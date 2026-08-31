@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { PlatformSelectionModalLoading } from "@/components/social/platform-selection-modal-loading";
+import { HookInlineSymbols } from "@/components/trending/hook-inline-symbols";
 import type { HookVideoScheduleSelection } from "@/components/trending/hook-video-schedule-drawer";
 import {
   Dialog,
@@ -527,7 +528,7 @@ function HookVideoPreviewDialog({
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase text-muted">Hook</p>
             <p className="mt-2 text-lg font-semibold leading-7 text-foreground-strong">
-              {item?.hookText}
+              {item ? <HookInlineSymbols text={item.hookText} /> : null}
             </p>
             <div className="mt-5 space-y-3 border-t border-border pt-5">
               <PreviewDetail

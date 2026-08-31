@@ -440,7 +440,7 @@ test("uses semantic lines and the shared 9:16 renderer fit", () => {
   assert.equal(overflow.fits, false);
 });
 
-test("allows up to two relevant emojis and rejects a third", () => {
+test("allows only the approved cross/check pair for the visual contrast format", () => {
   const baseDraft = {
     audioIntent: {
       energy: "medium",
@@ -448,42 +448,43 @@ test("allows up to two relevant emojis and rejects a third", () => {
       mood: "serious",
     },
     candidateIndex: 0,
-    draftKey: "0:GF_002",
+    draftKey: "0:GF_009",
     evidenceKeys: ["mainProblem"],
-    lines: ["Meal logging interrupts the day 😩"],
-    hookTextFormatId: "GF_002",
-    hookTextVariantId: "GF_002_A",
+    lines: ["Meal logging ❌", "AI-assisted meal logging ✅"],
+    hookTextFormatId: "GF_009",
+    hookTextVariantId: "GF_009_A",
   } satisfies HookDraft;
 
-  const oneEmoji = validateHookDraft({
+  const approvedPair = validateHookDraft({
     businessContext,
     candidate,
     draft: baseDraft,
     duplicate: false,
   });
-  const twoEmojis = validateHookDraft({
+  const unsupportedEmoji = validateHookDraft({
     businessContext,
     candidate,
     draft: {
       ...baseDraft,
-      lines: ["Meal logging interrupts the day 😩😩"],
+      lines: ["Meal logging interrupts the day 😩"],
     },
     duplicate: false,
   });
-  const threeEmojis = validateHookDraft({
+  const misplacedSymbols = validateHookDraft({
     businessContext,
     candidate,
     draft: {
       ...baseDraft,
-      lines: ["Meal logging interrupts the day 😩😩😩"],
+      lines: ["Meal logging ✅", "AI-assisted meal logging ❌"],
     },
     duplicate: false,
   });
 
-  assert.equal(oneEmoji.emojiValidationPassed, true);
-  assert.equal(twoEmojis.emojiValidationPassed, true);
-  assert.equal(threeEmojis.emojiValidationPassed, false);
-  assert.ok(threeEmojis.reasons.includes("too_many_emojis"));
+  assert.equal(approvedPair.emojiValidationPassed, true);
+  assert.equal(unsupportedEmoji.emojiValidationPassed, false);
+  assert.ok(unsupportedEmoji.reasons.includes("unsupported_hook_emoji"));
+  assert.equal(misplacedSymbols.emojiValidationPassed, false);
+  assert.ok(misplacedSymbols.reasons.includes("unsupported_hook_emoji"));
 });
 
 test("hard validation blocks fabricated history, numbers, and ad phrases", () => {

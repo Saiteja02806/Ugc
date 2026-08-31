@@ -14,6 +14,9 @@ const MEDIA_ASSET_ID = "00000000-0000-4000-8000-000000000305";
 test("stores one ready standalone Wall-text media asset", async () => {
   const events: string[] = [];
   const store = {
+    async hasPendingWallTextSchedules() {
+      return true;
+    },
     async markWallTextRenderStarted() {
       events.push("started");
     },
@@ -33,6 +36,13 @@ test("stores one ready standalone Wall-text media asset", async () => {
   const output = await runRenderWallTextVideoJob(createJob(), {
     dependencies: {
       createMediaAssetId: () => MEDIA_ASSET_ID,
+      async finalizeRenderedWallTextSchedules(params) {
+        events.push("finalized");
+        assert.equal(params.assignmentId, ASSIGNMENT_ID);
+        assert.equal(params.mediaAssetId, MEDIA_ASSET_ID);
+        assert.equal(params.renderId, RENDER_ID);
+        return { finalizedCount: 1, scheduleCount: 1 };
+      },
       async renderWallTextVideoToStorage(payload) {
         events.push("render");
         assert.equal(payload.assignmentId, ASSIGNMENT_ID);
@@ -57,7 +67,62 @@ test("stores one ready standalone Wall-text media asset", async () => {
     store,
   });
 
-  assert.deepEqual(events, ["started", "render", "completed"]);
+  assert.deepEqual(events, ["started", "render", "completed", "finalized"]);
+  assert.equal(output.mediaAssetId, MEDIA_ASSET_ID);
+});
+
+test("keeps a successful Wall MP4 when final scheduling delivery fails", async () => {
+  const events: string[] = [];
+  const store = {
+    async hasPendingWallTextSchedules() {
+      return true;
+    },
+    async markWallTextRenderStarted() {
+      events.push("started");
+    },
+    async markWallTextRenderCompleted() {
+      events.push("completed");
+    },
+    async markWallTextRenderFailed() {
+      events.push("render-failed");
+    },
+    async markWallTextScheduleFinalizationFailed(params: {
+      assignmentId: string;
+      renderId: string;
+    }) {
+      events.push("finalization-failed");
+      assert.equal(params.assignmentId, ASSIGNMENT_ID);
+      assert.equal(params.renderId, RENDER_ID);
+    },
+  } as unknown as SupabaseJobStore;
+
+  const output = await runRenderWallTextVideoJob(createJob(), {
+    dependencies: {
+      createMediaAssetId: () => MEDIA_ASSET_ID,
+      async finalizeRenderedWallTextSchedules() {
+        throw new Error("internal scheduler unavailable");
+      },
+      async renderWallTextVideoToStorage() {
+        events.push("render");
+        return {
+          assignmentId: ASSIGNMENT_ID,
+          creativeId: CREATIVE_ID,
+          key: "videos/rendered/wall.mp4",
+          ok: true,
+          renderId: RENDER_ID,
+          url: "https://cdn.example.com/wall.mp4",
+        };
+      },
+    },
+    store,
+  });
+
+  assert.deepEqual(events, [
+    "started",
+    "render",
+    "completed",
+    "finalization-failed",
+  ]);
   assert.equal(output.mediaAssetId, MEDIA_ASSET_ID);
 });
 
@@ -219,6 +284,9 @@ function instagramAttribution() {
 
 function successfulStore() {
   return {
+    async hasPendingWallTextSchedules() {
+      return false;
+    },
     async markWallTextRenderStarted() {},
     async markWallTextRenderCompleted() {},
     async markWallTextRenderFailed() {},
@@ -227,6 +295,9 @@ function successfulStore() {
 
 function failedStore() {
   return {
+    async hasPendingWallTextSchedules() {
+      return false;
+    },
     async markWallTextRenderStarted() {},
     async markWallTextRenderCompleted() {},
     async markWallTextRenderFailed() {},

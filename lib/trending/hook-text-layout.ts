@@ -18,7 +18,7 @@ export const HOOK_TEXT_FONT_WEIGHT = 600;
 export const HOOK_TEXT_OUTLINE_WIDTH = 5;
 export const HOOK_TEXT_OUTLINE_COLOR = "rgba(0, 0, 0, 0.82)";
 export const HOOK_TEXT_BROWSER_FONT_FAMILY =
-  'var(--font-edit-overlay), Geist, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", "Noto Sans CJK SC", "Noto Sans CJK JP", sans-serif';
+  'var(--font-edit-overlay), Geist, "Noto Sans CJK SC", "Noto Sans CJK JP", sans-serif';
 export const HOOK_TEXT_CANVAS_WIDTH = 1080;
 export const HOOK_TEXT_CANVAS_HEIGHT = 1920;
 export const HOOK_TEXT_MAXIMUM_WIDTH = Math.round(

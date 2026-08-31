@@ -53,7 +53,6 @@ import { HookVideoCard } from "@/components/trending/hook-video-card";
 import type { HookPreviewAudio } from "@/components/trending/hook-audio-preview";
 import type {
   HookVideoScheduleSelection,
-  VideoPreparationState,
 } from "@/components/trending/hook-video-schedule-drawer";
 import type { WallTextDetailActionState } from "@/components/trending/wall-text-detail-view";
 import { WallTextOverlay } from "@/components/trending/wall-text-overlay";
@@ -270,26 +269,28 @@ type SaveCarouselLibraryResponse =
       ok: false;
     };
 
-type SavedWallTextDraft = {
-  assignmentId: string;
-  id: string;
-  renderError: string | null;
-  renderedMediaAssetId: string | null;
-  renderedVideoUrl: string | null;
-  renderStatus: "not_requested" | "queued" | "rendering" | "ready" | "failed";
-  text: {
-    text: string;
-  };
-};
-
 type SavedWallTextDraftResponse =
   | {
-      draft: SavedWallTextDraft;
+      draft: {
+        assignmentId: string;
+      };
       jobId?: string;
       ok: true;
     }
   | {
       error?: string;
+      ok?: false;
+    };
+
+type WallTextPendingScheduleResponse =
+  | {
+      ok: true;
+      schedule: {
+        id: string;
+      };
+    }
+  | {
+      message?: string;
       ok?: false;
     };
 
@@ -311,6 +312,7 @@ type CarouselActionNotice = {
   actionLabel?: string;
   message: string;
   onAction?: () => void | Promise<void>;
+  tone?: "success";
 };
 
 function getSmartPreparingPollInterval(attemptCount: number): number {
@@ -1835,8 +1837,6 @@ function TrendingDeck({
     useState<WallTextDetailActionState>({ status: "idle" });
   const [pendingWallTextScheduleCandidate, setPendingWallTextScheduleCandidate] =
     useState<CompleteWallText | null>(null);
-  const [pendingWallTextDraft, setPendingWallTextDraft] =
-    useState<SavedWallTextDraft | null>(null);
   const [editorCandidate, setEditorCandidate] =
     useState<TrendingCandidate | null>(null);
   const [editByCreativeId, setEditByCreativeId] = useState<
@@ -1853,75 +1853,6 @@ function TrendingDeck({
   const [pendingScheduleCandidate, setPendingScheduleCandidate] =
     useState<CompleteCarousel | null>(null);
 
-  useEffect(() => {
-    const assignmentId = pendingWallTextDraft?.assignmentId;
-    const renderStatus = pendingWallTextDraft?.renderStatus;
-
-    if (
-      !assignmentId ||
-      renderStatus === "ready" ||
-      renderStatus === "failed"
-    ) {
-      return;
-    }
-    const assignmentIdToRefresh = assignmentId;
-
-    let cancelled = false;
-    let timer: number | null = null;
-
-    async function refreshDraft() {
-      try {
-        const latestDraft = await getSavedWallTextDraft(assignmentIdToRefresh);
-
-        if (cancelled) {
-          return;
-        }
-
-        setPendingWallTextDraft((current) =>
-          current?.assignmentId === assignmentIdToRefresh ? latestDraft : current,
-        );
-
-        if (
-          latestDraft.renderStatus !== "ready" &&
-          latestDraft.renderStatus !== "failed"
-        ) {
-          timer = window.setTimeout(() => void refreshDraft(), 2_000);
-        }
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-
-        setPendingWallTextDraft((current) => {
-          if (!current || current.assignmentId !== assignmentIdToRefresh) {
-            return current;
-          }
-
-          return {
-            ...current,
-            renderError: getErrorMessage(
-              error,
-              "Could not check Wall-of-text video preparation.",
-            ),
-            renderStatus: "failed",
-          };
-        });
-      }
-    }
-
-    timer = window.setTimeout(() => void refreshDraft(), 2_000);
-
-    return () => {
-      cancelled = true;
-
-      if (timer !== null) {
-        window.clearTimeout(timer);
-      }
-    };
-  }, [
-    pendingWallTextDraft?.assignmentId,
-    pendingWallTextDraft?.renderStatus,
-  ]);
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [hookPreviewStatusByCreativeId, setHookPreviewStatusByCreativeId] =
@@ -2520,8 +2451,6 @@ function TrendingDeck({
     setWallTextActionState({ status: "scheduling" });
 
     try {
-      const savedDraft = await saveWallTextDraft(wallTextCandidate.item);
-      setPendingWallTextDraft(savedDraft);
       setPendingWallTextScheduleCandidate(wallTextCandidate);
       setWallTextCandidate(null);
       setWallTextActionState({ status: "idle" });
@@ -2537,63 +2466,33 @@ function TrendingDeck({
     }
   }
 
-  async function retryWallTextPreparation() {
-    const candidate = pendingWallTextScheduleCandidate;
-
-    if (!candidate) {
-      return;
-    }
-
-    try {
-      const savedDraft = await saveWallTextDraft(candidate.item);
-      setPendingWallTextDraft(savedDraft);
-    } catch (error) {
-      setPendingWallTextDraft((current) =>
-        current
-          ? {
-              ...current,
-              renderError: getErrorMessage(
-                error,
-                "Could not restart Wall-of-text video preparation.",
-              ),
-              renderStatus: "failed",
-            }
-          : current,
-      );
-    }
-  }
-
   async function confirmWallTextSchedule(
     selection: HookVideoScheduleSelection,
   ) {
     const candidate = pendingWallTextScheduleCandidate;
-    const currentDraft = pendingWallTextDraft;
 
-    if (!candidate || !currentDraft) {
+    if (!candidate) {
       throw new Error("Choose a Wall-of-text video before scheduling.");
     }
 
-    if (
-      currentDraft.renderStatus !== "ready" ||
-      !currentDraft.renderedMediaAssetId
-    ) {
-      throw new Error("The Wall-of-text Reel is not ready to schedule yet.");
-    }
-
-    await createWallTextSchedule({
+    const schedule = await createPendingWallTextSchedule({
       candidate,
-      draft: currentDraft,
       selection,
     });
 
-    setPendingWallTextDraft(null);
     setPendingWallTextScheduleCandidate(null);
     setWallTextCandidate(null);
     setWallTextActionState({ status: "idle" });
     showActionNotice({
-      actionHref: "/scheduling",
-      actionLabel: "View schedule",
-      message: "Wall-text Reel scheduled.",
+      actionHref: `/scheduling?draft=${encodeURIComponent(schedule.id)}`,
+      actionLabel: "View Scheduling",
+      message: "Scheduled ·",
+      tone: "success",
+    });
+    // The acknowledgement is not coupled to background delivery. If this
+    // request cannot leave the browser, Scheduling offers the same retry.
+    void startPendingWallTextRender(schedule.id).catch((error) => {
+      console.error("Could not start the saved Wall-of-text render:", error);
     });
   }
 
@@ -2606,20 +2505,6 @@ function TrendingDeck({
     wallTextEdit?.content.format === "wall_text"
       ? wallTextEdit.content
       : null;
-  const wallTextPreparation: VideoPreparationState | undefined =
-    pendingWallTextScheduleCandidate
-      ? pendingWallTextDraft?.renderStatus === "ready" &&
-        pendingWallTextDraft.renderedMediaAssetId
-        ? { status: "ready" }
-        : pendingWallTextDraft?.renderStatus === "failed"
-          ? {
-              message:
-                pendingWallTextDraft.renderError ??
-                "Wall-of-text video preparation failed. Retry to prepare it again.",
-              status: "failed",
-            }
-          : { status: "preparing" }
-      : undefined;
 
   return (
     <section
@@ -2792,12 +2677,9 @@ function TrendingDeck({
               pendingWallTextScheduleCandidate.item.creative.text.fullText,
           }}
           onClose={() => {
-            setPendingWallTextDraft(null);
             setPendingWallTextScheduleCandidate(null);
           }}
           onConfirm={confirmWallTextSchedule}
-          onRetryPreparation={retryWallTextPreparation}
-          preparation={wallTextPreparation}
         />
       ) : null}
       {editorCandidate ? (
@@ -3094,7 +2976,12 @@ function CarouselActionToast({ notice }: { notice: CarouselActionNotice }) {
   return (
     <div
       role="status"
-      className="fixed bottom-5 left-1/2 z-[var(--z-modal)] flex -translate-x-1/2 items-center gap-3 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground-strong shadow-floating"
+      className={cn(
+        "fixed bottom-5 left-1/2 z-[var(--z-modal)] flex -translate-x-1/2 items-center gap-3 rounded-full border px-4 py-2 text-sm font-semibold shadow-floating",
+        notice.tone === "success"
+          ? "border-success/40 bg-success/15 text-success"
+          : "border-border bg-card text-foreground-strong",
+      )}
     >
       <span>{notice.message}</span>
       {notice.onAction && notice.actionLabel ? (
@@ -4353,79 +4240,21 @@ async function saveWallTextDraft(item: TrendingWallTextFeedItem) {
   return data.draft;
 }
 
-async function getSavedWallTextDraft(assignmentId: string) {
-  const token = await getCurrentUserIdToken();
-
-  if (!token) {
-    throw new Error("Sign in before checking this Wall-of-text video.");
-  }
-
-  const response = await fetch(
-    `/api/trending/wall-text/drafts?assignmentId=${encodeURIComponent(assignmentId)}`,
-    {
-      cache: "no-store",
-      headers: { Authorization: `Bearer ${token}` },
-    },
-  );
-  const data = (await response.json().catch(() => null)) as
-    | SavedWallTextDraftResponse
-    | null;
-
-  if (!response.ok || !data || data.ok !== true) {
-    throw new Error(
-      data?.ok === false && data.error
-        ? data.error
-        : "Could not check this Wall-of-text video.",
-    );
-  }
-
-  return data.draft;
-}
-
-async function createWallTextSchedule(params: {
+async function createPendingWallTextSchedule(params: {
   candidate: CompleteWallText;
-  draft: SavedWallTextDraft;
   selection: HookVideoScheduleSelection;
 }) {
-  const mediaAssetId = params.draft.renderedMediaAssetId;
-
-  if (!mediaAssetId) {
-    throw new Error("The Wall-of-text Reel is not ready to schedule.");
-  }
-
   const token = await getCurrentUserIdToken();
 
   if (!token) {
     throw new Error("Sign in before scheduling this Wall-of-text Reel.");
   }
 
-  const response = await fetch("/api/schedules", {
+  const response = await fetch("/api/trending/wall-text/schedules", {
     body: JSON.stringify({
-      caption: "",
-      idempotencyKey: [
-        "wall-text-schedule",
-        params.draft.assignmentId,
-        params.selection.useDefaultScheduleTime
-          ? "post-right-away"
-          : params.selection.scheduledDate,
-        params.selection.useDefaultScheduleTime
-          ? "post-right-away"
-          : params.selection.scheduledTime,
-        params.selection.timezone,
-      ].join(":"),
-      metadata: {
-        mediaMode: "single_video",
-        scheduledVideoId: mediaAssetId,
-        scheduledVideoSourceType: "wall_text_render",
-        wallTextAssignmentId: params.draft.assignmentId,
-        wallTextCreativeId: params.draft.id,
-      },
+      assignmentId: params.candidate.item.assignmentId,
       scheduledDate: params.selection.scheduledDate,
       scheduledTime: params.selection.scheduledTime,
-      source: {
-        id: mediaAssetId,
-        kind: "media_asset",
-      },
       targets: params.selection.targets.map((target) => ({
         connectionId: target.connectionId,
         platform: target.platform,
@@ -4443,17 +4272,7 @@ async function createWallTextSchedule(params: {
     method: "POST",
   });
   const data = (await response.json().catch(() => null)) as
-    | { message?: string; ok?: false }
-    | {
-        ok: true;
-        schedule: {
-          status: string;
-          targets: Array<{
-            lastErrorMessage?: string | null;
-            status: string;
-          }>;
-        };
-      }
+    | WallTextPendingScheduleResponse
     | null;
 
   if (!response.ok || !data || data.ok !== true) {
@@ -4464,19 +4283,27 @@ async function createWallTextSchedule(params: {
     );
   }
 
-  const failedTarget = data.schedule.targets.find((target) =>
-    ["action_required", "failed", "skipped"].includes(target.status),
-  );
+  return data.schedule;
+}
 
-  if (
-    data.schedule.status === "failed" ||
-    data.schedule.status === "partially_failed" ||
-    failedTarget
-  ) {
-    throw new Error(
-      failedTarget?.lastErrorMessage ||
-        "The schedule was saved, but one or more Instagram targets could not be scheduled. Open Scheduling to review it.",
-    );
+async function startPendingWallTextRender(scheduleId: string) {
+  const token = await getCurrentUserIdToken();
+
+  if (!token) {
+    throw new Error("Sign in before preparing this Wall-of-text Reel.");
+  }
+
+  const response = await fetch(`/api/schedules/${scheduleId}/wall-text-render`, {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${token}` },
+    method: "POST",
+  });
+  const data = (await response.json().catch(() => null)) as
+    | { message?: string; ok?: boolean }
+    | null;
+
+  if (!response.ok || !data?.ok) {
+    throw new Error(data?.message || "Could not start Wall-of-text video preparation.");
   }
 }
 

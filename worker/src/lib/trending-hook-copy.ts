@@ -25,6 +25,10 @@ import {
   type HookTextPerformanceSignals,
   type HookTextSelectionStrategy,
 } from "./trending-hook-text-formats.js";
+import {
+  getHookInlineSymbolNames,
+  hasUnsupportedHookEmoji,
+} from "./hook-inline-symbols.js";
 
 const DEFAULT_MODEL = "gpt-5.6-terra";
 const MAX_CANDIDATE_COUNT = 12;
@@ -32,7 +36,6 @@ const MAX_HOOK_LINES = 3;
 const MAX_HOOK_WORDS = 12;
 const MAX_HOOK_WORDS_PER_LINE = 7;
 const MAX_HOOK_CHARACTERS = 78;
-const MAX_HOOK_EMOJIS = 2;
 const MAX_EVIDENCE_BINDINGS = 2;
 const MIN_PASSING_SCORE = 80;
 // One targeted repair can fix a real publishability failure without repeatedly
@@ -973,7 +976,17 @@ export function validateHookDraft(params: {
     !FIRST_PERSON_PATTERN.test(text) ||
     assignedFormat?.rhetoricalFirstPersonAllowed === true;
   const emojiCount = Array.from(text.matchAll(EMOJI_PATTERN)).length;
-  const emojiValidationPassed = emojiCount <= MAX_HOOK_EMOJIS;
+  const assignedVariant = assignedFormat
+    ? getHookTextVariant(assignedFormat, params.draft.hookTextVariantId)
+    : null;
+  const inlineSymbols = getHookInlineSymbolNames(text);
+  const emojiValidationPassed =
+    !hasUnsupportedHookEmoji(text) &&
+    (emojiCount === 0 ||
+      (assignedVariant?.id === "GF_009_A" &&
+        inlineSymbols.length === 2 &&
+        inlineSymbols[0] === "cross" &&
+        inlineSymbols[1] === "check"));
   const businessGroundingPassed =
     evidenceBindingPassed &&
     hasSufficientBusinessGrounding(text, evidenceBindings);
@@ -1015,7 +1028,7 @@ export function validateHookDraft(params: {
     ...(!firstPersonValidationPassed
       ? ["unverified_first_person"]
       : []),
-    ...(!emojiValidationPassed ? ["too_many_emojis"] : []),
+    ...(!emojiValidationPassed ? ["unsupported_hook_emoji"] : []),
     ...(wordCount > MAX_HOOK_WORDS ||
     Array.from(text).length > MAX_HOOK_CHARACTERS
       ? ["hook_too_long"]
@@ -1156,7 +1169,7 @@ async function writeHookDrafts(params: {
       "Never invent numbers, time periods, results, testimonials, personal experience, prices, comparisons, superlatives, urgency, or guarantees. A number or time phrase is allowed only when it appears verbatim in the selected evidenceCatalog entry and the assigned format requires it.",
       "Never invent population claims such as most people, many people, everyone, or nobody.",
       "Do not invent a setting, physical object, metaphor, product mechanism, or feature that is absent from businessContext. Mystery must come from a true business idea, not fictional details.",
-      "Do not use quotations or banned phrases. First person and casual language are allowed only when the assigned format explicitly marks rhetoricalFirstPersonAllowed; emotional wording such as 'I could literally kiss whoever showed me this' is rhetorical and must not introduce personal history. You may use zero to two emotionally relevant emojis, usually at the end of the final line. Emojis may reinforce the reaction but must never act as evidence for a claim. Do not mention an influencer, clip, avatar, or future demo.",
+      "Do not use quotations, unsupported symbols, or banned phrases. First person and casual language are allowed only when the assigned format explicitly marks rhetoricalFirstPersonAllowed; emotional wording such as 'I could literally kiss whoever showed me this' is rhetorical and must not introduce personal history. Do not use emoji, except the exact ❌ then ✅ pair required by the assigned GF_009_A visual cross/check format. That pair is rendered as bundled icons, not font glyphs. Do not mention an influencer, clip, avatar, or future demo.",
       "There is no words-per-second formula. A reviewer will judge whether a normal viewer can comfortably read and understand the complete thought during the exact duration.",
       "Return exactly one result for every draftKey, preserving draftKey, candidateIndex, and hookTextFormatId. Never switch to a different format.",
     ].join(" "),
@@ -2426,9 +2439,9 @@ function buildBusinessEvidenceCatalog(
 function getGenerationPolicies() {
   return {
     emojiPolicy: {
-      allowed: true,
-      maximum: MAX_HOOK_EMOJIS,
-      preferredPlacement: "end_of_final_line",
+      allowed: "GF_009_A cross/check pair only",
+      maximum: 2,
+      preferredPlacement: "inside the assigned visual contrast only",
     },
     firstPersonPolicy:
       "Rhetorical first-person emotion is allowed only for the assigned format. Personal history and testimonials still require supplied evidence.",

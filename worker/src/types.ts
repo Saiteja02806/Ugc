@@ -1458,7 +1458,7 @@ export type BackgroundJobsDatabase = {
           metadata: Json;
           published_at: string | null;
           project_id: string | null;
-          source_kind: "library_item" | "media_asset";
+          source_kind: "library_item" | "media_asset" | "wall_text_pending";
           status: ScheduledPostStatus;
           title: string;
           updated_at: string;

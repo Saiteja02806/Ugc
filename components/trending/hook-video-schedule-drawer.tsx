@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { HookInlineSymbols } from "@/components/trending/hook-inline-symbols";
 import {
   Dialog,
   DialogContent,
@@ -734,7 +735,7 @@ function ScheduleReview({
             <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-3">
               <dt className="font-medium text-muted">Hook</dt>
               <dd className="line-clamp-3 font-semibold leading-5 text-foreground-strong">
-                {summary.hookText}
+                <HookInlineSymbols text={summary.hookText} />
               </dd>
             </div>
           </dl>

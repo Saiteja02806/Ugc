@@ -32,9 +32,9 @@ const feedSource = readFileSync(
   new URL("./trending-wall-text-feed.ts", import.meta.url),
   "utf8",
 );
-const renderRouteSource = readFileSync(
+const wallTextRenderRequestSource = readFileSync(
   new URL(
-    "../../app/api/trending/wall-text/drafts/route.ts",
+    "./wall-text-render-request.ts",
     import.meta.url,
   ),
   "utf8",
@@ -127,7 +127,7 @@ test("locks Instagram Reel audio to its paired template and never loops it", () 
   assert.match(databaseSource, /\.eq\("selection_scope", "instagram_reel_locked"\)/);
   assert.match(databaseSource, /\.eq\("selection_scope", "matcher_pool"\)/);
   assert.match(
-    renderRouteSource,
+    wallTextRenderRequestSource,
     /creativeEdit\?\.source[\s\S]+generationAttribution\?\.lockedAudioAssetId[\s\S]+lockedAudioAssetId,/,
   );
 });
@@ -209,19 +209,19 @@ test("requires a saved base selection before a Wall creative enters the feed", (
 
 test("resolves exact edit audio before claiming and queuing a render", () => {
   assert.match(
-    renderRouteSource,
+    wallTextRenderRequestSource,
     /isRenderableWallTextDuration\(durationSeconds\)[\s\S]+resolveWallTextAudioSelection/,
   );
   assert.match(
-    renderRouteSource,
+    wallTextRenderRequestSource,
     /resolveWallTextAudioSelection\([\s\S]+editId: creativeEdit\?\.id[\s\S]+editRevision: creativeEdit\?\.revision[\s\S]+videoDurationSeconds: durationSeconds/,
   );
   assert.match(
-    renderRouteSource,
+    wallTextRenderRequestSource,
     /isTrustedStorageUrl\(audio\.audioUrl\)[\s\S]+claimWallTextRender/,
   );
   assert.match(
-    renderRouteSource,
+    wallTextRenderRequestSource,
     /input: \{[\s\S]+audio: \{[\s\S]+selectionId: audio\.selectionId/,
   );
 });

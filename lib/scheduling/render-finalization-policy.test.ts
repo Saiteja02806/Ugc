@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   canRetrySchedulerCreateFailure,
   getRenderFinalizationDecision,
+  getWallTextRenderFinalizationDecision,
 } from "./render-finalization-policy.ts";
 import type { ScheduledPost, ScheduledPostTarget } from "./types.ts";
 
@@ -140,6 +141,67 @@ test("allows a clean retry only when every target failed during scheduler creati
       schedule: mixedFailure,
     }).action,
     "reject",
+  );
+});
+
+test("finalizes the current pending Wall render without an MP4 source", () => {
+  const schedule = createSchedule({
+    mediaAssetId: null,
+    metadata: {
+      mediaMode: "single_video",
+      plannedConnectionIds: "connection-1",
+      plannedScheduledFor: "2026-07-17T10:00:00.000Z",
+      wallTextAssignmentId: "00000000-0000-4000-8000-000000000051",
+      wallTextRenderId: RENDER_ID,
+      wallTextRenderStatus: "queued",
+    },
+    sourceKind: "wall_text_pending",
+  });
+
+  assert.deepEqual(
+    getWallTextRenderFinalizationDecision({
+      assignmentId: "00000000-0000-4000-8000-000000000051",
+      renderId: RENDER_ID,
+      schedule,
+    }),
+    { action: "finalize" },
+  );
+});
+
+test("rejects stale Wall callbacks and deduplicates an already scheduled Wall", () => {
+  const pending = createSchedule({
+    mediaAssetId: null,
+    metadata: {
+      plannedConnectionIds: "connection-1",
+      plannedScheduledFor: "2026-07-17T10:00:00.000Z",
+      wallTextAssignmentId: "00000000-0000-4000-8000-000000000051",
+      wallTextRenderId: RENDER_ID,
+    },
+    sourceKind: "wall_text_pending",
+  });
+
+  assert.equal(
+    getWallTextRenderFinalizationDecision({
+      assignmentId: "00000000-0000-4000-8000-000000000051",
+      renderId: "00000000-0000-4000-8000-000000000099",
+      schedule: pending,
+    }).action,
+    "reject",
+  );
+
+  const scheduled = createSchedule({
+    metadata: pending.metadata,
+    status: "scheduled",
+    targets: [createTarget({ status: "scheduled" })],
+  });
+
+  assert.deepEqual(
+    getWallTextRenderFinalizationDecision({
+      assignmentId: "00000000-0000-4000-8000-000000000051",
+      renderId: RENDER_ID,
+      schedule: scheduled,
+    }),
+    { action: "already_finalized" },
   );
 });
 

@@ -1344,6 +1344,32 @@ export class SupabaseJobStore {
     }
   }
 
+  async hasPendingWallTextSchedules(params: {
+    assignmentId: string;
+    renderId: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client
+      .from(SCHEDULED_POSTS_TABLE)
+      .select("id")
+      .eq("user_id", params.userId)
+      .eq("source_kind", "wall_text_pending")
+      .eq("status", "draft")
+      .contains("metadata", {
+        wallTextAssignmentId: params.assignmentId,
+        wallTextRenderId: params.renderId,
+      })
+      .limit(1);
+
+    if (error) {
+      throw new Error(
+        `Could not check pending Wall-text schedules: ${error.message}`,
+      );
+    }
+
+    return (data ?? []).length > 0;
+  }
+
   async markWallTextRenderFailed(params: {
     assignmentId: string;
     errorMessage: string;
@@ -1365,6 +1391,39 @@ export class SupabaseJobStore {
     if (error) {
       throw new Error(`Could not mark Wall-text render failed: ${error.message}`);
     }
+
+    await this.patchPendingWallTextSchedules({
+      assignmentId: params.assignmentId,
+      metadataPatch: {
+        wallTextRenderError: params.errorMessage.slice(0, 500),
+        wallTextRenderFailedAt: new Date().toISOString(),
+        wallTextRenderStatus: "failed",
+      },
+      renderId: params.renderId,
+      userId: params.userId,
+    });
+  }
+
+  async markWallTextScheduleFinalizationFailed(params: {
+    assignmentId: string;
+    errorMessage: string;
+    renderId: string;
+    userId: string;
+  }) {
+    await this.patchWallTextSchedules({
+      assignmentId: params.assignmentId,
+      allowedStatuses: ["draft", "failed", "partially_failed"],
+      metadataPatch: {
+        finalScheduleError: params.errorMessage.slice(0, 500),
+        finalScheduleErrorCode: "wall_text_finalization_delivery_failed",
+        finalScheduleFailedAt: new Date().toISOString(),
+        finalScheduleRenderId: params.renderId,
+        finalScheduleStatus: "failed",
+        wallTextRenderStatus: "ready",
+      },
+      renderId: params.renderId,
+      userId: params.userId,
+    });
   }
 
   async markScheduleCombinationFinalizationCompleted(params: {
@@ -2986,6 +3045,88 @@ export class SupabaseJobStore {
     }
 
     return data;
+  }
+
+  private async patchPendingWallTextSchedules(params: {
+    assignmentId: string;
+    metadataPatch: Record<string, Json | undefined>;
+    renderId: string;
+    userId: string;
+  }) {
+    return this.patchWallTextSchedules({ ...params, onlyPending: true });
+  }
+
+  private async patchWallTextSchedules(params: {
+    assignmentId: string;
+    allowedStatuses?: Array<
+      BackgroundJobsDatabase["public"]["Tables"]["scheduled_posts"]["Row"]["status"]
+    >;
+    metadataPatch: Record<string, Json | undefined>;
+    onlyPending?: boolean;
+    renderId: string;
+    userId: string;
+  }) {
+    const filter = {
+      wallTextAssignmentId: params.assignmentId,
+      wallTextRenderId: params.renderId,
+    };
+    const { data, error } = params.onlyPending
+      ? await this.client
+          .from(SCHEDULED_POSTS_TABLE)
+          .select("id,metadata")
+          .eq("user_id", params.userId)
+          .eq("source_kind", "wall_text_pending")
+          .eq("status", "draft")
+          .contains("metadata", filter)
+      : params.allowedStatuses
+        ? await this.client
+            .from(SCHEDULED_POSTS_TABLE)
+            .select("id,metadata")
+            .eq("user_id", params.userId)
+            .in("status", params.allowedStatuses)
+            .contains("metadata", filter)
+      : await this.client
+          .from(SCHEDULED_POSTS_TABLE)
+          .select("id,metadata")
+          .eq("user_id", params.userId)
+          .contains("metadata", filter);
+
+    if (error) {
+      throw new Error(
+        `Could not load Wall-text schedules: ${error.message}`,
+      );
+    }
+
+    const now = new Date().toISOString();
+
+    await Promise.all(
+      (data ?? []).map(async (schedule) => {
+        const update = this.client
+          .from(SCHEDULED_POSTS_TABLE)
+          .update({
+            metadata: toJsonObject({
+              ...toJsonRecord(schedule.metadata),
+              ...params.metadataPatch,
+            }),
+            updated_at: now,
+          })
+          .eq("id", schedule.id)
+          .eq("user_id", params.userId);
+        const { error: updateError } = params.onlyPending
+          ? await update
+              .eq("source_kind", "wall_text_pending")
+              .eq("status", "draft")
+          : params.allowedStatuses
+            ? await update.in("status", params.allowedStatuses)
+          : await update;
+
+        if (updateError) {
+          throw new Error(
+            `Could not update Wall-text schedule: ${updateError.message}`,
+          );
+        }
+      }),
+    );
   }
 
   private async patchScheduledPost(params: {

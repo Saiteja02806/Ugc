@@ -677,6 +677,16 @@ export function SchedulingWorkspace() {
       }
 
       storeServerSchedule(schedule);
+
+      if (schedule.sourceKind === "wall_text_pending") {
+        setDayPlannerOpen(false);
+        setActionNotice(null);
+        setActiveTab("drafts");
+        setNewScheduleInitialDate(draft.scheduledDate ?? toDateKey(new Date()));
+        initialDraftQueryState.current = "handled";
+        return;
+      }
+
       setDayPlannerOpen(false);
       setActionNotice(null);
       setDrawerError(null);
@@ -892,7 +902,13 @@ export function SchedulingWorkspace() {
         throw new Error("Sign in before preparing this video.");
       }
 
-      const renderResult = await queueCombinationRender({ scheduleId, token });
+      const schedule = serverSchedules.find(
+        (candidate) => candidate.id === scheduleId,
+      );
+      const renderResult =
+        getString(schedule?.metadata.wallTextAssignmentId)
+          ? await queueWallTextRender({ scheduleId, token })
+          : await queueCombinationRender({ scheduleId, token });
 
       storeServerSchedule(renderResult.schedule);
       setActionNotice(
@@ -921,6 +937,25 @@ export function SchedulingWorkspace() {
       const token = await getCurrentUserIdToken();
       if (!token) {
         throw new Error("Sign in before scheduling this post.");
+      }
+
+      const currentSchedule = serverSchedules.find(
+        (schedule) => schedule.id === draft.id,
+      );
+
+      if (currentSchedule?.sourceKind === "wall_text_pending") {
+        const renderResult = await queueWallTextRender({
+          scheduleId: draft.id,
+          token,
+        });
+
+        storeServerSchedule(renderResult.schedule);
+        setActionNotice(
+          renderResult.status === "ready"
+            ? "Wall-of-text video is ready; scheduling is retrying."
+            : "Wall-of-text video preparation resumed.",
+        );
+        return;
       }
 
       const data = await requestFinalSchedule({
@@ -953,7 +988,7 @@ export function SchedulingWorkspace() {
     } finally {
       setSchedulingFinalDraftId(null);
     }
-  }, [storeServerSchedule]);
+  }, [serverSchedules, storeServerSchedule]);
 
   async function handleRetryPublishing(
     draft: ScheduleDraft,
@@ -3273,13 +3308,18 @@ function getDraftTimeLabel(draft: ScheduleDraft) {
 }
 
 function canScheduleFinalDraft(draft: ScheduleDraft) {
+  const isWallTextDraft = draft.sourceType === "wall_text_render";
+  const hasRenderedAsset = isWallTextDraft
+    ? true
+    : isSingleVideoDraft(draft) || isCarouselDraft(draft)
+      ? Boolean(draft.demoMedia)
+      : Boolean(draft.combinedMedia?.mediaUrl);
+
   return Boolean(
     (draft.status === "ready" ||
       draft.status === "publishing_unavailable" ||
       canRetrySchedulerCreateFailure(draft)) &&
-      (isSingleVideoDraft(draft) || isCarouselDraft(draft)
-        ? draft.demoMedia
-        : draft.combinedMedia?.mediaUrl) &&
+      hasRenderedAsset &&
       hasPlannedFinalSchedule(draft) &&
       !hasScheduleLeadTimeError(draft),
   );
@@ -3346,10 +3386,19 @@ function getDraftPlannedScheduledFor(draft: ScheduleDraft) {
 
 function hasActiveSchedulingWork(schedule: ScheduledPost) {
   const now = Date.now();
-  const renderStatus = getString(schedule.metadata.combinedRenderStatus);
+  const isWallText = Boolean(getString(schedule.metadata.wallTextAssignmentId));
+  const renderStatus = getString(
+    isWallText
+      ? schedule.metadata.wallTextRenderStatus
+      : schedule.metadata.combinedRenderStatus,
+  );
   const finalScheduleStatus = getString(schedule.metadata.finalScheduleStatus);
   const renderQueuedAt = Date.parse(
-    getString(schedule.metadata.combinedRenderQueuedAt) ?? schedule.updatedAt,
+    getString(
+      isWallText
+        ? schedule.metadata.wallTextRenderQueuedAt
+        : schedule.metadata.combinedRenderQueuedAt,
+    ) ?? schedule.updatedAt,
   );
   const isRecentRender =
     (renderStatus === "queued" || renderStatus === "rendering") &&
@@ -3411,6 +3460,32 @@ async function queueCombinationRender({
   return data;
 }
 
+async function queueWallTextRender({
+  scheduleId,
+  token,
+}: {
+  scheduleId: string;
+  token: string;
+}) {
+  const response = await fetch(
+    `/api/schedules/${scheduleId}/wall-text-render`,
+    {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${token}` },
+      method: "POST",
+    },
+  );
+  const data = (await response.json()) as ScheduleRenderResponse;
+
+  if (!response.ok || data.ok !== true) {
+    throw new Error(
+      getApiResponseMessage(data, "Could not restart video preparation."),
+    );
+  }
+
+  return data;
+}
+
 async function requestFinalSchedule({
   connectionIds,
   scheduleId,
@@ -3460,6 +3535,7 @@ function mapScheduledPostToScheduleDraft(
   socialConnections: SocialConnection[] = [],
 ): ScheduleDraft {
   const metadata = schedule.metadata;
+  const isWallTextSchedule = Boolean(getString(metadata.wallTextAssignmentId));
   const savedPlannedTargets = getSavedPlannedTargets(schedule);
   const plannedConnectionIds = [
     ...new Set([
@@ -3524,7 +3600,10 @@ function mapScheduledPostToScheduleDraft(
         ? accountLabelsByConnectionId
         : undefined,
     canCancel: canCancelSchedule(schedule),
-    canEdit: canEditSchedule(schedule),
+    canEdit:
+      schedule.sourceKind === "wall_text_pending"
+        ? false
+        : canEditSchedule(schedule),
     caption: schedule.caption,
     combinedMedia,
     createdAt: schedule.createdAt,
@@ -3547,10 +3626,17 @@ function mapScheduledPostToScheduleDraft(
     platforms: getDraftPlatformsFromSchedule(schedule),
     scheduledDate,
     scheduledTime,
-    sourceId: schedule.mediaAssetId ?? schedule.libraryItemId ?? undefined,
+    sourceId:
+      schedule.mediaAssetId ??
+      schedule.libraryItemId ??
+      (isWallTextSchedule
+        ? getString(metadata.wallTextAssignmentId) ?? undefined
+        : undefined),
     sourceType:
       combinedMedia
         ? "combined_video"
+        : isWallTextSchedule
+          ? "wall_text_render"
         : isSingleVideoMetadata(metadata)
           ? getScheduleMediaSourceType(metadata.scheduledVideoSourceType)
         : schedule.sourceKind === "library_item"
@@ -3567,7 +3653,14 @@ function getDraftStatusFromScheduledPost(
   schedule: ScheduledPost,
   mediaIssue: ScheduleMediaIssue | null = null,
 ): ScheduleDraftStatus {
-  const renderStatus = getString(schedule.metadata.combinedRenderStatus);
+  const isWallTextSchedule = Boolean(
+    getString(schedule.metadata.wallTextAssignmentId),
+  );
+  const renderStatus = getString(
+    isWallTextSchedule
+      ? schedule.metadata.wallTextRenderStatus
+      : schedule.metadata.combinedRenderStatus,
+  );
   const finalScheduleStatus = getString(schedule.metadata.finalScheduleStatus);
 
   if (mediaIssue) {
@@ -3580,6 +3673,14 @@ function getDraftStatusFromScheduledPost(
 
   if (renderStatus === "failed") {
     return "render_failed";
+  }
+
+  if (isWallTextSchedule && renderStatus === "not_requested") {
+    return "render_required";
+  }
+
+  if (isWallTextSchedule && finalScheduleStatus === "failed") {
+    return "publishing_unavailable";
   }
 
   if (schedule.status === "failed") {
@@ -3768,10 +3869,6 @@ function getScheduleMediaSourceType(value: unknown): ScheduleMediaOption["source
     }
 
     if (value === "upload") {
-      return "user_video";
-    }
-
-    if (value === "wall_text_render") {
       return "user_video";
     }
 

@@ -16,6 +16,7 @@ import {
   type TrendingTextColor,
 } from "@/lib/trending/text-color";
 import { cn } from "@/lib/utils";
+import { HookInlineSymbols } from "@/components/trending/hook-inline-symbols";
 
 type HookTextOverlayProps = {
   className?: string;
@@ -82,7 +83,7 @@ export function HookTextOverlay({
                 : undefined
             }
           >
-            {line}
+            <HookInlineSymbols text={line} />
           </span>
         ))}
       </p>

@@ -24,9 +24,15 @@ import {
   buildEditOverlayTextLayout,
   buildLegacyEditOverlayTextLayout,
   buildResolvedEditOverlayTextLayout,
+  estimateEditOverlayLineWidth,
   type EditOverlayTextLayout,
   type HookTextLayoutVersion,
 } from "./edit-overlay-render-spec.js";
+import {
+  buildHookInlineSymbolSvg,
+  hasHookInlineSymbols,
+  tokenizeHookInlineSymbols,
+} from "./hook-inline-symbols.js";
 import {
   buildWallTextRenderLayout,
   buildWallTextOverlaySvg,
@@ -1227,7 +1233,7 @@ export function buildPreparedTextOverlaySvg(
   const textTop = containerY + layout.padding;
   const centerX = containerX + containerWidth / 2;
   const fontFamily = escapeXml(
-    `${EDIT_OVERLAY_FONT_FAMILY}, Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, Noto Sans CJK SC, Noto Sans CJK JP, sans-serif`,
+    `${EDIT_OVERLAY_FONT_FAMILY}, Noto Sans CJK SC, Noto Sans CJK JP, sans-serif`,
   );
   const background =
     layout.backgroundOpacity === null
@@ -1246,7 +1252,6 @@ export function buildPreparedTextOverlaySvg(
     const baselineY = Math.round(
       textTop + layout.fontSize * 0.82 + index * layout.lineHeight,
     );
-    const escapedLine = escapeXml(line);
     const commonAttributes = [
       `font-family="${fontFamily}"`,
       `font-size="${layout.fontSize}"`,
@@ -1256,6 +1261,19 @@ export function buildPreparedTextOverlaySvg(
     ]
       .filter(Boolean)
       .join(" ");
+
+    if (style === "hook" && hasHookInlineSymbols(line)) {
+      return buildHookInlineTextLineSvg({
+        baselineY,
+        centerX,
+        commonAttributes: commonAttributes.replace(/text-anchor="middle"\s*/u, ""),
+        fontSize: layout.fontSize,
+        line,
+        textColor: layout.textColor,
+      });
+    }
+
+    const escapedLine = escapeXml(line);
 
     const separationLayer =
       style === "hook"
@@ -1275,6 +1293,58 @@ export function buildPreparedTextOverlaySvg(
     ...textLines,
     "</svg>",
   ].join("");
+}
+
+function buildHookInlineTextLineSvg(params: {
+  baselineY: number;
+  centerX: number;
+  commonAttributes: string;
+  fontSize: number;
+  line: string;
+  textColor: string;
+}) {
+  const tokens = tokenizeHookInlineSymbols(params.line);
+  const lineWidth = estimateEditOverlayLineWidth(
+    params.line,
+    params.fontSize,
+  );
+  let cursorX = params.centerX - lineWidth / 2;
+
+  return tokens.flatMap((token) => {
+    if (token.kind === "unsupported") {
+      return [];
+    }
+
+    if (token.kind === "symbol") {
+      const iconAdvance = estimateEditOverlayLineWidth("❌", params.fontSize);
+      const iconSize = params.fontSize * 0.96;
+      const iconX = cursorX + (iconAdvance - iconSize) / 2;
+      const iconY = params.baselineY - params.fontSize * 0.84;
+      cursorX += iconAdvance;
+
+      return [
+        buildHookInlineSymbolSvg({
+          name: token.name,
+          size: iconSize,
+          x: iconX,
+          y: iconY,
+        }),
+      ];
+    }
+
+    const escapedText = escapeXml(token.value);
+    const fragmentWidth = estimateEditOverlayLineWidth(
+      token.value,
+      params.fontSize,
+    );
+    const x = cursorX;
+    cursorX += fragmentWidth;
+
+    return [
+      `<text x="${x}" y="${params.baselineY}" ${params.commonAttributes} fill="#000000" fill-opacity="0.82" stroke="#000000" stroke-opacity="0.82" stroke-width="5" stroke-linejoin="round" paint-order="stroke fill">${escapedText}</text>`,
+      `<text x="${x}" y="${params.baselineY}" ${params.commonAttributes} fill="${escapeXml(params.textColor)}">${escapedText}</text>`,
+    ];
+  });
 }
 
 export function ensureWallTextFontsRegistered() {

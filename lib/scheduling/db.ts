@@ -363,6 +363,30 @@ export async function getScheduledPostByIdempotency(params: {
   return (await attachTargets([data]))[0] ?? null;
 }
 
+export async function listWallTextSchedulesForRender(params: {
+  assignmentId: string;
+  renderId: string;
+  userId: string;
+}) {
+  const { data, error } = await getSchedulingSupabaseClient()
+    .from(SCHEDULED_POSTS_TABLE)
+    .select("*")
+    .eq("user_id", params.userId)
+    .in("source_kind", ["wall_text_pending", "media_asset"])
+    .contains("metadata", {
+      wallTextAssignmentId: params.assignmentId,
+      wallTextRenderId: params.renderId,
+    });
+
+  if (error) {
+    throw new Error(
+      `Could not load pending Wall-of-text schedules: ${error.message}`,
+    );
+  }
+
+  return attachTargets(data ?? []);
+}
+
 export async function insertScheduledPost(input: ScheduledPostInsert) {
   const { data, error } = await getSchedulingSupabaseClient()
     .from(SCHEDULED_POSTS_TABLE)
@@ -545,12 +569,15 @@ export async function prepareScheduledPostForPublishing(params: {
 }
 
 export async function updateScheduledPostRenderState(params: {
+  expectedSourceKind?: ScheduleSourceKind;
   expectedStatus?: ScheduledPostStatus;
   expectedUpdatedAt?: string;
   lastErrorCode?: string | null;
   mediaAssetId?: string | null;
   metadata: Record<string, Json | undefined>;
   postId: string;
+  projectId?: string | null;
+  sourceKind?: ScheduleSourceKind;
   userId: string;
 }) {
   const current = await getScheduledPostForUser({
@@ -575,6 +602,14 @@ export async function updateScheduledPostRenderState(params: {
     update.media_asset_id = params.mediaAssetId;
   }
 
+  if (params.projectId !== undefined) {
+    update.project_id = params.projectId;
+  }
+
+  if (params.sourceKind !== undefined) {
+    update.source_kind = params.sourceKind;
+  }
+
   let query = getSchedulingSupabaseClient()
     .from(SCHEDULED_POSTS_TABLE)
     .update(update)
@@ -583,6 +618,10 @@ export async function updateScheduledPostRenderState(params: {
 
   if (params.expectedStatus) {
     query = query.eq("status", params.expectedStatus);
+  }
+
+  if (params.expectedSourceKind) {
+    query = query.eq("source_kind", params.expectedSourceKind);
   }
 
   if (params.expectedUpdatedAt) {

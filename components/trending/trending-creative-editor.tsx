@@ -52,6 +52,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { HookInlineSymbols } from "@/components/trending/hook-inline-symbols";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { MediaAsset } from "@/lib/media/types";
 import {
@@ -1460,7 +1461,7 @@ function Structure2StoryText({ layout }: { layout: Structure2EditorLayout }) {
           key={`${index}:${line}`}
           className="block whitespace-nowrap"
         >
-          {line}
+          <HookInlineSymbols text={line} />
         </span>
       ))}
     </div>

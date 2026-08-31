@@ -146,8 +146,9 @@ test("keeps Hook feed and editor typography aligned with the final semibold outl
   assert.match(card, /hookFontSize = 52/);
   assert.match(hookLayout, /HOOK_TEXT_FONT_WEIGHT = 600/);
   assert.match(hookLayout, /HOOK_TEXT_OUTLINE_WIDTH = 5/);
-  assert.match(hookLayout, /"Segoe UI Emoji"/);
-  assert.match(hookLayout, /"Noto Color Emoji"/);
+  assert.match(textOverlay, /HookInlineSymbols/);
+  assert.match(textOverlay, /HOOK_TEXT_OUTLINE_WIDTH/);
+  assert.doesNotMatch(hookLayout, /Emoji/);
   assert.match(textOverlay, /fontWeight: HOOK_TEXT_FONT_WEIGHT/);
   assert.match(textOverlay, /HOOK_TEXT_OUTLINE_WIDTH/);
   assert.match(editorHookOverlay, /fontWeight: HOOK_TEXT_FONT_WEIGHT/);

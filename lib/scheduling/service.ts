@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import {
   createSocialPublishSchedule,
   deleteSocialPublishSchedule,
@@ -30,6 +32,7 @@ import {
   getScheduledPostForUser,
   insertScheduledPost,
   insertScheduledPostTargets,
+  listWallTextSchedulesForRender,
   listCancelledScheduleTargetsNeedingCleanup,
   listScheduledPostsForUser,
   markScheduleTargetCleanupFailed,
@@ -41,6 +44,7 @@ import {
   prepareScheduledPostForPublishing,
   requestSocialPublishTargetRetry,
   updateEditableScheduledPost,
+  updateScheduledPostRenderState,
 } from "@/lib/scheduling/db";
 import {
   getMediaAssetForOwner,
@@ -77,6 +81,7 @@ import {
 import {
   canRetrySchedulerCreateFailure,
   getRenderFinalizationDecision,
+  getWallTextRenderFinalizationDecision,
 } from "@/lib/scheduling/render-finalization-policy";
 import {
   normalizeScheduleMetadata,
@@ -90,6 +95,7 @@ import type {
   ScheduleCreateInput,
   ScheduleCreateTargetInput,
   SchedulePlatform,
+  ScheduleSourceKind,
   ScheduleUpdateInput,
 } from "@/lib/scheduling/types";
 import { isSocialPlatform } from "@/lib/social/types";
@@ -126,6 +132,13 @@ export type ScheduleRenderedPostInput = {
 export type FinalizeRenderedScheduleInput = {
   renderId: string;
   scheduleId: string;
+  userId: string;
+};
+
+export type FinalizeWallTextSchedulesInput = {
+  assignmentId: string;
+  mediaAssetId: string;
+  renderId: string;
   userId: string;
 };
 
@@ -173,7 +186,42 @@ export async function createUserSchedule(params: {
   const normalized = await normalizeScheduleCreateInput(params.input);
   assertScheduleTargetSelection(normalized);
 
-  if (normalized.idempotencyKey) {
+  if (normalized.source.kind === "wall_text_pending") {
+    const assignmentId = getMetadataString(
+      normalized.metadata.wallTextAssignmentId,
+    );
+
+    if (assignmentId !== normalized.source.id) {
+      throw new SchedulingRequestError(
+        "The Wall-of-text video selection is invalid.",
+        409,
+        "wall_text_assignment_mismatch",
+      );
+    }
+
+    if (normalized.targets.length > 0) {
+      throw new SchedulingRequestError(
+        "Wall-of-text videos must finish preparation before platform scheduling starts.",
+        409,
+        "wall_text_render_required",
+      );
+    }
+
+    const plannedScheduleTime = getMetadataString(
+      normalized.metadata.plannedScheduledFor,
+    );
+
+    if (!plannedScheduleTime) {
+      throw new SchedulingRequestError("Choose a date and time to schedule.");
+    }
+
+    assertMinimumScheduleLead(plannedScheduleTime);
+  }
+
+  if (
+    normalized.source.kind !== "wall_text_pending" &&
+    normalized.idempotencyKey
+  ) {
     const existing = await getScheduledPostByIdempotency({
       idempotencyKey: normalized.idempotencyKey,
       userId: params.userId,
@@ -187,11 +235,19 @@ export async function createUserSchedule(params: {
     }
   }
 
-  const source = await resolveScheduleSource({
-    sourceId: normalized.source.id,
-    sourceKind: normalized.source.kind,
-    userId: params.userId,
-  });
+  const source =
+    normalized.source.kind === "wall_text_pending"
+      ? {
+          collection: "wall_text_pending",
+          projectId: null,
+          sourceType: "wall_text_pending",
+          title: normalized.title || "Wall-of-text Reel",
+        }
+      : await resolveScheduleSource({
+          sourceId: normalized.source.id,
+          sourceKind: normalized.source.kind,
+          userId: params.userId,
+        });
   const [targetConnections, plannedTargetConnections] = await Promise.all([
     resolveScheduleTargets({
       targets: normalized.targets,
@@ -211,6 +267,29 @@ export async function createUserSchedule(params: {
     normalized.source.kind === "library_item"
       ? { ...trustedMetadata, mediaMode: "carousel" }
       : trustedMetadata;
+  const idempotencyKey =
+    normalized.source.kind === "wall_text_pending"
+      ? createWallTextPendingScheduleIdempotencyKey({
+          assignmentId: normalized.source.id,
+          metadata,
+          plannedTargets: plannedTargetConnections,
+          timezone: normalized.timezone,
+        })
+      : normalized.idempotencyKey;
+
+  if (idempotencyKey) {
+    const existing = await getScheduledPostByIdempotency({
+      idempotencyKey,
+      userId: params.userId,
+    });
+
+    if (existing) {
+      return {
+        created: false,
+        schedule: existing,
+      };
+    }
+  }
   const isDraft = targetConnections.length === 0;
   const mediaMode = getScheduleMediaMode(metadata);
 
@@ -251,7 +330,7 @@ export async function createUserSchedule(params: {
   const postStatus: ScheduledPostStatus = isDraft ? "draft" : "scheduling";
   const post = await insertScheduledPost({
     caption: normalized.caption,
-    idempotency_key: normalized.idempotencyKey,
+    idempotency_key: idempotencyKey,
     library_item_id:
       normalized.source.kind === "library_item" ? normalized.source.id : null,
     media_asset_id:
@@ -845,6 +924,14 @@ export async function updateUserSchedule(params: {
   const normalized = await normalizeScheduleCreateInput(params.input);
   assertScheduleTargetSelection(normalized);
 
+  if (normalized.source.kind === "wall_text_pending") {
+    throw new SchedulingRequestError(
+      "A Wall-of-text schedule cannot be edited while its video is being prepared.",
+      409,
+      "schedule_source_not_editable",
+    );
+  }
+
   if (normalized.targets.length > 0) {
     throw new SchedulingRequestError(
       "Edit planned accounts before platform publishing starts.",
@@ -1047,6 +1134,238 @@ export async function updateUserSchedule(params: {
 export function getSocialSchedulingMinimumLeadMinutes() {
   return parseSocialSchedulingMinimumLeadMinutes(
     process.env.SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
+  );
+}
+
+export async function finalizeWallTextSchedulesFromWorker(
+  input: FinalizeWallTextSchedulesInput,
+) {
+  assertUuid(input.assignmentId, "Wall-of-text assignment ID is invalid.");
+  assertUuid(input.mediaAssetId, "Wall-of-text media ID is invalid.");
+  assertUuid(input.renderId, "Wall-of-text render ID is invalid.");
+
+  const schedules = await listWallTextSchedulesForRender({
+    assignmentId: input.assignmentId,
+    renderId: input.renderId,
+    userId: input.userId,
+  });
+  const results = await Promise.all(
+    schedules.map((schedule) =>
+      finalizeWallTextScheduleFromWorker({
+        ...input,
+        schedule,
+      }),
+    ),
+  );
+
+  return {
+    finalizedCount: results.filter((result) => result.created).length,
+    scheduleCount: results.length,
+    schedules: results,
+  };
+}
+
+async function finalizeWallTextScheduleFromWorker(params: {
+  assignmentId: string;
+  mediaAssetId: string;
+  renderId: string;
+  schedule: ScheduledPost;
+  userId: string;
+}) {
+  const decision = getWallTextRenderFinalizationDecision({
+    assignmentId: params.assignmentId,
+    renderId: params.renderId,
+    schedule: params.schedule,
+  });
+
+  if (decision.action === "reject") {
+    return {
+      created: false,
+      error: decision.message,
+      scheduleId: params.schedule.id,
+      status: params.schedule.status,
+    };
+  }
+
+  if (decision.action === "skip" || decision.action === "already_finalized") {
+    return {
+      created: false,
+      scheduleId: params.schedule.id,
+      status: params.schedule.status,
+    };
+  }
+
+  let schedule = params.schedule;
+  const mediaAsset = await getMediaAssetForOwner({
+    assetId: params.mediaAssetId,
+    userId: params.userId,
+  });
+
+  if (
+    !mediaAsset ||
+    mediaAsset.status !== "ready" ||
+    mediaAsset.collection !== "video" ||
+    mediaAsset.source_type !== "wall_text_render"
+  ) {
+    return recordWallTextFinalizationFailure({
+      errorCode: "wall_text_media_unavailable",
+      errorMessage: "The rendered Wall-of-text video is not available for scheduling.",
+      schedule,
+      userId: params.userId,
+    });
+  }
+
+  if (schedule.sourceKind === "wall_text_pending") {
+    const attached = await updateScheduledPostRenderState({
+      expectedSourceKind: "wall_text_pending",
+      expectedStatus: "draft",
+      expectedUpdatedAt: schedule.updatedAt,
+      mediaAssetId: mediaAsset.id,
+      metadata: {
+        finalScheduleError: null,
+        finalScheduleErrorCode: null,
+        finalScheduleFailedAt: null,
+        finalScheduleStatus: null,
+        mediaMode: "single_video",
+        scheduledVideoId: mediaAsset.id,
+        scheduledVideoSourceType: "wall_text_render",
+        scheduledVideoTitle: mediaAsset.title,
+        wallTextRenderError: null,
+        wallTextRenderStatus: "ready",
+        wallTextRenderedAt: new Date().toISOString(),
+      },
+      postId: schedule.id,
+      projectId: mediaAsset.project_id,
+      sourceKind: "media_asset",
+      userId: params.userId,
+    });
+
+    if (!attached) {
+      const current = await getScheduledPostForUser({
+        postId: schedule.id,
+        userId: params.userId,
+      });
+
+      if (!current) {
+        return {
+          created: false,
+          error: "This schedule no longer exists.",
+          scheduleId: schedule.id,
+          status: "cancelled",
+        };
+      }
+
+      const currentDecision = getWallTextRenderFinalizationDecision({
+        assignmentId: params.assignmentId,
+        renderId: params.renderId,
+        schedule: current,
+      });
+
+      if (currentDecision.action !== "finalize") {
+        return {
+          created: false,
+          scheduleId: current.id,
+          status: current.status,
+        };
+      }
+
+      return recordWallTextFinalizationFailure({
+        errorCode: "wall_text_schedule_version_conflict",
+        errorMessage:
+          "The Wall-of-text schedule changed while its video was being attached.",
+        schedule: current,
+        userId: params.userId,
+      });
+    }
+
+    schedule = attached;
+  } else if (schedule.mediaAssetId !== mediaAsset.id) {
+    return recordWallTextFinalizationFailure({
+      errorCode: "stale_wall_text_media",
+      errorMessage: "This Wall-of-text schedule points to a different video.",
+      schedule,
+      userId: params.userId,
+    });
+  }
+
+  try {
+    const result = await scheduleRenderedPost({
+      input: {},
+      leadPolicy: "render_finalization",
+      postId: schedule.id,
+      userId: params.userId,
+    });
+    const finalizationFailed =
+      result.schedule.status === "failed" ||
+      result.schedule.status === "partially_failed";
+    const finalError = finalizationFailed
+      ? getFirstScheduleTargetError(result.schedule)
+      : null;
+    const updated = await updateScheduledPostRenderState({
+      metadata: {
+        finalScheduleCompletedAt: finalizationFailed ? null : new Date().toISOString(),
+        finalScheduleError: finalError,
+        finalScheduleErrorCode: finalizationFailed
+          ? "scheduler_create_failed"
+          : null,
+        finalScheduleFailedAt: finalizationFailed ? new Date().toISOString() : null,
+        finalScheduleRenderId: params.renderId,
+        finalScheduleStatus: finalizationFailed ? "failed" : result.schedule.status,
+        wallTextRenderStatus: "ready",
+      },
+      postId: result.schedule.id,
+      userId: params.userId,
+    });
+
+    return {
+      created: result.created,
+      error: finalError,
+      scheduleId: result.schedule.id,
+      status: updated?.status ?? result.schedule.status,
+    };
+  } catch (error) {
+    return recordWallTextFinalizationFailure({
+      errorCode:
+        error instanceof SchedulingRequestError
+          ? error.code
+          : "wall_text_scheduler_unavailable",
+      errorMessage: getSafeErrorMessage(error),
+      schedule,
+      userId: params.userId,
+    });
+  }
+}
+
+async function recordWallTextFinalizationFailure(params: {
+  errorCode: string;
+  errorMessage: string;
+  schedule: ScheduledPost;
+  userId: string;
+}) {
+  const updated = await updateScheduledPostRenderState({
+    metadata: {
+      finalScheduleError: params.errorMessage.slice(0, 500),
+      finalScheduleErrorCode: params.errorCode.slice(0, 120),
+      finalScheduleFailedAt: new Date().toISOString(),
+      finalScheduleStatus: "failed",
+      wallTextRenderStatus: "ready",
+    },
+    postId: params.schedule.id,
+    userId: params.userId,
+  });
+
+  return {
+    created: false,
+    error: params.errorMessage,
+    scheduleId: params.schedule.id,
+    status: updated?.status ?? params.schedule.status,
+  };
+}
+
+function getFirstScheduleTargetError(schedule: ScheduledPost) {
+  return (
+    schedule.targets.find((target) => target.lastErrorMessage)?.lastErrorMessage ??
+    "The video is ready, but the publishing task could not be created."
   );
 }
 
@@ -1292,7 +1611,8 @@ async function normalizeScheduleCreateInput(input: ScheduleCreateInput) {
 
   if (
     input.source.kind !== "media_asset" &&
-    input.source.kind !== "library_item"
+    input.source.kind !== "library_item" &&
+    input.source.kind !== "wall_text_pending"
   ) {
     throw new SchedulingRequestError("Unsupported schedule source.");
   }
@@ -1370,7 +1690,7 @@ function isPublishableMediaSource(params: {
 }
 
 function assertCarouselTargetPlatformsSupported(params: {
-  sourceKind: "media_asset" | "library_item";
+  sourceKind: ScheduleSourceKind;
   targets: Array<{ platform: SchedulePlatform }>;
 }) {
   if (params.sourceKind !== "library_item") {
@@ -1990,6 +2310,63 @@ function applyTrustedPlannedTargetMetadata(params: {
   metadata.plannedTargetsJson = JSON.stringify(plannedTargets);
 
   return metadata;
+}
+
+function createWallTextPendingScheduleIdempotencyKey(params: {
+  assignmentId: string;
+  metadata: Record<string, unknown>;
+  plannedTargets: Array<{
+    id: string;
+    platform: SchedulePlatform;
+    settings: ScheduleTargetSettings;
+  }>;
+  timezone: string;
+}) {
+  const plannedScheduledFor = getMetadataString(params.metadata.plannedScheduledFor);
+
+  if (!plannedScheduledFor) {
+    throw new SchedulingRequestError("Choose a date and time to schedule.");
+  }
+
+  const targetFingerprint = params.plannedTargets
+    .map((target) => ({
+      connectionId: target.id,
+      platform: target.platform,
+      settings: target.settings,
+    }))
+    .sort((left, right) => left.connectionId.localeCompare(right.connectionId));
+  const digest = createHash("sha256")
+    .update(
+      stableScheduleFingerprint({
+        plannedScheduledFor,
+        targets: targetFingerprint,
+        timezone: params.timezone,
+      }),
+    )
+    .digest("hex")
+    .slice(0, 24);
+
+  // This is derived only after the server has resolved the confirmation time
+  // and verified the selected social accounts. A stale browser key therefore
+  // cannot merge a later "Post right away" action with an earlier schedule.
+  return `wall-text-pending:${params.assignmentId}:${digest}`;
+}
+
+function stableScheduleFingerprint(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableScheduleFingerprint).join(",")}]`;
+  }
+
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+
+    return `{${Object.keys(record)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableScheduleFingerprint(record[key])}`)
+      .join(",")}}`;
+  }
+
+  return JSON.stringify(value) ?? "null";
 }
 
 function getPlannedTargetsFromMetadata(

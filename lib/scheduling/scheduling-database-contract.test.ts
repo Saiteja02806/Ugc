@@ -720,7 +720,10 @@ test("a deep-linked carousel draft opens the scheduling editor without switching
     draftHandoff,
     /schedule\.sourceKind === "library_item"[\s\S]*?loadSocialConnections\(\{ force: true \}\)[\s\S]*?Promise\.all\(\[[\s\S]*?loadScheduleMedia\(\{ force: true \}\)[\s\S]*?loadSocialConnections\(\{ force: true \}\)/,
   );
-  assert.doesNotMatch(draftHandoff, /setActiveTab\("drafts"\)/);
+  assert.match(
+    draftHandoff,
+    /schedule\.sourceKind === "wall_text_pending"[\s\S]*?setActiveTab\("drafts"\)[\s\S]*?return;/,
+  );
   assert.doesNotMatch(draftHandoff, /setViewMode\("list"\)/);
   assert.doesNotMatch(draftHandoff, /setTimeout/);
   assert.ok(

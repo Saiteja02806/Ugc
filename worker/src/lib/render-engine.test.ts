@@ -111,7 +111,7 @@ test("rasterizes the shared overlay plan without distorting the font", async () 
   assert.match(svg, /viewBox="0 0 1080 1920"/);
   assert.match(
     svg,
-    /font-family="Geist, Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, Noto Sans CJK SC/,
+    /font-family="Geist, Noto Sans CJK SC, Noto Sans CJK JP, sans-serif"/,
   );
   assert.match(svg, /fill="#f472b6"/);
   assert.doesNotMatch(svg, /@font-face|data:font\/ttf;base64,/);
@@ -168,24 +168,25 @@ test("rasterizes the shared overlay plan without distorting the font", async () 
   assert.equal(alpha.max, 255);
 });
 
-test("rasterizes a reference-style three-line Hook with an emoji", async () => {
+test("rasterizes approved Hook symbols as bundled cross/check icons", async () => {
   const layout = buildEditOverlayTextLayout(
-    "Meal logging\ninterrupts the day\nagain 😩",
+    "Time-consuming meal logging ❌\nAI-assisted meal logging ✅",
     "hook",
     "9:16",
   );
   const svg = buildPreparedTextOverlaySvg({
-    imagePath: "unused-hook-emoji-test.png",
+    imagePath: "unused-hook-symbol-test.png",
     layout,
     position: "middle",
     style: "hook",
   });
 
   assert.equal(layout.fontSize, 52);
-  assert.equal(layout.lines.length, 3);
-  assert.match(svg, /Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji/);
+  assert.equal(layout.lines.length, 2);
+  assert.match(svg, /data-hook-inline-symbol="cross"/);
+  assert.match(svg, /data-hook-inline-symbol="check"/);
   assert.match(svg, /stroke-width="5"/);
-  assert.match(svg, /again 😩/);
+  assert.doesNotMatch(svg, /❌|✅|274C|2705/);
 
   const png = await sharp(Buffer.from(svg)).png().toBuffer();
   const metadata = await sharp(png).metadata();

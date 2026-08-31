@@ -3931,3 +3931,20 @@ Name: **Verify v26 and replace the stale production assignment**
   A partially consumed daily refill is never reopened. Its completed items
   remain immutable and a terminal shortfall creates a fresh successor refill
   batch for the missing feed positions only.
+
+## 2026-08-31 Hook Inline Symbol Rendering
+
+- Hook copy keeps its original text for semantic validation and legacy
+  compatibility, but the approved `❌` and `✅` characters are normalized into
+  named `cross` and `check` inline-symbol tokens before any visual rendering.
+  The Preview and the GCP render worker both draw the matching bundled Lucide
+  CircleX/CircleCheck assets; neither surface depends on an operating-system
+  emoji font.
+- Only the assigned `GF_009_A` visual contrast format may use that exact
+  cross-then-check pair. New Hook generation rejects every other emoji, and
+  older unsupported emoji are omitted at visual-render boundaries instead of
+  producing a missing-glyph code such as `274C` in a video.
+- The text layout reserves the icon advance before rendering. This preserves
+  Hook line fitting, placement, and the existing fixed 52px type contract.
+  Existing source copy remains intact; no historic Hook record is rewritten
+  solely for this presentation change.

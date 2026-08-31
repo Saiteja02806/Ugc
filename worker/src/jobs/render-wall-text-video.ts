@@ -3,6 +3,10 @@ import {
   renderWallTextVideoToStorage as defaultRenderWallTextVideoToStorage,
   type RenderWallTextVideoPayload,
 } from "../lib/render-engine.js";
+import {
+  finalizeRenderedWallTextSchedules as defaultFinalizeRenderedWallTextSchedules,
+  type WallTextScheduleFinalizationResult,
+} from "../lib/schedule-finalization.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
 import type { BackgroundJobRow, Json } from "../types.js";
 import type {
@@ -20,11 +24,18 @@ import { parseTextColor } from "../lib/edit-overlay-render-spec.js";
 
 type RenderWallTextDependencies = {
   createMediaAssetId: () => string;
+  finalizeRenderedWallTextSchedules: (params: {
+    assignmentId: string;
+    mediaAssetId: string;
+    renderId: string;
+    userId: string;
+  }) => Promise<WallTextScheduleFinalizationResult>;
   renderWallTextVideoToStorage: typeof defaultRenderWallTextVideoToStorage;
 };
 
 const defaultDependencies: RenderWallTextDependencies = {
   createMediaAssetId: () => crypto.randomUUID(),
+  finalizeRenderedWallTextSchedules: defaultFinalizeRenderedWallTextSchedules,
   renderWallTextVideoToStorage: defaultRenderWallTextVideoToStorage,
 };
 
@@ -77,6 +88,60 @@ export async function runRenderWallTextVideoJob(
       url: result.url,
       userId: payload.userId,
     });
+
+    try {
+      const hasPendingSchedule = await context.store.hasPendingWallTextSchedules({
+        assignmentId: payload.assignmentId,
+        renderId: payload.renderId,
+        userId: payload.userId,
+      });
+
+      if (!hasPendingSchedule) {
+        return {
+          ...result,
+          mediaAssetId,
+        } satisfies Record<string, Json>;
+      }
+
+      const finalization = await dependencies.finalizeRenderedWallTextSchedules({
+        assignmentId: payload.assignmentId,
+        mediaAssetId,
+        renderId: payload.renderId,
+        userId: payload.userId,
+      });
+
+      logger.info("Rendered Wall-text schedules finalized by the server", {
+        finalizedCount: finalization.finalizedCount,
+        jobId: job.id,
+        renderId: payload.renderId,
+        scheduleCount: finalization.scheduleCount,
+      });
+    } catch (finalizationError) {
+      const errorMessage = getErrorMessage(finalizationError);
+
+      try {
+        await context.store.markWallTextScheduleFinalizationFailed({
+          assignmentId: payload.assignmentId,
+          errorMessage,
+          renderId: payload.renderId,
+          userId: payload.userId,
+        });
+      } catch (persistenceError) {
+        logger.error("Could not persist Wall-text final scheduling failure", {
+          assignmentId: payload.assignmentId,
+          error: getErrorMessage(persistenceError),
+          jobId: job.id,
+          renderId: payload.renderId,
+        });
+      }
+
+      logger.error("Wall-text video is ready, but final scheduling failed", {
+        assignmentId: payload.assignmentId,
+        error: errorMessage,
+        jobId: job.id,
+        renderId: payload.renderId,
+      });
+    }
 
     return {
       ...result,

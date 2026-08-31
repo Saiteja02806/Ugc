@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { HookInlineSymbols } from "@/components/trending/hook-inline-symbols";
 import { HookTextOverlay } from "@/components/trending/hook-text-overlay";
 import type { HookVideoScheduleSelection } from "@/components/trending/hook-video-schedule-drawer";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
@@ -1422,7 +1423,7 @@ function ReviewComposition({
         <div className="border-b border-border pb-5">
           <p className="text-xs font-bold uppercase text-muted">Selected hook</p>
           <p className="mt-2 whitespace-pre-line text-lg font-semibold leading-7 text-foreground-strong">
-            {hookText}
+            <HookInlineSymbols text={hookText} />
           </p>
         </div>
 

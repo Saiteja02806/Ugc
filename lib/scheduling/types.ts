@@ -1,6 +1,10 @@
 export const schedulePlatforms = ["instagram", "tiktok", "youtube"] as const;
 
-export const scheduleSourceKinds = ["media_asset", "library_item"] as const;
+export const scheduleSourceKinds = [
+  "media_asset",
+  "library_item",
+  "wall_text_pending",
+] as const;
 
 export const scheduledPostStatuses = [
   "draft",
@@ -50,6 +54,7 @@ export const scheduleSourceTypes = [
   "generated_carousel",
   "influencer_video",
   "user_video",
+  "wall_text_render",
   "combined_video",
 ] as const;
 

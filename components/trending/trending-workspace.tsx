@@ -51,7 +51,10 @@ import { PlatformSelectionModalLoading } from "@/components/social/platform-sele
 import type { SchedulePlatformContext } from "@/components/social/platform-selection-modal";
 import { HookVideoCard } from "@/components/trending/hook-video-card";
 import type { HookPreviewAudio } from "@/components/trending/hook-audio-preview";
-import type { HookVideoScheduleSelection } from "@/components/trending/hook-video-schedule-drawer";
+import type {
+  HookVideoScheduleSelection,
+  VideoPreparationState,
+} from "@/components/trending/hook-video-schedule-drawer";
 import type { WallTextDetailActionState } from "@/components/trending/wall-text-detail-view";
 import { WallTextOverlay } from "@/components/trending/wall-text-overlay";
 import { WallTextAudioPreview } from "@/components/trending/wall-text-audio-preview";
@@ -1849,6 +1852,76 @@ function TrendingDeck({
     useState<SchedulePlatformContext | null>(null);
   const [pendingScheduleCandidate, setPendingScheduleCandidate] =
     useState<CompleteCarousel | null>(null);
+
+  useEffect(() => {
+    const assignmentId = pendingWallTextDraft?.assignmentId;
+    const renderStatus = pendingWallTextDraft?.renderStatus;
+
+    if (
+      !assignmentId ||
+      renderStatus === "ready" ||
+      renderStatus === "failed"
+    ) {
+      return;
+    }
+    const assignmentIdToRefresh = assignmentId;
+
+    let cancelled = false;
+    let timer: number | null = null;
+
+    async function refreshDraft() {
+      try {
+        const latestDraft = await getSavedWallTextDraft(assignmentIdToRefresh);
+
+        if (cancelled) {
+          return;
+        }
+
+        setPendingWallTextDraft((current) =>
+          current?.assignmentId === assignmentIdToRefresh ? latestDraft : current,
+        );
+
+        if (
+          latestDraft.renderStatus !== "ready" &&
+          latestDraft.renderStatus !== "failed"
+        ) {
+          timer = window.setTimeout(() => void refreshDraft(), 2_000);
+        }
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        setPendingWallTextDraft((current) => {
+          if (!current || current.assignmentId !== assignmentIdToRefresh) {
+            return current;
+          }
+
+          return {
+            ...current,
+            renderError: getErrorMessage(
+              error,
+              "Could not check Wall-of-text video preparation.",
+            ),
+            renderStatus: "failed",
+          };
+        });
+      }
+    }
+
+    timer = window.setTimeout(() => void refreshDraft(), 2_000);
+
+    return () => {
+      cancelled = true;
+
+      if (timer !== null) {
+        window.clearTimeout(timer);
+      }
+    };
+  }, [
+    pendingWallTextDraft?.assignmentId,
+    pendingWallTextDraft?.renderStatus,
+  ]);
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [hookPreviewStatusByCreativeId, setHookPreviewStatusByCreativeId] =
@@ -2433,6 +2506,7 @@ function TrendingDeck({
           error,
           "Could not save this Wall-of-text video.",
         ),
+        retryAction: "save",
         status: "error",
       });
     }
@@ -2447,16 +2521,7 @@ function TrendingDeck({
 
     try {
       const savedDraft = await saveWallTextDraft(wallTextCandidate.item);
-      const readyDraft =
-        savedDraft.renderStatus === "ready" && savedDraft.renderedMediaAssetId
-          ? savedDraft
-          : await waitForWallTextRender(savedDraft.assignmentId);
-
-      if (!readyDraft.renderedMediaAssetId) {
-        throw new Error("The Wall-of-text Reel is not ready to schedule yet.");
-      }
-
-      setPendingWallTextDraft(readyDraft);
+      setPendingWallTextDraft(savedDraft);
       setPendingWallTextScheduleCandidate(wallTextCandidate);
       setWallTextCandidate(null);
       setWallTextActionState({ status: "idle" });
@@ -2466,8 +2531,35 @@ function TrendingDeck({
           error,
           "Could not prepare this Wall-of-text video for scheduling.",
         ),
+        retryAction: "schedule",
         status: "error",
       });
+    }
+  }
+
+  async function retryWallTextPreparation() {
+    const candidate = pendingWallTextScheduleCandidate;
+
+    if (!candidate) {
+      return;
+    }
+
+    try {
+      const savedDraft = await saveWallTextDraft(candidate.item);
+      setPendingWallTextDraft(savedDraft);
+    } catch (error) {
+      setPendingWallTextDraft((current) =>
+        current
+          ? {
+              ...current,
+              renderError: getErrorMessage(
+                error,
+                "Could not restart Wall-of-text video preparation.",
+              ),
+              renderStatus: "failed",
+            }
+          : current,
+      );
     }
   }
 
@@ -2514,6 +2606,20 @@ function TrendingDeck({
     wallTextEdit?.content.format === "wall_text"
       ? wallTextEdit.content
       : null;
+  const wallTextPreparation: VideoPreparationState | undefined =
+    pendingWallTextScheduleCandidate
+      ? pendingWallTextDraft?.renderStatus === "ready" &&
+        pendingWallTextDraft.renderedMediaAssetId
+        ? { status: "ready" }
+        : pendingWallTextDraft?.renderStatus === "failed"
+          ? {
+              message:
+                pendingWallTextDraft.renderError ??
+                "Wall-of-text video preparation failed. Retry to prepare it again.",
+              status: "failed",
+            }
+          : { status: "preparing" }
+      : undefined;
 
   return (
     <section
@@ -2662,6 +2768,18 @@ function TrendingDeck({
           }}
           onSaveToLibrary={handleSaveWallText}
           onSchedulePost={handleScheduleWallText}
+          onRetry={
+            wallTextActionState.status === "error" &&
+            wallTextActionState.retryAction === "schedule"
+              ? handleScheduleWallText
+              : handleSaveWallText
+          }
+          retryLabel={
+            wallTextActionState.status === "error" &&
+            wallTextActionState.retryAction === "schedule"
+              ? "Retry schedule"
+              : "Retry save"
+          }
         />
       ) : null}
       {pendingWallTextScheduleCandidate ? (
@@ -2678,6 +2796,8 @@ function TrendingDeck({
             setPendingWallTextScheduleCandidate(null);
           }}
           onConfirm={confirmWallTextSchedule}
+          onRetryPreparation={retryWallTextPreparation}
+          preparation={wallTextPreparation}
         />
       ) : null}
       {editorCandidate ? (
@@ -2754,14 +2874,18 @@ function TrendingDeck({
 function CarouselActionDialog({
   actionState,
   onClose,
+  onRetry,
   onSaveToLibrary,
   onSchedulePost,
+  retryLabel = "Retry",
   title,
 }: {
   actionState: CarouselActionState | WallTextDetailActionState;
   onClose: () => void;
+  onRetry?: () => void | Promise<void>;
   onSaveToLibrary: () => void | Promise<void>;
   onSchedulePost: () => void | Promise<void>;
+  retryLabel?: string;
   title: string;
 }) {
   const firstActionRef = useRef<HTMLButtonElement>(null);
@@ -2880,10 +3004,10 @@ function CarouselActionDialog({
                 <span>{actionState.message}</span>
                 <button
                   type="button"
-                  onClick={onSaveToLibrary}
+                  onClick={onRetry ?? onSaveToLibrary}
                   className="inline-flex h-8 shrink-0 items-center justify-center rounded-md bg-error px-3 text-xs font-semibold text-error-foreground transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30"
                 >
-                  Retry
+                  {retryLabel}
                 </button>
               </div>
             </div>
@@ -4256,33 +4380,6 @@ async function getSavedWallTextDraft(assignmentId: string) {
   }
 
   return data.draft;
-}
-
-async function waitForWallTextRender(assignmentId: string) {
-  const maximumAttempts = 45;
-
-  for (let attempt = 0; attempt < maximumAttempts; attempt += 1) {
-    const draft = await getSavedWallTextDraft(assignmentId);
-
-    if (draft.renderStatus === "ready" && draft.renderedMediaAssetId) {
-      return draft;
-    }
-
-    if (draft.renderStatus === "failed") {
-      throw new Error(
-        draft.renderError ||
-          "The Wall-of-text Reel could not be prepared. Save it again to retry.",
-      );
-    }
-
-    await new Promise<void>((resolve) => {
-      window.setTimeout(resolve, 2_000);
-    });
-  }
-
-  throw new Error(
-    "The Reel is still preparing. It is saved in Content, so you can schedule it there when it is ready.",
-  );
 }
 
 async function createWallTextSchedule(params: {

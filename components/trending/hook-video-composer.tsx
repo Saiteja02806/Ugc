@@ -63,11 +63,13 @@ import type {
 import { getHookVideoTextPosition } from "@/lib/trending/hook-video-text-placement";
 import { cn } from "@/lib/utils";
 
+const loadHookVideoScheduleDrawer = () =>
+  import("@/components/trending/hook-video-schedule-drawer").then(
+    (module) => module.HookVideoScheduleDrawer,
+  );
+
 const HookVideoScheduleDrawer = dynamic(
-  () =>
-    import("@/components/trending/hook-video-schedule-drawer").then(
-      (module) => module.HookVideoScheduleDrawer,
-    ),
+  loadHookVideoScheduleDrawer,
   { loading: PlatformSelectionModalLoading },
 );
 
@@ -567,6 +569,17 @@ export function HookVideoComposer({
   const mutationPending = saving || scheduling;
   const isTrendingComposition = flowState.draft.hookSource === "trending";
 
+  useEffect(() => {
+    if (flowState.stage !== "review") {
+      return;
+    }
+
+    // The drawer remains lazy for the initial composer bundle, but it is ready
+    // before the user can press Schedule. This prevents its loading overlay
+    // from covering the review screen at the moment of the click.
+    void loadHookVideoScheduleDrawer().catch(() => undefined);
+  }, [flowState.stage]);
+
   return (
     <div className="relative min-h-[520px] bg-background">
       <header className="border-b border-border">
@@ -714,10 +727,11 @@ export function HookVideoComposer({
             {scheduledPostId ? (
               <Link
                 href={`/scheduling?draft=${encodeURIComponent(scheduledPostId)}`}
-                className={primaryButtonClass}
+                className={scheduledButtonClass}
+                aria-label="Scheduled. View Scheduling"
               >
-                <CalendarClock className="size-4" aria-hidden="true" />
-                View Scheduling
+                <Check className="size-4" aria-hidden="true" />
+                Scheduled · View Scheduling
               </Link>
             ) : (
               <button
@@ -1835,6 +1849,9 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 const primaryButtonClass =
   "inline-flex h-10 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50";
+
+const scheduledButtonClass =
+  "inline-flex h-10 items-center justify-center gap-2 rounded-control bg-success px-4 text-sm font-semibold text-success-foreground transition-colors hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
 const secondaryButtonClass =
   "inline-flex h-10 items-center justify-center gap-2 rounded-control border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50";

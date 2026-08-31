@@ -443,9 +443,13 @@ export async function renderWallTextVideoToStorage(
   try {
     await ensureWallTextFontsRegistered();
     assertWallTextTextBoxMatchesPayload(payload.text, payload.textBox);
-    await validateWallTextRenderedLineWidths(payload.text, payload.textBox);
-    const overlaySvg = buildWallTextOverlaySvg({
+    const renderContent = await reflowWallTextContentForRenderer({
       content: payload.text,
+      textBox: payload.textBox,
+    });
+    await validateWallTextRenderedLineWidths(renderContent, payload.textBox);
+    const overlaySvg = buildWallTextOverlaySvg({
+      content: renderContent,
       placement: payload.placement,
       safeArea: payload.safeArea,
       textColor: payload.textColor,
@@ -1331,6 +1335,149 @@ async function validateWallTextRenderedLineWidths(
       }
     }
   }
+}
+
+/**
+ * The browser produces the initial semantic layout, but its font engine is
+ * not byte-for-byte identical to the packaged renderer font. Reflow the
+ * persisted final layout with the renderer's own Inter metrics before drawing
+ * it, so a one-pixel metrics difference never turns a valid Reel into a
+ * failed background job.
+ */
+export async function reflowWallTextContentForRenderer(params: {
+  content: WallTextRenderContent;
+  textBox: WallTextNormalizedBox;
+}): Promise<WallTextRenderContent> {
+  const { content, textBox } = params;
+
+  if (!content.finalLayout) {
+    return content;
+  }
+
+  const maximumWidth =
+    Math.round(textBox.width * WALL_TEXT_RENDER_WIDTH) -
+    WALL_TEXT_INLINE_SAFE_PADDING * 2;
+  const maximumHeight = Math.round(textBox.height * WALL_TEXT_RENDER_HEIGHT);
+  const fontPath = await getWallTextFontPath();
+  const fontSizes = getWallTextReflowFontSizes(content.finalLayout.fontSizePx);
+
+  for (const fontSizePx of fontSizes) {
+    const blocks = await Promise.all(
+      content.finalLayout.blocks.map(async (block) => ({
+        lines: await reflowWallTextBlockLines({
+          fontPath,
+          fontSizePx,
+          maximumWidth,
+          text: block.lines.join(" "),
+        }),
+        role: block.role,
+      })),
+    );
+    const lineCount = blocks.reduce((total, block) => total + block.lines.length, 0);
+
+    if (
+      content.finalLayout.version === "wall-text-final-layout-v2" &&
+      (lineCount < 4 || lineCount > 8)
+    ) {
+      continue;
+    }
+
+    const lineHeightPx = Math.round(fontSizePx * 1.1 * 100) / 100;
+    const blockHeight =
+      lineCount * lineHeightPx + Math.max(0, blocks.length - 1) * 18;
+
+    if (blockHeight > maximumHeight) {
+      continue;
+    }
+
+    return {
+      ...content,
+      finalLayout: {
+        ...content.finalLayout,
+        blocks,
+        fontSizePx,
+        fontWeight: 400,
+        lineHeightPx,
+      },
+    };
+  }
+
+  throw new Error(
+    "Wall-of-text copy cannot fit the selected placement zone with the renderer font.",
+  );
+}
+
+function getWallTextReflowFontSizes(
+  selectedFontSize: NonNullable<WallTextRenderContent["finalLayout"]>["fontSizePx"],
+) {
+  const supportedFontSizes = [52, 50, 48, 46, 44, 42, 40, 38, 36] as const;
+
+  return supportedFontSizes.filter((fontSize) => fontSize <= selectedFontSize);
+}
+
+async function reflowWallTextBlockLines(params: {
+  fontPath: string;
+  fontSizePx: number;
+  maximumWidth: number;
+  text: string;
+}) {
+  const words = params.text.replace(/\s+/gu, " ").trim().split(" ");
+  const lines: string[] = [];
+  let line = "";
+
+  for (const word of words) {
+    const candidate = line ? `${line} ${word}` : word;
+    const candidateWidth = await measureWallTextLineWidth({
+      fontPath: params.fontPath,
+      fontSizePx: params.fontSizePx,
+      text: candidate,
+    });
+
+    if (candidateWidth + WALL_TEXT_OUTLINE_WIDTH * 2 < params.maximumWidth) {
+      line = candidate;
+      continue;
+    }
+
+    if (!line) {
+      throw new Error(
+        `Wall-of-text word exceeds the measured Inter text width: "${word}"`,
+      );
+    }
+
+    lines.push(line);
+    line = word;
+  }
+
+  if (line) {
+    lines.push(line);
+  }
+
+  return lines;
+}
+
+async function measureWallTextLineWidth(params: {
+  fontPath: string;
+  fontSizePx: number;
+  text: string;
+}) {
+  const metadata = await sharp({
+    text: {
+      dpi: 72,
+      font: `Inter Regular ${params.fontSizePx}`,
+      fontfile: params.fontPath,
+      rgba: true,
+      text: escapePangoMarkup(params.text),
+      wrap: "none",
+    },
+  }).metadata();
+
+  if (!metadata.width) {
+    throw new Error(
+      "Inter Regular could not measure Wall-of-text copy for rendering.",
+    );
+  }
+
+  return metadata.width;
 }
 
 export function assertWallTextTextBoxMatchesPayload(

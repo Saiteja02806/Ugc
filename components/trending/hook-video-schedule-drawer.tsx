@@ -79,6 +79,11 @@ export type HookVideoScheduleSummary =
       text: string;
     };
 
+export type VideoPreparationState =
+  | { status: "ready" }
+  | { status: "preparing" }
+  | { message: string; status: "failed" };
+
 const platformDetails: Record<SocialPlatform, { label: string }> = {
   instagram: { label: "Instagram" },
   tiktok: { label: "TikTok" },
@@ -88,10 +93,14 @@ const platformDetails: Record<SocialPlatform, { label: string }> = {
 export function HookVideoScheduleDrawer({
   onClose,
   onConfirm,
+  onRetryPreparation,
+  preparation,
   summary,
 }: {
   onClose: () => void;
   onConfirm: (selection: HookVideoScheduleSelection) => Promise<void>;
+  onRetryPreparation?: () => void | Promise<void>;
+  preparation?: VideoPreparationState;
   summary: HookVideoScheduleSummary;
 }) {
   const { user } = useAuth();
@@ -182,6 +191,9 @@ export function HookVideoScheduleDrawer({
   // confirmation. The displayed preview can become stale while a Wall-of-text
   // Reel renders or while the user reviews either type of video.
   const useDefaultScheduleTime = !hasManualScheduleTime;
+  const preparationPending = preparation?.status === "preparing";
+  const preparationFailed = preparation?.status === "failed";
+  const canConfirmPreparation = !preparation || preparation.status === "ready";
 
   async function loadTikTokCapabilities(connectionId: string) {
     setTikTokCapabilities((current) => ({
@@ -498,6 +510,41 @@ export function HookVideoScheduleDrawer({
               {errorMessage}
             </p>
           ) : null}
+          {preparationPending ? (
+            <div
+              role="status"
+              className="mt-4 flex items-start gap-2 rounded-[10px] border border-primary/25 bg-primary/5 px-3 py-2.5 text-xs font-semibold leading-5 text-primary"
+            >
+              <Loader2
+                className="mt-0.5 size-3.5 shrink-0 animate-spin motion-reduce:animate-none"
+                aria-hidden="true"
+              />
+              <span>
+                Preparing this Wall-of-text Reel. You can finish the account and
+                time details now; confirmation unlocks as soon as the video is
+                ready.
+              </span>
+            </div>
+          ) : null}
+          {preparation?.status === "failed" ? (
+            <div
+              role="alert"
+              className="mt-4 flex flex-col gap-2 rounded-[10px] border border-error/30 bg-error/10 px-3 py-2.5 text-xs font-semibold leading-5 text-error sm:flex-row sm:items-center sm:justify-between"
+            >
+              <span>{preparation.message}</span>
+              {onRetryPreparation ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void onRetryPreparation()}
+                  className="shrink-0 border-error/40 text-error hover:bg-error/10 hover:text-error"
+                >
+                  Retry preparation
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         <footer className="border-t border-border bg-background px-4 py-3 sm:px-5">
@@ -505,7 +552,11 @@ export function HookVideoScheduleDrawer({
             type="button"
             size="lg"
             onClick={stage === "details" ? continueToReview : () => void confirmSchedule()}
-            disabled={loading || submitting}
+            disabled={
+              loading ||
+              submitting ||
+              (stage === "review" && !canConfirmPreparation)
+            }
             className="h-10 w-full rounded-[10px]"
           >
             {submitting ? (
@@ -515,7 +566,13 @@ export function HookVideoScheduleDrawer({
             ) : (
               <Check data-icon="inline-start" aria-hidden="true" />
             )}
-            {stage === "review" ? "Confirm schedule" : "Review"}
+            {stage === "review"
+              ? preparationPending
+                ? "Preparing video…"
+                : preparationFailed
+                  ? "Video preparation failed"
+                  : "Confirm schedule"
+              : "Review"}
           </Button>
         </footer>
       </DialogContent>

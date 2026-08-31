@@ -21,7 +21,11 @@ import type { TrendingTextColor } from "@/lib/trending/text-color";
 export type WallTextDetailActionState =
   | { status: "idle" }
   | { status: "saving" | "scheduling" }
-  | { message: string; status: "error" };
+  | {
+      message: string;
+      retryAction: "save" | "schedule";
+      status: "error";
+    };
 
 export function WallTextDetailView({
   actionState,

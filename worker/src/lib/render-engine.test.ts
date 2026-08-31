@@ -13,6 +13,7 @@ import {
   buildPreparedTextOverlaySvg,
   ensureEditOverlayFontRegistered,
   ensureWallTextFontsRegistered,
+  reflowWallTextContentForRenderer,
   validateRenderedVideoProbe,
 } from "./render-engine.js";
 import {
@@ -287,6 +288,85 @@ test("keeps the final painted Wall overlay inside the 15px inner fence", async (
   });
 
   assert.equal(layout.textBox.width - WALL_TEXT_INLINE_SAFE_PADDING * 2, 750);
+  assert.ok(bounds.left > layout.textBox.left + WALL_TEXT_INLINE_SAFE_PADDING);
+  assert.ok(
+    bounds.right <
+      layout.textBox.left + layout.textBox.width - WALL_TEXT_INLINE_SAFE_PADDING - 1,
+  );
+});
+
+test("reflows a saved Wall layout with the renderer's Inter metrics", async () => {
+  const textBox = {
+    height: 480 / 1920,
+    width: 780 / 1080,
+    x: 150 / 1080,
+    y: 800 / 1920,
+  };
+  const fullText =
+    "I savor the meal without guilt because I captured it instantly with AI logging and can review details on my own time.";
+  const content = {
+    finalLayout: {
+      blocks: [
+        {
+          lines: [
+            "I savor the meal without",
+            "guilt because I captured it",
+            "instantly with AI logging",
+            "and can review details on my own",
+            "time.",
+          ],
+          role: "text" as const,
+        },
+      ],
+      fontFamily: "Inter" as const,
+      fontSizePx: 52 as const,
+      fontWeight: 400 as const,
+      lineHeightPx: 57.2,
+      textBox,
+      version: "wall-text-final-layout-v2" as const,
+    },
+    fullText,
+    segments: [
+      { lines: ["I savor the meal without"], role: "lead" as const },
+      {
+        lines: ["guilt because I captured it", "instantly with AI logging"],
+        role: "support" as const,
+      },
+      {
+        lines: ["and can review details on my own", "time."],
+        role: "closing" as const,
+      },
+    ],
+  };
+  const reflowed = await reflowWallTextContentForRenderer({ content, textBox });
+  const lines = reflowed.finalLayout?.blocks.flatMap((block) => block.lines) ?? [];
+  const layout = buildWallTextRenderLayout({ content: reflowed, textBox });
+  const svg = buildWallTextOverlaySvg({
+    content: reflowed,
+    placement: "middle",
+    textBox,
+  });
+
+  assert.equal(lines.join(" "), fullText);
+  assert.doesNotMatch(lines.join("\n"), /and can review details on my own/);
+  assert.deepEqual(lines.slice(-2), [
+    "and can review details on my",
+    "own time.",
+  ]);
+
+  await ensureWallTextFontsRegistered();
+  const raster = await sharp(Buffer.from(svg))
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const bounds = assertWallTextOverlayPixelsInsideTextBox({
+    channels: raster.info.channels,
+    height: raster.info.height,
+    pixels: raster.data,
+    textBox: layout.textBox,
+    width: raster.info.width,
+  });
+
   assert.ok(bounds.left > layout.textBox.left + WALL_TEXT_INLINE_SAFE_PADDING);
   assert.ok(
     bounds.right <

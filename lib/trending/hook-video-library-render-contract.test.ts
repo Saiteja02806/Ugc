@@ -99,14 +99,15 @@ test("untouched Hook schedule times resolve at confirmation and always confirm t
   assert.match(scheduleRoute, /getDefaultHookVideoScheduleTime/);
   assert.match(scheduleRoute, /error instanceof ScheduleTimeError/);
   assert.match(hookComposer, /Your video has been scheduled\./);
-  assert.match(hookComposer, />\s*View Scheduling\s*</);
+  assert.match(hookComposer, /Scheduled · View Scheduling/);
+  assert.match(hookComposer, /className=\{scheduledButtonClass\}/);
   assert.match(
     hookComposer,
     /setScheduledPostId\(data\.scheduleId\);[\s\S]*setScheduleDrawerOpen\(false\);[\s\S]*fetch\([\s\S]*\/render/,
   );
 });
 
-test("Wall-of-text post right away resolves at final confirmation instead of using a stale preview", () => {
+test("Wall-of-text scheduling opens while preparation runs and resolves post right away at final confirmation", () => {
   assert.match(scheduleDrawer, /const useDefaultScheduleTime = !hasManualScheduleTime;/);
   assert.match(
     trendingWorkspace,
@@ -133,13 +134,16 @@ test("Wall-of-text post right away resolves at final confirmation instead of usi
 
   assert.match(
     wallSchedulePreparation,
-    /await waitForWallTextRender\(savedDraft\.assignmentId\)/,
+    /const savedDraft = await saveWallTextDraft\(wallTextCandidate\.item\);[\s\S]*setPendingWallTextDraft\(savedDraft\);[\s\S]*setPendingWallTextScheduleCandidate\(wallTextCandidate\);/,
   );
-  assert.ok(
-    wallSchedulePreparation.indexOf("waitForWallTextRender") <
-      wallSchedulePreparation.indexOf("setPendingWallTextDraft"),
-  );
+  assert.doesNotMatch(wallSchedulePreparation, /waitForWallTextRender/);
   assert.doesNotMatch(wallScheduleConfirmation, /waitForWallTextRender/);
+  assert.match(trendingWorkspace, /preparation=\{wallTextPreparation\}/);
+  assert.match(
+    scheduleDrawer,
+    /Preparing this Wall-of-text Reel\.[\s\S]*confirmation unlocks as soon as the video is[\s\S]*ready\./,
+  );
+  assert.match(scheduleDrawer, /\(stage === "review" && !canConfirmPreparation\)/);
 });
 
 function readProjectFile(relativePath: string) {

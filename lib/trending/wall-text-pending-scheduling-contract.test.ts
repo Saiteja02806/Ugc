@@ -21,6 +21,8 @@ const worker = readProjectFile("worker/src/jobs/render-wall-text-video.ts");
 const schedulingWorkspace = readProjectFile(
   "components/scheduling/scheduling-workspace.tsx",
 );
+const scheduleDetailRoute = readProjectFile("app/api/schedules/[scheduleId]/route.ts");
+const renderStarter = readProjectFile("lib/scheduling/wall-text-render-start.ts");
 
 test("permits a real MP4-free Wall pending source and nothing else", () => {
   assert.match(migration, /'wall_text_pending'/);
@@ -67,10 +69,29 @@ test("saves the pending schedule before server-side background render delivery",
   assert.match(workspace, /createWallTextScheduleRequest/);
   assert.doesNotMatch(workspace, /startPendingWallTextRender/);
   assert.match(
-    readProjectFile("lib/scheduling/wall-text-render-start.ts"),
+    renderStarter,
     /requestWallTextRender/,
   );
   assert.match(renderRequest, /createBackgroundJobWithCreationResult/);
+});
+
+test("accepts standard Wall assignment UUIDs and resumes only the saved hand-off state", () => {
+  const sourcePattern = renderStarter.match(
+    /const UUID_PATTERN\s*=\s*\/([^/]+)\/i;/,
+  )?.[1];
+
+  assert.ok(sourcePattern);
+  const assignmentPattern = new RegExp(sourcePattern, "i");
+  assert.equal(
+    assignmentPattern.test("f1a17385-a6e0-41a1-b77c-ef60554033cd"),
+    true,
+  );
+  assert.equal(assignmentPattern.test("not-a-wall-assignment"), false);
+  assert.match(scheduleDetailRoute, /after\(\(\) =>[\s\S]*startWallTextScheduleRender/);
+  assert.match(
+    scheduleDetailRoute,
+    /sourceKind === "wall_text_pending"[\s\S]*status === "draft"[\s\S]*wallTextRenderStatus === "not_requested"/,
+  );
 });
 
 test("calculates Wall schedule identity from the server-confirmed time", () => {

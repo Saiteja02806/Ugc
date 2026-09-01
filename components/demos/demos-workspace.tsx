@@ -652,6 +652,22 @@ export function UploadedPostsTab({
     });
   }
 
+  function handleToggleDemoPlayback(demoId: string) {
+    setPlayingDemoId((currentDemoId) =>
+      currentDemoId === demoId ? null : demoId,
+    );
+  }
+
+  function handleDemoPlaybackStateChange(
+    demoId: string,
+    isPlaying: boolean,
+  ) {
+    setPlayingDemoId((currentDemoId) => {
+      if (isPlaying) return demoId;
+      return currentDemoId === demoId ? null : currentDemoId;
+    });
+  }
+
   function handleSelectAll() {
     setSelectedDemoIds(new Set(demos.map((d) => d.id)));
   }
@@ -755,7 +771,8 @@ export function UploadedPostsTab({
             onDragActiveChange={setIsDragActive}
             onFiles={handleFiles}
             onOpenPreview={(demo) => setPreviewModalDemo(demo)}
-            onPlayDemo={setPlayingDemoId}
+            onPlayDemo={handleToggleDemoPlayback}
+            onPlaybackStateChange={handleDemoPlaybackStateChange}
             onRefresh={() => void loadDemos()}
             onRenameDemo={handleRenameDemo}
             onRetryQueueItem={handleRetryQueueItem}
@@ -796,7 +813,8 @@ export function UploadedPostsTab({
               isLoading={isLoading}
               onDeleteDemo={(demo) => void handleDeleteDemo(demo)}
               onOpenPreview={(demo) => setPreviewModalDemo(demo)}
-              onPlayDemo={setPlayingDemoId}
+              onPlayDemo={handleToggleDemoPlayback}
+              onPlaybackStateChange={handleDemoPlaybackStateChange}
               onRenameDemo={handleRenameDemo}
               onTagsChange={handleTagsChange}
               onToggleSelect={handleToggleSelect}
@@ -875,6 +893,7 @@ function EmbeddedDemoWorkspace({
   onFiles,
   onOpenPreview,
   onPlayDemo,
+  onPlaybackStateChange,
   onRefresh,
   onRenameDemo,
   onRetryQueueItem,
@@ -898,6 +917,7 @@ function EmbeddedDemoWorkspace({
   onFiles: (files: FileList | File[]) => Promise<void>;
   onOpenPreview: (demo: DemoVideo) => void;
   onPlayDemo: (demoId: string) => void;
+  onPlaybackStateChange: (demoId: string, isPlaying: boolean) => void;
   onRefresh: () => void;
   onRenameDemo: (demoId: string, title: string) => Promise<void>;
   onRetryQueueItem: (id: string) => void;
@@ -1043,6 +1063,9 @@ function EmbeddedDemoWorkspace({
                 onDelete={() => onDeleteDemo(demo)}
                 onOpenPreview={() => onOpenPreview(demo)}
                 onPlay={() => onPlayDemo(demo.id)}
+                onPlaybackStateChange={(isPlaying) =>
+                  onPlaybackStateChange(demo.id, isPlaying)
+                }
                 onRename={(newTitle) => onRenameDemo(demo.id, newTitle)}
                 onTagsChange={(newTags) => onTagsChange(demo.id, newTags)}
                 onToggleSelect={() => onToggleSelect(demo.id)}
@@ -1457,6 +1480,7 @@ export function DemoLibrary({
   onDeleteDemo,
   onOpenPreview,
   onPlayDemo,
+  onPlaybackStateChange,
   onRenameDemo,
   onTagsChange,
   onToggleSelect,
@@ -1474,6 +1498,7 @@ export function DemoLibrary({
   onDeleteDemo: (demo: DemoVideo) => void;
   onOpenPreview: (demo: DemoVideo) => void;
   onPlayDemo: (demoId: string) => void;
+  onPlaybackStateChange: (demoId: string, isPlaying: boolean) => void;
   onRenameDemo: (demoId: string, title: string) => Promise<void>;
   onTagsChange: (demoId: string, tags: string[]) => Promise<void>;
   onToggleSelect: (demoId: string) => void;
@@ -1522,6 +1547,9 @@ export function DemoLibrary({
               onDelete={() => onDeleteDemo(demo)}
               onOpenPreview={() => onOpenPreview(demo)}
               onPlay={() => onPlayDemo(demo.id)}
+              onPlaybackStateChange={(isPlaying) =>
+                onPlaybackStateChange(demo.id, isPlaying)
+              }
               onRename={(newTitle) => onRenameDemo(demo.id, newTitle)}
               onTagsChange={(newTags) => onTagsChange(demo.id, newTags)}
               onToggleSelect={() => onToggleSelect(demo.id)}
@@ -1555,6 +1583,7 @@ export function DemoCard({
   onDelete,
   onOpenPreview,
   onPlay,
+  onPlaybackStateChange,
   onRename,
   onTagsChange,
   onToggleSelect,
@@ -1566,6 +1595,7 @@ export function DemoCard({
   onDelete: () => void;
   onOpenPreview: () => void;
   onPlay: () => void;
+  onPlaybackStateChange: (isPlaying: boolean) => void;
   onRename: (newTitle: string) => Promise<void>;
   onTagsChange: (newTags: string[]) => Promise<void>;
   onToggleSelect: () => void;
@@ -1623,6 +1653,7 @@ export function DemoCard({
           demo={demo}
           playbackUrl={playbackUrl}
           playing={isPlaying}
+          onPlaybackStateChange={onPlaybackStateChange}
         />
 
         <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-linear-to-t from-black/70 via-black/20 to-transparent p-3 z-10">
@@ -1630,11 +1661,15 @@ export function DemoCard({
             type="button"
             onClick={onPlay}
             disabled={!playable}
-            aria-label={`Play ${demo.title}`}
-            title="Play preview"
+            aria-label={`${isPlaying ? "Pause" : "Play"} ${demo.title}`}
+            title={isPlaying ? "Pause preview" : "Play preview"}
             className="inline-flex size-9 items-center justify-center rounded-full bg-white/95 text-foreground shadow-md backdrop-blur-md transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Play className="ml-0.5 size-3.5 fill-current" aria-hidden="true" />
+            {isPlaying ? (
+              <Pause className="size-4" strokeWidth={2.5} aria-hidden="true" />
+            ) : (
+              <Play className="ml-0.5 size-4 fill-current" aria-hidden="true" />
+            )}
           </button>
           <StatusBadge status={demo.status} />
         </div>
@@ -2395,10 +2430,12 @@ function DemoMediaPreview({
   demo,
   playbackUrl,
   playing,
+  onPlaybackStateChange,
 }: {
   demo: DemoVideo;
   playbackUrl: string | null;
   playing: boolean;
+  onPlaybackStateChange: (isPlaying: boolean) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [previewState, setPreviewState] = useState<"loading" | "ready" | "error">(
@@ -2406,6 +2443,7 @@ function DemoMediaPreview({
   );
   const [previewKey, setPreviewKey] = useState(0);
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
+  const [hasStartedPreview, setHasStartedPreview] = useState(false);
   const playable = Boolean(playbackUrl);
 
   useEffect(() => {
@@ -2431,7 +2469,12 @@ function DemoMediaPreview({
     return () => window.clearTimeout(timer);
   }, [demo.thumbnail_url, previewKey, previewState, thumbnailFailed]);
 
-  if (demo.thumbnail_url && !thumbnailFailed && !playing) {
+  if (
+    demo.thumbnail_url &&
+    !thumbnailFailed &&
+    !playing &&
+    !hasStartedPreview
+  ) {
     return (
       // Demo thumbnails are already delivered from the configured media CDN.
       // eslint-disable-next-line @next/next/no-img-element
@@ -2506,7 +2549,16 @@ function DemoMediaPreview({
           }
         }}
         onSeeked={() => setPreviewState("ready")}
-        onError={() => setPreviewState("error")}
+        onPlay={() => {
+          setHasStartedPreview(true);
+          onPlaybackStateChange(true);
+        }}
+        onPause={() => onPlaybackStateChange(false)}
+        onEnded={() => onPlaybackStateChange(false)}
+        onError={() => {
+          setPreviewState("error");
+          onPlaybackStateChange(false);
+        }}
       />
     </>
   );

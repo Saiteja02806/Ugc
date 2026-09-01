@@ -61,7 +61,7 @@ type BalancedLines = {
 };
 
 export const CAROUSEL_RENDERER_VERSION =
-  "social-plain-text-renderer-v16-followup-copy-50";
+  "social-plain-text-renderer-v17-outline-4";
 export const CAROUSEL_FIXED_FONT_SIZE = 44;
 
 const FORMAT_DIMENSIONS: Record<CarouselFormat, { height: number; width: number }> = {
@@ -858,7 +858,7 @@ async function buildOverlaySvg(params: {
     y: bodyY,
   });
   const style = `
-    .text { fill: ${BODY_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${BODY_FONT_WEIGHT}; letter-spacing: 0; paint-order: stroke fill; stroke: #000000; stroke-linejoin: round; stroke-opacity: 0.72; stroke-width: 3px; }
+    .text { fill: ${BODY_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${BODY_FONT_WEIGHT}; letter-spacing: 0; paint-order: stroke fill; stroke: #000000; stroke-linejoin: round; stroke-opacity: 0.72; stroke-width: 4px; }
   `;
 
   return {

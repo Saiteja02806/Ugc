@@ -18,6 +18,7 @@ import type {
 } from "../lib/wall-text-render-spec.js";
 import {
   LEGACY_WALL_TEXT_FONT_WEIGHT,
+  LEGACY_WALL_TEXT_REGULAR_FONT_WEIGHT,
   WALL_TEXT_FONT_WEIGHT,
 } from "../lib/wall-text-render-spec.js";
 import { parseTextColor } from "../lib/edit-overlay-render-spec.js";
@@ -472,13 +473,17 @@ function getWallTextContent(value: Json | undefined): WallTextRenderContent {
 function getFinalLayout(value: Json) {
   const layout = getRecord(value, "text.finalLayout");
   if (
-    !["wall-text-final-layout-v1", "wall-text-final-layout-v2"].includes(
+    !["wall-text-final-layout-v1", "wall-text-final-layout-v2", "wall-text-final-layout-v3"].includes(
       String(layout.version),
     ) ||
-    layout.fontFamily !== "Inter" ||
-    ![WALL_TEXT_FONT_WEIGHT, 600, LEGACY_WALL_TEXT_FONT_WEIGHT].includes(
-      Number(layout.fontWeight),
-    ) ||
+    (layout.version === "wall-text-final-layout-v3"
+      ? layout.fontFamily !== "Arial" || Number(layout.fontWeight) !== WALL_TEXT_FONT_WEIGHT
+      : layout.fontFamily !== "Inter" ||
+        ![
+          LEGACY_WALL_TEXT_REGULAR_FONT_WEIGHT,
+          600,
+          LEGACY_WALL_TEXT_FONT_WEIGHT,
+        ].includes(Number(layout.fontWeight))) ||
     ![36, 38, 40, 42, 44, 46, 48, 50, 52].includes(Number(layout.fontSizePx)) ||
     typeof layout.lineHeightPx !== "number" ||
     !Array.isArray(layout.blocks) ||
@@ -507,27 +512,44 @@ function getFinalLayout(value: Json) {
       role: block.role as "prose" | "text" | "title" | "item",
     };
   });
-  const isV2 = layout.version === "wall-text-final-layout-v2";
+  const isV2OrV3 =
+    layout.version === "wall-text-final-layout-v2" ||
+    layout.version === "wall-text-final-layout-v3";
   const lineCount = blocks.reduce((total, block) => total + block.lines.length, 0);
   if (
-    isV2 &&
+    isV2OrV3 &&
     (blocks.length !== 1 ||
       blocks[0]?.role !== "text" ||
       lineCount < 4 ||
       lineCount > 8)
   ) {
-    throw new Error("text.finalLayout V2 must contain one 4-8 line text block.");
+    throw new Error("text.finalLayout V2/V3 must contain one 4-8 line text block.");
+  }
+  const fontSizePx = normalizeWallTextFontSize(Number(layout.fontSizePx));
+  const textBox = getTextBoxFromRecord(layout.textBox, "text.finalLayout.textBox");
+  const lineHeightPx = Math.round(fontSizePx * 1.1 * 100) / 100;
+  if (layout.version === "wall-text-final-layout-v3") {
+    return {
+      blocks,
+      fontFamily: "Arial" as const,
+      fontSizePx,
+      fontWeight: WALL_TEXT_FONT_WEIGHT as 500,
+      lineHeightPx,
+      textBox,
+      version: "wall-text-final-layout-v3" as const,
+    };
   }
   return {
     blocks,
     fontFamily: "Inter" as const,
-    fontSizePx: normalizeWallTextFontSize(Number(layout.fontSizePx)),
-    fontWeight: WALL_TEXT_FONT_WEIGHT as 400,
-    lineHeightPx: Math.round(normalizeWallTextFontSize(Number(layout.fontSizePx)) * 1.1 * 100) / 100,
-    textBox: getTextBoxFromRecord(layout.textBox, "text.finalLayout.textBox"),
-    version: isV2
-      ? ("wall-text-final-layout-v2" as const)
-      : ("wall-text-final-layout-v1" as const),
+    fontSizePx,
+    fontWeight: LEGACY_WALL_TEXT_REGULAR_FONT_WEIGHT as 400,
+    lineHeightPx,
+    textBox,
+    version:
+      layout.version === "wall-text-final-layout-v2"
+        ? ("wall-text-final-layout-v2" as const)
+        : ("wall-text-final-layout-v1" as const),
   };
 }
 

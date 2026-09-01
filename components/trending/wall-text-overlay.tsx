@@ -7,7 +7,7 @@ import type {
 import { getWallTextRenderBlocks } from "@/lib/trending/wall-text-types";
 import {
   getWallTextFontSize,
-  WALL_TEXT_FONT_WEIGHT,
+  getWallTextTypography,
   WALL_TEXT_INLINE_SAFE_PADDING,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
   WALL_TEXT_OUTLINE_WIDTH,
@@ -33,6 +33,7 @@ export function WallTextOverlay({
     width: `${layout.textBox.width * 100}%`,
   } satisfies CSSProperties;
   const fontSize = getWallTextFontSize(content);
+  const typography = getWallTextTypography(content);
 
   return (
     <div
@@ -45,10 +46,9 @@ export function WallTextOverlay({
           ...textBoxStyle,
           boxSizing: "border-box",
           color: textColor,
-          fontFamily:
-            "var(--font-wall-text), Inter, Arial, 'Helvetica Neue', sans-serif",
+          fontFamily: typography.fontFamily,
           fontSize: `${fontSize / 10.8}cqw`,
-          fontWeight: WALL_TEXT_FONT_WEIGHT,
+          fontWeight: typography.fontWeight,
           letterSpacing: `${-0.2 / 10.8}cqw`,
           paintOrder: "stroke fill",
           paddingInline: `${WALL_TEXT_INLINE_SAFE_PADDING / 10.8}cqw`,

@@ -14,12 +14,13 @@ FROM node:22-bookworm-slim
 
 RUN apt-get update \
   && apt-get install -y ffmpeg ca-certificates fontconfig fonts-inter fonts-noto-cjk \
-  && mkdir -p /usr/local/share/fonts/geist \
+  && mkdir -p /usr/local/share/fonts/geist /usr/local/share/fonts/arial \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/node_modules/geist/dist/fonts/geist-sans/Geist-Regular.ttf /usr/local/share/fonts/geist/
 COPY --from=build /app/node_modules/geist/dist/fonts/geist-sans/Geist-SemiBold.ttf /usr/local/share/fonts/geist/
 COPY --from=build /app/node_modules/geist/dist/fonts/geist-sans/Geist-Bold.ttf /usr/local/share/fonts/geist/
+COPY --from=build /app/src/assets/fonts/arial-bold.ttf /usr/local/share/fonts/arial/Arial-Bold.ttf
 
 RUN fc-cache -f
 
@@ -29,6 +30,7 @@ ENV NODE_ENV=production
 
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/src/assets ./assets
 COPY package.json ./package.json
 
 CMD ["node", "dist/index.js"]

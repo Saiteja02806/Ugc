@@ -2,7 +2,7 @@ import "server-only";
 
 import sharp from "sharp";
 
-import { getVerifiedWallTextInterFontPath } from "./wall-text-font";
+import { getVerifiedWallTextArialBoldFontPath } from "./wall-text-font";
 
 import {
   WALL_TEXT_CONTENT_LAYOUT_VERSION,
@@ -160,7 +160,7 @@ export async function createWallTextFinalLayout(params: {
       if (blockHeight <= maximumHeight) {
         return {
           blocks,
-          fontFamily: "Inter",
+          fontFamily: "Arial",
           fontSizePx: fontSize,
           fontWeight: WALL_TEXT_FONT_WEIGHT,
           lineHeightPx,
@@ -502,15 +502,15 @@ async function measureText(value: string, fontSize: WallTextFontSize) {
   const metadata = await sharp({
     text: {
       dpi: 72,
-      font: `Inter Regular ${fontSize}`,
-      fontfile: await getVerifiedWallTextInterFontPath(),
+      font: `Arial Bold ${fontSize}`,
+      fontfile: await getVerifiedWallTextArialBoldFontPath(),
       rgba: true,
       text: escapePangoMarkup(value),
       wrap: "none",
     },
   }).metadata();
   const width = metadata.width ?? 0;
-  if (!width) throw new Error("Could not measure Wall-of-text copy with Inter.");
+  if (!width) throw new Error("Could not measure Wall-of-text copy with Arial Bold.");
   measurementCache.set(cacheKey, width);
   return width;
 }

@@ -93,7 +93,7 @@ import {
 } from "@/lib/trending/text-color";
 import {
   getWallTextFontSize,
-  WALL_TEXT_FONT_WEIGHT,
+  getWallTextTypography,
   WALL_TEXT_INLINE_SAFE_PADDING,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
   WALL_TEXT_OUTLINE_WIDTH,
@@ -1452,7 +1452,7 @@ function Structure2StoryText({ layout }: { layout: Structure2EditorLayout }) {
         letterSpacing: 0,
         lineHeight: layout.story.lineHeight / layout.story.fontSize,
         paintOrder: "stroke fill",
-        WebkitTextStroke: "0.278cqw rgba(0, 0, 0, 0.72)",
+        WebkitTextStroke: "0.370cqw rgba(0, 0, 0, 0.72)",
         width: `${layout.storyBounds.width / 10.8}cqw`,
       }}
     >
@@ -1488,7 +1488,7 @@ function Structure2CtaText({
         lineHeight: layout.text.lineHeight / layout.text.fontSize,
         paintOrder: "stroke fill",
         top: `${(layout.bounds.y / layout.renderHeight) * 100}%`,
-        WebkitTextStroke: "0.278cqw rgba(0, 0, 0, 0.72)",
+        WebkitTextStroke: "0.370cqw rgba(0, 0, 0, 0.72)",
         width: `${(layout.bounds.width / STRUCTURE_2_RENDER_WIDTH) * 100}%`,
       }}
     >
@@ -1704,7 +1704,7 @@ function CarouselOutlinedText({
         fontFamily: 'var(--font-geist-sans), Geist, Arial, Helvetica, sans-serif',
         letterSpacing: 0,
         paintOrder: "stroke fill",
-        WebkitTextStroke: "0.278cqw rgba(0, 0, 0, 0.72)",
+        WebkitTextStroke: "0.370cqw rgba(0, 0, 0, 0.72)",
       }}
     >
       {text}
@@ -1778,6 +1778,7 @@ function WallTextOverlayText({
   content: TrendingWallTextEditContent;
 }) {
   const isPendingAuthoritativeLayout = !content.content.finalLayout;
+  const typography = getWallTextTypography(content.content);
 
   return (
     <div
@@ -1786,10 +1787,9 @@ function WallTextOverlayText({
         boxSizing: "border-box",
         WebkitTextStroke: `${WALL_TEXT_OUTLINE_WIDTH / 10.8}cqw #000`,
         color: content.textColor,
-        fontFamily:
-          'var(--font-wall-text), Inter, Arial, "Helvetica Neue", sans-serif',
+        fontFamily: typography.fontFamily,
         fontSize: `${getWallTextFontSize(content.content) / 10.8}cqw`,
-        fontWeight: WALL_TEXT_FONT_WEIGHT,
+        fontWeight: typography.fontWeight,
         letterSpacing: `${-0.2 / 10.8}cqw`,
         paddingInline: `${WALL_TEXT_INLINE_SAFE_PADDING / 10.8}cqw`,
         textShadow: "0 0.111111cqw 0.185185cqw rgba(0, 0, 0, 0.45)",

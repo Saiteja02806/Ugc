@@ -1,11 +1,15 @@
 export const WALL_TEXT_CONTENT_LAYOUT_VERSION =
-  "wall-text-overlay-v6" as const;
+  "wall-text-overlay-v7" as const;
 export const PREVIOUS_WALL_TEXT_CONTENT_LAYOUT_VERSION =
-  "wall-text-overlay-v5" as const;
+  "wall-text-overlay-v6" as const;
 export const LEGACY_WALL_TEXT_CONTENT_LAYOUT_VERSION =
+  "wall-text-overlay-v5" as const;
+export const OLDER_WALL_TEXT_CONTENT_LAYOUT_VERSION =
   "wall-text-overlay-v4" as const;
 export const WALL_TEXT_LAYOUT_VERSION = "wall-text-layout-v4" as const;
-export const WALL_TEXT_FINAL_LAYOUT_VERSION = "wall-text-final-layout-v2" as const;
+export const WALL_TEXT_FINAL_LAYOUT_VERSION = "wall-text-final-layout-v3" as const;
+export const PREVIOUS_WALL_TEXT_FINAL_LAYOUT_VERSION =
+  "wall-text-final-layout-v2" as const;
 export const LEGACY_WALL_TEXT_FINAL_LAYOUT_VERSION =
   "wall-text-final-layout-v1" as const;
 export const WALL_TEXT_GENERATOR_VERSION =
@@ -154,17 +158,25 @@ export type WallTextLayoutBlock = {
   lines: string[];
   role: "item" | "prose" | "text" | "title";
 };
-export type WallTextFinalLayout = {
+type WallTextFinalLayoutBase = {
   blocks: WallTextLayoutBlock[];
-  fontFamily: "Inter";
   fontSizePx: WallTextFontSize;
-  fontWeight: 400;
   lineHeightPx: number;
   textBox: WallTextNormalizedBox;
-  version:
-    | typeof WALL_TEXT_FINAL_LAYOUT_VERSION
-    | typeof LEGACY_WALL_TEXT_FINAL_LAYOUT_VERSION;
 };
+export type WallTextFinalLayout =
+  | (WallTextFinalLayoutBase & {
+      fontFamily: "Arial";
+      fontWeight: 500;
+      version: typeof WALL_TEXT_FINAL_LAYOUT_VERSION;
+    })
+  | (WallTextFinalLayoutBase & {
+      fontFamily: "Inter";
+      fontWeight: 400;
+      version:
+        | typeof PREVIOUS_WALL_TEXT_FINAL_LAYOUT_VERSION
+        | typeof LEGACY_WALL_TEXT_FINAL_LAYOUT_VERSION;
+    });
 export type WallTextPlacementAnalysis = {
   contrastScore: number;
   faceBoxes: WallTextNormalizedBox[];
@@ -182,7 +194,8 @@ export type TrendingWallTextContent = {
   layoutVersion:
     | typeof WALL_TEXT_CONTENT_LAYOUT_VERSION
     | typeof PREVIOUS_WALL_TEXT_CONTENT_LAYOUT_VERSION
-    | typeof LEGACY_WALL_TEXT_CONTENT_LAYOUT_VERSION;
+    | typeof LEGACY_WALL_TEXT_CONTENT_LAYOUT_VERSION
+    | typeof OLDER_WALL_TEXT_CONTENT_LAYOUT_VERSION;
   pattern: WallTextPattern;
   renderFontSize?: WallTextFontSize;
   renderSafetyVersion?: typeof WALL_TEXT_RENDER_SAFETY_VERSION;

@@ -103,7 +103,7 @@ test("renders and persists a normalized immutable Carousel edit", async () => {
   assert.equal(receivedTextStyle, "plain");
   assert.deepEqual(readyOutput, {
     rendererVersion:
-      "social-plain-text-renderer-v16-followup-copy-50-normalized-edit-v1",
+      "social-plain-text-renderer-v17-outline-4-normalized-edit-v1",
     slides: [
       {
         renderedS3Key: "carousels/rendered/user/edit/slide.webp",
@@ -243,7 +243,7 @@ test("reuses immutable output for unchanged Carousel slides", async () => {
   assert.deepEqual(uploadedSlideNumbers, [2]);
   assert.deepEqual(readyOutput, {
     rendererVersion:
-      "social-plain-text-renderer-v16-followup-copy-50-normalized-edit-v1",
+      "social-plain-text-renderer-v17-outline-4-normalized-edit-v1",
     slides: [
       {
         renderedS3Key: "carousels/original/slide-1.webp",
@@ -352,7 +352,7 @@ test("renders Structure 2 screenshot edits with the story-native renderer", asyn
             ctaFontSize: null,
             ctaLineCount: 0,
             layoutVariant: input.spec.layoutVariant,
-            rendererVersion: "story-native-renderer-v5-plain-white-story-text",
+            rendererVersion: "story-native-renderer-v6-outline-4",
             safeAreaContained: true,
             storyBounds: { height: 100, width: 700, x: 100, y: 100 },
             storyFontSize: 44,
@@ -380,7 +380,7 @@ test("renders Structure 2 screenshot edits with the story-native renderer", asyn
   assert.equal(receivedSpec.visualRole, "product_asset");
   assert.deepEqual(readyOutput, {
     rendererVersion:
-      "story-native-renderer-v5-plain-white-story-text-normalized-edit-v1",
+      "story-native-renderer-v6-outline-4-normalized-edit-v1",
     slides: [
       {
         renderedS3Key: "carousels/rendered/user/edit/slide-4.webp",

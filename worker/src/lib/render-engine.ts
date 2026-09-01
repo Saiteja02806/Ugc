@@ -1353,23 +1353,31 @@ export function ensureWallTextFontsRegistered() {
 }
 
 async function registerWallTextFonts() {
-  const fontPath = await getWallTextFontPath();
-  const directText = await sharp({
-    text: {
-      dpi: 72,
-      font: "Inter Regular 46",
-      fontfile: fontPath,
-      rgba: true,
-      text: "Wall text 0123",
-      wrap: "none",
-    },
-  }).metadata();
+  const fonts = await Promise.all([
+    getWallTextFont({ family: "Inter" }),
+    getWallTextFont({ family: "Arial" }),
+  ]);
 
-  if (!directText.width || !directText.height) {
-    throw new Error(
-      "Inter Regular could not be registered for Wall-of-text rendering.",
-    );
-  }
+  await Promise.all(
+    fonts.map(async (font) => {
+      const directText = await sharp({
+        text: {
+          dpi: 72,
+          font: `${font.name} 46`,
+          fontfile: font.path,
+          rgba: true,
+          text: "Wall text 0123",
+          wrap: "none",
+        },
+      }).metadata();
+
+      if (!directText.width || !directText.height) {
+        throw new Error(
+          `${font.name} could not be registered for Wall-of-text rendering.`,
+        );
+      }
+    }),
+  );
 }
 
 async function validateWallTextRenderedLineWidths(
@@ -1380,15 +1388,15 @@ async function validateWallTextRenderedLineWidths(
     Math.round(textBox.width * WALL_TEXT_RENDER_WIDTH) -
     WALL_TEXT_INLINE_SAFE_PADDING * 2;
   const layout = buildWallTextRenderLayout({ content, textBox });
-  const fontPath = await getWallTextFontPath();
+  const font = await getWallTextFontForContent(content);
 
   for (const segment of layout.segments) {
     for (const line of segment.lines) {
       const metadata = await sharp({
         text: {
           dpi: 72,
-            font: `Inter Regular ${segment.fontSize}`,
-          fontfile: fontPath,
+            font: `${font.name} ${segment.fontSize}`,
+          fontfile: font.path,
           rgba: true,
           text: escapePangoMarkup(line),
           wrap: "none",
@@ -1400,7 +1408,7 @@ async function validateWallTextRenderedLineWidths(
         metadata.width + WALL_TEXT_OUTLINE_WIDTH * 2 >= maximumWidth
       ) {
         throw new Error(
-          `Wall-of-text line exceeds the measured Inter text width: "${line}"`,
+          `Wall-of-text line exceeds the measured ${font.name} text width: "${line}"`,
         );
       }
     }
@@ -1410,9 +1418,10 @@ async function validateWallTextRenderedLineWidths(
 /**
  * The browser produces the initial semantic layout, but its font engine is
  * not byte-for-byte identical to the packaged renderer font. Reflow the
- * persisted final layout with the renderer's own Inter metrics before drawing
- * it, so a one-pixel metrics difference never turns a valid Reel into a
- * failed background job.
+ * persisted legacy layout with the renderer's own Inter metrics before
+ * drawing it, so a one-pixel metrics difference never turns a valid Reel into
+ * a failed background job. V3 uses the exact same bundled Arial Bold bytes in
+ * both layout stages, so its measured five-to-eight-line layout is immutable.
  */
 export async function reflowWallTextContentForRenderer(params: {
   content: WallTextRenderContent;
@@ -1420,7 +1429,10 @@ export async function reflowWallTextContentForRenderer(params: {
 }): Promise<WallTextRenderContent> {
   const { content, textBox } = params;
 
-  if (!content.finalLayout) {
+  if (
+    !content.finalLayout ||
+    content.finalLayout.version === "wall-text-final-layout-v3"
+  ) {
     return content;
   }
 
@@ -1428,14 +1440,14 @@ export async function reflowWallTextContentForRenderer(params: {
     Math.round(textBox.width * WALL_TEXT_RENDER_WIDTH) -
     WALL_TEXT_INLINE_SAFE_PADDING * 2;
   const maximumHeight = Math.round(textBox.height * WALL_TEXT_RENDER_HEIGHT);
-  const fontPath = await getWallTextFontPath();
+  const font = await getWallTextFontForContent(content);
   const fontSizes = getWallTextReflowFontSizes(content.finalLayout.fontSizePx);
 
   for (const fontSizePx of fontSizes) {
     const blocks = await Promise.all(
       content.finalLayout.blocks.map(async (block) => ({
         lines: await reflowWallTextBlockLines({
-          fontPath,
+          font,
           fontSizePx,
           maximumWidth,
           text: block.lines.join(" "),
@@ -1446,7 +1458,9 @@ export async function reflowWallTextContentForRenderer(params: {
     const lineCount = blocks.reduce((total, block) => total + block.lines.length, 0);
 
     if (
-      content.finalLayout.version === "wall-text-final-layout-v2" &&
+      ["wall-text-final-layout-v2", "wall-text-final-layout-v3"].includes(
+        content.finalLayout.version,
+      ) &&
       (lineCount < 4 || lineCount > 8)
     ) {
       continue;
@@ -1460,16 +1474,15 @@ export async function reflowWallTextContentForRenderer(params: {
       continue;
     }
 
-    return {
-      ...content,
-      finalLayout: {
-        ...content.finalLayout,
-        blocks,
-        fontSizePx,
-        fontWeight: 400,
-        lineHeightPx,
-      },
+    const finalLayout = {
+      ...content.finalLayout,
+      blocks,
+      fontSizePx,
+      fontWeight: 400 as const,
+      lineHeightPx,
     };
+
+    return { ...content, finalLayout };
   }
 
   throw new Error(
@@ -1486,7 +1499,7 @@ function getWallTextReflowFontSizes(
 }
 
 async function reflowWallTextBlockLines(params: {
-  fontPath: string;
+  font: WallTextRenderFont;
   fontSizePx: number;
   maximumWidth: number;
   text: string;
@@ -1498,7 +1511,7 @@ async function reflowWallTextBlockLines(params: {
   for (const word of words) {
     const candidate = line ? `${line} ${word}` : word;
     const candidateWidth = await measureWallTextLineWidth({
-      fontPath: params.fontPath,
+      font: params.font,
       fontSizePx: params.fontSizePx,
       text: candidate,
     });
@@ -1510,7 +1523,7 @@ async function reflowWallTextBlockLines(params: {
 
     if (!line) {
       throw new Error(
-        `Wall-of-text word exceeds the measured Inter text width: "${word}"`,
+        `Wall-of-text word exceeds the measured ${params.font.name} text width: "${word}"`,
       );
     }
 
@@ -1526,15 +1539,15 @@ async function reflowWallTextBlockLines(params: {
 }
 
 async function measureWallTextLineWidth(params: {
-  fontPath: string;
+  font: WallTextRenderFont;
   fontSizePx: number;
   text: string;
 }) {
   const metadata = await sharp({
     text: {
       dpi: 72,
-      font: `Inter Regular ${params.fontSizePx}`,
-      fontfile: params.fontPath,
+      font: `${params.font.name} ${params.fontSizePx}`,
+      fontfile: params.font.path,
       rgba: true,
       text: escapePangoMarkup(params.text),
       wrap: "none",
@@ -1543,7 +1556,7 @@ async function measureWallTextLineWidth(params: {
 
   if (!metadata.width) {
     throw new Error(
-      "Inter Regular could not measure Wall-of-text copy for rendering.",
+      `${params.font.name} could not measure Wall-of-text copy for rendering.`,
     );
   }
 
@@ -1684,7 +1697,43 @@ function getWallTextPixelBounds(params: {
   return right < left || bottom < top ? null : { bottom, left, right, top };
 }
 
-async function getWallTextFontPath() {
+type WallTextRenderFont = {
+  name: "Arial Bold" | "Inter Regular";
+  path: string;
+};
+
+async function getWallTextFontForContent(content: WallTextRenderContent) {
+  return getWallTextFont({
+    family:
+      content.finalLayout?.version === "wall-text-final-layout-v3"
+        ? "Arial"
+        : "Inter",
+  });
+}
+
+async function getWallTextFont(params: {
+  family: "Arial" | "Inter";
+}): Promise<WallTextRenderFont> {
+  if (params.family === "Arial") {
+    const candidatePaths = [
+      join(process.cwd(), "assets", "fonts", "arial-bold.ttf"),
+      join(process.cwd(), "worker", "src", "assets", "fonts", "arial-bold.ttf"),
+    ];
+
+    for (const fontPath of candidatePaths) {
+      try {
+        await readFile(fontPath);
+        return { name: "Arial Bold", path: fontPath };
+      } catch {
+        // Try the next packaged font path.
+      }
+    }
+
+    throw new Error(
+      "Arial Bold is unavailable; refusing to render Wall-of-text with a fallback font.",
+    );
+  }
+
   const fontParts = [
     "node_modules",
     "@fontsource",
@@ -1700,7 +1749,7 @@ async function getWallTextFontPath() {
   for (const fontPath of candidatePaths) {
     try {
       await readFile(fontPath);
-      return fontPath;
+      return { name: "Inter Regular", path: fontPath };
     } catch {
       // Try the next packaged font path.
     }

@@ -2145,7 +2145,7 @@ export function parseWallTextContent(
   if (
     isJsonObject(value) &&
     value.kind === "wall_text" &&
-    ["wall-text-overlay-v5", "wall-text-overlay-v6"].includes(
+    ["wall-text-overlay-v5", "wall-text-overlay-v6", "wall-text-overlay-v7"].includes(
       String(value.layoutVersion),
     )
   ) {
@@ -2265,23 +2265,32 @@ function parseCurrentWallTextContent(
         : null;
   const finalLayout = value.finalLayout;
   const textBox = parseNormalizedBox(finalLayout.textBox);
-  const isV7 = value.layoutVersion === "wall-text-overlay-v6";
+  const isArialV7 = value.layoutVersion === "wall-text-overlay-v7";
+  const isPlainTextLayout =
+    value.layoutVersion === "wall-text-overlay-v6" || isArialV7;
 
   if (
     !parsedSource ||
     finalLayout.version !==
-      (isV7 ? "wall-text-final-layout-v2" : "wall-text-final-layout-v1") ||
-    finalLayout.fontFamily !== "Inter" ||
-    ![WALL_TEXT_FONT_WEIGHT, 600, LEGACY_WALL_TEXT_FONT_WEIGHT].includes(
-      Number(finalLayout.fontWeight),
-    ) ||
+      (isArialV7
+        ? "wall-text-final-layout-v3"
+        : isPlainTextLayout
+          ? "wall-text-final-layout-v2"
+          : "wall-text-final-layout-v1") ||
+    (isArialV7
+      ? finalLayout.fontFamily !== "Arial" ||
+        Number(finalLayout.fontWeight) !== WALL_TEXT_FONT_WEIGHT
+      : finalLayout.fontFamily !== "Inter" ||
+        ![400, 600, LEGACY_WALL_TEXT_FONT_WEIGHT].includes(
+          Number(finalLayout.fontWeight),
+        )) ||
     ![36, 38, 40, 42, 44, 46, 48, 50, 52].includes(Number(finalLayout.fontSizePx)) ||
     typeof finalLayout.lineHeightPx !== "number" ||
     finalLayout.lineHeightPx <= 0 ||
     !textBox ||
     !Array.isArray(finalLayout.blocks) ||
     finalLayout.blocks.length < 1 ||
-    finalLayout.blocks.length > (isV7 ? 1 : 6)
+    finalLayout.blocks.length > (isPlainTextLayout ? 1 : 6)
   ) {
     return null;
   }
@@ -2309,7 +2318,7 @@ function parseCurrentWallTextContent(
   const finalLayoutText = lines.join(" ");
   if (
     blocks.length !== finalLayout.blocks.length ||
-    (isV7 &&
+    (isPlainTextLayout &&
       (blocks.length !== 1 ||
         blocks[0]?.role !== "text" ||
         // Four-line V2 records remain readable so selected historical drafts
@@ -2327,23 +2336,39 @@ function parseCurrentWallTextContent(
   const segments = toCompatibilitySegments(lines);
   const formatId = value.formatId as (typeof WALL_TEXT_PATTERNS)[number];
 
+  const fontSizePx = normalizeCurrentWallTextFontSize(Number(finalLayout.fontSizePx));
+  const parsedFinalLayout = isArialV7
+    ? {
+        blocks,
+        fontFamily: "Arial" as const,
+        fontSizePx,
+        fontWeight: WALL_TEXT_FONT_WEIGHT as 500,
+        lineHeightPx: fontSizePx * 1.1,
+        textBox,
+        version: "wall-text-final-layout-v3" as const,
+      }
+    : {
+        blocks,
+        fontFamily: "Inter" as const,
+        fontSizePx,
+        fontWeight: 400 as const,
+        lineHeightPx: fontSizePx * 1.1,
+        textBox,
+        version: isPlainTextLayout
+          ? ("wall-text-final-layout-v2" as const)
+          : ("wall-text-final-layout-v1" as const),
+      };
+
   return {
-    finalLayout: {
-      blocks,
-      fontFamily: "Inter",
-      fontSizePx: normalizeCurrentWallTextFontSize(Number(finalLayout.fontSizePx)),
-      fontWeight: WALL_TEXT_FONT_WEIGHT,
-      lineHeightPx:
-        normalizeCurrentWallTextFontSize(Number(finalLayout.fontSizePx)) * 1.1,
-      textBox,
-      version: isV7
-        ? "wall-text-final-layout-v2"
-        : "wall-text-final-layout-v1",
-    },
+    finalLayout: parsedFinalLayout,
     formatId,
     fullText: normalizedFullText,
     kind: "wall_text",
-    layoutVersion: isV7 ? "wall-text-overlay-v6" : "wall-text-overlay-v5",
+    layoutVersion: isArialV7
+      ? "wall-text-overlay-v7"
+      : isPlainTextLayout
+        ? "wall-text-overlay-v6"
+        : "wall-text-overlay-v5",
     pattern: formatId,
     ...(value.renderSafetyVersion === WALL_TEXT_RENDER_SAFETY_VERSION
       ? { renderSafetyVersion: WALL_TEXT_RENDER_SAFETY_VERSION }

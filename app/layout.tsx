@@ -50,8 +50,19 @@ const geistEditOverlay = localFont({
 const interWallText = localFont({
   src: "../node_modules/@fontsource/inter/files/inter-latin-400-normal.woff2",
   display: "swap",
-  variable: "--font-wall-text",
+  variable: "--font-wall-text-inter",
   weight: "400",
+});
+
+const arialWallText = localFont({
+  src: "../lib/trending/fonts/arial-bold.ttf",
+  adjustFontFallback: false,
+  display: "swap",
+  variable: "--font-wall-text-arial",
+  // The asset is the Arial Bold face. The persisted Wall-text treatment uses
+  // the requested 500 setting, so the browser and worker consume the same
+  // bold glyphs while retaining that product-level weight value.
+  weight: "500",
 });
 
 export const metadata: Metadata = {
@@ -105,7 +116,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${geistEditOverlay.variable} ${interWallText.variable} h-full dark`}
+      className={`${geistSans.variable} ${geistMono.variable} ${geistEditOverlay.variable} ${interWallText.variable} ${arialWallText.variable} h-full dark`}
       data-theme="dark"
       style={{
         backgroundColor: THEME_BACKGROUND_COLORS.dark,

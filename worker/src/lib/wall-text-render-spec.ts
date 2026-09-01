@@ -26,7 +26,20 @@ export type WallTextSegment = {
 };
 
 export type WallTextRenderContent = {
-  finalLayout?: {
+  finalLayout?:
+    | {
+        blocks: Array<{
+          lines: string[];
+          role: "prose" | "text" | "title" | "item";
+        }>;
+        fontFamily: "Arial";
+        fontSizePx: 36 | 38 | 40 | 42 | 44 | 46 | 48 | 50 | 52;
+        fontWeight: 500;
+        lineHeightPx: number;
+        textBox: WallTextNormalizedBox;
+        version: "wall-text-final-layout-v3";
+      }
+    | {
     blocks: Array<{
       lines: string[];
       role: "prose" | "text" | "title" | "item";
@@ -37,7 +50,7 @@ export type WallTextRenderContent = {
     lineHeightPx: number;
     textBox: WallTextNormalizedBox;
     version: "wall-text-final-layout-v1" | "wall-text-final-layout-v2";
-  };
+      };
   fullText: string;
   renderFontSize?: 36 | 38 | 40 | 42 | 44 | 46 | 48 | 50 | 52;
   segments: WallTextSegment[];
@@ -50,7 +63,7 @@ export type WallTextRenderLayout = {
   segments: Array<{
     centerX: number;
     fontSize: number;
-    fontWeight: 400;
+    fontWeight: 400 | 500 | 600 | 700;
     lineHeight: number;
     lines: string[];
     top: number;
@@ -75,7 +88,8 @@ export const WALL_TEXT_LEGACY_RENDER_MIN_LINES = 4;
 export const WALL_TEXT_DEFAULT_FONT_SIZE = 48;
 export const WALL_TEXT_MINIMUM_FONT_SIZE = 44;
 export const WALL_TEXT_MAXIMUM_FONT_SIZE = 52;
-export const WALL_TEXT_FONT_WEIGHT = 400;
+export const WALL_TEXT_FONT_WEIGHT = 500;
+export const LEGACY_WALL_TEXT_REGULAR_FONT_WEIGHT = 400;
 export const LEGACY_WALL_TEXT_FONT_WEIGHT = 700;
 export const WALL_TEXT_LINE_HEIGHT_FACTOR = 1.1;
 export const WALL_TEXT_SECTION_GAP = 18;
@@ -136,7 +150,9 @@ export function buildWallTextRenderLayout(params: {
   const segmentMetrics = renderBlocks.map((segment) => {
     return {
       fontSize,
-      fontWeight: WALL_TEXT_FONT_WEIGHT as 400,
+      fontWeight:
+        content.finalLayout?.fontWeight ??
+        LEGACY_WALL_TEXT_REGULAR_FONT_WEIGHT,
       lineHeight:
         content.finalLayout?.lineHeightPx ??
         getWallTextLineHeight(fontSize),
@@ -193,7 +209,9 @@ export function buildWallTextOverlaySvg(params: {
   const layout = buildWallTextRenderLayout(params);
   const textColor = resolveTextColor(params.textColor);
   const fontFamily =
-    "Inter, Arial, Helvetica Neue, Noto Sans CJK SC, Noto Sans CJK JP, sans-serif";
+    params.content.finalLayout?.version === "wall-text-final-layout-v3"
+      ? "Arial, Helvetica Neue, Noto Sans CJK SC, Noto Sans CJK JP, sans-serif"
+      : "Inter, Arial, Helvetica Neue, Noto Sans CJK SC, Noto Sans CJK JP, sans-serif";
   const shadowFilter = [
     '<filter id="wallTextShadow" x="-20%" y="-20%" width="140%" height="150%">',
     '<feDropShadow dx="0" dy="1.2" stdDeviation="1" flood-color="#000000" flood-opacity="0.45"/>',
@@ -303,13 +321,17 @@ function normalizeFinalLayout(
   value: NonNullable<WallTextRenderContent["finalLayout"]>,
 ) {
   if (
-    !["wall-text-final-layout-v1", "wall-text-final-layout-v2"].includes(
+    !["wall-text-final-layout-v1", "wall-text-final-layout-v2", "wall-text-final-layout-v3"].includes(
       value.version,
     ) ||
-    value.fontFamily !== "Inter" ||
-    ![WALL_TEXT_FONT_WEIGHT, 600, LEGACY_WALL_TEXT_FONT_WEIGHT].includes(
-      value.fontWeight,
-    ) ||
+    (value.version === "wall-text-final-layout-v3"
+      ? value.fontFamily !== "Arial" || value.fontWeight !== WALL_TEXT_FONT_WEIGHT
+      : value.fontFamily !== "Inter" ||
+        ![
+          LEGACY_WALL_TEXT_REGULAR_FONT_WEIGHT,
+          600,
+          LEGACY_WALL_TEXT_FONT_WEIGHT,
+        ].includes(value.fontWeight)) ||
     ![36, 38, 40, 42, 44, 46, 48, 50, 52].includes(value.fontSizePx) ||
     !Number.isFinite(value.lineHeightPx) ||
     value.lineHeightPx <= 0 ||
@@ -319,10 +341,8 @@ function normalizeFinalLayout(
     throw new Error("Wall-of-text final layout is invalid.");
   }
 
-  const normalized = {
-    ...value,
+  const normalizedBase = {
     fontSizePx: normalizeWallTextFontSize(value.fontSizePx),
-    fontWeight: WALL_TEXT_FONT_WEIGHT as 400,
     lineHeightPx: getWallTextLineHeight(normalizeWallTextFontSize(value.fontSizePx)),
     blocks: value.blocks.map((block) => {
       if (
@@ -338,18 +358,36 @@ function normalizeFinalLayout(
       };
     }),
   };
+  const normalized =
+    value.version === "wall-text-final-layout-v3"
+      ? {
+          ...normalizedBase,
+          fontFamily: "Arial" as const,
+          fontWeight: WALL_TEXT_FONT_WEIGHT as 500,
+          textBox: value.textBox,
+          version: "wall-text-final-layout-v3" as const,
+        }
+      : {
+          ...normalizedBase,
+          fontFamily: "Inter" as const,
+          fontWeight: LEGACY_WALL_TEXT_REGULAR_FONT_WEIGHT as 400,
+          textBox: value.textBox,
+          version: value.version,
+        };
   const lineCount = normalized.blocks.reduce(
     (total, block) => total + block.lines.length,
     0,
   );
   if (
-    normalized.version === "wall-text-final-layout-v2" &&
+    ["wall-text-final-layout-v2", "wall-text-final-layout-v3"].includes(
+      normalized.version,
+    ) &&
     (normalized.blocks.length !== 1 ||
       normalized.blocks[0]?.role !== "text" ||
       lineCount < WALL_TEXT_LEGACY_RENDER_MIN_LINES ||
       lineCount > WALL_TEXT_RENDER_MAX_LINES)
   ) {
-    throw new Error("Wall-of-text V2 must contain one 4-8 line text block.");
+    throw new Error("Wall-of-text V2/V3 must contain one 4-8 line text block.");
   }
   return normalized;
 }

@@ -161,8 +161,8 @@ test("renders the saved v6 final layout without reflowing its lines", () => {
   assert.match(svg, /font-weight="400"/);
 });
 
-test("renders V7 as one centered block with equal line rhythm and a short final line", () => {
-  const v7 = {
+test("renders the Arial Bold V3 layout as one centered block", () => {
+  const v3 = {
     finalLayout: {
       blocks: [{
         lines: [
@@ -174,9 +174,9 @@ test("renders V7 as one centered block with equal line rhythm and a short final 
         ],
         role: "text" as const,
       }],
-      fontFamily: "Inter" as const,
+      fontFamily: "Arial" as const,
       fontSizePx: 48 as const,
-      fontWeight: 600 as const,
+      fontWeight: 500 as const,
       lineHeightPx: 52,
       textBox: {
         height: 480 / 1920,
@@ -184,7 +184,7 @@ test("renders V7 as one centered block with equal line rhythm and a short final 
         x: 210 / 1080,
         y: 660 / 1920,
       },
-      version: "wall-text-final-layout-v2" as const,
+      version: "wall-text-final-layout-v3" as const,
     },
     fullText:
       "I tracked the obvious steps but missed the quiet habits. Those small details explained why the result changed at once.",
@@ -200,12 +200,14 @@ test("renders V7 as one centered block with equal line rhythm and a short final 
       },
     ],
   };
-  const layout = buildWallTextRenderLayout({ content: v7 });
-  const svg = buildWallTextOverlaySvg({ content: v7, placement: "middle" });
+  const layout = buildWallTextRenderLayout({ content: v3 });
+  const svg = buildWallTextOverlaySvg({ content: v3, placement: "middle" });
   assert.equal(layout.segments.length, 1);
   assert.equal(layout.segments[0]?.lineHeight, 52.8);
   assert.equal(layout.textBox.width, 660);
   assert.equal(svg.match(/text-anchor="middle"/g)?.length, 5);
+  assert.match(svg, /font-family="Arial, Helvetica Neue/);
+  assert.match(svg, /font-weight="500"/);
   assert.match(svg, />at once\.<\/text>/);
 });
 

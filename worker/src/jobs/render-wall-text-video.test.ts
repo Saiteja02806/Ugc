@@ -71,6 +71,47 @@ test("stores one ready standalone Wall-text media asset", async () => {
   assert.equal(output.mediaAssetId, MEDIA_ASSET_ID);
 });
 
+test("accepts the versioned Arial Bold 500 final layout", async () => {
+  const job = createJob();
+  const input = job.input_json as Record<string, unknown>;
+  const text = input.text as Record<string, unknown>;
+  const finalTextLines = [
+    "I logged every meal but",
+    "skipped drinks oil and small",
+    "bites. Those missing details",
+    "quietly changed the final",
+    "total.",
+  ];
+  text.finalLayout = {
+    blocks: [{ lines: finalTextLines, role: "text" }],
+    fontFamily: "Arial",
+    fontSizePx: 48,
+    fontWeight: 500,
+    lineHeightPx: 52.8,
+    textBox: (input.layout as { textBox: unknown }).textBox,
+    version: "wall-text-final-layout-v3",
+  };
+
+  await runRenderWallTextVideoJob(job, {
+    dependencies: {
+      async renderWallTextVideoToStorage(payload) {
+        assert.equal(payload.text.finalLayout?.fontFamily, "Arial");
+        assert.equal(payload.text.finalLayout?.fontWeight, 500);
+        assert.equal(payload.text.finalLayout?.version, "wall-text-final-layout-v3");
+        return {
+          assignmentId: ASSIGNMENT_ID,
+          creativeId: CREATIVE_ID,
+          key: "videos/rendered/wall.mp4",
+          ok: true,
+          renderId: RENDER_ID,
+          url: "https://cdn.example.com/wall.mp4",
+        };
+      },
+    },
+    store: successfulStore(),
+  });
+});
+
 test("keeps a successful Wall MP4 when final scheduling delivery fails", async () => {
   const events: string[] = [];
   const store = {

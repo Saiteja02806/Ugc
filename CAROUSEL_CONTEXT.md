@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-08-29
+Last updated: 2026-09-01
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -4005,3 +4005,16 @@ Name: **Verify v26 and replace the stale production assignment**
   than relying only on the five-item parent brief. Its final duplicate gate is
   exact-normalized text only, and it keeps accepted videos while retrying only
   a failed candidate twice more.
+
+## 2026-09-01 Carousel 4px Text Outline
+
+- New Carousel renders use a 4px black outline at 72% opacity with rounded
+  joins across both structures. The live Carousel editor preview uses the
+  matching 4px responsive stroke, so edited previews and saved WebPs share the
+  same text treatment.
+- The renderer versions are now `social-plain-text-renderer-v17-outline-4` for
+  Structure 1 and `story-native-renderer-v6-outline-4` for Structure 2. This
+  keeps new rendered storage objects and edit output provenance distinct from
+  the earlier 3px treatment.
+- Existing rendered Carousel images remain immutable; the 4px outline applies
+  to new generations and slides that are explicitly re-rendered.

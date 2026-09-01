@@ -2,7 +2,10 @@ import "server-only";
 
 import sharp from "sharp";
 
-import { getVerifiedWallTextInterFontPath } from "./wall-text-font";
+import {
+  getVerifiedWallTextArialBoldFontPath,
+  getVerifiedWallTextInterFontPath,
+} from "./wall-text-font";
 import type {
   TrendingWallTextContent,
   WallTextFontSize,
@@ -11,6 +14,7 @@ import { getWallTextRenderBlocks } from "./wall-text-types";
 import {
   getWallTextSafeLineWidth,
   getWallTextFontSize,
+  getWallTextTypography,
   WALL_TEXT_FONT_WEIGHT,
   WALL_TEXT_INLINE_SAFE_PADDING,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
@@ -67,7 +71,10 @@ export async function validateWallTextRenderFit(
     (fontSize, index, values) =>
       fontSize <= preferredFontSize && values.indexOf(fontSize) === index,
   ) as WallTextFontSize[];
-  const fontPath = await getVerifiedWallTextInterFontPath();
+  const typography = getWallTextTypography(content);
+  const fontPath = await (typography.fontWeight === 500
+    ? getVerifiedWallTextArialBoldFontPath()
+    : getVerifiedWallTextInterFontPath());
   const textBoxWidth =
     (content.finalLayout?.textBox.width ??
       WALL_TEXT_TEXT_WIDTH / WALL_TEXT_RENDER_WIDTH) *
@@ -90,6 +97,7 @@ export async function validateWallTextRenderFit(
       for (const line of segment.lines) {
         const width = await measureWallTextLine({
           fontPath,
+          fontName: typography.fontWeight === 500 ? "Arial Bold" : "Inter Regular",
           fontSize,
           line,
         });
@@ -136,7 +144,7 @@ export async function validateWallTextRenderFit(
 
   if (widestFailure) {
     throw new WallTextRenderFitError(
-      `Wall-of-text line does not fit the ${maximumTextWidth}px Inter text area at the ${WALL_TEXT_MINIMUM_FONT_SIZE}px minimum: "${widestFailure.line}"`,
+      `Wall-of-text line does not fit the ${maximumTextWidth}px ${typography.fontWeight === 500 ? "Arial Bold" : "Inter"} text area at the ${WALL_TEXT_MINIMUM_FONT_SIZE}px minimum: "${widestFailure.line}"`,
     );
   }
 
@@ -166,17 +174,18 @@ export function applyWallTextRenderFit(
 
 async function measureWallTextLine(params: {
   fontPath: string;
+  fontName: "Arial Bold" | "Inter Regular";
   fontSize: WallTextFontSize;
   line: string;
 }) {
-  const cacheKey = `${params.fontPath}:${params.fontSize}:${params.line}`;
+  const cacheKey = `${params.fontPath}:${params.fontName}:${params.fontSize}:${params.line}`;
   const cached = lineWidthCache.get(cacheKey);
   if (cached !== undefined) return cached;
 
   const metadata = await sharp({
     text: {
       dpi: 72,
-      font: `Inter Regular ${params.fontSize}`,
+      font: `${params.fontName} ${params.fontSize}`,
       fontfile: params.fontPath,
       rgba: true,
       text: escapePangoMarkup(params.line),

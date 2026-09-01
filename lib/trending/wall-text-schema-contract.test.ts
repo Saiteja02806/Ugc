@@ -591,8 +591,8 @@ test("keeps the approved thirty Wall formats in one controlled registry", () => 
   );
 });
 
-test("measures final Wall lines with Inter before saving authoritative layout", () => {
-  assert.match(layoutEngineSource, /fontFamily: "Inter"/);
+test("measures new final Wall lines with packaged Arial Bold before saving authoritative layout", () => {
+  assert.match(layoutEngineSource, /fontFamily: "Arial"/);
   assert.match(layoutEngineSource, /sharp\([\s\S]+\.metadata\(\)/);
   assert.match(layoutEngineSource, /finalLayout,/);
   assert.match(layoutEngineSource, /blocks,/);
@@ -808,33 +808,34 @@ test("rejects the reported overflow and synchronizes a safe fallback font", () =
   assert.ok(result.lines.length >= 5 && result.lines.length <= 8);
 });
 
-test("uses packaged Inter 400 with the restored 44-52px Wall scale", () => {
-  assert.match(visualStyleSource, /WALL_TEXT_FONT_WEIGHT = 400/);
+test("uses packaged Arial Bold glyphs at 500 with the restored 44-52px Wall scale", () => {
+  assert.match(visualStyleSource, /WALL_TEXT_FONT_WEIGHT = 500/);
   assert.match(visualStyleSource, /WALL_TEXT_MINIMUM_FONT_SIZE = 44/);
   assert.match(visualStyleSource, /WALL_TEXT_MAXIMUM_FONT_SIZE = 52/);
-  assert.match(layoutEngineSource, /Inter Regular \$\{fontSize\}/);
-  assert.match(layoutEngineSource, /getVerifiedWallTextInterFontPath/);
-  assert.match(renderValidationSource, /Inter Regular \$\{params\.fontSize\}/);
-  assert.match(renderValidationSource, /getVerifiedWallTextInterFontPath/);
+  assert.match(layoutEngineSource, /Arial Bold \$\{fontSize\}/);
+  assert.match(layoutEngineSource, /getVerifiedWallTextArialBoldFontPath/);
+  assert.match(renderValidationSource, /Arial Bold/);
+  assert.match(renderValidationSource, /getVerifiedWallTextArialBoldFontPath/);
+  assert.match(fontMeasurementSource, /arial-bold\.ttf/);
   assert.match(fontMeasurementSource, /inter-variable\.ttf/);
   assert.match(fontMeasurementSource, /FONTCONFIG_FILE/);
   assert.match(
     fontMeasurementSource,
-    /stat\(INTER_REGULAR_FONT_PATH\)[\s\S]+font\.size === 0[\s\S]+packaged Inter Regular font is unavailable/,
+    /ARIAL_BOLD_FONT_PATH[\s\S]+packaged \$\{params\.label\} font is unavailable/,
   );
   assert.match(
     nextConfigSource,
-    /outputFileTracingIncludes[\s\S]+inter-variable\.ttf[\s\S]+fontconfig[\\/]fonts\.conf/,
+    /outputFileTracingIncludes[\s\S]+arial-bold\.ttf[\s\S]+inter-variable\.ttf[\s\S]+fontconfig[\\/]fonts\.conf/,
   );
-  assert.match(overlaySource, /fontWeight: WALL_TEXT_FONT_WEIGHT/);
-  assert.match(editorSource, /fontWeight: WALL_TEXT_FONT_WEIGHT/);
+  assert.match(overlaySource, /fontWeight: typography\.fontWeight/);
+  assert.match(editorSource, /fontWeight: typography\.fontWeight/);
   assert.doesNotMatch(
     editorSource.match(/function WallTextOverlayText[\s\S]+?function StaticCreativeTextOverlay/)?.[0] ?? "",
     /font-bold/,
   );
   assert.match(
     rootLayoutSource,
-    /inter-latin-400-normal\.woff2[\s\S]+variable: "--font-wall-text"[\s\S]+weight: "400"/,
+    /arial-bold\.ttf[\s\S]+variable: "--font-wall-text-arial"[\s\S]+weight: "500"/,
   );
 });
 
@@ -863,7 +864,7 @@ test("keeps measured finalLayout lines as the current Wall source of truth", () 
 
 test("V9 uses soft copy targets and measured fit instead of clip-time limits", () => {
   const currentValidation = textLogicSource.match(
-    /if \(content\.layoutVersion === "wall-text-overlay-v6"\)[\s\S]+?\n    return;/,
+    /content\.layoutVersion === "wall-text-overlay-v6"[\s\S]+?MAX_CURRENT_WALL_TEXT_WORDS[\s\S]+?\n    return;/,
   )?.[0] ?? "";
 
   assert.match(layoutEngineSource, /deriveWallTextSpatialBudget/);
@@ -976,7 +977,7 @@ test("balances the reported Wall example into readable measured lines", () => {
     lineHeightPx: number;
   };
 
-  assert.equal(layout.fontFamily, "Inter");
+  assert.equal(layout.fontFamily, "Arial");
   assert.equal(layout.lineHeightPx, 57.2);
   const lines = layout.blocks.flatMap((block) => block.lines);
   assert.ok(lines.length >= 5 && lines.length <= 8);
@@ -1035,7 +1036,7 @@ test("V9 keeps every word in one measured 5-8 line block", () => {
   const lines = result.content.finalLayout.blocks.flatMap((block) => block.lines);
   assert.equal(result.content.fullText, original);
   assert.equal(result.content.sourceContent.kind, "text");
-  assert.equal(result.content.finalLayout.version, "wall-text-final-layout-v2");
+  assert.equal(result.content.finalLayout.version, "wall-text-final-layout-v3");
   assert.equal(result.content.finalLayout.blocks.length, 1);
   assert.equal(result.content.finalLayout.blocks[0]?.role, "text");
   assert.ok(lines.length >= 5 && lines.length <= 8);

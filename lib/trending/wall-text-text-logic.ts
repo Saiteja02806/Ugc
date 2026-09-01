@@ -347,7 +347,10 @@ export function validateWallTextContent(
   durationSeconds: number,
 ) {
   const wordCount = countWords(content.fullText);
-  if (content.layoutVersion === "wall-text-overlay-v6") {
+  if (
+    content.layoutVersion === "wall-text-overlay-v6" ||
+    content.layoutVersion === "wall-text-overlay-v7"
+  ) {
     const blocks = content.finalLayout?.blocks;
     const lines = blocks?.flatMap((block) => block.lines) ?? [];
     const authoritativeText = lines.join(" ");
@@ -362,7 +365,10 @@ export function validateWallTextContent(
     }
     if (
       content.sourceContent?.kind !== "text" ||
-      content.finalLayout?.version !== "wall-text-final-layout-v2" ||
+      content.finalLayout?.version !==
+        (content.layoutVersion === "wall-text-overlay-v7"
+          ? "wall-text-final-layout-v3"
+          : "wall-text-final-layout-v2") ||
       blocks?.length !== 1 ||
       blocks[0]?.role !== "text" ||
       normalizeText(content.sourceContent.text) !== normalizeText(content.fullText) ||

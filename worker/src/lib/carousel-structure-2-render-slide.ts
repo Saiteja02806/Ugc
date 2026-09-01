@@ -16,7 +16,7 @@ import {
 } from "./carousel-structure-2-layout.js";
 
 export const CAROUSEL_STRUCTURE_2_RENDERER_VERSION =
-  "story-native-renderer-v5-plain-white-story-text";
+  "story-native-renderer-v6-outline-4";
 
 const FORMAT_DIMENSIONS: Record<
   CarouselFormat,
@@ -327,7 +327,7 @@ function buildPlainWhiteTextMarkup(params: {
   const lines = params.layout.lines
     .map(
       (line, index) =>
-        `<text x="${centerX}" y="${baselineStart + index * params.layout.lineHeight}" fill="#ffffff" font-family="${FONT_FAMILY}" font-size="${params.layout.fontSize}" font-weight="600" letter-spacing="0" paint-order="stroke fill" stroke="#000000" stroke-linejoin="round" stroke-opacity="0.72" stroke-width="3" text-anchor="middle">${escapeXml(line)}</text>`,
+        `<text x="${centerX}" y="${baselineStart + index * params.layout.lineHeight}" fill="#ffffff" font-family="${FONT_FAMILY}" font-size="${params.layout.fontSize}" font-weight="600" letter-spacing="0" paint-order="stroke fill" stroke="#000000" stroke-linejoin="round" stroke-opacity="0.72" stroke-width="4" text-anchor="middle">${escapeXml(line)}</text>`,
     )
     .join("");
 

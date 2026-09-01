@@ -375,6 +375,47 @@ test("reflows a saved Wall layout with the renderer's Inter metrics", async () =
   );
 });
 
+test("keeps the measured five-line Arial Bold V3 layout intact", async () => {
+  const textBox = {
+    height: 480 / 1920,
+    width: 780 / 1080,
+    x: 150 / 1080,
+    y: 660 / 1920,
+  };
+  const lines = [
+    "I tracked the obvious steps",
+    "but missed the quiet habits.",
+    "Those small details explained",
+    "why the result changed",
+    "at once.",
+  ];
+  const content = {
+    finalLayout: {
+      blocks: [{ lines, role: "text" as const }],
+      fontFamily: "Arial" as const,
+      fontSizePx: 48 as const,
+      fontWeight: 500 as const,
+      lineHeightPx: 52.8,
+      textBox,
+      version: "wall-text-final-layout-v3" as const,
+    },
+    fullText:
+      "I tracked the obvious steps but missed the quiet habits. Those small details explained why the result changed at once.",
+    segments: [
+      { lines: [lines[0]!], role: "lead" as const },
+      { lines: [lines[1]!, lines[2]!], role: "support" as const },
+      { lines: [lines[3]!, lines[4]!], role: "closing" as const },
+    ],
+  };
+
+  await ensureWallTextFontsRegistered();
+  const reflowed = await reflowWallTextContentForRenderer({ content, textBox });
+
+  assert.equal(reflowed.finalLayout?.fontFamily, "Arial");
+  assert.equal(reflowed.finalLayout?.fontWeight, 500);
+  assert.deepEqual(reflowed.finalLayout?.blocks[0]?.lines, lines);
+});
+
 test("treats a painted fence edge as outside the usable Wall text space", () => {
   const width = 20;
   const height = 20;

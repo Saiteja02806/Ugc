@@ -25,8 +25,16 @@ const INTER_REGULAR_FONT_PATH = join(
   // reliably parsed by Sharp/Pango in Vercel's serverless runtime.
   "inter-variable.ttf",
 );
+const ARIAL_BOLD_FONT_PATH = join(
+  process.cwd(),
+  "lib",
+  "trending",
+  "fonts",
+  "arial-bold.ttf",
+);
 
 let verifiedInterFontPath: Promise<string> | null = null;
+let verifiedArialBoldFontPath: Promise<string> | null = null;
 
 /**
  * Sharp can silently fall back to a different installed font when fontfile is
@@ -34,18 +42,29 @@ let verifiedInterFontPath: Promise<string> | null = null;
  * so a deployment cannot approve lines using different glyph metrics.
  */
 export function getVerifiedWallTextInterFontPath() {
-  verifiedInterFontPath ??= verifyInterFontPath();
+  verifiedInterFontPath ??= verifyFontPath({
+    fontPath: INTER_REGULAR_FONT_PATH,
+    label: "Inter Regular",
+  });
   return verifiedInterFontPath;
 }
 
-async function verifyInterFontPath() {
-  const font = await stat(INTER_REGULAR_FONT_PATH).catch(() => null);
+export function getVerifiedWallTextArialBoldFontPath() {
+  verifiedArialBoldFontPath ??= verifyFontPath({
+    fontPath: ARIAL_BOLD_FONT_PATH,
+    label: "Arial Bold",
+  });
+  return verifiedArialBoldFontPath;
+}
+
+async function verifyFontPath(params: { fontPath: string; label: string }) {
+  const font = await stat(params.fontPath).catch(() => null);
 
   if (!font?.isFile() || font.size === 0) {
     throw new Error(
-      "The packaged Inter Regular font is unavailable for Wall-of-text measurement.",
+      `The packaged ${params.label} font is unavailable for Wall-of-text measurement.`,
     );
   }
 
-  return INTER_REGULAR_FONT_PATH;
+  return params.fontPath;
 }

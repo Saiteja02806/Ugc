@@ -196,6 +196,7 @@ test("keeps the current plan active and rotates unused ideas before least-recent
     rotationMigration,
     /update public\.carousel_content_plans as plan[\s\S]*status = 'active', exhausted_at = null/i,
   );
+  assert.match(rotationMigration, /set constraints all immediate/i);
   assert.doesNotMatch(rotationMigration, /set\s+status = 'exhausted'/i);
 });
 

@@ -165,6 +165,11 @@ SET
   last_used_at = coalesce(last_used_at, consumed_at, updated_at)
 WHERE status = 'consumed';
 
+-- The backfill can queue deferred foreign-key checks. Resolve them before
+-- building indexes on the same parent tables; Postgres otherwise refuses the
+-- index build with "pending trigger events" and rolls back this migration.
+SET CONSTRAINTS ALL IMMEDIATE;
+
 CREATE INDEX IF NOT EXISTS carousel_content_plan_items_rotation_idx
   ON public.carousel_content_plan_items (plan_id, status, last_used_at, use_count, sequence_index);
 

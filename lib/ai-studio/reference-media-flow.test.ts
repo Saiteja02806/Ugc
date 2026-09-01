@@ -7,6 +7,7 @@ const videoApi = readProjectFile("lib/ai-studio/video-generation-api.ts");
 const imageWorker = readProjectFile("worker/src/jobs/generate-image.ts");
 const videoWorker = readProjectFile("worker/src/jobs/generate-hook-video.ts");
 const openAiProvider = readProjectFile("worker/src/lib/openai-image.ts");
+const geminiOmniProvider = readProjectFile("worker/src/lib/gemini-omni-video.ts");
 const runwayProvider = readProjectFile("worker/src/lib/runway-video.ts");
 
 test("uploaded image references reach the image provider", () => {
@@ -29,6 +30,17 @@ test("uploaded video references reach Runway video-to-video generation", () => {
   assert.match(runwayProvider, /client\.videoToVideo\.create/);
   assert.match(runwayProvider, /model: RUNWAY_VIDEO_TO_VIDEO_MODEL/);
   assert.match(runwayProvider, /videoUri: referenceVideoUrl/);
+});
+
+test("optional image references reach Google Omni video generation", () => {
+  assert.match(videoApi, /avatarImageUrl,/);
+  assert.match(videoWorker, /referenceImageUrl: input\.avatarImageUrl/);
+  assert.match(
+    geminiOmniProvider,
+    /referenceImageUrl\s*\? await downloadReferenceImage\(referenceImageUrl\)/,
+  );
+  assert.match(geminiOmniProvider, /data: referenceImage\.data/);
+  assert.match(geminiOmniProvider, /mime_type: referenceImage\.mimeType/);
 });
 
 test("prompt-only generation remains valid", () => {

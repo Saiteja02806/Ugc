@@ -42,6 +42,7 @@ export function AiStudioComposer({
   onTextareaKeyDown,
   placeholder,
   prompt,
+  referenceControls,
   secondaryActions,
   settings,
 }: {
@@ -62,6 +63,7 @@ export function AiStudioComposer({
   onTextareaKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   placeholder: string;
   prompt: string;
+  referenceControls?: ReactNode;
   secondaryActions?: ReactNode;
   settings: ReactNode;
 }) {
@@ -166,6 +168,8 @@ export function AiStudioComposer({
               </span>
             </FieldDescription>
           </Field>
+
+          {referenceControls}
 
           <div
             className={cn(
@@ -286,7 +290,7 @@ export function AiStudioSettingSelect<TValue extends string>({
   disabled?: boolean;
   icon?: ReactNode;
   onChange: (value: TValue) => void;
-  options: readonly { label: string; value: TValue }[];
+  options: readonly { label: string; triggerLabel?: string; value: TValue }[];
   value: TValue;
 }) {
   const [open, setOpen] = useState(false);
@@ -348,7 +352,9 @@ export function AiStudioSettingSelect<TValue extends string>({
         }
       >
         {icon ? <span className="inline-flex shrink-0 items-center">{icon}</span> : null}
-        <span className="truncate">{currentOption.label}</span>
+        <span className="truncate">
+          {currentOption.triggerLabel ?? currentOption.label}
+        </span>
         <ChevronDown
           aria-hidden="true"
           className={cn(
@@ -405,30 +411,35 @@ export type AIStudioAspectRatio = "4:5" | "1:1" | "9:16" | "16:9";
 export const AI_STUDIO_RATIO_OPTIONS: {
   id: AIStudioAspectRatio;
   label: string;
+  triggerLabel: string;
   sublabel: string;
   iconClassName: string;
 }[] = [
   {
     id: "4:5",
     label: "4:5 portrait",
+    triggerLabel: "4:5 portrait",
     sublabel: "Instagram Feed (Default)",
     iconClassName: "h-4 w-3.5",
   },
   {
     id: "1:1",
     label: "1:1 square",
+    triggerLabel: "1:1 square",
     sublabel: "Square Post / Carousel",
     iconClassName: "size-3.5",
   },
   {
     id: "9:16",
     label: "9:16 vertical",
+    triggerLabel: "9:16",
     sublabel: "Reel / Story / TikTok",
     iconClassName: "h-5 w-3",
   },
   {
     id: "16:9",
     label: "16:9 landscape",
+    triggerLabel: "16:9 landscape",
     sublabel: "Horizontal Video",
     iconClassName: "h-3 w-5",
   },
@@ -471,7 +482,7 @@ export function AiStudioRatioPicker({
             currentOption.iconClassName,
           )}
         />
-        <span>{currentOption.label}</span>
+        <span>{currentOption.triggerLabel}</span>
         <ChevronDown
           className={cn(
             "size-3 text-muted transition-transform duration-200 motion-reduce:transition-none",

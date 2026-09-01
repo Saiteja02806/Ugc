@@ -28,6 +28,7 @@ import {
 } from "@/components/generation/ai-studio-results";
 import { AiStudioResultActions } from "@/components/generation/ai-studio-result-actions";
 import { ReferenceMediaUpload } from "@/components/generation/reference-media-upload";
+import { CreatorReferencePicker } from "@/components/video/creator-reference-picker";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
@@ -280,6 +281,10 @@ export function VideoGenerationStudioPanel({
     useState<AIStudioVideoDuration>(4);
   const [uploadedReference, setUploadedReference] =
     useState<AIStudioReferenceMedia | null>(null);
+  const [selectedCreatorReferenceId, setSelectedCreatorReferenceId] =
+    useState<string | null>(null);
+  const [creatorReferenceUploadPending, setCreatorReferenceUploadPending] =
+    useState(false);
   const [activeVideoPrompt, setActiveVideoPrompt] = useState("");
   const [latestCompletedVideoId, setLatestCompletedVideoId] = useState<string | null>(null);
   const [generationState, setGenerationState] =
@@ -332,6 +337,12 @@ export function VideoGenerationStudioPanel({
     uploadedReference?.kind === "video" ? uploadedReference : null;
   const activeReferenceImageUrl =
     uploadedReferenceImage?.asset.url ?? null;
+
+  function handleReferenceChange(selection: AIStudioReferenceMedia | null) {
+    submissionKeyRef.current = null;
+    setSelectedCreatorReferenceId(null);
+    setUploadedReference(selection);
+  }
   const queriedJobs = activeJobQueries.flatMap((query) =>
     query.data ? [query.data] : [],
   );
@@ -862,6 +873,7 @@ export function VideoGenerationStudioPanel({
           generationLocked ||
           hasInsufficientCredits ||
           !prompt.trim() ||
+          creatorReferenceUploadPending ||
           isGenerating
         }
         generateLabel="Generate video"
@@ -872,11 +884,12 @@ export function VideoGenerationStudioPanel({
           <ReferenceMediaUpload
             active={active}
             allowedKinds={["image", "video"]}
-            disabled={generationLocked || isGenerating}
+            disabled={
+              generationLocked || isGenerating || creatorReferenceUploadPending
+            }
             selection={uploadedReference}
             onChange={(selection) => {
-              submissionKeyRef.current = null;
-              setUploadedReference(selection);
+              handleReferenceChange(selection);
 
               if (
                 selection?.kind === "video" &&
@@ -899,6 +912,19 @@ export function VideoGenerationStudioPanel({
         }}
         onSubmit={handleSubmit}
         onTextareaKeyDown={handleTextareaKeyDown}
+        referenceControls={
+          <CreatorReferencePicker
+            active={active}
+            disabled={
+              generationLocked || isGenerating || creatorReferenceUploadPending
+            }
+            selection={uploadedReference}
+            selectedCreatorId={selectedCreatorReferenceId}
+            onChange={handleReferenceChange}
+            onPendingChange={setCreatorReferenceUploadPending}
+            onSelectedCreatorChange={setSelectedCreatorReferenceId}
+          />
+        }
         secondaryActions={
           <>
             {isGenerating ? (
@@ -954,6 +980,21 @@ export function VideoGenerationStudioPanel({
                 setDurationSeconds(Number(value) as AIStudioVideoDuration);
               }}
             />
+            <AiStudioSettingSelect
+              ariaLabel="Number of videos"
+              disabled={generationLocked || isGenerating}
+              icon={<Video className="size-4" aria-hidden="true" />}
+              options={AI_STUDIO_GENERATION_QUANTITIES.map((count) => ({
+                label: `${count} video${count === 1 ? "" : "s"}`,
+                triggerLabel: String(count),
+                value: String(count),
+              }))}
+              value={String(quantity)}
+              onChange={(value) => {
+                submissionKeyRef.current = null;
+                setQuantity(Number(value) as AIStudioGenerationQuantity);
+              }}
+            />
             <AiStudioRatioPicker
               value={aspectRatio}
               onChange={(value) => {
@@ -962,20 +1003,6 @@ export function VideoGenerationStudioPanel({
               }}
               allowedRatios={["9:16", "16:9"]}
               disabled={generationLocked || isGenerating}
-            />
-            <AiStudioSettingSelect
-              ariaLabel="Number of videos"
-              disabled={generationLocked || isGenerating}
-              icon={<Video className="size-4" aria-hidden="true" />}
-              options={AI_STUDIO_GENERATION_QUANTITIES.map((count) => ({
-                label: `${count} video${count === 1 ? "" : "s"}`,
-                value: String(count),
-              }))}
-              value={String(quantity)}
-              onChange={(value) => {
-                submissionKeyRef.current = null;
-                setQuantity(Number(value) as AIStudioGenerationQuantity);
-              }}
             />
           </>
         }

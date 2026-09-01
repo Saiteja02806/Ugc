@@ -23,6 +23,9 @@ const resultActions = readProjectFile(
 const videoWorkspace = readProjectFile(
   "components/video/video-generation-workspace.tsx",
 );
+const creatorReferencePicker = readProjectFile(
+  "components/video/creator-reference-picker.tsx",
+);
 const videoGenerationApi = readProjectFile(
   "lib/ai-studio/video-generation-api.ts",
 );
@@ -200,10 +203,17 @@ test("every image and video settings dropdown uses the shared themed pill", () =
   assert.doesNotMatch(videoWorkspace, /<select|<option/);
 });
 
-test("video references start empty without exposing competing pickers", () => {
+test("video references start empty and offer optional creator references", () => {
   assert.match(videoWorkspace, /useState<AIStudioReferenceMedia \| null>\(null\)/);
-  assert.doesNotMatch(videoWorkspace, /function ReferenceImagePicker/);
-  assert.doesNotMatch(videoWorkspace, /Optional reference/);
+  assert.match(videoWorkspace, /useState<string \| null>\(null\)/);
+  assert.match(videoWorkspace, /<CreatorReferencePicker/);
+  assert.match(videoWorkspace, /referenceControls=\{/);
+  assert.match(creatorReferencePicker, />\s*Creators\s*</);
+  assert.match(creatorReferencePicker, />\s*Optional\s*</);
+  assert.match(creatorReferencePicker, /Pick a creator reference or upload your own image/);
+  assert.match(creatorReferencePicker, /onChange\(nextSelection\)/);
+  assert.match(creatorReferencePicker, /uploadAIStudioReferenceMedia\(file, "image"\)/);
+  assert.match(creatorReferencePicker, /<ImagePlus className="size-3.5"/);
   assert.doesNotMatch(videoWorkspace, /groupAvatarsByCreator/);
   assert.doesNotMatch(videoWorkspace, /function AvatarFolderGroup/);
   assert.doesNotMatch(videoWorkspace, /Open a creator folder/);
@@ -245,6 +255,18 @@ test("AI Studio supports optional direct image and video reference uploads", () 
     videoWorkspace,
     /generateDisabled=\{[\s\S]*?generationLocked \|\|[\s\S]*?hasInsufficientCredits \|\|[\s\S]*?!prompt\.trim\(\) \|\|[\s\S]*?isGenerating[\s\S]*?\}/,
   );
+});
+
+test("video composer keeps compact controls in the requested order", () => {
+  const videoSettings = videoWorkspace.slice(
+    videoWorkspace.indexOf("settings={"),
+    videoWorkspace.indexOf("        }\n      />", videoWorkspace.indexOf("settings={")),
+  );
+
+  assert.match(composer, /triggerLabel\?: string/);
+  assert.match(composer, /triggerLabel: "9:16"/);
+  assert.match(videoSettings, /ariaLabel="Video model"[\s\S]*?ariaLabel="Video duration"[\s\S]*?ariaLabel="Number of videos"[\s\S]*?<AiStudioRatioPicker/);
+  assert.match(videoSettings, /label: `\$\{count\} video\$\{count === 1 \? "" : "s"\}`,[\s\S]*?triggerLabel: String\(count\)/);
 });
 
 test("image and video use one compact leading attachment control", () => {

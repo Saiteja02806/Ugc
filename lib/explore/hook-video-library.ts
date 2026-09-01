@@ -131,6 +131,19 @@ export function getExplorePreviewVideo(): ExploreHookVideo {
   };
 }
 
+// Used by the server-side video-generation boundary to recognize an Explore
+// recreation without trusting a client-provided flag.
+export function isExploreHookVideoId(value: unknown): value is string {
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  return (
+    value === EXPLORE_PREVIEW_VIDEO_ASSET.id ||
+    EXPLORE_HOOK_VIDEO_ASSETS.some((asset) => asset.id === value)
+  );
+}
+
 export function getExploreHookVideoAssetsForImport() {
   return EXPLORE_HOOK_VIDEO_ASSETS;
 }

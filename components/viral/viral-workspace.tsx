@@ -339,7 +339,7 @@ function ExploreHookVideoCard({
           })}
         >
           <Sparkles data-icon="inline-start" className="size-3.5" aria-hidden="true" />
-          Use This Hook
+          Recreate
         </Link>
       </div>
     </article>
@@ -349,6 +349,7 @@ function ExploreHookVideoCard({
 function getHookStudioHref(item: ExploreHookVideo) {
   const params = new URLSearchParams({
     mode: "videos",
+    exploreRecreate: "1",
     refId: item.id,
     refType: "hook",
     sourceUrl: item.videoUrl,

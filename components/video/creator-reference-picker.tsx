@@ -21,6 +21,7 @@ export function CreatorReferencePicker({
   onChange,
   onPendingChange,
   onSelectedCreatorChange,
+  required = false,
   selectedCreatorId,
   selection,
 }: {
@@ -29,6 +30,7 @@ export function CreatorReferencePicker({
   onChange: (selection: AIStudioReferenceMedia | null) => void;
   onPendingChange: (pending: boolean) => void;
   onSelectedCreatorChange: (creatorId: string | null) => void;
+  required?: boolean;
   selectedCreatorId: string | null;
   selection: AIStudioReferenceMedia | null;
 }) {
@@ -52,7 +54,9 @@ export function CreatorReferencePicker({
     ? `Creator ${selectedCreatorIndex + 1}`
     : hasCustomImageReference
       ? "Custom"
-      : "Creators";
+      : required
+        ? "Reference image"
+        : "Creators";
 
   async function uploadReference(
     file: File,
@@ -191,7 +195,9 @@ export function CreatorReferencePicker({
               Creator reference
             </h2>
             <p className="mt-0.5 text-[11px] leading-4 text-muted">
-              Optional. Choose a look or upload your own image.
+              {required
+                ? "Required for this Explore recreation. Choose a look or upload your own image."
+                : "Optional. Choose a look or upload your own image."}
             </p>
           </div>
           {isPending ? (

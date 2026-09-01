@@ -30,6 +30,14 @@ import { AiStudioResultActions } from "@/components/generation/ai-studio-result-
 import { ReferenceMediaUpload } from "@/components/generation/reference-media-upload";
 import { CreatorReferencePicker } from "@/components/video/creator-reference-picker";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/auth-context";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
 import { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND } from "@/lib/billing/generation-credit-policy";
@@ -232,6 +240,8 @@ export function VideoGenerationStudioPanel({
   const refTypeParam = searchParams.get("refType");
   const refIdParam = searchParams.get("refId");
   const sourceUrlParam = searchParams.get("sourceUrl");
+  const hasExploreRecreateParam =
+    refTypeParam === "hook" && searchParams.get("exploreRecreate") === "1";
   const referenceParamContext: {
     id: string;
     shortcode: string | null;
@@ -256,6 +266,8 @@ export function VideoGenerationStudioPanel({
     referenceParamKey && dismissedReferenceKey !== referenceParamKey
       ? referenceParamContext
       : null;
+  const isExploreRecreate =
+    hasExploreRecreateParam && referenceContext?.type === "hook";
 
   function handleDismissReference() {
     setDismissedReferenceKey(referenceParamKey);
@@ -263,6 +275,7 @@ export function VideoGenerationStudioPanel({
     nextParams.delete("refType");
     nextParams.delete("refId");
     nextParams.delete("sourceUrl");
+    nextParams.delete("exploreRecreate");
     const query = nextParams.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, {
       scroll: false,
@@ -284,6 +297,8 @@ export function VideoGenerationStudioPanel({
   const [selectedCreatorReferenceId, setSelectedCreatorReferenceId] =
     useState<string | null>(null);
   const [creatorReferenceUploadPending, setCreatorReferenceUploadPending] =
+    useState(false);
+  const [referenceImageRequiredDialogOpen, setReferenceImageRequiredDialogOpen] =
     useState(false);
   const [activeVideoPrompt, setActiveVideoPrompt] = useState("");
   const [latestCompletedVideoId, setLatestCompletedVideoId] = useState<string | null>(null);
@@ -632,6 +647,11 @@ export function VideoGenerationStudioPanel({
       return;
     }
 
+    if (isExploreRecreate && !activeReferenceImageUrl) {
+      setReferenceImageRequiredDialogOpen(true);
+      return;
+    }
+
     if (promptLengthError) {
       setActionError(promptLengthError);
       return;
@@ -847,7 +867,9 @@ export function VideoGenerationStudioPanel({
                   )}
                 </span>
                 <span className="font-semibold text-foreground-strong">
-                  {referenceContext.type === "hook"
+                  {isExploreRecreate
+                    ? "Explore Recreate"
+                    : referenceContext.type === "hook"
                     ? "Reference Hook"
                     : "Reference Format"}
                 </span>
@@ -856,6 +878,11 @@ export function VideoGenerationStudioPanel({
                     ? `• Instagram (${referenceContext.shortcode})`
                     : "• Attached Context"}
                 </span>
+                {isExploreRecreate ? (
+                  <span className="shrink-0 font-medium text-primary">
+                    • Image required
+                  </span>
+                ) : null}
               </div>
               <button
                 type="button"
@@ -883,7 +910,7 @@ export function VideoGenerationStudioPanel({
         leadingControl={
           <ReferenceMediaUpload
             active={active}
-            allowedKinds={["image", "video"]}
+            allowedKinds={isExploreRecreate ? ["image"] : ["image", "video"]}
             disabled={
               generationLocked || isGenerating || creatorReferenceUploadPending
             }
@@ -977,6 +1004,7 @@ export function VideoGenerationStudioPanel({
               onChange={handleReferenceChange}
               onPendingChange={setCreatorReferenceUploadPending}
               onSelectedCreatorChange={setSelectedCreatorReferenceId}
+              required={isExploreRecreate}
             />
             <AiStudioSettingSelect
               ariaLabel="Number of videos"
@@ -1005,6 +1033,24 @@ export function VideoGenerationStudioPanel({
           </>
         }
       />
+
+      <Dialog
+        open={referenceImageRequiredDialogOpen}
+        onOpenChange={setReferenceImageRequiredDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add a reference image to recreate this video</DialogTitle>
+            <DialogDescription>
+              This Explore format requires an image reference. It gives the
+              generation a clear subject and produces a result closer to the
+              expected quality. Upload your own image or choose a creator
+              reference, then generate again.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter showCloseButton />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

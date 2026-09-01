@@ -15,6 +15,7 @@ import {
   parseAIStudioVideoAspectRatio,
   parseAIStudioVideoModel,
 } from "@/lib/ai-studio/generation-settings";
+import { isExploreHookVideoId } from "@/lib/explore/hook-video-library";
 import { FirebaseAuthRequestError } from "@/lib/firebase/server-auth";
 import {
   getBackgroundJobById,
@@ -145,6 +146,8 @@ export async function handleAIStudioVideoGeneration(request: Request) {
   const quantity = parseAIStudioGenerationQuantity(body?.quantity);
   const model = parseAIStudioVideoModel(body?.model);
   const durationSeconds = parseAIStudioVideoDuration(body?.durationSeconds);
+  const isExploreRecreate =
+    body?.referenceType === "hook" && isExploreHookVideoId(body?.referenceId);
 
   if (body?.avatarImageUrl && !avatarImageUrl) {
     return NextResponse.json(
@@ -156,6 +159,17 @@ export async function handleAIStudioVideoGeneration(request: Request) {
   if (body?.referenceVideoUrl && !referenceVideoUrl) {
     return NextResponse.json(
       { error: "The reference video is not a trusted uploaded file.", ok: false },
+      { status: 400 },
+    );
+  }
+
+  if (isExploreRecreate && !avatarImageUrl) {
+    return NextResponse.json(
+      {
+        error:
+          "Add a reference image before recreating an Explore video. This format is image-reference-only for better results.",
+        ok: false,
+      },
       { status: 400 },
     );
   }

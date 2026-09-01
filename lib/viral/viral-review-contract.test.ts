@@ -44,11 +44,12 @@ test("saves only the fixed-zero Hook ending boundary", () => {
   assert.doesNotMatch(saveRoute, /publish_status.*published/);
 });
 
-test("renders direct Explore videos with the existing Hook action", () => {
+test("renders direct Explore videos with the Recreate action", () => {
   assert.match(workspace, /\/api\/explore\/hook-videos/);
   assert.match(workspace, /<video/);
   assert.match(workspace, /object-cover/);
-  assert.match(workspace, /Use This Hook/);
+  assert.match(workspace, />\s*Recreate\s*</);
+  assert.match(workspace, /exploreRecreate: "1"/);
   assert.match(workspace, /sourceUrl: item\.videoUrl/);
   assert.doesNotMatch(
     workspace,

@@ -9,6 +9,12 @@ const viralWorkspace = readProjectFile("components/viral/viral-workspace.tsx");
 const dashboardPage = readProjectFile("app/dashboard/page.tsx");
 const sidebar = readProjectFile("components/layout/app-sidebar.tsx");
 const directHookApi = readProjectFile("app/api/explore/hook-videos/route.ts");
+const videoWorkspace = readProjectFile(
+  "components/video/video-generation-workspace.tsx",
+);
+const videoGenerationApi = readProjectFile(
+  "lib/ai-studio/video-generation-api.ts",
+);
 
 test("opens Explore without changing the separate Trending dashboard", () => {
   assert.doesNotMatch(nextConfig, /source: "\/viral\/:path\*"/);
@@ -35,8 +41,10 @@ test("renders only direct Hook videos, not Instagram embeds or deferred formats"
   assert.match(viralWorkspace, />\s*Hook Videos\s*</);
   assert.match(viralWorkspace, /<video/);
   assert.match(viralWorkspace, /object-cover/);
-  assert.match(viralWorkspace, /Use This Hook/);
+  assert.match(viralWorkspace, />\s*Recreate\s*</);
+  assert.doesNotMatch(viralWorkspace, /Use This Hook/);
   assert.match(viralWorkspace, /sourceUrl: item\.videoUrl/);
+  assert.match(viralWorkspace, /exploreRecreate: "1"/);
   assert.match(viralWorkspace, /useBillingSubscription\(\)/);
   assert.match(viralWorkspace, /Upgrade to Pro/);
   assert.match(viralWorkspace, /This Hook performed well on Instagram/);
@@ -51,6 +59,34 @@ test("renders only direct Hook videos, not Instagram embeds or deferred formats"
   assert.match(directHookApi, /preview: getExplorePreviewVideo\(\)/);
   assert.doesNotMatch(viralWorkspace, /InstagramEmbed|embed\.js|wall-of-text|slideshows|Hook timing/i);
   assert.doesNotMatch(viralWorkspace, /@\/components\/trending|@\/lib\/trending/);
+});
+
+test("requires an image only for an Explore Recreate and enforces it server-side", () => {
+  assert.match(
+    videoWorkspace,
+    /hasExploreRecreateParam && referenceContext\?\.type === "hook"/,
+  );
+  assert.match(
+    videoWorkspace,
+    /isExploreRecreate && !activeReferenceImageUrl[\s\S]*?setReferenceImageRequiredDialogOpen\(true\)/,
+  );
+  assert.match(
+    videoWorkspace,
+    /allowedKinds=\{isExploreRecreate \? \["image"\] : \["image", "video"\]\}/,
+  );
+  assert.match(videoWorkspace, /Explore Recreate/);
+  assert.match(videoWorkspace, /Image required/);
+  assert.match(
+    videoWorkspace,
+    /Add a reference image to recreate this video/,
+  );
+  assert.match(videoGenerationApi, /isExploreHookVideoId\(body\?\.referenceId\)/);
+  assert.match(videoGenerationApi, /isExploreRecreate && !avatarImageUrl/);
+  assert.match(videoGenerationApi, /image-reference-only for better results/);
+  assert.doesNotMatch(
+    videoGenerationApi,
+    /if \(!avatarImageUrl\) \{[\s\S]*?Add a reference image before recreating/,
+  );
 });
 
 test("protects direct Explore video URLs behind the signed-in user check", () => {

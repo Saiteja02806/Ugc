@@ -249,16 +249,35 @@ test("video references start empty and offer optional creator references", () =>
   );
 });
 
-test("AI Studio supports optional direct image and video reference uploads", () => {
+test("AI Studio keeps direct image and video references optional outside Explore Recreate", () => {
   assert.match(imageWorkspace, /allowedKinds=\{\["image"\]\}/);
   assert.match(imageWorkspace, /referenceImageUrl: referenceImage\?\.asset\.url \?\? null/);
-  assert.match(videoWorkspace, /allowedKinds=\{\["image", "video"\]\}/);
+  assert.match(
+    videoWorkspace,
+    /allowedKinds=\{isExploreRecreate \? \["image"\] : \["image", "video"\]\}/,
+  );
   assert.match(videoWorkspace, /referenceVideoUrl: uploadedReferenceVideo\?\.asset\.url \?\? null/);
   assert.match(videoWorkspace, /referenceVideoDurationSeconds:/);
   assert.match(
     videoWorkspace,
     /generateDisabled=\{[\s\S]*?generationLocked \|\|[\s\S]*?hasInsufficientCredits \|\|[\s\S]*?!prompt\.trim\(\) \|\|[\s\S]*?isGenerating[\s\S]*?\}/,
   );
+});
+
+test("Explore Recreate asks for an image before video generation", () => {
+  assert.match(videoWorkspace, /searchParams\.get\("exploreRecreate"\) === "1"/);
+  assert.match(
+    videoWorkspace,
+    /isExploreRecreate && !activeReferenceImageUrl[\s\S]*?setReferenceImageRequiredDialogOpen\(true\)/,
+  );
+  assert.match(videoWorkspace, /<Dialog[\s\S]*?Add a reference image to recreate this video/);
+  assert.match(videoWorkspace, /required=\{isExploreRecreate\}/);
+  assert.match(
+    creatorReferencePicker,
+    /Required for this Explore recreation\. Choose a look or upload your own image\./,
+  );
+  assert.match(videoGenerationApi, /isExploreHookVideoId\(body\?\.referenceId\)/);
+  assert.match(videoGenerationApi, /isExploreRecreate && !avatarImageUrl/);
 });
 
 test("video composer keeps compact controls in the requested order", () => {

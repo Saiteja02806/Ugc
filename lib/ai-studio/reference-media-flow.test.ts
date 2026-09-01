@@ -50,6 +50,13 @@ test("prompt-only generation remains valid", () => {
   assert.doesNotMatch(videoApi, /Add a reference video before generating/);
 });
 
+test("only recognized Explore recreations require an image reference", () => {
+  assert.match(videoApi, /isExploreHookVideoId\(body\?\.referenceId\)/);
+  assert.match(videoApi, /body\?\.referenceType === "hook"/);
+  assert.match(videoApi, /isExploreRecreate && !avatarImageUrl/);
+  assert.match(videoApi, /Add a reference image before recreating an Explore video/);
+});
+
 test("AI Studio video generation sends the user's prompt without a UGC template", () => {
   assert.match(videoApi, /hookIdea: prompt,[\s\S]*?promptMode: "direct"/);
   assert.doesNotMatch(videoApi, /productName: "UGCPilot"/);

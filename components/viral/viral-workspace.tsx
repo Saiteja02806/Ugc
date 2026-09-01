@@ -41,6 +41,14 @@ type ExploreHookVideoLibrary = {
   preview: ExploreHookVideo | null;
 };
 
+// Keep the reference shelf dense and predictable on laptop workspaces. A
+// 14-inch display can have less usable width than a 15.6-inch display once the
+// persistent sidebar is visible, so auto-fill may unexpectedly drop to three
+// cards. Four equal columns from the laptop breakpoint preserve the intended
+// comparison rhythm without making phone cards too narrow.
+const EXPLORE_HOOK_GRID_CLASS_NAME =
+  "grid min-w-0 w-full max-w-[1180px] grid-cols-1 items-start gap-3 min-[440px]:grid-cols-2 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4";
+
 export function ViralWorkspace() {
   const [items, setItems] = useState<Array<ExploreHookVideo>>([]);
   const [previewItem, setPreviewItem] = useState<ExploreHookVideo | null>(null);
@@ -139,7 +147,7 @@ export function ViralWorkspace() {
 
         {loadState === "ready" && items.length > 0 ? (
           isProUser ? (
-            <div className="grid min-w-0 grid-cols-[repeat(auto-fill,minmax(220px,280px))] items-start justify-start gap-5">
+            <div className={EXPLORE_HOOK_GRID_CLASS_NAME}>
               {items.map((item) => (
                 <ExploreHookVideoCard key={item.id} item={item} />
               ))}
@@ -361,7 +369,7 @@ function getHookStudioHref(item: ExploreHookVideo) {
 function HookVideoGridSkeleton() {
   return (
     <div
-      className="grid grid-cols-[repeat(auto-fill,minmax(220px,280px))] items-start justify-start gap-5"
+      className={EXPLORE_HOOK_GRID_CLASS_NAME}
       aria-busy="true"
     >
       {[0, 1, 2, 3, 4, 5].map((index) => (

@@ -61,6 +61,25 @@ test("renders only direct Hook videos, not Instagram embeds or deferred formats"
   assert.doesNotMatch(viralWorkspace, /@\/components\/trending|@\/lib\/trending/);
 });
 
+test("keeps four compact Hook cards across standard laptop widths", () => {
+  assert.match(
+    viralWorkspace,
+    /const EXPLORE_HOOK_GRID_CLASS_NAME =[\s\S]*?lg:grid-cols-4/,
+  );
+  assert.match(
+    viralWorkspace,
+    /min-\[440px\]:grid-cols-2 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4/,
+  );
+  assert.match(
+    viralWorkspace,
+    /className=\{EXPLORE_HOOK_GRID_CLASS_NAME\}/,
+  );
+  assert.doesNotMatch(
+    viralWorkspace,
+    /repeat\(auto-fill,minmax\(220px,280px\)\)/,
+  );
+});
+
 test("requires an image only for an Explore Recreate and enforces it server-side", () => {
   assert.match(
     videoWorkspace,

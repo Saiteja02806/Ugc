@@ -4018,3 +4018,20 @@ Name: **Verify v26 and replace the stale production assignment**
   the earlier 3px treatment.
 - Existing rendered Carousel images remain immutable; the 4px outline applies
   to new generations and slides that are explicitly re-rendered.
+
+## 2026-09-01 Compact-Laptop Trending 9:16 Review Frames
+
+- Hook and Wall-of-Text Trending cards use the same shared 9:16 sizing rule.
+  On compact desktop viewports at least 1024px and below 1440px wide, their maximum
+  review-frame width increases from 230px to 252px. The height calculation
+  reduces only the reserved chrome budget, keeping the format label, stacked
+  preview clearance, decision controls, and progress text visible on short
+  laptop screens.
+- Larger desktop viewports retain the previous 230px maximum exactly. Carousel
+  (4:5) frames, swipe behavior, keyboard interaction, deck layering, and the
+  loading skeleton's shared 9:16 frame all remain structurally unchanged.
+- The paired Reject and Accept controls use the same compact-desktop range and
+  available-height calculation. They remain at least 56px for safe interaction
+  and grow from the previous 64px to a maximum of 72px as the 9:16 review frame
+  grows, including a proportionate icon size. Wider desktop layouts retain the
+  previous 64px controls.

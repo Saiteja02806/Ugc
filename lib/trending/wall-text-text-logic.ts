@@ -1,6 +1,6 @@
 import {
-  LEGACY_WALL_TEXT_CONTENT_LAYOUT_VERSION,
   LEGACY_WALL_TEXT_PATTERNS,
+  OLDER_WALL_TEXT_CONTENT_LAYOUT_VERSION,
   WALL_TEXT_PATTERNS,
   WALL_TEXT_SEGMENT_ROLES,
   type TrendingWallTextContent,
@@ -542,7 +542,7 @@ function toWallTextContent(
   return {
     fullText,
     kind: "wall_text",
-    layoutVersion: LEGACY_WALL_TEXT_CONTENT_LAYOUT_VERSION,
+    layoutVersion: OLDER_WALL_TEXT_CONTENT_LAYOUT_VERSION,
     pattern: normalizePattern(idea.pattern),
     segments,
   };

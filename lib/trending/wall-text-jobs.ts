@@ -5,6 +5,7 @@ import {
   retryAndDispatchBackgroundJob,
 } from "@/lib/jobs/background-job-service";
 import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
+import { getBackgroundJobForUser } from "@/lib/jobs/background-jobs";
 import { ensureWallTextContentPlanGeneration } from "@/lib/trending/wall-text-content-plan-generation-job";
 import { WALL_TEXT_PERSISTENCE_REJECTED } from "@/lib/trending/wall-text-generation-failure";
 import { WALL_TEXT_GENERATOR_VERSION } from "@/lib/trending/wall-text-types";
@@ -12,20 +13,33 @@ import { WALL_TEXT_GENERATOR_VERSION } from "@/lib/trending/wall-text-types";
 export async function enqueueTrendingWallTextJob(params: {
   businessProfileId: string;
   businessProfileVersion: number;
-  profile?: BusinessProfileRecord;
+  profile: BusinessProfileRecord;
   recoveryKey?: string | null;
   refillKey?: string | null;
   requestedCount?: number;
   userId: string;
 }) {
-  if (params.profile) {
-    await ensureWallTextContentPlanGeneration({ profile: params.profile }).catch(
-      (error) => {
-        // The plan is an additive quality layer. A queue or migration rollout
-        // issue must never prevent the established Wall generation fallback.
-        console.error("Could not start Wall-of-Text content planning:", error);
-      },
-    );
+  const plan = await ensureWallTextContentPlanGeneration({
+    profile: params.profile,
+  });
+
+  // Wall copy may only be generated from an active 30-day plan. Until the
+  // planner has completed, return its durable job to the caller instead of
+  // launching the old direct-writer path without private plan context.
+  if (plan.status !== "active") {
+    if (!plan.generationJobId) {
+      throw new Error("Wall-of-Text content plan has no generation job.");
+    }
+
+    const planningJob = await getBackgroundJobForUser({
+      jobId: plan.generationJobId,
+      userId: params.userId,
+    });
+    if (!planningJob) {
+      throw new Error("Wall-of-Text content-plan generation job was not found.");
+    }
+
+    return planningJob;
   }
 
   const idempotencyKey = [

@@ -19,7 +19,7 @@ export async function ensureCarouselContentPlanGeneration(params: {
 
   const job = await createAndDispatchBackgroundJob(
     {
-      idempotencyKey: `carousel-content-plan:${plan.id}:v${plan.planVersion}`,
+      idempotencyKey: `carousel-content-plan:${plan.id}:v${plan.planVersion}:attempt-${plan.generationAttempt}`,
       input: {
         operation: "carousel_content_plan_generation",
         planId: plan.id,

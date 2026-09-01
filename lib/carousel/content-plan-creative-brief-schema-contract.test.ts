@@ -34,6 +34,20 @@ const appContentPlan = readFileSync(
   new URL("./content-plan.ts", import.meta.url),
   "utf8",
 );
+const continuityMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260831103952_enforce_30_day_content_plan_continuity.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const itemContextMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260831173300_add_per_idea_private_context.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 test("adds a private six-field creative-brief layer without changing the 150-item Carousel pool", () => {
   assert.match(
@@ -108,7 +122,7 @@ test("defines every private creative-brief field for the Carousel planner", () =
 
   assert.match(
     contentPlanPlanner,
-    /Use all six fields together to create exactly five different child ideas/i,
+    /For every child return creativeSeed, emotion, audienceContext/i,
   );
   assert.match(
     contentPlanPlanner,
@@ -116,16 +130,40 @@ test("defines every private creative-brief field for the Carousel planner", () =
   );
   assert.match(
     contentPlanPlanner,
-    /carousel-content-plan-creative-briefs-v3-explicit-definitions/i,
+    /carousel-content-plan-creative-briefs-v6-item-context-concept-lanes/i,
   );
   assert.match(
     appContentPlan,
-    /carousel-content-plan-creative-briefs-v3-explicit-definitions/i,
+    /carousel-content-plan-creative-briefs-v6-item-context-concept-lanes/i,
   );
   assert.match(
-    migration,
-    /planner_prompt_version in \([\s\S]*carousel-content-plan-creative-briefs-v3-explicit-definitions/i,
+    itemContextMigration,
+    /private_context jsonb/i,
   );
+});
+
+test("uses private concept lanes and prior-cycle exclusions to keep related ideas broad", () => {
+  assert.match(contentPlanPlanner, /getContentPlanItemConceptLanes/);
+  assert.match(contentPlanPlanner, /conceptLanes: getCarouselItemConceptLanes/);
+  assert.match(
+    contentPlanPlanner,
+    /Previous items are guidance, not a ban on a broad topic/i,
+  );
+  assert.match(
+    contentPlanPlanner,
+    /repair exactly one private Carousel plan idea/i,
+  );
+});
+
+test("stores an individual private writing context without changing legacy parent-brief items", () => {
+  assert.match(itemContextMigration, /add column if not exists private_context jsonb/i);
+  assert.match(itemContextMigration, /private_context, status/i);
+  assert.match(
+    contentPlanPlanner,
+    /identical text after normalizing case, punctuation, and spacing/i,
+  );
+  assert.doesNotMatch(contentPlanPlanner, /isNearVerbatimCopy/);
+  assert.match(contentPlanPlanner, /MAX_SINGLE_IDEA_REPAIR_ATTEMPTS = 3/);
 });
 
 test("supplies the parent brief to both Carousel writers without overriding their selected format", () => {

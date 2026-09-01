@@ -2,7 +2,7 @@ import type { WebsiteBusinessAnalysis } from "@/lib/website-analysis/schema";
 
 export const CAROUSEL_CONTENT_PLAN_MODEL = "gpt-4o-mini";
 export const CAROUSEL_CONTENT_PLAN_PROMPT_VERSION =
-  "carousel-content-plan-creative-briefs-v3-explicit-definitions";
+  "carousel-content-plan-creative-briefs-v6-item-context-concept-lanes";
 export const CAROUSEL_CONTENT_PLAN_TARGET_COUNT = 150;
 export const CAROUSEL_CONTENT_PLAN_BRIEF_COUNT = 30;
 export const CAROUSEL_CONTENT_PLAN_ITEMS_PER_BRIEF = 5;

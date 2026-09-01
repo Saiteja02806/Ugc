@@ -15,6 +15,7 @@ import {
   getMediaAssetForOwner,
   serializeMediaAsset,
 } from "@/lib/media/media-storage";
+import { isMediaAssetVisibleInCreativeLibrary } from "@/lib/media/media-library-visibility";
 import type { MediaAsset } from "@/lib/media/types";
 import { getAvatarAsset } from "@/lib/avatars/avatar-storage";
 import {
@@ -931,7 +932,14 @@ async function resolveStoredSourceForEditor(
 }
 
 function assertReadyVideo(asset: MediaAsset | null | undefined): asserts asset is MediaAsset {
-  if (!asset || !isTrendingSourceVideoAsset(asset)) {
+  if (
+    !asset ||
+    !isMediaAssetVisibleInCreativeLibrary({
+      metadata: asset.metadata,
+      sourceType: asset.sourceType,
+    }) ||
+    !isTrendingSourceVideoAsset(asset)
+  ) {
     throw new TrendingCreativeEditAccessError(
       "This Creative Assets video is not available.",
       409,

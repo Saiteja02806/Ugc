@@ -184,6 +184,7 @@ type WallTextContentPlanItemRow = {
   feeling: string;
   id: string;
   plan_id: string;
+  private_context: Json | null;
   status: "available" | "consumed" | "reserved" | "retired";
   user_id: string;
 };
@@ -193,6 +194,7 @@ export type WallTextPrivateCreativeContext = {
   feeling: string;
   planningBrief: {
     audienceContext: string;
+    conceptLane?: string;
     creativeSeed: string;
     emotionalTension: string;
     humanMoment: string;
@@ -259,6 +261,7 @@ export type UserWallTextAssignmentRow = {
   created_at: string;
   id: string;
   last_opened_at: string | null;
+  library_saved_at: string | null;
   position: number;
   render_edit_id: string | null;
   render_edit_revision: number | null;
@@ -1037,7 +1040,44 @@ export async function getWallTextPrivateCreativeContexts(params: {
     throw new Error("Wall-of-Text planned idea is unavailable or stale.");
   }
 
-  const briefIds = [...new Set((items ?? []).map((item) => item.creative_brief_id))];
+  const itemPrivateContexts = new Map(
+    (items ?? []).map((item) => [
+      item.id,
+      parseWallTextItemPrivateContext(item.private_context),
+    ]),
+  );
+  if (
+    (items ?? []).some(
+      (item) =>
+        item.private_context !== null && !itemPrivateContexts.get(item.id),
+    )
+  ) {
+    throw new Error("Wall-of-Text planned idea has invalid private writing context.");
+  }
+
+  const briefIds = [
+    ...new Set(
+      (items ?? [])
+        .filter((item) => !itemPrivateContexts.get(item.id))
+        .map((item) => item.creative_brief_id),
+    ),
+  ];
+  if (briefIds.length === 0) {
+    const contexts = new Map<string, WallTextPrivateCreativeContext>();
+    for (const assignment of plannedAssignments) {
+      const item = itemById.get(assignment.wall_text_content_plan_item_id!)!;
+      const planningBrief = itemPrivateContexts.get(item.id);
+      if (!planningBrief) {
+        throw new Error("Wall-of-Text planned idea is missing its private brief.");
+      }
+      contexts.set(assignment.id, {
+        contentIdea: item.content_idea,
+        feeling: item.feeling,
+        planningBrief,
+      });
+    }
+    return contexts;
+  }
   const { data: briefs, error: briefError } = await getClient()
     .from("wall_text_content_plan_briefs")
     .select("*")
@@ -1051,6 +1091,15 @@ export async function getWallTextPrivateCreativeContexts(params: {
   const contexts = new Map<string, WallTextPrivateCreativeContext>();
   for (const assignment of plannedAssignments) {
     const item = itemById.get(assignment.wall_text_content_plan_item_id!)!;
+    const itemPlanningBrief = itemPrivateContexts.get(item.id);
+    if (itemPlanningBrief) {
+      contexts.set(assignment.id, {
+        contentIdea: item.content_idea,
+        feeling: item.feeling,
+        planningBrief: itemPlanningBrief,
+      });
+      continue;
+    }
     const brief = briefById.get(item.creative_brief_id);
     if (!brief || brief.plan_id !== item.plan_id) {
       throw new Error("Wall-of-Text planned idea is missing its private brief.");
@@ -1677,7 +1726,8 @@ export async function listSavedWallTextDrafts(params: {
     .select("*")
     .eq("user_id", params.userId)
     .eq("state", "selected")
-    .order("updated_at", { ascending: false });
+    .not("library_saved_at", "is", null)
+    .order("library_saved_at", { ascending: false });
 
   if (error) {
     throw new Error(`Could not load saved Wall-of-text videos: ${error.message}`);
@@ -1696,6 +1746,7 @@ export async function getSavedWallTextDraft(params: {
     .eq("id", params.assignmentId)
     .eq("user_id", params.userId)
     .eq("state", "selected")
+    .not("library_saved_at", "is", null)
     .maybeSingle();
 
   if (error) {
@@ -1707,6 +1758,59 @@ export async function getSavedWallTextDraft(params: {
   }
 
   return (await hydrateSavedWallTextDrafts([assignment], params.userId))[0] ?? null;
+}
+
+/**
+ * Loads a reviewed Wall-of-text assignment for internal rendering or
+ * scheduling. Selection removes it from the daily feed; it does not mean the
+ * user saved it to Creative Assets.
+ */
+export async function getSelectedWallTextDraft(params: {
+  assignmentId: string;
+  userId: string;
+}): Promise<SavedWallTextDraft | null> {
+  const { data: assignment, error } = await getClient()
+    .from("user_wall_text_assignments")
+    .select("*")
+    .eq("id", params.assignmentId)
+    .eq("user_id", params.userId)
+    .eq("state", "selected")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not load selected Wall-of-text video: ${error.message}`);
+  }
+
+  if (!assignment) {
+    return null;
+  }
+
+  return (await hydrateSavedWallTextDrafts([assignment], params.userId))[0] ?? null;
+}
+
+export async function markWallTextDraftSaved(params: {
+  assignmentId: string;
+  userId: string;
+}) {
+  const { data, error } = await getClient()
+    .from("user_wall_text_assignments")
+    .update({
+      library_saved_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", params.assignmentId)
+    .eq("user_id", params.userId)
+    .eq("state", "selected")
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not save Wall-of-text video to Creative Assets: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error("This Wall-of-text video is no longer available to save.");
+  }
 }
 
 export async function getEditableWallTextDraft(params: {
@@ -2505,6 +2609,55 @@ function isJsonObject(
   value: Json | undefined,
 ): value is Record<string, Json | undefined> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function parseWallTextItemPrivateContext(
+  value: Json | null,
+): WallTextPrivateCreativeContext["planningBrief"] | null {
+  const privateContext = value ?? undefined;
+  if (!isJsonObject(privateContext)) return null;
+  const audienceContext = getRequiredWallTextPrivateContextString(
+    privateContext.audienceContext,
+  );
+  const creativeSeed = getRequiredWallTextPrivateContextString(
+    privateContext.creativeSeed,
+  );
+  const emotionalTension = getRequiredWallTextPrivateContextString(
+    privateContext.emotionalTension,
+  );
+  const humanMoment = getRequiredWallTextPrivateContextString(
+    privateContext.humanMoment,
+  );
+  const supportedAngle = getRequiredWallTextPrivateContextString(
+    privateContext.supportedAngle,
+  );
+
+  if (
+    !audienceContext ||
+    !creativeSeed ||
+    !emotionalTension ||
+    !humanMoment ||
+    !supportedAngle ||
+    (privateContext.conceptLane !== undefined &&
+      typeof privateContext.conceptLane !== "string")
+  ) {
+    return null;
+  }
+
+  return {
+    audienceContext,
+    ...(typeof privateContext.conceptLane === "string"
+      ? { conceptLane: privateContext.conceptLane }
+      : {}),
+    creativeSeed,
+    emotionalTension,
+    humanMoment,
+    supportedAngle,
+  };
+}
+
+function getRequiredWallTextPrivateContextString(value: Json | undefined) {
+  return typeof value === "string" && value.trim() ? value : null;
 }
 
 function isCurrentWallTextFormatId(

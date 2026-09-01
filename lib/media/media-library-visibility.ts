@@ -8,7 +8,11 @@ type MediaLibraryVisibilityCandidate = {
 export function isMediaAssetVisibleInCreativeLibrary(
   asset: MediaLibraryVisibilityCandidate,
 ) {
-  if (asset.sourceType === "catalog_influencer") {
+  if (
+    asset.sourceType === "catalog_influencer" ||
+    asset.sourceType === "combined_render" ||
+    asset.sourceType === "wall_text_render"
+  ) {
     return false;
   }
 

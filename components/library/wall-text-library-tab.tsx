@@ -40,6 +40,9 @@ export function WallTextLibraryTab({
   const [drafts, setDrafts] = useState<SavedWallTextDraft[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [preparingAssignmentId, setPreparingAssignmentId] = useState<
+    string | null
+  >(null);
 
   const loadDrafts = useCallback(async () => {
     setLoading(true);
@@ -87,6 +90,51 @@ export function WallTextLibraryTab({
     const timer = window.setTimeout(() => void loadDrafts(), 0);
     return () => window.clearTimeout(timer);
   }, [loadDrafts]);
+
+  async function prepareDraft(assignmentId: string) {
+    setPreparingAssignmentId(assignmentId);
+    setErrorMessage(null);
+
+    try {
+      const token = await getCurrentUserIdToken();
+
+      if (!token) {
+        throw new Error("Sign in before preparing this Wall-text Reel.");
+      }
+
+      const response = await fetch("/api/trending/wall-text/drafts", {
+        body: JSON.stringify({ assignmentId }),
+        cache: "no-store",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      });
+      const data = (await response.json().catch(() => null)) as
+        | { error?: string; ok?: false }
+        | { ok: true }
+        | null;
+
+      if (!response.ok || data?.ok !== true) {
+        throw new Error(
+          data?.ok === false && data.error
+            ? data.error
+            : "Could not prepare this Wall-text Reel.",
+        );
+      }
+
+      await loadDrafts();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not prepare this Wall-text Reel.",
+      );
+    } finally {
+      setPreparingAssignmentId(null);
+    }
+  }
 
   if (hideIfEmpty && !loading && drafts.length === 0) {
     return null;
@@ -185,6 +233,10 @@ export function WallTextLibraryTab({
             const ready =
               draft.renderStatus === "ready" &&
               Boolean(draft.renderedMediaAssetId);
+            const needsPreparation =
+              draft.renderStatus === "not_requested" ||
+              draft.renderStatus === "failed";
+            const preparing = preparingAssignmentId === draft.assignmentId;
 
             return (
               <article
@@ -211,8 +263,10 @@ export function WallTextLibraryTab({
                     {draft.renderStatus === "failed" ? (
                       <>
                         <RotateCcw className="size-3.5" aria-hidden="true" />
-                        Preparation failed
+                        Ready to retry preparation
                       </>
+                    ) : draft.renderStatus === "not_requested" ? (
+                      "Ready to prepare"
                     ) : ready ? (
                       "Ready to schedule"
                     ) : (
@@ -239,6 +293,23 @@ export function WallTextLibraryTab({
                     <CalendarClock className="size-4" aria-hidden="true" />
                     Schedule
                   </Link>
+                ) : needsPreparation ? (
+                  <button
+                    type="button"
+                    onClick={() => void prepareDraft(draft.assignmentId)}
+                    disabled={Boolean(preparingAssignmentId)}
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-60"
+                  >
+                    {preparing ? (
+                      <Loader2
+                        className="size-4 animate-spin motion-reduce:animate-none"
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <CalendarClock className="size-4" aria-hidden="true" />
+                    )}
+                    {preparing ? "Preparing" : "Prepare"}
+                  </button>
                 ) : null}
               </article>
             );

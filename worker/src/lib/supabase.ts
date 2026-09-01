@@ -2211,6 +2211,35 @@ export class SupabaseJobStore {
     return data ?? [];
   }
 
+  async listPriorCarouselContentPlanItems(params: {
+    businessProfileId: string;
+    businessProfileVersion: number;
+    periodStartDate: string;
+    userId: string;
+  }) {
+    const { data: priorPlan, error: planError } = await this.client
+      .from(CAROUSEL_CONTENT_PLANS_TABLE)
+      .select("id")
+      .eq("user_id", params.userId)
+      .eq("business_profile_id", params.businessProfileId)
+      .eq("business_profile_version", params.businessProfileVersion)
+      .lt("period_end_date", params.periodStartDate)
+      .order("period_end_date", { ascending: false })
+      .order("plan_version", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (planError) {
+      throw new Error(`Could not load the prior Carousel content plan: ${planError.message}`);
+    }
+    if (!priorPlan) return [];
+
+    return this.listCarouselContentPlanItems({
+      planId: priorPlan.id,
+      userId: params.userId,
+    });
+  }
+
   async getWallTextContentPlan(params: {
     jobId: string;
     planId: string;
@@ -2247,6 +2276,37 @@ export class SupabaseJobStore {
       );
     }
     return data ?? [];
+  }
+
+  async listPriorWallTextContentPlanItems(params: {
+    businessProfileId: string;
+    businessProfileVersion: number;
+    periodStartDate: string;
+    userId: string;
+  }) {
+    const { data: priorPlan, error: planError } = await this.client
+      .from(WALL_TEXT_CONTENT_PLANS_TABLE)
+      .select("id")
+      .eq("user_id", params.userId)
+      .eq("business_profile_id", params.businessProfileId)
+      .eq("business_profile_version", params.businessProfileVersion)
+      .lt("period_end_date", params.periodStartDate)
+      .order("period_end_date", { ascending: false })
+      .order("plan_version", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (planError) {
+      throw new Error(
+        `Could not load the prior Wall-of-Text content plan: ${planError.message}`,
+      );
+    }
+    if (!priorPlan) return [];
+
+    return this.listWallTextContentPlanItems({
+      planId: priorPlan.id,
+      userId: params.userId,
+    });
   }
 
   async persistWallTextContentPlanBriefChunk(params: {
@@ -2365,13 +2425,19 @@ export class SupabaseJobStore {
       );
     }
 
-    const planningBrief = item.creative_brief_id
-      ? await this.getCarouselPlanningBrief({
-          briefId: item.creative_brief_id,
-          planId: generation.content_plan_id,
-          userId: generation.user_id,
-        })
-      : null;
+    const itemPlanningBrief = parseCarouselItemPrivateContext(item.private_context);
+    if (item.private_context !== null && !itemPlanningBrief) {
+      throw new Error("Carousel content-plan item has invalid private writing context.");
+    }
+    const planningBrief =
+      itemPlanningBrief ??
+      (item.creative_brief_id
+        ? await this.getCarouselPlanningBrief({
+            briefId: item.creative_brief_id,
+            planId: generation.content_plan_id,
+            userId: generation.user_id,
+          })
+        : null);
 
     return {
       businessDescription: plan.business_description,
@@ -3291,6 +3357,44 @@ function toJsonRecord(value: Json): Record<string, Json | undefined> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value
     : {};
+}
+
+function parseCarouselItemPrivateContext(
+  value: Json | null,
+): CarouselPlanningBrief | null {
+  const record = value === null ? null : toJsonRecord(value);
+  if (!record) return null;
+
+  const requiredFields = [
+    "audienceContext",
+    "creativeSeed",
+    "emotionalTension",
+    "humanMoment",
+    "preferredFormatFamily",
+    "supportedAngle",
+  ] as const;
+  if (
+    requiredFields.some(
+      (field) => typeof record[field] !== "string" || !record[field]?.trim(),
+    )
+  ) {
+    return null;
+  }
+  if (record.conceptLane !== undefined && typeof record.conceptLane !== "string") {
+    return null;
+  }
+
+  return {
+    audienceContext: record.audienceContext as string,
+    ...(typeof record.conceptLane === "string"
+      ? { conceptLane: record.conceptLane }
+      : {}),
+    creativeSeed: record.creativeSeed as string,
+    emotionalTension: record.emotionalTension as string,
+    humanMoment: record.humanMoment as string,
+    preferredFormatFamily: record.preferredFormatFamily as string,
+    supportedAngle: record.supportedAngle as string,
+  };
 }
 
 function isUuid(value: string) {

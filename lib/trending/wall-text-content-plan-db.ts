@@ -24,6 +24,7 @@ type WallTextContentPlanRow = {
   business_description: string;
   business_profile_id: string;
   business_profile_version: number;
+  generation_attempt: number;
   generation_job_id: string | null;
   id: string;
   period_end_date: string;
@@ -71,6 +72,7 @@ export type WallTextContentPlan = {
   businessDescription: string;
   businessProfileId: string;
   businessProfileVersion: number;
+  generationAttempt: number;
   generationJobId: string | null;
   id: string;
   periodEndDate: string;
@@ -160,6 +162,7 @@ function mapPlan(row: WallTextContentPlanRow): WallTextContentPlan {
     businessDescription: row.business_description,
     businessProfileId: row.business_profile_id,
     businessProfileVersion: row.business_profile_version,
+    generationAttempt: row.generation_attempt,
     generationJobId: row.generation_job_id,
     id: row.id,
     periodEndDate: row.period_end_date,

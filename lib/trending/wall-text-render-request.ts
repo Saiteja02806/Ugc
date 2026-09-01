@@ -23,7 +23,7 @@ import {
   attachWallTextRenderJob,
   claimWallTextRender,
   getMissingWallTextDbEnvVars,
-  getSavedWallTextDraft,
+  getSelectedWallTextDraft,
   getWallTextGenerationAttribution,
   markWallTextRenderQueueFailed,
   type SavedWallTextDraft,
@@ -347,11 +347,11 @@ export function getMissingWallTextRenderRuntimeEnvVars() {
 }
 
 async function getRequiredDraft(assignmentId: string, userId: string) {
-  const draft = await getSavedWallTextDraft({ assignmentId, userId });
+  const draft = await getSelectedWallTextDraft({ assignmentId, userId });
 
   if (!draft) {
     throw new WallTextRenderRequestError(
-      "Saved Wall-of-text video could not be reloaded.",
+      "Selected Wall-of-text video could not be reloaded.",
       404,
     );
   }

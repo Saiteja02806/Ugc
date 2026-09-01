@@ -46,6 +46,12 @@ export async function runGenerateCarouselContentPlanJob(
       planId: plan.id,
       userId: plan.user_id,
     });
+    const priorCycleItems = await context.store.listPriorCarouselContentPlanItems({
+      businessProfileId: plan.business_profile_id,
+      businessProfileVersion: plan.business_profile_version,
+      periodStartDate: plan.period_start_date,
+      userId: plan.user_id,
+    });
 
     assertContiguousItems(items.map((item) => item.sequence_index));
 
@@ -60,8 +66,12 @@ export async function runGenerateCarouselContentPlanJob(
       );
       const generated = await generateCarouselContentPlanChunk({
         businessDescription: plan.business_description,
+        briefIndexStart: items.length / 5 + 1,
         count,
-        existingItems: items,
+        // The current plan enforces within-cycle variety; the immediately
+        // preceding completed cycle keeps the next 30 days from recycling its
+        // concepts under new wording.
+        existingItems: [...priorCycleItems, ...items],
         planningContext: plan.planning_context,
       });
       const sequenceStart = items.length + 1;
@@ -93,6 +103,7 @@ export async function runGenerateCarouselContentPlanJob(
             seed_fingerprint: createCarouselContentPlanSeedFingerprint(
               item.creativeSeed,
             ),
+            private_context: item.planningBrief,
             sequence_index: sequenceIndex,
           };
         }),

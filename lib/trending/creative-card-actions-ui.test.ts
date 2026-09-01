@@ -37,6 +37,11 @@ const existingWalkthroughBackfill = readProjectFile(
   "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260828113000_backfill_existing_trending_walkthroughs.sql",
 );
 const nextConfig = readProjectFile("next.config.ts");
+const hookLibrary = readProjectFile("components/library/hook-video-library-tab.tsx");
+const wallLibrary = readProjectFile("components/library/wall-text-library-tab.tsx");
+const hookDraftRoute = readProjectFile(
+  "app/api/trending/hook-videos/drafts/route.ts",
+);
 
 test("places Edit in the page header and keeps circular decisions below the card", () => {
   assert.match(actions, /export function CreativeDecisionActions/);
@@ -278,6 +283,25 @@ test("keeps swiped cards dismissed when the Hook composer temporarily replaces t
     workspace,
     /inMemoryTrendingFeed = \{[\s\S]*items: excludeDecidedTrendingFeedItems/,
   );
+});
+
+test("keeps only explicitly saved Hook videos in Creative Assets", () => {
+  assert.match(
+    workspace,
+    /candidate\.format === "carousel"[\s\S]*saveCarouselToLibrary\(candidate\)[\s\S]*completeCreativeDecision/,
+  );
+  assert.match(
+    workspace,
+    /Could not save this carousel\. It is still in Trending\./,
+  );
+  assert.match(hookDraftRoute, /drafts: await listSavedHookVideoDrafts\(auth\.user\.uid\)/);
+  assert.doesNotMatch(hookDraftRoute, /accepted:/);
+  assert.doesNotMatch(hookLibrary, /Continue creating/);
+  assert.doesNotMatch(hookLibrary, /resumeHookAssignmentId=/);
+  assert.doesNotMatch(workspace, /resumeHookAssignmentId|resumeHookItem/);
+  assert.match(wallLibrary, /async function prepareDraft\(assignmentId: string\)/);
+  assert.match(wallLibrary, /Ready to prepare/);
+  assert.match(wallLibrary, /\{preparing \? "Preparing" : "Prepare"\}/);
 });
 
 test("keeps the accepted Carousel and Wall action chooser mounted after the final ready card", () => {
@@ -610,7 +634,7 @@ test("defers the Trending Hook composer until an accepted Hook opens it", () => 
   );
   assert.match(
     workspace,
-    /if \(hookComposition\)[\s\S]*<TrendingHookComposer[\s\S]*item=\{hookComposition\.item\}/,
+    /if \(hookComposition\) \{[\s\S]*<TrendingHookComposer[\s\S]*item=\{hookComposition\.item\}/,
   );
   assert.match(
     workspace,

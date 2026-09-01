@@ -34,7 +34,9 @@ import {
 } from "@/lib/trending/wall-text-types";
 
 const DEFAULT_MODEL = "gpt-5-mini";
-const MAX_WRITER_RETRIES = 1;
+// One initial pass plus two targeted replacements. Accepted candidates are
+// persisted before a retry, so only the failed item is sent back to the writer.
+const MAX_WRITER_RETRIES = 2;
 
 const WallTextIdeaOutputSchema = z
   .object({

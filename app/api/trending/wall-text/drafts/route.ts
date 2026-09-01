@@ -9,6 +9,7 @@ import { TrendingCreativeEditAccessError } from "@/lib/trending/creative-edits";
 import {
   getSavedWallTextDraft,
   listSavedWallTextDrafts,
+  markWallTextDraftSaved,
 } from "@/lib/trending/wall-text-db";
 import {
   requestWallTextRender,
@@ -86,6 +87,10 @@ export async function POST(request: Request) {
   }
 
   try {
+    await markWallTextDraftSaved({
+      assignmentId: parsed.data.assignmentId,
+      userId,
+    });
     const result = await requestWallTextRender({
       assignmentId: parsed.data.assignmentId,
       userId,

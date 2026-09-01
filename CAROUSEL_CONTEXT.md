@@ -3918,12 +3918,12 @@ Name: **Verify v26 and replace the stale production assignment**
   Claims are bounded and, after repeated stale passes, only still-unassigned
   stale slots become `failed` with a durable diagnostic instead of spinning
   forever.
-- Carousel and Wall content-plan duplicate validation is shortfall-aware. When
-  a model response contains only duplicate ideas, the affected five-item
-  brief(s) are regenerated while valid briefs in the same chunk remain intact.
-  Structural or safety validation errors still reject the chunk for normal
-  retry handling. This preserves complete five-item brief groups and does not
-  alter the writer queue's concurrency-one guard.
+- Carousel and Wall content-plan duplicate validation is shortfall-aware. Only
+  literal copies after normalizing case, punctuation, and spaces are rejected;
+  related themes, wording variations, and repeated private situations remain
+  valid. When a literal copy appears, the planner regenerates only that item.
+  Every other item in the five-item group and chunk remains intact. Structural
+  or safety validation errors still reject the chunk for normal retry handling.
 - A completely unconsumed Carousel reservation may reopen only when its five
   original generation rows never received a writer job. It re-leases those
   exact five plan items and returns the jobless failed rows to `processing`;
@@ -3951,9 +3951,23 @@ Name: **Verify v26 and replace the stale production assignment**
 
 ## 2026-08-31 Trending Accepted-Action Persistence
 
-- A right swipe remains one immediate, durable `accepted` decision. It removes
-  the decided card from the current feed without waiting for the subsequent
-  save or scheduling choice.
+- A right swipe remains one durable `accepted` decision. It removes the decided
+  card from the current feed without waiting for a later optional save or
+  scheduling choice.
+- A right swipe is also a keep decision. Before a Carousel card is retired,
+  Trending creates or reuses its owner-scoped Creative Assets Library item.
+  If that hand-off cannot be created, the card remains in Trending and the
+  user can retry; connecting Instagram, cancelling a dialog, or leaving the
+  page can never discard an accepted Carousel.
+- A selected Wall-of-Text or Hook is not a Saved Creative Asset. Only the
+  explicit `Save to Creative Assets` action makes it visible in that library;
+  scheduling uses its required internal record but does not create a second
+  Saved asset.
+- A Hook that is accepted but not explicitly saved or scheduled is discarded
+  when the user leaves the composer. It has no `Continue creating` library
+  entry and no resume link back to Trending.
+- Instagram connection is a scheduling concern only. It never controls
+  whether a right-swiped Trending item is retained or recoverable.
 - Once a user/day Trending review shell has shown content, it stays mounted
   when the final ready card is removed. This keeps the accepted Carousel or
   Wall-of-Text `Save to Creative Assets` / `Schedule Post` chooser alive until
@@ -3963,3 +3977,31 @@ Name: **Verify v26 and replace the stale production assignment**
   failure state behind the chooser. It does not re-add the decided card, change
   the durable decision outbox, or alter Hook composition, saving, scheduling,
   rendering, or worker behavior.
+
+## 2026-08-31 30-Day Plan Continuity and Diversity
+
+- A profile-version has one Carousel plan for its full 30-day date window. A
+  failed planning run is repaired on that same plan ID, retaining every valid
+  parent brief and child seed as an exclusion; it never creates another plan
+  version in the same window. The plan is a reusable pool: unused ideas are
+  reserved first, then the least-recently-used idea from a terminal batch is
+  rotated back in. A high-volume day therefore never marks the plan finished,
+  fails because its 150 ideas were used once, or starts a new cycle early.
+- The next 30-day Carousel plan is generated from current approved business
+  context and receives the immediately preceding plan's ideas as private
+  guidance. Each individual child item gets its own private audience, human
+  situation, tension, supported angle, soft format direction, and assigned
+  concept lane. The item-level context is stored on the plan item, while old
+  items continue using their parent brief. Each five-item group is prompted to
+  use different situations, but only exact normalized copies are rejected;
+  related themes and wording variations remain valid.
+- Wall-of-Text follows the same continuity rule and is plan-first: a Wall
+  writer may reserve only active 30-day plan items. Its 200 ideas also rotate
+  unused-first then least-recently-used after a terminal batch. If planning is
+  not ready, the durable planning job is returned and the writer waits; the
+  legacy direct-writer fallback must not produce unplanned Wall content.
+- Wall items use the same individual private context and broad concept lanes as
+  Carousel. The Wall writer receives the item's exact stored situation rather
+  than relying only on the five-item parent brief. Its final duplicate gate is
+  exact-normalized text only, and it keeps accepted videos while retrying only
+  a failed candidate twice more.

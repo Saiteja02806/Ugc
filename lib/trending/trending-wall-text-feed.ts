@@ -538,18 +538,20 @@ async function completeReservedWallTextGeneration(params: {
           business: params.profile.context,
           candidates: chunk.map((assignment) => {
             const layout = parseWallTextLayout(assignment.layout_json);
+            const privateCreativeContext = privateContextsByAssignment.get(
+              assignment.id,
+            );
             if (!layout) {
               throw new Error("Reserved Wall-of-text placement is invalid.");
             }
+            if (!privateCreativeContext) {
+              throw new Error(
+                "Reserved Wall-of-text content-plan context is unavailable.",
+              );
+            }
             return {
               candidateIndex: assignment.batch_candidate_index,
-              ...(privateContextsByAssignment.get(assignment.id)
-                ? {
-                    privateCreativeContext: privateContextsByAssignment.get(
-                      assignment.id,
-                    ),
-                  }
-                : {}),
+              privateCreativeContext: privateCreativeContext,
               durationSeconds: Number(assignment.duration_seconds),
               layout,
               maxWords: assignment.max_words,

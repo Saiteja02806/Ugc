@@ -32,6 +32,7 @@ type CarouselContentPlanRow = {
   exhausted_at: string | null;
   failed_at: string | null;
   failure_reason: string | null;
+  generation_attempt: number;
   generation_completed_at: string | null;
   generation_job_id: string | null;
   generation_started_at: string | null;
@@ -57,6 +58,7 @@ export type CarouselContentPlanRecord = {
   businessDescription: string;
   businessProfileId: string;
   businessProfileVersion: number;
+  generationAttempt: number;
   generationJobId: string | null;
   id: string;
   periodEndDate: string;
@@ -80,6 +82,7 @@ type CarouselContentPlanItemRow = {
   emotion: string;
   id: string;
   plan_id: string;
+  private_context: CarouselItemPrivateContext | null;
   reservation_expires_at: string | null;
   reservation_key: string | null;
   reservation_token: string | null;
@@ -92,6 +95,26 @@ type CarouselContentPlanItemRow = {
   status: "available" | "consumed" | "planned" | "reserved" | "retired";
   updated_at: string;
   user_id: string;
+};
+
+type CarouselItemPrivateContext = {
+  audienceContext?: unknown;
+  conceptLane?: unknown;
+  creativeSeed?: unknown;
+  emotionalTension?: unknown;
+  humanMoment?: unknown;
+  preferredFormatFamily?: unknown;
+  supportedAngle?: unknown;
+};
+
+type CarouselPlanningBrief = {
+  audienceContext: string;
+  conceptLane?: string;
+  creativeSeed: string;
+  emotionalTension: string;
+  humanMoment: string;
+  preferredFormatFamily: string;
+  supportedAngle: string;
 };
 
 type CarouselContentPlanBriefRow = {
@@ -260,6 +283,45 @@ export async function getCarouselContentPlan(planId: string) {
   return data ? mapPlan(data) : null;
 }
 
+export async function listPriorCarouselContentPlanItems(params: {
+  businessProfileId: string;
+  businessProfileVersion: number;
+  periodStartDate: string;
+  userId: string;
+}) {
+  const { data: priorPlan, error: planError } = await getClient()
+    .from(CONTENT_PLANS_TABLE)
+    .select("id")
+    .eq("user_id", params.userId)
+    .eq("business_profile_id", params.businessProfileId)
+    .eq("business_profile_version", params.businessProfileVersion)
+    .lt("period_end_date", params.periodStartDate)
+    .order("period_end_date", { ascending: false })
+    .order("plan_version", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (planError) {
+    throw new Error(`Could not load the prior Carousel content plan: ${planError.message}`);
+  }
+  if (!priorPlan) return [];
+
+  const { data: items, error: itemsError } = await getClient()
+    .from(CONTENT_PLAN_ITEMS_TABLE)
+    .select("*")
+    .eq("plan_id", priorPlan.id)
+    .eq("user_id", params.userId)
+    .order("sequence_index", { ascending: true });
+
+  if (itemsError) {
+    throw new Error(
+      `Could not load prior Carousel content-plan items: ${itemsError.message}`,
+    );
+  }
+
+  return items ?? [];
+}
+
 export async function getCarouselCreativeBriefForGeneration(params: {
   businessProfileId: string;
   businessProfileVersion: number;
@@ -304,13 +366,19 @@ export async function getCarouselCreativeBriefForGeneration(params: {
     );
   }
 
-  const planningBrief = item.creative_brief_id
-    ? await getCarouselPlanningBrief({
-        briefId: item.creative_brief_id,
-        planId: params.contentPlanId,
-        userId: params.userId,
-      })
-    : null;
+  const itemPlanningBrief = parseCarouselItemPrivateContext(item.private_context);
+  if (item.private_context !== null && !itemPlanningBrief) {
+    throw new Error("Carousel content-plan item has invalid private writing context.");
+  }
+  const planningBrief =
+    itemPlanningBrief ??
+    (item.creative_brief_id
+      ? await getCarouselPlanningBrief({
+          briefId: item.creative_brief_id,
+          planId: params.contentPlanId,
+          userId: params.userId,
+        })
+      : null);
 
   return {
     businessDescription: plan.business_description,
@@ -324,7 +392,7 @@ async function getCarouselPlanningBrief(params: {
   briefId: string;
   planId: string;
   userId: string;
-}) {
+}): Promise<CarouselPlanningBrief> {
   const { data, error } = await getClient()
     .from("carousel_content_plan_briefs")
     .select("*")
@@ -340,14 +408,62 @@ async function getCarouselPlanningBrief(params: {
     throw new Error("Carousel creative brief provenance is unavailable.");
   }
 
-  return {
+  const planningBrief = parseCarouselItemPrivateContext({
     audienceContext: data.audience_context,
     creativeSeed: data.creative_seed,
     emotionalTension: data.emotional_tension,
     humanMoment: data.human_moment,
     preferredFormatFamily: data.preferred_format_family,
     supportedAngle: data.supported_angle,
+  });
+
+  if (!planningBrief) {
+    throw new Error("Carousel creative brief has invalid private writing context.");
+  }
+
+  return planningBrief;
+}
+
+function parseCarouselItemPrivateContext(
+  value: CarouselItemPrivateContext | null,
+): CarouselPlanningBrief | null {
+  if (!value) return null;
+  const audienceContext = getRequiredPrivateContextString(value.audienceContext);
+  const creativeSeed = getRequiredPrivateContextString(value.creativeSeed);
+  const emotionalTension = getRequiredPrivateContextString(value.emotionalTension);
+  const humanMoment = getRequiredPrivateContextString(value.humanMoment);
+  const preferredFormatFamily = getRequiredPrivateContextString(
+    value.preferredFormatFamily,
+  );
+  const supportedAngle = getRequiredPrivateContextString(value.supportedAngle);
+
+  if (
+    !audienceContext ||
+    !creativeSeed ||
+    !emotionalTension ||
+    !humanMoment ||
+    !preferredFormatFamily ||
+    !supportedAngle ||
+    (value.conceptLane !== undefined && typeof value.conceptLane !== "string")
+  ) {
+    return null;
+  }
+
+  return {
+    audienceContext,
+    ...(typeof value.conceptLane === "string"
+      ? { conceptLane: value.conceptLane }
+      : {}),
+    creativeSeed,
+    emotionalTension,
+    humanMoment,
+    preferredFormatFamily,
+    supportedAngle,
   };
+}
+
+function getRequiredPrivateContextString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value : null;
 }
 
 export async function reserveCarouselContentPlanItems(params: {
@@ -429,6 +545,7 @@ function mapPlan(row: CarouselContentPlanRow): CarouselContentPlanRecord {
     businessDescription: row.business_description,
     businessProfileId: row.business_profile_id,
     businessProfileVersion: row.business_profile_version,
+    generationAttempt: row.generation_attempt,
     generationJobId: row.generation_job_id,
     id: row.id,
     periodEndDate: row.period_end_date,

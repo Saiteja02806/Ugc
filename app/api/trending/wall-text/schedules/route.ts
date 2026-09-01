@@ -10,7 +10,7 @@ import {
 import {
   startWallTextScheduleRender,
 } from "@/lib/scheduling/wall-text-render-start";
-import { getSavedWallTextDraft } from "@/lib/trending/wall-text-db";
+import { getSelectedWallTextDraft } from "@/lib/trending/wall-text-db";
 import { WallTextScheduleRequestSchema } from "@/lib/trending/wall-text-scheduling-contract";
 import { getWallTextPreviewTitle } from "@/lib/trending/wall-text-text-logic";
 
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const draft = await getSavedWallTextDraft({
+    const draft = await getSelectedWallTextDraft({
       assignmentId: parsed.data.assignmentId,
       userId,
     });

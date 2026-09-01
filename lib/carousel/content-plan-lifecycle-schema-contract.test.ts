@@ -23,6 +23,20 @@ const retryMigration = readFileSync(
   ),
   "utf8",
 );
+const continuityMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260831103952_enforce_30_day_content_plan_continuity.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const rotationMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260831133000_rotate_30_day_content_plan_items.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 test("activates only complete 30-day plans", () => {
   assert.match(migration, /create or replace function public\.activate_carousel_content_plan/i);
@@ -30,6 +44,25 @@ test("activates only complete 30-day plans", () => {
   assert.match(migration, /count\(distinct item\.day_number\)[\s\S]*<> 30/i);
   assert.match(migration, /coalesce\(v_minimum_day_count, 0\) < 5/i);
   assert.match(migration, /business_profile_version_changed/i);
+});
+
+test("keeps one current plan for the entire 30-day window and repairs it in place", () => {
+  assert.match(
+    continuityMigration,
+    /plan\.status in \('generating', 'active', 'exhausted', 'failed'\)/i,
+  );
+  assert.match(
+    continuityMigration,
+    /if v_plan\.status = 'failed' then[\s\S]*generation_attempt = plan\.generation_attempt \+ 1[\s\S]*generation_job_id = null/i,
+  );
+  assert.match(
+    continuityMigration,
+    /and v_current_date between plan\.period_start_date and plan\.period_end_date/i,
+  );
+  assert.match(
+    continuityMigration,
+    /starts a new plan only after that window ends/i,
+  );
 });
 
 test("reserves arbitrary counts atomically without filtering by day", () => {
@@ -136,6 +169,34 @@ test("consumes a seed only for a completed matching carousel", () => {
     migration,
     /^\s*(?:delete\s+from|truncate(?:\s+table)?|drop\s+table)\b/im,
   );
+});
+
+test("keeps the current plan active and rotates unused ideas before least-recently-used completed ideas", () => {
+  assert.match(
+    rotationMigration,
+    /create table if not exists public\.carousel_content_plan_item_uses/i,
+  );
+  assert.match(
+    rotationMigration,
+    /alter table public\.carousel_content_plan_item_uses enable row level security/i,
+  );
+  assert.match(
+    rotationMigration,
+    /case when item\.status = 'available' then 0 else 1 end/i,
+  );
+  assert.match(
+    rotationMigration,
+    /previous_reservation\.status in \('completed', 'expired_partial'\)/i,
+  );
+  assert.match(
+    rotationMigration,
+    /item\.last_used_at nulls first, item\.use_count, item\.sequence_index/i,
+  );
+  assert.match(
+    rotationMigration,
+    /update public\.carousel_content_plans as plan[\s\S]*status = 'active', exhausted_at = null/i,
+  );
+  assert.doesNotMatch(rotationMigration, /set\s+status = 'exhausted'/i);
 });
 
 test("binds generation provenance to one owner, plan, item, and reservation", () => {

@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 
 export const WALL_TEXT_DUPLICATE_SIGNATURE_VERSION =
   "wall-text-duplicate-signature-v1" as const;
-export const WALL_TEXT_NEAR_DUPLICATE_THRESHOLD = 0.82;
+// Related ideas and wording variations are allowed. The hard gate blocks only
+// a literal copy after normalizing case, punctuation, and spacing.
 
 export type WallTextDuplicateSignature = {
   contentHash: string;
@@ -14,7 +15,7 @@ export type WallTextDuplicateSignature = {
 
 export type WallTextDuplicateMatch = {
   matchedContentHash: string;
-  reason: "exact_duplicate" | "near_duplicate";
+  reason: "exact_duplicate";
   similarity: number;
 };
 
@@ -22,8 +23,8 @@ export function normalizeWallTextForHistory(value: string) {
   return value
     .normalize("NFKC")
     .toLocaleLowerCase("en-US")
-    .replace(/[\u2018\u2019]/gu, "'")
-    .replace(/[^\p{L}\p{N}\s']/gu, " ")
+    .replace(/[\u2018\u2019']/gu, "")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .replace(/\s+/gu, " ")
     .trim();
 }
@@ -60,21 +61,7 @@ export function findWallTextDuplicate(params: {
     }
   }
 
-  let best: WallTextDuplicateMatch | null = null;
-  for (const previous of params.history) {
-    const similarity = getWallTextSimilarity(params.candidate, previous);
-    if (
-      similarity >= WALL_TEXT_NEAR_DUPLICATE_THRESHOLD &&
-      (!best || similarity > best.similarity)
-    ) {
-      best = {
-        matchedContentHash: previous.contentHash,
-        reason: "near_duplicate",
-        similarity,
-      };
-    }
-  }
-  return best;
+  return null;
 }
 
 export function getWallTextSimilarity(

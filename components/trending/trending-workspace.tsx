@@ -1590,9 +1590,7 @@ function TrendingFeed({
       <TrendingHookComposer
         edit={hookComposition.edit}
         item={hookComposition.item}
-        onClose={() => {
-          setHookComposition(null);
-        }}
+        onClose={() => setHookComposition(null)}
       />
     );
   }
@@ -2232,6 +2230,52 @@ function TrendingDeck({
     const direction = decision === "accepted" ? "right" : "left";
 
     decisionLockRef.current = true;
+    if (decision === "accepted" && candidate.format === "carousel") {
+      // A right swipe promises that this content is kept. Create the
+      // owner-scoped Library hand-off before retiring the daily card, so an
+      // account connection, cancelled scheduling flow, or later navigation
+      // can never make the accepted Carousel disappear.
+      resetDrag();
+      showActionNotice({ message: "Saving accepted carousel…" });
+
+      void saveCarouselToLibrary(candidate)
+        .then(() => {
+          completeCreativeDecision({
+            candidate,
+            decision,
+            direction,
+            nextCandidateId,
+          });
+        })
+        .catch((error) => {
+          decisionLockRef.current = false;
+          showActionNotice({
+            message: getErrorMessage(
+              error,
+              "Could not save this carousel. It is still in Trending.",
+            ),
+          });
+        });
+      return true;
+    }
+
+    completeCreativeDecision({
+      candidate,
+      decision,
+      direction,
+      nextCandidateId,
+    });
+    return true;
+  }
+
+  function completeCreativeDecision(params: {
+    candidate: TrendingCandidate;
+    decision: "accepted" | "rejected";
+    direction: "left" | "right";
+    nextCandidateId: string | null;
+  }) {
+    const { candidate, decision, direction, nextCandidateId } = params;
+
     advancePastActiveItem(direction, () => {
       dismissCandidate(candidate);
       setActiveItemId(nextCandidateId);
@@ -2251,7 +2295,6 @@ function TrendingDeck({
         openAcceptedCandidate(candidate);
       }
     });
-    return true;
   }
 
   function openAcceptedCandidate(candidate: TrendingCandidate) {

@@ -414,7 +414,7 @@ test("uses one batched GPT-5 mini Writer request per normal ten-candidate chunk"
     generatorSource,
     /buildWallTextGenerationPrompt\([\s\S]+business: params\.business[\s\S]+candidates: params\.candidates/,
   );
-  assert.match(generatorSource, /MAX_WRITER_RETRIES = 1/);
+  assert.match(generatorSource, /MAX_WRITER_RETRIES = 2/);
   assert.match(generatorSource, /pending = failures\.map/);
   assert.ok(
     generatorSource.indexOf("if (params.onChunkAccepted") <

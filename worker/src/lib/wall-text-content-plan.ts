@@ -3,9 +3,10 @@ import { createHash } from "node:crypto";
 import OpenAI from "openai";
 
 import type { Json, WallTextContentPlanItemRow } from "../types.js";
+import { getContentPlanItemConceptLanes } from "./content-plan-concept-lanes.js";
 
 export const WALL_TEXT_CONTENT_PLAN_PROMPT_VERSION =
-  "wall-text-content-plan-five-context-v3-freeform";
+  "wall-text-content-plan-five-context-v5-item-context-concept-lanes";
 export const WALL_TEXT_CONTENT_PLAN_CHUNK_SIZE = 25;
 export const WALL_TEXT_CONTENT_PLAN_BRIEF_COUNT = 40;
 export const WALL_TEXT_CONTENT_PLAN_ITEMS_PER_BRIEF = 5;
@@ -14,10 +15,12 @@ const DEFAULT_MODEL = "gpt-5-mini";
 const MAX_CONTENT_IDEA_LENGTH = 400;
 const MAX_FEELING_LENGTH = 120;
 const MAX_GENERATION_ATTEMPTS = 2;
+const MAX_SINGLE_IDEA_REPAIR_ATTEMPTS = 3;
 let openaiClient: OpenAI | null = null;
 
 export type WallTextPlanningBrief = {
   audienceContext: string;
+  conceptLane?: string;
   creativeSeed: string;
   emotionalTension: string;
   humanMoment: string;
@@ -33,6 +36,7 @@ export type GeneratedWallTextContentPlanItem = {
   contentIdea: string;
   feeling: string;
   itemSlotIndex: number;
+  planningBrief: WallTextPlanningBrief;
 };
 
 export type GeneratedWallTextContentPlanChunk = {
@@ -45,6 +49,7 @@ export function getWallTextContentPlanModel() {
 }
 
 export async function generateWallTextContentPlanChunk(params: {
+  briefIndexStart?: number;
   businessDescription: string;
   count: number;
   existingItems: Array<Pick<WallTextContentPlanItemRow, "content_idea" | "feeling">>;
@@ -62,6 +67,10 @@ export async function generateWallTextContentPlanChunk(params: {
   }
 
   const briefCount = count / WALL_TEXT_CONTENT_PLAN_ITEMS_PER_BRIEF;
+  const briefIndexStart = params.briefIndexStart ?? 1;
+  if (!Number.isInteger(briefIndexStart) || briefIndexStart < 1) {
+    throw new Error("Wall-of-Text content-plan brief index must be positive.");
+  }
   let lastIssues: string[] = [];
 
   for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt += 1) {
@@ -69,6 +78,7 @@ export async function generateWallTextContentPlanChunk(params: {
       max_completion_tokens: 6_000,
       messages: buildMessages({
         ...params,
+        briefIndexStart,
         briefCount,
         issues: attempt === 0 ? [] : lastIssues,
       }),
@@ -89,32 +99,33 @@ export async function generateWallTextContentPlanChunk(params: {
     }
 
     try {
-      const parsed = parseWallTextContentPlanChunk(JSON.parse(content), briefCount);
+      const parsed = parseWallTextContentPlanChunk(
+        JSON.parse(content),
+        briefCount,
+        briefIndexStart,
+      );
       const issues = validateWallTextContentPlanChunk({
         existingItems: params.existingItems,
         items: parsed.items,
       });
       if (issues.length === 0) return parsed;
 
-      if (issues.every((issue) => issue.includes("repeats an existing content idea"))) {
-        const repaired = await regenerateDuplicateWallTextBriefs({
+      if (issues.every(isRepairableWallTextIdeaIssue)) {
+        const repaired = await regenerateDuplicateWallTextItems({
           ...params,
+          briefIndexStart,
           issues,
           parsed,
         });
-        if (repaired) {
-          const repairedIssues = validateWallTextContentPlanChunk({
-            existingItems: params.existingItems,
-            items: repaired.items,
-          });
-          if (repairedIssues.length === 0) return repaired;
-          lastIssues = repairedIssues;
-          continue;
-        }
+        if (repaired) return repaired;
+        throw new SingleWallTextIdeaRepairExhaustedError(
+          `Wall-of-Text content-plan could not replace only the rejected idea: ${issues.join(" ")}`,
+        );
       }
 
       lastIssues = issues;
     } catch (error) {
+      if (error instanceof SingleWallTextIdeaRepairExhaustedError) throw error;
       lastIssues = [getErrorMessage(error)];
     }
   }
@@ -124,7 +135,31 @@ export async function generateWallTextContentPlanChunk(params: {
   );
 }
 
-async function regenerateDuplicateWallTextBriefs(params: {
+class SingleWallTextIdeaRepairExhaustedError extends Error {}
+
+function isRepairableWallTextIdeaIssue(issue: string) {
+  return issue.includes("repeats an existing content idea");
+}
+
+export function isExactWallTextReplacementDuplicate(params: {
+  candidate: string;
+  existingItems: readonly Pick<WallTextContentPlanItemRow, "content_idea">[];
+  siblingItems: readonly Pick<GeneratedWallTextContentPlanItem, "contentIdea">[];
+}) {
+  const candidateFingerprint = createWallTextContentIdeaFingerprint(
+    params.candidate,
+  );
+  return [
+    ...params.existingItems.map((item) => item.content_idea),
+    ...params.siblingItems.map((item) => item.contentIdea),
+  ].some(
+    (contentIdea) =>
+      createWallTextContentIdeaFingerprint(contentIdea) === candidateFingerprint,
+  );
+}
+
+async function regenerateDuplicateWallTextItems(params: {
+  briefIndexStart: number;
   businessDescription: string;
   count: number;
   existingItems: Array<Pick<WallTextContentPlanItemRow, "content_idea" | "feeling">>;
@@ -132,73 +167,123 @@ async function regenerateDuplicateWallTextBriefs(params: {
   parsed: GeneratedWallTextContentPlanChunk;
   planningContext: Json;
 }) {
-  const affectedBriefs = new Set<number>();
+  const affectedItems = new Map<number, Set<number>>();
   for (const issue of params.issues) {
-    const match = issue.match(/^Brief (\d+) idea /);
-    if (match) affectedBriefs.add(Number.parseInt(match[1], 10));
+    const match = issue.match(/^Brief (\d+) idea (\d+)/);
+    if (!match) continue;
+    const briefSlotIndex = Number.parseInt(match[1], 10);
+    const itemSlotIndex = Number.parseInt(match[2], 10);
+    const targets = affectedItems.get(briefSlotIndex) ?? new Set<number>();
+    targets.add(itemSlotIndex);
+    affectedItems.set(briefSlotIndex, targets);
   }
-  if (affectedBriefs.size === 0) return null;
+  if (affectedItems.size === 0) return null;
 
-  const unaffectedBriefs = params.parsed.briefs.filter(
-    (brief) => !affectedBriefs.has(brief.briefSlotIndex),
+  const items = [...params.parsed.items];
+  const lanes = getWallTextItemConceptLanes(
+    params.briefIndexStart,
+    params.parsed.briefs.length,
   );
-  const unaffectedItems = params.parsed.items.filter(
-    (item) => !affectedBriefs.has(item.briefSlotIndex),
-  );
-  const replacementBriefs: GeneratedWallTextPlanningBrief[] = [];
-  const replacementItems: GeneratedWallTextContentPlanItem[] = [];
 
-  for (const briefSlotIndex of affectedBriefs) {
-    const completion = await getOpenAIClient().chat.completions.create({
-      max_completion_tokens: 2_000,
-      messages: buildMessages({
-        businessDescription: params.businessDescription,
-        briefCount: 1,
-        existingItems: [
-          ...params.existingItems,
-          ...unaffectedItems.map((item) => ({
-            content_idea: item.contentIdea,
-            feeling: item.feeling,
-          })),
-          ...replacementItems.map((item) => ({
-            content_idea: item.contentIdea,
-            feeling: item.feeling,
-          })),
-        ],
-        issues: ["Regenerate this five-item brief with five new, distinct content ideas."],
-        planningContext: params.planningContext,
-      }),
-      model: getWallTextContentPlanModel(),
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "wall_text_content_plan_brief_shortfall",
-          schema: buildSchema(1),
-          strict: true,
-        },
-      },
-    });
-    const content = completion.choices[0]?.message.content;
-    if (!content) return null;
-
-    try {
-      const replacement = parseWallTextContentPlanChunk(JSON.parse(content), 1);
-      const brief = replacement.briefs[0];
-      if (!brief) return null;
-      replacementBriefs.push({ ...brief, briefSlotIndex });
-      replacementItems.push(
-        ...replacement.items.map((item) => ({ ...item, briefSlotIndex })),
+  for (const [briefSlotIndex, itemSlots] of affectedItems) {
+    for (const itemSlotIndex of itemSlots) {
+      const itemIndex = items.findIndex(
+        (item) =>
+          item.briefSlotIndex === briefSlotIndex &&
+          item.itemSlotIndex === itemSlotIndex,
       );
-    } catch {
-      return null;
+      const currentItem = items[itemIndex];
+      const lane = lanes.find(
+        (value) =>
+          value.briefSlotIndex === briefSlotIndex &&
+          value.itemSlotIndex === itemSlotIndex,
+      );
+      if (itemIndex < 0 || !currentItem || !lane) return null;
+
+      let replaced = false;
+      for (
+        let repairAttempt = 0;
+        repairAttempt < MAX_SINGLE_IDEA_REPAIR_ATTEMPTS;
+        repairAttempt += 1
+      ) {
+        const completion = await getOpenAIClient().chat.completions.create({
+          max_completion_tokens: 1_000,
+          messages: buildSingleIdeaReplacementMessages({
+            businessDescription: params.businessDescription,
+            currentItem,
+            existingItems: [
+              ...params.existingItems,
+              ...items
+                .filter((_, index) => index !== itemIndex)
+                .map((item) => ({
+                  content_idea: item.contentIdea,
+                  feeling: item.feeling,
+                })),
+            ],
+            issues: params.issues.filter((issue) =>
+              issue.startsWith(`Brief ${briefSlotIndex} idea ${itemSlotIndex}`),
+            ),
+            lane,
+            planningContext: params.planningContext,
+          }),
+          model: getWallTextContentPlanModel(),
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "wall_text_content_plan_single_idea_replacement",
+              schema: buildSingleIdeaReplacementSchema(),
+              strict: true,
+            },
+          },
+          temperature: 0.8,
+        });
+        const content = completion.choices[0]?.message.content;
+        if (!content) continue;
+
+        try {
+          items[itemIndex] = parseWallTextReplacementItem(
+            JSON.parse(content),
+            currentItem,
+            lane.key,
+          );
+          const replacementIsExactDuplicate = isExactWallTextReplacementDuplicate({
+            candidate: items[itemIndex]!.contentIdea,
+            existingItems: params.existingItems,
+            siblingItems: items.filter((_, index) => index !== itemIndex),
+          });
+          if (replacementIsExactDuplicate) continue;
+          const remainingIssues = validateWallTextContentPlanChunk({
+            existingItems: params.existingItems,
+            items,
+          });
+          if (
+            !remainingIssues.some((issue) =>
+              issue.startsWith(`Brief ${briefSlotIndex} idea ${itemSlotIndex}`),
+            )
+          ) {
+            replaced = true;
+            break;
+          }
+        } catch {
+          // A malformed replacement never changes the other plan items.
+        }
+      }
+      if (!replaced) return null;
     }
   }
 
+  if (
+    validateWallTextContentPlanChunk({
+      existingItems: params.existingItems,
+      items,
+    }).length > 0
+  ) {
+    return null;
+  }
+
   return {
-    briefs: [...unaffectedBriefs, ...replacementBriefs].sort(
-      (left, right) => left.briefSlotIndex - right.briefSlotIndex,
-    ),
-    items: [...unaffectedItems, ...replacementItems].sort(
+    briefs: params.parsed.briefs,
+    items: items.sort(
       (left, right) =>
         left.briefSlotIndex - right.briefSlotIndex ||
         left.itemSlotIndex - right.itemSlotIndex,
@@ -206,7 +291,11 @@ async function regenerateDuplicateWallTextBriefs(params: {
   } satisfies GeneratedWallTextContentPlanChunk;
 }
 
-export function parseWallTextContentPlanChunk(value: unknown, briefCount: number) {
+export function parseWallTextContentPlanChunk(
+  value: unknown,
+  briefCount: number,
+  briefIndexStart = 1,
+) {
   const envelope = asRecord(value, "content-plan response");
   if (!Array.isArray(envelope.briefs) || envelope.briefs.length !== briefCount) {
     throw new Error(`Content-plan response must contain exactly ${briefCount} briefs.`);
@@ -262,11 +351,28 @@ export function parseWallTextContentPlanChunk(value: unknown, briefCount: number
         throw new Error("Creative brief idea slots must be unique and contiguous.");
       }
       seenItemSlots.add(itemSlotIndex);
+      const lane = getWallTextItemConceptLanes(
+        briefIndexStart,
+        briefCount,
+      ).find(
+        (value) =>
+          value.briefSlotIndex === briefSlotIndex &&
+          value.itemSlotIndex === itemSlotIndex,
+      );
+      if (!lane) throw new Error("Creative brief idea is missing its concept lane.");
       items.push({
         briefSlotIndex,
         contentIdea: getString(item.contentIdea, MAX_CONTENT_IDEA_LENGTH, `creative brief ${index + 1} idea ${itemIndex + 1} contentIdea`),
         feeling: getString(item.feeling, MAX_FEELING_LENGTH, `creative brief ${index + 1} idea ${itemIndex + 1} feeling`),
         itemSlotIndex,
+        planningBrief: {
+          audienceContext: getString(item.audienceContext, 240, `creative brief ${index + 1} idea ${itemIndex + 1} audienceContext`),
+          conceptLane: lane.key,
+          creativeSeed: getString(item.privateCreativeSeed, 400, `creative brief ${index + 1} idea ${itemIndex + 1} privateCreativeSeed`),
+          emotionalTension: getString(item.emotionalTension, 160, `creative brief ${index + 1} idea ${itemIndex + 1} emotionalTension`),
+          humanMoment: getString(item.humanMoment, 400, `creative brief ${index + 1} idea ${itemIndex + 1} humanMoment`),
+          supportedAngle: getString(item.supportedAngle, 400, `creative brief ${index + 1} idea ${itemIndex + 1} supportedAngle`),
+        },
       });
     }
   }
@@ -299,17 +405,21 @@ export function validateWallTextContentPlanChunk(params: {
       issues.push(`Brief ${item.briefSlotIndex} idea ${item.itemSlotIndex} prewrites final video structure instead of an idea.`);
     }
 
+    // Similar wording and near-verbatim variations are allowed. The plan can
+    // revisit a broad subject; only identical normalized text is a hard stop.
     const duplicate = acceptedIdeas.find(
       (existing) =>
         createWallTextContentIdeaFingerprint(existing) ===
-          createWallTextContentIdeaFingerprint(item.contentIdea) ||
-        ideaSimilarity(existing, item.contentIdea) >= 0.82,
+          createWallTextContentIdeaFingerprint(item.contentIdea),
     );
     if (duplicate) {
-      issues.push(`Brief ${item.briefSlotIndex} idea ${item.itemSlotIndex} repeats an existing content idea.`);
+      issues.push(
+        `Brief ${item.briefSlotIndex} idea ${item.itemSlotIndex} repeats an existing content idea: ${JSON.stringify(duplicate)}.`,
+      );
     } else {
       acceptedIdeas.push(item.contentIdea);
     }
+
   }
 
   return issues;
@@ -335,7 +445,15 @@ export function createWallTextCreativeBriefFingerprint(brief: WallTextPlanningBr
     .digest("hex");
 }
 
+export function getWallTextItemConceptLanes(
+  briefIndexStart: number,
+  briefCount: number,
+) {
+  return getContentPlanItemConceptLanes({ briefCount, briefIndexStart });
+}
+
 function buildMessages(params: {
+  briefIndexStart: number;
   briefCount: number;
   businessDescription: string;
   existingItems: Array<Pick<WallTextContentPlanItemRow, "content_idea" | "feeling">>;
@@ -348,14 +466,14 @@ function buildMessages(params: {
       content: [
         "You create private creative-brief context and content ideas for Wall-of-Text short videos.",
         "The supplied businessDescription and approvedPlanningContext are the only factual source. Do not invent audiences, capabilities, workflows, proof, metrics, guarantees, outcomes, or claims.",
-        "Every private brief has five fields. They guide later writing but are never visible overlay copy, labels, or a fixed script.",
+        "Every five-idea group has a private parent brief, and every child idea has its own five-field private writing context. The child context—not only the parent—is stored and used later. Neither is visible overlay copy, labels, or a fixed script.",
         "creativeSeed: The central human observation or tension. It is not final copy.",
         "audienceContext: The supported audience segment experiencing that situation. It must not mean everyone.",
         "humanMoment: One concrete, recognisable everyday event or situation. For example, an unexpected meeting moving the afternoon's work.",
         "emotionalTension: The inner feeling or conflict created by that moment. For example, frustration mixed with self-blame.",
         "supportedAngle: The factual connection to the business, based only on approved facts. It is not a sales claim or a promise.",
-        "Use all five fields together to create exactly five different child ideas. Each child has contentIdea and feeling. contentIdea is a specific angle that a later Wall writer may turn into one complete post; feeling is that child idea's emotional direction. The children are not generated from creativeSeed alone.",
-        "Do not write final overlay copy, line breaks, a slide layout, a CTA, a product pitch, or a finished script. Create grounded, recognisable situations with natural human tension. Make every brief and child idea meaningfully distinct.",
+        "For every child return contentIdea, feeling, audienceContext, privateCreativeSeed, emotionalTension, humanMoment, and supportedAngle. contentIdea is a specific angle that a later Wall writer may turn into one complete post; feeling is that child idea's emotional direction. The children are not generated from creativeSeed alone.",
+        "Every group of five must use five clearly different concrete human situations. Each child has an assigned concept lane; use its lane as broad guidance, then create a genuinely different audience, situation, tension, supported angle, or story. Do not write final overlay copy, line breaks, a slide layout, a CTA, a product pitch, or a finished script. Previous items are guidance, not a ban on a broad topic: related themes are allowed when those real-life details differ. Avoid copying a previous child idea word-for-word.",
       ].join(" "),
     },
     {
@@ -363,6 +481,10 @@ function buildMessages(params: {
       content: JSON.stringify({
         approvedPlanningContext: params.planningContext,
         businessDescription: params.businessDescription,
+        conceptLanes: getWallTextItemConceptLanes(
+          params.briefIndexStart,
+          params.briefCount,
+        ),
         instruction: `Generate exactly ${params.briefCount} private creative briefs. Every brief must contain exactly five child ideas. briefSlotIndex values must be 0 through ${params.briefCount - 1}; itemSlotIndex values must be 0 through 4 for each brief.`,
         previousItems: params.existingItems.map((item) => ({
           contentIdea: item.content_idea,
@@ -377,6 +499,89 @@ function buildMessages(params: {
       }),
     },
   ];
+}
+
+function buildSingleIdeaReplacementMessages(params: {
+  businessDescription: string;
+  currentItem: GeneratedWallTextContentPlanItem;
+  existingItems: Array<Pick<WallTextContentPlanItemRow, "content_idea" | "feeling">>;
+  issues: string[];
+  lane: { direction: string; key: string };
+  planningContext: Json;
+}) {
+  return [
+    {
+      role: "system" as const,
+      content: [
+        "You repair exactly one private Wall-of-Text plan idea without changing any other plan item.",
+        "Use only the supplied business facts. Return a genuinely new individual writing context with a different concrete human situation if the old one was repeated.",
+        "A related topic is allowed only when the audience, real-life situation, tension, supported angle, or story is meaningfully different.",
+        "Do not write final overlay copy, visual line breaks, a CTA, a product pitch, or an unsupported claim.",
+      ].join(" "),
+    },
+    {
+      role: "user" as const,
+      content: JSON.stringify({
+        approvedPlanningContext: params.planningContext,
+        assignedConceptLane: params.lane,
+        businessDescription: params.businessDescription,
+        currentRejectedItem: params.currentItem,
+        existingIdeasToAvoid: params.existingItems.map((item) => ({
+          contentIdea: item.content_idea,
+          feeling: item.feeling,
+        })),
+        rejectedAttemptIssues: params.issues,
+        instruction: "Return only the replacement idea and its five private context fields.",
+      }),
+    },
+  ];
+}
+
+function buildSingleIdeaReplacementSchema() {
+  return {
+    additionalProperties: false,
+    properties: {
+      audienceContext: { maxLength: 240, minLength: 1, type: "string" },
+      contentIdea: { maxLength: MAX_CONTENT_IDEA_LENGTH, minLength: 1, type: "string" },
+      emotionalTension: { maxLength: 160, minLength: 1, type: "string" },
+      feeling: { maxLength: MAX_FEELING_LENGTH, minLength: 1, type: "string" },
+      humanMoment: { maxLength: 400, minLength: 1, type: "string" },
+      privateCreativeSeed: { maxLength: 400, minLength: 1, type: "string" },
+      supportedAngle: { maxLength: 400, minLength: 1, type: "string" },
+    },
+    required: [
+      "audienceContext",
+      "contentIdea",
+      "emotionalTension",
+      "feeling",
+      "humanMoment",
+      "privateCreativeSeed",
+      "supportedAngle",
+    ],
+    type: "object",
+  } as const;
+}
+
+function parseWallTextReplacementItem(
+  value: unknown,
+  currentItem: GeneratedWallTextContentPlanItem,
+  conceptLane: string,
+): GeneratedWallTextContentPlanItem {
+  const item = asRecord(value, "single Wall-of-Text idea replacement");
+  return {
+    briefSlotIndex: currentItem.briefSlotIndex,
+    contentIdea: getString(item.contentIdea, MAX_CONTENT_IDEA_LENGTH, "single Wall-of-Text idea replacement contentIdea"),
+    feeling: getString(item.feeling, MAX_FEELING_LENGTH, "single Wall-of-Text idea replacement feeling"),
+    itemSlotIndex: currentItem.itemSlotIndex,
+    planningBrief: {
+      audienceContext: getString(item.audienceContext, 240, "single Wall-of-Text idea replacement audienceContext"),
+      conceptLane,
+      creativeSeed: getString(item.privateCreativeSeed, 400, "single Wall-of-Text idea replacement privateCreativeSeed"),
+      emotionalTension: getString(item.emotionalTension, 160, "single Wall-of-Text idea replacement emotionalTension"),
+      humanMoment: getString(item.humanMoment, 400, "single Wall-of-Text idea replacement humanMoment"),
+      supportedAngle: getString(item.supportedAngle, 400, "single Wall-of-Text idea replacement supportedAngle"),
+    },
+  };
 }
 
 function buildSchema(briefCount: number) {
@@ -396,11 +601,25 @@ function buildSchema(briefCount: number) {
               items: {
                 additionalProperties: false,
                 properties: {
+                  audienceContext: { maxLength: 240, minLength: 1, type: "string" },
                   contentIdea: { maxLength: MAX_CONTENT_IDEA_LENGTH, minLength: 1, type: "string" },
+                  emotionalTension: { maxLength: 160, minLength: 1, type: "string" },
                   feeling: { maxLength: MAX_FEELING_LENGTH, minLength: 1, type: "string" },
+                  humanMoment: { maxLength: 400, minLength: 1, type: "string" },
                   itemSlotIndex: { maximum: 4, minimum: 0, type: "integer" },
+                  privateCreativeSeed: { maxLength: 400, minLength: 1, type: "string" },
+                  supportedAngle: { maxLength: 400, minLength: 1, type: "string" },
                 },
-                required: ["contentIdea", "feeling", "itemSlotIndex"],
+                required: [
+                  "audienceContext",
+                  "contentIdea",
+                  "emotionalTension",
+                  "feeling",
+                  "humanMoment",
+                  "itemSlotIndex",
+                  "privateCreativeSeed",
+                  "supportedAngle",
+                ],
                 type: "object",
               },
               maxItems: 5,
@@ -428,23 +647,6 @@ function buildSchema(briefCount: number) {
     required: ["briefs"],
     type: "object",
   } as const;
-}
-
-function ideaSimilarity(left: string, right: string) {
-  const leftTokens = new Set(tokenize(left));
-  const rightTokens = new Set(tokenize(right));
-  const union = new Set([...leftTokens, ...rightTokens]);
-  if (union.size === 0) return 0;
-  let intersection = 0;
-  for (const token of leftTokens) if (rightTokens.has(token)) intersection += 1;
-  return Math.max(
-    intersection / union.size,
-    intersection / Math.max(1, Math.min(leftTokens.size, rightTokens.size)),
-  );
-}
-
-function tokenize(value: string) {
-  return normalize(value).split(" ").filter((token) => token.length > 2);
 }
 
 function normalize(value: string) {

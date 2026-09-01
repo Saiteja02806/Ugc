@@ -19,6 +19,7 @@ export type WallTextPromptCandidate = {
     feeling: string;
     planningBrief: {
       audienceContext: string;
+      conceptLane?: string;
       creativeSeed: string;
       emotionalTension: string;
       humanMoment: string;
@@ -36,7 +37,7 @@ const GLOBAL_WALL_RULES = [
   "Do not decide visual line breaks and do not insert newline characters.",
   "Avoid slogans, calls to action, and advertisement language.",
   "Use no more than one supported product capability in one idea.",
-  "When privateCreativeContext is present, use its contentIdea, feeling, and all five planningBrief fields together as private guidance. Do not print field names or treat creativeSeed as finished copy.",
+  "When privateCreativeContext is present, use its contentIdea, feeling, all five planningBrief fields, and its assigned concept lane when present as private guidance. Do not print field names or treat creativeSeed as finished copy.",
   "Make every candidate a distinct idea with a distinct opening.",
   "Return one continuous message per candidate: no title, bullets, list object, sections, or visual line breaks.",
   "Before answering, silently self-check grammar, completeness, unsupported claims, calls to action, one-idea focus, and the absolute safety ceiling inside this same request.",

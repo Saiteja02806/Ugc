@@ -9,6 +9,27 @@ const migration = readFileSync(
   ),
   "utf8",
 );
+const continuityMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260831103952_enforce_30_day_content_plan_continuity.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const rotationMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260831133000_rotate_30_day_content_plan_items.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const itemContextMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260831173300_add_per_idea_private_context.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const freeformMigration = readFileSync(
   new URL(
     "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260826101500_disable_forced_wall_text_formats.sql",
@@ -121,11 +142,11 @@ test("uses five parent fields for five child ideas without prewriting Wall copy"
   }
   assert.match(
     planner,
-    /Use all five fields together to create exactly five different child ideas/i,
+    /For every child return contentIdea, feeling, audienceContext/i,
   );
   assert.match(
     planner,
-    /Each child has contentIdea and feeling/i,
+    /children are not generated from creativeSeed alone/i,
   );
   assert.match(
     planner,
@@ -133,26 +154,60 @@ test("uses five parent fields for five child ideas without prewriting Wall copy"
   );
   assert.match(
     planner,
-    /wall-text-content-plan-five-context-v3-freeform/i,
+    /wall-text-content-plan-five-context-v5-item-context-concept-lanes/i,
   );
   assert.match(
     appPlan,
-    /wall-text-content-plan-five-context-v3-freeform/i,
+    /wall-text-content-plan-five-context-v5-item-context-concept-lanes/i,
   );
 });
 
-test("uses planned ideas progressively but preserves the established Wall fallback", () => {
-  assert.match(
-    migration,
-    /A plan is optional during rollout\. If no complete batch of ready private[\s\S]*original Wall generation path proceeds unchanged/i,
-  );
-  assert.match(migration, /if coalesce\(cardinality\(v_plan_item_ids\), 0\) <> assignment_count then[\s\S]*v_content_plan_id := null/i);
-  assert.match(migration, /wall_text_content_plan_id, wall_text_content_plan_item_id/i);
-  assert.match(migration, /set status = 'reserved'/i);
+test("stores a Wall item's exact private context and broad lane", () => {
+  assert.match(itemContextMigration, /wall_text_content_plan_items[\s\S]*private_context jsonb/i);
+  assert.match(planner, /getWallTextItemConceptLanes/);
+  assert.match(planner, /Every group of five must use five clearly different concrete human situations/i);
+  assert.match(planner, /MAX_SINGLE_IDEA_REPAIR_ATTEMPTS = 3/);
+  assert.match(finalWriter, /assigned concept lane when present/i);
+});
+
+test("requires a complete active Wall plan instead of falling back to direct generation", () => {
+  assert.match(continuityMigration, /Wall writing is plan-first/i);
+  assert.match(continuityMigration, /plan\.status = 'active'/i);
+  assert.match(continuityMigration, /wall_text_content_plan_pending/i);
+  assert.match(continuityMigration, /wall_text_content_plan_inventory_pending/i);
+  assert.doesNotMatch(continuityMigration, /v_content_plan_id := null/i);
+  assert.match(continuityMigration, /wall_text_content_plan_id, wall_text_content_plan_item_id/i);
+  assert.match(continuityMigration, /set status = 'reserved'/i);
   assert.match(migration, /set status = 'consumed'/i);
   assert.match(migration, /set status = 'retired'/i);
   assert.match(jobs, /ensureWallTextContentPlanGeneration/);
-  assert.match(jobs, /must never prevent the established Wall generation fallback/i);
+  assert.match(jobs, /Wall copy may only be generated from an active 30-day plan/i);
+  assert.match(jobs, /return planningJob/);
+});
+
+test("rotates the active Wall plan without reintroducing the direct writer fallback", () => {
+  assert.match(
+    rotationMigration,
+    /drop index if exists public\.wall_text_generation_assignments_plan_item_uidx/i,
+  );
+  assert.match(
+    rotationMigration,
+    /create table if not exists public\.wall_text_content_plan_item_uses/i,
+  );
+  assert.match(
+    rotationMigration,
+    /case when item\.status = 'available' then 0 else 1 end/i,
+  );
+  assert.match(
+    rotationMigration,
+    /prior_batch\.status in \('pending', 'processing'\)/i,
+  );
+  assert.match(
+    rotationMigration,
+    /item\.last_used_at nulls first, item\.use_count, item\.sequence_index/i,
+  );
+  assert.match(rotationMigration, /wall_text_content_plan_pending/i);
+  assert.doesNotMatch(rotationMigration, /v_content_plan_id := null/i);
 });
 
 test("allows the deployed AI-generation worker to execute the new private planning job", () => {
@@ -167,7 +222,7 @@ test("connects the complete planned Wall flow without exposing private context t
   );
   assert.match(
     jobs,
-    /ensureWallTextContentPlanGeneration\(\{ profile: params\.profile \}\)/,
+    /ensureWallTextContentPlanGeneration\(\{\s*profile: params\.profile,?\s*\}\)/,
   );
   assert.match(planLaunch, /beforeDispatch:[\s\S]*attachWallTextContentPlanGenerationJob/);
   assert.match(
@@ -186,7 +241,7 @@ test("connects the complete planned Wall flow without exposing private context t
 test("keeps planning context private and removes format pressure from the Wall writer", () => {
   assert.match(
     finalWriter,
-    /use its contentIdea, feeling, and all five planningBrief fields together as private guidance/i,
+    /use its contentIdea, feeling, all five planningBrief fields, and its assigned concept lane when present as private guidance/i,
   );
   assert.match(finalWriter, /Do not print field names or treat creativeSeed as finished copy/i);
   assert.match(finalWriter, /Do not force it into a named writing format, template, list, or formula/i);

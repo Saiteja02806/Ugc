@@ -42,6 +42,12 @@ export async function runGenerateWallTextContentPlanJob(
       planId: plan.id,
       userId: plan.user_id,
     });
+    const priorCycleItems = await context.store.listPriorWallTextContentPlanItems({
+      businessProfileId: plan.business_profile_id,
+      businessProfileVersion: plan.business_profile_version,
+      periodStartDate: plan.period_start_date,
+      userId: plan.user_id,
+    });
     assertContiguousItems(items.map((item) => item.sequence_index));
     if (items.length % 5 !== 0) {
       throw new Error("Wall-of-Text plan items are not grouped into complete creative briefs.");
@@ -54,8 +60,9 @@ export async function runGenerateWallTextContentPlanJob(
       );
       const generated = await generateWallTextContentPlanChunk({
         businessDescription: plan.business_description,
+        briefIndexStart: items.length / 5 + 1,
         count,
-        existingItems: items,
+        existingItems: [...priorCycleItems, ...items],
         planningContext: plan.planning_context,
       });
       const sequenceStart = items.length + 1;
@@ -78,6 +85,7 @@ export async function runGenerateWallTextContentPlanJob(
           content_idea: item.contentIdea,
           feeling: item.feeling,
           idea_fingerprint: createWallTextContentIdeaFingerprint(item.contentIdea),
+          private_context: item.planningBrief,
           sequence_index:
             sequenceStart +
             item.briefSlotIndex * 5 +

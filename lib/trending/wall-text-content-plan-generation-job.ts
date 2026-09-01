@@ -16,7 +16,7 @@ export async function ensureWallTextContentPlanGeneration(params: {
 
   const job = await createAndDispatchBackgroundJob(
     {
-      idempotencyKey: `wall-text-content-plan:${plan.id}:v${plan.planVersion}`,
+      idempotencyKey: `wall-text-content-plan:${plan.id}:v${plan.planVersion}:attempt-${plan.generationAttempt}`,
       input: {
         operation: "wall_text_content_plan_generation",
         planId: plan.id,

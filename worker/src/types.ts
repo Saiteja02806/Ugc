@@ -559,6 +559,7 @@ export type CarouselContentPlanRow = {
   exhausted_at: string | null;
   failed_at: string | null;
   failure_reason: string | null;
+  generation_attempt: number;
   generation_completed_at: string | null;
   generation_job_id: string | null;
   generation_started_at: string | null;
@@ -591,6 +592,7 @@ export type CarouselContentPlanItemRow = {
   emotion: string;
   id: string;
   plan_id: string;
+  private_context: Json | null;
   reservation_expires_at: string | null;
   reservation_key: string | null;
   reservation_token: string | null;
@@ -640,8 +642,12 @@ export type WallTextContentPlanRow = {
   business_profile_version: number;
   failed_at: string | null;
   failure_reason: string | null;
+  generation_attempt: number;
   generation_job_id: string | null;
   id: string;
+  period_end_date: string;
+  period_start_date: string;
+  plan_version: number;
   planner_model: string;
   planner_prompt_version: string;
   planning_context: Json;
@@ -659,6 +665,7 @@ export type WallTextContentPlanItemRow = {
   id: string;
   idea_fingerprint: string;
   plan_id: string;
+  private_context: Json | null;
   sequence_index: number;
   status: "available" | "consumed" | "reserved" | "retired";
   user_id: string;

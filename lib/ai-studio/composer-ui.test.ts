@@ -207,13 +207,17 @@ test("video references start empty and offer optional creator references", () =>
   assert.match(videoWorkspace, /useState<AIStudioReferenceMedia \| null>\(null\)/);
   assert.match(videoWorkspace, /useState<string \| null>\(null\)/);
   assert.match(videoWorkspace, /<CreatorReferencePicker/);
-  assert.match(videoWorkspace, /referenceControls=\{/);
-  assert.match(creatorReferencePicker, />\s*Creators\s*</);
-  assert.match(creatorReferencePicker, />\s*Optional\s*</);
-  assert.match(creatorReferencePicker, /Pick a creator reference or upload your own image/);
+  assert.match(videoWorkspace, /settings=\{[\s\S]*?<CreatorReferencePicker/);
+  assert.doesNotMatch(videoWorkspace, /referenceControls=/);
+  assert.match(creatorReferencePicker, /<Popover open=\{open\}/);
+  assert.match(creatorReferencePicker, /Creator reference/);
+  assert.match(creatorReferencePicker, /Optional\. Choose a look or upload your own image/);
+  assert.match(creatorReferencePicker, /grid-cols-5/);
+  assert.match(creatorReferencePicker, /side="top"/);
   assert.match(creatorReferencePicker, /onChange\(nextSelection\)/);
   assert.match(creatorReferencePicker, /uploadAIStudioReferenceMedia\(file, "image"\)/);
   assert.match(creatorReferencePicker, /<ImagePlus className="size-3.5"/);
+  assert.match(creatorReferencePicker, /setOpen\(false\)/);
   assert.doesNotMatch(videoWorkspace, /groupAvatarsByCreator/);
   assert.doesNotMatch(videoWorkspace, /function AvatarFolderGroup/);
   assert.doesNotMatch(videoWorkspace, /Open a creator folder/);
@@ -265,7 +269,7 @@ test("video composer keeps compact controls in the requested order", () => {
 
   assert.match(composer, /triggerLabel\?: string/);
   assert.match(composer, /triggerLabel: "9:16"/);
-  assert.match(videoSettings, /ariaLabel="Video model"[\s\S]*?ariaLabel="Video duration"[\s\S]*?ariaLabel="Number of videos"[\s\S]*?<AiStudioRatioPicker/);
+  assert.match(videoSettings, /ariaLabel="Video model"[\s\S]*?ariaLabel="Video duration"[\s\S]*?ariaLabel="Number of videos"[\s\S]*?<AiStudioRatioPicker[\s\S]*?<CreatorReferencePicker/);
   assert.match(videoSettings, /label: `\$\{count\} video\$\{count === 1 \? "" : "s"\}`,[\s\S]*?triggerLabel: String\(count\)/);
 });
 

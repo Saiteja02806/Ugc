@@ -912,19 +912,6 @@ export function VideoGenerationStudioPanel({
         }}
         onSubmit={handleSubmit}
         onTextareaKeyDown={handleTextareaKeyDown}
-        referenceControls={
-          <CreatorReferencePicker
-            active={active}
-            disabled={
-              generationLocked || isGenerating || creatorReferenceUploadPending
-            }
-            selection={uploadedReference}
-            selectedCreatorId={selectedCreatorReferenceId}
-            onChange={handleReferenceChange}
-            onPendingChange={setCreatorReferenceUploadPending}
-            onSelectedCreatorChange={setSelectedCreatorReferenceId}
-          />
-        }
         secondaryActions={
           <>
             {isGenerating ? (
@@ -1003,6 +990,17 @@ export function VideoGenerationStudioPanel({
               }}
               allowedRatios={["9:16", "16:9"]}
               disabled={generationLocked || isGenerating}
+            />
+            <CreatorReferencePicker
+              active={active}
+              disabled={
+                generationLocked || isGenerating || creatorReferenceUploadPending
+              }
+              selection={uploadedReference}
+              selectedCreatorId={selectedCreatorReferenceId}
+              onChange={handleReferenceChange}
+              onPendingChange={setCreatorReferenceUploadPending}
+              onSelectedCreatorChange={setSelectedCreatorReferenceId}
             />
           </>
         }

@@ -42,7 +42,6 @@ export function AiStudioComposer({
   onTextareaKeyDown,
   placeholder,
   prompt,
-  referenceControls,
   secondaryActions,
   settings,
 }: {
@@ -63,7 +62,6 @@ export function AiStudioComposer({
   onTextareaKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   placeholder: string;
   prompt: string;
-  referenceControls?: ReactNode;
   secondaryActions?: ReactNode;
   settings: ReactNode;
 }) {
@@ -168,8 +166,6 @@ export function AiStudioComposer({
               </span>
             </FieldDescription>
           </Field>
-
-          {referenceControls}
 
           <div
             className={cn(

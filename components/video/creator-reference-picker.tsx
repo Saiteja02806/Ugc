@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Check, ImagePlus, Loader2, UserRound, X } from "lucide-react";
+import { Check, ChevronDown, ImagePlus, Loader2, UserRound, X } from "lucide-react";
 import type { ChangeEvent } from "react";
 import { useRef, useState } from "react";
 
@@ -9,6 +9,11 @@ import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upl
 import { uploadAIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import { CREATOR_REFERENCES, type CreatorReference } from "@/lib/ai-studio/creator-references";
 import { cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 export function CreatorReferencePicker({
   active = true,
@@ -32,14 +37,27 @@ export function CreatorReferencePicker({
     null,
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
   const hasImageReference = selection?.kind === "image";
   const hasCustomImageReference = hasImageReference && !selectedCreatorId;
   const isPending = pendingReferenceId !== null;
+  const selectedCreatorIndex = CREATOR_REFERENCES.findIndex(
+    (reference) => reference.id === selectedCreatorId,
+  );
+  const selectedCreator =
+    selectedCreatorIndex === -1
+      ? null
+      : CREATOR_REFERENCES[selectedCreatorIndex];
+  const triggerLabel = selectedCreator
+    ? `Creator ${selectedCreatorIndex + 1}`
+    : hasCustomImageReference
+      ? "Custom"
+      : "Creators";
 
   async function uploadReference(
     file: File,
     selectedCreator: CreatorReference | null,
-  ) {
+  ): Promise<boolean> {
     setErrorMessage(null);
     setPendingReferenceId(selectedCreator?.id ?? "custom");
     onPendingChange(true);
@@ -48,12 +66,15 @@ export function CreatorReferencePicker({
       const nextSelection = await uploadAIStudioReferenceMedia(file, "image");
       onChange(nextSelection);
       onSelectedCreatorChange(selectedCreator?.id ?? null);
+      setOpen(false);
+      return true;
     } catch (error) {
       setErrorMessage(
         error instanceof Error && error.message
           ? error.message
           : "Could not prepare this creator reference.",
       );
+      return false;
     } finally {
       setPendingReferenceId(null);
       onPendingChange(false);
@@ -97,7 +118,7 @@ export function CreatorReferencePicker({
   }
 
   function clearImageReference() {
-    if (disabled || isPending || !hasImageReference) {
+    if (disabled || isPending || !active || !hasImageReference) {
       return;
     }
 
@@ -107,40 +128,7 @@ export function CreatorReferencePicker({
   }
 
   return (
-    <section
-      aria-labelledby="creator-references-heading"
-      className="border-t border-border/70 px-4 py-3 sm:px-5"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-primary ring-1 ring-primary/15">
-            <UserRound className="size-3.5" aria-hidden="true" />
-          </span>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h2
-                id="creator-references-heading"
-                className="text-xs font-semibold text-foreground"
-              >
-                Creators
-              </h2>
-              <span className="rounded-full bg-card-muted px-1.5 py-0.5 text-[10px] font-medium text-muted">
-                Optional
-              </span>
-            </div>
-            <p className="text-[11px] text-muted">
-              Pick a creator reference or upload your own image.
-            </p>
-          </div>
-        </div>
-        {isPending ? (
-          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-muted">
-            <Loader2 className="size-3 animate-spin motion-reduce:animate-none" />
-            Preparing
-          </span>
-        ) : null}
-      </div>
-
+    <Popover open={open} onOpenChange={setOpen}>
       <input
         ref={uploadInputRef}
         type="file"
@@ -150,106 +138,168 @@ export function CreatorReferencePicker({
         disabled={disabled || isPending || !active}
         onChange={handleCustomUpload}
       />
+      <PopoverTrigger
+        render={
+          <button
+            type="button"
+            disabled={disabled || isPending || !active}
+            aria-label={`Creator reference, currently ${triggerLabel}`}
+            aria-haspopup="dialog"
+            aria-expanded={open}
+            className="inline-flex h-8 min-w-0 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+          />
+        }
+      >
+        {selectedCreator ? (
+          <Image
+            src={selectedCreator.src}
+            alt=""
+            width={16}
+            height={16}
+            sizes="16px"
+            className="size-4 shrink-0 rounded-full object-cover"
+          />
+        ) : (
+          <UserRound className="size-3.5 shrink-0 text-muted" aria-hidden="true" />
+        )}
+        <span className="truncate">{isPending ? "Preparing" : triggerLabel}</span>
+        {isPending ? (
+          <Loader2
+            className="size-3 shrink-0 animate-spin text-muted motion-reduce:animate-none"
+            aria-hidden="true"
+          />
+        ) : (
+          <ChevronDown
+            aria-hidden="true"
+            className={cn(
+              "size-3 shrink-0 text-muted transition-transform duration-200 motion-reduce:transition-none",
+              open && "rotate-180",
+            )}
+          />
+        )}
+      </PopoverTrigger>
 
-      <div className="mt-2 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <button
-          type="button"
-          disabled={disabled || isPending || !hasImageReference}
-          aria-pressed={!hasImageReference}
-          onClick={clearImageReference}
-          className={cn(
-            "group relative flex h-[68px] w-[50px] shrink-0 flex-col items-center justify-center gap-1 rounded-xl border text-[10px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
-            !hasImageReference
-              ? "border-primary/45 bg-primary/8 text-primary shadow-[inset_0_0_0_1px_rgb(0_0_0_/_0.02)]"
-              : "border-border/80 bg-card-muted/70 text-muted hover:border-border hover:bg-card",
-          )}
-        >
-          <X className="size-3.5" aria-hidden="true" />
-          <span>None</span>
-        </button>
-
-        <button
-          type="button"
-          disabled={disabled || isPending || !active}
-          aria-pressed={hasCustomImageReference}
-          onClick={() => uploadInputRef.current?.click()}
-          className={cn(
-            "group relative flex h-[68px] w-[50px] shrink-0 flex-col items-center justify-center gap-1 rounded-xl border border-dashed text-[10px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
-            hasCustomImageReference
-              ? "border-primary/45 bg-primary/8 text-primary"
-              : "border-border/80 bg-card-muted/55 text-muted hover:border-primary/35 hover:bg-primary/5 hover:text-primary",
-          )}
-        >
-          {pendingReferenceId === "custom" ? (
+      <PopoverContent
+        side="top"
+        align="start"
+        sideOffset={6}
+        className="w-[min(22rem,calc(100vw-1rem))] p-2.5"
+      >
+        <div className="flex items-start justify-between gap-3 px-0.5 pb-2">
+          <div>
+            <h2 className="text-xs font-semibold text-foreground">
+              Creator reference
+            </h2>
+            <p className="mt-0.5 text-[11px] leading-4 text-muted">
+              Optional. Choose a look or upload your own image.
+            </p>
+          </div>
+          {isPending ? (
             <Loader2
-              className="size-3.5 animate-spin motion-reduce:animate-none"
-              aria-hidden="true"
+              className="mt-0.5 size-3.5 shrink-0 animate-spin text-muted motion-reduce:animate-none"
+              aria-label="Preparing creator reference"
             />
-          ) : (
-            <ImagePlus className="size-3.5" aria-hidden="true" />
-          )}
-          <span>Upload</span>
-          {hasCustomImageReference ? (
-            <span className="absolute right-1 top-1 flex size-3.5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
-              <Check className="size-2.5" aria-hidden="true" />
-            </span>
           ) : null}
-        </button>
+        </div>
 
-        {CREATOR_REFERENCES.map((reference, index) => {
-          const selected = selectedCreatorId === reference.id;
-          const loading = pendingReferenceId === reference.id;
+        <div className="grid max-h-[19rem] grid-cols-5 gap-2 overflow-y-auto pr-0.5">
+          <button
+            type="button"
+            disabled={disabled || isPending || !active}
+            aria-pressed={!hasImageReference}
+            onClick={() => {
+              if (hasImageReference) {
+                clearImageReference();
+              } else {
+                setOpen(false);
+              }
+            }}
+            className={cn(
+              "flex aspect-[3/4] min-w-0 flex-col items-center justify-center gap-1 rounded-lg border text-[10px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
+              !hasImageReference
+                ? "border-primary/45 bg-primary/8 text-primary"
+                : "border-border/80 bg-card-muted/70 text-muted hover:border-border hover:bg-card",
+            )}
+          >
+            <X className="size-3.5" aria-hidden="true" />
+            <span>None</span>
+          </button>
 
-          return (
-            <button
-              key={reference.id}
-              type="button"
-              disabled={disabled || isPending || !active}
-              aria-pressed={selected}
-              aria-label={`Use creator reference ${index + 1}`}
-              title={`Use creator reference ${index + 1}`}
-              onClick={() => void handleCreatorSelect(reference)}
-              className={cn(
-                "group relative h-[68px] w-[50px] shrink-0 overflow-hidden rounded-xl border bg-card-muted/70 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
-                selected
-                  ? "border-primary ring-2 ring-primary/35"
-                  : "border-border/80 hover:-translate-y-0.5 hover:border-primary/45 hover:shadow-sm",
-              )}
-            >
-              <Image
-                src={reference.src}
-                alt=""
-                width={50}
-                height={68}
-                sizes="50px"
-                className="size-full object-cover transition-transform duration-200 group-hover:scale-105 motion-reduce:transition-none"
-              />
-              <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent px-1 pb-1 pt-3 text-center text-[9px] font-semibold text-white">
-                {index + 1}
+          <button
+            type="button"
+            disabled={disabled || isPending || !active}
+            aria-pressed={hasCustomImageReference}
+            onClick={() => uploadInputRef.current?.click()}
+            className={cn(
+              "relative flex aspect-[3/4] min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed text-[10px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
+              hasCustomImageReference
+                ? "border-primary/45 bg-primary/8 text-primary"
+                : "border-border/80 bg-card-muted/55 text-muted hover:border-primary/35 hover:bg-primary/5 hover:text-primary",
+            )}
+          >
+            <ImagePlus className="size-3.5" aria-hidden="true" />
+            <span>Upload</span>
+            {hasCustomImageReference ? (
+              <span className="absolute right-1 top-1 flex size-3.5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                <Check className="size-2.5" aria-hidden="true" />
               </span>
-              {loading ? (
-                <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-white">
-                  <Loader2
-                    className="size-4 animate-spin motion-reduce:animate-none"
-                    aria-hidden="true"
-                  />
-                </span>
-              ) : null}
-              {selected ? (
-                <span className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
-                  <Check className="size-2.5" aria-hidden="true" />
-                </span>
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
+            ) : null}
+          </button>
 
-      {errorMessage ? (
-        <p role="alert" className="mt-1.5 text-xs font-medium text-destructive">
-          {errorMessage}
-        </p>
-      ) : null}
-    </section>
+          {CREATOR_REFERENCES.map((reference, index) => {
+            const selected = selectedCreatorId === reference.id;
+            const loading = pendingReferenceId === reference.id;
+
+            return (
+              <button
+                key={reference.id}
+                type="button"
+                disabled={disabled || isPending || !active}
+                aria-pressed={selected}
+                aria-label={`Use creator reference ${index + 1}`}
+                title={`Use creator reference ${index + 1}`}
+                onClick={() => void handleCreatorSelect(reference)}
+                className={cn(
+                  "group relative aspect-[3/4] min-w-0 overflow-hidden rounded-lg border bg-card-muted/70 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
+                  selected
+                    ? "border-primary ring-2 ring-primary/35"
+                    : "border-border/80 hover:-translate-y-0.5 hover:border-primary/45 hover:shadow-sm",
+                )}
+              >
+                <Image
+                  src={reference.src}
+                  alt=""
+                  fill
+                  sizes="(max-width: 360px) 18vw, 60px"
+                  className="object-cover transition-transform duration-200 group-hover:scale-105 motion-reduce:transition-none"
+                />
+                <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent px-1 pb-1 pt-3 text-center text-[9px] font-semibold text-white">
+                  {index + 1}
+                </span>
+                {loading ? (
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-white">
+                    <Loader2
+                      className="size-4 animate-spin motion-reduce:animate-none"
+                      aria-hidden="true"
+                    />
+                  </span>
+                ) : null}
+                {selected ? (
+                  <span className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                    <Check className="size-2.5" aria-hidden="true" />
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+
+        {errorMessage ? (
+          <p role="alert" className="mt-2 text-xs font-medium text-destructive">
+            {errorMessage}
+          </p>
+        ) : null}
+      </PopoverContent>
+    </Popover>
   );
 }

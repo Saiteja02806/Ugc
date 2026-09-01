@@ -269,7 +269,7 @@ test("video composer keeps compact controls in the requested order", () => {
 
   assert.match(composer, /triggerLabel\?: string/);
   assert.match(composer, /triggerLabel: "9:16"/);
-  assert.match(videoSettings, /ariaLabel="Video model"[\s\S]*?ariaLabel="Video duration"[\s\S]*?ariaLabel="Number of videos"[\s\S]*?<AiStudioRatioPicker[\s\S]*?<CreatorReferencePicker/);
+  assert.match(videoSettings, /ariaLabel="Video model"[\s\S]*?ariaLabel="Video duration"[\s\S]*?<CreatorReferencePicker[\s\S]*?ariaLabel="Number of videos"[\s\S]*?<AiStudioRatioPicker/);
   assert.match(videoSettings, /label: `\$\{count\} video\$\{count === 1 \? "" : "s"\}`,[\s\S]*?triggerLabel: String\(count\)/);
 });
 

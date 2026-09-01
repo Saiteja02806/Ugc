@@ -4034,3 +4034,9 @@ Name: **Verify v26 and replace the stale production assignment**
   available-height calculation. They stay at least 56px for safe interaction
   and scale from the prior 64px base to a maximum of 76px with proportionate
   icons, so they retain their visual relationship to the larger card.
+- The deck's external controls use the full visible card stack as their visual
+  boundary. When an active 4:5 Slideshow has a taller next card behind it, its
+  format pill moves above the stack and its decision row receives an
+  available-height-based lower offset. Hook and Wall-of-Text pills keep a
+  small, explicit gap above their own next-card layer. This preserves card
+  size while preventing labels and decisions from overlapping preview media.

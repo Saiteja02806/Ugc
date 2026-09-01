@@ -368,12 +368,12 @@ test("keeps the accepted Carousel and Wall action chooser mounted after the fina
 test("raises only the Slideshow label above its stacked preview", () => {
   assert.match(
     workspace,
-    /function getTrendingFormatPillPositionClass\(\)\s*\{[\s\S]*bottom-\[calc\(100%\+72px\)\]/,
+    /function getTrendingFormatPillPositionClass\(\)\s*\{[\s\S]*bottom-\[calc\(100%\+100px\)\]/,
   );
   assert.equal(
     (
       workspace.match(
-        /positionClassName="left-0 bottom-\[calc\(100%\+14px\)\]"/g,
+        /positionClassName="left-0 bottom-\[calc\(100%\+24px\)\]"/g,
       ) ?? []
     ).length,
     2,
@@ -406,7 +406,11 @@ test("centers a card-sized review frame over visible inert next-card layers", ()
   );
   assert.match(
     workspace,
-    /absolute left-1\/2 top-full z-40 flex w-max -translate-x-1\/2 flex-col items-center/,
+    /getTrendingDecisionControlsPositionClass\(activeCandidate\.format\)/,
+  );
+  assert.match(
+    workspace,
+    /function getTrendingDecisionControlsPositionClass[\s\S]*format !== "carousel"[\s\S]*top-full min-\[1024px\]:top-\[calc\(100%\+clamp\(0px,calc\(\(100dvh-700px\)\*0\.54\),52px\)\)\]/,
   );
   assert.equal(
     (workspace.match(/data-trending-card-state=/g) ?? []).length,
@@ -507,7 +511,7 @@ test("keeps Hook and Wall-of-Text pills close above their video frame", () => {
   assert.equal(
     (
       workspace.match(
-        /positionClassName="left-0 bottom-\[calc\(100%\+14px\)\]"/g,
+        /positionClassName="left-0 bottom-\[calc\(100%\+24px\)\]"/g,
       ) ?? []
     ).length,
     2,

@@ -2674,7 +2674,12 @@ function TrendingDeck({
                 </div>
               </div>
             </div>
-            <div className="absolute left-1/2 top-full z-40 flex w-max -translate-x-1/2 flex-col items-center">
+            <div
+              className={cn(
+                "absolute left-1/2 z-40 flex w-max -translate-x-1/2 flex-col items-center",
+                getTrendingDecisionControlsPositionClass(activeCandidate.format),
+              )}
+            >
               <CreativeDecisionActions
                 acceptDisabled={
                   activeHookPreviewStatus !== null &&
@@ -3165,8 +3170,20 @@ function getTrendingReviewCardFrameClass(
 
 function getTrendingFormatPillPositionClass() {
   // The Slideshow deck can reveal a taller card behind its 4:5 active frame.
-  // Keep this label above that stack without changing Hook or Wall-of-Text spacing.
-  return "bottom-[calc(100%+72px)]";
+  // Leave a clear gap above that stack on laptop-sized screens.
+  return "bottom-[calc(100%+72px)] min-[1024px]:bottom-[calc(100%+100px)]";
+}
+
+function getTrendingDecisionControlsPositionClass(
+  format: TrendingCandidate["format"],
+) {
+  if (format !== "carousel") {
+    return "top-full";
+  }
+
+  // A tall next card can extend below an active 4:5 slideshow card. Move the
+  // decision row only as the available height makes that lower layer visible.
+  return "top-full min-[1024px]:top-[calc(100%+clamp(0px,calc((100dvh-700px)*0.54),52px))]";
 }
 
 type TrendingDeckCardProps = {
@@ -3518,7 +3535,7 @@ function TrendingHookDeckCard({
         {isActive ? (
           <TrendingFormatPill
             candidate={candidate}
-            positionClassName="left-0 bottom-[calc(100%+14px)]"
+            positionClassName="left-0 bottom-[calc(100%+24px)]"
           />
         ) : null}
         {edit ? (
@@ -3700,7 +3717,7 @@ function TrendingWallTextDeckCard({
         {isActive ? (
           <TrendingFormatPill
             candidate={candidate}
-            positionClassName="left-0 bottom-[calc(100%+14px)]"
+            positionClassName="left-0 bottom-[calc(100%+24px)]"
           />
         ) : null}
         {edit ? (

@@ -110,14 +110,14 @@ const balancedLayoutMigration = readFileSync(
 );
 const reservationCollisionMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260830200000_prevent_wall_text_background_reservation_collisions.sql",
+    "../../supabase/migrations/20260830130908_prevent_wall_text_background_reservation_collisions.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const backgroundReuseMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260830213000_allow_wall_text_background_reuse_after_fresh_rotation.sql",
+    "../../supabase/migrations/20260830190443_allow_wall_text_background_reuse_after_fresh_rotation.sql",
     import.meta.url,
   ),
   "utf8",

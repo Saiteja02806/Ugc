@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const migration = readProjectFile(
-  "supabase/migrations/20260831043558_add_wall_text_pending_schedules.sql",
+  "supabase/migrations/20260831053441_add_wall_text_pending_schedules.sql",
 );
 const workspace = readProjectFile(
   "components/trending/trending-workspace.tsx",

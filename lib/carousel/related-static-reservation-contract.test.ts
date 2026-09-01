@@ -6,7 +6,7 @@ const migration = read(
   "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260820054247_add_carousel_related_static_reservation_v2.sql",
 );
 const freshFirstMigration = read(
-  "supabase/migrations/20260830214000_prioritize_fresh_carousel_images_before_reuse.sql",
+  "supabase/migrations/20260830190513_prioritize_fresh_carousel_images_before_reuse.sql",
 );
 const v1Migration = read(
   "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260817123000_add_carousel_role_image_library_v1.sql",

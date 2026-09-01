@@ -18,7 +18,7 @@ const terminalCarouselRecoveryMigration = readFileSync(
 );
 const partialRefillReplacementMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260830194000_replace_partial_daily_carousel_refill_batches.sql",
+    "../../supabase/migrations/20260830130901_replace_partial_daily_carousel_refill_batches.sql",
     import.meta.url,
   ),
   "utf8",

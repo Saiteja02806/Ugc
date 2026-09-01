@@ -18,7 +18,7 @@ const provenanceMigration = readFileSync(
 );
 const retryMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260830193000_reuse_unconsumed_carousel_content_plan_reservations.sql",
+    "../../supabase/migrations/20260830130854_reuse_unconsumed_carousel_content_plan_reservations.sql",
     import.meta.url,
   ),
   "utf8",

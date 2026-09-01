@@ -4022,16 +4022,15 @@ Name: **Verify v26 and replace the stale production assignment**
 ## 2026-09-01 Compact-Laptop Trending 9:16 Review Frames
 
 - Hook and Wall-of-Text Trending cards use the same shared 9:16 sizing rule.
-  On compact desktop viewports at least 1024px and below 1440px wide, their maximum
-  review-frame width increases from 230px to 252px. The height calculation
-  reduces only the reserved chrome budget, keeping the format label, stacked
-  preview clearance, decision controls, and progress text visible on short
-  laptop screens.
-- Larger desktop viewports retain the previous 230px maximum exactly. Carousel
-  (4:5) frames, swipe behavior, keyboard interaction, deck layering, and the
-  loading skeleton's shared 9:16 frame all remain structurally unchanged.
-- The paired Reject and Accept controls use the same compact-desktop range and
-  available-height calculation. They remain at least 56px for safe interaction
-  and grow from the previous 64px to a maximum of 72px as the 9:16 review frame
-  grows, including a proportionate icon size. Wider desktop layouts retain the
-  previous 64px controls.
+  From 1024px wide upward, their maximum review-frame width is 270px (480px
+  tall), rather than a narrow 252px exception. The available-height calculation
+  still protects the format label, stacked preview clearance, decision controls,
+  and progress text on short laptop screens.
+- This has no 1440px cutoff: both common compact-laptop and higher-resolution
+  15.6-inch viewports receive the same comfortable upper size. Carousel (4:5)
+  frames, swipe behavior, keyboard interaction, deck layering, and the loading
+  skeleton's shared 9:16 frame remain structurally unchanged.
+- The paired Reject and Accept controls use that same 1024px-and-up,
+  available-height calculation. They stay at least 56px for safe interaction
+  and scale from the prior 64px base to a maximum of 76px with proportionate
+  icons, so they retain their visual relationship to the larger card.

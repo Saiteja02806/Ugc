@@ -61,10 +61,10 @@ test("places Edit in the page header and keeps circular decisions below the card
 
 test("uses two accessible circular decision targets and a compact Edit pill", () => {
   assert.match(actions, /flex items-center justify-center gap-4 sm:gap-5/);
-  assert.match(actions, /COMPACT_LAPTOP_DECISION_BUTTON_CLASS/);
+  assert.match(actions, /LAPTOP_AND_DESKTOP_DECISION_BUTTON_CLASS/);
   assert.match(
     actions,
-    /min-\[1024px\]:max-\[1440px\]:size-\[clamp\(3\.5rem,calc\(\(100dvh-320px\)\*0\.161\),4\.5rem\)\]/,
+    /min-\[1024px\]:size-\[clamp\(3\.5rem,calc\(\(100dvh-288px\)\*0\.1584\),4\.75rem\)\]/,
   );
   assert.equal((actions.match(/size="creative-icon"/g) ?? []).length, 2);
   assert.equal((actions.match(/size="creative-edit"/g) ?? []).length, 1);
@@ -387,7 +387,7 @@ test("centers a card-sized review frame over visible inert next-card layers", ()
   );
   assert.match(
     workspace,
-    /VERTICAL_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(76vw,230px,calc\(\(100dvh-348px\)\*0\.5625\)\)\] min-\[1024px\]:max-\[1440px\]:w-\[min\(76vw,252px,calc\(\(100dvh-320px\)\*0\.5625\)\)\]"/,
+    /VERTICAL_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(76vw,230px,calc\(\(100dvh-348px\)\*0\.5625\)\)\] min-\[1024px\]:w-\[min\(76vw,270px,calc\(\(100dvh-288px\)\*0\.5625\)\)\]"/,
   );
   assert.match(
     workspace,

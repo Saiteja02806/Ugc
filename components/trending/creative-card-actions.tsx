@@ -4,8 +4,8 @@ import { Check, Pencil, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-const COMPACT_LAPTOP_DECISION_BUTTON_CLASS =
-  "min-[1024px]:max-[1440px]:size-[clamp(3.5rem,calc((100dvh-320px)*0.161),4.5rem)] min-[1024px]:max-[1440px]:[&_svg:not([class*='size-'])]:size-[clamp(1.25rem,calc((100dvh-320px)*0.056),1.625rem)]";
+const LAPTOP_AND_DESKTOP_DECISION_BUTTON_CLASS =
+  "min-[1024px]:size-[clamp(3.5rem,calc((100dvh-288px)*0.1584),4.75rem)] min-[1024px]:[&_svg:not([class*='size-'])]:size-[clamp(1.25rem,calc((100dvh-288px)*0.057),1.75rem)]";
 
 export function CreativeDecisionActions({
   acceptDisabled = false,
@@ -36,7 +36,7 @@ export function CreativeDecisionActions({
           title="Reject"
           disabled={disabled || rejectDisabled}
           onClick={onReject}
-          className={`transition-transform duration-150 active:scale-95 ${COMPACT_LAPTOP_DECISION_BUTTON_CLASS}`}
+          className={`transition-transform duration-150 active:scale-95 ${LAPTOP_AND_DESKTOP_DECISION_BUTTON_CLASS}`}
         >
           <X data-icon="inline-start" aria-hidden="true" />
         </Button>
@@ -57,7 +57,7 @@ export function CreativeDecisionActions({
           title="Accept"
           disabled={disabled || acceptDisabled}
           onClick={onAccept}
-          className={`transition-transform duration-150 active:scale-95 ${COMPACT_LAPTOP_DECISION_BUTTON_CLASS}`}
+          className={`transition-transform duration-150 active:scale-95 ${LAPTOP_AND_DESKTOP_DECISION_BUTTON_CLASS}`}
         >
           <Check data-icon="inline-start" aria-hidden="true" />
         </Button>

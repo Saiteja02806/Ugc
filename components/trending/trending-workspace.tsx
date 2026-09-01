@@ -400,7 +400,7 @@ const MAX_ROTATION_DEGREES = 5;
 const CAROUSEL_REVIEW_CARD_WIDTH_CLASS =
   "w-[min(78vw,270px,calc((100dvh-348px)*0.8))]";
 const VERTICAL_REVIEW_CARD_WIDTH_CLASS =
-  "w-[min(76vw,230px,calc((100dvh-348px)*0.5625))] min-[1024px]:max-[1440px]:w-[min(76vw,252px,calc((100dvh-320px)*0.5625))]";
+  "w-[min(76vw,230px,calc((100dvh-348px)*0.5625))] min-[1024px]:w-[min(76vw,270px,calc((100dvh-288px)*0.5625))]";
 const CAROUSEL_REVIEW_CARD_FRAME_CLASS =
   `${CAROUSEL_REVIEW_CARD_WIDTH_CLASS} aspect-[4/5]`;
 const VERTICAL_REVIEW_CARD_FRAME_CLASS =

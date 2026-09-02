@@ -44,7 +44,7 @@ test("shows generation progress instead of caught-up while daily slots remain pe
   );
   assert.match(
     workspace,
-    /items\.length === 0 && \(preparing \|\| pendingSlotCount > 0\)[\s\S]*TrendingPreparingEmptyState/,
+    /!retainingReviewShell[\s\S]*!showSkeleton[\s\S]*items\.length === 0[\s\S]*\(preparing \|\| pendingSlotCount > 0\)[\s\S]*TrendingPreparingEmptyState/,
   );
   assert.match(
     workspace,

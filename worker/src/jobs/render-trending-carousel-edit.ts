@@ -379,7 +379,7 @@ function parseEditedSlides(edit: TrendingCreativeEditRow): EditableCarouselSlide
             : null,
         backgroundUrl: getHttpUrl(slide.backgroundUrl, "backgroundUrl"),
         ctaText: getOptionalString(slide.ctaText, 120),
-        headline: getRequiredString(slide.headline, "headline").slice(0, 180),
+        headline: getOptionalString(slide.headline, 180),
         slideId: getRequiredString(slide.slideId, "slideId"),
         slideNumber: getPositiveInteger(slide.slideNumber, "slideNumber", 20),
         subtext: getOptionalString(slide.subtext, 360),
@@ -566,12 +566,13 @@ function applyEditToPlannedSlide(
 ): PlannedCarouselSlide {
   const isBodyOnly =
     original.textMode === "body_only" || original.textMode === "single_statement";
+  const bodyOnlyCopy = edited.headline || edited.subtext || null;
 
   return {
     ...original,
-    body: isBodyOnly ? edited.headline : edited.subtext || null,
+    body: isBodyOnly ? bodyOnlyCopy : edited.subtext || null,
     ctaText: edited.ctaText || null,
-    headline: isBodyOnly ? null : edited.headline,
+    headline: isBodyOnly ? null : edited.headline || null,
     listItems:
       original.textMode === "checklist" || original.textMode === "question_list"
         ? original.listItems

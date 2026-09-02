@@ -69,7 +69,7 @@ const CAROUSEL_PATCH_SCHEMA = z
           .object({
             backgroundAssetId: z.string().uuid().nullable(),
             ctaText: z.string().max(120),
-            headline: z.string().trim().min(1).max(180),
+            headline: z.string().trim().max(180),
             slideId: z.string().uuid(),
             slideNumber: z.number().int().min(1).max(20),
             subtext: z.string().max(360),

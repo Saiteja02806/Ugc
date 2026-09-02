@@ -49,7 +49,9 @@ type RegionSignal = {
 };
 
 export type CarouselRenderDiagnostics = {
-  bubbleShapeStrategy: "plain-white-text-with-shadow";
+  bubbleShapeStrategy:
+    | "heading-white-svg-background"
+    | "plain-white-text-with-outline";
   fontFamily: string;
   maxTextWidth: number;
   whiteBackgroundGroupCount: number;
@@ -61,7 +63,7 @@ type BalancedLines = {
 };
 
 export const CAROUSEL_RENDERER_VERSION =
-  "social-plain-text-renderer-v17-outline-4";
+  "social-heading-svg-renderer-v18-outline-4";
 export const CAROUSEL_FIXED_FONT_SIZE = 44;
 
 const FORMAT_DIMENSIONS: Record<CarouselFormat, { height: number; width: number }> = {
@@ -70,8 +72,12 @@ const FORMAT_DIMENSIONS: Record<CarouselFormat, { height: number; width: number 
 };
 
 const BODY_TEXT = "#ffffff";
+const HEADLINE_BACKGROUND_FILL = "#ffffff";
+const HEADLINE_TEXT = "#111316";
 const TEXT_FONT_FAMILY = "Geist, Arial, Helvetica, sans-serif";
 const BODY_FONT_WEIGHT = 600;
+const HEADLINE_BACKGROUND_PADDING_X = 24;
+const HEADLINE_BACKGROUND_PADDING_Y = 15;
 const MIN_CORNER_SAFETY = 6;
 
 function getMeasuredLineWidths(value: WrappedText) {
@@ -639,6 +645,11 @@ type PlainTextMetrics = {
   maximumTextWidth: number;
 };
 
+type HeadingSvgBackgroundMetrics = PlainTextMetrics & {
+  backgroundHeight: number;
+  backgroundWidth: number;
+};
+
 function measurePlainText(params: {
   lineHeight: number;
   lines: string[];
@@ -661,6 +672,32 @@ function measurePlainText(params: {
   };
 }
 
+function measureHeadingSvgBackground(params: {
+  lineHeight: number;
+  lines: string[];
+  measuredLineExtents?: RenderedTextExtents[];
+  measuredLineWidths?: number[];
+}): HeadingSvgBackgroundMetrics {
+  const text = measurePlainText(params);
+
+  if (params.lines.length === 0) {
+    return {
+      ...text,
+      backgroundHeight: 0,
+      backgroundWidth: 0,
+      groupHeight: 0,
+    };
+  }
+
+  return {
+    ...text,
+    backgroundHeight: text.groupHeight + HEADLINE_BACKGROUND_PADDING_Y * 2,
+    backgroundWidth:
+      text.maximumTextWidth + HEADLINE_BACKGROUND_PADDING_X * 2,
+    groupHeight: text.groupHeight + HEADLINE_BACKGROUND_PADDING_Y * 2,
+  };
+}
+
 function buildPlainWhiteText(params: {
   className: string;
   fontSize: number;
@@ -680,6 +717,35 @@ function buildPlainWhiteText(params: {
     .join("");
 
   return `<g>${lines}</g>`;
+}
+
+function buildHeadingSvgText(params: {
+  fontSize: number;
+  lineHeight: number;
+  lines: string[];
+  metrics: HeadingSvgBackgroundMetrics;
+  x: number;
+  y: number;
+}) {
+  if (params.lines.length === 0) return "";
+
+  const left = Math.round(params.x - params.metrics.backgroundWidth / 2);
+  const top = Math.round(params.y);
+  const baselineStart = Math.round(
+    top + HEADLINE_BACKGROUND_PADDING_Y + params.fontSize * 0.78,
+  );
+  const radius = Math.min(
+    Math.round(params.fontSize * 0.48),
+    Math.round(params.metrics.backgroundHeight / 2),
+  );
+  const lines = params.lines
+    .map(
+      (line, index) =>
+        `<text x="${params.x}" y="${baselineStart + index * params.lineHeight}" class="headline" font-size="${params.fontSize}" text-anchor="middle">${escapeXml(line)}</text>`,
+    )
+    .join("");
+
+  return `<g><rect x="${left}" y="${top}" width="${Math.round(params.metrics.backgroundWidth)}" height="${Math.round(params.metrics.backgroundHeight)}" rx="${radius}" fill="${HEADLINE_BACKGROUND_FILL}"/>${lines}</g>`;
 }
 
 function getPreferredCenterRatio(position: PlannedCarouselSlide["textPosition"]) {
@@ -712,6 +778,14 @@ type OverlayLayers = {
   diagnostics: CarouselRenderDiagnostics;
   overlay: Buffer;
 };
+
+function getHeadlineWrapCornerSafety(fontSize: number) {
+  return (
+    clamp(Math.round(fontSize * 0.3), 14, 16) +
+    MIN_CORNER_SAFETY +
+    HEADLINE_BACKGROUND_PADDING_X
+  );
+}
 
 function getBodyWrapCornerSafety(fontSize: number) {
   return clamp(Math.round(fontSize * 0.3), 14, 16) + MIN_CORNER_SAFETY;
@@ -764,11 +838,11 @@ async function buildOverlaySvg(params: {
     fontSize: CAROUSEL_FIXED_FONT_SIZE,
     fontFamily: TEXT_FONT_FAMILY,
     fontWeight: BODY_FONT_WEIGHT,
-    getCornerSafety: getBodyWrapCornerSafety,
+    getCornerSafety: getHeadlineWrapCornerSafety,
     lineHeightRatio: 1.04,
     maxLines: CAROUSEL_STRUCTURE_1_HEADLINE_MAX_LINES,
     maxWidth: maxTextWidth,
-    paddingX: bodyPaddingX,
+    paddingX: HEADLINE_BACKGROUND_PADDING_X,
   });
   const body = hasStackedBody
     ? await fitStackedText(stackedBodyLines, {
@@ -800,7 +874,7 @@ async function buildOverlaySvg(params: {
           measuredLineExtents: [],
           measuredLineWidths: [],
         };
-  const headlineMetrics = measurePlainText({
+  const headlineMetrics = measureHeadingSvgBackground({
     lineHeight: headline.lineHeight,
     lines: headline.lines,
     measuredLineExtents: headline.measuredLineExtents,
@@ -827,7 +901,7 @@ async function buildOverlaySvg(params: {
     params.height - safeMarginY - blockHeight,
   );
   const widestTextGroup = Math.max(
-    headlineMetrics.maximumTextWidth,
+    headlineMetrics.backgroundWidth,
     bodyMetrics.maximumTextWidth,
   );
   const textX = params.normalizedTextPosition
@@ -841,11 +915,11 @@ async function buildOverlaySvg(params: {
     : Math.round(params.width / 2);
   const headlineY = blockTop;
   const bodyY = headlineY + headlineMetrics.groupHeight + blockGap;
-  const headlineMarkup = buildPlainWhiteText({
-    className: "text",
+  const headlineMarkup = buildHeadingSvgText({
     fontSize: headline.fontSize,
     lineHeight: headline.lineHeight,
     lines: headline.lines,
+    metrics: headlineMetrics,
     x: textX,
     y: headlineY,
   });
@@ -858,15 +932,19 @@ async function buildOverlaySvg(params: {
     y: bodyY,
   });
   const style = `
+    .headline { fill: ${HEADLINE_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${BODY_FONT_WEIGHT}; letter-spacing: 0; }
     .text { fill: ${BODY_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${BODY_FONT_WEIGHT}; letter-spacing: 0; paint-order: stroke fill; stroke: #000000; stroke-linejoin: round; stroke-opacity: 0.72; stroke-width: 4px; }
   `;
 
   return {
     diagnostics: {
-      bubbleShapeStrategy: "plain-white-text-with-shadow",
+      bubbleShapeStrategy:
+        headline.lines.length > 0
+          ? "heading-white-svg-background"
+          : "plain-white-text-with-outline",
       fontFamily: TEXT_FONT_FAMILY,
       maxTextWidth,
-      whiteBackgroundGroupCount: 0,
+      whiteBackgroundGroupCount: headline.lines.length > 0 ? 1 : 0,
     },
     overlay: buildSvgDocument({
       content: `${headlineMarkup}${bodyMarkup}`,

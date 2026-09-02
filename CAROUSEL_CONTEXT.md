@@ -1093,11 +1093,14 @@ Balanced carousel copy rules:
   body text to at most eight rendered lines, and body text on Slides 2-5 to at
   most ten rendered lines.
 - A headline and its supporting copy remain two distinct text groups. Structure
-  1 and Structure 2 both render every visible group as ordinary white SVG text
-  directly on the image. Neither structure receives a white SVG background.
-- Both structures retain measured wrapping and safe-area containment with
-  fixed-size white type plus a restrained dark outline/shadow for legibility.
-  Never shrink, truncate, add an ellipsis, or substitute fallback copy.
+  1 renders every actual headline group over one measured white SVG background
+  with dark text. Its supporting body, list, and CTA groups remain ordinary
+  white SVG text directly on the image. Structure 2 has no separate headline
+  field, so its story and CTA groups remain direct white text with no white SVG
+  background.
+- Both structures retain measured wrapping and safe-area containment. Direct
+  white text uses a restrained dark outline for legibility; headline text never
+  shrinks, truncates, adds an ellipsis, or substitutes fallback copy.
 - JSON/schema validity, the backend-selected format, exact slide order and
   roles, required fields, renderer character limits, product timing, prohibited
   visual subjects, and unsupported/prohibited claims are publishing gates.
@@ -4019,11 +4022,33 @@ Name: **Verify v26 and replace the stale production assignment**
 - Existing rendered Carousel images remain immutable; the 4px outline applies
   to new generations and slides that are explicitly re-rendered.
 
+## 2026-09-02 Structure 1 Heading-Only White SVG Background
+
+- A Structure 1 slide whose visible `headline` is rendered as a headline gets
+  exactly one measured, rounded white SVG background behind that heading. The
+  heading uses dark Geist SemiBold text so it is visually distinct from the
+  image and remains readable across all approved backgrounds.
+- This treatment is semantic, not image-role-based: a Slide 1 Hook-library
+  asset does not receive a background merely for being a hook image. It does
+  receive the white SVG background when that slide also has a visible heading.
+  A body-only or single-statement slide remains direct white text, as do every
+  Structure 1 body, list, and CTA group.
+- A heading remains optional content, not a writing requirement. The planner
+  must not add one merely to activate this treatment; when body copy works on
+  its own, it uses `body_only` with a null headline and receives no white SVG
+  background.
+- Structure 2 has story and CTA fields rather than a separate heading field.
+  Its direct-white story/CTA treatment is unchanged; no white background is
+  inferred for it.
+- New Structure 1 renders and explicit Structure 1 edit re-renders use
+  `social-heading-svg-renderer-v18-outline-4`. Existing rendered images remain
+  immutable.
+
 ## 2026-09-01 Compact-Laptop Trending 9:16 Review Frames
 
 - Hook and Wall-of-Text Trending cards use the same shared 9:16 sizing rule.
-  The maximum review-frame width is 290px (about 516px tall) at the common
-  1366px-wide compact-laptop view, then tapers smoothly to 270px by 1536px
+  The maximum review-frame width is 280px (about 498px tall) at the common
+  1366px-wide compact-laptop view, then tapers smoothly to 260px by 1536px
   wide. The available-height calculation still protects the format label,
   stacked preview clearance, decision controls, and progress text on short
   laptop screens.
@@ -4042,7 +4067,8 @@ Name: **Verify v26 and replace the stale production assignment**
   available-height-based lower offset. Hook and Wall-of-Text pills keep a
   small, explicit gap above their own next-card layer. This preserves card
   size while preventing labels and decisions from overlapping preview media.
-- The larger 290px vertical frame retains that external-control contract. When
-  a Slideshow reveals it as the next stacked card, the review deck moves down
-  by 12px on laptop/desktop viewports, while its pill and decision row reserve
-  at least a 12px visual gap from the taller media layer.
+- The reduced vertical frame retains that external-control contract. When a
+  Slideshow reveals a Hook or Wall card as its next stacked card, its decision
+  row reserves the card's full promoted 9:16 height—not only its smaller
+  resting-preview height—so the media cannot overlap Reject or Accept while
+  the swipe transition is in progress.

@@ -400,7 +400,7 @@ const MAX_ROTATION_DEGREES = 5;
 const CAROUSEL_REVIEW_CARD_WIDTH_CLASS =
   "w-[min(78vw,270px,calc((100dvh-348px)*0.8))]";
 const VERTICAL_REVIEW_CARD_WIDTH_CLASS =
-  "w-[min(76vw,230px,calc((100dvh-348px)*0.5625))] min-[1024px]:w-[min(76vw,clamp(270px,calc(450.5px-11.75vw),290px),calc((100dvh-252px)*0.5625))]";
+  "w-[min(76vw,230px,calc((100dvh-348px)*0.5625))] min-[1024px]:w-[min(76vw,clamp(260px,calc(440.5px-11.75vw),280px),calc((100dvh-252px)*0.5625))]";
 const CAROUSEL_REVIEW_CARD_FRAME_CLASS =
   `${CAROUSEL_REVIEW_CARD_WIDTH_CLASS} aspect-[4/5]`;
 const VERTICAL_REVIEW_CARD_FRAME_CLASS =
@@ -1935,6 +1935,11 @@ function TrendingDeck({
   );
   const deckPresentation: TrendingDeckPresentation =
     activeCandidate?.format === "carousel" ? "centered" : "video_peek";
+  const hasVerticalNextCard =
+    activeCandidate?.format === "carousel" &&
+    deckSlots.some(
+      (slot) => slot.depth === 1 && slot.candidate.format !== "carousel",
+    );
   const handleHookPreviewStatusChange = useCallback(
     (creativeId: string, status: HookPreviewStatus) => {
       setHookPreviewStatusByCreativeId((current) =>
@@ -2678,7 +2683,10 @@ function TrendingDeck({
             <div
               className={cn(
                 "absolute left-1/2 z-40 flex w-max -translate-x-1/2 flex-col items-center",
-                getTrendingDecisionControlsPositionClass(activeCandidate.format),
+                getTrendingDecisionControlsPositionClass(
+                  activeCandidate.format,
+                  hasVerticalNextCard,
+                ),
               )}
             >
               <CreativeDecisionActions
@@ -3185,13 +3193,21 @@ function getTrendingReviewDeckPositionClass(
 
 function getTrendingDecisionControlsPositionClass(
   format: TrendingCandidate["format"],
+  hasVerticalNextCard: boolean,
 ) {
   if (format !== "carousel") {
     return "top-full";
   }
 
-  // A tall next card can extend below an active 4:5 slideshow card. Move the
-  // decision row only as the available height makes that lower layer visible.
+  if (hasVerticalNextCard) {
+    // During a Carousel swipe the vertical next card grows from its preview
+    // size to its full 9:16 height. Reserve that promoted height so it cannot
+    // run into the decision controls before it becomes the active card.
+    return "top-full min-[1024px]:top-[calc(100%+clamp(44px,calc((100dvh-600px)*0.5),80px))]";
+  }
+
+  // Keep the existing Carousel-only decision-row position when every visible
+  // card uses the Carousel's 4:5 frame.
   return "top-full min-[1024px]:top-[calc(100%+clamp(24px,calc((100dvh-680px)*0.72),52px))]";
 }
 

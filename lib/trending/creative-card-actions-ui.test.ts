@@ -387,7 +387,7 @@ test("centers a card-sized review frame over visible inert next-card layers", ()
   );
   assert.match(
     workspace,
-    /VERTICAL_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(76vw,230px,calc\(\(100dvh-348px\)\*0\.5625\)\)\] min-\[1024px\]:w-\[min\(76vw,clamp\(270px,calc\(450\.5px-11\.75vw\),290px\),calc\(\(100dvh-252px\)\*0\.5625\)\)\]"/,
+    /VERTICAL_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(76vw,230px,calc\(\(100dvh-348px\)\*0\.5625\)\)\] min-\[1024px\]:w-\[min\(76vw,clamp\(260px,calc\(440\.5px-11\.75vw\),280px\),calc\(\(100dvh-252px\)\*0\.5625\)\)\]"/,
   );
   assert.match(
     workspace,
@@ -406,11 +406,15 @@ test("centers a card-sized review frame over visible inert next-card layers", ()
   );
   assert.match(
     workspace,
-    /getTrendingDecisionControlsPositionClass\(activeCandidate\.format\)/,
+    /getTrendingDecisionControlsPositionClass\(\s*activeCandidate\.format,\s*hasVerticalNextCard,\s*\)/,
   );
   assert.match(
     workspace,
-    /function getTrendingDecisionControlsPositionClass[\s\S]*format !== "carousel"[\s\S]*top-full min-\[1024px\]:top-\[calc\(100%\+clamp\(24px,calc\(\(100dvh-680px\)\*0\.72\),52px\)\)\]/,
+    /const hasVerticalNextCard\s*=\s*activeCandidate\?\.format === "carousel"[\s\S]*slot\.depth === 1 && slot\.candidate\.format !== "carousel"/,
+  );
+  assert.match(
+    workspace,
+    /function getTrendingDecisionControlsPositionClass[\s\S]*hasVerticalNextCard: boolean[\s\S]*if \(hasVerticalNextCard\)[\s\S]*top-full min-\[1024px\]:top-\[calc\(100%\+clamp\(44px,calc\(\(100dvh-600px\)\*0\.5\),80px\)\)\][\s\S]*top-full min-\[1024px\]:top-\[calc\(100%\+clamp\(24px,calc\(\(100dvh-680px\)\*0\.72\),52px\)\)\]/,
   );
   assert.equal(
     (workspace.match(/data-trending-card-state=/g) ?? []).length,
@@ -656,7 +660,7 @@ test("defers the Trending Hook composer until an accepted Hook opens it", () => 
   assert.match(workspace, /function HookVideoComposerLoading\(\)/);
 });
 
-test("Carousel editing keeps the renderer's outlined white text treatment while dragging", () => {
+test("Carousel editing previews the heading-only white background treatment", () => {
   assert.match(editor, /data-carousel-editor-preview=\{/);
   assert.match(editor, /showExactRender \? "exact-render" : "live-render"/);
   assert.match(editor, /function getExactCarouselPreviewUrl/);
@@ -667,9 +671,16 @@ test("Carousel editing keeps the renderer's outlined white text treatment while 
   assert.match(editor, /function CarouselEditorBackground/);
   assert.match(editor, /story_product_reveal/);
   assert.match(editor, /function CarouselOutlinedText/);
+  assert.match(
+    editor,
+    /kind === "headline" \? \(\s*<span className="box-decoration-clone rounded-\[1\.8cqw\] bg-white/,
+  );
+  assert.match(
+    editor,
+    /kind === "body"\s*\? \{\s*paintOrder: "stroke fill",\s*WebkitTextStroke: "0\.370cqw rgba\(0, 0, 0, 0\.72\)"/,
+  );
   assert.doesNotMatch(editor, /function CarouselBubbleText/);
   assert.doesNotMatch(editor, /fill="#ffffff"/);
-  assert.doesNotMatch(editor, /bg-white/);
   assert.doesNotMatch(editor, /<feDropShadow/);
   assert.match(editor, /Rendered as the bottom action label\./);
 });

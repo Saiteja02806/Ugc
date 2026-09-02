@@ -27,6 +27,13 @@ const editService = readFileSync(
   new URL("./creative-edit-service.ts", import.meta.url),
   "utf8",
 );
+const carouselEditRenderJob = readFileSync(
+  new URL(
+    "../../worker/src/jobs/render-trending-carousel-edit.ts",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 test("creative edits are owner scoped and revision fenced", () => {
   assert.match(migration, /create table if not exists public\.trending_creative_edits/);
@@ -60,6 +67,16 @@ test("manual Hook and Wall saves use their publishing limits", () => {
   assert.match(editor, /<textarea\s+id="trending-hook-text"/);
   assert.match(editor, /HOOK_TEXT_MAXIMUM_LINES/);
   assert.doesNotMatch(editor, /final two-line layout/);
+});
+
+test("Carousel headings remain optional in the editor and render job", () => {
+  assert.match(editRoute, /headline:\s*z\.string\(\)\.trim\(\)\.max\(180\)/);
+  assert.doesNotMatch(editRoute, /headline:\s*z\.string\(\)\.trim\(\)\.min\(1\)/);
+  assert.doesNotMatch(editor, /Every Carousel slide needs a headline\./);
+  assert.match(
+    carouselEditRenderJob,
+    /headline:\s*getOptionalString\(slide\.headline, 180\)/,
+  );
 });
 
 test("Hook and Wall edits support an entire library or one exact video", () => {

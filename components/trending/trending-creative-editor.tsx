@@ -1207,10 +1207,9 @@ function EditorPreview({
             <Structure2StoryText layout={structure2Layout} />
           ) : (
             <div className="w-[82cqw] text-center">
-              <CarouselOutlinedText
-                kind="headline"
-                text={slide.headline || "Add a headline"}
-              />
+              {slide.headline.trim() ? (
+                <CarouselOutlinedText kind="headline" text={slide.headline} />
+              ) : null}
               {supportingText ? (
                 <CarouselOutlinedText kind="body" text={supportingText} />
               ) : null}
@@ -1377,7 +1376,7 @@ function CarouselEditorBackground({
 }) {
   if (slide.structureId === "structure_1") {
     return (
-      // Structure 1 composes its connected text bubbles over the normalized image.
+      // Structure 1 composes its heading-only white SVG background over this image.
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={slide.backgroundUrl || slide.renderedUrl}
@@ -1695,19 +1694,29 @@ function CarouselOutlinedText({
   return (
     <p
       className={cn(
-        "mx-auto max-w-[78cqw] text-center text-white",
+        "mx-auto max-w-[78cqw] text-center",
         kind === "headline"
           ? "text-[4.074cqw] font-semibold leading-[1.04]"
-          : "mt-[2.2cqw] text-[4.074cqw] font-semibold leading-[1.05]",
+          : "mt-[2.2cqw] text-[4.074cqw] font-semibold leading-[1.05] text-white",
       )}
       style={{
         fontFamily: 'var(--font-geist-sans), Geist, Arial, Helvetica, sans-serif',
         letterSpacing: 0,
-        paintOrder: "stroke fill",
-        WebkitTextStroke: "0.370cqw rgba(0, 0, 0, 0.72)",
+        ...(kind === "body"
+          ? {
+              paintOrder: "stroke fill",
+              WebkitTextStroke: "0.370cqw rgba(0, 0, 0, 0.72)",
+            }
+          : {}),
       }}
     >
-      {text}
+      {kind === "headline" ? (
+        <span className="box-decoration-clone rounded-[1.8cqw] bg-white px-[2.2cqw] py-[0.7cqw] text-[#111316]">
+          {text}
+        </span>
+      ) : (
+        text
+      )}
     </p>
   );
 }
@@ -3196,13 +3205,6 @@ function toPatchPayload(
 }
 
 function validateContent(content: TrendingCreativeEditContent) {
-  if (
-    content.format === "carousel" &&
-    content.slides.some((slide) => !slide.headline.trim())
-  ) {
-    return "Every Carousel slide needs a headline.";
-  }
-
   if (content.format === "hook_video") {
     try {
       createHookTextLayout(content.hookText, {

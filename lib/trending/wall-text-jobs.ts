@@ -8,7 +8,10 @@ import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
 import { getBackgroundJobForUser } from "@/lib/jobs/background-jobs";
 import { ensureWallTextContentPlanGeneration } from "@/lib/trending/wall-text-content-plan-generation-job";
 import { WALL_TEXT_PERSISTENCE_REJECTED } from "@/lib/trending/wall-text-generation-failure";
-import { WALL_TEXT_GENERATOR_VERSION } from "@/lib/trending/wall-text-types";
+import {
+  WALL_TEXT_FINAL_LAYOUT_VERSION,
+  WALL_TEXT_GENERATOR_VERSION,
+} from "@/lib/trending/wall-text-types";
 
 export async function enqueueTrendingWallTextJob(params: {
   businessProfileId: string;
@@ -47,6 +50,7 @@ export async function enqueueTrendingWallTextJob(params: {
     params.businessProfileId,
     `v${params.businessProfileVersion}`,
     WALL_TEXT_GENERATOR_VERSION,
+    WALL_TEXT_FINAL_LAYOUT_VERSION,
     ...(params.refillKey ? [`refill-${params.refillKey}`] : []),
     ...(params.recoveryKey ? [`recovery-${params.recoveryKey}`] : []),
     `count-${Math.min(Math.max(Math.trunc(params.requestedCount ?? 6), 1), 50)}`,

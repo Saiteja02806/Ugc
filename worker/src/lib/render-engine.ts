@@ -1355,7 +1355,8 @@ export function ensureWallTextFontsRegistered() {
 async function registerWallTextFonts() {
   const fonts = await Promise.all([
     getWallTextFont({ family: "Inter" }),
-    getWallTextFont({ family: "Arial" }),
+    getWallTextFont({ family: "ArialBold" }),
+    getWallTextFont({ family: "ArialRegular" }),
   ]);
 
   await Promise.all(
@@ -1418,10 +1419,10 @@ async function validateWallTextRenderedLineWidths(
 /**
  * The browser produces the initial semantic layout, but its font engine is
  * not byte-for-byte identical to the packaged renderer font. Reflow the
- * persisted legacy layout with the renderer's own Inter metrics before
- * drawing it, so a one-pixel metrics difference never turns a valid Reel into
- * a failed background job. V3 uses the exact same bundled Arial Bold bytes in
- * both layout stages, so its measured five-to-eight-line layout is immutable.
+ * persisted layout with the renderer's own Inter metrics before drawing it,
+ * so a one-pixel metrics difference never turns a valid Reel into a failed
+ * background job. V3 and V4 use the exact same bundled Arial font bytes in
+ * both layout stages, so their measured four-to-eight-line layouts are immutable.
  */
 export async function reflowWallTextContentForRenderer(params: {
   content: WallTextRenderContent;
@@ -1431,7 +1432,8 @@ export async function reflowWallTextContentForRenderer(params: {
 
   if (
     !content.finalLayout ||
-    content.finalLayout.version === "wall-text-final-layout-v3"
+    content.finalLayout.version === "wall-text-final-layout-v3" ||
+    content.finalLayout.version === "wall-text-final-layout-v4"
   ) {
     return content;
   }
@@ -1458,7 +1460,7 @@ export async function reflowWallTextContentForRenderer(params: {
     const lineCount = blocks.reduce((total, block) => total + block.lines.length, 0);
 
     if (
-      ["wall-text-final-layout-v2", "wall-text-final-layout-v3"].includes(
+      ["wall-text-final-layout-v2", "wall-text-final-layout-v3", "wall-text-final-layout-v4"].includes(
         content.finalLayout.version,
       ) &&
       (lineCount < 4 || lineCount > 8)
@@ -1698,7 +1700,7 @@ function getWallTextPixelBounds(params: {
 }
 
 type WallTextRenderFont = {
-  name: "Arial Bold" | "Inter Regular";
+  name: "Arial Bold" | "Arial Regular" | "Inter Regular";
   path: string;
 };
 
@@ -1706,31 +1708,36 @@ async function getWallTextFontForContent(content: WallTextRenderContent) {
   return getWallTextFont({
     family:
       content.finalLayout?.version === "wall-text-final-layout-v3"
-        ? "Arial"
-        : "Inter",
+        ? "ArialBold"
+        : content.finalLayout?.version === "wall-text-final-layout-v4"
+          ? "ArialRegular"
+          : "Inter",
   });
 }
 
 async function getWallTextFont(params: {
-  family: "Arial" | "Inter";
+  family: "ArialBold" | "ArialRegular" | "Inter";
 }): Promise<WallTextRenderFont> {
-  if (params.family === "Arial") {
+  if (params.family === "ArialBold" || params.family === "ArialRegular") {
+    const isBold = params.family === "ArialBold";
+    const fileName = isBold ? "arial-bold.ttf" : "arial-regular.ttf";
+    const fontName = isBold ? "Arial Bold" : "Arial Regular";
     const candidatePaths = [
-      join(process.cwd(), "assets", "fonts", "arial-bold.ttf"),
-      join(process.cwd(), "worker", "src", "assets", "fonts", "arial-bold.ttf"),
+      join(process.cwd(), "assets", "fonts", fileName),
+      join(process.cwd(), "worker", "src", "assets", "fonts", fileName),
     ];
 
     for (const fontPath of candidatePaths) {
       try {
         await readFile(fontPath);
-        return { name: "Arial Bold", path: fontPath };
+        return { name: fontName, path: fontPath };
       } catch {
         // Try the next packaged font path.
       }
     }
 
     throw new Error(
-      "Arial Bold is unavailable; refusing to render Wall-of-text with a fallback font.",
+      `${fontName} is unavailable; refusing to render Wall-of-text with a fallback font.`,
     );
   }
 

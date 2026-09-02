@@ -32,6 +32,7 @@ import { isRenderableWallTextDuration } from "@/lib/trending/wall-text-feed-logi
 import { createWallTextDuplicateSignature } from "@/lib/trending/wall-text-duplicate-logic";
 import { classifyWallTextEdit } from "@/lib/trending/wall-text-edit-attribution";
 import { getWallTextPreviewTitle } from "@/lib/trending/wall-text-text-logic";
+import { toWallTextRenderTransportContent } from "@/lib/trending/wall-text-render-transport";
 import { DEFAULT_TRENDING_TEXT_COLOR } from "@/lib/trending/text-color";
 
 export const WALL_TEXT_RENDER_JOB_TYPE = "render_wall_text_video";
@@ -239,7 +240,9 @@ export async function requestWallTextRender(params: {
         projectId: "trending-wall-text",
         renderId: claimed.render_id,
         sourceVideoUrl,
-        text: editedContent?.content ?? draft.text,
+        text: toWallTextRenderTransportContent(
+          editedContent?.content ?? draft.text,
+        ),
         textColor: editedContent?.textColor ?? DEFAULT_TRENDING_TEXT_COLOR,
         title: getWallTextPreviewTitle(
           editedContent?.content.fullText ?? draft.text.fullText,

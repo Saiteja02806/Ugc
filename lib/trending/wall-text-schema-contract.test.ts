@@ -122,6 +122,13 @@ const backgroundReuseMigration = readFileSync(
   ),
   "utf8",
 );
+const regularTypographyMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260902120000_add_wall_text_regular_typography.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const generatorSource = readFileSync(
   new URL("./generate-trending-wall-text-ideas.ts", import.meta.url),
   "utf8",
@@ -591,7 +598,7 @@ test("keeps the approved thirty Wall formats in one controlled registry", () => 
   );
 });
 
-test("measures new final Wall lines with packaged Arial Bold before saving authoritative layout", () => {
+test("measures new final Wall lines with packaged Arial Regular before saving authoritative layout", () => {
   assert.match(layoutEngineSource, /fontFamily: "Arial"/);
   assert.match(layoutEngineSource, /sharp\([\s\S]+\.metadata\(\)/);
   assert.match(layoutEngineSource, /finalLayout,/);
@@ -664,7 +671,7 @@ test("runs the final render-fit gate before generated Wall copy reaches storage"
   );
 });
 
-test("rejects the reported overflow and synchronizes a safe fallback font", () => {
+test("rejects the reported overflow and synchronizes the measured font fit", () => {
   const loaderPath = new URL(
     "../../scripts/next-server-only-test-loader.mjs",
     import.meta.url,
@@ -799,7 +806,10 @@ test("rejects the reported overflow and synchronizes a safe fallback font", () =
 
   assert.equal(result.rejected, true);
   assert.equal(result.fit.valid, true);
-  assert.ok(result.fit.fontSize < 52);
+  // Arial Regular is narrower than the former Inter treatment, so this
+  // measured layout legitimately fits at the requested 52px size. The
+  // contract is that the same verified face determines both layout and fit.
+  assert.ok(result.fit.fontSize <= 52);
   assert.ok(result.fit.maximumLineWidth + 8 < 750);
   assert.equal(result.appliedRenderFont, result.fit.fontSize);
   assert.equal(result.appliedFinalFont, result.fit.fontSize);
@@ -808,24 +818,29 @@ test("rejects the reported overflow and synchronizes a safe fallback font", () =
   assert.ok(result.lines.length >= 5 && result.lines.length <= 8);
 });
 
-test("uses packaged Arial Bold glyphs at 500 with the restored 44-52px Wall scale", () => {
-  assert.match(visualStyleSource, /WALL_TEXT_FONT_WEIGHT = 500/);
+test("uses packaged Arial Regular glyphs at 400 for new Wall content while retaining V3 compatibility", () => {
+  assert.match(visualStyleSource, /WALL_TEXT_FONT_WEIGHT = 400/);
   assert.match(visualStyleSource, /WALL_TEXT_MINIMUM_FONT_SIZE = 44/);
   assert.match(visualStyleSource, /WALL_TEXT_MAXIMUM_FONT_SIZE = 52/);
-  assert.match(layoutEngineSource, /Arial Bold \$\{fontSize\}/);
-  assert.match(layoutEngineSource, /getVerifiedWallTextArialBoldFontPath/);
+  assert.match(layoutEngineSource, /Arial Regular \$\{fontSize\}/);
+  assert.match(layoutEngineSource, /getVerifiedWallTextArialRegularFontPath/);
+  assert.match(layoutEngineSource, /fontWeight: WALL_TEXT_FONT_WEIGHT/);
   assert.match(renderValidationSource, /Arial Bold/);
+  assert.match(renderValidationSource, /Arial Regular/);
+  assert.match(renderValidationSource, /Inter Regular/);
   assert.match(renderValidationSource, /getVerifiedWallTextArialBoldFontPath/);
+  assert.match(renderValidationSource, /getVerifiedWallTextArialRegularFontPath/);
   assert.match(fontMeasurementSource, /arial-bold\.ttf/);
+  assert.match(fontMeasurementSource, /arial-regular\.ttf/);
   assert.match(fontMeasurementSource, /inter-variable\.ttf/);
   assert.match(fontMeasurementSource, /FONTCONFIG_FILE/);
   assert.match(
     fontMeasurementSource,
-    /ARIAL_BOLD_FONT_PATH[\s\S]+packaged \$\{params\.label\} font is unavailable/,
+    /ARIAL_REGULAR_FONT_PATH[\s\S]+packaged \$\{params\.label\} font is unavailable/,
   );
   assert.match(
     nextConfigSource,
-    /outputFileTracingIncludes[\s\S]+arial-bold\.ttf[\s\S]+inter-variable\.ttf[\s\S]+fontconfig[\\/]fonts\.conf/,
+    /outputFileTracingIncludes[\s\S]+arial-bold\.ttf[\s\S]+arial-regular\.ttf[\s\S]+inter-variable\.ttf[\s\S]+fontconfig[\\/]fonts\.conf/,
   );
   assert.match(overlaySource, /fontWeight: typography\.fontWeight/);
   assert.match(editorSource, /fontWeight: typography\.fontWeight/);
@@ -836,6 +851,18 @@ test("uses packaged Arial Bold glyphs at 500 with the restored 44-52px Wall scal
   assert.match(
     rootLayoutSource,
     /arial-bold\.ttf[\s\S]+variable: "--font-wall-text-arial"[\s\S]+weight: "500"/,
+  );
+  assert.match(
+    rootLayoutSource,
+    /arial-regular\.ttf[\s\S]+variable: "--font-wall-text-arial-regular"[\s\S]+weight: "400"/,
+  );
+  assert.match(
+    rootLayoutSource,
+    /inter-latin-400-normal\.woff2[\s\S]+variable: "--font-wall-text-inter"[\s\S]+weight: "400"/,
+  );
+  assert.match(
+    regularTypographyMigration,
+    /wall-text-overlay-v8[\s\S]+wall-text-final-layout-v4[\s\S]+fontFamily' = 'Arial'[\s\S]+fontWeight'\)::integer = 400/,
   );
 });
 
@@ -974,10 +1001,12 @@ test("balances the reported Wall example into readable measured lines", () => {
   const layout = JSON.parse(output) as {
     blocks: Array<{ lines: string[] }>;
     fontFamily: string;
+    fontWeight: number;
     lineHeightPx: number;
   };
 
   assert.equal(layout.fontFamily, "Arial");
+  assert.equal(layout.fontWeight, 400);
   assert.equal(layout.lineHeightPx, 57.2);
   const lines = layout.blocks.flatMap((block) => block.lines);
   assert.ok(lines.length >= 5 && lines.length <= 8);
@@ -1026,6 +1055,8 @@ test("V9 keeps every word in one measured 5-8 line block", () => {
     content: {
       finalLayout: {
         blocks: Array<{ lines: string[]; role: string }>;
+        fontFamily: string;
+        fontWeight: number;
         textBox: { width: number };
         version: string;
       };
@@ -1036,7 +1067,9 @@ test("V9 keeps every word in one measured 5-8 line block", () => {
   const lines = result.content.finalLayout.blocks.flatMap((block) => block.lines);
   assert.equal(result.content.fullText, original);
   assert.equal(result.content.sourceContent.kind, "text");
-  assert.equal(result.content.finalLayout.version, "wall-text-final-layout-v3");
+  assert.equal(result.content.finalLayout.version, "wall-text-final-layout-v4");
+  assert.equal(result.content.finalLayout.fontFamily, "Arial");
+  assert.equal(result.content.finalLayout.fontWeight, 400);
   assert.equal(result.content.finalLayout.blocks.length, 1);
   assert.equal(result.content.finalLayout.blocks[0]?.role, "text");
   assert.ok(lines.length >= 5 && lines.length <= 8);

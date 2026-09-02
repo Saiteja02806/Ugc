@@ -14,6 +14,7 @@ import type {
 } from "@/lib/trending/wall-text-types";
 import {
   WALL_TEXT_GENERATOR_VERSION,
+  WALL_TEXT_FINAL_LAYOUT_VERSION,
   WALL_TEXT_FORMAT_IDS,
   WALL_TEXT_PATTERNS,
   WALL_TEXT_PLACEMENT_ZONES,
@@ -34,6 +35,7 @@ import {
 } from "@/lib/trending/wall-audio-db";
 import type { WallTextDuplicateSignature } from "@/lib/trending/wall-text-duplicate-logic";
 import {
+  LEGACY_WALL_TEXT_ARIAL_BOLD_FONT_WEIGHT,
   LEGACY_WALL_TEXT_FONT_WEIGHT,
   WALL_TEXT_FONT_WEIGHT,
 } from "@/lib/trending/wall-text-visual-style";
@@ -1370,6 +1372,7 @@ export function isTrendingWallTextCreativeCurrent(
   return (
     creative.generator_version === WALL_TEXT_GENERATOR_VERSION &&
     content?.renderSafetyVersion === WALL_TEXT_RENDER_SAFETY_VERSION &&
+    content?.finalLayout?.version === WALL_TEXT_FINAL_LAYOUT_VERSION &&
     content.finalLayout !== undefined &&
     parseWallTextLayout(creative.layout) !== null
   );
@@ -2145,7 +2148,7 @@ export function parseWallTextContent(
   if (
     isJsonObject(value) &&
     value.kind === "wall_text" &&
-    ["wall-text-overlay-v5", "wall-text-overlay-v6", "wall-text-overlay-v7"].includes(
+    ["wall-text-overlay-v5", "wall-text-overlay-v6", "wall-text-overlay-v7", "wall-text-overlay-v8"].includes(
       String(value.layoutVersion),
     )
   ) {
@@ -2265,25 +2268,31 @@ function parseCurrentWallTextContent(
         : null;
   const finalLayout = value.finalLayout;
   const textBox = parseNormalizedBox(finalLayout.textBox);
+  const isArialRegularV8 = value.layoutVersion === "wall-text-overlay-v8";
   const isArialV7 = value.layoutVersion === "wall-text-overlay-v7";
   const isPlainTextLayout =
-    value.layoutVersion === "wall-text-overlay-v6" || isArialV7;
+    value.layoutVersion === "wall-text-overlay-v6" || isArialV7 || isArialRegularV8;
 
   if (
     !parsedSource ||
     finalLayout.version !==
-      (isArialV7
-        ? "wall-text-final-layout-v3"
-        : isPlainTextLayout
-          ? "wall-text-final-layout-v2"
-          : "wall-text-final-layout-v1") ||
-    (isArialV7
+      (isArialRegularV8
+        ? "wall-text-final-layout-v4"
+        : isArialV7
+          ? "wall-text-final-layout-v3"
+          : isPlainTextLayout
+            ? "wall-text-final-layout-v2"
+            : "wall-text-final-layout-v1") ||
+    (isArialRegularV8
       ? finalLayout.fontFamily !== "Arial" ||
         Number(finalLayout.fontWeight) !== WALL_TEXT_FONT_WEIGHT
-      : finalLayout.fontFamily !== "Inter" ||
-        ![400, 600, LEGACY_WALL_TEXT_FONT_WEIGHT].includes(
-          Number(finalLayout.fontWeight),
-        )) ||
+      : isArialV7
+        ? finalLayout.fontFamily !== "Arial" ||
+          Number(finalLayout.fontWeight) !== LEGACY_WALL_TEXT_ARIAL_BOLD_FONT_WEIGHT
+        : finalLayout.fontFamily !== "Inter" ||
+          ![400, 600, LEGACY_WALL_TEXT_FONT_WEIGHT].includes(
+            Number(finalLayout.fontWeight),
+          )) ||
     ![36, 38, 40, 42, 44, 46, 48, 50, 52].includes(Number(finalLayout.fontSizePx)) ||
     typeof finalLayout.lineHeightPx !== "number" ||
     finalLayout.lineHeightPx <= 0 ||
@@ -2337,17 +2346,27 @@ function parseCurrentWallTextContent(
   const formatId = value.formatId as (typeof WALL_TEXT_PATTERNS)[number];
 
   const fontSizePx = normalizeCurrentWallTextFontSize(Number(finalLayout.fontSizePx));
-  const parsedFinalLayout = isArialV7
+  const parsedFinalLayout = isArialRegularV8
     ? {
         blocks,
         fontFamily: "Arial" as const,
         fontSizePx,
-        fontWeight: WALL_TEXT_FONT_WEIGHT as 500,
+        fontWeight: WALL_TEXT_FONT_WEIGHT as 400,
         lineHeightPx: fontSizePx * 1.1,
         textBox,
-        version: "wall-text-final-layout-v3" as const,
+        version: "wall-text-final-layout-v4" as const,
       }
-    : {
+    : isArialV7
+      ? {
+          blocks,
+          fontFamily: "Arial" as const,
+          fontSizePx,
+          fontWeight: LEGACY_WALL_TEXT_ARIAL_BOLD_FONT_WEIGHT as 500,
+          lineHeightPx: fontSizePx * 1.1,
+          textBox,
+          version: "wall-text-final-layout-v3" as const,
+        }
+      : {
         blocks,
         fontFamily: "Inter" as const,
         fontSizePx,
@@ -2364,11 +2383,13 @@ function parseCurrentWallTextContent(
     formatId,
     fullText: normalizedFullText,
     kind: "wall_text",
-    layoutVersion: isArialV7
-      ? "wall-text-overlay-v7"
-      : isPlainTextLayout
-        ? "wall-text-overlay-v6"
-        : "wall-text-overlay-v5",
+    layoutVersion: isArialRegularV8
+      ? "wall-text-overlay-v8"
+      : isArialV7
+        ? "wall-text-overlay-v7"
+        : isPlainTextLayout
+          ? "wall-text-overlay-v6"
+          : "wall-text-overlay-v5",
     pattern: formatId,
     ...(value.renderSafetyVersion === WALL_TEXT_RENDER_SAFETY_VERSION
       ? { renderSafetyVersion: WALL_TEXT_RENDER_SAFETY_VERSION }

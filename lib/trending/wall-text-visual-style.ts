@@ -1,9 +1,10 @@
 import type { TrendingWallTextContent } from "./wall-text-types.ts";
 
-export const WALL_TEXT_FONT_WEIGHT = 500;
+export const WALL_TEXT_FONT_WEIGHT = 400;
 export const WALL_TEXT_FONT_FAMILY = "Arial";
 export const LEGACY_WALL_TEXT_FONT_FAMILY = "Inter";
 export const LEGACY_WALL_TEXT_REGULAR_FONT_WEIGHT = 400;
+export const LEGACY_WALL_TEXT_ARIAL_BOLD_FONT_WEIGHT = 500;
 export const LEGACY_WALL_TEXT_FONT_WEIGHT = 700;
 export const WALL_TEXT_LINE_HEIGHT_FACTOR = 1.1;
 export const WALL_TEXT_MAXIMUM_FONT_SIZE = 52;
@@ -67,7 +68,15 @@ export function getWallTextTypography(content: TrendingWallTextContent) {
   if (content.finalLayout?.version === "wall-text-final-layout-v3") {
     return {
       fontFamily:
-        `var(--font-wall-text-arial), ${WALL_TEXT_FONT_FAMILY}, 'Helvetica Neue', sans-serif`,
+        "var(--font-wall-text-arial), Arial, 'Helvetica Neue', sans-serif",
+      fontWeight: LEGACY_WALL_TEXT_ARIAL_BOLD_FONT_WEIGHT,
+    } as const;
+  }
+
+  if (content.finalLayout?.version === "wall-text-final-layout-v4") {
+    return {
+      fontFamily:
+        "var(--font-wall-text-arial-regular), Arial, 'Helvetica Neue', sans-serif",
       fontWeight: WALL_TEXT_FONT_WEIGHT,
     } as const;
   }

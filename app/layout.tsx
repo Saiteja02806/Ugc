@@ -54,14 +54,22 @@ const interWallText = localFont({
   weight: "400",
 });
 
+const arialRegularWallText = localFont({
+  src: "../lib/trending/fonts/arial-regular.ttf",
+  adjustFontFallback: false,
+  display: "swap",
+  variable: "--font-wall-text-arial-regular",
+  weight: "400",
+});
+
 const arialWallText = localFont({
   src: "../lib/trending/fonts/arial-bold.ttf",
   adjustFontFallback: false,
   display: "swap",
   variable: "--font-wall-text-arial",
-  // The asset is the Arial Bold face. The persisted Wall-text treatment uses
-  // the requested 500 setting, so the browser and worker consume the same
-  // bold glyphs while retaining that product-level weight value.
+  // This is retained only for persisted V3 Wall drafts. New Wall content uses
+  // the separately packaged Arial Regular 400 face above, while old preview
+  // URLs and already-scheduled work retain their original Bold appearance.
   weight: "500",
 });
 
@@ -116,7 +124,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${geistEditOverlay.variable} ${interWallText.variable} ${arialWallText.variable} h-full dark`}
+      className={`${geistSans.variable} ${geistMono.variable} ${geistEditOverlay.variable} ${interWallText.variable} ${arialRegularWallText.variable} ${arialWallText.variable} h-full dark`}
       data-theme="dark"
       style={{
         backgroundColor: THEME_BACKGROUND_COLORS.dark,

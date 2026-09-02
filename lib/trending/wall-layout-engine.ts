@@ -2,7 +2,7 @@ import "server-only";
 
 import sharp from "sharp";
 
-import { getVerifiedWallTextArialBoldFontPath } from "./wall-text-font";
+import { getVerifiedWallTextArialRegularFontPath } from "./wall-text-font";
 
 import {
   WALL_TEXT_CONTENT_LAYOUT_VERSION,
@@ -502,15 +502,15 @@ async function measureText(value: string, fontSize: WallTextFontSize) {
   const metadata = await sharp({
     text: {
       dpi: 72,
-      font: `Arial Bold ${fontSize}`,
-      fontfile: await getVerifiedWallTextArialBoldFontPath(),
+      font: `Arial Regular ${fontSize}`,
+      fontfile: await getVerifiedWallTextArialRegularFontPath(),
       rgba: true,
       text: escapePangoMarkup(value),
       wrap: "none",
     },
   }).metadata();
   const width = metadata.width ?? 0;
-  if (!width) throw new Error("Could not measure Wall-of-text copy with Arial Bold.");
+  if (!width) throw new Error("Could not measure Wall-of-text copy with Arial Regular.");
   measurementCache.set(cacheKey, width);
   return width;
 }

@@ -21,6 +21,7 @@ COPY --from=build /app/node_modules/geist/dist/fonts/geist-sans/Geist-Regular.tt
 COPY --from=build /app/node_modules/geist/dist/fonts/geist-sans/Geist-SemiBold.ttf /usr/local/share/fonts/geist/
 COPY --from=build /app/node_modules/geist/dist/fonts/geist-sans/Geist-Bold.ttf /usr/local/share/fonts/geist/
 COPY --from=build /app/src/assets/fonts/arial-bold.ttf /usr/local/share/fonts/arial/Arial-Bold.ttf
+COPY --from=build /app/src/assets/fonts/arial-regular.ttf /usr/local/share/fonts/arial/Arial-Regular.ttf
 
 RUN fc-cache -f
 

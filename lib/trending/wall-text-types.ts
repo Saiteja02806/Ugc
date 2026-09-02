@@ -1,16 +1,25 @@
 export const WALL_TEXT_CONTENT_LAYOUT_VERSION =
-  "wall-text-overlay-v7" as const;
+  "wall-text-overlay-v8" as const;
 export const PREVIOUS_WALL_TEXT_CONTENT_LAYOUT_VERSION =
-  "wall-text-overlay-v6" as const;
+  "wall-text-overlay-v7" as const;
 export const LEGACY_WALL_TEXT_CONTENT_LAYOUT_VERSION =
-  "wall-text-overlay-v5" as const;
+  "wall-text-overlay-v6" as const;
 export const OLDER_WALL_TEXT_CONTENT_LAYOUT_VERSION =
+  "wall-text-overlay-v5" as const;
+// V4 predates the measured final-layout contract. It remains readable for the
+// writer's historical semantic payloads and must not be reclassified as V5.
+export const HISTORICAL_WALL_TEXT_CONTENT_LAYOUT_VERSION =
   "wall-text-overlay-v4" as const;
 export const WALL_TEXT_LAYOUT_VERSION = "wall-text-layout-v4" as const;
-export const WALL_TEXT_FINAL_LAYOUT_VERSION = "wall-text-final-layout-v3" as const;
+// V4 moves new Wall-of-Text renders from the old Arial Bold treatment to the
+// packaged Arial Regular face at 400. Keep V3 readable for historical drafts
+// and already-rendered videos, but never use it for new content.
+export const WALL_TEXT_FINAL_LAYOUT_VERSION = "wall-text-final-layout-v4" as const;
 export const PREVIOUS_WALL_TEXT_FINAL_LAYOUT_VERSION =
-  "wall-text-final-layout-v2" as const;
+  "wall-text-final-layout-v3" as const;
 export const LEGACY_WALL_TEXT_FINAL_LAYOUT_VERSION =
+  "wall-text-final-layout-v2" as const;
+export const OLDER_WALL_TEXT_FINAL_LAYOUT_VERSION =
   "wall-text-final-layout-v1" as const;
 export const WALL_TEXT_GENERATOR_VERSION =
   "business-profile-wall-text-v9" as const;
@@ -167,15 +176,20 @@ type WallTextFinalLayoutBase = {
 export type WallTextFinalLayout =
   | (WallTextFinalLayoutBase & {
       fontFamily: "Arial";
-      fontWeight: 500;
+      fontWeight: 400;
       version: typeof WALL_TEXT_FINAL_LAYOUT_VERSION;
+    })
+  | (WallTextFinalLayoutBase & {
+      fontFamily: "Arial";
+      fontWeight: 500;
+      version: typeof PREVIOUS_WALL_TEXT_FINAL_LAYOUT_VERSION;
     })
   | (WallTextFinalLayoutBase & {
       fontFamily: "Inter";
       fontWeight: 400;
       version:
-        | typeof PREVIOUS_WALL_TEXT_FINAL_LAYOUT_VERSION
-        | typeof LEGACY_WALL_TEXT_FINAL_LAYOUT_VERSION;
+        | typeof LEGACY_WALL_TEXT_FINAL_LAYOUT_VERSION
+        | typeof OLDER_WALL_TEXT_FINAL_LAYOUT_VERSION;
     });
 export type WallTextPlacementAnalysis = {
   contrastScore: number;
@@ -195,7 +209,8 @@ export type TrendingWallTextContent = {
     | typeof WALL_TEXT_CONTENT_LAYOUT_VERSION
     | typeof PREVIOUS_WALL_TEXT_CONTENT_LAYOUT_VERSION
     | typeof LEGACY_WALL_TEXT_CONTENT_LAYOUT_VERSION
-    | typeof OLDER_WALL_TEXT_CONTENT_LAYOUT_VERSION;
+    | typeof OLDER_WALL_TEXT_CONTENT_LAYOUT_VERSION
+    | typeof HISTORICAL_WALL_TEXT_CONTENT_LAYOUT_VERSION;
   pattern: WallTextPattern;
   renderFontSize?: WallTextFontSize;
   renderSafetyVersion?: typeof WALL_TEXT_RENDER_SAFETY_VERSION;

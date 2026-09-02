@@ -30,6 +30,13 @@ const itemContextMigration = readFileSync(
   ),
   "utf8",
 );
+const terminalOwnerRecoveryMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260902054816_recover_terminal_wall_text_plan_jobs.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const freeformMigration = readFileSync(
   new URL(
     "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260826101500_disable_forced_wall_text_formats.sql",
@@ -183,6 +190,61 @@ test("requires a complete active Wall plan instead of falling back to direct gen
   assert.match(jobs, /ensureWallTextContentPlanGeneration/);
   assert.match(jobs, /Wall copy may only be generated from an active 30-day plan/i);
   assert.match(jobs, /return planningJob/);
+});
+
+test("reopens Carousel and Wall plans when their durable owner job is already terminal", () => {
+  assert.match(
+    terminalOwnerRecoveryMigration,
+    /CREATE OR REPLACE FUNCTION public\.ensure_carousel_content_plan[\s\S]*v_plan\.status = 'generating'[\s\S]*v_plan\.generation_job_id is not null[\s\S]*from public\.background_jobs as job/i,
+  );
+  assert.match(
+    terminalOwnerRecoveryMigration,
+    /CREATE OR REPLACE FUNCTION public\.ensure_carousel_content_plan[\s\S]*v_owner_status in \('failed', 'cancelled'\)[\s\S]*v_reopen_plan := true/i,
+  );
+  assert.match(
+    terminalOwnerRecoveryMigration,
+    /UPDATE public\.carousel_content_plans AS plan[\s\S]*FROM public\.background_jobs AS job[\s\S]*plan\.status = 'generating'[\s\S]*job\.status IN \('failed', 'cancelled'\)/i,
+  );
+  assert.match(
+    terminalOwnerRecoveryMigration,
+    /v_plan\.status = 'generating'[\s\S]*v_plan\.generation_job_id is not null[\s\S]*from public\.background_jobs as job/i,
+  );
+  assert.match(
+    terminalOwnerRecoveryMigration,
+    /v_owner_status in \('failed', 'cancelled'\)[\s\S]*v_reopen_plan := true/i,
+  );
+  assert.match(
+    terminalOwnerRecoveryMigration,
+    /generation_attempt = plan\.generation_attempt \+ 1[\s\S]*generation_job_id = null[\s\S]*generation_started_at = null/i,
+  );
+  assert.match(
+    terminalOwnerRecoveryMigration,
+    /UPDATE public\.wall_text_content_plans AS plan[\s\S]*FROM public\.background_jobs AS job[\s\S]*plan\.status = 'generating'[\s\S]*job\.status IN \('failed', 'cancelled'\)/i,
+  );
+  assert.match(
+    terminalOwnerRecoveryMigration,
+    /CREATE OR REPLACE FUNCTION public\.enqueue_completed_trending_feed_reconciliation\(\)[\s\S]*new\.job_type = 'carousel_content_plan_generation'[\s\S]*UPDATE public\.carousel_content_plans as plan[\s\S]*plan\.generation_job_id = new\.id[\s\S]*plan\.status = 'generating'/i,
+  );
+  assert.match(
+    terminalOwnerRecoveryMigration,
+    /new\.job_type = 'wall_text_content_plan_generation'[\s\S]*UPDATE public\.wall_text_content_plans as plan[\s\S]*plan\.generation_job_id = new\.id[\s\S]*plan\.status = 'generating'/i,
+  );
+  assert.match(
+    terminalOwnerRecoveryMigration,
+    /CREATE TRIGGER enqueue_completed_trending_feed_reconciliation[\s\S]*new\.status IN \('failed', 'cancelled'\)[\s\S]*'carousel_content_plan_generation'[\s\S]*'wall_text_content_plan_generation'[\s\S]*'wall_text_generation'/i,
+  );
+  assert.match(
+    terminalOwnerRecoveryMigration,
+    /insert into public\.trending_feed_reconciliation_outbox/i,
+  );
+  assert.match(
+    terminalOwnerRecoveryMigration,
+    /WITH recovered_carousel_jobs AS \([\s\S]*recovered_wall_text_jobs AS \([\s\S]*INSERT INTO public\.trending_feed_reconciliation_outbox[\s\S]*UNION ALL[\s\S]*ON CONFLICT \(source_job_id\) DO NOTHING/i,
+  );
+  assert.doesNotMatch(
+    terminalOwnerRecoveryMigration,
+    /^\s*(?:delete\s+from|truncate(?:\s+table)?|drop\s+table)\b/im,
+  );
 });
 
 test("rotates the active Wall plan without reintroducing the direct writer fallback", () => {

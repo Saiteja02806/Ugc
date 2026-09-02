@@ -358,6 +358,78 @@ test("marks a failed content plan terminally failed only after the worker job fa
   assert.deepEqual(failures, [{ planId: "plan-test", userId: "user-test" }]);
 });
 
+test("marks a failed Wall content plan terminally failed only after the worker job fails", async () => {
+  const job = createJob();
+  const store = createJobStore(job);
+  const failures: Array<{ planId: string; userId: string }> = [];
+  job.job_type = "wall_text_content_plan_generation";
+  job.input_json = {
+    operation: "wall_text_content_plan_generation",
+    planId: "wall-plan-test",
+    userId: "user-test",
+  };
+
+  store.markFailed = (async () => {
+    job.claim_token = null;
+    job.status = "failed";
+    return { ...job };
+  }) as SupabaseJobStore["markFailed"];
+  store.failWallTextContentPlanGeneration = (async (params) => {
+    failures.push({ planId: params.planId, userId: params.userId });
+  }) as SupabaseJobStore["failWallTextContentPlanGeneration"];
+
+  await processWorkerMessage({
+    config: createConfig(["wall_text_content_plan_generation"]),
+    dependencies: {
+      async runJob() {
+        throw new Error("provider rejected request");
+      },
+    },
+    message: createMessage("wall_text_content_plan_generation"),
+    queue: createQueue([]),
+    store,
+  });
+
+  assert.equal(job.status, "failed");
+  assert.deepEqual(failures, [
+    { planId: "wall-plan-test", userId: "user-test" },
+  ]);
+});
+
+test("returns a failed Hook chunk to the durable continuation path after its worker job fails", async () => {
+  const job = createJob();
+  const store = createJobStore(job);
+  const failures: Array<{ errorMessage: string; jobId: string }> = [];
+  job.job_type = "generate_trending_hook_copy";
+
+  store.markFailed = (async () => {
+    job.claim_token = null;
+    job.status = "failed";
+    return { ...job };
+  }) as SupabaseJobStore["markFailed"];
+  store.failTrendingHookGenerationRunChunk = (async (params) => {
+    failures.push(params);
+    return true;
+  }) as SupabaseJobStore["failTrendingHookGenerationRunChunk"];
+
+  await processWorkerMessage({
+    config: createConfig(["generate_trending_hook_copy"]),
+    dependencies: {
+      async runJob() {
+        throw new Error("provider rejected request");
+      },
+    },
+    message: createMessage("generate_trending_hook_copy"),
+    queue: createQueue([]),
+    store,
+  });
+
+  assert.equal(job.status, "failed");
+  assert.deepEqual(failures, [
+    { errorMessage: "provider rejected request", jobId: job.id },
+  ]);
+});
+
 function createJob(): BackgroundJobRow {
   const now = new Date().toISOString();
 

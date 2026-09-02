@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-09-01
+Last updated: 2026-09-02
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -3551,6 +3551,11 @@ Name: **Verify v26 and replace the stale production assignment**
   reaches a terminal failed state. Retriable worker errors leave the plan
   generating. The Wall-of-Text content planner also uses the supported model
   defaults rather than sending an unsupported temperature override.
+- Carousel and Wall-of-Text planner chunks use one 120-second OpenAI request
+  window with SDK retries disabled. A timeout, rate limit, service error, or
+  network interruption becomes the durable background-job retry state, so the
+  next worker resumes from already persisted five-item chunks rather than
+  terminally failing a plan after hidden in-process SDK retries.
 - Deploy this as one compatibility slice: apply migrations
   `20260825140000_harden_trending_daily_delivery.sql` and
   `20260825153000_make_trending_delivery_reconciliation_durable.sql`, deploy

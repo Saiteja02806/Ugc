@@ -3,6 +3,10 @@ import { createHash } from "node:crypto";
 import OpenAI from "openai";
 
 import type { Json, WallTextContentPlanItemRow } from "../types.js";
+import {
+  CONTENT_PLAN_OPENAI_MAX_RETRIES,
+  CONTENT_PLAN_OPENAI_TIMEOUT_MS,
+} from "./content-plan-provider-retry.js";
 import { getContentPlanItemConceptLanes } from "./content-plan-concept-lanes.js";
 
 export const WALL_TEXT_CONTENT_PLAN_PROMPT_VERSION =
@@ -662,7 +666,11 @@ function getOpenAIClient() {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) throw new Error("OPENAI_API_KEY is required for Wall-of-Text content planning.");
   if (!openaiClient) {
-    openaiClient = new OpenAI({ apiKey, maxRetries: 2, timeout: 60_000 });
+    openaiClient = new OpenAI({
+      apiKey,
+      maxRetries: CONTENT_PLAN_OPENAI_MAX_RETRIES,
+      timeout: CONTENT_PLAN_OPENAI_TIMEOUT_MS,
+    });
   }
   return openaiClient;
 }

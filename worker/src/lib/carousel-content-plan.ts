@@ -5,6 +5,10 @@ import OpenAI from "openai";
 import type { CarouselContentPlanItemRow, Json } from "../types.js";
 import { getContentPlanItemConceptLanes } from "./content-plan-concept-lanes.js";
 import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
+import {
+  CONTENT_PLAN_OPENAI_MAX_RETRIES,
+  CONTENT_PLAN_OPENAI_TIMEOUT_MS,
+} from "./content-plan-provider-retry.js";
 
 export const CAROUSEL_CONTENT_PLAN_PROMPT_VERSION =
   "carousel-content-plan-creative-briefs-v6-item-context-concept-lanes";
@@ -734,7 +738,13 @@ function normalize(value: string) {
 function getOpenAIClient() {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) throw new Error("OPENAI_API_KEY is required for Carousel content planning.");
-  if (!openaiClient) openaiClient = new OpenAI({ apiKey, maxRetries: 2, timeout: 60_000 });
+  if (!openaiClient) {
+    openaiClient = new OpenAI({
+      apiKey,
+      maxRetries: CONTENT_PLAN_OPENAI_MAX_RETRIES,
+      timeout: CONTENT_PLAN_OPENAI_TIMEOUT_MS,
+    });
+  }
   return openaiClient;
 }
 

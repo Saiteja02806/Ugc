@@ -5,6 +5,7 @@ import {
   createWallTextCreativeBriefFingerprint,
   generateWallTextContentPlanChunk,
 } from "../lib/wall-text-content-plan.js";
+import { toContentPlanProviderRetry } from "../lib/content-plan-provider-retry.js";
 import type { WorkerJobContext, WorkerJobOutput } from "./index.js";
 
 type ContentPlanJobInput = {
@@ -58,13 +59,20 @@ export async function runGenerateWallTextContentPlanJob(
         WALL_TEXT_CONTENT_PLAN_CHUNK_SIZE,
         plan.target_item_count - items.length,
       );
-      const generated = await generateWallTextContentPlanChunk({
-        businessDescription: plan.business_description,
-        briefIndexStart: items.length / 5 + 1,
-        count,
-        existingItems: [...priorCycleItems, ...items],
-        planningContext: plan.planning_context,
-      });
+      let generated: Awaited<
+        ReturnType<typeof generateWallTextContentPlanChunk>
+      >;
+      try {
+        generated = await generateWallTextContentPlanChunk({
+          businessDescription: plan.business_description,
+          briefIndexStart: items.length / 5 + 1,
+          count,
+          existingItems: [...priorCycleItems, ...items],
+          planningContext: plan.planning_context,
+        });
+      } catch (error) {
+        throw toContentPlanProviderRetry(error);
+      }
       const sequenceStart = items.length + 1;
       const briefIndexStart = items.length / 5 + 1;
       const inserted = await context.store.persistWallTextContentPlanBriefChunk({

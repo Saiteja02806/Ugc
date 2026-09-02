@@ -9,6 +9,7 @@ import {
 } from "./processor.js";
 import type { WorkerQueueTransport } from "./lib/queue-types.js";
 import type { SupabaseJobStore } from "./lib/supabase.js";
+import { toContentPlanProviderRetry } from "./lib/content-plan-provider-retry.js";
 import { DeferredJobError, RetryableJobError } from "./retryable-job-error.js";
 import type { BackgroundJobRow } from "./types.js";
 
@@ -131,6 +132,43 @@ test("persists retry state and keeps the queue delivery", async () => {
     commands.filter((name) => name === "DeleteMessageCommand").length,
     0,
   );
+});
+
+test("requeues an interrupted content-plan request instead of terminally failing it", async () => {
+  const job = createJob();
+  const commands: string[] = [];
+
+  await processWorkerMessage({
+    config: createConfig(),
+    dependencies: {
+      heartbeatIntervalMs: 1_000,
+      async runJob() {
+        throw toContentPlanProviderRetry({
+          message: "Request timed out.",
+          name: "APIConnectionTimeoutError",
+        });
+      },
+    },
+    message: createMessage(),
+    queue: createQueue(commands),
+    store: createJobStore(job),
+  });
+
+  assert.equal(job.status, "queued");
+  assert.equal(job.attempt_count, 1);
+  assert.match(job.error_message ?? "", /will resume from its last saved chunk/);
+  assert.equal(
+    commands.filter((name) => name === "DeleteMessageCommand").length,
+    0,
+  );
+});
+
+test("does not retry an invalid content-plan provider request", () => {
+  const error = Object.assign(new Error("The request schema is invalid."), {
+    status: 400,
+  });
+
+  assert.equal(toContentPlanProviderRetry(error), error);
 });
 
 test("defers expected lane backpressure without consuming a retry attempt", async () => {

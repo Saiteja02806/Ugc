@@ -276,10 +276,10 @@ const exactRegressionFixture = structuredClone(workerParsed);
 exactRegressionFixture.slides[3] = {
   ...exactRegressionFixture.slides[3],
   body:
-    "Bring the scattered steps into one clearer workflow so the next action is easier to find before the launch slows down.",
-  headline: "Plan your day smarter with AI insights and reminders.",
+    Array.from({ length: 45 }, () => "workflow").join(" "),
+  headline: Array.from({ length: 17 }, () => "planning").join(" "),
   subtext:
-    "Bring the scattered steps into one clearer workflow so the next action is easier to find before the launch slows down.",
+    Array.from({ length: 45 }, () => "workflow").join(" "),
   textMode: "headline_body",
 };
 const exactRegressionIssues = workerPlanner.validateCarouselContentPlan(

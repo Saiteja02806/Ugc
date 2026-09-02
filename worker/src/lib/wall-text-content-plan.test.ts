@@ -2,11 +2,63 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  EmptyWallTextContentPlanResponseError,
+  WALL_TEXT_CONTENT_PLAN_CHUNK_SIZE,
   createWallTextContentIdeaFingerprint,
+  getWallTextPromptPreviousItems,
   isExactWallTextReplacementDuplicate,
   parseWallTextContentPlanChunk,
   validateWallTextContentPlanChunk,
 } from "./wall-text-content-plan.js";
+
+test("uses compact Wall Text chunks and only sends a bounded recent history to the model", () => {
+  const previousItems = Array.from({ length: 55 }, (_, index) => ({
+    content_idea: `A distinct previous content idea ${index + 1}`,
+    feeling: "curiosity",
+  }));
+
+  assert.equal(WALL_TEXT_CONTENT_PLAN_CHUNK_SIZE, 10);
+  assert.equal(getWallTextPromptPreviousItems(previousItems).length, 40);
+  assert.equal(
+    getWallTextPromptPreviousItems(previousItems)[0]?.content_idea,
+    "A distinct previous content idea 16",
+  );
+});
+
+test("still rejects an exact duplicate from older history outside the model prompt window", () => {
+  const previousItems = Array.from({ length: 55 }, (_, index) => ({
+    content_idea: `A distinct previous content idea ${index + 1}`,
+    feeling: "curiosity",
+  }));
+
+  const issues = validateWallTextContentPlanChunk({
+    existingItems: previousItems,
+    items: [
+      {
+        briefSlotIndex: 0,
+        contentIdea: "A distinct previous content idea 1",
+        feeling: "curiosity",
+        itemSlotIndex: 0,
+        planningBrief: {
+          audienceContext: "People deciding what deserves their attention",
+          creativeSeed: "A small everyday moment exposes the hidden tradeoff.",
+          emotionalTension: "Relief after naming a familiar frustration",
+          humanMoment: "Pausing before repeating a habit that has stopped helping",
+          supportedAngle: "A factual reflection grounded in the approved business context",
+        },
+      },
+    ],
+  });
+
+  assert.match(issues.join(" "), /repeats an existing content idea/i);
+});
+
+test("identifies a blank Wall Text model response with its finish reason", () => {
+  const error = new EmptyWallTextContentPlanResponseError("length");
+
+  assert.equal(error.finishReason, "length");
+  assert.match(error.message, /finish reason: length/);
+});
 
 function oneBrief(overrides: Record<string, unknown> = {}) {
   const childContext = (slot: number) => ({

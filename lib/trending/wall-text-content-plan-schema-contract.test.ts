@@ -161,11 +161,11 @@ test("uses five parent fields for five child ideas without prewriting Wall copy"
   );
   assert.match(
     planner,
-    /wall-text-content-plan-five-context-v5-item-context-concept-lanes/i,
+    /wall-text-content-plan-five-context-v6-compact-chunks/i,
   );
   assert.match(
     appPlan,
-    /wall-text-content-plan-five-context-v5-item-context-concept-lanes/i,
+    /wall-text-content-plan-five-context-v6-compact-chunks/i,
   );
 });
 

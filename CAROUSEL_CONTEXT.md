@@ -4008,6 +4008,12 @@ Name: **Verify v26 and replace the stale production assignment**
   unused-first then least-recently-used after a terminal batch. If planning is
   not ready, the durable planning job is returned and the writer waits; the
   legacy direct-writer fallback must not produce unplanned Wall content.
+- Wall planning requests produce ten ideas (two complete five-idea briefs) at
+  a time and send the model only a bounded recent history. The database still
+  validates every historical idea. A blank provider response is classified as
+  a durable retry, retaining all saved plan items, rather than becoming a
+  terminal validation failure. This Wall-specific reliability change does not
+  alter Carousel planning or its output contract.
 - Wall items use the same individual private context and broad concept lanes as
   Carousel. The Wall writer receives the item's exact stored situation rather
   than relying only on the five-item parent brief. Its final duplicate gate is

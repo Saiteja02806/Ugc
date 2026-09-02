@@ -10,8 +10,11 @@ import {
 import { getContentPlanItemConceptLanes } from "./content-plan-concept-lanes.js";
 
 export const WALL_TEXT_CONTENT_PLAN_PROMPT_VERSION =
-  "wall-text-content-plan-five-context-v5-item-context-concept-lanes";
-export const WALL_TEXT_CONTENT_PLAN_CHUNK_SIZE = 25;
+  "wall-text-content-plan-five-context-v6-compact-chunks";
+// Each item carries seven structured fields in addition to its parent brief.
+// Ten ideas keep a response comfortably below the model's structured-output
+// budget while preserving the five-idea creative-brief grouping.
+export const WALL_TEXT_CONTENT_PLAN_CHUNK_SIZE = 10;
 export const WALL_TEXT_CONTENT_PLAN_BRIEF_COUNT = 40;
 export const WALL_TEXT_CONTENT_PLAN_ITEMS_PER_BRIEF = 5;
 
@@ -20,7 +23,22 @@ const MAX_CONTENT_IDEA_LENGTH = 400;
 const MAX_FEELING_LENGTH = 120;
 const MAX_GENERATION_ATTEMPTS = 2;
 const MAX_SINGLE_IDEA_REPAIR_ATTEMPTS = 3;
+const MAX_PROMPT_PREVIOUS_ITEMS = 40;
 let openaiClient: OpenAI | null = null;
+
+export class EmptyWallTextContentPlanResponseError extends Error {
+  readonly finishReason: string | null;
+
+  constructor(finishReason: string | null) {
+    super(
+      `Wall-of-Text content-plan model returned no content${
+        finishReason ? ` (finish reason: ${finishReason})` : ""
+      }.`,
+    );
+    this.name = "EmptyWallTextContentPlanResponseError";
+    this.finishReason = finishReason;
+  }
+}
 
 export type WallTextPlanningBrief = {
   audienceContext: string;
@@ -66,7 +84,7 @@ export async function generateWallTextContentPlanChunk(params: {
     count % WALL_TEXT_CONTENT_PLAN_ITEMS_PER_BRIEF !== 0
   ) {
     throw new Error(
-      "Wall-of-Text content-plan chunks must contain 5 to 25 ideas in groups of five.",
+      "Wall-of-Text content-plan chunks must contain 5 to 10 ideas in groups of five.",
     );
   }
 
@@ -76,10 +94,11 @@ export async function generateWallTextContentPlanChunk(params: {
     throw new Error("Wall-of-Text content-plan brief index must be positive.");
   }
   let lastIssues: string[] = [];
+  let lastEmptyResponseFinishReason: string | null = null;
 
   for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt += 1) {
     const completion = await getOpenAIClient().chat.completions.create({
-      max_completion_tokens: 6_000,
+      max_completion_tokens: 8_000,
       messages: buildMessages({
         ...params,
         briefIndexStart,
@@ -87,6 +106,7 @@ export async function generateWallTextContentPlanChunk(params: {
         issues: attempt === 0 ? [] : lastIssues,
       }),
       model: getWallTextContentPlanModel(),
+      reasoning_effort: "low",
       response_format: {
         type: "json_schema",
         json_schema: {
@@ -96,8 +116,16 @@ export async function generateWallTextContentPlanChunk(params: {
         },
       },
     });
-    const content = completion.choices[0]?.message.content;
+    const choice = completion.choices[0];
+    const content = choice?.message.content;
     if (!content) {
+      const refusal = choice?.message.refusal?.trim();
+      if (refusal) {
+        throw new Error(
+          `Wall-of-Text content-plan model refused the request: ${refusal}`,
+        );
+      }
+      lastEmptyResponseFinishReason = choice?.finish_reason ?? null;
       lastIssues = ["The model returned no content."];
       continue;
     }
@@ -132,6 +160,10 @@ export async function generateWallTextContentPlanChunk(params: {
       if (error instanceof SingleWallTextIdeaRepairExhaustedError) throw error;
       lastIssues = [getErrorMessage(error)];
     }
+  }
+
+  if (lastIssues.every((issue) => issue === "The model returned no content.")) {
+    throw new EmptyWallTextContentPlanResponseError(lastEmptyResponseFinishReason);
   }
 
   throw new Error(
@@ -456,6 +488,16 @@ export function getWallTextItemConceptLanes(
   return getContentPlanItemConceptLanes({ briefCount, briefIndexStart });
 }
 
+export function getWallTextPromptPreviousItems(
+  existingItems: readonly Pick<WallTextContentPlanItemRow, "content_idea" | "feeling">[],
+) {
+  // The server validates candidate ideas against the entire historical pool.
+  // The model only needs a recent, representative window to maintain topical
+  // variety; sending all 200 ideas makes later structured requests needlessly
+  // large in the observed blank-response path.
+  return existingItems.slice(-MAX_PROMPT_PREVIOUS_ITEMS);
+}
+
 function buildMessages(params: {
   briefIndexStart: number;
   briefCount: number;
@@ -478,6 +520,7 @@ function buildMessages(params: {
         "supportedAngle: The factual connection to the business, based only on approved facts. It is not a sales claim or a promise.",
         "For every child return contentIdea, feeling, audienceContext, privateCreativeSeed, emotionalTension, humanMoment, and supportedAngle. contentIdea is a specific angle that a later Wall writer may turn into one complete post; feeling is that child idea's emotional direction. The children are not generated from creativeSeed alone.",
         "Every group of five must use five clearly different concrete human situations. Each child has an assigned concept lane; use its lane as broad guidance, then create a genuinely different audience, situation, tension, supported angle, or story. Do not write final overlay copy, line breaks, a slide layout, a CTA, a product pitch, or a finished script. Previous items are guidance, not a ban on a broad topic: related themes are allowed when those real-life details differ. Avoid copying a previous child idea word-for-word.",
+        "Return the complete JSON object required by the schema. Include every brief, every child idea, and every required field. Do not return commentary, a partial result, or an empty response.",
       ].join(" "),
     },
     {
@@ -490,10 +533,13 @@ function buildMessages(params: {
           params.briefCount,
         ),
         instruction: `Generate exactly ${params.briefCount} private creative briefs. Every brief must contain exactly five child ideas. briefSlotIndex values must be 0 through ${params.briefCount - 1}; itemSlotIndex values must be 0 through 4 for each brief.`,
-        previousItems: params.existingItems.map((item) => ({
+        previousItemCount: params.existingItems.length,
+        previousItems: getWallTextPromptPreviousItems(params.existingItems).map((item) => ({
           contentIdea: item.content_idea,
           feeling: item.feeling,
         })),
+        previousItemsInstruction:
+          "The supplied previousItems are a recent sample. The server checks every historical idea for exact duplicates, so produce a new idea rather than copying any prior wording.",
         ...(params.issues.length > 0
           ? {
               rejectedAttemptIssues: params.issues,

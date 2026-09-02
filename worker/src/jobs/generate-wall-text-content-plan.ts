@@ -1,11 +1,13 @@
 import type { BackgroundJobRow } from "../types.js";
 import {
+  EmptyWallTextContentPlanResponseError,
   WALL_TEXT_CONTENT_PLAN_CHUNK_SIZE,
   createWallTextContentIdeaFingerprint,
   createWallTextCreativeBriefFingerprint,
   generateWallTextContentPlanChunk,
 } from "../lib/wall-text-content-plan.js";
 import { toContentPlanProviderRetry } from "../lib/content-plan-provider-retry.js";
+import { RetryableJobError } from "../retryable-job-error.js";
 import type { WorkerJobContext, WorkerJobOutput } from "./index.js";
 
 type ContentPlanJobInput = {
@@ -71,7 +73,7 @@ export async function runGenerateWallTextContentPlanJob(
           planningContext: plan.planning_context,
         });
       } catch (error) {
-        throw toContentPlanProviderRetry(error);
+        throw toWallTextContentPlanRetry(error);
       }
       const sequenceStart = items.length + 1;
       const briefIndexStart = items.length / 5 + 1;
@@ -134,6 +136,23 @@ export async function runGenerateWallTextContentPlanJob(
   } catch (error) {
     throw error;
   }
+}
+
+export function toWallTextContentPlanRetry(error: unknown) {
+  if (error instanceof EmptyWallTextContentPlanResponseError) {
+    const finishReason = error.finishReason
+      ? ` (finish reason: ${error.finishReason})`
+      : "";
+    return new RetryableJobError(
+      `The Wall-of-Text content-plan model returned no content${finishReason} and will resume from its last saved chunk.`,
+      {
+        code: "wall_text_content_plan_empty_response",
+        retryAfterSeconds: 45,
+      },
+    );
+  }
+
+  return toContentPlanProviderRetry(error);
 }
 
 function parseInput(job: BackgroundJobRow): ContentPlanJobInput {

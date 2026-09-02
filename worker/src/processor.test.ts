@@ -10,6 +10,8 @@ import {
 import type { WorkerQueueTransport } from "./lib/queue-types.js";
 import type { SupabaseJobStore } from "./lib/supabase.js";
 import { toContentPlanProviderRetry } from "./lib/content-plan-provider-retry.js";
+import { EmptyWallTextContentPlanResponseError } from "./lib/wall-text-content-plan.js";
+import { toWallTextContentPlanRetry } from "./jobs/generate-wall-text-content-plan.js";
 import { DeferredJobError, RetryableJobError } from "./retryable-job-error.js";
 import type { BackgroundJobRow } from "./types.js";
 
@@ -169,6 +171,39 @@ test("does not retry an invalid content-plan provider request", () => {
   });
 
   assert.equal(toContentPlanProviderRetry(error), error);
+});
+
+test("requeues an empty Wall Text model response without losing the plan", async () => {
+  const job = createJob();
+  const commands: string[] = [];
+  job.job_type = "wall_text_content_plan_generation";
+  job.input_json = {
+    operation: "wall_text_content_plan_generation",
+    planId: "plan-test",
+    userId: "user-test",
+  };
+
+  await processWorkerMessage({
+    config: createConfig(["wall_text_content_plan_generation"]),
+    dependencies: {
+      async runJob() {
+        throw toWallTextContentPlanRetry(
+          new EmptyWallTextContentPlanResponseError(null),
+        );
+      },
+    },
+    message: createMessage("wall_text_content_plan_generation"),
+    queue: createQueue(commands),
+    store: createJobStore(job),
+  });
+
+  assert.equal(job.status, "queued");
+  assert.equal(job.attempt_count, 1);
+  assert.match(job.error_message ?? "", /returned no content/);
+  assert.equal(
+    commands.filter((name) => name === "DeleteMessageCommand").length,
+    0,
+  );
 });
 
 test("defers expected lane backpressure without consuming a retry attempt", async () => {

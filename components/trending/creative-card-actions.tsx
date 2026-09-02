@@ -5,7 +5,7 @@ import { Check, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const LAPTOP_AND_DESKTOP_DECISION_BUTTON_CLASS =
-  "min-[1024px]:size-[clamp(3.5rem,calc((100dvh-288px)*0.1584),4.75rem)] min-[1024px]:[&_svg:not([class*='size-'])]:size-[clamp(1.25rem,calc((100dvh-288px)*0.057),1.75rem)]";
+  "min-[1024px]:size-[clamp(3.5rem,calc((100dvh-252px)*0.155),clamp(4.75rem,calc(124.5px-3.25vw),5rem))] min-[1024px]:[&_svg:not([class*='size-'])]:size-[clamp(1.25rem,calc((100dvh-252px)*0.0543),clamp(1.625rem,calc(44.125px-1.18vw),1.75rem))]";
 
 export function CreativeDecisionActions({
   acceptDisabled = false,

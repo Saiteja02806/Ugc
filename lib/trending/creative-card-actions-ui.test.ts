@@ -64,7 +64,7 @@ test("uses two accessible circular decision targets and a compact Edit pill", ()
   assert.match(actions, /LAPTOP_AND_DESKTOP_DECISION_BUTTON_CLASS/);
   assert.match(
     actions,
-    /min-\[1024px\]:size-\[clamp\(3\.5rem,calc\(\(100dvh-288px\)\*0\.1584\),4\.75rem\)\]/,
+    /min-\[1024px\]:size-\[clamp\(3\.5rem,calc\(\(100dvh-252px\)\*0\.155\),clamp\(4\.75rem,calc\(124\.5px-3\.25vw\),5rem\)\)\]/,
   );
   assert.equal((actions.match(/size="creative-icon"/g) ?? []).length, 2);
   assert.equal((actions.match(/size="creative-edit"/g) ?? []).length, 1);
@@ -368,7 +368,7 @@ test("keeps the accepted Carousel and Wall action chooser mounted after the fina
 test("raises only the Slideshow label above its stacked preview", () => {
   assert.match(
     workspace,
-    /function getTrendingFormatPillPositionClass\(\)\s*\{[\s\S]*bottom-\[calc\(100%\+100px\)\]/,
+    /function getTrendingFormatPillPositionClass\(\)\s*\{[\s\S]*bottom-\[calc\(100%\+116px\)\]/,
   );
   assert.equal(
     (
@@ -387,7 +387,7 @@ test("centers a card-sized review frame over visible inert next-card layers", ()
   );
   assert.match(
     workspace,
-    /VERTICAL_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(76vw,230px,calc\(\(100dvh-348px\)\*0\.5625\)\)\] min-\[1024px\]:w-\[min\(76vw,270px,calc\(\(100dvh-288px\)\*0\.5625\)\)\]"/,
+    /VERTICAL_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(76vw,230px,calc\(\(100dvh-348px\)\*0\.5625\)\)\] min-\[1024px\]:w-\[min\(76vw,clamp\(270px,calc\(450\.5px-11\.75vw\),290px\),calc\(\(100dvh-252px\)\*0\.5625\)\)\]"/,
   );
   assert.match(
     workspace,
@@ -410,7 +410,7 @@ test("centers a card-sized review frame over visible inert next-card layers", ()
   );
   assert.match(
     workspace,
-    /function getTrendingDecisionControlsPositionClass[\s\S]*format !== "carousel"[\s\S]*top-full min-\[1024px\]:top-\[calc\(100%\+clamp\(0px,calc\(\(100dvh-700px\)\*0\.54\),52px\)\)\]/,
+    /function getTrendingDecisionControlsPositionClass[\s\S]*format !== "carousel"[\s\S]*top-full min-\[1024px\]:top-\[calc\(100%\+clamp\(24px,calc\(\(100dvh-680px\)\*0\.72\),52px\)\)\]/,
   );
   assert.equal(
     (workspace.match(/data-trending-card-state=/g) ?? []).length,
@@ -519,6 +519,10 @@ test("keeps Hook and Wall-of-Text pills close above their video frame", () => {
   assert.doesNotMatch(workspace, /positionClassName="left-2\.5 top-2\.5 w-auto"/);
   assert.match(workspace, /data-trending-video-peek=\{[\s\S]*presentation === "video_peek"/);
   assert.match(workspace, /activeCandidate\.format === "carousel" \? \(/);
+  assert.match(
+    workspace,
+    /function getTrendingReviewDeckPositionClass[\s\S]*format === "carousel" \? "min-\[1024px\]:translate-y-3" : ""/,
+  );
 });
 
 test("locks Hook and Wall-of-Text to the same responsive 9:16 frame", () => {

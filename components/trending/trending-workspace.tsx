@@ -400,7 +400,7 @@ const MAX_ROTATION_DEGREES = 5;
 const CAROUSEL_REVIEW_CARD_WIDTH_CLASS =
   "w-[min(78vw,270px,calc((100dvh-348px)*0.8))]";
 const VERTICAL_REVIEW_CARD_WIDTH_CLASS =
-  "w-[min(76vw,230px,calc((100dvh-348px)*0.5625))] min-[1024px]:w-[min(76vw,270px,calc((100dvh-288px)*0.5625))]";
+  "w-[min(76vw,230px,calc((100dvh-348px)*0.5625))] min-[1024px]:w-[min(76vw,clamp(270px,calc(450.5px-11.75vw),290px),calc((100dvh-252px)*0.5625))]";
 const CAROUSEL_REVIEW_CARD_FRAME_CLASS =
   `${CAROUSEL_REVIEW_CARD_WIDTH_CLASS} aspect-[4/5]`;
 const VERTICAL_REVIEW_CARD_FRAME_CLASS =
@@ -2613,6 +2613,7 @@ function TrendingDeck({
             className={cn(
               "relative isolate mx-auto flex items-center justify-center overflow-visible rounded-[20px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               getTrendingReviewCardFrameClass(activeCandidate.format),
+              getTrendingReviewDeckPositionClass(activeCandidate.format),
             )}
           >
             {activeCandidate.format === "carousel" ? (
@@ -3171,7 +3172,15 @@ function getTrendingReviewCardFrameClass(
 function getTrendingFormatPillPositionClass() {
   // The Slideshow deck can reveal a taller card behind its 4:5 active frame.
   // Leave a clear gap above that stack on laptop-sized screens.
-  return "bottom-[calc(100%+72px)] min-[1024px]:bottom-[calc(100%+100px)]";
+  return "bottom-[calc(100%+72px)] min-[1024px]:bottom-[calc(100%+116px)]";
+}
+
+function getTrendingReviewDeckPositionClass(
+  format: TrendingCandidate["format"],
+) {
+  // Keep the enlarged Slideshow stack clear of the page header as its pill
+  // moves up to avoid a taller next card.
+  return format === "carousel" ? "min-[1024px]:translate-y-3" : "";
 }
 
 function getTrendingDecisionControlsPositionClass(
@@ -3183,7 +3192,7 @@ function getTrendingDecisionControlsPositionClass(
 
   // A tall next card can extend below an active 4:5 slideshow card. Move the
   // decision row only as the available height makes that lower layer visible.
-  return "top-full min-[1024px]:top-[calc(100%+clamp(0px,calc((100dvh-700px)*0.54),52px))]";
+  return "top-full min-[1024px]:top-[calc(100%+clamp(24px,calc((100dvh-680px)*0.72),52px))]";
 }
 
 type TrendingDeckCardProps = {

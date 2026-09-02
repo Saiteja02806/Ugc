@@ -4022,21 +4022,27 @@ Name: **Verify v26 and replace the stale production assignment**
 ## 2026-09-01 Compact-Laptop Trending 9:16 Review Frames
 
 - Hook and Wall-of-Text Trending cards use the same shared 9:16 sizing rule.
-  From 1024px wide upward, their maximum review-frame width is 270px (480px
-  tall), rather than a narrow 252px exception. The available-height calculation
-  still protects the format label, stacked preview clearance, decision controls,
-  and progress text on short laptop screens.
-- This has no 1440px cutoff: both common compact-laptop and higher-resolution
-  15.6-inch viewports receive the same comfortable upper size. Carousel (4:5)
-  frames, swipe behavior, keyboard interaction, deck layering, and the loading
+  The maximum review-frame width is 290px (about 516px tall) at the common
+  1366px-wide compact-laptop view, then tapers smoothly to 270px by 1536px
+  wide. The available-height calculation still protects the format label,
+  stacked preview clearance, decision controls, and progress text on short
+  laptop screens.
+- This has no 1440px cutoff: compact-laptop and higher-resolution viewports
+  transition smoothly between their comfortable sizes. Carousel (4:5) frames,
+  swipe behavior, keyboard interaction, deck layering, and the loading
   skeleton's shared 9:16 frame remain structurally unchanged.
 - The paired Reject and Accept controls use that same 1024px-and-up,
   available-height calculation. They stay at least 56px for safe interaction
-  and scale from the prior 64px base to a maximum of 76px with proportionate
-  icons, so they retain their visual relationship to the larger card.
+  and scale from the prior 64px base to a maximum of 80px with proportionate
+  icons on compact laptops, tapering to the prior 76px maximum at 1536px wide
+  so they retain their visual relationship to the card.
 - The deck's external controls use the full visible card stack as their visual
   boundary. When an active 4:5 Slideshow has a taller next card behind it, its
   format pill moves above the stack and its decision row receives an
   available-height-based lower offset. Hook and Wall-of-Text pills keep a
   small, explicit gap above their own next-card layer. This preserves card
   size while preventing labels and decisions from overlapping preview media.
+- The larger 290px vertical frame retains that external-control contract. When
+  a Slideshow reveals it as the next stacked card, the review deck moves down
+  by 12px on laptop/desktop viewports, while its pill and decision row reserve
+  at least a 12px visual gap from the taller media layer.

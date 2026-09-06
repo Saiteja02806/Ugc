@@ -2,7 +2,7 @@ import { ProviderRequestNotSubmittedError } from "./generation-provider.js";
 
 export function getRequiredProviderEnv(
   name: string,
-  environment: NodeJS.ProcessEnv = process.env,
+  environment: Readonly<Record<string, string | undefined>> = process.env,
 ) {
   const value = environment[name]?.trim();
 

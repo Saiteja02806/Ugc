@@ -539,3 +539,22 @@ npm run wall-audio:poc -- --library D:\walloftext_sound\wall_audio_library_v2_re
 - Every Wall card keeps the Explore `Recreate` route. It passes the verified
   `wall_text` reference identity to AI Studio, and the client and generation
   API require the user to choose an image reference before creating a video.
+
+
+## 2026-09-06 Terminal Worker Recovery
+
+- Exhausted or cancelled Wall generation jobs terminalize only their own
+  unfinished chunks and assignments in the database transaction. Deterministic
+  terminal error codes also trigger cleanup; retryable failures with attempts
+  remaining retain resumable work. Completed creatives and consumed ideas are
+  preserved. The parent must match the user, profile, version, and request key.
+- Reservation and claim operations check the owning job before taking child
+  locks, so late HTTP work cannot reserve or claim after a terminal parent.
+- Persistence uniqueness errors are terminal contract failures rather than
+  infrastructure retries that repeat the same rejected write.
+- An empty planner response yields immediately to the durable worker retry.
+  Saved ten-item chunks survive retries. Chunk timing and saved-item counts
+  are logged separately from whole-job duration.
+- The 200-item active-plan prerequisite remains the product contract. Its
+  sequential model calls remain a first-use latency cost, even with successful
+  generation; this repair does not introduce partial-plan publishing.

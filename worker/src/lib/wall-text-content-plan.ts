@@ -94,7 +94,6 @@ export async function generateWallTextContentPlanChunk(params: {
     throw new Error("Wall-of-Text content-plan brief index must be positive.");
   }
   let lastIssues: string[] = [];
-  let lastEmptyResponseFinishReason: string | null = null;
 
   for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt += 1) {
     const completion = await getOpenAIClient().chat.completions.create({
@@ -125,9 +124,9 @@ export async function generateWallTextContentPlanChunk(params: {
           `Wall-of-Text content-plan model refused the request: ${refusal}`,
         );
       }
-      lastEmptyResponseFinishReason = choice?.finish_reason ?? null;
-      lastIssues = ["The model returned no content."];
-      continue;
+      // An empty response has no validation feedback to repair. Let the
+      // durable job own the retry instead of hiding another full model wait.
+      throw new EmptyWallTextContentPlanResponseError(choice?.finish_reason ?? null);
     }
 
     try {
@@ -160,10 +159,6 @@ export async function generateWallTextContentPlanChunk(params: {
       if (error instanceof SingleWallTextIdeaRepairExhaustedError) throw error;
       lastIssues = [getErrorMessage(error)];
     }
-  }
-
-  if (lastIssues.every((issue) => issue === "The model returned no content.")) {
-    throw new EmptyWallTextContentPlanResponseError(lastEmptyResponseFinishReason);
   }
 
   throw new Error(

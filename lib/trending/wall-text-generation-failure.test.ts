@@ -55,6 +55,17 @@ test("keeps a timeout retryable", () => {
   );
 });
 
+test("does not spend more model calls on a persisted background uniqueness conflict", () => {
+  for (const error of [
+    { code: "23505" },
+    new Error('Could not save Wall-of-text generation candidate: duplicate key value violates unique constraint "wall_text_creatives_profile_asset_key"'),
+  ]) {
+    const result = classifyWallTextGenerationFailure(error);
+    assert.equal(result.retryable, false);
+    assert.equal(result.errorCode, WALL_TEXT_PERSISTENCE_REJECTED);
+  }
+});
+
 test("marks a final Wall render-fit rejection as terminal", () => {
   const error = Object.assign(new Error("Wall line is wider than its box."), {
     code: WALL_TEXT_RENDER_FIT_REJECTED,

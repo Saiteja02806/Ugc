@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { normalizeNullableComposite } from "@/lib/supabase/nullable-composite";
 
 import {
   updateBusinessProfileTrendingTimezone,
@@ -58,6 +59,7 @@ const DAILY_CAROUSEL_REFILL_BATCHES_TABLE = "daily_carousel_refill_batches";
 const DEFAULT_PLAN_KEY = "pro";
 const FALLBACK_TIMEZONE = "UTC";
 const CAROUSEL_INVENTORY_PAGE_SIZE = 50;
+const MAX_DAILY_CAROUSEL_AUTOMATIC_REPLACEMENTS = 3;
 
 const ACTIVE_ASSIGNMENT_STATES = ["pending", "in_progress"] as const;
 
@@ -747,6 +749,14 @@ async function reconcileDailyCarouselRefill(params: {
     }
   }
 
+  if (
+    !replacedPartialBatch && refillBatch && hasTerminalFailure &&
+    refillBatch.replacement_sequence >= MAX_DAILY_CAROUSEL_AUTOMATIC_REPLACEMENTS
+  ) {
+    // Keep failed slots visible without creating an unlimited chain of jobs.
+    return;
+  }
+
   const mayExtendForRepair = canExtendDailyCarouselRefill({
     currentRequestedCount: refillBatch?.requested_count ?? 0,
     hasTerminalFailure,
@@ -935,7 +945,7 @@ async function replacePartialDailyCarouselRefillBatch(params: {
   requestedCount: number;
   userId: string;
 }): Promise<DailyCarouselRefillBatchRow | null> {
-  const { data, error } = await getClient().rpc(
+  const { data: result, error } = await getClient().rpc(
     "replace_partial_daily_carousel_refill_batch_if_profile_current",
     {
       p_business_profile_id: params.profile.id,
@@ -959,6 +969,7 @@ async function replacePartialDailyCarouselRefillBatch(params: {
     );
   }
 
+  const data = normalizeNullableComposite(result);
   if (!data) {
     return null;
   }

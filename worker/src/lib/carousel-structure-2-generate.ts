@@ -60,6 +60,7 @@ export async function generateCarouselStructure2Batch(params: {
   });
 
   let plannedItems: CarouselStructure2StoryPlanResult[];
+  const failures: Error[] = [];
 
   try {
     plannedItems = await buildCarouselStructure2StoryPlanBatch({
@@ -75,6 +76,26 @@ export async function generateCarouselStructure2Batch(params: {
       })),
       businessDescription: params.businessDescription,
       recentHistory: [...params.recentHistory],
+      onPlanFailure: async (failure) => {
+        const generation = params.generations[failure.slotIndex];
+        if (!generation?.carousel_experiment_assignment_id) {
+          throw new Error(`Carousel Structure 2 failed slot ${failure.slotIndex} has no assignment.`);
+        }
+        await params.store.updateCarouselGeneration(generation.id, {
+          status: "failed",
+          error_message: truncate(failure.message),
+          content_plan_raw_response: failure.rawLlmResponse,
+          content_plan_validation: { ok: false, finalIssues: failure.issues } as unknown as Json,
+        });
+        await params.store.updateCarouselExperimentAssignment(
+          generation.carousel_experiment_assignment_id, { status: "failed" },
+        );
+        failures.push(new Error(failure.message));
+        logger.warn("Carousel story candidate failed validation", {
+          carouselId: generation.id, experimentBatchId: params.experimentBatchId,
+          slotIndex: failure.slotIndex, issues: failure.issues,
+        });
+      },
     });
   } catch (error) {
     await failEntireBatch(params, error);
@@ -82,7 +103,6 @@ export async function generateCarouselStructure2Batch(params: {
   }
 
   const successes: Array<{ carouselId: string; renderedSlideCount: number }> = [];
-  const failures: Error[] = [];
 
   for (const plannedItem of plannedItems) {
     const generation = params.generations[plannedItem.slotIndex];

@@ -4190,3 +4190,31 @@ Name: **Verify v26 and replace the stale production assignment**
 - The constraint remains `NOT VALID` to preserve the original migration's
   treatment of historic rows; it is nevertheless enforced for every new
   assignment.
+
+
+## 2026-09-06 Terminal Recovery and Candidate Isolation
+
+- Nullable composite RPC results are normalized before ownership checks.
+  PostgREST's object of null fields means no replacement; real or malformed
+  populated rows still pass through the full ownership validation.
+- A released/expired, unconsumed reservation that was attached to a durable
+  writer cannot be reopened. Daily recovery now creates a fresh successor
+  for this case as well as released partial reservations, under the existing
+  feed lock and expected-batch guard. Active writer jobs block replacement
+  even when a generation row incorrectly says failed.
+- Structure 2 reference word ranges are advisory again, as specified in the
+  format contract. Measured overflow, slide roles, CTA position, claim safety,
+  and the other existing blocking checks still require a valid plan.
+- An individual Structure 2 planning failure gets one isolated repair. If
+  that repair fails, persist its response and validation issues, then continue
+  validating and rendering the other candidates. Complete candidates retain
+  their output and consumed plan provenance when the batch is partial.
+- Structure 2 model calls now have a 120-second timeout and no hidden SDK
+  retries. An absent initial response does not fan out into five repair calls.
+- Production acceptance still requires the application and Carousel worker
+  at the same release revision and ready feed slots on the production domain.
+- Automatic replacement is limited to three successor batches per daily
+  feed/profile version. Both replacement and cumulative extension enforce this
+  budget in the database, including for older application revisions. Exhausted
+  failures stay visible instead of producing an unlimited chain of model calls;
+  a new daily feed or profile version receives a new budget.

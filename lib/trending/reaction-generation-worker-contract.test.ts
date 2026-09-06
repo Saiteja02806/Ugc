@@ -11,6 +11,10 @@ const workerDispatch = readProjectFile("worker/src/jobs/index.ts");
 const workerRenderer = readProjectFile("worker/src/lib/render-engine.ts");
 const workerStore = readProjectFile("worker/src/lib/supabase.ts");
 const workerProcessor = readProjectFile("worker/src/processor.ts");
+const queueConfig = readProjectFile("lib/queues/config.ts");
+const videoRenderWorkerVariables = readProjectFile(
+  "infra/gcp/video-render-worker/variables.tf",
+);
 
 test("keeps the durable Reaction job type additive to the established worker contract", () => {
   for (const jobType of [
@@ -23,6 +27,17 @@ test("keeps the durable Reaction job type additive to the established worker con
   }
   assert.match(enqueue, /jobType: REACTION_GENERATION_JOB_TYPE/);
   assert.match(workerDispatch, /job\.job_type === "reaction_generation"/);
+});
+
+test("routes Reaction generation to a deployed video-render worker", () => {
+  assert.match(
+    queueConfig,
+    /reaction_generation:\s*\{\s*queueName: "video-render",\s*\}/,
+  );
+  assert.match(
+    videoRenderWorkerVariables,
+    /default\s*=\s*"render_edit_video,render_schedule_combination,render_wall_text_video,reaction_generation"/,
+  );
 });
 
 test("persists the immutable plan before any Reaction video render", () => {

@@ -18,7 +18,7 @@ app_launcher_service_account_email = "ugc-app-sa@ugcsaas.iam.gserviceaccount.com
 service_name                 = "ugc-video-render-worker"
 job_name                     = "ugc-video-render-job"
 queue_name                   = "video-render"
-worker_job_types             = "render_edit_video,render_schedule_combination,render_wall_text_video"
+worker_job_types             = "render_edit_video,render_schedule_combination,render_wall_text_video,reaction_generation"
 
 worker_visibility_timeout_seconds = 900
 # The one-shot Cloud Run Job performs long renders and exits on completion.

@@ -4166,3 +4166,17 @@ Name: **Verify v26 and replace the stale production assignment**
 - The live Carousel planner audit script passes the required
   `businessDescription` string to the Structure 2 planner, allowing the normal
   live audit to exercise its production-shaped input.
+
+## 2026-09-06 Six-Slide Reservation Initialization Repair
+
+- The six-slide reservation migration must initialize its ten request and
+  actual metadata arrays only after `v_slide_count` is read from the validated
+  plan. PostgreSQL evaluates `DECLARE` initializers before `BEGIN`, so an
+  `array_fill(... array[v_slide_count])` initializer is invalid while that
+  count is still null.
+- The follow-up migration corrects only that function initialization order. It
+  preserves the already-agreed compatible five-or-six-slide database contract,
+  role patterns, image rotation rules, and existing rendered Carousel records.
+- A production release is complete only when the GCP Carousel worker is built
+  from the same Git revision as the deployed Vercel app. A six-slide request
+  must never be handled by an older five-slide worker.

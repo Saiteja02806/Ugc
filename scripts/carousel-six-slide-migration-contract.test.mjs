@@ -10,14 +10,23 @@ const migrationPath = new URL(
   "../supabase/migrations/20260905044832_expand_carousel_role_asset_reservation_to_six_slides.sql",
   import.meta.url,
 );
+const initializationRepairMigrationPath = new URL(
+  "../supabase/migrations/20260906091416_fix_carousel_six_slide_reservation_initialization.sql",
+  import.meta.url,
+);
 
 test("six-slide reservation migration keeps queued five-slide jobs compatible", async () => {
-  const [baselineRaw, migrationRaw] = await Promise.all([
+  const [baselineRaw, migrationRaw, initializationRepairMigrationRaw] = await Promise.all([
     readFile(baselinePath, "utf8"),
     readFile(migrationPath, "utf8"),
+    readFile(initializationRepairMigrationPath, "utf8"),
   ]);
   const baseline = baselineRaw.replaceAll("\r\n", "\n");
   const migration = migrationRaw.replaceAll("\r\n", "\n");
+  const initializationRepairMigration = initializationRepairMigrationRaw.replaceAll(
+    "\r\n",
+    "\n",
+  );
   const functionStart = baseline.indexOf(
     "CREATE OR REPLACE FUNCTION public.reserve_carousel_role_assets_v2",
   );
@@ -112,5 +121,48 @@ test("six-slide reservation migration keeps queued five-slide jobs compatible", 
   assert.match(
     transformed,
     /array\['hook', 'static', 'human', 'static', 'human', 'static'\]::text\[\]/,
+  );
+
+  assert.match(
+    initializationRepairMigration,
+    /carousel_six_slide_arrays_initialized:20260906091416/,
+  );
+  assert.match(
+    initializationRepairMigration,
+    /carousel_six_slide_reservation_initialization_baseline_not_found/,
+  );
+  assert.match(
+    initializationRepairMigration,
+    /array_initializer_rewrite_incomplete/,
+  );
+
+  const repaired = transformed
+    .replaceAll(
+      /^(  v_(?:actual|requested)_(?:categories|levels|reasons|roles|selection_types)) text\[\] := array_fill\(null::text, array\[v_slide_count\]\);$/gm,
+      "$1 text[];",
+    )
+    .replace(
+      "  v_slide_count := jsonb_array_length(p_slide_plan);",
+      `  v_slide_count := jsonb_array_length(p_slide_plan);
+  -- carousel_six_slide_arrays_initialized:20260906091416
+  v_actual_categories := array_fill(null::text, array[v_slide_count]);
+  v_actual_levels := array_fill(null::text, array[v_slide_count]);
+  v_actual_reasons := array_fill(null::text, array[v_slide_count]);
+  v_actual_roles := array_fill(null::text, array[v_slide_count]);
+  v_actual_selection_types := array_fill(null::text, array[v_slide_count]);
+  v_requested_categories := array_fill(null::text, array[v_slide_count]);
+  v_requested_levels := array_fill(null::text, array[v_slide_count]);
+  v_requested_reasons := array_fill(null::text, array[v_slide_count]);
+  v_requested_roles := array_fill(null::text, array[v_slide_count]);
+  v_requested_selection_types := array_fill(null::text, array[v_slide_count]);`,
+    );
+
+  assert.doesNotMatch(
+    repaired,
+    /^  v_(?:actual|requested)_(?:categories|levels|reasons|roles|selection_types) text\[\] := array_fill\(null::text, array\[v_slide_count\]\);$/m,
+  );
+  assert.match(
+    repaired,
+    /v_slide_count := jsonb_array_length\(p_slide_plan\);\n  -- carousel_six_slide_arrays_initialized:20260906091416\n  v_actual_categories := array_fill\(null::text, array\[v_slide_count\]\);/,
   );
 });

@@ -352,7 +352,11 @@ function parseBrief(value: unknown, index: number, available: ReadonlySet<Reacti
     throw new Error(`Reaction brief ${index + 1} has unavailable preferred reactions.`);
   }
   const lines = Array.isArray(content.lines) ? content.lines.map(normalizeText).filter(Boolean) : [];
-  const caption = normalizeText(content.caption);
+  // Lines are the actual rendered copy. Derive the persisted caption from
+  // them so an otherwise-safe model response cannot fail merely because it
+  // introduced formatting drift between two representations of the same text.
+  // All copy and safety validation still runs against this canonical value.
+  const caption = lines.join(" ");
   const emotion = typeof content.emotion === "string" && EMOTIONS.includes(content.emotion as (typeof EMOTIONS)[number]) ? content.emotion as (typeof EMOTIONS)[number] : null;
   const languageFormat = typeof content.languageFormat === "string" && LANGUAGE_FORMATS.includes(content.languageFormat as (typeof LANGUAGE_FORMATS)[number]) ? content.languageFormat as (typeof LANGUAGE_FORMATS)[number] : null;
   const visualTreatment = typeof content.visualTreatment === "string" && TREATMENTS.includes(content.visualTreatment as (typeof TREATMENTS)[number]) ? content.visualTreatment as (typeof TREATMENTS)[number] : null;

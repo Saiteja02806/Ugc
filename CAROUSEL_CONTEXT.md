@@ -4180,3 +4180,13 @@ Name: **Verify v26 and replace the stale production assignment**
 - A production release is complete only when the GCP Carousel worker is built
   from the same Git revision as the deployed Vercel app. A six-slide request
   must never be handled by an older five-slide worker.
+
+## 2026-09-06 Six-Slide Image-Usage Constraint Repair
+
+- The reservation function can now reserve six slide images, but the legacy
+  `carousel_image_usage_role_assignment_chk` also has to allow an assigned
+  `slide_number` of 6. Otherwise the sixth assignment fails at insert time
+  even after the reservation function has passed validation.
+- The constraint remains `NOT VALID` to preserve the original migration's
+  treatment of historic rows; it is nevertheless enforced for every new
+  assignment.

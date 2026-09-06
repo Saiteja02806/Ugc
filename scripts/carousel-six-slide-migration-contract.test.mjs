@@ -14,16 +14,30 @@ const initializationRepairMigrationPath = new URL(
   "../supabase/migrations/20260906091416_fix_carousel_six_slide_reservation_initialization.sql",
   import.meta.url,
 );
+const imageUsageSlotMigrationPath = new URL(
+  "../supabase/migrations/20260906093500_allow_sixth_carousel_image_usage_slot.sql",
+  import.meta.url,
+);
 
 test("six-slide reservation migration keeps queued five-slide jobs compatible", async () => {
-  const [baselineRaw, migrationRaw, initializationRepairMigrationRaw] = await Promise.all([
+  const [
+    baselineRaw,
+    migrationRaw,
+    initializationRepairMigrationRaw,
+    imageUsageSlotMigrationRaw,
+  ] = await Promise.all([
     readFile(baselinePath, "utf8"),
     readFile(migrationPath, "utf8"),
     readFile(initializationRepairMigrationPath, "utf8"),
+    readFile(imageUsageSlotMigrationPath, "utf8"),
   ]);
   const baseline = baselineRaw.replaceAll("\r\n", "\n");
   const migration = migrationRaw.replaceAll("\r\n", "\n");
   const initializationRepairMigration = initializationRepairMigrationRaw.replaceAll(
+    "\r\n",
+    "\n",
+  );
+  const imageUsageSlotMigration = imageUsageSlotMigrationRaw.replaceAll(
     "\r\n",
     "\n",
   );
@@ -165,4 +179,14 @@ test("six-slide reservation migration keeps queued five-slide jobs compatible", 
     repaired,
     /v_slide_count := jsonb_array_length\(p_slide_plan\);\n  -- carousel_six_slide_arrays_initialized:20260906091416\n  v_actual_categories := array_fill\(null::text, array\[v_slide_count\]\);/,
   );
+
+  assert.match(
+    imageUsageSlotMigration,
+    /drop constraint if exists carousel_image_usage_role_assignment_chk/i,
+  );
+  assert.match(
+    imageUsageSlotMigration,
+    /slide_number between 1 and 6/i,
+  );
+  assert.match(imageUsageSlotMigration, /\) not valid;/i);
 });

@@ -1,4 +1,5 @@
 import "server-only";
+import { FreeTrialAccessError } from "@/lib/billing/free-trial";
 
 import {
   getBusinessProfileForUser,
@@ -22,20 +23,35 @@ export type CompletedTrendingFeedReconciliation = {
  */
 export async function reconcileCompletedTrendingFeedForUser(
   userId: string,
+  dependencies = {
+    getProfile: getBusinessProfileForUser,
+    ensureFeed: ensureUnifiedTrendingDailyFeed,
+  },
 ): Promise<CompletedTrendingFeedReconciliation> {
-  const profile = await getBusinessProfileForUser(userId);
+  const profile = await dependencies.getProfile(userId);
 
   if (!profile || !profile.trendingTimezone) {
     return { feedId: null, feedState: null, pendingSlotCount: 0, skipped: true };
   }
 
-  const dailyFeed = await ensureUnifiedTrendingDailyFeed({
+  let dailyFeed: Awaited<ReturnType<typeof ensureUnifiedTrendingDailyFeed>>;
+  try {
+    dailyFeed = await dependencies.ensureFeed({
     includeHookVideos: areTrendingHookVideosEnabled(),
     includeWallText: isWallTextEnabled(),
     profile: profile as BusinessProfileRecord,
     timezone: profile.trendingTimezone,
     userId,
-  });
+    });
+  } catch (error) {
+    // Expired/exhausted access is a settled callback, not a provider outage.
+    // Completing the outbox item prevents endless five-minute retries.
+    // A later paid activation schedules its own prebuild.
+    if (error instanceof FreeTrialAccessError) {
+      return { feedId: null, feedState: null, pendingSlotCount: 0, skipped: true };
+    }
+    throw error;
+  }
 
   return {
     feedState: dailyFeed.feed.state,

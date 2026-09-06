@@ -27,7 +27,7 @@ test("retries a timed out or transient Trending feed request without relying on 
   );
   assert.match(
     workspace,
-    /if \(\(data\.feed\?\.pendingSlotCount \?\? 0\) > 0\)[\s\S]*scheduleFeedRefresh/,
+    /if \(shouldPollTrendingFeed\(\{[\s\S]*upgradeRequired: data\.upgradeRequired[\s\S]*scheduleFeedRefresh/,
   );
   assert.match(workspace, /if \(attemptCount <= 10\) return 10_000/);
   assert.match(workspace, /return 60_000/);

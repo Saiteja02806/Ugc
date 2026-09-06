@@ -267,7 +267,7 @@ async function requestWriter(params: {
 }) {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) throw new Error("OpenAI is not configured.");
-  if (!openaiClient) openaiClient = new OpenAI({ apiKey });
+  if (!openaiClient) openaiClient = new OpenAI({ apiKey, maxRetries: 0, timeout: 60_000 });
   const completion = await openaiClient.chat.completions.parse({
     model: getTrendingWallTextModelName(),
     reasoning_effort: "low",

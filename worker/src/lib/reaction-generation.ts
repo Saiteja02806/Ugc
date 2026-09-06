@@ -1,4 +1,6 @@
 import OpenAI from "openai";
+import { RetryableJobError } from "../retryable-job-error.js";
+import { CONTENT_COPY_MAX_RETRIES, CONTENT_COPY_TIMEOUT_MS, requestContentModel } from "./content-model-request.js";
 
 export const REACTION_GENERATION_PROMPT_VERSION = "reaction-brief-batch-v1";
 export const REACTION_GENERATION_SELECTION_VERSION = "reaction-batch-match-v1";
@@ -212,7 +214,7 @@ async function generateAndValidateBriefs(params: {
   let lastValidationError: Error | null = null;
 
   for (let attempt = 1; attempt <= MAX_REACTION_BRIEF_GENERATION_ATTEMPTS; attempt += 1) {
-    const completion = await getOpenAIClient().chat.completions.create({
+    const completion = await requestContentModel("reaction", () => getOpenAIClient().chat.completions.create({
       max_completion_tokens: 4_000,
       messages: [
         {
@@ -237,11 +239,18 @@ async function generateAndValidateBriefs(params: {
           strict: true,
         },
       },
-    });
+    }));
     const text = completion.choices[0]?.message.content;
+    if (completion.choices[0]?.message.refusal) {
+      throw new Error("The Reaction model declined this request.");
+    }
+    if (!text?.trim()) {
+      throw new RetryableJobError("The Reaction model returned no content.", {
+        code: "reaction_provider_empty_response", retryAfterSeconds: 30,
+      });
+    }
 
     try {
-      if (!text) throw new Error("Reaction brief model returned no structured output.");
       return validateReactionBriefBatch(JSON.parse(text), params.palette, params.requestedCount);
     } catch (error) {
       lastValidationError = error instanceof Error
@@ -490,7 +499,9 @@ function toPlanItem(candidate: Candidate): ReactionPlanItem {
 function getOpenAIClient() {
   const key = process.env.OPENAI_API_KEY?.trim();
   if (!key) throw new Error("OPENAI_API_KEY is required for Reaction brief generation.");
-  openaiClient ??= new OpenAI({ apiKey: key });
+  openaiClient ??= new OpenAI({
+    apiKey: key, maxRetries: CONTENT_COPY_MAX_RETRIES, timeout: CONTENT_COPY_TIMEOUT_MS,
+  });
   return openaiClient;
 }
 

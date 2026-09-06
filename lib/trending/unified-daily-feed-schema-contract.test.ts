@@ -152,7 +152,7 @@ test("exposes ready content before every remaining daily slot resolves", () => {
   );
   assert.match(
     unifiedFeed,
-    /params\.items\.length > 0[\s\S]*return "ready"/,
+    /import \{ getPublicDailyFeedState \} from "@\/lib\/trending\/daily-feed-status"/,
   );
 });
 
@@ -262,7 +262,7 @@ test("uses every vertical Hook clip for every business and exposes a recovery fo
 test("turns a terminal Wall persistence rejection into a visible retry state", () => {
   assert.match(
     unifiedFeed,
-    /params\.terminalFailure \|\| params\.readiness\.failedSlotCount > 0[\s\S]*return "failed"/,
+    /getPublicDailyFeedState\(\{[\s\S]*terminalFailure: terminalFailureFormats\.length > 0/,
   );
   assert.match(
     unifiedFeed,
@@ -389,7 +389,7 @@ test("keeps a ready daily assignment readable across mutable source changes", ()
 test("reconciles completed worker output without another browser feed request", () => {
   assert.match(
     completedFeedReconciliation,
-    /ensureUnifiedTrendingDailyFeed\(/,
+    /ensureFeed: ensureUnifiedTrendingDailyFeed[\s\S]*dependencies\.ensureFeed\(/,
   );
   assert.match(
     trendingReconciliationRoute,

@@ -4218,3 +4218,34 @@ Name: **Verify v26 and replace the stale production assignment**
   budget in the database, including for older application revisions. Exhausted
   failures stay visible instead of producing an unlimited chain of model calls;
   a new daily feed or profile version receives a new budget.
+
+## 2026-09-07 Format Isolation and Explicit Recovery
+
+- Starter remains 20 daily pieces, Free 10, Growth 50. There is no ten-piece
+  batch barrier: all daily slots are reserved together and valid items appear
+  progressively. A same-day paid upgrade preserves its previously promised
+  additional pack.
+- Carousel provider exceptions cannot abort the shared feed read or prevent
+  Hook, Wall, and Reaction preparation. Every terminal format returns a public
+  failure object, including while the retained review shell is open.
+- Carousel inventory counts every active worker stage, including waiting for
+  the provider, rendering, uploading, and cancellation pending. An exhausted
+  recovery with no active inventory marks missing Carousel slots failed
+  immediately, without waiting for repeated stale recovery scans.
+- Automatic recovery remains limited to three successor batches. An explicit
+  authenticated retry of failed, unassigned slots opens one new three-successor
+  window. It records a budget starting sequence; it never rewrites generation
+  history or old replacement sequence numbers. Repeated clicks without a newly
+  failed slot are no-ops. Ready/decided items are preserved and active writers
+  prevent resetting their budget.
+- The daily feed's existing retry token now scopes Reaction retries too, so
+  the retry button does not simply retrieve the same failed Reaction job.
+- Structure 1 and Hook copy use explicit 60-second requests without SDK
+  retries. Hook transient provider errors enter the durable job retry path;
+  independently valid copies still survive a failed best-effort repair.
+- Expired or exhausted free-trial reconciliation returns skipped so the
+  outbox settles. It does not manufacture generation work or keep polling.
+  Paid activation still schedules its own prebuild.
+- Database migration: 20260906183128_allow_explicit_bounded_format_recovery.
+  Application/worker changes require the coordinated release before production
+  acceptance; local model canaries alone are not end-to-end acceptance.

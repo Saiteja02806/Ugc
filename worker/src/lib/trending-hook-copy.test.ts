@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { RetryableJobError } from "../retryable-job-error.js";
 
 import {
   generateReactionMappedTrendingHooks,
@@ -67,6 +68,29 @@ const businessContext = {
   targetAudience: ["people who track meals"],
   valueProps: ["quicker meal logging"],
 };
+
+test("Hook provider failure uses one request and enters the durable retry path", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = "test-key-no-network";
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    return new Response(JSON.stringify({ error: { message: "rate limited" } }), {
+      status: 429, headers: { "content-type": "application/json" },
+    });
+  };
+  try {
+    await assert.rejects(generateReactionMappedTrendingHooks({
+      businessProfile: businessContext, candidates: [candidate],
+    }), RetryableJobError);
+    assert.equal(calls, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = originalKey;
+  }
+});
 
 test("simplified Trending generation writes once with no AI reviewer", async () => {
   let requestCount = 0;

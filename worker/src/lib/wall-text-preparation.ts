@@ -3,6 +3,7 @@ import {
   deriveWorkerScheduleFinalizationSecret,
 } from "./schedule-finalization.js";
 import { RetryableJobError } from "../retryable-job-error.js";
+import { isRetryableContentPlanProviderError } from "./content-plan-provider-retry.js";
 
 const PREPARATION_PATH = "/api/internal/jobs/prepare-wall-text";
 const SIGNATURE_HEADER = "x-ugc-finalization-signature";
@@ -60,7 +61,9 @@ export async function prepareWallTextInApp(params: {
           ? result.errorCode.trim().slice(0, 120)
           : "wall_text_preparation_failed";
 
-      if (errorCode === "infrastructure_error") {
+      if (errorCode === "infrastructure_error" ||
+          (errorCode === "wall_text_preparation_failed" &&
+            (response.status === 408 || response.status === 429 || response.status >= 500))) {
         throw new RetryableJobError(
           `Wall-of-text preparation request failed with HTTP ${response.status}.${detail}`,
           { code: errorCode, retryAfterSeconds: 30 },
@@ -76,6 +79,16 @@ export async function prepareWallTextInApp(params: {
     }
 
     return { ideaCount: result.ideaCount };
+  } catch (error) {
+    if (error instanceof RetryableJobError) throw error;
+    if (isRetryableContentPlanProviderError(error) ||
+        (error instanceof Error && (error.name === "AbortError" ||
+          (error instanceof TypeError && /fetch failed|network/i.test(error.message))))) {
+      throw new RetryableJobError("The Wall preparation connection was interrupted; saved work will be reused.", {
+        code: "wall_text_preparation_transient", retryAfterSeconds: 30,
+      });
+    }
+    throw error;
   } finally {
     clearTimeout(timeout);
   }

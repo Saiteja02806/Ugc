@@ -30,7 +30,9 @@ export function getTrendingDailyPackReadiness(params: {
   let completedCount = 0;
   let deliverableCount = 0;
   let failedSlotCount = 0;
-  let pendingSlotCount = 0;
+  // Interrupted reservation writes must not appear complete just because the
+  // physical rows are missing. The recovery scanner can restore these slots.
+  let pendingSlotCount = Math.max(dailyLimit - params.slots.length, 0);
 
   for (const slot of params.slots) {
     if (slot.state === "decided") {

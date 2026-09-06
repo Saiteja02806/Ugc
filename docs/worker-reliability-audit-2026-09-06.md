@@ -101,3 +101,89 @@ validated repair release; it has not been worked around through another tool.
 
 The result is stronger failure isolation and bounded recovery, not a guarantee
 that a model always returns valid content or that a new 200-item plan is fast.
+
+## Follow-up: all formats and the ten-piece wait — 7 September local time
+
+Starter is configured as 20 daily pieces in both production entitlement rows
+(`pro`, the internal Starter key) and application policy. Free has 10; Growth
+has 50. This account's 6 September feed reserved all 20 positions together at
+08:56:42 UTC. There is no ten-piece checkpoint, cooldown, or delayed second
+allocation. The browser shows Generating when currently deliverable cards run
+out while other reserved slots remain unresolved. Same-day upgrades can
+intentionally add a full paid pack; this account's 30-slot 30 August feed was
+created before its Starter activation, whereas its later feeds have 20.
+
+The observed failures were format-specific:
+- Wall: reservation uniqueness conflicts, incompatible saved text/layout, then
+  incorrect infrastructure retries. Its already-active September plan did not
+  cause the later September 6 writing failures.
+- Carousel: six-slide SQL failure, recovery-result parsing, advisory word
+  counts treated as hard failures, and a rejected candidate aborting siblings.
+- Reaction: absent catalog coverage, deterministic caption errors, and a SQL
+  ambiguity. Successful rendering was about 72 seconds; the historic 2h36m
+  elapsed time was mainly failed/requeue intervals.
+- Hook: all five stored copy jobs for this account succeeded. No historical
+  Hook recovery failure was demonstrated, but its SDK still retried requests
+  invisibly and transient errors were not consistently classified for the
+  durable worker.
+
+Additional fixes prepared in this follow-up:
+1. A Carousel provider exception no longer aborts the shared feed read or
+   prevents the other three formats from preparing.
+2. Every terminal format has a public failure object. The retained review
+   shell can show recovery instead of a misleading Generating spinner.
+   Physical slots missing after an interrupted reservation count as pending.
+3. Exhausted Carousel recovery marks missing slots failed immediately when
+   no viable work remains active. All active worker stages count as in-flight
+   inventory, including provider waits, rendering, and uploading.
+4. Explicit retries use the persisted daily retry token for Reaction as well
+   as Wall. Carousel gets one new bounded three-successor window per explicit
+   retry, without resetting historical sequence numbers. A repeated click
+   with no newly failed slot does nothing.
+5. Wall, Hook, Reaction, and Structure 1 copy requests use explicit 60-second
+   timeouts with no SDK retries. Transient Hook/Reaction requests enter the
+   durable retry path. Reaction empty output yields after one request;
+   refusal and deterministic invalid copy are not treated as provider outages.
+   Wall gateway/network failures now retry through the durable worker too.
+6. Expired/exhausted trial reconciliation returns skipped so its outbox entry
+   settles. Browser generation polling stops when an upgrade is required.
+
+Database changes live:
+- `20260906183128_allow_explicit_bounded_format_recovery`
+- `20260906184412_restrict_carousel_recovery_rpc_access`
+
+The latter closes public execution of an internal security-definer Carousel
+recovery function found by the advisor. The replacement, reservation, and
+explicit restart RPCs were verified inaccessible to anon/authenticated roles
+and executable by service_role. The existing service-only table RLS notice
+is unchanged; [Supabase explains that notice here](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy).
+
+Ten obsolete reconciliation callbacks had reached 196–442 attempts each.
+All were still pending solely because their free trials had expired. After
+checking current trial expiration and absence of paid access, those ten were
+settled live. The verification snapshot has 301 completed outbox rows and
+zero pending rows. Existing account content remains 18 decided and two ready
+for the 6 September pack; no test changed those assignments.
+
+Validation:
+- 96 application/feed/billing/recovery tests and 105 worker tests passed.
+- Worker compilation, complete app typecheck, and final production build passed.
+- Real database transaction tests exercised server-role ownership rejection,
+  explicit restart, duplicate no-op, unchanged ready/decided content and
+  generation history, successor budget inheritance, stale expected-batch no-op,
+  and limits on both replacement and cumulative extension. All fixture changes
+  were rolled back.
+- Fresh real-model canaries using the account's context returned six of six
+  Hook copies in 7.587 seconds, four of four Reaction plans in 33.054 seconds,
+  and one Wall copy with layout validation in 9.358 seconds. Outputs were
+  local only. Reaction timing excludes MP4 rendering. The prior Carousel
+  canary and verified production outputs remain described above.
+- The production app is still `465718f`. No authenticated customer browser
+  session was available; these checks are not a new deployed UI acceptance
+  test. The expanded application/worker repair still needs coordinated
+  production deployment and verification.
+
+Evidence: `format-app-tests.log`, `format-worker-suite.log`,
+`format-app-build-final.log`, `format-live-model-canaries.json`,
+`explicit-recovery-tests.sql`, and `explicit-recovery-successor-tests.sql`
+in the investigation artifact directory.

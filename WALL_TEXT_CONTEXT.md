@@ -558,3 +558,16 @@ npm run wall-audio:poc -- --library D:\walloftext_sound\wall_audio_library_v2_re
 - The 200-item active-plan prerequisite remains the product contract. Its
   sequential model calls remain a first-use latency cost, even with successful
   generation; this repair does not introduce partial-plan publishing.
+
+## 2026-09-07 Existing-User Delay and Feed-State Repair
+
+- The 200 ideas are reused for their 30-day plan/profile version. Existing
+  users do not repeat planning for every piece; failed writing, rendering, and
+  recovery must be measured separately.
+- Wall copy calls now use a 60-second request timeout and zero SDK retries.
+  Classified temporary app errors, gateway 408/429/5xx responses, aborted
+  requests, and network failures use the durable retry path. Typed layout,
+  persistence, and authentication failures remain terminal.
+- Missing physical daily slots count as pending. Terminal failures produce an
+  explicit public failure rather than leaving the retained deck on Generating.
+  Ready content from other formats remains available.

@@ -22,6 +22,8 @@ import {
 } from "@/lib/carousel/prepare-business-profile";
 import { shouldDeliverCarouselJobMessage } from "@/lib/jobs/background-job-delivery-logic";
 import { getBackgroundJobsByIds } from "@/lib/jobs/background-jobs";
+import { isActiveBackgroundJobStatus } from "@/lib/jobs/background-job-contract";
+import { getDailyTrendingFeedForDate, markDailyTrendingFeedFormatsFailed } from "@/lib/trending/unified-daily-feed-db";
 import {
   createVisibleCarouselConceptFingerprint,
   isVisibleCarouselConceptFingerprint,
@@ -145,6 +147,7 @@ type DailyCarouselRefillBatchRow = {
   id: string;
   local_date: string;
   replacement_sequence: number;
+  recovery_budget_start_sequence?: number;
   requested_count: number;
   superseded_at: string | null;
   superseded_by_batch_id: string | null;
@@ -751,9 +754,23 @@ async function reconcileDailyCarouselRefill(params: {
 
   if (
     !replacedPartialBatch && refillBatch && hasTerminalFailure &&
-    refillBatch.replacement_sequence >= MAX_DAILY_CAROUSEL_AUTOMATIC_REPLACEMENTS
+    refillBatch.replacement_sequence - (refillBatch.recovery_budget_start_sequence ?? 0) >= MAX_DAILY_CAROUSEL_AUTOMATIC_REPLACEMENTS
   ) {
-    // Keep failed slots visible without creating an unlimited chain of jobs.
+    // Persist the exhausted state now, so the browser does not wait for three
+    // stale recovery scans before learning that these slots have stopped.
+    if (viableInventory.processingCount === 0) {
+      const unified = await getDailyTrendingFeedForDate({
+        localDate: params.localDate, userId: params.userId,
+      });
+      if (unified &&
+          unified.feed.businessProfileId === params.profile.id &&
+          unified.feed.businessProfileVersion === params.profile.profileVersion) {
+        await markDailyTrendingFeedFormatsFailed({
+          feedId: unified.feed.id, formats: ["carousel"],
+          message: "Carousel generation stopped after its automatic recovery attempts. Try again to restart the missing pieces.",
+        });
+      }
+    }
     return;
   }
 
@@ -886,7 +903,7 @@ async function getViableUnassignedCarouselInventory(params: {
 
       const job = jobById.get(status.generation.triggerRunId);
 
-      return !job || job.status === "queued" || job.status === "processing";
+      return !job || isActiveBackgroundJobStatus(job.status);
     });
 
     processingCount += processingStatuses.length;

@@ -39,6 +39,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/contexts/auth-context";
+import { shouldPollTrendingFeed } from "@/lib/trending/daily-feed-status";
 import {
   type BillingSubscription,
   useBillingSubscription,
@@ -158,7 +159,7 @@ type TrendingFeedProgress = {
 };
 
 type TrendingFeedFailure = {
-  code: "hook_generation_restart_required" | "hook_source_unavailable";
+  code: "hook_generation_restart_required" | "hook_source_unavailable" | "content_generation_failed";
   message: string;
 };
 
@@ -1036,7 +1037,10 @@ export function TrendingWorkspace() {
           userId,
         };
 
-        if ((data.feed?.pendingSlotCount ?? 0) > 0) {
+        if (shouldPollTrendingFeed({
+          pendingSlotCount: data.feed?.pendingSlotCount ?? 0,
+          upgradeRequired: data.upgradeRequired,
+        })) {
           preparingPollAttemptsRef.current += 1;
           scheduleFeedRefresh(
             getSmartPreparingPollInterval(preparingPollAttemptsRef.current),

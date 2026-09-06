@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import OpenAI from "openai";
+import { CONTENT_COPY_MAX_RETRIES, CONTENT_COPY_TIMEOUT_MS, requestContentModel } from "./content-model-request.js";
 
 import {
   buildEditOverlayTextLayout,
@@ -1715,7 +1716,7 @@ async function requestStructuredJson(params: {
   responseFormatName: string;
   schema: Record<string, unknown>;
 }) {
-  const response = await params.client.responses.create({
+  const response = await requestContentModel("hook", () => params.client.responses.create({
     input: JSON.stringify(params.input),
     instructions: params.instructions,
     model: params.model,
@@ -1730,7 +1731,7 @@ async function requestStructuredJson(params: {
       },
       verbosity: "low",
     },
-  });
+  }));
 
   if (!response.output_text?.trim()) {
     throw new Error("The Hook copy model returned no structured output.");
@@ -2753,8 +2754,8 @@ function createOpenAIClient() {
 
   return new OpenAI({
     apiKey,
-    maxRetries: 2,
-    timeout: 60_000,
+    maxRetries: CONTENT_COPY_MAX_RETRIES,
+    timeout: CONTENT_COPY_TIMEOUT_MS,
   });
 }
 

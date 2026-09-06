@@ -53,7 +53,7 @@ if (execute && !args.yes) {
 
 assertManifestIsActiveAndValid(manifestPath);
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-const plan = buildImportPlan(manifest);
+const plan = buildImportPlan(manifest, { requireLocalSource: !verify });
 const operation = verify ? "verify" : execute ? "execute" : "dry-run";
 
 printPlan({ manifestPath, operation, plan });
@@ -143,7 +143,7 @@ function assertManifestIsActiveAndValid(inputPath) {
   }
 }
 
-function buildImportPlan(value) {
+function buildImportPlan(value, { requireLocalSource }) {
   if (
     value?.schemaVersion !== "reaction-asset-manifest-v2" ||
     !Array.isArray(value.videos) ||
@@ -154,10 +154,10 @@ function buildImportPlan(value) {
 
   const clips = value.videos
     .filter((asset) => asset.status === "active")
-    .map((asset) => buildItem(asset, "clip"));
+    .map((asset) => buildItem(asset, "clip", { requireLocalSource }));
   const backgrounds = value.backgrounds
     .filter((asset) => asset.status === "active")
-    .map((asset) => buildItem(asset, "background"));
+    .map((asset) => buildItem(asset, "background", { requireLocalSource }));
 
   assertUnique(clips, "clip");
   assertUnique(backgrounds, "background");
@@ -165,10 +165,28 @@ function buildImportPlan(value) {
   return { backgrounds, clips };
 }
 
-function buildItem(asset, kind) {
+function buildItem(asset, kind, { requireLocalSource }) {
   const sourceRoot = path.resolve(asset.sourceRoot);
   const sourcePath = path.resolve(sourceRoot, asset.sourceFileName);
   assertPathWithin(sourceRoot, sourcePath);
+  const extension = path.extname(sourcePath).toLowerCase();
+  const contentType = getContentType(kind, extension);
+  const storageKey = `${STORAGE_PREFIX}/${kind === "clip" ? "clips" : "backgrounds"}/${asset.sourceSha256}${extension}`;
+
+  // A production verification checks the immutable reviewed hash from storage;
+  // it must not require the source drive to remain mounted after import.
+  if (!requireLocalSource) {
+    return {
+      asset,
+      contentType,
+      kind,
+      sizeBytes: null,
+      sourcePath: null,
+      sourceSha256: asset.sourceSha256,
+      storageKey,
+    };
+  }
+
   if (!existsSync(sourcePath)) {
     throw new Error(`${asset.assetId} source file is missing: ${sourcePath}.`);
   }
@@ -182,10 +200,6 @@ function buildItem(asset, kind) {
   if (sourceSha256 !== asset.sourceSha256) {
     throw new Error(`${asset.assetId} source checksum no longer matches the reviewed manifest.`);
   }
-
-  const extension = path.extname(sourcePath).toLowerCase();
-  const contentType = getContentType(kind, extension);
-  const storageKey = `${STORAGE_PREFIX}/${kind === "clip" ? "clips" : "backgrounds"}/${sourceSha256}${extension}`;
 
   return {
     asset,
@@ -395,7 +409,7 @@ async function verifyStoredObject(item) {
   await withStorageRetry(async () => {
     const head = await headStorageObject({ key: item.storageKey });
     if (
-      Number(head.ContentLength) !== item.sizeBytes ||
+      (item.sizeBytes !== null && Number(head.ContentLength) !== item.sizeBytes) ||
       head.ContentType !== item.contentType
     ) {
       throw new Error(`Stored object metadata is invalid for ${item.asset.assetId}.`);
@@ -496,8 +510,14 @@ function printPlan({ manifestPath: inputPath, operation: mode, plan: value }) {
   console.log(`Manifest: ${inputPath}`);
   console.log(`Active clips: ${value.clips.length}`);
   console.log(`Active backgrounds: ${value.backgrounds.length}`);
+  const items = [...value.clips, ...value.backgrounds];
+  const sourceBytes = items.some((item) => item.sizeBytes === null)
+    ? null
+    : items.reduce((total, item) => total + item.sizeBytes, 0);
   console.log(
-    `Source bytes: ${formatBytes([...value.clips, ...value.backgrounds].reduce((total, item) => total + item.sizeBytes, 0))}`,
+    sourceBytes === null
+      ? "Source bytes: not required for remote verification"
+      : `Source bytes: ${formatBytes(sourceBytes)}`,
   );
 }
 

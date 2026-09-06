@@ -53,6 +53,16 @@ test("uploads and verifies storage before creating an active database row", () =
   assert.match(source, /verifyRemoteItems\(supabase, plan\)/u);
 });
 
+test("remote verification uses reviewed hashes without requiring the source drive", () => {
+  const source = readFileSync(importerPath, "utf8");
+  assert.match(
+    source,
+    /buildImportPlan\(manifest, \{ requireLocalSource: !verify \}\)/u,
+  );
+  assert.match(source, /if \(!requireLocalSource\) \{[\s\S]*sizeBytes: null/u);
+  assert.match(source, /item\.sizeBytes !== null/u);
+});
+
 function createFixture(options = {}) {
   const root = mkdtempSync(path.join(tmpdir(), "reaction-import-test-"));
   const clipsRoot = path.join(root, "clips");

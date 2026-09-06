@@ -23,12 +23,12 @@ const structure2Formats = await jiti.import(
 );
 const fixture = createPlanFixture();
 const analysis = createAnalysisFixture();
-const workerParsed = workerPlanner.parseCarouselContentPlan(fixture, 5);
+const workerParsed = workerPlanner.parseCarouselContentPlan(fixture, 6);
 const failures = [];
 
 if (
   workerParsed.slides[0]?.layoutPreset !== "top-hook" ||
-  workerParsed.slides[4]?.layoutPreset !== "middle-statement"
+  workerParsed.slides[5]?.layoutPreset !== "middle-statement"
 ) {
   failures.push("Planner did not derive the expected renderer layout presets.");
 }
@@ -47,7 +47,7 @@ unsafeFixture.slides[1].imageDirection =
   "A person holding a phone beside an overloaded calendar.";
 
 try {
-  workerPlanner.parseCarouselContentPlan(unsafeFixture, 5);
+  workerPlanner.parseCarouselContentPlan(unsafeFixture, 6);
   failures.push("Worker planner accepted a prohibited human visual subject.");
 } catch (error) {
   if (!String(error).includes("prohibited human subject")) {
@@ -60,7 +60,7 @@ clockHandsFixture.slides[2].imageDirection =
   "A clock with hands moving quickly beside scattered campaign papers.";
 
 try {
-  workerPlanner.parseCarouselContentPlan(clockHandsFixture, 5);
+  workerPlanner.parseCarouselContentPlan(clockHandsFixture, 6);
 } catch {
   failures.push("Planner treated clock hands as a prohibited human subject.");
 }
@@ -77,21 +77,21 @@ if (
   failures.push("Structure 1 still contains a runtime authored-copy fallback.");
 }
 
-const badCopyFixture = structuredClone(fixture);
-badCopyFixture.slides[1].body =
-  "Traditional tracking lacks guidance.. Need for context in tracking";
-
-const parsedBadCopy = workerPlanner.parseCarouselContentPlan(badCopyFixture, 5);
+const parsedBadCopy = structuredClone(workerParsed);
+parsedBadCopy.slides[1] = {
+  ...parsedBadCopy.slides[1],
+  body: "Traditional tracking lacks guidance.. Need for context in tracking",
+  subtext: "Traditional tracking lacks guidance.. Need for context in tracking",
+};
 const badCopyIssues = workerPlanner.partitionCarouselContentPlanValidationIssues(
   workerPlanner.validateCarouselContentPlan(parsedBadCopy),
 );
 if (
-  badCopyIssues.blockingIssues.length !== 0 ||
-  !badCopyIssues.advisoryIssues.some(
+  !badCopyIssues.blockingIssues.some(
     (issue) => issue.code === "repeated_punctuation",
   )
 ) {
-  failures.push("Planner did not retain punctuation feedback as advisory-only.");
+  failures.push("Planner did not block repeated punctuation for repair.");
 }
 
 const qualityIssues = workerPlanner.validateCarouselContentPlan({
@@ -112,8 +112,8 @@ if (!qualityIssues.some((issue) => issue.code === "generic_copy")) {
 }
 
 const unsupportedClaimFixture = structuredClone(workerParsed);
-unsupportedClaimFixture.slides[4] = {
-  ...unsupportedClaimFixture.slides[4],
+unsupportedClaimFixture.slides[5] = {
+  ...unsupportedClaimFixture.slides[5],
   body: "Join millions of users and regain control over your marketing.",
   subtext: "Join millions of users and regain control over your marketing.",
 };
@@ -147,8 +147,8 @@ if (
 }
 
 const unsupportedCtaBrandFixture = structuredClone(workerParsed);
-unsupportedCtaBrandFixture.slides[4] = {
-  ...unsupportedCtaBrandFixture.slides[4],
+unsupportedCtaBrandFixture.slides[5] = {
+  ...unsupportedCtaBrandFixture.slides[5],
   ctaText: "Get Notion free",
 };
 const unsupportedCtaBrandIssues = workerPlanner.validateCarouselContentPlan(
@@ -165,42 +165,35 @@ if (
   failures.push("Planner quality validation missed a foreign CTA brand.");
 }
 
-const repeatedHeadlineFixture = structuredClone(fixture);
+const repeatedHeadlineFixture = structuredClone(workerParsed);
 repeatedHeadlineFixture.slides[3] = {
   ...repeatedHeadlineFixture.slides[3],
   body: "Automate workflows to keep campaign management in one clear place.",
   headline: "Automate Workflows",
+  subtext: "Automate workflows to keep campaign management in one clear place.",
   textMode: "headline_body",
 };
-const normalizedRepeatedHeadline = workerPlanner.parseCarouselContentPlan(
+const repeatedHeadlineIssues = workerPlanner.validateCarouselContentPlan(
   repeatedHeadlineFixture,
-  5,
 );
 
-if (
-  normalizedRepeatedHeadline.slides[3]?.headline !== "Automate Workflows" ||
-  normalizedRepeatedHeadline.slides[3]?.textMode !== "headline_body"
-) {
-  failures.push("Planner changed a structurally valid repeated headline.");
+if (!repeatedHeadlineIssues.some((issue) => issue.code === "headline_body_repetition")) {
+  failures.push("Planner did not block repeated headline and body copy.");
 }
 
-const partialHeadlineRepeatFixture = structuredClone(fixture);
+const partialHeadlineRepeatFixture = structuredClone(workerParsed);
 partialHeadlineRepeatFixture.slides[0] = {
   ...partialHeadlineRepeatFixture.slides[0],
   body: "Campaign chaos leads to missed opportunities and confusion.",
   headline: "Tired of campaign chaos?",
+  subtext: "Campaign chaos leads to missed opportunities and confusion.",
 };
-const normalizedPartialHeadlineRepeat = workerPlanner.parseCarouselContentPlan(
+const partialHeadlineRepeatIssues = workerPlanner.validateCarouselContentPlan(
   partialHeadlineRepeatFixture,
-  5,
 );
 
-if (
-  normalizedPartialHeadlineRepeat.slides[0]?.headline !==
-    "Tired of campaign chaos?" ||
-  normalizedPartialHeadlineRepeat.slides[0]?.textMode !== "headline_body"
-) {
-  failures.push("Planner changed a structurally valid overlapping headline.");
+if (!partialHeadlineRepeatIssues.some((issue) => issue.code === "headline_body_repetition")) {
+  failures.push("Planner did not block an overlapping headline and body.");
 }
 
 const repeatedWordFixture = structuredClone(workerParsed);
@@ -264,12 +257,11 @@ const publishingIssuePartition =
   ]);
 
 if (
-  publishingIssuePartition.blockingIssues.length !== 0 ||
-  !publishingIssuePartition.advisoryIssues.some(
+  !publishingIssuePartition.blockingIssues.some(
     (issue) => issue.code === "grammar" || issue.code === "generic_copy",
   )
 ) {
-  failures.push("Planner did not preserve structurally usable AI copy as advisory-only.");
+  failures.push("Planner did not block invalid copy for repair.");
 }
 
 const exactRegressionFixture = structuredClone(workerParsed);
@@ -305,7 +297,7 @@ if (process.argv.includes("--live")) {
     hookFamilyId: "problem_recognition",
     recentHistory: [],
     selectedAngle: "The hidden cost of scattered campaign work",
-    slideCount: 5,
+    slideCount: 6,
   });
 
   if (livePlan.source !== "llm") {
@@ -317,7 +309,7 @@ if (process.argv.includes("--live")) {
 
   liveStructure2Plans =
     await structure2Planner.buildCarouselStructure2StoryPlanBatch({
-      analysis,
+      businessDescription: analysis.productSummary,
       assignments: structure2Formats.CAROUSEL_STRUCTURE_2_FORMAT_IDS
         .slice(0, 5)
         .map((storyFormatId, slotIndex) => ({
@@ -394,8 +386,7 @@ function createPlanFixture() {
     concept: "The campaign workday that never ends",
     slides: [
       {
-        body:
-          "Scattered updates turn each launch into an after-hours scramble when reminders and reporting live in separate places.",
+        body: "Why campaign updates keep spilling into after-hours work.",
         ctaText: null,
         headline: "Your campaign should not follow you home",
         imageDirection:
@@ -446,13 +437,25 @@ function createPlanFixture() {
       },
       {
         body:
+          "Set the next decision beside the approval note before closing each campaign review.",
+        ctaText: null,
+        headline: null,
+        imageDirection:
+          "Organized campaign notes beside a clear weekly calendar with centered text space.",
+        listItems: [],
+        slideNumber: 5,
+        slideType: "benefit",
+        textMode: "body_only",
+      },
+      {
+        body:
           "Connected planning and reporting keep the next campaign easier to launch and review.",
         ctaText: "Build your campaign",
         headline: "Put the next launch in one place",
         imageDirection:
           "Minimal laptop and notebook still life with clean central negative space.",
         listItems: [],
-        slideNumber: 5,
+        slideNumber: 6,
         slideType: "cta",
         textMode: "cta_takeaway",
       },

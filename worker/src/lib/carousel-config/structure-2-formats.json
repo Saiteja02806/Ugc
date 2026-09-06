@@ -1,6 +1,6 @@
 {
-  "version": "carousel-structure-2-formats-v4-expanded-copy-centered",
-  "backboneVersion": "carousel-structure-2-story-reference-v4",
+  "version": "carousel-structure-2-formats-v5-six-slide-story-runtime",
+  "backboneVersion": "carousel-structure-2-strict-six-slide-product-story-v1",
   "formats": [
     {
       "id": "wrong_belief",

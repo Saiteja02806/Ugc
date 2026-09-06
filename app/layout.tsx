@@ -62,6 +62,14 @@ const arialRegularWallText = localFont({
   weight: "400",
 });
 
+const avenirNextDemiBoldWallText = localFont({
+  src: "../lib/trending/fonts/avenir-next-demi-bold.ttf",
+  adjustFontFallback: false,
+  display: "swap",
+  variable: "--font-wall-text-avenir-next",
+  weight: "600",
+});
+
 const arialWallText = localFont({
   src: "../lib/trending/fonts/arial-bold.ttf",
   adjustFontFallback: false,
@@ -124,7 +132,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${geistEditOverlay.variable} ${interWallText.variable} ${arialRegularWallText.variable} ${arialWallText.variable} h-full dark`}
+      className={`${geistSans.variable} ${geistMono.variable} ${geistEditOverlay.variable} ${interWallText.variable} ${arialRegularWallText.variable} ${arialWallText.variable} ${avenirNextDemiBoldWallText.variable} h-full dark`}
       data-theme="dark"
       style={{
         backgroundColor: THEME_BACKGROUND_COLORS.dark,

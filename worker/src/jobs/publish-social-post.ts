@@ -69,6 +69,7 @@ const publishableVideoSourceTypes = new Set([
   "generated_video",
   "edit_export",
   "wall_text_render",
+  "reaction_render",
 ]);
 const ACCESS_TOKEN_REFRESH_SKEW_MS = 15 * 60 * 1000;
 const SOCIAL_TOKEN_REFRESH_STALE_SECONDS = 120;

@@ -7,10 +7,10 @@ import type {
 import { getWallTextRenderBlocks } from "@/lib/trending/wall-text-types";
 import {
   getWallTextFontSize,
+  getWallTextOutlineWidth,
   getWallTextTypography,
   WALL_TEXT_INLINE_SAFE_PADDING,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
-  WALL_TEXT_OUTLINE_WIDTH,
 } from "@/lib/trending/wall-text-visual-style";
 import {
   DEFAULT_TRENDING_TEXT_COLOR,
@@ -33,6 +33,7 @@ export function WallTextOverlay({
     width: `${layout.textBox.width * 100}%`,
   } satisfies CSSProperties;
   const fontSize = getWallTextFontSize(content);
+  const outlineWidth = getWallTextOutlineWidth(content);
   const typography = getWallTextTypography(content);
 
   return (
@@ -54,7 +55,7 @@ export function WallTextOverlay({
           paddingInline: `${WALL_TEXT_INLINE_SAFE_PADDING / 10.8}cqw`,
           textShadow:
             "0 0.111111cqw 0.185185cqw rgb(0 0 0 / 0.45)",
-          WebkitTextStroke: `${WALL_TEXT_OUTLINE_WIDTH / 10.8}cqw #000000`,
+          WebkitTextStroke: `${outlineWidth / 10.8}cqw #000000`,
         }}
       >
         {getWallTextRenderBlocks(content).map((segment, segmentIndex) => (

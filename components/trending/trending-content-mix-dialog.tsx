@@ -7,6 +7,7 @@ import {
   Loader2,
   RotateCcw,
   ScanText,
+  Sparkles,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 
@@ -89,6 +90,16 @@ const MIX_ROWS: Array<{
     iconSurfaceClass: "border-accent-purple/15 bg-accent-purple/10",
     label: "Wall-of-Text",
     valueClass: "text-accent-purple",
+  },
+  {
+    accentColor: "var(--success)",
+    barClass: "bg-success",
+    format: "reaction",
+    icon: Sparkles,
+    iconClass: "text-success",
+    iconSurfaceClass: "border-success/15 bg-success/10",
+    label: "Reaction Reels",
+    valueClass: "text-success",
   },
   {
     accentColor: "var(--info)",
@@ -196,10 +207,14 @@ export function TrendingContentMixDialog({
     });
   }, [mix, payload]);
   const hasChanges = MIX_ROWS.some(
-    ({ format }) => mix[format] !== savedMix[format],
+    ({ format }) =>
+      getMixValue(mix, format) !== getMixValue(savedMix, format),
   );
 
-  function updateMix(format: TrendingFeedFormat, nextValue: number) {
+  function updateMix(
+    format: TrendingFeedFormat,
+    nextValue: number,
+  ) {
     setNotice(null);
     setError(null);
     setMix((current) =>
@@ -337,7 +352,7 @@ export function TrendingContentMixDialog({
                     <span
                       key={format}
                       className={cn("h-full transition-[width]", barClass)}
-                      style={{ width: `${mix[format]}%` }}
+                      style={{ width: `${getMixValue(mix, format)}%` }}
                     />
                   ))}
                 </div>
@@ -362,7 +377,9 @@ export function TrendingContentMixDialog({
                     valueClass,
                   }) => {
                     const sliderFillPercent =
-                      (mix[format] / Math.max(payload.limits[format], 1)) * 100;
+                      (getMixValue(mix, format) /
+                        Math.max(getMixValue(payload.limits, format), 1)) *
+                      100;
 
                     return (
                       <label
@@ -389,7 +406,7 @@ export function TrendingContentMixDialog({
                                 valueClass,
                               )}
                             >
-                              {mix[format]}%
+                              {getMixValue(mix, format)}%
                             </output>
                             {allocation ? (
                               <span className="min-w-14 text-right text-xs tabular-nums text-muted-subtle">
@@ -400,10 +417,10 @@ export function TrendingContentMixDialog({
                         </span>
                         <input
                           aria-label={`${label} percentage`}
-                          aria-valuetext={`${mix[format]} percent, ${allocation?.[format] ?? 0} per day`}
+                          aria-valuetext={`${getMixValue(mix, format)} percent, ${allocation?.[format] ?? 0} per day`}
                           className={CONTENT_MIX_RANGE_CLASS}
                           disabled={!payload.editable || saving}
-                          max={payload.limits[format]}
+                          max={getMixValue(payload.limits, format)}
                           min={0}
                           step={1}
                           style={
@@ -413,7 +430,7 @@ export function TrendingContentMixDialog({
                             } as CSSProperties
                           }
                           type="range"
-                          value={mix[format]}
+                          value={getMixValue(mix, format)}
                           onChange={(event) =>
                             updateMix(format, Number(event.target.value))
                           }
@@ -487,6 +504,10 @@ function getBrowserLocalDate() {
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function getMixValue(mix: TrendingContentMix, format: TrendingFeedFormat) {
+  return format === "reaction" ? mix.reaction ?? 0 : mix[format];
 }
 
 function getContentMixErrorMessage(

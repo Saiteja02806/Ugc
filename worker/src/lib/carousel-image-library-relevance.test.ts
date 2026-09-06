@@ -4,7 +4,7 @@ import test from "node:test";
 import { buildCarouselSlideImagePlan } from "./carousel-image-library-relevance.js";
 
 function createSlides(values: Partial<Record<number, string>>) {
-  return [1, 2, 3, 4, 5].map((slideNumber) => ({
+  return [1, 2, 3, 4, 5, 6].map((slideNumber) => ({
     slideNumber,
     supportingText: [],
     visibleText: [values[slideNumber] ?? `Primary message ${slideNumber}`],

@@ -327,8 +327,10 @@ export function InstagramAccountManager() {
   const accountLimitReached = connections.length >= instagramAccountLimit;
   const accountLimitMessage =
     instagramAccountLimit === 1
-      ? "Free and Starter support 1 connected Instagram account. Upgrade to Growth to connect multiple accounts."
-      : `Your Growth plan supports up to ${instagramAccountLimit} connected Instagram accounts.`;
+      ? "Your Free plan supports 1 connected Instagram account. Upgrade to Starter to connect up to 3 accounts."
+      : instagramAccountLimit === 3
+        ? "Your Starter plan supports up to 3 connected Instagram accounts. Upgrade to Growth to connect up to 5 accounts."
+        : "Your Growth plan supports up to 5 connected Instagram accounts. Disconnect an account before adding another.";
 
   return (
     <>

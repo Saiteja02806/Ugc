@@ -53,8 +53,31 @@ test("prompt-only generation remains valid", () => {
 test("only recognized Explore recreations require an image reference", () => {
   assert.match(videoApi, /isExploreHookVideoId\(body\?\.referenceId\)/);
   assert.match(videoApi, /body\?\.referenceType === "hook"/);
+  assert.match(videoApi, /isExploreWallTextVideoId\(body\?\.referenceId\)/);
+  assert.match(videoApi, /body\?\.referenceType === "wall_text"/);
   assert.match(videoApi, /isExploreRecreate && !avatarImageUrl/);
   assert.match(videoApi, /Add a reference image before recreating an Explore video/);
+});
+
+test("Wall of Text Recreate carries its reference context and sends the chosen image to generation", () => {
+  const videoWorkspace = readProjectFile(
+    "components/video/video-generation-workspace.tsx",
+  );
+
+  assert.match(videoWorkspace, /refTypeParam === "wall_text"/);
+  assert.match(videoWorkspace, /referenceId: referenceContext\?\.id \?\? null/);
+  assert.match(videoWorkspace, /referenceType: referenceContext\?\.type \?\? null/);
+  assert.match(videoWorkspace, /referenceUrl: referenceContext\?\.sourceUrl \?\? null/);
+  assert.match(
+    videoWorkspace,
+    /referenceContext\?\.type === "hook" \|\| referenceContext\?\.type === "wall_text"/,
+  );
+  assert.match(videoWorkspace, /allowedKinds=\{isExploreRecreate \? \["image"\]/);
+  assert.match(videoWorker, /referenceImageUrl: input\.avatarImageUrl/);
+  assert.match(
+    geminiOmniProvider,
+    /referenceImageUrl\s*\? await downloadReferenceImage\(referenceImageUrl\)/,
+  );
 });
 
 test("AI Studio video generation sends the user's prompt without a UGC template", () => {

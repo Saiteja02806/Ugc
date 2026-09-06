@@ -21,11 +21,11 @@ export function createCarouselStructure2SlideInserts(params: {
     throw new Error("Structure 2 persistence requires a positive structure version.");
   }
   if (
-    params.renderSpecs.length !== 5 ||
+    params.renderSpecs.length !== 6 ||
     params.renderSpecs.some((spec, index) => spec.slideNumber !== index + 1)
   ) {
     throw new Error(
-      "Structure 2 persistence requires five ordered render specs for slides 1 through 5.",
+      "Structure 2 persistence requires six ordered render specs for slides 1 through 6.",
     );
   }
 

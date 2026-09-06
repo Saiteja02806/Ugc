@@ -43,6 +43,7 @@ export type BackgroundJobType =
   | "paid_trending_prebuild"
   | "preview_render"
   | "publish_social_post"
+  | "reaction_generation"
   | "render_demo_video"
   | "render_edit_video"
   | "render_schedule_combination"
@@ -66,6 +67,7 @@ export const EXECUTABLE_BACKGROUND_JOB_TYPES = [
   "media_analysis",
   "paid_trending_prebuild",
   "publish_social_post",
+  "reaction_generation",
   "render_edit_video",
   "render_schedule_combination",
   "render_trending_carousel_edit",
@@ -262,7 +264,8 @@ type MediaAssetInsert = {
     | "generated_video"
     | "edit_export"
     | "combined_render"
-    | "wall_text_render";
+    | "wall_text_render"
+    | "reaction_render";
   status: "uploading" | "processing" | "ready" | "failed";
   storage_key: string;
   thumbnail_url: string | null;
@@ -825,6 +828,7 @@ export type CarouselSlideRow = {
     | "proof_reflection_cta"
     | "recognition"
     | "reframe"
+    | "takeaway_cta"
     | null;
   story_text_treatment: "outlined_overlay" | "overlay" | "pill" | null;
   structure_id: "structure_1" | "structure_2";
@@ -881,6 +885,7 @@ export type CarouselSlideInsert = {
     | "proof_reflection_cta"
     | "recognition"
     | "reframe"
+    | "takeaway_cta"
     | null;
   story_text_treatment?: "outlined_overlay" | "overlay" | "pill" | null;
   structure_id?: "structure_1" | "structure_2";
@@ -954,6 +959,83 @@ export type InstagramAnalyticsContentInsert = {
   thumbnail_url: string | null;
   user_id: string;
   views: number | null;
+};
+
+export type ReactionClipPresentationRow = {
+  clip_asset_id: string;
+  presented_at: string;
+  user_id: string;
+};
+
+export type ReactionCreativeRow = {
+  business_profile_id: string;
+  business_profile_version: number;
+  clip_asset_id: string;
+  id: string;
+  render_status: "failed" | "preview_ready" | "queued" | "rendering";
+  user_id: string;
+};
+
+export type UserReactionAssignmentRow = {
+  business_profile_id: string;
+  business_profile_version: number;
+  id: string;
+  reaction_creative_id: string;
+  state: "active" | "completed_skipped" | "selected";
+  user_id: string;
+};
+
+type ReactionGenerationRunRow = {
+  brief_payload: Json | null;
+  business_profile_id: string;
+  business_profile_version: number;
+  generation_context: Json;
+  generation_job_id: string;
+  id: string;
+  project_id: string;
+  requested_count: number;
+  status: "completed" | "failed" | "partial" | "planning" | "queued" | "rendering";
+  user_id: string;
+};
+
+type ReactionClipCatalogRow = {
+  composition: string | null;
+  duration_seconds: number;
+  foreground_anchor: string | null;
+  foreground_height_percent: number | null;
+  has_alpha: boolean;
+  id: string;
+  reactions: string[];
+  source_storage_key: string | null;
+  status: "active" | "excluded" | "pending";
+  subject_count: string | null;
+};
+
+type ReactionBackgroundCatalogRow = {
+  context_tags: string[];
+  foreground_placement: string | null;
+  id: string;
+  source_storage_key: string | null;
+  status: "active" | "excluded" | "pending";
+};
+
+type ReactionGenerationItemRow = {
+  background_asset_id: string;
+  caption: string;
+  clip_asset_id: string;
+  content_json: Json;
+  duration_seconds: number;
+  id: string;
+  preview_url: string | null;
+  primary_reaction: string;
+  reaction_assignment_id: string;
+  reaction_creative_id: string;
+  render_error: string | null;
+  render_plan_json: Json;
+  render_status: "failed" | "queued" | "ready" | "rendering";
+  rendered_media_asset_id: string | null;
+  slot_index: number;
+  title: string;
 };
 
 export type BackgroundJobsDatabase = {
@@ -1042,6 +1124,28 @@ export type BackgroundJobsDatabase = {
         };
         Returns: WallTextContentPlanRow;
       };
+      complete_reaction_generation_item_render_v1: {
+        Args: {
+          p_generation_job_id: string;
+          p_item_id: string;
+          p_media_asset_id: string;
+          p_preview_url: string;
+          p_user_id: string;
+        };
+        Returns: boolean;
+      };
+      complete_reaction_generation_run_v1: {
+        Args: {
+          p_generation_job_id: string;
+          p_run_id: string;
+          p_user_id: string;
+        };
+        Returns: Array<{
+          failed_count: number;
+          ready_count: number;
+          status: "completed" | "failed" | "partial";
+        }>;
+      };
       consume_carousel_content_plan_item: {
         Args: {
           p_carousel_generation_id: string;
@@ -1050,6 +1154,36 @@ export type BackgroundJobsDatabase = {
           p_user_id: string;
         };
         Returns: CarouselContentPlanItemRow;
+      };
+      ensure_reaction_generation_run_v1: {
+        Args: {
+          p_business_profile_id: string;
+          p_business_profile_version: number;
+          p_generation_context: Json;
+          p_generation_job_id: string;
+          p_project_id: string;
+          p_request_key: string;
+          p_requested_count: number;
+          p_user_id: string;
+        };
+        Returns: ReactionGenerationRunRow[];
+      };
+      fail_reaction_generation_item_render_v1: {
+        Args: {
+          p_error_message: string;
+          p_generation_job_id: string;
+          p_item_id: string;
+          p_user_id: string;
+        };
+        Returns: boolean;
+      };
+      fail_reaction_generation_run_v1: {
+        Args: {
+          p_error_message: string;
+          p_generation_job_id: string;
+          p_user_id: string;
+        };
+        Returns: boolean;
       };
       persist_carousel_content_plan_brief_chunk: {
         Args: {
@@ -1068,6 +1202,16 @@ export type BackgroundJobsDatabase = {
           p_user_id: string;
         };
         Returns: WallTextContentPlanItemRow[];
+      };
+      persist_reaction_generation_plan_v1: {
+        Args: {
+          p_brief_payload: Json;
+          p_generation_job_id: string;
+          p_items: Json;
+          p_run_id: string;
+          p_user_id: string;
+        };
+        Returns: ReactionGenerationItemRow[];
       };
       finalize_edit_render: {
         Args: {
@@ -1412,6 +1556,30 @@ export type BackgroundJobsDatabase = {
         };
         Update: Partial<MediaAssetInsert> & { deleted_at?: string | null };
       };
+      reaction_background_assets: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: ReactionBackgroundCatalogRow;
+        Update: Partial<ReactionBackgroundCatalogRow>;
+      };
+      reaction_clip_assets: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: ReactionClipCatalogRow;
+        Update: Partial<ReactionClipCatalogRow>;
+      };
+      reaction_clip_presentations: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: ReactionClipPresentationRow;
+        Update: Partial<ReactionClipPresentationRow>;
+      };
+      reaction_creatives: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: ReactionCreativeRow;
+        Update: Partial<ReactionCreativeRow>;
+      };
       hook_video_drafts: {
         Insert: Record<string, never>;
         Relationships: [];
@@ -1440,6 +1608,12 @@ export type BackgroundJobsDatabase = {
           user_id: string;
         };
         Update: UserWallTextAssignmentUpdate;
+      };
+      user_reaction_assignments: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: UserReactionAssignmentRow;
+        Update: Partial<UserReactionAssignmentRow>;
       };
       library_carousel_slides: {
         Insert: Record<string, never>;

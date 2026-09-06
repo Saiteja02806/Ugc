@@ -9,6 +9,9 @@ const route = readProjectFile(
   "app/api/trending/feed/decisions/route.ts",
 );
 const service = readProjectFile("lib/trending/creative-decisions.ts");
+const reactionDeliveryMigration = readProjectFile(
+  "supabase/migrations/20260906120000_add_reaction_trending_delivery.sql",
+);
 
 test("persists the required owner, creative, decision, and timestamp fields", () => {
   assert.match(migration, /create table if not exists public\.trending_creative_decisions/);
@@ -22,7 +25,7 @@ test("persists the required owner, creative, decision, and timestamp fields", ()
   );
 });
 
-test("records all three formats and atomically retires their active assignments", () => {
+test("records every feed format and atomically retires its active assignment", () => {
   assert.match(migration, /create or replace function public\.record_trending_creative_decision/);
 
   for (const format of ["carousel", "hook_video", "wall_text"]) {
@@ -32,6 +35,8 @@ test("records all three formats and atomically retires their active assignments"
   assert.match(migration, /update public\.user_carousel_assignments/);
   assert.match(migration, /update public\.user_hook_video_assignments/);
   assert.match(migration, /update public\.user_wall_text_assignments/);
+  assert.match(reactionDeliveryMigration, /when 'reaction' then/);
+  assert.match(reactionDeliveryMigration, /update public\.user_reaction_assignments/);
   assert.match(migration, /when p_decision = 'accepted' then 'selected'/);
   assert.match(migration, /when p_decision = 'accepted' then 'accepted'/);
   assert.match(migration, /else 'completed_skipped'/);
@@ -69,7 +74,10 @@ test("authenticates the decision route and derives userId from Firebase", () => 
   assert.match(route, /requireFirebaseUser\(request\)/);
   assert.match(route, /userId = \(await requireFirebaseUser\(request\)\)\.uid/);
   assert.match(route, /decision: z\.enum\(\["accepted", "rejected"\]\)/);
-  assert.match(route, /format: z\.enum\(\["carousel", "hook_video", "wall_text"\]\)/);
+  assert.match(
+    route,
+    /format: z\.enum\(\["carousel", "hook_video", "wall_text", "reaction"\]\)/,
+  );
   assert.match(route, /recordTrendingCreativeDecision\(\{[\s\S]*userId/);
   assert.match(service, /record_trending_creative_decision/);
 });

@@ -3880,7 +3880,8 @@ function getScheduleMediaSourceType(value: unknown): ScheduleMediaOption["source
     value === "generated_video" ||
     value === "upload" ||
     value === "user_video" ||
-    value === "wall_text_render"
+    value === "wall_text_render" ||
+    value === "reaction_render"
   ) {
     if (value === "demo_upload") {
       return "demo_video";

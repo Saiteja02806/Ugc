@@ -17,7 +17,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { UploadedPostsTab } from "@/components/demos/demos-workspace";
 import { PlatformSelectionModalLoading } from "@/components/social/platform-selection-modal-loading";
-import type { SchedulePlatformContext } from "@/components/social/platform-selection-modal";
+import type {
+  CarouselSchedulePlatformContext,
+  SchedulePlatformContext,
+} from "@/components/social/platform-selection-modal";
 import {
   Dialog,
   DialogClose,
@@ -249,6 +252,13 @@ export function CarouselLibraryTab({
 
   async function confirmPlatforms(submission: CarouselScheduleSubmission) {
     if (!scheduleContext) {
+      throw new Error("Choose a saved Library carousel first.");
+    }
+
+    if (
+      scheduleContext.contentType === "wall_text" ||
+      scheduleContext.contentType === "reaction"
+    ) {
       throw new Error("Choose a saved Library carousel first.");
     }
 
@@ -511,7 +521,7 @@ function LibraryContentEmptyState({
 }
 
 async function scheduleLibraryCarousel(params: {
-  context: SchedulePlatformContext;
+  context: CarouselSchedulePlatformContext;
   submission: CarouselScheduleSubmission;
 }) {
   return createAndPublishCarouselSchedule({

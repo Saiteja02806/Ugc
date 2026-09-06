@@ -68,17 +68,10 @@ export type HookVideoScheduleSelection = {
   useDefaultScheduleTime: boolean;
 };
 
-export type HookVideoScheduleSummary =
-  | {
-      demoTitle: string;
-      hookText: string;
-      kind?: "hook_video";
-    }
-  | {
-      backgroundTitle: string;
-      kind: "wall_text";
-      text: string;
-    };
+export type HookVideoScheduleSummary = {
+  demoTitle: string;
+  hookText: string;
+};
 
 export type VideoPreparationState =
   | { status: "ready" }
@@ -326,12 +319,7 @@ export function HookVideoScheduleDrawer({
     }
   }
 
-  const scheduleTitle =
-    stage === "review"
-      ? "Review schedule"
-      : summary.kind === "wall_text"
-        ? "Schedule post"
-        : "Schedule Reel";
+  const scheduleTitle = stage === "review" ? "Review schedule" : "Schedule Reel";
 
   return (
     <Dialog
@@ -709,37 +697,20 @@ function ScheduleReview({
       </div>
       <div className="border-b border-border py-4">
         <p className="text-xs font-semibold text-muted">Composition</p>
-        {summary.kind === "wall_text" ? (
-          <dl className="mt-2 space-y-2 text-xs">
-            <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-3">
-              <dt className="font-medium text-muted">Background</dt>
-              <dd className="truncate font-semibold text-foreground-strong">
-                {summary.backgroundTitle}
-              </dd>
-            </div>
-            <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-3">
-              <dt className="font-medium text-muted">Overlay copy</dt>
-              <dd className="line-clamp-5 font-semibold leading-5 text-foreground-strong">
-                {summary.text}
-              </dd>
-            </div>
-          </dl>
-        ) : (
-          <dl className="mt-2 space-y-2 text-xs">
-            <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-3">
-              <dt className="font-medium text-muted">Demo</dt>
-              <dd className="truncate font-semibold text-foreground-strong">
-                {summary.demoTitle}
-              </dd>
-            </div>
-            <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-3">
-              <dt className="font-medium text-muted">Hook</dt>
-              <dd className="line-clamp-3 font-semibold leading-5 text-foreground-strong">
-                <HookInlineSymbols text={summary.hookText} />
-              </dd>
-            </div>
-          </dl>
-        )}
+        <dl className="mt-2 space-y-2 text-xs">
+          <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-3">
+            <dt className="font-medium text-muted">Demo</dt>
+            <dd className="truncate font-semibold text-foreground-strong">
+              {summary.demoTitle}
+            </dd>
+          </div>
+          <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-3">
+            <dt className="font-medium text-muted">Hook</dt>
+            <dd className="line-clamp-3 font-semibold leading-5 text-foreground-strong">
+              <HookInlineSymbols text={summary.hookText} />
+            </dd>
+          </div>
+        </dl>
       </div>
       <div className="pt-4">
         <p className="text-xs font-semibold text-muted">Accounts</p>

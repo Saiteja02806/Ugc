@@ -25,7 +25,7 @@ test("scheduling account rows render the returned profile picture with fallback"
   assert.match(reelDrawer, /<SocialAccountAvatar connection=\{connection\}/);
 });
 
-test("Carousel scheduling reserves a visible footer row at short heights", () => {
+test("Post scheduling reserves a visible footer row at short heights", () => {
   assert.match(
     carouselModal,
     /grid-rows-\[auto_minmax\(0,1fr\)_auto\]/,
@@ -35,11 +35,19 @@ test("Carousel scheduling reserves a visible footer row at short heights", () =>
   assert.match(carouselModal, /<DialogFooter className="[^"]*shrink-0/);
 });
 
-test("Carousel scheduling keeps the header text-only without a redundant Instagram logo", () => {
-  assert.match(carouselHeader, /Instagram carousel/);
+test("Post scheduling keeps the header text-only without a redundant Instagram logo", () => {
+  assert.match(carouselHeader, /Instagram post/);
   assert.match(carouselHeader, /\{currentStep\.title\}/);
   assert.doesNotMatch(carouselHeader, /<SocialPlatformIcon/);
   assert.match(carouselModal, /<SocialAccountAvatar connection=\{connection\}/);
+});
+
+test("Text Reels use the shared post scheduler without repeating their on-screen copy", () => {
+  assert.match(carouselModal, /contentType: "wall_text"/);
+  assert.match(carouselModal, /Text Reel is ready to prepare/);
+  assert.match(carouselModal, /Its message already appears on screen/);
+  assert.match(carouselModal, /Add context to accompany this Text Reel/);
+  assert.doesNotMatch(carouselModal, /Overlay copy/);
 });
 
 test("the Instagram empty-state icon remains white over its gradient tile", () => {

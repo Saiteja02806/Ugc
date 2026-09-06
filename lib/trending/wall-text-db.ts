@@ -37,6 +37,7 @@ import type { WallTextDuplicateSignature } from "@/lib/trending/wall-text-duplic
 import {
   LEGACY_WALL_TEXT_ARIAL_BOLD_FONT_WEIGHT,
   LEGACY_WALL_TEXT_FONT_WEIGHT,
+  WALL_TEXT_ARIAL_REGULAR_FONT_WEIGHT,
   WALL_TEXT_FONT_WEIGHT,
 } from "@/lib/trending/wall-text-visual-style";
 import {
@@ -1388,8 +1389,12 @@ export async function replaceTrendingWallTextCreativeCopy(params: {
     text: TrendingWallTextContent;
   }>;
   generatorModel: string;
+  recoveryIteration?: number | null;
+  recoveryKey?: string | null;
+  requestKey?: string | null;
   userId: string;
 }) {
+  const MAX_WALL_TEXT_REPLACEMENT_BATCH_SIZE = 50;
   const updates = await Promise.all(
     params.creatives.map(async (creative) => {
       const { layout, text } = await prepareWallTextForPersistence({
@@ -1404,21 +1409,46 @@ export async function replaceTrendingWallTextCreativeCopy(params: {
       };
     }),
   );
-  const { error } = await getClient().rpc(
-    "replace_wall_text_creative_copy_v9",
-    {
-      p_business_profile_id: params.businessProfileId,
-      p_business_profile_version: params.businessProfileVersion,
-      p_generator_model: params.generatorModel,
-      p_updates: toJson(updates),
-      p_user_id: params.userId,
-    },
-  );
 
-  if (error) {
-    throw new Error(
-      `Could not refresh Trending Wall-of-text copy: ${error.message}`,
+  // The database validates replacement batches at fifty rows. Historical
+  // accounts can have more stale creatives than that, so update in bounded
+  // batches rather than sending one deterministic invalid-count request.
+  for (let offset = 0; offset < updates.length; offset += MAX_WALL_TEXT_REPLACEMENT_BATCH_SIZE) {
+    const replacementBatch = updates.slice(
+      offset,
+      offset + MAX_WALL_TEXT_REPLACEMENT_BATCH_SIZE,
     );
+    const { data, error } = await getClient().rpc(
+      "replace_wall_text_creative_copy_v9",
+      {
+        p_business_profile_id: params.businessProfileId,
+        p_business_profile_version: params.businessProfileVersion,
+        p_generator_model: params.generatorModel,
+        p_updates: toJson(replacementBatch),
+        p_user_id: params.userId,
+      },
+    );
+
+    if (error) {
+      // Keep the bounded, non-content diagnostic together so recurring
+      // recovery can be identified without logging generated Wall copy.
+      const rpcData: unknown = data;
+      console.error("Wall-of-text replacement RPC failed", {
+        databaseCode: error.code ?? null,
+        expectedCount: replacementBatch.length,
+        returnedCount: Array.isArray(rpcData) ? rpcData.length : null,
+        creativeIds: replacementBatch.map((update) => update.id),
+        recoveryIteration: params.recoveryIteration ?? null,
+        recoveryKey: params.recoveryKey ?? null,
+        requestKey: params.requestKey ?? null,
+      });
+      throw Object.assign(
+        new Error(
+          `Could not refresh Trending Wall-of-text copy: ${error.message}`,
+        ),
+        { code: error.code },
+      );
+    }
   }
 
   return listTrendingWallTextCreatives({
@@ -2148,7 +2178,7 @@ export function parseWallTextContent(
   if (
     isJsonObject(value) &&
     value.kind === "wall_text" &&
-    ["wall-text-overlay-v5", "wall-text-overlay-v6", "wall-text-overlay-v7", "wall-text-overlay-v8"].includes(
+    ["wall-text-overlay-v5", "wall-text-overlay-v6", "wall-text-overlay-v7", "wall-text-overlay-v8", "wall-text-overlay-v9"].includes(
       String(value.layoutVersion),
     )
   ) {
@@ -2268,24 +2298,33 @@ function parseCurrentWallTextContent(
         : null;
   const finalLayout = value.finalLayout;
   const textBox = parseNormalizedBox(finalLayout.textBox);
+  const isAvenirNextV9 = value.layoutVersion === "wall-text-overlay-v9";
   const isArialRegularV8 = value.layoutVersion === "wall-text-overlay-v8";
   const isArialV7 = value.layoutVersion === "wall-text-overlay-v7";
   const isPlainTextLayout =
-    value.layoutVersion === "wall-text-overlay-v6" || isArialV7 || isArialRegularV8;
+    value.layoutVersion === "wall-text-overlay-v6" ||
+    isArialV7 ||
+    isArialRegularV8 ||
+    isAvenirNextV9;
 
   if (
     !parsedSource ||
     finalLayout.version !==
-      (isArialRegularV8
+      (isAvenirNextV9
+        ? "wall-text-final-layout-v5"
+        : isArialRegularV8
         ? "wall-text-final-layout-v4"
         : isArialV7
           ? "wall-text-final-layout-v3"
           : isPlainTextLayout
             ? "wall-text-final-layout-v2"
             : "wall-text-final-layout-v1") ||
-    (isArialRegularV8
-      ? finalLayout.fontFamily !== "Arial" ||
+    (isAvenirNextV9
+      ? finalLayout.fontFamily !== "Avenir Next" ||
         Number(finalLayout.fontWeight) !== WALL_TEXT_FONT_WEIGHT
+      : isArialRegularV8
+      ? finalLayout.fontFamily !== "Arial" ||
+        Number(finalLayout.fontWeight) !== WALL_TEXT_ARIAL_REGULAR_FONT_WEIGHT
       : isArialV7
         ? finalLayout.fontFamily !== "Arial" ||
           Number(finalLayout.fontWeight) !== LEGACY_WALL_TEXT_ARIAL_BOLD_FONT_WEIGHT
@@ -2346,12 +2385,22 @@ function parseCurrentWallTextContent(
   const formatId = value.formatId as (typeof WALL_TEXT_PATTERNS)[number];
 
   const fontSizePx = normalizeCurrentWallTextFontSize(Number(finalLayout.fontSizePx));
-  const parsedFinalLayout = isArialRegularV8
+  const parsedFinalLayout = isAvenirNextV9
+    ? {
+        blocks,
+        fontFamily: "Avenir Next" as const,
+        fontSizePx,
+        fontWeight: WALL_TEXT_FONT_WEIGHT as 600,
+        lineHeightPx: fontSizePx * 1.1,
+        textBox,
+        version: "wall-text-final-layout-v5" as const,
+      }
+    : isArialRegularV8
     ? {
         blocks,
         fontFamily: "Arial" as const,
         fontSizePx,
-        fontWeight: WALL_TEXT_FONT_WEIGHT as 400,
+        fontWeight: WALL_TEXT_ARIAL_REGULAR_FONT_WEIGHT as 400,
         lineHeightPx: fontSizePx * 1.1,
         textBox,
         version: "wall-text-final-layout-v4" as const,
@@ -2383,7 +2432,9 @@ function parseCurrentWallTextContent(
     formatId,
     fullText: normalizedFullText,
     kind: "wall_text",
-    layoutVersion: isArialRegularV8
+    layoutVersion: isAvenirNextV9
+      ? "wall-text-overlay-v9"
+      : isArialRegularV8
       ? "wall-text-overlay-v8"
       : isArialV7
         ? "wall-text-overlay-v7"

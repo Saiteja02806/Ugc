@@ -156,6 +156,8 @@ export async function prepareTrendingWallTextIdeas(
   profile: BusinessProfileRecord,
   options: {
     mode?: "initial" | "refill";
+    recoveryIteration?: number | null;
+    recoveryKey?: string | null;
     requestedCount?: number;
     requestKey?: string;
   } = {},
@@ -252,6 +254,11 @@ export async function prepareTrendingWallTextIdeas(
       profile,
       existing,
       inventory,
+      {
+        recoveryIteration: options.recoveryIteration,
+        recoveryKey: options.recoveryKey,
+        requestKey: options.requestKey,
+      },
     );
   }
 
@@ -799,6 +806,11 @@ async function backfillExistingTrendingWallTextIdeas(
   profile: BusinessProfileRecord,
   existing: WallTextCreativeRow[],
   inventory: Awaited<ReturnType<typeof listWallTextVideoAssetInventory>>,
+  recovery: {
+    recoveryIteration?: number | null;
+    recoveryKey?: string | null;
+    requestKey?: string | null;
+  },
 ) {
   const staleCreatives = existing.filter(
     (creative) => !isTrendingWallTextCreativeCurrent(creative),
@@ -856,6 +868,9 @@ async function backfillExistingTrendingWallTextIdeas(
     businessProfileVersion: profile.profileVersion,
     creatives: upgrades,
     generatorModel: "wall-layout-engine-v1",
+    recoveryIteration: recovery.recoveryIteration,
+    recoveryKey: recovery.recoveryKey,
+    requestKey: recovery.requestKey,
     userId: profile.userId,
   });
 

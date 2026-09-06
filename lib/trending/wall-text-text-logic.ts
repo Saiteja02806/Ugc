@@ -1,6 +1,6 @@
 import {
   LEGACY_WALL_TEXT_PATTERNS,
-  HISTORICAL_WALL_TEXT_CONTENT_LAYOUT_VERSION,
+  EARLIEST_WALL_TEXT_CONTENT_LAYOUT_VERSION,
   WALL_TEXT_PATTERNS,
   WALL_TEXT_SEGMENT_ROLES,
   type TrendingWallTextContent,
@@ -350,7 +350,8 @@ export function validateWallTextContent(
   if (
     content.layoutVersion === "wall-text-overlay-v6" ||
     content.layoutVersion === "wall-text-overlay-v7" ||
-    content.layoutVersion === "wall-text-overlay-v8"
+    content.layoutVersion === "wall-text-overlay-v8" ||
+    content.layoutVersion === "wall-text-overlay-v9"
   ) {
     const blocks = content.finalLayout?.blocks;
     const lines = blocks?.flatMap((block) => block.lines) ?? [];
@@ -367,7 +368,9 @@ export function validateWallTextContent(
     if (
       content.sourceContent?.kind !== "text" ||
       content.finalLayout?.version !==
-        (content.layoutVersion === "wall-text-overlay-v8"
+        (content.layoutVersion === "wall-text-overlay-v9"
+          ? "wall-text-final-layout-v5"
+          : content.layoutVersion === "wall-text-overlay-v8"
           ? "wall-text-final-layout-v4"
           : content.layoutVersion === "wall-text-overlay-v7"
             ? "wall-text-final-layout-v3"
@@ -545,7 +548,7 @@ function toWallTextContent(
   return {
     fullText,
     kind: "wall_text",
-    layoutVersion: HISTORICAL_WALL_TEXT_CONTENT_LAYOUT_VERSION,
+    layoutVersion: EARLIEST_WALL_TEXT_CONTENT_LAYOUT_VERSION,
     pattern: normalizePattern(idea.pattern),
     segments,
   };

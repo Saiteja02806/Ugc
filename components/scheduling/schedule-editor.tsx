@@ -2675,6 +2675,7 @@ function getMediaSourceLabel(option: ScheduleMediaOption) {
     influencer_video: "Presenter",
     user_video: "Uploaded video",
     wall_text_render: "Wall-of-text Reel",
+    reaction_render: "Reaction Reel",
   };
 
   return sourceLabels[option.sourceType];

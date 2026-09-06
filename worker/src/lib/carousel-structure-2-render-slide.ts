@@ -10,9 +10,10 @@ import {
   CAROUSEL_STRUCTURE_2_SAFE_BOTTOM,
   CAROUSEL_STRUCTURE_2_SAFE_TOP,
   CAROUSEL_STRUCTURE_2_SAFE_X,
-  CAROUSEL_STRUCTURE_2_STORY_MAX_LINES,
   CAROUSEL_STRUCTURE_2_TEXT_GROUP_GAP,
-  CAROUSEL_STRUCTURE_2_TEXT_LINE_HEIGHT,
+  getCarouselStructure2StoryFontSize,
+  getCarouselStructure2StoryMaxLines,
+  getCarouselStructure2TextLineHeight,
 } from "./carousel-structure-2-layout.js";
 
 export const CAROUSEL_STRUCTURE_2_RENDERER_VERSION =
@@ -130,7 +131,8 @@ function buildCarouselStructure2Overlay(params: {
   const maximumRenderableTextWidth =
     maximumTextWidth - DIRECT_TEXT_SIDE_BUFFER * 2;
   const story = fitText({
-    maximumLines: CAROUSEL_STRUCTURE_2_STORY_MAX_LINES,
+    fontSize: getCarouselStructure2StoryFontSize(params.spec.slideNumber),
+    maximumLines: getCarouselStructure2StoryMaxLines(params.spec.slideNumber),
     maximumWidth: maximumRenderableTextWidth,
     value: params.spec.storyText,
   });
@@ -358,6 +360,7 @@ function resolveStoryTop(params: {
 }
 
 function fitText(params: {
+  fontSize?: number;
   maximumLines: number;
   maximumWidth: number;
   value: string;
@@ -368,7 +371,7 @@ function fitText(params: {
     throw new Error("Structure 2 renderer cannot render empty story copy.");
   }
 
-  const fontSize = CAROUSEL_FIXED_FONT_SIZE;
+  const fontSize = params.fontSize ?? CAROUSEL_FIXED_FONT_SIZE;
   const lines = wrapWords(value, params.maximumWidth, fontSize);
 
   if (lines.length > params.maximumLines) {
@@ -376,7 +379,7 @@ function fitText(params: {
       `Structure 2 copy exceeds ${params.maximumLines} lines at the fixed ${fontSize}px font size.`,
     );
   }
-  const lineHeight = CAROUSEL_STRUCTURE_2_TEXT_LINE_HEIGHT;
+  const lineHeight = getCarouselStructure2TextLineHeight(fontSize);
   const maximumLineWidth = Math.ceil(
     Math.max(...lines.map((line) => estimateTextWidth(line, fontSize))),
   );

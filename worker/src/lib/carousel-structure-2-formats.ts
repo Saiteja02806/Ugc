@@ -19,6 +19,7 @@ export const CAROUSEL_STRUCTURE_2_STORY_ROLES = [
   "reframe",
   "product_turning_point",
   "proof_reflection_cta",
+  "takeaway_cta",
 ] as const;
 
 export type CarouselStructure2FormatId =
@@ -27,7 +28,8 @@ export type CarouselStructure2StoryRole =
   (typeof CAROUSEL_STRUCTURE_2_STORY_ROLES)[number];
 export type CarouselStructure2Perspective =
   | "first_person"
-  | "first_person_then_viewer";
+  | "first_person_then_viewer"
+  | "reader_first";
 export type CarouselStructure2ProductMention =
   | "forbidden"
   | "optional"
@@ -69,6 +71,7 @@ const STORY_ROLES = new Set<string>(CAROUSEL_STRUCTURE_2_STORY_ROLES);
 const PERSPECTIVES = new Set<CarouselStructure2Perspective>([
   "first_person",
   "first_person_then_viewer",
+  "reader_first",
 ]);
 const PRODUCT_MENTION_POLICIES = new Set<CarouselStructure2ProductMention>([
   "forbidden",
@@ -79,6 +82,14 @@ const CTA_POLICIES = new Set<CarouselStructure2CtaPolicy>([
   "native_experiment",
   "none",
 ]);
+const STRUCTURE_2_STRICT_STORY_FLOW: CarouselStructure2StoryRole[] = [
+  "recognition",
+  "failure_scene",
+  "reframe",
+  "product_turning_point",
+  "proof_reflection_cta",
+  "takeaway_cta",
+];
 
 export const CAROUSEL_STRUCTURE_2_FORMAT_LIBRARY =
   parseCarouselStructure2FormatLibrary(formatsJson);
@@ -158,18 +169,21 @@ function parseFormat(value: unknown, index: number) {
   }
 
   if (!Array.isArray(record.slides) || record.slides.length !== 5) {
-    throw new Error(`${id} must define exactly five story slides.`);
+    throw new Error(`${id} must define exactly five base story slides.`);
   }
 
-  const slides = record.slides.map((slide, slideIndex) =>
+  const baseSlides = record.slides.map((slide, slideIndex) =>
     parseSlide(slide, id, slideIndex),
   );
 
-  const exampleFlows = getStoryRoleFlows(record.exampleFlows, id);
+  // The old JSON examples are retained as source material, but the runtime
+  // contract is intentionally strict: each generated Structure 2 carousel
+  // follows the same six-slide product-story progression.
+  getStoryRoleFlows(record.exampleFlows, id);
 
   return {
     aliases: getOptionalStringArray(record.aliases, `${id} aliases`),
-    exampleFlows,
+    exampleFlows: [STRUCTURE_2_STRICT_STORY_FLOW],
     generationRules: getRequiredStringArray(
       record.generationRules,
       `${id} generation rules`,
@@ -189,9 +203,51 @@ function parseFormat(value: unknown, index: number) {
       0.1,
       10,
     ),
-    slides,
+    slides: expandSixSlideFormat(baseSlides),
     version: getInteger(record.version, `${id} version`, 1, 10_000),
   } satisfies CarouselStructure2FormatDefinition;
+}
+
+function expandSixSlideFormat(
+  baseSlides: readonly CarouselStructure2SlideDefinition[],
+) {
+  const [cover, problem, realization, mechanism, proof] = baseSlides;
+
+  if (!cover || !problem || !realization || !mechanism || !proof) {
+    throw new Error("Structure 2 requires five valid base story slides.");
+  }
+
+  return [
+    {
+      ...cover,
+      instruction:
+        "Reader-first cover: state a specific benefit, tension, mistake, contrast, or curiosity gap that gives the viewer a reason to swipe. Do not begin with a complete personal-story opener such as 'I thought...' or 'I used to...' unless the same line states the viewer payoff.",
+      maximumWords: Math.min(cover.maximumWords, 18),
+      minimumWords: 4,
+      perspective: "reader_first",
+    },
+    problem,
+    realization,
+    mechanism,
+    {
+      ...proof,
+      ctaPolicy: "none",
+      instruction:
+        "Give a modest, supportable proof or result that follows from the mechanism. Do not add a CTA or invent metrics, customers, guarantees, or outcomes.",
+      perspective: "first_person",
+    },
+    {
+      ctaPolicy: "native_experiment",
+      instruction:
+        "Close with one useful takeaway or a natural, low-pressure CTA. It should help the reader act on the lesson and may invite them to see the product only when that invitation follows the story.",
+      maximumWords: 36,
+      minimumWords: 5,
+      perspective: "first_person_then_viewer",
+      productMention: "optional",
+      slideNumber: 6,
+      storyRole: "takeaway_cta",
+    },
+  ] satisfies CarouselStructure2SlideDefinition[];
 }
 
 function parseSlide(

@@ -6,6 +6,7 @@ import { join } from "node:path";
 import sharp from "sharp";
 
 import {
+  downloadStoredObjectBuffer,
   getStorageProviderName,
   uploadBufferToStorage,
 } from "./storage.js";
@@ -36,6 +37,7 @@ import {
 import {
   buildWallTextRenderLayout,
   buildWallTextOverlaySvg,
+  getWallTextOutlineWidth,
   WALL_TEXT_INLINE_SAFE_PADDING,
   WALL_TEXT_OUTLINE_WIDTH,
   WALL_TEXT_RENDER_HEIGHT,
@@ -191,6 +193,28 @@ export type RenderWallTextVideoPayload = {
 export type RenderWallTextVideoOutput = {
   assignmentId: string;
   creativeId: string;
+  key: string;
+  ok: true;
+  renderId: string;
+  url: string;
+};
+
+export type RenderReactionVideoPayload = {
+  backgroundStorageKey: string;
+  captionLines: readonly string[];
+  creativeId: string;
+  durationSeconds: number;
+  foreground: {
+    anchor: "bottom_center" | "bottom_left" | "bottom_right" | "center";
+    heightPercent: number;
+  };
+  foregroundStorageKey: string;
+  renderId: string;
+  treatment: "caption_with_labels" | "outlined_text" | "white_card";
+};
+
+export type RenderReactionVideoOutput = {
+  byteLength: number;
   key: string;
   ok: true;
   renderId: string;
@@ -530,6 +554,168 @@ export async function renderWallTextVideoToStorage(
       recursive: true,
     });
   }
+}
+
+/**
+ * A Reaction card is always a final, owner-scoped MP4. Catalog backgrounds and
+ * alpha MOVs remain private worker inputs; no browser is asked to composite
+ * raw catalog media.
+ */
+export async function renderReactionVideoToStorage(
+  payload: RenderReactionVideoPayload,
+): Promise<RenderReactionVideoOutput> {
+  const workDir = await mkdtemp(join(tmpdir(), "ugc-reaction-render-"));
+  const backgroundPath = join(workDir, "background");
+  const foregroundPath = join(workDir, "foreground.mov");
+  const overlayPath = join(workDir, "caption.png");
+  const outputPath = join(workDir, "reaction.mp4");
+
+  try {
+    const [backgroundBuffer, foregroundBuffer, captionOverlay] = await Promise.all([
+      downloadStoredObjectBuffer(payload.backgroundStorageKey),
+      downloadStoredObjectBuffer(payload.foregroundStorageKey),
+      renderReactionCaptionOverlay(payload),
+    ]);
+    await Promise.all([
+      writeFile(backgroundPath, backgroundBuffer),
+      writeFile(foregroundPath, foregroundBuffer),
+      writeFile(overlayPath, captionOverlay),
+    ]);
+
+    await runFfmpegCommand({
+      args: buildReactionVideoArgs({
+        backgroundPath,
+        foregroundPath,
+        outputPath,
+        overlayPath,
+        payload,
+      }),
+      label: "reaction video render",
+      renderId: payload.renderId,
+    });
+    await validateRenderedVideoFile(outputPath, payload.renderId, {
+      expectedDurationSeconds: payload.durationSeconds,
+      logLabel: "Reaction",
+      requireAudio: false,
+    });
+
+    const renderedBuffer = await readFile(outputPath);
+    if (renderedBuffer.length === 0) {
+      throw new Error("Reaction render produced an empty MP4.");
+    }
+    const key = buildReactionVideoKey(payload);
+    const result = await uploadBufferToStorage({
+      key,
+      buffer: renderedBuffer,
+      contentType: OUTPUT_CONTENT_TYPE,
+      cacheControl: "public, max-age=31536000, immutable",
+    });
+
+    logger.info("Reaction video render uploaded to object storage", {
+      creativeId: payload.creativeId,
+      key: result.key,
+      renderId: payload.renderId,
+      renderedSize: renderedBuffer.length,
+      storageProvider: getStorageProviderName(),
+      url: result.url,
+    });
+
+    return {
+      byteLength: renderedBuffer.length,
+      key: result.key,
+      ok: true,
+      renderId: payload.renderId,
+      url: result.url,
+    };
+  } finally {
+    await rm(workDir, { force: true, recursive: true });
+  }
+}
+
+export function buildReactionVideoArgs(params: {
+  backgroundPath: string;
+  foregroundPath: string;
+  outputPath: string;
+  overlayPath: string;
+  payload: RenderReactionVideoPayload;
+}) {
+  const foregroundHeight = Math.round(
+    Math.max(0.25, Math.min(0.9, params.payload.foreground.heightPercent)) * 1920,
+  );
+  const foregroundX =
+    params.payload.foreground.anchor === "bottom_left"
+      ? "48"
+      : params.payload.foreground.anchor === "bottom_right"
+        ? "W-w-48"
+        : "(W-w)/2";
+  const foregroundY =
+    params.payload.foreground.anchor === "center" ? "(H-h)/2" : "H-h";
+  const filter = [
+    "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1[background]",
+    `[1:v]scale=-2:${foregroundHeight},setsar=1[foreground]`,
+    `[background][foreground]overlay=${foregroundX}:${foregroundY}:format=auto[composed]`,
+    "[composed][2:v]overlay=0:0:format=auto[video]",
+  ].join(";");
+
+  return [
+    "-y",
+    "-loop", "1",
+    "-framerate", "30",
+    "-i", params.backgroundPath,
+    "-stream_loop", "-1",
+    "-i", params.foregroundPath,
+    "-loop", "1",
+    "-framerate", "30",
+    "-i", params.overlayPath,
+    "-filter_complex", filter,
+    "-map", "[video]",
+    "-t", String(params.payload.durationSeconds),
+    "-r", "30",
+    "-an",
+    "-c:v", "libx264",
+    "-pix_fmt", "yuv420p",
+    "-movflags", "+faststart",
+    params.outputPath,
+  ];
+}
+
+async function renderReactionCaptionOverlay(
+  payload: Pick<RenderReactionVideoPayload, "captionLines" | "treatment">,
+) {
+  const lines = payload.captionLines.map((line) => normalizeReactionCaptionLine(line));
+  if (lines.length < 1 || lines.length > 3 || lines.some((line) => !line)) {
+    throw new Error("Reaction render needs one to three non-empty caption lines.");
+  }
+  const fontSize = lines.join(" ").length > 78 ? 46 : lines.join(" ").length > 48 ? 54 : 62;
+  const lineHeight = Math.round(fontSize * 1.16);
+  const textHeight = lineHeight * lines.length;
+  const isWhiteCard = payload.treatment === "white_card";
+  const y = 182;
+  const cardHeight = textHeight + 56;
+  const textY = isWhiteCard ? y + 38 : y;
+  const textNodes = lines
+    .map((line, index) => `<text x="540" y="${textY + lineHeight * index}" text-anchor="middle">${escapeReactionSvgText(line)}</text>`)
+    .join("");
+  const svg = `
+    <svg width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+      <style>text { font-family: Arial, sans-serif; font-size: ${fontSize}px; font-weight: 700; }</style>
+      ${isWhiteCard ? `<rect x="72" y="${y - 18}" width="936" height="${cardHeight}" rx="28" fill="#FFFFFF" fill-opacity="0.96"/>` : ""}
+      <g fill="${isWhiteCard ? "#111111" : "#FFFFFF"}" ${isWhiteCard ? "" : 'stroke="#111111" stroke-width="7" paint-order="stroke" stroke-linejoin="round"'}>${textNodes}</g>
+    </svg>`;
+  return sharp(Buffer.from(svg)).png().toBuffer();
+}
+
+function normalizeReactionCaptionLine(value: string) {
+  return value.replace(/\s+/gu, " ").trim();
+}
+
+function escapeReactionSvgText(value: string) {
+  return value
+    .replace(/&/gu, "&amp;")
+    .replace(/</gu, "&lt;")
+    .replace(/>/gu, "&gt;")
+    .replace(/"/gu, "&quot;")
+    .replace(/'/gu, "&apos;");
 }
 
 export function buildWallTextVideoArgs({
@@ -1357,6 +1543,7 @@ async function registerWallTextFonts() {
     getWallTextFont({ family: "Inter" }),
     getWallTextFont({ family: "ArialBold" }),
     getWallTextFont({ family: "ArialRegular" }),
+    getWallTextFont({ family: "AvenirNextDemiBold" }),
   ]);
 
   await Promise.all(
@@ -1364,7 +1551,7 @@ async function registerWallTextFonts() {
       const directText = await sharp({
         text: {
           dpi: 72,
-          font: `${font.name} 46`,
+          font: `${getPangoFontName(font)} 46`,
           fontfile: font.path,
           rgba: true,
           text: "Wall text 0123",
@@ -1396,7 +1583,7 @@ async function validateWallTextRenderedLineWidths(
       const metadata = await sharp({
         text: {
           dpi: 72,
-            font: `${font.name} ${segment.fontSize}`,
+          font: `${getPangoFontName(font)} ${segment.fontSize}`,
           fontfile: font.path,
           rgba: true,
           text: escapePangoMarkup(line),
@@ -1406,7 +1593,7 @@ async function validateWallTextRenderedLineWidths(
 
       if (
         !metadata.width ||
-        metadata.width + WALL_TEXT_OUTLINE_WIDTH * 2 >= maximumWidth
+        metadata.width + getWallTextOutlineWidth(content) * 2 >= maximumWidth
       ) {
         throw new Error(
           `Wall-of-text line exceeds the measured ${font.name} text width: "${line}"`,
@@ -1421,8 +1608,8 @@ async function validateWallTextRenderedLineWidths(
  * not byte-for-byte identical to the packaged renderer font. Reflow the
  * persisted layout with the renderer's own Inter metrics before drawing it,
  * so a one-pixel metrics difference never turns a valid Reel into a failed
- * background job. V3 and V4 use the exact same bundled Arial font bytes in
- * both layout stages, so their measured four-to-eight-line layouts are immutable.
+ * background job. V3-V5 use the exact same bundled font bytes in both layout
+ * stages, so their measured four-to-eight-line layouts are immutable.
  */
 export async function reflowWallTextContentForRenderer(params: {
   content: WallTextRenderContent;
@@ -1433,7 +1620,8 @@ export async function reflowWallTextContentForRenderer(params: {
   if (
     !content.finalLayout ||
     content.finalLayout.version === "wall-text-final-layout-v3" ||
-    content.finalLayout.version === "wall-text-final-layout-v4"
+    content.finalLayout.version === "wall-text-final-layout-v4" ||
+    content.finalLayout.version === "wall-text-final-layout-v5"
   ) {
     return content;
   }
@@ -1460,7 +1648,7 @@ export async function reflowWallTextContentForRenderer(params: {
     const lineCount = blocks.reduce((total, block) => total + block.lines.length, 0);
 
     if (
-      ["wall-text-final-layout-v2", "wall-text-final-layout-v3", "wall-text-final-layout-v4"].includes(
+      ["wall-text-final-layout-v2", "wall-text-final-layout-v3", "wall-text-final-layout-v4", "wall-text-final-layout-v5"].includes(
         content.finalLayout.version,
       ) &&
       (lineCount < 4 || lineCount > 8)
@@ -1548,7 +1736,7 @@ async function measureWallTextLineWidth(params: {
   const metadata = await sharp({
     text: {
       dpi: 72,
-      font: `${params.font.name} ${params.fontSizePx}`,
+      font: `${getPangoFontName(params.font)} ${params.fontSizePx}`,
       fontfile: params.font.path,
       rgba: true,
       text: escapePangoMarkup(params.text),
@@ -1700,9 +1888,22 @@ function getWallTextPixelBounds(params: {
 }
 
 type WallTextRenderFont = {
-  name: "Arial Bold" | "Arial Regular" | "Inter Regular";
+  name:
+    | "Avenir Next Demi Bold"
+    | "Arial Bold"
+    | "Arial Regular"
+    | "Inter Regular";
   path: string;
 };
+
+/**
+ * Pango treats words such as "Bold" as style modifiers. The supplied face's
+ * full name is "Avenir Next Demi Bold", but its family is "Avenir Next";
+ * using the full name makes Pango fall back on some hosts even with fontfile.
+ */
+function getPangoFontName(font: WallTextRenderFont) {
+  return font.name === "Avenir Next Demi Bold" ? "Avenir Next" : font.name;
+}
 
 async function getWallTextFontForContent(content: WallTextRenderContent) {
   return getWallTextFont({
@@ -1711,33 +1912,40 @@ async function getWallTextFontForContent(content: WallTextRenderContent) {
         ? "ArialBold"
         : content.finalLayout?.version === "wall-text-final-layout-v4"
           ? "ArialRegular"
+          : content.finalLayout?.version === "wall-text-final-layout-v5"
+            ? "AvenirNextDemiBold"
           : "Inter",
   });
 }
 
 async function getWallTextFont(params: {
-  family: "ArialBold" | "ArialRegular" | "Inter";
+  family: "AvenirNextDemiBold" | "ArialBold" | "ArialRegular" | "Inter";
 }): Promise<WallTextRenderFont> {
-  if (params.family === "ArialBold" || params.family === "ArialRegular") {
-    const isBold = params.family === "ArialBold";
-    const fileName = isBold ? "arial-bold.ttf" : "arial-regular.ttf";
-    const fontName = isBold ? "Arial Bold" : "Arial Regular";
+  if (params.family !== "Inter") {
+    const font = params.family === "AvenirNextDemiBold"
+      ? {
+          fileName: "avenir-next-demi-bold.ttf",
+          name: "Avenir Next Demi Bold" as const,
+        }
+      : params.family === "ArialBold"
+        ? { fileName: "arial-bold.ttf", name: "Arial Bold" as const }
+        : { fileName: "arial-regular.ttf", name: "Arial Regular" as const };
     const candidatePaths = [
-      join(process.cwd(), "assets", "fonts", fileName),
-      join(process.cwd(), "worker", "src", "assets", "fonts", fileName),
+      join(process.cwd(), "assets", "fonts", font.fileName),
+      join(process.cwd(), "worker", "src", "assets", "fonts", font.fileName),
     ];
 
     for (const fontPath of candidatePaths) {
       try {
         await readFile(fontPath);
-        return { name: fontName, path: fontPath };
+        return { name: font.name, path: fontPath };
       } catch {
         // Try the next packaged font path.
       }
     }
 
     throw new Error(
-      `${fontName} is unavailable; refusing to render Wall-of-text with a fallback font.`,
+      `${font.name} is unavailable; refusing to render Wall-of-text with a fallback font.`,
     );
   }
 
@@ -1981,6 +2189,16 @@ function buildWallTextVideoKey(payload: RenderWallTextVideoPayload) {
     cleanPathPart(payload.userId),
     cleanPathPart(payload.projectId),
     "wall-text",
+    `${cleanPathPart(payload.renderId)}.mp4`,
+  ].join("/");
+}
+
+function buildReactionVideoKey(payload: RenderReactionVideoPayload) {
+  return [
+    "videos",
+    "rendered",
+    "reaction",
+    cleanPathPart(payload.creativeId),
     `${cleanPathPart(payload.renderId)}.mp4`,
   ].join("/");
 }

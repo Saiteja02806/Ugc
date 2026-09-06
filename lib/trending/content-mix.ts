@@ -1,24 +1,37 @@
 import type { TrendingFeedFormat } from "@/lib/trending/feed-items";
 
 export const DEFAULT_TRENDING_CONTENT_MIX = {
-  carousel: 25,
-  hook_video: 25,
-  wall_text: 50,
+  carousel: 20,
+  hook_video: 30,
+  reaction: 20,
+  wall_text: 30,
 } as const satisfies TrendingContentMix;
 
 export const FREE_TRENDING_CONTENT_MIX = {
-  carousel: 30,
+  carousel: 20,
   hook_video: 30,
-  wall_text: 40,
+  reaction: 20,
+  wall_text: 30,
 } as const satisfies TrendingContentMix;
 
 export const TRENDING_CONTENT_MIX_LIMITS = {
   carousel: 100,
   hook_video: 100,
+  reaction: 100,
   wall_text: 100,
 } as const satisfies TrendingContentMix;
 
-export type TrendingContentMix = Record<TrendingFeedFormat, number>;
+/**
+ * Reaction is optional only so preferences written before this format existed
+ * remain readable during the database rollout. New and saved mixes always
+ * contain its value.
+ */
+export type TrendingContentMix = Record<
+  Exclude<TrendingFeedFormat, "reaction">,
+  number
+> & {
+  reaction?: number;
+};
 
 export type TrendingContentAllocation = Record<TrendingFeedFormat, number>;
 
@@ -32,17 +45,22 @@ const FORMATS = [
   "carousel",
   "wall_text",
   "hook_video",
+  "reaction",
 ] as const satisfies readonly TrendingFeedFormat[];
 
 export function validateTrendingContentMix(mix: TrendingContentMix) {
-  const total = FORMATS.reduce((sum, format) => sum + mix[format], 0);
+  const total = FORMATS.reduce(
+    (sum, format) => sum + getTrendingContentMixValue(mix, format),
+    0,
+  );
 
   return (
     total === 100 &&
     FORMATS.every((format) =>
-      Number.isInteger(mix[format]) &&
-      mix[format] >= 0 &&
-      mix[format] <= TRENDING_CONTENT_MIX_LIMITS[format]
+      Number.isInteger(getTrendingContentMixValue(mix, format)) &&
+      getTrendingContentMixValue(mix, format) >= 0 &&
+      getTrendingContentMixValue(mix, format) <=
+        TRENDING_CONTENT_MIX_LIMITS[format]
     )
   );
 }
@@ -82,21 +100,19 @@ export function allocateTrendingContent(params: {
   const allocation = Object.fromEntries(
     FORMATS.map((format) => [
       format,
-      Math.floor((dailyLimit * params.mix[format]) / 100),
+      Math.floor(
+        (dailyLimit * getTrendingContentMixValue(params.mix, format)) / 100,
+      ),
     ]),
   ) as TrendingContentAllocation;
   let remaining = dailyLimit - sumAllocation(allocation);
-  // The default Growth allocation has a 12.5/25/12.5 split. Keep its extra
-  // slot on Carousel so the complete Hook allocation fits in the validated
-  // twelve-candidate worker batch instead of serializing a second AI job for
-  // one remaining daily-feed position.
-  const tieOrder = isDefaultGrowthMix(params)
-    ? (["carousel", "wall_text", "hook_video"] as const)
-    : getDailyTieOrder(params.localDate);
+  const tieOrder = getDailyTieOrder(params.localDate);
   const tieIndex = new Map(tieOrder.map((format, index) => [format, index]));
   const ranked = [...FORMATS].sort((first, second) => {
-    const firstRemainder = (dailyLimit * params.mix[first]) % 100;
-    const secondRemainder = (dailyLimit * params.mix[second]) % 100;
+    const firstRemainder =
+      (dailyLimit * getTrendingContentMixValue(params.mix, first)) % 100;
+    const secondRemainder =
+      (dailyLimit * getTrendingContentMixValue(params.mix, second)) % 100;
 
     return (
       secondRemainder - firstRemainder ||
@@ -125,6 +141,7 @@ export function interleaveTrendingContent(params: {
   const currentWeight: TrendingContentAllocation = {
     carousel: 0,
     hook_video: 0,
+    reaction: 0,
     wall_text: 0,
   };
   const order: TrendingFeedFormat[] = [];
@@ -194,6 +211,7 @@ export function allocateUnboundTrendingSlots(params: {
   const allocation: TrendingContentAllocation = {
     carousel: Math.max(target.carousel - params.currentCounts.carousel, 0),
     hook_video: Math.max(target.hook_video - params.currentCounts.hook_video, 0),
+    reaction: Math.max(target.reaction - params.currentCounts.reaction, 0),
     wall_text: Math.max(target.wall_text - params.currentCounts.wall_text, 0),
   };
   let remaining = params.unboundCount - sumAllocation(allocation);
@@ -202,8 +220,12 @@ export function allocateUnboundTrendingSlots(params: {
     const format = [...FORMATS].sort((first, second) => {
       const firstCount = params.currentCounts[first] + allocation[first];
       const secondCount = params.currentCounts[second] + allocation[second];
-      const firstDeficit = params.mix[first] - (firstCount / params.dailyLimit) * 100;
-      const secondDeficit = params.mix[second] - (secondCount / params.dailyLimit) * 100;
+      const firstDeficit =
+        getTrendingContentMixValue(params.mix, first) -
+        (firstCount / params.dailyLimit) * 100;
+      const secondDeficit =
+        getTrendingContentMixValue(params.mix, second) -
+        (secondCount / params.dailyLimit) * 100;
 
       return secondDeficit - firstDeficit || first.localeCompare(second);
     })[0];
@@ -230,20 +252,15 @@ function getDailyTieOrder(localDate: string) {
   );
 
   return Number.isFinite(dayNumber) && Math.abs(dayNumber) % 2 === 1
-    ? (["hook_video", "wall_text", "carousel"] as const)
-    : (["carousel", "wall_text", "hook_video"] as const);
+    ? (["hook_video", "wall_text", "carousel", "reaction"] as const)
+    : (["carousel", "wall_text", "hook_video", "reaction"] as const);
 }
 
-function isDefaultGrowthMix(params: {
-  dailyLimit: number;
-  mix: TrendingContentMix;
-}) {
-  return (
-    params.dailyLimit === 50 &&
-    params.mix.carousel === DEFAULT_TRENDING_CONTENT_MIX.carousel &&
-    params.mix.wall_text === DEFAULT_TRENDING_CONTENT_MIX.wall_text &&
-    params.mix.hook_video === DEFAULT_TRENDING_CONTENT_MIX.hook_video
-  );
+export function getTrendingContentMixValue(
+  mix: TrendingContentMix,
+  format: TrendingFeedFormat,
+) {
+  return format === "reaction" ? mix.reaction ?? 0 : mix[format];
 }
 
 function sumAllocation(allocation: TrendingContentAllocation) {

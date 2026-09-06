@@ -7,6 +7,7 @@ import {
   CAROUSEL_STRUCTURE_1_LIST_ITEM_MAX_LINES,
   CAROUSEL_STRUCTURE_1_LIST_TOTAL_MAX_LINES,
   getCarouselStructure1BodyMaxLines,
+  getCarouselStructure1TextFontSize,
   type PlannedCarouselSlide,
 } from "./carousel-slide-plan.js";
 
@@ -49,6 +50,7 @@ type RegionSignal = {
 };
 
 export type CarouselRenderDiagnostics = {
+  bodyFontSize?: number;
   bubbleShapeStrategy:
     | "heading-white-svg-background"
     | "plain-white-text-with-outline";
@@ -833,6 +835,7 @@ async function buildOverlaySvg(params: {
   const bodyText =
     shouldRenderHeadline || rawBodyText ? rawBodyText : rawHeadlineText;
   const bodyOnlyMode = !headlineText;
+  const bodyFontSize = getCarouselStructure1TextFontSize(params.slide);
   const bodyPaddingX = 18;
   const headline = await fitMeasuredText(headlineText, {
     fontSize: CAROUSEL_FIXED_FONT_SIZE,
@@ -846,7 +849,7 @@ async function buildOverlaySvg(params: {
   });
   const body = hasStackedBody
     ? await fitStackedText(stackedBodyLines, {
-        fontSize: CAROUSEL_FIXED_FONT_SIZE,
+        fontSize: bodyFontSize,
         fontFamily: TEXT_FONT_FAMILY,
         fontWeight: BODY_FONT_WEIGHT,
         getCornerSafety: getBodyWrapCornerSafety,
@@ -858,7 +861,7 @@ async function buildOverlaySvg(params: {
       })
     : bodyText
       ? await fitMeasuredText(bodyText, {
-          fontSize: CAROUSEL_FIXED_FONT_SIZE,
+          fontSize: bodyFontSize,
           fontFamily: TEXT_FONT_FAMILY,
           fontWeight: BODY_FONT_WEIGHT,
           getCornerSafety: getBodyWrapCornerSafety,
@@ -938,6 +941,7 @@ async function buildOverlaySvg(params: {
 
   return {
     diagnostics: {
+      bodyFontSize,
       bubbleShapeStrategy:
         headline.lines.length > 0
           ? "heading-white-svg-background"

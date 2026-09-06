@@ -24,6 +24,7 @@ test("the dedicated renderer keeps all layouts fixed and inside the safe area", 
     makeSpec({
       layoutVariant: "story_pill_overlay",
       slideNumber: 1,
+      storyText: "Why weekly plans collapse by Tuesday",
       textPosition: "center",
       textTreatment: "pill",
       visualRole: "hook",
@@ -63,7 +64,10 @@ test("the dedicated renderer keeps all layouts fixed and inside the safe area", 
         CAROUSEL_STRUCTURE_2_RENDERER_VERSION,
       );
       assert.equal(result.diagnostics.layoutVariant, spec.layoutVariant);
-      assert.equal(result.diagnostics.storyFontSize, 44);
+      assert.equal(
+        result.diagnostics.storyFontSize,
+        spec.slideNumber === 1 ? 60 : 44,
+      );
       assert.equal(result.diagnostics.ctaFontSize, spec.ctaText ? 44 : null);
       assert.equal(
         result.diagnostics.bubbleShapeStrategy,

@@ -67,15 +67,37 @@ import {
 } from "@/lib/social/types";
 import { cn } from "@/lib/utils";
 
-export type SchedulePlatformContext = {
+export type CarouselSchedulePlatformContext = {
   assignmentId?: string;
   carouselId: string;
+  contentType?: "carousel";
   coverUrl?: string | null;
   idempotencyKey: string;
   libraryItemId: string;
   returnTo: "library" | "trending";
   title: string;
 };
+
+export type WallTextSchedulePlatformContext = {
+  assignmentId: string;
+  contentType: "wall_text";
+  coverUrl?: string | null;
+  returnTo: "accounts";
+  title: string;
+};
+
+export type ReactionSchedulePlatformContext = {
+  assignmentId: string;
+  contentType: "reaction";
+  coverUrl?: string | null;
+  returnTo: "trending";
+  title: string;
+};
+
+export type SchedulePlatformContext =
+  | CarouselSchedulePlatformContext
+  | WallTextSchedulePlatformContext
+  | ReactionSchedulePlatformContext;
 
 type PlatformSelectionModalProps = {
   context: SchedulePlatformContext | null;
@@ -104,6 +126,7 @@ type PlatformDefinition = {
 
 type ModalStep = "accounts" | "details" | "schedule";
 type ScheduleMode = "choose" | "later";
+type ScheduleContentKind = "carousel" | "wall_text" | "reaction";
 type ConnectionPublishingSettings = Record<string, boolean | string>;
 type TikTokCapabilitiesState =
   | { status: "loading" }
@@ -139,35 +162,51 @@ const defaultTimezone =
   Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 const MAX_SELECTED_INSTAGRAM_ACCOUNTS = 5;
 
-const stepDetails: Record<
-  ModalStep,
-  { description: string; number: 2 | 3 | 4; title: string }
-> = {
-  accounts: {
-    description:
-      "Choose the Instagram account that will publish this carousel.",
-    number: 2,
-    title: "Select Instagram account",
-  },
-  details: {
-    description:
-      "Review the destinations and add a caption only if you want one.",
-    number: 3,
-    title: "Content details",
-  },
-  schedule: {
-    description: "Choose when this carousel should be published.",
-    number: 4,
-    title: "Schedule",
-  },
-};
-
 const publishingJourney = [
-  { label: "Carousel", number: 1 },
+  { label: "Post", number: 1 },
   { label: "Account", number: 2 },
   { label: "Details", number: 3 },
   { label: "Publish", number: 4 },
 ] as const;
+
+function getContentKind(
+  context: SchedulePlatformContext | null,
+): ScheduleContentKind {
+  return context?.contentType ?? "carousel";
+}
+
+function getContentLabel(contentKind: ScheduleContentKind) {
+  if (contentKind === "wall_text") return "Text Reel";
+  if (contentKind === "reaction") return "Reaction Reel";
+  return "Carousel";
+}
+
+function getStepDetails(
+  contentKind: ScheduleContentKind,
+): Record<ModalStep, { description: string; number: 2 | 3 | 4; title: string }> {
+  const contentLabel = getContentLabel(contentKind);
+
+  return {
+    accounts: {
+      description: `Choose the Instagram account that will publish this ${contentLabel.toLowerCase()}.`,
+      number: 2,
+      title: "Select Instagram account",
+    },
+    details: {
+      description:
+        contentKind === "wall_text"
+          ? "Review the destination and optionally add a caption for this ready-to-prepare Reel."
+          : "Review the destinations and add a caption only if you want one.",
+      number: 3,
+      title: "Post details",
+    },
+    schedule: {
+      description: `Choose when this ${contentLabel.toLowerCase()} should be published.`,
+      number: 4,
+      title: "Schedule",
+    },
+  };
+}
 
 export function PlatformSelectionModal({
   context,
@@ -426,7 +465,9 @@ export function PlatformSelectionModal({
     () => getFutureSlot(currentTime, timezone).date,
     [currentTime, timezone],
   );
-  const currentStep = stepDetails[step];
+  const contentKind = getContentKind(context);
+  const contentLabel = getContentLabel(contentKind);
+  const currentStep = getStepDetails(contentKind)[step];
   const canContinueAccounts =
     selectedConnections.length > 0 &&
     selectedConnections.every(
@@ -703,7 +744,7 @@ export function PlatformSelectionModal({
       }
 
       setConfirmError(
-        getErrorMessage(error, "Could not schedule this carousel."),
+        getErrorMessage(error, "Could not schedule this post."),
       );
       setRecoveryDraftId(
         error instanceof CarouselScheduleRecoveryError ? error.draftId : null,
@@ -742,7 +783,7 @@ export function PlatformSelectionModal({
           <DialogHeader className="relative gap-3 px-5 pb-4 pr-14 pt-5 sm:px-7 sm:pb-5 sm:pr-16 sm:pt-6">
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
-                Instagram carousel
+                Instagram post
               </p>
               <DialogTitle className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">
                 {currentStep.title}
@@ -835,7 +876,7 @@ export function PlatformSelectionModal({
           {submitting ? (
             <Alert className="border-success/20 bg-success/5 text-success">
               <LoaderCircle className="animate-spin" />
-              <AlertTitle>Scheduling carousel</AlertTitle>
+              <AlertTitle>Scheduling post</AlertTitle>
               <AlertDescription className="text-success">
                 Saving the exact account settings and creating the calendar
                 schedule.
@@ -844,6 +885,7 @@ export function PlatformSelectionModal({
           ) : step === "accounts" ? (
             <AccountsStep
               carouselConnections={carouselConnections}
+              contentLabel={contentLabel}
               connectingConnectionId={connectingConnectionId}
               connectingIntent={connectingIntent}
               connectingPlatform={connectingPlatform}
@@ -852,7 +894,19 @@ export function PlatformSelectionModal({
               selectedConnectionIds={selectedConnectionIds}
               onConnect={(definition, connection) => {
                 if (!context) {
-                  setLoadError("Choose a saved Library carousel first.");
+                  setLoadError("Choose a post before connecting an account.");
+                  return;
+                }
+
+                if (context.contentType !== "carousel" && context.contentType) {
+                  void startConnection({
+                    expectedConnectionId: connection?.id,
+                    forceConsent: Boolean(connection),
+                    intent: connection ? "reconnect" : "add",
+                    platform: definition.platform,
+                    previousConnectionUpdatedAt: connection?.updatedAt ?? null,
+                    returnTo: context.returnTo,
+                  });
                   return;
                 }
 
@@ -872,6 +926,7 @@ export function PlatformSelectionModal({
           ) : step === "details" ? (
             <DetailsStep
               caption={caption}
+              contentKind={contentKind}
               context={context}
               publishingSettings={publishingSettings}
               publishingSettingsError={publishingSettingsError}
@@ -964,6 +1019,7 @@ export function PlatformSelectionModal({
 
 function AccountsStep({
   carouselConnections,
+  contentLabel,
   connectingConnectionId,
   connectingIntent,
   connectingPlatform,
@@ -974,6 +1030,7 @@ function AccountsStep({
   selectedConnectionIds,
 }: {
   carouselConnections: SocialConnection[];
+  contentLabel: string;
   connectingConnectionId: string | null;
   connectingIntent: SocialOAuthIntent | null;
   connectingPlatform: SocialPlatform | null;
@@ -994,7 +1051,7 @@ function AccountsStep({
         </h3>
         <p className="mt-1 text-sm leading-5 text-muted-foreground">
           Select one or more Instagram accounts. Each selected account
-          publishes its own copy of this carousel. You can choose up to five.
+          publishes its own {contentLabel.toLowerCase()}. You can choose up to five.
         </p>
       </div>
 
@@ -1137,7 +1194,7 @@ function AccountsStep({
             </p>
             <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground">
               UGCPilot needs a connected Instagram professional account before
-              it can schedule this carousel.
+              it can schedule this post.
             </p>
             <div className="mt-4 flex justify-center">
               {visiblePlatforms.map((definition) => (
@@ -1200,6 +1257,7 @@ function AccountsStep({
 
 function DetailsStep({
   caption,
+  contentKind,
   context,
   onCaptionChange,
   onChangeSetting,
@@ -1210,6 +1268,7 @@ function DetailsStep({
   tiktokCapabilities,
 }: {
   caption: string;
+  contentKind: ScheduleContentKind;
   context: SchedulePlatformContext | null;
   onCaptionChange: (value: string) => void;
   onChangeSetting: (
@@ -1223,34 +1282,57 @@ function DetailsStep({
   selectedConnections: SocialConnection[];
   tiktokCapabilities: Record<string, TikTokCapabilitiesState>;
 }) {
+  const isWallText = contentKind === "wall_text";
+  const isReel = contentKind !== "carousel";
+
   return (
     <div className="grid gap-5 md:grid-cols-[240px_minmax(0,1fr)] lg:grid-cols-[260px_minmax(0,1fr)]">
       <div className="self-start overflow-hidden rounded-card border border-border bg-card shadow-card">
         {context?.coverUrl ? (
-          // Carousel slides are already rendered production media.
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={context.coverUrl}
             alt=""
-            className="aspect-[4/5] w-full bg-card-muted object-cover"
+            className={cn(
+              "w-full bg-card-muted object-cover",
+              isReel ? "aspect-[9/16]" : "aspect-[4/5]",
+            )}
           />
         ) : (
-          <div className="flex aspect-[4/5] items-center justify-center bg-muted/30 text-muted-foreground">
+          <div
+            className={cn(
+              "flex items-center justify-center bg-muted/30 text-muted-foreground",
+              isReel ? "aspect-[9/16]" : "aspect-[4/5]",
+            )}
+          >
             <Camera className="size-8" aria-hidden="true" />
           </div>
         )}
         <div className="border-t border-border bg-card px-4 py-3.5">
           <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-primary">
             <SocialPlatformIcon platform="instagram" className="size-3.5" />
-            Carousel preview
+            {getContentLabel(contentKind)} preview
           </p>
           <p className="mt-1 line-clamp-2 text-sm font-semibold text-foreground">
-            {context?.title ?? "Saved carousel"}
+            {context?.title ?? `Saved ${getContentLabel(contentKind).toLowerCase()}`}
           </p>
         </div>
       </div>
 
       <div className="grid content-start gap-5">
+        {isWallText ? (
+          <section className="rounded-card border border-primary/20 bg-primary/5 p-4 sm:p-5">
+            <h3 className="text-sm font-semibold text-foreground">
+              Text Reel is ready to prepare
+            </h3>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Its message already appears on screen, so there is nothing extra
+              to write here. We start preparing the video after you confirm the
+              schedule.
+            </p>
+          </section>
+        ) : null}
+
         <label className="block rounded-card border border-border bg-card p-4 sm:p-5">
           <span className="text-sm font-semibold text-foreground">
             Instagram caption{" "}
@@ -1259,8 +1341,11 @@ function DetailsStep({
             </span>
           </span>
           <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-            Add context for the post, or leave this empty to publish only the
-            carousel.
+            {isWallText
+              ? "Add context to accompany this Text Reel, or leave this empty to publish without a caption."
+              : isReel
+                ? "Add context for the post, or leave this empty to publish only the Reaction Reel."
+                : "Add context for the post, or leave this empty to publish only the carousel."}
           </span>
           <textarea
             name="caption"
@@ -1277,11 +1362,11 @@ function DetailsStep({
         </label>
 
         <section
-          aria-labelledby="carousel-publishing-settings"
+          aria-labelledby="post-publishing-settings"
           className="rounded-card border border-border bg-card p-4 sm:p-5"
         >
           <h3
-            id="carousel-publishing-settings"
+            id="post-publishing-settings"
             className="text-sm font-semibold text-foreground"
           >
             Publishing settings
@@ -1291,9 +1376,10 @@ function DetailsStep({
           </p>
           <div className="mt-3 divide-y divide-border rounded-control border border-border bg-card-muted px-3.5">
             {selectedConnections.map((connection) => (
-              <CarouselAccountSettings
-                key={connection.id}
-                connection={connection}
+                <CarouselAccountSettings
+                  key={connection.id}
+                  connection={connection}
+                  contentKind={contentKind}
                 settings={
                   publishingSettings[connection.id] ??
                   getDefaultPublishingSettings(connection.platform)
@@ -1319,12 +1405,14 @@ function DetailsStep({
 
 function CarouselAccountSettings({
   connection,
+  contentKind,
   onChange,
   onRetry,
   settings,
   tiktokCapabilities,
 }: {
   connection: SocialConnection;
+  contentKind: ScheduleContentKind;
   onChange: (key: string, value: boolean | string) => void;
   onRetry: () => void;
   settings: ConnectionPublishingSettings;
@@ -1346,7 +1434,7 @@ function CarouselAccountSettings({
 
       {connection.platform === "instagram" ? (
         <p className="mt-2 text-xs leading-5 text-muted-foreground">
-          This will publish as an Instagram feed carousel.
+          This will publish as an Instagram {contentKind === "wall_text" ? "Reel" : "feed carousel"}.
         </p>
       ) : (
         <TikTokCarouselSettings

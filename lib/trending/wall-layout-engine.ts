@@ -2,7 +2,8 @@ import "server-only";
 
 import sharp from "sharp";
 
-import { getVerifiedWallTextArialRegularFontPath } from "./wall-text-font";
+import { getVerifiedWallTextAvenirNextDemiBoldFontPath } from "./wall-text-font";
+import { WALL_TEXT_TARGET_WORDS } from "./wall-text-copy-policy";
 
 import {
   WALL_TEXT_CONTENT_LAYOUT_VERSION,
@@ -20,16 +21,15 @@ import {
 import {
   getWallTextSafeLineWidth,
   WALL_TEXT_FONT_WEIGHT,
+  WALL_TEXT_FIXED_FONT_SIZE,
+  WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
-  WALL_TEXT_OUTLINE_WIDTH,
   WALL_TEXT_SECTION_GAP,
 } from "./wall-text-visual-style";
 const VIDEO_WIDTH = 1080;
 const VIDEO_HEIGHT = 1920;
 const ABSOLUTE_MAXIMUM_WORDS = 50;
 const MINIMUM_WORDS = 10;
-const FREEFORM_TARGET_WORDS = 18;
-const FONT_SIZES: readonly WallTextFontSize[] = [52, 50, 48, 46, 44];
 const INTERNAL_LINE_WIDTH_RATIO = 0.55;
 const MINIMUM_BALANCE_IMPROVEMENT = 0.04;
 const measurementCache = new Map<string, number>();
@@ -37,7 +37,7 @@ const measurementCache = new Map<string, number>();
 export async function deriveWallTextSpatialBudget(params: {
   layout: TrendingWallTextLayout;
 }) {
-  const lineHeight = 44 * WALL_TEXT_LINE_HEIGHT_FACTOR;
+  const lineHeight = WALL_TEXT_FIXED_FONT_SIZE * WALL_TEXT_LINE_HEIGHT_FACTOR;
   const availableLines = clamp(
     Math.floor((params.layout.textBox.height * VIDEO_HEIGHT) / lineHeight),
     5,
@@ -50,8 +50,8 @@ export async function deriveWallTextSpatialBudget(params: {
   );
   const widthPx = getWallTextSafeLineWidth(textBoxWidth);
   const sampleWords = "people notice the quiet details";
-  const sampleWidth = (await measureText(sampleWords, 44)) +
-    WALL_TEXT_OUTLINE_WIDTH * 2;
+  const sampleWidth = (await measureText(sampleWords, WALL_TEXT_FIXED_FONT_SIZE)) +
+    WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH * 2;
   const wordsPerLine = clamp(
     Math.floor((5 * widthPx * 0.9) / sampleWidth),
     3,
@@ -63,7 +63,7 @@ export async function deriveWallTextSpatialBudget(params: {
     ABSOLUTE_MAXIMUM_WORDS,
   );
   const targetWords = clamp(
-    FREEFORM_TARGET_WORDS,
+    WALL_TEXT_TARGET_WORDS,
     MINIMUM_WORDS,
     spatialMaximum,
   );
@@ -120,61 +120,49 @@ export async function createWallTextFinalLayout(params: {
     throw new Error("Wall-of-text placement has no usable inner text width.");
   }
 
-  const preferredLineCounts =
-    params.content.kind === "text"
-      ? getPreferredPlainTextLineCounts(params.content.text)
-      : [null];
-
-  // For plain Wall copy, line density is the primary decision. The old code
-  // picked the largest font first, so a 52px seven-line layout could win over
-  // a much more readable 46px five-line layout. Try the preferred line count
-  // first, then choose the largest measured font that fits it.
-  for (const preferredLineCount of preferredLineCounts) {
-    for (const fontSize of FONT_SIZES) {
-      const blocks: WallTextLayoutBlock[] = [];
-      let failed = false;
-      for (const block of sourceBlocks) {
-        const lines =
-          block.role === "text"
-            ? await wrapPlainWallText(
-                block.text,
-                maximumWidth,
-                fontSize,
-                preferredLineCount ?? undefined,
-              )
-            : await wrapMeasuredText(block.text, maximumWidth, fontSize);
-        if (!lines) {
-          failed = true;
-          break;
-        }
-        blocks.push({ lines, role: block.role });
-      }
-      if (failed) continue;
-
-      const lineHeightPx = Math.round(fontSize * WALL_TEXT_LINE_HEIGHT_FACTOR * 100) / 100;
-      const lineCount = blocks.reduce((total, block) => total + block.lines.length, 0);
-      const blockHeight =
-        lineCount * lineHeightPx +
-        Math.max(0, blocks.length - 1) * WALL_TEXT_SECTION_GAP;
-
-      if (blockHeight <= maximumHeight) {
-        return {
-          blocks,
-          fontFamily: "Arial",
-          fontSizePx: fontSize,
-          fontWeight: WALL_TEXT_FONT_WEIGHT,
-          lineHeightPx,
-          textBox: params.layout.textBox,
-          version: WALL_TEXT_FINAL_LAYOUT_VERSION,
-        };
-      }
+  // Let measured width determine the line count at one readable font size.
+  // A failed fit must be rewritten/reflowed, never silently shrunk.
+  const fontSize = WALL_TEXT_FIXED_FONT_SIZE;
+  const blocks: WallTextLayoutBlock[] = [];
+  let failed = false;
+  for (const block of sourceBlocks) {
+    const lines =
+      block.role === "text"
+        ? await wrapPlainWallText(
+            block.text,
+            maximumWidth,
+            fontSize,
+          )
+        : await wrapMeasuredText(block.text, maximumWidth, fontSize);
+    if (!lines) {
+      failed = true;
+      break;
     }
+    blocks.push({ lines, role: block.role });
+  }
+
+  const lineHeightPx = Math.round(fontSize * WALL_TEXT_LINE_HEIGHT_FACTOR * 100) / 100;
+  const lineCount = blocks.reduce((total, block) => total + block.lines.length, 0);
+  const blockHeight =
+    lineCount * lineHeightPx +
+    Math.max(0, blocks.length - 1) * WALL_TEXT_SECTION_GAP;
+
+  if (!failed && blockHeight <= maximumHeight) {
+    return {
+      blocks,
+      fontFamily: "Avenir Next",
+      fontSizePx: fontSize,
+      fontWeight: WALL_TEXT_FONT_WEIGHT,
+      lineHeightPx,
+      textBox: params.layout.textBox,
+      version: WALL_TEXT_FINAL_LAYOUT_VERSION,
+    };
   }
 
   throw new Error(
     params.content.kind === "text"
-      ? "Wall-of-text copy cannot be arranged into five to eight balanced lines."
-      : "Wall-of-text copy does not fit the publishing safe area at the minimum supported font size.",
+      ? "Wall-of-text copy cannot fit five to eight balanced lines at the fixed 50px font size. Shorten the copy or widen the text box."
+      : "Wall-of-text copy does not fit the publishing safe area at the fixed 50px font size.",
   );
 }
 
@@ -215,24 +203,14 @@ async function wrapPlainWallText(
   value: string,
   maximumWidth: number,
   fontSize: WallTextFontSize,
-  preferredLineCount?: number,
 ) {
   const words = value.split(/\s+/u).filter(Boolean);
   if (words.length < MINIMUM_WORDS) {
     throw new Error("Wall-of-text copy needs enough words to form five readable lines.");
   }
-  const idealLineCount = clamp(Math.round(words.length / 4.5), 5, 8);
-  const lineCounts = preferredLineCount
-    ? [preferredLineCount]
-    : [...new Set([
-        idealLineCount,
-        idealLineCount - 1,
-        idealLineCount + 1,
-        5,
-        6,
-        7,
-        8,
-      ])].filter((count) => count >= 5 && count <= 8 && words.length >= count * 2);
+  const naturalLines = await wrapMeasuredText(value, maximumWidth, fontSize);
+  const minimumLineCount = Math.max(5, naturalLines.length);
+  const lineCounts = [5, 6, 7, 8].filter((count) => count >= minimumLineCount);
 
   for (const lineCount of lineCounts) {
     const lines = await partitionMeasuredLines({
@@ -244,23 +222,6 @@ async function wrapPlainWallText(
     if (lines) return lines;
   }
   return null;
-}
-
-function getPreferredPlainTextLineCounts(value: string) {
-  const wordCount = value.split(/\s+/u).filter(Boolean).length;
-  const idealLineCount = clamp(Math.round(wordCount / 4.5), 5, 8);
-
-  return [...new Set([
-    idealLineCount,
-    idealLineCount - 1,
-    idealLineCount + 1,
-    5,
-    6,
-    7,
-    8,
-  ])].filter(
-    (count) => count >= 5 && count <= 8 && wordCount >= count * 2,
-  );
 }
 
 async function partitionMeasuredLines(params: {
@@ -276,7 +237,7 @@ async function partitionMeasuredLines(params: {
     if (cached !== undefined) return cached;
     const width =
       (await measureText(params.words.slice(start, end).join(" "), params.fontSize)) +
-      WALL_TEXT_OUTLINE_WIDTH * 2;
+      WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH * 2;
     widthCache.set(key, width);
     return width;
   };
@@ -358,7 +319,8 @@ async function wrapMeasuredText(
   for (const word of words) {
     const candidate = current ? `${current} ${word}` : word;
     const candidateWidth =
-      (await measureText(candidate, fontSize)) + WALL_TEXT_OUTLINE_WIDTH * 2;
+      (await measureText(candidate, fontSize)) +
+      WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH * 2;
 
     if (!current && candidateWidth >= maximumWidth) {
       throw new Error(
@@ -466,7 +428,8 @@ function createLocalBalanceCandidates(lines: string[]) {
 async function measureLines(lines: string[], fontSize: WallTextFontSize) {
   return Promise.all(
     lines.map(async (line) =>
-      (await measureText(line, fontSize)) + WALL_TEXT_OUTLINE_WIDTH * 2,
+      (await measureText(line, fontSize)) +
+      WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH * 2,
     ),
   );
 }
@@ -488,7 +451,8 @@ async function rebalanceLastLine(
   const previousLine = previousWords.join(" ");
   const lastLine = `${moved} ${lines.at(-1)!}`;
   const lastLineWidth =
-    (await measureText(lastLine, fontSize)) + WALL_TEXT_OUTLINE_WIDTH * 2;
+    (await measureText(lastLine, fontSize)) +
+    WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH * 2;
 
   return lastLineWidth < maximumWidth
     ? [...lines.slice(0, -2), previousLine, lastLine]
@@ -496,21 +460,24 @@ async function rebalanceLastLine(
 }
 
 async function measureText(value: string, fontSize: WallTextFontSize) {
-  const cacheKey = `${fontSize}:${value}`;
+  const cacheKey = `avenir-next-demi-bold:${fontSize}:${value}`;
   const cached = measurementCache.get(cacheKey);
   if (cached !== undefined) return cached;
   const metadata = await sharp({
     text: {
       dpi: 72,
-      font: `Arial Regular ${fontSize}`,
-      fontfile: await getVerifiedWallTextArialRegularFontPath(),
+      // Pango parses "Demi Bold" as a style token, not as part of a family
+      // name. Use the TTF's actual family name and let fontfile select its
+      // supplied 600 face so development cannot silently fall back to serif.
+      font: `Avenir Next ${fontSize}`,
+      fontfile: await getVerifiedWallTextAvenirNextDemiBoldFontPath(),
       rgba: true,
       text: escapePangoMarkup(value),
       wrap: "none",
     },
   }).metadata();
   const width = metadata.width ?? 0;
-  if (!width) throw new Error("Could not measure Wall-of-text copy with Arial Regular.");
+  if (!width) throw new Error("Could not measure Wall-of-text copy with Avenir Next Demi Bold.");
   measurementCache.set(cacheKey, width);
   return width;
 }

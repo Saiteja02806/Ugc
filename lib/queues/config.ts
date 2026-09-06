@@ -59,6 +59,9 @@ const jobQueueConfig = {
   publish_social_post: {
     queueName: "social-publish",
   },
+  reaction_generation: {
+    queueName: "video-render",
+  },
   render_demo_video: {
     queueName: "video-render",
   },

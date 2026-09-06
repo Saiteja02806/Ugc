@@ -44,7 +44,7 @@ export async function parseAiIdeBusinessContext(rawContext: string) {
         content: [
           "The following was produced by the business owner's AI IDE.",
           "Convert it into the required business-analysis schema.",
-          "Create a concrete five-slide carousel narrative: hook, problem, solution, benefit, CTA.",
+          "Create carousel-friendly context with reader-first hook possibilities, recognizable reader problems, and only evidence-backed product capabilities. Do not prescribe a fixed narrative or invent proof.",
           "Classify the business model and up to three category or product-type labels only when supported. Leave campaignPurposes empty because campaign goals come directly from the owner.",
           "Keep fields concise and use visual queries suitable for object-only stock imagery.",
           "",

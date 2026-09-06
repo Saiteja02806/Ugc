@@ -39,14 +39,22 @@ const ARIAL_REGULAR_FONT_PATH = join(
   "fonts",
   "arial-regular.ttf",
 );
+const AVENIR_NEXT_DEMI_BOLD_FONT_PATH = join(
+  process.cwd(),
+  "lib",
+  "trending",
+  "fonts",
+  "avenir-next-demi-bold.ttf",
+);
 
 let verifiedInterFontPath: Promise<string> | null = null;
 let verifiedArialBoldFontPath: Promise<string> | null = null;
 let verifiedArialRegularFontPath: Promise<string> | null = null;
+let verifiedAvenirNextDemiBoldFontPath: Promise<string> | null = null;
 
 /**
  * Sharp can silently fall back to a different installed font when fontfile is
- * unavailable. Verify the packaged Inter face before measuring any Wall copy
+ * unavailable. Verify each packaged face before measuring any Wall copy
  * so a deployment cannot approve lines using different glyph metrics.
  */
 export function getVerifiedWallTextInterFontPath() {
@@ -75,6 +83,19 @@ export function getVerifiedWallTextArialRegularFontPath() {
     label: "Arial Regular",
   });
   return verifiedArialRegularFontPath;
+}
+
+/**
+ * New Wall-of-Text layouts use the supplied Avenir Next Demi Bold face at
+ * 600. Verify the asset before measurement so previews and worker exports use
+ * matching glyph metrics rather than a host fallback.
+ */
+export function getVerifiedWallTextAvenirNextDemiBoldFontPath() {
+  verifiedAvenirNextDemiBoldFontPath ??= verifyFontPath({
+    fontPath: AVENIR_NEXT_DEMI_BOLD_FONT_PATH,
+    label: "Avenir Next Demi Bold",
+  });
+  return verifiedAvenirNextDemiBoldFontPath;
 }
 
 async function verifyFontPath(params: { fontPath: string; label: string }) {

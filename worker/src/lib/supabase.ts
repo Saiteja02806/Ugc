@@ -58,6 +58,11 @@ const SOCIAL_CONNECTIONS_TABLE = "social_connections";
 const SOCIAL_PUBLISH_OPERATIONS_TABLE = "social_publish_operations";
 const TRENDING_CREATIVE_EDITS_TABLE = "trending_creative_edits";
 const USER_WALL_TEXT_ASSIGNMENTS_TABLE = "user_wall_text_assignments";
+const REACTION_CLIP_ASSETS_TABLE = "reaction_clip_assets";
+const REACTION_BACKGROUND_ASSETS_TABLE = "reaction_background_assets";
+const REACTION_CLIP_PRESENTATIONS_TABLE = "reaction_clip_presentations";
+const REACTION_CREATIVES_TABLE = "reaction_creatives";
+const USER_REACTION_ASSIGNMENTS_TABLE = "user_reaction_assignments";
 const WALL_TEXT_CONTENT_PLAN_ITEMS_TABLE = "wall_text_content_plan_items";
 const WALL_TEXT_CONTENT_PLANS_TABLE = "wall_text_content_plans";
 const CLAIM_BACKGROUND_JOB_FUNCTION = "claim_background_job";
@@ -67,6 +72,59 @@ const INCREMENT_CATEGORY_IMAGE_USAGE_FUNCTION =
   "increment_category_image_asset_usage";
 const VIDEO_RENDER_JOBS_TABLE = "video_render_jobs";
 const WEBSITE_ANALYSES_TABLE = "website_analyses";
+
+type ReactionGenerationRunRow = {
+  brief_payload: Json | null;
+  business_profile_id: string;
+  business_profile_version: number;
+  generation_context: Json;
+  generation_job_id: string;
+  id: string;
+  project_id: string;
+  requested_count: number;
+  status: "completed" | "failed" | "partial" | "planning" | "queued" | "rendering";
+  user_id: string;
+};
+
+type ReactionClipCatalogRow = {
+  composition: string | null;
+  duration_seconds: number;
+  foreground_anchor: string | null;
+  foreground_height_percent: number | null;
+  has_alpha: boolean;
+  id: string;
+  reactions: string[];
+  source_storage_key: string | null;
+  status: "active" | "excluded" | "pending";
+  subject_count: string | null;
+};
+
+type ReactionBackgroundCatalogRow = {
+  context_tags: string[];
+  foreground_placement: string | null;
+  id: string;
+  source_storage_key: string | null;
+  status: "active" | "excluded" | "pending";
+};
+
+type ReactionGenerationItemRow = {
+  background_asset_id: string;
+  caption: string;
+  clip_asset_id: string;
+  content_json: Json;
+  duration_seconds: number;
+  id: string;
+  preview_url: string | null;
+  primary_reaction: string;
+  reaction_assignment_id: string;
+  reaction_creative_id: string;
+  render_error: string | null;
+  render_plan_json: Json;
+  render_status: "failed" | "queued" | "ready" | "rendering";
+  rendered_media_asset_id: string | null;
+  slot_index: number;
+  title: string;
+};
 
 export function createSupabaseJobStore(config: {
   supabaseServiceRoleKey: string;
@@ -3054,6 +3112,261 @@ export class SupabaseJobStore {
     }
   }
 
+  async ensureReactionGenerationRun(params: {
+    businessProfileId: string;
+    businessProfileVersion: number;
+    generationContext: Json;
+    generationJobId: string;
+    projectId: string;
+    requestKey: string;
+    requestedCount: number;
+    userId: string;
+  }) {
+    const client = this.client;
+    const { data, error } = await client.rpc("ensure_reaction_generation_run_v1", {
+      p_business_profile_id: params.businessProfileId,
+      p_business_profile_version: params.businessProfileVersion,
+      p_generation_context: params.generationContext,
+      p_generation_job_id: params.generationJobId,
+      p_project_id: params.projectId,
+      p_request_key: params.requestKey,
+      p_requested_count: params.requestedCount,
+      p_user_id: params.userId,
+    });
+
+    const run = data?.[0] ?? null;
+    if (error || !run) {
+      throw new Error(`Could not ensure Reaction generation run: ${error?.message ?? "no row returned"}`);
+    }
+
+    return run as ReactionGenerationRunRow;
+  }
+
+  async listActiveReactionCatalog() {
+    const client = this.client;
+    const [clipsResult, backgroundsResult] = await Promise.all([
+      client
+        .from(REACTION_CLIP_ASSETS_TABLE)
+        .select("id,reactions,subject_count,composition,foreground_anchor,foreground_height_percent,has_alpha,status,source_storage_key,duration_seconds")
+        .eq("status", "active")
+        .eq("has_alpha", true),
+      client
+        .from(REACTION_BACKGROUND_ASSETS_TABLE)
+        .select("id,context_tags,foreground_placement,status,source_storage_key")
+        .eq("status", "active"),
+    ]);
+
+    if (clipsResult.error || backgroundsResult.error) {
+      throw new Error(
+        `Could not load active Reaction catalog: ${clipsResult.error?.message ?? backgroundsResult.error?.message}`,
+      );
+    }
+
+    return {
+      backgrounds: (backgroundsResult.data ?? []) as ReactionBackgroundCatalogRow[],
+      clips: (clipsResult.data ?? []) as ReactionClipCatalogRow[],
+    };
+  }
+
+  async getReactionClipPresentationHistory(userId: string) {
+    const client = this.client;
+    const { data, error } = await client
+      .from(REACTION_CLIP_PRESENTATIONS_TABLE)
+      .select("clip_asset_id,presented_at")
+      .eq("user_id", userId)
+      .order("presented_at", { ascending: false });
+
+    if (error) {
+      throw new Error(`Could not load Reaction presentation history: ${error.message}`);
+    }
+
+    const history = new Map<string, { lastShownAt: string | null; shownCount: number }>();
+    for (const row of (data ?? []) as Array<{ clip_asset_id: string; presented_at: string }>) {
+      const current = history.get(row.clip_asset_id) ?? { lastShownAt: null, shownCount: 0 };
+      history.set(row.clip_asset_id, {
+        lastShownAt: current.lastShownAt ?? row.presented_at,
+        shownCount: current.shownCount + 1,
+      });
+    }
+    return history;
+  }
+
+  async getReservedReactionClipIds(params: {
+    businessProfileId: string;
+    businessProfileVersion: number;
+    userId: string;
+  }) {
+    const client = this.client;
+    const { data: assignments, error: assignmentError } = await client
+      .from(USER_REACTION_ASSIGNMENTS_TABLE)
+      .select("reaction_creative_id")
+      .eq("user_id", params.userId)
+      .eq("business_profile_id", params.businessProfileId)
+      .eq("business_profile_version", params.businessProfileVersion)
+      .eq("state", "active");
+
+    if (assignmentError) {
+      throw new Error(`Could not load active Reaction reservations: ${assignmentError.message}`);
+    }
+
+    const creativeIds = (assignments ?? [])
+      .map((assignment: { reaction_creative_id: string | null }) => assignment.reaction_creative_id)
+      .filter((creativeId: string | null): creativeId is string => Boolean(creativeId));
+    if (creativeIds.length === 0) return new Set<string>();
+
+    const { data: creatives, error: creativeError } = await client
+      .from(REACTION_CREATIVES_TABLE)
+      .select("clip_asset_id")
+      .eq("user_id", params.userId)
+      .eq("business_profile_id", params.businessProfileId)
+      .eq("business_profile_version", params.businessProfileVersion)
+      .in("render_status", ["queued", "rendering", "preview_ready"])
+      .in("id", creativeIds);
+
+    if (creativeError) {
+      throw new Error(`Could not load active Reaction reserved clips: ${creativeError.message}`);
+    }
+
+    return new Set(
+      (creatives ?? [])
+        .map((creative: { clip_asset_id: string | null }) => creative.clip_asset_id)
+        .filter((clipAssetId: string | null): clipAssetId is string => Boolean(clipAssetId)),
+    );
+  }
+
+  async persistReactionGenerationPlan(params: {
+    briefPayload: Json;
+    generationJobId: string;
+    items: Json;
+    runId: string;
+    userId: string;
+  }) {
+    const client = this.client;
+    const { data, error } = await client.rpc("persist_reaction_generation_plan_v1", {
+      p_brief_payload: params.briefPayload,
+      p_generation_job_id: params.generationJobId,
+      p_items: params.items,
+      p_run_id: params.runId,
+      p_user_id: params.userId,
+    });
+    if (error) {
+      throw new Error(`Could not persist Reaction generation plan: ${error.message}`);
+    }
+    return (data ?? []) as ReactionGenerationItemRow[];
+  }
+
+  async saveReactionRenderedMedia(params: {
+    creativeId: string;
+    durationSeconds: number;
+    fileSizeBytes: number;
+    key: string;
+    mediaAssetId: string;
+    projectId: string;
+    title: string;
+    url: string;
+    userId: string;
+  }) {
+    return this.saveMediaAsset({
+      collection: "video",
+      duration_seconds: params.durationSeconds,
+      file_name: `${params.creativeId}.mp4`,
+      file_size_bytes: params.fileSizeBytes,
+      height: 1920,
+      id: params.mediaAssetId,
+      metadata: {
+        format: "reaction",
+        reactionCreativeId: params.creativeId,
+      },
+      mime_type: "video/mp4",
+      parent_asset_id: null,
+      project_id: params.projectId,
+      ratio: "9:16",
+      source_record_id: params.creativeId,
+      source_type: "reaction_render",
+      status: "ready",
+      storage_key: params.key,
+      thumbnail_url: null,
+      title: params.title,
+      updated_at: new Date().toISOString(),
+      url: params.url,
+      user_id: params.userId,
+      width: 1080,
+    });
+  }
+
+  async completeReactionGenerationItemRender(params: {
+    generationJobId: string;
+    itemId: string;
+    mediaAssetId: string;
+    previewUrl: string;
+    userId: string;
+  }) {
+    const client = this.client;
+    const { data, error } = await client.rpc("complete_reaction_generation_item_render_v1", {
+      p_generation_job_id: params.generationJobId,
+      p_item_id: params.itemId,
+      p_media_asset_id: params.mediaAssetId,
+      p_preview_url: params.previewUrl,
+      p_user_id: params.userId,
+    });
+    if (error || data !== true) {
+      throw new Error(`Could not complete Reaction render item: ${error?.message ?? "stale item"}`);
+    }
+  }
+
+  async failReactionGenerationItemRender(params: {
+    errorMessage: string;
+    generationJobId: string;
+    itemId: string;
+    userId: string;
+  }) {
+    const client = this.client;
+    const { data, error } = await client.rpc("fail_reaction_generation_item_render_v1", {
+      p_error_message: params.errorMessage,
+      p_generation_job_id: params.generationJobId,
+      p_item_id: params.itemId,
+      p_user_id: params.userId,
+    });
+    if (error || data !== true) {
+      throw new Error(`Could not fail Reaction render item: ${error?.message ?? "stale item"}`);
+    }
+  }
+
+  async completeReactionGenerationRun(params: {
+    generationJobId: string;
+    runId: string;
+    userId: string;
+  }) {
+    const client = this.client;
+    const { data, error } = await client.rpc("complete_reaction_generation_run_v1", {
+      p_generation_job_id: params.generationJobId,
+      p_run_id: params.runId,
+      p_user_id: params.userId,
+    });
+    const result = data?.[0] ?? null;
+    if (error || !result) {
+      throw new Error(`Could not complete Reaction generation run: ${error?.message ?? "no row returned"}`);
+    }
+    return result as { failed_count: number; ready_count: number; status: "completed" | "failed" | "partial" };
+  }
+
+  async failReactionGenerationRun(params: {
+    errorMessage: string;
+    generationJobId: string;
+    userId: string;
+  }) {
+    const client = this.client;
+    const { data, error } = await client.rpc("fail_reaction_generation_run_v1", {
+      p_error_message: params.errorMessage,
+      p_generation_job_id: params.generationJobId,
+      p_user_id: params.userId,
+    });
+    if (error) {
+      throw new Error(`Could not fail Reaction generation run: ${error.message}`);
+    }
+    return data === true;
+  }
+
   private async getCarouselPlanningBrief(params: {
     briefId: string;
     planId: string;
@@ -3320,6 +3633,8 @@ export class SupabaseJobStore {
     if (error) {
       throw new Error(`Could not save generated media asset: ${error.message}`);
     }
+
+    return existing?.id ?? row.id;
   }
 }
 

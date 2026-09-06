@@ -23,14 +23,14 @@ test("Instagram OAuth checks the plan limit before authorization starts", () => 
 test("Instagram connection limits are enforced atomically in Postgres", () => {
   const migration = readFileSync(
     projectFile(
-      "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260824120641_enforce_instagram_account_limits.sql",
+      "supabase/migrations/20260905110000_update_instagram_connection_plan_limits.sql",
     ),
     "utf8",
   );
 
   assert.match(migration, /account_limit integer := 1/);
-  assert.match(migration, /plan_key = 'growth'[\s\S]*status = 'active'/);
-  assert.match(migration, /account_limit := 3/);
+  assert.match(migration, /plan_key = 'growth'[\s\S]*status = 'active'[\s\S]*account_limit := 5/);
+  assert.match(migration, /plan_key = 'starter'[\s\S]*status = 'active'[\s\S]*account_limit := 3/);
   assert.match(migration, /pg_advisory_xact_lock/);
   assert.match(migration, /before insert or update of user_id, platform, revoked_at/);
   assert.match(migration, /old\.revoked_at is null[\s\S]*return new/);
@@ -93,5 +93,6 @@ test("settings exposes the first connection and blocks only accounts beyond the 
     settingsSource,
     /disabled=\{Boolean\(connectingPlatform\) \|\| accountLimitReached\}/,
   );
-  assert.match(settingsSource, /Upgrade to Growth to connect multiple accounts/);
+  assert.match(settingsSource, /Upgrade to Starter to connect up to 3 accounts/);
+  assert.match(settingsSource, /Upgrade to Growth to connect up to 5 accounts/);
 });

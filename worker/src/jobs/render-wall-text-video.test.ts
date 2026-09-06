@@ -155,6 +155,94 @@ test("accepts the current Arial Regular 400 final layout", async () => {
   });
 });
 
+test("accepts the current Avenir Next Demi Bold 600 final layout", async () => {
+  const job = createJob();
+  const input = job.input_json as Record<string, unknown>;
+  const text = input.text as Record<string, unknown>;
+  text.layoutVersion = "wall-text-overlay-v9";
+  text.finalLayout = {
+    blocks: [{
+      lines: [
+        "I logged every meal but",
+        "skipped drinks oil and small",
+        "bites. Those missing details",
+        "quietly changed the final",
+        "total.",
+      ],
+      role: "text",
+    }],
+    fontFamily: "Avenir Next",
+    fontSizePx: 48,
+    fontWeight: 600,
+    lineHeightPx: 52.8,
+    textBox: (input.layout as { textBox: unknown }).textBox,
+    version: "wall-text-final-layout-v5",
+  };
+
+  await runRenderWallTextVideoJob(job, {
+    dependencies: {
+      async renderWallTextVideoToStorage(payload) {
+        assert.equal(payload.text.finalLayout?.fontFamily, "Avenir Next");
+        assert.equal(payload.text.finalLayout?.fontWeight, 600);
+        assert.equal(payload.text.finalLayout?.version, "wall-text-final-layout-v5");
+        return {
+          assignmentId: ASSIGNMENT_ID,
+          creativeId: CREATIVE_ID,
+          key: "videos/rendered/wall.mp4",
+          ok: true,
+          renderId: RENDER_ID,
+          url: "https://cdn.example.com/wall.mp4",
+        };
+      },
+    },
+    store: successfulStore(),
+  });
+});
+
+test("restores Avenir Next Demi Bold from the V4 rollout envelope", async () => {
+  const job = createJob();
+  const input = job.input_json as Record<string, unknown>;
+  const text = input.text as Record<string, unknown>;
+  text.layoutVersion = "wall-text-overlay-v9";
+  text.finalLayout = {
+    blocks: [{
+      lines: [
+        "I logged every meal but",
+        "skipped drinks oil and small",
+        "bites. Those missing details",
+        "quietly changed the final",
+        "total.",
+      ],
+      role: "text",
+    }],
+    fontFamily: "Arial",
+    fontSizePx: 48,
+    fontWeight: 400,
+    lineHeightPx: 52.8,
+    textBox: (input.layout as { textBox: unknown }).textBox,
+    version: "wall-text-final-layout-v4",
+  };
+
+  await runRenderWallTextVideoJob(job, {
+    dependencies: {
+      async renderWallTextVideoToStorage(payload) {
+        assert.equal(payload.text.finalLayout?.fontFamily, "Avenir Next");
+        assert.equal(payload.text.finalLayout?.fontWeight, 600);
+        assert.equal(payload.text.finalLayout?.version, "wall-text-final-layout-v5");
+        return {
+          assignmentId: ASSIGNMENT_ID,
+          creativeId: CREATIVE_ID,
+          key: "videos/rendered/wall.mp4",
+          ok: true,
+          renderId: RENDER_ID,
+          url: "https://cdn.example.com/wall.mp4",
+        };
+      },
+    },
+    store: successfulStore(),
+  });
+});
+
 test("restores Arial Regular 400 from the V3 rollout envelope", async () => {
   const job = createJob();
   const input = job.input_json as Record<string, unknown>;

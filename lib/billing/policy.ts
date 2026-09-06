@@ -4,8 +4,8 @@ export const MAX_BILLING_USAGE_ATTEMPTS = 10;
 
 export const INSTAGRAM_ACCOUNT_LIMITS: Record<BillingPlanKey, number> = {
   free: 1,
-  growth: 3,
-  starter: 1,
+  growth: 5,
+  starter: 3,
 };
 
 const MIN_BILLING_USAGE_RETRY_DELAY_MS = 5 * 60 * 1000;

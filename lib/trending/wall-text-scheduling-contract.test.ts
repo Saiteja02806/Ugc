@@ -8,6 +8,7 @@ import {
 
 const validRequest = {
   assignmentId: "00000000-0000-4000-8000-000000000001",
+  caption: "A caption that accompanies the Text Reel.",
   scheduledDate: "2026-08-31",
   scheduledTime: "18:30",
   targets: [
@@ -32,6 +33,7 @@ test("Wall schedule client sends exactly the strict API contract", () => {
 
   assert.deepEqual(Object.keys(request).sort(), [
     "assignmentId",
+    "caption",
     "scheduledDate",
     "scheduledTime",
     "targets",
@@ -39,6 +41,15 @@ test("Wall schedule client sends exactly the strict API contract", () => {
     "useDefaultScheduleTime",
   ]);
   assert.deepEqual(WallTextScheduleRequestSchema.parse(request), request);
+});
+
+test("Wall schedule keeps an optional caption", () => {
+  const request = createWallTextScheduleRequest({
+    ...validRequest,
+    caption: "  Extra context for this Reel.  ",
+  });
+
+  assert.equal(request.caption, "Extra context for this Reel.");
 });
 
 test("Wall schedule API rejects extra fields and missing selected accounts", () => {

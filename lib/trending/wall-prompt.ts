@@ -2,9 +2,10 @@ import {
   MIN_SHORT_WALL_TEXT_WORDS,
   type WallTextBusinessContext,
 } from "./wall-text-text-logic";
+import { WALL_TEXT_SOFT_WORD_RANGE } from "./wall-text-copy-policy";
 
 export const WALL_TEXT_PROMPT_VERSION =
-  "wall-text-writer-prompt-v11-freeform-balanced-layout" as const;
+  "wall-text-writer-prompt-v12-word-range-fixed-font" as const;
 
 export type WallTextPromptCandidate = {
   candidateIndex: number;
@@ -57,7 +58,9 @@ export function buildWallTextGenerationPrompt(params: {
     ...(candidate.privateCreativeContext
       ? { privateCreativeContext: candidate.privateCreativeContext }
       : {}),
-    targetWords: candidate.targetWords,
+    // Old reserved assignments can still store 18. Do not send that scalar
+    // back to the writer and accidentally restore the short-copy bias.
+    preferredWordRange: WALL_TEXT_SOFT_WORD_RANGE,
   }));
 
   return [
@@ -75,7 +78,8 @@ export function buildWallTextGenerationPrompt(params: {
     "TASK",
     "For each candidate, write the strongest complete natural message from the supplied idea and business facts. Do not force it into a named writing format, template, list, or formula.",
     "When privateCreativeContext is present, write from the complete private context, not from contentIdea alone.",
-    "Treat targetWords as a soft writing target, not a required minimum. maxWords is only the absolute safety ceiling; the layout engine will decide final acceptance from measured 5-8 line fit.",
+    "Treat preferredWordRange (18-30 words) as a soft writing target, not a required minimum or a hard maximum. Choose the length the idea needs across this range; do not default every message to its shortest end. maxWords is only the absolute safety ceiling; the layout engine will decide final acceptance from measured 5-8 line fit at a fixed 50px font size.",
+    "Do not pad a complete thought to fill eight lines or compress a useful thought just to keep five lines. If retry feedback reports layout_fit, simplify or shorten the wording; the font size will not shrink.",
     "A referenceTextForThisCandidateOnly belongs only to that candidate. Use it only as structural and emotional inspiration, adapt it to the Business Profile, and do not copy its wording.",
     "Reference text is not evidence. Never repeat its numbers, psychology statements, factual claims, product names, or promises unless the Business Profile independently supports them.",
     "Return exactly one result for every candidate. Do not return formatId, duration, coordinates, or final visual lines.",

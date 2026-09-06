@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test from "node:test";
 
@@ -21,6 +22,31 @@ import {
   buildWallTextRenderLayout,
   WALL_TEXT_INLINE_SAFE_PADDING,
 } from "./wall-text-render-spec.js";
+
+test("measures Avenir Next through its actual Pango family instead of a host fallback", async () => {
+  const candidates = [
+    join(process.cwd(), "worker", "src", "assets", "fonts", "avenir-next-demi-bold.ttf"),
+    join(process.cwd(), "src", "assets", "fonts", "avenir-next-demi-bold.ttf"),
+  ];
+  const fontfile = candidates.find((candidate) => existsSync(candidate));
+  assert.ok(fontfile, "Avenir Next Demi Bold asset should be available to the worker test");
+
+  const metadata = await sharp({
+    text: {
+      dpi: 72,
+      font: "Avenir Next 46",
+      fontfile,
+      rgba: true,
+      text: "Wall text 0123",
+      wrap: "none",
+    },
+  }).metadata();
+
+  // These exact TTF metrics distinguish the supplied Avenir face from the
+  // serif fallback Pango chooses when it is given the full face name.
+  assert.equal(metadata.width, 310);
+  assert.equal(metadata.height, 35);
+});
 
 test("applies Hook trim and text only to the opening segment", () => {
   const preparedTextOverlay = {

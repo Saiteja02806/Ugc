@@ -43,6 +43,7 @@ const HUMAN_FIRST_ROLES: readonly CarouselSlideImageRole[] = [
   "static",
   "human",
   "static",
+  "static",
 ];
 
 const STATIC_FIRST_ROLES: readonly CarouselSlideImageRole[] = [
@@ -51,6 +52,7 @@ const STATIC_FIRST_ROLES: readonly CarouselSlideImageRole[] = [
   "human",
   "static",
   "human",
+  "static",
 ];
 
 const RELATED_CATEGORY_BY_PRIMARY: Partial<
@@ -289,11 +291,11 @@ function normalizeSlides(slides: readonly CarouselSlideSemanticInput[]) {
   );
 
   if (
-    ordered.length !== 5 ||
+    ordered.length !== 6 ||
     ordered.some((slide, index) => slide.slideNumber !== index + 1)
   ) {
     throw new Error(
-      "Carousel slide-image planning requires slide numbers 1 through 5 exactly once.",
+      "Carousel slide-image planning requires slide numbers 1 through 6 exactly once.",
     );
   }
 

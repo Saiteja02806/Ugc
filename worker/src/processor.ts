@@ -474,6 +474,7 @@ const trendingDeliveryJobTypes = new Set<BackgroundJobRow["job_type"]>([
   "generate_trending_hook_copy",
   "wall_text_content_plan_generation",
   "wall_text_generation",
+  "reaction_generation",
 ]);
 
 async function reconcileCompletedTrendingFeed(params: {
@@ -676,6 +677,14 @@ async function reconcileDurableOutputJobFailure(
   store: SupabaseJobStore,
   errorMessage: string,
 ) {
+  if (job.job_type === "reaction_generation" && job.user_id) {
+    await store.failReactionGenerationRun({
+      errorMessage,
+      generationJobId: job.id,
+      userId: job.user_id,
+    });
+  }
+
   if (job.job_type === "generate_trending_hook_copy") {
     await store.failTrendingHookGenerationRunChunk({
       errorMessage,

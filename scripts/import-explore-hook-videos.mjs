@@ -14,9 +14,11 @@ import {
 
 const DEFAULT_SOURCE_DIRECTORY =
   "C:/Users/chund/OneDrive/Desktop/HOOk/videos (10)";
+const DEFAULT_WALL_TEXT_SOURCE_DIRECTORY = "D:/walloftext";
 const DEFAULT_PREVIEW_SOURCE_FILE =
   "C:/Users/chund/OneDrive/Desktop/UGC/landing_page/Explore.mp4";
 const STORAGE_PREFIX = "explore/hook-videos/2026-08-29";
+const WALL_TEXT_STORAGE_PREFIX = "explore/wall-text-videos/2026-09-03";
 const PREVIEW_STORAGE_PREFIX = "explore/landing-preview/2026-08-29";
 const CACHE_CONTROL = "public, max-age=31536000, immutable";
 const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
@@ -31,6 +33,10 @@ if (args.help) {
 
 const execute = Boolean(args.execute);
 const preview = Boolean(args.preview);
+const wallText = Boolean(args["wall-text"]);
+if (preview && wallText) {
+  throw new Error("The Explore landing preview cannot be imported as Wall of Text.");
+}
 if (execute && !args.yes) {
   throw new Error(
     "Refusing to write to GCP without --yes. Run the dry-run first, then use --execute --yes.",
@@ -45,10 +51,12 @@ const sourcePath = path.resolve(
     ? args.source
     : preview
       ? DEFAULT_PREVIEW_SOURCE_FILE
-      : DEFAULT_SOURCE_DIRECTORY,
+      : wallText
+        ? DEFAULT_WALL_TEXT_SOURCE_DIRECTORY
+        : DEFAULT_SOURCE_DIRECTORY,
 );
-const plan = buildImportPlan(sourcePath, { preview });
-printPlan({ execute, plan, preview, sourcePath });
+const plan = buildImportPlan(sourcePath, { preview, wallText });
+printPlan({ execute, plan, preview, sourcePath, wallText });
 
 if (!execute) {
   console.log("Dry run complete. No GCP object was changed.");
@@ -88,10 +96,10 @@ for (const [index, item] of plan.items.entries()) {
 console.log(
   preview
     ? `Import complete: the Explore landing preview is present in gs://${process.env.GCP_STORAGE_BUCKET}/${PREVIEW_STORAGE_PREFIX}/.`
-    : `Import complete: ${plan.items.length} Explore Hook video(s) are present in gs://${process.env.GCP_STORAGE_BUCKET}/${STORAGE_PREFIX}/.`,
+    : `Import complete: ${plan.items.length} Explore ${wallText ? "Wall of Text" : "Hook"} video(s) are present in gs://${process.env.GCP_STORAGE_BUCKET}/${getStoragePrefix({ wallText })}/.`,
 );
 
-function buildImportPlan(sourcePath, { preview: isPreview }) {
+function buildImportPlan(sourcePath, { preview: isPreview, wallText: isWallText }) {
   if (!existsSync(sourcePath)) {
     throw new Error(`Explore source does not exist: ${sourcePath}`);
   }
@@ -127,21 +135,27 @@ function buildImportPlan(sourcePath, { preview: isPreview }) {
 
     const metadata = probeVideo(filePath);
     if (
-      (!isPreview && metadata.audioStreamCount !== 0) ||
+      (!isPreview && !isWallText && metadata.audioStreamCount !== 0) ||
       metadata.codec !== "h264" ||
       metadata.width * 16 !== metadata.height * 9
     ) {
       throw new Error(
         isPreview
           ? `Explore landing preview must be a 9:16 H.264 MP4: ${fileName}`
-          : `Explore Hook video must be a silent 9:16 H.264 MP4: ${fileName}`,
+          : `Explore ${isWallText ? "Wall of Text" : "Hook"} video must be a ${
+              isWallText ? "9:16" : "silent 9:16"
+            } H.264 MP4: ${fileName}`,
       );
     }
 
     const sha256 = getFileSha256(filePath);
-    const storageKey = `${isPreview ? PREVIEW_STORAGE_PREFIX : STORAGE_PREFIX}/${sha256}.mp4`;
+    const storageKey = `${
+      isPreview ? PREVIEW_STORAGE_PREFIX : getStoragePrefix({ wallText: isWallText })
+    }/${sha256}.mp4`;
     if (sourceHashes.has(sha256) || storageKeys.has(storageKey)) {
-      throw new Error(`Duplicate Explore Hook source bytes: ${fileName}`);
+      throw new Error(
+        `Duplicate Explore ${isWallText ? "Wall of Text" : "Hook"} source bytes: ${fileName}`,
+      );
     }
     sourceHashes.add(sha256);
     storageKeys.add(storageKey);
@@ -151,7 +165,7 @@ function buildImportPlan(sourcePath, { preview: isPreview }) {
       filePath,
       id: isPreview
         ? "explore-landing-preview"
-        : `explore-hook-${String(index + 1).padStart(2, "0")}`,
+        : `explore-${isWallText ? "wall-text" : "hook"}-${String(index + 1).padStart(2, "0")}`,
       metadata,
       sha256,
       sizeBytes: stats.size,
@@ -163,6 +177,10 @@ function buildImportPlan(sourcePath, { preview: isPreview }) {
     items,
     totalBytes: items.reduce((total, item) => total + item.sizeBytes, 0),
   };
+}
+
+function getStoragePrefix({ wallText: isWallText }) {
+  return isWallText ? WALL_TEXT_STORAGE_PREFIX : STORAGE_PREFIX;
 }
 
 function probeVideo(filePath) {
@@ -243,7 +261,7 @@ function assertRuntimeReady() {
     throw new Error(`Missing GCP storage configuration: ${missing.join(", ")}`);
   }
   if (getStorageProviderName() !== "gcp") {
-    throw new Error("Explore Hook videos must be imported to GCP storage.");
+    throw new Error("Explore videos must be imported to GCP storage.");
   }
 }
 
@@ -260,10 +278,16 @@ function isMissingObjectError(error) {
   );
 }
 
-function printPlan({ execute: shouldExecute, plan: currentPlan, preview: isPreview, sourcePath }) {
-  console.log(isPreview ? "Explore landing preview import" : "Explore Hook video import");
+function printPlan({ execute: shouldExecute, plan: currentPlan, preview: isPreview, sourcePath, wallText: isWallText }) {
+  console.log(
+    isPreview
+      ? "Explore landing preview import"
+      : `Explore ${isWallText ? "Wall of Text" : "Hook"} video import`,
+  );
   console.log(`Mode: ${shouldExecute ? "EXECUTE" : "DRY RUN"}`);
-  console.log(`Storage prefix: ${isPreview ? PREVIEW_STORAGE_PREFIX : STORAGE_PREFIX}`);
+  console.log(
+    `Storage prefix: ${isPreview ? PREVIEW_STORAGE_PREFIX : getStoragePrefix({ wallText: isWallText })}`,
+  );
   console.log(`Source: ${sourcePath}`);
   console.log(`Video count: ${currentPlan.items.length}`);
   console.log(`Total bytes: ${currentPlan.totalBytes}`);
@@ -277,7 +301,7 @@ function printPlan({ execute: shouldExecute, plan: currentPlan, preview: isPrevi
 
 function parseArgs(rawArgs) {
   const parsed = {};
-  const booleanFlags = new Set(["execute", "help", "preview", "yes"]);
+  const booleanFlags = new Set(["execute", "help", "preview", "wall-text", "yes"]);
   const valueFlags = new Set(["source"]);
 
   for (let index = 0; index < rawArgs.length; index += 1) {
@@ -339,13 +363,17 @@ function printHelp() {
   npm run explore:hook-videos:import
   npm run explore:hook-videos:import -- --source <directory>
   npm run explore:hook-videos:import -- --execute --yes
+  npm run explore:wall-text-videos:import
+  npm run explore:wall-text-videos:import -- --source <directory>
+  npm run explore:wall-text-videos:import -- --execute --yes
   npm run explore:preview-video:import
   npm run explore:preview-video:import -- --execute --yes
 
 The default command is a read-only dry run. It validates each direct Explore
 Hook clip is a silent, vertical H.264 MP4 and calculates a content hash. The
-execute command uploads each file to its immutable GCP object key, verifies the
-stored bytes, and never touches Trending or Supabase tables. The landing preview
-uses the supplied vertical H.264 video exactly as provided; it may retain audio
-because the application always autoplays it muted.`);
+Wall-of-Text catalog retains supplied audio but the application plays reference
+cards muted. The execute command uploads each file to its immutable GCP object
+key, verifies the stored bytes, and never touches Trending or Supabase tables.
+The landing preview uses the supplied vertical H.264 video exactly as provided;
+it may retain audio because the application always autoplays it muted.`);
 }

@@ -2,15 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  buildCarouselStructure2StoryPlanBatch,
-  CAROUSEL_STRUCTURE_2_PLANNER_VERSION,
-} from "./carousel-structure-2-planner.js";
-import {
-  buildCarouselStructure2StoryBatchSchema,
   buildCarouselStructure2BatchMessages,
-  buildCarouselStructure2RepairMessages,
+  buildCarouselStructure2StoryBatchSchema,
+  CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS,
+  CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS,
   buildCarouselStructure2StoryPlanSchema,
-  CAROUSEL_STRUCTURE_2_POSITION_KEYS,
   parseCarouselStructure2StoryBatch,
   parseCarouselStructure2StoryPlan,
   partitionCarouselStructure2ValidationIssues,
@@ -19,357 +15,160 @@ import {
 } from "./carousel-structure-2-story-plan.js";
 import {
   CAROUSEL_STRUCTURE_2_FORMAT_IDS,
+  CAROUSEL_STRUCTURE_2_STORY_ROLES,
   type CarouselStructure2FormatId,
 } from "./carousel-structure-2-formats.js";
-import { doesCarouselStructure2TextFitSafeArea } from "./carousel-structure-2-layout.js";
-import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
+import {
+  CAROUSEL_STRUCTURE_2_COVER_FONT_SIZE,
+  getCarouselStructure2StoryMaxLines,
+} from "./carousel-structure-2-layout.js";
 
 const businessDescription =
   "Todaywise is an application for planning work when priorities change.";
 
-test("Structure 2 receives the private creative brief alongside seeds, formats, and exact copy history", () => {
-  const messages = buildCarouselStructure2BatchMessages({
-    assignments: makeAssignments(CAROUSEL_STRUCTURE_2_FORMAT_IDS.slice(0, 5)),
-    businessDescription,
-    recentHistory: [makeRecentCopy()],
-  });
-  const prompt = messages.map((message) => message.content).join("\n");
-
-  assert.match(prompt, /creativeSeed/);
-  assert.match(prompt, /emotion/);
-  assert.match(prompt, /privateCreativeBrief/);
-  assert.match(prompt, /An unexpected meeting moves the important work into the afternoon/);
-  assert.match(prompt, /CTA is optional/i);
-  assert.doesNotMatch(prompt, /allowedCtaPositions|exactly one CTA|CTA position is .*required/i);
-  assert.match(prompt, /exact visible text/i);
-  assert.match(prompt, /i kept rebuilding monday's list/);
-  assert.doesNotMatch(prompt, /productMechanism/);
-  assert.match(prompt, /preferredFormatFamily must never override/i);
-  assert.doesNotMatch(prompt, /productMechanism|claimsToAvoid/);
-});
-
-test("all eight formats keep five slides without requiring a CTA", () => {
+test("Structure 2 plans exactly the required six-slide product story", () => {
   for (const storyFormatId of CAROUSEL_STRUCTURE_2_FORMAT_IDS) {
-    const rawPlan = makeRawStoryPlan();
-    for (const slide of Object.values(rawPlan.slides)) slide.ctaText = null;
-    const plan = parseCarouselStructure2StoryPlan(rawPlan, {
+    const plan = parseCarouselStructure2StoryPlan(makeRawStoryPlan(), {
       businessDescription,
       storyFormatId,
     });
 
-    assert.equal(plan.slides.length, 5);
-    assert.ok(plan.slides.every((slide) => slide.ctaText === null));
-    assert.equal(plan.strategy.storyFormatId, storyFormatId);
-  }
-});
-
-test("the AI contract omits structural identities and the worker assigns them", () => {
-  const assignments = makeAssignments(CAROUSEL_STRUCTURE_2_FORMAT_IDS.slice(0, 5));
-  const rawPlan = makeRawStoryPlan();
-  const planSchema = JSON.stringify(
-    buildCarouselStructure2StoryPlanSchema(),
-  );
-  const batchSchema = JSON.stringify(
-    buildCarouselStructure2StoryBatchSchema({ assignments }),
-  );
-
-  assert.doesNotMatch(planSchema, /slideNumber|storyFormatId/);
-  assert.doesNotMatch(batchSchema, /slideNumber|slotIndex|candidateIndex|storyFormatId/);
-  assert.ok(
-    CAROUSEL_STRUCTURE_2_POSITION_KEYS.every(
-      (positionKey) => rawPlan.slides[positionKey] !== undefined,
-    ),
-  );
-  assert.ok(
-    Object.values(rawPlan.slides).every(
-      (slide) => !("slideNumber" in slide),
-    ),
-  );
-  assert.ok(!("storyFormatId" in rawPlan.strategy));
-
-  const parsedPlan = parseCarouselStructure2StoryPlan(rawPlan, {
-    businessDescription,
-    storyFormatId: assignments[0]!.storyFormatId,
-  });
-  assert.deepEqual(
-    parsedPlan.slides.map((slide) => slide.slideNumber),
-    [1, 2, 3, 4, 5],
-  );
-  assert.equal(
-    parsedPlan.strategy.storyFormatId,
-    assignments[0]!.storyFormatId,
-  );
-
-  const rawPlans = Object.fromEntries(
-    CAROUSEL_STRUCTURE_2_POSITION_KEYS.map((positionKey) => [
-      positionKey,
-      makeRawStoryPlan(),
-    ]),
-  );
-  const parsedBatch = parseCarouselStructure2StoryBatch(
-    { plans: rawPlans },
-    assignments,
-  );
-
-  assignments.forEach((assignment, index) => {
-    assert.equal(
-      parsedBatch.get(assignment.slotIndex),
-      rawPlans[CAROUSEL_STRUCTURE_2_POSITION_KEYS[index]],
-    );
-  });
-});
-
-test("the format flow is reference material while CTA presence and position stay flexible", () => {
-  const plan = makeRawStoryPlan();
-  [plan.slides.second, plan.slides.third] = [
-    plan.slides.third!,
-    plan.slides.second!,
-  ];
-
-  assert.doesNotThrow(() =>
-    parseCarouselStructure2StoryPlan(plan, {
-      businessDescription,
-      storyFormatId: "perfect_plan_breaks",
-    }),
-  );
-
-  const flexibleCta = makeRawStoryPlan();
-  CAROUSEL_STRUCTURE_2_POSITION_KEYS.forEach((positionKey, index) => {
-    flexibleCta.slides[positionKey]!.ctaText =
-      index === 0 ? "try this with your own week" : null;
-  });
-  assert.doesNotThrow(
-    () =>
-      parseCarouselStructure2StoryPlan(flexibleCta, {
-        businessDescription,
-        storyFormatId: "perfect_plan_breaks",
-      }),
-  );
-});
-
-test("the structured-output schema permits a CTA or null on every slide", () => {
-  const schema = buildCarouselStructure2StoryPlanSchema() as {
-    properties: {
-      slides: {
-        properties: Record<
-          string,
-          { properties: { ctaText: { anyOf: Array<{ type: string }> } } }
-        >;
-      };
-    };
-  };
-
-  for (const positionKey of CAROUSEL_STRUCTURE_2_POSITION_KEYS) {
+    assert.equal(plan.slides.length, 6);
     assert.deepEqual(
-      schema.properties.slides.properties[positionKey]!.properties.ctaText.anyOf.map(
-        (entry) => entry.type,
-      ),
-      ["string", "null"],
+      plan.slides.map((slide) => slide.storyRole),
+      CAROUSEL_STRUCTURE_2_STORY_ROLES,
+    );
+    assert.equal(plan.slides[5]!.ctaText, "Try the same approach with one changing priority.");
+    assert.deepEqual(
+      partitionCarouselStructure2ValidationIssues(
+        validateCarouselStructure2StoryPlan(plan, { businessDescription }),
+      ).blockingIssues,
+      [],
     );
   }
 });
 
-test("valid AI copy is preserved and writing-quality warnings stay advisory", () => {
-  const plan = makeStoryPlan("wrong_belief");
-  const aiCopy = "i’d plan the perfect meal prep schedule every sunday…";
-  plan.slides[0]!.storyText = aiCopy;
-  plan.slides[1]!.storyText = "one platform helped me work smarter";
-
-  const partitioned = partitionCarouselStructure2ValidationIssues(
-    validateCarouselStructure2StoryPlan(plan, { businessDescription }),
+test("Structure 2 rejects reordering story roles or placing a CTA before Slide 6", () => {
+  const reordered = makeRawStoryPlan();
+  [reordered.slides.second, reordered.slides.third] = [
+    reordered.slides.third!,
+    reordered.slides.second!,
+  ];
+  assert.throws(
+    () => parseCarouselStructure2StoryPlan(reordered, { businessDescription, storyFormatId: "wrong_belief" }),
+    /must use the failure_scene role/i,
   );
 
-  assert.equal(plan.slides[0]!.storyText, aiCopy);
-  assert.deepEqual(partitioned.blockingIssues, []);
-  assert.ok(partitioned.advisoryIssues.some((issue) => issue.code === "generic_copy"));
-});
-
-test("Structure 2 blocks copy that cannot fit at the fixed slideshow font size", () => {
-  const plan = makeStoryPlan("wrong_belief");
-  plan.slides[0]!.storyText = Array.from(
-    { length: 80 },
-    (_, index) => `wideword${index + 1}`,
-  ).join(" ");
-
-  const partitioned = partitionCarouselStructure2ValidationIssues(
-    validateCarouselStructure2StoryPlan(plan, { businessDescription }),
-  );
-
-  assert.ok(
-    partitioned.blockingIssues.some((issue) => issue.code === "render_fit"),
+  const earlyCta = makeRawStoryPlan();
+  earlyCta.slides.third!.ctaText = "Try this today.";
+  assert.throws(
+    () => parseCarouselStructure2StoryPlan(earlyCta, { businessDescription, storyFormatId: "wrong_belief" }),
+    /cannot include a CTA/i,
   );
 });
 
-test("Structure 2 accepts the doubled story and CTA capacities when their combined layout is safe", () => {
-  const rawPlan = makeRawStoryPlan();
-  rawPlan.slides.second!.storyText = Array.from(
-    { length: 60 },
-    () => "context",
-  ).join(" ");
-  rawPlan.slides.fifth!.ctaText = Array.from(
-    { length: 30 },
-    () => "context",
-  ).join(" ");
-
-  const plan = parseCarouselStructure2StoryPlan(rawPlan, {
+test("Structure 2 leaves creative cover wording to the prompt and uses a larger cover treatment", () => {
+  const raw = makeRawStoryPlan();
+  raw.slides.first!.storyText = "Is your content plan falling apart when life gets busy?";
+  const plan = parseCarouselStructure2StoryPlan(raw, {
     businessDescription,
     storyFormatId: "wrong_belief",
   });
+  const issues = validateCarouselStructure2StoryPlan(plan, { businessDescription });
+
+  assert.equal(CAROUSEL_STRUCTURE_2_COVER_FONT_SIZE, 60);
+  assert.equal(getCarouselStructure2StoryMaxLines(1), 3);
+  assert.ok(!issues.some((issue) => issue.code === "perspective"));
+});
+
+test("Structure 2 keeps five batch plan keys separate from six slide keys", () => {
+  const assignments = makeAssignments(CAROUSEL_STRUCTURE_2_FORMAT_IDS.slice(0, 5));
+  const schema = buildCarouselStructure2StoryBatchSchema({ assignments });
+  const rawBatch = {
+    plans: Object.fromEntries(
+      CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS.map((positionKey) => [
+        positionKey,
+        makeRawStoryPlan(),
+      ]),
+    ),
+  };
+  const parsed = parseCarouselStructure2StoryBatch(rawBatch, assignments);
+
+  assert.deepEqual(
+    Object.keys(schema.properties.plans.properties),
+    CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS,
+  );
+  assert.equal(parsed.size, 5);
+  assert.deepEqual([...parsed.keys()], [0, 1, 2, 3, 4]);
+  assert.equal(CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS.length, 6);
+});
+
+test("Structure 2 prompt and schema describe the strict six-slide contract", () => {
+  const messages = buildCarouselStructure2BatchMessages({
+    assignments: makeAssignments(CAROUSEL_STRUCTURE_2_FORMAT_IDS.slice(0, 5)),
+    businessDescription,
+  });
+  const prompt = messages.map((message) => message.content).join("\n");
+  const schema = JSON.stringify(buildCarouselStructure2StoryPlanSchema());
+
+  assert.match(prompt, /exactly six slides/i);
+  assert.match(prompt, /only Slide 1 may lead with direct reader wording/i);
+  assert.match(prompt, /Slides 1-5 must return ctaText: null/i);
+  assert.match(prompt, /Slide 4 must explain a real product capability/i);
+  assert.doesNotMatch(prompt, /CTA presence and slide position are your creative choice/i);
+  assert.match(schema, /sixth/);
+  assert.doesNotMatch(schema, /slideNumber|storyFormatId/);
+});
+
+test("Structure 2 sends writing-quality failures back through the repair path", () => {
+  const plan = parseCarouselStructure2StoryPlan(makeRawStoryPlan(), {
+    businessDescription,
+    storyFormatId: "wrong_belief",
+  });
+  plan.slides[1]!.storyText = "One platform helped me work smarter.";
   const partitioned = partitionCarouselStructure2ValidationIssues(
     validateCarouselStructure2StoryPlan(plan, { businessDescription }),
   );
 
-  assert.ok(plan.slides[1]!.storyText.length > 360);
-  assert.ok(plan.slides[4]!.ctaText!.length > 180);
-  assert.deepEqual(partitioned.blockingIssues, []);
-});
-
-test("Structure 2 refuses a doubled story and CTA pair that cannot coexist safely", () => {
-  assert.equal(
-    doesCarouselStructure2TextFitSafeArea({
-      ctaLineCount: 4,
-      height: 1080,
-      storyLineCount: 12,
-    }),
-    true,
-  );
-  assert.equal(
-    doesCarouselStructure2TextFitSafeArea({
-      ctaLineCount: 6,
-      height: 1080,
-      storyLineCount: 12,
-    }),
-    false,
-  );
-});
-
-test("recent repetition compares exact accepted slide copy", () => {
-  const plan = makeStoryPlan("wrong_belief");
-  const history = makeRecentCopy(plan.slides.map((slide) => slide.storyText));
-  const issues = validateCarouselStructure2StoryPlan(plan, {
-    businessDescription,
-    recentHistory: [history],
-  });
-
-  assert.ok(issues.some((issue) => issue.code === "recent_repetition"));
-});
-
-test("repair keeps the same creative brief and flexible format reference", () => {
-  const assignment = makeAssignments(["new_rule"])[0]!;
-  const messages = buildCarouselStructure2RepairMessages({
-    assignment,
-    businessDescription,
-    issues: [{ code: "invalid_plan", message: "CTA missing", slideNumber: null }],
-    rawPlan: {},
-    recentHistory: [makeRecentCopy()],
-  });
-  const prompt = messages.map((message) => message.content).join("\n");
-
-  assert.match(prompt, /new_rule/);
-  assert.match(prompt, /quiet frustration/);
-  assert.match(prompt, /CTA remains optional/i);
-  assert.doesNotMatch(prompt, /allowedCtaPositions|format-specific CTA position/i);
-  assert.doesNotMatch(prompt, /productMechanism/);
-});
-
-test("Structure 2 remains LLM-only and pinned to gpt-4o-mini", async () => {
-  const previousApiKey = process.env.OPENAI_API_KEY;
-  delete process.env.OPENAI_API_KEY;
-
-  try {
-    await assert.rejects(
-      buildCarouselStructure2StoryPlanBatch({
-        assignments: makeAssignments(CAROUSEL_STRUCTURE_2_FORMAT_IDS.slice(0, 5)),
-        businessDescription,
-      }),
-      /OPENAI_API_KEY is required/i,
-    );
-    assert.match(CAROUSEL_STRUCTURE_2_PLANNER_VERSION, /flexible-seed-writer/);
-    assert.equal(CAROUSEL_TEXT_MODEL, "gpt-4o-mini");
-  } finally {
-    if (previousApiKey === undefined) delete process.env.OPENAI_API_KEY;
-    else process.env.OPENAI_API_KEY = previousApiKey;
-  }
+  assert.ok(partitioned.blockingIssues.some((issue) => issue.code === "generic_copy"));
+  assert.deepEqual(partitioned.advisoryIssues, []);
 });
 
 function makeAssignments(formatIds: readonly CarouselStructure2FormatId[]) {
   return Array.from({ length: 5 }, (_, slotIndex) => ({
     candidateIndex: slotIndex,
-    creativeSeed: `A different open creative starting point ${slotIndex + 1}`,
-    emotion: slotIndex === 0 ? "quiet frustration" : `emotion ${slotIndex + 1}`,
-    planningBrief: {
-      audienceContext: "People managing changing priorities",
-      creativeSeed: "The plan starts to feel heavier than the work itself",
-      emotionalTension: "Frustration mixed with self-blame",
-      humanMoment: "An unexpected meeting moves the important work into the afternoon",
-      preferredFormatFamily: "relatable_situation",
-      supportedAngle: "A planning method that accounts for real capacity",
-    },
+    creativeSeed: `Open creative starting point ${slotIndex + 1}`,
+    emotion: "quiet frustration",
     slotIndex,
     storyFormatId: formatIds[slotIndex % formatIds.length]!,
   })) satisfies CarouselStructure2StoryAssignment[];
 }
 
-function makeStoryPlan(storyFormatId: CarouselStructure2FormatId) {
-  return parseCarouselStructure2StoryPlan(makeRawStoryPlan(), {
-    businessDescription,
-    storyFormatId,
-  });
-}
-
 function makeRawStoryPlan() {
   const copy = [
-    "i thought a perfect weekly plan would keep every priority under control",
-    "then monday changed one task and i rebuilt the whole list before starting anything",
-    "the problem was not effort; the plan left no room for ordinary changes",
-    "i tried Todaywise and used the changing plan as my starting point",
-    "the week stayed imperfect, but i stopped treating every change like a restart",
+    "Why weekly plans collapse by Tuesday",
+    "On Monday, one changed priority made me rebuild every task, delay the first decision, and lose the context I had already collected.",
+    "I realized the problem was not effort; my plan assumed that ordinary work would never change after I wrote it down.",
+    "Todaywise let me work from the changing task list, so I could update the next action without rebuilding the entire week from scratch.",
+    "The week still changed, but I stopped treating each shift as a reset and finished the important work with a clearer next decision.",
+    "Keep the next decision visible, then try the same approach with one changing priority.",
   ];
-  const roles = [
-    "recognition",
-    "failure_scene",
-    "reframe",
-    "product_turning_point",
-    "proof_reflection_cta",
-  ] as const;
 
   return {
     slides: Object.fromEntries(
-      CAROUSEL_STRUCTURE_2_POSITION_KEYS.map((positionKey, index) => [
+      CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS.map((positionKey, index) => [
         positionKey,
         {
           ctaText:
-            index === 4
-              ? "try the same idea with one changing priority"
+            index === 5
+              ? "Try the same approach with one changing priority."
               : null,
-          storyRole: roles[index]!,
+          storyRole: CAROUSEL_STRUCTURE_2_STORY_ROLES[index]!,
           storyText: copy[index]!,
           visualContext: `ordinary planning scene ${index + 1}`,
         },
       ]),
     ),
-    strategy: {
-      angle: "a perfect weekly plan colliding with an ordinary change",
-    },
-  };
-}
-
-function makeRecentCopy(copy?: string[]) {
-  const visible = copy ?? [
-    "i kept rebuilding monday's list",
-    "one changed priority restarted the whole plan",
-  ];
-
-  return {
-    contentPlanItemId: "00000000-0000-0000-0000-000000000001",
-    formatId: "wrong_belief",
-    generationId: "00000000-0000-0000-0000-000000000002",
-    slides: visible.map((headline, index) => ({
-      ctaText: null,
-      headline,
-      slideNumber: index + 1,
-      subtext: null,
-    })),
-    structureId: "structure_2" as const,
+    strategy: { angle: "a weekly plan that could not adapt to real work" },
   };
 }

@@ -45,6 +45,7 @@ export type BackgroundJobType =
   | "paid_trending_prebuild"
   | "preview_render"
   | "publish_social_post"
+  | "reaction_generation"
   | "render_demo_video"
   | "render_edit_video"
   | "render_schedule_combination"
@@ -149,6 +150,19 @@ type BackgroundJobsDatabase = {
           p_user_id: string;
         };
         Returns: Array<{ created: boolean; job_id: string }>;
+      };
+      create_or_get_background_job_v1: {
+        Args: {
+          p_idempotency_key: string | null;
+          p_input_json: Json;
+          p_input_reference: string | null;
+          p_job_type: string;
+          p_max_attempts: number;
+          p_project_id: string | null;
+          p_queue_name: string;
+          p_user_id: string | null;
+        };
+        Returns: Json;
       };
       claim_video_render_execution_slot: {
         Args: {
@@ -332,33 +346,71 @@ export async function createBackgroundJobWithCreationResult(
   input: CreateBackgroundJobInput,
 ) {
   const now = new Date().toISOString();
-  const { data, error } = await getSupabaseServerClient()
+  const insert = {
+    input_json: toJsonObject(input.input ?? {}),
+    input_reference: input.inputReference ?? null,
+    idempotency_key: input.idempotencyKey ?? null,
+    job_type: input.jobType,
+    max_attempts: input.maxAttempts ?? 3,
+    project_id: input.projectId ?? null,
+    queue_name: input.queueName,
+    queue_provider: "gcp" as const,
+    queued_at: now,
+    stage: "queued",
+    status: "queued" as const,
+    updated_at: now,
+    user_id: input.userId ?? null,
+  };
+  const client = getSupabaseServerClient();
+  const { data, error } = await client.rpc("create_or_get_background_job_v1", {
+    p_idempotency_key: insert.idempotency_key,
+    p_input_json: insert.input_json,
+    p_input_reference: insert.input_reference,
+    p_job_type: insert.job_type,
+    p_max_attempts: insert.max_attempts,
+    p_project_id: insert.project_id,
+    p_queue_name: insert.queue_name,
+    p_user_id: insert.user_id,
+  });
+
+  // Keep an app-before-migration rollout safe. Once the migration is applied,
+  // the RPC avoids emitting a duplicate-key error for normal idempotent reuse.
+  if (error && isCreateOrGetBackgroundJobRpcUnavailable(error.code)) {
+    return createBackgroundJobWithDirectInsert({ client, input, insert });
+  }
+
+  if (error) {
+    throw new Error(`Could not create background job: ${error.message}`);
+  }
+
+  if (!isBackgroundJobCreationResult(data)) {
+    throw new Error("Could not create or reuse background job: invalid database response.");
+  }
+
+  return {
+    created: data.created,
+    job: mapBackgroundJob(data.job as BackgroundJobRow),
+  };
+}
+
+async function createBackgroundJobWithDirectInsert(params: {
+  client: SupabaseClient<BackgroundJobsDatabase>;
+  input: CreateBackgroundJobInput;
+  insert: BackgroundJobInsert;
+}) {
+  const { data, error } = await params.client
     .from(BACKGROUND_JOBS_TABLE)
-    .insert({
-      input_json: toJsonObject(input.input ?? {}),
-      input_reference: input.inputReference ?? null,
-      idempotency_key: input.idempotencyKey ?? null,
-      job_type: input.jobType,
-      max_attempts: input.maxAttempts ?? 3,
-      project_id: input.projectId ?? null,
-      queue_name: input.queueName,
-      queue_provider: "gcp",
-      queued_at: now,
-      stage: "queued",
-      status: "queued",
-      updated_at: now,
-      user_id: input.userId ?? null,
-    })
+    .insert(params.insert)
     .select("*")
     .single();
 
   if (error) {
-    if (error.code === "23505" && input.idempotencyKey) {
+    if (error.code === "23505" && params.input.idempotencyKey) {
       const existing = await getBackgroundJobByIdempotencyKey(
-        input.idempotencyKey,
+        params.input.idempotencyKey,
         {
-          jobType: input.jobType,
-          userId: input.userId ?? null,
+          jobType: params.input.jobType,
+          userId: params.input.userId ?? null,
         },
       );
 
@@ -371,6 +423,24 @@ export async function createBackgroundJobWithCreationResult(
   }
 
   return { created: true as const, job: mapBackgroundJob(data) };
+}
+
+function isCreateOrGetBackgroundJobRpcUnavailable(code: string | undefined) {
+  return code === "42883" || code === "PGRST202";
+}
+
+function isBackgroundJobCreationResult(
+  value: Json | null,
+): value is { created: boolean; job: Json } {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    typeof value.created === "boolean" &&
+    value.job !== null &&
+    typeof value.job === "object" &&
+    !Array.isArray(value.job)
+  );
 }
 
 export async function getBackgroundJobById(jobId: string) {

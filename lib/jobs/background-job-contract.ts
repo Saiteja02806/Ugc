@@ -62,6 +62,7 @@ const canonicalTypeByImplementation: Record<
   paid_trending_prebuild: "trending_prebuild",
   preview_render: "preview_render",
   publish_social_post: "social_publish",
+  reaction_generation: "video_generation",
   render_demo_video: "final_render",
   render_edit_video: "final_render",
   render_schedule_combination: "final_render",

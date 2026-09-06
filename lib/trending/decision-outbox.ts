@@ -68,7 +68,8 @@ function isTrendingDecisionOutboxEntry(
     (entry.decision === "accepted" || entry.decision === "rejected") &&
     (entry.format === "carousel" ||
       entry.format === "hook_video" ||
-      entry.format === "wall_text") &&
+      entry.format === "wall_text" ||
+      entry.format === "reaction") &&
     typeof entry.queuedAt === "string" &&
     Boolean(entry.queuedAt)
   );

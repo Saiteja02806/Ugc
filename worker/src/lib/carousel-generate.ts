@@ -545,9 +545,9 @@ export async function generateCarousel({
       reservedAssets.map((asset) => [asset.slide_number, asset]),
     );
 
-    if (plannedSlides.length !== 5 || reservedAssets.length !== 5) {
+    if (plannedSlides.length !== 6 || reservedAssets.length !== 6) {
       throw new Error(
-        `Carousel role-image reservation requires five slides and five assets; received ${plannedSlides.length} slides and ${reservedAssets.length} assets.`,
+        `Carousel role-image reservation requires six slides and six assets; received ${plannedSlides.length} slides and ${reservedAssets.length} assets.`,
       );
     }
 

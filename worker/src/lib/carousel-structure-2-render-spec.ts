@@ -52,9 +52,9 @@ export function buildCarouselStructure2RenderSpecs(params: {
   if (!isCarouselStructure2FormatId(params.storyPlan.strategy.storyFormatId)) {
     throw new Error("Structure 2 render specs require a canonical Structure 2 format id.");
   }
-  if (params.storyPlan.slides.length !== 5 || params.assets.length !== 5) {
+  if (params.storyPlan.slides.length !== 6 || params.assets.length !== 6) {
     throw new Error(
-      "Structure 2 rendering requires exactly five story slides and five reserved role assets.",
+      "Structure 2 rendering requires exactly six story slides and six reserved role assets.",
     );
   }
 
@@ -62,8 +62,8 @@ export function buildCarouselStructure2RenderSpecs(params: {
     params.assets.map((asset) => [asset.slide_number, asset]),
   );
 
-  if (assetsBySlide.size !== 5) {
-    throw new Error("Structure 2 reserved assets must use slide numbers 1 through 5 once each.");
+  if (assetsBySlide.size !== 6) {
+    throw new Error("Structure 2 reserved assets must use slide numbers 1 through 6 once each.");
   }
 
   assertCarouselStructure2VisualRatio(params.assets);
@@ -160,20 +160,30 @@ export function assertCarouselStructure2VisualRatio(
   const nonHumanCount = counts.static + counts.product_asset;
 
   if (
-    ordered.length !== 5 ||
+    ordered.length === 6 &&
+    ordered[5]?.asset_role !== "static" &&
+    ordered[5]?.asset_role !== "product_asset"
+  ) {
+    throw new Error(
+      "Structure 2 Slide 6 must use the product screenshot when available, otherwise a static visual.",
+    );
+  }
+
+  if (
+    ordered.length !== 6 ||
     ordered.some((asset, index) => asset.slide_number !== index + 1) ||
     ordered[0]?.asset_role !== "hook" ||
     counts.hook !== 1 ||
     counts.human !== 2 ||
-    nonHumanCount !== 2 ||
+    nonHumanCount !== 3 ||
     counts.product_asset > 1
   ) {
     throw new Error(
-      "Structure 2 visuals must follow 1 hook + 2 human + 2 non-human assets; one non-human slot may be a product asset.",
+      "Structure 2 visuals must follow 1 hook + 2 human + 3 non-human assets; one non-human slot may be a product asset.",
     );
   }
 
-  const tailRoles = ordered.slice(1).map((asset) =>
+  const tailRoles = ordered.slice(1, 5).map((asset) =>
     asset.asset_role === "human" ? "human" : "non_human",
   );
 

@@ -19,7 +19,7 @@ const TrendingCreativeDecisionSchema = z
     assignmentId: z.string().uuid(),
     creativeId: z.string().uuid(),
     decision: z.enum(["accepted", "rejected"]),
-    format: z.enum(["carousel", "hook_video", "wall_text"]),
+    format: z.enum(["carousel", "hook_video", "wall_text", "reaction"]),
   })
   .strict();
 

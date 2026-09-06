@@ -11,6 +11,8 @@ import {
   CAROUSEL_STRUCTURE_2_CTA_MAX_LINES,
   CAROUSEL_STRUCTURE_2_STORY_MAX_LINES,
   doesCarouselStructure2TextFitSafeArea,
+  getCarouselStructure2StoryFontSize,
+  getCarouselStructure2StoryMaxLines,
 } from "./carousel-structure-2-layout.js";
 import {
   CAROUSEL_STRUCTURE_2_STORY_ROLES,
@@ -21,9 +23,20 @@ import {
 } from "./carousel-structure-2-formats.js";
 
 export const CAROUSEL_STRUCTURE_2_STORY_SCHEMA_VERSION =
-  "carousel-structure-2-flexible-story-v5-plain-white-story-text";
+  "carousel-structure-2-strict-six-slide-story-v6";
 export const CAROUSEL_STRUCTURE_2_STORY_HISTORY_LIMIT = 10;
-export const CAROUSEL_STRUCTURE_2_POSITION_KEYS = [
+/** Names the six rendered slides inside one Structure 2 carousel. */
+export const CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS = [
+  "first",
+  "second",
+  "third",
+  "fourth",
+  "fifth",
+  "sixth",
+] as const;
+
+/** Names the five independently planned carousels in one worker batch. */
+export const CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS = [
   "first",
   "second",
   "third",
@@ -105,12 +118,28 @@ export function parseCarouselStructure2StoryPlan(
   const slidesRecord = asRecord(record.slides, "Structure 2 slides");
   assertExactObjectKeys(
     slidesRecord,
-    CAROUSEL_STRUCTURE_2_POSITION_KEYS,
+    CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS,
     "Structure 2 slides",
   );
-  const slides = CAROUSEL_STRUCTURE_2_POSITION_KEYS.map((positionKey, index) =>
+  const format = getCarouselStructure2Format(params.storyFormatId);
+  const slides = CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS.map((positionKey, index) =>
     parseStorySlide(slidesRecord[positionKey], index),
   );
+
+  for (const slide of slides) {
+    const reference = format.slides[slide.slideNumber - 1];
+
+    if (!reference || reference.storyRole !== slide.storyRole) {
+      throw new Error(
+        `Structure 2 slide ${slide.slideNumber} must use the ${reference?.storyRole ?? "configured"} role.`,
+      );
+    }
+    if (reference.ctaPolicy === "none" && slide.ctaText) {
+      throw new Error(
+        `Structure 2 slide ${slide.slideNumber} cannot include a CTA.`,
+      );
+    }
+  }
 
   return {
     schemaVersion: CAROUSEL_STRUCTURE_2_STORY_SCHEMA_VERSION,
@@ -179,12 +208,15 @@ export function validateCarouselStructure2StoryPlan(
     const copy = [slide.storyText, slide.ctaText]
       .filter((value): value is string => Boolean(value))
       .join(" ");
-    const reference = format.slides.find(
-      (definition) => definition.storyRole === slide.storyRole,
-    );
+    const reference = format.slides[slide.slideNumber - 1];
     const wordCount = countWords(copy);
+    const storyFontSize = getCarouselStructure2StoryFontSize(slide.slideNumber);
+    const storyMaximumLines = getCarouselStructure2StoryMaxLines(
+      slide.slideNumber,
+    );
     const storyFit = inspectCarouselFixedTextFit({
-      maximumLines: CAROUSEL_STRUCTURE_2_STORY_MAX_LINES,
+      fontSize: storyFontSize,
+      maximumLines: storyMaximumLines,
       maximumWidth: CAROUSEL_STRUCTURE_2_FIXED_TEXT_WIDTH,
       value: slide.storyText,
     });
@@ -192,7 +224,7 @@ export function validateCarouselStructure2StoryPlan(
     if (!storyFit.fits) {
       issues.push({
         code: "render_fit",
-        message: `Story copy must fit within ${CAROUSEL_STRUCTURE_2_STORY_MAX_LINES} lines at the fixed ${CAROUSEL_FIXED_FONT_SIZE}px font size. ${storyFit.reason ?? ""}`.trim(),
+        message: `Story copy must fit within ${storyMaximumLines} lines at the ${storyFontSize}px font size. ${storyFit.reason ?? ""}`.trim(),
         slideNumber: slide.slideNumber,
       });
     }
@@ -218,8 +250,10 @@ export function validateCarouselStructure2StoryPlan(
     if (
       !doesCarouselStructure2TextFitSafeArea({
         ctaLineCount: ctaFit?.lines.length ?? 0,
+        ctaFontSize: CAROUSEL_FIXED_FONT_SIZE,
         height: 1080,
         storyLineCount: storyFit.lines.length,
+        storyFontSize,
       })
     ) {
       issues.push({
@@ -237,6 +271,41 @@ export function validateCarouselStructure2StoryPlan(
       issues.push({
         code: "word_count",
         message: `Slide copy is outside the reference ${reference.minimumWords}-${reference.maximumWords} word range.`,
+        slideNumber: slide.slideNumber,
+      });
+    }
+    if (!reference || reference.storyRole !== slide.storyRole) {
+      issues.push({
+        code: "story_structure",
+        message: "The slide role does not match the required six-slide story sequence.",
+        slideNumber: slide.slideNumber,
+      });
+    }
+    if (reference?.ctaPolicy === "none" && slide.ctaText) {
+      issues.push({
+        code: "cta_mismatch",
+        message: "Only the sixth slide may include a CTA.",
+        slideNumber: slide.slideNumber,
+      });
+    }
+    if (
+      reference?.perspective === "first_person" &&
+      /\b(you|your)\b/i.test(slide.storyText)
+    ) {
+      issues.push({
+        code: "perspective",
+        message: "This slide must stay in the first-person story perspective.",
+        slideNumber: slide.slideNumber,
+      });
+    }
+    if (
+      reference?.productMention === "forbidden" &&
+      params.businessDescription &&
+      includesBusinessName(slide.storyText, params.businessDescription)
+    ) {
+      issues.push({
+        code: "product_timing",
+        message: "The product must not appear before the product-mechanism slide.",
         slideNumber: slide.slideNumber,
       });
     }
@@ -321,19 +390,14 @@ export function partitionCarouselStructure2ValidationIssues(
   const blockingIssues: CarouselStructure2StoryValidationIssue[] = [];
   const advisoryIssues: CarouselStructure2StoryValidationIssue[] = [];
 
-  for (const issue of dedupeCarouselStructure2ValidationIssues(issues)) {
-    if (issue.code === "invalid_plan" || issue.code === "render_fit") {
-      blockingIssues.push(issue);
-    }
-    else advisoryIssues.push(issue);
-  }
+  blockingIssues.push(...dedupeCarouselStructure2ValidationIssues(issues));
 
   return { advisoryIssues, blockingIssues };
 }
 
 export function buildCarouselStructure2StoryPlanSchema() {
   const slides = Object.fromEntries(
-    CAROUSEL_STRUCTURE_2_POSITION_KEYS.map((positionKey) => [
+    CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS.map((positionKey) => [
       positionKey,
       {
         additionalProperties: false,
@@ -371,7 +435,7 @@ export function buildCarouselStructure2StoryPlanSchema() {
       slides: {
         additionalProperties: false,
         properties: slides,
-        required: [...CAROUSEL_STRUCTURE_2_POSITION_KEYS],
+        required: [...CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS],
         type: "object",
       },
       strategy: {
@@ -393,7 +457,7 @@ export function buildCarouselStructure2StoryBatchSchema(params: {
 }) {
   assertCarouselStructure2StoryAssignments(params.assignments);
   const plans = Object.fromEntries(
-    CAROUSEL_STRUCTURE_2_POSITION_KEYS.map((positionKey) => [
+    CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS.map((positionKey) => [
       positionKey,
       buildCarouselStructure2StoryPlanSchema(),
     ]),
@@ -405,7 +469,7 @@ export function buildCarouselStructure2StoryBatchSchema(params: {
       plans: {
         additionalProperties: false,
         properties: plans,
-        required: [...CAROUSEL_STRUCTURE_2_POSITION_KEYS],
+        required: [...CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS],
         type: "object",
       },
     },
@@ -424,7 +488,7 @@ export function parseCarouselStructure2StoryBatch(
   const plansRecord = asRecord(record.plans, "Structure 2 story batch plans");
   assertExactObjectKeys(
     plansRecord,
-    CAROUSEL_STRUCTURE_2_POSITION_KEYS,
+    CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS,
     "Structure 2 story batch plans",
   );
   const sortedAssignments = [...assignments].sort(
@@ -432,7 +496,7 @@ export function parseCarouselStructure2StoryBatch(
   );
 
   return new Map(
-    CAROUSEL_STRUCTURE_2_POSITION_KEYS.map((positionKey, index) => [
+    CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS.map((positionKey, index) => [
       sortedAssignments[index]!.slotIndex,
       plansRecord[positionKey],
     ]),
@@ -451,7 +515,7 @@ export function buildCarouselStructure2BatchMessages(params: {
       creativeSeed: assignment.creativeSeed,
       emotion: assignment.emotion,
       formatReference: getFormatReference(assignment.storyFormatId),
-      outputKey: CAROUSEL_STRUCTURE_2_POSITION_KEYS[index],
+      outputKey: CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS[index],
       privateCreativeBrief: assignment.planningBrief,
     }));
 
@@ -459,7 +523,7 @@ export function buildCarouselStructure2BatchMessages(params: {
     {
       role: "system" as const,
       content:
-        "You write native Instagram story carousels for Structure 2. Create exactly five independent carousels with exactly five slides each. The format is a controlled creative reference, not a compulsory sentence-by-sentence backbone. Private creative briefs add context but are not visible labels or compulsory plots. A CTA is optional and is never required to complete a story. Return only the requested JSON.",
+        "You write native Instagram product-story carousels for Structure 2. Create exactly five independent carousels with exactly six slides each. Every carousel follows this strict sequence: reader-first cover, problem, realization, product mechanism, modest proof or result, useful takeaway or CTA. Private creative briefs add context but are not visible labels or compulsory plots. Return only the requested JSON.",
     },
     {
       role: "user" as const,
@@ -467,11 +531,13 @@ export function buildCarouselStructure2BatchMessages(params: {
         "Use each creativeSeed as a broad starting point and its emotion as the emotional current. Do not treat either as finished copy or a complete plot.",
         "Use privateCreativeBrief only as flexible human and factual context; its preferredFormatFamily must never override the backend-selected format reference.",
         "Return each plan under its assigned outputKey. Do not return slideNumber, slotIndex, candidateIndex, or storyFormatId; the worker owns those structural values.",
-        "Develop genuinely different stories. Do not force every item through the same overwhelmed-to-easier arc.",
-        "Use ctaText only when a natural invitation improves the story. Otherwise return null. CTA presence and slide position are your creative choice.",
-        `Every story uses fixed ${CAROUSEL_FIXED_FONT_SIZE}px white text directly on the image; do not expect a white SVG background for storyText or ctaText. Keep storyText within ${CAROUSEL_STRUCTURE_2_STORY_MAX_LINES} visual lines and CTA text within ${CAROUSEL_STRUCTURE_2_CTA_MAX_LINES}; when both are present, they must fit together inside the square safe area. The renderer will not shrink or truncate copy.`,
-        "Use exampleFlows and roleGuidance as inspiration. You may choose another ordering of the known story roles when it better serves the seed.",
-        "Keep product connections natural and grounded only in businessDescription. Do not force a product sentence onto Slide 4.",
+        "Develop genuinely different stories inside the required six-slide sequence. Do not force every item through the same overwhelmed-to-easier arc.",
+        "Slide 1 is reader-first: direct reader wording such as 'you' or 'your' is allowed. Give a specific benefit, tension, mistake, contrast, or curiosity gap; do not force it into a first-person personal-story opener.",
+        "Perspective boundary: only Slide 1 may lead with direct reader wording. Slides 2-5 must stay in the first-person story voice (I, me, or my). Slide 6 may turn the lesson toward the reader after its takeaway.",
+        "Slides 1-5 must return ctaText: null. Slide 6 may use a natural, low-pressure CTA or return null when a useful takeaway stands on its own.",
+        `Every story uses white text directly on the image; do not expect a white SVG background for storyText or ctaText. Slide 1 uses ${getCarouselStructure2StoryFontSize(1)}px type within ${getCarouselStructure2StoryMaxLines(1)} visual lines; Slides 2-6 use ${CAROUSEL_FIXED_FONT_SIZE}px type within ${CAROUSEL_STRUCTURE_2_STORY_MAX_LINES} visual lines. CTA text stays within ${CAROUSEL_STRUCTURE_2_CTA_MAX_LINES} lines, and all text must fit inside the square safe area. The renderer will not shrink or truncate copy.`,
+        "Follow roleGuidance in its given order. Do not reorder, repeat, or omit story roles.",
+        "Slide 4 must explain a real product capability that directly addresses the Slide 2 problem. Keep product connections natural and grounded only in businessDescription; never invent a capability.",
         "Do not invent precise features, proof, metrics, customers, guarantees, health outcomes, financial outcomes, or performance claims.",
         "Avoid close wording and close paraphrases from recentAcceptedCopy, including hooks, emotional turns, and CTA wording.",
         "Minimal business context:",
@@ -492,11 +558,15 @@ export function buildCarouselStructure2RepairMessages(params: {
   rawPlan: unknown;
   recentHistory?: readonly CarouselStructure2RecentHistoryInput[];
 }) {
+  const hasSlideOneRenderFitFailure = params.issues.some(
+    (issue) => issue.code === "render_fit" && issue.slideNumber === 1,
+  );
+
   return [
     {
       role: "system" as const,
       content:
-        "Repair one Structure 2 JSON plan. Preserve valid AI copy unless a structural or renderability issue requires changing it. Keep the selected format reference, creative seed, emotion, and five-slide count. A CTA remains optional and must not be added merely to satisfy the repair. Do not return slideNumber, slotIndex, candidateIndex, or storyFormatId; the worker owns those structural values. Return only repaired JSON.",
+        "Repair one Structure 2 JSON plan. Preserve valid AI copy unless a structural or renderability issue requires changing it. Keep the selected format reference, creative seed, emotion, and six-slide sequence: reader-first cover, problem, realization, product mechanism, modest proof or result, takeaway or CTA. Slides 1-5 must return ctaText: null; only Slide 6 may use a low-pressure CTA. Do not return slideNumber, slotIndex, candidateIndex, or storyFormatId; the worker owns those structural values. Return only repaired JSON.",
     },
     {
       role: "user" as const,
@@ -511,13 +581,18 @@ export function buildCarouselStructure2RepairMessages(params: {
         JSON.stringify({ businessDescription: params.businessDescription }),
         "Format reference:",
         JSON.stringify(getFormatReference(params.assignment.storyFormatId)),
+        "Slide 1 is reader-first, so direct reader wording such as 'you' or 'your' is allowed. It must create a specific reason to swipe and fit within three visual lines at 60px type.",
+        "Only Slide 1 may lead with direct reader wording. Keep Slides 2-5 in the first-person story voice (I, me, or my); Slide 6 may turn the lesson toward the reader after its takeaway.",
+        hasSlideOneRenderFitFailure
+          ? "Slide 1 overflowed its real three-line display area. Replace it with a shorter, simpler cover rather than merely trimming words."
+          : null,
         "Validation issues:",
         JSON.stringify(params.issues),
         "Last accepted Carousel copies (exact visible text):",
         JSON.stringify(normalizeRecentHistory(params.recentHistory)),
         "Invalid original plan:",
         JSON.stringify(params.rawPlan),
-      ].join("\n"),
+      ].filter((line): line is string => line !== null).join("\n"),
     },
   ];
 }
@@ -622,8 +697,26 @@ function normalizeRecentHistory(
 function getProductVisualEligibility(
   role: CarouselStructure2StoryRole,
 ): CarouselStructure2ProductVisualEligibility {
-  if (role === "product_turning_point") return "preferred";
+  if (role === "product_turning_point" || role === "takeaway_cta") {
+    return "preferred";
+  }
   return "allowed";
+}
+
+function includesBusinessName(value: string, businessDescription: string) {
+  const firstPhrase = businessDescription
+    .trim()
+    .split(/[.!?\n]/)[0]
+    ?.trim()
+    .split(/\s+/)
+    .slice(0, 4)
+    .join(" ");
+
+  return Boolean(
+    firstPhrase &&
+      firstPhrase.length >= 3 &&
+      value.toLocaleLowerCase().includes(firstPhrase.toLocaleLowerCase()),
+  );
 }
 
 function countWords(value: string) {

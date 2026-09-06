@@ -55,13 +55,28 @@ test("plans expose the complete daily content allowance", () => {
   );
 });
 
-test("Free and Starter allow one Instagram account while Growth allows three", () => {
+test("Free allows one Instagram account, Starter three, and Growth five", () => {
   assert.deepEqual(
     pricingPlans.map((plan) => [plan.slug, plan.instagramAccounts]),
     [
       ["free", 1],
-      ["starter", 1],
-      ["growth", 3],
+      ["starter", 3],
+      ["growth", 5],
+    ],
+  );
+});
+
+test("plan feature lists match the advertised Instagram account limits", () => {
+  assert.deepEqual(
+    pricingPlans.map((plan) =>
+      plan.features.find((feature) =>
+        feature.includes("connected Instagram account"),
+      ),
+    ),
+    [
+      "1 connected Instagram account",
+      "3 connected Instagram accounts",
+      "5 connected Instagram accounts",
     ],
   );
 });

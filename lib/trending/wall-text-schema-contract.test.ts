@@ -129,6 +129,13 @@ const regularTypographyMigration = readFileSync(
   ),
   "utf8",
 );
+const avenirNextTypographyMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260903113000_add_wall_text_avenir_next_typography.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const generatorSource = readFileSync(
   new URL("./generate-trending-wall-text-ideas.ts", import.meta.url),
   "utf8",
@@ -598,8 +605,8 @@ test("keeps the approved thirty Wall formats in one controlled registry", () => 
   );
 });
 
-test("measures new final Wall lines with packaged Arial Regular before saving authoritative layout", () => {
-  assert.match(layoutEngineSource, /fontFamily: "Arial"/);
+test("measures new final Wall lines with packaged Avenir Next Demi Bold before saving authoritative layout", () => {
+  assert.match(layoutEngineSource, /fontFamily: "Avenir Next"/);
   assert.match(layoutEngineSource, /sharp\([\s\S]+\.metadata\(\)/);
   assert.match(layoutEngineSource, /finalLayout,/);
   assert.match(layoutEngineSource, /blocks,/);
@@ -609,12 +616,14 @@ test("measures new final Wall lines with packaged Arial Regular before saving au
   assert.match(layoutEngineSource, /maximumWidth = getWallTextSafeLineWidth\(textBoxWidth\)/);
   assert.match(visualStyleSource, /WALL_TEXT_INLINE_SAFE_PADDING = 15/);
   assert.match(visualStyleSource, /WALL_TEXT_OUTLINE_WIDTH = 4/);
+  assert.match(visualStyleSource, /WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH = 2/);
   assert.match(
     renderValidationSource,
     /maximumTextWidth = getWallTextSafeLineWidth\(textBoxWidth\)/,
   );
   assert.match(workerRenderSpecSource, /WALL_TEXT_INLINE_SAFE_PADDING = 15/);
   assert.match(workerRenderSpecSource, /WALL_TEXT_OUTLINE_WIDTH = 4/);
+  assert.match(workerRenderSpecSource, /WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH = 2/);
   assert.match(
     workerRenderEngineSource,
     /textBox\.width \* WALL_TEXT_RENDER_WIDTH\)[\s\S]+WALL_TEXT_INLINE_SAFE_PADDING \* 2/,
@@ -766,13 +775,20 @@ test("rejects the reported overflow and synchronizes the measured font fit", () 
         lineHeightPx: 57.2,
       },
     };
-    const fit = await validation.validateWallTextRenderFit(forcedLarge);
-    const applied = validation.applyWallTextRenderFit(forcedLarge, fit);
+    let forcedLargeRejected = false;
+    try {
+      await validation.validateWallTextRenderFit(forcedLarge);
+    } catch (error) {
+      forcedLargeRejected = error?.code === validation.WALL_TEXT_RENDER_FIT_REJECTED;
+    }
+    const fit = await validation.validateWallTextRenderFit(rebuilt.content);
+    const applied = validation.applyWallTextRenderFit(rebuilt.content, fit);
     process.stdout.write(JSON.stringify({
       appliedFinalFont: applied.finalLayout.fontSizePx,
       appliedLineHeight: applied.finalLayout.lineHeightPx,
       appliedRenderFont: applied.renderFontSize,
       fit,
+      forcedLargeRejected,
       lines: applied.finalLayout.blocks[0].lines,
       rejected,
     }));
@@ -802,15 +818,14 @@ test("rejects the reported overflow and synchronizes the measured font fit", () 
     };
     lines: string[];
     rejected: boolean;
+    forcedLargeRejected: boolean;
   };
 
   assert.equal(result.rejected, true);
   assert.equal(result.fit.valid, true);
-  // Arial Regular is narrower than the former Inter treatment, so this
-  // measured layout legitimately fits at the requested 52px size. The
-  // contract is that the same verified face determines both layout and fit.
-  assert.ok(result.fit.fontSize <= 52);
-  assert.ok(result.fit.maximumLineWidth + 8 < 750);
+  assert.equal(result.forcedLargeRejected, true);
+  assert.equal(result.fit.fontSize, 50);
+  assert.ok(result.fit.maximumLineWidth + 4 < 750);
   assert.equal(result.appliedRenderFont, result.fit.fontSize);
   assert.equal(result.appliedFinalFont, result.fit.fontSize);
   assert.equal(result.appliedLineHeight, result.fit.lineHeight);
@@ -818,35 +833,45 @@ test("rejects the reported overflow and synchronizes the measured font fit", () 
   assert.ok(result.lines.length >= 5 && result.lines.length <= 8);
 });
 
-test("uses packaged Arial Regular glyphs at 400 for new Wall content while retaining V3 compatibility", () => {
-  assert.match(visualStyleSource, /WALL_TEXT_FONT_WEIGHT = 400/);
+test("uses packaged Avenir Next Demi Bold glyphs at 600 for new Wall content while retaining prior typography", () => {
+  assert.match(visualStyleSource, /WALL_TEXT_FONT_WEIGHT = 600/);
   assert.match(visualStyleSource, /WALL_TEXT_MINIMUM_FONT_SIZE = 44/);
   assert.match(visualStyleSource, /WALL_TEXT_MAXIMUM_FONT_SIZE = 52/);
-  assert.match(layoutEngineSource, /Arial Regular \$\{fontSize\}/);
-  assert.match(layoutEngineSource, /getVerifiedWallTextArialRegularFontPath/);
+  assert.match(layoutEngineSource, /font: `Avenir Next \$\{fontSize\}`/);
+  assert.doesNotMatch(
+    layoutEngineSource,
+    /font: `Avenir Next Demi Bold \$\{fontSize\}`/,
+  );
+  assert.match(layoutEngineSource, /getVerifiedWallTextAvenirNextDemiBoldFontPath/);
   assert.match(layoutEngineSource, /fontWeight: WALL_TEXT_FONT_WEIGHT/);
   assert.match(renderValidationSource, /Arial Bold/);
   assert.match(renderValidationSource, /Arial Regular/);
+  assert.match(renderValidationSource, /Avenir Next Demi Bold/);
   assert.match(renderValidationSource, /Inter Regular/);
   assert.match(renderValidationSource, /getVerifiedWallTextArialBoldFontPath/);
   assert.match(renderValidationSource, /getVerifiedWallTextArialRegularFontPath/);
   assert.match(fontMeasurementSource, /arial-bold\.ttf/);
   assert.match(fontMeasurementSource, /arial-regular\.ttf/);
+  assert.match(fontMeasurementSource, /avenir-next-demi-bold\.ttf/);
   assert.match(fontMeasurementSource, /inter-variable\.ttf/);
   assert.match(fontMeasurementSource, /FONTCONFIG_FILE/);
   assert.match(
     fontMeasurementSource,
-    /ARIAL_REGULAR_FONT_PATH[\s\S]+packaged \$\{params\.label\} font is unavailable/,
+    /AVENIR_NEXT_DEMI_BOLD_FONT_PATH[\s\S]+packaged \$\{params\.label\} font is unavailable/,
   );
   assert.match(
     nextConfigSource,
-    /outputFileTracingIncludes[\s\S]+arial-bold\.ttf[\s\S]+arial-regular\.ttf[\s\S]+inter-variable\.ttf[\s\S]+fontconfig[\\/]fonts\.conf/,
+    /outputFileTracingIncludes[\s\S]+avenir-next-demi-bold\.ttf[\s\S]+arial-bold\.ttf[\s\S]+arial-regular\.ttf[\s\S]+inter-variable\.ttf[\s\S]+fontconfig[\\/]fonts\.conf/,
   );
   assert.match(overlaySource, /fontWeight: typography\.fontWeight/);
   assert.match(editorSource, /fontWeight: typography\.fontWeight/);
   assert.doesNotMatch(
     editorSource.match(/function WallTextOverlayText[\s\S]+?function StaticCreativeTextOverlay/)?.[0] ?? "",
     /font-bold/,
+  );
+  assert.match(
+    rootLayoutSource,
+    /avenir-next-demi-bold\.ttf[\s\S]+variable: "--font-wall-text-avenir-next"[\s\S]+weight: "600"/,
   );
   assert.match(
     rootLayoutSource,
@@ -863,6 +888,10 @@ test("uses packaged Arial Regular glyphs at 400 for new Wall content while retai
   assert.match(
     regularTypographyMigration,
     /wall-text-overlay-v8[\s\S]+wall-text-final-layout-v4[\s\S]+fontFamily' = 'Arial'[\s\S]+fontWeight'\)::integer = 400/,
+  );
+  assert.match(
+    avenirNextTypographyMigration,
+    /wall-text-overlay-v9[\s\S]+wall-text-final-layout-v5[\s\S]+fontFamily' = 'Avenir Next'[\s\S]+fontWeight'\)::integer = 600/,
   );
 });
 
@@ -964,6 +993,71 @@ test("V9 fits thirty natural words in the wider measured reading column", () => 
   assert.equal(lines.join(" "), original);
 });
 
+test("fixed Wall typography grows lines and rejects overflow without shrinking", () => {
+  const loaderPath = new URL("../../scripts/next-server-only-test-loader.mjs", import.meta.url).href;
+  const script = `
+    const assert = (await import('node:assert/strict')).default;
+    const sharp = (await import('sharp')).default;
+    const engine = await import(${JSON.stringify(new URL("wall-layout-engine.ts", import.meta.url).href)});
+    const feed = await import(${JSON.stringify(new URL("wall-text-feed-logic.ts", import.meta.url).href)});
+    const validation = await import(${JSON.stringify(new URL("wall-text-render-validation.ts", import.meta.url).href)});
+    const font = await import(${JSON.stringify(new URL("wall-text-font.ts", import.meta.url).href)});
+    const prompt = await import(${JSON.stringify(new URL("wall-prompt.ts", import.meta.url).href)});
+    const layout = feed.createWallTextLayout();
+    const samples = [
+      ['When the day gets busy, seeing every task in one place makes the next step feel more manageable.', 5],
+      ['Between classes, meetings, and errands, integrating your schedule with calendars so tasks appear alongside appointments helps reduce the mental load of planning.', 6],
+      ['Welcome to the other side of work where your day gets derailed before lunch, meetings move, priorities flip, and somehow everything still gets done because your tasks adjust in real time instead of you constantly trying to catch up.', 8],
+    ];
+    for (const [text, expectedLines] of samples) {
+      const result = await engine.createAuthoritativeWallTextContent({
+        content: { kind: 'text', text }, formatId: 'freeform', layout,
+      });
+      const lines = result.content.finalLayout.blocks.flatMap(b => b.lines);
+      assert.equal(lines.join(' '), text);
+      assert.equal(lines.length, expectedLines);
+      assert.equal(result.content.renderFontSize, 50);
+      assert.equal(result.content.finalLayout.fontSizePx, 50);
+      const fit = await validation.validateWallTextRenderFit(result.content);
+      assert.equal(fit.fontSize, 50);
+      for (const [index, line] of lines.entries()) {
+        const measured = await sharp({ text: {
+          dpi: 72, font: 'Avenir Next 50',
+          fontfile: await font.getVerifiedWallTextAvenirNextDemiBoldFontPath(),
+          text: line, rgba: true, wrap: 'none',
+        }}).metadata();
+        assert.equal(fit.lineWidths[index], measured.width);
+        assert.ok(measured.width + 4 < 750);
+      }
+      // Just too short for these lines: the old validator would reduce size.
+      const tooShort = {
+        ...result.content,
+        finalLayout: { ...result.content.finalLayout,
+          textBox: { ...layout.textBox, height: (fit.height - 5) / 1920 },
+        },
+      };
+      await assert.rejects(validation.validateWallTextRenderFit(tooShort),
+        error => error.code === validation.WALL_TEXT_RENDER_FIT_REJECTED);
+    }
+    await assert.rejects(engine.createAuthoritativeWallTextContent({
+      content: { kind: 'text', text: Array(50).fill('responsibilities').join(' ') + '.' },
+      formatId: 'freeform', layout,
+    }), /fixed 50px/);
+    const generatedPrompt = prompt.buildWallTextGenerationPrompt({
+      business: {}, candidates: [{ candidateIndex: 0, targetWords: 18, maxWords: 50 }],
+    });
+    const candidates = JSON.parse(generatedPrompt.split('CANDIDATES: SOFT COPY TARGETS AND ABSOLUTE SAFETY CEILINGS\\n')[1].split('\\n\\nGLOBAL RULES')[0]);
+    assert.deepEqual(candidates[0].preferredWordRange, { minimum: 18, maximum: 30 });
+    assert.equal(candidates[0].targetWords, undefined);
+    assert.equal(candidates[0].maxWords, 50);
+    assert.equal((await engine.deriveWallTextSpatialBudget({ layout })).targetWords, 24);
+  `;
+  execFileSync(process.execPath, [
+    "--import", loaderPath, "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+    "--experimental-strip-types", "--input-type=module", "--eval", script,
+  ], { encoding: "utf8", stdio: "pipe" });
+});
+
 test("balances the reported Wall example into readable measured lines", () => {
   const loaderPath = new URL(
     "../../scripts/next-server-only-test-loader.mjs",
@@ -1005,9 +1099,9 @@ test("balances the reported Wall example into readable measured lines", () => {
     lineHeightPx: number;
   };
 
-  assert.equal(layout.fontFamily, "Arial");
-  assert.equal(layout.fontWeight, 400);
-  assert.equal(layout.lineHeightPx, 57.2);
+  assert.equal(layout.fontFamily, "Avenir Next");
+  assert.equal(layout.fontWeight, 600);
+  assert.equal(layout.lineHeightPx, 55);
   const lines = layout.blocks.flatMap((block) => block.lines);
   assert.ok(lines.length >= 5 && lines.length <= 8);
   assert.equal(
@@ -1067,9 +1161,9 @@ test("V9 keeps every word in one measured 5-8 line block", () => {
   const lines = result.content.finalLayout.blocks.flatMap((block) => block.lines);
   assert.equal(result.content.fullText, original);
   assert.equal(result.content.sourceContent.kind, "text");
-  assert.equal(result.content.finalLayout.version, "wall-text-final-layout-v4");
-  assert.equal(result.content.finalLayout.fontFamily, "Arial");
-  assert.equal(result.content.finalLayout.fontWeight, 400);
+  assert.equal(result.content.finalLayout.version, "wall-text-final-layout-v5");
+  assert.equal(result.content.finalLayout.fontFamily, "Avenir Next");
+  assert.equal(result.content.finalLayout.fontWeight, 600);
   assert.equal(result.content.finalLayout.blocks.length, 1);
   assert.equal(result.content.finalLayout.blocks[0]?.role, "text");
   assert.ok(lines.length >= 5 && lines.length <= 8);
@@ -1247,6 +1341,21 @@ test("reopens a ready slot that is pinned to stale Wall layout instead of servin
   assert.match(
     balancedLayoutMigration,
     /update public\.daily_trending_feeds as feed[\s\S]*status = 'preparing'[\s\S]*reopened_slots/i,
+  );
+});
+
+test("chunks historical Wall replacement refreshes and records recovery diagnostics", () => {
+  assert.match(
+    databaseSource,
+    /MAX_WALL_TEXT_REPLACEMENT_BATCH_SIZE = 50[\s\S]+updates\.slice\([\s\S]+replace_wall_text_creative_copy_v9/,
+  );
+  assert.match(
+    databaseSource,
+    /Wall-of-text replacement RPC failed[\s\S]+expectedCount[\s\S]+returnedCount[\s\S]+creativeIds[\s\S]+recoveryIteration/,
+  );
+  assert.match(
+    feedSource,
+    /backfillExistingTrendingWallTextIdeas\([\s\S]+recoveryIteration: options\.recoveryIteration[\s\S]+recoveryKey: options\.recoveryKey/,
   );
 });
 

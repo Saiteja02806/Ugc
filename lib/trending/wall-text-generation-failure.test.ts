@@ -23,6 +23,22 @@ test("marks a Wall database constraint rejection as terminal", () => {
   });
 });
 
+test("marks a deterministic Wall replacement-count rejection as terminal", () => {
+  assert.deepEqual(
+    classifyWallTextGenerationFailure(
+      new Error(
+        "Could not refresh Trending Wall-of-text copy: wall_text_regeneration_invalid_count",
+      ),
+    ),
+    {
+      errorCode: WALL_TEXT_PERSISTENCE_REJECTED,
+      publicMessage:
+        "Wall-of-text could not be saved because a required update is missing.",
+      retryable: false,
+    },
+  );
+});
+
 test("keeps a timeout retryable", () => {
   assert.deepEqual(
     classifyWallTextGenerationFailure(new Error("Request timed out.")),

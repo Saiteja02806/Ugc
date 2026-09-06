@@ -3,6 +3,7 @@ import "server-only";
 import sharp from "sharp";
 
 import {
+  getVerifiedWallTextAvenirNextDemiBoldFontPath,
   getVerifiedWallTextArialBoldFontPath,
   getVerifiedWallTextArialRegularFontPath,
   getVerifiedWallTextInterFontPath,
@@ -15,6 +16,7 @@ import { getWallTextRenderBlocks } from "./wall-text-types";
 import {
   getWallTextSafeLineWidth,
   getWallTextFontSize,
+  getWallTextOutlineWidth,
   WALL_TEXT_FONT_WEIGHT,
   WALL_TEXT_INLINE_SAFE_PADDING,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
@@ -67,17 +69,24 @@ export async function validateWallTextRenderFit(
   content: TrendingWallTextContent,
 ): Promise<WallTextRenderValidation> {
   const preferredFontSize = getWallTextFontSize(content);
-  const fontSizes = [preferredFontSize, 52, 50, 48, 46, 44].filter(
-    (fontSize, index, values) =>
-      fontSize <= preferredFontSize && values.indexOf(fontSize) === index,
-  ) as WallTextFontSize[];
+  const fontSizes: WallTextFontSize[] =
+    content.finalLayout?.version === "wall-text-final-layout-v5"
+      ? [preferredFontSize]
+      : ([preferredFontSize, 52, 50, 48, 46, 44].filter(
+          (fontSize, index, values) =>
+            fontSize <= preferredFontSize && values.indexOf(fontSize) === index,
+        ) as WallTextFontSize[]);
   const fontName =
-    content.finalLayout?.version === "wall-text-final-layout-v3"
+    content.finalLayout?.version === "wall-text-final-layout-v5"
+      ? "Avenir Next Demi Bold"
+      : content.finalLayout?.version === "wall-text-final-layout-v3"
       ? "Arial Bold"
       : content.finalLayout?.version === "wall-text-final-layout-v4"
         ? "Arial Regular"
         : "Inter Regular";
-  const fontPath = await (fontName === "Arial Bold"
+  const fontPath = await (fontName === "Avenir Next Demi Bold"
+    ? getVerifiedWallTextAvenirNextDemiBoldFontPath()
+    : fontName === "Arial Bold"
     ? getVerifiedWallTextArialBoldFontPath()
     : fontName === "Arial Regular"
       ? getVerifiedWallTextArialRegularFontPath()
@@ -111,7 +120,7 @@ export async function validateWallTextRenderFit(
 
         if (
           !width ||
-          width + WALL_TEXT_OUTLINE_WIDTH * 2 >= maximumTextWidth
+          width + getWallTextOutlineWidth(content) * 2 >= maximumTextWidth
         ) {
           failedLine = { line, width };
           break;
@@ -151,7 +160,9 @@ export async function validateWallTextRenderFit(
 
   if (widestFailure) {
     throw new WallTextRenderFitError(
-      `Wall-of-text line does not fit the ${maximumTextWidth}px ${fontName} text area at the ${WALL_TEXT_MINIMUM_FONT_SIZE}px minimum: "${widestFailure.line}"`,
+      content.finalLayout?.version === "wall-text-final-layout-v5"
+        ? `Wall-of-text line does not fit the ${maximumTextWidth}px ${fontName} text area at its fixed ${preferredFontSize}px size. Reflow or shorten the copy: "${widestFailure.line}"`
+        : `Wall-of-text line does not fit the ${maximumTextWidth}px ${fontName} text area at the ${WALL_TEXT_MINIMUM_FONT_SIZE}px minimum: "${widestFailure.line}"`,
     );
   }
 
@@ -181,7 +192,11 @@ export function applyWallTextRenderFit(
 
 async function measureWallTextLine(params: {
   fontPath: string;
-  fontName: "Arial Bold" | "Arial Regular" | "Inter Regular";
+  fontName:
+    | "Avenir Next Demi Bold"
+    | "Arial Bold"
+    | "Arial Regular"
+    | "Inter Regular";
   fontSize: WallTextFontSize;
   line: string;
 }) {
@@ -192,7 +207,9 @@ async function measureWallTextLine(params: {
   const metadata = await sharp({
     text: {
       dpi: 72,
-      font: `${params.fontName} ${params.fontSize}`,
+      // Pango needs the family name, not the full face name. Match the
+      // layout engine and worker so this gate cannot approve fallback metrics.
+      font: `${params.fontName === "Avenir Next Demi Bold" ? "Avenir Next" : params.fontName} ${params.fontSize}`,
       fontfile: params.fontPath,
       rgba: true,
       text: escapePangoMarkup(params.line),

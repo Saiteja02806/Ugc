@@ -241,7 +241,8 @@ export function VideoGenerationStudioPanel({
   const refIdParam = searchParams.get("refId");
   const sourceUrlParam = searchParams.get("sourceUrl");
   const hasExploreRecreateParam =
-    refTypeParam === "hook" && searchParams.get("exploreRecreate") === "1";
+    (refTypeParam === "hook" || refTypeParam === "wall_text") &&
+    searchParams.get("exploreRecreate") === "1";
   const referenceParamContext: {
     id: string;
     shortcode: string | null;
@@ -267,7 +268,8 @@ export function VideoGenerationStudioPanel({
       ? referenceParamContext
       : null;
   const isExploreRecreate =
-    hasExploreRecreateParam && referenceContext?.type === "hook";
+    hasExploreRecreateParam &&
+    (referenceContext?.type === "hook" || referenceContext?.type === "wall_text");
 
   function handleDismissReference() {
     setDismissedReferenceKey(referenceParamKey);

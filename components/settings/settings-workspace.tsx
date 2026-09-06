@@ -496,7 +496,9 @@ export function SettingsWorkspace() {
                       / {subscription?.instagramAccounts ?? 1} allowed
                     </span>
                   </p>
-                  <p className="mt-1 text-[11px] text-muted">Up to 3 on Growth</p>
+                  <p className="mt-1 text-[11px] text-muted">
+                    Up to 3 on Starter · 5 on Growth
+                  </p>
                 </div>
               </div>
             </div>

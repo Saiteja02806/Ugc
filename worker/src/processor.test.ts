@@ -431,6 +431,38 @@ test("marks a failed content plan terminally failed only after the worker job fa
   assert.deepEqual(failures, [{ planId: "plan-test", userId: "user-test" }]);
 });
 
+test("marks a zero-ready Reaction run failed when its background job fails", async () => {
+  const job = createJob();
+  const store = createJobStore(job);
+  const failures: Array<{ generationJobId: string; userId: string }> = [];
+  job.job_type = "reaction_generation";
+
+  store.markFailed = (async () => {
+    job.claim_token = null;
+    job.status = "failed";
+    return { ...job };
+  }) as SupabaseJobStore["markFailed"];
+  store.failReactionGenerationRun = (async (params) => {
+    failures.push({ generationJobId: params.generationJobId, userId: params.userId });
+    return true;
+  }) as SupabaseJobStore["failReactionGenerationRun"];
+
+  await processWorkerMessage({
+    config: createConfig(["reaction_generation"]),
+    dependencies: {
+      async runJob() {
+        throw new Error("Reaction generation produced no preview-ready Reels.");
+      },
+    },
+    message: createMessage("reaction_generation"),
+    queue: createQueue([]),
+    store,
+  });
+
+  assert.equal(job.status, "failed");
+  assert.deepEqual(failures, [{ generationJobId: job.id, userId: "user-test" }]);
+});
+
 test("marks a failed Wall content plan terminally failed only after the worker job fails", async () => {
   const job = createJob();
   const store = createJobStore(job);

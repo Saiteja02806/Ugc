@@ -10,6 +10,10 @@ const library = readFileSync(
   new URL("../lib/explore/hook-video-library.ts", import.meta.url),
   "utf8",
 );
+const wallTextLibrary = readFileSync(
+  new URL("../lib/explore/wall-text-video-library.ts", import.meta.url),
+  "utf8",
+);
 
 test("Explore Hook importer uses only GCP and requires an explicit write confirmation", () => {
   assert.match(importer, /STORAGE_PREFIX = "explore\/hook-videos\/2026-08-29"/u);
@@ -32,7 +36,7 @@ test("Explore Hook importer validates and verifies every direct video", () => {
 
 test("the landing preview preserves the supplied source and permits muted autoplay audio", () => {
   assert.match(importer, /DEFAULT_PREVIEW_SOURCE_FILE/u);
-  assert.match(importer, /!isPreview && metadata\.audioStreamCount !== 0/u);
+  assert.match(importer, /!isPreview && !isWallText && metadata\.audioStreamCount !== 0/u);
   assert.match(importer, /id: isPreview\s*\?\s*"explore-landing-preview"/u);
   assert.match(importer, /["']preview["']/u);
   assert.match(library, /explore\/landing-preview\/2026-08-29/u);
@@ -46,4 +50,27 @@ test("the application catalog is a separate direct-video library", () => {
   assert.doesNotMatch(library, /from ["'][^"']*trending/i);
   assert.doesNotMatch(library, /from ["'][^"']*viral/i);
   assert.doesNotMatch(library, /instagram\.com/i);
+});
+
+test("the Wall-of-Text import keeps direct source audio while preserving the Hook catalog contract", () => {
+  assert.match(importer, /DEFAULT_WALL_TEXT_SOURCE_DIRECTORY = "D:\/walloftext"/u);
+  assert.match(importer, /WALL_TEXT_STORAGE_PREFIX = "explore\/wall-text-videos\/2026-09-03"/u);
+  assert.match(importer, /!isPreview && !isWallText && metadata\.audioStreamCount !== 0/u);
+  assert.match(importer, /explore-\$\{isWallText \? "wall-text" : "hook"\}/u);
+  assert.match(importer, /Wall-of-Text catalog retains supplied audio/u);
+});
+
+test("the Wall-of-Text catalog exposes all supplied references from its own immutable prefix", () => {
+  assert.match(
+    wallTextLibrary,
+    /STORAGE_PREFIX = "explore\/wall-text-videos\/2026-09-03"/u,
+  );
+  assert.equal(
+    [...wallTextLibrary.matchAll(/id: "explore-wall-text-\d{2}"/gu)].length,
+    63,
+  );
+  assert.match(wallTextLibrary, /getExploreWallTextVideos/u);
+  assert.match(wallTextLibrary, /isExploreWallTextVideoId/u);
+  assert.doesNotMatch(wallTextLibrary, /from ["'][^"']*trending/i);
+  assert.doesNotMatch(wallTextLibrary, /from ["'][^"']*viral/i);
 });

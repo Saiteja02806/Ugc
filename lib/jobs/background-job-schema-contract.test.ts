@@ -17,6 +17,10 @@ const generatedMediaPersistenceMigration = readMigration(
 const geminiProviderMigration = readMigration(
   "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260824120500_add_gemini_generation_provider.sql",
 );
+const idempotencyRecoveryMigration = readFileSync(
+  "supabase/migrations/20260905123000_harden_wall_text_regeneration_recovery.sql",
+  "utf8",
+);
 
 test("uses demand-scaled request workers for independent AI jobs", () => {
   const aiWorkerMain = readFileSync(
@@ -134,6 +138,23 @@ test("provides locked owner-scoped cancel, retry, claim, and recovery RPCs", () 
   assert.match(transitionsMigration, /where job\.id = p_job_id\s+and job\.user_id = p_user_id\s+for update/);
   assert.match(transitionsMigration, /job_recovery_exhausted/);
   assert.match(transitionsMigration, /grant execute on function public\.recover_background_job\(uuid\) to service_role/);
+});
+
+test("reuses an idempotent background job without surfacing a duplicate-key error", () => {
+  const backgroundJobsSource = readFileSync("lib/jobs/background-jobs.ts", "utf8");
+
+  assert.match(
+    idempotencyRecoveryMigration,
+    /create or replace function public\.create_or_get_background_job_v1[\s\S]+on conflict do nothing[\s\S]+coalesce\(job\.user_id, ''\) = coalesce\(p_user_id, ''\)/i,
+  );
+  assert.match(
+    idempotencyRecoveryMigration,
+    /'created', v_created[\s\S]+'job', to_jsonb\(v_job\)/i,
+  );
+  assert.match(
+    backgroundJobsSource,
+    /rpc\("create_or_get_background_job_v1"[\s\S]+isCreateOrGetBackgroundJobRpcUnavailable/,
+  );
 });
 
 test("fences paid provider calls and completes generated media atomically", () => {

@@ -32,6 +32,18 @@ export type WallTextRenderContent = {
           lines: string[];
           role: "prose" | "text" | "title" | "item";
         }>;
+        fontFamily: "Avenir Next";
+        fontSizePx: 36 | 38 | 40 | 42 | 44 | 46 | 48 | 50 | 52;
+        fontWeight: 600;
+        lineHeightPx: number;
+        textBox: WallTextNormalizedBox;
+        version: "wall-text-final-layout-v5";
+      }
+    | {
+        blocks: Array<{
+          lines: string[];
+          role: "prose" | "text" | "title" | "item";
+        }>;
         fontFamily: "Arial";
         fontSizePx: 36 | 38 | 40 | 42 | 44 | 46 | 48 | 50 | 52;
         fontWeight: 400;
@@ -100,7 +112,8 @@ export const WALL_TEXT_LEGACY_RENDER_MIN_LINES = 4;
 export const WALL_TEXT_DEFAULT_FONT_SIZE = 48;
 export const WALL_TEXT_MINIMUM_FONT_SIZE = 44;
 export const WALL_TEXT_MAXIMUM_FONT_SIZE = 52;
-export const WALL_TEXT_FONT_WEIGHT = 400;
+export const WALL_TEXT_FONT_WEIGHT = 600;
+export const WALL_TEXT_ARIAL_REGULAR_FONT_WEIGHT = 400;
 export const LEGACY_WALL_TEXT_ARIAL_BOLD_FONT_WEIGHT = 500;
 export const LEGACY_WALL_TEXT_REGULAR_FONT_WEIGHT = 400;
 export const LEGACY_WALL_TEXT_FONT_WEIGHT = 700;
@@ -110,6 +123,7 @@ export const WALL_TEXT_SECTION_GAP = 18;
 // enough to separate white text from bright video without making 44px copy
 // look heavy.
 export const WALL_TEXT_OUTLINE_WIDTH = 4;
+export const WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH = 2;
 // Keep this in sync with the application layout gate. This is inside the
 // selected text box, not an extra video-frame safe area. At the 780px
 // production box this leaves a 750px inner writing area.
@@ -126,6 +140,12 @@ export const WALL_TEXT_DEFAULT_TEXT_BOX: WallTextNormalizedBox = {
   x: 150 / 1080,
   y: 660 / 1920,
 };
+
+export function getWallTextOutlineWidth(content: WallTextRenderContent) {
+  return content.finalLayout?.version === "wall-text-final-layout-v5"
+    ? WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH
+    : WALL_TEXT_OUTLINE_WIDTH;
+}
 
 export function buildWallTextRenderLayout(params: {
   content: WallTextRenderContent;
@@ -221,11 +241,16 @@ export function buildWallTextOverlaySvg(params: {
 }) {
   const layout = buildWallTextRenderLayout(params);
   const textColor = resolveTextColor(params.textColor);
+  const isAvenirNextDemiBold =
+    params.content.finalLayout?.version === "wall-text-final-layout-v5";
   const fontFamily =
-    params.content.finalLayout?.version === "wall-text-final-layout-v3" ||
+    isAvenirNextDemiBold
+      ? "Avenir Next, Helvetica Neue, Noto Sans CJK SC, Noto Sans CJK JP, sans-serif"
+      : params.content.finalLayout?.version === "wall-text-final-layout-v3" ||
     params.content.finalLayout?.version === "wall-text-final-layout-v4"
       ? "Arial, Helvetica Neue, Noto Sans CJK SC, Noto Sans CJK JP, sans-serif"
       : "Inter, Arial, Helvetica Neue, Noto Sans CJK SC, Noto Sans CJK JP, sans-serif";
+  const outlineWidth = getWallTextOutlineWidth(params.content);
   const shadowFilter = [
     '<filter id="wallTextShadow" x="-20%" y="-20%" width="140%" height="150%">',
     '<feDropShadow dx="0" dy="1.2" stdDeviation="1" flood-color="#000000" flood-opacity="0.45"/>',
@@ -247,7 +272,7 @@ export function buildWallTextOverlaySvg(params: {
         'xml:space="preserve"',
       ].join(" ");
 
-      return `<text x="${segment.centerX}" y="${baseline.toFixed(2)}" ${attributes} fill="${textColor}" stroke="#000000" stroke-width="${WALL_TEXT_OUTLINE_WIDTH}" stroke-linejoin="round" paint-order="stroke fill" filter="url(#wallTextShadow)">${escaped}</text>`;
+      return `<text x="${segment.centerX}" y="${baseline.toFixed(2)}" ${attributes} fill="${textColor}" stroke="#000000" stroke-width="${outlineWidth}" stroke-linejoin="round" paint-order="stroke fill" filter="url(#wallTextShadow)">${escaped}</text>`;
     }),
   );
 
@@ -335,13 +360,15 @@ function normalizeFinalLayout(
   value: NonNullable<WallTextRenderContent["finalLayout"]>,
 ) {
   if (
-    !["wall-text-final-layout-v1", "wall-text-final-layout-v2", "wall-text-final-layout-v3", "wall-text-final-layout-v4"].includes(
+    !["wall-text-final-layout-v1", "wall-text-final-layout-v2", "wall-text-final-layout-v3", "wall-text-final-layout-v4", "wall-text-final-layout-v5"].includes(
       value.version,
     ) ||
-    (value.version === "wall-text-final-layout-v3"
+    (value.version === "wall-text-final-layout-v5"
+      ? value.fontFamily !== "Avenir Next" || value.fontWeight !== WALL_TEXT_FONT_WEIGHT
+      : value.version === "wall-text-final-layout-v3"
       ? value.fontFamily !== "Arial" || value.fontWeight !== LEGACY_WALL_TEXT_ARIAL_BOLD_FONT_WEIGHT
       : value.version === "wall-text-final-layout-v4"
-        ? value.fontFamily !== "Arial" || value.fontWeight !== WALL_TEXT_FONT_WEIGHT
+        ? value.fontFamily !== "Arial" || value.fontWeight !== WALL_TEXT_ARIAL_REGULAR_FONT_WEIGHT
       : value.fontFamily !== "Inter" ||
         ![
           LEGACY_WALL_TEXT_REGULAR_FONT_WEIGHT,
@@ -375,7 +402,15 @@ function normalizeFinalLayout(
     }),
   };
   const normalized =
-    value.version === "wall-text-final-layout-v3"
+    value.version === "wall-text-final-layout-v5"
+      ? {
+          ...normalizedBase,
+          fontFamily: "Avenir Next" as const,
+          fontWeight: WALL_TEXT_FONT_WEIGHT as 600,
+          textBox: value.textBox,
+          version: "wall-text-final-layout-v5" as const,
+        }
+      : value.version === "wall-text-final-layout-v3"
       ? {
           ...normalizedBase,
           fontFamily: "Arial" as const,
@@ -387,7 +422,7 @@ function normalizeFinalLayout(
         ? {
             ...normalizedBase,
             fontFamily: "Arial" as const,
-            fontWeight: WALL_TEXT_FONT_WEIGHT as 400,
+            fontWeight: WALL_TEXT_ARIAL_REGULAR_FONT_WEIGHT as 400,
             textBox: value.textBox,
             version: "wall-text-final-layout-v4" as const,
           }
@@ -403,7 +438,7 @@ function normalizeFinalLayout(
     0,
   );
   if (
-    ["wall-text-final-layout-v2", "wall-text-final-layout-v3", "wall-text-final-layout-v4"].includes(
+    ["wall-text-final-layout-v2", "wall-text-final-layout-v3", "wall-text-final-layout-v4", "wall-text-final-layout-v5"].includes(
       normalized.version,
     ) &&
     (normalized.blocks.length !== 1 ||
@@ -411,7 +446,7 @@ function normalizeFinalLayout(
       lineCount < WALL_TEXT_LEGACY_RENDER_MIN_LINES ||
       lineCount > WALL_TEXT_RENDER_MAX_LINES)
   ) {
-    throw new Error("Wall-of-text V2/V3/V4 must contain one 4-8 line text block.");
+    throw new Error("Wall-of-text V2/V3/V4/V5 must contain one 4-8 line text block.");
   }
   return normalized;
 }

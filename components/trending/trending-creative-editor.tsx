@@ -92,11 +92,9 @@ import {
   type TrendingTextColor,
 } from "@/lib/trending/text-color";
 import {
-  getWallTextFontSize,
-  getWallTextTypography,
+  getWallTextEditorTypography,
   WALL_TEXT_INLINE_SAFE_PADDING,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
-  WALL_TEXT_OUTLINE_WIDTH,
 } from "@/lib/trending/wall-text-visual-style";
 import { MIN_SHORT_WALL_TEXT_WORDS } from "@/lib/trending/wall-text-text-logic";
 import { getWallTextRenderBlocks } from "@/lib/trending/wall-text-types";
@@ -1787,17 +1785,17 @@ function WallTextOverlayText({
   content: TrendingWallTextEditContent;
 }) {
   const isPendingAuthoritativeLayout = !content.content.finalLayout;
-  const typography = getWallTextTypography(content.content);
+  const typography = getWallTextEditorTypography(content.content);
 
   return (
     <div
       className="flex flex-col justify-center text-center [paint-order:stroke_fill]"
       style={{
         boxSizing: "border-box",
-        WebkitTextStroke: `${WALL_TEXT_OUTLINE_WIDTH / 10.8}cqw #000`,
+        WebkitTextStroke: `${typography.outlineWidth / 10.8}cqw #000`,
         color: content.textColor,
         fontFamily: typography.fontFamily,
-        fontSize: `${getWallTextFontSize(content.content) / 10.8}cqw`,
+        fontSize: `${typography.fontSize / 10.8}cqw`,
         fontWeight: typography.fontWeight,
         letterSpacing: `${-0.2 / 10.8}cqw`,
         paddingInline: `${WALL_TEXT_INLINE_SAFE_PADDING / 10.8}cqw`,
@@ -2204,9 +2202,9 @@ function EditorFields({
           className="min-h-32 w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-xs outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
         />
         <FieldDescription>
-          Use {MIN_SHORT_WALL_TEXT_WORDS}–50 words. Saving measures Inter Regular and creates the final
-          5–8 lines inside the export-safe area; clip duration does not change
-          the copy limit.
+          Use {MIN_SHORT_WALL_TEXT_WORDS}–50 words. The preview keeps a fixed font size
+          while you type. Saving balances the final 5–8 lines inside the same
+          text area.
         </FieldDescription>
       </Field>
       <TextColorPicker

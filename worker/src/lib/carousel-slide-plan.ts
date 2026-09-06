@@ -27,6 +27,7 @@ export type PlannedCarouselSlide = {
 };
 
 export const CAROUSEL_FIXED_FONT_SIZE = 44;
+export const CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE = 60;
 export const CAROUSEL_STRUCTURE_1_FIXED_TEXT_WIDTH = 786;
 export const CAROUSEL_STRUCTURE_2_FIXED_TEXT_WIDTH = 868;
 export const CAROUSEL_STRUCTURE_1_HEADLINE_MAX_LINES = 4;
@@ -37,8 +38,17 @@ export const CAROUSEL_STRUCTURE_1_LIST_TOTAL_MAX_LINES = 8;
 
 export function getCarouselStructure1BodyMaxLines(slideNumber: number) {
   return slideNumber === 1
-    ? CAROUSEL_STRUCTURE_1_BODY_MAX_LINES
+    ? 3
     : CAROUSEL_STRUCTURE_1_FOLLOWUP_BODY_MAX_LINES;
+}
+
+export function getCarouselStructure1TextFontSize(slide: Pick<
+  PlannedCarouselSlide,
+  "slideNumber" | "textMode"
+>) {
+  return slide.slideNumber === 1 && slide.textMode === "single_statement"
+    ? CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE
+    : CAROUSEL_FIXED_FONT_SIZE;
 }
 
 export type CarouselFixedTextFit = {
@@ -49,6 +59,7 @@ export type CarouselFixedTextFit = {
 };
 
 export function inspectCarouselFixedTextFit(params: {
+  fontSize?: number;
   maximumLines: number;
   maximumWidth: number;
   value: string;
@@ -64,12 +75,13 @@ export function inspectCarouselFixedTextFit(params: {
     };
   }
 
+  const fontSize = params.fontSize ?? CAROUSEL_FIXED_FONT_SIZE;
   const words = value.split(" ").filter(Boolean);
   const lines: string[] = [];
   let current = "";
 
   for (const word of words) {
-    const wordWidth = estimateCarouselFixedTextWidth(word);
+    const wordWidth = estimateCarouselFixedTextWidth(word, fontSize);
 
     if (wordWidth > params.maximumWidth) {
       return {
@@ -82,7 +94,7 @@ export function inspectCarouselFixedTextFit(params: {
 
     const candidate = current ? `${current} ${word}` : word;
 
-    if (estimateCarouselFixedTextWidth(candidate) <= params.maximumWidth) {
+    if (estimateCarouselFixedTextWidth(candidate, fontSize) <= params.maximumWidth) {
       current = candidate;
     } else {
       lines.push(current);
@@ -93,7 +105,7 @@ export function inspectCarouselFixedTextFit(params: {
   if (current) lines.push(current);
 
   const maximumLineWidth = Math.ceil(
-    Math.max(0, ...lines.map(estimateCarouselFixedTextWidth)),
+    Math.max(0, ...lines.map((line) => estimateCarouselFixedTextWidth(line, fontSize))),
   );
   const fits = lines.length <= params.maximumLines;
 
@@ -107,18 +119,21 @@ export function inspectCarouselFixedTextFit(params: {
   };
 }
 
-export function estimateCarouselFixedTextWidth(value: string) {
+export function estimateCarouselFixedTextWidth(
+  value: string,
+  fontSize = CAROUSEL_FIXED_FONT_SIZE,
+) {
   return Array.from(value).reduce((width, character) => {
-    if (character === " ") return width + CAROUSEL_FIXED_FONT_SIZE * 0.29;
+    if (character === " ") return width + fontSize * 0.29;
     if (/[A-Z0-9]/u.test(character)) {
-      return width + CAROUSEL_FIXED_FONT_SIZE * 0.61;
+      return width + fontSize * 0.61;
     }
     if (/[il.,'|:;]/u.test(character)) {
-      return width + CAROUSEL_FIXED_FONT_SIZE * 0.27;
+      return width + fontSize * 0.27;
     }
     if (/[mwMW@%]/u.test(character)) {
-      return width + CAROUSEL_FIXED_FONT_SIZE * 0.8;
+      return width + fontSize * 0.8;
     }
-    return width + CAROUSEL_FIXED_FONT_SIZE * 0.52;
+    return width + fontSize * 0.52;
   }, 0);
 }

@@ -323,6 +323,7 @@ type CarouselSlideRow = {
     | "proof_reflection_cta"
     | "recognition"
     | "reframe"
+    | "takeaway_cta"
     | null;
   story_text_treatment: "outlined_overlay" | "overlay" | "pill" | null;
   structure_id: CarouselStructureId;
@@ -358,6 +359,7 @@ export type CarouselSlideInsert = {
     | "proof_reflection_cta"
     | "recognition"
     | "reframe"
+    | "takeaway_cta"
     | null;
   story_text_treatment?: "outlined_overlay" | "overlay" | "pill" | null;
   structure_id?: CarouselStructureId;
@@ -735,6 +737,7 @@ export type CarouselSlideRecord = {
     | "proof_reflection_cta"
     | "recognition"
     | "reframe"
+    | "takeaway_cta"
     | null;
   storyTextTreatment: "outlined_overlay" | "overlay" | "pill" | null;
   structureId: CarouselStructureId;

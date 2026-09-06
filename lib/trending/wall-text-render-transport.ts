@@ -1,16 +1,27 @@
 import type { TrendingWallTextContent } from "./wall-text-types.ts";
 
 /**
- * V4 is the persisted Arial Regular 400 contract. During the required
- * Vercel-before-worker deployment order, an older worker does not yet know
- * V4. Send it a V3-compatible envelope that it can render instead of letting
- * it reject the job. The V8 layout version stays in the payload, so the new
- * worker recognizes this envelope and restores Arial Regular 400 before it
- * draws. Historic V3 records use V7 and therefore remain Arial Bold 500.
+ * Each new persisted typography version has a safe envelope for an older
+ * worker during a Vercel-before-worker rollout. A V9 Avenir layout travels as
+ * valid V4 Arial Regular; an updated worker recognizes V9 and restores Avenir
+ * before drawing it. An older worker still renders the job instead of
+ * rejecting it. V8 keeps its existing V3-compatible Arial Bold envelope.
  */
 export function toWallTextRenderTransportContent(
   content: TrendingWallTextContent,
 ): TrendingWallTextContent {
+  if (content.finalLayout?.version === "wall-text-final-layout-v5") {
+    return {
+      ...content,
+      finalLayout: {
+        ...content.finalLayout,
+        fontFamily: "Arial",
+        fontWeight: 400,
+        version: "wall-text-final-layout-v4",
+      },
+    };
+  }
+
   if (content.finalLayout?.version === "wall-text-final-layout-v4") {
     return {
       ...content,

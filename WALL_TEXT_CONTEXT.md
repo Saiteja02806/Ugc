@@ -1,6 +1,74 @@
 # Wall-of-text Context
 
-Last updated: 2026-08-26
+Last updated: 2026-09-05
+
+## 2026-09-05 Regeneration recovery hardening
+
+- A stale-creative typography refresh may span more than fifty historical Wall
+  creatives. The database replacement RPC keeps its 1–50-row validation
+  contract; the application now submits larger refreshes as ordered batches of
+  at most fifty rather than attempting an invalid all-history replacement.
+- Failed replacement diagnostics record the expected batch count, returned
+  count, affected creative IDs, request key, recovery key, and worker recovery
+  iteration without logging generated copy.
+- Idempotent background-job creation now resolves an existing job in Postgres
+  before the API can emit a duplicate-key response. A queued reused job with no
+  queue message remains dispatchable; deterministic replacement-contract
+  failures are terminal rather than retried as infrastructure failures.
+
+## Live typing preview typography
+
+- Wall editor drafts without a measured final layout now explicitly use
+  Avenir Next Demi Bold 600, fixed 50px type, and a 2px outline. Clearing,
+  typing, and pasting no longer trigger the legacy Inter/dynamic-size fallback.
+- The draft remains unmeasured and wraps in the browser. Saving computes
+  balanced final lines, so exact line breaks may still change on save; font,
+  outline, and equal 15px inner side padding do not change for current layouts.
+- Existing measured historical layouts retain their saved appearance when
+  opened. Editing them uses the current typography that save-time reflow uses.
+- This is an editor rendering fix only. No post-writing grammar/claim review
+  or additional content-quality gate is added. Those checks were intentionally
+  removed to keep generation flexible; the master prompt remains responsible
+  for the writing instructions.
+
+## 2026-09-05 Fixed font and natural line wrapping
+
+This section supersedes historical word, font-size, and line-count policies
+described below for newly generated or manually reflowed Wall copy.
+
+- The writer receives an **18–30-word soft range**, not a single 18-word
+  target. It chooses the length needed for a complete idea without padding
+  to eight lines. The existing 15–50-word acceptance range remains a safety
+  boundary; 30 is not a new hard maximum.
+- Prompt V12 sends `preferredWordRange`, including for retries of older
+  assignments that stored `target_words = 18`. New assignment storage uses
+  the compatible scalar midpoint, 24; it is not sent as a single target to
+  the writer. No production assignment rows are rewritten by this change.
+- New measured layouts use **50px Avenir Next Demi Bold**, with 55px line
+  height on the 1080×1920 canvas. Font size never decreases to preserve fewer
+  lines. The actual measured width determines how many rows are needed,
+  retaining the five-line minimum and eight-line maximum. Balanced phrase
+  breaks can add a line; the former word-count/4.5 preference is removed.
+- The 780px text box, equal 15px internal side padding, 750px writing width,
+  white fill, and 2px outline remain. If copy cannot fit at 50px within eight
+  lines or the chosen box height, generation returns `layout_fit` for the
+  existing bounded rewrite flow; manual edits show a fit error. Text is never
+  truncated and the font is not shrunk.
+- The Avenir final validator now uses the same Pango family name (`Avenir
+  Next`) as initial measurement and the worker. It validates the persisted
+  size without a shrinking fallback. Historical non-Avenir validation keeps
+  its compatibility path, and already persisted layouts are not enlarged by
+  a preview-only font override. New generation and manual reflow use 50px.
+- The worker already preserves authoritative Avenir lines and size without
+  reflow. This change needs application deployment before it affects new
+  live output; production browser acceptance requires an authenticated
+  session. No production data or deployment is changed by local validation.
+- Local validation: all 121 Wall tests and 20 focused worker tests pass;
+  worker build and focused ESLint pass. A rendered six-line/eight-line proof
+  was visually inspected. The reported 22-word example now uses six lines
+  at 50px instead of five at 44px. Repository-wide TypeScript reports eight
+  errors in unrelated billing, onboarding, and provider-env test files, with
+  none in the changed Wall files.
 
 ## Product Definition
 
@@ -40,6 +108,21 @@ Last updated: 2026-08-26
 - The complete copy is visible together over the background for the full clip.
 - The source video plays once at its native duration. It does not loop.
 - A Wall preview does not include a product demo.
+
+## 2026-09-03 Avenir Next Typography
+
+- New measured Wall layouts are persisted as `wall-text-overlay-v9` with
+  `wall-text-final-layout-v5`: supplied Avenir Next Demi Bold at weight 600,
+  white fill, a 2px black stroke, and the existing subtle shadow.
+- The browser preview, server-side layout measurement, worker SVG, and worker
+  raster validation use the same packaged font asset. The renderer refuses a
+  missing asset rather than silently falling back to another face.
+- Existing V1-V4 final layouts retain their original Inter or Arial styling,
+  including their existing 4px outline. Saved cards are never rewritten merely
+  because this visual treatment changed.
+- V5 travels in a V4-compatible envelope during a Vercel-before-worker
+  rollout. An updated worker restores Avenir before rendering; an older worker
+  can still render the job with the prior V4 typography rather than reject it.
 
 ## Source Catalog Rules
 
@@ -409,3 +492,16 @@ npm run wall-audio:import -- --verify
 npm run wall-audio:simulate -- --library D:\walloftext_sound\wall_audio_library_v2_reviewed
 npm run wall-audio:poc -- --library D:\walloftext_sound\wall_audio_library_v2_reviewed
 ```
+
+## 2026-09-03 Explore Wall of Text Reference Library
+
+- Explore exposes Wall of Text as a separate, switchable library beside Hook
+  Videos. It is a direct reference catalog, not part of the Trending Wall
+  source picker, assignment store, placement analysis, render pipeline, or
+  saved Wall collection.
+- The 63 user-supplied `D:\walloftext` MP4s are stored immutably in GCP under
+  `explore/wall-text-videos/2026-09-03/<sha256>.mp4`. Their original audio is
+  preserved in storage, while Explore previews remain muted like Hook previews.
+- Every Wall card keeps the Explore `Recreate` route. It passes the verified
+  `wall_text` reference identity to AI Studio, and the client and generation
+  API require the user to choose an image reference before creating a video.

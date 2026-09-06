@@ -32,15 +32,22 @@ const ContentMixSchema = z
   .object({
     carousel: z.number().int().min(0).max(100),
     hook_video: z.number().int().min(0).max(100),
+    reaction: z.number().int().min(0).max(100),
     timezone: z.string().trim().min(1).max(100).optional(),
     wall_text: z.number().int().min(0).max(100),
   })
   .strict()
   .superRefine((value, context) => {
-    if (value.carousel + value.wall_text + value.hook_video !== 100) {
+    if (
+      value.carousel +
+        value.wall_text +
+        value.hook_video +
+        value.reaction !==
+      100
+    ) {
       context.addIssue({
         code: "custom",
-        message: "The three content percentages must total 100%.",
+        message: "The four content percentages must total 100%.",
       });
     }
   });
@@ -135,6 +142,7 @@ export async function PUT(request: Request) {
     const mix: TrendingContentMix = {
       carousel: parsed.data.carousel,
       hook_video: parsed.data.hook_video,
+      reaction: parsed.data.reaction,
       wall_text: parsed.data.wall_text,
     };
     const timezone = normalizeTrendingTimezone(

@@ -259,6 +259,55 @@ test("renders the current Arial Regular V4 layout at 400", () => {
   assert.match(svg, /font-weight="400"/);
 });
 
+test("renders the current Avenir Next Demi Bold V5 layout with a 2px outline", () => {
+  const v5 = {
+    finalLayout: {
+      blocks: [{
+        lines: [
+          "I tracked the obvious steps",
+          "but missed the quiet habits.",
+          "Those small details explained",
+          "why the result changed",
+          "at once.",
+        ],
+        role: "text" as const,
+      }],
+      fontFamily: "Avenir Next" as const,
+      fontSizePx: 48 as const,
+      fontWeight: 600 as const,
+      lineHeightPx: 52.8,
+      textBox: {
+        height: 480 / 1920,
+        width: 660 / 1080,
+        x: 210 / 1080,
+        y: 660 / 1920,
+      },
+      version: "wall-text-final-layout-v5" as const,
+    },
+    fullText:
+      "I tracked the obvious steps but missed the quiet habits. Those small details explained why the result changed at once.",
+    segments: [
+      { lines: ["I tracked the obvious steps"], role: "lead" as const },
+      {
+        lines: ["but missed the quiet habits.", "Those small details explained"],
+        role: "support" as const,
+      },
+      {
+        lines: ["why the result changed", "at once."],
+        role: "closing" as const,
+      },
+    ],
+  };
+  const layout = buildWallTextRenderLayout({ content: v5 });
+  const svg = buildWallTextOverlaySvg({ content: v5, placement: "middle" });
+
+  assert.equal(layout.segments.length, 1);
+  assert.equal(layout.segments[0]?.fontWeight, 600);
+  assert.match(svg, /font-family="Avenir Next, Helvetica Neue/);
+  assert.match(svg, /font-weight="600"/);
+  assert.match(svg, /stroke-width="2"/);
+});
+
 test("never truncates and rejects more than eight semantic lines", () => {
   assert.throws(
     () =>

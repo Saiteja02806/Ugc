@@ -11,7 +11,8 @@ export function isMediaAssetVisibleInCreativeLibrary(
   if (
     asset.sourceType === "catalog_influencer" ||
     asset.sourceType === "combined_render" ||
-    asset.sourceType === "wall_text_render"
+    asset.sourceType === "wall_text_render" ||
+    asset.sourceType === "reaction_render"
   ) {
     return false;
   }

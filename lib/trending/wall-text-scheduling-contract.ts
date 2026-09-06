@@ -8,6 +8,7 @@ import { z } from "zod";
 export const WallTextScheduleRequestSchema = z
   .object({
     assignmentId: z.string().uuid(),
+    caption: z.string().trim().max(5000).optional(),
     scheduledDate: z.string().trim().max(32).optional(),
     scheduledTime: z.string().trim().max(32).optional(),
     targets: z
@@ -33,6 +34,7 @@ export type WallTextScheduleRequest = z.infer<
 
 export type WallTextScheduleRequestInput = {
   assignmentId: string;
+  caption?: string;
   scheduledDate?: string;
   scheduledTime?: string;
   targets: Array<{
@@ -53,6 +55,7 @@ export function createWallTextScheduleRequest(
 ): WallTextScheduleRequest {
   return WallTextScheduleRequestSchema.parse({
     assignmentId: input.assignmentId,
+    caption: input.caption ?? "",
     scheduledDate: input.scheduledDate,
     scheduledTime: input.scheduledTime,
     targets: input.targets.map((target) => ({

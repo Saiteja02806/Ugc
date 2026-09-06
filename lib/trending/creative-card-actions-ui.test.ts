@@ -121,12 +121,13 @@ test("restores Adjust as the global content-mix action beside item-level Edit", 
   assert.match(contentMixDialog, /rounded-xl border border-border\/70 bg-card/);
   assert.match(contentMixDialog, /barClass: "bg-primary"/);
   assert.match(contentMixDialog, /barClass: "bg-accent-purple"/);
+  assert.match(contentMixDialog, /barClass: "bg-success"/);
   assert.match(contentMixDialog, /barClass: "bg-info"/);
   assert.match(contentMixDialog, /"--mix-accent": accentColor/);
   assert.match(contentMixDialog, /iconSurfaceClass/);
   assert.match(
     contentMixDialog,
-    /mix\[format\] \/ Math\.max\(payload\.limits\[format\], 1\)/,
+    /getMixValue\(mix, format\)[\s\S]*Math\.max\(getMixValue\(payload\.limits, format\), 1\)/,
   );
 });
 
@@ -270,6 +271,8 @@ test("labels every Trending card with its content format", () => {
   assert.match(workspace, /data-trending-format-pill/);
   assert.match(workspace, /"Reel Hook"/);
   assert.match(workspace, /"Wall-of-Text"/);
+  assert.match(workspace, /"Reaction Reel"/);
+  assert.match(workspace, /isReaction[\s\S]*\? Sparkles/);
   assert.match(workspace, /Slideshow/);
   assert.match(
     workspace,
@@ -376,14 +379,14 @@ test("raises only the Slideshow label above its stacked preview", () => {
         /positionClassName="left-0 bottom-\[calc\(100%\+24px\)\]"/g,
       ) ?? []
     ).length,
-    2,
+    3,
   );
 });
 
 test("centers a card-sized review frame over visible inert next-card layers", () => {
   assert.match(
     workspace,
-    /CAROUSEL_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(78vw,270px,calc\(\(100dvh-348px\)\*0\.8\)\)\]"/,
+    /CAROUSEL_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(78vw,300px,calc\(\(100dvh-348px\)\*0\.8\)\)\]"/,
   );
   assert.match(
     workspace,
@@ -418,11 +421,11 @@ test("centers a card-sized review frame over visible inert next-card layers", ()
   );
   assert.equal(
     (workspace.match(/data-trending-card-state=/g) ?? []).length,
-    3,
+    4,
   );
   assert.equal(
     (workspace.match(/inert=\{isActive \? undefined : true\}/g) ?? []).length,
-    3,
+    4,
   );
   assert.match(workspace, /function getTrendingDeckSlots/);
   assert.match(workspace, /depth === 1 \? "next" : "preload"/);
@@ -454,7 +457,7 @@ test("keeps actual upcoming media ready behind either swipe direction", () => {
   assert.doesNotMatch(workspace, /dragX > 0 \?/);
 });
 
-test("uses the same action-choice modal after accepting a Wall-of-Text Reel", () => {
+test("uses the shared post scheduler after accepting a Wall-of-Text Reel", () => {
   assert.match(
     workspace,
     /candidate\.format === "wall_text"[\s\S]*setWallTextCandidate\(candidate\)/,
@@ -469,13 +472,17 @@ test("uses the same action-choice modal after accepting a Wall-of-Text Reel", ()
   );
   assert.match(
     workspace,
-    /const wallTextActionCandidate =\s*wallTextCandidate \?\? pendingWallTextScheduleCandidate;/,
+    /contentType: "wall_text"[\s\S]*returnTo: "accounts"/,
   );
   assert.match(
     workspace,
-    /editByCreativeId\[wallTextActionCandidate\.item\.creativeId\]/,
+    /scheduleContext\.contentType === "wall_text"[\s\S]*createPendingWallTextSchedule/,
   );
-  assert.doesNotMatch(workspace, /<WallTextDetailView/);
+  assert.match(
+    workspace,
+    /Scheduled\. Your Text Reel is being prepared\./,
+  );
+  assert.doesNotMatch(workspace, /HookVideoScheduleDrawer/);
 });
 
 test("keeps the Carousel format pill above its centered media stack", () => {
@@ -518,7 +525,7 @@ test("keeps Hook and Wall-of-Text pills close above their video frame", () => {
         /positionClassName="left-0 bottom-\[calc\(100%\+24px\)\]"/g,
       ) ?? []
     ).length,
-    2,
+    3,
   );
   assert.doesNotMatch(workspace, /positionClassName="left-2\.5 top-2\.5 w-auto"/);
   assert.match(workspace, /data-trending-video-peek=\{[\s\S]*presentation === "video_peek"/);
@@ -529,23 +536,36 @@ test("keeps Hook and Wall-of-Text pills close above their video frame", () => {
   );
 });
 
-test("locks Hook and Wall-of-Text to the same responsive 9:16 frame", () => {
+test("locks Hook, Wall-of-Text, and Reaction Reels to the same responsive 9:16 frame", () => {
   assert.match(
     workspace,
     /VERTICAL_REVIEW_CARD_FRAME_CLASS\s*=\s*\n\s*`\$\{VERTICAL_REVIEW_CARD_WIDTH_CLASS\} aspect-\[9\/16\]`/,
   );
   assert.equal(
     (workspace.match(/data-trending-vertical-frame/g) ?? []).length,
-    2,
+    3,
   );
   assert.equal(
     (workspace.match(/VERTICAL_REVIEW_CARD_FRAME_CLASS,/g) ?? []).length,
-    2,
+    3,
   );
   assert.match(
     workspace,
     /relative size-full overflow-hidden rounded-\[20px\] bg-\[#171717\]/,
   );
+});
+
+test("opens the shared scheduler directly after accepting a rendered Reaction Reel", () => {
+  assert.match(
+    workspace,
+    /candidate\.format === "reaction"[\s\S]*setPendingReactionScheduleCandidate\(candidate\)[\s\S]*contentType: "reaction"[\s\S]*returnTo: "trending"/,
+  );
+  assert.match(
+    workspace,
+    /scheduleContext\.contentType === "reaction"[\s\S]*createPendingReactionSchedule/,
+  );
+  assert.match(workspace, /function TrendingReactionDeckCard/);
+  assert.match(workspace, /data-trending-vertical-frame/);
 });
 
 test("keeps the outgoing card mounted until its transform transition finishes", () => {

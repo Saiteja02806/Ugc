@@ -15,48 +15,59 @@ export function rebalanceTrendingContentMix(
     TRENDING_CONTENT_MIX_LIMITS[changedFormat],
   );
 
-  if (changedFormat === "wall_text" || changedFormat === "hook_video") {
-    const otherVideoFormat =
-      changedFormat === "wall_text" ? "hook_video" : "wall_text";
-    const carousel = Math.max(100 - nextValue - current[otherVideoFormat], 0);
-    const otherVideoShare = 100 - nextValue - carousel;
-
-    return {
-      carousel,
-      hook_video:
-        changedFormat === "hook_video" ? nextValue : otherVideoShare,
-      wall_text:
-        changedFormat === "wall_text" ? nextValue : otherVideoShare,
-    };
-  }
-
-  const remainingVideoShare = 100 - nextValue;
-  const currentVideoShare = current.wall_text + current.hook_video;
-  const proportionalWallShare =
-    currentVideoShare > 0
-      ? Math.round(
-          (remainingVideoShare * current.wall_text) / currentVideoShare,
-        )
-      : Math.round(remainingVideoShare / 2);
-  const minimumWallShare = Math.max(
+  const formats = [
+    "carousel",
+    "wall_text",
+    "hook_video",
+    "reaction",
+  ] as const satisfies readonly TrendingFeedFormat[];
+  const unchangedFormats = formats.filter(
+    (format) => format !== changedFormat,
+  );
+  const remaining = 100 - nextValue;
+  const currentTotal = unchangedFormats.reduce(
+    (total, format) => total + getValue(current, format),
     0,
-    remainingVideoShare - TRENDING_CONTENT_MIX_LIMITS.hook_video,
   );
-  const maximumWallShare = Math.min(
-    TRENDING_CONTENT_MIX_LIMITS.wall_text,
-    remainingVideoShare,
-  );
-  const wallText = clampInteger(
-    proportionalWallShare,
-    minimumWallShare,
-    maximumWallShare,
-  );
+  const rawValues = unchangedFormats.map((format, index) => {
+    const raw =
+      currentTotal > 0
+        ? (remaining * getValue(current, format)) / currentTotal
+        : remaining / unchangedFormats.length;
+
+    return { format, index, raw, value: Math.floor(raw) };
+  });
+  let unallocated =
+    remaining - rawValues.reduce((total, entry) => total + entry.value, 0);
+
+  rawValues
+    .sort(
+      (first, second) =>
+        second.raw - second.value - (first.raw - first.value) ||
+        first.index - second.index,
+    )
+    .forEach((entry) => {
+      if (unallocated > 0) {
+        entry.value += 1;
+        unallocated -= 1;
+      }
+    });
+
+  const values = new Map(rawValues.map((entry) => [entry.format, entry.value]));
 
   return {
-    carousel: nextValue,
-    hook_video: remainingVideoShare - wallText,
-    wall_text: wallText,
+    carousel: changedFormat === "carousel" ? nextValue : values.get("carousel") ?? 0,
+    hook_video:
+      changedFormat === "hook_video" ? nextValue : values.get("hook_video") ?? 0,
+    reaction:
+      changedFormat === "reaction" ? nextValue : values.get("reaction") ?? 0,
+    wall_text:
+      changedFormat === "wall_text" ? nextValue : values.get("wall_text") ?? 0,
   };
+}
+
+function getValue(mix: TrendingContentMix, format: TrendingFeedFormat) {
+  return format === "reaction" ? mix.reaction ?? 0 : mix[format];
 }
 
 function clampInteger(value: number, minimum: number, maximum: number) {

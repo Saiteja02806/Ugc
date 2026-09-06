@@ -606,6 +606,7 @@ function createStructure2EditRenderSpec(
       "proof_reflection_cta",
       "recognition",
       "reframe",
+      "takeaway_cta",
     ] as const,
     "recognition",
   );

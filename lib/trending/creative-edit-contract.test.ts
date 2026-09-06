@@ -21,6 +21,7 @@ import {
 } from "./hook-text-layout.ts";
 import { validateWallTextContent } from "./wall-text-text-logic.ts";
 import type { TrendingWallTextContent } from "./wall-text-types.ts";
+import { getWallTextEditorTypography } from "./wall-text-visual-style.ts";
 import {
   resolveTrendingTextColor,
   TRENDING_TEXT_COLOR_OPTIONS,
@@ -98,6 +99,62 @@ test("wall edits remain a renderable two-to-three segment payload", () => {
     () => validateWallTextContent(content, 4),
     /16–16 words for a 4\.0-second clip/,
   );
+});
+
+test("Wall typing keeps Avenir at 50px when measured metadata is invalidated", () => {
+  const saved: TrendingWallTextContent = {
+    ...currentContent,
+    layoutVersion: "wall-text-overlay-v9",
+    renderFontSize: 50,
+    finalLayout: {
+      version: "wall-text-final-layout-v5",
+      fontFamily: "Avenir Next",
+      fontWeight: 600,
+      fontSizePx: 50,
+      lineHeightPx: 55,
+      blocks: [{ role: "text", lines: ["Old lead.", "Old close."] }],
+      textBox: { x: 150 / 1080, y: 660 / 1920, width: 780 / 1080, height: 480 / 1920 },
+    },
+  };
+  const expected = getWallTextEditorTypography(saved);
+  assert.match(expected.fontFamily, /Avenir Next/);
+  assert.equal(expected.fontWeight, 600);
+  assert.equal(expected.fontSize, 50);
+  assert.equal(expected.outlineWidth, 2);
+
+  for (const initial of [saved, currentContent]) {
+    let draft = initial;
+    for (const text of [
+      "Between classes, meetings, and errands, integrating your schedule with calendars so tasks appear alongside appointments helps reduce the mental load of planning.",
+      "Partial text",
+      "",
+      "A much longer pasted paragraph. ".repeat(8),
+    ]) {
+      draft = createWallTextEditContent(text, draft);
+      assert.equal(draft.finalLayout, undefined);
+      assert.equal(draft.renderFontSize, undefined);
+      assert.deepEqual(getWallTextEditorTypography(draft), expected);
+    }
+  }
+
+  // Opening a previously measured legacy layout still shows its saved style.
+  const historical: TrendingWallTextContent = {
+    ...saved,
+    layoutVersion: "wall-text-overlay-v8",
+    renderFontSize: 44,
+    finalLayout: {
+      ...saved.finalLayout!,
+      fontFamily: "Arial",
+      fontWeight: 400,
+      fontSizePx: 44,
+      lineHeightPx: 48.4,
+      version: "wall-text-final-layout-v4",
+    },
+  };
+  const historicalTypography = getWallTextEditorTypography(historical);
+  assert.equal(historicalTypography.fontSize, 44);
+  assert.equal(historicalTypography.outlineWidth, 4);
+  assert.match(historicalTypography.fontFamily, /Arial/);
 });
 
 test("compact Wall edit patterns use the five-line minimum", () => {

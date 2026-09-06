@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 
     const pending = await createUserSchedule({
       input: {
-        caption: "",
+        caption: parsed.data.caption ?? "",
         metadata: {
           mediaMode: "single_video",
           wallTextAssignmentId: draft.assignmentId,

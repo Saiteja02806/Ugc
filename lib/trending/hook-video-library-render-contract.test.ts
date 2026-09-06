@@ -111,7 +111,6 @@ test("untouched Hook schedule times resolve at confirmation and always confirm t
 });
 
 test("Wall-of-text scheduling saves first and starts rendering after confirmation", () => {
-  assert.match(scheduleDrawer, /const useDefaultScheduleTime = !hasManualScheduleTime;/);
   assert.match(
     trendingWorkspace,
     /useDefaultScheduleTime: params\.selection\.useDefaultScheduleTime/,
@@ -130,12 +129,7 @@ test("Wall-of-text scheduling saves first and starts rendering after confirmatio
   const wallSchedulePreparation = getSection(
     trendingWorkspace,
     "async function handleScheduleWallText",
-    "async function confirmWallTextSchedule",
-  );
-  const wallScheduleConfirmation = getSection(
-    trendingWorkspace,
-    "async function confirmWallTextSchedule",
-    "const wallTextActionCandidate",
+    "  return (",
   );
 
   assert.match(
@@ -144,23 +138,21 @@ test("Wall-of-text scheduling saves first and starts rendering after confirmatio
   );
   assert.doesNotMatch(wallSchedulePreparation, /saveWallTextDraft\(/);
   assert.doesNotMatch(wallSchedulePreparation, /waitForWallTextRender/);
-  assert.doesNotMatch(wallScheduleConfirmation, /waitForWallTextRender/);
   assert.match(
-    wallScheduleConfirmation,
-    /showActionNotice\([\s\S]*actionLabel: "View Scheduling"[\s\S]*message: "Scheduled ·"[\s\S]*tone: "success"/,
+    wallSchedulePreparation,
+    /contentType: "wall_text"[\s\S]*returnTo: "accounts"/,
   );
-  assert.doesNotMatch(wallScheduleConfirmation, /startPendingWallTextRender/);
+  assert.match(
+    trendingWorkspace,
+    /scheduleContext\.contentType === "wall_text"[\s\S]*createPendingWallTextSchedule[\s\S]*Scheduled\. Your Text Reel is being prepared\./,
+  );
+  assert.doesNotMatch(trendingWorkspace, /HookVideoScheduleDrawer/);
+  assert.doesNotMatch(scheduleDrawer, /wall_text|Overlay copy/);
   assert.match(wallTextScheduleRoute, /await createUserSchedule/);
   assert.match(
     wallTextScheduleRoute,
     /after\(\(\) =>[\s\S]*startWallTextScheduleRender/,
   );
-  const wallDrawer = getSection(
-    trendingWorkspace,
-    "{pendingWallTextScheduleCandidate ? (",
-    "{editorCandidate ? (",
-  );
-  assert.doesNotMatch(wallDrawer, /preparation=/);
   assert.match(
     scheduleDrawer,
     /const canConfirmPreparation = !preparation \|\| preparation\.status === "ready";/,

@@ -12,6 +12,7 @@ import { runGenerateHookVideoJob } from "./generate-hook-video.js";
 import { runGenerateImageJob } from "./generate-image.js";
 import { runGenerateTrendingHookCopyJob } from "./generate-trending-hook-copy.js";
 import { runGenerateWallTextJob } from "./generate-wall-text.js";
+import { runGenerateReactionJob } from "./generate-reaction.js";
 import { runGenerateHookSuggestionsJob } from "./generate-hook-suggestions.js";
 import { runAnalyticsSyncJob } from "./sync-analytics.js";
 import { runMediaAnalysisJob } from "./process-media-analysis.js";
@@ -78,6 +79,10 @@ export async function runWorkerJob(
 
   if (job.job_type === "wall_text_generation") {
     return runGenerateWallTextJob(job, context);
+  }
+
+  if (job.job_type === "reaction_generation") {
+    return runGenerateReactionJob(job, context);
   }
 
   if (job.job_type === "media_analysis") {

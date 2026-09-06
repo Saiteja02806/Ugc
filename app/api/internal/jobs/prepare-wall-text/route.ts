@@ -23,6 +23,8 @@ const MAX_BODY_LENGTH = 4_096;
 type PrepareWallTextInput = {
   businessProfileId?: unknown;
   businessProfileVersion?: unknown;
+  recoveryIteration?: unknown;
+  recoveryKey?: unknown;
   refillKey?: unknown;
   requestedCount?: unknown;
   requestKey?: unknown;
@@ -69,6 +71,8 @@ export async function POST(request: Request) {
 
     const ideas = await prepareTrendingWallTextIdeas(profile, {
       mode: input.refillKey ? "refill" : "initial",
+      recoveryIteration: input.recoveryIteration,
+      recoveryKey: input.recoveryKey,
       requestedCount: input.requestedCount,
       requestKey: input.requestKey,
     });
@@ -99,7 +103,12 @@ function parseInput(rawBody: string) {
   try {
     const input = JSON.parse(rawBody) as PrepareWallTextInput;
     const businessProfileId = getString(input.businessProfileId);
+    const recoveryKey = getOptionalString(input.recoveryKey);
     const refillKey = getOptionalString(input.refillKey);
+    const recoveryIteration =
+      input.recoveryIteration === null || input.recoveryIteration === undefined
+        ? null
+        : input.recoveryIteration;
     const userId = getString(input.userId);
     const businessProfileVersion = input.businessProfileVersion;
     const requestedCount =
@@ -129,10 +138,17 @@ function parseInput(rawBody: string) {
       Number.isInteger(requestedCount) &&
       requestedCount >= 1 &&
       requestedCount <= 50 &&
+      (recoveryIteration === null ||
+        (typeof recoveryIteration === "number" &&
+          Number.isInteger(recoveryIteration) &&
+          recoveryIteration >= 0 &&
+          recoveryIteration <= 20)) &&
       requestKey
       ? {
           businessProfileId,
           businessProfileVersion,
+          recoveryIteration,
+          recoveryKey,
           refillKey,
           requestedCount,
           requestKey,

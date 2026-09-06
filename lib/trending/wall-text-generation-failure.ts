@@ -51,6 +51,9 @@ function isWallTextPersistenceRejection(error: unknown) {
     code === "23502" ||
     code === "42703" ||
     code === "42p01" ||
+    message.includes("wall_text_regeneration_invalid_") ||
+    message.includes("wall_text_regeneration_duplicate_updates") ||
+    message.includes("wall_text_regeneration_mismatch") ||
     message.includes("violates check constraint") ||
     message.includes("wall_text_creatives_text_content_chk") ||
     message.includes("wall_text_content_plan_briefs_preferred_format_family_check") ||

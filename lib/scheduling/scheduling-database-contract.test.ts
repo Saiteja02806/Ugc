@@ -841,8 +841,8 @@ test("the large inline Carousel scheduler loads only after scheduling is opened"
   }
 });
 
-test("the Hook and Wall scheduling drawer loads only from an open flow", () => {
-  for (const source of [trendingWorkspace, hookVideoComposer, hookVideoLibrary]) {
+test("Hook drawers and the shared Trending post scheduler load only from an open flow", () => {
+  for (const source of [hookVideoComposer, hookVideoLibrary]) {
     assert.match(source, /const HookVideoScheduleDrawer = dynamic\(/);
     assert.match(
       source,
@@ -857,7 +857,7 @@ test("the Hook and Wall scheduling drawer loads only from an open flow", () => {
 
   assert.match(
     trendingWorkspace,
-    /pendingWallTextScheduleCandidate \? \([\s\S]*<HookVideoScheduleDrawer/,
+    /scheduleContext \? \([\s\S]*<PlatformSelectionModal[\s\S]*context=\{scheduleContext\}[\s\S]*open/,
   );
   assert.match(
     hookVideoComposer,
@@ -872,7 +872,7 @@ test("the Hook and Wall scheduling drawer loads only from an open flow", () => {
 test("the inline carousel modal implements exact-account content and time steps", () => {
   assert.match(carouselScheduleModal, /Step \{currentStep\.number\} of 4/);
   assert.match(carouselScheduleModal, /title: "Select Instagram account"/);
-  assert.match(carouselScheduleModal, /title: "Content details"/);
+  assert.match(carouselScheduleModal, /title: "Post details"/);
   assert.match(carouselScheduleModal, /title: "Schedule"/);
   assert.match(
     carouselScheduleModal,

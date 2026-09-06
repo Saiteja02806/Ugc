@@ -20,6 +20,7 @@ import {
   LEGACY_WALL_TEXT_ARIAL_BOLD_FONT_WEIGHT,
   LEGACY_WALL_TEXT_FONT_WEIGHT,
   LEGACY_WALL_TEXT_REGULAR_FONT_WEIGHT,
+  WALL_TEXT_ARIAL_REGULAR_FONT_WEIGHT,
   WALL_TEXT_FONT_WEIGHT,
 } from "../lib/wall-text-render-spec.js";
 import { parseTextColor } from "../lib/edit-overlay-render-spec.js";
@@ -476,14 +477,19 @@ function getFinalLayout(value: Json, contentLayoutVersion: Json | undefined) {
   const isArialRegularRolloutEnvelope =
     contentLayoutVersion === "wall-text-overlay-v8" &&
     layout.version === "wall-text-final-layout-v3";
+  const isAvenirNextDemiBoldRolloutEnvelope =
+    contentLayoutVersion === "wall-text-overlay-v9" &&
+    layout.version === "wall-text-final-layout-v4";
   if (
-    !["wall-text-final-layout-v1", "wall-text-final-layout-v2", "wall-text-final-layout-v3", "wall-text-final-layout-v4"].includes(
+    !["wall-text-final-layout-v1", "wall-text-final-layout-v2", "wall-text-final-layout-v3", "wall-text-final-layout-v4", "wall-text-final-layout-v5"].includes(
       String(layout.version),
     ) ||
-    (layout.version === "wall-text-final-layout-v3"
+    (layout.version === "wall-text-final-layout-v5"
+      ? layout.fontFamily !== "Avenir Next" || Number(layout.fontWeight) !== WALL_TEXT_FONT_WEIGHT
+      : layout.version === "wall-text-final-layout-v3"
       ? layout.fontFamily !== "Arial" || Number(layout.fontWeight) !== LEGACY_WALL_TEXT_ARIAL_BOLD_FONT_WEIGHT
       : layout.version === "wall-text-final-layout-v4"
-        ? layout.fontFamily !== "Arial" || Number(layout.fontWeight) !== WALL_TEXT_FONT_WEIGHT
+        ? layout.fontFamily !== "Arial" || Number(layout.fontWeight) !== WALL_TEXT_ARIAL_REGULAR_FONT_WEIGHT
       : layout.fontFamily !== "Inter" ||
         ![
           LEGACY_WALL_TEXT_REGULAR_FONT_WEIGHT,
@@ -518,19 +524,20 @@ function getFinalLayout(value: Json, contentLayoutVersion: Json | undefined) {
       role: block.role as "prose" | "text" | "title" | "item",
     };
   });
-  const isV2OrV3OrV4 =
+  const isV2OrV3OrV4OrV5 =
     layout.version === "wall-text-final-layout-v2" ||
     layout.version === "wall-text-final-layout-v3" ||
-    layout.version === "wall-text-final-layout-v4";
+    layout.version === "wall-text-final-layout-v4" ||
+    layout.version === "wall-text-final-layout-v5";
   const lineCount = blocks.reduce((total, block) => total + block.lines.length, 0);
   if (
-    isV2OrV3OrV4 &&
+    isV2OrV3OrV4OrV5 &&
     (blocks.length !== 1 ||
       blocks[0]?.role !== "text" ||
       lineCount < 4 ||
       lineCount > 8)
   ) {
-    throw new Error("text.finalLayout V2/V3/V4 must contain one 4-8 line text block.");
+    throw new Error("text.finalLayout V2/V3/V4/V5 must contain one 4-8 line text block.");
   }
   const fontSizePx = normalizeWallTextFontSize(Number(layout.fontSizePx));
   const textBox = getTextBoxFromRecord(layout.textBox, "text.finalLayout.textBox");
@@ -540,10 +547,21 @@ function getFinalLayout(value: Json, contentLayoutVersion: Json | undefined) {
       blocks,
       fontFamily: "Arial" as const,
       fontSizePx,
-      fontWeight: WALL_TEXT_FONT_WEIGHT as 400,
+      fontWeight: WALL_TEXT_ARIAL_REGULAR_FONT_WEIGHT as 400,
       lineHeightPx,
       textBox,
       version: "wall-text-final-layout-v4" as const,
+    };
+  }
+  if (isAvenirNextDemiBoldRolloutEnvelope || layout.version === "wall-text-final-layout-v5") {
+    return {
+      blocks,
+      fontFamily: "Avenir Next" as const,
+      fontSizePx,
+      fontWeight: WALL_TEXT_FONT_WEIGHT as 600,
+      lineHeightPx,
+      textBox,
+      version: "wall-text-final-layout-v5" as const,
     };
   }
   if (layout.version === "wall-text-final-layout-v3") {
@@ -562,7 +580,7 @@ function getFinalLayout(value: Json, contentLayoutVersion: Json | undefined) {
       blocks,
       fontFamily: "Arial" as const,
       fontSizePx,
-      fontWeight: WALL_TEXT_FONT_WEIGHT as 400,
+      fontWeight: WALL_TEXT_ARIAL_REGULAR_FONT_WEIGHT as 400,
       lineHeightPx,
       textBox,
       version: "wall-text-final-layout-v4" as const,

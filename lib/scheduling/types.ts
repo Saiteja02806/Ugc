@@ -55,6 +55,7 @@ export const scheduleSourceTypes = [
   "influencer_video",
   "user_video",
   "wall_text_render",
+  "reaction_render",
   "combined_video",
 ] as const;
 

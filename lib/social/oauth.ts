@@ -1656,7 +1656,7 @@ async function upsertSocialConnection(params: {
 
     if (isInstagramAccountLimitDatabaseError(result.error)) {
       throw new SocialOAuthError(
-        "Your Instagram account limit has been reached. Disconnect an account before adding another, or upgrade to Growth to connect multiple accounts.",
+        "Your Instagram account limit has been reached. Disconnect an account before adding another, or upgrade your plan for more connections.",
         402,
         "instagram_account_limit_reached",
         "save_connected_account",

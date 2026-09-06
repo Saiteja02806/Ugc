@@ -13,7 +13,10 @@ export async function runGenerateWallTextJob(
     stage: "generating_wall_text",
     status: "waiting_external_service",
   });
-  const result = await prepareWallTextInApp(input);
+  const result = await prepareWallTextInApp({
+    ...input,
+    recoveryIteration: job.attempt_count,
+  });
   await context.checkpoint({
     progress: null,
     stage: "wall_text_persisted",
@@ -28,6 +31,7 @@ function parseInput(job: BackgroundJobRow) {
   const userId = getString(input?.userId);
   const businessProfileId = getString(input?.businessProfileId);
   const businessProfileVersion = input?.businessProfileVersion;
+  const recoveryKey = getOptionalString(input?.recoveryKey);
   const refillKey = getOptionalString(input?.refillKey);
   const requestedCount = input?.requestedCount ?? 6;
 
@@ -57,6 +61,7 @@ function parseInput(job: BackgroundJobRow) {
   return {
     businessProfileId,
     businessProfileVersion,
+    recoveryKey,
     refillKey,
     requestedCount,
     requestKey,

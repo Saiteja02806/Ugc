@@ -407,7 +407,7 @@ function getFailureMessage(platform: SocialPlatform, errorCode: string) {
   }
 
   if (errorCode === "instagram_account_limit_reached") {
-    return "Your Instagram account limit has been reached. Disconnect an account before adding another, or upgrade to Growth to connect multiple accounts.";
+    return "Your Instagram account limit has been reached. Disconnect an account before adding another, or upgrade your plan for more connections.";
   }
 
   if (errorCode === "reconnect_account_mismatch") {

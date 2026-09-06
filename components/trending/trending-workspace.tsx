@@ -48,12 +48,12 @@ import {
   CreativeEditAction,
 } from "@/components/trending/creative-card-actions";
 import { PlatformSelectionModalLoading } from "@/components/social/platform-selection-modal-loading";
-import type { SchedulePlatformContext } from "@/components/social/platform-selection-modal";
+import type {
+  CarouselSchedulePlatformContext,
+  SchedulePlatformContext,
+} from "@/components/social/platform-selection-modal";
 import { HookVideoCard } from "@/components/trending/hook-video-card";
 import type { HookPreviewAudio } from "@/components/trending/hook-audio-preview";
-import type {
-  HookVideoScheduleSelection,
-} from "@/components/trending/hook-video-schedule-drawer";
 import type { WallTextDetailActionState } from "@/components/trending/wall-text-detail-view";
 import { WallTextOverlay } from "@/components/trending/wall-text-overlay";
 import { WallTextAudioPreview } from "@/components/trending/wall-text-audio-preview";
@@ -65,6 +65,7 @@ import {
   type CarouselScheduleSubmission,
 } from "@/lib/scheduling/carousel-scheduling-client";
 import { createWallTextScheduleRequest } from "@/lib/trending/wall-text-scheduling-contract";
+import { createReactionScheduleRequest } from "@/lib/trending/reaction-scheduling-contract";
 import {
   getTrendingDecisionOutboxKey,
   parseTrendingDecisionOutbox,
@@ -84,6 +85,7 @@ import {
   type TrendingCarouselSourceRecord,
   type TrendingFeedItem,
   type TrendingHookVideoFeedItem,
+  type TrendingReactionFeedItem,
   type TrendingWallTextFeedItem,
 } from "@/lib/trending/feed-items";
 import {
@@ -131,14 +133,6 @@ const HookVideoComposer = dynamic(
       (module) => module.HookVideoComposer,
     ),
   { loading: HookVideoComposerLoading },
-);
-
-const HookVideoScheduleDrawer = dynamic(
-  () =>
-    import("@/components/trending/hook-video-schedule-drawer").then(
-      (module) => module.HookVideoScheduleDrawer,
-    ),
-  { loading: PlatformSelectionModalLoading },
 );
 
 const PlatformSelectionModal = dynamic(
@@ -191,10 +185,16 @@ type CompleteWallText = {
   item: TrendingWallTextFeedItem;
 };
 
+type CompleteReaction = {
+  format: "reaction";
+  item: TrendingReactionFeedItem;
+};
+
 type TrendingCandidate =
   | CompleteCarousel
   | CompleteHookVideo
-  | CompleteWallText;
+  | CompleteWallText
+  | CompleteReaction;
 
 type TrendingHookComposition = {
   edit: TrendingCreativeEditRecord | null;
@@ -398,7 +398,7 @@ const SWIPE_THRESHOLD_PX = 90;
 const SWIPE_EXIT_DURATION_MS = 220;
 const MAX_ROTATION_DEGREES = 5;
 const CAROUSEL_REVIEW_CARD_WIDTH_CLASS =
-  "w-[min(78vw,270px,calc((100dvh-348px)*0.8))]";
+  "w-[min(78vw,300px,calc((100dvh-348px)*0.8))]";
 const VERTICAL_REVIEW_CARD_WIDTH_CLASS =
   "w-[min(76vw,230px,calc((100dvh-348px)*0.5625))] min-[1024px]:w-[min(76vw,clamp(260px,calc(440.5px-11.75vw),280px),calc((100dvh-252px)*0.5625))]";
 const CAROUSEL_REVIEW_CARD_FRAME_CLASS =
@@ -1193,8 +1193,8 @@ export function TrendingWorkspace() {
               ) : null}
             </div>
             <p className="mt-1 max-w-2xl text-[14px] leading-[20px] text-muted sm:text-[15px] sm:leading-[22px]">
-              Explore Carousel, Hook, and Wall-of-text content made from your
-              business profile.
+              Explore Carousel, Hook, Wall-of-text, and Reaction Reel content
+              made from your business profile.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -1544,6 +1544,10 @@ function TrendingFeed({
       return [{ format: "wall_text", item }];
     }
 
+    if (item.format === "reaction") {
+      return [{ format: "reaction", item }];
+    }
+
     if (item.format !== "carousel") {
       return [];
     }
@@ -1877,6 +1881,8 @@ function TrendingDeck({
     useState<WallTextDetailActionState>({ status: "idle" });
   const [pendingWallTextScheduleCandidate, setPendingWallTextScheduleCandidate] =
     useState<CompleteWallText | null>(null);
+  const [pendingReactionScheduleCandidate, setPendingReactionScheduleCandidate] =
+    useState<CompleteReaction | null>(null);
   const [editorCandidate, setEditorCandidate] =
     useState<TrendingCandidate | null>(null);
   const [editByCreativeId, setEditByCreativeId] = useState<
@@ -2043,6 +2049,7 @@ function TrendingDeck({
   useEffect(() => {
     if (
       !activeCandidate ||
+      activeCandidate.format === "reaction" ||
       editByCreativeId[activeCandidate.item.creativeId]
     ) {
       return;
@@ -2317,12 +2324,29 @@ function TrendingDeck({
       return;
     }
 
+    if (candidate.format === "reaction") {
+      setPendingReactionScheduleCandidate(candidate);
+      setScheduleContext({
+        assignmentId: candidate.item.assignmentId,
+        contentType: "reaction",
+        coverUrl: candidate.item.creative.thumbnailUrl,
+        returnTo: "trending",
+        title: candidate.item.creative.title,
+      });
+      return;
+    }
+
     setActionState({ status: "idle" });
     setActionCandidate(candidate);
   }
 
   function handleEditActiveCandidate() {
-    if (!activeCandidate || decisionLockRef.current || exitDirection) {
+    if (
+      !activeCandidate ||
+      activeCandidate.format === "reaction" ||
+      decisionLockRef.current ||
+      exitDirection
+    ) {
       return;
     }
 
@@ -2544,6 +2568,13 @@ function TrendingDeck({
       setPendingWallTextScheduleCandidate(wallTextCandidate);
       setWallTextCandidate(null);
       setWallTextActionState({ status: "idle" });
+      setScheduleContext({
+        assignmentId: wallTextCandidate.item.assignmentId,
+        contentType: "wall_text",
+        coverUrl: wallTextCandidate.item.creative.thumbnailUrl,
+        returnTo: "accounts",
+        title: wallTextCandidate.item.creative.title,
+      });
     } catch (error) {
       setWallTextActionState({
         message: getErrorMessage(
@@ -2556,47 +2587,12 @@ function TrendingDeck({
     }
   }
 
-  async function confirmWallTextSchedule(
-    selection: HookVideoScheduleSelection,
-  ) {
-    const candidate = pendingWallTextScheduleCandidate;
-
-    if (!candidate) {
-      throw new Error("Choose a Wall-of-text video before scheduling.");
-    }
-
-    const schedule = await createPendingWallTextSchedule({
-      candidate,
-      selection,
-    });
-
-    setPendingWallTextScheduleCandidate(null);
-    setWallTextCandidate(null);
-    setWallTextActionState({ status: "idle" });
-    showActionNotice({
-      actionHref: `/scheduling?draft=${encodeURIComponent(schedule.id)}`,
-      actionLabel: "View Scheduling",
-      message: "Scheduled ·",
-      tone: "success",
-    });
-  }
-
-  const wallTextActionCandidate =
-    wallTextCandidate ?? pendingWallTextScheduleCandidate;
-  const wallTextEdit = wallTextActionCandidate
-    ? editByCreativeId[wallTextActionCandidate.item.creativeId] ?? null
-    : null;
-  const wallTextEditContent =
-    wallTextEdit?.content.format === "wall_text"
-      ? wallTextEdit.content
-      : null;
-
   return (
     <section
       aria-label="Trending content"
       className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-x-clip overflow-y-visible pb-[107px] pt-[94px]"
     >
-      {activeCandidate && headerActionsRoot
+      {activeCandidate && activeCandidate.format !== "reaction" && headerActionsRoot
         ? createPortal(
             <CreativeEditAction
               disabled={Boolean(exitDirection)}
@@ -2761,21 +2757,6 @@ function TrendingDeck({
           }
         />
       ) : null}
-      {pendingWallTextScheduleCandidate ? (
-        <HookVideoScheduleDrawer
-          summary={{
-            backgroundTitle: pendingWallTextScheduleCandidate.item.creative.title,
-            kind: "wall_text",
-            text:
-              wallTextEditContent?.content.fullText ??
-              pendingWallTextScheduleCandidate.item.creative.text.fullText,
-          }}
-          onClose={() => {
-            setPendingWallTextScheduleCandidate(null);
-          }}
-          onConfirm={confirmWallTextSchedule}
-        />
-      ) : null}
       {editorCandidate ? (
         <TrendingCreativeEditor
           item={editorCandidate.item}
@@ -2801,10 +2782,53 @@ function TrendingDeck({
           context={scheduleContext}
           open
           onConfirmed={async (submission) => {
-            if (!scheduleContext || !pendingScheduleCandidate) {
-              throw new Error(
-                "Choose an Instagram carousel before scheduling.",
-              );
+            if (!scheduleContext) {
+              throw new Error("Choose a post before scheduling.");
+            }
+
+            if (scheduleContext.contentType === "wall_text") {
+              if (!pendingWallTextScheduleCandidate) {
+                throw new Error("Choose a Text Reel before scheduling.");
+              }
+
+              const schedule = await createPendingWallTextSchedule({
+                candidate: pendingWallTextScheduleCandidate,
+                selection: submission,
+              });
+
+              setPendingWallTextScheduleCandidate(null);
+              setWallTextActionState({ status: "idle" });
+              showActionNotice({
+                actionHref: `/scheduling?draft=${encodeURIComponent(schedule.id)}`,
+                actionLabel: "View Scheduling",
+                message: "Scheduled. Your Text Reel is being prepared.",
+                tone: "success",
+              });
+              return;
+            }
+
+            if (scheduleContext.contentType === "reaction") {
+              if (!pendingReactionScheduleCandidate) {
+                throw new Error("Choose a Reaction Reel before scheduling.");
+              }
+
+              const schedule = await createPendingReactionSchedule({
+                candidate: pendingReactionScheduleCandidate,
+                selection: submission,
+              });
+
+              setPendingReactionScheduleCandidate(null);
+              showActionNotice({
+                actionHref: `/scheduling?draft=${encodeURIComponent(schedule.id)}`,
+                actionLabel: "View Scheduling",
+                message: "Reaction Reel scheduled.",
+                tone: "success",
+              });
+              return;
+            }
+
+            if (!pendingScheduleCandidate) {
+              throw new Error("Choose an Instagram carousel before scheduling.");
             }
 
             await scheduleTrendingCarousel({
@@ -2824,7 +2848,6 @@ function TrendingDeck({
               completionWarning = true;
             }
 
-            setScheduleContext(null);
             setPendingScheduleCandidate(null);
             showActionNotice({
               actionHref: "/scheduling",
@@ -2838,6 +2861,8 @@ function TrendingDeck({
             if (!open) {
               setScheduleContext(null);
               setPendingScheduleCandidate(null);
+              setPendingWallTextScheduleCandidate(null);
+              setPendingReactionScheduleCandidate(null);
             }
           }}
         />
@@ -3110,6 +3135,7 @@ function TrendingFormatPill({
   const activeFormat = candidate?.format ?? format ?? "carousel";
   const isHook = activeFormat === "hook_video";
   const isWallText = activeFormat === "wall_text";
+  const isReaction = activeFormat === "reaction";
   const slideCount =
     candidate && candidate.format === "carousel"
       ? candidate.carousel.slideCount || candidate.slides.length || 5
@@ -3119,14 +3145,24 @@ function TrendingFormatPill({
     ? "Reel Hook"
     : isWallText
       ? "Wall-of-Text"
-      : `Slideshow · ${slideCount} Slides`;
+      : isReaction
+        ? "Reaction Reel"
+        : `Slideshow · ${slideCount} Slides`;
 
-  const Icon = isHook ? Clapperboard : isWallText ? ScanText : Images;
+  const Icon = isHook
+    ? Clapperboard
+    : isWallText
+      ? ScanText
+      : isReaction
+        ? Sparkles
+        : Images;
   const iconColor = isHook
     ? "text-info"
     : isWallText
       ? "text-accent-purple"
-      : "text-primary";
+      : isReaction
+        ? "text-amber-500"
+        : "text-primary";
 
   return (
     <div
@@ -3289,6 +3325,24 @@ function TrendingDeckCard({
           itemCount={itemCount}
           itemIndex={itemIndex}
           edit={edit}
+          onPointerCancel={props.onPointerCancel}
+          onPointerDown={props.onPointerDown}
+          onPointerMove={props.onPointerMove}
+          onPointerUp={props.onPointerUp}
+          onExitTransitionEnd={props.onExitTransitionEnd}
+          presentation={props.presentation}
+        />
+      );
+    case "reaction":
+      return (
+        <TrendingReactionDeckCard
+          candidate={candidate}
+          depth={props.depth}
+          dragX={props.dragX}
+          exitDirection={props.exitDirection}
+          isDragging={props.isDragging}
+          itemCount={itemCount}
+          itemIndex={itemIndex}
           onPointerCancel={props.onPointerCancel}
           onPointerDown={props.onPointerDown}
           onPointerMove={props.onPointerMove}
@@ -3778,6 +3832,145 @@ function TrendingWallTextDeckCard({
               videoRef={videoRef}
             />
           ) : null}
+        </div>
+      </article>
+    </div>
+  );
+}
+
+function TrendingReactionDeckCard({
+  candidate,
+  depth,
+  dragX,
+  exitDirection,
+  isDragging,
+  itemCount,
+  itemIndex,
+  onPointerCancel,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onExitTransitionEnd,
+  presentation,
+}: {
+  candidate: CompleteReaction;
+  depth: DeckDepth;
+  dragX: number;
+  exitDirection: "left" | "right" | null;
+  isDragging: boolean;
+  itemCount: number;
+  itemIndex: number;
+  onPointerCancel: (event: ReactPointerEvent<HTMLElement>) => void;
+  onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
+  onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void;
+  onPointerUp: (event: ReactPointerEvent<HTMLElement>) => void;
+  onExitTransitionEnd: (event: ReactTransitionEvent<HTMLElement>) => void;
+  presentation: TrendingDeckPresentation;
+}) {
+  const isActive = depth === 0;
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const creative = candidate.item.creative;
+  const deckStyle = DECK_CARD_STYLES[depth];
+  const cardStyle = getTrendingDeckCardPresentation({
+    depth,
+    dragX,
+    exitDirection,
+    isDragging,
+    presentation,
+  });
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (!isActive) {
+      video.pause();
+      return;
+    }
+
+    video.currentTime = 0;
+    void video.play().catch(() => undefined);
+  }, [creative.previewUrl, isActive]);
+
+  useEffect(() => {
+    if (!isActive) return;
+
+    let cancelled = false;
+    void (async () => {
+      const token = await getCurrentUserIdToken();
+      if (!token || cancelled) return;
+
+      await fetch("/api/trending/reactions/presentations", {
+        body: JSON.stringify({
+          assignmentId: candidate.item.assignmentId,
+          clipAssetId: creative.clipAssetId,
+        }),
+        cache: "no-store",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        keepalive: true,
+        method: "POST",
+      }).catch(() => undefined);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [candidate.item.assignmentId, creative.clipAssetId, isActive]);
+
+  return (
+    <div
+      data-trending-card-state={getTrendingDeckCardState(depth)}
+      inert={isActive ? undefined : true}
+      className={cn(
+        "flex items-center justify-center",
+        isActive
+          ? "relative"
+          : "pointer-events-none absolute inset-0 overflow-visible",
+      )}
+      style={{ zIndex: deckStyle.zIndex }}
+    >
+      <article
+        data-trending-video-peek={
+          presentation === "video_peek" ? "true" : undefined
+        }
+        data-trending-vertical-frame
+        aria-label={`${creative.title}, Reaction Reel ${itemIndex + 1} of ${itemCount}`}
+        aria-hidden={isActive ? undefined : "true"}
+        className={cn(
+          VERTICAL_REVIEW_CARD_FRAME_CLASS,
+          "relative origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
+          isActive
+            ? "pointer-events-auto cursor-grab active:cursor-grabbing"
+            : "pointer-events-none",
+        )}
+        onPointerCancel={isActive ? onPointerCancel : undefined}
+        onPointerDown={isActive ? onPointerDown : undefined}
+        onPointerMove={isActive ? onPointerMove : undefined}
+        onPointerUp={isActive ? onPointerUp : undefined}
+        onTransitionEnd={isActive ? onExitTransitionEnd : undefined}
+        style={cardStyle}
+      >
+        {isActive ? (
+          <TrendingFormatPill
+            candidate={candidate}
+            positionClassName="left-0 bottom-[calc(100%+24px)]"
+          />
+        ) : null}
+        <div className="relative size-full overflow-hidden rounded-[20px] bg-[#171717] ring-1 ring-white/10">
+          <video
+            ref={videoRef}
+            src={creative.previewUrl}
+            poster={creative.thumbnailUrl ?? undefined}
+            autoPlay={isActive}
+            muted
+            playsInline
+            preload={depth <= 1 ? "auto" : "metadata"}
+            aria-hidden="true"
+            className="pointer-events-none size-full object-cover"
+          />
         </div>
       </article>
     </div>
@@ -4282,6 +4475,10 @@ async function loadTrendingCreativeEdit(
 }
 
 async function loadTrendingCreativeEditForItem(item: TrendingFeedItem) {
+  if (item.format === "reaction") {
+    return null;
+  }
+
   return loadTrendingCreativeEditScope({
     assignmentId: item.assignmentId,
     creativeId: item.creativeId,
@@ -4364,7 +4561,7 @@ async function saveWallTextDraft(item: TrendingWallTextFeedItem) {
 
 async function createPendingWallTextSchedule(params: {
   candidate: CompleteWallText;
-  selection: HookVideoScheduleSelection;
+  selection: CarouselScheduleSubmission;
 }) {
   const token = await getCurrentUserIdToken();
 
@@ -4375,6 +4572,7 @@ async function createPendingWallTextSchedule(params: {
   const response = await fetch("/api/trending/wall-text/schedules", {
     body: JSON.stringify(createWallTextScheduleRequest({
       assignmentId: params.candidate.item.assignmentId,
+      caption: params.selection.caption,
       scheduledDate: params.selection.scheduledDate,
       scheduledTime: params.selection.scheduledTime,
       targets: params.selection.targets.map((target) => ({
@@ -4383,7 +4581,7 @@ async function createPendingWallTextSchedule(params: {
         settings: target.settings,
       })),
       timezone: params.selection.timezone,
-      useDefaultScheduleTime: params.selection.useDefaultScheduleTime,
+      useDefaultScheduleTime: params.selection.useDefaultScheduleTime ?? false,
     })),
     cache: "no-store",
     headers: {
@@ -4407,9 +4605,56 @@ async function createPendingWallTextSchedule(params: {
   return data.schedule;
 }
 
+async function createPendingReactionSchedule(params: {
+  candidate: CompleteReaction;
+  selection: CarouselScheduleSubmission;
+}) {
+  const token = await getCurrentUserIdToken();
+
+  if (!token) {
+    throw new Error("Sign in before scheduling this Reaction Reel.");
+  }
+
+  const response = await fetch("/api/trending/reactions/schedules", {
+    body: JSON.stringify(createReactionScheduleRequest({
+      assignmentId: params.candidate.item.assignmentId,
+      caption: params.selection.caption,
+      scheduledDate: params.selection.scheduledDate,
+      scheduledTime: params.selection.scheduledTime,
+      targets: params.selection.targets.map((target) => ({
+        connectionId: target.connectionId,
+        platform: target.platform,
+        settings: target.settings,
+      })),
+      timezone: params.selection.timezone,
+      useDefaultScheduleTime: params.selection.useDefaultScheduleTime ?? false,
+    })),
+    cache: "no-store",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+  const data = (await response.json().catch(() => null)) as
+    | { message?: string; ok: false }
+    | { ok: true; schedule: { id: string } }
+    | null;
+
+  if (!response.ok || !data || data.ok !== true) {
+    throw new Error(
+      data?.ok === false && data.message
+        ? data.message
+        : "Could not schedule this Reaction Reel.",
+    );
+  }
+
+  return data.schedule;
+}
+
 async function scheduleTrendingCarousel(params: {
   candidate: CompleteCarousel;
-  context: SchedulePlatformContext;
+  context: CarouselSchedulePlatformContext;
   submission: CarouselScheduleSubmission;
 }) {
   const assignmentId = params.candidate.item.assignmentId;

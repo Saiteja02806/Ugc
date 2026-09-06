@@ -100,6 +100,7 @@ const TEXT_MODES = new Set<CarouselTextMode>([
 ]);
 const FORMAT_IDS = new Set<string>(CAROUSEL_CONTENT_FORMAT_IDS);
 const HOOK_FAMILY_IDS = new Set<string>(CAROUSEL_HOOK_FAMILY_IDS);
+export const CAROUSEL_STRUCTURE_1_SLIDE_COUNT = 6;
 
 export const CAROUSEL_CONTENT_GRAMMAR = parseCarouselContentGrammar({
   formats: formatsJson,
@@ -200,7 +201,7 @@ function parseCarouselContentGrammar(input: {
       throw new Error(`${format.id} must start with a hook slide.`);
     }
 
-    if (format.slides[4]?.slideType !== "cta") {
+    if (format.slides[CAROUSEL_STRUCTURE_1_SLIDE_COUNT - 1]?.slideType !== "cta") {
       throw new Error(`${format.id} must end with a takeaway/CTA slide.`);
     }
 
@@ -230,7 +231,7 @@ function parseContentFormat(
   }
 
   if (!Array.isArray(record.slides) || record.slides.length !== 5) {
-    throw new Error(`${id} must define exactly five slides.`);
+    throw new Error(`${id} must define exactly five base content slides.`);
   }
 
   const compatibleHookFamilies = getStringArray(
@@ -245,6 +246,10 @@ function parseContentFormat(
 
     return hookFamilyId;
   });
+
+  const baseSlides = record.slides.map((slide, slideIndex) =>
+    parseFormatSlide(slide, id, slideIndex),
+  );
 
   return {
     compatibleHookFamilies,
@@ -273,11 +278,48 @@ function parseContentFormat(
       0.1,
       10,
     ),
-    slides: record.slides.map((slide, slideIndex) =>
-      parseFormatSlide(slide, id, slideIndex),
-    ),
+    slides: expandSixSlideFormat({ baseSlides, formatId: id }),
     version: getInteger(record.version, `${id} version`, 1, 10_000),
   };
+}
+
+function expandSixSlideFormat(params: {
+  baseSlides: CarouselFormatSlideDefinition[];
+  formatId: CarouselContentFormatId;
+}) {
+  const [baseHook, firstValue, secondValue, thirdValue, baseCta] =
+    params.baseSlides;
+
+  if (!baseHook || !firstValue || !secondValue || !thirdValue || !baseCta) {
+    throw new Error(`${params.formatId} needs five base slides before expansion.`);
+  }
+
+  return [
+    {
+      ...baseHook,
+      instruction:
+        "Create a concise reader-first cover that gives a clear reason to swipe. Lead with a specific tension, outcome, contrast, mistake, useful promise, or curiosity gap—not a complete personal story.",
+      preferredTextModes: ["single_statement", "headline_body"],
+      role: "cover_hook",
+    },
+    firstValue,
+    secondValue,
+    thirdValue,
+    {
+      instruction:
+        "Add one fresh, useful application, implication, or practical extension of the format. Do not repeat an earlier item or force a product mention.",
+      preferredTextModes: ["headline_body", "body_only"],
+      role: "practical_extension",
+      slideType:
+        thirdValue.slideType === "problem" ? "solution" : thirdValue.slideType,
+    },
+    {
+      ...baseCta,
+      instruction:
+        "State the useful takeaway and add a soft, concrete CTA only when it helps the reader act.",
+      role: "takeaway_cta",
+    },
+  ] satisfies CarouselFormatSlideDefinition[];
 }
 
 function assertExactRotationOrder(

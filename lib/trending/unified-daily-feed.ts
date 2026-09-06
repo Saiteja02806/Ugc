@@ -31,8 +31,11 @@ import {
   type TrendingFeedProviderAvailability,
   type TrendingFeedProviderResult,
   type TrendingHookVideoFeedItem,
+  type TrendingReactionFeedItem,
   type TrendingWallTextFeedItem,
 } from "@/lib/trending/feed-items";
+import { getTrendingReactionFeedProvider } from "@/lib/trending/reaction-feed";
+import { enqueueTrendingReactionRefill } from "@/lib/reaction-format/generation-jobs";
 import {
   getTrendingHookFeedProvider,
   prepareTrendingHookIdeas,
@@ -79,7 +82,7 @@ const HOOK_GENERATION_RESTART_REQUIRED_MESSAGE =
 
 type MissingFormatPreparationResult = {
   failureMessage?: string;
-  status: "failed" | "scheduled";
+  status: "coverage_shortfall" | "failed" | "scheduled";
 };
 
 type PublicTrendingDailyFeedFailure = {
@@ -152,7 +155,12 @@ export async function readUnifiedTrendingDailyFeed(params: {
     format: "wall_text",
     slots: existingPlan.slots,
   });
-  const [carouselFeed, hookProvider, wallTextProvider] = await Promise.all([
+  const pinnedReactionAssignmentIds = getReadyAssignmentIds({
+    format: "reaction",
+    slots: existingPlan.slots,
+  });
+  const [carouselFeed, hookProvider, wallTextProvider, reactionProvider] =
+    await Promise.all([
     reservedAllocation.carousel > 0
       ? readTrendingDailyFeed({
           dailyLimitOverride: reservedAllocation.carousel,
@@ -183,13 +191,31 @@ export async function readUnifiedTrendingDailyFeed(params: {
             reservedAllocation.wall_text === 0
               ? "Wall-of-text is disabled in this content mix."
               : "Wall-of-text is not enabled for this environment.",
+        ),
+      ),
+    reservedAllocation.reaction > 0
+      ? getTrendingReactionFeedProvider({
+          businessProfileId: params.profile.id,
+          businessProfileVersion: params.profile.profileVersion,
+          pinnedAssignmentIds: pinnedReactionAssignmentIds,
+          userId: params.userId,
+        })
+      : Promise.resolve(
+          createUnavailableTrendingFeedProvider<TrendingReactionFeedItem>(
+            "reaction",
+            "Reaction Reels are disabled in this content mix.",
           ),
         ),
   ]);
   const carouselProvider = carouselFeed
     ? createCarouselTrendingFeedProvider(carouselFeed.carousels)
     : createCarouselTrendingFeedProvider([]);
-  const providers = [carouselProvider, hookProvider, wallTextProvider] as const;
+  const providers = [
+    carouselProvider,
+    hookProvider,
+    wallTextProvider,
+    reactionProvider,
+  ] as const;
   const resolvedItems = buildSlotOrderedItems({
     providers,
     slots: existingPlan.slots,
@@ -480,21 +506,24 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
     userId: params.userId,
   });
   const reservedAllocation = countReservedSlots(initialPlan.slots);
-  const [carouselProvider, hookProvider, wallTextProvider] = await loadProviders({
-    allocation: reservedAllocation,
-    includeHookVideos: params.includeHookVideos,
-    includeWallText: params.includeWallText,
-    markItemsShown: params.markItemsShown,
-    profile: params.profile,
-    slots: initialPlan.slots,
-    timezone,
-    userId: params.userId,
-  });
+  const [carouselProvider, hookProvider, wallTextProvider, reactionProvider] =
+    await loadProviders({
+      allocation: reservedAllocation,
+      includeHookVideos: params.includeHookVideos,
+      includeWallText: params.includeWallText,
+      markItemsShown: params.markItemsShown,
+      profile: params.profile,
+      slots: initialPlan.slots,
+      timezone,
+      userId: params.userId,
+    });
 
   await reconcileDailyTrendingFeedSlotIntegrity({
     feedId: initialPlan.feed.id,
     hookVideoAssignmentIds: hookProvider.items.map((item) => item.assignmentId),
     hookVideoProviderResolved: hookProvider.state === "ready",
+    reactionAssignmentIds: reactionProvider.items.map((item) => item.assignmentId),
+    reactionProviderResolved: reactionProvider.state === "ready",
     wallTextAssignmentIds: wallTextProvider.items.map((item) => item.assignmentId),
     wallTextProviderResolved: wallTextProvider.state === "ready",
   });
@@ -503,6 +532,7 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
     carouselAssignmentIds: carouselProvider.items.map((item) => item.assignmentId),
     feedId: initialPlan.feed.id,
     hookVideoAssignmentIds: hookProvider.items.map((item) => item.assignmentId),
+    reactionAssignmentIds: reactionProvider.items.map((item) => item.assignmentId),
     wallTextAssignmentIds: wallTextProvider.items.map((item) => item.assignmentId),
   });
 
@@ -515,17 +545,19 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
     currentCounts: {
       carousel: carouselProvider.items.length,
       hook_video: hookProvider.items.length,
+      reaction: reactionProvider.items.length,
       wall_text: wallTextProvider.items.length,
     },
     includeHookVideos: params.includeHookVideos,
     includeWallText: params.includeWallText,
     missingByFormat,
     profile: params.profile,
+    reactionDailyFeedKey: attachedPlan.feed.id,
     wallTextDailyFeedKey: attachedPlan.feed.id,
     wallTextRecoveryKey: attachedPlan.feed.wallTextRetryKey,
   });
   const resolvedItems = buildSlotOrderedItems({
-    providers: [carouselProvider, hookProvider, wallTextProvider],
+    providers: [carouselProvider, hookProvider, wallTextProvider, reactionProvider],
     slots: attachedPlan.slots,
   });
   const resolvedAssignmentIds = new Set(
@@ -549,6 +581,7 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
       includeWallText: params.includeWallText,
       missingByFormat,
       preparationResults,
+      reactionProvider,
       unresolvedByFormat,
       wallTextProvider,
     });
@@ -661,9 +694,10 @@ function getTerminalPreparationFailureFormats(params: {
   includeWallText: boolean;
   missingByFormat: TrendingContentAllocation;
   preparationResults: Map<
-    "hook_video" | "wall_text",
+    "hook_video" | "reaction" | "wall_text",
     MissingFormatPreparationResult
   >;
+  reactionProvider: TrendingFeedProviderResult<TrendingReactionFeedItem>;
   unresolvedByFormat: TrendingContentAllocation;
   wallTextProvider: TrendingFeedProviderResult<TrendingWallTextFeedItem>;
 }) {
@@ -679,10 +713,17 @@ function getTerminalPreparationFailureFormats(params: {
       params.preparationResults.get("wall_text")?.status === "failed" ||
       (params.missingByFormat.wall_text === 0 &&
         params.wallTextProvider.state === "unavailable"));
+  const reactionFailed =
+    params.unresolvedByFormat.reaction > 0 &&
+    (params.preparationResults.get("reaction")?.status === "coverage_shortfall" ||
+      params.preparationResults.get("reaction")?.status === "failed" ||
+      (params.missingByFormat.reaction === 0 &&
+        params.reactionProvider.state === "unavailable"));
 
   return [
     ...(hookFailed ? ["hook_video" as const] : []),
     ...(wallTextFailed ? ["wall_text" as const] : []),
+    ...(reactionFailed ? ["reaction" as const] : []),
   ];
 }
 
@@ -693,6 +734,7 @@ function countUnresolvedSlots(params: {
   const counts: TrendingContentAllocation = {
     carousel: 0,
     hook_video: 0,
+    reaction: 0,
     wall_text: 0,
   };
 
@@ -717,6 +759,7 @@ function countReservedSlots(slots: DailyTrendingFeedSlotRecord[]) {
   const counts: TrendingContentAllocation = {
     carousel: 0,
     hook_video: 0,
+    reaction: 0,
     wall_text: 0,
   };
 
@@ -728,9 +771,9 @@ function countReservedSlots(slots: DailyTrendingFeedSlotRecord[]) {
 }
 
 function getTerminalPreparationFailureMessage(params: {
-  formats: Array<"hook_video" | "wall_text">;
+  formats: Array<"hook_video" | "reaction" | "wall_text">;
   preparationResults: Map<
-    "hook_video" | "wall_text",
+    "hook_video" | "reaction" | "wall_text",
     MissingFormatPreparationResult
   >;
 }) {
@@ -795,7 +838,12 @@ async function loadProviders(params: {
     format: "wall_text",
     slots: params.slots,
   });
-  const [carouselDailyFeed, hookProvider, wallTextProvider] = await Promise.all([
+  const pinnedReactionAssignmentIds = getReadyAssignmentIds({
+    format: "reaction",
+    slots: params.slots,
+  });
+  const [carouselDailyFeed, hookProvider, wallTextProvider, reactionProvider] =
+    await Promise.all([
     params.allocation.carousel > 0
       ? ensureTrendingDailyFeed({
           dailyLimitOverride: params.allocation.carousel,
@@ -827,6 +875,19 @@ async function loadProviders(params: {
             params.allocation.wall_text === 0
               ? "Wall-of-text is disabled in this content mix."
               : "Wall-of-text is not enabled for this environment.",
+        ),
+      ),
+    params.allocation.reaction > 0
+      ? getTrendingReactionFeedProvider({
+          businessProfileId: params.profile.id,
+          businessProfileVersion: params.profile.profileVersion,
+          pinnedAssignmentIds: pinnedReactionAssignmentIds,
+          userId: params.userId,
+        })
+      : Promise.resolve(
+          createUnavailableTrendingFeedProvider<TrendingReactionFeedItem>(
+            "reaction",
+            "Reaction Reels are disabled in this content mix.",
           ),
         ),
   ]);
@@ -836,6 +897,7 @@ async function loadProviders(params: {
       : ({ format: "carousel", items: [], state: "ready" } satisfies TrendingFeedProviderResult<TrendingCarouselFeedItem>),
     hookProvider,
     wallTextProvider,
+    reactionProvider,
   ] as const;
 }
 
@@ -845,11 +907,12 @@ async function prepareMissingFormats(params: {
   includeWallText: boolean;
   missingByFormat: TrendingContentAllocation;
   profile: BusinessProfileRecord;
+  reactionDailyFeedKey: string;
   wallTextDailyFeedKey: string;
   wallTextRecoveryKey?: string | null;
 }) {
   const results = new Map<
-    "hook_video" | "wall_text",
+    "hook_video" | "reaction" | "wall_text",
     MissingFormatPreparationResult
   >();
   const tasks: Promise<void>[] = [];
@@ -902,6 +965,41 @@ async function prepareMissingFormats(params: {
           results.set("wall_text", {
             failureMessage:
               "Wall-of-text content could not be prepared. Try again shortly.",
+            status: "failed",
+          });
+        }),
+    );
+  }
+
+  if (params.missingByFormat.reaction > 0) {
+    // The planner and renderer make final owner-scoped MP4s in the worker.
+    // The raw catalog is never treated as a browser-side Trending fallback.
+    tasks.push(
+      enqueueTrendingReactionRefill(params.profile, {
+        currentActiveCount: params.currentCounts.reaction,
+        dailyFeedKey: params.reactionDailyFeedKey,
+        requestedCount: params.missingByFormat.reaction,
+      })
+        .then((result) => {
+          results.set(
+            "reaction",
+            result.kind === "coverage_shortfall"
+              ? {
+                  failureMessage: result.message,
+                  status: "coverage_shortfall",
+                }
+              : result.job.status === "failed"
+              ? {
+                  failureMessage: "Reaction Reels could not be prepared. Try again shortly.",
+                  status: "failed",
+                }
+              : { status: "scheduled" },
+          );
+        })
+        .catch((error) => {
+          console.error("Could not prepare reserved Reaction Reel positions:", error);
+          results.set("reaction", {
+            failureMessage: "Reaction Reels could not be prepared. Try again shortly.",
             status: "failed",
           });
         }),
@@ -966,6 +1064,7 @@ function countMissingSlots(slots: DailyTrendingFeedSlotRecord[]) {
   const counts: TrendingContentAllocation = {
     carousel: 0,
     hook_video: 0,
+    reaction: 0,
     wall_text: 0,
   };
 
@@ -1020,11 +1119,11 @@ function buildFormatAvailability(params: {
   allocation: TrendingContentAllocation;
   missingByFormat: TrendingContentAllocation;
   preparationResults: Map<
-    "hook_video" | "wall_text",
+    "hook_video" | "reaction" | "wall_text",
     MissingFormatPreparationResult
   >;
 }): TrendingFeedProviderAvailability[] {
-  return (["carousel", "wall_text", "hook_video"] as const).map((format) => {
+  return (["carousel", "wall_text", "hook_video", "reaction"] as const).map((format) => {
     if (params.allocation[format] === 0) {
       return { format, reason: "Disabled in the saved content mix.", state: "ready" as const };
     }
@@ -1035,7 +1134,9 @@ function buildFormatAvailability(params: {
 
     const preparation =
       format === "carousel" ? undefined : params.preparationResults.get(format);
-    const failed = preparation?.status === "failed";
+    const failed =
+      preparation?.status === "failed" ||
+      preparation?.status === "coverage_shortfall";
     return {
       format,
       reason: failed

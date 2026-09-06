@@ -78,6 +78,7 @@ type DailyFeedRow = {
   plan_display_name: string;
   plan_key: string;
   preference_version: number;
+  reaction_percent: number;
   status: DailyTrendingFeedRecord["status"];
   timezone: string;
   updated_at: string;
@@ -95,6 +96,7 @@ type DailySlotRow = {
   position: number;
   source: "carried" | "new";
   state: DailyTrendingFeedSlotRecord["state"];
+  reaction_assignment_id: string | null;
   wall_text_assignment_id: string | null;
 };
 
@@ -156,7 +158,7 @@ export async function getTrendingContentMixPreference(
 ): Promise<TrendingContentMixPreference> {
   const { data, error } = await getClient()
     .from(CONTENT_MIX_TABLE)
-    .select("carousel_percent,hook_video_percent,preference_version,updated_at,wall_text_percent")
+    .select("carousel_percent,hook_video_percent,preference_version,reaction_percent,updated_at,wall_text_percent")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -175,6 +177,7 @@ export async function getTrendingContentMixPreference(
   const mix: TrendingContentMix = {
     carousel: data.carousel_percent,
     hook_video: data.hook_video_percent,
+    reaction: data.reaction_percent,
     wall_text: data.wall_text_percent,
   };
 
@@ -202,6 +205,7 @@ export async function saveTrendingContentMixPreference(params: {
     {
       p_carousel_percent: params.mix.carousel,
       p_hook_video_percent: params.mix.hook_video,
+      p_reaction_percent: params.mix.reaction ?? 0,
       p_user_id: params.userId,
       p_wall_text_percent: params.mix.wall_text,
     },
@@ -243,6 +247,7 @@ export async function ensureDailyTrendingFeedPlan(params: {
       p_plan_display_name: params.entitlement.displayName,
       p_plan_key: params.entitlement.planKey,
       p_preference_version: params.preference.preferenceVersion,
+      p_reaction_percent: params.preference.mix.reaction ?? 0,
       p_timezone: params.timezone,
       p_user_id: params.userId,
       p_wall_text_percent: params.preference.mix.wall_text,
@@ -283,6 +288,7 @@ export async function attachDailyTrendingAssignments(params: {
   carouselAssignmentIds: string[];
   feedId: string;
   hookVideoAssignmentIds: string[];
+  reactionAssignmentIds: string[];
   wallTextAssignmentIds: string[];
 }) {
   const { error } = await getClient().rpc(
@@ -291,6 +297,7 @@ export async function attachDailyTrendingAssignments(params: {
       p_carousel_assignment_ids: params.carouselAssignmentIds,
       p_feed_id: params.feedId,
       p_hook_video_assignment_ids: params.hookVideoAssignmentIds,
+      p_reaction_assignment_ids: params.reactionAssignmentIds,
       p_wall_text_assignment_ids: params.wallTextAssignmentIds,
     },
   );
@@ -309,6 +316,8 @@ export async function reconcileDailyTrendingFeedSlotIntegrity(params: {
   feedId: string;
   hookVideoAssignmentIds: string[];
   hookVideoProviderResolved: boolean;
+  reactionAssignmentIds: string[];
+  reactionProviderResolved: boolean;
   wallTextAssignmentIds: string[];
   wallTextProviderResolved: boolean;
 }) {
@@ -318,6 +327,8 @@ export async function reconcileDailyTrendingFeedSlotIntegrity(params: {
       p_feed_id: params.feedId,
       p_hook_video_assignment_ids: params.hookVideoAssignmentIds,
       p_hook_video_provider_resolved: params.hookVideoProviderResolved,
+      p_reaction_assignment_ids: params.reactionAssignmentIds,
+      p_reaction_provider_resolved: params.reactionProviderResolved,
       p_wall_text_assignment_ids: params.wallTextAssignmentIds,
       p_wall_text_provider_resolved: params.wallTextProviderResolved,
     },
@@ -490,7 +501,7 @@ export async function finishTrendingFeedRepair(params: {
 
 export async function markDailyTrendingFeedFormatsFailed(params: {
   feedId: string;
-  formats: Array<"carousel" | "hook_video" | "wall_text">;
+  formats: Array<"carousel" | "hook_video" | "reaction" | "wall_text">;
   message: string;
 }) {
   if (params.formats.length === 0) {
@@ -600,6 +611,7 @@ export async function replanDailyTrendingUnboundSlots(params: {
       p_feed_id: params.feedId,
       p_formats: params.formats,
       p_hook_video_percent: params.mix.hook_video,
+      p_reaction_percent: params.mix.reaction ?? 0,
       p_positions: params.positions,
       p_preference_version: params.preferenceVersion,
       p_user_id: params.userId,
@@ -690,6 +702,7 @@ function mapFeed(row: DailyFeedRow): DailyTrendingFeedRecord {
     mix: {
       carousel: row.carousel_percent,
       hook_video: row.hook_video_percent,
+      reaction: row.reaction_percent,
       wall_text: row.wall_text_percent,
     },
     planDisplayName: row.plan_display_name,
@@ -708,6 +721,7 @@ function mapSlot(row: DailySlotRow): DailyTrendingFeedSlotRecord {
     assignmentId:
       row.carousel_assignment_id ??
       row.hook_video_assignment_id ??
+      row.reaction_assignment_id ??
       row.wall_text_assignment_id,
     feedId: row.feed_id,
     format: row.format,

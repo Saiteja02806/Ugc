@@ -13,10 +13,12 @@ export const trendingFeedFormats = [
   "carousel",
   "hook_video",
   "wall_text",
+  "reaction",
 ] as const;
 
 export type TrendingFeedFormat = (typeof trendingFeedFormats)[number];
 export const trendingFeedDisplayOrder = [
+  "reaction",
   "wall_text",
   "hook_video",
   "carousel",
@@ -127,6 +129,31 @@ export type TrendingWallTextSourceRecord = TrendingWallTextCreative & {
   feedSource: TrendingFeedItemSource;
 };
 
+/**
+ * Reaction previews are final 9:16 MP4s. Unlike Wall-of-text, their caption
+ * and foreground were already flattened by the render worker, so the feed
+ * must never recreate the composite in the browser.
+ */
+export type TrendingReactionCreative = {
+  aspectRatio: "9:16";
+  caption: string;
+  clipAssetId: string;
+  durationSeconds: number;
+  mediaAssetId: string;
+  previewUrl: string;
+  primaryReaction: string;
+  thumbnailUrl: string | null;
+  title: string;
+};
+
+export type TrendingReactionSourceRecord = TrendingReactionCreative & {
+  assignmentId: string;
+  creativeId: string;
+  feedItemId: string;
+  feedPosition: number;
+  feedSource: TrendingFeedItemSource;
+};
+
 type TrendingFeedItemBase<Format extends TrendingFeedFormat> = {
   assignmentId: string;
   creativeId: string;
@@ -153,10 +180,15 @@ export type TrendingWallTextFeedItem =
     creative: TrendingWallTextCreative;
   };
 
+export type TrendingReactionFeedItem = TrendingFeedItemBase<"reaction"> & {
+  creative: TrendingReactionCreative;
+};
+
 export type TrendingFeedItem =
   | TrendingCarouselFeedItem
   | TrendingHookVideoFeedItem
-  | TrendingWallTextFeedItem;
+  | TrendingWallTextFeedItem
+  | TrendingReactionFeedItem;
 
 export type TrendingFeedProviderAvailability = {
   format: TrendingFeedFormat;
@@ -260,6 +292,16 @@ export function createWallTextTrendingFeedProvider(
   return {
     format: "wall_text",
     items: ideas.map(toWallTextTrendingFeedItem),
+    state: "ready",
+  };
+}
+
+export function createReactionTrendingFeedProvider(
+  ideas: readonly TrendingReactionSourceRecord[],
+): TrendingFeedProviderResult<TrendingReactionFeedItem> {
+  return {
+    format: "reaction",
+    items: ideas.map(toReactionTrendingFeedItem),
     state: "ready",
   };
 }
@@ -421,6 +463,34 @@ function toWallTextTrendingFeedItem(
     feedItemId,
     format: "wall_text",
     id: `wall_text:${feedItemId}`,
+    position: feedPosition,
+    readiness: "preview_ready",
+    source: feedSource,
+  };
+}
+
+function toReactionTrendingFeedItem(
+  idea: TrendingReactionSourceRecord,
+): TrendingReactionFeedItem {
+  const {
+    assignmentId,
+    creativeId,
+    feedItemId,
+    feedPosition,
+    feedSource,
+    ...creative
+  } = idea;
+
+  return {
+    assignmentId,
+    creative: {
+      ...creative,
+      aspectRatio: "9:16",
+    },
+    creativeId,
+    feedItemId,
+    format: "reaction",
+    id: `reaction:${feedItemId}`,
     position: feedPosition,
     readiness: "preview_ready",
     source: feedSource,

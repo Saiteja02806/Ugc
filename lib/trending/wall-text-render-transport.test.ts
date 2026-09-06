@@ -54,6 +54,29 @@ const CURRENT_V4_CONTENT = {
   },
 } satisfies TrendingWallTextContent;
 
+const CURRENT_V5_CONTENT = {
+  ...CURRENT_V4_CONTENT,
+  finalLayout: {
+    ...CURRENT_V4_CONTENT.finalLayout,
+    fontFamily: "Avenir Next" as const,
+    fontWeight: 600 as const,
+    version: "wall-text-final-layout-v5" as const,
+  },
+  layoutVersion: "wall-text-overlay-v9" as const,
+} satisfies TrendingWallTextContent;
+
+test("sends V5 Avenir Next through the V4-compatible rollout envelope", () => {
+  const transport = toWallTextRenderTransportContent(CURRENT_V5_CONTENT);
+
+  assert.equal(CURRENT_V5_CONTENT.finalLayout?.version, "wall-text-final-layout-v5");
+  assert.equal(transport.finalLayout?.version, "wall-text-final-layout-v4");
+  assert.equal(transport.finalLayout?.fontFamily, "Arial");
+  assert.equal(transport.finalLayout?.fontWeight, 400);
+  assert.equal(transport.layoutVersion, "wall-text-overlay-v9");
+  assert.equal(transport.fullText, CURRENT_V5_CONTENT.fullText);
+  assert.deepEqual(transport.finalLayout?.blocks, CURRENT_V5_CONTENT.finalLayout?.blocks);
+});
+
 test("sends V4 Arial Regular through the V3-compatible rollout envelope", () => {
   const transport = toWallTextRenderTransportContent(CURRENT_V4_CONTENT);
 

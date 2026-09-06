@@ -16,6 +16,7 @@ import {
   parseAIStudioVideoModel,
 } from "@/lib/ai-studio/generation-settings";
 import { isExploreHookVideoId } from "@/lib/explore/hook-video-library";
+import { isExploreWallTextVideoId } from "@/lib/explore/wall-text-video-library";
 import { FirebaseAuthRequestError } from "@/lib/firebase/server-auth";
 import {
   getBackgroundJobById,
@@ -147,7 +148,9 @@ export async function handleAIStudioVideoGeneration(request: Request) {
   const model = parseAIStudioVideoModel(body?.model);
   const durationSeconds = parseAIStudioVideoDuration(body?.durationSeconds);
   const isExploreRecreate =
-    body?.referenceType === "hook" && isExploreHookVideoId(body?.referenceId);
+    (body?.referenceType === "hook" && isExploreHookVideoId(body?.referenceId)) ||
+    (body?.referenceType === "wall_text" &&
+      isExploreWallTextVideoId(body?.referenceId));
 
   if (body?.avatarImageUrl && !avatarImageUrl) {
     return NextResponse.json(

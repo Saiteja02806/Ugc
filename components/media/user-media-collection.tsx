@@ -2080,6 +2080,7 @@ function getSourceLabel(asset: MediaAsset) {
     influencer_upload: "Your influencer",
     upload: "Your upload",
     wall_text_render: "Wall-text Reel",
+    reaction_render: "Reaction Reel",
   };
   return labels[asset.sourceType];
 }

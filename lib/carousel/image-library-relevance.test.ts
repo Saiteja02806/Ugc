@@ -4,7 +4,7 @@ import test from "node:test";
 import { buildCarouselSlideImagePlan } from "./image-library-relevance.ts";
 
 function slides(values: Partial<Record<number, string>>) {
-  return [1, 2, 3, 4, 5].map((slideNumber) => ({
+  return [1, 2, 3, 4, 5, 6].map((slideNumber) => ({
     slideNumber,
     supportingText: [],
     visibleText: [values[slideNumber] ?? `Primary message ${slideNumber}`],
@@ -27,6 +27,7 @@ test("uses food_static for a strongly food-related gym slide", () => {
       { assetRole: "human", categorySlug: "gym" },
       { assetRole: "static", categorySlug: "food" },
       { assetRole: "human", categorySlug: "gym" },
+      { assetRole: "static", categorySlug: "gym" },
       { assetRole: "static", categorySlug: "gym" },
     ],
   );
@@ -122,7 +123,7 @@ test("supports food to gym and travel to food only", () => {
   );
 });
 
-test("ignores misleading idioms and validates the five-slide contract", () => {
+test("ignores misleading idioms and validates the six-slide contract", () => {
   const plan = buildCarouselSlideImagePlan({
     carouselId: "idiom-guard",
     primaryCategory: "gym",
@@ -137,6 +138,6 @@ test("ignores misleading idioms and validates the five-slide contract", () => {
         primaryCategory: "gym",
         slides: slides({}).slice(0, 4),
       }),
-    /slide numbers 1 through 5/i,
+    /slide numbers 1 through 6/i,
   );
 });

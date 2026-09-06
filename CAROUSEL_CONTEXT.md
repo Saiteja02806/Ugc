@@ -37,6 +37,21 @@ optional caption, provider settings, and publish time. Library opens the same
 modal directly for server-backed items. Normal Carousel scheduling must not
 navigate to the Scheduling page.
 
+### Unified Trending post scheduling UI
+
+Ready-to-post Trending formats use one shared Instagram scheduling shell:
+`Post`, `Account`, `Details`, then `Publish`. Carousel and Slideshow content
+enter with the complete post already selected and retain their optional caption;
+Wall-of-Text enters the same shell as a Text Reel, retains the same optional
+caption, and shows only a compact preview and the publication settings instead
+of repeating the full on-screen copy inside the scheduling UI. Its durable
+schedule is still saved before the background render begins. Hook videos remain
+separate because they must collect and combine a demo video before scheduling.
+
+The shared picker can add or reconnect an Instagram account from a Wall-of-Text
+schedule without requiring a Carousel Library item. Carousel scheduling keeps
+its existing Library ownership verification for OAuth and publishing.
+
 The scheduling backend stores server-backed `scheduled_posts` and
 `scheduled_post_targets` rows and creates delayed GCP Cloud Tasks for connected
 social accounts. Scheduler payloads contain only `{ version, targetId }`;
@@ -76,9 +91,10 @@ Instagram OAuth distinguishes adding an account from reconnecting one. Adding
 must never revoke or replace another connection. Reconnect sessions persist the
 selected `social_connections.id`, and the callback must verify that the returned
 Instagram account ID matches that connection before updating credentials. Both
-Settings and the inline account picker expose Add another account; the picker
-may select up to five exact Instagram connections, with each selected account
-remaining a separate publish target.
+Settings and the inline account picker expose Add another account. Active
+entitlements cap connected Instagram accounts at one for Free, three for
+Starter, and five for Growth; the picker may select up to five exact connected
+accounts, with each selected account remaining a separate publish target.
 
 The modal flow is Step 1 action choice, Step 2 exact account selection, Step 3
 optional caption and provider settings, and Step 4 ASAP or later scheduling.
@@ -4083,3 +4099,70 @@ Name: **Verify v26 and replace the stale production assignment**
   row reserves the card's full promoted 9:16 height—not only its smaller
   resting-preview height—so the media cannot overlap Reject or Accept while
   the swipe transition is in progress.
+
+## 2026-09-05 Six-Slide Carousel Core Flow
+
+- This decision supersedes earlier five-slide Carousel statements in this
+  document. New automatic Carousel generations require exactly six ordered
+  slides; existing rendered five-slide carousels remain immutable and usable.
+- Structure 1 remains the educational/list family: reader-first cover, four
+  useful value slides, then a useful takeaway or CTA. Its source JSON retains
+  five reusable base definitions, but the runtime expands them to the required
+  six-slide contract before planning, image reservation, rendering, and
+  persistence.
+- Structure 2 is the strict product-story family: reader-first cover, reader
+  problem, realization, grounded product mechanism, modest proof or result,
+  then takeaway or CTA. Slides 1-5 cannot carry CTA text; the final slide may
+  use a natural CTA or a useful stand-alone takeaway.
+- The writing prompt directs the first slide toward a reader-first reason to
+  swipe (specific benefit, tension, mistake, contrast, or curiosity gap), but
+  this is creative guidance rather than a hard validator rule. The validator
+  must not reject a valid cover merely because it begins as a personal story or
+  cannot mechanically prove audience attention. It continues to enforce the
+  objective contract: present copy, six ordered slides, exact roles, CTA
+  placement, claim safety, and fixed text fit. The cover uses a larger fixed
+  text treatment and a tighter line limit so the hook—not the background
+  photo—leads the slide.
+- Slide 6 always reserves a static visual slot. When a ready, approved user
+  app screenshot exists, the reservation function places that product asset in
+  the final slot; otherwise the normal approved static-image pool supplies the
+  visual. It must never fall back to an unrelated lifestyle/human slot.
+- The white SVG remains heading-only for Structure 1. It is not activated by a
+  hook image and the planner must not manufacture headings just to obtain the
+  treatment. Structure 2 has no heading field, so its story and CTA text remain
+  direct-white text on the image.
+- The agreed reader-problem/product-capability/proof questions are deliberately
+  not a separate semantic gate in this release. The core flow is enforced and
+  tested first; a later decision can add that stricter quality gate without
+  changing the slide contract.
+- In the Trending review deck, only the 4:5 Carousel/Slideshow review frame
+  grows to a 300px maximum width (375px high at its fixed 4:5 ratio). Its
+  existing viewport-height safeguard remains in place. Hook and Wall-of-Text
+  cards keep their separate 9:16 responsive frame and are not resized.
+
+## 2026-09-06 Slide 1 Hook Reliability and Structure 2 Batch Keys
+
+- Structure 2 has two intentionally separate position-key sets: five batch
+  keys (`first` through `fifth`) name the independently planned Carousels in a
+  worker request; six slide keys (`first` through `sixth`) name the slides
+  inside one Carousel. Batch messages, schema, and parsing use only the
+  five-key set, while individual story-plan parsing and rendering use the
+  six-key set. This prevents a six-slide Carousel from incorrectly requiring a
+  sixth batch assignment.
+- Structure 2 Slide 1 uses the explicit `reader_first` perspective. It may
+  address the reader directly (including `you` / `your`) and must create a
+  reason to swipe. Slides 2-5 retain their existing first-person story rules,
+  so the reader-first cover does not weaken the product-story sequence.
+- Structure 1 records an advisory-only `hook_quality` diagnostic when Slide 1
+  lacks a recognizable tension, outcome, contrast, mistake, useful promise,
+  or curiosity signal. It never blocks publication or triggers a repair by
+  itself: creative resonance cannot be proven mechanically. Structural safety,
+  claim safety, repetition checks, and fixed-layout fit remain blocking.
+- When a real Slide 1 render-fit failure does require repair, both structures'
+  repair prompts now state the three-line display constraint and its actual
+  type size (Structure 1: 60px for `single_statement`, otherwise 44px;
+  Structure 2: 60px). The repair must replace the overflowing cover with
+  shorter copy rather than add a repeating headline.
+- The live Carousel planner audit script passes the required
+  `businessDescription` string to the Structure 2 planner, allowing the normal
+  live audit to exercise its production-shaped input.

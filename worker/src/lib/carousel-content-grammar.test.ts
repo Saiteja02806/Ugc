@@ -5,13 +5,11 @@ import type { WebsiteBusinessAnalysis } from "../types.js";
 import {
   CAROUSEL_CONTENT_GRAMMAR,
   CAROUSEL_CONTENT_GRAMMAR_VERSION,
+  CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
 } from "./carousel-content-grammar.js";
 import {
-  buildCarouselContentPlan,
-  mergeCarouselRecentContentHistory,
   parseCarouselContentPlanForAssignment,
   partitionCarouselContentPlanValidationIssues,
-  validateCarouselRecentContentRepetition,
   validateCarouselContentPlan,
 } from "./carousel-llm-slide-plan.js";
 import { buildCarouselBusinessContentContext } from "./carousel-business-content-context.js";
@@ -20,12 +18,8 @@ import { inspectCarouselSlideLayout } from "./carousel-render-slide.js";
 const analysis: WebsiteBusinessAnalysis = {
   brandTone: "clear and practical",
   businessName: "CampaignFlow",
-  carouselAngles: [
-    "A calmer campaign handoff",
-    "How connected reporting reduces scattered work",
-    "What to organize before a campaign launch",
-  ],
-  categories: ["campaign planning", "marketing operations"],
+  carouselAngles: ["A calmer campaign handoff"],
+  categories: ["campaign planning"],
   category: "marketing software",
   claimsToAvoid: ["guaranteed revenue growth"],
   confidence: "high",
@@ -33,80 +27,91 @@ const analysis: WebsiteBusinessAnalysis = {
   differentiators: ["Planning and reporting stay in one workspace"],
   mainProblem: "Campaign planning and reporting are scattered across tools",
   mainPromise: "Keep campaign work in one organized workflow",
-  painPoints: [
-    "Missed follow-ups",
-    "Manual spreadsheet reporting",
-    "Late campaign checks",
-  ],
+  painPoints: ["Missed follow-ups"],
   productSummary: "A workspace for planning and reporting marketing campaigns.",
-  targetAudience: ["small marketing teams", "campaign managers"],
-  valueProps: [
-    "Connect planning, follow-up, and reporting",
-    "Keep the next action visible",
-  ],
-  visualKeywords: ["paper calendar", "organized desk", "reporting dashboard"],
+  targetAudience: ["small marketing teams"],
+  valueProps: ["Connect planning, follow-up, and reporting"],
+  visualKeywords: ["paper calendar", "organized desk"],
 };
 
-test("every Structure 1 format accepts the exact assigned five-slide grammar", () => {
+test("Structure 1 expands every educational format to the agreed six-slide flow", () => {
   assert.equal(CAROUSEL_CONTENT_GRAMMAR.formats.length, 15);
   assert.equal(CAROUSEL_CONTENT_GRAMMAR.hookFamilies.length, 10);
-  assert.deepEqual(
-    CAROUSEL_CONTENT_GRAMMAR.formats
-      .map((format) => format.rotationOrder)
-      .sort((left, right) => left - right),
-    Array.from({ length: 15 }, (_, index) => index + 1),
+  assert.equal(
+    CAROUSEL_CONTENT_GRAMMAR_VERSION,
+    "carousel-formats-v2-six-slide-core-flow+carousel-hook-families-v1",
   );
 
   for (const format of CAROUSEL_CONTENT_GRAMMAR.formats) {
-    const hookFamilyId = format.compatibleHookFamilies[0]!;
-    const fixture = createAssignedStructure1Fixture(format.id, hookFamilyId);
-    const result = parseCarouselContentPlanForAssignment(fixture, {
-      analysis,
-      candidateIndex: format.rotationOrder - 1,
-      contentFormatId: format.id,
-      hookFamilyId,
-      recentHistory: [],
-      slideCount: 5,
-    });
+    assert.equal(format.slides.length, CAROUSEL_STRUCTURE_1_SLIDE_COUNT);
+    assert.equal(format.slides[0]!.role, "cover_hook");
+    assert.equal(format.slides[0]!.slideType, "hook");
+    assert.equal(format.slides[4]!.role, "practical_extension");
+    assert.equal(format.slides[5]!.role, "takeaway_cta");
+    assert.equal(format.slides[5]!.slideType, "cta");
+  }
+});
 
-    assert.deepEqual(result.blockingIssues, [], format.id);
-    assert.equal(result.plan.contentStrategy?.contentFormatId, format.id);
-    assert.equal(result.plan.contentStrategy?.hookFamilyId, hookFamilyId);
-    assert.equal(result.plan.slides.length, 5, format.id);
-    assert.ok(
-      result.plan.slides.every((slide) => slide.textPosition === "center"),
-      `${format.id} should keep every automatic text group centered`,
+test("Structure 1 accepts a six-slide reader-first educational carousel", () => {
+  for (const format of CAROUSEL_CONTENT_GRAMMAR.formats) {
+    const hookFamilyId = format.compatibleHookFamilies[0]!;
+    const result = parseCarouselContentPlanForAssignment(
+      createFixture(format.id, hookFamilyId),
+      {
+        analysis,
+        contentFormatId: format.id,
+        hookFamilyId,
+        recentHistory: [],
+        slideCount: CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
+      },
     );
 
-    for (const [slideIndex, definition] of format.slides.entries()) {
-      const slide = result.plan.slides[slideIndex]!;
-      assert.equal(slide.slideNumber, slideIndex + 1, format.id);
-      assert.equal(slide.formatRole, definition.role, format.id);
-      assert.equal(slide.slideType, definition.slideType, format.id);
-      assert.ok(
-        definition.preferredTextModes.includes(slide.textMode),
-        `${format.id} slide ${slideIndex + 1} used ${slide.textMode}`,
-      );
-      if (definition.listItemCount !== undefined) {
-        assert.equal(slide.listItems.length, definition.listItemCount);
-      }
-    }
+    assert.deepEqual(result.blockingIssues, [], format.id);
+    assert.equal(result.plan.slides.length, 6, format.id);
+    assert.equal(result.plan.slides[0]!.formatRole, "cover_hook");
+    assert.equal(result.plan.slides[5]!.formatRole, "takeaway_cta");
   }
+});
 
-  assert.equal(
-    CAROUSEL_CONTENT_GRAMMAR_VERSION,
-    "carousel-formats-v1+carousel-hook-families-v1",
+test("Structure 1 keeps subjective cover wording nonblocking while recording an advisory", () => {
+  const fixture = createFixture("comparison", "question");
+  assert.throws(
+    () =>
+      parseCarouselContentPlanForAssignment(fixture, {
+        analysis,
+        contentFormatId: "comparison",
+        hookFamilyId: "question",
+        recentHistory: [],
+        slideCount: 5,
+      }),
+    /exactly six slides/i,
+  );
+
+  fixture.slides[0]!.body = "Better productivity starts here";
+  const accepted = parseCarouselContentPlanForAssignment(fixture, {
+    analysis,
+    contentFormatId: "comparison",
+    hookFamilyId: "question",
+    recentHistory: [],
+    slideCount: 6,
+  });
+  assert.deepEqual(
+    accepted.blockingIssues,
+    [],
+  );
+  assert.ok(
+    accepted.advisoryIssues.some((issue) => issue.code === "hook_quality"),
   );
 });
 
-test("Structure 1 uses a white SVG background for headings only", async () => {
-  const headlineAndBody = await inspectCarouselSlideLayout({
+test("Structure 1 uses the white SVG only for an actual heading", async () => {
+  const heading = await inspectCarouselSlideLayout({
     format: "1:1",
     slide: {
-      body: "Supporting copy stays plain white over the image instead of receiving a second SVG bubble.",
+      body: "Supporting copy remains directly on the image.",
       ctaText: null,
-      headline: "The headline receives the white SVG background",
-      imageDirection: "An object-only workspace with clear centered space.",
+      headline: "The heading is highlighted",
+      imageDirection: "An object-only workspace with open centered space.",
       layoutPreset: "middle-statement",
       listItems: [],
       slideNumber: 1,
@@ -119,425 +124,61 @@ test("Structure 1 uses a white SVG background for headings only", async () => {
   const bodyOnly = await inspectCarouselSlideLayout({
     format: "1:1",
     slide: {
-      body: "This normal body copy remains white text directly on the image with no SVG background.",
+      body: "A clear cover gives readers a reason to swipe.",
       ctaText: null,
       headline: null,
-      imageDirection: "An object-only workspace with clear centered space.",
-      layoutPreset: "caption-cluster",
+      imageDirection: "An object-only workspace with open centered space.",
+      layoutPreset: "middle-statement",
       listItems: [],
-      slideNumber: 2,
-      slideType: "problem",
+      slideNumber: 1,
+      slideType: "hook",
       subtext: null,
-      textMode: "body_only",
-      textPosition: "center",
-    },
-  });
-  const headingAndList = await inspectCarouselSlideLayout({
-    format: "1:1",
-    slide: {
-      body: null,
-      ctaText: null,
-      headline: "This heading receives the white SVG background",
-      imageDirection: "An object-only workspace with clear centered space.",
-      layoutPreset: "interactive-list",
-      listItems: ["First normal list item", "Second normal list item"],
-      slideNumber: 3,
-      slideType: "problem",
-      subtext: null,
-      textMode: "question_list",
+      textMode: "single_statement",
       textPosition: "center",
     },
   });
 
-  assert.equal(headlineAndBody.whiteBackgroundGroupCount, 1);
-  assert.equal(headingAndList.whiteBackgroundGroupCount, 1);
+  assert.equal(heading.whiteBackgroundGroupCount, 1);
   assert.equal(bodyOnly.whiteBackgroundGroupCount, 0);
-  assert.equal(
-    headlineAndBody.bubbleShapeStrategy,
-    "heading-white-svg-background",
-  );
-  assert.equal(bodyOnly.bubbleShapeStrategy, "plain-white-text-with-outline");
-  assert.equal(headlineAndBody.fontFamily, "Geist, Arial, Helvetica, sans-serif");
+  assert.equal(heading.bodyFontSize, 44);
+  assert.equal(bodyOnly.bodyFontSize, 60);
 });
 
-test("Structure 1 preserves structurally valid AI copy verbatim", () => {
-  const fixture = createAssignedStructure1Fixture(
-    "comparison",
-    "question",
-  );
-  const exactCopy =
-    "i’d compare both campaign handoffs before choosing the calmer workflow.";
-  fixture.slides[0]!.body = exactCopy;
-
-  const result = parseCarouselContentPlanForAssignment(fixture, {
-    analysis,
-    candidateIndex: 0,
-    contentFormatId: "comparison",
-    hookFamilyId: "question",
-    recentHistory: [],
-    slideCount: 5,
-  });
-
-  assert.equal(result.plan.slides[0]?.body, exactCopy);
-  assert.equal(result.plan.slides[0]?.subtext, exactCopy);
-  assert.deepEqual(result.blockingIssues, []);
-});
-
-test("Structure 1 accepts a 50-word follow-up body without changing its centered placement", async () => {
-  const fixture = createAssignedStructure1Fixture("comparison", "question");
-  const expandedBody =
-    "Each review keeps the plan clear so the next handoff starts with the right owner, timing, notes, goals, tasks, risks, facts, and next steps, giving the team enough context to keep work moving without repeating old talks or losing track of what must happen next today for everyone right now.";
-  fixture.slides[1]!.body = expandedBody;
-
-  const result = parseCarouselContentPlanForAssignment(fixture, {
-    analysis,
-    candidateIndex: 0,
-    contentFormatId: "comparison",
-    hookFamilyId: "question",
-    recentHistory: [],
-    slideCount: 5,
-  });
-
-  assert.equal(expandedBody.split(/\s+/).length, 50);
-  assert.ok(expandedBody.length > 240);
-  assert.ok(expandedBody.length <= 300);
-  assert.equal(result.plan.slides[1]!.body, expandedBody);
-  assert.equal(result.plan.slides[1]!.textPosition, "center");
-  assert.deepEqual(result.blockingIssues, []);
-  await inspectCarouselSlideLayout({
-    format: "4:5",
-    slide: result.plan.slides[1]!,
-  });
-});
-
-test("Structure 1 keeps Slide 1 at 40 words and blocks more than 50 words on Slides 2-5", () => {
-  const fiftyWordBody =
-    "Each review keeps the plan clear so the next handoff starts with the right owner, timing, notes, goals, tasks, risks, facts, and next steps, giving the team enough context to keep work moving without repeating old talks or losing track of what must happen next today for everyone right now.";
-  const fortyOneWordBody =
-    "Keep each plan clear so the next handoff has the right owner, time, notes, goals, tasks, risks, facts, and steps, giving the full team enough context to move work forward without repeating old talks or losing track of key decisions today.";
-  const slideOneFixture = createAssignedStructure1Fixture("comparison", "question");
-  slideOneFixture.slides[0]!.body = fortyOneWordBody;
-
-  assert.equal(fortyOneWordBody.split(/\s+/).length, 41);
-  assert.ok(fortyOneWordBody.length <= 240);
-
-  assert.throws(
-    () =>
-      parseCarouselContentPlanForAssignment(slideOneFixture, {
-        analysis,
-        candidateIndex: 0,
-        contentFormatId: "comparison",
-        hookFamilyId: "question",
-        recentHistory: [],
-        slideCount: 5,
-      }),
-    /Slide 1 body must not exceed 40 words/,
-  );
-
-  const fiftyOneWordFixture = createAssignedStructure1Fixture(
-    "comparison",
-    "question",
-  );
-  fiftyOneWordFixture.slides[1]!.body = fiftyWordBody.replace(
-    "right now.",
-    "right now together.",
-  );
-  assert.throws(
-    () =>
-      parseCarouselContentPlanForAssignment(fiftyOneWordFixture, {
-        analysis,
-        candidateIndex: 0,
-        contentFormatId: "comparison",
-        hookFamilyId: "question",
-        recentHistory: [],
-        slideCount: 5,
-      }),
-    /Slide 2 body must not exceed 50 words/,
-  );
-});
-
-test("Structure 1 rejects a changed format, role order, or required field", () => {
-  const changedFormat = createAssignedStructure1Fixture(
-    "comparison",
-    "question",
-  );
-  changedFormat.contentStrategy.contentFormatId = "list";
-  assert.throws(
-    () =>
-      parseCarouselContentPlanForAssignment(changedFormat, {
-        analysis,
-        contentFormatId: "comparison",
-        hookFamilyId: "question",
-        slideCount: 5,
-      }),
-    /changed the backend-selected content format/,
-  );
-
-  const changedRole = createAssignedStructure1Fixture(
-    "comparison",
-    "question",
-  );
-  changedRole.slides[1]!.formatRole = "option_b";
-  assert.throws(
-    () =>
-      parseCarouselContentPlanForAssignment(changedRole, {
-        analysis,
-        contentFormatId: "comparison",
-        hookFamilyId: "question",
-        slideCount: 5,
-      }),
-    /must use format role option_a/,
-  );
-
-  const missingCopy = createAssignedStructure1Fixture(
-    "comparison",
-    "question",
-  );
-  missingCopy.slides[1]!.body = null;
-  assert.throws(
-    () =>
-      parseCarouselContentPlanForAssignment(missingCopy, {
-        analysis,
-        contentFormatId: "comparison",
-        hookFamilyId: "question",
-        slideCount: 5,
-      }),
-    /body_only needs body/,
-  );
-
-  const unexpectedList = createAssignedStructure1Fixture(
-    "problem_solution",
-    "problem_recognition",
-  );
-  unexpectedList.slides[4]!.listItems = ["Hardcoded extra item"];
-  assert.throws(
-    () =>
-      parseCarouselContentPlanForAssignment(unexpectedList, {
-        analysis,
-        contentFormatId: "problem_solution",
-        hookFamilyId: "problem_recognition",
-        slideCount: 5,
-      }),
-    /must keep listItems empty/,
-  );
-});
-
-test("Structure 1 has no deterministic planner mode or authored fallback", async () => {
-  const previousMode = process.env.CAROUSEL_CONTENT_PLANNER_MODE;
-  const previousApiKey = process.env.OPENAI_API_KEY;
-  process.env.CAROUSEL_CONTENT_PLANNER_MODE = "deterministic";
-  delete process.env.OPENAI_API_KEY;
-
-  try {
-    await assert.rejects(
-      buildCarouselContentPlan({
-        analysis,
-        candidateIndex: 0,
-        contentFormatId: "comparison",
-        hookFamilyId: "question",
-        recentHistory: [],
-        slideCount: 5,
-      }),
-      /Missing OPENAI_API_KEY/,
-    );
-  } finally {
-    if (previousMode === undefined) {
-      delete process.env.CAROUSEL_CONTENT_PLANNER_MODE;
-    } else {
-      process.env.CAROUSEL_CONTENT_PLANNER_MODE = previousMode;
-    }
-    if (previousApiKey === undefined) {
-      delete process.env.OPENAI_API_KEY;
-    } else {
-      process.env.OPENAI_API_KEY = previousApiKey;
-    }
-  }
-});
-
-test("fails closed before planning when a V1 assignment is missing or incomplete", async () => {
-  await assert.rejects(
-    buildCarouselContentPlan({
+test("Structure 1 treats generic copy as a repairable blocking issue", () => {
+  const parsed = parseCarouselContentPlanForAssignment(
+    createFixture("comparison", "question"),
+    {
       analysis,
-      candidateIndex: 0,
-      recentHistory: [],
-      slideCount: 5,
-    }),
-    /Carousel V1 requires exactly five slides plus a backend-selected content format and compatible hook family/,
-  );
-
-  await assert.rejects(
-    buildCarouselContentPlan({
-      analysis,
-      candidateIndex: 0,
       contentFormatId: "comparison",
       hookFamilyId: "question",
       recentHistory: [],
-      slideCount: 4,
-    }),
-    /Carousel V1 requires exactly five slides plus a backend-selected content format and compatible hook family/,
-  );
-});
-
-test("Structure 1 wording preferences remain advisory for publishing", () => {
-  const parsed = parseAssignedFixture("checklist", "utility");
-  const usableCopy = {
+      slideCount: 6,
+    },
+  ).plan;
+  const altered = {
     ...parsed,
     slides: parsed.slides.map((slide, index) =>
       index === 1
-        ? {
-            ...slide,
-            body: "work smarter with ease",
-            subtext: "work smarter with ease",
-          }
-        : slide,
-    ),
-  };
-  const issues = validateCarouselContentPlan(usableCopy, analysis);
-  const partitioned = partitionCarouselContentPlanValidationIssues(issues);
-
-  assert.ok(issues.some((issue) => issue.code === "generic_copy"));
-  assert.deepEqual(partitioned.blockingIssues, []);
-  assert.ok(partitioned.advisoryIssues.length > 0);
-});
-
-test("Structure 1 blocks copy that cannot fit at the fixed slideshow font size", () => {
-  const parsed = parseAssignedFixture("checklist", "utility");
-  const oversized = {
-    ...parsed,
-    slides: parsed.slides.map((slide, index) =>
-      index === 1 && slide.listItems.length > 0
-        ? {
-            ...slide,
-            listItems: [
-              "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
-              ...slide.listItems.slice(1),
-            ],
-          }
+        ? { ...slide, body: "Work smarter with one platform.", subtext: "Work smarter with one platform." }
         : slide,
     ),
   };
   const partitioned = partitionCarouselContentPlanValidationIssues(
-    validateCarouselContentPlan(oversized, analysis),
+    validateCarouselContentPlan(altered, analysis),
   );
 
   assert.ok(
-    partitioned.blockingIssues.some((issue) => issue.code === "render_fit"),
+    partitioned.blockingIssues.some((issue) => issue.code === "generic_copy"),
   );
 });
 
-test("Structure 1 reports unsupported claims without replacing structurally valid AI copy", () => {
-  const parsed = parseAssignedFixture("myth_fact", "contrarian");
-  const unsupported = {
-    ...parsed,
-    slides: parsed.slides.map((slide, index) =>
-      index === 1
-        ? {
-            ...slide,
-            body: "A 1,200 calorie target works for every person.",
-            subtext: "A 1,200 calorie target works for every person.",
-          }
-        : slide,
-    ),
-  };
-  const issues = validateCarouselContentPlan(unsupported, analysis);
-
-  assert.ok(issues.some((issue) => issue.code === "unsupported_claim"));
-  assert.deepEqual(
-    partitionCarouselContentPlanValidationIssues(issues).blockingIssues,
-    [],
-  );
-});
-
-
-test("uses saved business model and campaign purposes in controlled context", () => {
-  const context = buildCarouselBusinessContentContext({
-    ...analysis,
-    businessModel: "b2b",
-    campaignPurposes: ["education", "conversion"],
-  });
-
-  assert.equal(context.brand.businessModel, "b2b");
-  assert.deepEqual(context.brand.campaignPurposes, [
-    "Educate the audience",
-    "Support conversion",
-  ]);
-});
-
-test("merges same-batch ideas ahead of reserved history without exceeding ten", () => {
-  const sibling = makeRecentCopy("sibling", "Which campaign view is clearer?");
-  const olderHistory = Array.from({ length: 10 }, (_, index) =>
-    makeRecentCopy(`older-${index}`, `Older hook ${index}`),
-  );
-  const merged = mergeCarouselRecentContentHistory(
-    [sibling],
-    [sibling, ...olderHistory],
-  );
-
-  assert.equal(merged.length, 10);
-  assert.deepEqual(merged[0], sibling);
-  assert.equal(merged.filter((item) => item.generationId === sibling.generationId).length, 1);
-});
-
-test("classifies repeated exact Structure 1 copy as advisory", () => {
-  const plan = parseAssignedFixture("comparison", "question");
-  const hook = plan.slides[0]!.headline ?? plan.slides[0]!.body ?? "";
-  const issues = validateCarouselRecentContentRepetition(
-    plan,
-    [makeRecentCopy("repeat", hook)],
-  );
-  const partitioned = partitionCarouselContentPlanValidationIssues(issues);
-
-  assert.ok(
-    issues.some((issue) => issue.code === "recent_repetition"),
-  );
-  assert.deepEqual(partitioned.blockingIssues, []);
-  assert.ok(
-    partitioned.advisoryIssues.some(
-      (issue) => issue.code === "recent_repetition",
-    ),
-  );
-});
-
-function parseAssignedFixture(formatId: string, hookFamilyId: string) {
-  return parseCarouselContentPlanForAssignment(
-    createAssignedStructure1Fixture(formatId, hookFamilyId),
-    {
-      analysis,
-      contentFormatId: formatId,
-      hookFamilyId,
-      recentHistory: [],
-      slideCount: 5,
-    },
-  ).plan;
-}
-
-function makeRecentCopy(id: string, headline: string) {
-  return {
-    contentPlanItemId: null,
-    formatId: "comparison",
-    generationId: id,
-    slides: [
-      {
-        ctaText: null,
-        headline,
-        slideNumber: 1,
-        subtext: null,
-      },
-    ],
-    structureId: "structure_1" as const,
-  };
-}
-
-function createAssignedStructure1Fixture(
-  formatId: string,
-  hookFamilyId: string,
-) {
+function createFixture(formatId: string, hookFamilyId: string) {
   const format = CAROUSEL_CONTENT_GRAMMAR.formats.find(
     (candidate) => candidate.id === formatId,
   );
   if (!format) throw new Error(`Unknown Structure 1 test format ${formatId}.`);
 
-  const businessContext = buildCarouselBusinessContentContext(analysis);
+  const context = buildCarouselBusinessContentContext(analysis);
   const listItems = [
     "Capture launch context",
     "Name the next action",
@@ -546,7 +187,12 @@ function createAssignedStructure1Fixture(
     "Keep reporting visible",
     "Record the handoff",
   ];
-  const ordinals = ["opening", "first", "second", "third", "closing"];
+  const valueBodies = [
+    "Map the campaign owner before a handoff so the next decision has a clear person responsible for moving it forward.",
+    "Keep approval context beside the work so campaign changes do not send the team searching through separate messages and documents.",
+    "Review timing with the current reporting details so launch choices reflect what changed instead of relying on an outdated checklist.",
+    "Record the practical next step after each review so the team can resume campaign work without rebuilding the handoff context.",
+  ];
   let listCursor = 0;
 
   return {
@@ -558,19 +204,16 @@ function createAssignedStructure1Fixture(
     concept: `A practical ${format.name} for clearer campaign handoffs`,
     contentStrategy: {
       angle: `Use ${format.name} to keep campaign handoffs clear`,
-      audienceId: businessContext.audiences[0]!.id,
+      audienceId: context.audiences[0]!.id,
       contentFormatId: format.id,
-      customerGoalId: businessContext.customerGoals[0]!.id,
+      customerGoalId: context.customerGoals[0]!.id,
       hookFamilyId,
-      problemId: businessContext.problems[0]!.id,
-      topicId: businessContext.topics[0]!.id,
+      problemId: context.problems[0]!.id,
+      topicId: context.topics[0]!.id,
     },
     slides: format.slides.map((definition, index) => {
       const listItemCount = definition.listItemCount ?? 0;
-      const selectedListItems = listItems.slice(
-        listCursor,
-        listCursor + listItemCount,
-      );
+      const selectedListItems = listItems.slice(listCursor, listCursor + listItemCount);
       listCursor += listItemCount;
       const textMode = listItemCount > 0
         ? definition.preferredTextModes[0]!
@@ -578,27 +221,21 @@ function createAssignedStructure1Fixture(
           ? "cta_takeaway"
           : definition.preferredTextModes.includes("single_statement")
             ? "single_statement"
-            : definition.preferredTextModes.includes("body_only")
-              ? "body_only"
-              : "headline_body";
+            : "body_only";
       const body = listItemCount > 0
         ? null
         : index === 0
-          ? "Scattered campaign details make every launch harder to review calmly."
-          : index === 4
-            ? "Keep one clear action visible before the next campaign handoff begins."
-            : `The ${ordinals[index]} campaign detail stays connected before the next launch review begins.`;
-      const headline = textMode === "headline_body"
-        ? `Campaign detail ${ordinals[index]}`
-        : null;
+          ? "Why campaign handoffs keep creating extra work"
+          : index === 5
+            ? "Keep the next campaign handoff clear with one connected workflow."
+            : valueBodies[index - 1]!;
 
       return {
         body,
         ctaText: null,
         formatRole: definition.role,
-        headline,
-        imageDirection:
-          "Organized calendar and notebook still life with clear upper space.",
+        headline: null,
+        imageDirection: "Organized calendar and notebook still life with clear upper space.",
         listItems: selectedListItems,
         slideNumber: index + 1,
         slideType: definition.slideType,

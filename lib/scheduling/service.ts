@@ -109,6 +109,7 @@ const directScheduledVideoSourceTypes = new Set([
   "generated_video",
   "edit_export",
   "wall_text_render",
+  "reaction_render",
 ]);
 const directScheduledVideoCollections = new Set(["influencer", "video"]);
 const creativeAssetHookVideoSourceTypes = new Set([

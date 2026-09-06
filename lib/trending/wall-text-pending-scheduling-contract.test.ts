@@ -37,7 +37,7 @@ test("permits a real MP4-free Wall pending source and nothing else", () => {
 test("opens Wall scheduling without the old preparation gate", () => {
   const wallScheduleSection =
     workspace.match(
-      /async function handleScheduleWallText\(\)[\s\S]+?async function confirmWallTextSchedule/,
+      /async function handleScheduleWallText\(\)[\s\S]+?\n  return \(/,
     )?.[0] ?? "";
 
   assert.doesNotMatch(wallScheduleSection, /saveWallTextDraft\(/);
@@ -49,7 +49,15 @@ test("opens Wall scheduling without the old preparation gate", () => {
     /actionHref: `\/scheduling\?draft=\$\{encodeURIComponent\(schedule\.id\)\}`/,
   );
   assert.match(workspace, /actionLabel: "View Scheduling"/);
-  assert.match(workspace, /message: "Scheduled ·"/);
+  assert.match(
+    workspace,
+    /message: "Scheduled\. Your Text Reel is being prepared\."/,
+  );
+  assert.match(
+    workspace,
+    /contentType: "wall_text"[\s\S]*returnTo: "accounts"/,
+  );
+  assert.doesNotMatch(workspace, /HookVideoScheduleDrawer/);
 });
 
 test("saves the pending schedule before server-side background render delivery", () => {
@@ -63,10 +71,12 @@ test("saves the pending schedule before server-side background render delivery",
   );
   assert.match(routeBody, /schedule: pending\.schedule/);
   assert.match(routeBody, /kind: "wall_text_pending"/);
+  assert.match(routeBody, /caption: parsed\.data\.caption \?\? ""/);
   assert.match(routeBody, /plannedTargets: parsed\.data\.targets/);
   assert.match(routeBody, /useDefaultScheduleTime: parsed\.data\.useDefaultScheduleTime/);
   assert.match(routeBody, /wallTextRenderStatus: "not_requested"/);
   assert.match(workspace, /createWallTextScheduleRequest/);
+  assert.match(workspace, /caption: params\.selection\.caption/);
   assert.doesNotMatch(workspace, /startPendingWallTextRender/);
   assert.match(
     renderStarter,

@@ -84,6 +84,31 @@ test("Reaction brief validation derives the caption from the rendered lines", ()
   assert.equal(brief?.content.caption, "When the task finally makes sense");
 });
 
+test("Reaction brief validation identifies an incompatible reaction and emotion safely", () => {
+  assert.throws(
+    () => validateReactionBriefBatch({
+      briefs: [{
+        content: {
+          caption: "When the task finally makes sense",
+          emotion: "relief",
+          languageFormat: "when",
+          lines: ["When the task", "finally makes sense"],
+          semantic: {
+            expectation: "The task stays confusing",
+            reality: "It finally makes sense",
+            structure: "expectation_reality",
+          },
+          visualContextTags: ["office"],
+          visualTreatment: "outlined_text",
+        },
+        preferredReactions: ["shock"],
+        slotIndex: 0,
+      }],
+    }, palette, 1),
+    /primary reaction shock is incompatible with emotion relief/u,
+  );
+});
+
 test("invalid model briefs have bounded repair attempts before the job fails", () => {
   assert.equal(MAX_REACTION_BRIEF_GENERATION_ATTEMPTS, 3);
 });

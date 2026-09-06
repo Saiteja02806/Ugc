@@ -223,7 +223,7 @@ async function generateAndValidateBriefs(params: {
           role: "user",
           content: buildBriefPrompt({
             ...params,
-            retryingAfterValidationFailure: attempt > 1,
+            validationFeedback: lastValidationError?.message ?? null,
           }),
         },
       ],
@@ -259,15 +259,15 @@ function buildBriefPrompt(params: {
   context: ReactionGenerationContext;
   palette: ReturnType<typeof buildAvailabilityPalette>;
   requestedCount: number;
-  retryingAfterValidationFailure?: boolean;
+  validationFeedback?: string | null;
 }) {
   return [
     `Generate exactly ${params.requestedCount} varied Reaction Reel briefs, with slotIndex 0 through ${params.requestedCount - 1}.`,
     "Each caption is a recognizable human moment, never an advertisement or CTA. Keep caption and lines word-for-word equivalent. Use 5-20 total words across 1-3 lines.",
     "semantic must use the exact beat names for its structure: situation_payoff uses situation/payoff; expectation_reality uses expectation/reality; comparison uses left/right; action_realization uses action/realization; setup_escalation uses setup/escalation. Do not use role contrast or character labels in V1.",
     "preferredReactions must have 1-3 controlled intents, strongest first. Do not repeat primary intent if relevant alternatives exist.",
-    params.retryingAfterValidationFailure
-      ? "Your previous draft failed validation. Recheck that lines joined with single spaces exactly equal caption, each caption has 5-20 words, semantic fields match its structure, and the primary reaction fits the selected emotion."
+    params.validationFeedback
+      ? `Your previous draft failed deterministic validation: ${params.validationFeedback} Correct that exact constraint in every brief. Use the rendered lines as the caption, keep captions 5-20 words, avoid product or CTA language, and make each primary reaction compatible with its emotion.`
       : "",
     "Do not output asset IDs, source filenames, URLs, or storage keys.",
     params.palette.generationRule,
@@ -361,14 +361,55 @@ function parseBrief(value: unknown, index: number, available: ReadonlySet<Reacti
   const languageFormat = typeof content.languageFormat === "string" && LANGUAGE_FORMATS.includes(content.languageFormat as (typeof LANGUAGE_FORMATS)[number]) ? content.languageFormat as (typeof LANGUAGE_FORMATS)[number] : null;
   const visualTreatment = typeof content.visualTreatment === "string" && TREATMENTS.includes(content.visualTreatment as (typeof TREATMENTS)[number]) ? content.visualTreatment as (typeof TREATMENTS)[number] : null;
   const visualContextTags = Array.isArray(content.visualContextTags) ? content.visualContextTags.map(normalizeTag).filter(Boolean) : [];
-  if (!caption || !emotion || !languageFormat || !visualTreatment || lines.length < 1 || lines.length > 3 || lines.join(" ") !== caption || wordCount(caption) < 5 || wordCount(caption) > 20 || visualContextTags.length < 1 || visualContextTags.length > 3 || !EMOTION_REACTIONS[emotion].includes(preferredReactions[0]) || productCopyPattern.test(caption) || featureClaimPattern.test(caption)) {
-    throw new Error(`Reaction brief ${index + 1} fails deterministic copy validation.`);
+  const copyValidationError = getCopyValidationError({
+    caption,
+    emotion,
+    languageFormat,
+    lines,
+    primaryReaction: preferredReactions[0],
+    visualContextTags,
+    visualTreatment,
+  });
+  if (copyValidationError || !emotion || !languageFormat || !visualTreatment) {
+    throw new Error(
+      `Reaction brief ${index + 1} fails deterministic copy validation: ${copyValidationError ?? "required presentation metadata is invalid"}`,
+    );
   }
   const semantic = parseSemantic(content.semantic);
   if (!semantic) {
     throw new Error(`Reaction brief ${index + 1} has invalid semantic beats.`);
   }
   return { content: { caption, emotion, languageFormat, lines, semantic, visualContextTags: [...new Set(visualContextTags)], visualTreatment }, preferredReactions, slotIndex: raw.slotIndex as number };
+}
+
+function getCopyValidationError(params: {
+  caption: string;
+  emotion: (typeof EMOTIONS)[number] | null;
+  languageFormat: (typeof LANGUAGE_FORMATS)[number] | null;
+  lines: readonly string[];
+  primaryReaction: ReactionIntent;
+  visualContextTags: readonly string[];
+  visualTreatment: (typeof TREATMENTS)[number] | null;
+}) {
+  if (!params.caption || params.lines.length < 1 || params.lines.length > 3) {
+    return "rendered lines are missing";
+  }
+  if (wordCount(params.caption) < 5 || wordCount(params.caption) > 20) {
+    return "rendered caption must contain 5-20 words";
+  }
+  if (!params.emotion || !params.languageFormat || !params.visualTreatment) {
+    return "required presentation metadata is invalid";
+  }
+  if (params.visualContextTags.length < 1 || params.visualContextTags.length > 3) {
+    return "visual context tags must contain 1-3 values";
+  }
+  if (!EMOTION_REACTIONS[params.emotion].includes(params.primaryReaction)) {
+    return `primary reaction ${params.primaryReaction} is incompatible with emotion ${params.emotion}`;
+  }
+  if (productCopyPattern.test(params.caption) || featureClaimPattern.test(params.caption)) {
+    return "rendered caption contains product or CTA language";
+  }
+  return null;
 }
 
 function selectUniquePairs(params: {

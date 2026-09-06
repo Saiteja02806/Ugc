@@ -15,6 +15,7 @@ import {
   getInstagramIncrementalFeedStart,
   INSTAGRAM_MEDIA_FEED_REFRESH_MS,
   isInstagramContentMetricsStale,
+  isInstagramThumbnailStale,
   isInstagramTimestampStale,
 } from "@/lib/analytics/instagram-freshness";
 import { getUniqueInstagramConnections } from "@/lib/analytics/instagram-insights";
@@ -53,6 +54,14 @@ const instagramMediaPageSize = 50;
 const maxInstagramMediaPages = 10;
 const accountSyncConcurrency = 2;
 const mediaInsightConcurrency = 4;
+// A thumbnail renewal is one Meta request per post. Keep repairs bounded so a
+// single account with a long history cannot monopolize the analytics worker.
+const maxInstagramThumbnailRefreshesPerAccount = 50;
+
+type ThumbnailSyncedInstagramContentItem = {
+  item: InstagramContentItem;
+  thumbnailSyncedAt: string | null;
+};
 
 export async function listInstagramContentInsightsForOwner(params: {
   days: InstagramInsightsRangeDays;
@@ -202,6 +211,7 @@ async function loadInstagramContentAccount(params: {
     let feedSyncedAt = params.previousState?.feedSyncedAt ?? null;
     let feedError: string | null = null;
     let feedItems = storedItems;
+    const freshThumbnailMediaIds = new Set<string>();
 
     if (shouldScanFeed) {
       try {
@@ -217,6 +227,9 @@ async function loadInstagramContentAccount(params: {
           }),
         });
 
+        for (const item of incrementalItems) {
+          freshThumbnailMediaIds.add(item.id);
+        }
         feedItems = mergeInstagramContentItems(incrementalItems, storedItems);
         feedSyncedAt = new Date().toISOString();
       } catch (error) {
@@ -239,10 +252,21 @@ async function loadInstagramContentAccount(params: {
     const storedByMediaId = new Map(
       params.storedRecords.map((record) => [record.item.id, record]),
     );
+    const contentWithFreshThumbnails =
+      await refreshStaleInstagramContentThumbnails({
+        accessToken: credential.accessToken,
+        accountName: credential.connection.platformAccountName,
+        accountUsername: credential.connection.platformAccountUsername,
+        connectionId: credential.connection.id,
+        force: params.force,
+        freshThumbnailMediaIds,
+        items: reconciledMedia,
+        storedByMediaId,
+      });
     const records = await mapWithConcurrency(
-      reconciledMedia,
+      contentWithFreshThumbnails,
       mediaInsightConcurrency,
-      async (item) => {
+      async ({ item, thumbnailSyncedAt }) => {
         const stored = storedByMediaId.get(item.id);
         const mergedItem = stored
           ? mergeStoredInstagramContentItem(item, stored.item)
@@ -259,6 +283,7 @@ async function loadInstagramContentAccount(params: {
             item: mergedItem,
             lastSyncError: stored?.lastSyncError ?? null,
             metricsSyncedAt: stored?.metricsSyncedAt ?? null,
+            thumbnailSyncedAt,
           } satisfies StoredInstagramContentItem;
         }
 
@@ -272,6 +297,7 @@ async function loadInstagramContentAccount(params: {
             item: mergeInstagramContentMetrics(mergedItem, insights),
             lastSyncError: null,
             metricsSyncedAt: new Date().toISOString(),
+            thumbnailSyncedAt,
           } satisfies StoredInstagramContentItem;
         } catch (error) {
           // A single unavailable, incompatible, rate-limited, or otherwise
@@ -280,6 +306,7 @@ async function loadInstagramContentAccount(params: {
             item: mergedItem,
             lastSyncError: getInstagramContentErrorMessage(error),
             metricsSyncedAt: stored?.metricsSyncedAt ?? null,
+            thumbnailSyncedAt,
           } satisfies StoredInstagramContentItem;
         }
       },
@@ -402,6 +429,78 @@ function mergeStoredInstagramContentItem(
       views: stored.metrics.views,
     },
   };
+}
+
+/**
+ * Meta returns short-lived CDN URLs for media_url and thumbnail_url. The
+ * incremental feed deliberately does not revisit older posts, so renew those
+ * URLs separately without forcing their metrics to be fetched again.
+ */
+async function refreshStaleInstagramContentThumbnails(params: {
+  accessToken: string;
+  accountName: string | null;
+  accountUsername: string | null;
+  connectionId: string;
+  force: boolean;
+  freshThumbnailMediaIds: ReadonlySet<string>;
+  items: InstagramContentItem[];
+  storedByMediaId: ReadonlyMap<string, StoredInstagramContentItem>;
+}): Promise<ThumbnailSyncedInstagramContentItem[]> {
+  const candidates = params.items
+    .filter((item) => {
+      const stored = params.storedByMediaId.get(item.id);
+
+      return (
+        stored !== undefined &&
+        !params.freshThumbnailMediaIds.has(item.id) &&
+        (params.force ||
+          isInstagramThumbnailStale({
+            thumbnailSyncedAt: stored.thumbnailSyncedAt,
+          }))
+      );
+    })
+    .slice(0, maxInstagramThumbnailRefreshesPerAccount);
+  const refreshedItems = await mapWithConcurrency(
+    candidates,
+    mediaInsightConcurrency,
+    async (item) => {
+      try {
+        return await requestInstagramMediaById({
+          accessToken: params.accessToken,
+          accountName: params.accountName,
+          accountUsername: params.accountUsername,
+          connectionId: params.connectionId,
+          mediaId: item.id,
+        });
+      } catch {
+        // An unavailable post must retain its saved data. Its old timestamp
+        // causes a later analytics job to retry without blocking other posts.
+        return null;
+      }
+    },
+  );
+  const refreshedByMediaId = new Map(
+    refreshedItems
+      .filter((item): item is InstagramContentItem => item !== null)
+      .map((item) => [item.id, item]),
+  );
+  const refreshedAt = new Date().toISOString();
+
+  return params.items.map((item) => {
+    const refreshedItem = refreshedByMediaId.get(item.id);
+    const stored = params.storedByMediaId.get(item.id);
+    const hasFreshThumbnail =
+      refreshedItem !== undefined ||
+      params.freshThumbnailMediaIds.has(item.id) ||
+      stored === undefined;
+
+    return {
+      item: refreshedItem ?? item,
+      thumbnailSyncedAt: hasFreshThumbnail
+        ? refreshedAt
+        : stored.thumbnailSyncedAt,
+    };
+  });
 }
 
 function keepStoredAccountAvailable(params: {

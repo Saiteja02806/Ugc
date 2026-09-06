@@ -2008,6 +2008,7 @@ export class SupabaseJobStore {
           saves: null,
           shares: null,
           social_connection_id: params.connectionId,
+          thumbnail_synced_at: null,
           thumbnail_url: null,
           user_id: params.userId,
           views: null,

@@ -5,6 +5,7 @@ import {
   getInstagramContentRefreshIntervalMs,
   getInstagramIncrementalFeedStart,
   isInstagramContentMetricsStale,
+  isInstagramThumbnailStale,
 } from "./instagram-freshness.ts";
 
 const hour = 60 * 60_000;
@@ -58,6 +59,27 @@ test("treats missing or expired per-post metrics as stale", () => {
       metricsSyncedAt: new Date(now - 6 * hour).toISOString(),
       now,
       publishedAt,
+    }),
+    true,
+  );
+});
+
+test("refreshes signed Instagram thumbnails independently from post metrics", () => {
+  assert.equal(
+    isInstagramThumbnailStale({ thumbnailSyncedAt: null, now }),
+    true,
+  );
+  assert.equal(
+    isInstagramThumbnailStale({
+      thumbnailSyncedAt: new Date(now - 11 * hour).toISOString(),
+      now,
+    }),
+    false,
+  );
+  assert.equal(
+    isInstagramThumbnailStale({
+      thumbnailSyncedAt: new Date(now - 12 * hour).toISOString(),
+      now,
     }),
     true,
   );

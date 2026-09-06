@@ -9,6 +9,9 @@ import { buildEditOverlayTextLayout } from "./edit-overlay-render-spec.js";
 import {
   assertWallTextOverlayPixelsInsideTextBox,
   assertWallTextTextBoxMatchesPayload,
+  buildReactionCaptionLayout,
+  buildReactionCaptionOverlaySvg,
+  buildReactionVideoArgs,
   buildWallTextVideoArgs,
   buildScheduleCombinationSegmentArgs,
   buildPreparedTextOverlaySvg,
@@ -46,6 +49,61 @@ test("measures Avenir Next through its actual Pango family instead of a host fal
   // serif fallback Pango chooses when it is given the full face name.
   assert.equal(metadata.width, 310);
   assert.equal(metadata.height, 35);
+});
+
+test("reflows an overflowing Reaction caption into the safe white-card area", async () => {
+  const captionLines = [
+    "I'll start tomorrow.",
+    "Reality: the deadline moved to this morning before your first coffee.",
+  ];
+  const layout = await buildReactionCaptionLayout({
+    captionLines,
+    treatment: "white_card",
+  });
+  const svg = await buildReactionCaptionOverlaySvg({
+    captionLines,
+    treatment: "white_card",
+  });
+
+  assert.equal(layout.lines.join(" "), captionLines.join(" "));
+  assert.equal(layout.lines.length, 2);
+  assert.ok(layout.card);
+  assert.ok(layout.card.width < 936, "the card should fit its content, not use the legacy full-width box");
+  assert.ok(layout.card.x >= 90);
+  assert.ok(layout.card.x + layout.card.width <= 990);
+  assert.ok(
+    layout.lineWidths.every((width) => width <= layout.card!.width - 56),
+    "each line keeps the requested left and right padding inside the card",
+  );
+  assert.equal(svg.match(/<text /gu)?.length, 2);
+  assert.match(svg, /rx="18"/u);
+  assert.doesNotMatch(svg, /width="936"/u);
+  assert.doesNotMatch(svg, /textLength=|lengthAdjust=/u);
+
+  const metadata = await sharp(Buffer.from(svg)).png().metadata();
+  assert.equal(metadata.width, 1080);
+  assert.equal(metadata.height, 1920);
+});
+
+test("keeps the Reaction foreground legible when a catalog placement is too small", () => {
+  const args = buildReactionVideoArgs({
+    backgroundPath: "background.jpg",
+    foregroundPath: "foreground.mov",
+    outputPath: "reaction.mp4",
+    overlayPath: "caption.png",
+    payload: {
+      backgroundStorageKey: "background.jpg",
+      captionLines: ["When the deadline moves", "before your first coffee"],
+      creativeId: "creative-1",
+      durationSeconds: 6,
+      foreground: { anchor: "bottom_center", heightPercent: 0.42 },
+      foregroundStorageKey: "foreground.mov",
+      renderId: "render-1",
+      treatment: "outlined_text",
+    },
+  });
+
+  assert.match(args[args.indexOf("-filter_complex") + 1]!, /scale=-2:1248/u);
 });
 
 test("applies Hook trim and text only to the opening segment", () => {

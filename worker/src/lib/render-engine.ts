@@ -640,7 +640,10 @@ export function buildReactionVideoArgs(params: {
   payload: RenderReactionVideoPayload;
 }) {
   const foregroundHeight = Math.round(
-    Math.max(0.25, Math.min(0.9, params.payload.foreground.heightPercent)) * 1920,
+    // Some imported alpha MOVs have generous transparent bounds, so a literal
+    // catalog height can make the visible performer feel tiny. Keep every
+    // Reaction Reel foreground large enough to read at feed-preview size.
+    Math.max(0.65, Math.min(0.9, params.payload.foreground.heightPercent)) * 1920,
   );
   const foregroundX =
     params.payload.foreground.anchor === "bottom_left"
@@ -682,27 +685,265 @@ export function buildReactionVideoArgs(params: {
 async function renderReactionCaptionOverlay(
   payload: Pick<RenderReactionVideoPayload, "captionLines" | "treatment">,
 ) {
-  const lines = payload.captionLines.map((line) => normalizeReactionCaptionLine(line));
-  if (lines.length < 1 || lines.length > 3 || lines.some((line) => !line)) {
+  return sharp(Buffer.from(await buildReactionCaptionOverlaySvg(payload)))
+    .png()
+    .toBuffer();
+}
+
+const REACTION_CANVAS_WIDTH = 1080;
+const REACTION_CANVAS_HEIGHT = 1920;
+const REACTION_CAPTION_MAX_LINES = 3;
+const REACTION_CAPTION_TOP = 126;
+const REACTION_CAPTION_HORIZONTAL_PADDING = 28;
+const REACTION_CAPTION_VERTICAL_PADDING = 18;
+const REACTION_WHITE_CARD_MIN_WIDTH = 320;
+// Leave a clear margin to the 9:16 frame even for long copy. A Reaction
+// caption should read as a compact label, never a full-width banner.
+const REACTION_WHITE_CARD_MAX_WIDTH = 900;
+const REACTION_OUTLINED_TEXT_MAX_WIDTH = 888;
+const REACTION_CAPTION_FONT_SIZES = [58, 56, 54, 52, 50, 48, 46, 44, 42, 40, 38, 36] as const;
+const REACTION_CAPTION_FONT_FAMILY = "Geist, Arial, sans-serif";
+const REACTION_CAPTION_FONT_WEIGHT = 600;
+
+export type ReactionCaptionLayout = {
+  card: { height: number; width: number; x: number; y: number } | null;
+  fontSize: number;
+  lineHeight: number;
+  lineWidths: readonly number[];
+  lines: readonly string[];
+  maxTextWidth: number;
+  textY: number;
+};
+
+/**
+ * Text from the brief is semantic input, not final pixel geometry. We use the
+ * same rendered-glyph measurement approach as Carousel headlines, then prefer
+ * a readable two-line layout before falling back to a third line.
+ */
+export async function buildReactionCaptionLayout(
+  payload: Pick<RenderReactionVideoPayload, "captionLines" | "treatment">,
+): Promise<ReactionCaptionLayout> {
+  const normalizedLines = payload.captionLines.map((line) =>
+    normalizeReactionCaptionLine(line),
+  );
+  if (
+    normalizedLines.length < 1 ||
+    normalizedLines.length > REACTION_CAPTION_MAX_LINES ||
+    normalizedLines.some((line) => !line)
+  ) {
     throw new Error("Reaction render needs one to three non-empty caption lines.");
   }
-  const fontSize = lines.join(" ").length > 78 ? 46 : lines.join(" ").length > 48 ? 54 : 62;
-  const lineHeight = Math.round(fontSize * 1.16);
-  const textHeight = lineHeight * lines.length;
+
+  // Use the same verified Geist face as the Carousel renderer. Rendering an
+  // SVG before this registration can make a long-lived worker cache a host
+  // fallback instead of the approved font.
+  await ensureEditOverlayFontRegistered();
+
+  const maxTextWidth = payload.treatment === "white_card"
+    ? REACTION_WHITE_CARD_MAX_WIDTH - REACTION_CAPTION_HORIZONTAL_PADDING * 2
+    : REACTION_OUTLINED_TEXT_MAX_WIDTH;
+  const allWords = normalizedLines.join(" ").split(" ").filter(Boolean);
+  const minimumFontSize = REACTION_CAPTION_FONT_SIZES.at(-1)!;
+  if (allWords.some((word) => estimateReactionCaptionWidth(word, minimumFontSize) > maxTextWidth)) {
+    throw new Error("Reaction caption contains a word too long for the 9:16 safe caption area.");
+  }
+
+  for (const linePreference of [
+    { lineCount: 1, minimumFontSize: 46 },
+    { lineCount: 2, minimumFontSize: 36 },
+    { lineCount: 3, minimumFontSize: 36 },
+  ] as const) {
+    if (allWords.length < linePreference.lineCount) continue;
+
+    for (const fontSize of REACTION_CAPTION_FONT_SIZES) {
+      if (fontSize < linePreference.minimumFontSize) continue;
+      const lines = buildBalancedReactionCaptionLines(
+        allWords,
+        linePreference.lineCount,
+        fontSize,
+      );
+      const lineWidths = await measureReactionCaptionLineWidths({
+        fontSize,
+        lines,
+        treatment: payload.treatment,
+      });
+
+      if (lineWidths.every((width) => width <= maxTextWidth)) {
+        return buildReactionCaptionLayoutResult({
+          fontSize,
+          lines,
+          lineWidths,
+          maxTextWidth,
+          treatment: payload.treatment,
+        });
+      }
+    }
+  }
+
+  // The generator is limited to twenty words; reaching this branch means a
+  // corrupt/legacy payload contains text that cannot be shown safely. Failing
+  // the render is preferable to silently clipping or compressing the copy.
+  throw new Error("Reaction caption cannot fit inside the 9:16 safe caption area.");
+}
+
+export async function buildReactionCaptionOverlaySvg(
+  payload: Pick<RenderReactionVideoPayload, "captionLines" | "treatment">,
+) {
+  const layout = await buildReactionCaptionLayout(payload);
   const isWhiteCard = payload.treatment === "white_card";
-  const y = 182;
-  const cardHeight = textHeight + 56;
-  const textY = isWhiteCard ? y + 38 : y;
-  const textNodes = lines
-    .map((line, index) => `<text x="540" y="${textY + lineHeight * index}" text-anchor="middle">${escapeReactionSvgText(line)}</text>`)
+  const textNodes = layout.lines
+    .map(
+      (line, index) =>
+        `<text x="540" y="${layout.textY + layout.lineHeight * index}" text-anchor="middle">${escapeReactionSvgText(line)}</text>`,
+    )
     .join("");
-  const svg = `
-    <svg width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
-      <style>text { font-family: Arial, sans-serif; font-size: ${fontSize}px; font-weight: 700; }</style>
-      ${isWhiteCard ? `<rect x="72" y="${y - 18}" width="936" height="${cardHeight}" rx="28" fill="#FFFFFF" fill-opacity="0.96"/>` : ""}
+  const card = layout.card
+    ? `<rect x="${layout.card.x}" y="${layout.card.y}" width="${layout.card.width}" height="${layout.card.height}" rx="${Math.min(Math.round(layout.fontSize * 0.48), Math.round(layout.card.height / 2))}" fill="#FFFFFF" fill-opacity="0.94"/>`
+    : "";
+
+  return `
+    <svg width="${REACTION_CANVAS_WIDTH}" height="${REACTION_CANVAS_HEIGHT}" viewBox="0 0 ${REACTION_CANVAS_WIDTH} ${REACTION_CANVAS_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
+      <style>text { font-family: ${REACTION_CAPTION_FONT_FAMILY}; font-size: ${layout.fontSize}px; font-weight: ${REACTION_CAPTION_FONT_WEIGHT}; }</style>
+      ${card}
       <g fill="${isWhiteCard ? "#111111" : "#FFFFFF"}" ${isWhiteCard ? "" : 'stroke="#111111" stroke-width="7" paint-order="stroke" stroke-linejoin="round"'}>${textNodes}</g>
     </svg>`;
-  return sharp(Buffer.from(svg)).png().toBuffer();
+}
+
+function buildReactionCaptionLayoutResult(params: {
+  fontSize: number;
+  lineWidths: readonly number[];
+  lines: readonly string[];
+  maxTextWidth: number;
+  treatment: RenderReactionVideoPayload["treatment"];
+}): ReactionCaptionLayout {
+  const lineHeight = Math.round(params.fontSize * 1.18);
+  const widestLine = Math.max(...params.lineWidths);
+  const isWhiteCard = params.treatment === "white_card";
+  const cardWidth = isWhiteCard
+    ? Math.min(
+        REACTION_WHITE_CARD_MAX_WIDTH,
+        Math.max(
+          REACTION_WHITE_CARD_MIN_WIDTH,
+          Math.ceil(widestLine + REACTION_CAPTION_HORIZONTAL_PADDING * 2),
+        ),
+      )
+    : 0;
+  const cardHeight = isWhiteCard
+    ? lineHeight * params.lines.length + REACTION_CAPTION_VERTICAL_PADDING * 2
+    : 0;
+  const card = isWhiteCard
+    ? {
+        height: cardHeight,
+        width: cardWidth,
+        x: Math.round((REACTION_CANVAS_WIDTH - cardWidth) / 2),
+        y: REACTION_CAPTION_TOP,
+      }
+    : null;
+
+  return {
+    card,
+    fontSize: params.fontSize,
+    lineHeight,
+    lineWidths: params.lineWidths,
+    lines: params.lines,
+    maxTextWidth: params.maxTextWidth,
+    textY: isWhiteCard
+      ? REACTION_CAPTION_TOP + REACTION_CAPTION_VERTICAL_PADDING + params.fontSize
+      : REACTION_CAPTION_TOP + params.fontSize,
+  };
+}
+
+function buildBalancedReactionCaptionLines(
+  words: readonly string[],
+  lineCount: number,
+  fontSize: number,
+) {
+  const candidates: Array<{ lines: string[]; score: number }> = [];
+
+  const visit = (start: number, remainingLines: number, lines: string[]) => {
+    if (remainingLines === 1) {
+      const completeLines = [...lines, words.slice(start).join(" ")];
+      const widths = completeLines.map((line) =>
+        estimateReactionCaptionWidth(line, fontSize),
+      );
+      const widest = Math.max(...widths);
+      const narrowest = Math.min(...widths);
+      const score = widest * 10_000 + (widest - narrowest);
+      candidates.push({ lines: completeLines, score });
+      return;
+    }
+
+    const lastWordIndex = words.length - (remainingLines - 1);
+    for (let end = start + 1; end <= lastWordIndex; end += 1) {
+      visit(end, remainingLines - 1, [...lines, words.slice(start, end).join(" ")]);
+    }
+  };
+
+  visit(0, lineCount, []);
+  const best = candidates.sort((left, right) => left.score - right.score)[0];
+  if (!best) {
+    throw new Error("Reaction caption could not be balanced into visible lines.");
+  }
+  return best.lines;
+}
+
+async function measureReactionCaptionLineWidths(params: {
+  fontSize: number;
+  lines: readonly string[];
+  treatment: RenderReactionVideoPayload["treatment"];
+}) {
+  const strokeAllowance = params.treatment === "outlined_text" ? 16 : 0;
+
+  return Promise.all(
+    params.lines.map(async (line) => {
+      const estimatedWidth = estimateReactionCaptionWidth(line, params.fontSize);
+      const padding = Math.ceil(params.fontSize * 1.5);
+      const width = Math.max(320, estimatedWidth * 2 + padding * 2);
+      const height = Math.ceil(params.fontSize * 3 + padding * 2);
+      const anchorX = Math.round(width / 2);
+      const baselineY = Math.round(padding + params.fontSize * 1.45);
+      const svg = Buffer.from(`
+        <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+          <text x="${anchorX}" y="${baselineY}" fill="#000000" font-family="${REACTION_CAPTION_FONT_FAMILY}" font-size="${params.fontSize}" font-weight="${REACTION_CAPTION_FONT_WEIGHT}" text-anchor="middle">${escapeReactionSvgText(line)}</text>
+        </svg>
+      `);
+      const { data, info } = await sharp(svg)
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      let minX = info.width;
+      let maxX = -1;
+
+      for (let y = 0; y < info.height; y += 1) {
+        for (let x = 0; x < info.width; x += 1) {
+          const alpha = data[(y * info.width + x) * info.channels + 3] ?? 0;
+          if (alpha > 8) {
+            minX = Math.min(minX, x);
+            maxX = Math.max(maxX, x);
+          }
+        }
+      }
+
+      const measuredWidth = maxX < minX ? estimatedWidth : maxX - minX + 1;
+      return measuredWidth + strokeAllowance;
+    }),
+  );
+}
+
+function estimateReactionCaptionWidth(value: string, fontSize: number) {
+  const relativeWidth = [...value].reduce((total, character) => {
+    if (/\s/u.test(character)) return total + 0.34;
+    if (/[ilI1!|.,:;'`]/u.test(character)) return total + 0.34;
+    if (/[MW@#%&]/u.test(character)) return total + 0.98;
+    if (/[mw]/u.test(character)) return total + 0.84;
+    if (/[A-Z0-9]/u.test(character)) return total + 0.74;
+    return total + 0.66;
+  }, 0);
+
+  // Retain a margin for the actual Arial Bold advance and, for outlined text,
+  // the visible stroke. The layout has no textLength fallback that could make
+  // text look squeezed; it wraps into another line instead.
+  return Math.ceil(relativeWidth * fontSize * 1.08 + 12);
 }
 
 function normalizeReactionCaptionLine(value: string) {

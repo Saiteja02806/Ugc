@@ -3,6 +3,7 @@ import type { InstagramInsightsRangeDays } from "./instagram";
 export const INSTAGRAM_ANALYTICS_BROWSER_CACHE_MS = 30 * 60_000;
 export const INSTAGRAM_ACCOUNT_INSIGHTS_REFRESH_MS = 60 * 60_000;
 export const INSTAGRAM_MEDIA_FEED_REFRESH_MS = 60 * 60_000;
+export const INSTAGRAM_THUMBNAIL_REFRESH_MS = 12 * 60 * 60_000;
 
 const ONE_HOUR_MS = 60 * 60_000;
 const ONE_DAY_MS = 24 * ONE_HOUR_MS;
@@ -48,6 +49,22 @@ export function isInstagramContentMetricsStale(params: {
     now - syncedTime >=
       getInstagramContentRefreshIntervalMs(params.publishedAt, now)
   );
+}
+
+/**
+ * Instagram media URLs are CDN-signed and cannot be treated as permanent
+ * storage references. Track their refresh separately from metrics: metrics
+ * can be current even after a saved thumbnail URL has expired.
+ */
+export function isInstagramThumbnailStale(params: {
+  now?: number;
+  thumbnailSyncedAt: string | null;
+}) {
+  return isInstagramTimestampStale({
+    maxAgeMs: INSTAGRAM_THUMBNAIL_REFRESH_MS,
+    now: params.now,
+    timestamp: params.thumbnailSyncedAt,
+  });
 }
 
 export function isInstagramTimestampStale(params: {

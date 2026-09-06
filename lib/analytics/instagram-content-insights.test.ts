@@ -582,6 +582,14 @@ test("Analytics workspace renders the Instagram account selector and isolates pe
   assert.equal(summary2.interactions, 420);
 });
 
+test("Analytics content thumbnails fall back cleanly when Instagram rejects an expired URL", () => {
+  assert.match(analyticsWorkspaceSource, /failedThumbnailUrl/);
+  assert.match(
+    analyticsWorkspaceSource,
+    /onError=\{\(\) => setFailedThumbnailUrl\(item\.thumbnailUrl\)\}/,
+  );
+});
+
 function createItem(
   overrides: Partial<InstagramContentItem> = {},
 ): InstagramContentItem {

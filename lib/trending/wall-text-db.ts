@@ -321,12 +321,14 @@ type WallTextDatabase = {
         };
         Returns: WallTextCreativeRow[];
       };
-      terminalize_wall_text_stale_layout_failures_v1: {
+      terminalize_wall_text_stale_layout_failures_v2: {
         Args: {
           p_business_profile_id: string;
           p_business_profile_version: number;
           p_creative_ids: string[];
+          p_current_final_layout_version: string;
           p_current_generator_version: string;
+          p_current_render_safety_version: string;
           p_user_id: string;
         };
         Returns: string[];
@@ -1421,12 +1423,14 @@ export async function terminalizeWallTextStaleLayoutFailures(params: {
   if (creativeIds.length === 0) return new Set<string>();
 
   const { data, error } = await getClient().rpc(
-    "terminalize_wall_text_stale_layout_failures_v1",
+    "terminalize_wall_text_stale_layout_failures_v2",
     {
       p_business_profile_id: params.businessProfileId,
       p_business_profile_version: params.businessProfileVersion,
       p_creative_ids: creativeIds,
+      p_current_final_layout_version: WALL_TEXT_FINAL_LAYOUT_VERSION,
       p_current_generator_version: WALL_TEXT_GENERATOR_VERSION,
+      p_current_render_safety_version: WALL_TEXT_RENDER_SAFETY_VERSION,
       p_user_id: params.userId,
     },
   );
@@ -1437,7 +1441,20 @@ export async function terminalizeWallTextStaleLayoutFailures(params: {
     );
   }
 
-  return new Set((data ?? []).filter((id): id is string => typeof id === "string"));
+  const terminalizedIds = new Set(
+    (data ?? []).filter((id): id is string => typeof id === "string"),
+  );
+  const missingCreativeIds = creativeIds.filter(
+    (creativeId) => !terminalizedIds.has(creativeId),
+  );
+
+  if (missingCreativeIds.length > 0) {
+    throw new Error(
+      "wall_text_regeneration_mismatch: the terminal layout failure did not retire every stale creative.",
+    );
+  }
+
+  return terminalizedIds;
 }
 
 export async function replaceTrendingWallTextCreativeCopy(params: {

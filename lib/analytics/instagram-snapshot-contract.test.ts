@@ -18,6 +18,10 @@ const publisher = readFileSync(
   "worker/src/jobs/publish-social-post.ts",
   "utf8",
 );
+const thumbnailMigration = readFileSync(
+  "supabase/migrations/20260906220000_refresh_instagram_analytics_thumbnails.sql",
+  "utf8",
+);
 
 test("analytics snapshots are durable, owner scoped, and service-role only", () => {
   assert.match(migration, /instagram_analytics_account_snapshots/);
@@ -31,8 +35,14 @@ test("analytics snapshots are durable, owner scoped, and service-role only", () 
 test("content synchronization refreshes incrementally and isolates post failures", () => {
   assert.match(contentSync, /getInstagramIncrementalFeedStart/);
   assert.match(contentSync, /isInstagramContentMetricsStale/);
+  assert.match(contentSync, /refreshStaleInstagramContentThumbnails/);
+  assert.match(contentSync, /maxInstagramThumbnailRefreshesPerAccount = 50/);
   assert.match(contentSync, /A single unavailable[\s\S]*must never discard/);
   assert.match(contentSync, /lastSyncError: getInstagramContentErrorMessage\(error\)/);
+});
+
+test("thumbnail URLs have their own durable freshness timestamp", () => {
+  assert.match(thumbnailMigration, /add column if not exists thumbnail_synced_at/);
 });
 
 test("attribution is a separate durable job after the content snapshot", () => {

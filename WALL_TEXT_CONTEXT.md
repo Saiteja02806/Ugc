@@ -32,6 +32,13 @@ Last updated: 2026-09-06
   future ready feed slot, and ensures it is never assigned again. It does not
   cause the full history to be shown to the user; daily delivery still selects
   only that day's reserved Wall slots from strict-current assignments.
+- Terminalization must test the full currentness contract: generator version,
+  render-safety version, and final-layout version. A V9 creative with a V2/V3
+  final layout is still stale; testing only its generator version silently
+  leaves it in the retry/recovery path.
+- If the database does not terminalize every creative that failed the measured
+  re-layout, the application records a terminal regeneration mismatch rather
+  than claiming successful recovery or retrying indefinitely.
 - Automatic recovery is addressable from the original request using one stable
   `recovery-v1` idempotency key. It must never form a new
   `replacement:<failed-job-id>` chain; a persistent error is limited to the

@@ -956,6 +956,7 @@ export type InstagramAnalyticsContentInsert = {
   saves: number | null;
   shares: number | null;
   social_connection_id: string;
+  thumbnail_synced_at: string | null;
   thumbnail_url: string | null;
   user_id: string;
   views: number | null;

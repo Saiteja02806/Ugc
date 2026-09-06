@@ -16,6 +16,7 @@ import {
   INSTAGRAM_ACCOUNT_INSIGHTS_REFRESH_MS,
   INSTAGRAM_MEDIA_FEED_REFRESH_MS,
   isInstagramContentMetricsStale,
+  isInstagramThumbnailStale,
   isInstagramTimestampStale,
 } from "@/lib/analytics/instagram-freshness";
 import { listSocialConnections } from "@/lib/social/oauth";
@@ -74,6 +75,7 @@ type ContentRow = {
   saves: number | null;
   shares: number | null;
   social_connection_id: string;
+  thumbnail_synced_at: string | null;
   thumbnail_url: string | null;
   updated_at: string;
   user_id: string;
@@ -118,6 +120,7 @@ export type StoredInstagramContentItem = {
   item: InstagramContentItem;
   lastSyncError: string | null;
   metricsSyncedAt: string | null;
+  thumbnailSyncedAt: string | null;
 };
 
 export type StoredInstagramConnectionSnapshot = {
@@ -319,6 +322,12 @@ export async function getInstagramContentSnapshotForOwner(params: {
           now: params.now,
           publishedAt: record.item.publishedAt,
         }),
+      ) ||
+      records.some((record) =>
+        isInstagramThumbnailStale({
+          now: params.now,
+          thumbnailSyncedAt: record.thumbnailSyncedAt,
+        }),
       )
     );
   });
@@ -341,7 +350,12 @@ export async function persistInstagramContentRecords(params: {
   }
 
   const now = new Date().toISOString();
-  const rows = params.records.map(({ item, lastSyncError, metricsSyncedAt }) => ({
+  const rows = params.records.map(({
+    item,
+    lastSyncError,
+    metricsSyncedAt,
+    thumbnailSyncedAt,
+  }) => ({
     account_name: item.accountName,
     account_username: item.accountUsername,
     caption: item.caption,
@@ -359,6 +373,7 @@ export async function persistInstagramContentRecords(params: {
     saves: item.metrics.saves,
     shares: item.metrics.shares,
     social_connection_id: item.connectionId,
+    thumbnail_synced_at: thumbnailSyncedAt,
     thumbnail_url: item.thumbnailUrl,
     updated_at: now,
     user_id: params.userId,
@@ -438,6 +453,7 @@ function deserializeContentRow(row: ContentRow): StoredInstagramContentItem {
     },
     lastSyncError: row.last_sync_error,
     metricsSyncedAt: row.metrics_synced_at,
+    thumbnailSyncedAt: row.thumbnail_synced_at,
   };
 }
 

@@ -138,7 +138,7 @@ const avenirNextTypographyMigration = readFileSync(
 );
 const terminalStaleLayoutMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260906200000_terminalize_wall_text_stale_layout_failures.sql",
+    "../../supabase/migrations/20260906213000_fix_wall_text_terminalization_current_generator_layouts.sql",
     import.meta.url,
   ),
   "utf8",
@@ -1351,8 +1351,12 @@ test("isolates a terminal legacy layout failure without freeing its unique sourc
     /WALL_TEXT_STALE_LAYOUT_TERMINAL_ERROR[\s\S]+needsTrendingWallTextCreativeRefresh/,
   );
   assert.match(
+    databaseSource,
+    /terminalize_wall_text_stale_layout_failures_v2[\s\S]+p_current_final_layout_version[\s\S]+p_current_render_safety_version[\s\S]+wall_text_regeneration_mismatch/,
+  );
+  assert.match(
     terminalStaleLayoutMigration,
-    /error_message = 'wall_text_stale_layout_terminal:wall_text_render_fit_rejected'[\s\S]+creative\.status = 'preview_ready'[\s\S]+creative\.generator_version <> p_current_generator_version/i,
+    /error_message = 'wall_text_stale_layout_terminal:wall_text_render_fit_rejected'[\s\S]+creative\.status = 'preview_ready'[\s\S]+creative\.generator_version is distinct from p_current_generator_version[\s\S]+creative\.text_content ->> 'renderSafetyVersion'[\s\S]+creative\.text_content -> 'finalLayout' ->> 'version'/i,
   );
   assert.match(
     terminalStaleLayoutMigration,
@@ -1360,7 +1364,7 @@ test("isolates a terminal legacy layout failure without freeing its unique sourc
   );
   assert.match(
     terminalStaleLayoutMigration,
-    /feed\.local_date >= timezone\(feed\.timezone, now\(\)\)::date[\s\S]+grant execute on function public\.terminalize_wall_text_stale_layout_failures_v1/i,
+    /feed\.local_date >= timezone\(feed\.timezone, now\(\)\)::date[\s\S]+grant execute on function public\.terminalize_wall_text_stale_layout_failures_v2/i,
   );
 });
 

@@ -2699,6 +2699,9 @@ function ContentThumbnail({
   item: InstagramContentItem;
   size: "lg" | "md" | "sm";
 }) {
+  const [failedThumbnailUrl, setFailedThumbnailUrl] = useState<string | null>(
+    null,
+  );
   const sizeClassName =
     size === "lg"
       ? "h-20 w-16"
@@ -2722,7 +2725,7 @@ function ContentThumbnail({
       )}
       aria-hidden="true"
     >
-      {item.thumbnailUrl ? (
+      {item.thumbnailUrl && failedThumbnailUrl !== item.thumbnailUrl ? (
         // Instagram owns these short-lived media URLs; optimization would cache
         // stale signed URLs, so the analytics thumbnail is rendered directly.
         // eslint-disable-next-line @next/next/no-img-element
@@ -2733,6 +2736,7 @@ function ContentThumbnail({
           height={120}
           className="size-full object-cover"
           loading="lazy"
+          onError={() => setFailedThumbnailUrl(item.thumbnailUrl)}
           referrerPolicy="no-referrer"
         />
       ) : (

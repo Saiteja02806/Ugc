@@ -32,12 +32,14 @@ import {
   listWallTextOverlayAssetsForMediaAssetIds,
   listReservedWallTextBackgroundAssetIds,
   listWallTextVideoAssetInventory,
+  needsTrendingWallTextCreativeRefresh,
   parseWallTextContent,
   parseWallTextLayout,
   recordWallTextGenerationChunkFailure,
   replaceTrendingWallTextCreativeCopy,
   reserveWallTextGenerationBatch,
   saveWallTextGenerationCandidate,
+  terminalizeWallTextStaleLayoutFailures,
   type WallTextCreativeRow,
 } from "@/lib/trending/wall-text-db";
 import {
@@ -47,6 +49,8 @@ import {
 } from "@/lib/trending/wall-text-types";
 import {
   classifyWallTextGenerationFailure,
+  isWallTextRenderFitFailure,
+  WALL_TEXT_RENDER_FIT_REJECTED,
 } from "@/lib/trending/wall-text-generation-failure";
 import {
   createUnavailableTrendingFeedProvider,
@@ -127,7 +131,7 @@ export async function enqueueTrendingWallTextRefill(
     );
 
   const needsTypographyRefresh = existing.some(
-    (creative) => !isTrendingWallTextCreativeCurrent(creative),
+    needsTrendingWallTextCreativeRefresh,
   );
   const job = await enqueueTrendingWallTextJob({
     businessProfileId: profile.id,
@@ -215,6 +219,7 @@ export async function prepareTrendingWallTextIdeas(
     userId: profile.userId,
   });
 
+  let activeIdeaCount = 0;
   if (mode === "initial" && existing.length > 0) {
     const active = await listActiveTrendingWallTextIdeas({
       backgroundAssetIds: selectedBackgroundAssetIds,
@@ -222,6 +227,7 @@ export async function prepareTrendingWallTextIdeas(
       businessProfileVersion: profile.profileVersion,
       userId: profile.userId,
     });
+    activeIdeaCount = active.length;
 
     if (active.length === 0 && areTrendingWallTextCreativesCurrent(existing)) {
       // Assignment upserts intentionally never reactivate rejected creatives.
@@ -238,7 +244,7 @@ export async function prepareTrendingWallTextIdeas(
     return ensureTrendingWallTextAssignments({
       businessProfileId: profile.id,
       businessProfileVersion: profile.profileVersion,
-      creatives: existing,
+      creatives: existing.filter(isTrendingWallTextCreativeCurrent),
       userId: profile.userId,
     });
   }
@@ -257,6 +263,7 @@ export async function prepareTrendingWallTextIdeas(
       {
         recoveryIteration: options.recoveryIteration,
         recoveryKey: options.recoveryKey,
+        requiredCurrentCount: activeIdeaCount + requestedCount,
         requestKey: options.requestKey,
       },
     );
@@ -809,23 +816,20 @@ async function backfillExistingTrendingWallTextIdeas(
   recovery: {
     recoveryIteration?: number | null;
     recoveryKey?: string | null;
+    requiredCurrentCount: number;
     requestKey?: string | null;
   },
 ) {
   const staleCreatives = existing.filter(
-    (creative) => !isTrendingWallTextCreativeCurrent(creative),
+    needsTrendingWallTextCreativeRefresh,
+  );
+  const hasTerminalStaleCreative = existing.some(
+    (creative) =>
+      !isTrendingWallTextCreativeCurrent(creative) &&
+      !needsTrendingWallTextCreativeRefresh(creative),
   );
 
-  if (staleCreatives.length === 0) {
-    return ensureTrendingWallTextAssignments({
-      businessProfileId: profile.id,
-      businessProfileVersion: profile.profileVersion,
-      creatives: existing,
-      userId: profile.userId,
-    });
-  }
-
-  const upgrades = await Promise.all(
+  const upgradeResults = await Promise.allSettled(
     staleCreatives.map(async (creative) => {
       const background = inventory.find(
         (asset) => asset.id === creative.overlay_media_asset_id,
@@ -863,21 +867,61 @@ async function backfillExistingTrendingWallTextIdeas(
       };
     }),
   );
-  const creatives = await replaceTrendingWallTextCreativeCopy({
+  const terminalCreativeIds: string[] = [];
+  for (const [index, result] of upgradeResults.entries()) {
+    if (result.status === "fulfilled") continue;
+    if (isWallTextRenderFitFailure(result.reason)) {
+      terminalCreativeIds.push(staleCreatives[index]!.id);
+      continue;
+    }
+    throw result.reason;
+  }
+
+  if (terminalCreativeIds.length > 0) {
+    await terminalizeWallTextStaleLayoutFailures({
+      businessProfileId: profile.id,
+      businessProfileVersion: profile.profileVersion,
+      creativeIds: terminalCreativeIds,
+      userId: profile.userId,
+    });
+  }
+
+  const upgrades = upgradeResults.flatMap((result) =>
+    result.status === "fulfilled" ? [result.value] : [],
+  );
+  const creatives =
+    upgrades.length > 0
+      ? await replaceTrendingWallTextCreativeCopy({
+          businessProfileId: profile.id,
+          businessProfileVersion: profile.profileVersion,
+          creatives: upgrades,
+          generatorModel: "wall-layout-engine-v1",
+          recoveryIteration: recovery.recoveryIteration,
+          recoveryKey: recovery.recoveryKey,
+          requestKey: recovery.requestKey,
+          userId: profile.userId,
+        })
+      : existing;
+  const currentCreatives = creatives.filter(
+    isTrendingWallTextCreativeCurrent,
+  );
+  const activeIdeas = await ensureTrendingWallTextAssignments({
     businessProfileId: profile.id,
     businessProfileVersion: profile.profileVersion,
-    creatives: upgrades,
-    generatorModel: "wall-layout-engine-v1",
-    recoveryIteration: recovery.recoveryIteration,
-    recoveryKey: recovery.recoveryKey,
-    requestKey: recovery.requestKey,
+    creatives: currentCreatives,
     userId: profile.userId,
   });
 
-  return ensureTrendingWallTextAssignments({
-    businessProfileId: profile.id,
-    businessProfileVersion: profile.profileVersion,
-    creatives,
-    userId: profile.userId,
-  });
+  if (
+    (hasTerminalStaleCreative || terminalCreativeIds.length > 0) &&
+    activeIdeas.length < recovery.requiredCurrentCount
+  ) {
+    throw new TrendingWallTextPreparationError(
+      "Wall-of-text could not be arranged safely inside enough videos. Fresh replacements are required.",
+      422,
+      WALL_TEXT_RENDER_FIT_REJECTED,
+    );
+  }
+
+  return activeIdeas;
 }

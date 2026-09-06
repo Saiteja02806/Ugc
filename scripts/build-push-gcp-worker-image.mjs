@@ -194,6 +194,8 @@ function buildImage() {
   console.log(`Building worker image ${imageUri}`);
   docker([
     "build",
+    "--build-arg",
+    `WORKER_BUILD_GIT_COMMIT=${workerGitCommit}`,
     "--label",
     `org.opencontainers.image.revision=${workerGitCommit}`,
     "--label",
@@ -240,8 +242,10 @@ function buildAndPushImageWithCloudBuild() {
     "builds",
     "submit",
     "./worker",
-    "--tag",
-    imageUri,
+    "--config",
+    "worker/cloudbuild.yaml",
+    "--substitutions",
+    `_IMAGE_URI=${imageUri},_WORKER_BUILD_GIT_COMMIT=${workerGitCommit}`,
     "--project",
     projectId,
     "--timeout",

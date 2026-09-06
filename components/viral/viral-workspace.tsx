@@ -11,7 +11,13 @@ import {
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -117,6 +123,11 @@ const INITIAL_LIBRARY_STATE: ExploreLibraryState = {
 const EXPLORE_VIDEO_GRID_CLASS_NAME =
   "grid min-w-0 w-full max-w-[1180px] grid-cols-1 items-start gap-3 min-[440px]:grid-cols-2 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4";
 
+// The free preview only needs enough blurred media to communicate that a
+// library exists. Loading every source there competes with the playable card.
+const EXPLORE_BACKDROP_VIDEO_LIMIT = 4;
+const EXPLORE_VIDEO_PRELOAD_ROOT_MARGIN = "480px 0px";
+
 export function ViralWorkspace() {
   const [activeSection, setActiveSection] = useState<ExploreSection>("hook");
   const [libraries, setLibraries] = useState<
@@ -206,7 +217,7 @@ export function ViralWorkspace() {
           <div
             role="tablist"
             aria-label="Explore Library sections"
-            className="inline-flex w-fit shrink-0 rounded-control border border-border bg-card p-1 sm:mt-1"
+            className="inline-flex w-fit shrink-0 rounded-[18px] border border-border bg-card p-1.5 sm:mt-1"
           >
             {(Object.keys(EXPLORE_SECTION_CONFIG) as ExploreSection[]).map(
               (section) => {
@@ -222,7 +233,7 @@ export function ViralWorkspace() {
                     aria-selected={isActive}
                     onClick={() => setActiveSection(section)}
                     className={cn(
-                      "min-h-9 rounded-[9px] px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
+                      "min-h-9 rounded-[13px] px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
                       isActive
                         ? "bg-primary text-primary-foreground shadow-sm"
                         : "text-muted hover:bg-card-muted hover:text-foreground",
@@ -361,7 +372,7 @@ function ExploreProPreview({
         className="pointer-events-none absolute inset-0 overflow-hidden opacity-60"
       >
         <div className="grid min-w-[920px] grid-cols-4 gap-4 p-5 blur-[9px] sm:min-w-[1120px]">
-          {previewItems.map((previewItem) => (
+          {previewItems.slice(0, EXPLORE_BACKDROP_VIDEO_LIMIT).map((previewItem) => (
             <div
               key={previewItem.id}
               className="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
@@ -429,14 +440,23 @@ function ExploreVideoCard({
   section: ExploreSection;
   autoPlay?: boolean;
 }) {
+  const cardRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasEnded, setHasEnded] = useState(false);
+  const [playbackRequested, setPlaybackRequested] = useState(false);
+  const nearViewport = useExploreVideoNearViewport(cardRef, autoPlay);
+  const shouldLoadVideo = autoPlay || nearViewport || playbackRequested;
+  const startPlaybackAfterLoadRef = useRef(false);
   const config = EXPLORE_SECTION_CONFIG[section];
 
   function handlePlayToggle() {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video) {
+      startPlaybackAfterLoadRef.current = true;
+      setPlaybackRequested(true);
+      return;
+    }
 
     if (video.paused) {
       if (video.ended) {
@@ -452,27 +472,40 @@ function ExploreVideoCard({
   }
 
   return (
-    <article className="group overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-[border-color,box-shadow] duration-200 hover:border-border-strong hover:shadow-md">
+    <article
+      ref={cardRef}
+      className="group overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-[border-color,box-shadow] duration-200 hover:border-border-strong hover:shadow-md"
+    >
       <div className="relative aspect-[9/16] overflow-hidden bg-card-muted">
-        <video
-          ref={videoRef}
-          aria-label={`Explore ${config.videoLabel}`}
-          className="size-full object-cover"
-          autoPlay={autoPlay}
-          muted
-          playsInline
-          preload={autoPlay ? "auto" : "metadata"}
-          src={item.videoUrl}
-          onEnded={() => {
-            setHasEnded(true);
-            setIsPlaying(false);
-          }}
-          onPause={() => setIsPlaying(false)}
-          onPlay={() => {
-            setHasEnded(false);
-            setIsPlaying(true);
-          }}
-        />
+        {shouldLoadVideo ? (
+          <video
+            ref={videoRef}
+            aria-label={`Explore ${config.videoLabel}`}
+            className="size-full object-cover"
+            autoPlay={autoPlay}
+            muted
+            playsInline
+            preload={autoPlay ? "auto" : "metadata"}
+            src={item.videoUrl}
+            onCanPlay={() => {
+              if (!startPlaybackAfterLoadRef.current) return;
+
+              startPlaybackAfterLoadRef.current = false;
+              void videoRef.current?.play().catch(() => {
+                setIsPlaying(false);
+              });
+            }}
+            onEnded={() => {
+              setHasEnded(true);
+              setIsPlaying(false);
+            }}
+            onPause={() => setIsPlaying(false)}
+            onPlay={() => {
+              setHasEnded(false);
+              setIsPlaying(true);
+            }}
+          />
+        ) : null}
         <button
           type="button"
           onClick={handlePlayToggle}
@@ -512,6 +545,38 @@ function ExploreVideoCard({
       </div>
     </article>
   );
+}
+
+function useExploreVideoNearViewport(
+  targetRef: RefObject<HTMLElement | null>,
+  eager: boolean,
+) {
+  const [nearViewport, setNearViewport] = useState(eager);
+
+  useEffect(() => {
+    if (eager || nearViewport) return;
+
+    const target = targetRef.current;
+    if (!target || !("IntersectionObserver" in window)) {
+      setNearViewport(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+
+        setNearViewport(true);
+        observer.disconnect();
+      },
+      { rootMargin: EXPLORE_VIDEO_PRELOAD_ROOT_MARGIN },
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [eager, nearViewport, targetRef]);
+
+  return nearViewport;
 }
 
 function getExploreStudioHref(

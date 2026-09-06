@@ -373,13 +373,13 @@ export async function createBackgroundJobWithCreationResult(
     p_user_id: insert.user_id,
   });
 
-  // Keep an app-before-migration rollout safe. Once the migration is applied,
-  // the RPC avoids emitting a duplicate-key error for normal idempotent reuse.
-  if (error && isCreateOrGetBackgroundJobRpcUnavailable(error.code)) {
-    return createBackgroundJobWithDirectInsert({ client, input, insert });
-  }
-
   if (error) {
+    if (isCreateOrGetBackgroundJobRpcUnavailable(error.code)) {
+      throw new Error(
+        "Could not create background job: create_or_get_background_job_v1 is unavailable. Apply the background-job idempotency migration before deploying this application.",
+      );
+    }
+
     throw new Error(`Could not create background job: ${error.message}`);
   }
 
@@ -391,38 +391,6 @@ export async function createBackgroundJobWithCreationResult(
     created: data.created,
     job: mapBackgroundJob(data.job as BackgroundJobRow),
   };
-}
-
-async function createBackgroundJobWithDirectInsert(params: {
-  client: SupabaseClient<BackgroundJobsDatabase>;
-  input: CreateBackgroundJobInput;
-  insert: BackgroundJobInsert;
-}) {
-  const { data, error } = await params.client
-    .from(BACKGROUND_JOBS_TABLE)
-    .insert(params.insert)
-    .select("*")
-    .single();
-
-  if (error) {
-    if (error.code === "23505" && params.input.idempotencyKey) {
-      const existing = await getBackgroundJobByIdempotencyKey(
-        params.input.idempotencyKey,
-        {
-          jobType: params.input.jobType,
-          userId: params.input.userId ?? null,
-        },
-      );
-
-      if (existing) {
-        return { created: false as const, job: existing };
-      }
-    }
-
-    throw new Error(`Could not create background job: ${error.message}`);
-  }
-
-  return { created: true as const, job: mapBackgroundJob(data) };
 }
 
 function isCreateOrGetBackgroundJobRpcUnavailable(code: string | undefined) {

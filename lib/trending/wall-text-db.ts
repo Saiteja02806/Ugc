@@ -169,6 +169,13 @@ type WallTextGenerationAssignmentRow = {
   wall_text_content_plan_item_id: string | null;
 };
 
+// A legacy card can be readable in its historic form yet impossible to reflow
+// at the current fixed 50px publishing contract. Keep the row (and therefore
+// its unique background/candidate reservation) but permanently exclude it
+// from automatic layout refreshes and active Trending delivery.
+export const WALL_TEXT_STALE_LAYOUT_TERMINAL_ERROR =
+  "wall_text_stale_layout_terminal:wall_text_render_fit_rejected";
+
 type WallTextContentPlanBriefRow = {
   audience_context: string;
   creative_seed: string;
@@ -313,6 +320,16 @@ type WallTextDatabase = {
           p_user_id: string;
         };
         Returns: WallTextCreativeRow[];
+      };
+      terminalize_wall_text_stale_layout_failures_v1: {
+        Args: {
+          p_business_profile_id: string;
+          p_business_profile_version: number;
+          p_creative_ids: string[];
+          p_current_generator_version: string;
+          p_user_id: string;
+        };
+        Returns: string[];
       };
       claim_wall_text_render: {
         Args: {
@@ -1362,7 +1379,7 @@ export function areTrendingWallTextCreativesCurrent(
 ) {
   return (
     creatives.length > 0 &&
-    creatives.every(isTrendingWallTextCreativeCurrent)
+    creatives.every(isTrendingWallTextCreativeRefreshSettled)
   );
 }
 
@@ -1377,6 +1394,50 @@ export function isTrendingWallTextCreativeCurrent(
     content.finalLayout !== undefined &&
     parseWallTextLayout(creative.layout) !== null
   );
+}
+
+export function needsTrendingWallTextCreativeRefresh(
+  creative: WallTextCreativeRow,
+) {
+  return !isTrendingWallTextCreativeRefreshSettled(creative);
+}
+
+export function isTrendingWallTextCreativeRefreshSettled(
+  creative: WallTextCreativeRow,
+) {
+  return (
+    isTrendingWallTextCreativeCurrent(creative) ||
+    creative.error_message === WALL_TEXT_STALE_LAYOUT_TERMINAL_ERROR
+  );
+}
+
+export async function terminalizeWallTextStaleLayoutFailures(params: {
+  businessProfileId: string;
+  businessProfileVersion: number;
+  creativeIds: readonly string[];
+  userId: string;
+}) {
+  const creativeIds = [...new Set(params.creativeIds)];
+  if (creativeIds.length === 0) return new Set<string>();
+
+  const { data, error } = await getClient().rpc(
+    "terminalize_wall_text_stale_layout_failures_v1",
+    {
+      p_business_profile_id: params.businessProfileId,
+      p_business_profile_version: params.businessProfileVersion,
+      p_creative_ids: creativeIds,
+      p_current_generator_version: WALL_TEXT_GENERATOR_VERSION,
+      p_user_id: params.userId,
+    },
+  );
+
+  if (error) {
+    throw new Error(
+      `Could not terminalize unfit legacy Wall-of-text ideas: ${error.message}`,
+    );
+  }
+
+  return new Set((data ?? []).filter((id): id is string => typeof id === "string"));
 }
 
 export async function replaceTrendingWallTextCreativeCopy(params: {

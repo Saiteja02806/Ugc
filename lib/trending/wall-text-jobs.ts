@@ -7,11 +7,16 @@ import {
 import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
 import { getBackgroundJobForUser } from "@/lib/jobs/background-jobs";
 import { ensureWallTextContentPlanGeneration } from "@/lib/trending/wall-text-content-plan-generation-job";
-import { WALL_TEXT_PERSISTENCE_REJECTED } from "@/lib/trending/wall-text-generation-failure";
+import { isWallTextGenerationFailureTerminalCode } from "@/lib/trending/wall-text-generation-failure";
 import {
   WALL_TEXT_FINAL_LAYOUT_VERSION,
   WALL_TEXT_GENERATOR_VERSION,
 } from "@/lib/trending/wall-text-types";
+
+// A recovery job must be addressable from the original request. Using the
+// failed job ID here creates an unbounded chain (`replacement:<id>` on every
+// later feed read) when the underlying failure is deterministic or persists.
+const WALL_TEXT_AUTOMATIC_RECOVERY_SUFFIX = "recovery-v1";
 
 export async function enqueueTrendingWallTextJob(params: {
   businessProfileId: string;
@@ -56,36 +61,42 @@ export async function enqueueTrendingWallTextJob(params: {
     `count-${Math.min(Math.max(Math.trunc(params.requestedCount ?? 6), 1), 50)}`,
   ].join(":");
 
-  let job = await createWallTextBackgroundJob({
+  const job = await createWallTextBackgroundJob({
     idempotencyKey,
     ...params,
   });
 
-  // A failed job with unused attempts can safely resume. If it exhausted its
-  // retry budget, create one new replacement that is tied to that failed job.
-  // This keeps normal requests idempotent while allowing a user to recover
-  // from an earlier infrastructure failure without changing their profile.
-  for (let recoveryDepth = 0; job.status === "failed" && recoveryDepth < 3; recoveryDepth += 1) {
-    if (job.errorCode === WALL_TEXT_PERSISTENCE_REJECTED) {
-      return job;
-    }
-
-    if (job.attemptCount < job.maxAttempts) {
-      const retried = await retryAndDispatchBackgroundJob({
-        jobId: job.id,
-        userId: params.userId,
-      });
-
-      return retried ?? job;
-    }
-
-    job = await createWallTextBackgroundJob({
-      idempotencyKey: `${idempotencyKey}:replacement:${job.id}`,
-      ...params,
-    });
+  // A failed job with unused attempts can safely resume. After its retry
+  // budget is exhausted, allow exactly one durable recovery job for this
+  // original request. Reusing a stable recovery key is essential: otherwise a
+  // feed read can turn one persistent error into an unlimited chain of new
+  // `replacement:<failed-job-id>` rows and duplicate-key conflicts.
+  if (
+    job.status !== "failed" ||
+    isWallTextGenerationFailureTerminalCode(job.errorCode)
+  ) {
+    return job;
   }
 
-  return job;
+  if (job.attemptCount < job.maxAttempts) {
+    const retried = await retryAndDispatchBackgroundJob({
+      jobId: job.id,
+      userId: params.userId,
+    });
+
+    return retried ?? job;
+  }
+
+  return createWallTextBackgroundJob({
+    idempotencyKey: getWallTextAutomaticRecoveryIdempotencyKey(idempotencyKey),
+    ...params,
+  });
+}
+
+export function getWallTextAutomaticRecoveryIdempotencyKey(
+  idempotencyKey: string,
+) {
+  return `${idempotencyKey}:${WALL_TEXT_AUTOMATIC_RECOVERY_SUFFIX}`;
 }
 
 function createWallTextBackgroundJob(params: {

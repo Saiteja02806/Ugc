@@ -14,6 +14,7 @@ import {
   getMissingGcpCutoverAuditAuthEnvVars,
   verifyGcpCutoverAuditRequest,
 } from "@/lib/internal/gcp-cutover-audit-auth";
+import { getAppReleaseIdentity } from "@/lib/internal/release-identity";
 import {
   attachQueueMessageToBackgroundJob,
   createBackgroundJob,
@@ -223,7 +224,11 @@ export async function POST(request: Request) {
 }
 
 function getRuntimeSnapshot() {
+  const appRelease = getAppReleaseIdentity();
+
   return {
+    appGitCommit: appRelease.gitCommit,
+    appGitCommitSource: appRelease.source,
     cloudTasksQueue:
       process.env.GCP_SOCIAL_PUBLISH_TASKS_QUEUE?.trim() ||
       "ugc-social-publish-scheduler",

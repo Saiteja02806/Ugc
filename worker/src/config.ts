@@ -16,14 +16,27 @@ export type WorkerConfig = {
   supabaseServiceRoleKey: string;
   supabaseUrl: string;
   visibilityTimeoutSeconds: number;
+  workerBuildGitCommit: string | null;
   workerGitCommit: string;
   workerId: string;
+  workerReleaseVerified: boolean;
   workerRunOnce: boolean;
   workerVersion: string;
 };
 
 export function loadWorkerConfig(): WorkerConfig {
   loadLocalEnvForDevelopment();
+
+  const workerGitCommit = getOptionalEnv("WORKER_GIT_COMMIT", "unknown");
+  const workerBuildGitCommit = getOptionalGitCommit(
+    process.env.WORKER_BUILD_GIT_COMMIT,
+  );
+  const workerReleaseVerified = validateWorkerReleaseIdentity({
+    workerBuildGitCommit,
+    workerBuildGitCommitWasDeclared:
+      process.env.WORKER_BUILD_GIT_COMMIT !== undefined,
+    workerGitCommit,
+  });
 
   return {
     allowedJobTypes: getWorkerJobTypes(),
@@ -58,13 +71,63 @@ export function loadWorkerConfig(): WorkerConfig {
         min: 1,
       },
     ),
-    workerGitCommit: getOptionalEnv("WORKER_GIT_COMMIT", "unknown"),
+    workerBuildGitCommit,
+    workerGitCommit,
     workerId:
       process.env.WORKER_ID?.trim() ||
       `${hostname() || "local"}-${process.pid.toString()}`,
+    workerReleaseVerified,
     workerRunOnce: process.env.WORKER_RUN_ONCE?.trim() === "true",
     workerVersion: getOptionalEnv("WORKER_VERSION", "local-dev"),
   };
+}
+
+/**
+ * New images bake their source SHA into WORKER_BUILD_GIT_COMMIT. Terraform
+ * separately supplies WORKER_GIT_COMMIT for the durable worker_id, so reject a
+ * production revision when those two independently configured values disagree.
+ * Older images lack the build variable and remain runnable during the one-time
+ * rollout of this guard.
+ */
+function validateWorkerReleaseIdentity(params: {
+  workerBuildGitCommit: string | null;
+  workerBuildGitCommitWasDeclared: boolean;
+  workerGitCommit: string;
+}) {
+  if (process.env.NODE_ENV !== "production") {
+    return Boolean(
+      params.workerBuildGitCommit &&
+        params.workerBuildGitCommit ===
+          getOptionalGitCommit(params.workerGitCommit),
+    );
+  }
+
+  if (!params.workerBuildGitCommitWasDeclared) {
+    // Compatibility for images built before the release-identity guard.
+    return false;
+  }
+
+  if (!params.workerBuildGitCommit) {
+    throw new Error(
+      "WORKER_BUILD_GIT_COMMIT must contain a Git SHA in production. Rebuild the worker image through the release image builder.",
+    );
+  }
+
+  const configuredCommit = getOptionalGitCommit(params.workerGitCommit);
+
+  if (!configuredCommit) {
+    throw new Error(
+      "WORKER_GIT_COMMIT must contain the worker image Git SHA in production.",
+    );
+  }
+
+  if (configuredCommit !== params.workerBuildGitCommit) {
+    throw new Error(
+      "WORKER_GIT_COMMIT does not match the Git SHA baked into this worker image.",
+    );
+  }
+
+  return true;
 }
 
 const validWorkerJobTypes = new Set<BackgroundJobType>(
@@ -169,6 +232,12 @@ function getOptionalEnv(name: string, fallback: string): string;
 function getOptionalEnv(name: string, fallback: null): string | null;
 function getOptionalEnv(name: string, fallback: string | null) {
   return process.env[name]?.trim() || fallback;
+}
+
+function getOptionalGitCommit(value: string | undefined) {
+  const normalized = value?.trim().toLowerCase() || "";
+
+  return /^[0-9a-f]{7,64}$/i.test(normalized) ? normalized : null;
 }
 
 function getIntegerEnv(

@@ -1,0 +1,14 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --build-arg
+      - WORKER_BUILD_GIT_COMMIT=${_WORKER_BUILD_GIT_COMMIT}
+      - --label
+      - org.opencontainers.image.revision=${_WORKER_BUILD_GIT_COMMIT}
+      - -t
+      - ${_IMAGE_URI}
+      - .
+
+images:
+  - ${_IMAGE_URI}

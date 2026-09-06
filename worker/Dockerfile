@@ -12,6 +12,12 @@ RUN npm prune --omit=dev --legacy-peer-deps
 
 FROM node:22-bookworm-slim
 
+# This value is supplied by the release image builder. The sentinel lets the
+# worker distinguish a legacy image (no variable) from a newly built image
+# whose release metadata was accidentally omitted.
+ARG WORKER_BUILD_GIT_COMMIT=missing
+LABEL org.opencontainers.image.revision=${WORKER_BUILD_GIT_COMMIT}
+
 RUN apt-get update \
   && apt-get install -y ffmpeg ca-certificates fontconfig fonts-inter fonts-noto-cjk \
   && mkdir -p /usr/local/share/fonts/geist /usr/local/share/fonts/arial /usr/local/share/fonts/avenir-next \
@@ -29,6 +35,7 @@ RUN fc-cache -f
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV WORKER_BUILD_GIT_COMMIT=${WORKER_BUILD_GIT_COMMIT}
 
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist

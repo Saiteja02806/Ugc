@@ -153,7 +153,11 @@ test("reuses an idempotent background job without surfacing a duplicate-key erro
   );
   assert.match(
     backgroundJobsSource,
-    /rpc\("create_or_get_background_job_v1"[\s\S]+isCreateOrGetBackgroundJobRpcUnavailable/,
+    /rpc\("create_or_get_background_job_v1"[\s\S]+create_or_get_background_job_v1 is unavailable/,
+  );
+  assert.doesNotMatch(
+    backgroundJobsSource,
+    /\.from\(BACKGROUND_JOBS_TABLE\)\s*\.insert\(/,
   );
 });
 
@@ -193,6 +197,45 @@ test("fences paid provider calls and completes generated media atomically", () =
   );
   assert.match(workerStore, /rpc\("complete_background_job"/);
   assert.doesNotMatch(workerStore, /registerGeneratedMediaAsset/);
+});
+
+test("binds an AI worker image SHA to its Cloud Run identity and canary", () => {
+  const dockerfile = readFileSync("worker/Dockerfile", "utf8");
+  const cloudBuild = readFileSync("worker/cloudbuild.yaml", "utf8");
+  const imageBuilder = readFileSync(
+    "scripts/build-push-gcp-worker-image.mjs",
+    "utf8",
+  );
+  const workerConfig = readFileSync("worker/src/config.ts", "utf8");
+  const cutoverAuditRoute = readFileSync(
+    "app/api/internal/gcp-cutover/audit/route.ts",
+    "utf8",
+  );
+  const cutoverAuditScript = readFileSync(
+    "scripts/test-production-gcp-cutover-audit.mjs",
+    "utf8",
+  );
+
+  assert.match(
+    dockerfile,
+    /ARG WORKER_BUILD_GIT_COMMIT=missing[\s\S]+ENV WORKER_BUILD_GIT_COMMIT=\$\{WORKER_BUILD_GIT_COMMIT\}/,
+  );
+  assert.match(
+    imageBuilder,
+    /--build-arg[\s\S]+WORKER_BUILD_GIT_COMMIT=\$\{workerGitCommit\}/,
+  );
+  assert.match(
+    imageBuilder,
+    /--config[\s\S]+worker\/cloudbuild\.yaml[\s\S]+_WORKER_BUILD_GIT_COMMIT=\$\{workerGitCommit\}/,
+  );
+  assert.match(cloudBuild, /WORKER_BUILD_GIT_COMMIT=\$\{_WORKER_BUILD_GIT_COMMIT\}/);
+  assert.match(
+    workerConfig,
+    /WORKER_GIT_COMMIT does not match the Git SHA baked into this worker image/,
+  );
+  assert.match(cutoverAuditRoute, /getAppReleaseIdentity\(\)/);
+  assert.match(cutoverAuditScript, /--expected-release-sha/);
+  assert.match(cutoverAuditScript, /assertWorkerReleaseIdentity/);
 });
 
 function readMigration(path: string) {

@@ -43,6 +43,9 @@ const pollTimeoutMs = normalizeInteger(
   15_000,
   10 * 60_000,
 );
+const expectedReleaseSha = getOptionalReleaseSha(
+  options.expectedReleaseSha || process.env.UGC_EXPECTED_RELEASE_SHA,
+);
 const shouldExecute = options.mode === "execute";
 
 const auditPlan = {
@@ -54,6 +57,7 @@ const auditPlan = {
   },
   expectedWorkerResult:
     "failed generate_image canary with missing prompt before any AI provider call",
+  expectedReleaseSha,
   generationId,
 };
 
@@ -93,6 +97,7 @@ try {
   assertProvider("queueProvider", runtime.queueProvider);
   assertProvider("storageProvider", runtime.storageProvider);
   assertProvider("socialSchedulerProvider", runtime.socialSchedulerProvider);
+  assertAppReleaseIdentity(runtime, expectedReleaseSha);
 
   if (canary.messageProvider !== "gcp") {
     throw new Error(
@@ -113,9 +118,11 @@ try {
   const finalJob = await waitForJobCompletion(canaryJobId);
 
   assertExpectedCanaryFailure(finalJob);
+  assertWorkerReleaseIdentity(finalJob, expectedReleaseSha);
 
   console.log(`Live Cloud Run worker consumed job ${canaryJobId}`);
   console.log(`Final status: ${finalJob.status}`);
+  console.log(`App Git commit: ${runtime.appGitCommit ?? "unreported"}`);
   console.log(`Worker id: ${finalJob.worker_id}`);
   console.log(`Error: ${finalJob.error_message}`);
   console.log("Production GCP cutover audit passed");
@@ -135,6 +142,7 @@ function parseArguments(args) {
   const parsed = {
     baseUrl: null,
     canaryProjectId: null,
+    expectedReleaseSha: null,
     generationId: null,
     mode: "dry-run",
     pollTimeoutMs: null,
@@ -176,6 +184,15 @@ function parseArguments(args) {
 
     if (argument === "--generation-id") {
       parsed.generationId = getRequiredArgumentValue(
+        args,
+        (index += 1),
+        argument,
+      );
+      continue;
+    }
+
+    if (argument === "--expected-release-sha") {
+      parsed.expectedReleaseSha = getRequiredArgumentValue(
         args,
         (index += 1),
         argument,
@@ -334,6 +351,30 @@ function assertExpectedCanaryFailure(job) {
   }
 }
 
+function assertAppReleaseIdentity(runtime, expectedSha) {
+  if (!expectedSha) {
+    return;
+  }
+
+  if (runtime.appGitCommit !== expectedSha) {
+    throw new Error(
+      `Expected deployed app Git commit ${expectedSha}, got ${runtime.appGitCommit ?? "unreported"}.`,
+    );
+  }
+}
+
+function assertWorkerReleaseIdentity(job, expectedSha) {
+  if (!expectedSha) {
+    return;
+  }
+
+  if (typeof job.worker_id !== "string" || !job.worker_id.endsWith(`:${expectedSha}`)) {
+    throw new Error(
+      `Expected Cloud Run worker Git commit ${expectedSha}, got ${job.worker_id ?? "unreported"}.`,
+    );
+  }
+}
+
 async function cancelOpenCanaryJob(jobId) {
   const latestJob = await getJob(jobId);
 
@@ -411,6 +452,20 @@ function normalizeInteger(value, fallback, min, max) {
   }
 
   return Math.min(Math.max(value, min), max);
+}
+
+function getOptionalReleaseSha(value) {
+  if (!value || !value.trim()) {
+    return null;
+  }
+
+  const normalized = value.trim().toLowerCase();
+
+  if (!/^[0-9a-f]{7,64}$/.test(normalized)) {
+    throw new Error("Expected release SHA must be a 7-64 character hexadecimal Git commit.");
+  }
+
+  return normalized;
 }
 
 function parseJsonResponse(text) {

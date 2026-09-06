@@ -93,6 +93,25 @@ test("keeps four compact Explore cards across standard laptop widths", () => {
   );
 });
 
+test("keeps Explore media loading bounded and its library tabs rounded", () => {
+  assert.match(viralWorkspace, /rounded-\[18px\][\s\S]*?p-1\.5/);
+  assert.match(viralWorkspace, /rounded-\[13px\]/);
+  assert.match(
+    viralWorkspace,
+    /const EXPLORE_BACKDROP_VIDEO_LIMIT = 4/,
+  );
+  assert.match(
+    viralWorkspace,
+    /previewItems\.slice\(0, EXPLORE_BACKDROP_VIDEO_LIMIT\)\.map/,
+  );
+  assert.match(viralWorkspace, /IntersectionObserver/);
+  assert.match(
+    viralWorkspace,
+    /rootMargin: EXPLORE_VIDEO_PRELOAD_ROOT_MARGIN/,
+  );
+  assert.match(viralWorkspace, /shouldLoadVideo \? \(/);
+});
+
 test("requires an image for Hook and Wall of Text Explore recreations", () => {
   assert.match(
     videoWorkspace,

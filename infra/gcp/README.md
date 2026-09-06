@@ -83,16 +83,21 @@ Never commit credentials.
 
 1. Apply the Supabase migrations in timestamp order.
 2. Plan and apply `foundation/` to create Cloud Tasks queues.
-3. Build and push the worker image with `npm run worker:gcp:image:push`.
+3. Build and push the worker image with `npm run worker:gcp:image:push`. Record
+   the exact source SHA used for that image.
 4. Apply each enabled Cloud Run worker stack. Service workers use request-based
    billing and scale from their configured minimum only while a request is
    active. The video Job is different: it is a one-shot instance that exits
    after its render. The stacks set
    `WORKER_TRANSPORT=cloud-tasks` and grant the scheduler service account
    `roles/run.invoker`.
-5. Configure the worker URLs in the app environment and deploy the app.
+5. Configure the worker URLs in the app environment and deploy the app from
+   the same source SHA as the worker image. Do not mark a background-job change
+   released when only the web app or only a Cloud Run worker has been deployed.
 6. Run a no-spend `test_worker_job` through `POST /api/jobs` and verify its
-   Supabase status through `GET /api/jobs/{jobId}`.
+   Supabase status through `GET /api/jobs/{jobId}`. For a Wall canary, also
+   confirm that the persisted `background_jobs.worker_id` contains the expected
+   source SHA; this is the release-parity check between the app and the worker.
 7. Set `enable_background_job_recovery_scheduler=true` in the foundation only
    after the deployed recovery route passes an authenticated manual check.
 8. Verify authenticated production flows on `https://www.getugcpilot.com`.

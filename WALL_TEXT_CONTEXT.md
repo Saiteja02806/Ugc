@@ -1,12 +1,12 @@
 # Wall-of-text Context
 
-Last updated: 2026-09-05
+Last updated: 2026-09-06
 
 ## 2026-09-05 Regeneration recovery hardening
 
 - A stale-creative typography refresh may span more than fifty historical Wall
   creatives. The database replacement RPC keeps its 1–50-row validation
-  contract; the application now submits larger refreshes as ordered batches of
+  contract; the application submits larger refreshes as ordered batches of
   at most fifty rather than attempting an invalid all-history replacement.
 - Failed replacement diagnostics record the expected batch count, returned
   count, affected creative IDs, request key, recovery key, and worker recovery
@@ -15,6 +15,33 @@ Last updated: 2026-09-05
   before the API can emit a duplicate-key response. A queued reused job with no
   queue message remains dispatchable; deterministic replacement-contract
   failures are terminal rather than retried as infrastructure failures.
+
+## 2026-09-06 Incident correction and release parity
+
+- The 2026-09-05 invalid-count incident happened **before** the batching and
+  atomic-create code was committed. A migration filename or a later merge is
+  not evidence that the running application was protected at the incident
+  time.
+- A later incident was separate: a six-card request produced copy that could
+  not fit five to eight balanced lines in the fixed 50px text area. This is a
+  deterministic layout rejection, not a temporary HTTP failure. It must return
+  a structured terminal error so recovery does not retry the same copy.
+- When only some historical cards cannot be re-laid out, refresh the cards
+  that fit and terminalize only the unfit legacy record. The terminal marker
+  preserves its historical uniqueness reservation, removes any current or
+  future ready feed slot, and ensures it is never assigned again. It does not
+  cause the full history to be shown to the user; daily delivery still selects
+  only that day's reserved Wall slots from strict-current assignments.
+- Automatic recovery is addressable from the original request using one stable
+  `recovery-v1` idempotency key. It must never form a new
+  `replacement:<failed-job-id>` chain; a persistent error is limited to the
+  original job and one recoverable successor.
+- A Wall release is complete only when the database migration, web application,
+  and AI-generation Cloud Run worker run the same release SHA. The worker
+  records its SHA in `background_jobs.worker_id`; production acceptance must
+  verify that a canary Wall job records the target SHA and that no invalid-count
+  or duplicate-job errors occur. A source commit, migration row, or successful
+  web deployment by itself is insufficient.
 
 ## Live typing preview typography
 

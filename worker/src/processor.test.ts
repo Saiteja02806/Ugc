@@ -705,8 +705,10 @@ function createConfig(
     supabaseServiceRoleKey: "test",
     supabaseUrl: "https://example.supabase.co",
     visibilityTimeoutSeconds: 60,
+    workerBuildGitCommit: "test",
     workerGitCommit: "test",
     workerId: "worker-test",
+    workerReleaseVerified: true,
     workerRunOnce: true,
     workerVersion: "test",
   };

@@ -136,6 +136,13 @@ const avenirNextTypographyMigration = readFileSync(
   ),
   "utf8",
 );
+const terminalStaleLayoutMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260906200000_terminalize_wall_text_stale_layout_failures.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const generatorSource = readFileSync(
   new URL("./generate-trending-wall-text-ideas.ts", import.meta.url),
   "utf8",
@@ -1042,7 +1049,8 @@ test("fixed Wall typography grows lines and rejects overflow without shrinking",
     await assert.rejects(engine.createAuthoritativeWallTextContent({
       content: { kind: 'text', text: Array(50).fill('responsibilities').join(' ') + '.' },
       formatId: 'freeform', layout,
-    }), /fixed 50px/);
+    }), error =>
+      error.code === 'wall_text_render_fit_rejected' && /fixed 50px/.test(error.message));
     const generatedPrompt = prompt.buildWallTextGenerationPrompt({
       business: {}, candidates: [{ candidateIndex: 0, targetWords: 18, maxWords: 50 }],
     });
@@ -1295,7 +1303,7 @@ test("preserves evidence-controlled v5 copy and adds the v6 one-call layout cont
 test("upgrades stale Wall layout without sending existing copy back to AI", () => {
   assert.match(
     feedSource,
-    /const staleCreatives = existing\.filter\([\s\S]+!isTrendingWallTextCreativeCurrent\(creative\)/,
+    /const staleCreatives = existing\.filter\([\s\S]+needsTrendingWallTextCreativeRefresh/,
   );
   assert.match(
     feedSource,
@@ -1321,7 +1329,38 @@ test("upgrades stale Wall layout without sending existing copy back to AI", () =
   );
   assert.match(
     databaseSource,
-    /creative\.generator_version === WALL_TEXT_GENERATOR_VERSION[\s\S]+finalLayout !== undefined/,
+    /creative\.generator_version === WALL_TEXT_GENERATOR_VERSION[\s\S]+finalLayout !== undefined[\s\S]+isTrendingWallTextCreativeRefreshSettled/,
+  );
+});
+
+test("isolates a terminal legacy layout failure without freeing its unique source", () => {
+  assert.match(
+    feedSource,
+    /Promise\.allSettled[\s\S]+isWallTextRenderFitFailure[\s\S]+terminalizeWallTextStaleLayoutFailures/,
+  );
+  assert.match(
+    feedSource,
+    /currentCreatives = creatives\.filter\([\s\S]+isTrendingWallTextCreativeCurrent[\s\S]+creatives: currentCreatives/,
+  );
+  assert.match(
+    feedSource,
+    /activeIdeas\.length < recovery\.requiredCurrentCount[\s\S]+WALL_TEXT_RENDER_FIT_REJECTED/,
+  );
+  assert.match(
+    databaseSource,
+    /WALL_TEXT_STALE_LAYOUT_TERMINAL_ERROR[\s\S]+needsTrendingWallTextCreativeRefresh/,
+  );
+  assert.match(
+    terminalStaleLayoutMigration,
+    /error_message = 'wall_text_stale_layout_terminal:wall_text_render_fit_rejected'[\s\S]+creative\.status = 'preview_ready'[\s\S]+creative\.generator_version <> p_current_generator_version/i,
+  );
+  assert.match(
+    terminalStaleLayoutMigration,
+    /state = 'completed_skipped'[\s\S]+assignment\.state = 'active'[\s\S]+detached_current_slots[\s\S]+slot\.state = 'ready'/i,
+  );
+  assert.match(
+    terminalStaleLayoutMigration,
+    /feed\.local_date >= timezone\(feed\.timezone, now\(\)\)::date[\s\S]+grant execute on function public\.terminalize_wall_text_stale_layout_failures_v1/i,
   );
 });
 
@@ -1468,11 +1507,20 @@ test("uses the content generator version and recovers failed preparation jobs", 
   );
   assert.match(
     jobsSource,
-    /job\.status === "failed"[\s\S]+retryAndDispatchBackgroundJob/i,
+    /job\.status !== "failed"[\s\S]+retryAndDispatchBackgroundJob/i,
   );
   assert.match(
     jobsSource,
-    /replacement:\$\{job\.id\}/,
+    /WALL_TEXT_AUTOMATIC_RECOVERY_SUFFIX = "recovery-v1"[\s\S]+getWallTextAutomaticRecoveryIdempotencyKey\(idempotencyKey\)/,
+  );
+  assert.match(
+    jobsSource,
+    /isWallTextGenerationFailureTerminalCode\(job\.errorCode\)/,
+  );
+  assert.doesNotMatch(jobsSource, /replacement:\$\{job\.id\}/);
+  assert.match(
+    internalPreparationRoute,
+    /failure\.retryable \? 500 : 422/,
   );
 });
 

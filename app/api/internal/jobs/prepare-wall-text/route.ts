@@ -86,15 +86,24 @@ export async function POST(request: Request) {
       );
     }
 
-    console.error("Background Wall-of-text preparation failed:", error);
     const failure = classifyWallTextGenerationFailure(error);
+    console.error("Background Wall-of-text preparation failed", {
+      errorCode: failure.errorCode,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorName: error instanceof Error ? error.name : typeof error,
+      recoveryIteration: input.recoveryIteration,
+      recoveryKey: input.recoveryKey,
+      requestKey: input.requestKey,
+      requestedCount: input.requestedCount,
+      retryable: failure.retryable,
+    });
     return json(
       {
         error: failure.publicMessage,
         errorCode: failure.errorCode,
         ok: false,
       },
-      500,
+      failure.retryable ? 500 : 422,
     );
   }
 }

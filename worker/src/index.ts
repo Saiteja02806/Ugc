@@ -67,8 +67,10 @@ async function main() {
     socialReconciliationIntervalSeconds:
       config.socialReconciliationIntervalSeconds,
     visibilityTimeoutSeconds: config.visibilityTimeoutSeconds,
+    workerBuildGitCommit: config.workerBuildGitCommit,
     workerGitCommit: config.workerGitCommit,
     workerId: config.workerId,
+    workerReleaseVerified: config.workerReleaseVerified,
     workerVersion: config.workerVersion,
     carouselImageSafetyPolicyVersion:
       CAROUSEL_IMAGE_SAFETY_POLICY_VERSION,
@@ -173,6 +175,20 @@ async function startWorkerHttpServer(params: {
     if (request.url === "/" || request.url === "/healthz") {
       response.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
       response.end("ok\n");
+      return;
+    }
+
+    if (request.url === "/version") {
+      writeJsonResponse(response, 200, {
+        ok: true,
+        release: {
+          buildGitCommit: params.config.workerBuildGitCommit,
+          runtimeGitCommit: params.config.workerGitCommit,
+          verified: params.config.workerReleaseVerified,
+        },
+        workerId: params.config.workerId,
+        workerVersion: params.config.workerVersion,
+      });
       return;
     }
 

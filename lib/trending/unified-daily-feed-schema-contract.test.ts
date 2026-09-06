@@ -82,6 +82,10 @@ const recoveryMigration = readFileSync(
   "supabase/migrations/20260830120123_harden_daily_trending_feed_recovery.sql",
   "utf8",
 );
+const reactionFailureMarkerMigration = readFileSync(
+  "supabase/migrations/20260906190000_allow_reaction_daily_feed_failure_marking.sql",
+  "utf8",
+);
 const workerProcessor = readFileSync("worker/src/processor.ts", "utf8");
 const recoveryRoute = readFileSync(
   "app/api/internal/jobs/recover/route.ts",
@@ -213,6 +217,21 @@ test("does not select a prior-day Carousel assignment for a new daily feed", () 
   assert.match(
     carouselDailyFeed,
     /Only recover an\s+\/\/ assignment that was already created for this same day/,
+  );
+});
+
+test("allows unbound Reaction slots through terminal failure marking", () => {
+  assert.match(
+    unifiedFeedDatabase,
+    /formats: Array<"carousel" \| "hook_video" \| "reaction" \| "wall_text">/,
+  );
+  assert.match(
+    reactionFailureMarkerMigration,
+    /requested_format not in \('carousel', 'hook_video', 'wall_text', 'reaction'\)/,
+  );
+  assert.match(
+    reactionFailureMarkerMigration,
+    /format = any\(p_formats\)[\s\S]*state in \('planned', 'preparing'\)[\s\S]*reaction_assignment_id is null/,
   );
 });
 

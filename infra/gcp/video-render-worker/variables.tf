@@ -154,6 +154,12 @@ variable "scheduling_secret_id" {
   default     = "ugc-internal-scheduling-secret"
 }
 
+variable "openai_api_key_secret_id" {
+  description = "Secret Manager secret ID injected as OPENAI_API_KEY for Reaction brief generation."
+  type        = string
+  default     = "openai-api-key"
+}
+
 variable "worker_version" {
   description = "Human-readable worker version label."
   type        = string

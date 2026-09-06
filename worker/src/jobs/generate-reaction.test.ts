@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { validateReactionBriefBatch } from "../lib/reaction-generation.js";
+import {
+  MAX_REACTION_BRIEF_GENERATION_ATTEMPTS,
+  validateReactionBriefBatch,
+} from "../lib/reaction-generation.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
 import type { BackgroundJobRow } from "../types.js";
 import {
@@ -55,6 +58,10 @@ test("Reaction brief validation preserves the canonical semantic beats", () => {
     }, palette, 1),
     /deterministic copy validation/u,
   );
+});
+
+test("invalid model briefs have bounded repair attempts before the job fails", () => {
+  assert.equal(MAX_REACTION_BRIEF_GENERATION_ATTEMPTS, 3);
 });
 
 test("a zero-ready Reaction render fails the durable background job", async () => {

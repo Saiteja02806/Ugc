@@ -97,6 +97,17 @@ test("reserves active clips and reports a catalog shortfall without another refi
   assert.match(enqueue, /Prepared \$\{readyCount\} of \$\{requestedCount\} Reaction Reels/);
 });
 
+test("retries only a catalog-blocked Reaction request after assets become active", () => {
+  assert.match(enqueue, /REACTION_CATALOG_UNAVAILABLE_MESSAGE/);
+  assert.match(enqueue, /params\.job\.status !== "failed"/);
+  assert.match(enqueue, /params\.job\.attemptCount >= params\.job\.maxAttempts/);
+  assert.match(enqueue, /hasActiveReactionCatalog/);
+  assert.match(enqueue, /reaction_clip_assets[\s\S]+eq\("status", "active"\)[\s\S]+eq\("has_alpha", true\)/);
+  assert.match(enqueue, /reaction_background_assets[\s\S]+eq\("status", "active"\)/);
+  assert.match(enqueue, /retryAndDispatchBackgroundJob/);
+  assert.match(enqueue, /current && current\.status !== "failed"/);
+});
+
 function readProjectFile(relativePath: string) {
   return readFileSync(new URL(`../../${relativePath}`, import.meta.url), "utf8");
 }

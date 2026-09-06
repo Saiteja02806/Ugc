@@ -5,7 +5,7 @@ environment = "prod"
 # Keep false until:
 # - a worker image has been pushed after the Cloud Run health listener change;
 # - Secret Manager has enabled versions for supabase-url,
-#   supabase-service-role-key, and ugc-internal-scheduling-secret;
+#   supabase-service-role-key, openai-api-key, and ugc-internal-scheduling-secret;
 # - GCS media public read has been enabled for the testing cutover.
 enable_video_render_worker = false
 
@@ -37,5 +37,6 @@ gcp_storage_public_base_url = "https://storage.googleapis.com/ugcsaas-media"
 
 internal_app_url    = "https://getugcpilot.com"
 scheduling_secret_id = "ugc-internal-scheduling-secret"
+openai_api_key_secret_id = "openai-api-key"
 worker_version      = "worker-gcp"
 worker_git_commit   = "unknown"

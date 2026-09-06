@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
 import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
 import { shouldDeliverCarouselJobMessage } from "@/lib/jobs/background-job-delivery-logic";
 import { sendBackgroundJobMessageWithBestEffortAttachment } from "@/lib/jobs/background-job-message-delivery";
@@ -12,9 +14,37 @@ import {
   markBackgroundJobFailed,
   type BackgroundJobRecord,
 } from "@/lib/jobs/background-jobs";
+import { retryAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
 import { getQueueNameForJobType, sendJobMessage } from "@/lib/queues/job-queue";
 
 const REACTION_GENERATION_JOB_TYPE = "reaction_generation";
+const REACTION_CATALOG_UNAVAILABLE_MESSAGE =
+  "Reaction generation requires active alpha clips and active backgrounds.";
+
+type ReactionCatalogDatabase = {
+  public: {
+    Tables: {
+      reaction_background_assets: {
+        Row: { id: string; status: string };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      reaction_clip_assets: {
+        Row: { has_alpha: boolean; id: string; status: string };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+};
+
+let reactionCatalogClient: SupabaseClient<ReactionCatalogDatabase> | null = null;
 
 export type ReactionRefillResult =
   | { job: BackgroundJobRecord; kind: "job" }
@@ -72,6 +102,10 @@ export async function enqueueTrendingReactionRefill(
   if (!isMatchingReactionGenerationJob(job, profile, requestKey)) {
     throw new Error("Reaction generation job ownership does not match the requested Trending refill.");
   }
+
+  const retriedJob = await retryCatalogBlockedReactionJob({ job, profile });
+  if (retriedJob) return { job: retriedJob, kind: "job" };
+
   if (job.status === "completed" || job.status === "failed") return { job, kind: "job" };
   if (!shouldDeliverCarouselJobMessage({ job, wasJustCreated: creation.created })) return { job, kind: "job" };
 
@@ -98,6 +132,80 @@ export async function enqueueTrendingReactionRefill(
     throw error;
   }
   return { job: (await getBackgroundJobById(job.id)) ?? job, kind: "job" };
+}
+
+/**
+ * A catalog import can legitimately happen after a user requested their daily
+ * Reaction refill.  Retry only that precise, pre-planning failure once the
+ * catalog is actually available.  Other failures remain user-retryable rather
+ * than being retried on every Trending page load.
+ */
+async function retryCatalogBlockedReactionJob(params: {
+  job: BackgroundJobRecord;
+  profile: Pick<BusinessProfileRecord, "userId">;
+}) {
+  if (
+    params.job.status !== "failed" ||
+    params.job.errorMessage !== REACTION_CATALOG_UNAVAILABLE_MESSAGE ||
+    params.job.attemptCount >= params.job.maxAttempts ||
+    !(await hasActiveReactionCatalog())
+  ) {
+    return null;
+  }
+
+  try {
+    return await retryAndDispatchBackgroundJob({
+      jobId: params.job.id,
+      userId: params.profile.userId,
+    });
+  } catch (error) {
+    // Concurrent feed loads can race to retry the same failed job.  The
+    // database retry RPC permits exactly one transition; the other request
+    // should reuse the now-queued job rather than turn the feed into an error.
+    const current = await getBackgroundJobById(params.job.id);
+    if (current && current.status !== "failed") return current;
+    throw error;
+  }
+}
+
+async function hasActiveReactionCatalog() {
+  const client = getReactionCatalogClient();
+  const [clips, backgrounds] = await Promise.all([
+    client
+      .from("reaction_clip_assets")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "active")
+      .eq("has_alpha", true),
+    client
+      .from("reaction_background_assets")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "active"),
+  ]);
+
+  if (clips.error || backgrounds.error) {
+    throw new Error(
+      `Could not verify Reaction catalog availability: ${clips.error?.message ?? backgrounds.error?.message}`,
+    );
+  }
+
+  return (clips.count ?? 0) > 0 && (backgrounds.count ?? 0) > 0;
+}
+
+function getReactionCatalogClient() {
+  const url = process.env.SUPABASE_URL?.trim() || process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "";
+
+  if (!url || !serviceRoleKey) {
+    throw new Error("Reaction catalog storage is not configured.");
+  }
+
+  if (!reactionCatalogClient) {
+    reactionCatalogClient = createClient<ReactionCatalogDatabase>(url, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+  }
+
+  return reactionCatalogClient;
 }
 
 export function getCompletedReactionCoverageShortfall(params: {

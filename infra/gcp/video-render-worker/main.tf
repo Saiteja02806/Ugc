@@ -155,6 +155,16 @@ resource "google_cloud_run_v2_service" "video_render_worker" {
       }
 
       env {
+        name = "OPENAI_API_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = var.openai_api_key_secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
         name = "UGC_INTERNAL_SCHEDULING_SECRET"
         value_source {
           secret_key_ref {
@@ -234,6 +244,16 @@ resource "google_cloud_run_v2_job" "video_render_worker" {
           value_source {
             secret_key_ref {
               secret  = "supabase-service-role-key"
+              version = "latest"
+            }
+          }
+        }
+
+        env {
+          name = "OPENAI_API_KEY"
+          value_source {
+            secret_key_ref {
+              secret  = var.openai_api_key_secret_id
               version = "latest"
             }
           }

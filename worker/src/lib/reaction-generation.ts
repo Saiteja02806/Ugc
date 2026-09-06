@@ -3,6 +3,7 @@ import OpenAI from "openai";
 export const REACTION_GENERATION_PROMPT_VERSION = "reaction-brief-batch-v1";
 export const REACTION_GENERATION_SELECTION_VERSION = "reaction-batch-match-v1";
 export const MAX_REACTION_CLIP_PRESENTATIONS_PER_USER = 2;
+export const MAX_REACTION_BRIEF_GENERATION_ATTEMPTS = 3;
 
 const REACTIONS = [
   "side_eye", "facepalm", "deadpan", "confusion", "shock", "relief",
@@ -208,50 +209,66 @@ async function generateAndValidateBriefs(params: {
   palette: ReturnType<typeof buildAvailabilityPalette>;
   requestedCount: number;
 }) {
-  const completion = await getOpenAIClient().chat.completions.create({
-    max_completion_tokens: 4_000,
-    messages: [
-      {
-        role: "system",
-        content: "You create short, safe, relatable Reaction Reel captions. Return only the required JSON.",
+  let lastValidationError: Error | null = null;
+
+  for (let attempt = 1; attempt <= MAX_REACTION_BRIEF_GENERATION_ATTEMPTS; attempt += 1) {
+    const completion = await getOpenAIClient().chat.completions.create({
+      max_completion_tokens: 4_000,
+      messages: [
+        {
+          role: "system",
+          content: "You create short, safe, relatable Reaction Reel captions. Return only the required JSON.",
+        },
+        {
+          role: "user",
+          content: buildBriefPrompt({
+            ...params,
+            retryingAfterValidationFailure: attempt > 1,
+          }),
+        },
+      ],
+      model: process.env.OPENAI_REACTION_MODEL?.trim() || "gpt-5-mini",
+      reasoning_effort: "low",
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "reaction_brief_batch",
+          schema: reactionBriefSchema(params.requestedCount),
+          strict: true,
+        },
       },
-      {
-        role: "user",
-        content: buildBriefPrompt(params),
-      },
-    ],
-    model: process.env.OPENAI_REACTION_MODEL?.trim() || "gpt-5-mini",
-    reasoning_effort: "low",
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "reaction_brief_batch",
-        schema: reactionBriefSchema(params.requestedCount),
-        strict: true,
-      },
-    },
-  });
-  const text = completion.choices[0]?.message.content;
-  if (!text) throw new Error("Reaction brief model returned no structured output.");
-  let value: unknown;
-  try {
-    value = JSON.parse(text);
-  } catch {
-    throw new Error("Reaction brief model returned invalid JSON.");
+    });
+    const text = completion.choices[0]?.message.content;
+
+    try {
+      if (!text) throw new Error("Reaction brief model returned no structured output.");
+      return validateReactionBriefBatch(JSON.parse(text), params.palette, params.requestedCount);
+    } catch (error) {
+      lastValidationError = error instanceof Error
+        ? error
+        : new Error("Reaction brief model returned invalid structured output.");
+    }
   }
-  return validateReactionBriefBatch(value, params.palette, params.requestedCount);
+
+  throw new Error(
+    `Reaction brief model returned invalid structured output after ${MAX_REACTION_BRIEF_GENERATION_ATTEMPTS} attempts: ${lastValidationError?.message ?? "unknown validation error"}`,
+  );
 }
 
 function buildBriefPrompt(params: {
   context: ReactionGenerationContext;
   palette: ReturnType<typeof buildAvailabilityPalette>;
   requestedCount: number;
+  retryingAfterValidationFailure?: boolean;
 }) {
   return [
     `Generate exactly ${params.requestedCount} varied Reaction Reel briefs, with slotIndex 0 through ${params.requestedCount - 1}.`,
     "Each caption is a recognizable human moment, never an advertisement or CTA. Keep caption and lines word-for-word equivalent. Use 5-20 total words across 1-3 lines.",
     "semantic must use the exact beat names for its structure: situation_payoff uses situation/payoff; expectation_reality uses expectation/reality; comparison uses left/right; action_realization uses action/realization; setup_escalation uses setup/escalation. Do not use role contrast or character labels in V1.",
     "preferredReactions must have 1-3 controlled intents, strongest first. Do not repeat primary intent if relevant alternatives exist.",
+    params.retryingAfterValidationFailure
+      ? "Your previous draft failed validation. Recheck that lines joined with single spaces exactly equal caption, each caption has 5-20 words, semantic fields match its structure, and the primary reaction fits the selected emotion."
+      : "",
     "Do not output asset IDs, source filenames, URLs, or storage keys.",
     params.palette.generationRule,
     `Available intent palette: ${JSON.stringify(params.palette.availableReactionPalette)}.`,

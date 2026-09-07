@@ -50,7 +50,7 @@ test("the launcher claims capacity before Cloud Run and releases only a failed l
 test("the app launcher can start the one-shot Cloud Run Job", () => {
   assert.match(
     videoRenderInfrastructure,
-    /resource "google_project_iam_custom_role" "video_render_job_runner"[\s\S]*?permissions\s*=\s*\["run\.jobs\.run"\]/,
+    /resource "google_project_iam_custom_role" "video_render_job_runner"[\s\S]*?"run\.jobs\.run"[\s\S]*?"run\.jobs\.runWithOverrides"/,
   );
   assert.match(
     videoRenderInfrastructure,

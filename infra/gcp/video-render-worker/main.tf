@@ -280,7 +280,13 @@ resource "google_project_iam_custom_role" "video_render_job_runner" {
   role_id     = "ugcVideoRenderJobRunner"
   title       = "UGC Video Render Job Runner"
   description = "Starts the UGC one-shot video render job."
-  permissions = ["run.jobs.run"]
+  # The launcher passes the background-job id and type as a per-execution
+  # override, so both run permissions are required. This remains scoped to
+  # this one Job through the IAM-member resource below.
+  permissions = [
+    "run.jobs.run",
+    "run.jobs.runWithOverrides",
+  ]
 }
 
 resource "google_cloud_run_v2_job_iam_member" "app_launcher" {

@@ -92,7 +92,9 @@ Never commit credentials.
    `WORKER_TRANSPORT=cloud-tasks` and grant the scheduler service account
    `roles/run.invoker` on each receiving Service. The app launcher starts the
    video Cloud Run Job through the Jobs API, so it receives a scoped custom
-   role containing only `run.jobs.run` on that Job.
+   role containing only `run.jobs.run` and `run.jobs.runWithOverrides` on
+   that Job. The override is required to pass the durable background-job id
+   to the one-shot worker execution.
 5. Configure the worker URLs in the app environment and deploy the app from
    the same source SHA as the worker image. Do not mark a background-job change
    released when only the web app or only a Cloud Run worker has been deployed.

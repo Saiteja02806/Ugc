@@ -43,6 +43,8 @@ test("the launcher claims capacity before Cloud Run and releases only a failed l
     /catch \(error\) \{[\s\S]*?releaseVideoRenderExecutionSlot\(/,
   );
   assert.match(launcher, /Render capacity is temporarily full/);
+  assert.match(launcher, /appendBackgroundJobEvent/);
+  assert.match(launcher, /render_launcher_failed/);
 });
 
 test("the app launcher can start the one-shot Cloud Run Job", () => {

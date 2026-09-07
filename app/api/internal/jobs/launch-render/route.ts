@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 
 import {
+  appendBackgroundJobEvent,
   attachVideoRenderExecutionSlot,
   attachWorkerExecutionToBackgroundJob,
   claimVideoRenderExecutionSlot,
@@ -26,19 +27,6 @@ export const dynamic = "force-dynamic";
 const MAX_BODY_LENGTH = 4_096;
 
 export async function POST(request: Request) {
-  const missingEnv = Array.from(
-    new Set([
-      ...getMissingBackgroundJobStorageEnvVars(),
-      ...getMissingCloudTasksOidcEnvVars(),
-      ...getMissingCloudRunRenderJobEnvVars(),
-    ]),
-  );
-
-  if (missingEnv.length > 0) {
-    console.error("Cloud Run render launcher is not configured", { missingEnv });
-    return json({ ok: false, error: "Render launcher is not configured." }, 503);
-  }
-
   const audience =
     process.env.GCP_BACKGROUND_JOB_TASK_AUDIENCE?.trim() ||
     new URL(request.url).origin;
@@ -67,6 +55,24 @@ export async function POST(request: Request) {
 
   if (!job) {
     return json({ ok: true, dropped: true });
+  }
+
+  const missingEnv = Array.from(
+    new Set([
+      ...getMissingBackgroundJobStorageEnvVars(),
+      ...getMissingCloudTasksOidcEnvVars(),
+      ...getMissingCloudRunRenderJobEnvVars(),
+    ]),
+  );
+
+  if (missingEnv.length > 0) {
+    await recordRenderLauncherFailure({
+      error: `Missing configuration: ${missingEnv.join(", ")}`,
+      jobId: job.id,
+      reason: "missing_configuration",
+    });
+    console.error("Cloud Run render launcher is not configured", { missingEnv });
+    return json({ ok: false, error: "Render launcher is not configured." }, 503);
   }
 
   if (job.jobType !== payload.jobType || job.queueName !== "video-render") {
@@ -163,8 +169,33 @@ export async function POST(request: Request) {
       error: error instanceof Error ? error.message : "Unknown error",
       jobId: job.id,
     });
+    await recordRenderLauncherFailure({
+      error: error instanceof Error ? error.message : "Unknown error",
+      jobId: job.id,
+      reason: "cloud_run_job_launch_failed",
+    });
     return json({ ok: false, error: "Could not launch the render job." }, 503);
   }
+}
+
+async function recordRenderLauncherFailure(params: {
+  error: string;
+  jobId: string;
+  reason: "cloud_run_job_launch_failed" | "missing_configuration";
+}) {
+  await appendBackgroundJobEvent({
+    eventType: "render_launcher_failed",
+    jobId: params.jobId,
+    metadata: {
+      error: params.error.slice(0, 500),
+      reason: params.reason,
+    },
+  }).catch((eventError) => {
+    console.error("Could not record render launcher failure", {
+      error: eventError instanceof Error ? eventError.message : "Unknown error",
+      jobId: params.jobId,
+    });
+  });
 }
 
 function parseTaskPayload(rawBody: string): BackgroundJobTaskPayload | null {

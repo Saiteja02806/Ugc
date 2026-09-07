@@ -6,7 +6,7 @@ const migration = readProjectFile(
   "supabase/migrations/20260906180000_add_durable_reaction_generation_worker.sql",
 );
 const renderSlotMigration = readProjectFile(
-  "supabase/migrations/20260907055638_allow_reaction_render_execution_slots.sql",
+  "supabase/migrations/20260907061454_allow_reaction_render_execution_slots.sql",
 );
 const enqueue = readProjectFile("lib/reaction-format/generation-jobs.ts");
 const workerJob = readProjectFile("worker/src/jobs/generate-reaction.ts");

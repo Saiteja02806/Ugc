@@ -131,6 +131,7 @@ const scheduledVideoSourceTypes: MediaSourceType[] = [
   "upload",
   "generated_video",
   "edit_export",
+  "wall_text_render",
 ];
 const ACTIVE_SCHEDULE_POLL_INTERVAL_MS = 5_000;
 const ACTIVE_SCHEDULE_LOOKAHEAD_MS = 60_000;
@@ -3965,6 +3966,10 @@ function getScheduleSourceTypeFromMediaAsset(
 
   if (asset.sourceType === "edit_export") {
     return "edit_video";
+  }
+
+  if (asset.sourceType === "wall_text_render") {
+    return "wall_text_render";
   }
 
   if (asset.sourceType === "combined_render") {

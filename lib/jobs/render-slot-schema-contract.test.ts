@@ -52,7 +52,7 @@ test("the app launcher can start the one-shot Cloud Run Job", () => {
   );
   assert.match(
     videoRenderInfrastructure,
-    /resource "google_cloud_run_v2_job_iam_member" "app_launcher"[\s\S]*?role\s*=\s*google_project_iam_custom_role\.video_render_job_runner\.name/,
+    /resource "google_cloud_run_v2_job_iam_member" "app_launcher"[\s\S]*?role\s*=\s*google_project_iam_custom_role\.video_render_job_runner\[0\]\.name/,
   );
   assert.match(
     cloudRunJobs,

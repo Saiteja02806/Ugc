@@ -2,10 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCreateContentCardForOwner } from "@/lib/create-content/card-storage";
+import {
+  CreateContentTextValidationError,
+  normalizeAndValidateCreateContentText,
+} from "@/lib/create-content/generation-validation";
 import { buildCreateContentRenderOverlay } from "@/lib/create-content/render-contract";
 import {
   attachCreateContentRenderJob,
-  createOrRetryQueuedCreateContentRender,
+  createOrGetQueuedCreateContentRender,
   failCreateContentRender,
   getCreateContentRenderForCard,
   getMissingCreateContentRenderEnvVars,
@@ -17,14 +21,18 @@ import {
 } from "@/lib/firebase/server-auth";
 import {
   attachQueueMessageToBackgroundJob,
-  createBackgroundJob,
+  claimBackgroundJobDelivery,
+  createBackgroundJobWithCreationResult,
   getMissingBackgroundJobStorageEnvVars,
   markBackgroundJobFailed,
 } from "@/lib/jobs/background-jobs";
+import { isTerminalBackgroundJobStatus } from "@/lib/jobs/background-job-contract";
+import { shouldDeliverCarouselJobMessage } from "@/lib/jobs/background-job-delivery-logic";
+import { sendBackgroundJobMessageWithBestEffortAttachment } from "@/lib/jobs/background-job-message-delivery";
 import { getMediaAssetForOwner, serializeMediaAsset } from "@/lib/media/media-storage";
 import {
-  getMissingJobQueueEnvVars,
   getQueueNameForJobType,
+  getMissingJobQueueEnvVars,
   sendJobMessage,
 } from "@/lib/queues/job-queue";
 import { isTrustedStorageUrl } from "@/lib/storage/storage";
@@ -67,6 +75,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   let renderId: string | null = null;
+  let renderAttempt: number | null = null;
   let userId: string | null = null;
   let backgroundJobId: string | null = null;
 
@@ -121,10 +130,18 @@ export async function POST(request: Request) {
       );
     }
 
-    let overlay;
+    let validatedText: string;
     try {
-      overlay = buildCreateContentRenderOverlay(card);
+      validatedText = await normalizeAndValidateCreateContentText({
+        format: card.overlay.format,
+        position: card.overlay.position,
+        text: card.overlay.text,
+      });
     } catch (error) {
+      if (!(error instanceof CreateContentTextValidationError)) {
+        throw error;
+      }
+
       return json(
         {
           error: getErrorMessage(error, "This text cannot be prepared yet."),
@@ -134,7 +151,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const queued = await createOrRetryQueuedCreateContentRender({
+    const overlay = buildCreateContentRenderOverlay({
+      ...card,
+      overlay: { ...card.overlay, text: validatedText },
+    });
+
+    const queued = await createOrGetQueuedCreateContentRender({
       cardRevision: card.revision,
       id: crypto.randomUUID(),
       overlay,
@@ -142,20 +164,25 @@ export async function POST(request: Request) {
       userId: user.uid,
     });
     renderId = queued.render.id;
+    renderAttempt = queued.render.attempt;
 
-    if (!queued.created) {
-      return json({ ok: true, render: queued.render }, queued.render.status === "ready" ? 200 : 202);
+    if (queued.render.status === "ready" || queued.render.jobId) {
+      return json(
+        { ok: true, render: queued.render },
+        queued.render.status === "ready" ? 200 : 202,
+      );
     }
 
-    const backgroundJob = await createBackgroundJob({
-      // The render snapshot is deduplicated by its card revision. A retry must
-      // use a new delivery-job key, otherwise a previous failed background job
-      // would be returned instead of being dispatched again.
-      idempotencyKey: `create-content-render:${queued.render.id}:${crypto.randomUUID()}`,
+    const creation = await createBackgroundJobWithCreationResult({
+      // Each durable render attempt has one background job. Repeated clicks
+      // reuse it; a failed attempt gets a new key when storage atomically
+      // increments the attempt number.
+      idempotencyKey: `create-content-render:${queued.render.id}:attempt:${queued.render.attempt}`,
       input: {
         cardRevision: card.revision,
         overlay,
         projectId: sourceAsset.projectId ?? "create-content",
+        renderAttempt: queued.render.attempt,
         renderId: queued.render.id,
         sourceVideoId: sourceAsset.id,
         sourceVideoUrl: sourceAsset.url,
@@ -167,20 +194,86 @@ export async function POST(request: Request) {
       queueName: getQueueNameForJobType(RENDER_JOB_TYPE),
       userId: user.uid,
     });
-    backgroundJobId = backgroundJob.id;
+    backgroundJobId = creation.job.id;
+
+    // A previous request may have created this idempotent job and then failed
+    // before attaching it to the render row. Do not attach a terminal job and
+    // leave the UI in "Generating" forever; atomically expose it as a failed
+    // render so the next click starts a new attempt.
+    if (isTerminalBackgroundJobStatus(creation.job.status)) {
+      await failCreateContentRender({
+        allowUnattachedJob: true,
+        attempt: queued.render.attempt,
+        errorMessage: "Video preparation stopped before it could start. Try preparing it again.",
+        jobId: creation.job.id,
+        renderId: queued.render.id,
+        userId: user.uid,
+      });
+
+      const reconciled = await getCreateContentRenderForCard({
+        cardRevision: card.revision,
+        sourceMediaAssetId: sourceAsset.id,
+        userId: user.uid,
+      });
+
+      if (reconciled) {
+        return json({ ok: true, render: reconciled }, 202);
+      }
+
+      throw new Error("Create Content preparation disappeared during recovery.");
+    }
+
     const jobAttached = await attachCreateContentRenderJob({
-      jobId: backgroundJob.id,
+      attempt: queued.render.attempt,
+      jobId: creation.job.id,
       renderId: queued.render.id,
       userId: user.uid,
     });
-    const message = await sendJobMessage({
-      jobId: backgroundJob.id,
-      jobType: RENDER_JOB_TYPE,
-    });
-    await attachQueueMessageToBackgroundJob({
-      jobId: backgroundJob.id,
-      queueMessageId: message.messageId,
-    });
+
+    if (
+      shouldDeliverCarouselJobMessage({
+        job: creation.job,
+        wasJustCreated: creation.created,
+      })
+    ) {
+      const deliveryClaim = await claimBackgroundJobDelivery(creation.job);
+
+      if (deliveryClaim) {
+        try {
+          await sendBackgroundJobMessageWithBestEffortAttachment({
+            attachMessage: (queueMessageId) =>
+              attachQueueMessageToBackgroundJob({
+                jobId: creation.job.id,
+                queueMessageId,
+              }),
+            jobId: creation.job.id,
+            onAttachmentError: (error) => {
+              console.error(
+                "Create Content render was queued but its delivery metadata could not be saved:",
+                error,
+              );
+            },
+            sendMessage: () =>
+              sendJobMessage({
+                jobId: creation.job.id,
+                jobType: RENDER_JOB_TYPE,
+              }),
+          });
+        } catch (error) {
+          if (creation.created) {
+            await markBackgroundJobFailed({
+              errorMessage: getErrorMessage(
+                error,
+                "Could not queue Create Content video preparation.",
+              ),
+              jobId: creation.job.id,
+            });
+          }
+
+          throw error;
+        }
+      }
+    }
 
     return json({ ok: true, render: jobAttached }, 202);
   } catch (error) {
@@ -195,7 +288,14 @@ export async function POST(request: Request) {
     }
     if (renderId && userId) {
       try {
-        await failCreateContentRender({ errorMessage: message, renderId, userId });
+        await failCreateContentRender({
+          allowUnattachedJob: true,
+          attempt: renderAttempt,
+          errorMessage: message,
+          jobId: backgroundJobId,
+          renderId,
+          userId,
+        });
       } catch (failureError) {
         console.error("Could not reconcile Create Content preparation failure:", failureError);
       }

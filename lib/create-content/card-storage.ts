@@ -11,6 +11,10 @@ import {
   type CreateContentTextFormat,
   type CreateContentTextPosition,
 } from "@/lib/create-content/card-contract";
+import {
+  CreateContentTextValidationError,
+  normalizeAndValidateCreateContentText,
+} from "@/lib/create-content/generation-validation";
 
 const CREATE_CONTENT_CARDS_TABLE = "create_content_cards";
 
@@ -114,6 +118,22 @@ export async function saveCreateContentCard(params: {
   text: string;
   userId: string;
 }): Promise<CreateContentCard> {
+  const position = clampCreateContentTextPosition(params.position);
+  let activeText: string;
+
+  try {
+    activeText = await normalizeAndValidateCreateContentText({
+      format: params.format,
+      position,
+      text: params.text,
+    });
+  } catch (error) {
+    if (error instanceof CreateContentTextValidationError) {
+      throw new CreateContentCardStorageError(error.message, 400);
+    }
+    throw error;
+  }
+
   const existing = await getCreateContentCardRowForOwner({
     sourceMediaAssetId: params.sourceMediaAssetId,
     userId: params.userId,
@@ -130,17 +150,13 @@ export async function saveCreateContentCard(params: {
   const now = new Date().toISOString();
   const values = {
     active_format: params.format,
-    active_text: normalizeCreateContentText(params.text),
+    active_text: activeText,
     revision: actualRevision + 1,
     source_media_asset_id: params.sourceMediaAssetId,
-    text_position: clampCreateContentTextPosition(params.position),
+    text_position: position,
     updated_at: now,
     user_id: params.userId,
   };
-
-  if (!values.active_text) {
-    throw new CreateContentCardStorageError("Text cannot be empty.", 400);
-  }
 
   if (!existing) {
     const { data, error } = await getClient()

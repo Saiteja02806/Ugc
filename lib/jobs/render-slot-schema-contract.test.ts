@@ -7,8 +7,13 @@ const workspaceRoot = process.cwd();
 const migration = read(
   "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260828160000_add_durable_video_render_slots.sql",
 );
+const createContentRenderMigration = read(
+  "supabase/migrations/20260907170000_add_create_content_video_renders.sql",
+);
 const launcher = read("app/api/internal/jobs/launch-render/route.ts");
 const jobs = read("lib/jobs/background-jobs.ts");
+const cloudRunJobs = read("lib/jobs/gcp-cloud-run-jobs.ts");
+const videoRenderInfrastructure = read("infra/gcp/video-render-worker/main.tf");
 
 test("render capacity is a durable ten-slot database gate", () => {
   assert.match(migration, /create table if not exists public\.video_render_execution_slots/i);
@@ -41,6 +46,31 @@ test("the launcher claims capacity before Cloud Run and releases only a failed l
     /catch \(error\) \{[\s\S]*?releaseVideoRenderExecutionSlot\(/,
   );
   assert.match(launcher, /Render capacity is temporarily full/);
+  assert.match(launcher, /appendBackgroundJobEvent/);
+  assert.match(launcher, /render_launcher_failed/);
+});
+
+test("the app launcher can start the one-shot Cloud Run Job", () => {
+  assert.match(
+    videoRenderInfrastructure,
+    /resource "google_project_iam_custom_role" "video_render_job_runner"[\s\S]*?"run\.jobs\.run"[\s\S]*?"run\.jobs\.runWithOverrides"/,
+  );
+  assert.match(
+    videoRenderInfrastructure,
+    /resource "google_cloud_run_v2_job_iam_member" "app_launcher"[\s\S]*?role\s*=\s*google_project_iam_custom_role\.video_render_job_runner\[0\]\.name/,
+  );
+  assert.match(
+    cloudRunJobs,
+    /DEFAULT_VIDEO_RENDER_JOB_NAME\s*=\s*"ugc-video-render-job"/,
+  );
+  assert.match(cloudRunJobs, /jobName:\s*getVideoRenderJobName\(\)/);
+});
+
+test("Create Content render jobs are admitted to the same bounded lease", () => {
+  assert.match(
+    createContentRenderMigration,
+    /claim_video_render_execution_slot[\s\S]*?job\.job_type in \([\s\S]*?'render_create_content_video'/,
+  );
 });
 
 function read(relativePath: string) {

@@ -10,7 +10,9 @@ import type { BackgroundJobRecord, BackgroundJobType } from "./background-jobs";
 import {
   buildBackgroundJobCloudTaskRequest,
   DEFAULT_GCP_JOB_TASKS_LOCATION,
-  resolveBackgroundJobDispatchUrl,
+  isVideoRenderLauncherDispatchUrl,
+  resolveBackgroundJobDispatchUrlFromEnv,
+  VIDEO_RENDER_LAUNCHER_PATH,
 } from "./gcp-cloud-tasks-logic";
 import { getGcpProjectId, getQueueNameForJobType } from "@/lib/queues/config";
 
@@ -45,8 +47,15 @@ export function getMissingBackgroundJobCloudTasksEnvVars(
     const queueName = getQueueNameForJobType(jobType);
     const envName = getDispatchUrlEnvName(queueName);
 
-    if (!getBackgroundJobDispatchUrl(queueName, env)) {
+    const dispatchUrl = getBackgroundJobDispatchUrl(queueName, env);
+
+    if (!dispatchUrl) {
       missing.add(`${envName} or GCP_BACKGROUND_JOB_TASK_URL`);
+    } else if (
+      queueName === "video-render" &&
+      !isVideoRenderLauncherDispatchUrl(dispatchUrl)
+    ) {
+      missing.add(getVideoRenderLauncherConfigurationError(envName));
     }
   }
 
@@ -122,6 +131,15 @@ function getRequiredDispatchUrl(jobType: BackgroundJobType) {
     );
   }
 
+  if (
+    queueName === "video-render" &&
+    !isVideoRenderLauncherDispatchUrl(dispatchUrl)
+  ) {
+    throw new Error(
+      getVideoRenderLauncherConfigurationError(getDispatchUrlEnvName(queueName)),
+    );
+  }
+
   return dispatchUrl;
 }
 
@@ -131,13 +149,8 @@ export function getBackgroundJobDispatchUrl(
 ) {
   const explicitUrl = env[getDispatchUrlEnvName(queueName)]?.trim();
   const fallbackUrl = env.GCP_BACKGROUND_JOB_TASK_URL?.trim();
-  const baseUrl = explicitUrl || fallbackUrl;
 
-  if (!baseUrl) {
-    return "";
-  }
-
-  return resolveBackgroundJobDispatchUrl(baseUrl);
+  return resolveBackgroundJobDispatchUrlFromEnv({ explicitUrl, fallbackUrl });
 }
 
 function getDispatchUrlEnvName(queueName: string) {
@@ -146,6 +159,10 @@ function getDispatchUrlEnvName(queueName: string) {
       queueName as keyof typeof dispatchUrlEnvByQueueName
     ] || "GCP_BACKGROUND_JOB_TASK_URL"
   );
+}
+
+function getVideoRenderLauncherConfigurationError(envName: string) {
+  return `${envName} must target ${VIDEO_RENDER_LAUNCHER_PATH} for video-render jobs.`;
 }
 
 function getCloudTasksServiceAccountEmail(

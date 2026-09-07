@@ -1489,9 +1489,36 @@ export class SupabaseJobStore {
       throw new Error(`Could not mark Create Content render started: ${error.message}`);
     }
 
-    if (!data) {
-      throw new Error("Create Content render request is stale.");
+    if (data) {
+      return { status: "rendering" as const };
     }
+
+    const { data: persistedRender, error: persistedRenderError } = await this.client
+      .from(CREATE_CONTENT_RENDERS_TABLE)
+      .select("rendered_media_asset_id,status")
+      .eq("id", params.renderId)
+      .eq("user_id", params.userId)
+      .eq("render_job_id", params.jobId)
+      .maybeSingle();
+
+    if (persistedRenderError) {
+      throw new Error(
+        `Could not inspect Create Content render state: ${persistedRenderError.message}`,
+      );
+    }
+
+    if (
+      persistedRender?.status === "ready" &&
+      typeof persistedRender.rendered_media_asset_id === "string" &&
+      persistedRender.rendered_media_asset_id.trim()
+    ) {
+      return {
+        mediaAssetId: persistedRender.rendered_media_asset_id,
+        status: "ready" as const,
+      };
+    }
+
+    throw new Error("Create Content render request is stale.");
   }
 
   async markCreateContentRenderCompleted(params: {
@@ -1504,7 +1531,7 @@ export class SupabaseJobStore {
   }) {
     const now = new Date().toISOString();
 
-    await this.saveMediaAsset({
+    const mediaAssetId = await this.saveMediaAsset({
       collection: "video",
       duration_seconds: null,
       file_name: null,
@@ -1513,6 +1540,7 @@ export class SupabaseJobStore {
       id: params.mediaAssetId,
       metadata: {
         cardRevision: params.cardRevision,
+        createContentRenderAttempt: params.payload.renderAttempt,
         createContentRenderId: params.payload.renderId,
         createContentTextFormat: params.payload.overlay.format,
         sourceMediaAssetId: params.payload.sourceVideoId,
@@ -1521,7 +1549,10 @@ export class SupabaseJobStore {
       parent_asset_id: params.payload.sourceVideoId,
       project_id: params.payload.projectId,
       ratio: "9:16",
-      source_record_id: params.payload.renderId,
+      // A new user retry is a distinct immutable artifact. A delayed old
+      // worker can therefore never update the media asset referenced by the
+      // newer render attempt.
+      source_record_id: `${params.payload.renderId}:attempt:${params.payload.renderAttempt}`,
       source_type: "wall_text_render",
       status: "ready",
       storage_key: params.key,
@@ -1537,7 +1568,7 @@ export class SupabaseJobStore {
       .from(CREATE_CONTENT_RENDERS_TABLE)
       .update({
         error_message: null,
-        rendered_media_asset_id: params.mediaAssetId,
+        rendered_media_asset_id: mediaAssetId,
         status: "ready",
         updated_at: now,
       })
@@ -1552,13 +1583,38 @@ export class SupabaseJobStore {
       throw new Error(`Could not complete Create Content render: ${error.message}`);
     }
 
-    if (!data) {
-      throw new Error("Create Content render changed before completion.");
+    if (data) {
+      return mediaAssetId;
     }
+
+    const { data: persistedRender, error: persistedRenderError } = await this.client
+      .from(CREATE_CONTENT_RENDERS_TABLE)
+      .select("rendered_media_asset_id,status")
+      .eq("id", params.payload.renderId)
+      .eq("user_id", params.payload.userId)
+      .eq("render_job_id", params.jobId)
+      .maybeSingle();
+
+    if (persistedRenderError) {
+      throw new Error(
+        `Could not inspect Create Content render completion: ${persistedRenderError.message}`,
+      );
+    }
+
+    if (
+      persistedRender?.status === "ready" &&
+      typeof persistedRender.rendered_media_asset_id === "string" &&
+      persistedRender.rendered_media_asset_id.trim()
+    ) {
+      return persistedRender.rendered_media_asset_id;
+    }
+
+    throw new Error("Create Content render changed before completion.");
   }
 
   async markCreateContentRenderFailed(params: {
     errorMessage: string;
+    jobId: string;
     renderId: string;
     userId: string;
   }) {
@@ -1571,6 +1627,7 @@ export class SupabaseJobStore {
       })
       .eq("id", params.renderId)
       .eq("user_id", params.userId)
+      .eq("render_job_id", params.jobId)
       .in("status", ["queued", "rendering"]);
 
     if (error) {
@@ -3771,8 +3828,9 @@ export class SupabaseJobStore {
       throw new Error(`Could not find generated media asset: ${readError.message}`);
     }
 
+    const { id: _id, ...update } = row;
     const operation = existing
-      ? this.client.from(MEDIA_ASSETS_TABLE).update(row).eq("id", existing.id)
+      ? this.client.from(MEDIA_ASSETS_TABLE).update(update).eq("id", existing.id)
       : this.client.from(MEDIA_ASSETS_TABLE).insert(row);
     const { error } = await operation;
 

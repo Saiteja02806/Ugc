@@ -88,6 +88,10 @@ test("maps all active production job types to migrated GCP queues", () => {
       ["generate_carousel", getQueueNameForJobType("generate_carousel")],
       ["render_edit_video", getQueueNameForJobType("render_edit_video")],
       [
+        "render_create_content_video",
+        getQueueNameForJobType("render_create_content_video"),
+      ],
+      [
         "render_schedule_combination",
         getQueueNameForJobType("render_schedule_combination"),
       ],
@@ -106,6 +110,7 @@ test("maps all active production job types to migrated GCP queues", () => {
       ["paid_trending_prebuild", "ai-generation"],
       ["generate_carousel", "carousel"],
       ["render_edit_video", "video-render"],
+      ["render_create_content_video", "video-render"],
       ["render_schedule_combination", "video-render"],
       ["render_wall_text_video", "video-render"],
       ["publish_social_post", "social-publish"],

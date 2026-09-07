@@ -49,7 +49,7 @@ test("raw company Hook clips are excluded from the frontend media library", () =
   );
 
   assert.doesNotMatch(sourceTypes, /catalog_influencer/);
-  assert.match(mediaRoute, /isMediaAssetVisibleInCreativeLibrary/);
+  assert.match(mediaRoute, /isMediaAssetVisibleInMediaList/);
   assert.match(mediaGroupStorage, /isMediaAssetVisibleInCreativeLibrary/);
   assert.match(mediaLibraryVisibility, /asset\.sourceType === "catalog_influencer"/);
   assert.match(mediaLibraryVisibility, /libraryVisibility !== "hook_videos_only"/);

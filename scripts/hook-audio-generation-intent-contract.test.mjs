@@ -32,7 +32,7 @@ test("the Hook writer emits meaning-only audio intent from controlled values", (
   assert.match(generator, /HOOK_AUDIO_ENERGIES/u);
   assert.match(generator, /additionalProperties: false,[\s\S]+audioIntent/u);
   assert.match(generator, /never return an audio filename, asset ID, URL, storage key, or library choice/i);
-  assert.match(generator, /"trending-hook-copy-v6"/u);
+  assert.match(generator, /"trending-hook-copy-v7"/u);
 });
 
 test("v6 persistence rejects filenames and stores only controlled intent", () => {
@@ -42,9 +42,9 @@ test("v6 persistence rejects filenames and stores only controlled intent", () =>
     /audio_intent - array\['mood', 'hookType', 'energy'\] = '\{\}'::jsonb/u,
   );
   assert.match(migration, /hook_copy_v6_candidate_is_valid/u);
-  assert.match(workerStore, /persist_trending_hook_copy_generation_v6/u);
+  assert.match(workerStore, /persist_trending_hook_copy_generation_v7/u);
   assert.match(
     workerStore,
-    /persist_validated_hook_composition_generation_v6/u,
+    /persist_validated_hook_composition_generation_v7/u,
   );
 });

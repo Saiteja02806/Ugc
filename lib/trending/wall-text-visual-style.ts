@@ -104,7 +104,8 @@ export function getWallTextFontSize(content: TrendingWallTextContent): WallTextF
 }
 
 export function getWallTextTypography(content: TrendingWallTextContent) {
-  if (content.finalLayout?.version === "wall-text-final-layout-v6") {
+  if (content.finalLayout?.version === "wall-text-final-layout-v6" ||
+      content.finalLayout?.version === "wall-text-final-layout-v7") {
     return ARIAL_BOLD_TYPOGRAPHY;
   }
 

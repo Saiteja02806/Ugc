@@ -136,6 +136,120 @@ test("persists retry state and keeps the queue delivery", async () => {
   );
 });
 
+test("keeps a Create Content render non-terminal while its worker retry is pending", async () => {
+  const job = createJob();
+  const commands: string[] = [];
+  const store = createJobStore(job);
+  const failures: Array<Record<string, string>> = [];
+  job.job_type = "render_create_content_video";
+  job.input_json = {
+    renderId: "render-1",
+    userId: "user-1",
+  };
+  store.markCreateContentRenderFailed = (async (params) => {
+    failures.push(params);
+  }) as SupabaseJobStore["markCreateContentRenderFailed"];
+
+  await processWorkerMessage({
+    config: createConfig(["render_create_content_video"]),
+    dependencies: {
+      heartbeatIntervalMs: 1_000,
+      async runJob() {
+        throw new RetryableJobError("Temporary storage timeout.", {
+          code: "storage_timeout",
+          now: 0,
+          retryAfterSeconds: 30,
+        });
+      },
+    },
+    message: createMessage("render_create_content_video"),
+    queue: createQueue(commands),
+    store,
+  });
+
+  assert.equal(job.status, "queued");
+  assert.equal(job.attempt_count, 1);
+  assert.deepEqual(failures, []);
+  assert.equal(
+    commands.filter((name) => name === "DeleteMessageCommand").length,
+    0,
+  );
+});
+
+test("reconciles a Create Content render only after its background job terminally fails", async () => {
+  const job = createJob();
+  const store = createJobStore(job);
+  const failures: Array<Record<string, string>> = [];
+  job.job_type = "render_create_content_video";
+  job.input_json = {
+    renderId: "render-1",
+    userId: "user-1",
+  };
+
+  store.markFailed = (async () => {
+    job.claim_token = null;
+    job.status = "failed";
+    return { ...job };
+  }) as SupabaseJobStore["markFailed"];
+  store.markCreateContentRenderFailed = (async (params) => {
+    failures.push(params);
+  }) as SupabaseJobStore["markCreateContentRenderFailed"];
+
+  await processWorkerMessage({
+    config: createConfig(["render_create_content_video"]),
+    dependencies: {
+      async runJob() {
+        throw new Error("FFmpeg rejected the input video.");
+      },
+    },
+    message: createMessage("render_create_content_video"),
+    queue: createQueue([]),
+    store,
+  });
+
+  assert.equal(job.status, "failed");
+  assert.deepEqual(failures, [
+    {
+      errorMessage: "FFmpeg rejected the input video.",
+      jobId: job.id,
+      renderId: "render-1",
+      userId: "user-1",
+    },
+  ]);
+});
+
+test("reconciles a cancelled Create Content render against the cancelled job", async () => {
+  const job = createJob();
+  const store = createJobStore(job);
+  const failures: Array<Record<string, string>> = [];
+  job.job_type = "render_create_content_video";
+  job.input_json = {
+    renderId: "render-1",
+    userId: "user-1",
+  };
+  job.status = "cancel_requested";
+  store.markCreateContentRenderFailed = (async (params) => {
+    failures.push(params);
+  }) as SupabaseJobStore["markCreateContentRenderFailed"];
+
+  await processWorkerMessage({
+    config: createConfig(["render_create_content_video"]),
+    message: createMessage("render_create_content_video"),
+    queue: createQueue([]),
+    store,
+  });
+
+  assert.equal(job.status, "cancelled");
+  assert.deepEqual(failures, [
+    {
+      errorMessage: "Video save was cancelled before execution.",
+      jobId: job.id,
+      renderId: "render-1",
+      userId: "user-1",
+    },
+  ]);
+});
+
 test("requeues an interrupted content-plan request instead of terminally failing it", async () => {
   const job = createJob();
   const commands: string[] = [];

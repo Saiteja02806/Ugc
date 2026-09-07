@@ -102,18 +102,18 @@ export async function generateCreateContentCopy(params: {
     throw new Error("The AI did not return the requested number of options. Please try again.");
   }
 
-  return parsed.options.map((option, index) => {
-    return {
+  return Promise.all(
+    parsed.options.map(async (option, index) => ({
       format: params.format,
       ...(params.format === "hook_text"
         ? { formatId: hookFormats[index]!.id }
         : {}),
-      text: normalizeAndValidateGeneratedCreateContentText({
+      text: await normalizeAndValidateGeneratedCreateContentText({
         format: params.format,
         text: option.text,
       }),
-    };
-  });
+    })),
+  );
 }
 
 function buildCreateContentPrompt(params: {

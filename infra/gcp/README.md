@@ -70,7 +70,7 @@ GCP_MEDIA_PROCESSING_TASK_URL=<Cloud Run service URL>
 GCP_SOCIAL_PUBLISH_TASK_URL=<Cloud Run service URL>
 # Must be the internal app launcher, not the legacy video worker service.
 # It starts the one-shot ugc-video-render-job for each render.
-GCP_VIDEO_RENDER_TASK_URL=https://www.getugcpilot.com/api/internal/jobs/launch-render
+GCP_VIDEO_RENDER_TASK_URL=https://getugcpilot.com/api/internal/jobs/launch-render
 GCP_STORAGE_BUCKET=ugcsaas-media
 GCP_STORAGE_PUBLIC_BASE_URL=https://storage.googleapis.com/ugcsaas-media
 ```
@@ -79,7 +79,18 @@ For an app hosted outside GCP, also configure the `ugc-app-sa` credential using
 `GOOGLE_CLOUD_CREDENTIALS_JSON`, or the split client-email/private-key values.
 Never commit credentials.
 
-## Safe apply order
+## Existing production release order
+
+1. Push the complete validated source to Git `main`. Temporarily skip Vercel
+   Git builds while database prerequisites are pending.
+2. Apply only missing Supabase migrations and verify migration parity.
+3. Restore the Vercel Git build setting and deploy the exact `main` revision.
+4. Build one worker image from that revision and deploy it to every active
+   worker service and job that uses this source.
+5. Run authenticated production smoke tests and verify app/worker source SHA
+   parity on `https://www.getugcpilot.com`.
+
+## Infrastructure bootstrap apply order
 
 1. Apply the Supabase migrations in timestamp order.
 2. Plan and apply `foundation/` to create Cloud Tasks queues.
@@ -90,7 +101,11 @@ Never commit credentials.
    active. The video Job is different: it is a one-shot instance that exits
    after its render. The stacks set
    `WORKER_TRANSPORT=cloud-tasks` and grant the scheduler service account
-   `roles/run.invoker`.
+   `roles/run.invoker` on each receiving Service. The app launcher starts the
+   video Cloud Run Job through the Jobs API, so it receives a scoped custom
+   role containing only `run.jobs.run` and `run.jobs.runWithOverrides` on
+   that Job. The override is required to pass the durable background-job id
+   to the one-shot worker execution.
 5. Configure the worker URLs in the app environment and deploy the app from
    the same source SHA as the worker image. Do not mark a background-job change
    released when only the web app or only a Cloud Run worker has been deployed.

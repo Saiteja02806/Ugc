@@ -87,7 +87,7 @@ test("Content Library is dedicated to compact demo footage", () => {
   assert.doesNotMatch(libraryPage, /tab === "content"/);
   assert.match(
     demosWorkspace,
-    /"grid min-h-\[220px\] items-center gap-5 rounded-panel border border-dashed px-4 py-5/,
+    /"grid min-h-\[220px\] items-center gap-6 rounded-2xl border-2 border-dashed p-6/,
   );
   assert.doesNotMatch(demosWorkspace, /min-h-\[330px\]/);
 });

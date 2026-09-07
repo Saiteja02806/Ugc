@@ -230,10 +230,11 @@ despite the MP4 being ready. Old drafts use their Reaction assignment metadata
 to retain the Reaction Reel source label, and genuinely deleted media still
 requires recovery.
 
-Release requirements: deploy the updated video worker with `final_render` in
-`WORKER_JOB_TYPES`, then deploy the application. This change uses existing
-columns and the existing `final_render` job type; no database migration is
-required. The affected old draft's planned time has passed and needs a newly
+Release order: push the combined source to `main`, apply the required Supabase
+migrations, deploy the Vercel app, deploy the GCP worker image, then smoke-test
+production. The Reaction edit migration adds `final_render` to the existing
+bounded render slot function; the video worker also needs `final_render` in
+`WORKER_JOB_TYPES`. The affected old draft's planned time has passed and needs a newly
 chosen future time; it must not be published automatically at an invented time.
 
 Run `npm run test:reaction` and `npm --prefix worker run test:reaction-edit` for
@@ -274,6 +275,12 @@ and its background job failed so the normal recovery/retry behavior applies.
 An individual clip is eligible for at most two real presentations to the same
 user (the first appearance and one later reuse); catalog reservation does not
 count as a presentation.
+
+Reaction generation uses the existing bounded `video_render_execution_slots`
+lease before its Cloud Run Job is launched. Its database allowlist must include
+`reaction_generation` alongside the other `video-render` job types; a missing
+entry leaves a free slot unclaimed and makes the launcher retry with a capacity
+error.
 
 ## Reaction brief latency and repair — 7 September
 

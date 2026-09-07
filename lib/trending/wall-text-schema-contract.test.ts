@@ -138,14 +138,14 @@ const avenirNextTypographyMigration = readFileSync(
 );
 const arialBoldV6TypographyMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260907051742_add_wall_text_arial_bold_v6_typography.sql",
+    "../../supabase/migrations/20260907150000_add_wall_text_arial_bold_v6_typography.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const lighterArialBoldV7TypographyMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260907111233_lighten_wall_text_v11_treatment.sql",
+    "../../supabase/migrations/20260907195000_lighten_wall_text_v11_treatment.sql",
     import.meta.url,
   ),
   "utf8",

@@ -227,8 +227,10 @@ export type RenderCreateContentVideoPayload = {
             textBox: WallTextNormalizedBox;
           };
         };
-      };
+  };
   projectId: string;
+  /** Monotonic retry generation for this durable render snapshot. */
+  renderAttempt: number;
   renderId: string;
   sourceVideoId: string;
   sourceVideoUrl: string;
@@ -604,6 +606,8 @@ export async function renderWallTextVideoToStorage(
 export async function renderCreateContentVideoToStorage(
   payload: RenderCreateContentVideoPayload,
 ): Promise<RenderCreateContentVideoOutput> {
+  const artifactRenderId = getCreateContentRenderArtifactId(payload);
+
   if (payload.overlay.format === "hook_text") {
     const rendered = await renderEditedVideoToStorage({
       draft: {
@@ -624,13 +628,16 @@ export async function renderCreateContentVideoToStorage(
       },
       projectId: payload.projectId,
       ratio: "9:16",
-      renderId: payload.renderId,
+      // `renderId` controls the immutable storage artifact for this generic
+      // renderer. Keep the durable Create Content id separate so a manual
+      // retry cannot overwrite an older attempt that finishes late.
+      renderId: artifactRenderId,
       sourceVideoId: payload.sourceVideoId,
       sourceVideoUrl: payload.sourceVideoUrl,
       userId: payload.userId,
     });
 
-    return rendered;
+    return { ...rendered, renderId: payload.renderId };
   }
 
   const workDir = await mkdtemp(join(tmpdir(), "ugc-create-content-wall-"));
@@ -671,9 +678,9 @@ export async function renderCreateContentVideoToStorage(
     await runFfmpegCommand({
       args: buildCreateContentWallTextVideoArgs({ inputPath, outputPath, overlayPath }),
       label: "Create Content Wall-of-Text render",
-      renderId: payload.renderId,
+      renderId: artifactRenderId,
     });
-    await validateRenderedVideoFile(outputPath, payload.renderId, {
+    await validateRenderedVideoFile(outputPath, artifactRenderId, {
       logLabel: "Create Content Wall-of-Text",
       requireAudio: false,
     });
@@ -2637,8 +2644,14 @@ function buildCreateContentVideoKey(payload: RenderCreateContentVideoPayload) {
     cleanPathPart(payload.userId),
     cleanPathPart(payload.projectId),
     "create-content",
-    `${cleanPathPart(payload.renderId)}.mp4`,
+    `${cleanPathPart(getCreateContentRenderArtifactId(payload))}.mp4`,
   ].join("/");
+}
+
+function getCreateContentRenderArtifactId(
+  payload: Pick<RenderCreateContentVideoPayload, "renderAttempt" | "renderId">,
+) {
+  return `${payload.renderId}-attempt-${payload.renderAttempt}`;
 }
 
 function buildReactionVideoKey(payload: RenderReactionVideoPayload) {

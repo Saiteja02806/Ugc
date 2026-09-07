@@ -5,10 +5,11 @@ import test from "node:test";
 const [
   workspace,
   renderRoute,
-  renderStorage,
   renderEngine,
   renderWorker,
   schedulingWorkspace,
+  renderStorage,
+  renderSlotMigration,
 ] =
   await Promise.all([
     readFile(
@@ -20,10 +21,6 @@ const [
     ),
     readFile(
       new URL("../../app/api/create-content/renders/route.ts", import.meta.url),
-      "utf8",
-    ),
-    readFile(
-      new URL("./render-storage.ts", import.meta.url),
       "utf8",
     ),
     readFile(
@@ -40,6 +37,17 @@ const [
     readFile(
       new URL(
         "../../components/scheduling/scheduling-workspace.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(
+      new URL("./render-storage.ts", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL(
+        "../../supabase/migrations/20260907170000_add_create_content_video_renders.sql",
         import.meta.url,
       ),
       "utf8",
@@ -64,22 +72,55 @@ test("Create Content enters the existing scheduler as one video, never an automa
   assert.match(schedulingWorkspace, /initialClipSelection: "secondary_only"/);
   assert.match(schedulingWorkspace, /initialDemoMediaId: assetId/);
 });
+test("Create Content renders claim the bounded video-render lease before launch", () => {
+  assert.match(
+    renderSlotMigration,
+    /claim_video_render_execution_slot[\s\S]*job\.job_type in \([\s\S]*'render_create_content_video'/,
+  );
+});
 
-test("Create Content retries a failed render snapshot with a new background job", () => {
+test("a failed Create Content render gets one new durable attempt while duplicate clicks reuse it", () => {
   assert.match(
     renderStorage,
-    /export async function createOrRetryQueuedCreateContentRender/,
+    /attempt:\s*existing\.attempt \+ 1,[\s\S]*?\.eq\("status", "failed"\)/,
   );
-  assert.match(renderStorage, /\.eq\("status", "failed"\)/);
-  assert.match(renderStorage, /render_job_id: null/);
-  assert.match(renderStorage, /status: "queued"/);
   assert.match(
-    renderRoute,
-    /createOrRetryQueuedCreateContentRender/,
+    renderStorage,
+    /\.eq\("attempt", params\.attempt\)[\s\S]*?\.is\("render_job_id", null\)/,
   );
   assert.match(
     renderRoute,
-    /create-content-render:\$\{queued\.render\.id\}:\$\{crypto\.randomUUID\(\)\}/,
+    /create-content-render:\$\{queued\.render\.id\}:attempt:\$\{queued\.render\.attempt\}/,
   );
-  assert.match(workspace, /Select Schedule to try again\./);
+  assert.match(renderRoute, /claimBackgroundJobDelivery\(creation\.job\)/);
+  assert.match(renderRoute, /sendBackgroundJobMessageWithBestEffortAttachment/);
+  assert.match(renderSlotMigration, /attempt integer not null default 1 check \(attempt > 0\)/);
+  assert.match(
+    renderWorker,
+    /renderAttempt: getPositiveInteger\(input\.renderAttempt, "renderAttempt"\)/,
+  );
+  assert.match(
+    renderEngine,
+    /\$\{cleanPathPart\(getCreateContentRenderArtifactId\(payload\)\)\}\.mp4/,
+  );
+});
+
+test("render enqueue validates saved text against the final renderer before it creates work", () => {
+  assert.match(renderRoute, /normalizeAndValidateCreateContentText/);
+  assert.match(
+    renderRoute,
+    /normalizeAndValidateCreateContentText\([\s\S]*?createOrGetQueuedCreateContentRender/,
+  );
+});
+
+test("an unlinked terminal job is reconciled to a retryable render state", () => {
+  assert.match(renderRoute, /isTerminalBackgroundJobStatus\(creation\.job\.status\)/);
+  assert.match(
+    renderRoute,
+    /failCreateContentRender\([\s\S]*?Video preparation stopped before it could start/,
+  );
+  assert.match(
+    renderRoute,
+    /failCreateContentRender\([\s\S]*?allowUnattachedJob: true[\s\S]*?attempt: queued\.render\.attempt/,
+  );
 });

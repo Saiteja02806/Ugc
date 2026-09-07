@@ -21,6 +21,14 @@ const idempotencyRecoveryMigration = readFileSync(
   "supabase/migrations/20260905123000_harden_wall_text_regeneration_recovery.sql",
   "utf8",
 );
+const internalFunctionPermissionsMigration = readFileSync(
+  "supabase/migrations/20260907180000_restrict_internal_security_definer_functions.sql",
+  "utf8",
+);
+const cloudRunOperationIdentityMigration = readFileSync(
+  "supabase/migrations/20260907190000_add_background_job_cloud_run_operation_identity.sql",
+  "utf8",
+);
 
 test("uses demand-scaled request workers for independent AI jobs", () => {
   const aiWorkerMain = readFileSync(
@@ -161,6 +169,17 @@ test("reuses an idempotent background job without surfacing a duplicate-key erro
   );
 });
 
+test("keeps internal SECURITY DEFINER job functions out of the public RPC surface", () => {
+  assert.match(
+    internalFunctionPermissionsMigration,
+    /create_or_get_background_job_v1[\s\S]*?revoke all on function %s from public, anon, authenticated[\s\S]*?grant execute on function %s to postgres, service_role/i,
+  );
+  assert.match(
+    internalFunctionPermissionsMigration,
+    /release_video_render_slot_on_background_job_state_change[\s\S]*?terminalize_wall_text_generation_on_job_status/i,
+  );
+});
+
 test("fences paid provider calls and completes generated media atomically", () => {
   const workerStore = readFileSync("worker/src/lib/supabase.ts", "utf8");
   assert.match(
@@ -236,6 +255,76 @@ test("binds an AI worker image SHA to its Cloud Run identity and canary", () => 
   assert.match(cutoverAuditRoute, /getAppReleaseIdentity\(\)/);
   assert.match(cutoverAuditScript, /--expected-release-sha/);
   assert.match(cutoverAuditScript, /assertWorkerReleaseIdentity/);
+});
+
+test("routes the Create Content render canary through the signed app launcher", () => {
+  const cutoverAuditRoute = readFileSync(
+    "app/api/internal/gcp-cutover/audit/route.ts",
+    "utf8",
+  );
+  const createContentCanary = readFileSync(
+    "scripts/test-production-create-content-render-canary.mjs",
+    "utf8",
+  );
+
+  assert.match(cutoverAuditRoute, /resolveGcpCutoverAuditCanary/);
+  assert.match(cutoverAuditRoute, /getMissingRuntimeEnv\(canary\.jobType\)/);
+  assert.match(cutoverAuditRoute, /getMissingCloudRunRenderJobEnvVars/);
+  assert.match(cutoverAuditRoute, /getMissingCloudTasksOidcEnvVars/);
+  assert.match(createContentCanary, /canaryKind:\s*"create-content-render"/);
+  assert.match(createContentCanary, /taskQueueName:\s*"ugc-video-render"/);
+  assert.match(createContentCanary, /--expected-app-release-sha/);
+  assert.match(createContentCanary, /expectedWorkerReleaseSha/);
+  assert.doesNotMatch(createContentCanary, /buildBackgroundJobCloudTaskRequest/);
+  assert.doesNotMatch(createContentCanary, /GoogleAuth/);
+});
+
+test("preserves the Cloud Run launch operation after a worker terminalizes", () => {
+  const backgroundJobs = readFileSync("lib/jobs/background-jobs.ts", "utf8");
+  const launchRenderRoute = readFileSync(
+    "app/api/internal/jobs/launch-render/route.ts",
+    "utf8",
+  );
+  const createContentCanary = readFileSync(
+    "scripts/test-production-create-content-render-canary.mjs",
+    "utf8",
+  );
+
+  assert.match(
+    cloudRunOperationIdentityMigration,
+    /add column if not exists cloud_run_operation_id text/,
+  );
+  assert.match(
+    cloudRunOperationIdentityMigration,
+    /from public\.video_render_execution_slots as slot/,
+  );
+  assert.match(cloudRunOperationIdentityMigration, /reload schema/);
+  assert.match(backgroundJobs, /cloud_run_operation_id/);
+  assert.match(backgroundJobs, /attachCloudRunOperationToBackgroundJob/);
+  assert.match(launchRenderRoute, /cloudRunOperationId: execution\.operationName/);
+  assert.match(createContentCanary, /cloud_run_operation_id/);
+  assert.doesNotMatch(
+    createContentCanary,
+    /!job\.worker_execution_id \|\| !job\.worker_id/,
+  );
+});
+
+test("rejects legacy direct-worker task targets for every video render", () => {
+  const cloudTasks = readFileSync("lib/jobs/gcp-cloud-tasks.ts", "utf8");
+  const cloudTasksLogic = readFileSync(
+    "lib/jobs/gcp-cloud-tasks-logic.ts",
+    "utf8",
+  );
+
+  assert.match(cloudTasks, /queueName === "video-render"/);
+  assert.match(cloudTasks, /isVideoRenderLauncherDispatchUrl\(dispatchUrl\)/);
+  assert.match(cloudTasks, /getVideoRenderLauncherConfigurationError/);
+  assert.match(cloudTasks, /resolveBackgroundJobDispatchUrlFromEnv/);
+  assert.match(cloudTasksLogic, /VIDEO_RENDER_LAUNCHER_PATH/);
+  assert.match(
+    cloudTasksLogic,
+    /new URL\(dispatchUrl\)\.pathname === VIDEO_RENDER_LAUNCHER_PATH/,
+  );
 });
 
 function readMigration(path: string) {

@@ -29,69 +29,99 @@ export async function runRenderCreateContentVideoJob(
   },
 ) {
   const dependencies = { ...defaultDependencies, ...context.dependencies };
-  let payload: CreateContentRenderJobInput | null = null;
+  const payload = parseCreateContentRenderJobInput(job.input_json);
+  const renderStart = await context.store.markCreateContentRenderStarted({
+    jobId: job.id,
+    renderId: payload.renderId,
+    userId: payload.userId,
+  });
 
-  try {
-    payload = parseCreateContentRenderJobInput(job.input_json);
-    await context.store.markCreateContentRenderStarted({
+  if (renderStart.status === "ready") {
+    logger.info("Create Content video render was already completed", {
       jobId: job.id,
-      renderId: payload.renderId,
-      userId: payload.userId,
-    });
-
-    logger.info("Create Content video render started", {
-      format: payload.overlay.format,
-      jobId: job.id,
+      mediaAssetId: renderStart.mediaAssetId,
       renderId: payload.renderId,
       sourceVideoId: payload.sourceVideoId,
       userId: payload.userId,
-    });
-
-    const result = await dependencies.renderCreateContentVideoToStorage(payload);
-    const mediaAssetId = dependencies.createMediaAssetId();
-    await context.store.markCreateContentRenderCompleted({
-      cardRevision: payload.cardRevision,
-      jobId: job.id,
-      key: result.key,
-      mediaAssetId,
-      payload,
-      url: result.url,
     });
 
     return {
-      mediaAssetId,
+      mediaAssetId: renderStart.mediaAssetId,
       renderId: payload.renderId,
       sourceVideoId: payload.sourceVideoId,
-      url: result.url,
     } satisfies Record<string, Json>;
-  } catch (error) {
-    if (payload) {
-      await reconcileCreateContentRenderFailure({
-        errorMessage: getErrorMessage(error),
-        payload,
-        store: context.store,
-      });
-    }
-    throw error;
   }
+
+  logger.info("Create Content video render started", {
+    format: payload.overlay.format,
+    jobId: job.id,
+    renderId: payload.renderId,
+    sourceVideoId: payload.sourceVideoId,
+    userId: payload.userId,
+  });
+
+  const result = await dependencies.renderCreateContentVideoToStorage(payload);
+  const mediaAssetId = await context.store.markCreateContentRenderCompleted({
+    cardRevision: payload.cardRevision,
+    jobId: job.id,
+    key: result.key,
+    mediaAssetId: dependencies.createMediaAssetId(),
+    payload,
+    url: result.url,
+  });
+
+  return {
+    mediaAssetId,
+    renderId: payload.renderId,
+    sourceVideoId: payload.sourceVideoId,
+    url: result.url,
+  } satisfies Record<string, Json>;
 }
 
-async function reconcileCreateContentRenderFailure(params: {
-  errorMessage: string;
-  payload: CreateContentRenderJobInput;
-  store: SupabaseJobStore;
-}) {
+export async function reconcileCreateContentRenderJobFailure(
+  job: BackgroundJobRow,
+  store: SupabaseJobStore,
+  errorMessage: string,
+) {
+  if (job.job_type !== "render_create_content_video") {
+    return;
+  }
+
+  const identity = getCreateContentRenderFailureIdentity(job.input_json);
+
+  if (!identity) {
+    logger.error("Could not identify Create Content render for reconciliation", {
+      jobId: job.id,
+    });
+    return;
+  }
+
   try {
-    await params.store.markCreateContentRenderFailed({
-      errorMessage: params.errorMessage,
-      renderId: params.payload.renderId,
-      userId: params.payload.userId,
+    await store.markCreateContentRenderFailed({
+      errorMessage,
+      jobId: job.id,
+      renderId: identity.renderId,
+      userId: identity.userId,
     });
   } catch (persistenceError) {
     logger.error("Could not persist Create Content render failure", {
       error: getErrorMessage(persistenceError),
-      renderId: params.payload.renderId,
+      jobId: job.id,
+      renderId: identity.renderId,
     });
+  }
+}
+
+function getCreateContentRenderFailureIdentity(value: Json) {
+  try {
+    const input = getRecord(value, "input_json");
+
+    return {
+      renderId: getRequiredString(input.renderId, "renderId"),
+      userId: getRequiredString(input.userId, "userId"),
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -103,6 +133,7 @@ function parseCreateContentRenderJobInput(value: Json): CreateContentRenderJobIn
   const common = {
     cardRevision: getPositiveInteger(input.cardRevision, "cardRevision"),
     projectId: getRequiredString(input.projectId, "projectId"),
+    renderAttempt: getPositiveInteger(input.renderAttempt, "renderAttempt"),
     renderId: getRequiredString(input.renderId, "renderId"),
     sourceVideoId: getRequiredString(input.sourceVideoId, "sourceVideoId"),
     sourceVideoUrl: getHttpUrl(input.sourceVideoUrl, "sourceVideoUrl"),

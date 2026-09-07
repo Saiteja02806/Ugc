@@ -6,6 +6,7 @@ import {
   getQueueProviderName,
   sendJobMessage,
 } from "@/lib/queues/job-queue";
+import { resolveGcpCutoverAuditCanary } from "@/lib/internal/gcp-cutover-audit-canary";
 import {
   GCP_CUTOVER_AUDIT_SIGNATURE_HEADER,
   GCP_CUTOVER_AUDIT_TIMESTAMP_HEADER,
@@ -20,8 +21,11 @@ import {
   createBackgroundJob,
   getMissingBackgroundJobStorageEnvVars,
   markBackgroundJobFailed,
+  type BackgroundJobType,
 } from "@/lib/jobs/background-jobs";
+import { getMissingCloudRunRenderJobEnvVars } from "@/lib/jobs/gcp-cloud-run-jobs";
 import { getGcpProjectId } from "@/lib/queues/config";
+import { getMissingCloudTasksOidcEnvVars } from "@/lib/scheduling/cloud-tasks-oidc-auth";
 import {
   getMissingSocialSchedulerEnvVars,
   getSocialSchedulerProviderName,
@@ -34,10 +38,10 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const CANARY_JOB_TYPE = "generate_image";
 const MAX_BODY_LENGTH = 2_048;
 
 type AuditRequestBody = {
+  canaryKind?: unknown;
   generationId?: unknown;
   projectId?: unknown;
   userId?: unknown;
@@ -92,10 +96,20 @@ export async function POST(request: Request) {
     return json({ ok: false, message: "Request body must be valid JSON." }, 400);
   }
 
+  const generationId = getString(input.generationId) || crypto.randomUUID();
+  const canary = resolveGcpCutoverAuditCanary({
+    generationId,
+    kind: input.canaryKind,
+  });
+
+  if (!canary) {
+    return json({ ok: false, message: "Unsupported canary kind." }, 400);
+  }
+
   let runtimeSnapshot: ReturnType<typeof getRuntimeSnapshot>;
 
   try {
-    runtimeSnapshot = getRuntimeSnapshot();
+    runtimeSnapshot = getRuntimeSnapshot(canary.jobType);
   } catch (error) {
     console.error("GCP cutover audit could not resolve providers", {
       error: error instanceof Error ? error.message : "Unknown error",
@@ -125,7 +139,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const missingRuntimeEnv = getMissingRuntimeEnv();
+  const missingRuntimeEnv = getMissingRuntimeEnv(canary.jobType);
 
   if (missingRuntimeEnv.length > 0) {
     console.error("GCP cutover audit runtime is missing env vars", {
@@ -142,26 +156,23 @@ export async function POST(request: Request) {
     );
   }
 
-  const generationId = getString(input.generationId) || crypto.randomUUID();
   const canaryProjectId =
     cleanPathSegment(input.projectId, "production-gcp-cutover-audit");
   const canaryUserId =
     cleanPathSegment(input.userId, "production-gcp-cutover-audit");
   const backgroundJob = await createBackgroundJob({
-    input: {
-      canary: "production-gcp-cutover-invalid-ai-generation",
-      generationId,
-    },
-    jobType: CANARY_JOB_TYPE,
+    input: canary.input,
+    jobType: canary.jobType,
+    maxAttempts: canary.maxAttempts,
     projectId: canaryProjectId,
-    queueName: getQueueNameForJobType(CANARY_JOB_TYPE),
+    queueName: getQueueNameForJobType(canary.jobType),
     userId: canaryUserId,
   });
 
   try {
     const message = await sendJobMessage({
       jobId: backgroundJob.id,
-      jobType: CANARY_JOB_TYPE,
+      jobType: canary.jobType,
     });
 
     if (message.provider !== "gcp") {
@@ -177,9 +188,12 @@ export async function POST(request: Request) {
 
     return json({
       canary: {
+        canaryKind: canary.kind,
+        expectedFailure: canary.expectedFailure,
         generationId,
         jobId: updatedJob.id,
         jobType: updatedJob.jobType,
+        maxAttempts: updatedJob.maxAttempts,
         messageId: message.messageId,
         messageProvider: message.provider,
         queueName: updatedJob.queueName,
@@ -223,7 +237,7 @@ export async function POST(request: Request) {
   }
 }
 
-function getRuntimeSnapshot() {
+function getRuntimeSnapshot(jobType: BackgroundJobType) {
   const appRelease = getAppReleaseIdentity();
 
   return {
@@ -240,17 +254,23 @@ function getRuntimeSnapshot() {
     storagePublicBaseUrlHost: getUrlHost(
       process.env.GCP_STORAGE_PUBLIC_BASE_URL?.trim(),
     ),
-    workerQueue: getQueueNameForJobType(CANARY_JOB_TYPE),
+    workerQueue: getQueueNameForJobType(jobType),
   };
 }
 
-function getMissingRuntimeEnv() {
+function getMissingRuntimeEnv(jobType: BackgroundJobType) {
   return Array.from(
     new Set([
       ...getMissingBackgroundJobStorageEnvVars(),
-      ...getMissingJobQueueEnvVars([CANARY_JOB_TYPE]),
+      ...getMissingJobQueueEnvVars([jobType]),
       ...getMissingStorageEnvVars(),
       ...getMissingSocialSchedulerEnvVars(),
+      ...(jobType === "render_create_content_video"
+        ? [
+            ...getMissingCloudRunRenderJobEnvVars(),
+            ...getMissingCloudTasksOidcEnvVars(),
+          ]
+        : []),
     ]),
   );
 }

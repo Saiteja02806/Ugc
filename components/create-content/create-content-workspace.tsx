@@ -54,7 +54,7 @@ import {
   createCreateContentWallTextContent,
   createCreateContentWallTextLayout,
 } from "@/lib/create-content/render-contract";
-import { normalizeAndValidateGeneratedCreateContentText } from "@/lib/create-content/generation-validation";
+import { normalizeAndValidateGeneratedCreateContentText } from "@/lib/create-content/text-input-validation";
 import type { MediaAsset } from "@/lib/media/types";
 import { cn } from "@/lib/utils";
 

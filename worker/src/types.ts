@@ -296,6 +296,14 @@ type CreateContentRenderUpdate = Partial<{
   updated_at: string;
 }>;
 
+type CreateContentRenderRow = {
+  id: string;
+  render_job_id: string | null;
+  rendered_media_asset_id: string | null;
+  status: "queued" | "rendering" | "ready" | "failed";
+  user_id: string;
+};
+
 export type SocialPublishAccountLaneRow = {
   active_claim_token: string | null;
   active_job_id: string | null;
@@ -1635,11 +1643,7 @@ export type BackgroundJobsDatabase = {
       create_content_renders: {
         Insert: Record<string, never>;
         Relationships: [];
-        Row: {
-          id: string;
-          render_job_id: string | null;
-          user_id: string;
-        };
+        Row: CreateContentRenderRow;
         Update: CreateContentRenderUpdate;
       };
       user_reaction_assignments: {

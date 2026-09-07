@@ -1,6 +1,6 @@
 # Reaction-format context
 
-Last updated: 2026-09-06
+Last updated: 2026-09-07
 
 ## Product definition
 
@@ -229,3 +229,31 @@ and its background job failed so the normal recovery/retry behavior applies.
 An individual clip is eligible for at most two real presentations to the same
 user (the first appearance and one later reuse); catalog reservation does not
 count as a presentation.
+
+## Reaction brief latency and repair — 7 September
+
+The worker's `reaction-brief-batch-v2` provider response omits `caption`.
+Rendered `lines` remain canonical; the worker derives and persists the same
+caption field that existing consumers use. Semantic beats and the other
+content dimensions remain intact. The prompt supplies the validator's exact
+emotion/primary-reaction compatibility matrix and distinct-primary rule.
+Catalog intents unsupported by every V1 emotion are excluded before asking AI.
+
+The default GPT-5 Mini request uses `minimal` reasoning, a 60-second timeout,
+and no SDK retries. Explicit model overrides outside the GPT-5 Mini alias or
+dated snapshot retain the existing `low` reasoning setting. The reduced
+reasoning setting does not bypass deterministic copy or catalog validation.
+
+Within the existing three-request validation budget, accepted briefs are
+retained and only missing or invalid slot indexes are requested again.
+Duplicate primary reactions or slot indexes cannot replace an accepted
+sibling. The final combined batch passes the full existing validator before
+matching or persistence. A provider outage still yields to durable retry;
+these in-memory accepted briefs are not a new durable partial-plan checkpoint.
+Exhausting the validation budget still fails explicitly instead of delivering
+invalid content.
+
+Worker logs record the job ID, model, reasoning setting, requested slots,
+request duration, token usage, validation repair slots, and matching duration.
+They omit business context, generated captions, and credentials. Persisted
+plans remain immutable and are reused on render retries as before.

@@ -187,3 +187,56 @@ Evidence: `format-app-tests.log`, `format-worker-suite.log`,
 `format-app-build-final.log`, `format-live-model-canaries.json`,
 `explicit-recovery-tests.sql`, and `explicit-recovery-successor-tests.sql`
 in the investigation artifact directory.
+
+## Reaction timing follow-up — 7 September
+
+The original 33.054-second canary measured all four plans together and did not
+record individual request attempts. It excluded catalog/database loading and
+MP4 rendering. Its exact split between model latency and validation repairs
+cannot be reconstructed from that aggregate measurement.
+
+A fresh trace of the previous planner measured 16.860 seconds: one model
+request took 16.821 seconds and local validation/matching plus SDK overhead
+took 39 ms. The request produced 640 reasoning tokens and 704 visible output
+tokens. Cached-response replays completed in 13–25 ms. This demonstrates an
+AI-request bottleneck in that trace, not slow local matching.
+
+Further live testing reproduced a duplicate-primary-reaction validation
+failure: a 13.692-second first request needed a 9.167-second repair. The new
+targeted repair kept three valid briefs and asked only for the fourth. Its
+initial measurement harness incorrectly replayed the last one-slot response
+as a complete batch after the successful live generation; the replay fixture
+was corrected before final measurements.
+
+Additional worker changes prepared:
+- Remove the redundant model-generated caption, deriving it from lines.
+- Supply exact emotion/reaction compatibility and distinct-primary rules.
+- Retain validated siblings and repair only invalid/missing slots within the
+  existing three-request budget; all final validation remains enforced.
+- Use minimal reasoning for GPT-5 Mini and its dated snapshots; preserve low
+  reasoning for other explicit model overrides.
+- Log request timing, token usage, repair indexes, and matching time with the
+  job ID, without logging customer context or generated text.
+
+With the revised prompt, two low-reasoning runs took 13.592 and 15.147 seconds.
+A minimal-reasoning comparison took 8.900 seconds including one targeted
+repair. The final worker then generated four valid, uniquely matched plans in
+7.606 and 10.993 seconds, each in one model request. Local overhead was 28 ms
+in each final run. These are small, real-account-context samples, not a
+production latency percentile or full-video timing guarantee. One final run
+had 1,024 cached input tokens and the other had none. The default model and
+deterministic validation remain the same.
+
+Validation: worker compilation plus 29 worker/processor tests and 21 Reaction
+application/contract tests passed. New regression coverage checks retained
+siblings, duplicate slots and intents, immutable accepted slots, the retry
+budget, provider outages during repair, and incompatible catalog gating.
+The prior full application build is unchanged by these worker-only changes.
+No production code deployment or content publication was performed.
+
+Evidence: `reaction-timing-trace.json`, `reaction-timing-v2-low.json`,
+`reaction-timing-v2-minimal-test.json`, `reaction-timing-v2-final-1.json`,
+`reaction-timing-v2-final-2.json`, `reaction-v2-worker-tests.log`, and
+`reaction-v2-app-tests.log` in the investigation artifact directory. The
+second low-reasoning sample was initially named `reaction-timing-v2-minimal`
+by the harness; its recorded request correctly identifies `low` reasoning.

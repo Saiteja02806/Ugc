@@ -1,8 +1,9 @@
 import OpenAI from "openai";
+import { logger } from "../logger.js";
 import { RetryableJobError } from "../retryable-job-error.js";
 import { CONTENT_COPY_MAX_RETRIES, CONTENT_COPY_TIMEOUT_MS, requestContentModel } from "./content-model-request.js";
 
-export const REACTION_GENERATION_PROMPT_VERSION = "reaction-brief-batch-v1";
+export const REACTION_GENERATION_PROMPT_VERSION = "reaction-brief-batch-v2";
 export const REACTION_GENERATION_SELECTION_VERSION = "reaction-batch-match-v1";
 export const MAX_REACTION_CLIP_PRESENTATIONS_PER_USER = 2;
 export const MAX_REACTION_BRIEF_GENERATION_ATTEMPTS = 3;
@@ -112,6 +113,7 @@ export async function planReactionGeneration(params: {
   clips: readonly ReactionCatalogClip[];
   context: ReactionGenerationContext;
   historyByClipId: ReadonlyMap<string, ClipHistory>;
+  jobId?: string;
   requestedCount: number;
   reservedClipIds?: ReadonlySet<string>;
   seed: string;
@@ -130,17 +132,26 @@ export async function planReactionGeneration(params: {
   }
 
   const palette = buildAvailabilityPalette({ backgrounds, clips, historyByClipId: params.historyByClipId });
+  if (palette.availableReactionPalette.length === 0) {
+    throw new Error("Reaction generation has no available intent compatible with the supported emotions.");
+  }
   const briefs = await generateAndValidateBriefs({
     context: params.context,
+    jobId: params.jobId,
     palette,
     requestedCount: params.requestedCount,
   });
+  const selectionStartedAt = performance.now();
   const selected = selectUniquePairs({
     backgrounds,
     briefs,
     clips,
     historyByClipId: params.historyByClipId,
     seed: params.seed,
+  });
+  logger.info("Reaction asset matching completed", {
+    jobId: params.jobId, durationMs: Math.round(performance.now() - selectionStartedAt),
+    requestedCount: params.requestedCount, selectedCount: selected.length,
   });
 
   return {
@@ -186,6 +197,7 @@ function buildAvailabilityPalette(params: {
     if (!params.backgrounds.some((background) => background.foregroundPlacement === clip.foregroundAnchor)) continue;
     const history = params.historyByClipId.get(clip.id);
     for (const reaction of clip.reactions.filter(isReactionIntent)) {
+      if (!Object.values(EMOTION_REACTIONS).some((intents) => intents.includes(reaction))) continue;
       const current = countByIntent.get(reaction) ?? { freshClipCount: 0, reusableClipCount: 0 };
       if (!history || history.shownCount === 0) current.freshClipCount += 1;
       else current.reusableClipCount += 1;
@@ -208,12 +220,22 @@ function buildAvailabilityPalette(params: {
 
 async function generateAndValidateBriefs(params: {
   context: ReactionGenerationContext;
+  jobId?: string;
   palette: ReturnType<typeof buildAvailabilityPalette>;
   requestedCount: number;
 }) {
   let lastValidationError: Error | null = null;
+  const accepted = new Map<number, ReactionBrief>();
+  const slotIndexes = Array.from({ length: params.requestedCount }, (_, index) => index);
+  const available = new Set(params.palette.availableReactionPalette.map((item) => item.intent));
 
   for (let attempt = 1; attempt <= MAX_REACTION_BRIEF_GENERATION_ATTEMPTS; attempt += 1) {
+    const requestedSlots = slotIndexes.filter((index) => !accepted.has(index));
+    const requestStartedAt = performance.now();
+    const model = process.env.OPENAI_REACTION_MODEL?.trim() || "gpt-5-mini";
+    // These short, schema-constrained briefs do not need the extra low-effort
+    // reasoning budget. Preserve the existing setting for model overrides.
+    const reasoningEffort = /^gpt-5-mini(?:-\d{4}-\d{2}-\d{2})?$/.test(model) ? "minimal" : "low";
     const completion = await requestContentModel("reaction", () => getOpenAIClient().chat.completions.create({
       max_completion_tokens: 4_000,
       messages: [
@@ -225,21 +247,39 @@ async function generateAndValidateBriefs(params: {
           role: "user",
           content: buildBriefPrompt({
             ...params,
+            acceptedBriefs: [...accepted.values()],
+            requestedSlots,
             validationFeedback: lastValidationError?.message ?? null,
           }),
         },
       ],
-      model: process.env.OPENAI_REACTION_MODEL?.trim() || "gpt-5-mini",
-      reasoning_effort: "low",
+      model,
+      reasoning_effort: reasoningEffort,
       response_format: {
         type: "json_schema",
         json_schema: {
           name: "reaction_brief_batch",
-          schema: reactionBriefSchema(params.requestedCount),
+          schema: reactionBriefSchema(requestedSlots, [...available]),
           strict: true,
         },
       },
-    }));
+    })).catch((error: unknown) => {
+      logger.warn("Reaction brief model request failed", {
+        jobId: params.jobId, attempt, model, reasoningEffort, requestedSlots,
+        durationMs: Math.round(performance.now() - requestStartedAt),
+        errorName: error instanceof Error ? error.name : "UnknownError",
+      });
+      throw error;
+    });
+    logger.info("Reaction brief model request completed", {
+      jobId: params.jobId, attempt, model, reasoningEffort, requestedSlots,
+      durationMs: Math.round(performance.now() - requestStartedAt),
+      promptVersion: REACTION_GENERATION_PROMPT_VERSION,
+      promptTokens: completion.usage?.prompt_tokens,
+      completionTokens: completion.usage?.completion_tokens,
+      reasoningTokens: completion.usage?.completion_tokens_details?.reasoning_tokens,
+      finishReason: completion.choices[0]?.finish_reason,
+    });
     const text = completion.choices[0]?.message.content;
     if (completion.choices[0]?.message.refusal) {
       throw new Error("The Reaction model declined this request.");
@@ -251,11 +291,26 @@ async function generateAndValidateBriefs(params: {
     }
 
     try {
-      return validateReactionBriefBatch(JSON.parse(text), params.palette, params.requestedCount);
+      let raw: unknown;
+      try { raw = JSON.parse(text); }
+      catch { throw new Error("Reaction brief response is not valid JSON."); }
+      const issues = acceptValidReactionBriefs({
+        accepted, available, requestedCount: params.requestedCount, requestedSlots, value: raw,
+      });
+      if (accepted.size === params.requestedCount) {
+        return validateReactionBriefBatch({ briefs: [...accepted.values()] }, params.palette, params.requestedCount);
+      }
+      throw new Error(issues.join("; "));
     } catch (error) {
       lastValidationError = error instanceof Error
         ? error
         : new Error("Reaction brief model returned invalid structured output.");
+      logger.warn("Reaction briefs require targeted repair", {
+        jobId: params.jobId, attempt,
+        acceptedSlots: [...accepted.keys()],
+        pendingSlots: slotIndexes.filter((index) => !accepted.has(index)),
+        validationError: lastValidationError.message,
+      });
     }
   }
 
@@ -264,19 +319,67 @@ async function generateAndValidateBriefs(params: {
   );
 }
 
+function acceptValidReactionBriefs(params: {
+  accepted: Map<number, ReactionBrief>;
+  available: ReadonlySet<ReactionIntent>;
+  requestedCount: number;
+  requestedSlots: readonly number[];
+  value: unknown;
+}) {
+  const raw = asRecord(params.value);
+  if (!raw || !Array.isArray(raw.briefs)) {
+    throw new Error("Reaction brief batch is missing its briefs array.");
+  }
+  const issues: string[] = [];
+  const usedIntents = new Set([...params.accepted.values()].map((brief) => brief.preferredReactions[0]));
+  // Accepted slots are immutable during repair. Duplicate or missing entries
+  // invalidate only their slot, so a bad sibling cannot discard good copy.
+  for (const slot of params.requestedSlots) {
+    const entries = raw.briefs.filter((entry) => asRecord(entry)?.slotIndex === slot);
+    if (entries.length !== 1) {
+      issues.push(`Slot ${slot} must appear exactly once`);
+      continue;
+    }
+    try {
+      const brief = parseBrief(entries[0], slot, params.available);
+      if (params.available.size >= params.requestedCount && usedIntents.has(brief.preferredReactions[0])) {
+        throw new Error(`Slot ${slot} repeats a primary intent despite available alternatives`);
+      }
+      params.accepted.set(slot, brief);
+      usedIntents.add(brief.preferredReactions[0]);
+    } catch (error) {
+      issues.push(error instanceof Error ? error.message : `Slot ${slot} is invalid`);
+    }
+  }
+  return issues;
+}
+
 function buildBriefPrompt(params: {
+  acceptedBriefs: readonly ReactionBrief[];
   context: ReactionGenerationContext;
   palette: ReturnType<typeof buildAvailabilityPalette>;
-  requestedCount: number;
+  requestedSlots: readonly number[];
   validationFeedback?: string | null;
 }) {
+  const available = new Set(params.palette.availableReactionPalette.map((item) => item.intent));
+  const allowedEmotionReactions = Object.fromEntries(Object.entries(EMOTION_REACTIONS)
+    .map(([emotion, intents]) => [emotion, intents.filter((intent) => available.has(intent))] as const)
+    .filter(([, intents]) => intents.length > 0));
   return [
-    `Generate exactly ${params.requestedCount} varied Reaction Reel briefs, with slotIndex 0 through ${params.requestedCount - 1}.`,
-    "Each caption is a recognizable human moment, never an advertisement or CTA. Keep caption and lines word-for-word equivalent. Use 5-20 total words across 1-3 lines.",
+    `Generate exactly ${params.requestedSlots.length} varied Reaction Reel briefs for slotIndex values ${params.requestedSlots.join(", ")}. Return each requested slot exactly once.`,
+    "Each caption is a recognizable human moment, never an advertisement or CTA. Write it only in lines; the application derives the caption. Use 5-20 total words across 1-3 lines, targeting 7-15 words.",
+    "Language-format values such as me_when are metadata only. Write natural words with spaces in rendered lines, never taxonomy identifiers.",
     "semantic must use the exact beat names for its structure: situation_payoff uses situation/payoff; expectation_reality uses expectation/reality; comparison uses left/right; action_realization uses action/realization; setup_escalation uses setup/escalation. Do not use role contrast or character labels in V1.",
     "preferredReactions must have 1-3 controlled intents, strongest first. Do not repeat primary intent if relevant alternatives exist.",
+    available.size >= params.requestedSlots.length + params.acceptedBriefs.length
+      ? "Primary reaction means preferredReactions[0]. Enough distinct intents are available: every requested slot MUST have a different primary reaction, including from already accepted slots. Check this before returning JSON."
+      : "",
+    `Allowed primary reactions by emotion (choose an exact compatible pair): ${JSON.stringify(allowedEmotionReactions)}.`,
+    params.acceptedBriefs.length
+      ? `Already accepted briefs: ${JSON.stringify(params.acceptedBriefs.map((brief) => ({ slotIndex: brief.slotIndex, primaryReaction: brief.preferredReactions[0], caption: brief.content.caption })))}. Do not return or rewrite these slots. Avoid repeating their captions and primary reactions when alternatives exist.`
+      : "",
     params.validationFeedback
-      ? `Your previous draft failed deterministic validation: ${params.validationFeedback} Correct that exact constraint in every brief. Use the rendered lines as the caption, keep captions 5-20 words, avoid product or CTA language, and make each primary reaction compatible with its emotion.`
+      ? `Your previous draft failed deterministic validation: ${params.validationFeedback} Repair only the requested slots using the exact constraints above.`
       : "",
     "Do not output asset IDs, source filenames, URLs, or storage keys.",
     params.palette.generationRule,
@@ -290,7 +393,7 @@ function buildBriefPrompt(params: {
   ].filter(Boolean).join("\n");
 }
 
-function reactionBriefSchema(requestedCount: number) {
+function reactionBriefSchema(requestedSlots: readonly number[], available: readonly ReactionIntent[]) {
   return {
     type: "object",
     additionalProperties: false,
@@ -298,23 +401,22 @@ function reactionBriefSchema(requestedCount: number) {
     properties: {
       briefs: {
         type: "array",
-        minItems: requestedCount,
-        maxItems: requestedCount,
+        minItems: requestedSlots.length,
+        maxItems: requestedSlots.length,
         items: {
           type: "object",
           additionalProperties: false,
           required: ["slotIndex", "preferredReactions", "content"],
           properties: {
-            slotIndex: { type: "integer", minimum: 0 },
+            slotIndex: { type: "integer", enum: requestedSlots },
             preferredReactions: {
               type: "array", minItems: 1, maxItems: 3,
-              items: { type: "string", enum: REACTIONS },
+              items: { type: "string", enum: available },
             },
             content: {
               type: "object", additionalProperties: false,
-              required: ["caption", "lines", "emotion", "languageFormat", "visualTreatment", "visualContextTags", "semantic"],
+              required: ["lines", "emotion", "languageFormat", "visualTreatment", "visualContextTags", "semantic"],
               properties: {
-                caption: { type: "string", minLength: 1, maxLength: 400 },
                 lines: { type: "array", minItems: 1, maxItems: 3, items: { type: "string", minLength: 1, maxLength: 160 } },
                 emotion: { type: "string", enum: EMOTIONS },
                 languageFormat: { type: "string", enum: LANGUAGE_FORMATS },

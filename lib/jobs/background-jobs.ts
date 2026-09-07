@@ -62,6 +62,7 @@ type BackgroundJobInsert = {
   attempt_count?: number;
   cancel_requested_at?: string | null;
   claim_token?: string | null;
+  cloud_run_operation_id?: string | null;
   queue_message_id?: string | null;
   completed_at?: string | null;
   error_code?: string | null;
@@ -103,6 +104,7 @@ type BackgroundJobRow = Required<
   attempt_count: number;
   cancel_requested_at: string | null;
   claim_token: string | null;
+  cloud_run_operation_id: string | null;
   queue_message_id: string | null;
   completed_at: string | null;
   created_at: string;
@@ -724,16 +726,39 @@ export async function attachQueueMessageToBackgroundJob(params: {
   return job;
 }
 
-export async function attachWorkerExecutionToBackgroundJob(params: {
+export async function attachCloudRunOperationToBackgroundJob(params: {
+  cloudRunOperationId: string;
   jobId: string;
-  workerExecutionId: string;
 }) {
-  const { data, error } = await getSupabaseServerClient()
+  const cloudRunOperationId = params.cloudRunOperationId.slice(0, 255);
+  const now = new Date().toISOString();
+  const client = getSupabaseServerClient();
+  const { data: durableData, error: durableError } = await client
+    .from(BACKGROUND_JOBS_TABLE)
+    .update({
+      cloud_run_operation_id: cloudRunOperationId,
+      updated_at: now,
+    })
+    .eq("id", params.jobId)
+    .select("*")
+    .maybeSingle();
+
+  if (durableError) {
+    throw new Error(
+      `Could not record Cloud Run operation: ${durableError.message}`,
+    );
+  }
+
+  if (!durableData) {
+    return null;
+  }
+
+  const { data, error } = await client
     .from(BACKGROUND_JOBS_TABLE)
     .update({
       stage: "render_job_launched",
-      worker_execution_id: params.workerExecutionId.slice(0, 255),
-      updated_at: new Date().toISOString(),
+      worker_execution_id: cloudRunOperationId,
+      updated_at: now,
     })
     .eq("id", params.jobId)
     .in("status", ["created", "queued", "stalled"])
@@ -741,10 +766,10 @@ export async function attachWorkerExecutionToBackgroundJob(params: {
     .maybeSingle();
 
   if (error) {
-    throw new Error(`Could not attach worker execution: ${error.message}`);
+    throw new Error(`Could not attach Cloud Run operation: ${error.message}`);
   }
 
-  return data ? mapBackgroundJob(data) : null;
+  return mapBackgroundJob(data ?? durableData);
 }
 
 export async function claimVideoRenderExecutionSlot(params: {

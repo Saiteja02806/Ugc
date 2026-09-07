@@ -2,6 +2,7 @@ import type { BackgroundJobType } from "./background-jobs.ts";
 
 export const DEFAULT_GCP_JOB_TASKS_LOCATION = "us-central1";
 export const GCP_JOB_TASK_SCHEMA_VERSION = 1;
+export const VIDEO_RENDER_LAUNCHER_PATH = "/api/internal/jobs/launch-render";
 
 const TASK_ID_PATTERN = /^[A-Za-z0-9_-]{1,500}$/;
 
@@ -52,6 +53,19 @@ export function resolveBackgroundJobDispatchUrl(baseUrl: string) {
     "/tasks/jobs",
     baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`,
   ).toString();
+}
+
+export function resolveBackgroundJobDispatchUrlFromEnv(params: {
+  explicitUrl?: string;
+  fallbackUrl?: string;
+}) {
+  const baseUrl = params.explicitUrl?.trim() || params.fallbackUrl?.trim();
+
+  return baseUrl ? resolveBackgroundJobDispatchUrl(baseUrl) : "";
+}
+
+export function isVideoRenderLauncherDispatchUrl(dispatchUrl: string) {
+  return new URL(dispatchUrl).pathname === VIDEO_RENDER_LAUNCHER_PATH;
 }
 
 export function buildBackgroundJobCloudTaskRequest(params: {

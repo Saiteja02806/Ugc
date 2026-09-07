@@ -70,7 +70,7 @@ GCP_MEDIA_PROCESSING_TASK_URL=<Cloud Run service URL>
 GCP_SOCIAL_PUBLISH_TASK_URL=<Cloud Run service URL>
 # Must be the internal app launcher, not the legacy video worker service.
 # It starts the one-shot ugc-video-render-job for each render.
-GCP_VIDEO_RENDER_TASK_URL=https://www.getugcpilot.com/api/internal/jobs/launch-render
+GCP_VIDEO_RENDER_TASK_URL=https://getugcpilot.com/api/internal/jobs/launch-render
 GCP_STORAGE_BUCKET=ugcsaas-media
 GCP_STORAGE_PUBLIC_BASE_URL=https://storage.googleapis.com/ugcsaas-media
 ```

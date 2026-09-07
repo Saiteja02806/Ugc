@@ -63,12 +63,15 @@ export async function launchBackgroundRenderJob(job: BackgroundJobRecord) {
   }
 
   const result = (await response.json()) as { name?: unknown };
-  const executionName =
+  // Cloud Run returns a long-running operation name here. The execution itself
+  // is created asynchronously, so calling this an execution ID loses that
+  // distinction during incident tracing.
+  const operationName =
     typeof result.name === "string" && result.name.trim()
       ? result.name.trim()
       : request.jobPath;
 
-  return { executionName };
+  return { operationName };
 }
 
 function getCloudRunAuth() {

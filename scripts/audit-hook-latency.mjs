@@ -78,7 +78,7 @@ const [
   supabase
     .from("background_jobs")
     .select(
-      "id,job_type,queue_name,status,stage,progress,attempt_count,max_attempts,queued_at,last_delivery_at,started_at,last_heartbeat_at,completed_at,failed_at,created_at,updated_at,error_code,error_message,worker_id,worker_execution_id,queue_message_id",
+      "id,job_type,queue_name,status,stage,progress,attempt_count,max_attempts,queued_at,last_delivery_at,started_at,last_heartbeat_at,completed_at,failed_at,created_at,updated_at,error_code,error_message,worker_id,worker_execution_id,cloud_run_operation_id,queue_message_id",
     )
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })

@@ -25,6 +25,10 @@ const internalFunctionPermissionsMigration = readFileSync(
   "supabase/migrations/20260907180000_restrict_internal_security_definer_functions.sql",
   "utf8",
 );
+const cloudRunOperationIdentityMigration = readFileSync(
+  "supabase/migrations/20260907190000_add_background_job_cloud_run_operation_identity.sql",
+  "utf8",
+);
 
 test("uses demand-scaled request workers for independent AI jobs", () => {
   const aiWorkerMain = readFileSync(
@@ -273,6 +277,54 @@ test("routes the Create Content render canary through the signed app launcher", 
   assert.match(createContentCanary, /expectedWorkerReleaseSha/);
   assert.doesNotMatch(createContentCanary, /buildBackgroundJobCloudTaskRequest/);
   assert.doesNotMatch(createContentCanary, /GoogleAuth/);
+});
+
+test("preserves the Cloud Run launch operation after a worker terminalizes", () => {
+  const backgroundJobs = readFileSync("lib/jobs/background-jobs.ts", "utf8");
+  const launchRenderRoute = readFileSync(
+    "app/api/internal/jobs/launch-render/route.ts",
+    "utf8",
+  );
+  const createContentCanary = readFileSync(
+    "scripts/test-production-create-content-render-canary.mjs",
+    "utf8",
+  );
+
+  assert.match(
+    cloudRunOperationIdentityMigration,
+    /add column if not exists cloud_run_operation_id text/,
+  );
+  assert.match(
+    cloudRunOperationIdentityMigration,
+    /from public\.video_render_execution_slots as slot/,
+  );
+  assert.match(cloudRunOperationIdentityMigration, /reload schema/);
+  assert.match(backgroundJobs, /cloud_run_operation_id/);
+  assert.match(backgroundJobs, /attachCloudRunOperationToBackgroundJob/);
+  assert.match(launchRenderRoute, /cloudRunOperationId: execution\.operationName/);
+  assert.match(createContentCanary, /cloud_run_operation_id/);
+  assert.doesNotMatch(
+    createContentCanary,
+    /!job\.worker_execution_id \|\| !job\.worker_id/,
+  );
+});
+
+test("rejects legacy direct-worker task targets for every video render", () => {
+  const cloudTasks = readFileSync("lib/jobs/gcp-cloud-tasks.ts", "utf8");
+  const cloudTasksLogic = readFileSync(
+    "lib/jobs/gcp-cloud-tasks-logic.ts",
+    "utf8",
+  );
+
+  assert.match(cloudTasks, /queueName === "video-render"/);
+  assert.match(cloudTasks, /isVideoRenderLauncherDispatchUrl\(dispatchUrl\)/);
+  assert.match(cloudTasks, /getVideoRenderLauncherConfigurationError/);
+  assert.match(cloudTasks, /resolveBackgroundJobDispatchUrlFromEnv/);
+  assert.match(cloudTasksLogic, /VIDEO_RENDER_LAUNCHER_PATH/);
+  assert.match(
+    cloudTasksLogic,
+    /new URL\(dispatchUrl\)\.pathname === VIDEO_RENDER_LAUNCHER_PATH/,
+  );
 });
 
 function readMigration(path: string) {

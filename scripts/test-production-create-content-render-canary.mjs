@@ -112,7 +112,7 @@ try {
   assertExpectedSafeFailure(completedJob, taskName);
   await assertReleasedRenderSlot(backgroundJobId);
 
-  console.log(`Worker execution: ${completedJob.worker_execution_id}`);
+  console.log(`Cloud Run operation: ${completedJob.cloud_run_operation_id}`);
   console.log(`Worker identity: ${completedJob.worker_id}`);
   console.log("Create Content production render canary passed");
 } catch (error) {
@@ -303,7 +303,7 @@ async function waitForTerminalJob(jobId) {
   while (Date.now() < deadline) {
     const job = await getCanaryJob(jobId);
     console.log(
-      `poll status=${job.status} queue=${job.queue_message_id ? "attached" : "pending"} execution=${job.worker_execution_id ? "attached" : "pending"}`,
+      `poll status=${job.status} queue=${job.queue_message_id ? "attached" : "pending"} cloudRunOperation=${job.cloud_run_operation_id ? "attached" : "pending"}`,
     );
 
     if (terminalStatuses.has(job.status)) {
@@ -323,7 +323,7 @@ async function getCanaryJob(jobId) {
   const { data, error } = await supabase
     .from("background_jobs")
     .select(
-      "id,status,queue_message_id,worker_execution_id,worker_id,started_at,failed_at,completed_at,error_message,output_json,output_reference",
+      "id,status,queue_message_id,cloud_run_operation_id,worker_id,started_at,failed_at,completed_at,error_message,output_json,output_reference",
     )
     .eq("id", jobId)
     .single();
@@ -344,7 +344,12 @@ function assertExpectedSafeFailure(job, taskName) {
     throw new Error("The Cloud Task was not durably attached to the canary job.");
   }
 
-  if (!job.worker_execution_id || !job.worker_id || !job.started_at || !job.failed_at) {
+  if (
+    !job.cloud_run_operation_id ||
+    !job.worker_id ||
+    !job.started_at ||
+    !job.failed_at
+  ) {
     throw new Error("The canary failed without complete launcher and worker metadata.");
   }
 

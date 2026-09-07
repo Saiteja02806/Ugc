@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import {
   appendBackgroundJobEvent,
   attachVideoRenderExecutionSlot,
-  attachWorkerExecutionToBackgroundJob,
+  attachCloudRunOperationToBackgroundJob,
   claimVideoRenderExecutionSlot,
   getBackgroundJobById,
   getMissingBackgroundJobStorageEnvVars,
@@ -114,13 +114,13 @@ export async function POST(request: Request) {
   try {
     const execution = await launchBackgroundRenderJob(job);
 
-    await attachWorkerExecutionToBackgroundJob({
+    await attachCloudRunOperationToBackgroundJob({
+      cloudRunOperationId: execution.operationName,
       jobId: job.id,
-      workerExecutionId: execution.executionName,
     }).catch((error) => {
-      console.error("Render execution launched before metadata attachment failed", {
+      console.error("Cloud Run operation launched before metadata attachment failed", {
         error: error instanceof Error ? error.message : "Unknown error",
-        executionName: execution.executionName,
+        operationName: execution.operationName,
         jobId: job.id,
       });
     });
@@ -128,11 +128,11 @@ export async function POST(request: Request) {
     const slotAttached = await attachVideoRenderExecutionSlot({
       claimToken: renderClaimToken,
       jobId: job.id,
-      workerExecutionId: execution.executionName,
+      workerExecutionId: execution.operationName,
     }).catch((error) => {
       console.error("Render execution launched before slot attachment failed", {
         error: error instanceof Error ? error.message : "Unknown error",
-        executionName: execution.executionName,
+        operationName: execution.operationName,
         jobId: job.id,
       });
       return false;
@@ -148,7 +148,7 @@ export async function POST(request: Request) {
 
     return json(
       {
-        executionName: execution.executionName,
+        operationName: execution.operationName,
         jobId: job.id,
         ok: true,
         status: "launched",

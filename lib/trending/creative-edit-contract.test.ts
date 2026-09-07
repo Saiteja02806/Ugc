@@ -101,7 +101,7 @@ test("wall edits remain a renderable two-to-three segment payload", () => {
   );
 });
 
-test("Wall typing keeps Avenir at 50px when measured metadata is invalidated", () => {
+test("Wall typing adopts the current Arial Bold treatment when measured metadata is invalidated", () => {
   const saved: TrendingWallTextContent = {
     ...currentContent,
     layoutVersion: "wall-text-overlay-v9",
@@ -116,11 +116,19 @@ test("Wall typing keeps Avenir at 50px when measured metadata is invalidated", (
       textBox: { x: 150 / 1080, y: 660 / 1920, width: 780 / 1080, height: 480 / 1920 },
     },
   };
-  const expected = getWallTextEditorTypography(saved);
-  assert.match(expected.fontFamily, /Avenir Next/);
-  assert.equal(expected.fontWeight, 600);
-  assert.equal(expected.fontSize, 50);
-  assert.equal(expected.outlineWidth, 2);
+  const savedTypography = getWallTextEditorTypography(saved);
+  assert.match(savedTypography.fontFamily, /Avenir Next/);
+  assert.equal(savedTypography.fontWeight, 600);
+  assert.equal(savedTypography.fontSize, 50);
+  assert.equal(savedTypography.outlineWidth, 2);
+
+  const currentDraftTypography = {
+    fontFamily:
+      "var(--font-wall-text-arial-bold), Arial, 'Helvetica Neue', sans-serif",
+    fontWeight: 700,
+    fontSize: 50,
+    outlineWidth: 4,
+  };
 
   for (const initial of [saved, currentContent]) {
     let draft = initial;
@@ -133,7 +141,7 @@ test("Wall typing keeps Avenir at 50px when measured metadata is invalidated", (
       draft = createWallTextEditContent(text, draft);
       assert.equal(draft.finalLayout, undefined);
       assert.equal(draft.renderFontSize, undefined);
-      assert.deepEqual(getWallTextEditorTypography(draft), expected);
+      assert.deepEqual(getWallTextEditorTypography(draft), currentDraftTypography);
     }
   }
 

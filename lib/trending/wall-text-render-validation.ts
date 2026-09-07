@@ -70,6 +70,7 @@ export async function validateWallTextRenderFit(
 ): Promise<WallTextRenderValidation> {
   const preferredFontSize = getWallTextFontSize(content);
   const fontSizes: WallTextFontSize[] =
+    content.finalLayout?.version === "wall-text-final-layout-v6" ||
     content.finalLayout?.version === "wall-text-final-layout-v5"
       ? [preferredFontSize]
       : ([preferredFontSize, 52, 50, 48, 46, 44].filter(
@@ -77,7 +78,9 @@ export async function validateWallTextRenderFit(
             fontSize <= preferredFontSize && values.indexOf(fontSize) === index,
         ) as WallTextFontSize[]);
   const fontName =
-    content.finalLayout?.version === "wall-text-final-layout-v5"
+    content.finalLayout?.version === "wall-text-final-layout-v6"
+      ? "Arial Bold"
+      : content.finalLayout?.version === "wall-text-final-layout-v5"
       ? "Avenir Next Demi Bold"
       : content.finalLayout?.version === "wall-text-final-layout-v3"
       ? "Arial Bold"
@@ -160,6 +163,7 @@ export async function validateWallTextRenderFit(
 
   if (widestFailure) {
     throw new WallTextRenderFitError(
+      content.finalLayout?.version === "wall-text-final-layout-v6" ||
       content.finalLayout?.version === "wall-text-final-layout-v5"
         ? `Wall-of-text line does not fit the ${maximumTextWidth}px ${fontName} text area at its fixed ${preferredFontSize}px size. Reflow or shorten the copy: "${widestFailure.line}"`
         : `Wall-of-text line does not fit the ${maximumTextWidth}px ${fontName} text area at the ${WALL_TEXT_MINIMUM_FONT_SIZE}px minimum: "${widestFailure.line}"`,

@@ -1,28 +1,33 @@
 export const WALL_TEXT_CONTENT_LAYOUT_VERSION =
-  "wall-text-overlay-v9" as const;
+  "wall-text-overlay-v10" as const;
 export const PREVIOUS_WALL_TEXT_CONTENT_LAYOUT_VERSION =
-  "wall-text-overlay-v8" as const;
+  "wall-text-overlay-v9" as const;
 export const LEGACY_WALL_TEXT_CONTENT_LAYOUT_VERSION =
-  "wall-text-overlay-v7" as const;
+  "wall-text-overlay-v8" as const;
 export const OLDER_WALL_TEXT_CONTENT_LAYOUT_VERSION =
-  "wall-text-overlay-v6" as const;
+  "wall-text-overlay-v7" as const;
 // V5 first introduced the measured final-layout contract. V4 predates it and
 // remains readable for the writer's historical semantic payloads.
 export const HISTORICAL_WALL_TEXT_CONTENT_LAYOUT_VERSION =
-  "wall-text-overlay-v5" as const;
+  "wall-text-overlay-v6" as const;
 export const EARLIEST_WALL_TEXT_CONTENT_LAYOUT_VERSION =
+  "wall-text-overlay-v5" as const;
+export const OLDEST_WALL_TEXT_CONTENT_LAYOUT_VERSION =
   "wall-text-overlay-v4" as const;
 export const WALL_TEXT_LAYOUT_VERSION = "wall-text-layout-v4" as const;
-// V5 is the Avenir Next Demi Bold 600 treatment. Older Arial and Inter
-// versions remain readable for historical drafts and already-rendered videos.
-export const WALL_TEXT_FINAL_LAYOUT_VERSION = "wall-text-final-layout-v5" as const;
+// V6 uses Arial Bold 700 to match the supplied Wall-of-Text reference.
+// Older Avenir, Arial, and Inter versions remain readable for historical
+// drafts and already-rendered videos.
+export const WALL_TEXT_FINAL_LAYOUT_VERSION = "wall-text-final-layout-v6" as const;
 export const PREVIOUS_WALL_TEXT_FINAL_LAYOUT_VERSION =
-  "wall-text-final-layout-v4" as const;
+  "wall-text-final-layout-v5" as const;
 export const LEGACY_WALL_TEXT_FINAL_LAYOUT_VERSION =
-  "wall-text-final-layout-v3" as const;
+  "wall-text-final-layout-v4" as const;
 export const OLDER_WALL_TEXT_FINAL_LAYOUT_VERSION =
-  "wall-text-final-layout-v2" as const;
+  "wall-text-final-layout-v3" as const;
 export const HISTORICAL_WALL_TEXT_FINAL_LAYOUT_VERSION =
+  "wall-text-final-layout-v2" as const;
+export const OLDEST_WALL_TEXT_FINAL_LAYOUT_VERSION =
   "wall-text-final-layout-v1" as const;
 export const WALL_TEXT_GENERATOR_VERSION =
   "business-profile-wall-text-v9" as const;
@@ -178,26 +183,31 @@ type WallTextFinalLayoutBase = {
 };
 export type WallTextFinalLayout =
   | (WallTextFinalLayoutBase & {
-      fontFamily: "Avenir Next";
-      fontWeight: 600;
+      fontFamily: "Arial";
+      fontWeight: 700;
       version: typeof WALL_TEXT_FINAL_LAYOUT_VERSION;
     })
   | (WallTextFinalLayoutBase & {
-      fontFamily: "Arial";
-      fontWeight: 400;
+      fontFamily: "Avenir Next";
+      fontWeight: 600;
       version: typeof PREVIOUS_WALL_TEXT_FINAL_LAYOUT_VERSION;
     })
   | (WallTextFinalLayoutBase & {
       fontFamily: "Arial";
-      fontWeight: 500;
+      fontWeight: 400;
       version: typeof LEGACY_WALL_TEXT_FINAL_LAYOUT_VERSION;
+    })
+  | (WallTextFinalLayoutBase & {
+      fontFamily: "Arial";
+      fontWeight: 500;
+      version: typeof OLDER_WALL_TEXT_FINAL_LAYOUT_VERSION;
     })
   | (WallTextFinalLayoutBase & {
       fontFamily: "Inter";
       fontWeight: 400;
       version:
-        | typeof OLDER_WALL_TEXT_FINAL_LAYOUT_VERSION
-        | typeof HISTORICAL_WALL_TEXT_FINAL_LAYOUT_VERSION;
+        | typeof HISTORICAL_WALL_TEXT_FINAL_LAYOUT_VERSION
+        | typeof OLDEST_WALL_TEXT_FINAL_LAYOUT_VERSION;
     });
 export type WallTextPlacementAnalysis = {
   contrastScore: number;
@@ -219,7 +229,8 @@ export type TrendingWallTextContent = {
     | typeof LEGACY_WALL_TEXT_CONTENT_LAYOUT_VERSION
     | typeof OLDER_WALL_TEXT_CONTENT_LAYOUT_VERSION
     | typeof HISTORICAL_WALL_TEXT_CONTENT_LAYOUT_VERSION
-    | typeof EARLIEST_WALL_TEXT_CONTENT_LAYOUT_VERSION;
+    | typeof EARLIEST_WALL_TEXT_CONTENT_LAYOUT_VERSION
+    | typeof OLDEST_WALL_TEXT_CONTENT_LAYOUT_VERSION;
   pattern: WallTextPattern;
   renderFontSize?: WallTextFontSize;
   renderSafetyVersion?: typeof WALL_TEXT_RENDER_SAFETY_VERSION;

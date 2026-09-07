@@ -4052,9 +4052,9 @@ Name: **Verify v26 and replace the stale production assignment**
 ## 2026-09-02 Structure 1 Heading-Only White SVG Background
 
 - A Structure 1 slide whose visible `headline` is rendered as a headline gets
-  exactly one measured, rounded white SVG background behind that heading. The
-  heading uses dark Geist SemiBold text so it is visually distinct from the
-  image and remains readable across all approved backgrounds.
+  exactly one measured white SVG background behind that heading. The heading
+  uses dark Geist SemiBold text so it is visually distinct from the image and
+  remains readable across all approved backgrounds.
 - This treatment is semantic, not image-role-based: a Slide 1 Hook-library
   asset does not receive a background merely for being a hook image. It does
   receive the white SVG background when that slide also has a visible heading.
@@ -4067,8 +4067,26 @@ Name: **Verify v26 and replace the stale production assignment**
 - Structure 2 has story and CTA fields rather than a separate heading field.
   Its direct-white story/CTA treatment is unchanged; no white background is
   inferred for it.
-- New Structure 1 renders and explicit Structure 1 edit re-renders use
-  `social-heading-svg-renderer-v18-outline-4`. Existing rendered images remain
+- New Structure 1 renders and explicit Structure 1 edit re-renders use the
+  current line-fitted heading renderer. Existing rendered images remain
+  immutable.
+
+## 2026-09-06 Structure 1 Line-Fitted Heading SVG
+
+- The heading-only white SVG is one connected path that follows the measured
+  width of every rendered headline line. A two-, three-, or four-line heading
+  therefore has rounded outer ends plus overlapping rounded shoulders wherever
+  the next line is narrower or wider. It must not taper through an S-shaped
+  pinch or use one full-width rectangle with empty white space beside shorter
+  lines.
+- The path uses the same measured Geist line widths, fixed 44px heading type,
+  horizontal/vertical padding, safe-area calculation, and line limit as the
+  prior treatment. This is a visual-contour change only: it does not alter
+  planner copy, wrapping, text positions, body/list/CTA treatment, image
+  safety, Structure 2, or whether a heading is optional.
+- The renderer version is
+  `social-heading-rounded-shoulder-svg-renderer-v20-outline-4`. New render
+  keys use that version; existing v19 and earlier rendered images remain
   immutable.
 
 ## 2026-09-01 Compact-Laptop Trending 9:16 Review Frames

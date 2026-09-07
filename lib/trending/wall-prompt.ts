@@ -1,11 +1,8 @@
-import {
-  MIN_SHORT_WALL_TEXT_WORDS,
-  type WallTextBusinessContext,
-} from "./wall-text-text-logic";
+import type { WallTextBusinessContext } from "./wall-text-text-logic";
 import { WALL_TEXT_SOFT_WORD_RANGE } from "./wall-text-copy-policy";
 
 export const WALL_TEXT_PROMPT_VERSION =
-  "wall-text-writer-prompt-v12-word-range-fixed-font" as const;
+  "wall-text-writer-prompt-v13-24-40-balanced-lines" as const;
 
 export type WallTextPromptCandidate = {
   candidateIndex: number;
@@ -32,7 +29,7 @@ export type WallTextPromptCandidate = {
 
 const GLOBAL_WALL_RULES = [
   "Write natural continuous Wall-of-Text language, not chopped Hook-style fragments.",
-  `Write at least ${MIN_SHORT_WALL_TEXT_WORDS} words so the layout can form five readable lines.`,
+  `Write ${WALL_TEXT_SOFT_WORD_RANGE.minimum}-${WALL_TEXT_SOFT_WORD_RANGE.maximum} words. This is required for new generated Wall-of-Text cards.`,
   "Use only information supported by the Business Profile.",
   "Do not invent numbers, statistics, studies, research, customer results, product features, guarantees, or medical claims.",
   "Do not decide visual line breaks and do not insert newline characters.",
@@ -50,7 +47,10 @@ export function buildWallTextGenerationPrompt(params: {
 }) {
   const candidates = params.candidates.map((candidate) => ({
     candidateIndex: candidate.candidateIndex,
-    maxWords: candidate.maxWords,
+    maxWords: Math.max(
+      WALL_TEXT_SOFT_WORD_RANGE.minimum,
+      Math.min(candidate.maxWords, WALL_TEXT_SOFT_WORD_RANGE.maximum),
+    ),
     ...(candidate.referenceText
       ? { referenceTextForThisCandidateOnly: candidate.referenceText }
       : {}),
@@ -58,8 +58,9 @@ export function buildWallTextGenerationPrompt(params: {
     ...(candidate.privateCreativeContext
       ? { privateCreativeContext: candidate.privateCreativeContext }
       : {}),
-    // Old reserved assignments can still store 18. Do not send that scalar
-    // back to the writer and accidentally restore the short-copy bias.
+    // Old reserved assignments can still store the previous 18-word target.
+    // Do not send that scalar back to the writer and restore the short-copy
+    // bias; the current 24–40 contract applies to retries too.
     preferredWordRange: WALL_TEXT_SOFT_WORD_RANGE,
   }));
 
@@ -78,8 +79,8 @@ export function buildWallTextGenerationPrompt(params: {
     "TASK",
     "For each candidate, write the strongest complete natural message from the supplied idea and business facts. Do not force it into a named writing format, template, list, or formula.",
     "When privateCreativeContext is present, write from the complete private context, not from contentIdea alone.",
-    "Treat preferredWordRange (18-30 words) as a soft writing target, not a required minimum or a hard maximum. Choose the length the idea needs across this range; do not default every message to its shortest end. maxWords is only the absolute safety ceiling; the layout engine will decide final acceptance from measured 5-8 line fit at a fixed 50px font size.",
-    "Do not pad a complete thought to fill eight lines or compress a useful thought just to keep five lines. If retry feedback reports layout_fit, simplify or shorten the wording; the font size will not shrink.",
+    "preferredWordRange is a required 24-40-word generation range. Choose the natural length the idea needs within that range; do not default every message to its shortest end. The layout engine—not the clip duration—will decide final acceptance from a measured 5-8 line fit at a fixed 50px font size.",
+    "Do not insert visual line breaks or pad a complete thought with filler to force eight lines. If retry feedback reports layout_fit, improve the wording while remaining inside preferredWordRange; the font size will not shrink.",
     "A referenceTextForThisCandidateOnly belongs only to that candidate. Use it only as structural and emotional inspiration, adapt it to the Business Profile, and do not copy its wording.",
     "Reference text is not evidence. Never repeat its numbers, psychology statements, factual claims, product names, or promises unless the Business Profile independently supports them.",
     "Return exactly one result for every candidate. Do not return formatId, duration, coordinates, or final visual lines.",

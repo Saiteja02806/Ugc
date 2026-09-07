@@ -19,11 +19,12 @@ import type { WallTextPrivateCreativeContext } from "@/lib/trending/wall-text-db
 import { createWallTextLayout } from "@/lib/trending/wall-text-feed-logic";
 import {
   buildWallTextBusinessContext,
-  MAX_CURRENT_WALL_TEXT_WORDS,
-  MIN_SHORT_WALL_TEXT_WORDS,
+  MAX_CURRENT_GENERATION_WALL_TEXT_WORDS,
+  MIN_CURRENT_GENERATION_WALL_TEXT_WORDS,
   normalizeWallTextGenerationCandidates,
   type WallTextGenerationCandidate,
 } from "@/lib/trending/wall-text-text-logic";
+import { WALL_TEXT_TARGET_WORDS } from "@/lib/trending/wall-text-copy-policy";
 import {
   applyWallTextRenderFit,
   validateWallTextRenderFit,
@@ -251,11 +252,17 @@ function getSavedBudget(candidate: GenerationInputCandidate) {
     Number.isInteger(candidate.maxWords) &&
     candidate.targetWords! > 0 &&
     candidate.maxWords! >= candidate.targetWords! &&
-    candidate.maxWords! <= MAX_CURRENT_WALL_TEXT_WORDS
+    candidate.maxWords! >= MIN_CURRENT_GENERATION_WALL_TEXT_WORDS
   ) {
+    const maxWords = Math.min(
+      candidate.maxWords!,
+      MAX_CURRENT_GENERATION_WALL_TEXT_WORDS,
+    );
     return {
-      maxWords: candidate.maxWords!,
-      targetWords: candidate.targetWords!,
+      maxWords,
+      // Existing retry-pending assignments may still contain 18/50. Preserve
+      // those rows, but generate their retry with the current contract.
+      targetWords: Math.min(WALL_TEXT_TARGET_WORDS, maxWords),
     };
   }
   return null;
@@ -304,7 +311,7 @@ async function validateCandidate(params: {
   const text = normalizeText(params.text);
   const wordCount = countWords(text);
   if (
-    wordCount < MIN_SHORT_WALL_TEXT_WORDS ||
+    wordCount < MIN_CURRENT_GENERATION_WALL_TEXT_WORDS ||
     wordCount > params.candidate.maxWords
   ) {
     throw new CandidateValidationError("word_limit");

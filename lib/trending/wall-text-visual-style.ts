@@ -1,7 +1,8 @@
 import type { TrendingWallTextContent, WallTextFontSize } from "./wall-text-types.ts";
 
-export const WALL_TEXT_FONT_WEIGHT = 600;
-export const WALL_TEXT_FONT_FAMILY = "Avenir Next";
+export const WALL_TEXT_FONT_WEIGHT = 700;
+export const WALL_TEXT_FONT_FAMILY = "Arial";
+export const WALL_TEXT_ARIAL_BOLD_FONT_WEIGHT = 700;
 export const WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_FONT_WEIGHT = 600;
 export const WALL_TEXT_ARIAL_REGULAR_FONT_WEIGHT = 400;
 export const LEGACY_WALL_TEXT_FONT_FAMILY = "Inter";
@@ -17,9 +18,9 @@ export const WALL_TEXT_MINIMUM_FONT_SIZE = 44;
 // At the 1080px render size, 4px remains readable at 44px type without
 // closing the counters inside letters such as a, e, and o.
 export const WALL_TEXT_OUTLINE_WIDTH = 4;
-// New Avenir layouts use the requested 2px stroke. Keep the former 4px
-// outline for persisted Arial and Inter layouts so their preview and export
-// rendering remain unchanged.
+// The V5 Avenir treatment uses a 2px stroke. The supplied reference uses a
+// stronger outlined Arial treatment, so V6 and prior Arial/Inter layouts use
+// the standard 4px outline.
 export const WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH = 2;
 export const WALL_TEXT_SECTION_GAP = 18;
 // The text box is the outer placement rectangle. Keep a real visual gap
@@ -29,6 +30,12 @@ export const WALL_TEXT_INLINE_SAFE_PADDING = 15;
 // A wider reading column prevents already-measured lines from being visually
 // rewrapped into two- or three-word rows on the 9:16 canvas.
 export const WALL_TEXT_TEXT_WIDTH = 780;
+
+const ARIAL_BOLD_TYPOGRAPHY = {
+  fontFamily:
+    "var(--font-wall-text-arial-bold), Arial, 'Helvetica Neue', sans-serif",
+  fontWeight: WALL_TEXT_ARIAL_BOLD_FONT_WEIGHT,
+} as const;
 
 const AVENIR_NEXT_TYPOGRAPHY = {
   fontFamily:
@@ -85,6 +92,10 @@ export function getWallTextFontSize(content: TrendingWallTextContent): WallTextF
 }
 
 export function getWallTextTypography(content: TrendingWallTextContent) {
+  if (content.finalLayout?.version === "wall-text-final-layout-v6") {
+    return ARIAL_BOLD_TYPOGRAPHY;
+  }
+
   if (content.finalLayout?.version === "wall-text-final-layout-v5") {
     return AVENIR_NEXT_TYPOGRAPHY;
   }
@@ -119,9 +130,9 @@ export function getWallTextEditorTypography(content: TrendingWallTextContent) {
   // the temporary paragraph still needs browser wrapping until it is saved.
   if (!content.finalLayout) {
     return {
-      ...AVENIR_NEXT_TYPOGRAPHY,
+      ...ARIAL_BOLD_TYPOGRAPHY,
       fontSize: WALL_TEXT_FIXED_FONT_SIZE,
-      outlineWidth: WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH,
+      outlineWidth: WALL_TEXT_OUTLINE_WIDTH,
     };
   }
 

@@ -7,12 +7,12 @@ import {
   getVerifiedWallTextArialBoldFontPath,
   getVerifiedWallTextArialRegularFontPath,
   getVerifiedWallTextInterFontPath,
-} from "./wall-text-font";
+} from "./wall-text-font.ts";
 import type {
   TrendingWallTextContent,
   WallTextFontSize,
-} from "./wall-text-types";
-import { getWallTextRenderBlocks } from "./wall-text-types";
+} from "./wall-text-types.ts";
+import { getWallTextRenderBlocks } from "./wall-text-types.ts";
 import {
   getWallTextSafeLineWidth,
   getWallTextFontSize,
@@ -25,7 +25,7 @@ import {
   WALL_TEXT_OUTLINE_WIDTH,
   WALL_TEXT_SECTION_GAP,
   WALL_TEXT_TEXT_WIDTH,
-} from "./wall-text-visual-style";
+} from "./wall-text-visual-style.ts";
 
 export const WALL_TEXT_RENDER_WIDTH = 1080;
 export const WALL_TEXT_RENDER_HEIGHT = 1920;

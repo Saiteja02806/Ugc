@@ -2,6 +2,7 @@ import { runGenerateAvatarJob } from "./generate-avatar.js";
 import { runPublishSocialPostJob } from "./publish-social-post.js";
 import { runTestWorkerJob } from "./test-worker-job.js";
 import { runRenderEditVideoJob } from "./render-edit-video.js";
+import { runRenderCreateContentVideoJob } from "./render-create-content-video.js";
 import { runRenderScheduleCombinationJob } from "./render-schedule-combination.js";
 import { runRenderTrendingCarouselEditJob } from "./render-trending-carousel-edit.js";
 import { runRenderWallTextVideoJob } from "./render-wall-text-video.js";
@@ -39,6 +40,10 @@ export async function runWorkerJob(
 
   if (job.job_type === "render_edit_video") {
     return runRenderEditVideoJob(job, context);
+  }
+
+  if (job.job_type === "render_create_content_video") {
+    return runRenderCreateContentVideoJob(job, context);
   }
 
   if (job.job_type === "render_schedule_combination") {

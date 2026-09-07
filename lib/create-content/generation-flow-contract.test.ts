@@ -24,3 +24,9 @@ test("Create Content generation remains separate from Trending plan generation",
   assert.doesNotMatch(generation, /enqueueTrendingWallTextJob/);
   assert.doesNotMatch(route, /\/api\/trending|enqueueTrending/);
 });
+
+test("Create Content generation uses the final visual constraints before options reach chat", () => {
+  assert.match(generation, /normalizeAndValidateGeneratedCreateContentText/);
+  assert.match(generation, /Use 4 to 8 purposeful lines/);
+  assert.match(generation, /2 to 12 words, 8 to 78 characters, and fit within 3 readable lines/);
+});

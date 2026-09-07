@@ -4,6 +4,7 @@ import type { WorkerConfig } from "./config.js";
 import { JobCancellationRequestedError } from "./job-cancellation.js";
 import { getErrorMessage, logger } from "./logger.js";
 import { hasWorkerJobHandler, runWorkerJob } from "./jobs/index.js";
+import { reconcileCreateContentRenderJobFailure } from "./jobs/render-create-content-video.js";
 import { reconcileRenderEditVideoJobFailure } from "./jobs/render-edit-video.js";
 import { reconcileTrendingCarouselEditJobFailure } from "./jobs/render-trending-carousel-edit.js";
 import {
@@ -68,6 +69,7 @@ export async function processWorkerMessage(params: ProcessMessageParams) {
   }
 
   if (terminalJobStatuses.has(job.status)) {
+    await reconcileTerminalCreateContentRenderFailure(job, store);
     logger.info("Dropping duplicate queue message for terminal job", {
       jobId: job.id,
       jobStatus: job.status,
@@ -127,7 +129,12 @@ export async function processRecoveredWorkerJob(params: {
 }) {
   const job = await params.store.getJobById(params.jobId);
 
-  if (!job || terminalJobStatuses.has(job.status)) {
+  if (!job) {
+    return false;
+  }
+
+  if (terminalJobStatuses.has(job.status)) {
+    await reconcileTerminalCreateContentRenderFailure(job, params.store);
     return false;
   }
 
@@ -190,6 +197,9 @@ async function processClaimableJob(params: {
     }
 
     if (!latestJob || terminalJobStatuses.has(latestJob.status)) {
+      if (latestJob) {
+        await reconcileTerminalCreateContentRenderFailure(latestJob, store);
+      }
       logger.info("Dropping duplicate queue message after claim was denied", {
         jobId: job.id,
         jobStatus: latestJob?.status ?? "missing",
@@ -320,6 +330,7 @@ async function processClaimableJob(params: {
       const latestJob = await store.getJobById(processingJob.id);
 
       if (latestJob && terminalJobStatuses.has(latestJob.status)) {
+        await reconcileTerminalCreateContentRenderFailure(latestJob, store);
         await deleteDeliveryMessage({ config, message, queue });
         logger.info("Worker completion was superseded by a terminal job state", {
           jobId: processingJob.id,
@@ -572,6 +583,7 @@ async function retryKnownJob(params: {
     const latestJob = await params.store.getJobById(params.job.id);
 
     if (latestJob && terminalJobStatuses.has(latestJob.status)) {
+      await reconcileTerminalCreateContentRenderFailure(latestJob, params.store);
       await deleteDeliveryMessage(params);
     } else {
       logger.warn("Could not retry job because its claim is no longer active", {
@@ -626,6 +638,7 @@ async function failKnownJobAndDeleteMessage(params: {
       const latestJob = await params.store.getJobById(params.job.id);
 
       if (latestJob && terminalJobStatuses.has(latestJob.status)) {
+        await reconcileTerminalCreateContentRenderFailure(latestJob, params.store);
         await deleteDeliveryMessage(params);
         return;
       }
@@ -693,8 +706,27 @@ async function reconcileDurableOutputJobFailure(
   }
 
   await reconcileRenderEditVideoJobFailure(job, store, errorMessage);
+  await reconcileCreateContentRenderJobFailure(job, store, errorMessage);
   await reconcileTrendingCarouselEditJobFailure(job, store, errorMessage);
   await reconcileContentPlanGenerationFailure(job, store, errorMessage);
+}
+
+async function reconcileTerminalCreateContentRenderFailure(
+  job: BackgroundJobRow,
+  store: SupabaseJobStore,
+) {
+  if (job.status === "completed") {
+    return;
+  }
+
+  await reconcileCreateContentRenderJobFailure(
+    job,
+    store,
+    job.error_message?.trim() ||
+      (job.status === "cancelled"
+        ? "Create Content video render was cancelled."
+        : "Create Content video render failed before its status was reconciled."),
+  );
 }
 
 async function reconcileContentPlanGenerationFailure(

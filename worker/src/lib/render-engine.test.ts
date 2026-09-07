@@ -12,6 +12,7 @@ import {
   buildReactionCaptionLayout,
   buildReactionCaptionOverlaySvg,
   buildReactionVideoArgs,
+  buildCreateContentWallTextVideoArgs,
   buildWallTextVideoArgs,
   buildScheduleCombinationSegmentArgs,
   buildPreparedTextOverlaySvg,
@@ -602,6 +603,30 @@ test("renders Wall text with the selected library audio and ignores source audio
     args[args.indexOf("-filter_complex") + 1] ?? "",
     /atrim=start=0\.250:end=12\.500[\s\S]+apad=pad_dur=5\.056[\s\S]+atrim=duration=5\.056[\s\S]+afade=t=out:st=4\.856:d=0\.200/,
   );
+});
+
+test("keeps the selected Create Content video's own audio while rendering Wall text", () => {
+  const args = buildCreateContentWallTextVideoArgs({
+    inputPath: "source-video.mp4",
+    outputPath: "create-content.mp4",
+    overlayPath: "wall-overlay.png",
+  });
+
+  assert.deepEqual(args.slice(0, 9), [
+    "-y",
+    "-i",
+    "source-video.mp4",
+    "-loop",
+    "1",
+    "-framerate",
+    "30",
+    "-i",
+    "wall-overlay.png",
+  ]);
+  assert.ok(args.includes("0:a?"));
+  assert.equal(args.some((value) => value.endsWith(".mp3")), false);
+  assert.equal(args.some((value) => value.includes("wall_audio")), false);
+  assert.equal(args.at(-1), "create-content.mp4");
 });
 
 test("loops only an audio selection explicitly marked with loop fit", () => {

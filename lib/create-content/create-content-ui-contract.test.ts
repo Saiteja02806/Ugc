@@ -36,3 +36,9 @@ test("AI chat is a full-height sidebar with an explicit Add-to-video action", ()
   assert.match(workspaceSource, /Add to this video/);
   assert.match(workspaceSource, /createCenteredTextPosition\(\)/);
 });
+
+test("AI chat opens from one circular, single-sparkle trigger", () => {
+  assert.match(workspaceSource, /aria-label="Open AI chat"/);
+  assert.match(workspaceSource, /className="size-10 rounded-full shadow-sm hover:shadow-md"/);
+  assert.match(workspaceSource, /<Sparkle className="size-\[17px\]" aria-hidden="true" \/>/);
+});

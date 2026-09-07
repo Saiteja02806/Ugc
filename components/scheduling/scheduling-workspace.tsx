@@ -227,6 +227,9 @@ export function SchedulingWorkspace() {
   const initialDraftQueryState = useRef<"handled" | "idle" | "opening">(
     "idle",
   );
+  const initialAssetQueryState = useRef<"handled" | "idle" | "opening">(
+    "idle",
+  );
   const [hookMediaOptions, setHookMediaOptions] = useState<ScheduleMediaOption[]>(
     () => cachedMediaCatalog?.hookMediaOptions ?? [],
   );
@@ -277,6 +280,12 @@ export function SchedulingWorkspace() {
   const [newScheduleInitialDate, setNewScheduleInitialDate] = useState(() =>
     toDateKey(new Date()),
   );
+  const [pendingInitialDemoMediaId, setPendingInitialDemoMediaId] = useState<
+    string | null
+  >(null);
+  const [pendingInitialClipSelection, setPendingInitialClipSelection] = useState<
+    "secondary_only" | null
+  >(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [dayPlannerOpen, setDayPlannerOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -545,12 +554,18 @@ export function SchedulingWorkspace() {
     setDrawerError(null);
     setEditingScheduleId(null);
     setRequireScheduleTarget(false);
+    setPendingInitialDemoMediaId(null);
+    setPendingInitialClipSelection(null);
   }
 
-  async function handleNewSchedulePost(
+  const handleNewSchedulePost = useCallback(async (
     dateKey = selectedCalendarDate,
-    options: { keepDayOpen?: boolean } = {},
-  ) {
+    options: {
+      initialClipSelection?: "secondary_only";
+      initialDemoMediaId?: string;
+      keepDayOpen?: boolean;
+    } = {},
+  ) => {
     if (checkingScheduleAccess) {
       return;
     }
@@ -575,8 +590,11 @@ export function SchedulingWorkspace() {
       setDrawerError(null);
       setEditingScheduleId(null);
       setRequireScheduleTarget(true);
-      handleSelectCalendarDate(dateKey);
+      setSelectedCalendarDate(dateKey);
+      setVisibleCalendarMonth(toMonthKey(parseDateKey(dateKey)));
       setNewScheduleInitialDate(dateKey);
+      setPendingInitialClipSelection(options.initialClipSelection ?? null);
+      setPendingInitialDemoMediaId(options.initialDemoMediaId ?? null);
       setViewMode("calendar");
       if (!options.keepDayOpen) {
         setDayPlannerOpen(false);
@@ -586,7 +604,43 @@ export function SchedulingWorkspace() {
     } finally {
       setCheckingScheduleAccess(false);
     }
-  }
+  }, [
+    checkingScheduleAccess,
+    loadScheduleMedia,
+    loadSocialConnections,
+    selectedCalendarDate,
+  ]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (initialAssetQueryState.current !== "idle" || !scheduleMediaLoaded) {
+        return;
+      }
+
+      const assetId = new URLSearchParams(window.location.search).get("assetId");
+
+      if (!assetId) {
+        initialAssetQueryState.current = "handled";
+        return;
+      }
+
+      if (!demoMediaOptions.some((asset) => asset.id === assetId)) {
+        initialAssetQueryState.current = "handled";
+        setActionNotice("The rendered Create Content video is not ready to schedule yet.");
+        return;
+      }
+
+      initialAssetQueryState.current = "opening";
+      void handleNewSchedulePost(toDateKey(new Date()), {
+        initialClipSelection: "secondary_only",
+        initialDemoMediaId: assetId,
+      }).finally(() => {
+        initialAssetQueryState.current = "handled";
+      });
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [demoMediaOptions, handleNewSchedulePost, scheduleMediaLoaded]);
 
   async function handleEditSchedule(draft: ScheduleDraft) {
     const schedule = serverSchedules.find((candidate) => candidate.id === draft.id);
@@ -1204,13 +1258,15 @@ export function SchedulingWorkspace() {
           editingScheduledTime={editingScheduleDraft?.scheduledTime ?? null}
           errorMessage={drawerError}
           hookMediaOptions={hookMediaOptions}
+          initialClipSelection={pendingInitialClipSelection ?? undefined}
           initialDemoMediaId={
-            getString(editingSchedule?.metadata.clipSelection) === "hook_only"
+            pendingInitialDemoMediaId ??
+            (getString(editingSchedule?.metadata.clipSelection) === "hook_only"
               ? ""
               : getString(editingSchedule?.metadata.scheduledVideoId) ??
                 getString(editingSchedule?.metadata.demoMediaId) ??
                 editingSchedule?.mediaAssetId ??
-                ""
+                "")
           }
           initialHookMediaId={
             getString(editingSchedule?.metadata.hookMediaId) ??

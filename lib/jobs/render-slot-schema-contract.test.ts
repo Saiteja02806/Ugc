@@ -7,6 +7,9 @@ const workspaceRoot = process.cwd();
 const migration = read(
   "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260828160000_add_durable_video_render_slots.sql",
 );
+const createContentRenderMigration = read(
+  "supabase/migrations/20260907170000_add_create_content_video_renders.sql",
+);
 const launcher = read("app/api/internal/jobs/launch-render/route.ts");
 const jobs = read("lib/jobs/background-jobs.ts");
 const cloudRunJobs = read("lib/jobs/gcp-cloud-run-jobs.ts");
@@ -61,6 +64,13 @@ test("the app launcher can start the one-shot Cloud Run Job", () => {
     /DEFAULT_VIDEO_RENDER_JOB_NAME\s*=\s*"ugc-video-render-job"/,
   );
   assert.match(cloudRunJobs, /jobName:\s*getVideoRenderJobName\(\)/);
+});
+
+test("Create Content render jobs are admitted to the same bounded lease", () => {
+  assert.match(
+    createContentRenderMigration,
+    /claim_video_render_execution_slot[\s\S]*?job\.job_type in \([\s\S]*?'render_create_content_video'/,
+  );
 });
 
 function read(relativePath: string) {

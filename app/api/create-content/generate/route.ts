@@ -7,6 +7,7 @@ import {
   generateCreateContentCopy,
   CREATE_CONTENT_MAX_OPTION_COUNT,
 } from "@/lib/create-content/generation";
+import { CreateContentGeneratedCopyValidationError } from "@/lib/create-content/generation-validation";
 import { isCreateContentVideo } from "@/lib/create-content/video-assets";
 import {
   FirebaseAuthRequestError,
@@ -90,6 +91,17 @@ export async function POST(request: Request) {
           ok: false,
         },
         error.status,
+      );
+    }
+
+    if (error instanceof CreateContentGeneratedCopyValidationError) {
+      return json(
+        {
+          error:
+            "The generated copy did not fit this video format. Please try again.",
+          ok: false,
+        },
+        422,
       );
     }
 

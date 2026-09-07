@@ -2,14 +2,16 @@
 
 import {
   Check,
+  CalendarClock,
   Clapperboard,
   Film,
   GripVertical,
   PencilLine,
   Plus,
   RefreshCw,
+  Loader2,
   Send,
-  Sparkles,
+  Sparkle,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -44,19 +46,11 @@ import {
   type CreateContentCard,
   type CreateContentTextPosition,
 } from "@/lib/create-content/card-contract";
+import {
+  createCreateContentWallTextContent,
+  createCreateContentWallTextLayout,
+} from "@/lib/create-content/render-contract";
 import type { MediaAsset } from "@/lib/media/types";
-import { createWallTextLayout } from "@/lib/trending/wall-text-feed-logic";
-import {
-  WALL_TEXT_CONTENT_LAYOUT_VERSION,
-  WALL_TEXT_FINAL_LAYOUT_VERSION,
-  type TrendingWallTextContent,
-  type TrendingWallTextLayout,
-} from "@/lib/trending/wall-text-types";
-import {
-  WALL_TEXT_FIXED_FONT_SIZE,
-  WALL_TEXT_FONT_WEIGHT,
-  WALL_TEXT_LINE_HEIGHT_FACTOR,
-} from "@/lib/trending/wall-text-visual-style";
 import { cn } from "@/lib/utils";
 
 type MediaResponse =
@@ -73,6 +67,19 @@ type CopyGenerationResponse =
       ok: true;
       options: CreateContentGeneratedOption[];
     }
+  | { error?: string; ok?: false };
+type CreateContentRender = {
+  cardRevision: number;
+  errorMessage: string | null;
+  id: string;
+  jobId: string | null;
+  mediaAssetId: string | null;
+  sourceMediaAssetId: string;
+  status: "queued" | "rendering" | "ready" | "failed";
+  updatedAt: string;
+};
+type CreateContentRenderResponse =
+  | { ok: true; render: CreateContentRender | null }
   | { error?: string; ok?: false };
 type CreateContentGeneratedOption = {
   format: "wall_text" | "hook_text";
@@ -115,6 +122,13 @@ export function CreateContentWorkspace({
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
   const [chatAddErrorMessage, setChatAddErrorMessage] = useState<string | null>(null);
   const [isAddingGeneratedCopy, setIsAddingGeneratedCopy] = useState(false);
+  const [activeRender, setActiveRender] = useState<CreateContentRender | null>(
+    null,
+  );
+  const [isPreparingForSchedule, setIsPreparingForSchedule] = useState(false);
+  const [scheduleErrorMessage, setScheduleErrorMessage] = useState<string | null>(
+    null,
+  );
   const pointerStartX = useRef<number | null>(null);
 
   const loadAssets = useCallback(async () => {
@@ -180,6 +194,54 @@ export function CreateContentWorkspace({
 
     return () => window.clearTimeout(timer);
   }, [isPreview, loadAssets]);
+
+  const loadActiveRender = useCallback(async () => {
+    if (isPreview || !activeAssetId || !cardsByAssetId.has(activeAssetId)) {
+      setActiveRender(null);
+      return null;
+    }
+
+    const token = await getCurrentUserIdToken();
+    if (!token) return null;
+    const response = await fetch(
+      `/api/create-content/renders?assetId=${encodeURIComponent(activeAssetId)}`,
+      { cache: "no-store", headers: { Authorization: `Bearer ${token}` } },
+    );
+    const data = (await response.json().catch(() => null)) as
+      | CreateContentRenderResponse
+      | null;
+
+    if (response.ok && data?.ok === true) {
+      setActiveRender(data.render);
+      return data.render;
+    }
+
+    setActiveRender(null);
+    return null;
+  }, [activeAssetId, cardsByAssetId, isPreview]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadActiveRender().catch(() => setActiveRender(null));
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [loadActiveRender]);
+
+  useEffect(() => {
+    if (
+      !activeRender ||
+      (activeRender.status !== "queued" && activeRender.status !== "rendering")
+    ) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      void loadActiveRender().catch(() => undefined);
+    }, 4_000);
+
+    return () => window.clearInterval(timer);
+  }, [activeRender, loadActiveRender]);
 
   const activeIndex = useMemo(
     () => assets.findIndex((asset) => asset.id === activeAssetId),
@@ -283,6 +345,7 @@ export function CreateContentWorkspace({
 
     try {
       updateLocalCard(await persistCard(card));
+      setActiveRender(null);
       setEditingOriginalCard(null);
       setEditingAssetId(null);
       setIsAiDrawerOpen(true);
@@ -315,6 +378,7 @@ export function CreateContentWorkspace({
         version: "create-content-card-v1",
       });
       updateLocalCard(saved);
+      setActiveRender(null);
       return true;
     } catch (error) {
       setChatAddErrorMessage(
@@ -324,6 +388,63 @@ export function CreateContentWorkspace({
     } finally {
       setIsAddingGeneratedCopy(false);
     }
+  }
+
+  async function prepareForScheduling() {
+    if (!activeAsset || !activeCard || isPreparingForSchedule) return;
+
+    setScheduleErrorMessage(null);
+    setIsPreparingForSchedule(true);
+
+    try {
+      if (isPreview) {
+        setActiveRender({
+          cardRevision: activeCard.revision,
+          errorMessage: null,
+          id: "preview-render",
+          jobId: null,
+          mediaAssetId: "preview-rendered-video",
+          sourceMediaAssetId: activeAsset.id,
+          status: "ready",
+          updatedAt: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const token = await getCurrentUserIdToken();
+      if (!token) throw new Error("Sign in before scheduling this video.");
+      const response = await fetch("/api/create-content/renders", {
+        body: JSON.stringify({ sourceMediaAssetId: activeAsset.id }),
+        cache: "no-store",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      });
+      const data = (await response.json().catch(() => null)) as
+        | CreateContentRenderResponse
+        | null;
+
+      if (!response.ok || data?.ok !== true || !data.render) {
+        throw new Error(getApiError(data, "Could not prepare this video."));
+      }
+
+      setActiveRender(data.render);
+    } catch (error) {
+      setScheduleErrorMessage(
+        getErrorMessage(error, "Could not prepare this video."),
+      );
+    } finally {
+      setIsPreparingForSchedule(false);
+    }
+  }
+
+  function openRenderedVideoInScheduling() {
+    if (!activeRender?.mediaAssetId || isPreview) return;
+    window.location.assign(
+      `/scheduling?assetId=${encodeURIComponent(activeRender.mediaAssetId)}`,
+    );
   }
 
   function handlePointerDown(event: ReactPointerEvent<HTMLElement>) {
@@ -387,15 +508,17 @@ export function CreateContentWorkspace({
             ) : null}
             <Button
               type="button"
-              size="sm"
+              size="icon-lg"
+              aria-label="Open AI chat"
+              title="Open AI chat"
+              className="size-10 rounded-full shadow-sm hover:shadow-md"
               disabled={!activeAsset || status !== "ready"}
               onClick={() => {
                 setChatAddErrorMessage(null);
                 setIsAiDrawerOpen(true);
               }}
             >
-              <Sparkles data-icon="inline-start" />
-              AI chat
+              <Sparkle className="size-[17px]" aria-hidden="true" />
             </Button>
           </div>
         </header>
@@ -437,6 +560,15 @@ export function CreateContentWorkspace({
                   overlay: { ...activeCard.overlay, position },
                 });
               }}
+            />
+            <CreateContentActionBar
+              hasText={Boolean(activeCard)}
+              isPreparing={isPreparingForSchedule}
+              onCreateCopy={() => setIsAiDrawerOpen(true)}
+              onPrepareForScheduling={() => void prepareForScheduling()}
+              onSchedule={openRenderedVideoInScheduling}
+              render={activeRender}
+              scheduleErrorMessage={scheduleErrorMessage}
             />
             {activeCard && editingAssetId === activeAsset.id ? (
               <TextEditorDrawer
@@ -588,6 +720,77 @@ function VideoDeck({
             ? "Select the text to edit it, or swipe to browse."
             : "Swipe to browse, or select a video below."}
       </p>
+    </div>
+  );
+}
+
+function CreateContentActionBar({
+  hasText,
+  isPreparing,
+  onCreateCopy,
+  onPrepareForScheduling,
+  onSchedule,
+  render,
+  scheduleErrorMessage,
+}: {
+  hasText: boolean;
+  isPreparing: boolean;
+  onCreateCopy: () => void;
+  onPrepareForScheduling: () => void;
+  onSchedule: () => void;
+  render: CreateContentRender | null;
+  scheduleErrorMessage: string | null;
+}) {
+  const isRendering =
+    render?.status === "queued" || render?.status === "rendering";
+
+  return (
+    <div className="mx-auto flex w-full max-w-md flex-col items-center gap-2 text-center">
+      {!hasText ? (
+        <Button type="button" onClick={onCreateCopy}>
+          <Sparkle data-icon="inline-start" />
+          Create copy
+        </Button>
+      ) : render?.status === "ready" && render.mediaAssetId ? (
+        <Button type="button" onClick={onSchedule}>
+          <CalendarClock data-icon="inline-start" />
+          Schedule this video
+        </Button>
+      ) : (
+        <Button
+          type="button"
+          disabled={isPreparing || isRendering}
+          onClick={onPrepareForScheduling}
+        >
+          {isPreparing || isRendering ? (
+            <Loader2 data-icon="inline-start" className="animate-spin motion-reduce:animate-none" />
+          ) : (
+            <CalendarClock data-icon="inline-start" />
+          )}
+          {isPreparing
+            ? "Preparing…"
+            : isRendering
+              ? "Preparing video…"
+              : render?.status === "failed"
+                ? "Try preparing again"
+                : "Schedule this video"}
+        </Button>
+      )}
+      {isRendering ? (
+        <p className="text-xs leading-5 text-muted-foreground">
+          Rendering your text onto the video. Its original audio will stay intact.
+        </p>
+      ) : null}
+      {render?.status === "failed" && render.errorMessage ? (
+        <p className="text-xs leading-5 text-destructive" role="alert">
+          {render.errorMessage}
+        </p>
+      ) : null}
+      {scheduleErrorMessage ? (
+        <p className="text-xs leading-5 text-destructive" role="alert">
+          {scheduleErrorMessage}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -784,7 +987,7 @@ function TextEditorDrawer({
           </button>
         </header>
         <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5">
             <p className="text-sm leading-6 text-muted-foreground">
               Edit the copy, then drag the text on the video to set its position.
             </p>
@@ -792,6 +995,8 @@ function TextEditorDrawer({
               {isWallText ? "Wall-of-Text copy" : "Hook text"}
               <textarea
                 aria-label={`${isWallText ? "Wall-of-Text" : "Hook text"} copy`}
+                autoComplete="off"
+                name="create-content-copy"
                 value={text}
                 maxLength={600}
                 rows={isWallText ? 10 : 6}
@@ -808,7 +1013,7 @@ function TextEditorDrawer({
               </p>
             ) : null}
           </div>
-          <footer className="flex shrink-0 justify-end gap-2 border-t border-border bg-card px-5 py-4">
+          <footer className="flex shrink-0 justify-end gap-2 border-t border-border bg-card px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <Button type="button" variant="ghost" onClick={onCancel} disabled={isSaving}>
               Cancel
             </Button>
@@ -937,7 +1142,7 @@ function AiChatDrawer({
         <header className="flex h-16 shrink-0 items-center justify-between border-b border-border px-5">
           <div className="flex min-w-0 items-center gap-3">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary">
-              <Sparkles className="size-4" aria-hidden="true" />
+              <Sparkle className="size-4" aria-hidden="true" />
             </span>
             <div className="min-w-0">
               <p className="text-[10px] font-semibold tracking-[0.14em] text-primary uppercase">
@@ -963,7 +1168,7 @@ function AiChatDrawer({
           </button>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5">
           <div className="rounded-xl border border-border bg-card-muted/50 px-4 py-3">
             <p className="text-xs font-semibold text-foreground-strong">{activeAsset.title}</p>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -1021,7 +1226,7 @@ function AiChatDrawer({
           ) : null}
         </div>
 
-        <form className="shrink-0 border-t border-border bg-card px-5 py-4" onSubmit={generate}>
+        <form className="shrink-0 border-t border-border bg-card px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]" onSubmit={generate}>
           <div className="flex flex-wrap gap-2 pb-3">
             <Button
               type="button"
@@ -1045,6 +1250,8 @@ function AiChatDrawer({
           </label>
           <textarea
             id="create-content-ai-request"
+            autoComplete="off"
+            name="create-content-ai-request"
             value={request}
             maxLength={1_200}
             rows={3}
@@ -1113,6 +1320,8 @@ function GeneratedCopyOptionCard({
       {isEditing ? (
         <textarea
           aria-label={`${kindLabel} ${optionNumber}`}
+          autoComplete="off"
+          name={`create-content-option-${optionNumber}`}
           value={text}
           maxLength={600}
           rows={option.format === "wall_text" ? 6 : 4}
@@ -1177,69 +1386,6 @@ function createPreviewCopyOptions(
       text,
     }),
   );
-}
-
-function createCreateContentWallTextContent(
-  text: string,
-  layout: TrendingWallTextLayout,
-): TrendingWallTextContent {
-  const lines = getCreateContentWallTextLines(text);
-
-  return {
-    finalLayout: {
-      blocks: [{ lines, role: "text" }],
-      fontFamily: "Arial",
-      fontSizePx: WALL_TEXT_FIXED_FONT_SIZE,
-      fontWeight: WALL_TEXT_FONT_WEIGHT,
-      lineHeightPx: WALL_TEXT_FIXED_FONT_SIZE * WALL_TEXT_LINE_HEIGHT_FACTOR,
-      textBox: layout.textBox,
-      version: WALL_TEXT_FINAL_LAYOUT_VERSION,
-    },
-    fullText: text.replace(/\s+/gu, " ").trim(),
-    kind: "wall_text",
-    layoutVersion: WALL_TEXT_CONTENT_LAYOUT_VERSION,
-    pattern: "freeform",
-    renderFontSize: WALL_TEXT_FIXED_FONT_SIZE,
-    segments: [{ lines, role: "lead" }],
-  };
-}
-
-function createCreateContentWallTextLayout(
-  position: CreateContentTextPosition,
-): TrendingWallTextLayout {
-  const layout = createWallTextLayout();
-  const { height, width } = layout.textBox;
-
-  return {
-    ...layout,
-    textBox: {
-      ...layout.textBox,
-      x: clamp(position.x - width / 2, 0, 1 - width),
-      y: clamp(position.y - height / 2, 0, 1 - height),
-    },
-  };
-}
-
-function getCreateContentWallTextLines(text: string): string[] {
-  const explicitLines = text
-    .split(/\n+/u)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  if (explicitLines.length > 1) return explicitLines;
-
-  const words = text.split(/\s+/u).filter(Boolean);
-  const lineCount = Math.min(6, Math.max(2, Math.ceil(words.length / 5)));
-
-  return Array.from({ length: lineCount }, (_, index) => {
-    const start = Math.floor((index * words.length) / lineCount);
-    const end = Math.floor(((index + 1) * words.length) / lineCount);
-    return words.slice(start, end).join(" ");
-  }).filter(Boolean);
-}
-
-function clamp(value: number, minimum: number, maximum: number): number {
-  return Math.min(maximum, Math.max(minimum, value));
 }
 
 function NextVideoPeek({ asset }: { asset: MediaAsset }) {

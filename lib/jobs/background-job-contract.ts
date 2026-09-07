@@ -63,6 +63,7 @@ const canonicalTypeByImplementation: Record<
   preview_render: "preview_render",
   publish_social_post: "social_publish",
   reaction_generation: "video_generation",
+  render_create_content_video: "final_render",
   render_demo_video: "final_render",
   render_edit_video: "final_render",
   render_schedule_combination: "final_render",

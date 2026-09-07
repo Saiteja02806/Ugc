@@ -216,6 +216,7 @@ export function ScheduleEditor({
   editingScheduledTime,
   errorMessage,
   hookMediaOptions,
+  initialClipSelection,
   initialDemoMediaId,
   initialHookMediaId,
   initialPlannedTargets,
@@ -237,6 +238,7 @@ export function ScheduleEditor({
   editingScheduledTime: string | null;
   errorMessage: string | null;
   hookMediaOptions: ScheduleMediaOption[];
+  initialClipSelection?: "secondary_only";
   initialDemoMediaId: string;
   initialHookMediaId: string;
   initialPlannedTargets: ScheduleCreateTargetInput[];
@@ -297,6 +299,7 @@ export function ScheduleEditor({
         editingSchedule,
         hasHookOptions: hookMediaOptions.length > 0,
         hasSecondaryOptions: demoMediaOptions.length > 0,
+        requestedSelection: initialClipSelection,
       }).useHook,
   );
   const [useSecondaryClip, setUseSecondaryClip] = useState(
@@ -306,6 +309,7 @@ export function ScheduleEditor({
         editingSchedule,
         hasHookOptions: hookMediaOptions.length > 0,
         hasSecondaryOptions: demoMediaOptions.length > 0,
+        requestedSelection: initialClipSelection,
       }).useSecondary,
   );
   const [selectedHookMediaId, setSelectedHookMediaId] = useState<string>(
@@ -2623,7 +2627,12 @@ function getInitialClipSelection(params: {
   editingSchedule: ScheduledPost | null;
   hasHookOptions: boolean;
   hasSecondaryOptions: boolean;
+  requestedSelection?: "secondary_only";
 }) {
+  if (params.requestedSelection === "secondary_only") {
+    return { useHook: false, useSecondary: true };
+  }
+
   const savedSelection = params.editingSchedule?.metadata.clipSelection;
 
   if (savedSelection === "hook_only") {

@@ -8,7 +8,6 @@ import type { WebsiteBusinessAnalysis } from "@/lib/website-analysis/schema";
 
 import {
   CREATE_CONTENT_TEXT_MAX_CHARACTERS,
-  normalizeCreateContentText,
   type CreateContentTextFormat,
 } from "./card-contract";
 import {
@@ -20,6 +19,7 @@ import {
   getCreateContentWallReadingGuide,
   resolveCreateContentOptionCount,
 } from "./generation-contract";
+import { normalizeAndValidateGeneratedCreateContentText } from "./generation-validation";
 
 const DEFAULT_MODEL = "gpt-5-mini";
 
@@ -106,20 +106,18 @@ export async function generateCreateContentCopy(params: {
     throw new Error("The AI did not return the requested number of options. Please try again.");
   }
 
-  return parsed.options.map((option, index) => {
-    const text = normalizeCreateContentText(option.text);
-    if (!text) {
-      throw new Error("The AI returned an empty option. Please try again.");
-    }
-
-    return {
+  return Promise.all(
+    parsed.options.map(async (option, index) => ({
       format: params.format,
       ...(params.format === "hook_text"
         ? { formatId: hookFormats[index]!.id }
         : {}),
-      text,
-    };
-  });
+      text: await normalizeAndValidateGeneratedCreateContentText({
+        format: params.format,
+        text: option.text,
+      }),
+    })),
+  );
 }
 
 function buildCreateContentPrompt(params: {
@@ -163,7 +161,7 @@ function buildCreateContentPrompt(params: {
       "- This will appear on a 9:16 source video in a centered text box.",
       `- The selected source video is ${Math.max(0, Math.round(params.selectedVideoDurationSeconds))} seconds. Aim for about ${guide.targetWords} words when natural.`,
       `- ${guide.wording}`,
-      "- Use 3 to 7 purposeful lines. Keep each line naturally readable.",
+      "- Use 4 to 8 purposeful lines. Keep each line naturally readable.",
       "- Return the visible copy only in each option's text field; keep intentional line breaks.",
     ].join("\n");
   }
@@ -174,6 +172,7 @@ function buildCreateContentPrompt(params: {
     "HOOK FORMAT CONTRACT",
     "Write each option using its assigned format. The listed formats are structures, not claims; use only facts supported by the Business Profile.",
     "Do not use video duration, text position, or canvas size as a constraint. The creator places Hook text manually.",
+    "Each Hook must contain 2 to 12 words, 8 to 78 characters, and fit within 3 readable lines. Keep it short enough for the fixed Trending Hook treatment.",
     "",
     ...params.hookFormats.map(
       (format, index) =>

@@ -45,6 +45,7 @@ export type BackgroundJobType =
   | "publish_social_post"
   | "reaction_generation"
   | "render_demo_video"
+  | "render_create_content_video"
   | "render_edit_video"
   | "render_schedule_combination"
   | "render_trending_carousel_edit"
@@ -68,6 +69,7 @@ export const EXECUTABLE_BACKGROUND_JOB_TYPES = [
   "paid_trending_prebuild",
   "publish_social_post",
   "reaction_generation",
+  "render_create_content_video",
   "render_edit_video",
   "render_schedule_combination",
   "render_trending_carousel_edit",
@@ -284,6 +286,22 @@ type UserWallTextAssignmentUpdate = Partial<{
   rendered_media_asset_id: string | null;
   updated_at: string;
 }>;
+
+type CreateContentRenderUpdate = Partial<{
+  error_message: string | null;
+  render_job_id: string | null;
+  rendered_media_asset_id: string | null;
+  status: "queued" | "rendering" | "ready" | "failed";
+  updated_at: string;
+}>;
+
+type CreateContentRenderRow = {
+  id: string;
+  render_job_id: string | null;
+  rendered_media_asset_id: string | null;
+  status: "queued" | "rendering" | "ready" | "failed";
+  user_id: string;
+};
 
 export type SocialPublishAccountLaneRow = {
   active_claim_token: string | null;
@@ -1609,6 +1627,12 @@ export type BackgroundJobsDatabase = {
           user_id: string;
         };
         Update: UserWallTextAssignmentUpdate;
+      };
+      create_content_renders: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: CreateContentRenderRow;
+        Update: CreateContentRenderUpdate;
       };
       user_reaction_assignments: {
         Insert: Record<string, never>;

@@ -12,6 +12,23 @@ const TEST_PARAMS = {
   userId: "test-user",
 };
 
+test("Wall gateway errors and network interruption retry; authentication errors remain terminal", async () => {
+  await withWallPreparationEnvironment(async () => {
+    for (const status of [408, 429, 502, 503, 504]) {
+      await withMockFetch(async () => new Response("upstream unavailable", { status }), async () => {
+        await assert.rejects(prepareWallTextInApp(TEST_PARAMS), RetryableJobError);
+      });
+    }
+    await withMockFetch(async () => { throw new TypeError("fetch failed"); }, async () => {
+      await assert.rejects(prepareWallTextInApp(TEST_PARAMS), RetryableJobError);
+    });
+    await withMockFetch(async () => new Response("unauthorized", { status: 401 }), async () => {
+      await assert.rejects(prepareWallTextInApp(TEST_PARAMS), (error) =>
+        error instanceof Error && !(error instanceof RetryableJobError));
+    });
+  });
+});
+
 test("does not retry a terminal fixed-layout rejection from the application", async () => {
   await withWallPreparationEnvironment(async () => {
     await withMockFetch(

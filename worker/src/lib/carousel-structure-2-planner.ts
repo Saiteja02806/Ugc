@@ -20,9 +20,10 @@ import {
 } from "./carousel-structure-2-story-plan.js";
 import type { CarouselStructure2FormatId } from "./carousel-structure-2-formats.js";
 import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
+import { CONTENT_PLAN_OPENAI_MAX_RETRIES, CONTENT_PLAN_OPENAI_TIMEOUT_MS } from "./content-plan-provider-retry.js";
 
 export const CAROUSEL_STRUCTURE_2_PLANNER_VERSION =
-  "llm-carousel-structure-2-flexible-seed-writer-v9-plain-white-story-text";
+  "llm-carousel-structure-2-writer-v10-isolated-failures";
 
 let openaiClient: OpenAI | null = null;
 
@@ -53,6 +54,14 @@ export type CarouselStructure2StoryBatchInput = {
   assignments: CarouselStructure2StoryAssignment[];
   businessDescription: string;
   recentHistory?: CarouselStructure2RecentHistoryInput[];
+  onPlanFailure?: (failure: CarouselStructure2PlanFailure) => Promise<void>;
+};
+
+export type CarouselStructure2PlanFailure = {
+  slotIndex: number;
+  message: string;
+  rawLlmResponse: { initialBatch: string | null; repair: string | null };
+  issues: CarouselStructure2StoryValidationIssue[];
 };
 
 export async function buildCarouselStructure2StoryPlanBatch(
@@ -94,6 +103,9 @@ export async function buildCarouselStructure2StoryPlanBatch(
       assignments,
     );
   } catch (error) {
+    // Provider outages and empty responses contain no candidate copy to repair.
+    // Do not amplify one failed request into five more provider requests.
+    if (!initialBatchResponse) throw error;
     batchFailure = createCarouselStructure2InvalidPlanIssue(error);
   }
 
@@ -145,6 +157,7 @@ export async function buildCarouselStructure2StoryPlanBatch(
       continue;
     }
 
+    const diagnostics = { repair: null as string | null };
     const repaired = await attemptIsolatedRepair({
       assignment,
       businessDescription: input.businessDescription,
@@ -153,6 +166,7 @@ export async function buildCarouselStructure2StoryPlanBatch(
       model,
       rawPlan,
       recentHistory: acceptedHistory,
+      diagnostics,
     });
 
     if (repaired) {
@@ -163,7 +177,7 @@ export async function buildCarouselStructure2StoryPlanBatch(
       continue;
     }
 
-    throw new Error(
+    const failure = new Error(
       `Carousel Structure 2 planning failed after isolated LLM repair for slot ${assignment.slotIndex}: ${formatCarouselStructure2ValidationIssues(
         initialIssues.length > 0
           ? initialIssues
@@ -176,6 +190,15 @@ export async function buildCarouselStructure2StoryPlanBatch(
             ],
       )}`,
     );
+    if (!input.onPlanFailure) throw failure;
+    // A failed candidate must not discard accepted siblings or prevent later
+    // slots from being validated. The runtime persists this failure separately.
+    await input.onPlanFailure({
+      slotIndex: assignment.slotIndex,
+      message: failure.message,
+      rawLlmResponse: { initialBatch: initialBatchResponse, repair: diagnostics.repair },
+      issues: initialIssues,
+    });
   }
 
   return results;
@@ -189,6 +212,7 @@ async function attemptIsolatedRepair(params: {
   model: string;
   rawPlan: unknown;
   recentHistory: CarouselStructure2RecentHistoryInput[];
+  diagnostics: { repair: string | null };
 }) {
   let repairResponse: string | null = null;
 
@@ -214,6 +238,7 @@ async function attemptIsolatedRepair(params: {
       temperature: 0.15,
     });
     repairResponse = completion.choices[0]?.message.content ?? null;
+    params.diagnostics.repair = repairResponse;
 
     if (!repairResponse) {
       throw new Error("OpenAI returned no repaired Structure 2 story plan.");
@@ -332,6 +357,10 @@ function getOpenAIClient() {
     throw new Error("OPENAI_API_KEY is required for Structure 2 story planning.");
   }
 
-  openaiClient = new OpenAI({ apiKey });
+  openaiClient = new OpenAI({
+    apiKey,
+    maxRetries: CONTENT_PLAN_OPENAI_MAX_RETRIES,
+    timeout: CONTENT_PLAN_OPENAI_TIMEOUT_MS,
+  });
   return openaiClient;
 }

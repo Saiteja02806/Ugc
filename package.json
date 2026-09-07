@@ -14,6 +14,7 @@
     "wall-text:videos:import": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/import-wall-text-video-assets.mjs",
     "wall-text:placement:analyze": "node scripts/analyze-wall-text-video-placement.mjs",
     "wall-text:placement:sync": "node scripts/analyze-wall-text-video-placement.mjs --execute --yes",
+    "wall-text:simulate": "npm run worker:build && node scripts/simulate-wall-text-v10-contract.mjs",
     "wall-audio:prepare:test": "node --test scripts/wall-audio-library-v2-contract.test.mjs",
     "wall-audio:prepare-reviewed:test": "node --test scripts/wall-audio-reviewed-library-contract.test.mjs",
     "wall-audio:prepare-reviewed": "node scripts/prepare-reviewed-wall-audio-library-v2.mjs",

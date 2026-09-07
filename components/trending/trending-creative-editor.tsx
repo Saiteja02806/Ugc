@@ -96,7 +96,10 @@ import {
   WALL_TEXT_INLINE_SAFE_PADDING,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
 } from "@/lib/trending/wall-text-visual-style";
-import { MIN_SHORT_WALL_TEXT_WORDS } from "@/lib/trending/wall-text-text-logic";
+import {
+  MAX_CURRENT_GENERATION_WALL_TEXT_WORDS,
+  MIN_CURRENT_GENERATION_WALL_TEXT_WORDS,
+} from "@/lib/trending/wall-text-text-logic";
 import { getWallTextRenderBlocks } from "@/lib/trending/wall-text-types";
 import { cn } from "@/lib/utils";
 
@@ -2202,7 +2205,7 @@ function EditorFields({
           className="min-h-32 w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-xs outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
         />
         <FieldDescription>
-          Use {MIN_SHORT_WALL_TEXT_WORDS}–50 words. The preview keeps a fixed font size
+          Use {MIN_CURRENT_GENERATION_WALL_TEXT_WORDS}–{MAX_CURRENT_GENERATION_WALL_TEXT_WORDS} words. The preview keeps a fixed font size
           while you type. Saving balances the final 5–8 lines inside the same
           text area.
         </FieldDescription>
@@ -3222,10 +3225,10 @@ function validateContent(content: TrendingCreativeEditContent) {
     const wordCount = normalized.split(/\s+/u).filter(Boolean).length;
     if (
       !normalized ||
-      wordCount < MIN_SHORT_WALL_TEXT_WORDS ||
-      wordCount > 50
+      wordCount < MIN_CURRENT_GENERATION_WALL_TEXT_WORDS ||
+      wordCount > MAX_CURRENT_GENERATION_WALL_TEXT_WORDS
     ) {
-      return `Wall-of-text copy must contain ${MIN_SHORT_WALL_TEXT_WORDS}–50 words and fit the measured 5–8-line layout.`;
+      return `Wall-of-text copy must contain ${MIN_CURRENT_GENERATION_WALL_TEXT_WORDS}–${MAX_CURRENT_GENERATION_WALL_TEXT_WORDS} words and fit the measured 5–8-line layout.`;
     }
   }
 

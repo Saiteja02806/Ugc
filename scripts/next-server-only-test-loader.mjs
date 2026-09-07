@@ -12,6 +12,12 @@ registerHooks({
     if (specifier === "server-only") {
       return { shortCircuit: true, url: serverOnlyModule };
     }
+    if (specifier.startsWith("@/")) {
+      const candidate = new URL(`../${specifier.slice(2)}.ts`, import.meta.url);
+      if (existsSync(fileURLToPath(candidate))) {
+        return { shortCircuit: true, url: candidate.href };
+      }
+    }
 
     if (
       (specifier.startsWith("./") || specifier.startsWith("../")) &&

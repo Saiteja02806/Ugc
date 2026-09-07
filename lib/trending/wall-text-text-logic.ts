@@ -1,6 +1,6 @@
 import {
   LEGACY_WALL_TEXT_PATTERNS,
-  EARLIEST_WALL_TEXT_CONTENT_LAYOUT_VERSION,
+  OLDEST_WALL_TEXT_CONTENT_LAYOUT_VERSION,
   WALL_TEXT_PATTERNS,
   WALL_TEXT_SEGMENT_ROLES,
   type TrendingWallTextContent,
@@ -8,6 +8,7 @@ import {
   type WallTextSegment,
   type WallTextSegmentRole,
 } from "./wall-text-types.ts";
+import { WALL_TEXT_GENERATION_WORD_RANGE } from "./wall-text-copy-policy.ts";
 import type { WebsiteBusinessAnalysis } from "../website-analysis/schema.ts";
 import {
   MAX_WALL_TEXT_VIDEO_DURATION_SECONDS,
@@ -19,6 +20,12 @@ export const WALL_TEXT_PREFERRED_MIN_WORDS = 18;
 export const WALL_TEXT_PREFERRED_MAX_WORDS = 21;
 export const MAX_WALL_TEXT_WORDS = 24;
 export const MAX_CURRENT_WALL_TEXT_WORDS = 50;
+// V10 is the current generation and reflow contract. Keep the broader 15–50
+// range above only for historical cards while they are read.
+export const MIN_CURRENT_GENERATION_WALL_TEXT_WORDS =
+  WALL_TEXT_GENERATION_WORD_RANGE.minimum;
+export const MAX_CURRENT_GENERATION_WALL_TEXT_WORDS =
+  WALL_TEXT_GENERATION_WORD_RANGE.maximum;
 export const MAX_WALL_TEXT_RENDERED_LINES = 8;
 export const PREFERRED_WALL_TEXT_RENDERED_LINES = { maximum: 7, minimum: 5 };
 export const MIN_WALL_TEXT_WORDS = 16;
@@ -351,24 +358,33 @@ export function validateWallTextContent(
     content.layoutVersion === "wall-text-overlay-v6" ||
     content.layoutVersion === "wall-text-overlay-v7" ||
     content.layoutVersion === "wall-text-overlay-v8" ||
-    content.layoutVersion === "wall-text-overlay-v9"
+    content.layoutVersion === "wall-text-overlay-v9" ||
+    content.layoutVersion === "wall-text-overlay-v10"
   ) {
     const blocks = content.finalLayout?.blocks;
     const lines = blocks?.flatMap((block) => block.lines) ?? [];
     const authoritativeText = lines.join(" ");
 
-    if (
-      wordCount < MIN_SHORT_WALL_TEXT_WORDS ||
-      wordCount > MAX_CURRENT_WALL_TEXT_WORDS
-    ) {
+    const minimumWords =
+      content.layoutVersion === "wall-text-overlay-v10"
+        ? MIN_CURRENT_GENERATION_WALL_TEXT_WORDS
+        : MIN_SHORT_WALL_TEXT_WORDS;
+    const maximumWords =
+      content.layoutVersion === "wall-text-overlay-v10"
+        ? MAX_CURRENT_GENERATION_WALL_TEXT_WORDS
+        : MAX_CURRENT_WALL_TEXT_WORDS;
+
+    if (wordCount < minimumWords || wordCount > maximumWords) {
       throw new Error(
-        `Wall-of-text copy must contain ${MIN_SHORT_WALL_TEXT_WORDS}-${MAX_CURRENT_WALL_TEXT_WORDS} words.`,
+        `Wall-of-text copy must contain ${minimumWords}-${maximumWords} words.`,
       );
     }
     if (
       content.sourceContent?.kind !== "text" ||
       content.finalLayout?.version !==
-        (content.layoutVersion === "wall-text-overlay-v9"
+        (content.layoutVersion === "wall-text-overlay-v10"
+          ? "wall-text-final-layout-v6"
+          : content.layoutVersion === "wall-text-overlay-v9"
           ? "wall-text-final-layout-v5"
           : content.layoutVersion === "wall-text-overlay-v8"
           ? "wall-text-final-layout-v4"
@@ -548,7 +564,7 @@ function toWallTextContent(
   return {
     fullText,
     kind: "wall_text",
-    layoutVersion: EARLIEST_WALL_TEXT_CONTENT_LAYOUT_VERSION,
+    layoutVersion: OLDEST_WALL_TEXT_CONTENT_LAYOUT_VERSION,
     pattern: normalizePattern(idea.pattern),
     segments,
   };

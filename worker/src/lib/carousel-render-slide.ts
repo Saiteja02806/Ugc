@@ -55,6 +55,9 @@ export type CarouselRenderDiagnostics = {
     | "heading-white-svg-background"
     | "plain-white-text-with-outline";
   fontFamily: string;
+  headingBackgroundLineCount?: number;
+  headingBackgroundLineWidths?: number[];
+  headingBackgroundUsesLineFittedPath?: boolean;
   maxTextWidth: number;
   whiteBackgroundGroupCount: number;
 };
@@ -65,7 +68,7 @@ type BalancedLines = {
 };
 
 export const CAROUSEL_RENDERER_VERSION =
-  "social-heading-svg-renderer-v18-outline-4";
+  "social-heading-rounded-shoulder-svg-renderer-v20-outline-4";
 export const CAROUSEL_FIXED_FONT_SIZE = 44;
 
 const FORMAT_DIMENSIONS: Record<CarouselFormat, { height: number; width: number }> = {
@@ -650,7 +653,30 @@ type PlainTextMetrics = {
 type HeadingSvgBackgroundMetrics = PlainTextMetrics & {
   backgroundHeight: number;
   backgroundWidth: number;
+  lineBackgroundWidths: number[];
+  lineCenterOffset: number;
+  lineStep: number;
 };
+
+type LineFittedHeadingBackgroundLine = {
+  centerY: number;
+  left: number;
+  right: number;
+  width: number;
+};
+
+function getVisibleLineWidth(params: {
+  index: number;
+  measuredLineExtents?: RenderedTextExtents[];
+  measuredLineWidths?: number[];
+}) {
+  const extents = params.measuredLineExtents?.[params.index];
+  const measuredWidth = params.measuredLineWidths?.[params.index];
+
+  return extents
+    ? Math.max(Math.abs(extents.left), Math.abs(extents.right)) * 2
+    : (measuredWidth ?? 0);
+}
 
 function measurePlainText(params: {
   lineHeight: number;
@@ -658,14 +684,17 @@ function measurePlainText(params: {
   measuredLineExtents?: RenderedTextExtents[];
   measuredLineWidths?: number[];
 }): PlainTextMetrics {
-  const maximumTextWidth = params.lines.reduce((widest, line, index) => {
-    const extents = params.measuredLineExtents?.[index];
-    const measuredWidth = params.measuredLineWidths?.[index];
-    const visibleWidth = extents
-      ? Math.max(Math.abs(extents.left), Math.abs(extents.right)) * 2
-      : (measuredWidth ?? 0);
-
-    return Math.max(widest, Math.ceil(visibleWidth));
+  const maximumTextWidth = params.lines.reduce((widest, _line, index) => {
+    return Math.max(
+      widest,
+      Math.ceil(
+        getVisibleLineWidth({
+          index,
+          measuredLineExtents: params.measuredLineExtents,
+          measuredLineWidths: params.measuredLineWidths,
+        }),
+      ),
+    );
   }, 0);
 
   return {
@@ -681,6 +710,18 @@ function measureHeadingSvgBackground(params: {
   measuredLineWidths?: number[];
 }): HeadingSvgBackgroundMetrics {
   const text = measurePlainText(params);
+  const lineBackgroundWidths = params.lines.map((_line, index) =>
+    Math.ceil(
+      getVisibleLineWidth({
+        index,
+        measuredLineExtents: params.measuredLineExtents,
+        measuredLineWidths: params.measuredLineWidths,
+      }) +
+        HEADLINE_BACKGROUND_PADDING_X * 2,
+    ),
+  );
+  const lineStep = params.lineHeight;
+  const lineRectHeight = params.lineHeight + HEADLINE_BACKGROUND_PADDING_Y * 2;
 
   if (params.lines.length === 0) {
     return {
@@ -688,16 +729,160 @@ function measureHeadingSvgBackground(params: {
       backgroundHeight: 0,
       backgroundWidth: 0,
       groupHeight: 0,
+      lineBackgroundWidths,
+      lineCenterOffset: 0,
+      lineStep,
     };
   }
 
   return {
     ...text,
-    backgroundHeight: text.groupHeight + HEADLINE_BACKGROUND_PADDING_Y * 2,
-    backgroundWidth:
-      text.maximumTextWidth + HEADLINE_BACKGROUND_PADDING_X * 2,
-    groupHeight: text.groupHeight + HEADLINE_BACKGROUND_PADDING_Y * 2,
+    backgroundHeight:
+      lineRectHeight + (params.lines.length - 1) * lineStep,
+    backgroundWidth: Math.max(...lineBackgroundWidths),
+    groupHeight: lineRectHeight + (params.lines.length - 1) * lineStep,
+    lineBackgroundWidths,
+    lineCenterOffset: lineRectHeight / 2,
+    lineStep,
   };
+}
+
+function formatPathCoordinate(value: number) {
+  const rounded = Math.round(value * 100) / 100;
+
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
+}
+
+function appendLineFittedHeadingTransition(params: {
+  boundaryY: number;
+  commands: string[];
+  direction: "down" | "up";
+  fromX: number;
+  lineStep: number;
+  stepRadius: number;
+  toX: number;
+}) {
+  if (params.fromX === params.toX) return;
+
+  const directionSign = params.direction === "down" ? 1 : -1;
+  const availableHalfHeight = Math.max(
+    1,
+    Math.floor(params.lineStep / 2) - 1,
+  );
+  const horizontalDistance = Math.abs(params.toX - params.fromX);
+  const horizontalSign = Math.sign(params.toX - params.fromX);
+  const shoulderRadius = Math.min(
+    params.stepRadius,
+    availableHalfHeight,
+    horizontalDistance / 2,
+  );
+  const startY = params.boundaryY - directionSign * shoulderRadius;
+  const endY = params.boundaryY + directionSign * shoulderRadius;
+  const firstShoulderX = params.fromX + horizontalSign * shoulderRadius;
+  const secondShoulderX = params.toX - horizontalSign * shoulderRadius;
+
+  // Preserve the wider line's rounded lower edge, then step into the next
+  // line through two compact rounded shoulders. This avoids the pinched,
+  // S-shaped taper that a single long curve creates between unequal lines.
+  params.commands.push(
+    `L ${formatPathCoordinate(params.fromX)} ${formatPathCoordinate(startY)}`,
+    `Q ${formatPathCoordinate(params.fromX)} ${formatPathCoordinate(params.boundaryY)} ${formatPathCoordinate(firstShoulderX)} ${formatPathCoordinate(params.boundaryY)}`,
+  );
+
+  if (firstShoulderX !== secondShoulderX) {
+    params.commands.push(
+      `L ${formatPathCoordinate(secondShoulderX)} ${formatPathCoordinate(params.boundaryY)}`,
+    );
+  }
+
+  params.commands.push(
+    `Q ${formatPathCoordinate(params.toX)} ${formatPathCoordinate(params.boundaryY)} ${formatPathCoordinate(params.toX)} ${formatPathCoordinate(endY)}`,
+  );
+}
+
+export function buildLineFittedHeadingSvgPath(params: {
+  centerX: number;
+  groupHeight: number;
+  groupY: number;
+  lineCenterOffset: number;
+  lineStep: number;
+  outerRadius: number;
+  stepRadius: number;
+  widths: number[];
+}) {
+  if (params.widths.length === 0) {
+    return { pathData: "", widths: [] };
+  }
+
+  const widths = params.widths.map((width) => Math.ceil(width));
+  const lines = widths.map((width, index): LineFittedHeadingBackgroundLine => ({
+    centerY:
+      params.groupY + params.lineCenterOffset + index * params.lineStep,
+    left: Math.round(params.centerX - width / 2),
+    right: Math.round(params.centerX + width / 2),
+    width,
+  }));
+  const firstLine = lines[0]!;
+  const lastLine = lines.at(-1)!;
+  const top = params.groupY;
+  const bottom = params.groupY + params.groupHeight;
+  const topRadius = Math.min(
+    params.outerRadius,
+    firstLine.width / 2,
+    params.groupHeight / 2,
+  );
+  const bottomRadius = Math.min(
+    params.outerRadius,
+    lastLine.width / 2,
+    params.groupHeight / 2,
+  );
+  const boundaries = lines.slice(0, -1).map((line, index) =>
+    Math.round((line.centerY + lines[index + 1]!.centerY) / 2),
+  );
+  const commands = [
+    `M ${formatPathCoordinate(firstLine.left + topRadius)} ${formatPathCoordinate(top)}`,
+    `L ${formatPathCoordinate(firstLine.right - topRadius)} ${formatPathCoordinate(top)}`,
+    `Q ${formatPathCoordinate(firstLine.right)} ${formatPathCoordinate(top)} ${formatPathCoordinate(firstLine.right)} ${formatPathCoordinate(top + topRadius)}`,
+  ];
+
+  for (let index = 0; index < boundaries.length; index += 1) {
+    appendLineFittedHeadingTransition({
+      boundaryY: boundaries[index]!,
+      commands,
+      direction: "down",
+      fromX: lines[index]!.right,
+      lineStep: params.lineStep,
+      stepRadius: params.stepRadius,
+      toX: lines[index + 1]!.right,
+    });
+  }
+
+  commands.push(
+    `L ${formatPathCoordinate(lastLine.right)} ${formatPathCoordinate(bottom - bottomRadius)}`,
+    `Q ${formatPathCoordinate(lastLine.right)} ${formatPathCoordinate(bottom)} ${formatPathCoordinate(lastLine.right - bottomRadius)} ${formatPathCoordinate(bottom)}`,
+    `L ${formatPathCoordinate(lastLine.left + bottomRadius)} ${formatPathCoordinate(bottom)}`,
+    `Q ${formatPathCoordinate(lastLine.left)} ${formatPathCoordinate(bottom)} ${formatPathCoordinate(lastLine.left)} ${formatPathCoordinate(bottom - bottomRadius)}`,
+  );
+
+  for (let index = boundaries.length - 1; index >= 0; index -= 1) {
+    appendLineFittedHeadingTransition({
+      boundaryY: boundaries[index]!,
+      commands,
+      direction: "up",
+      fromX: lines[index + 1]!.left,
+      lineStep: params.lineStep,
+      stepRadius: params.stepRadius,
+      toX: lines[index]!.left,
+    });
+  }
+
+  commands.push(
+    `L ${formatPathCoordinate(firstLine.left)} ${formatPathCoordinate(top + topRadius)}`,
+    `Q ${formatPathCoordinate(firstLine.left)} ${formatPathCoordinate(top)} ${formatPathCoordinate(firstLine.left + topRadius)} ${formatPathCoordinate(top)}`,
+    "Z",
+  );
+
+  return { pathData: commands.join(" "), widths };
 }
 
 function buildPlainWhiteText(params: {
@@ -731,15 +916,24 @@ function buildHeadingSvgText(params: {
 }) {
   if (params.lines.length === 0) return "";
 
-  const left = Math.round(params.x - params.metrics.backgroundWidth / 2);
   const top = Math.round(params.y);
   const baselineStart = Math.round(
     top + HEADLINE_BACKGROUND_PADDING_Y + params.fontSize * 0.78,
   );
   const radius = Math.min(
     Math.round(params.fontSize * 0.48),
-    Math.round(params.metrics.backgroundHeight / 2),
+    Math.round(params.metrics.lineCenterOffset),
   );
+  const background = buildLineFittedHeadingSvgPath({
+    centerX: params.x,
+    groupHeight: params.metrics.backgroundHeight,
+    groupY: top,
+    lineCenterOffset: params.metrics.lineCenterOffset,
+    lineStep: params.metrics.lineStep,
+    outerRadius: radius,
+    stepRadius: clamp(Math.round(params.fontSize * 0.28), 10, 14),
+    widths: params.metrics.lineBackgroundWidths,
+  });
   const lines = params.lines
     .map(
       (line, index) =>
@@ -747,7 +941,7 @@ function buildHeadingSvgText(params: {
     )
     .join("");
 
-  return `<g><rect x="${left}" y="${top}" width="${Math.round(params.metrics.backgroundWidth)}" height="${Math.round(params.metrics.backgroundHeight)}" rx="${radius}" fill="${HEADLINE_BACKGROUND_FILL}"/>${lines}</g>`;
+  return `<g><path d="${background.pathData}" fill="${HEADLINE_BACKGROUND_FILL}"/>${lines}</g>`;
 }
 
 function getPreferredCenterRatio(position: PlannedCarouselSlide["textPosition"]) {
@@ -947,6 +1141,9 @@ async function buildOverlaySvg(params: {
           ? "heading-white-svg-background"
           : "plain-white-text-with-outline",
       fontFamily: TEXT_FONT_FAMILY,
+      headingBackgroundLineCount: headline.lines.length,
+      headingBackgroundLineWidths: headlineMetrics.lineBackgroundWidths,
+      headingBackgroundUsesLineFittedPath: headline.lines.length > 0,
       maxTextWidth,
       whiteBackgroundGroupCount: headline.lines.length > 0 ? 1 : 0,
     },

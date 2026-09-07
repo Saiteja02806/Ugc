@@ -2299,7 +2299,7 @@ function getOpenAIClient() {
   }
 
   if (!openaiClient) {
-    openaiClient = new OpenAI({ apiKey, maxRetries: 2, timeout: 30_000 });
+    openaiClient = new OpenAI({ apiKey, maxRetries: 0, timeout: 60_000 });
   }
 
   return openaiClient;

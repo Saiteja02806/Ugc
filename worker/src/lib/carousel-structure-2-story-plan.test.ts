@@ -131,7 +131,17 @@ test("Structure 2 sends writing-quality failures back through the repair path", 
   );
 
   assert.ok(partitioned.blockingIssues.some((issue) => issue.code === "generic_copy"));
-  assert.deepEqual(partitioned.advisoryIssues, []);
+  assert.ok(partitioned.advisoryIssues.some((issue) => issue.code === "word_count"));
+});
+
+test("reference word counts are advisory while overflow and unsupported claims remain blocking", () => {
+  const partitioned = partitionCarouselStructure2ValidationIssues([
+    { code: "word_count", slideNumber: 4, message: "17 words instead of the reference 18" },
+    { code: "render_fit", slideNumber: 1, message: "Cover overflows" },
+    { code: "unsupported_claim", slideNumber: 5, message: "Unsupported result" },
+  ]);
+  assert.deepEqual(partitioned.advisoryIssues.map((issue) => issue.code), ["word_count"]);
+  assert.deepEqual(partitioned.blockingIssues.map((issue) => issue.code), ["render_fit", "unsupported_claim"]);
 });
 
 function makeAssignments(formatIds: readonly CarouselStructure2FormatId[]) {

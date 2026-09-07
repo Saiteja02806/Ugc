@@ -2,8 +2,11 @@ import "server-only";
 
 import sharp from "sharp";
 
-import { getVerifiedWallTextAvenirNextDemiBoldFontPath } from "./wall-text-font";
-import { WALL_TEXT_TARGET_WORDS } from "./wall-text-copy-policy";
+import { getVerifiedWallTextArialBoldFontPath } from "./wall-text-font";
+import {
+  WALL_TEXT_GENERATION_WORD_RANGE,
+  WALL_TEXT_TARGET_WORDS,
+} from "./wall-text-copy-policy";
 import { WallTextLayoutFitError } from "./wall-text-generation-failure";
 
 import {
@@ -23,13 +26,13 @@ import {
   getWallTextSafeLineWidth,
   WALL_TEXT_FONT_WEIGHT,
   WALL_TEXT_FIXED_FONT_SIZE,
-  WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH,
+  WALL_TEXT_OUTLINE_WIDTH,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
   WALL_TEXT_SECTION_GAP,
 } from "./wall-text-visual-style";
 const VIDEO_WIDTH = 1080;
 const VIDEO_HEIGHT = 1920;
-const ABSOLUTE_MAXIMUM_WORDS = 50;
+const ABSOLUTE_MAXIMUM_WORDS = WALL_TEXT_GENERATION_WORD_RANGE.maximum;
 const MINIMUM_WORDS = 10;
 const INTERNAL_LINE_WIDTH_RATIO = 0.55;
 const MINIMUM_BALANCE_IMPROVEMENT = 0.04;
@@ -52,7 +55,7 @@ export async function deriveWallTextSpatialBudget(params: {
   const widthPx = getWallTextSafeLineWidth(textBoxWidth);
   const sampleWords = "people notice the quiet details";
   const sampleWidth = (await measureText(sampleWords, WALL_TEXT_FIXED_FONT_SIZE)) +
-    WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH * 2;
+    WALL_TEXT_OUTLINE_WIDTH * 2;
   const wordsPerLine = clamp(
     Math.floor((5 * widthPx * 0.9) / sampleWidth),
     3,
@@ -63,14 +66,20 @@ export async function deriveWallTextSpatialBudget(params: {
     MINIMUM_WORDS,
     ABSOLUTE_MAXIMUM_WORDS,
   );
+  const maxWords = Math.min(ABSOLUTE_MAXIMUM_WORDS, spatialMaximum);
+  if (maxWords < WALL_TEXT_GENERATION_WORD_RANGE.minimum) {
+    throw new WallTextLayoutFitError(
+      `Wall-of-text placement cannot support the current ${WALL_TEXT_GENERATION_WORD_RANGE.minimum}-${WALL_TEXT_GENERATION_WORD_RANGE.maximum}-word contract.`,
+    );
+  }
   const targetWords = clamp(
     WALL_TEXT_TARGET_WORDS,
-    MINIMUM_WORDS,
-    spatialMaximum,
+    WALL_TEXT_GENERATION_WORD_RANGE.minimum,
+    maxWords,
   );
 
   return {
-    maxWords: ABSOLUTE_MAXIMUM_WORDS,
+    maxWords,
     spatialMaximum,
     targetWords,
   };
@@ -151,7 +160,7 @@ export async function createWallTextFinalLayout(params: {
   if (!failed && blockHeight <= maximumHeight) {
     return {
       blocks,
-      fontFamily: "Avenir Next",
+      fontFamily: "Arial",
       fontSizePx: fontSize,
       fontWeight: WALL_TEXT_FONT_WEIGHT,
       lineHeightPx,
@@ -212,17 +221,36 @@ async function wrapPlainWallText(
   const naturalLines = await wrapMeasuredText(value, maximumWidth, fontSize);
   const minimumLineCount = Math.max(5, naturalLines.length);
   const lineCounts = [5, 6, 7, 8].filter((count) => count >= minimumLineCount);
-
-  for (const lineCount of lineCounts) {
-    const lines = await partitionMeasuredLines({
+  const partitions = await Promise.all(lineCounts.map(async (lineCount) => {
+    const partition = await partitionMeasuredLines({
       fontSize,
       lineCount,
       maximumWidth,
       words,
     });
-    if (lines) return lines;
-  }
-  return null;
+    return partition ? { ...partition, lineCount } : null;
+  }));
+  const candidates = partitions.flatMap((partition) => partition ? [partition] : []);
+  if (candidates.length === 0) return null;
+
+  const preferredLineCount = getPreferredLineCount(words.length);
+  candidates.sort((left, right) => {
+    const preferredDistance =
+      Math.abs(left.lineCount - preferredLineCount) -
+      Math.abs(right.lineCount - preferredLineCount);
+    return preferredDistance || left.score - right.score || left.lineCount - right.lineCount;
+  });
+  return candidates[0]!.lines;
+}
+
+// This is a visual preference derived from the final copy length, not a
+// target assigned to an individual card. The measured layout still has the
+// final say and can fall back to the nearest readable count when needed.
+function getPreferredLineCount(wordCount: number) {
+  if (wordCount <= 27) return 5;
+  if (wordCount <= 31) return 6;
+  if (wordCount <= 35) return 7;
+  return 8;
 }
 
 async function partitionMeasuredLines(params: {
@@ -238,7 +266,7 @@ async function partitionMeasuredLines(params: {
     if (cached !== undefined) return cached;
     const width =
       (await measureText(params.words.slice(start, end).join(" "), params.fontSize)) +
-      WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH * 2;
+      WALL_TEXT_OUTLINE_WIDTH * 2;
     widthCache.set(key, width);
     return width;
   };
@@ -246,7 +274,7 @@ async function partitionMeasuredLines(params: {
   // Width and balance decide the natural break. Do not force a fixed number
   // of words into every row; short emphasis is valid when the measured layout
   // still reads as a balanced 5–8-line Wall.
-  const minimumWordsPerLine = 1;
+  const minimumWordsPerLine = 2;
 
   const solve = async (
     start: number,
@@ -298,7 +326,7 @@ async function partitionMeasuredLines(params: {
   if (widths.slice(0, -1).some((width) => width < widestInternal * 0.55)) {
     return null;
   }
-  return result.lines;
+  return result;
 }
 
 function endsWithLayoutBreakWord(value: string) {
@@ -321,7 +349,7 @@ async function wrapMeasuredText(
     const candidate = current ? `${current} ${word}` : word;
     const candidateWidth =
       (await measureText(candidate, fontSize)) +
-      WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH * 2;
+      WALL_TEXT_OUTLINE_WIDTH * 2;
 
     if (!current && candidateWidth >= maximumWidth) {
       throw new Error(
@@ -430,7 +458,7 @@ async function measureLines(lines: string[], fontSize: WallTextFontSize) {
   return Promise.all(
     lines.map(async (line) =>
       (await measureText(line, fontSize)) +
-      WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH * 2,
+      WALL_TEXT_OUTLINE_WIDTH * 2,
     ),
   );
 }
@@ -453,7 +481,7 @@ async function rebalanceLastLine(
   const lastLine = `${moved} ${lines.at(-1)!}`;
   const lastLineWidth =
     (await measureText(lastLine, fontSize)) +
-    WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH * 2;
+    WALL_TEXT_OUTLINE_WIDTH * 2;
 
   return lastLineWidth < maximumWidth
     ? [...lines.slice(0, -2), previousLine, lastLine]
@@ -461,24 +489,21 @@ async function rebalanceLastLine(
 }
 
 async function measureText(value: string, fontSize: WallTextFontSize) {
-  const cacheKey = `avenir-next-demi-bold:${fontSize}:${value}`;
+  const cacheKey = `arial-bold:${fontSize}:${value}`;
   const cached = measurementCache.get(cacheKey);
   if (cached !== undefined) return cached;
   const metadata = await sharp({
     text: {
       dpi: 72,
-      // Pango parses "Demi Bold" as a style token, not as part of a family
-      // name. Use the TTF's actual family name and let fontfile select its
-      // supplied 600 face so development cannot silently fall back to serif.
-      font: `Avenir Next ${fontSize}`,
-      fontfile: await getVerifiedWallTextAvenirNextDemiBoldFontPath(),
+      font: `Arial Bold ${fontSize}`,
+      fontfile: await getVerifiedWallTextArialBoldFontPath(),
       rgba: true,
       text: escapePangoMarkup(value),
       wrap: "none",
     },
   }).metadata();
   const width = metadata.width ?? 0;
-  if (!width) throw new Error("Could not measure Wall-of-text copy with Avenir Next Demi Bold.");
+  if (!width) throw new Error("Could not measure Wall-of-text copy with Arial Bold.");
   measurementCache.set(cacheKey, width);
   return width;
 }

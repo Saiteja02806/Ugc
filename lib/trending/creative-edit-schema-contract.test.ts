@@ -58,8 +58,8 @@ test("manual Hook and Wall saves use their publishing limits", () => {
   assert.match(editRoute, /HOOK_TEXT_MAXIMUM_CHARACTERS/);
   assert.match(editRoute, /HOOK_TEXT_MAXIMUM_WORDS/);
   assert.match(editRoute, /\.max\(600\)/);
-  assert.match(editRoute, /MIN_SHORT_WALL_TEXT_WORDS/);
-  assert.match(editRoute, /MAX_CURRENT_WALL_TEXT_WORDS/);
+  assert.match(editRoute, /MIN_CURRENT_GENERATION_WALL_TEXT_WORDS/);
+  assert.match(editRoute, /MAX_CURRENT_GENERATION_WALL_TEXT_WORDS/);
   assert.match(editRoute, /TEXT_COLOR_SCHEMA/);
   assert.match(editRoute, /textColor: data\.textColor/);
   assert.match(editor, /TextColorPicker/);

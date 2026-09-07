@@ -8,6 +8,7 @@ import {
 } from "../lib/wall-text-content-plan.js";
 import { toContentPlanProviderRetry } from "../lib/content-plan-provider-retry.js";
 import { RetryableJobError } from "../retryable-job-error.js";
+import { logger } from "../logger.js";
 import type { WorkerJobContext, WorkerJobOutput } from "./index.js";
 
 type ContentPlanJobInput = {
@@ -19,6 +20,7 @@ type ContentPlanJobInput = {
 export async function runGenerateWallTextContentPlanJob(
   job: BackgroundJobRow,
   context: WorkerJobContext,
+  dependencies = { generateChunk: generateWallTextContentPlanChunk },
 ): Promise<WorkerJobOutput> {
   const input = parseInput(job);
   const plan = await context.store.getWallTextContentPlan({
@@ -64,8 +66,9 @@ export async function runGenerateWallTextContentPlanJob(
       let generated: Awaited<
         ReturnType<typeof generateWallTextContentPlanChunk>
       >;
+      const chunkStartedAt = Date.now();
       try {
-        generated = await generateWallTextContentPlanChunk({
+        generated = await dependencies.generateChunk({
           businessDescription: plan.business_description,
           briefIndexStart: items.length / 5 + 1,
           count,
@@ -111,6 +114,15 @@ export async function runGenerateWallTextContentPlanJob(
       items = [...items, ...inserted].sort(
         (left, right) => left.sequence_index - right.sequence_index,
       );
+
+      logger.info("Wall content-plan chunk saved", {
+        jobId: job.id,
+        planId: plan.id,
+        chunkItemCount: count,
+        savedItemCount: items.length,
+        targetItemCount: plan.target_item_count,
+        durationMs: Date.now() - chunkStartedAt,
+      });
 
       await context.checkpoint({
         progress: Math.min(

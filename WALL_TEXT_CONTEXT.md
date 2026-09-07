@@ -2,6 +2,49 @@
 
 Last updated: 2026-09-06
 
+## 2026-09-06 Arial Bold reference typography
+
+- The supplied Wall-of-Text screenshots are matched by the packaged **Arial
+  Bold** face at weight 700, with white fill, the existing black outline, and
+  subtle shadow. A raster screenshot cannot prove the original font file, but
+  Arial Bold is the reproducible face that matches the observed Arial/
+  Helvetica-style bold captions.
+- New layouts are persisted as `wall-text-overlay-v10` with
+  `wall-text-final-layout-v6`. Browser preview, editor drafts, server-side
+  measurement, render validation, and the worker use the same packaged Arial
+  Bold asset. The current layout remains fixed at 50px with the 4px reference
+  outline; copy that cannot fit five to eight lines is rejected for a bounded
+  rewrite rather than reduced, clipped, or retried indefinitely.
+- V1-V5 remain valid historical contracts. V6 is transported through the
+  existing V4-compatible worker envelope only during a rolling deployment;
+  the V10 content version lets an updated worker restore Arial Bold 700 before
+  it renders. Existing cards are re-laid out through the normal, batched
+  refresh path rather than having a CSS font override applied to old lines.
+
+## 2026-09-06 current generated-copy and line-selection contract
+
+- New automated Wall-of-Text generation uses a required **24–40-word** range.
+  Its compatible assignment midpoint is 32 words; it is never sent to the
+  writer as a per-card fixed target. Prompt V13 and server-side candidate
+  validation enforce the same range. Retry-pending assignments written under
+  the former 18/50 storage budget are preserved, but their retry is clamped to
+  the current 24–40 contract.
+- The fixed 50px Arial Bold renderer evaluates every viable 5–8-row measured
+  partition. It automatically prefers 5 rows for 24–27 words, 6 for 28–31,
+  7 for 32–35, and 8 for 36–40, then falls back only when the measured glyph
+  fit requires it. This is a visual preference derived from the generated
+  copy, not a manually assigned target for a card. Every row needs at least
+  two words; browser `nowrap` protects each persisted row from accidental
+  client-side rewrapping.
+- Native video duration does **not** cap the current V10 word range or row
+  count. Legacy duration helpers remain only to read/edit historical layouts.
+  A six-second source can therefore render an eight-row card when its copy
+  fits safely.
+- The reusable `wall-text:simulate` check renders 24-, 28-, 32-, 36-, and
+  40-word examples through the application layout engine and the worker SVG
+  raster fence. It asserts Arial Bold 700 at 50px, exact word and row counts,
+  two-word minimum rows, and positive left/right protected-fence margins.
+
 ## 2026-09-05 Regeneration recovery hardening
 
 - A stale-creative typography refresh may span more than fifty historical Wall
@@ -53,7 +96,7 @@ Last updated: 2026-09-06
 ## Live typing preview typography
 
 - Wall editor drafts without a measured final layout now explicitly use
-  Avenir Next Demi Bold 600, fixed 50px type, and a 2px outline. Clearing,
+  Arial Bold 700, fixed 50px type, and a 4px outline. Clearing,
   typing, and pasting no longer trigger the legacy Inter/dynamic-size fallback.
 - The draft remains unmeasured and wraps in the browser. Saving computes
   balanced final lines, so exact line breaks may still change on save; font,
@@ -70,30 +113,29 @@ Last updated: 2026-09-06
 This section supersedes historical word, font-size, and line-count policies
 described below for newly generated or manually reflowed Wall copy.
 
-- The writer receives an **18–30-word soft range**, not a single 18-word
-  target. It chooses the length needed for a complete idea without padding
-  to eight lines. The existing 15–50-word acceptance range remains a safety
-  boundary; 30 is not a new hard maximum.
-- Prompt V12 sends `preferredWordRange`, including for retries of older
-  assignments that stored `target_words = 18`. New assignment storage uses
-  the compatible scalar midpoint, 24; it is not sent as a single target to
-  the writer. No production assignment rows are rewritten by this change.
-- New measured layouts use **50px Avenir Next Demi Bold**, with 55px line
-  height on the 1080×1920 canvas. Font size never decreases to preserve fewer
-  lines. The actual measured width determines how many rows are needed,
-  retaining the five-line minimum and eight-line maximum. Balanced phrase
-  breaks can add a line; the former word-count/4.5 preference is removed.
+- The writer receives a required **24–40-word range**, not a single target.
+  Prompt V13, assignment-budget handling, candidate validation, and manual
+  saves that reflow into V10 use this same contract. The historical 15–50
+  acceptance range is retained only while already-saved V6–V9 cards are read.
+- New assignment storage uses the compatible scalar midpoint, 32, plus a
+  maximum of 40. Retry-pending assignments that stored `target_words = 18`
+  and `max_words = 50` are not rewritten; generation clamps them before the
+  next writer request.
+- New measured layouts use **50px Arial Bold 700**, with 55px line height on
+  the 1080×1920 canvas and a 4px outline. Font size never decreases to
+  preserve fewer lines. All valid 5–8-row partitions are measured before a
+  word-count-derived visual preference chooses the final arrangement.
 - The 780px text box, equal 15px internal side padding, 750px writing width,
-  white fill, and 2px outline remain. If copy cannot fit at 50px within eight
+  white fill, and 4px outline remain. If copy cannot fit at 50px within eight
   lines or the chosen box height, generation returns `layout_fit` for the
   existing bounded rewrite flow; manual edits show a fit error. Text is never
   truncated and the font is not shrunk.
-- The Avenir final validator now uses the same Pango family name (`Avenir
-  Next`) as initial measurement and the worker. It validates the persisted
+- The Arial Bold final validator uses the same packaged face as initial
+  measurement and the worker. It validates the persisted
   size without a shrinking fallback. Historical non-Avenir validation keeps
   its compatibility path, and already persisted layouts are not enlarged by
   a preview-only font override. New generation and manual reflow use 50px.
-- The worker already preserves authoritative Avenir lines and size without
+- The worker already preserves authoritative Arial Bold lines and size without
   reflow. This change needs application deployment before it affects new
   live output; production browser acceptance requires an authenticated
   session. No production data or deployment is changed by local validation.
@@ -539,3 +581,35 @@ npm run wall-audio:poc -- --library D:\walloftext_sound\wall_audio_library_v2_re
 - Every Wall card keeps the Explore `Recreate` route. It passes the verified
   `wall_text` reference identity to AI Studio, and the client and generation
   API require the user to choose an image reference before creating a video.
+
+
+## 2026-09-06 Terminal Worker Recovery
+
+- Exhausted or cancelled Wall generation jobs terminalize only their own
+  unfinished chunks and assignments in the database transaction. Deterministic
+  terminal error codes also trigger cleanup; retryable failures with attempts
+  remaining retain resumable work. Completed creatives and consumed ideas are
+  preserved. The parent must match the user, profile, version, and request key.
+- Reservation and claim operations check the owning job before taking child
+  locks, so late HTTP work cannot reserve or claim after a terminal parent.
+- Persistence uniqueness errors are terminal contract failures rather than
+  infrastructure retries that repeat the same rejected write.
+- An empty planner response yields immediately to the durable worker retry.
+  Saved ten-item chunks survive retries. Chunk timing and saved-item counts
+  are logged separately from whole-job duration.
+- The 200-item active-plan prerequisite remains the product contract. Its
+  sequential model calls remain a first-use latency cost, even with successful
+  generation; this repair does not introduce partial-plan publishing.
+
+## 2026-09-07 Existing-User Delay and Feed-State Repair
+
+- The 200 ideas are reused for their 30-day plan/profile version. Existing
+  users do not repeat planning for every piece; failed writing, rendering, and
+  recovery must be measured separately.
+- Wall copy calls now use a 60-second request timeout and zero SDK retries.
+  Classified temporary app errors, gateway 408/429/5xx responses, aborted
+  requests, and network failures use the durable retry path. Typed layout,
+  persistence, and authentication failures remain terminal.
+- Missing physical daily slots count as pending. Terminal failures produce an
+  explicit public failure rather than leaving the retained deck on Generating.
+  Ready content from other formats remains available.

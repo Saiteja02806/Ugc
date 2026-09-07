@@ -103,7 +103,7 @@ test("renders and persists a normalized immutable Carousel edit", async () => {
   assert.equal(receivedTextStyle, "plain");
   assert.deepEqual(readyOutput, {
     rendererVersion:
-      "social-heading-svg-renderer-v18-outline-4-normalized-edit-v1",
+      "social-heading-rounded-shoulder-svg-renderer-v20-outline-4-normalized-edit-v1",
     slides: [
       {
         renderedS3Key: "carousels/rendered/user/edit/slide.webp",
@@ -243,7 +243,7 @@ test("reuses immutable output for unchanged Carousel slides", async () => {
   assert.deepEqual(uploadedSlideNumbers, [2]);
   assert.deepEqual(readyOutput, {
     rendererVersion:
-      "social-heading-svg-renderer-v18-outline-4-normalized-edit-v1",
+      "social-heading-rounded-shoulder-svg-renderer-v20-outline-4-normalized-edit-v1",
     slides: [
       {
         renderedS3Key: "carousels/original/slide-1.webp",

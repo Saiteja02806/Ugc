@@ -270,7 +270,7 @@ export function validateCarouselStructure2StoryPlan(
     ) {
       issues.push({
         code: "word_count",
-        message: `Slide copy is outside the reference ${reference.minimumWords}-${reference.maximumWords} word range.`,
+        message: `Slide copy has ${wordCount} words, outside the advisory reference ${reference.minimumWords}-${reference.maximumWords} word range.`,
         slideNumber: slide.slideNumber,
       });
     }
@@ -323,7 +323,7 @@ export function validateCarouselStructure2StoryPlan(
         slideNumber: slide.slideNumber,
       });
     }
-    if (/\b\d+(?:[.,]\d+)?\s*(?:%|percent|users?|customers?|hours?|days?)\b/i.test(copy)) {
+    if (/\b\d+(?:[.,]\d+)?\s*(?:%(?!\w)|(?:percent|users?|customers?|hours?|days?)\b)/i.test(copy)) {
       issues.push({
         code: "unsupported_claim",
         message: "The copy contains a precise claim that is not present in the minimal business description.",
@@ -390,7 +390,11 @@ export function partitionCarouselStructure2ValidationIssues(
   const blockingIssues: CarouselStructure2StoryValidationIssue[] = [];
   const advisoryIssues: CarouselStructure2StoryValidationIssue[] = [];
 
-  blockingIssues.push(...dedupeCarouselStructure2ValidationIssues(issues));
+  for (const issue of dedupeCarouselStructure2ValidationIssues(issues)) {
+    // Reference word ranges are writing guidance. Measured render fit and
+    // structural/claim validation remain the publishing boundary.
+    (issue.code === "word_count" ? advisoryIssues : blockingIssues).push(issue);
+  }
 
   return { advisoryIssues, blockingIssues };
 }
@@ -530,6 +534,7 @@ export function buildCarouselStructure2BatchMessages(params: {
       content: [
         "Use each creativeSeed as a broad starting point and its emotion as the emotional current. Do not treat either as finished copy or a complete plot.",
         "Use privateCreativeBrief only as flexible human and factual context; its preferredFormatFamily must never override the backend-selected format reference.",
+        "Use each role's word range as writing guidance. Develop the story beat clearly, keep the cover concise, and prioritize readable copy that fits the stated display area.",
         "Return each plan under its assigned outputKey. Do not return slideNumber, slotIndex, candidateIndex, or storyFormatId; the worker owns those structural values.",
         "Develop genuinely different stories inside the required six-slide sequence. Do not force every item through the same overwhelmed-to-easier arc.",
         "Slide 1 is reader-first: direct reader wording such as 'you' or 'your' is allowed. Give a specific benefit, tension, mistake, contrast, or curiosity gap; do not force it into a first-person personal-story opener.",
@@ -583,6 +588,7 @@ export function buildCarouselStructure2RepairMessages(params: {
         JSON.stringify(getFormatReference(params.assignment.storyFormatId)),
         "Slide 1 is reader-first, so direct reader wording such as 'you' or 'your' is allowed. It must create a specific reason to swipe and fit within three visual lines at 60px type.",
         "Only Slide 1 may lead with direct reader wording. Keep Slides 2-5 in the first-person story voice (I, me, or my); Slide 6 may turn the lesson toward the reader after its takeaway.",
+        "Word ranges are advisory writing targets. Repair the listed blocking issues and preserve slides that already passed validation.",
         hasSlideOneRenderFitFailure
           ? "Slide 1 overflowed its real three-line display area. Replace it with a shorter, simpler cover rather than merely trimming words."
           : null,

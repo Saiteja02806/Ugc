@@ -144,7 +144,7 @@ test("subscription activation stops its two-second polling after the bounded wai
     billingActivationStatus,
     /getSubscriptionActivationFailure/,
   );
-  assert.match(subscriptionDb, /status,\n\s*trial: trialResult/);
+  assert.match(subscriptionDb, /status,\r?\n\s*trial: trialResult/);
 });
 
 test("purchase intent survives authentication using validated values only", () => {

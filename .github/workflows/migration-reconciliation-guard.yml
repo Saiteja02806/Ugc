@@ -5,12 +5,16 @@ on:
     paths:
       - "supabase/migrations/**"
       - "supabase/supabase/migrations/**"
+      - "scripts/check-*migration*.mjs"
+      - ".github/workflows/migration-reconciliation-guard.yml"
   push:
     branches:
       - main
     paths:
       - "supabase/migrations/**"
       - "supabase/supabase/migrations/**"
+      - "scripts/check-*migration*.mjs"
+      - ".github/workflows/migration-reconciliation-guard.yml"
 
 permissions:
   contents: read
@@ -24,3 +28,4 @@ jobs:
         with:
           node-version: 22
       - run: node scripts/check-migration-reconciliation-freeze.mjs
+      - run: node --test scripts/check-supabase-migration-parity.test.mjs

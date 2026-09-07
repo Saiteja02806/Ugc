@@ -30,8 +30,8 @@ import {
   TrendingCreativeEditAccessError,
 } from "@/lib/trending/creative-edits";
 import {
-  MAX_CURRENT_WALL_TEXT_WORDS,
-  MIN_SHORT_WALL_TEXT_WORDS,
+  MAX_CURRENT_GENERATION_WALL_TEXT_WORDS,
+  MIN_CURRENT_GENERATION_WALL_TEXT_WORDS,
 } from "@/lib/trending/wall-text-text-logic";
 import {
   DEFAULT_TRENDING_TEXT_COLOR,
@@ -113,8 +113,8 @@ const WALL_PATCH_SCHEMA = z
       .refine((value) => {
         const wordCount = value.split(/\s+/u).filter(Boolean).length;
         return (
-          wordCount >= MIN_SHORT_WALL_TEXT_WORDS &&
-          wordCount <= MAX_CURRENT_WALL_TEXT_WORDS
+          wordCount >= MIN_CURRENT_GENERATION_WALL_TEXT_WORDS &&
+          wordCount <= MAX_CURRENT_GENERATION_WALL_TEXT_WORDS
         );
       }),
     source: SOURCE_SCHEMA.nullable().optional(),

@@ -51,6 +51,7 @@ const completedProfile = {
   profileVersion: 1,
   projectId: "default-project",
   trendingTimezone: null,
+  trendingWalkthroughCompletedAt: null,
   userId: "user-1",
 };
 

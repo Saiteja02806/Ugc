@@ -75,10 +75,16 @@ const arialWallText = localFont({
   adjustFontFallback: false,
   display: "swap",
   variable: "--font-wall-text-arial",
-  // This is retained only for persisted V3 Wall drafts. New Wall content uses
-  // the separately packaged Arial Regular 400 face above, while old preview
-  // URLs and already-scheduled work retain their original Bold appearance.
+  // Retained for persisted V3 metadata.
   weight: "500",
+});
+
+const arialBoldWallText = localFont({
+  src: "../lib/trending/fonts/arial-bold.ttf",
+  adjustFontFallback: false,
+  display: "swap",
+  variable: "--font-wall-text-arial-bold",
+  weight: "700",
 });
 
 export const metadata: Metadata = {
@@ -132,7 +138,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${geistEditOverlay.variable} ${interWallText.variable} ${arialRegularWallText.variable} ${arialWallText.variable} ${avenirNextDemiBoldWallText.variable} h-full dark`}
+      className={`${geistSans.variable} ${geistMono.variable} ${geistEditOverlay.variable} ${interWallText.variable} ${arialRegularWallText.variable} ${arialWallText.variable} ${arialBoldWallText.variable} ${avenirNextDemiBoldWallText.variable} h-full dark`}
       data-theme="dark"
       style={{
         backgroundColor: THEME_BACKGROUND_COLORS.dark,

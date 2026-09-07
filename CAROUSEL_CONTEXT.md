@@ -4052,9 +4052,9 @@ Name: **Verify v26 and replace the stale production assignment**
 ## 2026-09-02 Structure 1 Heading-Only White SVG Background
 
 - A Structure 1 slide whose visible `headline` is rendered as a headline gets
-  exactly one measured, rounded white SVG background behind that heading. The
-  heading uses dark Geist SemiBold text so it is visually distinct from the
-  image and remains readable across all approved backgrounds.
+  exactly one measured white SVG background behind that heading. The heading
+  uses dark Geist SemiBold text so it is visually distinct from the image and
+  remains readable across all approved backgrounds.
 - This treatment is semantic, not image-role-based: a Slide 1 Hook-library
   asset does not receive a background merely for being a hook image. It does
   receive the white SVG background when that slide also has a visible heading.
@@ -4067,8 +4067,26 @@ Name: **Verify v26 and replace the stale production assignment**
 - Structure 2 has story and CTA fields rather than a separate heading field.
   Its direct-white story/CTA treatment is unchanged; no white background is
   inferred for it.
-- New Structure 1 renders and explicit Structure 1 edit re-renders use
-  `social-heading-svg-renderer-v18-outline-4`. Existing rendered images remain
+- New Structure 1 renders and explicit Structure 1 edit re-renders use the
+  current line-fitted heading renderer. Existing rendered images remain
+  immutable.
+
+## 2026-09-06 Structure 1 Line-Fitted Heading SVG
+
+- The heading-only white SVG is one connected path that follows the measured
+  width of every rendered headline line. A two-, three-, or four-line heading
+  therefore has rounded outer ends plus overlapping rounded shoulders wherever
+  the next line is narrower or wider. It must not taper through an S-shaped
+  pinch or use one full-width rectangle with empty white space beside shorter
+  lines.
+- The path uses the same measured Geist line widths, fixed 44px heading type,
+  horizontal/vertical padding, safe-area calculation, and line limit as the
+  prior treatment. This is a visual-contour change only: it does not alter
+  planner copy, wrapping, text positions, body/list/CTA treatment, image
+  safety, Structure 2, or whether a heading is optional.
+- The renderer version is
+  `social-heading-rounded-shoulder-svg-renderer-v20-outline-4`. New render
+  keys use that version; existing v19 and earlier rendered images remain
   immutable.
 
 ## 2026-09-01 Compact-Laptop Trending 9:16 Review Frames
@@ -4190,3 +4208,62 @@ Name: **Verify v26 and replace the stale production assignment**
 - The constraint remains `NOT VALID` to preserve the original migration's
   treatment of historic rows; it is nevertheless enforced for every new
   assignment.
+
+
+## 2026-09-06 Terminal Recovery and Candidate Isolation
+
+- Nullable composite RPC results are normalized before ownership checks.
+  PostgREST's object of null fields means no replacement; real or malformed
+  populated rows still pass through the full ownership validation.
+- A released/expired, unconsumed reservation that was attached to a durable
+  writer cannot be reopened. Daily recovery now creates a fresh successor
+  for this case as well as released partial reservations, under the existing
+  feed lock and expected-batch guard. Active writer jobs block replacement
+  even when a generation row incorrectly says failed.
+- Structure 2 reference word ranges are advisory again, as specified in the
+  format contract. Measured overflow, slide roles, CTA position, claim safety,
+  and the other existing blocking checks still require a valid plan.
+- An individual Structure 2 planning failure gets one isolated repair. If
+  that repair fails, persist its response and validation issues, then continue
+  validating and rendering the other candidates. Complete candidates retain
+  their output and consumed plan provenance when the batch is partial.
+- Structure 2 model calls now have a 120-second timeout and no hidden SDK
+  retries. An absent initial response does not fan out into five repair calls.
+- Production acceptance still requires the application and Carousel worker
+  at the same release revision and ready feed slots on the production domain.
+- Automatic replacement is limited to three successor batches per daily
+  feed/profile version. Both replacement and cumulative extension enforce this
+  budget in the database, including for older application revisions. Exhausted
+  failures stay visible instead of producing an unlimited chain of model calls;
+  a new daily feed or profile version receives a new budget.
+
+## 2026-09-07 Format Isolation and Explicit Recovery
+
+- Starter remains 20 daily pieces, Free 10, Growth 50. There is no ten-piece
+  batch barrier: all daily slots are reserved together and valid items appear
+  progressively. A same-day paid upgrade preserves its previously promised
+  additional pack.
+- Carousel provider exceptions cannot abort the shared feed read or prevent
+  Hook, Wall, and Reaction preparation. Every terminal format returns a public
+  failure object, including while the retained review shell is open.
+- Carousel inventory counts every active worker stage, including waiting for
+  the provider, rendering, uploading, and cancellation pending. An exhausted
+  recovery with no active inventory marks missing Carousel slots failed
+  immediately, without waiting for repeated stale recovery scans.
+- Automatic recovery remains limited to three successor batches. An explicit
+  authenticated retry of failed, unassigned slots opens one new three-successor
+  window. It records a budget starting sequence; it never rewrites generation
+  history or old replacement sequence numbers. Repeated clicks without a newly
+  failed slot are no-ops. Ready/decided items are preserved and active writers
+  prevent resetting their budget.
+- The daily feed's existing retry token now scopes Reaction retries too, so
+  the retry button does not simply retrieve the same failed Reaction job.
+- Structure 1 and Hook copy use explicit 60-second requests without SDK
+  retries. Hook transient provider errors enter the durable job retry path;
+  independently valid copies still survive a failed best-effort repair.
+- Expired or exhausted free-trial reconciliation returns skipped so the
+  outbox settles. It does not manufacture generation work or keep polling.
+  Paid activation still schedules its own prebuild.
+- Database migration: 20260906183128_allow_explicit_bounded_format_recovery.
+  Application/worker changes require the coordinated release before production
+  acceptance; local model canaries alone are not end-to-end acceptance.

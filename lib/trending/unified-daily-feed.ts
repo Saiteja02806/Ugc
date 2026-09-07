@@ -3,6 +3,8 @@ import "server-only";
 import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
 import { updateBusinessProfileTrendingTimezone } from "@/lib/business-profiles/db";
 import { FreeTrialAccessError } from "@/lib/billing/free-trial";
+import { getPublicDailyFeedState } from "@/lib/trending/daily-feed-status";
+import { loadTrendingFormat } from "@/lib/trending/format-isolation";
 import {
   ensureTrendingDailyFeed,
   readTrendingDailyFeed,
@@ -86,7 +88,7 @@ type MissingFormatPreparationResult = {
 };
 
 type PublicTrendingDailyFeedFailure = {
-  code: "hook_generation_restart_required" | "hook_source_unavailable";
+  code: "hook_generation_restart_required" | "hook_source_unavailable" | "content_generation_failed";
   message: string;
 };
 
@@ -162,11 +164,15 @@ export async function readUnifiedTrendingDailyFeed(params: {
   const [carouselFeed, hookProvider, wallTextProvider, reactionProvider] =
     await Promise.all([
     reservedAllocation.carousel > 0
-      ? readTrendingDailyFeed({
+      ? loadTrendingFormat({
+          load: () => readTrendingDailyFeed({
           dailyLimitOverride: reservedAllocation.carousel,
           profile: params.profile,
           timezone,
           userId: params.userId,
+          }),
+          fallback: null,
+          onError: (error) => console.error("Could not read Carousel feed; other formats remain available", error),
         })
       : Promise.resolve(null),
     params.includeHookVideos && reservedAllocation.hook_video > 0
@@ -272,6 +278,7 @@ export async function readUnifiedTrendingDailyFeed(params: {
     }),
     formatAvailability: buildFormatAvailability({
       allocation: reservedAllocation,
+      failedFormats: existingPlan.slots.filter((slot) => slot.state === "failed").map((slot) => slot.format),
       missingByFormat: unresolvedByFormat,
       preparationResults: new Map(),
     }),
@@ -552,7 +559,9 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
     includeWallText: params.includeWallText,
     missingByFormat,
     profile: params.profile,
-    reactionDailyFeedKey: attachedPlan.feed.id,
+    reactionDailyFeedKey: attachedPlan.feed.wallTextRetryKey
+      ? `${attachedPlan.feed.id}:retry-${attachedPlan.feed.wallTextRetryKey}`
+      : attachedPlan.feed.id,
     wallTextDailyFeedKey: attachedPlan.feed.id,
     wallTextRecoveryKey: attachedPlan.feed.wallTextRetryKey,
   });
@@ -641,38 +650,6 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
     }),
     items,
   };
-}
-
-function getPublicDailyFeedState(params: {
-  items: readonly TrendingFeedItem[];
-  readiness: TrendingDailyPackReadiness;
-  terminalFailure?: boolean;
-}): UnifiedTrendingDailyFeedState {
-  if (params.readiness.remainingCount === 0) {
-    return "caught_up";
-  }
-
-  if (params.terminalFailure || params.readiness.failedSlotCount > 0) {
-    return "failed";
-  }
-
-  // A partial pack is useful, but it is not ready: callers must keep polling
-  // while any reserved slot is unresolved. Previously a few ready items made
-  // this return "ready", which stopped the browser poll and left the remaining
-  // positions stranded until a manual reload.
-  if (params.readiness.pendingSlotCount > 0) {
-    return "preparing";
-  }
-
-  if (params.items.length > 0) {
-    return "ready";
-  }
-
-  if (params.readiness.pendingSlotCount === 0) {
-    return "failed";
-  }
-
-  return "preparing";
 }
 
 function shouldPrepareDailyFeed(params: {
@@ -845,12 +822,16 @@ async function loadProviders(params: {
   const [carouselDailyFeed, hookProvider, wallTextProvider, reactionProvider] =
     await Promise.all([
     params.allocation.carousel > 0
-      ? ensureTrendingDailyFeed({
+      ? loadTrendingFormat({
+          load: () => ensureTrendingDailyFeed({
           dailyLimitOverride: params.allocation.carousel,
           markItemsShown: params.markItemsShown,
           profile: params.profile,
           timezone: params.timezone,
           userId: params.userId,
+          }),
+          fallback: null,
+          onError: (error) => console.error("Could not prepare Carousel feed; continuing other formats", error),
         })
       : Promise.resolve(null),
     params.includeHookVideos && params.allocation.hook_video > 0
@@ -1022,7 +1003,7 @@ function getHookPreparationFailureMessage(error: unknown) {
   return "Hook videos could not be prepared. Try again shortly.";
 }
 
-function getPublicDailyFeedFailure(params: {
+export function getPublicDailyFeedFailure(params: {
   error: string | null;
   slots: readonly DailyTrendingFeedSlotRecord[];
 }): PublicTrendingDailyFeedFailure | null {
@@ -1046,7 +1027,10 @@ function getPublicDailyFeedFailure(params: {
     };
   }
 
-  return null;
+  return {
+    code: "content_generation_failed",
+    message: "Some daily content could not be prepared. Your ready content is available; try again to recover the missing pieces.",
+  };
 }
 
 function hasUnassignedFailedHookSlot(
@@ -1117,6 +1101,7 @@ function buildSlotOrderedItems(params: {
 
 function buildFormatAvailability(params: {
   allocation: TrendingContentAllocation;
+  failedFormats?: readonly TrendingFeedFormat[];
   missingByFormat: TrendingContentAllocation;
   preparationResults: Map<
     "hook_video" | "reaction" | "wall_text",
@@ -1135,12 +1120,13 @@ function buildFormatAvailability(params: {
     const preparation =
       format === "carousel" ? undefined : params.preparationResults.get(format);
     const failed =
+      params.failedFormats?.includes(format) ||
       preparation?.status === "failed" ||
       preparation?.status === "coverage_shortfall";
     return {
       format,
       reason: failed
-        ? preparation.failureMessage ??
+        ? preparation?.failureMessage ??
           "Reserved content could not be prepared. Try again shortly."
         : "Reserved content is being prepared in the background.",
       state: "unavailable" as const,

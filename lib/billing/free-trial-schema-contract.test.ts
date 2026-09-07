@@ -54,7 +54,7 @@ test("five Instagram schedules are atomically enforced and returned as an upgrad
     migration,
     /create table if not exists public\.free_trial_instagram_schedule_usage/,
   );
-  assert.match(migration, /for update;[\s\S]*scheduled_post_count/s);
+  assert.match(migration, /for update;[\s\S]*scheduled_post_count/);
   assert.match(migration, /free_trial_schedule_limit_reached/);
   assert.match(migration, /create trigger enforce_free_trial_instagram_schedule_limit/i);
   assert.match(scheduleDatabase, /free_trial_schedule_limit_reached/);

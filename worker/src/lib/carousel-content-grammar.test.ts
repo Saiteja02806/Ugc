@@ -13,7 +13,10 @@ import {
   validateCarouselContentPlan,
 } from "./carousel-llm-slide-plan.js";
 import { buildCarouselBusinessContentContext } from "./carousel-business-content-context.js";
-import { inspectCarouselSlideLayout } from "./carousel-render-slide.js";
+import {
+  buildLineFittedHeadingSvgPath,
+  inspectCarouselSlideLayout,
+} from "./carousel-render-slide.js";
 
 const analysis: WebsiteBusinessAnalysis = {
   brandTone: "clear and practical",
@@ -142,6 +145,43 @@ test("Structure 1 uses the white SVG only for an actual heading", async () => {
   assert.equal(bodyOnly.whiteBackgroundGroupCount, 0);
   assert.equal(heading.bodyFontSize, 44);
   assert.equal(bodyOnly.bodyFontSize, 60);
+  assert.equal(heading.headingBackgroundUsesLineFittedPath, true);
+  assert.equal(
+    heading.headingBackgroundLineCount,
+    heading.headingBackgroundLineWidths?.length,
+  );
+  assert.equal(bodyOnly.headingBackgroundUsesLineFittedPath, false);
+});
+
+test("Structure 1's heading SVG gives every measured line a rounded shoulder", () => {
+  for (const widths of [
+    [680, 412],
+    [680, 412, 556],
+    [680, 412, 556, 338],
+  ]) {
+    const geometry = buildLineFittedHeadingSvgPath({
+      centerX: 540,
+      groupHeight: 76 + (widths.length - 1) * 46,
+      groupY: 300,
+      lineCenterOffset: 38,
+      lineStep: 46,
+      outerRadius: 21,
+      stepRadius: 16,
+      widths,
+    });
+
+    assert.deepEqual(geometry.widths, widths);
+    assert.equal(
+      geometry.pathData.match(/\bC\b/g)?.length ?? 0,
+      0,
+    );
+    assert.equal(
+      geometry.pathData.match(/\bQ\b/g)?.length ?? 0,
+      4 + (widths.length - 1) * 4,
+    );
+    assert.ok(geometry.pathData.includes("880"));
+    assert.ok(geometry.pathData.includes("746"));
+  }
 });
 
 test("Structure 1 treats generic copy as a repairable blocking issue", () => {

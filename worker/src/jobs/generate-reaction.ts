@@ -1,6 +1,7 @@
 import { getErrorMessage, logger } from "../logger.js";
 import {
   planReactionGeneration,
+  REACTION_GENERATION_PROMPT_VERSION,
   type ReactionCatalogBackground,
   type ReactionCatalogClip,
   type ReactionGenerationContext,
@@ -176,7 +177,9 @@ export async function runGenerateReactionJob(
   return {
     failedCount: completion.failed_count,
     generationRunId: run.id,
-    promptVersion: "reaction-brief-batch-v1",
+    promptVersion: run.brief_payload && typeof run.brief_payload === "object" && "promptVersion" in run.brief_payload
+      ? run.brief_payload.promptVersion ?? REACTION_GENERATION_PROMPT_VERSION
+      : REACTION_GENERATION_PROMPT_VERSION,
     readyCount: completion.ready_count,
     requestedCount: input.requestedCount,
     shortfallCount: Math.max(0, input.requestedCount - completion.ready_count),
@@ -205,6 +208,7 @@ async function createAndPersistPlan(params: {
     clips: params.clips,
     context: params.input.generationContext,
     historyByClipId: params.historyByClipId,
+    jobId: params.job.id,
     requestedCount: params.input.requestedCount,
     reservedClipIds: params.reservedClipIds,
     seed: `${params.input.userId}:${params.input.requestKey}`,

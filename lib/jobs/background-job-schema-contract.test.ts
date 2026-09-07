@@ -21,6 +21,10 @@ const idempotencyRecoveryMigration = readFileSync(
   "supabase/migrations/20260905123000_harden_wall_text_regeneration_recovery.sql",
   "utf8",
 );
+const internalFunctionPermissionsMigration = readFileSync(
+  "supabase/migrations/20260907180000_restrict_internal_security_definer_functions.sql",
+  "utf8",
+);
 
 test("uses demand-scaled request workers for independent AI jobs", () => {
   const aiWorkerMain = readFileSync(
@@ -158,6 +162,17 @@ test("reuses an idempotent background job without surfacing a duplicate-key erro
   assert.doesNotMatch(
     backgroundJobsSource,
     /\.from\(BACKGROUND_JOBS_TABLE\)\s*\.insert\(/,
+  );
+});
+
+test("keeps internal SECURITY DEFINER job functions out of the public RPC surface", () => {
+  assert.match(
+    internalFunctionPermissionsMigration,
+    /create_or_get_background_job_v1[\s\S]*?revoke all on function %s from public, anon, authenticated[\s\S]*?grant execute on function %s to postgres, service_role/i,
+  );
+  assert.match(
+    internalFunctionPermissionsMigration,
+    /release_video_render_slot_on_background_job_state_change[\s\S]*?terminalize_wall_text_generation_on_job_status/i,
   );
 });
 

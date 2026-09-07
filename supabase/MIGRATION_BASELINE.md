@@ -51,3 +51,8 @@ pending migrations, seeds, or roles.
 
 All future schema changes must be new, forward-only migrations with versions
 later than `20260829093001`.
+
+The September 7, 2026 follow-up reconciled later timestamp drift and unrecorded
+hotfixes without replaying SQL. See
+[the reconciliation record](MIGRATION_RECONCILIATION_20260907.md) and run its
+fresh production-ledger parity check for subsequent releases.

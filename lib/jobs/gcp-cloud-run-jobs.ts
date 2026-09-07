@@ -11,6 +11,10 @@ import type { BackgroundJobRecord } from "./background-jobs";
 import { buildCloudRunJobExecutionRequest } from "./gcp-cloud-run-job-logic";
 
 const CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform";
+// Terraform and the production Cloud Run stack use this stable Job name. An
+// explicit variable can still override it in another environment, but a
+// missing optional Vercel variable must not strand a queued render forever.
+const DEFAULT_VIDEO_RENDER_JOB_NAME = "ugc-video-render-job";
 let cloudRunAuth: GoogleAuth | null = null;
 
 export function getMissingCloudRunRenderJobEnvVars(
@@ -20,10 +24,6 @@ export function getMissingCloudRunRenderJobEnvVars(
 
   if (!getGcpProjectId(env)) {
     missing.add("GCP_PROJECT_ID or GOOGLE_CLOUD_PROJECT");
-  }
-
-  if (!env.GCP_VIDEO_RENDER_JOB_NAME?.trim()) {
-    missing.add("GCP_VIDEO_RENDER_JOB_NAME");
   }
 
   for (const envName of getMissingVercelGcpCredentialEnvVars(env)) {
@@ -36,7 +36,7 @@ export function getMissingCloudRunRenderJobEnvVars(
 export async function launchBackgroundRenderJob(job: BackgroundJobRecord) {
   const request = buildCloudRunJobExecutionRequest({
     jobId: job.id,
-    jobName: getRequiredEnv("GCP_VIDEO_RENDER_JOB_NAME"),
+    jobName: getVideoRenderJobName(),
     jobType: job.jobType,
     location:
       process.env.GCP_VIDEO_RENDER_JOB_LOCATION?.trim() ||
@@ -114,6 +114,13 @@ function getRequiredEnv(name: string) {
   }
 
   return value;
+}
+
+function getVideoRenderJobName() {
+  return (
+    process.env.GCP_VIDEO_RENDER_JOB_NAME?.trim() ||
+    DEFAULT_VIDEO_RENDER_JOB_NAME
+  );
 }
 
 function getRenderTimeoutSeconds() {

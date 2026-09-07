@@ -273,12 +273,24 @@ resource "google_cloud_run_v2_job" "video_render_worker" {
   }
 }
 
+resource "google_project_iam_custom_role" "video_render_job_runner" {
+  project     = var.project_id
+  role_id     = "ugcVideoRenderJobRunner"
+  title       = "UGC Video Render Job Runner"
+  description = "Starts the UGC one-shot video render job."
+  permissions = ["run.jobs.run"]
+}
+
 resource "google_cloud_run_v2_job_iam_member" "app_launcher" {
   count = var.enable_video_render_worker ? 1 : 0
 
   project  = var.project_id
   location = var.region
   name     = google_cloud_run_v2_job.video_render_worker[0].name
-  role     = "roles/run.invoker"
+  # Cloud Run Jobs are started through the Jobs API, which requires
+  # run.jobs.run. `roles/run.invoker` only permits invoking a Cloud Run
+  # Service and leaves the app launcher returning retryable 503 responses.
+  # The custom role has only that permission and is scoped to this one Job.
+  role     = google_project_iam_custom_role.video_render_job_runner.name
   member   = "serviceAccount:${var.app_launcher_service_account_email}"
 }

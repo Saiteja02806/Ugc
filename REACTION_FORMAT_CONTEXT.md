@@ -230,6 +230,12 @@ An individual clip is eligible for at most two real presentations to the same
 user (the first appearance and one later reuse); catalog reservation does not
 count as a presentation.
 
+Reaction generation uses the existing bounded `video_render_execution_slots`
+lease before its Cloud Run Job is launched. Its database allowlist must include
+`reaction_generation` alongside the other `video-render` job types; a missing
+entry leaves a free slot unclaimed and makes the launcher retry with a capacity
+error.
+
 ## Reaction brief latency and repair — 7 September
 
 The worker's `reaction-brief-batch-v2` provider response omits `caption`.

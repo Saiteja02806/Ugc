@@ -9,6 +9,8 @@ const migration = read(
 );
 const launcher = read("app/api/internal/jobs/launch-render/route.ts");
 const jobs = read("lib/jobs/background-jobs.ts");
+const cloudRunJobs = read("lib/jobs/gcp-cloud-run-jobs.ts");
+const videoRenderInfrastructure = read("infra/gcp/video-render-worker/main.tf");
 
 test("render capacity is a durable ten-slot database gate", () => {
   assert.match(migration, /create table if not exists public\.video_render_execution_slots/i);
@@ -41,6 +43,22 @@ test("the launcher claims capacity before Cloud Run and releases only a failed l
     /catch \(error\) \{[\s\S]*?releaseVideoRenderExecutionSlot\(/,
   );
   assert.match(launcher, /Render capacity is temporarily full/);
+});
+
+test("the app launcher can start the one-shot Cloud Run Job", () => {
+  assert.match(
+    videoRenderInfrastructure,
+    /resource "google_project_iam_custom_role" "video_render_job_runner"[\s\S]*?permissions\s*=\s*\["run\.jobs\.run"\]/,
+  );
+  assert.match(
+    videoRenderInfrastructure,
+    /resource "google_cloud_run_v2_job_iam_member" "app_launcher"[\s\S]*?role\s*=\s*google_project_iam_custom_role\.video_render_job_runner\.name/,
+  );
+  assert.match(
+    cloudRunJobs,
+    /DEFAULT_VIDEO_RENDER_JOB_NAME\s*=\s*"ugc-video-render-job"/,
+  );
+  assert.match(cloudRunJobs, /jobName:\s*getVideoRenderJobName\(\)/);
 });
 
 function read(relativePath: string) {

@@ -5,6 +5,9 @@ import test from "node:test";
 const migration = readProjectFile(
   "supabase/migrations/20260906180000_add_durable_reaction_generation_worker.sql",
 );
+const renderSlotMigration = readProjectFile(
+  "supabase/migrations/20260907055638_allow_reaction_render_execution_slots.sql",
+);
 const enqueue = readProjectFile("lib/reaction-format/generation-jobs.ts");
 const workerJob = readProjectFile("worker/src/jobs/generate-reaction.ts");
 const workerDispatch = readProjectFile("worker/src/jobs/index.ts");
@@ -38,6 +41,9 @@ test("routes Reaction generation to a deployed video-render worker", () => {
     videoRenderWorkerVariables,
     /default\s*=\s*"render_edit_video,render_schedule_combination,render_wall_text_video,reaction_generation"/,
   );
+  assert.match(renderSlotMigration, /claim_video_render_execution_slot/);
+  assert.match(renderSlotMigration, /'reaction_generation'/);
+  assert.match(renderSlotMigration, /queue_name = 'video-render'/);
 });
 
 test("persists the immutable plan before any Reaction video render", () => {

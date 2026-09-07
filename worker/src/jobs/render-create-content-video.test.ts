@@ -106,6 +106,40 @@ test("leaves a retryable render attempt non-terminal until the processor decides
   assert.equal(failureCount, 0);
 });
 
+test("rejects the production canary before touching a Create Content render", async () => {
+  let renderStarted = false;
+  let rendered = false;
+  const store = {
+    async markCreateContentRenderStarted() {
+      renderStarted = true;
+      throw new Error("The malformed canary must not start a render record.");
+    },
+  } as unknown as SupabaseJobStore;
+  const job = createJob();
+  job.input_json = {
+    canary: "production-create-content-render-invalid-payload",
+    generationId: "canary-generation-1",
+    overlay: null,
+  };
+
+  await assert.rejects(
+    () =>
+      runRenderCreateContentVideoJob(job, {
+        dependencies: {
+          async renderCreateContentVideoToStorage() {
+            rendered = true;
+            throw new Error("The malformed canary must not invoke the renderer.");
+          },
+        },
+        store,
+      }),
+    /overlay must be an object\./,
+  );
+
+  assert.equal(renderStarted, false);
+  assert.equal(rendered, false);
+});
+
 test("reconciles a terminal Create Content failure against the exact background job", async () => {
   const failures: Array<Record<string, string>> = [];
   const store = {

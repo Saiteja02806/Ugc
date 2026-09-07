@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
   Clapperboard,
@@ -13,7 +14,6 @@ import {
 import Link from "next/link";
 import {
   useCallback,
-  useEffect,
   useRef,
   useState,
 } from "react";
@@ -30,11 +30,16 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { ExploreVideoReference } from "@/lib/explore/hook-video-types";
+import {
+  exploreVideoLibraryQueryOptions,
+  type ExploreSection,
+  type ExploreVideoLibrary,
+} from "@/lib/explore/video-library-query";
 import { cn } from "@/lib/utils";
 
-type ExploreSection = "hook" | "wall_text";
 type ExploreLoadState = "error" | "idle" | "loading" | "ready";
 
 type ExploreVideoResponse = {
@@ -42,11 +47,6 @@ type ExploreVideoResponse = {
   message?: unknown;
   ok?: unknown;
   preview?: unknown;
-};
-
-type ExploreVideoLibrary = {
-  items: ExploreVideoReference[];
-  preview: ExploreVideoReference | null;
 };
 
 type ExploreLibraryState = ExploreVideoLibrary & {
@@ -107,13 +107,6 @@ const EXPLORE_SECTION_CONFIG: Record<ExploreSection, ExploreSectionConfig> = {
   },
 };
 
-const INITIAL_LIBRARY_STATE: ExploreLibraryState = {
-  error: null,
-  items: [],
-  loadState: "idle",
-  preview: null,
-};
-
 // Keep the reference shelf dense and predictable on laptop workspaces. A
 // 14-inch display can have less usable width than a 15.6-inch display once the
 // persistent sidebar is visible, so auto-fill may unexpectedly drop to three
@@ -128,73 +121,23 @@ const EXPLORE_BACKDROP_VIDEO_LIMIT = 4;
 
 export function ViralWorkspace() {
   const [activeSection, setActiveSection] = useState<ExploreSection>("hook");
-  const [libraries, setLibraries] = useState<
-    Record<ExploreSection, ExploreLibraryState>
-  >({
-    hook: INITIAL_LIBRARY_STATE,
-    wall_text: INITIAL_LIBRARY_STATE,
-  });
+  const { loading: authLoading, user } = useAuth();
   const subscriptionQuery = useBillingSubscription();
   const isProUser = subscriptionQuery.data?.isActive === true;
-  const activeLibrary = libraries[activeSection];
   const config = EXPLORE_SECTION_CONFIG[activeSection];
-
-  const loadVideos = useCallback(
-    async (section: ExploreSection, signal?: AbortSignal) => {
-      const sectionConfig = EXPLORE_SECTION_CONFIG[section];
-
-      setLibraries((current) => ({
-        ...current,
-        [section]: {
-          ...current[section],
-          error: null,
-          loadState: "loading",
-        },
-      }));
-
-      try {
-        const library = await fetchExploreVideos(sectionConfig.endpoint, signal);
-        setLibraries((current) => ({
-          ...current,
-          [section]: {
-            error: null,
-            items: library.items,
-            loadState: "ready",
-            preview: library.preview,
-          },
-        }));
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-
-        setLibraries((current) => ({
-          ...current,
-          [section]: {
-            ...current[section],
-            error:
-              error instanceof Error
-                ? error.message
-                : `Could not load the Explore ${sectionConfig.label} library.`,
-            loadState: "error",
-          },
-        }));
-      }
-    },
-    [],
-  );
-
-  useEffect(() => {
-    if (activeLibrary.loadState !== "idle") return;
-
-    const controller = new AbortController();
-    const frame = window.requestAnimationFrame(() => {
-      void loadVideos(activeSection, controller.signal);
-    });
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      controller.abort();
-    };
-  }, [activeLibrary.loadState, activeSection, loadVideos]);
+  // The query owns cancellation. A loading-state render must not abort the
+  // request that produced it; cached catalogs also survive navigation away.
+  const libraryQuery = useQuery(exploreVideoLibraryQueryOptions({
+    userId: authLoading ? null : user?.uid ?? null,
+    section: activeSection,
+    load: (signal) => fetchExploreVideos(config.endpoint, signal),
+  }));
+  const activeLibrary: ExploreLibraryState = {
+    error: libraryQuery.error?.message ?? null,
+    items: libraryQuery.data?.items ?? [],
+    preview: libraryQuery.data?.preview ?? null,
+    loadState: libraryQuery.data ? "ready" : libraryQuery.isError ? "error" : "loading",
+  };
 
   return (
     <section className="min-h-dvh min-w-0 flex-1 bg-background px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -264,7 +207,7 @@ export function ViralWorkspace() {
                 type="button"
                 variant="outline"
                 size="lg"
-                onClick={() => void loadVideos(activeSection)}
+                onClick={() => void libraryQuery.refetch()}
                 className="mt-2 w-fit"
               >
                 <RefreshCw data-icon="inline-start" aria-hidden="true" />
@@ -308,7 +251,7 @@ export function ViralWorkspace() {
                   type="button"
                   variant="outline"
                   size="lg"
-                  onClick={() => void loadVideos(activeSection)}
+                  onClick={() => void libraryQuery.refetch()}
                   className="mt-2 w-fit"
                 >
                   <RefreshCw data-icon="inline-start" aria-hidden="true" />
@@ -444,6 +387,15 @@ function ExploreVideoCard({
   const shouldLoadVideo = autoPlay || playbackRequested;
   const startPlaybackAfterLoadRef = useRef(false);
   const config = EXPLORE_SECTION_CONFIG[section];
+  const attachVideo = useCallback((video: HTMLVideoElement | null) => {
+    videoRef.current = video;
+    if (!video || !startPlaybackAfterLoadRef.current) return;
+
+    startPlaybackAfterLoadRef.current = false;
+    // play() starts buffering immediately. Waiting for canplay while asking
+    // for metadata alone can leave the first click waiting indefinitely.
+    void video.play().catch(() => setIsPlaying(false));
+  }, []);
 
   function handlePlayToggle() {
     const video = videoRef.current;
@@ -473,23 +425,15 @@ function ExploreVideoCard({
       <div className="relative aspect-[9/16] overflow-hidden bg-card-muted">
         {shouldLoadVideo ? (
           <video
-            ref={videoRef}
+            ref={attachVideo}
             aria-label={`Explore ${config.videoLabel}`}
             className="size-full object-cover"
             autoPlay={autoPlay}
             muted
             playsInline
             poster={item.posterUrl}
-            preload={autoPlay ? "auto" : "metadata"}
+            preload="auto"
             src={item.videoUrl}
-            onCanPlay={() => {
-              if (!startPlaybackAfterLoadRef.current) return;
-
-              startPlaybackAfterLoadRef.current = false;
-              void videoRef.current?.play().catch(() => {
-                setIsPlaying(false);
-              });
-            }}
             onEnded={() => {
               setHasEnded(true);
               setIsPlaying(false);

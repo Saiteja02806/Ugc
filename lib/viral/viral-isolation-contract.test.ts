@@ -36,7 +36,7 @@ test("opens Explore without changing the separate Trending dashboard", () => {
 
 test("shows Explore after Analytics to every signed-in workspace user", () => {
   assert.match(sidebar, /label: "Analytics"[\s\S]*label: "Explore"/);
-  assert.match(sidebar, /\.\.\.primaryNavigationItems,[\s\S]*exploreNavigationItem/);
+  assert.match(sidebar, /\.\.\.primaryNavigationItems(?:\.filter\([\s\S]*?\))?,[\s\S]*exploreNavigationItem/);
   assert.doesNotMatch(sidebar, /useViralReviewerAccess/);
 });
 

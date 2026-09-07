@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const [workspaceSource, createContentPageSource, appSidebarSource] =
+const [workspaceSource, createContentPageSource, appSidebarSource, proxySource] =
   await Promise.all([
     readFile(
       new URL(
@@ -16,6 +16,7 @@ const [workspaceSource, createContentPageSource, appSidebarSource] =
       new URL("../../components/layout/app-sidebar.tsx", import.meta.url),
       "utf8",
     ),
+    readFile(new URL("../../proxy.ts", import.meta.url), "utf8"),
   ]);
 
 test("Create Content removes the redundant page header so the workspace and chat use the viewport", () => {
@@ -37,6 +38,11 @@ test("Create Content is available locally but not exposed by the production page
   assert.match(
     appSidebarSource,
     /item\.key !== "create-content" \|\| isCreateContentScreenEnabled/,
+  );
+  assert.match(proxySource, /matcher: "\/create-content"/);
+  assert.match(
+    proxySource,
+    /if \(process\.env\.NODE_ENV === "production"\) \{[\s\S]*?status: 404/,
   );
 });
 

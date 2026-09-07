@@ -20,7 +20,6 @@ import type {
 } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { CreativeDecisionActions } from "@/components/trending/creative-card-actions";
 import { HookTextOverlay } from "@/components/trending/hook-text-overlay";
@@ -554,28 +553,7 @@ export function CreateContentWorkspace({
 
   return (
     <section className="min-w-0 flex-1 bg-background px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-      <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-6">
-        <header className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
-          <div className="max-w-xl">
-            <p className="text-xs font-semibold tracking-[0.12em] text-primary uppercase">
-              Your video workspace
-            </p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-foreground-strong sm:text-3xl">
-              Create Content
-            </h1>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Choose a vertical video to create content for it.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {status === "ready" && assets.length > 0 ? (
-              <Badge variant="secondary" className="w-fit">
-                {assets.length} ready {assets.length === 1 ? "video" : "videos"}
-              </Badge>
-            ) : null}
-          </div>
-        </header>
-
+      <div className="mx-auto w-full max-w-[1480px]">
         {status === "loading" ? <CreateContentLoading /> : null}
         {status === "error" ? (
           <CreateContentLoadError

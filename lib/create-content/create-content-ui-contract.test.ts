@@ -2,13 +2,43 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const workspaceSource = await readFile(
-  new URL(
-    "../../components/create-content/create-content-workspace.tsx",
-    import.meta.url,
-  ),
-  "utf8",
-);
+const [workspaceSource, createContentPageSource, appSidebarSource] =
+  await Promise.all([
+    readFile(
+      new URL(
+        "../../components/create-content/create-content-workspace.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(new URL("../../app/create-content/page.tsx", import.meta.url), "utf8"),
+    readFile(
+      new URL("../../components/layout/app-sidebar.tsx", import.meta.url),
+      "utf8",
+    ),
+  ]);
+
+test("Create Content removes the redundant page header so the workspace and chat use the viewport", () => {
+  assert.doesNotMatch(workspaceSource, /Your video workspace/);
+  assert.doesNotMatch(workspaceSource, /Choose a vertical video to create content for it\./);
+  assert.doesNotMatch(workspaceSource, /<header className="flex flex-col gap-3 border-b/);
+});
+
+test("Create Content is available locally but not exposed by the production page or sidebar", () => {
+  assert.match(createContentPageSource, /import \{ notFound \} from "next\/navigation"/);
+  assert.match(
+    createContentPageSource,
+    /if \(process\.env\.NODE_ENV === "production"\) \{[\s\S]*?notFound\(\);/,
+  );
+  assert.match(
+    appSidebarSource,
+    /const isCreateContentScreenEnabled = process\.env\.NODE_ENV !== "production"/,
+  );
+  assert.match(
+    appSidebarSource,
+    /item\.key !== "create-content" \|\| isCreateContentScreenEnabled/,
+  );
+});
 
 test("Create Content uses the same video text renderers as Trending", () => {
   assert.match(

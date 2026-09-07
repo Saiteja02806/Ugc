@@ -102,6 +102,7 @@ const libraryNavigationItems: SidebarItem[] = [
 
 const SIDEBAR_STORAGE_KEY = "ugc-studio.sidebar-collapsed";
 const SIDEBAR_CHANGE_EVENT = "ugc-studio:sidebar-change";
+const isCreateContentScreenEnabled = process.env.NODE_ENV !== "production";
 
 export function AppSidebar({
   activeKey = "trending",
@@ -371,7 +372,9 @@ function SidebarNavigation({
   onNavigate?: () => void;
 }) {
   const visiblePrimaryNavigationItems = [
-    ...primaryNavigationItems,
+    ...primaryNavigationItems.filter(
+      (item) => item.key !== "create-content" || isCreateContentScreenEnabled,
+    ),
     exploreNavigationItem,
   ];
 

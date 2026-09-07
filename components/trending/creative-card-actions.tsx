@@ -8,17 +8,29 @@ const LAPTOP_AND_DESKTOP_DECISION_BUTTON_CLASS =
   "min-[1024px]:size-[clamp(3.5rem,calc((100dvh-252px)*0.155),clamp(4.75rem,calc(124.5px-3.25vw),5rem))] min-[1024px]:[&_svg:not([class*='size-'])]:size-[clamp(1.25rem,calc((100dvh-252px)*0.0543),clamp(1.625rem,calc(44.125px-1.18vw),1.75rem))]";
 
 export function CreativeDecisionActions({
+  acceptAriaLabel = "Accept this creative",
+  acceptCaption = "Accept",
   acceptDisabled = false,
+  acceptTitle = "Accept",
   disabled = false,
   onAccept,
   onReject,
+  rejectAriaLabel = "Reject this creative",
+  rejectCaption = "Skip",
   rejectDisabled = false,
+  rejectTitle = "Reject",
 }: {
+  acceptAriaLabel?: string;
+  acceptCaption?: string;
   acceptDisabled?: boolean;
+  acceptTitle?: string;
   disabled?: boolean;
   onAccept: () => void;
   onReject: () => void;
+  rejectAriaLabel?: string;
+  rejectCaption?: string;
   rejectDisabled?: boolean;
+  rejectTitle?: string;
 }) {
   return (
     <div
@@ -32,8 +44,8 @@ export function CreativeDecisionActions({
           type="button"
           variant="creative-reject"
           size="creative-icon"
-          aria-label="Reject this creative"
-          title="Reject"
+          aria-label={rejectAriaLabel}
+          title={rejectTitle}
           disabled={disabled || rejectDisabled}
           onClick={onReject}
           className={`transition-transform duration-150 active:scale-95 ${LAPTOP_AND_DESKTOP_DECISION_BUTTON_CLASS}`}
@@ -44,7 +56,7 @@ export function CreativeDecisionActions({
           <kbd className="rounded border border-border/80 bg-card-muted px-1.5 py-0.5 text-[10px] font-mono font-semibold text-foreground/75">
             ←
           </kbd>
-          Skip
+          {rejectCaption}
         </span>
       </div>
 
@@ -53,8 +65,8 @@ export function CreativeDecisionActions({
           type="button"
           variant="creative-accept"
           size="creative-icon"
-          aria-label="Accept this creative"
-          title="Accept"
+          aria-label={acceptAriaLabel}
+          title={acceptTitle}
           disabled={disabled || acceptDisabled}
           onClick={onAccept}
           className={`transition-transform duration-150 active:scale-95 ${LAPTOP_AND_DESKTOP_DECISION_BUTTON_CLASS}`}
@@ -62,7 +74,7 @@ export function CreativeDecisionActions({
           <Check data-icon="inline-start" aria-hidden="true" />
         </Button>
         <span className="hidden items-center gap-1 text-[11px] font-medium text-muted sm:inline-flex">
-          Accept
+          {acceptCaption}
           <kbd className="rounded border border-border/80 bg-card-muted px-1.5 py-0.5 text-[10px] font-mono font-semibold text-foreground/75">
             →
           </kbd>

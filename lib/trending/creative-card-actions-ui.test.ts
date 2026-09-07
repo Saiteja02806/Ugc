@@ -46,10 +46,14 @@ const hookDraftRoute = readProjectFile(
 test("places Edit in the page header and keeps circular decisions below the card", () => {
   assert.match(actions, /export function CreativeDecisionActions/);
   assert.match(actions, /variant="creative-reject"/);
-  assert.match(actions, /aria-label="Reject this creative"/);
-  assert.match(actions, /title="Reject"/);
-  assert.match(actions, /aria-label="Accept this creative"/);
-  assert.match(actions, /title="Accept"/);
+  assert.match(actions, /rejectAriaLabel = "Reject this creative"/);
+  assert.match(actions, /aria-label=\{rejectAriaLabel\}/);
+  assert.match(actions, /rejectTitle = "Reject"/);
+  assert.match(actions, /title=\{rejectTitle\}/);
+  assert.match(actions, /acceptAriaLabel = "Accept this creative"/);
+  assert.match(actions, /aria-label=\{acceptAriaLabel\}/);
+  assert.match(actions, /acceptTitle = "Accept"/);
+  assert.match(actions, /title=\{acceptTitle\}/);
   assert.match(actions, /export function CreativeEditAction/);
   assert.match(actions, /variant="creative-edit"/);
   assert.match(actions, />\s*Edit\s*</);

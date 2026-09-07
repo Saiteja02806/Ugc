@@ -29,6 +29,7 @@ import { useBillingSubscription } from "@/components/billing/use-billing-subscri
 
 export type AppSidebarActiveKey =
   | "trending"
+  | "create-content"
   | "explore"
   | "ai-studio"
   | "library"
@@ -50,6 +51,12 @@ const primaryNavigationItems: SidebarItem[] = [
     label: "Trending",
     href: "/dashboard",
     icon: "trending",
+  },
+  {
+    key: "create-content",
+    label: "Create Content",
+    href: "/create-content",
+    icon: "edit",
   },
   {
     key: "ai-studio",

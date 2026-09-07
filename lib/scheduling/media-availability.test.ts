@@ -7,6 +7,14 @@ import type { ScheduledPost } from "./types.ts";
 const activeOpeningIds = new Set(["opening-active"]);
 const activeDemoIds = new Set(["demo-active"]);
 
+test("recognizes a ready Reaction MP4 in the scheduling catalog, including an old draft without source metadata", () => {
+  const schedule = { ...createSchedule({ mediaMode: "single_video", reactionAssignmentId: "reaction-assignment" }), mediaAssetId: "reaction-mp4" };
+  assert.equal(getScheduleMediaIssue({ activeDemoIds: new Set(["reaction-mp4"]), activeOpeningIds: new Set(), mediaLoaded: true, schedule }), null);
+  // A genuinely removed render still needs recovery; the assignment alone
+  // must not suppress missing-media detection.
+  assert.equal(getScheduleMediaIssue({ activeDemoIds: new Set(), activeOpeningIds: new Set(), mediaLoaded: true, schedule }), "demo");
+});
+
 test("detects a deleted demo before video preparation starts", () => {
   assert.equal(
     getScheduleMediaIssue({

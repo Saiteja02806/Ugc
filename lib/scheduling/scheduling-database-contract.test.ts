@@ -657,7 +657,7 @@ test("the shared account cache reuses fresh data, refetches on force, and isolat
 test("user actions open the editor using cached scheduling catalogs while refresh forces fresh media", () => {
   const newScheduleFlow = getSection(
     schedulingWorkspace,
-    "async function handleNewSchedulePost(",
+    "const handleNewSchedulePost = useCallback(async (",
     "async function handleEditSchedule",
   );
   const editScheduleFlow = getSection(

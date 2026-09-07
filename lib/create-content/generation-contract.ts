@@ -1,5 +1,7 @@
 export const CREATE_CONTENT_DEFAULT_OPTION_COUNT = 4;
 export const CREATE_CONTENT_MAX_OPTION_COUNT = 40;
+export const CREATE_CONTENT_WALL_TEXT_LINE_RANGE = { max: 8, min: 5 } as const;
+export const CREATE_CONTENT_WALL_TEXT_WORD_RANGE = { max: 40, min: 25 } as const;
 
 export function resolveCreateContentOptionCount(params: {
   requestedCount?: number;
@@ -19,20 +21,6 @@ export function resolveCreateContentOptionCount(params: {
   return explicit
     ? clampOptionCount(Number(explicit[1]))
     : CREATE_CONTENT_DEFAULT_OPTION_COUNT;
-}
-
-export function getCreateContentWallReadingGuide(durationSeconds: number) {
-  const duration = Math.max(
-    0,
-    Number.isFinite(durationSeconds) ? durationSeconds : 0,
-  );
-  const targetWords = Math.min(54, Math.max(14, Math.round(duration * 2.5)));
-
-  return {
-    targetWords,
-    wording:
-      "Treat this as gentle reading guidance, not a restriction. Never refuse a Wall-of-Text idea because the video is short; the creator controls placement and can edit it.",
-  };
 }
 
 function clampOptionCount(value: number) {

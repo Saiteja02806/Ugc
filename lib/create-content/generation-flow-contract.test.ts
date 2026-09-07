@@ -16,11 +16,17 @@ test("Create Content generation reads the existing business profile and selected
   assert.match(route, /getMediaAssetForOwner/);
   assert.match(route, /isCreateContentVideo/);
   assert.match(generation, /Use this existing onboarding Business Profile exactly/);
-  assert.match(generation, /selectedVideoDurationSeconds/);
+  assert.doesNotMatch(generation, /selectedVideoDurationSeconds/);
 });
 
 test("Create Content generation remains separate from Trending plan generation", () => {
   assert.doesNotMatch(generation, /generateBusinessTrendingWallTextIdeas/);
   assert.doesNotMatch(generation, /enqueueTrendingWallTextJob/);
   assert.doesNotMatch(route, /\/api\/trending|enqueueTrending/);
+});
+
+test("Create Content generation uses the final visual constraints before options reach chat", () => {
+  assert.match(generation, /normalizeAndValidateGeneratedCreateContentText/);
+  assert.match(generation, /Use 5 to 8 purposeful lines, usually about 25 to 40 words/);
+  assert.match(generation, /2 to 12 words, 8 to 78 characters, and fit within 3 readable lines/);
 });

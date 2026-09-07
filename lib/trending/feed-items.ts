@@ -135,6 +135,7 @@ export type TrendingWallTextSourceRecord = TrendingWallTextCreative & {
  * must never recreate the composite in the browser.
  */
 export type TrendingReactionCreative = {
+  textEditState?: "ready" | "preparing" | "failed";
   aspectRatio: "9:16";
   caption: string;
   clipAssetId: string;

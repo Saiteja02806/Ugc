@@ -138,7 +138,14 @@ const avenirNextTypographyMigration = readFileSync(
 );
 const arialBoldV6TypographyMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260906220000_add_wall_text_arial_bold_v6_typography.sql",
+    "../../supabase/migrations/20260907051742_add_wall_text_arial_bold_v6_typography.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const lighterArialBoldV7TypographyMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260907111233_lighten_wall_text_v11_treatment.sql",
     import.meta.url,
   ),
   "utf8",
@@ -629,14 +636,18 @@ test("measures new final Wall lines with packaged Arial Bold before saving autho
   assert.match(layoutEngineSource, /textBox: params\.layout\.textBox/);
   assert.match(layoutEngineSource, /maximumWidth = getWallTextSafeLineWidth\(textBoxWidth\)/);
   assert.match(visualStyleSource, /WALL_TEXT_INLINE_SAFE_PADDING = 15/);
-  assert.match(visualStyleSource, /WALL_TEXT_OUTLINE_WIDTH = 4/);
+  assert.match(visualStyleSource, /WALL_TEXT_OUTLINE_WIDTH = 3/);
+  assert.match(visualStyleSource, /WALL_TEXT_PREVIOUS_ARIAL_BOLD_OUTLINE_WIDTH = 4/);
+  assert.match(visualStyleSource, /WALL_TEXT_SHADOW_OPACITY = 0\.3/);
   assert.match(visualStyleSource, /WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH = 2/);
   assert.match(
     renderValidationSource,
     /maximumTextWidth = getWallTextSafeLineWidth\(textBoxWidth\)/,
   );
   assert.match(workerRenderSpecSource, /WALL_TEXT_INLINE_SAFE_PADDING = 15/);
-  assert.match(workerRenderSpecSource, /WALL_TEXT_OUTLINE_WIDTH = 4/);
+  assert.match(workerRenderSpecSource, /WALL_TEXT_OUTLINE_WIDTH = 3/);
+  assert.match(workerRenderSpecSource, /WALL_TEXT_PREVIOUS_ARIAL_BOLD_OUTLINE_WIDTH = 4/);
+  assert.match(workerRenderSpecSource, /WALL_TEXT_SHADOW_OPACITY = 0\.3/);
   assert.match(workerRenderSpecSource, /WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH = 2/);
   assert.match(
     workerRenderEngineSource,
@@ -911,6 +922,10 @@ test("uses packaged Arial Bold glyphs at 700 for new Wall content while retainin
     arialBoldV6TypographyMigration,
     /wall-text-overlay-v10[\s\S]+wall-text-final-layout-v6[\s\S]+fontFamily' = 'Arial'[\s\S]+fontWeight'\)::integer = 700/,
   );
+  assert.match(
+    lighterArialBoldV7TypographyMigration,
+    /wall-text-overlay-v11[\s\S]+wall-text-final-layout-v7[\s\S]+fontFamily' = 'Arial'[\s\S]+fontWeight'\)::integer = 700/,
+  );
 });
 
 test("keeps the Wall editor save gate aligned with the V10 24-40 word contract", () => {
@@ -1184,7 +1199,7 @@ test("V10 keeps every word in one measured 5-8 line block", () => {
   const lines = result.content.finalLayout.blocks.flatMap((block) => block.lines);
   assert.equal(result.content.fullText, original);
   assert.equal(result.content.sourceContent.kind, "text");
-  assert.equal(result.content.finalLayout.version, "wall-text-final-layout-v6");
+  assert.equal(result.content.finalLayout.version, "wall-text-final-layout-v7");
   assert.equal(result.content.finalLayout.fontFamily, "Arial");
   assert.equal(result.content.finalLayout.fontWeight, 700);
   assert.equal(result.content.finalLayout.blocks.length, 1);

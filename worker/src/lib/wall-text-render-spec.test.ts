@@ -211,6 +211,46 @@ test("renders the Arial Bold V3 layout as one centered block", () => {
   assert.match(svg, />at once\.<\/text>/);
 });
 
+test("renders the V7 Arial Bold treatment with a lighter outline and shadow", () => {
+  const v7Content = {
+    finalLayout: {
+      blocks: [{
+        lines: [
+          "I logged every meal but",
+          "skipped drinks oil and small",
+          "bites. Those missing details",
+          "quietly changed the final",
+          "total.",
+        ],
+        role: "text" as const,
+      }],
+      fontFamily: "Arial" as const,
+      fontSizePx: 50 as const,
+      fontWeight: 700 as const,
+      lineHeightPx: 55,
+      textBox: {
+        height: 480 / 1920,
+        width: 780 / 1080,
+        x: 150 / 1080,
+        y: 660 / 1920,
+      },
+      version: "wall-text-final-layout-v7" as const,
+    },
+    fullText:
+      "I logged every meal but skipped drinks oil and small bites. Those missing details quietly changed the final total.",
+    segments: content.segments,
+  };
+  const svg = buildWallTextOverlaySvg({
+    content: v7Content,
+    placement: "middle",
+  });
+
+  assert.match(svg, /font-family="Arial,/);
+  assert.match(svg, /font-weight="700"/);
+  assert.match(svg, /stroke-width="3"/);
+  assert.match(svg, /flood-opacity="0\.3"/);
+});
+
 test("renders the current Arial Regular V4 layout at 400", () => {
   const v4 = {
     finalLayout: {

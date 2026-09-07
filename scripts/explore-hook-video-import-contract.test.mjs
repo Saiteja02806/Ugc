@@ -27,11 +27,15 @@ test("Explore Hook importer uses only GCP and requires an explicit write confirm
 
 test("Explore Hook importer validates and verifies every direct video", () => {
   assert.match(importer, /ffprobeStatic\.path/u);
+  assert.match(importer, /ffmpegPath/u);
   assert.match(importer, /metadata\.audioStreamCount !== 0/u);
   assert.match(importer, /metadata\.width \* 16 !== metadata\.height \* 9/u);
   assert.match(importer, /getFileSha256\(filePath\)/u);
   assert.match(importer, /readStoredObjectHash\(item\.storageKey\)/u);
   assert.match(importer, /storedHash !== item\.sha256/u);
+  assert.match(importer, /createPoster\(item\)/u);
+  assert.match(importer, /contentType: "image\/webp"/u);
+  assert.match(importer, /posterKey: getPosterStorageKey\(storageKey\)/u);
 });
 
 test("the landing preview preserves the supplied source and permits muted autoplay audio", () => {
@@ -41,6 +45,7 @@ test("the landing preview preserves the supplied source and permits muted autopl
   assert.match(importer, /["']preview["']/u);
   assert.match(library, /explore\/landing-preview\/2026-08-29/u);
   assert.match(library, /getExplorePreviewVideo/u);
+  assert.match(library, /posterUrl/u);
 });
 
 test("the application catalog is a separate direct-video library", () => {
@@ -71,6 +76,7 @@ test("the Wall-of-Text catalog exposes all supplied references from its own immu
   );
   assert.match(wallTextLibrary, /getExploreWallTextVideos/u);
   assert.match(wallTextLibrary, /isExploreWallTextVideoId/u);
+  assert.match(wallTextLibrary, /posterUrl/u);
   assert.doesNotMatch(wallTextLibrary, /from ["'][^"']*trending/i);
   assert.doesNotMatch(wallTextLibrary, /from ["'][^"']*viral/i);
 });

@@ -3,7 +3,7 @@ import {
   listMediaAssets,
   serializeMediaAsset,
 } from "@/lib/media/media-storage";
-import { isMediaAssetVisibleInCreativeLibrary } from "@/lib/media/media-library-visibility";
+import { isMediaAssetVisibleInMediaList } from "@/lib/media/media-library-visibility";
 import {
   isMediaCollection,
   isMediaSourceType,
@@ -21,6 +21,7 @@ export async function GET(request: Request) {
     const collection = isMediaCollection(rawCollection) ? rawCollection : null;
     const rawSourceTypes = searchParams.get("sourceTypes");
     const sourceTypes = parseSourceTypes(rawSourceTypes);
+    const purpose = searchParams.get("purpose");
 
     if (rawCollection && !collection) {
       return Response.json(
@@ -47,10 +48,11 @@ export async function GET(request: Request) {
         ok: true,
         assets: rows
           .filter((row) =>
-            isMediaAssetVisibleInCreativeLibrary({
+            isMediaAssetVisibleInMediaList({
               metadata: row.metadata,
               sourceType: row.source_type,
-            }),
+              status: row.status,
+            }, purpose),
           )
           .map(serializeMediaAsset),
       },

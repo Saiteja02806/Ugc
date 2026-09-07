@@ -8,7 +8,6 @@ import type { WebsiteBusinessAnalysis } from "@/lib/website-analysis/schema";
 
 import {
   CREATE_CONTENT_TEXT_MAX_CHARACTERS,
-  normalizeCreateContentText,
   type CreateContentTextFormat,
 } from "./card-contract";
 import {
@@ -17,16 +16,15 @@ import {
 } from "./hook-format-library";
 import {
   CREATE_CONTENT_MAX_OPTION_COUNT,
-  getCreateContentWallReadingGuide,
   resolveCreateContentOptionCount,
 } from "./generation-contract";
+import { normalizeAndValidateGeneratedCreateContentText } from "./generation-validation";
 
 const DEFAULT_MODEL = "gpt-5-mini";
 
 export {
   CREATE_CONTENT_DEFAULT_OPTION_COUNT,
   CREATE_CONTENT_MAX_OPTION_COUNT,
-  getCreateContentWallReadingGuide,
   resolveCreateContentOptionCount,
 } from "./generation-contract";
 
@@ -59,7 +57,6 @@ export async function generateCreateContentCopy(params: {
   format: CreateContentTextFormat;
   request: string;
   requestedCount?: number;
-  selectedVideoDurationSeconds: number;
 }): Promise<CreateContentGeneratedOption[]> {
   const request = params.request.trim();
   if (!request) {
@@ -91,7 +88,6 @@ export async function generateCreateContentCopy(params: {
           hookFormats,
           request,
           requestedCount: optionCount,
-          selectedVideoDurationSeconds: params.selectedVideoDurationSeconds,
         }),
       },
     ],
@@ -107,17 +103,15 @@ export async function generateCreateContentCopy(params: {
   }
 
   return parsed.options.map((option, index) => {
-    const text = normalizeCreateContentText(option.text);
-    if (!text) {
-      throw new Error("The AI returned an empty option. Please try again.");
-    }
-
     return {
       format: params.format,
       ...(params.format === "hook_text"
         ? { formatId: hookFormats[index]!.id }
         : {}),
-      text,
+      text: normalizeAndValidateGeneratedCreateContentText({
+        format: params.format,
+        text: option.text,
+      }),
     };
   });
 }
@@ -128,7 +122,6 @@ function buildCreateContentPrompt(params: {
   hookFormats: readonly CreateContentHookFormat[];
   request: string;
   requestedCount: number;
-  selectedVideoDurationSeconds: number;
 }) {
   const shared = [
     "ROLE",
@@ -153,17 +146,13 @@ function buildCreateContentPrompt(params: {
   ];
 
   if (params.format === "wall_text") {
-    const guide = getCreateContentWallReadingGuide(
-      params.selectedVideoDurationSeconds,
-    );
     return [
       ...shared,
       "",
       "WALL-OF-TEXT FORMAT",
       "- This will appear on a 9:16 source video in a centered text box.",
-      `- The selected source video is ${Math.max(0, Math.round(params.selectedVideoDurationSeconds))} seconds. Aim for about ${guide.targetWords} words when natural.`,
-      `- ${guide.wording}`,
-      "- Use 3 to 7 purposeful lines. Keep each line naturally readable.",
+      "- Use 5 to 8 purposeful lines, usually about 25 to 40 words. Keep each line naturally readable.",
+      "- Do not use the source video duration as a copy constraint. The creator controls placement and can edit the copy.",
       "- Return the visible copy only in each option's text field; keep intentional line breaks.",
     ].join("\n");
   }
@@ -174,6 +163,7 @@ function buildCreateContentPrompt(params: {
     "HOOK FORMAT CONTRACT",
     "Write each option using its assigned format. The listed formats are structures, not claims; use only facts supported by the Business Profile.",
     "Do not use video duration, text position, or canvas size as a constraint. The creator places Hook text manually.",
+    "Each Hook must contain 2 to 12 words, 8 to 78 characters, and fit within 3 readable lines. Keep it short enough for the fixed Trending Hook treatment.",
     "",
     ...params.hookFormats.map(
       (format, index) =>

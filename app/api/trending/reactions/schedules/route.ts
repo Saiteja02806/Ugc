@@ -6,11 +6,15 @@ import {
 } from "@/lib/firebase/server-auth";
 import {
   createUserSchedule,
+  scheduleRenderedPost,
+  updateUserSchedule,
   SchedulingRequestError,
 } from "@/lib/scheduling/service";
 import { recordTrendingCreativeDecision } from "@/lib/trending/creative-decisions";
 import { getSelectedReadyReactionCreative } from "@/lib/trending/reaction-feed";
 import { ReactionScheduleRequestSchema } from "@/lib/trending/reaction-scheduling-contract";
+import { scheduleReactionWithDependencies } from "@/lib/trending/reaction-scheduling-flow";
+import type { ScheduleCreateInput } from "@/lib/scheduling/types";
 import { markDailyTrendingSlotDecided } from "@/lib/trending/unified-daily-feed-db";
 
 export const runtime = "nodejs";
@@ -66,28 +70,35 @@ export async function POST(request: Request) {
       userId,
     });
 
-    const result = await createUserSchedule({
-      input: {
-        caption: parsed.data.caption ?? "",
-        idempotencyKey: `reaction-trending-schedule:${creative.assignmentId}`,
-        metadata: {
-          mediaMode: "single_video",
-          reactionAssignmentId: creative.assignmentId,
-          reactionCreativeId: creative.creativeId,
-        },
-        plannedTargets: parsed.data.targets,
-        scheduledDate: parsed.data.scheduledDate,
-        scheduledTime: parsed.data.scheduledTime,
-        source: { id: creative.mediaAssetId, kind: "media_asset" },
-        targets: [],
-        timezone: parsed.data.timezone,
-        title: creative.title,
-        useDefaultScheduleTime: parsed.data.useDefaultScheduleTime,
+    const input: ScheduleCreateInput = {
+      caption: parsed.data.caption ?? "",
+      idempotencyKey: `reaction-trending-schedule:${creative.assignmentId}`,
+      metadata: {
+        mediaMode: "single_video",
+        reactionAssignmentId: creative.assignmentId,
+        reactionCreativeId: creative.creativeId,
+        scheduledVideoId: creative.mediaAssetId,
+        scheduledVideoSourceType: "reaction_render",
       },
+      plannedTargets: parsed.data.targets,
+      scheduledDate: parsed.data.scheduledDate,
+      scheduledTime: parsed.data.scheduledTime,
+      source: { id: creative.mediaAssetId, kind: "media_asset" },
+      targets: [],
+      timezone: parsed.data.timezone,
+      title: creative.title,
+      useDefaultScheduleTime: parsed.data.useDefaultScheduleTime,
+    };
+    const result = await scheduleReactionWithDependencies({
+      connectionIds: parsed.data.targets.map((target) => target.connectionId),
+      input,
       userId,
+    }, {
+      create: createUserSchedule,
+      publish: scheduleRenderedPost,
+      update: updateUserSchedule,
     });
-
-    return json({ created: result.created, ok: true, schedule: result.schedule });
+    return json({ ...result, ok: true });
   } catch (error) {
     if (error instanceof SchedulingRequestError) {
       return json({ code: error.code, message: error.message, ok: false }, error.status);

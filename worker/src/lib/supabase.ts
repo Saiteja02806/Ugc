@@ -25,7 +25,10 @@ import type {
 import type { CarouselBusinessVisualProfileId } from "./carousel-business-visual-profile.js";
 import type { CarouselStructureId } from "./carousel-structure.js";
 import type { CarouselSlideImagePlan } from "./carousel-image-library-relevance.js";
-import type { RenderWallTextVideoPayload } from "./render-engine.js";
+import type {
+  RenderCreateContentVideoPayload,
+  RenderWallTextVideoPayload,
+} from "./render-engine.js";
 import {
   getBroadAssetSourceCategorySlugsForProfile,
   isBroadAssetSourceAllowedForProfile,
@@ -58,6 +61,7 @@ const SOCIAL_CONNECTIONS_TABLE = "social_connections";
 const SOCIAL_PUBLISH_OPERATIONS_TABLE = "social_publish_operations";
 const TRENDING_CREATIVE_EDITS_TABLE = "trending_creative_edits";
 const USER_WALL_TEXT_ASSIGNMENTS_TABLE = "user_wall_text_assignments";
+const CREATE_CONTENT_RENDERS_TABLE = "create_content_renders";
 const REACTION_CLIP_ASSETS_TABLE = "reaction_clip_assets";
 const REACTION_BACKGROUND_ASSETS_TABLE = "reaction_background_assets";
 const REACTION_CLIP_PRESENTATIONS_TABLE = "reaction_clip_presentations";
@@ -1460,6 +1464,118 @@ export class SupabaseJobStore {
       renderId: params.renderId,
       userId: params.userId,
     });
+  }
+
+  async markCreateContentRenderStarted(params: {
+    jobId: string;
+    renderId: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client
+      .from(CREATE_CONTENT_RENDERS_TABLE)
+      .update({
+        error_message: null,
+        status: "rendering",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", params.renderId)
+      .eq("user_id", params.userId)
+      .eq("render_job_id", params.jobId)
+      .in("status", ["queued", "rendering"])
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Could not mark Create Content render started: ${error.message}`);
+    }
+
+    if (!data) {
+      throw new Error("Create Content render request is stale.");
+    }
+  }
+
+  async markCreateContentRenderCompleted(params: {
+    cardRevision: number;
+    jobId: string;
+    key: string;
+    mediaAssetId: string;
+    payload: RenderCreateContentVideoPayload;
+    url: string;
+  }) {
+    const now = new Date().toISOString();
+
+    await this.saveMediaAsset({
+      collection: "video",
+      duration_seconds: null,
+      file_name: null,
+      file_size_bytes: null,
+      height: 1920,
+      id: params.mediaAssetId,
+      metadata: {
+        cardRevision: params.cardRevision,
+        createContentRenderId: params.payload.renderId,
+        createContentTextFormat: params.payload.overlay.format,
+        sourceMediaAssetId: params.payload.sourceVideoId,
+      },
+      mime_type: "video/mp4",
+      parent_asset_id: params.payload.sourceVideoId,
+      project_id: params.payload.projectId,
+      ratio: "9:16",
+      source_record_id: params.payload.renderId,
+      source_type: "wall_text_render",
+      status: "ready",
+      storage_key: params.key,
+      thumbnail_url: null,
+      title: `${params.payload.title} · Create Content`.slice(0, 140),
+      updated_at: now,
+      url: params.url,
+      user_id: params.payload.userId,
+      width: 1080,
+    });
+
+    const { data, error } = await this.client
+      .from(CREATE_CONTENT_RENDERS_TABLE)
+      .update({
+        error_message: null,
+        rendered_media_asset_id: params.mediaAssetId,
+        status: "ready",
+        updated_at: now,
+      })
+      .eq("id", params.payload.renderId)
+      .eq("user_id", params.payload.userId)
+      .eq("render_job_id", params.jobId)
+      .in("status", ["queued", "rendering"])
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Could not complete Create Content render: ${error.message}`);
+    }
+
+    if (!data) {
+      throw new Error("Create Content render changed before completion.");
+    }
+  }
+
+  async markCreateContentRenderFailed(params: {
+    errorMessage: string;
+    renderId: string;
+    userId: string;
+  }) {
+    const { error } = await this.client
+      .from(CREATE_CONTENT_RENDERS_TABLE)
+      .update({
+        error_message: params.errorMessage.slice(0, 1000),
+        status: "failed",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", params.renderId)
+      .eq("user_id", params.userId)
+      .in("status", ["queued", "rendering"]);
+
+    if (error) {
+      throw new Error(`Could not fail Create Content render: ${error.message}`);
+    }
   }
 
   async markWallTextScheduleFinalizationFailed(params: {
@@ -3263,6 +3379,7 @@ export class SupabaseJobStore {
     key: string;
     mediaAssetId: string;
     projectId: string;
+    sourceRecordId?: string;
     title: string;
     url: string;
     userId: string;
@@ -3282,7 +3399,7 @@ export class SupabaseJobStore {
       parent_asset_id: null,
       project_id: params.projectId,
       ratio: "9:16",
-      source_record_id: params.creativeId,
+      source_record_id: params.sourceRecordId ?? params.creativeId,
       source_type: "reaction_render",
       status: "ready",
       storage_key: params.key,
@@ -3293,6 +3410,34 @@ export class SupabaseJobStore {
       user_id: params.userId,
       width: 1080,
     });
+  }
+
+  async getReactionTextEditForJob(params: { creativeId: string; jobId: string; userId: string }) {
+    const client = this.client;
+    const { data, error } = await client.from(REACTION_CREATIVES_TABLE).select("*")
+      .eq("id", params.creativeId).eq("user_id", params.userId).eq("render_job_id", params.jobId).maybeSingle();
+    if (error) throw new Error(`Could not load Reaction text edit: ${error.message}`);
+    return data;
+  }
+
+  async completeReactionTextEdit(params: {
+    creativeId: string; jobId: string; userId: string; caption: string;
+    content: Json; renderPlan: Json; mediaAssetId: string; url: string;
+  }) {
+    const client = this.client;
+    const { error } = await client.from(REACTION_CREATIVES_TABLE).update({
+      caption: params.caption, content_json: params.content, render_plan_json: params.renderPlan,
+      rendered_media_asset_id: params.mediaAssetId, preview_url: params.url, thumbnail_url: null,
+      render_error: null,
+    }).eq("id", params.creativeId).eq("user_id", params.userId).eq("render_job_id", params.jobId);
+    if (error) throw new Error(`Could not save Reaction text render: ${error.message}`);
+  }
+
+  async failReactionTextEdit(params: { creativeId: string; jobId: string; userId: string; content: Json }) {
+    const client = this.client;
+    const { error } = await client.from(REACTION_CREATIVES_TABLE).update({ content_json: params.content })
+      .eq("id", params.creativeId).eq("user_id", params.userId).eq("render_job_id", params.jobId);
+    if (error) throw new Error(`Could not record Reaction text render failure: ${error.message}`);
   }
 
   async completeReactionGenerationItemRender(params: {

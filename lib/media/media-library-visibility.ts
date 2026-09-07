@@ -5,6 +5,14 @@ type MediaLibraryVisibilityCandidate = {
   sourceType: MediaSourceType;
 };
 
+export function isMediaAssetVisibleInMediaList(
+  asset: MediaLibraryVisibilityCandidate & { status: string },
+  purpose: string | null,
+) {
+  return (purpose === "scheduling" && asset.sourceType === "reaction_render" && asset.status === "ready") ||
+    isMediaAssetVisibleInCreativeLibrary(asset);
+}
+
 export function isMediaAssetVisibleInCreativeLibrary(
   asset: MediaLibraryVisibilityCandidate,
 ) {

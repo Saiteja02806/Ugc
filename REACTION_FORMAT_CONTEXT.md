@@ -195,6 +195,51 @@ it does not introduce a second feed or a second scheduler.
 AI brief validation, batch matching, and render-plan rules. These rules must
 not be folded into Wall-of-text or Hook-video validation.
 
+## Text-only editing and scheduling repair — 7 September
+
+Reaction cards expose the normal Trending Edit action through a dedicated
+text-only dialog. Users can change 5–20 words across up to three lines; clip,
+background, placement, and visual treatment remain server-owned. The existing
+Carousel, Hook, and Wall-of-text editors keep their behavior.
+
+The pending text revision is stored in `reaction_creatives.content_json.userTextEdit`
+and linked to a durable `final_render` background job. Saving uses the creative's
+`updated_at` to reject stale tabs. Each candidate save owns a separate job, so a
+losing concurrent save cannot fail the winning save's render. The worker loads
+the saved sources and layout, renders the edited text, and creates an immutable
+`reaction_render` media asset identified by its job. Previously scheduled posts
+retain their original video. The original generation plan remains unchanged.
+
+Trending retains the last ready media reference while the revision prepares,
+shows “Preparing video,” and blocks accepting/scheduling the old preview until
+the new revision is ready. Reloading the page restores this state. Terminal job
+failures become a retryable Edit state, including worker termination or failed
+queue delivery. No browser compositing or source replacement is introduced.
+
+Ready Reaction MP4s schedule directly; they do not need another render simply
+because they were accepted. The scheduling API must persist/recover the draft,
+call `scheduleRenderedPost`, and verify all requested publishing targets before
+returning success. Earlier code returned success with only planned targets,
+leaving an undated draft and no Cloud Task. Resubmission refreshes a legacy
+draft's account, caption, and time before publishing it.
+
+The Scheduling media catalog explicitly includes ready Reaction renders via
+`/api/media?collection=video&purpose=scheduling`. They remain hidden in Creative
+Assets. Their omission from this catalog previously caused “Media required”
+despite the MP4 being ready. Old drafts use their Reaction assignment metadata
+to retain the Reaction Reel source label, and genuinely deleted media still
+requires recovery.
+
+Release requirements: deploy the updated video worker with `final_render` in
+`WORKER_JOB_TYPES`, then deploy the application. This change uses existing
+columns and the existing `final_render` job type; no database migration is
+required. The affected old draft's planned time has passed and needs a newly
+chosen future time; it must not be published automatically at an invented time.
+
+Run `npm run test:reaction` and `npm --prefix worker run test:reaction-edit` for
+the focused regression checks. Final authenticated acceptance must use the
+production domain after release.
+
 ## Phase 5: durable generation and rendering
 
 The durable worker starts from a `reaction_generation` background job. It

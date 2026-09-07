@@ -112,6 +112,50 @@ test("accepts the versioned Arial Bold 500 final layout", async () => {
   });
 });
 
+test("restores V11 lighter Arial Bold from its V4 rollout envelope", async () => {
+  const job = createJob();
+  const input = job.input_json as Record<string, unknown>;
+  const text = input.text as Record<string, unknown>;
+  text.layoutVersion = "wall-text-overlay-v11";
+  text.finalLayout = {
+    blocks: [{
+      lines: [
+        "I logged every meal but",
+        "skipped drinks oil and small",
+        "bites. Those missing details",
+        "quietly changed the final",
+        "total.",
+      ],
+      role: "text",
+    }],
+    fontFamily: "Arial",
+    fontSizePx: 50,
+    fontWeight: 400,
+    lineHeightPx: 55,
+    textBox: (input.layout as { textBox: unknown }).textBox,
+    version: "wall-text-final-layout-v4",
+  };
+
+  await runRenderWallTextVideoJob(job, {
+    dependencies: {
+      async renderWallTextVideoToStorage(payload) {
+        assert.equal(payload.text.finalLayout?.fontFamily, "Arial");
+        assert.equal(payload.text.finalLayout?.fontWeight, 700);
+        assert.equal(payload.text.finalLayout?.version, "wall-text-final-layout-v7");
+        return {
+          assignmentId: ASSIGNMENT_ID,
+          creativeId: CREATIVE_ID,
+          key: "videos/rendered/wall-v11.mp4",
+          ok: true,
+          renderId: RENDER_ID,
+          url: "https://cdn.example.com/wall-v11.mp4",
+        };
+      },
+    },
+    store: successfulStore(),
+  });
+});
+
 test("accepts the current Arial Regular 400 final layout", async () => {
   const job = createJob();
   const input = job.input_json as Record<string, unknown>;

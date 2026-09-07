@@ -46,10 +46,14 @@ const hookDraftRoute = readProjectFile(
 test("places Edit in the page header and keeps circular decisions below the card", () => {
   assert.match(actions, /export function CreativeDecisionActions/);
   assert.match(actions, /variant="creative-reject"/);
-  assert.match(actions, /aria-label="Reject this creative"/);
-  assert.match(actions, /title="Reject"/);
-  assert.match(actions, /aria-label="Accept this creative"/);
-  assert.match(actions, /title="Accept"/);
+  assert.match(actions, /rejectAriaLabel = "Reject this creative"/);
+  assert.match(actions, /aria-label=\{rejectAriaLabel\}/);
+  assert.match(actions, /rejectTitle = "Reject"/);
+  assert.match(actions, /title=\{rejectTitle\}/);
+  assert.match(actions, /acceptAriaLabel = "Accept this creative"/);
+  assert.match(actions, /aria-label=\{acceptAriaLabel\}/);
+  assert.match(actions, /acceptTitle = "Accept"/);
+  assert.match(actions, /title=\{acceptTitle\}/);
   assert.match(actions, /export function CreativeEditAction/);
   assert.match(actions, /variant="creative-edit"/);
   assert.match(actions, />\s*Edit\s*</);
@@ -57,6 +61,16 @@ test("places Edit in the page header and keeps circular decisions below the card
   assert.equal((workspace.match(/<CreativeEditAction/g) ?? []).length, 1);
   assert.match(workspace, /createPortal\([\s\S]*<CreativeEditAction/);
   assert.match(workspace, /ref=\{setHeaderActionsRoot\}/);
+});
+
+test("Reaction Reels expose text-only editing and show preparation instead of accepting an old preview", () => {
+  const editAction = workspace.slice(workspace.indexOf("function handleEditActiveCandidate()"), workspace.indexOf("function handlePointerDown("));
+  assert.doesNotMatch(editAction, /format === "reaction"/);
+  assert.match(workspace, /activeCandidate && headerActionsRoot/);
+  assert.match(workspace, /editorCandidate\?\.format === "reaction"[\s\S]*<ReactionTextEditor/);
+  assert.match(workspace, /import\("@\/components\/trending\/reaction-text-editor"\)/);
+  assert.match(workspace, /creative\.textEditState === "preparing" \? "Preparing video"/);
+  assert.match(workspace, /activeCandidate\.item\.creative\.textEditState !== "ready"[\s\S]*return false/);
 });
 
 test("uses two accessible circular decision targets and a compact Edit pill", () => {

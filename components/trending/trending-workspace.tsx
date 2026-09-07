@@ -67,6 +67,8 @@ import {
 } from "@/lib/scheduling/carousel-scheduling-client";
 import { createWallTextScheduleRequest } from "@/lib/trending/wall-text-scheduling-contract";
 import { createReactionScheduleRequest } from "@/lib/trending/reaction-scheduling-contract";
+import { fetchReactionTextEdit } from "@/lib/trending/reaction-edit-client";
+import type { ReactionTextEditRecord } from "@/lib/trending/reaction-edit-contract";
 import {
   getTrendingDecisionOutboxKey,
   parseTrendingDecisionOutbox,
@@ -110,6 +112,11 @@ const TrendingCreativeEditor = dynamic(
       (module) => module.TrendingCreativeEditor,
     ),
   { loading: TrendingCreativeEditorLoading },
+);
+
+const ReactionTextEditor = dynamic(
+  () => import("@/components/trending/reaction-text-editor").then((module) => module.ReactionTextEditor),
+  { ssr: false },
 );
 
 const TrendingContentMixDialog = dynamic(
@@ -1889,6 +1896,7 @@ function TrendingDeck({
     useState<CompleteReaction | null>(null);
   const [editorCandidate, setEditorCandidate] =
     useState<TrendingCandidate | null>(null);
+  const [reactionEdits, setReactionEdits] = useState<Record<string, ReactionTextEditRecord>>({});
   const [editByCreativeId, setEditByCreativeId] = useState<
     Record<string, TrendingCreativeEditRecord>
   >({});
@@ -1910,14 +1918,24 @@ function TrendingDeck({
   const [exitDirection, setExitDirection] = useState<"left" | "right" | null>(
     null,
   );
-  const visibleCandidates = useMemo(
+  const visibleCandidates = useMemo<TrendingCandidate[]>(
     () =>
       excludeDismissedTrendingFeedItems(
         candidates,
         optimisticallyDismissedItemIds,
         (candidate) => candidate.item.id,
-      ),
-    [candidates, optimisticallyDismissedItemIds],
+      ).map((candidate) => {
+        const edit = reactionEdits[candidate.item.creativeId];
+        if (candidate.format !== "reaction" || !edit) return candidate;
+        return { ...candidate, item: { ...candidate.item, creative: {
+          ...candidate.item.creative,
+          caption: edit.state === "ready" ? edit.text : candidate.item.creative.caption,
+          mediaAssetId: edit.mediaAssetId,
+          previewUrl: edit.previewUrl,
+          textEditState: edit.state,
+        } } };
+      }),
+    [candidates, optimisticallyDismissedItemIds, reactionEdits],
   );
   const deckProgressLabel = getTrendingDeckProgressLabel({
     readyCount: visibleCandidates.length,
@@ -1929,6 +1947,28 @@ function TrendingDeck({
     (candidate) => candidate.item.id,
   );
   const activeCandidate = visibleCandidates[activeItemIndex] ?? null;
+  const activeReactionCreativeId = activeCandidate?.format === "reaction" ? activeCandidate.item.creativeId : null;
+  const activeReactionAssignmentId = activeCandidate?.format === "reaction" ? activeCandidate.item.assignmentId : null;
+  const activeReactionState = activeCandidate?.format === "reaction" ? activeCandidate.item.creative.textEditState : undefined;
+
+  useEffect(() => {
+    if (!activeReactionCreativeId || !activeReactionAssignmentId || editorCandidate?.format === "reaction") return;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    const item = { creativeId: activeReactionCreativeId, assignmentId: activeReactionAssignmentId };
+    async function refresh() {
+      try {
+        const edit = await fetchReactionTextEdit(item, undefined, controller.signal);
+        if (controller.signal.aborted) return;
+        setReactionEdits((current) => ({ ...current, [edit.creativeId]: edit }));
+        if (edit.state === "preparing") timer = setTimeout(refresh, 2500);
+      } catch {
+        if (!controller.signal.aborted) timer = setTimeout(refresh, 5000);
+      }
+    }
+    void refresh();
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, [activeReactionCreativeId, activeReactionAssignmentId, activeReactionState, editorCandidate?.format]);
 
   const activeHookPreviewStatus =
     activeCandidate?.format === "hook_video"
@@ -2200,6 +2240,14 @@ function TrendingDeck({
 
     const activeEdit = editByCreativeId[activeCandidate.item.creativeId];
 
+    if (decision === "accepted" && activeCandidate.format === "reaction" &&
+        activeCandidate.item.creative.textEditState && activeCandidate.item.creative.textEditState !== "ready") {
+      showActionNotice({ message: activeCandidate.item.creative.textEditState === "failed"
+        ? "Video preparation failed. Open Edit and save again to retry."
+        : "Preparing video. Your edited Reaction Reel will be ready shortly." });
+      return false;
+    }
+
     if (
       decision === "accepted" &&
       activeCandidate.format === "carousel" &&
@@ -2347,7 +2395,6 @@ function TrendingDeck({
   function handleEditActiveCandidate() {
     if (
       !activeCandidate ||
-      activeCandidate.format === "reaction" ||
       decisionLockRef.current ||
       exitDirection
     ) {
@@ -2596,7 +2643,7 @@ function TrendingDeck({
       aria-label="Trending content"
       className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-x-clip overflow-y-visible pb-[107px] pt-[94px]"
     >
-      {activeCandidate && activeCandidate.format !== "reaction" && headerActionsRoot
+      {activeCandidate && headerActionsRoot
         ? createPortal(
             <CreativeEditAction
               disabled={Boolean(exitDirection)}
@@ -2761,7 +2808,13 @@ function TrendingDeck({
           }
         />
       ) : null}
-      {editorCandidate ? (
+      {editorCandidate?.format === "reaction" ? (
+        <ReactionTextEditor
+          item={editorCandidate.item}
+          onClose={() => setEditorCandidate(null)}
+          onUpdated={(edit) => setReactionEdits((current) => ({ ...current, [edit.creativeId]: edit }))}
+        />
+      ) : editorCandidate ? (
         <TrendingCreativeEditor
           item={editorCandidate.item}
           onClose={() => setEditorCandidate(null)}
@@ -3975,6 +4028,11 @@ function TrendingReactionDeckCard({
             aria-hidden="true"
             className="pointer-events-none size-full object-cover"
           />
+          {creative.textEditState === "preparing" || creative.textEditState === "failed" ? (
+            <div role="status" className="absolute inset-0 flex items-center justify-center bg-black/85 p-6 text-center text-sm text-white">
+              {creative.textEditState === "preparing" ? "Preparing video" : "Video preparation failed. Open Edit to retry."}
+            </div>
+          ) : null}
         </div>
       </article>
     </div>

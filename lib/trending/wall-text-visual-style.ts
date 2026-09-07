@@ -14,14 +14,16 @@ export const WALL_TEXT_LINE_HEIGHT_FACTOR = 1.1;
 export const WALL_TEXT_FIXED_FONT_SIZE = 50;
 export const WALL_TEXT_MAXIMUM_FONT_SIZE = 52;
 export const WALL_TEXT_MINIMUM_FONT_SIZE = 44;
-// The reference Wall treatment needs a clear border over bright video areas.
-// At the 1080px render size, 4px remains readable at 44px type without
-// closing the counters inside letters such as a, e, and o.
-export const WALL_TEXT_OUTLINE_WIDTH = 4;
+// V7 keeps the supplied Arial Bold face but lightens its edge treatment for
+// bright footage. V6 stays at 4px so already-rendered cards do not change.
+export const WALL_TEXT_OUTLINE_WIDTH = 3;
+export const WALL_TEXT_PREVIOUS_ARIAL_BOLD_OUTLINE_WIDTH = 4;
 // The V5 Avenir treatment uses a 2px stroke. The supplied reference uses a
 // stronger outlined Arial treatment, so V6 and prior Arial/Inter layouts use
 // the standard 4px outline.
 export const WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH = 2;
+export const WALL_TEXT_SHADOW_OPACITY = 0.3;
+export const WALL_TEXT_LEGACY_SHADOW_OPACITY = 0.45;
 export const WALL_TEXT_SECTION_GAP = 18;
 // The text box is the outer placement rectangle. Keep a real visual gap
 // inside it so rendered glyphs, outline, and shadow never touch its edges.
@@ -48,9 +50,19 @@ export function getWallTextSafeLineWidth(textBoxWidth: number) {
 }
 
 export function getWallTextOutlineWidth(content: TrendingWallTextContent) {
-  return content.finalLayout?.version === "wall-text-final-layout-v5"
-    ? WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH
-    : WALL_TEXT_OUTLINE_WIDTH;
+  if (content.finalLayout?.version === "wall-text-final-layout-v7") {
+    return WALL_TEXT_OUTLINE_WIDTH;
+  }
+  if (content.finalLayout?.version === "wall-text-final-layout-v5") {
+    return WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH;
+  }
+  return WALL_TEXT_PREVIOUS_ARIAL_BOLD_OUTLINE_WIDTH;
+}
+
+export function getWallTextShadowOpacity(content: TrendingWallTextContent) {
+  return content.finalLayout?.version === "wall-text-final-layout-v7"
+    ? WALL_TEXT_SHADOW_OPACITY
+    : WALL_TEXT_LEGACY_SHADOW_OPACITY;
 }
 
 export function getWallTextFontSize(content: TrendingWallTextContent): WallTextFontSize {
@@ -133,6 +145,7 @@ export function getWallTextEditorTypography(content: TrendingWallTextContent) {
       ...ARIAL_BOLD_TYPOGRAPHY,
       fontSize: WALL_TEXT_FIXED_FONT_SIZE,
       outlineWidth: WALL_TEXT_OUTLINE_WIDTH,
+      shadowOpacity: WALL_TEXT_SHADOW_OPACITY,
     };
   }
 
@@ -140,5 +153,6 @@ export function getWallTextEditorTypography(content: TrendingWallTextContent) {
     ...getWallTextTypography(content),
     fontSize: getWallTextFontSize(content),
     outlineWidth: getWallTextOutlineWidth(content),
+    shadowOpacity: getWallTextShadowOpacity(content),
   };
 }

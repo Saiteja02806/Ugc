@@ -6,8 +6,10 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import sharp from "sharp";
 
+// Kept at its original path so existing package scripts continue to work.
+// Its assertions track the current V11 contract.
 const rootDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const outputDirectory = path.join(rootDirectory, ".tmp", "wall-text-v10-simulation");
+const outputDirectory = path.join(rootDirectory, ".tmp", "wall-text-v11-simulation");
 const loaderUrl = pathToFileURL(
   path.join(rootDirectory, "scripts", "next-server-only-test-loader.mjs"),
 ).href;
@@ -72,12 +74,16 @@ for (const sample of samples) {
   assert.equal(content.finalLayout.fontFamily, "Arial");
   assert.equal(content.finalLayout.fontWeight, 700);
   assert.equal(content.finalLayout.fontSizePx, 50);
+  assert.equal(content.layoutVersion, "wall-text-overlay-v11");
+  assert.equal(content.finalLayout.version, "wall-text-final-layout-v7");
 
   const svg = buildWallTextOverlaySvg({
     content,
     placement: content.layout?.placement ?? "middle",
     textBox: content.finalLayout.textBox,
   });
+  assert.match(svg, /stroke-width="3"/);
+  assert.match(svg, /flood-opacity="0\.3"/);
   const raster = await sharp(Buffer.from(svg))
     .ensureAlpha()
     .raw()
@@ -101,7 +107,7 @@ for (const sample of samples) {
   const rightPadding = innerRight - bounds.right;
   assert.ok(leftPadding > 0, `${sample.name} reaches the protected left fence.`);
   assert.ok(rightPadding > 0, `${sample.name} reaches the protected right fence.`);
-  assert.ok(render.maximumLineWidth + 8 < 750);
+  assert.ok(render.maximumLineWidth + 6 < 750);
 
   const imagePath = path.join(outputDirectory, `${sample.name}.png`);
   await sharp({
@@ -116,12 +122,26 @@ for (const sample of samples) {
     .png()
     .toFile(imagePath);
 
+  const brightImagePath = path.join(outputDirectory, `${sample.name}-bright.png`);
+  await sharp({
+    create: {
+      background: { alpha: 1, b: 169, g: 196, r: 226 },
+      channels: 4,
+      height: 1920,
+      width: 1080,
+    },
+  })
+    .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
+    .png()
+    .toFile(brightImagePath);
+
   report.push({
     font: {
       family: content.finalLayout.fontFamily,
       sizePx: content.finalLayout.fontSizePx,
       weight: content.finalLayout.fontWeight,
     },
+    brightImagePath,
     imagePath,
     leftPadding,
     lineCount: lines.length,

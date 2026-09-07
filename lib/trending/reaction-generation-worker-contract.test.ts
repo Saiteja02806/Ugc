@@ -36,7 +36,7 @@ test("routes Reaction generation to a deployed video-render worker", () => {
   );
   assert.match(
     videoRenderWorkerVariables,
-    /default\s*=\s*"render_edit_video,render_schedule_combination,render_wall_text_video,reaction_generation"/,
+    /variable "worker_job_types"[\s\S]*?default\s*=\s*"[^"]*\breaction_generation\b[^"]*"/,
   );
 });
 

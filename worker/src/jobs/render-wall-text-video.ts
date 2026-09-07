@@ -482,14 +482,17 @@ function getFinalLayout(value: Json, contentLayoutVersion: Json | undefined) {
   const isAvenirNextDemiBoldRolloutEnvelope =
     contentLayoutVersion === "wall-text-overlay-v9" &&
     layout.version === "wall-text-final-layout-v4";
-  const isArialBoldRolloutEnvelope =
+  const isArialBoldV11RolloutEnvelope =
+    contentLayoutVersion === "wall-text-overlay-v11" &&
+    layout.version === "wall-text-final-layout-v4";
+  const isArialBoldV10RolloutEnvelope =
     contentLayoutVersion === "wall-text-overlay-v10" &&
     layout.version === "wall-text-final-layout-v4";
   if (
-    !["wall-text-final-layout-v1", "wall-text-final-layout-v2", "wall-text-final-layout-v3", "wall-text-final-layout-v4", "wall-text-final-layout-v5", "wall-text-final-layout-v6"].includes(
+    !["wall-text-final-layout-v1", "wall-text-final-layout-v2", "wall-text-final-layout-v3", "wall-text-final-layout-v4", "wall-text-final-layout-v5", "wall-text-final-layout-v6", "wall-text-final-layout-v7"].includes(
       String(layout.version),
     ) ||
-    (layout.version === "wall-text-final-layout-v6"
+    (layout.version === "wall-text-final-layout-v7" || layout.version === "wall-text-final-layout-v6"
       ? layout.fontFamily !== "Arial" || Number(layout.fontWeight) !== WALL_TEXT_ARIAL_BOLD_FONT_WEIGHT
       : layout.version === "wall-text-final-layout-v5"
       ? layout.fontFamily !== "Avenir Next" || Number(layout.fontWeight) !== WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_FONT_WEIGHT
@@ -531,21 +534,22 @@ function getFinalLayout(value: Json, contentLayoutVersion: Json | undefined) {
       role: block.role as "prose" | "text" | "title" | "item",
     };
   });
-  const isV2OrV3OrV4OrV5OrV6 =
+  const isV2OrV3OrV4OrV5OrV6OrV7 =
     layout.version === "wall-text-final-layout-v2" ||
     layout.version === "wall-text-final-layout-v3" ||
     layout.version === "wall-text-final-layout-v4" ||
     layout.version === "wall-text-final-layout-v5" ||
-    layout.version === "wall-text-final-layout-v6";
+    layout.version === "wall-text-final-layout-v6" ||
+    layout.version === "wall-text-final-layout-v7";
   const lineCount = blocks.reduce((total, block) => total + block.lines.length, 0);
   if (
-    isV2OrV3OrV4OrV5OrV6 &&
+    isV2OrV3OrV4OrV5OrV6OrV7 &&
     (blocks.length !== 1 ||
       blocks[0]?.role !== "text" ||
       lineCount < 4 ||
       lineCount > 8)
   ) {
-    throw new Error("text.finalLayout V2/V3/V4/V5/V6 must contain one 4-8 line text block.");
+    throw new Error("text.finalLayout V2/V3/V4/V5/V6/V7 must contain one 4-8 line text block.");
   }
   const fontSizePx = normalizeWallTextFontSize(Number(layout.fontSizePx));
   const textBox = getTextBoxFromRecord(layout.textBox, "text.finalLayout.textBox");
@@ -561,7 +565,18 @@ function getFinalLayout(value: Json, contentLayoutVersion: Json | undefined) {
       version: "wall-text-final-layout-v4" as const,
     };
   }
-  if (isArialBoldRolloutEnvelope || layout.version === "wall-text-final-layout-v6") {
+  if (isArialBoldV11RolloutEnvelope || layout.version === "wall-text-final-layout-v7") {
+    return {
+      blocks,
+      fontFamily: "Arial" as const,
+      fontSizePx,
+      fontWeight: WALL_TEXT_ARIAL_BOLD_FONT_WEIGHT as 700,
+      lineHeightPx,
+      textBox,
+      version: "wall-text-final-layout-v7" as const,
+    };
+  }
+  if (isArialBoldV10RolloutEnvelope || layout.version === "wall-text-final-layout-v6") {
     return {
       blocks,
       fontFamily: "Arial" as const,

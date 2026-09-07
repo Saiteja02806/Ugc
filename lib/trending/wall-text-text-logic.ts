@@ -1,6 +1,6 @@
 import {
+  ANCIENT_WALL_TEXT_CONTENT_LAYOUT_VERSION,
   LEGACY_WALL_TEXT_PATTERNS,
-  OLDEST_WALL_TEXT_CONTENT_LAYOUT_VERSION,
   WALL_TEXT_PATTERNS,
   WALL_TEXT_SEGMENT_ROLES,
   type TrendingWallTextContent,
@@ -20,7 +20,7 @@ export const WALL_TEXT_PREFERRED_MIN_WORDS = 18;
 export const WALL_TEXT_PREFERRED_MAX_WORDS = 21;
 export const MAX_WALL_TEXT_WORDS = 24;
 export const MAX_CURRENT_WALL_TEXT_WORDS = 50;
-// V10 is the current generation and reflow contract. Keep the broader 15–50
+// V11 is the current generation and reflow contract. Keep the broader 15–50
 // range above only for historical cards while they are read.
 export const MIN_CURRENT_GENERATION_WALL_TEXT_WORDS =
   WALL_TEXT_GENERATION_WORD_RANGE.minimum;
@@ -359,17 +359,20 @@ export function validateWallTextContent(
     content.layoutVersion === "wall-text-overlay-v7" ||
     content.layoutVersion === "wall-text-overlay-v8" ||
     content.layoutVersion === "wall-text-overlay-v9" ||
-    content.layoutVersion === "wall-text-overlay-v10"
+    content.layoutVersion === "wall-text-overlay-v10" ||
+    content.layoutVersion === "wall-text-overlay-v11"
   ) {
     const blocks = content.finalLayout?.blocks;
     const lines = blocks?.flatMap((block) => block.lines) ?? [];
     const authoritativeText = lines.join(" ");
 
     const minimumWords =
+      content.layoutVersion === "wall-text-overlay-v11" ||
       content.layoutVersion === "wall-text-overlay-v10"
         ? MIN_CURRENT_GENERATION_WALL_TEXT_WORDS
         : MIN_SHORT_WALL_TEXT_WORDS;
     const maximumWords =
+      content.layoutVersion === "wall-text-overlay-v11" ||
       content.layoutVersion === "wall-text-overlay-v10"
         ? MAX_CURRENT_GENERATION_WALL_TEXT_WORDS
         : MAX_CURRENT_WALL_TEXT_WORDS;
@@ -382,7 +385,9 @@ export function validateWallTextContent(
     if (
       content.sourceContent?.kind !== "text" ||
       content.finalLayout?.version !==
-        (content.layoutVersion === "wall-text-overlay-v10"
+        (content.layoutVersion === "wall-text-overlay-v11"
+          ? "wall-text-final-layout-v7"
+          : content.layoutVersion === "wall-text-overlay-v10"
           ? "wall-text-final-layout-v6"
           : content.layoutVersion === "wall-text-overlay-v9"
           ? "wall-text-final-layout-v5"
@@ -564,7 +569,7 @@ function toWallTextContent(
   return {
     fullText,
     kind: "wall_text",
-    layoutVersion: OLDEST_WALL_TEXT_CONTENT_LAYOUT_VERSION,
+    layoutVersion: ANCIENT_WALL_TEXT_CONTENT_LAYOUT_VERSION,
     pattern: normalizePattern(idea.pattern),
     segments,
   };

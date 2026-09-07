@@ -1,6 +1,9 @@
 import "server-only";
 
-import type { ExploreHookVideo } from "@/lib/explore/hook-video-types";
+import {
+  getExploreVideoPosterStorageKey,
+  type ExploreHookVideo,
+} from "@/lib/explore/hook-video-types";
 import { buildPublicStorageUrl } from "@/lib/storage/storage";
 
 export type { ExploreHookVideo } from "@/lib/explore/hook-video-types";
@@ -118,17 +121,11 @@ const EXPLORE_HOOK_VIDEO_ASSETS: ReadonlyArray<ExploreHookVideoAsset> = [
 ];
 
 export function getExploreHookVideos(): Array<ExploreHookVideo> {
-  return EXPLORE_HOOK_VIDEO_ASSETS.map((asset) => ({
-    id: asset.id,
-    videoUrl: buildPublicStorageUrl(asset.storageKey),
-  }));
+  return EXPLORE_HOOK_VIDEO_ASSETS.map(toExploreHookVideo);
 }
 
 export function getExplorePreviewVideo(): ExploreHookVideo {
-  return {
-    id: EXPLORE_PREVIEW_VIDEO_ASSET.id,
-    videoUrl: buildPublicStorageUrl(EXPLORE_PREVIEW_VIDEO_ASSET.storageKey),
-  };
+  return toExploreHookVideo(EXPLORE_PREVIEW_VIDEO_ASSET);
 }
 
 // Used by the server-side video-generation boundary to recognize an Explore
@@ -146,4 +143,14 @@ export function isExploreHookVideoId(value: unknown): value is string {
 
 export function getExploreHookVideoAssetsForImport() {
   return EXPLORE_HOOK_VIDEO_ASSETS;
+}
+
+function toExploreHookVideo(asset: ExploreHookVideoAsset | ExplorePreviewVideoAsset) {
+  return {
+    id: asset.id,
+    posterUrl: buildPublicStorageUrl(
+      getExploreVideoPosterStorageKey(asset.storageKey),
+    ),
+    videoUrl: buildPublicStorageUrl(asset.storageKey),
+  };
 }

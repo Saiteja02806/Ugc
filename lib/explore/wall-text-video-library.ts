@@ -1,6 +1,9 @@
 import "server-only";
 
-import type { ExploreWallTextVideo } from "@/lib/explore/hook-video-types";
+import {
+  getExploreVideoPosterStorageKey,
+  type ExploreWallTextVideo,
+} from "@/lib/explore/hook-video-types";
 import { buildPublicStorageUrl } from "@/lib/storage/storage";
 
 export type { ExploreWallTextVideo } from "@/lib/explore/hook-video-types";
@@ -84,6 +87,9 @@ const EXPLORE_WALL_TEXT_VIDEO_ASSETS: ReadonlyArray<ExploreWallTextVideoAsset> =
 export function getExploreWallTextVideos(): ExploreWallTextVideo[] {
   return EXPLORE_WALL_TEXT_VIDEO_ASSETS.map((asset) => ({
     id: asset.id,
+    posterUrl: buildPublicStorageUrl(
+      getExploreVideoPosterStorageKey(asset.storageKey),
+    ),
     videoUrl: buildPublicStorageUrl(asset.storageKey),
   }));
 }

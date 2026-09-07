@@ -199,6 +199,51 @@ export type RenderWallTextVideoOutput = {
   url: string;
 };
 
+/**
+ * Create Content renders a single user-owned clip. Unlike Trending Wall text,
+ * it never supplies a replacement music track: `0:a?` is retained from the
+ * selected source video all the way through the final MP4.
+ */
+export type RenderCreateContentVideoPayload = {
+  overlay:
+    | {
+        format: "hook_text";
+        hook: {
+          fontSize: number;
+          layoutVersion: HookTextLayoutVersion;
+          lines: string[];
+        };
+        position: NormalizedTextPosition;
+        text: string;
+      }
+    | {
+        format: "wall_text";
+        position: NormalizedTextPosition;
+        text: string;
+        wall: {
+          content: WallTextRenderContent;
+          layout: {
+            safeArea: WallTextSafeArea;
+            textBox: WallTextNormalizedBox;
+          };
+        };
+      };
+  projectId: string;
+  renderId: string;
+  sourceVideoId: string;
+  sourceVideoUrl: string;
+  title: string;
+  userId: string;
+};
+
+export type RenderCreateContentVideoOutput = {
+  key: string;
+  ok: true;
+  renderId: string;
+  sourceVideoId: string;
+  url: string;
+};
+
 export type RenderReactionVideoPayload = {
   backgroundStorageKey: string;
   captionLines: readonly string[];
@@ -553,6 +598,103 @@ export async function renderWallTextVideoToStorage(
       force: true,
       recursive: true,
     });
+  }
+}
+
+export async function renderCreateContentVideoToStorage(
+  payload: RenderCreateContentVideoPayload,
+): Promise<RenderCreateContentVideoOutput> {
+  if (payload.overlay.format === "hook_text") {
+    const rendered = await renderEditedVideoToStorage({
+      draft: {
+        textOverlays: [
+          {
+            fontSize: payload.overlay.hook.fontSize,
+            id: "create-content-hook",
+            layoutVersion: payload.overlay.hook.layoutVersion,
+            lines: payload.overlay.hook.lines,
+            normalizedPosition: payload.overlay.position,
+            position: "middle",
+            style: "hook",
+            text: payload.overlay.text,
+          },
+        ],
+        trimEndSeconds: null,
+        trimStartSeconds: 0,
+      },
+      projectId: payload.projectId,
+      ratio: "9:16",
+      renderId: payload.renderId,
+      sourceVideoId: payload.sourceVideoId,
+      sourceVideoUrl: payload.sourceVideoUrl,
+      userId: payload.userId,
+    });
+
+    return rendered;
+  }
+
+  const workDir = await mkdtemp(join(tmpdir(), "ugc-create-content-wall-"));
+  const inputPath = join(workDir, "source-video");
+  const overlayPath = join(workDir, "wall-text-overlay.png");
+  const outputPath = join(workDir, "create-content-wall.mp4");
+
+  try {
+    await ensureWallTextFontsRegistered();
+    assertWallTextTextBoxMatchesPayload(
+      payload.overlay.wall.content,
+      payload.overlay.wall.layout.textBox,
+    );
+    const renderContent = await reflowWallTextContentForRenderer({
+      content: payload.overlay.wall.content,
+      textBox: payload.overlay.wall.layout.textBox,
+    });
+    await validateWallTextRenderedLineWidths(
+      renderContent,
+      payload.overlay.wall.layout.textBox,
+    );
+    const overlayPng = await rasterizeWallTextOverlay({
+      overlaySvg: buildWallTextOverlaySvg({
+        content: renderContent,
+        placement: "middle",
+        safeArea: payload.overlay.wall.layout.safeArea,
+        textBox: payload.overlay.wall.layout.textBox,
+        textColor: "#ffffff",
+      }),
+      textBox: payload.overlay.wall.layout.textBox,
+    });
+    const sourceBuffer = await downloadVideoToBuffer(payload.sourceVideoUrl);
+    await Promise.all([
+      writeFile(inputPath, sourceBuffer),
+      writeFile(overlayPath, overlayPng),
+    ]);
+
+    await runFfmpegCommand({
+      args: buildCreateContentWallTextVideoArgs({ inputPath, outputPath, overlayPath }),
+      label: "Create Content Wall-of-Text render",
+      renderId: payload.renderId,
+    });
+    await validateRenderedVideoFile(outputPath, payload.renderId, {
+      logLabel: "Create Content Wall-of-Text",
+      requireAudio: false,
+    });
+
+    const renderedBuffer = await readFile(outputPath);
+    const result = await uploadBufferToStorage({
+      key: buildCreateContentVideoKey(payload),
+      buffer: renderedBuffer,
+      contentType: OUTPUT_CONTENT_TYPE,
+      cacheControl: "public, max-age=31536000, immutable",
+    });
+
+    return {
+      key: result.key,
+      ok: true,
+      renderId: payload.renderId,
+      sourceVideoId: payload.sourceVideoId,
+      url: result.url,
+    };
+  } finally {
+    await rm(workDir, { force: true, recursive: true });
   }
 }
 
@@ -1023,6 +1165,56 @@ export function buildWallTextVideoArgs({
   );
 
   return args;
+}
+
+export function buildCreateContentWallTextVideoArgs({
+  inputPath,
+  outputPath,
+  overlayPath,
+}: {
+  inputPath: string;
+  outputPath: string;
+  overlayPath: string;
+}) {
+  return [
+    "-y",
+    "-i",
+    inputPath,
+    "-loop",
+    "1",
+    "-framerate",
+    "30",
+    "-i",
+    overlayPath,
+    "-filter_complex",
+    [
+      `[0:v]${buildVideoFilters({ ratio: "9:16" })},setpts=PTS-STARTPTS[video]`,
+      "[1:v]format=rgba,setpts=PTS-STARTPTS[overlay]",
+      "[video][overlay]overlay=x=0:y=0:shortest=1:format=auto[rendered]",
+    ].join(";"),
+    "-map",
+    "[rendered]",
+    // Preserve the exact source audio when present. No app-selected or fixed
+    // soundtrack is added to a Create Content video.
+    "-map",
+    "0:a?",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "medium",
+    "-crf",
+    "20",
+    "-pix_fmt",
+    "yuv420p",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "160k",
+    "-movflags",
+    "+faststart",
+    "-shortest",
+    outputPath,
+  ];
 }
 
 function buildWallTextAudioFilter(
@@ -1863,7 +2055,8 @@ export async function reflowWallTextContentForRenderer(params: {
     content.finalLayout.version === "wall-text-final-layout-v3" ||
     content.finalLayout.version === "wall-text-final-layout-v4" ||
     content.finalLayout.version === "wall-text-final-layout-v5" ||
-    content.finalLayout.version === "wall-text-final-layout-v6"
+    content.finalLayout.version === "wall-text-final-layout-v6" ||
+    content.finalLayout.version === "wall-text-final-layout-v7"
   ) {
     return content;
   }
@@ -1890,7 +2083,7 @@ export async function reflowWallTextContentForRenderer(params: {
     const lineCount = blocks.reduce((total, block) => total + block.lines.length, 0);
 
     if (
-      ["wall-text-final-layout-v2", "wall-text-final-layout-v3", "wall-text-final-layout-v4", "wall-text-final-layout-v5", "wall-text-final-layout-v6"].includes(
+      ["wall-text-final-layout-v2", "wall-text-final-layout-v3", "wall-text-final-layout-v4", "wall-text-final-layout-v5", "wall-text-final-layout-v6", "wall-text-final-layout-v7"].includes(
         content.finalLayout.version,
       ) &&
       (lineCount < 4 || lineCount > 8)
@@ -2150,6 +2343,7 @@ function getPangoFontName(font: WallTextRenderFont) {
 async function getWallTextFontForContent(content: WallTextRenderContent) {
   return getWallTextFont({
     family:
+      content.finalLayout?.version === "wall-text-final-layout-v7" ||
       content.finalLayout?.version === "wall-text-final-layout-v6" ||
       content.finalLayout?.version === "wall-text-final-layout-v3"
         ? "ArialBold"
@@ -2432,6 +2626,17 @@ function buildWallTextVideoKey(payload: RenderWallTextVideoPayload) {
     cleanPathPart(payload.userId),
     cleanPathPart(payload.projectId),
     "wall-text",
+    `${cleanPathPart(payload.renderId)}.mp4`,
+  ].join("/");
+}
+
+function buildCreateContentVideoKey(payload: RenderCreateContentVideoPayload) {
+  return [
+    "videos",
+    "rendered",
+    cleanPathPart(payload.userId),
+    cleanPathPart(payload.projectId),
+    "create-content",
     `${cleanPathPart(payload.renderId)}.mp4`,
   ].join("/");
 }

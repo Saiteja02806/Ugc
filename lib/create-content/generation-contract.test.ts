@@ -4,7 +4,8 @@ import test from "node:test";
 import {
   CREATE_CONTENT_DEFAULT_OPTION_COUNT,
   CREATE_CONTENT_MAX_OPTION_COUNT,
-  getCreateContentWallReadingGuide,
+  CREATE_CONTENT_WALL_TEXT_LINE_RANGE,
+  CREATE_CONTENT_WALL_TEXT_WORD_RANGE,
   resolveCreateContentOptionCount,
 } from "./generation-contract.ts";
 import { selectCreateContentHookFormats } from "./hook-format-library.ts";
@@ -46,10 +47,7 @@ test("Hook format selection uses first formats, then rotates when more are reque
   assert.equal(formats[21]?.id, "GF_002");
 });
 
-test("Wall pacing is guidance only and never blocks short videos", () => {
-  const guide = getCreateContentWallReadingGuide(6);
-
-  assert.equal(guide.targetWords, 15);
-  assert.match(guide.wording, /not a restriction/i);
-  assert.match(guide.wording, /short/i);
+test("Wall copy uses one standard line and word range for every video", () => {
+  assert.deepEqual(CREATE_CONTENT_WALL_TEXT_LINE_RANGE, { max: 8, min: 5 });
+  assert.deepEqual(CREATE_CONTENT_WALL_TEXT_WORD_RANGE, { max: 40, min: 25 });
 });

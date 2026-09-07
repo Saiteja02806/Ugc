@@ -1,6 +1,8 @@
 import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { getReactionTextEditState } from "./reaction-edit-contract";
+import { SchedulingRequestError } from "@/lib/scheduling/errors";
 
 import {
   createReactionTrendingFeedProvider,
@@ -9,11 +11,12 @@ import {
   type TrendingReactionSourceRecord,
 } from "@/lib/trending/feed-items";
 
-type ReactionCreativeRow = {
+export type ReactionCreativeRow = {
   background_asset_id: string;
   business_profile_id: string;
   business_profile_version: number;
   caption: string;
+  content_json: Record<string, unknown>;
   clip_asset_id: string;
   duration_seconds: number;
   id: string;
@@ -21,6 +24,8 @@ type ReactionCreativeRow = {
   primary_reaction: string;
   rendered_media_asset_id: string;
   render_status: "failed" | "preview_ready" | "queued" | "rendering";
+  render_job_id: string | null;
+  updated_at: string;
   thumbnail_url: string | null;
   title: string;
   user_id: string;
@@ -49,7 +54,7 @@ type ReactionDatabase = {
         Insert: never;
         Relationships: [];
         Row: ReactionCreativeRow;
-        Update: never;
+        Update: Partial<ReactionCreativeRow>;
       };
       reaction_clip_presentations: {
         Insert: {
@@ -128,7 +133,7 @@ export async function listActiveTrendingReactionIdeas(params: {
   const { data: creatives, error: creativeError } = await getClient()
     .from("reaction_creatives")
     .select(
-      "id,background_asset_id,caption,clip_asset_id,duration_seconds,preview_url,primary_reaction,rendered_media_asset_id,thumbnail_url,title",
+      "id,background_asset_id,caption,clip_asset_id,content_json,duration_seconds,preview_url,primary_reaction,rendered_media_asset_id,thumbnail_url,title",
     )
     .eq("user_id", params.userId)
     .eq("business_profile_id", params.businessProfileId)
@@ -174,6 +179,7 @@ export async function listActiveTrendingReactionIdeas(params: {
         primaryReaction: creative.primary_reaction,
         thumbnailUrl: creative.thumbnail_url,
         title: creative.title,
+        textEditState: getReactionTextEditState(creative.content_json),
       },
     ];
   });
@@ -203,7 +209,7 @@ export async function getSelectedReadyReactionCreative(params: {
 
   const { data: creative, error: creativeError } = await getClient()
     .from("reaction_creatives")
-    .select("id,rendered_media_asset_id,title")
+    .select("id,content_json,rendered_media_asset_id,title")
     .eq("id", assignment.reaction_creative_id)
     .eq("user_id", params.userId)
     .eq("render_status", "preview_ready")
@@ -212,6 +218,16 @@ export async function getSelectedReadyReactionCreative(params: {
   if (creativeError) {
     throw new Error(
       `Could not load the rendered Reaction Reel: ${creativeError.message}`,
+    );
+  }
+
+  if (creative && getReactionTextEditState(creative.content_json) !== "ready") {
+    throw new SchedulingRequestError(
+      getReactionTextEditState(creative.content_json) === "failed"
+        ? "Video preparation failed. Open Edit and save the Reaction Reel again."
+        : "Preparing video. Wait for your edited Reaction Reel to finish before scheduling.",
+      409,
+      "reaction_edit_not_ready",
     );
   }
 
@@ -279,7 +295,7 @@ export async function recordReactionPresentation(params: {
   }
 }
 
-function getClient() {
+export function getReactionClient() {
   if (client) return client;
 
   const url =
@@ -297,3 +313,5 @@ function getClient() {
   });
   return client;
 }
+
+const getClient = getReactionClient;

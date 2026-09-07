@@ -1,7 +1,14 @@
+import ffmpegPath from "ffmpeg-static";
 import ffprobeStatic from "ffprobe-static";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+} from "node:fs";
 import path from "node:path";
 
 import {
@@ -22,6 +29,7 @@ const WALL_TEXT_STORAGE_PREFIX = "explore/wall-text-videos/2026-09-03";
 const PREVIEW_STORAGE_PREFIX = "explore/landing-preview/2026-08-29";
 const CACHE_CONTROL = "public, max-age=31536000, immutable";
 const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
+const POSTER_RESULT_ROOT = ".tmp/explore-video-posters";
 
 loadEnvFile(path.resolve(".env.local"));
 
@@ -69,28 +77,27 @@ for (const [index, item] of plan.items.entries()) {
   console.log(`[${index + 1}/${plan.items.length}] ${item.id}`);
   const existing = await readStoredObjectHash(item.storageKey);
 
-  if (existing === item.sha256) {
-    console.log("  already uploaded and verified");
-    continue;
-  }
-
-  if (existing) {
+  if (existing && existing !== item.sha256) {
     throw new Error(
       `Refusing to overwrite a different GCP object at ${item.storageKey}.`,
     );
   }
 
-  await uploadBufferToStorage({
-    buffer: readFileSync(item.filePath),
-    cacheControl: CACHE_CONTROL,
-    contentType: "video/mp4",
-    key: item.storageKey,
-  });
+  if (!existing) {
+    await uploadBufferToStorage({
+      buffer: readFileSync(item.filePath),
+      cacheControl: CACHE_CONTROL,
+      contentType: "video/mp4",
+      key: item.storageKey,
+    });
 
-  const storedHash = await readStoredObjectHash(item.storageKey);
-  if (storedHash !== item.sha256) {
-    throw new Error(`GCP verification failed for ${item.id}.`);
+    const storedHash = await readStoredObjectHash(item.storageKey);
+    if (storedHash !== item.sha256) {
+      throw new Error(`GCP verification failed for ${item.id}.`);
+    }
   }
+
+  await ensurePosterIsStored(item);
 }
 
 console.log(
@@ -169,6 +176,7 @@ function buildImportPlan(sourcePath, { preview: isPreview, wallText: isWallText 
       metadata,
       sha256,
       sizeBytes: stats.size,
+      posterKey: getPosterStorageKey(storageKey),
       storageKey,
     };
   });
@@ -177,6 +185,73 @@ function buildImportPlan(sourcePath, { preview: isPreview, wallText: isWallText 
     items,
     totalBytes: items.reduce((total, item) => total + item.sizeBytes, 0),
   };
+}
+
+function getPosterStorageKey(storageKey) {
+  if (!storageKey.endsWith(".mp4")) {
+    throw new Error(`Explore video key must end in .mp4: ${storageKey}`);
+  }
+
+  return `${storageKey.slice(0, -".mp4".length)}.webp`;
+}
+
+async function ensurePosterIsStored(item) {
+  const existingPoster = await readStoredPoster(item.posterKey);
+
+  if (existingPoster) {
+    console.log("  video and poster already uploaded and verified");
+    return;
+  }
+
+  const poster = createPoster(item);
+  await uploadBufferToStorage({
+    buffer: poster,
+    cacheControl: CACHE_CONTROL,
+    contentType: "image/webp",
+    key: item.posterKey,
+  });
+
+  if (!(await readStoredPoster(item.posterKey))) {
+    throw new Error(`GCP poster verification failed for ${item.id}.`);
+  }
+}
+
+function createPoster(item) {
+  const outputDirectory = path.resolve(POSTER_RESULT_ROOT);
+  const outputPath = path.join(outputDirectory, `${item.sha256}.webp`);
+  const seekSeconds = Math.min(
+    1.5,
+    Math.max(0.25, item.metadata.durationSeconds * 0.3),
+  );
+
+  mkdirSync(outputDirectory, { recursive: true });
+  execFileSync(
+    ffmpegPath || "ffmpeg",
+    [
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-ss",
+      String(seekSeconds),
+      "-i",
+      item.filePath,
+      "-frames:v",
+      "1",
+      "-vf",
+      "scale=360:640:force_original_aspect_ratio=decrease,pad=360:640:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1",
+      "-c:v",
+      "libwebp",
+      "-quality",
+      "82",
+      "-preset",
+      "picture",
+      "-y",
+      outputPath,
+    ],
+    { stdio: "pipe" },
+  );
+
+  return readFileSync(outputPath);
 }
 
 function getStoragePrefix({ wallText: isWallText }) {
@@ -251,6 +326,20 @@ async function readStoredObjectHash(storageKey) {
     return createHash("sha256").update(body).digest("hex");
   } catch (error) {
     if (isMissingObjectError(error)) return null;
+    throw error;
+  }
+}
+
+async function readStoredPoster(posterKey) {
+  try {
+    const poster = await headStorageObject({ key: posterKey });
+    if (poster.ContentType !== "image/webp" || !poster.ContentLength) {
+      throw new Error(`Stored Explore poster is invalid: ${posterKey}`);
+    }
+
+    return true;
+  } catch (error) {
+    if (isMissingObjectError(error)) return false;
     throw error;
   }
 }

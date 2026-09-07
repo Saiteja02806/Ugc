@@ -1802,7 +1802,7 @@ function WallTextOverlayText({
         fontWeight: typography.fontWeight,
         letterSpacing: `${-0.2 / 10.8}cqw`,
         paddingInline: `${WALL_TEXT_INLINE_SAFE_PADDING / 10.8}cqw`,
-        textShadow: "0 0.111111cqw 0.185185cqw rgba(0, 0, 0, 0.45)",
+        textShadow: `0 0.111111cqw 0.185185cqw rgba(0, 0, 0, ${typography.shadowOpacity})`,
         width: `${content.layout.textBox.width * 100}cqw`,
       }}
     >

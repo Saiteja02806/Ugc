@@ -65,6 +65,9 @@ const jobQueueConfig = {
   render_demo_video: {
     queueName: "video-render",
   },
+  render_create_content_video: {
+    queueName: "video-render",
+  },
   render_edit_video: {
     queueName: "video-render",
   },

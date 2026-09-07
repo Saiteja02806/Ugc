@@ -1,6 +1,29 @@
 # Wall-of-text Context
 
-Last updated: 2026-09-06
+Last updated: 2026-09-07
+
+## 2026-09-07 V11 lighter outline and shadow treatment
+
+- New and normally refreshed Wall cards are persisted as
+  `wall-text-overlay-v11` with `wall-text-final-layout-v7`. They retain the
+  measured **Arial Bold 700** face at 50px, but use a **3px** black outline
+  and a black shadow at **0.30** opacity. This is a rendering treatment only:
+  it does not change the 24–40-word contract, balanced 5–8-row layout, or the
+  allowed 6–60-second source duration.
+- Browser preview, the editor draft, server-side fit validation, SVG generation,
+  and the worker share these V11 values. The renderer uses the same packaged
+  Arial Bold file in both browser and worker paths, so the treatment cannot
+  drift because one side resolves a different font file.
+- Existing V10/V6 cards deliberately retain their persisted 4px outline and
+  0.45 shadow. They are not silently re-styled in the browser. A normal
+  currentness refresh produces V11/V7, while the existing batched,
+  idempotent recovery path remains responsible for safely updating historical
+  cards.
+- `wall-text:simulate` renders 24-, 28-, 32-, 36-, and 40-word V11 examples
+  at 5, 6, 7, 8, and 8 rows respectively against both dark and bright
+  backgrounds. It asserts Arial Bold 700 at 50px, 3px stroke, 0.30 shadow,
+  valid left/right protected margins, and the identical content fit at six and
+  sixty seconds.
 
 ## 2026-09-06 Arial Bold reference typography
 
@@ -9,10 +32,10 @@ Last updated: 2026-09-06
   subtle shadow. A raster screenshot cannot prove the original font file, but
   Arial Bold is the reproducible face that matches the observed Arial/
   Helvetica-style bold captions.
-- New layouts are persisted as `wall-text-overlay-v10` with
+- The preceding V10 layouts were persisted as `wall-text-overlay-v10` with
   `wall-text-final-layout-v6`. Browser preview, editor drafts, server-side
   measurement, render validation, and the worker use the same packaged Arial
-  Bold asset. The current layout remains fixed at 50px with the 4px reference
+  Bold asset. That layout remains fixed at 50px with the 4px reference
   outline; copy that cannot fit five to eight lines is rejected for a bounded
   rewrite rather than reduced, clipped, or retried indefinitely.
 - V1-V5 remain valid historical contracts. V6 is transported through the
@@ -36,7 +59,7 @@ Last updated: 2026-09-06
   copy, not a manually assigned target for a card. Every row needs at least
   two words; browser `nowrap` protects each persisted row from accidental
   client-side rewrapping.
-- Native video duration does **not** cap the current V10 word range or row
+- Native video duration does **not** cap the current V11 word range or row
   count. Legacy duration helpers remain only to read/edit historical layouts.
   A six-second source can therefore render an eight-row card when its copy
   fits safely.
@@ -96,11 +119,11 @@ Last updated: 2026-09-06
 ## Live typing preview typography
 
 - Wall editor drafts without a measured final layout now explicitly use
-  Arial Bold 700, fixed 50px type, and a 4px outline. Clearing,
+  Arial Bold 700, fixed 50px type, a 3px outline, and a 0.30-opacity shadow. Clearing,
   typing, and pasting no longer trigger the legacy Inter/dynamic-size fallback.
 - The draft remains unmeasured and wraps in the browser. Saving computes
   balanced final lines, so exact line breaks may still change on save; font,
-  outline, and equal 15px inner side padding do not change for current layouts.
+  outline, shadow, and equal 15px inner side padding do not change for current layouts.
 - Existing measured historical layouts retain their saved appearance when
   opened. Editing them uses the current typography that save-time reflow uses.
 - This is an editor rendering fix only. No post-writing grammar/claim review
@@ -115,18 +138,18 @@ described below for newly generated or manually reflowed Wall copy.
 
 - The writer receives a required **24–40-word range**, not a single target.
   Prompt V13, assignment-budget handling, candidate validation, and manual
-  saves that reflow into V10 use this same contract. The historical 15–50
+  saves that reflow into V11 use this same contract. The historical 15–50
   acceptance range is retained only while already-saved V6–V9 cards are read.
 - New assignment storage uses the compatible scalar midpoint, 32, plus a
   maximum of 40. Retry-pending assignments that stored `target_words = 18`
   and `max_words = 50` are not rewritten; generation clamps them before the
   next writer request.
 - New measured layouts use **50px Arial Bold 700**, with 55px line height on
-  the 1080×1920 canvas and a 4px outline. Font size never decreases to
+  the 1080×1920 canvas, a 3px outline, and a 0.30-opacity shadow. Font size never decreases to
   preserve fewer lines. All valid 5–8-row partitions are measured before a
   word-count-derived visual preference chooses the final arrangement.
 - The 780px text box, equal 15px internal side padding, 750px writing width,
-  white fill, and 4px outline remain. If copy cannot fit at 50px within eight
+  white fill, 3px outline, and 0.30-opacity shadow remain. If copy cannot fit at 50px within eight
   lines or the chosen box height, generation returns `layout_fit` for the
   existing bounded rewrite flow; manual edits show a fit error. Text is never
   truncated and the font is not shrunk.

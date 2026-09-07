@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import {
-  type RefObject,
   useCallback,
   useEffect,
   useRef,
@@ -126,7 +125,6 @@ const EXPLORE_VIDEO_GRID_CLASS_NAME =
 // The free preview only needs enough blurred media to communicate that a
 // library exists. Loading every source there competes with the playable card.
 const EXPLORE_BACKDROP_VIDEO_LIMIT = 4;
-const EXPLORE_VIDEO_PRELOAD_ROOT_MARGIN = "480px 0px";
 
 export function ViralWorkspace() {
   const [activeSection, setActiveSection] = useState<ExploreSection>("hook");
@@ -377,14 +375,13 @@ function ExploreProPreview({
               key={previewItem.id}
               className="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
             >
-              <video
+              <img
                 aria-hidden="true"
                 className="aspect-[9/16] w-full object-cover"
-                muted
-                playsInline
-                preload="metadata"
-                src={previewItem.videoUrl}
-                tabIndex={-1}
+                alt=""
+                decoding="async"
+                loading="lazy"
+                src={previewItem.posterUrl}
               />
             </div>
           ))}
@@ -440,13 +437,11 @@ function ExploreVideoCard({
   section: ExploreSection;
   autoPlay?: boolean;
 }) {
-  const cardRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasEnded, setHasEnded] = useState(false);
   const [playbackRequested, setPlaybackRequested] = useState(false);
-  const nearViewport = useExploreVideoNearViewport(cardRef, autoPlay);
-  const shouldLoadVideo = autoPlay || nearViewport || playbackRequested;
+  const shouldLoadVideo = autoPlay || playbackRequested;
   const startPlaybackAfterLoadRef = useRef(false);
   const config = EXPLORE_SECTION_CONFIG[section];
 
@@ -473,7 +468,6 @@ function ExploreVideoCard({
 
   return (
     <article
-      ref={cardRef}
       className="group overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-[border-color,box-shadow] duration-200 hover:border-border-strong hover:shadow-md"
     >
       <div className="relative aspect-[9/16] overflow-hidden bg-card-muted">
@@ -485,6 +479,7 @@ function ExploreVideoCard({
             autoPlay={autoPlay}
             muted
             playsInline
+            poster={item.posterUrl}
             preload={autoPlay ? "auto" : "metadata"}
             src={item.videoUrl}
             onCanPlay={() => {
@@ -505,7 +500,16 @@ function ExploreVideoCard({
               setIsPlaying(true);
             }}
           />
-        ) : null}
+        ) : (
+          <img
+            aria-hidden="true"
+            alt=""
+            className="size-full object-cover"
+            decoding="async"
+            loading="lazy"
+            src={item.posterUrl}
+          />
+        )}
         <button
           type="button"
           onClick={handlePlayToggle}
@@ -545,38 +549,6 @@ function ExploreVideoCard({
       </div>
     </article>
   );
-}
-
-function useExploreVideoNearViewport(
-  targetRef: RefObject<HTMLElement | null>,
-  eager: boolean,
-) {
-  const [nearViewport, setNearViewport] = useState(eager);
-
-  useEffect(() => {
-    if (eager || nearViewport) return;
-
-    const target = targetRef.current;
-    if (!target || !("IntersectionObserver" in window)) {
-      setNearViewport(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry?.isIntersecting) return;
-
-        setNearViewport(true);
-        observer.disconnect();
-      },
-      { rootMargin: EXPLORE_VIDEO_PRELOAD_ROOT_MARGIN },
-    );
-
-    observer.observe(target);
-    return () => observer.disconnect();
-  }, [eager, nearViewport, targetRef]);
-
-  return nearViewport;
 }
 
 function getExploreStudioHref(
@@ -649,6 +621,8 @@ function isExploreVideoReference(value: unknown): value is ExploreVideoReference
     value !== null &&
     "id" in value &&
     typeof value.id === "string" &&
+    "posterUrl" in value &&
+    typeof value.posterUrl === "string" &&
     "videoUrl" in value &&
     typeof value.videoUrl === "string"
   );

@@ -114,7 +114,7 @@ export async function saveCreateContentCard(params: {
   text: string;
   userId: string;
 }): Promise<CreateContentCard> {
-  const existing = await getCreateContentCard({
+  const existing = await getCreateContentCardRowForOwner({
     sourceMediaAssetId: params.sourceMediaAssetId,
     userId: params.userId,
   });
@@ -190,7 +190,15 @@ export async function saveCreateContentCard(params: {
   return serializeCreateContentCard(data);
 }
 
-async function getCreateContentCard(params: {
+export async function getCreateContentCardForOwner(params: {
+  sourceMediaAssetId: string;
+  userId: string;
+}): Promise<CreateContentCard | null> {
+  const row = await getCreateContentCardRowForOwner(params);
+  return row ? serializeCreateContentCard(row) : null;
+}
+
+async function getCreateContentCardRowForOwner(params: {
   sourceMediaAssetId: string;
   userId: string;
 }): Promise<CreateContentCardRow | null> {

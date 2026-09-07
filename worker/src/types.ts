@@ -45,6 +45,7 @@ export type BackgroundJobType =
   | "publish_social_post"
   | "reaction_generation"
   | "render_demo_video"
+  | "render_create_content_video"
   | "render_edit_video"
   | "render_schedule_combination"
   | "render_trending_carousel_edit"
@@ -56,6 +57,7 @@ export type BackgroundJobType =
   | "wall_text_generation";
 
 export const EXECUTABLE_BACKGROUND_JOB_TYPES = [
+  "final_render",
   "analytics_sync",
   "carousel_content_plan_generation",
   "generate_avatar",
@@ -68,6 +70,7 @@ export const EXECUTABLE_BACKGROUND_JOB_TYPES = [
   "paid_trending_prebuild",
   "publish_social_post",
   "reaction_generation",
+  "render_create_content_video",
   "render_edit_video",
   "render_schedule_combination",
   "render_trending_carousel_edit",
@@ -282,6 +285,14 @@ type UserWallTextAssignmentUpdate = Partial<{
   render_status: "not_requested" | "queued" | "rendering" | "ready" | "failed";
   rendered_at: string | null;
   rendered_media_asset_id: string | null;
+  updated_at: string;
+}>;
+
+type CreateContentRenderUpdate = Partial<{
+  error_message: string | null;
+  render_job_id: string | null;
+  rendered_media_asset_id: string | null;
+  status: "queued" | "rendering" | "ready" | "failed";
   updated_at: string;
 }>;
 
@@ -969,10 +980,21 @@ export type ReactionClipPresentationRow = {
 };
 
 export type ReactionCreativeRow = {
+  background_asset_id: string;
   business_profile_id: string;
   business_profile_version: number;
   clip_asset_id: string;
+  caption: string;
+  content_json: Json;
+  duration_seconds: number;
   id: string;
+  preview_url: string;
+  render_error: string | null;
+  render_job_id: string | null;
+  render_plan_json: Json;
+  rendered_media_asset_id: string;
+  thumbnail_url: string | null;
+  title: string;
   render_status: "failed" | "preview_ready" | "queued" | "rendering";
   user_id: string;
 };
@@ -1609,6 +1631,16 @@ export type BackgroundJobsDatabase = {
           user_id: string;
         };
         Update: UserWallTextAssignmentUpdate;
+      };
+      create_content_renders: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: {
+          id: string;
+          render_job_id: string | null;
+          user_id: string;
+        };
+        Update: CreateContentRenderUpdate;
       };
       user_reaction_assignments: {
         Insert: Record<string, never>;

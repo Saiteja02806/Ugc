@@ -921,6 +921,7 @@ async function prepareMissingFormats(params: {
   if (params.includeWallText && params.missingByFormat.wall_text > 0) {
     tasks.push(
       enqueueTrendingWallTextRefill(params.profile, {
+        dailyFeedId: params.wallTextDailyFeedKey,
         // A regular refill needs a stable key for this daily feed. Without it,
         // the same profile/count key can resolve to a completed job from an
         // earlier day and leave this feed's reserved slots unassigned.

@@ -4019,11 +4019,32 @@ Name: **Verify v26 and replace the stale production assignment**
   items continue using their parent brief. Each five-item group is prompted to
   use different situations, but only exact normalized copies are rejected;
   related themes and wording variations remain valid.
-- Wall-of-Text follows the same continuity rule and is plan-first: a Wall
+- Wall-of-Text follows the same continuity rule and is plan-first. Normally a Wall
   writer may reserve only active 30-day plan items. Its 200 ideas also rotate
   unused-first then least-recently-used after a terminal batch. If planning is
   not ready, the durable planning job is returned and the writer waits; the
   legacy direct-writer fallback must not produce unplanned Wall content.
+- The account-scoped Wall early-delivery rollout adds a separate published
+  prefix to a plan. An opted-in daily delivery intent can reserve unused items
+  from complete, committed five-item briefs while the same 200-item planner
+  continues. The plan becomes active only when all 200 items and 40 briefs exist.
+  Incomplete plans never recycle consumed items. Saved items and finished posts
+  remain available if the remaining planner fails.
+- Chunk publication checks the planner job and worker claim, saves the items,
+  and records a durable publication event in one database transaction. Events
+  have independent identities and token-fenced acknowledgements. A short worker
+  callback starts Wall-only reconciliation; the existing recovery scheduler
+  retries missed events and resumes incomplete plans independently of feed gaps.
+  Automatic plan reopening is capped at three planner jobs for opted-in plans.
+- Daily Wall delivery uses an immutable intent per feed, explicit retry key and
+  reserved Wall slot count, with generator and layout versions in its identity.
+  Repeated polls and publications reuse its writer,
+  including after partial output. A request for 20 posts waits for 20 available
+  published ideas. Opt-in is off by default, and only new opted-in plans use the
+  fast path. Turning the account flag off stops new early admissions while
+  already admitted writers retain their reservation permission. Keep the new
+  worker deployed until these admitted jobs and plans finish. Carousel and
+  Reaction preparation are not invoked by per-chunk Wall callbacks.
 - Wall planning requests produce ten ideas (two complete five-idea briefs) at
   a time and send the model only a bounded recent history. The database still
   validates every historical idea. A blank provider response is classified as

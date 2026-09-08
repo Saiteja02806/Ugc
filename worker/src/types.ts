@@ -659,6 +659,8 @@ export type CarouselContentPlanBriefRow = {
 };
 
 export type WallTextContentPlanRow = {
+  early_delivery_enabled?: boolean;
+  published_item_count?: number;
   business_description: string;
   business_profile_id: string;
   business_profile_version: number;
@@ -1147,8 +1149,9 @@ export type BackgroundJobsDatabase = {
         };
         Returns: CarouselContentPlanRow;
       };
-      complete_wall_text_content_plan_generation: {
+      complete_wall_text_content_plan_generation_v2: {
         Args: {
+          p_claim_token: string;
           p_job_id: string;
           p_plan_id: string;
           p_user_id: string;
@@ -1225,8 +1228,11 @@ export type BackgroundJobsDatabase = {
         };
         Returns: CarouselContentPlanItemRow[];
       };
-      persist_wall_text_content_plan_brief_chunk: {
+      persist_wall_text_content_plan_brief_chunk_v2: {
         Args: {
+          p_job_id: string;
+          p_claim_token: string;
+          p_expected_item_count: number;
           p_briefs: Json;
           p_items: Json;
           p_plan_id: string;

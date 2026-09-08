@@ -8,9 +8,9 @@ import type { WorkerJobContext } from "./index.js";
 
 function fixture() {
   const items: WallTextContentPlanItemRow[] = [];
-  const plan = { id: "plan", user_id: "user", status: "generating", target_item_count: 20 };
+  const plan = { id: "plan", user_id: "user", status: "generating", target_item_count: 20, early_delivery_enabled: false };
   const checkpoints: number[] = [];
-  const job = { id: "job", user_id: "user", input_json: {
+  const job = { id: "job", user_id: "user", claim_token: "claim", input_json: {
     operation: "wall_text_content_plan_generation", planId: "plan", userId: "user",
   } } as unknown as BackgroundJobRow;
   const context = {
@@ -19,7 +19,10 @@ function fixture() {
       getWallTextContentPlan: async () => plan,
       listWallTextContentPlanItems: async () => [...items],
       listPriorWallTextContentPlanItems: async () => [],
-      persistWallTextContentPlanBriefChunk: async (chunk: { items: WallTextContentPlanItemRow[] }) => {
+      persistWallTextContentPlanBriefChunk: async (chunk: { items: WallTextContentPlanItemRow[]; jobId: string; claimToken: string; expectedItemCount: number }) => {
+        assert.equal(chunk.claimToken, "claim");
+        assert.equal(chunk.jobId, "job");
+        assert.equal(chunk.expectedItemCount, items.length);
         items.push(...chunk.items);
         return chunk.items;
       },
@@ -82,4 +85,47 @@ test("stops before another model call when a checkpoint loses the worker claim",
   assert.equal(calls, 1);
   assert.equal(f.items.length, 10);
   assert.equal(f.plan.status, "generating");
+});
+
+test("publishes committed chunks before full activation and retains consumed items", async () => {
+  const f = fixture();
+  f.plan.early_delivery_enabled = true;
+  const published: number[] = [];
+  await runGenerateWallTextContentPlanJob(f.job, f.context, {
+    generateChunk: async () => generated(),
+    notifyPublication: async () => {
+      assert.equal(f.plan.status, "generating");
+      published.push(f.items.length);
+      f.items[0].status = "consumed";
+    },
+  });
+  assert.deepEqual(published, [10, 20]);
+  assert.equal(f.items[0].status, "consumed");
+  assert.equal(f.plan.status, "active");
+});
+
+test("a missed publication wake-up does not fail or restart the planner", async () => {
+  const f = fixture();
+  f.plan.early_delivery_enabled = true;
+  let notifications = 0;
+  await runGenerateWallTextContentPlanJob(f.job, f.context, {
+    generateChunk: async () => generated(),
+    notifyPublication: async () => { notifications++; throw new Error("app temporarily unavailable"); },
+  });
+  assert.equal(notifications, 2);
+  assert.equal(f.items.length, 20);
+  assert.equal(f.plan.status, "active");
+});
+
+test("does not notify readers when the fenced save rejects an obsolete worker", async () => {
+  const f = fixture();
+  f.plan.early_delivery_enabled = true;
+  f.context.store.persistWallTextContentPlanBriefChunk = async () => { throw new Error("wall_text_planner_claim_lost"); };
+  let notifications = 0;
+  await assert.rejects(runGenerateWallTextContentPlanJob(f.job, f.context, {
+    generateChunk: async () => generated(),
+    notifyPublication: async () => { notifications++; },
+  }), /wall_text_planner_claim_lost/);
+  assert.equal(f.items.length, 0);
+  assert.equal(notifications, 0);
 });

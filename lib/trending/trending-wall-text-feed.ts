@@ -76,7 +76,7 @@ const DEFAULT_WALL_TEXT_ACTIVE_TARGET = 6;
 
 export async function enqueueTrendingWallTextRefill(
   profile: BusinessProfileRecord,
-  options: { recoveryKey?: string | null; targetActive?: number } = {},
+  options: { dailyFeedId?: string; recoveryKey?: string | null; targetActive?: number } = {},
 ) {
   const targetActive = Math.max(
     Math.trunc(options.targetActive ?? DEFAULT_WALL_TEXT_ACTIVE_TARGET),
@@ -134,6 +134,7 @@ export async function enqueueTrendingWallTextRefill(
     needsTrendingWallTextCreativeRefresh,
   );
   const job = await enqueueTrendingWallTextJob({
+    dailyFeedId: options.dailyFeedId,
     businessProfileId: profile.id,
     businessProfileVersion: profile.profileVersion,
     profile,
@@ -142,6 +143,8 @@ export async function enqueueTrendingWallTextRefill(
     requestedCount: Math.max(targetActive - active.length, 1),
     userId: profile.userId,
   });
+
+  if (!job) return { activeCount: active.length, status: "ready" as const };
 
   return {
     activeCount: active.length,
@@ -370,6 +373,7 @@ export async function prepareTrendingWallTextIdeas(
     businessProfileId: profile.id,
     userId: profile.userId,
   });
+
   const candidateBudgets = await Promise.all(
     generationSources.map(async (candidate) => {
       const assignment =

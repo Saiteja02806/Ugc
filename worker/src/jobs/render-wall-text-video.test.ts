@@ -112,11 +112,11 @@ test("accepts the versioned Arial Bold 500 final layout", async () => {
   });
 });
 
-test("restores V11 lighter Arial Bold from its V4 rollout envelope", async () => {
+test("restores V12 compact Arial Bold from its V4 rollout envelope", async () => {
   const job = createJob();
   const input = job.input_json as Record<string, unknown>;
   const text = input.text as Record<string, unknown>;
-  text.layoutVersion = "wall-text-overlay-v11";
+  text.layoutVersion = "wall-text-overlay-v12";
   text.finalLayout = {
     blocks: [{
       lines: [
@@ -129,9 +129,9 @@ test("restores V11 lighter Arial Bold from its V4 rollout envelope", async () =>
       role: "text",
     }],
     fontFamily: "Arial",
-    fontSizePx: 50,
+    fontSizePx: 44,
     fontWeight: 400,
-    lineHeightPx: 55,
+    lineHeightPx: 48.4,
     textBox: (input.layout as { textBox: unknown }).textBox,
     version: "wall-text-final-layout-v4",
   };
@@ -141,14 +141,14 @@ test("restores V11 lighter Arial Bold from its V4 rollout envelope", async () =>
       async renderWallTextVideoToStorage(payload) {
         assert.equal(payload.text.finalLayout?.fontFamily, "Arial");
         assert.equal(payload.text.finalLayout?.fontWeight, 700);
-        assert.equal(payload.text.finalLayout?.version, "wall-text-final-layout-v7");
+        assert.equal(payload.text.finalLayout?.version, "wall-text-final-layout-v8");
         return {
           assignmentId: ASSIGNMENT_ID,
           creativeId: CREATIVE_ID,
-          key: "videos/rendered/wall-v11.mp4",
+          key: "videos/rendered/wall-v12.mp4",
           ok: true,
           renderId: RENDER_ID,
-          url: "https://cdn.example.com/wall-v11.mp4",
+          url: "https://cdn.example.com/wall-v12.mp4",
         };
       },
     },

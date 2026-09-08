@@ -2059,6 +2059,7 @@ export async function reflowWallTextContentForRenderer(params: {
 
   if (
     !content.finalLayout ||
+    content.finalLayout.version === "wall-text-final-layout-v8" ||
     content.finalLayout.version === "wall-text-final-layout-v3" ||
     content.finalLayout.version === "wall-text-final-layout-v4" ||
     content.finalLayout.version === "wall-text-final-layout-v5" ||
@@ -2090,7 +2091,7 @@ export async function reflowWallTextContentForRenderer(params: {
     const lineCount = blocks.reduce((total, block) => total + block.lines.length, 0);
 
     if (
-      ["wall-text-final-layout-v2", "wall-text-final-layout-v3", "wall-text-final-layout-v4", "wall-text-final-layout-v5", "wall-text-final-layout-v6", "wall-text-final-layout-v7"].includes(
+      ["wall-text-final-layout-v2", "wall-text-final-layout-v3", "wall-text-final-layout-v4", "wall-text-final-layout-v5", "wall-text-final-layout-v6", "wall-text-final-layout-v7", "wall-text-final-layout-v8"].includes(
         content.finalLayout.version,
       ) &&
       (lineCount < 4 || lineCount > 8)
@@ -2350,6 +2351,7 @@ function getPangoFontName(font: WallTextRenderFont) {
 async function getWallTextFontForContent(content: WallTextRenderContent) {
   return getWallTextFont({
     family:
+      content.finalLayout?.version === "wall-text-final-layout-v8" ||
       content.finalLayout?.version === "wall-text-final-layout-v7" ||
       content.finalLayout?.version === "wall-text-final-layout-v6" ||
       content.finalLayout?.version === "wall-text-final-layout-v3"

@@ -9,7 +9,7 @@ import sharp from "sharp";
 // Kept at its original path so existing package scripts continue to work.
 // Its assertions track the current V11 contract.
 const rootDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const outputDirectory = path.join(rootDirectory, ".tmp", "wall-text-v11-simulation");
+const outputDirectory = path.join(rootDirectory, ".tmp", "wall-text-v12-simulation");
 const loaderUrl = pathToFileURL(
   path.join(rootDirectory, "scripts", "next-server-only-test-loader.mjs"),
 ).href;
@@ -73,9 +73,9 @@ for (const sample of samples) {
   assert.ok(lines.every((line) => countWords(line) >= 2));
   assert.equal(content.finalLayout.fontFamily, "Arial");
   assert.equal(content.finalLayout.fontWeight, 700);
-  assert.equal(content.finalLayout.fontSizePx, 50);
-  assert.equal(content.layoutVersion, "wall-text-overlay-v11");
-  assert.equal(content.finalLayout.version, "wall-text-final-layout-v7");
+  assert.equal(content.finalLayout.fontSizePx, 44);
+  assert.equal(content.layoutVersion, "wall-text-overlay-v12");
+  assert.equal(content.finalLayout.version, "wall-text-final-layout-v8");
 
   const svg = buildWallTextOverlaySvg({
     content,
@@ -83,7 +83,8 @@ for (const sample of samples) {
     textBox: content.finalLayout.textBox,
   });
   assert.match(svg, /stroke-width="3"/);
-  assert.match(svg, /flood-opacity="0\.3"/);
+  assert.match(svg, /letter-spacing="0"/);
+  assert.doesNotMatch(svg, /wallTextShadow|feDropShadow/);
   const raster = await sharp(Buffer.from(svg))
     .ensureAlpha()
     .raw()

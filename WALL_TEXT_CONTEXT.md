@@ -1,6 +1,22 @@
 # Wall-of-text Context
 
-Last updated: 2026-09-07
+Last updated: 2026-09-08
+
+## 2026-09-08 V12 compact reference typography
+
+- New and normally refreshed Wall cards are persisted as
+  `wall-text-overlay-v12` with `wall-text-final-layout-v8`. They use the
+  packaged **Arial Bold 700** face at **44px**, white fill, a crisp **3px**
+  black outline, normal letter spacing, and **no drop shadow**. The 780px text
+  box remains unchanged, leaving a 750px (69.4% of the 1080px canvas) writing
+  width that matches the supplied reference's 65–72% footprint.
+- Browser preview, draft editing, measured layout, worker SVG, and export all
+  use the same values. V11 and older cards retain their saved typography: the
+  previous 50px V11 treatment keeps its 0.30 shadow and is never restyled.
+- `wall-text:simulate` renders 24-, 28-, 32-, 36-, and 40-word V12 examples
+  at 5, 6, 7, 8, and 8 rows against dark and bright backgrounds. It verifies
+  Arial Bold 700 at 44px, a 3px outline, zero letter spacing, no SVG shadow,
+  and positive protected-fence margins.
 
 ## 2026-09-07 V11 lighter outline and shadow treatment
 

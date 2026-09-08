@@ -70,6 +70,7 @@ export async function validateWallTextRenderFit(
 ): Promise<WallTextRenderValidation> {
   const preferredFontSize = getWallTextFontSize(content);
   const fontSizes: WallTextFontSize[] =
+    content.finalLayout?.version === "wall-text-final-layout-v8" ||
     content.finalLayout?.version === "wall-text-final-layout-v7" ||
     content.finalLayout?.version === "wall-text-final-layout-v6" ||
     content.finalLayout?.version === "wall-text-final-layout-v5"
@@ -79,6 +80,7 @@ export async function validateWallTextRenderFit(
             fontSize <= preferredFontSize && values.indexOf(fontSize) === index,
         ) as WallTextFontSize[]);
   const fontName =
+    content.finalLayout?.version === "wall-text-final-layout-v8" ||
     content.finalLayout?.version === "wall-text-final-layout-v7" ||
     content.finalLayout?.version === "wall-text-final-layout-v6"
       ? "Arial Bold"
@@ -165,6 +167,7 @@ export async function validateWallTextRenderFit(
 
   if (widestFailure) {
     throw new WallTextRenderFitError(
+      content.finalLayout?.version === "wall-text-final-layout-v8" ||
       content.finalLayout?.version === "wall-text-final-layout-v7" ||
       content.finalLayout?.version === "wall-text-final-layout-v6" ||
       content.finalLayout?.version === "wall-text-final-layout-v5"

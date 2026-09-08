@@ -1,5 +1,4 @@
 import {
-  ANCIENT_WALL_TEXT_CONTENT_LAYOUT_VERSION,
   LEGACY_WALL_TEXT_PATTERNS,
   WALL_TEXT_PATTERNS,
   WALL_TEXT_SEGMENT_ROLES,
@@ -360,18 +359,21 @@ export function validateWallTextContent(
     content.layoutVersion === "wall-text-overlay-v8" ||
     content.layoutVersion === "wall-text-overlay-v9" ||
     content.layoutVersion === "wall-text-overlay-v10" ||
-    content.layoutVersion === "wall-text-overlay-v11"
+    content.layoutVersion === "wall-text-overlay-v11" ||
+    content.layoutVersion === "wall-text-overlay-v12"
   ) {
     const blocks = content.finalLayout?.blocks;
     const lines = blocks?.flatMap((block) => block.lines) ?? [];
     const authoritativeText = lines.join(" ");
 
     const minimumWords =
+      content.layoutVersion === "wall-text-overlay-v12" ||
       content.layoutVersion === "wall-text-overlay-v11" ||
       content.layoutVersion === "wall-text-overlay-v10"
         ? MIN_CURRENT_GENERATION_WALL_TEXT_WORDS
         : MIN_SHORT_WALL_TEXT_WORDS;
     const maximumWords =
+      content.layoutVersion === "wall-text-overlay-v12" ||
       content.layoutVersion === "wall-text-overlay-v11" ||
       content.layoutVersion === "wall-text-overlay-v10"
         ? MAX_CURRENT_GENERATION_WALL_TEXT_WORDS
@@ -385,7 +387,9 @@ export function validateWallTextContent(
     if (
       content.sourceContent?.kind !== "text" ||
       content.finalLayout?.version !==
-        (content.layoutVersion === "wall-text-overlay-v11"
+        (content.layoutVersion === "wall-text-overlay-v12"
+          ? "wall-text-final-layout-v8"
+          : content.layoutVersion === "wall-text-overlay-v11"
           ? "wall-text-final-layout-v7"
           : content.layoutVersion === "wall-text-overlay-v10"
           ? "wall-text-final-layout-v6"
@@ -569,7 +573,10 @@ function toWallTextContent(
   return {
     fullText,
     kind: "wall_text",
-    layoutVersion: ANCIENT_WALL_TEXT_CONTENT_LAYOUT_VERSION,
+    // Generated ideas have semantic lines only. They deliberately retain the
+    // pre-measurement V4 marker until the layout engine persists their V12
+    // authoritative finalLayout.
+    layoutVersion: "wall-text-overlay-v4",
     pattern: normalizePattern(idea.pattern),
     segments,
   };

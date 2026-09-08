@@ -2257,7 +2257,7 @@ export function parseWallTextContent(
   if (
     isJsonObject(value) &&
     value.kind === "wall_text" &&
-    ["wall-text-overlay-v5", "wall-text-overlay-v6", "wall-text-overlay-v7", "wall-text-overlay-v8", "wall-text-overlay-v9", "wall-text-overlay-v10", "wall-text-overlay-v11"].includes(
+    ["wall-text-overlay-v5", "wall-text-overlay-v6", "wall-text-overlay-v7", "wall-text-overlay-v8", "wall-text-overlay-v9", "wall-text-overlay-v10", "wall-text-overlay-v11", "wall-text-overlay-v12"].includes(
       String(value.layoutVersion),
     )
   ) {
@@ -2377,6 +2377,7 @@ function parseCurrentWallTextContent(
         : null;
   const finalLayout = value.finalLayout;
   const textBox = parseNormalizedBox(finalLayout.textBox);
+  const isArialBoldV12 = value.layoutVersion === "wall-text-overlay-v12";
   const isArialBoldV11 = value.layoutVersion === "wall-text-overlay-v11";
   const isArialBoldV10 = value.layoutVersion === "wall-text-overlay-v10";
   const isAvenirNextV9 = value.layoutVersion === "wall-text-overlay-v9";
@@ -2387,12 +2388,14 @@ function parseCurrentWallTextContent(
     isArialV7 ||
     isArialRegularV8 ||
     isAvenirNextV9 ||
-    isArialBoldV11 || isArialBoldV10;
+    isArialBoldV12 || isArialBoldV11 || isArialBoldV10;
 
   if (
     !parsedSource ||
     finalLayout.version !==
-      (isArialBoldV11
+      (isArialBoldV12
+        ? "wall-text-final-layout-v8"
+        : isArialBoldV11
         ? "wall-text-final-layout-v7"
         : isArialBoldV10
         ? "wall-text-final-layout-v6"
@@ -2405,7 +2408,7 @@ function parseCurrentWallTextContent(
           : isPlainTextLayout
             ? "wall-text-final-layout-v2"
             : "wall-text-final-layout-v1") ||
-    (isArialBoldV11 || isArialBoldV10
+    (isArialBoldV12 || isArialBoldV11 || isArialBoldV10
       ? finalLayout.fontFamily !== "Arial" ||
         Number(finalLayout.fontWeight) !== WALL_TEXT_FONT_WEIGHT
       : isAvenirNextV9
@@ -2474,7 +2477,17 @@ function parseCurrentWallTextContent(
   const formatId = value.formatId as (typeof WALL_TEXT_PATTERNS)[number];
 
   const fontSizePx = normalizeCurrentWallTextFontSize(Number(finalLayout.fontSizePx));
-  const parsedFinalLayout = isArialBoldV11
+  const parsedFinalLayout = isArialBoldV12
+    ? {
+        blocks,
+        fontFamily: "Arial" as const,
+        fontSizePx,
+        fontWeight: WALL_TEXT_FONT_WEIGHT as 700,
+        lineHeightPx: fontSizePx * 1.1,
+        textBox,
+        version: "wall-text-final-layout-v8" as const,
+      }
+    : isArialBoldV11
     ? {
         blocks,
         fontFamily: "Arial" as const,
@@ -2541,7 +2554,9 @@ function parseCurrentWallTextContent(
     formatId,
     fullText: normalizedFullText,
     kind: "wall_text",
-    layoutVersion: isArialBoldV11
+    layoutVersion: isArialBoldV12
+      ? "wall-text-overlay-v12"
+      : isArialBoldV11
       ? "wall-text-overlay-v11"
       : isArialBoldV10
       ? "wall-text-overlay-v10"

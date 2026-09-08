@@ -171,8 +171,8 @@ export async function createWallTextFinalLayout(params: {
 
   throw new WallTextLayoutFitError(
     params.content.kind === "text"
-      ? "Wall-of-text copy cannot fit five to eight balanced lines at the fixed 50px font size. Shorten the copy or widen the text box."
-      : "Wall-of-text copy does not fit the publishing safe area at the fixed 50px font size.",
+      ? "Wall-of-text copy cannot fit five to eight balanced lines at the fixed 44px font size. Shorten the copy or widen the text box."
+      : "Wall-of-text copy does not fit the publishing safe area at the fixed 44px font size.",
   );
 }
 

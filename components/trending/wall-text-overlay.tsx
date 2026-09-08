@@ -7,6 +7,7 @@ import type {
 import { getWallTextRenderBlocks } from "@/lib/trending/wall-text-types";
 import {
   getWallTextFontSize,
+  getWallTextLetterSpacing,
   getWallTextOutlineWidth,
   getWallTextShadowOpacity,
   getWallTextTypography,
@@ -36,6 +37,7 @@ export function WallTextOverlay({
   const fontSize = getWallTextFontSize(content);
   const outlineWidth = getWallTextOutlineWidth(content);
   const shadowOpacity = getWallTextShadowOpacity(content);
+  const letterSpacing = getWallTextLetterSpacing(content);
   const typography = getWallTextTypography(content);
 
   return (
@@ -52,10 +54,16 @@ export function WallTextOverlay({
           fontFamily: typography.fontFamily,
           fontSize: `${fontSize / 10.8}cqw`,
           fontWeight: typography.fontWeight,
-          letterSpacing: `${-0.2 / 10.8}cqw`,
+          letterSpacing:
+            letterSpacing === 0
+              ? "normal"
+              : `${letterSpacing / 10.8}cqw`,
           paintOrder: "stroke fill",
           paddingInline: `${WALL_TEXT_INLINE_SAFE_PADDING / 10.8}cqw`,
-          textShadow: `0 0.111111cqw 0.185185cqw rgb(0 0 0 / ${shadowOpacity})`,
+          textShadow:
+            shadowOpacity > 0
+              ? `0 0.111111cqw 0.185185cqw rgb(0 0 0 / ${shadowOpacity})`
+              : "none",
           WebkitTextStroke: `${outlineWidth / 10.8}cqw #000000`,
         }}
       >

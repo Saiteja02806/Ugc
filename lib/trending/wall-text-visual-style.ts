@@ -10,20 +10,24 @@ export const LEGACY_WALL_TEXT_REGULAR_FONT_WEIGHT = 400;
 export const LEGACY_WALL_TEXT_ARIAL_BOLD_FONT_WEIGHT = 500;
 export const LEGACY_WALL_TEXT_FONT_WEIGHT = 700;
 export const WALL_TEXT_LINE_HEIGHT_FACTOR = 1.1;
-// New layouts wrap at this size; they never shrink to keep fewer lines.
-export const WALL_TEXT_FIXED_FONT_SIZE = 50;
+// The target treatment uses compact 44px Arial Bold. Layouts never shrink
+// below it merely to keep fewer lines.
+export const WALL_TEXT_FIXED_FONT_SIZE = 44;
 export const WALL_TEXT_MAXIMUM_FONT_SIZE = 52;
 export const WALL_TEXT_MINIMUM_FONT_SIZE = 44;
-// V7 keeps the supplied Arial Bold face but lightens its edge treatment for
-// bright footage. V6 stays at 4px so already-rendered cards do not change.
+// V8 keeps the crisp 3px reference edge. V7 and V6 stay as persisted so old
+// cards do not change appearance when viewed or exported later.
 export const WALL_TEXT_OUTLINE_WIDTH = 3;
 export const WALL_TEXT_PREVIOUS_ARIAL_BOLD_OUTLINE_WIDTH = 4;
 // The V5 Avenir treatment uses a 2px stroke. The supplied reference uses a
 // stronger outlined Arial treatment, so V6 and prior Arial/Inter layouts use
 // the standard 4px outline.
 export const WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH = 2;
-export const WALL_TEXT_SHADOW_OPACITY = 0.3;
+export const WALL_TEXT_SHADOW_OPACITY = 0;
+export const WALL_TEXT_V7_SHADOW_OPACITY = 0.3;
 export const WALL_TEXT_LEGACY_SHADOW_OPACITY = 0.45;
+export const WALL_TEXT_REFERENCE_LETTER_SPACING = 0;
+export const WALL_TEXT_LEGACY_LETTER_SPACING = -0.2;
 export const WALL_TEXT_SECTION_GAP = 18;
 // The text box is the outer placement rectangle. Keep a real visual gap
 // inside it so rendered glyphs, outline, and shadow never touch its edges.
@@ -50,7 +54,10 @@ export function getWallTextSafeLineWidth(textBoxWidth: number) {
 }
 
 export function getWallTextOutlineWidth(content: TrendingWallTextContent) {
-  if (content.finalLayout?.version === "wall-text-final-layout-v7") {
+  if (
+    content.finalLayout?.version === "wall-text-final-layout-v8" ||
+    content.finalLayout?.version === "wall-text-final-layout-v7"
+  ) {
     return WALL_TEXT_OUTLINE_WIDTH;
   }
   if (content.finalLayout?.version === "wall-text-final-layout-v5") {
@@ -60,9 +67,21 @@ export function getWallTextOutlineWidth(content: TrendingWallTextContent) {
 }
 
 export function getWallTextShadowOpacity(content: TrendingWallTextContent) {
+  if (content.finalLayout?.version === "wall-text-final-layout-v8") {
+    return WALL_TEXT_SHADOW_OPACITY;
+  }
   return content.finalLayout?.version === "wall-text-final-layout-v7"
-    ? WALL_TEXT_SHADOW_OPACITY
+    ? WALL_TEXT_V7_SHADOW_OPACITY
     : WALL_TEXT_LEGACY_SHADOW_OPACITY;
+}
+
+export function getWallTextLetterSpacing(content: TrendingWallTextContent) {
+  // V12 is deliberately normal tracking to match the supplied reference. Keep
+  // historical cards at their persisted, slightly tightened spacing.
+  return !content.finalLayout ||
+    content.finalLayout.version === "wall-text-final-layout-v8"
+    ? WALL_TEXT_REFERENCE_LETTER_SPACING
+    : WALL_TEXT_LEGACY_LETTER_SPACING;
 }
 
 export function getWallTextFontSize(content: TrendingWallTextContent): WallTextFontSize {
@@ -104,8 +123,9 @@ export function getWallTextFontSize(content: TrendingWallTextContent): WallTextF
 }
 
 export function getWallTextTypography(content: TrendingWallTextContent) {
-  if (content.finalLayout?.version === "wall-text-final-layout-v6" ||
-      content.finalLayout?.version === "wall-text-final-layout-v7") {
+  if (content.finalLayout?.version === "wall-text-final-layout-v8" ||
+      content.finalLayout?.version === "wall-text-final-layout-v7" ||
+      content.finalLayout?.version === "wall-text-final-layout-v6") {
     return ARIAL_BOLD_TYPOGRAPHY;
   }
 

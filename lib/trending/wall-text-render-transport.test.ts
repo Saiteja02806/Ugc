@@ -65,26 +65,28 @@ const CURRENT_V5_CONTENT = {
   layoutVersion: "wall-text-overlay-v9" as const,
 } satisfies TrendingWallTextContent;
 
-const CURRENT_V7_CONTENT = {
+const CURRENT_V8_CONTENT = {
   ...CURRENT_V4_CONTENT,
   finalLayout: {
     ...CURRENT_V4_CONTENT.finalLayout,
     fontFamily: "Arial" as const,
+    fontSizePx: 44 as const,
     fontWeight: 700 as const,
-    version: "wall-text-final-layout-v7" as const,
+    lineHeightPx: 48.4,
+    version: "wall-text-final-layout-v8" as const,
   },
-  layoutVersion: "wall-text-overlay-v11" as const,
+  layoutVersion: "wall-text-overlay-v12" as const,
 } satisfies TrendingWallTextContent;
 
-test("sends V7 lighter Arial Bold through the V4-compatible rollout envelope", () => {
-  const transport = toWallTextRenderTransportContent(CURRENT_V7_CONTENT);
+test("sends V8 compact Arial Bold through the V4-compatible rollout envelope", () => {
+  const transport = toWallTextRenderTransportContent(CURRENT_V8_CONTENT);
 
-  assert.equal(CURRENT_V7_CONTENT.finalLayout?.version, "wall-text-final-layout-v7");
+  assert.equal(CURRENT_V8_CONTENT.finalLayout?.version, "wall-text-final-layout-v8");
   assert.equal(transport.finalLayout?.version, "wall-text-final-layout-v4");
   assert.equal(transport.finalLayout?.fontFamily, "Arial");
   assert.equal(transport.finalLayout?.fontWeight, 400);
-  assert.equal(transport.layoutVersion, "wall-text-overlay-v11");
-  assert.deepEqual(transport.finalLayout?.blocks, CURRENT_V7_CONTENT.finalLayout?.blocks);
+  assert.equal(transport.layoutVersion, "wall-text-overlay-v12");
+  assert.deepEqual(transport.finalLayout?.blocks, CURRENT_V8_CONTENT.finalLayout?.blocks);
 });
 
 test("sends V5 Avenir Next through the V4-compatible rollout envelope", () => {

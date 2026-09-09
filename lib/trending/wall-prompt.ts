@@ -2,7 +2,7 @@ import type { WallTextBusinessContext } from "./wall-text-text-logic";
 import { WALL_TEXT_SOFT_WORD_RANGE } from "./wall-text-copy-policy";
 
 export const WALL_TEXT_PROMPT_VERSION =
-  "wall-text-writer-prompt-v14-24-40-52px-balanced-lines" as const;
+  "wall-text-writer-prompt-v15-candidate-specific-word-budgets" as const;
 
 export type WallTextPromptCandidate = {
   candidateIndex: number;
@@ -29,7 +29,7 @@ export type WallTextPromptCandidate = {
 
 const GLOBAL_WALL_RULES = [
   "Write natural continuous Wall-of-Text language, not chopped Hook-style fragments.",
-  `Write ${WALL_TEXT_SOFT_WORD_RANGE.minimum}-${WALL_TEXT_SOFT_WORD_RANGE.maximum} words. This is required for new generated Wall-of-Text cards.`,
+  "Use each candidate's requiredWordRange. Both limits are inclusive requirements, and that candidate-specific range overrides every general word-count instruction.",
   "Use only information supported by the Business Profile.",
   "Do not invent numbers, statistics, studies, research, customer results, product features, guarantees, or medical claims.",
   "Do not decide visual line breaks and do not insert newline characters.",
@@ -45,24 +45,31 @@ export function buildWallTextGenerationPrompt(params: {
   business: WallTextBusinessContext;
   candidates: readonly WallTextPromptCandidate[];
 }) {
-  const candidates = params.candidates.map((candidate) => ({
-    candidateIndex: candidate.candidateIndex,
-    maxWords: Math.max(
-      WALL_TEXT_SOFT_WORD_RANGE.minimum,
+  const candidates = params.candidates.map((candidate) => {
+    const minimum = WALL_TEXT_SOFT_WORD_RANGE.minimum;
+    const maximum = Math.max(
+      minimum,
       Math.min(candidate.maxWords, WALL_TEXT_SOFT_WORD_RANGE.maximum),
-    ),
-    ...(candidate.referenceText
-      ? { referenceTextForThisCandidateOnly: candidate.referenceText }
-      : {}),
-    ...(candidate.retryFeedback ? { retryFeedback: candidate.retryFeedback } : {}),
-    ...(candidate.privateCreativeContext
-      ? { privateCreativeContext: candidate.privateCreativeContext }
-      : {}),
-    // Old reserved assignments can still store the previous 18-word target.
-    // Do not send that scalar back to the writer and restore the short-copy
-    // bias; the current 24–40 contract applies to retries too.
-    preferredWordRange: WALL_TEXT_SOFT_WORD_RANGE,
-  }));
+    );
+    const targetWords = Math.max(
+      minimum,
+      Math.min(candidate.targetWords, maximum),
+    );
+
+    return {
+      candidateIndex: candidate.candidateIndex,
+      maxWords: maximum,
+      requiredWordRange: { maximum, minimum },
+      targetWords,
+      ...(candidate.referenceText
+        ? { referenceTextForThisCandidateOnly: candidate.referenceText }
+        : {}),
+      ...(candidate.retryFeedback ? { retryFeedback: candidate.retryFeedback } : {}),
+      ...(candidate.privateCreativeContext
+        ? { privateCreativeContext: candidate.privateCreativeContext }
+        : {}),
+    };
+  });
 
   return [
     "Create one original Wall-of-Text post for every supplied short-form video candidate.",
@@ -70,7 +77,7 @@ export function buildWallTextGenerationPrompt(params: {
     "BUSINESS PROFILE",
     JSON.stringify(params.business, null, 2),
     "",
-    "CANDIDATES: SOFT COPY TARGETS AND ABSOLUTE SAFETY CEILINGS",
+    "CANDIDATES: REQUIRED WORD RANGES AND ABSOLUTE SAFETY CEILINGS",
     JSON.stringify(candidates, null, 2),
     "",
     "GLOBAL RULES",
@@ -79,8 +86,8 @@ export function buildWallTextGenerationPrompt(params: {
     "TASK",
     "For each candidate, write the strongest complete natural message from the supplied idea and business facts. Do not force it into a named writing format, template, list, or formula.",
     "When privateCreativeContext is present, write from the complete private context, not from contentIdea alone.",
-    "preferredWordRange is a required 24-40-word generation range. Choose the natural length the idea needs within that range; do not default every message to its shortest end. The layout engine—not the clip duration—will decide final acceptance from a measured 5-8 line fit at a fixed 52px font size.",
-    "Do not insert visual line breaks or pad a complete thought with filler to force eight lines. If retry feedback reports layout_fit, improve the wording while remaining inside preferredWordRange; the font size will not shrink.",
+    "requiredWordRange is the exact allowed range for its candidate. Aim near targetWords, but never exceed requiredWordRange.maximum or fall below requiredWordRange.minimum. The layout engine—not clip duration—will verify a measured 5-8 line fit at a fixed 52px font size.",
+    "Do not insert visual line breaks or pad a complete thought with filler to force eight lines. If retry feedback reports layout_fit, use fewer words and shorter phrases while remaining inside that candidate's requiredWordRange; the font size will not shrink.",
     "A referenceTextForThisCandidateOnly belongs only to that candidate. Use it only as structural and emotional inspiration, adapt it to the Business Profile, and do not copy its wording.",
     "Reference text is not evidence. Never repeat its numbers, psychology statements, factual claims, product names, or promises unless the Business Profile independently supports them.",
     "Return exactly one result for every candidate. Do not return formatId, duration, coordinates, or final visual lines.",

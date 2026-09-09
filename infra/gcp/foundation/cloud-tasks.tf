@@ -30,6 +30,14 @@ locals {
       max_attempts          = 5
       max_retry_duration    = "3600s"
     }
+    # Fast, durable delivery of a committed Wall plan publication. This queue
+    # starts the Wall writer; it does not generate ideas or videos.
+    wall-text-publication = {
+      concurrent_dispatches = 5
+      dispatches_per_second = 5
+      max_attempts          = 5
+      max_retry_duration    = "3600s"
+    }
     carousel = {
       # Do not dispatch parallel Carousel writers until the durable Carousel
       # assignment reservation is made safe for more than one worker.
@@ -43,6 +51,14 @@ locals {
       dispatches_per_second = 5
       max_attempts          = 5
       max_retry_duration    = "3600s"
+    }
+    reaction-render = {
+      # One task represents one complete Reel. The Reaction service is
+      # request-based and scales to zero when this queue is empty.
+      concurrent_dispatches = 4
+      dispatches_per_second = 4
+      max_attempts          = 5
+      max_retry_duration    = "7200s"
     }
     social-publish = {
       # The current social-publish worker has a single safe execution slot.
@@ -96,10 +112,22 @@ resource "google_project_iam_member" "app_cloud_tasks_enqueuer" {
   member  = "serviceAccount:${google_service_account.app.email}"
 }
 
+resource "google_project_iam_member" "worker_cloud_tasks_enqueuer" {
+  project = var.project_id
+  role    = "roles/cloudtasks.enqueuer"
+  member  = "serviceAccount:${google_service_account.worker.email}"
+}
+
 resource "google_service_account_iam_member" "app_can_attach_scheduler_oidc" {
   service_account_id = google_service_account.scheduler.name
   role               = "roles/iam.serviceAccountUser"
   member             = "serviceAccount:${google_service_account.app.email}"
+}
+
+resource "google_service_account_iam_member" "worker_can_attach_scheduler_oidc" {
+  service_account_id = google_service_account.scheduler.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.worker.email}"
 }
 
 resource "google_service_account_iam_member" "cloud_tasks_can_mint_scheduler_oidc" {

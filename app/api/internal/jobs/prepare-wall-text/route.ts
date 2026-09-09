@@ -23,6 +23,7 @@ const MAX_BODY_LENGTH = 4_096;
 type PrepareWallTextInput = {
   businessProfileId?: unknown;
   businessProfileVersion?: unknown;
+  earlyPlanId?: unknown;
   recoveryIteration?: unknown;
   recoveryKey?: unknown;
   refillKey?: unknown;
@@ -70,6 +71,7 @@ export async function POST(request: Request) {
     }
 
     const ideas = await prepareTrendingWallTextIdeas(profile, {
+      earlyPlanId: input.earlyPlanId,
       mode: input.refillKey ? "refill" : "initial",
       recoveryIteration: input.recoveryIteration,
       recoveryKey: input.recoveryKey,
@@ -112,6 +114,7 @@ function parseInput(rawBody: string) {
   try {
     const input = JSON.parse(rawBody) as PrepareWallTextInput;
     const businessProfileId = getString(input.businessProfileId);
+    const earlyPlanId = getOptionalString(input.earlyPlanId);
     const recoveryKey = getOptionalString(input.recoveryKey);
     const refillKey = getOptionalString(input.refillKey);
     const recoveryIteration =
@@ -156,6 +159,7 @@ function parseInput(rawBody: string) {
       ? {
           businessProfileId,
           businessProfileVersion,
+          earlyPlanId,
           recoveryIteration,
           recoveryKey,
           refillKey,

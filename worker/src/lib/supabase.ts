@@ -69,6 +69,7 @@ const REACTION_CREATIVES_TABLE = "reaction_creatives";
 const USER_REACTION_ASSIGNMENTS_TABLE = "user_reaction_assignments";
 const WALL_TEXT_CONTENT_PLAN_ITEMS_TABLE = "wall_text_content_plan_items";
 const WALL_TEXT_CONTENT_PLANS_TABLE = "wall_text_content_plans";
+const WALL_TEXT_PLAN_PUBLICATIONS_TABLE = "wall_text_plan_publications";
 const CLAIM_BACKGROUND_JOB_FUNCTION = "claim_background_job";
 const CLAIM_SOCIAL_PUBLISH_OPERATION_FUNCTION =
   "claim_social_publish_operation_with_account_lane";
@@ -2570,6 +2571,28 @@ export class SupabaseJobStore {
     return data ?? [];
   }
 
+  async getWallTextPlanPublication(params: {
+    itemCount: number;
+    planId: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client
+      .from(WALL_TEXT_PLAN_PUBLICATIONS_TABLE)
+      .select("id,item_count,plan_id,user_id")
+      .eq("plan_id", params.planId)
+      .eq("user_id", params.userId)
+      .eq("item_count", params.itemCount)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(
+        `Could not load Wall-of-Text publication outbox record: ${error.message}`,
+      );
+    }
+
+    return data;
+  }
+
   async completeWallTextContentPlanGeneration(params: {
     claimToken: string;
     jobId: string;
@@ -3437,6 +3460,75 @@ export class SupabaseJobStore {
     return (data ?? []) as ReactionGenerationItemRow[];
   }
 
+  async createReactionGenerationRenderJobs(params: {
+    generationJobId: string;
+    runId: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client.rpc(
+      "create_reaction_generation_render_jobs_v1",
+      {
+        p_generation_job_id: params.generationJobId,
+        p_run_id: params.runId,
+        p_user_id: params.userId,
+      },
+    );
+    if (error) {
+      throw new Error(`Could not create Reaction render jobs: ${error.message}`);
+    }
+
+    const jobs = await Promise.all((data ?? []).map(async (row) => {
+      const job = await this.getJobById(row.job_id);
+      if (!job) {
+        throw new Error("A Reaction render job disappeared after reservation.");
+      }
+      return { created: row.created, itemId: row.item_id, job };
+    }));
+    return jobs;
+  }
+
+  async attachReactionRenderTaskDelivery(params: {
+    jobId: string;
+    taskName: string;
+  }) {
+    const { data, error } = await this.client
+      .from(BACKGROUND_JOBS_TABLE)
+      .update({
+        queue_message_id: params.taskName,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", params.jobId)
+      .eq("job_type", "reaction_render")
+      .is("queue_message_id", null)
+      .select("*")
+      .maybeSingle();
+    if (error) {
+      throw new Error(`Could not attach Reaction render task delivery: ${error.message}`);
+    }
+    return data as BackgroundJobRow | null;
+  }
+
+  async claimReactionGenerationItemRender(params: {
+    generationJobId: string;
+    itemId: string;
+    renderJobId: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client.rpc(
+      "claim_reaction_generation_item_render_v1",
+      {
+        p_generation_job_id: params.generationJobId,
+        p_item_id: params.itemId,
+        p_render_job_id: params.renderJobId,
+        p_user_id: params.userId,
+      },
+    );
+    if (error) {
+      throw new Error(`Could not claim Reaction render item: ${error.message}`);
+    }
+    return (data?.[0] ?? null) as ReactionGenerationItemRow | null;
+  }
+
   async saveReactionRenderedMedia(params: {
     creativeId: string;
     durationSeconds: number;
@@ -3525,6 +3617,30 @@ export class SupabaseJobStore {
     }
   }
 
+  async completeReactionGenerationItemRenderV2(params: {
+    generationJobId: string;
+    itemId: string;
+    mediaAssetId: string;
+    previewUrl: string;
+    renderJobId: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client.rpc(
+      "complete_reaction_generation_item_render_v2",
+      {
+        p_generation_job_id: params.generationJobId,
+        p_item_id: params.itemId,
+        p_media_asset_id: params.mediaAssetId,
+        p_preview_url: params.previewUrl,
+        p_render_job_id: params.renderJobId,
+        p_user_id: params.userId,
+      },
+    );
+    if (error || data !== true) {
+      throw new Error(`Could not complete Reaction render item: ${error?.message ?? "stale item"}`);
+    }
+  }
+
   async failReactionGenerationItemRender(params: {
     errorMessage: string;
     generationJobId: string;
@@ -3538,6 +3654,28 @@ export class SupabaseJobStore {
       p_item_id: params.itemId,
       p_user_id: params.userId,
     });
+    if (error || data !== true) {
+      throw new Error(`Could not fail Reaction render item: ${error?.message ?? "stale item"}`);
+    }
+  }
+
+  async failReactionGenerationItemRenderV2(params: {
+    errorMessage: string;
+    generationJobId: string;
+    itemId: string;
+    renderJobId: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client.rpc(
+      "fail_reaction_generation_item_render_v2",
+      {
+        p_error_message: params.errorMessage,
+        p_generation_job_id: params.generationJobId,
+        p_item_id: params.itemId,
+        p_render_job_id: params.renderJobId,
+        p_user_id: params.userId,
+      },
+    );
     if (error || data !== true) {
       throw new Error(`Could not fail Reaction render item: ${error?.message ?? "stale item"}`);
     }
@@ -3558,7 +3696,7 @@ export class SupabaseJobStore {
     if (error || !result) {
       throw new Error(`Could not complete Reaction generation run: ${error?.message ?? "no row returned"}`);
     }
-    return result as { failed_count: number; ready_count: number; status: "completed" | "failed" | "partial" };
+    return result as { failed_count: number; ready_count: number; status: "completed" | "failed" | "partial" | "rendering" };
   }
 
   async failReactionGenerationRun(params: {

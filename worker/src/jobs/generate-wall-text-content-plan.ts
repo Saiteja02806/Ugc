@@ -9,7 +9,7 @@ import {
 import { toContentPlanProviderRetry } from "../lib/content-plan-provider-retry.js";
 import { RetryableJobError } from "../retryable-job-error.js";
 import { logger } from "../logger.js";
-import { reconcileWallTextPlanInApp } from "../lib/trending-feed-reconciliation.js";
+import { enqueueWallTextPlanPublicationTask } from "../lib/wall-text-plan-publication-dispatch.js";
 import type { WorkerJobContext, WorkerJobOutput } from "./index.js";
 
 type ContentPlanJobInput = {
@@ -23,10 +23,13 @@ export async function runGenerateWallTextContentPlanJob(
   context: WorkerJobContext,
   dependencies: {
     generateChunk: typeof generateWallTextContentPlanChunk;
-    notifyPublication?: typeof reconcileWallTextPlanInApp;
+    enqueuePublication?: (params: {
+      planId: string;
+      publicationId: string;
+    }) => Promise<unknown>;
   } = {
     generateChunk: generateWallTextContentPlanChunk,
-    notifyPublication: reconcileWallTextPlanInApp,
+    enqueuePublication: enqueueWallTextPlanPublicationTask,
   },
 ): Promise<WorkerJobOutput> {
   const input = parseInput(job);
@@ -145,14 +148,28 @@ export async function runGenerateWallTextContentPlanJob(
       });
 
       if (plan.early_delivery_enabled) {
-        // The publication is already durable. Await a bounded wake-up, while a
-        // failed callback is retried independently by the recovery scheduler.
+        // The commit above already created the publication outbox row. Queue a
+        // deterministic Cloud Task for that row; the five-minute scan remains
+        // responsible only for the crash window before this dispatch succeeds.
         try {
-          await (dependencies.notifyPublication ?? reconcileWallTextPlanInApp)({ planId: plan.id, userId: plan.user_id });
+          const publication = await context.store.getWallTextPlanPublication({
+            itemCount: items.length,
+            planId: plan.id,
+            userId: plan.user_id,
+          });
+
+          if (!publication) {
+            throw new Error("The committed Wall-of-Text publication outbox row was not found.");
+          }
+
+          await (dependencies.enqueuePublication ?? enqueueWallTextPlanPublicationTask)({
+            planId: plan.id,
+            publicationId: publication.id,
+          });
         } catch (error) {
-          logger.warn("Wall plan publication will be reconciled by recovery", {
+          logger.warn("Wall plan publication task will be recovered if dispatch is unavailable", {
             planId: plan.id, savedItemCount: items.length,
-            error: error instanceof Error ? error.message : "Publication wake-up failed",
+            error: error instanceof Error ? error.message : "Publication task dispatch failed",
           });
         }
       }

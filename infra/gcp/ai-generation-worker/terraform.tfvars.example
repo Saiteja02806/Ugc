@@ -39,7 +39,7 @@ gemini_omni_model        = "gemini-omni-flash-preview"
 gemini_api_key_secret_id = "gemini-api-key"
 runwayml_api_secret_id   = "runwayml-api-secret"
 runway_daily_credit_limit = 100
-internal_app_url          = "https://www.getugcpilot.com"
+internal_app_url          = "https://getugcpilot.com"
 scheduling_secret_id     = "ugc-internal-scheduling-secret"
 
 worker_version    = "worker-gcp"

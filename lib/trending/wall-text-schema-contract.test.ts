@@ -253,6 +253,10 @@ const workerPreparationClient = readFileSync(
   ),
   "utf8",
 );
+const workerWallTextJob = readFileSync(
+  new URL("../../worker/src/jobs/generate-wall-text.ts", import.meta.url),
+  "utf8",
+);
 const migration =
   `${creativeMigration}\n${catalogMigration}\n${unifiedCopyMigration}\n${renderingMigration}\n${semanticOverlayMigration}\n${sixSecondMigration}\n${qualityMigration}`;
 
@@ -517,6 +521,25 @@ test("persists stable batches, original chunks, assignments, budgets, and placem
   assert.match(
     feedSource,
     /groupReservedAssignmentsByChunk[\s\S]+claimWallTextGenerationChunk[\s\S]+onChunkAccepted[\s\S]+saveWallTextGenerationCandidate/,
+  );
+});
+
+test("carries an early-delivery plan through the worker and bypasses the historical-library shortcut", () => {
+  assert.match(
+    workerPreparationClient,
+    /earlyPlanId\?: string \| null/,
+  );
+  assert.match(
+    workerWallTextJob,
+    /const earlyPlanId = getOptionalString\(input\?\.earlyPlanId\);[\s\S]+earlyPlanId,/,
+  );
+  assert.match(
+    internalPreparationRoute,
+    /earlyPlanId: input\.earlyPlanId/,
+  );
+  assert.match(
+    feedSource,
+    /mode === "initial" &&\s*!options\.earlyPlanId &&\s*areTrendingWallTextCreativesCurrent\(existing\)/,
   );
 });
 
@@ -965,7 +988,7 @@ test("keeps the Wall editor save gate aligned with the V13 24-40 word contract",
 
 test("keeps measured finalLayout lines as the current Wall source of truth", () => {
   assert.match(promptSource, /do not insert newline characters/i);
-  assert.match(promptSource, /\$\{WALL_TEXT_SOFT_WORD_RANGE\.minimum\}-\$\{WALL_TEXT_SOFT_WORD_RANGE\.maximum\} words/i);
+  assert.match(promptSource, /requiredWordRange[\s\S]+targetWords/i);
   assert.match(promptSource, /Do not return[\s\S]+final visual lines/i);
   assert.match(layoutEngineSource, /createWallTextFinalLayout[\s\S]+blocks,/);
   assert.match(overlaySource, /getWallTextRenderBlocks\(content\)/);
@@ -979,7 +1002,7 @@ test("keeps measured finalLayout lines as the current Wall source of truth", () 
   );
 });
 
-test("V13 requires 24-40 generated words and measured fit instead of clip-time limits", () => {
+test("V13 uses candidate-specific word budgets and measured fit instead of clip-time limits", () => {
   const currentValidation = textLogicSource.match(
     /content\.layoutVersion === "wall-text-overlay-v6"[\s\S]+?MAX_CURRENT_GENERATION_WALL_TEXT_WORDS[\s\S]+?\n    return;/,
   )?.[0] ?? "";
@@ -991,7 +1014,7 @@ test("V13 requires 24-40 generated words and measured fit instead of clip-time l
   assert.doesNotMatch(formatsSource, /hardWordRange/);
   assert.match(
     promptSource,
-    /required 24-40-word generation range[\s\S]+not the clip duration[\s\S]+measured 5-8 line fit/i,
+    /requiredWordRange is the exact allowed range[\s\S]+not clip duration[\s\S]+measured 5-8 line fit/i,
   );
   assert.doesNotMatch(promptSource, /CODE-DERIVED READABILITY BUDGETS/);
   assert.doesNotMatch(generatorSource, /targetWords\s*-\s*4/);
@@ -1110,12 +1133,17 @@ test("fixed Wall typography grows lines and rejects overflow without shrinking",
     }), error =>
       error.code === 'wall_text_render_fit_rejected' && /fixed 52px/.test(error.message));
     const generatedPrompt = prompt.buildWallTextGenerationPrompt({
-      business: {}, candidates: [{ candidateIndex: 0, targetWords: 18, maxWords: 50 }],
+      business: {}, candidates: [
+        { candidateIndex: 0, targetWords: 18, maxWords: 50 },
+        { candidateIndex: 1, targetWords: 32, maxWords: 28 },
+      ],
     });
-    const candidates = JSON.parse(generatedPrompt.split('CANDIDATES: SOFT COPY TARGETS AND ABSOLUTE SAFETY CEILINGS\\n')[1].split('\\n\\nGLOBAL RULES')[0]);
-    assert.deepEqual(candidates[0].preferredWordRange, { minimum: 24, maximum: 40 });
-    assert.equal(candidates[0].targetWords, undefined);
+    const candidates = JSON.parse(generatedPrompt.split('CANDIDATES: REQUIRED WORD RANGES AND ABSOLUTE SAFETY CEILINGS\\n')[1].split('\\n\\nGLOBAL RULES')[0]);
+    assert.deepEqual(candidates[0].requiredWordRange, { minimum: 24, maximum: 40 });
+    assert.equal(candidates[0].targetWords, 24);
     assert.equal(candidates[0].maxWords, 40);
+    assert.deepEqual(candidates[1].requiredWordRange, { minimum: 24, maximum: 28 });
+    assert.equal(candidates[1].targetWords, 28);
     assert.equal((await engine.deriveWallTextSpatialBudget({ layout })).targetWords, 32);
   `;
   execFileSync(process.execPath, [
@@ -1601,7 +1629,7 @@ test("refills Wall ideas from unused backgrounds with one deduplicated batch", (
   );
   assert.match(
     feedSource,
-    /refillKey: String\(existing\.length\)/,
+    /refillKey: options\.refillKey \?\? String\(existing\.length\)/,
   );
   assert.match(
     jobsSource,

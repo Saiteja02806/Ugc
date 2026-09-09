@@ -12,6 +12,7 @@ const TIMESTAMP_HEADER = "x-ugc-finalization-timestamp";
 export async function prepareWallTextInApp(params: {
   businessProfileId: string;
   businessProfileVersion: number;
+  earlyPlanId?: string | null;
   recoveryIteration?: number;
   recoveryKey?: string | null;
   refillKey?: string | null;

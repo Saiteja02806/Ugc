@@ -60,7 +60,12 @@ const jobQueueConfig = {
     queueName: "social-publish",
   },
   reaction_generation: {
-    queueName: "video-render",
+    // Planning only. The durable plan immediately creates one independent
+    // reaction_render job for every selected Reel.
+    queueName: "ai-generation",
+  },
+  reaction_render: {
+    queueName: "reaction-render",
   },
   render_demo_video: {
     queueName: "video-render",

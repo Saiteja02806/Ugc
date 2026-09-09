@@ -382,11 +382,17 @@ test("keeps the accepted Carousel and Wall action chooser mounted after the fina
   assert.match(workspace, /setActionCandidate\(candidate\)/);
 });
 
-test("raises only the Slideshow label above its stacked preview", () => {
+test("keeps the Slideshow label compact and aligned unless a tall next card needs clearance", () => {
   assert.match(
     workspace,
-    /function getTrendingFormatPillPositionClass\(\)\s*\{[\s\S]*bottom-\[calc\(100%\+116px\)\]/,
+    /function getTrendingFormatPillPositionClass\(hasVerticalNextCard: boolean\)[\s\S]*hasVerticalNextCard[\s\S]*bottom-\[calc\(100%\+72px\)\] min-\[1024px\]:bottom-\[calc\(100%\+96px\)\][\s\S]*bottom-\[calc\(100%\+24px\)\]/,
   );
+  assert.match(
+    workspace,
+    /positionClassName=\{getTrendingFormatPillPositionClass\(\s*hasVerticalNextCard,\s*\)\}/,
+  );
+  assert.match(workspace, /: "Slideshow";/);
+  assert.doesNotMatch(workspace, /Slideshow · \$\{slideCount\} Slides/);
   assert.equal(
     (
       workspace.match(
@@ -504,8 +510,8 @@ test("keeps the Carousel format pill above its centered media stack", () => {
     workspace,
     /pointer-events-none absolute left-0 z-40 flex w-full items-center justify-start/,
   );
-  assert.match(workspace, /bottom-\[calc\(100%\+72px\)\]/);
-  assert.doesNotMatch(workspace, /bottom-\[calc\(100%\+40px\)\]/);
+  assert.match(workspace, /bottom-\[calc\(100%\+24px\)\]/);
+  assert.doesNotMatch(workspace, /bottom-\[calc\(100%\+116px\)\]/);
   assert.doesNotMatch(workspace, /hasTallerVerticalBackground/);
   assert.match(workspace, /pb-\[107px\] pt-\[94px\]/);
   assert.match(

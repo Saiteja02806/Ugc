@@ -7,10 +7,7 @@ import {
 } from "../lib/reaction-generation.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
 import type { BackgroundJobRow } from "../types.js";
-import {
-  ReactionGenerationTerminalError,
-  runGenerateReactionJob,
-} from "./generate-reaction.js";
+import { runGenerateReactionJob } from "./generate-reaction.js";
 
 const palette = {
   availableReactionPalette: [
@@ -113,9 +110,9 @@ test("invalid model briefs have bounded repair attempts before the job fails", (
   assert.equal(MAX_REACTION_BRIEF_GENERATION_ATTEMPTS, 3);
 });
 
-test("a zero-ready Reaction render fails the durable background job", async () => {
-  let completedRun = false;
-  let failedItem = false;
+test("persists the plan then dispatches one durable render job per Reaction item", async () => {
+  const deliveries: string[] = [];
+  const attachedTaskNames: string[] = [];
   const store = {
     async ensureReactionGenerationRun() {
       return { brief_payload: {}, id: "run-1" };
@@ -153,28 +150,41 @@ test("a zero-ready Reaction render fails the durable background job", async () =
         title: "Reaction Reel · shock",
       }];
     },
-    async failReactionGenerationItemRender() { failedItem = true; },
-    async completeReactionGenerationRun() {
-      completedRun = true;
-      return { failed_count: 1, ready_count: 0, status: "failed" } as const;
+    async createReactionGenerationRenderJobs() {
+      return [{
+        created: true,
+        itemId: "item-1",
+        job: {
+          ...createJob(),
+          id: "525da1b7-35a6-4964-91a5-41c9641ed512",
+          input_json: {},
+          job_type: "reaction_render" as const,
+          queue_message_id: null,
+          queue_name: "reaction-render",
+          stage: "queued",
+          status: "queued" as const,
+        },
+      }];
+    },
+    async attachReactionRenderTaskDelivery(params: { taskName: string }) {
+      attachedTaskNames.push(params.taskName);
     },
   } as unknown as SupabaseJobStore;
 
-  await assert.rejects(
-    () => runGenerateReactionJob(createJob(), {
+  const output = await runGenerateReactionJob(createJob(), {
       checkpoint: async () => undefined,
       dependencies: {
-        renderReactionVideoToStorage: async () => {
-          throw new Error("ffmpeg unavailable");
+        enqueueReactionRenderTask: async (job) => {
+          deliveries.push(job.id);
+          return { created: true, taskName: `reaction-render-${job.id}` };
         },
       },
       store,
-    }),
-    (error: unknown) => error instanceof ReactionGenerationTerminalError,
-  );
+    });
 
-  assert.equal(failedItem, true);
-  assert.equal(completedRun, true);
+  assert.equal(output.queuedRenderCount, 1);
+  assert.deepEqual(deliveries, ["525da1b7-35a6-4964-91a5-41c9641ed512"]);
+  assert.deepEqual(attachedTaskNames, ["reaction-render-525da1b7-35a6-4964-91a5-41c9641ed512"]);
 });
 
 function createJob(): BackgroundJobRow {

@@ -40,6 +40,36 @@ variable "scheduler_service_account_email" {
   default     = "ugc-scheduler-sa@ugcsaas.iam.gserviceaccount.com"
 }
 
+variable "resource_name_prefix" {
+  description = "Prefix shared by Cloud Tasks queues and service accounts."
+  type        = string
+  default     = "ugc"
+}
+
+variable "wall_text_publication_tasks_queue" {
+  description = "Cloud Tasks queue that immediately reconciles committed Wall plan publications."
+  type        = string
+  default     = "ugc-wall-text-publication"
+}
+
+variable "reaction_render_tasks_queue" {
+  description = "Cloud Tasks queue that delivers individual Reaction Reel renders."
+  type        = string
+  default     = "ugc-reaction-render"
+}
+
+variable "reaction_render_task_url" {
+  description = "HTTPS /tasks/jobs URL of the dedicated Reaction render Cloud Run service."
+  type        = string
+  default     = ""
+}
+
+variable "reaction_render_task_audience" {
+  description = "OIDC audience used for the Reaction render Cloud Run service."
+  type        = string
+  default     = ""
+}
+
 variable "service_name" {
   description = "Cloud Run Service name for the AI-generation worker."
   type        = string
@@ -55,7 +85,7 @@ variable "queue_name" {
 variable "worker_job_types" {
   description = "Comma-separated job types allowed for this worker service."
   type        = string
-  default     = "generate_avatar,generate_image,generate_hook_video,generate_trending_hook_copy,hook_text_generation,wall_text_content_plan_generation,wall_text_generation,media_analysis,analytics_sync,carousel_content_plan_generation,paid_trending_prebuild"
+  default     = "generate_avatar,generate_image,generate_hook_video,generate_trending_hook_copy,hook_text_generation,wall_text_content_plan_generation,wall_text_generation,media_analysis,analytics_sync,carousel_content_plan_generation,paid_trending_prebuild,reaction_generation,test_worker_job"
 }
 
 variable "worker_visibility_timeout_seconds" {
@@ -166,9 +196,12 @@ variable "runway_daily_credit_limit" {
 }
 
 variable "internal_app_url" {
-  description = "Production app base URL used for authenticated background persistence calls."
+  description = "Canonical production app URL used for authenticated background persistence and Cloud Tasks callbacks."
   type        = string
-  default     = "https://www.getugcpilot.com"
+  # The www host redirects to this canonical host. Cloud Tasks must target the
+  # canonical origin directly because it does not preserve this API POST on
+  # the redirect chain.
+  default     = "https://getugcpilot.com"
 }
 
 variable "scheduling_secret_id" {

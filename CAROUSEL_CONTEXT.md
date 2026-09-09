@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-09-02
+Last updated: 2026-09-09
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -4138,6 +4138,17 @@ Name: **Verify v26 and replace the stale production assignment**
   row reserves the card's full promoted 9:16 height—not only its smaller
   resting-preview height—so the media cannot overlap Reject or Accept while
   the swipe transition is in progress.
+
+## 2026-09-09 Compact Slideshow Review Label
+
+- The external Slideshow pill uses the same compact label rhythm as Hook and
+  Wall-of-Text: it reads `Slideshow` and sits 24px above a normal active 4:5
+  frame. Slide dots remain the visible slide-count affordance.
+- When the immediate next card is a taller 9:16 Hook, Wall-of-Text, or
+  Reaction Reel, the Slideshow pill retains only the extra clearance required
+  to stay above that media layer (72px on smaller viewports and 96px at 1024px
+  and above). All deck layering, swipe behavior, controls, and media sizing
+  remain unchanged.
 
 ## 2026-09-05 Six-Slide Carousel Core Flow
 

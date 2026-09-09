@@ -5,6 +5,7 @@ import { zodResponseFormat } from "openai/helpers/zod";
 import { z } from "zod";
 
 import type { WebsiteBusinessAnalysis } from "@/lib/website-analysis/schema";
+import { WALL_TEXT_CONTENT_RETRY_EXHAUSTED } from "@/lib/trending/wall-text-generation-failure";
 import {
   createAuthoritativeWallTextContent,
   deriveWallTextSpatialBudget,
@@ -222,6 +223,8 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
 }
 
 export class WallTextCandidateRepairExhaustedError extends Error {
+  readonly code = WALL_TEXT_CONTENT_RETRY_EXHAUSTED;
+
   constructor(message: string) {
     super(message);
     this.name = "WallTextCandidateRepairExhaustedError";

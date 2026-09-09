@@ -6,6 +6,7 @@ export const WALL_TEXT_RUNTIME_CONFIGURATION_ERROR =
   "wall_text_runtime_configuration_error";
 export const WALL_TEXT_DEPENDENCY_UNAVAILABLE =
   "wall_text_dependency_unavailable";
+export const WALL_TEXT_CONTENT_RETRY_EXHAUSTED = "content_retry_exhausted";
 
 /**
  * Raised when the deterministic V9 layout pass cannot fit already-persisted
@@ -36,7 +37,8 @@ export function isWallTextGenerationFailureTerminalCode(
     normalized === WALL_TEXT_PERSISTENCE_REJECTED ||
     normalized === WALL_TEXT_RENDER_FIT_REJECTED ||
     normalized === WALL_TEXT_RUNTIME_CONFIGURATION_ERROR ||
-    normalized === WALL_TEXT_DEPENDENCY_UNAVAILABLE
+    normalized === WALL_TEXT_DEPENDENCY_UNAVAILABLE ||
+    normalized === WALL_TEXT_CONTENT_RETRY_EXHAUSTED
   );
 }
 
@@ -57,6 +59,15 @@ export function classifyWallTextGenerationFailure(
       errorCode: WALL_TEXT_RENDER_FIT_REJECTED,
       publicMessage:
         "Wall-of-text could not be arranged safely inside the video.",
+      retryable: false,
+    };
+  }
+
+  if (getErrorCode(error) === WALL_TEXT_CONTENT_RETRY_EXHAUSTED) {
+    return {
+      errorCode: WALL_TEXT_CONTENT_RETRY_EXHAUSTED,
+      publicMessage:
+        "Wall-of-text needs a different content idea before it can be prepared.",
       retryable: false,
     };
   }

@@ -17,7 +17,10 @@ export async function reconcileTrendingFeedInApp(params: {
 }
 
 export async function reconcileWallTextPlanInApp(params: { planId: string; userId: string }) {
-  return sendReconciliation(params, "/api/internal/trending/wall-plan-ready", 5_000, 1);
+  // Kept for rolling-deployment compatibility. New Wall plan publications use
+  // a durable Cloud Task, while this direct path follows the normal bounded
+  // reconciliation policy if an older caller still invokes it.
+  return sendReconciliation(params, "/api/internal/trending/wall-plan-ready", REQUEST_TIMEOUT_MS, MAX_ATTEMPTS);
 }
 
 async function sendReconciliation(params: object, path: string, timeoutMs: number, maxAttempts: number) {

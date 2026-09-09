@@ -50,6 +50,7 @@ import {
 import {
   classifyWallTextGenerationFailure,
   isWallTextRenderFitFailure,
+  WALL_TEXT_CONTENT_RETRY_EXHAUSTED,
   WALL_TEXT_RENDER_FIT_REJECTED,
 } from "@/lib/trending/wall-text-generation-failure";
 import {
@@ -76,7 +77,12 @@ const DEFAULT_WALL_TEXT_ACTIVE_TARGET = 6;
 
 export async function enqueueTrendingWallTextRefill(
   profile: BusinessProfileRecord,
-  options: { dailyFeedId?: string; recoveryKey?: string | null; targetActive?: number } = {},
+  options: {
+    dailyFeedId?: string;
+    recoveryKey?: string | null;
+    refillKey?: string | null;
+    targetActive?: number;
+  } = {},
 ) {
   const targetActive = Math.max(
     Math.trunc(options.targetActive ?? DEFAULT_WALL_TEXT_ACTIVE_TARGET),
@@ -138,7 +144,7 @@ export async function enqueueTrendingWallTextRefill(
     businessProfileId: profile.id,
     businessProfileVersion: profile.profileVersion,
     profile,
-    ...(needsTypographyRefresh ? {} : { refillKey: String(existing.length) }),
+    ...(needsTypographyRefresh ? {} : { refillKey: options.refillKey ?? String(existing.length) }),
     recoveryKey: options.recoveryKey,
     requestedCount: Math.max(targetActive - active.length, 1),
     userId: profile.userId,
@@ -162,6 +168,7 @@ export async function enqueueTrendingWallTextRefill(
 export async function prepareTrendingWallTextIdeas(
   profile: BusinessProfileRecord,
   options: {
+    earlyPlanId?: string | null;
     mode?: "initial" | "refill";
     recoveryIteration?: number | null;
     recoveryKey?: string | null;
@@ -242,6 +249,7 @@ export async function prepareTrendingWallTextIdeas(
 
   if (
     mode === "initial" &&
+    !options.earlyPlanId &&
     areTrendingWallTextCreativesCurrent(existing)
   ) {
     return ensureTrendingWallTextAssignments({
@@ -612,7 +620,7 @@ async function completeReservedWallTextGeneration(params: {
         const failure =
           error instanceof WallTextCandidateRepairExhaustedError
             ? {
-                errorCode: "content_retry_exhausted",
+                errorCode: WALL_TEXT_CONTENT_RETRY_EXHAUSTED,
                 retryable: false,
               }
             : classifyWallTextGenerationFailure(error);

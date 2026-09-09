@@ -2672,7 +2672,9 @@ function TrendingDeck({
               <TrendingFormatPill
                 candidate={activeCandidate}
                 format={activeCandidate.format}
-                positionClassName={getTrendingFormatPillPositionClass()}
+                positionClassName={getTrendingFormatPillPositionClass(
+                  hasVerticalNextCard,
+                )}
               />
             ) : null}
             <div className="relative flex size-full items-center justify-center">
@@ -3193,18 +3195,13 @@ function TrendingFormatPill({
   const isHook = activeFormat === "hook_video";
   const isWallText = activeFormat === "wall_text";
   const isReaction = activeFormat === "reaction";
-  const slideCount =
-    candidate && candidate.format === "carousel"
-      ? candidate.carousel.slideCount || candidate.slides.length || 5
-      : 5;
-
   const label = isHook
     ? "Reel Hook"
     : isWallText
       ? "Wall-of-Text"
       : isReaction
         ? "Reaction Reel"
-        : `Slideshow · ${slideCount} Slides`;
+        : "Slideshow";
 
   const Icon = isHook
     ? Clapperboard
@@ -3270,10 +3267,12 @@ function getTrendingReviewCardFrameClass(
     : VERTICAL_REVIEW_CARD_FRAME_CLASS;
 }
 
-function getTrendingFormatPillPositionClass() {
-  // The Slideshow deck can reveal a taller card behind its 4:5 active frame.
-  // Leave a clear gap above that stack on laptop-sized screens.
-  return "bottom-[calc(100%+72px)] min-[1024px]:bottom-[calc(100%+116px)]";
+function getTrendingFormatPillPositionClass(hasVerticalNextCard: boolean) {
+  // A standard Slideshow uses the same rhythm as Hook and Wall-of-Text pills.
+  // Only the taller 9:16 next-card layer needs additional external clearance.
+  return hasVerticalNextCard
+    ? "bottom-[calc(100%+72px)] min-[1024px]:bottom-[calc(100%+96px)]"
+    : "bottom-[calc(100%+24px)]";
 }
 
 function getTrendingReviewDeckPositionClass(

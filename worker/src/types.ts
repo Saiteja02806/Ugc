@@ -709,6 +709,13 @@ export type WallTextContentPlanBriefRow = {
   user_id: string;
 };
 
+export type WallTextPlanPublicationRow = {
+  id: string;
+  item_count: number;
+  plan_id: string;
+  user_id: string;
+};
+
 export type CarouselContentPlanReservationRow = {
   completed_at: string | null;
   consumed_count: number;
@@ -1516,6 +1523,12 @@ export type BackgroundJobsDatabase = {
         Relationships: [];
         Row: WallTextContentPlanRow;
         Update: Partial<WallTextContentPlanRow>;
+      };
+      wall_text_plan_publications: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: WallTextPlanPublicationRow;
+        Update: Partial<WallTextPlanPublicationRow>;
       };
       carousel_global_settings: {
         Insert: Record<string, never>;

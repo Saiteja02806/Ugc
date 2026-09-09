@@ -60,11 +60,17 @@ export async function admitWallTextDailyDelivery(params: {
 }
 
 /** The same durable event is handled here from the worker and the recovery scan. */
-export async function reconcileWallTextPlanPublications(params: { planId?: string; limit?: number } = {}) {
-  const { data, error } = await getClient().rpc("claim_wall_text_plan_publications", {
+export async function reconcileWallTextPlanPublications(params: {
+  limit?: number;
+  planId?: string;
+  publicationId?: string;
+} = {}) {
+  const claimParams: Record<string, string | number | null> = {
     p_limit: params.limit ?? 10,
     p_plan_id: params.planId ?? null,
-  });
+  };
+  if (params.publicationId) claimParams.p_publication_id = params.publicationId;
+  const { data, error } = await getClient().rpc("claim_wall_text_plan_publications", claimParams);
   if (error) throw new Error(`Could not claim Wall-of-text publications: ${error.message}`);
   const results = [];
   for (const event of (data ?? []) as Publication[]) {

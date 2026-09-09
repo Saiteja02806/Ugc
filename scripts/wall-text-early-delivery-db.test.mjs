@@ -135,6 +135,41 @@ test('missed publication delivery is reclaimable and an old acknowledgement cann
   assert.equal((await one('select finish_wall_text_plan_publication($1,$2,null) as ok',[second.id,second.claim_token])).ok,true);
 });
 
+test('a Cloud Task can claim exactly one publication and failed admission is due again in ten seconds', async () => {
+  const f = await fixture();
+  await publish(f);
+  await publish(f, 10);
+  const publications = (await db.query(
+    'select * from wall_text_plan_publications where plan_id=$1 order by item_count',
+    [f.plan.id],
+  )).rows;
+  const first = publications[0];
+  const second = publications[1];
+
+  const claimed = await one(
+    'select * from claim_wall_text_plan_publications(1,$1,$2)',
+    [f.plan.id, second.id],
+  );
+  assert.equal(claimed.id, second.id);
+  assert.notEqual(claimed.id, first.id);
+  assert.equal(
+    (await one('select finish_wall_text_plan_publication($1,$2,$3) as ok', [
+      claimed.id,
+      claimed.claim_token,
+      'temporary admission failure',
+    ])).ok,
+    true,
+  );
+  const retriable = await one(
+    `select extract(epoch from next_attempt_at - now()) as retry_seconds, status, last_error
+     from wall_text_plan_publications where id=$1`,
+    [second.id],
+  );
+  assert.equal(retriable.status, 'pending');
+  assert.equal(retriable.last_error, 'temporary admission failure');
+  assert.ok(retriable.retry_seconds >= 9 && retriable.retry_seconds <= 11);
+});
+
 test('new Wall plans use early delivery even when no rollout row existed, and old workers cannot save them', async () => {
   const f = await fixture({enabled:false});
   assert.equal(f.plan.early_delivery_enabled,true);

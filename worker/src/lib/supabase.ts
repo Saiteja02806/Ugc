@@ -69,6 +69,7 @@ const REACTION_CREATIVES_TABLE = "reaction_creatives";
 const USER_REACTION_ASSIGNMENTS_TABLE = "user_reaction_assignments";
 const WALL_TEXT_CONTENT_PLAN_ITEMS_TABLE = "wall_text_content_plan_items";
 const WALL_TEXT_CONTENT_PLANS_TABLE = "wall_text_content_plans";
+const WALL_TEXT_PLAN_PUBLICATIONS_TABLE = "wall_text_plan_publications";
 const CLAIM_BACKGROUND_JOB_FUNCTION = "claim_background_job";
 const CLAIM_SOCIAL_PUBLISH_OPERATION_FUNCTION =
   "claim_social_publish_operation_with_account_lane";
@@ -2568,6 +2569,28 @@ export class SupabaseJobStore {
       );
     }
     return data ?? [];
+  }
+
+  async getWallTextPlanPublication(params: {
+    itemCount: number;
+    planId: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client
+      .from(WALL_TEXT_PLAN_PUBLICATIONS_TABLE)
+      .select("id,item_count,plan_id,user_id")
+      .eq("plan_id", params.planId)
+      .eq("user_id", params.userId)
+      .eq("item_count", params.itemCount)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(
+        `Could not load Wall-of-Text publication outbox record: ${error.message}`,
+      );
+    }
+
+    return data;
   }
 
   async completeWallTextContentPlanGeneration(params: {

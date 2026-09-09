@@ -26,6 +26,9 @@ function fixture() {
         items.push(...chunk.items);
         return chunk.items;
       },
+      getWallTextPlanPublication: async ({ itemCount }: { itemCount: number }) => ({
+        id: `123e4567-e89b-42d3-a456-${itemCount.toString().padStart(12, "0")}`,
+      }),
       completeWallTextContentPlanGeneration: async () => {
         assert.equal(items.length, 20, "never activate an incomplete plan");
         plan.status = "active";
@@ -93,9 +96,9 @@ test("publishes committed chunks before full activation and retains consumed ite
   const published: number[] = [];
   await runGenerateWallTextContentPlanJob(f.job, f.context, {
     generateChunk: async () => generated(),
-    notifyPublication: async () => {
+    enqueuePublication: async ({ publicationId }) => {
       assert.equal(f.plan.status, "generating");
-      published.push(f.items.length);
+      published.push(Number(publicationId.slice(-12)));
       f.items[0].status = "consumed";
     },
   });
@@ -110,7 +113,7 @@ test("a missed publication wake-up does not fail or restart the planner", async 
   let notifications = 0;
   await runGenerateWallTextContentPlanJob(f.job, f.context, {
     generateChunk: async () => generated(),
-    notifyPublication: async () => { notifications++; throw new Error("app temporarily unavailable"); },
+    enqueuePublication: async () => { notifications++; throw new Error("Cloud Tasks temporarily unavailable"); },
   });
   assert.equal(notifications, 2);
   assert.equal(f.items.length, 20);
@@ -124,7 +127,7 @@ test("does not notify readers when the fenced save rejects an obsolete worker", 
   let notifications = 0;
   await assert.rejects(runGenerateWallTextContentPlanJob(f.job, f.context, {
     generateChunk: async () => generated(),
-    notifyPublication: async () => { notifications++; },
+    enqueuePublication: async () => { notifications++; },
   }), /wall_text_planner_claim_lost/);
   assert.equal(f.items.length, 0);
   assert.equal(notifications, 0);

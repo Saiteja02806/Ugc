@@ -40,6 +40,18 @@ variable "scheduler_service_account_email" {
   default     = "ugc-scheduler-sa@ugcsaas.iam.gserviceaccount.com"
 }
 
+variable "resource_name_prefix" {
+  description = "Prefix shared by Cloud Tasks queues and service accounts."
+  type        = string
+  default     = "ugc"
+}
+
+variable "wall_text_publication_tasks_queue" {
+  description = "Cloud Tasks queue that immediately reconciles committed Wall plan publications."
+  type        = string
+  default     = "ugc-wall-text-publication"
+}
+
 variable "service_name" {
   description = "Cloud Run Service name for the AI-generation worker."
   type        = string
@@ -168,7 +180,7 @@ variable "runway_daily_credit_limit" {
 variable "internal_app_url" {
   description = "Production app base URL used for authenticated background persistence calls."
   type        = string
-  default     = "https://www.getugcpilot.com"
+  default     = "https://getugcpilot.com"
 }
 
 variable "scheduling_secret_id" {

@@ -66,6 +66,26 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
       }
 
       env {
+        name  = "GCP_CLOUD_TASKS_LOCATION"
+        value = var.region
+      }
+
+      env {
+        name  = "GCP_CLOUD_TASKS_SERVICE_ACCOUNT_EMAIL"
+        value = var.scheduler_service_account_email
+      }
+
+      env {
+        name  = "GCP_RESOURCE_NAME_PREFIX"
+        value = var.resource_name_prefix
+      }
+
+      env {
+        name  = "GCP_WALL_TEXT_PUBLICATION_TASKS_QUEUE"
+        value = var.wall_text_publication_tasks_queue
+      }
+
+      env {
         name  = "QUEUE_PROVIDER"
         value = "gcp"
       }

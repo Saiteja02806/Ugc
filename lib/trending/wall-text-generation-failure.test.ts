@@ -6,6 +6,7 @@ import {
   isWallTextRenderFitFailure,
   isWallTextGenerationFailureTerminalCode,
   WallTextLayoutFitError,
+  WALL_TEXT_CONTENT_RETRY_EXHAUSTED,
   WALL_TEXT_DEPENDENCY_UNAVAILABLE,
   WALL_TEXT_PERSISTENCE_REJECTED,
   WALL_TEXT_RENDER_FIT_REJECTED,
@@ -76,6 +77,21 @@ test("marks a final Wall render-fit rejection as terminal", () => {
     publicMessage: "Wall-of-text could not be arranged safely inside the video.",
     retryable: false,
   });
+});
+
+test("marks exhausted candidate repair as terminal so a retry reserves new plan items", () => {
+  const error = Object.assign(
+    new Error("Wall-of-text Writer could not repair candidates: 0:word_limit."),
+    { code: WALL_TEXT_CONTENT_RETRY_EXHAUSTED },
+  );
+
+  assert.deepEqual(classifyWallTextGenerationFailure(error), {
+    errorCode: WALL_TEXT_CONTENT_RETRY_EXHAUSTED,
+    publicMessage:
+      "Wall-of-text needs a different content idea before it can be prepared.",
+    retryable: false,
+  });
+  assert.equal(isWallTextGenerationFailureTerminalCode(error.code), true);
 });
 
 test("marks deterministic V9 fixed-layout fit failures as terminal", () => {

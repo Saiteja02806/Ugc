@@ -50,6 +50,7 @@ import {
 import {
   classifyWallTextGenerationFailure,
   isWallTextRenderFitFailure,
+  WALL_TEXT_CONTENT_RETRY_EXHAUSTED,
   WALL_TEXT_RENDER_FIT_REJECTED,
 } from "@/lib/trending/wall-text-generation-failure";
 import {
@@ -614,7 +615,7 @@ async function completeReservedWallTextGeneration(params: {
         const failure =
           error instanceof WallTextCandidateRepairExhaustedError
             ? {
-                errorCode: "content_retry_exhausted",
+                errorCode: WALL_TEXT_CONTENT_RETRY_EXHAUSTED,
                 retryable: false,
               }
             : classifyWallTextGenerationFailure(error);

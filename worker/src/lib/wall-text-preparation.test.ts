@@ -79,6 +79,33 @@ test("retries only a classified temporary preparation failure", async () => {
   });
 });
 
+test("does not retry an exhausted candidate repair from the application", async () => {
+  await withWallPreparationEnvironment(async () => {
+    await withMockFetch(
+      async () =>
+        new Response(
+          JSON.stringify({
+            error:
+              "Wall-of-text needs a different content idea before it can be prepared.",
+            errorCode: "content_retry_exhausted",
+            ok: false,
+          }),
+          { status: 422 },
+        ),
+      async () => {
+        await assert.rejects(
+          prepareWallTextInApp(TEST_PARAMS),
+          (error: unknown) =>
+            error instanceof Error &&
+            !(error instanceof RetryableJobError) &&
+            (error as Error & { code?: string }).code ===
+              "content_retry_exhausted",
+        );
+      },
+    );
+  });
+});
+
 test("forwards early-plan provenance to the application", async () => {
   await withWallPreparationEnvironment(async () => {
     const received: { body: Record<string, unknown> | null } = { body: null };

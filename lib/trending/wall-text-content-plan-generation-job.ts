@@ -6,13 +6,17 @@ import {
   ensureCurrentWallTextContentPlan,
 } from "@/lib/trending/wall-text-content-plan-db";
 import { createAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
+import { shouldReuseWallTextContentPlanGeneration } from "./wall-text-content-plan-generation-logic";
 
 export async function ensureWallTextContentPlanGeneration(params: {
   profile: BusinessProfileRecord;
 }) {
   const plan = await ensureCurrentWallTextContentPlan(params);
 
-  if (plan.status !== "generating") return plan;
+  if (
+    plan.status !== "generating" ||
+    shouldReuseWallTextContentPlanGeneration(plan)
+  ) return plan;
 
   const job = await createAndDispatchBackgroundJob(
     {

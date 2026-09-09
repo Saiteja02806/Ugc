@@ -196,9 +196,12 @@ variable "runway_daily_credit_limit" {
 }
 
 variable "internal_app_url" {
-  description = "Production app base URL used for authenticated background persistence calls."
+  description = "Canonical production app URL used for authenticated background persistence and Cloud Tasks callbacks."
   type        = string
-  default     = "https://www.getugcpilot.com"
+  # The www host redirects to this canonical host. Cloud Tasks must target the
+  # canonical origin directly because it does not preserve this API POST on
+  # the redirect chain.
+  default     = "https://getugcpilot.com"
 }
 
 variable "scheduling_secret_id" {

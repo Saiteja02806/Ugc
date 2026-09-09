@@ -15,7 +15,7 @@ test("builds a deterministic OIDC Cloud Task for the exact publication outbox ro
     GCP_CLOUD_TASKS_SERVICE_ACCOUNT_EMAIL: "ugc-scheduler-sa@ugcsaas.iam.gserviceaccount.com",
     GCP_PROJECT_ID: "ugcsaas",
     GCP_RESOURCE_NAME_PREFIX: "ugc",
-    UGC_INTERNAL_APP_URL: "https://www.getugcpilot.com",
+    UGC_INTERNAL_APP_URL: "https://getugcpilot.com",
   });
   const task = buildWallTextPlanPublicationTaskRequest({
     ...config,
@@ -24,7 +24,7 @@ test("builds a deterministic OIDC Cloud Task for the exact publication outbox ro
   });
 
   assert.equal(task.taskName, `wall-plan-publication-${publicationId}`);
-  assert.equal(task.requestBody.task.httpRequest.url, "https://www.getugcpilot.com/api/internal/trending/wall-plan-ready");
+  assert.equal(task.requestBody.task.httpRequest.url, "https://getugcpilot.com/api/internal/trending/wall-plan-ready");
   assert.equal(task.requestBody.task.httpRequest.oidcToken.serviceAccountEmail, "ugc-scheduler-sa@ugcsaas.iam.gserviceaccount.com");
   assert.deepEqual(
     JSON.parse(Buffer.from(task.requestBody.task.httpRequest.body, "base64").toString("utf8")),
@@ -35,7 +35,7 @@ test("builds a deterministic OIDC Cloud Task for the exact publication outbox ro
 test("does not build a publication task for a non-UUID outbox identifier", () => {
   const config = getWallTextPlanPublicationDispatchConfig({
     GCP_PROJECT_ID: "ugcsaas",
-    UGC_INTERNAL_APP_URL: "https://www.getugcpilot.com",
+    UGC_INTERNAL_APP_URL: "https://getugcpilot.com",
   });
 
   assert.throws(

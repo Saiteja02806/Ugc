@@ -46,6 +46,7 @@ export type BackgroundJobType =
   | "preview_render"
   | "publish_social_post"
   | "reaction_generation"
+  | "reaction_render"
   | "render_demo_video"
   | "render_create_content_video"
   | "render_edit_video"

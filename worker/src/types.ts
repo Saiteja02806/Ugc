@@ -44,6 +44,7 @@ export type BackgroundJobType =
   | "preview_render"
   | "publish_social_post"
   | "reaction_generation"
+  | "reaction_render"
   | "render_demo_video"
   | "render_create_content_video"
   | "render_edit_video"
@@ -70,6 +71,7 @@ export const EXECUTABLE_BACKGROUND_JOB_TYPES = [
   "paid_trending_prebuild",
   "publish_social_post",
   "reaction_generation",
+  "reaction_render",
   "render_create_content_video",
   "render_edit_video",
   "render_schedule_combination",
@@ -155,6 +157,7 @@ export type BackgroundJobUpdate = Partial<{
   last_heartbeat_at: string | null;
   locked_at: string | null;
   next_attempt_at: string | null;
+  queue_message_id: string | null;
   output_json: Json | null;
   output_reference: string | null;
   progress: number | null;
@@ -1071,6 +1074,7 @@ type ReactionGenerationItemRow = {
   reaction_assignment_id: string;
   reaction_creative_id: string;
   render_error: string | null;
+  render_job_id: string | null;
   render_plan_json: Json;
   render_status: "failed" | "queued" | "ready" | "rendering";
   rendered_media_asset_id: string | null;
@@ -1175,6 +1179,17 @@ export type BackgroundJobsDatabase = {
         };
         Returns: boolean;
       };
+      complete_reaction_generation_item_render_v2: {
+        Args: {
+          p_generation_job_id: string;
+          p_item_id: string;
+          p_media_asset_id: string;
+          p_preview_url: string;
+          p_render_job_id: string;
+          p_user_id: string;
+        };
+        Returns: boolean;
+      };
       complete_reaction_generation_run_v1: {
         Args: {
           p_generation_job_id: string;
@@ -1184,7 +1199,7 @@ export type BackgroundJobsDatabase = {
         Returns: Array<{
           failed_count: number;
           ready_count: number;
-          status: "completed" | "failed" | "partial";
+          status: "completed" | "failed" | "partial" | "rendering";
         }>;
       };
       consume_carousel_content_plan_item: {
@@ -1209,11 +1224,42 @@ export type BackgroundJobsDatabase = {
         };
         Returns: ReactionGenerationRunRow[];
       };
+      create_reaction_generation_render_jobs_v1: {
+        Args: {
+          p_generation_job_id: string;
+          p_run_id: string;
+          p_user_id: string;
+        };
+        Returns: Array<{
+          created: boolean;
+          item_id: string;
+          job_id: string;
+        }>;
+      };
+      claim_reaction_generation_item_render_v1: {
+        Args: {
+          p_generation_job_id: string;
+          p_item_id: string;
+          p_render_job_id: string;
+          p_user_id: string;
+        };
+        Returns: ReactionGenerationItemRow[];
+      };
       fail_reaction_generation_item_render_v1: {
         Args: {
           p_error_message: string;
           p_generation_job_id: string;
           p_item_id: string;
+          p_user_id: string;
+        };
+        Returns: boolean;
+      };
+      fail_reaction_generation_item_render_v2: {
+        Args: {
+          p_error_message: string;
+          p_generation_job_id: string;
+          p_item_id: string;
+          p_render_job_id: string;
           p_user_id: string;
         };
         Returns: boolean;

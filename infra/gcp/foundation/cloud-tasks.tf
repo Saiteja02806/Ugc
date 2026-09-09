@@ -52,6 +52,14 @@ locals {
       max_attempts          = 5
       max_retry_duration    = "3600s"
     }
+    reaction-render = {
+      # One task represents one complete Reel. The Reaction service is
+      # request-based and scales to zero when this queue is empty.
+      concurrent_dispatches = 4
+      dispatches_per_second = 4
+      max_attempts          = 5
+      max_retry_duration    = "7200s"
+    }
     social-publish = {
       # The current social-publish worker has a single safe execution slot.
       concurrent_dispatches = 1

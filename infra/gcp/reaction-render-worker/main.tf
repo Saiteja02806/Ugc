@@ -1,5 +1,15 @@
-resource "google_cloud_run_v2_service" "ai_generation_worker" {
-  count = var.enable_ai_generation_worker ? 1 : 0
+locals {
+  labels = {
+    application = "ugc-pilot"
+    environment = var.environment
+    managed_by  = "terraform"
+    runtime     = "gcp-only"
+    slice       = "reaction-render-worker"
+  }
+}
+
+resource "google_cloud_run_v2_service" "reaction_render_worker" {
+  count = var.enable_reaction_render_worker ? 1 : 0
 
   project  = var.project_id
   name     = var.service_name
@@ -25,10 +35,8 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
       }
 
       resources {
-        # Request-based billing: Cloud Run starts instances for queued HTTP work
-        # and can scale back to zero after it completes. Each worker request is
-        # deliberately single-concurrency because an AI/provider call owns the
-        # full job lifetime.
+        # One request renders exactly one Reel. CPU is allocated only while a
+        # Cloud Task is active and scales all the way back to zero when idle.
         cpu_idle          = true
         startup_cpu_boost = true
 
@@ -66,63 +74,13 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
       }
 
       env {
-        name  = "GCP_CLOUD_TASKS_LOCATION"
-        value = var.region
-      }
-
-      env {
-        name  = "GCP_CLOUD_TASKS_SERVICE_ACCOUNT_EMAIL"
-        value = var.scheduler_service_account_email
-      }
-
-      env {
-        name  = "GCP_RESOURCE_NAME_PREFIX"
-        value = var.resource_name_prefix
-      }
-
-      env {
-        name  = "GCP_WALL_TEXT_PUBLICATION_TASKS_QUEUE"
-        value = var.wall_text_publication_tasks_queue
-      }
-
-      env {
-        name  = "GCP_REACTION_RENDER_TASKS_QUEUE"
-        value = var.reaction_render_tasks_queue
-      }
-
-      env {
-        name  = "GCP_REACTION_RENDER_TASK_URL"
-        value = var.reaction_render_task_url
-      }
-
-      env {
-        name  = "GCP_REACTION_RENDER_TASK_AUDIENCE"
-        value = var.reaction_render_task_audience
-      }
-
-      env {
-        name  = "QUEUE_PROVIDER"
-        value = "gcp"
-      }
-
-      env {
-        name  = "WORKER_QUEUE_PROVIDER"
-        value = "gcp"
-      }
-
-      env {
-        name  = "WORKER_TRANSPORT"
-        value = "cloud-tasks"
-      }
-
-      env {
         name  = "WORKER_QUEUE_NAME"
         value = var.queue_name
       }
 
       env {
         name  = "WORKER_JOB_TYPES"
-        value = var.worker_job_types
+        value = "reaction_render"
       }
 
       env {
@@ -152,7 +110,7 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
 
       env {
         name  = "STORAGE_PROVIDER"
-        value = var.storage_provider
+        value = "gcp"
       }
 
       env {
@@ -165,26 +123,9 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
         value = var.gcp_storage_public_base_url
       }
 
-      env {
-        name  = "OPENAI_IMAGE_MODEL"
-        value = var.openai_image_model
-      }
-
-      env {
-        name  = "GEMINI_IMAGE_MODEL"
-        value = var.gemini_image_model
-      }
-
-      env {
-        name  = "GEMINI_OMNI_MODEL"
-        value = var.gemini_omni_model
-      }
-
-      env {
-        name  = "RUNWAY_DAILY_CREDIT_LIMIT"
-        value = tostring(var.runway_daily_credit_limit)
-      }
-
+      # Each completed item immediately asks the app to refresh the Trending
+      # feed. The durable reconciliation outbox still recovers this if the
+      # request is temporarily unavailable.
       env {
         name  = "UGC_INTERNAL_APP_URL"
         value = var.internal_app_url
@@ -209,52 +150,9 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
           }
         }
       }
-
-      env {
-        name = "OPENAI_API_KEY"
-        value_source {
-          secret_key_ref {
-            secret  = var.openai_api_key_secret_id
-            version = "latest"
-          }
-        }
-      }
-
-      env {
-        name = "GEMINI_API_KEY"
-        value_source {
-          secret_key_ref {
-            secret  = var.gemini_api_key_secret_id
-            version = "latest"
-          }
-        }
-      }
-
-      env {
-        name = "RUNWAYML_API_SECRET"
-        value_source {
-          secret_key_ref {
-            secret  = var.runwayml_api_secret_id
-            version = "latest"
-          }
-        }
-      }
-
-      env {
-        name = "UGC_INTERNAL_SCHEDULING_SECRET"
-        value_source {
-          secret_key_ref {
-            secret  = var.scheduling_secret_id
-            version = "latest"
-          }
-        }
-      }
     }
   }
 
-  # Always direct Cloud Tasks to the latest healthy worker revision. Without an
-  # explicit traffic target, an older revision pin can keep newly deployed
-  # worker code from receiving any jobs.
   traffic {
     percent = 100
     type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
@@ -262,11 +160,11 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
 }
 
 resource "google_cloud_run_v2_service_iam_member" "cloud_tasks_invoker" {
-  count = var.enable_ai_generation_worker ? 1 : 0
+  count = var.enable_reaction_render_worker ? 1 : 0
 
   project  = var.project_id
   location = var.region
-  name     = google_cloud_run_v2_service.ai_generation_worker[0].name
+  name     = google_cloud_run_v2_service.reaction_render_worker[0].name
   role     = "roles/run.invoker"
   member   = "serviceAccount:${var.scheduler_service_account_email}"
 }

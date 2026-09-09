@@ -23,6 +23,7 @@ const dispatchUrlEnvByQueueName = {
   "ai-generation": "GCP_AI_GENERATION_TASK_URL",
   carousel: "GCP_CAROUSEL_TASK_URL",
   "media-processing": "GCP_MEDIA_PROCESSING_TASK_URL",
+  "reaction-render": "GCP_REACTION_RENDER_TASK_URL",
   "social-publish": "GCP_SOCIAL_PUBLISH_TASK_URL",
   "video-render": "GCP_VIDEO_RENDER_TASK_URL",
 } as const;
@@ -148,7 +149,11 @@ export function getBackgroundJobDispatchUrl(
   env: Record<string, string | undefined> = process.env,
 ) {
   const explicitUrl = env[getDispatchUrlEnvName(queueName)]?.trim();
-  const fallbackUrl = env.GCP_BACKGROUND_JOB_TASK_URL?.trim();
+  // A generic fallback can point at the legacy one-shot video launcher. Never
+  // send a per-Reel Reaction task there: it needs the dedicated service URL.
+  const fallbackUrl = queueName === "reaction-render"
+    ? undefined
+    : env.GCP_BACKGROUND_JOB_TASK_URL?.trim();
 
   return resolveBackgroundJobDispatchUrlFromEnv({ explicitUrl, fallbackUrl });
 }

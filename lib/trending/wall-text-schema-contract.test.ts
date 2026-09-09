@@ -1629,7 +1629,7 @@ test("refills Wall ideas from unused backgrounds with one deduplicated batch", (
   );
   assert.match(
     feedSource,
-    /refillKey: String\(existing\.length\)/,
+    /refillKey: options\.refillKey \?\? String\(existing\.length\)/,
   );
   assert.match(
     jobsSource,

@@ -1,4 +1,5 @@
 import { prepareWallTextInApp } from "../lib/wall-text-preparation.js";
+import { scheduleWallTextTerminalReplacement } from "../lib/wall-text-terminal-replacement.js";
 import type { BackgroundJobRow, Json } from "../types.js";
 import type { WorkerJobContext } from "./index.js";
 
@@ -13,10 +14,33 @@ export async function runGenerateWallTextJob(
     stage: "generating_wall_text",
     status: "waiting_external_service",
   });
-  const result = await prepareWallTextInApp({
-    ...input,
-    recoveryIteration: job.attempt_count,
-  });
+  let result: Awaited<ReturnType<typeof prepareWallTextInApp>>;
+  try {
+    result = await prepareWallTextInApp({
+      ...input,
+      recoveryIteration: job.attempt_count,
+    });
+  } catch (error) {
+    const errorCode = getErrorCode(error);
+    if (input.dailyFeedId && isCandidateReplacementFailure(errorCode)) {
+      const replacement = await scheduleWallTextTerminalReplacement({
+        businessProfileId: input.businessProfileId,
+        businessProfileVersion: input.businessProfileVersion,
+        dailyFeedId: input.dailyFeedId,
+        errorCode,
+        failedJobId: job.id,
+        recoveryKey: input.recoveryKey,
+        requestedCount: input.requestedCount,
+        userId: input.userId,
+      });
+      return {
+        ideaCount: 0,
+        replacementJobId: replacement.jobId,
+        replacementScheduled: replacement.replacementScheduled,
+      } satisfies Record<string, Json>;
+    }
+    throw error;
+  }
   await context.checkpoint({
     progress: null,
     stage: "wall_text_persisted",
@@ -32,6 +56,7 @@ function parseInput(job: BackgroundJobRow) {
   const businessProfileId = getString(input?.businessProfileId);
   const businessProfileVersion = input?.businessProfileVersion;
   const earlyPlanId = getOptionalString(input?.earlyPlanId);
+  const dailyFeedId = getOptionalString(input?.dailyFeedId);
   const recoveryKey = getOptionalString(input?.recoveryKey);
   const refillKey = getOptionalString(input?.refillKey);
   const requestedCount = input?.requestedCount ?? 6;
@@ -62,6 +87,7 @@ function parseInput(job: BackgroundJobRow) {
   return {
     businessProfileId,
     businessProfileVersion,
+    dailyFeedId,
     earlyPlanId,
     recoveryKey,
     refillKey,
@@ -69,6 +95,17 @@ function parseInput(job: BackgroundJobRow) {
     requestKey,
     userId,
   };
+}
+
+function getErrorCode(error: unknown) {
+  if (!error || typeof error !== "object") return "";
+  const value = (error as { code?: unknown }).code;
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+function isCandidateReplacementFailure(errorCode: string) {
+  return errorCode === "wall_text_render_fit_rejected" ||
+    errorCode === "content_retry_exhausted";
 }
 
 function getRecord(value: Json | undefined) {

@@ -52,6 +52,24 @@ variable "wall_text_publication_tasks_queue" {
   default     = "ugc-wall-text-publication"
 }
 
+variable "reaction_render_tasks_queue" {
+  description = "Cloud Tasks queue that delivers individual Reaction Reel renders."
+  type        = string
+  default     = "ugc-reaction-render"
+}
+
+variable "reaction_render_task_url" {
+  description = "HTTPS /tasks/jobs URL of the dedicated Reaction render Cloud Run service."
+  type        = string
+  default     = ""
+}
+
+variable "reaction_render_task_audience" {
+  description = "OIDC audience used for the Reaction render Cloud Run service."
+  type        = string
+  default     = ""
+}
+
 variable "service_name" {
   description = "Cloud Run Service name for the AI-generation worker."
   type        = string
@@ -67,7 +85,7 @@ variable "queue_name" {
 variable "worker_job_types" {
   description = "Comma-separated job types allowed for this worker service."
   type        = string
-  default     = "generate_avatar,generate_image,generate_hook_video,generate_trending_hook_copy,hook_text_generation,wall_text_content_plan_generation,wall_text_generation,media_analysis,analytics_sync,carousel_content_plan_generation,paid_trending_prebuild"
+  default     = "generate_avatar,generate_image,generate_hook_video,generate_trending_hook_copy,hook_text_generation,wall_text_content_plan_generation,wall_text_generation,media_analysis,analytics_sync,carousel_content_plan_generation,paid_trending_prebuild,reaction_generation"
 }
 
 variable "worker_visibility_timeout_seconds" {

@@ -486,6 +486,7 @@ const trendingDeliveryJobTypes = new Set<BackgroundJobRow["job_type"]>([
   "wall_text_content_plan_generation",
   "wall_text_generation",
   "reaction_generation",
+  "reaction_render",
 ]);
 
 async function reconcileCompletedTrendingFeed(params: {
@@ -698,6 +699,24 @@ async function reconcileDurableOutputJobFailure(
     });
   }
 
+  if (job.job_type === "reaction_render" && job.user_id) {
+    const input = getReactionRenderFailureInput(job);
+    if (input) {
+      await store.failReactionGenerationItemRenderV2({
+        errorMessage,
+        generationJobId: input.generationJobId,
+        itemId: input.itemId,
+        renderJobId: job.id,
+        userId: job.user_id,
+      });
+      await store.completeReactionGenerationRun({
+        generationJobId: input.generationJobId,
+        runId: input.generationRunId,
+        userId: job.user_id,
+      });
+    }
+  }
+
   if (job.job_type === "generate_trending_hook_copy") {
     await store.failTrendingHookGenerationRunChunk({
       errorMessage,
@@ -709,6 +728,33 @@ async function reconcileDurableOutputJobFailure(
   await reconcileCreateContentRenderJobFailure(job, store, errorMessage);
   await reconcileTrendingCarouselEditJobFailure(job, store, errorMessage);
   await reconcileContentPlanGenerationFailure(job, store, errorMessage);
+}
+
+function getReactionRenderFailureInput(job: BackgroundJobRow) {
+  if (job.job_type !== "reaction_render" || !job.user_id) {
+    return null;
+  }
+
+  const value = job.input_json;
+  if (
+    !value || typeof value !== "object" || Array.isArray(value) ||
+    typeof value.generationJobId !== "string" ||
+    typeof value.generationRunId !== "string" ||
+    typeof value.itemId !== "string" ||
+    typeof value.userId !== "string" ||
+    value.userId !== job.user_id
+  ) {
+    logger.warn("Could not reconcile malformed Reaction render job input", {
+      jobId: job.id,
+    });
+    return null;
+  }
+
+  return {
+    generationJobId: value.generationJobId,
+    generationRunId: value.generationRunId,
+    itemId: value.itemId,
+  };
 }
 
 async function reconcileTerminalCreateContentRenderFailure(

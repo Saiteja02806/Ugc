@@ -1,4 +1,3 @@
-import { getErrorMessage, logger } from "../logger.js";
 import {
   planReactionGeneration,
   REACTION_GENERATION_PROMPT_VERSION,
@@ -7,32 +6,24 @@ import {
   type ReactionGenerationContext,
 } from "../lib/reaction-generation.js";
 import {
-  renderReactionVideoToStorage as defaultRenderReactionVideoToStorage,
   type RenderReactionVideoPayload,
 } from "../lib/render-engine.js";
+import {
+  enqueueReactionRenderTask as defaultEnqueueReactionRenderTask,
+} from "../lib/reaction-render-task-dispatch.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
-import { RetryableJobError } from "../retryable-job-error.js";
 import type { BackgroundJobRow, Json } from "../types.js";
 import type { WorkerJobContext } from "./index.js";
 
 type Dependencies = {
-  createMediaAssetId: () => string;
+  enqueueReactionRenderTask: typeof defaultEnqueueReactionRenderTask;
   planReactionGeneration: typeof planReactionGeneration;
-  renderReactionVideoToStorage: typeof defaultRenderReactionVideoToStorage;
 };
 
 const defaultDependencies: Dependencies = {
-  createMediaAssetId: () => crypto.randomUUID(),
+  enqueueReactionRenderTask: defaultEnqueueReactionRenderTask,
   planReactionGeneration,
-  renderReactionVideoToStorage: defaultRenderReactionVideoToStorage,
 };
-
-export class ReactionGenerationTerminalError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "ReactionGenerationTerminalError";
-  }
-}
 
 export async function runGenerateReactionJob(
   job: BackgroundJobRow,
@@ -65,11 +56,11 @@ export async function runGenerateReactionJob(
       userId: input.userId,
     }),
   ]);
-  const clips = catalog.clips.map(toClip);
-  const backgrounds = catalog.backgrounds.map(toBackground);
+  const clips = catalog.clips.map(toReactionCatalogClip);
+  const backgrounds = catalog.backgrounds.map(toReactionCatalogBackground);
 
-  const plannedItems = run.brief_payload
-    ? await context.store.persistReactionGenerationPlan({
+  if (run.brief_payload) {
+    await context.store.persistReactionGenerationPlan({
         briefPayload: run.brief_payload,
         generationJobId: job.id,
         // The RPC returns its saved immutable plan before inspecting this
@@ -78,8 +69,9 @@ export async function runGenerateReactionJob(
         items: [],
         runId: run.id,
         userId: input.userId,
-      })
-    : await createAndPersistPlan({
+      });
+  } else {
+    await createAndPersistPlan({
         backgrounds,
         clips,
         context,
@@ -90,100 +82,39 @@ export async function runGenerateReactionJob(
         reservedClipIds,
         runId: run.id,
       });
-
-  const clipById = new Map(clips.map((clip) => [clip.id, clip]));
-  const backgroundById = new Map(backgrounds.map((background) => [background.id, background]));
-  const failedItemIds: string[] = [];
-
-  for (const item of plannedItems) {
-    if (item.render_status === "ready") continue;
-    try {
-      const renderPayload = buildRenderPayload({
-        background: backgroundById.get(item.background_asset_id),
-        clip: clipById.get(item.clip_asset_id),
-        item,
-      });
-      await context.checkpoint({
-        progress: null,
-        stage: `rendering_reaction_${item.slot_index + 1}`,
-        status: "rendering",
-      });
-      const render = await dependencies.renderReactionVideoToStorage(renderPayload);
-      await context.checkpoint({
-        progress: null,
-        stage: `saving_reaction_${item.slot_index + 1}`,
-        status: "uploading_output",
-      });
-      const mediaAssetId = await context.store.saveReactionRenderedMedia({
-        creativeId: item.reaction_creative_id,
-        durationSeconds: item.duration_seconds,
-        fileSizeBytes: render.byteLength,
-        key: render.key,
-        mediaAssetId: dependencies.createMediaAssetId(),
-        projectId: input.projectId,
-        title: item.title,
-        url: render.url,
-        userId: input.userId,
-      });
-      await context.store.completeReactionGenerationItemRender({
-        generationJobId: job.id,
-        itemId: item.id,
-        mediaAssetId,
-        previewUrl: render.url,
-        userId: input.userId,
-      });
-    } catch (error) {
-      const errorMessage = getErrorMessage(error);
-      failedItemIds.push(item.id);
-      await context.store.failReactionGenerationItemRender({
-        errorMessage,
-        generationJobId: job.id,
-        itemId: item.id,
-        userId: input.userId,
-      }).catch((persistenceError) => {
-        logger.error("Could not persist Reaction item render failure", {
-          error: getErrorMessage(persistenceError),
-          itemId: item.id,
-          jobId: job.id,
-        });
-      });
-    }
   }
 
-  if (failedItemIds.length > 0 && job.attempt_count + 1 < job.max_attempts) {
-    throw new RetryableJobError("One or more Reaction Reels could not be rendered; their durable items will be reclaimed.", {
-      code: "reaction_render_retry",
-      retryAfterSeconds: 30,
-    });
-  }
-
-  const completion = await context.store.completeReactionGenerationRun({
+  const renderJobs = await context.store.createReactionGenerationRenderJobs({
     generationJobId: job.id,
     runId: run.id,
     userId: input.userId,
   });
+
+  for (const renderJob of renderJobs) {
+    if (renderJob.job.status !== "queued" || renderJob.job.queue_message_id) {
+      continue;
+    }
+
+    const delivery = await dependencies.enqueueReactionRenderTask(renderJob.job);
+    await context.store.attachReactionRenderTaskDelivery({
+      jobId: renderJob.job.id,
+      taskName: delivery.taskName,
+    });
+  }
   await context.checkpoint({
     progress: null,
-    stage: "reaction_generation_persisted",
+    stage: "reaction_render_tasks_enqueued",
     status: "processing",
   });
 
-  if (completion.status === "failed") {
-    throw new ReactionGenerationTerminalError(
-      "Reaction generation produced no preview-ready Reels.",
-    );
-  }
-
   return {
-    failedCount: completion.failed_count,
     generationRunId: run.id,
     promptVersion: run.brief_payload && typeof run.brief_payload === "object" && "promptVersion" in run.brief_payload
       ? run.brief_payload.promptVersion ?? REACTION_GENERATION_PROMPT_VERSION
       : REACTION_GENERATION_PROMPT_VERSION,
-    readyCount: completion.ready_count,
+    queuedRenderCount: renderJobs.length,
     requestedCount: input.requestedCount,
-    shortfallCount: Math.max(0, input.requestedCount - completion.ready_count),
-    status: completion.status,
+    status: "rendering",
   } satisfies Record<string, Json>;
 }
 
@@ -237,7 +168,7 @@ async function createAndPersistPlan(params: {
   });
 }
 
-function buildRenderPayload(params: {
+export function buildReactionRenderPayload(params: {
   background: ReactionCatalogBackground | undefined;
   clip: ReactionCatalogClip | undefined;
   item: Awaited<ReturnType<SupabaseJobStore["persistReactionGenerationPlan"]>>[number];
@@ -270,7 +201,7 @@ function buildRenderPayload(params: {
   };
 }
 
-function toClip(row: {
+export function toReactionCatalogClip(row: {
   composition: string | null; duration_seconds: number; foreground_anchor: string | null;
   foreground_height_percent: number | null; has_alpha: boolean; id: string; reactions: string[];
   source_storage_key: string | null; status: string; subject_count: string | null;
@@ -289,7 +220,7 @@ function toClip(row: {
   };
 }
 
-function toBackground(row: {
+export function toReactionCatalogBackground(row: {
   context_tags: string[]; foreground_placement: string | null; id: string;
   source_storage_key: string | null; status: string;
 }): ReactionCatalogBackground {

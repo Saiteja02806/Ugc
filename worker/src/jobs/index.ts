@@ -14,6 +14,7 @@ import { runGenerateImageJob } from "./generate-image.js";
 import { runGenerateTrendingHookCopyJob } from "./generate-trending-hook-copy.js";
 import { runGenerateWallTextJob } from "./generate-wall-text.js";
 import { runGenerateReactionJob } from "./generate-reaction.js";
+import { runRenderReactionJob } from "./render-reaction.js";
 import { runRenderReactionEditJob } from "./render-reaction-edit.js";
 import { runGenerateHookSuggestionsJob } from "./generate-hook-suggestions.js";
 import { runAnalyticsSyncJob } from "./sync-analytics.js";
@@ -93,6 +94,10 @@ export async function runWorkerJob(
 
   if (job.job_type === "reaction_generation") {
     return runGenerateReactionJob(job, context);
+  }
+
+  if (job.job_type === "reaction_render") {
+    return runRenderReactionJob(job, context);
   }
 
   if (job.job_type === "media_analysis") {

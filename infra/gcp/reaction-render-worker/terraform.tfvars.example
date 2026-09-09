@@ -1,0 +1,24 @@
+project_id  = "ugcsaas"
+region      = "us-central1"
+environment = "prod"
+
+enable_reaction_render_worker = false
+worker_image_uri              = ""
+worker_service_account_email  = "ugc-worker-sa@ugcsaas.iam.gserviceaccount.com"
+scheduler_service_account_email = "ugc-scheduler-sa@ugcsaas.iam.gserviceaccount.com"
+
+service_name = "ugc-reaction-render-worker"
+queue_name   = "reaction-render"
+worker_version = "worker-gcp"
+worker_git_commit = "unknown"
+
+min_instance_count = 0
+max_instance_count = 4
+request_timeout_seconds = 1800
+worker_visibility_timeout_seconds = 1800
+cpu = "2"
+memory = "4Gi"
+container_port = 8080
+
+gcp_storage_bucket = "ugcsaas-media"
+gcp_storage_public_base_url = "https://storage.googleapis.com/ugcsaas-media"

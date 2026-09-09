@@ -329,10 +329,10 @@ function getSmartPreparingPollInterval(attemptCount: number): number {
   if (attemptCount <= 4) return 3_500;
   if (attemptCount <= 7) return 6_000;
   if (attemptCount <= 10) return 10_000;
-  // Once the normal worker latency window has elapsed, continue checking at
-  // the same cadence as the server recovery scanner. This avoids a permanent
-  // spinner while avoiding a tight request loop during a provider outage.
-  return 60_000;
+  // Keep pending content responsive after the normal worker window. Recovery
+  // still runs independently in the backend, but a completed Reel should not
+  // wait up to another minute before it appears in the visible feed.
+  return 10_000;
 }
 
 const TRENDING_FEED_REQUEST_TIMEOUT_MS = 20_000;

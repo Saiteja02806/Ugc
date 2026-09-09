@@ -77,7 +77,12 @@ const DEFAULT_WALL_TEXT_ACTIVE_TARGET = 6;
 
 export async function enqueueTrendingWallTextRefill(
   profile: BusinessProfileRecord,
-  options: { dailyFeedId?: string; recoveryKey?: string | null; targetActive?: number } = {},
+  options: {
+    dailyFeedId?: string;
+    recoveryKey?: string | null;
+    refillKey?: string | null;
+    targetActive?: number;
+  } = {},
 ) {
   const targetActive = Math.max(
     Math.trunc(options.targetActive ?? DEFAULT_WALL_TEXT_ACTIVE_TARGET),
@@ -139,7 +144,7 @@ export async function enqueueTrendingWallTextRefill(
     businessProfileId: profile.id,
     businessProfileVersion: profile.profileVersion,
     profile,
-    ...(needsTypographyRefresh ? {} : { refillKey: String(existing.length) }),
+    ...(needsTypographyRefresh ? {} : { refillKey: options.refillKey ?? String(existing.length) }),
     recoveryKey: options.recoveryKey,
     requestedCount: Math.max(targetActive - active.length, 1),
     userId: profile.userId,

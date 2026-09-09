@@ -30,7 +30,7 @@ test("retries a timed out or transient Trending feed request without relying on 
     /if \(shouldPollTrendingFeed\(\{[\s\S]*upgradeRequired: data\.upgradeRequired[\s\S]*scheduleFeedRefresh/,
   );
   assert.match(workspace, /if \(attemptCount <= 10\) return 10_000/);
-  assert.match(workspace, /return 60_000/);
+  assert.match(workspace, /return 10_000/);
 });
 
 test("shows generation progress instead of caught-up while daily slots remain pending", () => {

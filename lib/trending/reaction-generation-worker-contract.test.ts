@@ -5,18 +5,22 @@ import test from "node:test";
 const migration = readProjectFile(
   "supabase/migrations/20260906180000_add_durable_reaction_generation_worker.sql",
 );
-const renderSlotMigration = readProjectFile(
-  "supabase/migrations/20260907061454_allow_reaction_render_execution_slots.sql",
+const splitRenderMigration = readProjectFile(
+  "supabase/migrations/20260909140000_split_reaction_reel_render_workers.sql",
 );
 const enqueue = readProjectFile("lib/reaction-format/generation-jobs.ts");
 const workerJob = readProjectFile("worker/src/jobs/generate-reaction.ts");
+const reactionRenderJob = readProjectFile("worker/src/jobs/render-reaction.ts");
 const workerDispatch = readProjectFile("worker/src/jobs/index.ts");
 const workerRenderer = readProjectFile("worker/src/lib/render-engine.ts");
 const workerStore = readProjectFile("worker/src/lib/supabase.ts");
 const workerProcessor = readProjectFile("worker/src/processor.ts");
 const queueConfig = readProjectFile("lib/queues/config.ts");
-const videoRenderWorkerVariables = readProjectFile(
-  "infra/gcp/video-render-worker/variables.tf",
+const aiWorkerVariables = readProjectFile(
+  "infra/gcp/ai-generation-worker/variables.tf",
+);
+const reactionRenderWorker = readProjectFile(
+  "infra/gcp/reaction-render-worker/main.tf",
 );
 
 test("keeps the durable Reaction job type additive to the established worker contract", () => {
@@ -32,18 +36,22 @@ test("keeps the durable Reaction job type additive to the established worker con
   assert.match(workerDispatch, /job\.job_type === "reaction_generation"/);
 });
 
-test("routes Reaction generation to a deployed video-render worker", () => {
+test("plans Reactions on the AI worker and renders each item on a dedicated scale-to-zero service", () => {
   assert.match(
     queueConfig,
-    /reaction_generation:\s*\{\s*queueName: "video-render",\s*\}/,
+    /reaction_generation:\s*\{[\s\S]*?queueName: "ai-generation",\s*\}/,
   );
   assert.match(
-    videoRenderWorkerVariables,
+    queueConfig,
+    /reaction_render:\s*\{\s*queueName: "reaction-render",\s*\}/,
+  );
+  assert.match(
+    aiWorkerVariables,
     /variable "worker_job_types"[\s\S]*?default\s*=\s*"[^"]*\breaction_generation\b[^"]*"/,
   );
-  assert.match(renderSlotMigration, /claim_video_render_execution_slot/);
-  assert.match(renderSlotMigration, /'reaction_generation'/);
-  assert.match(renderSlotMigration, /queue_name = 'video-render'/);
+  assert.match(reactionRenderWorker, /min_instance_count = var\.min_instance_count/);
+  assert.match(reactionRenderWorker, /max_instance_count = var\.max_instance_count/);
+  assert.match(reactionRenderWorker, /value = "reaction_render"/);
 });
 
 test("persists the immutable plan before any Reaction video render", () => {
@@ -63,12 +71,12 @@ test("renders only private catalog inputs and records one owner-scoped final MP4
   assert.match(workerRenderer, /libx264[\s\S]+yuv420p/);
   assert.match(workerRenderer, /"videos",\s*"rendered",\s*"reaction"/);
   assert.match(workerStore, /source_type: "reaction_render"/);
-  assert.match(workerJob, /saveReactionRenderedMedia[\s\S]+completeReactionGenerationItemRender/);
+  assert.match(reactionRenderJob, /saveReactionRenderedMedia[\s\S]+completeReactionGenerationItemRenderV2/);
 });
 
-test("retries only unfinished render items and never asks AI for character labels", () => {
-  assert.match(workerJob, /if \(item\.render_status === "ready"\) continue/);
-  assert.match(workerJob, /RetryableJobError\("One or more Reaction Reels could not be rendered/);
+test("dispatches only unfinished render items and never asks AI for character labels", () => {
+  assert.match(workerJob, /createReactionGenerationRenderJobs[\s\S]+enqueueReactionRenderTask/);
+  assert.match(reactionRenderJob, /Reaction Reel rendering failed/);
   assert.match(migration, /render_status in \('queued', 'rendering', 'ready', 'failed'\)/);
   assert.match(workerRenderer, /treatment: "caption_with_labels" \| "outlined_text" \| "white_card"/);
   const generator = readProjectFile("worker/src/lib/reaction-generation.ts");
@@ -76,7 +84,7 @@ test("retries only unfinished render items and never asks AI for character label
   assert.doesNotMatch(generator, /caption_with_labels/);
 });
 
-test("uses the canonical semantic shapes and fails a zero-ready run terminally", () => {
+test("uses the canonical semantic shapes and terminally records individual render failures", () => {
   const generator = readProjectFile("worker/src/lib/reaction-generation.ts");
   for (const semanticBeats of [
     "situation.*payoff",
@@ -88,10 +96,9 @@ test("uses the canonical semantic shapes and fails a zero-ready run terminally",
     assert.match(generator, new RegExp(semanticBeats));
   }
   assert.match(generator, /productCopyPattern/);
-  assert.match(workerJob, /completion\.status === "failed"/);
-  assert.match(workerProcessor, /failReactionGenerationRun/);
+  assert.match(workerProcessor, /failReactionGenerationItemRenderV2/);
   assert.match(migration, /create or replace function public\.fail_reaction_generation_run_v1/);
-  assert.match(migration, /when current_ready_count < run_record\.requested_count/);
+  assert.match(splitRenderMigration, /when v_ready_count < v_run\.requested_count/);
 });
 
 test("reserves active clips and reports a catalog shortfall without another refill", () => {

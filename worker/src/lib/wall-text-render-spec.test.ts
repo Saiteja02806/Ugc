@@ -290,6 +290,45 @@ test("renders the V8 compact Arial Bold reference treatment without a shadow", (
   assert.doesNotMatch(svg, /wallTextShadow|feDropShadow|filter=/);
 });
 
+test("renders the approved V9 B treatment at 52px with a 4px outline", () => {
+  const v9Content = {
+    finalLayout: {
+      blocks: [{
+        lines: [
+          "I logged every meal",
+          "but skipped drinks oil",
+          "and small bites. Those",
+          "missing details quietly",
+          "changed the final total.",
+        ],
+        role: "text" as const,
+      }],
+      fontFamily: "Arial" as const,
+      fontSizePx: 52 as const,
+      fontWeight: 700 as const,
+      lineHeightPx: 57.2,
+      textBox: {
+        height: 480 / 1920,
+        width: 780 / 1080,
+        x: 150 / 1080,
+        y: 660 / 1920,
+      },
+      version: "wall-text-final-layout-v9" as const,
+    },
+    fullText:
+      "I logged every meal but skipped drinks oil and small bites. Those missing details quietly changed the final total.",
+    segments: content.segments,
+  };
+  const svg = buildWallTextOverlaySvg({ content: v9Content, placement: "middle" });
+
+  assert.match(svg, /font-family="Arial,/);
+  assert.match(svg, /font-size="52"/);
+  assert.match(svg, /font-weight="700"/);
+  assert.match(svg, /stroke-width="4"/);
+  assert.match(svg, /letter-spacing="0"/);
+  assert.doesNotMatch(svg, /wallTextShadow|feDropShadow|filter=/);
+});
+
 test("renders the current Arial Regular V4 layout at 400", () => {
   const v4 = {
     finalLayout: {

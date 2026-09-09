@@ -360,19 +360,22 @@ export function validateWallTextContent(
     content.layoutVersion === "wall-text-overlay-v9" ||
     content.layoutVersion === "wall-text-overlay-v10" ||
     content.layoutVersion === "wall-text-overlay-v11" ||
-    content.layoutVersion === "wall-text-overlay-v12"
+    content.layoutVersion === "wall-text-overlay-v12" ||
+    content.layoutVersion === "wall-text-overlay-v13"
   ) {
     const blocks = content.finalLayout?.blocks;
     const lines = blocks?.flatMap((block) => block.lines) ?? [];
     const authoritativeText = lines.join(" ");
 
     const minimumWords =
+      content.layoutVersion === "wall-text-overlay-v13" ||
       content.layoutVersion === "wall-text-overlay-v12" ||
       content.layoutVersion === "wall-text-overlay-v11" ||
       content.layoutVersion === "wall-text-overlay-v10"
         ? MIN_CURRENT_GENERATION_WALL_TEXT_WORDS
         : MIN_SHORT_WALL_TEXT_WORDS;
     const maximumWords =
+      content.layoutVersion === "wall-text-overlay-v13" ||
       content.layoutVersion === "wall-text-overlay-v12" ||
       content.layoutVersion === "wall-text-overlay-v11" ||
       content.layoutVersion === "wall-text-overlay-v10"
@@ -387,7 +390,9 @@ export function validateWallTextContent(
     if (
       content.sourceContent?.kind !== "text" ||
       content.finalLayout?.version !==
-        (content.layoutVersion === "wall-text-overlay-v12"
+        (content.layoutVersion === "wall-text-overlay-v13"
+          ? "wall-text-final-layout-v9"
+          : content.layoutVersion === "wall-text-overlay-v12"
           ? "wall-text-final-layout-v8"
           : content.layoutVersion === "wall-text-overlay-v11"
           ? "wall-text-final-layout-v7"
@@ -406,6 +411,12 @@ export function validateWallTextContent(
       normalizeText(authoritativeText) !== normalizeText(content.fullText)
     ) {
       throw new Error("Wall-of-text copy is missing its plain-text authoritative layout.");
+    }
+    if (
+      content.layoutVersion === "wall-text-overlay-v13" &&
+      content.finalLayout.fontSizePx !== 52
+    ) {
+      throw new Error("Wall-of-text V13 must use the fixed 52px font size.");
     }
     if (
       lines.length < MIN_WALL_TEXT_RENDERED_LINES ||

@@ -8,15 +8,10 @@ import {
   CREATE_CONTENT_MAX_OPTION_COUNT,
 } from "@/lib/create-content/generation";
 import { CreateContentGeneratedCopyValidationError } from "@/lib/create-content/generation-validation";
-import { isCreateContentVideo } from "@/lib/create-content/video-assets";
 import {
   FirebaseAuthRequestError,
   requireFirebaseUser,
 } from "@/lib/firebase/server-auth";
-import {
-  getMediaAssetForOwner,
-  serializeMediaAsset,
-} from "@/lib/media/media-storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,7 +21,6 @@ const REQUEST_SCHEMA = z
     format: z.enum(["wall_text", "hook_text"]),
     request: z.string().trim().min(1).max(1_200),
     requestedCount: z.number().int().min(1).max(CREATE_CONTENT_MAX_OPTION_COUNT).optional(),
-    sourceMediaAssetId: z.string().uuid(),
   })
   .strip();
 
@@ -39,7 +33,7 @@ export async function POST(request: Request) {
 
     if (!body.success) {
       return json(
-        { error: "Tell the AI what to create and choose a valid video.", ok: false },
+        { error: "Tell the AI what you would like to create.", ok: false },
         400,
       );
     }
@@ -56,18 +50,6 @@ export async function POST(request: Request) {
           ok: false,
         },
         onboardingGate?.status ?? 409,
-      );
-    }
-
-    const source = await getMediaAssetForOwner({
-      assetId: body.data.sourceMediaAssetId,
-      userId: user.uid,
-    });
-    const asset = source ? serializeMediaAsset(source) : null;
-    if (!asset || !isCreateContentVideo(asset)) {
-      return json(
-        { error: "This Creative Assets video is no longer available.", ok: false },
-        404,
       );
     }
 

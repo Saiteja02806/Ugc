@@ -156,6 +156,51 @@ test("restores V12 compact Arial Bold from its V4 rollout envelope", async () =>
   });
 });
 
+test("renders the approved V13 B treatment without changing its font or size", async () => {
+  const job = createJob();
+  const input = job.input_json as Record<string, unknown>;
+  const text = input.text as Record<string, unknown>;
+  text.layoutVersion = "wall-text-overlay-v13";
+  text.finalLayout = {
+    blocks: [{
+      lines: [
+        "I logged every meal",
+        "but skipped drinks oil",
+        "and small bites. Those",
+        "missing details quietly",
+        "changed the final total.",
+      ],
+      role: "text",
+    }],
+    fontFamily: "Arial",
+    fontSizePx: 52,
+    fontWeight: 700,
+    lineHeightPx: 57.2,
+    textBox: (input.layout as { textBox: unknown }).textBox,
+    version: "wall-text-final-layout-v9",
+  };
+
+  await runRenderWallTextVideoJob(job, {
+    dependencies: {
+      async renderWallTextVideoToStorage(payload) {
+        assert.equal(payload.text.finalLayout?.fontFamily, "Arial");
+        assert.equal(payload.text.finalLayout?.fontWeight, 700);
+        assert.equal(payload.text.finalLayout?.fontSizePx, 52);
+        assert.equal(payload.text.finalLayout?.version, "wall-text-final-layout-v9");
+        return {
+          assignmentId: ASSIGNMENT_ID,
+          creativeId: CREATIVE_ID,
+          key: "videos/rendered/wall-v13.mp4",
+          ok: true,
+          renderId: RENDER_ID,
+          url: "https://cdn.example.com/wall-v13.mp4",
+        };
+      },
+    },
+    store: successfulStore(),
+  });
+});
+
 test("accepts the current Arial Regular 400 final layout", async () => {
   const job = createJob();
   const input = job.input_json as Record<string, unknown>;

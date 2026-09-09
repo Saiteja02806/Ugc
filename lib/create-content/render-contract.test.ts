@@ -30,9 +30,10 @@ test("Create Content export preserves the user's Wall position and Trending visu
   assert.ok(finalLayout);
   if (!finalLayout) return;
 
-  assert.equal(finalLayout.version, "wall-text-final-layout-v8");
+  assert.equal(finalLayout.version, "wall-text-final-layout-v9");
   assert.equal(finalLayout.fontFamily, "Arial");
   assert.equal(finalLayout.fontWeight, 700);
+  assert.equal(finalLayout.fontSizePx, 52);
   assert.equal(finalLayout.blocks[0]?.lines.length, 5);
   assert.deepEqual(overlay.wall.layout.safeArea, {
     bottom: 0,

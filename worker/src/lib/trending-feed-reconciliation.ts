@@ -13,14 +13,22 @@ export async function reconcileTrendingFeedInApp(params: {
   sourceJobId: string;
   userId: string;
 }) {
-  const config = getConfig();
+  return sendReconciliation(params, RECONCILIATION_PATH, REQUEST_TIMEOUT_MS, MAX_ATTEMPTS);
+}
+
+export async function reconcileWallTextPlanInApp(params: { planId: string; userId: string }) {
+  return sendReconciliation(params, "/api/internal/trending/wall-plan-ready", 5_000, 1);
+}
+
+async function sendReconciliation(params: object, path: string, timeoutMs: number, maxAttempts: number) {
+  const config = getConfig(path);
   const body = JSON.stringify(params);
   let lastError: unknown;
 
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const timestamp = Date.now().toString();
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const response = await fetch(config.endpoint, {
@@ -72,7 +80,7 @@ export async function reconcileTrendingFeedInApp(params: {
       clearTimeout(timeout);
     }
 
-    if (attempt < MAX_ATTEMPTS) {
+    if (attempt < maxAttempts) {
       await sleep(attempt * 1_000);
     }
   }
@@ -92,7 +100,7 @@ class TrendingFeedReconciliationRequestError extends Error {
   }
 }
 
-function getConfig() {
+function getConfig(path: string) {
   const rawAppUrl = process.env.UGC_INTERNAL_APP_URL?.trim();
   const dedicatedSecret = process.env.UGC_INTERNAL_SCHEDULING_SECRET?.trim();
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
@@ -115,7 +123,7 @@ function getConfig() {
   let endpoint: URL;
 
   try {
-    endpoint = new URL(RECONCILIATION_PATH, `${rawAppUrl.replace(/\/+$/, "")}/`);
+    endpoint = new URL(path, `${rawAppUrl.replace(/\/+$/, "")}/`);
   } catch {
     throw new Error("UGC_INTERNAL_APP_URL must be a valid URL.");
   }

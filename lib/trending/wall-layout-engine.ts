@@ -171,8 +171,8 @@ export async function createWallTextFinalLayout(params: {
 
   throw new WallTextLayoutFitError(
     params.content.kind === "text"
-      ? "Wall-of-text copy cannot fit five to eight balanced lines at the fixed 44px font size. Shorten the copy or widen the text box."
-      : "Wall-of-text copy does not fit the publishing safe area at the fixed 44px font size.",
+      ? `Wall-of-text copy cannot fit five to eight balanced lines at the fixed ${fontSize}px font size. Shorten the copy or widen the text box.`
+      : `Wall-of-text copy does not fit the publishing safe area at the fixed ${fontSize}px font size.`,
   );
 }
 
@@ -303,6 +303,7 @@ async function partitionMeasuredLines(params: {
     ) {
       const width = await measure(start, end);
       if (width >= params.maximumWidth) break;
+      if (splitsCapitalizedNameAndAcronym(params.words, end)) continue;
       const rest = await solve(end, linesRemaining - 1);
       if (!rest) continue;
       const fill = width / params.maximumWidth;
@@ -334,6 +335,18 @@ function endsWithLayoutBreakWord(value: string) {
     "a", "an", "and", "as", "at", "but", "by", "for", "from", "if",
     "in", "of", "on", "or", "so", "than", "that", "the", "to", "with",
   ]).has(value.toLocaleLowerCase("en-US").replace(/[^\p{L}\p{N}]/gu, ""));
+}
+
+// Keep a title-cased name together with an immediately following acronym. For
+// example, “Cal AI's” must not be separated only to make two line widths look
+// more even. Copy that cannot fit without this split must be rewritten.
+function splitsCapitalizedNameAndAcronym(words: readonly string[], end: number) {
+  const before = words[end - 1]?.replace(/[^\p{L}\p{N}'’]/gu, "") ?? "";
+  const after = words[end]?.replace(/[^\p{L}\p{N}'’]/gu, "") ?? "";
+  return (
+    /^[A-Z][a-z]+(?:['’][A-Za-z]+)?$/u.test(before) &&
+    /^[A-Z]{2,}(?:['’][A-Za-z]+)?$/u.test(after)
+  );
 }
 
 async function wrapMeasuredText(

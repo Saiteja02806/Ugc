@@ -1,6 +1,6 @@
 # Reaction-format context
 
-Last updated: 2026-09-07
+Last updated: 2026-09-09
 
 ## Product definition
 
@@ -46,6 +46,25 @@ requires the original local source files to be mounted, because their checksums
 are deliberately verified before any upload.
 
 ## Phase 2: reviewed catalog import
+
+### Library expansion — 9 September 2026
+
+The additional `D:/green_mat/new batch` contains 22 unique MOV sources. The
+existing v2 visual mapping and checksum-based import process was retained.
+After complete decoding, actual-alpha sampling, motion review, and review of
+the first eight seconds used by production, 15 clean clips were imported and
+activated. The catalog now has 76 active clips and the same 19 backgrounds.
+The user explicitly chose to hold visible defects: seven sources remain
+excluded for borders, watermarks, strong colored outlines, opaque frames, or
+multi-second subject disappearance. Their exact decisions and mapping are
+saved in `scripts/data/reaction-assets-2026-09-09.json` and
+`docs/reaction-library-expansion-2026-09-09.md`.
+
+Files 09 and 15 in this batch show the same underlying cat reaction with
+different framing. They have different source checksums and remain separate
+assets under the existing identity rule. The importer references one existing
+background to satisfy its active-manifest gate; it verifies and skips that
+background rather than creating a new one.
 
 The Phase 2 importer reads only `active` manifest entries. Before it creates
 an active database row, it proves the current local file still matches the

@@ -2542,14 +2542,20 @@ export class SupabaseJobStore {
   }
 
   async persistWallTextContentPlanBriefChunk(params: {
+    jobId: string;
+    claimToken: string;
+    expectedItemCount: number;
     briefs: Json;
     items: Json;
     planId: string;
     userId: string;
   }) {
     const { data, error } = await this.client.rpc(
-      "persist_wall_text_content_plan_brief_chunk",
+      "persist_wall_text_content_plan_brief_chunk_v2",
       {
+        p_job_id: params.jobId,
+        p_claim_token: params.claimToken,
+        p_expected_item_count: params.expectedItemCount,
         p_briefs: params.briefs,
         p_items: params.items,
         p_plan_id: params.planId,
@@ -2565,13 +2571,15 @@ export class SupabaseJobStore {
   }
 
   async completeWallTextContentPlanGeneration(params: {
+    claimToken: string;
     jobId: string;
     planId: string;
     userId: string;
   }) {
     const { data, error } = await this.client.rpc(
-      "complete_wall_text_content_plan_generation",
+      "complete_wall_text_content_plan_generation_v2",
       {
+        p_claim_token: params.claimToken,
         p_job_id: params.jobId,
         p_plan_id: params.planId,
         p_user_id: params.userId,

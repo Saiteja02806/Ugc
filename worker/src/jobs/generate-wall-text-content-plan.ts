@@ -9,6 +9,7 @@ import {
 import { toContentPlanProviderRetry } from "../lib/content-plan-provider-retry.js";
 import { RetryableJobError } from "../retryable-job-error.js";
 import { logger } from "../logger.js";
+import { reconcileWallTextPlanInApp } from "../lib/trending-feed-reconciliation.js";
 import type { WorkerJobContext, WorkerJobOutput } from "./index.js";
 
 type ContentPlanJobInput = {
@@ -20,9 +21,16 @@ type ContentPlanJobInput = {
 export async function runGenerateWallTextContentPlanJob(
   job: BackgroundJobRow,
   context: WorkerJobContext,
-  dependencies = { generateChunk: generateWallTextContentPlanChunk },
+  dependencies: {
+    generateChunk: typeof generateWallTextContentPlanChunk;
+    notifyPublication?: typeof reconcileWallTextPlanInApp;
+  } = {
+    generateChunk: generateWallTextContentPlanChunk,
+    notifyPublication: reconcileWallTextPlanInApp,
+  },
 ): Promise<WorkerJobOutput> {
   const input = parseInput(job);
+  if (!job.claim_token) throw new Error("Wall-of-text planner requires a worker claim.");
   const plan = await context.store.getWallTextContentPlan({
     jobId: job.id,
     planId: input.planId,
@@ -81,6 +89,9 @@ export async function runGenerateWallTextContentPlanJob(
       const sequenceStart = items.length + 1;
       const briefIndexStart = items.length / 5 + 1;
       const inserted = await context.store.persistWallTextContentPlanBriefChunk({
+        jobId: job.id,
+        claimToken: job.claim_token,
+        expectedItemCount: items.length,
         briefs: generated.briefs.map((brief) => ({
           audience_context: brief.audienceContext,
           brief_fingerprint: createWallTextCreativeBriefFingerprint(brief),
@@ -132,9 +143,23 @@ export async function runGenerateWallTextContentPlanJob(
         stage: "generating_wall_text_content_plan",
         status: "waiting_external_service",
       });
+
+      if (plan.early_delivery_enabled) {
+        // The publication is already durable. Await a bounded wake-up, while a
+        // failed callback is retried independently by the recovery scheduler.
+        try {
+          await (dependencies.notifyPublication ?? reconcileWallTextPlanInApp)({ planId: plan.id, userId: plan.user_id });
+        } catch (error) {
+          logger.warn("Wall plan publication will be reconciled by recovery", {
+            planId: plan.id, savedItemCount: items.length,
+            error: error instanceof Error ? error.message : "Publication wake-up failed",
+          });
+        }
+      }
     }
 
     const activated = await context.store.completeWallTextContentPlanGeneration({
+      claimToken: job.claim_token,
       jobId: job.id,
       planId: plan.id,
       userId: plan.user_id,

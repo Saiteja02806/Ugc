@@ -5,8 +5,9 @@ import {
   retryAndDispatchBackgroundJob,
 } from "@/lib/jobs/background-job-service";
 import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
-import { getBackgroundJobForUser } from "@/lib/jobs/background-jobs";
+import { getBackgroundJobForUser, type BackgroundJobRecord } from "@/lib/jobs/background-jobs";
 import { ensureWallTextContentPlanGeneration } from "@/lib/trending/wall-text-content-plan-generation-job";
+import { admitWallTextDailyDelivery } from "@/lib/trending/wall-text-early-delivery";
 import { isWallTextGenerationFailureTerminalCode } from "@/lib/trending/wall-text-generation-failure";
 import {
   WALL_TEXT_FINAL_LAYOUT_VERSION,
@@ -18,7 +19,8 @@ import {
 // later feed read) when the underlying failure is deterministic or persists.
 const WALL_TEXT_AUTOMATIC_RECOVERY_SUFFIX = "recovery-v1";
 
-export async function enqueueTrendingWallTextJob(params: {
+type WallTextJobParams = {
+  dailyFeedId?: string;
   businessProfileId: string;
   businessProfileVersion: number;
   profile: BusinessProfileRecord;
@@ -26,12 +28,34 @@ export async function enqueueTrendingWallTextJob(params: {
   refillKey?: string | null;
   requestedCount?: number;
   userId: string;
-}) {
+};
+
+export function enqueueTrendingWallTextJob(params: WallTextJobParams & { dailyFeedId?: undefined }): Promise<BackgroundJobRecord>;
+export function enqueueTrendingWallTextJob(params: WallTextJobParams): Promise<BackgroundJobRecord | null>;
+export async function enqueueTrendingWallTextJob(params: WallTextJobParams) {
   const plan = await ensureWallTextContentPlanGeneration({
     profile: params.profile,
   });
 
-  // Wall copy may only be generated from an active 30-day plan. Until the
+  if (params.dailyFeedId) {
+    const admission = await admitWallTextDailyDelivery({
+      dailyFeedId: params.dailyFeedId,
+      planId: plan.id,
+      profile: params.profile,
+      requestedCount: Math.min(Math.max(Math.trunc(params.requestedCount ?? 6), 1), 50),
+    });
+    if (admission.kind === "ready") return null;
+    if (admission.kind === "job") {
+      const job = admission.job;
+      if (job.status === "failed" && job.attemptCount < job.maxAttempts &&
+        !isWallTextGenerationFailureTerminalCode(job.errorCode)) {
+        return await retryAndDispatchBackgroundJob({ jobId: job.id, userId: params.userId }) ?? job;
+      }
+      return job;
+    }
+  }
+
+  // Callers outside the opted-in daily intent still require an active plan. Until the
   // planner has completed, return its durable job to the caller instead of
   // launching the old direct-writer path without private plan context.
   if (plan.status !== "active") {

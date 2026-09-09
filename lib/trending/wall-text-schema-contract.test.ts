@@ -157,6 +157,13 @@ const compactArialBoldV8TypographyMigration = readFileSync(
   ),
   "utf8",
 );
+const approvedBTypographyMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260908172213_apply_wall_text_b_52px_typography_v13.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const terminalStaleLayoutMigration = readFileSync(
   new URL(
     "../../supabase/migrations/20260906213000_fix_wall_text_terminalization_current_generator_layouts.sql",
@@ -643,7 +650,9 @@ test("measures new final Wall lines with packaged Arial Bold before saving autho
   assert.match(layoutEngineSource, /textBox: params\.layout\.textBox/);
   assert.match(layoutEngineSource, /maximumWidth = getWallTextSafeLineWidth\(textBoxWidth\)/);
   assert.match(visualStyleSource, /WALL_TEXT_INLINE_SAFE_PADDING = 15/);
-  assert.match(visualStyleSource, /WALL_TEXT_OUTLINE_WIDTH = 3/);
+  assert.match(visualStyleSource, /WALL_TEXT_FIXED_FONT_SIZE = 52/);
+  assert.match(visualStyleSource, /WALL_TEXT_OUTLINE_WIDTH = 4/);
+  assert.match(visualStyleSource, /WALL_TEXT_V12_OUTLINE_WIDTH = 3/);
   assert.match(visualStyleSource, /WALL_TEXT_PREVIOUS_ARIAL_BOLD_OUTLINE_WIDTH = 4/);
   assert.match(visualStyleSource, /WALL_TEXT_SHADOW_OPACITY = 0/);
   assert.match(visualStyleSource, /WALL_TEXT_V7_SHADOW_OPACITY = 0\.3/);
@@ -653,7 +662,8 @@ test("measures new final Wall lines with packaged Arial Bold before saving autho
     /maximumTextWidth = getWallTextSafeLineWidth\(textBoxWidth\)/,
   );
   assert.match(workerRenderSpecSource, /WALL_TEXT_INLINE_SAFE_PADDING = 15/);
-  assert.match(workerRenderSpecSource, /WALL_TEXT_OUTLINE_WIDTH = 3/);
+  assert.match(workerRenderSpecSource, /WALL_TEXT_OUTLINE_WIDTH = 4/);
+  assert.match(workerRenderSpecSource, /WALL_TEXT_V12_OUTLINE_WIDTH = 3/);
   assert.match(workerRenderSpecSource, /WALL_TEXT_PREVIOUS_ARIAL_BOLD_OUTLINE_WIDTH = 4/);
   assert.match(workerRenderSpecSource, /WALL_TEXT_SHADOW_OPACITY = 0/);
   assert.match(workerRenderSpecSource, /WALL_TEXT_V7_SHADOW_OPACITY = 0\.3/);
@@ -800,20 +810,20 @@ test("rejects the reported overflow and synchronizes the measured font fit", () 
       formatId: "freeform",
       layout,
     });
-    const forcedLarge = {
+    const forcedWrongSize = {
       ...rebuilt.content,
-      renderFontSize: 52,
+      renderFontSize: 44,
       finalLayout: {
         ...rebuilt.content.finalLayout,
-        fontSizePx: 52,
-        lineHeightPx: 57.2,
+        fontSizePx: 44,
+        lineHeightPx: 48.4,
       },
     };
-    let forcedLargeRejected = false;
+    let forcedWrongSizeRejected = false;
     try {
-      await validation.validateWallTextRenderFit(forcedLarge);
+      await validation.validateWallTextRenderFit(forcedWrongSize);
     } catch (error) {
-      forcedLargeRejected = error?.code === validation.WALL_TEXT_RENDER_FIT_REJECTED;
+      forcedWrongSizeRejected = error?.code === validation.WALL_TEXT_RENDER_FIT_REJECTED;
     }
     const fit = await validation.validateWallTextRenderFit(rebuilt.content);
     const applied = validation.applyWallTextRenderFit(rebuilt.content, fit);
@@ -822,7 +832,7 @@ test("rejects the reported overflow and synchronizes the measured font fit", () 
       appliedLineHeight: applied.finalLayout.lineHeightPx,
       appliedRenderFont: applied.renderFontSize,
       fit,
-      forcedLargeRejected,
+      forcedWrongSizeRejected,
       lines: applied.finalLayout.blocks[0].lines,
       rejected,
     }));
@@ -852,14 +862,14 @@ test("rejects the reported overflow and synchronizes the measured font fit", () 
     };
     lines: string[];
     rejected: boolean;
-    forcedLargeRejected: boolean;
+    forcedWrongSizeRejected: boolean;
   };
 
   assert.equal(result.rejected, true);
   assert.equal(result.fit.valid, true);
-  assert.equal(result.forcedLargeRejected, true);
-  assert.equal(result.fit.fontSize, 44);
-  assert.ok(result.fit.maximumLineWidth + 6 < 750);
+  assert.equal(result.forcedWrongSizeRejected, true);
+  assert.equal(result.fit.fontSize, 52);
+  assert.ok(result.fit.maximumLineWidth + 8 < 750);
   assert.equal(result.appliedRenderFont, result.fit.fontSize);
   assert.equal(result.appliedFinalFont, result.fit.fontSize);
   assert.equal(result.appliedLineHeight, result.fit.lineHeight);
@@ -869,6 +879,7 @@ test("rejects the reported overflow and synchronizes the measured font fit", () 
 
 test("uses packaged Arial Bold glyphs at 700 for new Wall content while retaining prior typography", () => {
   assert.match(visualStyleSource, /WALL_TEXT_FONT_WEIGHT = 700/);
+  assert.match(visualStyleSource, /WALL_TEXT_FIXED_FONT_SIZE = 52/);
   assert.match(visualStyleSource, /WALL_TEXT_MINIMUM_FONT_SIZE = 44/);
   assert.match(visualStyleSource, /WALL_TEXT_MAXIMUM_FONT_SIZE = 52/);
   assert.match(layoutEngineSource, /font: `Arial Bold \$\{fontSize\}`/);
@@ -939,9 +950,13 @@ test("uses packaged Arial Bold glyphs at 700 for new Wall content while retainin
     compactArialBoldV8TypographyMigration,
     /wall-text-overlay-v12[\s\S]+wall-text-final-layout-v8[\s\S]+fontFamily' = 'Arial'[\s\S]+fontWeight'\)::integer = 700/,
   );
+  assert.match(
+    approvedBTypographyMigration,
+    /wall-text-overlay-v13[\s\S]+wall-text-final-layout-v9[\s\S]+fontFamily' = 'Arial'[\s\S]+fontWeight'\)::integer = 700[\s\S]+fontSizePx'\)::integer = 52[\s\S]+business-profile-wall-text-v9/,
+  );
 });
 
-test("keeps the Wall editor save gate aligned with the V10 24-40 word contract", () => {
+test("keeps the Wall editor save gate aligned with the V13 24-40 word contract", () => {
   assert.match(editorSource, /wordCount < MIN_CURRENT_GENERATION_WALL_TEXT_WORDS \|\|[\s\S]+wordCount > MAX_CURRENT_GENERATION_WALL_TEXT_WORDS/);
   assert.match(editorSource, /MIN_CURRENT_GENERATION_WALL_TEXT_WORDS\}–\$\{MAX_CURRENT_GENERATION_WALL_TEXT_WORDS\} words and fit the measured 5–8-line layout/);
   assert.match(textLogicSource, /MIN_SHORT_WALL_TEXT_WORDS = 15/);
@@ -964,7 +979,7 @@ test("keeps measured finalLayout lines as the current Wall source of truth", () 
   );
 });
 
-test("V10 requires 24-40 generated words and measured fit instead of clip-time limits", () => {
+test("V13 requires 24-40 generated words and measured fit instead of clip-time limits", () => {
   const currentValidation = textLogicSource.match(
     /content\.layoutVersion === "wall-text-overlay-v6"[\s\S]+?MAX_CURRENT_GENERATION_WALL_TEXT_WORDS[\s\S]+?\n    return;/,
   )?.[0] ?? "";
@@ -1052,7 +1067,7 @@ test("fixed Wall typography grows lines and rejects overflow without shrinking",
     const layout = feed.createWallTextLayout();
     const samples = [
       ['When the day gets busy, seeing every task in one place makes the next step feel more manageable.', 5],
-      ['Between classes, meetings, and errands, integrating your schedule with calendars so tasks appear alongside appointments helps reduce the mental load of planning.', 5],
+      ['Between classes, meetings, and errands, integrating your schedule with calendars so tasks appear alongside appointments helps reduce the mental load of planning.', 6],
     ];
     for (const [text, expectedLines] of samples) {
       const result = await engine.createAuthoritativeWallTextContent({
@@ -1061,18 +1076,18 @@ test("fixed Wall typography grows lines and rejects overflow without shrinking",
       const lines = result.content.finalLayout.blocks.flatMap(b => b.lines);
       assert.equal(lines.join(' '), text);
       assert.equal(lines.length, expectedLines);
-      assert.equal(result.content.renderFontSize, 44);
-      assert.equal(result.content.finalLayout.fontSizePx, 44);
+      assert.equal(result.content.renderFontSize, 52);
+      assert.equal(result.content.finalLayout.fontSizePx, 52);
       const fit = await validation.validateWallTextRenderFit(result.content);
-      assert.equal(fit.fontSize, 44);
+      assert.equal(fit.fontSize, 52);
       for (const [index, line] of lines.entries()) {
         const measured = await sharp({ text: {
-          dpi: 72, font: 'Arial Bold 44',
+          dpi: 72, font: 'Arial Bold 52',
           fontfile: await font.getVerifiedWallTextArialBoldFontPath(),
           text: line, rgba: true, wrap: 'none',
         }}).metadata();
         assert.equal(fit.lineWidths[index], measured.width);
-        assert.ok(measured.width + 6 < 750);
+        assert.ok(measured.width + 8 < 750);
       }
       // Just too short for these lines: the old validator would reduce size.
       const tooShort = {
@@ -1088,12 +1103,12 @@ test("fixed Wall typography grows lines and rejects overflow without shrinking",
       content: { kind: 'text', text: 'Welcome to the other side of work where your day gets derailed before lunch, meetings move, priorities flip, and somehow everything still gets done because your tasks adjust in real time instead of you constantly trying to catch up while new requests keep arriving, deadlines move, teams need answers, and the plan changes again before anyone can make progress.' },
       formatId: 'freeform', layout,
     }), error =>
-      error.code === 'wall_text_render_fit_rejected' && /fixed 44px/.test(error.message));
+      error.code === 'wall_text_render_fit_rejected' && /fixed 52px/.test(error.message));
     await assert.rejects(engine.createAuthoritativeWallTextContent({
       content: { kind: 'text', text: Array(50).fill('responsibilities').join(' ') + '.' },
       formatId: 'freeform', layout,
     }), error =>
-      error.code === 'wall_text_render_fit_rejected' && /fixed 44px/.test(error.message));
+      error.code === 'wall_text_render_fit_rejected' && /fixed 52px/.test(error.message));
     const generatedPrompt = prompt.buildWallTextGenerationPrompt({
       business: {}, candidates: [{ candidateIndex: 0, targetWords: 18, maxWords: 50 }],
     });
@@ -1152,7 +1167,7 @@ test("balances the reported Wall example into readable measured lines", () => {
 
   assert.equal(layout.fontFamily, "Arial");
   assert.equal(layout.fontWeight, 700);
-  assert.equal(layout.lineHeightPx, 48.4);
+  assert.equal(layout.lineHeightPx, 57.2);
   const lines = layout.blocks.flatMap((block) => block.lines);
   assert.ok(lines.length >= 5 && lines.length <= 8);
   assert.equal(
@@ -1162,7 +1177,7 @@ test("balances the reported Wall example into readable measured lines", () => {
   assert.ok(!lines.every((line) => line.split(/\s+/u).length <= 2));
 });
 
-test("V10 keeps every word in one measured 5-8 line block", () => {
+test("V13 keeps every word in one measured 5-8 line block", () => {
   const loaderPath = new URL(
     "../../scripts/next-server-only-test-loader.mjs",
     import.meta.url,
@@ -1212,7 +1227,7 @@ test("V10 keeps every word in one measured 5-8 line block", () => {
   const lines = result.content.finalLayout.blocks.flatMap((block) => block.lines);
   assert.equal(result.content.fullText, original);
   assert.equal(result.content.sourceContent.kind, "text");
-  assert.equal(result.content.finalLayout.version, "wall-text-final-layout-v8");
+  assert.equal(result.content.finalLayout.version, "wall-text-final-layout-v9");
   assert.equal(result.content.finalLayout.fontFamily, "Arial");
   assert.equal(result.content.finalLayout.fontWeight, 700);
   assert.equal(result.content.finalLayout.blocks.length, 1);

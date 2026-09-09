@@ -69,7 +69,16 @@ export async function validateWallTextRenderFit(
   content: TrendingWallTextContent,
 ): Promise<WallTextRenderValidation> {
   const preferredFontSize = getWallTextFontSize(content);
+  if (
+    content.finalLayout?.version === "wall-text-final-layout-v9" &&
+    (preferredFontSize !== 52 || content.finalLayout.fontSizePx !== 52)
+  ) {
+    throw new WallTextRenderFitError(
+      "Wall-of-text V13 must use the fixed 52px font size.",
+    );
+  }
   const fontSizes: WallTextFontSize[] =
+    content.finalLayout?.version === "wall-text-final-layout-v9" ||
     content.finalLayout?.version === "wall-text-final-layout-v8" ||
     content.finalLayout?.version === "wall-text-final-layout-v7" ||
     content.finalLayout?.version === "wall-text-final-layout-v6" ||
@@ -80,6 +89,7 @@ export async function validateWallTextRenderFit(
             fontSize <= preferredFontSize && values.indexOf(fontSize) === index,
         ) as WallTextFontSize[]);
   const fontName =
+    content.finalLayout?.version === "wall-text-final-layout-v9" ||
     content.finalLayout?.version === "wall-text-final-layout-v8" ||
     content.finalLayout?.version === "wall-text-final-layout-v7" ||
     content.finalLayout?.version === "wall-text-final-layout-v6"
@@ -168,6 +178,7 @@ export async function validateWallTextRenderFit(
   if (widestFailure) {
     throw new WallTextRenderFitError(
       content.finalLayout?.version === "wall-text-final-layout-v8" ||
+      content.finalLayout?.version === "wall-text-final-layout-v9" ||
       content.finalLayout?.version === "wall-text-final-layout-v7" ||
       content.finalLayout?.version === "wall-text-final-layout-v6" ||
       content.finalLayout?.version === "wall-text-final-layout-v5"

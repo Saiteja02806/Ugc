@@ -2,7 +2,7 @@ import type { WallTextBusinessContext } from "./wall-text-text-logic";
 import { WALL_TEXT_SOFT_WORD_RANGE } from "./wall-text-copy-policy";
 
 export const WALL_TEXT_PROMPT_VERSION =
-  "wall-text-writer-prompt-v13-24-40-balanced-lines" as const;
+  "wall-text-writer-prompt-v14-24-40-52px-balanced-lines" as const;
 
 export type WallTextPromptCandidate = {
   candidateIndex: number;
@@ -79,7 +79,7 @@ export function buildWallTextGenerationPrompt(params: {
     "TASK",
     "For each candidate, write the strongest complete natural message from the supplied idea and business facts. Do not force it into a named writing format, template, list, or formula.",
     "When privateCreativeContext is present, write from the complete private context, not from contentIdea alone.",
-    "preferredWordRange is a required 24-40-word generation range. Choose the natural length the idea needs within that range; do not default every message to its shortest end. The layout engine—not the clip duration—will decide final acceptance from a measured 5-8 line fit at a fixed 50px font size.",
+    "preferredWordRange is a required 24-40-word generation range. Choose the natural length the idea needs within that range; do not default every message to its shortest end. The layout engine—not the clip duration—will decide final acceptance from a measured 5-8 line fit at a fixed 52px font size.",
     "Do not insert visual line breaks or pad a complete thought with filler to force eight lines. If retry feedback reports layout_fit, improve the wording while remaining inside preferredWordRange; the font size will not shrink.",
     "A referenceTextForThisCandidateOnly belongs only to that candidate. Use it only as structural and emotional inspiration, adapt it to the Business Profile, and do not copy its wording.",
     "Reference text is not evidence. Never repeat its numbers, psychology statements, factual claims, product names, or promises unless the Business Profile independently supports them.",

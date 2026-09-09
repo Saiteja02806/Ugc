@@ -11,12 +11,14 @@ const route = await readFile(
   "utf8",
 );
 
-test("Create Content generation reads the existing business profile and selected asset", () => {
+test("Create Content generation reads the existing business profile without requiring a selected asset", () => {
   assert.match(route, /getBusinessProfileForUser/);
-  assert.match(route, /getMediaAssetForOwner/);
-  assert.match(route, /isCreateContentVideo/);
   assert.match(generation, /Use this existing onboarding Business Profile exactly/);
+  assert.doesNotMatch(route, /sourceMediaAssetId/);
+  assert.doesNotMatch(route, /getMediaAssetForOwner/);
+  assert.doesNotMatch(route, /isCreateContentVideo/);
   assert.doesNotMatch(generation, /selectedVideoDurationSeconds/);
+  assert.match(generation, /Create copy independently of any selected source video/);
 });
 
 test("Create Content generation remains separate from Trending plan generation", () => {

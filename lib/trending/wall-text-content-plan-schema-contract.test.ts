@@ -188,7 +188,7 @@ test("requires a complete active Wall plan instead of falling back to direct gen
   assert.match(migration, /set status = 'consumed'/i);
   assert.match(migration, /set status = 'retired'/i);
   assert.match(jobs, /ensureWallTextContentPlanGeneration/);
-  assert.match(jobs, /Wall copy may only be generated from an active 30-day plan/i);
+  assert.match(jobs, /Callers outside the opted-in daily intent still require an active plan/i);
   assert.match(jobs, /return planningJob/);
 });
 

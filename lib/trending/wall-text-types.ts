@@ -1,37 +1,37 @@
 export const WALL_TEXT_CONTENT_LAYOUT_VERSION =
-  "wall-text-overlay-v12" as const;
+  "wall-text-overlay-v13" as const;
 export const PREVIOUS_WALL_TEXT_CONTENT_LAYOUT_VERSION =
-  "wall-text-overlay-v11" as const;
+  "wall-text-overlay-v12" as const;
 export const LEGACY_WALL_TEXT_CONTENT_LAYOUT_VERSION =
-  "wall-text-overlay-v10" as const;
+  "wall-text-overlay-v11" as const;
 export const OLDER_WALL_TEXT_CONTENT_LAYOUT_VERSION =
-  "wall-text-overlay-v9" as const;
+  "wall-text-overlay-v10" as const;
 export const HISTORICAL_WALL_TEXT_CONTENT_LAYOUT_VERSION =
-  "wall-text-overlay-v8" as const;
+  "wall-text-overlay-v9" as const;
 // V5 first introduced the measured final-layout contract. V4 predates it and
 // remains readable for the writer's historical semantic payloads.
 export const EARLIEST_WALL_TEXT_CONTENT_LAYOUT_VERSION =
-  "wall-text-overlay-v7" as const;
+  "wall-text-overlay-v8" as const;
 export const OLDEST_WALL_TEXT_CONTENT_LAYOUT_VERSION =
-  "wall-text-overlay-v6" as const;
+  "wall-text-overlay-v7" as const;
 export const ANCIENT_WALL_TEXT_CONTENT_LAYOUT_VERSION =
-  "wall-text-overlay-v5" as const;
+  "wall-text-overlay-v6" as const;
 export const WALL_TEXT_LAYOUT_VERSION = "wall-text-layout-v4" as const;
-// V8 is the compact reference treatment: Arial Bold 700, a crisp 3px outline,
-// and no drop shadow. Older treatments remain immutable for historical cards.
-export const WALL_TEXT_FINAL_LAYOUT_VERSION = "wall-text-final-layout-v8" as const;
+// V9 is the approved B treatment: Arial Bold 700 at 52px with a crisp 4px
+// outline and no drop shadow. Older treatments remain immutable for historical cards.
+export const WALL_TEXT_FINAL_LAYOUT_VERSION = "wall-text-final-layout-v9" as const;
 export const PREVIOUS_WALL_TEXT_FINAL_LAYOUT_VERSION =
-  "wall-text-final-layout-v7" as const;
+  "wall-text-final-layout-v8" as const;
 export const LEGACY_WALL_TEXT_FINAL_LAYOUT_VERSION =
-  "wall-text-final-layout-v6" as const;
+  "wall-text-final-layout-v7" as const;
 export const OLDER_WALL_TEXT_FINAL_LAYOUT_VERSION =
-  "wall-text-final-layout-v5" as const;
+  "wall-text-final-layout-v6" as const;
 export const HISTORICAL_WALL_TEXT_FINAL_LAYOUT_VERSION =
-  "wall-text-final-layout-v4" as const;
+  "wall-text-final-layout-v5" as const;
 export const EARLIEST_WALL_TEXT_FINAL_LAYOUT_VERSION =
-  "wall-text-final-layout-v3" as const;
+  "wall-text-final-layout-v4" as const;
 export const OLDEST_WALL_TEXT_FINAL_LAYOUT_VERSION =
-  "wall-text-final-layout-v2" as const;
+  "wall-text-final-layout-v3" as const;
 export const WALL_TEXT_GENERATOR_VERSION =
   "business-profile-wall-text-v9" as const;
 // Version the measured inner text boundary separately from the generator.
@@ -145,7 +145,7 @@ export type WallTextPattern = (typeof WALL_TEXT_PATTERNS)[number];
 export type WallTextSegmentRole = (typeof WALL_TEXT_SEGMENT_ROLES)[number];
 export type WallTextPlacementZone = (typeof WALL_TEXT_PLACEMENT_ZONES)[number];
 // Existing 36-42px layouts remain readable without reflow. The current layout
-// engine emits the restored 44-52px range.
+// engine emits fixed 52px layouts; earlier saved sizes remain readable.
 export type WallTextFontSize = 36 | 38 | 40 | 42 | 44 | 46 | 48 | 50 | 52;
 export type WallTextNormalizedBox = {
   height: number;
@@ -201,25 +201,30 @@ export type WallTextFinalLayout =
       version: typeof LEGACY_WALL_TEXT_FINAL_LAYOUT_VERSION;
     })
   | (WallTextFinalLayoutBase & {
-      fontFamily: "Avenir Next";
-      fontWeight: 600;
+      fontFamily: "Arial";
+      fontWeight: 700;
       version: typeof OLDER_WALL_TEXT_FINAL_LAYOUT_VERSION;
     })
   | (WallTextFinalLayoutBase & {
-      fontFamily: "Arial";
-      fontWeight: 400;
+      fontFamily: "Avenir Next";
+      fontWeight: 600;
       version: typeof HISTORICAL_WALL_TEXT_FINAL_LAYOUT_VERSION;
     })
   | (WallTextFinalLayoutBase & {
       fontFamily: "Arial";
-      fontWeight: 500;
+      fontWeight: 400;
       version: typeof EARLIEST_WALL_TEXT_FINAL_LAYOUT_VERSION;
+    })
+  | (WallTextFinalLayoutBase & {
+      fontFamily: "Arial";
+      fontWeight: 500;
+      version: typeof OLDEST_WALL_TEXT_FINAL_LAYOUT_VERSION;
     })
   | (WallTextFinalLayoutBase & {
       fontFamily: "Inter";
       fontWeight: 400;
       version:
-        | typeof OLDEST_WALL_TEXT_FINAL_LAYOUT_VERSION
+        | "wall-text-final-layout-v2"
         | "wall-text-final-layout-v1";
     });
 export type WallTextPlacementAnalysis = {
@@ -245,6 +250,7 @@ export type TrendingWallTextContent = {
     | typeof EARLIEST_WALL_TEXT_CONTENT_LAYOUT_VERSION
     | typeof OLDEST_WALL_TEXT_CONTENT_LAYOUT_VERSION
     | typeof ANCIENT_WALL_TEXT_CONTENT_LAYOUT_VERSION
+    | "wall-text-overlay-v5"
     | "wall-text-overlay-v4";
   pattern: WallTextPattern;
   renderFontSize?: WallTextFontSize;

@@ -3,6 +3,8 @@
 import {
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clapperboard,
   Film,
   GripVertical,
@@ -134,7 +136,7 @@ export function CreateContentWorkspace({
   );
   const [shouldOpenSchedulingAfterRender, setShouldOpenSchedulingAfterRender] =
     useState(false);
-  const pointerStartX = useRef<number | null>(null);
+  const [isAssistantDocked, setIsAssistantDocked] = useState(true);
   const aiComposerRef = useRef<HTMLTextAreaElement>(null);
 
   const loadAssets = useCallback(async () => {
@@ -309,6 +311,7 @@ export function CreateContentWorkspace({
 
   function focusAiComposer() {
     setChatAddErrorMessage(null);
+    setIsAssistantDocked(true);
     window.requestAnimationFrame(() => {
       aiComposerRef.current?.scrollIntoView({
         behavior: "smooth",
@@ -379,7 +382,10 @@ export function CreateContentWorkspace({
     format: "wall_text" | "hook_text";
     text: string;
   }) {
-    if (!activeAsset) return false;
+    if (!activeAsset) {
+      setChatAddErrorMessage("Choose a video before adding this copy.");
+      return false;
+    }
 
     setChatAddErrorMessage(null);
     setIsAddingGeneratedCopy(true);
@@ -513,44 +519,6 @@ export function CreateContentWorkspace({
     shouldOpenSchedulingAfterRender,
   ]);
 
-  function handlePointerDown(event: ReactPointerEvent<HTMLElement>) {
-    if (!event.isPrimary) return;
-    pointerStartX.current = event.clientX;
-  }
-
-  function handlePointerUp(event: ReactPointerEvent<HTMLElement>) {
-    if (!event.isPrimary || pointerStartX.current === null) return;
-
-    const distance = event.clientX - pointerStartX.current;
-    pointerStartX.current = null;
-
-    if (Math.abs(distance) < SWIPE_THRESHOLD_PX) return;
-
-    if (distance < 0) {
-      skipActiveVideo();
-    }
-
-    if (distance > 0) {
-      void scheduleActiveVideo();
-    }
-  }
-
-  function clearPointerStart() {
-    pointerStartX.current = null;
-  }
-
-  function handleDeckKeyDown(event: KeyboardEvent<HTMLElement>) {
-    if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      skipActiveVideo();
-    }
-
-    if (event.key === "ArrowRight") {
-      event.preventDefault();
-      void scheduleActiveVideo();
-    }
-  }
-
   return (
     <section className="min-w-0 flex-1 bg-background px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <div className="mx-auto w-full max-w-[1480px]">
@@ -561,83 +529,90 @@ export function CreateContentWorkspace({
             onRetry={loadAssets}
           />
         ) : null}
-        {status === "ready" && assets.length === 0 ? (
-          <CreateContentEmptyState />
-        ) : null}
-        {status === "ready" && activeAsset ? (
+        {status === "ready" ? (
           <>
-            <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,40%)] xl:grid-cols-[minmax(0,1fr)_27.5rem]">
+            <div
+              className={cn(
+                "grid min-w-0 items-start gap-6 lg:gap-0",
+                isAssistantDocked
+                  ? "lg:grid-cols-[minmax(0,1fr)_minmax(22.5rem,clamp(22.5rem,30vw,26rem))]"
+                  : "lg:grid-cols-[minmax(0,1fr)_3.25rem]",
+              )}
+            >
               <div className="min-w-0 space-y-5">
-                <VideoPicker
-                  activeAssetId={activeAsset.id}
-                  assets={assets}
-                  onSelect={selectActiveVideo}
-                />
-                <VideoDeck
-                  activeAsset={activeAsset}
-                  activeCard={activeCard}
-                  activeIndex={resolvedActiveIndex}
-                  isPreparingForSchedule={
-                    isPreparingForSchedule ||
-                    activeRender?.status === "queued" ||
-                    activeRender?.status === "rendering"
-                  }
-                  isTextEditing={editingAssetId === activeAsset.id}
-                  nextAsset={nextAsset}
-                  total={assets.length}
-                  onEditText={() => {
-                    if (activeCard) openTextEditor(activeCard);
-                  }}
-                  onSchedule={() => void scheduleActiveVideo()}
-                  onPointerCancel={clearPointerStart}
-                  onPointerDown={handlePointerDown}
-                  onPointerUp={handlePointerUp}
-                  onSkip={skipActiveVideo}
-                  onKeyDown={handleDeckKeyDown}
-                  onPositionChange={(position) => {
-                    if (!activeCard) return;
-                    updateLocalCard({
-                      ...activeCard,
-                      overlay: { ...activeCard.overlay, position },
-                    });
-                  }}
-                />
-                {activeRender?.status === "queued" ||
-                activeRender?.status === "rendering" ? (
-                  <p className="mx-auto max-w-md text-center text-xs leading-5 text-muted-foreground">
-                    Preparing your video with its original audio intact. Scheduling
-                    will open as soon as it is ready.
-                  </p>
-                ) : null}
-                {activeRender?.status === "failed" && activeRender.errorMessage ? (
-                  <div
-                    className="mx-auto max-w-md rounded-xl border border-destructive/30 bg-destructive/8 px-3 py-2.5 text-center text-xs leading-5 text-destructive"
-                    role="alert"
-                  >
-                    <p>{activeRender.errorMessage}</p>
-                    <p className="mt-1 text-destructive/85">
-                      Select Schedule to try again.
-                    </p>
-                  </div>
-                ) : null}
-                {scheduleErrorMessage ? (
-                  <p className="mx-auto max-w-md text-center text-xs leading-5 text-destructive" role="alert">
-                    {scheduleErrorMessage}
-                  </p>
-                ) : null}
+                {activeAsset ? (
+                  <>
+                    <VideoPicker
+                      activeAssetId={activeAsset.id}
+                      assets={assets}
+                      onSelect={selectActiveVideo}
+                    />
+                    <VideoDeck
+                      activeAsset={activeAsset}
+                      activeCard={activeCard}
+                      activeIndex={resolvedActiveIndex}
+                      isPreparingForSchedule={
+                        isPreparingForSchedule ||
+                        activeRender?.status === "queued" ||
+                        activeRender?.status === "rendering"
+                      }
+                      isTextEditing={editingAssetId === activeAsset.id}
+                      nextAsset={nextAsset}
+                      total={assets.length}
+                      onEditText={() => {
+                        if (activeCard) openTextEditor(activeCard);
+                      }}
+                      onSchedule={() => void scheduleActiveVideo()}
+                      onSkip={skipActiveVideo}
+                      onPositionChange={(position) => {
+                        if (!activeCard) return;
+                        updateLocalCard({
+                          ...activeCard,
+                          overlay: { ...activeCard.overlay, position },
+                        });
+                      }}
+                    />
+                    {activeRender?.status === "queued" ||
+                    activeRender?.status === "rendering" ? (
+                      <p className="mx-auto max-w-md text-center text-xs leading-5 text-muted-foreground">
+                        Preparing your video with its original audio intact. Scheduling
+                        will open as soon as it is ready.
+                      </p>
+                    ) : null}
+                    {activeRender?.status === "failed" && activeRender.errorMessage ? (
+                      <div
+                        className="mx-auto max-w-md rounded-xl border border-destructive/30 bg-destructive/8 px-3 py-2.5 text-center text-xs leading-5 text-destructive"
+                        role="alert"
+                      >
+                        <p>{activeRender.errorMessage}</p>
+                        <p className="mt-1 text-destructive/85">
+                          Select Schedule to try again.
+                        </p>
+                      </div>
+                    ) : null}
+                    {scheduleErrorMessage ? (
+                      <p className="mx-auto max-w-md text-center text-xs leading-5 text-destructive" role="alert">
+                        {scheduleErrorMessage}
+                      </p>
+                    ) : null}
+                  </>
+                ) : (
+                  <CreateContentEmptyState />
+                )}
               </div>
               <AiChatPanel
-                key={activeAsset.id}
-                activeAsset={activeAsset}
                 addErrorMessage={chatAddErrorMessage}
                 composerRef={aiComposerRef}
                 isPreview={isPreview}
                 isAddingCopy={isAddingGeneratedCopy}
+                isDocked={isAssistantDocked}
                 hasExistingText={Boolean(activeCard)}
+                hasSelectedVideo={Boolean(activeAsset)}
                 onAddCopy={addCopyToActiveVideo}
+                onDockChange={setIsAssistantDocked}
               />
             </div>
-            {activeCard && editingAssetId === activeAsset.id ? (
+            {activeCard && activeAsset && editingAssetId === activeAsset.id ? (
               <TextEditorDrawer
                 key={activeCard.sourceMediaAssetId}
                 card={activeCard}
@@ -667,10 +642,6 @@ function VideoDeck({
   isTextEditing,
   nextAsset,
   onEditText,
-  onKeyDown,
-  onPointerCancel,
-  onPointerDown,
-  onPointerUp,
   onPositionChange,
   onSchedule,
   onSkip,
@@ -683,15 +654,90 @@ function VideoDeck({
   isTextEditing: boolean;
   nextAsset: MediaAsset | null;
   onEditText: () => void;
-  onKeyDown: (event: KeyboardEvent<HTMLElement>) => void;
-  onPointerCancel: () => void;
-  onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
-  onPointerUp: (event: ReactPointerEvent<HTMLElement>) => void;
   onPositionChange: (position: CreateContentTextPosition) => void;
   onSchedule: () => void;
   onSkip: () => void;
   total: number;
 }) {
+  const activePointerId = useRef<number | null>(null);
+  const pointerStartX = useRef<number | null>(null);
+  const didSwipe = useRef(false);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const actionLabel = activeCard ? "Schedule" : "Create copy";
+  const isInteractionDisabled = isTextEditing || isPreparingForSchedule;
+
+  function resetSwipe() {
+    activePointerId.current = null;
+    pointerStartX.current = null;
+    setIsDragging(false);
+    setDragOffset(0);
+  }
+
+  function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (isInteractionDisabled || !event.isPrimary) return;
+
+    didSwipe.current = false;
+    activePointerId.current = event.pointerId;
+    pointerStartX.current = event.clientX;
+    setIsDragging(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    if (
+      isInteractionDisabled ||
+      activePointerId.current !== event.pointerId ||
+      pointerStartX.current === null ||
+      !event.currentTarget.hasPointerCapture(event.pointerId)
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    setDragOffset(
+      Math.max(-SWIPE_THRESHOLD_PX - 32, Math.min(SWIPE_THRESHOLD_PX + 32, event.clientX - pointerStartX.current)),
+    );
+  }
+
+  function handlePointerEnd(event: ReactPointerEvent<HTMLDivElement>) {
+    if (activePointerId.current !== event.pointerId) return;
+
+    const distance = event.clientX - (pointerStartX.current ?? event.clientX);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    resetSwipe();
+
+    if (Math.abs(distance) < SWIPE_THRESHOLD_PX) return;
+
+    didSwipe.current = true;
+    window.setTimeout(() => {
+      didSwipe.current = false;
+    }, 0);
+
+    if (distance < 0) {
+      onSkip();
+      return;
+    }
+
+    onSchedule();
+  }
+
+  function handleDeckKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (isInteractionDisabled) return;
+
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      onSkip();
+    }
+
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      onSchedule();
+    }
+  }
+
   return (
     <div className="flex flex-col items-center gap-3">
       <div
@@ -703,15 +749,38 @@ function VideoDeck({
         )}
         role="region"
         tabIndex={0}
-        onKeyDown={isTextEditing || isPreparingForSchedule ? undefined : onKeyDown}
-        onPointerDown={isTextEditing || isPreparingForSchedule ? undefined : onPointerDown}
-        onPointerUp={isTextEditing || isPreparingForSchedule ? undefined : onPointerUp}
-        onPointerCancel={isTextEditing || isPreparingForSchedule ? undefined : onPointerCancel}
+        onClickCapture={(event) => {
+          if (!didSwipe.current) return;
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+        onKeyDown={handleDeckKeyDown}
+        onLostPointerCapture={resetSwipe}
+        onPointerCancel={resetSwipe}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerEnd}
       >
+        <SwipeActionLane
+          direction="left"
+          isActive={dragOffset < 0}
+          label="Skip"
+          progress={Math.abs(Math.min(dragOffset, 0)) / SWIPE_THRESHOLD_PX}
+        />
+        <SwipeActionLane
+          direction="right"
+          isActive={dragOffset > 0}
+          label={actionLabel}
+          progress={Math.max(dragOffset, 0) / SWIPE_THRESHOLD_PX}
+        />
         {nextAsset ? <NextVideoPeek asset={nextAsset} /> : null}
         <article
           data-create-content-video-frame
-          className="relative z-10 size-full overflow-hidden rounded-[20px] border border-border-strong bg-deep-contrast shadow-[var(--shadow-floating)]"
+          className="relative z-10 size-full overflow-hidden rounded-[20px] border border-border-strong bg-deep-contrast shadow-[var(--shadow-floating)] will-change-transform"
+          style={{
+            transform: `translateX(${dragOffset}px) rotate(${dragOffset * 0.025}deg)`,
+            transition: isDragging ? undefined : "transform 180ms ease-out",
+          }}
         >
           <video
             key={activeAsset.id}
@@ -739,15 +808,15 @@ function VideoDeck({
         </article>
       </div>
 
-      <div className="-mt-0.5">
+      <div className="-mt-0.5 flex flex-col items-center">
         <CreativeDecisionActions
           acceptAriaLabel={activeCard ? "Schedule this video" : "Create copy"}
-          acceptCaption={activeCard ? "Schedule" : "Create copy"}
-          acceptDisabled={isTextEditing || isPreparingForSchedule}
+          acceptCaption={actionLabel}
+          acceptDisabled={isInteractionDisabled}
           acceptTitle={activeCard ? "Schedule this video" : "Create copy"}
           rejectAriaLabel="Skip this video"
           rejectCaption="Skip"
-          rejectDisabled={isTextEditing || isPreparingForSchedule}
+          rejectDisabled={isInteractionDisabled}
           rejectTitle="Skip this video"
           onAccept={onSchedule}
           onReject={onSkip}
@@ -760,9 +829,47 @@ function VideoDeck({
         {isTextEditing
           ? "Drag the text to place it, then choose Done."
           : activeCard
-            ? "Select the text to edit it, swipe left to skip, or swipe right to schedule."
-            : "Add copy with Ask AI or Write manually. Swipe left to skip."}
+            ? "Select the text to edit it. Swipe left to skip or right to schedule."
+            : "Generate or write copy, then swipe left to skip or right to create copy."}
       </p>
+    </div>
+  );
+}
+
+function SwipeActionLane({
+  direction,
+  isActive,
+  label,
+  progress,
+}: {
+  direction: "left" | "right";
+  isActive: boolean;
+  label: string;
+  progress: number;
+}) {
+  const isLeft = direction === "left";
+
+  return (
+    <div
+      aria-hidden="true"
+      className={cn(
+        "pointer-events-none absolute inset-y-5 z-0 flex items-center transition-opacity duration-150",
+        isLeft ? "left-2 justify-start" : "right-2 justify-end",
+        isActive ? "opacity-100" : "opacity-0",
+      )}
+      style={{ opacity: isActive ? Math.min(1, Math.max(0.2, progress)) : 0 }}
+    >
+      <span
+        className={cn(
+          "flex h-13 min-w-23 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-semibold shadow-sm",
+          isLeft
+            ? "border-destructive/35 bg-destructive/12 text-destructive"
+            : "border-emerald-500/35 bg-emerald-500/12 text-emerald-600 dark:text-emerald-400",
+        )}
+      >
+        {isLeft ? <X className="size-4" /> : <Check className="size-4" />}
+        {label}
+      </span>
     </div>
   );
 }
@@ -1016,24 +1123,28 @@ function TextEditorDrawer({
 }
 
 function AiChatPanel({
-  activeAsset,
   addErrorMessage,
   composerRef,
   hasExistingText,
+  hasSelectedVideo,
   isAddingCopy,
+  isDocked,
   isPreview,
   onAddCopy,
+  onDockChange,
 }: {
-  activeAsset: MediaAsset;
   addErrorMessage: string | null;
   composerRef: RefObject<HTMLTextAreaElement | null>;
   hasExistingText: boolean;
+  hasSelectedVideo: boolean;
   isAddingCopy: boolean;
+  isDocked: boolean;
   isPreview: boolean;
   onAddCopy: (params: {
     format: "wall_text" | "hook_text";
     text: string;
   }) => Promise<boolean>;
+  onDockChange: (isDocked: boolean) => void;
 }) {
   const [mode, setMode] = useState<"ai" | "manual">("ai");
   const [format, setFormat] = useState<"wall_text" | "hook_text">(
@@ -1050,8 +1161,8 @@ function AiChatPanel({
     setOptions([]);
     setRequest(
       nextFormat === "wall_text"
-        ? "Create Wall-of-Text copy for my video."
-        : "Create Hook text for my video.",
+        ? "Create Wall-of-Text copy."
+        : "Create Hook text.",
     );
   }
 
@@ -1080,7 +1191,6 @@ function AiChatPanel({
         body: JSON.stringify({
           format: inferredFormat,
           request: exactRequest,
-          sourceMediaAssetId: activeAsset.id,
         }),
         headers: {
           Authorization: `Bearer ${token}`,
@@ -1108,24 +1218,63 @@ function AiChatPanel({
 
   return (
     <aside
-      aria-labelledby="create-content-ai-chat-title"
-      className="flex min-h-[34rem] flex-col overflow-hidden rounded-[28px] border border-border-strong bg-card shadow-[0_18px_44px_rgb(23_23_27_/_0.16)] lg:sticky lg:top-6 lg:h-[calc(100dvh-3rem)] lg:min-h-0"
+      aria-label="Ask AI workspace"
+      className={cn(
+        "min-w-0 bg-card/20 lg:sticky lg:top-6 lg:h-[calc(100dvh-3rem)] lg:min-h-0 lg:border-l lg:border-border",
+        isDocked ? "lg:flex lg:flex-col" : "lg:flex lg:items-start",
+      )}
     >
-        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-border px-5 py-4 sm:px-6">
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold tracking-[0.14em] text-primary uppercase">
-              Video copy assistant
-            </p>
-            <h2
-              id="create-content-ai-chat-title"
-              className="mt-1 truncate text-base font-semibold text-foreground-strong"
+      <button
+        type="button"
+        aria-controls="create-content-ai-workspace"
+        aria-expanded={false}
+        aria-label="Show Ask AI"
+        title="Show Ask AI"
+        className={cn(
+          "hidden size-full items-start justify-center pt-4 text-muted-foreground transition-colors hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+          isDocked ? "lg:hidden" : "lg:flex",
+        )}
+        onClick={() => onDockChange(true)}
+      >
+        <span className="flex size-9 items-center justify-center rounded-full border border-border bg-card shadow-sm">
+          <ChevronLeft className="size-4" aria-hidden="true" />
+        </span>
+      </button>
+      <div
+        id="create-content-ai-workspace"
+        className={cn(
+          "flex min-h-[34rem] min-w-0 flex-1 flex-col overflow-hidden bg-card lg:min-h-0",
+          isDocked ? "lg:flex" : "lg:hidden",
+        )}
+      >
+        <header className="shrink-0 px-5 pt-4 pb-2 sm:px-6">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold tracking-[0.14em] text-primary uppercase">
+                Copy assistant
+              </p>
+              <h2
+                id="create-content-ai-chat-title"
+                className="mt-1 truncate text-base font-semibold text-foreground-strong"
+              >
+                {mode === "ai" ? "Ask AI" : "Write manually"}
+              </h2>
+            </div>
+            <button
+              type="button"
+              aria-controls="create-content-ai-workspace"
+              aria-expanded={true}
+              aria-label="Hide Ask AI"
+              title="Hide Ask AI"
+              className="hidden size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus lg:inline-flex"
+              onClick={() => onDockChange(false)}
             >
-              {mode === "ai" ? "Ask AI" : "Write manually"}
-            </h2>
+              <ChevronRight className="size-4" aria-hidden="true" />
+            </button>
           </div>
           <div
             aria-label="Copy creation mode"
-            className="flex shrink-0 rounded-full border border-border bg-background/65 p-1"
+            className="mt-3 flex w-fit max-w-full rounded-full border border-border bg-background/65 p-1"
             role="tablist"
           >
             <button
@@ -1161,117 +1310,130 @@ function AiChatPanel({
           </div>
         </header>
 
-        {mode === "ai" ? <>
-        <div id="create-content-ai-panel" role="tabpanel" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-6 sm:px-6">
-          {options.length === 0 ? (
-            <div className="rounded-[22px] border border-border bg-background/65 p-5 shadow-[0_12px_30px_rgb(23_23_27_/_0.08)]">
-              <p className="text-base font-semibold text-foreground-strong">
-                What would you like to create?
-              </p>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Describe the idea in your own words. Ask AI returns four options
-                unless you request a different number.
-              </p>
-            </div>
-          ) : (
-            <div>
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-foreground-strong">
-                  {options.length} {activeFormatLabel} {options.length === 1 ? "option" : "options"}
+        {mode === "ai" ? (
+          <>
+            <div
+              id="create-content-ai-panel"
+              role="tabpanel"
+              className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-5 pb-4 sm:px-6"
+            >
+              {options.length === 0 ? (
+                <div className="max-w-[25rem] pt-1">
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    Describe the angle, audience, or feeling you want the copy to
+                    have.
+                  </p>
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                    Ask AI gives four options unless you request a different number.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-foreground-strong">
+                      {options.length} {activeFormatLabel}{" "}
+                      {options.length === 1 ? "option" : "options"}
+                    </p>
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                      onClick={() => setOptions([])}
+                    >
+                      Start over
+                    </button>
+                  </div>
+                  <div className="mt-4 space-y-3">
+                    {options.map((option, index) => (
+                      <GeneratedCopyOptionCard
+                        key={`${option.formatId ?? option.format}-${index}`}
+                        option={option}
+                        optionNumber={index + 1}
+                        isAdding={isAddingCopy}
+                        hasSelectedVideo={hasSelectedVideo}
+                        onAdd={onAddCopy}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {generationError ? (
+                <p className="mt-4 text-sm leading-5 text-destructive" role="alert">
+                  {generationError}
                 </p>
-                <button
-                  type="button"
-                  className="text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                  onClick={() => setOptions([])}
-                >
-                  Start over
-                </button>
-              </div>
-              <div className="mt-4 space-y-3">
-                {options.map((option, index) => (
-                  <GeneratedCopyOptionCard
-                    key={`${option.formatId ?? option.format}-${index}`}
-                    option={option}
-                    optionNumber={index + 1}
-                    isAdding={isAddingCopy}
-                    onAdd={onAddCopy}
-                  />
-                ))}
-              </div>
+              ) : null}
+              {addErrorMessage ? (
+                <p className="mt-4 text-sm leading-5 text-destructive" role="alert">
+                  {addErrorMessage}
+                </p>
+              ) : null}
             </div>
-          )}
 
-          {generationError ? (
-            <p className="mt-4 text-sm leading-5 text-destructive" role="alert">
-              {generationError}
-            </p>
-          ) : null}
-          {addErrorMessage ? (
-            <p className="mt-4 text-sm leading-5 text-destructive" role="alert">
-              {addErrorMessage}
-            </p>
-          ) : null}
-        </div>
-
-        <form className="shrink-0 border-t border-border bg-card/95 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur sm:px-6" onSubmit={generate}>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant={format === "wall_text" ? "default" : "outline"}
-              className="h-9 rounded-full px-4"
-              onClick={() => selectFormat("wall_text")}
+            <form
+              className="shrink-0 bg-card px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6"
+              onSubmit={generate}
             >
-              Wall-of-Text
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={format === "hook_text" ? "default" : "outline"}
-              className="h-9 rounded-full px-4"
-              onClick={() => selectFormat("hook_text")}
-            >
-              Hook text
-            </Button>
-          </div>
-          <label className="sr-only" htmlFor="create-content-ai-request">
-            Ask the AI for copy
-          </label>
-          <div className="relative mt-3 rounded-[22px] border border-border-strong bg-background p-1.5 transition-[border-color,box-shadow] focus-within:border-primary focus-within:ring-3 focus-within:ring-primary/15">
-            <textarea
-              id="create-content-ai-request"
-              ref={composerRef}
-              autoComplete="off"
-              name="create-content-ai-request"
-              value={request}
-              maxLength={1_200}
-              rows={3}
-              placeholder={`Ask for ${activeFormatLabel}…`}
-              className="min-h-27 w-full resize-none rounded-[17px] border-0 bg-transparent px-3 py-3 pb-11 text-sm leading-5 text-foreground outline-none placeholder:text-muted-foreground"
-              onChange={(event) => setRequest(event.target.value)}
-            />
-            <p className="absolute bottom-3 left-4 text-[11px] text-muted-foreground">
-              {request.trim().length}/1200
-            </p>
-            <Button
-              type="submit"
-              size="sm"
-              className="absolute right-3 bottom-3 h-8 rounded-full px-3.5"
-              disabled={!request.trim() || isGenerating}
-            >
-              <Send data-icon="inline-start" />
-              {isGenerating ? "Creating…" : "Send"}
-            </Button>
-          </div>
-        </form>
-        </> : (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={format === "wall_text" ? "default" : "outline"}
+                  className="h-9 rounded-full px-4"
+                  onClick={() => selectFormat("wall_text")}
+                >
+                  Wall-of-Text
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={format === "hook_text" ? "default" : "outline"}
+                  className="h-9 rounded-full px-4"
+                  onClick={() => selectFormat("hook_text")}
+                >
+                  Hook text
+                </Button>
+              </div>
+              <label className="sr-only" htmlFor="create-content-ai-request">
+                Ask the AI for copy
+              </label>
+              <div className="relative mt-3 rounded-[20px] border border-border-strong bg-background p-1.5 transition-[border-color,box-shadow] focus-within:border-primary focus-within:ring-3 focus-within:ring-primary/15">
+                <textarea
+                  id="create-content-ai-request"
+                  ref={composerRef}
+                  autoComplete="off"
+                  name="create-content-ai-request"
+                  value={request}
+                  maxLength={1_200}
+                  rows={3}
+                  placeholder={`Ask for ${activeFormatLabel}…`}
+                  className="min-h-27 w-full resize-none rounded-[15px] border-0 bg-transparent px-3 py-3 pb-11 text-sm leading-5 text-foreground outline-none placeholder:text-muted-foreground"
+                  onChange={(event) => setRequest(event.target.value)}
+                />
+                <p className="absolute bottom-3 left-4 text-[11px] text-muted-foreground">
+                  {request.trim().length}/1200
+                </p>
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="absolute right-3 bottom-3 h-8 rounded-full px-3.5"
+                  disabled={!request.trim() || isGenerating}
+                >
+                  <Send data-icon="inline-start" />
+                  {isGenerating ? "Creating…" : "Send"}
+                </Button>
+              </div>
+            </form>
+          </>
+        ) : (
           <ManualCopyComposer
             addErrorMessage={addErrorMessage}
             hasExistingText={hasExistingText}
+            hasSelectedVideo={hasSelectedVideo}
             isAddingCopy={isAddingCopy}
             onAddCopy={onAddCopy}
           />
         )}
+      </div>
     </aside>
   );
 }
@@ -1279,11 +1441,13 @@ function AiChatPanel({
 function ManualCopyComposer({
   addErrorMessage,
   hasExistingText,
+  hasSelectedVideo,
   isAddingCopy,
   onAddCopy,
 }: {
   addErrorMessage: string | null;
   hasExistingText: boolean;
+  hasSelectedVideo: boolean;
   isAddingCopy: boolean;
   onAddCopy: (params: {
     format: "wall_text" | "hook_text";
@@ -1345,17 +1509,8 @@ function ManualCopyComposer({
       className="flex min-h-0 flex-1 flex-col"
       onSubmit={addManualCopy}
     >
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-6 sm:px-6">
-        <div className="rounded-[22px] border border-border bg-background/65 p-5 shadow-[0_12px_30px_rgb(23_23_27_/_0.08)]">
-          <p className="text-base font-semibold text-foreground-strong">
-            Write your own copy
-          </p>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Choose a format and add render-ready text directly to this video.
-          </p>
-        </div>
-
-        <div className="mt-5 flex flex-wrap gap-2">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-5 pb-4 sm:px-6">
+        <div className="flex flex-wrap gap-2">
           <Button
             type="button"
             size="sm"
@@ -1419,11 +1574,11 @@ function ManualCopyComposer({
         ) : null}
       </div>
 
-      <footer className="shrink-0 border-t border-border bg-card/95 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur sm:px-6">
+      <footer className="shrink-0 bg-card px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6">
         <Button
           type="submit"
           className="w-full rounded-full"
-          disabled={!normalizedText || isAddingCopy}
+          disabled={!normalizedText || isAddingCopy || !hasSelectedVideo}
         >
           <Plus data-icon="inline-start" />
           {isAddingCopy
@@ -1432,7 +1587,9 @@ function ManualCopyComposer({
               ? "Confirm replace"
               : hasExistingText
                 ? "Replace current text"
-                : "Add to this video"}
+                : hasSelectedVideo
+                  ? "Add to selected video"
+                  : "Choose a video to add"}
         </Button>
       </footer>
     </form>
@@ -1443,11 +1600,13 @@ function GeneratedCopyOptionCard({
   option,
   optionNumber,
   isAdding,
+  hasSelectedVideo,
   onAdd,
 }: {
   option: CreateContentGeneratedOption;
   optionNumber: number;
   isAdding: boolean;
+  hasSelectedVideo: boolean;
   onAdd: (params: {
     format: "wall_text" | "hook_text";
     text: string;
@@ -1500,17 +1659,21 @@ function GeneratedCopyOptionCard({
       )}
       <div className="mt-3 flex items-center justify-between gap-3">
         <p className="text-[11px] text-muted-foreground">
-          {isAdded ? "Added to this video" : "Adds at the center; you can drag it."}
+          {isAdded
+            ? "Added to the selected video"
+            : hasSelectedVideo
+              ? "Adds at the center; you can drag it."
+              : "Choose a video before adding this copy."}
         </p>
         <Button
           type="button"
           size="sm"
           className="rounded-full px-3.5"
-          disabled={!normalizedText || isAdding}
+          disabled={!normalizedText || isAdding || !hasSelectedVideo}
           onClick={() => void addToVideo()}
         >
           <Plus data-icon="inline-start" />
-          {isAdding ? "Adding…" : "Add to this video"}
+          {isAdding ? "Adding…" : "Add to selected video"}
         </Button>
       </div>
     </article>

@@ -1,8 +1,10 @@
 import type { TrendingWallTextContent } from "./wall-text-types.ts";
 
 /**
- * Each new persisted typography version has a safe envelope for an older
- * worker during a Vercel-before-worker rollout. V12/V11/V10 Arial Bold layouts
+ * B (V13 / final V9) travels unchanged so an outdated worker cannot silently
+ * draw it in Arial Regular. Stage the app, deploy the supporting worker, then
+ * promote the app to production domains.
+ * Historical V12/V11/V10 Arial Bold layouts
  * and V9 Avenir layouts travel as valid V4 Arial Regular; an updated worker uses
  * the content-layout version to restore the intended face before drawing it.
  * An older worker still renders the job instead of rejecting it. V8 keeps its

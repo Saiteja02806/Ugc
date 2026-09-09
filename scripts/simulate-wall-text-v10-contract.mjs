@@ -7,9 +7,9 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import sharp from "sharp";
 
 // Kept at its original path so existing package scripts continue to work.
-// Its assertions track the current V11 contract.
+// Its assertions track the current V13 contract.
 const rootDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const outputDirectory = path.join(rootDirectory, ".tmp", "wall-text-v12-simulation");
+const outputDirectory = path.join(rootDirectory, ".tmp", "wall-text-v13-simulation");
 const loaderUrl = pathToFileURL(
   path.join(rootDirectory, "scripts", "next-server-only-test-loader.mjs"),
 ).href;
@@ -43,6 +43,11 @@ const samples = [
     name: "40-words-8-lines",
     text: "Life feels less loud when you can see what matters next. A clear plan keeps your tasks near your time, so changes do not turn into a long list of things to fix before the whole day feels lost again.",
   },
+  {
+    expectedLines: 8,
+    name: "33-words-production-b",
+    text: "Scoop after scoop from a family casserole leaves you guessing portions, but a quick photo with Cal AI's depth sensor gives a volume-based calorie and nutrient estimate that restores confidence in your tracking.",
+  },
 ];
 
 const generated = generateSemanticLayouts(samples);
@@ -70,19 +75,23 @@ for (const sample of samples) {
   assert.equal(wordCount, Number(sample.name.slice(0, 2)));
   assert.equal(lines.length, sample.expectedLines);
   assert.equal(lines.join(" "), content.fullText);
+  if (sample.name === "33-words-production-b") {
+    assert.ok(!lines.some((line) => /\bCal$/u.test(line)));
+    assert.ok(!lines.some((line) => /^AI['’]s\b/u.test(line)));
+  }
   assert.ok(lines.every((line) => countWords(line) >= 2));
   assert.equal(content.finalLayout.fontFamily, "Arial");
   assert.equal(content.finalLayout.fontWeight, 700);
-  assert.equal(content.finalLayout.fontSizePx, 44);
-  assert.equal(content.layoutVersion, "wall-text-overlay-v12");
-  assert.equal(content.finalLayout.version, "wall-text-final-layout-v8");
+  assert.equal(content.finalLayout.fontSizePx, 52);
+  assert.equal(content.layoutVersion, "wall-text-overlay-v13");
+  assert.equal(content.finalLayout.version, "wall-text-final-layout-v9");
 
   const svg = buildWallTextOverlaySvg({
     content,
     placement: content.layout?.placement ?? "middle",
     textBox: content.finalLayout.textBox,
   });
-  assert.match(svg, /stroke-width="3"/);
+  assert.match(svg, /stroke-width="4"/);
   assert.match(svg, /letter-spacing="0"/);
   assert.doesNotMatch(svg, /wallTextShadow|feDropShadow/);
   const raster = await sharp(Buffer.from(svg))
@@ -108,7 +117,7 @@ for (const sample of samples) {
   const rightPadding = innerRight - bounds.right;
   assert.ok(leftPadding > 0, `${sample.name} reaches the protected left fence.`);
   assert.ok(rightPadding > 0, `${sample.name} reaches the protected right fence.`);
-  assert.ok(render.maximumLineWidth + 6 < 750);
+  assert.ok(render.maximumLineWidth + 8 < 750);
 
   const imagePath = path.join(outputDirectory, `${sample.name}.png`);
   await sharp({

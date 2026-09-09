@@ -10,6 +10,7 @@ hatch-pet-runs/
 local-run-logs/
 node_modules/
 out/
+output/
 tmp/
 tmp-logs/
 worker/dist/

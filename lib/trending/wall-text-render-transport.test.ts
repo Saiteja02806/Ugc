@@ -78,6 +78,31 @@ const CURRENT_V8_CONTENT = {
   layoutVersion: "wall-text-overlay-v12" as const,
 } satisfies TrendingWallTextContent;
 
+const CURRENT_V9_CONTENT = {
+  ...CURRENT_V8_CONTENT,
+  finalLayout: {
+    ...CURRENT_V8_CONTENT.finalLayout,
+    fontSizePx: 52 as const,
+    lineHeightPx: 57.2,
+    version: "wall-text-final-layout-v9" as const,
+  },
+  layoutVersion: "wall-text-overlay-v13" as const,
+  renderFontSize: 52 as const,
+} satisfies TrendingWallTextContent;
+
+test("sends B unchanged so older workers cannot silently downgrade its font", () => {
+  const transport = toWallTextRenderTransportContent(CURRENT_V9_CONTENT);
+
+  assert.equal(CURRENT_V9_CONTENT.finalLayout?.version, "wall-text-final-layout-v9");
+  assert.equal(CURRENT_V9_CONTENT.finalLayout?.fontSizePx, 52);
+  assert.equal(transport, CURRENT_V9_CONTENT);
+  assert.equal(transport.finalLayout?.version, "wall-text-final-layout-v9");
+  assert.equal(transport.finalLayout?.fontFamily, "Arial");
+  assert.equal(transport.finalLayout?.fontWeight, 700);
+  assert.equal(transport.layoutVersion, "wall-text-overlay-v13");
+  assert.deepEqual(transport.finalLayout?.blocks, CURRENT_V9_CONTENT.finalLayout?.blocks);
+});
+
 test("sends V8 compact Arial Bold through the V4-compatible rollout envelope", () => {
   const transport = toWallTextRenderTransportContent(CURRENT_V8_CONTENT);
 

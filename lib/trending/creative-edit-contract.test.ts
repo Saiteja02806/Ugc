@@ -136,9 +136,9 @@ test("Wall typing adopts the current Arial Bold treatment when measured metadata
     fontFamily:
       "var(--font-wall-text-arial-bold), Arial, 'Helvetica Neue', sans-serif",
     fontWeight: 700,
-    fontSize: 50,
-    outlineWidth: 3,
-    shadowOpacity: 0.3,
+    fontSize: 52,
+    outlineWidth: 4,
+    shadowOpacity: 0,
   };
 
   for (const initial of [saved, currentContent]) {

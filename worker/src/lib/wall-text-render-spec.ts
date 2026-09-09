@@ -37,6 +37,18 @@ export type WallTextRenderContent = {
         fontWeight: 700;
         lineHeightPx: number;
         textBox: WallTextNormalizedBox;
+        version: "wall-text-final-layout-v9";
+      }
+    | {
+        blocks: Array<{
+          lines: string[];
+          role: "prose" | "text" | "title" | "item";
+        }>;
+        fontFamily: "Arial";
+        fontSizePx: 36 | 38 | 40 | 42 | 44 | 46 | 48 | 50 | 52;
+        fontWeight: 700;
+        lineHeightPx: number;
+        textBox: WallTextNormalizedBox;
         version: "wall-text-final-layout-v8";
       }
     | {
@@ -157,9 +169,10 @@ export const LEGACY_WALL_TEXT_REGULAR_FONT_WEIGHT = 400;
 export const LEGACY_WALL_TEXT_FONT_WEIGHT = 700;
 export const WALL_TEXT_LINE_HEIGHT_FACTOR = 1.1;
 export const WALL_TEXT_SECTION_GAP = 18;
-// V8 keeps the compact reference treatment: a crisp 3px outline and no shadow.
-// V7 and V6 retain their historical treatments.
-export const WALL_TEXT_OUTLINE_WIDTH = 3;
+// V9 is the approved B treatment: a crisp 4px outline and no shadow. V8 and
+// V7 retain their historical treatments.
+export const WALL_TEXT_OUTLINE_WIDTH = 4;
+export const WALL_TEXT_V12_OUTLINE_WIDTH = 3;
 export const WALL_TEXT_PREVIOUS_ARIAL_BOLD_OUTLINE_WIDTH = 4;
 export const WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH = 2;
 export const WALL_TEXT_SHADOW_OPACITY = 0;
@@ -185,11 +198,14 @@ export const WALL_TEXT_DEFAULT_TEXT_BOX: WallTextNormalizedBox = {
 };
 
 export function getWallTextOutlineWidth(content: WallTextRenderContent) {
+  if (content.finalLayout?.version === "wall-text-final-layout-v9") {
+    return WALL_TEXT_OUTLINE_WIDTH;
+  }
   if (
     content.finalLayout?.version === "wall-text-final-layout-v8" ||
     content.finalLayout?.version === "wall-text-final-layout-v7"
   ) {
-    return WALL_TEXT_OUTLINE_WIDTH;
+    return WALL_TEXT_V12_OUTLINE_WIDTH;
   }
   if (content.finalLayout?.version === "wall-text-final-layout-v5") {
     return WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH;
@@ -198,7 +214,10 @@ export function getWallTextOutlineWidth(content: WallTextRenderContent) {
 }
 
 export function getWallTextShadowOpacity(content: WallTextRenderContent) {
-  if (content.finalLayout?.version === "wall-text-final-layout-v8") {
+  if (
+    content.finalLayout?.version === "wall-text-final-layout-v9" ||
+    content.finalLayout?.version === "wall-text-final-layout-v8"
+  ) {
     return WALL_TEXT_SHADOW_OPACITY;
   }
   return content.finalLayout?.version === "wall-text-final-layout-v7"
@@ -207,7 +226,8 @@ export function getWallTextShadowOpacity(content: WallTextRenderContent) {
 }
 
 export function getWallTextLetterSpacing(content: WallTextRenderContent) {
-  return content.finalLayout?.version === "wall-text-final-layout-v8"
+  return content.finalLayout?.version === "wall-text-final-layout-v9" ||
+    content.finalLayout?.version === "wall-text-final-layout-v8"
     ? WALL_TEXT_REFERENCE_LETTER_SPACING
     : WALL_TEXT_LEGACY_LETTER_SPACING;
 }
@@ -311,7 +331,8 @@ export function buildWallTextOverlaySvg(params: {
   const fontFamily =
     isAvenirNextDemiBold
       ? "Avenir Next, Helvetica Neue, Noto Sans CJK SC, Noto Sans CJK JP, sans-serif"
-      : params.content.finalLayout?.version === "wall-text-final-layout-v8" ||
+      : params.content.finalLayout?.version === "wall-text-final-layout-v9" ||
+    params.content.finalLayout?.version === "wall-text-final-layout-v8" ||
     params.content.finalLayout?.version === "wall-text-final-layout-v7" ||
     params.content.finalLayout?.version === "wall-text-final-layout-v6" ||
     params.content.finalLayout?.version === "wall-text-final-layout-v3" ||
@@ -434,10 +455,10 @@ function normalizeFinalLayout(
   value: NonNullable<WallTextRenderContent["finalLayout"]>,
 ) {
   if (
-    !["wall-text-final-layout-v1", "wall-text-final-layout-v2", "wall-text-final-layout-v3", "wall-text-final-layout-v4", "wall-text-final-layout-v5", "wall-text-final-layout-v6", "wall-text-final-layout-v7", "wall-text-final-layout-v8"].includes(
+    !["wall-text-final-layout-v1", "wall-text-final-layout-v2", "wall-text-final-layout-v3", "wall-text-final-layout-v4", "wall-text-final-layout-v5", "wall-text-final-layout-v6", "wall-text-final-layout-v7", "wall-text-final-layout-v8", "wall-text-final-layout-v9"].includes(
       value.version,
     ) ||
-    (value.version === "wall-text-final-layout-v8" || value.version === "wall-text-final-layout-v7" || value.version === "wall-text-final-layout-v6"
+    (value.version === "wall-text-final-layout-v9" || value.version === "wall-text-final-layout-v8" || value.version === "wall-text-final-layout-v7" || value.version === "wall-text-final-layout-v6"
       ? value.fontFamily !== "Arial" || value.fontWeight !== WALL_TEXT_ARIAL_BOLD_FONT_WEIGHT
       : value.version === "wall-text-final-layout-v5"
       ? value.fontFamily !== "Avenir Next" || value.fontWeight !== WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_FONT_WEIGHT
@@ -452,6 +473,7 @@ function normalizeFinalLayout(
           LEGACY_WALL_TEXT_FONT_WEIGHT,
         ].includes(value.fontWeight)) ||
     ![36, 38, 40, 42, 44, 46, 48, 50, 52].includes(value.fontSizePx) ||
+    (value.version === "wall-text-final-layout-v9" && value.fontSizePx !== 52) ||
     !Number.isFinite(value.lineHeightPx) ||
     value.lineHeightPx <= 0 ||
     value.blocks.length < 1 ||
@@ -478,7 +500,15 @@ function normalizeFinalLayout(
     }),
   };
   const normalized =
-    value.version === "wall-text-final-layout-v8"
+    value.version === "wall-text-final-layout-v9"
+      ? {
+          ...normalizedBase,
+          fontFamily: "Arial" as const,
+          fontWeight: WALL_TEXT_ARIAL_BOLD_FONT_WEIGHT as 700,
+          textBox: value.textBox,
+          version: "wall-text-final-layout-v9" as const,
+        }
+      : value.version === "wall-text-final-layout-v8"
       ? {
           ...normalizedBase,
           fontFamily: "Arial" as const,
@@ -537,8 +567,11 @@ function normalizeFinalLayout(
     (total, block) => total + block.lines.length,
     0,
   );
+  if (normalized.version === "wall-text-final-layout-v9" && lineCount < 5) {
+    throw new Error("Wall-of-text V13 must contain one 5-8 line text block.");
+  }
   if (
-    ["wall-text-final-layout-v2", "wall-text-final-layout-v3", "wall-text-final-layout-v4", "wall-text-final-layout-v5", "wall-text-final-layout-v6", "wall-text-final-layout-v7", "wall-text-final-layout-v8"].includes(
+    ["wall-text-final-layout-v2", "wall-text-final-layout-v3", "wall-text-final-layout-v4", "wall-text-final-layout-v5", "wall-text-final-layout-v6", "wall-text-final-layout-v7", "wall-text-final-layout-v8", "wall-text-final-layout-v9"].includes(
       normalized.version,
     ) &&
     (normalized.blocks.length !== 1 ||
@@ -546,7 +579,7 @@ function normalizeFinalLayout(
       lineCount < WALL_TEXT_LEGACY_RENDER_MIN_LINES ||
       lineCount > WALL_TEXT_RENDER_MAX_LINES)
   ) {
-    throw new Error("Wall-of-text V2/V3/V4/V5/V6/V7/V8 must contain one 4-8 line text block.");
+    throw new Error("Wall-of-text V2/V3/V4/V5/V6/V7/V8/V9 must contain one 4-8 line text block.");
   }
   return normalized;
 }

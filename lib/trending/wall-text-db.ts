@@ -2257,7 +2257,7 @@ export function parseWallTextContent(
   if (
     isJsonObject(value) &&
     value.kind === "wall_text" &&
-    ["wall-text-overlay-v5", "wall-text-overlay-v6", "wall-text-overlay-v7", "wall-text-overlay-v8", "wall-text-overlay-v9", "wall-text-overlay-v10", "wall-text-overlay-v11", "wall-text-overlay-v12"].includes(
+    ["wall-text-overlay-v5", "wall-text-overlay-v6", "wall-text-overlay-v7", "wall-text-overlay-v8", "wall-text-overlay-v9", "wall-text-overlay-v10", "wall-text-overlay-v11", "wall-text-overlay-v12", "wall-text-overlay-v13"].includes(
       String(value.layoutVersion),
     )
   ) {
@@ -2377,6 +2377,7 @@ function parseCurrentWallTextContent(
         : null;
   const finalLayout = value.finalLayout;
   const textBox = parseNormalizedBox(finalLayout.textBox);
+  const isArialBoldV13 = value.layoutVersion === "wall-text-overlay-v13";
   const isArialBoldV12 = value.layoutVersion === "wall-text-overlay-v12";
   const isArialBoldV11 = value.layoutVersion === "wall-text-overlay-v11";
   const isArialBoldV10 = value.layoutVersion === "wall-text-overlay-v10";
@@ -2388,12 +2389,14 @@ function parseCurrentWallTextContent(
     isArialV7 ||
     isArialRegularV8 ||
     isAvenirNextV9 ||
-    isArialBoldV12 || isArialBoldV11 || isArialBoldV10;
+    isArialBoldV13 || isArialBoldV12 || isArialBoldV11 || isArialBoldV10;
 
   if (
     !parsedSource ||
     finalLayout.version !==
-      (isArialBoldV12
+      (isArialBoldV13
+        ? "wall-text-final-layout-v9"
+        : isArialBoldV12
         ? "wall-text-final-layout-v8"
         : isArialBoldV11
         ? "wall-text-final-layout-v7"
@@ -2408,7 +2411,7 @@ function parseCurrentWallTextContent(
           : isPlainTextLayout
             ? "wall-text-final-layout-v2"
             : "wall-text-final-layout-v1") ||
-    (isArialBoldV12 || isArialBoldV11 || isArialBoldV10
+    (isArialBoldV13 || isArialBoldV12 || isArialBoldV11 || isArialBoldV10
       ? finalLayout.fontFamily !== "Arial" ||
         Number(finalLayout.fontWeight) !== WALL_TEXT_FONT_WEIGHT
       : isAvenirNextV9
@@ -2424,6 +2427,7 @@ function parseCurrentWallTextContent(
           ![400, 600, LEGACY_WALL_TEXT_FONT_WEIGHT].includes(
             Number(finalLayout.fontWeight),
           )) ||
+    (isArialBoldV13 && Number(finalLayout.fontSizePx) !== 52) ||
     ![36, 38, 40, 42, 44, 46, 48, 50, 52].includes(Number(finalLayout.fontSizePx)) ||
     typeof finalLayout.lineHeightPx !== "number" ||
     finalLayout.lineHeightPx <= 0 ||
@@ -2462,7 +2466,7 @@ function parseCurrentWallTextContent(
       (blocks.length !== 1 ||
         blocks[0]?.role !== "text" ||
         // Four-line V2 records remain readable so selected historical drafts
-        // still open. New V9 writes are restricted to 5–8 lines by the
+        // still open. New V13 writes are restricted to 5–8 lines by the
         // generator and database constraint.
         lines.length < 4 ||
         lines.length > 8 ||
@@ -2477,7 +2481,17 @@ function parseCurrentWallTextContent(
   const formatId = value.formatId as (typeof WALL_TEXT_PATTERNS)[number];
 
   const fontSizePx = normalizeCurrentWallTextFontSize(Number(finalLayout.fontSizePx));
-  const parsedFinalLayout = isArialBoldV12
+  const parsedFinalLayout = isArialBoldV13
+    ? {
+        blocks,
+        fontFamily: "Arial" as const,
+        fontSizePx,
+        fontWeight: WALL_TEXT_FONT_WEIGHT as 700,
+        lineHeightPx: fontSizePx * 1.1,
+        textBox,
+        version: "wall-text-final-layout-v9" as const,
+      }
+    : isArialBoldV12
     ? {
         blocks,
         fontFamily: "Arial" as const,
@@ -2554,7 +2568,9 @@ function parseCurrentWallTextContent(
     formatId,
     fullText: normalizedFullText,
     kind: "wall_text",
-    layoutVersion: isArialBoldV12
+    layoutVersion: isArialBoldV13
+      ? "wall-text-overlay-v13"
+      : isArialBoldV12
       ? "wall-text-overlay-v12"
       : isArialBoldV11
       ? "wall-text-overlay-v11"

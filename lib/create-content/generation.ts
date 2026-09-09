@@ -152,7 +152,7 @@ function buildCreateContentPrompt(params: {
       "WALL-OF-TEXT FORMAT",
       "- This will appear on a 9:16 source video in a centered text box.",
       "- Use 5 to 8 purposeful lines, usually about 25 to 40 words. Keep each line naturally readable.",
-      "- Do not use the source video duration as a copy constraint. The creator controls placement and can edit the copy.",
+      "- Create copy independently of any selected source video. Do not use video duration as a copy constraint; the creator selects the video, controls placement, and can edit the copy.",
       "- Return the visible copy only in each option's text field; keep intentional line breaks.",
     ].join("\n");
   }
@@ -162,7 +162,7 @@ function buildCreateContentPrompt(params: {
     "",
     "HOOK FORMAT CONTRACT",
     "Write each option using its assigned format. The listed formats are structures, not claims; use only facts supported by the Business Profile.",
-    "Do not use video duration, text position, or canvas size as a constraint. The creator places Hook text manually.",
+    "Create copy independently of any selected source video. Do not use video duration, text position, or canvas size as a constraint. The creator selects the video and places Hook text manually.",
     "Each Hook must contain 2 to 12 words, 8 to 78 characters, and fit within 3 readable lines. Keep it short enough for the fixed Trending Hook treatment.",
     "",
     ...params.hookFormats.map(

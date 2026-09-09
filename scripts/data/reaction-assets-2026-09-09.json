@@ -1,0 +1,676 @@
+{
+  "schemaVersion": "reaction-asset-manifest-v2",
+  "generatedAt": "2026-09-09T04:01:30.889Z",
+  "instructions": {
+    "backgrounds": "Complete contextTags and foregroundPlacement after visual review. Use short scene/context tags only; do not add mood, simplicity, caption-space, or text-treatment tags.",
+    "videos": "Complete reactions (first is primary), subjectCount, composition, and placement after visual review. Only alpha clips are eligible for direct compositing."
+  },
+  "tagOptions": {
+    "backgroundForegroundPlacement": [
+      "bottom_center",
+      "bottom_left",
+      "bottom_right",
+      "center"
+    ],
+    "clipComposition": [
+      "close_up",
+      "bust",
+      "full_body",
+      "wide"
+    ],
+    "clipReactions": [
+      "side_eye",
+      "facepalm",
+      "deadpan",
+      "confusion",
+      "shock",
+      "relief",
+      "celebration",
+      "laughter",
+      "disappointment",
+      "regret",
+      "unbothered",
+      "concern",
+      "focused",
+      "playful"
+    ],
+    "clipSubjectCount": [
+      "one",
+      "two",
+      "group"
+    ],
+    "statuses": [
+      "pending",
+      "active",
+      "excluded"
+    ]
+  },
+  "backgrounds": [
+    {
+      "assetId": "background:e6efe8904c2eaa68073fc45f",
+      "sourceFileName": "🌅.jpg",
+      "sourceRoot": "C:\\Users\\chund\\OneDrive\\Desktop\\green_images",
+      "sourceSha256": "e6efe8904c2eaa68073fc45fe8ef28753d12420df075f15b57927111b6c9f785",
+      "width": 736,
+      "height": 1308,
+      "contextTags": [
+        "sunset",
+        "outdoors"
+      ],
+      "foregroundPlacement": "bottom_center",
+      "status": "active"
+    }
+  ],
+  "videos": [
+    {
+      "assetId": "reaction:4691b3080c304f49dc25725f",
+      "sourceFileName": "01_green_removed_edge_clean_prores4444 (1).mov",
+      "sourceRoot": "D:\\green_mat\\new batch",
+      "sourceSha256": "4691b3080c304f49dc25725ff06258062dbbf3d7cab8a9776a010581153663bc",
+      "codec": "prores",
+      "pixelFormat": "yuva444p10le",
+      "durationSeconds": 11.54,
+      "width": 720,
+      "height": 1280,
+      "hasAlpha": true,
+      "reactions": [
+        "celebration",
+        "playful"
+      ],
+      "subjectCount": "group",
+      "composition": "full_body",
+      "placement": {
+        "anchor": "bottom_center",
+        "heightPercent": 0.9
+      },
+      "status": "active",
+      "review": {
+        "visualDescription": "Group performs a coordinated upbeat dance; generous transparent padding.",
+        "decision": "usable"
+      }
+    },
+    {
+      "assetId": "reaction:76165b06a649c3938266d045",
+      "sourceFileName": "01_green_removed_edge_clean_prores4444.mov",
+      "sourceRoot": "D:\\green_mat\\new batch",
+      "sourceSha256": "76165b06a649c3938266d04571e9edabbaaef3a88fc596aee4dd04ec55a18589",
+      "codec": "prores",
+      "pixelFormat": "yuva444p10le",
+      "durationSeconds": 9.967,
+      "width": 720,
+      "height": 1280,
+      "hasAlpha": true,
+      "reactions": [
+        "confusion",
+        "shock"
+      ],
+      "subjectCount": "two",
+      "composition": "bust",
+      "placement": {
+        "anchor": "bottom_center",
+        "heightPercent": 0.75
+      },
+      "status": "excluded",
+      "review": {
+        "visualDescription": "Two cats stare with wide eyes.",
+        "decision": "hold_for_cleanup",
+        "reason": "Visible dark horizontal band across the bottom of the alpha canvas."
+      }
+    },
+    {
+      "assetId": "reaction:84c5b9b4a50c52f927716df8",
+      "sourceFileName": "02_green_removed_edge_clean_prores4444 (1).mov",
+      "sourceRoot": "D:\\green_mat\\new batch",
+      "sourceSha256": "84c5b9b4a50c52f927716df8b2cedbefe7de2489991f078cd5ebcd101af38b47",
+      "codec": "prores",
+      "pixelFormat": "yuva444p10le",
+      "durationSeconds": 27.033,
+      "width": 720,
+      "height": 1280,
+      "hasAlpha": true,
+      "reactions": [
+        "facepalm",
+        "regret"
+      ],
+      "subjectCount": "one",
+      "composition": "bust",
+      "placement": {
+        "anchor": "bottom_center",
+        "heightPercent": 0.8
+      },
+      "status": "excluded",
+      "review": {
+        "visualDescription": "Man covers his face and holds his head.",
+        "decision": "hold_for_cleanup",
+        "reason": "Subject disappears at approximately 4.5–6.5 seconds and repeatedly later; not suitable for the default first-eight-second render."
+      }
+    },
+    {
+      "assetId": "reaction:8eb5bc0f2357462ad2ab5971",
+      "sourceFileName": "02_green_removed_edge_clean_prores4444.mov",
+      "sourceRoot": "D:\\green_mat\\new batch",
+      "sourceSha256": "8eb5bc0f2357462ad2ab59717024b1406dc561921949e2cb7200c0fd14c4f9b6",
+      "codec": "prores",
+      "pixelFormat": "yuva444p10le",
+      "durationSeconds": 7.567,
+      "width": 720,
+      "height": 1280,
+      "hasAlpha": true,
+      "reactions": [
+        "facepalm",
+        "disappointment"
+      ],
+      "subjectCount": "one",
+      "composition": "bust",
+      "placement": {
+        "anchor": "bottom_center",
+        "heightPercent": 0.9
+      },
+      "status": "active",
+      "review": {
+        "visualDescription": "Cat presses paws to its head while opening its mouth; exaggerated frustration.",
+        "decision": "usable"
+      }
+    },
+    {
+      "assetId": "reaction:b55bc1a4f1c039e984ac4965",
+      "sourceFileName": "03_green_removed_edge_clean_prores4444 (1).mov",
+      "sourceRoot": "D:\\green_mat\\new batch",
+      "sourceSha256": "b55bc1a4f1c039e984ac4965b3d5df454a7dfb47fe9c453b2345703019e244b9",
+      "codec": "prores",
+      "pixelFormat": "yuva444p10le",
+      "durationSeconds": 8.033,
+      "width": 576,
+      "height": 1024,
+      "hasAlpha": true,
+      "reactions": [
+        "celebration",
+        "unbothered"
+      ],
+      "subjectCount": "one",
+      "composition": "bust",
+      "placement": {
+        "anchor": "bottom_center",
+        "heightPercent": 0.85
+      },
+      "status": "active",
+      "review": {
+        "visualDescription": "Woman fans and throws money behind stacks of cash.",
+        "decision": "usable"
+      }
+    },
+    {
+      "assetId": "reaction:0cb144b8a004ead118e785b3",
+      "sourceFileName": "03_green_removed_edge_clean_prores4444.mov",
+      "sourceRoot": "D:\\green_mat\\new batch",
+      "sourceSha256": "0cb144b8a004ead118e785b37e69e52a5e695f03f478ff3e3c96986a2428730e",
+      "codec": "prores",
+      "pixelFormat": "yuva444p10le",
+      "durationSeconds": 7.7,
+      "width": 720,
+      "height": 1280,
+      "hasAlpha": true,
+      "reactions": [
+        "playful",
+        "unbothered"
+      ],
+      "subjectCount": "one",
+      "composition": "bust",
+      "placement": {
+        "anchor": "bottom_center",
+        "heightPercent": 0.8
+      },
+      "status": "active",
+      "review": {
+        "visualDescription": "Boy approaches, gestures and smiles; framing changes from full body to bust.",
+        "decision": "usable"
+      }
+    },
+    {
+      "assetId": "reaction:5c5d2018043a58fa35f50c92",
+      "sourceFileName": "04_green_removed_edge_clean_prores4444 (1).mov",
+      "sourceRoot": "D:\\green_mat\\new batch",
+      "sourceSha256": "5c5d2018043a58fa35f50c921eef7014ea51f7a4274ceeb892a6eb607bf5d3c3",
+      "codec": "prores",
+      "pixelFormat": "yuva444p10le",
+      "durationSeconds": 10.309,
+      "width": 720,
+      "height": 1280,
+      "hasAlpha": true,
+      "reactions": [
+        "celebration",
+        "playful"
+      ],
+      "subjectCount": "two",
+      "composition": "full_body",
+      "placement": {
+        "anchor": "bottom_center",
+        "heightPercent": 0.75
+      },
+      "status": "active",
+      "review": {
+        "visualDescription": "Two people dance in matching outfits. Final blank tail is after the eight-second production window.",
+        "decision": "usable"
+      }
+    },
+    {
+      "assetId": "reaction:f0d6e4f9de0cbf3100e8af9c",
+      "sourceFileName": "04_green_removed_edge_clean_prores4444.mov",
+      "sourceRoot": "D:\\green_mat\\new batch",
+      "sourceSha256": "f0d6e4f9de0cbf3100e8af9c9dc47fee82a909cfe5bc562b9f2acb6795960f70",
+      "codec": "prores",
+      "pixelFormat": "yuva444p10le",
+      "durationSeconds": 31.345,
+      "width": 720,
+      "height": 1280,
+      "hasAlpha": true,
+      "reactions": [
+        "disappointment",
+        "regret"
+      ],
+      "subjectCount": "one",
+      "composition": "close_up",
+      "placement": {
+        "anchor": "bottom_center",
+        "heightPercent": 0.72
+      },
+      "status": "excluded",
+      "review": {
+        "visualDescription": "Woman cries and covers her face.",
+        "decision": "hold_for_cleanup",
+        "reason": "Visible vertical border lines remain in the transparent canvas."
+      }
+    },
+    {
+      "assetId": "reaction:9c21475fd5e831f42700b62a",
+      "sourceFileName": "05_green_removed_edge_clean_prores4444.mov",
+      "sourceRoot": "D:\\green_mat\\new batch",
+      "sourceSha256": "9c21475fd5e831f42700b62aaa5fad8b86200f9a2925bfe55e2803587a6f7580",
+      "codec": "prores",
+      "pixelFormat": "yuva444p10le",
+      "durationSeconds": 16.557,
+      "width": 576,
+      "height": 1024,
+      "hasAlpha": true,
+      "reactions": [
+        "disappointment",
+        "concern"
+      ],
+      "subjectCount": "two",
+      "composition": "bust",
+      "placement": {
+        "anchor": "bottom_center",
+        "heightPercent": 0.9
+      },
+      "status": "active",
+      "review": {
+        "visualDescription": "Interview reaction changes from two people to one person with a strained sympathetic expression.",
+        "decision": "usable"
+      }
+    },
+    {
+      "assetId": "reaction:f538f651532fdcaf9cb14571",
+      "sourceFileName": "06_green_removed_edge_clean_prores4444.mov",
+      "sourceRoot": "D:\\green_mat\\new batch",
+      "sourceSha256": "f538f651532fdcaf9cb1457185b595d1b0f0f86e42199de50ef43e6134607448",
+      "codec": "prores",
+      "pixelFormat": "yuva444p10le",
+      "durationSeconds": 9.343,
+      "width": 720,
+      "height": 1280,
+      "hasAlpha": true,
+      "reactions": [
+        "laughter",
+        "playful"
+      ],
+      "subjectCount": "two",
+      "composition": "bust",
+      "placement": {
+        "anchor": "bottom_center",
+        "heightPercent": 0.9
+      },
+      "status": "active",
+      "review": {
+        "visualDescription": "Two men laugh, bend forward and cover their faces; generous transparent padding.",
+        "decision": "usable"
+      }
+    },
+    {
+      "assetId": "reaction:6e72a86398dbdb9898dc73d0",
+      "sourceFileName": "07_green_removed_edge_clean_prores4444.mov",
+      "sourceRoot": "D:\\green_mat\\new batch",
+      "sourceSha256": "6e72a86398dbdb9898dc73d04f2e1685c849f9445412c88a23eef69fdcec6a43",
+      "codec": "prores",
+      "pixelFormat": "yuva444p10le",
+      "durationSeconds": 7.732,
+      "width": 720,
+      "height": 1280,
+      "hasAlpha": true,
+      "reactions": [
+        "laughter",
+        "celebration"
+      ],
+      "subjectCount": "one",
+      "composition": "bust",
+      "placement": {
+        "anchor": "bottom_center",
+        "heightPercent": 0.75
+      },
+      "status": "excluded",
+      "review": {
+        "visualDescription": "Person doubles over laughing and opens their mouth widely.",
+        "decision": "hold_for_cleanup",
+        "reason": "Strong magenta halo along hair, shoulders and arms."
+      }
+    },
+    {
+      "assetId": "reaction:5cb8a37a915be2e0c2330cf9",
+      "sourceFileName": "08_green_removed_edge_clean_prores4444.mov",
+      "sourceRoot": "D:\\green_mat\\new batch",
+      "sourceSha256": "5cb8a37a915be2e0c2330cf95794e9ba72ebb322f434d0f268777b4ec4e7b3b3",
+      "codec": "prores",
+      "pixelFormat": "yuva444p10le",
+      "durationSeconds": 7.133,
+      "width": 720,
+      "height": 1280,
+      "hasAlpha": true,
+      "reactions": [
+        "playful",
+        "unbothered"
+      ],
+      "subjectCount": "two",
+      "composition": "bust",
+      "placement": {
+        "anchor": "bottom_center",
+        "heightPercent": 0.9
+      },
+      "status": "active",
+      "review": {
+        "visualDescription": "Two seated men sway and move rhythmically.",
+        "decision": "usable"
+      }
+    },
+    {
+      "assetId": "reaction:7c75038637193685e3985ed1",
+      "sourceFileName": "09_green_removed_edge_clean_prores4444.mov",
+      "sourceRoot": "D:\\green_mat\\new batch",
+      "sourceSha256": "7c75038637193685e3985ed1e7ff45bc87a780d719402ddd124904beaa08a923",
+      "codec": "prores",
+      "pixelFormat": "yuva444p10le",
+      "durationSeconds": 6.533,
+      "width": 720,
+      "height": 1280,
+      "hasAlpha": true,
+      "reactions": [
+        "shock",
+        "confusion"
+      ],
+      "subjectCount": "one",
+      "composition": "full_body",
+      "placement": {
+        "anchor": "bottom_center",
+        "heightPercent": 0.72
+      },
+      "status": "active",
+      "review": {
+        "visualDescription": "Wide-eyed seated cat turns with an open mouth. Same underlying reaction as file 15, with different framing.",
+        "decision": "usable"
+      }
+    },
+    {
+      "assetId": "reaction:cb2bda4349dbd2ba9c038cb2",
+      "sourceFileName": "10_green_removed_edge_clean_prores4444.mov",
+      "sourceRoot": "D:\\green_mat\\new batch",
+      "sourceSha256": "cb2bda4349dbd2ba9c038cb2b5859e0aa6178500a358e360bdbb6d3eb2a69797",
+      "codec": "prores",
+      "pixelFormat": "yuva444p10le",
+      "durationSeconds": 6.333,
+      "width": 720,
+      "height": 1280,
+      "hasAlpha": true,
+      "reactions": [
+        "side_eye",
+        "deadpan"
+      ],
+      "subjectCount": "one",
+      "composition": "close_up",
+      "placement": {
+        "anchor": "bottom_center",
+        "heightPercent": 0.75
+      },
+      "status": "active",
+      "review": {
+        "visualDescription": "Cat gives a sustained unimpressed stare and slight sideways glance.",
+        "decision": "usable"
+      }
+    },
+    {
+      "assetId": "reaction:750e8761466734ed4fdc65b9",
+      "sourceFileName": "11_green_removed_edge_clean_prores4444.mov",
+      "sourceRoot": "D:\\green_mat\\new batch",
+      "sourceSha256": "750e8761466734ed4fdc65b935f0323963f49d2450a0bb5c757dc28337e09155",
+      "codec": "prores",
+      "pixelFormat": "yuva444p10le",
+      "durationSeconds": 6.233,
+      "width": 720,
+      "height": 1280,
+      "hasAlpha": true,
+      "reactions": [
+        "confusion",
+        "concern"
+      ],
+      "subjectCount": "group",
+      "composition": "full_body",
+      "placement": {
+        "anchor": "bottom_center",
+        "heightPercent": 0.75
+      },
+      "status": "active",
+      "review": {
+        "visualDescription": "Child looks uncertain while several adults lean in, point and react.",
+        "decision": "usable"
+      }
+    },
+    {
+      "assetId": "reaction:6fea9e274d6521e024c986ce",
+      "sourceFileName": "12_green_removed_edge_clean_prores4444.mov",
+      "sourceRoot": "D:\\green_mat\\new batch",
+      "sourceSha256": "6fea9e274d6521e024c986cecee889d67569dd1a1e648f9eb8f2fb06a8e1bbb8",
+      "codec": "prores",
+      "pixelFormat": "yuva444p10le",
+      "durationSeconds": 4.7,
+      "width": 720,
+      "height": 1280,
+      "hasAlpha": true,
+      "reactions": [
+        "side_eye",
+        "confusion"
+      ],
+      "subjectCount": "one",
+      "composition": "close_up",
+      "placement": {
+        "anchor": "bottom_center",
+        "heightPercent": 0.75
+      },
+      "status": "excluded",
+      "review": {
+        "visualDescription": "Man raises an eyebrow and turns toward the camera.",
+        "decision": "hold_for_cleanup",
+        "reason": "CapCut watermark and an opaque black background near the end."
+      }
+    },
+    {
+      "assetId": "reaction:258022db3fb342d45d89bc3a",
+      "sourceFileName": "13_green_removed_edge_clean_prores4444.mov",
+      "sourceRoot": "D:\\green_mat\\new batch",
+      "sourceSha256": "258022db3fb342d45d89bc3a17cdce266e6134536d62d6fae25db3099c8fb36c",
+      "codec": "prores",
+      "pixelFormat": "yuva444p10le",
+      "durationSeconds": 9.767,
+      "width": 720,
+      "height": 1280,
+      "hasAlpha": true,
+      "reactions": [
+        "side_eye",
+        "confusion"
+      ],
+      "subjectCount": "one",
+      "composition": "close_up",
+      "placement": {
+        "anchor": "bottom_center",
+        "heightPercent": 0.9
+      },
+      "status": "active",
+      "review": {
+        "visualDescription": "Child tastes food, wrinkles their face and gives a sideways look.",
+        "decision": "usable"
+      }
+    },
+    {
+      "assetId": "reaction:1a7a1a4e586cd62897ca5870",
+      "sourceFileName": "14_green_removed_edge_clean_prores4444.mov",
+      "sourceRoot": "D:\\green_mat\\new batch",
+      "sourceSha256": "1a7a1a4e586cd62897ca587020f7b40c08cbd617d14d1ee536a2c6b9f378c8d6",
+      "codec": "prores",
+      "pixelFormat": "yuva444p10le",
+      "durationSeconds": 9.4,
+      "width": 560,
+      "height": 560,
+      "hasAlpha": true,
+      "reactions": [
+        "disappointment",
+        "regret"
+      ],
+      "subjectCount": "one",
+      "composition": "close_up",
+      "placement": {
+        "anchor": "bottom_center",
+        "heightPercent": 0.65
+      },
+      "status": "active",
+      "review": {
+        "visualDescription": "Close-up of a crying person with an open mouth; square source requires conservative scale.",
+        "decision": "usable"
+      }
+    },
+    {
+      "assetId": "reaction:90636b9e800581c52f5d9986",
+      "sourceFileName": "15_green_removed_edge_clean_prores4444.mov",
+      "sourceRoot": "D:\\green_mat\\new batch",
+      "sourceSha256": "90636b9e800581c52f5d998618d299c7caaeb36e7e3306c7d3dec6b4df521d73",
+      "codec": "prores",
+      "pixelFormat": "yuva444p10le",
+      "durationSeconds": 6.4,
+      "width": 720,
+      "height": 1280,
+      "hasAlpha": true,
+      "reactions": [
+        "shock",
+        "confusion"
+      ],
+      "subjectCount": "one",
+      "composition": "bust",
+      "placement": {
+        "anchor": "bottom_center",
+        "heightPercent": 0.78
+      },
+      "status": "active",
+      "review": {
+        "visualDescription": "Wide-eyed open-mouthed cat with a tighter zoom than file 09.",
+        "decision": "usable"
+      }
+    },
+    {
+      "assetId": "reaction:7a5e9a1867daaafe96f6ece7",
+      "sourceFileName": "16_green_removed_edge_clean_prores4444.mov",
+      "sourceRoot": "D:\\green_mat\\new batch",
+      "sourceSha256": "7a5e9a1867daaafe96f6ece779682a1a3707fde1d13fab626d8f2c27348070f0",
+      "codec": "prores",
+      "pixelFormat": "yuva444p10le",
+      "durationSeconds": 14,
+      "width": 720,
+      "height": 1280,
+      "hasAlpha": true,
+      "reactions": [
+        "side_eye",
+        "concern"
+      ],
+      "subjectCount": "one",
+      "composition": "close_up",
+      "placement": {
+        "anchor": "bottom_center",
+        "heightPercent": 0.72
+      },
+      "status": "active",
+      "review": {
+        "visualDescription": "Dog alternates sideward and frontal uneasy wide-eyed looks.",
+        "decision": "usable"
+      }
+    },
+    {
+      "assetId": "reaction:a583093b03cd68e29d90d8d2",
+      "sourceFileName": "17_green_removed_edge_clean_prores4444.mov",
+      "sourceRoot": "D:\\green_mat\\new batch",
+      "sourceSha256": "a583093b03cd68e29d90d8d2346bd75ad4f9d569b0b24e02b7f0ad61d9a3205f",
+      "codec": "prores",
+      "pixelFormat": "yuva444p10le",
+      "durationSeconds": 9.52,
+      "width": 720,
+      "height": 1280,
+      "hasAlpha": true,
+      "reactions": [
+        "shock",
+        "concern"
+      ],
+      "subjectCount": "one",
+      "composition": "bust",
+      "placement": {
+        "anchor": "bottom_center",
+        "heightPercent": 0.85
+      },
+      "status": "excluded",
+      "review": {
+        "visualDescription": "Person covers their mouth and opens their eyes widely.",
+        "decision": "hold_for_cleanup",
+        "reason": "CapCut watermarks and full-height vertical border lines."
+      }
+    },
+    {
+      "assetId": "reaction:ec05aaa22541c6c0286c8de9",
+      "sourceFileName": "18_green_removed_edge_clean_prores4444.mov",
+      "sourceRoot": "D:\\green_mat\\new batch",
+      "sourceSha256": "ec05aaa22541c6c0286c8de9447f37f0ed07b639582a53905d59526e6613aa78",
+      "codec": "prores",
+      "pixelFormat": "yuva444p10le",
+      "durationSeconds": 7.337,
+      "width": 612,
+      "height": 1088,
+      "hasAlpha": true,
+      "reactions": [
+        "playful",
+        "celebration"
+      ],
+      "subjectCount": "one",
+      "composition": "full_body",
+      "placement": {
+        "anchor": "bottom_center",
+        "heightPercent": 0.75
+      },
+      "status": "excluded",
+      "review": {
+        "visualDescription": "Person dances, drops to the floor and rolls.",
+        "decision": "hold_for_cleanup",
+        "reason": "Visible purple outline along clothing, arms and legs."
+      }
+    }
+  ],
+  "review": {
+    "reviewedAt": "2026-09-09T04:07:59.584Z",
+    "reviewedBy": "codex",
+    "qualityPreference": "User approved uploading clean clips and holding visible defects.",
+    "method": "Same v2 catalog contract and existing importer. SHA-256 identity, complete video decode, alpha sampled at 2 fps, six visual frames per file, and first-eight-second production-window review.",
+    "existingBackgroundReferenceOnly": true,
+    "exactDuplicatesWithinBatch": 0,
+    "exactDuplicatesAgainstOriginalCatalog": 0
+  }
+}

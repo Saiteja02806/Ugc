@@ -15,6 +15,7 @@ import {
   verifyCloudTasksOidcRequest,
 } from "@/lib/scheduling/cloud-tasks-oidc-auth";
 import { reconcileCompletedTrendingFeedForUser } from "@/lib/trending/reconcile-completed-feed";
+import { reconcileWallTextPlanPublications, resumeIncompleteWallTextPlans } from "@/lib/trending/wall-text-early-delivery";
 import {
   claimDueTrendingFeedReconciliations,
   completeTrendingFeedReconciliation,
@@ -179,6 +180,11 @@ export async function POST(request: Request) {
             staleAfterSeconds,
           });
 
+    const wallTextEarlyDelivery = trendingMissing.length > 0 ? null : {
+      publications: await reconcileWallTextPlanPublications({ limit: Math.min(limit, 10) }),
+      resumedPlans: await resumeIncompleteWallTextPlans(Math.min(limit, 10)),
+    };
+
     return json({
       inspected: staleJobs.length,
       ok: true,
@@ -187,6 +193,7 @@ export async function POST(request: Request) {
       hookInitialRunRepair,
       trendingIntegrityRepair: integrityResults,
       trendingReconciliation: trendingResults,
+      wallTextEarlyDelivery,
     });
   } catch (error) {
     console.error("Background job recovery scan failed:", error);

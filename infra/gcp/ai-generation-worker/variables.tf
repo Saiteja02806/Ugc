@@ -198,7 +198,7 @@ variable "runway_daily_credit_limit" {
 variable "internal_app_url" {
   description = "Production app base URL used for authenticated background persistence calls."
   type        = string
-  default     = "https://getugcpilot.com"
+  default     = "https://www.getugcpilot.com"
 }
 
 variable "scheduling_secret_id" {

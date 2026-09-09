@@ -121,5 +121,5 @@ variable "gcp_storage_public_base_url" {
 variable "internal_app_url" {
   type        = string
   description = "Production app URL used to reconcile each completed Reaction item into the Trending feed."
-  default     = "https://getugcpilot.com"
+  default     = "https://www.getugcpilot.com"
 }

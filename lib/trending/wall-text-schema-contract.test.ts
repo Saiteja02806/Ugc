@@ -253,6 +253,10 @@ const workerPreparationClient = readFileSync(
   ),
   "utf8",
 );
+const workerWallTextJob = readFileSync(
+  new URL("../../worker/src/jobs/generate-wall-text.ts", import.meta.url),
+  "utf8",
+);
 const migration =
   `${creativeMigration}\n${catalogMigration}\n${unifiedCopyMigration}\n${renderingMigration}\n${semanticOverlayMigration}\n${sixSecondMigration}\n${qualityMigration}`;
 
@@ -517,6 +521,25 @@ test("persists stable batches, original chunks, assignments, budgets, and placem
   assert.match(
     feedSource,
     /groupReservedAssignmentsByChunk[\s\S]+claimWallTextGenerationChunk[\s\S]+onChunkAccepted[\s\S]+saveWallTextGenerationCandidate/,
+  );
+});
+
+test("carries an early-delivery plan through the worker and bypasses the historical-library shortcut", () => {
+  assert.match(
+    workerPreparationClient,
+    /earlyPlanId\?: string \| null/,
+  );
+  assert.match(
+    workerWallTextJob,
+    /const earlyPlanId = getOptionalString\(input\?\.earlyPlanId\);[\s\S]+earlyPlanId,/,
+  );
+  assert.match(
+    internalPreparationRoute,
+    /earlyPlanId: input\.earlyPlanId/,
+  );
+  assert.match(
+    feedSource,
+    /mode === "initial" &&\s*!options\.earlyPlanId &&\s*areTrendingWallTextCreativesCurrent\(existing\)/,
   );
 });
 

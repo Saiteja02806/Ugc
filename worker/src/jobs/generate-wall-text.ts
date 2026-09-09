@@ -31,6 +31,7 @@ function parseInput(job: BackgroundJobRow) {
   const userId = getString(input?.userId);
   const businessProfileId = getString(input?.businessProfileId);
   const businessProfileVersion = input?.businessProfileVersion;
+  const earlyPlanId = getOptionalString(input?.earlyPlanId);
   const recoveryKey = getOptionalString(input?.recoveryKey);
   const refillKey = getOptionalString(input?.refillKey);
   const requestedCount = input?.requestedCount ?? 6;
@@ -61,6 +62,7 @@ function parseInput(job: BackgroundJobRow) {
   return {
     businessProfileId,
     businessProfileVersion,
+    earlyPlanId,
     recoveryKey,
     refillKey,
     requestedCount,

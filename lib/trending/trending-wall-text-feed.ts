@@ -162,6 +162,7 @@ export async function enqueueTrendingWallTextRefill(
 export async function prepareTrendingWallTextIdeas(
   profile: BusinessProfileRecord,
   options: {
+    earlyPlanId?: string | null;
     mode?: "initial" | "refill";
     recoveryIteration?: number | null;
     recoveryKey?: string | null;
@@ -242,6 +243,7 @@ export async function prepareTrendingWallTextIdeas(
 
   if (
     mode === "initial" &&
+    !options.earlyPlanId &&
     areTrendingWallTextCreativesCurrent(existing)
   ) {
     return ensureTrendingWallTextAssignments({

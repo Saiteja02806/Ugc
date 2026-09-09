@@ -20,7 +20,7 @@ before(async () => {
 }, { timeout: 120_000 });
 after(async () => { await db.close(); });
 
-test('the complete migration chain builds with early delivery disabled by default', async () => {
+test('the complete migration chain builds with no rollout rows before a Wall plan is created', async () => {
   const { rows } = await db.query('select count(*)::integer as count from public.wall_text_early_delivery_accounts');
   assert.equal(rows[0].count, 0);
 });
@@ -135,10 +135,13 @@ test('missed publication delivery is reclaimable and an old acknowledgement cann
   assert.equal((await one('select finish_wall_text_plan_publication($1,$2,null) as ok',[second.id,second.claim_token])).ok,true);
 });
 
-test('disabled accounts keep waiting for the full plan and old workers cannot save opted-in plans', async () => {
-  const f = await fixture({enabled:false}); await publish(f);
-  assert.equal((await admit(f)).kind,'disabled');
-  assert.equal((await one('select count(*)::int as n from wall_text_plan_publications where plan_id=$1',[f.plan.id])).n,0);
+test('new Wall plans use early delivery even when no rollout row existed, and old workers cannot save them', async () => {
+  const f = await fixture({enabled:false});
+  assert.equal(f.plan.early_delivery_enabled,true);
+  assert.equal((await one('select enabled from wall_text_early_delivery_accounts where user_id=$1',[f.user])).enabled,true);
+  await publish(f);
+  assert.equal((await admit(f)).kind,'job');
+  assert.equal((await one('select count(*)::int as n from wall_text_plan_publications where plan_id=$1',[f.plan.id])).n,1);
   const optedIn = await fixture(); const c=chunk();
   await assert.rejects(db.query('select * from persist_wall_text_content_plan_brief_chunk($1,$2,$3,$4)',
     [optedIn.user,optedIn.plan.id,c.briefs,c.items]), /wall_text_planner_upgrade_required/);

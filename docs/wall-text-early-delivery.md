@@ -23,11 +23,11 @@ bounded by each job's attempt budget. Explicit feed retry uses a new retry key.
 
 ## Rollout and rollback
 
-1. Apply the additive migration with the account table empty.
+1. Apply the additive migration, then the global-default migration.
 2. Deploy the app and AI generation worker, then verify both versions.
-3. Enable a specifically selected user in `wall_text_early_delivery_accounts`.
-   Only plans created after opt-in receive `early_delivery_enabled = true`.
-   Existing complete plans and posts stay in place.
+3. Every new Wall plan receives `early_delivery_enabled = true`; the insert
+   trigger also maintains `wall_text_early_delivery_accounts` for publication
+   and recovery queries. Existing plans retain their original lifecycle.
 4. Observe published count, publication delivery, writer identity, item
    reservations, first-ready time, and eventual full activation.
 

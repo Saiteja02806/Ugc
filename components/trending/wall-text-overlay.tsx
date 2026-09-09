@@ -9,6 +9,8 @@ import {
   getWallTextFontSize,
   getWallTextLetterSpacing,
   getWallTextOutlineWidth,
+  getWallTextProportionalPreviewDimension,
+  getWallTextReviewCardCappedDimension,
   getWallTextShadowOpacity,
   getWallTextTypography,
   WALL_TEXT_INLINE_SAFE_PADDING,
@@ -19,13 +21,19 @@ import {
   type TrendingTextColor,
 } from "@/lib/trending/text-color";
 
+export type WallTextOverlayScaleMode =
+  | "proportional"
+  | "review-card-capped";
+
 export function WallTextOverlay({
   content,
   layout,
+  scaleMode = "proportional",
   textColor = DEFAULT_TRENDING_TEXT_COLOR,
 }: {
   content: TrendingWallTextContent;
   layout: TrendingWallTextLayout;
+  scaleMode?: WallTextOverlayScaleMode;
   textColor?: TrendingTextColor;
 }) {
   const textBoxStyle = {
@@ -39,6 +47,10 @@ export function WallTextOverlay({
   const shadowOpacity = getWallTextShadowOpacity(content);
   const letterSpacing = getWallTextLetterSpacing(content);
   const typography = getWallTextTypography(content);
+  const previewDimension =
+    scaleMode === "review-card-capped"
+      ? getWallTextReviewCardCappedDimension
+      : getWallTextProportionalPreviewDimension;
 
   return (
     <div
@@ -52,19 +64,21 @@ export function WallTextOverlay({
           boxSizing: "border-box",
           color: textColor,
           fontFamily: typography.fontFamily,
-          fontSize: `${fontSize / 10.8}cqw`,
+          fontSize: previewDimension(fontSize),
           fontWeight: typography.fontWeight,
           letterSpacing:
             letterSpacing === 0
               ? "normal"
-              : `${letterSpacing / 10.8}cqw`,
+              : previewDimension(letterSpacing),
           paintOrder: "stroke fill",
-          paddingInline: `${WALL_TEXT_INLINE_SAFE_PADDING / 10.8}cqw`,
+          paddingInline: previewDimension(WALL_TEXT_INLINE_SAFE_PADDING),
           textShadow:
             shadowOpacity > 0
-              ? `0 0.111111cqw 0.185185cqw rgb(0 0 0 / ${shadowOpacity})`
+              ? scaleMode === "review-card-capped"
+                ? `0 ${previewDimension(1.2)} ${previewDimension(2)} rgb(0 0 0 / ${shadowOpacity})`
+                : `0 0.111111cqw 0.185185cqw rgb(0 0 0 / ${shadowOpacity})`
               : "none",
-          WebkitTextStroke: `${outlineWidth / 10.8}cqw #000000`,
+          WebkitTextStroke: `${previewDimension(outlineWidth)} #000000`,
         }}
       >
         {getWallTextRenderBlocks(content).map((segment, segmentIndex) => (

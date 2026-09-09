@@ -202,16 +202,27 @@ export async function refreshCurrentFirebaseUser() {
   return mapFirebaseUser(user);
 }
 
-export async function getCurrentUserIdToken() {
+export async function getCurrentUserIdToken(expectedUserId?: string) {
   const e2eTestToken = getEditRenderE2ETestToken();
 
   if (e2eTestToken) {
+    if (expectedUserId && expectedUserId !== "edit-render-e2e") {
+      throw new Error("Your signed-in account changed. Reload to continue.");
+    }
     return e2eTestToken;
   }
 
   await auth.authStateReady();
 
-  return auth.currentUser ? getIdToken(auth.currentUser) : null;
+  const user = auth.currentUser;
+  if (expectedUserId && user?.uid !== expectedUserId) {
+    throw new Error("Your signed-in account changed. Reload to continue.");
+  }
+  const token = user ? await getIdToken(user) : null;
+  if (expectedUserId && auth.currentUser?.uid !== expectedUserId) {
+    throw new Error("Your signed-in account changed. Reload to continue.");
+  }
+  return token;
 }
 
 function getEditRenderE2ETestToken() {

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { BusinessProfileOnboarding } from "@/components/business-profiles/business-profile-onboarding";
+import { BackgroundBusinessOnboarding } from "@/components/business-profiles/background-business-onboarding";
 
 export const metadata: Metadata = {
   title: "Business profile",
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function OnboardingPage() {
   return (
     <AuthGuard requireBusinessProfile={false}>
-      <BusinessProfileOnboarding />
+      <BackgroundBusinessOnboarding />
     </AuthGuard>
   );
 }

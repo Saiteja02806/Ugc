@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { parseAiIdeBusinessContext } from "./ai-context";
 import { saveBusinessProfile } from "./db";
+import { dispatchOnboardingJobs, getOnboardingDraft, mutateOnboardingDraft } from "./onboarding-drafts";
 import {
   ManualBusinessProfileSchema,
   buildManualBusinessAnalysis,
@@ -42,8 +43,23 @@ export async function processBusinessProfileSetupJob(params: {
   input: BusinessProfileSetupInput;
   jobId: string;
   userId: string;
+  draftId?: string;
+  sourceRevision?: number;
 }) {
+  const draft = await getOnboardingDraft(params.userId);
+  if (draft && (draft.id !== params.draftId || draft.source_revision !== params.sourceRevision || draft.source_job_id !== params.jobId)) {
+    return { operation: "business_profile_setup" as const, skipped: "superseded" };
+  }
+  if (params.draftId && !draft) throw new Error("The onboarding draft is unavailable.");
   const normalized = await getOrCreateAnalysis(params);
+  if (draft) {
+    const updated = await mutateOnboardingDraft(params.userId, "attach", {
+      draftId: draft.id, sourceRevision: params.sourceRevision,
+      jobId: params.jobId, analysisId: normalized.analysisId,
+    });
+    await dispatchOnboardingJobs(updated);
+    return { operation: "business_profile_setup" as const, draftId: updated.id, analysisId: normalized.analysisId };
+  }
   const saved = await saveBusinessProfile({
     analysis: normalized.analysis,
     analysisId: normalized.analysisId,

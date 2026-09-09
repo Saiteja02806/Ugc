@@ -3880,6 +3880,7 @@ function TrendingWallTextDeckCard({
           <WallTextOverlay
             content={editedContent?.content ?? creative.text}
             layout={editedContent?.layout ?? creative.layout}
+            scaleMode="review-card-capped"
             textColor={editedContent?.textColor}
           />
           {!edit ? (

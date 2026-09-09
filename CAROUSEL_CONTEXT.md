@@ -4288,3 +4288,33 @@ Name: **Verify v26 and replace the stale production assignment**
 - Database migration: 20260906183128_allow_explicit_bounded_format_recovery.
   Application/worker changes require the coordinated release before production
   acceptance; local model canaries alone are not end-to-end acceptance.
+
+## 2026-09-09 Background business onboarding (local, rollout pending)
+
+- New enrolled accounts save source input and a durable analysis job in one
+  transaction, then continue through identity and goals while a top status strip
+  tracks analysis. Website, manual, and mobile-app intake retain their existing
+  analysis engines. Existing profiles and legacy setup sessions keep their flow.
+- `business_onboarding_drafts` stores answers separately from analyzed facts.
+  Owner, source revision, and answer revision checks fence old tabs and late
+  jobs; legacy profile writers cannot reset a draft-managed profile.
+- Analysis attachment and final form submission both schedule the same durable
+  finalizer once ready. It validates the stored analysis and atomically writes
+  one completed v3 profile, preserving owner name, logo, goals, and timezone.
+  The existing completion trigger starts the trial at that point, never on
+  source acceptance. Repeated delivery returns the same profile and timestamp.
+- Content preparation still uses `prebuildTrendingAfterOnboarding` and the
+  existing unified daily feed. A failure after profile completion retries
+  preparation without repeating analysis or trial activation. The dashboard's
+  existing feed recovery remains available.
+- Queue publication happens after the accepted response; persisted queued rows
+  remain discoverable by the existing recovery scheduler if publication fails.
+  Required analysis/finalization run in the durable worker, not in `after`.
+- Migration: `20260909165333_add_background_business_onboarding.sql`. Enrollment
+  defaults off except for `BUSINESS_ONBOARDING_BACKGROUND_USER_IDS`; the server
+  flag `BUSINESS_ONBOARDING_BACKGROUND_ENABLED=true` expands fresh enrollment.
+  Explicit `false` stops enrollment, including the allowlist. Existing drafts
+  always resume and finish, so rollback must retain the new handlers/schema.
+- Local database and independent-session concurrency tests pass. Deployment and
+  authenticated production canary acceptance remain pending; see
+  `docs/onboarding-background-analysis-plan.md` for release gates.

@@ -793,6 +793,7 @@ export function BusinessProfileOnboarding() {
 }
 
 export function BusinessInformationStep({
+  backgroundMode = false,
   aiIdeContext,
   copied,
   error,
@@ -806,6 +807,7 @@ export function BusinessInformationStep({
   onWebsiteUrlChange,
   websiteUrl,
 }: {
+  backgroundMode?: boolean;
   aiIdeContext: string;
   copied: boolean;
   error: string | null;
@@ -1003,7 +1005,7 @@ export function BusinessInformationStep({
         </div>
         <Button type="submit" disabled={isSaving} size="lg" className="h-12 w-full rounded-xl px-6 font-semibold shadow-sm sm:w-auto">
           {isSaving ? <Loader2 data-icon="inline-start" className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Sparkles data-icon="inline-start" aria-hidden="true" />}
-          <span aria-live="polite">{isSaving ? getSavingLabel(intakeType) : "Save profile & prepare ideas"}</span>
+          <span aria-live="polite">{backgroundMode ? (isSaving ? "Starting setup…" : "Continue") : isSaving ? getSavingLabel(intakeType) : "Save profile & prepare ideas"}</span>
         </Button>
       </footer>
     </>
@@ -1231,7 +1233,7 @@ export function OnboardingFrame({
   const shellWidth = compact ? "max-w-[960px]" : "max-w-[1120px]";
 
   return (
-    <main className="instagram-theme relative min-h-dvh overflow-x-hidden bg-background text-foreground">
+    <main className="instagram-theme relative min-h-dvh overflow-x-clip bg-background text-foreground">
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-[28rem] bg-[radial-gradient(circle_at_15%_0%,var(--instagram-orange),transparent_32%),radial-gradient(circle_at_85%_0%,var(--instagram-violet),transparent_30%)] opacity-[0.055]"
         aria-hidden="true"
@@ -1383,7 +1385,7 @@ async function readProfileResponse(response: Response) {
   return { profile: data.profile };
 }
 
-async function uploadLogo(file: File, token: string) {
+export async function uploadLogo(file: File, token: string) {
   const preparedResponse = await fetch("/api/business-profile/logo/upload-url", {
     body: JSON.stringify({ contentType: file.type, fileSize: file.size }),
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -1409,6 +1411,8 @@ async function uploadLogo(file: File, token: string) {
   }
   return prepared.key;
 }
+
+export { aiIdePrompt };
 
 function formatCount(value: number) {
   return countFormatter.format(value);

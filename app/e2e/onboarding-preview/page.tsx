@@ -2,6 +2,7 @@
 
 import { notFound, useSearchParams } from "next/navigation";
 import { Suspense, useRef, useState } from "react";
+import { OnboardingAnalysisStatus } from "@/components/business-profiles/background-business-onboarding";
 
 import {
   BusinessIdentityStep,
@@ -13,6 +14,7 @@ import {
 function OnboardingPreviewInner() {
   const searchParams = useSearchParams();
   const stepParam = searchParams.get("step") || "1";
+  const analysisParam = searchParams.get("analysis");
   const headingRef = useRef<HTMLHeadingElement | null>(null);
 
   const [intakeType, setIntakeType] = useState<"manual" | "mobile_app_ai_prompt" | "website">("website");
@@ -49,6 +51,11 @@ function OnboardingPreviewInner() {
 
   return (
     <OnboardingFrame>
+      {analysisParam && <OnboardingAnalysisStatus unavailable={analysisParam === "offline"} draft={{
+        sourceInput: { intakeType: "website", websiteUrl },
+        analysisReady: analysisParam === "complete",
+        analysisJob: { status: analysisParam === "failed" ? "failed" : analysisParam === "queued" ? "queued" : "processing" },
+      }} />}
       <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-floating transition-all duration-300">
         <div
           className="h-1.5 bg-[linear-gradient(90deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))]"
@@ -57,6 +64,7 @@ function OnboardingPreviewInner() {
 
         {stepParam === "1" ? (
           <BusinessInformationStep
+            backgroundMode={!!analysisParam}
             aiIdeContext={aiIdeContext}
             copied={false}
             error={null}
@@ -79,7 +87,7 @@ function OnboardingPreviewInner() {
             headingRef={headingRef}
             isSaving={false}
             logoPreviewUrl={null}
-            profile={{
+            profile={analysisParam ? null : {
               analysisConfidence: "high",
               analysisSummary: "AI copilot that automates short-form video creative generation for high growth brands.",
               businessName: "Acme AI",

@@ -4302,6 +4302,12 @@ Name: **Verify v26 and replace the stale production assignment**
 
 ## 2026-09-09 Background business onboarding (local, rollout pending)
 
+- Release verification found direct anonymous/authenticated grants on five
+  internal Reaction-render RPCs introduced by the earlier split-worker migration.
+  `20260909175456_restrict_reaction_render_rpc_access.sql` revokes those grants
+  explicitly while preserving worker service-role execution. Revoking PUBLIC
+  alone does not remove Supabase's direct default grants.
+
 - New enrolled accounts save source input and a durable analysis job in one
   transaction, then continue through identity and goals while a top status strip
   tracks analysis. Website, manual, and mobile-app intake retain their existing

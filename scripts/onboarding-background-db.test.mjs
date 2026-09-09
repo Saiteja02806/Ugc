@@ -180,3 +180,21 @@ test('a pending legacy setup keeps its original protocol', async () => {
   await db.query(`insert into business_profiles(user_id,intake_type,context_json,content_hash) values($1,'website',$2,'legacy')`,[user,analysis]);
   assert.ok(await one('select id from business_profiles where user_id=$1',[user]));
 });
+
+test('Reaction worker functions reject direct client execution and retain worker access', async () => {
+  const signatures = [
+    'create_reaction_generation_render_jobs_v1(uuid,uuid,text)',
+    'claim_reaction_generation_item_render_v1(uuid,uuid,uuid,text)',
+    'complete_reaction_generation_item_render_v2(uuid,uuid,uuid,text,uuid,text)',
+    'fail_reaction_generation_item_render_v2(uuid,uuid,uuid,text,text)',
+    'complete_reaction_generation_run_v1(uuid,uuid,text)',
+  ];
+  // Reproduce Supabase's direct role grants, then reapply the corrective migration.
+  for (const signature of signatures) await db.exec(`grant execute on function public.${signature} to anon,authenticated`);
+  await db.exec(await readFile(new URL('../supabase/migrations/20260909175456_restrict_reaction_render_rpc_access.sql',import.meta.url),'utf8'));
+  for (const signature of signatures) {
+    const privileges = await one(`select has_function_privilege('anon',$1,'EXECUTE') a,
+      has_function_privilege('authenticated',$1,'EXECUTE') u,has_function_privilege('service_role',$1,'EXECUTE') s`,['public.'+signature]);
+    assert.deepEqual(privileges,{a:false,u:false,s:true},signature);
+  }
+});

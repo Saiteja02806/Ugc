@@ -230,6 +230,51 @@ test('reservation cannot recycle consumed prefix items while planning is incompl
   assert.equal((await one('select count(*)::int as n from wall_text_generation_batches where user_id=$1',[f.user])).n,0);
 });
 
+test('Wall reservation uses the plan local date across midnight and session timezones', async () => {
+  const signature = 'public.reserve_wall_text_generation_batch_v1(text,uuid,integer,text,text,text,text,text,text,jsonb)';
+  const { definition } = await one('select pg_get_functiondef($1::regprocedure) as definition', [signature]);
+  // Freeze only this function's clock so the regression does not depend on
+  // the time at which CI runs. Exercise the real reservation, not a copy of it.
+  const cases = [
+    ['Asia/Calcutta', '2026-09-10 03:30:28+00', '2026-09-10'],
+    ['Asia/Calcutta', '2026-09-09 19:00:00+00', '2026-09-10'],
+    ['America/Los_Angeles', '2026-09-10 02:00:00+00', '2026-09-09'],
+    ['America/New_York', '2026-11-01 05:30:00+00', '2026-11-01'],
+    ['America/New_York', '2026-11-01 06:30:00+00', '2026-11-01'],
+  ];
+  try {
+    for (const sessionZone of ['UTC', 'Asia/Calcutta', 'America/Los_Angeles']) {
+      await db.query("select set_config('TimeZone',$1,false)", [sessionZone]);
+      for (const [zone, instant, localDate] of cases) {
+        const f = await fixture();
+        await publish(f);
+        const admitted = await admit(f);
+        await db.query(`update wall_text_content_plans set timezone=$2,
+          period_start_date=$3::date,period_end_date=$3::date+29 where id=$1`,
+          [f.plan.id,zone,localDate]);
+        await db.exec(definition.replace(/\bnow\(\)/g, `timestamptz '${instant}'`));
+        const batch = await reserve(f,admitted.jobId);
+        assert.equal(batch.requested_count,3,`${zone}, ${instant}, session ${sessionZone}`);
+        await db.exec(definition);
+      }
+    }
+  } finally {
+    await db.exec(definition);
+    await db.exec("set timezone='UTC'");
+  }
+});
+
+test('Wall reservation still rejects future and expired plans', async () => {
+  for (const offset of [1, -30]) {
+    const f = await fixture(); await publish(f); const admitted = await admit(f);
+    await db.query(`update wall_text_content_plans set
+      period_start_date=current_date+$2::int,period_end_date=current_date+$2::int+29 where id=$1`,
+      [f.plan.id,offset]);
+    await assert.rejects(reserve(f,admitted.jobId),/wall_text_content_plan_pending/);
+    assert.equal((await one('select count(*)::int as n from wall_text_generation_batches where user_id=$1',[f.user])).n,0);
+  }
+});
+
 test('only a full 200-item plan activates, preserving reserved items and existing reservations', async () => {
   const f=await fixture(); await publish(f); const admitted=await admit(f);
   const batch=await reserve(f,admitted.jobId);

@@ -203,8 +203,8 @@ const workerRenderSpecSource = readFileSync(
   new URL("../../worker/src/lib/wall-text-render-spec.ts", import.meta.url),
   "utf8",
 );
-const workerRenderEngineSource = readFileSync(
-  new URL("../../worker/src/lib/render-engine.ts", import.meta.url),
+const workerOverlayRendererSource = readFileSync(
+  new URL("../../worker/src/lib/wall-text-overlay-renderer.ts", import.meta.url),
   "utf8",
 );
 const fontMeasurementSource = readFileSync(
@@ -692,7 +692,7 @@ test("measures new final Wall lines with packaged Arial Bold before saving autho
   assert.match(workerRenderSpecSource, /WALL_TEXT_V7_SHADOW_OPACITY = 0\.3/);
   assert.match(workerRenderSpecSource, /WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH = 2/);
   assert.match(
-    workerRenderEngineSource,
+    workerOverlayRendererSource,
     /textBox\.width \* WALL_TEXT_RENDER_WIDTH\)[\s\S]+WALL_TEXT_INLINE_SAFE_PADDING \* 2/,
   );
   assert.match(overlaySource, /boxSizing: "border-box"[\s\S]+paddingInline/);

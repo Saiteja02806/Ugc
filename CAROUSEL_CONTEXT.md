@@ -4335,3 +4335,11 @@ Name: **Verify v26 and replace the stale production assignment**
 - Local database and independent-session concurrency tests pass. Deployment and
   authenticated production canary acceptance remain pending; see
   `docs/onboarding-background-analysis-plan.md` for release gates.
+
+## 2026-09-10 Free trial and complimentary access
+
+Free trials receive 20 daily content pieces for three days. Instagram scheduling
+is uncapped while the trial is active; expiry and usage tracking remain enforced.
+A NULL free_trial_entitlements.instagram_schedule_limit means uncapped. Positive
+per-user limits remain enforced. Active complimentary Starter/Growth grants supply
+product access separately from Dodo subscriptions and bypass free-trial gates.

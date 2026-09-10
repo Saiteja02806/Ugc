@@ -14,6 +14,8 @@ import {
   ScanText,
   SlidersHorizontal,
   Sparkles,
+  Volume2,
+  VolumeX,
   X,
 } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -57,6 +59,7 @@ import { HookVideoCard } from "@/components/trending/hook-video-card";
 import type { HookPreviewAudio } from "@/components/trending/hook-audio-preview";
 import type { WallTextDetailActionState } from "@/components/trending/wall-text-detail-view";
 import { WallTextOverlay } from "@/components/trending/wall-text-overlay";
+import { WallTextSavedImage } from "@/components/trending/wall-text-saved-image";
 import { WallTextAudioPreview } from "@/components/trending/wall-text-audio-preview";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
@@ -409,10 +412,19 @@ const CAROUSEL_REVIEW_CARD_WIDTH_CLASS =
   "w-[min(78vw,300px,calc((100dvh-348px)*0.8))]";
 const VERTICAL_REVIEW_CARD_WIDTH_CLASS =
   "w-[min(76vw,230px,calc((100dvh-348px)*0.5625))] min-[1024px]:w-[min(76vw,clamp(260px,calc(440.5px-11.75vw),280px),calc((100dvh-252px)*0.5625))]";
+// B was approved at a 277px logical review card. Give Wall-of-Text that
+// reference frame whenever the viewport has room, rather than letting the
+// generic vertical-card responsive rule change the glyph treatment.
+// On genuinely narrow or short viewports this still shrinks as one unit with
+// the saved line layout, which prevents long measured lines from overflowing.
+const WALL_TEXT_REVIEW_CARD_WIDTH_CLASS =
+  "w-[min(76vw,277px,calc((100dvh-348px)*0.5625))] min-[1024px]:w-[min(277px,calc((100dvh-252px)*0.5625))]";
 const CAROUSEL_REVIEW_CARD_FRAME_CLASS =
   `${CAROUSEL_REVIEW_CARD_WIDTH_CLASS} aspect-[4/5]`;
 const VERTICAL_REVIEW_CARD_FRAME_CLASS =
   `${VERTICAL_REVIEW_CARD_WIDTH_CLASS} aspect-[9/16]`;
+const WALL_TEXT_REVIEW_CARD_FRAME_CLASS =
+  `${WALL_TEXT_REVIEW_CARD_WIDTH_CLASS} aspect-[9/16]`;
 const DECK_CARD_STYLES: Record<
   DeckDepth,
   { opacity: number; scale: number; translateY: number; zIndex: number }
@@ -3262,8 +3274,12 @@ function getTrendingDeckProgressLabel({
 function getTrendingReviewCardFrameClass(
   format: TrendingCandidate["format"],
 ) {
-  return format === "carousel"
-    ? CAROUSEL_REVIEW_CARD_FRAME_CLASS
+  if (format === "carousel") {
+    return CAROUSEL_REVIEW_CARD_FRAME_CLASS;
+  }
+
+  return format === "wall_text"
+    ? WALL_TEXT_REVIEW_CARD_FRAME_CLASS
     : VERTICAL_REVIEW_CARD_FRAME_CLASS;
 }
 
@@ -3792,6 +3808,8 @@ function TrendingWallTextDeckCard({
   const previewUrl = edit?.source?.resolvedAssetUrl ?? creative.previewUrl;
   const thumbnailUrl =
     edit?.source?.resolvedThumbnailUrl ?? creative.thumbnailUrl;
+  const [videoReadyUrl, setVideoReadyUrl] = useState<string | null>(null);
+  const [videoErrorUrl, setVideoErrorUrl] = useState<string | null>(null);
   const deckStyle = DECK_CARD_STYLES[depth];
   const cardStyle = getTrendingDeckCardPresentation({
     depth,
@@ -3836,7 +3854,7 @@ function TrendingWallTextDeckCard({
         aria-label={`${creative.title}, Wall-of-text content ${itemIndex + 1} of ${itemCount}`}
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
-          VERTICAL_REVIEW_CARD_FRAME_CLASS,
+          WALL_TEXT_REVIEW_CARD_FRAME_CLASS,
           "relative origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
           isActive
             ? "pointer-events-auto cursor-grab active:cursor-grabbing"
@@ -3869,6 +3887,13 @@ function TrendingWallTextDeckCard({
             ref={videoRef}
             src={previewUrl}
             poster={thumbnailUrl ?? undefined}
+            onLoadedData={(event) => {
+              if (event.currentTarget.videoWidth > 0 && event.currentTarget.readyState >= 2) {
+                setVideoReadyUrl(previewUrl);
+                setVideoErrorUrl(null);
+              }
+            }}
+            onError={() => setVideoErrorUrl(previewUrl)}
             autoPlay={isActive}
             muted
             playsInline
@@ -3876,12 +3901,24 @@ function TrendingWallTextDeckCard({
             aria-hidden="true"
             className="pointer-events-none size-full object-cover"
           />
-          <WallTextOverlay
+          {process.env.NEXT_PUBLIC_WALL_TEXT_SHARED_PNG === "true" ? <WallTextSavedImage
+            assignmentId={candidate.item.assignmentId}
+            creativeId={candidate.item.creativeId}
+            revision={edit?.revision ?? 0}
+            text={editedContent?.content.fullText ?? creative.text.fullText}
+          /> : <WallTextOverlay
             content={editedContent?.content ?? creative.text}
             layout={editedContent?.layout ?? creative.layout}
             scaleMode="review-card-capped"
             textColor={editedContent?.textColor}
-          />
+          />}
+          {process.env.NEXT_PUBLIC_WALL_TEXT_SHARED_PNG === "true" && (videoReadyUrl !== previewUrl || videoErrorUrl === previewUrl) ? (
+            <div role="status" className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-black/70 p-4 text-center text-sm text-white">
+              <span>{videoErrorUrl === previewUrl ? "Video could not load." : "Loading video…"}</span>
+              <button type="button" className="rounded border px-3 py-1" onPointerDown={event => event.stopPropagation()}
+                onClick={() => { setVideoErrorUrl(null); videoRef.current?.load(); void videoRef.current?.play().catch(() => undefined); }}>Retry video</button>
+            </div>
+          ) : null}
           {!edit ? (
             <WallTextAudioPreview
               active={isActive}
@@ -3926,6 +3963,7 @@ function TrendingReactionDeckCard({
 }) {
   const isActive = depth === 0;
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [soundEnabled, setSoundEnabled] = useState(false);
   const creative = candidate.item.creative;
   const deckStyle = DECK_CARD_STYLES[depth];
   const cardStyle = getTrendingDeckCardPresentation({
@@ -3947,6 +3985,12 @@ function TrendingReactionDeckCard({
 
     video.currentTime = 0;
     void video.play().catch(() => undefined);
+  }, [creative.previewUrl, isActive]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video) video.muted = true;
+    setSoundEnabled(false);
   }, [creative.previewUrl, isActive]);
 
   useEffect(() => {
@@ -3976,6 +4020,33 @@ function TrendingReactionDeckCard({
       cancelled = true;
     };
   }, [candidate.item.assignmentId, creative.clipAssetId, isActive]);
+
+  function stopDeckControlPointer(event: ReactPointerEvent<HTMLElement>) {
+    event.stopPropagation();
+  }
+
+  async function toggleSound() {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const nextSoundEnabled = !soundEnabled;
+    // Sound must be enabled from a user gesture: browsers otherwise reject
+    // autoplay with audio. The actual Reaction MP4 remains the sole source.
+    video.muted = !nextSoundEnabled;
+
+    if (!nextSoundEnabled) {
+      setSoundEnabled(false);
+      return;
+    }
+
+    try {
+      await video.play();
+      setSoundEnabled(true);
+    } catch {
+      video.muted = true;
+      setSoundEnabled(false);
+    }
+  }
 
   return (
     <div
@@ -4022,12 +4093,35 @@ function TrendingReactionDeckCard({
             src={creative.previewUrl}
             poster={creative.thumbnailUrl ?? undefined}
             autoPlay={isActive}
-            muted
+            muted={!soundEnabled}
             playsInline
             preload={depth <= 1 ? "auto" : "metadata"}
             aria-hidden="true"
             className="pointer-events-none size-full object-cover"
           />
+          {isActive ? (
+            <button
+              type="button"
+              data-deck-control
+              aria-label={soundEnabled ? "Mute Reaction audio" : "Play Reaction audio"}
+              title={soundEnabled ? "Mute audio" : "Play original Reaction audio"}
+              onPointerCancel={stopDeckControlPointer}
+              onPointerDown={stopDeckControlPointer}
+              onPointerMove={stopDeckControlPointer}
+              onPointerUp={stopDeckControlPointer}
+              onClick={(event) => {
+                event.stopPropagation();
+                void toggleSound();
+              }}
+              className="absolute bottom-2 left-2 z-30 inline-flex size-8 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white/90 transition-colors hover:bg-black/75 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              {soundEnabled ? (
+                <Volume2 className="size-3.5" aria-hidden="true" />
+              ) : (
+                <VolumeX className="size-3.5" aria-hidden="true" />
+              )}
+            </button>
+          ) : null}
           {creative.textEditState === "preparing" || creative.textEditState === "failed" ? (
             <div role="status" className="absolute inset-0 flex items-center justify-center bg-black/85 p-6 text-center text-sm text-white">
               {creative.textEditState === "preparing" ? "Preparing video" : "Video preparation failed. Open Edit to retry."}

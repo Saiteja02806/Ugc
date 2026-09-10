@@ -72,6 +72,8 @@ test("reflows an overflowing Reaction caption into the safe white-card area", as
   assert.ok(layout.card.width < 936, "the card should fit its content, not use the legacy full-width box");
   assert.ok(layout.card.x >= 90);
   assert.ok(layout.card.x + layout.card.width <= 990);
+  assert.equal(layout.card.y, 260, "the Reaction caption sits below the top UI area");
+  assert.equal(layout.textY, 260 + 18 + layout.fontSize);
   assert.ok(
     layout.lineWidths.every((width) => width <= layout.card!.width - 56),
     "each line keeps the requested left and right padding inside the card",
@@ -84,6 +86,22 @@ test("reflows an overflowing Reaction caption into the safe white-card area", as
   const metadata = await sharp(Buffer.from(svg)).png().metadata();
   assert.equal(metadata.width, 1080);
   assert.equal(metadata.height, 1920);
+});
+
+test("uses the same lower anchor for outlined Reaction captions", async () => {
+  const layout = await buildReactionCaptionLayout({
+    captionLines: ["The message stays clear", "over every background"],
+    treatment: "outlined_text",
+  });
+  const svg = await buildReactionCaptionOverlaySvg({
+    captionLines: ["The message stays clear", "over every background"],
+    treatment: "outlined_text",
+  });
+
+  assert.equal(layout.card, null);
+  assert.equal(layout.textY, 260 + layout.fontSize);
+  assert.doesNotMatch(svg, /<rect /u);
+  assert.match(svg, new RegExp(`y="${layout.textY}"`, "u"));
 });
 
 test("keeps the Reaction foreground legible when a catalog placement is too small", () => {
@@ -105,6 +123,29 @@ test("keeps the Reaction foreground legible when a catalog placement is too smal
   });
 
   assert.match(args[args.indexOf("-filter_complex") + 1]!, /scale=-2:1248/u);
+});
+
+test("preserves the selected Reaction source audio in the final Reel", () => {
+  const args = buildReactionVideoArgs({
+    backgroundPath: "background.jpg",
+    foregroundPath: "foreground.mov",
+    outputPath: "reaction.mp4",
+    overlayPath: "caption.png",
+    payload: {
+      backgroundStorageKey: "background.jpg",
+      captionLines: ["When the deadline moves", "before your first coffee"],
+      creativeId: "creative-1",
+      durationSeconds: 6,
+      foreground: { anchor: "bottom_center", heightPercent: 0.65 },
+      foregroundStorageKey: "foreground.mov",
+      renderId: "render-1",
+      treatment: "outlined_text",
+    },
+  });
+
+  assert.equal(args.includes("-an"), false);
+  assert.deepEqual(args.slice(args.indexOf("-map", args.indexOf("[video]")) + 1, args.indexOf("-map", args.indexOf("[video]")) + 3), ["1:a:0", "-t"]);
+  assert.deepEqual(args.slice(args.indexOf("-c:a"), args.indexOf("-c:a") + 4), ["-c:a", "aac", "-b:a", "160k"]);
 });
 
 test("applies Hook trim and text only to the opening segment", () => {

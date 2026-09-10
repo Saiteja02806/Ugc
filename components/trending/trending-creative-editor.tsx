@@ -25,6 +25,7 @@ import {
 } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { WallTextSavedImage } from "@/components/trending/wall-text-saved-image";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -1268,6 +1269,13 @@ function EditorPreview({
         title={sourcePreview?.title ?? item.creative.title}
         url={sourcePreview?.url ?? item.creative.previewUrl}
       >
+        {process.env.NEXT_PUBLIC_WALL_TEXT_SHARED_PNG === "true" ? <WallTextSavedImage
+          assignmentId={item.assignmentId} creativeId={item.creativeId} revision={edit?.revision ?? 0}
+          text={content.content.fullText}
+          draft={JSON.stringify(content) === JSON.stringify(initialContent) ? undefined : {
+            fullText: content.content.fullText, textColor: content.textColor, textBox: box,
+          }}
+        /> : null}
         <DraggableOverlay
           ariaLabel="Move Wall-of-text copy"
           bounds={{
@@ -1291,7 +1299,9 @@ function EditorPreview({
             })
           }
         >
-          <WallTextOverlayText content={content} />
+          {process.env.NEXT_PUBLIC_WALL_TEXT_SHARED_PNG === "true" ? (
+            <div aria-label="Drag to move text" style={{ width: `${box.width * 100}cqw`, height: `${box.height * 100 * 16 / 9}cqw` }} />
+          ) : <WallTextOverlayText content={content} />}
         </DraggableOverlay>
       </VerticalVideoPreview>
     );

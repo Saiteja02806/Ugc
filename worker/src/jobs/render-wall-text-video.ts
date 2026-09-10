@@ -1,4 +1,5 @@
 import { getErrorMessage, logger } from "../logger.js";
+import { parseWallTextOverlayReference } from "../lib/wall-text-overlay-asset.js";
 import {
   renderWallTextVideoToStorage as defaultRenderWallTextVideoToStorage,
   type RenderWallTextVideoPayload,
@@ -238,6 +239,7 @@ function parseRenderWallTextVideoPayload(
 
   return {
     assignmentId: getRequiredString(input.assignmentId, "assignmentId", 64),
+    overlayAsset: parseWallTextOverlayReference(input.overlayAsset, getRequiredString(input.userId, "userId", 200)),
     attribution,
     audio,
     creativeEditId,

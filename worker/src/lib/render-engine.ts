@@ -1,53 +1,19 @@
+
+import { type RenderWallTextVideoPayload, prepareWallTextOverlayAsset, ensureWallTextFontsRegistered, validateWallTextRenderedLineWidths, reflowWallTextContentForRenderer, assertWallTextTextBoxMatchesPayload, rasterizeWallTextOverlay, escapePangoMarkup } from './wall-text-overlay-renderer.ts';
+export { type RenderWallTextVideoPayload, type WallTextOverlayInput, getWallTextOverlayIdentity, prepareWallTextOverlayAsset, ensureWallTextFontsRegistered, reflowWallTextContentForRenderer, assertWallTextTextBoxMatchesPayload, assertWallTextOverlayPixelsInsideTextBox } from './wall-text-overlay-renderer.ts';
 import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import sharp from "sharp";
-
-import {
-  downloadStoredObjectBuffer,
-  getStorageProviderName,
-  uploadBufferToStorage,
-} from "./storage.js";
-import {
-  downloadAudioToBuffer,
-  downloadVideoToBuffer,
-} from "./download-video.js";
-import {
-  EDIT_OVERLAY_FONT_FAMILY,
-  EDIT_OVERLAY_OUTPUT_DIMENSIONS,
-  EDIT_OVERLAY_SHADOW_COLOR,
-  EDIT_OVERLAY_SHADOW_OFFSET_PX,
-  EDIT_OVERLAY_VERTICAL_INSET_PERCENT,
-  HOOK_TEXT_LAYOUT_VERSION,
-  LEGACY_HOOK_TEXT_LAYOUT_VERSION,
-  buildEditOverlayTextLayout,
-  buildLegacyEditOverlayTextLayout,
-  buildResolvedEditOverlayTextLayout,
-  estimateEditOverlayLineWidth,
-  type EditOverlayTextLayout,
-  type HookTextLayoutVersion,
-} from "./edit-overlay-render-spec.js";
-import {
-  buildHookInlineSymbolSvg,
-  hasHookInlineSymbols,
-  tokenizeHookInlineSymbols,
-} from "./hook-inline-symbols.js";
-import {
-  buildWallTextRenderLayout,
-  buildWallTextOverlaySvg,
-  getWallTextOutlineWidth,
-  WALL_TEXT_INLINE_SAFE_PADDING,
-  WALL_TEXT_OUTLINE_WIDTH,
-  WALL_TEXT_RENDER_HEIGHT,
-  WALL_TEXT_RENDER_WIDTH,
-  type WallTextNormalizedBox,
-  type WallTextPlacementZone,
-  type WallTextRenderContent,
-  type WallTextSafeArea,
-} from "./wall-text-render-spec.js";
-import { logger } from "../logger.js";
+import { wallTextOverlayContentHash, validateWallTextOverlayAsset, parseWallTextOverlayReference } from "./wall-text-overlay-asset.ts";
+import { downloadStoredObjectBuffer, getStorageProviderName, uploadBufferToStorage } from "./storage.ts";
+import { downloadAudioToBuffer, downloadVideoToBuffer } from "./download-video.ts";
+import { EDIT_OVERLAY_FONT_FAMILY, EDIT_OVERLAY_OUTPUT_DIMENSIONS, EDIT_OVERLAY_SHADOW_COLOR, EDIT_OVERLAY_SHADOW_OFFSET_PX, EDIT_OVERLAY_VERTICAL_INSET_PERCENT, HOOK_TEXT_LAYOUT_VERSION, LEGACY_HOOK_TEXT_LAYOUT_VERSION, buildEditOverlayTextLayout, buildLegacyEditOverlayTextLayout, buildResolvedEditOverlayTextLayout, estimateEditOverlayLineWidth, type EditOverlayTextLayout, type HookTextLayoutVersion } from "./edit-overlay-render-spec.ts";
+import { buildHookInlineSymbolSvg, hasHookInlineSymbols, tokenizeHookInlineSymbols } from "./hook-inline-symbols.ts";
+import { buildWallTextOverlaySvg, type WallTextNormalizedBox, type WallTextRenderContent, type WallTextSafeArea } from "./wall-text-render-spec.ts";
+import { logger } from "../logger.ts";
 
 export type RenderRatio = "9:16" | "1:1" | "4:5" | "16:9";
 export type TextOverlayPosition = "top" | "middle" | "bottom";
@@ -76,7 +42,6 @@ const EDIT_OVERLAY_FONT_REGISTRATION_TEXT = "MW@gi 0123";
 const EDIT_OVERLAY_FONT_REGISTRATION_SIZE = 64;
 let editOverlayFontRegistrationPromise: Promise<EditOverlayFontRegistration> | null =
   null;
-let wallTextFontRegistrationPromise: Promise<void> | null = null;
 
 export type EditOverlayFontRegistration = {
   directBounds: { height: number; width: number };
@@ -148,46 +113,6 @@ export type RenderScheduleCombinationOutput = {
   renderId: string;
   scheduleId: string;
   url: string;
-};
-
-export type RenderWallTextVideoPayload = {
-  assignmentId: string;
-  attribution: {
-    contentHash: string;
-    editClassification: "major" | "minor" | "none";
-    formatId: string | null;
-    formatLearningEligible: boolean;
-    formatVersion: number;
-    instagramReelTemplateId: string | null;
-    selectionMode: string;
-    selectionWeight: number;
-    selectorVersion: string;
-    sourceKind: "creative_asset" | "instagram_reel" | "ugcpilot";
-  };
-  audio: {
-    assetDurationSeconds: number;
-    assetId: string;
-    audioUrl: string;
-    cueStartSeconds: number;
-    fadeOutSeconds: number;
-    fitMode: "exact" | "trim" | "loop";
-    matchingVersion: string;
-    selectionId: string;
-  };
-  creativeEditId: string | null;
-  creativeEditRevision: number | null;
-  creativeId: string;
-  durationSeconds: number;
-  placement: WallTextPlacementZone;
-  projectId: string;
-  renderId: string;
-  safeArea: WallTextSafeArea;
-  sourceVideoUrl: string;
-  text: WallTextRenderContent;
-  textColor: string;
-  textBox: WallTextNormalizedBox;
-  title: string;
-  userId: string;
 };
 
 export type RenderWallTextVideoOutput = {
@@ -518,24 +443,20 @@ export async function renderWallTextVideoToStorage(
   const outputPath = join(workDir, "wall-text-video.mp4");
 
   try {
-    await ensureWallTextFontsRegistered();
-    assertWallTextTextBoxMatchesPayload(payload.text, payload.textBox);
-    const renderContent = await reflowWallTextContentForRenderer({
-      content: payload.text,
-      textBox: payload.textBox,
-    });
-    await validateWallTextRenderedLineWidths(renderContent, payload.textBox);
-    const overlaySvg = buildWallTextOverlaySvg({
-      content: renderContent,
-      placement: payload.placement,
-      safeArea: payload.safeArea,
-      textColor: payload.textColor,
-      textBox: payload.textBox,
-    });
-    const overlayPng = await rasterizeWallTextOverlay({
-      overlaySvg,
-      textBox: payload.textBox,
-    });
+    const savedOverlay = parseWallTextOverlayReference(payload.overlayAsset, payload.userId);
+    if (savedOverlay && savedOverlay.contentHash !== wallTextOverlayContentHash({
+      text: payload.text, textBox: payload.textBox, placement: payload.placement,
+      safeArea: payload.safeArea, textColor: payload.textColor,
+    })) {
+      throw new Error("Saved Wall text image does not match this export's content.");
+    }
+    const overlayPng = savedOverlay
+      ? await validateWallTextOverlayAsset({ ...savedOverlay,
+          png: await downloadStoredObjectBuffer(savedOverlay.key) }, savedOverlay.inputHash)
+      : (await prepareWallTextOverlayAsset({
+      text: payload.text, textBox: payload.textBox, placement: payload.placement,
+      safeArea: payload.safeArea, textColor: payload.textColor,
+    })).png;
     const [sourceBuffer, audioBuffer] = await Promise.all([
       downloadVideoToBuffer(payload.sourceVideoUrl),
       downloadAudioToBuffer(payload.audio.audioUrl, {
@@ -708,7 +629,8 @@ export async function renderCreateContentVideoToStorage(
 /**
  * A Reaction card is always a final, owner-scoped MP4. Catalog backgrounds and
  * alpha MOVs remain private worker inputs; no browser is asked to composite
- * raw catalog media.
+ * raw catalog media. Its soundtrack is the selected foreground clip's original
+ * audio, so the visual reaction and its sound remain in sync in Trending.
  */
 export async function renderReactionVideoToStorage(
   payload: RenderReactionVideoPayload,
@@ -743,9 +665,10 @@ export async function renderReactionVideoToStorage(
       renderId: payload.renderId,
     });
     await validateRenderedVideoFile(outputPath, payload.renderId, {
+      expectedAudioCodecName: "aac",
       expectedDurationSeconds: payload.durationSeconds,
       logLabel: "Reaction",
-      requireAudio: false,
+      requireAudio: true,
     });
 
     const renderedBuffer = await readFile(outputPath);
@@ -821,11 +744,15 @@ export function buildReactionVideoArgs(params: {
     "-i", params.overlayPath,
     "-filter_complex", filter,
     "-map", "[video]",
+    // The reaction source is the selected foreground input. Preserve its audio
+    // rather than muting the final Reel or substituting library music.
+    "-map", "1:a:0",
     "-t", String(params.payload.durationSeconds),
     "-r", "30",
-    "-an",
     "-c:v", "libx264",
     "-pix_fmt", "yuv420p",
+    "-c:a", "aac",
+    "-b:a", "160k",
     "-movflags", "+faststart",
     params.outputPath,
   ];
@@ -842,7 +769,9 @@ async function renderReactionCaptionOverlay(
 const REACTION_CANVAS_WIDTH = 1080;
 const REACTION_CANVAS_HEIGHT = 1920;
 const REACTION_CAPTION_MAX_LINES = 3;
-const REACTION_CAPTION_TOP = 126;
+// Keep the caption safely below the top UI area so the copy feels anchored to
+// the composition instead of pressed against the top edge.
+const REACTION_CAPTION_TOP = 260;
 const REACTION_CAPTION_HORIZONTAL_PADDING = 28;
 const REACTION_CAPTION_VERTICAL_PADDING = 18;
 const REACTION_WHITE_CARD_MIN_WIDTH = 320;
@@ -1973,456 +1902,6 @@ function buildHookInlineTextLineSvg(params: {
   });
 }
 
-export function ensureWallTextFontsRegistered() {
-  wallTextFontRegistrationPromise ??= registerWallTextFonts();
-  return wallTextFontRegistrationPromise;
-}
-
-async function registerWallTextFonts() {
-  const fonts = await Promise.all([
-    getWallTextFont({ family: "Inter" }),
-    getWallTextFont({ family: "ArialBold" }),
-    getWallTextFont({ family: "ArialRegular" }),
-    getWallTextFont({ family: "AvenirNextDemiBold" }),
-  ]);
-
-  await Promise.all(
-    fonts.map(async (font) => {
-      const directText = await sharp({
-        text: {
-          dpi: 72,
-          font: `${getPangoFontName(font)} 46`,
-          fontfile: font.path,
-          rgba: true,
-          text: "Wall text 0123",
-          wrap: "none",
-        },
-      }).metadata();
-
-      if (!directText.width || !directText.height) {
-        throw new Error(
-          `${font.name} could not be registered for Wall-of-text rendering.`,
-        );
-      }
-    }),
-  );
-}
-
-async function validateWallTextRenderedLineWidths(
-  content: WallTextRenderContent,
-  textBox: WallTextNormalizedBox,
-) {
-  const maximumWidth =
-    Math.round(textBox.width * WALL_TEXT_RENDER_WIDTH) -
-    WALL_TEXT_INLINE_SAFE_PADDING * 2;
-  const layout = buildWallTextRenderLayout({ content, textBox });
-  const font = await getWallTextFontForContent(content);
-
-  for (const segment of layout.segments) {
-    for (const line of segment.lines) {
-      const metadata = await sharp({
-        text: {
-          dpi: 72,
-          font: `${getPangoFontName(font)} ${segment.fontSize}`,
-          fontfile: font.path,
-          rgba: true,
-          text: escapePangoMarkup(line),
-          wrap: "none",
-        },
-      }).metadata();
-
-      if (
-        !metadata.width ||
-        metadata.width + getWallTextOutlineWidth(content) * 2 >= maximumWidth
-      ) {
-        throw new Error(
-          `Wall-of-text line exceeds the measured ${font.name} text width: "${line}"`,
-        );
-      }
-    }
-  }
-}
-
-/**
- * The browser produces the initial semantic layout, but its font engine is
- * not byte-for-byte identical to the packaged renderer font. Reflow the
- * persisted layout with the renderer's own Inter metrics before drawing it,
- * so a one-pixel metrics difference never turns a valid Reel into a failed
- * background job. V3-V5 use the exact same bundled font bytes in both layout
- * stages, so their measured four-to-eight-line layouts are immutable.
- */
-export async function reflowWallTextContentForRenderer(params: {
-  content: WallTextRenderContent;
-  textBox: WallTextNormalizedBox;
-}): Promise<WallTextRenderContent> {
-  const { content, textBox } = params;
-
-  if (
-    !content.finalLayout ||
-    content.finalLayout.version === "wall-text-final-layout-v9" ||
-    content.finalLayout.version === "wall-text-final-layout-v8" ||
-    content.finalLayout.version === "wall-text-final-layout-v3" ||
-    content.finalLayout.version === "wall-text-final-layout-v4" ||
-    content.finalLayout.version === "wall-text-final-layout-v5" ||
-    content.finalLayout.version === "wall-text-final-layout-v6" ||
-    content.finalLayout.version === "wall-text-final-layout-v7"
-  ) {
-    return content;
-  }
-
-  const maximumWidth =
-    Math.round(textBox.width * WALL_TEXT_RENDER_WIDTH) -
-    WALL_TEXT_INLINE_SAFE_PADDING * 2;
-  const maximumHeight = Math.round(textBox.height * WALL_TEXT_RENDER_HEIGHT);
-  const font = await getWallTextFontForContent(content);
-  const fontSizes = getWallTextReflowFontSizes(content.finalLayout.fontSizePx);
-
-  for (const fontSizePx of fontSizes) {
-    const blocks = await Promise.all(
-      content.finalLayout.blocks.map(async (block) => ({
-        lines: await reflowWallTextBlockLines({
-          font,
-          fontSizePx,
-          maximumWidth,
-          text: block.lines.join(" "),
-        }),
-        role: block.role,
-      })),
-    );
-    const lineCount = blocks.reduce((total, block) => total + block.lines.length, 0);
-
-    if (
-      ["wall-text-final-layout-v2", "wall-text-final-layout-v3", "wall-text-final-layout-v4", "wall-text-final-layout-v5", "wall-text-final-layout-v6", "wall-text-final-layout-v7", "wall-text-final-layout-v8", "wall-text-final-layout-v9"].includes(
-        content.finalLayout.version,
-      ) &&
-      (lineCount < 4 || lineCount > 8)
-    ) {
-      continue;
-    }
-
-    const lineHeightPx = Math.round(fontSizePx * 1.1 * 100) / 100;
-    const blockHeight =
-      lineCount * lineHeightPx + Math.max(0, blocks.length - 1) * 18;
-
-    if (blockHeight > maximumHeight) {
-      continue;
-    }
-
-    const finalLayout = {
-      ...content.finalLayout,
-      blocks,
-      fontSizePx,
-      fontWeight: 400 as const,
-      lineHeightPx,
-    };
-
-    return { ...content, finalLayout };
-  }
-
-  throw new Error(
-    "Wall-of-text copy cannot fit the selected placement zone with the renderer font.",
-  );
-}
-
-function getWallTextReflowFontSizes(
-  selectedFontSize: NonNullable<WallTextRenderContent["finalLayout"]>["fontSizePx"],
-) {
-  const supportedFontSizes = [52, 50, 48, 46, 44, 42, 40, 38, 36] as const;
-
-  return supportedFontSizes.filter((fontSize) => fontSize <= selectedFontSize);
-}
-
-async function reflowWallTextBlockLines(params: {
-  font: WallTextRenderFont;
-  fontSizePx: number;
-  maximumWidth: number;
-  text: string;
-}) {
-  const words = params.text.replace(/\s+/gu, " ").trim().split(" ");
-  const lines: string[] = [];
-  let line = "";
-
-  for (const word of words) {
-    const candidate = line ? `${line} ${word}` : word;
-    const candidateWidth = await measureWallTextLineWidth({
-      font: params.font,
-      fontSizePx: params.fontSizePx,
-      text: candidate,
-    });
-
-    if (candidateWidth + WALL_TEXT_OUTLINE_WIDTH * 2 < params.maximumWidth) {
-      line = candidate;
-      continue;
-    }
-
-    if (!line) {
-      throw new Error(
-        `Wall-of-text word exceeds the measured ${params.font.name} text width: "${word}"`,
-      );
-    }
-
-    lines.push(line);
-    line = word;
-  }
-
-  if (line) {
-    lines.push(line);
-  }
-
-  return lines;
-}
-
-async function measureWallTextLineWidth(params: {
-  font: WallTextRenderFont;
-  fontSizePx: number;
-  text: string;
-}) {
-  const metadata = await sharp({
-    text: {
-      dpi: 72,
-      font: `${getPangoFontName(params.font)} ${params.fontSizePx}`,
-      fontfile: params.font.path,
-      rgba: true,
-      text: escapePangoMarkup(params.text),
-      wrap: "none",
-    },
-  }).metadata();
-
-  if (!metadata.width) {
-    throw new Error(
-      `${params.font.name} could not measure Wall-of-text copy for rendering.`,
-    );
-  }
-
-  return metadata.width;
-}
-
-export function assertWallTextTextBoxMatchesPayload(
-  content: WallTextRenderContent,
-  payloadTextBox: WallTextNormalizedBox,
-) {
-  const savedTextBox = content.finalLayout?.textBox;
-
-  if (!savedTextBox) {
-    return;
-  }
-
-  const fields = ["height", "width", "x", "y"] as const;
-  const matches = fields.every(
-    (field) => Math.abs(savedTextBox[field] - payloadTextBox[field]) < 0.000001,
-  );
-
-  if (!matches) {
-    throw new Error(
-      "Wall-of-text final layout text box does not match the render payload.",
-    );
-  }
-}
-
-type WallTextPixelBounds = {
-  bottom: number;
-  left: number;
-  right: number;
-  top: number;
-};
-
-export function assertWallTextOverlayPixelsInsideTextBox(params: {
-  channels: number;
-  height: number;
-  pixels: Buffer;
-  textBox: {
-    height: number;
-    left: number;
-    top: number;
-    width: number;
-  };
-  width: number;
-}) {
-  const bounds = getWallTextPixelBounds(params);
-
-  if (!bounds) {
-    throw new Error("Wall-of-text overlay did not draw any visible pixels.");
-  }
-
-  const innerLeft = params.textBox.left + WALL_TEXT_INLINE_SAFE_PADDING;
-  const innerRight =
-    params.textBox.left + params.textBox.width - WALL_TEXT_INLINE_SAFE_PADDING - 1;
-  const innerTop = params.textBox.top;
-  const innerBottom = params.textBox.top + params.textBox.height - 1;
-
-  // The inner fence itself is not usable text space. A fully transparent
-  // pixel remains between the visible outline/shadow and every fence edge.
-  if (
-    bounds.left <= innerLeft ||
-    bounds.right >= innerRight ||
-    bounds.top <= innerTop ||
-    bounds.bottom >= innerBottom
-  ) {
-    throw new Error(
-      "Wall-of-text overlay crosses the protected inner text fence.",
-    );
-  }
-
-  return bounds;
-}
-
-async function rasterizeWallTextOverlay(params: {
-  overlaySvg: string;
-  textBox: WallTextNormalizedBox;
-}) {
-  const raster = await sharp(Buffer.from(params.overlaySvg))
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-
-  assertWallTextOverlayPixelsInsideTextBox({
-    channels: raster.info.channels,
-    height: raster.info.height,
-    pixels: raster.data,
-    textBox: {
-      height: Math.round(params.textBox.height * WALL_TEXT_RENDER_HEIGHT),
-      left: Math.round(params.textBox.x * WALL_TEXT_RENDER_WIDTH),
-      top: Math.round(params.textBox.y * WALL_TEXT_RENDER_HEIGHT),
-      width: Math.round(params.textBox.width * WALL_TEXT_RENDER_WIDTH),
-    },
-    width: raster.info.width,
-  });
-
-  return sharp(raster.data, {
-    raw: {
-      channels: raster.info.channels,
-      height: raster.info.height,
-      width: raster.info.width,
-    },
-  })
-    .png({ compressionLevel: 9 })
-    .toBuffer();
-}
-
-function getWallTextPixelBounds(params: {
-  channels: number;
-  height: number;
-  pixels: Buffer;
-  width: number;
-}): WallTextPixelBounds | null {
-  if (params.channels < 4) {
-    throw new Error("Wall-of-text overlay must contain an alpha channel.");
-  }
-
-  let left = params.width;
-  let right = -1;
-  let top = params.height;
-  let bottom = -1;
-
-  for (let y = 0; y < params.height; y += 1) {
-    for (let x = 0; x < params.width; x += 1) {
-      const alphaOffset = (y * params.width + x) * params.channels + 3;
-      if (params.pixels[alphaOffset] === 0) {
-        continue;
-      }
-
-      left = Math.min(left, x);
-      right = Math.max(right, x);
-      top = Math.min(top, y);
-      bottom = Math.max(bottom, y);
-    }
-  }
-
-  return right < left || bottom < top ? null : { bottom, left, right, top };
-}
-
-type WallTextRenderFont = {
-  name:
-    | "Avenir Next Demi Bold"
-    | "Arial Bold"
-    | "Arial Regular"
-    | "Inter Regular";
-  path: string;
-};
-
-/**
- * Pango treats words such as "Bold" as style modifiers. The supplied face's
- * full name is "Avenir Next Demi Bold", but its family is "Avenir Next";
- * using the full name makes Pango fall back on some hosts even with fontfile.
- */
-function getPangoFontName(font: WallTextRenderFont) {
-  return font.name === "Avenir Next Demi Bold" ? "Avenir Next" : font.name;
-}
-
-async function getWallTextFontForContent(content: WallTextRenderContent) {
-  return getWallTextFont({
-    family:
-      content.finalLayout?.version === "wall-text-final-layout-v9" ||
-      content.finalLayout?.version === "wall-text-final-layout-v8" ||
-      content.finalLayout?.version === "wall-text-final-layout-v7" ||
-      content.finalLayout?.version === "wall-text-final-layout-v6" ||
-      content.finalLayout?.version === "wall-text-final-layout-v3"
-        ? "ArialBold"
-        : content.finalLayout?.version === "wall-text-final-layout-v4"
-          ? "ArialRegular"
-          : content.finalLayout?.version === "wall-text-final-layout-v5"
-            ? "AvenirNextDemiBold"
-          : "Inter",
-  });
-}
-
-async function getWallTextFont(params: {
-  family: "AvenirNextDemiBold" | "ArialBold" | "ArialRegular" | "Inter";
-}): Promise<WallTextRenderFont> {
-  if (params.family !== "Inter") {
-    const font = params.family === "AvenirNextDemiBold"
-      ? {
-          fileName: "avenir-next-demi-bold.ttf",
-          name: "Avenir Next Demi Bold" as const,
-        }
-      : params.family === "ArialBold"
-        ? { fileName: "arial-bold.ttf", name: "Arial Bold" as const }
-        : { fileName: "arial-regular.ttf", name: "Arial Regular" as const };
-    const candidatePaths = [
-      join(process.cwd(), "assets", "fonts", font.fileName),
-      join(process.cwd(), "worker", "src", "assets", "fonts", font.fileName),
-    ];
-
-    for (const fontPath of candidatePaths) {
-      try {
-        await readFile(fontPath);
-        return { name: font.name, path: fontPath };
-      } catch {
-        // Try the next packaged font path.
-      }
-    }
-
-    throw new Error(
-      `${font.name} is unavailable; refusing to render Wall-of-text with a fallback font.`,
-    );
-  }
-
-  const fontParts = [
-    "node_modules",
-    "@fontsource",
-    "inter",
-    "files",
-    "inter-latin-400-normal.woff2",
-  ];
-  const candidatePaths = [
-    join(process.cwd(), ...fontParts),
-    join(process.cwd(), "..", ...fontParts),
-  ];
-
-  for (const fontPath of candidatePaths) {
-    try {
-      await readFile(fontPath);
-      return { name: "Inter Regular", path: fontPath };
-    } catch {
-      // Try the next packaged font path.
-    }
-  }
-
-  throw new Error(
-    "Inter Regular is unavailable; refusing to render with a fallback font.",
-  );
-}
-
 export function ensureEditOverlayFontRegistered() {
   editOverlayFontRegistrationPromise ??= registerAndVerifyEditOverlayFont();
   return editOverlayFontRegistrationPromise;
@@ -2484,8 +1963,8 @@ async function getEditOverlayFontPath() {
     "geist-sans",
     "Geist-SemiBold.ttf",
   ];
-  const packagedFontPath = join(process.cwd(), ...packagedFontParts);
-  const workspaceFontPath = join(process.cwd(), "..", ...packagedFontParts);
+  const packagedFontPath = join(/* turbopackIgnore: true */ process.cwd(), "node_modules", "geist", "dist", "fonts", "geist-sans", "Geist-SemiBold.ttf");
+  const workspaceFontPath = join(/* turbopackIgnore: true */ process.cwd(), "..", "node_modules", "geist", "dist", "fonts", "geist-sans", "Geist-SemiBold.ttf");
   const candidatePaths =
     process.platform === "win32"
       ? [packagedFontPath, workspaceFontPath]
@@ -2497,7 +1976,7 @@ async function getEditOverlayFontPath() {
 
   for (const fontPath of candidatePaths) {
     try {
-      await readFile(fontPath);
+      await readFile(/* turbopackIgnore: true */ fontPath);
       return fontPath;
     } catch {
       // Try the next packaged or container font path.
@@ -2588,13 +2067,6 @@ function escapeXml(value: string) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&apos;");
-}
-
-function escapePangoMarkup(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
 }
 
 function getTrimDuration(payload: RenderEditVideoPayload) {

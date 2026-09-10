@@ -1,4 +1,4 @@
-import { resolveTextColor } from "./edit-overlay-render-spec.js";
+import { resolveTextColor } from "./edit-overlay-render-spec.ts";
 
 export type WallTextSafeArea = {
   bottom: number;

@@ -5,5 +5,5 @@ import { wallTextPublicationNeedsRetry } from "./wall-text-publication-delivery.
 
 test("a failed Wall publication admission keeps its Cloud Task retryable", () => {
   assert.equal(wallTextPublicationNeedsRetry([{ error: "admission unavailable" }]), true);
-  assert.equal(wallTextPublicationNeedsRetry([{ jobId: "existing-writer" }]), false);
+  assert.equal(wallTextPublicationNeedsRetry([{ error: undefined }]), false);
 });

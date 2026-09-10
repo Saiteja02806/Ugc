@@ -73,6 +73,21 @@ test("Reaction Reels expose text-only editing and show preparation instead of ac
   assert.match(workspace, /activeCandidate\.item\.creative\.textEditState !== "ready"[\s\S]*return false/);
 });
 
+test("keeps original Reaction Reel audio playable in Trending", () => {
+  const reactionCard = workspace.slice(
+    workspace.indexOf("function TrendingReactionDeckCard("),
+    workspace.indexOf("function CarouselDeckCard("),
+  );
+
+  assert.match(reactionCard, /muted=\{!soundEnabled\}/);
+  assert.match(
+    reactionCard,
+    /aria-label=\{soundEnabled \? "Mute Reaction audio" : "Play Reaction audio"\}/,
+  );
+  assert.match(reactionCard, /video\.muted = !nextSoundEnabled/);
+  assert.match(reactionCard, /data-deck-control/);
+});
+
 test("uses two accessible circular decision targets and a compact Edit pill", () => {
   assert.match(actions, /flex items-center justify-center gap-4 sm:gap-5/);
   assert.match(actions, /LAPTOP_AND_DESKTOP_DECISION_BUTTON_CLASS/);
@@ -414,6 +429,10 @@ test("centers a card-sized review frame over visible inert next-card layers", ()
   );
   assert.match(
     workspace,
+    /WALL_TEXT_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(76vw,277px,calc\(\(100dvh-348px\)\*0\.5625\)\)\] min-\[1024px\]:w-\[min\(277px,calc\(\(100dvh-252px\)\*0\.5625\)\)\]"/,
+  );
+  assert.match(
+    workspace,
     /className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-x-clip overflow-y-visible pb-\[107px\] pt-\[94px\]"/,
   );
   assert.match(workspace, /data-trending-review-frame/);
@@ -556,10 +575,18 @@ test("keeps Hook and Wall-of-Text pills close above their video frame", () => {
   );
 });
 
-test("locks Hook, Wall-of-Text, and Reaction Reels to the same responsive 9:16 frame", () => {
+test("locks Wall-of-Text to its approved B card width while preserving responsive 9:16 frames", () => {
   assert.match(
     workspace,
     /VERTICAL_REVIEW_CARD_FRAME_CLASS\s*=\s*\n\s*`\$\{VERTICAL_REVIEW_CARD_WIDTH_CLASS\} aspect-\[9\/16\]`/,
+  );
+  assert.match(
+    workspace,
+    /WALL_TEXT_REVIEW_CARD_FRAME_CLASS\s*=\s*\n\s*`\$\{WALL_TEXT_REVIEW_CARD_WIDTH_CLASS\} aspect-\[9\/16\]`/,
+  );
+  assert.match(
+    workspace,
+    /function getTrendingReviewCardFrameClass\([\s\S]*format === "carousel"[\s\S]*format === "wall_text"[\s\S]*WALL_TEXT_REVIEW_CARD_FRAME_CLASS/,
   );
   assert.equal(
     (workspace.match(/data-trending-vertical-frame/g) ?? []).length,
@@ -567,7 +594,11 @@ test("locks Hook, Wall-of-Text, and Reaction Reels to the same responsive 9:16 f
   );
   assert.equal(
     (workspace.match(/VERTICAL_REVIEW_CARD_FRAME_CLASS,/g) ?? []).length,
-    3,
+    2,
+  );
+  assert.equal(
+    (workspace.match(/WALL_TEXT_REVIEW_CARD_FRAME_CLASS,/g) ?? []).length,
+    1,
   );
   assert.match(
     workspace,

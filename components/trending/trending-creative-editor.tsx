@@ -93,6 +93,8 @@ import {
 } from "@/lib/trending/text-color";
 import {
   getWallTextEditorTypography,
+  getWallTextLetterSpacing,
+  getWallTextReviewCardCappedDimension,
   WALL_TEXT_INLINE_SAFE_PADDING,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
 } from "@/lib/trending/wall-text-visual-style";
@@ -1789,20 +1791,26 @@ function WallTextOverlayText({
 }) {
   const isPendingAuthoritativeLayout = !content.content.finalLayout;
   const typography = getWallTextEditorTypography(content.content);
+  const letterSpacing = getWallTextLetterSpacing(content.content);
+  const previewDimension = getWallTextReviewCardCappedDimension;
 
   return (
     <div
       className="flex flex-col justify-center text-center [paint-order:stroke_fill]"
       style={{
         boxSizing: "border-box",
-        WebkitTextStroke: `${typography.outlineWidth / 10.8}cqw #000`,
+        WebkitTextStroke: `${previewDimension(typography.outlineWidth)} #000`,
         color: content.textColor,
         fontFamily: typography.fontFamily,
-        fontSize: `${typography.fontSize / 10.8}cqw`,
+        fontSize: previewDimension(typography.fontSize),
         fontWeight: typography.fontWeight,
-        letterSpacing: `${-0.2 / 10.8}cqw`,
-        paddingInline: `${WALL_TEXT_INLINE_SAFE_PADDING / 10.8}cqw`,
-        textShadow: `0 0.111111cqw 0.185185cqw rgba(0, 0, 0, ${typography.shadowOpacity})`,
+        letterSpacing:
+          letterSpacing === 0 ? "normal" : previewDimension(letterSpacing),
+        paddingInline: previewDimension(WALL_TEXT_INLINE_SAFE_PADDING),
+        textShadow:
+          typography.shadowOpacity > 0
+            ? `0 ${previewDimension(1.2)} ${previewDimension(2)} rgb(0 0 0 / ${typography.shadowOpacity})`
+            : "none",
         width: `${content.layout.textBox.width * 100}cqw`,
       }}
     >

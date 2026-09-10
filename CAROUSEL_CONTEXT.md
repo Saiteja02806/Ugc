@@ -4343,3 +4343,12 @@ is uncapped while the trial is active; expiry and usage tracking remain enforced
 A NULL free_trial_entitlements.instagram_schedule_limit means uncapped. Positive
 per-user limits remain enforced. Active complimentary Starter/Growth grants supply
 product access separately from Dodo subscriptions and bypass free-trial gates.
+
+## 2026-09-10 Production read recovery and Wall copy repairs
+
+Trial and avatar catalog database clients retry read-only gateway failures twice;
+write requests are never replayed by this policy and access checks still fail closed.
+Wall layout retries carry the rejected draft and measured error, reducing the word
+budget by four per repair down to the existing 24-word minimum. The two-repair
+limit, fixed 52px font, safe area, and incremental acceptance remain unchanged.
+Runtime/font errors propagate as dependency failures instead of copy-fit errors.

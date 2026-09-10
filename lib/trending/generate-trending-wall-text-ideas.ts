@@ -5,7 +5,8 @@ import { zodResponseFormat } from "openai/helpers/zod";
 import { z } from "zod";
 
 import type { WebsiteBusinessAnalysis } from "@/lib/website-analysis/schema";
-import { WALL_TEXT_CONTENT_RETRY_EXHAUSTED } from "@/lib/trending/wall-text-generation-failure";
+import { WALL_TEXT_CONTENT_RETRY_EXHAUSTED, isWallTextRenderFitFailure } from "@/lib/trending/wall-text-generation-failure";
+import { getWallTextRepairBudget } from "./wall-text-repair-budget";
 import {
   createAuthoritativeWallTextContent,
   deriveWallTextSpatialBudget,
@@ -83,6 +84,8 @@ type WriterFailure = {
   avoidOpening?: string;
   candidateIndex: number;
   reason: string;
+  rejectedText?: string;
+  detail?: string;
 };
 
 export type GeneratedBusinessTrendingWallTextIdea = {
@@ -137,9 +140,6 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
       };
     }),
   );
-  const candidateByIndex = new Map(
-    candidates.map((candidate) => [candidate.candidateIndex, candidate]),
-  );
   const business = buildWallTextBusinessContext(params.business);
   const accepted = new Map<number, Awaited<ReturnType<typeof validateCandidate>>>();
   const acceptedSignatures = [...(params.historicalSignatures ?? [])];
@@ -182,7 +182,12 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
           acceptedSignatures.push(result.duplicateSignature);
           newlyAccepted.push(candidate);
         } catch (error) {
+          if (!(error instanceof CandidateValidationError)) throw error;
           const failure = toWriterFailure(candidate.candidateIndex, error);
+          if (failure.reason === "layout_fit") {
+            failure.rejectedText = outputs[0]!.text;
+            failure.detail = error.message;
+          }
           failures.push(failure);
         }
       }
@@ -212,7 +217,12 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
       retryFeedback = new Map(
         failures.map((failure) => [failure.candidateIndex, failure]),
       );
-      pending = failures.map((failure) => candidateByIndex.get(failure.candidateIndex)!);
+      pending = failures.map((failure) => {
+        const candidate = pending.find((entry) => entry.candidateIndex === failure.candidateIndex)!;
+        return failure.reason === "layout_fit"
+          ? { ...candidate, ...getWallTextRepairBudget(candidate) }
+          : candidate;
+      });
     }
 
   }
@@ -360,8 +370,9 @@ async function validateCandidate(params: {
       content: applyWallTextRenderFit(authoritative.content, render),
       duplicateSignature,
     };
-  } catch {
-    throw new CandidateValidationError("layout_fit");
+  } catch (error) {
+    if (!isWallTextRenderFitFailure(error)) throw error;
+    throw new CandidateValidationError("layout_fit", undefined, error instanceof Error ? error.message : undefined);
   }
 }
 
@@ -389,8 +400,9 @@ class CandidateValidationError extends Error {
   constructor(
     readonly reason: string,
     readonly avoidOpening?: string,
+    detail?: string,
   ) {
-    super(reason);
+    super(detail ?? reason);
   }
 }
 

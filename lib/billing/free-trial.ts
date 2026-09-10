@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { gatewayRetryFetch } from "@/lib/supabase/gateway-retry-fetch";
 
 import {
   getActiveComplimentaryPlanGrant,
@@ -88,7 +89,7 @@ export async function getFreeTrialEntitlement(
 
   if (usageResult.error) {
     throw new Error(
-      `Could not load free trial schedule usage: ${usageResult.error.message}`,
+      `Could not load free trial schedule usage (HTTP ${usageResult.status}): ${usageResult.error.message || usageResult.statusText}`,
     );
   }
 
@@ -227,6 +228,7 @@ function getClient(): SupabaseClient {
   }
 
   client ??= createClient(url, key, {
+    global: { fetch: gatewayRetryFetch },
     auth: { autoRefreshToken: false, persistSession: false },
   });
 

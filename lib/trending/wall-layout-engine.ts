@@ -365,7 +365,7 @@ async function wrapMeasuredText(
       WALL_TEXT_OUTLINE_WIDTH * 2;
 
     if (!current && candidateWidth >= maximumWidth) {
-      throw new Error(
+      throw new WallTextLayoutFitError(
         "Wall-of-text contains a word that cannot fit the publishing text box.",
       );
     }

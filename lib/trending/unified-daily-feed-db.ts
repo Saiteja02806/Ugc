@@ -682,7 +682,7 @@ function getFallbackEntitlement(
   planKey: TrendingPlanEntitlement["planKey"],
 ): TrendingPlanEntitlement {
   if (planKey === "free") {
-    return { dailyLimit: 10, displayName: "Free", planKey };
+    return { dailyLimit: 20, displayName: "Free", planKey };
   }
 
   return planKey === "pro"

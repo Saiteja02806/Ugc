@@ -7,6 +7,7 @@ import { shouldPollForSubscriptionActivation } from "@/lib/billing/activation-st
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 
 export type BillingSubscription = {
+  accessSource: "complimentary" | "dodo" | "free";
   billingInterval: "monthly" | "yearly" | null;
   cancelAtPeriodEnd: boolean;
   connectedInstagramAccounts: number;
@@ -20,6 +21,7 @@ export type BillingSubscription = {
   instagramAccounts: number;
   imageGenerationCreditCost: number;
   isActive: boolean;
+  isDodoManaged: boolean;
   planKey: "free" | "starter" | "growth";
   sharedMonthlyCredits: number;
   status:
@@ -38,8 +40,8 @@ export type BillingSubscription = {
     dailyContentPieces: number;
     daysRemaining: number;
     expiresAt: string | null;
-    instagramSchedulesLimit: number;
-    instagramSchedulesRemaining: number;
+    instagramSchedulesLimit: number | null;
+    instagramSchedulesRemaining: number | null;
     instagramSchedulesUsed: number;
     startedAt: string | null;
     status: "active" | "expired" | "unavailable";

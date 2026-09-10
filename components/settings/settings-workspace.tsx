@@ -401,18 +401,22 @@ export function SettingsWorkspace() {
                     </div>
                     <p className="mt-1 text-sm text-muted">
                       {subscription?.isActive
-                        ? `Your ${subscription.displayName} subscription includes ${subscription.dailyContentPieces} daily drops and ${subscription.sharedMonthlyCredits} monthly AI credits.`
+                        ? subscription.accessSource === "complimentary"
+                          ? subscription.isDodoManaged
+                            ? `Your complimentary ${subscription.displayName} access includes ${subscription.dailyContentPieces} daily drops and ${subscription.sharedMonthlyCredits} monthly AI credits. An existing Dodo subscription remains separate and can be managed below.`
+                            : `Your complimentary ${subscription.displayName} access includes ${subscription.dailyContentPieces} daily drops and ${subscription.sharedMonthlyCredits} monthly AI credits. No payment method is attached.`
+                          : `Your ${subscription.displayName} subscription includes ${subscription.dailyContentPieces} daily drops and ${subscription.sharedMonthlyCredits} monthly AI credits.`
                         : subscription?.trial.status === "active" &&
                             subscription.trial.contentDaysRemaining > 0
-                          ? `Your 3-day trial includes 10 daily ready-to-post concepts. You have ${subscription.trial.instagramSchedulesRemaining} of ${subscription.trial.instagramSchedulesLimit} Instagram schedules remaining, including future dates.`
+                          ? `Your 3-day trial includes ${subscription.trial.dailyContentPieces} daily ready-to-post concepts. ${subscription.trial.instagramSchedulesLimit === null ? "Unlimited Instagram scheduling is available until the trial ends." : `You have ${subscription.trial.instagramSchedulesRemaining} of ${subscription.trial.instagramSchedulesLimit} Instagram schedules remaining.`}`
                           : subscription?.trial.status === "active"
-                            ? `Your trial content allowance is used. You still have ${subscription.trial.instagramSchedulesRemaining} of ${subscription.trial.instagramSchedulesLimit} Instagram schedules remaining until the trial ends.`
+                            ? `Your trial content allowance is used. ${subscription.trial.instagramSchedulesLimit === null ? "Unlimited Instagram scheduling remains available until the trial ends." : `You have ${subscription.trial.instagramSchedulesRemaining} of ${subscription.trial.instagramSchedulesLimit} Instagram schedules remaining until the trial ends.`}`
                             : "Your 3-day free trial has ended. Upgrade to generate content or schedule more Instagram posts."}
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2.5">
-                  {subscription?.isActive ? (
+                  {subscription?.isActive && subscription.isDodoManaged ? (
                     <Button
                       type="button"
                       size="lg"
@@ -431,6 +435,13 @@ export function SettingsWorkspace() {
                       )}
                       {isOpeningBilling ? "Opening billing" : "Manage billing"}
                     </Button>
+                  ) : subscription?.isActive ? (
+                    <Badge
+                      variant="outline"
+                      className="w-full justify-center border-primary/30 text-primary sm:w-auto"
+                    >
+                      Complimentary access
+                    </Badge>
                   ) : (
                     <Link
                       href="/pricing"

@@ -3,6 +3,10 @@ import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  getActiveComplimentaryPlanGrant,
+  resolveBillingAccess,
+} from "./complimentary-plan-grants";
+import {
   FREE_TRIAL_CONTENT_DAYS,
   FREE_TRIAL_DAILY_CONTENT_PIECES,
   FREE_TRIAL_INSTAGRAM_SCHEDULE_LIMIT,
@@ -29,8 +33,8 @@ export type FreeTrialEntitlement = {
   dailyContentPieces: number;
   daysRemaining: number;
   expiresAt: string | null;
-  instagramSchedulesLimit: number;
-  instagramSchedulesRemaining: number;
+  instagramSchedulesLimit: number | null;
+  instagramSchedulesRemaining: number | null;
   instagramSchedulesUsed: number;
   startedAt: string | null;
   status: FreeTrialStatus;
@@ -106,10 +110,9 @@ export async function getFreeTrialEntitlement(
   const contentDaysRemaining =
     status === "active" ? Math.max(contentDaysLimit - contentDaysUsed, 0) : 0;
   const usage = Math.max(0, usageResult.count ?? 0);
-  const scheduleLimit = positiveInteger(
-    trial?.instagram_schedule_limit,
-    FREE_TRIAL_INSTAGRAM_SCHEDULE_LIMIT,
-  );
+  const scheduleLimit = trial?.instagram_schedule_limit == null
+    ? FREE_TRIAL_INSTAGRAM_SCHEDULE_LIMIT
+    : positiveInteger(trial.instagram_schedule_limit, 5);
 
   return {
     contentDaysLimit,
@@ -129,7 +132,11 @@ export async function getFreeTrialEntitlement(
     expiresAt: trial?.expires_at ?? null,
     instagramSchedulesLimit: scheduleLimit,
     instagramSchedulesRemaining:
-      status === "active" ? Math.max(scheduleLimit - usage, 0) : 0,
+      status === "active"
+        ? scheduleLimit === null
+          ? null
+          : Math.max(scheduleLimit - usage, 0)
+        : 0,
     instagramSchedulesUsed: usage,
     startedAt: trial?.started_at ?? null,
     status,
@@ -137,7 +144,7 @@ export async function getFreeTrialEntitlement(
 }
 
 export async function assertFreeTrialContentAccess(userId: string) {
-  const activeSubscription = await getActivePaidSubscription(userId);
+  const activeSubscription = await getActiveProductPlanAccess(userId);
 
   if (activeSubscription) {
     return {
@@ -168,7 +175,7 @@ export async function assertFreeTrialContentAccess(userId: string) {
 }
 
 export async function assertFreeTrialInstagramSchedulingAccess(userId: string) {
-  if (await getActivePaidSubscription(userId)) {
+  if (await getActiveProductPlanAccess(userId)) {
     return;
   }
 
@@ -181,9 +188,12 @@ export async function assertFreeTrialInstagramSchedulingAccess(userId: string) {
     );
   }
 
-  if (trial.instagramSchedulesRemaining <= 0) {
+  if (
+    trial.instagramSchedulesRemaining !== null &&
+    trial.instagramSchedulesRemaining <= 0
+  ) {
     throw new FreeTrialAccessError(
-      "Your free trial allows up to 5 Instagram posts in total, including future dates. Upgrade to schedule more.",
+      `Your free trial allows up to ${trial.instagramSchedulesLimit} Instagram posts in total, including future dates. Upgrade to schedule more.`,
       "free_trial_schedule_limit_reached",
     );
   }
@@ -223,23 +233,41 @@ function getClient(): SupabaseClient {
   return client;
 }
 
-async function getActivePaidSubscription(userId: string) {
-  const { data, error } = await getClient()
-    .from("billing_subscriptions")
-    .select("plan_key")
-    .eq("user_id", userId)
-    .eq("status", "active")
-    .limit(1)
-    .maybeSingle();
+async function getActiveProductPlanAccess(userId: string) {
+  const [subscriptionResult, complimentaryGrant] = await Promise.all([
+    getClient()
+      .from("billing_subscriptions")
+      .select("plan_key")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .order("last_event_at", { ascending: false })
+      .limit(10),
+    getActiveComplimentaryPlanGrant(userId),
+  ]);
 
-  if (error) {
-    throw new Error(`Could not load subscription access: ${error.message}`);
+  if (subscriptionResult.error) {
+    throw new Error(
+      `Could not load subscription access: ${subscriptionResult.error.message}`,
+    );
   }
 
-  return data
+  const activeSubscription = (subscriptionResult.data ?? []).find(
+    (subscription) => subscription.plan_key === "growth",
+  ) ?? subscriptionResult.data?.[0] ?? null;
+  const dodoPlanKey =
+    activeSubscription?.plan_key === "growth"
+      ? "growth"
+      : activeSubscription?.plan_key === "starter"
+        ? "starter"
+        : null;
+  const access = resolveBillingAccess({
+    complimentaryPlanKey: complimentaryGrant?.planKey ?? null,
+    dodoPlanKey,
+  });
+
+  return access.accessSource !== "free"
     ? {
-        planKey:
-          data.plan_key === "growth" ? ("growth" as const) : ("starter" as const),
+        planKey: access.planKey,
       }
     : null;
 }

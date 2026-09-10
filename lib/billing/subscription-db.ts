@@ -1,5 +1,10 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import {
+  getActiveComplimentaryPlanGrant,
+  resolveBillingAccess,
+  type BillingAccessSource,
+} from "./complimentary-plan-grants";
 import { ingestDodoUsageEvent } from "@/lib/billing/dodo";
 import {
   getFreeTrialEntitlement,
@@ -32,6 +37,7 @@ export type BillingSubscriptionStatus =
   | "pending";
 
 export type UserSubscriptionInfo = {
+  accessSource: BillingAccessSource;
   billingInterval: "monthly" | "yearly" | null;
   cancelAtPeriodEnd: boolean;
   connectedInstagramAccounts: number;
@@ -45,6 +51,7 @@ export type UserSubscriptionInfo = {
   instagramAccounts: number;
   imageGenerationCreditCost: number;
   isActive: boolean;
+  isDodoManaged: boolean;
   planKey: BillingPlanKey;
   sharedMonthlyCredits: number;
   status: BillingSubscriptionStatus;
@@ -136,6 +143,8 @@ export function resolveSubscriptionEntitlements(
   userId: string,
   updatedAt?: string | null,
   configuredDailyContentPieces?: number | null,
+  accessSource: BillingAccessSource = isActive ? "dodo" : "free",
+  isDodoManaged = accessSource === "dodo",
 ): UserSubscriptionInfo {
   const paidPlan = planKey;
   const sharedMonthlyCredits =
@@ -146,6 +155,7 @@ export function resolveSubscriptionEntitlements(
         : 0;
 
   return {
+    accessSource,
     billingInterval: null,
     cancelAtPeriodEnd: false,
     connectedInstagramAccounts: 0,
@@ -168,6 +178,7 @@ export function resolveSubscriptionEntitlements(
     instagramAccounts: resolveInstagramAccountLimit(paidPlan, isActive),
     imageGenerationCreditCost: getGenerationCreditCost("image"),
     isActive: isActive && paidPlan !== "free",
+    isDodoManaged,
     planKey: paidPlan,
     sharedMonthlyCredits,
     status: paidPlan === "free" ? "free" : isActive ? "active" : "pending",
@@ -199,10 +210,12 @@ export async function getUserSubscription(
 
   const [
     subscriptionResult,
+    activeSubscriptionsResult,
     creditsResult,
     accountsResult,
     entitlementsResult,
     trialResult,
+    complimentaryGrant,
   ] = await Promise.all([
     db
       .from("billing_subscriptions")
@@ -214,8 +227,19 @@ export async function getUserSubscription(
       .limit(1)
       .maybeSingle(),
     db
+      .from("billing_subscriptions")
+      .select(
+        "billing_interval,cancel_at_period_end,current_period_end,current_period_start,last_event_at,plan_key,status",
+      )
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .order("last_event_at", { ascending: false })
+      .limit(10),
+    db
       .from("billing_credit_balances")
-      .select("credit_limit,reserved_credits,used_credits")
+      .select(
+        "credit_limit,period_end,period_start,reserved_credits,used_credits",
+      )
       .eq("user_id", userId)
       .maybeSingle(),
     db
@@ -232,6 +256,7 @@ export async function getUserSubscription(
       console.error("Could not load free trial entitlement:", error);
       return unavailableFreeTrialEntitlement();
     }),
+    getActiveComplimentaryPlanGrant(userId),
   ]);
 
   if (subscriptionResult.error) {
@@ -239,13 +264,39 @@ export async function getUserSubscription(
       `Could not fetch billing subscription for user ${userId}:`,
       subscriptionResult.error.message,
     );
-    return resolveSubscriptionEntitlements("free", false, userId);
   }
 
-  const row = subscriptionResult.data;
-  const planKey = normalizeSubscriptionPlanKey(row?.plan_key);
-  const status = normalizeSubscriptionStatus(row?.status);
-  const isActive = status === "active";
+  if (activeSubscriptionsResult.error) {
+    console.warn(
+      `Could not fetch active billing subscriptions for user ${userId}:`,
+      activeSubscriptionsResult.error.message,
+    );
+  }
+
+  const row = subscriptionResult.data ?? null;
+  const activeDodoRow = (activeSubscriptionsResult.data ?? []).find(
+    (subscription) => subscription.plan_key === "growth",
+  ) ?? activeSubscriptionsResult.data?.[0] ?? null;
+  const activeDodoPlanKey = activeDodoRow
+    ? normalizeSubscriptionPlanKey(activeDodoRow.plan_key)
+    : "free";
+  const dodoPlanKey =
+    activeDodoPlanKey === "starter" || activeDodoPlanKey === "growth"
+      ? activeDodoPlanKey
+      : null;
+  const access = resolveBillingAccess({
+    complimentaryPlanKey: complimentaryGrant?.planKey ?? null,
+    dodoPlanKey,
+  });
+  const planKey =
+    access.accessSource === "free"
+      ? normalizeSubscriptionPlanKey(row?.plan_key)
+      : access.planKey;
+  const status =
+    access.accessSource === "free"
+      ? normalizeSubscriptionStatus(row?.status)
+      : "active";
+  const isActive = access.accessSource !== "free";
   const entitlementPlanKey = getSubscriptionEntitlementPlanKey(
     isActive ? planKey : "free",
   );
@@ -264,34 +315,65 @@ export async function getUserSubscription(
     planKey,
     isActive,
     userId,
-    row?.last_event_at,
+    access.accessSource === "complimentary"
+      ? complimentaryGrant?.updatedAt
+      : activeDodoRow?.last_event_at ?? row?.last_event_at,
     configuredDailyContentPieces,
+    access.accessSource,
+    Boolean(dodoPlanKey),
   );
+  const complimentaryCreditsResult =
+    access.accessSource === "complimentary" && complimentaryGrant
+      ? await db
+          .from("complimentary_plan_credit_balances")
+          .select("credit_limit,period_end,period_start,reserved_credits,used_credits")
+          .eq("grant_id", complimentaryGrant.id)
+          .maybeSingle()
+      : null;
+
+  if (complimentaryCreditsResult?.error) {
+    console.error(
+      `Could not load complimentary credit balance for user ${userId}:`,
+      complimentaryCreditsResult.error.message,
+    );
+  }
+
+  const creditBalance =
+    access.accessSource === "complimentary"
+      ? complimentaryCreditsResult?.data
+      : creditsResult.data;
   const creditLimit = Math.max(
     0,
-    toInteger(creditsResult.data?.credit_limit, base.sharedMonthlyCredits),
+    toInteger(creditBalance?.credit_limit, base.sharedMonthlyCredits),
   );
-  const creditsUsed = Math.max(0, toInteger(creditsResult.data?.used_credits));
+  const creditsUsed = Math.max(0, toInteger(creditBalance?.used_credits));
   const creditsReserved = Math.max(
     0,
-    toInteger(creditsResult.data?.reserved_credits),
+    toInteger(creditBalance?.reserved_credits),
   );
 
   return {
     ...base,
     billingInterval:
-      row?.billing_interval === "monthly" || row?.billing_interval === "yearly"
-        ? row.billing_interval
+      activeDodoRow?.billing_interval === "monthly" ||
+      activeDodoRow?.billing_interval === "yearly"
+        ? activeDodoRow.billing_interval
         : null,
-    cancelAtPeriodEnd: Boolean(row?.cancel_at_period_end),
+    cancelAtPeriodEnd: Boolean(activeDodoRow?.cancel_at_period_end),
     connectedInstagramAccounts: Math.max(0, accountsResult.count ?? 0),
     creditsRemaining: base.isActive
       ? Math.max(creditLimit - creditsUsed - creditsReserved, 0)
       : 0,
     creditsReserved: base.isActive ? creditsReserved : 0,
     creditsUsed: base.isActive ? creditsUsed : 0,
-    currentPeriodEnd: row?.current_period_end ?? null,
-    currentPeriodStart: row?.current_period_start ?? null,
+    currentPeriodEnd:
+      access.accessSource === "complimentary"
+        ? creditBalance?.period_end ?? null
+        : activeDodoRow?.current_period_end ?? row?.current_period_end ?? null,
+    currentPeriodStart:
+      access.accessSource === "complimentary"
+        ? creditBalance?.period_start ?? null
+        : activeDodoRow?.current_period_start ?? row?.current_period_start ?? null,
     dailyContentPieces: base.isActive
       ? base.dailyContentPieces
       : trialResult.dailyContentPieces,

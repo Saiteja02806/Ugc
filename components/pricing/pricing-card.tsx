@@ -43,9 +43,7 @@ export function PricingCard({
         ? currentPlanSlug === plan.slug
         : plan.slug === "free"),
   );
-  const hasManagedSubscription = Boolean(
-    subscription && subscription.status !== "free",
-  );
+  const hasManagedSubscription = Boolean(subscription?.isDodoManaged);
   const ctaHref = `/sign-in?plan=${plan.slug}&billing=${billingInterval}`;
   const ctaText = getCtaText({
     hasPaidSubscription: hasManagedSubscription,

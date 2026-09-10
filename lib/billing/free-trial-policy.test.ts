@@ -9,10 +9,10 @@ import {
   resolveFreeTrialStatus,
 } from "./free-trial-policy.ts";
 
-test("free trial policy has the agreed three-day, ten-piece, five-schedule limits", () => {
+test("free trial policy has the agreed three-day, twenty-piece, uncapped-scheduling policy", () => {
   assert.equal(FREE_TRIAL_CONTENT_DAYS, 3);
-  assert.equal(FREE_TRIAL_DAILY_CONTENT_PIECES, 10);
-  assert.equal(FREE_TRIAL_INSTAGRAM_SCHEDULE_LIMIT, 5);
+  assert.equal(FREE_TRIAL_DAILY_CONTENT_PIECES, 20);
+  assert.equal(FREE_TRIAL_INSTAGRAM_SCHEDULE_LIMIT, null);
 });
 
 test("free trial access is active only before its explicit expiry", () => {

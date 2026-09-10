@@ -208,7 +208,6 @@ function DraftOnboarding({ session, statusUnavailable, userId }: { session: Onbo
     {submitted ? <div className="rounded-2xl border border-border bg-card p-6">
       <h2 className="text-xl font-semibold">Your details are saved</h2>
       <p className="mt-2 text-sm text-muted" role="status">{failed ? "Your setup needs a retry. Your answers are still saved." : draft?.analysisReady ? "Finishing your setup. We'll open Trending when it's ready." : "We're finishing your business analysis. You can safely close this page and come back."}</p>
-      <Button className="mt-5" variant="outline" disabled={busy} onClick={() => void run(async () => { await mutate("edit"); })}>Edit my answers</Button>
     </div> : <form onSubmit={submit} className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-floating lg:overflow-visible">
       <div className="h-1.5 rounded-t-2xl bg-[linear-gradient(90deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))]" aria-hidden="true" />
       {step === 1 && <BusinessInformationStep aiIdeContext={aiIdeContext} copied={copied} error={error} intakeType={intakeType} isSaving={busy}

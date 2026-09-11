@@ -89,21 +89,25 @@ test("the persistent workspace shell preserves the existing route access matrix"
     access: "profile",
     activeKey: "trending",
     defaultSidebarCollapsed: false,
+    showProductUpdatesFooter: false,
   });
   assert.deepEqual(getWorkspaceRouteConfig("/library/demos/demo-1/edit"), {
     access: "profile",
     activeKey: "library",
     defaultSidebarCollapsed: true,
+    showProductUpdatesFooter: true,
   });
   assert.deepEqual(getWorkspaceRouteConfig("/viral"), {
     access: "profile",
     activeKey: "explore",
     defaultSidebarCollapsed: false,
+    showProductUpdatesFooter: true,
   });
   assert.deepEqual(getWorkspaceRouteConfig("/avatars"), {
     access: "none",
     activeKey: "avatars",
     defaultSidebarCollapsed: false,
+    showProductUpdatesFooter: true,
   });
   assert.equal(getWorkspaceRouteConfig("/onboarding"), null);
   assert.equal(getWorkspaceRouteConfig("/sign-in"), null);

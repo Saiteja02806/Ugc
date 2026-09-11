@@ -9,11 +9,12 @@ export type WorkspaceRouteConfig = {
   access: WorkspaceAccessRequirement;
   activeKey: AppSidebarActiveKey;
   defaultSidebarCollapsed: boolean;
+  showProductUpdatesFooter: boolean;
 };
 
 type WorkspaceRouteDefinition = Omit<
   WorkspaceRouteConfig,
-  "defaultSidebarCollapsed"
+  "defaultSidebarCollapsed" | "showProductUpdatesFooter"
 > & {
   prefix: string;
 };
@@ -47,6 +48,7 @@ export function getWorkspaceRouteConfig(
     access: route.access,
     activeKey: route.activeKey,
     defaultSidebarCollapsed: shouldDefaultSidebarToCollapsed(pathname),
+    showProductUpdatesFooter: pathname !== "/dashboard",
   };
 }
 

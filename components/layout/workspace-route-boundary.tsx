@@ -23,6 +23,7 @@ export function WorkspaceRouteBoundary({ children }: { children: ReactNode }) {
       <AppShell
         activeKey={route.activeKey}
         defaultSidebarCollapsed={route.defaultSidebarCollapsed}
+        showProductUpdatesFooter={route.showProductUpdatesFooter}
       >
         {children}
       </AppShell>

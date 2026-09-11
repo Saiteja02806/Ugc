@@ -40,6 +40,7 @@ import { AppScreenshotsSettings } from "@/components/settings/app-screenshots-se
 import { SupportFeedbackSettings } from "@/components/settings/support-feedback-settings";
 import { useTheme } from "@/components/providers/theme-provider";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { LATEST_PRODUCT_UPDATE } from "@/lib/updates/product-updates";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
@@ -69,6 +70,11 @@ const SETTINGS_SECTIONS = [
     icon: Palette,
     id: "preferences",
     label: "Preferences",
+  },
+  {
+    icon: Sparkles,
+    id: "product-updates",
+    label: "Product updates",
   },
   {
     icon: Bug,
@@ -611,6 +617,45 @@ export function SettingsWorkspace() {
                   ? "Theme locked"
                   : `Use ${theme === "light" ? "dark" : "light"} theme`}
               </Button>
+            </div>
+          </SettingsSection>
+          ) : null}
+
+          {activeSection === "product-updates" ? (
+          <SettingsSection
+            id="product-updates"
+            description="Review the latest fixes and improvements to UGC Pilot."
+            icon={<Sparkles className="size-5" aria-hidden="true" />}
+            title="Product updates"
+          >
+            <div className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="success">Latest release</Badge>
+                  <time
+                    dateTime={LATEST_PRODUCT_UPDATE.releasedOn}
+                    className="text-xs font-medium text-muted"
+                  >
+                    Released {LATEST_PRODUCT_UPDATE.releasedOnLabel}
+                  </time>
+                </div>
+                <p className="mt-3 text-sm font-bold text-foreground-strong">
+                  {LATEST_PRODUCT_UPDATE.title}
+                </p>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
+                  {LATEST_PRODUCT_UPDATE.summary}
+                </p>
+              </div>
+              <Link
+                href={`/updates#${LATEST_PRODUCT_UPDATE.id}`}
+                className={buttonVariants({
+                  size: "lg",
+                  variant: "outline",
+                })}
+              >
+                View all updates
+                <ArrowUpRight data-icon="inline-end" aria-hidden="true" />
+              </Link>
             </div>
           </SettingsSection>
           ) : null}

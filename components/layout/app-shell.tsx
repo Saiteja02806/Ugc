@@ -5,6 +5,7 @@ import {
   type AppSidebarActiveKey,
 } from "@/components/layout/app-sidebar";
 import { ProductUpdatesCorner } from "@/components/updates/product-updates-corner";
+import { WorkspaceFooter } from "@/components/layout/workspace-footer";
 
 export function AppShell({
   activeKey,
@@ -21,7 +22,10 @@ export function AppShell({
         activeKey={activeKey}
         defaultCollapsed={defaultSidebarCollapsed}
       />
-      {children}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="min-w-0 flex-1">{children}</div>
+        <WorkspaceFooter />
+      </div>
       <ProductUpdatesCorner />
     </main>
   );

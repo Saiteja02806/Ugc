@@ -28,6 +28,7 @@ const workspaceRoutes: ReadonlyArray<WorkspaceRouteDefinition> = [
   { prefix: "/library", activeKey: "library", access: "profile" },
   { prefix: "/scheduling", activeKey: "scheduling", access: "profile" },
   { prefix: "/settings", activeKey: "settings", access: "profile" },
+  { prefix: "/updates", activeKey: "updates", access: "profile" },
   { prefix: "/avatars", activeKey: "avatars", access: "none" },
 ];
 

@@ -106,10 +106,11 @@ test("the recovery UI explains the Instagram conversion path", () => {
     "utf8",
   );
 
-  assert.match(guideSource, /Creator or Business/);
+  assert.match(guideSource, /Switch to a Creator account/);
   assert.match(guideSource, /Account type and tools/);
   assert.match(guideSource, /Switch to professional account/);
-  assert.match(guideSource, /Professional accounts are public/);
+  assert.match(guideSource, /Creator accounts are public/);
+  assert.doesNotMatch(guideSource, /Creator or Business/);
   assert.match(guideSource, /aria-live="polite"/);
   assert.match(guideSource, /focus-visible:ring-2/);
   assert.match(guideSource, /bg-card/);
@@ -122,5 +123,5 @@ test("the recovery UI explains the Instagram conversion path", () => {
     ),
     "utf8",
   );
-  assert.match(settingsSource, /Professional account required/);
+  assert.match(settingsSource, /Creator account required/);
 });

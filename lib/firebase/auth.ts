@@ -40,6 +40,7 @@ export function clearAuthSessionCookie() {
 }
 
 export type AuthUser = {
+  createdAt: string | null;
   uid: string;
   displayName: string | null;
   email: string | null;
@@ -60,6 +61,7 @@ export class FirebaseAuthActionError extends Error {
 
 export function mapFirebaseUser(user: User): AuthUser {
   return {
+    createdAt: user.metadata.creationTime ?? null,
     uid: user.uid,
     displayName: user.displayName,
     email: user.email,
@@ -349,6 +351,7 @@ function getEditRenderE2ETestUser(): AuthUser | null {
   }
 
   return {
+    createdAt: null,
     displayName: "Edit Render E2E",
     email: "edit-render-e2e@localhost",
     emailVerified: true,

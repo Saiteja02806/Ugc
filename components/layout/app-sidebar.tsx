@@ -4,6 +4,7 @@ import {
   ExternalLink,
   Menu,
   Settings,
+  Sparkles,
   X,
 } from "lucide-react";
 import Image from "next/image";
@@ -36,7 +37,8 @@ export type AppSidebarActiveKey =
   | "avatars"
   | "analytics"
   | "scheduling"
-  | "settings";
+  | "settings"
+  | "updates";
 
 type SidebarItem = {
   href: string;
@@ -231,6 +233,11 @@ export function AppSidebar({
 
         {collapsed ? null : <SidebarPlanCreditsWidget />}
 
+        <ProductUpdatesLink
+          active={activeKey === "updates"}
+          collapsed={collapsed}
+        />
+
         <AccountSection
           active={activeKey === "settings"}
           collapsed={collapsed}
@@ -281,6 +288,8 @@ export function AppSidebar({
             <SidebarDiscordLink collapsed={false} />
 
             <SidebarPlanCreditsWidget />
+
+            <ProductUpdatesLink active={activeKey === "updates"} />
 
             <AccountSection
               active={activeKey === "settings"}
@@ -677,6 +686,68 @@ function SidebarPlanCreditsWidget() {
           {creditsRemaining} / {creditsLimit}
         </span>
       </div>
+    </div>
+  );
+}
+
+function ProductUpdatesLink({
+  active,
+  collapsed = false,
+}: {
+  active: boolean;
+  collapsed?: boolean;
+}) {
+  const tooltipId = useId();
+
+  if (collapsed) {
+    return (
+      <div className="mb-2 flex justify-center">
+        <Link
+          href="/updates"
+          aria-current={active ? "page" : undefined}
+          aria-describedby={tooltipId}
+          aria-label="Product updates"
+          className={cn(
+            "group/updates relative flex size-10 items-center justify-center rounded-control transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
+            active
+              ? "bg-selected text-primary"
+              : "text-muted-subtle hover:bg-card-muted hover:text-foreground-strong",
+          )}
+        >
+          <Sparkles className="size-[19px]" aria-hidden="true" />
+          <span
+            id={tooltipId}
+            role="tooltip"
+            className="pointer-events-none invisible absolute left-full top-1/2 z-[var(--z-tooltip)] ml-3 -translate-y-1/2 whitespace-nowrap rounded-small bg-deep-contrast px-2.5 py-1.5 text-xs font-semibold text-white opacity-0 shadow-floating transition-opacity duration-150 delay-0 group-hover/updates:visible group-hover/updates:opacity-100 group-hover/updates:delay-[160ms] group-focus-visible/updates:visible group-focus-visible/updates:opacity-100 motion-reduce:transition-none"
+          >
+            Product updates
+          </span>
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-2 px-3">
+      <Link
+        href="/updates"
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "group relative flex h-10 w-full items-center gap-3 rounded-control px-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 motion-reduce:transition-none",
+          active
+            ? "bg-selected text-primary"
+            : "text-muted hover:bg-card-muted hover:text-foreground-strong",
+        )}
+      >
+        <Sparkles
+          className={cn(
+            "size-[19px] transition-colors",
+            active ? "text-brand" : "text-muted-subtle group-hover:text-foreground-strong",
+          )}
+          aria-hidden="true"
+        />
+        <span>Product updates</span>
+      </Link>
     </div>
   );
 }

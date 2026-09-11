@@ -4,6 +4,7 @@ import {
   AppSidebar,
   type AppSidebarActiveKey,
 } from "@/components/layout/app-sidebar";
+import { ProductUpdatesCorner } from "@/components/updates/product-updates-corner";
 
 export function AppShell({
   activeKey,
@@ -21,6 +22,7 @@ export function AppShell({
         defaultCollapsed={defaultSidebarCollapsed}
       />
       {children}
+      <ProductUpdatesCorner />
     </main>
   );
 }

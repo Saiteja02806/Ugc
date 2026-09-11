@@ -14,12 +14,12 @@ const INSTAGRAM_PROFESSIONAL_ACCOUNT_STEPS = [
   [
     "3",
     "Switch account type",
-    "Tap Switch to professional account and choose a category.",
+    "Tap Switch to professional account, then select Creator.",
   ],
   [
     "4",
-    "Choose and reconnect",
-    "Select Creator or Business, finish setup, then return and connect again.",
+    "Reconnect UGC Pilot",
+    "Finish the Creator setup, then return and connect again.",
   ],
 ] as const;
 
@@ -30,7 +30,7 @@ export function InstagramProfessionalAccountGuide({
 }) {
   return (
     <section
-      aria-label="Instagram professional account setup"
+      aria-label="Instagram Creator account setup"
       aria-live="polite"
       role="alert"
       className={`overflow-hidden rounded-[var(--radius-control)] border border-border-strong bg-card shadow-sm ${className}`}
@@ -45,14 +45,14 @@ export function InstagramProfessionalAccountGuide({
         </span>
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#9d174d] dark:text-pink-300">
-            One setting to change
+            Creator account required
           </p>
           <h3 className="mt-1 text-base font-bold text-foreground-strong">
-            Switch this Instagram account to professional
+            Switch to a Creator account
           </h3>
           <p className="mt-1 text-sm leading-6 text-muted">
-            UGC Pilot can publish only to Instagram Creator or Business
-            accounts. A personal account cannot be connected for publishing.
+            UGC Pilot needs an Instagram Creator account to publish. A personal
+            account cannot be connected for publishing.
           </p>
         </div>
       </div>
@@ -81,8 +81,8 @@ export function InstagramProfessionalAccountGuide({
         <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="flex max-w-xl items-start gap-2 text-xs leading-5 text-muted">
             <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-            Creator is best for an individual; Business is best for a brand or
-            company. Professional accounts are public.
+            Instagram calls this change “Switch to professional account.”
+            Creator accounts are public.
           </p>
           <a
             href={META_INSTAGRAM_PROFESSIONAL_ACCOUNT_HELP}

@@ -298,7 +298,7 @@ function getOAuthResultErrorMessage(result: SocialOAuthResultMessage) {
     case "eligible_instagram_account_missing":
     case INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR:
       message =
-        "This Instagram profile is not a Creator or Business account yet. Switch it to professional, then try again.";
+        "This Instagram profile is not a Creator account yet. Switch it to a Creator account, then try again.";
       break;
     case "invalid_or_expired_state":
       message = "This connection request expired. Start the connection again.";

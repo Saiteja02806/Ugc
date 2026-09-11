@@ -707,8 +707,8 @@ function getInstagramConnectionViewState(
     return {
       badgeVariant: "destructive",
       description:
-        "Instagram could not verify this profile as a Creator or Business account. Switch it to professional, then reconnect.",
-      label: "Professional account required",
+        "Instagram could not verify this profile as a Creator account. Switch it to a Creator account, then reconnect.",
+      label: "Creator account required",
     };
   }
 

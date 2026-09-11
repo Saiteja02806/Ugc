@@ -163,6 +163,8 @@ export async function generateCarouselBatch(params: {
       creativeSeed: creativeBriefs[slotIndex]!.creativeSeed,
       emotion: creativeBriefs[slotIndex]!.emotion,
       hookFamilyId: generation.hook_family_id ?? "",
+      hookTemplateId: generation.hook_template_id,
+      hookTemplateVersion: generation.hook_template_version,
       planningBrief: creativeBriefs[slotIndex]!.planningBrief,
       slotIndex,
     })),
@@ -336,11 +338,15 @@ async function persistActualBatchAssignment(params: {
     content_format_id: params.plannedItem.actualContentFormatId,
     content_format_version: format.version,
     hook_family_id: params.plannedItem.actualHookFamilyId,
+    hook_template_id: params.plannedItem.actualHookTemplateId,
+    hook_template_version: params.plannedItem.actualHookTemplateVersion,
   });
   await params.store.updateCarouselExperimentAssignment(assignmentId, {
     actual_format_id: params.plannedItem.actualContentFormatId,
     format_version: format.version,
     hook_family_id: params.plannedItem.actualHookFamilyId,
+    hook_template_id: params.plannedItem.actualHookTemplateId,
+    hook_template_version: params.plannedItem.actualHookTemplateVersion,
     replacement_for_format_id: params.plannedItem.replacementForFormatId,
     status: "processing",
   });
@@ -485,12 +491,16 @@ export async function generateCarousel({
         emotion: creativeBrief.emotion,
         goal: generation.goal,
         hookFamilyId: generation.hook_family_id,
+        hookTemplateId: generation.hook_template_id,
+        hookTemplateVersion: generation.hook_template_version,
         planningBrief: creativeBrief.planningBrief,
         recentHistory,
         selectedAngle: generation.selected_angle,
         slideCount: generation.slide_count,
       }));
     const plannedSlides = contentPlan.slides;
+    const abandonedHookTemplate =
+      contentPlan.validationResult.hookTemplateFallbackUsed;
 
     logger.info("Carousel content planning completed", {
       broadSituations: contentPlan.broadSituations,
@@ -517,8 +527,26 @@ export async function generateCarousel({
       content_problem_id: contentPlan.contentStrategy?.problemId ?? null,
       content_topic: contentPlan.contentStrategy?.topic ?? null,
       content_topic_id: contentPlan.contentStrategy?.topicId ?? null,
+      hook_template_id: abandonedHookTemplate
+        ? null
+        : generation.hook_template_id,
+      hook_template_version: abandonedHookTemplate
+        ? null
+        : generation.hook_template_version,
       renderer_version: CAROUSEL_RENDERER_VERSION,
     });
+    if (
+      abandonedHookTemplate &&
+      generation.carousel_experiment_assignment_id
+    ) {
+      await store.updateCarouselExperimentAssignment(
+        generation.carousel_experiment_assignment_id,
+        {
+          hook_template_id: null,
+          hook_template_version: null,
+        },
+      );
+    }
     await assertBusinessProfileVersionIsCurrent({ generation, store });
     const slideImagePlan = buildCarouselSlideImagePlan({
       carouselId,

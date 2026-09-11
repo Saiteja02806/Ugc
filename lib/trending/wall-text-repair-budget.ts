@@ -1,10 +1,14 @@
-import { WALL_TEXT_GENERATION_WORD_RANGE } from "./wall-text-copy-policy.ts";
-
 // Fit failures need a measurably smaller rewrite, not another response at the
-// same target. Keep the product's minimum and the existing two-repair limit.
-export function getWallTextRepairBudget(candidate: {maxWords: number; targetWords: number}) {
+// same target. Keep the candidate's duration-aware minimum and the existing
+// two-repair limit.
+export function getWallTextRepairBudget(candidate: {
+  maxWords: number;
+  minWords?: number;
+  targetWords: number;
+}) {
+  const minimumWords = candidate.minWords ?? 12;
   const maxWords = Math.max(
-    WALL_TEXT_GENERATION_WORD_RANGE.minimum,
+    minimumWords,
     Math.min(candidate.maxWords, candidate.targetWords) - 4,
   );
   return {maxWords, targetWords: maxWords};

@@ -372,8 +372,14 @@ function getOptionalHookAudio(value: Json | undefined) {
     "hookAudio.selectionSource",
   );
 
-  if (selectionSource !== "video_locked") {
-    throw new Error("hookAudio.selectionSource must be video_locked.");
+  if (
+    selectionSource !== "video_locked" &&
+    selectionSource !== "format_preferred" &&
+    selectionSource !== "dynamic"
+  ) {
+    throw new Error(
+      "hookAudio.selectionSource must be video_locked, format_preferred, or dynamic.",
+    );
   }
 
   const durationSeconds = getOptionalNullablePositiveNumber(
@@ -392,7 +398,10 @@ function getOptionalHookAudio(value: Json | undefined) {
     ),
     audioUrl: getHttpUrl(audio.audioUrl, "hookAudio.audioUrl"),
     durationSeconds,
-    selectionSource: "video_locked" as const,
+    selectionSource: selectionSource as
+      | "dynamic"
+      | "format_preferred"
+      | "video_locked",
   };
 }
 

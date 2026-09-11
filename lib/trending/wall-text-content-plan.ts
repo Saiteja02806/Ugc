@@ -1,8 +1,8 @@
 import type { WebsiteBusinessAnalysis } from "@/lib/website-analysis/schema";
 
-export const WALL_TEXT_CONTENT_PLAN_MODEL = "gpt-5-mini";
+export const WALL_TEXT_CONTENT_PLAN_MODEL = "gpt-5.6-luna";
 export const WALL_TEXT_CONTENT_PLAN_PROMPT_VERSION =
-  "wall-text-content-plan-five-context-v6-compact-chunks";
+  "wall-text-content-plan-five-context-v7-luna-scene-cards";
 export const WALL_TEXT_CONTENT_PLAN_TARGET_COUNT = 200;
 export const WALL_TEXT_CONTENT_PLAN_BRIEF_COUNT = 40;
 export const WALL_TEXT_CONTENT_PLAN_ITEMS_PER_BRIEF = 5;

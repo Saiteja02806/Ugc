@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-09-09
+Last updated: 2026-09-11
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -4352,3 +4352,53 @@ Wall layout retries carry the rejected draft and measured error, reducing the wo
 budget by four per repair down to the existing 24-word minimum. The two-repair
 limit, fixed 52px font, safe area, and incremental acceptance remain unchanged.
 Runtime/font errors propagate as dependency failures instead of copy-fit errors.
+
+## 2026-09-11 Structure 1 combined format and optional hook overlay
+
+- The supplied twenty hook structures are a versioned, backend-owned template
+  catalog for Structure 1 Slide 1 only. Compatibility is explicit per content
+  format: preferred mappings are selected before adaptable mappings, and an
+  unmapped format/hook-family pair is valid with no template.
+- Durable rows continue to store normalized IDs rather than a duplicated JSON
+  format: content format, hook family, optional hook-template ID, and template
+  version. At worker runtime those identifiers resolve into one combined
+  six-slide format object. The optional pattern is added only to Slide 1's
+  instruction; Slides 2-6 are copied unchanged from the base format.
+- A hook template is adaptable structural guidance rather than literal final
+  copy. The planner replaces `{topic}` and removes or softens unsupported time,
+  metric, personal-result, or performance claims. An unresolved placeholder or
+  unsupported precise claim is repairable and blocking. A possible semantic
+  disconnect between the cover and Slides 2-6 is recorded as an advisory so it
+  can be monitored without turning subjective wording into a generation stop.
+- Optional overlay data must never make Structure 1 unavailable. Missing,
+  incomplete, unknown, stale-version, format-mismatched, or hook-family-
+  mismatched template data resolves to the selected base format's native Slide
+  1 hook. Required format and hook-family corruption remains an error.
+- `CAROUSEL_HOOK_TEMPLATES_MODE` supports `enabled`, `shadow`, and `off`.
+  Missing or unknown values resolve to `off`, so rollout is explicit. Shadow
+  mode performs and logs selection only, then persists null template fields and
+  sends the native combined format to the worker. Retries reuse the durable
+  assignment and do not reselect it.
+- Structure 2 remains isolated, uses its existing complete story format, and
+  always clears/stores null hook-template fields during takeover and normal
+  generation.
+- An optional overlay cannot be the reason an otherwise usable Structure 1
+  Carousel is lost to repeated Slide 1 overflow. The normal isolated repair
+  first gets one chance to shorten the cover. If the repaired plan's only
+  remaining publishing blockers are measured Slide 1 `render_fit` issues, the
+  worker removes the overlay and makes one narrowly scoped LLM request for a
+  native-format Slide 1. Slides 2-6 and the plan-level communication are frozen
+  and merged back by the worker; the model does not regenerate those chapters.
+  The merged plan must still pass the complete publishing validator. Claim,
+  structure, placeholder, Slides 2-6, and other unrelated failures remain
+  blocking and cannot enter this fallback. No deterministic truncation or
+  authored cover copy is introduced.
+- A successful native overflow fallback records its third raw response and a
+  `hookTemplateFallbackUsed` validation diagnostic, and clears the actual hook
+  template ID/version before persistence so performance is not attributed to a
+  pattern that was abandoned. Planner version
+  `llm-carousel-planner-v40-native-hook-overflow-fallback` identifies this
+  behavior.
+- Database migration: `20260910150000_add_carousel_hook_template_assignments`.
+  The application migration and worker must be released together before
+  explicitly enabling this behavior in production.

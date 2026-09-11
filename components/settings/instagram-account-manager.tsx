@@ -17,6 +17,7 @@ import {
 
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
 import { InstagramAccountAvatar } from "@/components/social/instagram-account-avatar";
+import { InstagramProfessionalAccountGuide } from "@/components/social/instagram-professional-account-guide";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { useSocialOAuthPopup } from "@/components/social/use-social-oauth-popup";
 import {
@@ -44,6 +45,7 @@ import {
   removeAccountSocialConnection,
 } from "@/lib/scheduling/account-data-query";
 import { getConnectionPublishingBlockMessage } from "@/lib/scheduling/social-connection-policy";
+import { INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR } from "@/lib/social/instagram-professional-account";
 import type {
   SocialConnection,
   SocialPlatform,
@@ -147,6 +149,7 @@ export function InstagramAccountManager() {
     connectingIntent,
     connectingPlatform,
     popupError,
+    popupErrorCode,
     startConnection,
   } = useSocialOAuthPopup({
     onPopupClosed: async ({
@@ -331,6 +334,12 @@ export function InstagramAccountManager() {
       : instagramAccountLimit === 3
         ? "Your Starter plan supports up to 3 connected Instagram accounts. Upgrade to Growth to connect up to 5 accounts."
         : "Your Growth plan supports up to 5 connected Instagram accounts. Disconnect an account before adding another.";
+  const hasExistingProfessionalAccountRequirement = connections.some(
+    (connection) => connection.requiresInstagramProfessionalAccount === true,
+  );
+  const showProfessionalAccountGuide =
+    popupErrorCode === INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR ||
+    (!popupError && hasExistingProfessionalAccountRequirement);
 
   return (
     <>
@@ -344,7 +353,11 @@ export function InstagramAccountManager() {
         </div>
       ) : null}
 
-      {popupError ? (
+      {showProfessionalAccountGuide ? (
+        <div className="px-5 pt-5 sm:px-6">
+          <InstagramProfessionalAccountGuide />
+        </div>
+      ) : popupError ? (
         <div className="px-5 pt-5 sm:px-6">
           <Alert variant="destructive" aria-live="polite">
             <AlertCircle aria-hidden="true" />
@@ -690,6 +703,15 @@ async function getRequiredToken() {
 function getInstagramConnectionViewState(
   connection: SocialConnection,
 ): InstagramConnectionViewState {
+  if (connection.requiresInstagramProfessionalAccount) {
+    return {
+      badgeVariant: "destructive",
+      description:
+        "Instagram could not verify this profile as a Creator or Business account. Switch it to professional, then reconnect.",
+      label: "Professional account required",
+    };
+  }
+
   const publishingBlockMessage =
     getConnectionPublishingBlockMessage(connection);
 

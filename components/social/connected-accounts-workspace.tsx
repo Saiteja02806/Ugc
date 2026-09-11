@@ -11,7 +11,9 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import { useSocialOAuthPopup } from "@/components/social/use-social-oauth-popup";
+import { InstagramProfessionalAccountGuide } from "@/components/social/instagram-professional-account-guide";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR } from "@/lib/social/instagram-professional-account";
 import type {
   SocialConnection as Connection,
   SocialPlatform,
@@ -69,6 +71,7 @@ export function ConnectedAccountsWorkspace() {
   const {
     connectingPlatform,
     popupError,
+    popupErrorCode,
     startConnection,
   } = useSocialOAuthPopup({
     onPopupClosed: async ({ platform, previousConnectionUpdatedAt }) => {
@@ -111,6 +114,12 @@ export function ConnectedAccountsWorkspace() {
   });
   const displayedMessage = message;
   const displayedError = error ?? popupError;
+  const hasExistingProfessionalAccountRequirement = connections.some(
+    (connection) => connection.requiresInstagramProfessionalAccount === true,
+  );
+  const showProfessionalAccountGuide =
+    popupErrorCode === INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR ||
+    (!displayedError && hasExistingProfessionalAccountRequirement);
 
   useEffect(() => {
     void loadConnections();
@@ -265,7 +274,9 @@ export function ConnectedAccountsWorkspace() {
           />
         ) : null}
 
-        {displayedError ? (
+        {showProfessionalAccountGuide ? (
+          <InstagramProfessionalAccountGuide className="mt-5" />
+        ) : displayedError ? (
           <StatusNotice tone="error" message={displayedError} className="mt-5" />
         ) : null}
 

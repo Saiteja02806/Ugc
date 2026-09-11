@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR } from "@/lib/social/instagram-professional-account";
 import {
   getProviderForPlatform,
   isSocialOAuthResultMessage,
@@ -57,7 +58,11 @@ export function useSocialOAuthPopup(params?: {
   const [connectingIntent, setConnectingIntent] =
     useState<SocialOAuthIntent | null>(null);
   const [popupError, setPopupError] = useState<string | null>(null);
-  const clearPopupError = useCallback(() => setPopupError(null), []);
+  const [popupErrorCode, setPopupErrorCode] = useState<string | null>(null);
+  const clearPopupError = useCallback(() => {
+    setPopupError(null);
+    setPopupErrorCode(null);
+  }, []);
 
   useEffect(() => {
     onPopupClosedRef.current = params?.onPopupClosed;
@@ -108,8 +113,10 @@ export function useSocialOAuthPopup(params?: {
 
       if (event.data.status === "error") {
         setPopupError(getOAuthResultErrorMessage(event.data));
+        setPopupErrorCode(event.data.errorCode ?? null);
       } else {
         setPopupError(null);
+        setPopupErrorCode(null);
       }
 
       void onResultRef.current?.(event.data);
@@ -135,6 +142,7 @@ export function useSocialOAuthPopup(params?: {
       }
 
       setPopupError(null);
+      setPopupErrorCode(null);
       setConnectingPlatform(input.platform);
       setConnectingConnectionId(input.expectedConnectionId ?? null);
       setConnectingIntent(input.intent ?? "add");
@@ -152,6 +160,7 @@ export function useSocialOAuthPopup(params?: {
         setPopupError(
           "Your browser blocked the connection window. Allow popups for UGC Pilot and try again.",
         );
+        setPopupErrorCode(null);
         return;
       }
 
@@ -225,6 +234,7 @@ export function useSocialOAuthPopup(params?: {
             setPopupError(
               "The connection window was closed before authorization finished.",
             );
+            setPopupErrorCode(null);
           })();
         }, 500);
       } catch (error) {
@@ -239,6 +249,7 @@ export function useSocialOAuthPopup(params?: {
             ? error.message
             : "Could not start the account connection.",
         );
+        setPopupErrorCode(null);
       }
     },
     [clearClosePoll],
@@ -251,6 +262,7 @@ export function useSocialOAuthPopup(params?: {
     connectingIntent,
     connectingPlatform,
     popupError,
+    popupErrorCode,
     startConnection,
   };
 }
@@ -284,8 +296,9 @@ function getOAuthResultErrorMessage(result: SocialOAuthResultMessage) {
       message = `${getPlatformLabel(result.platform)} authorization was cancelled.`;
       break;
     case "eligible_instagram_account_missing":
+    case INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR:
       message =
-        "No eligible Instagram professional account was found. Connect it to a Facebook Page and try again.";
+        "This Instagram profile is not a Creator or Business account yet. Switch it to professional, then try again.";
       break;
     case "invalid_or_expired_state":
       message = "This connection request expired. Start the connection again.";

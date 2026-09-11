@@ -91,7 +91,7 @@ export type RenderScheduleCombinationPayload = {
     audioAssetId: string;
     audioUrl: string;
     durationSeconds: number;
-    selectionSource: "video_locked";
+    selectionSource: "dynamic" | "format_preferred" | "video_locked";
   } | null;
   hookTrimEnd: number | null;
   hookTrimStart: number;
@@ -324,7 +324,7 @@ export async function renderScheduleCombinationToBuffer(
   const workDir = await mkdtemp(join(tmpdir(), "ugc-combine-render-"));
   const hookInputPath = join(workDir, "hook-source-video");
   const hookAudioPath = payload.hookAudio
-    ? join(workDir, "hook-locked-audio")
+    ? join(workDir, "hook-audio")
     : null;
   const demoInputPath = join(workDir, "demo-source-video");
   const hookSegmentPath = join(workDir, "hook-normalized.mp4");
@@ -422,6 +422,12 @@ export async function renderScheduleCombinationToBuffer(
       ],
       label: "schedule combination concat",
       renderId: payload.renderId,
+    });
+
+    await validateRenderedVideoFile(outputPath, payload.renderId, {
+      expectedAudioCodecName: "aac",
+      logLabel: "schedule combination",
+      requireAudio: true,
     });
 
     return await readFile(outputPath);
@@ -1485,9 +1491,15 @@ export function buildScheduleCombinationSegmentArgs({
   }
 
   const auxiliaryAudioInputIndex = preparedTextOverlay ? 2 : 1;
-  const useLockedHookAudio = isHook && Boolean(hookAudioPath);
+  const useHookAudio = isHook && Boolean(hookAudioPath);
 
-  if (useLockedHookAudio) {
+  if (isHook && !hasAudio && !useHookAudio) {
+    throw new Error(
+      "The Hook source is silent and no approved Hook audio was supplied.",
+    );
+  }
+
+  if (useHookAudio) {
     args.push("-i", hookAudioPath as string);
   } else if (!hasAudio) {
     args.push(
@@ -1515,12 +1527,12 @@ export function buildScheduleCombinationSegmentArgs({
 
   args.push(
     "-map",
-    useLockedHookAudio
+    useHookAudio
       ? `${auxiliaryAudioInputIndex}:a:0`
       : hasAudio
         ? "0:a:0"
         : `${auxiliaryAudioInputIndex}:a:0`,
-    ...(useLockedHookAudio
+    ...(useHookAudio
       ? ["-filter:a", `volume=${TRENDING_LIBRARY_AUDIO_RENDER_GAIN}`]
       : []),
     "-c:v",

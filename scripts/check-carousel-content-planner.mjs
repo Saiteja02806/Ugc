@@ -288,13 +288,21 @@ if (
 let livePlan = null;
 let liveStructure2Plans = null;
 
-if (process.argv.includes("--live")) {
+if (
+  process.argv.includes("--live") ||
+  process.argv.includes("--hook-overlay-live")
+) {
   loadEnvFile(path.resolve(workspaceRoot, ".env.local"));
   livePlan = await workerPlanner.buildCarouselContentPlan({
     analysis,
     candidateIndex: 1,
-    contentFormatId: "problem_solution",
+    businessDescription: analysis.productSummary,
+    contentFormatId: "mistakes",
+    creativeSeed: "Three campaign handoff mistakes that create avoidable rework",
+    emotion: "relief",
     hookFamilyId: "problem_recognition",
+    hookTemplateId: "doing_it_wrong",
+    hookTemplateVersion: 1,
     recentHistory: [],
     selectedAngle: "The hidden cost of scattered campaign work",
     slideCount: 6,
@@ -306,30 +314,55 @@ if (process.argv.includes("--live")) {
   if (livePlan.model !== "gpt-4o-mini") {
     failures.push(`Live Structure 1 planner used model ${livePlan.model}.`);
   }
-
-  liveStructure2Plans =
-    await structure2Planner.buildCarouselStructure2StoryPlanBatch({
-      businessDescription: analysis.productSummary,
-      assignments: structure2Formats.CAROUSEL_STRUCTURE_2_FORMAT_IDS
-        .slice(0, 5)
-        .map((storyFormatId, slotIndex) => ({
-          candidateIndex: slotIndex,
-          slotIndex,
-          storyFormatId,
-        })),
-      recentHistory: [],
-    });
-
+  const liveHookCopy = [
+    livePlan.slides[0]?.headline,
+    livePlan.slides[0]?.body,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  if (/\{\s*topic\s*\}|_{3,}/i.test(liveHookCopy)) {
+    failures.push("Live Structure 1 hook retained a template placeholder.");
+  }
   if (
-    liveStructure2Plans.length !== 5 ||
-    liveStructure2Plans.some(
-      (item) =>
-        item.source !== "llm" ||
-        item.model !== "gpt-4o-mini" ||
-        item.validationResult.fallbackUsed,
-    )
+    livePlan.contentStrategy?.contentFormatId !== "mistakes" ||
+    livePlan.contentStrategy?.hookFamilyId !== "problem_recognition" ||
+    livePlan.slides[0]?.formatRole !== "cover_hook" ||
+    livePlan.slides[1]?.formatRole !== "mistake_1" ||
+    livePlan.slides[2]?.formatRole !== "mistake_2" ||
+    livePlan.slides[3]?.formatRole !== "mistake_3" ||
+    livePlan.slides[4]?.formatRole !== "practical_extension" ||
+    livePlan.slides[5]?.formatRole !== "takeaway_cta"
   ) {
-    failures.push("Live Structure 2 planner violated the LLM-only batch contract.");
+    failures.push(
+      "Live Structure 1 hook overlay changed the assigned six-slide mistakes format.",
+    );
+  }
+
+  if (process.argv.includes("--live")) {
+    liveStructure2Plans =
+      await structure2Planner.buildCarouselStructure2StoryPlanBatch({
+        businessDescription: analysis.productSummary,
+        assignments: structure2Formats.CAROUSEL_STRUCTURE_2_FORMAT_IDS
+          .slice(0, 5)
+          .map((storyFormatId, slotIndex) => ({
+            candidateIndex: slotIndex,
+            slotIndex,
+            storyFormatId,
+          })),
+        recentHistory: [],
+      });
+
+    if (
+      liveStructure2Plans.length !== 5 ||
+      liveStructure2Plans.some(
+        (item) =>
+          item.source !== "llm" ||
+          item.model !== "gpt-4o-mini" ||
+          item.validationResult.fallbackUsed,
+      )
+    ) {
+      failures.push("Live Structure 2 planner violated the LLM-only batch contract.");
+    }
   }
 }
 

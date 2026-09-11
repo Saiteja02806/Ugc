@@ -38,6 +38,12 @@ import {
   type SocialPlatform,
   type SocialProvider,
 } from "@/lib/social/types";
+import {
+  INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR,
+  isInstagramProfessionalAccountProviderError,
+  isInstagramProfessionalAccountType,
+  requiresInstagramProfessionalAccount,
+} from "@/lib/social/instagram-professional-account";
 
 type Json = Record<string, unknown>;
 
@@ -1241,6 +1247,15 @@ async function exchangeInstagramCode(
   });
 
   if (!shortResponse.ok || !shortData?.access_token) {
+    if (isInstagramProfessionalAccountProviderError(shortData)) {
+      throw new SocialOAuthError(
+        "Instagram requires a Creator or Business account for publishing.",
+        422,
+        INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR,
+        "exchange_authorization_code",
+      );
+    }
+
     throw new SocialOAuthError(
       "Instagram did not complete the account connection.",
       502,
@@ -1249,11 +1264,10 @@ async function exchangeInstagramCode(
     );
   }
 
-  const longData = await exchangeInstagramLongLivedToken(
+  const tokenData = await exchangeInstagramLongLivedToken(
     shortData.access_token,
     trace,
-  ).catch(() => null);
-  const tokenData = longData?.access_token ? longData : shortData;
+  );
   logSocialOAuthTrace(trace, "normalize_token_permissions", {
     permissionsShape: getSafeValueShape(shortData.permissions),
     scopeShape: getSafeValueShape(shortData.scope),
@@ -1300,6 +1314,15 @@ async function exchangeInstagramLongLivedToken(
   });
 
   if (!response.ok || !data?.access_token) {
+    if (isInstagramProfessionalAccountProviderError(data)) {
+      throw new SocialOAuthError(
+        "Instagram requires a Creator or Business account for publishing.",
+        422,
+        INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR,
+        "exchange_authorization_code",
+      );
+    }
+
     throw new SocialOAuthError(
       "Instagram did not provide a long-lived access token.",
       502,
@@ -1475,22 +1498,28 @@ async function fetchInstagramAccount(
   });
 
   if (!response.ok || !payload?.id) {
-    if (fallbackAccountId) {
-      return {
-        id: fallbackAccountId,
-        metadata: {
-          profileLookupFailed: true,
-          profilePictureSyncedAt: new Date().toISOString(),
-        },
-        name: "Instagram account",
-        username: null,
-      };
+    if (isInstagramProfessionalAccountProviderError(payload)) {
+      throw new SocialOAuthError(
+        "Instagram requires a Creator or Business account for publishing.",
+        422,
+        INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR,
+        "fetch_instagram_profile",
+      );
     }
 
     throw new SocialOAuthError(
       "Could not load the authorized Instagram account.",
       502,
       "account_lookup_failed",
+      "fetch_instagram_profile",
+    );
+  }
+
+  if (!isInstagramProfessionalAccountType(payload.account_type)) {
+    throw new SocialOAuthError(
+      "Instagram requires a Creator or Business account for publishing.",
+      422,
+      INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR,
       "fetch_instagram_profile",
     );
   }
@@ -1877,6 +1906,12 @@ function mapSocialConnection(row: SocialConnectionRow): SocialConnection {
     profilePictureUrl: getInstagramProfilePictureUrl(row.metadata),
     provider: row.provider,
     refreshExpiresAt: row.refresh_expires_at,
+    requiresInstagramProfessionalAccount:
+      row.platform === "instagram" &&
+      requiresInstagramProfessionalAccount({
+        lastErrorCode: row.last_error_code,
+        metadata: row.metadata,
+      }),
     scopes: row.scopes,
     status,
     supportsBackgroundRefresh:
@@ -1892,14 +1927,34 @@ async function hydrateInstagramConnectionProfile(
   row: SocialConnectionRow,
   trace?: SocialOAuthTraceContext,
 ): Promise<SocialConnectionRow> {
+  const professionalAccountRequirementRecorded =
+    row.last_error_code ===
+      INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR ||
+    row.metadata.professionalAccountRequired === true;
+  const storedAccountType = getMetadataString(row.metadata, "accountType");
+  const storedAccountTypeRequiresProfessional =
+    storedAccountType !== null &&
+    !isInstagramProfessionalAccountType(storedAccountType);
+
   if (
     row.platform !== "instagram" ||
-    isInstagramProfileFresh(row.metadata)
+    professionalAccountRequirementRecorded ||
+    (!storedAccountTypeRequiresProfessional &&
+      isInstagramProfileFresh(row.metadata))
   ) {
     return row;
   }
 
   try {
+    if (storedAccountTypeRequiresProfessional) {
+      throw new SocialOAuthError(
+        "Instagram requires a Creator or Business account for publishing.",
+        422,
+        INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR,
+        "fetch_instagram_profile",
+      );
+    }
+
     const account = await fetchInstagramAccount(
       decryptSecret(row.access_token_ciphertext),
       row.platform_account_id,
@@ -1908,6 +1963,8 @@ async function hydrateInstagramConnectionProfile(
     const metadata = {
       ...row.metadata,
       ...account.metadata,
+      professionalAccountRequired: false,
+      profileLookupFailed: false,
     };
     const patch = {
       metadata,
@@ -1935,15 +1992,58 @@ async function hydrateInstagramConnectionProfile(
       ...row,
       ...patch,
     };
-  } catch {
+  } catch (error) {
+    const professionalAccountRequired =
+      (error instanceof SocialOAuthError &&
+        error.code === INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR) ||
+      requiresInstagramProfessionalAccount({
+        lastErrorCode: row.last_error_code,
+        metadata: row.metadata,
+      });
+
     logSocialOAuthTrace(trace, "connected_accounts_api_response", {
       instagramProfileHydrated: false,
+      professionalAccountRequired,
     });
-    return row;
+
+    if (!professionalAccountRequired) {
+      return row;
+    }
+
+    const patch = {
+      last_error_code: INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR,
+      metadata: {
+        ...row.metadata,
+        professionalAccountRequired: true,
+      },
+      status: "error" as const,
+      updated_at: new Date().toISOString(),
+    };
+    const { error: saveError } = await getClient()
+      .from("social_connections")
+      .update(patch)
+      .eq("id", row.id)
+      .eq("user_id", row.user_id);
+
+    if (saveError) {
+      logSocialOAuthTrace(trace, "connected_accounts_api_response", {
+        databaseErrorCode: saveError.code,
+        instagramEligibilitySaved: false,
+      });
+    }
+
+    return {
+      ...row,
+      ...patch,
+    };
   }
 }
 
 function isInstagramProfileFresh(metadata: Json) {
+  if (metadata.profileLookupFailed === true) {
+    return false;
+  }
+
   const syncedAt = getMetadataString(metadata, "profilePictureSyncedAt");
 
   if (!syncedAt) {

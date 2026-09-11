@@ -4,8 +4,8 @@ import sharp from "sharp";
 
 import { getVerifiedWallTextArialBoldFontPath } from "./wall-text-font";
 import {
+  getWallTextGenerationWordBudget,
   WALL_TEXT_GENERATION_WORD_RANGE,
-  WALL_TEXT_TARGET_WORDS,
 } from "./wall-text-copy-policy";
 import { WallTextLayoutFitError } from "./wall-text-generation-failure";
 
@@ -39,6 +39,7 @@ const MINIMUM_BALANCE_IMPROVEMENT = 0.04;
 const measurementCache = new Map<string, number>();
 
 export async function deriveWallTextSpatialBudget(params: {
+  durationSeconds?: number;
   layout: TrendingWallTextLayout;
 }) {
   const lineHeight = WALL_TEXT_FIXED_FONT_SIZE * WALL_TEXT_LINE_HEIGHT_FACTOR;
@@ -66,22 +67,21 @@ export async function deriveWallTextSpatialBudget(params: {
     MINIMUM_WORDS,
     ABSOLUTE_MAXIMUM_WORDS,
   );
-  const maxWords = Math.min(ABSOLUTE_MAXIMUM_WORDS, spatialMaximum);
-  if (maxWords < WALL_TEXT_GENERATION_WORD_RANGE.minimum) {
+  const wordBudget = getWallTextGenerationWordBudget({
+    durationSeconds: params.durationSeconds,
+    spatialMaximum,
+  });
+  if (wordBudget.maximum < WALL_TEXT_GENERATION_WORD_RANGE.minimum) {
     throw new WallTextLayoutFitError(
       `Wall-of-text placement cannot support the current ${WALL_TEXT_GENERATION_WORD_RANGE.minimum}-${WALL_TEXT_GENERATION_WORD_RANGE.maximum}-word contract.`,
     );
   }
-  const targetWords = clamp(
-    WALL_TEXT_TARGET_WORDS,
-    WALL_TEXT_GENERATION_WORD_RANGE.minimum,
-    maxWords,
-  );
 
   return {
-    maxWords,
+    maxWords: wordBudget.maximum,
+    minWords: wordBudget.minimum,
     spatialMaximum,
-    targetWords,
+    targetWords: wordBudget.target,
   };
 }
 

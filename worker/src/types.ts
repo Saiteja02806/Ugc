@@ -554,6 +554,8 @@ export type CarouselGenerationRow = {
   generation_source: "auto_generated" | "manual";
   goal: string | null;
   hook_family_id: string | null;
+  hook_template_id: string | null;
+  hook_template_version: number | null;
   id: string;
   project_id: string;
   renderer_version: string | null;
@@ -774,6 +776,8 @@ export type CarouselGenerationUpdate = Partial<{
   error_message: string | null;
   renderer_version: string | null;
   hook_family_id: string | null;
+  hook_template_id: string | null;
+  hook_template_version: number | null;
   status: CarouselGenerationStatus;
   updated_at: string;
 }>;
@@ -814,6 +818,8 @@ export type CarouselExperimentAssignmentRow = {
   experiment_batch_id: string;
   format_version: number;
   hook_family_id: string | null;
+  hook_template_id: string | null;
+  hook_template_version: number | null;
   id: string;
   replacement_for_format_id: string | null;
   slot_index: number;
@@ -1007,6 +1013,7 @@ export type ReactionCreativeRow = {
   caption: string;
   content_json: Json;
   duration_seconds: number;
+  generation_origin: "business_generation" | "internal_qa";
   id: string;
   preview_url: string;
   render_error: string | null;
@@ -1032,6 +1039,7 @@ type ReactionGenerationRunRow = {
   brief_payload: Json | null;
   business_profile_id: string;
   business_profile_version: number;
+  generation_origin: "business_generation" | "internal_qa";
   generation_context: Json;
   generation_job_id: string;
   id: string;

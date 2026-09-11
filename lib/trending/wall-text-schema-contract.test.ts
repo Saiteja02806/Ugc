@@ -449,17 +449,21 @@ test("does not retain the superseded multi-pass Wall generator", () => {
   assert.match(generatorSource, /must never use a two-line Hook rule/i); */
 });
 
-test("uses one batched GPT-5 mini Writer request per normal ten-candidate chunk", () => {
-  assert.match(generatorSource, /const DEFAULT_MODEL = "gpt-5-mini"/);
-  assert.match(generatorSource, /reasoning_effort: "low"/);
+test("uses Luna Writer and Reviewer passes for every normal ten-candidate chunk", () => {
+  assert.match(generatorSource, /const DEFAULT_MODEL = "gpt-5\.6-luna"/);
+  assert.match(generatorSource, /const DEFAULT_WRITER_REASONING_EFFORT = "medium"/);
+  assert.match(generatorSource, /const DEFAULT_REVIEW_REASONING_EFFORT = "medium"/);
+  assert.match(generatorSource, /OPENAI_WALL_TEXT_WRITER_REASONING_EFFORT/);
+  assert.match(generatorSource, /OPENAI_WALL_TEXT_REVIEW_MODEL/);
+  assert.match(generatorSource, /OPENAI_WALL_TEXT_REVIEW_REASONING_EFFORT/);
   assert.match(
     generatorSource,
     /const business = buildWallTextBusinessContext\(params\.business\)/,
   );
   assert.equal(
     generatorSource.match(/chat\.completions\.parse/g)?.length,
-    1,
-    "the batch generator must make exactly one AI request",
+    2,
+    "the batch generator must make one Writer and one Reviewer request",
   );
   assert.match(generatorSource, /candidateIndex:[\s\S]+text: z\.string/);
   assert.doesNotMatch(generatorSource, /formatId: EligibleWallTextFormatIdSchema/);
@@ -474,7 +478,10 @@ test("uses one batched GPT-5 mini Writer request per normal ten-candidate chunk"
       generatorSource.indexOf("if (attempt === MAX_WRITER_RETRIES)"),
     "valid candidates must be persisted before a failed candidate exhausts repair",
   );
-  assert.doesNotMatch(generatorSource, /reviewer|embeddings?/i);
+  assert.match(generatorSource, /requestReviewer/);
+  assert.match(generatorSource, /readableWithinClip/);
+  assert.match(generatorSource, /oneCentralThought/);
+  assert.match(generatorSource, /naturalSpokenLanguage/);
   assert.match(
     promptSource,
     /natural continuous Wall-of-Text language[\s\S]+do not insert newline characters/i,
@@ -979,7 +986,7 @@ test("uses packaged Arial Bold glyphs at 700 for new Wall content while retainin
   );
 });
 
-test("keeps the Wall editor save gate aligned with the V13 24-40 word contract", () => {
+test("keeps the Wall editor save gate aligned with the current 12-26 word contract", () => {
   assert.match(editorSource, /wordCount < MIN_CURRENT_GENERATION_WALL_TEXT_WORDS \|\|[\s\S]+wordCount > MAX_CURRENT_GENERATION_WALL_TEXT_WORDS/);
   assert.match(editorSource, /MIN_CURRENT_GENERATION_WALL_TEXT_WORDS\}–\$\{MAX_CURRENT_GENERATION_WALL_TEXT_WORDS\} words and fit the measured 5–8-line layout/);
   assert.match(textLogicSource, /MIN_SHORT_WALL_TEXT_WORDS = 15/);
@@ -1002,31 +1009,24 @@ test("keeps measured finalLayout lines as the current Wall source of truth", () 
   );
 });
 
-test("V13 uses candidate-specific word budgets and measured fit instead of clip-time limits", () => {
-  const currentValidation = textLogicSource.match(
-    /content\.layoutVersion === "wall-text-overlay-v6"[\s\S]+?MAX_CURRENT_GENERATION_WALL_TEXT_WORDS[\s\S]+?\n    return;/,
-  )?.[0] ?? "";
-
+test("uses duration-aware word budgets before measured layout validation", () => {
   assert.match(layoutEngineSource, /deriveWallTextSpatialBudget/);
-  assert.doesNotMatch(layoutEngineSource, /temporalMaximum|durationSeconds\s*\*\s*4\.3/);
-  assert.match(layoutEngineSource, /const maxWords = Math\.min\(ABSOLUTE_MAXIMUM_WORDS, spatialMaximum\)/);
+  assert.match(layoutEngineSource, /durationSeconds\?: number/);
+  assert.match(layoutEngineSource, /getWallTextGenerationWordBudget/);
   assert.match(formatsSource, /preferredWordRange/);
   assert.doesNotMatch(formatsSource, /hardWordRange/);
   assert.match(
     promptSource,
-    /requiredWordRange is the exact allowed range[\s\S]+not clip duration[\s\S]+measured 5-8 line fit/i,
+    /server will verify reading time against clip duration[\s\S]+measured 5-8 line fit/i,
   );
-  assert.doesNotMatch(promptSource, /CODE-DERIVED READABILITY BUDGETS/);
-  assert.doesNotMatch(generatorSource, /targetWords\s*-\s*4/);
-  assert.match(currentValidation, /MIN_CURRENT_GENERATION_WALL_TEXT_WORDS[\s\S]+MAX_CURRENT_GENERATION_WALL_TEXT_WORDS/);
-  assert.doesNotMatch(
-    currentValidation,
-    /durationSeconds\s*\*|estimateWallTextReadingSeconds|longer than the/,
-  );
+  assert.match(generatorSource, /WALL_TEXT_READING_WORDS_PER_SECOND/);
+  assert.match(generatorSource, /WALL_TEXT_READING_CUSHION_RATIO/);
+  assert.match(generatorSource, /semicolon_story/);
+  assert.match(feedSource, /durationSeconds: candidate\.durationSeconds/);
   assert.match(feedSource, /promptVersion: WALL_TEXT_PROMPT_VERSION/);
 });
 
-test("V9 fits thirty natural words in the wider measured reading column", () => {
+test("uses a readable duration budget for a compact natural Wall message", () => {
   const loaderPath = new URL(
     "../../scripts/next-server-only-test-loader.mjs",
     import.meta.url,
@@ -1035,7 +1035,7 @@ test("V9 fits thirty natural words in the wider measured reading column", () => 
   const feedLogicUrl = new URL("wall-text-feed-logic.ts", import.meta.url).href;
   const textLogicUrl = new URL("wall-text-text-logic.ts", import.meta.url).href;
   const original =
-    "A full day can seem clear until small tasks use every open gap. When those quiet demands become visible, the next useful choice becomes easier to make without guessing again.";
+    "After a rushed dinner, tracking every ingredient feels like one chore too many.";
   const script = `
     const [engine, feed, logic] = await Promise.all([
       import(${JSON.stringify(engineUrl)}),
@@ -1050,12 +1050,12 @@ test("V9 fits thirty natural words in the wider measured reading column", () => 
     });
     logic.validateWallTextContent(result.content, 6);
     const budget = await engine.deriveWallTextSpatialBudget({
-      formatId: "hidden_cause",
+      durationSeconds: 6,
       layout,
     });
     process.stdout.write(JSON.stringify({ budget, content: result.content }));
   `;
-  assert.equal(original.split(/\s+/u).length, 30);
+  assert.equal(original.split(/\s+/u).length, 13);
   const output = execFileSync(
     process.execPath,
     [
@@ -1070,8 +1070,12 @@ test("V9 fits thirty natural words in the wider measured reading column", () => 
     { encoding: "utf8", stdio: "pipe" },
   );
   const result = JSON.parse(output) as {
+    budget: { maxWords: number; minWords: number; targetWords: number };
     content: { finalLayout: { blocks: Array<{ lines: string[] }> } };
   };
+  assert.equal(result.budget.maxWords, 16);
+  assert.equal(result.budget.minWords, 12);
+  assert.equal(result.budget.targetWords, 14);
   const lines = result.content.finalLayout.blocks.flatMap((block) => block.lines);
   assert.ok(lines.length >= 5 && lines.length <= 8);
   assert.equal(lines.join(" "), original);
@@ -1139,12 +1143,15 @@ test("fixed Wall typography grows lines and rejects overflow without shrinking",
       ],
     });
     const candidates = JSON.parse(generatedPrompt.split('CANDIDATES: REQUIRED WORD RANGES AND ABSOLUTE SAFETY CEILINGS\\n')[1].split('\\n\\nGLOBAL RULES')[0]);
-    assert.deepEqual(candidates[0].requiredWordRange, { minimum: 24, maximum: 40 });
-    assert.equal(candidates[0].targetWords, 24);
-    assert.equal(candidates[0].maxWords, 40);
-    assert.deepEqual(candidates[1].requiredWordRange, { minimum: 24, maximum: 28 });
-    assert.equal(candidates[1].targetWords, 28);
-    assert.equal((await engine.deriveWallTextSpatialBudget({ layout })).targetWords, 32);
+    assert.deepEqual(candidates[0].requiredWordRange, { minimum: 12, maximum: 26 });
+    assert.equal(candidates[0].targetWords, 18);
+    assert.equal(candidates[0].maxWords, 26);
+    assert.deepEqual(candidates[1].requiredWordRange, { minimum: 12, maximum: 26 });
+    assert.equal(candidates[1].targetWords, 26);
+    const durationBudget = await engine.deriveWallTextSpatialBudget({ durationSeconds: 6, layout });
+    assert.equal(durationBudget.minWords, 12);
+    assert.equal(durationBudget.maxWords, 16);
+    assert.equal(durationBudget.targetWords, 14);
   `;
   execFileSync(process.execPath, [
     "--import", loaderPath, "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",

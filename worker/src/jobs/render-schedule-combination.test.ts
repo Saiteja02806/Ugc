@@ -273,9 +273,38 @@ test("rejects an invalid Locked Hook audio contract before rendering", async () 
 
   await assert.rejects(
     runRenderScheduleCombinationJob(job, { store: fixture.store }),
-    /hookAudio.selectionSource must be video_locked/,
+    /hookAudio.selectionSource must be video_locked, format_preferred, or dynamic/,
   );
   assert.deepEqual(fixture.events, []);
+});
+
+test("accepts a dynamically matched Hook audio contract", async () => {
+  const fixture = createStore();
+  const job = createJob(false);
+  (job.input_json as Record<string, unknown>).hookAudio = {
+    audioAssetId: "hook_audio_029",
+    audioUrl: "https://cdn.example.com/dynamic.mp3",
+    durationSeconds: 14.08,
+    selectionSource: "dynamic",
+  };
+
+  await runRenderScheduleCombinationJob(job, {
+    dependencies: {
+      createMediaAssetId: () => MEDIA_ASSET_ID,
+      async renderScheduleCombinationToStorage(payload) {
+        fixture.events.push("render");
+        assert.equal(payload.hookAudio?.selectionSource, "dynamic");
+        return createRenderOutput(payload);
+      },
+    },
+    store: fixture.store,
+  });
+
+  assert.deepEqual(fixture.events, [
+    "render-started",
+    "render",
+    "render-completed",
+  ]);
 });
 
 test("keeps the completed video available when server finalization fails", async () => {

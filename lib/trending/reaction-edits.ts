@@ -18,7 +18,10 @@ async function loadCreative(scope: Scope) {
   if (error) throw new Error(error.message);
   if (!assignment) throw new SchedulingRequestError("This Reaction Reel is no longer available to edit.", 404);
   const result = await client.from("reaction_creatives").select("*")
-    .eq("id", scope.creativeId).eq("user_id", scope.userId).eq("render_status", "preview_ready").maybeSingle();
+    .eq("id", scope.creativeId).eq("user_id", scope.userId)
+    .eq("render_status", "preview_ready")
+    .eq("generation_origin", "business_generation")
+    .maybeSingle();
   if (result.error) throw new Error(result.error.message);
   if (!result.data) throw new SchedulingRequestError("This Reaction Reel is no longer available to edit.", 404);
   return result.data;
@@ -48,7 +51,9 @@ export async function loadReactionTextEdit(scope: Scope): Promise<ReactionTextEd
       const content = { ...creative.content_json, userTextEdit: { ...getReactionUserTextEdit(creative.content_json)!, status: "failed" } };
       const { data, error } = await getReactionClient().from("reaction_creatives")
         .update({ content_json: content }).eq("id", creative.id).eq("user_id", scope.userId)
-        .eq("updated_at", creative.updated_at).select("*").maybeSingle();
+        .eq("updated_at", creative.updated_at)
+        .eq("generation_origin", "business_generation")
+        .select("*").maybeSingle();
       if (error) throw new Error(error.message);
       return serialize(scope, data ?? await loadCreative(scope));
     }
@@ -83,7 +88,9 @@ export async function saveReactionTextEdit(scope: Scope & { expectedUpdatedAt: s
           content_json: { ...creative.content_json, userTextEdit: { lines, revision, status: "queued" } },
           render_job_id: job.id,
         }).eq("id", creative.id).eq("user_id", scope.userId)
-        .eq("updated_at", scope.expectedUpdatedAt).select("id").maybeSingle();
+        .eq("updated_at", scope.expectedUpdatedAt)
+        .eq("generation_origin", "business_generation")
+        .select("id").maybeSingle();
       if (error) throw new Error(error.message);
       if (!data) throw new SchedulingRequestError("This Reaction Reel changed in another tab. Reopen Edit and try again.", 409);
     },

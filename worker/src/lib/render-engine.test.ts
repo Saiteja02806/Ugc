@@ -26,6 +26,7 @@ import {
   buildWallTextRenderLayout,
   WALL_TEXT_INLINE_SAFE_PADDING,
 } from "./wall-text-render-spec.js";
+import { HOOK_INLINE_SYMBOL_STROKE_WIDTH } from "./hook-inline-symbols.js";
 
 test("measures Avenir Next through its actual Pango family instead of a host fallback", async () => {
   const candidates = [
@@ -217,6 +218,20 @@ test("applies Hook trim and text only to the opening segment", () => {
   assert.equal(demoArgs.includes("-ss"), false);
   assert.equal(demoArgs.includes("-t"), false);
   assert.equal(demoArgs.includes("-filter_complex"), false);
+
+  assert.throws(
+    () =>
+      buildScheduleCombinationSegmentArgs({
+        hasAudio: false,
+        hookAudioPath: null,
+        inputPath: "silent-hook.mp4",
+        outputPath: "silent-hook-normalized.mp4",
+        payload: { ...payload, hookAudio: null },
+        preparedTextOverlay,
+        segmentLabel: "hook",
+      }),
+    /Hook source is silent and no approved Hook audio was supplied/,
+  );
 });
 
 test("rasterizes the shared overlay plan without distorting the font", async () => {
@@ -311,7 +326,16 @@ test("rasterizes approved Hook symbols as bundled cross/check icons", async () =
   assert.equal(layout.lines.length, 2);
   assert.match(svg, /data-hook-inline-symbol="cross"/);
   assert.match(svg, /data-hook-inline-symbol="check"/);
-  assert.match(svg, /stroke-width="5"/);
+  const symbolStrokeWidths = Array.from(
+    svg.matchAll(
+      /<g data-hook-inline-symbol="[^"]+"[^>]*stroke-width="([^"]+)"/gu,
+    ),
+    (match) => match[1],
+  );
+  assert.deepEqual(symbolStrokeWidths, [
+    String(HOOK_INLINE_SYMBOL_STROKE_WIDTH),
+    String(HOOK_INLINE_SYMBOL_STROKE_WIDTH),
+  ]);
   assert.doesNotMatch(svg, /❌|✅|274C|2705/);
 
   const png = await sharp(Buffer.from(svg)).png().toBuffer();

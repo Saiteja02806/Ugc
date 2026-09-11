@@ -19,6 +19,7 @@ export type ReactionCreativeRow = {
   content_json: Record<string, unknown>;
   clip_asset_id: string;
   duration_seconds: number;
+  generation_origin: "business_generation" | "internal_qa";
   id: string;
   preview_url: string;
   primary_reaction: string;
@@ -133,12 +134,13 @@ export async function listActiveTrendingReactionIdeas(params: {
   const { data: creatives, error: creativeError } = await getClient()
     .from("reaction_creatives")
     .select(
-      "id,background_asset_id,caption,clip_asset_id,content_json,duration_seconds,preview_url,primary_reaction,rendered_media_asset_id,thumbnail_url,title",
+      "id,background_asset_id,caption,clip_asset_id,content_json,duration_seconds,generation_origin,preview_url,primary_reaction,rendered_media_asset_id,thumbnail_url,title",
     )
     .eq("user_id", params.userId)
     .eq("business_profile_id", params.businessProfileId)
     .eq("business_profile_version", params.businessProfileVersion)
     .eq("render_status", "preview_ready")
+    .eq("generation_origin", "business_generation")
     .in(
       "id",
       assignments.map((assignment) => assignment.reaction_creative_id),
@@ -213,6 +215,7 @@ export async function getSelectedReadyReactionCreative(params: {
     .eq("id", assignment.reaction_creative_id)
     .eq("user_id", params.userId)
     .eq("render_status", "preview_ready")
+    .eq("generation_origin", "business_generation")
     .maybeSingle();
 
   if (creativeError) {
@@ -271,6 +274,7 @@ export async function recordReactionPresentation(params: {
     .eq("user_id", params.userId)
     .eq("clip_asset_id", params.clipAssetId)
     .eq("render_status", "preview_ready")
+    .eq("generation_origin", "business_generation")
     .maybeSingle();
 
   if (creativeError || !creative) {

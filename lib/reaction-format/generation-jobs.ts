@@ -86,6 +86,7 @@ export async function enqueueTrendingReactionRefill(
       businessProfileId: profile.id,
       businessProfileVersion: profile.profileVersion,
       generationContext: buildReactionGenerationContext(profile),
+      generationOrigin: "business_generation",
       projectId: profile.projectId,
       requestKey,
       requestedCount,
@@ -252,7 +253,7 @@ function buildReactionGenerationContext(profile: BusinessProfileRecord) {
     commonSituations: dedupe([...(analysis.painPoints ?? []), analysis.mainProblem ?? ""]),
     desiredOutcomes: dedupe([...(analysis.valueProps ?? []), analysis.mainPromise ?? ""]),
     pains: dedupe([...(analysis.painPoints ?? []), analysis.productSummary ?? ""]),
-    productName: analysis.businessName ?? null,
+    productName: analysis.businessName?.trim().slice(0, 160) || null,
   };
 }
 
@@ -266,6 +267,7 @@ function isMatchingReactionGenerationJob(
   requestKey: string,
 ) {
   const input = job.input;
+  const expectedContext = buildReactionGenerationContext(profile);
   return (
     job.jobType === REACTION_GENERATION_JOB_TYPE &&
     job.userId === profile.userId &&
@@ -274,8 +276,25 @@ function isMatchingReactionGenerationJob(
       input && typeof input === "object" && !Array.isArray(input) &&
       input.businessProfileId === profile.id &&
       input.businessProfileVersion === profile.profileVersion &&
+      (input.generationOrigin === undefined || input.generationOrigin === "business_generation") &&
+      hasMatchingReactionGenerationContext(input.generationContext, expectedContext) &&
       input.requestKey === requestKey,
     )
+  );
+}
+
+function hasMatchingReactionGenerationContext(
+  value: unknown,
+  expected: ReturnType<typeof buildReactionGenerationContext>,
+) {
+  const input = asRecord(value);
+  return Boolean(
+    input &&
+    JSON.stringify(input.audience) === JSON.stringify(expected.audience) &&
+    JSON.stringify(input.commonSituations) === JSON.stringify(expected.commonSituations) &&
+    JSON.stringify(input.desiredOutcomes) === JSON.stringify(expected.desiredOutcomes) &&
+    JSON.stringify(input.pains) === JSON.stringify(expected.pains) &&
+    (input.productName ?? null) === expected.productName,
   );
 }
 
@@ -289,6 +308,7 @@ function isMatchingReactionCoverageJob(
     job.jobType === REACTION_GENERATION_JOB_TYPE &&
     input?.businessProfileId === profile.id &&
     input.businessProfileVersion === profile.profileVersion &&
+    (input.generationOrigin === undefined || input.generationOrigin === "business_generation") &&
     typeof input.requestKey === "string" &&
     input.requestKey.startsWith(requestPrefix)
   );

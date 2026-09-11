@@ -1,6 +1,24 @@
 # Wall-of-text Context
 
-Last updated: 2026-09-08
+Last updated: 2026-09-11
+
+## 2026-09-11 Luna scene-card, writer, and reviewer pipeline
+
+- New Wall-of-Text planning defaults to **GPT-5.6 Luna / low reasoning**.
+  A five-pair evaluation found the scene-card contract tied at 50/50 compliant
+  ideas for low and medium, while low used materially fewer reasoning tokens.
+- Writing defaults to **GPT-5.6 Luna / medium reasoning**, followed by an
+  independent **GPT-5.6 Luna / medium reasoning** reviewer. The reviewer
+  checks for one concrete daily action, one central thought, natural spoken
+  language, supported claims, and readability during the native clip.
+- The writer receives a duration-aware 12-26-word budget (3.2 words per second
+  with a 15% viewing cushion), uses one or two sentences, and rejects
+  semicolon-linked mini-stories. The fixed measured 5-8-row renderer remains
+  the visual source of truth; it does not insert line breaks into model copy.
+- Configure the six explicit `OPENAI_WALL_TEXT_*` variables in `.env.example`
+  in every app and AI-generation-worker deployment. A repair retry uses medium
+  reasoning by default and can be independently overridden with
+  `OPENAI_WALL_TEXT_WRITER_REPAIR_REASONING_EFFORT`.
 
 ## 2026-09-08 V12 compact reference typography
 

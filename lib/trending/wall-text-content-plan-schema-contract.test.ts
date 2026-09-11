@@ -159,22 +159,27 @@ test("uses five parent fields for five child ideas without prewriting Wall copy"
     planner,
     /Do not write final overlay copy, line breaks, a slide layout, a CTA, a product pitch, or a finished script/i,
   );
+  assert.match(planner, /const DEFAULT_MODEL = "gpt-5\.6-luna"/i);
+  assert.match(planner, /const DEFAULT_REASONING_EFFORT = "low"/i);
+  assert.match(planner, /OPENAI_WALL_TEXT_PLAN_MODEL/);
+  assert.match(planner, /OPENAI_WALL_TEXT_PLAN_REASONING_EFFORT/);
   assert.match(
     planner,
-    /wall-text-content-plan-five-context-v6-compact-chunks/i,
+    /wall-text-content-plan-five-context-v7-luna-scene-cards/i,
   );
+  assert.match(appPlan, /WALL_TEXT_CONTENT_PLAN_MODEL = "gpt-5\.6-luna"/i);
   assert.match(
     appPlan,
-    /wall-text-content-plan-five-context-v6-compact-chunks/i,
+    /wall-text-content-plan-five-context-v7-luna-scene-cards/i,
   );
 });
 
 test("stores a Wall item's exact private context and broad lane", () => {
   assert.match(itemContextMigration, /wall_text_content_plan_items[\s\S]*private_context jsonb/i);
   assert.match(planner, /getWallTextItemConceptLanes/);
-  assert.match(planner, /Every group of five must use five clearly different concrete human situations/i);
+  assert.match(planner, /Every group of five must use five clearly different concrete daily actions or situations/i);
   assert.match(planner, /MAX_SINGLE_IDEA_REPAIR_ATTEMPTS = 3/);
-  assert.match(finalWriter, /assigned concept lane when present/i);
+  assert.match(finalWriter, /conceptLane\?: string/);
 });
 
 test("requires a complete active Wall plan instead of falling back to direct generation", () => {
@@ -303,7 +308,7 @@ test("connects the complete planned Wall flow without exposing private context t
 test("keeps planning context private and removes format pressure from the Wall writer", () => {
   assert.match(
     finalWriter,
-    /use its contentIdea, feeling, all five planningBrief fields, and its assigned concept lane when present as private guidance/i,
+    /select the humanMoment and only one other detail needed for one clear thought/i,
   );
   assert.match(finalWriter, /Do not print field names or treat creativeSeed as finished copy/i);
   assert.match(finalWriter, /Do not force it into a named writing format, template, list, or formula/i);

@@ -22,7 +22,7 @@ import {
   type RenderableScheduleAsset,
 } from "@/lib/scheduling/render-asset-resolution";
 import { isTrustedStorageUrl } from "@/lib/storage/storage";
-import { getLockedHookAudioForVideo } from "@/lib/trending/hook-audio-db";
+import { resolveHookAudioForVideo } from "@/lib/trending/hook-audio-db";
 import {
   attachHookVideoLibraryRenderJob,
   claimHookVideoLibraryRender,
@@ -35,6 +35,7 @@ import type { HookTextLayoutVersion } from "@/lib/trending/hook-text-layout";
 import { resolveTrendingTextColor } from "@/lib/trending/text-color";
 
 const COMBINATION_RENDER_JOB_TYPE = "render_schedule_combination" as const;
+const HOOK_INLINE_SYMBOL_RENDER_VERSION = "hook-inline-symbol-render-v2";
 const videoRatios = new Set<MediaRatio>(["9:16", "1:1", "4:5", "16:9"]);
 type CombinationRenderRatio = "9:16" | "1:1" | "4:5" | "16:9";
 type HookVideoComposition = Awaited<
@@ -103,8 +104,15 @@ export async function queueSavedHookVideoRender(params: {
 
   const hookAudio =
     composition.source.sourceKind === "catalog"
-      ? await getLockedHookAudioForVideo({
+      ? await resolveHookAudioForVideo({
+          draftId: composition.draft.id,
           hookVideoId: composition.source.id,
+          suggestionId: composition.draft.selectedHookId,
+          userId,
+          videoDurationSeconds:
+            composition.draft.trimEnd !== null
+              ? composition.draft.trimEnd - composition.draft.trimStart
+              : composition.source.durationSeconds,
         })
       : null;
 
@@ -138,6 +146,7 @@ export async function queueSavedHookVideoRender(params: {
     hookText: composition.draft.hookText,
     hookTextColor,
     hookTextFontSize: composition.hookRenderSpec.fontSize,
+    hookInlineSymbolRenderVersion: HOOK_INLINE_SYMBOL_RENDER_VERSION,
     hookTextLayoutVersion: composition.hookRenderSpec.version,
     hookTextLines: composition.hookRenderSpec.lines,
     hookTextPosition,
@@ -304,6 +313,7 @@ function createCompositionFingerprint(value: {
   hookText: string;
   hookTextColor: string;
   hookTextFontSize: number | null;
+  hookInlineSymbolRenderVersion: string;
   hookTextLayoutVersion: HookTextLayoutVersion;
   hookTextLines: string[];
   hookTextPosition: { x: number; y: number } | null;

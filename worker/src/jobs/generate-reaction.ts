@@ -58,6 +58,10 @@ export async function runGenerateReactionJob(
   ]);
   const clips = catalog.clips.map(toReactionCatalogClip);
   const backgrounds = catalog.backgrounds.map(toReactionCatalogBackground);
+  const generationContext = parseGenerationContext(run.generation_context);
+  if (!generationContext) {
+    throw new Error("Persisted Reaction generation context is invalid.");
+  }
 
   if (run.brief_payload) {
     await context.store.persistReactionGenerationPlan({
@@ -76,6 +80,7 @@ export async function runGenerateReactionJob(
         clips,
         context,
         historyByClipId,
+        generationContext,
         input,
         job,
         planReactionGeneration: dependencies.planReactionGeneration,
@@ -123,6 +128,7 @@ async function createAndPersistPlan(params: {
   clips: readonly ReactionCatalogClip[];
   context: WorkerJobContext;
   historyByClipId: ReadonlyMap<string, { lastShownAt: string | null; shownCount: number }>;
+  generationContext: ReactionGenerationContext;
   input: ReturnType<typeof parseInput>;
   job: BackgroundJobRow;
   planReactionGeneration: typeof planReactionGeneration;
@@ -137,7 +143,7 @@ async function createAndPersistPlan(params: {
   const plan = await params.planReactionGeneration({
     backgrounds: params.backgrounds,
     clips: params.clips,
-    context: params.input.generationContext,
+    context: params.generationContext,
     historyByClipId: params.historyByClipId,
     jobId: params.job.id,
     requestedCount: params.input.requestedCount,
@@ -242,15 +248,16 @@ function parseInput(job: BackgroundJobRow) {
   const businessProfileVersion = input?.businessProfileVersion;
   const requestedCount = input?.requestedCount;
   const generationContext = parseGenerationContext(input?.generationContext);
+  const generationOrigin = typeof input?.generationOrigin === "string" ? input.generationOrigin : null;
   if (
-    !job.user_id || job.user_id !== userId || !businessProfileId || !projectId || !requestKey ||
+    !job.user_id || job.user_id !== userId || !job.project_id || job.project_id !== projectId || !businessProfileId || !projectId || !requestKey ||
     !Number.isInteger(businessProfileVersion) || typeof businessProfileVersion !== "number" || businessProfileVersion < 1 ||
     !Number.isInteger(requestedCount) || typeof requestedCount !== "number" || requestedCount < 1 || requestedCount > 12 ||
-    !generationContext
+    !generationContext || (generationOrigin !== null && generationOrigin !== "business_generation")
   ) {
     throw new Error("reaction_generation input is invalid.");
   }
-  return { businessProfileId, businessProfileVersion, generationContext, projectId, requestKey, requestedCount, userId };
+  return { businessProfileId, businessProfileVersion, generationContext, generationOrigin, projectId, requestKey, requestedCount, userId };
 }
 
 function parseGenerationContext(value: Json | undefined): ReactionGenerationContext | null {

@@ -35,7 +35,10 @@ import {
 } from "@/lib/scheduling/render-asset-resolution";
 import { isTrustedStorageUrl } from "@/lib/storage/storage";
 import { resolveTrendingTextColor } from "@/lib/trending/text-color";
-import { getLockedHookAudioForVideo } from "@/lib/trending/hook-audio-db";
+import {
+  resolveHookAudioForVideo,
+  type ResolvedHookAudioSelection,
+} from "@/lib/trending/hook-audio-db";
 import {
   HOOK_TEXT_FIXED_FONT_SIZE,
   HOOK_TEXT_LAYOUT_VERSION,
@@ -243,7 +246,7 @@ export async function POST(
   const hookCatalogVideoId =
     getString(metadata.hookCatalogVideoId) ??
     getStringFromValue(getObjectValue(hookAsset.metadata, "avatarAssetId"));
-  let hookAudio = null;
+  let hookAudio: ResolvedHookAudioSelection | null = null;
 
   if (
     hookTextLayoutVersion !== null &&
@@ -287,16 +290,23 @@ export async function POST(
 
   if (hookCatalogVideoId) {
     try {
-      hookAudio = await getLockedHookAudioForVideo({
+      hookAudio = await resolveHookAudioForVideo({
+        draftId: getString(metadata.hookVideoDraftId),
         hookVideoId: hookCatalogVideoId,
+        suggestionId: getString(metadata.selectedHookId),
+        userId,
+        videoDurationSeconds:
+          hookTrimEnd !== null
+            ? hookTrimEnd - hookTrimStart
+            : hookAsset.duration_seconds,
       });
     } catch (error) {
-      console.error("Could not resolve Locked Hook audio:", error);
+      console.error("Could not resolve Hook audio:", error);
       return jsonResponse(
         {
-          code: "locked_hook_audio_unavailable",
+          code: "hook_audio_unavailable",
           message:
-              "The approved sound for this hook clip is unavailable. Review its Locked audio before rendering.",
+              "The approved sound for this hook clip is unavailable. Choose another hook clip before rendering.",
           ok: false,
         },
         409,
@@ -307,7 +317,7 @@ export async function POST(
   if (hookAudio && !isTrustedStorageUrl(hookAudio.audioUrl)) {
     return jsonResponse(
       {
-        code: "locked_hook_audio_untrusted",
+        code: "hook_audio_untrusted",
         message: "The approved Hook sound must use supported app storage.",
         ok: false,
       },

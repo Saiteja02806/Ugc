@@ -115,7 +115,11 @@ test("persists the plan then dispatches one durable render job per Reaction item
   const attachedTaskNames: string[] = [];
   const store = {
     async ensureReactionGenerationRun() {
-      return { brief_payload: {}, id: "run-1" };
+      return {
+        brief_payload: {},
+        generation_context: { audience: [], commonSituations: [], desiredOutcomes: [], pains: [], productName: null },
+        id: "run-1",
+      };
     },
     async listActiveReactionCatalog() {
       return {
@@ -185,6 +189,50 @@ test("persists the plan then dispatches one durable render job per Reaction item
   assert.equal(output.queuedRenderCount, 1);
   assert.deepEqual(deliveries, ["525da1b7-35a6-4964-91a5-41c9641ed512"]);
   assert.deepEqual(attachedTaskNames, ["reaction-render-525da1b7-35a6-4964-91a5-41c9641ed512"]);
+});
+
+test("uses the persisted canonical profile context when planning", async () => {
+  const canonicalContext = {
+    audience: ["Meal logging adults"],
+    commonSituations: ["Logging meals feels tedious"],
+    desiredOutcomes: ["Faster everyday logging"],
+    pains: ["Meal logging feels tedious"],
+    productName: "Canary Meal Logger",
+  };
+  let plannedContext: unknown;
+  const store = {
+    async ensureReactionGenerationRun() {
+      return { brief_payload: null, generation_context: canonicalContext, id: "run-canonical" };
+    },
+    async listActiveReactionCatalog() { return { backgrounds: [], clips: [] }; },
+    async getReactionClipPresentationHistory() { return new Map(); },
+    async getReservedReactionClipIds() { return new Set(); },
+    async persistReactionGenerationPlan() { return []; },
+    async createReactionGenerationRenderJobs() { return []; },
+  } as unknown as SupabaseJobStore;
+
+  await runGenerateReactionJob(createJob(), {
+    checkpoint: async () => undefined,
+    dependencies: {
+      planReactionGeneration: async (params) => {
+        plannedContext = params.context;
+        return {
+          briefPayload: {
+            availability: { availableReactionPalette: [], generationRule: "test", recentlyShownIntents: [] },
+            briefs: [],
+            promptVersion: "test",
+            selectionVersion: "test",
+            shortfallCount: 0,
+          },
+          items: [],
+          shortfallCount: 0,
+        };
+      },
+    },
+    store,
+  });
+
+  assert.deepEqual(plannedContext, canonicalContext);
 });
 
 function createJob(): BackgroundJobRow {

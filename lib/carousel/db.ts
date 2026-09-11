@@ -7,6 +7,11 @@ import {
   type CarouselContentFormatId,
   type CarouselHookFamilyId,
 } from "@/lib/carousel/content-grammar";
+import {
+  isCarouselHookTemplateId,
+  resolveCarouselStructure1CombinedFormat,
+  type CarouselHookTemplateId,
+} from "@/lib/carousel/hook-templates";
 import type {
   CarouselContentAssignment,
   CarouselPerformanceSelectionMode,
@@ -227,6 +232,8 @@ type CarouselGenerationRow = {
   generation_source: "auto_generated" | "manual";
   goal: string | null;
   hook_family_id: string | null;
+  hook_template_id: string | null;
+  hook_template_version: number | null;
   id: string;
   origin_daily_feed_id: string | null;
   project_id: string;
@@ -279,6 +286,8 @@ type CarouselGenerationInsert = {
   generation_source?: "auto_generated" | "manual";
   goal?: string | null;
   hook_family_id?: string | null;
+  hook_template_id?: string | null;
+  hook_template_version?: number | null;
   origin_daily_feed_id?: string | null;
   project_id: string;
   renderer_version?: string | null;
@@ -407,6 +416,8 @@ type CarouselExperimentAssignmentRow = {
   format_selection_multiplier: number;
   format_version: number;
   hook_family_id: string | null;
+  hook_template_id: string | null;
+  hook_template_version: number | null;
   hook_selection_mode: CarouselPerformanceSelectionMode | null;
   hook_selection_multiplier: number | null;
   id: string;
@@ -447,6 +458,8 @@ type CarouselExperimentAssignmentInsert = Partial<
     | "format_selection_multiplier"
     | "format_version"
     | "hook_family_id"
+    | "hook_template_id"
+    | "hook_template_version"
     | "hook_selection_mode"
     | "hook_selection_multiplier"
     | "rotation_candidate_format_id"
@@ -696,6 +709,8 @@ export type CarouselGenerationRecord = {
   generationSource: "auto_generated" | "manual";
   goal: string | null;
   hookFamilyId: CarouselHookFamilyId | null;
+  hookTemplateId: CarouselHookTemplateId | null;
+  hookTemplateVersion: number | null;
   id: string;
   originDailyFeedId: string | null;
   projectId: string;
@@ -836,6 +851,27 @@ function mapGeneration(row: CarouselGenerationRow): CarouselGenerationRecord {
     throw new Error("Carousel generation has an invalid structure id.");
   }
 
+  const contentAssignedFormatId = parseStructureFormatId(
+    row.structure_id,
+    row.content_assigned_format_id,
+  );
+  const contentFormatId = parseStructureFormatId(
+    row.structure_id,
+    row.content_format_id,
+  );
+  const hookFamilyId =
+    row.structure_id === "structure_1" &&
+    isCarouselHookFamilyId(row.hook_family_id)
+      ? row.hook_family_id
+      : null;
+  const hookOverlay = resolveStoredStructure1HookOverlay({
+    contentFormatId,
+    hookFamilyId,
+    hookTemplateId: row.hook_template_id,
+    hookTemplateVersion: row.hook_template_version,
+    structureId: row.structure_id,
+  });
+
   return {
     availableOnLocalDate: row.available_on_local_date,
     businessProfileId: row.business_profile_id,
@@ -846,15 +882,9 @@ function mapGeneration(row: CarouselGenerationRow): CarouselGenerationRecord {
     carouselExperimentBatchId: row.carousel_experiment_batch_id,
     categorySlug: row.category_slug,
     contentAngle: row.content_angle,
-    contentAssignedFormatId: parseStructureFormatId(
-      row.structure_id,
-      row.content_assigned_format_id,
-    ),
+    contentAssignedFormatId,
     contentAudienceId: row.content_audience_id,
-    contentFormatId: parseStructureFormatId(
-      row.structure_id,
-      row.content_format_id,
-    ),
+    contentFormatId,
     contentFormatVersion: row.content_format_version,
     contentGoalId: row.content_goal_id,
     contentGrammarVersion: row.content_grammar_version,
@@ -873,11 +903,9 @@ function mapGeneration(row: CarouselGenerationRow): CarouselGenerationRecord {
     generationBatchId: row.generation_batch_id,
     generationSource: row.generation_source,
     goal: row.goal,
-    hookFamilyId:
-      row.structure_id === "structure_1" &&
-      isCarouselHookFamilyId(row.hook_family_id)
-      ? row.hook_family_id
-      : null,
+    hookFamilyId,
+    hookTemplateId: hookOverlay?.id ?? null,
+    hookTemplateVersion: hookOverlay?.version ?? null,
     id: row.id,
     originDailyFeedId: row.origin_daily_feed_id,
     projectId: row.project_id,
@@ -892,6 +920,33 @@ function mapGeneration(row: CarouselGenerationRow): CarouselGenerationRecord {
     userId: row.user_id,
     websiteAnalysisId: row.website_analysis_id,
   };
+}
+
+function resolveStoredStructure1HookOverlay(params: {
+  contentFormatId: CarouselStructureFormatId | null;
+  hookFamilyId: CarouselHookFamilyId | null;
+  hookTemplateId: string | null;
+  hookTemplateVersion: number | null;
+  structureId: CarouselStructureId;
+}) {
+  if (
+    params.structureId !== "structure_1" ||
+    !isCarouselContentFormatId(params.contentFormatId) ||
+    !params.hookFamilyId
+  ) {
+    return null;
+  }
+
+  try {
+    return resolveCarouselStructure1CombinedFormat({
+      contentFormatId: params.contentFormatId,
+      hookFamilyId: params.hookFamilyId,
+      hookTemplateId: params.hookTemplateId,
+      hookTemplateVersion: params.hookTemplateVersion,
+    }).hookTemplate;
+  } catch {
+    return null;
+  }
 }
 
 function mapSlide(row: CarouselSlideRow): CarouselSlideRecord {
@@ -1295,6 +1350,8 @@ export async function createCarouselGeneration(input: {
       generation_source: input.generationSource,
       goal: input.goal ?? null,
       hook_family_id: assignment.hookFamilyId,
+      hook_template_id: assignment.hookTemplateId,
+      hook_template_version: assignment.hookTemplateVersion,
       origin_daily_feed_id: input.originDailyFeedId ?? null,
       project_id: input.projectId,
       selected_angle: input.selectedAngle ?? null,
@@ -1457,6 +1514,8 @@ export type CarouselExperimentAssignmentRecord = {
   hookFamilyId: CarouselHookFamilyId | null;
   hookSelectionMode: CarouselPerformanceSelectionMode | null;
   hookSelectionMultiplier: number | null;
+  hookTemplateId: CarouselHookTemplateId | null;
+  hookTemplateVersion: number | null;
   id: string;
   rotationCandidateFormatId: CarouselStructureFormatId;
   slotIndex: number;
@@ -1513,6 +1572,8 @@ export async function upsertCarouselExperimentAssignments(params: {
       hook_family_id: normalized.hookFamilyId,
       hook_selection_mode: normalized.hookSelectionMode,
       hook_selection_multiplier: normalized.hookSelectionMultiplier,
+      hook_template_id: normalized.hookTemplateId,
+      hook_template_version: normalized.hookTemplateVersion,
       rotation_candidate_format_id: normalized.rotationCandidateFormatId,
       slot_index: slotIndex,
       status: "reserved" as const,
@@ -1653,6 +1714,31 @@ function mapExperimentAssignment(
       : row.hook_family_id === null &&
         row.hook_selection_mode === null &&
         row.hook_selection_multiplier === null;
+  const effectiveFormatId = actualFormatId ?? assignedFormatId;
+  let combinedFormat: ReturnType<
+    typeof resolveCarouselStructure1CombinedFormat
+  > | null = null;
+
+  if (
+    row.structure_id === "structure_1" &&
+    isCarouselContentFormatId(effectiveFormatId) &&
+    isCarouselHookFamilyId(row.hook_family_id)
+  ) {
+    try {
+      combinedFormat = resolveCarouselStructure1CombinedFormat({
+        contentFormatId: effectiveFormatId,
+        hookFamilyId: row.hook_family_id,
+        hookTemplateId: row.hook_template_id,
+        hookTemplateVersion: row.hook_template_version,
+      });
+    } catch {
+      combinedFormat = null;
+    }
+  }
+  const hookTemplateFieldsAreValid =
+    row.structure_id === "structure_1"
+      ? combinedFormat !== null
+      : row.hook_template_id === null && row.hook_template_version === null;
 
   if (
     assignedFormatId === null ||
@@ -1660,7 +1746,8 @@ function mapExperimentAssignment(
     rotationCandidateFormatId === null ||
     !isCarouselPerformanceSelectionMode(row.format_selection_mode) ||
     !isCarouselStructureId(row.structure_id) ||
-    !hookFieldsAreValid
+    !hookFieldsAreValid ||
+    !hookTemplateFieldsAreValid
   ) {
     throw new Error("Carousel experiment assignment has an invalid grammar id.");
   }
@@ -1678,6 +1765,8 @@ function mapExperimentAssignment(
       : null,
     hookSelectionMode: row.hook_selection_mode,
     hookSelectionMultiplier: row.hook_selection_multiplier,
+    hookTemplateId: combinedFormat?.hookTemplate?.id ?? null,
+    hookTemplateVersion: combinedFormat?.hookTemplate?.version ?? null,
     id: row.id,
     rotationCandidateFormatId,
     slotIndex: row.slot_index,
@@ -1708,6 +1797,8 @@ type NormalizedStructureContentAssignment = {
   hookFamilyId: CarouselHookFamilyId | null;
   hookSelectionMode: CarouselPerformanceSelectionMode | null;
   hookSelectionMultiplier: number | null;
+  hookTemplateId: CarouselHookTemplateId | null;
+  hookTemplateVersion: number | null;
   rotationCandidateFormatId: CarouselStructureFormatId;
   selectorVersion: string;
 };
@@ -1721,6 +1812,13 @@ function normalizeStructureContentAssignment(params: {
       throw new Error("Structure 1 requires a Structure 1 content assignment.");
     }
 
+    const combinedFormat = resolveCarouselStructure1CombinedFormat({
+      contentFormatId: params.assignment.contentFormatId,
+      hookFamilyId: params.assignment.hookFamilyId,
+      hookTemplateId: params.assignment.hookTemplateId,
+      hookTemplateVersion: params.assignment.hookTemplateVersion,
+    });
+
     return {
       actualFormatId: params.assignment.contentFormatId,
       assignedFormatId: params.assignment.assignedContentFormatId,
@@ -1732,6 +1830,8 @@ function normalizeStructureContentAssignment(params: {
       hookFamilyId: params.assignment.hookFamilyId,
       hookSelectionMode: params.assignment.hookSelectionMode,
       hookSelectionMultiplier: params.assignment.hookSelectionMultiplier,
+      hookTemplateId: combinedFormat.hookTemplate?.id ?? null,
+      hookTemplateVersion: combinedFormat.hookTemplate?.version ?? null,
       rotationCandidateFormatId:
         params.assignment.rotationCandidateContentFormatId,
       selectorVersion: params.assignment.selectorVersion,
@@ -1753,6 +1853,8 @@ function normalizeStructureContentAssignment(params: {
     hookFamilyId: null,
     hookSelectionMode: null,
     hookSelectionMultiplier: null,
+    hookTemplateId: null,
+    hookTemplateVersion: null,
     rotationCandidateFormatId:
       params.assignment.rotationCandidateStoryFormatId,
     selectorVersion: params.assignment.selectorVersion,
@@ -1875,6 +1977,8 @@ export async function reserveCarouselContentAssignment(params: {
         params.assignment.historySnapshot as unknown as Json,
       content_selector_version: params.assignment.selectorVersion,
       hook_family_id: params.assignment.hookFamilyId,
+      hook_template_id: params.assignment.hookTemplateId,
+      hook_template_version: params.assignment.hookTemplateVersion,
       updated_at: getNowIso(),
     })
     .eq("id", params.carouselId)
@@ -2653,6 +2757,9 @@ function mapRecentContentSummary(
       : isCarouselHookFamilyId(strategy?.hookFamilyId)
         ? strategy.hookFamilyId
         : null,
+    hookTemplateId: isCarouselHookTemplateId(row.hook_template_id)
+      ? row.hook_template_id
+      : null,
     topic:
       row.content_topic ??
       getJsonString(strategy?.topic) ??

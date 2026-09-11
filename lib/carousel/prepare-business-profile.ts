@@ -26,6 +26,10 @@ import {
   type CarouselContentAssignment,
 } from "@/lib/carousel/content-selector";
 import {
+  resolveCarouselStructure1CombinedFormat,
+} from "@/lib/carousel/hook-templates";
+import { getCarouselHookTemplateMode } from "@/lib/carousel/hook-template-runtime";
+import {
   getCarouselPerformanceSignals,
   getCarouselStructure2PerformanceSignals,
 } from "@/lib/carousel/performance";
@@ -50,7 +54,10 @@ import {
 import { resolveCarouselImageLibraryCategory } from "@/lib/carousel/image-library-category";
 import { DEFAULT_CAROUSEL_RENDER_STYLE } from "@/lib/carousel/render-style";
 import { assertCarouselStructureRuntimeReady } from "@/lib/carousel/structure";
-import { isCarouselContentFormatId } from "@/lib/carousel/content-grammar";
+import {
+  isCarouselContentFormatId,
+  isCarouselHookFamilyId,
+} from "@/lib/carousel/content-grammar";
 import { isCarouselStructure2FormatId } from "@/lib/carousel/structure-2-formats";
 import {
   selectCarouselStructure2ExperimentBatch,
@@ -286,6 +293,8 @@ async function prepareControlledGenerationBatch(params: {
   const topicOptionCount = buildCarouselBusinessContentContext(
     params.businessContext,
   ).topics.length;
+  const hookTemplateMode = getCarouselHookTemplateMode();
+  const hookTemplateContext = JSON.stringify(params.businessContext);
   const [structure1Performance, structure2Performance] = await Promise.all([
     hasStructure1
       ? getCarouselPerformanceSignals({
@@ -311,13 +320,25 @@ async function prepareControlledGenerationBatch(params: {
             performanceSignals: structure2Performance,
             selectionKey: params.profile.id,
           })
-        : selectCarouselExperimentBatch({
-            batchSequence: experimentBatch.structureBatchSequence,
-            history: structure1History,
-            performanceSignals: structure1Performance,
-            selectionKey: params.profile.id,
-            topicOptionCount,
-          });
+        : (() => {
+            const selectedAssignments = selectCarouselExperimentBatch({
+              batchSequence: experimentBatch.structureBatchSequence,
+              history: structure1History,
+              performanceSignals: structure1Performance,
+              selectionKey: params.profile.id,
+              hookTemplateContext,
+              hookTemplatesEnabled: hookTemplateMode !== "off",
+              topicOptionCount,
+            });
+
+            return hookTemplateMode === "enabled"
+              ? selectedAssignments
+              : disableStructure1HookTemplates({
+                  assignments: selectedAssignments,
+                  experimentBatchId: experimentBatch.id,
+                  mode: hookTemplateMode,
+                });
+          })();
     const persistedAssignments = await upsertCarouselExperimentAssignments({
       assignments,
       experimentBatchId: experimentBatch.id,
@@ -487,12 +508,19 @@ function buildPersistedStructure1Assignment(params: {
     !isCarouselContentFormatId(assignedFormatId) ||
     !isCarouselContentFormatId(actualFormatId) ||
     !isCarouselContentFormatId(rotationCandidateFormatId) ||
-    !params.persistedAssignment.hookFamilyId ||
+    !isCarouselHookFamilyId(params.persistedAssignment.hookFamilyId) ||
     !params.persistedAssignment.hookSelectionMode ||
     params.persistedAssignment.hookSelectionMultiplier === null
   ) {
     throw new Error("Persisted Structure 1 assignment is invalid.");
   }
+
+  const combinedFormat = resolveCarouselStructure1CombinedFormat({
+    contentFormatId: actualFormatId,
+    hookFamilyId: params.persistedAssignment.hookFamilyId,
+    hookTemplateId: params.persistedAssignment.hookTemplateId,
+    hookTemplateVersion: params.persistedAssignment.hookTemplateVersion,
+  });
 
   return {
     ...params.assignment,
@@ -506,9 +534,46 @@ function buildPersistedStructure1Assignment(params: {
     hookSelectionMode: params.persistedAssignment.hookSelectionMode,
     hookSelectionMultiplier:
       params.persistedAssignment.hookSelectionMultiplier,
+    hookTemplateId: combinedFormat.hookTemplate?.id ?? null,
+    hookTemplateVersion: combinedFormat.hookTemplate?.version ?? null,
     rotationCandidateContentFormatId:
       rotationCandidateFormatId,
   };
+}
+
+function disableStructure1HookTemplates(params: {
+  assignments: CarouselContentAssignment[];
+  experimentBatchId: string;
+  mode: "off" | "shadow";
+}) {
+  if (params.mode === "shadow") {
+    console.info("Carousel hook templates shadow selection", {
+      experimentBatchId: params.experimentBatchId,
+      selections: params.assignments.map((assignment) => {
+        const combinedFormat = resolveCarouselStructure1CombinedFormat({
+          contentFormatId: assignment.contentFormatId,
+          hookFamilyId: assignment.hookFamilyId,
+          hookTemplateId: assignment.hookTemplateId,
+          hookTemplateVersion: assignment.hookTemplateVersion,
+        });
+
+        return {
+          combinedFormatId: combinedFormat.combinedFormatId,
+          contentFormatId: assignment.contentFormatId,
+          hookFamilyId: assignment.hookFamilyId,
+          hookTemplateFit: combinedFormat.hookTemplateFit,
+          hookTemplateId: combinedFormat.hookTemplate?.id ?? null,
+          source: combinedFormat.hookTemplate ? "template" : "format_native",
+        };
+      }),
+    });
+  }
+
+  return params.assignments.map((assignment) => ({
+    ...assignment,
+    hookTemplateId: null,
+    hookTemplateVersion: null,
+  }));
 }
 
 function buildPersistedStructure2Assignment(params: {

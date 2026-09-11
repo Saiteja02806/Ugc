@@ -118,11 +118,14 @@ test("provides guarded lookup and dry-run-first configuration", () => {
   assert.match(command, /assertRemoteAssetAvailable/u);
 });
 
-test("carries per-video Locked audio into the Hook render only", () => {
+test("carries resolved Locked or matched audio into the Hook render only", () => {
   assert.match(scheduleDraftRoute, /hookCatalogVideoId/u);
-  assert.match(scheduleRoute, /getLockedHookAudioForVideo/u);
+  assert.match(scheduleRoute, /resolveHookAudioForVideo/u);
+  assert.match(databaseAccess, /getLockedHookAudioForVideo/u);
+  assert.match(databaseAccess, /selectHookAudio/u);
   assert.match(scheduleRoute, /hookAudioAssetId: hookAudio\?\.audioAssetId/u);
   assert.match(workerRender, /downloadAudioToBuffer\(payload\.hookAudio\.audioUrl/u);
-  assert.match(workerRender, /useLockedHookAudio/u);
+  assert.match(workerRender, /useHookAudio/u);
   assert.match(workerRender, /segmentLabel === "hook"/u);
+  assert.match(workerRender, /Hook source is silent and no approved Hook audio was supplied/u);
 });

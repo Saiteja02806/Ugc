@@ -4,6 +4,7 @@ import { CircleCheck, CircleX } from "lucide-react";
 import { Fragment } from "react";
 
 import {
+  HOOK_INLINE_SYMBOL_STROKE_WIDTH,
   tokenizeHookInlineSymbols,
   type HookInlineSymbol,
 } from "@/lib/trending/hook-inline-symbols";
@@ -53,7 +54,7 @@ function HookInlineSymbolIcon({ name }: { name: HookInlineSymbol }) {
       <Icon
         aria-hidden="true"
         className={name === "check" ? "text-emerald-300" : "text-rose-300"}
-        strokeWidth={2.8}
+        strokeWidth={HOOK_INLINE_SYMBOL_STROKE_WIDTH}
         style={{ height: "0.96em", width: "0.96em" }}
       />
     </span>

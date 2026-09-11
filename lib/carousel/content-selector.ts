@@ -7,10 +7,17 @@ import {
   type CarouselContentFormatId,
   type CarouselHookFamilyId,
 } from "./content-grammar.ts";
+import {
+  getCarouselHookTemplate,
+  getCarouselHookTemplateFit,
+  getCompatibleCarouselHookTemplates,
+  isCarouselHookTemplateId,
+  type CarouselHookTemplateId,
+} from "./hook-templates.ts";
 import type { CarouselPerformanceSignals } from "./performance-logic.ts";
 
 export const CAROUSEL_CONTENT_SELECTOR_VERSION =
-  "carousel-content-selector-v3-bounded-performance-learning";
+  "carousel-content-selector-v5-combined-hook-overlay";
 export const CAROUSEL_EXPERIMENT_BATCH_SIZE = 5;
 const FORMAT_GROUP_COUNT = 3;
 const FORMAT_EXPLORATION_SLOTS_PER_BATCH = 1;
@@ -27,6 +34,7 @@ export type CarouselRecentContentSummary = {
   contentFormatId: CarouselContentFormatId | null;
   hook: string | null;
   hookFamilyId: CarouselHookFamilyId | null;
+  hookTemplateId?: CarouselHookTemplateId | null;
   topic: string | null;
   topicId: string | null;
 };
@@ -42,6 +50,8 @@ export type CarouselContentAssignment = {
   hookFamilyId: CarouselHookFamilyId;
   hookSelectionMode: CarouselPerformanceSelectionMode;
   hookSelectionMultiplier: number;
+  hookTemplateId: CarouselHookTemplateId | null;
+  hookTemplateVersion: number | null;
   rotationCandidateContentFormatId: CarouselContentFormatId;
   selectorVersion: string;
 };
@@ -56,6 +66,8 @@ export function selectCarouselExperimentBatch(params: {
   performanceSignals?: CarouselPerformanceSignals;
   reserved?: ReadonlyMap<number, Partial<CarouselContentAssignment>>;
   selectionKey?: string;
+  hookTemplateContext?: string | null;
+  hookTemplatesEnabled?: boolean;
   topicOptionCount: number;
 }) {
   const batchSequence = Math.max(Math.trunc(params.batchSequence), 0);
@@ -70,6 +82,12 @@ export function selectCarouselExperimentBatch(params: {
     rotationFormats,
     selectionKey: params.selectionKey ?? "carousel",
   });
+
+  const selectedTemplateIds = new Set(
+    historySnapshot
+      .map((item) => item.hookTemplateId)
+      .filter(isCarouselHookTemplateId),
+  );
 
   return selectedFormats.map((selectedFormat, slotIndex) => {
     const reserved = params.reserved?.get(slotIndex);
@@ -88,6 +106,19 @@ export function selectCarouselExperimentBatch(params: {
       format.compatibleHookFamilies.includes(reserved.hookFamilyId)
         ? reserved.hookFamilyId
         : selectedHook.hookFamilyId;
+    const hookTemplate =
+      params.hookTemplatesEnabled === false
+        ? null
+        : selectHookTemplate({
+            contentFormatId,
+            contextText: params.hookTemplateContext,
+            hookFamilyId,
+            recentTemplateIds: selectedTemplateIds,
+            reservedHookTemplateId: reserved?.hookTemplateId,
+            selectionKey: `${params.selectionKey ?? "carousel"}:${batchSequence}:${slotIndex}`,
+          });
+
+    if (hookTemplate) selectedTemplateIds.add(hookTemplate.id);
 
     return {
       assignedContentFormatId: selectedFormat.contentFormatId,
@@ -104,6 +135,8 @@ export function selectCarouselExperimentBatch(params: {
         hookFamilyId,
         performanceSignals: params.performanceSignals,
       }),
+      hookTemplateId: hookTemplate?.id ?? null,
+      hookTemplateVersion: hookTemplate?.version ?? null,
       rotationCandidateContentFormatId:
         selectedFormat.rotationCandidateContentFormatId,
       selectorVersion: CAROUSEL_CONTENT_SELECTOR_VERSION,
@@ -124,6 +157,8 @@ export function selectCarouselContentAssignments(params: {
   performanceSignals?: CarouselPerformanceSignals;
   reserved?: ReadonlyMap<number, Partial<CarouselContentAssignment>>;
   seed: string;
+  hookTemplateContext?: string | null;
+  hookTemplatesEnabled?: boolean;
   topicOptionCount: number;
 }) {
   const candidateCount = Math.min(
@@ -151,6 +186,8 @@ export function selectCarouselContentAssignments(params: {
         performanceSignals: params.performanceSignals,
         reserved,
         selectionKey: params.seed,
+        hookTemplateContext: params.hookTemplateContext,
+        hookTemplatesEnabled: params.hookTemplatesEnabled,
         topicOptionCount: params.topicOptionCount,
       }),
     );
@@ -185,6 +222,50 @@ function getFormatsForBatch(params: {
   // replacing a format before it has been tried.
   void params.topicOptionCount;
   return rotated;
+}
+
+function selectHookTemplate(params: {
+  contentFormatId: CarouselContentFormatId;
+  contextText?: string | null;
+  hookFamilyId: CarouselHookFamilyId;
+  recentTemplateIds: ReadonlySet<CarouselHookTemplateId>;
+  reservedHookTemplateId: unknown;
+  selectionKey: string;
+}) {
+  const compatible = getCompatibleCarouselHookTemplates({
+    contentFormatId: params.contentFormatId,
+    contextText: params.contextText,
+    hookFamilyId: params.hookFamilyId,
+  });
+
+  if (isCarouselHookTemplateId(params.reservedHookTemplateId)) {
+    const reserved = getCarouselHookTemplate(params.reservedHookTemplateId);
+    if (compatible.some((template) => template.id === reserved.id)) {
+      return reserved;
+    }
+  }
+
+  const preferred = compatible.filter(
+    (template) =>
+      getCarouselHookTemplateFit(template, params.contentFormatId) ===
+      "preferred",
+  );
+  const fitCandidates = preferred.length > 0 ? preferred : compatible;
+  const unseen = fitCandidates.filter(
+    (template) => !params.recentTemplateIds.has(template.id),
+  );
+  const candidates = unseen.length > 0 ? unseen : fitCandidates;
+
+  return [...candidates]
+    .map((template) => ({
+      priority: stableUnitInterval(`${params.selectionKey}:${template.id}`),
+      template,
+    }))
+    .sort(
+      (left, right) =>
+        left.priority - right.priority ||
+        left.template.id.localeCompare(right.template.id),
+    )[0]?.template ?? null;
 }
 
 function selectHookFamilyForFormat(params: {
@@ -393,6 +474,9 @@ function normalizeHistory(
     hook: cleanOptional(item.hook, 160),
     hookFamilyId: isCarouselHookFamilyId(item.hookFamilyId)
       ? item.hookFamilyId
+      : null,
+    hookTemplateId: isCarouselHookTemplateId(item.hookTemplateId)
+      ? item.hookTemplateId
       : null,
     topic: cleanOptional(item.topic, 160),
     topicId: cleanOptional(item.topicId, 100),

@@ -82,6 +82,7 @@ type ReactionGenerationRunRow = {
   brief_payload: Json | null;
   business_profile_id: string;
   business_profile_version: number;
+  generation_origin: "business_generation" | "internal_qa";
   generation_context: Json;
   generation_job_id: string;
   id: string;

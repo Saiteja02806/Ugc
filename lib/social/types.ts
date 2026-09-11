@@ -29,6 +29,7 @@ export type SocialConnection = {
   profilePictureUrl: string | null;
   provider: SocialProvider;
   refreshExpiresAt: string | null;
+  requiresInstagramProfessionalAccount?: boolean;
   scopes: string[];
   status: SocialConnectionStatus;
   supportsBackgroundRefresh: boolean;

@@ -19,8 +19,6 @@ import {
 } from "./carousel-slide-plan.js";
 import {
   CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
-  getCarouselContentFormat,
-  getCarouselHookFamily,
   isCarouselContentFormatId,
   isCarouselHookFamilyId,
   type CarouselContentFormatDefinition,
@@ -28,10 +26,16 @@ import {
   type CarouselHookFamilyDefinition,
   type CarouselHookFamilyId,
 } from "./carousel-content-grammar.js";
+import {
+  resolveCarouselStructure1CombinedFormat,
+  type CarouselHookTemplateDefinition,
+  type CarouselHookTemplateFallbackReason,
+  type CarouselHookTemplateFit,
+} from "./carousel-hook-templates.js";
 import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v37-six-slide-reader-first-cover";
+  "llm-carousel-planner-v40-native-hook-overflow-fallback";
 export const CAROUSEL_V1_ASSIGNMENT_REQUIRED_ERROR =
   "Carousel V1 requires exactly six slides plus a backend-selected content format and compatible hook family.";
 
@@ -85,6 +89,7 @@ const MEANINGFUL_COMPACT_COPY_TOKENS = new Set([
 ]);
 
 let openaiClient: OpenAI | null = null;
+let openaiClientApiKey: string | null = null;
 
 export type CarouselContentPlan = {
   broadSituations: string[];
@@ -100,6 +105,7 @@ export type CarouselContentPlan = {
   };
   plannerVersion: string;
   rawLlmResponse: {
+    hookFallback: string | null;
     initial: string | null;
     repair: string | null;
   };
@@ -116,6 +122,7 @@ export type CarouselPlanValidationIssue = {
     | "grammar"
     | "headline_body_repetition"
     | "headline_length"
+    | "hook_alignment"
     | "hook_quality"
     | "incomplete_ending"
     | "invalid_plan"
@@ -125,6 +132,7 @@ export type CarouselPlanValidationIssue = {
     | "repeated_punctuation"
     | "story_structure"
     | "story_repetition"
+    | "unresolved_placeholder"
     | "unsupported_claim";
   message: string;
   slideNumber: number | null;
@@ -134,6 +142,7 @@ export type CarouselPlanValidationResult = {
   advisoryIssues: CarouselPlanValidationIssue[];
   fallbackUsed: boolean;
   finalIssues: CarouselPlanValidationIssue[];
+  hookTemplateFallbackUsed: boolean;
   initialIssues: CarouselPlanValidationIssue[];
   ok: boolean;
   repairAttempted: boolean;
@@ -149,6 +158,8 @@ export type CarouselContentPlanInput = {
   emotion?: string;
   goal?: string | null;
   hookFamilyId?: string | null;
+  hookTemplateId?: string | null;
+  hookTemplateVersion?: number | null;
   planningBrief?: CarouselPlanningBrief | null;
   recentHistory?: CarouselRecentAcceptedCopy[];
   selectedAngle?: string | null;
@@ -178,6 +189,8 @@ export type CarouselBatchContentPlanInput = {
     creativeSeed: string;
     emotion: string;
     hookFamilyId: string;
+    hookTemplateId: string | null;
+    hookTemplateVersion: number | null;
     planningBrief: CarouselPlanningBrief | null;
     slotIndex: number;
   }>;
@@ -187,6 +200,8 @@ export type CarouselBatchContentPlanInput = {
 export type CarouselBatchContentPlanItem = {
   actualContentFormatId: CarouselContentFormatId;
   actualHookFamilyId: CarouselHookFamilyId;
+  actualHookTemplateId: string | null;
+  actualHookTemplateVersion: number | null;
   assignedContentFormatId: CarouselContentFormatId;
   plan: CarouselContentPlan;
   replacementForFormatId: CarouselContentFormatId | null;
@@ -208,8 +223,12 @@ export type ResolvedCarouselContentStrategy = {
 };
 
 type CarouselGrammarGenerationContext = {
+  combinedFormatId: string;
   format: CarouselContentFormatDefinition;
+  hookTemplateFallbackReason: CarouselHookTemplateFallbackReason | null;
   hookFamily: CarouselHookFamilyDefinition;
+  hookTemplate: CarouselHookTemplateDefinition | null;
+  hookTemplateFit: CarouselHookTemplateFit | null;
 };
 
 function getGrammarGenerationContext(
@@ -224,17 +243,20 @@ function getGrammarGenerationContext(
     throw new Error(CAROUSEL_V1_ASSIGNMENT_REQUIRED_ERROR);
   }
 
-  const format = getCarouselContentFormat(input.contentFormatId);
-
-  if (!format.compatibleHookFamilies.includes(input.hookFamilyId)) {
-    throw new Error(
-      `${input.hookFamilyId} is not compatible with ${input.contentFormatId}.`,
-    );
-  }
+  const combinedFormat = resolveCarouselStructure1CombinedFormat({
+    contentFormatId: input.contentFormatId,
+    hookFamilyId: input.hookFamilyId,
+    hookTemplateId: input.hookTemplateId,
+    hookTemplateVersion: input.hookTemplateVersion,
+  });
 
   return {
-    format,
-    hookFamily: getCarouselHookFamily(input.hookFamilyId),
+    combinedFormatId: combinedFormat.combinedFormatId,
+    format: combinedFormat.format,
+    hookFamily: combinedFormat.hookFamily,
+    hookTemplate: combinedFormat.hookTemplate,
+    hookTemplateFallbackReason: combinedFormat.fallbackReason,
+    hookTemplateFit: combinedFormat.hookTemplateFit,
   };
 }
 
@@ -294,12 +316,17 @@ export async function buildCarouselContentPlan(
         ...normalizedPlan,
         fallbackReason: null,
         model,
-        rawLlmResponse: { initial: initialRawResponse, repair: null },
+        rawLlmResponse: {
+          hookFallback: null,
+          initial: initialRawResponse,
+          repair: null,
+        },
         source: "llm",
         validationResult: {
           advisoryIssues: initialAdvisoryIssues,
           fallbackUsed: false,
           finalIssues: [],
+          hookTemplateFallbackUsed: false,
           initialIssues: [],
           ok: true,
           repairAttempted: false,
@@ -339,11 +366,17 @@ export async function buildCarouselContentPlan(
       throw new Error("OpenAI returned no repaired carousel plan content.");
     }
 
-    const repairedPlan = parseCarouselContentPlanShape(
+    const parsedRepairedPlan = parseCarouselContentPlanShape(
       JSON.parse(repairRawResponse),
       slideCount,
       grammarContext,
     );
+    const repairedPlan =
+      normalizedPlan &&
+      grammarContext.hookTemplate &&
+      hasOnlySlideOneRenderFitIssues(initialIssues)
+        ? replaceOnlySlideOne(normalizedPlan, parsedRepairedPlan)
+        : parsedRepairedPlan;
     const repairedValidation = evaluateCarouselContentPlanForPublishing({
       analysis: input.analysis,
       plan: repairedPlan,
@@ -352,6 +385,42 @@ export async function buildCarouselContentPlan(
     const finalIssues = repairedValidation.blockingIssues;
 
     if (finalIssues.length > 0) {
+      if (
+        grammarContext.hookTemplate &&
+        hasOnlySlideOneRenderFitIssues(finalIssues)
+      ) {
+        const nativeFallback = await buildNativeSlideOneOverflowFallback({
+          input,
+          model,
+          plan: repairedPlan,
+        });
+
+        return createContentPlan({
+          ...nativeFallback.plan,
+          fallbackReason: null,
+          model,
+          rawLlmResponse: {
+            hookFallback: nativeFallback.rawResponse,
+            initial: initialRawResponse,
+            repair: repairRawResponse,
+          },
+          source: "llm",
+          validationResult: {
+            advisoryIssues: nativeFallback.advisoryIssues,
+            fallbackUsed: false,
+            finalIssues: [],
+            hookTemplateFallbackUsed: true,
+            initialIssues: dedupeValidationIssues([
+              ...initialIssues,
+              ...finalIssues,
+            ]),
+            ok: true,
+            repairAttempted: true,
+            repaired: true,
+          },
+        });
+      }
+
       initialIssues = dedupeValidationIssues([...initialIssues, ...finalIssues]);
       throw new Error(formatValidationIssues(finalIssues));
     }
@@ -361,6 +430,7 @@ export async function buildCarouselContentPlan(
       fallbackReason: null,
       model,
       rawLlmResponse: {
+        hookFallback: null,
         initial: initialRawResponse,
         repair: repairRawResponse,
       },
@@ -369,6 +439,7 @@ export async function buildCarouselContentPlan(
         advisoryIssues: repairedValidation.advisoryIssues,
         fallbackUsed: false,
         finalIssues: [],
+        hookTemplateFallbackUsed: false,
         initialIssues,
         ok: true,
         repairAttempted: true,
@@ -405,6 +476,8 @@ export async function buildCarouselContentPlanBatch(
         creativeSeed: item.creativeSeed,
         emotion: item.emotion,
         hookFamilyId: item.hookFamilyId,
+        hookTemplateId: item.hookTemplateId,
+        hookTemplateVersion: item.hookTemplateVersion,
         planningBrief: item.planningBrief,
         recentHistory: input.recentHistory,
         slideCount: CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
@@ -523,12 +596,17 @@ export async function buildCarouselContentPlanBatch(
           ...parsed,
           fallbackReason: null,
           model,
-          rawLlmResponse: { initial: JSON.stringify(rawItem), repair: null },
+          rawLlmResponse: {
+            hookFallback: null,
+            initial: JSON.stringify(rawItem),
+            repair: null,
+          },
           source: "llm",
           validationResult: {
             advisoryIssues: validation.advisoryIssues,
             fallbackUsed: false,
             finalIssues: [],
+            hookTemplateFallbackUsed: false,
             initialIssues: [],
             ok: true,
             repairAttempted: false,
@@ -538,6 +616,9 @@ export async function buildCarouselContentPlanBatch(
         completed.push({
           actualContentFormatId: requestedItem.context.format.id,
           actualHookFamilyId: requestedItem.context.hookFamily.id,
+          actualHookTemplateId: requestedItem.context.hookTemplate?.id ?? null,
+          actualHookTemplateVersion:
+            requestedItem.context.hookTemplate?.version ?? null,
           assignedContentFormatId: requestedItem.context.format.id,
           plan,
           replacementForFormatId: null,
@@ -573,6 +654,10 @@ export async function buildCarouselContentPlanBatch(
         ...pending.requestedItem.planInput,
         contentFormatId: actualFormatId,
         hookFamilyId: actualHookFamilyId,
+        hookTemplateId: replacement ? null : pending.requestedItem.planInput.hookTemplateId,
+        hookTemplateVersion: replacement
+          ? null
+          : pending.requestedItem.planInput.hookTemplateVersion,
         recentHistory: workingHistory,
       } satisfies CarouselContentPlanInput;
       const repairContext = getGrammarGenerationContext(
@@ -591,6 +676,14 @@ export async function buildCarouselContentPlanBatch(
       completed.push({
         actualContentFormatId: repairContext.format.id,
         actualHookFamilyId: repairContext.hookFamily.id,
+        actualHookTemplateId: repairedPlan.validationResult
+          .hookTemplateFallbackUsed
+          ? null
+          : repairContext.hookTemplate?.id ?? null,
+        actualHookTemplateVersion: repairedPlan.validationResult
+          .hookTemplateFallbackUsed
+          ? null
+          : repairContext.hookTemplate?.version ?? null,
         assignedContentFormatId: pending.requestedItem.context.format.id,
         plan: repairedPlan,
         replacementForFormatId: replacement
@@ -1101,6 +1194,83 @@ function getSlideOneHookQualityIssue(
   };
 }
 
+const HOOK_ALIGNMENT_IGNORED_TOKENS = new Set([
+  "about",
+  "after",
+  "before",
+  "better",
+  "doing",
+  "here",
+  "really",
+  "slide",
+  "thing",
+  "things",
+  "this",
+  "what",
+  "when",
+  "where",
+  "which",
+  "with",
+  "wrong",
+  "your",
+]);
+
+function getSlideOneCommunicationIssues(
+  plan: Pick<CarouselContentPlan, "concept" | "slides"> &
+    Partial<Pick<CarouselContentPlan, "contentStrategy">>,
+): CarouselPlanValidationIssue[] {
+  const firstSlide = plan.slides[0];
+  if (!firstSlide) return [];
+
+  const visibleHook = [firstSlide.headline, firstSlide.body]
+    .filter((value): value is string => Boolean(value?.trim()))
+    .join(" ");
+  if (!visibleHook) return [];
+
+  const issues: CarouselPlanValidationIssue[] = [];
+  if (/\{\s*topic\s*\}|\[\s*topic\s*\]|_{3,}/i.test(visibleHook)) {
+    issues.push({
+      code: "unresolved_placeholder",
+      message: "Slide 1 still contains an unreplaced hook-template placeholder.",
+      slideNumber: 1,
+    });
+  }
+
+  const supportingCopy = [
+    plan.concept,
+    plan.contentStrategy?.angle,
+    ...plan.slides.slice(1).flatMap((slide) => [
+      slide.headline,
+      slide.body,
+      ...(slide.listItems ?? []),
+    ]),
+  ]
+    .filter((value): value is string => Boolean(value?.trim()))
+    .join(" ");
+  const hookTokens = getNormalizedTokens(visibleHook)
+    .map(getCopyWordRoot)
+    .filter((token) => !HOOK_ALIGNMENT_IGNORED_TOKENS.has(token));
+  const supportingTokens = new Set(
+    getNormalizedTokens(supportingCopy)
+      .map(getCopyWordRoot)
+      .filter((token) => !HOOK_ALIGNMENT_IGNORED_TOKENS.has(token)),
+  );
+
+  if (
+    hookTokens.length > 0 &&
+    !hookTokens.some((token) => supportingTokens.has(token))
+  ) {
+    issues.push({
+      code: "hook_alignment",
+      message:
+        "Slide 1 may not clearly preview the subject delivered by Slides 2-6; review the cover-to-chapter connection.",
+      slideNumber: 1,
+    });
+  }
+
+  return issues;
+}
+
 function validateStructure1FixedTextFit(
   slide: PlannedCarouselSlide,
 ): CarouselPlanValidationIssue[] {
@@ -1216,6 +1386,8 @@ export function validateCarouselContentPlan(
       slideNumber: null,
     });
   }
+
+  issues.push(...getSlideOneCommunicationIssues(plan));
 
   for (const slide of plan.slides) {
     const texts = [
@@ -1537,7 +1709,7 @@ export function partitionCarouselContentPlanValidationIssues(
   const advisoryIssues: CarouselPlanValidationIssue[] = [];
 
   for (const issue of dedupeValidationIssues([...issues])) {
-    if (issue.code === "hook_quality") {
+    if (issue.code === "hook_alignment" || issue.code === "hook_quality") {
       advisoryIssues.push(issue);
     } else {
       blockingIssues.push(issue);
@@ -1566,7 +1738,7 @@ function evaluateCarouselContentPlanForPublishing(params: {
 
 function hasUnsupportedPreciseNumber(value: string, evidenceText: string) {
   const preciseClaims = value.match(
-    /\b\d+(?:[.,]\d+)?\s*(?:%|percent|kcal|calories?|grams?|g\b|kilograms?|kg\b|minutes?|hours?|days?|users?|customers?|dollars?|usd\b|inr\b)/gi,
+    /\b\d+(?:[.,]\d+)?\s*(?:x\b|%|percent|kcal|calories?|grams?|g\b|kilograms?|kg\b|minutes?|hours?|days?|users?|customers?|dollars?|usd\b|inr\b)/gi,
   );
 
   if (!preciseClaims) {
@@ -1654,10 +1826,24 @@ function buildGrammarPlannerMessages(
 ) {
   const candidateNumber = Math.max(0, input.candidateIndex ?? 0) + 1;
   const recentHistory = normalizeRecentHistory(input.recentHistory);
-  const formatForPrompt = {
+  const combinedFormatForPrompt = {
+    baseContentFormatId: grammarContext.format.id,
     compatibleHookFamilies: grammarContext.format.compatibleHookFamilies,
     generationRules: grammarContext.format.generationRules,
-    id: grammarContext.format.id,
+    hookOverlay: grammarContext.hookTemplate
+      ? {
+          claimHandling: grammarContext.hookTemplate.claimHandling,
+          fit: grammarContext.hookTemplateFit,
+          id: grammarContext.hookTemplate.id,
+          pattern: grammarContext.hookTemplate.pattern,
+          source: "template",
+          version: grammarContext.hookTemplate.version,
+        }
+      : {
+          fallbackReason: grammarContext.hookTemplateFallbackReason,
+          source: "format_native",
+        },
+    id: grammarContext.combinedFormatId,
     name: grammarContext.format.name,
     purpose: grammarContext.format.purpose,
     slides: grammarContext.format.slides,
@@ -1670,12 +1856,11 @@ function buildGrammarPlannerMessages(
     rules: grammarContext.hookFamily.rules,
     useWhen: grammarContext.hookFamily.useWhen,
   };
-
   return [
     {
       role: "system" as const,
       content:
-        "You are a senior Instagram carousel strategist. Use the broad creative seed, emotion, and optional private creative brief to invent a fresh, coherent angle. The private brief is context only: do not mention its labels or force every part into visible copy. The selected Structure 1 format and hook family are renderer contracts, so keep their IDs and required slide fields. Return only the requested JSON. Do not invent precise claims, metrics, proof, or guarantees. Visual directions must describe only objects, surfaces, rooms, food, devices, documents, or still-life details and must never contain human-related words, even as exclusions.",
+        "You are a senior Instagram carousel strategist. Use the broad creative seed, emotion, and optional private creative brief to invent a fresh, coherent angle. The private brief is context only: do not mention its labels or force every part into visible copy. The resolved combined Structure 1 format is one renderer contract: its Slide 1 instruction may contain an optional hook overlay, while its Slides 2-6 instructions retain the base content structure. Keep the base content-format ID, hook-family ID, and required slide fields. Return only the requested JSON. Do not invent precise claims, metrics, proof, or guarantees. Visual directions must describe only objects, surfaces, rooms, food, devices, documents, or still-life details and must never contain human-related words, even as exclusions.",
     },
     {
       role: "user" as const,
@@ -1701,6 +1886,12 @@ function buildGrammarPlannerMessages(
         "- Use simple, natural language and one main idea per slide.",
         "- Prioritize useful content over promotion. Do not turn the carousel into an advertisement.",
         "- Hook wording must be completely fresh and must follow the selected hook family without copying examples or history.",
+        grammarContext.hookTemplate
+          ? "- Apply the selected hook template only to Slide 1 as a structural pattern; adapt its {topic} placeholder naturally, rather than copying it verbatim. Do not let it change Slides 2-6 or their selected format roles."
+          : "- No hook template is assigned. Keep the legacy fresh hook-family approach for Slide 1.",
+        grammarContext.hookTemplate?.claimHandling === "adapt_if_unsupported"
+          ? "- The selected template contains a personal-result, time, metric, or performance implication. Keep its structure, but remove or soften that implication unless the supplied business context directly supports it."
+          : null,
         `- Headlines are optional. When present, use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words, at most ${MAX_HEADLINE_LENGTH} characters, and no more than four visual lines.`,
         `- Slide 1 is the cover. Write one reader-first cover statement of ${FIRST_SLIDE_MIN_BODY_WORDS}-${FIRST_SLIDE_MAX_BODY_WORDS} words and at most ${FIRST_SLIDE_MAX_BODY_LENGTH} characters. It must create a specific reason to swipe through a tension, outcome, contrast, mistake, useful promise, or curiosity gap. Do not begin a complete personal story with “I thought,” “I used to,” “Recently I,” “Here is my story,” or “I learned” unless the same line states a specific reader payoff.`,
         `- Slides 2-6 body copy must each be one complete sentence of ${MIN_REQUIRED_BODY_WORDS}-${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words and at most ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters.`,
@@ -1720,15 +1911,15 @@ function buildGrammarPlannerMessages(
         "Minimal business context:",
         JSON.stringify({ businessDescription: input.businessDescription }),
         "",
-        "Selected format definition:",
-        JSON.stringify(formatForPrompt),
+        "Resolved combined Structure 1 format:",
+        JSON.stringify(combinedFormatForPrompt),
         "",
         "Selected hook-family definition:",
         JSON.stringify(hookFamilyForPrompt),
         "",
         "Last accepted Carousel copies (exact visible text):",
         JSON.stringify(recentHistory),
-      ].join("\n"),
+      ].filter((line): line is string => line !== null).join("\n"),
     },
   ];
 }
@@ -1745,9 +1936,23 @@ function buildBatchPlannerMessages(
     creativeSeed: item.creativeSeed,
     emotion: item.emotion,
     privateCreativeBrief: item.planningBrief,
-    format: {
+    combinedFormat: {
+      baseContentFormatId: context.format.id,
       generationRules: context.format.generationRules,
-      id: context.format.id,
+      hookOverlay: context.hookTemplate
+        ? {
+            claimHandling: context.hookTemplate.claimHandling,
+            fit: context.hookTemplateFit,
+            id: context.hookTemplate.id,
+            pattern: context.hookTemplate.pattern,
+            source: "template",
+            version: context.hookTemplate.version,
+          }
+        : {
+            fallbackReason: context.hookTemplateFallbackReason,
+            source: "format_native",
+          },
+      id: context.combinedFormatId,
       name: context.format.name,
       purpose: context.format.purpose,
       slides: context.format.slides,
@@ -1768,7 +1973,7 @@ function buildBatchPlannerMessages(
     {
       role: "system" as const,
       content:
-        "You are a senior Instagram carousel strategist. Produce one controlled batch of exactly five independent Carousels. Each slot has a broad creative seed, a required emotion, an optional private creative brief, and a selected Structure 1 renderer format and hook family. Private briefs add human specificity but are not visible labels or compulsory scripts. Keep the required IDs and fields, but freely develop the idea and wording. Avoid repetition against exact accepted copy and within this batch. Return only the requested JSON.",
+        "You are a senior Instagram carousel strategist. Produce one controlled batch of exactly five independent Carousels. Each slot has a broad creative seed, a required emotion, an optional private creative brief, a resolved combined Structure 1 format, and a hook family. The combined format may overlay only its Slide 1 instruction; Slides 2-6 retain the base content structure. Private briefs add human specificity but are not visible labels or compulsory scripts. Keep the required IDs and fields, but freely develop the idea and wording. Avoid repetition against exact accepted copy and within this batch. Return only the requested JSON.",
     },
     {
       role: "user" as const,
@@ -1780,6 +1985,7 @@ function buildBatchPlannerMessages(
         "Develop each creativeSeed differently and let its emotion guide the tone without forcing a fixed story arc.",
         "Use each privateCreativeBrief as flexible background context; the backend-selected format and hook family remain authoritative.",
         "Write fresh hooks and slide copy that do not copy recentAcceptedCopy or another item in this response.",
+        "When a slot's combinedFormat.hookOverlay source is template, use that pattern only for Slide 1. Adapt {topic}; never copy it verbatim, and do not change Slides 2-6 or their format roles. For adapt_if_unsupported claims, remove or soften unsupported personal, time, metric, or performance promises.",
         "Use simple, specific, natural copy. Prioritize useful information over promotion.",
         `Optional headlines must use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words and at most ${MAX_HEADLINE_LENGTH} characters. Headlines remain optional and are never added merely to obtain the white SVG treatment.`,
         `Slide 1 is a ${FIRST_SLIDE_MIN_BODY_WORDS}-${FIRST_SLIDE_MAX_BODY_WORDS}-word reader-first cover, not a complete personal-story opener. Give a specific reason to swipe through a tension, outcome, contrast, mistake, useful promise, or curiosity gap.`,
@@ -1859,8 +2065,22 @@ async function buildSingleBatchItemRepair(params: {
   replacement: boolean;
 }) {
   let repairRawResponse: string | null = null;
+  let originalPlan: ReturnType<typeof parseCarouselContentPlanShape> | null =
+    null;
 
   try {
+    if (params.rawItem.status === "ready") {
+      try {
+        originalPlan = parseCarouselContentPlanShape(
+          params.rawItem.plan,
+          CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
+          params.context,
+        );
+      } catch {
+        originalPlan = null;
+      }
+    }
+
     const baseMessages = buildGrammarPlannerMessages(
       { ...params.input, slideCount: CAROUSEL_STRUCTURE_1_SLIDE_COUNT },
       params.context,
@@ -1900,24 +2120,67 @@ async function buildSingleBatchItemRepair(params: {
     repairRawResponse = completion.choices[0]?.message.content ?? null;
     if (!repairRawResponse) throw new Error("OpenAI returned no repaired batch item.");
 
-    const repaired = parseCarouselContentPlanShape(
+    const parsedRepair = parseCarouselContentPlanShape(
       JSON.parse(repairRawResponse),
       CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
       params.context,
     );
+    const repaired =
+      originalPlan && hasOnlySlideOneRenderFitIssues(params.issues)
+        ? replaceOnlySlideOne(originalPlan, parsedRepair)
+        : parsedRepair;
     const repairedValidation = evaluateCarouselContentPlanForPublishing({
       analysis: params.input.analysis,
       plan: repaired,
       recentHistory: params.input.recentHistory,
     });
     const finalIssues = repairedValidation.blockingIssues;
-    if (finalIssues.length > 0) throw new Error(formatValidationIssues(finalIssues));
+    if (finalIssues.length > 0) {
+      if (
+        params.context.hookTemplate &&
+        hasOnlySlideOneRenderFitIssues(finalIssues)
+      ) {
+        const nativeFallback = await buildNativeSlideOneOverflowFallback({
+          input: params.input,
+          model: params.model,
+          plan: repaired,
+        });
+
+        return createContentPlan({
+          ...nativeFallback.plan,
+          fallbackReason: null,
+          model: params.model,
+          rawLlmResponse: {
+            hookFallback: nativeFallback.rawResponse,
+            initial: JSON.stringify(params.rawItem),
+            repair: repairRawResponse,
+          },
+          source: "llm",
+          validationResult: {
+            advisoryIssues: nativeFallback.advisoryIssues,
+            fallbackUsed: false,
+            finalIssues: [],
+            hookTemplateFallbackUsed: true,
+            initialIssues: dedupeValidationIssues([
+              ...params.issues,
+              ...finalIssues,
+            ]),
+            ok: true,
+            repairAttempted: true,
+            repaired: true,
+          },
+        });
+      }
+
+      throw new Error(formatValidationIssues(finalIssues));
+    }
 
     return createContentPlan({
       ...repaired,
       fallbackReason: null,
       model: params.model,
       rawLlmResponse: {
+        hookFallback: null,
         initial: JSON.stringify(params.rawItem),
         repair: repairRawResponse,
       },
@@ -1926,6 +2189,7 @@ async function buildSingleBatchItemRepair(params: {
         advisoryIssues: repairedValidation.advisoryIssues,
         fallbackUsed: false,
         finalIssues: [],
+        hookTemplateFallbackUsed: false,
         initialIssues: params.issues,
         ok: true,
         repairAttempted: true,
@@ -1938,6 +2202,92 @@ async function buildSingleBatchItemRepair(params: {
       { cause: error },
     );
   }
+}
+
+function hasOnlySlideOneRenderFitIssues(
+  issues: readonly CarouselPlanValidationIssue[],
+) {
+  return (
+    issues.length > 0 &&
+    issues.every(
+      (issue) => issue.code === "render_fit" && issue.slideNumber === 1,
+    )
+  );
+}
+
+function replaceOnlySlideOne(
+  baseline: ReturnType<typeof parseCarouselContentPlanShape>,
+  candidate: ReturnType<typeof parseCarouselContentPlanShape>,
+) {
+  return {
+    ...baseline,
+    slides: [candidate.slides[0]!, ...baseline.slides.slice(1)],
+  };
+}
+
+async function buildNativeSlideOneOverflowFallback(params: {
+  input: CarouselContentPlanInput;
+  model: string;
+  plan: ReturnType<typeof parseCarouselContentPlanShape>;
+}) {
+  const nativeContext = getGrammarGenerationContext(
+    {
+      ...params.input,
+      hookTemplateId: null,
+      hookTemplateVersion: null,
+      slideCount: CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
+    },
+    CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
+  );
+  const completion = await getOpenAIClient().chat.completions.create({
+    max_completion_tokens: 500,
+    messages: buildNativeSlideOneOverflowFallbackMessages({
+      input: params.input,
+      nativeContext,
+      plan: params.plan,
+    }),
+    model: params.model,
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "native_slide_one_overflow_fallback",
+        schema: buildNativeSlideOneFallbackResponseSchema(nativeContext),
+        strict: true,
+      },
+    },
+    temperature: 0.15,
+  });
+  const rawResponse = completion.choices[0]?.message.content ?? null;
+  if (!rawResponse) {
+    throw new Error("OpenAI returned no native Slide 1 fallback content.");
+  }
+
+  const response = asRecord(
+    JSON.parse(rawResponse),
+    "native Slide 1 fallback",
+  );
+  const mergedPlan = parseCarouselContentPlanShape(
+    {
+      ...params.plan,
+      slides: [response.slide, ...params.plan.slides.slice(1)],
+    },
+    CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
+    nativeContext,
+  );
+  const validation = evaluateCarouselContentPlanForPublishing({
+    analysis: params.input.analysis,
+    plan: mergedPlan,
+    recentHistory: params.input.recentHistory,
+  });
+  if (validation.blockingIssues.length > 0) {
+    throw new Error(formatValidationIssues(validation.blockingIssues));
+  }
+
+  return {
+    advisoryIssues: validation.advisoryIssues,
+    plan: mergedPlan,
+    rawResponse,
+  };
 }
 
 export function selectCarouselBatchReplacement(
@@ -2029,6 +2379,44 @@ export function mergeCarouselRecentContentHistory(
   return merged;
 }
 
+function buildNativeSlideOneOverflowFallbackMessages(params: {
+  input: CarouselContentPlanInput;
+  nativeContext: CarouselGrammarGenerationContext;
+  plan: ReturnType<typeof parseCarouselContentPlanShape>;
+}) {
+  return [
+    {
+      role: "system" as const,
+      content:
+        "You write one replacement cover for an Instagram carousel. Return only the requested JSON. The optional hook-template pattern has been removed because it did not fit. Use the base format's native hook guidance and keep the supplied Slides 2-6 as the exact communication contract.",
+    },
+    {
+      role: "user" as const,
+      content: [
+        "Replace only Slide 1. Slides 2-6 are frozen and must not be returned or rewritten.",
+        "Write a short, natural, reader-first cover that honestly previews those frozen slides.",
+        "Do not reuse the optional hook-template pattern. Do not mechanically truncate the rejected cover.",
+        `The cover must fit within ${getCarouselStructure1BodyMaxLines(1)} measured lines at its configured fixed type size; use fewer, simpler words when needed.`,
+        "Keep the exact Slide 1 format role, slide type, one allowed text mode, list-item count, and null CTA required by the base format.",
+        "Do not invent precise claims, metrics, proof, guarantees, brands, or capabilities.",
+        "imageDirection must describe only a concrete object-only scene and text-safe space without human-related words.",
+        `Creative seed: ${params.input.creativeSeed}.`,
+        `Required emotion: ${params.input.emotion}.`,
+        "Minimal business context:",
+        JSON.stringify({ businessDescription: params.input.businessDescription }),
+        "Base Slide 1 format instruction:",
+        JSON.stringify(params.nativeContext.format.slides[0]),
+        "Selected hook family:",
+        JSON.stringify(params.nativeContext.hookFamily),
+        "Rejected overflowing Slide 1:",
+        JSON.stringify(params.plan.slides[0]),
+        "Frozen Slides 2-6:",
+        JSON.stringify(params.plan.slides.slice(1)),
+      ].join("\n"),
+    },
+  ];
+}
+
 function buildRepairMessages(params: {
   analysis?: WebsiteBusinessAnalysis;
   businessDescription?: string;
@@ -2090,8 +2478,27 @@ function buildRepairMessages(params: {
         JSON.stringify(params.issues),
         "Minimal business context:",
         JSON.stringify({ businessDescription: params.businessDescription }),
-        "Selected format definition:",
-        JSON.stringify(params.grammarContext.format),
+        "Resolved combined Structure 1 format:",
+        JSON.stringify({
+          ...params.grammarContext.format,
+          baseContentFormatId: params.grammarContext.format.id,
+          hookOverlay: params.grammarContext.hookTemplate
+            ? {
+                claimHandling:
+                  params.grammarContext.hookTemplate.claimHandling,
+                fit: params.grammarContext.hookTemplateFit,
+                id: params.grammarContext.hookTemplate.id,
+                pattern: params.grammarContext.hookTemplate.pattern,
+                source: "template",
+                version: params.grammarContext.hookTemplate.version,
+              }
+            : {
+                fallbackReason:
+                  params.grammarContext.hookTemplateFallbackReason,
+                source: "format_native",
+              },
+          id: params.grammarContext.combinedFormatId,
+        }),
         "Selected hook-family definition:",
         JSON.stringify(params.grammarContext.hookFamily),
         recentHistory.length > 0 ? "Recent Carousel history to avoid:" : null,
@@ -2148,6 +2555,81 @@ function buildCarouselContentPlanSchema(
       },
     },
     required: ["broadSituations", "concept", "contentStrategy", "slides"],
+    type: "object",
+  } as const;
+}
+
+function buildNativeSlideOneFallbackResponseSchema(
+  grammarContext: CarouselGrammarGenerationContext,
+) {
+  const definition = grammarContext.format.slides[0]!;
+  const configuredListItemCount = definition.listItemCount;
+
+  return {
+    additionalProperties: false,
+    properties: {
+      slide: {
+        additionalProperties: false,
+        properties: {
+          body: {
+            anyOf: [
+              {
+                maxLength: FIRST_SLIDE_MAX_BODY_LENGTH,
+                minLength: 1,
+                type: "string",
+              },
+              { type: "null" },
+            ],
+          },
+          ctaText: { type: "null" },
+          formatRole: { enum: [definition.role], type: "string" },
+          headline: {
+            anyOf: [
+              {
+                maxLength: MAX_HEADLINE_LENGTH,
+                minLength: 1,
+                type: "string",
+              },
+              { type: "null" },
+            ],
+          },
+          imageDirection: {
+            maxLength: MAX_IMAGE_DIRECTION_LENGTH,
+            minLength: 1,
+            type: "string",
+          },
+          listItems: {
+            items: {
+              maxLength: MAX_LIST_ITEM_LENGTH,
+              minLength: 1,
+              type: "string",
+            },
+            maxItems: configuredListItemCount ?? 0,
+            minItems: configuredListItemCount ?? 0,
+            type: "array",
+          },
+          slideNumber: { enum: [1], type: "integer" },
+          slideType: { enum: [definition.slideType], type: "string" },
+          textMode: {
+            enum: definition.preferredTextModes,
+            type: "string",
+          },
+        },
+        required: [
+          "body",
+          "ctaText",
+          "formatRole",
+          "headline",
+          "imageDirection",
+          "listItems",
+          "slideNumber",
+          "slideType",
+          "textMode",
+        ],
+        type: "object",
+      },
+    },
+    required: ["slide"],
     type: "object",
   } as const;
 }
@@ -2298,8 +2780,9 @@ function getOpenAIClient() {
     throw new Error("Missing OPENAI_API_KEY for carousel content planning.");
   }
 
-  if (!openaiClient) {
+  if (!openaiClient || openaiClientApiKey !== apiKey) {
     openaiClient = new OpenAI({ apiKey, maxRetries: 0, timeout: 60_000 });
+    openaiClientApiKey = apiKey;
   }
 
   return openaiClient;

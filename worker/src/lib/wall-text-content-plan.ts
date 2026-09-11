@@ -10,7 +10,7 @@ import {
 import { getContentPlanItemConceptLanes } from "./content-plan-concept-lanes.js";
 
 export const WALL_TEXT_CONTENT_PLAN_PROMPT_VERSION =
-  "wall-text-content-plan-five-context-v6-compact-chunks";
+  "wall-text-content-plan-five-context-v7-luna-scene-cards";
 // Each item carries seven structured fields in addition to its parent brief.
 // Ten ideas keep a response comfortably below the model's structured-output
 // budget while preserving the five-idea creative-brief grouping.
@@ -18,7 +18,8 @@ export const WALL_TEXT_CONTENT_PLAN_CHUNK_SIZE = 10;
 export const WALL_TEXT_CONTENT_PLAN_BRIEF_COUNT = 40;
 export const WALL_TEXT_CONTENT_PLAN_ITEMS_PER_BRIEF = 5;
 
-const DEFAULT_MODEL = "gpt-5-mini";
+const DEFAULT_MODEL = "gpt-5.6-luna";
+const DEFAULT_REASONING_EFFORT = "low";
 const MAX_CONTENT_IDEA_LENGTH = 400;
 const MAX_FEELING_LENGTH = 120;
 const MAX_GENERATION_ATTEMPTS = 2;
@@ -70,6 +71,14 @@ export function getWallTextContentPlanModel() {
   return process.env.OPENAI_WALL_TEXT_PLAN_MODEL?.trim() || DEFAULT_MODEL;
 }
 
+export function getWallTextContentPlanReasoningEffort() {
+  return getReasoningEffort(
+    process.env.OPENAI_WALL_TEXT_PLAN_REASONING_EFFORT,
+    DEFAULT_REASONING_EFFORT,
+    "OPENAI_WALL_TEXT_PLAN_REASONING_EFFORT",
+  );
+}
+
 export async function generateWallTextContentPlanChunk(params: {
   briefIndexStart?: number;
   businessDescription: string;
@@ -105,7 +114,7 @@ export async function generateWallTextContentPlanChunk(params: {
         issues: attempt === 0 ? [] : lastIssues,
       }),
       model: getWallTextContentPlanModel(),
-      reasoning_effort: "low",
+      reasoning_effort: getWallTextContentPlanReasoningEffort(),
       response_format: {
         type: "json_schema",
         json_schema: {
@@ -169,7 +178,11 @@ export async function generateWallTextContentPlanChunk(params: {
 class SingleWallTextIdeaRepairExhaustedError extends Error {}
 
 function isRepairableWallTextIdeaIssue(issue: string) {
-  return issue.includes("repeats an existing content idea");
+  return (
+    issue.includes("repeats an existing content idea") ||
+    issue.includes("contentIdea must contain 8 to 14 words") ||
+    issue.includes("production direction instead of a human observation")
+  );
 }
 
 export function isExactWallTextReplacementDuplicate(params: {
@@ -258,6 +271,7 @@ async function regenerateDuplicateWallTextItems(params: {
             planningContext: params.planningContext,
           }),
           model: getWallTextContentPlanModel(),
+          reasoning_effort: getWallTextContentPlanReasoningEffort(),
           response_format: {
             type: "json_schema",
             json_schema: {
@@ -266,7 +280,6 @@ async function regenerateDuplicateWallTextItems(params: {
               strict: true,
             },
           },
-          temperature: 0.8,
         });
         const content = completion.choices[0]?.message.content;
         if (!content) continue;
@@ -429,11 +442,20 @@ export function validateWallTextContentPlanChunk(params: {
     if (item.contentIdea.length < 12) {
       issues.push(`Brief ${item.briefSlotIndex} idea ${item.itemSlotIndex} is too vague.`);
     }
+    const contentIdeaWordCount = countWords(item.contentIdea);
+    if (contentIdeaWordCount < 8 || contentIdeaWordCount > 14) {
+      issues.push(
+        `Brief ${item.briefSlotIndex} idea ${item.itemSlotIndex} contentIdea must contain 8 to 14 words.`,
+      );
+    }
     if (item.feeling.length < 2) {
       issues.push(`Brief ${item.briefSlotIndex} idea ${item.itemSlotIndex} has a vague feeling.`);
     }
     if (/\b(?:slide\s*\d+|call[ -]?to[ -]?action|cta|line\s*\d+)\b/i.test(item.contentIdea)) {
       issues.push(`Brief ${item.briefSlotIndex} idea ${item.itemSlotIndex} prewrites final video structure instead of an idea.`);
+    }
+    if (/^(?:show|depict|portray|capture|highlight|explore|imagine|picture|present|describe)\b/i.test(item.contentIdea)) {
+      issues.push(`Brief ${item.briefSlotIndex} idea ${item.itemSlotIndex} is a production direction instead of a human observation.`);
     }
 
     // Similar wording and near-verbatim variations are allowed. The plan can
@@ -513,8 +535,8 @@ function buildMessages(params: {
         "humanMoment: One concrete, recognisable everyday event or situation. For example, an unexpected meeting moving the afternoon's work.",
         "emotionalTension: The inner feeling or conflict created by that moment. For example, frustration mixed with self-blame.",
         "supportedAngle: The factual connection to the business, based only on approved facts. It is not a sales claim or a promise.",
-        "For every child return contentIdea, feeling, audienceContext, privateCreativeSeed, emotionalTension, humanMoment, and supportedAngle. contentIdea is a specific angle that a later Wall writer may turn into one complete post; feeling is that child idea's emotional direction. The children are not generated from creativeSeed alone.",
-        "Every group of five must use five clearly different concrete human situations. Each child has an assigned concept lane; use its lane as broad guidance, then create a genuinely different audience, situation, tension, supported angle, or story. Do not write final overlay copy, line breaks, a slide layout, a CTA, a product pitch, or a finished script. Previous items are guidance, not a ban on a broad topic: related themes are allowed when those real-life details differ. Avoid copying a previous child idea word-for-word.",
+        "For every child return contentIdea, feeling, audienceContext, privateCreativeSeed, emotionalTension, humanMoment, and supportedAngle. contentIdea must be an 8-to-14-word human observation that a later Wall writer can develop. It must never begin with Show, Depict, Portray, Capture, Highlight, Explore, Imagine, Picture, Present, or Describe. feeling guides tone and is not a phrase the writer must append. The children are not generated from creativeSeed alone.",
+        "Every group of five must use five clearly different concrete daily actions or situations. Each child has an assigned concept lane; use its lane as broad guidance, then create a genuinely different audience, action, setting, tension, or observation. Product capabilities are optional context, not the subject of every idea. Do not write final overlay copy, line breaks, a slide layout, a CTA, a product pitch, or a finished script. Previous items are guidance, not a ban on a broad topic: related themes are allowed when those real-life details differ. Avoid copying a previous child idea word-for-word.",
         "Return the complete JSON object required by the schema. Include every brief, every child idea, and every required field. Do not return commentary, a partial result, or an empty response.",
       ].join(" "),
     },
@@ -701,6 +723,22 @@ function normalize(value: string) {
     .replace(/[^a-z0-9]+/g, " ")
     .trim()
     .replace(/\s+/g, " ");
+}
+
+function countWords(value: string) {
+  return value.trim().split(/\s+/u).filter(Boolean).length;
+}
+
+function getReasoningEffort(
+  value: string | undefined,
+  fallback: "low" | "medium",
+  variableName: string,
+) {
+  const normalized = value?.trim().toLocaleLowerCase("en-US") || fallback;
+  if (normalized === "none" || normalized === "low" || normalized === "medium") {
+    return normalized;
+  }
+  throw new Error(`${variableName} must be none, low, or medium.`);
 }
 
 function getOpenAIClient() {

@@ -17,6 +17,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
+import { InstagramProfessionalAccountGuide } from "@/components/social/instagram-professional-account-guide";
 import { SocialAccountAvatar } from "@/components/social/social-account-avatar";
 import { useSocialOAuthPopup } from "@/components/social/use-social-oauth-popup";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -52,6 +53,7 @@ import {
   validateScheduleLeadTime,
 } from "@/lib/scheduling/schedule-time";
 import { getConnectionPublishingBlockMessage } from "@/lib/scheduling/social-connection-policy";
+import { INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR } from "@/lib/social/instagram-professional-account";
 import {
   getTikTokPrivacyLabel,
   isTikTokPrivacyLevel,
@@ -346,6 +348,7 @@ export function PlatformSelectionModal({
     connectingIntent,
     connectingPlatform,
     popupError,
+    popupErrorCode,
     startConnection,
   } = useSocialOAuthPopup({
     onPopupClosed: async ({
@@ -428,6 +431,17 @@ export function PlatformSelectionModal({
       ),
     [connections],
   );
+  const hasExistingProfessionalAccountRequirement =
+    carouselConnections.some(
+      (connection) =>
+        connection.requiresInstagramProfessionalAccount === true,
+    );
+  const showProfessionalAccountGuide =
+    popupErrorCode === INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR ||
+    (!confirmError &&
+      !loadError &&
+      !popupError &&
+      hasExistingProfessionalAccountRequirement);
   const selectedConnections = useMemo(
     () =>
       carouselConnections.filter((connection) =>
@@ -851,7 +865,9 @@ export function PlatformSelectionModal({
         </div>
 
         <div className="min-h-0 overflow-y-auto overscroll-contain bg-background/35 px-5 py-5 sm:px-7 sm:py-6">
-          {confirmError || loadError || popupError ? (
+          {showProfessionalAccountGuide ? (
+            <InstagramProfessionalAccountGuide className="mb-5" />
+          ) : confirmError || loadError || popupError ? (
             <Alert variant="destructive" className="mb-5">
               <AlertCircle />
               <AlertTitle>

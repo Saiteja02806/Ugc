@@ -46,8 +46,8 @@ test("does not block the deck while a decision is being saved", () => {
   assert.match(workspace, /enqueueDecision/);
 });
 
-test("returns only validated Locked Hook audio to the authenticated preview", () => {
-  assert.match(previewSession, /getLockedHookAudioForVideo/);
+test("returns only validated Locked or matched Hook audio to the authenticated preview", () => {
+  assert.match(previewSession, /resolveHookAudioForPreview/);
   assert.match(previewSession, /body\.sourceKind === "catalog"/);
   assert.match(previewSession, /isTrustedStorageUrl\(hookAudio\.audioUrl\)/);
   assert.match(previewSession, /hookAudio,[\s\S]+previewUrl/);

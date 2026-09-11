@@ -5,6 +5,9 @@ import test from "node:test";
 const migration = readProjectFile(
   "supabase/migrations/20260906180000_add_durable_reaction_generation_worker.sql",
 );
+const provenanceMigration = readProjectFile(
+  "supabase/migrations/20260911120000_harden_reaction_generation_provenance.sql",
+);
 const splitRenderMigration = readProjectFile(
   "supabase/migrations/20260909140000_split_reaction_reel_render_workers.sql",
 );
@@ -108,6 +111,23 @@ test("reserves active clips and reports a catalog shortfall without another refi
   assert.match(migration, /reaction_generation_plan_clip_reserved/);
   assert.match(enqueue, /getCompletedReactionCoverageShortfall/);
   assert.match(enqueue, /Prepared \$\{readyCount\} of \$\{requestedCount\} Reaction Reels/);
+});
+
+test("binds every business Reaction plan to profile context and quarantines QA output", () => {
+  assert.match(provenanceMigration, /reaction_generation_context_v1/);
+  assert.match(provenanceMigration, /validate_reaction_generation_background_job_v1/);
+  assert.match(provenanceMigration, /validate_reaction_creative_origin_v1/);
+  assert.match(provenanceMigration, /reaction_generation_creative_run_required/);
+  assert.match(provenanceMigration, /reaction_generation_origin_mismatch/);
+  assert.match(provenanceMigration, /validate_reaction_generation_plan_provenance_v1/);
+  assert.match(provenanceMigration, /reaction_generation_plan_provenance_invalid/);
+  assert.match(provenanceMigration, /reaction_generation_context_mismatch/);
+  assert.match(provenanceMigration, /generation_origin text not null default 'business_generation'/);
+  assert.match(provenanceMigration, /generation_origin = 'internal_qa'/);
+  assert.match(provenanceMigration, /state = 'completed_skipped'/);
+  assert.match(provenanceMigration, /business_profiles as profile/);
+  assert.match(readProjectFile("lib/trending/reaction-feed.ts"), /generation_origin.*business_generation/);
+  assert.match(workerJob, /run\.generation_context/);
 });
 
 test("retries only a catalog-blocked Reaction request after assets become active", () => {

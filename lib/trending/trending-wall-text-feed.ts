@@ -399,6 +399,7 @@ export async function prepareTrendingWallTextIdeas(
               selectionWeight: 1,
             };
       const budget = await deriveWallTextSpatialBudget({
+        durationSeconds: candidate.durationSeconds,
         layout: candidate.layout,
       });
       return { assignment, budget, candidate };

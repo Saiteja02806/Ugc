@@ -91,6 +91,11 @@ test("new saved and scheduled Hook renders carry the authoritative layout versio
   assert.match(workerJob, /hookTextLines must match hookText exactly/);
 });
 
+test("Hook render fingerprints invalidate the pre-parity symbol raster", () => {
+  assert.match(savedRender, /HOOK_INLINE_SYMBOL_RENDER_VERSION = "hook-inline-symbol-render-v2"/);
+  assert.match(savedRender, /hookInlineSymbolRenderVersion: HOOK_INLINE_SYMBOL_RENDER_VERSION/);
+});
+
 test("untouched Hook schedule times resolve at confirmation and always confirm the saved schedule", () => {
   assert.match(scheduleDrawer, /useDefaultScheduleTime/);
   assert.match(scheduleDrawer, /setHasManualScheduleTime\(true\)/);

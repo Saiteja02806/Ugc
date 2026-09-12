@@ -1625,11 +1625,13 @@ async function prepareWallTextForPersistence(params: {
 
 export async function listTrendingWallTextCreatives(params: {
   backgroundAssetIds?: string[] | null;
+  creativeIds?: readonly string[];
   businessProfileId: string;
   businessProfileVersion: number;
   userId: string;
 }) {
-  if (params.backgroundAssetIds && params.backgroundAssetIds.length === 0) {
+  if ((params.backgroundAssetIds && params.backgroundAssetIds.length === 0) ||
+      params.creativeIds?.length === 0) {
     return [];
   }
 
@@ -1640,6 +1642,10 @@ export async function listTrendingWallTextCreatives(params: {
     .eq("business_profile_id", params.businessProfileId)
     .eq("business_profile_version", params.businessProfileVersion)
     .eq("status", "preview_ready");
+
+  if (params.creativeIds) {
+    query = query.in("id", [...params.creativeIds]);
+  }
 
   if (params.backgroundAssetIds) {
     query = query.in(
@@ -1667,6 +1673,19 @@ export async function ensureTrendingWallTextAssignments(params: {
   creatives: WallTextCreativeRow[];
   userId: string;
 }) {
+  await publishTrendingWallTextAssignments(params);
+  return listActiveTrendingWallTextIdeas(params);
+}
+
+// Publication is independent of the active deck: a user may decide a card
+// while its generation batch is still running. Existing decisions survive.
+export async function publishTrendingWallTextAssignments(params: {
+  businessProfileId: string;
+  businessProfileVersion: number;
+  creatives: WallTextCreativeRow[];
+  userId: string;
+}) {
+  if (params.creatives.length === 0) return;
   const instagramTemplateIds = params.creatives.flatMap((creative) =>
     creative.instagram_reel_template_id
       ? [creative.instagram_reel_template_id]
@@ -1731,7 +1750,27 @@ export async function ensureTrendingWallTextAssignments(params: {
     }
   }
 
-  return listActiveTrendingWallTextIdeas(params);
+}
+
+export async function listUnassignedWallTextCreatives(params: {
+  businessProfileId: string;
+  businessProfileVersion: number;
+  creatives: WallTextCreativeRow[];
+  userId: string;
+}) {
+  const creatives = params.creatives.filter(isTrendingWallTextCreativeCurrent);
+  if (creatives.length === 0) return [];
+  // Include every decision state. A rejected or saved card must never be
+  // mistaken for an orphan simply because it no longer appears in the deck.
+  const { data: assignments, error } = await getClient()
+    .from("user_wall_text_assignments")
+    .select("wall_text_creative_id")
+    .eq("user_id", params.userId)
+    .eq("business_profile_id", params.businessProfileId)
+    .eq("business_profile_version", params.businessProfileVersion);
+  if (error) throw new Error(`Could not reconcile Wall-of-text assignments: ${error.message}`);
+  const assignedIds = new Set(assignments.map((entry) => entry.wall_text_creative_id));
+  return creatives.filter((creative) => !assignedIds.has(creative.id));
 }
 
 export async function listActiveTrendingWallTextIdeas(params: {

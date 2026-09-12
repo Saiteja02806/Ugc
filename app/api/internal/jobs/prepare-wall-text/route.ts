@@ -77,7 +77,8 @@ export async function POST(request: Request) {
       return json({ ok: false, error: "Business Profile changed." }, 409);
     }
 
-    const ideas = await prepareTrendingWallTextIdeas(profile, {
+    const result = await prepareTrendingWallTextIdeas(profile, {
+      dailyFeedId: input.dailyFeedId,
       earlyPlanId: input.earlyPlanId,
       mode: input.refillKey ? "refill" : "initial",
       recoveryIteration: input.recoveryIteration,
@@ -88,15 +89,15 @@ export async function POST(request: Request) {
 
     // A daily delivery owns a fixed set of feed slots. Returning a smaller
     // historical-library count must never settle that delivery as complete.
-    if (input.dailyFeedId && ideas.length !== input.requestedCount) {
+    if (input.dailyFeedId && result.ideaCount !== input.requestedCount) {
       throw new TrendingWallTextPreparationError(
-        `Wall-of-text daily delivery prepared ${ideas.length} of ${input.requestedCount} required items.`,
+        `Wall-of-text daily delivery prepared ${result.ideaCount} of ${input.requestedCount} required items.`,
         409,
         WALL_TEXT_DAILY_DELIVERY_SHORTFALL,
       );
     }
 
-    return json({ ideaCount: ideas.length, ok: true });
+    return json({ ideaCount: result.ideaCount, ok: true });
   } catch (error) {
     const failure = classifyWallTextGenerationFailure(error);
     if (!wasWallTextFailureDiagnosticRecorded(error)) {

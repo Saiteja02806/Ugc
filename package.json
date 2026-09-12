@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "test:wall-text:behavior": "node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/trending/wall-text-generation-behavior.test.mjs lib/trending/wall-text-publication-db-behavior.test.mjs lib/trending/wall-text-reading-budget-behavior.test.mjs",
+    "posttest:wall-text": "npm run test:wall-text:behavior",
     "dev": "next dev",
     "build": "next build",
     "test:onboarding-background": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test scripts/onboarding-background-db.test.mjs lib/business-profiles/onboarding-rollout.test.ts",

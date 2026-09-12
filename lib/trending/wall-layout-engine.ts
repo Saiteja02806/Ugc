@@ -68,7 +68,6 @@ export async function deriveWallTextSpatialBudget(params: {
     ABSOLUTE_MAXIMUM_WORDS,
   );
   const wordBudget = getWallTextGenerationWordBudget({
-    durationSeconds: params.durationSeconds,
     spatialMaximum,
   });
   if (wordBudget.maximum < WALL_TEXT_GENERATION_WORD_RANGE.minimum) {

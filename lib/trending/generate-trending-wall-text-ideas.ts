@@ -31,17 +31,9 @@ import type { WallTextPrivateCreativeContext } from "@/lib/trending/wall-text-db
 import { createWallTextLayout } from "@/lib/trending/wall-text-feed-logic";
 import {
   buildWallTextBusinessContext,
-  MAX_CURRENT_GENERATION_WALL_TEXT_WORDS,
-  MIN_CURRENT_GENERATION_WALL_TEXT_WORDS,
   normalizeWallTextGenerationCandidates,
   type WallTextGenerationCandidate,
 } from "@/lib/trending/wall-text-text-logic";
-import {
-  getWallTextGenerationWordBudget,
-  WALL_TEXT_READING_CUSHION_RATIO,
-  WALL_TEXT_READING_WORDS_PER_SECOND,
-  WALL_TEXT_TARGET_WORDS,
-} from "@/lib/trending/wall-text-copy-policy";
 import {
   applyWallTextRenderFit,
   validateWallTextRenderFit,
@@ -86,7 +78,6 @@ const WallTextReviewSchema = z
             feedback: z.string().trim().min(1).max(300),
             naturalSpokenLanguage: z.boolean(),
             oneCentralThought: z.boolean(),
-            readableWithinClip: z.boolean(),
           })
           .strict(),
       )
@@ -188,13 +179,9 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
     normalized.map(async (candidate): Promise<PreparedCandidate> => {
       const input = inputByIndex.get(candidate.candidateIndex)!;
       const layout = input.layout ?? createWallTextLayout();
-      const savedBudget = getSavedBudget(input, candidate.durationSeconds);
-      const budget =
-        savedBudget ??
-        (await deriveWallTextSpatialBudget({
-          durationSeconds: candidate.durationSeconds,
-          layout,
-        }));
+      // Older reservations contain duration-limited caps (for example 15/16
+      // words at six seconds). Recompute from the layout instead of reusing them.
+      const budget = await deriveWallTextSpatialBudget({ layout });
       return {
         candidateIndex: candidate.candidateIndex,
         durationSeconds: candidate.durationSeconds,
@@ -296,7 +283,6 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
           }
           if (
             !review.approved ||
-            !review.readableWithinClip ||
             !review.oneCentralThought ||
             !review.naturalSpokenLanguage
           ) {
@@ -393,36 +379,6 @@ function buildGeneratedIdea(params: {
   };
 }
 
-function getSavedBudget(
-  candidate: GenerationInputCandidate,
-  durationSeconds: number,
-) {
-  if (
-    Number.isInteger(candidate.targetWords) &&
-    Number.isInteger(candidate.maxWords) &&
-    candidate.targetWords! > 0 &&
-    candidate.maxWords! >= candidate.targetWords! &&
-    candidate.maxWords! >= MIN_CURRENT_GENERATION_WALL_TEXT_WORDS
-  ) {
-    const spatialMaximum = Math.min(
-      candidate.maxWords!,
-      MAX_CURRENT_GENERATION_WALL_TEXT_WORDS,
-    );
-    const wordBudget = getWallTextGenerationWordBudget({
-      durationSeconds,
-      spatialMaximum,
-    });
-    return {
-      maxWords: wordBudget.maximum,
-      minWords: wordBudget.minimum,
-      // Existing retry-pending assignments may still contain 18/50. Preserve
-      // those rows, but generate their retry with the readable current budget.
-      targetWords: Math.min(WALL_TEXT_TARGET_WORDS, wordBudget.target),
-    };
-  }
-  return null;
-}
-
 async function requestWriter(params: {
   business: ReturnType<typeof buildWallTextBusinessContext>;
   candidates: Array<PreparedCandidate & { retryFeedback?: WriterFailure }>;
@@ -501,7 +457,7 @@ async function requestReviewer(params: {
           role: "system",
           content: [
             "You independently review Wall-of-Text social overlays. Do not rewrite them.",
-            "Approve only when a viewer can understand the complete copy on first read during one native play.",
+            "Review the clarity and quality of the complete copy. Video duration and reading speed are not approval criteria; do not reject copy because it may take longer than one play to read.",
             "The copy needs one concrete daily action, one central thought, natural spoken language, and only supported business claims.",
             "Reject semicolon-linked marketing mini-stories, feature stacking, forced emotional conclusions, and product mentions that are not needed for the thought.",
             "Keep every boolean consistent with approved and feedback.",
@@ -513,7 +469,6 @@ async function requestReviewer(params: {
             business: params.business,
             candidates: params.candidates.map((candidate) => ({
               candidateIndex: candidate.candidateIndex,
-              durationSeconds: candidate.durationSeconds,
               ...(candidate.privateCreativeContext
                 ? {
                     plan: {
@@ -527,14 +482,12 @@ async function requestReviewer(params: {
                 : {}),
               text: params.textByCandidateIndex.get(candidate.candidateIndex),
             })),
-            readingRule:
-              "Use 3.2 words per second and require roughly fifteen percent of the clip as reading cushion.",
           }),
         },
       ],
       response_format: zodResponseFormat(
         WallTextReviewSchema,
-        "trending_wall_text_review_v8",
+        "trending_wall_text_review_v9",
       ),
     });
   } catch (error) {
@@ -611,15 +564,6 @@ async function validateCandidate(params: {
   }
   if (text.includes(";")) {
     throw new CandidateValidationError("semicolon_story");
-  }
-  const estimatedReadingSeconds =
-    wordCount / WALL_TEXT_READING_WORDS_PER_SECOND +
-    Math.max(0, sentenceCount - 1) * 0.25;
-  if (
-    estimatedReadingSeconds >
-    params.candidate.durationSeconds * WALL_TEXT_READING_CUSHION_RATIO
-  ) {
-    throw new CandidateValidationError("reading_time");
   }
   if (PROMOTIONAL_OR_CTA_PATTERNS.some((pattern) => pattern.test(text))) {
     throw new CandidateValidationError("promotional_or_cta");

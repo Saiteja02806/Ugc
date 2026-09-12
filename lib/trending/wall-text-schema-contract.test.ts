@@ -479,7 +479,7 @@ test("uses Luna Writer and Reviewer passes for every normal ten-candidate chunk"
     "valid candidates must be persisted before a failed candidate exhausts repair",
   );
   assert.match(generatorSource, /requestReviewer/);
-  assert.match(generatorSource, /readableWithinClip/);
+  assert.doesNotMatch(generatorSource, /readableWithinClip/);
   assert.match(generatorSource, /oneCentralThought/);
   assert.match(generatorSource, /naturalSpokenLanguage/);
   assert.match(
@@ -546,11 +546,11 @@ test("carries an early-delivery plan through the worker and bypasses the histori
   );
   assert.match(
     feedSource,
-    /mode === "initial" &&\s*!options\.earlyPlanId &&\s*areTrendingWallTextCreativesCurrent\(existing\)/,
+    /mode === "initial" &&\s*!options\.earlyPlanId &&\s*!options\.dailyFeedId &&\s*areTrendingWallTextCreativesCurrent\(existing\)/,
   );
   assert.match(
     feedSource,
-    /mode === "initial" &&\s*!options\.earlyPlanId &&\s*existing\.length > 0/,
+    /mode === "initial" &&\s*!options\.earlyPlanId &&\s*!options\.dailyFeedId &&\s*existing\.length > 0/,
   );
   assert.match(
     workerPreparationClient,
@@ -562,7 +562,7 @@ test("carries an early-delivery plan through the worker and bypasses the histori
   );
   assert.match(
     internalPreparationRoute,
-    /input\.dailyFeedId && ideas\.length !== input\.requestedCount/,
+    /input\.dailyFeedId && result\.ideaCount !== input\.requestedCount/,
   );
 });
 
@@ -1025,7 +1025,7 @@ test("keeps measured finalLayout lines as the current Wall source of truth", () 
   );
 });
 
-test("uses duration-aware word budgets before measured layout validation", () => {
+test("uses layout-based word budgets without reading-time rejection", () => {
   assert.match(layoutEngineSource, /deriveWallTextSpatialBudget/);
   assert.match(layoutEngineSource, /durationSeconds\?: number/);
   assert.match(layoutEngineSource, /getWallTextGenerationWordBudget/);
@@ -1033,16 +1033,15 @@ test("uses duration-aware word budgets before measured layout validation", () =>
   assert.doesNotMatch(formatsSource, /hardWordRange/);
   assert.match(
     promptSource,
-    /server will verify reading time against clip duration[\s\S]+measured 5-8 line fit/i,
+    /server will verify a measured 5-8 line fit/i,
   );
-  assert.match(generatorSource, /WALL_TEXT_READING_WORDS_PER_SECOND/);
-  assert.match(generatorSource, /WALL_TEXT_READING_CUSHION_RATIO/);
+  assert.doesNotMatch(generatorSource, /reading_time|readableWithinClip|readingRule|WALL_TEXT_READING_CUSHION_RATIO/);
   assert.match(generatorSource, /semicolon_story/);
   assert.match(feedSource, /durationSeconds: candidate\.durationSeconds/);
   assert.match(feedSource, /promptVersion: WALL_TEXT_PROMPT_VERSION/);
 });
 
-test("uses a readable duration budget for a compact natural Wall message", () => {
+test("uses the general word budget for a compact natural Wall message", () => {
   const loaderPath = new URL(
     "../../scripts/next-server-only-test-loader.mjs",
     import.meta.url,
@@ -1089,9 +1088,9 @@ test("uses a readable duration budget for a compact natural Wall message", () =>
     budget: { maxWords: number; minWords: number; targetWords: number };
     content: { finalLayout: { blocks: Array<{ lines: string[] }> } };
   };
-  assert.equal(result.budget.maxWords, 16);
+  assert.equal(result.budget.maxWords, 26);
   assert.equal(result.budget.minWords, 12);
-  assert.equal(result.budget.targetWords, 14);
+  assert.equal(result.budget.targetWords, 19);
   const lines = result.content.finalLayout.blocks.flatMap((block) => block.lines);
   assert.ok(lines.length >= 5 && lines.length <= 8);
   assert.equal(lines.join(" "), original);
@@ -1166,8 +1165,8 @@ test("fixed Wall typography grows lines and rejects overflow without shrinking",
     assert.equal(candidates[1].targetWords, 26);
     const durationBudget = await engine.deriveWallTextSpatialBudget({ durationSeconds: 6, layout });
     assert.equal(durationBudget.minWords, 12);
-    assert.equal(durationBudget.maxWords, 16);
-    assert.equal(durationBudget.targetWords, 14);
+    assert.equal(durationBudget.maxWords, 26);
+    assert.equal(durationBudget.targetWords, 19);
   `;
   execFileSync(process.execPath, [
     "--import", loaderPath, "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",

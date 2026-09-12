@@ -1,5 +1,5 @@
 // Fit failures need a measurably smaller rewrite, not another response at the
-// same target. Keep the candidate's duration-aware minimum and the existing
+// same target. Keep the candidate's general copy minimum and the existing
 // two-repair limit.
 export function getWallTextRepairBudget(candidate: {
   maxWords: number;

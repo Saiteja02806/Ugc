@@ -1,6 +1,49 @@
 # Wall-of-text Context
 
-Last updated: 2026-09-11
+Last updated: 2026-09-12
+
+## 2026-09-12 Copy length is independent of video duration
+
+- Product decision: six-second videos have no special word cap or reading-time
+  deadline. All supported durations use the same general 12–26-word generation
+  range, subject to actual layout fit. The source-video duration eligibility
+  rules are separate and unchanged.
+- Writer prompt V19 and reviewer schema V9 remove duration from the copy and
+  review inputs. The reviewer checks clarity, one central thought and supported
+  natural language, without requiring reading to finish within one play.
+- Generation and legacy content validation no longer reject copy based on
+  estimated reading seconds. Older reservations are re-budgeted from the saved
+  layout, so old 15/16-word caps do not survive on retries. Fixed typography,
+  measured 5–8 lines, general length and quality checks remain enforced.
+- Regression coverage includes identical budgets at six and sixty seconds and
+  26-word, two-sentence copy completing the actual generator/layout pipeline on
+  a six-second job whose saved reservation previously allowed only 16 words.
+
+## 2026-09-12 Wall generation delivery repairs
+
+- Accepted candidates receive audio and user feed assignments immediately,
+  independently of later candidate rejection. Saving/publication settles for
+  every accepted sibling before a chunk failure releases its claim.
+- Replays recover completed-but-unpublished candidates before requesting more
+  copy. Trending reconciliation also publishes current, saved creatives with
+  missing user assignments, including survivors of older failed batches.
+  Existing saved/rejected decisions are preserved by idempotent upserts.
+- Failed generation assignments are detected before reading reserved-only plan
+  contexts. A retired idea takes terminal replacement instead of becoming a
+  retryable stale-context infrastructure error.
+- A generation result counts only its reservation's completed, published
+  creatives, including cards already decided while the writer was running.
+  Historical active cards neither inflate nor satisfy a daily delivery count.
+  Daily requests bypass the historical-library shortcut even without an early
+  plan hint. The app and worker retain the exact daily-count guard.
+- The initial sentence-pause budget repair was superseded by the product
+  decision above: there is no duration-based copy cap or reading-time gate.
+- `npm run test:wall-text` also runs behavioral regressions covering partial
+  publication, terminal replay, committed-save timeouts, delivery attribution,
+  preserved decisions, isolated publication failures and actual writer/layout
+  validation with mocked model responses. These are local implementation
+  changes; production acceptance requires deploying the app and checking the
+  authenticated Trending flow on the production domain.
 
 ## 2026-09-11 Luna scene-card, writer, and reviewer pipeline
 
@@ -10,9 +53,10 @@ Last updated: 2026-09-11
 - Writing defaults to **GPT-5.6 Luna / medium reasoning**, followed by an
   independent **GPT-5.6 Luna / medium reasoning** reviewer. The reviewer
   checks for one concrete daily action, one central thought, natural spoken
-  language, supported claims, and readability during the native clip.
-- The writer receives a duration-aware 12-26-word budget (3.2 words per second
-  with a 15% viewing cushion), uses one or two sentences, and rejects
+  language, and supported claims. Its original native-clip reading-time check
+  was removed by the 2026-09-12 product decision above.
+- The writer receives a layout-based 12-26-word budget, uses one or two
+  sentences, and rejects
   semicolon-linked mini-stories. The fixed measured 5-8-row renderer remains
   the visual source of truth; it does not insert line breaks into model copy.
 - Configure the six explicit `OPENAI_WALL_TEXT_*` variables in `.env.example`

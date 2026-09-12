@@ -4,7 +4,7 @@ import { generateBusinessTrendingWallTextIdeas } from '../lib/trending/generate-
 import { createWallTextLayout } from '../lib/trending/wall-text-feed-logic.ts';
 import { getWallTextRepairBudget } from '../lib/trending/wall-text-repair-budget.ts';
 
-test('successive fit repairs tighten the budget without dropping below the duration-aware minimum',()=>{
+test('successive fit repairs tighten the budget without dropping below the general copy minimum',()=>{
   const first=getWallTextRepairBudget({maxWords:32,minWords:12,targetWords:32});
   const second=getWallTextRepairBudget(first);
   assert.deepEqual(first,{maxWords:28,targetWords:28});
@@ -25,9 +25,9 @@ test('a rejected candidate gets a targeted rewrite and already accepted items ar
   globalThis.fetch=async(_url,init)=>{
     const body=JSON.parse(init.body);
     const schemaName=body.response_format?.json_schema?.name;
-    if(schemaName==='trending_wall_text_review_v8') {
+    if(schemaName==='trending_wall_text_review_v9') {
       const reviewCandidates=JSON.parse(body.messages[1].content).candidates;
-      const reviews=reviewCandidates.map(candidate=>({approved:true,candidateIndex:candidate.candidateIndex,feedback:'Clear and natural.',naturalSpokenLanguage:true,oneCentralThought:true,readableWithinClip:true}));
+      const reviews=reviewCandidates.map(candidate=>({approved:true,candidateIndex:candidate.candidateIndex,feedback:'Clear and natural.',naturalSpokenLanguage:true,oneCentralThought:true}));
       return new Response(JSON.stringify({id:'test',object:'chat.completion',created:0,model:'gpt-5.6-luna',choices:[{index:0,finish_reason:'stop',message:{role:'assistant',content:JSON.stringify({reviews}),refusal:null}}]}),{headers:{'content-type':'application/json'}});
     }
     requests.push(body.messages[1].content);
@@ -40,8 +40,8 @@ test('a rejected candidate gets a targeted rewrite and already accepted items ar
     const candidateJson=JSON.parse(requests[1].split('CANDIDATES: REQUIRED WORD RANGES AND ABSOLUTE SAFETY CEILINGS\n')[1].split('\n\nGLOBAL RULES')[0]);
     assert.equal(candidateJson.length,1);
     assert.equal(candidateJson[0].candidateIndex,1);
-    assert.equal(candidateJson[0].maxWords,16);
-    assert.equal(candidateJson[0].retryFeedback.reason,'word_limit');
+    assert.equal(candidateJson[0].maxWords,15);
+    assert.equal(candidateJson[0].retryFeedback.reason,'layout_fit');
     assert.deepEqual(accepted,[0,1]);
     assert.equal(result[1].content.fullText,repair);
     assert.equal(result[1].content.finalLayout.fontSizePx,52);

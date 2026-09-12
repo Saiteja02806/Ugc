@@ -2,7 +2,7 @@
 import { type RenderWallTextVideoPayload, prepareWallTextOverlayAsset, ensureWallTextFontsRegistered, validateWallTextRenderedLineWidths, reflowWallTextContentForRenderer, assertWallTextTextBoxMatchesPayload, rasterizeWallTextOverlay, escapePangoMarkup } from './wall-text-overlay-renderer.ts';
 export { type RenderWallTextVideoPayload, type WallTextOverlayInput, getWallTextOverlayIdentity, prepareWallTextOverlayAsset, ensureWallTextFontsRegistered, reflowWallTextContentForRenderer, assertWallTextTextBoxMatchesPayload, assertWallTextOverlayPixelsInsideTextBox } from './wall-text-overlay-renderer.ts';
 import { spawn } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -330,6 +330,7 @@ export async function renderScheduleCombinationToBuffer(
   const hookSegmentPath = join(workDir, "hook-normalized.mp4");
   const demoSegmentPath = join(workDir, "demo-normalized.mp4");
   const concatListPath = join(workDir, "concat-list.txt");
+  const concatenatedSegmentsPath = join(workDir, "combined-segments.mp4");
   const outputPath = join(workDir, "combined.mp4");
   const hookOverlay = buildPreparedTextOverlay({
     imagePath: join(workDir, "hook-overlay.png"),
@@ -418,11 +419,25 @@ export async function renderScheduleCombinationToBuffer(
         "make_zero",
         "-movflags",
         "+faststart",
-        outputPath,
+        concatenatedSegmentsPath,
       ],
       label: "schedule combination concat",
       renderId: payload.renderId,
     });
+
+    if (hookAudioPath) {
+      await runFfmpegCommand({
+        args: buildScheduleCombinationSoundtrackArgs({
+          hookAudioPath,
+          inputPath: concatenatedSegmentsPath,
+          outputPath,
+        }),
+        label: "schedule combination continuous Hook soundtrack",
+        renderId: payload.renderId,
+      });
+    } else {
+      await copyFile(concatenatedSegmentsPath, outputPath);
+    }
 
     await validateRenderedVideoFile(outputPath, payload.renderId, {
       expectedAudioCodecName: "aac",
@@ -1558,6 +1573,51 @@ export function buildScheduleCombinationSegmentArgs({
   );
 
   return args;
+}
+
+/**
+ * Replaces the concatenated segments' audio with the approved Hook soundtrack.
+ * `apad` keeps the output video intact when a non-looping asset finishes before
+ * the Demo, while `-shortest` trims an asset that outlasts the combined video.
+ */
+export function buildScheduleCombinationSoundtrackArgs({
+  hookAudioPath,
+  inputPath,
+  outputPath,
+}: {
+  hookAudioPath: string;
+  inputPath: string;
+  outputPath: string;
+}) {
+  return [
+    "-y",
+    "-i",
+    inputPath,
+    "-i",
+    hookAudioPath,
+    "-map",
+    "0:v:0",
+    "-map",
+    "1:a:0",
+    "-filter:a",
+    `volume=${TRENDING_LIBRARY_AUDIO_RENDER_GAIN},apad`,
+    "-c:v",
+    "copy",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "160k",
+    "-ar",
+    "48000",
+    "-ac",
+    "2",
+    "-shortest",
+    "-avoid_negative_ts",
+    "make_zero",
+    "-movflags",
+    "+faststart",
+    outputPath,
+  ];
 }
 
 async function inputHasAudio(inputPath: string) {

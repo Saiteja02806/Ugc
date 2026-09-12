@@ -15,6 +15,7 @@ import {
   buildCreateContentWallTextVideoArgs,
   buildWallTextVideoArgs,
   buildScheduleCombinationSegmentArgs,
+  buildScheduleCombinationSoundtrackArgs,
   buildPreparedTextOverlaySvg,
   ensureEditOverlayFontRegistered,
   ensureWallTextFontsRegistered,
@@ -232,6 +233,44 @@ test("applies Hook trim and text only to the opening segment", () => {
       }),
     /Hook source is silent and no approved Hook audio was supplied/,
   );
+});
+
+test("carries approved Hook audio across the full Hook and Demo timeline", () => {
+  const args = buildScheduleCombinationSoundtrackArgs({
+    hookAudioPath: "EWW.mp3",
+    inputPath: "combined-segments.mp4",
+    outputPath: "combined.mp4",
+  });
+
+  assert.deepEqual(args, [
+    "-y",
+    "-i",
+    "combined-segments.mp4",
+    "-i",
+    "EWW.mp3",
+    "-map",
+    "0:v:0",
+    "-map",
+    "1:a:0",
+    "-filter:a",
+    "volume=0.45,apad",
+    "-c:v",
+    "copy",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "160k",
+    "-ar",
+    "48000",
+    "-ac",
+    "2",
+    "-shortest",
+    "-avoid_negative_ts",
+    "make_zero",
+    "-movflags",
+    "+faststart",
+    "combined.mp4",
+  ]);
 });
 
 test("rasterizes the shared overlay plan without distorting the font", async () => {

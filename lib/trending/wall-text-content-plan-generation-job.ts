@@ -6,11 +6,17 @@ import {
   ensureCurrentWallTextContentPlan,
 } from "@/lib/trending/wall-text-content-plan-db";
 import { createAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
+import { assertWallTextGenerationRuntimeConfigured } from "./wall-text-generation-runtime";
 import { shouldReuseWallTextContentPlanGeneration } from "./wall-text-content-plan-generation-logic";
 
 export async function ensureWallTextContentPlanGeneration(params: {
   profile: BusinessProfileRecord;
 }) {
+  // This is also invoked by daily-feed recovery. Keep the check before the
+  // plan RPC so a deployment configuration failure cannot create a plan that
+  // has no route to a worker.
+  assertWallTextGenerationRuntimeConfigured();
+
   const plan = await ensureCurrentWallTextContentPlan(params);
 
   if (

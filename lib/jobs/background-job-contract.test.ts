@@ -54,3 +54,24 @@ test("public jobs expose safe errors and retry state without internal errors", (
   });
   assert.equal(JSON.stringify(getPublicBackgroundJob(job)).includes("secret"), false);
 });
+
+test("public Wall jobs never expose private provider or validation diagnostics", () => {
+  const job = {
+    attemptCount: 3,
+    errorCode: "wall_text_provider_billing_limit",
+    errorMessage: "project_spend_limit_exceeded request=req_secret model=gpt-5.6-luna",
+    jobType: "wall_text_generation",
+    maxAttempts: 3,
+    status: "failed",
+  } as BackgroundJobRecord;
+
+  assert.deepEqual(getPublicBackgroundJob(job).error, {
+    code: "CONTENT_PREPARATION_UNAVAILABLE",
+    message: "We’re handling content preparation automatically. No action is needed from you.",
+    retryable: false,
+  });
+  const publicJob = JSON.stringify(getPublicBackgroundJob(job));
+  assert.equal(publicJob.includes("billing"), false);
+  assert.equal(publicJob.includes("req_secret"), false);
+  assert.equal(publicJob.includes("gpt-5.6-luna"), false);
+});

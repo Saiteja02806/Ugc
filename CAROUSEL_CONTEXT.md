@@ -4402,3 +4402,46 @@ Runtime/font errors propagate as dependency failures instead of copy-fit errors.
 - Database migration: `20260910150000_add_carousel_hook_template_assignments`.
   The application migration and worker must be released together before
   explicitly enabling this behavior in production.
+
+## 2026-09-11 Carousel dispatch safety and grounded Structure 1 planning
+
+- Carousel preparation validates the durable job store and `generate_carousel`
+  Cloud Tasks configuration before it reserves an experiment batch, a
+  content-plan item, or a customer quota slot. A missing dispatch URL or other
+  required queue setting is a deployment configuration error, never a failed
+  Carousel generation.
+- Once a durable Carousel job has been created and its delivery lease claimed,
+  an ambiguous Cloud Tasks send failure leaves the job `queued` and records a
+  `queue_delivery_deferred` event. It is not marked failed and its Carousel
+  rows are not terminalized. The existing leased-delivery recovery and
+  idempotent worker claim are the only redelivery route; this avoids both lost
+  work and duplicate paid work when Cloud Tasks accepted a request before the
+  app lost the response.
+- The GCP cutover canary has a `carousel-generation` kind. It uses an invalid
+  payload that the Carousel worker rejects before it loads a Carousel row,
+  calls the LLM, selects an image, or writes output. Production acceptance must
+  verify the signed app-to-Cloud-Tasks-to-Carousel-worker path at the same app
+  and worker release identity before enabling hook overlays or recovering old
+  failures.
+- Structure 1 planner version
+  `llm-carousel-planner-v41-grounded-batch-cover-contract` requires a
+  server-derived grounding anchor from the saved creative brief. The model may
+  select only an anchor ID; the worker restores its verified fact and requires
+  the concept and Slides 3-5 to use it. Old persisted plans remain readable,
+  while newly generated plans cannot invent a fact or use generic disconnected
+  middle slides.
+- Both initial and batch Structure 1 planner instructions now state the same
+  measured Slide 1 contract: 4-18 words, at most 140 characters, three actual
+  visual lines at 60px for `single_statement` or 44px for other text modes,
+  with no shrink/truncation. An optional hook overlay remains Slide-1-only and
+  cannot repeat the body as a headline or alter Slides 2-6. The publishing
+  validator remains strict.
+- The historical six-slide role-asset error `dimension values cannot be null`
+  is the PostgreSQL array-initialization defect fixed by committed migration
+  `20260906091416_fix_carousel_six_slide_reservation_initialization.sql`; it
+  is not a null image-metadata issue. Release verification must confirm that
+  migration is present in production rather than adding a weaker asset
+  fallback.
+- Historical content-plan duplicate-seed failures are already isolated to the
+  literal normalized duplicate and regenerated one item at a time. Near
+  overlap remains allowed; no broad duplicate rejection should be restored.

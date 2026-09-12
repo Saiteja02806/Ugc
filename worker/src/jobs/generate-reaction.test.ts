@@ -6,6 +6,7 @@ import {
   validateReactionBriefBatch,
 } from "../lib/reaction-generation.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
+import { DeferredJobError } from "../retryable-job-error.js";
 import type { BackgroundJobRow } from "../types.js";
 import { runGenerateReactionJob } from "./generate-reaction.js";
 
@@ -233,6 +234,79 @@ test("uses the persisted canonical profile context when planning", async () => {
   });
 
   assert.deepEqual(plannedContext, canonicalContext);
+});
+
+test("defers after a concurrent planner reserves the selected clip", async () => {
+  let renderJobsCreated = 0;
+  const store = {
+    async ensureReactionGenerationRun() {
+      return {
+        brief_payload: null,
+        generation_context: { audience: [], commonSituations: [], desiredOutcomes: [], pains: [] },
+        id: "run-race",
+      };
+    },
+    async listActiveReactionCatalog() { return { backgrounds: [], clips: [] }; },
+    async getReactionClipPresentationHistory() { return new Map(); },
+    async getReservedReactionClipIds() { return new Set(); },
+    async persistReactionGenerationPlan() {
+      throw new Error("Could not persist Reaction generation plan: reaction_generation_plan_clip_reserved");
+    },
+    async createReactionGenerationRenderJobs() {
+      renderJobsCreated += 1;
+      return [];
+    },
+  } as unknown as SupabaseJobStore;
+
+  await assert.rejects(
+    runGenerateReactionJob(createJob(), {
+      checkpoint: async () => undefined,
+      dependencies: {
+        planReactionGeneration: async () => ({
+          briefPayload: {
+            availability: { availableReactionPalette: [], generationRule: "test", recentlyShownIntents: [] },
+            briefs: [],
+            promptVersion: "test",
+            selectionVersion: "test",
+            shortfallCount: 0,
+          },
+          items: [{
+            backgroundAssetId: "background-1",
+            caption: "When the task finally makes sense",
+            clipAssetId: "clip-1",
+            content: {
+              caption: "When the task finally makes sense",
+              emotion: "surprise",
+              languageFormat: "when",
+              lines: ["When the task", "finally makes sense"],
+              semantic: {
+                expectation: "The task stays confusing",
+                reality: "It finally makes sense",
+                structure: "expectation_reality",
+              },
+              visualContextTags: ["office"],
+              visualTreatment: "outlined_text",
+            },
+            durationSeconds: 6,
+            primaryReaction: "shock",
+            renderPlan: {
+              foreground: { anchor: "bottom_center", heightPercent: 0.5 },
+              text: { lines: ["When the task", "finally makes sense"], treatment: "outlined_text" },
+            },
+            slotIndex: 0,
+            title: "Reaction Reel · shock",
+          }],
+          shortfallCount: 0,
+        }),
+      },
+      store,
+    }),
+    (error: unknown) =>
+      error instanceof DeferredJobError &&
+      error.code === "reaction_generation_plan_clip_reserved" &&
+      error.retryAfterSeconds === 10,
+  );
+  assert.equal(renderJobsCreated, 0);
 });
 
 function createJob(): BackgroundJobRow {

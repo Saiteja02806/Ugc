@@ -38,6 +38,25 @@ test("builds a bounded media-free Create Content render canary", () => {
   );
 });
 
+test("builds a bounded Carousel delivery canary", () => {
+  assert.deepEqual(
+    resolveGcpCutoverAuditCanary({
+      generationId: "generation-carousel",
+      kind: "carousel-generation",
+    }),
+    {
+      expectedFailure: "generate_carousel requires input.carouselId.",
+      input: {
+        canary: "production-carousel-generation-invalid-payload",
+        generationId: "generation-carousel",
+      },
+      jobType: "generate_carousel",
+      kind: "carousel-generation",
+      maxAttempts: 1,
+    },
+  );
+});
+
 test("rejects a canary kind outside the fixed allowlist", () => {
   assert.equal(
     resolveGcpCutoverAuditCanary({ generationId: "generation-3", kind: "anything" }),

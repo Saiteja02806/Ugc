@@ -2572,6 +2572,37 @@ export class SupabaseJobStore {
     return data ?? [];
   }
 
+  async recordWallTextFailureDiagnostic(params: {
+    backgroundJobId: string;
+    contentPlanId: string | null;
+    details: Json;
+    errorCode: string;
+    errorMessage: string;
+    retryable: boolean;
+    stage: string;
+    userId: string;
+  }) {
+    const { error } = await this.client.rpc(
+      "record_wall_text_failure_diagnostic_v1",
+      {
+        p_background_job_id: params.backgroundJobId,
+        p_content_plan_id: params.contentPlanId,
+        p_details: params.details,
+        p_error_code: params.errorCode.slice(0, 120),
+        p_error_message: params.errorMessage.slice(0, 4_000),
+        p_generation_batch_id: null,
+        p_generation_chunk_id: null,
+        p_request_key: null,
+        p_retryable: params.retryable,
+        p_stage: params.stage,
+        p_user_id: params.userId,
+      },
+    );
+    if (error) {
+      throw new Error(`Could not record private Wall planner diagnostic: ${error.message}`);
+    }
+  }
+
   async getWallTextPlanPublication(params: {
     itemCount: number;
     planId: string;

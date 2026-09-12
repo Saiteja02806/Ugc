@@ -12,6 +12,7 @@ import {
   enqueueReactionRenderTask as defaultEnqueueReactionRenderTask,
 } from "../lib/reaction-render-task-dispatch.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
+import { DeferredJobError } from "../retryable-job-error.js";
 import type { BackgroundJobRow, Json } from "../types.js";
 import type { WorkerJobContext } from "./index.js";
 
@@ -155,23 +156,47 @@ async function createAndPersistPlan(params: {
     stage: "persisting_reaction_plan",
     status: "processing",
   });
-  return params.context.store.persistReactionGenerationPlan({
-    briefPayload: plan.briefPayload as Json,
-    generationJobId: params.job.id,
-    items: plan.items.map((item) => ({
-      background_asset_id: item.backgroundAssetId,
-      caption: item.caption,
-      clip_asset_id: item.clipAssetId,
-      content_json: item.content as unknown as Json,
-      duration_seconds: item.durationSeconds,
-      primary_reaction: item.primaryReaction,
-      render_plan_json: item.renderPlan as Json,
-      slot_index: item.slotIndex,
-      title: item.title,
-    })) as unknown as Json,
-    runId: params.runId,
-    userId: params.input.userId,
-  });
+  try {
+    return await params.context.store.persistReactionGenerationPlan({
+      briefPayload: plan.briefPayload as Json,
+      generationJobId: params.job.id,
+      items: plan.items.map((item) => ({
+        background_asset_id: item.backgroundAssetId,
+        caption: item.caption,
+        clip_asset_id: item.clipAssetId,
+        content_json: item.content as unknown as Json,
+        duration_seconds: item.durationSeconds,
+        primary_reaction: item.primaryReaction,
+        render_plan_json: item.renderPlan as Json,
+        slot_index: item.slotIndex,
+        title: item.title,
+      })) as unknown as Json,
+      runId: params.runId,
+      userId: params.input.userId,
+    });
+  } catch (error) {
+    // The database transaction deliberately rejects a clip that a competing
+    // planner committed after this job read its reservation snapshot. No part
+    // of this plan was saved, so a short durable wait lets the next execution
+    // load the current reservations and select a different clip. Do not relax
+    // the database constraint or spend one of the job's provider attempts.
+    if (isReactionPlanClipReservationConflict(error)) {
+      throw new DeferredJobError(
+        "Another Reaction planner reserved a clip first. Refreshing the catalog before planning again.",
+        {
+          code: "reaction_generation_plan_clip_reserved",
+          retryAfterSeconds: 10,
+        },
+      );
+    }
+
+    throw error;
+  }
+}
+
+function isReactionPlanClipReservationConflict(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /\breaction_generation_plan_clip_reserved\b/u.test(message);
 }
 
 export function buildReactionRenderPayload(params: {

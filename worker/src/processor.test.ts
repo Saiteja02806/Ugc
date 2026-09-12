@@ -313,7 +313,10 @@ test("requeues an empty Wall Text model response without losing the plan", async
 
   assert.equal(job.status, "queued");
   assert.equal(job.attempt_count, 1);
-  assert.match(job.error_message ?? "", /returned no content/);
+  assert.match(
+    job.error_message ?? "",
+    /will resume from its last saved chunk/,
+  );
   assert.equal(
     commands.filter((name) => name === "DeleteMessageCommand").length,
     0,

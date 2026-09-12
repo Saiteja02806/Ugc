@@ -79,6 +79,39 @@ test("Structure 1 accepts a six-slide reader-first educational carousel", () => 
   }
 });
 
+test("Structure 1 requires a verified grounding anchor in the concept and middle slides", () => {
+  const input = {
+    analysis,
+    contentFormatId: "how_to",
+    hookFamilyId: "curiosity",
+    recentHistory: [],
+    slideCount: CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
+  };
+
+  const missingAnchor: Record<string, unknown> = {
+    ...createFixture("how_to", "curiosity"),
+  };
+  delete missingAnchor.grounding;
+  assert.throws(
+    () => parseCarouselContentPlanForAssignment(missingAnchor, input),
+    /grounding/i,
+  );
+
+  const unsupportedAnchor = createFixture("how_to", "curiosity");
+  unsupportedAnchor.grounding.anchorId = "product_detail:invented";
+  assert.throws(
+    () => parseCarouselContentPlanForAssignment(unsupportedAnchor, input),
+    /grounding/i,
+  );
+
+  const disconnectedAnchor = createFixture("how_to", "curiosity");
+  disconnectedAnchor.concept = "A practical way to keep a launch review clear";
+  assert.throws(
+    () => parseCarouselContentPlanForAssignment(disconnectedAnchor, input),
+    /grounding/i,
+  );
+});
+
 test("Structure 1 accepts a persisted Slide 1 hook template without changing its six-slide grammar", () => {
   const hookTemplate = getCarouselHookTemplate("cracked_the_code");
   const result = parseCarouselContentPlanForAssignment(
@@ -198,6 +231,9 @@ test("the worker sends a persisted template only as Slide 1 planner guidance", a
     assert.match(requestText, new RegExp(hookTemplate.id));
     assert.match(requestText, /I finally cracked the code for \{topic\}/);
     assert.match(requestText, /not let it change Slides 2-6/i);
+    assert.match(requestText, /Verified grounding anchors/i);
+    assert.match(requestText, /single_statement uses 60px type/i);
+    assert.match(requestText, /headline must not repeat its body/i);
   } finally {
     globalThis.fetch = originalFetch;
     if (originalApiKey === undefined) delete process.env.OPENAI_API_KEY;
@@ -418,6 +454,10 @@ test("the production-shaped five-item batch uses combined formats and a native f
     assert.match(requestText, /how_to__cracked_the_code/);
     assert.match(requestText, /list__native/);
     assert.match(requestText, /source.*format_native/);
+    assert.match(requestText, /at-most-140-character reader-first cover/i);
+    assert.match(requestText, /actual 3-line display area/i);
+    assert.match(requestText, /headline must add distinct information/i);
+    assert.match(requestText, /grounding\.anchorId/i);
   } finally {
     globalThis.fetch = originalFetch;
     if (originalApiKey === undefined) delete process.env.OPENAI_API_KEY;
@@ -906,6 +946,23 @@ function createDistinctBatchFixture(
     };
   });
 
+  // The batch path now requires the selected verified workflow to be visible
+  // in the concept and across the middle teaching slides. Keep this
+  // production-shaped fixture tied to the selected main-problem anchor rather
+  // than making the validator accept an ungrounded sequence of generic steps.
+  const groundingSlide = fixture.slides[2]!;
+  fixture.slides[2] = groundingSlide.listItems.length > 0
+    ? {
+        ...groundingSlide,
+        listItems: groundingSlide.listItems.map((item, index) =>
+          index === 0 ? "Connect campaign planning" : item,
+        ),
+      }
+    : {
+        ...groundingSlide,
+        body: "Keep campaign planning and reporting connected instead of scattering work across tools.",
+      };
+
   return fixture;
 }
 
@@ -947,6 +1004,9 @@ function createFixture(formatId: string, hookFamilyId: string) {
       hookFamilyId,
       problemId: context.problems[0]!.id,
       topicId: context.topics[0]!.id,
+    },
+    grounding: {
+      anchorId: "workflow:main_problem",
     },
     slides: format.slides.map((definition, index) => {
       const listItemCount = definition.listItemCount ?? 0;

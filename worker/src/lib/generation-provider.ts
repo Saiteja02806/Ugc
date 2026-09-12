@@ -129,6 +129,14 @@ function classifySubmissionFailure(error: unknown) {
     return error.retryable ? "retryable_rejection" : "permanent_rejection";
   }
 
+  // Some SDK versions expose a provider validation failure only as a message,
+  // without the HTTP 400 status. This is still known to be pre-submission: no
+  // paid provider operation could have been created, so it must not become an
+  // ambiguous submission that blocks recovery.
+  if (isKnownPermanentProviderConfigurationError(error)) {
+    return "permanent_rejection";
+  }
+
   const status = getNumericErrorField(error, "status", "statusCode");
 
   if (status === 429) {
@@ -159,6 +167,10 @@ function getErrorCode(error: unknown) {
       : "request_not_submitted";
   }
 
+  if (isKnownPermanentProviderConfigurationError(error)) {
+    return "provider_configuration_invalid";
+  }
+
   const code = getStringErrorField(error, "code");
   const status = getNumericErrorField(error, "status", "statusCode");
 
@@ -166,6 +178,11 @@ function getErrorCode(error: unknown) {
     .toLowerCase()
     .replace(/[^a-z0-9_-]+/g, "_")
     .slice(0, 120);
+}
+
+function isKnownPermanentProviderConfigurationError(error: unknown) {
+  const message = getErrorMessage(error);
+  return /\bgenerateaudio parameter is only supported in gemini enterprise agent platform mode, not in gemini developer api mode\b/iu.test(message);
 }
 
 function getErrorMessage(error: unknown) {

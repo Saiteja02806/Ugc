@@ -35,6 +35,7 @@ import {
   needsTrendingWallTextCreativeRefresh,
   parseWallTextContent,
   parseWallTextLayout,
+  recordWallTextFailureDiagnostic,
   recordWallTextGenerationChunkFailure,
   replaceTrendingWallTextCreativeCopy,
   reserveWallTextGenerationBatch,
@@ -49,8 +50,9 @@ import {
 } from "@/lib/trending/wall-text-types";
 import {
   classifyWallTextGenerationFailure,
+  getWallTextFailurePrivateMessage,
   isWallTextRenderFitFailure,
-  WALL_TEXT_CONTENT_RETRY_EXHAUSTED,
+  markWallTextFailureDiagnosticRecorded,
   WALL_TEXT_RENDER_FIT_REJECTED,
 } from "@/lib/trending/wall-text-generation-failure";
 import {
@@ -514,31 +516,52 @@ async function completeReservedWallTextGeneration(params: {
   );
 
   if (unfinished.length > 0) {
-    const privateContextsByAssignment = await getWallTextPrivateCreativeContexts({
-      assignments: unfinished,
-      userId: params.profile.userId,
-    });
-    const assets = await listWallTextOverlayAssetsByIds(
-      unfinished.map((assignment) => assignment.overlay_media_asset_id),
-    );
-    const availableAssetIds = new Set(assets.map((asset) => asset.id));
-    if (
-      unfinished.some(
-        (assignment) =>
-          !availableAssetIds.has(assignment.overlay_media_asset_id) ||
-           (assignment.source_kind === "instagram_reel" &&
-             (!assignment.instagram_reel_template_id ||
-               !assignment.instagram_reel_template_version ||
-               !assignment.instagram_reference_text ||
-              !assignment.instagram_reference_text_hash ||
-              !assignment.instagram_locked_audio_asset_id ||
-              !assignment.instagram_audio_fit_mode)),
-      )
-    ) {
-      throw new TrendingWallTextPreparationError(
-        "A reserved Wall-of-text background is no longer available.",
-        409,
+    let privateContextsByAssignment: Awaited<
+      ReturnType<typeof getWallTextPrivateCreativeContexts>
+    >;
+    try {
+      privateContextsByAssignment = await getWallTextPrivateCreativeContexts({
+        assignments: unfinished,
+        userId: params.profile.userId,
+      });
+      const assets = await listWallTextOverlayAssetsByIds(
+        unfinished.map((assignment) => assignment.overlay_media_asset_id),
       );
+      const availableAssetIds = new Set(assets.map((asset) => asset.id));
+      if (
+        unfinished.some(
+          (assignment) =>
+            !availableAssetIds.has(assignment.overlay_media_asset_id) ||
+            (assignment.source_kind === "instagram_reel" &&
+              (!assignment.instagram_reel_template_id ||
+                !assignment.instagram_reel_template_version ||
+                !assignment.instagram_reference_text ||
+                !assignment.instagram_reference_text_hash ||
+                !assignment.instagram_locked_audio_asset_id ||
+                !assignment.instagram_audio_fit_mode)),
+        )
+      ) {
+        throw new TrendingWallTextPreparationError(
+          "A reserved Wall-of-text background is no longer available.",
+          409,
+        );
+      }
+    } catch (error) {
+      const failure = classifyWallTextGenerationFailure(error, "reservation");
+      try {
+        await recordWallTextFailureDiagnostic({
+          details: failure.diagnostic,
+          errorCode: failure.errorCode,
+          errorMessage: getWallTextFailurePrivateMessage(error),
+          requestKey: params.requestKey,
+          retryable: failure.retryable,
+          userId: params.profile.userId,
+        });
+        markWallTextFailureDiagnosticRecorded(error);
+      } catch (recordError) {
+        console.error("Could not persist private Wall-of-text reservation diagnostic:", recordError);
+      }
+      throw error;
     }
 
     const reservedByLocalIndex = new Map(
@@ -618,19 +641,30 @@ async function completeReservedWallTextGeneration(params: {
           },
         });
       } catch (error) {
-        const failure =
-          error instanceof WallTextCandidateRepairExhaustedError
-            ? {
-                errorCode: WALL_TEXT_CONTENT_RETRY_EXHAUSTED,
-                retryable: false,
-              }
-            : classifyWallTextGenerationFailure(error);
+        const failure = classifyWallTextGenerationFailure(error);
+        try {
+          await recordWallTextFailureDiagnostic({
+            details: failure.diagnostic,
+            errorCode: failure.errorCode,
+            errorMessage: getWallTextFailurePrivateMessage(error),
+            generationChunkId: chunkId,
+            requestKey: params.requestKey,
+            retryable: failure.retryable,
+            userId: params.profile.userId,
+          });
+          markWallTextFailureDiagnosticRecorded(error);
+        } catch (diagnosticError) {
+          // Keep the established chunk-state path intact during a rolling
+          // deployment if the diagnostics migration has not reached this
+          // application instance yet.
+          console.error("Could not persist private Wall-of-text diagnostic:", diagnosticError);
+        }
         try {
           await recordWallTextGenerationChunkFailure({
             claimToken,
             chunkId,
             errorCode: failure.errorCode,
-            errorMessage: error instanceof Error ? error.message : String(error),
+            errorMessage: getWallTextFailurePrivateMessage(error),
             retryable: failure.retryable,
             userId: params.profile.userId,
           });

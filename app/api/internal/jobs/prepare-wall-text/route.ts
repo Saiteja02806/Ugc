@@ -13,7 +13,12 @@ import {
   prepareTrendingWallTextIdeas,
   TrendingWallTextPreparationError,
 } from "@/lib/trending/trending-wall-text-feed";
-import { classifyWallTextGenerationFailure } from "@/lib/trending/wall-text-generation-failure";
+import { recordWallTextFailureDiagnostic } from "@/lib/trending/wall-text-db";
+import {
+  classifyWallTextGenerationFailure,
+  getWallTextFailurePrivateMessage,
+  wasWallTextFailureDiagnosticRecorded,
+} from "@/lib/trending/wall-text-generation-failure";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -81,17 +86,41 @@ export async function POST(request: Request) {
 
     return json({ ideaCount: ideas.length, ok: true });
   } catch (error) {
+    const failure = classifyWallTextGenerationFailure(error);
+    if (!wasWallTextFailureDiagnosticRecorded(error)) {
+      try {
+        await recordWallTextFailureDiagnostic({
+          details: failure.diagnostic,
+          errorCode: failure.errorCode,
+          errorMessage: getWallTextFailurePrivateMessage(error),
+          requestKey: input.requestKey,
+          retryable: failure.retryable,
+          userId: input.userId,
+        });
+      } catch (diagnosticError) {
+        console.error("Could not record private Wall-of-text preparation diagnostic", {
+          error: diagnosticError instanceof Error
+            ? diagnosticError.message
+            : String(diagnosticError),
+          requestKey: input.requestKey,
+        });
+      }
+    }
+
     if (error instanceof TrendingWallTextPreparationError) {
       return json(
-        { error: error.message, errorCode: error.code, ok: false },
+        {
+          error: "Wall-of-text preparation is temporarily unavailable.",
+          errorCode: error.code,
+          ok: false,
+        },
         error.status,
       );
     }
 
-    const failure = classifyWallTextGenerationFailure(error);
     console.error("Background Wall-of-text preparation failed", {
       errorCode: failure.errorCode,
-      errorMessage: error instanceof Error ? error.message : String(error),
+      errorMessage: getWallTextFailurePrivateMessage(error),
       errorName: error instanceof Error ? error.name : typeof error,
       recoveryIteration: input.recoveryIteration,
       recoveryKey: input.recoveryKey,
@@ -101,7 +130,9 @@ export async function POST(request: Request) {
     });
     return json(
       {
-        error: failure.publicMessage,
+        // This endpoint is worker-only, but retaining a generic body ensures a
+        // future caller cannot receive model, database, or provider details.
+        error: "Wall-of-text preparation is temporarily unavailable.",
         errorCode: failure.errorCode,
         ok: false,
       },

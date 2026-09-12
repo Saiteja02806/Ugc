@@ -7,7 +7,10 @@ import {
   updateBusinessProfilePreparation,
   type BusinessProfileRecord,
 } from "@/lib/business-profiles/db";
-import { enqueueCarouselExperimentBatchJob } from "@/lib/carousel/generation-jobs";
+import {
+  assertCarouselGenerationRuntimeConfigured,
+  enqueueCarouselExperimentBatchJob,
+} from "@/lib/carousel/generation-jobs";
 import {
   AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
   AUTOMATIC_CAROUSEL_SLIDE_COUNT,
@@ -222,6 +225,11 @@ async function prepareControlledGenerationBatch(params: {
   originDailyFeedId?: string | null;
   profile: BusinessProfileRecord;
 }) {
+  // This must happen before reserving experiment batches or plan items. A
+  // missing Cloud Tasks configuration is an application deployment error, not
+  // a failed customer Carousel or a consumed daily-content slot.
+  assertCarouselGenerationRuntimeConfigured();
+
   const candidateCount = Math.min(
     Math.ceil(params.candidateCount / CAROUSEL_EXPERIMENT_BATCH_SIZE) *
       CAROUSEL_EXPERIMENT_BATCH_SIZE,

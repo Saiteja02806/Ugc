@@ -124,6 +124,7 @@ export function isRetryableBackgroundJob(job: BackgroundJobRecord) {
 }
 
 export function getPublicBackgroundJob(job: BackgroundJobRecord) {
+  const hideWallTextFailureDetails = isWallTextJob(job.jobType);
   return {
     cancelRequestedAt: job.cancelRequestedAt,
     completedAt: job.completedAt,
@@ -131,8 +132,12 @@ export function getPublicBackgroundJob(job: BackgroundJobRecord) {
     error:
       job.status === "failed" || job.status === "stalled"
         ? {
-            code: job.errorCode || "JOB_FAILED",
-            message: getSafeJobErrorMessage(job.errorCode),
+            code: hideWallTextFailureDetails
+              ? "CONTENT_PREPARATION_UNAVAILABLE"
+              : job.errorCode || "JOB_FAILED",
+            message: hideWallTextFailureDetails
+              ? "We’re handling content preparation automatically. No action is needed from you."
+              : getSafeJobErrorMessage(job.errorCode),
             retryable: isRetryableBackgroundJob(job),
           }
         : null,
@@ -149,6 +154,15 @@ export function getPublicBackgroundJob(job: BackgroundJobRecord) {
     status: job.status,
     updatedAt: job.updatedAt,
   } satisfies PublicBackgroundJob;
+}
+
+/**
+ * Wall generation includes provider and content-quality diagnostics which are
+ * useful to operations only. The public job contract must never reveal them.
+ */
+function isWallTextJob(jobType: BackgroundJobType) {
+  return jobType === "wall_text_generation" ||
+    jobType === "wall_text_content_plan_generation";
 }
 
 function getSafeJobErrorMessage(errorCode: string | null) {

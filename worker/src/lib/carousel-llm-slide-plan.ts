@@ -35,7 +35,7 @@ import {
 import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v40-native-hook-overflow-fallback";
+  "llm-carousel-planner-v41-grounded-batch-cover-contract";
 export const CAROUSEL_V1_ASSIGNMENT_REQUIRED_ERROR =
   "Carousel V1 requires exactly six slides plus a backend-selected content format and compatible hook family.";
 
@@ -96,11 +96,13 @@ export type CarouselContentPlan = {
   concept: string;
   contentStrategy: ResolvedCarouselContentStrategy | null;
   fallbackReason: string | null;
+  grounding: CarouselGroundingAnchor | null;
   model: string | null;
   normalizedPlan: {
     broadSituations: string[];
     concept: string;
     contentStrategy: ResolvedCarouselContentStrategy | null;
+    grounding: CarouselGroundingAnchor | null;
     slides: PlannedCarouselSlide[];
   };
   plannerVersion: string;
@@ -119,6 +121,9 @@ export type CarouselPlanValidationIssue = {
     | "body_length"
     | "body_word_limit"
     | "generic_copy"
+    | "grounding_disconnected"
+    | "grounding_missing"
+    | "grounding_unsupported"
     | "grammar"
     | "headline_body_repetition"
     | "headline_length"
@@ -222,9 +227,20 @@ export type ResolvedCarouselContentStrategy = {
   topicId: null;
 };
 
+export type CarouselGroundingAnchor = {
+  anchorId: string;
+  kind: "product_detail" | "user_situation" | "workflow";
+  sourceFact: string;
+};
+
+type CarouselGroundingCandidate = CarouselGroundingAnchor & {
+  matchTerms: string[];
+};
+
 type CarouselGrammarGenerationContext = {
   combinedFormatId: string;
   format: CarouselContentFormatDefinition;
+  groundingCandidates: CarouselGroundingCandidate[];
   hookTemplateFallbackReason: CarouselHookTemplateFallbackReason | null;
   hookFamily: CarouselHookFamilyDefinition;
   hookTemplate: CarouselHookTemplateDefinition | null;
@@ -249,10 +265,18 @@ function getGrammarGenerationContext(
     hookTemplateId: input.hookTemplateId,
     hookTemplateVersion: input.hookTemplateVersion,
   });
+  const groundingCandidates = getCarouselGroundingCandidates(input);
+
+  if (groundingCandidates.length === 0) {
+    throw new Error(
+      "Carousel generation requires a concrete supported workflow, product detail, or user situation in the saved creative brief.",
+    );
+  }
 
   return {
     combinedFormatId: combinedFormat.combinedFormatId,
     format: combinedFormat.format,
+    groundingCandidates,
     hookFamily: combinedFormat.hookFamily,
     hookTemplate: combinedFormat.hookTemplate,
     hookTemplateFallbackReason: combinedFormat.fallbackReason,
@@ -302,6 +326,7 @@ export async function buildCarouselContentPlan(
       );
       const validation = evaluateCarouselContentPlanForPublishing({
         analysis: input.analysis,
+        groundingCandidates: grammarContext.groundingCandidates,
         plan: normalizedPlan,
         recentHistory: input.recentHistory,
       });
@@ -379,6 +404,7 @@ export async function buildCarouselContentPlan(
         : parsedRepairedPlan;
     const repairedValidation = evaluateCarouselContentPlanForPublishing({
       analysis: input.analysis,
+      groundingCandidates: grammarContext.groundingCandidates,
       plan: repairedPlan,
       recentHistory: input.recentHistory,
     });
@@ -579,6 +605,7 @@ export async function buildCarouselContentPlanBatch(
         );
         const validation = evaluateCarouselContentPlanForPublishing({
           analysis: input.analysis,
+          groundingCandidates: requestedItem.context.groundingCandidates,
           plan: parsed,
           recentHistory: workingHistory,
         });
@@ -734,6 +761,7 @@ export function parseCarouselContentPlanForAssignment(
   );
   const validation = evaluateCarouselContentPlanForPublishing({
     analysis: input.analysis,
+    groundingCandidates: grammarContext.groundingCandidates,
     plan,
     recentHistory: input.recentHistory,
   });
@@ -762,6 +790,9 @@ function parseCarouselContentPlanShape(
   );
   const contentStrategy = grammarContext
     ? parseContentStrategy(record.contentStrategy, grammarContext)
+    : null;
+  const grounding = grammarContext
+    ? parseCarouselGrounding(record.grounding, grammarContext.groundingCandidates)
     : null;
 
   if (!Array.isArray(record.slides) || record.slides.length !== slideCount) {
@@ -940,7 +971,26 @@ function parseCarouselContentPlanShape(
     } satisfies PlannedCarouselSlide;
   });
 
-  return { broadSituations, concept, contentStrategy, slides };
+  return { broadSituations, concept, contentStrategy, grounding, slides };
+}
+
+function parseCarouselGrounding(
+  value: unknown,
+  candidates: readonly CarouselGroundingCandidate[],
+): CarouselGroundingAnchor {
+  const record = asRecord(value, "grounding");
+  const anchorId = getRequiredString(record.anchorId, 80, "grounding anchorId");
+  const candidate = candidates.find((item) => item.anchorId === anchorId);
+
+  if (!candidate) {
+    throw new Error("Carousel grounding must select one supplied evidence anchor.");
+  }
+
+  return {
+    anchorId: candidate.anchorId,
+    kind: candidate.kind,
+    sourceFact: candidate.sourceFact,
+  };
 }
 
 function parseContentStrategy(
@@ -1360,7 +1410,7 @@ function validateStructure1FixedTextFit(
 
 export function validateCarouselContentPlan(
   plan: Pick<CarouselContentPlan, "broadSituations" | "concept" | "slides"> &
-    Partial<Pick<CarouselContentPlan, "contentStrategy">>,
+    Partial<Pick<CarouselContentPlan, "contentStrategy" | "grounding">>,
   analysis?: WebsiteBusinessAnalysis,
 ) {
   const issues: CarouselPlanValidationIssue[] = [];
@@ -1723,12 +1773,14 @@ function evaluateCarouselContentPlanForPublishing(params: {
   analysis?: WebsiteBusinessAnalysis;
   plan: Pick<
     CarouselContentPlan,
-    "broadSituations" | "concept" | "contentStrategy" | "slides"
+    "broadSituations" | "concept" | "contentStrategy" | "grounding" | "slides"
   >;
+  groundingCandidates: readonly CarouselGroundingCandidate[];
   recentHistory: readonly CarouselRecentAcceptedCopy[] | undefined;
 }) {
   return partitionCarouselContentPlanValidationIssues([
     ...validateCarouselContentPlan(params.plan, params.analysis),
+    ...validateCarouselPlanGrounding(params.plan, params.groundingCandidates),
     ...validateCarouselRecentContentRepetition(
       params.plan,
       params.recentHistory,
@@ -1753,6 +1805,148 @@ function hasUnsupportedPreciseNumber(value: string, evidenceText: string) {
 
 function normalizeValidationText(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+const GROUNDING_STOP_WORDS = new Set([
+  "about",
+  "across",
+  "after",
+  "against",
+  "along",
+  "also",
+  "another",
+  "before",
+  "between",
+  "could",
+  "each",
+  "from",
+  "have",
+  "into",
+  "just",
+  "more",
+  "most",
+  "other",
+  "over",
+  "same",
+  "that",
+  "their",
+  "these",
+  "this",
+  "through",
+  "using",
+  "with",
+  "without",
+]);
+
+function getCarouselGroundingCandidates(
+  input: CarouselContentPlanInput,
+): CarouselGroundingCandidate[] {
+  const candidates: CarouselGroundingCandidate[] = [];
+  const seenFacts = new Set<string>();
+  const add = (
+    anchorId: string,
+    kind: CarouselGroundingAnchor["kind"],
+    sourceFact: string | null | undefined,
+  ) => {
+    const trimmedFact = sourceFact?.trim().slice(0, 240) ?? "";
+    const normalizedFact = normalizeValidationText(trimmedFact);
+    const matchTerms = getGroundingMatchTerms(trimmedFact);
+
+    if (!normalizedFact || matchTerms.length === 0 || seenFacts.has(normalizedFact)) {
+      return;
+    }
+
+    seenFacts.add(normalizedFact);
+    candidates.push({ anchorId, kind, matchTerms, sourceFact: trimmedFact });
+  };
+
+  add("workflow:main_problem", "workflow", input.analysis?.mainProblem);
+  input.analysis?.painPoints?.forEach((fact, index) =>
+    add(`workflow:pain_point:${index}`, "workflow", fact),
+  );
+  add("product_detail:product_summary", "product_detail", input.analysis?.productSummary);
+  input.analysis?.differentiators?.forEach((fact, index) =>
+    add(`product_detail:differentiator:${index}`, "product_detail", fact),
+  );
+  input.analysis?.valueProps?.forEach((fact, index) =>
+    add(`product_detail:value_prop:${index}`, "product_detail", fact),
+  );
+  add("user_situation:human_moment", "user_situation", input.planningBrief?.humanMoment);
+  add("user_situation:audience_context", "user_situation", input.planningBrief?.audienceContext);
+  add("product_detail:supported_angle", "product_detail", input.planningBrief?.supportedAngle);
+  add("product_detail:business_description", "product_detail", input.businessDescription);
+
+  return candidates;
+}
+
+function getGroundingMatchTerms(value: string) {
+  return Array.from(
+    new Set(
+      getNormalizedTokens(value).filter(
+        (token) => !GROUNDING_STOP_WORDS.has(token) && token.length >= 3,
+      ),
+    ),
+  ).slice(0, 8);
+}
+
+function validateCarouselPlanGrounding(
+  plan: Pick<CarouselContentPlan, "concept" | "grounding" | "slides">,
+  candidates: readonly CarouselGroundingCandidate[],
+): CarouselPlanValidationIssue[] {
+  const issues: CarouselPlanValidationIssue[] = [];
+
+  if (!plan.grounding) {
+    return [{
+      code: "grounding_missing",
+      message: "Carousel plan must select a supported workflow, product detail, or user situation.",
+      slideNumber: null,
+    }];
+  }
+
+  const candidate = candidates.find(
+    (item) =>
+      item.anchorId === plan.grounding?.anchorId &&
+      item.kind === plan.grounding.kind &&
+      item.sourceFact === plan.grounding.sourceFact,
+  );
+
+  if (!candidate) {
+    return [{
+      code: "grounding_unsupported",
+      message: "Carousel plan selected grounding that is not present in the verified creative brief.",
+      slideNumber: null,
+    }];
+  }
+
+  if (!hasGroundingTerm(plan.concept, candidate.matchTerms)) {
+    issues.push({
+      code: "grounding_disconnected",
+      message: "Carousel concept does not connect to its selected verified grounding.",
+      slideNumber: null,
+    });
+  }
+
+  const middleSlides = plan.slides.slice(2, 5).flatMap((slide) => [
+    slide.headline,
+    slide.body,
+    ...slide.listItems,
+    slide.ctaText,
+  ]).filter((value): value is string => Boolean(value)).join(" ");
+
+  if (!hasGroundingTerm(middleSlides, candidate.matchTerms)) {
+    issues.push({
+      code: "grounding_disconnected",
+      message: "Carousel middle slides do not deliver the selected verified grounding.",
+      slideNumber: 3,
+    });
+  }
+
+  return issues;
+}
+
+function hasGroundingTerm(value: string, matchTerms: readonly string[]) {
+  const tokens = new Set(getNormalizedTokens(value));
+  return matchTerms.some((term) => tokens.has(term));
 }
 
 function getTokenOverlap(left: string, right: string) {
@@ -1875,6 +2069,7 @@ function buildGrammarPlannerMessages(
         "",
         "Selection rules:",
         "- contentFormatId and hookFamilyId must exactly match the backend-selected values.",
+        "- Select one supplied grounding.anchorId. The concept and Slides 3-5 must naturally develop that verified workflow, product detail, or user situation; never invent a fact or force a product name into every slide.",
         "- Treat creativeSeed as an open starting point, not finished copy or a compulsory plot.",
         "- Let the required emotion shape the voice without naming it mechanically on every slide.",
         "- Use the private creative brief as human specificity and factual direction, not as a fixed storyline or a replacement for the selected format.",
@@ -1887,13 +2082,13 @@ function buildGrammarPlannerMessages(
         "- Prioritize useful content over promotion. Do not turn the carousel into an advertisement.",
         "- Hook wording must be completely fresh and must follow the selected hook family without copying examples or history.",
         grammarContext.hookTemplate
-          ? "- Apply the selected hook template only to Slide 1 as a structural pattern; adapt its {topic} placeholder naturally, rather than copying it verbatim. Do not let it change Slides 2-6 or their selected format roles."
+          ? "- Apply the selected hook template only to Slide 1 as a structural pattern; adapt its {topic} placeholder naturally, rather than copying it verbatim. Do not let it change Slides 2-6, their selected format roles, or the Slide 1 copy budget."
           : "- No hook template is assigned. Keep the legacy fresh hook-family approach for Slide 1.",
         grammarContext.hookTemplate?.claimHandling === "adapt_if_unsupported"
           ? "- The selected template contains a personal-result, time, metric, or performance implication. Keep its structure, but remove or soften that implication unless the supplied business context directly supports it."
           : null,
         `- Headlines are optional. When present, use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words, at most ${MAX_HEADLINE_LENGTH} characters, and no more than four visual lines.`,
-        `- Slide 1 is the cover. Write one reader-first cover statement of ${FIRST_SLIDE_MIN_BODY_WORDS}-${FIRST_SLIDE_MAX_BODY_WORDS} words and at most ${FIRST_SLIDE_MAX_BODY_LENGTH} characters. It must create a specific reason to swipe through a tension, outcome, contrast, mistake, useful promise, or curiosity gap. Do not begin a complete personal story with “I thought,” “I used to,” “Recently I,” “Here is my story,” or “I learned” unless the same line states a specific reader payoff.`,
+        `- Slide 1 is the cover. Write one reader-first cover statement of ${FIRST_SLIDE_MIN_BODY_WORDS}-${FIRST_SLIDE_MAX_BODY_WORDS} words and at most ${FIRST_SLIDE_MAX_BODY_LENGTH} characters. It must fit the real ${getCarouselStructure1BodyMaxLines(1)}-line display area: single_statement uses 60px type; headline_body and body_only use ${CAROUSEL_FIXED_FONT_SIZE}px. The renderer never shrinks or truncates copy. It must create a specific reason to swipe through a tension, outcome, contrast, mistake, useful promise, or curiosity gap. Do not begin a complete personal story with “I thought,” “I used to,” “Recently I,” “Here is my story,” or “I learned” unless the same line states a specific reader payoff.`,
         `- Slides 2-6 body copy must each be one complete sentence of ${MIN_REQUIRED_BODY_WORDS}-${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words and at most ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters.`,
         `- The renderer uses fixed ${CAROUSEL_FIXED_FONT_SIZE}px type, except a single-statement Slide 1 cover renders larger. An actual headline receives one measured white SVG background with dark text; body, list, and CTA text remain white directly on the image. Headlines remain optional: never add one merely to obtain the SVG background. Slide 1 copy must fit within ${getCarouselStructure1BodyMaxLines(1)} lines; Slides 2-6 body copy within ${getCarouselStructure1BodyMaxLines(2)} lines; each list item within two; list groups within eight total. The renderer will not shrink or truncate copy.`,
         "- A headline must not repeat its body. If the body works alone, use body_only and set headline to null.",
@@ -1910,6 +2105,14 @@ function buildGrammarPlannerMessages(
         "",
         "Minimal business context:",
         JSON.stringify({ businessDescription: input.businessDescription }),
+        "Verified grounding anchors:",
+        JSON.stringify(
+          grammarContext.groundingCandidates.map(({ anchorId, kind, sourceFact }) => ({
+            anchorId,
+            kind,
+            sourceFact,
+          })),
+        ),
         "",
         "Resolved combined Structure 1 format:",
         JSON.stringify(combinedFormatForPrompt),
@@ -1935,6 +2138,11 @@ function buildBatchPlannerMessages(
   const assignments = requested.map(({ context, item }) => ({
     creativeSeed: item.creativeSeed,
     emotion: item.emotion,
+    groundingCandidates: context.groundingCandidates.map(({ anchorId, kind, sourceFact }) => ({
+      anchorId,
+      kind,
+      sourceFact,
+    })),
     privateCreativeBrief: item.planningBrief,
     combinedFormat: {
       baseContentFormatId: context.format.id,
@@ -1983,12 +2191,14 @@ function buildBatchPlannerMessages(
         "Do not mark a format not_applicable merely because another format is easier.",
         "Every ready item must use the exact format and hook-family IDs assigned to that slot.",
         "Develop each creativeSeed differently and let its emotion guide the tone without forcing a fixed story arc.",
-        "Use each privateCreativeBrief as flexible background context; the backend-selected format and hook family remain authoritative.",
+        "Use each privateCreativeBrief as factual direction without forcing a fixed story; the backend-selected format and hook family remain authoritative.",
+        "Every ready plan must select one supplied grounding.anchorId. Its concept and Slides 3-5 must naturally develop that verified workflow, product detail, or user situation. Do not invent an anchor, and do not merely repeat a product name on every slide.",
         "Write fresh hooks and slide copy that do not copy recentAcceptedCopy or another item in this response.",
-        "When a slot's combinedFormat.hookOverlay source is template, use that pattern only for Slide 1. Adapt {topic}; never copy it verbatim, and do not change Slides 2-6 or their format roles. For adapt_if_unsupported claims, remove or soften unsupported personal, time, metric, or performance promises.",
+        "When a slot's combinedFormat.hookOverlay source is template, use that pattern only for Slide 1. Adapt {topic}; never copy it verbatim, do not change Slides 2-6 or their format roles, and never increase the Slide 1 copy budget. For adapt_if_unsupported claims, remove or soften unsupported personal, time, metric, or performance promises.",
         "Use simple, specific, natural copy. Prioritize useful information over promotion.",
         `Optional headlines must use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words and at most ${MAX_HEADLINE_LENGTH} characters. Headlines remain optional and are never added merely to obtain the white SVG treatment.`,
-        `Slide 1 is a ${FIRST_SLIDE_MIN_BODY_WORDS}-${FIRST_SLIDE_MAX_BODY_WORDS}-word reader-first cover, not a complete personal-story opener. Give a specific reason to swipe through a tension, outcome, contrast, mistake, useful promise, or curiosity gap.`,
+        `Slide 1 is a ${FIRST_SLIDE_MIN_BODY_WORDS}-${FIRST_SLIDE_MAX_BODY_WORDS}-word, at-most-${FIRST_SLIDE_MAX_BODY_LENGTH}-character reader-first cover, not a complete personal-story opener. It must fit the actual ${getCarouselStructure1BodyMaxLines(1)}-line display area: single_statement uses 60px type; headline_body and body_only use ${CAROUSEL_FIXED_FONT_SIZE}px. The renderer never shrinks or truncates copy. Give a specific reason to swipe through a tension, outcome, contrast, mistake, useful promise, or curiosity gap.`,
+        "A headline must add distinct information rather than repeat its body. If the cover works alone, use body_only and set headline to null.",
         `Slides 2-6 body copy must each be one complete sentence of ${MIN_REQUIRED_BODY_WORDS}-${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words and at most ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters.`,
         "Never invent numbers, product capabilities, proof, customers, brands, health claims, financial claims, or guaranteed outcomes.",
         "Avoid generic copy such as boost productivity, streamline your workflow, save time, work smarter, unlock efficiency, or next level.",
@@ -2131,6 +2341,7 @@ async function buildSingleBatchItemRepair(params: {
         : parsedRepair;
     const repairedValidation = evaluateCarouselContentPlanForPublishing({
       analysis: params.input.analysis,
+      groundingCandidates: params.context.groundingCandidates,
       plan: repaired,
       recentHistory: params.input.recentHistory,
     });
@@ -2276,6 +2487,7 @@ async function buildNativeSlideOneOverflowFallback(params: {
   );
   const validation = evaluateCarouselContentPlanForPublishing({
     analysis: params.input.analysis,
+    groundingCandidates: nativeContext.groundingCandidates,
     plan: mergedPlan,
     recentHistory: params.input.recentHistory,
   });
@@ -2452,7 +2664,7 @@ function buildRepairMessages(params: {
         "Private creative brief (context only):",
         JSON.stringify(params.planningBrief),
         "Every headline is optional; when present it must be 3-16 words, at most 100 characters, and at most four visual lines.",
-        "Slide 1 must be a reader-first cover of 4-18 words: a specific benefit, tension, mistake, contrast, or curiosity gap. Do not open with a complete personal-story sentence such as 'I thought...', 'I used to...', or 'Recently I...'. It must fit within three visual lines.",
+        "Slide 1 must be a reader-first cover of 4-18 words and at most 140 characters: a specific benefit, tension, mistake, contrast, or curiosity gap. Do not open with a complete personal-story sentence such as 'I thought...', 'I used to...', or 'Recently I...'. It must fit within three measured visual lines: single_statement uses 60px type, while headline_body and body_only use 44px type. The renderer never shrinks or truncates copy.",
         hasSlideOneRenderFitFailure
           ? "Slide 1 overflowed its real three-line display area. Replace it with a shorter, simpler cover rather than merely trimming words: single_statement uses 60px type, while headline_body and body_only use 44px type. Do not add a repeating headline to solve the overflow."
           : null,
@@ -2464,6 +2676,7 @@ function buildRepairMessages(params: {
         "Never use abstract outcomes such as experience improved clarity, achieve better results, better management, or better organization.",
         "Never use these phrases: boost productivity, effectively, efficiently, effortlessly, enhance your marketing efforts, seamless, streamline your workflow, transform your campaign management, unify your planning and reporting, unlock efficiency, with ease, next level, one workspace for everything, save time, stay on top, or work smarter.",
         "If a headline repeats its body, set headline to null and use body_only instead of paraphrasing it.",
+        "Select one supplied grounding.anchorId. The concept and Slides 3-5 must naturally develop that verified workflow, product detail, or user situation. Do not invent a grounding fact or force a product name into every slide.",
         "The final slide must use slideType cta; ctaText may be null when the takeaway is complete without it.",
         "Every role without a configured listItemCount must return listItems as an empty array.",
         hasRecentRepetition
@@ -2478,6 +2691,14 @@ function buildRepairMessages(params: {
         JSON.stringify(params.issues),
         "Minimal business context:",
         JSON.stringify({ businessDescription: params.businessDescription }),
+        "Verified grounding anchors:",
+        JSON.stringify(
+          params.grammarContext.groundingCandidates.map(({ anchorId, kind, sourceFact }) => ({
+            anchorId,
+            kind,
+            sourceFact,
+          })),
+        ),
         "Resolved combined Structure 1 format:",
         JSON.stringify({
           ...params.grammarContext.format,
@@ -2547,6 +2768,21 @@ function buildCarouselContentPlanSchema(
       },
       concept: { maxLength: 120, minLength: 1, type: "string" },
       contentStrategy: contentStrategySchema,
+      grounding: grammarContext
+        ? {
+            additionalProperties: false,
+            properties: {
+              anchorId: {
+                enum: grammarContext.groundingCandidates.map(
+                  (candidate) => candidate.anchorId,
+                ),
+                type: "string",
+              },
+            },
+            required: ["anchorId"],
+            type: "object",
+          }
+        : { type: "null" },
       slides: {
         items: buildCarouselContentSlideSchema(slideCount, grammarContext),
         maxItems: slideCount,
@@ -2554,7 +2790,7 @@ function buildCarouselContentPlanSchema(
         type: "array",
       },
     },
-    required: ["broadSituations", "concept", "contentStrategy", "slides"],
+    required: ["broadSituations", "concept", "contentStrategy", "grounding", "slides"],
     type: "object",
   } as const;
 }
@@ -2644,6 +2880,9 @@ function buildCarouselContentSlideSchema(
   ) => {
     const configuredListItemCount = definition?.listItemCount;
     const finalSlide = index === slideCount - 1;
+    const maximumBodyLength = index === 0
+      ? FIRST_SLIDE_MAX_BODY_LENGTH
+      : MAX_BODY_LENGTH;
 
     return {
       additionalProperties: false,
@@ -2664,7 +2903,7 @@ function buildCarouselContentSlideSchema(
         body: {
           anyOf: [
             {
-              maxLength: MAX_BODY_LENGTH,
+              maxLength: maximumBodyLength,
               minLength: 1,
               type: "string",
             },
@@ -2767,6 +3006,7 @@ function createContentPlan(params: Omit<CarouselContentPlan, "normalizedPlan" | 
       broadSituations: params.broadSituations,
       concept: params.concept,
       contentStrategy: params.contentStrategy,
+      grounding: params.grounding,
       slides: params.slides,
     },
     plannerVersion: CAROUSEL_CONTENT_PLANNER_VERSION,

@@ -2,10 +2,20 @@ import "server-only";
 
 import OpenAI from "openai";
 import { zodResponseFormat } from "openai/helpers/zod";
+import type { ParsedChatCompletion } from "openai/resources/chat/completions";
 import { z } from "zod";
 
 import type { WebsiteBusinessAnalysis } from "@/lib/website-analysis/schema";
-import { WALL_TEXT_CONTENT_RETRY_EXHAUSTED, isWallTextRenderFitFailure } from "@/lib/trending/wall-text-generation-failure";
+import {
+  WALL_TEXT_CONTENT_RETRY_EXHAUSTED,
+  WALL_TEXT_MODEL_OUTPUT_EMPTY,
+  WALL_TEXT_MODEL_OUTPUT_REFUSAL,
+  WALL_TEXT_MODEL_OUTPUT_SCHEMA_INVALID,
+  WallTextModelOutputError,
+  WallTextStagedError,
+  isWallTextRenderFitFailure,
+  type WallTextCandidateRejection,
+} from "@/lib/trending/wall-text-generation-failure";
 import { getWallTextRepairBudget } from "./wall-text-repair-budget";
 import {
   createAuthoritativeWallTextContent,
@@ -279,9 +289,10 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
           if (!result) continue;
           const review = reviews.get(candidate.candidateIndex);
           if (!review) {
-            throw new Error(
-              `Wall-of-text Reviewer omitted candidate ${candidate.candidateIndex}.`,
-            );
+            throw new WallTextModelOutputError({
+              code: WALL_TEXT_MODEL_OUTPUT_SCHEMA_INVALID,
+              message: `Wall-of-text Reviewer omitted candidate ${candidate.candidateIndex}.`,
+            });
           }
           if (
             !review.approved ||
@@ -323,6 +334,11 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
           `Wall-of-text Writer could not repair candidates: ${failures
             .map((failure) => `${failure.candidateIndex}:${failure.reason}`)
             .join(", ")}.`,
+          failures.map(({ candidateIndex, detail, reason }) => ({
+            candidateIndex,
+            ...(detail ? { detail } : {}),
+            reason,
+          })),
         );
       }
       retryFeedback = new Map(
@@ -345,10 +361,17 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
 
 export class WallTextCandidateRepairExhaustedError extends Error {
   readonly code = WALL_TEXT_CONTENT_RETRY_EXHAUSTED;
+  readonly candidateRejections: WallTextCandidateRejection[];
 
-  constructor(message: string) {
+  constructor(
+    message: string,
+    candidateRejections: readonly WallTextCandidateRejection[] = [],
+  ) {
     super(message);
     this.name = "WallTextCandidateRepairExhaustedError";
+    this.candidateRejections = candidateRejections.map((rejection) => ({
+      ...rejection,
+    }));
   }
 }
 
@@ -408,30 +431,55 @@ async function requestWriter(params: {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) throw new Error("OpenAI is not configured.");
   if (!openaiClient) openaiClient = new OpenAI({ apiKey, maxRetries: 0, timeout: 60_000 });
-  const completion = await openaiClient.chat.completions.parse({
-    model: getTrendingWallTextModelName(),
-    reasoning_effort: params.reasoningEffort,
-    messages: [
-      {
-        role: "system",
-        content:
-          "You write grounded Wall-of-Text social copy. Return one complete plain text message per assigned candidate. A separate Reviewer will judge the result.",
-      },
-      {
-        role: "user",
-        content: buildWallTextGenerationPrompt({
-          business: params.business,
-          candidates: params.candidates,
-        }),
-      },
-    ],
-    response_format: zodResponseFormat(
-      WallTextIdeaOutputSchema,
-      "trending_wall_text_ideas_v8",
-    ),
-  });
-  const parsed = completion.choices[0]?.message.parsed;
-  if (!parsed) throw new Error("OpenAI returned no structured Wall-of-text ideas.");
+  let completion: ParsedChatCompletion<z.infer<typeof WallTextIdeaOutputSchema>>;
+  try {
+    completion = await openaiClient.chat.completions.parse({
+      model: getTrendingWallTextModelName(),
+      reasoning_effort: params.reasoningEffort,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You write grounded Wall-of-Text social copy. Return one complete plain text message per assigned candidate. A separate Reviewer will judge the result.",
+        },
+        {
+          role: "user",
+          content: buildWallTextGenerationPrompt({
+            business: params.business,
+            candidates: params.candidates,
+          }),
+        },
+      ],
+      response_format: zodResponseFormat(
+        WallTextIdeaOutputSchema,
+        "trending_wall_text_ideas_v8",
+      ),
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw new WallTextModelOutputError({
+        code: WALL_TEXT_MODEL_OUTPUT_SCHEMA_INVALID,
+        message: "The Wall-of-text Writer returned an invalid structured response.",
+      });
+    }
+    throw new WallTextStagedError("writer", error);
+  }
+  const choice = completion.choices[0];
+  if (choice?.message.refusal?.trim()) {
+    throw new WallTextModelOutputError({
+      code: WALL_TEXT_MODEL_OUTPUT_REFUSAL,
+      finishReason: choice.finish_reason ?? null,
+      message: "The Wall-of-text Writer refused the requested content.",
+    });
+  }
+  const parsed = choice?.message.parsed;
+  if (!parsed) {
+    throw new WallTextModelOutputError({
+      code: WALL_TEXT_MODEL_OUTPUT_EMPTY,
+      finishReason: choice?.finish_reason ?? null,
+      message: "The Wall-of-text Writer returned no structured ideas.",
+    });
+  }
   return parsed.ideas;
 }
 
@@ -443,52 +491,77 @@ async function requestReviewer(params: {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) throw new Error("OpenAI is not configured.");
   if (!openaiClient) openaiClient = new OpenAI({ apiKey, maxRetries: 0, timeout: 60_000 });
-  const completion = await openaiClient.chat.completions.parse({
-    model: getTrendingWallTextReviewModelName(),
-    reasoning_effort: getTrendingWallTextReviewReasoningEffort(),
-    messages: [
-      {
-        role: "system",
-        content: [
-          "You independently review Wall-of-Text social overlays. Do not rewrite them.",
-          "Approve only when a viewer can understand the complete copy on first read during one native play.",
-          "The copy needs one concrete daily action, one central thought, natural spoken language, and only supported business claims.",
-          "Reject semicolon-linked marketing mini-stories, feature stacking, forced emotional conclusions, and product mentions that are not needed for the thought.",
-          "Keep every boolean consistent with approved and feedback.",
-        ].join(" "),
-      },
-      {
-        role: "user",
-        content: JSON.stringify({
-          business: params.business,
-          candidates: params.candidates.map((candidate) => ({
-            candidateIndex: candidate.candidateIndex,
-            durationSeconds: candidate.durationSeconds,
-            ...(candidate.privateCreativeContext
-              ? {
-                  plan: {
-                    contentIdea: candidate.privateCreativeContext.contentIdea,
-                    humanMoment:
-                      candidate.privateCreativeContext.planningBrief.humanMoment,
-                    supportedAngle:
-                      candidate.privateCreativeContext.planningBrief.supportedAngle,
-                  },
-                }
-              : {}),
-            text: params.textByCandidateIndex.get(candidate.candidateIndex),
-          })),
-          readingRule:
-            "Use 3.2 words per second and require roughly fifteen percent of the clip as reading cushion.",
-        }),
-      },
-    ],
-    response_format: zodResponseFormat(
-      WallTextReviewSchema,
-      "trending_wall_text_review_v8",
-    ),
-  });
-  const parsed = completion.choices[0]?.message.parsed;
-  if (!parsed) throw new Error("OpenAI returned no structured Wall-of-text review.");
+  let completion: ParsedChatCompletion<z.infer<typeof WallTextReviewSchema>>;
+  try {
+    completion = await openaiClient.chat.completions.parse({
+      model: getTrendingWallTextReviewModelName(),
+      reasoning_effort: getTrendingWallTextReviewReasoningEffort(),
+      messages: [
+        {
+          role: "system",
+          content: [
+            "You independently review Wall-of-Text social overlays. Do not rewrite them.",
+            "Approve only when a viewer can understand the complete copy on first read during one native play.",
+            "The copy needs one concrete daily action, one central thought, natural spoken language, and only supported business claims.",
+            "Reject semicolon-linked marketing mini-stories, feature stacking, forced emotional conclusions, and product mentions that are not needed for the thought.",
+            "Keep every boolean consistent with approved and feedback.",
+          ].join(" "),
+        },
+        {
+          role: "user",
+          content: JSON.stringify({
+            business: params.business,
+            candidates: params.candidates.map((candidate) => ({
+              candidateIndex: candidate.candidateIndex,
+              durationSeconds: candidate.durationSeconds,
+              ...(candidate.privateCreativeContext
+                ? {
+                    plan: {
+                      contentIdea: candidate.privateCreativeContext.contentIdea,
+                      humanMoment:
+                        candidate.privateCreativeContext.planningBrief.humanMoment,
+                      supportedAngle:
+                        candidate.privateCreativeContext.planningBrief.supportedAngle,
+                    },
+                  }
+                : {}),
+              text: params.textByCandidateIndex.get(candidate.candidateIndex),
+            })),
+            readingRule:
+              "Use 3.2 words per second and require roughly fifteen percent of the clip as reading cushion.",
+          }),
+        },
+      ],
+      response_format: zodResponseFormat(
+        WallTextReviewSchema,
+        "trending_wall_text_review_v8",
+      ),
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw new WallTextModelOutputError({
+        code: WALL_TEXT_MODEL_OUTPUT_SCHEMA_INVALID,
+        message: "The Wall-of-text Reviewer returned an invalid structured response.",
+      });
+    }
+    throw new WallTextStagedError("reviewer", error);
+  }
+  const choice = completion.choices[0];
+  if (choice?.message.refusal?.trim()) {
+    throw new WallTextModelOutputError({
+      code: WALL_TEXT_MODEL_OUTPUT_REFUSAL,
+      finishReason: choice.finish_reason ?? null,
+      message: "The Wall-of-text Reviewer refused the requested review.",
+    });
+  }
+  const parsed = choice?.message.parsed;
+  if (!parsed) {
+    throw new WallTextModelOutputError({
+      code: WALL_TEXT_MODEL_OUTPUT_EMPTY,
+      finishReason: choice?.finish_reason ?? null,
+      message: "The Wall-of-text Reviewer returned no structured review.",
+    });
+  }
 
   const expectedCandidateIndexes = new Set(
     params.candidates.map((candidate) => candidate.candidateIndex),
@@ -499,12 +572,18 @@ async function requestReviewer(params: {
   >();
   for (const review of parsed.reviews) {
     if (!expectedCandidateIndexes.has(review.candidateIndex) || reviews.has(review.candidateIndex)) {
-      throw new Error("The Wall-of-text Reviewer returned an invalid review mapping.");
+      throw new WallTextModelOutputError({
+        code: WALL_TEXT_MODEL_OUTPUT_SCHEMA_INVALID,
+        message: "The Wall-of-text Reviewer returned an invalid review mapping.",
+      });
     }
     reviews.set(review.candidateIndex, review);
   }
   if (reviews.size !== params.candidates.length) {
-    throw new Error("The Wall-of-text Reviewer did not review every candidate.");
+    throw new WallTextModelOutputError({
+      code: WALL_TEXT_MODEL_OUTPUT_SCHEMA_INVALID,
+      message: "The Wall-of-text Reviewer did not review every candidate.",
+    });
   }
   return reviews;
 }
@@ -621,6 +700,9 @@ function toWriterFailure(candidateIndex: number, error: unknown): WriterFailure 
     ? {
         ...(error.avoidOpening ? { avoidOpening: error.avoidOpening } : {}),
         candidateIndex,
+        ...(error.message && error.message !== error.reason
+          ? { detail: error.message }
+          : {}),
         reason: error.reason,
       }
     : { candidateIndex, reason: "validation_failed" };

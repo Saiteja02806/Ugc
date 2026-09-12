@@ -23,6 +23,20 @@ const partialRefillReplacementMigration = readFileSync(
   ),
   "utf8",
 );
+const sixSlideReservationInitializationMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260906091416_fix_carousel_six_slide_reservation_initialization.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const boundedDailyCarouselRecoveryMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260906175631_bound_daily_carousel_recovery.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const businessProfileDatabase = readFileSync(
   new URL("../business-profiles/db.ts", import.meta.url),
   "utf8",
@@ -259,5 +273,42 @@ test("a partial Carousel reservation gets a new refill batch without recycling p
   assert.match(
     dailyFeed,
     /\.is\("superseded_at", null\)[\s\S]+\.maybeSingle\(\)/,
+  );
+});
+
+test("six-slide image-role reservation initializes its arrays only after it knows the slide count", () => {
+  assert.match(
+    sixSlideReservationInitializationMigration,
+    /v_function_definition := regexp_replace\([\s\S]+v_\(\?:actual\|requested\)_\(\?:categories\|levels\|reasons\|roles\|selection_types\)/,
+  );
+  assert.match(
+    sixSlideReservationInitializationMigration,
+    /if position\('array_fill\(null::text, array\[v_slide_count\]\)' in v_function_definition\) > 0[\s\S]+array_initializer_rewrite_incomplete/i,
+  );
+  const initializationAnchor =
+    "v_count_assignment || E'\\n'";
+  const arrayInitialization =
+    "v_actual_categories := array_fill(null::text, array[v_slide_count]);";
+  assert.ok(
+    sixSlideReservationInitializationMigration.indexOf(initializationAnchor) >= 0,
+  );
+  assert.ok(
+    sixSlideReservationInitializationMigration.indexOf(arrayInitialization) >
+      sixSlideReservationInitializationMigration.indexOf(initializationAnchor),
+  );
+});
+
+test("automatic daily recovery remains bounded while retaining completed siblings", () => {
+  assert.match(
+    boundedDailyCarouselRecoveryMigration,
+    /v_existing\.replacement_sequence >= 3 then return null/i,
+  );
+  assert.match(
+    boundedDailyCarouselRecoveryMigration,
+    /partial reservations[\s\S]+must not be reopened[\s\S]+start a successor/i,
+  );
+  assert.match(
+    dailyFeed,
+    /hasTerminalFailure && plan\.generationDeficit > 0[\s\S]+replacePartialDailyCarouselRefillBatch[\s\S]+getDailyCarouselReplacementBatchRequestedCount/,
   );
 });

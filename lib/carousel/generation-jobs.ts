@@ -5,18 +5,17 @@ import {
   getQueueNameForJobType,
   sendJobMessage,
 } from "@/lib/queues/job-queue";
-import { updateCarouselGeneration } from "@/lib/carousel/db";
 import type { CarouselRenderStyle } from "@/lib/carousel/render-style";
 import { shouldDeliverCarouselJobMessage } from "@/lib/jobs/background-job-delivery-logic";
 import { sendBackgroundJobMessageWithBestEffortAttachment } from "@/lib/jobs/background-job-message-delivery";
 import {
+  appendBackgroundJobEvent,
   attachQueueMessageToBackgroundJob,
   claimBackgroundJobDelivery,
   createBackgroundJobWithCreationResult,
   createOrGetCarouselExperimentBatchJob,
   getBackgroundJobById,
   getMissingBackgroundJobStorageEnvVars,
-  markBackgroundJobFailed,
 } from "@/lib/jobs/background-jobs";
 
 const CAROUSEL_JOB_TYPE = "generate_carousel";
@@ -30,6 +29,32 @@ export function getMissingCarouselGenerationEnvVars() {
   return Array.from(missing);
 }
 
+export class CarouselGenerationConfigurationError extends Error {
+  readonly missingEnvVars: string[];
+
+  constructor(missingEnvVars: string[]) {
+    super(
+      `Carousel generation is unavailable because required queue configuration is missing: ${missingEnvVars.join(", ")}.`,
+    );
+    this.name = "CarouselGenerationConfigurationError";
+    this.missingEnvVars = missingEnvVars;
+  }
+}
+
+/**
+ * Fail before a generation row, plan reservation, or durable job is created.
+ * The worker cannot repair an app-side Cloud Tasks configuration error, and
+ * consuming a customer's Carousel slot before a task exists would make that
+ * configuration error look like a content-generation failure.
+ */
+export function assertCarouselGenerationRuntimeConfigured() {
+  const missingEnvVars = getMissingCarouselGenerationEnvVars();
+
+  if (missingEnvVars.length > 0) {
+    throw new CarouselGenerationConfigurationError(missingEnvVars);
+  }
+}
+
 export async function enqueueCarouselGenerationJob(params: {
   candidateCount: number;
   candidateIndex: number;
@@ -39,6 +64,8 @@ export async function enqueueCarouselGenerationJob(params: {
   textStyle: CarouselRenderStyle;
   userId: string;
 }) {
+  assertCarouselGenerationRuntimeConfigured();
+
   const existingJob = params.existingJobId
     ? await getBackgroundJobById(params.existingJobId)
     : null;
@@ -109,36 +136,11 @@ export async function enqueueCarouselGenerationJob(params: {
         }),
     });
   } catch (error) {
-    if (!creationResult.created) {
-      throw error;
-    }
-
-    const errorMessage =
-      error instanceof Error
-        ? error.message
-        : "Failed to queue carousel generation.";
-
-    await markBackgroundJobFailed({
-      errorMessage,
+    return preserveCarouselJobForDeliveryRecovery({
+      error,
       jobId: job.id,
-    }).catch((persistenceError) => {
-      console.error(
-        "Failed to persist carousel background job enqueue failure:",
-        persistenceError,
-      );
+      scope: "single_generation",
     });
-
-    await updateCarouselGeneration(params.carouselId, {
-      error_message: "Could not start the carousel generation worker.",
-      status: "failed",
-    }).catch((persistenceError) => {
-      console.error(
-        "Failed to mark carousel generation enqueue failure:",
-        persistenceError,
-      );
-    });
-
-    throw error;
   }
 }
 
@@ -150,6 +152,8 @@ export async function enqueueCarouselExperimentBatchJob(params: {
   textStyle: CarouselRenderStyle;
   userId: string;
 }) {
+  assertCarouselGenerationRuntimeConfigured();
+
   if (params.carouselIds.length !== 5 || new Set(params.carouselIds).size !== 5) {
     throw new Error("A Carousel experiment job requires exactly five unique Carousel IDs.");
   }
@@ -198,21 +202,50 @@ export async function enqueueCarouselExperimentBatchJob(params: {
       sendMessage: () => sendJobMessage({ jobId: job.id, jobType: CAROUSEL_JOB_TYPE }),
     });
   } catch (error) {
-    if (creationResult.created) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to queue Carousel experiment.";
-      await markBackgroundJobFailed({ errorMessage, jobId: job.id }).catch(() => undefined);
-      await Promise.all(
-        params.carouselIds.map((carouselId) =>
-          updateCarouselGeneration(carouselId, {
-            error_message: "Could not start the Carousel experiment worker.",
-            status: "failed",
-          }).catch(() => undefined),
-        ),
-      );
-    }
-    throw error;
+    return preserveCarouselJobForDeliveryRecovery({
+      error,
+      jobId: job.id,
+      scope: "experiment_batch",
+    });
   }
+}
+
+async function preserveCarouselJobForDeliveryRecovery(params: {
+  error: unknown;
+  jobId: string;
+  scope: "experiment_batch" | "single_generation";
+}) {
+  const errorMessage =
+    params.error instanceof Error
+      ? params.error.message
+      : "Carousel task delivery could not be confirmed.";
+
+  // Cloud Tasks can fail after accepting a request, so immediately retrying or
+  // terminalizing here can respectively duplicate work or lose it. The durable
+  // job remains queued; the existing stale-delivery lease and worker claim
+  // provide the bounded, idempotent recovery path.
+  console.error("Carousel task delivery deferred for durable recovery:", {
+    error: errorMessage,
+    jobId: params.jobId,
+    scope: params.scope,
+  });
+
+  await appendBackgroundJobEvent({
+    eventType: "queue_delivery_deferred",
+    jobId: params.jobId,
+    metadata: {
+      errorMessage,
+      scope: params.scope,
+    },
+  }).catch((eventError) => {
+    console.error("Could not record deferred Carousel task delivery:", {
+      error: eventError,
+      jobId: params.jobId,
+      scope: params.scope,
+    });
+  });
+
+  return params.jobId;
 }
 
 function isMatchingCarouselGenerationJob(

@@ -34,6 +34,7 @@ import {
   type ResolvedWallTextAudioSelection,
 } from "@/lib/trending/wall-audio-db";
 import type { WallTextDuplicateSignature } from "@/lib/trending/wall-text-duplicate-logic";
+import type { WallTextFailureDiagnosticDetails } from "@/lib/trending/wall-text-generation-failure";
 import {
   LEGACY_WALL_TEXT_ARIAL_BOLD_FONT_WEIGHT,
   LEGACY_WALL_TEXT_FONT_WEIGHT,
@@ -367,6 +368,22 @@ type WallTextDatabase = {
           p_user_id: string;
         };
         Returns: undefined;
+      };
+      record_wall_text_failure_diagnostic_v1: {
+        Args: {
+          p_background_job_id: string | null;
+          p_content_plan_id: string | null;
+          p_details: Json;
+          p_error_code: string;
+          p_error_message: string;
+          p_generation_batch_id: string | null;
+          p_generation_chunk_id: string | null;
+          p_request_key: string | null;
+          p_retryable: boolean;
+          p_stage: string;
+          p_user_id: string;
+        };
+        Returns: string;
       };
       reserve_wall_text_generation_batch_v1: {
         Args: {
@@ -1384,6 +1401,58 @@ export function areTrendingWallTextCreativesCurrent(
     creatives.length > 0 &&
     creatives.every(isTrendingWallTextCreativeRefreshSettled)
   );
+}
+
+/**
+ * Stores diagnostic evidence in a service-role-only table. This never feeds a
+ * browser response or a user-visible background-job error.
+ */
+export async function recordWallTextFailureDiagnostic(params: {
+  backgroundJobId?: string | null;
+  contentPlanId?: string | null;
+  details: WallTextFailureDiagnosticDetails;
+  errorCode: string;
+  errorMessage: string;
+  generationBatchId?: string | null;
+  generationChunkId?: string | null;
+  requestKey?: string | null;
+  retryable: boolean;
+  userId: string;
+}) {
+  const { data, error } = await getClient().rpc(
+    "record_wall_text_failure_diagnostic_v1",
+    {
+      p_background_job_id: params.backgroundJobId ?? null,
+      p_content_plan_id: params.contentPlanId ?? null,
+      p_details: {
+        candidateRejections: params.details.candidateRejections.map(
+          (rejection) => ({
+            candidateIndex: rejection.candidateIndex,
+            ...(rejection.detail ? { detail: rejection.detail.slice(0, 300) } : {}),
+            reason: rejection.reason.slice(0, 120),
+          }),
+        ),
+        errorName: params.details.errorName.slice(0, 120),
+        finishReason: params.details.finishReason?.slice(0, 120) ?? null,
+        providerErrorCode: params.details.providerErrorCode?.slice(0, 120) ?? null,
+        providerErrorType: params.details.providerErrorType?.slice(0, 120) ?? null,
+        providerRequestId: params.details.providerRequestId?.slice(0, 300) ?? null,
+        providerStatus: params.details.providerStatus,
+      },
+      p_error_code: params.errorCode.slice(0, 120),
+      p_error_message: params.errorMessage.slice(0, 4_000),
+      p_generation_batch_id: params.generationBatchId ?? null,
+      p_generation_chunk_id: params.generationChunkId ?? null,
+      p_request_key: params.requestKey?.slice(0, 200) ?? null,
+      p_retryable: params.retryable,
+      p_stage: params.details.stage,
+      p_user_id: params.userId,
+    },
+  );
+  if (error) {
+    throw new Error(`Could not record private Wall-of-text diagnostic: ${error.message}`);
+  }
+  return data;
 }
 
 export function isTrendingWallTextCreativeCurrent(

@@ -83,3 +83,34 @@ test("does not resubmit when provider acceptance is uncertain", async () => {
   );
   assert.equal(uncertainWrites, 1);
 });
+
+test("records a bare Gemini configuration validation error as not submitted", async () => {
+  const failures: Array<{ errorCode: string; retryAllowed: boolean }> = [];
+  let uncertainWrites = 0;
+  const configurationError = new Error(
+    "generateAudio parameter is only supported in Gemini Enterprise Agent Platform mode, not in Gemini Developer API mode.",
+  );
+  const store = {
+    async markGenerationProviderFailed(params: { errorCode: string; retryAllowed: boolean }) {
+      failures.push({ errorCode: params.errorCode, retryAllowed: params.retryAllowed });
+    },
+    async markGenerationProviderSubmissionUncertain() {
+      uncertainWrites += 1;
+    },
+  } as unknown as SupabaseJobStore;
+
+  await assert.rejects(
+    persistProviderSubmissionFailure({
+      error: configurationError,
+      jobId: "job-1",
+      operationKey: "primary-veo",
+      store,
+    }),
+    configurationError,
+  );
+  assert.deepEqual(failures, [{
+    errorCode: "provider_configuration_invalid",
+    retryAllowed: false,
+  }]);
+  assert.equal(uncertainWrites, 0);
+});

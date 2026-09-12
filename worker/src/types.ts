@@ -1301,6 +1301,22 @@ export type BackgroundJobsDatabase = {
         };
         Returns: WallTextContentPlanItemRow[];
       };
+      record_wall_text_failure_diagnostic_v1: {
+        Args: {
+          p_background_job_id: string | null;
+          p_content_plan_id: string | null;
+          p_details: Json;
+          p_error_code: string;
+          p_error_message: string;
+          p_generation_batch_id: string | null;
+          p_generation_chunk_id: string | null;
+          p_request_key: string | null;
+          p_retryable: boolean;
+          p_stage: string;
+          p_user_id: string;
+        };
+        Returns: string;
+      };
       persist_reaction_generation_plan_v1: {
         Args: {
           p_brief_payload: Json;

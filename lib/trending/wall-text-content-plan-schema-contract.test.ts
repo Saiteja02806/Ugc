@@ -71,6 +71,10 @@ const planLaunch = readFileSync(
   new URL("./wall-text-content-plan-generation-job.ts", import.meta.url),
   "utf8",
 );
+const generationRuntime = readFileSync(
+  new URL("./wall-text-generation-runtime.ts", import.meta.url),
+  "utf8",
+);
 const preparationRoute = readFileSync(
   new URL("../../app/api/trending/wall-text/feed/prepare/route.ts", import.meta.url),
   "utf8",
@@ -303,6 +307,25 @@ test("connects the complete planned Wall flow without exposing private context t
   assert.match(storage, /reserve_wall_text_generation_batch_v1/);
   assert.match(storage, /save_wall_text_generation_candidate_v1/);
   assert.doesNotMatch(feed, /creativeSeed|audienceContext|humanMoment|emotionalTension|supportedAngle|preferredFormatFamily/);
+});
+
+test("checks Wall queue admission before plans or daily slots can be reserved", () => {
+  assert.match(
+    generationRuntime,
+    /wall_text_content_plan_generation[\s\S]*wall_text_generation/,
+  );
+  assert.match(
+    generationRuntime,
+    /getMissingJobQueueEnvVars\([\s\S]*WALL_TEXT_GENERATION_JOB_TYPES/,
+  );
+  assert.match(
+    planLaunch,
+    /assertWallTextGenerationRuntimeConfigured\(\);[\s\S]*ensureCurrentWallTextContentPlan/,
+  );
+  assert.match(
+    jobs,
+    /enqueueTrendingWallTextJob[\s\S]*assertWallTextGenerationRuntimeConfigured\(\);[\s\S]*ensureWallTextContentPlanGeneration/,
+  );
 });
 
 test("keeps planning context private and removes format pressure from the Wall writer", () => {

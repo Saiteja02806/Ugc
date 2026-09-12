@@ -62,7 +62,7 @@ export async function prepareWallTextInApp(params: {
           ? result.errorCode.trim().slice(0, 120)
           : "wall_text_preparation_failed";
 
-      if (errorCode === "infrastructure_error" ||
+      if (isRetryablePreparationErrorCode(errorCode) ||
           (errorCode === "wall_text_preparation_failed" &&
             (response.status === 408 || response.status === 429 || response.status >= 500))) {
         throw new RetryableJobError(
@@ -93,6 +93,16 @@ export async function prepareWallTextInApp(params: {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function isRetryablePreparationErrorCode(errorCode: string) {
+  return [
+    "infrastructure_error",
+    "model_output_empty",
+    "model_output_schema_invalid",
+    "wall_text_provider_rate_limited",
+    "wall_text_provider_transient",
+  ].includes(errorCode);
 }
 
 function getConfig() {

@@ -2,6 +2,7 @@ import type { BackgroundJobType } from "../jobs/background-jobs.ts";
 
 export const GCP_CUTOVER_AUDIT_CANARY_KINDS = [
   "ai-generation",
+  "carousel-generation",
   "create-content-render",
 ] as const;
 
@@ -44,6 +45,22 @@ export function resolveGcpCutoverAuditCanary(params: {
       },
       jobType: "render_create_content_video",
       kind: "create-content-render",
+      maxAttempts: 1,
+    };
+  }
+
+  if (params.kind === "carousel-generation") {
+    return {
+      // The Carousel worker rejects this before it can load a Carousel row,
+      // reserve an idea, call the LLM, select an image, or write output. It
+      // proves the exact app -> Cloud Tasks -> Carousel worker delivery path.
+      expectedFailure: "generate_carousel requires input.carouselId.",
+      input: {
+        canary: "production-carousel-generation-invalid-payload",
+        generationId: params.generationId,
+      },
+      jobType: "generate_carousel",
+      kind: "carousel-generation",
       maxAttempts: 1,
     };
   }

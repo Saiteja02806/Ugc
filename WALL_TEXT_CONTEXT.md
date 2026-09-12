@@ -5,10 +5,13 @@ Last updated: 2026-09-12
 ## 2026-09-12 Copy length is independent of video duration
 
 - Product decision: six-second videos have no special word cap or reading-time
-  deadline. All supported durations use the same general 12–26-word generation
+  deadline. All supported durations use the same general 18–36-word generation
   range, subject to actual layout fit. The source-video duration eligibility
   rules are separate and unchanged.
-- Writer prompt V19 and reviewer schema V9 remove duration from the copy and
+- Writer prompt V20 uses the requested 18–36-word range (raised from 12–26),
+  with a default target of 27 words where layout space permits. Layout repair
+  keeps the 18-word minimum. The same shared range governs the editor save gate.
+- Writer prompt V19 and reviewer schema V9 removed duration from the copy and
   review inputs. The reviewer checks clarity, one central thought and supported
   natural language, without requiring reading to finish within one play.
 - Generation and legacy content validation no longer reject copy based on
@@ -16,7 +19,7 @@ Last updated: 2026-09-12
   layout, so old 15/16-word caps do not survive on retries. Fixed typography,
   measured 5–8 lines, general length and quality checks remain enforced.
 - Regression coverage includes identical budgets at six and sixty seconds and
-  26-word, two-sentence copy completing the actual generator/layout pipeline on
+  36-word, two-sentence copy completing the actual generator/layout pipeline on
   a six-second job whose saved reservation previously allowed only 16 words.
 
 ## 2026-09-12 Wall generation delivery repairs
@@ -55,7 +58,7 @@ Last updated: 2026-09-12
   checks for one concrete daily action, one central thought, natural spoken
   language, and supported claims. Its original native-clip reading-time check
   was removed by the 2026-09-12 product decision above.
-- The writer receives a layout-based 12-26-word budget, uses one or two
+- The writer receives a layout-based 18–36-word budget, uses one or two
   sentences, and rejects
   semicolon-linked mini-stories. The fixed measured 5-8-row renderer remains
   the visual source of truth; it does not insert line breaks into model copy.

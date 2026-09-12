@@ -17,6 +17,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
+import { InstagramCaptionPreview } from "@/components/social/instagram-caption-preview";
 import { InstagramProfessionalAccountGuide } from "@/components/social/instagram-professional-account-guide";
 import { SocialAccountAvatar } from "@/components/social/social-account-avatar";
 import { useSocialOAuthPopup } from "@/components/social/use-social-oauth-popup";
@@ -952,29 +953,37 @@ export function PlatformSelectionModal({
               onChangeSetting={updatePublishingSetting}
               onRetryTikTok={loadTikTokCapabilities}
             />
-          ) : scheduleMode === "choose" ? (
-            <ScheduleChoiceStep
-              earliestLabel={formatScheduleInstant(
-                earliestSlot.scheduledFor,
-                timezone,
-              )}
-              minimumLeadMinutes={minimumLeadMinutes}
-              onPostAsap={() => void submitSchedule("asap")}
-              onScheduleLater={() => setScheduleMode("later")}
-            />
           ) : (
-            <LaterScheduleStep
-              date={scheduledDate}
-              error={laterValidation.error}
-              minimumDate={minimumScheduledDate}
-              time={scheduledTime}
-              timezone={timezone}
-              onDateChange={setScheduledDate}
-              onQuickHours={applyQuickSlot}
-              onQuickTomorrow={applyTomorrowSlot}
-              onTimeChange={setScheduledTime}
-              onTimezoneChange={setTimezone}
-            />
+            <div className="grid gap-5">
+              <InstagramCaptionPreview
+                caption={caption}
+                onEdit={() => setStep("details")}
+              />
+              {scheduleMode === "choose" ? (
+                <ScheduleChoiceStep
+                  earliestLabel={formatScheduleInstant(
+                    earliestSlot.scheduledFor,
+                    timezone,
+                  )}
+                  minimumLeadMinutes={minimumLeadMinutes}
+                  onPostAsap={() => void submitSchedule("asap")}
+                  onScheduleLater={() => setScheduleMode("later")}
+                />
+              ) : (
+                <LaterScheduleStep
+                  date={scheduledDate}
+                  error={laterValidation.error}
+                  minimumDate={minimumScheduledDate}
+                  time={scheduledTime}
+                  timezone={timezone}
+                  onDateChange={setScheduledDate}
+                  onQuickHours={applyQuickSlot}
+                  onQuickTomorrow={applyTomorrowSlot}
+                  onTimeChange={setScheduledTime}
+                  onTimezoneChange={setTimezone}
+                />
+              )}
+            </div>
           )}
         </div>
 
@@ -1342,9 +1351,9 @@ function DetailsStep({
               Text Reel is ready to prepare
             </h3>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Its message already appears on screen, so there is nothing extra
-              to write here. We start preparing the video after you confirm the
-              schedule.
+              Its message already appears on screen. The optional Instagram
+              caption below appears with the post, separately from the video
+              text. We start preparing the video after you confirm the schedule.
             </p>
           </section>
         ) : null}
@@ -1358,10 +1367,10 @@ function DetailsStep({
           </span>
           <span className="mt-1 block text-xs leading-5 text-muted-foreground">
             {isWallText
-              ? "Add context to accompany this Text Reel, or leave this empty to publish without a caption."
+              ? "Add context to accompany this Text Reel. This appears in the Instagram post caption, separate from the on-screen text."
               : isReel
-                ? "Add context for the post, or leave this empty to publish only the Reaction Reel."
-                : "Add context for the post, or leave this empty to publish only the carousel."}
+                ? "This appears in the Instagram post caption, separate from the text in the Reaction Reel."
+                : "This appears below the carousel on Instagram, separate from the text on the slides."}
           </span>
           <textarea
             name="caption"
@@ -1376,6 +1385,8 @@ function DetailsStep({
             {caption.length}/5000
           </span>
         </label>
+
+        <InstagramCaptionPreview caption={caption} />
 
         <section
           aria-labelledby="post-publishing-settings"

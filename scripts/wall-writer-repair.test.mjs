@@ -9,7 +9,7 @@ test('successive fit repairs tighten the budget without dropping below the gener
   const second=getWallTextRepairBudget(first);
   assert.deepEqual(first,{maxWords:28,targetWords:28});
   assert.deepEqual(second,{maxWords:24,targetWords:24});
-  assert.deepEqual(getWallTextRepairBudget(getWallTextRepairBudget(second)),{maxWords:16,targetWords:16});
+  assert.deepEqual(getWallTextRepairBudget(getWallTextRepairBudget(second)),{maxWords:18,targetWords:18});
   assert.deepEqual(getWallTextRepairBudget({maxWords:12,minWords:12,targetWords:12}),{maxWords:12,targetWords:12});
 });
 
@@ -19,8 +19,8 @@ test('a rejected candidate gets a targeted rewrite and already accepted items ar
   process.env.OPENAI_API_KEY='test-key';
   const requests=[];
   const accepted=[];
-  const good='My notes looked clear until the day got busy. One list helped.';
-  const repair='A full week hides small tasks. One clear plan brings them back.';
+  const good='My notes looked clear until the day got busy. One list helped me see the small tasks I still needed to finish.';
+  const repair='A full week hides small tasks. One clear plan brings them back so I can see what needs my time.';
   const rejected=Array(24).fill('mischaracterization').join(' ')+'.';
   globalThis.fetch=async(_url,init)=>{
     const body=JSON.parse(init.body);
@@ -40,7 +40,7 @@ test('a rejected candidate gets a targeted rewrite and already accepted items ar
     const candidateJson=JSON.parse(requests[1].split('CANDIDATES: REQUIRED WORD RANGES AND ABSOLUTE SAFETY CEILINGS\n')[1].split('\n\nGLOBAL RULES')[0]);
     assert.equal(candidateJson.length,1);
     assert.equal(candidateJson[0].candidateIndex,1);
-    assert.equal(candidateJson[0].maxWords,15);
+    assert.equal(candidateJson[0].maxWords,23);
     assert.equal(candidateJson[0].retryFeedback.reason,'layout_fit');
     assert.deepEqual(accepted,[0,1]);
     assert.equal(result[1].content.fullText,repair);

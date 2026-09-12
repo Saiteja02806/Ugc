@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-09-11
+Last updated: 2026-09-12
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -114,6 +114,13 @@ title and do not require an LLM caption call. The visible Instagram editor may
 offer an editable optional caption, but caption presence must never block
 account/date/time scheduling. Dormant legacy TikTok targets keep their existing
 caption support.
+
+The shared Instagram scheduler shows a live caption preview in Details and
+keeps the same caption visible on both Publish time choices, with an Edit caption
+action. The Scheduling editor also previews its current caption. Caption copy
+is separate from on-screen video/slide text and internal post titles. Previews
+preserve line breaks and show an explicit empty state when no caption is added;
+they never substitute the creative's title or overlay text for a blank caption.
 
 The social publish worker loads the ordered `library_carousel_slides` rows at
 publish time. Instagram publishes a 2-10 image carousel through child media

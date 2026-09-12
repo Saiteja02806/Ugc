@@ -20,6 +20,7 @@ import type { ReactNode, RefObject } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
+import { InstagramCaptionPreview } from "@/components/social/instagram-caption-preview";
 import {
   Popover,
   PopoverContent,
@@ -941,11 +942,10 @@ export function ScheduleEditor({
                       }
                       className="mt-2 min-h-32 w-full resize-none rounded-control border border-border bg-card-muted px-4 py-3 text-sm font-medium leading-6 text-foreground outline-none transition placeholder:text-muted-subtle hover:border-border-strong focus:border-primary focus:ring-2 focus:ring-primary/15"
                     />
-                    {isCarouselSchedule ? (
-                      <span className="mt-2 block text-xs font-semibold text-muted">
-                        Caption optional.
-                      </span>
-                    ) : null}
+                    <span className="mt-2 block text-xs font-semibold text-muted">
+                      Caption optional. Appears with your Instagram post,
+                      separate from the text on the video or slides.
+                    </span>
                     {captionValidationError ? (
                       <span className="mt-2 block text-xs font-semibold text-error">
                         {captionValidationError}
@@ -974,6 +974,7 @@ export function ScheduleEditor({
                       useSecondaryClip={useSecondaryClip}
                     />
                   )}
+                  <InstagramCaptionPreview caption={caption} />
                 </div>
               </div>
             </ScheduleFlowSection>

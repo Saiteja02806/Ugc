@@ -58,12 +58,14 @@ export async function deriveWallTextSpatialBudget(params: {
   const sampleWidth = (await measureText(sampleWords, WALL_TEXT_FIXED_FONT_SIZE)) +
     WALL_TEXT_OUTLINE_WIDTH * 2;
   const wordsPerLine = clamp(
-    Math.floor((5 * widthPx * 0.9) / sampleWidth),
+    (5 * widthPx * 0.9) / sampleWidth,
     3,
     7,
   );
   const spatialMaximum = clamp(
-    availableLines * wordsPerLine,
+    // Round the total estimate once; rounding each row loses usable capacity.
+    // The final measured layout remains the authority for the actual copy.
+    Math.floor(availableLines * wordsPerLine),
     MINIMUM_WORDS,
     ABSOLUTE_MAXIMUM_WORDS,
   );

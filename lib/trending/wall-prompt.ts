@@ -2,7 +2,7 @@ import type { WallTextBusinessContext } from "./wall-text-text-logic";
 import { WALL_TEXT_SOFT_WORD_RANGE } from "./wall-text-copy-policy";
 
 export const WALL_TEXT_PROMPT_VERSION =
-  "wall-text-writer-prompt-v19-duration-independent" as const;
+  "wall-text-writer-prompt-v20-18-to-36-words" as const;
 
 export type WallTextPromptCandidate = {
   candidateIndex: number;
@@ -52,7 +52,7 @@ export function buildWallTextGenerationPrompt(params: {
 }) {
   const candidates = params.candidates.map((candidate) => {
     const minimum = Math.max(
-      10,
+      WALL_TEXT_SOFT_WORD_RANGE.minimum,
       Math.min(
         candidate.minWords ?? WALL_TEXT_SOFT_WORD_RANGE.minimum,
         WALL_TEXT_SOFT_WORD_RANGE.maximum,

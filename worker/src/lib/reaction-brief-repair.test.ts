@@ -56,7 +56,7 @@ test("Reaction repairs preserve validated siblings and enforce the original batc
       const plan = await planReactionGeneration(input);
       assert.equal(plan.items.length, 4);
       assert.equal(requests.length, 2);
-      assert.equal(requests[0]!.reasoning_effort, "minimal");
+      assert.equal(requests[0]!.reasoning_effort, "medium");
       const schema = requests[1]!.response_format.json_schema.schema.properties.briefs;
       assert.equal(schema.minItems, 1);
       assert.equal(schema.maxItems, 1);

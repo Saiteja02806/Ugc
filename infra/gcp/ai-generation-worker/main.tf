@@ -183,6 +183,16 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
       }
 
       env {
+        name  = "OPENAI_REACTION_MODEL"
+        value = var.openai_reaction_model
+      }
+
+      env {
+        name  = "OPENAI_REACTION_REASONING_EFFORT"
+        value = var.openai_reaction_reasoning_effort
+      }
+
+      env {
         name  = "OPENAI_IMAGE_MODEL"
         value = var.openai_image_model
       }

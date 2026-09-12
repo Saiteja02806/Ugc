@@ -154,6 +154,28 @@ variable "openai_api_key_secret_id" {
   default     = "openai-api-key"
 }
 
+variable "openai_reaction_model" {
+  description = "OpenAI model used by the Reaction Reel brief planner."
+  type        = string
+  default     = "gpt-5.6-luna"
+
+  validation {
+    condition     = trimspace(var.openai_reaction_model) != ""
+    error_message = "openai_reaction_model must not be empty."
+  }
+}
+
+variable "openai_reaction_reasoning_effort" {
+  description = "Reasoning effort used by the Reaction Reel brief planner."
+  type        = string
+  default     = "medium"
+
+  validation {
+    condition     = contains(["low", "medium"], lower(trimspace(var.openai_reaction_reasoning_effort)))
+    error_message = "openai_reaction_reasoning_effort must be low or medium."
+  }
+}
+
 variable "openai_image_model" {
   description = "OpenAI image generation model used by generate_image and generate_avatar."
   type        = string

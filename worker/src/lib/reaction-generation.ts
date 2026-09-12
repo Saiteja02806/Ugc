@@ -7,6 +7,10 @@ export const REACTION_GENERATION_PROMPT_VERSION = "reaction-brief-batch-v2";
 export const REACTION_GENERATION_SELECTION_VERSION = "reaction-batch-match-v1";
 export const MAX_REACTION_CLIP_PRESENTATIONS_PER_USER = 2;
 export const MAX_REACTION_BRIEF_GENERATION_ATTEMPTS = 3;
+const DEFAULT_REACTION_MODEL = "gpt-5.6-luna";
+const REACTION_REASONING_EFFORTS = ["low", "medium"] as const;
+type ReactionReasoningEffort = "minimal" | (typeof REACTION_REASONING_EFFORTS)[number];
+const DEFAULT_REACTION_REASONING_EFFORT: ReactionReasoningEffort = "medium";
 
 const REACTIONS = [
   "side_eye", "facepalm", "deadpan", "confusion", "shock", "relief",
@@ -232,10 +236,8 @@ async function generateAndValidateBriefs(params: {
   for (let attempt = 1; attempt <= MAX_REACTION_BRIEF_GENERATION_ATTEMPTS; attempt += 1) {
     const requestedSlots = slotIndexes.filter((index) => !accepted.has(index));
     const requestStartedAt = performance.now();
-    const model = process.env.OPENAI_REACTION_MODEL?.trim() || "gpt-5-mini";
-    // These short, schema-constrained briefs do not need the extra low-effort
-    // reasoning budget. Preserve the existing setting for model overrides.
-    const reasoningEffort = /^gpt-5-mini(?:-\d{4}-\d{2}-\d{2})?$/.test(model) ? "minimal" : "low";
+    const model = process.env.OPENAI_REACTION_MODEL?.trim() || DEFAULT_REACTION_MODEL;
+    const reasoningEffort = getReactionReasoningEffort(model);
     const completion = await requestContentModel("reaction", () => getOpenAIClient().chat.completions.create({
       max_completion_tokens: 4_000,
       messages: [
@@ -605,6 +607,12 @@ function getOpenAIClient() {
     apiKey: key, maxRetries: CONTENT_COPY_MAX_RETRIES, timeout: CONTENT_COPY_TIMEOUT_MS,
   });
   return openaiClient;
+}
+
+function getReactionReasoningEffort(model: string): ReactionReasoningEffort {
+  const configured = process.env.OPENAI_REACTION_REASONING_EFFORT?.trim().toLowerCase();
+  if (configured === "low" || configured === "medium") return configured;
+  return /^gpt-5-mini(?:-\d{4}-\d{2}-\d{2})?$/.test(model) ? "minimal" : DEFAULT_REACTION_REASONING_EFFORT;
 }
 
 function isReactionIntent(value: unknown): value is ReactionIntent { return typeof value === "string" && (REACTIONS as readonly string[]).includes(value); }

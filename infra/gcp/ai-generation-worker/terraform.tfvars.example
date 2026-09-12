@@ -18,6 +18,14 @@ service_name                 = "ugc-ai-generation-worker"
 queue_name                   = "ai-generation"
 worker_job_types             = "generate_avatar,generate_image,generate_hook_video,generate_trending_hook_copy,hook_text_generation,wall_text_content_plan_generation,wall_text_generation,media_analysis,analytics_sync,carousel_content_plan_generation,test_worker_job"
 
+# Required before adding reaction_generation to worker_job_types. Use the
+# dedicated Reaction renderer's exact Cloud Run task endpoint, not the app or
+# generic background-job endpoint. The audience may remain empty to use the
+# endpoint origin.
+reaction_render_tasks_queue   = "ugc-reaction-render"
+reaction_render_task_url      = "https://ugc-reaction-render-worker-<service-id>-uc.a.run.app/tasks/jobs"
+reaction_render_task_audience = ""
+
 worker_visibility_timeout_seconds = 1800
 # Start only when Cloud Tasks has work. Twenty is the burst ceiling; keep
 # it aligned with foundation/cloud-tasks.tf and confirmed AI provider quotas.

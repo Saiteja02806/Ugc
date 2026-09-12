@@ -7,6 +7,23 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
   labels   = local.labels
   ingress  = "INGRESS_TRAFFIC_INTERNAL_ONLY"
 
+  lifecycle {
+    # Reaction planning creates one durable render job per selected Reel. Those
+    # jobs cannot reach the dedicated renderer unless this worker is given its
+    # exact Cloud Run task endpoint. Fail the plan before a partial daily pack
+    # can be committed with undeliverable Reaction items.
+    precondition {
+      condition = !contains(
+        [for job_type in split(",", var.worker_job_types) : trimspace(job_type)],
+        "reaction_generation",
+      ) || can(regex(
+        "^https://[^/?#]+/tasks/jobs$",
+        trimspace(var.reaction_render_task_url),
+      ))
+      error_message = "reaction_render_task_url must be the dedicated HTTPS Reaction worker /tasks/jobs endpoint whenever worker_job_types includes reaction_generation."
+    }
+  }
+
   template {
     service_account                  = var.worker_service_account_email
     timeout                          = "${var.request_timeout_seconds}s"

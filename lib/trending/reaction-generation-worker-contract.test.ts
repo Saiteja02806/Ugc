@@ -22,6 +22,12 @@ const queueConfig = readProjectFile("lib/queues/config.ts");
 const aiWorkerVariables = readProjectFile(
   "infra/gcp/ai-generation-worker/variables.tf",
 );
+const aiWorkerTerraform = readProjectFile(
+  "infra/gcp/ai-generation-worker/main.tf",
+);
+const aiWorkerExample = readProjectFile(
+  "infra/gcp/ai-generation-worker/terraform.tfvars.example",
+);
 const reactionRenderWorker = readProjectFile(
   "infra/gcp/reaction-render-worker/main.tf",
 );
@@ -55,6 +61,21 @@ test("plans Reactions on the AI worker and renders each item on a dedicated scal
   assert.match(reactionRenderWorker, /min_instance_count = var\.min_instance_count/);
   assert.match(reactionRenderWorker, /max_instance_count = var\.max_instance_count/);
   assert.match(reactionRenderWorker, /value = "reaction_render"/);
+});
+
+test("refuses a Reaction-enabled AI worker without its dedicated task endpoint", () => {
+  assert.match(
+    aiWorkerTerraform,
+    /worker_job_types[\s\S]+reaction_generation[\s\S]+reaction_render_task_url/,
+  );
+  assert.match(
+    aiWorkerTerraform,
+    /\^https:\/\/\[\^\/\?\#\]\+\/tasks\/jobs\$/,
+  );
+  assert.match(
+    aiWorkerExample,
+    /reaction_render_task_url\s*=\s*"https:\/\/ugc-reaction-render-worker-/,
+  );
 });
 
 test("persists the immutable plan before any Reaction video render", () => {

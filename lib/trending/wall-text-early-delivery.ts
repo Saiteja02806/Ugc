@@ -59,6 +59,35 @@ export async function admitWallTextDailyDelivery(params: {
   return { kind: "job" as const, job: await dispatchQueuedBackgroundJobForRecovery(job) };
 }
 
+/**
+ * A terminal copy rejection must not retry the same daily delivery intent:
+ * its rejected plan items have deliberately been retired. Rotate that intent
+ * before the worker completes so the reconciliation outbox can attach the
+ * valid partial work and request only the still-empty slots.
+ */
+export async function requestWallTextDailyTerminalReplacement(params: {
+  dailyFeedId: string;
+  expectedRecoveryKey: string | null;
+  failedJobId: string;
+  userId: string;
+}) {
+  const { data, error } = await getClient().rpc(
+    "request_wall_text_daily_terminal_replacement_v1",
+    {
+      p_expected_recovery_key: params.expectedRecoveryKey,
+      p_failed_job_id: params.failedJobId,
+      p_feed_id: params.dailyFeedId,
+      p_user_id: params.userId,
+    },
+  );
+  if (error) {
+    throw new Error(
+      `Could not rotate terminal Wall-of-text delivery: ${error.message}`,
+    );
+  }
+  return typeof data === "string" && data ? data : null;
+}
+
 /** The same durable event is handled here from the worker and the recovery scan. */
 export async function reconcileWallTextPlanPublications(params: {
   limit?: number;

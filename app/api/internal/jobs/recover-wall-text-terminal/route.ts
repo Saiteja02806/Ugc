@@ -10,6 +10,7 @@ import {
   verifyInternalFinalizationRequest,
 } from "@/lib/scheduling/internal-finalization-auth";
 import { enqueueTrendingWallTextRefill } from "@/lib/trending/trending-wall-text-feed";
+import { requestWallTextDailyTerminalReplacement } from "@/lib/trending/wall-text-early-delivery";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -42,8 +43,25 @@ export async function POST(request: Request) {
   }
 
   try {
+    if (input.dailyFeedId) {
+      const retryKey = await requestWallTextDailyTerminalReplacement({
+        dailyFeedId: input.dailyFeedId,
+        expectedRecoveryKey: input.recoveryKey,
+        failedJobId: input.failedJobId,
+        userId: input.userId,
+      });
+
+      // The worker will now complete and emit the normal reconciliation event.
+      // That event first exposes any successfully persisted creatives, then
+      // asks for only the remaining empty daily slots under this new retry key.
+      return json({
+        jobId: null,
+        ok: true,
+        replacementScheduled: retryKey !== null,
+      });
+    }
+
     const replacement = await enqueueTrendingWallTextRefill(profile, {
-      ...(input.dailyFeedId ? { dailyFeedId: input.dailyFeedId } : {}),
       recoveryKey: `${input.recoveryKey ?? `profile:${input.businessProfileId}`}:terminal:${input.failedJobId}`,
       refillKey: `terminal:${input.failedJobId}`,
       targetActive: input.requestedCount,

@@ -151,6 +151,45 @@ test('a completed short daily result is reopened with a new retry key and keeps 
   assert.equal(settledJob.status, 'completed');
 });
 
+test('a terminal Wall writer rotates its daily intent before reconciliation without duplicating the live job', async () => {
+  const f = await fixture();
+  await publish(f);
+  const admitted = await admit(f);
+  const originalRetryKey = f.feed.wall_text_retry_key ?? f.feed.id;
+
+  await db.query(
+    "update background_jobs set status='waiting_external_service' where id=$1",
+    [admitted.jobId],
+  );
+  const rotated = await one(
+    'select request_wall_text_daily_terminal_replacement_v1($1,$2,$3,$4) as retry_key',
+    [f.user, f.feed.id, admitted.jobId, originalRetryKey],
+  );
+  assert.ok(rotated.retry_key);
+
+  const afterRotation = await one(
+    'select status,wall_text_retry_key from daily_trending_feeds where id=$1',
+    [f.feed.id],
+  );
+  assert.equal(afterRotation.status, 'preparing');
+  assert.notEqual(afterRotation.wall_text_retry_key, f.feed.wall_text_retry_key);
+  assert.equal(
+    (await one('select request_wall_text_daily_terminal_replacement_v1($1,$2,$3,$4) as retry_key',
+      [f.user, f.feed.id, admitted.jobId, originalRetryKey])).retry_key,
+    null,
+    'an older duplicate delivery cannot rotate the next retry',
+  );
+  assert.equal(
+    (await one('select count(*)::int as n from wall_text_daily_delivery_intents where feed_id=$1', [f.feed.id])).n,
+    1,
+    'the terminal handoff leaves the current worker as the only live intent',
+  );
+
+  await db.query("update background_jobs set status='completed' where id=$1", [admitted.jobId]);
+  const replacement = await admit(f);
+  assert.notEqual(replacement.jobId, admitted.jobId);
+});
+
 test('rejects stale claims, cancelled jobs, out-of-order chunks and duplicate saves atomically', async () => {
   const f = await fixture();
   await assert.rejects(publish({...f,job:{...f.job,claim_token:randomUUID()}}),/wall_text_planner_claim_lost/);

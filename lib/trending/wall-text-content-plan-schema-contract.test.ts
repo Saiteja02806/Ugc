@@ -44,6 +44,13 @@ const dailyDeliveryShortfallRecoveryMigration = readFileSync(
   ),
   "utf8",
 );
+const terminalDailyDeliveryReplacementMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260912140000_rotate_wall_text_terminal_delivery.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const freeformMigration = readFileSync(
   new URL(
     "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260826101500_disable_forced_wall_text_formats.sql",
@@ -98,6 +105,13 @@ const workerHandlers = readFileSync(
   new URL("../../worker/src/jobs/index.ts", import.meta.url),
   "utf8",
 );
+const terminalRecoveryRoute = readFileSync(
+  new URL(
+    "../../app/api/internal/jobs/recover-wall-text-terminal/route.ts",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const aiWorkerVariables = readFileSync(
   new URL(
     "../../infra/gcp/ai-generation-worker/variables.tf",
@@ -145,6 +159,29 @@ test("creates a separate private 30-day Wall plan with forty briefs and two hund
   assert.doesNotMatch(
     migration,
     /^\s*(?:delete\s+from|truncate(?:\s+table)?|drop\s+table)\b/im,
+  );
+});
+
+test("rotates a terminal daily Wall delivery before its successful partial work is reconciled", () => {
+  assert.match(
+    terminalDailyDeliveryReplacementMigration,
+    /request_wall_text_daily_terminal_replacement_v1[\s\S]+wall_text_retry_key = v_retry_key/i,
+  );
+  assert.match(
+    terminalDailyDeliveryReplacementMigration,
+    /intent\.job_id = p_failed_job_id[\s\S]+intent\.retry_key = coalesce\(v_feed\.wall_text_retry_key::text, ''\)/i,
+  );
+  assert.match(
+    terminalDailyDeliveryReplacementMigration,
+    /job\.input_json ->> 'dailyFeedId' = v_feed\.id::text/i,
+  );
+  assert.match(
+    terminalRecoveryRoute,
+    /if \(input\.dailyFeedId\)[\s\S]+requestWallTextDailyTerminalReplacement[\s\S]+replacementScheduled: retryKey !== null/i,
+  );
+  assert.doesNotMatch(
+    terminalRecoveryRoute.match(/if \(input\.dailyFeedId\)[\s\S]+?\n    }\n\n    const replacement/)?.[0] ?? "",
+    /enqueueTrendingWallTextRefill/,
   );
 });
 

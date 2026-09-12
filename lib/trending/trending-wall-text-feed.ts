@@ -264,6 +264,7 @@ export async function prepareTrendingWallTextIdeas(
 
   if (
     mode === "initial" &&
+    !options.earlyPlanId &&
     existing.length > 0
   ) {
     const inventory =

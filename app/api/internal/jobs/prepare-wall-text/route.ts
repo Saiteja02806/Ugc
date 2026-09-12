@@ -17,6 +17,7 @@ import { recordWallTextFailureDiagnostic } from "@/lib/trending/wall-text-db";
 import {
   classifyWallTextGenerationFailure,
   getWallTextFailurePrivateMessage,
+  WALL_TEXT_DAILY_DELIVERY_SHORTFALL,
   wasWallTextFailureDiagnosticRecorded,
 } from "@/lib/trending/wall-text-generation-failure";
 
@@ -28,6 +29,7 @@ const MAX_BODY_LENGTH = 4_096;
 type PrepareWallTextInput = {
   businessProfileId?: unknown;
   businessProfileVersion?: unknown;
+  dailyFeedId?: unknown;
   earlyPlanId?: unknown;
   recoveryIteration?: unknown;
   recoveryKey?: unknown;
@@ -83,6 +85,16 @@ export async function POST(request: Request) {
       requestedCount: input.requestedCount,
       requestKey: input.requestKey,
     });
+
+    // A daily delivery owns a fixed set of feed slots. Returning a smaller
+    // historical-library count must never settle that delivery as complete.
+    if (input.dailyFeedId && ideas.length !== input.requestedCount) {
+      throw new TrendingWallTextPreparationError(
+        `Wall-of-text daily delivery prepared ${ideas.length} of ${input.requestedCount} required items.`,
+        409,
+        WALL_TEXT_DAILY_DELIVERY_SHORTFALL,
+      );
+    }
 
     return json({ ideaCount: ideas.length, ok: true });
   } catch (error) {
@@ -145,6 +157,7 @@ function parseInput(rawBody: string) {
   try {
     const input = JSON.parse(rawBody) as PrepareWallTextInput;
     const businessProfileId = getString(input.businessProfileId);
+    const dailyFeedId = getOptionalString(input.dailyFeedId);
     const earlyPlanId = getOptionalString(input.earlyPlanId);
     const recoveryKey = getOptionalString(input.recoveryKey);
     const refillKey = getOptionalString(input.refillKey);
@@ -190,6 +203,7 @@ function parseInput(rawBody: string) {
       ? {
           businessProfileId,
           businessProfileVersion,
+          dailyFeedId,
           earlyPlanId,
           recoveryIteration,
           recoveryKey,

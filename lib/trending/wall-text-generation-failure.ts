@@ -7,6 +7,8 @@ export const WALL_TEXT_RUNTIME_CONFIGURATION_ERROR =
 export const WALL_TEXT_DEPENDENCY_UNAVAILABLE =
   "wall_text_dependency_unavailable";
 export const WALL_TEXT_CONTENT_RETRY_EXHAUSTED = "content_retry_exhausted";
+export const WALL_TEXT_DAILY_DELIVERY_SHORTFALL =
+  "wall_text_daily_delivery_shortfall";
 export const WALL_TEXT_MODEL_OUTPUT_EMPTY = "model_output_empty";
 export const WALL_TEXT_MODEL_OUTPUT_REFUSAL = "model_output_refusal";
 export const WALL_TEXT_MODEL_OUTPUT_SCHEMA_INVALID =
@@ -193,6 +195,15 @@ export function classifyWallTextGenerationFailure(
       publicMessage:
         "Wall-of-text cannot be prepared because a required audio dependency is unavailable.",
       retryable: false,
+    };
+  }
+
+  if (code === WALL_TEXT_DAILY_DELIVERY_SHORTFALL) {
+    return {
+      diagnostic,
+      errorCode: WALL_TEXT_DAILY_DELIVERY_SHORTFALL,
+      publicMessage: "Wall-of-text preparation could not finish yet.",
+      retryable: true,
     };
   }
 

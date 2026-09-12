@@ -79,6 +79,25 @@ test("retries only a classified temporary preparation failure", async () => {
   });
 });
 
+test("rejects a short successful response for a fixed daily delivery", async () => {
+  await withWallPreparationEnvironment(async () => {
+    await withMockFetch(
+      async () => Response.json({ ideaCount: 1, ok: true }),
+      async () => {
+        await assert.rejects(
+          prepareWallTextInApp({
+            ...TEST_PARAMS,
+            dailyFeedId: "00000000-0000-4000-8000-000000000303",
+          }),
+          (error: unknown) =>
+            error instanceof RetryableJobError &&
+            error.code === "wall_text_daily_delivery_shortfall",
+        );
+      },
+    );
+  });
+});
+
 test("does not retry an exhausted candidate repair from the application", async () => {
   await withWallPreparationEnvironment(async () => {
     await withMockFetch(

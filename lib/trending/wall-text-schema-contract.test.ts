@@ -548,6 +548,22 @@ test("carries an early-delivery plan through the worker and bypasses the histori
     feedSource,
     /mode === "initial" &&\s*!options\.earlyPlanId &&\s*areTrendingWallTextCreativesCurrent\(existing\)/,
   );
+  assert.match(
+    feedSource,
+    /mode === "initial" &&\s*!options\.earlyPlanId &&\s*existing\.length > 0/,
+  );
+  assert.match(
+    workerPreparationClient,
+    /dailyFeedId\?: string \| null/,
+  );
+  assert.match(
+    internalPreparationRoute,
+    /const dailyFeedId = getOptionalString\(input\.dailyFeedId\);/,
+  );
+  assert.match(
+    internalPreparationRoute,
+    /input\.dailyFeedId && ideas\.length !== input\.requestedCount/,
+  );
 });
 
 test("prevents concurrent Wall refills while allowing completed backgrounds to recycle", () => {

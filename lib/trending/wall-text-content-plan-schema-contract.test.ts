@@ -37,6 +37,13 @@ const terminalOwnerRecoveryMigration = readFileSync(
   ),
   "utf8",
 );
+const dailyDeliveryShortfallRecoveryMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260912103553_repair_wall_text_daily_delivery_shortfalls.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const freeformMigration = readFileSync(
   new URL(
     "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260826101500_disable_forced_wall_text_formats.sql",
@@ -252,6 +259,29 @@ test("reopens Carousel and Wall plans when their durable owner job is already te
   );
   assert.doesNotMatch(
     terminalOwnerRecoveryMigration,
+    /^\s*(?:delete\s+from|truncate(?:\s+table)?|drop\s+table)\b/im,
+  );
+});
+
+test("reopens only a short, currently active daily Wall delivery without deleting history", () => {
+  assert.match(
+    dailyDeliveryShortfallRecoveryMigration,
+    /intent\.retry_key = coalesce\(feed\.wall_text_retry_key::text, ''\)/i,
+  );
+  assert.match(
+    dailyDeliveryShortfallRecoveryMigration,
+    /job\.status = 'completed'[\s\S]*jsonb_typeof\(job\.output_json -> 'ideaCount'\) = 'number'[\s\S]*::numeric < intent\.slot_count/i,
+  );
+  assert.match(
+    dailyDeliveryShortfallRecoveryMigration,
+    /slot\.id = any\(intent\.slot_ids\)[\s\S]*slot\.wall_text_assignment_id is null/i,
+  );
+  assert.match(
+    dailyDeliveryShortfallRecoveryMigration,
+    /wall_text_retry_key = gen_random_uuid\(\)/i,
+  );
+  assert.doesNotMatch(
+    dailyDeliveryShortfallRecoveryMigration,
     /^\s*(?:delete\s+from|truncate(?:\s+table)?|drop\s+table)\b/im,
   );
 });

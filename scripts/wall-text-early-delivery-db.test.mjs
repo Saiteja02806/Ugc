@@ -112,6 +112,45 @@ test('an explicit retry or later generator version has a new intent after the ol
   assert.notEqual((await admit(f,f.count,'writer-test-v2')).jobId,upgrade.jobId);
 });
 
+test('a completed short daily result is reopened with a new retry key and keeps its history', async () => {
+  const f = await fixture();
+  await publish(f);
+  const admitted = await admit(f);
+  await db.query(
+    `update background_jobs
+       set status = 'completed', output_json = jsonb_build_object('ideaCount', 1)
+     where id = $1`,
+    [admitted.jobId],
+  );
+
+  const recoveryMigration = await readFile(
+    new URL(
+      '../supabase/migrations/20260912103553_repair_wall_text_daily_delivery_shortfalls.sql',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  await db.exec(recoveryMigration);
+
+  const recoveredFeed = await one(
+    'select status, wall_text_retry_key from daily_trending_feeds where id = $1',
+    [f.feed.id],
+  );
+  const originalIntent = await one(
+    'select retry_key from wall_text_daily_delivery_intents where job_id = $1',
+    [admitted.jobId],
+  );
+  const settledJob = await one(
+    'select status from background_jobs where id = $1',
+    [admitted.jobId],
+  );
+
+  assert.equal(recoveredFeed.status, 'preparing');
+  assert.ok(recoveredFeed.wall_text_retry_key);
+  assert.notEqual(recoveredFeed.wall_text_retry_key, originalIntent.retry_key);
+  assert.equal(settledJob.status, 'completed');
+});
+
 test('rejects stale claims, cancelled jobs, out-of-order chunks and duplicate saves atomically', async () => {
   const f = await fixture();
   await assert.rejects(publish({...f,job:{...f.job,claim_token:randomUUID()}}),/wall_text_planner_claim_lost/);

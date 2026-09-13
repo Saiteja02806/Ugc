@@ -11,15 +11,28 @@ feed reads/recovery and Wall plan publications pass this context. A new pack,
 another user's pack, or a pack outside the current trial cannot use this
 exception; expired trials still stop preparation. No extra quota is granted.
 
+## 2026-09-13 Wall copy range increased to 24-48 words
+
+- New automated Wall-of-Text copy uses an inclusive 24-48-word generation range
+  with a 36-word midpoint target when the measured layout permits it. Video
+  duration still does not impose a separate word limit or reading-time gate.
+- Writer prompt V21, layout budgeting, deterministic validation, and repair
+  candidates all read the same range from `wall-text-copy-policy.ts`. The
+  fixed 52px typography and measured 5-8-line fit remain the authority when a
+  particular background has less available space.
+- This policy applies to newly generated or repaired copy. Existing saved
+  creatives retain their persisted text and layout until an explicit
+  regeneration or edit reflows them under the current contract.
+
 ## 2026-09-12 Copy length is independent of video duration
 
 - Product decision: six-second videos have no special word cap or reading-time
-  deadline. All supported durations use the same general 18–36-word generation
-  range, subject to actual layout fit. The source-video duration eligibility
+  deadline. All supported durations use the same general generation range,
+  subject to actual layout fit. The source-video duration eligibility
   rules are separate and unchanged.
-- Writer prompt V20 uses the requested 18–36-word range (raised from 12–26),
-  with a default target of 27 words where layout space permits. Layout repair
-  keeps the 18-word minimum. The same shared range governs the editor save gate.
+- Writer prompt V20 used the former 18–36-word range (raised from 12–26),
+  with a default target of 27 words where layout space permits. The same shared
+  range governed the editor save gate before the 2026-09-13 increase.
 - Writer prompt V19 and reviewer schema V9 removed duration from the copy and
   review inputs. The reviewer checks clarity, one central thought and supported
   natural language, without requiring reading to finish within one play.
@@ -28,7 +41,7 @@ exception; expired trials still stop preparation. No extra quota is granted.
   layout, so old 15/16-word caps do not survive on retries. Fixed typography,
   measured 5–8 lines, general length and quality checks remain enforced.
 - Regression coverage includes identical budgets at six and sixty seconds and
-  36-word, two-sentence copy completing the actual generator/layout pipeline on
+  48-word, two-sentence copy completing the actual generator/layout pipeline on
   a six-second job whose saved reservation previously allowed only 16 words.
 
 ## 2026-09-12 Wall generation delivery repairs
@@ -67,7 +80,7 @@ exception; expired trials still stop preparation. No extra quota is granted.
   checks for one concrete daily action, one central thought, natural spoken
   language, and supported claims. Its original native-clip reading-time check
   was removed by the 2026-09-12 product decision above.
-- The writer receives a layout-based 18–36-word budget, uses one or two
+- The writer receives a layout-based 24–48-word budget, uses one or two
   sentences, and rejects
   semicolon-linked mini-stories. The fixed measured 5-8-row renderer remains
   the visual source of truth; it does not insert line breaks into model copy.

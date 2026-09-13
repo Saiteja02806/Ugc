@@ -1,12 +1,12 @@
 // Automated Wall copy uses the general word range and available layout space.
 // Video duration does not restrict how much text a card can contain.
 export const WALL_TEXT_GENERATION_WORD_RANGE = {
-  minimum: 18,
-  maximum: 36,
+  minimum: 24,
+  maximum: 48,
 } as const;
 
 export const WALL_TEXT_SOFT_WORD_RANGE = WALL_TEXT_GENERATION_WORD_RANGE;
-export const WALL_TEXT_TARGET_WORDS = 27;
+export const WALL_TEXT_TARGET_WORDS = 36;
 export function getWallTextGenerationWordBudget(params: {
   spatialMaximum?: number;
 }) {

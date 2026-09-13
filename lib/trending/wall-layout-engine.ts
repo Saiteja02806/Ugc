@@ -54,7 +54,10 @@ export async function deriveWallTextSpatialBudget(params: {
     780,
   );
   const widthPx = getWallTextSafeLineWidth(textBoxWidth);
-  const sampleWords = "people notice the quiet details";
+  // Estimate the upper budget from a six-word ordinary sentence fragment.
+  // The final measured layout below remains the authority for every response,
+  // so long words or uneven phrasing receive a smaller repair budget.
+  const sampleWords = "I can see what I need";
   const sampleWidth = (await measureText(sampleWords, WALL_TEXT_FIXED_FONT_SIZE)) +
     WALL_TEXT_OUTLINE_WIDTH * 2;
   const wordsPerLine = clamp(

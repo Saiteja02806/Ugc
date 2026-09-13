@@ -17,7 +17,7 @@ import {
 const MAX_WALL_TEXT_IDEA_COUNT = 50;
 export const WALL_TEXT_PREFERRED_MIN_WORDS = 18;
 export const WALL_TEXT_PREFERRED_MAX_WORDS = 21;
-export const MAX_WALL_TEXT_WORDS = 24;
+export const MAX_WALL_TEXT_WORDS = WALL_TEXT_GENERATION_WORD_RANGE.maximum;
 export const MAX_CURRENT_WALL_TEXT_WORDS = 50;
 // V11 is the current generation and reflow contract. Keep the broader 15–50
 // range above only for historical cards while they are read.

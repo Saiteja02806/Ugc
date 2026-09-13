@@ -30,8 +30,8 @@ const CURRENT_EXAMPLE = {
   ],
 };
 
-test("uses the Wall 24-word global hard limit", () => {
-  assert.equal(getWallTextMaximumWords(), 24);
+test("uses the Wall 48-word global hard limit", () => {
+  assert.equal(getWallTextMaximumWords(), 48);
 });
 
 test("rejects Wall generation candidates shorter than six seconds", () => {

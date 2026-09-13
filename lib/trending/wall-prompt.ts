@@ -2,7 +2,7 @@ import type { WallTextBusinessContext } from "./wall-text-text-logic";
 import { WALL_TEXT_SOFT_WORD_RANGE } from "./wall-text-copy-policy";
 
 export const WALL_TEXT_PROMPT_VERSION =
-  "wall-text-writer-prompt-v20-18-to-36-words" as const;
+  "wall-text-writer-prompt-v21-24-to-48-words" as const;
 
 export type WallTextPromptCandidate = {
   candidateIndex: number;

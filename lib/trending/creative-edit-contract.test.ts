@@ -95,10 +95,9 @@ test("wall edits remain a renderable two-to-three segment payload", () => {
     true,
   );
   assert.doesNotThrow(() => validateWallTextContent(content, 6));
-  assert.throws(
-    () => validateWallTextContent(content, 4),
-    /16–16 words for a 4\.0-second clip/,
-  );
+  // Duration no longer imposes a separate reading-time word cap. The same
+  // layout and global Wall range apply to short clips as to longer clips.
+  assert.doesNotThrow(() => validateWallTextContent(content, 4));
 });
 
 test("Wall typing adopts the current Arial Bold treatment when measured metadata is invalidated", () => {

@@ -111,7 +111,9 @@ export async function readUnifiedTrendingDailyFeed(params: {
   let trialAccessBlocked = false;
 
   try {
-    entitlement = await getTrendingPlanEntitlement(params.userId);
+    entitlement = await getTrendingPlanEntitlement(params.userId, {
+      existingFeedId: existingPlan?.feed.id,
+    });
   } catch (error) {
     if (!(error instanceof FreeTrialAccessError) || !existingPlan) {
       throw error;
@@ -462,11 +464,13 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
   }
 
   const localDate = getTrendingLocalDate(timezone);
-  const [entitlement, preference, existingPlan] = await Promise.all([
-    getTrendingPlanEntitlement(params.userId),
+  const [preference, existingPlan] = await Promise.all([
     getTrendingContentMixPreference(params.userId),
     getDailyTrendingFeedForDate({ localDate, userId: params.userId }),
   ]);
+  const entitlement = await getTrendingPlanEntitlement(params.userId, {
+    existingFeedId: existingPlan?.feed.id,
+  });
   const effectivePreference = resolveTrendingContentMixPreference({
     planKey: entitlement.planKey,
     preference,

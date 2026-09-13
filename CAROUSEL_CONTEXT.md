@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-09-12
+Last updated: 2026-09-13
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -8,6 +8,16 @@ Read it before changing Carousel API routes, workers, image sourcing, matching,
 rendering, database schema, review scripts, or frontend behavior.
 
 ## Product Goal
+
+### Active trial pack delivery
+
+The three-day pack quota is charged when a daily pack is reserved. While the
+trial is active, feed reads, generation continuation, and completion callbacks
+may finish an existing owner-scoped trial pack after its remaining content-day
+quota reaches zero. They retain that pack's saved daily limit. Creating another
+pack still requires unused quota; an expired trial still blocks preparation.
+The database admission limit remains authoritative. This applies to all four
+Trending formats, including Wall plan-publication callbacks.
 
 Generate complete, visually coherent social carousels from website/business
 analysis. Each candidate is one complete carousel with its own angle and slides.

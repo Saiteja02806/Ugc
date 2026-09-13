@@ -44,7 +44,8 @@ export async function reconcileCompletedTrendingFeedForUser(
     userId,
     });
   } catch (error) {
-    // Expired/exhausted access is a settled callback, not a provider outage.
+    // Allocated packs are authorized inside ensureFeed even on the final trial
+    // content day. Expired access or exhaustion without a saved pack is settled.
     // Completing the outbox item prevents endless five-minute retries.
     // A later paid activation schedules its own prebuild.
     if (error instanceof FreeTrialAccessError) {

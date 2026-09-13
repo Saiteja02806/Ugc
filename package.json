@@ -127,7 +127,7 @@
     "billing:usage-scheduler:configure": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/configure-billing-usage-scheduler.mjs --execute --yes",
     "worker:start": "node worker/dist/index.js",
     "test:wall-text-early": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test lib/trending/wall-text-publication-delivery.test.ts && npm run worker:build && node --test worker/dist/jobs/generate-wall-text-content-plan.test.js worker/dist/lib/wall-text-plan-publication-dispatch.test.js scripts/wall-text-early-delivery-db.test.mjs",
-    "test:production-recovery": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test lib/supabase/gateway-retry-fetch.test.ts scripts/free-trial-allowance-upgrade.test.mjs && node --import ./scripts/next-server-only-test-loader.mjs --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-transform-types --test scripts/wall-writer-repair.test.mjs"
+    "test:production-recovery": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test lib/supabase/gateway-retry-fetch.test.ts scripts/free-trial-allowance-upgrade.test.mjs && node --import ./scripts/next-server-only-test-loader.mjs --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-transform-types --test scripts/wall-writer-repair.test.mjs lib/billing/free-trial-delivery-behavior.test.mjs lib/trending/reconcile-completed-feed.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

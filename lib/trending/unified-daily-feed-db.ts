@@ -118,8 +118,9 @@ export function getMissingUnifiedTrendingFeedEnvVars() {
 
 export async function getTrendingPlanEntitlement(
   userId: string,
+  options: { existingFeedId?: string } = {},
 ): Promise<TrendingPlanEntitlement> {
-  const freeTrialAccess = await assertFreeTrialContentAccess(userId);
+  const freeTrialAccess = await assertFreeTrialContentAccess(userId, options);
   const effectivePlanKey =
     freeTrialAccess.paid
       ? freeTrialAccess.planKey === "growth"

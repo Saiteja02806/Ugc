@@ -127,17 +127,17 @@ async function reconcilePublication(event: Publication) {
   const profile = await getBusinessProfileForUser(event.user_id);
   if (!plan || plan.status === "superseded" || !profile?.trendingTimezone ||
     profile.id !== plan.business_profile_id || profile.profileVersion !== plan.business_profile_version) return;
-  try {
-    await getTrendingPlanEntitlement(event.user_id);
-  } catch (error) {
-    if (error instanceof FreeTrialAccessError) return;
-    throw error;
-  }
   const existing = await getDailyTrendingFeedForDate({
     localDate: getTrendingLocalDate(profile.trendingTimezone), userId: event.user_id,
   });
   if (!existing || existing.feed.businessProfileId !== profile.id ||
     existing.feed.businessProfileVersion !== profile.profileVersion) return;
+  try {
+    await getTrendingPlanEntitlement(event.user_id, { existingFeedId: existing.feed.id });
+  } catch (error) {
+    if (error instanceof FreeTrialAccessError) return;
+    throw error;
+  }
   const wallSlots = existing.slots.filter(slot => slot.format === "wall_text");
   if (!wallSlots.some(slot => slot.state !== "decided" && !slot.assignmentId)) return;
   const provider = await getTrendingWallTextFeedProvider(profile, {

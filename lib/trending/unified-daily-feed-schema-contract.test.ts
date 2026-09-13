@@ -107,7 +107,7 @@ test("uses the ten-piece free-trial allowance and repairs an already-created sma
   );
   assert.match(
     unifiedFeedDatabase,
-    /assertFreeTrialContentAccess\(userId\)[\s\S]*freeTrialAccess\.trial\?\.dailyContentPieces/,
+    /assertFreeTrialContentAccess\(userId, options\)[\s\S]*freeTrialAccess\.trial\?\.dailyContentPieces/,
   );
 });
 

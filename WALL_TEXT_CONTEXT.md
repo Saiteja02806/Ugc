@@ -1,6 +1,15 @@
 # Wall-of-text Context
 
-Last updated: 2026-09-12
+Last updated: 2026-09-13
+
+## 2026-09-13 Active trial final-pack recovery
+
+The final trial pack consumes the last content-day allowance at reservation.
+Its generation and feed attachment can continue while the trial is active,
+using the existing owner-scoped feed ID and saved daily limit. Both unified
+feed reads/recovery and Wall plan publications pass this context. A new pack,
+another user's pack, or a pack outside the current trial cannot use this
+exception; expired trials still stop preparation. No extra quota is granted.
 
 ## 2026-09-12 Copy length is independent of video duration
 

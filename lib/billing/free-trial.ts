@@ -144,7 +144,10 @@ export async function getFreeTrialEntitlement(
   };
 }
 
-export async function assertFreeTrialContentAccess(userId: string) {
+export async function assertFreeTrialContentAccess(
+  userId: string,
+  options: { existingFeedId?: string } = {},
+) {
   const activeSubscription = await getActiveProductPlanAccess(userId);
 
   if (activeSubscription) {
@@ -166,6 +169,30 @@ export async function assertFreeTrialContentAccess(userId: string) {
   }
 
   if (trial.contentDaysRemaining <= 0) {
+    // The last daily pack consumes its quota when it is reserved, before its
+    // asynchronous generation finishes. Resume only that owner's saved trial
+    // pack; this allowance must never authorize creating another pack.
+    if (options.existingFeedId && trial.startedAt && trial.expiresAt) {
+      const { data: feed, error } = await getClient()
+        .from(DAILY_TRENDING_FEEDS_TABLE)
+        .select("daily_limit")
+        .eq("id", options.existingFeedId)
+        .eq("user_id", userId)
+        .eq("plan_key", "free")
+        .gte("created_at", trial.startedAt)
+        .lt("created_at", trial.expiresAt)
+        .maybeSingle();
+      if (error) {
+        throw new Error(`Could not verify the allocated trial pack: ${error.message}`);
+      }
+      if (feed && Number.isInteger(feed.daily_limit) && feed.daily_limit > 0) {
+        return {
+          paid: false as const,
+          planKey: null,
+          trial: { ...trial, dailyContentPieces: feed.daily_limit },
+        };
+      }
+    }
     throw new FreeTrialAccessError(
       "Your 3-day free trial content allowance has been used. Upgrade to generate more content.",
       "free_trial_content_days_exhausted",

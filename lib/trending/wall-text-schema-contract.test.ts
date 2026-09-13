@@ -219,6 +219,10 @@ const editorSource = readFileSync(
   new URL("../../components/trending/trending-creative-editor.tsx", import.meta.url),
   "utf8",
 );
+const workspaceSource = readFileSync(
+  new URL("../../components/trending/trending-workspace.tsx", import.meta.url),
+  "utf8",
+);
 const rootLayoutSource = readFileSync(
   new URL("../../app/layout.tsx", import.meta.url),
   "utf8",
@@ -1039,6 +1043,34 @@ test("uses layout-based word budgets without reading-time rejection", () => {
   assert.match(generatorSource, /semicolon_story/);
   assert.match(feedSource, /durationSeconds: candidate\.durationSeconds/);
   assert.match(feedSource, /promptVersion: WALL_TEXT_PROMPT_VERSION/);
+});
+
+test("keeps Wall video buffering distinct from a failed preview", () => {
+  assert.match(
+    workspaceSource,
+    /const WALL_VIDEO_LOAD_TIMEOUT_MS = 12_000/,
+  );
+  assert.match(workspaceSource, /preload="auto"/);
+  assert.match(
+    workspaceSource,
+    /onCanPlay=\{\(event\) => markVideoReady\(event\.currentTarget\)\}/,
+  );
+  assert.match(
+    workspaceSource,
+    /onLoadedData=\{\(event\) => markVideoReady\(event\.currentTarget\)\}/,
+  );
+  assert.match(
+    workspaceSource,
+    /const videoLoadKey = `\$\{previewUrl\}:\$\{videoRetryKey\}`/,
+  );
+  assert.match(
+    workspaceSource,
+    /!isVideoError[\s\S]+!isVideoReady[\s\S]+Loading video…/,
+  );
+  assert.match(
+    workspaceSource,
+    /isVideoError[\s\S]+Video could not load\.[\s\S]+Retry video/,
+  );
 });
 
 test("uses the general word budget for a compact natural Wall message", () => {

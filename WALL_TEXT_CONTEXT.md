@@ -24,6 +24,16 @@ exception; expired trials still stop preparation. No extra quota is granted.
   creatives retain their persisted text and layout until an explicit
   regeneration or edit reflows them under the current contract.
 
+## 2026-09-13 Wall preview loading recovery
+
+- The three mounted Trending Wall cards preload their MP4 background data. A
+  card is ready after either `loadeddata` or `canplay` confirms current video
+  data and dimensions; a ready element detected after mount is accepted too.
+- The shared PNG remains independent from video readiness. Normal buffering
+  leaves the poster and text visible with a compact nonblocking status. A
+  full retry state appears only for a media error or after a 12-second active
+  preview timeout, and retry remounts the media element.
+
 ## 2026-09-12 Copy length is independent of video duration
 
 - Product decision: six-second videos have no special word cap or reading-time

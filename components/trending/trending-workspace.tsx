@@ -3808,8 +3808,13 @@ function TrendingWallTextDeckCard({
   const previewUrl = edit?.source?.resolvedAssetUrl ?? creative.previewUrl;
   const thumbnailUrl =
     edit?.source?.resolvedThumbnailUrl ?? creative.thumbnailUrl;
+  const WALL_VIDEO_LOAD_TIMEOUT_MS = 12_000;
   const [videoReadyUrl, setVideoReadyUrl] = useState<string | null>(null);
   const [videoErrorUrl, setVideoErrorUrl] = useState<string | null>(null);
+  const [videoRetryKey, setVideoRetryKey] = useState(0);
+  const videoLoadKey = `${previewUrl}:${videoRetryKey}`;
+  const isVideoReady = videoReadyUrl === videoLoadKey;
+  const isVideoError = videoErrorUrl === videoLoadKey;
   const deckStyle = DECK_CARD_STYLES[depth];
   const cardStyle = getTrendingDeckCardPresentation({
     depth,
@@ -3818,6 +3823,33 @@ function TrendingWallTextDeckCard({
     isDragging,
     presentation,
   });
+
+  const markVideoReady = useCallback(
+    (video: HTMLVideoElement) => {
+      if (video.videoWidth > 0 && video.readyState >= 2) {
+        setVideoReadyUrl(videoLoadKey);
+        setVideoErrorUrl(null);
+      }
+    },
+    [videoLoadKey],
+  );
+
+  useEffect(() => {
+    if (
+      !isActive ||
+      isVideoReady ||
+      isVideoError
+    ) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setVideoErrorUrl(videoLoadKey);
+    }, WALL_VIDEO_LOAD_TIMEOUT_MS);
+
+    return () => window.clearTimeout(timeout);
+  }, [isActive, isVideoError, isVideoReady, videoLoadKey]);
+
   useEffect(() => {
     const video = videoRef.current;
 
@@ -3832,7 +3864,7 @@ function TrendingWallTextDeckCard({
 
     video.currentTime = 0;
     void video.play().catch(() => undefined);
-  }, [isActive, previewUrl]);
+  }, [isActive, videoLoadKey]);
 
   return (
     <div
@@ -3884,20 +3916,17 @@ function TrendingWallTextDeckCard({
         ) : null}
         <div className="relative size-full overflow-hidden rounded-[20px] bg-[#171717] ring-1 ring-white/10">
           <video
+            key={videoLoadKey}
             ref={videoRef}
             src={previewUrl}
             poster={thumbnailUrl ?? undefined}
-            onLoadedData={(event) => {
-              if (event.currentTarget.videoWidth > 0 && event.currentTarget.readyState >= 2) {
-                setVideoReadyUrl(previewUrl);
-                setVideoErrorUrl(null);
-              }
-            }}
-            onError={() => setVideoErrorUrl(previewUrl)}
+            onCanPlay={(event) => markVideoReady(event.currentTarget)}
+            onLoadedData={(event) => markVideoReady(event.currentTarget)}
+            onError={() => setVideoErrorUrl(videoLoadKey)}
             autoPlay={isActive}
             muted
             playsInline
-            preload={depth <= 1 ? "auto" : "metadata"}
+            preload="auto"
             aria-hidden="true"
             className="pointer-events-none size-full object-cover"
           />
@@ -3912,11 +3941,37 @@ function TrendingWallTextDeckCard({
             scaleMode="review-card-capped"
             textColor={editedContent?.textColor}
           />}
-          {process.env.NEXT_PUBLIC_WALL_TEXT_SHARED_PNG === "true" && (videoReadyUrl !== previewUrl || videoErrorUrl === previewUrl) ? (
-            <div role="status" className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-black/70 p-4 text-center text-sm text-white">
-              <span>{videoErrorUrl === previewUrl ? "Video could not load." : "Loading video…"}</span>
-              <button type="button" className="rounded border px-3 py-1" onPointerDown={event => event.stopPropagation()}
-                onClick={() => { setVideoErrorUrl(null); videoRef.current?.load(); void videoRef.current?.play().catch(() => undefined); }}>Retry video</button>
+          {process.env.NEXT_PUBLIC_WALL_TEXT_SHARED_PNG === "true" &&
+          !isVideoError &&
+          !isVideoReady ? (
+            <div
+              role="status"
+              aria-live="polite"
+              className="pointer-events-none absolute inset-x-4 bottom-4 z-30 flex justify-center"
+            >
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/70 px-2.5 py-1 text-xs text-white">
+                <Loader2 className="size-3 animate-spin" aria-hidden="true" />
+                Loading video…
+              </span>
+            </div>
+          ) : null}
+          {process.env.NEXT_PUBLIC_WALL_TEXT_SHARED_PNG === "true" &&
+          isVideoError ? (
+            <div
+              role="alert"
+              className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-black/70 p-4 text-center text-sm text-white"
+            >
+              <span>Video could not load.</span>
+              <button
+                type="button"
+                className="rounded border px-3 py-1"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={() => {
+                  setVideoRetryKey((current) => current + 1);
+                }}
+              >
+                Retry video
+              </button>
             </div>
           ) : null}
           {!edit ? (

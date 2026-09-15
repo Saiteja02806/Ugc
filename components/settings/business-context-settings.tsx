@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, LoaderCircle, RefreshCw, Save, Sparkles } from "lucide-react";
+import { CheckCircle2, LoaderCircle, RefreshCw, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState, type ComponentProps, type ReactNode } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -34,9 +34,10 @@ type ApiResponse = { message?: string; ok: boolean; profile?: ContextResponse; r
 export function BusinessContextSettings() {
   const [profile, setProfile] = useState<ContextResponse | null>(null);
   const [context, setContext] = useState<WebsiteBusinessAnalysis | null>(null);
+  const [initialContext, setInitialContext] = useState<WebsiteBusinessAnalysis | null>(null);
   const [listText, setListText] = useState<BusinessContextListText | null>(null);
   const [source, setSource] = useState("");
-  const [busyAction, setBusyAction] = useState<"apply" | "reanalyze" | "save_draft" | null>(null);
+  const [busyAction, setBusyAction] = useState<"apply" | "reanalyze" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,6 +62,18 @@ export function BusinessContextSettings() {
 
   const hasDraft = Boolean(profile?.draft);
   const canApplyDraft = profile?.draft?.readiness === "ready" && Boolean(profile.draft.updatedAt);
+  const editedContext = useMemo(
+    () => context && listText
+      ? normalizeContext(applyBusinessContextListText(context, listText))
+      : null,
+    [context, listText],
+  );
+  const hasFormChanges = Boolean(
+    editedContext
+    && initialContext
+    && JSON.stringify(editedContext) !== JSON.stringify(initialContext),
+  );
+  const canApplyChanges = hasFormChanges || canApplyDraft;
   const version = profile?.activeProfileVersion ?? 0;
   const sourcePlaceholder = useMemo(
     () => "Describe only the current, factual business context you want us to analyze. Unsupported details stay empty rather than guessed.",
@@ -71,6 +84,7 @@ export function BusinessContextSettings() {
     const nextContext = normalizeContext(next.draft?.context ?? next.activeContext);
     setProfile(next);
     setContext(nextContext);
+    setInitialContext(nextContext);
     setListText(createBusinessContextListText(nextContext));
     setSource(next.draft?.source ?? "");
   }
@@ -85,7 +99,7 @@ export function BusinessContextSettings() {
     setListText((current) => current ? { ...current, [field]: value } : current);
   }
 
-  async function runAction(action: "apply" | "reanalyze" | "save_draft") {
+  async function runAction(action: "apply" | "reanalyze") {
     if (!profile || !context || !listText) return;
     setBusyAction(action);
     setError(null);
@@ -96,25 +110,16 @@ export function BusinessContextSettings() {
       const payload = action === "apply"
         ? {
             action,
-            expectedDraftUpdatedAt: profile.draft?.updatedAt,
+            context: editedContext ?? normalizeContext(applyBusinessContextListText(context, listText)),
+            expectedDraftUpdatedAt: profile.draft?.updatedAt ?? null,
             expectedProfileVersion: profile.activeProfileVersion,
           }
-        : action === "reanalyze"
-          ? {
-              action,
-              expectedDraftUpdatedAt: profile.draft?.updatedAt ?? null,
-              expectedProfileVersion: profile.activeProfileVersion,
-              source,
-            }
-          : {
-              action,
-              context: normalizeContext(
-                applyBusinessContextListText(context, listText),
-              ),
-              expectedDraftUpdatedAt: profile.draft?.updatedAt ?? null,
-              expectedProfileVersion: profile.activeProfileVersion,
-              source: source || null,
-            };
+        : {
+            action,
+            expectedDraftUpdatedAt: profile.draft?.updatedAt ?? null,
+            expectedProfileVersion: profile.activeProfileVersion,
+            source,
+          };
       const response = await fetch("/api/business-context", {
         body: JSON.stringify(payload),
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -127,7 +132,7 @@ export function BusinessContextSettings() {
         ? "Your new context is active for the next local Trending day. Today's pack was not changed."
         : action === "reanalyze"
           ? "Re-analysis created a reviewable draft. Nothing live changed."
-          : "Draft saved. Nothing live changed."));
+          : ""));
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "Could not update Business Context.");
     } finally {
@@ -154,7 +159,7 @@ export function BusinessContextSettings() {
             {profile.draft ? <Badge variant={profile.draft.readiness === "ready" ? "secondary" : "outline"}>{profile.draft.readiness === "ready" ? `${profile.draft.factCount} factual anchors ready` : "Needs factual anchors"}</Badge> : null}
           </div>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
-            This is the factual source for future marketing content. Saving or re-analyzing creates a draft only; applying a fact-ready draft creates the next context version without rewriting today’s feed.
+            Edit the details below, then apply them when ready. Applying creates the next context version for future marketing content without rewriting today’s feed.
           </p>
         </div>
       </div>
@@ -184,25 +189,21 @@ export function BusinessContextSettings() {
         <div className="flex items-start gap-3">
           <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-foreground-strong">Re-analyze factual source</p>
-            <p className="mt-1 text-sm leading-6 text-muted">Creates a new draft from your factual source. It cannot change live context on its own.</p>
+            <p className="text-sm font-semibold text-foreground-strong">Create a draft from a description (optional)</p>
+            <p className="mt-1 text-sm leading-6 text-muted">Use this when you want to rebuild the form from a fresh business description. It creates an editable draft and never changes future content until you apply it.</p>
             <Textarea className="mt-3 min-h-28" placeholder={sourcePlaceholder} value={source} onChange={(event) => setSource(event.target.value)} />
           </div>
         </div>
       </div>
 
       <div className="flex flex-col-reverse gap-3 border-t border-border pt-5 sm:flex-row sm:justify-end">
-        <Button type="button" variant="outline" disabled={busyAction !== null} onClick={() => void runAction("save_draft")}>
-          {busyAction === "save_draft" ? <LoaderCircle data-icon="inline-start" className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Save data-icon="inline-start" aria-hidden="true" />}
-          Save draft
-        </Button>
         <Button type="button" variant="outline" disabled={busyAction !== null || source.trim().length < 20} onClick={() => void runAction("reanalyze")}>
           {busyAction === "reanalyze" ? <LoaderCircle data-icon="inline-start" className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <RefreshCw data-icon="inline-start" aria-hidden="true" />}
-          Re-analyze draft
+          Create draft from description
         </Button>
-        <Button type="button" disabled={busyAction !== null || !canApplyDraft} onClick={() => void runAction("apply")}>
+        <Button type="button" disabled={busyAction !== null || !canApplyChanges} onClick={() => void runAction("apply")}>
           {busyAction === "apply" ? <LoaderCircle data-icon="inline-start" className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <CheckCircle2 data-icon="inline-start" aria-hidden="true" />}
-          Apply to future content
+          Apply changes to future content
         </Button>
       </div>
     </div>

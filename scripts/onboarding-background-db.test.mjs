@@ -116,9 +116,29 @@ test('legacy writers cannot insert or reset a draft-managed profile', async () =
   await assert.rejects(db.query(`update business_profiles set context_json='{}' where id=$1`,[d.profile_id]),/legacy_write_rejected/);
   await db.query(`update business_profiles set preparation_status='preparing' where id=$1`,[d.profile_id]);
 });
+test('direct Business Context apply atomically promotes manual edits without reopening the legacy writer', async () => {
+  const d=await finalize(await submit(await analyze(await identity(await start()))));
+  const before=await one('select * from business_profiles where id=$1',[d.profile_id]);
+  const next={...analysis,productSummary:'An owner-applied factual summary'};
+  const applied=await one(`select * from public.apply_business_context_v1($1,$2,$3,$4,$5)`,[
+    'owner-applied-context-hash',next,null,before.profile_version,d.user_id,
+  ]);
+
+  assert.equal(applied.context_json.productSummary,'An owner-applied factual summary');
+  assert.equal(applied.profile_version,before.profile_version+1);
+  assert.equal(applied.business_context_draft_json,null);
+  assert.equal(applied.business_context_draft_updated_at,null);
+  await assert.rejects(
+    db.query(`update business_profiles set context_json='{}' where id=$1`,[d.profile_id]),
+    /legacy_write_rejected/,
+  );
+});
+
 test('anonymous clients cannot read drafts or execute transition functions', async () => {
   assert.equal((await one(`select has_table_privilege('anon','public.business_onboarding_drafts','SELECT') allowed`)).allowed,false);
   assert.equal((await one(`select has_function_privilege('authenticated','public.mutate_business_onboarding_v1(text,text,jsonb)','EXECUTE') allowed`)).allowed,false);
+  assert.equal((await one(`select has_function_privilege('authenticated','public.apply_business_context_v1(text,jsonb,timestamptz,integer,text)','EXECUTE') allowed`)).allowed,false);
+  assert.equal((await one(`select has_function_privilege('service_role','public.apply_business_context_v1(text,jsonb,timestamptz,integer,text)','EXECUTE') allowed`)).allowed,true);
 });
 
 test('the service role can execute the complete protocol with RLS enabled', async () => {

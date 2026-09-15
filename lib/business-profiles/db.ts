@@ -69,7 +69,18 @@ type BusinessProfileRow = {
 
 type BusinessProfileDatabase = {
   public: {
-    Functions: Record<string, never>;
+    Functions: {
+      apply_business_context_v1: {
+        Args: {
+          p_content_hash: string;
+          p_context_json: WebsiteBusinessAnalysis;
+          p_expected_draft_updated_at: string | null;
+          p_expected_profile_version: number;
+          p_user_id: string;
+        };
+        Returns: BusinessProfileRow[];
+      };
+    };
     Tables: {
       business_profiles: {
         Insert: Partial<BusinessProfileRow> & Pick<BusinessProfileRow, "context_json" | "intake_type" | "user_id" | "content_hash">;
@@ -277,57 +288,37 @@ export async function saveBusinessContextDraft(params: {
 }
 
 /**
- * Atomically promotes the exact reviewed draft to a new active version. The
- * next local-day Trending pack uses the new version; the current pack remains
+ * Atomically promotes the owner-visible Business Context to a new active
+ * version. The draft revision remains a concurrency fence, while the next
+ * local-day Trending pack uses the new version and the current pack remains
  * tied to its previous immutable profile version.
  */
-export async function applyBusinessContextDraft(params: {
-  expectedDraftUpdatedAt: string;
+export async function applyBusinessContext(params: {
+  context: WebsiteBusinessAnalysis;
+  expectedDraftUpdatedAt: string | null;
   expectedProfileVersion: number;
   profile: BusinessProfileRecord;
 }) {
-  const draft = params.profile.businessContextDraftContext;
-  if (
-    !draft ||
-    params.profile.businessContextDraftBaseVersion !== params.expectedProfileVersion ||
-    !params.profile.businessContextDraftUpdatedAt ||
-    params.profile.businessContextDraftUpdatedAt !== params.expectedDraftUpdatedAt
-  ) {
-    throw new Error("business_context_draft_stale");
-  }
   if (params.profile.profileVersion !== params.expectedProfileVersion) {
     throw new Error("business_context_profile_conflict");
   }
 
-  // Re-check immediately before the write. A draft may be stored for review
-  // with no facts, but that draft can never become the live source for a
-  // grounded format.
-  assertBusinessContextCandidateReady(draft);
+  // A saved draft is useful for a generated description, but a person can
+  // also apply the fields they are editing directly. Either path must have a
+  // fact before it becomes the active source for grounded formats.
+  assertBusinessContextCandidateReady(params.context);
 
-  const updatedAt = new Date().toISOString();
-  const { data, error } = await getClient()
-    .from(BUSINESS_PROFILES_TABLE)
-    .update({
-      business_context_draft_base_version: null,
-      business_context_draft_json: null,
-      business_context_draft_source: null,
-      business_context_draft_updated_at: null,
-      content_hash: hashAnalysis(draft, params.profile.intakeType),
-      context_json: draft,
-      profile_version: params.expectedProfileVersion + 1,
-      updated_at: updatedAt,
-    })
-    .eq("id", params.profile.id)
-    .eq("user_id", params.profile.userId)
-    .eq("profile_version", params.expectedProfileVersion)
-    .eq("business_context_draft_base_version", params.expectedProfileVersion)
-    .eq("business_context_draft_updated_at", params.expectedDraftUpdatedAt)
-    .select("*")
-    .maybeSingle();
+  const { data, error } = await getClient().rpc("apply_business_context_v1", {
+    p_content_hash: hashAnalysis(params.context, params.profile.intakeType),
+    p_context_json: params.context,
+    p_expected_draft_updated_at: params.expectedDraftUpdatedAt,
+    p_expected_profile_version: params.expectedProfileVersion,
+    p_user_id: params.profile.userId,
+  });
 
-  if (error) throw new Error(`Could not apply business-context draft: ${error.message}`);
-  if (!data) throw new Error("business_context_draft_conflict");
-  return mapProfile(data);
+  if (error) throw new Error(`Could not apply Business Context: ${error.message}`);
+  if (!data?.[0]) throw new Error("business_context_draft_conflict");
+  return mapProfile(data[0]);
 }
 
 export async function completeTrendingWalkthroughForUser(userId: string) {

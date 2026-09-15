@@ -26,6 +26,8 @@ import {
   buildWallTextOverlaySvg,
   buildWallTextRenderLayout,
   WALL_TEXT_INLINE_SAFE_PADDING,
+  WALL_TEXT_RASTER_EDGE_GUARD,
+  getWallTextRasterSafeLineWidth,
 } from "./wall-text-render-spec.js";
 import { HOOK_INLINE_SYMBOL_STROKE_WIDTH } from "./hook-inline-symbols.js";
 
@@ -482,6 +484,62 @@ test("keeps the final painted Wall overlay inside the 15px inner fence", async (
   assert.ok(
     bounds.right <
       layout.textBox.left + layout.textBox.width - WALL_TEXT_INLINE_SAFE_PADDING - 1,
+  );
+});
+
+test("reserves raster edge space before a V9 line can touch the inner fence", async () => {
+  const textBox = {
+    height: 480 / 1920,
+    width: 780 / 1080,
+    x: 150 / 1080,
+    y: 800 / 1920,
+  };
+  const lines = [
+    "A customer question",
+    "interrupts the caption, and the",
+    "half-written note waits in",
+    "drafts. Use UGCPilot's",
+    "completed, business-aware",
+    "post drafts to publish one",
+    "finished Instagram post",
+    "before closing each day.",
+  ];
+  const content = {
+    fullText: lines.join(" "),
+    segments: [
+      { lines: lines.slice(0, 3), role: "lead" as const },
+      { lines: lines.slice(3, 6), role: "support" as const },
+      { lines: lines.slice(6), role: "closing" as const },
+    ],
+    finalLayout: {
+      blocks: [{ lines, role: "text" as const }],
+      fontFamily: "Arial" as const,
+      fontSizePx: 52 as const,
+      fontWeight: 700 as const,
+      lineHeightPx: 57.2,
+      textBox,
+      version: "wall-text-final-layout-v9" as const,
+    },
+  };
+
+  assert.equal(
+    getWallTextRasterSafeLineWidth(780),
+    780 - WALL_TEXT_INLINE_SAFE_PADDING * 2 - WALL_TEXT_RASTER_EDGE_GUARD,
+  );
+  assert.equal(getWallTextRasterSafeLineWidth(780), 748);
+
+  await ensureWallTextFontsRegistered();
+  await assert.rejects(
+    import("./wall-text-overlay-renderer.js").then(({ prepareWallTextOverlayAsset }) =>
+      prepareWallTextOverlayAsset({
+        placement: "lower-middle",
+        safeArea: { bottom: 0.1, left: 0.1, right: 0.1, top: 0.1 },
+        text: content,
+        textBox,
+        textColor: "#FFFFFF",
+      }),
+    ),
+    /line exceeds the measured Arial Bold text width/,
   );
 });
 

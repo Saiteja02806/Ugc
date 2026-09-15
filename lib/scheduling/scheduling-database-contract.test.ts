@@ -40,6 +40,9 @@ const instagramRenewalMigration = readProjectFile(
 const carouselPublishRetryMigration = readProjectFile(
   "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260717183000_support_carousel_publish_retry.sql",
 );
+const terminalInstagramRetryMigration = readProjectFile(
+  "supabase/migrations/20260915144500_reset_terminal_instagram_container_on_manual_retry.sql",
+);
 const hookVideoScheduleMigration = readProjectFile(
   "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260717190000_link_hook_video_schedules.sql",
 );
@@ -348,6 +351,33 @@ test("publish retry repairs provider success and fails closed for unsafe inputs"
   assert.match(
     retryFunction,
     /connection\.status = 'connected'[\s\S]*connection\.revoked_at is null/,
+  );
+});
+
+test("manual retry replaces only an inactive terminal Instagram container", () => {
+  assert.match(
+    terminalInstagramRetryMigration,
+    /create or replace function public\.reset_terminal_instagram_container_on_manual_retry\(\)/i,
+  );
+  assert.match(
+    terminalInstagramRetryMigration,
+    /OLD\.status IS DISTINCT FROM 'failed'[\s\S]*OLD\.last_error_code IS DISTINCT FROM 'instagram_media_processing_failed'[\s\S]*NEW\.platform IS DISTINCT FROM 'instagram'[\s\S]*NEW\.status IS DISTINCT FROM 'scheduled'[\s\S]*NEW\.publish_job_id IS NOT DISTINCT FROM OLD\.publish_job_id/,
+  );
+  assert.match(
+    terminalInstagramRetryMigration,
+    /job\.job_type = 'publish_social_post'[\s\S]*job\.status = 'queued'[\s\S]*job\.input_json ->> 'targetId' = NEW\.id::text/,
+  );
+  assert.match(
+    terminalInstagramRetryMigration,
+    /operation\.platform_post_id IS NULL[\s\S]*operation\.published_at IS NULL[\s\S]*operation\.active_job_id IS NULL[\s\S]*operation\.active_claim_token IS NULL/,
+  );
+  assert.match(
+    terminalInstagramRetryMigration,
+    /provider_operation_id = NULL,[\s\S]*provider_operation_kind = NULL,[\s\S]*status = 'pending'/,
+  );
+  assert.match(
+    terminalInstagramRetryMigration,
+    /CREATE TRIGGER reset_terminal_instagram_container_on_manual_retry[\s\S]*BEFORE UPDATE OF status, publish_job_id/,
   );
 });
 

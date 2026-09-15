@@ -700,6 +700,7 @@ test("measures new final Wall lines with packaged Arial Bold before saving autho
   assert.match(layoutEngineSource, /textBox: params\.layout\.textBox/);
   assert.match(layoutEngineSource, /maximumWidth = getWallTextSafeLineWidth\(textBoxWidth\)/);
   assert.match(visualStyleSource, /WALL_TEXT_INLINE_SAFE_PADDING = 15/);
+  assert.match(visualStyleSource, /WALL_TEXT_RASTER_EDGE_GUARD = 2/);
   assert.match(visualStyleSource, /WALL_TEXT_FIXED_FONT_SIZE = 52/);
   assert.match(visualStyleSource, /WALL_TEXT_OUTLINE_WIDTH = 4/);
   assert.match(visualStyleSource, /WALL_TEXT_V12_OUTLINE_WIDTH = 3/);
@@ -712,6 +713,7 @@ test("measures new final Wall lines with packaged Arial Bold before saving autho
     /maximumTextWidth = getWallTextSafeLineWidth\(textBoxWidth\)/,
   );
   assert.match(workerRenderSpecSource, /WALL_TEXT_INLINE_SAFE_PADDING = 15/);
+  assert.match(workerRenderSpecSource, /WALL_TEXT_RASTER_EDGE_GUARD = 2/);
   assert.match(workerRenderSpecSource, /WALL_TEXT_OUTLINE_WIDTH = 4/);
   assert.match(workerRenderSpecSource, /WALL_TEXT_V12_OUTLINE_WIDTH = 3/);
   assert.match(workerRenderSpecSource, /WALL_TEXT_PREVIOUS_ARIAL_BOLD_OUTLINE_WIDTH = 4/);
@@ -720,7 +722,7 @@ test("measures new final Wall lines with packaged Arial Bold before saving autho
   assert.match(workerRenderSpecSource, /WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH = 2/);
   assert.match(
     workerOverlayRendererSource,
-    /textBox\.width \* WALL_TEXT_RENDER_WIDTH\)[\s\S]+WALL_TEXT_INLINE_SAFE_PADDING \* 2/,
+    /getWallTextRasterSafeLineWidth\([\s\S]+textBox\.width \* WALL_TEXT_RENDER_WIDTH/,
   );
   assert.match(overlaySource, /boxSizing: "border-box"[\s\S]+paddingInline/);
   assert.match(editorSource, /boxSizing: "border-box"[\s\S]+paddingInline/);
@@ -732,6 +734,95 @@ test("measures new final Wall lines with packaged Arial Bold before saving autho
     layoutEngineSource,
     /widths\.some\(\(width\) => width >= maximumWidth\)/,
   );
+});
+
+test("rejects an edge-touching V9 line before it can reach the PNG renderer", () => {
+  const loaderPath = new URL(
+    "../../scripts/next-server-only-test-loader.mjs",
+    import.meta.url,
+  ).href;
+  const validationUrl = new URL(
+    "wall-text-render-validation.ts",
+    import.meta.url,
+  ).href;
+  const visualStyleUrl = new URL(
+    "wall-text-visual-style.ts",
+    import.meta.url,
+  ).href;
+  const lines = [
+    "A customer question",
+    "interrupts the caption, and the",
+    "half-written note waits in",
+    "drafts. Use UGCPilot's",
+    "completed, business-aware",
+    "post drafts to publish one",
+    "finished Instagram post",
+    "before closing each day.",
+  ];
+  const script = `
+    const [validation, visualStyle] = await Promise.all([
+      import(${JSON.stringify(validationUrl)}),
+      import(${JSON.stringify(visualStyleUrl)}),
+    ]);
+    const textBox = {
+      height: 480 / 1920,
+      width: 780 / 1080,
+      x: 150 / 1080,
+      y: 800 / 1920,
+    };
+    const lines = ${JSON.stringify(lines)};
+    const content = {
+      finalLayout: {
+        blocks: [{ lines, role: "text" }],
+        fontFamily: "Arial",
+        fontSizePx: 52,
+        fontWeight: 700,
+        lineHeightPx: 57.2,
+        textBox,
+        version: "wall-text-final-layout-v9",
+      },
+      formatId: "freeform",
+      fullText: lines.join(" "),
+      kind: "wall_text",
+      layoutVersion: "wall-text-overlay-v13",
+      pattern: "freeform",
+      renderFontSize: 52,
+      renderSafetyVersion: "wall-text-inner-safe-v3",
+      segments: [
+        { lines: lines.slice(0, 3), role: "lead" },
+        { lines: lines.slice(3, 6), role: "support" },
+        { lines: lines.slice(6), role: "closing" },
+      ],
+      sourceContent: { kind: "text", text: lines.join(" ") },
+    };
+    let rejected = false;
+    try {
+      await validation.validateWallTextRenderFit(content);
+    } catch (error) {
+      rejected = error?.code === validation.WALL_TEXT_RENDER_FIT_REJECTED;
+    }
+    process.stdout.write(JSON.stringify({
+      safeWidth: visualStyle.getWallTextSafeLineWidth(780),
+      rejected,
+    }));
+  `;
+  const output = execFileSync(
+    process.execPath,
+    [
+      "--import",
+      loaderPath,
+      "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+      "--experimental-strip-types",
+      "--input-type=module",
+      "--eval",
+      script,
+    ],
+    { encoding: "utf8", stdio: "pipe" },
+  );
+  const result = JSON.parse(output) as { rejected: boolean; safeWidth: number };
+
+  assert.equal(result.safeWidth, 748);
+  assert.equal(result.rejected, true);
 });
 
 test("runs the final render-fit gate before generated Wall copy reaches storage", () => {
@@ -1161,7 +1252,7 @@ test("fixed Wall typography grows lines and rejects overflow without shrinking",
           text: line, rgba: true, wrap: 'none',
         }}).metadata();
         assert.equal(fit.lineWidths[index], measured.width);
-        assert.ok(measured.width + 8 < 750);
+        assert.ok(measured.width + 8 < 748);
       }
       // Just too short for these lines: the old validator would reduce size.
       const tooShort = {

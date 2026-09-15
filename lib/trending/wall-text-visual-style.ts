@@ -39,8 +39,13 @@ export const WALL_TEXT_REVIEW_CARD_REFERENCE_WIDTH = 277;
 export const WALL_TEXT_RENDER_CANVAS_WIDTH = 1080;
 // The text box is the outer placement rectangle. Keep a real visual gap
 // inside it so rendered glyphs, outline, and shadow never touch its edges.
-// At the 780px production box this leaves a 750px inner writing area.
+// At the 780px production box this leaves a 750px physical inner fence.
 export const WALL_TEXT_INLINE_SAFE_PADDING = 15;
+// The SVG rasterizer can round a centered, outlined line onto either edge of
+// that physical fence even when its measured width still fits. Reserve one
+// additional transparent pixel on each side during layout and validation.
+// This is a rendering preflight guard; it does not change the visual fence.
+export const WALL_TEXT_RASTER_EDGE_GUARD = 2;
 // A wider reading column prevents already-measured lines from being visually
 // rewrapped into two- or three-word rows on the 9:16 canvas.
 export const WALL_TEXT_TEXT_WIDTH = 780;
@@ -84,7 +89,12 @@ const AVENIR_NEXT_TYPOGRAPHY = {
 } as const;
 
 export function getWallTextSafeLineWidth(textBoxWidth: number) {
-  return Math.max(0, textBoxWidth - WALL_TEXT_INLINE_SAFE_PADDING * 2);
+  return Math.max(
+    0,
+    textBoxWidth -
+      WALL_TEXT_INLINE_SAFE_PADDING * 2 -
+      WALL_TEXT_RASTER_EDGE_GUARD,
+  );
 }
 
 export function getWallTextOutlineWidth(content: TrendingWallTextContent) {

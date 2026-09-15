@@ -8,6 +8,9 @@ const actions = readProjectFile(
 const workspace = readProjectFile(
   "components/trending/trending-workspace.tsx",
 );
+const reviewLayout = readProjectFile(
+  "components/trending/trending-review-layout.module.css",
+);
 const skeletonStyles = readProjectFile(
   "components/trending/trending-post-skeleton.module.css",
 );
@@ -61,6 +64,17 @@ test("places Edit in the page header and keeps circular decisions below the card
   assert.equal((workspace.match(/<CreativeEditAction/g) ?? []).length, 1);
   assert.match(workspace, /createPortal\([\s\S]*<CreativeEditAction/);
   assert.match(workspace, /ref=\{setHeaderActionsRoot\}/);
+});
+
+test("keeps Hook video decisions below the review frame on compact laptops", () => {
+  assert.match(
+    workspace,
+    /absolute left-1\/2 z-40 flex w-max -translate-x-1\/2 flex-col items-center/,
+  );
+  assert.doesNotMatch(reviewLayout, /left:\s*calc\(100%\s*\+\s*24px\)/);
+  assert.doesNotMatch(reviewLayout, /top:\s*50%/);
+  assert.doesNotMatch(reviewLayout, /flex-direction:\s*column/);
+  assert.doesNotMatch(reviewLayout, /padding-bottom:/);
 });
 
 test("Reaction Reels expose text-only editing and show preparation instead of accepting an old preview", () => {

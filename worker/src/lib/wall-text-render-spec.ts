@@ -182,8 +182,21 @@ export const WALL_TEXT_REFERENCE_LETTER_SPACING = 0;
 export const WALL_TEXT_LEGACY_LETTER_SPACING = -0.2;
 // Keep this in sync with the application layout gate. This is inside the
 // selected text box, not an extra video-frame safe area. At the 780px
-// production box this leaves a 750px inner writing area.
+// production box this leaves a 750px physical inner fence.
 export const WALL_TEXT_INLINE_SAFE_PADDING = 15;
+// Keep this in sync with the application layout gate. A centered, outlined
+// SVG line can round onto a fence edge even when its measured width fits, so
+// preflight reserves one transparent pixel on each side.
+export const WALL_TEXT_RASTER_EDGE_GUARD = 2;
+
+export function getWallTextRasterSafeLineWidth(textBoxWidth: number) {
+  return Math.max(
+    0,
+    textBoxWidth -
+      WALL_TEXT_INLINE_SAFE_PADDING * 2 -
+      WALL_TEXT_RASTER_EDGE_GUARD,
+  );
+}
 export const WALL_TEXT_DEFAULT_SAFE_AREA: WallTextSafeArea = {
   bottom: 460 / 1920,
   left: 140 / 1080,

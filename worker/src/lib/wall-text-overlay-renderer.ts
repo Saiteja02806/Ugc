@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import sharp from "sharp";
 import { packageWallTextOverlay, wallTextOverlayInputHash, wallTextOverlayPngHash, type WallTextOverlayReference } from "./wall-text-overlay-asset.ts";
-import { buildWallTextRenderLayout, buildWallTextOverlaySvg, getWallTextOutlineWidth, WALL_TEXT_INLINE_SAFE_PADDING, WALL_TEXT_OUTLINE_WIDTH, WALL_TEXT_RENDER_HEIGHT, WALL_TEXT_RENDER_WIDTH, type WallTextNormalizedBox, type WallTextPlacementZone, type WallTextRenderContent, type WallTextSafeArea } from "./wall-text-render-spec.ts";
+import { buildWallTextRenderLayout, buildWallTextOverlaySvg, getWallTextOutlineWidth, getWallTextRasterSafeLineWidth, WALL_TEXT_INLINE_SAFE_PADDING, WALL_TEXT_OUTLINE_WIDTH, WALL_TEXT_RENDER_HEIGHT, WALL_TEXT_RENDER_WIDTH, type WallTextNormalizedBox, type WallTextPlacementZone, type WallTextRenderContent, type WallTextSafeArea } from "./wall-text-render-spec.ts";
 
 export let wallTextFontRegistrationPromise: Promise<void> | null = null;
 
@@ -113,9 +113,9 @@ export async function validateWallTextRenderedLineWidths(
   content: WallTextRenderContent,
   textBox: WallTextNormalizedBox,
 ) {
-  const maximumWidth =
-    Math.round(textBox.width * WALL_TEXT_RENDER_WIDTH) -
-    WALL_TEXT_INLINE_SAFE_PADDING * 2;
+  const maximumWidth = getWallTextRasterSafeLineWidth(
+    Math.round(textBox.width * WALL_TEXT_RENDER_WIDTH),
+  );
   const layout = buildWallTextRenderLayout({ content, textBox });
   const font = await getWallTextFontForContent(content);
 
@@ -163,9 +163,9 @@ export async function reflowWallTextContentForRenderer(params: {
     return content;
   }
 
-  const maximumWidth =
-    Math.round(textBox.width * WALL_TEXT_RENDER_WIDTH) -
-    WALL_TEXT_INLINE_SAFE_PADDING * 2;
+  const maximumWidth = getWallTextRasterSafeLineWidth(
+    Math.round(textBox.width * WALL_TEXT_RENDER_WIDTH),
+  );
   const maximumHeight = Math.round(textBox.height * WALL_TEXT_RENDER_HEIGHT);
   const font = await getWallTextFontForContent(content);
   const fontSizes = getWallTextReflowFontSizes(content.finalLayout.fontSizePx);
@@ -518,4 +518,3 @@ export function escapePangoMarkup(value: string) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 }
-

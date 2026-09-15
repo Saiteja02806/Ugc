@@ -1,0 +1,31 @@
+/* Use the spare horizontal space on compact laptops to keep larger previews
+   and their decisions visible together. Short windows can still scroll. */
+@media (min-width: 1024px) and (max-width: 1535.98px) {
+  .stage {
+    padding-bottom: 24px;
+  }
+
+  .stage[data-review-format="video"] {
+    padding-top: 32px;
+    padding-bottom: 12px;
+  }
+
+  .decisions {
+    left: calc(100% + 24px);
+    top: 50%;
+    width: 128px;
+    translate: 0 -50%;
+  }
+
+  .decisions > [data-deck-control] {
+    flex-direction: column;
+    margin-top: 0;
+    gap: 20px;
+  }
+
+  .decisions > p {
+    margin-top: 16px;
+    white-space: normal;
+    text-wrap: balance;
+  }
+}

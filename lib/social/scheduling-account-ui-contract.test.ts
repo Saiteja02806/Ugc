@@ -57,6 +57,18 @@ test("the Instagram empty-state icon remains white over its gradient tile", () =
   );
 });
 
+test("Carousel scheduling preserves a rendered slide's complete composition", () => {
+  const detailsStep = carouselModal.slice(
+    carouselModal.indexOf("function DetailsStep"),
+    carouselModal.indexOf("function PublishingStep"),
+  );
+
+  assert.match(
+    detailsStep,
+    /isReel \? "aspect-\[9\/16\] object-cover" : "aspect-\[4\/5\] object-contain"/,
+  );
+});
+
 function readProjectFile(relativePath: string) {
   return readFileSync(
     new URL(`../../${relativePath}`, import.meta.url),

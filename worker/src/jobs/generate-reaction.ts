@@ -158,7 +158,7 @@ async function createAndPersistPlan(params: {
   });
   try {
     return await params.context.store.persistReactionGenerationPlan({
-      briefPayload: plan.briefPayload as Json,
+      briefPayload: plan.briefPayload as unknown as Json,
       generationJobId: params.job.id,
       items: plan.items.map((item) => ({
         background_asset_id: item.backgroundAssetId,
@@ -293,13 +293,20 @@ function parseGenerationContext(value: Json | undefined): ReactionGenerationCont
   const commonSituations = stringArray(input.commonSituations);
   const desiredOutcomes = stringArray(input.desiredOutcomes);
   if (!audience || !pains || !commonSituations || !desiredOutcomes) return null;
-  return {
+  const legacyContext = {
     audience,
     commonSituations,
     desiredOutcomes,
     pains,
-    productName: typeof input.productName === "string" ? input.productName.trim().slice(0, 160) || null : null,
+    productName: typeof input.productName === "string" ? truncateByCodePoint(input.productName.trim(), 160) || null : null,
   };
+
+  if (input.contextVersion === undefined) return legacyContext;
+  if (input.contextVersion !== "reaction-grounding-v2") return null;
+
+  const factSnapshot = parseFactSnapshot(input.factSnapshot);
+  if (!factSnapshot) return null;
+  return { ...legacyContext, contextVersion: "reaction-grounding-v2", factSnapshot };
 }
 
 function record(value: Json | undefined): Record<string, Json | undefined> | null {
@@ -307,5 +314,24 @@ function record(value: Json | undefined): Record<string, Json | undefined> | nul
 }
 function stringValue(value: Json | undefined) { return typeof value === "string" ? value.trim() : ""; }
 function stringArray(value: Json | undefined) { return Array.isArray(value) && value.length <= 12 && value.every((item) => typeof item === "string") ? value.map((item) => item.trim()).filter(Boolean).slice(0, 12) : null; }
+function truncateByCodePoint(value: string, limit: number) { return Array.from(value).slice(0, limit).join(""); }
+function parseFactSnapshot(value: Json | undefined) {
+  const snapshot = record(value);
+  if (!snapshot || snapshot.version !== "business-facts-v1") return null;
+  const claimsToAvoid = stringArray(snapshot.claimsToAvoid);
+  if (!claimsToAvoid || !Array.isArray(snapshot.facts) || snapshot.facts.length > 12) return null;
+  const facts = snapshot.facts.map((value) => {
+    const fact = record(value);
+    const id = stringValue(fact?.id);
+    const text = truncateByCodePoint(stringValue(fact?.text), 360);
+    const type = fact?.type;
+    return id && text &&
+      (type === "audience" || type === "capability" || type === "differentiator" || type === "outcome" || type === "pain")
+      ? { id, text, type }
+      : null;
+  });
+  if (facts.some((fact) => !fact) || new Set(facts.map((fact) => fact?.id)).size !== facts.length) return null;
+  return { claimsToAvoid, facts: facts as { id: string; text: string; type: "audience" | "capability" | "differentiator" | "outcome" | "pain" }[], version: "business-facts-v1" as const };
+}
 function isTreatment(value: Json | undefined): value is "caption_with_labels" | "outlined_text" | "white_card" { return value === "caption_with_labels" || value === "outlined_text" || value === "white_card"; }
 function isAnchor(value: Json | undefined): value is "bottom_center" | "bottom_left" | "bottom_right" | "center" { return value === "bottom_center" || value === "bottom_left" || value === "bottom_right" || value === "center"; }

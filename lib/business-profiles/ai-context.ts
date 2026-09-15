@@ -7,8 +7,8 @@ import {
   WebsiteBusinessAnalysisSchema,
   type WebsiteBusinessAnalysis,
 } from "@/lib/website-analysis/schema";
+import { getBusinessContextModelRequest } from "./model";
 
-const DEFAULT_MODEL = "gpt-4o-mini";
 const MAX_AI_IDE_CONTEXT_CHARS = 24_000;
 
 let openaiClient: OpenAI | null = null;
@@ -31,8 +31,7 @@ export async function parseAiIdeBusinessContext(rawContext: string) {
   }
 
   const completion = await openaiClient.chat.completions.parse({
-    model: process.env.OPENAI_WEBSITE_ANALYSIS_MODEL ?? DEFAULT_MODEL,
-    temperature: 0.2,
+    ...getBusinessContextModelRequest(),
     messages: [
       {
         role: "system",

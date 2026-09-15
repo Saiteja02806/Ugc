@@ -11,6 +11,11 @@ import {
 import { getBackfillWallTextFormatId } from "@/lib/trending/wall-formats";
 import { WALL_TEXT_PROMPT_VERSION } from "@/lib/trending/wall-prompt";
 import {
+  buildWallTextFactGroundingAssignments,
+  parseWallTextFactGrounding,
+  serializeWallTextFactGrounding,
+} from "@/lib/trending/wall-text-grounding";
+import {
   generateBusinessTrendingWallTextIdeas,
   getTrendingWallTextModelName,
   WallTextCandidateRepairExhaustedError,
@@ -387,6 +392,23 @@ export async function prepareTrendingWallTextIdeas(
     );
   }
 
+  // There is intentionally no minimum fact count. A smaller catalog safely
+  // cycles across requested cards, but a *new* business-specific Wall batch
+  // cannot honestly be created without a single approved fact. Existing
+  // legacy reservations continue through their historical Reviewer path in
+  // completeReservedWallTextGeneration below.
+  const groundingByCandidateIndex = buildWallTextFactGroundingAssignments({
+    analysis: profile.context,
+    candidateIndexes: generationSources.map((candidate) => candidate.candidateIndex),
+  });
+  if (groundingByCandidateIndex.size === 0) {
+    throw new TrendingWallTextPreparationError(
+      "Business Context needs at least one approved pain, audience, capability, differentiator, or outcome before Wall-of-text can be generated.",
+      409,
+      "wall_text_business_context_needed",
+    );
+  }
+
   const historicalSignatures = await listWallTextDuplicateSignatures({
     businessProfileId: profile.id,
     userId: profile.userId,
@@ -432,6 +454,7 @@ export async function prepareTrendingWallTextIdeas(
     maxWords: budget.maxWords,
     sourceKind: candidate.sourceKind,
     targetWords: budget.targetWords,
+    grounding: groundingByCandidateIndex.get(candidate.candidateIndex) ?? null,
   }));
   const requestHash = createHash("sha256")
     .update(JSON.stringify(requestDescriptor), "utf8")
@@ -449,6 +472,13 @@ export async function prepareTrendingWallTextIdeas(
     assignments: candidateBudgets.map(({ assignment, budget, candidate }) => ({
       assignment,
       durationSeconds: candidate.durationSeconds,
+      ...(groundingByCandidateIndex.has(candidate.candidateIndex)
+        ? {
+            focus: serializeWallTextFactGrounding(
+              groundingByCandidateIndex.get(candidate.candidateIndex)!,
+            ),
+          }
+        : {}),
       ...(candidate.sourceKind === "instagram_reel"
         ? {
             instagramAudioFitMode: candidate.instagramAudioFitMode,
@@ -607,6 +637,7 @@ async function completeReservedWallTextGeneration(params: {
             const privateCreativeContext = privateContextsByAssignment.get(
               assignment.id,
             );
+            const grounding = parseWallTextFactGrounding(assignment.focus_json);
             if (!layout) {
               throw new Error("Reserved Wall-of-text placement is invalid.");
             }
@@ -617,6 +648,7 @@ async function completeReservedWallTextGeneration(params: {
             }
             return {
               candidateIndex: assignment.batch_candidate_index,
+              ...(grounding ? { grounding } : {}),
               privateCreativeContext: privateCreativeContext,
               durationSeconds: Number(assignment.duration_seconds),
               layout,

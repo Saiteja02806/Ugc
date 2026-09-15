@@ -74,8 +74,8 @@ test("reflows an overflowing Reaction caption into the safe white-card area", as
   assert.ok(layout.card.width < 936, "the card should fit its content, not use the legacy full-width box");
   assert.ok(layout.card.x >= 90);
   assert.ok(layout.card.x + layout.card.width <= 990);
-  assert.equal(layout.card.y, 260, "the Reaction caption sits below the top UI area");
-  assert.equal(layout.textY, 260 + 18 + layout.fontSize);
+  assert.equal(layout.card.y, 320, "the Reaction caption sits below the top UI area");
+  assert.equal(layout.textY, 320 + 18 + layout.fontSize);
   assert.ok(
     layout.lineWidths.every((width) => width <= layout.card!.width - 56),
     "each line keeps the requested left and right padding inside the card",
@@ -101,7 +101,7 @@ test("uses the same lower anchor for outlined Reaction captions", async () => {
   });
 
   assert.equal(layout.card, null);
-  assert.equal(layout.textY, 260 + layout.fontSize);
+  assert.equal(layout.textY, 320 + layout.fontSize);
   assert.doesNotMatch(svg, /<rect /u);
   assert.match(svg, new RegExp(`y="${layout.textY}"`, "u"));
 });

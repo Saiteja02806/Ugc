@@ -790,9 +790,9 @@ async function renderReactionCaptionOverlay(
 const REACTION_CANVAS_WIDTH = 1080;
 const REACTION_CANVAS_HEIGHT = 1920;
 const REACTION_CAPTION_MAX_LINES = 3;
-// Keep the caption safely below the top UI area so the copy feels anchored to
-// the composition instead of pressed against the top edge.
-const REACTION_CAPTION_TOP = 260;
+// Keep the caption comfortably below the top UI area so the copy feels
+// anchored to the composition instead of pressed against the top edge.
+const REACTION_CAPTION_TOP = 320;
 const REACTION_CAPTION_HORIZONTAL_PADDING = 28;
 const REACTION_CAPTION_VERTICAL_PADDING = 18;
 const REACTION_WHITE_CARD_MIN_WIDTH = 320;

@@ -11,6 +11,7 @@ import type {
   WallTextNormalizedBox,
   WallTextPlacementAnalysis,
   WallTextPlacementZone,
+  WallTextGroundingMetadata,
 } from "@/lib/trending/wall-text-types";
 import {
   WALL_TEXT_GENERATOR_VERSION,
@@ -151,6 +152,7 @@ type WallTextGenerationAssignmentRow = {
   creative_candidate_index: number;
   duration_seconds: number;
   format_version: number;
+  focus_json: Json;
   id: string;
   instagram_reel_template_id: string | null;
   instagram_reel_template_version: number | null;
@@ -2457,6 +2459,13 @@ function parseCurrentWallTextContent(
   }
 
   const sourceContent = value.sourceContent;
+  const grounding =
+    value.grounding === undefined
+      ? null
+      : parseWallTextGroundingMetadata(value.grounding);
+  if (value.grounding !== undefined && !grounding) {
+    return null;
+  }
   const parsedSource =
     sourceContent.kind === "text" &&
     typeof sourceContent.text === "string" &&
@@ -2697,9 +2706,41 @@ function parseCurrentWallTextContent(
     ...(value.renderSafetyVersion === WALL_TEXT_RENDER_SAFETY_VERSION
       ? { renderSafetyVersion: WALL_TEXT_RENDER_SAFETY_VERSION }
       : {}),
+    ...(grounding ? { grounding } : {}),
     renderFontSize: normalizeCurrentWallTextFontSize(Number(finalLayout.fontSizePx)),
     segments,
     sourceContent: parsedSource,
+  };
+}
+
+function parseWallTextGroundingMetadata(
+  value: Json | undefined,
+): WallTextGroundingMetadata | null {
+  if (
+    !isJsonObject(value) ||
+    value.version !== "wall-text-grounding-v2" ||
+    value.factSnapshotVersion !== "business-facts-v1" ||
+    typeof value.anchorId !== "string" ||
+    !value.anchorId.trim() ||
+    typeof value.factText !== "string" ||
+    !value.factText.trim() ||
+    ![
+      "audience",
+      "capability",
+      "differentiator",
+      "outcome",
+      "pain",
+    ].includes(String(value.factType))
+  ) {
+    return null;
+  }
+
+  return {
+    anchorId: value.anchorId.trim().slice(0, 120),
+    factSnapshotVersion: "business-facts-v1",
+    factText: value.factText.trim().replace(/\s+/gu, " ").slice(0, 360),
+    factType: value.factType as WallTextGroundingMetadata["factType"],
+    version: "wall-text-grounding-v2",
   };
 }
 

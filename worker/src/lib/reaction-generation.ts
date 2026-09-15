@@ -3,8 +3,8 @@ import { logger } from "../logger.js";
 import { RetryableJobError } from "../retryable-job-error.js";
 import { CONTENT_COPY_MAX_RETRIES, CONTENT_COPY_TIMEOUT_MS, requestContentModel } from "./content-model-request.js";
 
-export const REACTION_GENERATION_PROMPT_VERSION = "reaction-brief-batch-v2";
-export const REACTION_GENERATION_SELECTION_VERSION = "reaction-batch-match-v1";
+export const REACTION_GENERATION_PROMPT_VERSION = "reaction-brief-batch-v3-grounded";
+export const REACTION_GENERATION_SELECTION_VERSION = "reaction-batch-match-v2-grounded";
 export const MAX_REACTION_CLIP_PRESENTATIONS_PER_USER = 2;
 export const MAX_REACTION_BRIEF_GENERATION_ATTEMPTS = 3;
 const DEFAULT_REACTION_MODEL = "gpt-5.6-luna";
@@ -37,10 +37,22 @@ const productCopyPattern = /\b(our|we|sign\s*up|start\s+(?:your|a)\s+free|try\s+
 const featureClaimPattern = /\b(?:ai|app|platform|tool)\s+(?:automatically|instantly|guarantees|will)\b/iu;
 
 export type ReactionIntent = (typeof REACTIONS)[number];
+type ReactionBusinessFactType = "audience" | "capability" | "differentiator" | "outcome" | "pain";
+type ReactionBusinessFact = { id: string; text: string; type: ReactionBusinessFactType };
+type ReactionFactSnapshot = {
+  claimsToAvoid: readonly string[];
+  facts: readonly ReactionBusinessFact[];
+  version: "business-facts-v1";
+};
+type ReactionGrounding =
+  | { factId: string; factText: string; factType: ReactionBusinessFactType; mode: "business_fact" }
+  | { mode: "awareness_generic" };
 export type ReactionGenerationContext = {
   audience: readonly string[];
   commonSituations: readonly string[];
+  contextVersion?: "reaction-grounding-v2";
   desiredOutcomes: readonly string[];
+  factSnapshot?: ReactionFactSnapshot;
   pains: readonly string[];
   productName?: string | null;
 };
@@ -78,6 +90,19 @@ export type ReactionPlanItem = {
   title: string;
 };
 
+export type ReactionGenerationPlan = {
+  briefPayload: {
+    availability: ReturnType<typeof buildAvailabilityPalette>;
+    briefs: readonly unknown[];
+    groundingAssignments?: readonly unknown[];
+    promptVersion: string;
+    selectionVersion: string;
+    shortfallCount: number;
+  };
+  items: readonly ReactionPlanItem[];
+  shortfallCount: number;
+};
+
 type ReactionBrief = {
   content: ReactionBriefContent;
   preferredReactions: ReactionIntent[];
@@ -90,6 +115,7 @@ type ReactionBriefContent = {
   languageFormat: (typeof LANGUAGE_FORMATS)[number];
   lines: string[];
   semantic: ReactionSemantic;
+  grounding?: ReactionGrounding;
   visualContextTags: string[];
   visualTreatment: (typeof TREATMENTS)[number];
 };
@@ -121,7 +147,7 @@ export async function planReactionGeneration(params: {
   requestedCount: number;
   reservedClipIds?: ReadonlySet<string>;
   seed: string;
-}) {
+}): Promise<ReactionGenerationPlan> {
   const clips = params.clips.filter((clip) =>
     isRenderableClip(clip) &&
     !params.reservedClipIds?.has(clip.id) &&
@@ -134,13 +160,24 @@ export async function planReactionGeneration(params: {
   if (!Number.isInteger(params.requestedCount) || params.requestedCount < 1 || params.requestedCount > 12) {
     throw new Error("Reaction generation requested count must be between 1 and 12.");
   }
+  if (
+    params.context.contextVersion === "reaction-grounding-v2" &&
+    !params.context.factSnapshot?.facts.length
+  ) {
+    throw new Error("Reaction generation requires at least one approved business fact.");
+  }
 
   const palette = buildAvailabilityPalette({ backgrounds, clips, historyByClipId: params.historyByClipId });
   if (palette.availableReactionPalette.length === 0) {
     throw new Error("Reaction generation has no available intent compatible with the supported emotions.");
   }
+  const groundingBySlot = assignGroundingToSlots(
+    params.context,
+    params.requestedCount,
+  );
   const briefs = await generateAndValidateBriefs({
     context: params.context,
+    groundingBySlot,
     jobId: params.jobId,
     palette,
     requestedCount: params.requestedCount,
@@ -162,6 +199,10 @@ export async function planReactionGeneration(params: {
     briefPayload: {
       availability: palette,
       briefs,
+      groundingAssignments: briefs.map((brief) => ({
+        grounding: brief.content.grounding ?? { mode: "awareness_generic" },
+        slotIndex: brief.slotIndex,
+      })),
       promptVersion: REACTION_GENERATION_PROMPT_VERSION,
       selectionVersion: REACTION_GENERATION_SELECTION_VERSION,
       shortfallCount: params.requestedCount - selected.length,
@@ -224,10 +265,11 @@ function buildAvailabilityPalette(params: {
 
 async function generateAndValidateBriefs(params: {
   context: ReactionGenerationContext;
+  groundingBySlot: ReadonlyMap<number, ReactionGrounding>;
   jobId?: string;
   palette: ReturnType<typeof buildAvailabilityPalette>;
   requestedCount: number;
-}) {
+}): Promise<readonly ReactionBrief[]> {
   let lastValidationError: Error | null = null;
   const accepted = new Map<number, ReactionBrief>();
   const slotIndexes = Array.from({ length: params.requestedCount }, (_, index) => index);
@@ -297,7 +339,13 @@ async function generateAndValidateBriefs(params: {
       try { raw = JSON.parse(text); }
       catch { throw new Error("Reaction brief response is not valid JSON."); }
       const issues = acceptValidReactionBriefs({
-        accepted, available, requestedCount: params.requestedCount, requestedSlots, value: raw,
+        accepted,
+        available,
+        claimsToAvoid: params.context.factSnapshot?.claimsToAvoid ?? [],
+        groundingBySlot: params.groundingBySlot,
+        requestedCount: params.requestedCount,
+        requestedSlots,
+        value: raw,
       });
       if (accepted.size === params.requestedCount) {
         return validateReactionBriefBatch({ briefs: [...accepted.values()] }, params.palette, params.requestedCount);
@@ -324,6 +372,8 @@ async function generateAndValidateBriefs(params: {
 function acceptValidReactionBriefs(params: {
   accepted: Map<number, ReactionBrief>;
   available: ReadonlySet<ReactionIntent>;
+  claimsToAvoid: readonly string[];
+  groundingBySlot: ReadonlyMap<number, ReactionGrounding>;
   requestedCount: number;
   requestedSlots: readonly number[];
   value: unknown;
@@ -343,7 +393,13 @@ function acceptValidReactionBriefs(params: {
       continue;
     }
     try {
-      const brief = parseBrief(entries[0], slot, params.available);
+      const brief = parseBrief(
+        entries[0],
+        slot,
+        params.available,
+        params.groundingBySlot.get(slot) ?? { mode: "awareness_generic" },
+        params.claimsToAvoid,
+      );
       if (params.available.size >= params.requestedCount && usedIntents.has(brief.preferredReactions[0])) {
         throw new Error(`Slot ${slot} repeats a primary intent despite available alternatives`);
       }
@@ -359,6 +415,7 @@ function acceptValidReactionBriefs(params: {
 function buildBriefPrompt(params: {
   acceptedBriefs: readonly ReactionBrief[];
   context: ReactionGenerationContext;
+  groundingBySlot: ReadonlyMap<number, ReactionGrounding>;
   palette: ReturnType<typeof buildAvailabilityPalette>;
   requestedSlots: readonly number[];
   validationFeedback?: string | null;
@@ -370,6 +427,8 @@ function buildBriefPrompt(params: {
   return [
     `Generate exactly ${params.requestedSlots.length} varied Reaction Reel briefs for slotIndex values ${params.requestedSlots.join(", ")}. Return each requested slot exactly once.`,
     "Each caption is a recognizable human moment, never an advertisement or CTA. Write it only in lines; the application derives the caption. Use 5-20 total words across 1-3 lines, targeting 7-15 words.",
+    "Do not hallucinate. Generate only from the supplied business facts. Do not invent a feature, workflow, audience, result, metric, guarantee, testimonial, or claim.",
+    "For every business_fact assignment below, make its factual connection visible in the rendered lines by reusing distinctive words from that exact fact. Do not mention fact IDs. awareness_generic is intentionally generic and must not be presented as business-specific marketing.",
     "Language-format values such as me_when are metadata only. Write natural words with spaces in rendered lines, never taxonomy identifiers.",
     "semantic must use the exact beat names for its structure: situation_payoff uses situation/payoff; expectation_reality uses expectation/reality; comparison uses left/right; action_realization uses action/realization; setup_escalation uses setup/escalation. Do not use role contrast or character labels in V1.",
     "preferredReactions must have 1-3 controlled intents, strongest first. Do not repeat primary intent if relevant alternatives exist.",
@@ -387,10 +446,17 @@ function buildBriefPrompt(params: {
     params.palette.generationRule,
     `Available intent palette: ${JSON.stringify(params.palette.availableReactionPalette)}.`,
     `Recently shown intents: ${params.palette.recentlyShownIntents.join(", ") || "none"}.`,
+    `Backend-owned grounding assignments: ${JSON.stringify(params.requestedSlots.map((slotIndex) => ({
+      grounding: params.groundingBySlot.get(slotIndex) ?? { mode: "awareness_generic" },
+      slotIndex,
+    })))}.`,
     `Audience: ${joinContext(params.context.audience)}.`,
     `Pains: ${joinContext(params.context.pains)}.`,
     `Common situations: ${joinContext(params.context.commonSituations)}.`,
     `Desired outcomes: ${joinContext(params.context.desiredOutcomes)}.`,
+    params.context.factSnapshot?.claimsToAvoid?.length
+      ? `Unsupported or prohibited claims to avoid: ${joinContext(params.context.factSnapshot.claimsToAvoid)}.`
+      : "",
     params.context.productName ? `Business name for private context only: ${params.context.productName}.` : "",
   ].filter(Boolean).join("\n");
 }
@@ -441,7 +507,13 @@ export function validateReactionBriefBatch(value: unknown, palette: ReturnType<t
   }
   const available = new Set(palette.availableReactionPalette.map((item) => item.intent));
   const seenSlots = new Set<number>();
-  const briefs = raw.briefs.map((entry, index) => parseBrief(entry, index, available));
+  const briefs = raw.briefs.map((entry, index) => parseBrief(
+    entry,
+    index,
+    available,
+    { mode: "awareness_generic" },
+    [],
+  ));
   for (const brief of briefs) {
     if (seenSlots.has(brief.slotIndex) || brief.slotIndex < 0 || brief.slotIndex >= requestedCount) {
       throw new Error("Reaction brief batch has invalid slot indexes.");
@@ -454,7 +526,13 @@ export function validateReactionBriefBatch(value: unknown, palette: ReturnType<t
   return briefs.sort((a, b) => a.slotIndex - b.slotIndex);
 }
 
-function parseBrief(value: unknown, index: number, available: ReadonlySet<ReactionIntent>): ReactionBrief {
+function parseBrief(
+  value: unknown,
+  index: number,
+  available: ReadonlySet<ReactionIntent>,
+  grounding: ReactionGrounding,
+  claimsToAvoid: readonly string[],
+): ReactionBrief {
   const raw = asRecord(value);
   const content = asRecord(raw?.content);
   if (!raw || !content || !Number.isInteger(raw.slotIndex) || !Array.isArray(raw.preferredReactions)) {
@@ -480,6 +558,8 @@ function parseBrief(value: unknown, index: number, available: ReadonlySet<Reacti
     languageFormat,
     lines,
     primaryReaction: preferredReactions[0],
+    grounding,
+    claimsToAvoid,
     visualContextTags,
     visualTreatment,
   });
@@ -492,12 +572,63 @@ function parseBrief(value: unknown, index: number, available: ReadonlySet<Reacti
   if (!semantic) {
     throw new Error(`Reaction brief ${index + 1} has invalid semantic beats.`);
   }
-  return { content: { caption, emotion, languageFormat, lines, semantic, visualContextTags: [...new Set(visualContextTags)], visualTreatment }, preferredReactions, slotIndex: raw.slotIndex as number };
+  return {
+    content: {
+      caption,
+      emotion,
+      grounding,
+      languageFormat,
+      lines,
+      semantic,
+      visualContextTags: [...new Set(visualContextTags)],
+      visualTreatment,
+    },
+    preferredReactions,
+    slotIndex: raw.slotIndex as number,
+  };
+}
+
+/**
+ * The model does not select or echo the fact identity. The worker assigns a
+ * deterministic fact to each slot from the immutable job snapshot before the
+ * prompt is built, so retries receive the same grounding and the persisted
+ * creative retains server-owned provenance.
+ */
+function assignGroundingToSlots(
+  context: ReactionGenerationContext,
+  requestedCount: number,
+) {
+  // Every approved fact type is eligible. An audience is a truthful anchor
+  // when the actual caption visibly names that audience; requiring a
+  // capability in every Reel would make sparse contexts fail unnecessarily.
+  const eligibleFacts = context.factSnapshot?.facts ?? [];
+  const assignments = new Map<number, ReactionGrounding>();
+
+  for (let slotIndex = 0; slotIndex < requestedCount; slotIndex += 1) {
+    const fact = eligibleFacts.length > 0
+      ? eligibleFacts[slotIndex % eligibleFacts.length]
+      : undefined;
+    assignments.set(
+      slotIndex,
+      fact
+        ? {
+            factId: fact.id,
+            factText: fact.text,
+            factType: fact.type,
+            mode: "business_fact",
+          }
+        : { mode: "awareness_generic" },
+    );
+  }
+
+  return assignments;
 }
 
 function getCopyValidationError(params: {
   caption: string;
+  claimsToAvoid: readonly string[];
   emotion: (typeof EMOTIONS)[number] | null;
+  grounding: ReactionGrounding;
   languageFormat: (typeof LANGUAGE_FORMATS)[number] | null;
   lines: readonly string[];
   primaryReaction: ReactionIntent;
@@ -521,6 +652,85 @@ function getCopyValidationError(params: {
   }
   if (productCopyPattern.test(params.caption) || featureClaimPattern.test(params.caption)) {
     return "rendered caption contains product or CTA language";
+  }
+  if (params.grounding.mode === "business_fact") {
+    const groundingIssue = getReactionGroundedCopySafetyIssue({
+      caption: params.caption,
+      claimsToAvoid: params.claimsToAvoid,
+      factText: params.grounding.factText,
+    });
+    if (groundingIssue) return groundingIssue;
+  }
+  return null;
+}
+
+/**
+ * Deterministic checks for a V2, backend-assigned business fact. This replaces
+ * a second AI reviewer: an unsafe slot is repaired by the existing writer loop
+ * while accepted sibling slots stay untouched.
+ */
+export function getReactionGroundedCopySafetyIssue(params: {
+  caption: string;
+  claimsToAvoid: readonly string[];
+  factText: string;
+}) {
+  if (!hasVisibleGroundingAnchor(params.caption, {
+    factId: "server-assigned",
+    factText: params.factText,
+    factType: "capability",
+    mode: "business_fact",
+  })) {
+    return "rendered caption does not visibly use its backend-assigned business fact";
+  }
+  if (containsAvoidedClaim(params.caption, params.claimsToAvoid)) {
+    return "rendered caption repeats a claim the business profile marks as unsupported";
+  }
+  return getUnsupportedHighRiskClaimIssue(params.caption, params.factText);
+}
+
+function getUnsupportedHighRiskClaimIssue(caption: string, factText: string) {
+  const normalizedFact = normalizeForComparison(factText);
+  const supports = (...phrases: readonly string[]) =>
+    phrases.some((phrase) => normalizedFact.includes(phrase));
+
+  if (
+    /\b(?:logs?|tracks?|counts?|calculates?|records?|enters?)\s+(?:itself|themselves)\b/iu.test(caption) &&
+    !supports("logs itself", "tracks itself", "counts itself", "calculates itself", "records itself", "enters itself")
+  ) {
+    return "rendered caption claims unsupported self-running automation";
+  }
+  if (
+    /\b(?:automatically|automatic|autopilot|hands[-\s]?free)\b/iu.test(caption) &&
+    !supports("automatically", "automatic", "autopilot", "hands free")
+  ) {
+    return "rendered caption claims unsupported automation";
+  }
+  if (
+    /\b(?:actual|exact|accurate|precise|100\s*%|guarantee(?:d|s)?)\b/iu.test(caption) &&
+    !supports("actual", "exact", "accurate", "precise", "100", "guarantee")
+  ) {
+    return "rendered caption claims an unsupported level of accuracy or certainty";
+  }
+  if (
+    /\b(?:all[-\s]?in[-\s]?one|without\s+(?:\w+\s+){0,4}(?:apps?|tools?))\b/iu.test(caption) &&
+    !supports(
+      "all in one",
+      "all-in-one",
+      "single app",
+      "one app",
+      "without switching apps",
+      "without multiple apps",
+      "without different apps",
+      "without tools",
+    )
+  ) {
+    return "rendered caption claims an unsupported bundled workflow";
+  }
+  if (
+    /\b(?:instant|instantly)\b/iu.test(caption) &&
+    !supports("instant", "instantly")
+  ) {
+    return "rendered caption claims an unsupported speed or immediacy";
   }
   return null;
 }
@@ -613,6 +823,43 @@ function getReactionReasoningEffort(model: string): ReactionReasoningEffort {
   const configured = process.env.OPENAI_REACTION_REASONING_EFFORT?.trim().toLowerCase();
   if (configured === "low" || configured === "medium") return configured;
   return /^gpt-5-mini(?:-\d{4}-\d{2}-\d{2})?$/.test(model) ? "minimal" : DEFAULT_REACTION_REASONING_EFFORT;
+}
+
+function hasVisibleGroundingAnchor(caption: string, grounding: ReactionGrounding) {
+  if (grounding.mode === "awareness_generic") return true;
+
+  const captionTerms = new Set(extractGroundingTerms(caption));
+  const factTerms = extractGroundingTerms(grounding.factText);
+  const requiredMatches = Math.min(2, factTerms.length);
+  if (requiredMatches === 0) return false;
+
+  return factTerms.filter((term) => captionTerms.has(term)).length >= requiredMatches;
+}
+
+function containsAvoidedClaim(caption: string, claimsToAvoid: readonly string[]) {
+  const normalizedCaption = normalizeForComparison(caption);
+  return claimsToAvoid.some((claim) => {
+    const normalizedClaim = normalizeForComparison(claim);
+    return normalizedClaim.length >= 8 && normalizedCaption.includes(normalizedClaim);
+  });
+}
+
+function extractGroundingTerms(value: string) {
+  const ignored = new Set([
+    "about", "after", "again", "because", "being", "business", "could",
+    "every", "first", "from", "have", "into", "just", "more", "only",
+    "people", "really", "that", "their", "there", "these", "they", "this",
+    "those", "through", "using", "when", "with", "your",
+  ]);
+  return [...new Set(
+    normalizeForComparison(value)
+      .split(" ")
+      .filter((term) => term.length >= 4 && !ignored.has(term)),
+  )];
+}
+
+function normalizeForComparison(value: string) {
+  return normalizeText(value).toLocaleLowerCase("en-US").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
 
 function isReactionIntent(value: unknown): value is ReactionIntent { return typeof value === "string" && (REACTIONS as readonly string[]).includes(value); }

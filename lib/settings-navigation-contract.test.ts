@@ -15,6 +15,7 @@ test("Settings exposes the approved customer sections in order", () => {
 
   assert.deepEqual(labels, [
     "Account",
+    "Business Context",
     "Plan & billing",
     "App screenshots",
     "Connected accounts",
@@ -30,6 +31,7 @@ test("Settings exposes the approved customer sections in order", () => {
 test("Settings keeps existing deep links while rendering one active panel", () => {
   for (const sectionId of [
     "account",
+    "business-context",
     "subscription-billing",
     "app-screenshots",
     "instagram-publishing",
@@ -45,6 +47,17 @@ test("Settings keeps existing deep links while rendering one active panel", () =
   assert.match(workspace, /window\.history\.pushState/);
   assert.match(workspace, /window\.addEventListener\("hashchange"/);
   assert.match(workspace, /window\.addEventListener\("popstate"/);
+});
+
+test("Business Context is a first-class Settings panel, not a detached workflow", () => {
+  assert.match(
+    workspace,
+    /import \{ BusinessContextSettings \} from "@\/components\/settings\/business-context-settings"/,
+  );
+  assert.match(
+    workspace,
+    /activeSection === "business-context"[\s\S]*<BusinessContextSettings \/>/,
+  );
 });
 
 test("Settings has an explicit close control that returns to the workspace", () => {

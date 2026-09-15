@@ -1,6 +1,6 @@
 # Reaction-format context
 
-Last updated: 2026-09-09
+Last updated: 2026-09-14
 
 ## Product definition
 
@@ -159,6 +159,33 @@ Reaction copy is concise: 5–20 words, one to three semantically balanced
 lines, with a 7–15 word target. The generated caption must represent a
 human moment, not feature copy or a CTA. Product claims such as “our AI
 automatically…” are rejected before matching.
+
+### 2026-09-14 business-fact grounding
+
+New business-generated Reactions use `reaction-grounding-v2`. Before any model
+request, the application compiles a small immutable `business-facts-v1`
+snapshot from the exact Business Profile version attached to the durable job.
+Each fact has a type, stable-within-version ID, and literal approved text. The
+database reconstructs that same snapshot before accepting the job, so neither
+the browser nor a stale app process can choose different facts.
+
+The worker assigns one eligible fact to each business-specific slot before it
+prompts the model. The model never creates or chooses a fact ID. Its visible
+caption must reuse at least two distinctive terms from the assigned fact and
+must not repeat a profile `claimsToAvoid` phrase. It also rejects unsupported
+self-running automation, certainty/accuracy, bundled-app, and instant-result
+claims unless the assigned fact explicitly supports them. That deterministic
+check is the acceptance boundary; it does not add a second AI reviewer request.
+
+There is no hard minimum number of facts: a single approved fact can rotate
+across any number of requested slots. A new V2 business-generation request
+with *zero* approved facts is returned as an explicit Business Context coverage
+shortfall before the model is called. It never silently fills the feed with a
+generic meme. `grounding.mode = awareness_generic` remains readable only for
+legacy V1 work; it is not business-specific marketing. The saved
+`content_json.grounding` object remains backend-owned. Text-only edits of a
+business-specific Reaction must retain the visible anchor and the same
+deterministic claim safeguards.
 
 ## Rendering rules
 

@@ -9,6 +9,39 @@ rendering, database schema, review scripts, or frontend behavior.
 
 ## Product Goal
 
+### Compact-laptop Trending readability (2026-09-13)
+
+At 1024-1535 CSS pixels wide, Trending now prioritizes readable media over
+fitting the entire deck into a short viewport. Slideshow cards grow to a 380px
+cap, and Hook, Wall-of-Text, and Reaction cards to 320px. Caps taper smoothly
+to the existing desktop widths by 1536px. Height-based sizing retains a 320px
+Slideshow / 280px vertical-card width floor within those caps; shorter windows
+can scroll to reach the decisions instead of continually shrinking the media.
+Compact-laptop decisions sit beside the card in a vertical pair, with progress
+below them. Reduced stage padding keeps the enlarged preview and actions in
+view together, including mixed 4:5 / 9:16 stacks. Mobile and 1536px-and-wider
+sizing and below-card controls stay unchanged. Physical screen inches are
+not detectable; the CSS viewport accounts for resolution and display scaling.
+
+Wall-of-Text feed overlays scale proportionally with their media, including
+above the previous 277px review-text cap, so enlarging the card also enlarges
+its text, outline, and spacing without changing saved line breaks. The editor's
+capped B treatment and rendered assets remain unchanged. This supersedes the
+earlier compact-laptop and 300px Slideshow review-size decisions below.
+
+Slideshow review images use `object-contain` at every viewport width. Normal
+4:5 renders fill the frame; different source ratios retain their entire image
+with neutral space around it. `object-cover` cropped the top and bottom of
+9:16 sources, removing the intended headline safe margin. Enlarging a frame
+does not reposition text baked into a rendered slide.
+
+This full-image policy also applies to Library Carousel covers and the shared
+scheduling modal's Carousel preview. Library cover hover must not zoom and
+clip rendered text. Full-slide Library previews and the editor's immutable
+render preview already contain the complete image. This policy applies to all
+saved slides and edited renders, independent of image URL or laptop size; it
+does not modify source assets or repair text already baked outside safe margins.
+
 ### Active trial pack delivery
 
 The three-day pack quota is charged when a daily pack is reserved. While the
@@ -3158,8 +3191,9 @@ Name: **Verify v26 and replace the stale production assignment**
 ## 2026-08-24 Sectioned Settings Navigation
 
 - Customer Settings now presents one active section at a time in this fixed
-  order: Account, Plan & billing, App screenshots, Connected accounts,
-  Preferences, and Privacy & data.
+  order: Account, Business Context, Plan & billing, App screenshots, Connected
+  accounts, Preferences, Product updates, Raise Ticket, Request Feature, and
+  Privacy & data.
 - App screenshots remains the existing owner-scoped product-screen library;
   its upload, validation, storage, removal, and Structure 2 eligibility
   behavior are unchanged.
@@ -3794,6 +3828,21 @@ Name: **Verify v26 and replace the stale production assignment**
   remains a separate, explicitly controlled rollout.
 
 ## 2026-08-27 First-Visit Trending Walkthrough
+
+### Application video presentation (2026-09-13)
+
+The original animated walkthrough remains preserved and its display is currently
+disabled in Trending. The replacement application video uses a centered rounded
+presentation screen capped at 960 CSS pixels wide and constrained by the
+available feed height and width. Its inner 16:9 frame displays the complete
+recording with contain fitting, so neither side is cropped. The quiet outer
+screen provides a margin below the video for the Skip button at its lower
+right. There is no heading; the screen has a subtle border and shadow, and the
+native playback controls remain within the video. Skip removes the presentation
+screen only; background feed generation continues independently. The developer
+walkthrough preview currently displays this application video.
+
+### Preserved animated walkthrough behavior
 
 - After a completed business onboarding, an owner who has not yet completed
   the Trending walkthrough sees one auto-playing desktop canvas
@@ -4462,3 +4511,31 @@ Runtime/font errors propagate as dependency failures instead of copy-fit errors.
 - Historical content-plan duplicate-seed failures are already isolated to the
   literal normalized duplicate and regenerated one item at a time. Near
   overlap remains allowed; no broad duplicate rejection should be restored.
+
+## 2026-09-14 Business Context Settings and immutable versioning
+
+- Settings exposes an owner-editable **Business Context** section. Its `Save
+  draft` and `Re-analyze draft` actions write only a staged context; neither
+  action changes `business_profiles.context_json`, profile version, active
+  Carousel plans, rendered output, or a current user's assigned Trending
+  content.
+- Re-analysis uses the separately pinned Business Context model
+  `gpt-5.6-luna` with `medium` reasoning by default. It must use only the
+  supplied factual source and return empty/null fields for unsupported details.
+  Creative-writer model configuration never controls this analysis.
+- `Apply to future content` promotes only an exact, fact-ready reviewed draft
+  in one optimistic profile-version update. The exact draft timestamp and
+  profile version must both still match, so another tab cannot silently apply
+  an older draft. A draft with zero usable facts remains reviewable but cannot
+  be activated; one fact is sufficient because grounded formats rotate an
+  approved fact rather than requiring an arbitrary count.
+- A context activation never prebuilds, reconciles, or reassigns the already
+  reserved local-day Trending pack. That pack is read with its saved profile
+  version and remains a historical snapshot; only a new local-day pack uses
+  the newly active context. This prevents a v13 context from detaching ready
+  v12 Carousel, Hook, Wall-of-Text, or Reaction assignments.
+- Each profile-version is the immutable fact boundary for all generation
+  formats. Carousel continues its existing server-derived anchoring; no
+  Carousel plan, render, or approved assignment is bulk-rewritten when the
+  owner changes Business Context. This preserves the current durable plan and
+  assignment recovery contracts.

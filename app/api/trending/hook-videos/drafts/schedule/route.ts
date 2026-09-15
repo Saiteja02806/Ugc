@@ -64,6 +64,7 @@ export async function POST(request: Request) {
     };
     const scheduleResult = await createUserSchedule({
       input: {
+        caption: scheduleInput.caption ?? "",
         idempotencyKey: createHookVideoScheduleIdempotencyKey({
           ...scheduleInput,
           draftId: composition.draft.id,

@@ -108,6 +108,7 @@ import type { TrendingCreativeEditRecord } from "@/lib/trending/creative-edit-co
 import { cn } from "@/lib/utils";
 
 import skeletonStyles from "./trending-post-skeleton.module.css";
+import reviewLayout from "./trending-review-layout.module.css";
 
 const TrendingCreativeEditor = dynamic(
   () =>
@@ -137,6 +138,11 @@ const TrendingFirstVisitWalkthrough = dynamic(
     ),
   { ssr: false },
 );
+const TrendingApplicationDemo = dynamic(
+  () => import("@/components/trending/trending-application-demo").then((module) => module.TrendingApplicationDemo),
+  { ssr: false },
+);
+const SHOW_TRENDING_FIRST_VISIT_WALKTHROUGH = false;
 
 const HookVideoComposer = dynamic(
   () =>
@@ -408,17 +414,17 @@ const decisionOutboxMemoryFallback = new Map<
 const SWIPE_THRESHOLD_PX = 90;
 const SWIPE_EXIT_DURATION_MS = 220;
 const MAX_ROTATION_DEGREES = 5;
+// Compact laptops need readable previews even when OS scaling leaves a short
+// CSS viewport. Allow vertical scrolling below the size floor; taper the caps
+// back to the existing desktop sizes by 1536px without a sudden size jump.
 const CAROUSEL_REVIEW_CARD_WIDTH_CLASS =
-  "w-[min(78vw,300px,calc((100dvh-348px)*0.8))]";
+  "w-[min(78vw,300px,calc((100dvh-348px)*0.8))] min-[1024px]:max-[1536px]:w-[min(78vw,clamp(300px,calc(902.12px-39.2vw),380px),max(320px,calc((100dvh-300px)*0.8)))]";
 const VERTICAL_REVIEW_CARD_WIDTH_CLASS =
-  "w-[min(76vw,230px,calc((100dvh-348px)*0.5625))] min-[1024px]:w-[min(76vw,clamp(260px,calc(440.5px-11.75vw),280px),calc((100dvh-252px)*0.5625))]";
-// B was approved at a 277px logical review card. Give Wall-of-Text that
-// reference frame whenever the viewport has room, rather than letting the
-// generic vertical-card responsive rule change the glyph treatment.
-// On genuinely narrow or short viewports this still shrinks as one unit with
-// the saved line layout, which prevents long measured lines from overflowing.
+  "w-[min(76vw,230px,calc((100dvh-348px)*0.5625))] min-[1024px]:w-[min(76vw,clamp(260px,calc(440.5px-11.75vw),280px),calc((100dvh-252px)*0.5625))] min-[1024px]:max-[1536px]:w-[min(76vw,clamp(260px,calc(802.12px-35.294vw),320px),max(280px,calc((100dvh-200px)*0.5625)))]";
+// Keep the 277px desktop reference, but enlarge Wall text and media together
+// on compact laptops so the saved line layout remains readable and intact.
 const WALL_TEXT_REVIEW_CARD_WIDTH_CLASS =
-  "w-[min(76vw,277px,calc((100dvh-348px)*0.5625))] min-[1024px]:w-[min(277px,calc((100dvh-252px)*0.5625))]";
+  "w-[min(76vw,277px,calc((100dvh-348px)*0.5625))] min-[1024px]:w-[min(277px,calc((100dvh-252px)*0.5625))] min-[1024px]:max-[1536px]:w-[min(76vw,clamp(277px,calc(665.52px-25.294vw),320px),max(280px,calc((100dvh-200px)*0.5625)))]";
 const CAROUSEL_REVIEW_CARD_FRAME_CLASS =
   `${CAROUSEL_REVIEW_CARD_WIDTH_CLASS} aspect-[4/5]`;
 const VERTICAL_REVIEW_CARD_FRAME_CLASS =
@@ -1270,12 +1276,13 @@ export function TrendingWorkspace() {
                 }}
               />
             </div>
-            {user?.uid ? (
+            {SHOW_TRENDING_FIRST_VISIT_WALKTHROUGH && user?.uid ? (
               <TrendingFirstVisitWalkthrough
                 key={user.uid}
                 userId={user.uid}
               />
             ) : null}
+            {!SHOW_TRENDING_FIRST_VISIT_WALKTHROUGH ? <TrendingApplicationDemo /> : null}
           </div>
         </section>
         {contentMixOpen ? (
@@ -2653,7 +2660,11 @@ function TrendingDeck({
   return (
     <section
       aria-label="Trending content"
-      className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-x-clip overflow-y-visible pb-[107px] pt-[94px]"
+      data-review-format={activeCandidate?.format === "carousel" ? "carousel" : "video"}
+      className={cn(
+        "relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-x-clip overflow-y-visible pb-[107px] pt-[94px]",
+        reviewLayout.stage,
+      )}
     >
       {activeCandidate && headerActionsRoot
         ? createPortal(
@@ -2744,6 +2755,7 @@ function TrendingDeck({
             <div
               className={cn(
                 "absolute left-1/2 z-40 flex w-max -translate-x-1/2 flex-col items-center",
+                reviewLayout.decisions,
                 getTrendingDecisionControlsPositionClass(
                   activeCandidate.format,
                   hasVerticalNextCard,
@@ -3938,7 +3950,7 @@ function TrendingWallTextDeckCard({
           /> : <WallTextOverlay
             content={editedContent?.content ?? creative.text}
             layout={editedContent?.layout ?? creative.layout}
-            scaleMode="review-card-capped"
+            scaleMode="proportional"
             textColor={editedContent?.textColor}
           />}
           {process.env.NEXT_PUBLIC_WALL_TEXT_SHARED_PNG === "true" &&
@@ -4307,13 +4319,14 @@ function CarouselDeckCard({
         ) : null}
         <div className="relative size-full overflow-hidden rounded-[20px] bg-card ring-1 ring-black/5">
           {/* Rendered Carousel slides are immutable Cloud Storage creative assets. */}
+          {/* Preserve their full composition when a source has a different ratio. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={editedRenderedUrl ?? activeSlide.renderedUrl}
             alt={isActive ? `${title}, slide ${activeSlide.slideNumber}` : ""}
             aria-hidden={isActive ? undefined : "true"}
             draggable={false}
-            className="size-full pointer-events-none object-cover"
+            className="size-full pointer-events-none object-contain"
           />
 
           {isActive && candidate.slides.length > 1 ? (

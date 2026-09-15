@@ -27,6 +27,11 @@ import {
   type WallTextDuplicateSignature,
 } from "@/lib/trending/wall-text-duplicate-logic";
 import { buildWallTextGenerationPrompt } from "@/lib/trending/wall-prompt";
+import {
+  getWallTextGroundingIssue,
+  toWallTextGroundingMetadata,
+  type WallTextFactGrounding,
+} from "@/lib/trending/wall-text-grounding";
 import type { WallTextPrivateCreativeContext } from "@/lib/trending/wall-text-db";
 import { createWallTextLayout } from "@/lib/trending/wall-text-feed-logic";
 import {
@@ -92,6 +97,7 @@ const PROMOTIONAL_OR_CTA_PATTERNS = [
 ] as const;
 
 type GenerationInputCandidate = WallTextGenerationCandidate & {
+  grounding?: WallTextFactGrounding;
   layout?: TrendingWallTextLayout;
   maxWords?: number;
   referenceText?: string;
@@ -102,6 +108,7 @@ type GenerationInputCandidate = WallTextGenerationCandidate & {
 type PreparedCandidate = {
   candidateIndex: number;
   durationSeconds: number;
+  grounding?: WallTextFactGrounding;
   layout: TrendingWallTextLayout;
   maxWords: number;
   minWords: number;
@@ -194,6 +201,7 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
         ...(input.privateCreativeContext
           ? { privateCreativeContext: input.privateCreativeContext }
           : {}),
+        ...(input.grounding ? { grounding: input.grounding } : {}),
         targetWords: budget.targetWords,
       };
     }),
@@ -258,45 +266,60 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
       }
 
       if (validated.size > 0) {
-        const reviews = await requestReviewer({
-          business,
-          candidates: pending.filter((candidate) =>
-            validated.has(candidate.candidateIndex),
-          ),
-          textByCandidateIndex: new Map(
-            [...validated.entries()].map(([candidateIndex, result]) => [
-              candidateIndex,
-              result.content.fullText,
-            ]),
-          ),
-        });
-
-        for (const candidate of pending) {
+        // A V2 reservation has a backend-owned snapshot and one assigned
+        // fact. Its copy has already passed deterministic grounding, unsafe
+        // claim, structural, duplicate, and measured-layout gates. Accept it
+        // here without a second AI request. Older reservations intentionally
+        // retain the Reviewer while they have no stable fact assignment.
+        const reviewerCandidates = pending.filter((candidate) => {
           const result = validated.get(candidate.candidateIndex);
-          if (!result) continue;
-          const review = reviews.get(candidate.candidateIndex);
-          if (!review) {
-            throw new WallTextModelOutputError({
-              code: WALL_TEXT_MODEL_OUTPUT_SCHEMA_INVALID,
-              message: `Wall-of-text Reviewer omitted candidate ${candidate.candidateIndex}.`,
-            });
-          }
-          if (
-            !review.approved ||
-            !review.oneCentralThought ||
-            !review.naturalSpokenLanguage
-          ) {
-            failures.push({
-              candidateIndex: candidate.candidateIndex,
-              detail: review.feedback,
-              reason: "reviewer_rejected",
-              rejectedText: result.content.fullText,
-            });
-            continue;
-          }
+          if (!result) return false;
+          if (!candidate.grounding) return true;
           accepted.set(candidate.candidateIndex, result);
           acceptedSignatures.push(result.duplicateSignature);
           newlyAccepted.push(candidate);
+          return false;
+        });
+
+        if (reviewerCandidates.length > 0) {
+          const reviews = await requestReviewer({
+            business,
+            candidates: reviewerCandidates,
+            textByCandidateIndex: new Map(
+              reviewerCandidates.map((candidate) => [
+                candidate.candidateIndex,
+                validated.get(candidate.candidateIndex)!.content.fullText,
+              ]),
+            ),
+          });
+
+          for (const candidate of reviewerCandidates) {
+            const result = validated.get(candidate.candidateIndex);
+            if (!result) continue;
+            const review = reviews.get(candidate.candidateIndex);
+            if (!review) {
+              throw new WallTextModelOutputError({
+                code: WALL_TEXT_MODEL_OUTPUT_SCHEMA_INVALID,
+                message: `Wall-of-text Reviewer omitted candidate ${candidate.candidateIndex}.`,
+              });
+            }
+            if (
+              !review.approved ||
+              !review.oneCentralThought ||
+              !review.naturalSpokenLanguage
+            ) {
+              failures.push({
+                candidateIndex: candidate.candidateIndex,
+                detail: review.feedback,
+                reason: "reviewer_rejected",
+                rejectedText: result.content.fullText,
+              });
+              continue;
+            }
+            accepted.set(candidate.candidateIndex, result);
+            acceptedSignatures.push(result.duplicateSignature);
+            newlyAccepted.push(candidate);
+          }
         }
       }
 
@@ -396,7 +419,7 @@ async function requestWriter(params: {
         {
           role: "system",
           content:
-            "You write grounded Wall-of-Text social copy. Return one complete plain text message per assigned candidate. A separate Reviewer will judge the result.",
+            "You write grounded Wall-of-Text social copy. Do not hallucinate. Generate based only on the information available in the approved prompt data. Return one complete plain text message per assigned candidate. Fact-grounded assignments are checked by deterministic server rules, including their visible business anchor.",
         },
         {
           role: "user",
@@ -575,6 +598,15 @@ async function validateCandidate(params: {
       throw new CandidateValidationError("forbidden_claim");
     }
   }
+  if (params.candidate.grounding) {
+    const groundingIssue = getWallTextGroundingIssue({
+      grounding: params.candidate.grounding,
+      text,
+    });
+    if (groundingIssue) {
+      throw new CandidateValidationError(groundingIssue);
+    }
+  }
 
   const duplicateSignature = createWallTextDuplicateSignature(text);
   const duplicate = findWallTextDuplicate({
@@ -600,7 +632,16 @@ async function validateCandidate(params: {
     const render = await validateWallTextRenderFit(authoritative.content);
     return {
       ...authoritative,
-      content: applyWallTextRenderFit(authoritative.content, render),
+      content: {
+        ...applyWallTextRenderFit(authoritative.content, render),
+        ...(params.candidate.grounding
+          ? {
+              grounding: toWallTextGroundingMetadata(
+                params.candidate.grounding,
+              ),
+            }
+          : {}),
+      },
       duplicateSignature,
     };
   } catch (error) {

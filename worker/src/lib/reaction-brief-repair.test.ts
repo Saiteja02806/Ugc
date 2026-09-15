@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { planReactionGeneration } from "./reaction-generation.js";
+import {
+  getReactionGroundedCopySafetyIssue,
+  planReactionGeneration,
+} from "./reaction-generation.js";
 import { RetryableJobError } from "../retryable-job-error.js";
 
 const intents = ["shock", "facepalm", "deadpan", "relief"] as const;
@@ -26,6 +29,59 @@ function brief(slotIndex: number, intentIndex = slotIndex) {
 }
 const success = (briefs: unknown[]) => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ briefs }) } }] }), {
   status: 200, headers: { "content-type": "application/json" },
+});
+
+test("grounded Reaction copy rejects unsupported capability and certainty claims", () => {
+  const factText = "Take a meal photo to estimate calories and nutrients";
+  const claimsToAvoid = ["100% accurate calorie counts"];
+
+  assert.match(
+    getReactionGroundedCopySafetyIssue({
+      caption: "When my meal photo logs itself and estimates calories",
+      claimsToAvoid,
+      factText,
+    }) ?? "",
+    /self-running automation/u,
+  );
+  assert.match(
+    getReactionGroundedCopySafetyIssue({
+      caption: "When my meal photo gives an actual calorie estimate",
+      claimsToAvoid,
+      factText,
+    }) ?? "",
+    /accuracy or certainty/u,
+  );
+  assert.match(
+    getReactionGroundedCopySafetyIssue({
+      caption: "Taking meal photos to estimate calories without opening three apps",
+      claimsToAvoid,
+      factText,
+    }) ?? "",
+    /bundled workflow/u,
+  );
+  assert.equal(
+    getReactionGroundedCopySafetyIssue({
+      caption: "Taking a meal photo instead of calculating every ingredient",
+      claimsToAvoid,
+      factText,
+    }),
+    null,
+  );
+});
+
+test("a V2 Reaction plan with no fact fails before it asks the model", async () => {
+  await assert.rejects(
+    planReactionGeneration({
+      ...input,
+      context: {
+        ...input.context,
+        contextVersion: "reaction-grounding-v2",
+        factSnapshot: { claimsToAvoid: [], facts: [], version: "business-facts-v1" },
+      },
+      requestedCount: 1,
+    }),
+    /at least one approved business fact/u,
+  );
 });
 type CapturedRequest = {
   reasoning_effort: string;

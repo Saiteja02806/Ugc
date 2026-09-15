@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { LoaderCircle, Pencil, SlidersHorizontal } from "lucide-react";
 
-import { TrendingFirstVisitWalkthrough } from "@/components/trending/trending-first-visit-walkthrough";
+import { TrendingApplicationDemo } from "@/components/trending/trending-application-demo";
 
 export default function TrendingWalkthroughPreviewPage() {
   if (process.env.NODE_ENV === "production") {
@@ -54,10 +54,7 @@ export default function TrendingWalkthroughPreviewPage() {
               </p>
             </div>
           </div>
-          <TrendingFirstVisitWalkthrough
-            preview
-            userId="e2e-walkthrough-preview"
-          />
+          <TrendingApplicationDemo />
         </div>
       </section>
     </main>

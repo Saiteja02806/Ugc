@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import type { WebsiteBusinessAnalysis } from "@/lib/website-analysis/schema";
+import { assertBusinessContextCandidateReady } from "@/lib/business-profiles/business-context-candidate";
 
 import { isBusinessProfileOnboardingComplete } from "./onboarding-access";
 import type { BusinessLogoAsset } from "./logo";
@@ -32,6 +33,10 @@ export type BusinessProfileOnboardingStep = 1 | 2 | 3;
 
 type BusinessProfileRow = {
   analysis_id: string | null;
+  business_context_draft_base_version: number | null;
+  business_context_draft_json: WebsiteBusinessAnalysis | null;
+  business_context_draft_source: string | null;
+  business_context_draft_updated_at: string | null;
   content_hash: string;
   context_json: WebsiteBusinessAnalysis;
   created_at: string;
@@ -79,6 +84,10 @@ type BusinessProfileDatabase = {
 
 export type BusinessProfileRecord = {
   analysisId: string | null;
+  businessContextDraftBaseVersion: number | null;
+  businessContextDraftContext: WebsiteBusinessAnalysis | null;
+  businessContextDraftSource: string | null;
+  businessContextDraftUpdatedAt: string | null;
   context: WebsiteBusinessAnalysis;
   id: string;
   intakeType: BusinessProfileIntakeType;
@@ -233,6 +242,92 @@ export async function saveBusinessProfile(input: {
     .single();
   if (error) throw new Error(`Could not save business profile: ${error.message}`);
   return { changed: true, profile: mapProfile(data) };
+}
+
+/** Saves a Settings draft only. It never changes the active profile version. */
+export async function saveBusinessContextDraft(params: {
+  context: WebsiteBusinessAnalysis;
+  expectedDraftUpdatedAt: string | null;
+  profile: BusinessProfileRecord;
+  source?: string | null;
+}) {
+  const updatedAt = new Date().toISOString();
+  let query = getClient()
+    .from(BUSINESS_PROFILES_TABLE)
+    .update({
+      business_context_draft_base_version: params.profile.profileVersion,
+      business_context_draft_json: params.context,
+      business_context_draft_source: params.source?.trim().slice(0, 4_000) || null,
+      business_context_draft_updated_at: updatedAt,
+      updated_at: updatedAt,
+    })
+    .eq("id", params.profile.id)
+    .eq("user_id", params.profile.userId)
+    .eq("profile_version", params.profile.profileVersion);
+
+  query = params.expectedDraftUpdatedAt
+    ? query.eq("business_context_draft_updated_at", params.expectedDraftUpdatedAt)
+    : query.is("business_context_draft_updated_at", null);
+
+  const { data, error } = await query.select("*").maybeSingle();
+
+  if (error) throw new Error(`Could not save business-context draft: ${error.message}`);
+  if (!data) throw new Error("business_context_draft_conflict");
+  return mapProfile(data);
+}
+
+/**
+ * Atomically promotes the exact reviewed draft to a new active version. The
+ * next local-day Trending pack uses the new version; the current pack remains
+ * tied to its previous immutable profile version.
+ */
+export async function applyBusinessContextDraft(params: {
+  expectedDraftUpdatedAt: string;
+  expectedProfileVersion: number;
+  profile: BusinessProfileRecord;
+}) {
+  const draft = params.profile.businessContextDraftContext;
+  if (
+    !draft ||
+    params.profile.businessContextDraftBaseVersion !== params.expectedProfileVersion ||
+    !params.profile.businessContextDraftUpdatedAt ||
+    params.profile.businessContextDraftUpdatedAt !== params.expectedDraftUpdatedAt
+  ) {
+    throw new Error("business_context_draft_stale");
+  }
+  if (params.profile.profileVersion !== params.expectedProfileVersion) {
+    throw new Error("business_context_profile_conflict");
+  }
+
+  // Re-check immediately before the write. A draft may be stored for review
+  // with no facts, but that draft can never become the live source for a
+  // grounded format.
+  assertBusinessContextCandidateReady(draft);
+
+  const updatedAt = new Date().toISOString();
+  const { data, error } = await getClient()
+    .from(BUSINESS_PROFILES_TABLE)
+    .update({
+      business_context_draft_base_version: null,
+      business_context_draft_json: null,
+      business_context_draft_source: null,
+      business_context_draft_updated_at: null,
+      content_hash: hashAnalysis(draft, params.profile.intakeType),
+      context_json: draft,
+      profile_version: params.expectedProfileVersion + 1,
+      updated_at: updatedAt,
+    })
+    .eq("id", params.profile.id)
+    .eq("user_id", params.profile.userId)
+    .eq("profile_version", params.expectedProfileVersion)
+    .eq("business_context_draft_base_version", params.expectedProfileVersion)
+    .eq("business_context_draft_updated_at", params.expectedDraftUpdatedAt)
+    .select("*")
+    .maybeSingle();
+
+  if (error) throw new Error(`Could not apply business-context draft: ${error.message}`);
+  if (!data) throw new Error("business_context_draft_conflict");
+  return mapProfile(data);
 }
 
 export async function completeTrendingWalkthroughForUser(userId: string) {
@@ -511,6 +606,10 @@ function mapProfile(row: BusinessProfileRow): BusinessProfileRecord {
 
   return {
     analysisId: row.analysis_id,
+    businessContextDraftBaseVersion: row.business_context_draft_base_version ?? null,
+    businessContextDraftContext: row.business_context_draft_json ?? null,
+    businessContextDraftSource: row.business_context_draft_source ?? null,
+    businessContextDraftUpdatedAt: row.business_context_draft_updated_at ?? null,
     context: row.context_json,
     id: row.id,
     intakeType: row.intake_type,

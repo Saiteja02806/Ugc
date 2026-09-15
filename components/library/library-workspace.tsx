@@ -563,7 +563,7 @@ function LibraryCarouselCard({
           <img
             src={coverUrl}
             alt=""
-            className="size-full object-cover transition-transform duration-200 group-hover:scale-[1.015] motion-reduce:transition-none"
+            className="size-full object-contain"
           />
         ) : (
           <div className="flex size-full items-center justify-center text-white/70">

@@ -62,7 +62,7 @@ test("Saved category controls use a responsive floating pill track", () => {
   assert.match(savedTab, /savedCreativeFilters/);
 });
 
-test("saved carousel cards use a compact grid without thumbnail letterboxing", () => {
+test("saved carousel cards preserve the full rendered slide", () => {
   const cardSource = carouselLibrary.slice(
     carouselLibrary.indexOf("function LibraryCarouselCard"),
     carouselLibrary.indexOf("function LibraryCarouselViewer"),
@@ -73,8 +73,8 @@ test("saved carousel cards use a compact grid without thumbnail letterboxing", (
     /grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5/,
   );
   assert.doesNotMatch(cardSource, /max-h-\[440px\]/);
-  assert.match(cardSource, /size-full object-cover/);
-  assert.doesNotMatch(cardSource, /object-contain/);
+  assert.match(cardSource, /size-full object-contain/);
+  assert.doesNotMatch(cardSource, /object-cover/);
   assert.match(cardSource, /onClick=\{onView\}/);
   assert.match(cardSource, /onClick=\{onSchedule\}/);
   assert.match(cardSource, />\s*Preview\s*</);

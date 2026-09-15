@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 
 import { createAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
 import { getBackgroundJobForUser } from "@/lib/jobs/background-jobs";
+import { getReactionGroundingIssue } from "@/lib/reaction-format/grounding";
 import { SchedulingRequestError } from "@/lib/scheduling/errors";
 import { getReactionClient, type ReactionCreativeRow } from "./reaction-feed";
 import { getReactionTextEditState, getReactionUserTextEdit, type ReactionTextEditRecord } from "./reaction-edit-contract";
@@ -71,6 +72,13 @@ export async function saveReactionTextEdit(scope: Scope & { expectedUpdatedAt: s
     throw new SchedulingRequestError("Preparing video. Wait for this edit to finish.", 409);
   }
   const lines = scope.text.split(/\r?\n/u).map((line) => line.trim().replace(/\s+/gu, " ")).filter(Boolean);
+  const groundingIssue = getReactionGroundingIssue({
+    content: creative.content_json,
+    text: lines.join(" "),
+  });
+  if (groundingIssue) {
+    throw new SchedulingRequestError(groundingIssue, 422);
+  }
   const revision = (current?.revision ?? 0) + 1;
   await createAndDispatchBackgroundJob({
     // Each candidate save owns its job. Only the optimistic creative update

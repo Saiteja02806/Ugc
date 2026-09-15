@@ -174,6 +174,16 @@ export type WallTextSourceContent =
   | WallTextPlainContent
   | WallTextProseContent
   | WallTextListContent;
+// Grounding is optional only so historical Wall cards remain readable. New
+// fact-grounded reservations persist this compact audit record alongside the
+// rendered copy; the complete immutable snapshot lives on the assignment.
+export type WallTextGroundingMetadata = {
+  anchorId: string;
+  factSnapshotVersion: "business-facts-v1";
+  factText: string;
+  factType: "audience" | "capability" | "differentiator" | "outcome" | "pain";
+  version: "wall-text-grounding-v2";
+};
 export type WallTextLayoutBlock = {
   lines: string[];
   role: "item" | "prose" | "text" | "title";
@@ -240,6 +250,7 @@ export type TrendingWallTextContent = {
   finalLayout?: WallTextFinalLayout;
   formatId?: WallTextPattern;
   fullText: string;
+  grounding?: WallTextGroundingMetadata;
   kind: "wall_text";
   layoutVersion:
     | typeof WALL_TEXT_CONTENT_LAYOUT_VERSION

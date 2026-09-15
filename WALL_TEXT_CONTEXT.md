@@ -1,6 +1,30 @@
 # Wall-of-text Context
 
-Last updated: 2026-09-13
+Last updated: 2026-09-14
+
+## 2026-09-14 Fact-grounded Wall V2
+
+- A new Wall reservation creates one immutable approved-business-fact snapshot
+  and assigns exactly one stable fact ID to each content slot. The snapshot and
+  assignment are saved in the server-owned assignment `focus_json`; candidate
+  indices cycle the available facts, so a request never needs a hard minimum
+  number of facts.
+- The V2 writer receives the snapshot and its selected fact, with the explicit
+  instruction: “Do not hallucinate. Generate based only on the information
+  available.” Private plan context may provide a human situation or tone, but
+  cannot add a product claim.
+- Deterministic validation requires a visible natural anchor from the assigned
+  fact, rejects owner-prohibited claims and unsupported high-risk automation,
+  precision, guarantee, or instant-result language, plus the existing grammar,
+  duplicate, CTA, and measured-layout checks. A compact anchor record is saved
+  with the rendered creative for auditability.
+- Eligible V2 fact-grounded cards do **not** make a separate AI Reviewer call.
+  A single approved fact can safely cycle across any number of new cards; a
+  new request with zero facts returns a clear Business Context-needed result
+  before it reserves work or calls a model. Pre-release/legacy reservations
+  retain their existing Reviewer path, so the rollout does not invalidate
+  in-flight work. Database triggers verify the saved fact snapshot and creative
+  anchor match the current immutable Business Profile version.
 
 ## 2026-09-13 Active trial final-pack recovery
 

@@ -115,6 +115,13 @@ test("untouched Hook schedule times resolve at confirmation and always confirm t
   );
 });
 
+test("Hook scheduling carries the optional Instagram caption into the scheduled post", () => {
+  assert.match(scheduleDrawer, /Instagram caption[\s\S]*?\(optional\)/);
+  assert.match(scheduleDrawer, /name="caption"/);
+  assert.match(scheduleDrawer, /caption,\s*scheduledDate,/);
+  assert.match(scheduleRoute, /caption: scheduleInput\.caption \?\? ""/);
+});
+
 test("Wall-of-text scheduling saves first and starts rendering after confirmation", () => {
   assert.match(
     trendingWorkspace,

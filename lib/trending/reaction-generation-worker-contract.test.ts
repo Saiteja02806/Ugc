@@ -8,6 +8,10 @@ const migration = readProjectFile(
 const provenanceMigration = readProjectFile(
   "supabase/migrations/20260911120000_harden_reaction_generation_provenance.sql",
 );
+const groundingMigration = readProjectFile(
+  "supabase/migrations/20260914120000_add_reaction_grounding_context_v2.sql",
+);
+const factCatalog = readProjectFile("lib/business-profiles/fact-catalog.ts");
 const splitRenderMigration = readProjectFile(
   "supabase/migrations/20260909140000_split_reaction_reel_render_workers.sql",
 );
@@ -149,6 +153,16 @@ test("binds every business Reaction plan to profile context and quarantines QA o
   assert.match(provenanceMigration, /business_profiles as profile/);
   assert.match(readProjectFile("lib/trending/reaction-feed.ts"), /generation_origin.*business_generation/);
   assert.match(workerJob, /run\.generation_context/);
+});
+
+test("keeps V2 fact snapshot normalization identical across the app and database", () => {
+  assert.match(factCatalog, /BUSINESS_FACT_WHITESPACE/);
+  assert.match(factCatalog, /Array\.from\(normalized\)\.slice\(0, 360\)\.join/);
+  assert.match(groundingMigration, /reaction_business_fact_text_v1/);
+  assert.match(groundingMigration, /U&'\[\\0009-\\000D\\0020\\00A0/);
+  assert.match(groundingMigration, /reaction_business_fact_string_list_v1/);
+  assert.match(groundingMigration, /group by value[\s\S]*?order by min\(ordinality\)[\s\S]*?limit 6/);
+  assert.match(groundingMigration, /public\.reaction_business_fact_text_v1\(value\) as text/);
 });
 
 test("retries only a catalog-blocked Reaction request after assets become active", () => {

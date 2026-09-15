@@ -6,6 +6,7 @@ import {
   Bug,
   CheckCircle2,
   CreditCard,
+  FileText,
   Images,
   Lightbulb,
   LoaderCircle,
@@ -37,6 +38,7 @@ import { Separator } from "@/components/ui/separator";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { InstagramAccountManager } from "@/components/settings/instagram-account-manager";
 import { AppScreenshotsSettings } from "@/components/settings/app-screenshots-settings";
+import { BusinessContextSettings } from "@/components/settings/business-context-settings";
 import { SupportFeedbackSettings } from "@/components/settings/support-feedback-settings";
 import { useTheme } from "@/components/providers/theme-provider";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
@@ -50,6 +52,11 @@ const SETTINGS_SECTIONS = [
     icon: UserRound,
     id: "account",
     label: "Account",
+  },
+  {
+    icon: FileText,
+    id: "business-context",
+    label: "Business Context",
   },
   {
     icon: CreditCard,
@@ -361,6 +368,17 @@ export function SettingsWorkspace() {
               ) : null}
             </div>
 
+          </SettingsSection>
+          ) : null}
+
+          {activeSection === "business-context" ? (
+          <SettingsSection
+            id="business-context"
+            description="Review the approved facts that guide future marketing content."
+            icon={<FileText className="size-5" aria-hidden="true" />}
+            title="Business Context"
+          >
+            <BusinessContextSettings />
           </SettingsSection>
           ) : null}
 

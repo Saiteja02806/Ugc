@@ -57,6 +57,7 @@ type TikTokCapabilitiesResponse =
 type PublishingSettings = ScheduleTargetSettings;
 
 export type HookVideoScheduleSelection = {
+  caption: string;
   scheduledDate: string;
   scheduledTime: string;
   targets: Array<{
@@ -114,6 +115,7 @@ export function HookVideoScheduleDrawer({
   >({});
   const [scheduledDate, setScheduledDate] = useState(initialDateTime.date);
   const [scheduledTime, setScheduledTime] = useState(initialDateTime.time);
+  const [caption, setCaption] = useState("");
   const [hasManualScheduleTime, setHasManualScheduleTime] = useState(false);
   const [minimumScheduleLeadMinutes, setMinimumScheduleLeadMinutes] = useState(
     DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
@@ -293,6 +295,7 @@ export function HookVideoScheduleDrawer({
 
   async function confirmSchedule() {
     const selection: HookVideoScheduleSelection = {
+      caption,
       scheduledDate,
       scheduledTime,
       targets: selectedConnections.map((connection) => ({
@@ -356,7 +359,7 @@ export function HookVideoScheduleDrawer({
               <DialogDescription className="mt-1 text-xs">
                 {stage === "review"
                   ? "Confirm the destination and publish time."
-                  : "Choose an account and optionally a publish time."}
+                  : "Choose an account, caption, and optionally a publish time."}
               </DialogDescription>
             </div>
           </div>
@@ -435,6 +438,32 @@ export function HookVideoScheduleDrawer({
                 )}
               </section>
 
+              <section
+                className="mt-5 border-t border-border pt-4"
+                aria-labelledby="schedule-caption-heading"
+              >
+                <label className="block text-xs font-semibold text-muted">
+                  <span id="schedule-caption-heading">
+                    Instagram caption <span className="font-medium">(optional)</span>
+                  </span>
+                  <span className="mt-1 block text-[11px] font-medium leading-4 text-muted">
+                    This appears in the Instagram post caption, separately from the text in your Hook Video.
+                  </span>
+                  <textarea
+                    name="caption"
+                    rows={4}
+                    maxLength={5000}
+                    value={caption}
+                    onChange={(event) => setCaption(event.target.value)}
+                    placeholder="Write a caption for this post..."
+                    className="mt-2 w-full resize-y rounded-control border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground-strong outline-none placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary"
+                  />
+                  <span className="mt-1 block text-right text-[11px] font-medium text-muted">
+                    {caption.length}/5000
+                  </span>
+                </label>
+              </section>
+
               <section className="mt-5 border-t border-border pt-4" aria-labelledby="schedule-time-heading">
                 <h4 id="schedule-time-heading" className="text-xs font-semibold text-foreground-strong">
                   Date and time
@@ -485,6 +514,7 @@ export function HookVideoScheduleDrawer({
           ) : (
             <ScheduleReview
               connections={selectedConnections}
+              caption={caption}
               scheduledDate={scheduledDate}
               scheduledTime={scheduledTime}
               summary={summary}
@@ -664,6 +694,7 @@ function ConnectionRow({
 }
 
 function ScheduleReview({
+  caption,
   connections,
   minimumScheduleLeadMinutes,
   scheduledDate,
@@ -672,6 +703,7 @@ function ScheduleReview({
   timezone,
   useDefaultScheduleTime,
 }: {
+  caption: string;
   connections: SocialConnection[];
   minimumScheduleLeadMinutes: number;
   scheduledDate: string;
@@ -712,6 +744,14 @@ function ScheduleReview({
           </div>
         </dl>
       </div>
+      {caption.trim() ? (
+        <div className="border-b border-border py-4">
+          <p className="text-xs font-semibold text-muted">Caption</p>
+          <p className="mt-2 whitespace-pre-wrap text-xs font-medium leading-5 text-foreground-strong">
+            {caption}
+          </p>
+        </div>
+      ) : null}
       <div className="pt-4">
         <p className="text-xs font-semibold text-muted">Accounts</p>
         <div className="mt-2 space-y-2">

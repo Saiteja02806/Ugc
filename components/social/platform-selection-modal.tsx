@@ -1319,8 +1319,8 @@ function DetailsStep({
             src={context.coverUrl}
             alt=""
             className={cn(
-              "w-full bg-card-muted object-cover",
-              isReel ? "aspect-[9/16]" : "aspect-[4/5]",
+              "w-full bg-card-muted",
+              isReel ? "aspect-[9/16] object-cover" : "aspect-[4/5] object-contain",
             )}
           />
         ) : (

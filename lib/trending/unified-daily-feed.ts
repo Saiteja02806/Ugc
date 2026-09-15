@@ -21,6 +21,10 @@ import {
   type TrendingDailyPackReadiness,
 } from "@/lib/trending/daily-pack-readiness";
 import {
+  getProfilePinnedToDailyFeed,
+  isDailyFeedPinnedToHistoricalProfile,
+} from "@/lib/trending/daily-feed-profile-version";
+import {
   getAdditionalTrendingSlotsForUpgrade,
   getReservedTrendingDailyLimit,
 } from "@/lib/trending/plan-upgrade-grant";
@@ -92,6 +96,11 @@ type PublicTrendingDailyFeedFailure = {
   message: string;
 };
 
+/**
+ * Daily Trending feeds are immutable delivery snapshots. The active profile
+ * can advance during the day, but the existing pack must continue resolving
+ * assignments that were created under its saved version.
+ */
 export async function readUnifiedTrendingDailyFeed(params: {
   includeHookVideos: boolean;
   includeWallText: boolean;
@@ -145,6 +154,16 @@ export async function readUnifiedTrendingDailyFeed(params: {
     });
   }
 
+  // A local-day feed is a delivered snapshot. Once Business Context advances,
+  // its already-reserved slots must keep querying the version recorded on the
+  // feed. Querying the new version makes valid v12 assignments look absent
+  // and can lead a later reconciliation to detach them.
+  const feedProfile = getProfilePinnedToDailyFeed(
+    params.profile,
+    existingPlan.feed,
+  );
+  const isHistoricalFeed = feedProfile.profileVersion !== params.profile.profileVersion;
+
   const upgradeSlots = getAdditionalTrendingSlotsForUpgrade({
     currentPlanDailyLimit: entitlement.dailyLimit,
     currentPlanKey: entitlement.planKey,
@@ -169,7 +188,7 @@ export async function readUnifiedTrendingDailyFeed(params: {
       ? loadTrendingFormat({
           load: () => readTrendingDailyFeed({
           dailyLimitOverride: reservedAllocation.carousel,
-          profile: params.profile,
+          profile: feedProfile,
           timezone,
           userId: params.userId,
           }),
@@ -178,7 +197,7 @@ export async function readUnifiedTrendingDailyFeed(params: {
         })
       : Promise.resolve(null),
     params.includeHookVideos && reservedAllocation.hook_video > 0
-      ? getTrendingHookFeedProvider(params.profile, {
+      ? getTrendingHookFeedProvider(feedProfile, {
           pinnedAssignmentIds: pinnedHookAssignmentIds,
         })
       : Promise.resolve(
@@ -190,7 +209,7 @@ export async function readUnifiedTrendingDailyFeed(params: {
           ),
         ),
     params.includeWallText && reservedAllocation.wall_text > 0
-      ? getTrendingWallTextFeedProvider(params.profile, {
+      ? getTrendingWallTextFeedProvider(feedProfile, {
           pinnedAssignmentIds: pinnedWallTextAssignmentIds,
         })
       : Promise.resolve(
@@ -203,8 +222,8 @@ export async function readUnifiedTrendingDailyFeed(params: {
       ),
     reservedAllocation.reaction > 0
       ? getTrendingReactionFeedProvider({
-          businessProfileId: params.profile.id,
-          businessProfileVersion: params.profile.profileVersion,
+          businessProfileId: feedProfile.id,
+          businessProfileVersion: feedProfile.profileVersion,
           pinnedAssignmentIds: pinnedReactionAssignmentIds,
           userId: params.userId,
         })
@@ -286,6 +305,7 @@ export async function readUnifiedTrendingDailyFeed(params: {
     }),
     requiresPreparation:
       !trialAccessBlocked &&
+      !isHistoricalFeed &&
       (upgradeSlots > 0 ||
         shouldPrepareDailyFeed({
           dailyLimit: existingPlan.feed.dailyLimit,
@@ -468,6 +488,16 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
     getTrendingContentMixPreference(params.userId),
     getDailyTrendingFeedForDate({ localDate, userId: params.userId }),
   ]);
+
+  if (
+    existingPlan &&
+    isDailyFeedPinnedToHistoricalProfile(existingPlan.feed, params.profile)
+  ) {
+    // Do not call ensure_daily_trending_feed_plan, reconciliation, attachment,
+    // or a writer against the new profile version for a pre-existing pack.
+    // The read path above uses the feed's version and remains safe to display.
+    return readUnifiedTrendingDailyFeed(params);
+  }
   const entitlement = await getTrendingPlanEntitlement(params.userId, {
     existingFeedId: existingPlan?.feed.id,
   });

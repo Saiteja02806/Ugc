@@ -30,6 +30,10 @@ const context = applyPrimaryGoals(
 
 const completedProfile = {
   analysisId: "analysis-1",
+  businessContextDraftBaseVersion: null,
+  businessContextDraftContext: null,
+  businessContextDraftSource: null,
+  businessContextDraftUpdatedAt: null,
   context,
   id: "profile-1",
   intakeType: "manual" as const,

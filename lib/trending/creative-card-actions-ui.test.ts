@@ -421,19 +421,19 @@ test("keeps the Slideshow label compact and aligned unless a tall next card need
 test("centers a card-sized review frame over visible inert next-card layers", () => {
   assert.match(
     workspace,
-    /CAROUSEL_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(78vw,300px,calc\(\(100dvh-348px\)\*0\.8\)\)\]"/,
+    /CAROUSEL_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(78vw,300px,calc\(\(100dvh-348px\)\*0\.8\)\)\] min-\[1024px\]:max-\[1536px\]:w-\[min\(78vw,clamp\(300px,calc\(902\.12px-39\.2vw\),380px\),max\(320px,calc\(\(100dvh-300px\)\*0\.8\)\)\)\]"/,
   );
   assert.match(
     workspace,
-    /VERTICAL_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(76vw,230px,calc\(\(100dvh-348px\)\*0\.5625\)\)\] min-\[1024px\]:w-\[min\(76vw,clamp\(260px,calc\(440\.5px-11\.75vw\),280px\),calc\(\(100dvh-252px\)\*0\.5625\)\)\]"/,
+    /VERTICAL_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(76vw,230px,calc\(\(100dvh-348px\)\*0\.5625\)\)\] min-\[1024px\]:w-\[min\(76vw,clamp\(260px,calc\(440\.5px-11\.75vw\),280px\),calc\(\(100dvh-252px\)\*0\.5625\)\)\] min-\[1024px\]:max-\[1536px\]:w-\[min\(76vw,clamp\(260px,calc\(802\.12px-35\.294vw\),320px\),max\(280px,calc\(\(100dvh-200px\)\*0\.5625\)\)\)\]"/,
   );
   assert.match(
     workspace,
-    /WALL_TEXT_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(76vw,277px,calc\(\(100dvh-348px\)\*0\.5625\)\)\] min-\[1024px\]:w-\[min\(277px,calc\(\(100dvh-252px\)\*0\.5625\)\)\]"/,
+    /WALL_TEXT_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(76vw,277px,calc\(\(100dvh-348px\)\*0\.5625\)\)\] min-\[1024px\]:w-\[min\(277px,calc\(\(100dvh-252px\)\*0\.5625\)\)\] min-\[1024px\]:max-\[1536px\]:w-\[min\(76vw,clamp\(277px,calc\(665\.52px-25\.294vw\),320px\),max\(280px,calc\(\(100dvh-200px\)\*0\.5625\)\)\)\]"/,
   );
   assert.match(
     workspace,
-    /className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-x-clip overflow-y-visible pb-\[107px\] pt-\[94px\]"/,
+    /"relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-x-clip overflow-y-visible pb-\[107px\] pt-\[94px\]",\s*reviewLayout.stage/,
   );
   assert.match(workspace, /data-trending-review-frame/);
   assert.match(workspace, /getTrendingReviewCardFrameClass\(activeCandidate\.format\)/);
@@ -474,14 +474,14 @@ test("centers a card-sized review frame over visible inert next-card layers", ()
   assert.doesNotMatch(workspace, /size-px overflow-hidden opacity-0/);
 });
 
-test("fills the fixed slideshow frame without side gutters", () => {
+test("shows the complete rendered slide without cropping its headline", () => {
   assert.match(
     workspace,
-    /function CarouselDeckCard[\s\S]*className="size-full pointer-events-none object-cover"/,
+    /function CarouselDeckCard[\s\S]*className="size-full pointer-events-none object-contain"/,
   );
   assert.doesNotMatch(
     workspace,
-    /function CarouselDeckCard[\s\S]*className="size-full pointer-events-none object-contain"/,
+    /function CarouselDeckCard[\s\S]*className="size-full pointer-events-none object-cover"/,
   );
 });
 
@@ -575,7 +575,7 @@ test("keeps Hook and Wall-of-Text pills close above their video frame", () => {
   );
 });
 
-test("locks Wall-of-Text to its approved B card width while preserving responsive 9:16 frames", () => {
+test("preserves separate responsive 9:16 frames for Wall-of-Text and video cards", () => {
   assert.match(
     workspace,
     /VERTICAL_REVIEW_CARD_FRAME_CLASS\s*=\s*\n\s*`\$\{VERTICAL_REVIEW_CARD_WIDTH_CLASS\} aspect-\[9\/16\]`/,

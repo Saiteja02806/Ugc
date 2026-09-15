@@ -67,10 +67,10 @@ test("uses the approved capped B treatment in the Wall editor preview", () => {
   assert.doesNotMatch(editorWallTextOverlay, /-0\.2 \/ 10\.8/);
 });
 
-test("uses the 277px B reference frame for Wall review cards when space allows", () => {
+test("enlarges compact-laptop Wall cards and scales their saved text proportionally", () => {
   assert.match(
     workspaceSource,
-    /WALL_TEXT_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(76vw,277px,calc\(\(100dvh-348px\)\*0\.5625\)\)\] min-\[1024px\]:w-\[min\(277px,calc\(\(100dvh-252px\)\*0\.5625\)\)\]"/,
+    /WALL_TEXT_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(76vw,277px,calc\(\(100dvh-348px\)\*0\.5625\)\)\] min-\[1024px\]:w-\[min\(277px,calc\(\(100dvh-252px\)\*0\.5625\)\)\] min-\[1024px\]:max-\[1536px\]:w-\[min\(76vw,clamp\(277px,calc\(665\.52px-25\.294vw\),320px\),max\(280px,calc\(\(100dvh-200px\)\*0\.5625\)\)\)\]"/,
   );
 
   const wallDeckCard =
@@ -78,5 +78,5 @@ test("uses the 277px B reference frame for Wall review cards when space allows",
     "";
 
   assert.match(wallDeckCard, /WALL_TEXT_REVIEW_CARD_FRAME_CLASS/);
-  assert.match(wallDeckCard, /scaleMode="review-card-capped"/);
+  assert.match(wallDeckCard, /scaleMode="proportional"/);
 });

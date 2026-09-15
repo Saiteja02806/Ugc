@@ -2,6 +2,10 @@ import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import {
+  buildBusinessFactSnapshot,
+  type BusinessFactSnapshot,
+} from "@/lib/business-profiles/fact-catalog";
 import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
 import { shouldDeliverCarouselJobMessage } from "@/lib/jobs/background-job-delivery-logic";
 import { sendBackgroundJobMessageWithBestEffortAttachment } from "@/lib/jobs/background-job-message-delivery";
@@ -12,6 +16,7 @@ import {
   getBackgroundJobById,
   listBackgroundJobsForUser,
   markBackgroundJobFailed,
+  type Json,
   type BackgroundJobRecord,
 } from "@/lib/jobs/background-jobs";
 import { retryAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
@@ -66,6 +71,22 @@ export async function enqueueTrendingReactionRefill(
 ): Promise<ReactionRefillResult> {
   const requestedCount = Math.max(1, Math.min(12, Math.trunc(params.requestedCount)));
   const currentActiveCount = Math.max(0, Math.trunc(params.currentActiveCount));
+  const generationContext = buildReactionGenerationContext(profile);
+
+  // There is deliberately no minimum catalog size: one approved fact can
+  // ground any number of slots by cycling deterministically. But a V2
+  // business-generation job with zero facts would create a generic meme that
+  // looks like marketing without a factual basis, so do not enqueue it.
+  if (generationContext.factSnapshot.facts.length === 0) {
+    return {
+      kind: "coverage_shortfall",
+      message: "Reaction Reels need at least one approved Business Context fact. Add a real customer pain, audience, capability, or differentiator, then apply the draft before generating more.",
+      missingCount: requestedCount,
+      readyCount: currentActiveCount,
+      requestedCount,
+    };
+  }
+
   const requestPrefix = getReactionRequestPrefix(profile, params.dailyFeedKey);
   const existingJobs = await listBackgroundJobsForUser({
     jobType: REACTION_GENERATION_JOB_TYPE,
@@ -85,7 +106,7 @@ export async function enqueueTrendingReactionRefill(
     input: {
       businessProfileId: profile.id,
       businessProfileVersion: profile.profileVersion,
-      generationContext: buildReactionGenerationContext(profile),
+      generationContext: toJsonReactionGenerationContext(generationContext),
       generationOrigin: "business_generation",
       projectId: profile.projectId,
       requestKey,
@@ -246,19 +267,61 @@ export function getCompletedReactionCoverageShortfall(params: {
   return null;
 }
 
-function buildReactionGenerationContext(profile: BusinessProfileRecord) {
+export const REACTION_GROUNDING_CONTEXT_VERSION = "reaction-grounding-v2" as const;
+
+export type ReactionGenerationContextSnapshot = {
+  audience: readonly string[];
+  commonSituations: readonly string[];
+  contextVersion: typeof REACTION_GROUNDING_CONTEXT_VERSION;
+  desiredOutcomes: readonly string[];
+  factSnapshot: BusinessFactSnapshot;
+  pains: readonly string[];
+  productName: string | null;
+};
+
+export function buildReactionGenerationContext(profile: BusinessProfileRecord): ReactionGenerationContextSnapshot {
   const analysis = profile.context;
   return {
     audience: dedupe([...(analysis.targetAudience ?? []), ...(analysis.categories ?? []), analysis.category ?? ""]),
     commonSituations: dedupe([...(analysis.painPoints ?? []), analysis.mainProblem ?? ""]),
+    contextVersion: REACTION_GROUNDING_CONTEXT_VERSION,
     desiredOutcomes: dedupe([...(analysis.valueProps ?? []), analysis.mainPromise ?? ""]),
+    factSnapshot: buildBusinessFactSnapshot(analysis),
     pains: dedupe([...(analysis.painPoints ?? []), analysis.productSummary ?? ""]),
-    productName: analysis.businessName?.trim().slice(0, 160) || null,
+    productName: truncateByCodePoint(trimPostgresSpace(analysis.businessName ?? ""), 160) || null,
+  };
+}
+
+function toJsonReactionGenerationContext(context: ReactionGenerationContextSnapshot): Json {
+  return {
+    audience: [...context.audience],
+    commonSituations: [...context.commonSituations],
+    contextVersion: context.contextVersion,
+    desiredOutcomes: [...context.desiredOutcomes],
+    factSnapshot: {
+      claimsToAvoid: [...context.factSnapshot.claimsToAvoid],
+      facts: context.factSnapshot.facts.map((fact) => ({ ...fact })),
+      version: context.factSnapshot.version,
+    },
+    pains: [...context.pains],
+    productName: context.productName,
   };
 }
 
 function dedupe(values: readonly string[]) {
-  return [...new Set(values.map((value) => value.trim()).filter(Boolean))].slice(0, 12);
+  // Keep V2 field values byte-for-byte compatible with the existing
+  // reaction_context_string_list_v1 SQL helper, which uses btrim's default
+  // ASCII-space behavior. The business-profile schema already trims normal
+  // user input; this avoids a rare legacy-data mismatch at job creation.
+  return [...new Set(values.map(trimPostgresSpace).filter(Boolean))].slice(0, 12);
+}
+
+function truncateByCodePoint(value: string, limit: number) {
+  return Array.from(value).slice(0, limit).join("");
+}
+
+function trimPostgresSpace(value: string) {
+  return value.replace(/^ +| +$/gu, "");
 }
 
 function isMatchingReactionGenerationJob(
@@ -292,7 +355,9 @@ function hasMatchingReactionGenerationContext(
     input &&
     JSON.stringify(input.audience) === JSON.stringify(expected.audience) &&
     JSON.stringify(input.commonSituations) === JSON.stringify(expected.commonSituations) &&
+    input.contextVersion === expected.contextVersion &&
     JSON.stringify(input.desiredOutcomes) === JSON.stringify(expected.desiredOutcomes) &&
+    JSON.stringify(input.factSnapshot) === JSON.stringify(expected.factSnapshot) &&
     JSON.stringify(input.pains) === JSON.stringify(expected.pains) &&
     (input.productName ?? null) === expected.productName,
   );

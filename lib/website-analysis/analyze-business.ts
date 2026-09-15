@@ -4,6 +4,7 @@ import OpenAI from "openai";
 import { zodResponseFormat } from "openai/helpers/zod";
 
 import { WebsiteAnalysisError } from "@/lib/website-analysis/errors";
+import { getBusinessContextModelRequest } from "@/lib/business-profiles/model";
 import type { ScrapedWebsitePage } from "@/lib/website-analysis/firecrawl";
 import {
   WebsiteBusinessAnalysisSchema,
@@ -13,7 +14,6 @@ import {
 const MAX_PAGE_CHARS = 7_000;
 const MAX_TOTAL_CHARS = 24_000;
 const MAX_DESCRIPTION_CHARS = 4_000;
-const DEFAULT_MODEL = "gpt-4o-mini";
 
 let openaiClient: OpenAI | null = null;
 
@@ -91,8 +91,7 @@ export async function analyzeWebsiteBusiness({
   }
 
   const completion = await getOpenAIClient().chat.completions.parse({
-    model: process.env.OPENAI_WEBSITE_ANALYSIS_MODEL ?? DEFAULT_MODEL,
-    temperature: 0.2,
+    ...getBusinessContextModelRequest(),
     messages: [
       {
         role: "system",
@@ -157,8 +156,7 @@ export async function analyzeBusinessDescription(
   }
 
   const completion = await getOpenAIClient().chat.completions.parse({
-    model: process.env.OPENAI_WEBSITE_ANALYSIS_MODEL ?? DEFAULT_MODEL,
-    temperature: 0.2,
+    ...getBusinessContextModelRequest(),
     messages: [
       {
         role: "system",

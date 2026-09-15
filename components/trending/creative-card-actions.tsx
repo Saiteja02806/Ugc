@@ -3,6 +3,7 @@
 import { Check, Pencil, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import reviewLayout from "./trending-review-layout.module.css";
 
 const LAPTOP_AND_DESKTOP_DECISION_BUTTON_CLASS =
   "min-[1024px]:size-[clamp(3.5rem,calc((100dvh-252px)*0.155),clamp(4.75rem,calc(124.5px-3.25vw),5rem))] min-[1024px]:[&_svg:not([class*='size-'])]:size-[clamp(1.25rem,calc((100dvh-252px)*0.0543),clamp(1.625rem,calc(44.125px-1.18vw),1.75rem))]";
@@ -36,7 +37,7 @@ export function CreativeDecisionActions({
     <div
       data-deck-control
       aria-label="Creative decisions"
-      className="mx-auto mt-3.5 sm:mt-4 flex items-center justify-center gap-4 sm:gap-5"
+      className={`mx-auto mt-3.5 sm:mt-4 flex items-center justify-center gap-4 sm:gap-5 ${reviewLayout.compactHeightDecisionGroup}`}
       role="group"
     >
       <div className="flex flex-col items-center gap-1.5">
@@ -48,9 +49,13 @@ export function CreativeDecisionActions({
           title={rejectTitle}
           disabled={disabled || rejectDisabled}
           onClick={onReject}
-          className={`transition-transform duration-150 active:scale-95 ${LAPTOP_AND_DESKTOP_DECISION_BUTTON_CLASS}`}
+          className={`transition-transform duration-150 active:scale-95 ${LAPTOP_AND_DESKTOP_DECISION_BUTTON_CLASS} ${reviewLayout.compactHeightDecisionButton}`}
         >
-          <X data-icon="inline-start" aria-hidden="true" />
+          <X
+            data-icon="inline-start"
+            className={reviewLayout.compactHeightDecisionIcon}
+            aria-hidden="true"
+          />
         </Button>
         <span className="hidden items-center gap-1 text-[11px] font-medium text-muted sm:inline-flex">
           <kbd className="rounded border border-border/80 bg-card-muted px-1.5 py-0.5 text-[10px] font-mono font-semibold text-foreground/75">
@@ -69,9 +74,13 @@ export function CreativeDecisionActions({
           title={acceptTitle}
           disabled={disabled || acceptDisabled}
           onClick={onAccept}
-          className={`transition-transform duration-150 active:scale-95 ${LAPTOP_AND_DESKTOP_DECISION_BUTTON_CLASS}`}
+          className={`transition-transform duration-150 active:scale-95 ${LAPTOP_AND_DESKTOP_DECISION_BUTTON_CLASS} ${reviewLayout.compactHeightDecisionButton}`}
         >
-          <Check data-icon="inline-start" aria-hidden="true" />
+          <Check
+            data-icon="inline-start"
+            className={reviewLayout.compactHeightDecisionIcon}
+            aria-hidden="true"
+          />
         </Button>
         <span className="hidden items-center gap-1 text-[11px] font-medium text-muted sm:inline-flex">
           {acceptCaption}

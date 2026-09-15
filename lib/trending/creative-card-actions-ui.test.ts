@@ -109,6 +109,8 @@ test("uses two accessible circular decision targets and a compact Edit pill", ()
     actions,
     /min-\[1024px\]:size-\[clamp\(3\.5rem,calc\(\(100dvh-252px\)\*0\.155\),clamp\(4\.75rem,calc\(124\.5px-3\.25vw\),5rem\)\)\]/,
   );
+  assert.match(actions, /reviewLayout\.compactHeightDecisionButton/);
+  assert.match(actions, /reviewLayout\.compactHeightDecisionGroup/);
   assert.equal((actions.match(/size="creative-icon"/g) ?? []).length, 2);
   assert.equal((actions.match(/size="creative-edit"/g) ?? []).length, 1);
   assert.match(buttons, /"creative-icon":\s*\n\s*"size-14[^"]*sm:size-16/);
@@ -446,6 +448,10 @@ test("centers a card-sized review frame over visible inert next-card layers", ()
   assert.match(
     workspace,
     /VERTICAL_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(76vw,230px,calc\(\(100dvh-348px\)\*0\.5625\)\)\] min-\[1024px\]:w-\[min\(76vw,clamp\(260px,calc\(440\.5px-11\.75vw\),280px\),calc\(\(100dvh-252px\)\*0\.5625\)\)\] min-\[1024px\]:max-\[1536px\]:w-\[min\(76vw,clamp\(260px,calc\(802\.12px-35\.294vw\),320px\),max\(280px,calc\(\(100dvh-200px\)\*0\.5625\)\)\)\]"/,
+  );
+  assert.match(
+    reviewLayout,
+    /@media \(min-width: 1024px\) and \(max-height: 820px\)[\s\S]*\.stage\[data-review-format="carousel"\] \[data-trending-review-frame\][\s\S]*translateY\(-16px\)[\s\S]*\.compactHeightCarouselFrame[\s\S]*width: min\(72vw, 300px, calc\(\(100dvh - 330px\) \* 0\.64\)\)/,
   );
   assert.match(
     workspace,

@@ -409,9 +409,9 @@ const decisionOutboxMemoryFallback = new Map<
 const SWIPE_THRESHOLD_PX = 90;
 const SWIPE_EXIT_DURATION_MS = 220;
 const MAX_ROTATION_DEGREES = 5;
-// Compact laptops need readable previews even when OS scaling leaves a short
-// CSS viewport. Allow vertical scrolling below the size floor; taper the caps
-// back to the existing desktop sizes by 1536px without a sudden size jump.
+// Compact laptops need readable previews without pushing the decision controls
+// below the first viewport. Keep the normal desktop scale; short-height caps
+// are applied by the scoped review layout stylesheet.
 const CAROUSEL_REVIEW_CARD_WIDTH_CLASS =
   "w-[min(78vw,300px,calc((100dvh-348px)*0.8))] min-[1024px]:max-[1536px]:w-[min(78vw,clamp(300px,calc(902.12px-39.2vw),380px),max(320px,calc((100dvh-300px)*0.8)))]";
 const VERTICAL_REVIEW_CARD_WIDTH_CLASS =
@@ -3281,7 +3281,10 @@ function getTrendingReviewCardFrameClass(
   format: TrendingCandidate["format"],
 ) {
   if (format === "carousel") {
-    return CAROUSEL_REVIEW_CARD_FRAME_CLASS;
+    return cn(
+      CAROUSEL_REVIEW_CARD_FRAME_CLASS,
+      reviewLayout.compactHeightCarouselFrame,
+    );
   }
 
   return format === "wall_text"
@@ -4290,6 +4293,7 @@ function CarouselDeckCard({
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
           CAROUSEL_REVIEW_CARD_FRAME_CLASS,
+          reviewLayout.compactHeightCarouselFrame,
           "origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
           isActive
             ? "pointer-events-auto cursor-grab active:cursor-grabbing"

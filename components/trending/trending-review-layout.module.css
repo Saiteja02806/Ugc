@@ -6,3 +6,34 @@
     padding-top: 32px;
   }
 }
+
+/* A 1366×768 laptop has enough room for review only when the card and its
+   decisions compose as one unit. Raise the entire frame on short desktops;
+   the Carousel rule replaces its normal 12px downward desktop offset. */
+@media (min-width: 1024px) and (max-height: 820px) {
+  .stage[data-review-format="carousel"] [data-trending-review-frame] {
+    transform: translateY(-16px);
+  }
+
+  .stage[data-review-format="video"] [data-trending-review-frame] {
+    transform: translateY(-16px);
+  }
+
+  .stage[data-review-format="carousel"] .compactHeightCarouselFrame {
+    width: min(72vw, 300px, calc((100dvh - 330px) * 0.64));
+  }
+
+  div.compactHeightDecisionGroup {
+    margin-top: 0.625rem;
+  }
+
+  button.compactHeightDecisionButton {
+    height: clamp(3.5rem, calc((100dvh - 252px) * 0.124), 4rem);
+    width: clamp(3.5rem, calc((100dvh - 252px) * 0.124), 4rem);
+  }
+
+  .compactHeightDecisionButton > .compactHeightDecisionIcon {
+    height: clamp(1.25rem, calc((100dvh - 252px) * 0.0435), 1.5rem);
+    width: clamp(1.25rem, calc((100dvh - 252px) * 0.0435), 1.5rem);
+  }
+}

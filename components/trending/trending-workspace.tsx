@@ -138,11 +138,6 @@ const TrendingFirstVisitWalkthrough = dynamic(
     ),
   { ssr: false },
 );
-const TrendingApplicationDemo = dynamic(
-  () => import("@/components/trending/trending-application-demo").then((module) => module.TrendingApplicationDemo),
-  { ssr: false },
-);
-const SHOW_TRENDING_FIRST_VISIT_WALKTHROUGH = false;
 
 const HookVideoComposer = dynamic(
   () =>
@@ -1276,13 +1271,12 @@ export function TrendingWorkspace() {
                 }}
               />
             </div>
-            {SHOW_TRENDING_FIRST_VISIT_WALKTHROUGH && user?.uid ? (
+            {user?.uid ? (
               <TrendingFirstVisitWalkthrough
                 key={user.uid}
                 userId={user.uid}
               />
             ) : null}
-            {!SHOW_TRENDING_FIRST_VISIT_WALKTHROUGH ? <TrendingApplicationDemo /> : null}
           </div>
         </section>
         {contentMixOpen ? (
@@ -3321,9 +3315,9 @@ function getTrendingDecisionControlsPositionClass(
 
   if (hasVerticalNextCard) {
     // During a Carousel swipe the vertical next card grows from its preview
-    // size to its full 9:16 height. Reserve that promoted height so it cannot
-    // run into the decision controls before it becomes the active card.
-    return "top-full min-[1024px]:top-[calc(100%+clamp(44px,calc((100dvh-600px)*0.5),80px))]";
+    // size to its full 9:16 height. Keep a compact buffer so it cannot run
+    // into the decision controls without leaving a visually detached gap.
+    return "top-full min-[1024px]:top-[calc(100%+clamp(28px,calc((100dvh-600px)*0.32),52px))]";
   }
 
   // Keep the existing Carousel-only decision-row position when every visible

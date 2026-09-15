@@ -255,6 +255,12 @@ test("teaches new Trending users the difference between editing one post and adj
     /<div className="min-w-0 flex-1">[\s\S]*<TrendingFeedGallery[\s\S]*<TrendingFirstVisitWalkthrough/,
   );
   assert.match(
+    workspace,
+    /\{user\?\.uid \? \([\s\S]*<TrendingFirstVisitWalkthrough[\s\S]*userId=\{user\.uid\}/,
+  );
+  assert.doesNotMatch(workspace, /TrendingApplicationDemo/);
+  assert.doesNotMatch(workspace, /SHOW_TRENDING_FIRST_VISIT_WALKTHROUGH/);
+  assert.match(
     firstVisitGuide,
     /data-walkthrough-format-label[\s\S]*data-walkthrough-media-frame/,
   );
@@ -470,7 +476,7 @@ test("centers a card-sized review frame over visible inert next-card layers", ()
   );
   assert.match(
     workspace,
-    /function getTrendingDecisionControlsPositionClass[\s\S]*hasVerticalNextCard: boolean[\s\S]*if \(hasVerticalNextCard\)[\s\S]*top-full min-\[1024px\]:top-\[calc\(100%\+clamp\(44px,calc\(\(100dvh-600px\)\*0\.5\),80px\)\)\][\s\S]*top-full min-\[1024px\]:top-\[calc\(100%\+clamp\(24px,calc\(\(100dvh-680px\)\*0\.72\),52px\)\)\]/,
+    /function getTrendingDecisionControlsPositionClass[\s\S]*hasVerticalNextCard: boolean[\s\S]*if \(hasVerticalNextCard\)[\s\S]*top-full min-\[1024px\]:top-\[calc\(100%\+clamp\(28px,calc\(\(100dvh-600px\)\*0\.32\),52px\)\)\][\s\S]*top-full min-\[1024px\]:top-\[calc\(100%\+clamp\(24px,calc\(\(100dvh-680px\)\*0\.72\),52px\)\)\]/,
   );
   assert.equal(
     (workspace.match(/data-trending-card-state=/g) ?? []).length,

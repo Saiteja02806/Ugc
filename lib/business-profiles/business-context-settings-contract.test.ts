@@ -8,6 +8,10 @@ const settingsPanel = readFileSync(
   "components/settings/business-context-settings.tsx",
   "utf8",
 );
+const settingsForm = readFileSync(
+  "lib/business-profiles/business-context-form.ts",
+  "utf8",
+);
 
 function sourceBetween(source: string, start: string, end: string) {
   const startIndex = source.indexOf(start);
@@ -75,4 +79,18 @@ test("only a fact-ready exact draft can apply, without prebuilding today's feed"
   assert.match(settingsPanel, /Needs factual anchors/);
   assert.match(settingsPanel, /Apply to future content/);
   assert.match(settingsPanel, /disabled=\{busyAction !== null \|\| !canApplyDraft\}/);
+});
+
+test("list fields preserve raw typing and normalize only on Save draft", () => {
+  const listUpdater = sourceBetween(
+    settingsPanel,
+    "function updateListField",
+    "async function runAction",
+  );
+
+  assert.match(listUpdater, /setListText/);
+  assert.doesNotMatch(listUpdater, /split\(|trim\(/);
+  assert.match(settingsPanel, /applyBusinessContextListText\(context, listText\)/);
+  assert.match(settingsForm, /split\(\/\\r\?\\n\/u\)/);
+  assert.doesNotMatch(settingsForm, /split\(\/\\n\|,\/u\)/);
 });

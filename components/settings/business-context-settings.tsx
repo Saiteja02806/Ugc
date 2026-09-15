@@ -8,6 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import {
+  applyBusinessContextListText,
+  createBusinessContextListText,
+  type BusinessContextListField,
+  type BusinessContextListText,
+} from "@/lib/business-profiles/business-context-form";
 import type { WebsiteBusinessAnalysis } from "@/lib/website-analysis/schema";
 
 type ContextResponse = {
@@ -28,6 +34,7 @@ type ApiResponse = { message?: string; ok: boolean; profile?: ContextResponse; r
 export function BusinessContextSettings() {
   const [profile, setProfile] = useState<ContextResponse | null>(null);
   const [context, setContext] = useState<WebsiteBusinessAnalysis | null>(null);
+  const [listText, setListText] = useState<BusinessContextListText | null>(null);
   const [source, setSource] = useState("");
   const [busyAction, setBusyAction] = useState<"apply" | "reanalyze" | "save_draft" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -61,8 +68,10 @@ export function BusinessContextSettings() {
   );
 
   function setLoadedProfile(next: ContextResponse) {
+    const nextContext = normalizeContext(next.draft?.context ?? next.activeContext);
     setProfile(next);
-    setContext(normalizeContext(next.draft?.context ?? next.activeContext));
+    setContext(nextContext);
+    setListText(createBusinessContextListText(nextContext));
     setSource(next.draft?.source ?? "");
   }
 
@@ -70,16 +79,14 @@ export function BusinessContextSettings() {
     setContext((current) => current ? { ...current, [field]: value || null } : current);
   }
 
-  function updateListField(field: "categories" | "claimsToAvoid" | "differentiators" | "painPoints" | "targetAudience" | "valueProps", value: string) {
-    const limit = field === "categories" ? 3 : field === "targetAudience" ? 5 : 6;
-    setContext((current) => current ? {
-      ...current,
-      [field]: value.split(/\n|,/u).map((item) => item.trim()).filter(Boolean).slice(0, limit),
-    } : current);
+  function updateListField(field: BusinessContextListField, value: string) {
+    // Keep every keystroke exactly as entered. List parsing happens only for
+    // the explicit Save draft action, not while a person is composing copy.
+    setListText((current) => current ? { ...current, [field]: value } : current);
   }
 
   async function runAction(action: "apply" | "reanalyze" | "save_draft") {
-    if (!profile || !context) return;
+    if (!profile || !context || !listText) return;
     setBusyAction(action);
     setError(null);
     setMessage(null);
@@ -101,7 +108,9 @@ export function BusinessContextSettings() {
             }
           : {
               action,
-              context: normalizeContext(context),
+              context: normalizeContext(
+                applyBusinessContextListText(context, listText),
+              ),
               expectedDraftUpdatedAt: profile.draft?.updatedAt ?? null,
               expectedProfileVersion: profile.activeProfileVersion,
               source: source || null,
@@ -126,7 +135,7 @@ export function BusinessContextSettings() {
     }
   }
 
-  if (!profile || !context) {
+  if (!profile || !context || !listText) {
     return (
       <div className="flex min-h-48 items-center justify-center text-sm text-muted" aria-live="polite">
         {error ? error : <><LoaderCircle className="mr-2 size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Loading Business Context…</>}
@@ -160,15 +169,15 @@ export function BusinessContextSettings() {
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Business name"><Input value={context.businessName ?? ""} onChange={(event) => updateTextField("businessName", event.target.value)} /></Field>
         <Field label="Category"><Input value={context.category ?? ""} onChange={(event) => updateTextField("category", event.target.value)} /></Field>
-        <Field label="Category tags (one per line)"><Textarea value={(context.categories ?? []).join("\n")} onChange={(event) => updateListField("categories", event.target.value)} /></Field>
+        <Field label="Category tags (one per line)"><Textarea value={listText.categories} onChange={(event) => updateListField("categories", event.target.value)} /></Field>
         <Field label="Product summary" className="sm:col-span-2"><Textarea value={context.productSummary ?? ""} onChange={(event) => updateTextField("productSummary", event.target.value)} /></Field>
         <Field label="Main customer problem" className="sm:col-span-2"><Textarea value={context.mainProblem ?? ""} onChange={(event) => updateTextField("mainProblem", event.target.value)} /></Field>
         <Field label="Main promise" className="sm:col-span-2"><Textarea value={context.mainPromise ?? ""} onChange={(event) => updateTextField("mainPromise", event.target.value)} /></Field>
-        <Field label="Target audience (one per line)" className="sm:col-span-2"><Textarea value={context.targetAudience.join("\n")} onChange={(event) => updateListField("targetAudience", event.target.value)} /></Field>
-        <Field label="Customer pain points (one per line)" className="sm:col-span-2"><Textarea value={context.painPoints.join("\n")} onChange={(event) => updateListField("painPoints", event.target.value)} /></Field>
-        <Field label="Approved capabilities / value (one per line)" className="sm:col-span-2"><Textarea value={context.valueProps.join("\n")} onChange={(event) => updateListField("valueProps", event.target.value)} /></Field>
-        <Field label="Differentiators (one per line)" className="sm:col-span-2"><Textarea value={context.differentiators.join("\n")} onChange={(event) => updateListField("differentiators", event.target.value)} /></Field>
-        <Field label="Claims to avoid (one per line)" className="sm:col-span-2"><Textarea value={context.claimsToAvoid.join("\n")} onChange={(event) => updateListField("claimsToAvoid", event.target.value)} /></Field>
+        <Field label="Target audience (one per line)" className="sm:col-span-2"><Textarea value={listText.targetAudience} onChange={(event) => updateListField("targetAudience", event.target.value)} /></Field>
+        <Field label="Customer pain points (one per line)" className="sm:col-span-2"><Textarea value={listText.painPoints} onChange={(event) => updateListField("painPoints", event.target.value)} /></Field>
+        <Field label="Approved capabilities / value (one per line)" className="sm:col-span-2"><Textarea value={listText.valueProps} onChange={(event) => updateListField("valueProps", event.target.value)} /></Field>
+        <Field label="Differentiators (one per line)" className="sm:col-span-2"><Textarea value={listText.differentiators} onChange={(event) => updateListField("differentiators", event.target.value)} /></Field>
+        <Field label="Claims to avoid (one per line)" className="sm:col-span-2"><Textarea value={listText.claimsToAvoid} onChange={(event) => updateListField("claimsToAvoid", event.target.value)} /></Field>
       </div>
 
       <div className="rounded-control border border-border bg-card-muted/35 p-4">
@@ -176,7 +185,7 @@ export function BusinessContextSettings() {
           <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-foreground-strong">Re-analyze factual source</p>
-            <p className="mt-1 text-sm leading-6 text-muted">Uses GPT-5.6 Luna with medium reasoning to produce a new draft. It cannot change live context on its own.</p>
+            <p className="mt-1 text-sm leading-6 text-muted">Creates a new draft from your factual source. It cannot change live context on its own.</p>
             <Textarea className="mt-3 min-h-28" placeholder={sourcePlaceholder} value={source} onChange={(event) => setSource(event.target.value)} />
           </div>
         </div>

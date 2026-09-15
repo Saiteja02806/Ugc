@@ -451,7 +451,7 @@ test("centers a card-sized review frame over visible inert next-card layers", ()
   );
   assert.match(
     reviewLayout,
-    /@media \(min-width: 1024px\) and \(max-height: 820px\)[\s\S]*\.stage\[data-review-format="carousel"\] \[data-trending-review-frame\][\s\S]*translateY\(-16px\)[\s\S]*\.compactHeightCarouselFrame[\s\S]*width: min\(72vw, 300px, calc\(\(100dvh - 330px\) \* 0\.64\)\)/,
+    /@media \(min-width: 1024px\) and \(max-height: 820px\)[\s\S]*\.stage\[data-review-format="carousel"\] \[data-trending-review-frame\][\s\S]*translateY\(-16px\)[\s\S]*\.compactHeightCarouselFrame[\s\S]*width: min\(72vw, 270px, calc\(\(100dvh - 326px\) \* 0\.61\)\)[\s\S]*\.compactHeightVerticalFrame[\s\S]*width: min\(72vw, 250px, calc\(\(100dvh - 324px\) \* 0\.5625\)\)[\s\S]*\.compactHeightWallTextFrame[\s\S]*width: min\(72vw, 260px, calc\(\(100dvh - 306px\) \* 0\.5625\)\)/,
   );
   assert.match(
     workspace,
@@ -463,6 +463,10 @@ test("centers a card-sized review frame over visible inert next-card layers", ()
   );
   assert.match(workspace, /data-trending-review-frame/);
   assert.match(workspace, /getTrendingReviewCardFrameClass\(activeCandidate\.format\)/);
+  assert.match(
+    workspace,
+    /WALL_TEXT_REVIEW_CARD_FRAME_CLASS,[\s\S]*reviewLayout\.compactHeightWallTextFrame[\s\S]*VERTICAL_REVIEW_CARD_FRAME_CLASS,[\s\S]*reviewLayout\.compactHeightVerticalFrame/,
+  );
   assert.doesNotMatch(workspace, /w-full max-w-3xl flex-col items-center/);
   assert.match(
     workspace,
@@ -620,11 +624,11 @@ test("preserves separate responsive 9:16 frames for Wall-of-Text and video cards
   );
   assert.equal(
     (workspace.match(/VERTICAL_REVIEW_CARD_FRAME_CLASS,/g) ?? []).length,
-    2,
+    3,
   );
   assert.equal(
     (workspace.match(/WALL_TEXT_REVIEW_CARD_FRAME_CLASS,/g) ?? []).length,
-    1,
+    2,
   );
   assert.match(
     workspace,

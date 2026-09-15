@@ -9,25 +9,26 @@ rendering, database schema, review scripts, or frontend behavior.
 
 ## Product Goal
 
-### Compact-laptop Trending readability (2026-09-13)
+### Compact-laptop Trending composition (2026-09-15)
 
-At 1024-1535 CSS pixels wide, Trending now prioritizes readable media over
-fitting the entire deck into a short viewport. Slideshow cards grow to a 380px
-cap, and Hook, Wall-of-Text, and Reaction cards to 320px. Caps taper smoothly
-to the existing desktop widths by 1536px. Height-based sizing retains a 320px
-Slideshow / 280px vertical-card width floor within those caps; shorter windows
-can scroll to reach the decisions instead of continually shrinking the media.
-Compact-laptop decisions sit beside the card in a vertical pair, with progress
-below them. Reduced stage padding keeps the enlarged preview and actions in
-view together, including mixed 4:5 / 9:16 stacks. Mobile and 1536px-and-wider
-sizing and below-card controls stay unchanged. Physical screen inches are
-not detectable; the CSS viewport accounts for resolution and display scaling.
+On a short desktop viewport (at least 1024px wide and no taller than 820px),
+Trending reserves one clear vertical unit for the format label, review card,
+decision buttons, and remaining-content text. This means the first 1366×768
+viewport must show the complete controls without scrolling and without a
+format pill colliding with the page subtitle or card stack.
 
-Wall-of-Text feed overlays scale proportionally with their media, including
-above the previous 277px review-text cap, so enlarging the card also enlarges
-its text, outline, and spacing without changing saved line breaks. The editor's
-capped B treatment and rendered assets remain unchanged. This supersedes the
-earlier compact-laptop and 300px Slideshow review-size decisions below.
+Within that short-height range, the review caps are 270px for a 4:5 Slideshow,
+250px for Hook and Reaction 9:16 video, and 260px for Wall-of-Text. The normal
+larger desktop scale remains unchanged on taller viewports. Labels retain a
+24px gap above their active card; a Slideshow with a taller next-card layer
+keeps its existing extra clearance. Decisions remain a below-card pair with
+progress below them. Physical screen inches are not detectable, so CSS viewport
+height—not the device's marketed inch size—is the source of this behavior.
+
+Wall-of-Text feed overlays scale proportionally with their media, preserving
+saved line breaks, text outline, and spacing. The editor's capped B treatment
+and rendered assets remain unchanged. This supersedes the earlier
+compact-laptop and 300px Slideshow review-size decisions below.
 
 Slideshow review images use `object-contain` at every viewport width. Normal
 4:5 renders fill the frame; different source ratios retain their entire image

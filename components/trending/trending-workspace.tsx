@@ -3288,8 +3288,14 @@ function getTrendingReviewCardFrameClass(
   }
 
   return format === "wall_text"
-    ? WALL_TEXT_REVIEW_CARD_FRAME_CLASS
-    : VERTICAL_REVIEW_CARD_FRAME_CLASS;
+    ? cn(
+        WALL_TEXT_REVIEW_CARD_FRAME_CLASS,
+        reviewLayout.compactHeightWallTextFrame,
+      )
+    : cn(
+        VERTICAL_REVIEW_CARD_FRAME_CLASS,
+        reviewLayout.compactHeightVerticalFrame,
+      );
 }
 
 function getTrendingFormatPillPositionClass(hasVerticalNextCard: boolean) {
@@ -3680,6 +3686,7 @@ function TrendingHookDeckCard({
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
           VERTICAL_REVIEW_CARD_FRAME_CLASS,
+          reviewLayout.compactHeightVerticalFrame,
           "relative origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
           isActive
             ? "pointer-events-auto cursor-grab active:cursor-grabbing"
@@ -3896,6 +3903,7 @@ function TrendingWallTextDeckCard({
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
           WALL_TEXT_REVIEW_CARD_FRAME_CLASS,
+          reviewLayout.compactHeightWallTextFrame,
           "relative origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
           isActive
             ? "pointer-events-auto cursor-grab active:cursor-grabbing"
@@ -4133,6 +4141,7 @@ function TrendingReactionDeckCard({
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
           VERTICAL_REVIEW_CARD_FRAME_CLASS,
+          reviewLayout.compactHeightVerticalFrame,
           "relative origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
           isActive
             ? "pointer-events-auto cursor-grab active:cursor-grabbing"

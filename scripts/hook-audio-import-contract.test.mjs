@@ -61,7 +61,7 @@ test("backend reads only approved and active audio", () => {
   assert.match(databaseAccess, /import "server-only"/u);
   assert.match(databaseAccess, /\.eq\("status", "active"\)/u);
   assert.match(databaseAccess, /\.eq\("review_status", "approved"\)/u);
-  assert.match(databaseAccess, /row\.loopable !== false/u);
+  assert.match(databaseAccess, /typeof row\.loopable !== "boolean"/u);
 });
 
 test("does not implement Preferred or per-video overrides", () => {

@@ -91,6 +91,7 @@ export type RenderScheduleCombinationPayload = {
     audioAssetId: string;
     audioUrl: string;
     durationSeconds: number;
+    fitMode: "loop" | "trim";
     selectionSource: "dynamic" | "format_preferred" | "video_locked";
   } | null;
   hookTrimEnd: number | null;
@@ -323,8 +324,8 @@ export async function renderScheduleCombinationToBuffer(
 ) {
   const workDir = await mkdtemp(join(tmpdir(), "ugc-combine-render-"));
   const hookInputPath = join(workDir, "hook-source-video");
-  const hookAudioPath = payload.hookAudio
-    ? join(workDir, "hook-audio")
+  const compositionAudioPath = payload.hookAudio
+    ? join(workDir, "composition-audio")
     : null;
   const demoInputPath = join(workDir, "demo-source-video");
   const hookSegmentPath = join(workDir, "hook-normalized.mp4");
@@ -355,6 +356,16 @@ export async function renderScheduleCombinationToBuffer(
       payload.hookAudio
         ? downloadAudioToBuffer(payload.hookAudio.audioUrl, {
             maxBytes: 50 * 1024 * 1024,
+          }).catch((error) => {
+            // Audio is optional for the composition. A storage outage must not
+            // turn an otherwise valid Trending video into a failed render.
+            logger.warn("Could not download composition soundtrack", {
+              audioAssetId: payload.hookAudio?.audioAssetId ?? null,
+              error: error instanceof Error ? error.message : String(error),
+              renderId: payload.renderId,
+              scheduleId: payload.scheduleId,
+            });
+            return null;
           })
         : Promise.resolve(null),
     ]);
@@ -362,8 +373,8 @@ export async function renderScheduleCombinationToBuffer(
     await Promise.all([
       writeFile(hookInputPath, hookBuffer),
       writeFile(demoInputPath, demoBuffer),
-      ...(hookAudioPath && hookAudioBuffer
-        ? [writeFile(hookAudioPath, hookAudioBuffer)]
+      ...(compositionAudioPath && hookAudioBuffer
+        ? [writeFile(compositionAudioPath, hookAudioBuffer)]
         : []),
       ...(hookOverlay ? [renderPreparedTextOverlayImage(hookOverlay)] : []),
     ]);
@@ -373,6 +384,7 @@ export async function renderScheduleCombinationToBuffer(
       demoVideoId: payload.demoVideoId,
       hookSize: hookBuffer.length,
       hookAudioAssetId: payload.hookAudio?.audioAssetId ?? null,
+      hookAudioFitMode: payload.hookAudio?.fitMode ?? null,
       hookAudioSize: hookAudioBuffer?.length ?? 0,
       hookVideoId: payload.hookVideoId,
       renderId: payload.renderId,
@@ -381,7 +393,6 @@ export async function renderScheduleCombinationToBuffer(
 
     await normalizeCombinationSegment({
       inputPath: hookInputPath,
-      hookAudioPath,
       outputPath: hookSegmentPath,
       payload,
       preparedTextOverlay: hookOverlay,
@@ -389,7 +400,6 @@ export async function renderScheduleCombinationToBuffer(
     });
     await normalizeCombinationSegment({
       inputPath: demoInputPath,
-      hookAudioPath: null,
       outputPath: demoSegmentPath,
       payload,
       preparedTextOverlay: null,
@@ -425,16 +435,53 @@ export async function renderScheduleCombinationToBuffer(
       renderId: payload.renderId,
     });
 
-    if (hookAudioPath) {
-      await runFfmpegCommand({
-        args: buildScheduleCombinationSoundtrackArgs({
-          hookAudioPath,
-          inputPath: concatenatedSegmentsPath,
-          outputPath,
-        }),
-        label: "schedule combination continuous Hook soundtrack",
-        renderId: payload.renderId,
-      });
+    if (compositionAudioPath && payload.hookAudio) {
+      let soundtrackApplied = false;
+
+      try {
+        const combinedDurationSeconds = await getMediaDurationSeconds(
+          concatenatedSegmentsPath,
+        );
+        const canApplySoundtrack =
+          payload.hookAudio.fitMode === "loop" ||
+          payload.hookAudio.durationSeconds + 0.08 >= combinedDurationSeconds;
+
+        if (!canApplySoundtrack) {
+          // Never let a stale duration or malformed job truncate the demo.
+          logger.warn("Skipping short composition soundtrack", {
+            audioAssetId: payload.hookAudio.audioAssetId,
+            audioDurationSeconds: payload.hookAudio.durationSeconds,
+            combinedDurationSeconds,
+            renderId: payload.renderId,
+            scheduleId: payload.scheduleId,
+          });
+        } else {
+          await runFfmpegCommand({
+            args: buildScheduleCombinationSoundtrackArgs({
+              audioFitMode: payload.hookAudio.fitMode,
+              audioPath: compositionAudioPath,
+              inputPath: concatenatedSegmentsPath,
+              outputPath,
+            }),
+            label: "schedule combination continuous soundtrack",
+            renderId: payload.renderId,
+          });
+          soundtrackApplied = true;
+        }
+      } catch (error) {
+        // A bad or transient soundtrack must not fail an otherwise valid
+        // Hook + Demo. Preserve the normalized segment audio and complete it.
+        logger.warn("Skipping unusable composition soundtrack", {
+          audioAssetId: payload.hookAudio.audioAssetId,
+          error: error instanceof Error ? error.message : String(error),
+          renderId: payload.renderId,
+          scheduleId: payload.scheduleId,
+        });
+      }
+
+      if (!soundtrackApplied) {
+        await copyFile(concatenatedSegmentsPath, outputPath);
+      }
     } else {
       await copyFile(concatenatedSegmentsPath, outputPath);
     }
@@ -1296,14 +1343,12 @@ async function runFfmpegCommand({
 }
 
 async function normalizeCombinationSegment({
-  hookAudioPath,
   inputPath,
   outputPath,
   payload,
   preparedTextOverlay,
   segmentLabel,
 }: {
-  hookAudioPath: string | null;
   inputPath: string;
   outputPath: string;
   payload: RenderScheduleCombinationPayload;
@@ -1313,7 +1358,6 @@ async function normalizeCombinationSegment({
   const hasAudio = await inputHasAudio(inputPath);
   const args = buildScheduleCombinationSegmentArgs({
     hasAudio,
-    hookAudioPath,
     inputPath,
     outputPath,
     payload,
@@ -1464,9 +1508,56 @@ async function validateRenderedVideoFile(
   });
 }
 
+async function getMediaDurationSeconds(inputPath: string) {
+  const ffprobePath = process.env.FFPROBE_PATH || "ffprobe";
+  const stdout = await new Promise<string>((resolve, reject) => {
+    const ffprobe = spawn(
+      ffprobePath,
+      ["-v", "error", "-show_entries", "format=duration", "-of", "json", inputPath],
+      { windowsHide: true },
+    );
+    let output = "";
+    let stderr = "";
+
+    ffprobe.stdout.on("data", (chunk: Buffer) => {
+      output += chunk.toString();
+    });
+    ffprobe.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString();
+    });
+    ffprobe.on("error", reject);
+    ffprobe.on("close", (code) => {
+      if (code === 0) {
+        resolve(output);
+        return;
+      }
+      reject(
+        new Error(
+          `ffprobe exited with code ${code ?? "unknown"}: ${stderr.trim()}`,
+        ),
+      );
+    });
+  });
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(stdout);
+  } catch {
+    throw new Error("ffprobe returned invalid JSON for the combined video.");
+  }
+
+  const durationSeconds = Number(
+    (parsed as RenderedVideoProbe | null)?.format?.duration,
+  );
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+    throw new Error("Combined video duration is unavailable.");
+  }
+
+  return durationSeconds;
+}
+
 export function buildScheduleCombinationSegmentArgs({
   hasAudio,
-  hookAudioPath = null,
   inputPath,
   outputPath,
   payload,
@@ -1474,7 +1565,6 @@ export function buildScheduleCombinationSegmentArgs({
   segmentLabel,
 }: {
   hasAudio: boolean;
-  hookAudioPath?: string | null;
   inputPath: string;
   outputPath: string;
   payload: RenderScheduleCombinationPayload;
@@ -1506,17 +1596,8 @@ export function buildScheduleCombinationSegmentArgs({
   }
 
   const auxiliaryAudioInputIndex = preparedTextOverlay ? 2 : 1;
-  const useHookAudio = isHook && Boolean(hookAudioPath);
 
-  if (isHook && !hasAudio && !useHookAudio) {
-    throw new Error(
-      "The Hook source is silent and no approved Hook audio was supplied.",
-    );
-  }
-
-  if (useHookAudio) {
-    args.push("-i", hookAudioPath as string);
-  } else if (!hasAudio) {
+  if (!hasAudio) {
     args.push(
       "-f",
       "lavfi",
@@ -1542,14 +1623,7 @@ export function buildScheduleCombinationSegmentArgs({
 
   args.push(
     "-map",
-    useHookAudio
-      ? `${auxiliaryAudioInputIndex}:a:0`
-      : hasAudio
-        ? "0:a:0"
-        : `${auxiliaryAudioInputIndex}:a:0`,
-    ...(useHookAudio
-      ? ["-filter:a", `volume=${TRENDING_LIBRARY_AUDIO_RENDER_GAIN}`]
-      : []),
+    hasAudio ? "0:a:0" : `${auxiliaryAudioInputIndex}:a:0`,
     "-c:v",
     "libx264",
     "-preset",
@@ -1576,16 +1650,18 @@ export function buildScheduleCombinationSegmentArgs({
 }
 
 /**
- * Replaces the concatenated segments' audio with the approved Hook soundtrack.
- * `apad` keeps the output video intact when a non-looping asset finishes before
- * the Demo, while `-shortest` trims an asset that outlasts the combined video.
+ * Replaces the concatenated segments' audio with one approved composition
+ * soundtrack. The selector guarantees that trim tracks cover the timeline;
+ * only human-approved loopable tracks receive FFmpeg's input-loop flag.
  */
 export function buildScheduleCombinationSoundtrackArgs({
-  hookAudioPath,
+  audioFitMode,
+  audioPath,
   inputPath,
   outputPath,
 }: {
-  hookAudioPath: string;
+  audioFitMode: "loop" | "trim";
+  audioPath: string;
   inputPath: string;
   outputPath: string;
 }) {
@@ -1593,14 +1669,15 @@ export function buildScheduleCombinationSoundtrackArgs({
     "-y",
     "-i",
     inputPath,
+    ...(audioFitMode === "loop" ? ["-stream_loop", "-1"] : []),
     "-i",
-    hookAudioPath,
+    audioPath,
     "-map",
     "0:v:0",
     "-map",
     "1:a:0",
     "-filter:a",
-    `volume=${TRENDING_LIBRARY_AUDIO_RENDER_GAIN},apad`,
+    `volume=${TRENDING_LIBRARY_AUDIO_RENDER_GAIN}`,
     "-c:v",
     "copy",
     "-c:a",

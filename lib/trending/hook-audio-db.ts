@@ -219,12 +219,19 @@ export async function getLockedHookAudioForVideo(params: {
 }
 
 /**
- * Resolves a catalog Hook's sound in the same order as the product contract:
- * a human video lock wins, then a reviewed format preference, then the
- * deterministic semantic matcher. A silent catalog clip never falls through
- * to a synthetic silence track.
+ * Resolves a catalog Hook's soundtrack in the same order as the product
+ * contract: a sufficiently long human video lock wins, then a reviewed
+ * format preference, then the deterministic semantic matcher. When there is
+ * no approved fit, the caller receives `null` and can render without a
+ * soundtrack instead of failing the video.
  */
 export async function resolveHookAudioForVideo(params: {
+  /**
+   * A final Hook + Demo render replaces segment audio with one approved
+   * soundtrack, even when the catalog Hook has its own source audio. Preview
+   * callers keep the historic behavior and leave source audio untouched.
+   */
+  allowSourceAudioReplacement?: boolean;
   draftId?: string | null;
   hookVideoId: string;
   suggestionId?: string | null;
@@ -232,8 +239,6 @@ export async function resolveHookAudioForVideo(params: {
   videoDurationSeconds?: number | null;
 }): Promise<ResolvedHookAudioSelection | null> {
   const hookVideoId = requireIdentifier(params.hookVideoId, "Hook video ID");
-  const locked = await getLockedHookAudioForVideo({ hookVideoId });
-  if (locked) return locked;
 
   const [videoResult, suggestionResult] = await Promise.all([
     getClient()
@@ -256,8 +261,9 @@ export async function resolveHookAudioForVideo(params: {
   }
 
   const video = videoResult.data;
-  if (video.has_audio !== false) {
-    // Catalog videos that already carry source audio keep that source audio.
+  if (video.has_audio !== false && !params.allowSourceAudioReplacement) {
+    // Preview-only callers keep catalog source audio. A final composition
+    // explicitly opts in below, so its soundtrack spans both Hook and Demo.
     return null;
   }
   if (
@@ -285,6 +291,14 @@ export async function resolveHookAudioForVideo(params: {
     fallback: Number(video.duration_seconds),
     requested: params.videoDurationSeconds,
   });
+  const locked = await getLockedHookAudioForVideo({ hookVideoId });
+
+  // Locks remain deliberately non-looping. A lock that covers the Hook but
+  // not the complete composition cannot be stretched or padded with silence;
+  // semantic selection below gets a chance to find a longer approved track.
+  if (locked && locked.durationSeconds >= videoDurationSeconds) {
+    return locked;
+  }
 
   const [assets, formatResult, preferencesResult] = await Promise.all([
     listActiveHookAudioAssets(),
@@ -323,11 +337,7 @@ export async function resolveHookAudioForVideo(params: {
     videoDurationSeconds,
   });
 
-  if (!selection) {
-    throw new Error(
-      "No approved Hook audio can cover this video's duration.",
-    );
-  }
+  if (!selection) return null;
 
   // A preview can be opened on a catalog video before a Hook suggestion has
   // been assigned. The audio is still safe to preview, but there is no valid
@@ -351,6 +361,7 @@ export async function resolveHookAudioForVideo(params: {
         match_score: selection.matchScore,
         matching_version: HOOK_AUDIO_MATCHING_VERSION,
         metadata: {
+          fitMode: selection.fitMode,
           resolver: "hook-audio-db",
           videoDurationSeconds,
         },
@@ -366,6 +377,35 @@ export async function resolveHookAudioForVideo(params: {
   }
 
   return { ...selection, hookVideoId };
+}
+
+/**
+ * Resolves a single soundtrack for the whole Hook + Demo timeline. A normal
+ * track must cover the composition; only a separately reviewed loopable asset
+ * may be returned with `fitMode: "loop"`.
+ */
+export async function resolveHookAudioForComposition(params: {
+  compositionDurationSeconds: number;
+  draftId?: string | null;
+  hookVideoId: string;
+  suggestionId?: string | null;
+  userId: string;
+}) {
+  if (
+    !Number.isFinite(params.compositionDurationSeconds) ||
+    params.compositionDurationSeconds <= 0
+  ) {
+    return null;
+  }
+
+  return resolveHookAudioForVideo({
+    allowSourceAudioReplacement: true,
+    draftId: params.draftId,
+    hookVideoId: params.hookVideoId,
+    suggestionId: params.suggestionId,
+    userId: params.userId,
+    videoDurationSeconds: params.compositionDurationSeconds,
+  });
 }
 
 export async function resolveHookAudioForPreview(params: {
@@ -555,7 +595,7 @@ function parseActiveAsset(row: HookAudioAssetRow): HookAudioAsset | null {
   if (
     row.status !== "active" ||
     row.review_status !== "approved" ||
-    row.loopable !== false ||
+    typeof row.loopable !== "boolean" ||
     !row.audio_url.startsWith("https://") ||
     !Number.isFinite(Number(row.duration_seconds)) ||
     Number(row.duration_seconds) <= 0 ||
@@ -580,7 +620,7 @@ function parseActiveAsset(row: HookAudioAssetRow): HookAudioAsset | null {
       row.impact_at_seconds === null
         ? null
         : Number(row.impact_at_seconds),
-    loopable: false,
+    loopable: row.loopable,
     moods: row.moods,
   };
 }

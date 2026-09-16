@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 
-export const HOOK_AUDIO_MATCHING_VERSION = "hook-audio-match-v1" as const;
+export const HOOK_AUDIO_MATCHING_VERSION = "hook-audio-match-v2" as const;
+export const HOOK_COMPOSITION_AUDIO_RENDER_VERSION =
+  "hook-composition-audio-v1" as const;
 
 export const HOOK_AUDIO_MOODS = [
   "curious",
@@ -38,7 +40,8 @@ export type HookAudioAsset = {
   hookTypes: HookAudioType[];
   id: string;
   impactAtSeconds: number | null;
-  loopable: false;
+  /** Set only after a human has approved the asset's loop boundary. */
+  loopable: boolean;
   moods: HookAudioMood[];
 };
 
@@ -47,6 +50,7 @@ export type HookAudioSelection = {
   audioAssetId: string;
   audioUrl: string;
   durationSeconds: number;
+  fitMode: "loop" | "trim";
   intent: HookAudioIntent;
   matchScore: number;
   matchingVersion: typeof HOOK_AUDIO_MATCHING_VERSION;
@@ -156,11 +160,17 @@ export function selectHookAudio(params: {
     return null;
   }
 
-  const eligible = params.assets.filter(
-    (asset) =>
-      asset.loopable === false &&
-      asset.durationSeconds >= params.videoDurationSeconds,
+  // A complete approved track always wins. This prevents a short loop from
+  // displacing a track that can naturally cover the whole Hook + Demo.
+  const directFitAssets = params.assets.filter(
+    (asset) => asset.durationSeconds >= params.videoDurationSeconds,
   );
+  const fitMode = directFitAssets.length > 0 ? "trim" : "loop";
+  const eligible =
+    directFitAssets.length > 0
+      ? directFitAssets
+      : params.assets.filter((asset) => asset.loopable === true);
+
   if (eligible.length === 0) return null;
 
   const preferred = params.preferredAssetIds
@@ -184,6 +194,7 @@ export function selectHookAudio(params: {
     audioAssetId: selected.id,
     audioUrl: selected.audioUrl,
     durationSeconds: selected.durationSeconds,
+    fitMode,
     intent: { ...params.intent },
     matchScore: scoreHookAudioMatch(selected, params.intent),
     matchingVersion: HOOK_AUDIO_MATCHING_VERSION,

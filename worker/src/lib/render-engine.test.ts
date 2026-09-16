@@ -174,6 +174,7 @@ test("applies Hook trim and text only to the opening segment", () => {
       audioAssetId: "hook_audio_029",
       audioUrl: "https://cdn.example.com/EWW.mp3",
       durationSeconds: 14.08,
+      fitMode: "trim" as const,
       selectionSource: "video_locked" as const,
     },
     hookTrimEnd: 4.5,
@@ -189,7 +190,6 @@ test("applies Hook trim and text only to the opening segment", () => {
   };
   const hookArgs = buildScheduleCombinationSegmentArgs({
     hasAudio: false,
-    hookAudioPath: "EWW.mp3",
     inputPath: "hook.mp4",
     outputPath: "hook-normalized.mp4",
     payload,
@@ -215,31 +215,34 @@ test("applies Hook trim and text only to the opening segment", () => {
   assert.ok(hookArgs.includes("hook-overlay.png"));
   assert.ok(hookArgs.includes("-filter_complex"));
   assert.ok(hookArgs.includes("3.250"));
-  assert.ok(hookArgs.includes("EWW.mp3"));
+  assert.equal(hookArgs.includes("EWW.mp3"), false);
   assert.ok(hookArgs.includes("2:a:0"));
-  assert.ok(hookArgs.includes("volume=0.45"));
+  assert.ok(
+    hookArgs.includes("anullsrc=channel_layout=stereo:sample_rate=48000"),
+  );
   assert.equal(demoArgs.includes("-ss"), false);
   assert.equal(demoArgs.includes("-t"), false);
   assert.equal(demoArgs.includes("-filter_complex"), false);
 
-  assert.throws(
-    () =>
-      buildScheduleCombinationSegmentArgs({
-        hasAudio: false,
-        hookAudioPath: null,
-        inputPath: "silent-hook.mp4",
-        outputPath: "silent-hook-normalized.mp4",
-        payload: { ...payload, hookAudio: null },
-        preparedTextOverlay,
-        segmentLabel: "hook",
-      }),
-    /Hook source is silent and no approved Hook audio was supplied/,
+  const silentHookArgs = buildScheduleCombinationSegmentArgs({
+    hasAudio: false,
+    inputPath: "silent-hook.mp4",
+    outputPath: "silent-hook-normalized.mp4",
+    payload: { ...payload, hookAudio: null },
+    preparedTextOverlay,
+    segmentLabel: "hook",
+  });
+  assert.ok(
+    silentHookArgs.includes(
+      "anullsrc=channel_layout=stereo:sample_rate=48000",
+    ),
   );
 });
 
-test("carries approved Hook audio across the full Hook and Demo timeline", () => {
+test("trims a full-length approved soundtrack across the Hook and Demo timeline", () => {
   const args = buildScheduleCombinationSoundtrackArgs({
-    hookAudioPath: "EWW.mp3",
+    audioFitMode: "trim",
+    audioPath: "EWW.mp3",
     inputPath: "combined-segments.mp4",
     outputPath: "combined.mp4",
   });
@@ -255,7 +258,7 @@ test("carries approved Hook audio across the full Hook and Demo timeline", () =>
     "-map",
     "1:a:0",
     "-filter:a",
-    "volume=0.45,apad",
+    "volume=0.45",
     "-c:v",
     "copy",
     "-c:a",
@@ -273,6 +276,28 @@ test("carries approved Hook audio across the full Hook and Demo timeline", () =>
     "+faststart",
     "combined.mp4",
   ]);
+  assert.equal(args.includes("-stream_loop"), false);
+});
+
+test("loops only a soundtrack explicitly selected as loopable", () => {
+  const args = buildScheduleCombinationSoundtrackArgs({
+    audioFitMode: "loop",
+    audioPath: "loop.mp3",
+    inputPath: "combined-segments.mp4",
+    outputPath: "combined.mp4",
+  });
+
+  assert.deepEqual(args.slice(0, 8), [
+    "-y",
+    "-i",
+    "combined-segments.mp4",
+    "-stream_loop",
+    "-1",
+    "-i",
+    "loop.mp3",
+    "-map",
+  ]);
+  assert.equal(args.includes("apad"), false);
 });
 
 test("rasterizes the shared overlay plan without distorting the font", async () => {

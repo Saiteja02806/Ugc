@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-09-13
+Last updated: 2026-09-16
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -9,21 +9,22 @@ rendering, database schema, review scripts, or frontend behavior.
 
 ## Product Goal
 
-### Compact-laptop Trending composition (2026-09-15)
+### Monotonic laptop Trending composition (2026-09-16)
 
-On a short desktop viewport (at least 1024px wide and no taller than 820px),
 Trending reserves one clear vertical unit for the format label, review card,
-decision buttons, and remaining-content text. This means the first 1366×768
-viewport must show the complete controls without scrolling and without a
-format pill colliding with the page subtitle or card stack.
+decision buttons, and remaining-content text. At 1366×768, the complete unit
+must be visible without scrolling and without a format pill colliding with the
+page subtitle or card stack.
 
-Within that short-height range, the review caps are 270px for a 4:5 Slideshow,
-250px for Hook and Reaction 9:16 video, and 260px for Wall-of-Text. The normal
-larger desktop scale remains unchanged on taller viewports. Labels retain a
-24px gap above their active card; a Slideshow with a taller next-card layer
-keeps its existing extra clearance. Decisions remain a below-card pair with
-progress below them. Physical screen inches are not detectable, so CSS viewport
-height—not the device's marketed inch size—is the source of this behavior.
+Browsers cannot reliably read a laptop's physical diagonal, so the layout uses
+CSS viewport profiles rather than claiming to detect 14- or 15.6-inch hardware.
+The width curve grows monotonically from a 1366×768 profile (300px Slideshow,
+270px Hook/Reaction, 280px Wall-of-Text) to a 1440×900 or 1536×864 profile
+(340px, 305px, 315px), then caps at 1920×1080 (380px, 340px, 350px). Each card
+uses the smaller of a positive viewport-width and viewport-height bound, so a
+wide-but-short window cannot push controls below the fold. Labels retain a 24px
+gap above their active card; a Slideshow with a taller next-card layer keeps
+its extra clearance. Decisions remain a below-card pair with progress below.
 
 Wall-of-Text feed overlays scale proportionally with their media, preserving
 saved line breaks, text outline, and spacing. The editor's capped B treatment

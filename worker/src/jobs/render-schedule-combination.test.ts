@@ -45,6 +45,7 @@ test("renders and asks the server to finalize a planned schedule", async () => {
           audioAssetId: "hook_audio_029",
           audioUrl: "https://cdn.example.com/EWW.mp3",
           durationSeconds: 14.08,
+          fitMode: "trim",
           selectionSource: "video_locked",
         });
         assert.equal(payload.hookTrimStart, 0.5);
@@ -268,6 +269,7 @@ test("rejects an invalid Locked Hook audio contract before rendering", async () 
     audioAssetId: "hook_audio_029",
     audioUrl: "https://cdn.example.com/EWW.mp3",
     durationSeconds: 14.08,
+    fitMode: "trim",
     selectionSource: "preferred",
   };
 
@@ -285,6 +287,7 @@ test("accepts a dynamically matched Hook audio contract", async () => {
     audioAssetId: "hook_audio_029",
     audioUrl: "https://cdn.example.com/dynamic.mp3",
     durationSeconds: 14.08,
+    fitMode: "loop",
     selectionSource: "dynamic",
   };
 
@@ -305,6 +308,42 @@ test("accepts a dynamically matched Hook audio contract", async () => {
     "render",
     "render-completed",
   ]);
+});
+
+test("ignores a legacy Hook-only soundtrack instead of risking Demo truncation", async () => {
+  const events: string[] = [];
+  const job = createJob(false);
+  const legacyAudio = (job.input_json as Record<string, unknown>)
+    .hookAudio as Record<string, unknown>;
+  delete legacyAudio.fitMode;
+  const store = {
+    async markScheduleCombinationRenderCompleted(params: {
+      hookAudioAssetId: string | null;
+    }) {
+      events.push("render-completed");
+      assert.equal(params.hookAudioAssetId, null);
+    },
+    async markScheduleCombinationRenderFailed() {
+      events.push("render-failed");
+    },
+    async markScheduleCombinationRenderStarted() {
+      events.push("render-started");
+    },
+  } as unknown as SupabaseJobStore;
+
+  await runRenderScheduleCombinationJob(job, {
+    dependencies: {
+      createMediaAssetId: () => MEDIA_ASSET_ID,
+      async renderScheduleCombinationToStorage(payload) {
+        events.push("render");
+        assert.equal(payload.hookAudio, null);
+        return createRenderOutput(payload);
+      },
+    },
+    store,
+  });
+
+  assert.deepEqual(events, ["render-started", "render", "render-completed"]);
 });
 
 test("keeps the completed video available when server finalization fails", async () => {
@@ -445,6 +484,7 @@ function createJob(autoFinalize: boolean): BackgroundJobRow {
         audioAssetId: "hook_audio_029",
         audioUrl: "https://cdn.example.com/EWW.mp3",
         durationSeconds: 14.08,
+        fitMode: "trim",
         selectionSource: "video_locked",
       },
       hookTrimEnd: 4.5,

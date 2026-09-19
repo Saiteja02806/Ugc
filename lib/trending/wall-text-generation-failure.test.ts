@@ -147,6 +147,22 @@ test("marks an unavailable Wall audio dependency as terminal", () => {
   );
 });
 
+test("marks a database grounding contract rejection as terminal", () => {
+  assert.deepEqual(
+    publicFailure(
+      new Error(
+        "Could not save Wall-of-text generation candidate: wall_text_creative_grounding_mismatch",
+      ),
+    ),
+    {
+      errorCode: WALL_TEXT_PERSISTENCE_REJECTED,
+      publicMessage:
+        "Wall-of-text could not be saved because a required update is missing.",
+      retryable: false,
+    },
+  );
+});
+
 test("preserves provider billing and stage details for server-only diagnostics", () => {
   const error = Object.assign(new Error("Project spend limit reached."), {
     code: "project_spend_limit_exceeded",

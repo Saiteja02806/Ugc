@@ -32,6 +32,7 @@ test("builds a Locked selection without an invented score", () => {
     audioAssetId: "hook_audio_029",
     audioUrl: "https://media.example/EWW.mp3",
     durationSeconds: 14.08,
+    fitMode: "trim",
     hookVideoId: "video-1",
     selectionSource: "video_locked",
   });

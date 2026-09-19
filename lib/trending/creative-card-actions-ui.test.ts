@@ -451,7 +451,7 @@ test("centers a card-sized review frame over visible inert next-card layers", ()
   );
   assert.match(
     reviewLayout,
-    /@media \(min-width: 1024px\) and \(max-height: 820px\)[\s\S]*\.stage\[data-review-format="carousel"\] \[data-trending-review-frame\][\s\S]*translateY\(-16px\)[\s\S]*\.compactHeightCarouselFrame[\s\S]*width: min\(72vw, 270px, calc\(\(100dvh - 326px\) \* 0\.61\)\)[\s\S]*\.compactHeightVerticalFrame[\s\S]*width: min\(72vw, 250px, calc\(\(100dvh - 324px\) \* 0\.5625\)\)[\s\S]*\.compactHeightWallTextFrame[\s\S]*width: min\(72vw, 260px, calc\(\(100dvh - 306px\) \* 0\.5625\)\)/,
+    /@media \(min-width: 1024px\)[\s\S]*\.responsiveCarouselFrame[\s\S]*clamp\(300px, calc\(8\.333vw \+ 220px\), 380px\)[\s\S]*\.responsiveVerticalFrame[\s\S]*clamp\(270px, calc\(7\.292vw \+ 200px\), 340px\)[\s\S]*\.responsiveWallTextFrame[\s\S]*clamp\(280px, calc\(7\.292vw \+ 210px\), 350px\)[\s\S]*@media \(min-width: 1024px\) and \(max-height: 820px\)[\s\S]*translateY\(3px\)[\s\S]*\.stage\[data-review-format="video"\] \[data-trending-review-frame\][\s\S]*translateY\(18px\)/,
   );
   assert.match(
     workspace,
@@ -465,7 +465,7 @@ test("centers a card-sized review frame over visible inert next-card layers", ()
   assert.match(workspace, /getTrendingReviewCardFrameClass\(activeCandidate\.format\)/);
   assert.match(
     workspace,
-    /WALL_TEXT_REVIEW_CARD_FRAME_CLASS,[\s\S]*reviewLayout\.compactHeightWallTextFrame[\s\S]*VERTICAL_REVIEW_CARD_FRAME_CLASS,[\s\S]*reviewLayout\.compactHeightVerticalFrame/,
+    /WALL_TEXT_REVIEW_CARD_FRAME_CLASS,[\s\S]*reviewLayout\.responsiveWallTextFrame[\s\S]*VERTICAL_REVIEW_CARD_FRAME_CLASS,[\s\S]*reviewLayout\.responsiveVerticalFrame/,
   );
   assert.doesNotMatch(workspace, /w-full max-w-3xl flex-col items-center/);
   assert.match(
@@ -502,6 +502,54 @@ test("centers a card-sized review frame over visible inert next-card layers", ()
   assert.match(workspace, /dragX=\{dragX\}/);
   assert.match(workspace, /isDragging=\{isDragging\}/);
   assert.doesNotMatch(workspace, /size-px overflow-hidden opacity-0/);
+});
+
+test("grows every review format across practical laptop viewport profiles", () => {
+  const clamp = (minimum: number, value: number, maximum: number) =>
+    Math.min(Math.max(value, minimum), maximum);
+  const carouselWidth = (width: number, height: number) =>
+    Math.min(
+      clamp(300, width * 0.08333 + 220, 380),
+      clamp(300, height * 0.41667 - 20, 380),
+    );
+  const verticalWidth = (width: number, height: number) =>
+    Math.min(
+      clamp(270, width * 0.07292 + 200, 340),
+      clamp(270, height * 0.36458 - 10, 340),
+    );
+  const wallTextWidth = (width: number, height: number) =>
+    Math.min(
+      clamp(280, width * 0.07292 + 210, 350),
+      clamp(280, height * 0.36458, 350),
+    );
+  const viewports = [
+    [1366, 768],
+    [1440, 900],
+    [1536, 864],
+    [1920, 1080],
+  ] as const;
+
+  for (const getWidth of [carouselWidth, verticalWidth, wallTextWidth]) {
+    const sizes = viewports.map(([width, height]) => getWidth(width, height));
+
+    assert.ok(sizes[1] >= sizes[0]);
+    assert.ok(sizes[2] >= sizes[0]);
+    assert.ok(sizes[3] >= sizes[1]);
+    assert.ok(sizes[3] >= sizes[2]);
+  }
+
+  assert.deepEqual(
+    viewports.map(([width, height]) => Math.round(carouselWidth(width, height))),
+    [300, 340, 340, 380],
+  );
+  assert.deepEqual(
+    viewports.map(([width, height]) => Math.round(verticalWidth(width, height))),
+    [270, 305, 305, 340],
+  );
+  assert.deepEqual(
+    viewports.map(([width, height]) => Math.round(wallTextWidth(width, height))),
+    [280, 315, 315, 350],
+  );
 });
 
 test("shows the complete rendered slide without cropping its headline", () => {

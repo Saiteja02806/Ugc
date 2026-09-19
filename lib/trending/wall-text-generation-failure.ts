@@ -371,6 +371,8 @@ function isWallTextPersistenceRejection(error: unknown) {
     message.includes("wall_text_regeneration_invalid_") ||
     message.includes("wall_text_regeneration_duplicate_updates") ||
     message.includes("wall_text_regeneration_mismatch") ||
+    message.includes("wall_text_creative_grounding_mismatch") ||
+    message.includes("wall_text_grounding_profile_mismatch") ||
     message.includes("violates check constraint") ||
     message.includes("violates unique constraint") ||
     message.includes("wall_text_creatives_text_content_chk") ||

@@ -36,9 +36,10 @@ import {
 import { isTrustedStorageUrl } from "@/lib/storage/storage";
 import { resolveTrendingTextColor } from "@/lib/trending/text-color";
 import {
-  resolveHookAudioForVideo,
+  resolveHookAudioForComposition,
   type ResolvedHookAudioSelection,
 } from "@/lib/trending/hook-audio-db";
+import { HOOK_COMPOSITION_AUDIO_RENDER_VERSION } from "@/lib/trending/hook-audio-matcher";
 import {
   HOOK_TEXT_FIXED_FONT_SIZE,
   HOOK_TEXT_LAYOUT_VERSION,
@@ -288,41 +289,42 @@ export async function POST(
     );
   }
 
-  if (hookCatalogVideoId) {
+  const compositionDurationSeconds = getCompositionDurationSeconds({
+    demoDurationSeconds: demoAsset.duration_seconds,
+    hookDurationSeconds:
+      hookTrimEnd !== null
+        ? hookTrimEnd - hookTrimStart
+        : hookAsset.duration_seconds,
+  });
+
+  if (hookCatalogVideoId && compositionDurationSeconds !== null) {
     try {
-      hookAudio = await resolveHookAudioForVideo({
+      hookAudio = await resolveHookAudioForComposition({
+        compositionDurationSeconds,
         draftId: getString(metadata.hookVideoDraftId),
         hookVideoId: hookCatalogVideoId,
         suggestionId: getString(metadata.selectedHookId),
         userId,
-        videoDurationSeconds:
-          hookTrimEnd !== null
-            ? hookTrimEnd - hookTrimStart
-            : hookAsset.duration_seconds,
       });
     } catch (error) {
-      console.error("Could not resolve Hook audio:", error);
-      return jsonResponse(
-        {
-          code: "hook_audio_unavailable",
-          message:
-              "The approved sound for this hook clip is unavailable. Choose another hook clip before rendering.",
-          ok: false,
-        },
-        409,
-      );
+      // Soundtrack lookup is intentionally non-blocking. The combined video
+      // remains a valid Trending item even while the reviewed audio pool is
+      // temporarily unavailable.
+      console.warn("Could not resolve Hook composition audio:", error);
     }
+  } else if (hookCatalogVideoId) {
+    console.warn(
+      "Skipping Hook composition audio because the combined duration is unavailable.",
+      { demoMediaId, hookMediaId },
+    );
   }
 
   if (hookAudio && !isTrustedStorageUrl(hookAudio.audioUrl)) {
-    return jsonResponse(
-      {
-        code: "hook_audio_untrusted",
-        message: "The approved Hook sound must use supported app storage.",
-        ok: false,
-      },
-      400,
-    );
+    console.warn("Skipping an untrusted Hook composition audio URL.", {
+      audioAssetId: hookAudio.audioAssetId,
+      scheduleId: schedule.id,
+    });
+    hookAudio = null;
   }
 
   const ratio = getRenderRatio(
@@ -339,7 +341,9 @@ export async function POST(
     hookTextPosition,
     hookTextColor,
     hookAudioAssetId: hookAudio?.audioAssetId ?? null,
+    hookAudioFitMode: hookAudio?.fitMode ?? null,
     hookAudioUrl: hookAudio?.audioUrl ?? null,
+    hookCompositionAudioRenderVersion: HOOK_COMPOSITION_AUDIO_RENDER_VERSION,
     hookTrimEnd,
     hookTrimStart,
     hookUpdatedAt: resolvedHookAsset.asset.updated_at,
@@ -417,6 +421,8 @@ export async function POST(
       expectedUpdatedAt: schedule.updatedAt,
       metadata: {
         combinedRenderError: null,
+        combinedSoundtrackAssetId: hookAudio?.audioAssetId ?? null,
+        combinedSoundtrackStatus: hookAudio?.fitMode ?? "unavailable",
         combinedRequestedFingerprint: compositionFingerprint,
         combinedRenderId: renderId,
         combinedRenderJobId: backgroundJob.id,
@@ -686,7 +692,9 @@ function createCompositionFingerprint(value: {
   hookTextPosition: { x: number; y: number } | null;
   hookTextColor: string;
   hookAudioAssetId: string | null;
+  hookAudioFitMode: "loop" | "trim" | null;
   hookAudioUrl: string | null;
+  hookCompositionAudioRenderVersion: string;
   hookTrimEnd: number | null;
   hookTrimStart: number;
   hookUpdatedAt: string;
@@ -694,6 +702,24 @@ function createCompositionFingerprint(value: {
   ratio: CombinationRenderRatio;
 }) {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+function getCompositionDurationSeconds(params: {
+  demoDurationSeconds: number | null;
+  hookDurationSeconds: number | null;
+}) {
+  if (
+    params.hookDurationSeconds === null ||
+    params.demoDurationSeconds === null ||
+    !Number.isFinite(params.hookDurationSeconds) ||
+    !Number.isFinite(params.demoDurationSeconds) ||
+    params.hookDurationSeconds <= 0 ||
+    params.demoDurationSeconds <= 0
+  ) {
+    return null;
+  }
+
+  return params.hookDurationSeconds + params.demoDurationSeconds;
 }
 
 function normalizeHookText(value: string) {

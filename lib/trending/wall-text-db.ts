@@ -1608,7 +1608,11 @@ export async function replaceTrendingWallTextCreativeCopy(params: {
   });
 }
 
-async function prepareWallTextForPersistence(params: {
+// The layout engine intentionally reconstructs content from its visible copy.
+// Keep the backend-owned grounding receipt when that happens: it is not display
+// text, and the database trigger uses it to prove the saved creative still
+// belongs to the assignment's immutable business fact.
+export async function prepareWallTextForPersistence(params: {
   layout: TrendingWallTextLayout;
   text: TrendingWallTextContent;
 }) {
@@ -1621,7 +1625,12 @@ async function prepareWallTextForPersistence(params: {
 
   return {
     layout: authoritative.layout,
-    text: applyWallTextRenderFit(authoritative.content, render),
+    text: {
+      ...applyWallTextRenderFit(authoritative.content, render),
+      ...(params.text.grounding
+        ? { grounding: params.text.grounding }
+        : {}),
+    },
   };
 }
 

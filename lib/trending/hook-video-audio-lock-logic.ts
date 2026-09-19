@@ -22,6 +22,7 @@ export type LockedHookAudioSelection = {
   audioAssetId: string;
   audioUrl: string;
   durationSeconds: number;
+  fitMode: "trim";
   hookVideoId: string;
   selectionSource: "video_locked";
 };
@@ -74,6 +75,7 @@ export function buildLockedHookAudioSelection(params: {
     audioAssetId: audio.id,
     audioUrl: audio.audioUrl,
     durationSeconds: audioDuration,
+    fitMode: "trim",
     hookVideoId: video.id,
     selectionSource: "video_locked",
   };

@@ -367,6 +367,12 @@ function getOptionalHookAudio(value: Json | undefined) {
   }
 
   const audio = getJsonRecord(value, "hookAudio");
+  // Legacy jobs used Hook-only audio without an explicit composition fit. Do
+  // not risk truncating their Demo portion; they safely render without the
+  // replacement soundtrack instead.
+  if (audio.fitMode === undefined || audio.fitMode === null) {
+    return null;
+  }
   const selectionSource = getRequiredString(
     audio.selectionSource,
     "hookAudio.selectionSource",
@@ -391,6 +397,11 @@ function getOptionalHookAudio(value: Json | undefined) {
     throw new Error("hookAudio.durationSeconds must be a positive number.");
   }
 
+  const fitMode = getRequiredString(audio.fitMode, "hookAudio.fitMode");
+  if (fitMode !== "loop" && fitMode !== "trim") {
+    throw new Error("hookAudio.fitMode must be loop or trim.");
+  }
+
   return {
     audioAssetId: getRequiredString(
       audio.audioAssetId,
@@ -398,6 +409,7 @@ function getOptionalHookAudio(value: Json | undefined) {
     ),
     audioUrl: getHttpUrl(audio.audioUrl, "hookAudio.audioUrl"),
     durationSeconds,
+    fitMode: fitMode as "loop" | "trim",
     selectionSource: selectionSource as
       | "dynamic"
       | "format_preferred"

@@ -409,9 +409,9 @@ const decisionOutboxMemoryFallback = new Map<
 const SWIPE_THRESHOLD_PX = 90;
 const SWIPE_EXIT_DURATION_MS = 220;
 const MAX_ROTATION_DEGREES = 5;
-// Compact laptops need readable previews without pushing the decision controls
-// below the first viewport. Keep the normal desktop scale; short-height caps
-// are applied by the scoped review layout stylesheet.
+// Review frame sizing is scoped in the layout stylesheet so every desktop
+// format grows monotonically with the usable viewport and still preserves room
+// for its format label, decisions, and remaining-content text.
 const CAROUSEL_REVIEW_CARD_WIDTH_CLASS =
   "w-[min(78vw,300px,calc((100dvh-348px)*0.8))] min-[1024px]:max-[1536px]:w-[min(78vw,clamp(300px,calc(902.12px-39.2vw),380px),max(320px,calc((100dvh-300px)*0.8)))]";
 const VERTICAL_REVIEW_CARD_WIDTH_CLASS =
@@ -3283,18 +3283,18 @@ function getTrendingReviewCardFrameClass(
   if (format === "carousel") {
     return cn(
       CAROUSEL_REVIEW_CARD_FRAME_CLASS,
-      reviewLayout.compactHeightCarouselFrame,
+      reviewLayout.responsiveCarouselFrame,
     );
   }
 
   return format === "wall_text"
     ? cn(
         WALL_TEXT_REVIEW_CARD_FRAME_CLASS,
-        reviewLayout.compactHeightWallTextFrame,
+        reviewLayout.responsiveWallTextFrame,
       )
     : cn(
         VERTICAL_REVIEW_CARD_FRAME_CLASS,
-        reviewLayout.compactHeightVerticalFrame,
+        reviewLayout.responsiveVerticalFrame,
       );
 }
 
@@ -3686,7 +3686,7 @@ function TrendingHookDeckCard({
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
           VERTICAL_REVIEW_CARD_FRAME_CLASS,
-          reviewLayout.compactHeightVerticalFrame,
+          reviewLayout.responsiveVerticalFrame,
           "relative origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
           isActive
             ? "pointer-events-auto cursor-grab active:cursor-grabbing"
@@ -3903,7 +3903,7 @@ function TrendingWallTextDeckCard({
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
           WALL_TEXT_REVIEW_CARD_FRAME_CLASS,
-          reviewLayout.compactHeightWallTextFrame,
+          reviewLayout.responsiveWallTextFrame,
           "relative origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
           isActive
             ? "pointer-events-auto cursor-grab active:cursor-grabbing"
@@ -4141,7 +4141,7 @@ function TrendingReactionDeckCard({
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
           VERTICAL_REVIEW_CARD_FRAME_CLASS,
-          reviewLayout.compactHeightVerticalFrame,
+          reviewLayout.responsiveVerticalFrame,
           "relative origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
           isActive
             ? "pointer-events-auto cursor-grab active:cursor-grabbing"
@@ -4302,7 +4302,7 @@ function CarouselDeckCard({
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
           CAROUSEL_REVIEW_CARD_FRAME_CLASS,
-          reviewLayout.compactHeightCarouselFrame,
+          reviewLayout.responsiveCarouselFrame,
           "origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
           isActive
             ? "pointer-events-auto cursor-grab active:cursor-grabbing"

@@ -75,6 +75,51 @@ test("rejects short tracks instead of producing a shortened Hook segment", () =>
   assert.equal(result, null);
 });
 
+test("prefers a full approved track over a shorter loopable background", () => {
+  const result = selectHookAudio({
+    assets: [
+      asset("hook_audio_loop", {
+        durationSeconds: 8,
+        energy: "high",
+        hookTypes: ["warning", "curiosity"],
+        loopable: true,
+        moods: ["urgent"],
+      }),
+      asset("hook_audio_full", {
+        durationSeconds: 45,
+        energy: "medium",
+        hookTypes: ["story", "benefit"],
+        moods: ["calm"],
+      }),
+    ],
+    intent,
+    videoDurationSeconds: 30,
+  });
+
+  assert.equal(result?.audioAssetId, "hook_audio_full");
+  assert.equal(result?.fitMode, "trim");
+});
+
+test("uses a short background only when it was explicitly approved as loopable", () => {
+  const result = selectHookAudio({
+    assets: [
+      asset("hook_audio_short", { durationSeconds: 8 }),
+      asset("hook_audio_loop", {
+        durationSeconds: 9,
+        energy: "high",
+        hookTypes: ["warning", "curiosity"],
+        loopable: true,
+        moods: ["urgent"],
+      }),
+    ],
+    intent,
+    videoDurationSeconds: 120,
+  });
+
+  assert.equal(result?.audioAssetId, "hook_audio_loop");
+  assert.equal(result?.fitMode, "loop");
+});
+
 test("parses controlled intent and keeps the generator format fallback aligned", () => {
   assert.deepEqual(
     parseHookAudioIntent({

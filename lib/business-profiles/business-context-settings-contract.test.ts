@@ -12,6 +12,10 @@ const settingsForm = readFileSync(
   "lib/business-profiles/business-context-form.ts",
   "utf8",
 );
+const directApplyMigration = readFileSync(
+  "supabase/migrations/20260915160000_apply_business_context_directly.sql",
+  "utf8",
+);
 
 function sourceBetween(source: string, start: string, end: string) {
   const startIndex = source.indexOf(start);
@@ -21,11 +25,11 @@ function sourceBetween(source: string, start: string, end: string) {
   return source.slice(startIndex, endIndex);
 }
 
-test("Business Context accepts only versioned draft, re-analysis, and apply operations", () => {
+test("Business Context accepts a versioned direct apply and optional re-analysis", () => {
   assert.match(route, /z\.discriminatedUnion\("action"/);
   assert.match(route, /action: z\.literal\("save_draft"\)[\s\S]*expectedDraftUpdatedAt[\s\S]*expectedProfileVersion/);
   assert.match(route, /action: z\.literal\("reanalyze"\)[\s\S]*expectedDraftUpdatedAt[\s\S]*source: z\.string\(\)\.trim\(\)\.min\(20\)/);
-  assert.match(route, /action: z\.literal\("apply"\)[\s\S]*expectedDraftUpdatedAt[\s\S]*expectedProfileVersion/);
+  assert.match(route, /action: z\.literal\("apply"\)[\s\S]*context: WebsiteBusinessAnalysisSchema[\s\S]*expectedDraftUpdatedAt: draftRevisionSchema\.nullable\(\)[\s\S]*expectedProfileVersion/);
   assert.match(route, /profile\.profileVersion !== body\.data\.expectedProfileVersion/);
   assert.match(route, /applyPrimaryGoals\(body\.data\.context, profile\.primaryGoals\)/);
   assert.match(route, /analyzeBusinessDescription\(body\.data\.source\)/);
@@ -35,7 +39,7 @@ test("saving a draft cannot change active Business Context or its version", () =
   const saveDraft = sourceBetween(
     db,
     "export async function saveBusinessContextDraft",
-    "export async function applyBusinessContextDraft",
+    "export async function applyBusinessContext",
   );
 
   assert.match(saveDraft, /business_context_draft_base_version: params\.profile\.profileVersion/);
@@ -47,41 +51,38 @@ test("saving a draft cannot change active Business Context or its version", () =
   assert.doesNotMatch(saveDraft, /profile_version:/);
 });
 
-test("applying requires the exact saved draft and creates one new immutable version", () => {
-  const applyDraft = sourceBetween(
+test("direct apply validates facts and uses the atomic versioned database write", () => {
+  const applyContext = sourceBetween(
     db,
-    "export async function applyBusinessContextDraft",
+    "export async function applyBusinessContext",
     "export async function completeTrendingWalkthroughForUser",
   );
 
-  assert.match(applyDraft, /businessContextDraftBaseVersion !== params\.expectedProfileVersion/);
-  assert.match(applyDraft, /businessContextDraftUpdatedAt !== params\.expectedDraftUpdatedAt/);
-  assert.match(applyDraft, /assertBusinessContextCandidateReady\(draft\)/);
-  assert.match(applyDraft, /context_json: draft/);
-  assert.match(applyDraft, /profile_version: params\.expectedProfileVersion \+ 1/);
-  assert.match(applyDraft, /business_context_draft_base_version: null/);
-  assert.match(applyDraft, /business_context_draft_json: null/);
-  assert.match(applyDraft, /\.eq\("business_context_draft_base_version", params\.expectedProfileVersion\)/);
-  assert.match(applyDraft, /\.eq\("business_context_draft_updated_at", params\.expectedDraftUpdatedAt\)/);
+  assert.match(applyContext, /profile\.profileVersion !== params\.expectedProfileVersion/);
+  assert.match(applyContext, /assertBusinessContextCandidateReady\(params\.context\)/);
+  assert.match(applyContext, /\.rpc\("apply_business_context_v1"/);
+  assert.match(applyContext, /p_expected_draft_updated_at: params\.expectedDraftUpdatedAt/);
+  assert.match(applyContext, /p_expected_profile_version: params\.expectedProfileVersion/);
 });
 
-test("only a fact-ready exact draft can apply, without prebuilding today's feed", () => {
+test("only a fact-ready context can apply, without prebuilding today's feed", () => {
   const applyBranch = sourceBetween(
     route,
-    "const applied = await applyBusinessContextDraft",
+    "const applied = await applyBusinessContext",
     "function toClientContext",
   );
 
   assert.doesNotMatch(applyBranch, /prebuildTrendingAfterOnboarding/);
   assert.match(applyBranch, /next local Trending day/);
   assert.match(route, /prepareBusinessContextCandidate/);
-  assert.match(settingsPanel, /Saving or re-analyzing creates a draft only/);
+  assert.match(settingsPanel, /Edit the details below, then apply them when ready/);
   assert.match(settingsPanel, /Needs factual anchors/);
-  assert.match(settingsPanel, /Apply to future content/);
-  assert.match(settingsPanel, /disabled=\{busyAction !== null \|\| !canApplyDraft\}/);
+  assert.match(settingsPanel, /Apply changes to future content/);
+  assert.match(settingsPanel, /disabled=\{busyAction !== null \|\| !canApplyChanges\}/);
+  assert.doesNotMatch(settingsPanel, />\s*Save draft/);
 });
 
-test("list fields preserve raw typing and normalize only on Save draft", () => {
+test("list fields preserve raw typing and normalize only when applying", () => {
   const listUpdater = sourceBetween(
     settingsPanel,
     "function updateListField",
@@ -93,4 +94,15 @@ test("list fields preserve raw typing and normalize only on Save draft", () => {
   assert.match(settingsPanel, /applyBusinessContextListText\(context, listText\)/);
   assert.match(settingsForm, /split\(\/\\r\?\\n\/u\)/);
   assert.doesNotMatch(settingsForm, /split\(\/\\n\|,\/u\)/);
+});
+
+test("direct apply migration preserves the onboarding guard and authorizes only the atomic apply function", () => {
+  assert.match(directApplyMigration, /create or replace function public\.guard_background_onboarding_profile_v1/);
+  assert.match(directApplyMigration, /current_setting\('ugc\.business_context_writer', true\) is distinct from 'apply_business_context_v1'/);
+  assert.match(directApplyMigration, /create or replace function public\.apply_business_context_v1/);
+  assert.match(directApplyMigration, /perform set_config\('ugc\.business_context_writer', 'apply_business_context_v1', true\)/);
+  assert.match(directApplyMigration, /business_context_draft_json = null/);
+  assert.match(directApplyMigration, /business_context_draft_updated_at is not distinct from p_expected_draft_updated_at/);
+  assert.match(directApplyMigration, /profile_version = p_expected_profile_version \+ 1/);
+  assert.match(directApplyMigration, /grant execute on function public\.apply_business_context_v1/);
 });

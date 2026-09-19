@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import {
-  applyBusinessContextDraft,
+  applyBusinessContext,
   getBusinessProfileForUser,
   saveBusinessContextDraft,
   type BusinessProfileRecord,
@@ -35,7 +35,8 @@ const requestSchema = z.discriminatedUnion("action", [
   }).strict(),
   z.object({
     action: z.literal("apply"),
-    expectedDraftUpdatedAt: draftRevisionSchema,
+    context: WebsiteBusinessAnalysisSchema,
+    expectedDraftUpdatedAt: draftRevisionSchema.nullable(),
     expectedProfileVersion: expectedVersionSchema,
   }).strict(),
 ]);
@@ -97,7 +98,9 @@ export async function POST(request: Request) {
       return json({ ok: true, profile: toClientContext(saved) });
     }
 
-    const applied = await applyBusinessContextDraft({
+    const context = applyPrimaryGoals(body.data.context, profile.primaryGoals);
+    const applied = await applyBusinessContext({
+      context,
       expectedDraftUpdatedAt: body.data.expectedDraftUpdatedAt,
       expectedProfileVersion: body.data.expectedProfileVersion,
       profile,

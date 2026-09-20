@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronLeft, Flame, LoaderCircle, Pointer, Redo2, RotateCcw, Sparkles, Undo2, Wifi, X } from "lucide-react";
+import { Check, ChevronLeft, Flame, LoaderCircle, RotateCcw, Sparkles, Wifi, X } from "lucide-react";
 
 type WallOfTextPost = {
   id: string;
@@ -508,25 +508,71 @@ export function TryUgcPilotDemo() {
 
 function SwipeGuide() {
   return (
-    <div className="pointer-events-none absolute inset-0 z-30 text-center" aria-hidden="true">
-      <div className="absolute inset-0 bg-black/[0.08]" />
-      <div className="absolute left-3 top-[42%] flex w-[31%] flex-col items-center text-[#ff6b82] drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)]">
-        <Undo2 className="size-8 -rotate-12 stroke-[2.6]" />
-        <span className="mt-1 text-[10px] font-black tracking-[0.04em]">SWIPE LEFT</span>
-        <span className="mt-1 rounded-full border border-rose-300/70 bg-rose-500/75 px-3 py-1 text-xs font-black text-white shadow-lg">SKIP</span>
+    <>
+      <style>{`
+        @keyframes ugcpilot-guide-hand-glide {
+          0%, 100% { transform: translateX(0) rotate(0deg); }
+          15%, 32% { transform: translateX(28px) rotate(7deg); }
+          50% { transform: translateX(0) rotate(0deg); }
+          65%, 82% { transform: translateX(-28px) rotate(-7deg); }
+        }
+        @keyframes ugcpilot-guide-left-pulse {
+          0%, 50%, 100% { opacity: 0.6; transform: scale(0.98); }
+          65%, 82% { opacity: 1; transform: scale(1.06); }
+        }
+        @keyframes ugcpilot-guide-right-pulse {
+          0%, 48%, 100% { opacity: 0.6; transform: scale(0.98); }
+          15%, 32% { opacity: 1; transform: scale(1.06); }
+        }
+        @keyframes ugcpilot-guide-ring-pulse {
+          0% { transform: scale(0.7); opacity: 0.8; }
+          100% { transform: scale(1.55); opacity: 0; }
+        }
+        .ugcpilot-guide-hand { animation: ugcpilot-guide-hand-glide 3.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; }
+        .ugcpilot-guide-left { animation: ugcpilot-guide-left-pulse 3.2s ease-in-out infinite; }
+        .ugcpilot-guide-right { animation: ugcpilot-guide-right-pulse 3.2s ease-in-out infinite; }
+        .ugcpilot-guide-ring { animation: ugcpilot-guide-ring-pulse 2s ease-out infinite; }
+        @media (prefers-reduced-motion: reduce) {
+          .ugcpilot-guide-hand, .ugcpilot-guide-left, .ugcpilot-guide-right, .ugcpilot-guide-ring { animation: none; }
+        }
+      `}</style>
+      <div className="pointer-events-none absolute inset-0 z-30 text-center" aria-hidden="true">
+        <div className="absolute inset-0 bg-black/[0.08]" />
+        <div className="absolute left-1/2 top-[47%] flex w-[310px] max-w-[calc(100%-24px)] -translate-x-1/2 -translate-y-1/2 items-center justify-between">
+          <div className="ugcpilot-guide-left flex w-[86px] flex-col items-center gap-1.5 text-white drop-shadow-[0_3px_8px_rgba(0,0,0,0.9)]">
+            <svg viewBox="0 0 44 32" width="34" height="25" fill="none" aria-hidden="true">
+              <path d="M40 26 C26 26 12 18 6 6" stroke="#f43f5e" strokeWidth="2.6" strokeLinecap="round" />
+              <polyline points="14 5 5 5 5 14" stroke="#f43f5e" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span className="text-[11px] font-extrabold uppercase tracking-[0.4px]">Swipe left</span>
+            <span className="rounded-full border-[1.5px] border-white/40 bg-rose-500/[0.88] px-[11px] py-[3px] text-[11px] font-extrabold uppercase tracking-[0.8px] text-white shadow-[0_4px_16px_rgba(244,63,94,0.7)]">Skip</span>
+          </div>
+          <div className="ugcpilot-guide-hand relative grid size-[76px] place-items-center">
+            <span className="ugcpilot-guide-ring absolute size-[58px] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.35)_0%,transparent_70%)]" />
+            <Image
+              src="/try-ugcpilot/hand-pointer.png"
+              alt=""
+              width={62}
+              height={62}
+              className="relative size-[62px] select-none object-contain drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]"
+              draggable={false}
+              unoptimized
+            />
+          </div>
+          <div className="ugcpilot-guide-right flex w-[86px] flex-col items-center gap-1.5 text-white drop-shadow-[0_3px_8px_rgba(0,0,0,0.9)]">
+            <svg viewBox="0 0 44 32" width="34" height="25" fill="none" aria-hidden="true">
+              <path d="M4 26 C18 26 32 18 38 6" stroke="#10b981" strokeWidth="2.6" strokeLinecap="round" />
+              <polyline points="30 5 39 5 39 14" stroke="#10b981" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span className="text-[11px] font-extrabold uppercase tracking-[0.4px]">Swipe right</span>
+            <span className="rounded-full border-[1.5px] border-white/40 bg-emerald-500/[0.88] px-[11px] py-[3px] text-[11px] font-extrabold uppercase tracking-[0.8px] text-white shadow-[0_4px_16px_rgba(16,185,129,0.7)]">Posted</span>
+          </div>
+        </div>
+        <span className="absolute left-1/2 top-[61%] -translate-x-1/2 whitespace-nowrap rounded-full border border-white/30 bg-black/[0.72] px-[18px] py-[7px] text-[11.5px] font-semibold tracking-[0.3px] text-white shadow-[0_4px_20px_rgba(0,0,0,0.7)]">
+          Tap or swipe card to start
+        </span>
       </div>
-      <div className="absolute right-3 top-[42%] flex w-[31%] flex-col items-center text-emerald-300 drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)]">
-        <Redo2 className="size-8 rotate-12 stroke-[2.6]" />
-        <span className="mt-1 text-[10px] font-black tracking-[0.04em]">SWIPE RIGHT</span>
-        <span className="mt-1 rounded-full border border-emerald-300/70 bg-emerald-500/75 px-3 py-1 text-xs font-black text-white shadow-lg">POSTED</span>
-      </div>
-      <div className="absolute left-1/2 top-[43%] -translate-x-1/2 text-white drop-shadow-[0_6px_12px_rgba(0,0,0,0.85)]">
-        <Pointer className="size-[68px] -rotate-6 fill-white text-white stroke-black stroke-[1.5]" />
-      </div>
-      <span className="absolute bottom-[31%] left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/30 bg-black/80 px-4 py-1.5 text-xs font-bold text-white shadow-[0_8px_20px_rgba(0,0,0,0.55)]">
-        Tap or swipe card to start
-      </span>
-    </div>
+    </>
   );
 }
 

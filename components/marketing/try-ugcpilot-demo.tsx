@@ -12,21 +12,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-type WallOfTextPost = {
-  id: string;
-  topic: string;
-  hook: string;
-  wallOfText: string;
-};
-
-type BusinessContext = {
-  brand: string;
-  url: string;
-  title: string;
-  description: string;
-  markdown: string;
-};
+import {
+  parseTryUgcPilotBrowserSession,
+  serializeTryUgcPilotBrowserSession,
+  TRY_UGCPILOT_BROWSER_SESSION_KEY,
+  type TryUgcPilotBusinessContext as BusinessContext,
+  type TryUgcPilotWallOfTextPost as WallOfTextPost,
+} from "@/lib/try-ugcpilot/browser-session";
 
 type AnalyzeResponse = {
   businessContext: BusinessContext;
@@ -300,6 +292,8 @@ export function TryUgcPilotDemo() {
   const [showSwipeGuide, setShowSwipeGuide] = useState(true);
   const [isMediaMuted, setIsMediaMuted] = useState(true);
   const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
+  const [isSessionRestored, setIsSessionRestored] = useState(false);
+  const [browserStorageAvailable, setBrowserStorageAvailable] = useState(false);
   const dragStartX = useRef<number | null>(null);
   const refillAttemptFor = useRef<string | null>(null);
   const refillInFlight = useRef(false);
@@ -372,6 +366,90 @@ export function TryUgcPilotDemo() {
     desktopQuery.addEventListener("change", closeMobileControlsOnDesktop);
     return () => desktopQuery.removeEventListener("change", closeMobileControlsOnDesktop);
   }, []);
+
+  useEffect(() => {
+    const animationFrame = window.requestAnimationFrame(() => {
+      try {
+        const restored = parseTryUgcPilotBrowserSession(
+          window.localStorage.getItem(TRY_UGCPILOT_BROWSER_SESSION_KEY),
+        );
+
+        setBrowserStorageAvailable(true);
+        if (restored) {
+          setUrl(restored.url);
+          setCards(restored.cards);
+          setBusinessContext(restored.businessContext);
+          setNextPostNumber(restored.nextPostNumber);
+          setRecentHooks(restored.recentHooks);
+          setSwipedCount(restored.swipedCount);
+          setGeneratedCount(restored.generatedCount);
+          setPostedCount(restored.postedCount);
+          setSkippedCount(restored.skippedCount);
+          setNotice(
+            restored.businessContext
+              ? `Restored your saved Wall-of-Text deck for ${restored.businessContext.brand}.`
+              : "Restored your saved demo deck.",
+          );
+        }
+      } catch {
+        // Browser storage can be disabled by a visitor's privacy settings.
+      } finally {
+        setIsSessionRestored(true);
+      }
+    });
+
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, []);
+
+  useEffect(() => {
+    if (
+      !isSessionRestored ||
+      !browserStorageAvailable ||
+      isAnalyzing ||
+      isRefilling ||
+      dragging ||
+      exitDirection
+    ) {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(
+        TRY_UGCPILOT_BROWSER_SESSION_KEY,
+        serializeTryUgcPilotBrowserSession({
+          url,
+          cards,
+          businessContext,
+          nextPostNumber,
+          recentHooks,
+          swipedCount,
+          generatedCount,
+          postedCount,
+          skippedCount,
+          notice,
+        }),
+      );
+    } catch {
+      window.requestAnimationFrame(() => setBrowserStorageAvailable(false));
+    }
+  }, [
+    browserStorageAvailable,
+    businessContext,
+    cards,
+    dragging,
+    exitDirection,
+    generatedCount,
+    isAnalyzing,
+    isRefilling,
+    isSessionRestored,
+    nextPostNumber,
+    notice,
+    postedCount,
+    recentHooks,
+    skippedCount,
+    swipedCount,
+    url,
+  ]);
 
   useEffect(() => {
     let animationFrame: number | null = null;
@@ -630,6 +708,12 @@ export function TryUgcPilotDemo() {
     setIsRefilling(false);
     setMobileControlsOpen(false);
     setNotice("Loaded Cal AI Wall-of-Text content.");
+    try {
+      window.localStorage.removeItem(TRY_UGCPILOT_BROWSER_SESSION_KEY);
+      setBrowserStorageAvailable(true);
+    } catch {
+      setBrowserStorageAvailable(false);
+    }
   }
 
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
@@ -672,6 +756,7 @@ export function TryUgcPilotDemo() {
           activeContext={activeContext}
           brand={brand}
           isRefilling={isRefilling}
+          browserStorageAvailable={browserStorageAvailable}
           onReset={resetDemo}
         />
       </section>
@@ -720,13 +805,14 @@ export function TryUgcPilotDemo() {
             activeContext={activeContext}
             brand={brand}
             isRefilling={isRefilling}
+            browserStorageAvailable={browserStorageAvailable}
             onReset={resetDemo}
           />
         </DialogContent>
       </Dialog>
 
       <section className="flex h-[100svh] min-h-0 w-full items-center justify-center px-0 py-0 xl:min-h-dvh xl:h-auto xl:px-4 xl:py-5">
-          <div className="relative h-full min-h-0 w-full max-w-[505px] xl:h-[min(900px,calc(100svh-2rem))] xl:min-h-[660px] xl:max-w-[400px]">
+          <div className="relative h-full min-h-0 w-full max-w-[505px] xl:h-[min(900px,calc(100svh-2rem))] xl:min-h-[660px] xl:max-w-[368px]">
             <div className="relative h-full overflow-hidden bg-[#101011]">
             <div className="relative z-40 flex h-[54px] items-center justify-between px-[clamp(24px,7.5vw,39px)] text-[16px] font-bold tracking-[-0.04em] text-white xl:px-7">
               <span>3:42</span>
@@ -880,6 +966,7 @@ function ProductControlPanel({
   activeContext,
   brand,
   isRefilling,
+  browserStorageAvailable,
   onReset,
 }: {
   inputId: string;
@@ -890,6 +977,7 @@ function ProductControlPanel({
   activeContext: BusinessContext;
   brand: string;
   isRefilling: boolean;
+  browserStorageAvailable: boolean;
   onReset: () => void;
 }) {
   return (
@@ -939,6 +1027,11 @@ function ProductControlPanel({
       <button type="button" onClick={onReset} className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-400 hover:text-[#ff6a35]">
         <RotateCcw className="size-3.5" aria-hidden="true" /> Reset demo deck
       </button>
+      {browserStorageAvailable ? (
+        <p className="mt-2 text-[11px] leading-4 text-zinc-500">
+          This deck is saved on this device for 30 days.
+        </p>
+      ) : null}
     </div>
   );
 }

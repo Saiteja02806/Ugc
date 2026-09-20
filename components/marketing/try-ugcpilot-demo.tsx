@@ -273,12 +273,12 @@ export function TryUgcPilotDemo() {
   return (
     <main className="min-h-dvh bg-[#101010] px-4 py-5 text-white sm:px-6 lg:px-10">
       <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[310px_minmax(0,1fr)] lg:items-center">
-        <section className="order-2 rounded-3xl border border-slate-200 bg-white p-5 text-slate-900 shadow-2xl lg:order-1">
+        <section className="order-2 rounded-3xl border border-white/10 bg-zinc-900 p-5 text-white shadow-2xl lg:order-1">
           <div className="mb-5 flex items-center justify-between">
-            <Link href="/" className="inline-flex items-center gap-1 text-sm font-semibold text-slate-600 hover:text-[#e04810]">
+            <Link href="/" className="inline-flex items-center gap-1 text-sm font-semibold text-zinc-300 hover:text-[#ff6a35]">
               <ChevronLeft className="size-4" aria-hidden="true" /> UGCPilot
             </Link>
-            <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[#e04810]">
+            <span className="rounded-full bg-orange-500/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[#ff6a35]">
               Live demo
             </span>
           </div>
@@ -286,13 +286,13 @@ export function TryUgcPilotDemo() {
           <div className="mb-5">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#e04810]">AI content engine</p>
             <h1 className="mt-2 text-2xl font-bold tracking-tight">Website to Wall-of-Text content.</h1>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
+            <p className="mt-2 text-sm leading-6 text-zinc-400">
               Enter a public product website. UGCPilot reads the business context, then gives you ready-to-review content cards.
             </p>
           </div>
 
           <form className="space-y-3" onSubmit={analyze}>
-            <label className="block text-xs font-bold uppercase tracking-wide text-slate-600" htmlFor="product-url">
+            <label className="block text-xs font-bold uppercase tracking-wide text-zinc-400" htmlFor="product-url">
               Product website URL
             </label>
             <input
@@ -301,7 +301,7 @@ export function TryUgcPilotDemo() {
               onChange={(event) => setUrl(event.target.value)}
               placeholder="https://yourproduct.com"
               inputMode="url"
-              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium outline-none transition focus:border-[#ff5a1f] focus:ring-4 focus:ring-orange-100"
+              className="h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 text-sm font-medium text-white outline-none transition placeholder:text-zinc-600 focus:border-[#ff5a1f] focus:ring-4 focus:ring-orange-500/20"
             />
             <button
               type="submit"
@@ -313,17 +313,17 @@ export function TryUgcPilotDemo() {
             </button>
           </form>
 
-          <div className="mt-5 space-y-3 rounded-2xl bg-slate-50 p-4 text-sm">
+          <div className="mt-5 space-y-3 rounded-2xl bg-zinc-950 p-4 text-sm">
             <StatusRow done={Boolean(businessContext)} label={businessContext ? `Analyzed: ${businessContext.url.replace(/^https?:\/\//, "")}` : "Website context ready"} />
             <StatusRow done={Boolean(businessContext)} label={businessContext ? `Brand: ${brand}` : "Brand identified"} />
             <StatusRow done={Boolean(businessContext) && !isRefilling} loading={isAnalyzing || isRefilling} label={isRefilling ? "Generating 10 more posts…" : "Wall-of-Text posts ready"} />
           </div>
 
-          <p aria-live="polite" className="mt-4 min-h-10 text-sm leading-5 text-slate-600">
+          <p aria-live="polite" className="mt-4 min-h-10 text-sm leading-5 text-zinc-400">
             {notice}
           </p>
 
-          <button type="button" onClick={resetDemo} className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-[#e04810]">
+          <button type="button" onClick={resetDemo} className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-300 hover:text-[#ff6a35]">
             <RotateCcw className="size-4" aria-hidden="true" /> Reset demo deck
           </button>
         </section>
@@ -429,10 +429,10 @@ export function TryUgcPilotDemo() {
 function StatusRow({ done, label, loading = false }: { done: boolean; label: string; loading?: boolean }) {
   return (
     <div className="flex items-center gap-2.5">
-      <span className={`grid size-5 place-items-center rounded-full ${done ? "bg-[#ff5a1f] text-white" : "bg-slate-200 text-slate-500"}`}>
+      <span className={`grid size-5 place-items-center rounded-full ${done ? "bg-[#ff5a1f] text-white" : "bg-zinc-800 text-zinc-400"}`}>
         {loading ? <LoaderCircle className="size-3 animate-spin" aria-hidden="true" /> : done ? <Check className="size-3" aria-hidden="true" /> : <span className="size-1.5 rounded-full bg-current" />}
       </span>
-      <span className="truncate text-xs font-medium text-slate-600">{label}</span>
+      <span className="truncate text-xs font-medium text-zinc-300">{label}</span>
     </div>
   );
 }

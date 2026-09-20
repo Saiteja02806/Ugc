@@ -110,6 +110,9 @@ export function TryUgcPilotDemo() {
   const [showSwipeGuide, setShowSwipeGuide] = useState(true);
   const dragStartX = useRef<number | null>(null);
   const refillAttemptFor = useRef<string | null>(null);
+  const refillInFlight = useRef(false);
+  const refillRequestId = useRef(0);
+  const deckVersion = useRef(0);
 
   const topCard = cards[0];
   const readyCount = cards.length;
@@ -157,13 +160,21 @@ export function TryUgcPilotDemo() {
 
   useEffect(() => {
     const refillKey = `${nextPostNumber}:${readyCount}`;
-    if (!businessContext || readyCount >= 6 || isRefilling || refillAttemptFor.current === refillKey) {
+    if (
+      !businessContext ||
+      isAnalyzing ||
+      readyCount >= 6 ||
+      refillInFlight.current ||
+      refillAttemptFor.current === refillKey
+    ) {
       return;
     }
 
     const startNumber = nextPostNumber;
+    const requestId = ++refillRequestId.current;
+    const requestDeckVersion = deckVersion.current;
     refillAttemptFor.current = refillKey;
-    let cancelled = false;
+    refillInFlight.current = true;
     setIsRefilling(true);
     setNotice("Generating 10 more Wall-of-Text posts in the background…");
 
@@ -183,25 +194,24 @@ export function TryUgcPilotDemo() {
         if (!Array.isArray(data.posts) || data.posts.length !== 10) {
           throw new Error("The background content response was incomplete.");
         }
-        if (cancelled) return;
+        if (refillRequestId.current !== requestId || deckVersion.current !== requestDeckVersion) return;
         setCards((current) => [...current, ...data.posts]);
         setRecentHooks((current) => [...current, ...data.posts.map((post) => post.hook)].slice(-32));
         setNextPostNumber(startNumber + data.posts.length);
         setNotice("10 more Wall-of-Text posts are ready.");
       })
       .catch((error: unknown) => {
-        if (!cancelled) {
+        if (refillRequestId.current === requestId && deckVersion.current === requestDeckVersion) {
           setNotice(error instanceof Error ? error.message : "More content could not be generated right now.");
         }
       })
       .finally(() => {
-        if (!cancelled) setIsRefilling(false);
+        if (refillRequestId.current === requestId) {
+          refillInFlight.current = false;
+          if (deckVersion.current === requestDeckVersion) setIsRefilling(false);
+        }
       });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [businessContext, isRefilling, nextPostNumber, readyCount, recentHooks]);
+  }, [businessContext, isAnalyzing, nextPostNumber, readyCount, recentHooks]);
 
   function swipe(direction: "left" | "right") {
     if (!topCard || exitDirection) return;
@@ -225,6 +235,10 @@ export function TryUgcPilotDemo() {
     const requestedUrl = url.trim();
     if (!requestedUrl || isAnalyzing) return;
 
+    deckVersion.current += 1;
+    refillRequestId.current += 1;
+    refillInFlight.current = false;
+    setIsRefilling(false);
     setIsAnalyzing(true);
     setNotice("Reading the website and generating 16 Wall-of-Text posts…");
     try {
@@ -255,6 +269,9 @@ export function TryUgcPilotDemo() {
   }
 
   function resetDemo() {
+    deckVersion.current += 1;
+    refillRequestId.current += 1;
+    refillInFlight.current = false;
     refillAttemptFor.current = null;
     setBusinessContext(null);
     setCards(DEMO_POSTS);
@@ -263,6 +280,7 @@ export function TryUgcPilotDemo() {
     setNextPostNumber(17);
     setDragX(0);
     setExitDirection(null);
+    setIsRefilling(false);
     setNotice("The demonstration deck has been reset.");
   }
 

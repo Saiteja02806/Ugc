@@ -521,11 +521,27 @@ function getOriginalNormalizedTextPosition(
 }
 
 function createFallbackPlannedSlide(slide: CarouselSlideRow): PlannedCarouselSlide {
+  if (slide.slide_number === 1) {
+    return {
+      body: null,
+      ctaText: null,
+      headline: slide.headline?.trim() || slide.subtext?.trim() || null,
+      imageDirection: slide.image_direction ?? "",
+      layoutPreset: "middle-statement",
+      listItems: [],
+      slideNumber: 1,
+      slideType: "hook",
+      subtext: null,
+      textMode: "single_statement",
+      textPosition: "center",
+    };
+  }
+
   const hasSupport = Boolean(slide.subtext?.trim());
 
   return {
     body: slide.subtext,
-    ctaText: slide.cta_text,
+    ctaText: null,
     headline: slide.headline,
     imageDirection: slide.image_direction ?? "",
     layoutPreset: getChoice(
@@ -547,11 +563,7 @@ function createFallbackPlannedSlide(slide: CarouselSlideRow): PlannedCarouselSli
       "solution",
     ),
     subtext: slide.subtext,
-    textMode: slide.cta_text
-      ? "cta_takeaway"
-      : hasSupport
-        ? "headline_body"
-        : "single_statement",
+    textMode: hasSupport ? "headline_body" : "single_statement",
     textPosition: getChoice(
       slide.text_position,
       ["bottom", "center", "top"] as const,
@@ -564,6 +576,20 @@ function applyEditToPlannedSlide(
   original: PlannedCarouselSlide,
   edited: EditableCarouselSlide,
 ): PlannedCarouselSlide {
+  if (edited.slideNumber === 1) {
+    return {
+      ...original,
+      body: null,
+      ctaText: null,
+      headline: edited.headline.trim() || edited.subtext.trim() || null,
+      listItems: [],
+      slideNumber: 1,
+      subtext: null,
+      textMode: "single_statement",
+      textPosition: "center",
+    };
+  }
+
   const isBodyOnly =
     original.textMode === "body_only" || original.textMode === "single_statement";
   const bodyOnlyCopy = edited.headline || edited.subtext || null;
@@ -571,7 +597,7 @@ function applyEditToPlannedSlide(
   return {
     ...original,
     body: isBodyOnly ? bodyOnlyCopy : edited.subtext || null,
-    ctaText: edited.ctaText || null,
+    ctaText: null,
     headline: isBodyOnly ? null : edited.headline || null,
     listItems:
       original.textMode === "checklist" || original.textMode === "question_list"
@@ -624,7 +650,7 @@ function createStructure2EditRenderSpec(
       edited.backgroundAssetId ??
       getRequiredString(original.category_image_asset_id, "category_image_asset_id"),
     assetUrl: edited.backgroundUrl,
-    ctaText: edited.ctaText || null,
+    ctaText: null,
     layoutVariant: isProduct
       ? "story_product_reveal"
       : getChoice(
@@ -644,9 +670,12 @@ function createStructure2EditRenderSpec(
     slideNumber: edited.slideNumber,
     storyFormatId: original.story_format_id,
     storyRole,
-    storyText: edited.subtext
-      ? `${edited.headline} ${edited.subtext}`
-      : edited.headline,
+    storyText:
+      edited.slideNumber === 1
+        ? edited.headline.trim() || edited.subtext.trim()
+        : edited.subtext
+          ? `${edited.headline} ${edited.subtext}`
+          : edited.headline,
     textPosition:
       edited.textPosition.y < 0.42
         ? "upper"

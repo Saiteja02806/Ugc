@@ -1146,13 +1146,14 @@ function EditorPreview({
         initialSlide &&
         !hasCarouselSlidePreviewChanged(initialSlide, slide),
     );
+    const isCover = slide.slideNumber === 1;
     const isStructure2 = slide.structureId === "structure_2";
     const structure2Layout = isStructure2
       ? createStructure2EditorLayout(slide)
       : null;
     const previewPosition =
       structure2Layout?.storyPosition ?? slide.textPosition;
-    const supportingText = slide.subtext || slide.ctaText;
+    const supportingText = slide.subtext;
 
     return (
       <div
@@ -1209,6 +1210,8 @@ function EditorPreview({
             </span>
           ) : structure2Layout ? (
             <Structure2StoryText layout={structure2Layout} />
+          ) : isCover ? (
+            <CarouselCoverText primaryText={slide.headline.trim() || supportingText} />
           ) : (
             <div className="w-[82cqw] text-center">
               {slide.headline.trim() ? (
@@ -1220,14 +1223,6 @@ function EditorPreview({
             </div>
           )}
         </DraggableOverlay>
-        {!showExactRender && structure2Layout?.cta ? (
-          <Structure2CtaText
-            layout={{
-              ...structure2Layout.cta,
-              renderHeight: structure2Layout.renderHeight,
-            }}
-          />
-        ) : null}
       </div>
     );
   }
@@ -1333,11 +1328,6 @@ type Structure2EditorBounds = {
 };
 
 type Structure2EditorLayout = {
-  cta: {
-    bounds: Structure2EditorBounds;
-    text: Structure2EditorTextLayout;
-  } | null;
-  renderHeight: number;
   story: Structure2EditorTextLayout;
   storyBounds: Structure2EditorBounds;
   storyPosition: NormalizedTextPosition;
@@ -1404,8 +1394,6 @@ function CarouselEditorBackground({
   const layoutVariant = isProduct
     ? "story_product_reveal"
     : slide.storyLayoutVariant ?? "story_overlay_only";
-  const position = getStructure2TextPosition(slide.textPosition.y);
-
   return (
     <>
       {isProduct ? (
@@ -1435,16 +1423,6 @@ function CarouselEditorBackground({
           className="absolute inset-0 size-full object-cover"
         />
       )}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background: getStructure2ReadabilityBackground({
-            layoutVariant,
-            position,
-          }),
-        }}
-      />
       {layoutVariant === "story_product_reveal" ? (
         <div className="pointer-events-none absolute inset-[4%] rounded-[3cqw] border border-white/20" />
       ) : null}
@@ -1460,7 +1438,7 @@ function Structure2StoryText({ layout }: { layout: Structure2EditorLayout }) {
         color: "#ffffff",
         fontFamily: 'var(--font-geist-sans), Geist, Arial, Helvetica, sans-serif',
         fontSize: `${layout.story.fontSize / 10.8}cqw`,
-        fontWeight: 600,
+        fontWeight: layout.story.fontSize >= 90 ? 800 : 600,
         letterSpacing: 0,
         lineHeight: layout.story.lineHeight / layout.story.fontSize,
         paintOrder: "stroke fill",
@@ -1480,77 +1458,33 @@ function Structure2StoryText({ layout }: { layout: Structure2EditorLayout }) {
   );
 }
 
-function Structure2CtaText({
-  layout,
-}: {
-  layout: NonNullable<Structure2EditorLayout["cta"]> & {
-    renderHeight: number;
-  };
-}) {
-  return (
-    <div
-      className="pointer-events-none absolute flex flex-col items-center justify-center text-center text-white"
-      style={{
-        fontFamily: 'var(--font-geist-sans), Geist, Arial, Helvetica, sans-serif',
-        fontSize: `${layout.text.fontSize / 10.8}cqw`,
-        fontWeight: 600,
-        height: `${(layout.bounds.height / layout.renderHeight) * 100}%`,
-        left: `${(layout.bounds.x / STRUCTURE_2_RENDER_WIDTH) * 100}%`,
-        letterSpacing: 0,
-        lineHeight: layout.text.lineHeight / layout.text.fontSize,
-        paintOrder: "stroke fill",
-        top: `${(layout.bounds.y / layout.renderHeight) * 100}%`,
-        WebkitTextStroke: "0.370cqw rgba(0, 0, 0, 0.72)",
-        width: `${(layout.bounds.width / STRUCTURE_2_RENDER_WIDTH) * 100}%`,
-      }}
-    >
-      {layout.text.lines.map((line, index) => (
-        <span
-          key={`${index}:${line}`}
-          className="block whitespace-nowrap"
-        >
-          {line}
-        </span>
-      ))}
-    </div>
-  );
-}
-
 function createStructure2EditorLayout(
   slide: TrendingCarouselEditSlide,
 ): Structure2EditorLayout {
   const height = getStructure2RenderHeight(slide.renderFormat);
+  const isCover = slide.slideNumber === 1;
   const maximumTextWidth = STRUCTURE_2_RENDER_WIDTH - STRUCTURE_2_SAFE_X * 2;
   const treatment = "overlay" as const;
   const story = fitStructure2EditorText({
-    maximumLines: 12,
+    fontSize: isCover ? 92 : CAROUSEL_FIXED_EDITOR_FONT_SIZE,
+    maximumLines: isCover ? 3 : 12,
     maximumWidth:
       maximumTextWidth - STRUCTURE_2_DIRECT_TEXT_SIDE_BUFFER * 2,
     value:
-      (slide.subtext
-        ? `${slide.headline} ${slide.subtext}`
-        : slide.headline) || "Add a headline",
+      (isCover
+        ? slide.headline || slide.subtext
+        : slide.subtext
+          ? `${slide.headline} ${slide.subtext}`
+          : slide.headline) || "Add a headline",
   });
-  const cta = slide.ctaText
-    ? fitStructure2EditorText({
-        maximumLines: 6,
-        maximumWidth:
-          maximumTextWidth - STRUCTURE_2_DIRECT_TEXT_SIDE_BUFFER * 2,
-        value: slide.ctaText,
-      })
-    : null;
   const storyWidth = story.maximumLineWidth;
   const storyHeight = story.blockHeight;
-  const ctaHeight = cta?.blockHeight ?? 0;
-  const ctaWidth = cta?.maximumLineWidth ?? 0;
-  const textBlockHeight = storyHeight + (cta ? 46 + ctaHeight : 0);
   const storyTop = resolveStructure2StoryTop({
-    blockHeight: textBlockHeight,
+    blockHeight: storyHeight,
     height,
     maximumBottom: height - STRUCTURE_2_SAFE_BOTTOM,
     position: getStructure2TextPosition(slide.textPosition.y),
   });
-  const ctaTop = cta ? storyTop + storyHeight + 46 : null;
   const storyBounds = {
     height: storyHeight,
     width: storyWidth,
@@ -1559,19 +1493,6 @@ function createStructure2EditorLayout(
   };
 
   return {
-    cta:
-      cta && ctaTop !== null
-        ? {
-            bounds: {
-              height: ctaHeight,
-              width: ctaWidth,
-              x: Math.round((STRUCTURE_2_RENDER_WIDTH - ctaWidth) / 2),
-              y: ctaTop,
-            },
-            text: cta,
-          }
-        : null,
-    renderHeight: height,
     story,
     storyBounds,
     storyPosition: {
@@ -1583,12 +1504,13 @@ function createStructure2EditorLayout(
 }
 
 function fitStructure2EditorText(params: {
+  fontSize?: number;
   maximumLines: number;
   maximumWidth: number;
   value: string;
 }): Structure2EditorTextLayout {
   const value = params.value.trim().replace(/\s+/gu, " ");
-  const fontSize = CAROUSEL_FIXED_EDITOR_FONT_SIZE;
+  const fontSize = params.fontSize ?? CAROUSEL_FIXED_EDITOR_FONT_SIZE;
   const lines = wrapStructure2EditorWords(
     value || "Add a headline",
     params.maximumWidth,
@@ -1677,26 +1599,6 @@ function resolveStructure2StoryTop(params: {
   );
 }
 
-function getStructure2ReadabilityBackground({
-  layoutVariant,
-  position,
-}: {
-  layoutVariant: NonNullable<TrendingCarouselEditSlide["storyLayoutVariant"]>;
-  position: ReturnType<typeof getStructure2TextPosition>;
-}) {
-  if (layoutVariant === "story_pill_overlay") {
-    return "rgba(0,0,0,.10)";
-  }
-
-  if (layoutVariant === "story_product_reveal") {
-    return "linear-gradient(to bottom,rgba(0,0,0,.68),rgba(0,0,0,.04) 34%,rgba(0,0,0,.06) 70%,rgba(0,0,0,.70))";
-  }
-
-  const topOpacity = position === "upper" ? 0.66 : 0.2;
-  const bottomOpacity = position === "lower" ? 0.72 : 0.42;
-  return `linear-gradient(to bottom,rgba(0,0,0,${topOpacity}),rgba(0,0,0,.04) 48%,rgba(0,0,0,${bottomOpacity}))`;
-}
-
 function CarouselOutlinedText({
   kind,
   text,
@@ -1731,6 +1633,28 @@ function CarouselOutlinedText({
         text
       )}
     </p>
+  );
+}
+
+function CarouselCoverText({
+  primaryText,
+}: {
+  primaryText: string;
+}) {
+  return (
+    <div className="mx-auto w-[78cqw] text-center">
+      <p
+        className="text-[8.52cqw] font-extrabold leading-[.98] text-white"
+        style={{
+          fontFamily: 'var(--font-geist-sans), Geist, Arial, Helvetica, sans-serif',
+          letterSpacing: 0,
+          paintOrder: "stroke fill",
+          WebkitTextStroke: "0.370cqw rgba(0, 0, 0, 0.72)",
+        }}
+      >
+        {primaryText}
+      </p>
+    </div>
   );
 }
 
@@ -2124,7 +2048,7 @@ function EditorFields({
         <FieldGroup className="mt-5">
           <Field>
             <FieldLabel htmlFor="trending-carousel-headline">
-              Headline
+              {slide.slideNumber === 1 ? "Hook" : "Headline"}
             </FieldLabel>
             <Input
               id="trending-carousel-headline"
@@ -2133,33 +2057,19 @@ function EditorFields({
               onChange={(event) => updateSlide("headline", event.target.value)}
             />
           </Field>
-          <Field>
-            <FieldLabel htmlFor="trending-carousel-subtext">
-              Supporting text
-            </FieldLabel>
-            <Input
-              id="trending-carousel-subtext"
-              value={slide.subtext}
-              maxLength={360}
-              onChange={(event) => updateSlide("subtext", event.target.value)}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="trending-carousel-cta">
-              Call to action
-            </FieldLabel>
-            <Input
-              id="trending-carousel-cta"
-              value={slide.ctaText}
-              maxLength={120}
-              onChange={(event) => updateSlide("ctaText", event.target.value)}
-            />
-            <FieldDescription>
-              {slide.structureId === "structure_2"
-                ? "Rendered as the bottom action label."
-                : "Rendered when Supporting text is empty."}
-            </FieldDescription>
-          </Field>
+          {slide.slideNumber !== 1 ? (
+            <Field>
+              <FieldLabel htmlFor="trending-carousel-subtext">
+                Supporting text
+              </FieldLabel>
+              <Input
+                id="trending-carousel-subtext"
+                value={slide.subtext}
+                maxLength={360}
+                onChange={(event) => updateSlide("subtext", event.target.value)}
+              />
+            </Field>
+          ) : null}
         </FieldGroup>
       </div>
     );

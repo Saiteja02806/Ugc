@@ -44,6 +44,8 @@ import {
   HOOK_TEXT_FIXED_FONT_SIZE,
   HOOK_TEXT_LAYOUT_VERSION,
   LEGACY_HOOK_TEXT_LAYOUT_VERSION,
+  PREVIOUS_HOOK_TEXT_FIXED_FONT_SIZE,
+  PREVIOUS_HOOK_TEXT_LAYOUT_VERSION,
 } from "@/lib/trending/hook-text-layout";
 
 export const runtime = "nodejs";
@@ -252,6 +254,7 @@ export async function POST(
   if (
     hookTextLayoutVersion !== null &&
     hookTextLayoutVersion !== HOOK_TEXT_LAYOUT_VERSION &&
+    hookTextLayoutVersion !== PREVIOUS_HOOK_TEXT_LAYOUT_VERSION &&
     hookTextLayoutVersion !== LEGACY_HOOK_TEXT_LAYOUT_VERSION
   ) {
     return jsonResponse(
@@ -267,6 +270,22 @@ export async function POST(
     hookTextLayoutVersion === HOOK_TEXT_LAYOUT_VERSION &&
     (!hookTextFontSize ||
       hookTextFontSize !== HOOK_TEXT_FIXED_FONT_SIZE ||
+      !hookTextLines ||
+      normalizeHookText(hookTextLines.join(" ")) !== normalizeHookText(hookText))
+  ) {
+    return jsonResponse(
+      {
+        message: "The saved Hook text layout no longer matches its copy.",
+        ok: false,
+      },
+      409,
+    );
+  }
+
+  if (
+    hookTextLayoutVersion === PREVIOUS_HOOK_TEXT_LAYOUT_VERSION &&
+    (!hookTextFontSize ||
+      hookTextFontSize !== PREVIOUS_HOOK_TEXT_FIXED_FONT_SIZE ||
       !hookTextLines ||
       normalizeHookText(hookTextLines.join(" ")) !== normalizeHookText(hookText))
   ) {

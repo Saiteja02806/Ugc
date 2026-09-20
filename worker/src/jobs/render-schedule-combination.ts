@@ -12,6 +12,8 @@ import {
   HOOK_TEXT_FIXED_FONT_SIZE,
   HOOK_TEXT_LAYOUT_VERSION,
   LEGACY_HOOK_TEXT_LAYOUT_VERSION,
+  PREVIOUS_HOOK_TEXT_FIXED_FONT_SIZE,
+  PREVIOUS_HOOK_TEXT_LAYOUT_VERSION,
   parseTextColor,
 } from "../lib/edit-overlay-render-spec.js";
 import type { BackgroundJobRow, Json } from "../types.js";
@@ -282,6 +284,15 @@ function parseRenderScheduleCombinationPayload(
   }
 
   if (
+    hookTextLayoutVersion === PREVIOUS_HOOK_TEXT_LAYOUT_VERSION &&
+    (hookTextFontSize === null ||
+      hookTextLines === null ||
+      hookTextFontSize !== PREVIOUS_HOOK_TEXT_FIXED_FONT_SIZE)
+  ) {
+    throw new Error("The previous fixed Hook text layout is incomplete.");
+  }
+
+  if (
     hookTextLayoutVersion === HOOK_TEXT_LAYOUT_VERSION &&
     hookTextFontSize !== HOOK_TEXT_FIXED_FONT_SIZE
   ) {
@@ -442,6 +453,7 @@ function getOptionalHookTextLayoutVersion(value: Json | undefined) {
 
   if (
     value === HOOK_TEXT_LAYOUT_VERSION ||
+    value === PREVIOUS_HOOK_TEXT_LAYOUT_VERSION ||
     value === LEGACY_HOOK_TEXT_LAYOUT_VERSION
   ) {
     return value;

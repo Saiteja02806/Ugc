@@ -3,10 +3,15 @@ import test from "node:test";
 
 import type { SupabaseJobStore } from "../lib/supabase.js";
 import type { BackgroundJobRow } from "../types.js";
+import { CAROUSEL_RENDERER_VERSION } from "../lib/carousel-render-slide.js";
+import { CAROUSEL_STRUCTURE_2_RENDERER_VERSION } from "../lib/carousel-structure-2-render-slide.js";
 import { runRenderTrendingCarouselEditJob } from "./render-trending-carousel-edit.js";
 
 test("renders and persists a normalized immutable Carousel edit", async () => {
   let receivedPosition: { x: number; y: number } | undefined;
+  let receivedSlide:
+    | { body: string | null; headline: string | null; subtext: string | null }
+    | undefined;
   let receivedTextStyle: string | undefined;
   let readyOutput: unknown;
   const store = {
@@ -80,12 +85,13 @@ test("renders and persists a normalized immutable Carousel edit", async () => {
     dependencies: {
       renderCarouselSlide: async (input) => {
         receivedPosition = input.normalizedTextPosition;
+        receivedSlide = input.slide;
         receivedTextStyle = input.textStyle;
         return {
           buffer: Buffer.from("rendered"),
           diagnostics: {
             bubbleShapeStrategy: "heading-white-svg-background",
-            fontFamily: "Geist",
+            fontFamily: "Inter Tight, Inter, Arial, Helvetica, sans-serif",
             maxTextWidth: 700,
             whiteBackgroundGroupCount: 1,
           },
@@ -100,10 +106,22 @@ test("renders and persists a normalized immutable Carousel edit", async () => {
   });
 
   assert.deepEqual(receivedPosition, { x: 0.27, y: 0.73 });
+  assert.deepEqual(receivedSlide, {
+    body: null,
+    ctaText: null,
+    headline: "Edited headline",
+    imageDirection: "",
+    layoutPreset: "middle-statement",
+    listItems: [],
+    slideNumber: 1,
+    slideType: "hook",
+    subtext: null,
+    textMode: "single_statement",
+    textPosition: "center",
+  });
   assert.equal(receivedTextStyle, "plain");
   assert.deepEqual(readyOutput, {
-    rendererVersion:
-      "social-heading-rounded-shoulder-svg-renderer-v20-outline-4-normalized-edit-v1",
+    rendererVersion: `${CAROUSEL_RENDERER_VERSION}-normalized-edit-v1`,
     slides: [
       {
         renderedS3Key: "carousels/rendered/user/edit/slide.webp",
@@ -222,7 +240,7 @@ test("reuses immutable output for unchanged Carousel slides", async () => {
           buffer: Buffer.from("rendered"),
           diagnostics: {
             bubbleShapeStrategy: "heading-white-svg-background",
-            fontFamily: "Geist",
+            fontFamily: "Inter Tight, Inter, Arial, Helvetica, sans-serif",
             maxTextWidth: 700,
             whiteBackgroundGroupCount: 1,
           },
@@ -242,8 +260,7 @@ test("reuses immutable output for unchanged Carousel slides", async () => {
   assert.deepEqual(renderedSlideNumbers, [2]);
   assert.deepEqual(uploadedSlideNumbers, [2]);
   assert.deepEqual(readyOutput, {
-    rendererVersion:
-      "social-heading-rounded-shoulder-svg-renderer-v20-outline-4-normalized-edit-v1",
+    rendererVersion: `${CAROUSEL_RENDERER_VERSION}-normalized-edit-v1`,
     slides: [
       {
         renderedS3Key: "carousels/original/slide-1.webp",
@@ -347,15 +364,15 @@ test("renders Structure 2 screenshot edits with the story-native renderer", asyn
         return {
           buffer: Buffer.from("story-rendered"),
           diagnostics: {
-            bubbleShapeStrategy: "plain-white-text-with-shadow",
+            bubbleShapeStrategy: "plain-white-text-with-outline",
             ctaBounds: null,
             ctaFontSize: null,
             ctaLineCount: 0,
             layoutVariant: input.spec.layoutVariant,
-            rendererVersion: "story-native-renderer-v6-outline-4",
+            rendererVersion: CAROUSEL_STRUCTURE_2_RENDERER_VERSION,
             safeAreaContained: true,
             storyBounds: { height: 100, width: 700, x: 100, y: 100 },
-            storyFontSize: 44,
+            storyFontSize: 60,
             storyLineCount: 2,
             textTreatment: input.spec.textTreatment,
             visualRole: input.spec.visualRole,
@@ -374,13 +391,13 @@ test("renders Structure 2 screenshot edits with the story-native renderer", asyn
   const receivedSpec = receivedSpecs[0];
   assert.ok(receivedSpec);
   assert.equal(receivedSpec.assetId, "product-asset-1");
+  assert.equal(receivedSpec.ctaText, null);
   assert.equal(receivedSpec.layoutVariant, "story_product_reveal");
   assert.equal(receivedSpec.textTreatment, "overlay");
   assert.equal(receivedSpec.textPosition, "upper");
   assert.equal(receivedSpec.visualRole, "product_asset");
   assert.deepEqual(readyOutput, {
-    rendererVersion:
-      "story-native-renderer-v6-outline-4-normalized-edit-v1",
+    rendererVersion: `${CAROUSEL_STRUCTURE_2_RENDERER_VERSION}-normalized-edit-v1`,
     slides: [
       {
         renderedS3Key: "carousels/rendered/user/edit/slide-4.webp",

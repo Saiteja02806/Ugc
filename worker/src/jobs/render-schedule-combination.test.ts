@@ -193,11 +193,11 @@ test("rejects a non-fixed font size for the current Hook layout", async () => {
   const fixture = createStore();
   const job = createJob(false);
   (job.input_json as Record<string, unknown>).hookTextLayoutVersion =
-    "hook-overlay-layout-v2-fixed";
+    "hook-overlay-layout-v3-56px";
 
   await assert.rejects(
     runRenderScheduleCombinationJob(job, { store: fixture.store }),
-    /Current Hook text must use the fixed 52px font size/,
+    /Current Hook text must use the fixed 56px font size/,
   );
   assert.deepEqual(fixture.events, []);
 });

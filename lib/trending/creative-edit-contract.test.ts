@@ -16,8 +16,10 @@ import {
 import {
   createHookTextLayout,
   getDefaultHookTextPosition,
+  HOOK_TEXT_FIXED_FONT_SIZE,
   HOOK_TEXT_MAXIMUM_CHARACTERS,
   HOOK_TEXT_LAYOUT_VERSION,
+  PREVIOUS_HOOK_TEXT_LAYOUT_VERSION,
 } from "./hook-text-layout.ts";
 import { validateWallTextContent } from "./wall-text-text-logic.ts";
 import type { TrendingWallTextContent } from "./wall-text-types.ts";
@@ -61,6 +63,21 @@ test("keeps the editor and worker on one safe color palette", () => {
   for (const option of TRENDING_TEXT_COLOR_OPTIONS) {
     assert.equal(workerContract.includes(option.value), true);
   }
+});
+
+test("Carousel edit preview cannot restore a CTA layer or readability gradient", () => {
+  const editor = readFileSync(
+    new URL(
+      "../../components/trending/trending-creative-editor.tsx",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  assert.equal(editor.includes("function Structure2CtaText"), false);
+  assert.equal(editor.includes("getStructure2ReadabilityBackground"), false);
+  assert.equal(editor.includes("supportingText={slide.headline.trim()"), false);
+  assert.equal(editor.includes('{slide.slideNumber === 1 ? "Hook" : "Headline"}'), true);
 });
 
 test("wall edits remain a renderable two-to-three segment payload", () => {
@@ -194,7 +211,7 @@ test("compact Wall edit patterns use the five-line minimum", () => {
 
 test("Hook edits recalculate their final lines, font, and safe position", () => {
   const current = {
-    fontSize: 52,
+    fontSize: HOOK_TEXT_FIXED_FONT_SIZE,
     format: "hook_video" as const,
     hookText: "Old Hook copy",
     lines: ["Old Hook copy"],
@@ -212,7 +229,7 @@ test("Hook edits recalculate their final lines, font, and safe position", () => 
   });
 
   assert.equal(edited.lines.length, 2);
-  assert.equal(edited.fontSize, 52);
+  assert.equal(edited.fontSize, HOOK_TEXT_FIXED_FONT_SIZE);
   assert.equal(edited.fontSize, layout.fontSize);
   assert.equal(layout.version, HOOK_TEXT_LAYOUT_VERSION);
   assert.equal(edited.textColor, "#ffffff");
@@ -241,13 +258,24 @@ test("Hook edits preserve three intentional lines and a trailing emoji", () => {
     "shouldn't interrupt",
     "your whole day 😩",
   ]);
-  assert.equal(layout.fontSize, 52);
+  assert.equal(layout.fontSize, HOOK_TEXT_FIXED_FONT_SIZE);
   assert.equal(layout.wordCount, 8);
+});
+
+test("keeps the previous fixed Hook layout renderable for saved drafts", () => {
+  const layout = createHookTextLayout("Meal logging\nshouldn't interrupt", {
+    fontSize: 52,
+    layoutVersion: PREVIOUS_HOOK_TEXT_LAYOUT_VERSION,
+    lines: ["Meal logging", "shouldn't interrupt"],
+  });
+
+  assert.equal(layout.fontSize, 52);
+  assert.equal(layout.version, PREVIOUS_HOOK_TEXT_LAYOUT_VERSION);
 });
 
 test("Hook editor changes preserve user-controlled line breaks", () => {
   const current = {
-    fontSize: 52,
+    fontSize: HOOK_TEXT_FIXED_FONT_SIZE,
     format: "hook_video" as const,
     hookText: "Old Hook copy",
     lines: ["Old Hook copy"],
@@ -281,13 +309,13 @@ test("Hook layouts fail closed when saved lines or font metadata change", () => 
         fontSize: 55,
         lines: ["The original Hook copy"],
       }),
-    /fixed 52px font size/,
+    /fixed 56px font size/,
   );
 });
 
 test("invalid in-progress Hook edits are preserved instead of sliced", () => {
   const current = {
-    fontSize: 52,
+    fontSize: HOOK_TEXT_FIXED_FONT_SIZE,
     format: "hook_video" as const,
     hookText: "Old Hook copy",
     lines: ["Old Hook copy"],

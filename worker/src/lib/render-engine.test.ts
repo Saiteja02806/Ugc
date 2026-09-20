@@ -71,7 +71,10 @@ test("reflows an overflowing Reaction caption into the safe white-card area", as
   });
 
   assert.equal(layout.lines.join(" "), captionLines.join(" "));
-  assert.equal(layout.lines.length, 2);
+  assert.ok(
+    layout.lines.length >= 2 && layout.lines.length <= 3,
+    "the readable Reaction scale may use the permitted third caption line",
+  );
   assert.ok(layout.card);
   assert.ok(layout.card.width < 936, "the card should fit its content, not use the legacy full-width box");
   assert.ok(layout.card.x >= 90);
@@ -82,8 +85,8 @@ test("reflows an overflowing Reaction caption into the safe white-card area", as
     layout.lineWidths.every((width) => width <= layout.card!.width - 56),
     "each line keeps the requested left and right padding inside the card",
   );
-  assert.equal(svg.match(/<text /gu)?.length, 2);
-  assert.match(svg, /rx="18"/u);
+  assert.equal(svg.match(/<text /gu)?.length, layout.lines.length);
+  assert.match(svg, /rx="\d+"/u);
   assert.doesNotMatch(svg, /width="936"/u);
   assert.doesNotMatch(svg, /textLength=|lengthAdjust=/u);
 
@@ -106,6 +109,26 @@ test("uses the same lower anchor for outlined Reaction captions", async () => {
   assert.equal(layout.textY, 320 + layout.fontSize);
   assert.doesNotMatch(svg, /<rect /u);
   assert.match(svg, new RegExp(`y="${layout.textY}"`, "u"));
+});
+
+test("keeps feed-sized outlined Reaction captions above the old shrink floor", async () => {
+  const layout = await buildReactionCaptionLayout({
+    captionLines: [
+      "Me marketing my web application realizing viral",
+      "ready to post marketing content takes a long time",
+    ],
+    treatment: "outlined_text",
+  });
+
+  assert.ok(
+    layout.fontSize >= 50,
+    "the supplied feed-sized caption retains a visibly larger 50px minimum",
+  );
+  assert.ok(layout.lines.length <= 3);
+  assert.deepEqual(
+    layout.lines.join(" "),
+    "Me marketing my web application realizing viral ready to post marketing content takes a long time",
+  );
 });
 
 test("keeps the Reaction foreground legible when a catalog placement is too small", () => {
@@ -388,7 +411,7 @@ test("rasterizes approved Hook symbols as bundled cross/check icons", async () =
     style: "hook",
   });
 
-  assert.equal(layout.fontSize, 52);
+  assert.equal(layout.fontSize, 56);
   assert.equal(layout.lines.length, 2);
   assert.match(svg, /data-hook-inline-symbol="cross"/);
   assert.match(svg, /data-hook-inline-symbol="check"/);

@@ -30,12 +30,20 @@ test("Structure 2 owns a dedicated renderer and persistence adapter", async () =
     read("worker/src/lib/carousel-structure-2-render-spec.ts"),
   ]);
 
-  assert.match(renderer, /story-native-renderer-v6-outline-4/);
+  assert.match(renderer, /story-native-centered-inter-tight-no-gradient-v10/);
   assert.match(renderer, /story_product_reveal/);
   assert.match(renderer, /buildPlainWhiteTextMarkup/);
   assert.match(renderer, /fill="#ffffff"/);
+  assert.match(renderer, /CAROUSEL_FONT_FAMILY/);
+  assert.match(renderer, /outlined: params\.spec\.slideNumber !== 1/);
+  assert.doesNotMatch(renderer, /buildReadabilityGradient|linearGradient/);
   assert.match(renderer, /stroke="#000000"/);
   assert.match(renderer, /stroke-width="4"/);
+  assert.match(renderer, /CAROUSEL_COVER_FONT_WEIGHT/);
+  assert.match(
+    renderer,
+    /params\.spec\.slideNumber === 1[\s\S]*CAROUSEL_COVER_FONT_WEIGHT[\s\S]*CAROUSEL_BODY_FONT_WEIGHT/,
+  );
   assert.match(renderer, /text-anchor="middle"/);
   assert.match(renderer, /CAROUSEL_FIXED_FONT_SIZE/);
   assert.doesNotMatch(renderer, /fontSize\s*-=\s*2/);

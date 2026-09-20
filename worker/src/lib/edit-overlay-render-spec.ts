@@ -68,13 +68,19 @@ export const EDIT_OVERLAY_MAX_TEXT_WIDTH_PERCENT =
   100 - EDIT_OVERLAY_HORIZONTAL_INSET_PERCENT * 2;
 export const EDIT_OVERLAY_FONT_FAMILY = "Geist";
 export const EDIT_OVERLAY_FONT_WEIGHT = 600;
-export const HOOK_TEXT_FIXED_FONT_SIZE = 52;
+// Hook text has its own versioned typography contract. Keep it separate from
+// Reaction captions and every other edit-overlay style.
+export const HOOK_TEXT_FIXED_FONT_SIZE = 56;
+export const PREVIOUS_HOOK_TEXT_FIXED_FONT_SIZE = 52;
 export const LEGACY_HOOK_TEXT_LAYOUT_VERSION =
   "hook-overlay-layout-v1" as const;
-export const HOOK_TEXT_LAYOUT_VERSION =
+export const PREVIOUS_HOOK_TEXT_LAYOUT_VERSION =
   "hook-overlay-layout-v2-fixed" as const;
+export const HOOK_TEXT_LAYOUT_VERSION =
+  "hook-overlay-layout-v3-56px" as const;
 export type HookTextLayoutVersion =
   | typeof HOOK_TEXT_LAYOUT_VERSION
+  | typeof PREVIOUS_HOOK_TEXT_LAYOUT_VERSION
   | typeof LEGACY_HOOK_TEXT_LAYOUT_VERSION;
 export const EDIT_OVERLAY_TEXT_COLOR = DEFAULT_TEXT_COLOR;
 export const EDIT_OVERLAY_SHADOW_COLOR = "rgba(0, 0, 0, 0.45)";
@@ -333,6 +339,10 @@ export function buildResolvedEditOverlayTextLayout(params: {
 }): EditOverlayTextLayout {
   const metrics = getEditOverlayRenderMetrics(params.style, params.ratio);
   const layoutVersion = params.layoutVersion ?? HOOK_TEXT_LAYOUT_VERSION;
+  const fixedHookFontSize =
+    params.style === "hook"
+      ? getHookTextFixedFontSize(layoutVersion)
+      : null;
   const normalizedLines = params.lines
     .map((line) => line.replace(/\s+/gu, " ").trim())
     .filter(Boolean);
@@ -341,19 +351,19 @@ export function buildResolvedEditOverlayTextLayout(params: {
     normalizedLines.length < 1 ||
     (params.style === "hook" && normalizedLines.length > 3) ||
     (params.style === "hook" &&
-      layoutVersion === HOOK_TEXT_LAYOUT_VERSION &&
-      params.fontSize !== HOOK_TEXT_FIXED_FONT_SIZE) ||
+      fixedHookFontSize !== null &&
+      params.fontSize !== fixedHookFontSize) ||
     !Number.isInteger(params.fontSize) ||
     params.fontSize <
       (params.style === "hook" &&
       layoutVersion === LEGACY_HOOK_TEXT_LAYOUT_VERSION
         ? 34
-        : metrics.minFontSize) ||
+        : fixedHookFontSize ?? metrics.minFontSize) ||
     params.fontSize >
       (params.style === "hook" &&
       layoutVersion === LEGACY_HOOK_TEXT_LAYOUT_VERSION
         ? 60
-        : metrics.fontSize) ||
+        : fixedHookFontSize ?? metrics.fontSize) ||
     params.fontSize % 2 !== 0
   ) {
     throw new Error("The saved text layout is outside the supported limits.");
@@ -391,6 +401,20 @@ export function buildResolvedEditOverlayTextLayout(params: {
   }
 
   return layout;
+}
+
+export function getHookTextFixedFontSize(
+  layoutVersion: HookTextLayoutVersion,
+) {
+  if (layoutVersion === HOOK_TEXT_LAYOUT_VERSION) {
+    return HOOK_TEXT_FIXED_FONT_SIZE;
+  }
+
+  if (layoutVersion === PREVIOUS_HOOK_TEXT_LAYOUT_VERSION) {
+    return PREVIOUS_HOOK_TEXT_FIXED_FONT_SIZE;
+  }
+
+  return null;
 }
 
 function buildLayoutAtFontSize(params: {

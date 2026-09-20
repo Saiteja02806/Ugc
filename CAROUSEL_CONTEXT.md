@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-09-16
+Last updated: 2026-09-20
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -4492,18 +4492,18 @@ Runtime/font errors propagate as dependency failures instead of copy-fit errors.
   and worker release identity before enabling hook overlays or recovering old
   failures.
 - Structure 1 planner version
-  `llm-carousel-planner-v41-grounded-batch-cover-contract` requires a
+  `llm-carousel-planner-v42-grounded-batch-cover-poster-contract` requires a
   server-derived grounding anchor from the saved creative brief. The model may
   select only an anchor ID; the worker restores its verified fact and requires
   the concept and Slides 3-5 to use it. Old persisted plans remain readable,
   while newly generated plans cannot invent a fact or use generic disconnected
   middle slides.
 - Both initial and batch Structure 1 planner instructions now state the same
-  measured Slide 1 contract: 4-18 words, at most 140 characters, three actual
-  visual lines at 60px for `single_statement` or 44px for other text modes,
-  with no shrink/truncation. An optional hook overlay remains Slide-1-only and
-  cannot repeat the body as a headline or alter Slides 2-6. The publishing
-  validator remains strict.
+  measured Slide 1 poster-cover contract: 4-12 words, targeting at most 90 characters,
+  three actual visual lines at 92px for the dominant hook and, when present,
+  two lines at 34px for distinct supporting copy. No text is shrunk or
+  truncated. The treatment is Slide-1-only and does not alter Slides 2-6. The
+  publishing validator remains strict.
 - The historical six-slide role-asset error `dimension values cannot be null`
   is the PostgreSQL array-initialization defect fixed by committed migration
   `20260906091416_fix_carousel_six_slide_reservation_initialization.sql`; it
@@ -4541,3 +4541,107 @@ Runtime/font errors propagate as dependency failures instead of copy-fit errors.
   Carousel plan, render, or approved assignment is bulk-rewritten when the
   owner changes Business Context. This preserves the current durable plan and
   assignment recovery contracts.
+
+## 2026-09-17 Slide 1 cover poster treatment
+
+- Slide 1 is a distinct, bottom-anchored cover treatment for both Carousel
+  structures. It uses one dominant heavy display hook (92px, weight 800, up to
+  three visual lines) and may include a distinct, smaller supporting line
+  (34px, up to two lines). It does not use Structure 1's white headline bubble.
+  Slides 2-6 keep their established type hierarchy and layouts.
+- The existing image blend, crop, brightness, saturation, and background
+  readability treatment remain unchanged for every slide. Moving a Slide 1
+  text block lower must not introduce a new full-slide gradient, blur, crop, or
+  brightness change. Structure 1 continues to use its prior center-region
+  brightness sampling for Slide 1 so its blend remains stable after the text
+  moves.
+- Approved Hook-category assets selected with `asset_role = hook` for Slide 1
+  may contain people or faces when that category calls for them. This is a
+  category-scoped exception, not permission to use unreviewed human imagery or
+  to change Slides 2-6's existing asset policy. The existing Hook-library role
+  selection remains authoritative; no new image-selection step, user flow, or
+  image transformation is introduced.
+- Existing completed Carousel renders remain immutable. The treatment applies
+  to new renders and intentional edits only; historical images are not bulk
+  rewritten.
+
+## 2026-09-20 True Black cover typography and short-hook prompt contract
+
+- Both Carousel structures render newly created Slide 1 covers with Geist Black
+  at weight 900. The worker image explicitly packages `Geist-Black.ttf`, so an
+  exported slide does not rely on an 800 request resolving to a lighter Bold
+  face. Slides 2-6 retain their established SemiBold hierarchy.
+- Structure 1 initial, batch, repair, and native-overflow prompts, plus
+  Structure 2 initial and repair prompts, now ask for one self-contained,
+  reader-first hook. The target is 5-9 words (never more than 11), natural or
+  sentence case, and never all caps. Structure 1 prefers `body_only` when its
+  selected format allows it; its existing format roles and optional
+  headline/body support contract remain intact.
+- This change does not alter the six-slide formats, slide roles, cover text
+  placement, image blend, crop, brightness, saturation, asset selection, or
+  historical renders.
+
+## 2026-09-20 Centered Inter Tight carousel typography
+
+- This decision supersedes the 2026-09-17 bottom-anchored cover placement and
+  the earlier 2026-09-20 Geist Black treatment for newly rendered slides.
+  Existing completed Carousel renders remain immutable.
+- Both structures now render Slide 1 as a centered (52% vertical centre),
+  three-line maximum hook in Inter Tight Bold 700 at 96px. The type has no
+  added outline, drop shadow, or black gradient. Supporting copy remains an
+  exceptional, distinct secondary line at 32px rather than a repeated hook.
+- Slides 2-6 use centered Inter Tight SemiBold 600 at 60px. Slide 6 uses the
+  same treatment as the preceding content slides; no Carousel
+  slide has a standalone CTA type treatment. This changes typography and text
+  placement only; six-slide roles, formats, copy modes, and the original image
+  blend remain intact.
+- Neither renderer adds a readability gradient or tint to any Carousel slide.
+  Structure 2 retains its existing crop and product-screenshot layout variants;
+  Structure 1 continues its existing brightness sampling without adding a
+  gradient.
+- Structure 1 and Structure 2 initial and repair prompts ask for one 5-9 word
+  (11 maximum), sentence-case Slide 1 hook and a clear central text-safe zone
+  in the supplied visual direction. Follow-up copy is guided toward 18-30
+  words so the larger centered type does not rely on shrink-to-fit behaviour.
+
+## 2026-09-20 Richer centered body copy without gradient overlays
+
+- Slides 2-6 now target 18-30 words, with a 30-word ceiling and a ten-visual-
+  line maximum at 60px in both structures. The larger content budget is paired
+  with real render-fit validation; text is never shrunk or cut to fit.
+- No Carousel slide receives a renderer-added black gradient or tint. Structure
+  1 continues its existing image brightness sampling without a gradient;
+  Structure 2 now renders its text directly over its established background
+  image and retains its existing crop/layout variants without the former SVG
+  readability gradient. Text outline remains a non-cover readability treatment.
+
+## 2026-09-20 Single-hook-only Slide 1 contract
+
+- This decision supersedes every earlier optional Slide 1 supporting-copy rule.
+  New Carousel plans in both structures use exactly one hook only: target
+  5-9 words, hard limit 5-11 words, rendered in the centered 96px Inter Tight
+  Bold cover treatment. There is no cover subtitle, body support line, or
+  secondary text layer.
+- Structure 1 generates the hook in `headline` with `body: null`; its renderer,
+  re-edit worker, and editor preview render only that headline. Structure 2
+  keeps its single `storyText` field and applies the same 5-11 word hook limit.
+  A legacy saved Structure 1 plan may still contain body/subtext, but a new
+  intentional re-render ignores it on Slide 1 instead of drawing it as support.
+- This changes only visible Slide 1 copy structure and its validation. The
+  image blend, crop, brightness sampling, background asset policy, and Slides
+  2-6 treatment remain unchanged.
+
+## 2026-09-20 Final takeaway, not a CTA
+
+- All newly planned Carousel slides must set `ctaText` to null. Slide 6 remains
+  part of the six-slide sequence, but it is a self-contained 18-30-word final
+  takeaway at the same centered 60px SemiBold treatment as Slides 2-5. It must
+  never become a separate action label or an instruction to save.
+- This applies to both structures and to Carousel re-edits. A submitted edit
+  cannot reintroduce CTA text into a new render. Existing completed renders
+  remain immutable.
+- The editor's temporary preview follows that same rule: it never draws an old
+  CTA field or a readability gradient while an edit is being made.
+- A user-supplied or approved application screenshot may still be selected for
+  Slide 6. That is an image-selection decision, independent from the removed
+  CTA-copy behavior.

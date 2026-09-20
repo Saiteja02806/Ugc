@@ -809,7 +809,7 @@ test("defers the Trending Hook composer until an accepted Hook opens it", () => 
   assert.match(workspace, /function HookVideoComposerLoading\(\)/);
 });
 
-test("Carousel editing previews the heading-only white background treatment", () => {
+test("Carousel editing keeps content headings and adds the heavy Slide 1 cover treatment", () => {
   assert.match(editor, /data-carousel-editor-preview=\{/);
   assert.match(editor, /showExactRender \? "exact-render" : "live-render"/);
   assert.match(editor, /function getExactCarouselPreviewUrl/);
@@ -820,6 +820,10 @@ test("Carousel editing previews the heading-only white background treatment", ()
   assert.match(editor, /function CarouselEditorBackground/);
   assert.match(editor, /story_product_reveal/);
   assert.match(editor, /function CarouselOutlinedText/);
+  assert.match(editor, /function CarouselCoverText/);
+  assert.match(editor, /text-\[8\.52cqw\] font-extrabold/);
+  assert.match(editor, /primaryText=\{slide\.headline\.trim\(\) \|\| supportingText\}/);
+  assert.match(editor, /slide\.slideNumber === 1 \? "center" : position/);
   assert.match(
     editor,
     /kind === "headline" \? \(\s*<span className="box-decoration-clone rounded-\[1\.8cqw\] bg-white/,

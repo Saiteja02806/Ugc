@@ -1,16 +1,16 @@
 import { CAROUSEL_FIXED_FONT_SIZE } from "./carousel-slide-plan.js";
 
-export const CAROUSEL_STRUCTURE_2_STORY_MAX_LINES = 12;
+export const CAROUSEL_STRUCTURE_2_STORY_MAX_LINES = 10;
+export const CAROUSEL_STRUCTURE_2_STORY_MAX_WORDS = 30;
 export const CAROUSEL_STRUCTURE_2_COVER_MAX_LINES = 3;
-export const CAROUSEL_STRUCTURE_2_CTA_MAX_LINES = 6;
-export const CAROUSEL_STRUCTURE_2_COVER_FONT_SIZE = 60;
+export const CAROUSEL_STRUCTURE_2_COVER_FONT_SIZE = 96;
 export const CAROUSEL_STRUCTURE_2_SAFE_X = 72;
 export const CAROUSEL_STRUCTURE_2_SAFE_TOP = 84;
 export const CAROUSEL_STRUCTURE_2_SAFE_BOTTOM = 92;
 export const CAROUSEL_STRUCTURE_2_TEXT_LINE_HEIGHT = Math.round(
   CAROUSEL_FIXED_FONT_SIZE * 1.16,
 );
-export const CAROUSEL_STRUCTURE_2_TEXT_GROUP_GAP = 46;
+export const CAROUSEL_STRUCTURE_2_TEXT_GROUP_GAP = 28;
 
 export function getCarouselStructure2StoryFontSize(slideNumber: number) {
   return slideNumber === 1

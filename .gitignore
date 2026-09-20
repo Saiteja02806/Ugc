@@ -52,6 +52,9 @@
 /.codex-artifacts/
 /.codex-audits/
 /artifacts/
+/output/
+# Production demo media is stored under the configured GCS release prefix.
+/public/try-ugcpilot/media/
 /edit-screen-audit/
 /onboarding-flow-audit/
 /landing_page/

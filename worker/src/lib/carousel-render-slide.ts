@@ -3,6 +3,14 @@ import sharp from "sharp";
 import type { CarouselFormat } from "../types.js";
 import type { CarouselRenderStyle } from "./carousel-render-style.js";
 import {
+  CAROUSEL_BODY_FONT_WEIGHT,
+  CAROUSEL_COVER_FONT_WEIGHT,
+  CAROUSEL_FONT_FAMILY,
+} from "./carousel-cover-typography.js";
+import {
+  CAROUSEL_FIXED_FONT_SIZE,
+  CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE,
+  CAROUSEL_STRUCTURE_1_COVER_MAX_LINES,
   CAROUSEL_STRUCTURE_1_HEADLINE_MAX_LINES,
   CAROUSEL_STRUCTURE_1_LIST_ITEM_MAX_LINES,
   CAROUSEL_STRUCTURE_1_LIST_TOTAL_MAX_LINES,
@@ -53,6 +61,7 @@ export type CarouselRenderDiagnostics = {
   bodyFontSize?: number;
   bubbleShapeStrategy:
     | "heading-white-svg-background"
+    | "plain-white-text"
     | "plain-white-text-with-outline";
   fontFamily: string;
   headingBackgroundLineCount?: number;
@@ -68,8 +77,8 @@ type BalancedLines = {
 };
 
 export const CAROUSEL_RENDERER_VERSION =
-  "social-heading-rounded-shoulder-svg-renderer-v20-outline-4";
-export const CAROUSEL_FIXED_FONT_SIZE = 44;
+  "social-cover-single-hook-inter-tight-v24";
+export { CAROUSEL_FIXED_FONT_SIZE } from "./carousel-slide-plan.js";
 
 const FORMAT_DIMENSIONS: Record<CarouselFormat, { height: number; width: number }> = {
   "1:1": { height: 1080, width: 1080 },
@@ -79,8 +88,8 @@ const FORMAT_DIMENSIONS: Record<CarouselFormat, { height: number; width: number 
 const BODY_TEXT = "#ffffff";
 const HEADLINE_BACKGROUND_FILL = "#ffffff";
 const HEADLINE_TEXT = "#111316";
-const TEXT_FONT_FAMILY = "Geist, Arial, Helvetica, sans-serif";
-const BODY_FONT_WEIGHT = 600;
+const TEXT_FONT_FAMILY = CAROUSEL_FONT_FAMILY;
+const BODY_FONT_WEIGHT = CAROUSEL_BODY_FONT_WEIGHT;
 const HEADLINE_BACKGROUND_PADDING_X = 24;
 const HEADLINE_BACKGROUND_PADDING_Y = 15;
 const MIN_CORNER_SAFETY = 6;
@@ -615,7 +624,6 @@ async function getRegionSignal(params: {
 function getBodyText(slide: PlannedCarouselSlide) {
   const body = normalizeText(slide.body);
   const subtext = normalizeText(slide.subtext);
-  const ctaText = normalizeText(slide.ctaText);
   const headline = normalizeComparableText(normalizeText(slide.headline));
   const listItems = (slide.listItems ?? [])
     .map((item, index) => {
@@ -636,10 +644,6 @@ function getBodyText(slide: PlannedCarouselSlide) {
 
   if (subtext && normalizeComparableText(subtext) !== headline) {
     return subtext;
-  }
-
-  if (ctaText && normalizeComparableText(ctaText) !== headline) {
-    return ctaText;
   }
 
   return "";
@@ -1009,6 +1013,10 @@ async function buildOverlaySvg(params: {
   slide: PlannedCarouselSlide;
   width: number;
 }): Promise<OverlayLayers> {
+  if (params.slide.slideNumber === 1) {
+    return buildCoverOverlaySvg(params);
+  }
+
   const isSquare = params.format === "1:1";
   const safeMarginX = isSquare ? 108 : 96;
   const safeMarginY = isSquare ? 112 : 136;
@@ -1030,6 +1038,7 @@ async function buildOverlaySvg(params: {
     shouldRenderHeadline || rawBodyText ? rawBodyText : rawHeadlineText;
   const bodyOnlyMode = !headlineText;
   const bodyFontSize = getCarouselStructure1TextFontSize(params.slide);
+  const bodyFontWeight = BODY_FONT_WEIGHT;
   const bodyPaddingX = 18;
   const headline = await fitMeasuredText(headlineText, {
     fontSize: CAROUSEL_FIXED_FONT_SIZE,
@@ -1045,7 +1054,7 @@ async function buildOverlaySvg(params: {
     ? await fitStackedText(stackedBodyLines, {
         fontSize: bodyFontSize,
         fontFamily: TEXT_FONT_FAMILY,
-        fontWeight: BODY_FONT_WEIGHT,
+        fontWeight: bodyFontWeight,
         getCornerSafety: getBodyWrapCornerSafety,
         lineHeightRatio: 1.04,
         maxLines: CAROUSEL_STRUCTURE_1_LIST_TOTAL_MAX_LINES,
@@ -1057,7 +1066,7 @@ async function buildOverlaySvg(params: {
       ? await fitMeasuredText(bodyText, {
           fontSize: bodyFontSize,
           fontFamily: TEXT_FONT_FAMILY,
-          fontWeight: BODY_FONT_WEIGHT,
+          fontWeight: bodyFontWeight,
           getCornerSafety: getBodyWrapCornerSafety,
           lineHeightRatio: bodyOnlyMode ? 1.04 : 1.05,
           maxLines: getCarouselStructure1BodyMaxLines(params.slide.slideNumber),
@@ -1130,7 +1139,7 @@ async function buildOverlaySvg(params: {
   });
   const style = `
     .headline { fill: ${HEADLINE_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${BODY_FONT_WEIGHT}; letter-spacing: 0; }
-    .text { fill: ${BODY_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${BODY_FONT_WEIGHT}; letter-spacing: 0; paint-order: stroke fill; stroke: #000000; stroke-linejoin: round; stroke-opacity: 0.72; stroke-width: 4px; }
+    .text { fill: ${BODY_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${bodyFontWeight}; letter-spacing: 0; paint-order: stroke fill; stroke: #000000; stroke-linejoin: round; stroke-opacity: 0.72; stroke-width: 4px; }
   `;
 
   return {
@@ -1151,6 +1160,99 @@ async function buildOverlaySvg(params: {
       content: `${headlineMarkup}${bodyMarkup}`,
       height: params.height,
       style,
+      width: params.width,
+    }),
+  };
+}
+
+async function buildCoverOverlaySvg(params: {
+  format: CarouselFormat;
+  height: number;
+  normalizedTextPosition?: CarouselNormalizedTextPosition;
+  slide: PlannedCarouselSlide;
+  width: number;
+}): Promise<OverlayLayers> {
+  const isSquare = params.format === "1:1";
+  const safeMarginX = isSquare ? 108 : 96;
+  const safeMarginY = isSquare ? 112 : 136;
+  const maxTextWidth = Math.min(
+    params.width - safeMarginX * 2,
+    Math.round(params.width * 0.78),
+  );
+  const textMode = getSlideTextMode(params.slide);
+  const headline = normalizeText(params.slide.headline);
+  const listFallback = getListOverlayLines(params.slide, textMode).join(" ");
+  const body = getBodyText(params.slide) || listFallback;
+  // Slide 1 is one hook only. A prior plan may still have body/subtext, but it
+  // is legacy supporting copy and must never create a second visual layer.
+  const primaryText = headline || body;
+  const primary = await fitMeasuredText(primaryText, {
+    fontSize: CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE,
+    fontFamily: TEXT_FONT_FAMILY,
+    fontWeight: CAROUSEL_COVER_FONT_WEIGHT,
+    getCornerSafety: getBodyWrapCornerSafety,
+    lineHeightRatio: 0.98,
+    maxLines: CAROUSEL_STRUCTURE_1_COVER_MAX_LINES,
+    maxWidth: maxTextWidth,
+    paddingX: 18,
+  });
+  const primaryMetrics = measurePlainText({
+    lineHeight: primary.lineHeight,
+    lines: primary.lines,
+    measuredLineExtents: getMeasuredLineExtents(primary),
+    measuredLineWidths: getMeasuredLineWidths(primary),
+  });
+  const blockHeight = primaryMetrics.groupHeight;
+  const widestTextGroup = primaryMetrics.maximumTextWidth;
+  const textX = params.normalizedTextPosition
+    ? Math.round(
+        clamp(
+          params.width * clamp(params.normalizedTextPosition.x, 0.1, 0.9),
+          safeMarginX + widestTextGroup / 2,
+          params.width - safeMarginX - widestTextGroup / 2,
+        ),
+      )
+    : Math.round(params.width / 2);
+  // New covers sit at the visual centre. A deliberate editor drag still wins.
+  const blockTop = params.normalizedTextPosition
+    ? clamp(
+        Math.round(
+          params.height * clamp(params.normalizedTextPosition.y, 0.1, 0.9) -
+            blockHeight / 2,
+        ),
+        safeMarginY,
+        params.height - safeMarginY - blockHeight,
+      )
+    : clamp(
+        Math.round(params.height * 0.52 - blockHeight / 2),
+        safeMarginY,
+        params.height - safeMarginY - blockHeight,
+      );
+  const primaryMarkup = buildPlainWhiteText({
+    className: "cover-primary",
+    fontSize: primary.fontSize,
+    lineHeight: primary.lineHeight,
+    lines: primary.lines,
+    x: textX,
+    y: blockTop,
+  });
+  return {
+    diagnostics: {
+      bodyFontSize: CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE,
+      bubbleShapeStrategy: "plain-white-text",
+      fontFamily: TEXT_FONT_FAMILY,
+      headingBackgroundLineCount: 0,
+      headingBackgroundLineWidths: [],
+      headingBackgroundUsesLineFittedPath: false,
+      maxTextWidth,
+      whiteBackgroundGroupCount: 0,
+    },
+    overlay: buildSvgDocument({
+      content: primaryMarkup,
+      height: params.height,
+      style: `
+        .cover-primary { fill: ${BODY_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${CAROUSEL_COVER_FONT_WEIGHT}; letter-spacing: -0.02em; }
+      `,
       width: params.width,
     }),
   };
@@ -1195,8 +1297,10 @@ export async function renderCarouselSlideWithDiagnostics(
   const signal = await getRegionSignal({
     backgroundBuffer,
     height: dimensions.height,
-    normalizedTextPosition: input.normalizedTextPosition,
-    position: input.slide.textPosition,
+    // Preserve the existing cover image blend while its text stays centred.
+    normalizedTextPosition:
+      input.slide.slideNumber === 1 ? undefined : input.normalizedTextPosition,
+    position: input.slide.slideNumber === 1 ? "center" : input.slide.textPosition,
     width: dimensions.width,
   });
   const overlay = await buildValidatedOverlay({

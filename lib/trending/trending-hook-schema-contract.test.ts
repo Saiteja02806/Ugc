@@ -102,6 +102,13 @@ const atomicInitialHookDispatchMigration = readFileSync(
   ),
   "utf8",
 );
+const hookV5TypographyMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260917130211_hook_v5_56px_typography.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const durableHookPersistenceFixMigration = readFileSync(
   new URL(
     "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260828163000_fix_trending_hook_chunk_persistence_ambiguity.sql",
@@ -404,15 +411,7 @@ test("reaction-mapped Trending formats preserve history and accept V2 jobs", () 
   );
 });
 
-test("fixed-type Hook provenance is accepted as a matched rolling-safe pair", () => {
-  assert.match(
-    hookWorkerCopySource,
-    /TRENDING_HOOK_OVERLAY_VERSION\s*=\s*[\s\S]*hook-overlay-v4-fixed-type/,
-  );
-  assert.match(
-    hookWorkerCopySource,
-    /TRENDING_HOOK_VALIDATOR_VERSION\s*=\s*[\s\S]*trending-hook-validator-v4-fixed-type/,
-  );
+test("previous fixed-type Hook provenance remains accepted as a matched rolling-safe pair", () => {
   assert.match(
     fixedTypeValidationMigration,
     /validator_version in \([\s\S]*trending-hook-validator-v3[\s\S]*trending-hook-validator-v4-fixed-type/,
@@ -585,6 +584,33 @@ test("keeps a crash between Hook reservation and job creation durably recoverabl
   assert.match(
     jobRecoveryRouteSource,
     /catch \(error\)[\s\S]*completeTrendingHookGenerationChunkDispatch[\s\S]*dispatched_after_reconciliation_error[\s\S]*rescheduleTrendingHookGenerationChunkDispatch/,
+  );
+});
+
+test("56px Hook provenance is additive and retains the prior fixed-type pair", () => {
+  assert.match(
+    hookWorkerCopySource,
+    /TRENDING_HOOK_OVERLAY_VERSION\s*=\s*[\s\S]*hook-overlay-v5-56px/,
+  );
+  assert.match(
+    hookWorkerCopySource,
+    /TRENDING_HOOK_VALIDATOR_VERSION\s*=\s*[\s\S]*trending-hook-validator-v5-56px/,
+  );
+  assert.match(
+    hookV5TypographyMigration,
+    /trending-hook-validator-v3[\s\S]*trending-hook-validator-v4-fixed-type[\s\S]*trending-hook-validator-v5-56px/,
+  );
+  assert.match(
+    hookV5TypographyMigration,
+    /trending-hook-validator-v4-fixed-type[\s\S]*hook-overlay-v4-fixed-type/,
+  );
+  assert.match(
+    hookV5TypographyMigration,
+    /trending-hook-validator-v5-56px[\s\S]*hook-overlay-v5-56px/,
+  );
+  assert.match(
+    hookV5TypographyMigration,
+    /pg_get_constraintdef[\s\S]*hook_v5_56px_typography_contract_not_installed/,
   );
 });
 

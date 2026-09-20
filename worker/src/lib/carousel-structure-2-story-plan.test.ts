@@ -38,7 +38,7 @@ test("Structure 2 plans exactly the required six-slide product story", () => {
       plan.slides.map((slide) => slide.storyRole),
       CAROUSEL_STRUCTURE_2_STORY_ROLES,
     );
-    assert.equal(plan.slides[5]!.ctaText, "Try the same approach with one changing priority.");
+    assert.equal(plan.slides[5]!.ctaText, null);
     assert.deepEqual(
       partitionCarouselStructure2ValidationIssues(
         validateCarouselStructure2StoryPlan(plan, { businessDescription }),
@@ -48,7 +48,7 @@ test("Structure 2 plans exactly the required six-slide product story", () => {
   }
 });
 
-test("Structure 2 rejects reordering story roles or placing a CTA before Slide 6", () => {
+test("Structure 2 rejects reordering story roles or placing a CTA on any slide", () => {
   const reordered = makeRawStoryPlan();
   [reordered.slides.second, reordered.slides.third] = [
     reordered.slides.third!,
@@ -60,9 +60,16 @@ test("Structure 2 rejects reordering story roles or placing a CTA before Slide 6
   );
 
   const earlyCta = makeRawStoryPlan();
-  earlyCta.slides.third!.ctaText = "Try this today.";
+  Reflect.set(earlyCta.slides.third!, "ctaText", "Try this today.");
   assert.throws(
     () => parseCarouselStructure2StoryPlan(earlyCta, { businessDescription, storyFormatId: "wrong_belief" }),
+    /cannot include a CTA/i,
+  );
+
+  const finalCta = makeRawStoryPlan();
+  Reflect.set(finalCta.slides.sixth!, "ctaText", "Try this today.");
+  assert.throws(
+    () => parseCarouselStructure2StoryPlan(finalCta, { businessDescription, storyFormatId: "wrong_belief" }),
     /cannot include a CTA/i,
   );
 });
@@ -76,7 +83,7 @@ test("Structure 2 leaves creative cover wording to the prompt and uses a larger 
   });
   const issues = validateCarouselStructure2StoryPlan(plan, { businessDescription });
 
-  assert.equal(CAROUSEL_STRUCTURE_2_COVER_FONT_SIZE, 60);
+  assert.equal(CAROUSEL_STRUCTURE_2_COVER_FONT_SIZE, 96);
   assert.equal(getCarouselStructure2StoryMaxLines(1), 3);
   assert.ok(!issues.some((issue) => issue.code === "perspective"));
 });
@@ -113,7 +120,10 @@ test("Structure 2 prompt and schema describe the strict six-slide contract", () 
 
   assert.match(prompt, /exactly six slides/i);
   assert.match(prompt, /only Slide 1 may lead with direct reader wording/i);
-  assert.match(prompt, /Slides 1-5 must return ctaText: null/i);
+  assert.match(prompt, /targeting 5-9 words/i);
+  assert.match(prompt, /natural or sentence case/i);
+  assert.match(prompt, /Inter Tight Bold at 700 weight/i);
+  assert.match(prompt, /Slides 1-6 must return ctaText: null/i);
   assert.match(prompt, /Slide 4 must explain a real product capability/i);
   assert.doesNotMatch(prompt, /CTA presence and slide position are your creative choice/i);
   assert.match(schema, /sixth/);
@@ -131,17 +141,38 @@ test("Structure 2 sends writing-quality failures back through the repair path", 
   );
 
   assert.ok(partitioned.blockingIssues.some((issue) => issue.code === "generic_copy"));
-  assert.ok(partitioned.advisoryIssues.some((issue) => issue.code === "word_count"));
+  assert.ok(partitioned.blockingIssues.some((issue) => issue.code === "word_count"));
 });
 
-test("reference word counts are advisory while overflow and unsupported claims remain blocking", () => {
+test("hook and story word-count contracts block invalid output", () => {
+  const plan = parseCarouselStructure2StoryPlan(makeRawStoryPlan(), {
+    businessDescription,
+    storyFormatId: "wrong_belief",
+  });
+  plan.slides[0]!.storyText = "Stop losing approvals";
+  plan.slides[1]!.storyText = "I changed tasks once.";
+
+  const partitioned = partitionCarouselStructure2ValidationIssues(
+    validateCarouselStructure2StoryPlan(plan, { businessDescription }),
+  );
+
+  assert.ok(partitioned.blockingIssues.some((issue) => issue.code === "hook_length"));
+  assert.ok(
+    partitioned.blockingIssues.some(
+      (issue) => issue.code === "word_count" && issue.slideNumber === 2,
+    ),
+  );
+  assert.deepEqual(partitioned.advisoryIssues, []);
+});
+
+test("reference word counts, overflow, and unsupported claims remain blocking", () => {
   const partitioned = partitionCarouselStructure2ValidationIssues([
     { code: "word_count", slideNumber: 4, message: "17 words instead of the reference 18" },
     { code: "render_fit", slideNumber: 1, message: "Cover overflows" },
     { code: "unsupported_claim", slideNumber: 5, message: "Unsupported result" },
   ]);
-  assert.deepEqual(partitioned.advisoryIssues.map((issue) => issue.code), ["word_count"]);
-  assert.deepEqual(partitioned.blockingIssues.map((issue) => issue.code), ["render_fit", "unsupported_claim"]);
+  assert.deepEqual(partitioned.advisoryIssues, []);
+  assert.deepEqual(partitioned.blockingIssues.map((issue) => issue.code), ["word_count", "render_fit", "unsupported_claim"]);
 });
 
 function makeAssignments(formatIds: readonly CarouselStructure2FormatId[]) {
@@ -161,7 +192,7 @@ function makeRawStoryPlan() {
     "I realized the problem was not effort; my plan assumed that ordinary work would never change after I wrote it down.",
     "Todaywise let me work from the changing task list, so I could update the next action without rebuilding the entire week from scratch.",
     "The week still changed, but I stopped treating each shift as a reset and finished the important work with a clearer next decision.",
-    "Keep the next decision visible, then try the same approach with one changing priority.",
+    "Keep the next decision visible so each changed priority still has one practical next step, clear owner, and relevant context.",
   ];
 
   return {
@@ -169,10 +200,7 @@ function makeRawStoryPlan() {
       CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS.map((positionKey, index) => [
         positionKey,
         {
-          ctaText:
-            index === 5
-              ? "Try the same approach with one changing priority."
-              : null,
+          ctaText: null,
           storyRole: CAROUSEL_STRUCTURE_2_STORY_ROLES[index]!,
           storyText: copy[index]!,
           visualContext: `ordinary planning scene ${index + 1}`,

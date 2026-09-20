@@ -4,6 +4,7 @@ import { AlertCircle, Loader2, Play, Video } from "lucide-react";
 import { useEffect, useRef, type CSSProperties } from "react";
 
 import type { HookInfluencerVideoSummary } from "@/lib/trending/hook-video-types";
+import { HOOK_TEXT_FIXED_FONT_SIZE } from "@/lib/trending/hook-text-layout";
 import type { TrendingTextColor } from "@/lib/trending/text-color";
 import { cn } from "@/lib/utils";
 import {
@@ -18,7 +19,7 @@ export function HookVideoCard({
   dragOffset,
   exitingDirection = null,
   hookAudio = null,
-  hookFontSize = 52,
+  hookFontSize = HOOK_TEXT_FIXED_FONT_SIZE,
   hookLines = null,
   hookPosition = null,
   hookTextColor,

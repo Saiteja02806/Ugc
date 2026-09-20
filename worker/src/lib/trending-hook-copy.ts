@@ -52,9 +52,9 @@ export const TRENDING_HOOK_REACTION_SELECTION_VERSION =
 export const TRENDING_HOOK_FEED_GENERATION_MODE =
   "reaction_mapped_lean_v1";
 export const TRENDING_HOOK_OVERLAY_VERSION =
-  "hook-overlay-v4-fixed-type";
+  "hook-overlay-v5-56px";
 export const TRENDING_HOOK_VALIDATOR_VERSION =
-  "trending-hook-validator-v4-fixed-type";
+  "trending-hook-validator-v5-56px";
 
 export const HOOK_AUDIO_MOODS = [
   "curious",

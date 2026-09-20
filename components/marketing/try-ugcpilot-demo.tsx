@@ -1,9 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronLeft, Flame, LoaderCircle, RotateCcw, Sparkles, Wifi, X } from "lucide-react";
+import { Check, Flame, LoaderCircle, RotateCcw, Volume2, VolumeX, Wifi, X } from "lucide-react";
+
+import { ProductLogoMark } from "@/components/brand/product-logo";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type WallOfTextPost = {
   id: string;
@@ -27,12 +35,22 @@ type AnalyzeResponse = {
 
 type RefillResponse = { posts: WallOfTextPost[] };
 
-const CARD_IMAGES = [
-  "/try-ugcpilot/card-1.jpg",
-  "/try-ugcpilot/card-2.jpg",
-  "/try-ugcpilot/card-3.jpg",
-  "/try-ugcpilot/card-4.jpg",
-];
+// The default Cal AI deck is one Wall-of-Text post for every video in the
+// original pool (14 videos in `videos (7)` and 15 in `videos (8)`). Audio is
+// paired with the same index. Production serves the release assets from GCS so
+// the app bundle and Git history do not carry the large media files; the local
+// path keeps the developer preview usable when the public base URL is absent.
+const tryUgcPilotMediaBaseUrl =
+  process.env.NEXT_PUBLIC_TRY_UGCPILOT_MEDIA_BASE_URL?.replace(/\/$/, "") ??
+  "/try-ugcpilot/media";
+
+const CARD_MEDIA = Array.from({ length: 29 }, (_, index) => {
+  const number = String(index + 1).padStart(2, "0");
+  return {
+    video: `${tryUgcPilotMediaBaseUrl}/videos/card-${number}.mp4`,
+    audio: `${tryUgcPilotMediaBaseUrl}/audio/track-${number}.mp3`,
+  };
+});
 
 const DEFAULT_CAL_AI_CONTEXT: BusinessContext = {
   brand: "Cal AI",
@@ -48,56 +66,203 @@ const DEMO_POSTS: WallOfTextPost[] = [
     topic: "Hidden Calories",
     hook: "you don't have a slow metabolism",
     wallOfText:
-      "hot take, you don't have a slow metabolism. you're just drinking 400 calories in your iced latte and forgetting to track the oil you cook your eggs in. i started using this tracker because it scans the plate in 2 seconds instead of searching a database for 15 minutes. count accurately for 7 days and watch what happens.",
+      "hot take, you don't have\na slow metabolism\nyou're just drinking 400 calories\nin your iced latte\nand forgetting to track the oil\nyou cook your eggs in\ni started using this tracker because\nit scans the plate in 2 seconds\ninstead of searching a database\nfor 15 minutes\ncount accurately for 7 days\nand watch what happens",
   },
   {
     id: "cal-ai-2",
     topic: "Calorie Deficit",
     hook: "you don't need to cut carbs",
     wallOfText:
-      "unpopular opinion: you don't need to cut carbs or do 2 hours of cardio. you just need to stay in a 300 calorie deficit and eat enough protein. i stopped overcomplicating it and started photo tracking every single meal. visible abs are built on boring consistency.",
+      "unpopular opinion:\nyou don't need to cut carbs\nor do 2 hours of cardio\nyou just need to stay\nin a 300 calorie deficit\nand eat enough protein\ni stopped overcomplicating it\nand started photo tracking\nevery single meal\nvisible abs are built\non boring consistency",
   },
   {
     id: "cal-ai-3",
     topic: "Metabolism Myth",
     hook: "the biggest lie in fitness",
     wallOfText:
-      "the biggest lie in fitness: i only eat 1,200 calories and can't lose weight. one handful of almonds, two tablespoons of salad dressing, and a splash of coffee creamer adds 600 hidden calories. track what you actually swallow, not what you think you ate.",
+      "the biggest lie in fitness:\n\"i only eat 1,200 calories\nand can't lose weight\"\none handful of almonds\ntwo tablespoons of salad dressing\nand a splash of coffee creamer\nadds 600 hidden calories\ntrack what you actually swallow\nnot what you think you ate",
   },
   {
     id: "cal-ai-4",
     topic: "Photo Tracking",
     hook: "stop trying to guess calories",
     wallOfText:
-      "stop trying to guess how many calories are in that bowl. your brain will always underestimate by 30%. i snap a photo before i eat. the AI breaks down macros before my fork hits the plate. accurate data beats willpower every single time.",
+      "stop trying to guess\nhow many calories are in that bowl\nyour brain will always\nunderestimate by 30%\ni snap a photo before i eat\nthe AI breaks down macros\nbefore my fork hits the plate\naccurate data beats willpower\nevery single time",
   },
   {
     id: "cal-ai-5",
     topic: "Weekend Ruin",
     hook: "how you undo your whole week",
     wallOfText:
-      "you eat clean Monday to Friday in a 400 calorie deficit, then drink 4 margaritas on Saturday and order late-night pizza. boom, you just wiped out the entire week's fat loss. consistency on the weekend is what actually separates results from frustration.",
+      "you eat clean Monday to Friday\nin a 400 calorie deficit\nthen drink 4 margaritas on Saturday\nand order late-night pizza\nboom, you just wiped out\nthe entire week's fat loss\nconsistency on the weekend\nis what actually separates\nresults from frustration",
   },
   {
     id: "cal-ai-6",
     topic: "Protein Priority",
     hook: "why you feel starving on diets",
     wallOfText:
-      "if you feel starving on a diet, it's not low calories, it's low protein. aim for 0.8g per pound of bodyweight and watch your cravings disappear. fill your plate with high volume and stop suffering unnecessarily.",
+      "if you feel starving on a diet\nit's not low calories\nit's low protein\naim for 0.8g per pound of bodyweight\nand watch your cravings disappear\nfill your plate with high volume\nand stop suffering unnecessarily",
   },
   {
     id: "cal-ai-7",
     topic: "Liquid Calories",
     hook: "stop drinking your calories",
     wallOfText:
-      "the easiest 10 pounds you will ever lose: stop drinking your calories. swapping soda, sweet tea, and lattes for water and zero-calorie drinks cuts 500 calories a day without changing a single bite of real food.",
+      "the easiest 10 pounds you will ever lose:\nstop drinking your calories\nswapping soda, sweet tea, and lattes\nfor water and zero-calorie drinks\ncuts 500 calories a day\nwithout changing a single bite\nof real food",
   },
   {
     id: "cal-ai-8",
     topic: "Scale Weight Anxiety",
     hook: "the scale went up 3 pounds overnight",
     wallOfText:
-      "you didn't gain 3 pounds of fat from yesterday's dinner. you gained water weight from sodium and carbohydrate glycogen. stop freaking out at daily fluctuations, track your weekly average, and look at the 30-day trend.",
+      "you didn't gain 3 pounds of fat\nfrom yesterday's dinner\nyou gained water weight from sodium\nand carbohydrate glycogen\nstop freaking out at daily fluctuations\ntrack your weekly average\nand look at the 30-day trend",
+  },
+  {
+    id: "cal-ai-9",
+    topic: "Portion Blindness",
+    hook: "healthy food still has calories",
+    wallOfText:
+      "healthy food still has calories. a spoon of peanut butter, a handful of trail mix, and an extra pour of olive oil can turn a light lunch into your whole afternoon. take the picture before the first bite. seeing the estimate makes the next choice easier.",
+  },
+  {
+    id: "cal-ai-10",
+    topic: "Restaurant Guessing",
+    hook: "eating out does not ruin progress",
+    wallOfText:
+      "eating out does not ruin progress. guessing that a restaurant meal is perfect is what makes the week feel confusing. photograph the plate, get a reasonable estimate, and move on. one meal with context is better than a whole day of pretending it did not count.",
+  },
+  {
+    id: "cal-ai-11",
+    topic: "Breakfast Pattern",
+    hook: "your breakfast is setting the whole day",
+    wallOfText:
+      "your breakfast is setting the whole day. if it leaves you hungry an hour later, every decision after that gets harder. track the meal once, notice the protein and fiber, then make one small swap tomorrow. sustainable progress starts with repeatable mornings.",
+  },
+  {
+    id: "cal-ai-12",
+    topic: "Macro Clarity",
+    hook: "calories tell only half the story",
+    wallOfText:
+      "calories tell only half the story. two meals can have the same number and leave you feeling completely different. use the photo to see the protein, carbs, and fats together. when your meals keep you full, consistency stops feeling like a fight.",
+  },
+  {
+    id: "cal-ai-13",
+    topic: "Snack Audit",
+    hook: "the snacks between meals matter",
+    wallOfText:
+      "the snacks between meals matter more than the meal plan you wrote on sunday. a few bites while cooking and a coffee run can quietly erase your deficit. track the ordinary moments for one week. the answer is usually hiding in the routine, not your motivation.",
+  },
+  {
+    id: "cal-ai-14",
+    topic: "Progress Plateau",
+    hook: "a plateau is usually missing information",
+    wallOfText:
+      "a plateau is usually missing information, not a broken metabolism. before changing everything, look at seven days of real meals, drinks, and portions. photo tracking gives you something useful to adjust. data turns a frustrating guess into one clear next step.",
+  },
+  {
+    id: "cal-ai-15",
+    topic: "Protein Snacks",
+    hook: "hunger is not a personality flaw",
+    wallOfText:
+      "hunger is not a personality flaw. if every snack is quick sugar, your energy crashes and dinner becomes impossible to control. build one protein option into the afternoon, log it with a photo, and notice what changes. a fuller day makes the plan much easier to follow.",
+  },
+  {
+    id: "cal-ai-16",
+    topic: "Food Scale Freedom",
+    hook: "you do not need to weigh every bite forever",
+    wallOfText:
+      "you do not need to weigh every bite forever. use a tool long enough to learn what your normal portions actually look like. a quick meal photo can give you that feedback without turning dinner into a math problem. awareness first, then flexibility.",
+  },
+  {
+    id: "cal-ai-17",
+    topic: "Late Night Eating",
+    hook: "late night eating is not the real problem",
+    wallOfText:
+      "late night eating is not the real problem. arriving there starving because lunch was tiny is the problem. track the full day instead of blaming the final snack. when daytime meals have enough protein and volume, evenings stop feeling like a test of willpower.",
+  },
+  {
+    id: "cal-ai-18",
+    topic: "Consistency Over Perfection",
+    hook: "one imperfect meal changes nothing",
+    wallOfText:
+      "one imperfect meal changes nothing. the all-or-nothing spiral after it is what slows progress down. log the meal, learn from it, and make your next choice normal. the people who get results are not perfect; they return to their routine quickly.",
+  },
+  {
+    id: "cal-ai-19",
+    topic: "Weekend Plan",
+    hook: "weekends need a plan too",
+    wallOfText:
+      "weekends need a plan too, not a punishment. you can have brunch, dinner out, and a social life when you know the bigger picture. get an estimate from the photo, prioritize what you actually enjoy, and let the rest of the week stay simple.",
+  },
+  {
+    id: "cal-ai-20",
+    topic: "Mindless Eating",
+    hook: "your phone is changing your portions",
+    wallOfText:
+      "your phone is changing your portions more than you think. when you eat while scrolling, fullness arrives late and the plate disappears fast. take one photo before you begin. that two-second pause creates enough awareness to notice whether you are still hungry.",
+  },
+  {
+    id: "cal-ai-21",
+    topic: "Realistic Deficit",
+    hook: "the best deficit is the one you can repeat",
+    wallOfText:
+      "the best deficit is the one you can repeat on a busy tuesday. extreme plans work only until life happens. start with the meals you already eat, understand their calories, and make a few changes you do not resent. boring and repeatable wins.",
+  },
+  {
+    id: "cal-ai-22",
+    topic: "Fiber Habit",
+    hook: "fullness is a system",
+    wallOfText:
+      "fullness is a system. protein, fiber, water, and enough food on the plate all work together. if you are hungry every night, stop blaming yourself and inspect the meals. a picture makes patterns visible that memory never catches.",
+  },
+  {
+    id: "cal-ai-23",
+    topic: "Coffee Check",
+    hook: "your coffee might be a meal",
+    wallOfText:
+      "your coffee might be a meal and that is fine, as long as you count it like one. syrups, creamers, and cold foam add up quickly when they are invisible. take the photo, see the estimate, and choose the version that still fits your day.",
+  },
+  {
+    id: "cal-ai-24",
+    topic: "Meal Prep Reality",
+    hook: "meal prep does not need to be perfect",
+    wallOfText:
+      "meal prep does not need matching containers and a perfect sunday. knowing the rough calories in three reliable meals is enough to remove daily decision fatigue. save the meals that work, photograph the new ones, and let your system grow from there.",
+  },
+  {
+    id: "cal-ai-25",
+    topic: "Maintenance Mindset",
+    hook: "learning maintenance starts now",
+    wallOfText:
+      "learning maintenance starts now, not after you reach a goal weight. the same awareness that helps you lose weight helps you keep it off. use the tracker to understand your normal meals, then trust the pattern instead of restarting another strict plan.",
+  },
+  {
+    id: "cal-ai-26",
+    topic: "Grocery Choices",
+    hook: "the grocery cart decides dinner",
+    wallOfText:
+      "the grocery cart decides dinner before willpower gets involved. keep a few foods you enjoy that make protein and fiber easy. when the simple option is already in the fridge, tracking becomes confirmation instead of a stressful correction.",
+  },
+  {
+    id: "cal-ai-27",
+    topic: "Progress Photos",
+    hook: "the scale is one signal",
+    wallOfText:
+      "the scale is one signal, not the whole story. sleep, sodium, training, and digestion can move it around overnight. use your food data alongside the weekly trend. you need enough context to stay calm while your habits do their work.",
+  },
+  {
+    id: "cal-ai-28",
+    topic: "Simple Tracking",
+    hook: "the easiest system is the system you use",
+    wallOfText:
+      "the easiest system is the system you use when you are busy. a photo before a meal is faster than searching a giant database and more useful than guessing. make the helpful action small enough that it survives real life.",
+  },
+  {
+    id: "cal-ai-29",
+    topic: "One Week Experiment",
+    hook: "give yourself seven honest days",
+    wallOfText:
+      "give yourself seven honest days before deciding the plan is not working. track meals, drinks, snacks, and the weekend without judgment. patterns will show up quickly. then you can change the one thing that matters instead of starting over again.",
   },
 ];
 
@@ -123,6 +288,9 @@ export function TryUgcPilotDemo() {
   const [nextPostNumber, setNextPostNumber] = useState(17);
   const [recentHooks, setRecentHooks] = useState<string[]>([]);
   const [swipedCount, setSwipedCount] = useState(0);
+  const [generatedCount, setGeneratedCount] = useState(DEMO_POSTS.length);
+  const [postedCount, setPostedCount] = useState(0);
+  const [skippedCount, setSkippedCount] = useState(0);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isRefilling, setIsRefilling] = useState(false);
   const [notice, setNotice] = useState("Loaded Cal AI Wall-of-Text content.");
@@ -130,19 +298,57 @@ export function TryUgcPilotDemo() {
   const [dragging, setDragging] = useState(false);
   const [exitDirection, setExitDirection] = useState<"left" | "right" | null>(null);
   const [showSwipeGuide, setShowSwipeGuide] = useState(true);
+  const [isMediaMuted, setIsMediaMuted] = useState(true);
+  const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
   const dragStartX = useRef<number | null>(null);
   const refillAttemptFor = useRef<string | null>(null);
   const refillInFlight = useRef(false);
   const refillRequestId = useRef(0);
   const deckVersion = useRef(0);
+  const audioContext = useRef<AudioContext | null>(null);
+  const activeVideo = useRef<HTMLVideoElement | null>(null);
+  const activeAudio = useRef<HTMLAudioElement | null>(null);
+  const mobileControlsLauncher = useRef<HTMLButtonElement | null>(null);
 
   const topCard = cards[0];
   const readyCount = cards.length;
   const activeContext = businessContext ?? DEFAULT_CAL_AI_CONTEXT;
   const brand = activeContext.brand;
+  const shouldShowMobileControls = swipedCount >= 3;
+
+  function closeMobileControls() {
+    setMobileControlsOpen(false);
+    window.requestAnimationFrame(() => {
+      if (window.matchMedia("(max-width: 1279px)").matches) {
+        mobileControlsLauncher.current?.focus();
+      }
+    });
+  }
+
+  function handleMobileControlsOpenChange(open: boolean) {
+    if (open) {
+      setMobileControlsOpen(true);
+      return;
+    }
+    closeMobileControls();
+  }
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (mobileControlsOpen) {
+        if (event.key === "Escape") {
+          closeMobileControls();
+          event.preventDefault();
+          return;
+        }
+        if (
+          (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
+          !(event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)
+        ) {
+          event.preventDefault();
+          return;
+        }
+      }
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
       if (event.key === "ArrowLeft") {
         event.preventDefault();
@@ -156,6 +362,16 @@ export function TryUgcPilotDemo() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   });
+
+  useEffect(() => {
+    const desktopQuery = window.matchMedia("(min-width: 1280px)");
+    const closeMobileControlsOnDesktop = () => {
+      if (desktopQuery.matches) setMobileControlsOpen(false);
+    };
+    closeMobileControlsOnDesktop();
+    desktopQuery.addEventListener("change", closeMobileControlsOnDesktop);
+    return () => desktopQuery.removeEventListener("change", closeMobileControlsOnDesktop);
+  }, []);
 
   useEffect(() => {
     let animationFrame: number | null = null;
@@ -179,6 +395,98 @@ export function TryUgcPilotDemo() {
     } catch {
       // The guide still dismisses for the current visit when storage is unavailable.
     }
+  }
+
+  function playSwipeSound(direction: "left" | "right") {
+    try {
+      const AudioContextConstructor = window.AudioContext ?? (
+        window as Window & { webkitAudioContext?: typeof AudioContext }
+      ).webkitAudioContext;
+      if (!AudioContextConstructor) return;
+      const context = audioContext.current ?? new AudioContextConstructor();
+      audioContext.current = context;
+      if (context.state === "suspended") void context.resume();
+
+      const now = context.currentTime;
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+
+      if (direction === "left") {
+        oscillator.type = "triangle";
+        oscillator.frequency.setValueAtTime(460, now);
+        oscillator.frequency.exponentialRampToValueAtTime(110, now + 0.12);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+      } else {
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(523.25, now);
+        oscillator.frequency.exponentialRampToValueAtTime(783.99, now + 0.2);
+        gain.gain.setValueAtTime(0.16, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+      }
+
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(now);
+      oscillator.stop(now + (direction === "left" ? 0.13 : 0.24));
+    } catch {
+      // Sound feedback is optional; swiping must still work when audio is unavailable.
+    }
+  }
+
+  useEffect(() => {
+    const video = activeVideo.current;
+    const audio = activeAudio.current;
+
+    if (showSwipeGuide) {
+      video?.pause();
+      audio?.pause();
+      return;
+    }
+
+    if (video) {
+      video.muted = true;
+      void video.play().catch(() => {
+        // Browsers can defer video playback until the guide is dismissed.
+      });
+    }
+    if (!audio) return;
+    audio.volume = 0.85;
+    audio.muted = isMediaMuted;
+
+    if (isMediaMuted) {
+      audio.pause();
+      return;
+    }
+
+    if (video && Number.isFinite(video.currentTime)) {
+      audio.currentTime = video.currentTime;
+    }
+    void audio.play().catch(() => {
+      // Sound is enabled only after a user gesture, per browser autoplay rules.
+    });
+  }, [isMediaMuted, showSwipeGuide, topCard?.id]);
+
+  function toggleMediaAudio() {
+    const nextMuted = !isMediaMuted;
+    setIsMediaMuted(nextMuted);
+
+    const audio = activeAudio.current;
+    if (!audio) return;
+    audio.volume = 0.85;
+    audio.muted = nextMuted;
+    if (nextMuted) {
+      audio.pause();
+      return;
+    }
+
+    const video = activeVideo.current;
+    if (video && Number.isFinite(video.currentTime)) {
+      audio.currentTime = video.currentTime;
+    }
+    void audio.play().catch(() => {
+      setNotice("Audio could not start. Tap the sound control once more.");
+    });
   }
 
   useEffect(() => {
@@ -219,6 +527,7 @@ export function TryUgcPilotDemo() {
         }
         if (refillRequestId.current !== requestId || deckVersion.current !== requestDeckVersion) return;
         setCards((current) => [...current, ...data.posts]);
+        setGeneratedCount((count) => count + data.posts.length);
         setRecentHooks((current) => [...current, ...data.posts.map((post) => post.hook)].slice(-32));
         setNextPostNumber(startNumber + data.posts.length);
         setNotice("10 more Wall-of-Text posts are ready.");
@@ -237,15 +546,23 @@ export function TryUgcPilotDemo() {
   }, [businessContext, isAnalyzing, nextPostNumber, readyCount, recentHooks]);
 
   function swipe(direction: "left" | "right") {
+    // A first interaction is only an onboarding acknowledgement. It must not
+    // perform the Skip/Posted action the tutorial is explaining.
+    if (showSwipeGuide) {
+      dismissSwipeGuide();
+      return;
+    }
     if (!topCard || exitDirection) return;
-    dismissSwipeGuide();
+    if (!isMediaMuted) playSwipeSound(direction);
     setExitDirection(direction);
     window.setTimeout(() => {
       setCards((current) => current.slice(1));
       setSwipedCount((count) => count + 1);
       if (direction === "right") {
+        setPostedCount((count) => count + 1);
         setNotice(`Posted: “${topCard.hook}”`);
       } else {
+        setSkippedCount((count) => count + 1);
         setNotice(`Skipped: “${topCard.hook}”`);
       }
       setDragX(0);
@@ -283,6 +600,10 @@ export function TryUgcPilotDemo() {
       setNextPostNumber(17);
       setRecentHooks(data.posts.map((post) => post.hook).slice(-32));
       setSwipedCount(0);
+      setGeneratedCount(data.posts.length);
+      setPostedCount(0);
+      setSkippedCount(0);
+      setMobileControlsOpen(false);
       setNotice(`16 tailored Wall-of-Text posts are ready for ${data.businessContext.brand}.`);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "The analysis is temporarily unavailable. Please try again.");
@@ -300,16 +621,25 @@ export function TryUgcPilotDemo() {
     setCards(DEMO_POSTS);
     setRecentHooks([]);
     setSwipedCount(0);
+    setGeneratedCount(DEMO_POSTS.length);
+    setPostedCount(0);
+    setSkippedCount(0);
     setNextPostNumber(17);
     setDragX(0);
     setExitDirection(null);
     setIsRefilling(false);
+    setMobileControlsOpen(false);
     setNotice("Loaded Cal AI Wall-of-Text content.");
   }
 
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
     if (!topCard || exitDirection) return;
-    dismissSwipeGuide();
+    // The tutorial is deliberately a separate first step. Do not begin a
+    // drag in the same gesture that makes the instructions disappear.
+    if (showSwipeGuide) {
+      dismissSwipeGuide();
+      return;
+    }
     dragStartX.current = event.clientX;
     setDragging(true);
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -331,67 +661,74 @@ export function TryUgcPilotDemo() {
   }
 
   return (
-    <main className="min-h-dvh bg-[#101010] px-4 py-5 text-white sm:px-6 lg:px-10">
-      <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[310px_minmax(0,1fr)] lg:items-center">
-        <section className="order-2 rounded-3xl border border-white/10 bg-zinc-900 p-5 text-white shadow-2xl lg:order-1">
-          <div className="mb-5 flex items-center justify-between">
-            <Link href="/" className="inline-flex items-center gap-1 text-sm font-semibold text-zinc-300 hover:text-[#ff6a35]">
-              <ChevronLeft className="size-4" aria-hidden="true" /> UGCPilot
-            </Link>
-            <span className="rounded-full bg-orange-500/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[#ff6a35]">
-              Live demo
-            </span>
-          </div>
+    <main className="relative min-h-dvh overflow-x-hidden bg-[#101010] text-white">
+      <section className="relative z-50 mx-auto hidden w-full max-w-[280px] xl:fixed xl:left-8 xl:top-1/2 xl:block xl:w-[280px] xl:max-h-[calc(100dvh-160px)] xl:max-w-none xl:-translate-y-1/2 xl:overflow-y-auto">
+        <ProductControlPanel
+          inputId="desktop-product-url"
+          url={url}
+          onUrlChange={setUrl}
+          onSubmit={analyze}
+          isAnalyzing={isAnalyzing}
+          activeContext={activeContext}
+          brand={brand}
+          isRefilling={isRefilling}
+          onReset={resetDemo}
+        />
+      </section>
 
-          <div className="mb-5">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#e04810]">AI content engine</p>
-            <h1 className="mt-2 text-2xl font-bold tracking-tight">Website to Wall-of-Text content.</h1>
-            <p className="mt-2 text-sm leading-6 text-zinc-400">
-              Enter a public product website. UGCPilot reads the business context, then gives you ready-to-review content cards.
-            </p>
-          </div>
+      <aside className="fixed bottom-6 left-8 z-40 hidden w-[280px] text-left xl:block" aria-live="polite">
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">Content Activity</p>
+        <p className="mt-1 text-sm font-semibold text-zinc-200">
+          <span className="mr-1 text-xl font-bold text-white">{generatedCount}</span>
+          posts generated
+        </p>
+        <p className="mt-1 text-xs font-medium text-zinc-400">
+          Posted {postedCount} / Skipped {skippedCount} / Generating {isAnalyzing ? 16 : isRefilling ? 10 : 0}
+        </p>
+        <p className="mt-2 truncate text-xs leading-4 text-zinc-500">{notice}</p>
+      </aside>
 
-          <form className="space-y-3" onSubmit={analyze}>
-            <label className="block text-xs font-bold uppercase tracking-wide text-zinc-400" htmlFor="product-url">
-              Product website URL
-            </label>
-            <input
-              id="product-url"
-              value={url}
-              onChange={(event) => setUrl(event.target.value)}
-              placeholder="https://yourproduct.com"
-              inputMode="url"
-              className="h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 text-sm font-medium text-white outline-none transition placeholder:text-zinc-600 focus:border-[#ff5a1f] focus:ring-4 focus:ring-orange-500/20"
-            />
-            <button
-              type="submit"
-              disabled={isAnalyzing || !url.trim()}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#ff5a1f] px-4 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition hover:bg-[#e04810] disabled:cursor-wait disabled:opacity-65"
-            >
-              {isAnalyzing ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Sparkles className="size-4" aria-hidden="true" />}
-              {isAnalyzing ? "Analyzing…" : "Analyze URL"}
-            </button>
-          </form>
+      {shouldShowMobileControls && !mobileControlsOpen ? (
+        <button
+          ref={mobileControlsLauncher}
+          type="button"
+          aria-label="Open product controls"
+          aria-expanded={false}
+          title="Open Product URL"
+          onClick={() => setMobileControlsOpen(true)}
+          className="fixed bottom-[calc(136px+env(safe-area-inset-bottom))] right-4 z-50 grid size-11 place-items-center rounded-full border border-white/70 bg-white p-1.5 shadow-[0_8px_22px_rgba(255,90,31,0.38)] transition hover:scale-105 hover:border-[#ff5a1f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff5a1f] focus-visible:ring-offset-2 focus-visible:ring-offset-[#101010] xl:hidden"
+        >
+          <ProductLogoMark className="size-full" sizes="40px" />
+        </button>
+      ) : null}
 
-          <div className="mt-5 space-y-3 rounded-2xl bg-zinc-950 p-4 text-sm">
-            <StatusRow done label={`Analyzed: ${activeContext.url.replace(/^https?:\/\//, "")}`} />
-            <StatusRow done label={`Brand: ${brand}`} />
-            <StatusRow done={!isRefilling} loading={isAnalyzing || isRefilling} label={isRefilling ? "Generating 10 more posts…" : "Wall-of-Text posts ready"} />
-          </div>
+      <Dialog open={mobileControlsOpen} onOpenChange={handleMobileControlsOpenChange}>
+        <DialogContent
+          className="w-[min(320px,calc(100%-2rem))] gap-0 border-white/10 bg-zinc-900 p-0 text-white shadow-[0_24px_80px_rgba(0,0,0,0.64)] xl:hidden"
+          overlayClassName="bg-black/70 backdrop-blur-md xl:hidden"
+        >
+          <DialogHeader className="sr-only">
+            <DialogTitle>Product controls</DialogTitle>
+            <DialogDescription>Enter a product website to generate Wall-of-Text content.</DialogDescription>
+          </DialogHeader>
+          <ProductControlPanel
+            inputId="mobile-product-url"
+            url={url}
+            onUrlChange={setUrl}
+            onSubmit={analyze}
+            isAnalyzing={isAnalyzing}
+            activeContext={activeContext}
+            brand={brand}
+            isRefilling={isRefilling}
+            onReset={resetDemo}
+          />
+        </DialogContent>
+      </Dialog>
 
-          <p aria-live="polite" className="mt-4 min-h-10 text-sm leading-5 text-zinc-400">
-            {notice}
-          </p>
-
-          <button type="button" onClick={resetDemo} className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-300 hover:text-[#ff6a35]">
-            <RotateCcw className="size-4" aria-hidden="true" /> Reset demo deck
-          </button>
-        </section>
-
-        <section className="order-1 flex flex-col items-center lg:order-2">
-          <div className="relative h-[min(900px,calc(100svh-2rem))] min-h-[660px] w-full max-w-[400px]">
+      <section className="flex h-[100svh] min-h-0 w-full items-center justify-center px-0 py-0 xl:min-h-dvh xl:h-auto xl:px-4 xl:py-5">
+          <div className="relative h-full min-h-0 w-full max-w-[505px] xl:h-[min(900px,calc(100svh-2rem))] xl:min-h-[660px] xl:max-w-[400px]">
             <div className="relative h-full overflow-hidden bg-[#101011]">
-            <div className="relative z-40 flex h-[54px] items-center justify-between px-7 text-[16px] font-bold tracking-[-0.04em] text-white">
+            <div className="relative z-40 flex h-[54px] items-center justify-between px-[clamp(24px,7.5vw,39px)] text-[16px] font-bold tracking-[-0.04em] text-white xl:px-7">
               <span>3:42</span>
               <span className="absolute left-1/2 top-[11px] h-[32px] w-[114px] -translate-x-1/2 rounded-[22px] bg-black" aria-hidden="true" />
               <span className="flex items-center gap-1.5" aria-label="Phone status">
@@ -409,7 +746,7 @@ export function TryUgcPilotDemo() {
               </span>
             </div>
 
-            <div className="absolute inset-x-5 top-[63px] z-40 flex items-center justify-between">
+            <div className="absolute inset-x-[clamp(16px,6.5vw,33px)] top-[63px] z-40 flex items-center justify-between xl:inset-x-5">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.08] px-3 py-1.5 text-[14px] font-bold tracking-[-0.02em] text-white shadow-[0_6px_18px_rgba(0,0,0,0.18)]">
                 <Flame className="size-4 text-[#ff526b]" fill="currentColor" aria-hidden="true" />
                 Trending Content
@@ -420,7 +757,7 @@ export function TryUgcPilotDemo() {
               </span>
             </div>
 
-            <div className="absolute inset-x-4 bottom-[104px] top-[122px]" aria-label={`${readyCount} content cards ready`}>
+            <div className="absolute inset-x-[clamp(12px,5.5vw,28px)] bottom-[120px] top-[122px] xl:inset-x-4 xl:bottom-[104px]" aria-label={`${readyCount} content cards ready`}>
             {cards.slice(0, 3).map((card, index) => {
               const isTop = index === 0;
               const rotation = isTop ? dragX * 0.075 : 0;
@@ -429,7 +766,7 @@ export function TryUgcPilotDemo() {
                 : isTop
                   ? `translateX(${dragX}px) rotate(${rotation}deg)`
                   : `translateY(${index * 12}px) scale(${1 - index * 0.04})`;
-              const image = CARD_IMAGES[(swipedCount + index) % CARD_IMAGES.length] ?? CARD_IMAGES[0];
+              const media = CARD_MEDIA[(swipedCount + index) % CARD_MEDIA.length] ?? CARD_MEDIA[0];
               return (
                 <div
                   key={card.id}
@@ -438,22 +775,51 @@ export function TryUgcPilotDemo() {
                   onPointerUp={isTop ? onPointerEnd : undefined}
                   onPointerCancel={isTop ? onPointerEnd : undefined}
                   aria-label={isTop ? "Wall-of-Text content card. Swipe left to skip or right to post." : undefined}
-                  className={`absolute inset-0 overflow-hidden rounded-[29px] border border-white/10 bg-zinc-900 shadow-[0_20px_45px_rgba(0,0,0,0.5)] ${isTop ? "cursor-grab touch-none select-none active:cursor-grabbing" : "pointer-events-none"} ${dragging ? "transition-none" : "transition-[transform,opacity] duration-300"}`}
+                  className={`absolute inset-0 overflow-hidden rounded-[31px] border border-white/10 bg-zinc-900 shadow-[0_20px_45px_rgba(0,0,0,0.5)] xl:rounded-[29px] ${isTop ? "cursor-grab touch-none select-none active:cursor-grabbing" : "pointer-events-none"} ${dragging ? "transition-none" : "transition-[transform,opacity] duration-300"}`}
                   style={{ transform, zIndex: 30 - index, opacity: isTop && exitDirection ? 0 : 1 }}
                 >
-                  <Image
-                    src={image}
-                    alt="Creator content background"
-                    fill
-                    sizes="390px"
-                    loading={index === 0 ? "eager" : "lazy"}
-                    className="object-cover"
-                    draggable={false}
+                  <video
+                    ref={isTop ? activeVideo : undefined}
+                    src={media.video}
+                    autoPlay={isTop && !showSwipeGuide}
+                    loop
+                    muted
+                    playsInline
+                    preload={isTop ? "auto" : "metadata"}
+                    aria-label="Creator content background video"
+                    className="absolute inset-0 size-full object-cover"
                   />
+                  {isTop ? (
+                    <audio
+                      ref={activeAudio}
+                      src={media.audio}
+                      loop
+                      muted={isMediaMuted}
+                      preload="auto"
+                    />
+                  ) : null}
                   <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/5 to-black/65" />
+                  {isTop ? (
+                    <button
+                      type="button"
+                      aria-label={isMediaMuted ? "Turn on background audio" : "Mute background audio"}
+                      aria-pressed={!isMediaMuted}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        toggleMediaAudio();
+                      }}
+                      className="absolute right-5 top-5 z-30 grid size-12 place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-[0_5px_16px_rgba(0,0,0,0.45)] backdrop-blur-sm transition hover:bg-black/65 xl:right-4 xl:top-4 xl:size-11"
+                    >
+                      {isMediaMuted ? <VolumeX className="size-4" aria-hidden="true" /> : <Volume2 className="size-4" aria-hidden="true" />}
+                    </button>
+                  ) : null}
                   <div
-                    className="absolute inset-x-8 top-[185px] text-center text-base font-semibold leading-[1.42] tracking-[-0.15px] text-white [text-shadow:-0.5px_-0.5px_0_rgba(0,0,0,0.85),0.5px_-0.5px_0_rgba(0,0,0,0.85),-0.5px_0.5px_0_rgba(0,0,0,0.85),0.5px_0.5px_0_rgba(0,0,0,0.85),0_1px_3px_rgba(0,0,0,0.9),0_3px_8px_rgba(0,0,0,0.85)]"
-                    style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Rounded', Inter, sans-serif" }}
+                    className="absolute left-1/2 top-[185px] w-[min(295px,calc(100%-72px))] -translate-x-1/2 break-words whitespace-pre-line text-center text-base font-semibold leading-[1.42] tracking-[-0.15px] text-white [text-shadow:-0.5px_-0.5px_0_rgba(0,0,0,0.85),0.5px_-0.5px_0_rgba(0,0,0,0.85),-0.5px_0.5px_0_rgba(0,0,0,0.85),0.5px_0.5px_0_rgba(0,0,0,0.85),0_1px_3px_rgba(0,0,0,0.9),0_3px_8px_rgba(0,0,0,0.85)]"
+                    style={{
+                      fontFamily: "var(--font-try-ugcpilot-wall-text), Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Rounded', 'Plus Jakarta Sans', Roboto, sans-serif",
+                      WebkitTextStroke: "0.35px rgba(0, 0, 0, 0.85)",
+                    }}
                   >
                     {card.wallOfText}
                   </div>
@@ -477,13 +843,13 @@ export function TryUgcPilotDemo() {
             ) : null}
             </div>
 
-            <div className="absolute inset-x-0 bottom-0 z-40 flex h-[104px] items-center justify-center gap-20 bg-[#101011]">
+            <div className="absolute inset-x-0 bottom-0 z-40 flex h-[120px] items-center justify-center gap-[116px] bg-[#101011] xl:h-[104px] xl:gap-20">
               <button
                 type="button"
                 aria-label="Skip"
                 onClick={() => swipe("left")}
                 disabled={!topCard || Boolean(exitDirection)}
-                className="grid size-[68px] place-items-center rounded-full border border-rose-400/35 bg-white/5 text-rose-400 shadow-[0_12px_28px_rgba(0,0,0,0.45)] transition hover:scale-105 hover:bg-rose-400/10 disabled:opacity-50"
+                className="grid size-[84px] place-items-center rounded-full border border-rose-400/35 bg-white/5 text-rose-400 shadow-[0_12px_28px_rgba(0,0,0,0.45)] transition hover:scale-105 hover:bg-rose-400/10 disabled:opacity-50 xl:size-[68px]"
               >
                 <X className="size-7" aria-hidden="true" />
               </button>
@@ -492,7 +858,7 @@ export function TryUgcPilotDemo() {
                 aria-label="Posted"
                 onClick={() => swipe("right")}
                 disabled={!topCard || Boolean(exitDirection)}
-                className="grid size-[68px] place-items-center rounded-full border border-emerald-400/35 bg-white/5 text-emerald-400 shadow-[0_12px_28px_rgba(0,0,0,0.45)] transition hover:scale-105 hover:bg-emerald-400/10 disabled:opacity-50"
+                className="grid size-[84px] place-items-center rounded-full border border-emerald-400/35 bg-white/5 text-emerald-400 shadow-[0_12px_28px_rgba(0,0,0,0.45)] transition hover:scale-105 hover:bg-emerald-400/10 disabled:opacity-50 xl:size-[68px]"
               >
                 <Check className="size-7" aria-hidden="true" />
               </button>
@@ -500,9 +866,80 @@ export function TryUgcPilotDemo() {
             <div className="absolute bottom-2 left-1/2 z-50 h-[4.5px] w-[130px] -translate-x-1/2 rounded-full bg-white/25" aria-hidden="true" />
             </div>
           </div>
-        </section>
-      </div>
+      </section>
     </main>
+  );
+}
+
+function ProductControlPanel({
+  inputId,
+  url,
+  onUrlChange,
+  onSubmit,
+  isAnalyzing,
+  activeContext,
+  brand,
+  isRefilling,
+  onReset,
+}: {
+  inputId: string;
+  url: string;
+  onUrlChange: (value: string) => void;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  isAnalyzing: boolean;
+  activeContext: BusinessContext;
+  brand: string;
+  isRefilling: boolean;
+  onReset: () => void;
+}) {
+  return (
+    <div className="rounded-[20px] border border-white/10 bg-zinc-900 p-4 text-white shadow-2xl">
+      <div className="mb-4 flex items-center gap-2.5">
+        <span className="size-2.5 rounded-full bg-[#ff5a1f] shadow-[0_0_10px_rgba(255,90,31,0.8)]" aria-hidden="true" />
+        <p className="text-[13px] font-bold uppercase tracking-[0.8px] text-zinc-300">AI Content Engine</p>
+      </div>
+
+      <form className="space-y-2.5" onSubmit={onSubmit}>
+        <label className="block text-[11px] font-bold uppercase tracking-[0.6px] text-zinc-400" htmlFor={inputId}>
+          Product URL
+        </label>
+        <div className="flex h-10 items-center rounded-[11px] border border-white/15 bg-zinc-950 px-3 transition-[border-color,box-shadow] focus-within:border-[#ff5a1f] focus-within:ring-2 focus-within:ring-orange-500/20">
+          <input
+            id={inputId}
+            name="productUrl"
+            type="url"
+            value={url}
+            onChange={(event) => onUrlChange(event.target.value)}
+            placeholder="calai.com"
+            inputMode="url"
+            autoComplete="url"
+            className="min-w-0 flex-1 bg-transparent text-[13px] font-medium text-white outline-none placeholder:text-zinc-600"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={isAnalyzing || !url.trim()}
+          className="flex h-10 w-full items-center justify-center rounded-[11px] bg-[#ff5a1f] px-4 text-[13px] font-bold text-white shadow-lg shadow-orange-500/20 transition hover:bg-[#e04810] disabled:cursor-wait disabled:opacity-65"
+        >
+          {isAnalyzing ? <LoaderCircle className="mr-2 size-3.5 animate-spin" aria-hidden="true" /> : null}
+          {isAnalyzing ? "Analyzing…" : "Analyze URL"}
+        </button>
+      </form>
+
+      <div className="mt-4 space-y-2.5 rounded-xl bg-zinc-950 p-3 text-sm">
+        <StatusRow done label={`Analyzed: ${activeContext.url.replace(/^https?:\/\//, "")}`} />
+        <StatusRow done label={`Brand: ${brand}`} />
+        <StatusRow
+          done={!isRefilling}
+          loading={isAnalyzing || isRefilling}
+          label={isRefilling ? "Generating 10 more posts…" : "Wall-of-Text posts ready"}
+        />
+      </div>
+
+      <button type="button" onClick={onReset} className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-400 hover:text-[#ff6a35]">
+        <RotateCcw className="size-3.5" aria-hidden="true" /> Reset demo deck
+      </button>
+    </div>
   );
 }
 
@@ -512,9 +949,9 @@ function SwipeGuide() {
       <style>{`
         @keyframes ugcpilot-guide-hand-glide {
           0%, 100% { transform: translateX(0) rotate(0deg); }
-          15%, 32% { transform: translateX(28px) rotate(7deg); }
+          15%, 32% { transform: translateX(36px) rotate(9deg); }
           50% { transform: translateX(0) rotate(0deg); }
-          65%, 82% { transform: translateX(-28px) rotate(-7deg); }
+          65%, 82% { transform: translateX(-36px) rotate(-9deg); }
         }
         @keyframes ugcpilot-guide-left-pulse {
           0%, 50%, 100% { opacity: 0.6; transform: scale(0.98); }
@@ -536,15 +973,17 @@ function SwipeGuide() {
           .ugcpilot-guide-hand, .ugcpilot-guide-left, .ugcpilot-guide-right, .ugcpilot-guide-ring { animation: none; }
         }
       `}</style>
-      <div className="pointer-events-none absolute inset-0 z-30 text-center" aria-hidden="true">
-        <div className="absolute inset-0 bg-black/[0.08]" />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-30 select-none rounded-[31px] bg-black/[0.58] text-center backdrop-blur-[16px] xl:rounded-[29px]"
+      >
         <div className="absolute left-1/2 top-[47%] flex w-[310px] max-w-[calc(100%-24px)] -translate-x-1/2 -translate-y-1/2 items-center justify-between">
           <div className="ugcpilot-guide-left flex w-[86px] flex-col items-center gap-1.5 text-white drop-shadow-[0_3px_8px_rgba(0,0,0,0.9)]">
             <svg viewBox="0 0 44 32" width="34" height="25" fill="none" aria-hidden="true">
               <path d="M40 26 C26 26 12 18 6 6" stroke="#f43f5e" strokeWidth="2.6" strokeLinecap="round" />
               <polyline points="14 5 5 5 5 14" stroke="#f43f5e" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <span className="text-[11px] font-extrabold uppercase tracking-[0.4px]">Swipe left</span>
+            <span className="text-xs font-extrabold uppercase tracking-[0.4px]">Swipe left</span>
             <span className="rounded-full border-[1.5px] border-white/40 bg-rose-500/[0.88] px-[11px] py-[3px] text-[11px] font-extrabold uppercase tracking-[0.8px] text-white shadow-[0_4px_16px_rgba(244,63,94,0.7)]">Skip</span>
           </div>
           <div className="ugcpilot-guide-hand relative grid size-[76px] place-items-center">
@@ -564,7 +1003,7 @@ function SwipeGuide() {
               <path d="M4 26 C18 26 32 18 38 6" stroke="#10b981" strokeWidth="2.6" strokeLinecap="round" />
               <polyline points="30 5 39 5 39 14" stroke="#10b981" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <span className="text-[11px] font-extrabold uppercase tracking-[0.4px]">Swipe right</span>
+            <span className="text-xs font-extrabold uppercase tracking-[0.4px]">Swipe right</span>
             <span className="rounded-full border-[1.5px] border-white/40 bg-emerald-500/[0.88] px-[11px] py-[3px] text-[11px] font-extrabold uppercase tracking-[0.8px] text-white shadow-[0_4px_16px_rgba(16,185,129,0.7)]">Posted</span>
           </div>
         </div>

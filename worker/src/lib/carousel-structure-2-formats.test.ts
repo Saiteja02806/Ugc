@@ -25,7 +25,7 @@ test("Structure 2 exposes eight formats with one strict six-slide runtime backbo
     assert.deepEqual(format.slides.map((slide) => slide.slideNumber), [1, 2, 3, 4, 5, 6]);
     assert.deepEqual(
       format.slides.map((slide) => slide.ctaPolicy),
-      ["none", "none", "none", "none", "none", "native_experiment"],
+      ["none", "none", "none", "none", "none", "none"],
     );
     assert.deepEqual(format.exampleFlows, [CAROUSEL_STRUCTURE_2_STORY_ROLES]);
   }

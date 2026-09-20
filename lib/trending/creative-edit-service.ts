@@ -46,6 +46,7 @@ import {
   HOOK_TEXT_LAYOUT_VERSION,
   HookTextLayoutError,
   LEGACY_HOOK_TEXT_LAYOUT_VERSION,
+  PREVIOUS_HOOK_TEXT_LAYOUT_VERSION,
 } from "@/lib/trending/hook-text-layout";
 import {
   getHookVideoTextPosition,
@@ -752,6 +753,7 @@ function mergeStoredContentWithOwnerDefaults(
     try {
       const storedLayoutVersion =
         stored.layoutVersion === HOOK_TEXT_LAYOUT_VERSION ||
+        stored.layoutVersion === PREVIOUS_HOOK_TEXT_LAYOUT_VERSION ||
         stored.layoutVersion === LEGACY_HOOK_TEXT_LAYOUT_VERSION
           ? stored.layoutVersion
           : null;

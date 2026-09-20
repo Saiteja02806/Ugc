@@ -6,6 +6,8 @@ import {
   HOOK_TEXT_FIXED_FONT_SIZE,
   HOOK_TEXT_LAYOUT_VERSION,
   LEGACY_HOOK_TEXT_LAYOUT_VERSION,
+  PREVIOUS_HOOK_TEXT_FIXED_FONT_SIZE,
+  PREVIOUS_HOOK_TEXT_LAYOUT_VERSION,
   type HookTextLayoutVersion,
 } from "@/lib/trending/hook-text-layout";
 
@@ -915,10 +917,13 @@ export function parseHookSuggestionRenderLayout(params: {
       ? params.visualFit.overlayVersion
       : null;
   const layoutVersion =
-    overlayVersion === "hook-overlay-v4-fixed-type" &&
+    overlayVersion === "hook-overlay-v5-56px" &&
     fontSize === HOOK_TEXT_FIXED_FONT_SIZE
       ? HOOK_TEXT_LAYOUT_VERSION
-      : LEGACY_HOOK_TEXT_LAYOUT_VERSION;
+      : overlayVersion === "hook-overlay-v4-fixed-type" &&
+          fontSize === PREVIOUS_HOOK_TEXT_FIXED_FONT_SIZE
+        ? PREVIOUS_HOOK_TEXT_LAYOUT_VERSION
+        : LEGACY_HOOK_TEXT_LAYOUT_VERSION;
 
   return { fontSize, layoutVersion, lines };
 }

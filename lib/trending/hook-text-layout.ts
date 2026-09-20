@@ -6,13 +6,19 @@ export const HOOK_TEXT_MAXIMUM_LINES = 3;
 export const HOOK_TEXT_MAXIMUM_WORDS_PER_LINE = 7;
 export const HOOK_TEXT_MAXIMUM_FONT_SIZE = 60;
 export const HOOK_TEXT_MINIMUM_FONT_SIZE = 34;
-export const HOOK_TEXT_FIXED_FONT_SIZE = 52;
+// Hook typography is intentionally owned by the Hook format. Do not reuse
+// this value for Wall-of-Text, Carousel, or Reaction Reel captions.
+export const HOOK_TEXT_FIXED_FONT_SIZE = 56;
+export const PREVIOUS_HOOK_TEXT_FIXED_FONT_SIZE = 52;
 export const LEGACY_HOOK_TEXT_LAYOUT_VERSION =
   "hook-overlay-layout-v1" as const;
-export const HOOK_TEXT_LAYOUT_VERSION =
+export const PREVIOUS_HOOK_TEXT_LAYOUT_VERSION =
   "hook-overlay-layout-v2-fixed" as const;
+export const HOOK_TEXT_LAYOUT_VERSION =
+  "hook-overlay-layout-v3-56px" as const;
 export type HookTextLayoutVersion =
   | typeof HOOK_TEXT_LAYOUT_VERSION
+  | typeof PREVIOUS_HOOK_TEXT_LAYOUT_VERSION
   | typeof LEGACY_HOOK_TEXT_LAYOUT_VERSION;
 export const HOOK_TEXT_FONT_WEIGHT = 600;
 export const HOOK_TEXT_OUTLINE_WIDTH = 5;
@@ -126,8 +132,8 @@ export function createHookTextLayout(
   );
   if (options.fontSize !== undefined && fixedFontSize === null) {
     throw new HookTextLayoutError(
-      layoutVersion === HOOK_TEXT_LAYOUT_VERSION
-        ? `Current Hook text must use the fixed ${HOOK_TEXT_FIXED_FONT_SIZE}px font size.`
+      getHookTextFixedFontSize(layoutVersion)
+        ? `This Hook layout must use the fixed ${getHookTextFixedFontSize(layoutVersion)}px font size.`
         : `Legacy Hook font size must be an even number from ${HOOK_TEXT_MINIMUM_FONT_SIZE} to ${HOOK_TEXT_MAXIMUM_FONT_SIZE}.`,
     );
   }
@@ -246,8 +252,9 @@ function createAutomaticLineCandidates(words: string[]) {
 }
 
 function createFontSizeCandidates(layoutVersion: HookTextLayoutVersion) {
-  if (layoutVersion === HOOK_TEXT_LAYOUT_VERSION) {
-    return [HOOK_TEXT_FIXED_FONT_SIZE];
+  const fixedFontSize = getHookTextFixedFontSize(layoutVersion);
+  if (fixedFontSize) {
+    return [fixedFontSize];
   }
 
   const fontSizes: number[] = [];
@@ -269,8 +276,9 @@ function normalizeRequestedFontSize(
 ) {
   if (value === undefined) return null;
 
-  if (layoutVersion === HOOK_TEXT_LAYOUT_VERSION) {
-    return value === HOOK_TEXT_FIXED_FONT_SIZE ? value : null;
+  const fixedFontSize = getHookTextFixedFontSize(layoutVersion);
+  if (fixedFontSize) {
+    return value === fixedFontSize ? value : null;
   }
 
   return typeof value === "number" &&
@@ -280,6 +288,20 @@ function normalizeRequestedFontSize(
     value % 2 === 0
     ? value
     : null;
+}
+
+export function getHookTextFixedFontSize(
+  layoutVersion: HookTextLayoutVersion,
+) {
+  if (layoutVersion === HOOK_TEXT_LAYOUT_VERSION) {
+    return HOOK_TEXT_FIXED_FONT_SIZE;
+  }
+
+  if (layoutVersion === PREVIOUS_HOOK_TEXT_LAYOUT_VERSION) {
+    return PREVIOUS_HOOK_TEXT_FIXED_FONT_SIZE;
+  }
+
+  return null;
 }
 
 function scoreCandidate(candidate: { lines: string[]; widths: number[] }) {

@@ -7,6 +7,8 @@ import type {
 } from "./carousel-content-plan.js";
 import {
   CAROUSEL_FIXED_FONT_SIZE,
+  CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE,
+  CAROUSEL_STRUCTURE_1_COVER_MAX_LINES,
   CAROUSEL_STRUCTURE_1_FIXED_TEXT_WIDTH,
   CAROUSEL_STRUCTURE_1_HEADLINE_MAX_LINES,
   CAROUSEL_STRUCTURE_1_LIST_ITEM_MAX_LINES,
@@ -35,10 +37,12 @@ import {
 import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v41-grounded-batch-cover-contract";
+  "llm-carousel-planner-v45-single-hook-cover-contract";
 export const CAROUSEL_V1_ASSIGNMENT_REQUIRED_ERROR =
   "Carousel V1 requires exactly six slides plus a backend-selected content format and compatible hook family.";
 
+// Keep the parser ceiling for backwards-compatible repair handling. The short
+// hook prompts and measured cover fit remain the authority for new plans.
 const FIRST_SLIDE_MAX_BODY_LENGTH = 140;
 const FOLLOWUP_SLIDE_MAX_BODY_LENGTH = 300;
 const MAX_BODY_LENGTH = FOLLOWUP_SLIDE_MAX_BODY_LENGTH;
@@ -46,12 +50,17 @@ const MAX_HEADLINE_LENGTH = 100;
 const MAX_CTA_LENGTH = 68;
 const MAX_IMAGE_DIRECTION_LENGTH = 180;
 const MAX_LIST_ITEM_LENGTH = 88;
-const MIN_REQUIRED_BODY_WORDS = 8;
+const MIN_REQUIRED_BODY_WORDS = 18;
 const FIRST_SLIDE_MIN_BODY_WORDS = 4;
-const FIRST_SLIDE_MAX_BODY_WORDS = 18;
-const FOLLOWUP_SLIDE_MAX_BODY_WORDS = 50;
+const FIRST_SLIDE_MAX_BODY_WORDS = 12;
+const FIRST_SLIDE_MIN_HEADLINE_WORDS = 5;
+const FIRST_SLIDE_MAX_HEADLINE_LENGTH = 90;
+const FIRST_SLIDE_MAX_HEADLINE_WORDS = 11;
+const FOLLOWUP_SLIDE_MAX_BODY_WORDS = 30;
 const MIN_HEADLINE_WORDS = 3;
 const MAX_HEADLINE_WORDS = 16;
+const FIRST_SLIDE_HOOK_COPY_GUIDANCE =
+  "Write exactly one self-contained hook in the headline field, targeting 5-9 words and never more than 11. Set body to null: Slide 1 has no subtitle, supporting copy, or second text layer. Use natural or sentence case, never ALL CAPS. The hook is centered over the image, so imageDirection must leave a clear, calm central text zone rather than reserving empty space only at the bottom.";
 const VISUAL_SUBJECT_TERMS =
   "(?:human|humans|person|people|face|faces|hand|hands|body|bodies|silhouette|silhouettes|man|men|woman|women|child|children|team|customer|customers|worker|workers)";
 const PROHIBITED_VISUAL_SUBJECT_PATTERN =
@@ -851,6 +860,12 @@ function parseCarouselContentPlanShape(
       throw new Error("The first carousel slide must be a hook.");
     }
 
+    if (index === 0 && (!parsedHeadline || parsedBody !== null)) {
+      throw new Error(
+        "Slide 1 must contain one headline hook and no supporting body copy.",
+      );
+    }
+
     if (expectedFormatSlide && formatRole !== expectedFormatSlide.role) {
       throw new Error(
         `Slide ${index + 1} must use format role ${expectedFormatSlide.role}.`,
@@ -895,11 +910,11 @@ function parseCarouselContentPlanShape(
       throw new Error("The final carousel slide must be a CTA.");
     }
 
-    if (index < slideCount - 1 && ctaText !== null) {
-      throw new Error("Only the final carousel slide may include CTA text.");
+    if (ctaText !== null) {
+      throw new Error("Carousel slides must not include CTA text.");
     }
 
-    if (hasProhibitedVisualSubject(imageDirection)) {
+    if (index !== 0 && hasProhibitedVisualSubject(imageDirection)) {
       throw new Error(
         `Slide ${index + 1} image direction includes a prohibited human subject.`,
       );
@@ -939,7 +954,10 @@ function parseCarouselContentPlanShape(
     });
 
     validateTextContent({
-      body,
+      // `single_statement` historically required a body field. For the cover,
+      // validate the hook as that statement, then store it only as headline so
+      // no downstream surface can mistake a second field for cover support.
+      body: index === 0 ? headline ?? body : body,
       headline,
       listItems,
       slideNumber,
@@ -957,8 +975,8 @@ function parseCarouselContentPlanShape(
     }
 
     return {
-      ...getLayoutPreset(slideType, textMode),
-      body,
+      ...getLayoutPreset(slideType, textMode, slideNumber),
+      body: index === 0 ? null : body,
       ctaText,
       formatRole,
       headline,
@@ -966,7 +984,7 @@ function parseCarouselContentPlanShape(
       listItems,
       slideNumber,
       slideType,
-      subtext: body,
+      subtext: index === 0 ? null : body,
       textMode,
     } satisfies PlannedCarouselSlide;
   });
@@ -1220,9 +1238,7 @@ function getSlideOneHookQualityIssue(
 ): CarouselPlanValidationIssue | null {
   if (slide.slideNumber !== 1) return null;
 
-  const visibleCopy = [slide.headline, slide.body]
-    .filter((value): value is string => Boolean(value?.trim()))
-    .join(" ");
+  const visibleCopy = slide.headline?.trim() ?? "";
 
   if (!visibleCopy) return null;
 
@@ -1272,9 +1288,7 @@ function getSlideOneCommunicationIssues(
   const firstSlide = plan.slides[0];
   if (!firstSlide) return [];
 
-  const visibleHook = [firstSlide.headline, firstSlide.body]
-    .filter((value): value is string => Boolean(value?.trim()))
-    .join(" ");
+  const visibleHook = firstSlide.headline?.trim() ?? "";
   if (!visibleHook) return [];
 
   const issues: CarouselPlanValidationIssue[] = [];
@@ -1347,6 +1361,26 @@ function validateStructure1FixedTextFit(
       slide.ctaText?.trim() ||
       (!headline ? slide.headline?.trim() ?? "" : "");
 
+  if (slide.slideNumber === 1) {
+    const primary = headline || body;
+    const fit = inspectCarouselFixedTextFit({
+      fontSize: CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE,
+      maximumLines: CAROUSEL_STRUCTURE_1_COVER_MAX_LINES,
+      maximumWidth: CAROUSEL_STRUCTURE_1_FIXED_TEXT_WIDTH,
+      value: primary,
+    });
+
+    if (!fit.fits) {
+      issues.push({
+        code: "render_fit",
+        message: `Cover hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines at the fixed ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px font size. ${fit.reason ?? ""}`.trim(),
+        slideNumber: slide.slideNumber,
+      });
+    }
+
+    return issues;
+  }
+
   const groups: Array<{
     label: string;
     maximumLines: number;
@@ -1380,7 +1414,7 @@ function validateStructure1FixedTextFit(
     if (!fit.fits) {
       issues.push({
         code: "render_fit",
-        message: `${group.label} must fit within ${group.maximumLines} line${group.maximumLines === 1 ? "" : "s"} at the fixed ${CAROUSEL_FIXED_FONT_SIZE}px font size. ${fit.reason ?? ""}`.trim(),
+        message: `${group.label} must fit within ${group.maximumLines} line${group.maximumLines === 1 ? "" : "s"} at the fixed ${getCarouselStructure1TextFontSize(slide)}px font size. ${fit.reason ?? ""}`.trim(),
         slideNumber: slide.slideNumber,
       });
     }
@@ -1463,15 +1497,27 @@ export function validateCarouselContentPlan(
 
     if (slide.headline) {
       const headlineWords = countWords(slide.headline);
+      const minimumHeadlineWords =
+        slide.slideNumber === 1
+          ? FIRST_SLIDE_MIN_HEADLINE_WORDS
+          : MIN_HEADLINE_WORDS;
+      const maximumHeadlineWords =
+        slide.slideNumber === 1
+          ? FIRST_SLIDE_MAX_HEADLINE_WORDS
+          : MAX_HEADLINE_WORDS;
+      const maximumHeadlineLength =
+        slide.slideNumber === 1
+          ? FIRST_SLIDE_MAX_HEADLINE_LENGTH
+          : MAX_HEADLINE_LENGTH;
 
       if (
-        headlineWords < MIN_HEADLINE_WORDS ||
-        headlineWords > MAX_HEADLINE_WORDS ||
-        slide.headline.length > MAX_HEADLINE_LENGTH
+        headlineWords < minimumHeadlineWords ||
+        headlineWords > maximumHeadlineWords ||
+        slide.headline.length > maximumHeadlineLength
       ) {
         issues.push({
           code: "headline_length",
-          message: `Headline must be ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words and at most ${MAX_HEADLINE_LENGTH} characters.`,
+          message: `Headline must be ${minimumHeadlineWords}-${maximumHeadlineWords} words and at most ${maximumHeadlineLength} characters.`,
           slideNumber: slide.slideNumber,
         });
       }
@@ -2054,7 +2100,7 @@ function buildGrammarPlannerMessages(
     {
       role: "system" as const,
       content:
-        "You are a senior Instagram carousel strategist. Use the broad creative seed, emotion, and optional private creative brief to invent a fresh, coherent angle. The private brief is context only: do not mention its labels or force every part into visible copy. The resolved combined Structure 1 format is one renderer contract: its Slide 1 instruction may contain an optional hook overlay, while its Slides 2-6 instructions retain the base content structure. Keep the base content-format ID, hook-family ID, and required slide fields. Return only the requested JSON. Do not invent precise claims, metrics, proof, or guarantees. Visual directions must describe only objects, surfaces, rooms, food, devices, documents, or still-life details and must never contain human-related words, even as exclusions.",
+        "You are a senior Instagram carousel strategist. Use the broad creative seed, emotion, and optional private creative brief to invent a fresh, coherent angle. The private brief is context only: do not mention its labels or force every part into visible copy. The resolved combined Structure 1 format is one renderer contract: its Slide 1 instruction may contain an optional hook overlay, while its Slides 2-6 instructions retain the base content structure. Keep the base content-format ID, hook-family ID, and required slide fields. Return only the requested JSON. Do not invent precise claims, metrics, proof, or guarantees. Slides 2-6 visual directions must describe only objects, surfaces, rooms, food, devices, documents, or still-life details and must never contain human-related words. Slide 1 may describe a person or face only when an approved Hook-category asset is available; it must not request an unreviewed human scene.",
     },
     {
       role: "user" as const,
@@ -2075,7 +2121,7 @@ function buildGrammarPlannerMessages(
         "- Use the private creative brief as human specificity and factual direction, not as a fixed storyline or a replacement for the selected format.",
         "- Avoid wording and close paraphrases from recentAcceptedCopy.",
         "- Follow every supplied slide role, slideType, allowed text mode, item count, and instruction exactly.",
-        "- Slide 6 must be a useful takeaway. ctaText is optional and, when present, must be soft and concrete.",
+        "- Slide 6 must be a useful, self-contained takeaway. It is normal content, never a CTA.",
         "",
         "Writing rules:",
         "- Use simple, natural language and one main idea per slide.",
@@ -2087,21 +2133,21 @@ function buildGrammarPlannerMessages(
         grammarContext.hookTemplate?.claimHandling === "adapt_if_unsupported"
           ? "- The selected template contains a personal-result, time, metric, or performance implication. Keep its structure, but remove or soften that implication unless the supplied business context directly supports it."
           : null,
-        `- Headlines are optional. When present, use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words, at most ${MAX_HEADLINE_LENGTH} characters, and no more than four visual lines.`,
-        `- Slide 1 is the cover. Write one reader-first cover statement of ${FIRST_SLIDE_MIN_BODY_WORDS}-${FIRST_SLIDE_MAX_BODY_WORDS} words and at most ${FIRST_SLIDE_MAX_BODY_LENGTH} characters. It must fit the real ${getCarouselStructure1BodyMaxLines(1)}-line display area: single_statement uses 60px type; headline_body and body_only use ${CAROUSEL_FIXED_FONT_SIZE}px. The renderer never shrinks or truncates copy. It must create a specific reason to swipe through a tension, outcome, contrast, mistake, useful promise, or curiosity gap. Do not begin a complete personal story with “I thought,” “I used to,” “Recently I,” “Here is my story,” or “I learned” unless the same line states a specific reader payoff.`,
-        `- Slides 2-6 body copy must each be one complete sentence of ${MIN_REQUIRED_BODY_WORDS}-${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words and at most ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters.`,
-        `- The renderer uses fixed ${CAROUSEL_FIXED_FONT_SIZE}px type, except a single-statement Slide 1 cover renders larger. An actual headline receives one measured white SVG background with dark text; body, list, and CTA text remain white directly on the image. Headlines remain optional: never add one merely to obtain the SVG background. Slide 1 copy must fit within ${getCarouselStructure1BodyMaxLines(1)} lines; Slides 2-6 body copy within ${getCarouselStructure1BodyMaxLines(2)} lines; each list item within two; list groups within eight total. The renderer will not shrink or truncate copy.`,
-        "- A headline must not repeat its body. If the body works alone, use body_only and set headline to null.",
+        `- On Slides 2-6, headlines are optional. When present, use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words, at most ${MAX_HEADLINE_LENGTH} characters, and no more than four visual lines. Slide 1 requires one ${FIRST_SLIDE_MIN_HEADLINE_WORDS}-${FIRST_SLIDE_MAX_HEADLINE_WORDS}-word headline hook, at most ${FIRST_SLIDE_MAX_HEADLINE_LENGTH} characters.`,
+        `- Slide 1 is a poster cover, not a normal heading/body slide. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in Inter Tight Bold at 700 weight, centered at ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px, with no added gradient or outline. The one hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines. The renderer never shrinks or truncates copy. It must create a specific reason to swipe through a tension, outcome, contrast, mistake, useful promise, or curiosity gap. Do not begin a complete personal story with “I thought,” “I used to,” “Recently I,” “Here is my story,” or “I learned” unless the same line states a specific reader payoff.`,
+        `- Slides 2-6 body copy must each be one complete sentence, targeting 18-30 words and never more than ${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words or ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters.`,
+        `- Slides 2-6 use centered Inter Tight SemiBold at fixed ${CAROUSEL_FIXED_FONT_SIZE}px type. Their actual headlines receive one measured white SVG background with dark text; body and list text remain white directly on the image. Slide 1 never uses the white SVG background: its cover hook is clean white display text over the unchanged image blend. Headlines remain optional: never add one merely to obtain the SVG background. Slides 2-6 body copy must fit within ${getCarouselStructure1BodyMaxLines(2)} lines; each list item within two; list groups within eight total. The renderer will not shrink or truncate copy.`,
+        "- A headline must not repeat its body on Slides 2-6. Slide 1 has headline-only hook text and body must be null.",
         "- List slides must use the exact configured number of short listItems and normally set body to null.",
         "- Every slide without a configured listItemCount must return listItems as an empty array.",
         "- Do not repeat the same information across slides.",
         "- Do not use generic phrases such as boost productivity, streamline your workflow, unlock efficiency, save time, work smarter, or next level.",
         "- Do not invent exact calories, protein, grams, percentages, prices, time savings, user counts, or performance figures.",
         "- Never invent brands, customers, testimonials, rankings, or quantified social proof.",
-        "- imageDirection must name one concrete object-only scene and useful text-safe space.",
-        "- Do not write humans, people, faces, hands, bodies, silhouettes, teams, customers, or workers in imageDirection, even as exclusions.",
+        "- Slide 1 imageDirection may describe a person or face only when that scene is supported by the approved Hook image category; otherwise use an object-only scene. Slides 2-6 imageDirection must name one concrete object-only scene and useful text-safe space.",
+        "- Never request an unreviewed human scene. On Slides 2-6, do not write humans, people, faces, hands, bodies, silhouettes, teams, customers, or workers in imageDirection, even as exclusions.",
         "- formatRole must exactly match the configured role for its slide number.",
-        "- ctaText must be null on slides 1-5.",
+        "- ctaText must be null on every slide.",
         "",
         "Minimal business context:",
         JSON.stringify({ businessDescription: input.businessDescription }),
@@ -2196,16 +2242,16 @@ function buildBatchPlannerMessages(
         "Write fresh hooks and slide copy that do not copy recentAcceptedCopy or another item in this response.",
         "When a slot's combinedFormat.hookOverlay source is template, use that pattern only for Slide 1. Adapt {topic}; never copy it verbatim, do not change Slides 2-6 or their format roles, and never increase the Slide 1 copy budget. For adapt_if_unsupported claims, remove or soften unsupported personal, time, metric, or performance promises.",
         "Use simple, specific, natural copy. Prioritize useful information over promotion.",
-        `Optional headlines must use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words and at most ${MAX_HEADLINE_LENGTH} characters. Headlines remain optional and are never added merely to obtain the white SVG treatment.`,
-        `Slide 1 is a ${FIRST_SLIDE_MIN_BODY_WORDS}-${FIRST_SLIDE_MAX_BODY_WORDS}-word, at-most-${FIRST_SLIDE_MAX_BODY_LENGTH}-character reader-first cover, not a complete personal-story opener. It must fit the actual ${getCarouselStructure1BodyMaxLines(1)}-line display area: single_statement uses 60px type; headline_body and body_only use ${CAROUSEL_FIXED_FONT_SIZE}px. The renderer never shrinks or truncates copy. Give a specific reason to swipe through a tension, outcome, contrast, mistake, useful promise, or curiosity gap.`,
-        "A headline must add distinct information rather than repeat its body. If the cover works alone, use body_only and set headline to null.",
-        `Slides 2-6 body copy must each be one complete sentence of ${MIN_REQUIRED_BODY_WORDS}-${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words and at most ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters.`,
+        `Optional headlines on Slides 2-6 must use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words and at most ${MAX_HEADLINE_LENGTH} characters. Slide 1 requires one ${FIRST_SLIDE_MIN_HEADLINE_WORDS}-${FIRST_SLIDE_MAX_HEADLINE_WORDS}-word headline hook, at most ${FIRST_SLIDE_MAX_HEADLINE_LENGTH} characters. Headlines remain optional and are never added merely to obtain the white SVG treatment.`,
+        `Slide 1 is a reader-first poster cover, not a complete personal-story opener. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Tight Bold at 700 weight and ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px, with no added gradient or outline. Its one hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines. The renderer never shrinks or truncates copy. Give a specific reason to swipe through a tension, outcome, contrast, mistake, useful promise, or curiosity gap.`,
+        "A headline must add distinct information rather than repeat its body on Slides 2-6. Slide 1 has headline-only hook text and body must be null.",
+        `Slides 2-6 body copy must each be one complete sentence, targeting 18-30 words and never more than ${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words or ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters.`,
         "Never invent numbers, product capabilities, proof, customers, brands, health claims, financial claims, or guaranteed outcomes.",
         "Avoid generic copy such as boost productivity, streamline your workflow, save time, work smarter, unlock efficiency, or next level.",
         "Follow every format role, slide type, allowed text mode, and list-item count exactly.",
         "Return listItems as an empty array whenever that slide role has no configured listItemCount.",
-        "Slide 1 is the assigned reader-first cover. Slide 6 is a useful takeaway/CTA. ctaText must be null on slides 1-5.",
-        "imageDirection must describe only concrete object-only scenes and text-safe space. Never mention humans, people, faces, hands, bodies, silhouettes, teams, customers, or workers, even as exclusions.",
+        "Slide 1 is the assigned reader-first cover. Slide 6 is a useful, self-contained takeaway. ctaText must be null on every slide.",
+        "Slide 1 imageDirection may describe a person or face only when that scene is supported by the approved Hook image category; otherwise use an object-only scene. Slides 2-6 imageDirection must describe only concrete object-only scenes and text-safe space, and never mention humans, people, faces, hands, bodies, silhouettes, teams, customers, or workers, even as exclusions.",
         "Minimal business context:",
         JSON.stringify({ businessDescription: input.businessDescription }),
         "Controlled slot assignments:",
@@ -2606,12 +2652,12 @@ function buildNativeSlideOneOverflowFallbackMessages(params: {
       role: "user" as const,
       content: [
         "Replace only Slide 1. Slides 2-6 are frozen and must not be returned or rewritten.",
-        "Write a short, natural, reader-first cover that honestly previews those frozen slides.",
+        `Write a short, natural, reader-first cover that honestly previews those frozen slides. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Tight Bold at 700 weight, with no added gradient or outline.`,
         "Do not reuse the optional hook-template pattern. Do not mechanically truncate the rejected cover.",
-        `The cover must fit within ${getCarouselStructure1BodyMaxLines(1)} measured lines at its configured fixed type size; use fewer, simpler words when needed.`,
+        `The one cover hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} measured lines at ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px. Use fewer, simpler words when needed; do not add a subtitle or support line.`,
         "Keep the exact Slide 1 format role, slide type, one allowed text mode, list-item count, and null CTA required by the base format.",
         "Do not invent precise claims, metrics, proof, guarantees, brands, or capabilities.",
-        "imageDirection must describe only a concrete object-only scene and text-safe space without human-related words.",
+        "imageDirection must describe one approved Hook-category scene and useful text-safe space. It may describe a person or face only when that Hook category supplies an approved human asset; otherwise it must be object-only.",
         `Creative seed: ${params.input.creativeSeed}.`,
         `Required emotion: ${params.input.emotion}.`,
         "Minimal business context:",
@@ -2663,12 +2709,12 @@ function buildRepairMessages(params: {
         `Required emotion: ${params.emotion}.`,
         "Private creative brief (context only):",
         JSON.stringify(params.planningBrief),
-        "Every headline is optional; when present it must be 3-16 words, at most 100 characters, and at most four visual lines.",
-        "Slide 1 must be a reader-first cover of 4-18 words and at most 140 characters: a specific benefit, tension, mistake, contrast, or curiosity gap. Do not open with a complete personal-story sentence such as 'I thought...', 'I used to...', or 'Recently I...'. It must fit within three measured visual lines: single_statement uses 60px type, while headline_body and body_only use 44px type. The renderer never shrinks or truncates copy.",
+        `Every Slide 2-6 headline is optional; when present it must be ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words, at most ${MAX_HEADLINE_LENGTH} characters, and at most four visual lines. Slide 1 requires one ${FIRST_SLIDE_MIN_HEADLINE_WORDS}-${FIRST_SLIDE_MAX_HEADLINE_WORDS}-word headline hook, at most ${FIRST_SLIDE_MAX_HEADLINE_LENGTH} characters.`,
+        `Slide 1 must be a reader-first poster cover: a specific benefit, tension, mistake, contrast, or curiosity gap. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Tight Bold at 700 weight and ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px, with no added gradient or outline. Do not open with a complete personal-story sentence such as 'I thought...', 'I used to...', or 'Recently I...'. Its one hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} measured lines. The renderer never shrinks or truncates copy.`,
         hasSlideOneRenderFitFailure
-          ? "Slide 1 overflowed its real three-line display area. Replace it with a shorter, simpler cover rather than merely trimming words: single_statement uses 60px type, while headline_body and body_only use 44px type. Do not add a repeating headline to solve the overflow."
+          ? `Slide 1 overflowed its real cover area. Replace it with a shorter, simpler single hook that fits within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines at ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px. Do not add a subtitle or support line to solve the overflow.`
           : null,
-        "Each body on Slides 2-6 must be one complete, specific sentence of 8-50 words, at most 300 characters, and at most ten visual lines.",
+        "Each body on Slides 2-6 must be one complete, specific sentence targeting 18-30 words, at most 300 characters, and at most ten visual lines at the fixed 60px type size.",
         "List modes may use at most eight total visual lines, with at most two lines per item.",
         "Remove repeated punctuation, fragments, generic copy, unsupported claims, repeated ideas, headline/body repetition, and grammar errors such as lead to missed leads.",
         "Do not repeat a connector within one short sentence, such as for better management for clearer decisions.",
@@ -2677,7 +2723,7 @@ function buildRepairMessages(params: {
         "Never use these phrases: boost productivity, effectively, efficiently, effortlessly, enhance your marketing efforts, seamless, streamline your workflow, transform your campaign management, unify your planning and reporting, unlock efficiency, with ease, next level, one workspace for everything, save time, stay on top, or work smarter.",
         "If a headline repeats its body, set headline to null and use body_only instead of paraphrasing it.",
         "Select one supplied grounding.anchorId. The concept and Slides 3-5 must naturally develop that verified workflow, product detail, or user situation. Do not invent a grounding fact or force a product name into every slide.",
-        "The final slide must use slideType cta; ctaText may be null when the takeaway is complete without it.",
+        "The final slide must be a self-contained takeaway using normal body content. ctaText must be null.",
         "Every role without a configured listItemCount must return listItems as an empty array.",
         hasRecentRepetition
           ? "Preserve contentFormatId, hookFamilyId, formatRole, slideType, configured text modes, list-item counts, seed, and emotion. Rewrite only enough to avoid close wording repetition."
@@ -2807,27 +2853,13 @@ function buildNativeSlideOneFallbackResponseSchema(
       slide: {
         additionalProperties: false,
         properties: {
-          body: {
-            anyOf: [
-              {
-                maxLength: FIRST_SLIDE_MAX_BODY_LENGTH,
-                minLength: 1,
-                type: "string",
-              },
-              { type: "null" },
-            ],
-          },
+          body: { type: "null" },
           ctaText: { type: "null" },
           formatRole: { enum: [definition.role], type: "string" },
           headline: {
-            anyOf: [
-              {
-                maxLength: MAX_HEADLINE_LENGTH,
-                minLength: 1,
-                type: "string",
-              },
-              { type: "null" },
-            ],
+            maxLength: FIRST_SLIDE_MAX_HEADLINE_LENGTH,
+            minLength: 1,
+            type: "string",
           },
           imageDirection: {
             maxLength: MAX_IMAGE_DIRECTION_LENGTH,
@@ -2846,10 +2878,7 @@ function buildNativeSlideOneFallbackResponseSchema(
           },
           slideNumber: { enum: [1], type: "integer" },
           slideType: { enum: [definition.slideType], type: "string" },
-          textMode: {
-            enum: definition.preferredTextModes,
-            type: "string",
-          },
+          textMode: { enum: ["single_statement"], type: "string" },
         },
         required: [
           "body",
@@ -2879,7 +2908,6 @@ function buildCarouselContentSlideSchema(
     index: number | null,
   ) => {
     const configuredListItemCount = definition?.listItemCount;
-    const finalSlide = index === slideCount - 1;
     const maximumBodyLength = index === 0
       ? FIRST_SLIDE_MAX_BODY_LENGTH
       : MAX_BODY_LENGTH;
@@ -2887,39 +2915,37 @@ function buildCarouselContentSlideSchema(
     return {
       additionalProperties: false,
       properties: {
-        ctaText:
-          index !== null && !finalSlide
+        ctaText: { type: "null" },
+        body:
+          index === 0
             ? { type: "null" }
             : {
                 anyOf: [
                   {
-                    maxLength: MAX_CTA_LENGTH,
+                    maxLength: maximumBodyLength,
                     minLength: 1,
                     type: "string",
                   },
                   { type: "null" },
                 ],
               },
-        body: {
-          anyOf: [
-            {
-              maxLength: maximumBodyLength,
-              minLength: 1,
-              type: "string",
-            },
-            { type: "null" },
-          ],
-        },
-        headline: {
-          anyOf: [
-            {
-              maxLength: MAX_HEADLINE_LENGTH,
-              minLength: 1,
-              type: "string",
-            },
-            { type: "null" },
-          ],
-        },
+        headline:
+          index === 0
+            ? {
+                maxLength: FIRST_SLIDE_MAX_HEADLINE_LENGTH,
+                minLength: 1,
+                type: "string",
+              }
+            : {
+                anyOf: [
+                  {
+                    maxLength: MAX_HEADLINE_LENGTH,
+                    minLength: 1,
+                    type: "string",
+                  },
+                  { type: "null" },
+                ],
+              },
         formatRole: definition
           ? { enum: [definition.role], type: "string" }
           : {
@@ -2962,16 +2988,19 @@ function buildCarouselContentSlideSchema(
           type: "string",
         },
         textMode: {
-          enum: definition
-            ? definition.preferredTextModes
-            : [
-                "body_only",
-                "checklist",
-                "cta_takeaway",
-                "headline_body",
-                "question_list",
-                "single_statement",
-              ],
+          enum:
+            index === 0
+              ? ["single_statement"]
+              : definition
+                ? definition.preferredTextModes
+                : [
+                    "body_only",
+                    "checklist",
+                    "cta_takeaway",
+                    "headline_body",
+                    "question_list",
+                    "single_statement",
+                  ],
           type: "string",
         },
       },
@@ -3031,7 +3060,12 @@ function getOpenAIClient() {
 function getLayoutPreset(
   slideType: PlannedCarouselSlide["slideType"],
   textMode: CarouselTextMode,
+  slideNumber: number,
 ): Pick<PlannedCarouselSlide, "layoutPreset" | "textPosition"> {
+  if (slideNumber === 1) {
+    return { layoutPreset: "middle-statement", textPosition: "center" };
+  }
+
   if (textMode === "question_list" || textMode === "checklist") {
     return { layoutPreset: "interactive-list", textPosition: "center" };
   }

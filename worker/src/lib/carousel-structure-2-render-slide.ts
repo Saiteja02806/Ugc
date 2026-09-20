@@ -4,9 +4,13 @@ import type { CarouselFormat } from "../types.js";
 import type {
   CarouselStructure2RenderSpec,
 } from "./carousel-structure-2-render-spec.js";
+import {
+  CAROUSEL_BODY_FONT_WEIGHT,
+  CAROUSEL_COVER_FONT_WEIGHT,
+  CAROUSEL_FONT_FAMILY,
+} from "./carousel-cover-typography.js";
 import { CAROUSEL_FIXED_FONT_SIZE } from "./carousel-render-slide.js";
 import {
-  CAROUSEL_STRUCTURE_2_CTA_MAX_LINES,
   CAROUSEL_STRUCTURE_2_SAFE_BOTTOM,
   CAROUSEL_STRUCTURE_2_SAFE_TOP,
   CAROUSEL_STRUCTURE_2_SAFE_X,
@@ -17,7 +21,7 @@ import {
 } from "./carousel-structure-2-layout.js";
 
 export const CAROUSEL_STRUCTURE_2_RENDERER_VERSION =
-  "story-native-renderer-v6-outline-4";
+  "story-native-centered-inter-tight-no-gradient-v10";
 
 const FORMAT_DIMENSIONS: Record<
   CarouselFormat,
@@ -26,7 +30,7 @@ const FORMAT_DIMENSIONS: Record<
   "1:1": { height: 1080, width: 1080 },
   "4:5": { height: 1350, width: 1080 },
 };
-const FONT_FAMILY = "Geist, Arial, Helvetica, sans-serif";
+const FONT_FAMILY = CAROUSEL_FONT_FAMILY;
 const DIRECT_TEXT_SIDE_BUFFER = 34;
 
 type TextLayout = {
@@ -45,7 +49,7 @@ type Bounds = {
 };
 
 export type CarouselStructure2RenderDiagnostics = {
-  bubbleShapeStrategy: "plain-white-text-with-shadow";
+  bubbleShapeStrategy: "plain-white-text" | "plain-white-text-with-outline";
   ctaBounds: Bounds | null;
   ctaFontSize: number | null;
   ctaLineCount: number;
@@ -136,29 +140,14 @@ function buildCarouselStructure2Overlay(params: {
     maximumWidth: maximumRenderableTextWidth,
     value: params.spec.storyText,
   });
-  const cta = params.spec.ctaText
-    ? fitText({
-        maximumLines: CAROUSEL_STRUCTURE_2_CTA_MAX_LINES,
-        maximumWidth: maximumRenderableTextWidth,
-        value: params.spec.ctaText,
-      })
-    : null;
   const storyWidth = story.maximumLineWidth;
   const storyHeight = story.blockHeight;
-  const ctaWidth = cta?.maximumLineWidth ?? 0;
-  const ctaHeight = cta ? cta.blockHeight : 0;
-  const textBlockHeight =
-    storyHeight +
-    (cta ? CAROUSEL_STRUCTURE_2_TEXT_GROUP_GAP + ctaHeight : 0);
   const storyTop = resolveStoryTop({
-    blockHeight: textBlockHeight,
+    blockHeight: storyHeight,
     height: params.height,
     maximumBottom: params.height - CAROUSEL_STRUCTURE_2_SAFE_BOTTOM,
     position: params.spec.textPosition,
   });
-  const ctaTop = cta
-    ? storyTop + storyHeight + CAROUSEL_STRUCTURE_2_TEXT_GROUP_GAP
-    : null;
   const storyLeft = Math.round((params.width - storyWidth) / 2);
   const storyBounds: Bounds = {
     height: storyHeight,
@@ -166,15 +155,7 @@ function buildCarouselStructure2Overlay(params: {
     x: storyLeft,
     y: storyTop,
   };
-  const ctaBounds: Bounds | null =
-    cta && ctaTop !== null
-      ? {
-          height: ctaHeight,
-          width: ctaWidth,
-          x: Math.round((params.width - ctaWidth) / 2),
-          y: ctaTop,
-        }
-      : null;
+  const ctaBounds: Bounds | null = null;
   const safeAreaContained = [storyBounds, ctaBounds]
     .filter((bounds): bounds is Bounds => bounds !== null)
     .every(
@@ -193,10 +174,13 @@ function buildCarouselStructure2Overlay(params: {
   }
 
   const diagnostics: CarouselStructure2RenderDiagnostics = {
-    bubbleShapeStrategy: "plain-white-text-with-shadow",
+    bubbleShapeStrategy:
+      params.spec.slideNumber === 1
+        ? "plain-white-text"
+        : "plain-white-text-with-outline",
     ctaBounds,
-    ctaFontSize: cta?.fontSize ?? null,
-    ctaLineCount: cta?.lines.length ?? 0,
+    ctaFontSize: null,
+    ctaLineCount: 0,
     layoutVariant: params.spec.layoutVariant,
     rendererVersion: CAROUSEL_STRUCTURE_2_RENDERER_VERSION,
     safeAreaContained,
@@ -207,71 +191,23 @@ function buildCarouselStructure2Overlay(params: {
     visualRole: params.spec.visualRole,
     whiteBackgroundGroupCount: 0,
   };
-  const gradient = buildReadabilityGradient({
-    height: params.height,
-    layoutVariant: params.spec.layoutVariant,
-    position: params.spec.textPosition,
-    width: params.width,
-  });
   const storyMarkup = buildPlainWhiteTextMarkup({
     bounds: storyBounds,
+    fontWeight:
+      params.spec.slideNumber === 1
+        ? CAROUSEL_COVER_FONT_WEIGHT
+        : CAROUSEL_BODY_FONT_WEIGHT,
     layout: story,
+    outlined: params.spec.slideNumber !== 1,
   });
-  const ctaMarkup =
-    cta && ctaBounds
-      ? buildPlainWhiteTextMarkup({ bounds: ctaBounds, layout: cta })
-      : "";
-
   return {
     diagnostics,
     svg: Buffer.from(`
       <svg width="${params.width}" height="${params.height}" viewBox="0 0 ${params.width} ${params.height}" xmlns="http://www.w3.org/2000/svg">
-        ${gradient}
         ${storyMarkup}
-        ${ctaMarkup}
       </svg>
     `),
   };
-}
-
-function buildReadabilityGradient(params: {
-  height: number;
-  layoutVariant: CarouselStructure2RenderSpec["layoutVariant"];
-  position: CarouselStructure2RenderSpec["textPosition"];
-  width: number;
-}) {
-  if (params.layoutVariant === "story_pill_overlay") {
-    return `<rect width="${params.width}" height="${params.height}" fill="rgba(0,0,0,0.18)" />`;
-  }
-
-  if (params.layoutVariant === "story_product_reveal") {
-    return `
-      <defs>
-        <linearGradient id="product-readability-gradient" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#000000" stop-opacity="0.68" />
-          <stop offset="0.34" stop-color="#000000" stop-opacity="0.04" />
-          <stop offset="0.7" stop-color="#000000" stop-opacity="0.06" />
-          <stop offset="1" stop-color="#000000" stop-opacity="0.7" />
-        </linearGradient>
-      </defs>
-      <rect width="${params.width}" height="${params.height}" fill="url(#product-readability-gradient)" />
-      <rect x="42" y="54" width="${params.width - 84}" height="${params.height - 108}" rx="32" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="2" />
-    `;
-  }
-
-  const topOpacity = params.position === "upper" ? 0.66 : 0.2;
-  const bottomOpacity = params.position === "lower" ? 0.72 : 0.42;
-
-  return `
-    <defs>
-      <linearGradient id="readability-gradient" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#000000" stop-opacity="${topOpacity}" />
-        <stop offset="0.48" stop-color="#000000" stop-opacity="0.04" />
-        <stop offset="1" stop-color="#000000" stop-opacity="${bottomOpacity}" />
-      </linearGradient>
-    </defs>
-    <rect width="${params.width}" height="${params.height}" fill="url(#readability-gradient)" />
-  `;
 }
 
 async function buildStructure2Background(params: {
@@ -321,7 +257,9 @@ async function buildStructure2Background(params: {
 
 function buildPlainWhiteTextMarkup(params: {
   bounds: Bounds;
+  fontWeight: number;
   layout: TextLayout;
+  outlined: boolean;
 }) {
   const centerX = params.bounds.x + params.bounds.width / 2;
   const baselineStart =
@@ -329,7 +267,7 @@ function buildPlainWhiteTextMarkup(params: {
   const lines = params.layout.lines
     .map(
       (line, index) =>
-        `<text x="${centerX}" y="${baselineStart + index * params.layout.lineHeight}" fill="#ffffff" font-family="${FONT_FAMILY}" font-size="${params.layout.fontSize}" font-weight="600" letter-spacing="0" paint-order="stroke fill" stroke="#000000" stroke-linejoin="round" stroke-opacity="0.72" stroke-width="4" text-anchor="middle">${escapeXml(line)}</text>`,
+        `<text x="${centerX}" y="${baselineStart + index * params.layout.lineHeight}" fill="#ffffff" font-family="${FONT_FAMILY}" font-size="${params.layout.fontSize}" font-weight="${params.fontWeight}" letter-spacing="-0.015em" ${params.outlined ? 'paint-order="stroke fill" stroke="#000000" stroke-linejoin="round" stroke-opacity="0.72" stroke-width="4"' : ""} text-anchor="middle">${escapeXml(line)}</text>`,
     )
     .join("");
 

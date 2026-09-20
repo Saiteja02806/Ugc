@@ -8,6 +8,8 @@ import {
   HOOK_TEXT_OUTLINE_COLOR,
   HOOK_TEXT_OUTLINE_WIDTH,
   LEGACY_HOOK_TEXT_LAYOUT_VERSION,
+  PREVIOUS_HOOK_TEXT_FIXED_FONT_SIZE,
+  PREVIOUS_HOOK_TEXT_LAYOUT_VERSION,
   type HookTextLayoutVersion,
   type HookTextLayout,
 } from "@/lib/trending/hook-text-layout";
@@ -118,7 +120,9 @@ function getPreviewLayout(params: {
           params.layoutVersion ??
           (params.fontSize === HOOK_TEXT_FIXED_FONT_SIZE
             ? undefined
-            : LEGACY_HOOK_TEXT_LAYOUT_VERSION),
+            : params.fontSize === PREVIOUS_HOOK_TEXT_FIXED_FONT_SIZE
+              ? PREVIOUS_HOOK_TEXT_LAYOUT_VERSION
+              : LEGACY_HOOK_TEXT_LAYOUT_VERSION),
         lines: savedLines,
       });
     } catch {

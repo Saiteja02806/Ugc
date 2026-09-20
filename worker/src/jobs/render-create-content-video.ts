@@ -3,6 +3,12 @@ import {
   renderCreateContentVideoToStorage as defaultRenderCreateContentVideoToStorage,
   type RenderCreateContentVideoPayload,
 } from "../lib/render-engine.js";
+import {
+  HOOK_TEXT_FIXED_FONT_SIZE,
+  HOOK_TEXT_LAYOUT_VERSION,
+  PREVIOUS_HOOK_TEXT_FIXED_FONT_SIZE,
+  PREVIOUS_HOOK_TEXT_LAYOUT_VERSION,
+} from "../lib/edit-overlay-render-spec.js";
 import type { WallTextRenderContent } from "../lib/wall-text-render-spec.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
 import type { BackgroundJobRow, Json } from "../types.js";
@@ -150,7 +156,14 @@ function parseCreateContentRenderJobInput(value: Json): CreateContentRenderJobIn
     );
     const lines = getLines(hook.lines, "overlay.hook.lines", 3);
 
-    if (fontSize !== 52 || layoutVersion !== "hook-overlay-layout-v2-fixed") {
+    const isCurrentHookLayout =
+      fontSize === HOOK_TEXT_FIXED_FONT_SIZE &&
+      layoutVersion === HOOK_TEXT_LAYOUT_VERSION;
+    const isPreviousHookLayout =
+      fontSize === PREVIOUS_HOOK_TEXT_FIXED_FONT_SIZE &&
+      layoutVersion === PREVIOUS_HOOK_TEXT_LAYOUT_VERSION;
+
+    if (!isCurrentHookLayout && !isPreviousHookLayout) {
       throw new Error("Create Content Hook text has an unsupported layout.");
     }
 

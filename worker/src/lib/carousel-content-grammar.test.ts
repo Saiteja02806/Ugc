@@ -79,6 +79,91 @@ test("Structure 1 accepts a six-slide reader-first educational carousel", () => 
   }
 });
 
+test("Structure 1 rejects CTA copy even on its final takeaway slide", () => {
+  const format = CAROUSEL_CONTENT_GRAMMAR.formats[0]!;
+  const fixture = createFixture(format.id, format.compatibleHookFamilies[0]!);
+  Reflect.set(fixture.slides[5]!, "ctaText", "Save this for later.");
+
+  assert.throws(
+    () => parseCarouselContentPlanForAssignment(fixture, {
+      analysis,
+      contentFormatId: format.id,
+      hookFamilyId: format.compatibleHookFamilies[0]!,
+      recentHistory: [],
+      slideCount: CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
+    }),
+    /must not include CTA text/i,
+  );
+});
+
+test("Structure 1 requires one 5-11 word hook and rejects Slide 1 support copy", () => {
+  const format = CAROUSEL_CONTENT_GRAMMAR.formats[0]!;
+  const input = {
+    analysis,
+    contentFormatId: format.id,
+    hookFamilyId: format.compatibleHookFamilies[0]!,
+    recentHistory: [],
+    slideCount: CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
+  };
+  const shortHook = createFixture(format.id, format.compatibleHookFamilies[0]!);
+  shortHook.slides[0]!.headline = "Stop losing approvals today";
+
+  assert.throws(
+    () => parseCarouselContentPlanForAssignment(shortHook, input),
+    /Headline must be 5-11 words/i,
+  );
+
+  const withSupport = createFixture(format.id, format.compatibleHookFamilies[0]!);
+  withSupport.slides[0]!.body = "Keep every approval beside the decision that needs it.";
+
+  assert.throws(
+    () => parseCarouselContentPlanForAssignment(withSupport, input),
+    /no supporting body copy/i,
+  );
+});
+
+test("Structure 1 requires 18-30 words for Slides 2-6 prose", () => {
+  const format = CAROUSEL_CONTENT_GRAMMAR.formats[0]!;
+  const input = {
+    analysis,
+    contentFormatId: format.id,
+    hookFamilyId: format.compatibleHookFamilies[0]!,
+    recentHistory: [],
+    slideCount: CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
+  };
+  const tooShort = createFixture(format.id, format.compatibleHookFamilies[0]!);
+  const shortProseSlide = tooShort.slides.find(
+    (slide) => slide.slideNumber > 1 && slide.body !== null,
+  );
+  assert.ok(shortProseSlide);
+  shortProseSlide.body =
+    "Keep every approval visible beside the campaign work it affects during handoffs.";
+
+  assert.throws(
+    () => parseCarouselContentPlanForAssignment(tooShort, input),
+    /Body must use at least 18 words/i,
+  );
+
+  const tooLong = createFixture(format.id, format.compatibleHookFamilies[0]!);
+  const longProseSlide = tooLong.slides.find(
+    (slide) => slide.slideNumber > 1 && slide.body !== null,
+  );
+  assert.ok(longProseSlide);
+  longProseSlide.body =
+    "Keep every approval, owner, decision, deadline, campaign version, review note, reporting signal, next action, unresolved question, stakeholder comment, dependency, and change request visible beside the active work so the handoff never loses essential operating context, timing, or responsibility.";
+
+  assert.ok(
+    validateCarouselContentPlan(
+      tooLong as unknown as Parameters<typeof validateCarouselContentPlan>[0],
+      analysis,
+    ).some(
+      (issue) =>
+        issue.code === "body_word_limit" &&
+        issue.slideNumber === longProseSlide.slideNumber,
+    ),
+  );
+});
+
 test("Structure 1 requires a verified grounding anchor in the concept and middle slides", () => {
   const input = {
     analysis,
@@ -232,7 +317,11 @@ test("the worker sends a persisted template only as Slide 1 planner guidance", a
     assert.match(requestText, /I finally cracked the code for \{topic\}/);
     assert.match(requestText, /not let it change Slides 2-6/i);
     assert.match(requestText, /Verified grounding anchors/i);
-    assert.match(requestText, /single_statement uses 60px type/i);
+    assert.match(requestText, /poster cover/i);
+    assert.match(requestText, /96px/i);
+    assert.match(requestText, /Inter Tight Bold at 700 weight/i);
+    assert.match(requestText, /targeting 5-9 words/i);
+    assert.match(requestText, /natural or sentence case/i);
     assert.match(requestText, /headline must not repeat its body/i);
   } finally {
     globalThis.fetch = originalFetch;
@@ -247,12 +336,12 @@ test("Structure 1 drops an optional hook overlay after two Slide 1 overflow atte
   const repair = structuredClone(initial);
   const originalSlideTwoBody = initial.slides[1]!.body;
   const overflowingHook =
-    "You’re managing complicated cross-functional campaign approval handoffs completely wrong (here’s how to fix them today)";
+    "Cross-functional campaign handoffs repeatedly create invisible approval bottlenecks";
 
-  initial.slides[0]!.body = overflowingHook;
-  repair.slides[0]!.body = overflowingHook;
+  initial.slides[0]!.headline = overflowingHook;
+  repair.slides[0]!.headline = overflowingHook;
   repair.slides[1]!.body =
-    "This repair tried to replace a valid second slide even though only the cover overflowed.";
+    "This repair incorrectly rewrote a valid second slide even though the only failing content was the long cover hook on Slide 1.";
 
   const originalFetch = globalThis.fetch;
   const originalApiKey = process.env.OPENAI_API_KEY;
@@ -270,7 +359,8 @@ test("Structure 1 drops an optional hook overlay after two Slide 1 overflow atte
         ? {
             slide: {
               ...initial.slides[0],
-              body: "Why campaign handoffs keep breaking",
+              body: null,
+              headline: "Why campaign handoffs keep breaking",
             },
           }
         : schemaName === "repaired_carousel_content_plan"
@@ -314,7 +404,8 @@ test("Structure 1 drops an optional hook overlay after two Slide 1 overflow atte
     });
 
     assert.equal(requests.length, 3);
-    assert.equal(plan.slides[0]!.body, "Why campaign handoffs keep breaking");
+    assert.equal(plan.slides[0]!.body, null);
+    assert.equal(plan.slides[0]!.headline, "Why campaign handoffs keep breaking");
     assert.equal(plan.slides[1]!.body, originalSlideTwoBody);
     assert.deepEqual(
       plan.slides.slice(1).map((slide) => slide.formatRole),
@@ -454,8 +545,10 @@ test("the production-shaped five-item batch uses combined formats and a native f
     assert.match(requestText, /how_to__cracked_the_code/);
     assert.match(requestText, /list__native/);
     assert.match(requestText, /source.*format_native/);
-    assert.match(requestText, /at-most-140-character reader-first cover/i);
-    assert.match(requestText, /actual 3-line display area/i);
+    assert.match(requestText, /reader-first poster cover/i);
+    assert.match(requestText, /within 3 lines/i);
+    assert.match(requestText, /Inter Tight Bold at 700 weight/i);
+    assert.match(requestText, /targeting 5-9 words/i);
     assert.match(requestText, /headline must add distinct information/i);
     assert.match(requestText, /grounding\.anchorId/i);
   } finally {
@@ -506,11 +599,11 @@ test("the batch planner keeps Slides 2-6 while abandoning an overflowing optiona
     ),
   );
   const overflowingHook =
-    "You’re managing complicated cross-functional campaign approval handoffs completely wrong (here’s how to fix them today)";
-  initialPlans[0]!.slides[0]!.body = overflowingHook;
+    "Cross-functional campaign handoffs repeatedly create invisible approval bottlenecks";
+  initialPlans[0]!.slides[0]!.headline = overflowingHook;
   const repairPlan = structuredClone(initialPlans[0]!);
   repairPlan.slides[1]!.body =
-    "This repair tried to replace a valid second slide even though only the cover overflowed.";
+    "This repair incorrectly rewrote a valid second slide even though the only failing content was the long cover hook on Slide 1.";
 
   const originalFetch = globalThis.fetch;
   const originalApiKey = process.env.OPENAI_API_KEY;
@@ -528,7 +621,8 @@ test("the batch planner keeps Slides 2-6 while abandoning an overflowing optiona
         ? {
             slide: {
               ...initialPlans[0]!.slides[0],
-              body: "Why launch ownership keeps disappearing",
+              body: null,
+              headline: "Why launch ownership keeps disappearing",
             },
           }
         : schemaName === "repaired_carousel_batch_item"
@@ -581,7 +675,8 @@ test("the batch planner keeps Slides 2-6 while abandoning an overflowing optiona
     const recovered = plans[0]!;
 
     assert.equal(requests.length, 3);
-    assert.equal(recovered.plan.slides[0]!.body, "Why launch ownership keeps disappearing");
+    assert.equal(recovered.plan.slides[0]!.body, null);
+    assert.equal(recovered.plan.slides[0]!.headline, "Why launch ownership keeps disappearing");
     assert.equal(
       recovered.plan.slides[1]!.body,
       initialPlans[0]!.slides[1]!.body,
@@ -610,7 +705,7 @@ test("Structure 1 keeps subjective cover wording nonblocking while recording an 
     /exactly six slides/i,
   );
 
-  fixture.slides[0]!.body = "Better productivity starts here";
+  fixture.slides[0]!.headline = "Calmer campaign planning starts here";
   const accepted = parseCarouselContentPlanForAssignment(fixture, {
     analysis,
     contentFormatId: "comparison",
@@ -629,7 +724,7 @@ test("Structure 1 keeps subjective cover wording nonblocking while recording an 
 
 test("Structure 1 records possible hook-to-chapter misalignment without blocking generation", () => {
   const fixture = createFixture("comparison", "question");
-  fixture.slides[0]!.body = "Why ceramic glazes crack unexpectedly";
+  fixture.slides[0]!.headline = "Why ceramic glazes crack unexpectedly";
   const accepted = parseCarouselContentPlanForAssignment(fixture, {
     analysis,
     contentFormatId: "comparison",
@@ -646,7 +741,7 @@ test("Structure 1 records possible hook-to-chapter misalignment without blocking
 
 test("Structure 1 repairs an unreplaced hook-template placeholder", () => {
   const fixture = createFixture("mistakes", "problem_recognition");
-  fixture.slides[0]!.body = "You’re doing {topic} wrong today";
+  fixture.slides[0]!.headline = "You’re doing {topic} wrong today";
 
   assert.throws(
     () =>
@@ -665,7 +760,7 @@ test("Structure 1 repairs an unreplaced hook-template placeholder", () => {
 
 test("Structure 1 rejects unsupported 10x claims introduced by a template", () => {
   const fixture = createFixture("before_after", "specific_outcome");
-  fixture.slides[0]!.body = "This simple switch got me 10x better campaign results";
+  fixture.slides[0]!.headline = "This simple switch got me 10x better campaign results";
 
   assert.throws(
     () =>
@@ -682,7 +777,7 @@ test("Structure 1 rejects unsupported 10x claims introduced by a template", () =
   );
 });
 
-test("Structure 1 uses the white SVG only for an actual heading", async () => {
+test("Structure 1 reserves the white SVG heading treatment for content slides", async () => {
   const heading = await inspectCarouselSlideLayout({
     format: "1:1",
     slide: {
@@ -692,8 +787,8 @@ test("Structure 1 uses the white SVG only for an actual heading", async () => {
       imageDirection: "An object-only workspace with open centered space.",
       layoutPreset: "middle-statement",
       listItems: [],
-      slideNumber: 1,
-      slideType: "hook",
+      slideNumber: 2,
+      slideType: "problem",
       subtext: null,
       textMode: "headline_body",
       textPosition: "center",
@@ -708,24 +803,78 @@ test("Structure 1 uses the white SVG only for an actual heading", async () => {
       imageDirection: "An object-only workspace with open centered space.",
       layoutPreset: "middle-statement",
       listItems: [],
+      slideNumber: 2,
+      slideType: "problem",
+      subtext: null,
+      textMode: "single_statement",
+      textPosition: "center",
+    },
+  });
+  const cover = await inspectCarouselSlideLayout({
+    format: "1:1",
+    slide: {
+      body: "Start with the reader tension.",
+      ctaText: null,
+      headline: "This hook earns the swipe",
+      imageDirection: "An approved Hook-category portrait with clear central space.",
+      layoutPreset: "middle-statement",
+      listItems: [],
       slideNumber: 1,
       slideType: "hook",
       subtext: null,
-      textMode: "single_statement",
+      textMode: "headline_body",
       textPosition: "center",
     },
   });
 
   assert.equal(heading.whiteBackgroundGroupCount, 1);
   assert.equal(bodyOnly.whiteBackgroundGroupCount, 0);
-  assert.equal(heading.bodyFontSize, 44);
+  assert.equal(cover.whiteBackgroundGroupCount, 0);
+  assert.equal(heading.bodyFontSize, 60);
   assert.equal(bodyOnly.bodyFontSize, 60);
+  assert.equal(cover.bodyFontSize, 96);
   assert.equal(heading.headingBackgroundUsesLineFittedPath, true);
   assert.equal(
     heading.headingBackgroundLineCount,
     heading.headingBackgroundLineWidths?.length,
   );
   assert.equal(bodyOnly.headingBackgroundUsesLineFittedPath, false);
+  assert.equal(cover.headingBackgroundUsesLineFittedPath, false);
+});
+
+test("Structure 1 permits a people-first image direction only on the Hook cover", () => {
+  const fixture = createFixture("mistakes", "problem_recognition");
+  fixture.slides[0]!.imageDirection =
+    "A focused founder portrait from the approved Hook-category library with clear central text space.";
+
+  const plan = parseCarouselContentPlanForAssignment(fixture, {
+    analysis,
+    contentFormatId: "mistakes",
+    hookFamilyId: "problem_recognition",
+    hookTemplateId: null,
+    hookTemplateVersion: null,
+    recentHistory: [],
+    slideCount: 6,
+  });
+
+  assert.equal(plan.plan.slides[0]!.textPosition, "center");
+
+  fixture.slides[1]!.imageDirection =
+    "A focused person portrait with clear center space.";
+
+  assert.throws(
+    () =>
+      parseCarouselContentPlanForAssignment(fixture, {
+        analysis,
+        contentFormatId: "mistakes",
+        hookFamilyId: "problem_recognition",
+        hookTemplateId: null,
+        hookTemplateVersion: null,
+        recentHistory: [],
+        slideCount: 6,
+      }),
+    /prohibited human subject/i,
+  );
 });
 
 test("Structure 1's heading SVG gives every measured line a rounded shoulder", () => {
@@ -796,14 +945,14 @@ function createDistinctBatchFixture(
     {
       angle: "Make launch ownership explicit before work changes hands",
       bodies: [
-        "Assign one launch owner before the handoff so every open decision has a clear destination.",
-        "Place the owner beside the launch date so reviewers know who can resolve a blocked choice.",
-        "Record the next approval action while the discussion is fresh enough to remain useful.",
-        "Review ownership again when timing changes so the handoff never points to an outdated person.",
-        "Keep one visible owner beside every launch decision before the campaign moves forward.",
+        "Assign one launch owner before the handoff so every open decision has a clear destination during busy review cycles.",
+        "Place the owner beside the launch date so reviewers know who can resolve a blocked choice before it delays launch work.",
+        "Record the next approval action while the discussion is fresh enough to remain useful for the people inheriting the work tomorrow.",
+        "Review ownership again when timing changes so the handoff never points to an outdated person or a team that cannot respond.",
+        "Keep one visible owner beside every launch decision before the campaign moves forward so pending work never loses its accountable destination.",
       ],
       concept: "A practical ownership system for cleaner campaign launches",
-      hook: "Why launch ownership disappears during campaign handoffs",
+      hook: "Why launch owners disappear suddenly",
       items: [
         "Name the launch owner",
         "Attach the open decision",
@@ -821,14 +970,14 @@ function createDistinctBatchFixture(
     {
       angle: "Keep approval rationale beside the exact campaign change",
       bodies: [
-        "Capture the approval reason beside the edited asset so later reviewers can understand the decision.",
-        "Link each comment to its campaign version so old feedback cannot redirect current work.",
-        "Summarize the accepted change in plain language before another review round begins.",
-        "Separate pending questions from approved edits so the team can act without guessing.",
-        "Preserve the reason behind each approval, not only the final yes or no.",
+        "Capture the approval reason beside the edited asset so later reviewers can understand the decision without reopening the same question after launch work begins.",
+        "Link each comment to its campaign version so old feedback cannot redirect current work or confuse the team during final review.",
+        "Summarize the accepted change in plain language before another review round begins so collaborators can continue with shared context and confidence.",
+        "Separate pending questions from approved edits so the team can act without guessing which changes are ready for production immediately.",
+        "Preserve the reason behind each approval, not only the final yes or no, so teams can defend decisions during later reviews.",
       ],
       concept: "An approval trail that keeps campaign decisions understandable",
-      hook: "Approval notes lose context at the worst moment",
+      hook: "Why approval work keeps stalling",
       items: [
         "Link feedback to one version",
         "Write the approval reason",
@@ -846,14 +995,14 @@ function createDistinctBatchFixture(
     {
       angle: "Use current reporting signals to protect campaign timing",
       bodies: [
-        "Check the latest reporting signal before changing timing so the schedule reflects current campaign evidence.",
-        "Compare the planned milestone with recent activity before moving a launch date forward.",
-        "Flag delayed inputs early enough for the next review to choose a realistic response.",
-        "Write the timing decision beside its evidence so future changes retain the original context.",
-        "Let current reporting guide the schedule before urgency turns into an avoidable delay.",
+        "Check the latest reporting signal before changing timing so the schedule reflects current campaign evidence rather than an outdated optimistic assumption.",
+        "Compare the planned milestone with recent activity before moving a launch date forward so the schedule matches actual progress across the team.",
+        "Flag delayed inputs early enough for the next review to choose a realistic response before the missed deadline forces last-minute changes.",
+        "Write the timing decision beside its evidence so future changes retain the original context and reviewers understand why the schedule moved.",
+        "Let current reporting guide the schedule before urgency turns into an avoidable delay that disrupts the entire campaign handoff.",
       ],
       concept: "A reporting rhythm that protects campaign timing decisions",
-      hook: "Campaign timing slips when reporting arrives too late",
+      hook: "Why campaign plans break down",
       items: [
         "Check the latest signal",
         "Compare the next milestone",
@@ -871,14 +1020,14 @@ function createDistinctBatchFixture(
     {
       angle: "Carry small campaign decisions through every review round",
       bodies: [
-        "Write each review decision as a concrete action so it survives the move into the next round.",
-        "Attach the decision to the affected campaign element instead of leaving it inside a broad summary.",
-        "Mark unresolved choices separately so completed decisions never return as duplicate questions.",
-        "Read the prior decision log before reviewing new changes so the conversation continues coherently.",
-        "A short decision record keeps every review round connected to what the last one settled.",
+        "Write each review decision as a concrete action so it survives the move into the next round without losing its original owner or deadline.",
+        "Attach the decision to the affected campaign element instead of leaving it inside a broad summary where it will be missed during the next review.",
+        "Mark unresolved choices separately so completed decisions never return as duplicate questions when the campaign enters another review round.",
+        "Read the prior decision log before reviewing new changes so the conversation continues coherently with the context required to make a fast choice.",
+        "A short decision record keeps every review round connected to what the last one settled and prevents routine choices from being reopened.",
       ],
       concept: "A decision record for connected campaign review rounds",
-      hook: "Small campaign decisions vanish between review rounds",
+      hook: "Why small choices get lost",
       items: [
         "Write one concrete action",
         "Attach the affected element",
@@ -896,14 +1045,14 @@ function createDistinctBatchFixture(
     {
       angle: "Build a campaign brief around the gaps that block action",
       bodies: [
-        "State the audience decision first so every later detail supports the same campaign direction.",
-        "Add the required approval checkpoint before listing optional ideas or visual preferences.",
-        "Name the available evidence so reviewers can distinguish known facts from open assumptions.",
-        "Finish with the next action and owner so the brief can move directly into execution.",
-        "A useful campaign brief answers the next decision before it adds more background detail.",
+        "State the audience decision first so every later detail supports the same campaign direction instead of creating conflicting ideas and approvals.",
+        "Add the required approval checkpoint before listing optional ideas or visual preferences so the team knows what must happen before launch.",
+        "Name the available evidence so reviewers can distinguish known facts from open assumptions when they decide which direction to approve.",
+        "Finish with the next action and owner so the brief can move directly into execution without another meeting to determine responsibility.",
+        "A useful campaign brief answers the next decision before it adds more background detail so readers can act instead of searching for direction.",
       ],
       concept: "A focused campaign brief that exposes missing decisions",
-      hook: "A useful campaign brief reveals its hidden gaps",
+      hook: "Why campaign briefs miss details",
       items: [
         "State the audience decision",
         "Name the campaign objective",
@@ -938,10 +1087,11 @@ function createDistinctBatchFixture(
       ...slide,
       body:
         index === 0
-          ? theme.hook
+          ? null
           : listItems.length > 0
             ? null
             : theme.bodies[index - 1]!,
+      headline: index === 0 ? theme.hook : slide.headline,
       listItems,
     };
   });
@@ -960,7 +1110,7 @@ function createDistinctBatchFixture(
       }
     : {
         ...groundingSlide,
-        body: "Keep campaign planning and reporting connected instead of scattering work across tools.",
+        body: "Keep campaign planning and reporting connected in one visible workflow instead of scattering decisions, deadlines, and ownership across separate tools.",
       };
 
   return fixture;
@@ -985,7 +1135,7 @@ function createFixture(formatId: string, hookFamilyId: string) {
     "Map the campaign owner before a handoff so the next decision has a clear person responsible for moving it forward.",
     "Keep approval context beside the work so campaign changes do not send the team searching through separate messages and documents.",
     "Review timing with the current reporting details so launch choices reflect what changed instead of relying on an outdated checklist.",
-    "Record the practical next step after each review so the team can resume campaign work without rebuilding the handoff context.",
+    "Record the practical next step after each review so the team can resume campaign work without rebuilding the handoff context again.",
   ];
   let listCursor = 0;
 
@@ -1022,16 +1172,17 @@ function createFixture(formatId: string, hookFamilyId: string) {
       const body = listItemCount > 0
         ? null
         : index === 0
-          ? "Why campaign handoffs keep creating extra work"
+          ? null
           : index === 5
-            ? "Keep the next campaign handoff clear with one connected workflow."
+            ? "Keep the next campaign handoff clear with one connected workflow so every owner, decision, and deadline remains visible when priorities change."
             : valueBodies[index - 1]!;
 
       return {
         body,
         ctaText: null,
         formatRole: definition.role,
-        headline: null,
+        headline:
+          index === 0 ? "Why campaign work keeps stalling" : null,
         imageDirection: "Organized calendar and notebook still life with clear upper space.",
         listItems: selectedListItems,
         slideNumber: index + 1,

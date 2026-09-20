@@ -84,6 +84,7 @@ export function buildCarouselStructure2RenderSpecs(params: {
     }
 
     const presentation = resolvePresentation({
+      slideNumber: slide.slideNumber,
       storyRole: slide.storyRole,
       visualRole: asset.asset_role,
     });
@@ -107,6 +108,7 @@ export function buildCarouselStructure2RenderSpecs(params: {
 }
 
 function resolvePresentation(params: {
+  slideNumber: number;
   storyRole: CarouselStructure2StoryRole;
   visualRole: CarouselStructure2VisualRole;
 }): Pick<

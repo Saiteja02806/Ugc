@@ -6,6 +6,10 @@ import {
   buildCreateContentRenderOverlay,
   createCreateContentWallTextLayout,
 } from "./render-contract.ts";
+import {
+  HOOK_TEXT_FIXED_FONT_SIZE,
+  HOOK_TEXT_LAYOUT_VERSION,
+} from "../trending/hook-text-layout.ts";
 
 const baseCard: Omit<CreateContentCard, "overlay"> = {
   revision: 3,
@@ -58,8 +62,8 @@ test("Create Content export keeps the fixed Trending Hook treatment", () => {
   assert.equal(overlay.format, "hook_text");
   if (overlay.format !== "hook_text") return;
 
-  assert.equal(overlay.hook.fontSize, 52);
-  assert.equal(overlay.hook.layoutVersion, "hook-overlay-layout-v2-fixed");
+  assert.equal(overlay.hook.fontSize, HOOK_TEXT_FIXED_FONT_SIZE);
+  assert.equal(overlay.hook.layoutVersion, HOOK_TEXT_LAYOUT_VERSION);
   assert.ok(overlay.hook.lines.length >= 1);
   assert.ok(overlay.hook.lines.length <= 3);
   assert.deepEqual(overlay.position, { x: 0.5, y: 0.5 });

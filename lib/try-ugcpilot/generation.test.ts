@@ -68,6 +68,28 @@ test("accepts complete creator copy without a brittle word-count requirement", (
   assert.equal(posts.length, 1);
 });
 
+test("preserves deliberate Wall-of-Text line breaks for the card overlay", () => {
+  const wallOfText = [
+    "one clear choice",
+    "makes the next step easier",
+    "when the setup is visible",
+    "and the action takes seconds",
+    "instead of twenty minutes",
+    "progress becomes a habit",
+    "because the work feels simple",
+  ].join("\n");
+
+  const posts = validatePosts(
+    {
+      posts: [{ topic: "Clear choice", hook: "Make the next step obvious", wallOfText }],
+    },
+    1,
+    1,
+  );
+
+  assert.equal(posts[0]?.wallOfText, wallOfText);
+});
+
 test("accepts only the public analysis and stateless refill request shapes", () => {
   assert.equal(AnalyzeRequestSchema.safeParse({ url: "https://example.com" }).success, true);
   assert.equal(AnalyzeRequestSchema.safeParse({ url: "" }).success, false);

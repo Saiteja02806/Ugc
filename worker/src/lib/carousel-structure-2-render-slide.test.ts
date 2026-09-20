@@ -37,7 +37,7 @@ test("the dedicated renderer keeps all layouts fixed and inside the safe area", 
       visualRole: "static",
     }),
     makeSpec({
-      ctaText: "Try your own list and see what it prioritizes first.",
+      ctaText: "This legacy CTA must never render as a second text block.",
       layoutVariant: "story_product_reveal",
       slideNumber: 5,
       textPosition: "upper",
@@ -66,12 +66,15 @@ test("the dedicated renderer keeps all layouts fixed and inside the safe area", 
       assert.equal(result.diagnostics.layoutVariant, spec.layoutVariant);
       assert.equal(
         result.diagnostics.storyFontSize,
-        spec.slideNumber === 1 ? 60 : 44,
+        spec.slideNumber === 1 ? 96 : 60,
       );
-      assert.equal(result.diagnostics.ctaFontSize, spec.ctaText ? 44 : null);
+      assert.equal(result.diagnostics.ctaFontSize, null);
+      assert.equal(result.diagnostics.ctaLineCount, 0);
       assert.equal(
         result.diagnostics.bubbleShapeStrategy,
-        "plain-white-text-with-shadow",
+        spec.slideNumber === 1
+          ? "plain-white-text"
+          : "plain-white-text-with-outline",
       );
       assert.equal(result.diagnostics.whiteBackgroundGroupCount, 0);
       assert.equal(result.diagnostics.textTreatment, "overlay");

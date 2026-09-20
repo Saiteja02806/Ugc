@@ -26,8 +26,9 @@ export type PlannedCarouselSlide = {
   textPosition: "bottom" | "center" | "top";
 };
 
-export const CAROUSEL_FIXED_FONT_SIZE = 44;
-export const CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE = 60;
+export const CAROUSEL_FIXED_FONT_SIZE = 60;
+export const CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE = 96;
+export const CAROUSEL_STRUCTURE_1_COVER_MAX_LINES = 3;
 export const CAROUSEL_STRUCTURE_1_FIXED_TEXT_WIDTH = 786;
 export const CAROUSEL_STRUCTURE_2_FIXED_TEXT_WIDTH = 868;
 export const CAROUSEL_STRUCTURE_1_HEADLINE_MAX_LINES = 4;
@@ -46,7 +47,7 @@ export function getCarouselStructure1TextFontSize(slide: Pick<
   PlannedCarouselSlide,
   "slideNumber" | "textMode"
 >) {
-  return slide.slideNumber === 1 && slide.textMode === "single_statement"
+  return slide.slideNumber === 1
     ? CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE
     : CAROUSEL_FIXED_FONT_SIZE;
 }

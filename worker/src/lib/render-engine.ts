@@ -847,7 +847,11 @@ const REACTION_WHITE_CARD_MIN_WIDTH = 320;
 // caption should read as a compact label, never a full-width banner.
 const REACTION_WHITE_CARD_MAX_WIDTH = 900;
 const REACTION_OUTLINED_TEXT_MAX_WIDTH = 888;
-const REACTION_CAPTION_FONT_SIZES = [58, 56, 54, 52, 50, 48, 46, 44, 42, 40, 38, 36] as const;
+// Reaction captions own a deliberately larger type scale than Hook text. A
+// Reel is reviewed at feed size, so never shrink its copy below 48px merely
+// to retain an older two-line arrangement; reflow it into the allowed third
+// line instead.
+const REACTION_CAPTION_FONT_SIZES = [72, 70, 68, 66, 64, 62, 60, 58, 56, 54, 52, 50, 48] as const;
 const REACTION_CAPTION_FONT_FAMILY = "Geist, Arial, sans-serif";
 const REACTION_CAPTION_FONT_WEIGHT = 600;
 

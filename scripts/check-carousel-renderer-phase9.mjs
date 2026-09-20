@@ -13,7 +13,13 @@ const {
   inspectCarouselSlideLayout,
   renderCarouselSlide,
 } = await import(
-  "../lib/carousel/render-slide.ts",
+  "../worker/dist/lib/carousel-render-slide.js",
+);
+const {
+  CAROUSEL_STRUCTURE_2_RENDERER_VERSION,
+  renderCarouselStructure2SlideFromBuffer,
+} = await import(
+  "../worker/dist/lib/carousel-structure-2-render-slide.js",
 );
 
 await mkdir(outputDir, { recursive: true });
@@ -45,17 +51,17 @@ const cases = [
     format: "4:5",
     slide: {
       body:
-        "you skip one meal, then a day, then a week, and suddenly the routine breaks because the system demanded too much effort every time",
+        "This legacy support copy must never create a second Slide 1 text layer.",
       ctaText: null,
-      headline: "consistency dies fast",
+      headline: "Why routines break before they stick",
       imageDirection: "Object-only organized desk with open center space.",
       listItems: [],
       layoutPreset: "middle-statement",
       slideNumber: 1,
       slideType: "problem",
       subtext:
-        "you skip one meal, then a day, then a week, and suddenly the routine breaks because the system demanded too much effort every time",
-      textMode: "headline_body",
+        "This legacy support copy must never create a second Slide 1 text layer.",
+      textMode: "single_statement",
       textPosition: "center",
     },
   },
@@ -65,7 +71,7 @@ const cases = [
     format: "4:5",
     slide: {
       body:
-        "most people are not failing because they eat terribly. they lose confidence because close enough entries keep adding up every single day",
+        "Small tracking shortcuts add up, blur the real pattern, and make it harder to trust your next decision.",
       ctaText: null,
       headline: null,
       imageDirection: "Object-only evening desk with lamp and open middle space.",
@@ -74,7 +80,7 @@ const cases = [
       slideNumber: 2,
       slideType: "problem",
       subtext:
-        "most people are not failing because they eat terribly. they lose confidence because close enough entries keep adding up every single day",
+        "Small tracking shortcuts add up, blur the real pattern, and make it harder to trust your next decision.",
       textMode: "body_only",
       textPosition: "center",
     },
@@ -143,22 +149,22 @@ const cases = [
     },
   },
   {
-    background: "cta-takeaway",
+    background: "final-takeaway",
     backgroundKind: "clean-still-life",
     format: "1:1",
     slide: {
       body:
         "make the system fit the week you actually live, then use the pattern to make better choices without restarting every Monday",
-      ctaText: "start with one easier food log",
-      headline: "start smaller",
+      ctaText: null,
+      headline: null,
       imageDirection: "Object-only clean still life with large open text-safe space.",
       listItems: [],
       layoutPreset: "bottom-message",
-      slideNumber: 5,
+      slideNumber: 6,
       slideType: "cta",
       subtext:
         "make the system fit the week you actually live, then use the pattern to make better choices without restarting every Monday",
-      textMode: "cta_takeaway",
+      textMode: "single_statement",
       textPosition: "center",
     },
   },
@@ -173,38 +179,28 @@ for (const item of cases) {
     slide: item.slide,
   });
 
-  if (item.background === "reference-production-copy") {
-    const widths = layoutDiagnostics.lines.map((line) => line.visualWidth);
-    const transitions = layoutDiagnostics.lines.map(
-      (line) => line.transitionToNext,
-    );
-
-    if (
-      widths.join(",") !== "536,622,638" ||
-      transitions.join(",") !== "rounded-shoulder,soft-curve,none"
-    ) {
-      throw new Error(
-        `Reference copy did not preserve widths with a soft final transition: ${widths.join(",")} (${transitions.join(",")}).`,
-      );
-    }
-  }
+  const isCover = item.slide.slideNumber === 1;
+  const hasHeadlineTreatment =
+    !isCover &&
+    Boolean(item.slide.headline) &&
+    item.slide.textMode !== "body_only" &&
+    item.slide.textMode !== "single_statement";
+  const expectedStrategy = isCover
+    ? "plain-white-text"
+    : hasHeadlineTreatment
+      ? "heading-white-svg-background"
+      : "plain-white-text-with-outline";
+  const expectedWhiteBackgroundGroups = hasHeadlineTreatment ? 1 : 0;
 
   if (
-    layoutDiagnostics.bubbleShapeStrategy !==
-      "hybrid-soft-union-connected-path" ||
-    !layoutDiagnostics.textPixelContainmentPassed ||
-    layoutDiagnostics.escapedTextPixels !== 0 ||
-    layoutDiagnostics.lines.some(
-      (line) =>
-        line.rectangleWidth < line.requiredWidth ||
-        line.visualWidth !== line.rectangleWidth ||
-        line.rectangleWidth > layoutDiagnostics.maxBubbleWidth ||
-        line.cornerSafety < 8 ||
-        line.stepRadius < 18 ||
-        line.widthSnapSideThreshold !== 3,
-    )
+    layoutDiagnostics.bubbleShapeStrategy !== expectedStrategy ||
+    layoutDiagnostics.whiteBackgroundGroupCount !== expectedWhiteBackgroundGroups ||
+    !layoutDiagnostics.fontFamily.includes("Inter Tight") ||
+    layoutDiagnostics.maxTextWidth <= 0
   ) {
-    throw new Error(`Text containment failed for ${item.background}.`);
+    throw new Error(
+      `Centered Inter Tight layout audit failed for ${item.background}.`,
+    );
   }
 
   const background = await createBackground(item.backgroundKind);
@@ -223,6 +219,44 @@ for (const item of cases) {
 
 await writeContactSheet(outputs, path.join(outputDir, "contact-sheet.webp"));
 
+const legacyCoverCase = cases.find((item) => item.background === "headline-body");
+if (!legacyCoverCase) throw new Error("Missing legacy Slide 1 audit case.");
+const legacyCoverBackground = await createBackground(legacyCoverCase.backgroundKind);
+const legacyCoverWithSupport = await renderCarouselSlide({
+  assetUrl: `data:image/jpeg;base64,${legacyCoverBackground.toString("base64")}`,
+  format: legacyCoverCase.format,
+  slide: legacyCoverCase.slide,
+  textStyle: "highlight",
+});
+const legacyCoverWithoutSupport = await renderCarouselSlide({
+  assetUrl: `data:image/jpeg;base64,${legacyCoverBackground.toString("base64")}`,
+  format: legacyCoverCase.format,
+  slide: {
+    ...legacyCoverCase.slide,
+    body: null,
+    subtext: null,
+  },
+  textStyle: "highlight",
+});
+const [legacyCoverPixels, singleHookPixels] = await Promise.all([
+  sharp(legacyCoverWithSupport).raw().toBuffer(),
+  sharp(legacyCoverWithoutSupport).raw().toBuffer(),
+]);
+if (!legacyCoverPixels.equals(singleHookPixels)) {
+  throw new Error("Legacy Slide 1 support copy changed the rendered single-hook cover.");
+}
+
+const structure1ContractOutputs = await renderStructure1ContractCarousel();
+const structure2ContractOutputs = await renderStructure2ContractCarousel();
+await writeContactSheet(
+  structure1ContractOutputs,
+  path.join(outputDir, "structure1-contract-contact-sheet.webp"),
+);
+await writeContactSheet(
+  structure2ContractOutputs,
+  path.join(outputDir, "structure2-contract-contact-sheet.webp"),
+);
+
 console.log(
   JSON.stringify(
     {
@@ -231,11 +265,185 @@ console.log(
       diagnostics,
       contactSheet: path.join(outputDir, "contact-sheet.webp"),
       rendererVersion: CAROUSEL_RENDERER_VERSION,
+      singleHookLegacySupportIgnored: true,
+      structure1ContractContactSheet: path.join(
+        outputDir,
+        "structure1-contract-contact-sheet.webp",
+      ),
+      structure1ContractOutputs,
+      structure2ContractContactSheet: path.join(
+        outputDir,
+        "structure2-contract-contact-sheet.webp",
+      ),
+      structure2ContractOutputs,
+      structure2RendererVersion: CAROUSEL_STRUCTURE_2_RENDERER_VERSION,
     },
     null,
     2,
   ),
 );
+
+async function renderStructure1ContractCarousel() {
+  const background = await createBackground("organized-desk");
+  const slides = [
+    {
+      body: null,
+      ctaText: null,
+      headline: "Why campaign handoffs lose momentum",
+      imageDirection: "Object-only organized desk with open central text space.",
+      listItems: [],
+      layoutPreset: "middle-statement",
+      slideNumber: 1,
+      slideType: "hook",
+      subtext: null,
+      textMode: "single_statement",
+      textPosition: "center",
+    },
+    {
+      body: "Map the campaign owner, decision, and deadline in one shared place so every handoff begins with a clear accountable next step.",
+      ctaText: null,
+      headline: null,
+      imageDirection: "Object-only organized desk with open central text space.",
+      listItems: [],
+      layoutPreset: "middle-statement",
+      slideNumber: 2,
+      slideType: "problem",
+      subtext: null,
+      textMode: "body_only",
+      textPosition: "center",
+    },
+    {
+      body: "Keep approval context beside the active work so reviewers can understand what changed, why it changed, and which decision still needs attention.",
+      ctaText: null,
+      headline: null,
+      imageDirection: "Object-only organized desk with open central text space.",
+      listItems: [],
+      layoutPreset: "middle-statement",
+      slideNumber: 3,
+      slideType: "solution",
+      subtext: null,
+      textMode: "body_only",
+      textPosition: "center",
+    },
+    {
+      body: "Review current reporting details before moving a launch date, so campaign timing reflects new evidence instead of an outdated planning assumption.",
+      ctaText: null,
+      headline: null,
+      imageDirection: "Object-only organized desk with open central text space.",
+      listItems: [],
+      layoutPreset: "middle-statement",
+      slideNumber: 4,
+      slideType: "benefit",
+      subtext: null,
+      textMode: "body_only",
+      textPosition: "center",
+    },
+    {
+      body: "Keep every choice connected to one owner and one next step so campaign reviews continue without repeated questions or missing context.",
+      ctaText: null,
+      headline: null,
+      imageDirection: "Object-only organized desk with open central text space.",
+      listItems: [],
+      layoutPreset: "middle-statement",
+      slideNumber: 5,
+      slideType: "differentiator",
+      subtext: null,
+      textMode: "body_only",
+      textPosition: "center",
+    },
+    {
+      body: "Keep every next action, decision, and owner connected in one visible workflow, so campaign handoffs remain clear when priorities change.",
+      ctaText: null,
+      headline: null,
+      imageDirection: "Object-only organized desk with open central text space.",
+      listItems: [],
+      layoutPreset: "middle-statement",
+      slideNumber: 6,
+      slideType: "cta",
+      subtext: null,
+      textMode: "cta_takeaway",
+      textPosition: "center",
+    },
+  ];
+
+  return Promise.all(
+    slides.map(async (slide) => {
+      let rendered;
+      try {
+        rendered = await renderCarouselSlide({
+          assetUrl: `data:image/jpeg;base64,${background.toString("base64")}`,
+          format: "4:5",
+          slide,
+          textStyle: "highlight",
+        });
+      } catch (error) {
+        throw new Error(
+          `Structure 1 contract Slide ${slide.slideNumber} failed to render: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+      const outputPath = path.join(
+        outputDir,
+        `structure1-contract-slide-${slide.slideNumber}.webp`,
+      );
+      await writeFile(outputPath, rendered);
+      return outputPath;
+    }),
+  );
+}
+
+async function renderStructure2ContractCarousel() {
+  const background = await createBackground("organized-desk");
+  const stories = [
+    "Why campaign handoffs lose momentum",
+    "When priorities changed, I rebuilt the same launch plan repeatedly, delayed decisions, and lost the context that teammates needed to keep moving.",
+    "The real problem was that our decisions, owners, and timelines lived separately, so each new change forced the team to reconstruct the handoff.",
+    "Todaywise keeps the task, decision, owner, and next step connected, so changing priorities update the workflow without rebuilding the campaign plan from scratch.",
+    "The work still changed, but the team could see what mattered next, who owned it, and why the decision had already been made.",
+    "Keep the next decision, owner, and context visible, so a changing priority becomes one manageable handoff instead of a complete reset.",
+  ];
+  const roles = [
+    "recognition",
+    "failure_scene",
+    "reframe",
+    "product_turning_point",
+    "proof_reflection_cta",
+    "takeaway_cta",
+  ];
+
+  return Promise.all(
+    stories.map(async (storyText, index) => {
+      const slideNumber = index + 1;
+      const rendered = await renderCarouselStructure2SlideFromBuffer({
+        assetBuffer: background,
+        format: "4:5",
+        spec: {
+          assetId: "00000000-0000-0000-0000-000000000001",
+          assetUrl: "https://example.test/contract-background.webp",
+          ctaText: null,
+          layoutVariant:
+            slideNumber === 1 || slideNumber === 4
+              ? "story_pill_overlay"
+              : "story_overlay_only",
+          productVisualEligibility: "forbidden",
+          slideNumber,
+          storyFormatId: "wrong_belief",
+          storyRole: roles[index],
+          storyText,
+          textPosition: "center",
+          textTreatment: "overlay",
+          visualContext: "Object-only organized desk with open central text space.",
+          visualRole: slideNumber === 1 ? "hook" : "static",
+        },
+      });
+      const outputPath = path.join(
+        outputDir,
+        `structure2-contract-slide-${slideNumber}.webp`,
+      );
+      await writeFile(outputPath, rendered.buffer);
+      return outputPath;
+    }),
+  );
+}
 
 async function createBackground(kind) {
   const width = 1500;

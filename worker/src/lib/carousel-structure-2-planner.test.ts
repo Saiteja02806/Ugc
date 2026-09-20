@@ -15,7 +15,7 @@ const copy = [
   "I realized the problem was not effort; my plan assumed that ordinary work would never change after I wrote it down.",
   "Todaywise let me work from the changing task list, so I could update the next action without rebuilding the entire week from scratch.",
   "The week still changed, but I stopped treating each shift as a reset and finished the important work with a clearer next decision.",
-  "Keep the next decision visible, then try the same approach with one changing priority.",
+  "Keep the next decision visible so each changed priority still has one practical next step.",
 ];
 function rawPlan(valid: boolean) {
   return {
@@ -24,7 +24,7 @@ function rawPlan(valid: boolean) {
       storyRole: CAROUSEL_STRUCTURE_2_STORY_ROLES[i], storyText: i === 3
         ? valid ? "Todaywise let me adjust the next task without rebuilding my entire week." : "Todaywise saved me 90% of my time while planning my work."
         : copy[i],
-      ctaText: i === 5 ? "Try the same approach with one changing priority." : null,
+      ctaText: null,
       visualContext: `ordinary planning scene ${i + 1}`,
     }])),
   };

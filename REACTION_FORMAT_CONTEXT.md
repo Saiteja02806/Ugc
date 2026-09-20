@@ -191,6 +191,10 @@ deterministic claim safeguards.
 
 - Canvas: 1080×1920, 30 fps, H.264 MP4 output.
 - Caption: upper safe band; white-card and outlined variants remain separate.
+- Caption typography is a Reaction-only 48–72px scale. It must reflow within
+  the existing three-line caption contract instead of shrinking below 48px;
+  Hook, Wall-of-Text, and Carousel font settings do not participate in this
+  policy.
 - Foreground: a per-asset anchor/scale is applied after the background has
   been cropped to the output canvas. Never infer this from source dimensions
   alone.

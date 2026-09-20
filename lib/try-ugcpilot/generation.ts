@@ -11,6 +11,8 @@ const MAX_MARKDOWN_CHARS = 9_000;
 const MAX_RECENT_HOOKS = 32;
 const REQUESTS_PER_MINUTE = 5;
 const MIN_WALL_OF_TEXT_CHARS = 80;
+const OPENAI_REQUEST_TIMEOUT_MS = 30_000;
+const REFILL_BATCH_COUNT = REFILL_POST_COUNT / 2;
 
 const requestTimes = new Map<string, number[]>();
 
@@ -303,6 +305,8 @@ async function generatePostsAttempt(
   ].join(" ");
 
   let response: Response;
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(() => abortController.abort(), OPENAI_REQUEST_TIMEOUT_MS);
   try {
     response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -316,7 +320,7 @@ async function generatePostsAttempt(
           { role: "system", content: system },
           {
             role: "user",
-            content: `Generate exactly ${count} wall-of-text posts. Business context:\n${JSON.stringify({
+            content: `Generate exactly ${count} wall-of-text posts starting at card ${startNumber}. Business context:\n${JSON.stringify({
               brand: businessContext.brand,
               websiteTitle: businessContext.title,
               websiteDescription: businessContext.description,
@@ -332,12 +336,15 @@ async function generatePostsAttempt(
         // This is a small, deterministic writing task. Minimal reasoning leaves
         // sufficient completion budget for all 16 initial cards in one response.
         reasoning_effort: "minimal",
-        max_completion_tokens: 6_400,
+        max_completion_tokens: Math.max(2_400, count * 400),
       }),
       cache: "no-store",
+      signal: abortController.signal,
     });
   } catch {
     throw new UgcPilotDemoError("OPENAI_UNAVAILABLE", "The AI service is temporarily unavailable. Please try again.", 502);
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   if (!response.ok) {
@@ -459,8 +466,11 @@ export async function generateMorePosts(
   clientIp: string,
 ) {
   enforceWarmInstanceRateLimit(clientIp);
-  const posts = await generatePosts(businessContext, REFILL_POST_COUNT, nextPostNumber, recentHooks);
-  return { posts };
+  const [firstBatch, secondBatch] = await Promise.all([
+    generatePosts(businessContext, REFILL_BATCH_COUNT, nextPostNumber, recentHooks),
+    generatePosts(businessContext, REFILL_BATCH_COUNT, nextPostNumber + REFILL_BATCH_COUNT, recentHooks),
+  ]);
+  return { posts: [...firstBatch, ...secondBatch] };
 }
 
 export function getClientIp(request: Request) {

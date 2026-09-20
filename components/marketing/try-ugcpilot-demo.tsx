@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { BatteryFull, Check, ChevronLeft, LoaderCircle, RotateCcw, Signal, Sparkles, Wifi, X } from "lucide-react";
+import { Check, ChevronLeft, Flame, LoaderCircle, Pointer, Redo2, RotateCcw, Sparkles, Undo2, Wifi, X } from "lucide-react";
 
 type WallOfTextPost = {
   id: string;
@@ -107,6 +107,7 @@ export function TryUgcPilotDemo() {
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [exitDirection, setExitDirection] = useState<"left" | "right" | null>(null);
+  const [showSwipeGuide, setShowSwipeGuide] = useState(true);
   const dragStartX = useRef<number | null>(null);
   const refillAttemptFor = useRef<string | null>(null);
 
@@ -129,6 +130,30 @@ export function TryUgcPilotDemo() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   });
+
+  useEffect(() => {
+    let animationFrame: number | null = null;
+    try {
+      if (window.localStorage.getItem("ugcpilot-demo-swipe-guide-seen") === "true") {
+        animationFrame = window.requestAnimationFrame(() => setShowSwipeGuide(false));
+      }
+    } catch {
+      // The guide is optional when browser storage is unavailable.
+    }
+    return () => {
+      if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
+    };
+  }, []);
+
+  function dismissSwipeGuide() {
+    if (!showSwipeGuide) return;
+    setShowSwipeGuide(false);
+    try {
+      window.localStorage.setItem("ugcpilot-demo-swipe-guide-seen", "true");
+    } catch {
+      // The guide still dismisses for the current visit when storage is unavailable.
+    }
+  }
 
   useEffect(() => {
     const refillKey = `${nextPostNumber}:${readyCount}`;
@@ -180,6 +205,7 @@ export function TryUgcPilotDemo() {
 
   function swipe(direction: "left" | "right") {
     if (!topCard || exitDirection) return;
+    dismissSwipeGuide();
     setExitDirection(direction);
     window.setTimeout(() => {
       setCards((current) => current.slice(1));
@@ -242,6 +268,7 @@ export function TryUgcPilotDemo() {
 
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
     if (!topCard || exitDirection) return;
+    dismissSwipeGuide();
     dragStartX.current = event.clientX;
     setDragging(true);
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -321,18 +348,38 @@ export function TryUgcPilotDemo() {
         </section>
 
         <section className="order-1 flex flex-col items-center lg:order-2">
-          <div className="relative h-[min(825px,calc(100svh-2.5rem))] min-h-[620px] w-full max-w-[395px] overflow-hidden rounded-[44px] border-[10px] border-black bg-[#121212] shadow-[0_30px_80px_rgba(0,0,0,0.8),0_0_0_1px_rgba(255,255,255,0.14)]">
-            <div className="relative z-40 flex h-12 items-center justify-between px-5 text-[14px] font-semibold text-white">
-              <span>9:41</span>
-              <span className="absolute left-1/2 top-[11px] h-[26px] w-[104px] -translate-x-1/2 rounded-[20px] bg-black" aria-hidden="true" />
+          <div className="relative h-[min(900px,calc(100svh-2rem))] min-h-[660px] w-full max-w-[510px] overflow-hidden rounded-[48px] border-2 border-[#272727] bg-[#080808] p-[9px] shadow-[0_34px_90px_rgba(0,0,0,0.82),inset_0_0_0_1px_rgba(255,255,255,0.04)]">
+            <div className="relative h-full overflow-hidden rounded-[38px] border border-white/[0.045] bg-[#101011]">
+            <div className="relative z-40 flex h-[54px] items-center justify-between px-7 text-[16px] font-bold tracking-[-0.04em] text-white">
+              <span>3:42</span>
+              <span className="absolute left-1/2 top-[11px] h-[32px] w-[114px] -translate-x-1/2 rounded-[22px] bg-black" aria-hidden="true" />
               <span className="flex items-center gap-1.5" aria-label="Phone status">
-                <Signal className="size-3.5" aria-hidden="true" />
-                <Wifi className="size-3.5" aria-hidden="true" />
-                <BatteryFull className="size-5" aria-hidden="true" />
+                <span className="flex h-4 items-end gap-[2px]" aria-hidden="true">
+                  <i className="h-[5px] w-[2px] rounded-t-sm bg-white" />
+                  <i className="h-[8px] w-[2px] rounded-t-sm bg-white" />
+                  <i className="h-[11px] w-[2px] rounded-t-sm bg-white" />
+                  <i className="h-[14px] w-[2px] rounded-t-sm bg-white" />
+                </span>
+                <Wifi className="size-4" strokeWidth={2.8} aria-hidden="true" />
+                <span className="relative h-[14px] w-[25px] rounded-[5px] border-2 border-white" aria-hidden="true">
+                  <span className="absolute inset-[2px] rounded-[2px] bg-white" />
+                  <span className="absolute -right-[4px] top-[3px] h-[5px] w-[2px] rounded-r-sm bg-white" />
+                </span>
               </span>
             </div>
 
-            <div className="absolute inset-x-5 bottom-[104px] top-[66px]" aria-label={`${readyCount} content cards ready`}>
+            <div className="absolute inset-x-5 top-[63px] z-40 flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.08] px-3 py-1.5 text-[14px] font-bold tracking-[-0.02em] text-white shadow-[0_6px_18px_rgba(0,0,0,0.18)]">
+                <Flame className="size-4 text-[#ff526b]" fill="currentColor" aria-hidden="true" />
+                Trending Content
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/45 bg-emerald-400/[0.08] px-3 py-1.5 text-[14px] font-bold tracking-[-0.02em] text-emerald-300 shadow-[0_6px_18px_rgba(0,0,0,0.18)]">
+                <Check className="size-4 stroke-[3]" aria-hidden="true" />
+                Posted
+              </span>
+            </div>
+
+            <div className="absolute inset-x-4 bottom-[104px] top-[122px]" aria-label={`${readyCount} content cards ready`}>
             {cards.slice(0, 3).map((card, index) => {
               const isTop = index === 0;
               const rotation = isTop ? dragX * 0.075 : 0;
@@ -349,7 +396,8 @@ export function TryUgcPilotDemo() {
                   onPointerMove={isTop ? onPointerMove : undefined}
                   onPointerUp={isTop ? onPointerEnd : undefined}
                   onPointerCancel={isTop ? onPointerEnd : undefined}
-                  className={`absolute inset-0 overflow-hidden rounded-[26px] border border-white/10 bg-zinc-900 shadow-[0_20px_45px_rgba(0,0,0,0.5)] ${isTop ? "cursor-grab touch-none" : "pointer-events-none"} ${dragging ? "transition-none" : "transition-[transform,opacity] duration-300"}`}
+                  aria-label={isTop ? "Wall-of-Text content card. Swipe left to skip or right to post." : undefined}
+                  className={`absolute inset-0 overflow-hidden rounded-[29px] border border-white/10 bg-zinc-900 shadow-[0_20px_45px_rgba(0,0,0,0.5)] ${isTop ? "cursor-grab touch-none select-none active:cursor-grabbing" : "pointer-events-none"} ${dragging ? "transition-none" : "transition-[transform,opacity] duration-300"}`}
                   style={{ transform, zIndex: 30 - index, opacity: isTop && exitDirection ? 0 : 1 }}
                 >
                   <Image
@@ -374,6 +422,7 @@ export function TryUgcPilotDemo() {
                   <div className={`absolute right-6 top-9 rounded-lg border-4 px-3 py-1 text-xl font-black tracking-wider transition-opacity ${dragX < 0 || exitDirection === "left" ? "border-rose-300 text-rose-200" : "border-rose-300 text-rose-200 opacity-0"}`}>
                     SKIP
                   </div>
+                  {isTop && showSwipeGuide ? <SwipeGuide /> : null}
                 </div>
               );
             })}
@@ -387,7 +436,7 @@ export function TryUgcPilotDemo() {
             ) : null}
             </div>
 
-            <div className="absolute inset-x-0 bottom-0 z-40 flex h-[104px] items-center justify-center gap-20 bg-[#121212]">
+            <div className="absolute inset-x-0 bottom-0 z-40 flex h-[104px] items-center justify-center gap-20 bg-[#101011]">
               <button
                 type="button"
                 aria-label="Skip"
@@ -408,10 +457,35 @@ export function TryUgcPilotDemo() {
               </button>
             </div>
             <div className="absolute bottom-2 left-1/2 z-50 h-[4.5px] w-[130px] -translate-x-1/2 rounded-full bg-white/25" aria-hidden="true" />
+            </div>
           </div>
         </section>
       </div>
     </main>
+  );
+}
+
+function SwipeGuide() {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-30 text-center" aria-hidden="true">
+      <div className="absolute inset-0 bg-black/[0.08]" />
+      <div className="absolute left-3 top-[42%] flex w-[31%] flex-col items-center text-[#ff6b82] drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)]">
+        <Undo2 className="size-8 -rotate-12 stroke-[2.6]" />
+        <span className="mt-1 text-[10px] font-black tracking-[0.04em]">SWIPE LEFT</span>
+        <span className="mt-1 rounded-full border border-rose-300/70 bg-rose-500/75 px-3 py-1 text-xs font-black text-white shadow-lg">SKIP</span>
+      </div>
+      <div className="absolute right-3 top-[42%] flex w-[31%] flex-col items-center text-emerald-300 drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)]">
+        <Redo2 className="size-8 rotate-12 stroke-[2.6]" />
+        <span className="mt-1 text-[10px] font-black tracking-[0.04em]">SWIPE RIGHT</span>
+        <span className="mt-1 rounded-full border border-emerald-300/70 bg-emerald-500/75 px-3 py-1 text-xs font-black text-white shadow-lg">POSTED</span>
+      </div>
+      <div className="absolute left-1/2 top-[43%] -translate-x-1/2 text-white drop-shadow-[0_6px_12px_rgba(0,0,0,0.85)]">
+        <Pointer className="size-[68px] -rotate-6 fill-white text-white stroke-black stroke-[1.5]" />
+      </div>
+      <span className="absolute bottom-[31%] left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/30 bg-black/80 px-4 py-1.5 text-xs font-bold text-white shadow-[0_8px_20px_rgba(0,0,0,0.55)]">
+        Tap or swipe card to start
+      </span>
+    </div>
   );
 }
 

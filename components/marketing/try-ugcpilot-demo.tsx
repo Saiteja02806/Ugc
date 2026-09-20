@@ -389,7 +389,7 @@ export function TryUgcPilotDemo() {
         </section>
 
         <section className="order-1 flex flex-col items-center lg:order-2">
-          <div className="relative h-[min(900px,calc(100svh-2rem))] min-h-[660px] w-full max-w-[510px]">
+          <div className="relative h-[min(900px,calc(100svh-2rem))] min-h-[660px] w-full max-w-[400px]">
             <div className="relative h-full overflow-hidden bg-[#101011]">
             <div className="relative z-40 flex h-[54px] items-center justify-between px-7 text-[16px] font-bold tracking-[-0.04em] text-white">
               <span>3:42</span>

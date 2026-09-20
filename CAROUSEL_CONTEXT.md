@@ -4645,3 +4645,19 @@ Runtime/font errors propagate as dependency failures instead of copy-fit errors.
 - A user-supplied or approved application screenshot may still be selected for
   Slide 6. That is an image-selection decision, independent from the removed
   CTA-copy behavior.
+
+## 2026-09-20 Schema-bound centered copy contracts
+
+- Both Structure 1 and Structure 2 use strict Structured Outputs string
+  patterns for new plans and repairs: Slide 1 is exactly 5-11 whitespace-
+  separated words, while prose returned for Slides 2-6 is exactly 18-30 words.
+  This makes the content-size agreement an output boundary rather than relying
+  only on prompt-following. It does not create, truncate, or otherwise replace
+  model copy after generation.
+- The maximum new-cover hook length is 42 characters in both structures. This
+  gives the existing centered 96px, three-line treatment the measured margin it
+  needs for natural reader-first hooks. The 5-11 word contract remains the
+  governing rule; the character ceiling is a fit guard, not a request for a
+  second support line.
+- The change does not alter the image blend, crop, brightness, safe area,
+  fonts, text placement, slide roles, CTA prohibition, or historical renders.

@@ -110,7 +110,7 @@ export function TryUgcPilotDemo() {
   const [dragging, setDragging] = useState(false);
   const [exitDirection, setExitDirection] = useState<"left" | "right" | null>(null);
   const dragStartX = useRef<number | null>(null);
-  const refillAttemptFor = useRef<number | null>(null);
+  const refillAttemptFor = useRef<string | null>(null);
 
   const topCard = cards[0];
   const readyCount = cards.length;
@@ -133,12 +133,13 @@ export function TryUgcPilotDemo() {
   });
 
   useEffect(() => {
-    if (!businessContext || readyCount >= 6 || isRefilling || refillAttemptFor.current === nextPostNumber) {
+    const refillKey = `${nextPostNumber}:${readyCount}`;
+    if (!businessContext || readyCount >= 6 || isRefilling || refillAttemptFor.current === refillKey) {
       return;
     }
 
     const startNumber = nextPostNumber;
-    refillAttemptFor.current = startNumber;
+    refillAttemptFor.current = refillKey;
     let cancelled = false;
     setIsRefilling(true);
     setNotice("Generating 10 more Wall-of-Text posts in the background…");
@@ -167,7 +168,6 @@ export function TryUgcPilotDemo() {
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          refillAttemptFor.current = null;
           setNotice(error instanceof Error ? error.message : "More content could not be generated right now.");
         }
       })

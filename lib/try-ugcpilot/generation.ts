@@ -235,13 +235,15 @@ async function scrapeWithFirecrawl(url: string): Promise<BusinessContext> {
   };
 }
 
-function postSchema() {
+function postSchema(expectedCount: number) {
   return {
     type: "object",
     additionalProperties: false,
     properties: {
       posts: {
         type: "array",
+        minItems: expectedCount,
+        maxItems: expectedCount,
         items: {
           type: "object",
           additionalProperties: false,
@@ -325,9 +327,9 @@ async function generatePosts(
         ],
         response_format: {
           type: "json_schema",
-          json_schema: { name: "ugc_pilot_wall_of_text_posts", strict: true, schema: postSchema() },
+          json_schema: { name: "ugc_pilot_wall_of_text_posts", strict: true, schema: postSchema(count) },
         },
-        max_completion_tokens: count === INITIAL_POST_COUNT ? 4_800 : 3_200,
+        max_completion_tokens: 4_800,
       }),
       cache: "no-store",
     });
@@ -389,6 +391,7 @@ export function getClientIp(request: Request) {
 
 export function errorResponse(error: unknown) {
   if (error instanceof UgcPilotDemoError) {
+    console.warn("UGC Pilot demo request rejected", { code: error.code, status: error.status });
     return Response.json({ error: { code: error.code, message: error.message } }, { status: error.status });
   }
   console.error("UGC Pilot demo request failed:", error);

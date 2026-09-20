@@ -41,3 +41,7 @@ design-qa-*.png
 design-qa-*.jpg
 edit-screen-audit/
 onboarding-flow-audit/
+
+# Production serves the versioned Try UGC Pilot media from GCS via
+# NEXT_PUBLIC_TRY_UGCPILOT_MEDIA_BASE_URL; retain local originals for dev only.
+public/try-ugcpilot/media/

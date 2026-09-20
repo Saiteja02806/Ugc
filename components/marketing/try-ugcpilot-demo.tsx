@@ -366,8 +366,8 @@ export function TryUgcPilotDemo() {
         </section>
 
         <section className="order-1 flex flex-col items-center lg:order-2">
-          <div className="relative h-[min(900px,calc(100svh-2rem))] min-h-[660px] w-full max-w-[510px] overflow-hidden rounded-[48px] border-2 border-[#272727] bg-[#080808] p-[9px] shadow-[0_34px_90px_rgba(0,0,0,0.82),inset_0_0_0_1px_rgba(255,255,255,0.04)]">
-            <div className="relative h-full overflow-hidden rounded-[38px] border border-white/[0.045] bg-[#101011]">
+          <div className="relative h-[min(900px,calc(100svh-2rem))] min-h-[660px] w-full max-w-[510px]">
+            <div className="relative h-full overflow-hidden bg-[#101011]">
             <div className="relative z-40 flex h-[54px] items-center justify-between px-7 text-[16px] font-bold tracking-[-0.04em] text-white">
               <span>3:42</span>
               <span className="absolute left-1/2 top-[11px] h-[32px] w-[114px] -translate-x-1/2 rounded-[22px] bg-black" aria-hidden="true" />

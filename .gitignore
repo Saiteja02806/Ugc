@@ -44,6 +44,10 @@
 /ugc-home-*.png
 /ugcpilot_logo__1.png
 
+# Local-only Tinder / UGCPilot prototype files. The production demo lives in
+# app/try-ugcpilot, app/api/try-ugcpilot, lib/try-ugcpilot, and public/try-ugcpilot.
+/tinder/
+
 # local visual QA and generated review artifacts
 /.codex-artifacts/
 /.codex-audits/

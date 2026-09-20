@@ -8,7 +8,7 @@ import { ProductLogoMark } from "@/components/brand/product-logo";
 import { LandingAuthAction } from "@/components/marketing/landing-auth-actions";
 
 const navItems = [{ label: "Pricing", href: "/pricing" }];
-const topOnlyNavItems = [{ label: "How it works", href: "#workflow" }];
+const topOnlyNavItems = [{ label: "Try UGCPilot", href: "/try-ugcpilot" }];
 
 export function LandingHeader({
   initialHasSession,

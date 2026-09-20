@@ -901,10 +901,12 @@ export function TryUgcPilotDemo() {
                     </button>
                   ) : null}
                   <div
-                    className="absolute left-1/2 top-[185px] w-[min(295px,calc(100%-72px))] -translate-x-1/2 break-words whitespace-pre-line text-center text-base font-semibold leading-[1.42] tracking-[-0.15px] text-white [text-shadow:-0.5px_-0.5px_0_rgba(0,0,0,0.85),0.5px_-0.5px_0_rgba(0,0,0,0.85),-0.5px_0.5px_0_rgba(0,0,0,0.85),0.5px_0.5px_0_rgba(0,0,0,0.85),0_1px_3px_rgba(0,0,0,0.9),0_3px_8px_rgba(0,0,0,0.85)]"
+                    className="absolute left-1/2 top-[185px] w-[min(295px,calc(100%-72px))] -translate-x-1/2 break-words whitespace-pre-line text-center text-base font-semibold leading-[1.42] tracking-[-0.15px] text-white [paint-order:stroke_fill] [text-shadow:0_2px_5px_rgba(0,0,0,0.82)]"
                     style={{
                       fontFamily: "var(--font-try-ugcpilot-wall-text), Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Rounded', 'Plus Jakarta Sans', Roboto, sans-serif",
-                      WebkitTextStroke: "0.35px rgba(0, 0, 0, 0.85)",
+                      // Fractional, stacked shadow offsets rasterize independently and can
+                      // leave visible seams inside glyphs at different browser zoom/DPRs.
+                      WebkitTextStroke: "1px rgba(0, 0, 0, 0.92)",
                     }}
                   >
                     {card.wallOfText}

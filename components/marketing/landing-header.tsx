@@ -74,8 +74,9 @@ export function LandingHeader({
                 <Link
                   key={item.label}
                   href={item.href}
-                  className="inline-flex items-center rounded-full border border-primary bg-primary px-4 py-2 font-semibold text-primary-foreground shadow-[0_8px_24px_rgba(255,107,69,0.28)] transition-[transform,background-color,box-shadow] hover:-translate-y-px hover:bg-primary/90 hover:shadow-[0_12px_30px_rgba(255,107,69,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className="inline-flex items-center gap-2 rounded-full border border-primary/60 bg-primary/[0.06] px-4 py-2 font-semibold text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-[transform,background-color,border-color,box-shadow] hover:-translate-y-px hover:border-primary hover:bg-primary/[0.12] hover:shadow-[0_8px_20px_rgba(255,107,69,0.16)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
+                  <span className="size-1.5 rounded-full bg-primary shadow-[0_0_10px_rgba(255,107,69,0.9)]" aria-hidden="true" />
                   {item.label}
                 </Link>
               ))
@@ -115,7 +116,7 @@ export function LandingHeader({
                   }
                   className={`block rounded-control px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${
                     item.label === "Try UGCPilot"
-                      ? "bg-primary text-primary-foreground shadow-[0_8px_20px_rgba(255,107,69,0.24)] hover:bg-primary/90"
+                      ? "border border-primary/60 bg-primary/[0.06] text-primary hover:border-primary hover:bg-primary/[0.12]"
                       : "text-muted hover:bg-card-muted hover:text-foreground-strong"
                   }`}
                 >

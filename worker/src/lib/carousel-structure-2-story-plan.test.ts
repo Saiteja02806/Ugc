@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   buildCarouselStructure2BatchMessages,
   buildCarouselStructure2StoryBatchSchema,
+  CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS,
   CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS,
   CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS,
   buildCarouselStructure2StoryPlanSchema,
@@ -76,7 +77,7 @@ test("Structure 2 rejects reordering story roles or placing a CTA on any slide",
 
 test("Structure 2 leaves creative cover wording to the prompt and uses a larger cover treatment", () => {
   const raw = makeRawStoryPlan();
-  raw.slides.first!.storyText = "Is your content plan falling apart when life gets busy?";
+  raw.slides.first!.storyText = "Does your content plan fall apart when life gets busy?";
   const plan = parseCarouselStructure2StoryPlan(raw, {
     businessDescription,
     storyFormatId: "wrong_belief",
@@ -120,7 +121,9 @@ test("Structure 2 prompt and schema describe the strict six-slide contract", () 
 
   assert.match(prompt, /exactly six slides/i);
   assert.match(prompt, /only Slide 1 may lead with direct reader wording/i);
-  assert.match(prompt, /targeting 5-9 words/i);
+  assert.match(prompt, /normally 5-8 words/i);
+  assert.match(prompt, /54 characters or fewer/i);
+  assert.match(prompt, /aim for 20-24 words/i);
   assert.match(prompt, /natural or sentence case/i);
   assert.match(prompt, /Inter Tight Bold at 700 weight/i);
   assert.match(prompt, /Slides 1-6 must return ctaText: null/i);
@@ -128,6 +131,34 @@ test("Structure 2 prompt and schema describe the strict six-slide contract", () 
   assert.doesNotMatch(prompt, /CTA presence and slide position are your creative choice/i);
   assert.match(schema, /sixth/);
   assert.doesNotMatch(schema, /slideNumber|storyFormatId/);
+  assert.match(
+    schema,
+    new RegExp(`"maxLength":${CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS}`),
+  );
+});
+
+test("Structure 2 rejects a cover hook that cannot safely fit the fixed three-line area", () => {
+  const raw = makeRawStoryPlan();
+  raw.slides.first!.storyText =
+    "Every delayed approval quietly stalls the next important campaign decision";
+
+  const plan = parseCarouselStructure2StoryPlan(raw, {
+    businessDescription,
+    storyFormatId: "wrong_belief",
+  });
+  const issues = validateCarouselStructure2StoryPlan(plan, {
+    businessDescription,
+  });
+
+  assert.ok(
+    issues.some(
+      (issue) =>
+        issue.code === "hook_length" &&
+        issue.message.includes(
+          `${CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS} characters`,
+        ),
+    ),
+  );
 });
 
 test("Structure 2 sends writing-quality failures back through the repair path", () => {

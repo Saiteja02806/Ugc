@@ -23,7 +23,7 @@ import {
 } from "./carousel-structure-2-formats.js";
 
 const STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE =
-  "Write one self-contained hook, targeting 5-9 words and never more than 11. Use natural or sentence case, never ALL CAPS. It must read as one dominant thought, not a title plus subtitle or an explanatory story sentence. The hook sits in the image centre, so visualContext must leave a clear, calm central text zone rather than reserving empty space only at the bottom.";
+  "Write one self-contained hook, normally 5-8 words and 54 characters or fewer; 11 words remains the absolute limit. Use natural or sentence case, never ALL CAPS. It must read as one dominant thought, not a title plus subtitle or an explanatory story sentence. The hook sits in the image centre, so visualContext must leave a clear, calm central text zone rather than reserving empty space only at the bottom.";
 
 export const CAROUSEL_STRUCTURE_2_STORY_SCHEMA_VERSION =
   "carousel-structure-2-strict-six-slide-story-v7";
@@ -53,6 +53,7 @@ const MAX_STORY_TEXT_LENGTH = 720;
 const MAX_VISUAL_CONTEXT_LENGTH = 220;
 const STRUCTURE_2_COVER_HOOK_MIN_WORDS = 5;
 const STRUCTURE_2_COVER_HOOK_MAX_WORDS = 11;
+export const CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS = 54;
 const GENERIC_COPY_PATTERN =
   /\b(boost productivity|streamline your workflow|unlock efficiency|work smarter|next level|seamless|one platform|one workspace for everything)\b/i;
 
@@ -188,6 +189,8 @@ function parseStorySlide(value: unknown, index: number) {
     storyText: getRequiredString(
       record.storyText,
       `${label} story text`,
+      // Keep parsing broad enough for repair to handle older or mocked output.
+      // New model output receives the tighter first-slide schema constraint.
       MAX_STORY_TEXT_LENGTH,
     ),
     visualContext: getRequiredString(
@@ -229,11 +232,12 @@ export function validateCarouselStructure2StoryPlan(
     if (
       slide.slideNumber === 1 &&
       (wordCount < STRUCTURE_2_COVER_HOOK_MIN_WORDS ||
-        wordCount > STRUCTURE_2_COVER_HOOK_MAX_WORDS)
+        wordCount > STRUCTURE_2_COVER_HOOK_MAX_WORDS ||
+        copy.length > CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS)
     ) {
       issues.push({
         code: "hook_length",
-        message: `Slide 1 must be one ${STRUCTURE_2_COVER_HOOK_MIN_WORDS}-${STRUCTURE_2_COVER_HOOK_MAX_WORDS}-word hook with no subtitle or supporting copy.`,
+        message: `Slide 1 must be one ${STRUCTURE_2_COVER_HOOK_MIN_WORDS}-${STRUCTURE_2_COVER_HOOK_MAX_WORDS}-word hook of ${CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS} characters or fewer, with no subtitle or supporting copy.`,
         slideNumber: slide.slideNumber,
       });
     }
@@ -398,7 +402,7 @@ export function partitionCarouselStructure2ValidationIssues(
 
 export function buildCarouselStructure2StoryPlanSchema() {
   const slides = Object.fromEntries(
-    CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS.map((positionKey) => [
+    CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS.map((positionKey, index) => [
       positionKey,
       {
         additionalProperties: false,
@@ -414,7 +418,10 @@ export function buildCarouselStructure2StoryPlanSchema() {
             type: "string",
           },
           storyText: {
-            maxLength: MAX_STORY_TEXT_LENGTH,
+            maxLength:
+              index === 0
+                ? CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS
+                : MAX_STORY_TEXT_LENGTH,
             minLength: 1,
             type: "string",
           },
@@ -532,7 +539,7 @@ export function buildCarouselStructure2BatchMessages(params: {
         "Use each creativeSeed as a broad starting point and its emotion as the emotional current. Do not treat either as finished copy or a complete plot.",
         "Use privateCreativeBrief only as flexible human and factual context; its preferredFormatFamily must never override the backend-selected format reference.",
         "Follow each role's word range as a hard publishing contract. Slide 1 must be one 5-11 word hook only, with no subtitle or supporting copy. Every prose slide from Slide 2 through Slide 6 must contain 18-30 words. Develop the story beat clearly and prioritize readable copy that fits the stated display area.",
-        "For Slides 2-6, use 18-30 words. Keep the thought specific and complete, while staying within ten visual lines at centered 60px type; never rely on shrink-to-fit behavior.",
+        "For Slides 2-6, aim for 20-24 words (the hard accepted range is 18-30) and count words before returning. Keep the thought specific and complete, while staying within ten visual lines at centered 60px type; never rely on shrink-to-fit behavior.",
         "Return each plan under its assigned outputKey. Do not return slideNumber, slotIndex, candidateIndex, or storyFormatId; the worker owns those structural values.",
         "Develop genuinely different stories inside the required six-slide sequence. Do not force every item through the same overwhelmed-to-easier arc.",
         `Slide 1 is reader-first: direct reader wording such as 'you' or 'your' is allowed. ${STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE} Give a specific benefit, tension, mistake, contrast, or curiosity gap; do not force it into a first-person personal-story opener.`,
@@ -561,8 +568,10 @@ export function buildCarouselStructure2RepairMessages(params: {
   rawPlan: unknown;
   recentHistory?: readonly CarouselStructure2RecentHistoryInput[];
 }) {
-  const hasSlideOneRenderFitFailure = params.issues.some(
-    (issue) => issue.code === "render_fit" && issue.slideNumber === 1,
+  const hasSlideOneCoverFitFailure = params.issues.some(
+    (issue) =>
+      issue.slideNumber === 1 &&
+      (issue.code === "render_fit" || issue.code === "hook_length"),
   );
 
   return [
@@ -586,10 +595,10 @@ export function buildCarouselStructure2RepairMessages(params: {
         JSON.stringify(getFormatReference(params.assignment.storyFormatId)),
         `Slide 1 is reader-first, so direct reader wording such as 'you' or 'your' is allowed. ${STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Tight Bold at 700 weight and must create a specific reason to swipe within ${getCarouselStructure2StoryMaxLines(1)} visual lines at ${getCarouselStructure2StoryFontSize(1)}px type.`,
         "Only Slide 1 may lead with direct reader wording. Keep Slides 2-5 in the first-person story voice (I, me, or my); Slide 6 may turn the lesson toward the reader after its takeaway.",
-        "Keep Slides 2-6 substantial but readable: 18-30 words, never exceed 30, and stay within ten visual lines at centered 60px type.",
+        "Keep Slides 2-6 substantial but readable: aim for 20-24 words (the hard accepted range is 18-30), count words before returning, never exceed 30, and stay within ten visual lines at centered 60px type.",
         "Slide 1's 5-11 word single-hook limit and every Slide 2-6 18-30 word range are strict publishing requirements. Repair the listed blocking issues and preserve slides that already passed validation.",
-        hasSlideOneRenderFitFailure
-          ? "Slide 1 overflowed its real three-line display area. Replace it with a shorter, simpler single hook rather than merely trimming words."
+        hasSlideOneCoverFitFailure
+          ? `Slide 1 exceeded its fixed cover budget. Replace it with a shorter, simpler single hook that remains within ${CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS} characters and the real three-line display area; do not add support copy.`
           : null,
         "Validation issues:",
         JSON.stringify(params.issues),

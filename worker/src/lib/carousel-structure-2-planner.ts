@@ -23,7 +23,7 @@ import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 import { CONTENT_PLAN_OPENAI_MAX_RETRIES, CONTENT_PLAN_OPENAI_TIMEOUT_MS } from "./content-plan-provider-retry.js";
 
 export const CAROUSEL_STRUCTURE_2_PLANNER_VERSION =
-  "llm-carousel-structure-2-writer-v10-isolated-failures";
+  "llm-carousel-structure-2-writer-v11-isolated-failures";
 
 let openaiClient: OpenAI | null = null;
 

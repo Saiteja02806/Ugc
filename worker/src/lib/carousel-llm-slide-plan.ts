@@ -37,7 +37,7 @@ import {
 import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v45-single-hook-cover-contract";
+  "llm-carousel-planner-v46-single-hook-cover-contract";
 export const CAROUSEL_V1_ASSIGNMENT_REQUIRED_ERROR =
   "Carousel V1 requires exactly six slides plus a backend-selected content format and compatible hook family.";
 
@@ -54,13 +54,16 @@ const MIN_REQUIRED_BODY_WORDS = 18;
 const FIRST_SLIDE_MIN_BODY_WORDS = 4;
 const FIRST_SLIDE_MAX_BODY_WORDS = 12;
 const FIRST_SLIDE_MIN_HEADLINE_WORDS = 5;
-const FIRST_SLIDE_MAX_HEADLINE_LENGTH = 90;
+// The Structure 1 cover has three centered 96px lines in a fixed 786px area.
+// The 5-11 word contract remains authoritative, while this cap prevents a
+// technically valid hook from reaching the renderer with no safe line break.
+const FIRST_SLIDE_MAX_HEADLINE_LENGTH = 50;
 const FIRST_SLIDE_MAX_HEADLINE_WORDS = 11;
 const FOLLOWUP_SLIDE_MAX_BODY_WORDS = 30;
 const MIN_HEADLINE_WORDS = 3;
 const MAX_HEADLINE_WORDS = 16;
 const FIRST_SLIDE_HOOK_COPY_GUIDANCE =
-  "Write exactly one self-contained hook in the headline field, targeting 5-9 words and never more than 11. Set body to null: Slide 1 has no subtitle, supporting copy, or second text layer. Use natural or sentence case, never ALL CAPS. The hook is centered over the image, so imageDirection must leave a clear, calm central text zone rather than reserving empty space only at the bottom.";
+  "Write exactly one self-contained hook in the headline field, normally 5-8 words and 50 characters or fewer; 11 words remains the absolute limit. Set body to null: Slide 1 has no subtitle, supporting copy, or second text layer. Use natural or sentence case, never ALL CAPS. The hook is centered over the image, so imageDirection must leave a clear, calm central text zone rather than reserving empty space only at the bottom.";
 const VISUAL_SUBJECT_TERMS =
   "(?:human|humans|person|people|face|faces|hand|hands|body|bodies|silhouette|silhouettes|man|men|woman|women|child|children|team|customer|customers|worker|workers)";
 const PROHIBITED_VISUAL_SUBJECT_PATTERN =
@@ -408,7 +411,7 @@ export async function buildCarouselContentPlan(
     const repairedPlan =
       normalizedPlan &&
       grammarContext.hookTemplate &&
-      hasOnlySlideOneRenderFitIssues(initialIssues)
+      hasOnlySlideOneCoverFitIssues(initialIssues)
         ? replaceOnlySlideOne(normalizedPlan, parsedRepairedPlan)
         : parsedRepairedPlan;
     const repairedValidation = evaluateCarouselContentPlanForPublishing({
@@ -422,7 +425,7 @@ export async function buildCarouselContentPlan(
     if (finalIssues.length > 0) {
       if (
         grammarContext.hookTemplate &&
-        hasOnlySlideOneRenderFitIssues(finalIssues)
+        hasOnlySlideOneCoverFitIssues(finalIssues)
       ) {
         const nativeFallback = await buildNativeSlideOneOverflowFallback({
           input,
@@ -827,6 +830,9 @@ function parseCarouselContentPlanShape(
     );
     const parsedHeadline = getOptionalNullableString(
       slide.headline,
+      // Keep parsing broad enough for a repair to correct older or mocked
+      // responses. New model output is constrained to the tighter cover cap
+      // by the JSON schema and the measured fit validator below.
       MAX_HEADLINE_LENGTH,
       `slide ${index + 1} headline`,
     );
@@ -2135,10 +2141,10 @@ function buildGrammarPlannerMessages(
           : null,
         `- On Slides 2-6, headlines are optional. When present, use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words, at most ${MAX_HEADLINE_LENGTH} characters, and no more than four visual lines. Slide 1 requires one ${FIRST_SLIDE_MIN_HEADLINE_WORDS}-${FIRST_SLIDE_MAX_HEADLINE_WORDS}-word headline hook, at most ${FIRST_SLIDE_MAX_HEADLINE_LENGTH} characters.`,
         `- Slide 1 is a poster cover, not a normal heading/body slide. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in Inter Tight Bold at 700 weight, centered at ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px, with no added gradient or outline. The one hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines. The renderer never shrinks or truncates copy. It must create a specific reason to swipe through a tension, outcome, contrast, mistake, useful promise, or curiosity gap. Do not begin a complete personal story with “I thought,” “I used to,” “Recently I,” “Here is my story,” or “I learned” unless the same line states a specific reader payoff.`,
-        `- Slides 2-6 body copy must each be one complete sentence, targeting 18-30 words and never more than ${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words or ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters.`,
+        `- Slides 2-6 body copy must each be one complete sentence. Aim for 20-24 words (the hard accepted range is 18-30); count words before returning, and never exceed ${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words or ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters.`,
         `- Slides 2-6 use centered Inter Tight SemiBold at fixed ${CAROUSEL_FIXED_FONT_SIZE}px type. Their actual headlines receive one measured white SVG background with dark text; body and list text remain white directly on the image. Slide 1 never uses the white SVG background: its cover hook is clean white display text over the unchanged image blend. Headlines remain optional: never add one merely to obtain the SVG background. Slides 2-6 body copy must fit within ${getCarouselStructure1BodyMaxLines(2)} lines; each list item within two; list groups within eight total. The renderer will not shrink or truncate copy.`,
-        "- A headline must not repeat its body on Slides 2-6. Slide 1 has headline-only hook text and body must be null.",
-        "- List slides must use the exact configured number of short listItems and normally set body to null.",
+        "- On Slides 2-6, prefer body_only whenever the selected role permits it: set headline to null and use the one body sentence. Use a headline only when it adds distinct information the body does not already say. Slide 1 has headline-only hook text and body must be null.",
+        "- List slides must use the exact configured number of short listItems and normally set headline and body to null. Never add a second text layer for decoration.",
         "- Every slide without a configured listItemCount must return listItems as an empty array.",
         "- Do not repeat the same information across slides.",
         "- Do not use generic phrases such as boost productivity, streamline your workflow, unlock efficiency, save time, work smarter, or next level.",
@@ -2244,8 +2250,8 @@ function buildBatchPlannerMessages(
         "Use simple, specific, natural copy. Prioritize useful information over promotion.",
         `Optional headlines on Slides 2-6 must use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words and at most ${MAX_HEADLINE_LENGTH} characters. Slide 1 requires one ${FIRST_SLIDE_MIN_HEADLINE_WORDS}-${FIRST_SLIDE_MAX_HEADLINE_WORDS}-word headline hook, at most ${FIRST_SLIDE_MAX_HEADLINE_LENGTH} characters. Headlines remain optional and are never added merely to obtain the white SVG treatment.`,
         `Slide 1 is a reader-first poster cover, not a complete personal-story opener. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Tight Bold at 700 weight and ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px, with no added gradient or outline. Its one hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines. The renderer never shrinks or truncates copy. Give a specific reason to swipe through a tension, outcome, contrast, mistake, useful promise, or curiosity gap.`,
-        "A headline must add distinct information rather than repeat its body on Slides 2-6. Slide 1 has headline-only hook text and body must be null.",
-        `Slides 2-6 body copy must each be one complete sentence, targeting 18-30 words and never more than ${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words or ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters.`,
+        "On Slides 2-6, prefer body_only whenever the selected role permits it: set headline to null and use one body sentence. A headline may appear only when it adds distinct information rather than repeats its body. Slide 1 has headline-only hook text and body must be null.",
+        `Slides 2-6 body copy must each be one complete sentence. Aim for 20-24 words (the hard accepted range is 18-30); count words before returning, and never exceed ${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words or ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters.`,
         "Never invent numbers, product capabilities, proof, customers, brands, health claims, financial claims, or guaranteed outcomes.",
         "Avoid generic copy such as boost productivity, streamline your workflow, save time, work smarter, unlock efficiency, or next level.",
         "Follow every format role, slide type, allowed text mode, and list-item count exactly.",
@@ -2382,7 +2388,7 @@ async function buildSingleBatchItemRepair(params: {
       params.context,
     );
     const repaired =
-      originalPlan && hasOnlySlideOneRenderFitIssues(params.issues)
+      originalPlan && hasOnlySlideOneCoverFitIssues(params.issues)
         ? replaceOnlySlideOne(originalPlan, parsedRepair)
         : parsedRepair;
     const repairedValidation = evaluateCarouselContentPlanForPublishing({
@@ -2395,7 +2401,7 @@ async function buildSingleBatchItemRepair(params: {
     if (finalIssues.length > 0) {
       if (
         params.context.hookTemplate &&
-        hasOnlySlideOneRenderFitIssues(finalIssues)
+        hasOnlySlideOneCoverFitIssues(finalIssues)
       ) {
         const nativeFallback = await buildNativeSlideOneOverflowFallback({
           input: params.input,
@@ -2461,13 +2467,15 @@ async function buildSingleBatchItemRepair(params: {
   }
 }
 
-function hasOnlySlideOneRenderFitIssues(
+function hasOnlySlideOneCoverFitIssues(
   issues: readonly CarouselPlanValidationIssue[],
 ) {
   return (
     issues.length > 0 &&
     issues.every(
-      (issue) => issue.code === "render_fit" && issue.slideNumber === 1,
+      (issue) =>
+        issue.slideNumber === 1 &&
+        (issue.code === "render_fit" || issue.code === "headline_length"),
     )
   );
 }
@@ -2690,8 +2698,10 @@ function buildRepairMessages(params: {
   const hasRecentRepetition = params.issues.some(
     (issue) => issue.code === "recent_repetition",
   );
-  const hasSlideOneRenderFitFailure = params.issues.some(
-    (issue) => issue.code === "render_fit" && issue.slideNumber === 1,
+  const hasSlideOneCoverFitFailure = params.issues.some(
+    (issue) =>
+      issue.slideNumber === 1 &&
+      (issue.code === "render_fit" || issue.code === "headline_length"),
   );
   const recentHistory = normalizeRecentHistory(params.recentHistory);
 
@@ -2711,17 +2721,17 @@ function buildRepairMessages(params: {
         JSON.stringify(params.planningBrief),
         `Every Slide 2-6 headline is optional; when present it must be ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words, at most ${MAX_HEADLINE_LENGTH} characters, and at most four visual lines. Slide 1 requires one ${FIRST_SLIDE_MIN_HEADLINE_WORDS}-${FIRST_SLIDE_MAX_HEADLINE_WORDS}-word headline hook, at most ${FIRST_SLIDE_MAX_HEADLINE_LENGTH} characters.`,
         `Slide 1 must be a reader-first poster cover: a specific benefit, tension, mistake, contrast, or curiosity gap. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Tight Bold at 700 weight and ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px, with no added gradient or outline. Do not open with a complete personal-story sentence such as 'I thought...', 'I used to...', or 'Recently I...'. Its one hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} measured lines. The renderer never shrinks or truncates copy.`,
-        hasSlideOneRenderFitFailure
-          ? `Slide 1 overflowed its real cover area. Replace it with a shorter, simpler single hook that fits within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines at ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px. Do not add a subtitle or support line to solve the overflow.`
+        hasSlideOneCoverFitFailure
+          ? `Slide 1 exceeded its fixed cover budget. Replace it with a shorter, simpler single hook that fits within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines at ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px and ${FIRST_SLIDE_MAX_HEADLINE_LENGTH} characters. Do not add a subtitle or support line to solve the overflow.`
           : null,
-        "Each body on Slides 2-6 must be one complete, specific sentence targeting 18-30 words, at most 300 characters, and at most ten visual lines at the fixed 60px type size.",
+        "Each body on Slides 2-6 must be one complete, specific sentence. Aim for 20-24 words (the hard accepted range is 18-30), count words before returning, keep it at most 300 characters, and fit it within ten visual lines at the fixed 60px type size.",
         "List modes may use at most eight total visual lines, with at most two lines per item.",
         "Remove repeated punctuation, fragments, generic copy, unsupported claims, repeated ideas, headline/body repetition, and grammar errors such as lead to missed leads.",
         "Do not repeat a connector within one short sentence, such as for better management for clearer decisions.",
         "Remove invented quantified proof, guarantees, or precise performance claims.",
         "Never use abstract outcomes such as experience improved clarity, achieve better results, better management, or better organization.",
         "Never use these phrases: boost productivity, effectively, efficiently, effortlessly, enhance your marketing efforts, seamless, streamline your workflow, transform your campaign management, unify your planning and reporting, unlock efficiency, with ease, next level, one workspace for everything, save time, stay on top, or work smarter.",
-        "If a headline repeats its body, set headline to null and use body_only instead of paraphrasing it.",
+        "Prefer body_only whenever the selected role permits it: set headline to null and use one body sentence. If a headline repeats its body, set headline to null and use body_only instead of paraphrasing it.",
         "Select one supplied grounding.anchorId. The concept and Slides 3-5 must naturally develop that verified workflow, product detail, or user situation. Do not invent a grounding fact or force a product name into every slide.",
         "The final slide must be a self-contained takeaway using normal body content. ctaText must be null.",
         "Every role without a configured listItemCount must return listItems as an empty array.",

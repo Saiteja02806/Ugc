@@ -320,9 +320,11 @@ test("the worker sends a persisted template only as Slide 1 planner guidance", a
     assert.match(requestText, /poster cover/i);
     assert.match(requestText, /96px/i);
     assert.match(requestText, /Inter Tight Bold at 700 weight/i);
-    assert.match(requestText, /targeting 5-9 words/i);
+    assert.match(requestText, /normally 5-8 words/i);
+    assert.match(requestText, /50 characters or fewer/i);
+    assert.match(requestText, /aim for 20-24 words/i);
     assert.match(requestText, /natural or sentence case/i);
-    assert.match(requestText, /headline must not repeat its body/i);
+    assert.match(requestText, /adds distinct information the body does not already say/i);
   } finally {
     globalThis.fetch = originalFetch;
     if (originalApiKey === undefined) delete process.env.OPENAI_API_KEY;
@@ -548,8 +550,10 @@ test("the production-shaped five-item batch uses combined formats and a native f
     assert.match(requestText, /reader-first poster cover/i);
     assert.match(requestText, /within 3 lines/i);
     assert.match(requestText, /Inter Tight Bold at 700 weight/i);
-    assert.match(requestText, /targeting 5-9 words/i);
-    assert.match(requestText, /headline must add distinct information/i);
+    assert.match(requestText, /normally 5-8 words/i);
+    assert.match(requestText, /50 characters or fewer/i);
+    assert.match(requestText, /aim for 20-24 words/i);
+    assert.match(requestText, /prefer body_only whenever the selected role permits it/i);
     assert.match(requestText, /grounding\.anchorId/i);
   } finally {
     globalThis.fetch = originalFetch;

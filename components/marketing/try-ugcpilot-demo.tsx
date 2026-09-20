@@ -837,10 +837,6 @@ export function TryUgcPilotDemo() {
                 <Flame className="size-4 text-[#ff526b]" fill="currentColor" aria-hidden="true" />
                 Trending Content
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/45 bg-emerald-400/[0.08] px-3 py-1.5 text-[14px] font-bold tracking-[-0.02em] text-emerald-300 shadow-[0_6px_18px_rgba(0,0,0,0.18)]">
-                <Check className="size-4 stroke-[3]" aria-hidden="true" />
-                Posted
-              </span>
             </div>
 
             <div className="absolute inset-x-[clamp(12px,5.5vw,28px)] bottom-[120px] top-[122px] xl:inset-x-4 xl:bottom-[104px]" aria-label={`${readyCount} content cards ready`}>

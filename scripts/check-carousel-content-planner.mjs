@@ -27,7 +27,7 @@ const workerParsed = workerPlanner.parseCarouselContentPlan(fixture, 6);
 const failures = [];
 
 if (
-  workerParsed.slides[0]?.layoutPreset !== "top-hook" ||
+  workerParsed.slides[0]?.layoutPreset !== "middle-statement" ||
   workerParsed.slides[5]?.layoutPreset !== "middle-statement"
 ) {
   failures.push("Planner did not derive the expected renderer layout presets.");
@@ -419,7 +419,7 @@ function createPlanFixture() {
     concept: "The campaign workday that never ends",
     slides: [
       {
-        body: "Why campaign updates keep spilling into after-hours work.",
+        body: null,
         ctaText: null,
         headline: "Your campaign should not follow you home",
         imageDirection:
@@ -427,11 +427,11 @@ function createPlanFixture() {
         listItems: [],
         slideNumber: 1,
         slideType: "hook",
-        textMode: "headline_body",
+        textMode: "single_statement",
       },
       {
         body:
-          "Every update becomes another file while the next action gets harder to find before launch.",
+          "Every update creates another file, so reviewers lose the campaign context needed to identify the next action before launch begins.",
         ctaText: null,
         headline: null,
         imageDirection:
@@ -458,7 +458,7 @@ function createPlanFixture() {
       },
       {
         body:
-          "A visible next action keeps tomorrow moving without rebuilding the campaign plan again.",
+          "A visible next action keeps tomorrow moving without rebuilding the campaign plan again, even when priorities shift during a busy launch review.",
         ctaText: null,
         headline: null,
         imageDirection:
@@ -470,7 +470,7 @@ function createPlanFixture() {
       },
       {
         body:
-          "Set the next decision beside the approval note before closing each campaign review.",
+          "Set the next decision beside the approval note before closing each campaign review, so the incoming owner can continue work without reopening old discussions.",
         ctaText: null,
         headline: null,
         imageDirection:
@@ -482,9 +482,9 @@ function createPlanFixture() {
       },
       {
         body:
-          "Connected planning and reporting keep the next campaign easier to launch and review.",
-        ctaText: "Build your campaign",
-        headline: "Put the next launch in one place",
+          "Connected planning keeps campaign decisions visible, giving each review a clear next action before the work moves into another launch stage.",
+        ctaText: null,
+        headline: null,
         imageDirection:
           "Minimal laptop and notebook still life with clean central negative space.",
         listItems: [],

@@ -15,14 +15,14 @@ const copy = [
   "I realized the problem was not effort; my plan assumed that ordinary work would never change after I wrote it down.",
   "Todaywise let me work from the changing task list, so I could update the next action without rebuilding the entire week from scratch.",
   "The week still changed, but I stopped treating each shift as a reset and finished the important work with a clearer next decision.",
-  "Keep the next decision visible so each changed priority still has one practical next step.",
+  "Keep the next decision visible so each changed priority still has one practical next step, accountable owner, and the context needed to continue.",
 ];
 function rawPlan(valid: boolean) {
   return {
     strategy: { angle: "a weekly plan that could not adapt to real work" },
     slides: Object.fromEntries(CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS.map((key, i) => [key, {
       storyRole: CAROUSEL_STRUCTURE_2_STORY_ROLES[i], storyText: i === 3
-        ? valid ? "Todaywise let me adjust the next task without rebuilding my entire week." : "Todaywise saved me 90% of my time while planning my work."
+        ? valid ? "Todaywise let me adjust the next task without rebuilding my entire week whenever changing priorities shifted the campaign work I needed to finish." : "Todaywise saved me 90% of my time while planning my work."
         : copy[i],
       ctaText: null,
       visualContext: `ordinary planning scene ${i + 1}`,
@@ -54,7 +54,7 @@ test("retains a valid candidate between failures and diagnoses only the rejected
     assert.equal(calls, 5, "one batch request and one repair per rejected candidate");
     assert.ok(failures.every((failure) => failure.rawLlmResponse.repair));
     assert.match(failures[0]!.message, /precise claim/);
-    assert.ok(plans[0]!.validationResult.advisoryIssues.some((issue) => issue.code === "word_count"));
+    assert.deepEqual(plans[0]!.validationResult.advisoryIssues, []);
     assert.equal(plans[0]!.validationResult.repairAttempted, false);
     emptyResponse = true;
     calls = 0;

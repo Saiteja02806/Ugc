@@ -34,48 +34,70 @@ const CARD_IMAGES = [
   "/try-ugcpilot/card-4.jpg",
 ];
 
+const DEFAULT_CAL_AI_CONTEXT: BusinessContext = {
+  brand: "Cal AI",
+  url: "https://calai.com",
+  title: "Cal AI",
+  description: "A calorie and nutrition tracking app.",
+  markdown: "Cal AI default demonstration content.",
+};
+
 const DEMO_POSTS: WallOfTextPost[] = [
   {
-    id: "demo-1",
-    topic: "Clearer decisions",
-    hook: "the fastest way to lose momentum is guessing what to do next",
+    id: "cal-ai-1",
+    topic: "Hidden Calories",
+    hook: "you don't have a slow metabolism",
     wallOfText:
-      "the fastest way to lose momentum is guessing what to do next. one clear measurement, one small action, and one honest review beat a complicated plan you never follow. progress becomes much easier when the next step is obvious.",
+      "hot take, you don't have a slow metabolism. you're just drinking 400 calories in your iced latte and forgetting to track the oil you cook your eggs in. i started using this tracker because it scans the plate in 2 seconds instead of searching a database for 15 minutes. count accurately for 7 days and watch what happens.",
   },
   {
-    id: "demo-2",
-    topic: "Consistency",
-    hook: "you do not need a perfect routine to make progress",
+    id: "cal-ai-2",
+    topic: "Calorie Deficit",
+    hook: "you don't need to cut carbs",
     wallOfText:
-      "you do not need a perfect routine to make progress. you need a useful system that still works on a busy Tuesday, after a bad night of sleep, and when motivation disappears. consistency is simply making the easy choice repeatable.",
+      "unpopular opinion: you don't need to cut carbs or do 2 hours of cardio. you just need to stay in a 300 calorie deficit and eat enough protein. i stopped overcomplicating it and started photo tracking every single meal. visible abs are built on boring consistency.",
   },
   {
-    id: "demo-3",
-    topic: "Less friction",
-    hook: "most people are not lazy, their next step is just too hard",
+    id: "cal-ai-3",
+    topic: "Metabolism Myth",
+    hook: "the biggest lie in fitness",
     wallOfText:
-      "most people are not lazy, their next step is just too hard. remove the setup, make the choice visible, and lower the effort needed to begin. when a useful action takes seconds instead of twenty minutes, it finally becomes a habit.",
+      "the biggest lie in fitness: i only eat 1,200 calories and can't lose weight. one handful of almonds, two tablespoons of salad dressing, and a splash of coffee creamer adds 600 hidden calories. track what you actually swallow, not what you think you ate.",
   },
   {
-    id: "demo-4",
-    topic: "Simple systems",
-    hook: "a simple system you use beats an impressive system you ignore",
+    id: "cal-ai-4",
+    topic: "Photo Tracking",
+    hook: "stop trying to guess calories",
     wallOfText:
-      "a simple system you use beats an impressive system you ignore. start with the smallest version that gives you useful feedback, then improve it after you have proof it fits real life. the best process is the one that actually survives your week.",
+      "stop trying to guess how many calories are in that bowl. your brain will always underestimate by 30%. i snap a photo before i eat. the AI breaks down macros before my fork hits the plate. accurate data beats willpower every single time.",
   },
   {
-    id: "demo-5",
-    topic: "Focus",
-    hook: "more information is not always the answer",
+    id: "cal-ai-5",
+    topic: "Weekend Ruin",
+    hook: "how you undo your whole week",
     wallOfText:
-      "more information is not always the answer. when every option feels urgent, choose the signal that tells you what matters today. a focused decision creates momentum, while a crowded to do list can quietly turn every important goal into background noise.",
+      "you eat clean Monday to Friday in a 400 calorie deficit, then drink 4 margaritas on Saturday and order late-night pizza. boom, you just wiped out the entire week's fat loss. consistency on the weekend is what actually separates results from frustration.",
   },
   {
-    id: "demo-6",
-    topic: "Action",
-    hook: "the plan is only useful when it changes what you do today",
+    id: "cal-ai-6",
+    topic: "Protein Priority",
+    hook: "why you feel starving on diets",
     wallOfText:
-      "the plan is only useful when it changes what you do today. turn the next idea into one visible action, complete it before you reconsider it, and use the result to decide what comes next. small proof creates more confidence than endless preparation.",
+      "if you feel starving on a diet, it's not low calories, it's low protein. aim for 0.8g per pound of bodyweight and watch your cravings disappear. fill your plate with high volume and stop suffering unnecessarily.",
+  },
+  {
+    id: "cal-ai-7",
+    topic: "Liquid Calories",
+    hook: "stop drinking your calories",
+    wallOfText:
+      "the easiest 10 pounds you will ever lose: stop drinking your calories. swapping soda, sweet tea, and lattes for water and zero-calorie drinks cuts 500 calories a day without changing a single bite of real food.",
+  },
+  {
+    id: "cal-ai-8",
+    topic: "Scale Weight Anxiety",
+    hook: "the scale went up 3 pounds overnight",
+    wallOfText:
+      "you didn't gain 3 pounds of fat from yesterday's dinner. you gained water weight from sodium and carbohydrate glycogen. stop freaking out at daily fluctuations, track your weekly average, and look at the 30-day trend.",
   },
 ];
 
@@ -103,7 +125,7 @@ export function TryUgcPilotDemo() {
   const [swipedCount, setSwipedCount] = useState(0);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isRefilling, setIsRefilling] = useState(false);
-  const [notice, setNotice] = useState("Try a public product website to generate 16 tailored posts.");
+  const [notice, setNotice] = useState("Loaded Cal AI Wall-of-Text content.");
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [exitDirection, setExitDirection] = useState<"left" | "right" | null>(null);
@@ -116,7 +138,8 @@ export function TryUgcPilotDemo() {
 
   const topCard = cards[0];
   const readyCount = cards.length;
-  const brand = businessContext?.brand ?? "UGCPilot demo";
+  const activeContext = businessContext ?? DEFAULT_CAL_AI_CONTEXT;
+  const brand = activeContext.brand;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -281,7 +304,7 @@ export function TryUgcPilotDemo() {
     setDragX(0);
     setExitDirection(null);
     setIsRefilling(false);
-    setNotice("The demonstration deck has been reset.");
+    setNotice("Loaded Cal AI Wall-of-Text content.");
   }
 
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
@@ -351,9 +374,9 @@ export function TryUgcPilotDemo() {
           </form>
 
           <div className="mt-5 space-y-3 rounded-2xl bg-zinc-950 p-4 text-sm">
-            <StatusRow done={Boolean(businessContext)} label={businessContext ? `Analyzed: ${businessContext.url.replace(/^https?:\/\//, "")}` : "Website context ready"} />
-            <StatusRow done={Boolean(businessContext)} label={businessContext ? `Brand: ${brand}` : "Brand identified"} />
-            <StatusRow done={Boolean(businessContext) && !isRefilling} loading={isAnalyzing || isRefilling} label={isRefilling ? "Generating 10 more posts…" : "Wall-of-Text posts ready"} />
+            <StatusRow done label={`Analyzed: ${activeContext.url.replace(/^https?:\/\//, "")}`} />
+            <StatusRow done label={`Brand: ${brand}`} />
+            <StatusRow done={!isRefilling} loading={isAnalyzing || isRefilling} label={isRefilling ? "Generating 10 more posts…" : "Wall-of-Text posts ready"} />
           </div>
 
           <p aria-live="polite" className="mt-4 min-h-10 text-sm leading-5 text-zinc-400">

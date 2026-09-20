@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronLeft, LoaderCircle, RotateCcw, Sparkles, X } from "lucide-react";
+import { BatteryFull, Check, ChevronLeft, LoaderCircle, RotateCcw, Signal, Sparkles, Wifi, X } from "lucide-react";
 
 type WallOfTextPost = {
   id: string;
@@ -100,8 +100,6 @@ export function TryUgcPilotDemo() {
   const [businessContext, setBusinessContext] = useState<BusinessContext | null>(null);
   const [nextPostNumber, setNextPostNumber] = useState(17);
   const [recentHooks, setRecentHooks] = useState<string[]>([]);
-  const [accepted, setAccepted] = useState<WallOfTextPost[]>([]);
-  const [skippedCount, setSkippedCount] = useState(0);
   const [swipedCount, setSwipedCount] = useState(0);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isRefilling, setIsRefilling] = useState(false);
@@ -187,10 +185,8 @@ export function TryUgcPilotDemo() {
       setCards((current) => current.slice(1));
       setSwipedCount((count) => count + 1);
       if (direction === "right") {
-        setAccepted((current) => [topCard, ...current]);
         setNotice(`Posted: “${topCard.hook}”`);
       } else {
-        setSkippedCount((count) => count + 1);
         setNotice(`Skipped: “${topCard.hook}”`);
       }
       setDragX(0);
@@ -223,8 +219,6 @@ export function TryUgcPilotDemo() {
       setCards(data.posts);
       setNextPostNumber(17);
       setRecentHooks(data.posts.map((post) => post.hook).slice(-32));
-      setAccepted([]);
-      setSkippedCount(0);
       setSwipedCount(0);
       setNotice(`16 tailored Wall-of-Text posts are ready for ${data.businessContext.brand}.`);
     } catch (error) {
@@ -239,8 +233,6 @@ export function TryUgcPilotDemo() {
     setBusinessContext(null);
     setCards(DEMO_POSTS);
     setRecentHooks([]);
-    setAccepted([]);
-    setSkippedCount(0);
     setSwipedCount(0);
     setNextPostNumber(17);
     setDragX(0);
@@ -329,17 +321,18 @@ export function TryUgcPilotDemo() {
         </section>
 
         <section className="order-1 flex flex-col items-center lg:order-2">
-          <div className="mb-4 flex w-full max-w-[390px] items-center justify-between text-sm text-zinc-400">
-            <span className="font-semibold">{brand}</span>
-            <span>{readyCount} ready · {isRefilling ? "refilling" : "swipe to review"}</span>
-          </div>
-
-          <div className="relative h-[620px] w-full max-w-[390px] overflow-hidden rounded-[42px] border-[8px] border-zinc-800 bg-zinc-900 shadow-[0_28px_90px_rgba(0,0,0,0.55)]">
-            <div className="absolute inset-x-0 top-0 z-40 flex h-14 items-center justify-between px-5 text-xs font-semibold text-white/80">
-              <span>Trending content</span>
-              <span>Posted {accepted.length}</span>
+          <div className="relative h-[min(825px,calc(100svh-2.5rem))] min-h-[620px] w-full max-w-[395px] overflow-hidden rounded-[44px] border-[10px] border-black bg-[#121212] shadow-[0_30px_80px_rgba(0,0,0,0.8),0_0_0_1px_rgba(255,255,255,0.14)]">
+            <div className="relative z-40 flex h-12 items-center justify-between px-5 text-[14px] font-semibold text-white">
+              <span>9:41</span>
+              <span className="absolute left-1/2 top-[11px] h-[26px] w-[104px] -translate-x-1/2 rounded-[20px] bg-black" aria-hidden="true" />
+              <span className="flex items-center gap-1.5" aria-label="Phone status">
+                <Signal className="size-3.5" aria-hidden="true" />
+                <Wifi className="size-3.5" aria-hidden="true" />
+                <BatteryFull className="size-5" aria-hidden="true" />
+              </span>
             </div>
 
+            <div className="absolute inset-x-5 bottom-[104px] top-[66px]" aria-label={`${readyCount} content cards ready`}>
             {cards.slice(0, 3).map((card, index) => {
               const isTop = index === 0;
               const rotation = isTop ? dragX * 0.075 : 0;
@@ -356,7 +349,7 @@ export function TryUgcPilotDemo() {
                   onPointerMove={isTop ? onPointerMove : undefined}
                   onPointerUp={isTop ? onPointerEnd : undefined}
                   onPointerCancel={isTop ? onPointerEnd : undefined}
-                  className={`absolute inset-0 overflow-hidden bg-zinc-900 ${isTop ? "cursor-grab touch-none" : "pointer-events-none"} ${dragging ? "transition-none" : "transition-[transform,opacity] duration-300"}`}
+                  className={`absolute inset-0 overflow-hidden rounded-[26px] border border-white/10 bg-zinc-900 shadow-[0_20px_45px_rgba(0,0,0,0.5)] ${isTop ? "cursor-grab touch-none" : "pointer-events-none"} ${dragging ? "transition-none" : "transition-[transform,opacity] duration-300"}`}
                   style={{ transform, zIndex: 30 - index, opacity: isTop && exitDirection ? 0 : 1 }}
                 >
                   <Image
@@ -369,18 +362,17 @@ export function TryUgcPilotDemo() {
                     draggable={false}
                   />
                   <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/5 to-black/65" />
-                  <div className="absolute inset-x-6 top-24 text-center text-[14px] font-bold leading-6 text-white drop-shadow-[0_2px_5px_rgba(0,0,0,0.85)] sm:text-[16px] sm:leading-7">
+                  <div
+                    className="absolute inset-x-8 top-[185px] text-center text-base font-semibold leading-[1.42] tracking-[-0.15px] text-white [text-shadow:-0.5px_-0.5px_0_rgba(0,0,0,0.85),0.5px_-0.5px_0_rgba(0,0,0,0.85),-0.5px_0.5px_0_rgba(0,0,0,0.85),0.5px_0.5px_0_rgba(0,0,0,0.85),0_1px_3px_rgba(0,0,0,0.9),0_3px_8px_rgba(0,0,0,0.85)]"
+                    style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Rounded', Inter, sans-serif" }}
+                  >
                     {card.wallOfText}
                   </div>
-                  <div className={`absolute left-6 top-20 rounded-lg border-4 px-3 py-1 text-xl font-black tracking-wider transition-opacity ${dragX > 0 || exitDirection === "right" ? "border-emerald-300 text-emerald-200" : "border-emerald-300 text-emerald-200 opacity-0"}`}>
+                  <div className={`absolute left-6 top-9 rounded-lg border-4 px-3 py-1 text-xl font-black tracking-wider transition-opacity ${dragX > 0 || exitDirection === "right" ? "border-emerald-300 text-emerald-200" : "border-emerald-300 text-emerald-200 opacity-0"}`}>
                     POSTED
                   </div>
-                  <div className={`absolute right-6 top-20 rounded-lg border-4 px-3 py-1 text-xl font-black tracking-wider transition-opacity ${dragX < 0 || exitDirection === "left" ? "border-rose-300 text-rose-200" : "border-rose-300 text-rose-200 opacity-0"}`}>
+                  <div className={`absolute right-6 top-9 rounded-lg border-4 px-3 py-1 text-xl font-black tracking-wider transition-opacity ${dragX < 0 || exitDirection === "left" ? "border-rose-300 text-rose-200" : "border-rose-300 text-rose-200 opacity-0"}`}>
                     SKIP
-                  </div>
-                  <div className="absolute inset-x-5 bottom-7">
-                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/65">{card.topic}</p>
-                    <p className="mt-1 text-base font-semibold leading-5 text-white">{card.hook}</p>
                   </div>
                 </div>
               );
@@ -393,33 +385,30 @@ export function TryUgcPilotDemo() {
                 <p className="mt-2 text-sm leading-6 text-zinc-300">Analyze another website or reset this demonstration deck to continue.</p>
               </div>
             ) : null}
-          </div>
-
-          <div className="mt-5 flex items-center gap-8">
-            <button
-              type="button"
-              aria-label="Skip"
-              onClick={() => swipe("left")}
-              disabled={!topCard || Boolean(exitDirection)}
-              className="grid size-16 place-items-center rounded-full border border-rose-400/35 bg-zinc-900 text-rose-400 shadow-lg transition hover:scale-105 hover:bg-rose-400/10 disabled:opacity-50"
-            >
-              <X className="size-7" aria-hidden="true" />
-            </button>
-            <div className="text-center text-xs text-zinc-400">
-              <p>Skipped {skippedCount}</p>
-              <p className="mt-1">Posted {accepted.length}</p>
             </div>
-            <button
-              type="button"
-              aria-label="Posted"
-              onClick={() => swipe("right")}
-              disabled={!topCard || Boolean(exitDirection)}
-              className="grid size-16 place-items-center rounded-full border border-emerald-400/35 bg-zinc-900 text-emerald-400 shadow-lg transition hover:scale-105 hover:bg-emerald-400/10 disabled:opacity-50"
-            >
-              <Check className="size-7" aria-hidden="true" />
-            </button>
+
+            <div className="absolute inset-x-0 bottom-0 z-40 flex h-[104px] items-center justify-center gap-20 bg-[#121212]">
+              <button
+                type="button"
+                aria-label="Skip"
+                onClick={() => swipe("left")}
+                disabled={!topCard || Boolean(exitDirection)}
+                className="grid size-[68px] place-items-center rounded-full border border-rose-400/35 bg-white/5 text-rose-400 shadow-[0_12px_28px_rgba(0,0,0,0.45)] transition hover:scale-105 hover:bg-rose-400/10 disabled:opacity-50"
+              >
+                <X className="size-7" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                aria-label="Posted"
+                onClick={() => swipe("right")}
+                disabled={!topCard || Boolean(exitDirection)}
+                className="grid size-[68px] place-items-center rounded-full border border-emerald-400/35 bg-white/5 text-emerald-400 shadow-[0_12px_28px_rgba(0,0,0,0.45)] transition hover:scale-105 hover:bg-emerald-400/10 disabled:opacity-50"
+              >
+                <Check className="size-7" aria-hidden="true" />
+              </button>
+            </div>
+            <div className="absolute bottom-2 left-1/2 z-50 h-[4.5px] w-[130px] -translate-x-1/2 rounded-full bg-white/25" aria-hidden="true" />
           </div>
-          <p className="mt-4 text-center text-xs text-zinc-500">Swipe left to skip · Swipe right to post · Arrow keys work too</p>
         </section>
       </div>
     </main>

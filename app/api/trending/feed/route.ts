@@ -118,7 +118,7 @@ export async function GET(request: Request) {
     const failedFeed = dailyFeed.feed;
     if (
       requestUrl.searchParams.get("retryFailed") === "1" &&
-      failedFeed?.state === "failed" &&
+      failedFeed?.failure &&
       failedFeed.id
     ) {
       const retryKey = await restartFailedDailyTrendingFeedSlots({

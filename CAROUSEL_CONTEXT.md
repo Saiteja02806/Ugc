@@ -896,6 +896,13 @@ items than that persisted limit, later GET requests append newly ready items to
 the remaining positions. A partial feed therefore fills as existing generation
 work completes instead of freezing after its first non-empty response.
 
+If one or more unassigned slots reach a terminal failure while other cards are
+ready, the response keeps `feed.state: "ready"` and preserves those ready cards,
+but also exposes its public failure state and a visible **Retry missing** action.
+That action is the only browser path that adds `retryFailed=1`; it reopens only
+the failed, unassigned slots through `restart_failed_daily_trending_feed_slots`.
+It must never clear, replace, or automatically retry ready content.
+
 The response exposes `feed.state` with these values:
 
 - `ready`: at least one runtime-safe active carousel is available and no

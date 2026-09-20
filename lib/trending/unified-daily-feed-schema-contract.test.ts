@@ -323,6 +323,21 @@ test("derives feed status from slots so stale failure metadata cannot hide ready
   );
 });
 
+test("keeps ready cards visible while surfacing an explicit retry for failed slots", () => {
+  assert.match(
+    unifiedFeed,
+    /const hasFailedSlots = existingPlan\.slots\.some\([\s\S]*slot\.state === "failed"/,
+  );
+  assert.match(
+    unifiedFeed,
+    /state === "failed" \|\| hasFailedSlots[\s\S]*getPublicDailyFeedFailure/,
+  );
+  assert.match(
+    feedRoute,
+    /requestUrl\.searchParams\.get\("retryFailed"\) === "1"[\s\S]*failedFeed\?\.failure[\s\S]*restartFailedDailyTrendingFeedSlots/,
+  );
+});
+
 test("preserves a current ready Hook during refills and reopens only stale current slots", () => {
   assert.match(
     hookAssignmentIntegrityMigration,

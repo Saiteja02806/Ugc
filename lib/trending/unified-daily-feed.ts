@@ -275,8 +275,15 @@ export async function readUnifiedTrendingDailyFeed(params: {
     items,
     readiness: responseReadiness,
   });
+  // A ready card must stay visible when another reserved slot fails, but the
+  // response still needs to expose the explicit, slot-preserving recovery
+  // action. `feed.state` remains ready so the deck does not regress to a full
+  // failure screen.
+  const hasFailedSlots = existingPlan.slots.some(
+    (slot) => slot.state === "failed",
+  );
   const failure =
-    state === "failed"
+    state === "failed" || hasFailedSlots
       ? getPublicDailyFeedFailure({
           error: existingPlan.feed.lastError,
           slots: existingPlan.slots,

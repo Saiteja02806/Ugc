@@ -1265,7 +1265,7 @@ export function TrendingWorkspace() {
                 upgradeRequired={trendingUpgradeRequired}
                 onCompleteProfile={openBusinessProfile}
                 onRetryHistory={() => {
-                  retryFailedFeedRef.current = trendingFeedState === "failed";
+                  retryFailedFeedRef.current = Boolean(trendingFeedFailure);
                   setCarouselHistoryState("loading");
                   setCarouselHistoryRefreshKey((current) => current + 1);
                 }}
@@ -1625,6 +1625,22 @@ function TrendingFeed({
 
   return (
     <div className="flex w-full flex-col gap-10">
+      {failure && headerActionsRoot
+        ? createPortal(
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-label="Retry missing Trending content"
+              title="Retry missing content"
+              onClick={onRetry}
+            >
+              <RefreshCw data-icon="inline-start" aria-hidden="true" />
+              Retry missing
+            </Button>,
+            headerActionsRoot,
+          )
+        : null}
       <TrendingDeck
         activeSlideByCarouselId={activeSlideByCarouselId}
         candidates={candidates}

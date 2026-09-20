@@ -65,6 +65,17 @@ test("shows generation progress instead of caught-up while daily slots remain pe
   );
 });
 
+test("offers a user-initiated retry when only part of the visible feed failed", () => {
+  assert.match(
+    workspace,
+    /retryFailedFeedRef\.current = Boolean\(trendingFeedFailure\)/,
+  );
+  assert.match(
+    workspace,
+    /aria-label="Retry missing Trending content"[\s\S]*Retry missing/,
+  );
+});
+
 test("stops the generation spinner when an existing free-trial feed requires an upgrade", () => {
   assert.match(workspace, /upgradeRequired\?: boolean/);
   assert.match(

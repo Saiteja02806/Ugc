@@ -10,6 +10,7 @@ const MAX_URL_LENGTH = 2_048;
 const MAX_MARKDOWN_CHARS = 9_000;
 const MAX_RECENT_HOOKS = 32;
 const REQUESTS_PER_MINUTE = 5;
+const MIN_WALL_OF_TEXT_CHARS = 80;
 
 const requestTimes = new Map<string, number[]>();
 
@@ -273,8 +274,7 @@ export function validatePosts(payload: unknown, expectedCount: number, startNumb
     const topic = collapseText(parsed.data.topic, 96);
     const hook = collapseText(parsed.data.hook, 180);
     const wallOfText = collapseText(parsed.data.wallOfText, 560);
-    const wordCount = wallOfText.split(/\s+/).filter(Boolean).length;
-    if (!topic || !hook || wordCount < 24 || wordCount > 42) return [];
+    if (!topic || !hook || wallOfText.length < MIN_WALL_OF_TEXT_CHARS) return [];
     return [{ id: `post_${startNumber + index}`, topic, hook, wallOfText }];
   });
 
@@ -284,7 +284,7 @@ export function validatePosts(payload: unknown, expectedCount: number, startNumb
   return posts;
 }
 
-async function generatePosts(
+async function generatePostsAttempt(
   businessContext: BusinessContext,
   count: number,
   startNumber: number,
@@ -398,7 +398,16 @@ async function generatePosts(
   try {
     return validatePosts(JSON.parse(content), count, startNumber);
   } catch (error) {
-    if (error instanceof UgcPilotDemoError) throw error;
+    if (error instanceof UgcPilotDemoError) {
+      console.warn("UGC Pilot OpenAI structured response failed validation", {
+        model,
+        expectedPosts: count,
+        completionCharacters: content.length,
+        finishReason,
+        responseCode: error.code,
+      });
+      throw error;
+    }
     console.warn("UGC Pilot OpenAI response was not valid structured content", {
       model,
       expectedPosts: count,
@@ -407,6 +416,32 @@ async function generatePosts(
     });
     throw new UgcPilotDemoError("AI_RESPONSE_INVALID", "The AI response could not be used. Please try again.", 502);
   }
+}
+
+async function generatePosts(
+  businessContext: BusinessContext,
+  count: number,
+  startNumber: number,
+  recentHooks: string[],
+) {
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      return await generatePostsAttempt(businessContext, count, startNumber, recentHooks);
+    } catch (error) {
+      const canRetry =
+        error instanceof UgcPilotDemoError &&
+        ["AI_RESPONSE_INVALID", "AI_RESPONSE_INCOMPLETE"].includes(error.code);
+      if (!canRetry || attempt === 2) throw error;
+
+      console.warn("UGC Pilot retrying malformed structured response", {
+        expectedPosts: count,
+        attempt: attempt + 1,
+        failureCode: error.code,
+      });
+    }
+  }
+
+  throw new UgcPilotDemoError("AI_RESPONSE_INVALID", "The AI response could not be used. Please try again.", 502);
 }
 
 export async function analyzeWebsite(rawUrl: string, clientIp: string) {

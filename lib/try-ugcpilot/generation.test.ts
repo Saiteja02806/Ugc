@@ -49,6 +49,25 @@ test("rejects incomplete or non-Wall-of-Text model output", () => {
   );
 });
 
+test("accepts complete creator copy without a brittle word-count requirement", () => {
+  const posts = validatePosts(
+    {
+      posts: [
+        {
+          topic: "Clear next step",
+          hook: "Make the next action obvious",
+          wallOfText:
+            "Make the next action obvious, remove the friction around it, and review the result before deciding what deserves your attention after that.",
+        },
+      ],
+    },
+    1,
+    1,
+  );
+
+  assert.equal(posts.length, 1);
+});
+
 test("accepts only the public analysis and stateless refill request shapes", () => {
   assert.equal(AnalyzeRequestSchema.safeParse({ url: "https://example.com" }).success, true);
   assert.equal(AnalyzeRequestSchema.safeParse({ url: "" }).success, false);

@@ -37,6 +37,7 @@ import {
 } from "react";
 
 import { SocialAccountAvatar } from "@/components/social/social-account-avatar";
+import { TikTokBetaAnalyticsPanel } from "@/components/analytics/tiktok-beta-analytics-panel";
 import { InstagramAccountAvatar } from "@/components/social/instagram-account-avatar";
 import {
   Alert,
@@ -95,6 +96,7 @@ import {
 import { getConnectionPublishingBlockMessage } from "@/lib/scheduling/social-connection-policy";
 import type { ScheduledPost } from "@/lib/scheduling/types";
 import type { SocialConnection } from "@/lib/social/types";
+import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
 import { cn } from "@/lib/utils";
 
 type AnalyticsLoadState = "error" | "loading" | "ready";
@@ -210,6 +212,7 @@ const contentTypeLabels: Record<InstagramContentType, string> = {
 export function InstagramAnalyticsWorkspace() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const tiktokBetaEnabled = hasTikTokBetaAccess(user);
   const accountId = user?.uid ?? "";
 
   const [connections, setConnections] = useState<SocialConnection[]>([]);
@@ -608,6 +611,8 @@ export function InstagramAnalyticsWorkspace() {
             </Button>
           </div>
         </header>
+
+        {tiktokBetaEnabled ? <TikTokBetaAnalyticsPanel /> : null}
 
         <div
           className="mt-6"

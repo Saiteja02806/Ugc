@@ -8,6 +8,14 @@ import {
   requiredTikTokOAuthScopes,
 } from "./tiktok-oauth-config.ts";
 
+test("requests only the approved TikTok beta scopes", () => {
+  assert.deepEqual(requiredTikTokOAuthScopes, [
+    "user.info.basic",
+    "video.publish",
+    "video.list",
+  ]);
+});
+
 test("builds a least-privilege TikTok reconnect URL", () => {
   const url = buildTikTokOAuthAuthorizationUrl({
     clientKey: "client-key",

@@ -4698,6 +4698,25 @@ Runtime/font errors propagate as dependency failures instead of copy-fit errors.
   generation recovery reliability, not the approved cover/body design,
   existing image treatment, format sequence, or historical renders.
 
+## 2026-09-21 Verified TikTok scheduling beta
+
+- The visible new-post scheduling and inline Carousel scheduling surfaces stay
+  Instagram-only for all accounts except the verified Firebase email
+  `vtu19403@veltech.edu.in`. That account may select its connected TikTok
+  account alongside Instagram for Direct Post video and 2-35 image photo
+  Carousel targets. YouTube remains dormant.
+- This is enforced in the OAuth, analytics, draft create/edit, final schedule,
+  and retry server boundaries; a hidden frontend control is not the access
+  control. The named verified Firebase email is the complete allowlist.
+- TikTok authorization requests exactly `user.info.basic`, `video.publish`,
+  and `video.list`. The account identity view uses basic info, Direct Post uses
+  `video.publish`, and per-video analytics use `video.list`. Do not add
+  `user.info.profile`, `user.info.stats`, or the draft-only `video.upload`
+  scope for this beta without a new product decision.
+- The beta analytics panel shows only returned public-video metrics (views,
+  likes, comments, and shares). It does not claim account-level followers,
+  following, total likes, or public-video-count analytics.
+
 ## 2026-09-21 Structure 2 field-level repair and empty-response evidence
 
 - A parsed Structure 2 plan with blocking copy failures on one or more
@@ -4738,3 +4757,6 @@ Runtime/font errors propagate as dependency failures instead of copy-fit errors.
   `llm-carousel-structure-2-writer-v17-flexible-body-copy-field-repair`, so
   production rows make the relaxed boundary auditable.
 - The targeted copy-repair schema also applies the existing 42-character cap
+  to Slide 1 only. This is not a new copy-quality rule: it prevents the repair
+  response from ignoring the measured three-line, 96px cover fit boundary and
+  causing a valid body plan to fail for a second time.

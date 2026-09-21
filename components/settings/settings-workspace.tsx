@@ -37,6 +37,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { InstagramAccountManager } from "@/components/settings/instagram-account-manager";
+import { TikTokBetaAccountManager } from "@/components/settings/tiktok-beta-account-manager";
 import { AppScreenshotsSettings } from "@/components/settings/app-screenshots-settings";
 import { BusinessContextSettings } from "@/components/settings/business-context-settings";
 import { SupportFeedbackSettings } from "@/components/settings/support-feedback-settings";
@@ -46,6 +47,7 @@ import { LATEST_PRODUCT_UPDATE } from "@/lib/updates/product-updates";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
+import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
 
 const SETTINGS_SECTIONS = [
   {
@@ -105,6 +107,7 @@ type SettingsSectionId = (typeof SETTINGS_SECTIONS)[number]["id"];
 export function SettingsWorkspace() {
   const router = useRouter();
   const { user, signOut } = useAuth();
+  const tiktokBetaEnabled = hasTikTokBetaAccess(user);
   const { locked: themeLocked, setTheme, theme } = useTheme();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
@@ -582,6 +585,7 @@ export function SettingsWorkspace() {
             title="Connected accounts"
           >
             <InstagramAccountManager />
+            {tiktokBetaEnabled ? <TikTokBetaAccountManager /> : null}
           </SettingsSection>
           ) : null}
 

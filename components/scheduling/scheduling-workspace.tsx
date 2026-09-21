@@ -60,6 +60,7 @@ import {
 import { getScheduleMediaIssue } from "@/lib/scheduling/media-availability";
 import { getSocialConnectionAccountLabel } from "@/lib/scheduling/schedule-form-persistence";
 import {
+  getConnectionPublishingBlockMessage,
   getInstagramSchedulingAccessState,
   type InstagramSchedulingAccessState,
 } from "@/lib/scheduling/social-connection-policy";
@@ -109,6 +110,7 @@ import {
   SCHEDULING_CATALOG_GC_TIME_MS,
 } from "@/lib/scheduling/workspace-query-cache";
 import type { SocialConnection } from "@/lib/social/types";
+import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
 import type { ScheduleFormSubmission } from "@/components/scheduling/schedule-editor";
 import { cn } from "@/lib/utils";
 
@@ -208,6 +210,7 @@ const tabLabels: Record<ScheduleTab, string> = {
 
 export function SchedulingWorkspace() {
   const { user } = useAuth();
+  const tiktokBetaEnabled = hasTikTokBetaAccess(user);
   const queryClient = useQueryClient();
   const accountId = user?.uid ?? "signed-out";
   const cachedMediaCatalog = queryClient.getQueryData<SchedulingMediaCatalog>(
@@ -582,8 +585,15 @@ export function SchedulingWorkspace() {
       }
 
       const accessState = getInstagramSchedulingAccessState(connections);
+      const hasReadyTikTokConnection =
+        tiktokBetaEnabled &&
+        connections.some(
+          (connection) =>
+            connection.platform === "tiktok" &&
+            getConnectionPublishingBlockMessage(connection) === null,
+        );
 
-      if (accessState !== "ready") {
+      if (accessState !== "ready" && !hasReadyTikTokConnection) {
         setScheduleAccessPrompt(accessState);
         return;
       }
@@ -610,6 +620,7 @@ export function SchedulingWorkspace() {
     loadScheduleMedia,
     loadSocialConnections,
     selectedCalendarDate,
+    tiktokBetaEnabled,
   ]);
 
   useEffect(() => {
@@ -776,10 +787,16 @@ export function SchedulingWorkspace() {
 
   async function handleSaveScheduleDraft(submission: ScheduleFormSubmission) {
     if (
-      !submission.targets.some((target) => target.platform === "instagram")
+      !submission.targets.some(
+        (target) =>
+          target.platform === "instagram" ||
+          (tiktokBetaEnabled && target.platform === "tiktok"),
+      )
     ) {
       setDrawerError(
-        "Connect and select an Instagram account before scheduling.",
+        tiktokBetaEnabled
+          ? "Connect and select an Instagram or TikTok account before scheduling."
+          : "Connect and select an Instagram account before scheduling.",
       );
       return;
     }
@@ -1146,14 +1163,13 @@ export function SchedulingWorkspace() {
         <div>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-primary">
             <SocialPlatformIcon className="size-4" platform="instagram" />
-            Instagram publishing
+            {tiktokBetaEnabled ? "Instagram + TikTok publishing" : "Instagram publishing"}
           </div>
           <h1 className="mt-3 text-3xl font-bold tracking-[-0.035em] text-foreground sm:text-4xl">
             Content calendar
           </h1>
           <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-muted sm:text-base">
-            Plan, review, and publish your Instagram content from one focused
-            workspace.
+            Plan, review, and publish your {tiktokBetaEnabled ? "Instagram and TikTok" : "Instagram"} content from one focused workspace.
           </p>
         </div>
 
@@ -1177,8 +1193,8 @@ export function SchedulingWorkspace() {
             <Plus className="size-4" aria-hidden="true" />
           )}
           {checkingScheduleAccess
-            ? "Checking Instagram…"
-            : "Schedule Instagram post"}
+            ? `Checking ${tiktokBetaEnabled ? "publishing accounts" : "Instagram"}…`
+            : `Schedule ${tiktokBetaEnabled ? "publishing" : "Instagram"} post`}
         </button>
       </header>
 
@@ -1288,11 +1304,13 @@ export function SchedulingWorkspace() {
           requireScheduleTarget={requireScheduleTarget}
           saving={savingSchedule}
           socialConnections={socialConnections}
+          tiktokBetaEnabled={tiktokBetaEnabled}
         />
       ) : null}
 
       <InstagramScheduleAccessDialog
         accessState={scheduleAccessPrompt}
+        tiktokBetaEnabled={tiktokBetaEnabled}
         onClose={() => setScheduleAccessPrompt(null)}
       />
 
@@ -1330,9 +1348,11 @@ function ScheduleEditorLoading() {
 
 function InstagramScheduleAccessDialog({
   accessState,
+  tiktokBetaEnabled,
   onClose,
 }: {
   accessState: Exclude<InstagramSchedulingAccessState, "ready"> | null;
+  tiktokBetaEnabled: boolean;
   onClose: () => void;
 }) {
   const reconnecting = accessState === "reconnect";
@@ -1351,16 +1371,20 @@ function InstagramScheduleAccessDialog({
           <span className="mb-2 inline-flex size-11 items-center justify-center rounded-[14px] bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose)_55%,var(--instagram-violet))] shadow-[0_10px_24px_rgb(214_41_118_/_0.18)]">
             <SocialPlatformIcon
               className="size-6 text-white"
-              platform="instagram"
+              platform={tiktokBetaEnabled ? "tiktok" : "instagram"}
             />
           </span>
           <DialogTitle className="text-lg font-bold tracking-[-0.02em] text-foreground-strong">
-            {reconnecting
+            {tiktokBetaEnabled
+              ? "Connect a publishing account"
+              : reconnecting
               ? "Reconnect Instagram to schedule"
               : "Connect Instagram first"}
           </DialogTitle>
           <DialogDescription className="leading-6">
-            {reconnecting
+            {tiktokBetaEnabled
+              ? "Connect Instagram or TikTok before choosing media, date, and time."
+              : reconnecting
               ? "Your Instagram connection cannot publish right now. Reconnect it before choosing media, date, and time."
               : "Scheduling requires a connected Instagram professional account. Connect one before choosing media, date, and time."}
           </DialogDescription>
@@ -1381,7 +1405,11 @@ function InstagramScheduleAccessDialog({
             className={buttonVariants({ size: "lg" })}
           >
             <Plus data-icon="inline-start" aria-hidden="true" />
-            {reconnecting ? "Reconnect Instagram" : "Connect Instagram"}
+            {tiktokBetaEnabled
+              ? "Open connected accounts"
+              : reconnecting
+                ? "Reconnect Instagram"
+                : "Connect Instagram"}
           </Link>
         </DialogFooter>
       </DialogContent>

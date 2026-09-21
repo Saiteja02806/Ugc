@@ -13,6 +13,7 @@ import {
 import { getScheduledPostForUser } from "@/lib/scheduling/db";
 import { startWallTextScheduleRender } from "@/lib/scheduling/wall-text-render-start";
 import type { ScheduleUpdateInput } from "@/lib/scheduling/types";
+import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -172,9 +173,11 @@ export async function PATCH(
   { params }: { params: Promise<{ scheduleId: string }> },
 ) {
   let userId: string;
+  let user: Awaited<ReturnType<typeof requireFirebaseUser>>;
 
   try {
-    userId = (await requireFirebaseUser(request)).uid;
+    user = await requireFirebaseUser(request);
+    userId = user.uid;
   } catch (error) {
     return authErrorResponse(error, "Sign in before editing this schedule.");
   }
@@ -211,6 +214,7 @@ export async function PATCH(
 
   try {
     const schedule = await updateUserSchedule({
+      allowTikTokTargets: hasTikTokBetaAccess(user),
       input: body,
       postId: scheduleId,
       userId,

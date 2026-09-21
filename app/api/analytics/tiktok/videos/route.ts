@@ -8,15 +8,18 @@ import {
 import { getPublicBackgroundJob } from "@/lib/jobs/background-job-contract";
 import { getMissingBackgroundJobStorageEnvVars } from "@/lib/jobs/background-jobs";
 import { getMissingBackgroundJobCloudTasksEnvVars } from "@/lib/jobs/gcp-cloud-tasks";
+import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   let userId: string;
+  let user: Awaited<ReturnType<typeof requireFirebaseUser>>;
 
   try {
-    userId = (await requireFirebaseUser(request)).uid;
+    user = await requireFirebaseUser(request);
+    userId = user.uid;
   } catch (error) {
     const status = error instanceof FirebaseAuthRequestError ? error.status : 500;
     return json({
@@ -26,6 +29,17 @@ export async function POST(request: Request) {
           : "Could not verify your sign-in session.",
       ok: false,
     }, status);
+  }
+
+  if (!hasTikTokBetaAccess(user)) {
+    return json(
+      {
+        code: "tiktok_beta_access_required",
+        message: "TikTok analytics are not enabled for this account.",
+        ok: false,
+      },
+      403,
+    );
   }
 
   const missing = Array.from(new Set([

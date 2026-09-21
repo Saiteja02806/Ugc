@@ -47,6 +47,7 @@ import {
   getTikTokPrivacyLabel,
   type TikTokPublishCapabilities,
 } from "@/lib/social/tiktok-publishing";
+import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
 import type { SocialConnection, SocialPlatform } from "@/lib/social/types";
 import { cn } from "@/lib/utils";
 
@@ -99,6 +100,7 @@ export function HookVideoScheduleDrawer({
   summary: HookVideoScheduleSummary;
 }) {
   const { user } = useAuth();
+  const tiktokBetaEnabled = hasTikTokBetaAccess(user);
   const queryClient = useQueryClient();
   const accountId = user?.uid ?? "signed-out";
   const initialDateTime = useMemo(() => getInitialDateTime(), []);
@@ -168,14 +170,16 @@ export function HookVideoScheduleDrawer({
     return () => window.clearTimeout(timer);
   }, [loadConnections]);
 
-  // Keep every provider in state so legacy schedules and provider-specific
-  // validation remain intact. New Reel scheduling only exposes Instagram.
+  // Keep every provider in state so legacy schedules remain intact. The
+  // verified TikTok beta account can also select TikTok Direct Post targets.
   const visibleConnections = useMemo(
     () =>
       connections.filter(
-        (connection) => connection.platform === "instagram",
+        (connection) =>
+          connection.platform === "instagram" ||
+          (tiktokBetaEnabled && connection.platform === "tiktok"),
       ),
-    [connections],
+    [connections, tiktokBetaEnabled],
   );
   const selectedConnections = visibleConnections.filter((connection) =>
     selectedConnectionIds.includes(connection.id),
@@ -424,7 +428,7 @@ export function HookVideoScheduleDrawer({
                     {visibleConnections.length === 0 ? (
                       <div className="rounded-[12px] border border-dashed border-border-strong px-3 py-5 text-center">
                         <p className="text-xs font-medium text-muted">
-                          No Instagram account connected.
+                          No {tiktokBetaEnabled ? "Instagram or TikTok account" : "Instagram account"} connected.
                         </p>
                         <Link
                           href="/settings#instagram-publishing"
@@ -444,10 +448,10 @@ export function HookVideoScheduleDrawer({
               >
                 <label className="block text-xs font-semibold text-muted">
                   <span id="schedule-caption-heading">
-                    Instagram caption <span className="font-medium">(optional)</span>
+                    Caption <span className="font-medium">(optional)</span>
                   </span>
                   <span className="mt-1 block text-[11px] font-medium leading-4 text-muted">
-                    This appears in the Instagram post caption, separately from the text in your Hook Video.
+                    This appears with the published post, separately from the text in your Hook Video.
                   </span>
                   <textarea
                     name="caption"
@@ -599,8 +603,8 @@ export function HookVideoScheduleDrawer({
   );
 }
 
-// Provider-specific controls remain here for legacy/internal schedule targets.
-// The current picker only passes Instagram connections into this component.
+// Provider-specific controls cover the visible Instagram picker and the
+// verified-account TikTok beta picker.
 function ConnectionRow({
   connection,
   selected,

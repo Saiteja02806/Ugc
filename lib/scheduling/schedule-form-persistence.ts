@@ -47,21 +47,23 @@ export function getInitialScheduleConnectionIds(params: {
 }
 
 export function getUnavailableSavedInstagramTargets(params: {
+  allowedPlatforms?: SchedulePlatform[];
   connections: ConnectionIdentity[];
   plannedTargets: ScheduleCreateTargetInput[];
 }) {
   const connectionById = new Map(
     params.connections.map((connection) => [connection.id, connection]),
   );
+  const allowedPlatforms = new Set(params.allowedPlatforms ?? ["instagram"]);
 
   return params.plannedTargets.filter((target) => {
     const connection = connectionById.get(target.connectionId);
     const platform = target.platform ?? connection?.platform;
 
     return (
-      (platform === undefined || platform === "instagram") &&
+      (platform === undefined || allowedPlatforms.has(platform)) &&
       (!connection ||
-        connection.platform !== "instagram" ||
+        !allowedPlatforms.has(connection.platform) ||
         connection.status === "revoked")
     );
   });

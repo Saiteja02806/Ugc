@@ -18,6 +18,7 @@ import { persistHookVideoSelection } from "@/lib/trending/hook-video-service";
 import { prepareOwnedHookMediaAsset } from "@/lib/trending/hook-video-sources";
 import { getHookVideoTextPosition } from "@/lib/trending/hook-video-text-placement";
 import { HookVideoScheduleRequestSchema } from "@/lib/trending/hook-video-validation";
+import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,6 +64,7 @@ export async function POST(request: Request) {
       ...scheduleTime,
     };
     const scheduleResult = await createUserSchedule({
+      allowTikTokTargets: hasTikTokBetaAccess(auth.user),
       input: {
         caption: scheduleInput.caption ?? "",
         idempotencyKey: createHookVideoScheduleIdempotencyKey({

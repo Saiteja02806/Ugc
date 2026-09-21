@@ -16,15 +16,18 @@ import { ReactionScheduleRequestSchema } from "@/lib/trending/reaction-schedulin
 import { scheduleReactionWithDependencies } from "@/lib/trending/reaction-scheduling-flow";
 import type { ScheduleCreateInput } from "@/lib/scheduling/types";
 import { markDailyTrendingSlotDecided } from "@/lib/trending/unified-daily-feed-db";
+import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   let userId: string;
+  let user: Awaited<ReturnType<typeof requireFirebaseUser>>;
 
   try {
-    userId = (await requireFirebaseUser(request)).uid;
+    user = await requireFirebaseUser(request);
+    userId = user.uid;
   } catch (error) {
     return authError(error);
   }
@@ -89,14 +92,18 @@ export async function POST(request: Request) {
       title: creative.title,
       useDefaultScheduleTime: parsed.data.useDefaultScheduleTime,
     };
+    const allowTikTokTargets = hasTikTokBetaAccess(user);
     const result = await scheduleReactionWithDependencies({
       connectionIds: parsed.data.targets.map((target) => target.connectionId),
       input,
       userId,
     }, {
-      create: createUserSchedule,
-      publish: scheduleRenderedPost,
-      update: updateUserSchedule,
+      create: (params) =>
+        createUserSchedule({ ...params, allowTikTokTargets }),
+      publish: (params) =>
+        scheduleRenderedPost({ ...params, allowTikTokTargets }),
+      update: (params) =>
+        updateUserSchedule({ ...params, allowTikTokTargets }),
     });
     return json({ ...result, ok: true });
   } catch (error) {

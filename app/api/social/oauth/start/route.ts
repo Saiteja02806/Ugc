@@ -16,6 +16,7 @@ import {
   isSocialPlatform,
   isSocialProvider,
 } from "@/lib/social/types";
+import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
 import { getUserSubscription } from "@/lib/billing/subscription-db";
 
 export const runtime = "nodejs";
@@ -34,9 +35,11 @@ type StartBody = {
 
 export async function POST(request: Request) {
   let userId: string;
+  let user: Awaited<ReturnType<typeof requireFirebaseUser>>;
 
   try {
-    userId = (await requireFirebaseUser(request)).uid;
+    user = await requireFirebaseUser(request);
+    userId = user.uid;
   } catch (error) {
     const status = error instanceof FirebaseAuthRequestError ? error.status : 500;
     return json(
@@ -66,6 +69,20 @@ export async function POST(request: Request) {
     return json(
       { ok: false, message: "The selected provider does not match this platform." },
       400,
+    );
+  }
+
+  if (
+    platform === "tiktok" &&
+    !hasTikTokBetaAccess(user)
+  ) {
+    return json(
+      {
+        code: "tiktok_beta_access_required",
+        message: "TikTok connection is not enabled for this account.",
+        ok: false,
+      },
+      403,
     );
   }
 

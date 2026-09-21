@@ -115,8 +115,8 @@ test("untouched Hook schedule times resolve at confirmation and always confirm t
   );
 });
 
-test("Hook scheduling carries the optional Instagram caption into the scheduled post", () => {
-  assert.match(scheduleDrawer, /Instagram caption[\s\S]*?\(optional\)/);
+test("Hook scheduling carries the optional post caption into the scheduled post", () => {
+  assert.match(scheduleDrawer, /Caption[\s\S]*?\(optional\)/);
   assert.match(scheduleDrawer, /name="caption"/);
   assert.match(scheduleDrawer, /caption,\s*scheduledDate,/);
   assert.match(scheduleRoute, /caption: scheduleInput\.caption \?\? ""/);

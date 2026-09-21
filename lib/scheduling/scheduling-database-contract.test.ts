@@ -798,7 +798,7 @@ test("carousel captions remain optional and are never replaced with the carousel
   assert.match(scheduleEditor, /Caption optional\./);
   assert.match(
     scheduleEditor,
-    /Confirm the carousel, choose your Instagram account, and set the publish time\./,
+    /Confirm the carousel, choose your \$\{tiktokBetaEnabled \? "Instagram or TikTok" : "Instagram"\} account, and set the publish time\./,
   );
 });
 
@@ -899,18 +899,22 @@ test("Hook drawers and the shared Trending post scheduler load only from an open
   );
 });
 
-test("the inline carousel modal implements exact-account content and time steps", () => {
+test("the inline carousel modal implements publishing-account content and time steps", () => {
   assert.match(carouselScheduleModal, /Step \{currentStep\.number\} of 4/);
-  assert.match(carouselScheduleModal, /title: "Select Instagram account"/);
+  assert.match(
+    carouselScheduleModal,
+    /const accountLabel = tiktokBetaEnabled \? "publishing account" : "Instagram account"/,
+  );
+  assert.match(carouselScheduleModal, /title: `Select \$\{accountLabel\}`/);
   assert.match(carouselScheduleModal, /title: "Post details"/);
   assert.match(carouselScheduleModal, /title: "Schedule"/);
   assert.match(
     carouselScheduleModal,
-    /const visiblePlatforms = platforms\.filter\([\s\S]*definition\.platform === "instagram"/,
+    /const visiblePlatforms = useMemo\([\s\S]*definition\.platform === "instagram"[\s\S]*tiktokBetaEnabled && definition\.platform === "tiktok"/,
   );
   assert.match(
     carouselScheduleModal,
-    /connections\.filter\([\s\S]*connection\.platform === "instagram"/,
+    /connections\.filter\([\s\S]*visiblePlatforms\.some\([\s\S]*definition\.platform === connection\.platform/,
   );
   assert.match(carouselScheduleModal, /\{visiblePlatforms\.map\(/);
   assert.match(carouselScheduleModal, /label: "TikTok"[\s\S]*platform: "tiktok"/);
@@ -1011,7 +1015,7 @@ test("scheduling requires a selected account before any draft is stored", () => 
   assert.match(schedulingWorkspace, /Connect Instagram first/);
   assert.match(
     schedulingWorkspace,
-    /SocialPlatformIcon\s+className="size-6 text-white"\s+platform="instagram"/,
+    /SocialPlatformIcon[\s\S]*?className="size-6 text-white"[\s\S]*?platform=\{tiktokBetaEnabled \? "tiktok" : "instagram"\}/,
   );
   assert.match(schedulingWorkspace, /target\.platform === "instagram"/);
   assert.doesNotMatch(

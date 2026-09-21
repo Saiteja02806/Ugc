@@ -61,6 +61,7 @@ import {
   type TikTokPrivacyLevel,
   type TikTokPublishCapabilities,
 } from "@/lib/social/tiktok-publishing";
+import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
 import {
   type SocialConnection,
   type SocialConnectionStatus,
@@ -154,13 +155,6 @@ const platforms: PlatformDefinition[] = [
   },
 ];
 
-// TikTok and YouTube definitions stay available for legacy OAuth callbacks and
-// existing schedule records. New Carousel scheduling is intentionally
-// Instagram-only, so only Instagram is rendered as a selectable destination.
-const visiblePlatforms = platforms.filter(
-  (definition) => definition.platform === "instagram",
-);
-
 const defaultTimezone =
   Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 const MAX_SELECTED_INSTAGRAM_ACCOUNTS = 5;
@@ -186,14 +180,16 @@ function getContentLabel(contentKind: ScheduleContentKind) {
 
 function getStepDetails(
   contentKind: ScheduleContentKind,
+  tiktokBetaEnabled: boolean,
 ): Record<ModalStep, { description: string; number: 2 | 3 | 4; title: string }> {
   const contentLabel = getContentLabel(contentKind);
+  const accountLabel = tiktokBetaEnabled ? "publishing account" : "Instagram account";
 
   return {
     accounts: {
-      description: `Choose the Instagram account that will publish this ${contentLabel.toLowerCase()}.`,
+      description: `Choose the ${accountLabel} that will publish this ${contentLabel.toLowerCase()}.`,
       number: 2,
-      title: "Select Instagram account",
+      title: `Select ${accountLabel}`,
     },
     details: {
       description:
@@ -218,6 +214,7 @@ export function PlatformSelectionModal({
   open,
 }: PlatformSelectionModalProps) {
   const { user } = useAuth();
+  const tiktokBetaEnabled = hasTikTokBetaAccess(user);
   const queryClient = useQueryClient();
   const accountId = user?.uid ?? "signed-out";
   const [step, setStep] = useState<ModalStep>("accounts");
@@ -425,12 +422,24 @@ export function PlatformSelectionModal({
     });
   }, [connections, renderTrace]);
 
+  const visiblePlatforms = useMemo(
+    () =>
+      platforms.filter(
+        (definition) =>
+          definition.platform === "instagram" ||
+          (tiktokBetaEnabled && definition.platform === "tiktok"),
+      ),
+    [tiktokBetaEnabled],
+  );
   const carouselConnections = useMemo(
     () =>
       connections.filter(
-        (connection) => connection.platform === "instagram",
+        (connection) =>
+          visiblePlatforms.some(
+            (definition) => definition.platform === connection.platform,
+          ),
       ),
-    [connections],
+    [connections, visiblePlatforms],
   );
   const hasExistingProfessionalAccountRequirement =
     carouselConnections.some(
@@ -449,6 +458,9 @@ export function PlatformSelectionModal({
         selectedConnectionIds.includes(connection.id),
       ),
     [carouselConnections, selectedConnectionIds],
+  );
+  const hasInstagramDestination = selectedConnections.some(
+    (connection) => connection.platform === "instagram",
   );
   const publishingSettingsError = getPublishingSettingsError({
     connections: selectedConnections,
@@ -482,7 +494,7 @@ export function PlatformSelectionModal({
   );
   const contentKind = getContentKind(context);
   const contentLabel = getContentLabel(contentKind);
-  const currentStep = getStepDetails(contentKind)[step];
+  const currentStep = getStepDetails(contentKind, tiktokBetaEnabled)[step];
   const canContinueAccounts =
     selectedConnections.length > 0 &&
     selectedConnections.every(
@@ -798,7 +810,7 @@ export function PlatformSelectionModal({
           <DialogHeader className="relative gap-3 px-5 pb-4 pr-14 pt-5 sm:px-7 sm:pb-5 sm:pr-16 sm:pt-6">
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
-                Instagram post
+                {tiktokBetaEnabled ? "Publishing post" : "Instagram post"}
               </p>
               <DialogTitle className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">
                 {currentStep.title}
@@ -939,6 +951,7 @@ export function PlatformSelectionModal({
                 });
               }}
               onToggle={selectConnection}
+              visiblePlatforms={visiblePlatforms}
             />
           ) : step === "details" ? (
             <DetailsStep
@@ -955,10 +968,32 @@ export function PlatformSelectionModal({
             />
           ) : (
             <div className="grid gap-5">
-              <InstagramCaptionPreview
-                caption={caption}
-                onEdit={() => setStep("details")}
-              />
+              {hasInstagramDestination ? (
+                <InstagramCaptionPreview
+                  caption={caption}
+                  onEdit={() => setStep("details")}
+                />
+              ) : (
+                <section className="rounded-card border border-border bg-card p-4 shadow-card">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">
+                        TikTok caption
+                      </h3>
+                      <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+                        {caption || "No caption"}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setStep("details")}
+                      className="shrink-0 text-xs font-semibold text-primary hover:underline"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </section>
+              )}
               {scheduleMode === "choose" ? (
                 <ScheduleChoiceStep
                   earliestLabel={formatScheduleInstant(
@@ -1053,6 +1088,7 @@ function AccountsStep({
   onConnect,
   onToggle,
   selectedConnectionIds,
+  visiblePlatforms,
 }: {
   carouselConnections: SocialConnection[];
   contentLabel: string;
@@ -1067,7 +1103,11 @@ function AccountsStep({
   ) => void;
   onToggle: (connection: SocialConnection) => void;
   selectedConnectionIds: string[];
+  visiblePlatforms: PlatformDefinition[];
 }) {
+  const includesTikTok = visiblePlatforms.some(
+    (definition) => definition.platform === "tiktok",
+  );
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-5">
       <div>
@@ -1075,13 +1115,13 @@ function AccountsStep({
           Publishing account
         </h3>
         <p className="mt-1 text-sm leading-5 text-muted-foreground">
-          Select one or more Instagram accounts. Each selected account
+          Select one or more publishing accounts. Each selected account
           publishes its own {contentLabel.toLowerCase()}. You can choose up to five.
         </p>
       </div>
 
       <fieldset>
-        <legend className="sr-only">Connected Instagram accounts</legend>
+        <legend className="sr-only">Connected publishing accounts</legend>
         {loading ? (
           <div className="grid gap-3">
             <Skeleton className="h-[88px] w-full rounded-card" />
@@ -1145,7 +1185,9 @@ function AccountsStep({
                         </Badge>
                       </span>
                       <span className="mt-1 block text-xs text-muted-foreground">
-                        Instagram professional account
+                        {connection.platform === "instagram"
+                          ? "Instagram professional account"
+                          : "TikTok creator account"}
                       </span>
                     </span>
                   </label>
@@ -1201,8 +1243,8 @@ function AccountsStep({
                 )}
                 {connectingIntent === "add" &&
                 connectingPlatform === definition.platform
-                  ? "Opening Instagram..."
-                  : "Add another Instagram account"}
+                  ? `Opening ${definition.label}...`
+                  : `Add another ${definition.label} account`}
               </Button>
             ))}
           </div>
@@ -1215,11 +1257,10 @@ function AccountsStep({
               />
             </span>
             <p className="mt-4 text-sm font-semibold text-foreground">
-              Connect Instagram to continue
+              Connect a publishing account to continue
             </p>
             <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground">
-              UGCPilot needs a connected Instagram professional account before
-              it can schedule this post.
+              UGCPilot needs a connected {includesTikTok ? "Instagram or TikTok" : "Instagram"} account before it can schedule this post.
             </p>
             <div className="mt-4 flex justify-center">
               {visiblePlatforms.map((definition) => (
@@ -1242,7 +1283,7 @@ function AccountsStep({
                   )}
                   {connectingPlatform === definition.platform
                     ? "Connecting..."
-                    : "Connect Instagram"}
+                    : `Connect ${definition.label}`}
                 </Button>
               ))}
             </div>
@@ -1309,6 +1350,9 @@ function DetailsStep({
 }) {
   const isWallText = contentKind === "wall_text";
   const isReel = contentKind !== "carousel";
+  const hasTikTokDestination = selectedConnections.some(
+    (connection) => connection.platform === "tiktok",
+  );
 
   return (
     <div className="grid gap-5 md:grid-cols-[240px_minmax(0,1fr)] lg:grid-cols-[260px_minmax(0,1fr)]">
@@ -1351,8 +1395,8 @@ function DetailsStep({
               Text Reel is ready to prepare
             </h3>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Its message already appears on screen. The optional Instagram
-              caption below appears with the post, separately from the video
+              Its message already appears on screen. The optional caption
+              below appears with the post, separately from the video
               text. We start preparing the video after you confirm the schedule.
             </p>
           </section>
@@ -1360,17 +1404,19 @@ function DetailsStep({
 
         <label className="block rounded-card border border-border bg-card p-4 sm:p-5">
           <span className="text-sm font-semibold text-foreground">
-            Instagram caption{" "}
+            Post caption{" "}
             <span className="font-normal text-muted-foreground">
               (optional)
             </span>
           </span>
           <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-            {isWallText
-              ? "Add context to accompany this Text Reel. This appears in the Instagram post caption, separate from the on-screen text."
-              : isReel
-                ? "This appears in the Instagram post caption, separate from the text in the Reaction Reel."
-                : "This appears below the carousel on Instagram, separate from the text on the slides."}
+            {hasTikTokDestination
+              ? "This appears with the TikTok post, separate from the text on the media."
+              : isWallText
+                ? "Add context to accompany this Text Reel. This appears in the Instagram post caption, separate from the on-screen text."
+                : isReel
+                  ? "This appears in the Instagram post caption, separate from the text in the Reaction Reel."
+                  : "This appears below the carousel on Instagram, separate from the text on the slides."}
           </span>
           <textarea
             name="caption"
@@ -1386,7 +1432,11 @@ function DetailsStep({
           </span>
         </label>
 
-        <InstagramCaptionPreview caption={caption} />
+        {selectedConnections.some(
+          (connection) => connection.platform === "instagram",
+        ) ? (
+          <InstagramCaptionPreview caption={caption} />
+        ) : null}
 
         <section
           aria-labelledby="post-publishing-settings"

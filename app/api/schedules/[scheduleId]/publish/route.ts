@@ -10,6 +10,7 @@ import {
   SchedulingRequestError,
   type ScheduleRenderedPostInput,
 } from "@/lib/scheduling/service";
+import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,9 +29,11 @@ export async function POST(
   { params }: { params: Promise<{ scheduleId: string }> },
 ) {
   let userId: string;
+  let user: Awaited<ReturnType<typeof requireFirebaseUser>>;
 
   try {
-    userId = (await requireFirebaseUser(request)).uid;
+    user = await requireFirebaseUser(request);
+    userId = user.uid;
   } catch (error) {
     return authErrorResponse(error, "Sign in before scheduling this post.");
   }
@@ -67,6 +70,7 @@ export async function POST(
 
   try {
     const result = await scheduleRenderedPost({
+      allowTikTokTargets: hasTikTokBetaAccess(user),
       input: body,
       postId: scheduleId,
       userId,

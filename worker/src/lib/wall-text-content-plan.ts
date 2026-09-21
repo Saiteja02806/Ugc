@@ -158,14 +158,18 @@ export async function generateWallTextContentPlanChunk(params: {
           parsed,
         });
         if (repaired) return repaired;
-        throw new SingleWallTextIdeaRepairExhaustedError(
-          `Wall-of-Text content-plan could not replace only the rejected idea: ${issues.join(" ")}`,
-        );
+        // Keep the successfully saved earlier chunks intact. If a narrowly
+        // scoped replacement cannot satisfy validation, use the remaining
+        // compact-chunk attempt with the rejection feedback instead of
+        // failing the entire 200-item plan. This does not add prior-plan
+        // history to the prompt: the model receives only this chunk's
+        // rejected issue(s).
+        lastIssues = issues;
+        continue;
       }
 
       lastIssues = issues;
     } catch (error) {
-      if (error instanceof SingleWallTextIdeaRepairExhaustedError) throw error;
       lastIssues = [getErrorMessage(error)];
     }
   }
@@ -174,8 +178,6 @@ export async function generateWallTextContentPlanChunk(params: {
     `Wall-of-Text content-plan chunk failed validation: ${lastIssues.join(" ")}`,
   );
 }
-
-class SingleWallTextIdeaRepairExhaustedError extends Error {}
 
 function isRepairableWallTextIdeaIssue(issue: string) {
   return (
@@ -555,6 +557,7 @@ function buildSingleIdeaReplacementMessages(params: {
       content: [
         "You repair exactly one private Wall-of-Text plan idea without changing any other plan item.",
         "Use only the supplied business facts. Return a genuinely new individual writing context with a different concrete human situation if the old one was repeated.",
+        "Never repeat an exact contentIdea named in rejectedAttemptIssues; choose a genuinely distinct observation instead.",
         "A related topic is allowed only when the audience, real-life situation, tension, supported angle, or story is meaningfully different.",
         "Do not write final overlay copy, visual line breaks, a CTA, a product pitch, or an unsupported claim.",
       ].join(" "),

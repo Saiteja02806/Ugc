@@ -42,9 +42,10 @@ function shortTakeawayPlan() {
 }
 
 function multiIssuePlan() {
-  const plan = shortTakeawayPlan();
+  const plan = rawPlan(true);
   plan.slides.first!.storyText =
-    "This cover hook is too long for the fixed visual space";
+    "This cover hook deliberately uses too many words for the compact visual space";
+  plan.slides.sixth!.storyText = "Keep your next task visible today.";
   return plan;
 }
 
@@ -74,8 +75,7 @@ test("retains a valid candidate between failures and diagnoses only the rejected
           ? {
               storyTextBySlide: {
                 slide1: "Campaign changes should not steal nights",
-                slide6:
-                  "Keep the next decision visible so changing priorities always have a clear owner and context to continue.",
+                slide6: "Keep your next task visible today.",
               },
             }
           : requestNumber === 2

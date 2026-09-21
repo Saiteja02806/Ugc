@@ -4760,3 +4760,30 @@ Runtime/font errors propagate as dependency failures instead of copy-fit errors.
   to Slide 1 only. This is not a new copy-quality rule: it prevents the repair
   response from ignoring the measured three-line, 96px cover fit boundary and
   causing a valid body plan to fail for a second time.
+
+## 2026-09-22 Structure 2 render-first cover and exact-freshness boundary
+
+- A live production batch on the then-current v17 worker proved that the
+  worker, queue, image path, renderer, and feed delivery were healthy, but
+  fuzzy recent-copy validation rejected otherwise valid plans too often. The
+  validation boundary now blocks only a literal visible-copy duplicate after
+  normalizing case, punctuation, and whitespace. A close token overlap remains
+  an advisory freshness signal and the writer still receives recent accepted
+  copy to avoid it; it cannot by itself discard a natural, audience-relevant
+  Carousel.
+- The 42-character cover figure is now a writing preference, not a publishing
+  ceiling. Slide 1 still must be one complete 5-11-word hook and must pass the
+  measured centered 96px, three-line render-fit and safe-area checks. A hook
+  that physically overflows remains blocked. A complete unpunctuated hook at
+  the preferred length is valid; a lone final letter at that boundary and clear
+  hanging endings remain rejected as actual truncation signals.
+- Structure 2 targeted repair uses the existing broad 720-character structured
+  transport ceiling for Slide 1. It asks the model to prefer the 42-character
+  target, then the publisher decides with the real word-count, completeness,
+  and render-fit checks. This avoids decoder-boundary fragments while preserving
+  no-shrink and no-truncate rendering.
+- The decision raises the planner identifier to
+  `llm-carousel-structure-2-writer-v18-render-first-freshness-advisory`.
+  It changes only new Structure 2 validation and repair behavior; slide roles,
+  CTA prohibition, image selection, safe area, renderer, and historical
+  renders are unchanged.

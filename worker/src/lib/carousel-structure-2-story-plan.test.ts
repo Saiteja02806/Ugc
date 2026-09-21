@@ -5,7 +5,7 @@ import {
   buildCarouselStructure2BatchMessages,
   buildCarouselStructure2StoryBatchSchema,
   buildCarouselStructure2StoryTextRepairSchema,
-  CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS,
+  CAROUSEL_STRUCTURE_2_COVER_HOOK_PREFERRED_MAX_CHARACTERS,
   CAROUSEL_STRUCTURE_2_COVER_HOOK_SCHEMA_MAX_CHARACTERS,
   CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS,
   CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS,
@@ -153,7 +153,7 @@ test("Structure 2 prompt and schema describe the strict six-slide contract", () 
   assert.equal("pattern" in secondStoryText, false);
 });
 
-test("Structure 2 rejects a cover that ends at the published character cap without an ending", () => {
+test("Structure 2 rejects a cover that ends in a lone truncated letter", () => {
   const raw = makeRawStoryPlan();
   raw.slides.first!.storyText = "Are you overwhelmed by changing audience f";
   const plan = parseCarouselStructure2StoryPlan(raw, {
@@ -166,6 +166,24 @@ test("Structure 2 rejects a cover that ends at the published character cap witho
     issues.some(
       (issue) => issue.code === "hook_incomplete" && issue.slideNumber === 1,
     ),
+  );
+});
+
+test("Structure 2 accepts a complete unpunctuated cover at the writing target", () => {
+  const raw = makeRawStoryPlan();
+  raw.slides.first!.storyText = "Your next task needs a simple plan quickly";
+  assert.equal(raw.slides.first!.storyText.length, 42);
+  const plan = parseCarouselStructure2StoryPlan(raw, {
+    businessDescription,
+    storyFormatId: "wrong_belief",
+  });
+  const issues = validateCarouselStructure2StoryPlan(plan, { businessDescription });
+
+  assert.equal(
+    issues.some(
+      (issue) => issue.code === "hook_incomplete" && issue.slideNumber === 1,
+    ),
+    false,
   );
 });
 
@@ -200,11 +218,7 @@ test("Structure 2 rejects a cover hook that cannot safely fit the fixed three-li
 
   assert.ok(
     issues.some(
-      (issue) =>
-        issue.code === "hook_length" &&
-        issue.message.includes(
-          `${CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS} characters`,
-        ),
+      (issue) => issue.code === "render_fit" && issue.slideNumber === 1,
     ),
   );
 });
@@ -244,7 +258,7 @@ test("Structure 2 targeted repair accepts replacements for every invalid slide o
   );
   assert.equal(
     schema.properties.storyTextBySlide.properties.slide1.maxLength,
-    CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS,
+    CAROUSEL_STRUCTURE_2_COVER_HOOK_SCHEMA_MAX_CHARACTERS,
   );
   assert.equal(
     schema.properties.storyTextBySlide.properties.slide5.maxLength,
@@ -253,6 +267,44 @@ test("Structure 2 targeted repair accepts replacements for every invalid slide o
   assert.equal(replacements.get(1), "When campaign work keeps shifting");
   assert.equal(replacements.get(5)?.startsWith("The work still changed"), true);
   assert.equal(replacements.get(6)?.startsWith("Keep the next decision"), true);
+});
+
+test("Structure 2 treats close recent wording as advisory but blocks exact copy", () => {
+  const plan = parseCarouselStructure2StoryPlan(makeRawStoryPlan(), {
+    businessDescription,
+    storyFormatId: "wrong_belief",
+  });
+  const history = [
+    {
+      contentPlanItemId: null,
+      formatId: "wrong_belief",
+      generationId: "prior-carousel",
+      slides: plan.slides.map((slide) => ({
+        ctaText: slide.ctaText,
+        headline: slide.storyText,
+        slideNumber: slide.slideNumber,
+        subtext: null,
+      })),
+      structureId: "structure_2",
+    },
+  ] as const;
+
+  const exact = partitionCarouselStructure2ValidationIssues(
+    validateCarouselStructure2StoryPlan(plan, { businessDescription, recentHistory: history }),
+  );
+  assert.ok(
+    exact.blockingIssues.some((issue) => issue.code === "recent_exact_duplicate"),
+  );
+
+  plan.slides[0]!.storyText = "Why weekly plans collapse by Friday";
+  const close = partitionCarouselStructure2ValidationIssues(
+    validateCarouselStructure2StoryPlan(plan, { businessDescription, recentHistory: history }),
+  );
+  assert.ok(close.advisoryIssues.some((issue) => issue.code === "recent_repetition"));
+  assert.equal(
+    close.blockingIssues.some((issue) => issue.code === "recent_exact_duplicate"),
+    false,
+  );
 });
 
 test("hook and story word-count contracts block invalid output", () => {

@@ -26,7 +26,7 @@ import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 import { CONTENT_PLAN_OPENAI_MAX_RETRIES, CONTENT_PLAN_OPENAI_TIMEOUT_MS } from "./content-plan-provider-retry.js";
 
 export const CAROUSEL_STRUCTURE_2_PLANNER_VERSION =
-  "llm-carousel-structure-2-writer-v17-flexible-body-copy-field-repair";
+  "llm-carousel-structure-2-writer-v18-render-first-freshness-advisory";
 
 // The OpenAI strict decoder cannot safely carry the whitespace word-count
 // regex. Keep the exact contract in the publisher validator and allow one

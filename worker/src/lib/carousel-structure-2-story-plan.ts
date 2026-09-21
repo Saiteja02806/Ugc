@@ -53,11 +53,14 @@ const MAX_STORY_TEXT_LENGTH = 720;
 const MAX_VISUAL_CONTEXT_LENGTH = 220;
 const STRUCTURE_2_COVER_HOOK_MIN_WORDS = 5;
 const STRUCTURE_2_COVER_HOOK_MAX_WORDS = 11;
-export const CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS = 42;
-// The published cover budget remains 42 characters. Do not use that exact
-// boundary in Structured Outputs: gpt-4o-mini can finish a token mid-hook to
-// satisfy it, which produces an apparently valid but incomplete cover. The
-// publisher validator below owns the real 42-character acceptance rule.
+// Forty-two characters is a useful writing target, not the publishing gate.
+// The renderer measures the actual 96px, three-line cover treatment below.
+// A raw character cap rejects naturally short covers that render cleanly and,
+// when used in Structured Outputs, can cut a model off mid-thought.
+export const CAROUSEL_STRUCTURE_2_COVER_HOOK_PREFERRED_MAX_CHARACTERS = 42;
+// Keep strict Structured Outputs broad. The publishing validator owns the
+// meaningful constraints: a compact word range, a complete thought, and the
+// measured three-line render fit.
 export const CAROUSEL_STRUCTURE_2_COVER_HOOK_SCHEMA_MAX_CHARACTERS =
   MAX_STORY_TEXT_LENGTH;
 const GENERIC_COPY_PATTERN =
@@ -113,6 +116,7 @@ export type CarouselStructure2StoryValidationIssue = {
     | "invalid_plan"
     | "perspective"
     | "product_timing"
+    | "recent_exact_duplicate"
     | "render_fit"
     | "recent_repetition"
     | "story_repetition"
@@ -244,12 +248,11 @@ export function validateCarouselStructure2StoryPlan(
     if (
       slide.slideNumber === 1 &&
       (wordCount < STRUCTURE_2_COVER_HOOK_MIN_WORDS ||
-        wordCount > STRUCTURE_2_COVER_HOOK_MAX_WORDS ||
-        copy.length > CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS)
+        wordCount > STRUCTURE_2_COVER_HOOK_MAX_WORDS)
     ) {
       issues.push({
         code: "hook_length",
-        message: `Slide 1 must be one ${STRUCTURE_2_COVER_HOOK_MIN_WORDS}-${STRUCTURE_2_COVER_HOOK_MAX_WORDS}-word hook of ${CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS} characters or fewer, with no subtitle or supporting copy.`,
+        message: `Slide 1 must be one ${STRUCTURE_2_COVER_HOOK_MIN_WORDS}-${STRUCTURE_2_COVER_HOOK_MAX_WORDS}-word hook, with no subtitle or supporting copy.`,
         slideNumber: slide.slideNumber,
       });
     }
@@ -391,6 +394,20 @@ export function validateCarouselStructure2StoryPlan(
       .join(" ");
 
     if (
+      (currentHook && priorHook && hasExactVisibleCopyMatch(currentHook, priorHook)) ||
+      (currentFullCopy &&
+        priorFullCopy &&
+        hasExactVisibleCopyMatch(currentFullCopy, priorFullCopy))
+    ) {
+      issues.push({
+        code: "recent_exact_duplicate",
+        message: "The hook or visible story copy exactly repeats a recent accepted Carousel.",
+        slideNumber: null,
+      });
+      break;
+    }
+
+    if (
       (currentHook && priorHook && tokenOverlap(currentHook, priorHook) >= 0.75) ||
       (currentFullCopy &&
         priorFullCopy &&
@@ -398,7 +415,8 @@ export function validateCarouselStructure2StoryPlan(
     ) {
       issues.push({
         code: "recent_repetition",
-        message: "The hook or visible story copy closely repeats a recent accepted Carousel.",
+        message:
+          "The hook or visible story copy is close to a recent accepted Carousel; keep it as a freshness signal, not a publication block.",
         slideNumber: null,
       });
       break;
@@ -415,7 +433,11 @@ export function partitionCarouselStructure2ValidationIssues(
   const advisoryIssues: CarouselStructure2StoryValidationIssue[] = [];
 
   for (const issue of dedupeCarouselStructure2ValidationIssues(issues)) {
-    blockingIssues.push(issue);
+    if (issue.code === "recent_repetition") {
+      advisoryIssues.push(issue);
+    } else {
+      blockingIssues.push(issue);
+    }
   }
 
   return { advisoryIssues, blockingIssues };
@@ -505,12 +527,12 @@ export function buildCarouselStructure2StoryTextRepairSchema(
             {
               // A word-count regex causes empty strict-output responses from
               // the production model, but a plain character ceiling is safe.
-              // Apply the measured cover budget at the repair boundary so a
-              // repair cannot keep returning an otherwise valid four-line
-              // hook for the fixed 96px, three-line treatment.
+              // Do not bind a repair to the 42-character writing target:
+              // gpt-4o-mini can end an otherwise complete hook at that
+              // boundary. Measured render fit remains the hard safeguard.
               maxLength:
                 key === getTargetedStoryTextKey(1)
-                  ? CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS
+                  ? CAROUSEL_STRUCTURE_2_COVER_HOOK_SCHEMA_MAX_CHARACTERS
                   : MAX_STORY_TEXT_LENGTH,
               minLength: 1,
               type: "string",
@@ -675,8 +697,8 @@ export function buildCarouselStructure2RepairMessages(params: {
           : null,
         hasSlideOneCoverFitFailure
           ? hasSlideOneCutoff
-            ? `Slide 1 stopped at the ${CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS}-character boundary without a complete ending. Replace it with a shorter, self-contained hook; never leave a partial final word or phrase, and do not add support copy.`
-            : `Slide 1 exceeded its fixed cover budget. Replace it with a shorter, simpler single hook that remains within ${CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS} characters and the real three-line display area; do not add support copy.`
+            ? `Slide 1 ends without a complete thought. Replace it with a shorter, self-contained hook; never leave a partial final word or phrase, and do not add support copy.`
+            : `Slide 1 does not fit its fixed visual treatment. Replace it with a shorter, simpler single hook that fits the real three-line display area; approximately ${CAROUSEL_STRUCTURE_2_COVER_HOOK_PREFERRED_MAX_CHARACTERS} characters or fewer is a useful target, not a hard limit. Do not add support copy.`
           : null,
         "Validation issues:",
         JSON.stringify(params.issues),
@@ -713,7 +735,7 @@ export function buildCarouselStructure2StoryTextRepairMessages(params: {
       currentStoryText: slide.storyText,
       replacementKey: getTargetedStoryTextKey(slide.slideNumber),
       requirement: isCover
-        ? `Return one self-contained reader-first hook, normally ${targetRange} words and never outside ${wordRange} words or ${CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS} characters. It must fit within ${lineLimit} visual lines at centered ${fontSize}px type. Never leave a hanging phrase.`
+        ? `Return one self-contained reader-first hook, normally ${targetRange} words and preferably ${CAROUSEL_STRUCTURE_2_COVER_HOOK_PREFERRED_MAX_CHARACTERS} characters or fewer. It must stay within ${wordRange} words and fit within ${lineLimit} visual lines at centered ${fontSize}px type. Never leave a hanging phrase.`
         : `Return one complete ${slide.storyRole} sentence of ${wordRange} words; aim for ${targetRange} words and count whitespace-delimited words before returning. It must fit within ${lineLimit} visual lines at centered ${fontSize}px type.`,
       roleGuidance: getFormatReference(params.assignment.storyFormatId).roleGuidance[
         slide.slideNumber - 1
@@ -961,10 +983,28 @@ function countWords(value: string) {
 
 function isClearlyIncompleteCoverHook(value: string) {
   if (/[.!?…]$/.test(value)) return false;
+  const finalToken = value.trim().split(/\s+/).at(-1) ?? "";
   return (
-    value.length === CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS ||
-    INCOMPLETE_HOOK_ENDING_PATTERN.test(value)
+    INCOMPLETE_HOOK_ENDING_PATTERN.test(value) ||
+    // A lone final letter at the preferred 42-character boundary is a strong
+    // truncation signal. A normal unpunctuated social hook at that length is
+    // not; its measured render fit decides publication.
+    (value.length === CAROUSEL_STRUCTURE_2_COVER_HOOK_PREFERRED_MAX_CHARACTERS &&
+      /^[a-z]$/i.test(finalToken))
   );
+}
+
+function hasExactVisibleCopyMatch(left: string, right: string) {
+  return normalizeVisibleCopy(left) === normalizeVisibleCopy(right);
+}
+
+function normalizeVisibleCopy(value: string) {
+  return value
+    .normalize("NFKC")
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
 }
 
 function tokenOverlap(left: string, right: string) {

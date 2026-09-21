@@ -177,8 +177,12 @@ while keeping exact-copy protection separate from editorial variety.
 The live Wall planner additionally assigns each of the 40 parent briefs one
 compact, deterministic situation focus. It is derived locally for the current
 200-card plan—not from earlier plan ideas, and never sent to the final Writer.
-It tells the planner which part of the reader's working life to explore so that
-twenty small planner calls do not all fall back to the business's most obvious
-scene. The focus is a diversity hint, not a required scene or copy formula:
-when it would require an unsupported fact, the planner must use a nearby,
-fact-grounded situation instead.
+It is a planning coverage boundary: it tells the planner which part of the
+reader's working life to explore so that twenty small planner calls do not all
+fall back to the business's most obvious scene. Within each five-card brief,
+the situations must differ in at least two meaningful dimensions (trigger,
+action, setting, routine point, people involved, or practical constraint); a
+reworded version of the same moment does not count. This protects plan variety
+without forcing a scene or formula into the final copy. When a literal focus
+would require an unsupported fact, the planner uses a nearby fact-grounded
+situation instead.

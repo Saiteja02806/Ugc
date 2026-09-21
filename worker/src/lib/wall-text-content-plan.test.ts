@@ -10,9 +10,23 @@ import {
   parseWallTextContentPlanChunk,
   validateWallTextContentPlanChunk,
 } from "./wall-text-content-plan.js";
+import { getWallTextBriefSituationFocuses } from "./wall-text-situation-focuses.js";
 
 test("uses compact ten-idea Wall Text planning chunks", () => {
   assert.equal(WALL_TEXT_CONTENT_PLAN_CHUNK_SIZE, 10);
+});
+
+test("assigns a distinct situation focus to each parent brief in a 200-item plan", () => {
+  const focuses = getWallTextBriefSituationFocuses(1, 40);
+
+  assert.equal(focuses.length, 40);
+  assert.equal(new Set(focuses.map((focus) => focus.key)).size, 40);
+  assert.deepEqual(focuses[0], {
+    briefSlotIndex: 0,
+    key: "first_signal",
+    direction: "the first small sign that a routine needs attention",
+  });
+  assert.equal(focuses[39]?.key, "routine_reflection");
 });
 
 test("still rejects an exact duplicate from historical plan items", () => {

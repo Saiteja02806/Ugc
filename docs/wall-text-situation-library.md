@@ -173,3 +173,12 @@ Use this library to guide human planning and future editorial improvements. It
 is not injected wholesale into generation prompts. Any runtime use should
 select only business-supported reader categories and relevant scene mechanics,
 while keeping exact-copy protection separate from editorial variety.
+
+The live Wall planner additionally assigns each of the 40 parent briefs one
+compact, deterministic situation focus. It is derived locally for the current
+200-card plan—not from earlier plan ideas, and never sent to the final Writer.
+It tells the planner which part of the reader's working life to explore so that
+twenty small planner calls do not all fall back to the business's most obvious
+scene. The focus is a diversity hint, not a required scene or copy formula:
+when it would require an unsupported fact, the planner must use a nearby,
+fact-grounded situation instead.

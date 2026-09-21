@@ -8,9 +8,10 @@ import {
   CONTENT_PLAN_OPENAI_TIMEOUT_MS,
 } from "./content-plan-provider-retry.js";
 import { getContentPlanItemConceptLanes } from "./content-plan-concept-lanes.js";
+import { getWallTextBriefSituationFocuses } from "./wall-text-situation-focuses.js";
 
 export const WALL_TEXT_CONTENT_PLAN_PROMPT_VERSION =
-  "wall-text-content-plan-reader-profiles-v9-no-plan-history";
+  "wall-text-content-plan-reader-profiles-v10-situation-focus-no-plan-history";
 // Each item carries seven structured fields in addition to its parent brief.
 // Ten ideas keep a response comfortably below the model's structured-output
 // budget while preserving the five-idea creative-brief grouping.
@@ -546,8 +547,9 @@ function buildMessages(params: {
         "humanMoment: One concrete, recognisable everyday event or situation. For example, an unexpected meeting moving the afternoon's work.",
         "emotionalTension: The inner feeling or conflict created by that moment. For example, frustration mixed with self-blame.",
         "supportedAngle: The factual connection to the business, based only on approved facts. It is not a sales claim or a promise.",
+        "Each parent brief has an assigned current-plan situation focus. It is a private diversity aid, not a fact, phrase to copy, required scene, or final-copy formula. Use it to choose a different part of the reader's real working life. If the literal focus would require an unsupported fact, choose the nearest factual situation that remains clearly distinct instead. Do not keep returning to the most obvious object, action, setting, or time cue from the business description.",
         "For every child return contentIdea, feeling, audienceContext, privateCreativeSeed, emotionalTension, humanMoment, and supportedAngle. contentIdea must be an 8-to-14-word human observation that a later Wall writer can develop. It must never begin with Show, Depict, Portray, Capture, Highlight, Explore, Imagine, Picture, Present, or Describe. feeling guides tone and is not a phrase the writer must append. The children are not generated from creativeSeed alone.",
-        "Every group of five must use five clearly different concrete daily actions or situations. Each child has an assigned concept lane; use its lane as broad guidance, then create a genuinely different audience, action, setting, tension, or observation. Product capabilities are optional context, not the subject of every idea. Do not write final overlay copy, line breaks, a slide layout, a CTA, a product pitch, or a finished script.",
+        "Every group of five must use five clearly different concrete daily actions or situations. Each child has an assigned concept lane; use its lane and its parent focus as broad guidance, then create a genuinely different audience, action, setting, tension, or observation. Product capabilities are optional context, not the subject of every idea. Do not write final overlay copy, line breaks, a slide layout, a CTA, a product pitch, or a finished script.",
         "Return the complete JSON object required by the schema. Include every brief, every child idea, and every required field. Do not return commentary, a partial result, or an empty response.",
       ].join(" "),
     },
@@ -557,6 +559,10 @@ function buildMessages(params: {
         approvedPlanningContext: params.planningContext,
         businessDescription: params.businessDescription,
         conceptLanes: getWallTextItemConceptLanes(
+          params.briefIndexStart,
+          params.briefCount,
+        ),
+        assignedBriefSituationFocuses: getWallTextBriefSituationFocuses(
           params.briefIndexStart,
           params.briefCount,
         ),

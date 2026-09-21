@@ -183,6 +183,10 @@ fall back to the business's most obvious scene. Within each five-card brief,
 the situations must differ in at least two meaningful dimensions (trigger,
 action, setting, routine point, people involved, or practical constraint); a
 reworded version of the same moment does not count. This protects plan variety
-without forcing a scene or formula into the final copy. When a literal focus
-would require an unsupported fact, the planner uses a nearby fact-grounded
-situation instead.
+without forcing a scene or formula into the final copy. Every ten-card planner
+request also spreads at least five ideas around the main problem—before it,
+around it, or after it—rather than reenacting its most obvious decision scene.
+That can mean relevant preparation, changing conditions, resources,
+coordination, competing priorities, interruption, consequence, or reflection.
+When a literal focus would require an unsupported fact, the planner uses a
+nearby fact-grounded situation instead.

@@ -13,10 +13,6 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  {
-    label: "Dating swipe demo",
-    href: "/tinder",
-  },
   { label: "Pricing", href: "/pricing" },
 ];
 const topOnlyNavItems: NavItem[] = [

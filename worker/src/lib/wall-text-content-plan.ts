@@ -66,6 +66,13 @@ export type GeneratedWallTextContentPlanChunk = {
   items: GeneratedWallTextContentPlanItem[];
 };
 
+type ExistingWallTextContentPlanItem = Pick<
+  WallTextContentPlanItemRow,
+  "content_idea" | "feeling"
+> & {
+  private_context?: Json | null;
+};
+
 export function getWallTextContentPlanModel() {
   return process.env.OPENAI_WALL_TEXT_PLAN_MODEL?.trim() || DEFAULT_MODEL;
 }
@@ -82,7 +89,7 @@ export async function generateWallTextContentPlanChunk(params: {
   briefIndexStart?: number;
   businessDescription: string;
   count: number;
-  existingItems: Array<Pick<WallTextContentPlanItemRow, "content_idea" | "feeling">>;
+  existingItems: ExistingWallTextContentPlanItem[];
   planningContext: Json;
 }) {
   const count = Math.trunc(params.count);
@@ -182,6 +189,7 @@ export async function generateWallTextContentPlanChunk(params: {
 function isRepairableWallTextIdeaIssue(issue: string) {
   return (
     issue.includes("repeats an existing content idea") ||
+    issue.includes("repeats an existing human moment") ||
     issue.includes("contentIdea must contain 8 to 14 words") ||
     issue.includes("production direction instead of a human observation")
   );
@@ -208,7 +216,7 @@ async function regenerateDuplicateWallTextItems(params: {
   briefIndexStart: number;
   businessDescription: string;
   count: number;
-  existingItems: Array<Pick<WallTextContentPlanItemRow, "content_idea" | "feeling">>;
+  existingItems: ExistingWallTextContentPlanItem[];
   issues: string[];
   parsed: GeneratedWallTextContentPlanChunk;
   planningContext: Json;
@@ -425,11 +433,14 @@ export function parseWallTextContentPlanChunk(
 }
 
 export function validateWallTextContentPlanChunk(params: {
-  existingItems: Array<{ content_idea: string; feeling: string }>;
+  existingItems: ExistingWallTextContentPlanItem[];
   items: GeneratedWallTextContentPlanItem[];
 }) {
   const issues: string[] = [];
   const acceptedIdeas = params.existingItems.map((item) => item.content_idea);
+  const acceptedHumanMoments = params.existingItems
+    .map((item) => getPrivateHumanMoment(item.private_context))
+    .filter((humanMoment): humanMoment is string => humanMoment !== null);
 
   for (const item of params.items) {
     if (item.contentIdea.length < 12) {
@@ -464,6 +475,23 @@ export function validateWallTextContentPlanChunk(params: {
       );
     } else {
       acceptedIdeas.push(item.contentIdea);
+    }
+
+    // This deliberately rejects only an exact normalized private moment. It
+    // protects against the same recognisable situation being recycled with a
+    // one-word copy variation, while allowing natural related observations
+    // and avoiding broad semantic-similarity policing.
+    const duplicateHumanMoment = acceptedHumanMoments.find(
+      (existing) =>
+        createWallTextContentIdeaFingerprint(existing) ===
+        createWallTextContentIdeaFingerprint(item.planningBrief.humanMoment),
+    );
+    if (duplicateHumanMoment) {
+      issues.push(
+        `Brief ${item.briefSlotIndex} idea ${item.itemSlotIndex} repeats an existing human moment: ${JSON.stringify(duplicateHumanMoment)}.`,
+      );
+    } else {
+      acceptedHumanMoments.push(item.planningBrief.humanMoment);
     }
 
   }
@@ -695,6 +723,14 @@ function normalize(value: string) {
     .replace(/[^a-z0-9]+/g, " ")
     .trim()
     .replace(/\s+/g, " ");
+}
+
+function getPrivateHumanMoment(value: Json | null | undefined) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const humanMoment = (value as Record<string, Json>).humanMoment;
+  return typeof humanMoment === "string" && humanMoment.trim()
+    ? humanMoment.trim()
+    : null;
 }
 
 function countWords(value: string) {

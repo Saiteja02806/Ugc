@@ -259,7 +259,7 @@ test("rejects exact ideas, permits wording variations, and rejects prewritten vi
   assert.ok(!mildRelatedIssues.some((issue) => issue.includes("repeats")));
 });
 
-test("permits repeated private human situations when the ideas differ", () => {
+test("permits related but distinct private human situations when the ideas differ", () => {
   const issues = validateWallTextContentPlanChunk({
     existingItems: [],
     items: [
@@ -277,13 +277,42 @@ test("permits repeated private human situations when the ideas differ", () => {
         itemSlotIndex: 1,
         planningBrief: {
           ...planningBrief(1),
-          humanMoment: "A distinct real-life planning moment 1",
+          humanMoment: "A related planning moment where the afternoon changes after a surprise meeting",
         },
       },
     ],
   });
 
   assert.ok(!issues.some((issue) => issue.includes("private human moment")));
+});
+
+test("rejects an exact private human moment even when the idea wording differs", () => {
+  const sharedMoment = "A tired person reopens the fridge after another long workday";
+  const issues = validateWallTextContentPlanChunk({
+    existingItems: [],
+    items: [
+      {
+        briefSlotIndex: 0,
+        contentIdea: "The late dinner decision that follows another long workday",
+        feeling: "fatigue",
+        itemSlotIndex: 0,
+        planningBrief: { ...planningBrief(0), humanMoment: sharedMoment },
+      },
+      {
+        briefSlotIndex: 0,
+        contentIdea: "Reopening the fridge can make dinner feel unexpectedly defeating",
+        feeling: "frustration",
+        itemSlotIndex: 1,
+        planningBrief: { ...planningBrief(1), humanMoment: sharedMoment },
+      },
+    ],
+  });
+
+  assert.ok(
+    issues.some((issue) =>
+      issue.startsWith("Brief 0 idea 1 repeats an existing human moment"),
+    ),
+  );
 });
 
 test("rejects a replacement that would copy a later Wall-of-Text idea", () => {

@@ -213,12 +213,12 @@ test("uses five parent fields for five child ideas without prewriting Wall copy"
   assert.match(planner, /OPENAI_WALL_TEXT_PLAN_REASONING_EFFORT/);
   assert.match(
     planner,
-    /wall-text-content-plan-five-context-v7-luna-scene-cards/i,
+    /wall-text-content-plan-five-context-v8-situation-history/i,
   );
   assert.match(appPlan, /WALL_TEXT_CONTENT_PLAN_MODEL = "gpt-5\.6-luna"/i);
   assert.match(
     appPlan,
-    /wall-text-content-plan-five-context-v7-luna-scene-cards/i,
+    /wall-text-content-plan-five-context-v8-situation-history/i,
   );
 });
 
@@ -226,6 +226,8 @@ test("stores a Wall item's exact private context and broad lane", () => {
   assert.match(itemContextMigration, /wall_text_content_plan_items[\s\S]*private_context jsonb/i);
   assert.match(planner, /getWallTextItemConceptLanes/);
   assert.match(planner, /Every group of five must use five clearly different concrete daily actions or situations/i);
+  assert.match(planner, /recentSituationHistory is a soft creative memory/i);
+  assert.match(planner, /getWallTextPromptSituationHistory/);
   assert.match(planner, /MAX_SINGLE_IDEA_REPAIR_ATTEMPTS = 3/);
   assert.match(finalWriter, /conceptLane\?: string/);
 });
@@ -398,7 +400,7 @@ test("checks Wall queue admission before plans or daily slots can be reserved", 
 test("keeps planning context private and removes format pressure from the Wall writer", () => {
   assert.match(
     finalWriter,
-    /select the humanMoment and only one other detail needed for one clear thought/i,
+    /preserve its recognisable humanMoment and central tension in one clear thought/i,
   );
   assert.match(finalWriter, /Do not print field names or treat creativeSeed as finished copy/i);
   assert.match(finalWriter, /Do not force it into a named writing format, template, list, or formula/i);

@@ -6,6 +6,7 @@ import {
   WALL_TEXT_CONTENT_PLAN_CHUNK_SIZE,
   createWallTextContentIdeaFingerprint,
   getWallTextPromptPreviousItems,
+  getWallTextPromptSituationHistory,
   isExactWallTextReplacementDuplicate,
   parseWallTextContentPlanChunk,
   validateWallTextContentPlanChunk,
@@ -23,6 +24,32 @@ test("uses compact Wall Text chunks and only sends a bounded recent history to t
     getWallTextPromptPreviousItems(previousItems)[0]?.content_idea,
     "A distinct previous content idea 16",
   );
+});
+
+test("gives the planner a compact history of prior human situations without making it a hard gate", () => {
+  const history = Array.from({ length: 24 }, (_, index) => ({
+    content_idea: `A distinct previous content idea ${index + 1}`,
+    feeling: "curiosity",
+    private_context: {
+      audienceContext: `A supported audience ${index + 1}`,
+      emotionalTension: `A distinct tension ${index + 1}`,
+      humanMoment: `A concrete human moment ${index + 1}`,
+    },
+  }));
+
+  const situations = getWallTextPromptSituationHistory(history);
+
+  assert.equal(situations.length, 20);
+  assert.deepEqual(situations[0], {
+    audienceContext: "A supported audience 5",
+    emotionalTension: "A distinct tension 5",
+    humanMoment: "A concrete human moment 5",
+  });
+  assert.deepEqual(situations.at(-1), {
+    audienceContext: "A supported audience 24",
+    emotionalTension: "A distinct tension 24",
+    humanMoment: "A concrete human moment 24",
+  });
 });
 
 test("still rejects an exact duplicate from older history outside the model prompt window", () => {

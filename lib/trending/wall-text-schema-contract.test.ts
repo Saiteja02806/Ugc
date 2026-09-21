@@ -486,6 +486,11 @@ test("uses Luna Writer and Reviewer passes for every normal ten-candidate chunk"
   assert.doesNotMatch(generatorSource, /readableWithinClip/);
   assert.match(generatorSource, /oneCentralThought/);
   assert.match(generatorSource, /naturalSpokenLanguage/);
+  assert.match(generatorSource, /preservesPlannedSituation/);
+  assert.match(
+    generatorSource,
+    /Fact grounding proves a claim is supported; it does not prove that[\s\S]+structurally valid candidate therefore receives the same quality[\s\S]+review/i,
+  );
   assert.match(
     promptSource,
     /natural continuous Wall-of-Text language[\s\S]+do not insert newline characters/i,

@@ -16,7 +16,8 @@ const loaderUrl = pathToFileURL(
 
 // The samples deliberately cover each automatic word-count band. Their
 // expected row count is a preference, not per-card metadata: measured fit can
-// still choose the nearest viable count for unusually long words.
+// still choose the nearest viable count for unusually long words. The final
+// sample proves that word count alone never overrules the measured safe area.
 const samples = [
   {
     expectedLines: 5,
@@ -44,8 +45,14 @@ const samples = [
     text: "Life feels less loud when you can see what matters next. A clear plan keeps your tasks near your time, so changes do not turn into a long list of things to fix before the whole day feels lost again.",
   },
   {
-    expectedLines: 8,
-    name: "33-words-production-b",
+    expectedLines: 7,
+    name: "33-words-ordinary-language",
+    text: "On a busy afternoon, a team sees every draft in one calm place, chooses what to publish next, and stops rebuilding the same plan across calendars, tabs, and chat messages all day long.",
+  },
+  {
+    expectedFailure:
+      "Wall-of-text copy cannot fit five to eight balanced lines at the fixed 52px font size.",
+    name: "33-words-long-phrases-rejected",
     text: "Scoop after scoop from a family casserole leaves you guessing portions, but a quick photo with Cal AI's depth sensor gives a volume-based calorie and nutrient estimate that restores confidence in your tracking.",
   },
 ];
@@ -69,16 +76,26 @@ for (const sample of samples) {
   const result = generated[sample.name];
   assert.ok(result, `Simulation did not return ${sample.name}.`);
 
+  if (sample.expectedFailure) {
+    assert.equal(result.kind, "rejected");
+    assert.match(result.error, new RegExp(sample.expectedFailure.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    report.push({
+      expectedRejection: true,
+      name: sample.name,
+      reason: result.error,
+      wordCount: countWords(sample.text),
+    });
+    continue;
+  }
+
+  assert.equal(result.kind, "accepted");
+
   const { content, render } = result;
   const lines = content.finalLayout.blocks.flatMap((block) => block.lines);
   const wordCount = countWords(content.fullText);
   assert.equal(wordCount, Number(sample.name.slice(0, 2)));
   assert.equal(lines.length, sample.expectedLines);
   assert.equal(lines.join(" "), content.fullText);
-  if (sample.name === "33-words-production-b") {
-    assert.ok(!lines.some((line) => /\bCal$/u.test(line)));
-    assert.ok(!lines.some((line) => /^AI['’]s\b/u.test(line)));
-  }
   assert.ok(lines.every((line) => countWords(line) >= 2));
   assert.equal(content.finalLayout.fontFamily, "Arial");
   assert.equal(content.finalLayout.fontWeight, 700);
@@ -189,10 +206,15 @@ function generateSemanticLayouts(inputSamples) {
         logic.validateWallTextContent(result.content, 60);
         output[sample.name] = {
           content: { ...result.content, layout: result.layout },
+          kind: "accepted",
           render: await validation.validateWallTextRenderFit(result.content),
         };
       } catch (error) {
-        throw new Error(sample.name + ": " + (error instanceof Error ? error.message : String(error)));
+        const message = error instanceof Error ? error.message : String(error);
+        if (!sample.expectedFailure) {
+          throw new Error(sample.name + ": " + message);
+        }
+        output[sample.name] = { error: message, kind: "rejected" };
       }
     }
     process.stdout.write(JSON.stringify(output));

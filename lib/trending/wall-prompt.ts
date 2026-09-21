@@ -3,7 +3,7 @@ import { WALL_TEXT_SOFT_WORD_RANGE } from "./wall-text-copy-policy";
 import type { WallTextFactGrounding } from "./wall-text-grounding";
 
 export const WALL_TEXT_PROMPT_VERSION =
-  "wall-text-writer-prompt-v22-fact-grounded" as const;
+  "wall-text-writer-prompt-v23-situation-grounded" as const;
 
 export type WallTextPromptCandidate = {
   candidateIndex: number;
@@ -40,7 +40,7 @@ const GLOBAL_WALL_RULES = [
   "Do not decide visual line breaks and do not insert newline characters.",
   "Avoid slogans, calls to action, and advertisement language.",
   "Use no more than one supported product capability in one idea.",
-  "When privateCreativeContext is present, select the humanMoment and only one other detail needed for one clear thought. It is creative direction, not factual business evidence: do not treat its supportedAngle, creativeSeed, or other private field as permission to add a business claim. feeling guides tone and must not become a forced emotional ending. Do not print field names or treat creativeSeed as finished copy.",
+  "When privateCreativeContext is present, preserve its recognisable humanMoment and central tension in one clear thought. Use only the smallest relevant subset of details so the writing stays natural. It is creative direction, not factual business evidence: do not treat its supportedAngle, creativeSeed, or other private field as permission to add a business claim. feeling guides tone and must not become a forced emotional ending. Do not print field names or treat creativeSeed as finished copy.",
   "Make every candidate a distinct idea with a distinct opening.",
   "Return one continuous message per candidate: no title, bullets, list object, sections, or visual line breaks.",
   "Use one or two short grammatical sentences. Never join a marketing mini-story with a semicolon.",
@@ -130,7 +130,7 @@ export function buildWallTextGenerationPrompt(params: {
     "",
     "TASK",
     "For each candidate, write the strongest complete natural message from the supplied idea and business facts. Do not force it into a named writing format, template, list, or formula.",
-    "When privateCreativeContext is present, use it as creative direction. Select the smallest relevant subset rather than covering the complete private context.",
+    "When privateCreativeContext is present, use it as creative direction. Keep the same human scene and central tension, while selecting the smallest relevant subset rather than covering the complete private context. Natural paraphrase is expected; generic capability copy that replaces the scene is not.",
     "For a fact-grounded candidate, the assignedBusinessFact is the only business fact you may state. The private creative context can provide a human situation or tone, but never a new product fact, outcome, metric, audience claim, or promise.",
     "requiredWordRange is the exact allowed range for its candidate. Aim near targetWords, but never exceed requiredWordRange.maximum or fall below requiredWordRange.minimum. The server will verify a measured 5-8 line fit at a fixed 52px font size. Video duration does not impose a word limit or reading-time deadline.",
     "Do not insert visual line breaks or pad a complete thought with filler to force eight lines. If retry feedback reports layout_fit, use fewer words and shorter phrases while remaining inside that candidate's requiredWordRange; the font size will not shrink.",

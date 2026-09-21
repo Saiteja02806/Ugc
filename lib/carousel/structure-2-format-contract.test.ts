@@ -13,7 +13,7 @@ const structure1Formats = JSON.parse(
 ) as { formats: Array<{ id: string }> };
 
 test("Structure 2 owns exactly eight global format ids", () => {
-  assert.equal(config.version, "carousel-structure-2-formats-v5-six-slide-story-runtime");
+  assert.equal(config.version, "carousel-structure-2-formats-v6-flexible-body-copy-runtime");
   assert.equal(config.backboneVersion, "carousel-structure-2-strict-six-slide-product-story-v1");
   assert.deepEqual(
     config.formats.map((format) => format.id),

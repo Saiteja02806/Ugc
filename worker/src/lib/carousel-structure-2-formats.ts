@@ -230,19 +230,19 @@ function expandSixSlideFormat(
       ...problem,
       ctaPolicy: "none",
       maximumWords: 30,
-      minimumWords: 18,
+      minimumWords: 14,
     },
     {
       ...realization,
       ctaPolicy: "none",
       maximumWords: 30,
-      minimumWords: 18,
+      minimumWords: 14,
     },
     {
       ...mechanism,
       ctaPolicy: "none",
       maximumWords: 30,
-      minimumWords: 18,
+      minimumWords: 14,
     },
     {
       ...proof,
@@ -250,7 +250,7 @@ function expandSixSlideFormat(
       instruction:
         "Give a modest, supportable proof or result that follows from the mechanism. Do not add a CTA or invent metrics, customers, guarantees, or outcomes.",
       maximumWords: 30,
-      minimumWords: 18,
+      minimumWords: 14,
       perspective: "first_person",
     },
     {
@@ -258,7 +258,7 @@ function expandSixSlideFormat(
       instruction:
         "Close with one useful, self-contained takeaway. It should help the reader act on the lesson without an invitation, instruction to save, or call to action.",
       maximumWords: 30,
-      minimumWords: 18,
+      minimumWords: 14,
       perspective: "first_person_then_viewer",
       productMention: "optional",
       slideNumber: 6,

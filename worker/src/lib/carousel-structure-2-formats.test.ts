@@ -14,7 +14,7 @@ import {
 test("Structure 2 exposes eight formats with one strict six-slide runtime backbone", () => {
   assert.equal(CAROUSEL_STRUCTURE_2_FORMAT_IDS.length, 8);
   assert.equal(CAROUSEL_STRUCTURE_2_FORMAT_LIBRARY.formats.length, 8);
-  assert.equal(CAROUSEL_STRUCTURE_2_FORMATS_VERSION, "carousel-structure-2-formats-v5-six-slide-story-runtime");
+  assert.equal(CAROUSEL_STRUCTURE_2_FORMATS_VERSION, "carousel-structure-2-formats-v6-flexible-body-copy-runtime");
   assert.equal(CAROUSEL_STRUCTURE_2_BACKBONE_VERSION, "carousel-structure-2-strict-six-slide-product-story-v1");
 
   for (const format of CAROUSEL_STRUCTURE_2_FORMAT_LIBRARY.formats) {
@@ -28,6 +28,10 @@ test("Structure 2 exposes eight formats with one strict six-slide runtime backbo
       ["none", "none", "none", "none", "none", "none"],
     );
     assert.deepEqual(format.exampleFlows, [CAROUSEL_STRUCTURE_2_STORY_ROLES]);
+    assert.deepEqual(
+      format.slides.map((slide) => slide.minimumWords),
+      [5, 14, 14, 14, 14, 14],
+    );
   }
 });
 

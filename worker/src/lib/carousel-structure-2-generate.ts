@@ -18,6 +18,7 @@ import {
 import { createCarouselStructure2SlideInserts } from "./carousel-structure-2-persistence.js";
 import {
   buildCarouselStructure2StoryPlanBatch,
+  CarouselStructure2EmptyProviderResponseError,
   type CarouselStructure2StoryPlanResult,
 } from "./carousel-structure-2-planner.js";
 import {
@@ -365,12 +366,29 @@ async function failEntireBatch(
   },
   error: unknown,
 ) {
+  const providerResponse =
+    error instanceof CarouselStructure2EmptyProviderResponseError
+      ? {
+          initialBatch: null,
+          providerDiagnostics: {
+            initialBatch: error.diagnostic,
+            repairs: [],
+          },
+          repair: null,
+        }
+      : null;
   const message = truncate(
     error instanceof Error ? error.message : "Structure 2 planning failed.",
   );
   await Promise.allSettled([
     ...params.generations.map((generation) =>
       params.store.updateCarouselGeneration(generation.id, {
+        ...(providerResponse
+          ? {
+              content_plan_raw_response:
+                providerResponse as unknown as Json,
+            }
+          : {}),
         error_message: message,
         status: "failed",
       }),

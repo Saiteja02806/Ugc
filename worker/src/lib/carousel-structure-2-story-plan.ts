@@ -62,6 +62,11 @@ export const CAROUSEL_STRUCTURE_2_COVER_HOOK_SCHEMA_MAX_CHARACTERS =
   MAX_STORY_TEXT_LENGTH;
 const GENERIC_COPY_PATTERN =
   /\b(boost productivity|streamline your workflow|unlock efficiency|work smarter|next level|seamless|one platform|one workspace for everything)\b/i;
+// Covers do not require terminal punctuation: short social hooks often read
+// naturally without it. This deliberately catches only unmistakable hanging
+// endings, rather than turning every unpunctuated hook into a failure.
+const INCOMPLETE_HOOK_ENDING_PATTERN =
+  /\b(?:and|or|but|because|if|when|while|with|for|from|into|about|than|that|which|who|whose|where|why|how|to\s+(?:always|constantly|still|ever|never|really|just))\s*$/i;
 
 export type CarouselStructure2ProductVisualEligibility =
   | "allowed"
@@ -249,15 +254,11 @@ export function validateCarouselStructure2StoryPlan(
       });
     }
 
-    if (
-      slide.slideNumber === 1 &&
-      copy.length === CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS &&
-      !/[.!?…]$/.test(copy)
-    ) {
+    if (slide.slideNumber === 1 && isClearlyIncompleteCoverHook(copy)) {
       issues.push({
         code: "hook_incomplete",
         message:
-          "Slide 1 reaches the character cap without a complete ending. Return a shorter, self-contained hook instead of a partial final word or phrase.",
+          "Slide 1 ends as an incomplete hook. Return a shorter, self-contained hook instead of a partial final word or hanging phrase.",
         slideNumber: slide.slideNumber,
       });
     }
@@ -483,6 +484,48 @@ export function buildCarouselStructure2StoryPlanSchema() {
   } as const;
 }
 
+/**
+ * A narrow repair schema contains only the visible fields that need
+ * replacement. The full-plan schema remains necessary for structural
+ * failures, but using it for a small copy correction gives the model needless
+ * opportunities to disturb valid slides.
+ */
+export function buildCarouselStructure2StoryTextRepairSchema(
+  slideNumbers: readonly number[],
+) {
+  const keys = getTargetedStoryTextKeys(slideNumbers);
+  return {
+    additionalProperties: false,
+    properties: {
+      storyTextBySlide: {
+        additionalProperties: false,
+        properties: Object.fromEntries(
+          keys.map((key) => [
+            key,
+            {
+              // A word-count regex causes empty strict-output responses from
+              // the production model, but a plain character ceiling is safe.
+              // Apply the measured cover budget at the repair boundary so a
+              // repair cannot keep returning an otherwise valid four-line
+              // hook for the fixed 96px, three-line treatment.
+              maxLength:
+                key === getTargetedStoryTextKey(1)
+                  ? CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS
+                  : MAX_STORY_TEXT_LENGTH,
+              minLength: 1,
+              type: "string",
+            },
+          ]),
+        ),
+        required: keys,
+        type: "object",
+      },
+    },
+    required: ["storyTextBySlide"],
+    type: "object",
+  } as const;
+}
+
 export function buildCarouselStructure2StoryBatchSchema(params: {
   assignments: readonly CarouselStructure2StoryAssignment[];
 }) {
@@ -561,8 +604,8 @@ export function buildCarouselStructure2BatchMessages(params: {
       content: [
         "Use each creativeSeed as a broad starting point and its emotion as the emotional current. Do not treat either as finished copy or a complete plot.",
         "Use privateCreativeBrief only as flexible human and factual context; its preferredFormatFamily must never override the backend-selected format reference.",
-        "Follow each role's word range as a hard publishing contract. Slide 1 must be one 5-11 word hook only, with no subtitle or supporting copy. Every prose slide from Slide 2 through Slide 6 must contain 18-30 words. Develop the story beat clearly and prioritize readable copy that fits the stated display area.",
-        "For Slides 2-6, aim for 20-24 words (the hard accepted range is 18-30) and count words before returning. Keep the thought specific and complete, while staying within ten visual lines at centered 60px type; never rely on shrink-to-fit behavior.",
+        "Follow each role's word range as a publishing contract. Slide 1 must be one 5-11 word hook only, with no subtitle or supporting copy. Every prose slide from Slide 2 through Slide 6 must contain 14-30 words. Develop the story beat clearly and prioritize readable copy that fits the stated display area.",
+        "For Slides 2-6, aim for 16-22 words (the accepted range is 14-30) and count words before returning. Keep the thought specific and complete, while staying within ten visual lines at centered 60px type; never rely on shrink-to-fit behavior.",
         "Return each plan under its assigned outputKey. Do not return slideNumber, slotIndex, candidateIndex, or storyFormatId; the worker owns those structural values.",
         "Develop genuinely different stories inside the required six-slide sequence. Do not force every item through the same overwhelmed-to-easier arc.",
         `Slide 1 is reader-first: direct reader wording such as 'you' or 'your' is allowed. ${STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE} Give a specific benefit, tension, mistake, contrast, or curiosity gap; do not force it into a first-person personal-story opener.`,
@@ -625,8 +668,8 @@ export function buildCarouselStructure2RepairMessages(params: {
         JSON.stringify(getFormatReference(params.assignment.storyFormatId)),
         `Slide 1 is reader-first, so direct reader wording such as 'you' or 'your' is allowed. ${STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Tight Bold at 700 weight and must create a specific reason to swipe within ${getCarouselStructure2StoryMaxLines(1)} visual lines at ${getCarouselStructure2StoryFontSize(1)}px type.`,
         "Only Slide 1 may lead with direct reader wording. Keep Slides 2-5 in the first-person story voice (I, me, or my); Slide 6 may turn the lesson toward the reader after its takeaway.",
-        "Keep Slides 2-6 substantial but readable: aim for 20-24 words (the hard accepted range is 18-30), count words before returning, never exceed 30, and stay within ten visual lines at centered 60px type.",
-        "Slide 1's 5-11 word single-hook limit and every Slide 2-6 18-30 word range are strict publishing requirements. Repair the listed blocking issues and preserve slides that already passed validation.",
+        "Keep Slides 2-6 substantial but readable: aim for 16-22 words (the accepted range is 14-30), count words before returning, never exceed 30, and stay within ten visual lines at centered 60px type.",
+        "Slide 1's 5-11 word single-hook limit and every Slide 2-6 14-30 word range are publishing requirements. Repair the listed blocking issues and preserve slides that already passed validation.",
         params.repairAttempt === params.repairAttemptLimit
           ? "This is the final bounded copy repair. Before returning, count whitespace-delimited words in every changed Slide 2-6 and make sure the complete plan has no close paraphrase or CTA. Return only a plan that satisfies every listed publishing requirement."
           : null,
@@ -644,6 +687,115 @@ export function buildCarouselStructure2RepairMessages(params: {
       ].filter((line): line is string => line !== null).join("\n"),
     },
   ];
+}
+
+export function buildCarouselStructure2StoryTextRepairMessages(params: {
+  assignment: CarouselStructure2StoryAssignment;
+  businessDescription: string;
+  issues: readonly CarouselStructure2StoryValidationIssue[];
+  plan: CarouselStructure2StoryPlan;
+  recentHistory?: readonly CarouselStructure2RecentHistoryInput[];
+  repairAttempt: number;
+  repairAttemptLimit: number;
+}) {
+  const slideNumbers = getTargetedSlideNumbers(params.issues);
+  const slides = slideNumbers.map((slideNumber) => {
+    const slide = params.plan.slides[slideNumber - 1];
+    if (!slide) {
+      throw new Error("A targeted Structure 2 copy repair requires valid slides.");
+    }
+    const isCover = slide.slideNumber === 1;
+    const wordRange = isCover ? "5-11" : "14-30";
+    const targetRange = isCover ? "5-8" : "16-22";
+    const lineLimit = getCarouselStructure2StoryMaxLines(slide.slideNumber);
+    const fontSize = getCarouselStructure2StoryFontSize(slide.slideNumber);
+    return {
+      currentStoryText: slide.storyText,
+      replacementKey: getTargetedStoryTextKey(slide.slideNumber),
+      requirement: isCover
+        ? `Return one self-contained reader-first hook, normally ${targetRange} words and never outside ${wordRange} words or ${CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS} characters. It must fit within ${lineLimit} visual lines at centered ${fontSize}px type. Never leave a hanging phrase.`
+        : `Return one complete ${slide.storyRole} sentence of ${wordRange} words; aim for ${targetRange} words and count whitespace-delimited words before returning. It must fit within ${lineLimit} visual lines at centered ${fontSize}px type.`,
+      roleGuidance: getFormatReference(params.assignment.storyFormatId).roleGuidance[
+        slide.slideNumber - 1
+      ],
+      slideNumber: slide.slideNumber,
+      storyRole: slide.storyRole,
+      voiceRequirement:
+        slide.slideNumber >= 2 && slide.slideNumber <= 5
+          ? "Keep the replacement in first-person story voice (I, me, or my)."
+          : slide.slideNumber === 6
+            ? "Make this a useful self-contained takeaway, never a CTA."
+            : null,
+    };
+  });
+  if (slides.length === 0) {
+    throw new Error("A targeted Structure 2 copy repair requires at least one slide.");
+  }
+
+  return [
+    {
+      role: "system" as const,
+      content:
+        "Repair only the listed visible Structure 2 storyText values. Return only JSON with one storyTextBySlide object containing exactly the requested replacement keys. Do not return a plan, slide metadata, labels, a CTA, or an explanation. Each replacement must resolve its stated failure while preserving the original slide role and natural story flow.",
+    },
+    {
+      role: "user" as const,
+      content: [
+        "Minimal business context:",
+        JSON.stringify({ businessDescription: params.businessDescription }),
+        "Creative brief:",
+        JSON.stringify({
+          creativeSeed: params.assignment.creativeSeed,
+          emotion: params.assignment.emotion,
+          privateCreativeBrief: params.assignment.planningBrief,
+        }),
+        "Slides to replace:",
+        JSON.stringify(slides),
+        "Never invent precise features, metrics, guarantees, or outcomes. Do not closely paraphrase recent accepted copy.",
+        params.repairAttempt === params.repairAttemptLimit
+          ? "This is the final bounded repair. Check the exact count and completeness before returning."
+          : null,
+        "Validation issue to correct:",
+        JSON.stringify(params.issues),
+        "Last accepted Carousel copies (exact visible text):",
+        JSON.stringify(normalizeRecentHistory(params.recentHistory)),
+      ]
+        .filter((line): line is string => line !== null)
+        .join("\n"),
+    },
+  ];
+}
+
+export function parseCarouselStructure2StoryTextRepair(
+  value: unknown,
+  slideNumbers: readonly number[],
+) {
+  const record = asRecord(value, "Structure 2 targeted story-text repair");
+  assertExactObjectKeys(
+    record,
+    ["storyTextBySlide"],
+    "Structure 2 targeted story-text repair",
+  );
+  const values = asRecord(
+    record.storyTextBySlide,
+    "Structure 2 targeted story-text replacement values",
+  );
+  const keys = getTargetedStoryTextKeys(slideNumbers);
+  assertExactObjectKeys(
+    values,
+    keys,
+    "Structure 2 targeted story-text replacement values",
+  );
+  return new Map(
+    slideNumbers.map((slideNumber) => [
+      slideNumber,
+      getRequiredString(
+        values[getTargetedStoryTextKey(slideNumber)],
+        `Structure 2 targeted story text for Slide ${slideNumber}`,
+        MAX_STORY_TEXT_LENGTH,
+      ),
+    ]),
+  );
 }
 
 export function normalizeCarouselStructure2RecentHistory(
@@ -768,8 +920,51 @@ function includesBusinessName(value: string, businessDescription: string) {
   );
 }
 
+function getTargetedSlideNumbers(
+  issues: readonly CarouselStructure2StoryValidationIssue[],
+) {
+  const slideNumbers = [
+    ...new Set(issues.map((issue) => issue.slideNumber)),
+  ].sort((left, right) => (left ?? 0) - (right ?? 0));
+  if (
+    slideNumbers.length === 0 ||
+    slideNumbers.some(
+      (slideNumber) =>
+        slideNumber === null ||
+        !Number.isInteger(slideNumber) ||
+        slideNumber < 1 ||
+        slideNumber > CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS.length,
+    )
+  ) {
+    throw new Error("Targeted Structure 2 copy repair requires numbered slides.");
+  }
+  return slideNumbers as number[];
+}
+
+function getTargetedStoryTextKeys(slideNumbers: readonly number[]) {
+  return getTargetedSlideNumbers(
+    slideNumbers.map((slideNumber) => ({
+      code: "word_count" as const,
+      message: "",
+      slideNumber,
+    })),
+  ).map(getTargetedStoryTextKey);
+}
+
+function getTargetedStoryTextKey(slideNumber: number) {
+  return `slide${slideNumber}`;
+}
+
 function countWords(value: string) {
   return value.trim().split(/\s+/).filter(Boolean).length;
+}
+
+function isClearlyIncompleteCoverHook(value: string) {
+  if (/[.!?…]$/.test(value)) return false;
+  return (
+    value.length === CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS ||
+    INCOMPLETE_HOOK_ENDING_PATTERN.test(value)
+  );
 }
 
 function tokenOverlap(left: string, right: string) {

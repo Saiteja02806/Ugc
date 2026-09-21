@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   buildCarouselStructure2BatchMessages,
   buildCarouselStructure2StoryBatchSchema,
+  buildCarouselStructure2StoryTextRepairSchema,
   CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS,
   CAROUSEL_STRUCTURE_2_COVER_HOOK_SCHEMA_MAX_CHARACTERS,
   CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS,
@@ -11,6 +12,7 @@ import {
   buildCarouselStructure2StoryPlanSchema,
   parseCarouselStructure2StoryBatch,
   parseCarouselStructure2StoryPlan,
+  parseCarouselStructure2StoryTextRepair,
   partitionCarouselStructure2ValidationIssues,
   validateCarouselStructure2StoryPlan,
   type CarouselStructure2StoryAssignment,
@@ -124,7 +126,7 @@ test("Structure 2 prompt and schema describe the strict six-slide contract", () 
   assert.match(prompt, /only Slide 1 may lead with direct reader wording/i);
   assert.match(prompt, /normally 5-8 words/i);
   assert.match(prompt, /42 characters or fewer/i);
-  assert.match(prompt, /aim for 20-24 words/i);
+  assert.match(prompt, /aim for 16-22 words/i);
   assert.match(prompt, /natural or sentence case/i);
   assert.match(prompt, /Inter Tight Bold at 700 weight/i);
   assert.match(prompt, /Slides 1-6 must return ctaText: null/i);
@@ -154,6 +156,22 @@ test("Structure 2 prompt and schema describe the strict six-slide contract", () 
 test("Structure 2 rejects a cover that ends at the published character cap without an ending", () => {
   const raw = makeRawStoryPlan();
   raw.slides.first!.storyText = "Are you overwhelmed by changing audience f";
+  const plan = parseCarouselStructure2StoryPlan(raw, {
+    businessDescription,
+    storyFormatId: "wrong_belief",
+  });
+  const issues = validateCarouselStructure2StoryPlan(plan, { businessDescription });
+
+  assert.ok(
+    issues.some(
+      (issue) => issue.code === "hook_incomplete" && issue.slideNumber === 1,
+    ),
+  );
+});
+
+test("Structure 2 rejects a shorter cover that ends in an unmistakable hanging phrase", () => {
+  const raw = makeRawStoryPlan();
+  raw.slides.first!.storyText = "Are you feeling pressured to constantly";
   const plan = parseCarouselStructure2StoryPlan(raw, {
     businessDescription,
     storyFormatId: "wrong_belief",
@@ -205,6 +223,38 @@ test("Structure 2 sends writing-quality failures back through the repair path", 
   assert.ok(partitioned.blockingIssues.some((issue) => issue.code === "word_count"));
 });
 
+test("Structure 2 targeted repair accepts replacements for every invalid slide only", () => {
+  const schema = buildCarouselStructure2StoryTextRepairSchema([1, 5, 6]);
+  const replacements = parseCarouselStructure2StoryTextRepair(
+    {
+      storyTextBySlide: {
+        slide1: "When campaign work keeps shifting",
+        slide5:
+          "The work still changed, but I kept each campaign decision visible and moved forward without rebuilding the entire plan from scratch.",
+        slide6:
+          "Keep the next decision visible so changing priorities still have a clear owner, useful context, and one practical step to continue.",
+      },
+    },
+    [1, 5, 6],
+  );
+
+  assert.deepEqual(
+    Object.keys(schema.properties.storyTextBySlide.properties),
+    ["slide1", "slide5", "slide6"],
+  );
+  assert.equal(
+    schema.properties.storyTextBySlide.properties.slide1.maxLength,
+    CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS,
+  );
+  assert.equal(
+    schema.properties.storyTextBySlide.properties.slide5.maxLength,
+    720,
+  );
+  assert.equal(replacements.get(1), "When campaign work keeps shifting");
+  assert.equal(replacements.get(5)?.startsWith("The work still changed"), true);
+  assert.equal(replacements.get(6)?.startsWith("Keep the next decision"), true);
+});
+
 test("hook and story word-count contracts block invalid output", () => {
   const plan = parseCarouselStructure2StoryPlan(makeRawStoryPlan(), {
     businessDescription,
@@ -226,9 +276,27 @@ test("hook and story word-count contracts block invalid output", () => {
   assert.deepEqual(partitioned.advisoryIssues, []);
 });
 
+test("Structure 2 accepts a complete fourteen-word body without forcing a longer sentence", () => {
+  const plan = parseCarouselStructure2StoryPlan(makeRawStoryPlan(), {
+    businessDescription,
+    storyFormatId: "wrong_belief",
+  });
+  plan.slides[1]!.storyText =
+    "I stopped rebuilding the week whenever one urgent request moved my next decision late.";
+
+  const issues = validateCarouselStructure2StoryPlan(plan, { businessDescription });
+
+  assert.equal(
+    issues.some(
+      (issue) => issue.code === "word_count" && issue.slideNumber === 2,
+    ),
+    false,
+  );
+});
+
 test("reference word counts, overflow, and unsupported claims remain blocking", () => {
   const partitioned = partitionCarouselStructure2ValidationIssues([
-    { code: "word_count", slideNumber: 4, message: "17 words instead of the reference 18" },
+    { code: "word_count", slideNumber: 4, message: "13 words instead of the required 14" },
     { code: "render_fit", slideNumber: 1, message: "Cover overflows" },
     { code: "unsupported_claim", slideNumber: 5, message: "Unsupported result" },
   ]);

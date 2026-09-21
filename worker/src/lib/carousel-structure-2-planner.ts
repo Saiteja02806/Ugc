@@ -4,13 +4,16 @@ import {
   assertCarouselStructure2StoryAssignments,
   buildCarouselStructure2BatchMessages,
   buildCarouselStructure2RepairMessages,
+  buildCarouselStructure2StoryTextRepairMessages,
   buildCarouselStructure2StoryBatchSchema,
   buildCarouselStructure2StoryPlanSchema,
+  buildCarouselStructure2StoryTextRepairSchema,
   createCarouselStructure2InvalidPlanIssue,
   dedupeCarouselStructure2ValidationIssues,
   formatCarouselStructure2ValidationIssues,
   parseCarouselStructure2StoryBatch,
   parseCarouselStructure2StoryPlan,
+  parseCarouselStructure2StoryTextRepair,
   partitionCarouselStructure2ValidationIssues,
   validateCarouselStructure2StoryPlan,
   type CarouselStructure2RecentHistoryInput,
@@ -23,7 +26,7 @@ import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 import { CONTENT_PLAN_OPENAI_MAX_RETRIES, CONTENT_PLAN_OPENAI_TIMEOUT_MS } from "./content-plan-provider-retry.js";
 
 export const CAROUSEL_STRUCTURE_2_PLANNER_VERSION =
-  "llm-carousel-structure-2-writer-v15-complete-cover-hook";
+  "llm-carousel-structure-2-writer-v17-flexible-body-copy-field-repair";
 
 // The OpenAI strict decoder cannot safely carry the whitespace word-count
 // regex. Keep the exact contract in the publisher validator and allow one
@@ -31,9 +34,19 @@ export const CAROUSEL_STRUCTURE_2_PLANNER_VERSION =
 // close on word count or copy uniqueness. This is deliberately not a general
 // retry loop: every other defect keeps the single-repair failure behavior.
 const MAX_TARGETED_REPAIR_ATTEMPTS = 2;
-const SECOND_REPAIRABLE_ISSUE_CODES = new Set<
+const TARGETED_COPY_REPAIR_ISSUE_CODES = new Set<
   CarouselStructure2StoryValidationIssue["code"]
->(["recent_repetition", "story_repetition", "word_count"]);
+>([
+  "generic_copy",
+  "hook_incomplete",
+  "hook_length",
+  "perspective",
+  "product_timing",
+  "render_fit",
+  "story_repetition",
+  "unsupported_claim",
+  "word_count",
+]);
 
 let openaiClient: OpenAI | null = null;
 
@@ -59,6 +72,29 @@ export type CarouselStructure2StoryPlanResult = {
     repaired: boolean;
   };
 };
+
+export type CarouselStructure2ProviderResponseDiagnostic = {
+  completionId: string | null;
+  completionTokens: number | null;
+  finishReason: string | null;
+  promptTokens: number | null;
+  refusal: string | null;
+  requestId: string | null;
+  responseCharacterCount: number;
+  totalTokens: number | null;
+};
+
+export class CarouselStructure2EmptyProviderResponseError extends Error {
+  readonly diagnostic: CarouselStructure2ProviderResponseDiagnostic;
+
+  constructor(diagnostic: CarouselStructure2ProviderResponseDiagnostic) {
+    super(
+      `OpenAI returned no Structure 2 story batch content (finish_reason=${diagnostic.finishReason ?? "unknown"}, response_chars=${diagnostic.responseCharacterCount}, request_id=${diagnostic.requestId ?? "unknown"}).`,
+    );
+    this.name = "CarouselStructure2EmptyProviderResponseError";
+    this.diagnostic = diagnostic;
+  }
+}
 
 export type CarouselStructure2StoryBatchInput = {
   assignments: CarouselStructure2StoryAssignment[];
@@ -105,7 +141,9 @@ export async function buildCarouselStructure2StoryPlanBatch(
     initialBatchResponse = completion.choices[0]?.message.content ?? null;
 
     if (!initialBatchResponse) {
-      throw new Error("OpenAI returned no Structure 2 story batch content.");
+      throw new CarouselStructure2EmptyProviderResponseError(
+        summarizeProviderResponse(completion),
+      );
     }
 
     rawPlans = parseCarouselStructure2StoryBatch(
@@ -174,6 +212,7 @@ export async function buildCarouselStructure2StoryPlanBatch(
       initialBatchResponse,
       initialIssues,
       model,
+      parsedPlan,
       rawPlan,
       recentHistory: acceptedHistory,
       diagnostics,
@@ -220,12 +259,14 @@ async function attemptIsolatedRepair(params: {
   initialBatchResponse: string | null;
   initialIssues: CarouselStructure2StoryValidationIssue[];
   model: string;
+  parsedPlan: CarouselStructure2StoryPlan | null;
   rawPlan: unknown;
   recentHistory: CarouselStructure2RecentHistoryInput[];
   diagnostics: { repair: string | null };
 }) {
   let currentIssues = [...params.initialIssues];
   let currentRawPlan = params.rawPlan;
+  let currentPlan = params.parsedPlan;
   const repairResponses: string[] = [];
 
   for (
@@ -234,23 +275,45 @@ async function attemptIsolatedRepair(params: {
     attempt += 1
   ) {
     try {
+      const targetedIssues = getTargetedCopyRepairIssues(
+        currentPlan,
+        currentIssues,
+      );
+      const usesTargetedCopyRepair = targetedIssues !== null;
+      const targetedSlideNumbers = usesTargetedCopyRepair
+        ? [...new Set(targetedIssues!.map((issue) => issue.slideNumber!))]
+        : [];
       const completion = await getOpenAIClient().chat.completions.create({
         max_completion_tokens: 1_800,
-        messages: buildCarouselStructure2RepairMessages({
-          assignment: params.assignment,
-          businessDescription: params.businessDescription,
-          issues: currentIssues,
-          rawPlan: currentRawPlan,
-          recentHistory: params.recentHistory,
-          repairAttempt: attempt,
-          repairAttemptLimit: MAX_TARGETED_REPAIR_ATTEMPTS,
-        }),
+        messages: usesTargetedCopyRepair
+          ? buildCarouselStructure2StoryTextRepairMessages({
+              assignment: params.assignment,
+              businessDescription: params.businessDescription,
+              issues: targetedIssues!,
+              plan: currentPlan!,
+              recentHistory: params.recentHistory,
+              repairAttempt: attempt,
+              repairAttemptLimit: MAX_TARGETED_REPAIR_ATTEMPTS,
+            })
+          : buildCarouselStructure2RepairMessages({
+              assignment: params.assignment,
+              businessDescription: params.businessDescription,
+              issues: currentIssues,
+              rawPlan: currentRawPlan,
+              recentHistory: params.recentHistory,
+              repairAttempt: attempt,
+              repairAttemptLimit: MAX_TARGETED_REPAIR_ATTEMPTS,
+            }),
         model: params.model,
         response_format: {
           type: "json_schema",
           json_schema: {
-            name: `carousel_structure_2_story_repair_${params.assignment.slotIndex}_${attempt}`,
-            schema: buildCarouselStructure2StoryPlanSchema(),
+            name: usesTargetedCopyRepair
+              ? `carousel_structure_2_story_text_repair_${params.assignment.slotIndex}_${attempt}`
+              : `carousel_structure_2_story_repair_${params.assignment.slotIndex}_${attempt}`,
+            schema: usesTargetedCopyRepair
+              ? buildCarouselStructure2StoryTextRepairSchema(targetedSlideNumbers)
+              : buildCarouselStructure2StoryPlanSchema(),
             strict: true,
           },
         },
@@ -267,11 +330,19 @@ async function attemptIsolatedRepair(params: {
         "\n\n--- Structure 2 repair attempt ---\n\n",
       );
 
-      const rawRepairedPlan = JSON.parse(repairResponse);
-      const repairedPlan = parseCarouselStructure2StoryPlan(rawRepairedPlan, {
-        businessDescription: params.businessDescription,
-        storyFormatId: params.assignment.storyFormatId,
-      });
+      const rawRepair = JSON.parse(repairResponse);
+      const repairedPlan = usesTargetedCopyRepair
+        ? replaceStoryTexts(
+            currentPlan!,
+            parseCarouselStructure2StoryTextRepair(
+              rawRepair,
+              targetedSlideNumbers,
+            ),
+          )
+        : parseCarouselStructure2StoryPlan(rawRepair, {
+            businessDescription: params.businessDescription,
+            storyFormatId: params.assignment.storyFormatId,
+          });
       const validation = partitionCarouselStructure2ValidationIssues(
         validateCarouselStructure2StoryPlan(repairedPlan, {
           businessDescription: params.businessDescription,
@@ -293,21 +364,18 @@ async function attemptIsolatedRepair(params: {
         });
       }
 
-      const combinedIssues = dedupeCarouselStructure2ValidationIssues([
-        ...currentIssues,
-        ...finalIssues,
-      ]);
       const canUseTargetedSecondRepair =
         attempt < MAX_TARGETED_REPAIR_ATTEMPTS &&
-        hasOnlyTargetedSecondRepairIssues(combinedIssues);
+        hasOnlyTargetedSecondRepairIssues(finalIssues);
 
       if (!canUseTargetedSecondRepair) {
-        replaceIssues(params.initialIssues, combinedIssues);
+        replaceIssues(params.initialIssues, finalIssues);
         return null;
       }
 
-      currentIssues = combinedIssues;
-      currentRawPlan = rawRepairedPlan;
+      currentIssues = finalIssues;
+      currentRawPlan = rawRepair;
+      currentPlan = repairedPlan;
     } catch (error) {
       replaceIssues(
         params.initialIssues,
@@ -328,8 +396,39 @@ function hasOnlyTargetedSecondRepairIssues(
 ) {
   return (
     issues.length > 0 &&
-    issues.every((issue) => SECOND_REPAIRABLE_ISSUE_CODES.has(issue.code))
+    issues.every((issue) => TARGETED_COPY_REPAIR_ISSUE_CODES.has(issue.code))
   );
+}
+
+function getTargetedCopyRepairIssues(
+  plan: CarouselStructure2StoryPlan | null,
+  issues: readonly CarouselStructure2StoryValidationIssue[],
+) {
+  if (!plan || issues.length === 0) return null;
+  if (
+    !issues.every(
+      (issue) =>
+        issue.slideNumber !== null &&
+        TARGETED_COPY_REPAIR_ISSUE_CODES.has(issue.code),
+    )
+  ) {
+    return null;
+  }
+  return [...issues];
+}
+
+function replaceStoryTexts(
+  plan: CarouselStructure2StoryPlan,
+  storyTextBySlide: ReadonlyMap<number, string>,
+): CarouselStructure2StoryPlan {
+  return {
+    ...plan,
+    slides: plan.slides.map((slide) =>
+      storyTextBySlide.has(slide.slideNumber)
+        ? { ...slide, storyText: storyTextBySlide.get(slide.slideNumber)! }
+        : slide,
+    ),
+  };
 }
 
 function replaceIssues(
@@ -406,4 +505,29 @@ function getOpenAIClient() {
     timeout: CONTENT_PLAN_OPENAI_TIMEOUT_MS,
   });
   return openaiClient;
+}
+
+function summarizeProviderResponse(
+  completion: OpenAI.Chat.Completions.ChatCompletion,
+): CarouselStructure2ProviderResponseDiagnostic {
+  const choice = completion.choices[0];
+  const response = choice?.message.content ?? "";
+  const responseWithRequestId = completion as typeof completion & {
+    _request_id?: string;
+    request_id?: string;
+  };
+
+  return {
+    completionId: completion.id ?? null,
+    completionTokens: completion.usage?.completion_tokens ?? null,
+    finishReason: choice?.finish_reason ?? null,
+    promptTokens: completion.usage?.prompt_tokens ?? null,
+    refusal: choice?.message.refusal ?? null,
+    requestId:
+      responseWithRequestId._request_id ??
+      responseWithRequestId.request_id ??
+      null,
+    responseCharacterCount: response.length,
+    totalTokens: completion.usage?.total_tokens ?? null,
+  };
 }

@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildCarouselStructure2StoryPlanBatch, type CarouselStructure2PlanFailure } from "./carousel-structure-2-planner.js";
+import {
+  buildCarouselStructure2StoryPlanBatch,
+  CarouselStructure2EmptyProviderResponseError,
+  type CarouselStructure2PlanFailure,
+} from "./carousel-structure-2-planner.js";
 import { CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS, CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS } from "./carousel-structure-2-story-plan.js";
 import { CAROUSEL_STRUCTURE_2_STORY_ROLES } from "./carousel-structure-2-formats.js";
 
@@ -37,15 +41,24 @@ function shortTakeawayPlan() {
   return plan;
 }
 
+function multiIssuePlan() {
+  const plan = shortTakeawayPlan();
+  plan.slides.first!.storyText =
+    "This cover hook is too long for the fixed visual space";
+  return plan;
+}
+
 test("retains a valid candidate between failures and diagnoses only the rejected slots", async () => {
   const originalFetch = globalThis.fetch;
   const originalKey = process.env.OPENAI_API_KEY;
   process.env.OPENAI_API_KEY = "test-key-no-network";
   let calls = 0;
+  const requests: Array<Record<string, unknown>> = [];
   let emptyResponse = false;
   let scenario: "default" | "second-repair" = "default";
   const failures: CarouselStructure2PlanFailure[] = [];
-  globalThis.fetch = async () => {
+  globalThis.fetch = async (_input, init) => {
+    requests.push(JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>);
     const requestNumber = calls++;
     const content = scenario === "second-repair"
       ? requestNumber === 0
@@ -53,14 +66,20 @@ test("retains a valid candidate between failures and diagnoses only the rejected
           plans: Object.fromEntries(
             CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS.map((key, index) => [
               key,
-              index === 0 ? shortTakeawayPlan() : rawPlan(false),
+              index === 0 ? multiIssuePlan() : rawPlan(false),
             ]),
           ),
         }
         : requestNumber === 1
-          ? shortTakeawayPlan()
+          ? {
+              storyTextBySlide: {
+                slide1: "Campaign changes should not steal nights",
+                slide6:
+                  "Keep the next decision visible so changing priorities always have a clear owner and context to continue.",
+              },
+            }
           : requestNumber === 2
-            ? rawPlan(true)
+            ? { storyTextBySlide: { slide6: copy[5] } }
             : rawPlan(false)
       : requestNumber === 0
         ? { plans: Object.fromEntries(CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS.map((key, i) => [key, rawPlan(i === 1)])) }
@@ -82,12 +101,21 @@ test("retains a valid candidate between failures and diagnoses only the rejected
     assert.equal(plans[0]!.validationResult.repairAttempted, false);
     emptyResponse = true;
     calls = 0;
-    await assert.rejects(buildCarouselStructure2StoryPlanBatch({ assignments, businessDescription }), /no Structure 2 story batch content/);
+    await assert.rejects(
+      buildCarouselStructure2StoryPlanBatch({ assignments, businessDescription }),
+      (error: unknown) => {
+        assert.ok(error instanceof CarouselStructure2EmptyProviderResponseError);
+        assert.equal(error.diagnostic.finishReason, "stop");
+        assert.equal(error.diagnostic.responseCharacterCount, 0);
+        return true;
+      },
+    );
     assert.equal(calls, 1, "an empty provider response must not trigger five repairs");
 
     emptyResponse = false;
     scenario = "second-repair";
     calls = 0;
+    requests.splice(0, requests.length);
     failures.splice(0, failures.length);
     const secondRepairPlans = await buildCarouselStructure2StoryPlanBatch({
       assignments,
@@ -101,6 +129,18 @@ test("retains a valid candidate between failures and diagnoses only the rejected
     assert.match(
       secondRepairPlans[0]!.rawLlmResponse.repair ?? "",
       /--- Structure 2 repair attempt ---/,
+    );
+    const firstRepairSchema = requests[1]!
+      .response_format as { json_schema: { schema: { properties: { storyTextBySlide: { properties: Record<string, unknown> } } } } };
+    const secondRepairSchema = requests[2]!
+      .response_format as { json_schema: { schema: { properties: { storyTextBySlide: { properties: Record<string, unknown> } } } } };
+    assert.deepEqual(
+      Object.keys(firstRepairSchema.json_schema.schema.properties.storyTextBySlide.properties),
+      ["slide1", "slide6"],
+    );
+    assert.deepEqual(
+      Object.keys(secondRepairSchema.json_schema.schema.properties.storyTextBySlide.properties),
+      ["slide6"],
     );
   } finally {
     globalThis.fetch = originalFetch;

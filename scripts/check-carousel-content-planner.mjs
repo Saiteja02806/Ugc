@@ -23,6 +23,13 @@ const structure2Formats = await jiti.import(
 );
 const fixture = createPlanFixture();
 const analysis = createAnalysisFixture();
+const liveStructure2CreativeSeeds = [
+  "Why campaign approvals quietly create late-night rework",
+  "The reporting handoff that leaves the next owner guessing",
+  "Why a perfect weekly campaign plan fails after one urgent change",
+  "The planning habit that hides a campaign's real next decision",
+  "How scattered launch notes turn small follow-ups into missed deadlines",
+];
 const workerParsed = workerPlanner.parseCarouselContentPlan(fixture, 6);
 const failures = [];
 
@@ -287,12 +294,18 @@ if (
 
 let livePlan = null;
 let liveStructure2Plans = null;
+let liveStructure2Failures = null;
 
-if (
-  process.argv.includes("--live") ||
-  process.argv.includes("--hook-overlay-live")
-) {
+const runLiveStructure1 =
+  process.argv.includes("--live") || process.argv.includes("--hook-overlay-live");
+const runLiveStructure2 =
+  process.argv.includes("--live") || process.argv.includes("--structure-2-live");
+
+if (runLiveStructure1 || runLiveStructure2) {
   loadEnvFile(path.resolve(workspaceRoot, ".env.local"));
+}
+
+if (runLiveStructure1) {
   livePlan = await workerPlanner.buildCarouselContentPlan({
     analysis,
     candidateIndex: 1,
@@ -338,31 +351,45 @@ if (
     );
   }
 
-  if (process.argv.includes("--live")) {
-    liveStructure2Plans =
-      await structure2Planner.buildCarouselStructure2StoryPlanBatch({
-        businessDescription: analysis.productSummary,
-        assignments: structure2Formats.CAROUSEL_STRUCTURE_2_FORMAT_IDS
-          .slice(0, 5)
-          .map((storyFormatId, slotIndex) => ({
-            candidateIndex: slotIndex,
-            slotIndex,
-            storyFormatId,
-          })),
-        recentHistory: [],
-      });
+}
 
-    if (
-      liveStructure2Plans.length !== 5 ||
-      liveStructure2Plans.some(
-        (item) =>
-          item.source !== "llm" ||
-          item.model !== "gpt-4o-mini" ||
-          item.validationResult.fallbackUsed,
-      )
-    ) {
-      failures.push("Live Structure 2 planner violated the LLM-only batch contract.");
-    }
+if (runLiveStructure2) {
+  liveStructure2Failures = [];
+  liveStructure2Plans =
+    await structure2Planner.buildCarouselStructure2StoryPlanBatch({
+      businessDescription: analysis.productSummary,
+      assignments: structure2Formats.CAROUSEL_STRUCTURE_2_FORMAT_IDS
+        .slice(0, 5)
+        .map((storyFormatId, slotIndex) => ({
+          candidateIndex: slotIndex,
+          creativeSeed:
+            liveStructure2CreativeSeeds[slotIndex] ??
+            `Practical marketing workflow insight ${slotIndex + 1}`,
+          emotion: "relief",
+          slotIndex,
+          storyFormatId,
+      })),
+      onPlanFailure: async (failure) => {
+        liveStructure2Failures.push(failure);
+      },
+      recentHistory: [],
+    });
+
+  if (
+    liveStructure2Plans.length !== 5 ||
+    liveStructure2Plans.some(
+      (item) =>
+        item.source !== "llm" ||
+        item.model !== "gpt-4o-mini" ||
+        item.validationResult.fallbackUsed,
+    )
+  ) {
+    failures.push("Live Structure 2 planner violated the LLM-only batch contract.");
+  }
+  if (liveStructure2Failures.length > 0) {
+    failures.push(
+      `Live Structure 2 planner rejected ${liveStructure2Failures.length} candidate(s).`,
+    );
   }
 }
 
@@ -395,6 +422,14 @@ console.log(
             slides: item.plan.slides,
             source: item.source,
             storyFormatId: item.assignedStoryFormatId,
+            validationResult: item.validationResult,
+          }))
+        : null,
+      liveStructure2Failures: liveStructure2Failures
+        ? liveStructure2Failures.map((failure) => ({
+            issues: failure.issues,
+            rawLlmResponse: failure.rawLlmResponse,
+            slotIndex: failure.slotIndex,
           }))
         : null,
       plannerVersion: workerPlanner.CAROUSEL_CONTENT_PLANNER_VERSION,

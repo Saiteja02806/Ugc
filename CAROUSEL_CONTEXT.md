@@ -4697,3 +4697,44 @@ Runtime/font errors propagate as dependency failures instead of copy-fit errors.
   `llm-carousel-structure-2-writer-v14-bounded-copy-repair`; it changes only
   generation recovery reliability, not the approved cover/body design,
   existing image treatment, format sequence, or historical renders.
+
+## 2026-09-21 Structure 2 field-level repair and empty-response evidence
+
+- A parsed Structure 2 plan with blocking copy failures on one or more
+  individually repairable slides now receives a bounded field-level repair
+  that returns only those slides' `storyText` values. The worker merges and
+  revalidates them against the unchanged six-slide plan. Structural, CTA, and
+  recent-history failures retain the complete-plan repair path. No valid
+  sibling slide is rewritten merely to correct word-count, fit, grounding,
+  perspective, repetition, or hanging-hook issues.
+- The validator also rejects only clear hanging cover endings below the
+  42-character cap (for example, a hook ending `to constantly`). It still does
+  not require punctuation from naturally complete short hooks.
+- An empty initial provider response is now identified separately and its
+  completion ID, request ID when supplied by the SDK, finish reason, refusal,
+  response size, and token usage are persisted with each failed generation.
+  This distinguishes an absent model response from a copy-rule rejection.
+- The decision initially raised the planner identifier to
+  `llm-carousel-structure-2-writer-v16-field-repair-observable-empty-response`.
+  It preserves the fixed font sizes, safe area, no-shrink/no-truncate policy,
+  story sequence, history boundary, historical renders, and approved image
+  behavior.
+
+## 2026-09-21 Structure 2 flexible body-copy boundary
+
+- Production evidence showed that the 18-word lower limit—not the fixed 60px
+  rendering contract—was causing otherwise complete 14-17-word body sentences
+  to enter repair and, at times, turn worse during repair. New Structure 2
+  body copy on Slides 2-6 therefore accepts 14-30 words and aims for 16-22
+  words. This is a narrow change to Structure 2, the generation path where
+  the failures were observed; Structure 1 is unchanged.
+- The 30-word ceiling, fixed 60px font, ten-line safe area, no-shrink and
+  no-truncate renderer behavior, six-slide sequence, first-person voice,
+  grounded-claim checks, duplicate/history checks, no-CTA policy, and
+  complete cover-hook rule remain mandatory. A short sentence still fails when
+  it is incomplete, generic, structurally wrong, unsupported, or does not fit.
+- The source format library and runtime validator now share this exact
+  14-30-word range. The planner identifier is
+  `llm-carousel-structure-2-writer-v17-flexible-body-copy-field-repair`, so
+  production rows make the relaxed boundary auditable.
+- The targeted copy-repair schema also applies the existing 42-character cap

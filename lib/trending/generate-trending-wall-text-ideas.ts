@@ -83,7 +83,6 @@ const WallTextReviewSchema = z
             feedback: z.string().trim().min(1).max(300),
             naturalSpokenLanguage: z.boolean(),
             oneCentralThought: z.boolean(),
-            preservesPlannedSituation: z.boolean(),
           })
           .strict(),
       )
@@ -276,14 +275,20 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
       }
 
       if (validated.size > 0) {
-        // Fact grounding proves a claim is supported; it does not prove that
-        // the visible copy still develops the assigned human situation. Every
-        // structurally valid candidate therefore receives the same quality
-        // review. The Reviewer judges scene fidelity semantically, never by
-        // requiring copied phrases or every field from the private brief.
-        const reviewerCandidates = pending.filter((candidate) =>
-          validated.has(candidate.candidateIndex),
-        );
+        // A V2 reservation has a backend-owned snapshot and one assigned
+        // fact. Its copy has already passed deterministic grounding, unsafe
+        // claim, structural, duplicate, and measured-layout gates. Accept it
+        // here without a second AI request. Older reservations intentionally
+        // retain the Reviewer while they have no stable fact assignment.
+        const reviewerCandidates = pending.filter((candidate) => {
+          const result = validated.get(candidate.candidateIndex);
+          if (!result) return false;
+          if (!candidate.grounding) return true;
+          accepted.set(candidate.candidateIndex, result);
+          acceptedSignatures.push(result.duplicateSignature);
+          newlyAccepted.push(candidate);
+          return false;
+        });
 
         if (reviewerCandidates.length > 0) {
           const reviews = await requestReviewer({
@@ -310,8 +315,7 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
             if (
               !review.approved ||
               !review.oneCentralThought ||
-              !review.naturalSpokenLanguage ||
-              !review.preservesPlannedSituation
+              !review.naturalSpokenLanguage
             ) {
               failures.push({
                 candidateIndex: candidate.candidateIndex,
@@ -487,7 +491,6 @@ async function requestReviewer(params: {
             "You independently review Wall-of-Text social overlays. Do not rewrite them.",
             "Review the clarity and quality of the complete copy. Video duration and reading speed are not approval criteria; do not reject copy because it may take longer than one play to read.",
             "The copy needs one concrete daily action, one central thought, natural spoken language, and only supported business claims.",
-            "The supplied plan is a scene contract, not a phrase template. Approve natural paraphrases when they preserve the same recognisable human moment and central tension. Set preservesPlannedSituation=false only when the copy clearly replaces or drops that situation for a different scene or generic capability statement. Do not require exact wording, every private-plan field, a product mention, or a formulaic structure.",
             "Reject semicolon-linked marketing mini-stories, feature stacking, forced emotional conclusions, and product mentions that are not needed for the thought.",
             "Keep every boolean consistent with approved and feedback.",
           ].join(" "),
@@ -501,13 +504,7 @@ async function requestReviewer(params: {
               ...(candidate.privateCreativeContext
                 ? {
                     plan: {
-                      audienceContext:
-                        candidate.privateCreativeContext.planningBrief.audienceContext,
                       contentIdea: candidate.privateCreativeContext.contentIdea,
-                      creativeSeed:
-                        candidate.privateCreativeContext.planningBrief.creativeSeed,
-                      emotionalTension:
-                        candidate.privateCreativeContext.planningBrief.emotionalTension,
                       humanMoment:
                         candidate.privateCreativeContext.planningBrief.humanMoment,
                       supportedAngle:
@@ -522,7 +519,7 @@ async function requestReviewer(params: {
       ],
       response_format: zodResponseFormat(
         WallTextReviewSchema,
-        "trending_wall_text_review_v10",
+        "trending_wall_text_review_v9",
       ),
     });
   } catch (error) {

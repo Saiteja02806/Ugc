@@ -4671,6 +4671,14 @@ Runtime/font errors propagate as dependency failures instead of copy-fit errors.
   needs for natural reader-first hooks. The 5-11 word contract remains the
   governing rule; the character ceiling is a fit guard, not a request for a
   second support line.
+- The Structure 2 strict-output schema uses the broader 720-character story
+  transport ceiling for Slide 1 rather than imposing the 42-character publish
+  ceiling inside the decoder. The publisher remains authoritative: it rejects
+  any overlength hook and an unterminated hook exactly at the 42-character
+  boundary, then uses the existing isolated repair to request a shorter,
+  complete hook. This prevents decoder-boundary fragments such as a final lone
+  letter from reaching a rendered slide; it does not alter the visible cover
+  budget or rewrite historical renders.
 - The change does not alter the image blend, crop, brightness, safe area,
   fonts, text placement, slide roles, CTA prohibition, or historical renders.
 

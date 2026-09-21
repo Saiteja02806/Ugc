@@ -25,9 +25,9 @@ test('a rejected candidate gets a targeted rewrite and already accepted items ar
   globalThis.fetch=async(_url,init)=>{
     const body=JSON.parse(init.body);
     const schemaName=body.response_format?.json_schema?.name;
-    if(schemaName==='trending_wall_text_review_v10') {
+    if(schemaName==='trending_wall_text_review_v9') {
       const reviewCandidates=JSON.parse(body.messages[1].content).candidates;
-      const reviews=reviewCandidates.map(candidate=>({approved:true,candidateIndex:candidate.candidateIndex,feedback:'Clear and natural.',naturalSpokenLanguage:true,oneCentralThought:true,preservesPlannedSituation:true}));
+      const reviews=reviewCandidates.map(candidate=>({approved:true,candidateIndex:candidate.candidateIndex,feedback:'Clear and natural.',naturalSpokenLanguage:true,oneCentralThought:true}));
       return new Response(JSON.stringify({id:'test',object:'chat.completion',created:0,model:'gpt-5.6-luna',choices:[{index:0,finish_reason:'stop',message:{role:'assistant',content:JSON.stringify({reviews}),refusal:null}}]}),{headers:{'content-type':'application/json'}});
     }
     requests.push(body.messages[1].content);

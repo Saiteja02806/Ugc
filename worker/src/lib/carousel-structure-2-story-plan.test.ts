@@ -5,6 +5,7 @@ import {
   buildCarouselStructure2BatchMessages,
   buildCarouselStructure2StoryBatchSchema,
   CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS,
+  CAROUSEL_STRUCTURE_2_COVER_HOOK_SCHEMA_MAX_CHARACTERS,
   CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS,
   CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS,
   buildCarouselStructure2StoryPlanSchema,
@@ -133,7 +134,9 @@ test("Structure 2 prompt and schema describe the strict six-slide contract", () 
   assert.doesNotMatch(schema, /slideNumber|storyFormatId/);
   assert.match(
     schema,
-    new RegExp(`"maxLength":${CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS}`),
+    new RegExp(
+      `"maxLength":${CAROUSEL_STRUCTURE_2_COVER_HOOK_SCHEMA_MAX_CHARACTERS}`,
+    ),
   );
 
   const schemaObject = buildCarouselStructure2StoryPlanSchema();
@@ -146,6 +149,22 @@ test("Structure 2 prompt and schema describe the strict six-slide contract", () 
   // and publishing validation remain the authoritative count contract.
   assert.equal("pattern" in firstStoryText, false);
   assert.equal("pattern" in secondStoryText, false);
+});
+
+test("Structure 2 rejects a cover that ends at the published character cap without an ending", () => {
+  const raw = makeRawStoryPlan();
+  raw.slides.first!.storyText = "Are you overwhelmed by changing audience f";
+  const plan = parseCarouselStructure2StoryPlan(raw, {
+    businessDescription,
+    storyFormatId: "wrong_belief",
+  });
+  const issues = validateCarouselStructure2StoryPlan(plan, { businessDescription });
+
+  assert.ok(
+    issues.some(
+      (issue) => issue.code === "hook_incomplete" && issue.slideNumber === 1,
+    ),
+  );
 });
 
 test("Structure 2 rejects a cover hook that cannot safely fit the fixed three-line area", () => {

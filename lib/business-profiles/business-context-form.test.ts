@@ -64,3 +64,23 @@ test("saving list text trims only completed lines, keeps commas, and drops blank
   assert.deepEqual(saved.differentiators, ["Human experts, not generic advice"]);
   assert.deepEqual(saved.claimsToAvoid, ["Guaranteed results"]);
 });
+
+test("keeps Wall-of-Text reader categories while list fields are edited", () => {
+  const saved = applyBusinessContextListText(
+    createContext({
+      wallTextPrimaryReader: "Marketing managers",
+      wallTextSecondaryReader: "Agency account managers",
+    }),
+    {
+      categories: "",
+      claimsToAvoid: "",
+      differentiators: "",
+      painPoints: "",
+      targetAudience: "Marketing managers\nAgency account managers",
+      valueProps: "",
+    },
+  );
+
+  assert.equal(saved.wallTextPrimaryReader, "Marketing managers");
+  assert.equal(saved.wallTextSecondaryReader, "Agency account managers");
+});

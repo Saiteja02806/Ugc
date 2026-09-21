@@ -815,7 +815,7 @@ test("Carousel editing keeps content headings and adds the heavy Slide 1 cover t
   assert.match(editor, /function getExactCarouselPreviewUrl/);
   assert.match(editor, /function Structure2StoryText/);
   assert.match(editor, /color: "#ffffff"/);
-  assert.match(editor, /fontWeight: 600/);
+  assert.match(editor, /fontWeight: layout\.story\.fontSize >= 90 \? 800 : 600/);
   assert.match(editor, /WebkitTextStroke: "0\.370cqw rgba\(0, 0, 0, 0\.72\)"/);
   assert.match(editor, /function CarouselEditorBackground/);
   assert.match(editor, /story_product_reveal/);
@@ -823,7 +823,9 @@ test("Carousel editing keeps content headings and adds the heavy Slide 1 cover t
   assert.match(editor, /function CarouselCoverText/);
   assert.match(editor, /text-\[8\.52cqw\] font-extrabold/);
   assert.match(editor, /primaryText=\{slide\.headline\.trim\(\) \|\| supportingText\}/);
-  assert.match(editor, /slide\.slideNumber === 1 \? "center" : position/);
+  assert.match(editor, /const isCover = slide\.slideNumber === 1/);
+  assert.match(editor, /fontSize: isCover \? 92 : CAROUSEL_FIXED_EDITOR_FONT_SIZE/);
+  assert.match(editor, /slide\.slideNumber === 1 \? "Hook" : "Headline"/);
   assert.match(
     editor,
     /kind === "headline" \? \(\s*<span className="box-decoration-clone rounded-\[1\.8cqw\] bg-white/,
@@ -835,7 +837,7 @@ test("Carousel editing keeps content headings and adds the heavy Slide 1 cover t
   assert.doesNotMatch(editor, /function CarouselBubbleText/);
   assert.doesNotMatch(editor, /fill="#ffffff"/);
   assert.doesNotMatch(editor, /<feDropShadow/);
-  assert.match(editor, /Rendered as the bottom action label\./);
+  assert.doesNotMatch(editor, /Rendered as the bottom action label\./);
 });
 
 test("moves the real edited Carousel slide from the latest state instead of a stale closure", () => {

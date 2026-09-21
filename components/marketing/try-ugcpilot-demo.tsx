@@ -920,7 +920,15 @@ export function TryUgcPilotDemo() {
               );
             })}
 
-            {!topCard ? (
+            {!topCard && (isAnalyzing || isRefilling) ? (
+              <div className="absolute inset-0 z-50 flex flex-col items-center justify-center px-8 text-center" role="status" aria-live="polite">
+                <LoaderCircle className="size-9 animate-spin text-[#ff6b3d]" aria-hidden="true" />
+                <h2 className="mt-3 text-xl font-bold">Loading more content</h2>
+                <p className="mt-2 text-sm leading-6 text-zinc-300">
+                  {isAnalyzing ? "Building your personalized deck…" : "Preparing your next cards…"}
+                </p>
+              </div>
+            ) : !topCard ? (
               <div className="absolute inset-0 z-50 flex flex-col items-center justify-center px-8 text-center">
                 <Check className="size-9 text-emerald-300" aria-hidden="true" />
                 <h2 className="mt-3 text-xl font-bold">Deck reviewed</h2>

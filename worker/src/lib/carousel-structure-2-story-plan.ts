@@ -54,6 +54,12 @@ const MAX_VISUAL_CONTEXT_LENGTH = 220;
 const STRUCTURE_2_COVER_HOOK_MIN_WORDS = 5;
 const STRUCTURE_2_COVER_HOOK_MAX_WORDS = 11;
 export const CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS = 42;
+// The published cover budget remains 42 characters. Do not use that exact
+// boundary in Structured Outputs: gpt-4o-mini can finish a token mid-hook to
+// satisfy it, which produces an apparently valid but incomplete cover. The
+// publisher validator below owns the real 42-character acceptance rule.
+export const CAROUSEL_STRUCTURE_2_COVER_HOOK_SCHEMA_MAX_CHARACTERS =
+  MAX_STORY_TEXT_LENGTH;
 const GENERIC_COPY_PATTERN =
   /\b(boost productivity|streamline your workflow|unlock efficiency|work smarter|next level|seamless|one platform|one workspace for everything)\b/i;
 
@@ -97,6 +103,7 @@ export type CarouselStructure2StoryValidationIssue = {
   code:
     | "cta_mismatch"
     | "generic_copy"
+    | "hook_incomplete"
     | "hook_length"
     | "invalid_plan"
     | "perspective"
@@ -238,6 +245,19 @@ export function validateCarouselStructure2StoryPlan(
       issues.push({
         code: "hook_length",
         message: `Slide 1 must be one ${STRUCTURE_2_COVER_HOOK_MIN_WORDS}-${STRUCTURE_2_COVER_HOOK_MAX_WORDS}-word hook of ${CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS} characters or fewer, with no subtitle or supporting copy.`,
+        slideNumber: slide.slideNumber,
+      });
+    }
+
+    if (
+      slide.slideNumber === 1 &&
+      copy.length === CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS &&
+      !/[.!?…]$/.test(copy)
+    ) {
+      issues.push({
+        code: "hook_incomplete",
+        message:
+          "Slide 1 reaches the character cap without a complete ending. Return a shorter, self-contained hook instead of a partial final word or phrase.",
         slideNumber: slide.slideNumber,
       });
     }
@@ -422,7 +442,7 @@ export function buildCarouselStructure2StoryPlanSchema() {
           storyText: {
             maxLength:
               isCover
-                ? CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS
+                ? CAROUSEL_STRUCTURE_2_COVER_HOOK_SCHEMA_MAX_CHARACTERS
                 : MAX_STORY_TEXT_LENGTH,
             minLength: 1,
             type: "string",
@@ -576,7 +596,12 @@ export function buildCarouselStructure2RepairMessages(params: {
   const hasSlideOneCoverFitFailure = params.issues.some(
     (issue) =>
       issue.slideNumber === 1 &&
-      (issue.code === "render_fit" || issue.code === "hook_length"),
+      (issue.code === "hook_incomplete" ||
+        issue.code === "render_fit" ||
+        issue.code === "hook_length"),
+  );
+  const hasSlideOneCutoff = params.issues.some(
+    (issue) => issue.slideNumber === 1 && issue.code === "hook_incomplete",
   );
 
   return [
@@ -606,7 +631,9 @@ export function buildCarouselStructure2RepairMessages(params: {
           ? "This is the final bounded copy repair. Before returning, count whitespace-delimited words in every changed Slide 2-6 and make sure the complete plan has no close paraphrase or CTA. Return only a plan that satisfies every listed publishing requirement."
           : null,
         hasSlideOneCoverFitFailure
-          ? `Slide 1 exceeded its fixed cover budget. Replace it with a shorter, simpler single hook that remains within ${CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS} characters and the real three-line display area; do not add support copy.`
+          ? hasSlideOneCutoff
+            ? `Slide 1 stopped at the ${CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS}-character boundary without a complete ending. Replace it with a shorter, self-contained hook; never leave a partial final word or phrase, and do not add support copy.`
+            : `Slide 1 exceeded its fixed cover budget. Replace it with a shorter, simpler single hook that remains within ${CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS} characters and the real three-line display area; do not add support copy.`
           : null,
         "Validation issues:",
         JSON.stringify(params.issues),

@@ -10,7 +10,7 @@ import {
 import { getContentPlanItemConceptLanes } from "./content-plan-concept-lanes.js";
 
 export const WALL_TEXT_CONTENT_PLAN_PROMPT_VERSION =
-  "wall-text-content-plan-five-context-v8-situation-history";
+  "wall-text-content-plan-reader-profiles-v9-no-plan-history";
 // Each item carries seven structured fields in addition to its parent brief.
 // Ten ideas keep a response comfortably below the model's structured-output
 // budget while preserving the five-idea creative-brief grouping.
@@ -24,16 +24,7 @@ const MAX_CONTENT_IDEA_LENGTH = 400;
 const MAX_FEELING_LENGTH = 120;
 const MAX_GENERATION_ATTEMPTS = 2;
 const MAX_SINGLE_IDEA_REPAIR_ATTEMPTS = 3;
-const MAX_PROMPT_PREVIOUS_ITEMS = 40;
-const MAX_PROMPT_SITUATION_HISTORY = 20;
 let openaiClient: OpenAI | null = null;
-
-type WallTextPromptHistoryItem = Pick<
-  WallTextContentPlanItemRow,
-  "content_idea" | "feeling"
-> & {
-  private_context?: Json | null;
-};
 
 export class EmptyWallTextContentPlanResponseError extends Error {
   readonly finishReason: string | null;
@@ -91,7 +82,7 @@ export async function generateWallTextContentPlanChunk(params: {
   briefIndexStart?: number;
   businessDescription: string;
   count: number;
-  existingItems: WallTextPromptHistoryItem[];
+  existingItems: Array<Pick<WallTextContentPlanItemRow, "content_idea" | "feeling">>;
   planningContext: Json;
 }) {
   const count = Math.trunc(params.count);
@@ -116,10 +107,11 @@ export async function generateWallTextContentPlanChunk(params: {
     const completion = await getOpenAIClient().chat.completions.create({
       max_completion_tokens: 8_000,
       messages: buildMessages({
-        ...params,
+        businessDescription: params.businessDescription,
         briefIndexStart,
         briefCount,
         issues: attempt === 0 ? [] : lastIssues,
+        planningContext: params.planningContext,
       }),
       model: getWallTextContentPlanModel(),
       reasoning_effort: getWallTextContentPlanReasoningEffort(),
@@ -214,7 +206,7 @@ async function regenerateDuplicateWallTextItems(params: {
   briefIndexStart: number;
   businessDescription: string;
   count: number;
-  existingItems: WallTextPromptHistoryItem[];
+  existingItems: Array<Pick<WallTextContentPlanItemRow, "content_idea" | "feeling">>;
   issues: string[];
   parsed: GeneratedWallTextContentPlanChunk;
   planningContext: Json;
@@ -263,15 +255,6 @@ async function regenerateDuplicateWallTextItems(params: {
           messages: buildSingleIdeaReplacementMessages({
             businessDescription: params.businessDescription,
             currentItem,
-            existingItems: [
-              ...params.existingItems,
-              ...items
-                .filter((_, index) => index !== itemIndex)
-                .map((item) => ({
-                  content_idea: item.contentIdea,
-                  feeling: item.feeling,
-                })),
-            ],
             issues: params.issues.filter((issue) =>
               issue.startsWith(`Brief ${briefSlotIndex} idea ${itemSlotIndex}`),
             ),
@@ -513,45 +496,10 @@ export function getWallTextItemConceptLanes(
   return getContentPlanItemConceptLanes({ briefCount, briefIndexStart });
 }
 
-export function getWallTextPromptPreviousItems(
-  existingItems: readonly WallTextPromptHistoryItem[],
-) {
-  // The server validates candidate ideas against the entire historical pool.
-  // The model only needs a recent, representative window to maintain topical
-  // variety; sending all 200 ideas makes later structured requests needlessly
-  // large in the observed blank-response path.
-  return existingItems.slice(-MAX_PROMPT_PREVIOUS_ITEMS);
-}
-
-/**
- * The planner should see a compact sample of prior scenes, not just their
- * short titles. This is guidance rather than a hard duplicate gate: the model
- * can return to a broad theme when the audience, trigger, tension, or outcome
- * is materially different.
- */
-export function getWallTextPromptSituationHistory(
-  existingItems: readonly WallTextPromptHistoryItem[],
-) {
-  return existingItems
-    .slice(-MAX_PROMPT_SITUATION_HISTORY)
-    .flatMap((item) => {
-      const context = asOptionalRecord(item.private_context);
-      if (!context) return [];
-      const humanMoment = compactPromptText(context.humanMoment, 220);
-      if (!humanMoment) return [];
-      return [{
-        audienceContext: compactPromptText(context.audienceContext, 120),
-        emotionalTension: compactPromptText(context.emotionalTension, 120),
-        humanMoment,
-      }];
-    });
-}
-
 function buildMessages(params: {
   briefIndexStart: number;
   briefCount: number;
   businessDescription: string;
-  existingItems: WallTextPromptHistoryItem[];
   issues: string[];
   planningContext: Json;
 }) {
@@ -561,6 +509,7 @@ function buildMessages(params: {
       content: [
         "You create private creative-brief context and content ideas for Wall-of-Text short videos.",
         "The supplied businessDescription and approvedPlanningContext are the only factual source. Do not invent audiences, capabilities, workflows, proof, metrics, guarantees, outcomes, or claims.",
+        "approvedPlanningContext.wallTextReaders identifies the intended Wall-of-Text reader categories. Treat its primary reader as the default; use its secondary reader only when it is present and the idea genuinely suits that category. Every audienceContext must name a supported reader category rather than a generic everyone. Do not invent a reader persona because a category is missing.",
         "Every five-idea group has a private parent brief, and every child idea has its own five-field private writing context. The child context—not only the parent—is stored and used later. Neither is visible overlay copy, labels, or a fixed script.",
         "creativeSeed: The central human observation or tension. It is not final copy.",
         "audienceContext: The supported audience segment experiencing that situation. It must not mean everyone.",
@@ -568,7 +517,7 @@ function buildMessages(params: {
         "emotionalTension: The inner feeling or conflict created by that moment. For example, frustration mixed with self-blame.",
         "supportedAngle: The factual connection to the business, based only on approved facts. It is not a sales claim or a promise.",
         "For every child return contentIdea, feeling, audienceContext, privateCreativeSeed, emotionalTension, humanMoment, and supportedAngle. contentIdea must be an 8-to-14-word human observation that a later Wall writer can develop. It must never begin with Show, Depict, Portray, Capture, Highlight, Explore, Imagine, Picture, Present, or Describe. feeling guides tone and is not a phrase the writer must append. The children are not generated from creativeSeed alone.",
-        "Every group of five must use five clearly different concrete daily actions or situations. Each child has an assigned concept lane; use its lane as broad guidance, then create a genuinely different audience, action, setting, tension, or observation. recentSituationHistory is a soft creative memory: do not echo a past scene merely by changing words. A broad topic may recur when the audience, workflow stage, trigger, tension, or consequence is materially different. Product capabilities are optional context, not the subject of every idea. Do not write final overlay copy, line breaks, a slide layout, a CTA, a product pitch, or a finished script. Avoid copying a previous child idea word-for-word.",
+        "Every group of five must use five clearly different concrete daily actions or situations. Each child has an assigned concept lane; use its lane as broad guidance, then create a genuinely different audience, action, setting, tension, or observation. Product capabilities are optional context, not the subject of every idea. Do not write final overlay copy, line breaks, a slide layout, a CTA, a product pitch, or a finished script.",
         "Return the complete JSON object required by the schema. Include every brief, every child idea, and every required field. Do not return commentary, a partial result, or an empty response.",
       ].join(" "),
     },
@@ -582,16 +531,6 @@ function buildMessages(params: {
           params.briefCount,
         ),
         instruction: `Generate exactly ${params.briefCount} private creative briefs. Every brief must contain exactly five child ideas. briefSlotIndex values must be 0 through ${params.briefCount - 1}; itemSlotIndex values must be 0 through 4 for each brief.`,
-        previousItemCount: params.existingItems.length,
-        previousItems: getWallTextPromptPreviousItems(params.existingItems).map((item) => ({
-          contentIdea: item.content_idea,
-          feeling: item.feeling,
-        })),
-        recentSituationHistory: getWallTextPromptSituationHistory(
-          params.existingItems,
-        ),
-        previousItemsInstruction:
-          "previousItems and recentSituationHistory are compact recent samples. The server checks every historical idea for exact duplicates. Do not copy a prior wording or repeat the same scene with shallow substitutions.",
         ...(params.issues.length > 0
           ? {
               rejectedAttemptIssues: params.issues,
@@ -606,7 +545,6 @@ function buildMessages(params: {
 function buildSingleIdeaReplacementMessages(params: {
   businessDescription: string;
   currentItem: GeneratedWallTextContentPlanItem;
-  existingItems: WallTextPromptHistoryItem[];
   issues: string[];
   lane: { direction: string; key: string };
   planningContext: Json;
@@ -628,10 +566,6 @@ function buildSingleIdeaReplacementMessages(params: {
         assignedConceptLane: params.lane,
         businessDescription: params.businessDescription,
         currentRejectedItem: params.currentItem,
-        existingIdeasToAvoid: params.existingItems.map((item) => ({
-          contentIdea: item.content_idea,
-          feeling: item.feeling,
-        })),
         rejectedAttemptIssues: params.issues,
         instruction: "Return only the replacement idea and its five private context fields.",
       }),
@@ -787,17 +721,6 @@ function getOpenAIClient() {
     });
   }
   return openaiClient;
-}
-
-function asOptionalRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null;
-}
-
-function compactPromptText(value: unknown, maximumLength: number) {
-  if (typeof value !== "string") return "";
-  return value.trim().replace(/\s+/gu, " ").slice(0, maximumLength);
 }
 
 function asRecord(value: unknown, label: string): Record<string, unknown> {

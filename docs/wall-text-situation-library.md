@@ -167,10 +167,9 @@ The first four are planning diagnostics, not automatic rejections. Their role
 is to reveal concentration early enough for a writer or reviewer to make a
 good editorial decision.
 
-## Current implementation direction
+## Recommended implementation direction
 
-The generator now carries a compact recent scene history into future planning
-and asks the writer and reviewer to preserve the assigned human situation. The
-review is semantic and intentionally flexible: it rejects clear scene drift,
-not natural variation. Exact-copy protection remains separate from this
-editorial variety system.
+Use this library to guide human planning and future editorial improvements. It
+is not injected wholesale into generation prompts. Any runtime use should
+select only business-supported reader categories and relevant scene mechanics,
+while keeping exact-copy protection separate from editorial variety.

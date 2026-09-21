@@ -2,6 +2,10 @@ import { z } from "zod";
 
 const compactString = z.string().trim().min(1).max(240);
 const nullableCompactString = compactString.nullable();
+// Reader categories guide Wall-of-Text planning only. They are optional so
+// older saved business contexts remain readable until their owner next reviews
+// or re-analyzes the context.
+const optionalWallTextReaderCategory = nullableCompactString.optional();
 const stringList = (maxItems: number) =>
   z.array(compactString).max(maxItems);
 
@@ -24,6 +28,8 @@ export const WebsiteBusinessAnalysisSchema = z
     productSummary: z.string().trim().min(1).max(500).nullable(),
 
     targetAudience: stringList(5),
+    wallTextPrimaryReader: optionalWallTextReaderCategory,
+    wallTextSecondaryReader: optionalWallTextReaderCategory,
     mainProblem: nullableCompactString,
     mainPromise: nullableCompactString,
     valueProps: stringList(6),

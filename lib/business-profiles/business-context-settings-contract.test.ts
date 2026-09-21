@@ -35,6 +35,13 @@ test("Business Context accepts a versioned direct apply and optional re-analysis
   assert.match(route, /analyzeBusinessDescription\(body\.data\.source\)/);
 });
 
+test("Business Context exposes primary and optional secondary Wall-of-Text readers", () => {
+  assert.match(settingsPanel, /Wall-of-Text primary reader/);
+  assert.match(settingsPanel, /Wall-of-Text secondary reader \(optional\)/);
+  assert.match(settingsPanel, /wallTextPrimaryReader/);
+  assert.match(settingsPanel, /wallTextSecondaryReader/);
+});
+
 test("saving a draft cannot change active Business Context or its version", () => {
   const saveDraft = sourceBetween(
     db,

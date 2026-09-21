@@ -570,6 +570,8 @@ export function buildCarouselStructure2RepairMessages(params: {
   issues: readonly CarouselStructure2StoryValidationIssue[];
   rawPlan: unknown;
   recentHistory?: readonly CarouselStructure2RecentHistoryInput[];
+  repairAttempt?: number;
+  repairAttemptLimit?: number;
 }) {
   const hasSlideOneCoverFitFailure = params.issues.some(
     (issue) =>
@@ -600,6 +602,9 @@ export function buildCarouselStructure2RepairMessages(params: {
         "Only Slide 1 may lead with direct reader wording. Keep Slides 2-5 in the first-person story voice (I, me, or my); Slide 6 may turn the lesson toward the reader after its takeaway.",
         "Keep Slides 2-6 substantial but readable: aim for 20-24 words (the hard accepted range is 18-30), count words before returning, never exceed 30, and stay within ten visual lines at centered 60px type.",
         "Slide 1's 5-11 word single-hook limit and every Slide 2-6 18-30 word range are strict publishing requirements. Repair the listed blocking issues and preserve slides that already passed validation.",
+        params.repairAttempt === params.repairAttemptLimit
+          ? "This is the final bounded copy repair. Before returning, count whitespace-delimited words in every changed Slide 2-6 and make sure the complete plan has no close paraphrase or CTA. Return only a plan that satisfies every listed publishing requirement."
+          : null,
         hasSlideOneCoverFitFailure
           ? `Slide 1 exceeded its fixed cover budget. Replace it with a shorter, simpler single hook that remains within ${CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS} characters and the real three-line display area; do not add support copy.`
           : null,

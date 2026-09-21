@@ -23,7 +23,17 @@ import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 import { CONTENT_PLAN_OPENAI_MAX_RETRIES, CONTENT_PLAN_OPENAI_TIMEOUT_MS } from "./content-plan-provider-retry.js";
 
 export const CAROUSEL_STRUCTURE_2_PLANNER_VERSION =
-  "llm-carousel-structure-2-writer-v13-validated-copy";
+  "llm-carousel-structure-2-writer-v14-bounded-copy-repair";
+
+// The OpenAI strict decoder cannot safely carry the whitespace word-count
+// regex. Keep the exact contract in the publisher validator and allow one
+// additional, tightly scoped repair only when that validator says the model is
+// close on word count or copy uniqueness. This is deliberately not a general
+// retry loop: every other defect keeps the single-repair failure behavior.
+const MAX_TARGETED_REPAIR_ATTEMPTS = 2;
+const SECOND_REPAIRABLE_ISSUE_CODES = new Set<
+  CarouselStructure2StoryValidationIssue["code"]
+>(["recent_repetition", "story_repetition", "word_count"]);
 
 let openaiClient: OpenAI | null = null;
 
@@ -214,86 +224,119 @@ async function attemptIsolatedRepair(params: {
   recentHistory: CarouselStructure2RecentHistoryInput[];
   diagnostics: { repair: string | null };
 }) {
-  let repairResponse: string | null = null;
+  let currentIssues = [...params.initialIssues];
+  let currentRawPlan = params.rawPlan;
+  const repairResponses: string[] = [];
 
-  try {
-    const completion = await getOpenAIClient().chat.completions.create({
-      max_completion_tokens: 1_800,
-      messages: buildCarouselStructure2RepairMessages({
-        assignment: params.assignment,
-        businessDescription: params.businessDescription,
-        issues: params.initialIssues,
-        rawPlan: params.rawPlan,
-        recentHistory: params.recentHistory,
-      }),
-      model: params.model,
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: `carousel_structure_2_story_repair_${params.assignment.slotIndex}`,
-          schema: buildCarouselStructure2StoryPlanSchema(),
-          strict: true,
+  for (
+    let attempt = 1;
+    attempt <= MAX_TARGETED_REPAIR_ATTEMPTS;
+    attempt += 1
+  ) {
+    try {
+      const completion = await getOpenAIClient().chat.completions.create({
+        max_completion_tokens: 1_800,
+        messages: buildCarouselStructure2RepairMessages({
+          assignment: params.assignment,
+          businessDescription: params.businessDescription,
+          issues: currentIssues,
+          rawPlan: currentRawPlan,
+          recentHistory: params.recentHistory,
+          repairAttempt: attempt,
+          repairAttemptLimit: MAX_TARGETED_REPAIR_ATTEMPTS,
+        }),
+        model: params.model,
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: `carousel_structure_2_story_repair_${params.assignment.slotIndex}_${attempt}`,
+            schema: buildCarouselStructure2StoryPlanSchema(),
+            strict: true,
+          },
         },
-      },
-      temperature: 0.15,
-    });
-    repairResponse = completion.choices[0]?.message.content ?? null;
-    params.diagnostics.repair = repairResponse;
+        temperature: 0.15,
+      });
+      const repairResponse = completion.choices[0]?.message.content ?? null;
 
-    if (!repairResponse) {
-      throw new Error("OpenAI returned no repaired Structure 2 story plan.");
-    }
+      if (!repairResponse) {
+        throw new Error("OpenAI returned no repaired Structure 2 story plan.");
+      }
 
-    const repairedPlan = parseCarouselStructure2StoryPlan(
-      JSON.parse(repairResponse),
-      {
+      repairResponses.push(repairResponse);
+      params.diagnostics.repair = repairResponses.join(
+        "\n\n--- Structure 2 repair attempt ---\n\n",
+      );
+
+      const rawRepairedPlan = JSON.parse(repairResponse);
+      const repairedPlan = parseCarouselStructure2StoryPlan(rawRepairedPlan, {
         businessDescription: params.businessDescription,
         storyFormatId: params.assignment.storyFormatId,
-      },
-    );
-    const validation = partitionCarouselStructure2ValidationIssues(
-      validateCarouselStructure2StoryPlan(repairedPlan, {
-        businessDescription: params.businessDescription,
-        recentHistory: params.recentHistory,
-      }),
-    );
-    const finalIssues = validation.blockingIssues;
+      });
+      const validation = partitionCarouselStructure2ValidationIssues(
+        validateCarouselStructure2StoryPlan(repairedPlan, {
+          businessDescription: params.businessDescription,
+          recentHistory: params.recentHistory,
+        }),
+      );
+      const finalIssues = validation.blockingIssues;
 
-    if (finalIssues.length > 0) {
+      if (finalIssues.length === 0) {
+        return createLlmResult({
+          advisoryIssues: validation.advisoryIssues,
+          assignment: params.assignment,
+          initialBatchResponse: params.initialBatchResponse,
+          initialIssues: params.initialIssues,
+          model: params.model,
+          plan: repairedPlan,
+          repairResponse: params.diagnostics.repair,
+          repaired: true,
+        });
+      }
+
       const combinedIssues = dedupeCarouselStructure2ValidationIssues([
-        ...params.initialIssues,
+        ...currentIssues,
         ...finalIssues,
       ]);
-      params.initialIssues.splice(
-        0,
-        params.initialIssues.length,
-        ...combinedIssues,
+      const canUseTargetedSecondRepair =
+        attempt < MAX_TARGETED_REPAIR_ATTEMPTS &&
+        hasOnlyTargetedSecondRepairIssues(combinedIssues);
+
+      if (!canUseTargetedSecondRepair) {
+        replaceIssues(params.initialIssues, combinedIssues);
+        return null;
+      }
+
+      currentIssues = combinedIssues;
+      currentRawPlan = rawRepairedPlan;
+    } catch (error) {
+      replaceIssues(
+        params.initialIssues,
+        dedupeCarouselStructure2ValidationIssues([
+          ...currentIssues,
+          createCarouselStructure2InvalidPlanIssue(error),
+        ]),
       );
       return null;
     }
-
-    return createLlmResult({
-      advisoryIssues: validation.advisoryIssues,
-      assignment: params.assignment,
-      initialBatchResponse: params.initialBatchResponse,
-      initialIssues: params.initialIssues,
-      model: params.model,
-      plan: repairedPlan,
-      repairResponse,
-      repaired: true,
-    });
-  } catch (error) {
-    const combinedIssues = dedupeCarouselStructure2ValidationIssues([
-      ...params.initialIssues,
-      createCarouselStructure2InvalidPlanIssue(error),
-    ]);
-    params.initialIssues.splice(
-      0,
-      params.initialIssues.length,
-      ...combinedIssues,
-    );
-    return null;
   }
+
+  return null;
+}
+
+function hasOnlyTargetedSecondRepairIssues(
+  issues: readonly CarouselStructure2StoryValidationIssue[],
+) {
+  return (
+    issues.length > 0 &&
+    issues.every((issue) => SECOND_REPAIRABLE_ISSUE_CODES.has(issue.code))
+  );
+}
+
+function replaceIssues(
+  target: CarouselStructure2StoryValidationIssue[],
+  issues: readonly CarouselStructure2StoryValidationIssue[],
+) {
+  target.splice(0, target.length, ...issues);
 }
 
 function createLlmResult(params: {

@@ -30,17 +30,41 @@ function rawPlan(valid: boolean) {
   };
 }
 
+function shortTakeawayPlan() {
+  const plan = rawPlan(true);
+  plan.slides[CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS[5]]!.storyText =
+    "Keep the next decision visible so changing priorities always have a clear owner and context to continue.";
+  return plan;
+}
+
 test("retains a valid candidate between failures and diagnoses only the rejected slots", async () => {
   const originalFetch = globalThis.fetch;
   const originalKey = process.env.OPENAI_API_KEY;
   process.env.OPENAI_API_KEY = "test-key-no-network";
   let calls = 0;
   let emptyResponse = false;
+  let scenario: "default" | "second-repair" = "default";
   const failures: CarouselStructure2PlanFailure[] = [];
   globalThis.fetch = async () => {
-    const content = calls++ === 0
-      ? { plans: Object.fromEntries(CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS.map((key, i) => [key, rawPlan(i === 1)])) }
-      : rawPlan(false);
+    const requestNumber = calls++;
+    const content = scenario === "second-repair"
+      ? requestNumber === 0
+        ? {
+          plans: Object.fromEntries(
+            CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS.map((key, index) => [
+              key,
+              index === 0 ? shortTakeawayPlan() : rawPlan(false),
+            ]),
+          ),
+        }
+        : requestNumber === 1
+          ? shortTakeawayPlan()
+          : requestNumber === 2
+            ? rawPlan(true)
+            : rawPlan(false)
+      : requestNumber === 0
+        ? { plans: Object.fromEntries(CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS.map((key, i) => [key, rawPlan(i === 1)])) }
+        : rawPlan(false);
     return new Response(JSON.stringify({ choices: [{ message: { content: emptyResponse ? null : JSON.stringify(content) }, finish_reason: "stop" }] }), {
       status: 200, headers: { "content-type": "application/json" },
     });
@@ -60,6 +84,24 @@ test("retains a valid candidate between failures and diagnoses only the rejected
     calls = 0;
     await assert.rejects(buildCarouselStructure2StoryPlanBatch({ assignments, businessDescription }), /no Structure 2 story batch content/);
     assert.equal(calls, 1, "an empty provider response must not trigger five repairs");
+
+    emptyResponse = false;
+    scenario = "second-repair";
+    calls = 0;
+    failures.splice(0, failures.length);
+    const secondRepairPlans = await buildCarouselStructure2StoryPlanBatch({
+      assignments,
+      businessDescription,
+      onPlanFailure: async (failure) => { failures.push(failure); },
+    });
+    assert.deepEqual(secondRepairPlans.map((plan) => plan.slotIndex), [0]);
+    assert.deepEqual(failures.map((failure) => failure.slotIndex), [1, 2, 3, 4]);
+    assert.equal(calls, 7, "one batch, two bounded repairs, then one repair per unrelated failure");
+    assert.equal(secondRepairPlans[0]!.validationResult.repairAttempted, true);
+    assert.match(
+      secondRepairPlans[0]!.rawLlmResponse.repair ?? "",
+      /--- Structure 2 repair attempt ---/,
+    );
   } finally {
     globalThis.fetch = originalFetch;
     if (originalKey === undefined) delete process.env.OPENAI_API_KEY;

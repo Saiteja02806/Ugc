@@ -4673,3 +4673,19 @@ Runtime/font errors propagate as dependency failures instead of copy-fit errors.
   second support line.
 - The change does not alter the image blend, crop, brightness, safe area,
   fonts, text placement, slide roles, CTA prohibition, or historical renders.
+
+## 2026-09-21 Structure 2 bounded near-valid copy repair
+
+- Structure 2 continues to make one isolated LLM repair for a rejected plan.
+  It may make exactly one additional repair only when every remaining blocking
+  issue is a word-count or copy-uniqueness issue (`word_count`,
+  `recent_repetition`, or `story_repetition`). The final repair repeats the
+  exact publishing contract and asks the model to count changed Slides 2-6.
+- This is not a general retry loop: provider-empty, invalid-schema, claim,
+  role, CTA, rendering, or other content failures remain terminal after their
+  normal single repair. No renderer or worker ever pads, truncates, or rewrites
+  model copy to make it pass.
+- The decision raises the Structure 2 planner identifier to
+  `llm-carousel-structure-2-writer-v14-bounded-copy-repair`; it changes only
+  generation recovery reliability, not the approved cover/body design,
+  existing image treatment, format sequence, or historical renders.

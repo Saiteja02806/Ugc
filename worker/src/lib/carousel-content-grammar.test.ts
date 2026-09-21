@@ -11,8 +11,6 @@ import { getCarouselHookTemplate } from "./carousel-hook-templates.js";
 import {
   buildCarouselContentPlan,
   buildCarouselContentPlanBatch,
-  CAROUSEL_COVER_HOOK_WORD_PATTERN,
-  CAROUSEL_FOLLOWUP_BODY_WORD_PATTERN,
   parseCarouselContentPlanForAssignment,
   partitionCarouselContentPlanValidationIssues,
   validateCarouselContentPlan,
@@ -163,25 +161,6 @@ test("Structure 1 requires 18-30 words for Slides 2-6 prose", () => {
         issue.code === "body_word_limit" &&
         issue.slideNumber === longProseSlide.slideNumber,
     ),
-  );
-});
-
-test("Structure 1 planner schema patterns preserve the centered copy contract", () => {
-  assert.match(
-    "Stop letting approvals stall campaigns",
-    new RegExp(CAROUSEL_COVER_HOOK_WORD_PATTERN),
-  );
-  assert.doesNotMatch(
-    "Stop losing approvals",
-    new RegExp(CAROUSEL_COVER_HOOK_WORD_PATTERN),
-  );
-  assert.match(
-    "I kept rebuilding campaign handoffs whenever priorities changed, which hid approvals and made every owner reconstruct context before their next decision.",
-    new RegExp(CAROUSEL_FOLLOWUP_BODY_WORD_PATTERN),
-  );
-  assert.doesNotMatch(
-    "I kept rebuilding campaign handoffs whenever priorities changed, hiding approvals and forcing every owner to reconstruct context.",
-    new RegExp(CAROUSEL_FOLLOWUP_BODY_WORD_PATTERN),
   );
 });
 
@@ -346,8 +325,15 @@ test("the worker sends a persisted template only as Slide 1 planner guidance", a
     assert.match(requestText, /aim for 20-24 words/i);
     assert.match(requestText, /natural or sentence case/i);
     assert.match(requestText, /adds distinct information the body does not already say/i);
-    assert.match(requestText, /"pattern":"\^\(\?:\\\\S\+\\\\s\+\)\{4,10\}\\\\S\+\$"/);
-    assert.match(requestText, /"pattern":"\^\(\?:\\\\S\+\\\\s\+\)\{17,29\}\\\\S\+\$"/);
+    // Word limits stay in the prompt and publisher validator. They must not be
+    // encoded as regex patterns in the strict decoder schema: gpt-4o-mini can
+    // terminate with an empty `length` response when those patterns are present.
+    const responseSchema = (
+      request as {
+        response_format?: { json_schema?: { schema?: unknown } };
+      } | null
+    )?.response_format?.json_schema?.schema;
+    assert.doesNotMatch(JSON.stringify(responseSchema), /"pattern":/);
   } finally {
     globalThis.fetch = originalFetch;
     if (originalApiKey === undefined) delete process.env.OPENAI_API_KEY;

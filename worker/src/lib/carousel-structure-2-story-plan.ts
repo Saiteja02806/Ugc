@@ -26,7 +26,7 @@ const STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE =
   "Write one self-contained hook, normally 5-8 words and 42 characters or fewer; 11 words remains the absolute limit. Use short, natural wording so it stays within three centred display lines. Use natural or sentence case, never ALL CAPS. It must read as one dominant thought, not a title plus subtitle or an explanatory story sentence. The hook sits in the image centre, so visualContext must leave a clear, calm central text zone rather than reserving empty space only at the bottom.";
 
 export const CAROUSEL_STRUCTURE_2_STORY_SCHEMA_VERSION =
-  "carousel-structure-2-strict-six-slide-story-v8";
+  "carousel-structure-2-strict-six-slide-story-v9";
 export const CAROUSEL_STRUCTURE_2_STORY_HISTORY_LIMIT = 10;
 /** Names the six rendered slides inside one Structure 2 carousel. */
 export const CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS = [
@@ -54,9 +54,6 @@ const MAX_VISUAL_CONTEXT_LENGTH = 220;
 const STRUCTURE_2_COVER_HOOK_MIN_WORDS = 5;
 const STRUCTURE_2_COVER_HOOK_MAX_WORDS = 11;
 export const CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS = 42;
-export const CAROUSEL_COVER_HOOK_WORD_PATTERN = "^(?:\\S+\\s+){4,10}\\S+$";
-export const CAROUSEL_FOLLOWUP_BODY_WORD_PATTERN =
-  "^(?:\\S+\\s+){17,29}\\S+$";
 const GENERIC_COPY_PATTERN =
   /\b(boost productivity|streamline your workflow|unlock efficiency|work smarter|next level|seamless|one platform|one workspace for everything)\b/i;
 
@@ -428,9 +425,6 @@ export function buildCarouselStructure2StoryPlanSchema() {
                 ? CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS
                 : MAX_STORY_TEXT_LENGTH,
             minLength: 1,
-            pattern: isCover
-              ? CAROUSEL_COVER_HOOK_WORD_PATTERN
-              : CAROUSEL_FOLLOWUP_BODY_WORD_PATTERN,
             type: "string",
           },
           visualContext: {

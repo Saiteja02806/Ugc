@@ -4653,14 +4653,19 @@ Runtime/font errors propagate as dependency failures instead of copy-fit errors.
   Slide 6. That is an image-selection decision, independent from the removed
   CTA-copy behavior.
 
-## 2026-09-20 Schema-bound centered copy contracts
+## 2026-09-21 Validated centered copy contracts
 
-- Both Structure 1 and Structure 2 use strict Structured Outputs string
-  patterns for new plans and repairs: Slide 1 is exactly 5-11 whitespace-
-  separated words, while prose returned for Slides 2-6 is exactly 18-30 words.
-  This makes the content-size agreement an output boundary rather than relying
-  only on prompt-following. It does not create, truncate, or otherwise replace
-  model copy after generation.
+- Both Structure 1 and Structure 2 prompt for a 5-11-word Slide 1 hook and
+  18-30-word prose on Slides 2-6, then enforce those exact word ranges through
+  their publishing validators and bounded repair path. No generated copy is
+  truncated, expanded, or otherwise replaced after the model response.
+- The OpenAI `gpt-4o-mini` production probe returned `finish_reason: "length"`
+  with zero completion tokens when the whitespace word-count regex appeared in
+  a strict Structured Outputs schema, while the otherwise identical schema
+  without that regex completed normally. Therefore these schemas retain strict
+  object shape, nullability, character limits, and role enums, but deliberately
+  omit the word-count `pattern`. The prompt plus validator are the safe output
+  boundary for this model.
 - The maximum new-cover hook length is 42 characters in both structures. This
   gives the existing centered 96px, three-line treatment the measured margin it
   needs for natural reader-first hooks. The 5-11 word contract remains the

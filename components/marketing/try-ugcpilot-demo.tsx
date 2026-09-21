@@ -631,7 +631,9 @@ export function TryUgcPilotDemo() {
       return;
     }
     if (!topCard || exitDirection) return;
-    if (!isMediaMuted) playSwipeSound(direction);
+    // Swipe feedback is a separate interaction cue. Keep it available for a
+    // first-time visitor even when the optional background track is muted.
+    playSwipeSound(direction);
     setExitDirection(direction);
     window.setTimeout(() => {
       setCards((current) => current.slice(1));

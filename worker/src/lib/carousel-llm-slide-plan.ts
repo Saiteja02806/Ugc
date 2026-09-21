@@ -37,7 +37,7 @@ import {
 import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v47-schema-bound-copy";
+  "llm-carousel-planner-v48-validated-copy";
 export const CAROUSEL_V1_ASSIGNMENT_REQUIRED_ERROR =
   "Carousel V1 requires exactly six slides plus a backend-selected content format and compatible hook family.";
 
@@ -64,9 +64,6 @@ const MIN_HEADLINE_WORDS = 3;
 const MAX_HEADLINE_WORDS = 16;
 const FIRST_SLIDE_HOOK_COPY_GUIDANCE =
   "Write exactly one self-contained hook in the headline field, normally 5-8 words and 42 characters or fewer; 11 words remains the absolute limit. Use short, natural wording so it stays within three centred display lines. Set body to null: Slide 1 has no subtitle, supporting copy, or second text layer. Use natural or sentence case, never ALL CAPS. The hook is centered over the image, so imageDirection must leave a clear, calm central text zone rather than reserving empty space only at the bottom.";
-export const CAROUSEL_COVER_HOOK_WORD_PATTERN = "^(?:\\S+\\s+){4,10}\\S+$";
-export const CAROUSEL_FOLLOWUP_BODY_WORD_PATTERN =
-  "^(?:\\S+\\s+){17,29}\\S+$";
 const VISUAL_SUBJECT_TERMS =
   "(?:human|humans|person|people|face|faces|hand|hands|body|bodies|silhouette|silhouettes|man|men|woman|women|child|children|team|customer|customers|worker|workers)";
 const PROHIBITED_VISUAL_SUBJECT_PATTERN =
@@ -2872,7 +2869,6 @@ function buildNativeSlideOneFallbackResponseSchema(
           headline: {
             maxLength: FIRST_SLIDE_MAX_HEADLINE_LENGTH,
             minLength: 1,
-            pattern: CAROUSEL_COVER_HOOK_WORD_PATTERN,
             type: "string",
           },
           imageDirection: {
@@ -2938,7 +2934,6 @@ function buildCarouselContentSlideSchema(
                   {
                     maxLength: maximumBodyLength,
                     minLength: 1,
-                    pattern: CAROUSEL_FOLLOWUP_BODY_WORD_PATTERN,
                     type: "string",
                   },
                   { type: "null" },
@@ -2949,7 +2944,6 @@ function buildCarouselContentSlideSchema(
             ? {
                 maxLength: FIRST_SLIDE_MAX_HEADLINE_LENGTH,
                 minLength: 1,
-                pattern: CAROUSEL_COVER_HOOK_WORD_PATTERN,
                 type: "string",
               }
             : {

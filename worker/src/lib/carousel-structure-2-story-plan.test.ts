@@ -4,8 +4,6 @@ import test from "node:test";
 import {
   buildCarouselStructure2BatchMessages,
   buildCarouselStructure2StoryBatchSchema,
-  CAROUSEL_COVER_HOOK_WORD_PATTERN,
-  CAROUSEL_FOLLOWUP_BODY_WORD_PATTERN,
   CAROUSEL_STRUCTURE_2_COVER_HOOK_MAX_CHARACTERS,
   CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS,
   CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS,
@@ -143,24 +141,11 @@ test("Structure 2 prompt and schema describe the strict six-slide contract", () 
     .properties.storyText;
   const secondStoryText = schemaObject.properties.slides.properties.second
     .properties.storyText;
-  assert.equal(firstStoryText.pattern, CAROUSEL_COVER_HOOK_WORD_PATTERN);
-  assert.equal(secondStoryText.pattern, CAROUSEL_FOLLOWUP_BODY_WORD_PATTERN);
-  assert.match(
-    "Stop letting approvals stall campaigns",
-    new RegExp(CAROUSEL_COVER_HOOK_WORD_PATTERN),
-  );
-  assert.doesNotMatch(
-    "Stop losing approvals",
-    new RegExp(CAROUSEL_COVER_HOOK_WORD_PATTERN),
-  );
-  assert.match(
-    "I kept rebuilding campaign handoffs whenever priorities changed, which hid approvals and made every owner reconstruct context before their next decision.",
-    new RegExp(CAROUSEL_FOLLOWUP_BODY_WORD_PATTERN),
-  );
-  assert.doesNotMatch(
-    "I kept rebuilding campaign handoffs whenever priorities changed, hiding approvals and forcing every owner to reconstruct context.",
-    new RegExp(CAROUSEL_FOLLOWUP_BODY_WORD_PATTERN),
-  );
+  // gpt-4o-mini ends constrained generation before emitting output when these
+  // word-count regexes appear in strict Structured Outputs. Prompt guidance
+  // and publishing validation remain the authoritative count contract.
+  assert.equal("pattern" in firstStoryText, false);
+  assert.equal("pattern" in secondStoryText, false);
 });
 
 test("Structure 2 rejects a cover hook that cannot safely fit the fixed three-line area", () => {

@@ -7,8 +7,21 @@ import { useEffect, useState } from "react";
 import { ProductLogoMark } from "@/components/brand/product-logo";
 import { LandingAuthAction } from "@/components/marketing/landing-auth-actions";
 
-const navItems = [{ label: "Pricing", href: "/pricing" }];
-const topOnlyNavItems = [{ label: "Try UGCPilot", href: "/try-ugcpilot" }];
+type NavItem = {
+  label: string;
+  href: string;
+};
+
+const navItems: NavItem[] = [
+  {
+    label: "Dating swipe demo",
+    href: "/tinder",
+  },
+  { label: "Pricing", href: "/pricing" },
+];
+const topOnlyNavItems: NavItem[] = [
+  { label: "Try UGCPilot", href: "/try-ugcpilot" },
+];
 
 export function LandingHeader({
   initialHasSession,

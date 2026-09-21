@@ -56,6 +56,10 @@ const workflowSteps = [
 const productFooterLinks = [
   { label: "Instagram formats", href: "#formats" },
   { label: "Workflow", href: "#workflow" },
+  {
+    label: "Dating swipe demo",
+    href: "/tinder",
+  },
   { label: "Pricing", href: "/pricing" },
   { label: "Sign in", href: authHref },
 ];

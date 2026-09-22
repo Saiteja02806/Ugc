@@ -38,7 +38,7 @@ exception; expired trials still stop preparation. No extra quota is granted.
 ## 2026-09-13 Wall copy range increased to 24-48 words
 
 - New automated Wall-of-Text copy uses an inclusive 24-48-word generation range
-  with a 36-word midpoint target when the measured layout permits it. Video
+  with a fixed 36-word target whenever the measured layout can support it. Video
   duration still does not impose a separate word limit or reading-time gate.
 - Writer prompt V21, layout budgeting, deterministic validation, and repair
   candidates all read the same range from `wall-text-copy-policy.ts`. The

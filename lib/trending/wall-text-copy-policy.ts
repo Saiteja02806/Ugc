@@ -16,10 +16,17 @@ export function getWallTextGenerationWordBudget(params: {
   );
   const maximum = Math.max(10, spatialMaximum);
   const minimum = Math.min(WALL_TEXT_GENERATION_WORD_RANGE.minimum, maximum);
+  // Keep the production writing target consistent for every account. A tighter
+  // measured layout may lower the maximum, but must never ask the Writer for
+  // more words than that particular fixed 52px canvas can safely render.
+  const target = Math.max(
+    minimum,
+    Math.min(WALL_TEXT_TARGET_WORDS, maximum),
+  );
 
   return {
     maximum,
     minimum,
-    target: Math.round((minimum + maximum) / 2),
+    target,
   } as const;
 }

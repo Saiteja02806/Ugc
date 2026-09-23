@@ -14,6 +14,7 @@ import { getSelectedWallTextDraft } from "@/lib/trending/wall-text-db";
 import { WallTextScheduleRequestSchema } from "@/lib/trending/wall-text-scheduling-contract";
 import { getWallTextPreviewTitle } from "@/lib/trending/wall-text-text-logic";
 import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
+import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -55,6 +56,7 @@ export async function POST(request: Request) {
 
     const pending = await createUserSchedule({
       allowTikTokTargets: hasTikTokBetaAccess(user),
+      allowYouTubeTargets: hasYouTubeBetaAccess(user),
       input: {
         caption: parsed.data.caption ?? "",
         metadata: {

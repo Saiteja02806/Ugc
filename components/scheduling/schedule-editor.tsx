@@ -60,6 +60,7 @@ import {
 import {
   getTikTokPrivacyLabel,
   isTikTokPrivacyLevel,
+  TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE,
   type TikTokPublishCapabilities,
 } from "@/lib/social/tiktok-publishing";
 import type { SocialConnection } from "@/lib/social/types";
@@ -93,6 +94,25 @@ const defaultTimezone =
   typeof Intl !== "undefined"
     ? Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
     : "UTC";
+
+function getPublishingAccountLabel(
+  tiktokBetaEnabled: boolean,
+  youtubeBetaEnabled: boolean,
+) {
+  if (tiktokBetaEnabled && youtubeBetaEnabled) {
+    return "Instagram, TikTok, or YouTube";
+  }
+
+  if (tiktokBetaEnabled) {
+    return "Instagram or TikTok";
+  }
+
+  if (youtubeBetaEnabled) {
+    return "Instagram or YouTube";
+  }
+
+  return "Instagram";
+}
 
 export type ScheduleFormSubmission = {
   caption: string;
@@ -231,6 +251,7 @@ export function ScheduleEditor({
   saving,
   socialConnections,
   tiktokBetaEnabled,
+  youtubeBetaEnabled,
 }: {
   demoMediaOptions: ScheduleMediaOption[];
   editingIsCombinedVideo: boolean;
@@ -254,6 +275,7 @@ export function ScheduleEditor({
   saving: boolean;
   socialConnections: SocialConnection[];
   tiktokBetaEnabled: boolean;
+  youtubeBetaEnabled: boolean;
 }) {
   useLockBodyScroll();
   const dialogRef = useRef<HTMLElement>(null);
@@ -266,17 +288,42 @@ export function ScheduleEditor({
     ? editingSchedule?.libraryItemId ?? null
     : null;
   const enabledPlatforms = useMemo<SchedulePlatform[]>(
-    () => (tiktokBetaEnabled ? ["instagram", "tiktok"] : ["instagram"]),
-    [tiktokBetaEnabled],
+    () => [
+      "instagram",
+      ...(tiktokBetaEnabled ? (["tiktok"] as const) : []),
+      ...(youtubeBetaEnabled ? (["youtube"] as const) : []),
+    ],
+    [tiktokBetaEnabled, youtubeBetaEnabled],
   );
+  const selectablePlatforms = useMemo(
+    () =>
+      isCarouselSchedule
+        ? enabledPlatforms.filter(supportsCarouselPublishing)
+        : enabledPlatforms,
+    [enabledPlatforms, isCarouselSchedule],
+  );
+  const videoPublishingAccountLabel = getPublishingAccountLabel(
+    tiktokBetaEnabled,
+    youtubeBetaEnabled,
+  );
+  const carouselPublishingAccountLabel = getPublishingAccountLabel(
+    tiktokBetaEnabled,
+    false,
+  );
+  const publishingAccountLabel = isCarouselSchedule
+    ? carouselPublishingAccountLabel
+    : videoPublishingAccountLabel;
+  const hasAdditionalVideoPublishingPlatform =
+    tiktokBetaEnabled || youtubeBetaEnabled;
+  const hasAdditionalCarouselPublishingPlatform = tiktokBetaEnabled;
   const publishingConnections = useMemo(
     () =>
       socialConnections.filter(
         (connection) =>
-          enabledPlatforms.includes(connection.platform) &&
+          selectablePlatforms.includes(connection.platform) &&
           connection.status !== "revoked",
       ),
-    [enabledPlatforms, socialConnections],
+    [selectablePlatforms, socialConnections],
   );
   const initialConnectionIds = getInitialScheduleConnectionIds({
     connections: publishingConnections,
@@ -284,8 +331,8 @@ export function ScheduleEditor({
     plannedPlatforms: editingPlannedPlatforms,
     plannedTargets: initialPlannedTargets,
   });
-  // Keep only providers outside this user's enabled beta surface dormant, so
-  // legacy drafts remain lossless when saved.
+  // Keep providers outside the currently selectable publishing surface dormant,
+  // so legacy drafts remain lossless when saved.
   const dormantLegacyTargets = initialPlannedTargets.filter(
     (target) => {
       const savedConnection = socialConnections.find(
@@ -293,7 +340,7 @@ export function ScheduleEditor({
       );
       const platform = target.platform ?? savedConnection?.platform;
 
-      return platform !== undefined && !enabledPlatforms.includes(platform);
+      return platform !== undefined && !selectablePlatforms.includes(platform);
     },
   );
   const [useOpeningClip, setUseOpeningClip] = useState(
@@ -409,12 +456,12 @@ export function ScheduleEditor({
     () =>
       socialConnections.filter(
         (connection) =>
-          enabledPlatforms.includes(connection.platform) &&
+          selectablePlatforms.includes(connection.platform) &&
           connection.status !== "revoked" &&
           (!isCarouselSchedule ||
             supportsCarouselPublishing(connection.platform)),
       ),
-    [enabledPlatforms, isCarouselSchedule, socialConnections],
+    [isCarouselSchedule, selectablePlatforms, socialConnections],
   );
   const selectedConnections = useMemo(
     () =>
@@ -428,7 +475,7 @@ export function ScheduleEditor({
   );
   const unavailableSavedInstagramTargets =
     getUnavailableSavedInstagramTargets({
-      allowedPlatforms: enabledPlatforms,
+      allowedPlatforms: selectablePlatforms,
       connections: socialConnections,
       plannedTargets: initialPlannedTargets,
     });
@@ -817,18 +864,18 @@ export function ScheduleEditor({
                 className="text-lg font-bold tracking-normal text-foreground"
               >
                 {isCarouselSchedule
-                  ? `Schedule ${tiktokBetaEnabled ? "publishing" : "Instagram"} carousel`
+                  ? `Schedule ${hasAdditionalCarouselPublishingPlatform ? "publishing" : "Instagram"} carousel`
                   : editingSchedule
-                    ? `Edit ${tiktokBetaEnabled ? "publishing" : "Instagram"} schedule`
-                    : `Schedule ${tiktokBetaEnabled ? "publishing" : "Instagram"} post`}
+                    ? `Edit ${hasAdditionalVideoPublishingPlatform ? "publishing" : "Instagram"} schedule`
+                    : `Schedule ${hasAdditionalVideoPublishingPlatform ? "publishing" : "Instagram"} post`}
               </h2>
               <p
                 id="schedule-drawer-description"
                 className="mt-1 max-w-2xl text-sm font-medium leading-6 text-muted"
               >
                 {isCarouselSchedule
-                  ? `Confirm the carousel, choose your ${tiktokBetaEnabled ? "Instagram or TikTok" : "Instagram"} account, and set the publish time.`
-                  : `Choose real media, your ${tiktokBetaEnabled ? "Instagram or TikTok" : "Instagram"} account, and when the post should publish.`}
+                  ? `Confirm the carousel, choose your ${publishingAccountLabel} account, and set the publish time.`
+                  : `Choose real media, your ${publishingAccountLabel} account, and when the post should publish.`}
               </p>
             </div>
           </div>
@@ -945,14 +992,14 @@ export function ScheduleEditor({
                       placeholder={
                         isCarouselSchedule
                           ? "Add a caption if you want one…"
-                          : tiktokBetaEnabled
+                          : hasAdditionalVideoPublishingPlatform
                             ? "Write a caption for your selected accounts…"
                             : "Write your Instagram caption…"
                       }
                       className="mt-2 min-h-32 w-full resize-none rounded-control border border-border bg-card-muted px-4 py-3 text-sm font-medium leading-6 text-foreground outline-none transition placeholder:text-muted-subtle hover:border-border-strong focus:border-primary focus:ring-2 focus:ring-primary/15"
                     />
                     <span className="mt-2 block text-xs font-semibold text-muted">
-                      {tiktokBetaEnabled
+                      {hasAdditionalVideoPublishingPlatform
                         ? "Caption optional. It is sent to each selected publishing account."
                         : "Caption optional. Appears with your Instagram post, separate from the text on the video or slides."}
                     </span>
@@ -993,14 +1040,18 @@ export function ScheduleEditor({
 
             <ScheduleFlowSection
               step="2"
-              title={tiktokBetaEnabled ? "Publishing account" : "Instagram account"}
+              title={
+                hasAdditionalVideoPublishingPlatform
+                  ? "Publishing account"
+                  : "Instagram account"
+              }
               description="Choose where this post will publish"
             >
               <ConnectedAccountSelector
                 connections={availableSocialConnections}
                 onToggle={toggleConnection}
                 selectedConnectionIds={selectedConnectionIds}
-                tiktokBetaEnabled={tiktokBetaEnabled}
+                accountLabel={publishingAccountLabel}
               />
 
               {unavailableSavedTargetError ? (
@@ -1164,7 +1215,7 @@ export function ScheduleEditor({
                         : "The selected secondary clip will be scheduled directly."
                   : requireScheduleTarget
                     ? "Choose a connected account before scheduling this post."
-                    : `Choose a connected ${tiktokBetaEnabled ? "Instagram or TikTok" : "Instagram"} account before scheduling this post.`}
+                    : `Choose a connected ${publishingAccountLabel} account before scheduling this post.`}
             </p>
             <button
               type="button"
@@ -2045,20 +2096,20 @@ function CompositionSlot({
 }
 
 function ConnectedAccountSelector({
+  accountLabel,
   connections,
   onToggle,
   selectedConnectionIds,
-  tiktokBetaEnabled,
 }: {
+  accountLabel: string;
   connections: SocialConnection[];
   onToggle: (connectionId: string) => void;
   selectedConnectionIds: string[];
-  tiktokBetaEnabled: boolean;
 }) {
   return (
     <div className="max-w-xl">
       <span className="text-sm font-bold text-foreground">
-        {tiktokBetaEnabled ? "Publishing account" : "Instagram account"}
+        {accountLabel === "Instagram" ? "Instagram account" : "Publishing account"}
       </span>
       {connections.length > 0 ? (
         <div className="mt-2 grid gap-2">
@@ -2158,7 +2209,7 @@ function ConnectedAccountSelector({
       ) : (
         <div className="mt-2 rounded-control border border-dashed border-border bg-card-muted px-4 py-4 text-sm font-semibold leading-6 text-muted">
           <p>
-            Connect {tiktokBetaEnabled ? "Instagram or TikTok" : "Instagram"} before scheduling this post.
+            Connect {accountLabel} before scheduling this post.
           </p>
           <a
             href="/settings#instagram-publishing"
@@ -2167,7 +2218,7 @@ function ConnectedAccountSelector({
             className="mt-3 inline-flex h-8 items-center justify-center gap-1.5 rounded-control border border-border bg-card px-3 text-xs font-bold text-foreground transition hover:border-border-strong hover:bg-card-muted"
           >
             <Plus className="size-3.5" aria-hidden="true" />
-            Connect {tiktokBetaEnabled ? "an account" : "Instagram"}
+            Connect {accountLabel === "Instagram" ? "Instagram" : "an account"}
           </a>
         </div>
       )}
@@ -2399,6 +2450,11 @@ function TikTokAccountSettings({
             : capabilities.creatorNickname}
         </p>
       ) : null}
+      {!capabilities.directPostAudited ? (
+        <p className="rounded-control border border-primary/25 bg-primary/5 px-3 py-2 text-[11px] font-semibold leading-5 text-foreground">
+          {TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE}
+        </p>
+      ) : null}
       <label className="block">
         <span className="flex items-center justify-between gap-3 text-xs font-bold text-foreground">
           <span>Visibility</span>
@@ -2487,9 +2543,12 @@ function TikTokAccountSettings({
         </div>
       </fieldset>
 
-      <p className="text-[11px] font-semibold leading-5 text-muted">
-        By posting, you agree to TikTok&apos;s Music Usage Confirmation.
-      </p>
+      <SettingCheckbox
+        checked={getBooleanSetting(settings, "musicUsageConfirmed", false)}
+        description="Required before scheduling this TikTok post."
+        label="I agree to TikTok's Music Usage Confirmation"
+        onChange={(checked) => onChange("musicUsageConfirmed", checked)}
+      />
     </div>
   );
 }

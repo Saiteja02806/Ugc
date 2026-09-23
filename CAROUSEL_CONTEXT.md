@@ -4717,6 +4717,45 @@ Runtime/font errors propagate as dependency failures instead of copy-fit errors.
   likes, comments, and shares). It does not claim account-level followers,
   following, total likes, or public-video-count analytics.
 
+## 2026-09-23 TikTok Direct Post audit readiness
+
+- The verified-email TikTok beta collects explicit per-target Music Usage
+  Confirmation before it saves a schedule. It preserves TikTok's mandatory
+  manual visibility choice; `SELF_ONLY` is never selected or substituted by
+  the app.
+- `TIKTOK_DIRECT_POST_AUDITED` defaults to false in the web app and worker.
+  While false, the scheduler and publisher reject TikTok visibility other than
+  `SELF_ONLY` with an actionable audit message. A private test still requires
+  the creator to make the TikTok account private. TikTok approval is the only
+  condition that changes the flag to true.
+- TikTok server-hosted videos and photo carousels use `PULL_FROM_URL`; every
+  production media hostname must be verified in TikTok Developer Portal before
+  scheduling. The worker rejects a media URL outside the configured verified
+  host list before it asks TikTok to publish.
+- This changes only the TikTok target controls within the shared inline
+  scheduler. It does not change Carousel source ownership, slide rendering,
+  caption behavior, or the Library-to-Social scheduling boundary.
+
+## 2026-09-23 Verified YouTube scheduling beta
+
+- Video scheduling is enabled only for the verified Firebase identity
+  `vtu19403@veltech.edu.in`. The same server-owned check protects Google OAuth
+  connection, schedule creation and editing, final schedule submission, and
+  publish retries; a hidden client control alone never grants YouTube access.
+- The approved account can connect a YouTube channel from Settings and select
+  it in the video scheduling editor or Hook-video drawer. The OAuth flow asks
+  only for channel read and `youtube.upload` scopes, and scheduled publishing
+  requires both upload scope and a background-refresh token.
+- YouTube remains unavailable for Carousel scheduling because the upload API
+  accepts video media only. The inline Carousel scheduling modal remains
+  Instagram plus the existing verified TikTok beta, and legacy targets remain
+  lossless when an older schedule is edited.
+- Google test-project behavior is an external rollout constraint: the approved
+  email must be listed as a Google OAuth test user, and uploads from an
+  unaudited project are restricted by Google to private visibility. General
+  release requires the corresponding Google verification/audit; it is not
+  implied by this beta gate.
+
 ## 2026-09-21 Structure 2 field-level repair and empty-response evidence
 
 - A parsed Structure 2 plan with blocking copy failures on one or more

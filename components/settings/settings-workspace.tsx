@@ -38,6 +38,7 @@ import { Separator } from "@/components/ui/separator";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { InstagramAccountManager } from "@/components/settings/instagram-account-manager";
 import { TikTokBetaAccountManager } from "@/components/settings/tiktok-beta-account-manager";
+import { YouTubeBetaAccountManager } from "@/components/settings/youtube-beta-account-manager";
 import { AppScreenshotsSettings } from "@/components/settings/app-screenshots-settings";
 import { BusinessContextSettings } from "@/components/settings/business-context-settings";
 import { SupportFeedbackSettings } from "@/components/settings/support-feedback-settings";
@@ -48,6 +49,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
 import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
+import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
 
 const SETTINGS_SECTIONS = [
   {
@@ -108,6 +110,7 @@ export function SettingsWorkspace() {
   const router = useRouter();
   const { user, signOut } = useAuth();
   const tiktokBetaEnabled = hasTikTokBetaAccess(user);
+  const youtubeBetaEnabled = hasYouTubeBetaAccess(user);
   const { locked: themeLocked, setTheme, theme } = useTheme();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
@@ -586,6 +589,7 @@ export function SettingsWorkspace() {
           >
             <InstagramAccountManager />
             {tiktokBetaEnabled ? <TikTokBetaAccountManager /> : null}
+            {youtubeBetaEnabled ? <YouTubeBetaAccountManager /> : null}
           </SettingsSection>
           ) : null}
 

@@ -45,9 +45,11 @@ import {
 } from "@/lib/scheduling/schedule-time";
 import {
   getTikTokPrivacyLabel,
+  TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE,
   type TikTokPublishCapabilities,
 } from "@/lib/social/tiktok-publishing";
 import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
+import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
 import type { SocialConnection, SocialPlatform } from "@/lib/social/types";
 import { cn } from "@/lib/utils";
 
@@ -101,6 +103,11 @@ export function HookVideoScheduleDrawer({
 }) {
   const { user } = useAuth();
   const tiktokBetaEnabled = hasTikTokBetaAccess(user);
+  const youtubeBetaEnabled = hasYouTubeBetaAccess(user);
+  const publishingAccountLabel = getPublishingAccountLabel(
+    tiktokBetaEnabled,
+    youtubeBetaEnabled,
+  );
   const queryClient = useQueryClient();
   const accountId = user?.uid ?? "signed-out";
   const initialDateTime = useMemo(() => getInitialDateTime(), []);
@@ -171,15 +178,16 @@ export function HookVideoScheduleDrawer({
   }, [loadConnections]);
 
   // Keep every provider in state so legacy schedules remain intact. The
-  // verified TikTok beta account can also select TikTok Direct Post targets.
+  // verified beta account can select its approved publishing targets.
   const visibleConnections = useMemo(
     () =>
       connections.filter(
         (connection) =>
           connection.platform === "instagram" ||
-          (tiktokBetaEnabled && connection.platform === "tiktok"),
+          (tiktokBetaEnabled && connection.platform === "tiktok") ||
+          (youtubeBetaEnabled && connection.platform === "youtube"),
       ),
-    [connections, tiktokBetaEnabled],
+    [connections, tiktokBetaEnabled, youtubeBetaEnabled],
   );
   const selectedConnections = visibleConnections.filter((connection) =>
     selectedConnectionIds.includes(connection.id),
@@ -428,7 +436,7 @@ export function HookVideoScheduleDrawer({
                     {visibleConnections.length === 0 ? (
                       <div className="rounded-[12px] border border-dashed border-border-strong px-3 py-5 text-center">
                         <p className="text-xs font-medium text-muted">
-                          No {tiktokBetaEnabled ? "Instagram or TikTok account" : "Instagram account"} connected.
+                          No {publishingAccountLabel} account connected.
                         </p>
                         <Link
                           href="/settings#instagram-publishing"
@@ -658,21 +666,37 @@ function ConnectionRow({
               {tiktokCapability.message}
             </p>
           ) : (
-            <label className="text-xs font-semibold text-muted">
-              Visibility
-              <select
-                value={typeof settings.privacyLevel === "string" ? settings.privacyLevel : ""}
-                onChange={(event) => onSettingChange("privacyLevel", event.target.value)}
-                className="mt-1.5 h-9 w-full rounded-control border border-border bg-card px-2.5 text-xs font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-              >
-                <option value="">Choose visibility</option>
-                {tiktokCapability.capabilities.privacyLevels.map((privacyLevel) => (
-                  <option key={privacyLevel} value={privacyLevel}>
-                    {getTikTokPrivacyLabel(privacyLevel)}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="grid gap-3">
+              {!tiktokCapability.capabilities.directPostAudited ? (
+                <p className="rounded-[8px] border border-primary/25 bg-primary/5 px-2.5 py-2 text-[11px] font-medium leading-4 text-foreground-strong">
+                  {TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE}
+                </p>
+              ) : null}
+              <label className="text-xs font-semibold text-muted">
+                Visibility
+                <select
+                  value={typeof settings.privacyLevel === "string" ? settings.privacyLevel : ""}
+                  onChange={(event) => onSettingChange("privacyLevel", event.target.value)}
+                  className="mt-1.5 h-9 w-full rounded-control border border-border bg-card px-2.5 text-xs font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">Choose visibility</option>
+                  {tiktokCapability.capabilities.privacyLevels.map((privacyLevel) => (
+                    <option key={privacyLevel} value={privacyLevel}>
+                      {getTikTokPrivacyLabel(privacyLevel)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-start gap-2 text-xs font-medium leading-4 text-foreground-strong">
+                <input
+                  type="checkbox"
+                  checked={settings.musicUsageConfirmed === true}
+                  onChange={(event) => onSettingChange("musicUsageConfirmed", event.target.checked)}
+                  className="mt-0.5 size-4 shrink-0 accent-primary"
+                />
+                <span>I agree to TikTok&apos;s Music Usage Confirmation.</span>
+              </label>
+            </div>
           )}
         </div>
       ) : null}
@@ -838,6 +862,25 @@ function getValidationError(params: {
   }
 
   return null;
+}
+
+function getPublishingAccountLabel(
+  tiktokBetaEnabled: boolean,
+  youtubeBetaEnabled: boolean,
+) {
+  if (tiktokBetaEnabled && youtubeBetaEnabled) {
+    return "Instagram, TikTok, or YouTube";
+  }
+
+  if (tiktokBetaEnabled) {
+    return "Instagram or TikTok";
+  }
+
+  if (youtubeBetaEnabled) {
+    return "Instagram or YouTube";
+  }
+
+  return "Instagram";
 }
 
 function getInitialDateTime(

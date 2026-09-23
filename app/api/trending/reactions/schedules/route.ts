@@ -17,6 +17,7 @@ import { scheduleReactionWithDependencies } from "@/lib/trending/reaction-schedu
 import type { ScheduleCreateInput } from "@/lib/scheduling/types";
 import { markDailyTrendingSlotDecided } from "@/lib/trending/unified-daily-feed-db";
 import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
+import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -93,17 +94,30 @@ export async function POST(request: Request) {
       useDefaultScheduleTime: parsed.data.useDefaultScheduleTime,
     };
     const allowTikTokTargets = hasTikTokBetaAccess(user);
+    const allowYouTubeTargets = hasYouTubeBetaAccess(user);
     const result = await scheduleReactionWithDependencies({
       connectionIds: parsed.data.targets.map((target) => target.connectionId),
       input,
       userId,
     }, {
       create: (params) =>
-        createUserSchedule({ ...params, allowTikTokTargets }),
+        createUserSchedule({
+          ...params,
+          allowTikTokTargets,
+          allowYouTubeTargets,
+        }),
       publish: (params) =>
-        scheduleRenderedPost({ ...params, allowTikTokTargets }),
+        scheduleRenderedPost({
+          ...params,
+          allowTikTokTargets,
+          allowYouTubeTargets,
+        }),
       update: (params) =>
-        updateUserSchedule({ ...params, allowTikTokTargets }),
+        updateUserSchedule({
+          ...params,
+          allowTikTokTargets,
+          allowYouTubeTargets,
+        }),
     });
     return json({ ...result, ok: true });
   } catch (error) {

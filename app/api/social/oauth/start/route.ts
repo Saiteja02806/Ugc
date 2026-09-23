@@ -17,6 +17,7 @@ import {
   isSocialProvider,
 } from "@/lib/social/types";
 import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
+import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
 import { getUserSubscription } from "@/lib/billing/subscription-db";
 
 export const runtime = "nodejs";
@@ -80,6 +81,17 @@ export async function POST(request: Request) {
       {
         code: "tiktok_beta_access_required",
         message: "TikTok connection is not enabled for this account.",
+        ok: false,
+      },
+      403,
+    );
+  }
+
+  if (platform === "youtube" && !hasYouTubeBetaAccess(user)) {
+    return json(
+      {
+        code: "youtube_beta_access_required",
+        message: "YouTube connection is not enabled for this account.",
         ok: false,
       },
       403,

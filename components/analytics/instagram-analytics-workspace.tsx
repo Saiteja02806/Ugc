@@ -37,7 +37,9 @@ import {
 } from "react";
 
 import { SocialAccountAvatar } from "@/components/social/social-account-avatar";
+import { SocialAnalyticsBetaControls } from "@/components/analytics/social-analytics-beta-controls";
 import { TikTokBetaAnalyticsPanel } from "@/components/analytics/tiktok-beta-analytics-panel";
+import { YouTubeBetaPublicationPanel } from "@/components/analytics/youtube-beta-publication-panel";
 import { InstagramAccountAvatar } from "@/components/social/instagram-account-avatar";
 import {
   Alert,
@@ -80,6 +82,10 @@ import {
   type InstagramContentSort,
   type InstagramContentType,
 } from "@/lib/analytics/instagram-content-insights";
+import {
+  getConnectionsForAnalyticsPlatform,
+  getEffectiveAnalyticsConnectionId,
+} from "@/lib/analytics/social-account-selection";
 import { loadInstagramAnalyticsQuery } from "@/lib/analytics/instagram-query";
 import { useAuth } from "@/contexts/auth-context";
 import {
@@ -95,8 +101,9 @@ import {
 } from "@/lib/scheduling/account-data-query";
 import { getConnectionPublishingBlockMessage } from "@/lib/scheduling/social-connection-policy";
 import type { ScheduledPost } from "@/lib/scheduling/types";
-import type { SocialConnection } from "@/lib/social/types";
+import type { SocialConnection, SocialPlatform } from "@/lib/social/types";
 import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
+import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
 import { cn } from "@/lib/utils";
 
 type AnalyticsLoadState = "error" | "loading" | "ready";
@@ -212,10 +219,15 @@ const contentTypeLabels: Record<InstagramContentType, string> = {
 export function InstagramAnalyticsWorkspace() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const tiktokBetaEnabled = hasTikTokBetaAccess(user);
+  const betaSocialAnalyticsEnabled = hasYouTubeBetaAccess(user);
+  const tiktokBetaEnabled =
+    betaSocialAnalyticsEnabled && hasTikTokBetaAccess(user);
   const accountId = user?.uid ?? "";
 
   const [connections, setConnections] = useState<SocialConnection[]>([]);
+  const [allSocialConnections, setAllSocialConnections] = useState<
+    SocialConnection[]
+  >([]);
   const [schedules, setSchedules] = useState<ScheduledPost[]>([]);
   const [dateRangeDays, setDateRangeDays] = useState<DateRangeDays>(30);
   const activeDateRangeRef = useRef<DateRangeDays>(dateRangeDays);
@@ -257,6 +269,7 @@ export function InstagramAnalyticsWorkspace() {
 
       if (!token) {
         setConnections([]);
+        setAllSocialConnections([]);
         setSchedules([]);
         setInsightsResult({
           accounts: [],
@@ -325,14 +338,13 @@ export function InstagramAnalyticsWorkspace() {
         return;
       }
 
-      setConnections(
-        getUniqueInstagramConnections(
-          [...(loadedConnections ?? [])].sort(
-            (left, right) =>
-              Date.parse(right.updatedAt) - Date.parse(left.updatedAt),
-          ),
-        ),
+      const sortedConnections = [...(loadedConnections ?? [])].sort(
+        (left, right) =>
+          Date.parse(right.updatedAt) - Date.parse(left.updatedAt),
       );
+
+      setAllSocialConnections(sortedConnections);
+      setConnections(getUniqueInstagramConnections(sortedConnections));
       setSchedules(
         Array.isArray(loadedSchedules.schedules)
           ? loadedSchedules.schedules
@@ -476,6 +488,38 @@ export function InstagramAnalyticsWorkspace() {
   }, [loadAnalytics, loadContentPerformance]);
 
   const [selectedConnectionId, setSelectedConnectionId] = useState<string>("all");
+  const [betaSelectedPlatform, setBetaSelectedPlatform] =
+    useState<SocialPlatform>("instagram");
+  const [betaSelectedConnectionId, setBetaSelectedConnectionId] =
+    useState<string>("all");
+
+  const betaPlatformConnections = useMemo(
+    () =>
+      getConnectionsForAnalyticsPlatform(
+        allSocialConnections,
+        betaSelectedPlatform,
+      ),
+    [allSocialConnections, betaSelectedPlatform],
+  );
+  const effectiveBetaSelectedConnectionId =
+    getEffectiveAnalyticsConnectionId(
+      betaPlatformConnections,
+      betaSelectedConnectionId,
+    );
+
+  const showInstagramAnalytics =
+    !betaSocialAnalyticsEnabled || betaSelectedPlatform === "instagram";
+  const showTikTokAnalytics =
+    tiktokBetaEnabled &&
+    (!betaSocialAnalyticsEnabled || betaSelectedPlatform === "tiktok");
+  const showYouTubeAnalytics =
+    betaSocialAnalyticsEnabled && betaSelectedPlatform === "youtube";
+  const showHeaderRefresh =
+    !betaSocialAnalyticsEnabled || betaSelectedPlatform !== "tiktok";
+  const headerRefreshLabel =
+    betaSocialAnalyticsEnabled && betaSelectedPlatform === "youtube"
+      ? "Refresh activity"
+      : "Refresh";
 
   const activeConnectionIds = useMemo(
     () => new Set(connections.map((connection) => connection.id)),
@@ -486,10 +530,16 @@ export function InstagramAnalyticsWorkspace() {
       ? "all"
       : selectedConnectionId;
 
+  const effectiveInstagramSelectedConnectionId =
+    betaSocialAnalyticsEnabled && betaSelectedPlatform === "instagram"
+      ? effectiveBetaSelectedConnectionId
+      : effectiveSelectedConnectionId;
   const displayedConnections = useMemo(() => {
-    if (effectiveSelectedConnectionId === "all") return connections;
-    return connections.filter((c) => c.id === effectiveSelectedConnectionId);
-  }, [connections, effectiveSelectedConnectionId]);
+    if (effectiveInstagramSelectedConnectionId === "all") return connections;
+    return connections.filter(
+      (connection) => connection.id === effectiveInstagramSelectedConnectionId,
+    );
+  }, [connections, effectiveInstagramSelectedConnectionId]);
 
   const activeInsightAccounts = useMemo(
     () =>
@@ -591,33 +641,56 @@ export function InstagramAnalyticsWorkspace() {
               <ShieldCheck data-icon="inline-start" aria-hidden="true" />
               Real workspace data
             </Badge>
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              onClick={retryAnalytics}
-              disabled={refreshing}
-              className="w-full sm:w-auto"
-            >
-              <RefreshCw
-                data-icon="inline-start"
-                className={cn(
-                  refreshing &&
-                    "animate-spin motion-reduce:animate-none",
-                )}
-                aria-hidden="true"
-              />
-              Refresh
-            </Button>
+            {showHeaderRefresh ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={retryAnalytics}
+                disabled={refreshing}
+                className="w-full sm:w-auto"
+              >
+                <RefreshCw
+                  data-icon="inline-start"
+                  className={cn(
+                    refreshing &&
+                      "animate-spin motion-reduce:animate-none",
+                  )}
+                  aria-hidden="true"
+                />
+                {headerRefreshLabel}
+              </Button>
+            ) : null}
           </div>
         </header>
 
-        {tiktokBetaEnabled ? <TikTokBetaAnalyticsPanel /> : null}
+        {betaSocialAnalyticsEnabled ? (
+          <SocialAnalyticsBetaControls
+            connections={allSocialConnections}
+            platform={betaSelectedPlatform}
+            selectedConnectionId={effectiveBetaSelectedConnectionId}
+            onPlatformChange={(platform) => {
+              setBetaSelectedPlatform(platform);
+              setBetaSelectedConnectionId("all");
+            }}
+            onConnectionChange={setBetaSelectedConnectionId}
+          />
+        ) : null}
 
-        <div
-          className="mt-6"
-          aria-busy={loadState === "loading"}
-        >
+        {showTikTokAnalytics ? (
+          <TikTokBetaAnalyticsPanel
+            selectedConnectionId={effectiveBetaSelectedConnectionId}
+          />
+        ) : null}
+        {showYouTubeAnalytics ? (
+          <YouTubeBetaPublicationPanel
+            connections={allSocialConnections}
+            schedules={schedules}
+            selectedConnectionId={effectiveBetaSelectedConnectionId}
+          />
+        ) : null}
+
+        {showInstagramAnalytics ? <div className="mt-6" aria-busy={loadState === "loading"}>
           {loadState === "loading" ? <AnalyticsLoadingState /> : null}
           {loadState === "error" ? (
             <AnalyticsErrorState
@@ -640,12 +713,17 @@ export function InstagramAnalyticsWorkspace() {
               insightsMessage={insightsResult.message}
               onDateRangeChange={setDateRangeDays}
               onPerformanceMetricChange={setPerformanceMetric}
-              onSelectConnectionId={setSelectedConnectionId}
+              onSelectConnectionId={
+                betaSocialAnalyticsEnabled
+                  ? setBetaSelectedConnectionId
+                  : setSelectedConnectionId
+              }
               performanceMetric={performanceMetric}
-              selectedConnectionId={effectiveSelectedConnectionId}
+              selectedConnectionId={effectiveInstagramSelectedConnectionId}
+              showAccountSelector={!betaSocialAnalyticsEnabled}
             />
           ) : null}
-        </div>
+        </div> : null}
       </div>
     </section>
   );
@@ -668,6 +746,7 @@ function AnalyticsReadyState({
   onSelectConnectionId,
   performanceMetric,
   selectedConnectionId,
+  showAccountSelector,
 }: {
   allConnections: SocialConnection[];
   analytics: InstagramAnalyticsWorkspaceSummary;
@@ -685,6 +764,7 @@ function AnalyticsReadyState({
   onSelectConnectionId: (connectionId: string) => void;
   performanceMetric: PerformanceMetric;
   selectedConnectionId: string;
+  showAccountSelector: boolean;
 }) {
   const contentSnapshot = useMemo(
     () =>
@@ -729,7 +809,7 @@ function AnalyticsReadyState({
         />
       </div>
 
-      {allConnections.length > 1 ? (
+      {showAccountSelector && allConnections.length > 1 ? (
         <div className="flex flex-col gap-3 rounded-[var(--radius-panel)] border border-border bg-card p-3.5 shadow-card sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 px-0.5">
             <span className="text-xs font-bold uppercase tracking-[0.12em] text-primary">

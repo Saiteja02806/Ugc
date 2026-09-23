@@ -45,10 +45,12 @@ social_reconciliation_enabled          = false
 social_reconciliation_batch_size       = 10
 social_reconciliation_interval_seconds = 15
 
-# FILE_UPLOAD avoids a verified media domain requirement for TikTok videos.
-# TikTok photo carousel publishing still requires verified pull URL hosts.
-tiktok_media_transfer_mode  = "FILE_UPLOAD"
-tiktok_verified_media_hosts = ""
+# Verify this exact media hostname under TikTok Developer Portal > Manage URL
+# properties before applying. Add every production media hostname if necessary.
+tiktok_media_transfer_mode  = "PULL_FROM_URL"
+tiktok_verified_media_hosts = "media.example.com"
+# Set true only after TikTok approves the Direct Post audit.
+tiktok_direct_post_audited = false
 
 worker_version    = "worker-gcp"
 worker_git_commit = "unknown"

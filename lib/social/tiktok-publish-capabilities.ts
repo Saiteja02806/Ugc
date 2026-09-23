@@ -8,6 +8,7 @@ import {
   isTikTokPrivacyLevel,
   type TikTokPublishCapabilities,
 } from "@/lib/social/tiktok-publishing";
+import { isTikTokDirectPostAudited } from "@/lib/social/tiktok-direct-post-audit";
 
 type TikTokApiEnvelope = {
   data?: {
@@ -129,6 +130,7 @@ export async function getTikTokPublishCapabilitiesForOwner(params: {
   return {
     creatorNickname: payload.data.creator_nickname?.trim() || null,
     creatorUsername: payload.data.creator_username?.trim() || null,
+    directPostAudited: isTikTokDirectPostAudited(),
     interactions: {
       commentsDisabled: payload.data.comment_disabled === true,
       duetsDisabled: payload.data.duet_disabled === true,

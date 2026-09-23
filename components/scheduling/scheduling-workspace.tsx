@@ -111,6 +111,7 @@ import {
 } from "@/lib/scheduling/workspace-query-cache";
 import type { SocialConnection } from "@/lib/social/types";
 import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
+import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
 import type { ScheduleFormSubmission } from "@/components/scheduling/schedule-editor";
 import { cn } from "@/lib/utils";
 
@@ -211,6 +212,17 @@ const tabLabels: Record<ScheduleTab, string> = {
 export function SchedulingWorkspace() {
   const { user } = useAuth();
   const tiktokBetaEnabled = hasTikTokBetaAccess(user);
+  const youtubeBetaEnabled = hasYouTubeBetaAccess(user);
+  const hasAdditionalPublishingPlatform =
+    tiktokBetaEnabled || youtubeBetaEnabled;
+  const publishingPlatformList = getPublishingPlatformList(
+    tiktokBetaEnabled,
+    youtubeBetaEnabled,
+  );
+  const publishingPlatformSummary = getPublishingPlatformSummary(
+    tiktokBetaEnabled,
+    youtubeBetaEnabled,
+  );
   const queryClient = useQueryClient();
   const accountId = user?.uid ?? "signed-out";
   const cachedMediaCatalog = queryClient.getQueryData<SchedulingMediaCatalog>(
@@ -592,8 +604,19 @@ export function SchedulingWorkspace() {
             connection.platform === "tiktok" &&
             getConnectionPublishingBlockMessage(connection) === null,
         );
+      const hasReadyYouTubeConnection =
+        youtubeBetaEnabled &&
+        connections.some(
+          (connection) =>
+            connection.platform === "youtube" &&
+            getConnectionPublishingBlockMessage(connection) === null,
+        );
 
-      if (accessState !== "ready" && !hasReadyTikTokConnection) {
+      if (
+        accessState !== "ready" &&
+        !hasReadyTikTokConnection &&
+        !hasReadyYouTubeConnection
+      ) {
         setScheduleAccessPrompt(accessState);
         return;
       }
@@ -621,6 +644,7 @@ export function SchedulingWorkspace() {
     loadSocialConnections,
     selectedCalendarDate,
     tiktokBetaEnabled,
+    youtubeBetaEnabled,
   ]);
 
   useEffect(() => {
@@ -790,12 +814,13 @@ export function SchedulingWorkspace() {
       !submission.targets.some(
         (target) =>
           target.platform === "instagram" ||
-          (tiktokBetaEnabled && target.platform === "tiktok"),
+          (tiktokBetaEnabled && target.platform === "tiktok") ||
+          (youtubeBetaEnabled && target.platform === "youtube"),
       )
     ) {
       setDrawerError(
-        tiktokBetaEnabled
-          ? "Connect and select an Instagram or TikTok account before scheduling."
+        hasAdditionalPublishingPlatform
+          ? `Connect and select an ${publishingPlatformList} account before scheduling.`
           : "Connect and select an Instagram account before scheduling.",
       );
       return;
@@ -1163,13 +1188,15 @@ export function SchedulingWorkspace() {
         <div>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-primary">
             <SocialPlatformIcon className="size-4" platform="instagram" />
-            {tiktokBetaEnabled ? "Instagram + TikTok publishing" : "Instagram publishing"}
+            {hasAdditionalPublishingPlatform
+              ? `${publishingPlatformSummary} publishing`
+              : "Instagram publishing"}
           </div>
           <h1 className="mt-3 text-3xl font-bold tracking-[-0.035em] text-foreground sm:text-4xl">
             Content calendar
           </h1>
           <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-muted sm:text-base">
-            Plan, review, and publish your {tiktokBetaEnabled ? "Instagram and TikTok" : "Instagram"} content from one focused workspace.
+            Plan, review, and publish your {publishingPlatformList} content from one focused workspace.
           </p>
         </div>
 
@@ -1193,8 +1220,8 @@ export function SchedulingWorkspace() {
             <Plus className="size-4" aria-hidden="true" />
           )}
           {checkingScheduleAccess
-            ? `Checking ${tiktokBetaEnabled ? "publishing accounts" : "Instagram"}…`
-            : `Schedule ${tiktokBetaEnabled ? "publishing" : "Instagram"} post`}
+            ? `Checking ${hasAdditionalPublishingPlatform ? "publishing accounts" : "Instagram"}…`
+            : `Schedule ${hasAdditionalPublishingPlatform ? "publishing" : "Instagram"} post`}
         </button>
       </header>
 
@@ -1305,12 +1332,14 @@ export function SchedulingWorkspace() {
           saving={savingSchedule}
           socialConnections={socialConnections}
           tiktokBetaEnabled={tiktokBetaEnabled}
+          youtubeBetaEnabled={youtubeBetaEnabled}
         />
       ) : null}
 
       <InstagramScheduleAccessDialog
         accessState={scheduleAccessPrompt}
         tiktokBetaEnabled={tiktokBetaEnabled}
+        youtubeBetaEnabled={youtubeBetaEnabled}
         onClose={() => setScheduleAccessPrompt(null)}
       />
 
@@ -1349,13 +1378,21 @@ function ScheduleEditorLoading() {
 function InstagramScheduleAccessDialog({
   accessState,
   tiktokBetaEnabled,
+  youtubeBetaEnabled,
   onClose,
 }: {
   accessState: Exclude<InstagramSchedulingAccessState, "ready"> | null;
   tiktokBetaEnabled: boolean;
+  youtubeBetaEnabled: boolean;
   onClose: () => void;
 }) {
   const reconnecting = accessState === "reconnect";
+  const hasAdditionalPublishingPlatform =
+    tiktokBetaEnabled || youtubeBetaEnabled;
+  const publishingPlatformList = getPublishingPlatformList(
+    tiktokBetaEnabled,
+    youtubeBetaEnabled,
+  );
 
   return (
     <Dialog
@@ -1371,19 +1408,25 @@ function InstagramScheduleAccessDialog({
           <span className="mb-2 inline-flex size-11 items-center justify-center rounded-[14px] bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose)_55%,var(--instagram-violet))] shadow-[0_10px_24px_rgb(214_41_118_/_0.18)]">
             <SocialPlatformIcon
               className="size-6 text-white"
-              platform={tiktokBetaEnabled ? "tiktok" : "instagram"}
+              platform={
+                youtubeBetaEnabled
+                  ? "youtube"
+                  : tiktokBetaEnabled
+                    ? "tiktok"
+                    : "instagram"
+              }
             />
           </span>
           <DialogTitle className="text-lg font-bold tracking-[-0.02em] text-foreground-strong">
-            {tiktokBetaEnabled
+            {hasAdditionalPublishingPlatform
               ? "Connect a publishing account"
               : reconnecting
               ? "Reconnect Instagram to schedule"
               : "Connect Instagram first"}
           </DialogTitle>
           <DialogDescription className="leading-6">
-            {tiktokBetaEnabled
-              ? "Connect Instagram or TikTok before choosing media, date, and time."
+            {hasAdditionalPublishingPlatform
+              ? `Connect ${publishingPlatformList} before choosing media, date, and time.`
               : reconnecting
               ? "Your Instagram connection cannot publish right now. Reconnect it before choosing media, date, and time."
               : "Scheduling requires a connected Instagram professional account. Connect one before choosing media, date, and time."}
@@ -1405,7 +1448,7 @@ function InstagramScheduleAccessDialog({
             className={buttonVariants({ size: "lg" })}
           >
             <Plus data-icon="inline-start" aria-hidden="true" />
-            {tiktokBetaEnabled
+            {hasAdditionalPublishingPlatform
               ? "Open connected accounts"
               : reconnecting
                 ? "Reconnect Instagram"
@@ -1415,6 +1458,44 @@ function InstagramScheduleAccessDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function getPublishingPlatformList(
+  tiktokBetaEnabled: boolean,
+  youtubeBetaEnabled: boolean,
+) {
+  if (tiktokBetaEnabled && youtubeBetaEnabled) {
+    return "Instagram, TikTok, or YouTube";
+  }
+
+  if (tiktokBetaEnabled) {
+    return "Instagram or TikTok";
+  }
+
+  if (youtubeBetaEnabled) {
+    return "Instagram or YouTube";
+  }
+
+  return "Instagram";
+}
+
+function getPublishingPlatformSummary(
+  tiktokBetaEnabled: boolean,
+  youtubeBetaEnabled: boolean,
+) {
+  if (tiktokBetaEnabled && youtubeBetaEnabled) {
+    return "Instagram + TikTok + YouTube";
+  }
+
+  if (tiktokBetaEnabled) {
+    return "Instagram + TikTok";
+  }
+
+  if (youtubeBetaEnabled) {
+    return "Instagram + YouTube";
+  }
+
+  return "Instagram";
 }
 
 function ScheduleTabs({

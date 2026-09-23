@@ -19,6 +19,7 @@ test("provides shared defaults for every scheduling surface", () => {
     brandOrganic: false,
     brandedContent: false,
     containsSyntheticMedia: true,
+    musicUsageConfirmed: false,
     privacyLevel: "",
   });
   assert.deepEqual(getDefaultScheduleTargetSettings("youtube"), {
@@ -43,12 +44,18 @@ test("validates TikTok capability selection for every scheduling surface", () =>
   assert.equal(
     getScheduleTargetSettingsError({
       connections: [connection],
-      settings: { "tiktok-1": { privacyLevel: "PUBLIC_TO_EVERYONE" } },
+      settings: {
+        "tiktok-1": {
+          musicUsageConfirmed: true,
+          privacyLevel: "PUBLIC_TO_EVERYONE",
+        },
+      },
       tiktokCapabilities: {
         "tiktok-1": {
           capabilities: {
             creatorNickname: "Creator",
             creatorUsername: "creator",
+            directPostAudited: true,
             interactions: {
               commentsDisabled: false,
               duetsDisabled: false,
@@ -63,6 +70,38 @@ test("validates TikTok capability selection for every scheduling surface", () =>
     }),
     null,
   );
+});
+
+test("keeps public TikTok visibility unavailable while Direct Post is unaudited", () => {
+  const error = getScheduleTargetSettingsError({
+    connections: [{ id: "tiktok-1", platform: "tiktok" }],
+    settings: {
+      "tiktok-1": {
+        musicUsageConfirmed: true,
+        privacyLevel: "PUBLIC_TO_EVERYONE",
+      },
+    },
+    tiktokCapabilities: {
+      "tiktok-1": {
+        capabilities: {
+          creatorNickname: "Creator",
+          creatorUsername: "creator",
+          directPostAudited: false,
+          interactions: {
+            commentsDisabled: false,
+            duetsDisabled: false,
+            stitchesDisabled: false,
+          },
+          maxVideoDurationSeconds: 600,
+          privacyLevels: ["PUBLIC_TO_EVERYONE", "SELF_ONLY"],
+        },
+        status: "ready",
+      },
+    },
+  });
+
+  assert.ok(error);
+  assert.match(error, /TikTok Direct Post audit/);
 });
 
 test("normalizes Instagram publishing settings", () => {
@@ -100,6 +139,7 @@ test("normalizes TikTok interaction and disclosure settings", () => {
       brandOrganic: true,
       brandedContent: false,
       containsSyntheticMedia: false,
+      musicUsageConfirmed: true,
       privacyLevel: "PUBLIC_TO_EVERYONE",
     }),
     {
@@ -109,6 +149,7 @@ test("normalizes TikTok interaction and disclosure settings", () => {
       brandOrganic: true,
       brandedContent: false,
       containsSyntheticMedia: false,
+      musicUsageConfirmed: true,
       privacyLevel: "PUBLIC_TO_EVERYONE",
     },
   );
@@ -119,11 +160,24 @@ test("rejects private TikTok paid partnerships", () => {
     () =>
       normalizeScheduleTargetSettings("tiktok", {
         brandedContent: true,
+        musicUsageConfirmed: true,
         privacyLevel: "SELF_ONLY",
       }),
     (error) =>
       error instanceof SchedulePlatformSettingsError &&
       error.message.includes("paid partnerships"),
+  );
+});
+
+test("requires explicit TikTok Music Usage Confirmation", () => {
+  assert.throws(
+    () =>
+      normalizeScheduleTargetSettings("tiktok", {
+        privacyLevel: "PUBLIC_TO_EVERYONE",
+      }),
+    (error) =>
+      error instanceof SchedulePlatformSettingsError &&
+      error.message.includes("Music Usage Confirmation"),
   );
 });
 

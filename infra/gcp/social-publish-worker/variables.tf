@@ -185,15 +185,21 @@ variable "social_reconciliation_interval_seconds" {
 }
 
 variable "tiktok_media_transfer_mode" {
-  description = "TikTok video transfer mode. FILE_UPLOAD avoids requiring a verified pull URL host for video posts."
+  description = "TikTok video transfer mode. Server-hosted videos and photo carousels use PULL_FROM_URL with a TikTok-verified media host."
   type        = string
-  default     = "FILE_UPLOAD"
+  default     = "PULL_FROM_URL"
 }
 
 variable "tiktok_verified_media_hosts" {
-  description = "Comma-separated verified media hosts for TikTok PULL_FROM_URL/photo carousel publishing."
+  description = "Comma-separated TikTok-verified media hosts for PULL_FROM_URL video and photo carousel publishing."
   type        = string
   default     = ""
+}
+
+variable "tiktok_direct_post_audited" {
+  description = "Set true only after TikTok approves the Direct Post audit for public/follower visibility."
+  type        = bool
+  default     = false
 }
 
 variable "worker_version" {

@@ -74,6 +74,10 @@ import { getScheduleEditBlockReason } from "@/lib/scheduling/schedule-action-pol
 import { SchedulingRequestError } from "@/lib/scheduling/errors";
 import { getConnectionPublishingBlock } from "@/lib/scheduling/social-connection-policy";
 import {
+  isTikTokDirectPostAudited,
+  TIKTOK_DIRECT_POST_AUDIT_REQUIRED_MESSAGE,
+} from "@/lib/social/tiktok-direct-post-audit";
+import {
   hasScheduleTargetSelection,
   SCHEDULE_TARGET_REQUIRED_CODE,
   SCHEDULE_TARGET_REQUIRED_MESSAGE,
@@ -182,6 +186,7 @@ export async function getUserSchedule(params: {
 
 export async function createUserSchedule(params: {
   allowTikTokTargets?: boolean;
+  allowYouTubeTargets?: boolean;
   input: ScheduleCreateInput;
   userId: string;
 }) {
@@ -260,9 +265,9 @@ export async function createUserSchedule(params: {
       userId: params.userId,
     }),
   ]);
-  assertTikTokSchedulingAccess(
+  assertSchedulingTargetAccess(
     [...targetConnections, ...plannedTargetConnections],
-    params.allowTikTokTargets,
+    params,
   );
   const trustedMetadata = applyTrustedPlannedTargetMetadata({
     metadata: normalized.metadata,
@@ -407,6 +412,7 @@ export async function createUserSchedule(params: {
 
 export async function scheduleRenderedPost(params: {
   allowTikTokTargets?: boolean;
+  allowYouTubeTargets?: boolean;
   input: ScheduleRenderedPostInput;
   leadPolicy?: ScheduleLeadPolicy;
   postId: string;
@@ -482,7 +488,7 @@ export async function scheduleRenderedPost(params: {
     targets: normalized.targets,
     userId: params.userId,
   });
-  assertTikTokSchedulingAccess(targetConnections, params.allowTikTokTargets);
+  assertSchedulingTargetAccess(targetConnections, params);
 
   if (targetConnections.length === 0) {
     throw new SchedulingRequestError(
@@ -795,6 +801,7 @@ export async function scheduleRenderedPost(params: {
 
 export async function retryUserScheduleTargetPublishing(params: {
   allowTikTokTargets?: boolean;
+  allowYouTubeTargets?: boolean;
   postId: string;
   targetId: string;
   userId: string;
@@ -802,7 +809,10 @@ export async function retryUserScheduleTargetPublishing(params: {
   assertUuid(params.postId, "Schedule ID is invalid.");
   assertUuid(params.targetId, "Platform target ID is invalid.");
 
-  if (params.allowTikTokTargets === false) {
+  if (
+    params.allowTikTokTargets === false ||
+    params.allowYouTubeTargets === false
+  ) {
     const existing = await getRequiredSchedule({
       postId: params.postId,
       userId: params.userId,
@@ -810,7 +820,7 @@ export async function retryUserScheduleTargetPublishing(params: {
     const target = existing.targets.find((item) => item.id === params.targetId);
 
     if (target) {
-      assertTikTokSchedulingAccess([target], false);
+      assertSchedulingTargetAccess([target], params);
     }
   }
 
@@ -897,6 +907,7 @@ export async function retryUserScheduleTargetPublishing(params: {
 
 export async function updateUserSchedule(params: {
   allowTikTokTargets?: boolean;
+  allowYouTubeTargets?: boolean;
   input: ScheduleUpdateInput;
   postId: string;
   userId: string;
@@ -983,9 +994,9 @@ export async function updateUserSchedule(params: {
       targets: normalized.plannedTargets,
       userId: params.userId,
     });
-    assertTikTokSchedulingAccess(
+    assertSchedulingTargetAccess(
       plannedTargetConnections,
-      params.allowTikTokTargets,
+      params,
     );
     assertCarouselTargetPlatformsSupported({
       sourceKind: "library_item",
@@ -1073,9 +1084,9 @@ export async function updateUserSchedule(params: {
     targets: normalized.plannedTargets,
     userId: params.userId,
   });
-  assertTikTokSchedulingAccess(
+  assertSchedulingTargetAccess(
     plannedTargetConnections,
-    params.allowTikTokTargets,
+    params,
   );
   const mergedMetadata = {
     ...normalizeScheduleMetadata(existing.metadata),
@@ -2070,6 +2081,18 @@ async function resolveScheduleTargets(params: {
       }
     }
 
+    if (
+      connection.platform === "tiktok" &&
+      settings.privacyLevel !== "SELF_ONLY" &&
+      !isTikTokDirectPostAudited()
+    ) {
+      throw new SchedulingRequestError(
+        TIKTOK_DIRECT_POST_AUDIT_REQUIRED_MESSAGE,
+        409,
+        "tiktok_direct_post_audit_required",
+      );
+    }
+
     connections.push({
       id: connection.id,
       platform: connection.platform,
@@ -2080,18 +2103,32 @@ async function resolveScheduleTargets(params: {
   return connections;
 }
 
-function assertTikTokSchedulingAccess(
+function assertSchedulingTargetAccess(
   connections: Array<{ platform: SchedulePlatform }>,
-  allowTikTokTargets = true,
+  access: {
+    allowTikTokTargets?: boolean;
+    allowYouTubeTargets?: boolean;
+  },
 ) {
   if (
-    allowTikTokTargets === false &&
+    access.allowTikTokTargets === false &&
     connections.some((connection) => connection.platform === "tiktok")
   ) {
     throw new SchedulingRequestError(
       "TikTok scheduling is not enabled for this account.",
       403,
       "tiktok_beta_access_required",
+    );
+  }
+
+  if (
+    access.allowYouTubeTargets === false &&
+    connections.some((connection) => connection.platform === "youtube")
+  ) {
+    throw new SchedulingRequestError(
+      "YouTube scheduling is not enabled for this account.",
+      403,
+      "youtube_beta_access_required",
     );
   }
 }

@@ -28,11 +28,19 @@ type TikTokAccount = {
   videos: TikTokVideo[];
 };
 
-export function TikTokBetaAnalyticsPanel() {
+export function TikTokBetaAnalyticsPanel({
+  selectedConnectionId = "all",
+}: {
+  selectedConnectionId?: string;
+}) {
   const [accounts, setAccounts] = useState<TikTokAccount[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [hasRefreshed, setHasRefreshed] = useState(false);
+  const visibleAccounts =
+    selectedConnectionId === "all"
+      ? accounts
+      : accounts.filter((account) => account.connectionId === selectedConnectionId);
 
   async function refresh() {
     setRefreshing(true);
@@ -69,9 +77,9 @@ export function TikTokBetaAnalyticsPanel() {
       </div>
       {error ? <p role="alert" className="mt-4 rounded-control border border-error/25 bg-error/10 px-3 py-2 text-sm font-semibold text-error">{error}</p> : null}
       {!hasRefreshed && !error ? <p className="mt-4 text-sm font-medium text-muted">Connect TikTok in Settings, then refresh to load the account&apos;s public-video metrics.</p> : null}
-      {hasRefreshed && accounts.length === 0 ? <p className="mt-4 text-sm font-medium text-muted">No TikTok account data is available yet.</p> : null}
+      {hasRefreshed && visibleAccounts.length === 0 ? <p className="mt-4 text-sm font-medium text-muted">No TikTok account data is available for the selected account yet.</p> : null}
       <div className="mt-5 grid gap-4">
-        {accounts.map((account) => <div key={account.connectionId} className="overflow-hidden rounded-control border border-border bg-card-muted/45">
+        {visibleAccounts.map((account) => <div key={account.connectionId} className="overflow-hidden rounded-control border border-border bg-card-muted/45">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3"><div><p className="text-sm font-bold text-foreground">{account.accountUsername || account.accountName || "TikTok account"}</p><p className="mt-0.5 text-xs font-medium text-muted">{account.lastSyncedAt ? `Updated ${formatDate(account.lastSyncedAt)}` : "Not refreshed yet"}</p></div><span className={account.status === "ready" ? "text-xs font-bold text-success" : "text-xs font-bold text-error"}>{account.status === "ready" ? "Ready" : "Action needed"}</span></div>
           {account.message ? <p className="px-4 py-3 text-sm font-medium text-muted">{account.message}</p> : null}
           {account.videos.length > 0 ? <div className="divide-y divide-border">{account.videos.map((video) => <TikTokVideoRow key={video.id} video={video} />)}</div> : null}

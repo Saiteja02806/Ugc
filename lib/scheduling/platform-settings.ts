@@ -1,5 +1,6 @@
 import {
   isTikTokPrivacyLevel,
+  TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE,
   type TikTokPrivacyLevel,
   type TikTokPublishCapabilities,
 } from "../social/tiktok-publishing.ts";
@@ -21,6 +22,7 @@ export type TikTokScheduleSettings = {
   brandOrganic: boolean;
   brandedContent: boolean;
   containsSyntheticMedia: boolean;
+  musicUsageConfirmed: boolean;
   privacyLevel: TikTokPrivacyLevel;
 };
 
@@ -59,6 +61,7 @@ export function getDefaultScheduleTargetSettings(
       brandOrganic: false,
       brandedContent: false,
       containsSyntheticMedia: true,
+      musicUsageConfirmed: false,
       privacyLevel: "",
     };
   }
@@ -111,6 +114,17 @@ export function getScheduleTargetSettingsError(params: {
       return "Choose a TikTok visibility available for this account.";
     }
 
+    if (
+      !capabilityState.capabilities.directPostAudited &&
+      privacyLevel !== "SELF_ONLY"
+    ) {
+      return TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE;
+    }
+
+    if (settings.musicUsageConfirmed !== true) {
+      return "Confirm TikTok's Music Usage Confirmation before scheduling.";
+    }
+
     if (settings.brandedContent === true && privacyLevel === "SELF_ONLY") {
       return "TikTok paid partnerships cannot use Only me visibility.";
     }
@@ -150,8 +164,15 @@ export function normalizeScheduleTargetSettings(
         settings.containsSyntheticMedia,
         true,
       ),
+      musicUsageConfirmed: getBoolean(settings.musicUsageConfirmed, false),
       privacyLevel,
     } satisfies TikTokScheduleSettings;
+
+    if (!normalized.musicUsageConfirmed) {
+      throw new SchedulePlatformSettingsError(
+        "Confirm TikTok's Music Usage Confirmation before scheduling.",
+      );
+    }
 
     if (normalized.brandedContent && normalized.privacyLevel === "SELF_ONLY") {
       throw new SchedulePlatformSettingsError(

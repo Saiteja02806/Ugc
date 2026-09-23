@@ -108,6 +108,11 @@ export async function publishTikTokVideo(params: {
     creatorInfo.privacy_level_options,
     params.settings,
   );
+
+  if (!publishId) {
+    assertTikTokDirectPostAuditAllowsPrivacy(privacyLevel);
+  }
+
   validateVideoDuration(
     params.videoDurationSeconds,
     creatorInfo.max_video_post_duration_sec,
@@ -212,6 +217,8 @@ export async function publishTikTokPhotoCarousel(params: {
   let publishId = params.publishId ?? null;
 
   if (!publishId) {
+    assertTikTokDirectPostAuditAllowsPrivacy(privacyLevel);
+
     for (const imageUrl of params.imageUrls) {
       assertVerifiedPullUrl(imageUrl);
     }
@@ -779,6 +786,21 @@ function getMediaTransferMode(): TikTokMediaTransferMode {
     : "FILE_UPLOAD";
 }
 
+function assertTikTokDirectPostAuditAllowsPrivacy(privacyLevel: string) {
+  if (
+    process.env.TIKTOK_DIRECT_POST_AUDITED?.trim().toLowerCase() !== "true" &&
+    privacyLevel !== "SELF_ONLY"
+  ) {
+    throw new TikTokPublishError(
+      "TikTok Direct Post is still in private testing. Complete the app audit before publishing beyond Only me.",
+      "direct_post_audit_required",
+      null,
+      null,
+      true,
+    );
+  }
+}
+
 function assertVerifiedPullUrl(videoUrl: string) {
   const host = new URL(videoUrl).hostname.toLowerCase();
   const verifiedHosts = new Set(
@@ -802,6 +824,7 @@ function assertVerifiedPullUrl(videoUrl: string) {
 function isTikTokActionRequiredError(code: string) {
   return [
     "access_token_invalid",
+    "direct_post_audit_required",
     "invalid_branded_content_visibility",
     "privacy_level_option_mismatch",
     "scope_not_authorized",

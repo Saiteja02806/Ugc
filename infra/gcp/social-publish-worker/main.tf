@@ -169,6 +169,11 @@ resource "google_cloud_run_v2_service" "social_publish_worker" {
       }
 
       env {
+        name  = "TIKTOK_DIRECT_POST_AUDITED"
+        value = tostring(var.tiktok_direct_post_audited)
+      }
+
+      env {
         name = "SUPABASE_URL"
         value_source {
           secret_key_ref {

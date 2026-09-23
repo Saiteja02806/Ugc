@@ -1567,6 +1567,10 @@ function getTikTokUserMessage(code: string, fallbackMessage: string) {
     return "TikTok currently allows this app to publish only with Only me visibility.";
   }
 
+  if (code === "direct_post_audit_required") {
+    return "TikTok public posting will be available after the app's Direct Post audit is approved.";
+  }
+
   return fallbackMessage.toLowerCase().includes("timed out")
     ? "TikTok is still processing this video. We will retry automatically."
     : "TikTok could not publish this video. Try again.";

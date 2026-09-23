@@ -86,6 +86,19 @@ const hookVideoLibrary = readProjectFile(
 const scheduleTime = readProjectFile("lib/scheduling/schedule-time.ts");
 const schedulingService = readProjectFile("lib/scheduling/service.ts");
 const schedulesRoute = readProjectFile("app/api/schedules/route.ts");
+const scheduleUpdateRoute = readProjectFile(
+  "app/api/schedules/[scheduleId]/route.ts",
+);
+const schedulePublishRoute = readProjectFile(
+  "app/api/schedules/[scheduleId]/publish/route.ts",
+);
+const scheduleRetryRoute = readProjectFile(
+  "app/api/schedules/[scheduleId]/targets/[targetId]/retry/route.ts",
+);
+const socialOAuthStartRoute = readProjectFile("app/api/social/oauth/start/route.ts");
+const youtubeBetaAccountManager = readProjectFile(
+  "components/settings/youtube-beta-account-manager.tsx",
+);
 const carouselScheduleClient = readProjectFile(
   "lib/scheduling/carousel-scheduling-client.ts",
 );
@@ -798,7 +811,7 @@ test("carousel captions remain optional and are never replaced with the carousel
   assert.match(scheduleEditor, /Caption optional\./);
   assert.match(
     scheduleEditor,
-    /Confirm the carousel, choose your \$\{tiktokBetaEnabled \? "Instagram or TikTok" : "Instagram"\} account, and set the publish time\./,
+    /Confirm the carousel, choose your \$\{publishingAccountLabel\} account, and set the publish time\./,
   );
 });
 
@@ -1015,9 +1028,13 @@ test("scheduling requires a selected account before any draft is stored", () => 
   assert.match(schedulingWorkspace, /Connect Instagram first/);
   assert.match(
     schedulingWorkspace,
-    /SocialPlatformIcon[\s\S]*?className="size-6 text-white"[\s\S]*?platform=\{tiktokBetaEnabled \? "tiktok" : "instagram"\}/,
+    /SocialPlatformIcon[\s\S]*?className="size-6 text-white"[\s\S]*?youtubeBetaEnabled[\s\S]*?"youtube"[\s\S]*?tiktokBetaEnabled[\s\S]*?"tiktok"[\s\S]*?"instagram"/,
   );
   assert.match(schedulingWorkspace, /target\.platform === "instagram"/);
+  assert.match(
+    schedulingWorkspace,
+    /youtubeBetaEnabled && target\.platform === "youtube"/,
+  );
   assert.doesNotMatch(
     schedulingWorkspace,
     /save a video draft without publishing/i,
@@ -1112,6 +1129,36 @@ test("the main scheduler uses compact role-based clip and time controls", () => 
     /\[\s*"catalog_influencer",\s*"influencer_upload",\s*"upload",\s*"generated_video",\s*\]/,
   );
   assert.match(schedulingService, /directScheduledVideoCollections/);
+});
+
+test("YouTube video beta is scoped to the approved identity across every scheduling boundary", () => {
+  for (const route of [
+    schedulesRoute,
+    scheduleUpdateRoute,
+    schedulePublishRoute,
+    scheduleRetryRoute,
+    hookVideoScheduleRoute,
+  ]) {
+    assert.match(route, /allowYouTubeTargets: hasYouTubeBetaAccess\(/);
+  }
+
+  assert.match(
+    socialOAuthStartRoute,
+    /platform === "youtube" && !hasYouTubeBetaAccess\(user\)[\s\S]*?youtube_beta_access_required/,
+  );
+  assert.match(
+    schedulingService,
+    /allowYouTubeTargets[\s\S]*?connection\.platform === "youtube"[\s\S]*?youtube_beta_access_required/,
+  );
+  assert.match(schedulingWorkspace, /hasYouTubeBetaAccess\(user\)/);
+  assert.match(scheduleEditor, /youtubeBetaEnabled/);
+  assert.match(hookVideoScheduleDrawer, /hasYouTubeBetaAccess\(user\)/);
+  assert.match(youtubeBetaAccountManager, /platform: YOUTUBE_PLATFORM/);
+  assert.match(youtubeBetaAccountManager, /Connect YouTube/);
+  assert.match(
+    scheduleEditor,
+    /function supportsCarouselPublishing[\s\S]*?platform === "instagram" \|\| platform === "tiktok"/,
+  );
 });
 
 test("every calendar date opens the dedicated day view", () => {

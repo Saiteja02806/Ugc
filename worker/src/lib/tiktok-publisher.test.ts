@@ -311,6 +311,43 @@ test("fails instead of changing a TikTok visibility that is no longer available"
   assert.equal(initCalls, 0);
 });
 
+test("rejects public Direct Post initialization until the TikTok audit is approved", async () => {
+  let initCalls = 0;
+
+  await withTikTokEnv(
+    { audited: false, mode: "PULL_FROM_URL", verifiedHosts: "cdn.example.com" },
+    async () => {
+      await assert.rejects(
+        withMockFetch(async (input) => {
+          const url = new URL(String(input));
+
+          if (url.pathname.endsWith("/creator_info/query/")) {
+            return tiktokResponse({
+              privacy_level_options: ["PUBLIC_TO_EVERYONE", "SELF_ONLY"],
+            });
+          }
+
+          initCalls += 1;
+          return tiktokResponse({ publish_id: "unexpected" });
+        }, async () => {
+          await publishTikTokVideo({
+            accessToken: "access-token",
+            caption: "Caption",
+            settings: { privacyLevel: "PUBLIC_TO_EVERYONE" },
+            videoUrl: "https://cdn.example.com/video.mp4",
+          });
+        }),
+        (error) =>
+          error instanceof TikTokPublishError &&
+          error.code === "direct_post_audit_required" &&
+          error.actionRequired,
+      );
+    },
+  );
+
+  assert.equal(initCalls, 0);
+});
+
 test("requires an explicit TikTok visibility", async () => {
   await assert.rejects(
     withMockFetch(async () =>
@@ -414,17 +451,24 @@ function tiktokResponse(data: Record<string, unknown>, logId?: string) {
 }
 
 async function withTikTokEnv(
-  values: { mode: "FILE_UPLOAD" | "PULL_FROM_URL"; verifiedHosts?: string },
+  values: {
+    audited?: boolean;
+    mode: "FILE_UPLOAD" | "PULL_FROM_URL";
+    verifiedHosts?: string;
+  },
   run: () => Promise<void>,
 ) {
+  const previousAuditStatus = process.env.TIKTOK_DIRECT_POST_AUDITED;
   const previousMode = process.env.TIKTOK_MEDIA_TRANSFER_MODE;
   const previousHosts = process.env.TIKTOK_VERIFIED_MEDIA_HOSTS;
+  process.env.TIKTOK_DIRECT_POST_AUDITED = values.audited === false ? "false" : "true";
   process.env.TIKTOK_MEDIA_TRANSFER_MODE = values.mode;
   process.env.TIKTOK_VERIFIED_MEDIA_HOSTS = values.verifiedHosts ?? "";
 
   try {
     await run();
   } finally {
+    restoreEnv("TIKTOK_DIRECT_POST_AUDITED", previousAuditStatus);
     restoreEnv("TIKTOK_MEDIA_TRANSFER_MODE", previousMode);
     restoreEnv("TIKTOK_VERIFIED_MEDIA_HOSTS", previousHosts);
   }

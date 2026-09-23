@@ -10,6 +10,7 @@ import {
   SchedulingRequestError,
 } from "@/lib/scheduling/service";
 import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
+import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,6 +61,7 @@ export async function POST(
   try {
     const result = await retryUserScheduleTargetPublishing({
       allowTikTokTargets: hasTikTokBetaAccess(user),
+      allowYouTubeTargets: hasYouTubeBetaAccess(user),
       postId: scheduleId,
       targetId,
       userId,

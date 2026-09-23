@@ -182,6 +182,7 @@ export async function listTikTokPublicVideoAnalyticsForOwner(params: {
               : connectionPrivatePublishingRecords.length > 0
                 ? "TikTok did not return metrics for privately published posts. Those publishing records are shown below."
                 : "No public TikTok videos were returned for this connected account.",
+          privatePublishingRecords: connectionPrivatePublishingRecords,
           status: "ready",
           videos,
         };

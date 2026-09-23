@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, LoaderCircle, RefreshCw } from "lucide-react";
+import { ExternalLink, EyeOff, LoaderCircle, RefreshCw } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -26,8 +26,16 @@ type TikTokAccount = {
   connectionId: string;
   lastSyncedAt: string | null;
   message: string | null;
+  privatePublishingRecords: TikTokPrivatePublishingRecord[];
   status: "error" | "permission_missing" | "ready" | "unavailable";
   videos: TikTokVideo[];
+};
+
+type TikTokPrivatePublishingRecord = {
+  connectionId: string;
+  id: string;
+  publishedAt: string | null;
+  title: string | null;
 };
 
 export function TikTokBetaAnalyticsPanel({
@@ -81,8 +89,9 @@ export function TikTokBetaAnalyticsPanel({
             TikTok analytics
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-            Review views and interactions for the 20 most recent public videos
-            on the selected account.
+            Review views and interactions for the 20 most recent public videos.
+            Private posts remain visible with their publishing status, not made-up
+            zero metrics.
           </p>
         </div>
         <Button
@@ -137,10 +146,85 @@ export function TikTokBetaAnalyticsPanel({
             {account.videos.length > 0 ? (
               <TikTokVideoTable videos={account.videos} />
             ) : null}
+            {account.privatePublishingRecords.length > 0 ? (
+              <TikTokPrivatePublishingRecordsTable
+                records={account.privatePublishingRecords}
+              />
+            ) : null}
           </article>
         ))}
       </div>
     </section>
+  );
+}
+
+function TikTokPrivatePublishingRecordsTable({
+  records,
+}: {
+  records: TikTokPrivatePublishingRecord[];
+}) {
+  return (
+    <div className="border-t border-border">
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-card-muted/35 px-4 py-3">
+        <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+          <span className="flex size-7 items-center justify-center rounded-full bg-warning/10 text-warning">
+            <EyeOff className="size-3.5" aria-hidden="true" />
+          </span>
+          Private publishing records
+        </div>
+        <span className="text-xs font-medium text-muted">
+          Metrics unavailable from TikTok
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[740px] border-collapse text-left">
+          <thead className="bg-card-muted/55">
+            <tr className="border-b border-border">
+              <TableHeading className="w-[360px]">Content</TableHeading>
+              <TableHeading>Published</TableHeading>
+              <TableHeading numeric>Views</TableHeading>
+              <TableHeading numeric>Likes</TableHeading>
+              <TableHeading numeric>Comments</TableHeading>
+              <TableHeading numeric>Shares</TableHeading>
+              <TableHeading>Status</TableHeading>
+            </tr>
+          </thead>
+          <tbody>
+            {records.map((record) => (
+              <tr key={record.id} className="border-b border-border last:border-b-0">
+                <td className="px-4 py-3.5">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex size-12 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-warning/10 text-xs font-bold text-warning">
+                      TT
+                    </span>
+                    <div className="min-w-0">
+                      <p className="line-clamp-1 text-sm font-semibold text-foreground">
+                        {record.title || "TikTok post"}
+                      </p>
+                      <p className="mt-1 text-xs text-muted">
+                        Published with Only me visibility
+                      </p>
+                    </div>
+                  </div>
+                </td>
+                <td className="whitespace-nowrap px-3 py-3.5 text-xs font-medium text-muted">
+                  {record.publishedAt ? formatDateOnly(record.publishedAt) : "—"}
+                </td>
+                <UnavailableMetricCell />
+                <UnavailableMetricCell />
+                <UnavailableMetricCell />
+                <UnavailableMetricCell />
+                <td className="px-3 py-3.5">
+                  <span className="inline-flex rounded-full bg-warning/10 px-2.5 py-1 text-xs font-bold text-warning">
+                    Private
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
@@ -296,6 +380,14 @@ function MetricCell({ value }: { value: number | null }) {
   return (
     <td className="whitespace-nowrap px-3 py-3.5 text-right font-mono text-xs font-semibold tabular-nums text-foreground">
       {formatMetric(value)}
+    </td>
+  );
+}
+
+function UnavailableMetricCell() {
+  return (
+    <td className="whitespace-nowrap px-3 py-3.5 text-right font-mono text-xs font-semibold tabular-nums text-muted">
+      Unavailable
     </td>
   );
 }

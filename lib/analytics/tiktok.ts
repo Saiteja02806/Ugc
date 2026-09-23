@@ -6,6 +6,12 @@ import {
   SocialOAuthError,
 } from "@/lib/social/oauth";
 import { hasTikTokAnalyticsScope } from "@/lib/social/tiktok-oauth-config";
+import { listScheduledPostsForUser } from "@/lib/scheduling/db";
+
+import {
+  getTikTokPrivatePublishingRecords,
+  type TikTokPrivatePublishingRecord,
+} from "./tiktok-private-publishing";
 
 const tiktokVideoAnalyticsFields = [
   "id",
@@ -45,6 +51,7 @@ export type TikTokAnalyticsAccount = {
   connectionId: string;
   lastSyncedAt: string | null;
   message: string | null;
+  privatePublishingRecords: TikTokPrivatePublishingRecord[];
   status: TikTokAnalyticsAccountStatus;
   videos: TikTokVideoAnalytics[];
 };
@@ -83,14 +90,31 @@ export async function listTikTokPublicVideoAnalyticsForOwner(params: {
   const tiktokConnections = connections.filter(
     (connection) => connection.platform === "tiktok",
   );
+  const privatePublishingRecords = await getPrivatePublishingRecordsSafely(
+    params.userId,
+  );
+  const privateRecordsByConnection = new Map<
+    string,
+    TikTokPrivatePublishingRecord[]
+  >();
+
+  for (const record of privatePublishingRecords) {
+    const records = privateRecordsByConnection.get(record.connectionId) ?? [];
+
+    records.push(record);
+    privateRecordsByConnection.set(record.connectionId, records);
+  }
 
   return Promise.all(
     tiktokConnections.map(async (connection): Promise<TikTokAnalyticsAccount> => {
+      const connectionPrivatePublishingRecords =
+        privateRecordsByConnection.get(connection.id) ?? [];
       const baseAccount = {
         accountName: connection.platformAccountName,
         accountUsername: connection.platformAccountUsername,
         connectionId: connection.id,
         lastSyncedAt: null,
+        privatePublishingRecords: connectionPrivatePublishingRecords,
         videos: [],
       };
 
@@ -155,7 +179,9 @@ export async function listTikTokPublicVideoAnalyticsForOwner(params: {
           message:
             videos.length > 0
               ? null
-              : "No public TikTok videos were returned for this connected account.",
+              : connectionPrivatePublishingRecords.length > 0
+                ? "TikTok did not return metrics for privately published posts. Those publishing records are shown below."
+                : "No public TikTok videos were returned for this connected account.",
           status: "ready",
           videos,
         };
@@ -171,6 +197,20 @@ export async function listTikTokPublicVideoAnalyticsForOwner(params: {
       }
     }),
   );
+}
+
+async function getPrivatePublishingRecordsSafely(userId: string) {
+  try {
+    return getTikTokPrivatePublishingRecords(
+      await listScheduledPostsForUser({ userId }),
+    );
+  } catch (error) {
+    // Provider data remains useful if the optional publishing-record read is
+    // temporarily unavailable. Do not turn a successful TikTok refresh into a
+    // generic analytics failure.
+    console.error("Could not load private TikTok publishing records:", error);
+    return [];
+  }
 }
 
 class TikTokAnalyticsRequestError extends Error {

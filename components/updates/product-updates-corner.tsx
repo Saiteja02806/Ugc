@@ -18,6 +18,8 @@ export function ProductUpdatesCorner() {
   const pathname = usePathname();
   const { loading: isAuthLoading, user } = useAuth();
   const [isDismissedInSession, setIsDismissedInSession] = useState(false);
+  const isAnalyticsPage =
+    pathname === "/analytics" || pathname.startsWith("/analytics/");
   const lastSeenUpdateId = useSyncExternalStore(
     subscribeToProductUpdatePreference,
     getLastSeenUpdateId,
@@ -32,7 +34,8 @@ export function ProductUpdatesCorner() {
       LATEST_PRODUCT_UPDATE,
       user?.createdAt ?? null,
     ) &&
-    pathname !== "/updates";
+    pathname !== "/updates" &&
+    !isAnalyticsPage;
 
   if (!isVisible) {
     return null;

@@ -48,7 +48,9 @@ export function getWorkspaceRouteConfig(
     access: route.access,
     activeKey: route.activeKey,
     defaultSidebarCollapsed: shouldDefaultSidebarToCollapsed(pathname),
-    showProductUpdatesFooter: pathname !== "/dashboard",
+    showProductUpdatesFooter:
+      !matchesRoutePrefix(pathname, "/dashboard") &&
+      !matchesRoutePrefix(pathname, "/analytics"),
   };
 }
 

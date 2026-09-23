@@ -78,9 +78,8 @@ export function YouTubeBetaAnalyticsPanel({
     <section className="mt-6 rounded-[var(--radius-panel)] border border-border bg-card p-5 shadow-card sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-sm font-semibold text-primary">YouTube beta</p>
-          <h2 className="mt-1 text-xl font-bold tracking-[-0.02em] text-foreground">
-            Channel performance
+          <h2 className="text-xl font-bold tracking-[-0.02em] text-foreground text-pretty">
+            YouTube analytics
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
             Views, likes, comments, and estimated watch time for the last 30

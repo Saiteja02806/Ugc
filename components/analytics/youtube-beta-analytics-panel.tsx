@@ -11,10 +11,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import {
-  useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -28,8 +26,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { runAnalyticsBackgroundSync } from "@/lib/analytics/background-sync-client";
-import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { useSocialAnalytics } from "@/lib/analytics/use-social-analytics";
+import { PublishDateLineChart } from "@/components/analytics/publish-date-line-chart";
+import { localPublishDate } from "@/lib/analytics/publish-date-chart";
 import type { SocialConnection } from "@/lib/social/types";
 import { cn } from "@/lib/utils";
 
@@ -92,15 +91,12 @@ export function YouTubeBetaAnalyticsPanel({
   refreshRequest: number;
   selectedConnectionId?: string;
 }) {
-  const [accounts, setAccounts] = useState<YouTubeAccount[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [hasRefreshed, setHasRefreshed] = useState(false);
+  const { output, error, hasRefreshed, refreshing } = useSocialAnalytics("youtube", connections, refreshRequest);
+  const accounts = useMemo(() => getAccounts(output).filter((account) => connections.some((connection) => connection.id === account.connectionId)), [output, connections]);
   const [metric, setMetric] = useState<YouTubeMetric>("views");
-  const [refreshing, setRefreshing] = useState(false);
   const [selectedContent, setSelectedContent] =
     useState<YouTubeTrendContentItem | null>(null);
   const [sort, setSort] = useState<YouTubeSort>("views");
-  const handledRefreshRequest = useRef(0);
 
   const visibleConnections = useMemo(
     () =>
@@ -147,50 +143,14 @@ export function YouTubeBetaAnalyticsPanel({
     [sort, visibleAccounts],
   );
 
-  const refresh = useCallback(async () => {
-    setRefreshing(true);
-    setError(null);
-
-    try {
-      const token = await getCurrentUserIdToken();
-      if (!token) throw new Error("Sign in before viewing YouTube analytics.");
-
-      const output = await runAnalyticsBackgroundSync({
-        idempotencyKey: crypto.randomUUID(),
-        token,
-        url: "/api/analytics/youtube/channel",
-      });
-      setAccounts(getAccounts(output));
-    } catch (refreshError) {
-      setError(
-        refreshError instanceof Error
-          ? refreshError.message
-          : "YouTube analytics could not load right now.",
-      );
-    } finally {
-      setHasRefreshed(true);
-      setRefreshing(false);
-    }
-  }, []);
-
   useEffect(() => {
     onRefreshStateChange(refreshing);
+    return () => onRefreshStateChange(false);
   }, [onRefreshStateChange, refreshing]);
-
-  useEffect(() => {
-    if (
-      refreshRequest === 0 ||
-      refreshRequest === handledRefreshRequest.current
-    ) {
-      return;
-    }
-
-    handledRefreshRequest.current = refreshRequest;
-    void refresh();
-  }, [refresh, refreshRequest]);
 
   return (
     <div className="mt-6 space-y-5" aria-busy={refreshing}>
+      {refreshing ? <p role="status" className="text-sm text-muted">{accounts.length ? "Showing saved analytics while fresh data loads…" : "Loading your channel analytics…"}</p> : null}
       {error ? <AnalyticsNotice message={error} /> : null}
 
       <section className="relative overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card">
@@ -294,7 +254,7 @@ export function YouTubeBetaAnalyticsPanel({
             title={
               hasRefreshed
                 ? "No uploaded video data returned"
-                : "No content loaded yet"
+                : "Loading content"
             }
           />
         )}
@@ -430,7 +390,6 @@ function PublishDateTrend({
     (point): point is YouTubeTrendPoint & { value: number } =>
       point.value !== null,
   );
-  const max = Math.max(...metricPoints.map((point) => point.value), 1);
   const selectedDateItems = selectedDate
     ? (points.find((point) => point.date === selectedDate)?.items ?? [])
     : [];
@@ -455,45 +414,13 @@ function PublishDateTrend({
 
   return (
     <div className="mt-6">
-      <div className="overflow-x-auto rounded-[var(--radius-control)] border border-border bg-card-muted/25">
-        <div className="flex h-60 min-w-max items-end gap-2 px-4 pb-6 pt-10 sm:gap-3 sm:px-6">
-          {points.map((point) => (
-            <button
-              key={point.date}
-              type="button"
-              aria-haspopup="dialog"
-              aria-label={getTrendPointLabel(point, metric)}
-              className="group relative flex min-h-44 w-14 shrink-0 flex-col justify-end rounded-[var(--radius-control)] px-1 pb-0.5 text-left outline-none transition-transform hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-ring sm:w-16"
-              onClick={() => selectPoint(point)}
-            >
-              <span className="mb-2 text-center font-mono text-[10px] font-semibold tabular-nums text-muted opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-                {point.value === null ? "—" : formatNumber(point.value)}
-              </span>
-              <span
-                className={cn(
-                  "relative block min-h-1 w-full rounded-t-full transition-colors",
-                  point.value === null
-                    ? "border border-dashed border-warning/60 bg-warning/10"
-                    : "bg-primary/85 group-hover:bg-primary group-focus-visible:bg-primary",
-                )}
-                style={{
-                  height:
-                    point.value === null
-                      ? "8px"
-                      : `${Math.max((point.value / max) * 100, 2)}%`,
-                }}
-              >
-                <YouTubeTrendMarker item={point.items[0]} multiple={point.items.length > 1} />
-                {point.items.length > 1 ? (
-                  <span className="absolute -bottom-1 -right-1 flex min-w-4 items-center justify-center rounded-full border border-border-strong bg-card px-1 font-mono text-[9px] leading-4 text-foreground-strong">
-                    {point.items.length > 99 ? "99+" : formatNumber(point.items.length)}
-                  </span>
-                ) : null}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
+      <PublishDateLineChart
+        points={points}
+        onSelect={selectPoint}
+        getLabel={(point) => getTrendPointLabel(point, metric)}
+        getThumbnail={(item) => item.thumbnailUrl}
+        platform="YouTube"
+      />
       <div className="mt-3 flex justify-between gap-3 px-1 text-xs font-medium text-muted">
         <span>{formatShortDate(points[0].date)}</span>
         <span>{formatShortDate(points.at(-1)?.date ?? points[0].date)}</span>
@@ -501,9 +428,9 @@ function PublishDateTrend({
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <TrendSummary
           label="Visible total"
-          value={formatNumber(
+          value={metricPoints.length ? formatNumber(
             metricPoints.reduce((total, point) => total + point.value, 0),
-          )}
+          ) : "—"}
         />
         <TrendSummary
           label="Peak publish date"
@@ -542,45 +469,6 @@ function TrendSummary({ label, value }: { label: string; value: string }) {
         {value}
       </p>
     </div>
-  );
-}
-
-function YouTubeTrendMarker({
-  item,
-  multiple,
-}: {
-  item: YouTubeTrendContentItem;
-  multiple: boolean;
-}) {
-  return (
-    <span
-      className={cn(
-        "absolute left-1/2 top-0 flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center overflow-hidden rounded-full border-2 border-primary bg-card text-[10px] font-bold text-muted shadow-card",
-        multiple && "ring-2 ring-primary/25",
-      )}
-      aria-hidden="true"
-    >
-      {item.thumbnailUrl ? (
-        <>
-          <span>YT</span>
-          {/* YouTube supplies a public thumbnail URL alongside its video data. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={item.thumbnailUrl}
-            alt=""
-            width={40}
-            height={40}
-            loading="lazy"
-            className="absolute inset-0 size-full object-cover"
-            onError={(event) => {
-              event.currentTarget.hidden = true;
-            }}
-          />
-        </>
-      ) : (
-        "YT"
-      )}
-    </span>
   );
 }
 
@@ -1175,7 +1063,8 @@ function buildTrendPoints(
   const points = new Map<string, YouTubeTrendContentItem[]>();
   for (const item of items) {
     if (!item.publishedAt) continue;
-    const date = item.publishedAt.slice(0, 10);
+    const date = localPublishDate(item.publishedAt);
+    if (!date) continue;
     points.set(date, [
       ...(points.get(date) ?? []),
       toYouTubeTrendContentItem(item, metric),
@@ -1264,7 +1153,7 @@ function getEmptyTrendDescription({
   if (providerMessage) return providerMessage;
   return hasRefreshed
     ? "YouTube returned no publish-date metrics for this selection yet."
-    : "The connected channel appears in Account readiness. Use Refresh above to load its current analytics.";
+    : "The connected channel appears in Account readiness. Its analytics load automatically.";
 }
 
 function getEmptyContentDescription({
@@ -1284,7 +1173,7 @@ function getEmptyContentDescription({
   if (providerMessage) return providerMessage;
   return hasRefreshed
     ? "YouTube did not return uploaded videos for this selection. New uploads can take a short time to appear."
-    : "Use Refresh above to load uploaded-video data for this connected channel.";
+    : "Loading uploaded-video data for this connected channel.";
 }
 
 function getReadiness(
@@ -1293,8 +1182,8 @@ function getReadiness(
 ) {
   if (!hasRefreshed)
     return {
-      label: "Ready to refresh",
-      message: "Channel is connected. Refresh to load current analytics.",
+      label: "Loading analytics",
+      message: "Channel is connected. Current analytics load automatically.",
       tone: "muted" as const,
     };
   if (!account)

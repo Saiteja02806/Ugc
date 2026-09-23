@@ -12,10 +12,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import {
-  useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -29,8 +27,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { runAnalyticsBackgroundSync } from "@/lib/analytics/background-sync-client";
-import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { useSocialAnalytics } from "@/lib/analytics/use-social-analytics";
+import { PublishDateLineChart } from "@/components/analytics/publish-date-line-chart";
+import { localPublishDate } from "@/lib/analytics/publish-date-chart";
 import type { SocialConnection } from "@/lib/social/types";
 import { cn } from "@/lib/utils";
 
@@ -105,15 +104,12 @@ export function TikTokBetaAnalyticsPanel({
   refreshRequest: number;
   selectedConnectionId?: string;
 }) {
-  const [accounts, setAccounts] = useState<TikTokAccount[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [hasRefreshed, setHasRefreshed] = useState(false);
+  const { output, error, hasRefreshed, refreshing } = useSocialAnalytics("tiktok", connections, refreshRequest);
+  const accounts = useMemo(() => getAccounts(output).filter((account) => connections.some((connection) => connection.id === account.connectionId)), [output, connections]);
   const [metric, setMetric] = useState<TikTokMetric>("views");
-  const [refreshing, setRefreshing] = useState(false);
   const [selectedContent, setSelectedContent] =
     useState<TikTokTrendContentItem | null>(null);
   const [sort, setSort] = useState<TikTokSort>("views");
-  const handledRefreshRequest = useRef(0);
 
   const visibleConnections = useMemo(
     () =>
@@ -168,45 +164,14 @@ export function TikTokBetaAnalyticsPanel({
   );
   const totals = useMemo(() => summarizePublicVideos(videos), [videos]);
 
-  const refresh = useCallback(async () => {
-    setRefreshing(true);
-    setError(null);
-    try {
-      const token = await getCurrentUserIdToken();
-      if (!token) throw new Error("Sign in before viewing TikTok analytics.");
-      const output = await runAnalyticsBackgroundSync({
-        idempotencyKey: crypto.randomUUID(),
-        token,
-        url: "/api/analytics/tiktok/videos",
-      });
-      setAccounts(getAccounts(output));
-    } catch (refreshError) {
-      setError(
-        refreshError instanceof Error
-          ? refreshError.message
-          : "TikTok analytics could not load right now.",
-      );
-    } finally {
-      setHasRefreshed(true);
-      setRefreshing(false);
-    }
-  }, []);
-
   useEffect(() => {
     onRefreshStateChange(refreshing);
+    return () => onRefreshStateChange(false);
   }, [onRefreshStateChange, refreshing]);
-  useEffect(() => {
-    if (
-      refreshRequest === 0 ||
-      refreshRequest === handledRefreshRequest.current
-    )
-      return;
-    handledRefreshRequest.current = refreshRequest;
-    void refresh();
-  }, [refresh, refreshRequest]);
 
   return (
     <div className="mt-6 space-y-5" aria-busy={refreshing}>
+      {refreshing ? <p role="status" className="text-sm text-muted">{accounts.length ? "Showing saved analytics while fresh data loads…" : "Loading your TikTok analytics…"}</p> : null}
       {error ? <AnalyticsNotice message={error} /> : null}
 
       <section className="relative overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card">
@@ -243,13 +208,13 @@ export function TikTokBetaAnalyticsPanel({
             icon={<TrendingUp />}
             label="Public videos"
             value={hasRefreshed ? formatNumber(videos.length) : "—"}
-            source={hasRefreshed ? "Returned by TikTok" : "Refresh to load"}
+            source={hasRefreshed ? "Returned by TikTok" : "Loading analytics"}
           />
           <SnapshotMetric
             icon={<EyeOff />}
             label="Private records"
             value={hasRefreshed ? formatNumber(privateRecords.length) : "—"}
-            source={hasRefreshed ? "Metrics unavailable" : "Refresh to load"}
+            source={hasRefreshed ? "Metrics unavailable" : "Loading analytics"}
           />
         </div>
       </section>
@@ -308,7 +273,7 @@ export function TikTokBetaAnalyticsPanel({
             title={
               hasRefreshed
                 ? "No TikTok content data returned"
-                : "No content loaded yet"
+                : "Loading content"
             }
             description={getEmptyContentDescription({
               error,
@@ -451,7 +416,6 @@ function PublishDateTrend({
     (point): point is TikTokTrendPoint & { value: number } =>
       point.value !== null,
   );
-  const max = Math.max(...metricPoints.map((point) => point.value), 1);
   const selectedDateItems = selectedDate
     ? (points.find((point) => point.date === selectedDate)?.items ?? [])
     : [];
@@ -476,47 +440,13 @@ function PublishDateTrend({
 
   return (
     <div className="mt-6">
-      <div className="overflow-x-auto rounded-[var(--radius-control)] border border-border bg-card-muted/25">
-        <div className="flex h-60 min-w-max items-end gap-2 px-4 pb-6 pt-10 sm:gap-3 sm:px-6">
-        {points.map((point) => (
-          <button
-            key={point.date}
-            type="button"
-            aria-haspopup="dialog"
-            aria-label={getTrendPointLabel(point, metric)}
-            className="group relative flex min-h-44 w-14 shrink-0 flex-col justify-end rounded-[var(--radius-control)] px-1 pb-0.5 text-left outline-none transition-transform hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-ring sm:w-16"
-            onClick={() => selectPoint(point)}
-          >
-            <span className="mb-2 text-center font-mono text-[10px] font-semibold tabular-nums text-muted opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-              {point.value === null ? "—" : formatNumber(point.value)}
-            </span>
-            <span
-              className={cn(
-                "relative block min-h-1 w-full rounded-t-full transition-colors",
-                point.value === null
-                  ? "border border-dashed border-warning/60 bg-warning/10"
-                  : "bg-primary/85 group-hover:bg-primary group-focus-visible:bg-primary",
-              )}
-              style={{
-                height:
-                  point.value === null
-                    ? "8px"
-                    : `${Math.max((point.value / max) * 100, 2)}%`,
-              }}
-            >
-              <TrendMarker
-                count={point.items.length}
-                item={point.items[0]}
-                metricColorClassName={
-                  point.value === null ? "border-warning" : "border-primary"
-                }
-                multiple={point.items.length > 1}
-              />
-            </span>
-          </button>
-        ))}
-        </div>
-      </div>
+      <PublishDateLineChart
+        points={points}
+        onSelect={selectPoint}
+        getLabel={(point) => getTrendPointLabel(point, metric)}
+        getThumbnail={(item) => item.kind === "public" ? item.coverImageUrl : null}
+        platform="TikTok"
+      />
       <div className="mt-3 flex justify-between gap-3 px-1 text-xs font-medium text-muted">
         <span>{formatShortDate(points[0].date)}</span>
         <span>{formatShortDate(points.at(-1)?.date ?? points[0].date)}</span>
@@ -524,9 +454,9 @@ function PublishDateTrend({
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <TrendSummary
           label="Visible total"
-          value={formatNumber(
+          value={metricPoints.length ? formatNumber(
             metricPoints.reduce((total, point) => total + point.value, 0),
-          )}
+          ) : "—"}
         />
         <TrendSummary
           label="Peak publish date"
@@ -565,56 +495,6 @@ function TrendSummary({ label, value }: { label: string; value: string }) {
         {value}
       </p>
     </div>
-  );
-}
-
-function TrendMarker({
-  count,
-  item,
-  metricColorClassName,
-  multiple,
-}: {
-  count: number;
-  item: TikTokTrendContentItem;
-  metricColorClassName: string;
-  multiple: boolean;
-}) {
-  return (
-    <span
-      className={cn(
-        "absolute left-1/2 top-0 flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center overflow-hidden rounded-full border-2 bg-card text-[10px] font-bold text-muted shadow-card",
-        metricColorClassName,
-      )}
-      aria-hidden="true"
-    >
-      {item.kind === "public" && item.coverImageUrl ? (
-        <>
-          <span>TT</span>
-          {/* TikTok owns the returned cover URL, which may expire independently. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={item.coverImageUrl}
-            alt=""
-            width={40}
-            height={40}
-            loading="lazy"
-            className="absolute inset-0 size-full object-cover"
-            onError={(event) => {
-              event.currentTarget.hidden = true;
-            }}
-          />
-        </>
-      ) : item.kind === "private" ? (
-        <EyeOff className="size-3.5 text-warning" />
-      ) : (
-        "TT"
-      )}
-      {multiple ? (
-        <span className="absolute -bottom-1 -right-1 flex min-w-4 items-center justify-center rounded-full border border-border-strong bg-card px-1 font-mono text-[9px] leading-4 text-foreground-strong">
-          {count > 99 ? "99+" : formatNumber(count)}
-        </span>
-      ) : null}
-    </span>
   );
 }
 
@@ -1315,7 +1195,8 @@ function buildTrendPoints(
   const points = new Map<string, TikTokTrendContentItem[]>();
   const addItem = (date: string | null, item: TikTokTrendContentItem) => {
     if (!date) return;
-    const dateKey = date.slice(0, 10);
+    const dateKey = localPublishDate(date);
+    if (!dateKey) return;
     points.set(dateKey, [...(points.get(dateKey) ?? []), item]);
   };
 
@@ -1430,7 +1311,7 @@ function getEmptyTrendDescription({
   if (providerMessage) return providerMessage;
   return hasRefreshed
     ? "TikTok returned no public-video metrics for this selection yet."
-    : "The connected account appears in Account readiness. Use Refresh above to load public-video analytics.";
+    : "The connected account appears in Account readiness. Its analytics load automatically.";
 }
 function getEmptyContentDescription({
   error,
@@ -1449,7 +1330,7 @@ function getEmptyContentDescription({
   if (providerMessage) return providerMessage;
   return hasRefreshed
     ? "TikTok did not return public videos for this selection. Private UGC Pilot posts appear here separately when available."
-    : "Use Refresh above to load public-video metrics and private publishing records.";
+    : "Loading public-video metrics and private publishing records.";
 }
 function getReadiness(
   account: TikTokAccount | undefined,
@@ -1457,8 +1338,8 @@ function getReadiness(
 ) {
   if (!hasRefreshed)
     return {
-      label: "Ready to refresh",
-      message: "Account is connected. Refresh to load current analytics.",
+      label: "Loading analytics",
+      message: "Account is connected. Current analytics load automatically.",
       tone: "muted" as const,
     };
   if (!account)

@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { enqueueAnalyticsSyncJob } from "@/lib/analytics/jobs";
+import { readOrRefreshSocialAnalytics } from "@/lib/analytics/social-snapshot";
 import {
   FirebaseAuthRequestError,
   requireFirebaseUser,
 } from "@/lib/firebase/server-auth";
-import { getPublicBackgroundJob } from "@/lib/jobs/background-job-contract";
-import { getMissingBackgroundJobStorageEnvVars } from "@/lib/jobs/background-jobs";
-import { getMissingBackgroundJobCloudTasksEnvVars } from "@/lib/jobs/gcp-cloud-tasks";
 import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
 
 export const runtime = "nodejs";
@@ -42,22 +39,14 @@ export async function POST(request: Request) {
     );
   }
 
-  const missing = Array.from(new Set([
-    ...getMissingBackgroundJobStorageEnvVars(),
-    ...getMissingBackgroundJobCloudTasksEnvVars(["analytics_sync"]),
-  ]));
-
-  if (missing.length > 0) {
-    return json({ message: `Analytics jobs are not configured. Add ${missing.join(", ")}.`, ok: false }, 501);
-  }
-
   try {
-    const job = await enqueueAnalyticsSyncJob({
-      idempotencyKey: request.headers.get("Idempotency-Key")?.trim().slice(0, 200) || null,
+    const body = await request.json().catch(() => ({}));
+    const result = await readOrRefreshSocialAnalytics({
+      force: body?.force === true,
       operation: "tiktok_videos",
       userId,
     });
-    return json({ job: getPublicBackgroundJob(job), jobId: job.id, ok: true }, job.status === "completed" ? 200 : 202);
+    return json(result, 200);
   } catch (error) {
     console.error("Could not queue TikTok analytics synchronization:", error);
     return json({ message: "Could not start TikTok analytics synchronization.", ok: false }, 502);

@@ -500,6 +500,8 @@ export async function getBackgroundJobForUser(params: {
 export async function listBackgroundJobsForUser(params: {
   activeOnly?: boolean;
   jobType?: BackgroundJobType;
+  projectId?: string;
+  completedOnly?: boolean;
   limit?: number;
   userId: string;
 }) {
@@ -527,6 +529,9 @@ export async function listBackgroundJobsForUser(params: {
   if (params.jobType) {
     query = query.eq("job_type", params.jobType);
   }
+
+  if (params.projectId) query = query.eq("project_id", params.projectId);
+  if (params.completedOnly) query = query.eq("status", "completed");
 
   const { data, error } = await query;
 

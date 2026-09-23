@@ -36,7 +36,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
@@ -343,144 +342,166 @@ export function InstagramAccountManager() {
 
   return (
     <>
-      {message ? (
-        <div className="px-5 pt-5 sm:px-6">
-          <Alert aria-live="polite" className="border-success/25 bg-success/5">
-            <CheckCircle2 aria-hidden="true" className="text-success" />
-            <AlertTitle className="text-success">Instagram updated</AlertTitle>
-            <AlertDescription>{message}</AlertDescription>
-          </Alert>
-        </div>
-      ) : null}
-
-      {showProfessionalAccountGuide ? (
-        <div className="px-5 pt-5 sm:px-6">
-          <InstagramProfessionalAccountGuide />
-        </div>
-      ) : popupError ? (
-        <div className="px-5 pt-5 sm:px-6">
-          <Alert variant="destructive" aria-live="polite">
-            <AlertCircle aria-hidden="true" />
-            <AlertTitle>Instagram connection failed</AlertTitle>
-            <AlertDescription>{popupError}</AlertDescription>
-          </Alert>
-        </div>
-      ) : null}
-
-      {loading ? (
-        <InstagramConnectionSkeleton />
-      ) : loadError ? (
-        <div className="px-5 py-5 sm:px-6">
-          <Alert variant="destructive" aria-live="polite">
-            <AlertCircle aria-hidden="true" />
-            <AlertTitle>Instagram status unavailable</AlertTitle>
-            <AlertDescription>{loadError}</AlertDescription>
-            <AlertAction>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => void refreshConnections()}
-              >
-                Retry
-              </Button>
-            </AlertAction>
-          </Alert>
-        </div>
-      ) : connections.length > 0 ? (
-        <div className="px-5 py-5 sm:px-6">
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-bold text-foreground-strong">
-                {formatConnectionCount(connections.length)}
-              </p>
-              <p className="mt-1 text-sm leading-6 text-muted">
-                Manage the Instagram accounts UGC Pilot can use for
-                publishing.
+      <section
+        aria-labelledby="instagram-accounts-title"
+        className="overflow-hidden rounded-[22px] border border-border bg-card shadow-card"
+      >
+        <header className="flex flex-col gap-4 border-b border-border px-4 py-4 sm:px-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-[14px] bg-brand-soft text-primary ring-1 ring-inset ring-primary/10">
+              <SocialPlatformIcon className="size-5" platform="instagram" />
+            </span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3
+                  id="instagram-accounts-title"
+                  className="text-base font-bold text-foreground-strong"
+                >
+                  Instagram accounts
+                </h3>
+                {connections.length > 0 ? (
+                  <Badge variant="connected">
+                    <CheckCircle2 data-icon="inline-start" aria-hidden="true" />
+                    {connections.length} connected
+                  </Badge>
+                ) : null}
+              </div>
+              <p className="mt-1 max-w-xl text-sm leading-6 text-muted">
+                Accounts available for approved posts and scheduled publishing.
               </p>
             </div>
-            <Badge variant="outline" className="w-fit">
-              <CheckCircle2 data-icon="inline-start" aria-hidden="true" />
-              Connected through Meta
-            </Badge>
           </div>
 
-          <div className="grid gap-3">
-            {connections.map((connection) => (
-              <InstagramConnectionRow
-                key={connection.id}
-                connectionActionPending={isConnecting}
-                connection={connection}
-                reconnecting={
-                  isConnecting &&
-                  connectingIntent === "reconnect" &&
-                  connectingConnectionId === connection.id
-                }
-                onDisconnect={() => {
-                  setDisconnectError(null);
-                  setPendingDisconnect(connection);
-                }}
-                onReconnect={() => void reconnectInstagram(connection)}
-              />
-            ))}
-          </div>
-        </div>
-      ) : (
-        <InstagramConnectionEmptyState />
-      )}
-
-      <Separator />
-
-      <div className="flex flex-col gap-3 bg-card-muted/35 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <p className="max-w-xl text-sm leading-6 text-muted">
-          {accountLimitReached
-            ? accountLimitMessage
-            : connections.length > 0
-              ? "To add another profile, switch to that professional account in the Instagram authorization window."
-              : "Connect an Instagram Professional account through Meta to get started."}
-        </p>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            onClick={() => void refreshConnections()}
-            disabled={loading || isConnecting}
-            className="w-full rounded-[var(--radius-action)] sm:w-auto"
-          >
-            <RefreshCw
-              data-icon="inline-start"
-              className={loading ? "animate-spin motion-reduce:animate-none" : ""}
-              aria-hidden="true"
-            />
-            Refresh
-          </Button>
-          <Button
-            type="button"
-            size="lg"
-            onClick={() => void addInstagram()}
-            disabled={Boolean(connectingPlatform) || accountLimitReached}
-            className="w-full rounded-[var(--radius-action)] sm:w-auto"
-          >
-            {isAdding ? (
-              <LoaderCircle
+          <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void refreshConnections()}
+              disabled={loading || isConnecting}
+              className="h-9 rounded-full px-3.5"
+            >
+              <RefreshCw
                 data-icon="inline-start"
-                className="animate-spin motion-reduce:animate-none"
+                className={loading ? "animate-spin motion-reduce:animate-none" : ""}
                 aria-hidden="true"
               />
+              Refresh
+            </Button>
+            {accountLimitReached ? (
+              <Badge variant="outline" className="h-9 px-3.5 text-sm">
+                Plan limit reached
+              </Badge>
             ) : (
-              <Plus data-icon="inline-start" aria-hidden="true" />
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => void addInstagram()}
+                disabled={Boolean(connectingPlatform)}
+                className="h-9 rounded-full px-4"
+              >
+                {isAdding ? (
+                  <LoaderCircle
+                    data-icon="inline-start"
+                    className="animate-spin motion-reduce:animate-none"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <Plus data-icon="inline-start" aria-hidden="true" />
+                )}
+                {isAdding
+                  ? "Opening Instagram…"
+                  : connections.length > 0
+                    ? "Add account"
+                    : "Connect Instagram"}
+              </Button>
             )}
-            {isAdding
-              ? "Opening Instagram…"
-              : accountLimitReached
-                ? "Account limit reached"
-                : connections.length > 0
-                  ? "Add another account"
-                  : "Connect Instagram"}
-          </Button>
+          </div>
+        </header>
+
+        <div className="space-y-4 bg-card-muted/20 p-3 sm:p-4">
+          {message ? (
+            <Alert aria-live="polite" className="border-success/25 bg-success/5">
+              <CheckCircle2 aria-hidden="true" className="text-success" />
+              <AlertTitle className="text-success">Instagram updated</AlertTitle>
+              <AlertDescription>{message}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          {showProfessionalAccountGuide ? (
+            <InstagramProfessionalAccountGuide />
+          ) : popupError ? (
+            <Alert variant="destructive" aria-live="polite">
+              <AlertCircle aria-hidden="true" />
+              <AlertTitle>Instagram connection failed</AlertTitle>
+              <AlertDescription>{popupError}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          {loading ? (
+            <InstagramConnectionSkeleton />
+          ) : loadError ? (
+            <Alert variant="destructive" aria-live="polite">
+              <AlertCircle aria-hidden="true" />
+              <AlertTitle>Instagram status unavailable</AlertTitle>
+              <AlertDescription>{loadError}</AlertDescription>
+              <AlertAction>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void refreshConnections()}
+                  className="rounded-full"
+                >
+                  Retry
+                </Button>
+              </AlertAction>
+            </Alert>
+          ) : connections.length > 0 ? (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+                <p className="text-sm font-semibold text-foreground-strong">
+                  {formatConnectionCount(connections.length)}
+                </p>
+                <Badge variant="outline">
+                  <CheckCircle2 data-icon="inline-start" aria-hidden="true" />
+                  Meta connected
+                </Badge>
+              </div>
+
+              <div className="overflow-hidden rounded-[var(--radius-group)] border border-border bg-card">
+                {connections.map((connection) => (
+                  <InstagramConnectionRow
+                    key={connection.id}
+                    connectionActionPending={isConnecting}
+                    connection={connection}
+                    reconnecting={
+                      isConnecting &&
+                      connectingIntent === "reconnect" &&
+                      connectingConnectionId === connection.id
+                    }
+                    onDisconnect={() => {
+                      setDisconnectError(null);
+                      setPendingDisconnect(connection);
+                    }}
+                    onReconnect={() => void reconnectInstagram(connection)}
+                  />
+                ))}
+              </div>
+            </>
+          ) : (
+            <InstagramConnectionEmptyState />
+          )}
+
+          <p className="px-1 text-xs leading-5 text-muted">
+            {accountLimitReached
+              ? accountLimitMessage
+              : connections.length > 0
+                ? "To add another profile, switch to that professional account in the Instagram authorization window."
+                : "Connect an Instagram Professional account through Meta to get started."}
+          </p>
         </div>
-      </div>
+      </section>
 
       <Dialog
         open={pendingDisconnect !== null}
@@ -583,7 +604,7 @@ function InstagramConnectionRow({
   const viewState = getInstagramConnectionViewState(connection);
 
   return (
-    <article className="flex flex-col gap-4 rounded-[var(--radius-group)] border border-border bg-card-muted/45 p-4 sm:flex-row sm:items-center sm:justify-between">
+    <article className="flex flex-col gap-4 border-b border-border px-4 py-4 last:border-b-0 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex min-w-0 items-start gap-3">
         <InstagramAccountAvatar
           className="size-11"
@@ -614,14 +635,14 @@ function InstagramConnectionRow({
           </p>
         </div>
       </div>
-      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+      <div className="inline-flex w-full items-center rounded-full border border-border bg-card-muted/65 p-1 lg:w-auto">
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="sm"
           onClick={onReconnect}
           disabled={connectionActionPending}
-          className="w-full rounded-[var(--radius-action)] sm:w-auto"
+          className="h-8 flex-1 rounded-full px-3 lg:flex-none"
         >
           {reconnecting ? (
             <LoaderCircle
@@ -634,13 +655,14 @@ function InstagramConnectionRow({
           )}
           {reconnecting ? "Opening Instagram..." : "Reconnect"}
         </Button>
+        <span aria-hidden="true" className="h-5 w-px bg-border" />
         <Button
           type="button"
-          variant="destructive"
+          variant="ghost"
           size="sm"
           onClick={onDisconnect}
           disabled={connectionActionPending}
-          className="w-full rounded-[var(--radius-action)] sm:w-auto"
+          className="h-8 flex-1 rounded-full px-3 text-destructive hover:bg-destructive/10 hover:text-destructive lg:flex-none"
         >
           <Trash2 data-icon="inline-start" aria-hidden="true" />
           Disconnect
@@ -652,21 +674,18 @@ function InstagramConnectionRow({
 
 function InstagramConnectionEmptyState() {
   return (
-    <div className="px-5 py-6 sm:px-6">
-      <div className="flex flex-col items-start gap-4 rounded-[var(--radius-control)] border border-dashed border-border-strong bg-card-muted/30 p-5 sm:flex-row sm:items-center">
-        <span className="flex size-12 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-brand-soft ring-1 ring-inset ring-primary/10">
-          <SocialPlatformIcon className="size-6" platform="instagram" />
-        </span>
-        <div>
-          <h3 className="text-sm font-bold text-foreground-strong">
-            Connect an Instagram professional account
-          </h3>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
-            Connect through Meta to schedule approved posts from this
-            workspace. Personal Instagram accounts are not eligible for
-            publishing.
-          </p>
-        </div>
+    <div className="flex flex-col items-start gap-4 rounded-[var(--radius-group)] border border-dashed border-border-strong bg-card p-5 sm:flex-row sm:items-center">
+      <span className="flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-brand-soft ring-1 ring-inset ring-primary/10">
+        <SocialPlatformIcon className="size-5" platform="instagram" />
+      </span>
+      <div>
+        <h3 className="text-sm font-bold text-foreground-strong">
+          No Instagram account connected
+        </h3>
+        <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
+          Connect a professional Instagram account through Meta to schedule
+          approved posts. Personal accounts are not eligible for publishing.
+        </p>
       </div>
     </div>
   );
@@ -675,9 +694,9 @@ function InstagramConnectionEmptyState() {
 function InstagramConnectionSkeleton() {
   return (
     <div
-      role="status"
-      aria-live="polite"
-      className="flex items-center gap-4 px-5 py-6 sm:px-6"
+    role="status"
+    aria-live="polite"
+      className="flex items-center gap-4 rounded-[var(--radius-group)] border border-border bg-card px-4 py-5"
     >
       <span className="sr-only">Loading Instagram account status…</span>
       <Skeleton className="size-11 shrink-0 rounded-[var(--radius-control)]" />

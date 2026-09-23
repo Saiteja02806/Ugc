@@ -123,6 +123,7 @@
     "production:gcp-media-backfill:audit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/test-production-gcp-media-backfill-audit.mjs --execute --yes",
     "demo:test:e2e": "node scripts/test-demo-upload-draft-e2e.mjs",
     "diagnose:tiktok": "node scripts/diagnose-tiktok.mjs",
+    "audit:tiktok": "node scripts/audit-tiktok-schedule.mjs",
     "social-dispatch:gcp:dry-run": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/test-social-dispatch-cloud-tasks-gcp.mjs --dry-run",
     "social-dispatch:gcp:canary": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/test-social-dispatch-cloud-tasks-gcp.mjs --execute --yes",
     "billing:usage-scheduler:dry-run": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/configure-billing-usage-scheduler.mjs --dry-run",

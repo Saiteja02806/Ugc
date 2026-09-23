@@ -35,7 +35,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { InstagramAccountManager } from "@/components/settings/instagram-account-manager";
 import { TikTokBetaAccountManager } from "@/components/settings/tiktok-beta-account-manager";
 import { YouTubeBetaAccountManager } from "@/components/settings/youtube-beta-account-manager";
@@ -578,18 +577,15 @@ export function SettingsWorkspace() {
           {activeSection === "instagram-publishing" ? (
           <SettingsSection
             id="instagram-publishing"
-            description="Connect and manage the Instagram accounts available for publishing."
-            icon={
-              <SocialPlatformIcon
-                className="size-5"
-                platform="instagram"
-              />
-            }
+            description="Connect and organize the social accounts UGC Pilot can use for publishing."
+            icon={<Plug className="size-5" aria-hidden="true" />}
             title="Connected accounts"
           >
-            <InstagramAccountManager />
-            {tiktokBetaEnabled ? <TikTokBetaAccountManager /> : null}
-            {youtubeBetaEnabled ? <YouTubeBetaAccountManager /> : null}
+            <div className="space-y-4 px-5 py-5 sm:px-6">
+              <InstagramAccountManager />
+              {tiktokBetaEnabled ? <TikTokBetaAccountManager /> : null}
+              {youtubeBetaEnabled ? <YouTubeBetaAccountManager /> : null}
+            </div>
           </SettingsSection>
           ) : null}
 

@@ -40,9 +40,7 @@ export function SocialAnalyticsBetaControls({
   platform: SocialPlatform;
   selectedConnectionId: string;
 }) {
-  const [openPlatform, setOpenPlatform] = useState<SocialPlatform | null>(
-    null,
-  );
+  const [openPlatform, setOpenPlatform] = useState<SocialPlatform | null>(null);
 
   return (
     <section
@@ -52,7 +50,7 @@ export function SocialAnalyticsBetaControls({
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
-            Analytics beta
+            Account selection
           </p>
           <h2 className="mt-1 text-lg font-bold tracking-[-0.02em] text-foreground">
             Choose a social account
@@ -96,9 +94,7 @@ export function SocialAnalyticsBetaControls({
                 open={openPlatform === option.platform}
                 platform={option.platform}
                 selected={selected}
-                selectedConnectionId={
-                  selected ? selectedConnectionId : "all"
-                }
+                selectedConnectionId={selected ? selectedConnectionId : "all"}
               />
             );
           })}
@@ -148,7 +144,9 @@ function PlatformAccountMenu({
         onClick={onPlatformChange}
       >
         <SocialPlatformIcon className="size-5" platform={platform} />
-        {selected ? <ChevronDown className="size-3.5" aria-hidden="true" /> : null}
+        {selected ? (
+          <ChevronDown className="size-3.5" aria-hidden="true" />
+        ) : null}
         <span className="sr-only">{label}</span>
       </PopoverTrigger>
 

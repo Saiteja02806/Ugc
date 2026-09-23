@@ -6,7 +6,8 @@ export type AnalyticsSyncOperation =
   | "instagram_attribution"
   | "instagram_content"
   | "instagram_insights"
-  | "tiktok_videos";
+  | "tiktok_videos"
+  | "youtube_channel";
 
 export async function enqueueAnalyticsSyncJob(params: {
   days?: 7 | 30 | 90;

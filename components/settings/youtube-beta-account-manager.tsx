@@ -33,6 +33,7 @@ import {
 } from "@/lib/scheduling/account-data-query";
 import { getConnectionPublishingBlockMessage } from "@/lib/scheduling/social-connection-policy";
 import type { SocialConnection } from "@/lib/social/types";
+import { hasYouTubeAnalyticsScope } from "@/lib/social/youtube-oauth-config";
 
 const YOUTUBE_PLATFORM = "youtube" as const;
 
@@ -108,15 +109,33 @@ export function YouTubeBetaAccountManager() {
       );
 
       if (connected) {
-        setMessage("YouTube channel connected.");
+        const analyticsEnabled = refreshed.some(
+          (connection) =>
+            connection.platform === YOUTUBE_PLATFORM &&
+            hasYouTubeAnalyticsScope(connection.scopes),
+        );
+        setMessage(
+          analyticsEnabled
+            ? "YouTube channel connected with upload and analytics access."
+            : "YouTube channel connected. Reconnect once to enable channel performance in Analytics.",
+        );
       }
 
       return connected;
     },
     onResult: async (result) => {
       if (result.status === "success" && result.platform === YOUTUBE_PLATFORM) {
-        await loadConnections(true);
-        setMessage("YouTube channel connected.");
+        const refreshed = await loadConnections(true);
+        const analyticsEnabled = refreshed.some(
+          (connection) =>
+            connection.platform === YOUTUBE_PLATFORM &&
+            hasYouTubeAnalyticsScope(connection.scopes),
+        );
+        setMessage(
+          analyticsEnabled
+            ? "YouTube channel connected with upload and analytics access."
+            : "YouTube channel connected. Reconnect once to enable channel performance in Analytics.",
+        );
       }
     },
   });
@@ -217,8 +236,8 @@ export function YouTubeBetaAccountManager() {
                 <Badge variant="outline">Beta</Badge>
               </div>
               <p className="mt-1 max-w-xl text-sm leading-6 text-muted">
-                Connect an approved channel to schedule video uploads with the
-                permission required for unattended publishing.
+                Connect an approved channel to schedule video uploads and view
+                channel performance in Analytics.
               </p>
             </div>
           </div>
@@ -279,6 +298,8 @@ export function YouTubeBetaAccountManager() {
                   isConnecting &&
                   connectingIntent === "reconnect" &&
                   connectingConnectionId === connection.id;
+                const needsAnalyticsConsent =
+                  !hasYouTubeAnalyticsScope(connection.scopes);
 
                 return (
                   <article
@@ -312,7 +333,9 @@ export function YouTubeBetaAccountManager() {
                           }
                         >
                           {publishingBlock ??
-                            "Video uploads are available for this approved beta channel."}
+                            (needsAnalyticsConsent
+                              ? "Reconnect once to enable channel performance in Analytics."
+                              : "Video uploads and channel performance are enabled for this approved beta channel.")}
                         </p>
                       </div>
                     </div>

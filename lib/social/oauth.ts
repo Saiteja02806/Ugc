@@ -194,6 +194,14 @@ type TikTokTokenResponse = {
   token_type?: string;
 };
 
+type GoogleTokenRefreshResponse = {
+  access_token?: string;
+  error?: string;
+  error_description?: string;
+  expires_in?: number;
+  token_type?: string;
+};
+
 class TikTokTokenRequestError extends Error {
   constructor(
     message: string,
@@ -203,6 +211,17 @@ class TikTokTokenRequestError extends Error {
   ) {
     super(message);
     this.name = "TikTokTokenRequestError";
+  }
+}
+
+class GoogleTokenRefreshError extends Error {
+  constructor(
+    message: string,
+    public readonly code: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = "GoogleTokenRefreshError";
   }
 }
 
@@ -245,8 +264,10 @@ export type SocialOAuthTraceContext = {
 
 const STATE_TTL_MINUTES = 10;
 const TIKTOK_TOKEN_REFRESH_SKEW_MS = 15 * 60 * 1000;
+const GOOGLE_TOKEN_REFRESH_SKEW_MS = 15 * 60 * 1000;
 const INSTAGRAM_PROFILE_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const TIKTOK_TOKEN_REFRESH_STALE_SECONDS = 120;
+const GOOGLE_TOKEN_REFRESH_STALE_SECONDS = 120;
 let supabaseClient: SupabaseClient<SocialOAuthDatabase> | null = null;
 
 export async function createSocialAuthorization(params: {
@@ -643,7 +664,10 @@ export async function getSocialConnectionCredentialForOwner(params: {
     hasTikTokPublishScope(data.scopes) &&
     isTokenExpiring(data.expires_at, TIKTOK_TOKEN_REFRESH_SKEW_MS)
       ? await refreshTikTokConnection({ connection: data, ...params })
-      : data;
+      : data.platform === "youtube" &&
+          isTokenExpiring(data.expires_at, GOOGLE_TOKEN_REFRESH_SKEW_MS)
+        ? await refreshYouTubeConnection({ connection: data, ...params })
+        : data;
 
   return {
     accessToken: decryptSecret(connection.access_token_ciphertext),
@@ -865,6 +889,187 @@ async function refreshTikTokConnection(params: {
       "tiktok_refresh_failed",
     );
   }
+}
+
+async function refreshYouTubeConnection(params: {
+  connection: SocialConnectionRow;
+  connectionId: string;
+  userId: string;
+}) {
+  if (!params.connection.refresh_token_ciphertext) {
+    throw new SocialOAuthError(
+      "Reconnect YouTube before loading channel analytics.",
+      409,
+      "youtube_refresh_required",
+    );
+  }
+
+  const claimToken = randomUUID();
+  let claimedConnection: SocialConnectionRow | null = null;
+
+  for (let attempt = 0; attempt < 3 && !claimedConnection; attempt += 1) {
+    const claim = await getClient().rpc(
+      "claim_social_connection_token_refresh",
+      {
+        p_claim_token: claimToken,
+        p_connection_id: params.connectionId,
+        p_stale_after_seconds: GOOGLE_TOKEN_REFRESH_STALE_SECONDS,
+        p_user_id: params.userId,
+      },
+    );
+
+    if (claim.error) {
+      throw new SocialOAuthError(
+        "Could not safely refresh YouTube right now.",
+        502,
+        "youtube_refresh_claim_failed",
+      );
+    }
+
+    claimedConnection = claim.data?.[0] ?? null;
+
+    if (!claimedConnection && attempt < 2) {
+      await delay(300 * (attempt + 1));
+      const latest = await getClient()
+        .from("social_connections")
+        .select("*")
+        .eq("id", params.connectionId)
+        .eq("user_id", params.userId)
+        .maybeSingle();
+
+      if (latest.error) {
+        throw new SocialOAuthError(
+          "Could not reload the YouTube connection.",
+          502,
+          "youtube_refresh_read_failed",
+        );
+      }
+
+      if (
+        latest.data &&
+        !isTokenExpiring(
+          latest.data.expires_at,
+          GOOGLE_TOKEN_REFRESH_SKEW_MS,
+        )
+      ) {
+        return latest.data;
+      }
+    }
+  }
+
+  if (!claimedConnection) {
+    throw new SocialOAuthError(
+      "YouTube is already refreshing. Try again in a moment.",
+      409,
+      "youtube_refresh_in_progress",
+    );
+  }
+
+  try {
+    const refreshToken = decryptSecret(
+      claimedConnection.refresh_token_ciphertext ?? "",
+    );
+    const refreshed = await requestGoogleTokenRefresh(refreshToken);
+    const completed = await getClient().rpc(
+      "complete_social_connection_token_refresh",
+      {
+        p_access_token_ciphertext: encryptSecret(refreshed.accessToken),
+        p_claim_token: claimToken,
+        p_connection_id: params.connectionId,
+        p_expires_at: refreshed.expiresAt,
+        p_refresh_expires_at: claimedConnection.refresh_expires_at,
+        p_refresh_token_ciphertext:
+          claimedConnection.refresh_token_ciphertext,
+        p_scopes: claimedConnection.scopes,
+        p_status: "connected",
+        p_token_type: refreshed.tokenType,
+        p_user_id: params.userId,
+      },
+    );
+
+    if (completed.error || !completed.data?.[0]) {
+      throw new SocialOAuthError(
+        "Could not save the refreshed YouTube connection.",
+        502,
+        "youtube_refresh_save_failed",
+      );
+    }
+
+    return completed.data[0];
+  } catch (error) {
+    const errorCode =
+      error instanceof GoogleTokenRefreshError
+        ? error.code
+        : error instanceof SocialOAuthError
+          ? error.code
+          : "youtube_refresh_failed";
+
+    try {
+      await getClient().rpc("release_social_connection_token_refresh", {
+        p_claim_token: claimToken,
+        p_connection_id: params.connectionId,
+        p_error_code: errorCode,
+        p_user_id: params.userId,
+      });
+    } catch {
+      // The stale refresh lease expires automatically if release cannot persist.
+    }
+
+    if (
+      error instanceof GoogleTokenRefreshError &&
+      ["invalid_grant", "invalid_request", "unauthorized_client"].includes(
+        error.code,
+      )
+    ) {
+      throw new SocialOAuthError(
+        "Reconnect YouTube before loading channel analytics.",
+        409,
+        "youtube_refresh_required",
+      );
+    }
+
+    if (error instanceof SocialOAuthError) {
+      throw error;
+    }
+
+    throw new SocialOAuthError(
+      "YouTube could not refresh this connection right now.",
+      502,
+      "youtube_refresh_failed",
+    );
+  }
+}
+
+async function requestGoogleTokenRefresh(refreshToken: string) {
+  const body = new URLSearchParams({
+    client_id: getEnv("GOOGLE_CLIENT_ID"),
+    client_secret: getEnv("GOOGLE_CLIENT_SECRET"),
+    grant_type: "refresh_token",
+    refresh_token: refreshToken,
+  });
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    body,
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    method: "POST",
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | GoogleTokenRefreshResponse
+    | null;
+  const expiresIn = getPositiveInteger(payload?.expires_in);
+
+  if (!response.ok || !payload?.access_token || !expiresIn) {
+    throw new GoogleTokenRefreshError(
+      payload?.error_description || "Google token refresh failed.",
+      payload?.error || "google_refresh_failed",
+      response.status,
+    );
+  }
+
+  return {
+    accessToken: payload.access_token,
+    expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
+    tokenType: payload.token_type ?? "Bearer",
+  };
 }
 
 async function requestTikTokTokenRefresh(refreshToken: string) {

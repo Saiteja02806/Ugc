@@ -39,6 +39,7 @@ import {
 import { SocialAccountAvatar } from "@/components/social/social-account-avatar";
 import { SocialAnalyticsBetaControls } from "@/components/analytics/social-analytics-beta-controls";
 import { TikTokBetaAnalyticsPanel } from "@/components/analytics/tiktok-beta-analytics-panel";
+import { YouTubeBetaAnalyticsPanel } from "@/components/analytics/youtube-beta-analytics-panel";
 import { YouTubeBetaPublicationPanel } from "@/components/analytics/youtube-beta-publication-panel";
 import { InstagramAccountAvatar } from "@/components/social/instagram-account-avatar";
 import {
@@ -514,12 +515,7 @@ export function InstagramAnalyticsWorkspace() {
     (!betaSocialAnalyticsEnabled || betaSelectedPlatform === "tiktok");
   const showYouTubeAnalytics =
     betaSocialAnalyticsEnabled && betaSelectedPlatform === "youtube";
-  const showHeaderRefresh =
-    !betaSocialAnalyticsEnabled || betaSelectedPlatform !== "tiktok";
-  const headerRefreshLabel =
-    betaSocialAnalyticsEnabled && betaSelectedPlatform === "youtube"
-      ? "Refresh activity"
-      : "Refresh";
+  const showHeaderRefresh = !betaSocialAnalyticsEnabled || betaSelectedPlatform === "instagram";
 
   const activeConnectionIds = useMemo(
     () => new Set(connections.map((connection) => connection.id)),
@@ -666,7 +662,7 @@ export function InstagramAnalyticsWorkspace() {
                   )}
                   aria-hidden="true"
                 />
-                {headerRefreshLabel}
+                Refresh
               </Button>
             ) : null}
           </div>
@@ -691,11 +687,16 @@ export function InstagramAnalyticsWorkspace() {
           />
         ) : null}
         {showYouTubeAnalytics ? (
-          <YouTubeBetaPublicationPanel
-            connections={allSocialConnections}
-            schedules={schedules}
-            selectedConnectionId={effectiveBetaSelectedConnectionId}
-          />
+          <>
+            <YouTubeBetaAnalyticsPanel
+              selectedConnectionId={effectiveBetaSelectedConnectionId}
+            />
+            <YouTubeBetaPublicationPanel
+              connections={allSocialConnections}
+              schedules={schedules}
+              selectedConnectionId={effectiveBetaSelectedConnectionId}
+            />
+          </>
         ) : null}
 
         {showInstagramAnalytics ? <div className="mt-6" aria-busy={loadState === "loading"}>

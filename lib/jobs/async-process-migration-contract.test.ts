@@ -34,6 +34,11 @@ test("user-facing AI and analytics routes only enqueue durable jobs", () => {
       forbidden: ["listTikTokPublicVideoAnalyticsForOwner"],
       path: "app/api/analytics/tiktok/videos/route.ts",
     },
+    {
+      enqueue: "enqueueAnalyticsSyncJob",
+      forbidden: ["listYouTubeChannelAnalyticsForOwner"],
+      path: "app/api/analytics/youtube/channel/route.ts",
+    },
   ];
 
   for (const contract of contracts) {
@@ -53,6 +58,7 @@ test("Analytics is available to every signed-in user without a paid-plan gate", 
     "app/api/analytics/instagram/insights/route.ts",
     "app/api/analytics/instagram/content/route.ts",
     "app/api/analytics/tiktok/videos/route.ts",
+    "app/api/analytics/youtube/channel/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 

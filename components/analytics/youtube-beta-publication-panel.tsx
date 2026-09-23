@@ -57,8 +57,8 @@ export function YouTubeBetaPublicationPanel({
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
             Tracks YouTube videos scheduled through UGC Pilot, including their
-            publish state and the YouTube link after upload. Performance
-            metrics such as views and watch time are not collected yet.
+            publish state and the YouTube link after upload. Channel
+            performance appears above after a refresh.
           </p>
         </div>
         <span className="inline-flex w-fit items-center gap-2 rounded-control border border-border bg-card-muted px-3 py-2 text-xs font-semibold text-muted">

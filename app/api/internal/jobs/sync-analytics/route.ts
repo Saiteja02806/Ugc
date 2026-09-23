@@ -8,6 +8,7 @@ import { listInstagramContentInsightsForOwner } from "@/lib/analytics/instagram-
 import { enqueueAnalyticsSyncJob } from "@/lib/analytics/jobs";
 import { getInstagramContentSnapshotForOwner } from "@/lib/analytics/instagram-snapshots";
 import { listTikTokPublicVideoAnalyticsForOwner } from "@/lib/analytics/tiktok";
+import { listYouTubeChannelAnalyticsForOwner } from "@/lib/analytics/youtube";
 import { recordInstagramCarouselPerformance } from "@/lib/carousel/performance";
 import { getBackgroundJobById, type Json } from "@/lib/jobs/background-jobs";
 import {
@@ -84,6 +85,12 @@ export async function POST(request: Request) {
       await recordPerformanceSafely("Hook", () =>
         recordTikTokHookPerformance({ accounts, userId }),
       );
+
+      return json({ accounts, ok: true, operation: input.operation });
+    }
+
+    if (input.operation === "youtube_channel") {
+      const accounts = await listYouTubeChannelAnalyticsForOwner({ userId });
 
       return json({ accounts, ok: true, operation: input.operation });
     }

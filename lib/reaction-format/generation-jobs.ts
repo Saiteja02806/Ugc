@@ -88,6 +88,7 @@ export async function enqueueTrendingReactionRefill(
   }
 
   const requestPrefix = getReactionRequestPrefix(profile, params.dailyFeedKey);
+  const requestKey = `${requestPrefix}active-${currentActiveCount}:need-${requestedCount}`;
   const existingJobs = await listBackgroundJobsForUser({
     jobType: REACTION_GENERATION_JOB_TYPE,
     limit: 100,
@@ -96,11 +97,10 @@ export async function enqueueTrendingReactionRefill(
   const coverageShortfall = getCompletedReactionCoverageShortfall({
     jobs: existingJobs,
     profile,
-    requestPrefix,
+    requestKey,
   });
   if (coverageShortfall) return coverageShortfall;
 
-  const requestKey = `${requestPrefix}active-${currentActiveCount}:need-${requestedCount}`;
   const creation = await createBackgroundJobWithCreationResult({
     idempotencyKey: `reaction-generation:${profile.userId}:${requestKey}`,
     input: {
@@ -233,10 +233,10 @@ function getReactionCatalogClient() {
 export function getCompletedReactionCoverageShortfall(params: {
   jobs: readonly BackgroundJobRecord[];
   profile: Pick<BusinessProfileRecord, "id" | "profileVersion">;
-  requestPrefix: string;
+  requestKey: string;
 }): Extract<ReactionRefillResult, { kind: "coverage_shortfall" }> | null {
   for (const job of params.jobs) {
-    if (job.status !== "completed" || !isMatchingReactionCoverageJob(job, params.profile, params.requestPrefix)) {
+    if (job.status !== "completed" || !isMatchingReactionCoverageJob(job, params.profile, params.requestKey)) {
       continue;
     }
     const output = asRecord(job.output);
@@ -249,16 +249,22 @@ export function getCompletedReactionCoverageShortfall(params: {
       requestedCount === null ||
       readyCount === null ||
       failedCount !== 0 ||
-      readyCount < 1 ||
+      readyCount < 0 ||
       readyCount >= requestedCount ||
       shortfallCount !== requestedCount - readyCount
     ) {
       continue;
     }
     const missingCount = requestedCount - readyCount;
+    const shortfallReason = output?.shortfallReason;
     return {
       kind: "coverage_shortfall",
-      message: `Prepared ${readyCount} of ${requestedCount} Reaction Reels; ${missingCount} more need approved catalog coverage.`,
+      message:
+        readyCount === 0 && shortfallReason === "reaction_catalog_capacity_exhausted"
+          ? "No additional Reaction Reels can be prepared yet. Every eligible clip is either already on an active card or has reached its per-user repetition limit. Decide on existing cards or add approved clips, then try again."
+          : readyCount === 0
+          ? "No Reaction Reels can be prepared until the approved catalog has a renderable alpha clip and background."
+          : `Prepared ${readyCount} of ${requestedCount} Reaction Reels; ${missingCount} more need approved catalog coverage.`,
       missingCount,
       readyCount,
       requestedCount,
@@ -398,7 +404,7 @@ function hasMatchingFactSnapshot(value: unknown, expected: BusinessFactSnapshot)
 function isMatchingReactionCoverageJob(
   job: BackgroundJobRecord,
   profile: Pick<BusinessProfileRecord, "id" | "profileVersion">,
-  requestPrefix: string,
+  requestKey: string,
 ) {
   const input = asRecord(job.input);
   return (
@@ -406,8 +412,7 @@ function isMatchingReactionCoverageJob(
     input?.businessProfileId === profile.id &&
     input.businessProfileVersion === profile.profileVersion &&
     (input.generationOrigin === undefined || input.generationOrigin === "business_generation") &&
-    typeof input.requestKey === "string" &&
-    input.requestKey.startsWith(requestPrefix)
+    input.requestKey === requestKey
   );
 }
 

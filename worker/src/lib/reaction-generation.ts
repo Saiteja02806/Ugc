@@ -103,6 +103,19 @@ export type ReactionGenerationPlan = {
   shortfallCount: number;
 };
 
+/**
+ * The worker reads this before spending a model call.  A clip can be a valid
+ * catalog asset while still being unavailable to a particular user because it
+ * is already on one of their active cards or has reached the presentation
+ * limit.  Keeping the counts separate lets the caller report that distinction
+ * instead of treating a capacity shortfall as a broken catalog.
+ */
+export type ReactionCatalogAvailability = {
+  availableClipCount: number;
+  renderableBackgroundCount: number;
+  renderableClipCount: number;
+};
+
 type ReactionBrief = {
   content: ReactionBriefContent;
   preferredReactions: ReactionIntent[];
@@ -148,12 +161,7 @@ export async function planReactionGeneration(params: {
   reservedClipIds?: ReadonlySet<string>;
   seed: string;
 }): Promise<ReactionGenerationPlan> {
-  const clips = params.clips.filter((clip) =>
-    isRenderableClip(clip) &&
-    !params.reservedClipIds?.has(clip.id) &&
-    isWithinPresentationLimit(params.historyByClipId.get(clip.id)),
-  );
-  const backgrounds = params.backgrounds.filter(isRenderableBackground);
+  const { availableClips: clips, backgrounds } = getReactionCatalogCandidates(params);
   if (!clips.length || !backgrounds.length) {
     throw new Error("Reaction generation requires active alpha clips and active backgrounds.");
   }
@@ -585,6 +593,37 @@ function parseBrief(
     },
     preferredReactions,
     slotIndex: raw.slotIndex as number,
+  };
+}
+
+export function getReactionCatalogAvailability(params: {
+  backgrounds: readonly ReactionCatalogBackground[];
+  clips: readonly ReactionCatalogClip[];
+  historyByClipId: ReadonlyMap<string, ClipHistory>;
+  reservedClipIds?: ReadonlySet<string>;
+}): ReactionCatalogAvailability {
+  const { availableClips, backgrounds, renderableClips } = getReactionCatalogCandidates(params);
+  return {
+    availableClipCount: availableClips.length,
+    renderableBackgroundCount: backgrounds.length,
+    renderableClipCount: renderableClips.length,
+  };
+}
+
+function getReactionCatalogCandidates(params: {
+  backgrounds: readonly ReactionCatalogBackground[];
+  clips: readonly ReactionCatalogClip[];
+  historyByClipId: ReadonlyMap<string, ClipHistory>;
+  reservedClipIds?: ReadonlySet<string>;
+}) {
+  const renderableClips = params.clips.filter(isRenderableClip);
+  return {
+    availableClips: renderableClips.filter((clip) =>
+      !params.reservedClipIds?.has(clip.id) &&
+      isWithinPresentationLimit(params.historyByClipId.get(clip.id)),
+    ),
+    backgrounds: params.backgrounds.filter(isRenderableBackground),
+    renderableClips,
   };
 }
 

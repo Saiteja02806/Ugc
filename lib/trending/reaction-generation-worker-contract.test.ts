@@ -132,9 +132,13 @@ test("uses the canonical semantic shapes and terminally records individual rende
 test("reserves active clips and reports a catalog shortfall without another refill", () => {
   assert.match(workerStore, /getReservedReactionClipIds/);
   assert.match(workerJob, /reservedClipIds/);
+  assert.match(workerJob, /getReactionCatalogAvailability/);
+  assert.match(workerJob, /reaction_catalog_capacity_exhausted/);
+  assert.match(workerJob, /shortfallCount: input\.requestedCount/);
   assert.match(migration, /pg_advisory_xact_lock/);
   assert.match(migration, /reaction_generation_plan_clip_reserved/);
   assert.match(enqueue, /getCompletedReactionCoverageShortfall/);
+  assert.match(enqueue, /input\.requestKey === requestKey/);
   assert.match(enqueue, /Prepared \$\{readyCount\} of \$\{requestedCount\} Reaction Reels/);
 });
 

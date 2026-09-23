@@ -1,4 +1,5 @@
 import {
+  getReactionCatalogAvailability,
   planReactionGeneration,
   REACTION_GENERATION_PROMPT_VERSION,
   type ReactionCatalogBackground,
@@ -76,6 +77,41 @@ export async function runGenerateReactionJob(
         userId: input.userId,
       });
   } else {
+    const availability = getReactionCatalogAvailability({
+      backgrounds,
+      clips,
+      historyByClipId,
+      reservedClipIds,
+    });
+    if (availability.availableClipCount === 0 || availability.renderableBackgroundCount === 0) {
+      // This is not a provider failure.  The catalog can be healthy while all
+      // usable clips are reserved by active cards or have reached the
+      // per-user presentation cap.  End the durable run and return a partial
+      // result without paying for model output that cannot be rendered.
+      const completion = await context.store.completeReactionGenerationRun({
+        generationJobId: job.id,
+        runId: run.id,
+        userId: input.userId,
+      });
+      const shortfallReason = availability.renderableClipCount > 0 && availability.renderableBackgroundCount > 0
+        ? "reaction_catalog_capacity_exhausted"
+        : "reaction_catalog_unavailable";
+      await context.checkpoint({
+        progress: null,
+        stage: shortfallReason,
+        status: "processing",
+      });
+      return {
+        availableClipCount: availability.availableClipCount,
+        failedCount: completion.failed_count,
+        generationRunId: run.id,
+        readyCount: completion.ready_count,
+        requestedCount: input.requestedCount,
+        shortfallCount: input.requestedCount,
+        shortfallReason,
+        status: "partial",
+      } satisfies Record<string, Json>;
+    }
     await createAndPersistPlan({
         backgrounds,
         clips,

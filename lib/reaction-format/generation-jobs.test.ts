@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  getCompletedReactionCoverageShortfall,
   hasMatchingReactionGenerationContext,
   type ReactionGenerationContextSnapshot,
 } from "./generation-jobs.ts";
@@ -56,4 +57,45 @@ test("rejects a persisted Reaction fact snapshot when a fact changes", () => {
     hasMatchingReactionGenerationContext(persistedContext, expectedContext),
     false,
   );
+});
+
+test("surfaces an exhausted per-user Reaction catalog as a stable coverage shortfall", () => {
+  const shortfall = getCompletedReactionCoverageShortfall({
+    jobs: [{
+      attemptCount: 1,
+      createdAt: "2026-09-24T00:00:00.000Z",
+      errorCode: null,
+      errorMessage: null,
+      id: "job-1",
+      input: {
+        businessProfileId: "profile-1",
+        businessProfileVersion: 1,
+        requestKey: "reaction-v1:feed-1:profile-1:active-62:need-2",
+      },
+      jobType: "reaction_generation",
+      maxAttempts: 3,
+      output: {
+        failedCount: 0,
+        readyCount: 0,
+        requestedCount: 2,
+        shortfallCount: 2,
+        shortfallReason: "reaction_catalog_capacity_exhausted",
+        status: "partial",
+      },
+      projectId: "project-1",
+      status: "completed",
+      updatedAt: "2026-09-24T00:00:00.000Z",
+      userId: "user-1",
+    }],
+    profile: { id: "profile-1", profileVersion: 1 },
+    requestKey: "reaction-v1:feed-1:profile-1:active-62:need-2",
+  });
+
+  assert.deepEqual(shortfall, {
+    kind: "coverage_shortfall",
+    message: "No additional Reaction Reels can be prepared yet. Every eligible clip is either already on an active card or has reached its per-user repetition limit. Decide on existing cards or add approved clips, then try again.",
+    missingCount: 2,
+    readyCount: 0,
+    requestedCount: 2,
+  });
 });

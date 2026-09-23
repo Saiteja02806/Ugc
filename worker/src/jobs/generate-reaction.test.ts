@@ -205,7 +205,19 @@ test("uses the persisted canonical profile context when planning", async () => {
     async ensureReactionGenerationRun() {
       return { brief_payload: null, generation_context: canonicalContext, id: "run-canonical" };
     },
-    async listActiveReactionCatalog() { return { backgrounds: [], clips: [] }; },
+    async listActiveReactionCatalog() {
+      return {
+        backgrounds: [{
+          context_tags: ["office"], foreground_placement: "bottom_center", id: "background-canonical",
+          source_storage_key: "reaction/backgrounds/canonical.jpg", status: "active",
+        }],
+        clips: [{
+          composition: "bust", duration_seconds: 6, foreground_anchor: "bottom_center",
+          foreground_height_percent: 0.5, has_alpha: true, id: "clip-canonical", reactions: ["shock"],
+          source_storage_key: "reaction/clips/canonical.mov", status: "active", subject_count: "one",
+        }],
+      };
+    },
     async getReactionClipPresentationHistory() { return new Map(); },
     async getReservedReactionClipIds() { return new Set(); },
     async persistReactionGenerationPlan() { return []; },
@@ -236,6 +248,70 @@ test("uses the persisted canonical profile context when planning", async () => {
   assert.deepEqual(plannedContext, canonicalContext);
 });
 
+test("completes a per-user Reaction catalog shortfall without asking the model for unusable content", async () => {
+  let planned = false;
+  let renderJobsCreated = false;
+  const checkpoints: Array<{ stage: string; status: string }> = [];
+  const store = {
+    async ensureReactionGenerationRun() {
+      return {
+        brief_payload: null,
+        generation_context: { audience: [], commonSituations: [], desiredOutcomes: [], pains: [] },
+        id: "run-catalog-shortfall",
+      };
+    },
+    async listActiveReactionCatalog() {
+      return {
+        backgrounds: [{
+          context_tags: ["office"], foreground_placement: "bottom_center", id: "background-1",
+          source_storage_key: "reaction/backgrounds/background-1.jpg", status: "active",
+        }],
+        clips: [{
+          composition: "bust", duration_seconds: 6, foreground_anchor: "bottom_center",
+          foreground_height_percent: 0.5, has_alpha: true, id: "clip-1", reactions: ["shock"],
+          source_storage_key: "reaction/clips/clip-1.mov", status: "active", subject_count: "one",
+        }],
+      };
+    },
+    async getReactionClipPresentationHistory() { return new Map(); },
+    async getReservedReactionClipIds() { return new Set(["clip-1"]); },
+    async completeReactionGenerationRun() {
+      return { failed_count: 0, ready_count: 0, status: "failed" as const };
+    },
+    async createReactionGenerationRenderJobs() {
+      renderJobsCreated = true;
+      return [];
+    },
+  } as unknown as SupabaseJobStore;
+
+  const output = await runGenerateReactionJob(createJob(), {
+    checkpoint: async (checkpoint) => {
+      checkpoints.push({ stage: checkpoint.stage, status: checkpoint.status });
+    },
+    dependencies: {
+      planReactionGeneration: async () => {
+        planned = true;
+        throw new Error("The planner must not be called for an unusable catalog.");
+      },
+    },
+    store,
+  });
+
+  assert.equal(planned, false);
+  assert.equal(renderJobsCreated, false);
+  assert.deepEqual(output, {
+    availableClipCount: 0,
+    failedCount: 0,
+    generationRunId: "run-catalog-shortfall",
+    readyCount: 0,
+    requestedCount: 1,
+    shortfallCount: 1,
+    shortfallReason: "reaction_catalog_capacity_exhausted",
+    status: "partial",
+  });
+  assert.ok(checkpoints.some((checkpoint) => checkpoint.stage === "reaction_catalog_capacity_exhausted"));
+});
+
 test("defers after a concurrent planner reserves the selected clip", async () => {
   let renderJobsCreated = 0;
   const store = {
@@ -246,7 +322,19 @@ test("defers after a concurrent planner reserves the selected clip", async () =>
         id: "run-race",
       };
     },
-    async listActiveReactionCatalog() { return { backgrounds: [], clips: [] }; },
+    async listActiveReactionCatalog() {
+      return {
+        backgrounds: [{
+          context_tags: ["office"], foreground_placement: "bottom_center", id: "background-race",
+          source_storage_key: "reaction/backgrounds/race.jpg", status: "active",
+        }],
+        clips: [{
+          composition: "bust", duration_seconds: 6, foreground_anchor: "bottom_center",
+          foreground_height_percent: 0.5, has_alpha: true, id: "clip-race", reactions: ["shock"],
+          source_storage_key: "reaction/clips/race.mov", status: "active", subject_count: "one",
+        }],
+      };
+    },
     async getReactionClipPresentationHistory() { return new Map(); },
     async getReservedReactionClipIds() { return new Set(); },
     async persistReactionGenerationPlan() {

@@ -22,6 +22,25 @@ const diagnosticsMigration = readFileSync(
   "utf8",
 );
 
+const reusableBackgroundMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260924110000_allow_wall_text_background_reuse.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+
+test("allows Wall-of-text to recycle a completed background after fresh inventory is exhausted", () => {
+  assert.match(
+    reusableBackgroundMigration,
+    /drop constraint if exists wall_text_creatives_profile_asset_key/i,
+  );
+  assert.doesNotMatch(
+    reusableBackgroundMigration,
+    /wall_text_creatives_profile_candidate_key/i,
+  );
+});
+
 test("marks a Wall database constraint rejection as terminal", () => {
   const error = Object.assign(
     new Error(
@@ -65,10 +84,10 @@ test("keeps a timeout retryable", () => {
   );
 });
 
-test("does not spend more model calls on a persisted background uniqueness conflict", () => {
+test("does not spend more model calls on a persisted candidate uniqueness conflict", () => {
   for (const error of [
     { code: "23505" },
-    new Error('Could not save Wall-of-text generation candidate: duplicate key value violates unique constraint "wall_text_creatives_profile_asset_key"'),
+    new Error('Could not save Wall-of-text generation candidate: duplicate key value violates unique constraint "wall_text_creatives_profile_candidate_key"'),
   ]) {
     const result = classifyWallTextGenerationFailure(error);
     assert.equal(result.retryable, false);

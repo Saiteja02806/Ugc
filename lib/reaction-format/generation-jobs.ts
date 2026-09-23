@@ -346,21 +346,53 @@ function isMatchingReactionGenerationJob(
   );
 }
 
-function hasMatchingReactionGenerationContext(
+export function hasMatchingReactionGenerationContext(
   value: unknown,
   expected: ReturnType<typeof buildReactionGenerationContext>,
 ) {
   const input = asRecord(value);
   return Boolean(
     input &&
-    JSON.stringify(input.audience) === JSON.stringify(expected.audience) &&
-    JSON.stringify(input.commonSituations) === JSON.stringify(expected.commonSituations) &&
+    hasMatchingStringList(input.audience, expected.audience) &&
+    hasMatchingStringList(input.commonSituations, expected.commonSituations) &&
     input.contextVersion === expected.contextVersion &&
-    JSON.stringify(input.desiredOutcomes) === JSON.stringify(expected.desiredOutcomes) &&
-    JSON.stringify(input.factSnapshot) === JSON.stringify(expected.factSnapshot) &&
-    JSON.stringify(input.pains) === JSON.stringify(expected.pains) &&
+    hasMatchingStringList(input.desiredOutcomes, expected.desiredOutcomes) &&
+    hasMatchingFactSnapshot(input.factSnapshot, expected.factSnapshot) &&
+    hasMatchingStringList(input.pains, expected.pains) &&
     (input.productName ?? null) === expected.productName,
   );
+}
+
+function hasMatchingStringList(value: unknown, expected: readonly string[]) {
+  return (
+    Array.isArray(value) &&
+    value.length === expected.length &&
+    value.every((entry, index) => entry === expected[index])
+  );
+}
+
+function hasMatchingFactSnapshot(value: unknown, expected: BusinessFactSnapshot) {
+  const snapshot = asRecord(value);
+  if (
+    !snapshot ||
+    snapshot.version !== expected.version ||
+    !hasMatchingStringList(snapshot.claimsToAvoid, expected.claimsToAvoid) ||
+    !Array.isArray(snapshot.facts) ||
+    snapshot.facts.length !== expected.facts.length
+  ) {
+    return false;
+  }
+
+  return snapshot.facts.every((fact, index) => {
+    const expectedFact = expected.facts[index];
+    const persistedFact = asRecord(fact);
+    return (
+      persistedFact &&
+      persistedFact.id === expectedFact.id &&
+      persistedFact.text === expectedFact.text &&
+      persistedFact.type === expectedFact.type
+    );
+  });
 }
 
 function isMatchingReactionCoverageJob(

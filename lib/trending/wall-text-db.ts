@@ -974,9 +974,9 @@ export async function listUsedWallTextBackgroundAssetIds(params: {
 
 /**
  * Background selection happens before the reservation transaction. Exclude
- * work that has already been reserved by another live batch so a retry can
- * choose a different background instead of retrying a write that the
- * profile/asset uniqueness constraint must reject.
+ * work that has already been reserved by another live batch. A completed
+ * background can be recycled once the fresh pool is exhausted, but it must
+ * never be generated concurrently by two live batches.
  */
 export async function listReservedWallTextBackgroundAssetIds(params: {
   businessProfileId: string;

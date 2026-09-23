@@ -557,18 +557,26 @@ export function InstagramAnalyticsWorkspace() {
   );
 
   const displayedContentAccounts = useMemo(() => {
-    if (effectiveSelectedConnectionId === "all") return activeContentAccounts;
+    if (effectiveInstagramSelectedConnectionId === "all") {
+      return activeContentAccounts;
+    }
+
     return activeContentAccounts.filter(
-      (account) => account.connectionId === effectiveSelectedConnectionId,
+      (account) =>
+        account.connectionId === effectiveInstagramSelectedConnectionId,
     );
-  }, [activeContentAccounts, effectiveSelectedConnectionId]);
+  }, [activeContentAccounts, effectiveInstagramSelectedConnectionId]);
 
   const displayedInsightAccounts = useMemo(() => {
-    if (effectiveSelectedConnectionId === "all") return activeInsightAccounts;
+    if (effectiveInstagramSelectedConnectionId === "all") {
+      return activeInsightAccounts;
+    }
+
     return activeInsightAccounts.filter(
-      (account) => account.connectionId === effectiveSelectedConnectionId,
+      (account) =>
+        account.connectionId === effectiveInstagramSelectedConnectionId,
     );
-  }, [activeInsightAccounts, effectiveSelectedConnectionId]);
+  }, [activeInsightAccounts, effectiveInstagramSelectedConnectionId]);
 
   const displayedVisibleConnectionIds = useMemo(
     () => new Set(displayedConnections.map((connection) => connection.id)),

@@ -534,6 +534,19 @@ test("Analytics workspace renders the Instagram account selector and isolates pe
   assert.match(analyticsWorkspaceSource, /displayedContentAccounts/);
   assert.match(analyticsWorkspaceSource, /displayedInsightAccounts/);
 
+  const betaAccountFilterBlocks = analyticsWorkspaceSource.match(
+    /const displayedContentAccounts[\s\S]*?\n  }, \[activeContentAccounts, effectiveInstagramSelectedConnectionId\]\);[\s\S]*?const displayedInsightAccounts[\s\S]*?\n  }, \[activeInsightAccounts, effectiveInstagramSelectedConnectionId\]\);/,
+  )?.[0];
+  assert.ok(betaAccountFilterBlocks);
+  assert.match(
+    betaAccountFilterBlocks,
+    /effectiveInstagramSelectedConnectionId/,
+  );
+  assert.doesNotMatch(
+    betaAccountFilterBlocks,
+    /effectiveSelectedConnectionId/,
+  );
+
   // Slicing test: when account 1 is selected from a multi-account dataset
   const account1: InstagramContentAccount = {
     accountName: "Brand One",

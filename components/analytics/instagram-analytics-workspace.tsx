@@ -648,7 +648,7 @@ export function InstagramAnalyticsWorkspace() {
                 size="lg"
                 onClick={retryAnalytics}
                 disabled={refreshing}
-                className="w-full sm:w-auto"
+                className="w-full rounded-[var(--radius-action)] sm:w-auto"
               >
                 <RefreshCw
                   data-icon="inline-start"
@@ -1075,7 +1075,7 @@ function DateRangeSelector({
   return (
     <div
       aria-label="Analytics date range"
-      className="inline-flex w-fit max-w-full overflow-x-auto rounded-[var(--radius-control)] border border-border bg-card p-1"
+      className="inline-flex w-fit max-w-full overflow-x-auto rounded-[var(--radius-group)] border border-border bg-card p-1.5"
       role="group"
     >
       {dateRangeOptions.map((option) => {
@@ -1087,7 +1087,7 @@ function DateRangeSelector({
             type="button"
             aria-pressed={selected}
             className={cn(
-              "min-h-11 touch-manipulation whitespace-nowrap rounded-[7px] px-3 py-1.5 text-xs font-semibold transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
+              "min-h-11 touch-manipulation whitespace-nowrap rounded-[var(--radius-segment)] px-3.5 py-1.5 text-xs font-semibold transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
               selected
                 ? "bg-primary text-primary-foreground shadow-card"
                 : "text-muted hover:bg-card-muted hover:text-foreground-strong",
@@ -1112,7 +1112,7 @@ function PerformanceMetricSelector({
   return (
     <div
       aria-label="Performance metric"
-      className="grid w-full grid-cols-3 rounded-[var(--radius-control)] border border-border bg-card-muted p-1 sm:inline-grid sm:w-auto"
+      className="grid w-full grid-cols-3 rounded-[var(--radius-group)] border border-border bg-card-muted p-1.5 sm:inline-grid sm:w-auto"
       role="group"
     >
       {(Object.keys(performanceMetricLabels) as PerformanceMetric[]).map(
@@ -1125,7 +1125,7 @@ function PerformanceMetricSelector({
               type="button"
               aria-pressed={selected}
               className={cn(
-                "inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 rounded-[7px] px-2.5 py-1.5 text-xs font-semibold transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
+                "inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 rounded-[var(--radius-segment)] px-2.5 py-1.5 text-xs font-semibold transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
                 selected
                   ? "bg-card text-foreground-strong shadow-card"
                   : "text-muted hover:text-foreground-strong",

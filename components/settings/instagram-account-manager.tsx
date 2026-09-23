@@ -446,7 +446,7 @@ export function InstagramAccountManager() {
             size="lg"
             onClick={() => void refreshConnections()}
             disabled={loading || isConnecting}
-            className="w-full sm:w-auto"
+            className="w-full rounded-[var(--radius-action)] sm:w-auto"
           >
             <RefreshCw
               data-icon="inline-start"
@@ -460,7 +460,7 @@ export function InstagramAccountManager() {
             size="lg"
             onClick={() => void addInstagram()}
             disabled={Boolean(connectingPlatform) || accountLimitReached}
-            className="w-full sm:w-auto"
+            className="w-full rounded-[var(--radius-action)] sm:w-auto"
           >
             {isAdding ? (
               <LoaderCircle
@@ -583,7 +583,7 @@ function InstagramConnectionRow({
   const viewState = getInstagramConnectionViewState(connection);
 
   return (
-    <article className="flex flex-col gap-4 rounded-[var(--radius-control)] border border-border bg-card-muted/45 p-4 sm:flex-row sm:items-center sm:justify-between">
+    <article className="flex flex-col gap-4 rounded-[var(--radius-group)] border border-border bg-card-muted/45 p-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-start gap-3">
         <InstagramAccountAvatar
           className="size-11"
@@ -621,7 +621,7 @@ function InstagramConnectionRow({
           size="sm"
           onClick={onReconnect}
           disabled={connectionActionPending}
-          className="w-full sm:w-auto"
+          className="w-full rounded-[var(--radius-action)] sm:w-auto"
         >
           {reconnecting ? (
             <LoaderCircle
@@ -640,7 +640,7 @@ function InstagramConnectionRow({
           size="sm"
           onClick={onDisconnect}
           disabled={connectionActionPending}
-          className="w-full sm:w-auto"
+          className="w-full rounded-[var(--radius-action)] sm:w-auto"
         >
           <Trash2 data-icon="inline-start" aria-hidden="true" />
           Disconnect

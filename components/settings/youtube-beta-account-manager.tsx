@@ -202,6 +202,7 @@ export function YouTubeBetaAccountManager() {
           type="button"
           onClick={() => void connect()}
           disabled={loading || isConnecting}
+          className="rounded-[var(--radius-action)]"
         >
           {isConnecting && connectingIntent === "add" ? (
             <LoaderCircle data-icon="inline-start" className="animate-spin" />
@@ -248,7 +249,7 @@ export function YouTubeBetaAccountManager() {
           return (
             <div
               key={connection.id}
-              className="flex flex-wrap items-center gap-3 rounded-card border border-border bg-card p-3.5"
+              className="flex flex-wrap items-center gap-3 rounded-[var(--radius-group)] border border-border bg-card p-3.5"
             >
               <SocialAccountAvatar connection={connection} size="lg" />
               <div className="min-w-0 flex-1">
@@ -285,6 +286,7 @@ export function YouTubeBetaAccountManager() {
                   variant="outline"
                   onClick={() => void connect(connection)}
                   disabled={isConnecting}
+                  className="rounded-[var(--radius-action)]"
                 >
                   {isReconnecting ? (
                     <LoaderCircle data-icon="inline-start" className="animate-spin" />
@@ -299,6 +301,7 @@ export function YouTubeBetaAccountManager() {
                   variant="ghost"
                   onClick={() => setPendingDisconnect(connection)}
                   disabled={isConnecting}
+                  className="rounded-[var(--radius-action)]"
                 >
                   <Trash2 data-icon="inline-start" />
                   Disconnect

@@ -43,6 +43,9 @@
   --radius-card: 14px;
   --radius-panel: 16px;
   --radius-modal: 20px;
+  --radius-action: 14px;
+  --radius-segment: 12px;
+  --radius-group: 18px;
   --space-unit: 4px;
   --z-sidebar: 30;
   --z-sticky: 40;
@@ -118,6 +121,9 @@
   --radius-card: var(--radius-card);
   --radius-panel: var(--radius-panel);
   --radius-modal: var(--radius-modal);
+  --radius-action: var(--radius-action);
+  --radius-segment: var(--radius-segment);
+  --radius-group: var(--radius-group);
   --spacing-unit: var(--space-unit);
   --shadow-card: var(--shadow-card);
   --shadow-floating: var(--shadow-floating);

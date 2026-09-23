@@ -115,7 +115,7 @@ export function TikTokBetaAccountManager() {
           <h3 className="text-sm font-bold text-foreground">TikTok beta</h3>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">Connect the approved TikTok account to schedule Direct Posts and refresh per-video analytics.</p>
         </div>
-        <Button type="button" onClick={() => void connect()} disabled={loading || isConnecting}>
+        <Button type="button" onClick={() => void connect()} disabled={loading || isConnecting} className="rounded-[var(--radius-action)]">
           {isConnecting && connectingIntent === "add" ? <LoaderCircle data-icon="inline-start" className="animate-spin" /> : <Plus data-icon="inline-start" />}
           Connect TikTok
         </Button>
@@ -129,10 +129,10 @@ export function TikTokBetaAccountManager() {
           const publishingBlock = getConnectionPublishingBlockMessage(connection);
           const accountName = connection.platformAccountUsername || connection.platformAccountName || connection.platformAccountId;
           const isReconnecting = isConnecting && connectingIntent === "reconnect" && connectingConnectionId === connection.id;
-          return <div key={connection.id} className="flex flex-wrap items-center gap-3 rounded-card border border-border bg-card p-3.5">
+          return <div key={connection.id} className="flex flex-wrap items-center gap-3 rounded-[var(--radius-group)] border border-border bg-card p-3.5">
             <SocialAccountAvatar connection={connection} size="lg" />
             <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-bold text-foreground">{accountName}</p><Badge variant={connection.status === "connected" ? "connected" : "destructive"}>{connection.status === "connected" ? "Connected" : "Reconnect required"}</Badge></div>{publishingBlock ? <p className="mt-1 text-xs font-semibold text-error">{publishingBlock}</p> : <p className="mt-1 text-xs font-medium text-muted">Direct Post videos and photo carousels are available.</p>}</div>
-            <div className="flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => void connect(connection)} disabled={isConnecting}>{isReconnecting ? <LoaderCircle data-icon="inline-start" className="animate-spin" /> : <RefreshCw data-icon="inline-start" />}Reconnect</Button><Button type="button" size="sm" variant="ghost" onClick={() => setPendingDisconnect(connection)} disabled={isConnecting}><Trash2 data-icon="inline-start" />Disconnect</Button></div>
+            <div className="flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => void connect(connection)} disabled={isConnecting} className="rounded-[var(--radius-action)]">{isReconnecting ? <LoaderCircle data-icon="inline-start" className="animate-spin" /> : <RefreshCw data-icon="inline-start" />}Reconnect</Button><Button type="button" size="sm" variant="ghost" onClick={() => setPendingDisconnect(connection)} disabled={isConnecting} className="rounded-[var(--radius-action)]"><Trash2 data-icon="inline-start" />Disconnect</Button></div>
           </div>;
         })}
       </div>

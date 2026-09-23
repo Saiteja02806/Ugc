@@ -30,6 +30,15 @@ import {
 const businessDescription =
   "Todaywise is an application for planning work when priorities change.";
 
+test("Structure 2 rejects template placeholders and unsupported multiplier promises", () => {
+  for (const [hook, code] of [["The real reason [topic] feels hard", "hook_template_placeholder"], ["This small switch brings 10x results", "unsupported_claim"]]) {
+    const raw = makeRawStoryPlan();
+    raw.slides.first!.storyText = hook!;
+    const plan = parseCarouselStructure2StoryPlan(raw, { businessDescription, storyFormatId: "wrong_belief" });
+    assert.ok(validateCarouselStructure2StoryPlan(plan, { businessDescription }).some(issue => issue.code === code));
+  }
+});
+
 test("Structure 2 plans exactly the required six-slide product story", () => {
   for (const storyFormatId of CAROUSEL_STRUCTURE_2_FORMAT_IDS) {
     const plan = parseCarouselStructure2StoryPlan(makeRawStoryPlan(), {

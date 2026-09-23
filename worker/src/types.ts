@@ -783,6 +783,9 @@ export type CarouselGenerationUpdate = Partial<{
 }>;
 
 export type CarouselExperimentBatchRow = {
+  hook_template_mode_snapshot?: "off" | "shadow" | "enabled" | null;
+  structure_2_hook_templates_resolved_at?: string | null;
+  structure_2_hook_template_diagnostics?: Json;
   batch_sequence: number;
   business_profile_id: string;
   business_profile_version: number;
@@ -1430,6 +1433,10 @@ export type BackgroundJobsDatabase = {
           p_planning_attempt_count: number;
         };
         Returns: CarouselExperimentBatchRow[];
+      };
+      resolve_carousel_structure_2_hooks: {
+        Args: { p_batch_id: string; p_mode: string; p_choices: Json };
+        Returns: Json;
       };
       persist_trending_hook_copy_generation: {
         Args: {

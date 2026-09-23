@@ -1,4 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { resolveStructure2HookTemplate } from "../../worker/src/lib/carousel-structure-2-hook-templates.ts";
+import { getCarouselHookTemplateMode } from "./hook-template-runtime";
 
 import type { CarouselBusinessVisualProfileId } from "@/lib/carousel/business-visual-profile";
 import {
@@ -379,6 +381,7 @@ export type CarouselSlideInsert = {
 };
 
 type CarouselExperimentBatchRow = {
+  hook_template_mode_snapshot?: "off" | "shadow" | "enabled" | null;
   batch_sequence: number;
   business_profile_id: string;
   business_profile_version: number;
@@ -469,6 +472,10 @@ type CarouselExperimentAssignmentInsert = Partial<
 type CarouselDatabase = {
   public: {
     Functions: {
+      snapshot_carousel_hook_template_mode: {
+        Args: { p_batch_id: string; p_mode: string };
+        Returns: "off" | "shadow" | "enabled";
+      };
       fail_unqueued_carousel_preparation: {
         Args: {
           p_error_message: string;
@@ -929,6 +936,10 @@ function resolveStoredStructure1HookOverlay(params: {
   hookTemplateVersion: number | null;
   structureId: CarouselStructureId;
 }) {
+  if (params.structureId === "structure_2" && isCarouselStructure2FormatId(params.contentFormatId)) {
+    return resolveStructure2HookTemplate({ storyFormatId: params.contentFormatId,
+      hookTemplateId: params.hookTemplateId, hookTemplateVersion: params.hookTemplateVersion }).template;
+  }
   if (
     params.structureId !== "structure_1" ||
     !isCarouselContentFormatId(params.contentFormatId) ||
@@ -1479,6 +1490,7 @@ export async function reserveCarouselRoleAssets(params: {
 }
 
 export type CarouselExperimentBatchRecord = {
+  hookTemplateModeSnapshot?: "off" | "shadow" | "enabled" | null;
   batchSequence: number;
   businessProfileId: string;
   businessProfileVersion: number;
@@ -1544,7 +1556,13 @@ export async function reserveCarouselExperimentBatches(params: {
     throw new Error(`Could not reserve Carousel experiment batches: ${error.message}`);
   }
 
-  return (data ?? []).map(mapExperimentBatch);
+  return Promise.all((data ?? []).map(async (row) => {
+    const { data: mode, error: modeError } = await getSupabaseServerClient().rpc(
+      "snapshot_carousel_hook_template_mode", { p_batch_id: row.id, p_mode: getCarouselHookTemplateMode() },
+    );
+    if (modeError) throw new Error(`Could not snapshot Carousel hook mode: ${modeError.message}`);
+    return { ...mapExperimentBatch(row), hookTemplateModeSnapshot: mode };
+  }));
 }
 
 export async function upsertCarouselExperimentAssignments(params: {
@@ -1666,6 +1684,7 @@ function mapExperimentBatch(
   }
 
   return {
+    hookTemplateModeSnapshot: row.hook_template_mode_snapshot ?? null,
     batchSequence: row.batch_sequence,
     businessProfileId: row.business_profile_id,
     businessProfileVersion: row.business_profile_version,
@@ -1735,10 +1754,13 @@ function mapExperimentAssignment(
       combinedFormat = null;
     }
   }
+  const structure2Template = row.structure_id === "structure_2" && isCarouselStructure2FormatId(effectiveFormatId)
+    ? resolveStructure2HookTemplate({ storyFormatId: effectiveFormatId, hookTemplateId: row.hook_template_id, hookTemplateVersion: row.hook_template_version }).template
+    : null;
   const hookTemplateFieldsAreValid =
     row.structure_id === "structure_1"
       ? combinedFormat !== null
-      : row.hook_template_id === null && row.hook_template_version === null;
+      : true; // Optional unknown/stale templates degrade to native guidance.
 
   if (
     assignedFormatId === null ||
@@ -1765,8 +1787,8 @@ function mapExperimentAssignment(
       : null,
     hookSelectionMode: row.hook_selection_mode,
     hookSelectionMultiplier: row.hook_selection_multiplier,
-    hookTemplateId: combinedFormat?.hookTemplate?.id ?? null,
-    hookTemplateVersion: combinedFormat?.hookTemplate?.version ?? null,
+    hookTemplateId: (combinedFormat?.hookTemplate ?? structure2Template)?.id ?? null,
+    hookTemplateVersion: (combinedFormat?.hookTemplate ?? structure2Template)?.version ?? null,
     id: row.id,
     rotationCandidateFormatId,
     slotIndex: row.slot_index,

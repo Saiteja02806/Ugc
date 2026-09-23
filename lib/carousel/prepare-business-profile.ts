@@ -31,7 +31,6 @@ import {
 import {
   resolveCarouselStructure1CombinedFormat,
 } from "@/lib/carousel/hook-templates";
-import { getCarouselHookTemplateMode } from "@/lib/carousel/hook-template-runtime";
 import {
   getCarouselPerformanceSignals,
   getCarouselStructure2PerformanceSignals,
@@ -301,7 +300,6 @@ async function prepareControlledGenerationBatch(params: {
   const topicOptionCount = buildCarouselBusinessContentContext(
     params.businessContext,
   ).topics.length;
-  const hookTemplateMode = getCarouselHookTemplateMode();
   const hookTemplateContext = JSON.stringify(params.businessContext);
   const [structure1Performance, structure2Performance] = await Promise.all([
     hasStructure1
@@ -320,6 +318,7 @@ async function prepareControlledGenerationBatch(params: {
   ]);
 
   for (const [batchOffset, experimentBatch] of experimentBatches.entries()) {
+    const hookTemplateMode = experimentBatch.hookTemplateModeSnapshot ?? "off";
     const assignments =
       experimentBatch.structureId === "structure_2"
         ? selectCarouselStructure2ExperimentBatch({

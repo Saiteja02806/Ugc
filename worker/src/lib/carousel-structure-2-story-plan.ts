@@ -1,3 +1,4 @@
+import { structure2HookGuidance } from "./carousel-structure-2-hook-templates.js";
 import type {
   CarouselPlanningBrief,
   CarouselRecentAcceptedCopy,
@@ -97,6 +98,8 @@ export type CarouselStructure2StoryPlan = {
 };
 
 export type CarouselStructure2StoryAssignment = {
+  hookTemplateId?: string | null;
+  hookTemplateVersion?: number | null;
   candidateIndex: number;
   creativeSeed: string;
   emotion: string;
@@ -113,6 +116,7 @@ export type CarouselStructure2StoryValidationIssue = {
     | "generic_copy"
     | "hook_incomplete"
     | "hook_length"
+    | "hook_template_placeholder"
     | "invalid_plan"
     | "perspective"
     | "product_timing"
@@ -257,6 +261,9 @@ export function validateCarouselStructure2StoryPlan(
       });
     }
 
+    if (slide.slideNumber === 1 && /\[[^\]]+\]|\{\{[^}]+\}\}/.test(copy)) {
+      issues.push({ code: "hook_template_placeholder", message: "Replace every hook placeholder with grounded, complete reader-facing copy.", slideNumber: 1 });
+    }
     if (slide.slideNumber === 1 && isClearlyIncompleteCoverHook(copy)) {
       issues.push({
         code: "hook_incomplete",
@@ -350,7 +357,7 @@ export function validateCarouselStructure2StoryPlan(
         slideNumber: slide.slideNumber,
       });
     }
-    if (/\b\d+(?:[.,]\d+)?\s*(?:%(?!\w)|(?:percent|users?|customers?|hours?|days?)\b)/i.test(copy)) {
+    if (/\b\d+(?:[.,]\d+)?\s*(?:%(?!\w)|(?:x|times|percent|users?|customers?|hours?|days?)\b)/i.test(copy)) {
       issues.push({
         code: "unsupported_claim",
         message: "The copy contains a precise claim that is not present in the minimal business description.",
@@ -611,6 +618,7 @@ export function buildCarouselStructure2BatchMessages(params: {
       creativeSeed: assignment.creativeSeed,
       emotion: assignment.emotion,
       formatReference: getFormatReference(assignment.storyFormatId),
+      hookGuidance: structure2HookGuidance(assignment),
       outputKey: CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS[index],
       privateCreativeBrief: assignment.planningBrief,
     }));
@@ -687,6 +695,7 @@ export function buildCarouselStructure2RepairMessages(params: {
         "Minimal business context:",
         JSON.stringify({ businessDescription: params.businessDescription }),
         "Format reference:",
+        structure2HookGuidance(params.assignment),
         JSON.stringify(getFormatReference(params.assignment.storyFormatId)),
         `Slide 1 is reader-first, so direct reader wording such as 'you' or 'your' is allowed. ${STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Tight Bold at 700 weight and must create a specific reason to swipe within ${getCarouselStructure2StoryMaxLines(1)} visual lines at ${getCarouselStructure2StoryFontSize(1)}px type.`,
         "Only Slide 1 may lead with direct reader wording. Keep Slides 2-5 in the first-person story voice (I, me, or my); Slide 6 may turn the lesson toward the reader after its takeaway.",
@@ -733,6 +742,7 @@ export function buildCarouselStructure2StoryTextRepairMessages(params: {
     const fontSize = getCarouselStructure2StoryFontSize(slide.slideNumber);
     return {
       currentStoryText: slide.storyText,
+      hookGuidance: isCover ? structure2HookGuidance(params.assignment) : undefined,
       replacementKey: getTargetedStoryTextKey(slide.slideNumber),
       requirement: isCover
         ? `Return one self-contained reader-first hook, normally ${targetRange} words and preferably ${CAROUSEL_STRUCTURE_2_COVER_HOOK_PREFERRED_MAX_CHARACTERS} characters or fewer. It must stay within ${wordRange} words and fit within ${lineLimit} visual lines at centered ${fontSize}px type. Never leave a hanging phrase.`

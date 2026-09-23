@@ -3149,6 +3149,23 @@ export class SupabaseJobStore {
     }
   }
 
+  async listRecentStructure2HookTemplateIds(profileId: string, batchId: string) {
+    const { data, error } = await this.client.from(CAROUSEL_GENERATIONS_TABLE)
+      .select("hook_template_id").eq("business_profile_id", profileId)
+      .eq("structure_id", "structure_2").eq("status", "completed")
+      .neq("carousel_experiment_batch_id", batchId).not("hook_template_id", "is", null)
+      .order("created_at", { ascending: false }).limit(10);
+    if (error) throw new Error(`Could not read recent Structure 2 hooks: ${error.message}`);
+    return (data ?? []).flatMap(row => row.hook_template_id ? [row.hook_template_id] : []);
+  }
+
+  async resolveCarouselStructure2Hooks(batchId: string, mode: "off" | "shadow" | "enabled", choices: Json) {
+    const { error } = await this.client.rpc("resolve_carousel_structure_2_hooks", {
+      p_batch_id: batchId, p_mode: mode, p_choices: choices,
+    });
+    if (error) throw new Error(`Could not persist Structure 2 hooks: ${error.message}`);
+  }
+
   async takeOverCarouselExperimentBatchWithStructure2(params: {
     experimentBatchId: string;
     failureReason: string;

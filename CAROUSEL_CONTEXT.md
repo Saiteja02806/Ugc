@@ -4787,3 +4787,44 @@ Runtime/font errors propagate as dependency failures instead of copy-fit errors.
   It changes only new Structure 2 validation and repair behavior; slide roles,
   CTA prohibition, image selection, safe area, renderer, and historical
   renders are unchanged.
+
+## 2026-09-23 Shared hook-template coverage for Structure 2 (local implementation)
+
+- Supersedes the earlier Structure 1-only hook-template restriction. Structure 2
+  reuses the twenty-pattern catalog through explicit compatibility pools for all
+  eight story formats. List/formula patterns and context-specific copywriting
+  patterns are excluded from these pools. Selection is deterministic, prefers
+  unused eligible patterns within the batch and recent completed history, and
+  changes Slide 1 guidance only.
+- New batch preparation snapshots the existing global
+  `CAROUSEL_HOOK_TEMPLATES_MODE` (`off`, `shadow`, `enabled`). There is no account
+  allowlist. Missing legacy snapshots remain off; already-dispatched legacy
+  batches cannot be enabled by replaying preparation. Shadow records proposed
+  choices but sends no optional pattern to the model.
+- Both direct Structure 2 batches and Structure 1 planning takeovers resolve
+  hooks at their shared Structure 2 worker entry, after final story formats are
+  known. Takeover still clears obsolete Structure 1 choices. A service-role-only
+  transaction persists all five assignment/generation pairs and a resolution
+  marker before the model call. Retries reload durable choices rather than
+  rerolling. The new migration expands the old Structure 1-only pair constraints;
+  apply the additive migration before deploying callers.
+- Application readers now recognize compatible Structure 2 template attribution.
+  Missing, stale or incompatible optional templates use native story guidance;
+  required structure/format identity checks remain in place. Effective attribution
+  and resolution reasons are saved separately from the batch selection diagnostics.
+- Initial generation, full-plan repair and targeted cover repair use the same
+  resolved pattern. The writer is
+  `llm-carousel-structure-2-writer-v19-shared-hook-templates`. Unresolved hook
+  placeholders and unsupported numeric multipliers remain publishing failures.
+  After two normal repairs, only a remaining Slide 1 render-fit failure may get
+  one native-cover repair. It freezes strategy and Slides 2-6, revalidates the
+  complete story, and clears effective template attribution with
+  `hook_template_cover_render_fit` if successful.
+- No renderer, six-slide role, 14-30-word body, CTA, image, daily-feed eligibility,
+  old inventory or historical-render change is included. Centered 96px cover
+  type, the three-line limit, and no shrink/truncate behavior remain unchanged.
+- Local checks: `npm run carousel:structure-2-hooks:test`,
+  `npm run carousel:content-grammar:test`, and TypeScript checks. This entry does
+  not assert production rollout: migration application, coordinated web/worker
+  deployment, mode verification and bounded direct/fallback canaries on
+  `https://www.getugcpilot.com` are separate release gates.

@@ -11,7 +11,9 @@ import {
 } from "./carousel-content-grammar.ts";
 
 /**
- * Structure 1's Slide 1 pattern catalog. A template is prompt guidance, not
+ * Shared Slide 1 pattern catalog. Compatibility below belongs to Structure 1;
+ * Structure 2 owns its story-format pools in carousel-structure-2-hook-templates.
+ * A template is prompt guidance, not
  * generated copy: the planner must adapt placeholders to the supported topic
  * and remove any unsupported proof, metric, or time promise.
  */

@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { resolveStructure2HookTemplate } from "./carousel-structure-2-hook-templates.js";
 
 import {
   assertCarouselStructure2StoryAssignments,
@@ -26,7 +27,7 @@ import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 import { CONTENT_PLAN_OPENAI_MAX_RETRIES, CONTENT_PLAN_OPENAI_TIMEOUT_MS } from "./content-plan-provider-retry.js";
 
 export const CAROUSEL_STRUCTURE_2_PLANNER_VERSION =
-  "llm-carousel-structure-2-writer-v18-render-first-freshness-advisory";
+  "llm-carousel-structure-2-writer-v19-shared-hook-templates";
 
 // The OpenAI strict decoder cannot safely carry the whitespace word-count
 // regex. Keep the exact contract in the publisher validator and allow one
@@ -40,6 +41,7 @@ const TARGETED_COPY_REPAIR_ISSUE_CODES = new Set<
   "generic_copy",
   "hook_incomplete",
   "hook_length",
+  "hook_template_placeholder",
   "perspective",
   "product_timing",
   "render_fit",
@@ -51,6 +53,8 @@ const TARGETED_COPY_REPAIR_ISSUE_CODES = new Set<
 let openaiClient: OpenAI | null = null;
 
 export type CarouselStructure2StoryPlanResult = {
+  hookTemplateId?: string | null;
+  hookTemplateVersion?: number | null;
   assignedStoryFormatId: CarouselStructure2FormatId;
   fallbackReason: string | null;
   model: string | null;
@@ -63,6 +67,7 @@ export type CarouselStructure2StoryPlanResult = {
   slotIndex: number;
   source: "llm";
   validationResult: {
+    hookTemplateResolutionReason?: string | null;
     advisoryIssues: CarouselStructure2StoryValidationIssue[];
     fallbackUsed: boolean;
     finalIssues: CarouselStructure2StoryValidationIssue[];
@@ -369,6 +374,44 @@ async function attemptIsolatedRepair(params: {
         hasOnlyTargetedSecondRepairIssues(finalIssues);
 
       if (!canUseTargetedSecondRepair) {
+        // One cover-only escape hatch after normal repairs, never a bypass for
+        // claims, grounding, body copy or any other publishing failure.
+        if (attempt === MAX_TARGETED_REPAIR_ATTEMPTS &&
+          resolveStructure2HookTemplate(params.assignment).template &&
+          finalIssues.every((issue) => issue.slideNumber === 1 && issue.code === "render_fit")) {
+          const nativeAssignment = { ...params.assignment, hookTemplateId: null, hookTemplateVersion: null };
+          const completion = await getOpenAIClient().chat.completions.create({
+            model: params.model, temperature: 0.15, max_completion_tokens: 300,
+            messages: buildCarouselStructure2StoryTextRepairMessages({
+              assignment: nativeAssignment, businessDescription: params.businessDescription,
+              issues: finalIssues, plan: repairedPlan, recentHistory: params.recentHistory,
+              repairAttempt: 1, repairAttemptLimit: 1,
+            }),
+            response_format: { type: "json_schema", json_schema: {
+              name: `carousel_structure_2_native_cover_${params.assignment.slotIndex}`,
+              schema: buildCarouselStructure2StoryTextRepairSchema([1]), strict: true,
+            } },
+          });
+          const response = completion.choices[0]?.message.content;
+          if (!response) throw new Error("No native Structure 2 cover repair returned.");
+          repairResponses.push(response);
+          params.diagnostics.repair = repairResponses.join("\n\n--- Structure 2 repair attempt ---\n\n");
+          const nativePlan = replaceStoryTexts(repairedPlan, parseCarouselStructure2StoryTextRepair(JSON.parse(response), [1]));
+          const nativeValidation = partitionCarouselStructure2ValidationIssues(validateCarouselStructure2StoryPlan(nativePlan, {
+            businessDescription: params.businessDescription, recentHistory: params.recentHistory,
+          }));
+          if (!nativeValidation.blockingIssues.length) {
+            const result = createLlmResult({ assignment: nativeAssignment, plan: nativePlan,
+              advisoryIssues: nativeValidation.advisoryIssues, initialBatchResponse: params.initialBatchResponse,
+              initialIssues: params.initialIssues, model: params.model, repairResponse: params.diagnostics.repair, repaired: true });
+            result.fallbackReason = "hook_template_cover_render_fit";
+            result.validationResult.hookTemplateResolutionReason = "cover_render_fit";
+            result.validationResult.fallbackUsed = true;
+            return result;
+          }
+          replaceIssues(params.initialIssues, nativeValidation.blockingIssues);
+          return null;
+        }
         replaceIssues(params.initialIssues, finalIssues);
         return null;
       }
@@ -448,7 +491,10 @@ function createLlmResult(params: {
   repairResponse: string | null;
   repaired: boolean;
 }): CarouselStructure2StoryPlanResult {
+  const { template, reason } = resolveStructure2HookTemplate(params.assignment);
   return {
+    hookTemplateId: template?.id ?? null,
+    hookTemplateVersion: template?.version ?? null,
     assignedStoryFormatId: params.assignment.storyFormatId,
     fallbackReason: null,
     model: params.model,
@@ -461,6 +507,7 @@ function createLlmResult(params: {
     slotIndex: params.assignment.slotIndex,
     source: "llm",
     validationResult: {
+      hookTemplateResolutionReason: reason,
       advisoryIssues: params.advisoryIssues,
       fallbackUsed: false,
       finalIssues: [],

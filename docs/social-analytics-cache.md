@@ -6,6 +6,7 @@
 - Reconnected and disconnected accounts invalidate old snapshots. No public/CDN caching or new database tables are involved.
 - Refresh failures keep saved values visible with a warning. Genuine zero values remain zero; unavailable/private metrics are never substituted with zero.
 - Both platforms use a calendar-spaced line chart with thumbnail/count buttons, day pickers and video details. Dates follow the viewer's local timezone, matching Instagram. Unavailable-only days appear separately, not on the zero line.
+- Chart ranges are 7, 30 and 90 days (30 by default). Older returned videos remain in the table; the date range affects the chart and its summaries, not the separate 30-complete-day YouTube channel report.
 - Current ingestion is still limited to the 20 latest provider-returned videos per account. The chart is current video totals grouped by publication date, not a daily audience activity report or a complete historical archive.
 - YouTube channel reports and video lifetime counts remain separate. This change does not grant OAuth scopes or enable cloud APIs.
 

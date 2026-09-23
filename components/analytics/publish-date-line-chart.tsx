@@ -4,14 +4,15 @@ import { layoutPublishDatePoints } from "@/lib/analytics/publish-date-chart";
 
 type Point<T> = { date: string; value: number | null; items: T[] };
 
-export function PublishDateLineChart<T>({ points, onSelect, getLabel, getThumbnail, platform }: {
+export function PublishDateLineChart<T>({ points, onSelect, getLabel, getThumbnail, platform, range }: {
+  range?: { start: string; end: string };
   points: Point<T>[];
   onSelect: (point: Point<T>) => void;
   getLabel: (point: Point<T>) => string;
   getThumbnail: (item: T) => string | null;
   platform: string;
 }) {
-  const layout = layoutPublishDatePoints(points);
+  const layout = layoutPublishDatePoints(points, range);
   const path = layout.points.map((point, index) => {
     if (point.y === null) return "";
     return `${index > 0 && layout.points[index - 1].y !== null ? "L" : "M"} ${point.x} ${point.y}`;
@@ -62,4 +63,11 @@ export function PublishDateLineChart<T>({ points, onSelect, getLabel, getThumbna
       <p className="mt-2 text-xs text-muted">Select a thumbnail to explore that day’s content. Points show current totals by publish date, not views earned on that day.</p>
     </div>
   );
+}
+
+export function PublishDateRangeControl({ days, onChange }: { days: 7 | 30 | 90; onChange: (days: 7 | 30 | 90) => void }) {
+  return <div className="mb-4 flex justify-end"><div className="inline-flex rounded-full border border-border bg-card-muted p-1" role="group" aria-label="Content trend date range">
+    {([7, 30, 90] as const).map((value) => <button key={value} type="button" aria-pressed={days === value} onClick={() => onChange(value)}
+      className={`min-h-10 rounded-full px-4 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${days === value ? "bg-card text-foreground-strong shadow-card" : "text-muted hover:text-foreground-strong"}`}>{value} days</button>)}
+  </div></div>;
 }

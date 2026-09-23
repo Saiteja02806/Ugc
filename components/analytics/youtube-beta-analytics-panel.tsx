@@ -27,8 +27,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useSocialAnalytics } from "@/lib/analytics/use-social-analytics";
-import { PublishDateLineChart } from "@/components/analytics/publish-date-line-chart";
-import { localPublishDate } from "@/lib/analytics/publish-date-chart";
+import { PublishDateLineChart, PublishDateRangeControl } from "@/components/analytics/publish-date-line-chart";
+import { localPublishDate, publishDateRange } from "@/lib/analytics/publish-date-chart";
 import type { SocialConnection } from "@/lib/social/types";
 import { cn } from "@/lib/utils";
 
@@ -382,10 +382,13 @@ function PublishDateTrend({
   onSelectItem: (item: YouTubeTrendContentItem) => void;
 }) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const points = useMemo(
+  const [days, setDays] = useState<7 | 30 | 90>(30);
+  const range = publishDateRange(days);
+  const allPoints = useMemo(
     () => buildTrendPoints(items, metric),
     [items, metric],
   );
+  const points = allPoints.filter((point) => point.date >= range.start && point.date <= range.end);
   const metricPoints = points.filter(
     (point): point is YouTubeTrendPoint & { value: number } =>
       point.value !== null,
@@ -393,15 +396,6 @@ function PublishDateTrend({
   const selectedDateItems = selectedDate
     ? (points.find((point) => point.date === selectedDate)?.items ?? [])
     : [];
-
-  if (points.length === 0) {
-    return (
-      <DashboardEmptyState
-        description={emptyDescription}
-        title="No publish-date values yet"
-      />
-    );
-  }
 
   const selectPoint = (point: YouTubeTrendPoint) => {
     if (point.items.length === 1) {
@@ -414,16 +408,18 @@ function PublishDateTrend({
 
   return (
     <div className="mt-6">
-      <PublishDateLineChart
+      <PublishDateRangeControl days={days} onChange={(value) => { setDays(value); setSelectedDate(null); }} />
+      {points.length === 0 ? <DashboardEmptyState title="No content in this period" description={allPoints.length ? "No returned videos were published in this period. Older returned videos remain in Content performance below." : emptyDescription} /> : <PublishDateLineChart
         points={points}
         onSelect={selectPoint}
         getLabel={(point) => getTrendPointLabel(point, metric)}
         getThumbnail={(item) => item.thumbnailUrl}
         platform="YouTube"
-      />
+        range={range}
+      />}
       <div className="mt-3 flex justify-between gap-3 px-1 text-xs font-medium text-muted">
-        <span>{formatShortDate(points[0].date)}</span>
-        <span>{formatShortDate(points.at(-1)?.date ?? points[0].date)}</span>
+        <span>{formatShortDate(range.start)}</span>
+        <span>{formatShortDate(range.end)}</span>
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <TrendSummary

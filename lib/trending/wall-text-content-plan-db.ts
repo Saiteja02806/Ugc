@@ -62,6 +62,21 @@ type WallTextContentPlanDatabase = {
         };
         Returns: WallTextContentPlanRow;
       };
+      start_wall_text_fact_matched_plan_replacement_v1: {
+        Args: {
+          p_business_description: string;
+          p_business_profile_id: string;
+          p_business_profile_version: number;
+          p_planner_model: string;
+          p_planner_prompt_version: string;
+          p_planning_context: WallTextPlanningContext;
+          p_project_id: string;
+          p_target_item_count: number;
+          p_timezone: string;
+          p_user_id: string;
+        };
+        Returns: WallTextContentPlanRow;
+      };
     };
     Tables: Record<string, never>;
     Views: Record<string, never>;
@@ -110,6 +125,44 @@ export async function ensureCurrentWallTextContentPlan(params: {
 
   if (error) {
     throw new Error(`Could not ensure Wall-of-Text content plan: ${error.message}`);
+  }
+
+  return mapPlan(data);
+}
+
+/**
+ * Starts the one-time fact-matched replacement for an active Pro account.
+ *
+ * The database function is deliberately stricter than the caller: it accepts
+ * only a currently-active `starter` subscription (the stored Pro tier), keeps
+ * the existing active plan available, and returns an existing staged
+ * replacement on retry. It never applies to Free or Creator accounts.
+ */
+export async function startWallTextFactMatchedPlanReplacement(params: {
+  profile: BusinessProfileRecord;
+}) {
+  const { data, error } = await getClient().rpc(
+    "start_wall_text_fact_matched_plan_replacement_v1",
+    {
+      p_business_description: buildWallTextContentPlanDescription(
+        params.profile.context,
+      ),
+      p_business_profile_id: params.profile.id,
+      p_business_profile_version: params.profile.profileVersion,
+      p_planner_model: WALL_TEXT_CONTENT_PLAN_MODEL,
+      p_planner_prompt_version: WALL_TEXT_CONTENT_PLAN_PROMPT_VERSION,
+      p_planning_context: buildWallTextPlanningContext(params.profile.context),
+      p_project_id: params.profile.projectId,
+      p_target_item_count: WALL_TEXT_CONTENT_PLAN_TARGET_COUNT,
+      p_timezone: params.profile.trendingTimezone ?? "UTC",
+      p_user_id: params.profile.userId,
+    },
+  );
+
+  if (error) {
+    throw new Error(
+      `Could not start the fact-matched Wall-of-Text replacement: ${error.message}`,
+    );
   }
 
   return mapPlan(data);

@@ -7,6 +7,7 @@ import {
   buildWallTextFactGroundingAssignments,
   getWallTextGroundingIssue,
   parseWallTextFactGrounding,
+  selectWallTextGroundingFact,
   toWallTextGroundingMetadata,
 } from "./wall-text-grounding.ts";
 
@@ -78,7 +79,7 @@ test("requires Business Context instead of creating generic new Wall copy with z
   assert.ok(reservationIndex > guardIndex);
 });
 
-test("requires a visible assigned-business anchor without another AI review", () => {
+test("allows a clear paraphrase after the plan selects the matching fact", () => {
   const grounding = buildWallTextFactGroundingAssignments({
     analysis,
     candidateIndexes: [0],
@@ -96,7 +97,7 @@ test("requires a visible assigned-business anchor without another AI review", ()
       grounding,
       text: "The little choices in a busy day can feel harder than they need to.",
     }),
-    "missing_business_anchor",
+    null,
   );
   assert.equal(
     getWallTextGroundingIssue({
@@ -122,6 +123,24 @@ test("requires a visible assigned-business anchor without another AI review", ()
   });
 });
 
+test("selects only an approved fact from the plan snapshot", () => {
+  const initialGrounding = buildWallTextFactGroundingAssignments({
+    analysis,
+    candidateIndexes: [0],
+  }).get(0)!;
+  const selected = initialGrounding.factSnapshot.facts.find(
+    (fact) => fact.id !== initialGrounding.assignedFact.id,
+  )!;
+  const grounding = selectWallTextGroundingFact(initialGrounding, selected.id);
+
+  assert.equal(grounding.assignedFact.id, selected.id);
+  assert.equal(grounding.factSnapshot, initialGrounding.factSnapshot);
+  assert.throws(
+    () => selectWallTextGroundingFact(initialGrounding, "made-up-fact"),
+    /unapproved business fact/i,
+  );
+});
+
 test("fails closed when a declared grounding assignment is altered", () => {
   const grounding = buildWallTextFactGroundingAssignments({
     analysis,
@@ -138,17 +157,22 @@ test("fails closed when a declared grounding assignment is altered", () => {
   );
 });
 
-test("sends only a server-assigned fact and the no-hallucination contract to the V2 writer", () => {
+test("sends only the plan-matched fact and permits ordinary-language phrasing", () => {
   const prompt = readFileSync(
     new URL("./wall-prompt.ts", import.meta.url),
     "utf8",
   );
 
   assert.match(prompt, /Do not hallucinate\. Generate based only on the information available/i);
-  assert.match(prompt, /APPROVED FACT SNAPSHOT/);
   assert.match(prompt, /assignedBusinessFact/);
   assert.match(prompt, /groundingRequired/);
-  assert.match(prompt, /the assignedBusinessFact is the only business fact you may state/i);
+  assert.match(prompt, /clear paraphrase is valid/i);
+  assert.match(prompt, /Never use an empty product bridge/i);
+  assert.match(prompt, /businessName is the product or brand label/i);
+  assert.match(prompt, /not a place, employer, team, speaker, or person/i);
+  assert.match(prompt, /selected for this exact planned idea/i);
+  assert.match(prompt, /It is the only business fact you may state/i);
+  assert.doesNotMatch(prompt, /Use at least two distinctive words from that assigned fact/i);
 });
 
 test("database persistence rejects a swapped Wall fact snapshot or creative anchor", () => {

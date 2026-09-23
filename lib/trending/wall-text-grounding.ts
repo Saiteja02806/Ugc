@@ -21,55 +21,11 @@ export type WallTextFactGrounding = {
   factSnapshot: BusinessFactSnapshot;
 };
 
-const COMMON_WORDS = new Set([
-  "about",
-  "after",
-  "again",
-  "also",
-  "and",
-  "are",
-  "because",
-  "been",
-  "being",
-  "between",
-  "can",
-  "could",
-  "every",
-  "for",
-  "from",
-  "have",
-  "into",
-  "just",
-  "more",
-  "much",
-  "not",
-  "of",
-  "one",
-  "only",
-  "our",
-  "out",
-  "over",
-  "that",
-  "the",
-  "their",
-  "them",
-  "then",
-  "there",
-  "these",
-  "this",
-  "those",
-  "through",
-  "to",
-  "using",
-  "with",
-  "you",
-  "your",
-]);
-
 /**
- * Candidate indices are stable inside a reserved batch. Cycling facts means
- * a request for more posts than facts still remains grounded without creating
- * invented claims or requiring a minimum fact count.
+ * Candidate indices are stable inside a reserved batch. This supplies a
+ * canonical initial fact for a reservation; new planned cards replace it with
+ * their plan-selected fact before writing. Cycling still keeps legacy cards
+ * grounded without inventing claims or requiring a minimum fact count.
  */
 export function buildWallTextFactGroundingAssignments(params: {
   analysis: WebsiteBusinessAnalysis;
@@ -120,6 +76,22 @@ export function parseWallTextFactGrounding(value: unknown) {
   } satisfies WallTextFactGrounding;
 }
 
+export function selectWallTextGroundingFact(
+  grounding: WallTextFactGrounding,
+  factId: string,
+): WallTextFactGrounding {
+  const assignedFact = grounding.factSnapshot.facts.find(
+    (fact) => fact.id === factId,
+  );
+  if (!assignedFact) {
+    throw new Error("Wall-of-text plan selected an unapproved business fact.");
+  }
+  return {
+    ...grounding,
+    assignedFact,
+  };
+}
+
 export function toWallTextGroundingMetadata(
   grounding: WallTextFactGrounding,
 ): WallTextGroundingMetadata {
@@ -150,23 +122,16 @@ export function serializeWallTextFactGrounding(
 }
 
 /**
- * This is deterministic validation, not another model call. It makes the
- * anchor visible in final copy and prevents an approved fact snapshot from
- * being treated as permission to repeat a claim the owner marked unsafe.
+ * This deterministic validation prevents an approved fact snapshot from
+ * becoming permission to repeat a claim the owner marked unsafe. The selected
+ * fact was matched to the idea during planning, so literal word overlap is
+ * not used as a proxy for meaning.
  */
 export function getWallTextGroundingIssue(params: {
   grounding: WallTextFactGrounding;
   text: string;
 }) {
-  const terms = getDistinctiveGroundingTerms(params.grounding.assignedFact.text);
   const normalizedText = normalizeForComparison(params.text);
-  const textTerms = new Set(normalizedText.split(" ").filter(Boolean));
-  const matchedTerms = terms.filter((term) => textTerms.has(term));
-  const requiredTerms = Math.min(2, terms.length);
-
-  if (requiredTerms > 0 && matchedTerms.length < requiredTerms) {
-    return "missing_business_anchor";
-  }
 
   if (
     params.grounding.factSnapshot.claimsToAvoid.some((claim) => {
@@ -182,17 +147,6 @@ export function getWallTextGroundingIssue(params: {
   }
 
   return null;
-}
-
-export function getDistinctiveGroundingTerms(value: string) {
-  const allTerms = normalizeForComparison(value)
-    .split(" ")
-    .filter(Boolean);
-  const distinctive = allTerms.filter(
-    (term) => term.length >= 3 && !COMMON_WORDS.has(term),
-  );
-  // Short terms such as "AI" should still be usable as a business anchor.
-  return [...new Set((distinctive.length > 0 ? distinctive : allTerms).slice(0, 6))];
 }
 
 function parseFactSnapshot(value: unknown): BusinessFactSnapshot {

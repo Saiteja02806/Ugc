@@ -30,6 +30,13 @@ const itemContextMigration = readFileSync(
   ),
   "utf8",
 );
+const planMatchedFactMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260923191000_store_wall_text_plan_selected_fact.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const terminalOwnerRecoveryMigration = readFileSync(
   new URL(
     "../../supabase/migrations/20260902054816_recover_terminal_wall_text_plan_jobs.sql",
@@ -195,10 +202,8 @@ test("uses five parent fields for five child ideas without prewriting Wall copy"
   ]) {
     assert.match(planner, definition);
   }
-  assert.match(
-    planner,
-    /For every child return contentIdea, feeling, audienceContext/i,
-  );
+  assert.match(planner, /selectedFactId first, then /i);
+  assert.match(planner, /contentIdea, feeling, audienceContext/i);
   assert.match(
     planner,
     /children are not generated from creativeSeed alone/i,
@@ -213,12 +218,12 @@ test("uses five parent fields for five child ideas without prewriting Wall copy"
   assert.match(planner, /OPENAI_WALL_TEXT_PLAN_REASONING_EFFORT/);
   assert.match(
     planner,
-    /wall-text-content-plan-reader-profiles-v12-situation-spread-no-plan-history/i,
+    /wall-text-content-plan-reader-profiles-v15-fact-first-structured-order/i,
   );
   assert.match(appPlan, /WALL_TEXT_CONTENT_PLAN_MODEL = "gpt-5\.6-luna"/i);
   assert.match(
     appPlan,
-    /wall-text-content-plan-reader-profiles-v12-situation-spread-no-plan-history/i,
+    /wall-text-content-plan-reader-profiles-v15-fact-first-structured-order/i,
   );
 });
 
@@ -231,6 +236,14 @@ test("stores a Wall item's exact private context and broad lane", () => {
   assert.match(planner, /At least five of the ten must locate the reader before, around, or after the main problem rather than reenacting its most obvious decision scene/i);
   assert.match(planner, /assignedBriefSituationFocuses/);
   assert.match(planner, /current-plan situation focus/i);
+  assert.match(planner, /first choose exactly one selectedFactId from that list/i);
+  assert.match(planner, /Then create its humanMoment and contentIdea from what that exact fact supports/i);
+  assert.match(planner, /must not introduce a separate event, cause, workflow, problem, or outcome/i);
+  assert.match(planner, /Never invent a human moment first and search for a fact to attach later/i);
+  assert.match(planner, /selectedFactId first, then /i);
+  assert.match(planner, /the replacement idea and its five private context fields/i);
+  assert.match(planner, /For the replacement, first select exactly one valid selectedFactId/i);
+  assert.match(appPlan, /approvedFactSnapshot: buildBusinessFactSnapshot\(analysis\)/i);
   assert.match(planner, /approvedPlanningContext\.wallTextReaders identifies the intended Wall-of-Text reader categories/i);
   assert.match(appPlan, /wallTextReaders:/);
   assert.doesNotMatch(planner, /previousItems\s*:/);
@@ -379,9 +392,19 @@ test("connects the complete planned Wall flow without exposing private context t
   assert.match(feed, /reserveWallTextGenerationBatch/);
   assert.match(feed, /getWallTextPrivateCreativeContexts/);
   assert.match(feed, /privateCreativeContext:/);
+  assert.match(feed, /planningBrief\?\.selectedFactId/);
+  assert.match(feed, /selectWallTextGroundingFact/);
+  assert.match(feed, /updateWallTextGenerationAssignmentGrounding/);
   assert.match(feed, /saveWallTextGenerationCandidate/);
   assert.match(storage, /reserve_wall_text_generation_batch_v1/);
   assert.match(storage, /save_wall_text_generation_candidate_v1/);
+  assert.match(
+    planMatchedFactMigration,
+    /set_wall_text_generation_assignment_grounding_v1\(\s*p_assignment_id uuid,\s*p_batch_id uuid,\s*p_focus_json jsonb,\s*p_user_id text/i,
+  );
+  assert.match(planMatchedFactMigration, /assignment\.status = 'processing'/i);
+  assert.match(planMatchedFactMigration, /batch\.user_id = p_user_id/i);
+  assert.match(planMatchedFactMigration, /revoke all on function[\s\S]+grant execute on function[\s\S]+service_role/i);
   assert.doesNotMatch(feed, /creativeSeed|audienceContext|humanMoment|emotionalTension|supportedAngle|preferredFormatFamily/);
 });
 
@@ -411,6 +434,10 @@ test("keeps planning context private and removes format pressure from the Wall w
   );
   assert.match(finalWriter, /do not manufacture a scene/i);
   assert.match(finalWriter, /Do not print field names or treat creativeSeed as finished copy/i);
+  assert.match(finalWriter, /clear paraphrase is valid/i);
+  assert.match(finalWriter, /businessName is the product or brand label/i);
+  assert.match(finalWriter, /selected for this exact planned idea/i);
+  assert.doesNotMatch(finalWriter, /Use at least two distinctive words from that assigned fact/i);
   assert.match(finalWriter, /Do not force it into a named writing format, template, list, or formula/i);
   assert.doesNotMatch(finalWriter, /preferredFormatFamily|assignedFormatId|APPROVED WALL FORMATS/);
   assert.doesNotMatch(feed, /selectWallTextFormatAssignments|getWallTextPerformanceSignals/);

@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-09-20
+Last updated: 2026-09-23
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -4131,6 +4131,39 @@ walkthrough preview currently displays this application video.
   than relying only on the five-item parent brief. Its final duplicate gate is
   exact-normalized text only, and it keeps accepted videos while retrying only
   a failed candidate twice more.
+
+## 2026-09-23 Wall-of-Text plan-matched fact selection
+
+- Every new Wall-of-Text plan stores the immutable approved-business-fact
+  snapshot that was available when its 200 ideas were planned. Each child idea
+  must choose one `selectedFactId` from that snapshot based on whether the fact
+  truly supports its human moment and content idea; a positional or round-robin
+  fact choice is not a valid planning decision.
+- The item-level `selectedFactId` is private. Before the Writer is called, the
+  server replaces the reservation's initial canonical fact with that selected
+  fact and saves it on the reservation. Thus a retry and later reuse of the
+  same plan item use the same fact, while a new 30-day plan selects again from
+  its own current profile-version snapshot. Fact IDs are only meaningful inside
+  that saved snapshot and are not carried into the next plan.
+- The Writer receives only the one plan-matched fact, not an open menu of
+  facts. It may express the fact in clear ordinary language and must not pad
+  text with copied words or end with a vague bridge such as “is relevant to
+  this pressure.” The 24–48-word range, measured five-to-eight-line fit,
+  factual-claim guardrails, exact duplicate gate, and no separate readability
+  reviewer remain unchanged.
+- Existing plan items with no `selectedFactId` retain their historical
+  reservation behavior, so this additive rollout does not break active plans
+  or retries. An additive service-role-only database function saves the chosen
+  fact only on an already claimed assignment; the saved plan context, private
+  item context, and assignment grounding JSON remain the durable fields.
+- In prompt version `v15`, every new item is fact-first: the planner chooses
+  its `selectedFactId` before it creates the human moment and idea. Those two
+  fields may make an ordinary illustration of that fact, but cannot introduce
+  an unrelated event, cause, workflow, problem, or outcome and then attach a
+  fact afterward. The structured response lists `selectedFactId` before the
+  other item fields to reinforce that order. This is part of the existing planning request, not a
+  readability-review pass, so the later Writer remains free to write natural
+  24–48-word copy from the matched fact and context.
 
 ## 2026-09-01 Carousel 4px Text Outline
 

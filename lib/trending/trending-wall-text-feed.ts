@@ -13,6 +13,7 @@ import { WALL_TEXT_PROMPT_VERSION } from "@/lib/trending/wall-prompt";
 import {
   buildWallTextFactGroundingAssignments,
   parseWallTextFactGrounding,
+  selectWallTextGroundingFact,
   serializeWallTextFactGrounding,
 } from "@/lib/trending/wall-text-grounding";
 import {
@@ -48,6 +49,7 @@ import {
   reserveWallTextGenerationBatch,
   saveWallTextGenerationCandidate,
   terminalizeWallTextStaleLayoutFailures,
+  updateWallTextGenerationAssignmentGrounding,
   type WallTextCreativeRow,
 } from "@/lib/trending/wall-text-db";
 import {
@@ -630,14 +632,13 @@ async function completeReservedWallTextGeneration(params: {
       if (!claimToken) continue;
 
       try {
-        await generateBusinessTrendingWallTextIdeas({
-          business: params.profile.context,
-          candidates: chunk.map((assignment) => {
+        const candidates = await Promise.all(
+          chunk.map(async (assignment) => {
             const layout = parseWallTextLayout(assignment.layout_json);
             const privateCreativeContext = privateContextsByAssignment.get(
               assignment.id,
             );
-            const grounding = parseWallTextFactGrounding(assignment.focus_json);
+            let grounding = parseWallTextFactGrounding(assignment.focus_json);
             if (!layout) {
               throw new Error("Reserved Wall-of-text placement is invalid.");
             }
@@ -645,6 +646,23 @@ async function completeReservedWallTextGeneration(params: {
               throw new Error(
                 "Reserved Wall-of-text content-plan context is unavailable.",
               );
+            }
+            const selectedFactId =
+              privateCreativeContext.planningBrief?.selectedFactId;
+            if (grounding && selectedFactId) {
+              const selectedGrounding = selectWallTextGroundingFact(
+                grounding,
+                selectedFactId,
+              );
+              if (selectedGrounding.assignedFact.id !== grounding.assignedFact.id) {
+                await updateWallTextGenerationAssignmentGrounding({
+                  assignmentId: assignment.id,
+                  batchId: assignment.batch_id,
+                  focus: serializeWallTextFactGrounding(selectedGrounding),
+                  userId: params.profile.userId,
+                });
+              }
+              grounding = selectedGrounding;
             }
             return {
               candidateIndex: assignment.batch_candidate_index,
@@ -661,6 +679,10 @@ async function completeReservedWallTextGeneration(params: {
               targetWords: assignment.target_words,
             };
           }),
+        );
+        await generateBusinessTrendingWallTextIdeas({
+          business: params.profile.context,
+          candidates,
           historicalSignatures: runtimeSignatures,
           onChunkAccepted: async (ideas) => {
             const saves = await Promise.allSettled(

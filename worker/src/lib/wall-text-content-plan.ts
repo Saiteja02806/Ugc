@@ -11,7 +11,7 @@ import { getContentPlanItemConceptLanes } from "./content-plan-concept-lanes.js"
 import { getWallTextBriefSituationFocuses } from "./wall-text-situation-focuses.js";
 
 export const WALL_TEXT_CONTENT_PLAN_PROMPT_VERSION =
-  "wall-text-content-plan-reader-profiles-v12-situation-spread-no-plan-history";
+  "wall-text-content-plan-reader-profiles-v15-fact-first-structured-order";
 // Each item carries seven structured fields in addition to its parent brief.
 // Ten ideas keep a response comfortably below the model's structured-output
 // budget while preserving the five-idea creative-brief grouping.
@@ -47,6 +47,7 @@ export type WallTextPlanningBrief = {
   creativeSeed: string;
   emotionalTension: string;
   humanMoment: string;
+  selectedFactId?: string;
   supportedAngle: string;
 };
 
@@ -109,6 +110,7 @@ export async function generateWallTextContentPlanChunk(params: {
   if (!Number.isInteger(briefIndexStart) || briefIndexStart < 1) {
     throw new Error("Wall-of-Text content-plan brief index must be positive.");
   }
+  const approvedFactIds = getApprovedPlanningFactIds(params.planningContext);
   let lastIssues: string[] = [];
 
   for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt += 1) {
@@ -120,6 +122,7 @@ export async function generateWallTextContentPlanChunk(params: {
         briefCount,
         issues: attempt === 0 ? [] : lastIssues,
         planningContext: params.planningContext,
+        factSelectionRequired: approvedFactIds !== null,
       }),
       model: getWallTextContentPlanModel(),
       reasoning_effort: getWallTextContentPlanReasoningEffort(),
@@ -127,7 +130,7 @@ export async function generateWallTextContentPlanChunk(params: {
         type: "json_schema",
         json_schema: {
           name: "wall_text_content_plan_five_context_chunk",
-          schema: buildSchema(briefCount),
+          schema: buildSchema(briefCount, approvedFactIds !== null),
           strict: true,
         },
       },
@@ -151,6 +154,7 @@ export async function generateWallTextContentPlanChunk(params: {
         JSON.parse(content),
         briefCount,
         briefIndexStart,
+        approvedFactIds,
       );
       const issues = validateWallTextContentPlanChunk({
         existingItems: params.existingItems,
@@ -161,6 +165,7 @@ export async function generateWallTextContentPlanChunk(params: {
       if (issues.every(isRepairableWallTextIdeaIssue)) {
         const repaired = await regenerateDuplicateWallTextItems({
           ...params,
+          approvedFactIds,
           briefIndexStart,
           issues,
           parsed,
@@ -214,6 +219,7 @@ export function isExactWallTextReplacementDuplicate(params: {
 }
 
 async function regenerateDuplicateWallTextItems(params: {
+  approvedFactIds: ReadonlySet<string> | null;
   briefIndexStart: number;
   businessDescription: string;
   count: number;
@@ -271,6 +277,7 @@ async function regenerateDuplicateWallTextItems(params: {
             ),
             lane,
             planningContext: params.planningContext,
+            factSelectionRequired: params.approvedFactIds !== null,
           }),
           model: getWallTextContentPlanModel(),
           reasoning_effort: getWallTextContentPlanReasoningEffort(),
@@ -278,7 +285,9 @@ async function regenerateDuplicateWallTextItems(params: {
             type: "json_schema",
             json_schema: {
               name: "wall_text_content_plan_single_idea_replacement",
-              schema: buildSingleIdeaReplacementSchema(),
+              schema: buildSingleIdeaReplacementSchema(
+                params.approvedFactIds !== null,
+              ),
               strict: true,
             },
           },
@@ -291,6 +300,7 @@ async function regenerateDuplicateWallTextItems(params: {
             JSON.parse(content),
             currentItem,
             lane.key,
+            params.approvedFactIds,
           );
           const replacementIsExactDuplicate = isExactWallTextReplacementDuplicate({
             candidate: items[itemIndex]!.contentIdea,
@@ -341,6 +351,7 @@ export function parseWallTextContentPlanChunk(
   value: unknown,
   briefCount: number,
   briefIndexStart = 1,
+  approvedFactIds: ReadonlySet<string> | null = null,
 ) {
   const envelope = asRecord(value, "content-plan response");
   if (!Array.isArray(envelope.briefs) || envelope.briefs.length !== briefCount) {
@@ -417,6 +428,15 @@ export function parseWallTextContentPlanChunk(
           creativeSeed: getString(item.privateCreativeSeed, 400, `creative brief ${index + 1} idea ${itemIndex + 1} privateCreativeSeed`),
           emotionalTension: getString(item.emotionalTension, 160, `creative brief ${index + 1} idea ${itemIndex + 1} emotionalTension`),
           humanMoment: getString(item.humanMoment, 400, `creative brief ${index + 1} idea ${itemIndex + 1} humanMoment`),
+          ...(approvedFactIds
+            ? {
+                selectedFactId: getApprovedPlanningFactId(
+                  item.selectedFactId,
+                  approvedFactIds,
+                  `creative brief ${index + 1} idea ${itemIndex + 1} selectedFactId`,
+                ),
+              }
+            : {}),
           supportedAngle: getString(item.supportedAngle, 400, `creative brief ${index + 1} idea ${itemIndex + 1} supportedAngle`),
         },
       });
@@ -531,6 +551,7 @@ function buildMessages(params: {
   briefIndexStart: number;
   briefCount: number;
   businessDescription: string;
+  factSelectionRequired: boolean;
   issues: string[];
   planningContext: Json;
 }) {
@@ -547,8 +568,13 @@ function buildMessages(params: {
         "humanMoment: One concrete, recognisable everyday event or situation. For example, an unexpected meeting moving the afternoon's work.",
         "emotionalTension: The inner feeling or conflict created by that moment. For example, frustration mixed with self-blame.",
         "supportedAngle: The factual connection to the business, based only on approved facts. It is not a sales claim or a promise.",
+        ...(params.factSelectionRequired
+          ? [
+              "approvedPlanningContext.approvedFactSnapshot is the complete approved fact list for this plan. For every child, first choose exactly one selectedFactId from that list. Then create its humanMoment and contentIdea from what that exact fact supports. A clear paraphrase or ordinary daily illustration is allowed, but the moment and idea must not introduce a separate event, cause, workflow, problem, or outcome that the fact does not support. Never invent a human moment first and search for a fact to attach later. Do not choose a fact by its list position or by repeated words. If no fact produces a natural, supported moment, select a different fact or create a different child idea.",
+            ]
+          : []),
         "Each parent brief has an assigned current-plan situation focus. It is a private planning coverage boundary, not a fact, phrase to copy, required visible scene, or final-copy formula. Every child in that brief must genuinely explore the focus through its private humanMoment. If the literal focus would require an unsupported fact, choose the nearest factual situation that remains clearly distinct instead. Do not keep returning to the business's most obvious object, action, setting, or time cue.",
-        "For every child return contentIdea, feeling, audienceContext, privateCreativeSeed, emotionalTension, humanMoment, and supportedAngle. contentIdea must be an 8-to-14-word human observation that a later Wall writer can develop. It must never begin with Show, Depict, Portray, Capture, Highlight, Explore, Imagine, Picture, Present, or Describe. feeling guides tone and is not a phrase the writer must append. The children are not generated from creativeSeed alone.",
+        `For every child return ${params.factSelectionRequired ? "selectedFactId first, then " : ""}contentIdea, feeling, audienceContext, privateCreativeSeed, emotionalTension, humanMoment, and supportedAngle. contentIdea must be an 8-to-14-word human observation that a later Wall writer can develop. It must never begin with Show, Depict, Portray, Capture, Highlight, Explore, Imagine, Picture, Present, or Describe. feeling guides tone and is not a phrase the writer must append. The children are not generated from creativeSeed alone.`,
         "Situation coverage is an editorial quality requirement for the plan, not a rigid rule for the later Writer. Every group of five must use five clearly different concrete reader situations. A situation is different only when at least two of these change: the trigger, the main action, the setting, the point in the routine, the people involved, or the practical constraint. Rewording the same core decision, object, place, or time of day is not different enough. In each ten-idea request, no more than three ideas may occupy the same situation family. At least five of the ten must locate the reader before, around, or after the main problem rather than reenacting its most obvious decision scene: use relevant preparation, changing conditions, available resources, coordination, competing priorities, interruptions, consequences, or reflection when supported. Keep the business topic relevant, but do not make all ten direct variations of the main problem. Each child has an assigned concept lane; use its lane and its parent focus as broad guidance, then create a genuinely different audience, action, setting, tension, or observation. Product capabilities are optional context, not the subject of every idea. Do not write final overlay copy, line breaks, a slide layout, a CTA, a product pitch, or a finished script.",
         "Return the complete JSON object required by the schema. Include every brief, every child idea, and every required field. Do not return commentary, a partial result, or an empty response.",
       ].join(" "),
@@ -581,6 +607,7 @@ function buildMessages(params: {
 function buildSingleIdeaReplacementMessages(params: {
   businessDescription: string;
   currentItem: GeneratedWallTextContentPlanItem;
+  factSelectionRequired: boolean;
   issues: string[];
   lane: { direction: string; key: string };
   planningContext: Json;
@@ -591,6 +618,11 @@ function buildSingleIdeaReplacementMessages(params: {
       content: [
         "You repair exactly one private Wall-of-Text plan idea without changing any other plan item.",
         "Use only the supplied business facts. Return a genuinely new individual writing context with a different concrete human situation if the old one was repeated.",
+        ...(params.factSelectionRequired
+          ? [
+              "For the replacement, first select exactly one valid selectedFactId from approvedPlanningContext.approvedFactSnapshot. Then create the new human situation and idea from that fact. Do not introduce a separate event, cause, workflow, problem, or outcome that the fact does not support, and never invent the situation first and attach a fact later.",
+            ]
+          : []),
         "Never repeat an exact contentIdea named in rejectedAttemptIssues; choose a genuinely distinct observation instead.",
         "A related topic is allowed only when the audience, real-life situation, tension, supported angle, or story is meaningfully different.",
         "Do not write final overlay copy, visual line breaks, a CTA, a product pitch, or an unsupported claim.",
@@ -604,16 +636,19 @@ function buildSingleIdeaReplacementMessages(params: {
         businessDescription: params.businessDescription,
         currentRejectedItem: params.currentItem,
         rejectedAttemptIssues: params.issues,
-        instruction: "Return only the replacement idea and its five private context fields.",
+        instruction: `Return only ${params.factSelectionRequired ? "selectedFactId first, then " : ""}the replacement idea and its five private context fields.`,
       }),
     },
   ];
 }
 
-function buildSingleIdeaReplacementSchema() {
+function buildSingleIdeaReplacementSchema(factSelectionRequired: boolean) {
   return {
     additionalProperties: false,
     properties: {
+      ...(factSelectionRequired
+        ? { selectedFactId: { maxLength: 120, minLength: 1, type: "string" } }
+        : {}),
       audienceContext: { maxLength: 240, minLength: 1, type: "string" },
       contentIdea: { maxLength: MAX_CONTENT_IDEA_LENGTH, minLength: 1, type: "string" },
       emotionalTension: { maxLength: 160, minLength: 1, type: "string" },
@@ -623,6 +658,7 @@ function buildSingleIdeaReplacementSchema() {
       supportedAngle: { maxLength: 400, minLength: 1, type: "string" },
     },
     required: [
+      ...(factSelectionRequired ? ["selectedFactId"] : []),
       "audienceContext",
       "contentIdea",
       "emotionalTension",
@@ -639,6 +675,7 @@ function parseWallTextReplacementItem(
   value: unknown,
   currentItem: GeneratedWallTextContentPlanItem,
   conceptLane: string,
+  approvedFactIds: ReadonlySet<string> | null,
 ): GeneratedWallTextContentPlanItem {
   const item = asRecord(value, "single Wall-of-Text idea replacement");
   return {
@@ -652,12 +689,21 @@ function parseWallTextReplacementItem(
       creativeSeed: getString(item.privateCreativeSeed, 400, "single Wall-of-Text idea replacement privateCreativeSeed"),
       emotionalTension: getString(item.emotionalTension, 160, "single Wall-of-Text idea replacement emotionalTension"),
       humanMoment: getString(item.humanMoment, 400, "single Wall-of-Text idea replacement humanMoment"),
+      ...(approvedFactIds
+        ? {
+            selectedFactId: getApprovedPlanningFactId(
+              item.selectedFactId,
+              approvedFactIds,
+              "single Wall-of-Text idea replacement selectedFactId",
+            ),
+          }
+        : {}),
       supportedAngle: getString(item.supportedAngle, 400, "single Wall-of-Text idea replacement supportedAngle"),
     },
   };
 }
 
-function buildSchema(briefCount: number) {
+function buildSchema(briefCount: number, factSelectionRequired: boolean) {
   return {
     additionalProperties: false,
     properties: {
@@ -674,6 +720,9 @@ function buildSchema(briefCount: number) {
               items: {
                 additionalProperties: false,
                 properties: {
+                  ...(factSelectionRequired
+                    ? { selectedFactId: { maxLength: 120, minLength: 1, type: "string" } }
+                    : {}),
                   audienceContext: { maxLength: 240, minLength: 1, type: "string" },
                   contentIdea: { maxLength: MAX_CONTENT_IDEA_LENGTH, minLength: 1, type: "string" },
                   emotionalTension: { maxLength: 160, minLength: 1, type: "string" },
@@ -684,6 +733,7 @@ function buildSchema(briefCount: number) {
                   supportedAngle: { maxLength: 400, minLength: 1, type: "string" },
                 },
                 required: [
+                  ...(factSelectionRequired ? ["selectedFactId"] : []),
                   "audienceContext",
                   "contentIdea",
                   "emotionalTension",
@@ -720,6 +770,43 @@ function buildSchema(briefCount: number) {
     required: ["briefs"],
     type: "object",
   } as const;
+}
+
+function getApprovedPlanningFactIds(
+  planningContext: Json,
+): ReadonlySet<string> | null {
+  if (!planningContext || typeof planningContext !== "object" || Array.isArray(planningContext)) {
+    return null;
+  }
+  const snapshotValue = (planningContext as Record<string, Json>).approvedFactSnapshot;
+  if (snapshotValue === undefined) return null;
+  const snapshot = asRecord(snapshotValue, "approved fact snapshot");
+  if (snapshot.version !== "business-facts-v1" || !Array.isArray(snapshot.facts)) {
+    throw new Error("Approved fact snapshot is invalid.");
+  }
+  const ids = new Set<string>();
+  for (const [index, value] of snapshot.facts.entries()) {
+    const fact = asRecord(value, `approved fact ${index + 1}`);
+    const id = getString(fact.id, 120, `approved fact ${index + 1} ID`);
+    if (ids.has(id)) throw new Error("Approved fact snapshot contains duplicate IDs.");
+    ids.add(id);
+  }
+  if (ids.size === 0) {
+    throw new Error("Approved fact snapshot must contain at least one fact.");
+  }
+  return ids;
+}
+
+function getApprovedPlanningFactId(
+  value: unknown,
+  approvedFactIds: ReadonlySet<string>,
+  label: string,
+) {
+  const id = getString(value, 120, label);
+  if (!approvedFactIds.has(id)) {
+    throw new Error(`${label} is not present in the approved fact snapshot.`);
+  }
+  return id;
 }
 
 function normalize(value: string) {

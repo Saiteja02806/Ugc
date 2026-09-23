@@ -205,6 +205,34 @@ test("parses one five-field private Wall brief with five contentIdea and feeling
   );
 });
 
+test("requires every new plan idea to select one ID from the approved fact snapshot", () => {
+  const approvedFactIds = new Set(["capability-1", "pain-1"]);
+  const response = { briefs: [oneBrief()] };
+  for (const [index, item] of response.briefs[0]!.items.entries()) {
+    Object.assign(item, {
+      selectedFactId: index % 2 === 0 ? "capability-1" : "pain-1",
+    });
+  }
+
+  const parsed = parseWallTextContentPlanChunk(
+    response,
+    1,
+    1,
+    approvedFactIds,
+  );
+  assert.deepEqual(
+    parsed.items.map((item) => item.planningBrief.selectedFactId),
+    ["capability-1", "pain-1", "capability-1", "pain-1", "capability-1"],
+  );
+
+  (response.briefs[0]!.items[0]! as Record<string, unknown>).selectedFactId =
+    "unknown-fact";
+  assert.throws(
+    () => parseWallTextContentPlanChunk(response, 1, 1, approvedFactIds),
+    /not present in the approved fact snapshot/i,
+  );
+});
+
 test("rejects exact ideas, permits wording variations, and rejects prewritten video structure", () => {
   const issues = validateWallTextContentPlanChunk({
     existingItems: [

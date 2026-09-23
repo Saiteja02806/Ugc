@@ -4,6 +4,8 @@ import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
 import {
   attachWallTextContentPlanGenerationJob,
   ensureCurrentWallTextContentPlan,
+  startWallTextFactMatchedPlanReplacement,
+  type WallTextContentPlan,
 } from "@/lib/trending/wall-text-content-plan-db";
 import { createAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
 import { assertWallTextGenerationRuntimeConfigured } from "./wall-text-generation-runtime";
@@ -18,7 +20,25 @@ export async function ensureWallTextContentPlanGeneration(params: {
   assertWallTextGenerationRuntimeConfigured();
 
   const plan = await ensureCurrentWallTextContentPlan(params);
+  return dispatchWallTextContentPlanGeneration(plan);
+}
 
+/**
+ * One-time replacement path for existing active Pro accounts. The current
+ * plan remains the serving plan until the replacement has all 200 ideas and
+ * activates atomically; this function merely creates or resumes its durable
+ * planner job.
+ */
+export async function startWallTextFactMatchedPlanReplacementGeneration(params: {
+  profile: BusinessProfileRecord;
+}) {
+  assertWallTextGenerationRuntimeConfigured();
+
+  const plan = await startWallTextFactMatchedPlanReplacement(params);
+  return dispatchWallTextContentPlanGeneration(plan);
+}
+
+async function dispatchWallTextContentPlanGeneration(plan: WallTextContentPlan) {
   if (
     plan.status !== "generating" ||
     shouldReuseWallTextContentPlanGeneration(plan)

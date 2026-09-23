@@ -212,6 +212,7 @@ export type WallTextPrivateCreativeContext = {
     creativeSeed: string;
     emotionalTension: string;
     humanMoment: string;
+    selectedFactId?: string;
     supportedAngle: string;
   };
 };
@@ -359,6 +360,15 @@ type WallTextDatabase = {
       claim_wall_text_generation_chunk_v1: {
         Args: { p_chunk_id: string; p_user_id: string };
         Returns: string | null;
+      };
+      set_wall_text_generation_assignment_grounding_v1: {
+        Args: {
+          p_assignment_id: string;
+          p_batch_id: string;
+          p_focus_json: Json;
+          p_user_id: string;
+        };
+        Returns: string;
       };
       record_wall_text_generation_chunk_failure_v1: {
         Args: {
@@ -1174,6 +1184,29 @@ export async function claimWallTextGenerationChunk(params: {
     throw new Error(`Could not claim Wall-of-text generation chunk: ${error.message}`);
   }
   return data;
+}
+
+export async function updateWallTextGenerationAssignmentGrounding(params: {
+  assignmentId: string;
+  batchId: string;
+  focus: Json;
+  userId: string;
+}) {
+  const { data, error } = await getClient().rpc(
+    "set_wall_text_generation_assignment_grounding_v1",
+    {
+      p_assignment_id: params.assignmentId,
+      p_batch_id: params.batchId,
+      p_focus_json: params.focus,
+      p_user_id: params.userId,
+    },
+  );
+  if (error) {
+    throw new Error(`Could not save Wall-of-text selected fact: ${error.message}`);
+  }
+  if (data !== params.assignmentId) {
+    throw new Error("Wall-of-text generation assignment is no longer available.");
+  }
 }
 
 export async function recordWallTextGenerationChunkFailure(params: {
@@ -3030,6 +3063,7 @@ function parseWallTextItemPrivateContext(
   const supportedAngle = getRequiredWallTextPrivateContextString(
     privateContext.supportedAngle,
   );
+  const selectedFactId = privateContext.selectedFactId;
 
   if (
     !audienceContext ||
@@ -3037,6 +3071,8 @@ function parseWallTextItemPrivateContext(
     !emotionalTension ||
     !humanMoment ||
     !supportedAngle ||
+    (selectedFactId !== undefined &&
+      (typeof selectedFactId !== "string" || !selectedFactId.trim())) ||
     (privateContext.conceptLane !== undefined &&
       typeof privateContext.conceptLane !== "string")
   ) {
@@ -3051,6 +3087,9 @@ function parseWallTextItemPrivateContext(
     creativeSeed,
     emotionalTension,
     humanMoment,
+    ...(typeof selectedFactId === "string"
+      ? { selectedFactId: selectedFactId.trim().slice(0, 120) }
+      : {}),
     supportedAngle,
   };
 }

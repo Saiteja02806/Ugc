@@ -6,6 +6,8 @@ import {
   Eye,
   EyeOff,
   Heart,
+  MessageCircle,
+  Share2,
   TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
@@ -20,6 +22,13 @@ import {
 
 import { SocialAccountAvatar } from "@/components/social/social-account-avatar";
 import { buttonVariants } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { runAnalyticsBackgroundSync } from "@/lib/analytics/background-sync-client";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { SocialConnection } from "@/lib/social/types";
@@ -60,6 +69,23 @@ type TikTokAccount = {
 };
 
 type TikTokContentItem = TikTokVideo & { accountLabel: string };
+type TikTokPrivateContentItem = TikTokPrivatePublishingRecord & {
+  accountLabel: string;
+};
+type TikTokTrendContentItem =
+  | (TikTokContentItem & {
+      kind: "public";
+      metricValue: number | null;
+    })
+  | (TikTokPrivateContentItem & {
+      kind: "private";
+      metricValue: null;
+    });
+type TikTokTrendPoint = {
+  date: string;
+  items: TikTokTrendContentItem[];
+  value: number | null;
+};
 
 const metricLabels: Record<TikTokMetric, string> = {
   comments: "Comments",
@@ -84,6 +110,8 @@ export function TikTokBetaAnalyticsPanel({
   const [hasRefreshed, setHasRefreshed] = useState(false);
   const [metric, setMetric] = useState<TikTokMetric>("views");
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedContent, setSelectedContent] =
+    useState<TikTokTrendContentItem | null>(null);
   const [sort, setSort] = useState<TikTokSort>("views");
   const handledRefreshRequest = useRef(0);
 
@@ -236,11 +264,13 @@ export function TikTokBetaAnalyticsPanel({
           <PublishDateTrend
             items={videos}
             metric={metric}
+            privateRecords={privateRecords}
             emptyDescription={getEmptyTrendDescription({
               error,
               hasRefreshed,
               visibleAccounts,
             })}
+            onSelectItem={setSelectedContent}
           />
         </AnalyticsSurface>
         <AccountReadiness
@@ -267,7 +297,12 @@ export function TikTokBetaAnalyticsPanel({
           <ContentSortControl sort={sort} onChange={setSort} />
         </header>
         {videos.length > 0 || privateRecords.length > 0 ? (
-          <TikTokContentTable privateRecords={privateRecords} videos={videos} />
+          <TikTokContentTable
+            metric={metric}
+            onSelect={setSelectedContent}
+            privateRecords={privateRecords}
+            videos={videos}
+          />
         ) : (
           <ContentEmptyState
             title={
@@ -285,6 +320,12 @@ export function TikTokBetaAnalyticsPanel({
       </section>
 
       <DataIntegrityNote />
+      <TikTokContentDetailDialog
+        item={selectedContent}
+        onOpenChange={(open) => {
+          if (!open) setSelectedContent(null);
+        }}
+      />
     </div>
   );
 }
@@ -392,16 +433,29 @@ function PublishDateTrend({
   emptyDescription,
   items,
   metric,
+  onSelectItem,
+  privateRecords,
 }: {
   emptyDescription: string;
   items: TikTokContentItem[];
   metric: TikTokMetric;
+  onSelectItem: (item: TikTokTrendContentItem) => void;
+  privateRecords: TikTokPrivateContentItem[];
 }) {
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const points = useMemo(
-    () => buildTrendPoints(items, metric),
-    [items, metric],
+    () => buildTrendPoints(items, privateRecords, metric),
+    [items, metric, privateRecords],
   );
-  const max = Math.max(...points.map((point) => point.value), 1);
+  const metricPoints = points.filter(
+    (point): point is TikTokTrendPoint & { value: number } =>
+      point.value !== null,
+  );
+  const max = Math.max(...metricPoints.map((point) => point.value), 1);
+  const selectedDateItems = selectedDate
+    ? (points.find((point) => point.date === selectedDate)?.items ?? [])
+    : [];
+
   if (points.length === 0)
     return (
       <DashboardEmptyState
@@ -409,25 +463,59 @@ function PublishDateTrend({
         description={emptyDescription}
       />
     );
-  const peak = getPeakPoint(points);
+
+  const peak = metricPoints.length > 0 ? getPeakPoint(metricPoints) : null;
+  const selectPoint = (point: TikTokTrendPoint) => {
+    if (point.items.length === 1) {
+      onSelectItem(point.items[0]);
+      return;
+    }
+
+    setSelectedDate(point.date);
+  };
+
   return (
     <div className="mt-6">
-      <div className="flex h-56 items-end gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted/25 px-4 pb-6 pt-5 sm:gap-3 sm:px-6">
+      <div className="overflow-x-auto rounded-[var(--radius-control)] border border-border bg-card-muted/25">
+        <div className="flex h-60 min-w-max items-end gap-2 px-4 pb-6 pt-10 sm:gap-3 sm:px-6">
         {points.map((point) => (
-          <div
+          <button
             key={point.date}
-            className="group flex min-w-0 flex-1 flex-col justify-end"
-            title={`${formatDateOnly(point.date)}: ${formatNumber(point.value)} ${metricLabels[metric].toLowerCase()}`}
+            type="button"
+            aria-haspopup="dialog"
+            aria-label={getTrendPointLabel(point, metric)}
+            className="group relative flex min-h-44 w-14 shrink-0 flex-col justify-end rounded-[var(--radius-control)] px-1 pb-0.5 text-left outline-none transition-transform hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-ring sm:w-16"
+            onClick={() => selectPoint(point)}
           >
-            <span className="mb-2 text-center font-mono text-[10px] font-semibold tabular-nums text-muted opacity-0 transition-opacity group-hover:opacity-100">
-              {formatNumber(point.value)}
+            <span className="mb-2 text-center font-mono text-[10px] font-semibold tabular-nums text-muted opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+              {point.value === null ? "—" : formatNumber(point.value)}
             </span>
-            <div
-              className="min-h-1 rounded-t-full bg-primary/85 transition-colors group-hover:bg-primary"
-              style={{ height: `${Math.max((point.value / max) * 100, 2)}%` }}
-            />
-          </div>
+            <span
+              className={cn(
+                "relative block min-h-1 w-full rounded-t-full transition-colors",
+                point.value === null
+                  ? "border border-dashed border-warning/60 bg-warning/10"
+                  : "bg-primary/85 group-hover:bg-primary group-focus-visible:bg-primary",
+              )}
+              style={{
+                height:
+                  point.value === null
+                    ? "8px"
+                    : `${Math.max((point.value / max) * 100, 2)}%`,
+              }}
+            >
+              <TrendMarker
+                count={point.items.length}
+                item={point.items[0]}
+                metricColorClassName={
+                  point.value === null ? "border-warning" : "border-primary"
+                }
+                multiple={point.items.length > 1}
+              />
+            </span>
+          </button>
         ))}
+        </div>
       </div>
       <div className="mt-3 flex justify-between gap-3 px-1 text-xs font-medium text-muted">
         <span>{formatShortDate(points[0].date)}</span>
@@ -437,15 +525,34 @@ function PublishDateTrend({
         <TrendSummary
           label="Visible total"
           value={formatNumber(
-            points.reduce((total, point) => total + point.value, 0),
+            metricPoints.reduce((total, point) => total + point.value, 0),
           )}
         />
         <TrendSummary
           label="Peak publish date"
-          value={`${formatNumber(peak.value)} · ${formatShortDate(peak.date)}`}
+          value={
+            peak
+              ? `${formatNumber(peak.value)} · ${formatShortDate(peak.date)}`
+              : "—"
+          }
         />
-        <TrendSummary label="Publish dates" value={`${points.length}`} />
+        <TrendSummary
+          label="Publish dates"
+          value={`${metricPoints.length} measured · ${points.length} total`}
+        />
       </div>
+      <TikTokContentDayPickerDialog
+        date={selectedDate}
+        items={selectedDateItems}
+        metric={metric}
+        onOpenChange={(open) => {
+          if (!open) setSelectedDate(null);
+        }}
+        onSelect={(item) => {
+          setSelectedDate(null);
+          onSelectItem(item);
+        }}
+      />
     </div>
   );
 }
@@ -457,6 +564,288 @@ function TrendSummary({ label, value }: { label: string; value: string }) {
       <p className="mt-1 font-mono text-sm font-bold tabular-nums text-foreground-strong">
         {value}
       </p>
+    </div>
+  );
+}
+
+function TrendMarker({
+  count,
+  item,
+  metricColorClassName,
+  multiple,
+}: {
+  count: number;
+  item: TikTokTrendContentItem;
+  metricColorClassName: string;
+  multiple: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        "absolute left-1/2 top-0 flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center overflow-hidden rounded-full border-2 bg-card text-[10px] font-bold text-muted shadow-card",
+        metricColorClassName,
+      )}
+      aria-hidden="true"
+    >
+      {item.kind === "public" && item.coverImageUrl ? (
+        <>
+          <span>TT</span>
+          {/* TikTok owns the returned cover URL, which may expire independently. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={item.coverImageUrl}
+            alt=""
+            width={40}
+            height={40}
+            loading="lazy"
+            className="absolute inset-0 size-full object-cover"
+            onError={(event) => {
+              event.currentTarget.hidden = true;
+            }}
+          />
+        </>
+      ) : item.kind === "private" ? (
+        <EyeOff className="size-3.5 text-warning" />
+      ) : (
+        "TT"
+      )}
+      {multiple ? (
+        <span className="absolute -bottom-1 -right-1 flex min-w-4 items-center justify-center rounded-full border border-border-strong bg-card px-1 font-mono text-[9px] leading-4 text-foreground-strong">
+          {count > 99 ? "99+" : formatNumber(count)}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+function TikTokContentDayPickerDialog({
+  date,
+  items,
+  metric,
+  onOpenChange,
+  onSelect,
+}: {
+  date: string | null;
+  items: TikTokTrendContentItem[];
+  metric: TikTokMetric;
+  onOpenChange: (open: boolean) => void;
+  onSelect: (item: TikTokTrendContentItem) => void;
+}) {
+  return (
+    <Dialog open={Boolean(date && items.length > 1)} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[min(80dvh,640px)] gap-0 overflow-hidden p-0 sm:max-w-lg">
+        <DialogHeader className="border-b border-border px-5 py-5 pr-14 sm:px-6">
+          <DialogTitle className="text-lg font-bold leading-6 tracking-[-0.02em] text-foreground-strong">
+            Videos from {formatDateOnly(date ?? "")}
+          </DialogTitle>
+          <DialogDescription className="text-sm leading-6 text-muted">
+            {formatNumber(items.length)} videos were published on this day.
+            Select one to view its available metrics.
+          </DialogDescription>
+        </DialogHeader>
+        <ul className="flex min-h-0 flex-col gap-2 overflow-y-auto overscroll-contain p-3 sm:p-4">
+          {items.map((item) => (
+            <li key={`${item.kind}:${item.id}`}>
+              <button
+                type="button"
+                className="flex min-h-20 w-full items-center gap-3 rounded-[var(--radius-control)] border border-border bg-card p-3 text-left transition-[border-color,background-color,box-shadow] hover:border-border-strong hover:bg-card-muted/45 hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+                onClick={() => onSelect(item)}
+              >
+                <TikTokTrendThumbnail item={item} size="sm" />
+                <span className="min-w-0 flex-1">
+                  <span className="line-clamp-1 block text-sm font-semibold text-foreground-strong">
+                    {getTrendItemTitle(item)}
+                  </span>
+                  <span className="mt-1 block line-clamp-1 text-xs text-muted">
+                    {item.accountLabel}
+                    {item.kind === "private" ? " · Only me visibility" : ""}
+                  </span>
+                  <span className="mt-1 block text-xs text-muted-subtle">
+                    {getTrendItemPublishedAt(item)
+                      ? formatDate(getTrendItemPublishedAt(item)!)
+                      : "Publish time unavailable"}
+                  </span>
+                </span>
+                <span className="shrink-0 text-right">
+                  <span className="block font-mono text-sm font-semibold tabular-nums text-foreground-strong">
+                    {item.metricValue === null
+                      ? "Unavailable"
+                      : formatNumber(item.metricValue)}
+                  </span>
+                  <span className="mt-1 block text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-subtle">
+                    {item.metricValue === null ? "Metrics" : metricLabels[metric]}
+                  </span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function TikTokContentDetailDialog({
+  item,
+  onOpenChange,
+}: {
+  item: TikTokTrendContentItem | null;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const interactionRate =
+    item?.kind === "public"
+      ? getInteractionRate({
+          comments: item.commentCount,
+          likes: item.likeCount,
+          shares: item.shareCount,
+          views: item.viewCount,
+        })
+      : null;
+
+  return (
+    <Dialog open={Boolean(item)} onOpenChange={onOpenChange}>
+      <DialogContent className="bottom-0 left-0 top-auto flex h-[min(88dvh,760px)] max-h-[88dvh] max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-b-none rounded-t-[var(--radius-panel)] border border-border bg-card p-0 sm:bottom-auto sm:left-auto sm:right-0 sm:top-0 sm:h-dvh sm:max-h-none sm:w-[480px] sm:max-w-[calc(100%-2rem)] sm:translate-x-0 sm:translate-y-0 sm:rounded-none sm:border-y-0 sm:border-r-0">
+        {item ? (
+          <>
+            <DialogHeader className="border-b border-border px-5 py-5 pr-14 sm:px-6">
+              <div className="flex items-start gap-4">
+                <TikTokTrendThumbnail item={item} size="lg" />
+                <div className="min-w-0">
+                  <p className="w-fit rounded-full bg-card-muted px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-muted">
+                    {item.kind === "private" ? "Private post" : "TikTok video"}
+                  </p>
+                  <DialogTitle className="mt-3 line-clamp-2 text-lg font-bold leading-6 tracking-[-0.02em] text-foreground-strong">
+                    {getTrendItemTitle(item)}
+                  </DialogTitle>
+                  <DialogDescription className="mt-1 text-xs leading-5 text-muted">
+                    Published {getTrendItemPublishedAt(item) ? formatDate(getTrendItemPublishedAt(item)!) : "date unavailable"}
+                    {item.accountLabel ? ` · ${item.accountLabel}` : ""}
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">
+              {item.kind === "public" ? (
+                <>
+                  <section aria-labelledby="tiktok-metric-breakdown">
+                    <p
+                      id="tiktok-metric-breakdown"
+                      className="text-xs font-bold uppercase tracking-[0.12em] text-primary"
+                    >
+                      Metric breakdown
+                    </p>
+                    <dl className="mt-3 divide-y divide-border rounded-[var(--radius-control)] border border-border bg-card-muted/35 px-4">
+                      <ContentDetailMetric icon={<Eye />} label="Views" value={formatOptionalNumber(item.viewCount)} />
+                      <ContentDetailMetric icon={<Heart />} label="Likes" value={formatOptionalNumber(item.likeCount)} />
+                      <ContentDetailMetric icon={<MessageCircle />} label="Comments" value={formatOptionalNumber(item.commentCount)} />
+                      <ContentDetailMetric icon={<Share2 />} label="Shares" value={formatOptionalNumber(item.shareCount)} />
+                      <ContentDetailMetric icon={<TrendingUp />} label="Interaction rate" value={formatOptionalPercentage(interactionRate)} />
+                    </dl>
+                  </section>
+                  <section className="mt-6" aria-labelledby="tiktok-caption">
+                    <p id="tiktok-caption" className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
+                      Caption
+                    </p>
+                    <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted">
+                      {item.description || item.title || "No caption was returned for this video."}
+                    </p>
+                  </section>
+                </>
+              ) : (
+                <section className="rounded-[var(--radius-control)] border border-warning/25 bg-warning/10 p-4">
+                  <p className="text-sm font-semibold text-foreground-strong">Metrics are unavailable for this private post</p>
+                  <p className="mt-2 text-sm leading-6 text-muted">
+                    TikTok returns analytics only for public videos. This UGC Pilot publishing record stays visible so it is not mistaken for a zero-view video.
+                  </p>
+                </section>
+              )}
+            </div>
+
+            <footer className="border-t border-border bg-card px-5 py-4 sm:px-6">
+              {item.kind === "public" && item.shareUrl ? (
+                <a
+                  href={item.shareUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={cn(buttonVariants({ size: "lg", variant: "default" }), "w-full")}
+                >
+                  Open on TikTok
+                  <ExternalLink data-icon="inline-end" aria-hidden="true" />
+                </a>
+              ) : (
+                <p className="text-center text-xs leading-5 text-muted">
+                  {item.kind === "private"
+                    ? "This post is only visible to the connected TikTok account."
+                    : "A public TikTok link was not returned for this video."}
+                </p>
+              )}
+            </footer>
+          </>
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function TikTokTrendThumbnail({
+  item,
+  size,
+}: {
+  item: TikTokTrendContentItem;
+  size: "lg" | "sm";
+}) {
+  const sizeClassName = size === "lg" ? "size-20" : "size-12";
+
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "relative flex shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-control)] bg-card-muted text-xs font-bold text-muted",
+        sizeClassName,
+      )}
+    >
+      {item.kind === "public" && item.coverImageUrl ? (
+        <>
+          <span>TT</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={item.coverImageUrl}
+            alt=""
+            width={size === "lg" ? 80 : 48}
+            height={size === "lg" ? 80 : 48}
+            loading="lazy"
+            className="absolute inset-0 size-full object-cover"
+            onError={(event) => {
+              event.currentTarget.hidden = true;
+            }}
+          />
+        </>
+      ) : item.kind === "private" ? (
+        <EyeOff className="size-4 text-warning" />
+      ) : (
+        "TT"
+      )}
+    </span>
+  );
+}
+
+function ContentDetailMetric({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-3">
+      <dt className="flex items-center gap-2 text-sm font-medium text-muted [&>svg]:size-4 [&>svg]:text-primary">
+        {icon}
+        {label}
+      </dt>
+      <dd className="font-mono text-sm font-semibold tabular-nums text-foreground-strong">{value}</dd>
     </div>
   );
 }
@@ -553,12 +942,14 @@ function ReadinessBadge({
 }
 
 function TikTokContentTable({
+  metric,
+  onSelect,
   privateRecords,
   videos,
 }: {
-  privateRecords: Array<
-    TikTokPrivatePublishingRecord & { accountLabel: string }
-  >;
+  metric: TikTokMetric;
+  onSelect: (item: TikTokTrendContentItem) => void;
+  privateRecords: TikTokPrivateContentItem[];
   videos: TikTokContentItem[];
 }) {
   return (
@@ -583,7 +974,16 @@ function TikTokContentTable({
           {videos.map((video) => (
             <tr
               key={video.id}
-              className="border-b border-border hover:bg-card-muted/45"
+              tabIndex={0}
+              aria-label={`View details for ${getVideoTitle(video)}`}
+              onClick={() => onSelect(toTikTokTrendContentItem(video, metric))}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onSelect(toTikTokTrendContentItem(video, metric));
+                }
+              }}
+              className="cursor-pointer border-b border-border transition-colors hover:bg-card-muted/45 focus-visible:bg-card-muted/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
             >
               <td className="px-4 py-3.5">
                 <div className="flex min-w-0 items-center gap-3">
@@ -621,6 +1021,8 @@ function TikTokContentTable({
                     target="_blank"
                     rel="noreferrer"
                     aria-label={`Open ${getVideoTitle(video)} on TikTok`}
+                    onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
                     className={buttonVariants({
                       size: "icon-sm",
                       variant: "ghost",
@@ -637,7 +1039,16 @@ function TikTokContentTable({
           {privateRecords.map((record) => (
             <tr
               key={record.id}
-              className="border-b border-border last:border-b-0"
+              tabIndex={0}
+              aria-label={`View publishing record for ${record.title || "TikTok post"}`}
+              onClick={() => onSelect(toTikTokPrivateTrendContentItem(record))}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onSelect(toTikTokPrivateTrendContentItem(record));
+                }
+              }}
+              className="cursor-pointer border-b border-border transition-colors last:border-b-0 hover:bg-card-muted/45 focus-visible:bg-card-muted/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
             >
               <td className="px-4 py-3.5">
                 <div className="flex min-w-0 items-center gap-3">
@@ -896,24 +1307,83 @@ function sumMetric(values: Array<number | null>) {
     ? available.reduce((total, value) => total + value, 0)
     : null;
 }
-function buildTrendPoints(items: TikTokContentItem[], metric: TikTokMetric) {
-  const points = new Map<string, number>();
+function buildTrendPoints(
+  items: TikTokContentItem[],
+  privateRecords: TikTokPrivateContentItem[],
+  metric: TikTokMetric,
+): TikTokTrendPoint[] {
+  const points = new Map<string, TikTokTrendContentItem[]>();
+  const addItem = (date: string | null, item: TikTokTrendContentItem) => {
+    if (!date) return;
+    const dateKey = date.slice(0, 10);
+    points.set(dateKey, [...(points.get(dateKey) ?? []), item]);
+  };
+
   for (const item of items) {
-    if (!item.createdAt) continue;
-    const date = item.createdAt.slice(0, 10);
-    const value =
-      metric === "views"
-        ? item.viewCount
-        : metric === "likes"
-          ? item.likeCount
-          : metric === "comments"
-            ? item.commentCount
-            : item.shareCount;
-    if (value !== null) points.set(date, (points.get(date) ?? 0) + value);
+    addItem(item.createdAt, toTikTokTrendContentItem(item, metric));
   }
+  for (const record of privateRecords) {
+    addItem(record.publishedAt, toTikTokPrivateTrendContentItem(record));
+  }
+
   return [...points.entries()]
-    .map(([date, value]) => ({ date, value }))
+    .map(([date, dateItems]) => {
+      const values = dateItems
+        .map((item) => item.metricValue)
+        .filter((value): value is number => value !== null);
+
+      return {
+        date,
+        items: dateItems,
+        value: values.length
+          ? values.reduce((total, value) => total + value, 0)
+          : null,
+      };
+    })
     .sort((left, right) => left.date.localeCompare(right.date));
+}
+
+function toTikTokTrendContentItem(
+  item: TikTokContentItem,
+  metric: TikTokMetric,
+): TikTokTrendContentItem {
+  const metricValue =
+    metric === "views"
+      ? item.viewCount
+      : metric === "likes"
+        ? item.likeCount
+        : metric === "comments"
+          ? item.commentCount
+          : item.shareCount;
+
+  return { ...item, kind: "public", metricValue };
+}
+
+function toTikTokPrivateTrendContentItem(
+  item: TikTokPrivateContentItem,
+): TikTokTrendContentItem {
+  return { ...item, kind: "private", metricValue: null };
+}
+
+function getTrendItemTitle(item: TikTokTrendContentItem) {
+  return item.kind === "public"
+    ? getVideoTitle(item)
+    : item.title || "TikTok post";
+}
+
+function getTrendItemPublishedAt(item: TikTokTrendContentItem) {
+  return item.kind === "public" ? item.createdAt : item.publishedAt;
+}
+
+function getTrendPointLabel(point: TikTokTrendPoint, metric: TikTokMetric) {
+  const date = formatDateOnly(point.date);
+  const itemLabel = point.items.length === 1 ? "video" : "videos";
+  const metricLabel =
+    point.value === null
+      ? "Metrics unavailable"
+      : `${formatNumber(point.value)} ${metricLabels[metric].toLowerCase()}`;
+
+  return `Open ${formatNumber(point.items.length)} ${itemLabel} from ${date}. ${metricLabel}.`;
 }
 function getPeakPoint(points: Array<{ date: string; value: number }>) {
   return points.reduce(

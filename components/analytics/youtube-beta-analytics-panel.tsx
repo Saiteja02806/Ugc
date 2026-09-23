@@ -21,6 +21,13 @@ import {
 
 import { SocialAccountAvatar } from "@/components/social/social-account-avatar";
 import { buttonVariants } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { runAnalyticsBackgroundSync } from "@/lib/analytics/background-sync-client";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { SocialConnection } from "@/lib/social/types";
@@ -59,6 +66,14 @@ type YouTubeAccount = {
 };
 
 type YouTubeContentItem = YouTubeVideo & { accountLabel: string };
+type YouTubeTrendContentItem = YouTubeContentItem & {
+  metricValue: number | null;
+};
+type YouTubeTrendPoint = {
+  date: string;
+  items: YouTubeTrendContentItem[];
+  value: number | null;
+};
 
 const metricLabels: Record<YouTubeMetric, string> = {
   comments: "Comments",
@@ -82,6 +97,8 @@ export function YouTubeBetaAnalyticsPanel({
   const [hasRefreshed, setHasRefreshed] = useState(false);
   const [metric, setMetric] = useState<YouTubeMetric>("views");
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedContent, setSelectedContent] =
+    useState<YouTubeTrendContentItem | null>(null);
   const [sort, setSort] = useState<YouTubeSort>("views");
   const handledRefreshRequest = useRef(0);
 
@@ -234,6 +251,7 @@ export function YouTubeBetaAnalyticsPanel({
             })}
             items={videos}
             metric={metric}
+            onSelectItem={setSelectedContent}
           />
         </AnalyticsSurface>
 
@@ -261,7 +279,11 @@ export function YouTubeBetaAnalyticsPanel({
           <ContentSortControl sort={sort} onChange={setSort} />
         </header>
         {videos.length > 0 ? (
-          <YouTubeVideoTable videos={videos} />
+          <YouTubeVideoTable
+            metric={metric}
+            onSelect={setSelectedContent}
+            videos={videos}
+          />
         ) : (
           <ContentEmptyState
             description={getEmptyContentDescription({
@@ -279,6 +301,12 @@ export function YouTubeBetaAnalyticsPanel({
       </section>
 
       <DataIntegrityNote />
+      <YouTubeContentDetailDialog
+        item={selectedContent}
+        onOpenChange={(open) => {
+          if (!open) setSelectedContent(null);
+        }}
+      />
     </div>
   );
 }
@@ -386,16 +414,26 @@ function PublishDateTrend({
   emptyDescription,
   items,
   metric,
+  onSelectItem,
 }: {
   emptyDescription: string;
   items: YouTubeContentItem[];
   metric: YouTubeMetric;
+  onSelectItem: (item: YouTubeTrendContentItem) => void;
 }) {
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const points = useMemo(
     () => buildTrendPoints(items, metric),
     [items, metric],
   );
-  const max = Math.max(...points.map((point) => point.value), 1);
+  const metricPoints = points.filter(
+    (point): point is YouTubeTrendPoint & { value: number } =>
+      point.value !== null,
+  );
+  const max = Math.max(...metricPoints.map((point) => point.value), 1);
+  const selectedDateItems = selectedDate
+    ? (points.find((point) => point.date === selectedDate)?.items ?? [])
+    : [];
 
   if (points.length === 0) {
     return (
@@ -406,24 +444,55 @@ function PublishDateTrend({
     );
   }
 
+  const selectPoint = (point: YouTubeTrendPoint) => {
+    if (point.items.length === 1) {
+      onSelectItem(point.items[0]);
+      return;
+    }
+
+    setSelectedDate(point.date);
+  };
+
   return (
     <div className="mt-6">
-      <div className="flex h-56 items-end gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted/25 px-4 pb-6 pt-5 sm:gap-3 sm:px-6">
-        {points.map((point) => (
-          <div
-            key={point.date}
-            className="group flex min-w-0 flex-1 flex-col justify-end"
-            title={`${formatDateOnly(point.date)}: ${formatNumber(point.value)} ${metricLabels[metric].toLowerCase()}`}
-          >
-            <span className="mb-2 text-center font-mono text-[10px] font-semibold tabular-nums text-muted opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-              {formatNumber(point.value)}
-            </span>
-            <div
-              className="min-h-1 rounded-t-full bg-primary/85 transition-colors group-hover:bg-primary"
-              style={{ height: `${Math.max((point.value / max) * 100, 2)}%` }}
-            />
-          </div>
-        ))}
+      <div className="overflow-x-auto rounded-[var(--radius-control)] border border-border bg-card-muted/25">
+        <div className="flex h-60 min-w-max items-end gap-2 px-4 pb-6 pt-10 sm:gap-3 sm:px-6">
+          {points.map((point) => (
+            <button
+              key={point.date}
+              type="button"
+              aria-haspopup="dialog"
+              aria-label={getTrendPointLabel(point, metric)}
+              className="group relative flex min-h-44 w-14 shrink-0 flex-col justify-end rounded-[var(--radius-control)] px-1 pb-0.5 text-left outline-none transition-transform hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-ring sm:w-16"
+              onClick={() => selectPoint(point)}
+            >
+              <span className="mb-2 text-center font-mono text-[10px] font-semibold tabular-nums text-muted opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                {point.value === null ? "—" : formatNumber(point.value)}
+              </span>
+              <span
+                className={cn(
+                  "relative block min-h-1 w-full rounded-t-full transition-colors",
+                  point.value === null
+                    ? "border border-dashed border-warning/60 bg-warning/10"
+                    : "bg-primary/85 group-hover:bg-primary group-focus-visible:bg-primary",
+                )}
+                style={{
+                  height:
+                    point.value === null
+                      ? "8px"
+                      : `${Math.max((point.value / max) * 100, 2)}%`,
+                }}
+              >
+                <YouTubeTrendMarker item={point.items[0]} multiple={point.items.length > 1} />
+                {point.items.length > 1 ? (
+                  <span className="absolute -bottom-1 -right-1 flex min-w-4 items-center justify-center rounded-full border border-border-strong bg-card px-1 font-mono text-[9px] leading-4 text-foreground-strong">
+                    {point.items.length > 99 ? "99+" : formatNumber(point.items.length)}
+                  </span>
+                ) : null}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
       <div className="mt-3 flex justify-between gap-3 px-1 text-xs font-medium text-muted">
         <span>{formatShortDate(points[0].date)}</span>
@@ -433,15 +502,34 @@ function PublishDateTrend({
         <TrendSummary
           label="Visible total"
           value={formatNumber(
-            points.reduce((total, point) => total + point.value, 0),
+            metricPoints.reduce((total, point) => total + point.value, 0),
           )}
         />
         <TrendSummary
           label="Peak publish date"
-          value={`${formatNumber(getPeakPoint(points).value)} · ${formatShortDate(getPeakPoint(points).date)}`}
+          value={
+            metricPoints.length > 0
+              ? `${formatNumber(getPeakPoint(metricPoints).value)} · ${formatShortDate(getPeakPoint(metricPoints).date)}`
+              : "—"
+          }
         />
-        <TrendSummary label="Publish dates" value={`${points.length}`} />
+        <TrendSummary
+          label="Publish dates"
+          value={`${metricPoints.length} measured · ${points.length} total`}
+        />
       </div>
+      <YouTubeContentDayPickerDialog
+        date={selectedDate}
+        items={selectedDateItems}
+        metric={metric}
+        onOpenChange={(open) => {
+          if (!open) setSelectedDate(null);
+        }}
+        onSelect={(item) => {
+          setSelectedDate(null);
+          onSelectItem(item);
+        }}
+      />
     </div>
   );
 }
@@ -453,6 +541,242 @@ function TrendSummary({ label, value }: { label: string; value: string }) {
       <p className="mt-1 font-mono text-sm font-bold tabular-nums text-foreground-strong">
         {value}
       </p>
+    </div>
+  );
+}
+
+function YouTubeTrendMarker({
+  item,
+  multiple,
+}: {
+  item: YouTubeTrendContentItem;
+  multiple: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        "absolute left-1/2 top-0 flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center overflow-hidden rounded-full border-2 border-primary bg-card text-[10px] font-bold text-muted shadow-card",
+        multiple && "ring-2 ring-primary/25",
+      )}
+      aria-hidden="true"
+    >
+      {item.thumbnailUrl ? (
+        <>
+          <span>YT</span>
+          {/* YouTube supplies a public thumbnail URL alongside its video data. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={item.thumbnailUrl}
+            alt=""
+            width={40}
+            height={40}
+            loading="lazy"
+            className="absolute inset-0 size-full object-cover"
+            onError={(event) => {
+              event.currentTarget.hidden = true;
+            }}
+          />
+        </>
+      ) : (
+        "YT"
+      )}
+    </span>
+  );
+}
+
+function YouTubeContentDayPickerDialog({
+  date,
+  items,
+  metric,
+  onOpenChange,
+  onSelect,
+}: {
+  date: string | null;
+  items: YouTubeTrendContentItem[];
+  metric: YouTubeMetric;
+  onOpenChange: (open: boolean) => void;
+  onSelect: (item: YouTubeTrendContentItem) => void;
+}) {
+  return (
+    <Dialog open={Boolean(date && items.length > 1)} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[min(80dvh,640px)] gap-0 overflow-hidden p-0 sm:max-w-lg">
+        <DialogHeader className="border-b border-border px-5 py-5 pr-14 sm:px-6">
+          <DialogTitle className="text-lg font-bold leading-6 tracking-[-0.02em] text-foreground-strong">
+            Videos from {formatDateOnly(date ?? "")}
+          </DialogTitle>
+          <DialogDescription className="text-sm leading-6 text-muted">
+            {formatNumber(items.length)} videos were published on this day.
+            Select one to view its available metrics.
+          </DialogDescription>
+        </DialogHeader>
+        <ul className="flex min-h-0 flex-col gap-2 overflow-y-auto overscroll-contain p-3 sm:p-4">
+          {items.map((item) => (
+            <li key={item.id}>
+              <button
+                type="button"
+                className="flex min-h-20 w-full items-center gap-3 rounded-[var(--radius-control)] border border-border bg-card p-3 text-left transition-[border-color,background-color,box-shadow] hover:border-border-strong hover:bg-card-muted/45 hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+                onClick={() => onSelect(item)}
+              >
+                <YouTubeTrendThumbnail item={item} size="sm" />
+                <span className="min-w-0 flex-1">
+                  <span className="line-clamp-1 block text-sm font-semibold text-foreground-strong">
+                    {item.title || "YouTube video"}
+                  </span>
+                  <span className="mt-1 block line-clamp-1 text-xs text-muted">
+                    {item.accountLabel}
+                  </span>
+                  <span className="mt-1 block text-xs text-muted-subtle">
+                    {item.publishedAt ? formatDate(item.publishedAt) : "Publish time unavailable"}
+                  </span>
+                </span>
+                <span className="shrink-0 text-right">
+                  <span className="block font-mono text-sm font-semibold tabular-nums text-foreground-strong">
+                    {item.metricValue === null
+                      ? "Unavailable"
+                      : formatNumber(item.metricValue)}
+                  </span>
+                  <span className="mt-1 block text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-subtle">
+                    {item.metricValue === null ? "Metrics" : metricLabels[metric]}
+                  </span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function YouTubeContentDetailDialog({
+  item,
+  onOpenChange,
+}: {
+  item: YouTubeTrendContentItem | null;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const engagementRate = item
+    ? getEngagementRate({
+        comments: item.commentCount,
+        likes: item.likeCount,
+        views: item.viewCount,
+      })
+    : null;
+
+  return (
+    <Dialog open={Boolean(item)} onOpenChange={onOpenChange}>
+      <DialogContent className="bottom-0 left-0 top-auto flex h-[min(88dvh,760px)] max-h-[88dvh] max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-b-none rounded-t-[var(--radius-panel)] border border-border bg-card p-0 sm:bottom-auto sm:left-auto sm:right-0 sm:top-0 sm:h-dvh sm:max-h-none sm:w-[480px] sm:max-w-[calc(100%-2rem)] sm:translate-x-0 sm:translate-y-0 sm:rounded-none sm:border-y-0 sm:border-r-0">
+        {item ? (
+          <>
+            <DialogHeader className="border-b border-border px-5 py-5 pr-14 sm:px-6">
+              <div className="flex items-start gap-4">
+                <YouTubeTrendThumbnail item={item} size="lg" />
+                <div className="min-w-0">
+                  <p className="w-fit rounded-full bg-card-muted px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-muted">
+                    YouTube video
+                  </p>
+                  <DialogTitle className="mt-3 line-clamp-2 text-lg font-bold leading-6 tracking-[-0.02em] text-foreground-strong">
+                    {item.title || "YouTube video"}
+                  </DialogTitle>
+                  <DialogDescription className="mt-1 text-xs leading-5 text-muted">
+                    Published {item.publishedAt ? formatDate(item.publishedAt) : "date unavailable"}
+                    {item.accountLabel ? ` · ${item.accountLabel}` : ""}
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">
+              <section aria-labelledby="youtube-metric-breakdown">
+                <p
+                  id="youtube-metric-breakdown"
+                  className="text-xs font-bold uppercase tracking-[0.12em] text-primary"
+                >
+                  Video metrics
+                </p>
+                <dl className="mt-3 divide-y divide-border rounded-[var(--radius-control)] border border-border bg-card-muted/35 px-4">
+                  <YouTubeContentDetailMetric icon={<Eye />} label="Views" value={formatOptionalNumber(item.viewCount)} />
+                  <YouTubeContentDetailMetric icon={<Heart />} label="Likes" value={formatOptionalNumber(item.likeCount)} />
+                  <YouTubeContentDetailMetric icon={<MessageCircle />} label="Comments" value={formatOptionalNumber(item.commentCount)} />
+                  <YouTubeContentDetailMetric icon={<TrendingUp />} label="Engagement rate" value={formatOptionalPercentage(engagementRate)} />
+                </dl>
+              </section>
+            </div>
+
+            <footer className="border-t border-border bg-card px-5 py-4 sm:px-6">
+              <a
+                href={item.watchUrl}
+                target="_blank"
+                rel="noreferrer"
+                className={cn(buttonVariants({ size: "lg", variant: "default" }), "w-full")}
+              >
+                Open on YouTube
+                <ExternalLink data-icon="inline-end" aria-hidden="true" />
+              </a>
+            </footer>
+          </>
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function YouTubeTrendThumbnail({
+  item,
+  size,
+}: {
+  item: YouTubeTrendContentItem;
+  size: "lg" | "sm";
+}) {
+  const sizeClassName = size === "lg" ? "size-20" : "size-12";
+
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "relative flex shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-control)] bg-card-muted text-xs font-bold text-muted",
+        sizeClassName,
+      )}
+    >
+      {item.thumbnailUrl ? (
+        <>
+          <span>YT</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={item.thumbnailUrl}
+            alt=""
+            width={size === "lg" ? 80 : 48}
+            height={size === "lg" ? 80 : 48}
+            loading="lazy"
+            className="absolute inset-0 size-full object-cover"
+            onError={(event) => {
+              event.currentTarget.hidden = true;
+            }}
+          />
+        </>
+      ) : (
+        "YT"
+      )}
+    </span>
+  );
+}
+
+function YouTubeContentDetailMetric({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-3">
+      <dt className="flex items-center gap-2 text-sm font-medium text-muted [&>svg]:size-4 [&>svg]:text-primary">
+        {icon}
+        {label}
+      </dt>
+      <dd className="font-mono text-sm font-semibold tabular-nums text-foreground-strong">{value}</dd>
     </div>
   );
 }
@@ -550,7 +874,15 @@ function ReadinessBadge({
   );
 }
 
-function YouTubeVideoTable({ videos }: { videos: YouTubeContentItem[] }) {
+function YouTubeVideoTable({
+  metric,
+  onSelect,
+  videos,
+}: {
+  metric: YouTubeMetric;
+  onSelect: (item: YouTubeTrendContentItem) => void;
+  videos: YouTubeContentItem[];
+}) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[760px] border-collapse text-left">
@@ -571,7 +903,16 @@ function YouTubeVideoTable({ videos }: { videos: YouTubeContentItem[] }) {
           {videos.map((video) => (
             <tr
               key={video.id}
-              className="border-b border-border last:border-b-0 hover:bg-card-muted/45"
+              tabIndex={0}
+              aria-label={`View details for ${video.title || "YouTube video"}`}
+              onClick={() => onSelect(toYouTubeTrendContentItem(video, metric))}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onSelect(toYouTubeTrendContentItem(video, metric));
+                }
+              }}
+              className="cursor-pointer border-b border-border transition-colors last:border-b-0 hover:bg-card-muted/45 focus-visible:bg-card-muted/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
             >
               <td className="px-4 py-3.5">
                 <div className="flex min-w-0 items-center gap-3">
@@ -603,6 +944,8 @@ function YouTubeVideoTable({ videos }: { videos: YouTubeContentItem[] }) {
                   target="_blank"
                   rel="noreferrer"
                   aria-label={`Open ${video.title || "YouTube video"} on YouTube`}
+                  onClick={(event) => event.stopPropagation()}
+                  onKeyDown={(event) => event.stopPropagation()}
                   className={buttonVariants({
                     size: "icon-sm",
                     variant: "ghost",
@@ -772,16 +1115,27 @@ function EngagementRateCell({
   likes: number | null;
   views: number | null;
 }) {
-  const engagementRate =
-    views === null || views === 0 || likes === null || comments === null
-      ? null
-      : (likes + comments) / views;
+  const engagementRate = getEngagementRate({ comments, likes, views });
 
   return (
     <td className="whitespace-nowrap px-3 py-3.5 text-right font-mono text-xs font-semibold tabular-nums text-foreground">
       {formatOptionalPercentage(engagementRate)}
     </td>
   );
+}
+
+function getEngagementRate({
+  comments,
+  likes,
+  views,
+}: {
+  comments: number | null;
+  likes: number | null;
+  views: number | null;
+}) {
+  return views === null || views === 0 || likes === null || comments === null
+    ? null
+    : (likes + comments) / views;
 }
 
 function getAccounts(value: unknown): YouTubeAccount[] {
@@ -814,22 +1168,58 @@ function sumMetric(values: Array<number | null>) {
     : null;
 }
 
-function buildTrendPoints(items: YouTubeContentItem[], metric: YouTubeMetric) {
-  const points = new Map<string, number>();
+function buildTrendPoints(
+  items: YouTubeContentItem[],
+  metric: YouTubeMetric,
+): YouTubeTrendPoint[] {
+  const points = new Map<string, YouTubeTrendContentItem[]>();
   for (const item of items) {
     if (!item.publishedAt) continue;
     const date = item.publishedAt.slice(0, 10);
-    const value =
-      metric === "views"
-        ? item.viewCount
-        : metric === "likes"
-          ? item.likeCount
-          : item.commentCount;
-    if (value !== null) points.set(date, (points.get(date) ?? 0) + value);
+    points.set(date, [
+      ...(points.get(date) ?? []),
+      toYouTubeTrendContentItem(item, metric),
+    ]);
   }
+
   return [...points.entries()]
-    .map(([date, value]) => ({ date, value }))
+    .map(([date, dateItems]) => {
+      const values = dateItems
+        .map((item) => item.metricValue)
+        .filter((value): value is number => value !== null);
+
+      return {
+        date,
+        items: dateItems,
+        value: values.length
+          ? values.reduce((total, value) => total + value, 0)
+          : null,
+      };
+    })
     .sort((left, right) => left.date.localeCompare(right.date));
+}
+
+function toYouTubeTrendContentItem(
+  item: YouTubeContentItem,
+  metric: YouTubeMetric,
+): YouTubeTrendContentItem {
+  const metricValue =
+    metric === "views"
+      ? item.viewCount
+      : metric === "likes"
+        ? item.likeCount
+        : item.commentCount;
+
+  return { ...item, metricValue };
+}
+
+function getTrendPointLabel(point: YouTubeTrendPoint, metric: YouTubeMetric) {
+  const itemLabel = point.items.length === 1 ? "video" : "videos";
+  const metricLabel =
+    point.value === null
+      ? "Metrics unavailable"
+      : `${formatNumber(point.value)} ${metricLabels[metric].toLowerCase()}`;
+  return `Open ${formatNumber(point.items.length)} ${itemLabel} from ${formatDateOnly(point.date)}. ${metricLabel}.`;
 }
 
 function getPeakPoint(points: Array<{ date: string; value: number }>) {

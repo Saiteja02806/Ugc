@@ -7,6 +7,18 @@ import {
   type YouTubeChannelMetrics,
 } from "@/lib/analytics/youtube-report";
 import {
+  buildYouTubeUploadsChannelUrl,
+  buildYouTubeUploadsPlaylistUrl,
+  buildYouTubeVideoDetailsUrl,
+  getYouTubePlaylistVideoIds,
+  getYouTubeUploadsPlaylistId,
+  normalizeYouTubeUploadedVideos,
+  type YouTubePlaylistItemsResponse,
+  type YouTubeUploadedVideo,
+  type YouTubeUploadsChannelResponse,
+  type YouTubeVideosResponse,
+} from "@/lib/analytics/youtube-videos";
+import {
   getSocialConnectionCredentialForOwner,
   listSocialConnections,
   SocialOAuthError,
@@ -27,6 +39,7 @@ export type YouTubeAnalyticsAccount = {
   message: string | null;
   metrics: YouTubeChannelMetrics | null;
   status: YouTubeAnalyticsAccountStatus;
+  videos: YouTubeUploadedVideo[];
 };
 
 type YouTubeAnalyticsErrorEnvelope = {
@@ -52,6 +65,7 @@ export async function listYouTubeChannelAnalyticsForOwner(params: {
         connectionId: connection.id,
         lastSyncedAt: null,
         metrics: null,
+        videos: [],
       };
 
       if (connection.status !== "connected") {
@@ -105,21 +119,38 @@ export async function listYouTubeChannelAnalyticsForOwner(params: {
       }
 
       try {
-        const metrics = await requestYouTubeChannelAnalytics(
-          credential.accessToken,
-        );
+        const [metricsResult, videosResult] = await Promise.allSettled([
+          requestYouTubeChannelAnalytics(credential.accessToken),
+          requestYouTubeUploadedVideos(credential.accessToken),
+        ]);
+        const metrics =
+          metricsResult.status === "fulfilled" ? metricsResult.value : null;
+        const videos =
+          videosResult.status === "fulfilled" ? videosResult.value : [];
+
+        if (
+          metricsResult.status === "rejected" &&
+          videosResult.status === "rejected"
+        ) {
+          throw metricsResult.reason;
+        }
 
         return {
           accountName: credential.connection.platformAccountName,
           accountUsername: credential.connection.platformAccountUsername,
           connectionId: credential.connection.id,
           lastSyncedAt: new Date().toISOString(),
-          message:
-            metrics === null
-              ? "No YouTube analytics data is available for the selected dates yet."
-              : null,
+          message: getYouTubeAnalyticsMessage({
+            metrics,
+            metricsError:
+              metricsResult.status === "rejected" ? metricsResult.reason : null,
+            videos,
+            videosError:
+              videosResult.status === "rejected" ? videosResult.reason : null,
+          }),
           metrics,
           status: "ready",
+          videos,
         };
       } catch (error) {
         return {
@@ -145,6 +176,41 @@ class YouTubeAnalyticsRequestError extends Error {
   }
 }
 
+function getYouTubeAnalyticsMessage(params: {
+  metrics: YouTubeChannelMetrics | null;
+  metricsError: unknown | null;
+  videos: YouTubeUploadedVideo[];
+  videosError: unknown | null;
+}) {
+  if (params.metricsError) {
+    return `${getYouTubeAnalyticsErrorMessage(params.metricsError)} Uploaded videos are still shown below.`;
+  }
+
+  if (params.videosError) {
+    return `${getYouTubeAnalyticsErrorMessage(params.videosError)} Channel metrics are still shown above.`;
+  }
+
+  if (params.metrics === null && params.videos.length === 0) {
+    return "No uploaded videos or channel analytics are available for this channel yet.";
+  }
+
+  if (params.metrics === null) {
+    return "Channel-level Analytics data is not available for the selected dates yet.";
+  }
+
+  if (params.videos.length === 0) {
+    return "No uploaded videos were returned for this channel yet.";
+  }
+
+  return null;
+}
+
+function getYouTubeAnalyticsErrorMessage(error: unknown) {
+  return error instanceof YouTubeAnalyticsRequestError
+    ? error.userMessage
+    : "Part of the YouTube analytics data could not load right now.";
+}
+
 async function requestYouTubeChannelAnalytics(accessToken: string) {
   const url = buildYouTubeAnalyticsReportUrl({
     apiBaseUrl:
@@ -163,27 +229,85 @@ async function requestYouTubeChannelAnalytics(accessToken: string) {
     | null;
 
   if (!response.ok || !payload || payload.error) {
-    const providerMessage =
-      typeof payload?.error?.message === "string"
-        ? payload.error.message
-        : "YouTube Analytics request failed.";
-    const providerCode = payload?.error?.code;
-    const message = [
-      `HTTP ${response.status}`,
-      providerCode === undefined ? null : `code ${String(providerCode)}`,
-      providerMessage,
-    ]
-      .filter(Boolean)
-      .join(" - ");
-    const userMessage =
-      response.status === 401 || response.status === 403
-        ? "Reconnect YouTube to grant channel analytics access."
-        : "YouTube analytics could not load right now.";
-
-    throw new YouTubeAnalyticsRequestError(message, userMessage);
+    throw createYouTubeAnalyticsRequestError(response.status, payload);
   }
 
   return summarizeYouTubeAnalyticsReport(payload);
+}
+
+async function requestYouTubeUploadedVideos(accessToken: string) {
+  const apiBaseUrl =
+    process.env.YOUTUBE_DATA_API_BASE_URL?.trim() ||
+    "https://www.googleapis.com/youtube/v3";
+  const channel = await requestYouTubeDataApi<YouTubeUploadsChannelResponse>(
+    buildYouTubeUploadsChannelUrl({ apiBaseUrl }),
+    accessToken,
+  );
+  const uploadsPlaylistId = getYouTubeUploadsPlaylistId(channel);
+
+  if (!uploadsPlaylistId) {
+    return [];
+  }
+
+  const playlistItems = await requestYouTubeDataApi<YouTubePlaylistItemsResponse>(
+    buildYouTubeUploadsPlaylistUrl({
+      apiBaseUrl,
+      playlistId: uploadsPlaylistId,
+    }),
+    accessToken,
+  );
+  const videoIds = getYouTubePlaylistVideoIds(playlistItems);
+
+  if (videoIds.length === 0) {
+    return [];
+  }
+
+  const videos = await requestYouTubeDataApi<YouTubeVideosResponse>(
+    buildYouTubeVideoDetailsUrl({ apiBaseUrl, videoIds }),
+    accessToken,
+  );
+
+  return normalizeYouTubeUploadedVideos({ playlistItems, videos });
+}
+
+async function requestYouTubeDataApi<T>(url: URL, accessToken: string) {
+  const response = await fetch(url, {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | (T & YouTubeAnalyticsErrorEnvelope)
+    | null;
+
+  if (!response.ok || !payload || payload.error) {
+    throw createYouTubeAnalyticsRequestError(response.status, payload);
+  }
+
+  return payload;
+}
+
+function createYouTubeAnalyticsRequestError(
+  status: number,
+  payload: YouTubeAnalyticsErrorEnvelope | null,
+) {
+  const providerMessage =
+    typeof payload?.error?.message === "string"
+      ? payload.error.message
+      : "YouTube request failed.";
+  const providerCode = payload?.error?.code;
+  const message = [
+    `HTTP ${status}`,
+    providerCode === undefined ? null : `code ${String(providerCode)}`,
+    providerMessage,
+  ]
+    .filter(Boolean)
+    .join(" - ");
+  const userMessage =
+    status === 401 || status === 403
+      ? "Reconnect YouTube to grant channel analytics access."
+      : "YouTube analytics could not load right now.";
+
+  return new YouTubeAnalyticsRequestError(message, userMessage);
 }
 
 export function getYouTubeAnalyticsRangeLabel() {

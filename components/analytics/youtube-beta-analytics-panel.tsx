@@ -2,15 +2,16 @@
 
 import {
   Clock3,
+  ExternalLink,
   Eye,
   Heart,
   LoaderCircle,
   MessageCircle,
   RefreshCw,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { runAnalyticsBackgroundSync } from "@/lib/analytics/background-sync-client";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 
@@ -21,6 +22,17 @@ type YouTubeMetrics = {
   views: number | null;
 };
 
+type YouTubeVideo = {
+  commentCount: number | null;
+  id: string;
+  likeCount: number | null;
+  publishedAt: string | null;
+  thumbnailUrl: string | null;
+  title: string | null;
+  viewCount: number | null;
+  watchUrl: string;
+};
+
 type YouTubeAccount = {
   accountName: string | null;
   accountUsername: string | null;
@@ -29,6 +41,7 @@ type YouTubeAccount = {
   message: string | null;
   metrics: YouTubeMetrics | null;
   status: "error" | "permission_missing" | "ready" | "unavailable";
+  videos: YouTubeVideo[];
 };
 
 export function YouTubeBetaAnalyticsPanel({
@@ -78,13 +91,12 @@ export function YouTubeBetaAnalyticsPanel({
     <section className="mt-6 rounded-[var(--radius-panel)] border border-border bg-card p-5 shadow-card sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-xl font-bold tracking-[-0.02em] text-foreground text-pretty">
+          <h2 className="text-pretty text-xl font-bold tracking-[-0.02em] text-foreground">
             YouTube analytics
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-            Views, likes, comments, and estimated watch time for the last 30
-            complete days. YouTube Analytics reports are typically available
-            after a short delay.
+            Review channel performance for the last 30 complete days and the
+            20 most recent uploaded videos.
           </p>
         </div>
         <Button
@@ -114,9 +126,8 @@ export function YouTubeBetaAnalyticsPanel({
 
       {!hasRefreshed && !error ? (
         <p className="mt-4 text-sm font-medium text-muted">
-          Refresh to load the selected channel&apos;s YouTube Analytics metrics.
-          Existing channels need one reconnect to grant the new analytics
-          permission.
+          Refresh to load channel metrics and uploaded-video data. Existing
+          channels need one reconnect to grant analytics access.
         </p>
       ) : null}
 
@@ -130,52 +141,36 @@ export function YouTubeBetaAnalyticsPanel({
         {visibleAccounts.map((account) => (
           <article
             key={account.connectionId}
-            className="overflow-hidden rounded-control border border-border bg-card-muted/45"
+            className="overflow-hidden rounded-[var(--radius-control)] border border-border bg-card-muted/45"
           >
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
-              <div>
-                <p className="text-sm font-bold text-foreground">
-                  {account.accountUsername || account.accountName || "YouTube channel"}
-                </p>
-                <p className="mt-0.5 text-xs font-medium text-muted">
-                  {account.lastSyncedAt
-                    ? `Updated ${formatDate(account.lastSyncedAt)}`
-                    : "Not refreshed yet"}
-                </p>
-              </div>
-              <span
-                className={
-                  account.status === "ready"
-                    ? "text-xs font-bold text-success"
-                    : "text-xs font-bold text-error"
-                }
-              >
-                {account.status === "ready" ? "Ready" : "Action needed"}
-              </span>
-            </div>
+            <AccountHeader account={account} />
 
             {account.message ? (
-              <p className="px-4 py-3 text-sm font-medium text-muted">
+              <p aria-live="polite" className="px-4 py-3 text-sm font-medium text-muted">
                 {account.message}
               </p>
             ) : null}
 
             {account.metrics ? (
-              <div className="grid gap-px border-t border-border bg-border sm:grid-cols-4">
-                <Metric icon={Eye} label="Views" value={account.metrics.views} />
-                <Metric icon={Heart} label="Likes" value={account.metrics.likes} />
-                <Metric
+              <div className="grid gap-px border-y border-border bg-border sm:grid-cols-4">
+                <ChannelMetric icon={Eye} label="Views" value={account.metrics.views} />
+                <ChannelMetric icon={Heart} label="Likes" value={account.metrics.likes} />
+                <ChannelMetric
                   icon={MessageCircle}
                   label="Comments"
                   value={account.metrics.comments}
                 />
-                <Metric
+                <ChannelMetric
                   icon={Clock3}
                   label="Watch time"
                   value={account.metrics.estimatedMinutesWatched}
                   format="duration"
                 />
               </div>
+            ) : null}
+
+            {account.videos.length > 0 ? (
+              <YouTubeVideoTable videos={account.videos} />
             ) : null}
           </article>
         ))}
@@ -184,7 +179,34 @@ export function YouTubeBetaAnalyticsPanel({
   );
 }
 
-function Metric({
+function AccountHeader({ account }: { account: YouTubeAccount }) {
+  const accountLabel =
+    account.accountUsername || account.accountName || "YouTube channel";
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3.5">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-bold text-foreground">{accountLabel}</p>
+        <p className="mt-0.5 text-xs font-medium text-muted">
+          {account.lastSyncedAt
+            ? `Updated ${formatDate(account.lastSyncedAt)}`
+            : "Not refreshed yet"}
+        </p>
+      </div>
+      <span
+        className={
+          account.status === "ready"
+            ? "rounded-full bg-success/10 px-2.5 py-1 text-xs font-bold text-success"
+            : "rounded-full bg-error/10 px-2.5 py-1 text-xs font-bold text-error"
+        }
+      >
+        {account.status === "ready" ? "Ready" : "Action needed"}
+      </span>
+    </div>
+  );
+}
+
+function ChannelMetric({
   format = "number",
   icon: Icon,
   label,
@@ -208,10 +230,129 @@ function Metric({
         <Icon className="size-3.5" aria-hidden="true" />
         {label}
       </span>
-      <strong className="mt-2 block font-mono text-xl font-bold text-foreground">
+      <strong className="mt-2 block font-mono text-xl font-bold tabular-nums text-foreground">
         {formattedValue}
       </strong>
     </div>
+  );
+}
+
+function YouTubeVideoTable({ videos }: { videos: YouTubeVideo[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[700px] border-collapse text-left">
+        <thead className="bg-card-muted/55">
+          <tr className="border-b border-border">
+            <TableHeading className="w-[390px]">Content</TableHeading>
+            <TableHeading>Published</TableHeading>
+            <TableHeading numeric>Views</TableHeading>
+            <TableHeading numeric>Likes</TableHeading>
+            <TableHeading numeric>Comments</TableHeading>
+            <th scope="col" className="w-14 px-3 py-3">
+              <span className="sr-only">Open on YouTube</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {videos.map((video) => (
+            <tr
+              key={video.id}
+              className="border-b border-border last:border-b-0 hover:bg-card-muted/45"
+            >
+              <td className="px-4 py-3.5">
+                <div className="flex min-w-0 items-center gap-3">
+                  <VideoThumbnail src={video.thumbnailUrl} />
+                  <div className="min-w-0">
+                    <p className="line-clamp-1 text-sm font-semibold text-foreground">
+                      {video.title || "YouTube video"}
+                    </p>
+                    <p className="mt-1 line-clamp-1 text-xs text-muted">
+                      YouTube video
+                    </p>
+                  </div>
+                </div>
+              </td>
+              <td className="whitespace-nowrap px-3 py-3.5 text-xs font-medium text-muted">
+                {video.publishedAt ? formatDateOnly(video.publishedAt) : "—"}
+              </td>
+              <MetricCell value={video.viewCount} />
+              <MetricCell value={video.likeCount} />
+              <MetricCell value={video.commentCount} />
+              <td className="px-3 py-3.5 text-right">
+                <a
+                  href={video.watchUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={`Open ${video.title || "YouTube video"} on YouTube`}
+                  className={buttonVariants({ size: "icon-sm", variant: "ghost" })}
+                >
+                  <ExternalLink aria-hidden="true" />
+                </a>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function VideoThumbnail({ src }: { src: string | null }) {
+  const [failedSource, setFailedSource] = useState<string | null>(null);
+
+  if (!src || failedSource === src) {
+    return (
+      <span
+        aria-hidden="true"
+        className="flex size-12 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-card-muted text-xs font-bold text-muted"
+      >
+        YT
+      </span>
+    );
+  }
+
+  return (
+    // YouTube owns these remote thumbnails. Rendering them directly avoids
+    // caching a stale image behind an optimized URL.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      width={48}
+      height={48}
+      loading="lazy"
+      className="size-12 shrink-0 rounded-[var(--radius-control)] object-cover"
+      onError={() => setFailedSource(src)}
+    />
+  );
+}
+
+function TableHeading({
+  children,
+  className,
+  numeric = false,
+}: {
+  children: ReactNode;
+  className?: string;
+  numeric?: boolean;
+}) {
+  return (
+    <th
+      scope="col"
+      className={`whitespace-nowrap px-3 py-3 text-xs font-bold uppercase tracking-[0.08em] text-muted ${
+        numeric ? "text-right" : "text-left"
+      } ${className ?? ""}`}
+    >
+      {children}
+    </th>
+  );
+}
+
+function MetricCell({ value }: { value: number | null }) {
+  return (
+    <td className="whitespace-nowrap px-3 py-3.5 text-right font-mono text-xs font-semibold tabular-nums text-foreground">
+      {value === null ? "—" : value.toLocaleString()}
+    </td>
   );
 }
 
@@ -236,6 +377,14 @@ function formatDate(value: string) {
         dateStyle: "medium",
         timeStyle: "short",
       }).format(date);
+}
+
+function formatDateOnly(value: string) {
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime())
+    ? value
+    : new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
 }
 
 function formatDuration(minutes: number) {

@@ -1,15 +1,17 @@
 "use client";
 
-import { Eye, Heart, LoaderCircle, MessageCircle, RefreshCw, Share2 } from "lucide-react";
-import { useState } from "react";
+import { ExternalLink, LoaderCircle, RefreshCw } from "lucide-react";
+import { useState, type ReactNode } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { runAnalyticsBackgroundSync } from "@/lib/analytics/background-sync-client";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 
 type TikTokVideo = {
   commentCount: number | null;
+  coverImageUrl: string | null;
   createdAt: string | null;
+  description: string | null;
   id: string;
   likeCount: number | null;
   shareCount: number | null;
@@ -45,9 +47,14 @@ export function TikTokBetaAnalyticsPanel({
   async function refresh() {
     setRefreshing(true);
     setError(null);
+
     try {
       const token = await getCurrentUserIdToken();
-      if (!token) throw new Error("Sign in before viewing TikTok analytics.");
+
+      if (!token) {
+        throw new Error("Sign in before viewing TikTok analytics.");
+      }
+
       const output = await runAnalyticsBackgroundSync({
         idempotencyKey: crypto.randomUUID(),
         token,
@@ -56,7 +63,11 @@ export function TikTokBetaAnalyticsPanel({
       setAccounts(getAccounts(output));
       setHasRefreshed(true);
     } catch (refreshError) {
-      setError(refreshError instanceof Error ? refreshError.message : "TikTok analytics could not load right now.");
+      setError(
+        refreshError instanceof Error
+          ? refreshError.message
+          : "TikTok analytics could not load right now.",
+      );
     } finally {
       setRefreshing(false);
     }
@@ -66,44 +77,264 @@ export function TikTokBetaAnalyticsPanel({
     <section className="mt-6 rounded-[var(--radius-panel)] border border-border bg-card p-5 shadow-card sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-sm font-semibold text-primary">TikTok beta</p>
-          <h2 className="mt-1 text-xl font-bold tracking-[-0.02em] text-foreground">Per-video analytics</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Views, likes, comments, and shares for up to 20 public videos. This uses the connected account&apos;s <code>video.list</code> permission only.</p>
+          <h2 className="text-pretty text-xl font-bold tracking-[-0.02em] text-foreground">
+            TikTok analytics
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+            Review views and interactions for the 20 most recent public videos
+            on the selected account.
+          </p>
         </div>
-        <Button type="button" variant="outline" onClick={() => void refresh()} disabled={refreshing}>
-          {refreshing ? <LoaderCircle data-icon="inline-start" className="animate-spin" /> : <RefreshCw data-icon="inline-start" />}
+        <Button
+          type="button"
+          variant="outline"
+          className="rounded-full"
+          onClick={() => void refresh()}
+          disabled={refreshing}
+        >
+          {refreshing ? (
+            <LoaderCircle data-icon="inline-start" className="animate-spin" />
+          ) : (
+            <RefreshCw data-icon="inline-start" />
+          )}
           Refresh TikTok analytics
         </Button>
       </div>
-      {error ? <p role="alert" className="mt-4 rounded-control border border-error/25 bg-error/10 px-3 py-2 text-sm font-semibold text-error">{error}</p> : null}
-      {!hasRefreshed && !error ? <p className="mt-4 text-sm font-medium text-muted">Connect TikTok in Settings, then refresh to load the account&apos;s public-video metrics.</p> : null}
-      {hasRefreshed && visibleAccounts.length === 0 ? <p className="mt-4 text-sm font-medium text-muted">No TikTok account data is available for the selected account yet.</p> : null}
+
+      {error ? (
+        <p
+          role="alert"
+          className="mt-4 rounded-control border border-error/25 bg-error/10 px-3 py-2 text-sm font-semibold text-error"
+        >
+          {error}
+        </p>
+      ) : null}
+
+      {!hasRefreshed && !error ? (
+        <p className="mt-4 text-sm font-medium text-muted">
+          Refresh to load public-video metrics for the selected TikTok account.
+        </p>
+      ) : null}
+
+      {hasRefreshed && visibleAccounts.length === 0 ? (
+        <p className="mt-4 text-sm font-medium text-muted">
+          No TikTok account data is available for the selected account yet.
+        </p>
+      ) : null}
+
       <div className="mt-5 grid gap-4">
-        {visibleAccounts.map((account) => <div key={account.connectionId} className="overflow-hidden rounded-control border border-border bg-card-muted/45">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3"><div><p className="text-sm font-bold text-foreground">{account.accountUsername || account.accountName || "TikTok account"}</p><p className="mt-0.5 text-xs font-medium text-muted">{account.lastSyncedAt ? `Updated ${formatDate(account.lastSyncedAt)}` : "Not refreshed yet"}</p></div><span className={account.status === "ready" ? "text-xs font-bold text-success" : "text-xs font-bold text-error"}>{account.status === "ready" ? "Ready" : "Action needed"}</span></div>
-          {account.message ? <p className="px-4 py-3 text-sm font-medium text-muted">{account.message}</p> : null}
-          {account.videos.length > 0 ? <div className="divide-y divide-border">{account.videos.map((video) => <TikTokVideoRow key={video.id} video={video} />)}</div> : null}
-        </div>)}
+        {visibleAccounts.map((account) => (
+          <article
+            key={account.connectionId}
+            className="overflow-hidden rounded-[var(--radius-control)] border border-border bg-card-muted/45"
+          >
+            <AccountHeader account={account} />
+            {account.message ? (
+              <p aria-live="polite" className="px-4 py-3 text-sm font-medium text-muted">
+                {account.message}
+              </p>
+            ) : null}
+            {account.videos.length > 0 ? (
+              <TikTokVideoTable videos={account.videos} />
+            ) : null}
+          </article>
+        ))}
       </div>
     </section>
   );
 }
 
-function TikTokVideoRow({ video }: { video: TikTokVideo }) {
-  const content = <><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-foreground">{video.title || "TikTok video"}</p><p className="mt-1 text-xs font-medium text-muted">{video.createdAt ? formatDate(video.createdAt) : "Publication date unavailable"}</p></div><Metric icon={Eye} label="Views" value={video.viewCount} /><Metric icon={Heart} label="Likes" value={video.likeCount} /><Metric icon={MessageCircle} label="Comments" value={video.commentCount} /><Metric icon={Share2} label="Shares" value={video.shareCount} /></>;
-  return video.shareUrl ? <a href={video.shareUrl} target="_blank" rel="noreferrer" className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3 transition hover:bg-card">{content}</a> : <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3">{content}</div>;
+function AccountHeader({ account }: { account: TikTokAccount }) {
+  const accountLabel =
+    account.accountUsername || account.accountName || "TikTok account";
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3.5">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-bold text-foreground">{accountLabel}</p>
+        <p className="mt-0.5 text-xs font-medium text-muted">
+          {account.lastSyncedAt
+            ? `Updated ${formatDate(account.lastSyncedAt)}`
+            : "Not refreshed yet"}
+        </p>
+      </div>
+      <span
+        className={
+          account.status === "ready"
+            ? "rounded-full bg-success/10 px-2.5 py-1 text-xs font-bold text-success"
+            : "rounded-full bg-error/10 px-2.5 py-1 text-xs font-bold text-error"
+        }
+      >
+        {account.status === "ready" ? "Ready" : "Action needed"}
+      </span>
+    </div>
+  );
 }
 
-function Metric({ icon: Icon, label, value }: { icon: typeof Eye; label: string; value: number | null }) {
-  return <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted"><Icon className="size-3.5" aria-hidden="true" />{value?.toLocaleString() ?? "—"}<span className="sr-only"> {label}</span></span>;
+function TikTokVideoTable({ videos }: { videos: TikTokVideo[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[740px] border-collapse text-left">
+        <thead className="bg-card-muted/55">
+          <tr className="border-b border-border">
+            <TableHeading className="w-[360px]">Content</TableHeading>
+            <TableHeading>Published</TableHeading>
+            <TableHeading numeric>Views</TableHeading>
+            <TableHeading numeric>Likes</TableHeading>
+            <TableHeading numeric>Comments</TableHeading>
+            <TableHeading numeric>Shares</TableHeading>
+            <th scope="col" className="w-14 px-3 py-3">
+              <span className="sr-only">Open on TikTok</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {videos.map((video) => (
+            <tr
+              key={video.id}
+              className="border-b border-border last:border-b-0 hover:bg-card-muted/45"
+            >
+              <td className="px-4 py-3.5">
+                <div className="flex min-w-0 items-center gap-3">
+                  <VideoThumbnail
+                    src={video.coverImageUrl}
+                  />
+                  <div className="min-w-0">
+                    <p className="line-clamp-1 text-sm font-semibold text-foreground">
+                      {getVideoTitle(video)}
+                    </p>
+                    <p className="mt-1 line-clamp-1 text-xs text-muted">
+                      TikTok video
+                    </p>
+                  </div>
+                </div>
+              </td>
+              <td className="whitespace-nowrap px-3 py-3.5 text-xs font-medium text-muted">
+                {video.createdAt ? formatDateOnly(video.createdAt) : "—"}
+              </td>
+              <MetricCell value={video.viewCount} />
+              <MetricCell value={video.likeCount} />
+              <MetricCell value={video.commentCount} />
+              <MetricCell value={video.shareCount} />
+              <td className="px-3 py-3.5 text-right">
+                {video.shareUrl ? (
+                  <a
+                    href={video.shareUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`Open ${getVideoTitle(video)} on TikTok`}
+                    className={buttonVariants({ size: "icon-sm", variant: "ghost" })}
+                  >
+                    <ExternalLink aria-hidden="true" />
+                  </a>
+                ) : (
+                  <span className="inline-flex size-8 items-center justify-center text-muted-subtle">
+                    —
+                  </span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function VideoThumbnail({ src }: { src: string | null }) {
+  const [failedSource, setFailedSource] = useState<string | null>(null);
+
+  if (!src || failedSource === src) {
+    return (
+      <span
+        aria-hidden="true"
+        className="flex size-12 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-card-muted text-xs font-bold text-muted"
+      >
+        TT
+      </span>
+    );
+  }
+
+  return (
+    // TikTok owns these remote thumbnails. Rendering them directly avoids
+    // caching a stale image behind an optimized URL.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      width={48}
+      height={48}
+      loading="lazy"
+      className="size-12 shrink-0 rounded-[var(--radius-control)] object-cover"
+      onError={() => setFailedSource(src)}
+    />
+  );
+}
+
+function TableHeading({
+  children,
+  className,
+  numeric = false,
+}: {
+  children: ReactNode;
+  className?: string;
+  numeric?: boolean;
+}) {
+  return (
+    <th
+      scope="col"
+      className={`whitespace-nowrap px-3 py-3 text-xs font-bold uppercase tracking-[0.08em] text-muted ${
+        numeric ? "text-right" : "text-left"
+      } ${className ?? ""}`}
+    >
+      {children}
+    </th>
+  );
+}
+
+function MetricCell({ value }: { value: number | null }) {
+  return (
+    <td className="whitespace-nowrap px-3 py-3.5 text-right font-mono text-xs font-semibold tabular-nums text-foreground">
+      {formatMetric(value)}
+    </td>
+  );
+}
+
+function getVideoTitle(video: TikTokVideo) {
+  return video.title || video.description || "TikTok video";
+}
+
+function formatMetric(value: number | null) {
+  return value === null ? "—" : value.toLocaleString();
 }
 
 function getAccounts(value: unknown): TikTokAccount[] {
-  if (!value || typeof value !== "object" || !Array.isArray((value as { accounts?: unknown }).accounts)) return [];
+  if (
+    !value ||
+    typeof value !== "object" ||
+    !Array.isArray((value as { accounts?: unknown }).accounts)
+  ) {
+    return [];
+  }
+
   return (value as { accounts: TikTokAccount[] }).accounts;
 }
 
 function formatDate(value: string) {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date);
+
+  return Number.isNaN(date.getTime())
+    ? value
+    : new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(date);
+}
+
+function formatDateOnly(value: string) {
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime())
+    ? value
+    : new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
 }

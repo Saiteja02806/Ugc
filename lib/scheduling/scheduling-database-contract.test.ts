@@ -709,10 +709,16 @@ test("user actions open the editor using cached scheduling catalogs while refres
     "useEffect(() => {",
   );
 
-  assert.match(newScheduleFlow, /loadSocialConnections\(\)/);
+  assert.match(
+    newScheduleFlow,
+    /loadSocialConnections\(\{ force: true \}\)/,
+  );
   assert.match(newScheduleFlow, /loadScheduleMedia\(\)/);
   assert.match(editScheduleFlow, /loadScheduleMedia\(\)/);
-  assert.match(editScheduleFlow, /loadSocialConnections\(\)/);
+  assert.match(
+    editScheduleFlow,
+    /loadSocialConnections\(\{ force: true \}\)/,
+  );
   assert.match(
     schedulingWorkspace,
     /onRefreshMedia=\{\(\) => loadScheduleMedia\(\{ force: true \}\)\}/,
@@ -1089,11 +1095,25 @@ test("social scheduling uses one five-minute rule without quarter-hour rounding"
 test("the main scheduler uses compact role-based clip and time controls", () => {
   assert.match(
     schedulingWorkspace,
-    /demoMediaOptions: videoAssets[\s\S]*filter\(isScheduledVideoMediaAsset\)/,
+    /const scheduledVideoAssets = videoAssets\.filter\(isScheduledVideoMediaAsset\)/,
+  );
+  assert.match(
+    schedulingWorkspace,
+    /demoMediaOptions: scheduledVideoAssets[\s\S]*filter\(isContentSecondaryClipMediaAsset\)/,
   );
   assert.match(scheduleEditor, /Hook clip/);
   assert.match(scheduleEditor, /title="Secondary clip"/);
   assert.match(scheduleEditor, /Choose a secondary clip/);
+  assert.match(scheduleEditor, /Change selected hook clip, currently/);
+  assert.match(scheduleEditor, /Choose a hook clip/);
+  assert.match(
+    scheduleEditor,
+    /Creative Assets clips appear here\. Select one to use at the start of this Reel\./,
+  );
+  assert.match(
+    scheduleEditor,
+    /function ScheduleOpeningMediaPicker[\s\S]*?<SchedulePrimaryMediaCard[\s\S]*?setOpen\(false\)/,
+  );
   assert.match(
     scheduleEditor,
     /Content videos appear here\. Selecting a clip closes this list\./,

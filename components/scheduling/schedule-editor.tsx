@@ -1523,6 +1523,7 @@ function ScheduleOpeningMediaPicker({
 }) {
   const [activeSource, setActiveSource] =
     useState<OpeningVideoSourceTab>("all");
+  const [open, setOpen] = useState(false);
   const creatorMediaOptions = mediaOptions.filter(
     (option) => option.sourceType === "influencer_video",
   );
@@ -1537,14 +1538,21 @@ function ScheduleOpeningMediaPicker({
     videos: videoMediaOptions.length,
   };
   const hasAnyOptions = sourceCounts.all > 0;
+  const selectedMedia = mediaOptions.find(
+    (option) => option.id === selectedMediaId,
+  );
 
   function renderMediaOptions(options: ScheduleMediaOption[]) {
     return options.map((option) => (
-      <ScheduleMediaOptionButton
+      <SchedulePrimaryMediaCard
         key={option.id}
+        className="min-w-0"
         option={option}
         selected={option.id === selectedMediaId}
-        onSelect={() => onSelectMedia(option.id)}
+        onSelect={() => {
+          onSelectMedia(option.id);
+          setOpen(false);
+        }}
       />
     ));
   }
@@ -1614,40 +1622,6 @@ function ScheduleOpeningMediaPicker({
         </div>
       </div>
 
-      <div
-        aria-label="Choose hook clip source"
-        className="mt-3 flex flex-wrap gap-2"
-      >
-        {openingVideoSourceTabs.map((source) => {
-          const selected = activeSource === source.id;
-
-          return (
-            <button
-              key={source.id}
-              type="button"
-              aria-pressed={selected}
-              onClick={() => setActiveSource(source.id)}
-              className={cn(
-                "inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
-                selected
-                  ? "border-primary/60 bg-primary/10 text-primary"
-                  : "border-border bg-card-muted text-muted hover:bg-card hover:text-foreground",
-              )}
-            >
-              {source.label}
-              <span
-                className={cn(
-                  "rounded-full px-1.5 py-0.5 text-[10px]",
-                  selected ? "bg-primary/15 text-primary" : "bg-card text-muted",
-                )}
-              >
-                {sourceCounts[source.id]}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
       {errorMessage ? (
         <div
           role="alert"
@@ -1657,9 +1631,125 @@ function ScheduleOpeningMediaPicker({
         </div>
       ) : null}
 
-      <div className="mt-3 grid max-h-[320px] gap-3 overflow-y-auto pr-1">
-        {renderSourceSections()}
-      </div>
+      {hasAnyOptions ? (
+        <div className="mt-3">
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger
+              render={
+                <button
+                  type="button"
+                  aria-label={
+                    selectedMedia
+                      ? ["Change selected hook clip, currently", selectedMedia.title].join(" ")
+                      : "Choose a hook clip"
+                  }
+                  className={cn(
+                    "group flex min-h-20 w-full items-center gap-3 rounded-[var(--radius-card)] border bg-card-muted p-2.5 text-left transition hover:border-border-strong hover:bg-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                    selectedMedia
+                      ? "border-primary/45 ring-1 ring-primary/10"
+                      : "border-dashed border-border",
+                  )}
+                />
+              }
+            >
+              <span className="relative flex size-16 shrink-0 overflow-hidden rounded-control border border-border bg-background">
+                {selectedMedia ? (
+                  <ScheduleMediaVisual option={selectedMedia} compact />
+                ) : (
+                  <span className="flex size-full items-center justify-center bg-brand-soft/40 text-primary">
+                    <Video className="size-5" aria-hidden="true" />
+                  </span>
+                )}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-bold text-foreground">
+                  {selectedMedia?.title ?? "No hook clip selected"}
+                </span>
+                <span className="mt-1 block truncate text-xs font-semibold text-muted">
+                  {selectedMedia
+                    ? [
+                        getMediaSourceLabel(selectedMedia),
+                        selectedMedia.durationLabel || "Duration pending",
+                      ].join(" - ")
+                    : "Choose a video from Creative Assets."}
+                </span>
+              </span>
+              <span className="flex shrink-0 items-center gap-2 text-xs font-bold text-primary">
+                {selectedMedia ? "Change" : "Choose"}
+                <ChevronDown
+                  className={cn(
+                    "size-4 transition-transform motion-reduce:transition-none",
+                    open && "rotate-180",
+                  )}
+                  aria-hidden="true"
+                />
+              </span>
+            </PopoverTrigger>
+
+            <PopoverContent
+              align="start"
+              sideOffset={8}
+              className="w-[min(92vw,860px)] max-h-[min(72vh,680px)] gap-0 overflow-hidden p-0"
+            >
+              <PopoverHeader className="border-b border-border px-4 py-3">
+                <PopoverTitle className="text-sm font-bold text-foreground">
+                  Choose a hook clip
+                </PopoverTitle>
+                <PopoverDescription className="text-xs font-semibold text-muted">
+                  Creative Assets clips appear here. Select one to use at the start of this Reel.
+                </PopoverDescription>
+              </PopoverHeader>
+
+              <div
+                aria-label="Choose hook clip source"
+                className="flex flex-wrap gap-2 border-b border-border px-4 py-3"
+              >
+                {openingVideoSourceTabs.map((source) => {
+                  const selected = activeSource === source.id;
+
+                  return (
+                    <button
+                      key={source.id}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => setActiveSource(source.id)}
+                      className={cn(
+                        "inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                        selected
+                          ? "border-primary/60 bg-primary/10 text-primary"
+                          : "border-border bg-card-muted text-muted hover:bg-card hover:text-foreground",
+                      )}
+                    >
+                      {source.label}
+                      <span
+                        className={cn(
+                          "rounded-full px-1.5 py-0.5 text-[10px]",
+                          selected
+                            ? "bg-primary/15 text-primary"
+                            : "bg-card text-muted",
+                        )}
+                      >
+                        {sourceCounts[source.id]}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div
+                aria-label="Choose a hook clip"
+                className="max-h-[480px] overflow-y-auto p-3"
+              >
+                {renderSourceSections()}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+      ) : (
+        <div className="mt-3">
+          <OpeningVideoEmptyState source="all" />
+        </div>
+      )}
     </div>
   );
 }
@@ -1683,58 +1773,10 @@ function OpeningVideoSourceSection({
         <p className="text-[11px] font-bold text-muted">{title}</p>
         <span className="text-[11px] font-bold text-muted">{count}</span>
       </div>
-      <div className="grid gap-2">{children}</div>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-3">
+        {children}
+      </div>
     </div>
-  );
-}
-
-function ScheduleMediaOptionButton({
-  onSelect,
-  option,
-  selected,
-}: {
-  onSelect: () => void;
-  option: ScheduleMediaOption;
-  selected: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={onSelect}
-      className={cn(
-        "grid grid-cols-[58px_minmax(0,1fr)_auto] items-center gap-3 rounded-control border bg-card-muted p-2 text-left transition hover:border-border-strong hover:bg-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
-        selected ? "border-primary/60 ring-2 ring-primary/15" : "border-border",
-      )}
-    >
-      <div className="flex aspect-[9/12] items-center justify-center overflow-hidden rounded-control bg-card text-muted">
-        {option.thumbnailUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={option.thumbnailUrl}
-            alt=""
-            width={116}
-            height={154}
-            loading="lazy"
-            className="size-full object-cover"
-          />
-        ) : (
-          <FileVideo className="size-5 text-muted" aria-hidden="true" />
-        )}
-      </div>
-      <div className="min-w-0">
-        <p className="truncate text-sm font-bold text-foreground">
-          {option.title}
-        </p>
-        <p className="mt-1 text-xs font-semibold text-muted">
-          {getMediaSourceLabel(option)} -{" "}
-          {option.durationLabel || "Duration pending"}
-        </p>
-      </div>
-      {selected ? (
-        <CheckCircle2 className="size-4 text-primary" aria-hidden="true" />
-      ) : null}
-    </button>
   );
 }
 

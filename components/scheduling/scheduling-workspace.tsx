@@ -99,6 +99,7 @@ import {
   getScheduleEditBlockReason,
 } from "@/lib/scheduling/schedule-action-policy";
 import { getSchedulePublishFailureMessage } from "@/lib/scheduling/schedule-publish-outcome";
+import { getPublishedPostLink, shouldShowExportPreview } from "@/lib/scheduling/published-post-link";
 import {
   AccountDataAuthenticationUnavailableError,
   getAccountSchedulesQueryKey,
@@ -2112,7 +2113,7 @@ function ScheduleTargetStatusList({
         {targets.map((target) => {
           const isRetrying = retryingPublishTargetId === target.id;
           const showPublishRetry = canRetryTargetPublishing(target);
-          const platformPostUrl = getTrustedPlatformPostUrl(target);
+          const publishedPostLink = getPublishedPostLink(target);
           const customerErrorMessage =
             getCustomerFacingTargetErrorMessage(target);
           const accountLabel =
@@ -2149,6 +2150,11 @@ function ScheduleTargetStatusList({
                 <p className="mt-1 text-[11px] font-semibold leading-4 text-muted">
                   {getTargetStatusHelpText(target, draft.timezone)}
                 </p>
+                {publishedPostLink?.help ? (
+                  <p className="mt-1 text-[11px] font-medium leading-4 text-muted">
+                    {publishedPostLink.help}
+                  </p>
+                ) : null}
                 {customerErrorMessage ? (
                   <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-4 text-error">
                     {customerErrorMessage}
@@ -2156,14 +2162,14 @@ function ScheduleTargetStatusList({
                 ) : null}
               </div>
 
-              {platformPostUrl ? (
+              {publishedPostLink ? (
                 <a
-                  href={platformPostUrl}
+                  href={publishedPostLink.href}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   className="inline-flex h-7 w-fit items-center justify-center rounded-full border border-border bg-card-muted px-2.5 text-[11px] font-bold text-foreground transition hover:border-border-strong hover:bg-card"
                 >
-                  {getOpenPlatformPostLabel(target.platform)}
+                  {publishedPostLink.label}
                 </a>
               ) : target.status === "published" && target.platformPostId ? (
                 <span className="rounded-full bg-card-muted px-2.5 py-1 text-[11px] font-bold text-muted">
@@ -2835,18 +2841,18 @@ function SelectedDayDraftCard({
         retryingPublishTargetId={retryingPublishTargetId}
       />
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        {combinedMedia?.mediaUrl ? (
+      {combinedMedia?.mediaUrl && shouldShowExportPreview(draft.targets) ? (
+        <div className="mt-3 flex flex-wrap gap-2">
           <a
             href={combinedMedia.mediaUrl}
             target="_blank"
             rel="noreferrer"
             className="inline-flex h-8 items-center justify-center rounded-control border border-border bg-card-muted px-3 text-xs font-bold text-foreground transition hover:border-border-strong hover:bg-card"
           >
-            View exported MP4
+            Preview video file
           </a>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       <ScheduleDraftActions
         draft={draft}
@@ -4024,38 +4030,6 @@ function getScheduleDraftPlatformLabel(
   }
 
   return "YouTube (unsupported)";
-}
-
-const trustedPlatformPostDomains: Record<
-  SchedulePlatform,
-  readonly string[]
-> = {
-  instagram: ["instagram.com"],
-  tiktok: ["tiktok.com"],
-  youtube: ["youtube.com", "youtu.be"],
-};
-
-function getOpenPlatformPostLabel(platform: SchedulePlatform) {
-  return `Open on ${getSchedulePlatformLabel(platform)}`;
-}
-
-function getTrustedPlatformPostUrl(target: ScheduledPostTarget) {
-  if (target.status !== "published" || !target.platformPostUrl) {
-    return null;
-  }
-
-  try {
-    const url = new URL(target.platformPostUrl);
-    const hostname = url.hostname.toLowerCase();
-    const expectedDomains = trustedPlatformPostDomains[target.platform];
-    const usesExpectedDomain = expectedDomains.some(
-      (domain) => hostname === domain || hostname.endsWith(`.${domain}`),
-    );
-
-    return url.protocol === "https:" && usesExpectedDomain ? url.toString() : null;
-  } catch {
-    return null;
-  }
 }
 
 function isCombinedVideoDraft(draft: ScheduleDraft) {

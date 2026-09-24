@@ -1217,12 +1217,12 @@ test("day schedules separate the exported file from verified social post links",
     "type CalendarDay",
   );
 
-  assert.match(targetStatusList, /getTrustedPlatformPostUrl\(target\)/);
-  assert.match(targetStatusList, /getOpenPlatformPostLabel\(target\.platform\)/);
+  assert.match(targetStatusList, /getPublishedPostLink\(target\)/);
+  assert.match(targetStatusList, /href=\{publishedPostLink\.href\}/);
   assert.match(targetStatusList, /Post link unavailable/);
-  assert.match(dayScheduleItem, /View exported MP4/);
-  assert.match(schedulingWorkspace, /url\.protocol === "https:"/);
-  assert.match(schedulingWorkspace, /hostname === domain \|\| hostname\.endsWith\(`\.\$\{domain\}`\)/);
+  assert.match(dayScheduleItem, /shouldShowExportPreview\(draft\.targets\)/);
+  assert.match(dayScheduleItem, /Preview video file/);
+  assert.doesNotMatch(dayScheduleItem, /View exported MP4/);
 });
 
 test("List view opens a compact, date-selectable daily agenda", () => {

@@ -1005,9 +1005,6 @@ export function PlatformSelectionModal({
                     timezone,
                   )}
                   minimumLeadMinutes={minimumLeadMinutes}
-                  requiresTikTokMusicDeclaration={selectedConnections.some(
-                    (connection) => connection.platform === "tiktok",
-                  )}
                   onPostAsap={() => void submitSchedule("asap")}
                   onScheduleLater={() => setScheduleMode("later")}
                 />
@@ -1066,13 +1063,7 @@ export function PlatformSelectionModal({
                 Next
                 <ChevronRight data-icon="inline-end" />
               </Button>
-            ) : scheduleMode === "later" ? (
-              <div className="flex flex-col items-end gap-2">
-                {selectedConnections.some((connection) => connection.platform === "tiktok") ? (
-                  <p className="max-w-64 text-right text-[11px] font-medium leading-4 text-muted-foreground">
-                    By posting, you agree to TikTok&apos;s Music Usage Confirmation.
-                  </p>
-                ) : null}
+              ) : scheduleMode === "later" ? (
                 <Button
                   size="lg"
                   className="px-4"
@@ -1082,7 +1073,6 @@ export function PlatformSelectionModal({
                   <Check data-icon="inline-start" />
                   Schedule post
                 </Button>
-              </div>
             ) : null}
           </DialogFooter>
         ) : null}
@@ -1655,6 +1645,13 @@ function TikTokCarouselSettings({
           ) : null}
         </div>
       </fieldset>
+      <p
+        role="note"
+        className="flex items-center gap-2 rounded-control border border-border bg-card-muted px-3 py-2 text-xs font-semibold leading-5 text-muted-foreground"
+      >
+        <Check className="size-3.5 shrink-0 text-success" aria-hidden="true" />
+        By posting, you agree to TikTok&apos;s Music Usage Confirmation.
+      </p>
     </div>
   );
 }
@@ -1664,13 +1661,11 @@ function ScheduleChoiceStep({
   minimumLeadMinutes,
   onPostAsap,
   onScheduleLater,
-  requiresTikTokMusicDeclaration,
 }: {
   earliestLabel: string;
   minimumLeadMinutes: number;
   onPostAsap: () => void;
   onScheduleLater: () => void;
-  requiresTikTokMusicDeclaration: boolean;
 }) {
   return (
     <div className="mx-auto w-full max-w-3xl">
@@ -1682,11 +1677,6 @@ function ScheduleChoiceStep({
           Publish at the earliest safe time, or choose an exact date and time.
         </p>
       </div>
-      {requiresTikTokMusicDeclaration ? (
-        <p className="mt-4 text-xs font-medium leading-5 text-muted-foreground">
-          By posting, you agree to TikTok&apos;s Music Usage Confirmation.
-        </p>
-      ) : null}
       <div className="mt-5 grid gap-3 md:grid-cols-2">
         <ScheduleChoice
           description={`Earliest available: ${earliestLabel}. Uses the configured ${minimumLeadMinutes}-minute lead time.`}

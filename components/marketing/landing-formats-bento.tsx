@@ -146,7 +146,7 @@ export function LandingFormatsBento() {
             </li>
             <li className="flex items-center gap-2">
               <Check className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
-              <span>Paced for effortless Instagram reading</span>
+              <span>Paced for effortless mobile viewing</span>
             </li>
           </ul>
         </div>
@@ -267,7 +267,7 @@ export function LandingFormatsBento() {
             </li>
             <li className="flex items-center gap-2">
               <Check className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
-              <span>1-click review & direct Instagram scheduling</span>
+              <span>1-click review & platform-ready scheduling</span>
             </li>
           </ul>
         </div>

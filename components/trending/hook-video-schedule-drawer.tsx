@@ -582,11 +582,6 @@ export function HookVideoScheduleDrawer({
         </div>
 
         <footer className="border-t border-border bg-background px-4 py-3 sm:px-5">
-          {stage === "review" && selectedConnections.some((connection) => connection.platform === "tiktok") ? (
-            <p className="mb-2 text-center text-[11px] font-medium leading-4 text-muted">
-              By posting, you agree to TikTok&apos;s Music Usage Confirmation.
-            </p>
-          ) : null}
           <Button
             type="button"
             size="lg"
@@ -715,6 +710,13 @@ function ConnectionRow({
                   </div>
                 ) : null}
               </fieldset>
+              <p
+                role="note"
+                className="flex items-center gap-2 rounded-control border border-border bg-card-muted px-3 py-2 text-xs font-semibold leading-5 text-muted"
+              >
+                <Check className="size-3.5 shrink-0 text-success" aria-hidden="true" />
+                By posting, you agree to TikTok&apos;s Music Usage Confirmation.
+              </p>
             </div>
           )}
         </div>

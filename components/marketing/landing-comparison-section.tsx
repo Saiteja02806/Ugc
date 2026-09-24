@@ -72,13 +72,13 @@ export function LandingComparisonSection() {
                   <span className="text-base leading-none select-none mt-0.5" aria-hidden="true">
                     😵‍💫
                   </span>
-                  <span>Designing and formatting multi-slide Instagram carousels from scratch in Canva</span>
+                  <span>Designing and formatting multi-slide social posts from scratch in Canva</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <span className="text-base leading-none select-none mt-0.5" aria-hidden="true">
                     😅
                   </span>
-                  <span>Juggling multiple Instagram logins and manual scheduling routines across accounts</span>
+                  <span>Juggling YouTube, TikTok, and Instagram logins with manual scheduling routines</span>
                 </li>
               </ul>
             </div>
@@ -151,7 +151,7 @@ export function LandingComparisonSection() {
             </div>
 
             <div className="mt-6 rounded-control border border-border bg-card-muted p-2.5 text-center text-[11px] font-semibold text-primary">
-              1 unified workspace from business analysis to published Instagram posts
+              1 unified workspace from business analysis to published social posts
             </div>
           </div>
         </div>

@@ -1225,22 +1225,15 @@ export function ScheduleEditor({
                     ? "Choose a connected account before scheduling this post."
                     : `Choose a connected ${publishingAccountLabel} account before scheduling this post.`}
             </p>
-            <div className="flex w-full flex-col items-end gap-2 sm:w-auto">
-              {selectedConnections.some((connection) => connection.platform === "tiktok") ? (
-                <p className="max-w-72 text-right text-[11px] font-medium leading-4 text-muted">
-                  By posting, you agree to TikTok&apos;s Music Usage Confirmation.
-                </p>
-              ) : null}
-              <button
-                type="button"
-                onClick={handleSaveDraft}
-                disabled={!canSaveDraft}
-                className="inline-flex h-11 w-full shrink-0 touch-manipulation items-center justify-center gap-2 rounded-control bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_10px_24px_rgb(225_101_64_/_0.18)] transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-56"
-              >
-                <CheckCircle2 className="size-4" aria-hidden="true" />
-                {saving ? "Scheduling…" : canSaveDraft ? editingSchedule ? "Save and schedule" : "Schedule post" : unavailableSavedTargetError ? "Review saved account" : captionValidationError ? "Shorten caption" : publishingSettingsError ? "Review publishing settings" : requireScheduleTarget && !hasSelectedConnections ? "Choose an account" : isCarouselSchedule || selectedPublishMedia ? "Choose date and time" : mediaValidationError ?? "Select media to schedule"}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={!canSaveDraft}
+              className="inline-flex h-11 w-full shrink-0 touch-manipulation items-center justify-center gap-2 rounded-control bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_10px_24px_rgb(225_101_64_/_0.18)] transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-56"
+            >
+              <CheckCircle2 className="size-4" aria-hidden="true" />
+              {saving ? "Scheduling…" : canSaveDraft ? editingSchedule ? "Save and schedule" : "Schedule post" : unavailableSavedTargetError ? "Review saved account" : captionValidationError ? "Shorten caption" : publishingSettingsError ? "Review publishing settings" : requireScheduleTarget && !hasSelectedConnections ? "Choose an account" : isCarouselSchedule || selectedPublishMedia ? "Choose date and time" : mediaValidationError ?? "Select media to schedule"}
+            </button>
           </div>
         </div>
       </aside>
@@ -2641,6 +2634,13 @@ function TikTokAccountSettings({
           ) : null}
         </div>
       </fieldset>
+      <p
+        role="note"
+        className="flex items-center gap-2 rounded-control border border-border bg-card-muted px-3 py-2 text-xs font-semibold leading-5 text-muted"
+      >
+        <CheckCircle2 className="size-3.5 shrink-0 text-success" aria-hidden="true" />
+        By posting, you agree to TikTok&apos;s Music Usage Confirmation.
+      </p>
     </div>
   );
 }

@@ -9,7 +9,7 @@ import {
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "Privacy Policy for UGC Pilot's Instagram content creation, carousel generation, video uploads, scheduling, and publishing features.",
+    "Privacy Policy for UGC Pilot's YouTube, TikTok, and Instagram content creation, media uploads, scheduling, and publishing features.",
 };
 
 export default function PrivacyPolicyPage() {
@@ -17,16 +17,17 @@ export default function PrivacyPolicyPage() {
     <LegalPageShell
       eyebrow="Privacy Policy"
       title="How UGC Pilot handles user data"
-      description="This policy explains what information we process when users create Instagram content, upload media, generate carousel posts, and schedule approved content through UGC Pilot."
+      description="This policy explains what information we process when users create content for YouTube, TikTok, and Instagram, upload media, and schedule approved content through UGC Pilot."
     >
       <div className="space-y-8">
         <LegalSection title="Who we are">
           <p>
-            UGC Pilot is an Instagram content creation and scheduling tool
-            operated through getugcpilot.com. Users can provide business
-            context, automatically prepare multi-slide carousel posts, upload
-            images and videos, review captions and creative assets, connect an
-            Instagram professional account, and schedule approved content.
+            UGC Pilot is a social content creation and scheduling tool operated
+            through getugcpilot.com. Users can provide business context, prepare
+            videos and multi-slide posts, upload images and videos, review
+            captions and creative assets, connect YouTube channels, TikTok
+            accounts, or Instagram professional accounts, and schedule approved
+            content.
           </p>
           <p>
             Privacy questions can be sent to{" "}
@@ -53,9 +54,10 @@ export default function PrivacyPolicyPage() {
               provide to personalize content creation.
             </li>
             <li>
-              Connected Instagram professional account information, such as an
-              Instagram account ID, username, profile information returned
-              during authorization, granted permissions, access tokens, and
+              Connected social account information, such as YouTube channel,
+              TikTok account, or Instagram professional account identifiers,
+              usernames or channel names, profile information returned during
+              authorization, granted permissions, access tokens, and
               token-expiration information.
             </li>
             <li>
@@ -65,10 +67,11 @@ export default function PrivacyPolicyPage() {
               status, and publishing logs.
             </li>
             <li>
-              Instagram media and insights information, such as media
+              Connected-platform media and insights information, such as media
               identifiers, media type, publishing time, reach, views,
               interactions, saves, shares, likes, comments, and other metrics
-              Instagram makes available for the connected account.
+              YouTube, TikTok, or Instagram makes available for the connected
+              account.
             </li>
             <li>
               AI-assisted content information, such as user instructions,
@@ -100,55 +103,59 @@ export default function PrivacyPolicyPage() {
               Store drafts, uploaded images and videos, generated carousel
               slides, edited content, and scheduled posts.
             </li>
-            <li>Connect an Instagram professional account at the user&apos;s request.</li>
             <li>
-              Schedule, publish, and track Instagram post status only after the
-              user approves the content and destination account.
+              Connect a YouTube channel, TikTok account, or Instagram
+              professional account at the user&apos;s request.
             </li>
             <li>
-              Show the connected Instagram account, publishing settings, post
-              history, analytics, and content-performance information.
+              Schedule, publish, and track content status only after the user
+              approves the content and destination account.
+            </li>
+            <li>
+              Show connected account details, publishing settings, post history,
+              analytics, and content-performance information.
             </li>
             <li>Troubleshoot failed uploads, rendering jobs, publishing jobs, or account connections.</li>
-            <li>Detect abuse, protect the service, and comply with legal and Instagram requirements.</li>
+            <li>Detect abuse, protect the service, and comply with legal and platform requirements.</li>
           </LegalList>
         </LegalSection>
 
-        <LegalSection title="Connected Instagram accounts">
+        <LegalSection title="Connected social accounts">
           <p>
-            UGC Pilot currently supports Instagram professional accounts for
-            connected-account, scheduling, publishing, and analytics features.
-            We use Instagram account data only to provide the features the user
-            requests.
+            UGC Pilot supports YouTube channels, TikTok accounts, and Instagram
+            professional accounts for available connected-account, scheduling,
+            publishing, and analytics features. Feature availability, supported
+            formats, and permissions vary by platform. We use connected-account
+            data only to provide the features the user requests.
           </p>
           <p>
-            We do not sell Instagram account data. We do not publish content to
-            Instagram without the user reviewing and approving the content,
-            destination account, and schedule.
+            We do not sell connected-account data. We do not publish content to
+            YouTube, TikTok, or Instagram without the user reviewing and
+            approving the content, destination account, and schedule.
           </p>
           <p>
-            Users can disconnect Instagram from UGC Pilot Settings or revoke
-            UGC Pilot&apos;s access through their Instagram or Meta account
-            settings.
+            Users can disconnect a platform from UGC Pilot Settings or revoke
+            UGC Pilot&apos;s access through the applicable YouTube, TikTok,
+            Instagram, Google, Meta, or other platform account settings.
           </p>
         </LegalSection>
 
         <LegalSection title="Access tokens and account permissions">
           <p>
-            We may store Instagram access tokens securely so users can keep an
-            account connected, schedule approved content, publish at the
-            selected time, and display authorized insights. Users can
-            disconnect Instagram at any time. When a user disconnects the
-            account, we delete or revoke stored tokens where technically
-            possible.
+            We may store access tokens or equivalent credentials securely so
+            users can keep a YouTube, TikTok, or Instagram account connected,
+            schedule approved content, publish at the selected time, and display
+            authorized insights. Users can disconnect a platform at any time.
+            When a user disconnects an account, we delete or revoke stored
+            tokens where technically possible.
           </p>
           <p>
-            We request Instagram permissions only for identifying the
-            professional account selected by the user, publishing
-            user-approved content, and retrieving account or media insights
-            displayed in UGC Pilot. Tokens are retained only while needed to
-            provide those authorized features, unless limited retention is
-            required for security, legal, or dispute-resolution reasons.
+            We request permissions only as needed to identify the account
+            selected by the user, publish user-approved content, and retrieve
+            account or media insights displayed in UGC Pilot. Tokens are retained
+            only while needed to provide those authorized features, unless
+            limited retention is required for security, legal, or
+            dispute-resolution reasons.
           </p>
         </LegalSection>
 
@@ -156,9 +163,9 @@ export default function PrivacyPolicyPage() {
           <p>
             We store uploaded or selected images and videos so users can create
             drafts, prepare carousel slides and video content, edit creative
-            assets, schedule Instagram posts, and publish at the selected time.
-            Users can delete drafts, uploaded media, scheduled posts, or their
-            account.
+            assets, schedule posts to selected platforms, and publish at the
+            selected time. Users can delete drafts, uploaded media, scheduled
+            posts, or their account.
           </p>
           <p>
             Uploaded media is deleted within 30 days after account deletion
@@ -181,9 +188,9 @@ export default function PrivacyPolicyPage() {
             requires an AI-generated content disclosure.
           </p>
           <p>
-            When a user chooses to publish content to Instagram, we may transmit
-            the applicable content settings and disclosures required by
-            Instagram.
+            When a user chooses to publish content to YouTube, TikTok, or
+            Instagram, we may transmit the applicable content settings and
+            disclosures required by that platform.
           </p>
         </LegalSection>
 
@@ -191,13 +198,13 @@ export default function PrivacyPolicyPage() {
           <p>
             We share information only as needed to provide the service, follow
             user instructions, operate the product, and comply with law or
-            Instagram requirements.
+            platform requirements.
           </p>
           <LegalList>
             <li>
-              Meta and Instagram, when the user connects an Instagram account,
-              requests Instagram data, or schedules or publishes approved
-              content.
+              YouTube, TikTok, and Meta or Instagram, when the user connects an
+              account, requests platform data, or schedules or publishes
+              approved content.
             </li>
             <li>Cloud hosting, database, storage, email, analytics, error monitoring, and payment providers.</li>
             <li>Law enforcement, regulators, or legal requesters when required by applicable law.</li>
@@ -226,12 +233,12 @@ export default function PrivacyPolicyPage() {
             .
           </p>
           <p>
-            Deletion includes connected Instagram identifiers, stored access
-            tokens where technically possible, uploaded or generated media,
-            carousel slides, drafts, scheduled posts, captions, publishing
-            records, and stored Instagram analytics associated with the account,
-            subject to limited legal, security, billing, or dispute-resolution
-            retention needs.
+            Deletion includes connected YouTube, TikTok, and Instagram account
+            identifiers, stored access tokens where technically possible,
+            uploaded or generated media, carousel slides, drafts, scheduled
+            posts, captions, publishing records, and stored platform analytics
+            associated with the account, subject to limited legal, security,
+            billing, or dispute-resolution retention needs.
           </p>
         </LegalSection>
 

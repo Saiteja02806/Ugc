@@ -93,7 +93,7 @@ export const metadata: Metadata = {
     template: "%s | UGC Pilot",
   },
   description:
-    "Create Instagram Reel hooks, text-led videos, carousel posts, and approved publishing workflows in one focused workspace.",
+    "Create video-first content and approved publishing workflows for YouTube, TikTok, and Instagram in one focused workspace.",
 };
 
 const RETIRED_GLOBAL_CONTENT_STORAGE_KEYS = [

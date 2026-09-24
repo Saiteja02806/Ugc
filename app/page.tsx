@@ -20,16 +20,16 @@ const authHref = "/sign-in";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "UGCPilot — Instagram Marketing Workspace",
+    absolute: "UGCPilot — YouTube, TikTok & Instagram Content Workspace",
   },
   description:
-    "Create Instagram Reel hooks, text-led videos, slideshow posts, and approved publishing workflows in one workspace.",
+    "Create video-first content and approved publishing workflows for YouTube, TikTok, and Instagram in one workspace.",
 };
 
 const workflowSteps = [
   {
     step: "01",
-    title: "Set your Instagram context",
+    title: "Set your social context",
     description:
       "Add your website and business details so creative work starts from your actual offer.",
   },
@@ -37,7 +37,7 @@ const workflowSteps = [
     step: "02",
     title: "Choose a format",
     description:
-      "Work on a Reel hook, a text-led video, or an Instagram carousel from the same workspace.",
+      "Work on a hook video, a text-led video, or a slideshow from the same workspace.",
   },
   {
     step: "03",
@@ -49,12 +49,12 @@ const workflowSteps = [
     step: "04",
     title: "Approve the schedule",
     description:
-      "Choose the Instagram account and timing, then confirm the final publishing action.",
+      "Choose the YouTube, TikTok, or Instagram destination and timing, then confirm the final publishing action.",
   },
 ];
 
 const productFooterLinks = [
-  { label: "Instagram formats", href: "#formats" },
+  { label: "Platform formats", href: "#formats" },
   { label: "Workflow", href: "#workflow" },
   {
     label: "Dating swipe demo",
@@ -91,7 +91,7 @@ export default async function Home() {
           <div className="w-full max-w-[1200px] text-center">
             {/* Announcement Pill Badge */}
             <div className="mb-5 inline-flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-0.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-semibold leading-4 text-foreground shadow-sm sm:mb-6 sm:px-4 sm:text-xs">
-              <span className="text-primary font-semibold">Instagram-First</span>
+              <span className="text-primary font-semibold">Multi-Platform</span>
               <span className="text-border-strong">•</span>
               <span className="min-w-0 text-muted">The All-in-One Content Workspace</span>
             </div>
@@ -156,10 +156,10 @@ export default async function Home() {
             </h1>
 
             <p className="mx-auto mt-7 max-w-[860px] text-base leading-7 text-muted sm:text-lg sm:leading-8">
-              Turn proven Instagram formats into ready-to-publish content for
-              your business. Review, edit, and publish slideshows, Reel hooks,
-              and text-led videos designed to earn more attention and drive
-              action.
+              Turn proven formats into ready-to-publish content for YouTube,
+              TikTok, and Instagram. Review, edit, and publish slideshows, hook
+              videos, and text-led videos designed to earn more attention and
+              drive action.
             </p>
 
             <div className="mt-7 flex justify-center sm:mt-8">
@@ -176,7 +176,7 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Section 2: One Instagram Workflow (Connected 4-card container) */}
+      {/* Section 2: One Social Workflow (Connected 4-card container) */}
       <section
         id="workflow"
         className="relative z-10 -mt-3 sm:-mt-4 lg:-mt-5 border-t border-border bg-background px-4 pt-8 pb-16 sm:px-6 sm:pt-10 sm:pb-20 lg:px-8 lg:pt-12 lg:pb-24 shadow-[0_-12px_32px_rgba(0,0,0,0.04)]"
@@ -202,7 +202,7 @@ export default async function Home() {
 
           <div className="max-w-2xl">
             <p className="text-sm font-semibold text-primary">
-              One Instagram workflow
+              One social workflow
             </p>
             <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-[-0.035em] text-foreground-strong sm:text-5xl">
               Keep the creative and the publishing decision together.
@@ -237,7 +237,7 @@ export default async function Home() {
       {/* Section 4: Why UGCPilot Comparison Matrix */}
       <LandingComparisonSection />
 
-      {/* Section 5: Connect Multiple Instagram Accounts (Connect -> Post Flow) */}
+      {/* Section 5: Connect Multiple Platform Accounts (Connect -> Post Flow) */}
       <LandingBottomCta initialHasSession={initialHasSession} />
 
       <footer className="border-t border-border bg-card px-4 py-12 sm:px-6 lg:px-8">
@@ -252,13 +252,13 @@ export default async function Home() {
               <div>
                 <p className="font-semibold text-foreground-strong">UGCPilot</p>
                 <p className="mt-0.5 text-xs text-muted">
-                  Instagram marketing workspace
+                  YouTube, TikTok & Instagram content workspace
                 </p>
               </div>
             </div>
             <p className="mt-5 max-w-sm text-sm leading-6 text-muted">
-              Create, review, and schedule Instagram content from your own
-              business context and approved media.
+              Create, review, and schedule content for YouTube, TikTok, and
+              Instagram from your own business context and approved media.
             </p>
           </div>
 
@@ -269,7 +269,7 @@ export default async function Home() {
 
         <div className="mx-auto mt-10 flex max-w-[1200px] flex-col gap-3 border-t border-border pt-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} UGCPilot. All rights reserved.</p>
-          <p>Instagram is a trademark of Meta Platforms, Inc.</p>
+          <p>YouTube, TikTok, and Instagram are trademarks of their respective owners.</p>
         </div>
       </footer>
     </main>

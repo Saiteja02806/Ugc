@@ -27,7 +27,6 @@ test("builds the YouTube authorization URL with every product scope", () => {
   const url = buildYouTubeOAuthAuthorizationUrl({
     clientId: "google-client-id.apps.googleusercontent.com",
     codeVerifierChallenge: "code-challenge",
-    forceConsent: false,
     redirectUri: "https://getugcpilot.com/api/social/youtube/callback",
     state: "state-value",
   });
@@ -48,14 +47,13 @@ test("builds the YouTube authorization URL with every product scope", () => {
   assert.equal(url.searchParams.get("include_granted_scopes"), "true");
   assert.equal(url.searchParams.get("code_challenge"), "code-challenge");
   assert.equal(url.searchParams.get("code_challenge_method"), "S256");
-  assert.equal(url.searchParams.has("prompt"), false);
+  assert.equal(url.searchParams.get("prompt"), "consent");
 });
 
-test("forces YouTube consent only for an intentional reconnect", () => {
+test("always forces YouTube consent so Google issues usable refresh tokens", () => {
   const url = buildYouTubeOAuthAuthorizationUrl({
     clientId: "google-client-id.apps.googleusercontent.com",
     codeVerifierChallenge: "code-challenge",
-    forceConsent: true,
     redirectUri: "https://getugcpilot.com/api/social/youtube/callback",
     state: "state-value",
   });

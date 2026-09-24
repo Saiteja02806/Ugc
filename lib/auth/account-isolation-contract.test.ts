@@ -26,9 +26,6 @@ const authGuard = readProjectFile("components/auth/auth-guard.tsx");
 const workspaceRouteBoundary = readProjectFile(
   "components/layout/workspace-route-boundary.tsx",
 );
-const productUpdatesCorner = readProjectFile(
-  "components/updates/product-updates-corner.tsx",
-);
 const aiStudioAccess = readProjectFile(
   "components/generation/use-ai-studio-access.ts",
 );
@@ -92,39 +89,29 @@ test("the persistent workspace shell preserves the existing route access matrix"
     access: "profile",
     activeKey: "trending",
     defaultSidebarCollapsed: false,
-    showProductUpdatesFooter: false,
   });
   assert.deepEqual(getWorkspaceRouteConfig("/library/demos/demo-1/edit"), {
     access: "profile",
     activeKey: "library",
     defaultSidebarCollapsed: true,
-    showProductUpdatesFooter: true,
   });
   assert.deepEqual(getWorkspaceRouteConfig("/viral"), {
     access: "profile",
     activeKey: "explore",
     defaultSidebarCollapsed: false,
-    showProductUpdatesFooter: true,
   });
   assert.deepEqual(getWorkspaceRouteConfig("/analytics"), {
     access: "profile",
     activeKey: "analytics",
     defaultSidebarCollapsed: false,
-    showProductUpdatesFooter: false,
   });
   assert.deepEqual(getWorkspaceRouteConfig("/avatars"), {
     access: "none",
     activeKey: "avatars",
     defaultSidebarCollapsed: false,
-    showProductUpdatesFooter: true,
   });
   assert.equal(getWorkspaceRouteConfig("/onboarding"), null);
   assert.equal(getWorkspaceRouteConfig("/sign-in"), null);
-});
-
-test("Analytics stays focused by hiding product update notices", () => {
-  assert.match(productUpdatesCorner, /pathname === "\/analytics"/);
-  assert.match(productUpdatesCorner, /!isAnalyticsPage/);
 });
 
 test("the sign-in plan query is isolated behind a production Suspense boundary", () => {

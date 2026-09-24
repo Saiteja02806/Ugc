@@ -3,8 +3,11 @@ export type TikTokBetaIdentity = {
   emailVerified: boolean | null | undefined;
 };
 
-/** The single approved TikTok beta account is deliberately auditable in source. */
-export const TIKTOK_BETA_DEFAULT_EMAIL = "vtu19403@veltech.edu.in";
+/** Approved TikTok beta identities are deliberately auditable in source. */
+export const TIKTOK_BETA_APPROVED_EMAILS: readonly string[] = [
+  "vtu19403@veltech.edu.in",
+  "m28013655@gmail.com",
+];
 
 export function hasTikTokBetaAccess(
   identity: TikTokBetaIdentity | null | undefined,
@@ -13,7 +16,7 @@ export function hasTikTokBetaAccess(
     return false;
   }
 
-  return normalizeEmail(identity.email) === TIKTOK_BETA_DEFAULT_EMAIL;
+  return TIKTOK_BETA_APPROVED_EMAILS.includes(normalizeEmail(identity.email));
 }
 
 function normalizeEmail(value: string) {

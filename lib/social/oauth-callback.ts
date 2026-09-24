@@ -242,7 +242,7 @@ function renderCallbackPage(params: {
       <p>${escapeHtml(params.message)}</p>
       <p id="manual-close-message" hidden>${escapeHtml(fallbackMessage)}</p>
       ${params.status === "error" ? `<dl><dt>Failed stage</dt><dd>${escapeHtml(failedStage)}</dd><dt>Correlation ID</dt><dd>${escapeHtml(params.correlationId)}</dd></dl>` : ""}
-      <a href="${escapeHtml(returnUrl)}">Return to Instagram settings</a>
+      <a href="${escapeHtml(returnUrl)}">Return to publishing settings</a>
     </main>
     <script>
       (() => {

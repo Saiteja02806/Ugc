@@ -366,7 +366,6 @@ export async function createSocialAuthorization(params: {
     case "youtube":
       authorizationUrl = buildYouTubeAuthorizationUrl({
         codeVerifier: codeVerifier ?? "",
-        forceConsent: params.forceConsent === true,
         redirectUri,
         state,
       });
@@ -1984,14 +1983,12 @@ function buildInstagramAuthorizationUrl(params: {
 
 function buildYouTubeAuthorizationUrl(params: {
   codeVerifier: string;
-  forceConsent: boolean;
   redirectUri: string;
   state: string;
 }) {
   return buildYouTubeOAuthAuthorizationUrl({
     clientId: getEnv("GOOGLE_CLIENT_ID"),
     codeVerifierChallenge: createPkceCodeChallenge(params.codeVerifier),
-    forceConsent: params.forceConsent,
     redirectUri: params.redirectUri,
     state: params.state,
   });

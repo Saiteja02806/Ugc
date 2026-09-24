@@ -3,8 +3,11 @@ export type YouTubeBetaIdentity = {
   emailVerified: boolean | null | undefined;
 };
 
-/** The single approved YouTube beta account is deliberately auditable in source. */
-export const YOUTUBE_BETA_DEFAULT_EMAIL = "vtu19403@veltech.edu.in";
+/** Approved YouTube beta identities are deliberately auditable in source. */
+export const YOUTUBE_BETA_APPROVED_EMAILS: readonly string[] = [
+  "vtu19403@veltech.edu.in",
+  "m28013655@gmail.com",
+];
 
 export function hasYouTubeBetaAccess(
   identity: YouTubeBetaIdentity | null | undefined,
@@ -13,7 +16,7 @@ export function hasYouTubeBetaAccess(
     return false;
   }
 
-  return normalizeEmail(identity.email) === YOUTUBE_BETA_DEFAULT_EMAIL;
+  return YOUTUBE_BETA_APPROVED_EMAILS.includes(normalizeEmail(identity.email));
 }
 
 function normalizeEmail(value: string) {

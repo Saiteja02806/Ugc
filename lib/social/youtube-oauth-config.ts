@@ -25,7 +25,6 @@ export type YouTubeOAuthDiagnostic = {
 export function buildYouTubeOAuthAuthorizationUrl(params: {
   clientId: string;
   codeVerifierChallenge: string;
-  forceConsent: boolean;
   redirectUri: string;
   state: string;
 }) {
@@ -40,10 +39,10 @@ export function buildYouTubeOAuthAuthorizationUrl(params: {
   url.searchParams.set("include_granted_scopes", "true");
   url.searchParams.set("code_challenge", params.codeVerifierChallenge);
   url.searchParams.set("code_challenge_method", "S256");
-
-  if (params.forceConsent) {
-    url.searchParams.set("prompt", "consent");
-  }
+  // Scheduled publishing requires a refresh token. Google may otherwise reuse
+  // an earlier grant and omit a new refresh token, leaving a connection that
+  // cannot publish after the user leaves UGC Pilot.
+  url.searchParams.set("prompt", "consent");
 
   return url;
 }

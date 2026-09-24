@@ -4,19 +4,15 @@ import {
   AppSidebar,
   type AppSidebarActiveKey,
 } from "@/components/layout/app-sidebar";
-import { ProductUpdatesCorner } from "@/components/updates/product-updates-corner";
-import { WorkspaceFooter } from "@/components/layout/workspace-footer";
 
 export function AppShell({
   activeKey,
   children,
   defaultSidebarCollapsed = false,
-  showProductUpdatesFooter = true,
 }: {
   activeKey: AppSidebarActiveKey;
   children: ReactNode;
   defaultSidebarCollapsed?: boolean;
-  showProductUpdatesFooter?: boolean;
 }) {
   return (
     <main className="instagram-theme flex min-h-dvh flex-col overflow-x-clip bg-background text-foreground md:flex-row">
@@ -26,9 +22,7 @@ export function AppShell({
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="min-w-0 flex-1">{children}</div>
-        {showProductUpdatesFooter ? <WorkspaceFooter /> : null}
       </div>
-      <ProductUpdatesCorner />
     </main>
   );
 }

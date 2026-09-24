@@ -2055,8 +2055,9 @@ function ScheduleTargetStatusList({
   const plannedAccounts = (draft.plannedConnectionIds ?? []).flatMap(
     (connectionId) => {
       const label = draft.accountLabelsByConnectionId?.[connectionId];
+      const platform = draft.plannedPlatformsByConnectionId?.[connectionId];
 
-      return label ? [{ connectionId, label }] : [];
+      return label ? [{ connectionId, label, platform }] : [];
     },
   );
 
@@ -2074,7 +2075,12 @@ function ScheduleTargetStatusList({
               key={account.connectionId}
               className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-2.5 py-1"
             >
-              <SocialPlatformIcon className="size-3.5" platform="instagram" />
+              {account.platform ? (
+                <SocialPlatformIcon
+                  className="size-3.5"
+                  platform={account.platform}
+                />
+              ) : null}
               {account.label}
             </span>
           ))
@@ -3730,6 +3736,19 @@ function mapScheduledPostToScheduleDraft(
       ...getMetadataCsv(metadata.plannedConnectionIds),
     ]),
   ];
+  const plannedPlatformsByConnectionId = Object.fromEntries(
+    plannedConnectionIds.flatMap((connectionId) => {
+      const savedTarget = savedPlannedTargets.find(
+        (target) => target.connectionId === connectionId,
+      );
+      const platform =
+        savedTarget?.platform ??
+        socialConnections.find((connection) => connection.id === connectionId)
+          ?.platform;
+
+      return platform ? [[connectionId, platform]] : [];
+    }),
+  );
   const relevantConnectionIds = new Set([
     ...schedule.targets.map((target) => target.socialConnectionId),
     ...plannedConnectionIds,
@@ -3809,6 +3828,10 @@ function mapScheduledPostToScheduleDraft(
           : "single_video",
     mediaTitle: schedule.title,
     plannedConnectionIds,
+    plannedPlatformsByConnectionId:
+      Object.keys(plannedPlatformsByConnectionId).length > 0
+        ? plannedPlatformsByConnectionId
+        : undefined,
     plannedScheduledFor: plannedScheduledFor ?? undefined,
     platforms: getDraftPlatformsFromSchedule(schedule),
     scheduledDate,

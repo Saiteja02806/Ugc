@@ -1225,6 +1225,18 @@ test("day schedules separate the exported file from verified social post links",
   assert.doesNotMatch(dayScheduleItem, /View exported MP4/);
 });
 
+test("pending scheduled accounts use their saved platform icon", () => {
+  const targetStatusList = getSection(
+    schedulingWorkspace,
+    "function ScheduleTargetStatusList({",
+    "function CalendarPlanner({",
+  );
+
+  assert.match(targetStatusList, /plannedPlatformsByConnectionId/);
+  assert.match(targetStatusList, /platform=\{account\.platform\}/);
+  assert.doesNotMatch(targetStatusList, /platform="instagram"/);
+});
+
 test("List view opens a compact, date-selectable daily agenda", () => {
   const listExperience = getSection(
     schedulingWorkspace,

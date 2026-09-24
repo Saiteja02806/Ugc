@@ -35,6 +35,7 @@ import {
   getUnavailableSavedInstagramTargets,
 } from "@/lib/scheduling/schedule-form-persistence";
 import {
+  finalizeScheduleTargetSettings,
   getDefaultScheduleTargetSettings,
   getScheduleTargetSettingsError,
   type ScheduleTargetSettings,
@@ -827,9 +828,11 @@ export function ScheduleEditor({
         ...selectedConnections.map((connection) => ({
           connectionId: connection.id,
           platform: connection.platform,
-          settings:
+          settings: finalizeScheduleTargetSettings(
+            connection.platform,
             publishingSettings[connection.id] ??
-            getDefaultPublishingSettings(connection.platform),
+              getDefaultPublishingSettings(connection.platform),
+          ),
         })),
       ],
       timezone,
@@ -1222,31 +1225,22 @@ export function ScheduleEditor({
                     ? "Choose a connected account before scheduling this post."
                     : `Choose a connected ${publishingAccountLabel} account before scheduling this post.`}
             </p>
-            <button
-              type="button"
-              onClick={handleSaveDraft}
-              disabled={!canSaveDraft}
-              className="inline-flex h-11 w-full shrink-0 touch-manipulation items-center justify-center gap-2 rounded-control bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_10px_24px_rgb(225_101_64_/_0.18)] transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-56"
-            >
-              <CheckCircle2 className="size-4" aria-hidden="true" />
-              {saving
-                ? "Scheduling…"
-                : canSaveDraft
-                  ? editingSchedule
-                    ? "Save and schedule"
-                    : "Schedule post"
-                  : unavailableSavedTargetError
-                    ? "Review saved account"
-                    : captionValidationError
-                      ? "Shorten caption"
-                      : publishingSettingsError
-                        ? "Review publishing settings"
-                        : requireScheduleTarget && !hasSelectedConnections
-                          ? "Choose an account"
-                          : isCarouselSchedule || selectedPublishMedia
-                            ? "Choose date and time"
-                            : mediaValidationError ?? "Select media to schedule"}
-            </button>
+            <div className="flex w-full flex-col items-end gap-2 sm:w-auto">
+              {selectedConnections.some((connection) => connection.platform === "tiktok") ? (
+                <p className="max-w-72 text-right text-[11px] font-medium leading-4 text-muted">
+                  By posting, you agree to TikTok&apos;s Music Usage Confirmation.
+                </p>
+              ) : null}
+              <button
+                type="button"
+                onClick={handleSaveDraft}
+                disabled={!canSaveDraft}
+                className="inline-flex h-11 w-full shrink-0 touch-manipulation items-center justify-center gap-2 rounded-control bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_10px_24px_rgb(225_101_64_/_0.18)] transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-56"
+              >
+                <CheckCircle2 className="size-4" aria-hidden="true" />
+                {saving ? "Scheduling…" : canSaveDraft ? editingSchedule ? "Save and schedule" : "Schedule post" : unavailableSavedTargetError ? "Review saved account" : captionValidationError ? "Shorten caption" : publishingSettingsError ? "Review publishing settings" : requireScheduleTarget && !hasSelectedConnections ? "Choose an account" : isCarouselSchedule || selectedPublishMedia ? "Choose date and time" : mediaValidationError ?? "Select media to schedule"}
+              </button>
+            </div>
           </div>
         </div>
       </aside>
@@ -2525,6 +2519,10 @@ function TikTokAccountSettings({
   const capabilities = capabilitiesState.capabilities;
   const privacyLevel = getStringSetting(settings, "privacyLevel", "");
   const brandedContent = getBooleanSetting(settings, "brandedContent", false);
+  const commercialContentEnabled =
+    getBooleanSetting(settings, "commercialContentDisclosureEnabled", false) ||
+    getBooleanSetting(settings, "brandOrganic", false) ||
+    brandedContent;
 
   return (
     <div className="mt-3 grid gap-3">
@@ -2595,45 +2593,54 @@ function TikTokAccountSettings({
 
       <fieldset>
         <legend className="text-xs font-bold text-foreground">
-          Content disclosure
+          AI-generated content
         </legend>
-        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        <div className="mt-2">
           <SettingCheckbox
-            checked={getBooleanSetting(
-              settings,
-              "containsSyntheticMedia",
-              true,
-            )}
+            checked={getBooleanSetting(settings, "containsSyntheticMedia", true)}
+            description="Separate from commercial content disclosure."
             label="Contains AI-generated content"
-            onChange={(checked) =>
-              onChange("containsSyntheticMedia", checked)
-            }
-          />
-          <SettingCheckbox
-            checked={getBooleanSetting(settings, "brandOrganic", false)}
-            label="Promotes your brand"
-            onChange={(checked) => onChange("brandOrganic", checked)}
-          />
-          <SettingCheckbox
-            checked={brandedContent}
-            label="Paid partnership"
-            onChange={(checked) => {
-              onChange("brandedContent", checked);
-
-              if (checked && privacyLevel === "SELF_ONLY") {
-                onChange("privacyLevel", "");
-              }
-            }}
+            onChange={(checked) => onChange("containsSyntheticMedia", checked)}
           />
         </div>
       </fieldset>
 
-      <SettingCheckbox
-        checked={getBooleanSetting(settings, "musicUsageConfirmed", false)}
-        description="Required before scheduling this TikTok post."
-        label="I agree to TikTok's Music Usage Confirmation"
-        onChange={(checked) => onChange("musicUsageConfirmed", checked)}
-      />
+      <fieldset>
+        <legend className="text-xs font-bold text-foreground">Commercial content</legend>
+        <div className="mt-2 grid gap-2">
+          <SettingCheckbox
+            checked={commercialContentEnabled}
+            description="Turn this on only when this post promotes a business or brand."
+            label="Content disclosure"
+            onChange={(checked) => {
+              onChange("commercialContentDisclosureEnabled", checked);
+              if (!checked) {
+                onChange("brandOrganic", false);
+                onChange("brandedContent", false);
+              }
+            }}
+          />
+          {commercialContentEnabled ? (
+            <div className="grid gap-2 border-l-2 border-primary/30 pl-3 sm:grid-cols-2">
+              <SettingCheckbox
+                checked={getBooleanSetting(settings, "brandOrganic", false)}
+                description={getBooleanSetting(settings, "brandOrganic", false) ? "Your video will be labeled as ‘Promotional content’." : undefined}
+                label="Your brand"
+                onChange={(checked) => onChange("brandOrganic", checked)}
+              />
+              <SettingCheckbox
+                checked={brandedContent}
+                description={brandedContent ? "Your video will be labeled as ‘Paid partnership’." : undefined}
+                label="Branded content"
+                onChange={(checked) => {
+                  onChange("brandedContent", checked);
+                  if (checked && privacyLevel === "SELF_ONLY") onChange("privacyLevel", "");
+                }}
+              />
+            </div>
+          ) : null}
+        </div>
+      </fieldset>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  finalizeScheduleTargetSettings,
   getDefaultScheduleTargetSettings,
   getScheduleTargetSettingsError,
   normalizeScheduleTargetSettings,
@@ -18,6 +19,7 @@ test("provides shared defaults for every scheduling surface", () => {
     allowStitch: false,
     brandOrganic: false,
     brandedContent: false,
+    commercialContentDisclosureEnabled: false,
     containsSyntheticMedia: true,
     musicUsageConfirmed: false,
     privacyLevel: "",
@@ -179,6 +181,19 @@ test("requires explicit TikTok Music Usage Confirmation", () => {
       error instanceof SchedulePlatformSettingsError &&
       error.message.includes("Music Usage Confirmation"),
   );
+});
+
+test("blocks an incomplete commercial disclosure and confirms music at the final action", () => {
+  const connection = { id: "tiktok-1", platform: "tiktok" as const };
+  const capabilities = {
+    capabilities: {
+      creatorNickname: "Creator", creatorUsername: "creator", directPostAudited: true,
+      interactions: { commentsDisabled: false, duetsDisabled: false, stitchesDisabled: false },
+      maxVideoDurationSeconds: 600, privacyLevels: ["PUBLIC_TO_EVERYONE" as const],
+    }, status: "ready" as const,
+  };
+  assert.equal(getScheduleTargetSettingsError({ connections: [connection], settings: { "tiktok-1": { commercialContentDisclosureEnabled: true, privacyLevel: "PUBLIC_TO_EVERYONE" } }, tiktokCapabilities: { "tiktok-1": capabilities } }), "Choose Your brand or Branded content before scheduling.");
+  assert.equal(finalizeScheduleTargetSettings("tiktok", { privacyLevel: "PUBLIC_TO_EVERYONE" }).musicUsageConfirmed, true);
 });
 
 test("normalizes YouTube visibility and audience settings", () => {

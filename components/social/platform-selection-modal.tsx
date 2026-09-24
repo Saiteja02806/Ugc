@@ -53,6 +53,7 @@ import {
   SOCIAL_SCHEDULING_TIME_STEP_SECONDS,
   validateScheduleLeadTime,
 } from "@/lib/scheduling/schedule-time";
+import { finalizeScheduleTargetSettings } from "@/lib/scheduling/platform-settings";
 import { getConnectionPublishingBlockMessage } from "@/lib/scheduling/social-connection-policy";
 import { INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR } from "@/lib/social/instagram-professional-account";
 import {
@@ -756,9 +757,11 @@ export function PlatformSelectionModal({
         targets: selectedConnections.map((connection) => ({
           connectionId: connection.id,
           platform: connection.platform,
-          settings:
+          settings: finalizeScheduleTargetSettings(
+            connection.platform,
             publishingSettings[connection.id] ??
-            getDefaultPublishingSettings(connection.platform),
+              getDefaultPublishingSettings(connection.platform),
+          ),
         })),
         timezone,
         useDefaultScheduleTime: mode === "asap",
@@ -1002,6 +1005,9 @@ export function PlatformSelectionModal({
                     timezone,
                   )}
                   minimumLeadMinutes={minimumLeadMinutes}
+                  requiresTikTokMusicDeclaration={selectedConnections.some(
+                    (connection) => connection.platform === "tiktok",
+                  )}
                   onPostAsap={() => void submitSchedule("asap")}
                   onScheduleLater={() => setScheduleMode("later")}
                 />
@@ -1061,15 +1067,22 @@ export function PlatformSelectionModal({
                 <ChevronRight data-icon="inline-end" />
               </Button>
             ) : scheduleMode === "later" ? (
-              <Button
-                size="lg"
-                className="px-4"
-                onClick={() => void submitSchedule("later")}
-                disabled={Boolean(laterValidation.error)}
-              >
-                <Check data-icon="inline-start" />
-                Schedule post
-              </Button>
+              <div className="flex flex-col items-end gap-2">
+                {selectedConnections.some((connection) => connection.platform === "tiktok") ? (
+                  <p className="max-w-64 text-right text-[11px] font-medium leading-4 text-muted-foreground">
+                    By posting, you agree to TikTok&apos;s Music Usage Confirmation.
+                  </p>
+                ) : null}
+                <Button
+                  size="lg"
+                  className="px-4"
+                  onClick={() => void submitSchedule("later")}
+                  disabled={Boolean(laterValidation.error)}
+                >
+                  <Check data-icon="inline-start" />
+                  Schedule post
+                </Button>
+              </div>
             ) : null}
           </DialogFooter>
         ) : null}
@@ -1562,6 +1575,10 @@ function TikTokCarouselSettings({
   const capabilities = capabilitiesState.capabilities;
   const privacyLevel = getStringSetting(settings, "privacyLevel", "");
   const brandedContent = getBooleanSetting(settings, "brandedContent", false);
+  const commercialContentEnabled =
+    getBooleanSetting(settings, "commercialContentDisclosureEnabled", false) ||
+    getBooleanSetting(settings, "brandOrganic", false) ||
+    brandedContent;
 
   return (
     <div className="mt-3 grid gap-3">
@@ -1597,29 +1614,47 @@ function TikTokCarouselSettings({
           label="Allow comments"
           onChange={(checked) => onChange("allowComment", checked)}
         />
-        <SettingCheckbox
-          checked={getBooleanSetting(settings, "brandOrganic", false)}
-          label="Promotes your brand"
-          onChange={(checked) => onChange("brandOrganic", checked)}
-        />
-        <SettingCheckbox
-          checked={brandedContent}
-          label="Paid partnership"
-          onChange={(checked) => {
-            onChange("brandedContent", checked);
-
-            if (checked && privacyLevel === "SELF_ONLY") {
-              onChange("privacyLevel", "");
-            }
-          }}
-        />
       </div>
 
-      <SettingCheckbox
-        checked={getBooleanSetting(settings, "musicUsageConfirmed", false)}
-        label="I agree to TikTok's Music Usage Confirmation"
-        onChange={(checked) => onChange("musicUsageConfirmed", checked)}
-      />
+      <fieldset>
+        <legend className="text-xs font-semibold text-foreground">AI-generated content</legend>
+        <div className="mt-2">
+          <SettingCheckbox
+            checked={getBooleanSetting(settings, "containsSyntheticMedia", true)}
+            label="Contains AI-generated content"
+            onChange={(checked) => onChange("containsSyntheticMedia", checked)}
+          />
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend className="text-xs font-semibold text-foreground">Commercial content</legend>
+        <div className="mt-2 grid gap-2">
+          <SettingCheckbox
+            checked={commercialContentEnabled}
+            label="Content disclosure"
+            onChange={(checked) => {
+              onChange("commercialContentDisclosureEnabled", checked);
+              if (!checked) { onChange("brandOrganic", false); onChange("brandedContent", false); }
+            }}
+          />
+          {commercialContentEnabled ? (
+            <div className="grid gap-2 border-l-2 border-primary/30 pl-3 sm:grid-cols-2">
+              <SettingCheckbox
+                checked={getBooleanSetting(settings, "brandOrganic", false)}
+                label="Your brand"
+                onChange={(checked) => onChange("brandOrganic", checked)}
+              />
+              {getBooleanSetting(settings, "brandOrganic", false) ? <p className="text-[11px] font-medium leading-4 text-muted-foreground">Your video will be labeled as ‘Promotional content’.</p> : null}
+              <SettingCheckbox
+                checked={brandedContent}
+                label="Branded content"
+                onChange={(checked) => { onChange("brandedContent", checked); if (checked && privacyLevel === "SELF_ONLY") onChange("privacyLevel", ""); }}
+              />
+              {brandedContent ? <p className="text-[11px] font-medium leading-4 text-muted-foreground">Your video will be labeled as ‘Paid partnership’.</p> : null}
+            </div>
+          ) : null}
+        </div>
+      </fieldset>
     </div>
   );
 }
@@ -1629,11 +1664,13 @@ function ScheduleChoiceStep({
   minimumLeadMinutes,
   onPostAsap,
   onScheduleLater,
+  requiresTikTokMusicDeclaration,
 }: {
   earliestLabel: string;
   minimumLeadMinutes: number;
   onPostAsap: () => void;
   onScheduleLater: () => void;
+  requiresTikTokMusicDeclaration: boolean;
 }) {
   return (
     <div className="mx-auto w-full max-w-3xl">
@@ -1645,6 +1682,11 @@ function ScheduleChoiceStep({
           Publish at the earliest safe time, or choose an exact date and time.
         </p>
       </div>
+      {requiresTikTokMusicDeclaration ? (
+        <p className="mt-4 text-xs font-medium leading-5 text-muted-foreground">
+          By posting, you agree to TikTok&apos;s Music Usage Confirmation.
+        </p>
+      ) : null}
       <div className="mt-5 grid gap-3 md:grid-cols-2">
         <ScheduleChoice
           description={`Earliest available: ${earliestLabel}. Uses the configured ${minimumLeadMinutes}-minute lead time.`}
@@ -1862,6 +1904,7 @@ function getDefaultPublishingSettings(
     allowStitch: false,
     brandOrganic: false,
     brandedContent: false,
+    commercialContentDisclosureEnabled: false,
     containsSyntheticMedia: true,
     musicUsageConfirmed: false,
     privacyLevel: "",
@@ -1917,8 +1960,12 @@ function getPublishingSettingsError(params: {
       return TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE;
     }
 
-    if (!getBooleanSetting(settings, "musicUsageConfirmed", false)) {
-      return "Confirm TikTok's Music Usage Confirmation before scheduling.";
+    if (
+      getBooleanSetting(settings, "commercialContentDisclosureEnabled", false) &&
+      !getBooleanSetting(settings, "brandOrganic", false) &&
+      !getBooleanSetting(settings, "brandedContent", false)
+    ) {
+      return "Choose Your brand or Branded content before scheduling.";
     }
 
     if (

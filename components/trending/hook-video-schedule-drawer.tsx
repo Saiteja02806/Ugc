@@ -30,6 +30,7 @@ import {
   loadAccountSocialConnections,
 } from "@/lib/scheduling/account-data-query";
 import {
+  finalizeScheduleTargetSettings,
   getDefaultScheduleTargetSettings,
   getScheduleTargetSettingsError,
   type ScheduleTargetSettings,
@@ -313,9 +314,11 @@ export function HookVideoScheduleDrawer({
       targets: selectedConnections.map((connection) => ({
         connectionId: connection.id,
         platform: connection.platform,
-        settings:
+        settings: finalizeScheduleTargetSettings(
+          connection.platform,
           settings[connection.id] ??
-          getDefaultScheduleTargetSettings(connection.platform),
+            getDefaultScheduleTargetSettings(connection.platform),
+        ),
       })),
       timezone,
       useDefaultScheduleTime,
@@ -579,6 +582,11 @@ export function HookVideoScheduleDrawer({
         </div>
 
         <footer className="border-t border-border bg-background px-4 py-3 sm:px-5">
+          {stage === "review" && selectedConnections.some((connection) => connection.platform === "tiktok") ? (
+            <p className="mb-2 text-center text-[11px] font-medium leading-4 text-muted">
+              By posting, you agree to TikTok&apos;s Music Usage Confirmation.
+            </p>
+          ) : null}
           <Button
             type="button"
             size="lg"
@@ -687,15 +695,26 @@ function ConnectionRow({
                   ))}
                 </select>
               </label>
-              <label className="flex items-start gap-2 text-xs font-medium leading-4 text-foreground-strong">
-                <input
-                  type="checkbox"
-                  checked={settings.musicUsageConfirmed === true}
-                  onChange={(event) => onSettingChange("musicUsageConfirmed", event.target.checked)}
-                  className="mt-0.5 size-4 shrink-0 accent-primary"
-                />
-                <span>I agree to TikTok&apos;s Music Usage Confirmation.</span>
-              </label>
+              <fieldset>
+                <legend className="text-xs font-semibold text-foreground-strong">AI-generated content</legend>
+                <label className="mt-2 flex items-start gap-2 text-xs font-medium leading-4 text-foreground-strong">
+                  <input type="checkbox" checked={settings.containsSyntheticMedia !== false} onChange={(event) => onSettingChange("containsSyntheticMedia", event.target.checked)} className="mt-0.5 size-4 shrink-0 accent-primary" />
+                  <span>Contains AI-generated content</span>
+                </label>
+              </fieldset>
+              <fieldset>
+                <legend className="text-xs font-semibold text-foreground-strong">Commercial content</legend>
+                <label className="mt-2 flex items-start gap-2 text-xs font-medium leading-4 text-foreground-strong">
+                  <input type="checkbox" checked={settings.commercialContentDisclosureEnabled === true || settings.brandOrganic === true || settings.brandedContent === true} onChange={(event) => { const enabled = event.target.checked; onSettingChange("commercialContentDisclosureEnabled", enabled); if (!enabled) { onSettingChange("brandOrganic", false); onSettingChange("brandedContent", false); } }} className="mt-0.5 size-4 shrink-0 accent-primary" />
+                  <span>Content disclosure</span>
+                </label>
+                {settings.commercialContentDisclosureEnabled === true || settings.brandOrganic === true || settings.brandedContent === true ? (
+                  <div className="mt-2 grid gap-2 border-l-2 border-primary/30 pl-3">
+                    <label className="flex items-start gap-2 text-xs font-medium leading-4 text-foreground-strong"><input type="checkbox" checked={settings.brandOrganic === true} onChange={(event) => onSettingChange("brandOrganic", event.target.checked)} className="mt-0.5 size-4 shrink-0 accent-primary" /><span>Your brand{settings.brandOrganic === true ? ": Your video will be labeled as ‘Promotional content’." : ""}</span></label>
+                    <label className="flex items-start gap-2 text-xs font-medium leading-4 text-foreground-strong"><input type="checkbox" checked={settings.brandedContent === true} onChange={(event) => { onSettingChange("brandedContent", event.target.checked); if (event.target.checked && settings.privacyLevel === "SELF_ONLY") onSettingChange("privacyLevel", ""); }} className="mt-0.5 size-4 shrink-0 accent-primary" /><span>Branded content{settings.brandedContent === true ? ": Your video will be labeled as ‘Paid partnership’." : ""}</span></label>
+                  </div>
+                ) : null}
+              </fieldset>
             </div>
           )}
         </div>

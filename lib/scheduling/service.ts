@@ -61,9 +61,12 @@ import {
 } from "@/lib/scheduling/platform-settings";
 import {
   getEarliestScheduleTimestamp,
+  getRenderFinalizationDeadline,
   getZonedDateTimeParts,
+  parseRenderFinalizationGraceMinutes,
   parseSchedulingTaskCreationBufferSeconds,
   parseSocialSchedulingMinimumLeadMinutes,
+  resolveRenderFinalizationScheduleTime,
   resolveZonedDateTime,
   ScheduleTimeError,
   validateScheduleLeadTime,
@@ -483,7 +486,14 @@ export async function scheduleRenderedPost(params: {
       ? assertTaskCreationBuffer
       : assertMinimumScheduleLead;
 
-  assertLeadTime(normalized.scheduledFor);
+  const finalizationSchedule = getFinalizationScheduleTime({
+    leadPolicy,
+    preferredScheduledFor: normalized.scheduledFor,
+    schedule: existing,
+  });
+  const scheduledFor = finalizationSchedule.scheduledFor;
+
+  assertLeadTime(scheduledFor);
   const targetConnections = await resolveScheduleTargets({
     targets: normalized.targets,
     userId: params.userId,
@@ -539,7 +549,7 @@ export async function scheduleRenderedPost(params: {
         scheduledTime: normalized.scheduleTime.scheduledTime,
       },
       postId: existing.id,
-      scheduledFor: normalized.scheduledFor,
+      scheduledFor,
       timezone: normalized.timezone,
       userId: params.userId,
     });
@@ -559,7 +569,7 @@ export async function scheduleRenderedPost(params: {
           mediaMode: "carousel",
         },
         platform: connection.platform,
-        scheduled_for: normalized.scheduledFor,
+        scheduled_for: scheduledFor,
         scheduled_post_id: existing.id,
         settings: connection.settings,
         social_connection_id: connection.id,
@@ -638,7 +648,7 @@ export async function scheduleRenderedPost(params: {
         useOpeningClip: false,
       },
       postId: existing.id,
-      scheduledFor: normalized.scheduledFor,
+      scheduledFor,
       timezone: normalized.timezone,
       userId: params.userId,
     });
@@ -658,7 +668,7 @@ export async function scheduleRenderedPost(params: {
           scheduledVideoId: scheduledVideoAsset.id,
         },
         platform: connection.platform,
-        scheduled_for: normalized.scheduledFor,
+        scheduled_for: scheduledFor,
         scheduled_post_id: existing.id,
         settings: connection.settings,
         social_connection_id: connection.id,
@@ -748,7 +758,7 @@ export async function scheduleRenderedPost(params: {
       scheduledTime: normalized.scheduleTime.scheduledTime,
     },
     postId: existing.id,
-    scheduledFor: normalized.scheduledFor,
+    scheduledFor,
     timezone: normalized.timezone,
     userId: params.userId,
   });
@@ -768,7 +778,7 @@ export async function scheduleRenderedPost(params: {
         mediaMode: "combined_video",
       },
       platform: connection.platform,
-      scheduled_for: normalized.scheduledFor,
+      scheduled_for: scheduledFor,
       scheduled_post_id: existing.id,
       settings: connection.settings,
       social_connection_id: connection.id,
@@ -2335,6 +2345,47 @@ function assertTaskCreationBuffer(scheduledFor: string) {
   }
 }
 
+function getFinalizationScheduleTime(params: {
+  leadPolicy: ScheduleLeadPolicy;
+  preferredScheduledFor: string;
+  schedule: ScheduledPost;
+}) {
+  if (params.leadPolicy !== "render_finalization") {
+    return {
+      deadlineAt: null,
+      scheduledFor: params.preferredScheduledFor,
+      usedGraceWindow: false,
+    };
+  }
+
+  const graceMinutes = parseRenderFinalizationGraceMinutes(
+    process.env.SOCIAL_SCHEDULING_RENDER_GRACE_MINUTES,
+  );
+  const deadlineAt =
+    getMetadataString(params.schedule.metadata.plannedPublishDeadlineAt) ??
+    getRenderFinalizationDeadline({
+      graceMinutes,
+      preferredScheduledFor: params.preferredScheduledFor,
+    });
+  const decision = resolveRenderFinalizationScheduleTime({
+    deadlineAt,
+    minimumTaskCreationBufferSeconds: parseSchedulingTaskCreationBufferSeconds(
+      process.env.SOCIAL_SCHEDULING_TASK_CREATION_BUFFER_SECONDS,
+    ),
+    preferredScheduledFor: params.preferredScheduledFor,
+  });
+
+  if (decision.action === "expired") {
+    throw new SchedulingRequestError(
+      "The video was not ready before its permitted publishing window ended.",
+      409,
+      "schedule_grace_window_elapsed",
+    );
+  }
+
+  return decision;
+}
+
 function applyTrustedScheduleTimeMetadata(
   metadata: ScheduleMetadata,
   scheduleTime: NormalizedScheduleTime | null,
@@ -2342,11 +2393,18 @@ function applyTrustedScheduleTimeMetadata(
   const normalized: ScheduleMetadata = { ...metadata };
 
   delete normalized.plannedScheduledFor;
+  delete normalized.plannedPublishDeadlineAt;
   delete normalized.scheduledDate;
   delete normalized.scheduledTime;
 
   if (scheduleTime) {
     normalized.plannedScheduledFor = scheduleTime.scheduledFor;
+    normalized.plannedPublishDeadlineAt = getRenderFinalizationDeadline({
+      graceMinutes: parseRenderFinalizationGraceMinutes(
+        process.env.SOCIAL_SCHEDULING_RENDER_GRACE_MINUTES,
+      ),
+      preferredScheduledFor: scheduleTime.scheduledFor,
+    });
     normalized.scheduledDate = scheduleTime.scheduledDate;
     normalized.scheduledTime = scheduleTime.scheduledTime;
   }

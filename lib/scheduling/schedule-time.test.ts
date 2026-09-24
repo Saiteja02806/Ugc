@@ -4,11 +4,15 @@ import test from "node:test";
 import {
   DEFAULT_SCHEDULING_TASK_CREATION_BUFFER_SECONDS,
   DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
+  DEFAULT_RENDER_FINALIZATION_GRACE_MINUTES,
   getEarliestScheduleTimestamp,
+  getRenderFinalizationDeadline,
   getZonedDateTimeParts,
   parseSchedulingTaskCreationBufferSeconds,
+  parseRenderFinalizationGraceMinutes,
   parseSocialSchedulingMinimumLeadMinutes,
   resolveZonedDateTime,
+  resolveRenderFinalizationScheduleTime,
   ScheduleTimeError,
   validateScheduleLeadTime,
   validateSchedulingTaskCreationBuffer,
@@ -177,5 +181,49 @@ test("uses safe configurable scheduling defaults", () => {
   assert.equal(
     parseSchedulingTaskCreationBufferSeconds("not-a-number"),
     DEFAULT_SCHEDULING_TASK_CREATION_BUFFER_SECONDS,
+  );
+  assert.equal(parseRenderFinalizationGraceMinutes("10"), 10);
+  assert.equal(
+    parseRenderFinalizationGraceMinutes("0"),
+    DEFAULT_RENDER_FINALIZATION_GRACE_MINUTES,
+  );
+});
+
+test("keeps a rendered post inside its saved ten-minute grace window", () => {
+  const preferredScheduledFor = "2026-07-20T20:45:00.000Z";
+  const deadlineAt = getRenderFinalizationDeadline({
+    graceMinutes: 10,
+    preferredScheduledFor,
+  });
+
+  assert.equal(deadlineAt, "2026-07-20T20:55:00.000Z");
+  assert.deepEqual(
+    resolveRenderFinalizationScheduleTime({
+      deadlineAt,
+      minimumTaskCreationBufferSeconds: 30,
+      now: Date.UTC(2026, 6, 20, 20, 45, 14),
+      preferredScheduledFor,
+    }),
+    {
+      action: "schedule",
+      deadlineAt,
+      scheduledFor: "2026-07-20T20:46:14.000Z",
+      usedGraceWindow: true,
+    },
+  );
+});
+
+test("does not schedule after the saved render-finalization deadline", () => {
+  assert.deepEqual(
+    resolveRenderFinalizationScheduleTime({
+      deadlineAt: "2026-07-20T20:55:00.000Z",
+      minimumTaskCreationBufferSeconds: 30,
+      now: Date.UTC(2026, 6, 20, 20, 54, 1),
+      preferredScheduledFor: "2026-07-20T20:45:00.000Z",
+    }),
+    {
+      action: "expired",
+      deadlineAt: "2026-07-20T20:55:00.000Z",
+    },
   );
 });

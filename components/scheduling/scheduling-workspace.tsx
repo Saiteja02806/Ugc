@@ -29,6 +29,10 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { useAuth } from "@/contexts/auth-context";
 import type { MediaAsset, MediaSourceType } from "@/lib/media/types";
+import {
+  isContentSecondaryClipMediaAsset,
+  isScheduledVideoMediaAsset,
+} from "@/lib/scheduling/secondary-clip-media";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -129,14 +133,6 @@ const creativeAssetHookVideoSourceTypes: MediaSourceType[] = [
   "influencer_upload",
   "generated_video",
 ];
-const scheduledVideoSourceTypes: MediaSourceType[] = [
-  "demo_upload",
-  "upload",
-  "generated_video",
-  "edit_export",
-  "wall_text_render",
-  "reaction_render",
-];
 const ACTIVE_SCHEDULE_POLL_INTERVAL_MS = 5_000;
 const ACTIVE_SCHEDULE_LOOKAHEAD_MS = 60_000;
 const ACTIVE_SCHEDULE_LOOKBEHIND_MS = 120_000;
@@ -190,6 +186,7 @@ type SchedulePublishRetryResponse =
   | { message?: string; ok?: false };
 
 type SchedulingMediaCatalog = {
+  availableScheduledVideoIds: string[];
   demoMediaOptions: ScheduleMediaOption[];
   hookMediaOptions: ScheduleMediaOption[];
 };
@@ -252,6 +249,12 @@ export function SchedulingWorkspace() {
   const [demoMediaOptions, setDemoMediaOptions] = useState<ScheduleMediaOption[]>(
     () => cachedMediaCatalog?.demoMediaOptions ?? [],
   );
+  const [availableScheduledVideoIds, setAvailableScheduledVideoIds] = useState<string[]>(
+    () =>
+      cachedMediaCatalog?.availableScheduledVideoIds ??
+      cachedMediaCatalog?.demoMediaOptions.map((option) => option.id) ??
+      [],
+  );
   const [scheduleMediaLoaded, setScheduleMediaLoaded] = useState(
     () => cachedMediaCatalog !== undefined,
   );
@@ -260,7 +263,7 @@ export function SchedulingWorkspace() {
   );
   const drafts = useMemo(() => {
     const activeOpeningIds = new Set(hookMediaOptions.map((option) => option.id));
-    const activeDemoIds = new Set(demoMediaOptions.map((option) => option.id));
+    const activeDemoIds = new Set(availableScheduledVideoIds);
 
     return serverSchedules.map((schedule) => {
       const mediaIssue = getScheduleMediaIssue({
@@ -277,7 +280,7 @@ export function SchedulingWorkspace() {
       );
     });
   }, [
-    demoMediaOptions,
+    availableScheduledVideoIds,
     hookMediaOptions,
     scheduleMediaLoaded,
     serverSchedules,
@@ -404,10 +407,12 @@ export function SchedulingWorkspace() {
           }
 
           const videoAssets = videoData.assets;
+          const scheduledVideoAssets = videoAssets.filter(isScheduledVideoMediaAsset);
 
           return {
-            demoMediaOptions: videoAssets
-              .filter(isScheduledVideoMediaAsset)
+            availableScheduledVideoIds: scheduledVideoAssets.map((asset) => asset.id),
+            demoMediaOptions: scheduledVideoAssets
+              .filter(isContentSecondaryClipMediaAsset)
               .map(mapMediaAssetToScheduleMediaOption),
             hookMediaOptions: dedupeScheduleMediaOptions([
               ...influencerData.assets
@@ -426,6 +431,7 @@ export function SchedulingWorkspace() {
 
       setHookMediaOptions(mediaCatalog.hookMediaOptions);
       setDemoMediaOptions(mediaCatalog.demoMediaOptions);
+      setAvailableScheduledVideoIds(mediaCatalog.availableScheduledVideoIds);
       setScheduleMediaLoaded(true);
       return true;
     } catch (error) {
@@ -4157,13 +4163,6 @@ function isCreativeAssetHookMediaAsset(asset: MediaAsset) {
   return (
     (asset.collection === "influencer" || asset.collection === "video") &&
     creativeAssetHookVideoSourceTypes.includes(asset.sourceType)
-  );
-}
-
-function isScheduledVideoMediaAsset(asset: MediaAsset) {
-  return (
-    asset.collection === "video" &&
-    scheduledVideoSourceTypes.includes(asset.sourceType)
   );
 }
 

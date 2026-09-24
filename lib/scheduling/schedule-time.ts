@@ -8,6 +8,7 @@ const OFFSET_SAMPLE_STEP_HOURS = 6;
 
 export const DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES = 5;
 export const DEFAULT_SCHEDULING_TASK_CREATION_BUFFER_SECONDS = 30;
+export const DEFAULT_RENDER_FINALIZATION_GRACE_MINUTES = 10;
 export const SOCIAL_SCHEDULING_TIME_STEP_SECONDS = 60;
 
 export type ScheduleTimeErrorCode =
@@ -174,6 +175,90 @@ export function parseSchedulingTaskCreationBufferSeconds(
     : DEFAULT_SCHEDULING_TASK_CREATION_BUFFER_SECONDS;
 }
 
+/**
+ * A render may finish just after the user's preferred time because an
+ * external renderer is still starting. This is intentionally independent
+ * from the ordinary scheduling lead time: it applies only while a rendered
+ * video is being handed off to the publishing scheduler.
+ */
+export function parseRenderFinalizationGraceMinutes(
+  value: string | null | undefined,
+) {
+  if (!value?.trim()) {
+    return DEFAULT_RENDER_FINALIZATION_GRACE_MINUTES;
+  }
+
+  const parsed = Number(value);
+
+  return Number.isInteger(parsed) && parsed >= 1 && parsed <= MINUTES_PER_DAY
+    ? parsed
+    : DEFAULT_RENDER_FINALIZATION_GRACE_MINUTES;
+}
+
+export function getRenderFinalizationDeadline(params: {
+  graceMinutes: number;
+  preferredScheduledFor: string | number | Date;
+}) {
+  const preferredTimestamp = getTimestamp(params.preferredScheduledFor);
+  const graceMinutes = normalizeGraceMinutes(params.graceMinutes);
+
+  return new Date(
+    preferredTimestamp + graceMinutes * MILLISECONDS_PER_MINUTE,
+  ).toISOString();
+}
+
+export type RenderFinalizationScheduleDecision =
+  | {
+      action: "schedule";
+      deadlineAt: string;
+      scheduledFor: string;
+      usedGraceWindow: boolean;
+    }
+  | {
+      action: "expired";
+      deadlineAt: string;
+    };
+
+/**
+ * Select the time passed to Cloud Tasks after a render completes. A render
+ * that is already late is handed off at the first safe future instant, but
+ * never after the durable deadline saved when the user requested the post.
+ */
+export function resolveRenderFinalizationScheduleTime(params: {
+  deadlineAt: string | number | Date;
+  minimumTaskCreationBufferSeconds: number;
+  now?: number;
+  preferredScheduledFor: string | number | Date;
+}): RenderFinalizationScheduleDecision {
+  const preferredTimestamp = getTimestamp(params.preferredScheduledFor);
+  const deadlineTimestamp = getTimestamp(params.deadlineAt);
+  const now = params.now ?? Date.now();
+  const minimumBufferSeconds = normalizeBufferSeconds(
+    params.minimumTaskCreationBufferSeconds,
+  );
+
+  // Give the database and Cloud Tasks handoff enough time to complete after
+  // this calculation. The normal 30-second validation still runs later.
+  const earliestSafeTimestamp = now + Math.max(minimumBufferSeconds, 60) * 1_000;
+  const scheduledTimestamp = Math.max(
+    preferredTimestamp,
+    earliestSafeTimestamp,
+  );
+
+  const deadlineAt = new Date(deadlineTimestamp).toISOString();
+
+  if (scheduledTimestamp > deadlineTimestamp) {
+    return { action: "expired", deadlineAt };
+  }
+
+  return {
+    action: "schedule",
+    deadlineAt,
+    scheduledFor: new Date(scheduledTimestamp).toISOString(),
+    usedGraceWindow: scheduledTimestamp > preferredTimestamp,
+  };
+}
+
 export function validateTimeZone(value: string) {
   const timeZone = value.trim();
 
@@ -289,6 +374,12 @@ function normalizeBufferSeconds(value: number) {
   return Number.isFinite(value) && value >= 1
     ? Math.ceil(value)
     : DEFAULT_SCHEDULING_TASK_CREATION_BUFFER_SECONDS;
+}
+
+function normalizeGraceMinutes(value: number) {
+  return Number.isFinite(value) && value >= 1
+    ? Math.ceil(value)
+    : DEFAULT_RENDER_FINALIZATION_GRACE_MINUTES;
 }
 
 type NumericDateTimeParts = {

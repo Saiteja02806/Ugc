@@ -1205,6 +1205,26 @@ test("every calendar date opens the dedicated day view", () => {
   assert.match(schedulingWorkspace, /<DayScheduleWorkspace/);
 });
 
+test("day schedules separate the exported file from verified social post links", () => {
+  const targetStatusList = getSection(
+    schedulingWorkspace,
+    "function ScheduleTargetStatusList({",
+    "function CalendarPlanner({",
+  );
+  const dayScheduleItem = getSection(
+    schedulingWorkspace,
+    "function SelectedDayDraftCard({",
+    "type CalendarDay",
+  );
+
+  assert.match(targetStatusList, /getTrustedPlatformPostUrl\(target\)/);
+  assert.match(targetStatusList, /getOpenPlatformPostLabel\(target\.platform\)/);
+  assert.match(targetStatusList, /Post link unavailable/);
+  assert.match(dayScheduleItem, /View exported MP4/);
+  assert.match(schedulingWorkspace, /url\.protocol === "https:"/);
+  assert.match(schedulingWorkspace, /hostname === domain \|\| hostname\.endsWith\(`\.\$\{domain\}`\)/);
+});
+
 test("List view opens a compact, date-selectable daily agenda", () => {
   const listExperience = getSection(
     schedulingWorkspace,
@@ -1224,7 +1244,7 @@ test("List view opens a compact, date-selectable daily agenda", () => {
   assert.match(listExperience, /getScheduleDayListStatusVariant\(draft\.status\)/);
   assert.doesNotMatch(listExperience, /ScheduleDraftMediaThumb/);
 });
-test("calendar and Day view include all posts, with upcoming posts first", () => {
+test("calendar and Day view show the newest post first across platforms", () => {
   const calendarSelection = getSection(
     schedulingWorkspace,
     "const visibleDrafts = useMemo(",
@@ -1246,15 +1266,16 @@ test("calendar and Day view include all posts, with upcoming posts first", () =>
   assert.match(scheduleContent, /calendarDrafts: ScheduleDraft\[\]/);
   assert.match(scheduleContent, /drafts=\{calendarDrafts\}/);
   assert.match(scheduleContent, /<ScheduleDayList/);
-  assert.match(dateGrouping, /function getCalendarDayDraftSortRank/);
   assert.match(
     dateGrouping,
-    /if \(isUpcomingDraft\(draft\)\) \{\s*return 0/,
+    /second\.scheduledTime \?\? ""\)\.localeCompare\([\s\S]*first\.scheduledTime \?\? ""/,
   );
   assert.match(
     dateGrouping,
-    /if \(draft\.status === "published"\) \{\s*return 1/,
+    /second\.createdAt\.localeCompare\(first\.createdAt\)/,
   );
+  assert.doesNotMatch(dateGrouping, /getCalendarDayDraftSortRank/);
+  assert.match(schedulingWorkspace, /Latest posts appear first/);
 });
 
 test("Calendar starts at the fixed rollout boundary and hides historical posts", () => {

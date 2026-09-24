@@ -30,6 +30,21 @@ test("initializes a TikTok photo carousel with ordered pull URLs", async () => {
           return tiktokResponse({ publish_id: "photo-publish-1" });
         }
 
+        if (url.pathname.endsWith("/video/query/")) {
+          assert.equal(url.searchParams.get("fields"), "id,share_url");
+          assert.deepEqual(JSON.parse(String(init?.body)), {
+            filters: { video_ids: ["photo-post-1"] },
+          });
+          return tiktokResponse({
+            videos: [
+              {
+                id: "photo-post-1",
+                share_url: "https://www.tiktok.com/@creator/photo/123",
+              },
+            ],
+          });
+        }
+
         assert.equal(url.pathname.endsWith("/status/fetch/"), true);
         return tiktokResponse({
           publicaly_available_post_id: ["photo-post-1"],
@@ -55,6 +70,10 @@ test("initializes a TikTok photo carousel with ordered pull URLs", async () => {
         });
 
         assert.equal(result.platformPostId, "photo-post-1");
+        assert.equal(
+          result.platformPostUrl,
+          "https://www.tiktok.com/@creator/photo/123",
+        );
       });
     },
   );
@@ -105,6 +124,21 @@ test("sends the selected TikTok privacy, interaction, and disclosure settings", 
           return tiktokResponse({ publish_id: "publish-1" });
         }
 
+        if (url.pathname.endsWith("/video/query/")) {
+          assert.equal(url.searchParams.get("fields"), "id,share_url");
+          assert.deepEqual(JSON.parse(String(init?.body)), {
+            filters: { video_ids: ["video-1"] },
+          });
+          return tiktokResponse({
+            videos: [
+              {
+                id: "video-1",
+                share_url: "https://www.tiktok.com/@creator/video/456",
+              },
+            ],
+          });
+        }
+
         assert.equal(url.pathname.endsWith("/status/fetch/"), true);
         return tiktokResponse({
           publicaly_available_post_id: ["video-1"],
@@ -126,6 +160,10 @@ test("sends the selected TikTok privacy, interaction, and disclosure settings", 
         });
 
         assert.equal(result.platformPostId, "video-1");
+        assert.equal(
+          result.platformPostUrl,
+          "https://www.tiktok.com/@creator/video/456",
+        );
       });
     },
   );
@@ -144,6 +182,103 @@ test("sends the selected TikTok privacy, interaction, and disclosure settings", 
     source: "PULL_FROM_URL",
     video_url: "https://cdn.example.com/video.mp4",
   });
+});
+
+test("keeps a successful TikTok post link empty when TikTok does not return a trusted share URL", async () => {
+  await withTikTokEnv(
+    { mode: "PULL_FROM_URL", verifiedHosts: "cdn.example.com" },
+    async () => {
+      await withMockFetch(async (input) => {
+        const url = new URL(String(input));
+
+        if (url.pathname.endsWith("/creator_info/query/")) {
+          return tiktokResponse({
+            privacy_level_options: ["PUBLIC_TO_EVERYONE"],
+          });
+        }
+
+        if (url.pathname.endsWith("/video/init/")) {
+          return tiktokResponse({ publish_id: "publish-unsafe-url" });
+        }
+
+        if (url.pathname.endsWith("/video/query/")) {
+          return tiktokResponse({
+            videos: [
+              {
+                id: "video-unsafe-url",
+                share_url: "https://not-tiktok.example/video/456",
+              },
+            ],
+          });
+        }
+
+        assert.equal(url.pathname.endsWith("/status/fetch/"), true);
+        return tiktokResponse({
+          publicaly_available_post_id: ["video-unsafe-url"],
+          status: "PUBLISH_COMPLETE",
+        });
+      }, async () => {
+        const result = await publishTikTokVideo({
+          accessToken: "access-token",
+          caption: "Caption",
+          settings: { privacyLevel: "PUBLIC_TO_EVERYONE" },
+          videoUrl: "https://cdn.example.com/video.mp4",
+        });
+
+        assert.equal(result.platformPostId, "video-unsafe-url");
+        assert.equal(result.platformPostUrl, null);
+      });
+    },
+  );
+});
+
+test("does not fail a completed TikTok publish when share-link lookup lacks permission", async () => {
+  await withTikTokEnv(
+    { mode: "PULL_FROM_URL", verifiedHosts: "cdn.example.com" },
+    async () => {
+      await withMockFetch(async (input) => {
+        const url = new URL(String(input));
+
+        if (url.pathname.endsWith("/creator_info/query/")) {
+          return tiktokResponse({
+            privacy_level_options: ["PUBLIC_TO_EVERYONE"],
+          });
+        }
+
+        if (url.pathname.endsWith("/video/init/")) {
+          return tiktokResponse({ publish_id: "publish-missing-scope" });
+        }
+
+        if (url.pathname.endsWith("/video/query/")) {
+          return Response.json(
+            {
+              error: {
+                code: "scope_not_authorized",
+                message: "video.list is required",
+              },
+            },
+            { status: 403 },
+          );
+        }
+
+        assert.equal(url.pathname.endsWith("/status/fetch/"), true);
+        return tiktokResponse({
+          publicaly_available_post_id: ["video-missing-scope"],
+          status: "PUBLISH_COMPLETE",
+        });
+      }, async () => {
+        const result = await publishTikTokVideo({
+          accessToken: "access-token",
+          caption: "Caption",
+          settings: { privacyLevel: "PUBLIC_TO_EVERYONE" },
+          videoUrl: "https://cdn.example.com/video.mp4",
+        });
+
+        assert.equal(result.platformPostId, "video-missing-scope");
+        assert.equal(result.platformPostUrl, null);
+      });
+    },
+  );
 });
 
 test("persists a FILE_UPLOAD session before sending video bytes", async () => {

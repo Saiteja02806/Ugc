@@ -2112,6 +2112,7 @@ function ScheduleTargetStatusList({
         {targets.map((target) => {
           const isRetrying = retryingPublishTargetId === target.id;
           const showPublishRetry = canRetryTargetPublishing(target);
+          const platformPostUrl = getTrustedPlatformPostUrl(target);
           const customerErrorMessage =
             getCustomerFacingTargetErrorMessage(target);
           const accountLabel =
@@ -2155,18 +2156,22 @@ function ScheduleTargetStatusList({
                 ) : null}
               </div>
 
-              {target.platformPostUrl ? (
+              {platformPostUrl ? (
                 <a
-                  href={target.platformPostUrl}
+                  href={platformPostUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex h-7 w-fit items-center justify-center rounded-full border border-border bg-card-muted px-2.5 text-[11px] font-bold text-foreground transition hover:border-border-strong hover:bg-card"
                 >
-                  View post
+                  {getOpenPlatformPostLabel(target.platform)}
                 </a>
+              ) : target.status === "published" && target.platformPostId ? (
+                <span className="rounded-full bg-card-muted px-2.5 py-1 text-[11px] font-bold text-muted">
+                  Post link unavailable
+                </span>
               ) : target.platformPostId ? (
                 <span className="rounded-full bg-card-muted px-2.5 py-1 text-[11px] font-bold text-muted">
-                  ID saved
+                  Publishing reference saved
                 </span>
               ) : target.status === "action_required" &&
                 shouldReconnectSocialTarget(target.lastErrorCode) ? (
@@ -2682,8 +2687,8 @@ function DayScheduleWorkspace({
           <div className="rounded-[var(--radius-card)] border border-border bg-card p-4">
             <p className="text-sm font-bold text-foreground">What appears here</p>
             <p className="mt-1 text-xs font-semibold leading-5 text-muted">
-              Upcoming posts first, then published posts and other publishing
-              statuses for this selected calendar date.
+              Posts are shown from latest to earliest, across every publishing
+              platform, for this selected calendar date.
             </p>
           </div>
         </div>
@@ -2695,7 +2700,7 @@ function DayScheduleWorkspace({
                 Posts for this day
               </p>
               <p className="mt-1 text-xs font-semibold leading-5 text-muted">
-                Upcoming posts appear first. Publishing status updates here.
+                Latest posts appear first. Publishing status updates here.
               </p>
             </div>
             <span className="inline-flex w-fit items-center rounded-full bg-card-muted px-3 py-1 text-xs font-bold text-muted ring-1 ring-inset ring-border">
@@ -2838,7 +2843,7 @@ function SelectedDayDraftCard({
             rel="noreferrer"
             className="inline-flex h-8 items-center justify-center rounded-control border border-border bg-card-muted px-3 text-xs font-bold text-foreground transition hover:border-border-strong hover:bg-card"
           >
-            Open MP4
+            View exported MP4
           </a>
         ) : null}
       </div>
@@ -2869,13 +2874,13 @@ function getScheduleDayListDrafts(drafts: ScheduleDraft[], selectedDate: string)
   return drafts
     .filter((draft) => draft.scheduledDate === selectedDate)
     .sort((first, second) => {
-      const timeDifference = (first.scheduledTime ?? "").localeCompare(
-        second.scheduledTime ?? "",
+      const timeDifference = (second.scheduledTime ?? "").localeCompare(
+        first.scheduledTime ?? "",
       );
 
       return timeDifference !== 0
         ? timeDifference
-        : first.createdAt.localeCompare(second.createdAt);
+        : second.createdAt.localeCompare(first.createdAt);
     });
 }
 
@@ -2932,41 +2937,17 @@ function groupDraftsByDate(drafts: ScheduleDraft[]) {
 
   for (const draftsForDate of grouped.values()) {
     draftsForDate.sort((first, second) => {
-      const statusDifference =
-        getCalendarDayDraftSortRank(first) -
-        getCalendarDayDraftSortRank(second);
-
-      if (statusDifference !== 0) {
-        return statusDifference;
-      }
-
-      const timeDifference = (first.scheduledTime ?? "").localeCompare(
-        second.scheduledTime ?? "",
+      const timeDifference = (second.scheduledTime ?? "").localeCompare(
+        first.scheduledTime ?? "",
       );
 
       return timeDifference !== 0
         ? timeDifference
-        : first.createdAt.localeCompare(second.createdAt);
+        : second.createdAt.localeCompare(first.createdAt);
     });
   }
 
   return grouped;
-}
-
-function getCalendarDayDraftSortRank(draft: ScheduleDraft) {
-  if (isUpcomingDraft(draft)) {
-    return 0;
-  }
-
-  if (draft.status === "published") {
-    return 1;
-  }
-
-  if (isFailedDraft(draft)) {
-    return 2;
-  }
-
-  return 3;
 }
 
 function getMonthCalendarDays(monthKey: string): CalendarDay[] {
@@ -4043,6 +4024,38 @@ function getScheduleDraftPlatformLabel(
   }
 
   return "YouTube (unsupported)";
+}
+
+const trustedPlatformPostDomains: Record<
+  SchedulePlatform,
+  readonly string[]
+> = {
+  instagram: ["instagram.com"],
+  tiktok: ["tiktok.com"],
+  youtube: ["youtube.com", "youtu.be"],
+};
+
+function getOpenPlatformPostLabel(platform: SchedulePlatform) {
+  return `Open on ${getSchedulePlatformLabel(platform)}`;
+}
+
+function getTrustedPlatformPostUrl(target: ScheduledPostTarget) {
+  if (target.status !== "published" || !target.platformPostUrl) {
+    return null;
+  }
+
+  try {
+    const url = new URL(target.platformPostUrl);
+    const hostname = url.hostname.toLowerCase();
+    const expectedDomains = trustedPlatformPostDomains[target.platform];
+    const usesExpectedDomain = expectedDomains.some(
+      (domain) => hostname === domain || hostname.endsWith(`.${domain}`),
+    );
+
+    return url.protocol === "https:" && usesExpectedDomain ? url.toString() : null;
+  } catch {
+    return null;
+  }
 }
 
 function isCombinedVideoDraft(draft: ScheduleDraft) {

@@ -261,7 +261,7 @@ export function getCompletedReactionCoverageShortfall(params: {
       kind: "coverage_shortfall",
       message:
         readyCount === 0 && shortfallReason === "reaction_catalog_capacity_exhausted"
-          ? "No additional Reaction Reels can be prepared yet. Every eligible clip is either already on an active card or has reached its per-user repetition limit. Decide on existing cards or add approved clips, then try again."
+          ? "No additional Reaction Reels can be prepared until the approved catalog has a renderable alpha clip and background."
           : readyCount === 0
           ? "No Reaction Reels can be prepared until the approved catalog has a renderable alpha clip and background."
           : `Prepared ${readyCount} of ${requestedCount} Reaction Reels; ${missingCount} more need approved catalog coverage.`,
@@ -420,7 +420,10 @@ function getReactionRequestPrefix(
   profile: Pick<BusinessProfileRecord, "profileVersion">,
   dailyFeedKey: string,
 ) {
-  return `reaction-v1:${dailyFeedKey}:profile-${profile.profileVersion}:`;
+  // v2 retires terminal v1 catalog-capacity jobs. The worker now repeats
+  // existing clips only after fresh rotation is exhausted, so a prior v1
+  // shortfall must not block a new durable refill request.
+  return `reaction-v2:${dailyFeedKey}:profile-${profile.profileVersion}:`;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

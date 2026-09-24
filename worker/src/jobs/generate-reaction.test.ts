@@ -248,10 +248,9 @@ test("uses the persisted canonical profile context when planning", async () => {
   assert.deepEqual(plannedContext, canonicalContext);
 });
 
-test("completes a per-user Reaction catalog shortfall without asking the model for unusable content", async () => {
-  let planned = false;
+test("repeats a catalog clip after every clip is already reserved", async () => {
+  let plannedClipIds: readonly string[] = [];
   let renderJobsCreated = false;
-  const checkpoints: Array<{ stage: string; status: string }> = [];
   const store = {
     async ensureReactionGenerationRun() {
       return {
@@ -273,11 +272,11 @@ test("completes a per-user Reaction catalog shortfall without asking the model f
         }],
       };
     },
-    async getReactionClipPresentationHistory() { return new Map(); },
-    async getReservedReactionClipIds() { return new Set(["clip-1"]); },
-    async completeReactionGenerationRun() {
-      return { failed_count: 0, ready_count: 0, status: "failed" as const };
+    async getReactionClipPresentationHistory() {
+      return new Map([["clip-1", { lastShownAt: "2026-09-24T00:00:00.000Z", shownCount: 2 }]]);
     },
+    async getReservedReactionClipIds() { return new Set(["clip-1"]); },
+    async persistReactionGenerationPlan() { return []; },
     async createReactionGenerationRenderJobs() {
       renderJobsCreated = true;
       return [];
@@ -285,31 +284,35 @@ test("completes a per-user Reaction catalog shortfall without asking the model f
   } as unknown as SupabaseJobStore;
 
   const output = await runGenerateReactionJob(createJob(), {
-    checkpoint: async (checkpoint) => {
-      checkpoints.push({ stage: checkpoint.stage, status: checkpoint.status });
-    },
+    checkpoint: async () => undefined,
     dependencies: {
-      planReactionGeneration: async () => {
-        planned = true;
-        throw new Error("The planner must not be called for an unusable catalog.");
+      planReactionGeneration: async (params) => {
+        plannedClipIds = params.clips.map((clip) => clip.id);
+        return {
+          briefPayload: {
+            availability: { availableReactionPalette: [], generationRule: "test", recentlyShownIntents: [] },
+            briefs: [],
+            promptVersion: "test",
+            selectionVersion: "test",
+            shortfallCount: 0,
+          },
+          items: [],
+          shortfallCount: 0,
+        };
       },
     },
     store,
   });
 
-  assert.equal(planned, false);
-  assert.equal(renderJobsCreated, false);
+  assert.deepEqual(plannedClipIds, ["clip-1"]);
+  assert.equal(renderJobsCreated, true);
   assert.deepEqual(output, {
-    availableClipCount: 0,
-    failedCount: 0,
     generationRunId: "run-catalog-shortfall",
-    readyCount: 0,
+    promptVersion: "reaction-brief-batch-v3-grounded",
+    queuedRenderCount: 0,
     requestedCount: 1,
-    shortfallCount: 1,
-    shortfallReason: "reaction_catalog_capacity_exhausted",
-    status: "partial",
+    status: "rendering",
   });
-  assert.ok(checkpoints.some((checkpoint) => checkpoint.stage === "reaction_catalog_capacity_exhausted"));
 });
 
 test("defers after a concurrent planner reserves the selected clip", async () => {

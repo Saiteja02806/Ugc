@@ -5,7 +5,6 @@ import { CONTENT_COPY_MAX_RETRIES, CONTENT_COPY_TIMEOUT_MS, requestContentModel 
 
 export const REACTION_GENERATION_PROMPT_VERSION = "reaction-brief-batch-v3-grounded";
 export const REACTION_GENERATION_SELECTION_VERSION = "reaction-batch-match-v2-grounded";
-export const MAX_REACTION_CLIP_PRESENTATIONS_PER_USER = 2;
 export const MAX_REACTION_BRIEF_GENERATION_ATTEMPTS = 3;
 const DEFAULT_REACTION_MODEL = "gpt-5.6-luna";
 const REACTION_REASONING_EFFORTS = ["low", "medium"] as const;
@@ -105,10 +104,9 @@ export type ReactionGenerationPlan = {
 
 /**
  * The worker reads this before spending a model call.  A clip can be a valid
- * catalog asset while still being unavailable to a particular user because it
- * is already on one of their active cards or has reached the presentation
- * limit.  Keeping the counts separate lets the caller report that distinction
- * instead of treating a capacity shortfall as a broken catalog.
+ * catalog asset while still being reserved by one of a user's active cards.
+ * The planner always prefers fresh and least-used clips, but repetition is an
+ * intentional fallback once the user's available catalog has been exhausted.
  */
 export type ReactionCatalogAvailability = {
   availableClipCount: number;
@@ -617,11 +615,16 @@ function getReactionCatalogCandidates(params: {
   reservedClipIds?: ReadonlySet<string>;
 }) {
   const renderableClips = params.clips.filter(isRenderableClip);
+  const unreservedClips = renderableClips.filter(
+    (clip) => !params.reservedClipIds?.has(clip.id),
+  );
   return {
-    availableClips: renderableClips.filter((clip) =>
-      !params.reservedClipIds?.has(clip.id) &&
-      isWithinPresentationLimit(params.historyByClipId.get(clip.id)),
-    ),
+    // Do not impose a hard per-user presentation cap. The selection score
+    // below still makes unseen clips dominant, then rotates through the
+    // least-used and longest-unseen clips. If every clip is on an active card,
+    // return the renderable catalog so the persistence layer can permit a
+    // repeat rather than leaving paid quota unfilled.
+    availableClips: unreservedClips.length > 0 ? unreservedClips : renderableClips,
     backgrounds: params.backgrounds.filter(isRenderableBackground),
     renderableClips,
   };
@@ -910,7 +913,6 @@ function joinContext(values: readonly string[]) { const clean = values.map(norma
 function intersectionSize(left: readonly string[], right: readonly string[]) { const rightSet = new Set(right.map(normalizeTag)); return left.filter((value) => rightSet.has(normalizeTag(value))).length; }
 function daysSince(value: string | null | undefined) { const timestamp = value ? Date.parse(value) : Number.NaN; return Number.isFinite(timestamp) ? Math.min(365, Math.max(0, Math.floor((Date.now() - timestamp) / 86_400_000))) : 0; }
 function stableTieBreak(seed: string, clipId: string, backgroundId: string) { let value = 2166136261; for (const character of `${seed}:${clipId}:${backgroundId}`) { value ^= character.charCodeAt(0); value = Math.imul(value, 16777619); } return value >>> 0; }
-function isWithinPresentationLimit(history: ClipHistory | undefined) { return (history?.shownCount ?? 0) < MAX_REACTION_CLIP_PRESENTATIONS_PER_USER; }
 function parseSemantic(value: unknown): ReactionSemantic | null {
   const raw = asRecord(value);
   const structure = typeof raw?.structure === "string" && SEMANTIC_STRUCTURES.includes(raw.structure as (typeof SEMANTIC_STRUCTURES)[number])

@@ -84,18 +84,15 @@ export async function runGenerateReactionJob(
       reservedClipIds,
     });
     if (availability.availableClipCount === 0 || availability.renderableBackgroundCount === 0) {
-      // This is not a provider failure.  The catalog can be healthy while all
-      // usable clips are reserved by active cards or have reached the
-      // per-user presentation cap.  End the durable run and return a partial
-      // result without paying for model output that cannot be rendered.
+      // This is not a provider failure. A missing renderable asset means no
+      // safe Reel can be built, so end the durable run without paying for a
+      // model response. Catalog repetition handles active-card exhaustion.
       const completion = await context.store.completeReactionGenerationRun({
         generationJobId: job.id,
         runId: run.id,
         userId: input.userId,
       });
-      const shortfallReason = availability.renderableClipCount > 0 && availability.renderableBackgroundCount > 0
-        ? "reaction_catalog_capacity_exhausted"
-        : "reaction_catalog_unavailable";
+      const shortfallReason = "reaction_catalog_unavailable";
       await context.checkpoint({
         progress: null,
         stage: shortfallReason,

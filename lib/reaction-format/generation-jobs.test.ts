@@ -59,7 +59,7 @@ test("rejects a persisted Reaction fact snapshot when a fact changes", () => {
   );
 });
 
-test("surfaces an exhausted per-user Reaction catalog as a stable coverage shortfall", () => {
+test("surfaces an unavailable Reaction catalog as a stable coverage shortfall", () => {
   const shortfall = getCompletedReactionCoverageShortfall({
     jobs: [{
       attemptCount: 1,
@@ -70,7 +70,7 @@ test("surfaces an exhausted per-user Reaction catalog as a stable coverage short
       input: {
         businessProfileId: "profile-1",
         businessProfileVersion: 1,
-        requestKey: "reaction-v1:feed-1:profile-1:active-62:need-2",
+        requestKey: "reaction-v2:feed-1:profile-1:active-62:need-2",
       },
       jobType: "reaction_generation",
       maxAttempts: 3,
@@ -88,12 +88,12 @@ test("surfaces an exhausted per-user Reaction catalog as a stable coverage short
       userId: "user-1",
     }],
     profile: { id: "profile-1", profileVersion: 1 },
-    requestKey: "reaction-v1:feed-1:profile-1:active-62:need-2",
+    requestKey: "reaction-v2:feed-1:profile-1:active-62:need-2",
   });
 
   assert.deepEqual(shortfall, {
     kind: "coverage_shortfall",
-    message: "No additional Reaction Reels can be prepared yet. Every eligible clip is either already on an active card or has reached its per-user repetition limit. Decide on existing cards or add approved clips, then try again.",
+    message: "No additional Reaction Reels can be prepared until the approved catalog has a renderable alpha clip and background.",
     missingCount: 2,
     readyCount: 0,
     requestedCount: 2,

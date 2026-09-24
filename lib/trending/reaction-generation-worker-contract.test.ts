@@ -11,6 +11,9 @@ const provenanceMigration = readProjectFile(
 const groundingMigration = readProjectFile(
   "supabase/migrations/20260914120000_add_reaction_grounding_context_v2.sql",
 );
+const repetitionMigration = readProjectFile(
+  "supabase/migrations/20260924185333_allow_reaction_clip_repeat_after_catalog_exhaustion.sql",
+);
 const factCatalog = readProjectFile("lib/business-profiles/fact-catalog.ts");
 const splitRenderMigration = readProjectFile(
   "supabase/migrations/20260909140000_split_reaction_reel_render_workers.sql",
@@ -129,16 +132,20 @@ test("uses the canonical semantic shapes and terminally records individual rende
   assert.match(splitRenderMigration, /when v_ready_count < v_run\.requested_count/);
 });
 
-test("reserves active clips and reports a catalog shortfall without another refill", () => {
+test("repeats clips only after fresh rotation and active-card alternatives are exhausted", () => {
   assert.match(workerStore, /getReservedReactionClipIds/);
   assert.match(workerJob, /reservedClipIds/);
   assert.match(workerJob, /getReactionCatalogAvailability/);
-  assert.match(workerJob, /reaction_catalog_capacity_exhausted/);
-  assert.match(workerJob, /shortfallCount: input\.requestedCount/);
+  const reactionGenerator = readProjectFile("worker/src/lib/reaction-generation.ts");
+  assert.match(reactionGenerator, /unreservedClips\.length > 0 \? unreservedClips : renderableClips/);
   assert.match(migration, /pg_advisory_xact_lock/);
-  assert.match(migration, /reaction_generation_plan_clip_reserved/);
+  assert.match(repetitionMigration, /reaction_generation_plan_clip_reserved/);
+  assert.match(repetitionMigration, /planned\.clip_asset_id = alternative\.id/);
+  assert.match(repetitionMigration, /A single request never repeats a clip/);
+  assert.match(repetitionMigration, /REVOKE ALL ON FUNCTION public\.persist_reaction_generation_plan_v1[\s\S]+FROM PUBLIC, anon, authenticated/);
+  assert.match(repetitionMigration, /GRANT EXECUTE ON FUNCTION public\.persist_reaction_generation_plan_v1[\s\S]+TO service_role, postgres/);
   assert.match(enqueue, /getCompletedReactionCoverageShortfall/);
-  assert.match(enqueue, /input\.requestKey === requestKey/);
+  assert.match(enqueue, /reaction-v2:/);
   assert.match(enqueue, /Prepared \$\{readyCount\} of \$\{requestedCount\} Reaction Reels/);
 });
 

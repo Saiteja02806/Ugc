@@ -99,7 +99,7 @@ import {
   getScheduleEditBlockReason,
 } from "@/lib/scheduling/schedule-action-policy";
 import { getSchedulePublishFailureMessage } from "@/lib/scheduling/schedule-publish-outcome";
-import { getPublishedPostLink, shouldShowExportPreview } from "@/lib/scheduling/published-post-link";
+import { getPublishedPostLink, getPostLinkUnavailableReason, shouldShowExportPreview } from "@/lib/scheduling/published-post-link";
 import {
   AccountDataAuthenticationUnavailableError,
   getAccountSchedulesQueryKey,
@@ -2150,9 +2150,9 @@ function ScheduleTargetStatusList({
                 <p className="mt-1 text-[11px] font-semibold leading-4 text-muted">
                   {getTargetStatusHelpText(target, draft.timezone)}
                 </p>
-                {publishedPostLink?.help ? (
+                {!publishedPostLink && target.status === "published" ? (
                   <p className="mt-1 text-[11px] font-medium leading-4 text-muted">
-                    {publishedPostLink.help}
+                    {getPostLinkUnavailableReason(target)}
                   </p>
                 ) : null}
                 {customerErrorMessage ? (
@@ -2171,7 +2171,7 @@ function ScheduleTargetStatusList({
                 >
                   {publishedPostLink.label}
                 </a>
-              ) : target.status === "published" && target.platformPostId ? (
+              ) : target.status === "published" ? (
                 <span className="rounded-full bg-card-muted px-2.5 py-1 text-[11px] font-bold text-muted">
                   Post link unavailable
                 </span>

@@ -29,7 +29,10 @@ export function getPublishedPostLink(
       const trustedHost = trustedDomains[target.platform].some(
         (domain) => url.hostname === domain || url.hostname.endsWith(`.${domain}`),
       );
-      if (url.protocol === "https:" && trustedHost && !url.username && !url.password) {
+      if (
+        url.protocol === "https:" && trustedHost && !url.username && !url.password &&
+        isPostDestination(target.platform, url)
+      ) {
         return {
           href: url.toString(),
           label: `Open on ${platformNames[target.platform]}`,
@@ -41,17 +44,33 @@ export function getPublishedPostLink(
     }
   }
 
-  if (target.platform === "tiktok") {
-    return {
-      href: "https://www.tiktok.com/",
-      label: "Open TikTok",
-      help: target.settings.privacyLevel === "SELF_ONLY"
-        ? "Published as Only me. Open TikTok, switch to this account, then open your private posts. TikTok has not provided a direct post link."
-        : "TikTok has not provided a direct post link. Open TikTok and switch to this account to find the post.",
-    };
-  }
-
   return null;
+}
+
+function isPostDestination(platform: SchedulePlatform, url: URL) {
+  if (platform === "instagram") {
+    return /^\/(?:p|reel|tv)\/[A-Za-z0-9_-]+\/?$/.test(url.pathname);
+  }
+  if (platform === "youtube") {
+    if (url.hostname === "youtu.be") {
+      return /^\/[A-Za-z0-9_-]{11}\/?$/.test(url.pathname);
+    }
+    return (url.pathname === "/watch" && /^[A-Za-z0-9_-]{11}$/.test(url.searchParams.get("v") ?? "")) ||
+      /^\/(?:shorts|live|embed)\/[A-Za-z0-9_-]{11}\/?$/.test(url.pathname);
+  }
+  if (url.hostname === "vm.tiktok.com" || url.hostname === "vt.tiktok.com") {
+    return /^\/[A-Za-z0-9]+\/?$/.test(url.pathname);
+  }
+  return /^\/@[^/]+\/(?:video|photo)\/\d+\/?$/.test(url.pathname);
+}
+
+export function getPostLinkUnavailableReason(
+  target: Pick<ScheduledPostTarget, "platform" | "settings">,
+) {
+  if (target.platform === "tiktok" && target.settings.privacyLevel === "SELF_ONLY") {
+    return "This private TikTok post has no direct link available from TikTok. It cannot be opened from here.";
+  }
+  return `${platformNames[target.platform]} has not provided a direct link to this post.`;
 }
 
 export function shouldShowExportPreview(targets: Pick<ScheduledPostTarget, "status">[] = []) {

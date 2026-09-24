@@ -122,6 +122,10 @@ export function getScheduleTargetSettingsError(params: {
       return TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE;
     }
 
+    if (settings.musicUsageConfirmed !== true) {
+      return "Confirm TikTok's Music Usage Confirmation before scheduling.";
+    }
+
     if (
       settings.commercialContentDisclosureEnabled === true &&
       settings.brandOrganic !== true &&
@@ -136,25 +140,6 @@ export function getScheduleTargetSettingsError(params: {
   }
 
   return null;
-}
-
-/**
- * Music Usage Confirmation is a declaration made by the final posting action.
- * It is not an editable publishing preference, so it is deliberately applied
- * only after the user reaches that final action.
- */
-export function finalizeScheduleTargetSettings(
-  platform: SchedulePlatform,
-  settings: ScheduleTargetSettings,
-): ScheduleTargetSettings {
-  if (platform !== "tiktok") {
-    return settings;
-  }
-
-  return {
-    ...settings,
-    musicUsageConfirmed: true,
-  };
 }
 
 export function normalizeScheduleTargetSettings(

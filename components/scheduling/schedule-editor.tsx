@@ -35,7 +35,6 @@ import {
   getUnavailableSavedInstagramTargets,
 } from "@/lib/scheduling/schedule-form-persistence";
 import {
-  finalizeScheduleTargetSettings,
   getDefaultScheduleTargetSettings,
   getScheduleTargetSettingsError,
   type ScheduleTargetSettings,
@@ -828,11 +827,9 @@ export function ScheduleEditor({
         ...selectedConnections.map((connection) => ({
           connectionId: connection.id,
           platform: connection.platform,
-          settings: finalizeScheduleTargetSettings(
-            connection.platform,
+          settings:
             publishingSettings[connection.id] ??
-              getDefaultPublishingSettings(connection.platform),
-          ),
+            getDefaultPublishingSettings(connection.platform),
         })),
       ],
       timezone,
@@ -2634,13 +2631,11 @@ function TikTokAccountSettings({
           ) : null}
         </div>
       </fieldset>
-      <p
-        role="note"
-        className="flex items-center gap-2 rounded-control border border-border bg-card-muted px-3 py-2 text-xs font-semibold leading-5 text-muted"
-      >
-        <CheckCircle2 className="size-3.5 shrink-0 text-success" aria-hidden="true" />
-        By posting, you agree to TikTok&apos;s Music Usage Confirmation.
-      </p>
+      <SettingCheckbox
+        checked={getBooleanSetting(settings, "musicUsageConfirmed", false)}
+        label="By posting, you agree to TikTok's Music Usage Confirmation."
+        onChange={(checked) => onChange("musicUsageConfirmed", checked)}
+      />
     </div>
   );
 }

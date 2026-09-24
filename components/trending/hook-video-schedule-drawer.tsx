@@ -30,7 +30,6 @@ import {
   loadAccountSocialConnections,
 } from "@/lib/scheduling/account-data-query";
 import {
-  finalizeScheduleTargetSettings,
   getDefaultScheduleTargetSettings,
   getScheduleTargetSettingsError,
   type ScheduleTargetSettings,
@@ -314,11 +313,9 @@ export function HookVideoScheduleDrawer({
       targets: selectedConnections.map((connection) => ({
         connectionId: connection.id,
         platform: connection.platform,
-        settings: finalizeScheduleTargetSettings(
-          connection.platform,
+        settings:
           settings[connection.id] ??
-            getDefaultScheduleTargetSettings(connection.platform),
-        ),
+          getDefaultScheduleTargetSettings(connection.platform),
       })),
       timezone,
       useDefaultScheduleTime,
@@ -710,13 +707,19 @@ function ConnectionRow({
                   </div>
                 ) : null}
               </fieldset>
-              <p
-                role="note"
-                className="flex items-center gap-2 rounded-control border border-border bg-card-muted px-3 py-2 text-xs font-semibold leading-5 text-muted"
-              >
-                <Check className="size-3.5 shrink-0 text-success" aria-hidden="true" />
-                By posting, you agree to TikTok&apos;s Music Usage Confirmation.
-              </p>
+              <label className="flex items-start gap-2 rounded-control border border-border bg-card-muted px-3 py-2 text-xs font-semibold leading-5 text-foreground-strong">
+                <input
+                  type="checkbox"
+                  checked={settings.musicUsageConfirmed === true}
+                  onChange={(event) =>
+                    onSettingChange("musicUsageConfirmed", event.target.checked)
+                  }
+                  className="mt-0.5 size-4 shrink-0 accent-primary"
+                />
+                <span>
+                  By posting, you agree to TikTok&apos;s Music Usage Confirmation.
+                </span>
+              </label>
             </div>
           )}
         </div>

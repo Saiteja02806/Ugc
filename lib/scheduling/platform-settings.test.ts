@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  finalizeScheduleTargetSettings,
   getDefaultScheduleTargetSettings,
   getScheduleTargetSettingsError,
   normalizeScheduleTargetSettings,
@@ -183,7 +182,7 @@ test("requires explicit TikTok Music Usage Confirmation", () => {
   );
 });
 
-test("blocks an incomplete commercial disclosure and confirms music at the final action", () => {
+test("requires manual music confirmation before scheduling", () => {
   const connection = { id: "tiktok-1", platform: "tiktok" as const };
   const capabilities = {
     capabilities: {
@@ -192,8 +191,28 @@ test("blocks an incomplete commercial disclosure and confirms music at the final
       maxVideoDurationSeconds: 600, privacyLevels: ["PUBLIC_TO_EVERYONE" as const],
     }, status: "ready" as const,
   };
-  assert.equal(getScheduleTargetSettingsError({ connections: [connection], settings: { "tiktok-1": { commercialContentDisclosureEnabled: true, privacyLevel: "PUBLIC_TO_EVERYONE" } }, tiktokCapabilities: { "tiktok-1": capabilities } }), "Choose Your brand or Branded content before scheduling.");
-  assert.equal(finalizeScheduleTargetSettings("tiktok", { privacyLevel: "PUBLIC_TO_EVERYONE" }).musicUsageConfirmed, true);
+  assert.equal(
+    getScheduleTargetSettingsError({
+      connections: [connection],
+      settings: { "tiktok-1": { privacyLevel: "PUBLIC_TO_EVERYONE" } },
+      tiktokCapabilities: { "tiktok-1": capabilities },
+    }),
+    "Confirm TikTok's Music Usage Confirmation before scheduling.",
+  );
+  assert.equal(
+    getScheduleTargetSettingsError({
+      connections: [connection],
+      settings: {
+        "tiktok-1": {
+          commercialContentDisclosureEnabled: true,
+          musicUsageConfirmed: true,
+          privacyLevel: "PUBLIC_TO_EVERYONE",
+        },
+      },
+      tiktokCapabilities: { "tiktok-1": capabilities },
+    }),
+    "Choose Your brand or Branded content before scheduling.",
+  );
 });
 
 test("normalizes YouTube visibility and audience settings", () => {

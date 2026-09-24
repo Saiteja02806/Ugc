@@ -348,6 +348,78 @@ test("rejects public Direct Post initialization until the TikTok audit is approv
   assert.equal(initCalls, 0);
 });
 
+for (const media of ["video", "photo"] as const) {
+  for (const account of ["public", "private", "unknown"] as const) {
+    test(`unaudited ${media} checks ${account} account privacy before media transfer`, async () => {
+      const paths: string[] = [];
+      await withTikTokEnv({ audited: false, mode: "PULL_FROM_URL", verifiedHosts: "cdn.example.com" }, async () => {
+        await withMockFetch(async (input, init) => {
+          const url = new URL(String(input));
+          paths.push(url.pathname);
+          if (url.pathname.endsWith("/creator_info/query/")) {
+            return tiktokResponse({ privacy_level_options: [
+              ...(account === "public" ? ["PUBLIC_TO_EVERYONE"] : account === "private" ? ["FOLLOWER_OF_CREATOR"] : []),
+              "SELF_ONLY",
+            ] });
+          }
+          assert.equal(account, "private", "blocked account must not download, upload or initialize");
+          if (url.pathname.endsWith("/init/")) {
+            assert.equal(JSON.parse(String(init?.body)).post_info.privacy_level, "SELF_ONLY");
+            return tiktokResponse({ publish_id: "private-test" });
+          }
+          assert.equal(url.pathname.endsWith("/status/fetch/"), true);
+          return tiktokResponse({ status: "PUBLISH_COMPLETE" });
+        }, async () => {
+          const common = { accessToken: "test", caption: "", settings: { privacyLevel: "SELF_ONLY" as const } };
+          const publish = () => media === "video"
+            ? publishTikTokVideo({ ...common, videoUrl: "https://cdn.example.com/video.mp4" })
+            : publishTikTokPhotoCarousel({ ...common, imageUrls: ["https://cdn.example.com/1.jpg", "https://cdn.example.com/2.jpg"] });
+          if (account === "private") {
+            await publish();
+          } else {
+            await assert.rejects(publish(), error => error instanceof TikTokPublishError && error.actionRequired &&
+              error.code === (account === "public" ? "private_account_required" : "account_privacy_unavailable"));
+          }
+        });
+      });
+      assert.equal(paths.length, account === "private" ? 3 : 1);
+    });
+  }
+}
+
+test("public-account preflight runs before FILE_UPLOAD downloads the video", async () => {
+  await withTikTokEnv({ audited: false, mode: "FILE_UPLOAD" }, async () => {
+    await withMockFetch(async input => {
+      assert.ok(String(input).endsWith("/creator_info/query/"));
+      return tiktokResponse({ privacy_level_options: ["PUBLIC_TO_EVERYONE", "SELF_ONLY"] });
+    }, async () => {
+      await assert.rejects(publishTikTokVideo({
+        accessToken: "test", caption: "", settings: { privacyLevel: "SELF_ONLY" },
+        videoUrl: "https://cdn.example.com/video.mp4",
+      }), { code: "private_account_required" });
+    });
+  });
+});
+
+test("existing publish sessions can finish after account privacy changes without reinitializing", async () => {
+  await withTikTokEnv({ audited: false, mode: "PULL_FROM_URL" }, async () => {
+    await withMockFetch(async input => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/creator_info/query/")) {
+        return tiktokResponse({ privacy_level_options: ["PUBLIC_TO_EVERYONE", "SELF_ONLY"] });
+      }
+      assert.equal(url.pathname.endsWith("/status/fetch/"), true);
+      return tiktokResponse({ status: "PUBLISH_COMPLETE" });
+    }, async () => {
+      const result = await publishTikTokVideo({
+        accessToken: "test", caption: "", publishId: "existing", settings: { privacyLevel: "SELF_ONLY" },
+        videoUrl: "https://cdn.example.com/video.mp4",
+      });
+      assert.equal(result.publishId, "existing");
+    });
+  });
+});
+
 test("requires an explicit TikTok visibility", async () => {
   await assert.rejects(
     withMockFetch(async () =>

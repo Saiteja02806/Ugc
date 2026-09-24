@@ -3,6 +3,10 @@ import { setTimeout as delay } from "node:timers/promises";
 
 import { logger } from "../logger.js";
 import {
+  TIKTOK_ACCOUNT_PRIVACY_UNAVAILABLE_MESSAGE,
+  TIKTOK_PRIVATE_ACCOUNT_REQUIRED_MESSAGE,
+} from "../lib/tiktok-direct-post-policy.js";
+import {
   GoogleOAuthError,
   refreshGoogleAccessToken,
 } from "../lib/google-oauth.js";
@@ -1563,8 +1567,15 @@ function getTikTokUserMessage(code: string, fallbackMessage: string) {
     return "This video is longer than the selected TikTok account allows.";
   }
 
-  if (code === "unaudited_client_can_only_post_to_private_accounts") {
-    return "TikTok currently allows this app to publish only with Only me visibility.";
+  if (
+    code === "unaudited_client_can_only_post_to_private_accounts" ||
+    code === "private_account_required"
+  ) {
+    return TIKTOK_PRIVATE_ACCOUNT_REQUIRED_MESSAGE;
+  }
+
+  if (code === "account_privacy_unavailable") {
+    return TIKTOK_ACCOUNT_PRIVACY_UNAVAILABLE_MESSAGE;
   }
 
   if (code === "direct_post_audit_required") {

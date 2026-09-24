@@ -7,6 +7,28 @@ account. Public posting remains blocked until TikTok approves the Direct Post
 audit. This is intentional: an unaudited TikTok app may post only with the
 creator's **Only me** visibility and a private creator account.
 
+The scheduler checks fresh creator information for the selected connection
+before accepting an unaudited TikTok target (including pending-render plans).
+The publish worker repeats the check before initializing a new video or photo
+post. `PUBLIC_TO_EVERYONE` identifies a public account;
+`FOLLOWER_OF_CREATOR` identifies a private account. `SELF_ONLY` alone does not
+establish account privacy. Missing or ambiguous account privacy is blocked with
+a refresh message. Both runtimes use the dependency-free policy in
+`worker/src/lib/tiktok-direct-post-policy.ts`.
+
+The app never changes the account, substitutes visibility, or switches the
+selected connection. Existing provider sessions retain their publish ID on
+retry; this preflight does not initialize a duplicate. Provider error
+`unaudited_client_can_only_post_to_private_accounts` must explain both privacy
+requirements, not suggest Only me alone fixes it. Account-privacy failures are
+action-required, not automatic retries.
+
+For a private test, make the exact selected TikTok account private and choose
+Only me. If that connection was disconnected, reconnect it or explicitly select
+the intended connected private account. Recheck with `scripts/diagnose-tiktok.mjs`
+before authorizing a new test post. Website/domain verification is separate
+from Direct Post audit approval.
+
 ## Required production configuration
 
 Before turning on TikTok scheduling, verify every media hostname used by the

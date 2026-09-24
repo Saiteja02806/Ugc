@@ -475,6 +475,24 @@ test("marks TikTok permission failures as action required", async () => {
   });
 });
 
+for (const code of ["private_account_required", "unaudited_client_can_only_post_to_private_accounts"]) {
+  test(`explains both TikTok privacy requirements for ${code} without automatic retry`, async () => {
+    await withEncryptionKey(async () => {
+      const fixture = createPublishStore(createOperation({ platform: "tiktok" }), { allowFailure: true, platform: "tiktok" });
+      await assert.rejects(runPublishSocialPostJob(createPublishJob(), {
+        publishers: { async tiktok() {
+          throw new TikTokPublishError("Original diagnostic", code, "log-private", 403, true);
+        } },
+        store: fixture.store,
+      }), error => error instanceof TikTokPublishError && error.code === code);
+      assert.deepEqual(fixture.calls, ["claim-operation", "release-operation", "target-action-required"]);
+      assert.match(fixture.targetErrorMessage ?? "", /private account and Only me/);
+      assert.match(fixture.targetErrorMessage ?? "", /Only me alone is not enough/);
+      assert.equal(getJsonRecord(fixture.targetMetadata.providerError).logId, "log-private");
+    });
+  });
+}
+
 test("marks expired Instagram authorization as action required with a safe message", async () => {
   await withEncryptionKey(async () => {
     const fixture = createPublishStore(createOperation(), {

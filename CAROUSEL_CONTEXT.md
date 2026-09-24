@@ -4761,6 +4761,16 @@ Runtime/font errors propagate as dependency failures instead of copy-fit errors.
   `SELF_ONLY` with an actionable audit message. A private test still requires
   the creator to make the TikTok account private. TikTok approval is the only
   condition that changes the flag to true.
+  Scheduling now verifies that account requirement from fresh creator-info
+  privacy options; the worker checks it again before new video/photo publish
+  initialization. Public or unconfirmed account privacy is blocked without
+  changing the selected connection or visibility. Existing publish sessions
+  retain their IDs on retry; the check does not reinitialize them.
+  The full Scheduling editor keeps each enabled platform discoverable with a
+  Connect action when no non-revoked account is present. It refreshes account
+  data when opened and provides manual refresh after reconnecting in Settings.
+  Disconnected accounts are never presented as active publishing destinations;
+  the existing TikTok beta gate and Carousel platform restrictions remain intact.
 - TikTok server-hosted videos and photo carousels use `PULL_FROM_URL`; every
   production media hostname must be verified in TikTok Developer Portal before
   scheduling. The worker rejects a media URL outside the configured verified

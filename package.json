@@ -128,6 +128,8 @@
     "demo:test:e2e": "node scripts/test-demo-upload-draft-e2e.mjs",
     "diagnose:tiktok": "node scripts/diagnose-tiktok.mjs",
     "audit:tiktok": "node scripts/audit-tiktok-schedule.mjs",
+    "test:schedule-account-picker": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/scheduling/account-picker.test.ts lib/scheduling/account-picker-render.test.mjs lib/social/tiktok-beta-access.test.ts lib/scheduling/schedule-form-persistence.test.ts lib/scheduling/social-connection-policy.test.ts",
+    "test:tiktok-scheduling": "node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/scheduling/tiktok-preflight.test.mjs && npm run worker:build && node --test --test-concurrency=1 worker/dist/lib/tiktok-direct-post-policy.test.js worker/dist/lib/tiktok-publisher.test.js worker/dist/jobs/publish-social-post.test.js",
     "social-dispatch:gcp:dry-run": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/test-social-dispatch-cloud-tasks-gcp.mjs --dry-run",
     "social-dispatch:gcp:canary": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/test-social-dispatch-cloud-tasks-gcp.mjs --execute --yes",
     "billing:usage-scheduler:dry-run": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/configure-billing-usage-scheduler.mjs --dry-run",

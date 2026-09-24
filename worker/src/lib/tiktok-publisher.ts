@@ -1,6 +1,7 @@
 import { setTimeout as delay } from "node:timers/promises";
 
 import { logger } from "../logger.js";
+import { getTikTokDirectPostBlock } from "./tiktok-direct-post-policy.js";
 import type { TikTokTargetPublishSettings } from "./social-publish-settings.js";
 
 const DEFAULT_MAX_STATUS_POLLS = 18;
@@ -110,7 +111,7 @@ export async function publishTikTokVideo(params: {
   );
 
   if (!publishId) {
-    assertTikTokDirectPostAuditAllowsPrivacy(privacyLevel);
+    assertTikTokDirectPostAuditAllowsPrivacy(privacyLevel, creatorInfo);
   }
 
   validateVideoDuration(
@@ -217,7 +218,7 @@ export async function publishTikTokPhotoCarousel(params: {
   let publishId = params.publishId ?? null;
 
   if (!publishId) {
-    assertTikTokDirectPostAuditAllowsPrivacy(privacyLevel);
+    assertTikTokDirectPostAuditAllowsPrivacy(privacyLevel, creatorInfo);
 
     for (const imageUrl of params.imageUrls) {
       assertVerifiedPullUrl(imageUrl);
@@ -786,14 +787,19 @@ function getMediaTransferMode(): TikTokMediaTransferMode {
     : "FILE_UPLOAD";
 }
 
-function assertTikTokDirectPostAuditAllowsPrivacy(privacyLevel: string) {
-  if (
-    process.env.TIKTOK_DIRECT_POST_AUDITED?.trim().toLowerCase() !== "true" &&
-    privacyLevel !== "SELF_ONLY"
-  ) {
+function assertTikTokDirectPostAuditAllowsPrivacy(
+  privacyLevel: string,
+  creatorInfo: TikTokCreatorInfo,
+) {
+  const block = getTikTokDirectPostBlock({
+    audited: process.env.TIKTOK_DIRECT_POST_AUDITED?.trim().toLowerCase() === "true",
+    privacyLevel,
+    privacyLevels: creatorInfo.privacy_level_options ?? [],
+  });
+  if (block) {
     throw new TikTokPublishError(
-      "TikTok Direct Post is still in private testing. Complete the app audit before publishing beyond Only me.",
-      "direct_post_audit_required",
+      block.message,
+      block.code,
       null,
       null,
       true,
@@ -825,6 +831,8 @@ function isTikTokActionRequiredError(code: string) {
   return [
     "access_token_invalid",
     "direct_post_audit_required",
+    "private_account_required",
+    "account_privacy_unavailable",
     "invalid_branded_content_visibility",
     "privacy_level_option_mismatch",
     "scope_not_authorized",

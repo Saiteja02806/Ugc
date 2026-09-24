@@ -40,6 +40,7 @@ import {
   type ScheduleTargetSettings,
 } from "@/lib/scheduling/platform-settings";
 import { getConnectionPublishingBlockMessage } from "@/lib/scheduling/social-connection-policy";
+import { getMissingScheduleAccountPlatforms } from "@/lib/scheduling/account-picker";
 import {
   getSchedulePlatformLabel,
   getScheduleStatusLabel,
@@ -246,6 +247,7 @@ export function ScheduleEditor({
   minimumScheduleLeadMinutes,
   onClose,
   onRefreshMedia,
+  onRefreshConnections,
   onSave,
   requireScheduleTarget,
   saving,
@@ -270,6 +272,7 @@ export function ScheduleEditor({
   minimumScheduleLeadMinutes: number;
   onClose: () => void;
   onRefreshMedia: () => Promise<boolean>;
+  onRefreshConnections: () => Promise<boolean>;
   onSave: (submission: ScheduleFormSubmission) => void;
   requireScheduleTarget: boolean;
   saving: boolean;
@@ -1049,6 +1052,8 @@ export function ScheduleEditor({
             >
               <ConnectedAccountSelector
                 connections={availableSocialConnections}
+                enabledPlatforms={selectablePlatforms}
+                onRefresh={onRefreshConnections}
                 onToggle={toggleConnection}
                 selectedConnectionIds={selectedConnectionIds}
                 accountLabel={publishingAccountLabel}
@@ -2098,20 +2103,53 @@ function CompositionSlot({
 function ConnectedAccountSelector({
   accountLabel,
   connections,
+  enabledPlatforms,
+  onRefresh,
   onToggle,
   selectedConnectionIds,
 }: {
   accountLabel: string;
   connections: SocialConnection[];
+  enabledPlatforms: SchedulePlatform[];
+  onRefresh: () => Promise<boolean>;
   onToggle: (connectionId: string) => void;
   selectedConnectionIds: string[];
 }) {
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const missingPlatforms = getMissingScheduleAccountPlatforms(enabledPlatforms, connections);
+
+  async function refreshAccounts() {
+    setRefreshing(true);
+    setRefreshError(null);
+    try {
+      if (!(await onRefresh())) {
+        setRefreshError("Could not refresh publishing accounts. Try again.");
+      }
+    } catch {
+      setRefreshError("Could not refresh publishing accounts. Try again.");
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   return (
     <div className="max-w-xl">
-      <span className="text-sm font-bold text-foreground">
-        {accountLabel === "Instagram" ? "Instagram account" : "Publishing account"}
-      </span>
-      {connections.length > 0 ? (
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-bold text-foreground">
+          {accountLabel === "Instagram" ? "Instagram account" : "Publishing account"}
+        </span>
+        <button
+          type="button"
+          disabled={refreshing}
+          onClick={() => void refreshAccounts()}
+          className="inline-flex h-8 items-center gap-1.5 rounded-control border border-border px-3 text-xs font-bold text-foreground transition hover:bg-card-muted disabled:opacity-50"
+        >
+          <RefreshCw className={cn("size-3.5", refreshing && "animate-spin")} aria-hidden="true" />
+          {refreshing ? "Refreshing accounts…" : "Refresh accounts"}
+        </button>
+      </div>
+      {refreshError ? <p role="alert" className="mt-2 text-xs font-semibold text-error">{refreshError}</p> : null}
         <div className="mt-2 grid gap-2">
           {connections.map((connection) => {
             const selected = selectedConnectionIds.includes(connection.id);
@@ -2205,23 +2243,28 @@ function ConnectedAccountSelector({
               </button>
             );
           })}
+          {missingPlatforms.map(platform => (
+            <div key={platform} className="rounded-control border border-dashed border-border bg-card-muted px-3 py-3">
+              <div className="flex items-center gap-3">
+                <SocialPlatformIcon className="size-5 shrink-0" platform={platform} />
+                <div>
+                  <p className="text-sm font-bold text-foreground">{getSchedulePlatformLabel(platform)}</p>
+                  <p className="text-xs font-semibold leading-5 text-muted">No connected account. Connect one in Settings, then refresh accounts here.</p>
+                </div>
+              </div>
+              <a
+                href="/settings#instagram-publishing"
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 inline-flex h-8 items-center gap-1.5 rounded-control border border-border bg-card px-3 text-xs font-bold text-foreground transition hover:border-border-strong hover:bg-card-muted"
+              >
+                <Plus className="size-3.5" aria-hidden="true" />
+                Connect {platform === "tiktok" ? "TikTok" : platform === "youtube" ? "YouTube" : "Instagram"}
+                <span className="sr-only"> (opens Settings in a new tab)</span>
+              </a>
+            </div>
+          ))}
         </div>
-      ) : (
-        <div className="mt-2 rounded-control border border-dashed border-border bg-card-muted px-4 py-4 text-sm font-semibold leading-6 text-muted">
-          <p>
-            Connect {accountLabel} before scheduling this post.
-          </p>
-          <a
-            href="/settings#instagram-publishing"
-            target="_blank"
-            rel="noreferrer"
-            className="mt-3 inline-flex h-8 items-center justify-center gap-1.5 rounded-control border border-border bg-card px-3 text-xs font-bold text-foreground transition hover:border-border-strong hover:bg-card-muted"
-          >
-            <Plus className="size-3.5" aria-hidden="true" />
-            Connect {accountLabel === "Instagram" ? "Instagram" : "an account"}
-          </a>
-        </div>
-      )}
     </div>
   );
 }

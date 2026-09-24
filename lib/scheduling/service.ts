@@ -76,10 +76,7 @@ import {
 import { getScheduleEditBlockReason } from "@/lib/scheduling/schedule-action-policy";
 import { SchedulingRequestError } from "@/lib/scheduling/errors";
 import { getConnectionPublishingBlock } from "@/lib/scheduling/social-connection-policy";
-import {
-  isTikTokDirectPostAudited,
-  TIKTOK_DIRECT_POST_AUDIT_REQUIRED_MESSAGE,
-} from "@/lib/social/tiktok-direct-post-audit";
+import { assertTikTokScheduleEligibility } from "@/lib/scheduling/tiktok-preflight";
 import {
   hasScheduleTargetSelection,
   SCHEDULE_TARGET_REQUIRED_CODE,
@@ -2091,16 +2088,13 @@ async function resolveScheduleTargets(params: {
       }
     }
 
-    if (
-      connection.platform === "tiktok" &&
-      settings.privacyLevel !== "SELF_ONLY" &&
-      !isTikTokDirectPostAudited()
-    ) {
-      throw new SchedulingRequestError(
-        TIKTOK_DIRECT_POST_AUDIT_REQUIRED_MESSAGE,
-        409,
-        "tiktok_direct_post_audit_required",
-      );
+    if (connection.platform === "tiktok") {
+      await assertTikTokScheduleEligibility({
+        connectionId: connection.id,
+        userId: params.userId,
+        privacyLevel:
+          typeof settings.privacyLevel === "string" ? settings.privacyLevel : undefined,
+      });
     }
 
     connections.push({

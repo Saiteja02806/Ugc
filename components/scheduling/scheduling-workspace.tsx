@@ -494,7 +494,7 @@ export function SchedulingWorkspace() {
         return null;
       }
 
-      setActionNotice("Could not load connected Instagram accounts.");
+      setActionNotice("Could not load connected publishing accounts.");
       return null;
     }
   }, [accountId, queryClient]);
@@ -596,7 +596,9 @@ export function SchedulingWorkspace() {
     setActionNotice(null);
 
     try {
-      const connections = await loadSocialConnections();
+      // Account connection changes must be visible immediately, not after the
+      // shared catalog's 30-minute freshness window.
+      const connections = await loadSocialConnections({ force: true });
 
       if (!connections) {
         return;
@@ -706,7 +708,7 @@ export function SchedulingWorkspace() {
     setNewScheduleInitialDate(draft.scheduledDate ?? selectedCalendarDate);
     await Promise.all([
       loadScheduleMedia(),
-      loadSocialConnections(),
+      loadSocialConnections({ force: true }),
     ]);
     setDrawerOpen(true);
   }
@@ -1333,6 +1335,9 @@ export function SchedulingWorkspace() {
           minimumScheduleLeadMinutes={minimumScheduleLeadMinutes}
           onClose={handleCloseScheduleDrawer}
           onRefreshMedia={() => loadScheduleMedia({ force: true })}
+          onRefreshConnections={async () =>
+            (await loadSocialConnections({ force: true })) !== null
+          }
           onSave={handleSaveScheduleDraft}
           requireScheduleTarget={requireScheduleTarget}
           saving={savingSchedule}

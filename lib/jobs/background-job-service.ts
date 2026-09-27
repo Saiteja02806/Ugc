@@ -3,6 +3,7 @@ import "server-only";
 import {
   attachQueueMessageToBackgroundJob,
   createBackgroundJobWithCreationResult,
+  createReservedMcpGenerationJob,
   getBackgroundJobForUser,
   markBackgroundJobFailed,
   requestBackgroundJobCancellation,
@@ -10,6 +11,7 @@ import {
   type BackgroundJobRecord,
   type BackgroundJobType,
   type CreateBackgroundJobInput,
+  type Json,
 } from "./background-jobs";
 import { enqueueBackgroundJobCloudTask } from "./gcp-cloud-tasks";
 import { getQueueNameForJobType } from "@/lib/queues/config";
@@ -44,6 +46,23 @@ export async function createAndDispatchBackgroundJob(
   }
 
   return dispatchBackgroundJob(result.job);
+}
+
+export async function createAndDispatchReservedMcpGenerationJob(params: {
+  amount: number;
+  fingerprint: string;
+  idempotencyKey: string;
+  input: Record<string, Json | undefined>;
+  jobType: "generate_image";
+  userId: string;
+}) {
+  const result = await createReservedMcpGenerationJob({
+    ...params,
+    queueName: getQueueNameForJobType(params.jobType),
+  });
+  // An earlier delivery may have failed after the transaction committed.
+  // A matching retry can safely dispatch that still-queued job again.
+  return dispatchQueuedBackgroundJobForRecovery(result.job);
 }
 
 export async function retryAndDispatchBackgroundJob(params: {

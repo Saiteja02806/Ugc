@@ -1,0 +1,23 @@
+# UGC Pilot Cloud MCP: Phase 3 read-only tools
+
+Status: implemented and locally validated on 2026-09-27. No production migration, domain change, push, or deployment has been made.
+
+The server now registers the six approved read-only tools: `get_profile`, `get_entitlements`, `get_saas_brand`, `list_assets`, `get_asset`, and `get_capabilities`. The Phase 1 contracts remain the source of truth for their inputs and outputs. Phase 4 also registers `create_upload`, `confirm_upload`, and `delete_asset`; see [Phase 4](ugc-pilot-cloud-mcp-phase4.md). Phase 5 now registers `generate_image` and `get_job` locally; see [Phase 5](ugc-pilot-cloud-mcp-phase5-audit.md). Video generation remains unavailable.
+
+## Behavior
+
+- Each tool derives the Firebase UID from the validated OAuth token. Tool arguments never carry a user ID. The MCP route checks the bearer audience, expiry, and revocation before tool invocation. Each tool checks its required scope; SDK scope challenges include the OAuth authentication metadata.
+- `get_profile` returns the stable Firebase UID. Name, email, and nickname are optional in the approved contract and are omitted because the token does not contain a trusted value for them.
+- `get_entitlements` and `get_capabilities` use a strict, read-only billing path. They do not invoke the credit-cycle rollover RPC. If a paid credit cycle has expired, they preview the reset balance as the current credit limit with zero used or reserved credits; the existing reservation path performs the actual rollover when generation starts. If a core subscription query or active credit balance is unavailable, they return `ENTITLEMENTS_UNAVAILABLE`. The regular website billing path retains its prior refresh and fallback behavior. Capabilities require enough credits for at least one minimum-cost generation; they never expose provider/model names or video references.
+- `get_saas_brand` requires a completed owner profile with a name, a product summary of at least 20 characters, and a target audience. It reads the saved `source_url`; a mobile/manual profile may have `null` when no link was supplied. Missing profiles return `BRAND_NOT_FOUND`, unfinished onboarding returns `ONBOARDING_REQUIRED`, and incomplete completed context returns `BRAND_INCOMPLETE`.
+- `list_assets` queries only the owner's ready, nondeleted media rows. It searches title and filename, limits pages to 1–50, and orders by `updated_at DESC, id DESC`. A signed cursor is bound to owner and filters. `get_asset` also checks owner, nondeleted state, and ready status before returning its public URL. Unknown and cross-owner asset IDs use the same `NOT_FOUND` code.
+- All six tools have `readOnlyHint:true`, a required SDK scope challenge, and OAuth scheme metadata in `_meta.securitySchemes`. SDK v2.1's `registerTool` config does not expose a top-level `securitySchemes` property; the metadata mirror is published for ChatGPT compatibility.
+
+## Local validation
+
+- `node --import ./scripts/next-server-only-test-loader.mjs --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/test-mcp-read-tools.mjs` passed. The test invokes the MCP transport and HTTP route with local-only fixtures and mocked Supabase responses. It covers valid, missing, expired, revoked, and wrong-resource bearer tokens, token-store failure, foreign Origin rejection, tool discovery, profile identity, scope challenge, owner-scoped asset lookup, pagination, cursor binding/signature, search escaping, invalid asset ID, contract error codes, optional brand URL, incomplete brand, billing outage, free/Growth plan differences, expired-cycle preview without a write RPC, owner-scoped deletion, repeated deletion, and the conditional ready-state update used to prevent concurrent upload confirmation.
+- Targeted ESLint and `npm run build` passed. A raw `tsc --noEmit` still reports the pre-existing `lib/reaction-format/generation-jobs.test.ts` fixture type error; it reports no Phase 3 errors.
+
+## Next steps
+
+Phase 4 is locally implemented and tested. MCP uploads use a marker in the existing `media_assets.metadata` JSON; signed upload links expire after 10 minutes, while confirmation has no deadline. The website upload flow is unchanged. Production acceptance of Phases 2–4 requires an approved migration and deployment to the real domain, including end-to-end OAuth, upload, and owner-isolation tests with real accounts. The production `mcp.getugcpilot.com` domain currently does not serve this app.

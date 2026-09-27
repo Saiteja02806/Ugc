@@ -21,6 +21,11 @@ export function GoogleAuthRedirectHandler() {
     }
 
     handledRef.current = true;
+    if (user.emailVerified && window.location.pathname === "/oauth/authorize") {
+      // Firebase returns to the page that started redirect sign-in. Keep the
+      // OAuth request and consent screen instead of sending the user home.
+      return;
+    }
     router.replace(user.emailVerified ? "/dashboard" : "/verify-email");
   }, [loading, router, user]);
 

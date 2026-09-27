@@ -22,6 +22,8 @@ const sourceUrl = z.url().regex(/^https?:\/\//i);
 const httpsUrl = z.url().regex(/^https:\/\//i);
 const nullableText = z.string().nullable();
 const generationCount = z.union([z.literal(1), z.literal(2), z.literal(4)]);
+// Phase 6 will enable this when generate_video is registered and validated.
+const videoToolRegistered = false;
 const videoDuration = z.union([
   z.literal(3), z.literal(4), z.literal(5), z.literal(6),
   z.literal(7), z.literal(8), z.literal(9), z.literal(10),
@@ -166,7 +168,7 @@ export function registerReadMcpTools(server: McpServer) {
       credits_reserved: subscription.creditsReserved,
       image_credit_cost: subscription.imageGenerationCreditCost,
       video_credits_per_second: subscription.videoGenerationCreditsPerSecond,
-      features: { image_generation: active, video_generation: active },
+      features: { image_generation: active, video_generation: active && videoToolRegistered },
     };
   }));
 
@@ -301,7 +303,8 @@ export function registerReadMcpTools(server: McpServer) {
   }, async (_args, ctx) => executeTool(async () => {
     const subscription = await loadEntitlements(principal(ctx, "account:read"));
     const imageAvailable = subscription.isActive && subscription.creditsRemaining >= subscription.imageGenerationCreditCost;
-    const videoAvailable = subscription.isActive && subscription.creditsRemaining >= 3 * subscription.videoGenerationCreditsPerSecond;
+    const videoAvailable = videoToolRegistered && subscription.isActive &&
+      subscription.creditsRemaining >= 3 * subscription.videoGenerationCreditsPerSecond;
     return {
       image_generation: {
         available: imageAvailable,

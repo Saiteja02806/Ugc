@@ -13,7 +13,7 @@ function functionSql(source, name) {
 
 const baseline = await readFile(new URL("../supabase/migrations/20260905123000_harden_wall_text_regeneration_recovery.sql", import.meta.url), "utf8");
 const billing = await readFile(new URL("../supabase/migrations/20260910105839_add_complimentary_plan_grants.sql", import.meta.url), "utf8");
-const mcp = await readFile(new URL("../supabase/migrations/20260927183258_mcp_atomic_generation_job.sql", import.meta.url), "utf8");
+const mcp = await readFile(new URL("../supabase/migrations/20260927202613_mcp_atomic_generation_job.sql", import.meta.url), "utf8");
 const db = new PGlite();
 
 try {

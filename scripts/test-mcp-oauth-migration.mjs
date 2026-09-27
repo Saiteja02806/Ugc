@@ -6,7 +6,7 @@ import { PGlite } from "@electric-sql/pglite";
 const db = new PGlite();
 try {
   await db.exec("CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;");
-  await db.exec(await readFile(new URL("../supabase/migrations/20260927150038_mcp_oauth.sql", import.meta.url), "utf8"));
+  await db.exec(await readFile(new URL("../supabase/migrations/20260927202555_mcp_oauth.sql", import.meta.url), "utf8"));
   const tables = await db.query("SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename LIKE 'mcp_oauth_%'");
   assert.equal(tables.rows.length, 4);
   for (const { tablename } of tables.rows) {

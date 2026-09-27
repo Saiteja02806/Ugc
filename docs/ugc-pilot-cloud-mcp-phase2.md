@@ -19,7 +19,7 @@ The user approved the 12-tool [contract](ugc-pilot-cloud-mcp-v1-contracts.md) an
 
 ## Database and configuration
 
-The migration is [`20260927150038_mcp_oauth.sql`](../supabase/migrations/20260927150038_mcp_oauth.sql). It creates four RLS-enabled tables and restricted refresh-rotation and client-registration functions in the existing Supabase project. Only the server-side service role receives table access and function execution. No second backend or user table is introduced.
+The migration is [`20260927202555_mcp_oauth.sql`](../supabase/migrations/20260927202555_mcp_oauth.sql). It creates four RLS-enabled tables and restricted refresh-rotation and client-registration functions in the existing Supabase project. Only the server-side service role receives table access and function execution. No second backend or user table is introduced.
 
 The current `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `NEXT_PUBLIC_FIREBASE_API_KEY` remain required. Optional configuration:
 

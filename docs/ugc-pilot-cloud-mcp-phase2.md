@@ -45,7 +45,7 @@ Initial checks on 2026-09-27 found `DEPLOYMENT_NOT_FOUND` on the MCP domain and 
 
 1. Complete: apply the OAuth migration, verify its service-role grants, deploy the separate MCP project, attach its custom domain, and verify public production health/discovery and website-route isolation.
 2. Core live flow verified: the user added the authorized domain and Google callback; real Google sign-in, Dynamic Client Registration, consent, PKCE code exchange, refresh rotation, revocation, and authenticated MCP initialization passed on the production MCP domain. Client ID Metadata interoperability, redirect fallback, and remaining security cases still need acceptance.
-3. Authenticated Phase 3 read smoke checks passed. Phase 4 uploads/deletion and Phase 5 image jobs still need live acceptance. The Google Cloud credential is saved in `ugc-mcp`, but runtime permissions remain unverified. The connected account is Free with 0 credits; a generation-eligible account is required for the one-image test. Phase 6 waits for live image acceptance.
+3. Authenticated Phase 3 read smoke checks and a real Phase 4 signed upload, confirmation, readback, and soft-delete test passed. The deployed Google Cloud credential signed the storage URL and accessed the object. Cross-account owner isolation and third-party client upload UX remain pending. Phase 5 image jobs and actual queue dispatch still need live acceptance. The connected account is Free with 0 credits; a generation-eligible account is required for the one-image test. Phase 6 waits for live image acceptance.
 
 Production acceptance must use the real domains, per `AGENTS.md`; localhost checks above are only compile and isolated-flow sanity checks.
 

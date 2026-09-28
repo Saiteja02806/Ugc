@@ -18,10 +18,11 @@ import {
 import { useState } from "react";
 
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
-import { ProductLogoMark } from "@/components/brand/product-logo";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+
+import { ConsentBrandMark } from "./consent-brand-mark";
 
 type ScopeDetails = {
   description: string;
@@ -140,7 +141,7 @@ export function OAuthConsent({
       >
         <header className="flex items-center justify-between gap-4 border-b border-border px-5 py-4 sm:px-7">
           <div className="flex min-w-0 items-center gap-3">
-            <ProductLogoMark className="size-9 rounded-[11px] bg-primary p-1.5 shadow-sm" />
+            <ConsentBrandMark className="size-9 rounded-[11px] shadow-sm" />
             <div className="min-w-0">
               <p className="truncate text-sm font-bold text-foreground-strong">
                 UGC Pilot
@@ -157,7 +158,7 @@ export function OAuthConsent({
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6 pt-7 sm:px-8 sm:pb-7 sm:pt-8">
           <div className="mx-auto flex max-w-[520px] items-center justify-center" aria-hidden="true">
             <div className="flex size-14 items-center justify-center rounded-2xl border border-primary/20 bg-brand-soft shadow-sm sm:size-16">
-              <ProductLogoMark className="size-10 rounded-xl bg-primary p-1.5 sm:size-11" />
+              <ConsentBrandMark className="size-10 rounded-xl sm:size-11" />
             </div>
             <div className="relative mx-2 h-px w-16 bg-border sm:mx-4 sm:w-24">
               <span className="absolute left-1/2 top-1/2 flex size-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card text-primary shadow-sm">

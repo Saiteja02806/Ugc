@@ -77,3 +77,10 @@ afterward. The three quota functions are executable by `service_role` only,
 and there were zero active or deleted-pending MCP upload reservations at
 promotion. The updated live oversized/overwrite PUT test and a credit-spending
 image completion test remain outstanding.
+
+The MCP source branch was subsequently pushed to the existing GitHub project
+at `7c34f90`, after explicit user authorization. A new production-target
+deployment `dpl_9eXnyucrrxe586Gp2FQqqASPaYA4` was staged, returned health
+`ready`, and was promoted to `mcp.getugcpilot.com`. The public production
+preflight passed after promotion. This direct Vercel release does not yet set
+up automatic deploys from GitHub; the website `main` branch was unchanged.

@@ -1,6 +1,6 @@
 # MCP live image validation plan
 
-Status: MCP is deployed at `mcp.getugcpilot.com`. The 2026-09-28 quota update is production deployment `dpl_6qVCFsTLKxv4DQH3s3gQ3rtCs6Tk`, backed by Supabase migration version `20260928151747`. Public health, OAuth metadata/challenge, and route-isolation checks pass. The shared AI worker fix is live at source SHA `e2ddd46`. A real paid image completion and the new adversarial signed-PUT checks remain outstanding. The MCP source branch is local; automatic approval review rejected publishing that full branch to GitHub, so its source was uploaded directly to Vercel.
+Status: MCP is deployed at `mcp.getugcpilot.com`. The latest production deployment is `dpl_9eXnyucrrxe586Gp2FQqqASPaYA4`, backed by Supabase quota migration version `20260928151747`. Public health, OAuth metadata/challenge, and route-isolation checks pass. The shared AI worker fix is live at source SHA `e2ddd46`. The MCP source is in the GitHub `codex/ugc-mcp` branch. A real paid image completion and the new adversarial signed-PUT checks remain outstanding.
 
 ## Current live state
 
@@ -122,3 +122,17 @@ all three new functions are service-role-only. Supabase security advisors
 reported only the preexisting informational RLS-without-policy category.
 The updated live oversized/overwrite PUT test and an eligible-account image
 job completion remain unverified.
+
+## GitHub and release follow-up: 2026-09-28
+
+After the user explicitly authorized publishing the MCP work to the existing
+GitHub project, `codex/ugc-mcp` was pushed to
+`github.com/Saiteja02806/Ugc` at `7c34f90`. The website `main` branch remains
+at `e2ddd46`. A separate MCP production-target Vercel deployment
+`dpl_9eXnyucrrxe586Gp2FQqqASPaYA4` built with TypeScript, returned database
+health `ready` while staged, then was promoted to `mcp.getugcpilot.com`.
+Production public preflight passed after promotion; the website homepage also
+returned 200. Vercel's MCP project is still deployed by explicit CLI release,
+not configured to redeploy automatically when this GitHub branch changes.
+Authenticated signed-PUT rejection and credit-spending image completion remain
+to be checked with a fresh real-account OAuth connection.

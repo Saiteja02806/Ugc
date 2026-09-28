@@ -1,8 +1,8 @@
 # UGC Pilot Cloud MCP: Phase 3 read-only tools
 
-Status: implemented and locally validated on 2026-09-27. No production migration, domain change, push, or deployment has been made.
+Status: implemented and locally validated on 2026-09-27; deployed to the separate `ugc-mcp` project on 2026-09-28. Public health/discovery pass. Authenticated production reads remain unverified; see the [live rollout record](ugc-pilot-cloud-mcp-live-image-validation.md). No GitHub push has been performed.
 
-The server now registers the six approved read-only tools: `get_profile`, `get_entitlements`, `get_saas_brand`, `list_assets`, `get_asset`, and `get_capabilities`. The Phase 1 contracts remain the source of truth for their inputs and outputs. Phase 4 also registers `create_upload`, `confirm_upload`, and `delete_asset`; see [Phase 4](ugc-pilot-cloud-mcp-phase4.md). Phase 5 now registers `generate_image` and `get_job` locally; see [Phase 5](ugc-pilot-cloud-mcp-phase5-audit.md). Video generation remains unavailable.
+The server now registers the six approved read-only tools: `get_profile`, `get_entitlements`, `get_saas_brand`, `list_assets`, `get_asset`, and `get_capabilities`. The Phase 1 contracts remain the source of truth for their inputs and outputs. Phase 4 also registers `create_upload`, `confirm_upload`, and `delete_asset`; see [Phase 4](ugc-pilot-cloud-mcp-phase4.md). Phase 5 now registers `generate_image` and `get_job`; see [Phase 5](ugc-pilot-cloud-mcp-phase5-audit.md). Video generation remains unavailable.
 
 ## Behavior
 
@@ -20,4 +20,4 @@ The server now registers the six approved read-only tools: `get_profile`, `get_e
 
 ## Next steps
 
-Phase 4 is locally implemented and tested. MCP uploads use a marker in the existing `media_assets.metadata` JSON; signed upload links expire after 10 minutes, while confirmation has no deadline. The website upload flow is unchanged. Production acceptance of Phases 2–4 requires an approved migration and deployment to the real domain, including end-to-end OAuth, upload, and owner-isolation tests with real accounts. The production `mcp.getugcpilot.com` domain currently does not serve this app.
+Phase 4 is locally implemented and tested. MCP uploads use a marker in the existing `media_assets.metadata` JSON; signed upload links expire after 10 minutes, while confirmation has no deadline. The website upload flow is unchanged. The approved migrations and separate-project deployment are complete, and the real MCP domain serves this app. Production acceptance of Phases 2–4 still requires end-to-end OAuth, upload, and owner-isolation tests with real accounts. Firebase access and the Google Cloud service-account credential remain pending. The live verification helper in `scripts/verify-mcp-live-image.mjs` can check authenticated reads once a real OAuth bearer is available; it queues an image only with the explicit `--generate` flag.

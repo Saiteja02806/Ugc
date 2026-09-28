@@ -1,6 +1,6 @@
 # UGC Pilot Cloud MCP: Phase 5 image generation
 
-Status: implemented and locally validated on 2026-09-28. The migration has not been applied to production, and the MCP service has not been deployed or tested with a live image provider.
+Status: implemented and locally validated on 2026-09-28. Both MCP migrations are now applied, and Phases 2–5 are deployed to the separate `ugc-mcp` project. No live image provider job has run. Authenticated image and credit acceptance remain pending; see the [live rollout record](ugc-pilot-cloud-mcp-live-image-validation.md).
 
 ## Behavior
 
@@ -17,4 +17,4 @@ Status: implemented and locally validated on 2026-09-28. The migration has not b
 
 ## Deployment boundary and remaining work
 
-This MCP-specific wrapper leaves the existing website image-generation code unchanged. The website's previously identified duplicate-reservation release race is still separate work. Production acceptance requires applying the Phase 2 OAuth migration and this Phase 5 migration, deploying the MCP route at its approved domain, then testing real OAuth, credit reservation and settlement, queue dispatch and recovery, provider completion, and output ownership. The recovery scheduler is optional in Terraform, so its live enabled state must also be checked before relying on unattended recovery. None of those production changes has been made here. Phase 6 video generation and its billing rules remain separate.
+This MCP-specific wrapper leaves the existing website image-generation code unchanged. The website's previously identified duplicate-reservation release race is still separate work. The Phase 2 OAuth migration and Phase 5 atomic wrapper are applied, and the MCP route is deployed at its approved domain. Production acceptance still requires real OAuth, credit reservation and settlement, queue dispatch and recovery, provider completion, and output ownership. The recovery scheduler is optional in Terraform, so its live enabled state must also be checked before relying on unattended recovery. The Google Cloud service-account credential and Firebase access are still pending. The production helper `scripts/verify-mcp-live-image.mjs` is prepared, but its authenticated/image modes have not run. Phase 6 video generation waits for live image acceptance.

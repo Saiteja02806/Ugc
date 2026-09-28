@@ -35,6 +35,53 @@ Status: rollout approved by the user. On 2026-09-28 the two additive MCP migrati
 4. Public hosting checks complete: the release built, generated-host checks passed, only `mcp.getugcpilot.com` was attached, and health/metadata pass on that domain while the website retains its deployment and aliases. On the MCP domain, verify registration, Firebase popup and redirect sign-in, consent, PKCE token exchange, scopes, refresh, and revocation with a test account.
 5. Confirm the MCP project's Cloud Tasks configuration and the existing image worker before queueing a paid job. With the test account, queue one image using a known prompt and a unique request ID. Poll `get_job`, confirm the completed owned asset via `get_asset`, repeat the same request ID to prove no second credit reservation or provider job, and inspect credit settlement. Check queue recovery configuration and test an error path without generating another paid output.
 
+## Prepared live verification helper
+
+`scripts/verify-mcp-live-image.mjs` uses the real production MCP domain and Node's built-in HTTP client. On 2026-09-28 its public mode passed health, both discovery documents, unauthenticated challenge, and website-route isolation. Its syntax check passed, and a missing-token guard check confirmed that paid mode stops before any network request or job submission. Authenticated and paid modes have not run.
+
+- `node scripts/verify-mcp-live-image.mjs --public` performs only public checks and explicitly reports that authenticated/image validation did not run.
+- With a real OAuth access token in `MCP_ACCESS_TOKEN`, `node scripts/verify-mcp-live-image.mjs` initializes MCP and checks discovery, profile, entitlements, brand, capabilities, and the asset library. It does not create an upload, delete an asset, or queue an image.
+- `--generate` additionally requires `MCP_IMAGE_PROMPT` and a stable `MCP_IMAGE_CLIENT_REQUEST_ID`. Use one approved prompt and one request ID for this acceptance test. It submits one image, repeats the identical request, requires the same job ID, polls for up to 10 minutes, retrieves the owned generated asset, and checks the nonempty image object with HEAD. It reports credit balances before/after, but those aggregate balances alone do not prove a single reservation if the account has other activity.
+- If a request or polling times out, keep the same prompt and request ID. A job may already exist. The helper never chooses a replacement request ID and never prints a token, prompt, or raw server error.
+- This is a production transport/adapter test helper. It does not satisfy Phase 9's actual local-client, ChatGPT, or Claude interoperability checks, nor the full OAuth/media/security acceptance checklist.
+
+After a completed run, inspect that real job with this read-only query, replacing `PASTE_JOB_ID` with the reported UUID. Require exactly one job and reservation for its owner/key, reservation amount equal to the advertised image cost, `committed` status, matching reservation background job ID, a settlement timestamp, queue delivery ID, and an owned ready output asset. Inspect worker logs for attempts/provider completion and verify the existing recovery scheduler separately.
+
+```sql
+with test_job as (
+  select id, user_id, job_type, idempotency_key, status,
+         queue_message_id, output_json
+  from public.background_jobs
+  where id = 'PASTE_JOB_ID'::uuid
+    and job_type = 'generate_image'
+    and input_json->>'mcpSource' = 'ugc-pilot-cloud-mcp'
+)
+select job.id as job_id, job.status as job_status, job.queue_message_id,
+       (select count(*) from public.background_jobs as other
+        where other.user_id = job.user_id
+          and other.job_type = job.job_type
+          and other.idempotency_key = job.idempotency_key) as job_count,
+       (select count(*) from public.billing_credit_reservations as other
+        where other.user_id = job.user_id
+          and other.idempotency_key = job.idempotency_key) as reservation_count,
+       reservation.amount, reservation.status as reservation_status,
+       reservation.background_job_id, reservation.settled_at,
+       job.output_json->>'mediaAssetId' as output_asset_id,
+       exists (
+         select 1 from public.media_assets as asset
+         where asset.id::text = job.output_json->>'mediaAssetId'
+           and asset.user_id = job.user_id
+           and asset.collection = 'image'
+           and asset.status = 'ready' and asset.deleted_at is null
+       ) as owned_ready_output
+from test_job as job
+left join public.billing_credit_reservations as reservation
+  on reservation.user_id = job.user_id
+ and reservation.idempotency_key = job.idempotency_key;
+```
+
+On 2026-09-28 the existing website project was also rechecked: `GOOGLE_CLOUD_CREDENTIALS_JSON` is a project Secret for Production/Preview, its Copy to Clipboard action is disabled, and the team Shared tab says "No shared variables." It cannot currently be linked as a team variable. [Vercel documents](https://vercel.com/docs/environment-variables/sensitive-environment-variables) sensitive values as non-readable after creation; the original JSON is needed to add the existing credential to the new project. No credential was replaced, rotated, or removed.
+
 ## Stop conditions and rollback
 
 Stop if the apex deployment ID or alias changes, health is not ready, OAuth cannot complete, the queue is not configured, or a credit reservation cannot settle. Remove the MCP domain from the separate project to stop new MCP requests; the website project remains untouched. The additive database migration is retained for inspection because dropping auth/token tables could destroy test records; any cleanup would be a separately reviewed action.

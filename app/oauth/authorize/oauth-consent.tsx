@@ -66,11 +66,13 @@ const SCOPE_DETAILS: Record<string, ScopeDetails> = {
 export function OAuthConsent({
   clientName,
   redirectHost,
+  redirectIsLocal,
   scopes,
   authorizationParams,
 }: {
   clientName: string;
   redirectHost: string;
+  redirectIsLocal: boolean;
   scopes: string[];
   authorizationParams: string;
 }) {
@@ -247,13 +249,28 @@ export function OAuthConsent({
 
           <div className="mx-auto mt-4 flex max-w-[540px] items-start gap-3 rounded-xl border border-border/80 bg-card-muted/45 px-3.5 py-3 text-xs leading-5 text-muted">
             <LockKeyhole className="mt-0.5 size-4 shrink-0 text-muted-subtle" aria-hidden="true" />
-            <p>
-              After approval, you&apos;ll return to{" "}
-              <span className="break-all font-mono font-semibold text-foreground">
-                {redirectHost}
-              </span>
-              . Only continue if you started this connection.
-            </p>
+            <div className="min-w-0">
+              <p className="font-semibold text-foreground">
+                {redirectIsLocal
+                  ? "Return to the app on this device"
+                  : `Return to ${redirectHost}`}
+              </p>
+              <p className="mt-0.5">
+                {redirectIsLocal ? (
+                  <>
+                    After approval, this private callback returns control to the desktop app that started the connection.
+                    <span className="mt-1 block break-all font-mono text-[11px] font-semibold text-muted-subtle">
+                      Local callback: {redirectHost}
+                    </span>
+                  </>
+                ) : (
+                  "After approval, this browser will return to the requesting app."
+                )}
+              </p>
+              <p className="mt-1 text-muted-subtle">
+                Only continue if you started this connection.
+              </p>
+            </div>
           </div>
         </div>
 

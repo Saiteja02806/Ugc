@@ -291,9 +291,9 @@ export function VideoGenerationStudioPanel({
     useState<AIStudioVideoAspectRatio>("9:16");
   const [quantity, setQuantity] =
     useState<AIStudioGenerationQuantity>(1);
-  const [model, setModel] = useState<AIStudioVideoModel>("google_omni");
+  const [model, setModel] = useState<AIStudioVideoModel>("seedance_2_5");
   const [durationSeconds, setDurationSeconds] =
-    useState<AIStudioVideoDuration>(4);
+    useState<AIStudioVideoDuration>(5);
   const [uploadedReference, setUploadedReference] =
     useState<AIStudioReferenceMedia | null>(null);
   const [selectedCreatorReferenceId, setSelectedCreatorReferenceId] =
@@ -359,6 +359,10 @@ export function VideoGenerationStudioPanel({
     submissionKeyRef.current = null;
     setSelectedCreatorReferenceId(null);
     setUploadedReference(selection);
+    if (selection && model === "seedance_2_5") {
+      setModel("google_omni");
+      setActionNotice("Switched to Google Omni for reference-based generation.");
+    }
   }
   const queriedJobs = activeJobQueries.flatMap((query) =>
     query.data ? [query.data] : [],
@@ -973,12 +977,21 @@ export function VideoGenerationStudioPanel({
               ariaLabel="Video model"
               disabled={generationLocked || isGenerating}
               options={AI_STUDIO_VIDEO_MODELS.map((value) => ({
-                label: "Google Omni",
+                label:
+                  value === "seedance_2_5" ? "Seedance 2.5" : "Google Omni",
                 value,
               }))}
               value={model}
               onChange={(value) => {
                 submissionKeyRef.current = null;
+                if (value === "seedance_2_5" && uploadedReference) {
+                  setUploadedReference(null);
+                  setSelectedCreatorReferenceId(null);
+                  setActionNotice("Removed the reference for Seedance text-to-video generation.");
+                }
+                if (value === "seedance_2_5" && durationSeconds < 4) {
+                  setDurationSeconds(5);
+                }
                 setModel(value as AIStudioVideoModel);
               }}
             />
@@ -986,7 +999,9 @@ export function VideoGenerationStudioPanel({
               ariaLabel="Video duration"
               disabled={generationLocked || isGenerating}
               icon={<Clock3 className="size-4" aria-hidden="true" />}
-              options={AI_STUDIO_VIDEO_DURATIONS.map((duration) => ({
+              options={AI_STUDIO_VIDEO_DURATIONS.filter(
+                (duration) => model !== "seedance_2_5" || duration >= 4,
+              ).map((duration) => ({
                 label: `${duration} sec · ${duration * creditsPerSecond} credits`,
                 value: String(duration),
               }))}

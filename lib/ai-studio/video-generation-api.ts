@@ -184,6 +184,27 @@ export async function handleAIStudioVideoGeneration(request: Request) {
     );
   }
 
+  if (model === "seedance_2_5" && (avatarImageUrl || referenceVideoUrl)) {
+    return NextResponse.json(
+      {
+        error:
+          "Seedance 2.5 supports text prompts here. Select Google Omni to use a reference.",
+        ok: false,
+      },
+      { status: 400 },
+    );
+  }
+
+  if (model === "seedance_2_5" && durationSeconds < 4) {
+    return NextResponse.json(
+      {
+        error: "Seedance 2.5 requires a duration of at least 4 seconds.",
+        ok: false,
+      },
+      { status: 400 },
+    );
+  }
+
   if (referenceVideoUrl && !referenceVideoDurationSeconds) {
     return NextResponse.json(
       { error: "Reference videos must be 3 seconds or shorter.", ok: false },

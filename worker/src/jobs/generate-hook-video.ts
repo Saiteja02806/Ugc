@@ -9,6 +9,7 @@ import {
 } from "../lib/generation-provider.js";
 import { generateRunwayHookVideoBuffer } from "../lib/runway-video.js";
 import { generateGeminiOmniVideoBuffer } from "../lib/gemini-omni-video.js";
+import { generateHiggsfieldVideoBuffer } from "../lib/higgsfield-video.js";
 import { getStoredObject, uploadBufferToStorage } from "../lib/storage.js";
 import {
   buildVideoGenerationPrompt,
@@ -32,7 +33,7 @@ type GenerateHookVideoBaseInput = {
   avatarImageUrl?: string;
   durationSeconds: number;
   hookIdea: string;
-  model?: "google_omni";
+  model?: "google_omni" | "seedance_2_5";
   projectId: string;
   provider?: HookVideoProvider;
   referenceVideoDurationSeconds?: number;
@@ -80,7 +81,8 @@ export async function runGenerateHookVideoJob(
       provider:
         (persistedProvider === "gemini" ||
         persistedProvider === "runway" ||
-        persistedProvider === "veo"
+        persistedProvider === "veo" ||
+        persistedProvider === "higgsfield"
           ? persistedProvider
           : undefined) ??
         input.provider ??
@@ -151,7 +153,13 @@ async function generateWithFallback(
   prompt: string,
 ) {
   const preferredProvider = input.provider ?? DEFAULT_HOOK_VIDEO_PROVIDER;
-  const selectedProvider = input.model === "google_omni" ? "gemini" : preferredProvider;
+  const selectedProvider = input.model === "seedance_2_5"
+    ? "higgsfield"
+    : input.model === "google_omni" ? "gemini" : preferredProvider;
+
+  if (selectedProvider === "higgsfield") {
+    return generateWithProvider(job, context, "higgsfield", "primary", input, prompt);
+  }
 
   if (input.referenceVideoUrl) {
     return generateWithProvider(
@@ -277,6 +285,8 @@ async function generateWithProvider(
     action === "resume"
       ? reservation.operation.provider_operation_id ?? undefined
       : undefined;
+  const providerOutputUrl =
+    action === "resume" ? reservation.operation.output_url ?? undefined : undefined;
   const onOperationCreated = async (operationId: string) => {
     await context.store.markGenerationProviderSubmitted({
       jobId: job.id,
@@ -305,6 +315,7 @@ async function generateWithProvider(
       onOperationCreated,
       prompt,
       providerOperationId,
+      providerOutputUrl,
       referenceImageUrl: input.avatarImageUrl,
       referenceVideoDurationSeconds: input.referenceVideoDurationSeconds,
       referenceVideoUrl: input.referenceVideoUrl,
@@ -348,6 +359,7 @@ async function generateProviderBuffer(
     onOperationCreated: (operationId: string) => Promise<void>;
     prompt: string;
     providerOperationId?: string;
+    providerOutputUrl?: string;
     referenceImageUrl?: string;
     referenceVideoDurationSeconds?: number;
     referenceVideoUrl?: string;
@@ -359,6 +371,10 @@ async function generateProviderBuffer(
       ...params,
       onOperationSucceeded,
     });
+  }
+
+  if (provider === "higgsfield") {
+    return generateHiggsfieldVideoBuffer({ ...params, onOperationSucceeded });
   }
 
   if (provider === "runway") {
@@ -407,7 +423,9 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
     avatarImageUrl: getOptionalHttpsUrl(job.input_json.avatarImageUrl),
     durationSeconds: getGenerationDurationSeconds(job.input_json.durationSeconds),
     hookIdea: getText(job.input_json.hookIdea, "hookIdea", MAX_HOOK_LENGTH),
-    model: job.input_json.model === "google_omni" ? "google_omni" : undefined,
+    model: job.input_json.model === "seedance_2_5"
+      ? "seedance_2_5"
+      : job.input_json.model === "google_omni" ? "google_omni" : undefined,
     projectId: getPathSegment(job.input_json.projectId, "projectId"),
     provider: getOptionalChoice(job.input_json.provider, hookVideoProviders),
     referenceVideoDurationSeconds: getOptionalDurationSeconds(

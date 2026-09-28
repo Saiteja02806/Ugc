@@ -136,13 +136,15 @@
     "billing:usage-scheduler:configure": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/configure-billing-usage-scheduler.mjs --execute --yes",
     "worker:start": "node worker/dist/index.js",
     "test:wall-text-early": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test lib/trending/wall-text-publication-delivery.test.ts && npm run worker:build && node --test worker/dist/jobs/generate-wall-text-content-plan.test.js worker/dist/lib/wall-text-plan-publication-dispatch.test.js scripts/wall-text-early-delivery-db.test.mjs",
-    "test:production-recovery": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test lib/supabase/gateway-retry-fetch.test.ts scripts/free-trial-allowance-upgrade.test.mjs && node --import ./scripts/next-server-only-test-loader.mjs --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-transform-types --test scripts/wall-writer-repair.test.mjs lib/billing/free-trial-delivery-behavior.test.mjs lib/trending/reconcile-completed-feed.test.ts"
+    "test:production-recovery": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test lib/supabase/gateway-retry-fetch.test.ts scripts/free-trial-allowance-upgrade.test.mjs && node --import ./scripts/next-server-only-test-loader.mjs --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-transform-types --test scripts/wall-writer-repair.test.mjs lib/billing/free-trial-delivery-behavior.test.mjs lib/trending/reconcile-completed-feed.test.ts",
+    "higgsfield:example": "node --env-file=.env.local --experimental-strip-types index.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
     "@fontsource/inter": "^5.2.8",
     "@google-cloud/storage": "^7.21.0",
     "@google/genai": "^2.10.0",
+    "@higgsfield/client": "^0.2.6",
     "@modelcontextprotocol/server": "2.1.0",
     "@runwayml/sdk": "^4.4.0",
     "@supabase/supabase-js": "^2.108.2",

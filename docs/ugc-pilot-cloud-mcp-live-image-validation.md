@@ -1,6 +1,6 @@
 # MCP live image validation plan
 
-Status: rollout approved by the user. On 2026-09-28 the two additive MCP migrations were applied to the shared Supabase project; no Vercel deployment or paid image job has occurred. The isolated release branch is `codex/ugc-mcp`, based on production commit `d741487`, and excludes unrelated working-tree changes. The Vercel account requires its owner to complete two-factor authentication before the project can be configured.
+Status: rollout approved by the user. On 2026-09-28 the two additive MCP migrations were applied to the shared Supabase project; no Vercel deployment or paid image job has occurred. The isolated release branch is `codex/ugc-mcp`, based on production commit `d741487`, and excludes unrelated working-tree changes. Vercel access was rechecked: the connected app can list the ugcpilot team and ugc project, the dashboard is signed in, and the new-project setup page opens without a two-factor prompt. The earlier prompt is not a current deployment blocker. Direct source upload is available for the new isolated project; no GitHub push has been authorized or performed.
 
 ## Current live state
 

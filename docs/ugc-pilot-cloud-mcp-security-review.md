@@ -43,10 +43,11 @@ reaction-generation tests. A worker output build in the managed worktree was
 blocked by local filesystem permissions; the worker compiled into a temporary
 directory for its focused tests.
 
-Before declaring the fixes live, apply the migration, deploy MCP and worker
-from the same reviewed revision, then perform a new small upload through the
-real MCP domain. Confirm an oversized PUT fails and a second PUT fails without
-leaving test media visible. A repeated live image run also needs a paid account
+Before declaring the fixes live, allow the two headers in bucket CORS, promote
+the staged MCP deployment, coordinate the shared worker release, then run the
+updated tiny upload verifier through the real MCP domain. It checks that an
+oversized PUT and a second PUT fail, then soft-deletes its test asset. A
+repeated live image run also needs a paid account
 with available credits; the connected test account is Free with zero credits.
 The high finding's repeated bounded abandoned uploads still call for a
 per-account quota and cleanup policy before wider public rollout.

@@ -88,6 +88,10 @@ async function main() {
   assert(receipt.required_headers?.['x-goog-content-length-range'] === `1,${png.length}`, 'Signed upload byte limit is missing.');
   assert(receipt.required_headers?.['x-goog-if-generation-match'] === '0', 'Signed upload create-only condition is missing.');
   assert(Date.parse(receipt.expires_at) > Date.now(), 'Signed upload link is already expired.');
+  const oversized = await request(signed, { method: 'PUT', headers: receipt.required_headers,
+    body: Buffer.concat([png, Buffer.from([0])]) });
+  assert(!oversized.ok, `Oversized signed GCS PUT unexpectedly returned HTTP ${oversized.status}.`);
+  console.log(`Oversized signed GCS PUT was rejected (HTTP ${oversized.status}).`);
   const put = await request(signed, { method: 'PUT', headers: receipt.required_headers, body: png });
   assert(put.ok, `Direct GCS PUT returned HTTP ${put.status}.`);
   console.log('Signed GCS PUT passed.');
@@ -101,6 +105,9 @@ async function main() {
   assert(direct.origin === 'https://storage.googleapis.com' && direct.pathname.startsWith('/ugcsaas-media/'), 'Asset URL is outside configured GCS.');
   const head = await request(direct, { method: 'HEAD' });
   assert(head.ok && Number(head.headers.get('content-length')) === png.length && head.headers.get('content-type')?.startsWith('image/png'), 'Uploaded object is missing or mismatched.');
+  const overwrite = await request(signed, { method: 'PUT', headers: receipt.required_headers, body: png });
+  assert(!overwrite.ok, `A second signed GCS PUT unexpectedly returned HTTP ${overwrite.status}.`);
+  console.log(`Second signed GCS PUT was rejected (HTTP ${overwrite.status}).`);
   console.log('Confirmed owned asset, idempotent confirmation, readback, and GCS object HEAD passed.');
   const deleted = await tool('delete_asset', { asset_id: testAssetId });
   assert(deleted.asset_id === testAssetId && deleted.deleted === true, 'Test asset was not soft-deleted.');

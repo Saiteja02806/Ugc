@@ -115,6 +115,7 @@ async function main() {
     assert((await tool("get_asset", { asset_id: assets.items[0].id })).asset?.id === assets.items[0].id, "Listed asset could not be retrieved.");
   }
   console.log("Authenticated production reads passed (identity, entitlements, brand, capabilities, asset library).");
+  console.log(JSON.stringify({ plan: before.plan, active: before.active, credits_remaining: before.credits_remaining, credits_reserved: before.credits_reserved, image_credit_cost: before.image_credit_cost, image_generation_available: capabilities.image_generation?.available }));
   if (!generate) {
     console.log("Image generation NOT RUN. Use --generate with an approved test prompt and stable request ID to spend image credits.");
     return;

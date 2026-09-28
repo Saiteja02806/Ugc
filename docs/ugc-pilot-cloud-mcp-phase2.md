@@ -1,6 +1,6 @@
 # UGC Pilot Cloud MCP: Phase 2 implementation
 
-Status: local implementation and validation completed on 2026-09-27. On 2026-09-28 the OAuth migration was applied and Phases 2–5 were deployed to the separate `ugc-mcp` Vercel project. Public production health and discovery pass; authenticated OAuth acceptance is pending Firebase access. See the [live rollout record](ugc-pilot-cloud-mcp-live-image-validation.md) and [Phase 3](ugc-pilot-cloud-mcp-phase3.md).
+Status: local implementation and validation completed on 2026-09-27. On 2026-09-28 the OAuth migration was applied and Phases 2–5 were deployed to the separate `ugc-mcp` Vercel project. Public production health/discovery and the real-account Google sign-in, consent, PKCE exchange, MCP initialization, refresh rotation, and revocation checks pass. Full client, redirect-fallback, and security acceptance remain pending. See the [live rollout record](ugc-pilot-cloud-mcp-live-image-validation.md) and [Phase 3](ugc-pilot-cloud-mcp-phase3.md).
 
 ## Phase 1 handoff
 
@@ -44,8 +44,8 @@ Initial checks on 2026-09-27 found `DEPLOYMENT_NOT_FOUND` on the MCP domain and 
 ## Remaining rollout work
 
 1. Complete: apply the OAuth migration, verify its service-role grants, deploy the separate MCP project, attach its custom domain, and verify public production health/discovery and website-route isolation.
-2. Pending: obtain access to Firebase/Google OAuth settings and verify the additive authorized-domain and redirect configuration. Test real Firebase sign-in, client registration/CIMD, consent, code exchange, refresh, revocation, and authenticated MCP initialization on the production MCP domain.
-3. Pending: validate the deployed Phase 3 reads, Phase 4 uploads/deletion, and Phase 5 image jobs against owned production data. The Google Cloud service-account credential is still missing from `ugc-mcp`. Phase 6 waits for live image acceptance.
+2. Core live flow verified: the user added the authorized domain and Google callback; real Google sign-in, Dynamic Client Registration, consent, PKCE code exchange, refresh rotation, revocation, and authenticated MCP initialization passed on the production MCP domain. Client ID Metadata interoperability, redirect fallback, and remaining security cases still need acceptance.
+3. Authenticated Phase 3 read smoke checks passed. Phase 4 uploads/deletion and Phase 5 image jobs still need live acceptance. The Google Cloud credential is saved in `ugc-mcp`, but runtime permissions remain unverified. The connected account is Free with 0 credits; a generation-eligible account is required for the one-image test. Phase 6 waits for live image acceptance.
 
 Production acceptance must use the real domains, per `AGENTS.md`; localhost checks above are only compile and isolated-flow sanity checks.
 
@@ -62,4 +62,4 @@ The six approved read-only tools have concrete existing data sources and are now
 | `get_asset` | `getMediaAssetForOwner` checks owner and nondeleted state. | Requires `status = ready`, then maps the approved metadata/URL shape; unknown and cross-user IDs share `NOT_FOUND`. |
 | `get_capabilities` | AI Studio generation settings define ratios, counts and durations; `getUserSubscription` defines active paid access. | Intersects backend settings with plan and minimum available credits, omits model names, and advertises image references only for video V1. |
 
-The existing media API applies a separate Creative Library visibility filter to its list response. The approved MCP contract says owner-owned, ready, nondeleted assets and explicitly names source types that the website library hides; Phase 3 should follow that contract without silently changing the website list. Owner isolation and pagination pass focused local fixtures. The approved isolated deployment is live; real authenticated acceptance is still pending account access.
+The existing media API applies a separate Creative Library visibility filter to its list response. The approved MCP contract says owner-owned, ready, nondeleted assets and explicitly names source types that the website library hides; Phase 3 should follow that contract without silently changing the website list. Owner isolation and pagination pass focused local fixtures. The approved isolated deployment is live, and real-account read smoke checks passed. Cross-account ownership, pagination, and remaining security/client acceptance still need verification.

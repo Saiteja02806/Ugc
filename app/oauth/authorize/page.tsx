@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
-import { ProductLogoMark } from "@/components/brand/product-logo";
 import { validateAuthorizationRequest } from "@/lib/mcp/authorization";
 
+import { ConsentBrandMark } from "./consent-brand-mark";
 import { OAuthConsent } from "./oauth-consent";
 
 export const metadata: Metadata = {
@@ -30,7 +30,7 @@ export default async function OAuthAuthorizePage({
           className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_50%_-10%,color-mix(in_srgb,var(--primary)_16%,transparent),transparent_42%)]"
         />
         <section className="w-full max-w-md rounded-[24px] border border-border bg-card p-6 text-center shadow-[0_24px_80px_rgb(0_0_0/0.22)] sm:p-8">
-          <ProductLogoMark className="mx-auto size-12 rounded-2xl bg-primary p-2 shadow-sm" />
+          <ConsentBrandMark className="mx-auto size-12 rounded-2xl shadow-sm" />
           <p className="mt-5 text-xs font-bold uppercase tracking-[0.14em] text-primary">
             Connection request
           </p>

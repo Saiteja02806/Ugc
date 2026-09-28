@@ -68,5 +68,12 @@ AI worker revision `ugc-ai-generation-worker-00109-raf` now report the same
 source SHA. A no-spend production cutover canary passed app dispatch, Cloud
 Tasks delivery, worker consumption, and source identity; it failed on its
 deliberately missing prompt before any paid provider call. Other worker
-services stayed on their prior images. A separate MCP quota migration and tool
-change pass local tests but have not yet been applied or deployed.
+services stayed on their prior images. The separate MCP quota migration was
+applied in Supabase as version `20260928151747`, and production MCP deployment
+`dpl_6qVCFsTLKxv4DQH3s3gQ3rtCs6Tk` was promoted to `mcp.getugcpilot.com`.
+The staged deployment returned database health `ready` before promotion; the
+public health, OAuth discovery/challenge, and route-isolation checks passed
+afterward. The three quota functions are executable by `service_role` only,
+and there were zero active or deleted-pending MCP upload reservations at
+promotion. The updated live oversized/overwrite PUT test and a credit-spending
+image completion test remain outstanding.

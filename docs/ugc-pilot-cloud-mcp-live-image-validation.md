@@ -1,6 +1,6 @@
 # MCP live image validation plan
 
-Status: rollout approved by the user. On 2026-09-28 the two additive MCP migrations were applied to the shared Supabase project and a separate `ugc-mcp` Vercel project was deployed from committed release candidate `b7866af`. The MCP subdomain is attached to that project and its database health check passes. No paid image job has occurred. The release branch is `codex/ugc-mcp`, based on website production commit `d741487`, and excludes unrelated working-tree changes. Signed-in Vercel dashboard access is working; no two-factor prompt is blocking the rollout. The source was uploaded directly to Vercel; no GitHub push has been authorized or performed.
+Status: MCP is deployed at `mcp.getugcpilot.com`. The 2026-09-28 quota update is production deployment `dpl_6qVCFsTLKxv4DQH3s3gQ3rtCs6Tk`, backed by Supabase migration version `20260928151747`. Public health, OAuth metadata/challenge, and route-isolation checks pass. The shared AI worker fix is live at source SHA `e2ddd46`. A real paid image completion and the new adversarial signed-PUT checks remain outstanding. The MCP source branch is local; automatic approval review rejected publishing that full branch to GitHub, so its source was uploaded directly to Vercel.
 
 ## Current live state
 
@@ -101,4 +101,24 @@ Stop if the apex deployment ID or alias changes, health is not ready, OAuth cann
 
 The database schema, separate Vercel deployment, MCP-only route guard, and subdomain steps are complete. The deployed Google Cloud credential has now passed real signed upload and object checks; queue dispatch and image-worker completion remain unverified. Firebase authorized domains and the real Google sign-in/consent/PKCE exchange, refresh, revocation, authenticated reads, and Phase 4 upload flow are verified. The connected account reports Free with 0 credits, so a generation-eligible account is needed before live image, credit, and queue acceptance. Phase 6 remains deferred until live image validation passes. The candidate has not been deployed to the apex website.
 
-The focused [security review](ugc-pilot-cloud-mcp-security-review.md) identified four production hardening items after the first tiny upload passed. The MCP signed-PUT guard is now deployed at `mcp.getugcpilot.com`, and the bucket CORS preflight permits both required headers. The updated live PUT test for oversized bytes and a second write has not yet run. The shared image-worker size guard is locally validated but awaits a coordinated website/worker release. The original upload test established functionality, not the absence of adversarial storage cases.
+The focused [security review](ugc-pilot-cloud-mcp-security-review.md) identified four production hardening items after the first tiny upload passed. The MCP signed-PUT guard is now deployed at `mcp.getugcpilot.com`, and the bucket CORS preflight permits both required headers. The updated live PUT test for oversized bytes and a second write has not yet run. The shared image-worker size guard was released and passed a no-spend production queue canary. The original upload test established functionality, not the absence of adversarial storage cases.
+
+## Quota rollout follow-up: 2026-09-28
+
+Supabase recorded the additive quota migration as `20260928151747`; the local
+filename was aligned to that version. MCP release `36e3793` built on Vercel
+with TypeScript and was staged without the custom domain, then returned
+`{ "status": "ready" }` against the migrated database. Promoting deployment
+`dpl_6qVCFsTLKxv4DQH3s3gQ3rtCs6Tk` to `mcp.getugcpilot.com` succeeded.
+The public production preflight passed afterward. The quota is five active
+unconfirmed reservations and 500 MiB per account. Only owner-deleted,
+unconfirmed MCP uploads are eligible for physical cleanup, after the signed
+URL expires; confirmation itself has no deadline. Cleanup is retried on a
+subsequent `create_upload`, so an idle deleted upload can retain its one-byte
+seal until that account next uploads. The initial deletion replaces the
+original object content with the seal when storage is available. Production
+database checks found zero active and zero deleted-pending MCP reservations;
+all three new functions are service-role-only. Supabase security advisors
+reported only the preexisting informational RLS-without-policy category.
+The updated live oversized/overwrite PUT test and an eligible-account image
+job completion remain unverified.

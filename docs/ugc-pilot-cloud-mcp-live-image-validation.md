@@ -1,6 +1,6 @@
 # MCP live image validation plan
 
-Status: MCP is deployed at `mcp.getugcpilot.com`. The latest production deployment is `dpl_9eXnyucrrxe586Gp2FQqqASPaYA4`, backed by Supabase quota migration version `20260928151747`. Public health, OAuth metadata/challenge, and route-isolation checks pass. The shared AI worker fix is live at source SHA `e2ddd46`. The MCP source is in the GitHub `codex/ugc-mcp` branch. A real paid image completion and the new adversarial signed-PUT checks remain outstanding.
+Status: MCP is deployed at `mcp.getugcpilot.com`, backed by Supabase quota migration version `20260928151747`. Public health, OAuth metadata/challenge, route isolation, authenticated reads, and the adversarial signed-PUT checks pass. The shared AI worker fix is live at source SHA `e2ddd46`. The MCP source is in the GitHub `codex/ugc-mcp` branch. A real paid image completion remains outstanding because the connected account has zero credits.
 
 ## Current live state
 
@@ -120,19 +120,24 @@ original object content with the seal when storage is available. Production
 database checks found zero active and zero deleted-pending MCP reservations;
 all three new functions are service-role-only. Supabase security advisors
 reported only the preexisting informational RLS-without-policy category.
-The updated live oversized/overwrite PUT test and an eligible-account image
-job completion remain unverified.
+The updated live oversized/overwrite PUT test passed. An eligible-account image
+job completion remains unverified.
 
 ## GitHub and release follow-up: 2026-09-28
 
 After the user explicitly authorized publishing the MCP work to the existing
 GitHub project, `codex/ugc-mcp` was pushed to
-`github.com/Saiteja02806/Ugc` at `7c34f90`. The website `main` branch remains
+`github.com/Saiteja02806/Ugc`. The website `main` branch remains
 at `e2ddd46`. A separate MCP production-target Vercel deployment
-`dpl_9eXnyucrrxe586Gp2FQqqASPaYA4` built with TypeScript, returned database
-health `ready` while staged, then was promoted to `mcp.getugcpilot.com`.
+built with TypeScript, returned database health `ready` while staged, then was
+promoted to `mcp.getugcpilot.com`.
 Production public preflight passed after promotion; the website homepage also
 returned 200. Vercel's MCP project is still deployed by explicit CLI release,
 not configured to redeploy automatically when this GitHub branch changes.
-Authenticated signed-PUT rejection and credit-spending image completion remain
-to be checked with a fresh real-account OAuth connection.
+Authenticated reads and the signed-PUT rejection checks then passed through a
+fresh real-account OAuth connection. The oversized 69-byte PUT was rejected
+with HTTP 400, the valid 68-byte PNG uploaded and confirmed, and a second PUT
+through the same signed URL was rejected with HTTP 412. The test asset was
+soft-deleted. The temporary OAuth token family was revoked and has zero valid
+tokens. The account reported Free, inactive, and zero credits, so no image job
+was submitted and no credits were spent.

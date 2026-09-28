@@ -75,12 +75,15 @@ The staged deployment returned database health `ready` before promotion; the
 public health, OAuth discovery/challenge, and route-isolation checks passed
 afterward. The three quota functions are executable by `service_role` only,
 and there were zero active or deleted-pending MCP upload reservations at
-promotion. The updated live oversized/overwrite PUT test and a credit-spending
-image completion test remain outstanding.
+promotion. A credit-spending image completion test remains outstanding.
 
-The MCP source branch was subsequently pushed to the existing GitHub project
-at `7c34f90`, after explicit user authorization. A new production-target
-deployment `dpl_9eXnyucrrxe586Gp2FQqqASPaYA4` was staged, returned health
-`ready`, and was promoted to `mcp.getugcpilot.com`. The public production
-preflight passed after promotion. This direct Vercel release does not yet set
-up automatic deploys from GitHub; the website `main` branch was unchanged.
+The MCP source branch was subsequently pushed to the existing GitHub project,
+after explicit user authorization. A new production-target deployment was
+staged, returned health `ready`, and was promoted to `mcp.getugcpilot.com`.
+The public production preflight passed after promotion. This direct Vercel
+release does not yet set up automatic deploys from GitHub; the website `main`
+branch was unchanged. A fresh authenticated test rejected an oversized PUT
+with HTTP 400 and a second write with HTTP 412, while the valid 68-byte upload,
+confirmation, readback, and owner soft-delete passed. The temporary token
+family was revoked. The test account has zero image credits, so paid image
+completion remains unverified.

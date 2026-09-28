@@ -1,0 +1,24 @@
+# UGC Pilot Cloud MCP: Phase 5 image generation
+
+Status: implemented and locally validated on 2026-09-28. Both MCP migrations are now applied, and Phases 2–5 are deployed to the separate `ugc-mcp` project. No live image provider job has run. Authenticated image and credit acceptance remain pending; see the [live rollout record](ugc-pilot-cloud-mcp-live-image-validation.md).
+
+A later focused security review found that both provider reference-image paths
+read an entire response before checking 25 MiB. A bounded shared downloader is
+prepared locally and remains undeployed; see the [security review](ugc-pilot-cloud-mcp-security-review.md).
+
+## Behavior
+
+- `generate_image` requires `generation:write` and an active Starter or Growth subscription. It accepts the approved prompt, ratio, optional owned ready image reference, quantity of 1, 2, or 4, and client request ID. The reference URL is resolved from the owner's media row, never accepted from tool input. It uses the existing default image model and the existing image worker.
+- Each image has a user-scoped child idempotency key and a fingerprint of the normalized request. The new `mcp_create_reserved_generation_job` database function checks the fingerprint on a retry, then calls the existing billing reservation and durable job creation functions in one transaction. A changed request ID payload fails with `IDEMPOTENCY_CONFLICT`; if job insertion fails, Postgres rolls back the reservation. Its execute privilege is limited to `service_role`.
+- Queue delivery follows the existing Cloud Tasks route. If immediate delivery fails, the durable queued row remains available for the existing recovery endpoint; a matching tool retry also attempts delivery again. The tool returns job IDs without waiting for provider work. A multi-image request can return `partial:true` when earlier children were queued and a later child fails; retrying the same request can create the missing children.
+- `get_job` requires `jobs:read`, checks ownership and the MCP marker, and returns only the public job state. It reveals an output asset ID only for a completed job with a ready asset still owned by the caller. Provider details and internal job errors are not included.
+
+## Validation
+
+- `scripts/test-mcp-generation-migration.mjs` applies the current billing and job functions plus the new migration in PGlite. It passed service-role isolation, first creation, identical retry without another reservation, changed-input conflict, invalid input, insufficient credits, transaction rollback on job insertion failure, missing plan, and stray reservation checks.
+- `scripts/test-mcp-generation-tools.mjs` exercises the MCP transport with local service fixtures. It passed scope and plan checks, normalized retry, conflict, insufficient credits, partial batch and retry, reference ownership, Cloud Tasks delivery failure and retry, job ownership, completed output, and safe failure response.
+- The fingerprint unit tests, targeted ESLint, and optimized Next.js build passed. A raw `tsc --noEmit` still reports the pre-existing `lib/reaction-format/generation-jobs.test.ts` fixture type error; it reports no Phase 5 errors.
+
+## Deployment boundary and remaining work
+
+This MCP-specific wrapper leaves the existing website image-generation code unchanged. The website's previously identified duplicate-reservation release race is still separate work. The Phase 2 OAuth migration and Phase 5 atomic wrapper are applied, and the MCP route is deployed at its approved domain. Core production OAuth checks passed. Phase 5 acceptance still requires a live credit reservation and settlement, queue dispatch and recovery, provider completion, and output ownership. Read-only live Google Cloud checks confirm the image queue RUNNING, worker Ready, and the recovery scheduler ENABLED every five minutes. A real MCP signed upload now confirms that the deployed Google Cloud credential works for storage signing and object access. Actual queue delivery and recovery still require a real job. The production helper `scripts/verify-mcp-live-image.mjs` passed authenticated read mode; image mode has not run because the connected account reports Free, inactive, 0 credits, and image generation unavailable. The advertised image price is 1 credit. Use an existing generation-eligible account for the single paid test, then audit its reservation/queue/output. Phase 6 video generation waits for live image acceptance.

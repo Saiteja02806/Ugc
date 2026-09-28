@@ -191,21 +191,25 @@ export function resolveSubscriptionEntitlements(
 
 export async function getUserSubscription(
   userId: string,
+  options?: { strict?: boolean; refreshCredits?: boolean },
 ): Promise<UserSubscriptionInfo> {
   if (!userId.trim()) {
     return resolveSubscriptionEntitlements("free", false, "");
   }
 
   const db = getClient();
-  const refreshResult = await db.rpc("refresh_billing_credit_balance", {
-    p_user_id: userId,
-  });
+  if (options?.refreshCredits !== false) {
+    const refreshResult = await db.rpc("refresh_billing_credit_balance", {
+      p_user_id: userId,
+    });
 
-  if (refreshResult.error) {
-    console.warn(
-      `Could not refresh billing credit cycle for user ${userId}:`,
-      refreshResult.error.message,
-    );
+    if (refreshResult.error) {
+      if (options?.strict) throw new Error("ENTITLEMENTS_UNAVAILABLE");
+      console.warn(
+        `Could not refresh billing credit cycle for user ${userId}:`,
+        refreshResult.error.message,
+      );
+    }
   }
 
   const [
@@ -258,6 +262,15 @@ export async function getUserSubscription(
     }),
     getActiveComplimentaryPlanGrant(userId),
   ]);
+
+  if (options?.strict && [
+    subscriptionResult.error,
+    activeSubscriptionsResult.error,
+    creditsResult.error,
+    entitlementsResult.error,
+  ].some(Boolean)) {
+    throw new Error("ENTITLEMENTS_UNAVAILABLE");
+  }
 
   if (subscriptionResult.error) {
     console.warn(
@@ -332,6 +345,7 @@ export async function getUserSubscription(
       : null;
 
   if (complimentaryCreditsResult?.error) {
+    if (options?.strict) throw new Error("ENTITLEMENTS_UNAVAILABLE");
     console.error(
       `Could not load complimentary credit balance for user ${userId}:`,
       complimentaryCreditsResult.error.message,
@@ -342,14 +356,23 @@ export async function getUserSubscription(
     access.accessSource === "complimentary"
       ? complimentaryCreditsResult?.data
       : creditsResult.data;
+  if (options?.strict && base.isActive && !creditBalance) {
+    throw new Error("ENTITLEMENTS_UNAVAILABLE");
+  }
+  // MCP reads must not roll the billing row forward. The reservation RPC will
+  // perform the actual rollover when the user next starts a generation.
+  const previewExpiredCycle = options?.refreshCredits === false &&
+    access.accessSource === "dodo" &&
+    Boolean(creditBalance?.period_end) &&
+    Date.parse(creditBalance!.period_end) <= Date.now();
   const creditLimit = Math.max(
     0,
     toInteger(creditBalance?.credit_limit, base.sharedMonthlyCredits),
   );
-  const creditsUsed = Math.max(0, toInteger(creditBalance?.used_credits));
+  const creditsUsed = previewExpiredCycle ? 0 : Math.max(0, toInteger(creditBalance?.used_credits));
   const creditsReserved = Math.max(
     0,
-    toInteger(creditBalance?.reserved_credits),
+    previewExpiredCycle ? 0 : toInteger(creditBalance?.reserved_credits),
   );
 
   return {

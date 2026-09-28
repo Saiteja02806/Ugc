@@ -13,6 +13,11 @@ still require deployment and a repeated live upload check.
 - `confirm_upload` requires the same scope and an owned MCP upload row. It checks the GCS object exists and matches the declared MIME and byte count, validates dimensions and video duration, and conditionally changes `uploading` to `ready`. An object uploaded while the signed URL was valid can be confirmed after URL expiry. A matching retry of an already ready upload returns the same asset. Website upload rows without the MCP marker cannot be confirmed through this tool.
 - `delete_asset` retains the existing owner-scoped soft delete and destructive annotation. It does not purge the backing object.
 
+The later upload-quota hardening adds a separate database migration and an
+MCP-only exception to deletion: an owner-deleted upload that is still
+unconfirmed is sealed in storage, then cleaned after the signed PUT link's
+validity window. Ready assets retain the original soft-delete behavior.
+
 ## Local evidence and limits
 
 - The MCP integration fixture covers signed URL failure, MIME and size rejection, cross-user confirmation, missing object, storage outage, object mismatch, confirmation after URL expiry, successful image and video confirmation, required video duration, safe retry, and deletion ownership.

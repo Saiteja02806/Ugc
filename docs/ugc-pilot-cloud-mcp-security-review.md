@@ -16,17 +16,15 @@ path were deferred. The findings were not reproduced as live attacks.
 The upload headers are part of the `create_upload.required_headers` contract.
 Clients must send every returned header with their PUT. Existing website upload
 callers do not request these MCP-specific signing options. Browser upload clients
-also need the two added headers in the bucket's CORS configuration; the
-Terraform definition is updated, but the deployed bucket must be checked.
+also need the two added headers in the bucket's CORS configuration.
 The database migration
 `20260928111109_mcp_oauth_atomic_family_revocation.sql` was applied to
 production and its service-role grants and family lock were checked. The new
 MCP route is built at deployment `dpl_DBAu6tr6Cba32QRZHnrksi4HdsRe`; its
-health and OAuth metadata passed on the isolated Vercel URL. The custom
-`mcp.getugcpilot.com` alias still points to the previous deployment. Its
-production bucket also does not yet allow the two new request headers in a
-browser CORS preflight. Apply that narrow bucket change before promoting the
-MCP route. The worker fix changes the shared image worker; it needs a
+health and OAuth metadata passed on the isolated Vercel URL. At the time of
+the scan, the custom `mcp.getugcpilot.com` alias still pointed to the previous
+deployment and the bucket lacked the two request headers in browser CORS.
+The worker fix changes the shared image worker; it needs a
 coordinated worker release and production monitoring under the source-parity
 policy in `infra/gcp/README.md`.
 
@@ -43,9 +41,8 @@ reaction-generation tests. A worker output build in the managed worktree was
 blocked by local filesystem permissions; the worker compiled into a temporary
 directory for its focused tests.
 
-Before declaring the fixes live, allow the two headers in bucket CORS, promote
-the staged MCP deployment, coordinate the shared worker release, then run the
-updated tiny upload verifier through the real MCP domain. It checks that an
+Before declaring all fixes live, coordinate the shared worker release, then run
+the updated tiny upload verifier through the real MCP domain. It checks that an
 oversized PUT and a second PUT fail, then soft-deletes its test asset. A
 repeated live image run also needs a paid account
 with available credits; the connected test account is Free with zero credits.
@@ -53,3 +50,23 @@ The high finding's repeated bounded abandoned uploads still call for a
 per-account quota and cleanup policy before wider public rollout.
 
 Scan ID: `088cca54-2a76-4ff3-af31-52b98636eaf4`.
+
+## Rollout update: 2026-09-28
+
+The bucket CORS preflight now permits both MCP upload request headers from
+`https://www.getugcpilot.com`. The hardened MCP deployment
+`dpl_DBAu6tr6Cba32QRZHnrksi4HdsRe` was promoted to
+`mcp.getugcpilot.com`; a fresh public health, discovery, authentication
+challenge, and route-isolation check passed. The website domain still serves
+its separate deployment `dpl_AzNbSeuQLPhyJYLL13x9RmPjwr1t`. The production
+upload byte-range and create-only behavior still needs a real signed PUT test.
+The four-file worker source change was released at commit `e2ddd46` and
+passed the bounded-download tests. Cloud Build `45ebf71f-54cf-4a35-9e28-1431e4914eea`
+produced image digest `sha256:bdaeeefbdb90ea2c0d5d33fca5964223dc9443d4151ddce6f899f6ec41600117`.
+The production website deployment `dpl_4YiBjzNmq9rd8LKWXiXs3arWGzv2` and
+AI worker revision `ugc-ai-generation-worker-00109-raf` now report the same
+source SHA. A no-spend production cutover canary passed app dispatch, Cloud
+Tasks delivery, worker consumption, and source identity; it failed on its
+deliberately missing prompt before any paid provider call. Other worker
+services stayed on their prior images. A separate MCP quota migration and tool
+change pass local tests but have not yet been applied or deployed.

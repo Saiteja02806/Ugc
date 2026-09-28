@@ -91,6 +91,8 @@ async function main() {
   const oversized = await request(signed, { method: 'PUT', headers: receipt.required_headers,
     body: Buffer.concat([png, Buffer.from([0])]) });
   assert(!oversized.ok, `Oversized signed GCS PUT unexpectedly returned HTTP ${oversized.status}.`);
+  const afterOversize = await request(new URL(signed.pathname, signed.origin), { method: 'HEAD' });
+  assert(afterOversize.status === 404, 'The rejected oversized PUT left an object in storage.');
   console.log(`Oversized signed GCS PUT was rejected (HTTP ${oversized.status}).`);
   const put = await request(signed, { method: 'PUT', headers: receipt.required_headers, body: png });
   assert(put.ok, `Direct GCS PUT returned HTTP ${put.status}.`);
@@ -105,6 +107,7 @@ async function main() {
   assert(direct.origin === 'https://storage.googleapis.com' && direct.pathname.startsWith('/ugcsaas-media/'), 'Asset URL is outside configured GCS.');
   const head = await request(direct, { method: 'HEAD' });
   assert(head.ok && Number(head.headers.get('content-length')) === png.length && head.headers.get('content-type')?.startsWith('image/png'), 'Uploaded object is missing or mismatched.');
+  assert(Date.parse(receipt.expires_at) > Date.now(), 'Signed URL expired before the overwrite check.');
   const overwrite = await request(signed, { method: 'PUT', headers: receipt.required_headers, body: png });
   assert(!overwrite.ok, `A second signed GCS PUT unexpectedly returned HTTP ${overwrite.status}.`);
   console.log(`Second signed GCS PUT was rejected (HTTP ${overwrite.status}).`);

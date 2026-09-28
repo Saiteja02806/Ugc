@@ -177,20 +177,16 @@ export async function handleAIStudioVideoGeneration(request: Request) {
     );
   }
 
-  if (avatarImageUrl && referenceVideoUrl) {
+  if (model === "google_omni" && avatarImageUrl && referenceVideoUrl) {
     return NextResponse.json(
-      { error: "Choose either a reference image or a reference video, not both.", ok: false },
+      { error: "Google Omni accepts either a reference image or a reference video, not both.", ok: false },
       { status: 400 },
     );
   }
 
-  if (model === "seedance_2_5" && (avatarImageUrl || referenceVideoUrl)) {
+  if (model === "google_omni" && durationSeconds > 10) {
     return NextResponse.json(
-      {
-        error:
-          "Seedance 2.5 supports text prompts here. Select Google Omni to use a reference.",
-        ok: false,
-      },
+      { error: "Google Omni duration must be 10 seconds or shorter.", ok: false },
       { status: 400 },
     );
   }
@@ -207,7 +203,21 @@ export async function handleAIStudioVideoGeneration(request: Request) {
 
   if (referenceVideoUrl && !referenceVideoDurationSeconds) {
     return NextResponse.json(
-      { error: "Reference videos must be 3 seconds or shorter.", ok: false },
+      { error: "Reference videos must be 30 seconds or shorter.", ok: false },
+      { status: 400 },
+    );
+  }
+
+  if (model === "google_omni" && referenceVideoDurationSeconds && referenceVideoDurationSeconds > 3) {
+    return NextResponse.json(
+      { error: "Google Omni reference videos must be 3 seconds or shorter.", ok: false },
+      { status: 400 },
+    );
+  }
+
+  if (model === "seedance_2_5" && referenceVideoDurationSeconds && referenceVideoDurationSeconds > durationSeconds) {
+    return NextResponse.json(
+      { error: "Set Seedance duration to at least the reference video's length.", ok: false },
       { status: 400 },
     );
   }
@@ -378,7 +388,7 @@ function cleanReferenceVideoDuration(value: unknown) {
   return typeof value === "number" &&
     Number.isFinite(value) &&
     value > 0 &&
-    value <= 3
+    value <= 30
     ? value
     : null;
 }

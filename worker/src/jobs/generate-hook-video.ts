@@ -430,6 +430,7 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
     provider: getOptionalChoice(job.input_json.provider, hookVideoProviders),
     referenceVideoDurationSeconds: getOptionalDurationSeconds(
       job.input_json.referenceVideoDurationSeconds,
+      job.input_json.model === "seedance_2_5" ? 30 : 3,
     ),
     referenceVideoUrl: getOptionalHttpsUrl(job.input_json.referenceVideoUrl),
     userId: getPathSegment(job.input_json.userId, "userId"),
@@ -467,18 +468,18 @@ function getOutputDurationSeconds(input: GenerateHookVideoInput) {
 }
 
 function getGenerationDurationSeconds(value: Json | undefined) {
-  return typeof value === "number" && Number.isInteger(value) && value >= 3 && value <= 10
+  return typeof value === "number" && Number.isInteger(value) && value >= 3 && value <= 30
     ? value
     : 4;
 }
 
-function getOptionalDurationSeconds(value: Json | undefined) {
+function getOptionalDurationSeconds(value: Json | undefined, maxDurationSeconds: number) {
   if (typeof value !== "number") {
     return undefined;
   }
 
-  if (!Number.isFinite(value) || value <= 0 || value > 3) {
-    throw new Error("generate_hook_video reference video must be 3 seconds or shorter.");
+  if (!Number.isFinite(value) || value <= 0 || value > maxDurationSeconds) {
+    throw new Error(`generate_hook_video reference video must be ${maxDurationSeconds} seconds or shorter.`);
   }
 
   return value;

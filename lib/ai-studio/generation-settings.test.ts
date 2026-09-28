@@ -24,6 +24,7 @@ test("accepts only supported AI Studio settings", () => {
   assert.equal(parseAIStudioVideoModel("seedance_2_5"), "seedance_2_5");
   assert.equal(parseAIStudioVideoModel("unknown"), "seedance_2_5");
   assert.equal(parseAIStudioVideoDuration(10), 10);
+  assert.equal(parseAIStudioVideoDuration(30), 30);
   assert.equal(parseAIStudioVideoDuration(11), 5);
 });
 

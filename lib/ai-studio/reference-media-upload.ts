@@ -10,11 +10,12 @@ export type AIStudioReferenceMedia = {
   kind: AIStudioReferenceKind;
 };
 
-const MAX_REFERENCE_VIDEO_SECONDS = 3;
+const DEFAULT_MAX_REFERENCE_VIDEO_SECONDS = 3;
 
 export async function uploadAIStudioReferenceMedia(
   file: File,
   kind: AIStudioReferenceKind,
+  maxVideoDurationSeconds = DEFAULT_MAX_REFERENCE_VIDEO_SECONDS,
 ): Promise<AIStudioReferenceMedia> {
   const collection: MediaCollection = kind;
   const expectedPrefix = `${kind}/`;
@@ -24,7 +25,7 @@ export async function uploadAIStudioReferenceMedia(
   }
 
   const metadata =
-    kind === "image" ? await readImageMetadata(file) : await readVideoMetadata(file);
+    kind === "image" ? await readImageMetadata(file) : await readVideoMetadata(file, maxVideoDurationSeconds);
   const token = await getCurrentUserIdToken();
 
   if (!token) {
@@ -137,7 +138,7 @@ async function readImageMetadata(file: File) {
   }
 }
 
-async function readVideoMetadata(file: File) {
+async function readVideoMetadata(file: File, maxDurationSeconds: number) {
   const objectUrl = URL.createObjectURL(file);
 
   try {
@@ -158,8 +159,8 @@ async function readVideoMetadata(file: File) {
       throw new Error("This reference video does not contain valid video data.");
     }
 
-    if (video.duration > MAX_REFERENCE_VIDEO_SECONDS) {
-      throw new Error(`Reference videos can be up to ${MAX_REFERENCE_VIDEO_SECONDS} seconds long.`);
+    if (video.duration > maxDurationSeconds) {
+      throw new Error(`Reference videos can be up to ${maxDurationSeconds} seconds long.`);
     }
 
     const ratio = getRatio(video.videoWidth, video.videoHeight);

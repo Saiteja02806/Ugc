@@ -296,6 +296,8 @@ export function VideoGenerationStudioPanel({
     useState<AIStudioVideoDuration>(5);
   const [uploadedReference, setUploadedReference] =
     useState<AIStudioReferenceMedia | null>(null);
+  const [uploadedVideoReference, setUploadedVideoReference] =
+    useState<AIStudioReferenceMedia | null>(null);
   const [selectedCreatorReferenceId, setSelectedCreatorReferenceId] =
     useState<string | null>(null);
   const [creatorReferenceUploadPending, setCreatorReferenceUploadPending] =
@@ -348,20 +350,31 @@ export function VideoGenerationStudioPanel({
       ? `This generation needs ${requiredCredits} AI credits. You have ${creditsRemaining}.`
       : `This generation uses ${requiredCredits} AI credits (${creditsPerSecond} per second).`;
 
-  const uploadedReferenceImage =
-    uploadedReference?.kind === "image" ? uploadedReference : null;
-  const uploadedReferenceVideo =
-    uploadedReference?.kind === "video" ? uploadedReference : null;
-  const activeReferenceImageUrl =
-    uploadedReferenceImage?.asset.url ?? null;
+  const activeReferenceImageUrl = uploadedReference?.asset.url ?? null;
+  const uploadedReferenceVideo = uploadedVideoReference;
 
   function handleReferenceChange(selection: AIStudioReferenceMedia | null) {
     submissionKeyRef.current = null;
     setSelectedCreatorReferenceId(null);
     setUploadedReference(selection);
-    if (selection && model === "seedance_2_5") {
-      setModel("google_omni");
-      setActionNotice("Switched to Google Omni for reference-based generation.");
+    if (selection && model === "google_omni") setUploadedVideoReference(null);
+  }
+
+  function handleVideoReferenceChange(selection: AIStudioReferenceMedia | null) {
+    submissionKeyRef.current = null;
+    setUploadedVideoReference(selection);
+    if (!selection) return;
+    if (model === "google_omni") {
+      setUploadedReference(null);
+      setSelectedCreatorReferenceId(null);
+    } else {
+      const matchingDuration = AI_STUDIO_VIDEO_DURATIONS.find(
+        (duration) => duration >= 4 && duration >= selection.asset.durationSeconds!,
+      );
+      if (matchingDuration) setDurationSeconds(matchingDuration);
+    }
+    if (selection.asset.ratio === "9:16" || selection.asset.ratio === "16:9") {
+      setAspectRatio(selection.asset.ratio);
     }
   }
   const queriedJobs = activeJobQueries.flatMap((query) =>
@@ -711,7 +724,7 @@ export function VideoGenerationStudioPanel({
       }
       persistPendingVideoMetadata(user.uid, data.jobs, {
         aspectRatio,
-        avatarName: uploadedReference?.asset.title ?? "",
+        avatarName: uploadedReference?.asset.title ?? uploadedVideoReference?.asset.title ?? "",
         prompt: trimmedPrompt,
       });
       void queryClient.invalidateQueries({
@@ -914,25 +927,25 @@ export function VideoGenerationStudioPanel({
         isGenerating={isGenerating}
         layout="unified"
         leadingControl={
-          <ReferenceMediaUpload
-            active={active}
-            allowedKinds={isExploreRecreate ? ["image"] : ["image", "video"]}
-            disabled={
-              generationLocked || isGenerating || creatorReferenceUploadPending
-            }
-            selection={uploadedReference}
-            onChange={(selection) => {
-              handleReferenceChange(selection);
-
-              if (
-                selection?.kind === "video" &&
-                (selection.asset.ratio === "9:16" ||
-                  selection.asset.ratio === "16:9")
-              ) {
-                setAspectRatio(selection.asset.ratio);
-              }
-            }}
-          />
+          <div className="flex items-start gap-2">
+            <ReferenceMediaUpload
+              active={active}
+              allowedKinds={["image"]}
+              disabled={generationLocked || isGenerating || creatorReferenceUploadPending}
+              selection={uploadedReference}
+              onChange={handleReferenceChange}
+            />
+            {!isExploreRecreate ? (
+              <ReferenceMediaUpload
+                active={active}
+                allowedKinds={["video"]}
+                disabled={generationLocked || isGenerating || creatorReferenceUploadPending}
+                maxVideoDurationSeconds={model === "seedance_2_5" ? 30 : 3}
+                selection={uploadedVideoReference}
+                onChange={handleVideoReferenceChange}
+              />
+            ) : null}
+          </div>
         }
         maxLength={AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH}
         name="videoPrompt"
@@ -984,13 +997,17 @@ export function VideoGenerationStudioPanel({
               value={model}
               onChange={(value) => {
                 submissionKeyRef.current = null;
-                if (value === "seedance_2_5" && uploadedReference) {
-                  setUploadedReference(null);
-                  setSelectedCreatorReferenceId(null);
-                  setActionNotice("Removed the reference for Seedance text-to-video generation.");
-                }
                 if (value === "seedance_2_5" && durationSeconds < 4) {
                   setDurationSeconds(5);
+                }
+                if (value === "google_omni") {
+                  if (uploadedVideoReference && (uploadedVideoReference.asset.durationSeconds ?? 0) > 3) {
+                    setUploadedVideoReference(null);
+                    setActionNotice("Removed the video reference because Google Omni accepts clips up to 3 seconds.");
+                  } else if (uploadedReference && uploadedVideoReference) {
+                    setUploadedVideoReference(null);
+                  }
+                  if (durationSeconds > 10) setDurationSeconds(5);
                 }
                 setModel(value as AIStudioVideoModel);
               }}
@@ -1000,7 +1017,7 @@ export function VideoGenerationStudioPanel({
               disabled={generationLocked || isGenerating}
               icon={<Clock3 className="size-4" aria-hidden="true" />}
               options={AI_STUDIO_VIDEO_DURATIONS.filter(
-                (duration) => model !== "seedance_2_5" || duration >= 4,
+                (duration) => model === "seedance_2_5" ? duration >= 4 : duration <= 10,
               ).map((duration) => ({
                 label: `${duration} sec · ${duration * creditsPerSecond} credits`,
                 value: String(duration),

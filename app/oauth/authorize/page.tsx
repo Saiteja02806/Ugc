@@ -44,9 +44,15 @@ export default async function OAuthAuthorizePage({
       </main>
     );
   }
+  const redirectUrl = new URL(authorization.redirectUri);
+  const redirectIsLocal =
+    redirectUrl.protocol === "http:" &&
+    ["localhost", "127.0.0.1", "[::1]"].includes(redirectUrl.hostname);
+
   return <OAuthConsent
     clientName={authorization.client.clientName}
-    redirectHost={new URL(authorization.redirectUri).host}
+    redirectHost={redirectUrl.host}
+    redirectIsLocal={redirectIsLocal}
     scopes={authorization.scopes}
     authorizationParams={params.toString()}
   />;

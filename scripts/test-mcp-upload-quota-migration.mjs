@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 
 import { PGlite } from "@electric-sql/pglite";
 
-const migration = await readFile(new URL("../supabase/migrations/20260928142405_mcp_upload_quota.sql", import.meta.url), "utf8");
+const migration = await readFile(new URL("../supabase/migrations/20260928151747_mcp_upload_quota.sql", import.meta.url), "utf8");
 const db = new PGlite();
 
 async function reserve(userId, collection = "image", bytes = 1, maxCount = 5, maxBytes = 500 * 1024 * 1024) {

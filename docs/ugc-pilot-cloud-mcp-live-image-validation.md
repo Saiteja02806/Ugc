@@ -33,7 +33,7 @@ Status: MCP is deployed at `mcp.getugcpilot.com`, backed by Supabase quota migra
 ## Safety findings
 
 - The earlier same-project `--prod --skip-domain` plan protects the website during that one deployment, but adding `mcp.getugcpilot.com` as a normal production domain on the website project creates a future release risk: Vercel automatically assigns project production domains to later production deployments. Do not use `vercel promote` on the website project for MCP because it promotes the deployment to the project's production domains.
-- A separate Vercel project under the same team, built from the same UGC Pilot codebase and using the existing Supabase, storage, billing, and worker services, isolates the MCP domain and its environment variables from website deployments. This is hosting isolation, not a second business backend. It must follow an MCP release branch (or manual MCP deployments), not the website's `main` branch, or a later website push could replace the MCP code. The release candidate now gates unrelated routes when `MCP_ONLY_DEPLOYMENT=true` or the host is `mcp.getugcpilot.com`; verify that gate on the deployed host.
+- A separate Vercel project under the same team, built from the same UGC Pilot codebase and using the existing Supabase, storage, billing, and worker services, isolates the MCP domain and its environment variables from website deployments. This is hosting isolation, not a second business backend. The MCP source can live in the canonical `main` branch because the website deployment now blocks MCP/OAuth routes and the MCP deployment blocks website routes. The `ugc-mcp` Vercel project remains an explicit release target with `MCP_ONLY_DEPLOYMENT=true`, so a website deployment cannot take over the MCP domain.
 - The current Firebase client config uses `getugcpilot.com` as `authDomain`. Reliable redirect fallback on `mcp.getugcpilot.com` needs a project-specific `authDomain` for that host, the existing Firebase helper rewrite, and the corresponding Firebase authorized domain and Google OAuth redirect URI. These changes are additive; verify the existing website sign-in afterward.
 - The earlier Phase 5 candidate could report video as available before `generate_video` existed. The release candidate now reports video unavailable in both `get_entitlements` and `get_capabilities` until Phase 6 is implemented.
 - The two MCP migrations created new tables/functions and grants without replacing website billing or job functions. Their service-role grant and exclusion of anon/authenticated were verified after applying them. After migration, the live homepage and sign-in page loaded and the website deployment ID was unchanged. An authenticated website flow still needs a test account.
@@ -141,3 +141,15 @@ through the same signed URL was rejected with HTTP 412. The test asset was
 soft-deleted. The temporary OAuth token family was revoked and has zero valid
 tokens. The account reported Free, inactive, and zero credits, so no image job
 was submitted and no credits were spent.
+
+## Main-branch integration guard: 2026-09-28
+
+Before merging the MCP source into `main`, the deployment boundary was made
+bidirectional. Production website hosts now return 404 for `/mcp`, `/oauth`,
+and the two MCP OAuth discovery routes, while the separate MCP project still
+returns 404 for website pages and APIs. Static Next.js and Firebase auth helper
+paths remain available on the MCP deployment. The default issuer was also
+aligned with `https://mcp.getugcpilot.com`, preventing an unconfigured website
+build from advertising a second OAuth issuer. Focused routing tests cover the
+MCP custom domain, the MCP project's generated Vercel hostname, the website
+domain, unrelated `/.well-known` documents, and localhost development.

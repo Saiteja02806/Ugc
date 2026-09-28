@@ -18,12 +18,17 @@ Clients must send every returned header with their PUT. Existing website upload
 callers do not request these MCP-specific signing options. Browser upload clients
 also need the two added headers in the bucket's CORS configuration; the
 Terraform definition is updated, but the deployed bucket must be checked.
-The database fix requires migration
-`20260928111109_mcp_oauth_atomic_family_revocation.sql`
-before the MCP route deployment. The worker fix changes the shared image worker;
-it needs a coordinated worker release and production monitoring under the
-source-parity policy in `infra/gcp/README.md`. None of these fixes is
-active on the deployed services until that rollout completes.
+The database migration
+`20260928111109_mcp_oauth_atomic_family_revocation.sql` was applied to
+production and its service-role grants and family lock were checked. The new
+MCP route is built at deployment `dpl_DBAu6tr6Cba32QRZHnrksi4HdsRe`; its
+health and OAuth metadata passed on the isolated Vercel URL. The custom
+`mcp.getugcpilot.com` alias still points to the previous deployment. Its
+production bucket also does not yet allow the two new request headers in a
+browser CORS preflight. Apply that narrow bucket change before promoting the
+MCP route. The worker fix changes the shared image worker; it needs a
+coordinated worker release and production monitoring under the source-parity
+policy in `infra/gcp/README.md`.
 
 Google Cloud documents the
 [`x-goog-content-length-range` PUT guard](https://docs.cloud.google.com/storage/docs/xml-api/reference-headers),

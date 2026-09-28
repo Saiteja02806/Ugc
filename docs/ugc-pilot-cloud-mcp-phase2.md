@@ -2,6 +2,10 @@
 
 Status: local implementation and validation completed on 2026-09-27. On 2026-09-28 the OAuth migration was applied and Phases 2–5 were deployed to the separate `ugc-mcp` Vercel project. Public production health/discovery and the real-account Google sign-in, consent, PKCE exchange, MCP initialization, refresh rotation, and revocation checks pass. Full client, redirect-fallback, and security acceptance remain pending. See the [live rollout record](ugc-pilot-cloud-mcp-live-image-validation.md) and [Phase 3](ugc-pilot-cloud-mcp-phase3.md).
 
+A later security review found a refresh versus revocation race. The atomic
+family-lock migration and matching route change are prepared locally and have
+not been applied to production; see the [security review](ugc-pilot-cloud-mcp-security-review.md).
+
 ## Phase 1 handoff
 
 The user approved the 12-tool [contract](ugc-pilot-cloud-mcp-v1-contracts.md) and [schemas](ugc-pilot-cloud-mcp-v1-tool-schemas.json) on 2026-09-27. No further Phase 1 instructions are needed to implement the server skeleton. `cancel_job` remains excluded. The approved Firebase identity and first-party OAuth issuer architecture is used here.

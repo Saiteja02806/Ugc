@@ -85,6 +85,8 @@ async function main() {
   const signed = new URL(receipt.upload_url);
   assert(signed.origin === 'https://storage.googleapis.com' && signed.pathname.startsWith('/ugcsaas-media/'), 'Signed destination is not the configured GCS bucket.');
   assert(receipt.required_headers?.['Content-Type'] === 'image/png', 'Signed upload MIME type is unexpected.');
+  assert(receipt.required_headers?.['x-goog-content-length-range'] === `1,${png.length}`, 'Signed upload byte limit is missing.');
+  assert(receipt.required_headers?.['x-goog-if-generation-match'] === '0', 'Signed upload create-only condition is missing.');
   assert(Date.parse(receipt.expires_at) > Date.now(), 'Signed upload link is already expired.');
   const put = await request(signed, { method: 'PUT', headers: receipt.required_headers, body: png });
   assert(put.ok, `Direct GCS PUT returned HTTP ${put.status}.`);

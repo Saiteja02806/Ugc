@@ -56,7 +56,11 @@ export function registerMutationMcpTools(server: McpServer) {
       upload_id: z.uuid(),
       upload_url: httpsUrl,
       expires_at: z.iso.datetime(),
-      required_headers: z.strictObject({ "Content-Type": z.string() }),
+      required_headers: z.strictObject({
+        "Content-Type": z.string(),
+        "x-goog-content-length-range": z.string(),
+        "x-goog-if-generation-match": z.literal("0"),
+      }),
     }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     scopeChallenge: requireScopes("assets:write"),
@@ -78,6 +82,8 @@ export function registerMutationMcpTools(server: McpServer) {
         contentType: target.contentType,
         expiresInSeconds: MEDIA_UPLOAD_EXPIRES_IN_SECONDS,
         key: target.key,
+        maxBytes: target.fileSize,
+        createOnly: true,
       }));
       assertHttpsUrl(target.publicUrl);
     } catch {
@@ -98,7 +104,11 @@ export function registerMutationMcpTools(server: McpServer) {
     });
     return {
       upload_id: row.id, upload_url: uploadUrl, expires_at: expiresAt,
-      required_headers: { "Content-Type": target.contentType },
+      required_headers: {
+        "Content-Type": target.contentType,
+        "x-goog-content-length-range": `1,${target.fileSize}`,
+        "x-goog-if-generation-match": "0" as const,
+      },
     };
   }));
 

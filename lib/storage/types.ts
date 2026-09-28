@@ -12,6 +12,8 @@ export type CreateSignedPutUrlParams = {
   contentType: string;
   expiresInSeconds?: number;
   cacheControl?: string;
+  maxBytes?: number;
+  createOnly?: boolean;
 };
 
 export type StorageObjectKeyParams = {

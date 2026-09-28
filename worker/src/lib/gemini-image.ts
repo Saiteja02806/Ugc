@@ -3,9 +3,9 @@ import { GoogleGenAI } from "@google/genai";
 import { ProviderRequestNotSubmittedError } from "./generation-provider.js";
 import type { AIStudioImageRatio } from "./image-output.js";
 import { getRequiredProviderEnv } from "./provider-env.js";
+import { downloadReferenceImageBytes } from "./reference-image-download.js";
 
 const DEFAULT_GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image";
-const MAX_REFERENCE_IMAGE_BYTES = 25 * 1024 * 1024;
 
 let googleClient: GoogleGenAI | null = null;
 
@@ -84,32 +84,8 @@ function getGoogleClient() {
 }
 
 async function downloadReferenceImage(url: string) {
-  let response: Response;
-
-  try {
-    response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
-  } catch (error) {
-    throw new ProviderRequestNotSubmittedError(
-      "The uploaded reference image could not be downloaded.",
-      { cause: error },
-    );
-  }
-
-  if (!response.ok) {
-    throw new ProviderRequestNotSubmittedError(
-      "The uploaded reference image could not be downloaded.",
-    );
-  }
-
-  const mimeType =
-    response.headers.get("content-type")?.split(";", 1)[0] ?? "image/png";
-  const buffer = Buffer.from(await response.arrayBuffer());
-
-  if (
-    !mimeType.startsWith("image/") ||
-    buffer.length === 0 ||
-    buffer.length > MAX_REFERENCE_IMAGE_BYTES
-  ) {
+  const { buffer, contentType: mimeType } = await downloadReferenceImageBytes(url);
+  if (!mimeType.startsWith("image/")) {
     throw new ProviderRequestNotSubmittedError(
       "The uploaded reference image is invalid or too large.",
     );

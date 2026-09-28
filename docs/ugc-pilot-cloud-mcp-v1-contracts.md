@@ -195,12 +195,18 @@ output: {
   upload_id: string; // UUID, same as reserved media asset ID
   upload_url: string; // HTTPS signed PUT URL
   expires_at: string; // UTC timestamp, currently 10 minutes after issuance
-  required_headers: { "Content-Type": string };
+  required_headers: {
+    "Content-Type": string;
+    "x-goog-content-length-range": string; // 1,file_size_bytes
+    "x-goog-if-generation-match": "0"; // upload to a new object only
+  };
 };
 ```
 
 The MIME type must match the collection. No arbitrary `project_id`, storage key,
 or owner ID comes from the model.
+The signed PUT enforces the declared maximum size at GCS and rejects a second
+write to the same object. The client must send every `required_headers` entry.
 
 ### 7. `confirm_upload`
 

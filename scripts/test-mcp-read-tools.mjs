@@ -322,9 +322,13 @@ const createdUpload = await call("tools/call", { name: "create_upload", argument
 assert.equal(createdUpload.status, 200, JSON.stringify(createdUpload));
 const uploadReceipt = createdUpload.body.result.structuredContent;
 assert.equal(uploadReceipt.required_headers["Content-Type"], "image/png");
+assert.equal(uploadReceipt.required_headers["x-goog-content-length-range"], "1,1024");
+assert.equal(uploadReceipt.required_headers["x-goog-if-generation-match"], "0");
 assert.ok(Date.parse(uploadReceipt.expires_at) > Date.now());
 assert.match(uploadReceipt.upload_url, /^https:\/\/local-mcp-upload\.example\.test\//);
 assert.equal(signedUploads.at(-1).expiresInSeconds, 600);
+assert.equal(signedUploads.at(-1).maxBytes, 1024);
+assert.equal(signedUploads.at(-1).createOnly, true);
 const uploadedRow = mcpUploadRows.get(uploadReceipt.upload_id);
 assert.equal(uploadedRow.user_id, "owner-a");
 assert.deepEqual(uploadedRow.metadata, { mcpUpload: true });

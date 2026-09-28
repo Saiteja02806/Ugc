@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
+import { generateKeyPairSync } from "node:crypto";
 import test from "node:test";
 
 import {
   buildDirectStorageUrl,
   buildPublicStorageUrl,
+  createSignedPutUrl,
   getMissingStorageEnvVars,
   getStorageProviderName,
   isTrustedStorageUrl,
@@ -54,6 +56,41 @@ test("uses GCP storage", () => {
       );
     },
   );
+});
+
+test("MCP signed PUT binds the size and first-write headers only when requested", async () => {
+  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const previous = {
+    GCP_STORAGE_BUCKET: process.env.GCP_STORAGE_BUCKET,
+    GCP_STORAGE_PUBLIC_BASE_URL: process.env.GCP_STORAGE_PUBLIC_BASE_URL,
+    GOOGLE_CLOUD_CREDENTIALS_JSON: process.env.GOOGLE_CLOUD_CREDENTIALS_JSON,
+  };
+  process.env.GCP_STORAGE_BUCKET = "test-mcp-bucket";
+  process.env.GCP_STORAGE_PUBLIC_BASE_URL = "https://storage.googleapis.com/test-mcp-bucket";
+  process.env.GOOGLE_CLOUD_CREDENTIALS_JSON = JSON.stringify({
+    client_email: "local-signer@example.test",
+    private_key: privateKey.export({ type: "pkcs8", format: "pem" }).toString(),
+  });
+  try {
+    const guarded = new URL(await createSignedPutUrl({
+      key: "media/test.png", contentType: "image/png", maxBytes: 1024, createOnly: true,
+    }));
+    const guardedHeaders = guarded.searchParams.get("X-Goog-SignedHeaders")?.split(";") ?? [];
+    assert.ok(guardedHeaders.includes("x-goog-content-length-range"));
+    assert.ok(guardedHeaders.includes("x-goog-if-generation-match"));
+
+    const ordinary = new URL(await createSignedPutUrl({
+      key: "media/website.png", contentType: "image/png",
+    }));
+    const ordinaryHeaders = ordinary.searchParams.get("X-Goog-SignedHeaders")?.split(";") ?? [];
+    assert.ok(!ordinaryHeaders.includes("x-goog-content-length-range"));
+    assert.ok(!ordinaryHeaders.includes("x-goog-if-generation-match"));
+  } finally {
+    for (const [name, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
 });
 
 test("trusts only the configured GCS bucket when public base is storage.googleapis.com", () => {

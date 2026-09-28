@@ -2,6 +2,10 @@
 
 Status: implemented and locally validated on 2026-09-28. Both MCP migrations are now applied, and Phases 2–5 are deployed to the separate `ugc-mcp` project. No live image provider job has run. Authenticated image and credit acceptance remain pending; see the [live rollout record](ugc-pilot-cloud-mcp-live-image-validation.md).
 
+A later focused security review found that both provider reference-image paths
+read an entire response before checking 25 MiB. A bounded shared downloader is
+prepared locally and remains undeployed; see the [security review](ugc-pilot-cloud-mcp-security-review.md).
+
 ## Behavior
 
 - `generate_image` requires `generation:write` and an active Starter or Growth subscription. It accepts the approved prompt, ratio, optional owned ready image reference, quantity of 1, 2, or 4, and client request ID. The reference URL is resolved from the owner's media row, never accepted from tool input. It uses the existing default image model and the existing image worker.

@@ -173,15 +173,21 @@ async function createSignedPutUrl(params: CreateSignedPutUrlParams) {
   const config = getStorageConfig();
   const cleanKey = cleanGcsKey(params.key);
   const file = getStorageClient(config).bucket(config.bucket).file(cleanKey);
-  const extensionHeaders = params.cacheControl
-    ? { "cache-control": params.cacheControl }
-    : undefined;
+  const extensionHeaders: Record<string, string> = {};
+  if (params.cacheControl) extensionHeaders["cache-control"] = params.cacheControl;
+  if (params.maxBytes !== undefined) {
+    if (!Number.isSafeInteger(params.maxBytes) || params.maxBytes <= 0) {
+      throw new Error("Invalid signed upload byte limit.");
+    }
+    extensionHeaders["x-goog-content-length-range"] = `1,${params.maxBytes}`;
+  }
+  if (params.createOnly) extensionHeaders["x-goog-if-generation-match"] = "0";
 
   const [url] = await file.getSignedUrl({
     action: "write",
     contentType: params.contentType,
     expires: Date.now() + (params.expiresInSeconds ?? 600) * 1000,
-    ...(extensionHeaders ? { extensionHeaders } : {}),
+    ...(Object.keys(extensionHeaders).length > 0 ? { extensionHeaders } : {}),
     version: "v4",
   });
 

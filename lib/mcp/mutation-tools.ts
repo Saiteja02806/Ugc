@@ -18,6 +18,9 @@ import {
 } from "./upload-store";
 
 const httpsUrl = z.url().regex(/^https:\/\//i);
+const uploadCollection = z.enum(mediaCollections).describe(
+  "Asset group: image for still images, video for videos, or influencer for creator footage.",
+);
 
 export const registeredMutationMcpTools = ["create_upload", "confirm_upload", "delete_asset"] as const;
 
@@ -50,11 +53,11 @@ export function registerMutationMcpTools(server: McpServer) {
   server.registerTool("create_upload", {
     description: "Reserve one media asset and return a temporary URL for directly uploading its bytes.",
     inputSchema: z.strictObject({
-      collection: z.enum(mediaCollections),
-      file_name: z.string().trim().min(1).max(255).regex(/^[^/\\\0]+$/),
-      mime_type: z.enum(["image/jpeg", "image/png", "image/webp", "video/mp4", "video/quicktime", "video/webm"]),
-      file_size_bytes: z.number().int().positive(),
-      title: z.string().trim().min(1).max(140).optional(),
+      collection: uploadCollection,
+      file_name: z.string().trim().min(1).max(255).regex(/^[^/\\\0]+$/).describe("The display file name. Folder paths are not allowed."),
+      mime_type: z.enum(["image/jpeg", "image/png", "image/webp", "video/mp4", "video/quicktime", "video/webm"]).describe("Actual MIME type of the bytes that will be uploaded."),
+      file_size_bytes: z.number().int().positive().describe("Exact upload size in bytes. Images allow up to 25 MB; videos up to 250 MB."),
+      title: z.string().trim().min(1).max(140).optional().describe("Optional title shown in the creative library."),
     }),
     outputSchema: z.strictObject({
       upload_id: z.uuid(),
@@ -124,10 +127,10 @@ export function registerMutationMcpTools(server: McpServer) {
   server.registerTool("confirm_upload", {
     description: "Verify an owned temporary upload in storage and make its asset ready.",
     inputSchema: z.strictObject({
-      upload_id: z.uuid(),
-      width: z.number().int().positive(),
-      height: z.number().int().positive(),
-      duration_seconds: z.number().positive().optional(),
+      upload_id: z.uuid().describe("ID returned as upload_id by create_upload."),
+      width: z.number().int().positive().describe("Width of the uploaded media in pixels."),
+      height: z.number().int().positive().describe("Height of the uploaded media in pixels."),
+      duration_seconds: z.number().positive().optional().describe("Required duration in seconds for video uploads; omit for images."),
     }),
     outputSchema: z.strictObject({ asset }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },

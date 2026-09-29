@@ -264,6 +264,13 @@ for (const tool of discovered.body.result.tools) {
   assert.equal(tool._meta.securitySchemes[0].type, "oauth2");
   assert.equal(tool._meta.securitySchemes[0].scopes.length, 1);
 }
+const listAssetsSchema = discovered.body.result.tools.find((tool) => tool.name === "list_assets").inputSchema;
+assert.match(listAssetsSchema.properties.source_type.description, /combined_render/u);
+assert.match(listAssetsSchema.properties.collection.description, /influencer/u);
+const imageCountSchema = discovered.body.result.tools.find((tool) => tool.name === "generate_image").inputSchema.properties.count;
+assert.deepEqual(imageCountSchema.enum, [1, 2, 4]);
+const capabilitiesSchema = discovered.body.result.tools.find((tool) => tool.name === "get_capabilities").outputSchema;
+assert.deepEqual(capabilitiesSchema.properties.image_generation.properties.counts.items.enum, [1, 2, 4]);
 
 const profile = await call("tools/call", { name: "get_profile", arguments: {} });
 assert.deepEqual(profile.body.result.structuredContent, { id: "owner-a" });

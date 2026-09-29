@@ -4,6 +4,10 @@ import { authenticateMcpRequest } from "@/lib/mcp/auth";
 import { getMcpResource } from "@/lib/mcp/config";
 import { clientLogRef } from "@/lib/mcp/logging";
 import { mcpHandler } from "@/lib/mcp/server";
+import {
+  includesToolsListRequest,
+  withToolSecuritySchemes,
+} from "@/lib/mcp/tool-auth-metadata";
 
 export const runtime = "nodejs";
 
@@ -22,9 +26,15 @@ async function handle(request: Request) {
   try {
     const authentication = await authenticateMcpRequest(request);
     if (authentication instanceof Response) return authentication;
-    const response = await mcpHandler.fetch(request, {
+    const mirrorToolAuth = request.method === "POST" &&
+      request.headers.get("content-type")?.includes("application/json") &&
+      await request.clone().json().then(includesToolsListRequest).catch(() => false);
+    const transportResponse = await mcpHandler.fetch(request, {
       authInfo: authentication.authInfo,
     });
+    const response = mirrorToolAuth
+      ? await withToolSecuritySchemes(transportResponse)
+      : transportResponse;
     console.info(JSON.stringify({
       event: "mcp.request",
       request_id: requestId,

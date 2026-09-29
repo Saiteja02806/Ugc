@@ -8,7 +8,7 @@ const imageWorker = readProjectFile("worker/src/jobs/generate-image.ts");
 const videoWorker = readProjectFile("worker/src/jobs/generate-hook-video.ts");
 const openAiProvider = readProjectFile("worker/src/lib/openai-image.ts");
 const geminiOmniProvider = readProjectFile("worker/src/lib/gemini-omni-video.ts");
-const runwayProvider = readProjectFile("worker/src/lib/runway-video.ts");
+const higgsfieldProvider = readProjectFile("worker/src/lib/higgsfield-video.ts");
 
 test("uploaded image references reach the image provider", () => {
   assert.match(imageApi, /input: \{[\s\S]*?referenceImageUrl,/);
@@ -21,26 +21,29 @@ test("uploaded image references reach the image provider", () => {
   assert.match(openAiProvider, /downloadReferenceImage\(referenceImageUrl\)/);
 });
 
-test("uploaded video references reach Runway video-to-video generation", () => {
+test("Seedance video edits accept a video and reference images", () => {
   assert.match(videoApi, /referenceVideoDurationSeconds,/);
   assert.match(videoApi, /referenceVideoUrl,/);
-  assert.match(videoApi, /Choose either a reference image or a reference video/);
-  assert.match(videoWorker, /if \(input\.referenceVideoUrl\)/);
+  assert.match(videoApi, /Google Omni video references are unavailable in UGC Pilot/);
+  assert.match(videoApi, /const maxImages = model === "seedance_2_5" \? \(referenceVideoUrl \? 29 : 30\) : 6/);
+  assert.match(videoWorker, /input\.model === "seedance_2_5"[\s\S]*?"higgsfield"/);
   assert.match(videoWorker, /referenceVideoUrl: input\.referenceVideoUrl/);
-  assert.match(runwayProvider, /client\.videoToVideo\.create/);
-  assert.match(runwayProvider, /model: RUNWAY_VIDEO_TO_VIDEO_MODEL/);
-  assert.match(runwayProvider, /videoUri: referenceVideoUrl/);
+  assert.match(videoWorker, /referenceImageUrls: input\.referenceImageUrls/);
+  assert.match(higgsfieldProvider, /const EDIT_MODEL = "bytedance\/seedance-2\.5\/video-edit"/);
+  assert.match(higgsfieldProvider, /video_url: params\.referenceVideoUrl/);
+  assert.match(higgsfieldProvider, /image_urls: imageUrls/);
 });
 
 test("optional image references reach Google Omni video generation", () => {
   assert.match(videoApi, /avatarImageUrl,/);
-  assert.match(videoWorker, /referenceImageUrl: input\.avatarImageUrl/);
+  assert.match(videoApi, /referenceImageUrls/);
+  assert.match(videoWorker, /referenceImageUrls: input\.referenceImageUrls/);
   assert.match(
     geminiOmniProvider,
-    /referenceImageUrl\s*\? await downloadReferenceImage\(referenceImageUrl\)/,
+    /Promise\.all\(imageUrls\.map\(downloadReferenceImage\)\)/,
   );
-  assert.match(geminiOmniProvider, /data: referenceImage\.data/);
-  assert.match(geminiOmniProvider, /mime_type: referenceImage\.mimeType/);
+  assert.match(geminiOmniProvider, /data: image\.data/);
+  assert.match(geminiOmniProvider, /mime_type: image\.mimeType/);
 });
 
 test("prompt-only generation remains valid", () => {
@@ -55,7 +58,7 @@ test("only recognized Explore recreations require an image reference", () => {
   assert.match(videoApi, /body\?\.referenceType === "hook"/);
   assert.match(videoApi, /isExploreWallTextVideoId\(body\?\.referenceId\)/);
   assert.match(videoApi, /body\?\.referenceType === "wall_text"/);
-  assert.match(videoApi, /isExploreRecreate && !avatarImageUrl/);
+  assert.match(videoApi, /isExploreRecreate && referenceImageUrls\.length === 0/);
   assert.match(videoApi, /Add a reference image before recreating an Explore video/);
 });
 
@@ -72,11 +75,12 @@ test("Wall of Text Recreate carries its reference context and sends the chosen i
     videoWorkspace,
     /referenceContext\?\.type === "hook" \|\| referenceContext\?\.type === "wall_text"/,
   );
-  assert.match(videoWorkspace, /allowedKinds=\{isExploreRecreate \? \["image"\]/);
-  assert.match(videoWorker, /referenceImageUrl: input\.avatarImageUrl/);
+  assert.match(videoWorkspace, /<ReferenceImageListUpload[\s\S]*?selections=\{referenceImages\}/);
+  assert.match(videoWorkspace, /referenceImageUrls: referenceImages\.map\(\(image\) => image\.asset\.url\)/);
+  assert.match(videoWorker, /referenceImageUrls: input\.referenceImageUrls/);
   assert.match(
     geminiOmniProvider,
-    /referenceImageUrl\s*\? await downloadReferenceImage\(referenceImageUrl\)/,
+    /Promise\.all\(imageUrls\.map\(downloadReferenceImage\)\)/,
   );
 });
 

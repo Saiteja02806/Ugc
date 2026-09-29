@@ -45,6 +45,11 @@ test("maps backend video metadata and media asset identity", () => {
     collection: "video",
     durationSeconds: 4,
     id: "video-1",
+    metadata: {
+      model: "seedance_2_5",
+      prompt: "A cinematic product launch at sunset",
+      resolution: "720p",
+    },
     mimeType: "video/mp4",
     ratio: "9:16",
     sourceType: "generated_video",
@@ -56,7 +61,10 @@ test("maps backend video metadata and media asset identity", () => {
   assert.equal(result?.mediaAssetId, "video-1");
   assert.equal(result?.durationSeconds, 4);
   assert.equal(result?.createdAt, videoAsset.createdAt);
-  assert.equal(result?.prompt, videoAsset.title);
+  assert.equal(result?.prompt, "A cinematic product launch at sunset");
+  assert.equal(result?.modelLabel, "Seedance 2.5");
+  assert.equal(result?.resolution, "720p");
+  assert.equal(result?.thumbnailUrl, null);
 });
 
 test("upserts a reconciled result without duplicates", () => {

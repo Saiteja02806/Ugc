@@ -26,6 +26,7 @@ export function AiStudioResults({
   hasResults,
   loading = false,
   status,
+  toolbar,
 }: {
   ariaLabel: string;
   children: ReactNode;
@@ -35,6 +36,7 @@ export function AiStudioResults({
   hasResults: boolean;
   loading?: boolean;
   status?: AiStudioResultsStatus | null;
+  toolbar?: ReactNode;
 }) {
   const showStatusBadge =
     Boolean(status) &&
@@ -46,8 +48,18 @@ export function AiStudioResults({
       aria-busy={loading || status?.tone === "progress"}
       className="relative flex min-h-[420px] min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain md:min-h-0"
     >
+      {toolbar ? (
+        <div className="sticky top-0 z-20 flex shrink-0 justify-end bg-background/90 px-1 pb-2 pt-1 backdrop-blur-sm">
+          {toolbar}
+        </div>
+      ) : null}
       {showStatusBadge && status ? (
-        <div className="sticky top-0 z-10 flex shrink-0 justify-start px-1 pb-2 pt-1">
+        <div
+          className={cn(
+            "sticky z-10 flex shrink-0 justify-start px-1 pb-2 pt-1",
+            toolbar ? "top-12" : "top-0",
+          )}
+        >
           <Badge
             variant={status.tone === "error" ? "destructive" : "secondary"}
             role={status.tone === "error" ? "alert" : "status"}

@@ -1,11 +1,16 @@
 "use client";
 
 import {
+  ChevronDown,
+  ChevronUp,
   Clock3,
+  History,
   Loader2,
+  Monitor,
   Pause,
   Play,
   ScanText,
+  Search,
   Sparkles,
   Video,
   Volume2,
@@ -13,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { FormEvent, KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -28,6 +34,7 @@ import {
 } from "@/components/generation/ai-studio-results";
 import { AiStudioResultActions } from "@/components/generation/ai-studio-result-actions";
 import { ReferenceMediaUpload } from "@/components/generation/reference-media-upload";
+import { Input } from "@/components/ui/input";
 import { ReferenceImageListUpload } from "@/components/video/reference-image-list-upload";
 import { CreatorReferencePicker } from "@/components/video/creator-reference-picker";
 import { Button } from "@/components/ui/button";
@@ -66,6 +73,10 @@ import {
   upsertAIStudioResult,
 } from "@/lib/ai-studio/media-results";
 import {
+  filterAIStudioVideoHistory,
+  groupAIStudioVideoHistory,
+} from "@/lib/ai-studio/video-history";
+import {
   AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
   getAIStudioPromptLengthError,
   normalizeAIStudioPrompt,
@@ -88,11 +99,11 @@ type GeneratedVideo = AIStudioVideoResult;
 const VIDEO_JOB_STORAGE_PREFIX = "ugc-ai-studio.latest-video-job.v2.";
 const VIDEO_JOB_METADATA_PREFIX = "ugc-ai-studio.video-job.v2.";
 const VIDEO_JOB_URL_PARAMETER = "videoJob";
-const VIDEO_PREVIEW_WIDTH_CLASS_NAMES: Record<GeneratedVideo["ratio"], string> = {
-  "4:5": "max-w-[min(216px,30dvh)]",
-  "1:1": "max-w-[min(216px,36dvh)]",
-  "9:16": "max-w-[min(216px,24dvh)]",
-  "16:9": "max-w-[216px]",
+const VIDEO_RESULT_WIDTH_CLASS_NAMES: Record<GeneratedVideo["ratio"], string> = {
+  "4:5": "w-[min(100%,20rem)]",
+  "1:1": "w-[min(100%,24rem)]",
+  "9:16": "w-[min(100%,22.5rem)]",
+  "16:9": "w-[min(100%,38rem)]",
 };
 
 type GenerateVideoResponse =
@@ -135,7 +146,9 @@ function persistPendingVideoMetadata(
   metadata: {
     aspectRatio: AIStudioVideoAspectRatio;
     avatarName: string;
+    model: AIStudioVideoModel;
     prompt: string;
+    resolution: AIStudioVideoResolution;
   },
 ) {
   try {
@@ -177,7 +190,17 @@ function getPendingVideoMetadata(userId: string, jobId: string) {
           : "9:16",
       avatarName:
         typeof value.avatarName === "string" ? value.avatarName : "",
+      model:
+        value.model === "google_omni" || value.model === "seedance_2_5"
+          ? value.model
+          : "seedance_2_5",
       prompt: typeof value.prompt === "string" ? value.prompt : "",
+      resolution:
+        value.resolution === "480p" ||
+        value.resolution === "720p" ||
+        value.resolution === "1080p"
+          ? value.resolution
+          : "720p",
     };
   } catch {
     return null;
@@ -317,6 +340,8 @@ export function VideoGenerationStudioPanel({
   const [generationState, setGenerationState] =
     useState<GenerationState>("empty");
   const [generatedVideos, setGeneratedVideos] = useState<GeneratedVideo[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyQuery, setHistoryQuery] = useState("");
   const [resultsLoading, setResultsLoading] = useState(true);
   const [resultsError, setResultsError] = useState<string | null>(null);
   const [submittedJobIds, setSubmittedJobIds] = useState<string[]>([]);
@@ -632,7 +657,9 @@ export function VideoGenerationStudioPanel({
         const nextVideo: GeneratedVideo = persistedVideo
           ? {
               ...persistedVideo,
+              modelLabel: getVideoModelLabel(metadata?.model),
               prompt: metadata?.prompt || persistedVideo.prompt,
+              resolution: metadata?.resolution ?? persistedVideo.resolution,
             }
           : {
               createdAt: completedJob.completedAt ?? completedJob.updatedAt,
@@ -642,10 +669,13 @@ export function VideoGenerationStudioPanel({
                 completedOutput.videoId ??
                 completedJob.id,
               mediaAssetId: completedOutput.mediaAssetId,
+              modelLabel: getVideoModelLabel(metadata?.model),
               prompt: completedPrompt,
               ratio:
                 completedOutput.ratio ?? metadata?.aspectRatio ?? "9:16",
+              resolution: metadata?.resolution ?? null,
               status: "Ready",
+              thumbnailUrl: null,
               title: getGeneratedVideoTitle(completedPrompt),
               url: completedOutputUrl,
             };
@@ -756,7 +786,9 @@ export function VideoGenerationStudioPanel({
       persistPendingVideoMetadata(user.uid, data.jobs, {
         aspectRatio,
         avatarName: uploadedReference?.asset.title ?? uploadedVideoReference?.asset.title ?? "",
+        model,
         prompt: trimmedPrompt,
+        resolution,
       });
       void queryClient.invalidateQueries({
         queryKey: ["billing-subscription", user.uid],
@@ -858,6 +890,21 @@ export function VideoGenerationStudioPanel({
   const canRetry = durableJobs.some(
     (job) => job.status === "failed" && Boolean(job.error?.retryable),
   );
+  const filteredHistoryVideos = filterAIStudioVideoHistory(
+    generatedVideos,
+    historyQuery,
+  );
+  const historyGroups = groupAIStudioVideoHistory(filteredHistoryVideos);
+
+  function focusHistoryVideo(videoId: string) {
+    setHistoryOpen(false);
+
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById(`ai-studio-video-result-${videoId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
 
   return (
     <div
@@ -877,6 +924,23 @@ export function VideoGenerationStudioPanel({
         hasResults={generatedVideos.length > 0 || isGenerating}
         loading={resultsLoading}
         status={resultsStatus}
+        toolbar={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setHistoryOpen(true)}
+            className="gap-2 rounded-full bg-card/90 px-3 shadow-xs"
+          >
+            <History className="size-3.5" aria-hidden="true" />
+            History
+            {generatedVideos.length > 0 ? (
+              <span className="rounded-full bg-card-muted px-1.5 py-0.5 text-[10px] tabular-nums text-muted">
+                {generatedVideos.length}
+              </span>
+            ) : null}
+          </Button>
+        }
       >
         {isGenerating
           ? Array.from(
@@ -900,6 +964,16 @@ export function VideoGenerationStudioPanel({
           />
         ))}
       </AiStudioResults>
+
+      <VideoHistoryDrawer
+        groups={historyGroups}
+        onClose={() => setHistoryOpen(false)}
+        onQueryChange={setHistoryQuery}
+        onSelectVideo={focusHistoryVideo}
+        open={historyOpen}
+        query={historyQuery}
+        selectedVideoId={latestCompletedVideoId}
+      />
 
       <AiStudioComposer
         accessMessage={composerMessage}
@@ -957,6 +1031,7 @@ export function VideoGenerationStudioPanel({
         generationLocked={generationLocked}
         isGenerating={isGenerating}
         layout="unified"
+        unifiedMaxWidthClassName="max-w-[1280px]"
         leadingControl={
           <div className="flex min-w-0 flex-col gap-2">
             <ReferenceImageListUpload
@@ -1152,6 +1227,10 @@ function getGeneratedVideoTitle(prompt: string) {
     : singleLinePrompt;
 }
 
+function getVideoModelLabel(model: AIStudioVideoModel | undefined) {
+  return model === "google_omni" ? "Google Omni" : "Seedance 2.5";
+}
+
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
@@ -1168,32 +1247,17 @@ function OptimisticVideoCard({
   prompt?: string;
 }) {
   return (
-    <article className="grid min-w-0 gap-5 border-b border-border py-5 first:pt-1 last:border-b-0 animate-in fade-in-0 duration-300 lg:grid-cols-[minmax(0,1fr)_216px] lg:items-center">
-      <div className="order-2 min-w-0 space-y-3 lg:order-1 lg:py-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-xs font-medium tracking-[0.12em] text-muted uppercase">
-            Your prompt
-          </p>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary shadow-xs backdrop-blur-md">
-            <Loader2 className="size-3 animate-spin" aria-hidden="true" />
-            Rendering…
-          </span>
-        </div>
-        <h3 className="max-w-3xl text-base font-medium leading-7 text-foreground/85 sm:text-lg">
-          {prompt || "Creating presenter video…"}
-        </h3>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-muted">
-          <span className="inline-flex items-center gap-1.5 animate-pulse text-primary">
-            <Sparkles className="size-3" aria-hidden="true" />
-            Synthesizing avatar & audio…
-          </span>
-        </div>
-      </div>
+    <article className="border-b border-border py-6 first:pt-1 last:border-b-0 animate-in fade-in-0 duration-300 sm:py-8">
+      <VideoPromptBubble
+        createdAt={new Date().toISOString()}
+        prompt={prompt || "Creating presenter video…"}
+        status="Rendering"
+      />
 
       <div
         className={cn(
-          "order-1 w-full justify-self-start lg:order-2 lg:justify-self-end",
-          getVideoPreviewWidthClassName(aspectRatio),
+          "mt-4 sm:ml-[10%]",
+          getVideoResultWidthClassName(aspectRatio),
         )}
       >
         <div
@@ -1226,6 +1290,10 @@ function OptimisticVideoCard({
             </span>
           </div>
         </div>
+        <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary">
+          <Loader2 className="size-3 animate-spin" aria-hidden="true" />
+          Your generation will appear here when it is ready.
+        </p>
       </div>
     </article>
   );
@@ -1285,54 +1353,19 @@ function VideoResultCard({
 
   return (
     <article
+      id={`ai-studio-video-result-${video.id}`}
       className={cn(
-        "grid min-w-0 gap-5 border-b border-border py-5 first:pt-1 last:border-b-0 transition-[transform,box-shadow] duration-300 lg:grid-cols-[minmax(0,1fr)_216px] lg:items-center",
+        "scroll-mt-4 border-b border-border py-6 first:pt-1 last:border-b-0 transition-[transform,box-shadow] duration-300 sm:py-8",
         isNew &&
           "animate-in fade-in-50 zoom-in-[0.98] duration-500 rounded-[var(--radius-card)] ring-2 ring-emerald-500/40 ring-offset-2 ring-offset-background px-3",
       )}
     >
-      <div className="order-2 min-w-0 space-y-3 lg:order-1 lg:py-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-xs font-medium tracking-[0.12em] text-muted uppercase">
-            Your prompt
-          </p>
-          <span
-            className={cn(
-              "rounded-full px-2 py-0.5 text-[11px] font-medium",
-              video.status === "Ready"
-                ? "bg-success/10 text-success"
-                : video.status === "Failed"
-                  ? "bg-error/10 text-error"
-                  : "bg-card-muted text-muted",
-            )}
-          >
-            {video.status}
-          </span>
-        </div>
-        <h3 className="max-w-3xl text-base font-medium leading-7 text-foreground sm:text-lg">
-          {video.prompt}
-        </h3>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-muted">
-          {displayDuration > 0 ? (
-            <span className="inline-flex items-center gap-1">
-              <Clock3 className="size-3" aria-hidden="true" />
-              {formatVideoDuration(displayDuration)}
-            </span>
-          ) : null}
-          <span>{formatGeneratedAt(video.createdAt)}</span>
-          <AiStudioResultActions
-            className="ml-auto sm:ml-0"
-            kind="video"
-            title={video.title}
-            url={video.url}
-          />
-        </div>
-      </div>
+      <VideoPromptBubble createdAt={video.createdAt} prompt={video.prompt} />
 
       <div
         className={cn(
-          "order-1 w-full justify-self-start lg:order-2 lg:justify-self-end",
-          getVideoPreviewWidthClassName(video.ratio),
+          "mt-4 sm:ml-[10%]",
+          getVideoResultWidthClassName(video.ratio),
         )}
       >
         <div
@@ -1343,6 +1376,7 @@ function VideoResultCard({
             key={video.url}
             ref={videoRef}
             src={video.url}
+            poster={video.thumbnailUrl ?? undefined}
             aria-label={`${video.title} preview`}
             className="size-full object-cover"
             muted={isMuted}
@@ -1408,15 +1442,268 @@ function VideoResultCard({
             </div>
           </div>
         </div>
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs font-medium text-muted">
+          {video.modelLabel ? (
+            <span className="inline-flex items-center gap-1.5 text-foreground/85">
+              <Sparkles className="size-3 text-primary" aria-hidden="true" />
+              {video.modelLabel}
+            </span>
+          ) : null}
+          {displayDuration > 0 ? (
+            <span className="inline-flex items-center gap-1.5">
+              <Clock3 className="size-3" aria-hidden="true" />
+              {formatVideoDuration(displayDuration)}
+            </span>
+          ) : null}
+          {video.resolution ? (
+            <span className="inline-flex items-center gap-1.5">
+              <Monitor className="size-3" aria-hidden="true" />
+              {video.resolution}
+            </span>
+          ) : null}
+          <span>{video.ratio}</span>
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <AiStudioResultActions
+            kind="video"
+            title={video.title}
+            url={video.url}
+            variant="buttons"
+          />
+          <Link
+            href="/avatars"
+            className="inline-flex h-8 items-center rounded-[var(--radius-control)] border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            Creative Assets
+          </Link>
+          <span className="ml-auto hidden text-xs text-muted sm:inline">
+            {formatGeneratedAt(video.createdAt)}
+          </span>
+        </div>
       </div>
     </article>
   );
 }
 
-function getVideoPreviewWidthClassName(
+function VideoPromptBubble({
+  createdAt,
+  prompt,
+  status,
+}: {
+  createdAt: string;
+  prompt: string;
+  status?: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="ml-auto max-w-[520px] sm:max-w-[min(520px,62%)]">
+      <div className="mb-1.5 flex items-center justify-end gap-2 px-1 text-[11px] font-medium text-muted">
+        <span className="text-foreground-strong">You</span>
+        <span>{formatGeneratedAt(createdAt)}</span>
+        {status ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 font-semibold text-primary">
+            <Loader2 className="size-2.5 animate-spin" aria-hidden="true" />
+            {status}
+          </span>
+        ) : null}
+      </div>
+      <button
+        type="button"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((current) => !current)}
+        className={cn(
+          "group flex w-full items-start gap-3 rounded-[18px] border border-border bg-card-muted/70 px-4 py-3 text-left shadow-xs transition-colors hover:border-border-strong hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+          expanded && "max-w-[700px] bg-card",
+        )}
+      >
+        <span
+          className={cn(
+            "min-w-0 flex-1 whitespace-pre-wrap text-sm font-medium leading-6 text-foreground",
+            expanded ? "max-h-[26rem] overflow-y-auto pr-2" : "line-clamp-2",
+          )}
+        >
+          {prompt}
+        </span>
+        {expanded ? (
+          <ChevronUp className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden="true" />
+        ) : (
+          <ChevronDown className="mt-0.5 size-4 shrink-0 text-muted transition-transform group-hover:translate-y-0.5" aria-hidden="true" />
+        )}
+      </button>
+    </div>
+  );
+}
+
+function VideoHistoryDrawer({
+  groups,
+  onClose,
+  onQueryChange,
+  onSelectVideo,
+  open,
+  query,
+  selectedVideoId,
+}: {
+  groups: ReturnType<typeof groupAIStudioVideoHistory>;
+  onClose: () => void;
+  onQueryChange: (value: string) => void;
+  onSelectVideo: (videoId: string) => void;
+  open: boolean;
+  query: string;
+  selectedVideoId: string | null;
+}) {
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function handleKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, open]);
+
+  if (!open) {
+    return null;
+  }
+
+  const hasVideos = groups.some((group) => group.videos.length > 0);
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <button
+        type="button"
+        aria-label="Close generation history"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/45 backdrop-blur-[1px]"
+      />
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-label="Generation history"
+        className="relative flex h-full w-full max-w-[460px] flex-col border-l border-border bg-background shadow-2xl animate-in slide-in-from-right duration-200"
+      >
+        <header className="flex shrink-0 items-center justify-between border-b border-border px-5 py-5">
+          <div>
+            <p className="text-base font-semibold text-foreground-strong">Generation History</p>
+            <p className="mt-1 text-xs text-muted">Your completed AI Studio videos</p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Close history"
+            onClick={onClose}
+          >
+            <X aria-hidden="true" />
+          </Button>
+        </header>
+
+        <div className="shrink-0 border-b border-border px-5 py-4">
+          <label className="relative block">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden="true" />
+            <Input
+              value={query}
+              onChange={(event) => onQueryChange(event.target.value)}
+              placeholder="Search your generations…"
+              aria-label="Search your generations"
+              className="h-10 rounded-full pl-9"
+            />
+          </label>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+          {hasVideos ? (
+            <div className="space-y-6">
+              {groups.map((group) => (
+                <section key={group.label} aria-label={group.label}>
+                  <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted">
+                    {group.label}
+                  </h2>
+                  <div className="space-y-2">
+                    {group.videos.map((video) => (
+                      <button
+                        key={video.id}
+                        type="button"
+                        onClick={() => onSelectVideo(video.id)}
+                        className={cn(
+                          "flex w-full items-center gap-3 rounded-[16px] border border-transparent p-2 text-left transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+                          selectedVideoId === video.id && "border-primary/60 bg-primary/[0.06]",
+                        )}
+                      >
+                        <div
+                          className="relative w-[76px] shrink-0 overflow-hidden rounded-xl bg-card-muted"
+                          style={{ aspectRatio: video.ratio.replace(":", " / ") }}
+                        >
+                          <video
+                            src={video.url}
+                            poster={video.thumbnailUrl ?? undefined}
+                            muted
+                            playsInline
+                            preload="metadata"
+                            className="size-full object-cover"
+                            aria-hidden="true"
+                          />
+                          {video.durationSeconds ? (
+                            <span className="absolute bottom-1 right-1 rounded bg-black/70 px-1 py-0.5 text-[10px] font-semibold tabular-nums text-white">
+                              {formatVideoDuration(video.durationSeconds)}
+                            </span>
+                          ) : null}
+                        </div>
+                        <span className="min-w-0 flex-1">
+                          <span className="line-clamp-2 block text-sm font-semibold leading-5 text-foreground">
+                            {getVideoHistoryTitle(video)}
+                          </span>
+                          <span className="mt-1.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] font-medium text-muted">
+                            {video.modelLabel ? <span>{video.modelLabel}</span> : null}
+                            {video.resolution ? <span>{video.resolution}</span> : null}
+                            <span>{video.ratio}</span>
+                          </span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          ) : (
+            <div className="flex min-h-48 flex-col items-center justify-center px-5 text-center">
+              <History className="size-6 text-muted" aria-hidden="true" />
+              <p className="mt-3 text-sm font-semibold text-foreground">No matching videos</p>
+              <p className="mt-1 text-xs leading-5 text-muted">
+                Try another search term or create a video from this workspace.
+              </p>
+            </div>
+          )}
+        </div>
+
+        <footer className="shrink-0 border-t border-border p-4">
+          <Link
+            href="/avatars"
+            className="flex h-10 w-full items-center justify-center rounded-[var(--radius-control)] border border-border bg-card text-sm font-semibold text-foreground transition-colors hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            Open Creative Assets
+          </Link>
+        </footer>
+      </aside>
+    </div>
+  );
+}
+
+function getVideoHistoryTitle(video: GeneratedVideo) {
+  return video.prompt === "Generated influencer video" || video.prompt === "Generated video"
+    ? video.title
+    : video.prompt;
+}
+
+function getVideoResultWidthClassName(
   aspectRatio: GeneratedVideo["ratio"],
 ) {
-  return VIDEO_PREVIEW_WIDTH_CLASS_NAMES[aspectRatio];
+  return VIDEO_RESULT_WIDTH_CLASS_NAMES[aspectRatio];
 }
 
 function formatVideoDuration(durationSeconds: number) {

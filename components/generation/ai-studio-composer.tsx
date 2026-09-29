@@ -44,6 +44,7 @@ export function AiStudioComposer({
   prompt,
   secondaryActions,
   settings,
+  unifiedMaxWidthClassName,
 }: {
   active: boolean;
   accessMessage?: string | null;
@@ -64,6 +65,7 @@ export function AiStudioComposer({
   prompt: string;
   secondaryActions?: ReactNode;
   settings: ReactNode;
+  unifiedMaxWidthClassName?: string;
 }) {
   const promptId = useId();
   const promptHelperId = useId();
@@ -97,7 +99,10 @@ export function AiStudioComposer({
         className={cn(
           "mx-auto w-full border bg-card transition-all duration-200",
           layout === "unified"
-            ? "max-w-[944px] rounded-[24px] border-border/80 p-0 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15"
+            ? cn(
+                unifiedMaxWidthClassName ?? "max-w-[944px]",
+                "rounded-[24px] border-border/80 p-0 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15",
+              )
             : "max-w-[1024px] rounded-[20px] border-border p-2.5 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 sm:p-3",
         )}
       >

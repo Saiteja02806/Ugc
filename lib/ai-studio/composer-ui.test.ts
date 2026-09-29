@@ -46,7 +46,7 @@ test("the image prompt uses one unified composer surface", () => {
   );
   assert.match(
     composer,
-    /layout === "unified"[\s\S]*?"max-w-\[944px\] rounded-\[24px\] border-border/,
+    /layout === "unified"[\s\S]*?unifiedMaxWidthClassName \?\? "max-w-\[944px\]"[\s\S]*?"rounded-\[24px\] border-border/,
   );
   assert.match(
     composer,
@@ -184,7 +184,7 @@ test("every image and video settings dropdown uses the shared themed pill", () =
   );
   assert.equal(
     videoWorkspace.match(/<AiStudioSettingSelect\b/g)?.length,
-    3,
+    4,
   );
 
   for (const ariaLabel of ["Image model", "Number of images"]) {
@@ -193,6 +193,7 @@ test("every image and video settings dropdown uses the shared themed pill", () =
 
   for (const ariaLabel of [
     "Video model",
+    "Video quality",
     "Video duration",
     "Number of videos",
   ]) {
@@ -254,10 +255,12 @@ test("AI Studio keeps direct image and video references optional outside Explore
   assert.match(imageWorkspace, /referenceImageUrl: referenceImage\?\.asset\.url \?\? null/);
   assert.match(
     videoWorkspace,
-    /allowedKinds=\{\["image"\]\}[\s\S]*?allowedKinds=\{\["video"\]\}/,
+    /<ReferenceImageListUpload[\s\S]*?maxImages=\{maxReferenceImages\}[\s\S]*?allowedKinds=\{\["video"\]\}/,
   );
+  assert.match(videoWorkspace, /maxReferenceImages = model === "seedance_2_5"[\s\S]*?\? \(uploadedVideoReference \? 29 : 30\)[\s\S]*?: 6/);
   assert.match(videoWorkspace, /maxVideoDurationSeconds=\{model === "seedance_2_5" \? 30 : 3\}/);
   assert.match(videoWorkspace, /avatarImageUrl: activeReferenceImageUrl/);
+  assert.match(videoWorkspace, /referenceImageUrls: referenceImages\.map\(\(image\) => image\.asset\.url\)/);
   assert.match(videoWorkspace, /referenceVideoUrl: uploadedReferenceVideo\?\.asset\.url \?\? null/);
   assert.match(videoWorkspace, /referenceVideoDurationSeconds:/);
   assert.match(
@@ -279,7 +282,7 @@ test("Explore Recreate asks for an image before video generation", () => {
     /Required for this Explore recreation\. Choose a look or upload your own image\./,
   );
   assert.match(videoGenerationApi, /isExploreHookVideoId\(body\?\.referenceId\)/);
-  assert.match(videoGenerationApi, /isExploreRecreate && !avatarImageUrl/);
+  assert.match(videoGenerationApi, /isExploreRecreate && referenceImageUrls\.length === 0/);
 });
 
 test("video composer keeps compact controls in the requested order", () => {
@@ -361,7 +364,7 @@ test("generation progress has a visible in-place loading state", () => {
   assert.match(resultSurface, /animate-spin/);
 });
 
-test("image and video previews stay compact enough for the active viewport", () => {
+test("image previews remain compact and video results use the dedicated history layout", () => {
   assert.match(
     imageWorkspace,
     /"9:16": "max-w-\[min\(240px,26dvh\)\]"/,
@@ -376,16 +379,18 @@ test("image and video previews stay compact enough for the active viewport", () 
   );
   assert.match(
     videoWorkspace,
-    /"9:16": "max-w-\[min\(216px,24dvh\)\]"/,
+    /"9:16": "w-\[min\(100%,22\.5rem\)\]"/,
   );
   assert.match(
     videoWorkspace,
-    /getVideoPreviewWidthClassName\(aspectRatio\)/,
+    /getVideoResultWidthClassName\(aspectRatio\)/,
   );
   assert.match(
     videoWorkspace,
-    /getVideoPreviewWidthClassName\(video\.ratio\)/,
+    /getVideoResultWidthClassName\(video\.ratio\)/,
   );
+  assert.match(videoWorkspace, /<VideoPromptBubble createdAt=\{video\.createdAt\} prompt=\{video\.prompt\}/);
+  assert.match(videoWorkspace, /<VideoHistoryDrawer/);
 });
 
 test("access guidance appears once inside the composer", () => {

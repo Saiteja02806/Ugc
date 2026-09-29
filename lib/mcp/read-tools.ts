@@ -17,22 +17,27 @@ import { mediaCollections, mediaSourceTypes } from "@/lib/media/types";
 import { decodeAssetCursor, encodeAssetCursor } from "./asset-cursor";
 
 const empty = z.strictObject({});
-const uuid = z.uuid();
+const uuid = z.uuid().describe("A UGC Pilot resource ID.");
 const sourceUrl = z.url().regex(/^https?:\/\//i);
 const httpsUrl = z.url().regex(/^https:\/\//i);
 const nullableText = z.string().nullable();
-const generationCount = z.union([z.literal(1), z.literal(2), z.literal(4)]);
+const mediaCollectionDescription =
+  "Asset group: image for still images, video for videos, or influencer for creator footage.";
+const mediaSourceTypeDescription =
+  "How UGC Pilot created the asset: upload (library upload), influencer_upload (creator footage upload), demo_upload (demo footage), catalog_influencer (built-in creator asset), generated_image or generated_video (AI output), edit_export (editor export), combined_render (composed video), wall_text_render, or reaction_render.";
+const mediaCollection = z.enum(mediaCollections).describe(mediaCollectionDescription);
+const mediaSourceType = z.enum(mediaSourceTypes).describe(mediaSourceTypeDescription);
+export const generationCount = z.literal([1, 2, 4]).describe(
+  "Number of images to create. Choose 1, 2, or 4.",
+);
 // Phase 6 will enable this when generate_video is registered and validated.
 const videoToolRegistered = false;
-const videoDuration = z.union([
-  z.literal(3), z.literal(4), z.literal(5), z.literal(6),
-  z.literal(7), z.literal(8), z.literal(9), z.literal(10),
-]);
+const videoDuration = z.literal([3, 4, 5, 6, 7, 8, 9, 10]);
 const assetSummary = z.strictObject({
   id: uuid,
   title: z.string(),
-  collection: z.enum(mediaCollections),
-  source_type: z.enum(mediaSourceTypes),
+  collection: mediaCollection,
+  source_type: mediaSourceType,
   mime_type: z.string(),
   width: z.number().int().positive().nullable(),
   height: z.number().int().positive().nullable(),
@@ -239,11 +244,11 @@ export function registerReadMcpTools(server: McpServer) {
   server.registerTool("list_assets", {
     description: "Find ready assets owned by the connected account, with search and pagination.",
     inputSchema: z.strictObject({
-      collection: z.enum(mediaCollections).optional(),
-      source_type: z.enum(mediaSourceTypes).optional(),
-      query: z.string().trim().min(1).max(100).optional(),
-      limit: z.number().int().min(1).max(50).default(20),
-      cursor: z.string().min(1).max(2048).optional(),
+      collection: mediaCollection.optional().describe(`Optionally limit results. ${mediaCollectionDescription}`),
+      source_type: mediaSourceType.optional().describe(`Optionally limit results. ${mediaSourceTypeDescription}`),
+      query: z.string().trim().min(1).max(100).optional().describe("Optional words to find in asset titles."),
+      limit: z.number().int().min(1).max(50).default(20).describe("Maximum number of results to return, from 1 through 50."),
+      cursor: z.string().min(1).max(2048).optional().describe("The next_cursor returned by an earlier call with the same filters."),
     }),
     outputSchema: z.strictObject({ items: z.array(assetSummary), next_cursor: z.string().min(1).nullable() }),
     annotations: readOnly,
@@ -278,7 +283,7 @@ export function registerReadMcpTools(server: McpServer) {
 
   server.registerTool("get_asset", {
     description: "Get one ready, undeleted asset owned by this account.",
-    inputSchema: z.strictObject({ asset_id: uuid }),
+    inputSchema: z.strictObject({ asset_id: uuid.describe("ID of the ready asset to retrieve.") }),
     outputSchema: z.strictObject({ asset }),
     annotations: readOnly,
     scopeChallenge: requireScopes("assets:read"),

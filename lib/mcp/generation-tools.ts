@@ -15,7 +15,7 @@ import { getMediaAssetForOwner } from "@/lib/media/media-storage";
 import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
 import { isTrustedStorageUrl } from "@/lib/storage/storage";
 import { generationChildIdempotencyKey, generationRequestFingerprint } from "./generation-idempotency";
-import { executeTool, oauthMetadata, principal, ToolFailure } from "./read-tools";
+import { executeTool, generationCount, oauthMetadata, principal, ToolFailure } from "./read-tools";
 
 const uuid = z.uuid();
 const jobStatus = z.enum([
@@ -49,11 +49,11 @@ export function registerGenerationMcpTools(server: McpServer) {
   server.registerTool("generate_image", {
     description: "Reserve image credits and queue 1, 2, or 4 images. Reusing the request ID with the same input returns the existing jobs.",
     inputSchema: z.strictObject({
-      prompt: z.string().trim().min(1).max(2000),
-      aspect_ratio: z.enum(AI_STUDIO_IMAGE_ASPECT_RATIOS).default("9:16"),
-      reference_asset_id: uuid.optional(),
-      count: z.union([z.literal(1), z.literal(2), z.literal(4)]).default(1),
-      client_request_id: z.string().trim().min(1).max(200),
+      prompt: z.string().trim().min(1).max(2000).describe("The image instruction, up to 2,000 characters."),
+      aspect_ratio: z.enum(AI_STUDIO_IMAGE_ASPECT_RATIOS).default("9:16").describe("Output image aspect ratio."),
+      reference_asset_id: uuid.optional().describe("Optional ID of one ready image in this account to use as a reference."),
+      count: generationCount.default(1),
+      client_request_id: z.string().trim().min(1).max(200).describe("A caller-generated stable ID. Reuse it only to retry the same request."),
     }),
     outputSchema: z.strictObject({ jobs: z.array(jobReceipt).min(1).max(4), partial: z.boolean() }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },

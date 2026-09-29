@@ -137,7 +137,7 @@ export function getPublicBackgroundJob(job: BackgroundJobRecord) {
               : job.errorCode || "JOB_FAILED",
             message: hideWallTextFailureDetails
               ? "We’re handling content preparation automatically. No action is needed from you."
-              : getSafeJobErrorMessage(job.errorCode),
+            : getSafeJobErrorMessage(job.errorCode, job.errorMessage),
             retryable: isRetryableBackgroundJob(job),
           }
         : null,
@@ -165,7 +165,17 @@ function isWallTextJob(jobType: BackgroundJobType) {
     jobType === "wall_text_content_plan_generation";
 }
 
-function getSafeJobErrorMessage(errorCode: string | null) {
+function getSafeJobErrorMessage(
+  errorCode: string | null,
+  errorMessage: string | null,
+) {
+  if (
+    errorCode === "PROVIDER_INSUFFICIENT_CREDITS" ||
+    isProviderBalanceFailure(errorMessage)
+  ) {
+    return "Higgsfield's API balance is too low to create this video. Add funds in Higgsfield, then retry. Your UGC Pilot credits were released.";
+  }
+
   switch (errorCode) {
     case "CANCELLED":
       return "This job was cancelled.";
@@ -182,4 +192,8 @@ function getSafeJobErrorMessage(errorCode: string | null) {
     default:
       return "The job could not be completed. You can retry it if attempts remain.";
   }
+}
+
+function isProviderBalanceFailure(errorMessage: string | null) {
+  return /credit balance is too low/i.test(errorMessage ?? "");
 }

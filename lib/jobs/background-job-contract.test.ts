@@ -55,6 +55,26 @@ test("public jobs expose safe errors and retry state without internal errors", (
   assert.equal(JSON.stringify(getPublicBackgroundJob(job)).includes("secret"), false);
 });
 
+test("public video jobs explain a provider balance failure without exposing diagnostics", () => {
+  const job = {
+    attemptCount: 1,
+    errorCode: "JOB_FAILED",
+    errorMessage:
+      "Seedance request request-private ended with status failed: Your credit balance is too low.",
+    jobType: "generate_hook_video",
+    maxAttempts: 3,
+    status: "failed",
+  } as BackgroundJobRecord;
+
+  assert.deepEqual(getPublicBackgroundJob(job).error, {
+    code: "JOB_FAILED",
+    message:
+      "Higgsfield's API balance is too low to create this video. Add funds in Higgsfield, then retry. Your UGC Pilot credits were released.",
+    retryable: true,
+  });
+  assert.equal(JSON.stringify(getPublicBackgroundJob(job)).includes("request-private"), false);
+});
+
 test("public Wall jobs never expose private provider or validation diagnostics", () => {
   const job = {
     attemptCount: 3,

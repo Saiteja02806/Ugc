@@ -394,7 +394,10 @@ test("image previews remain compact and video results use the dedicated history 
 });
 
 test("the video composer keeps attachments together and stays quiet until guidance is needed", () => {
-  assert.match(videoWorkspace, /showPromptHint=\{false\}/);
+  assert.match(
+    videoWorkspace,
+    /showPromptHint=\{generationLocked \|\| hasInsufficientCredits\}/,
+  );
   assert.match(
     videoWorkspace,
     /leadingControl=\{[\s\S]*?flex min-w-0 flex-wrap items-center gap-2[\s\S]*?<ReferenceImageListUpload[\s\S]*?<ReferenceMediaUpload/,

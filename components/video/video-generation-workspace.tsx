@@ -1034,7 +1034,7 @@ export function VideoGenerationStudioPanel({
         generationLocked={generationLocked}
         isGenerating={isGenerating}
         layout="unified"
-        showPromptHint={false}
+        showPromptHint={generationLocked || hasInsufficientCredits}
         unifiedMaxWidthClassName="max-w-[1280px]"
         leadingControl={
           <div className="flex min-w-0 flex-wrap items-center gap-2">

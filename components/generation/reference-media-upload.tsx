@@ -2,6 +2,7 @@
 
 import {
   FileVideo,
+  ImagePlus,
   Loader2,
   Plus,
   RefreshCw,
@@ -145,6 +146,10 @@ export function ReferenceMediaUpload({
           />
         ) : selection ? (
           <RefreshCw className="size-4" aria-hidden="true" />
+        ) : allowedKinds.length === 1 && allowedKinds[0] === "video" ? (
+          <FileVideo className="size-4" aria-hidden="true" />
+        ) : allowedKinds.length === 1 && allowedKinds[0] === "image" ? (
+          <ImagePlus className="size-4" aria-hidden="true" />
         ) : (
           <Plus className="size-4" aria-hidden="true" />
         )}

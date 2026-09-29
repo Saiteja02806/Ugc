@@ -1,5 +1,5 @@
 export const AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH = 2_000;
-export const AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH = 1_000;
+export const AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH = 5_000;
 
 export function normalizeAIStudioPrompt(value: unknown) {
   return typeof value === "string" ? value.trim() : "";

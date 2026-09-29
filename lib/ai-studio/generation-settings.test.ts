@@ -2,13 +2,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  getAIStudioVideoResolutions,
   getAIStudioRatioLabel,
+  isAIStudioVideoResolutionSupported,
   parseAIStudioGenerationQuantity,
   parseAIStudioImageAspectRatio,
   parseAIStudioImageModel,
   parseAIStudioVideoAspectRatio,
   parseAIStudioVideoDuration,
   parseAIStudioVideoModel,
+  parseAIStudioVideoResolution,
 } from "./generation-settings.ts";
 
 test("accepts only supported AI Studio settings", () => {
@@ -26,6 +29,21 @@ test("accepts only supported AI Studio settings", () => {
   assert.equal(parseAIStudioVideoDuration(10), 10);
   assert.equal(parseAIStudioVideoDuration(30), 30);
   assert.equal(parseAIStudioVideoDuration(11), 5);
+  assert.equal(parseAIStudioVideoResolution("1080p"), "1080p");
+  assert.equal(parseAIStudioVideoResolution("4k"), "720p");
+});
+
+test("limits video quality choices to each provider's supported resolutions", () => {
+  assert.deepEqual(getAIStudioVideoResolutions("seedance_2_5"), ["480p", "720p"]);
+  assert.deepEqual(getAIStudioVideoResolutions("google_omni"), ["720p", "1080p"]);
+  assert.equal(
+    isAIStudioVideoResolutionSupported("seedance_2_5", "1080p"),
+    false,
+  );
+  assert.equal(
+    isAIStudioVideoResolutionSupported("google_omni", "1080p"),
+    true,
+  );
 });
 
 test("provides clear labels for supported ratios", () => {

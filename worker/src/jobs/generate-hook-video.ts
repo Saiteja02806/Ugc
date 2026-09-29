@@ -32,6 +32,7 @@ type GenerateHookVideoBaseInput = {
   aspectRatio: HookVideoAspectRatio;
   avatarImageUrl?: string;
   referenceImageUrls: string[];
+  resolution: HookVideoResolution;
   durationSeconds: number;
   hookIdea: string;
   model?: "google_omni" | "seedance_2_5";
@@ -57,8 +58,10 @@ type GenerateHookVideoInput = GenerateHookVideoBaseInput &
 
 const hookVideoAspectRatios = ["9:16", "16:9"] as const;
 type HookVideoAspectRatio = (typeof hookVideoAspectRatios)[number];
+const hookVideoResolutions = ["480p", "720p", "1080p"] as const;
+type HookVideoResolution = (typeof hookVideoResolutions)[number];
 
-const MAX_HOOK_LENGTH = 1_000;
+const MAX_HOOK_LENGTH = 5_000;
 const MAX_PRODUCT_NAME_LENGTH = 120;
 const MAX_PRODUCT_DESCRIPTION_LENGTH = 500;
 
@@ -261,6 +264,7 @@ async function generateWithProvider(
     model: input.model ?? null,
     prompt,
     provider,
+    resolution: input.resolution,
     referenceImageUrl: input.avatarImageUrl,
     referenceImageUrls: input.referenceImageUrls,
     referenceVideoDurationSeconds: input.referenceVideoDurationSeconds ?? null,
@@ -315,6 +319,7 @@ async function generateWithProvider(
       referenceImageUrls: input.referenceImageUrls,
       referenceVideoDurationSeconds: input.referenceVideoDurationSeconds,
       referenceVideoUrl: input.referenceVideoUrl,
+      resolution: input.resolution,
     };
 
     return {
@@ -360,6 +365,7 @@ async function generateProviderBuffer(
     referenceImageUrls?: string[];
     referenceVideoDurationSeconds?: number;
     referenceVideoUrl?: string;
+    resolution: HookVideoResolution;
   },
   onOperationSucceeded: (operationId: string, outputUrl?: string) => Promise<void>,
 ) {
@@ -401,6 +407,7 @@ function buildOutput(params: {
     ok: true,
     provider: params.provider,
     ratio: params.input.aspectRatio,
+    resolution: params.input.resolution,
     url: params.uploaded.url,
     videoId: params.input.videoId,
   };
@@ -413,6 +420,12 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
 
   const promptMode =
     job.input_json.promptMode === "direct" ? "direct" : "ugc_template";
+  const model =
+    job.input_json.model === "seedance_2_5"
+      ? "seedance_2_5"
+      : job.input_json.model === "google_omni"
+        ? "google_omni"
+        : undefined;
   const sharedInput: GenerateHookVideoBaseInput = {
     aspectRatio:
       getOptionalChoice(job.input_json.aspectRatio, hookVideoAspectRatios) ??
@@ -421,9 +434,7 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
     referenceImageUrls: getReferenceImageUrls(job.input_json.referenceImageUrls, job.input_json.avatarImageUrl),
     durationSeconds: getGenerationDurationSeconds(job.input_json.durationSeconds),
     hookIdea: getText(job.input_json.hookIdea, "hookIdea", MAX_HOOK_LENGTH),
-    model: job.input_json.model === "seedance_2_5"
-      ? "seedance_2_5"
-      : job.input_json.model === "google_omni" ? "google_omni" : undefined,
+    model,
     projectId: getPathSegment(job.input_json.projectId, "projectId"),
     provider: getOptionalChoice(job.input_json.provider, hookVideoProviders),
     referenceVideoDurationSeconds: getOptionalDurationSeconds(
@@ -431,6 +442,7 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
       job.input_json.model === "seedance_2_5" ? 30 : 3,
     ),
     referenceVideoUrl: getOptionalHttpsUrl(job.input_json.referenceVideoUrl),
+    resolution: getGenerationResolution(job.input_json.resolution, model),
     userId: getPathSegment(job.input_json.userId, "userId"),
     videoId: getPathSegment(job.input_json.videoId, "videoId"),
   };
@@ -469,6 +481,24 @@ function getGenerationDurationSeconds(value: Json | undefined) {
   return typeof value === "number" && Number.isInteger(value) && value >= 3 && value <= 30
     ? value
     : 4;
+}
+
+function getGenerationResolution(
+  value: Json | undefined,
+  model: GenerateHookVideoBaseInput["model"],
+): HookVideoResolution {
+  const resolution =
+    getOptionalChoice(value, hookVideoResolutions) ?? "720p";
+
+  if (model === "seedance_2_5" && resolution === "1080p") {
+    throw new Error("Seedance 2.5 supports 480p or 720p video quality.");
+  }
+
+  if (model === "google_omni" && resolution === "480p") {
+    throw new Error("Google Omni supports 720p or 1080p video quality.");
+  }
+
+  return resolution;
 }
 
 function getOptionalDurationSeconds(value: Json | undefined, maxDurationSeconds: number) {

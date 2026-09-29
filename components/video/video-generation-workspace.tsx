@@ -48,10 +48,13 @@ import {
   AI_STUDIO_VIDEO_ASPECT_RATIOS,
   AI_STUDIO_VIDEO_DURATIONS,
   AI_STUDIO_VIDEO_MODELS,
+  AI_STUDIO_VIDEO_RESOLUTIONS,
+  isAIStudioVideoResolutionSupported,
   type AIStudioGenerationQuantity,
   type AIStudioVideoAspectRatio,
   type AIStudioVideoDuration,
   type AIStudioVideoModel,
+  type AIStudioVideoResolution,
 } from "@/lib/ai-studio/generation-settings";
 import {
   fetchAIStudioMediaAsset,
@@ -295,6 +298,8 @@ export function VideoGenerationStudioPanel({
   const [model, setModel] = useState<AIStudioVideoModel>("seedance_2_5");
   const [durationSeconds, setDurationSeconds] =
     useState<AIStudioVideoDuration>(5);
+  const [resolution, setResolution] =
+    useState<AIStudioVideoResolution>("720p");
   const [uploadedReference, setUploadedReference] =
     useState<AIStudioReferenceMedia | null>(null);
   const [additionalImageReferences, setAdditionalImageReferences] =
@@ -726,6 +731,7 @@ export function VideoGenerationStudioPanel({
           model,
           prompt: trimmedPrompt,
           quantity,
+          resolution,
           referenceVideoDurationSeconds:
             uploadedReferenceVideo?.asset.durationSeconds ?? null,
           referenceVideoUrl: uploadedReferenceVideo?.asset.url ?? null,
@@ -1036,7 +1042,29 @@ export function VideoGenerationStudioPanel({
                   }
                   if (durationSeconds > 10) setDurationSeconds(5);
                 }
-                setModel(value as AIStudioVideoModel);
+                const nextModel = value as AIStudioVideoModel;
+                if (!isAIStudioVideoResolutionSupported(nextModel, resolution)) {
+                  setResolution("720p");
+                }
+                setModel(nextModel);
+              }}
+            />
+            <AiStudioSettingSelect
+              ariaLabel="Video quality"
+              disabled={generationLocked || isGenerating}
+              options={AI_STUDIO_VIDEO_RESOLUTIONS.map((value) => {
+                const supported = isAIStudioVideoResolutionSupported(model, value);
+
+                return {
+                  disabled: !supported,
+                  label: supported ? value : `${value} · unavailable for this model`,
+                  value,
+                };
+              })}
+              value={resolution}
+              onChange={(value) => {
+                submissionKeyRef.current = null;
+                setResolution(value as AIStudioVideoResolution);
               }}
             />
             <AiStudioSettingSelect

@@ -14,6 +14,8 @@ import {
   parseAIStudioVideoDuration,
   parseAIStudioVideoAspectRatio,
   parseAIStudioVideoModel,
+  parseAIStudioVideoResolution,
+  isAIStudioVideoResolutionSupported,
 } from "@/lib/ai-studio/generation-settings";
 import { isExploreHookVideoId } from "@/lib/explore/hook-video-library";
 import { isExploreWallTextVideoId } from "@/lib/explore/wall-text-video-library";
@@ -47,6 +49,7 @@ type GenerateVideoRequest = {
   referenceType?: unknown;
   referenceUrl?: unknown;
   durationSeconds?: unknown;
+  resolution?: unknown;
 };
 
 type VideoJobOutput = {
@@ -152,6 +155,7 @@ export async function handleAIStudioVideoGeneration(request: Request) {
   const quantity = parseAIStudioGenerationQuantity(body?.quantity);
   const model = parseAIStudioVideoModel(body?.model);
   const durationSeconds = parseAIStudioVideoDuration(body?.durationSeconds);
+  const resolution = parseAIStudioVideoResolution(body?.resolution);
   const isExploreRecreate =
     (body?.referenceType === "hook" && isExploreHookVideoId(body?.referenceId)) ||
     (body?.referenceType === "wall_text" &&
@@ -205,6 +209,19 @@ export async function handleAIStudioVideoGeneration(request: Request) {
   if (model === "google_omni" && referenceVideoUrl) {
     return NextResponse.json(
       { error: "Google Omni video references are unavailable in UGC Pilot. Select Seedance 2.5 to use a video reference.", ok: false },
+      { status: 400 },
+    );
+  }
+
+  if (!isAIStudioVideoResolutionSupported(model, resolution)) {
+    const supportedResolutions =
+      model === "seedance_2_5" ? "480p or 720p" : "720p or 1080p";
+
+    return NextResponse.json(
+      {
+        error: `${model === "seedance_2_5" ? "Seedance 2.5" : "Google Omni"} supports ${supportedResolutions}.`,
+        ok: false,
+      },
       { status: 400 },
     );
   }
@@ -328,6 +345,7 @@ export async function handleAIStudioVideoGeneration(request: Request) {
             typeof body?.referenceType === "string" ? body.referenceType : null,
           referenceUrl:
             typeof body?.referenceUrl === "string" ? body.referenceUrl : null,
+          resolution,
           userId: user.uid,
           videoId,
         },

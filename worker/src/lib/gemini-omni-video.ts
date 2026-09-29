@@ -23,6 +23,7 @@ type GenerateGeminiOmniVideoParams = {
   providerOperationId?: string;
   referenceImageUrl?: string;
   referenceImageUrls?: string[];
+  resolution: "480p" | "720p" | "1080p";
 };
 
 const DEFAULT_OMNI_MODEL = "gemini-omni-1.1-flash";
@@ -40,11 +41,18 @@ export async function generateGeminiOmniVideoBuffer({
   providerOperationId,
   referenceImageUrl,
   referenceImageUrls,
+  resolution,
 }: GenerateGeminiOmniVideoParams) {
   const ai = getGoogleClient();
   const startedAt = Date.now();
   const model = process.env.GEMINI_OMNI_MODEL?.trim() || DEFAULT_OMNI_MODEL;
   let interaction;
+
+  if (resolution === "480p") {
+    throw new ProviderRequestNotSubmittedError(
+      "Google Omni supports 720p or 1080p video quality.",
+    );
+  }
 
   if (providerOperationId) {
     try {
@@ -79,6 +87,7 @@ export async function generateGeminiOmniVideoBuffer({
         aspect_ratio: aspectRatio,
         delivery: "uri",
         duration: `${durationSeconds}s`,
+        resolution,
         type: "video",
       },
     });

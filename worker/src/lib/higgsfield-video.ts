@@ -25,6 +25,7 @@ export async function generateHiggsfieldVideoBuffer(params: {
   referenceImageUrl?: string;
   referenceImageUrls?: string[];
   referenceVideoUrl?: string;
+  resolution: "480p" | "720p" | "1080p";
 }) {
   if (params.providerOperationId && params.providerOutputUrl && /^https:\/\//i.test(params.providerOutputUrl)) {
     return downloadVideoToBuffer(params.providerOutputUrl);
@@ -44,6 +45,11 @@ export async function generateHiggsfieldVideoBuffer(params: {
     params.referenceImageUrls?.some((url) => !/^https:\/\//i.test(url))
   ) {
     throw new ProviderRequestNotSubmittedError("Seedance references require HTTPS URLs.");
+  }
+  if (params.resolution !== "480p" && params.resolution !== "720p") {
+    throw new ProviderRequestNotSubmittedError(
+      "Seedance 2.5 supports 480p or 720p video quality.",
+    );
   }
 
   const credentials = getRequiredProviderEnv("HF_CREDENTIALS");
@@ -69,7 +75,7 @@ export async function generateHiggsfieldVideoBuffer(params: {
         prompt: params.prompt,
         video_url: params.referenceVideoUrl,
         ...(imageUrls.length ? { image_urls: imageUrls } : {}),
-        resolution: "720p",
+        resolution: params.resolution,
         output_format: "mp4",
         generate_audio: true,
       }
@@ -78,7 +84,7 @@ export async function generateHiggsfieldVideoBuffer(params: {
           prompt: params.prompt,
           image_urls: imageUrls,
           duration: params.durationSeconds,
-          resolution: "720p",
+          resolution: params.resolution,
           aspect_ratio: params.aspectRatio,
           output_format: "mp4",
           generate_audio: true,
@@ -88,14 +94,14 @@ export async function generateHiggsfieldVideoBuffer(params: {
           prompt: params.prompt,
           image_url: imageUrls[0],
           duration: params.durationSeconds,
-          resolution: "720p",
+          resolution: params.resolution,
           output_format: "mp4",
           generate_audio: true,
         }
       : {
           prompt: params.prompt,
           duration: params.durationSeconds,
-          resolution: "720p",
+          resolution: params.resolution,
           aspect_ratio: params.aspectRatio,
           output_format: "mp4",
         };

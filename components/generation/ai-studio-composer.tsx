@@ -285,7 +285,12 @@ export function AiStudioSettingSelect<TValue extends string>({
   disabled?: boolean;
   icon?: ReactNode;
   onChange: (value: TValue) => void;
-  options: readonly { label: string; triggerLabel?: string; value: TValue }[];
+  options: readonly {
+    disabled?: boolean;
+    label: string;
+    triggerLabel?: string;
+    value: TValue;
+  }[];
   value: TValue;
 }) {
   const [open, setOpen] = useState(false);
@@ -296,10 +301,7 @@ export function AiStudioSettingSelect<TValue extends string>({
     return null;
   }
 
-  function handleOptionKeyDown(
-    event: KeyboardEvent<HTMLButtonElement>,
-    optionIndex: number,
-  ) {
+  function handleOptionKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
     if (
       event.key !== "ArrowDown" &&
       event.key !== "ArrowUp" &&
@@ -312,7 +314,7 @@ export function AiStudioSettingSelect<TValue extends string>({
     event.preventDefault();
     const optionButtons = Array.from(
       event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
-        "[data-ai-studio-setting-option]",
+        "[data-ai-studio-setting-option]:not(:disabled)",
       ) ?? [],
     );
 
@@ -320,14 +322,15 @@ export function AiStudioSettingSelect<TValue extends string>({
       return;
     }
 
+    const currentIndex = Math.max(0, optionButtons.indexOf(event.currentTarget));
     const nextIndex =
       event.key === "Home"
         ? 0
         : event.key === "End"
           ? optionButtons.length - 1
           : event.key === "ArrowDown"
-            ? (optionIndex + 1) % optionButtons.length
-            : (optionIndex - 1 + optionButtons.length) % optionButtons.length;
+            ? (currentIndex + 1) % optionButtons.length
+            : (currentIndex - 1 + optionButtons.length) % optionButtons.length;
 
     optionButtons[nextIndex]?.focus();
   }
@@ -366,23 +369,24 @@ export function AiStudioSettingSelect<TValue extends string>({
         className="w-max min-w-40 max-w-[min(20rem,calc(100vw-1rem))] p-1.5"
       >
         <div role="listbox" aria-label={ariaLabel} className="flex flex-col gap-0.5">
-          {options.map((option, optionIndex) => {
+          {options.map((option) => {
             const isSelected = option.value === value;
 
             return (
               <button
                 key={option.value}
                 type="button"
+                disabled={option.disabled}
                 role="option"
                 aria-selected={isSelected}
                 data-ai-studio-setting-option
-                onKeyDown={(event) => handleOptionKeyDown(event, optionIndex)}
+                onKeyDown={handleOptionKeyDown}
                 onClick={() => {
                   onChange(option.value);
                   setOpen(false);
                 }}
                 className={cn(
-                  "flex w-full cursor-pointer items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+                  "flex w-full cursor-pointer items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-45",
                   isSelected
                     ? "bg-brand-soft font-semibold text-primary"
                     : "text-foreground hover:bg-card-muted",

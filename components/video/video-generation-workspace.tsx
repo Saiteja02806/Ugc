@@ -1252,18 +1252,21 @@ function OptimisticVideoCard({
 }) {
   return (
     <article className="border-b border-border py-6 first:pt-1 last:border-b-0 animate-in fade-in-0 duration-300 sm:py-8">
-      <VideoPromptBubble
-        createdAt={new Date().toISOString()}
-        prompt={prompt || "Creating presenter video…"}
-        status="Rendering"
-      />
+      <div className="mx-auto grid w-full max-w-[62rem] gap-4 lg:w-fit lg:max-w-full lg:grid-cols-[auto_minmax(0,32.5rem)] lg:items-start lg:gap-[clamp(2rem,2.5vw,3rem)]">
+        <div className="order-1 min-w-0 lg:order-2">
+          <VideoPromptBubble
+            createdAt={new Date().toISOString()}
+            prompt={prompt || "Creating presenter video…"}
+            status="Rendering"
+          />
+        </div>
 
-      <div
-        className={cn(
-          "mt-4 sm:ml-[10%]",
-          getVideoResultWidthClassName(aspectRatio),
-        )}
-      >
+        <div
+          className={cn(
+            "order-2 lg:order-1",
+            getVideoResultWidthClassName(aspectRatio),
+          )}
+        >
         <div
           className="relative overflow-hidden rounded-[20px] bg-card-muted ring-1 ring-primary/30 shadow-sm"
           style={{ aspectRatio: aspectRatio.replace(":", " / ") }}
@@ -1298,6 +1301,7 @@ function OptimisticVideoCard({
           <Loader2 className="size-3 animate-spin" aria-hidden="true" />
           Your generation will appear here when it is ready.
         </p>
+        </div>
       </div>
     </article>
   );
@@ -1364,14 +1368,17 @@ function VideoResultCard({
           "animate-in fade-in-50 zoom-in-[0.98] duration-500 rounded-[var(--radius-card)] ring-2 ring-emerald-500/40 ring-offset-2 ring-offset-background px-3",
       )}
     >
-      <VideoPromptBubble createdAt={video.createdAt} prompt={video.prompt} />
+      <div className="mx-auto grid w-full max-w-[62rem] gap-4 lg:w-fit lg:max-w-full lg:grid-cols-[auto_minmax(0,32.5rem)] lg:items-start lg:gap-[clamp(2rem,2.5vw,3rem)]">
+        <div className="order-1 min-w-0 lg:order-2">
+          <VideoPromptBubble createdAt={video.createdAt} prompt={video.prompt} />
+        </div>
 
-      <div
-        className={cn(
-          "mt-4 sm:ml-[10%]",
-          getVideoResultWidthClassName(video.ratio),
-        )}
-      >
+        <div
+          className={cn(
+            "order-2 lg:order-1",
+            getVideoResultWidthClassName(video.ratio),
+          )}
+        >
         <div
           className="relative overflow-hidden rounded-[20px] bg-black shadow-sm"
           style={{ aspectRatio: video.ratio.replace(":", " / ") }}
@@ -1478,6 +1485,7 @@ function VideoResultCard({
           <span className="ml-auto hidden text-xs text-muted sm:inline">
             {formatGeneratedAt(video.createdAt)}
           </span>
+        </div>
         </div>
       </div>
     </article>

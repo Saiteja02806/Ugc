@@ -325,6 +325,11 @@ test("video results keep the prompt visible with custom playback controls", () =
   assert.doesNotMatch(videoWorkspace, /getCreativeAssetEditorHref|handleEditVideo/);
   assert.doesNotMatch(videoWorkspace, /setPrompt\(""\);/);
   assert.match(videoResultCard, /video\.prompt/);
+  assert.match(
+    videoResultCard,
+    /lg:grid-cols-\[auto_minmax\(0,32\.5rem\)\][\s\S]*?lg:gap-\[clamp\(2rem,2\.5vw,3rem\)\]/,
+  );
+  assert.doesNotMatch(videoResultCard, /sm:ml-\[10%\]/);
   assert.doesNotMatch(videoResultCard, /\bcontrols\b/);
   assert.match(
     videoResultCard,

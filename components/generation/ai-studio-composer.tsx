@@ -43,6 +43,7 @@ export function AiStudioComposer({
   placeholder,
   prompt,
   secondaryActions,
+  showPromptHint = true,
   settings,
   unifiedMaxWidthClassName,
 }: {
@@ -64,6 +65,7 @@ export function AiStudioComposer({
   placeholder: string;
   prompt: string;
   secondaryActions?: ReactNode;
+  showPromptHint?: boolean;
   settings: ReactNode;
   unifiedMaxWidthClassName?: string;
 }) {
@@ -154,16 +156,18 @@ export function AiStudioComposer({
               )}
               role={promptTooLong ? "alert" : undefined}
             >
-              <span className="min-w-0">
-                {promptTooLong
-                  ? `Prompt is ${(
-                      prompt.length - maxLength
-                    ).toLocaleString("en-US")} character${
-                      prompt.length - maxLength === 1 ? "" : "s"
-                    } too long. Shorten it before generating.`
-                  : accessMessage ??
-                    "Press Enter to generate. Use Shift+Enter for a new line."}
-              </span>
+              {promptTooLong || showPromptHint ? (
+                <span className="min-w-0">
+                  {promptTooLong
+                    ? `Prompt is ${(
+                        prompt.length - maxLength
+                      ).toLocaleString("en-US")} character${
+                        prompt.length - maxLength === 1 ? "" : "s"
+                      } too long. Shorten it before generating.`
+                    : accessMessage ??
+                      "Press Enter to generate. Use Shift+Enter for a new line."}
+                </span>
+              ) : null}
               <span className="shrink-0 tabular-nums font-mono">
                 {prompt.length.toLocaleString("en-US")}/
                 {maxLength.toLocaleString("en-US")}

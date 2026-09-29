@@ -100,10 +100,10 @@ const VIDEO_JOB_STORAGE_PREFIX = "ugc-ai-studio.latest-video-job.v2.";
 const VIDEO_JOB_METADATA_PREFIX = "ugc-ai-studio.video-job.v2.";
 const VIDEO_JOB_URL_PARAMETER = "videoJob";
 const VIDEO_RESULT_WIDTH_CLASS_NAMES: Record<GeneratedVideo["ratio"], string> = {
-  "4:5": "w-[min(100%,20rem)]",
-  "1:1": "w-[min(100%,24rem)]",
-  "9:16": "w-[min(100%,22.5rem)]",
-  "16:9": "w-[min(100%,38rem)]",
+  "4:5": "w-[min(100%,17rem)]",
+  "1:1": "w-[min(100%,20rem)]",
+  "9:16": "w-[min(100%,18rem)]",
+  "16:9": "w-[min(100%,28rem)]",
 };
 
 type GenerateVideoResponse =
@@ -1040,9 +1040,10 @@ export function VideoGenerationStudioPanel({
         generationLocked={generationLocked}
         isGenerating={isGenerating}
         layout="unified"
+        showPromptHint={false}
         unifiedMaxWidthClassName="max-w-[1280px]"
         leadingControl={
-          <div className="flex min-w-0 flex-col gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <ReferenceImageListUpload
               active={active}
               disabled={generationLocked || isGenerating || creatorReferenceUploadPending}
@@ -1051,14 +1052,14 @@ export function VideoGenerationStudioPanel({
               onChange={handleImageReferencesChange}
             />
             {!isExploreRecreate && model === "seedance_2_5" ? (
-              <div className="flex min-w-0 flex-wrap items-center gap-2"><ReferenceMediaUpload
+              <ReferenceMediaUpload
                 active={active}
                 allowedKinds={["video"]}
                 disabled={generationLocked || isGenerating || creatorReferenceUploadPending}
                 maxVideoDurationSeconds={model === "seedance_2_5" ? 30 : 3}
                 selection={uploadedVideoReference}
                 onChange={handleVideoReferenceChange}
-              /></div>
+              />
             ) : null}
           </div>
         }

@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  ArrowRight,
   BadgeCheck,
   BriefcaseBusiness,
   Eye,
@@ -48,13 +47,13 @@ const SCOPE_DETAILS: Record<string, ScopeDetails> = {
     icon: Images,
   },
   "assets:write": {
-    title: "Manage uploaded media",
-    description: "Add and remove reference images in your UGC Pilot creative library.",
+    title: "Manage media",
+    description: "Upload reference media and delete media you select in UGC Pilot.",
     icon: Upload,
   },
   "generation:write": {
-    title: "Create media",
-    description: "Submit supported generation jobs using your available credits.",
+    title: "Generate images",
+    description: "Create images using credits available in your UGC Pilot plan.",
     icon: Sparkles,
   },
   "jobs:read": {
@@ -125,7 +124,6 @@ export function OAuthConsent({
   }
 
   const accountLabel = user?.email ?? user?.displayName ?? "UGC Pilot account";
-  const clientInitial = clientName.trim().charAt(0).toUpperCase() || "A";
   const redirectTitle = redirectDestination === "chatgpt"
     ? "Return to ChatGPT"
     : redirectDestination === "claude"
@@ -154,7 +152,7 @@ export function OAuthConsent({
 
       <section
         aria-labelledby="oauth-consent-title"
-        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-[660px] flex-col overflow-hidden rounded-[28px] border border-border bg-card shadow-[0_28px_90px_rgb(0_0_0/0.24)] sm:max-h-[calc(100dvh-3rem)]"
+        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-[640px] flex-col overflow-hidden rounded-[28px] border border-border bg-card shadow-[0_28px_90px_rgb(0_0_0/0.24)] sm:max-h-[calc(100dvh-3rem)]"
       >
         <header className="flex items-center justify-between gap-4 border-b border-border px-5 py-4 sm:px-7">
           <div className="flex min-w-0 items-center gap-3">
@@ -166,44 +164,33 @@ export function OAuthConsent({
               <p className="text-xs text-muted">Secure connection</p>
             </div>
           </div>
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-success/25 bg-success/10 px-2.5 py-1 text-[11px] font-bold text-success">
+          <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-success">
             <ShieldCheck className="size-3.5" aria-hidden="true" />
-            Permission request
+            Secure OAuth
           </span>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6 pt-7 sm:px-8 sm:pb-7 sm:pt-8">
-          <div className="mx-auto flex max-w-[520px] items-center justify-center" aria-hidden="true">
-            <div className="flex size-14 items-center justify-center rounded-2xl border border-primary/20 bg-brand-soft shadow-sm sm:size-16">
-              <ConsentBrandMark className="size-10 rounded-xl sm:size-11" />
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-8 sm:py-6">
+          <div className="mx-auto max-w-[540px]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card-muted/70 px-2.5 py-1.5 text-xs font-semibold text-foreground-strong">
+              <ConsentBrandMark className="size-5 rounded-md" />
+              <span>UGC Pilot</span>
+              <span aria-hidden="true" className="text-muted-subtle">/</span>
+              <span className="max-w-52 truncate" translate="no">{clientName}</span>
             </div>
-            <div className="relative mx-2 h-px w-16 bg-border sm:mx-4 sm:w-24">
-              <span className="absolute left-1/2 top-1/2 flex size-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card text-primary shadow-sm">
-                <ArrowRight className="size-3.5" />
-              </span>
-            </div>
-            <div className="flex size-14 items-center justify-center rounded-2xl border border-border-strong bg-card-muted text-xl font-black text-foreground-strong shadow-sm sm:size-16 sm:text-2xl">
-              {clientInitial}
-            </div>
-          </div>
-
-          <div className="mx-auto mt-6 max-w-[540px] text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
-              Connect an app
-            </p>
             <h1
               id="oauth-consent-title"
-              className="mt-2 text-balance text-[1.75rem] font-bold leading-tight tracking-[-0.035em] text-foreground-strong [overflow-wrap:anywhere] sm:text-[2rem]"
+              className="mt-4 text-balance text-[1.7rem] font-bold leading-tight tracking-[-0.035em] text-foreground-strong [overflow-wrap:anywhere] sm:text-[1.9rem]"
             >
-              Allow {clientName} to access UGC Pilot?
+              Review what {clientName} can access
             </h1>
-            <p className="mx-auto mt-3 max-w-[480px] text-sm leading-6 text-muted sm:text-[15px]">
-              Review what this app can use before connecting your account.
+            <p className="mt-2 max-w-[510px] text-sm leading-6 text-muted sm:text-[15px]">
+              Only the permissions shown below will be granted to this connection.
             </p>
           </div>
 
           {user ? (
-            <div className="mx-auto mt-6 flex max-w-[540px] items-center gap-3 rounded-2xl border border-border bg-card-muted/65 px-4 py-3">
+            <div className="mx-auto mt-5 flex max-w-[540px] items-center gap-3 rounded-2xl border border-border bg-card-muted/65 px-4 py-3">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-success/12 text-success">
                 <BadgeCheck className="size-[18px]" aria-hidden="true" />
               </span>
@@ -224,12 +211,12 @@ export function OAuthConsent({
             </div>
           ) : null}
 
-          <div className="mx-auto mt-6 max-w-[540px]">
+          <div className="mx-auto mt-5 max-w-[540px]">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-sm font-bold text-foreground-strong">
-                This app is requesting
+                Requested permissions
               </h2>
-              <span className="text-xs text-muted">
+              <span className="shrink-0 text-xs text-muted">
                 {scopes.length} {scopes.length === 1 ? "permission" : "permissions"}
               </span>
             </div>
@@ -260,6 +247,9 @@ export function OAuthConsent({
                 );
               })}
             </ul>
+            <p className="mt-3 text-xs leading-5 text-muted">
+              If {clientName} needs another permission later, you will review a separate request before it is granted.
+            </p>
           </div>
 
           <div className="mx-auto mt-4 flex max-w-[540px] items-start gap-3 rounded-xl border border-border/80 bg-card-muted/45 px-3.5 py-3 text-xs leading-5 text-muted">
@@ -275,13 +265,32 @@ export function OAuthConsent({
                 {redirectDestination === "loopback" ? "Local callback" : "Callback"}: {redirectHost}
               </p>
               <p className="mt-1 text-muted-subtle">
-                Only continue if you started this connection.
+                Your password and payment details are not shared with {clientName}. Only continue if you started this connection.
+              </p>
+              <p className="mt-2 text-muted-subtle">
+                <a
+                  className="font-semibold text-primary underline decoration-primary/40 underline-offset-2 hover:text-primary-hover focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                  href="https://getugcpilot.com/privacy"
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Privacy Policy
+                </a>
+                <span aria-hidden="true"> · </span>
+                <a
+                  className="font-semibold text-primary underline decoration-primary/40 underline-offset-2 hover:text-primary-hover focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                  href="https://getugcpilot.com/terms"
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Terms of Service
+                </a>
               </p>
             </div>
           </div>
         </div>
 
-        <footer className="shrink-0 border-t border-border bg-card px-5 py-4 sm:px-8 sm:py-5">
+        <footer className="shrink-0 border-t border-border bg-card px-5 py-3.5 sm:px-8 sm:py-4">
           <div className="mx-auto max-w-[540px]">
             {loading ? (
               <div
@@ -312,14 +321,14 @@ export function OAuthConsent({
                 Verify the email address for this UGC Pilot account, then return here to continue.
               </div>
             ) : (
-              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <div className="grid grid-cols-2 gap-3">
                 <Button
                   type="button"
                   size="auth-compact"
                   variant="outline"
                   disabled={busy}
                   onClick={() => void decide(false)}
-                  className="min-h-11 w-full touch-manipulation px-5 sm:w-auto"
+                  className="min-h-11 w-full touch-manipulation px-4"
                 >
                   Cancel
                 </Button>
@@ -329,7 +338,7 @@ export function OAuthConsent({
                   disabled={busy}
                   aria-busy={busy}
                   onClick={() => void decide(true)}
-                  className="min-h-11 w-full touch-manipulation px-5 font-semibold shadow-[0_8px_24px_color-mix(in_srgb,var(--primary)_24%,transparent)] sm:w-auto"
+                  className="min-h-11 w-full touch-manipulation px-4 font-semibold shadow-[0_8px_24px_color-mix(in_srgb,var(--primary)_24%,transparent)]"
                 >
                   {busy ? (
                     <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />

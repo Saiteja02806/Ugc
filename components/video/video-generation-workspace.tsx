@@ -57,6 +57,8 @@ import {
   AI_STUDIO_VIDEO_MODELS,
   AI_STUDIO_VIDEO_RESOLUTIONS,
   isAIStudioVideoResolutionSupported,
+  parseAIStudioVideoModel,
+  parseAIStudioVideoResolution,
   type AIStudioGenerationQuantity,
   type AIStudioVideoAspectRatio,
   type AIStudioVideoDuration,
@@ -199,17 +201,9 @@ function getPendingVideoMetadata(
           : "9:16",
       avatarName:
         typeof value.avatarName === "string" ? value.avatarName : "",
-      model:
-        value.model === "google_omni" || value.model === "seedance_2_5"
-          ? value.model
-          : "seedance_2_5",
+      model: parseAIStudioVideoModel(value.model),
       prompt: typeof value.prompt === "string" ? value.prompt : "",
-      resolution:
-        value.resolution === "480p" ||
-        value.resolution === "720p" ||
-        value.resolution === "1080p"
-          ? value.resolution
-          : "720p",
+      resolution: parseAIStudioVideoResolution(value.resolution),
     };
   } catch {
     return null;

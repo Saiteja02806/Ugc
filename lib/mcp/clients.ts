@@ -2,7 +2,7 @@ import "server-only";
 
 import { lookup } from "node:dns/promises";
 import https from "node:https";
-import { isIP } from "node:net";
+import { isIP, type LookupFunction } from "node:net";
 import { randomBytes } from "node:crypto";
 import ipaddr from "ipaddr.js";
 
@@ -86,11 +86,24 @@ function publicAddress(address: string) {
   }
 }
 
+export function createPinnedLookup(address: { address: string; family: number }): LookupFunction {
+  return (_hostname, options, callback) => {
+    // Node 24 enables autoSelectFamily for HTTPS requests. In that mode it asks
+    // custom lookups for an array, even though this request must remain pinned
+    // to the single public address we verified above.
+    if (options.all) {
+      callback(null, [address]);
+      return;
+    }
+    callback(null, address.address, address.family);
+  };
+}
+
 function pinnedHttpsJson(url: URL, address: { address: string; family: number }, timeoutMs: number) {
   return new Promise<string>((resolve, reject) => {
     const request = https.get(url, {
       headers: { Accept: "application/json" },
-      lookup: (_hostname, _options, callback) => callback(null, address.address, address.family),
+      lookup: createPinnedLookup(address),
     }, (response) => {
       if (response.statusCode !== 200 ||
           !response.headers["content-type"]?.includes("application/json")) {

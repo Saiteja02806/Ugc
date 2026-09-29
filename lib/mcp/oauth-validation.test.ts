@@ -8,6 +8,7 @@ import {
   supportsPublicClientTokenExchange,
   validRedirectUri,
 } from "./client-validation.ts";
+import { createPinnedLookup } from "./clients.ts";
 import { matchesPkce, pkceChallenge } from "./pkce.ts";
 import { parseMcpScopes } from "./scopes.ts";
 
@@ -91,6 +92,27 @@ test("CIMD selects none from the supported method intersection", () => {
   }), false);
   assert.equal(supportsPublicClientTokenExchange({ token_endpoint_auth_methods_supported: "none" }), false);
   assert.equal(supportsPublicClientTokenExchange({ token_endpoint_auth_method: 0 }), false);
+});
+
+test("pinned client-metadata lookups support Node's address-list mode", async () => {
+  const lookup = createPinnedLookup({ address: "203.0.113.10", family: 4 });
+  const single = await new Promise<{ address: string | { address: string; family: number }[]; family?: number }>((resolve, reject) => {
+    lookup("metadata.example.test", { all: false }, (error, address, family) => {
+      if (error) reject(error);
+      else resolve({ address, family });
+    });
+  });
+  assert.equal(single.address, "203.0.113.10");
+  assert.equal(single.family, 4);
+
+  const many = await new Promise<{ address: string | { address: string; family: number }[]; family?: number }>((resolve, reject) => {
+    lookup("metadata.example.test", { all: true }, (error, address, family) => {
+      if (error) reject(error);
+      else resolve({ address, family });
+    });
+  });
+  assert.deepEqual(many.address, [{ address: "203.0.113.10", family: 4 }]);
+  assert.equal(many.family, undefined);
 });
 
 test("consent copy identifies only official callback shapes", () => {

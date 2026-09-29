@@ -336,11 +336,19 @@ test("video results keep the prompt visible with custom playback controls", () =
   );
 });
 
-test("completed image and video results expose download and open actions", () => {
+test("completed image results expose download and open actions while video cards keep only download", () => {
   assert.match(imageWorkspace, /<AiStudioResultActions[\s\S]*?kind="image"/);
   assert.match(videoWorkspace, /<AiStudioResultActions[\s\S]*?kind="video"/);
   assert.match(resultActions, /download=\{fileName\}/);
   assert.match(resultActions, /aria-label=\{`Open \$\{title\} in a new tab`\}/);
+  assert.match(videoWorkspace, /kind="video"[\s\S]*?showOpenAction=\{false\}/);
+  assert.doesNotMatch(
+    videoWorkspace.slice(
+      videoWorkspace.indexOf("function VideoResultCard"),
+      videoWorkspace.indexOf("function VideoPromptBubble"),
+    ),
+    />\s*Creative Assets\s*</,
+  );
 });
 
 test("the active reference control accepts a pasted image into the composer", () => {
@@ -379,7 +387,7 @@ test("image previews remain compact and video results use the dedicated history 
   );
   assert.match(
     videoWorkspace,
-    /"9:16": "w-\[min\(100%,18rem\)\]"/,
+    /"9:16": "w-\[min\(100%,15rem\)\]"/,
   );
   assert.match(
     videoWorkspace,

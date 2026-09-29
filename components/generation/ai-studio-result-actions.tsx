@@ -7,12 +7,14 @@ import { cn } from "@/lib/utils";
 export function AiStudioResultActions({
   className,
   kind,
+  showOpenAction = true,
   title,
   url,
   variant = "icons",
 }: {
   className?: string;
   kind: "image" | "video";
+  showOpenAction?: boolean;
   title: string;
   url: string;
   variant?: "icons" | "buttons";
@@ -38,17 +40,19 @@ export function AiStudioResultActions({
         <Download className="size-3.5" aria-hidden="true" />
         {variant === "buttons" ? "Download" : null}
       </a>
-      <a
-        href={url}
-        target="_blank"
-        rel="noreferrer"
-        aria-label={`Open ${title} in a new tab`}
-        title={`Open ${mediaLabel} in a new tab`}
-        className={actionClassName}
-      >
-        <ExternalLink className="size-3.5" aria-hidden="true" />
-        {variant === "buttons" ? "Open" : null}
-      </a>
+      {showOpenAction ? (
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={`Open ${title} in a new tab`}
+          title={`Open ${mediaLabel} in a new tab`}
+          className={actionClassName}
+        >
+          <ExternalLink className="size-3.5" aria-hidden="true" />
+          {variant === "buttons" ? "Open" : null}
+        </a>
+      ) : null}
     </div>
   );
 }

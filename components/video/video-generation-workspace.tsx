@@ -102,10 +102,10 @@ const VIDEO_JOB_STORAGE_PREFIX = "ugc-ai-studio.latest-video-job.v2.";
 const VIDEO_JOB_METADATA_PREFIX = "ugc-ai-studio.video-job.v2.";
 const VIDEO_JOB_URL_PARAMETER = "videoJob";
 const VIDEO_RESULT_WIDTH_CLASS_NAMES: Record<GeneratedVideo["ratio"], string> = {
-  "4:5": "w-[min(100%,17rem)]",
-  "1:1": "w-[min(100%,20rem)]",
-  "9:16": "w-[min(100%,18rem)]",
-  "16:9": "w-[min(100%,28rem)]",
+  "4:5": "w-[min(100%,14rem)]",
+  "1:1": "w-[min(100%,16rem)]",
+  "9:16": "w-[min(100%,15rem)]",
+  "16:9": "w-[min(100%,24rem)]",
 };
 
 type GenerateVideoResponse =
@@ -1470,16 +1470,11 @@ function VideoResultCard({
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <AiStudioResultActions
             kind="video"
+            showOpenAction={false}
             title={video.title}
             url={video.url}
             variant="buttons"
           />
-          <Link
-            href="/avatars"
-            className="inline-flex h-8 items-center rounded-[var(--radius-control)] border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-          >
-            Creative Assets
-          </Link>
           <span className="ml-auto hidden text-xs text-muted sm:inline">
             {formatGeneratedAt(video.createdAt)}
           </span>

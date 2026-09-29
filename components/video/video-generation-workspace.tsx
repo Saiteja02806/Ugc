@@ -168,7 +168,16 @@ function persistPendingVideoMetadata(
   }
 }
 
-function getPendingVideoMetadata(userId: string, jobId: string) {
+function getPendingVideoMetadata(
+  userId: string,
+  jobId: string,
+): {
+  aspectRatio: AIStudioVideoAspectRatio;
+  avatarName: string;
+  model: AIStudioVideoModel;
+  prompt: string;
+  resolution: AIStudioVideoResolution;
+} | null {
   try {
     const rawValue = window.localStorage.getItem(
       `${VIDEO_JOB_METADATA_PREFIX}${userId}.${jobId}`,

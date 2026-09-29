@@ -61,7 +61,7 @@ type HookVideoAspectRatio = (typeof hookVideoAspectRatios)[number];
 const hookVideoResolutions = ["480p", "720p", "1080p"] as const;
 type HookVideoResolution = (typeof hookVideoResolutions)[number];
 
-const MAX_HOOK_LENGTH = 5_000;
+const MAX_HOOK_LENGTH = 10_000;
 const MAX_PRODUCT_NAME_LENGTH = 120;
 const MAX_PRODUCT_DESCRIPTION_LENGTH = 500;
 

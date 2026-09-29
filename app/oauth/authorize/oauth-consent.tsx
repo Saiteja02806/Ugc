@@ -21,6 +21,7 @@ import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import type { RedirectDestination } from "@/lib/mcp/client-validation";
 
 import { ConsentBrandMark } from "./consent-brand-mark";
 
@@ -47,8 +48,8 @@ const SCOPE_DETAILS: Record<string, ScopeDetails> = {
     icon: Images,
   },
   "assets:write": {
-    title: "Upload media",
-    description: "Add reference images to your UGC Pilot creative library.",
+    title: "Manage uploaded media",
+    description: "Add and remove reference images in your UGC Pilot creative library.",
     icon: Upload,
   },
   "generation:write": {
@@ -66,13 +67,13 @@ const SCOPE_DETAILS: Record<string, ScopeDetails> = {
 export function OAuthConsent({
   clientName,
   redirectHost,
-  redirectIsLocal,
+  redirectDestination,
   scopes,
   authorizationParams,
 }: {
   clientName: string;
   redirectHost: string;
-  redirectIsLocal: boolean;
+  redirectDestination: RedirectDestination;
   scopes: string[];
   authorizationParams: string;
 }) {
@@ -125,6 +126,20 @@ export function OAuthConsent({
 
   const accountLabel = user?.email ?? user?.displayName ?? "UGC Pilot account";
   const clientInitial = clientName.trim().charAt(0).toUpperCase() || "A";
+  const redirectTitle = redirectDestination === "chatgpt"
+    ? "Return to ChatGPT"
+    : redirectDestination === "claude"
+      ? "Return to Claude"
+      : redirectDestination === "loopback"
+        ? "Return to the app on this device"
+        : `Return to ${redirectHost}`;
+  const redirectDescription = redirectDestination === "chatgpt"
+    ? "After approval, this browser will return securely to ChatGPT."
+    : redirectDestination === "claude"
+      ? "After approval, this browser will return securely to Claude."
+      : redirectDestination === "loopback"
+        ? "This local address returns control to the desktop or command-line app that started the connection. Keep that app open."
+        : "After approval, this browser will return to the requesting app.";
 
   return (
     <main className="relative isolate flex min-h-dvh items-center justify-center overflow-hidden bg-background px-4 py-4 sm:px-6 sm:py-6">
@@ -202,7 +217,7 @@ export function OAuthConsent({
                 type="button"
                 disabled={busy || switchingAccount}
                 onClick={() => void switchAccount()}
-                className="shrink-0 rounded-md px-2 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-11 shrink-0 touch-manipulation rounded-md px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {switchingAccount ? "Switching…" : "Switch account"}
               </button>
@@ -251,21 +266,13 @@ export function OAuthConsent({
             <LockKeyhole className="mt-0.5 size-4 shrink-0 text-muted-subtle" aria-hidden="true" />
             <div className="min-w-0">
               <p className="font-semibold text-foreground">
-                {redirectIsLocal
-                  ? "Return to the app on this device"
-                  : `Return to ${redirectHost}`}
+                {redirectTitle}
               </p>
               <p className="mt-0.5">
-                {redirectIsLocal ? (
-                  <>
-                    After approval, this private callback returns control to the desktop app that started the connection.
-                    <span className="mt-1 block break-all font-mono text-[11px] font-semibold text-muted-subtle">
-                      Local callback: {redirectHost}
-                    </span>
-                  </>
-                ) : (
-                  "After approval, this browser will return to the requesting app."
-                )}
+                {redirectDescription}
+              </p>
+              <p className="mt-1 break-all font-mono text-[11px] font-semibold text-muted-subtle" translate="no">
+                {redirectDestination === "loopback" ? "Local callback" : "Callback"}: {redirectHost}
               </p>
               <p className="mt-1 text-muted-subtle">
                 Only continue if you started this connection.
@@ -312,7 +319,7 @@ export function OAuthConsent({
                   variant="outline"
                   disabled={busy}
                   onClick={() => void decide(false)}
-                  className="w-full px-5 sm:w-auto"
+                  className="min-h-11 w-full touch-manipulation px-5 sm:w-auto"
                 >
                   Cancel
                 </Button>
@@ -322,7 +329,7 @@ export function OAuthConsent({
                   disabled={busy}
                   aria-busy={busy}
                   onClick={() => void decide(true)}
-                  className="w-full px-5 font-semibold shadow-[0_8px_24px_color-mix(in_srgb,var(--primary)_24%,transparent)] sm:w-auto"
+                  className="min-h-11 w-full touch-manipulation px-5 font-semibold shadow-[0_8px_24px_color-mix(in_srgb,var(--primary)_24%,transparent)] sm:w-auto"
                 >
                   {busy ? (
                     <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />

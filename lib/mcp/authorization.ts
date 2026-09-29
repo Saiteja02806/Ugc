@@ -1,6 +1,7 @@
 import "server-only";
 
 import { resolveMcpClient, type McpOAuthClient } from "./clients";
+import { redirectUriMatches } from "./client-validation";
 import { getMcpResource } from "./config";
 import { parseMcpScopes } from "./scopes";
 
@@ -27,6 +28,6 @@ export async function validateAuthorizationRequest(params: URLSearchParams): Pro
   const scopes = parseMcpScopes(params.get("scope"));
   if (!scopes) return null;
   const client = await resolveMcpClient(clientId);
-  if (!client || !client.redirectUris.includes(redirectUri)) return null;
+  if (!client || !client.redirectUris.some((registered) => redirectUriMatches(registered, redirectUri))) return null;
   return { client, redirectUri, resource, scopes, codeChallenge, state };
 }

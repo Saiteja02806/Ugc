@@ -223,6 +223,9 @@ const routeBodyText = await authenticatedRoute.text();
 const routeDataLine = routeBodyText.split("\n").find((line) => line.startsWith("data: "));
 const routeBody = JSON.parse(routeDataLine ? routeDataLine.slice(6) : routeBodyText);
 assert.ok(routeBody.result.tools.some((tool) => tool.name === "get_profile"));
+for (const tool of routeBody.result.tools) {
+  assert.deepEqual(tool.securitySchemes, tool._meta.securitySchemes);
+}
 assert.equal(seenBearerHash, `eq.${createHash("sha256").update(bearerSecret).digest("hex")}`);
 for (const mode of ["missing", "expired", "revoked", "wrong-resource"]) {
   bearerMode = mode;

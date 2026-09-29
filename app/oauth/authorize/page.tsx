@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { validateAuthorizationRequest } from "@/lib/mcp/authorization";
+import { classifyRedirectDestination } from "@/lib/mcp/client-validation";
 
 import { ConsentBrandMark } from "./consent-brand-mark";
 import { OAuthConsent } from "./oauth-consent";
@@ -45,14 +46,12 @@ export default async function OAuthAuthorizePage({
     );
   }
   const redirectUrl = new URL(authorization.redirectUri);
-  const redirectIsLocal =
-    redirectUrl.protocol === "http:" &&
-    ["localhost", "127.0.0.1", "[::1]"].includes(redirectUrl.hostname);
+  const redirectDestination = classifyRedirectDestination(authorization.redirectUri);
 
   return <OAuthConsent
     clientName={authorization.client.clientName}
     redirectHost={redirectUrl.host}
-    redirectIsLocal={redirectIsLocal}
+    redirectDestination={redirectDestination}
     scopes={authorization.scopes}
     authorizationParams={params.toString()}
   />;

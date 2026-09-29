@@ -6,7 +6,10 @@ import { isIP } from "node:net";
 import { randomBytes } from "node:crypto";
 import ipaddr from "ipaddr.js";
 
-import { validRedirectUri } from "./client-validation";
+import {
+  supportsPublicClientTokenExchange,
+  validRedirectUri,
+} from "./client-validation";
 import { getMcpStore } from "./store";
 
 export type McpOAuthClient = {
@@ -50,10 +53,10 @@ async function fetchClientMetadata(clientId: string): Promise<McpOAuthClient | n
         !Array.isArray(metadata.redirect_uris) ||
         metadata.redirect_uris.length === 0 || metadata.redirect_uris.length > 10 ||
         !metadata.redirect_uris.every((uri) => typeof uri === "string" && validRedirectUri(uri)) ||
-        (metadata.token_endpoint_auth_method && metadata.token_endpoint_auth_method !== "none")) return null;
+        !supportsPublicClientTokenExchange(metadata)) return null;
     return {
       clientId,
-      clientName: metadata.client_name.slice(0, 100),
+      clientName: metadata.client_name.trim().slice(0, 100),
       redirectUris: metadata.redirect_uris as string[],
     };
   } catch {

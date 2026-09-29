@@ -28,6 +28,7 @@ import {
 } from "@/components/generation/ai-studio-results";
 import { AiStudioResultActions } from "@/components/generation/ai-studio-result-actions";
 import { ReferenceMediaUpload } from "@/components/generation/reference-media-upload";
+import { ReferenceImageListUpload } from "@/components/video/reference-image-list-upload";
 import { CreatorReferencePicker } from "@/components/video/creator-reference-picker";
 import { Button } from "@/components/ui/button";
 import {
@@ -296,6 +297,8 @@ export function VideoGenerationStudioPanel({
     useState<AIStudioVideoDuration>(5);
   const [uploadedReference, setUploadedReference] =
     useState<AIStudioReferenceMedia | null>(null);
+  const [additionalImageReferences, setAdditionalImageReferences] =
+    useState<AIStudioReferenceMedia[]>([]);
   const [uploadedVideoReference, setUploadedVideoReference] =
     useState<AIStudioReferenceMedia | null>(null);
   const [selectedCreatorReferenceId, setSelectedCreatorReferenceId] =
@@ -350,14 +353,30 @@ export function VideoGenerationStudioPanel({
       ? `This generation needs ${requiredCredits} AI credits. You have ${creditsRemaining}.`
       : `This generation uses ${requiredCredits} AI credits (${creditsPerSecond} per second).`;
 
+  const referenceImages = [
+    ...(uploadedReference ? [uploadedReference] : []),
+    ...additionalImageReferences,
+  ];
   const activeReferenceImageUrl = uploadedReference?.asset.url ?? null;
+  const maxReferenceImages = model === "seedance_2_5"
+    ? (uploadedVideoReference ? 29 : 30)
+    : 6;
   const uploadedReferenceVideo = uploadedVideoReference;
 
   function handleReferenceChange(selection: AIStudioReferenceMedia | null) {
     submissionKeyRef.current = null;
     setSelectedCreatorReferenceId(null);
     setUploadedReference(selection);
+    if (!selection) setAdditionalImageReferences([]);
     if (selection && model === "google_omni") setUploadedVideoReference(null);
+  }
+
+  function handleImageReferencesChange(selections: AIStudioReferenceMedia[]) {
+    submissionKeyRef.current = null;
+    setSelectedCreatorReferenceId(null);
+    setUploadedReference(selections[0] ?? null);
+    setAdditionalImageReferences(selections.slice(1));
+    if (selections.length && model === "google_omni") setUploadedVideoReference(null);
   }
 
   function handleVideoReferenceChange(selection: AIStudioReferenceMedia | null) {
@@ -366,8 +385,13 @@ export function VideoGenerationStudioPanel({
     if (!selection) return;
     if (model === "google_omni") {
       setUploadedReference(null);
+      setAdditionalImageReferences([]);
       setSelectedCreatorReferenceId(null);
     } else {
+      if (referenceImages.length > 29) {
+        setAdditionalImageReferences(referenceImages.slice(1, 29));
+        setActionNotice("The video uses one of Seedance's 30 reference slots; the last image was removed.");
+      }
       const matchingDuration = AI_STUDIO_VIDEO_DURATIONS.find(
         (duration) => duration >= 4 && duration >= selection.asset.durationSeconds!,
       );
@@ -696,6 +720,7 @@ export function VideoGenerationStudioPanel({
         body: JSON.stringify({
           aspectRatio,
           avatarImageUrl: activeReferenceImageUrl,
+          referenceImageUrls: referenceImages.map((image) => image.asset.url),
           durationSeconds,
           idempotencyKey,
           model,
@@ -927,23 +952,23 @@ export function VideoGenerationStudioPanel({
         isGenerating={isGenerating}
         layout="unified"
         leadingControl={
-          <div className="flex items-start gap-2">
-            <ReferenceMediaUpload
+          <div className="flex min-w-0 flex-col gap-2">
+            <ReferenceImageListUpload
               active={active}
-              allowedKinds={["image"]}
               disabled={generationLocked || isGenerating || creatorReferenceUploadPending}
-              selection={uploadedReference}
-              onChange={handleReferenceChange}
+              maxImages={maxReferenceImages}
+              selections={referenceImages}
+              onChange={handleImageReferencesChange}
             />
-            {!isExploreRecreate ? (
-              <ReferenceMediaUpload
+            {!isExploreRecreate && model === "seedance_2_5" ? (
+              <div className="flex min-w-0 flex-wrap items-center gap-2"><ReferenceMediaUpload
                 active={active}
                 allowedKinds={["video"]}
                 disabled={generationLocked || isGenerating || creatorReferenceUploadPending}
                 maxVideoDurationSeconds={model === "seedance_2_5" ? 30 : 3}
                 selection={uploadedVideoReference}
                 onChange={handleVideoReferenceChange}
-              />
+              /></div>
             ) : null}
           </div>
         }
@@ -991,7 +1016,7 @@ export function VideoGenerationStudioPanel({
               disabled={generationLocked || isGenerating}
               options={AI_STUDIO_VIDEO_MODELS.map((value) => ({
                 label:
-                  value === "seedance_2_5" ? "Seedance 2.5" : "Google Omni",
+                  value === "seedance_2_5" ? "Seedance 2.5" : "Omni Flash 1.1",
                 value,
               }))}
               value={model}
@@ -1001,11 +1026,13 @@ export function VideoGenerationStudioPanel({
                   setDurationSeconds(5);
                 }
                 if (value === "google_omni") {
-                  if (uploadedVideoReference && (uploadedVideoReference.asset.durationSeconds ?? 0) > 3) {
+                  if (uploadedVideoReference) {
                     setUploadedVideoReference(null);
-                    setActionNotice("Removed the video reference because Google Omni accepts clips up to 3 seconds.");
-                  } else if (uploadedReference && uploadedVideoReference) {
-                    setUploadedVideoReference(null);
+                    setActionNotice("Removed the video reference. Select Seedance 2.5 to use a video together with images.");
+                  }
+                  if (referenceImages.length > 6) {
+                    setAdditionalImageReferences(referenceImages.slice(1, 6));
+                    setActionNotice("Google Omni accepts up to 6 reference images in UGC Pilot; extra images were removed.");
                   }
                   if (durationSeconds > 10) setDurationSeconds(5);
                 }

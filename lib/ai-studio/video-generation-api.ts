@@ -35,6 +35,7 @@ import {
 type GenerateVideoRequest = {
   aspectRatio?: unknown;
   avatarImageUrl?: unknown;
+  referenceImageUrls?: unknown;
   hookIdea?: unknown;
   idempotencyKey?: unknown;
   model?: unknown;
@@ -139,6 +140,10 @@ export async function handleAIStudioVideoGeneration(request: Request) {
     | null;
   const prompt = normalizeAIStudioPrompt(body?.prompt ?? body?.hookIdea);
   const avatarImageUrl = cleanHttpsUrl(body?.avatarImageUrl);
+  const imageUrlsInput = body?.referenceImageUrls;
+  const referenceImageUrls = Array.isArray(imageUrlsInput)
+    ? imageUrlsInput.map(cleanHttpsUrl)
+    : avatarImageUrl ? [avatarImageUrl] : [];
   const referenceVideoUrl = cleanHttpsUrl(body?.referenceVideoUrl);
   const referenceVideoDurationSeconds = cleanReferenceVideoDuration(
     body?.referenceVideoDurationSeconds,
@@ -159,6 +164,26 @@ export async function handleAIStudioVideoGeneration(request: Request) {
     );
   }
 
+  if (
+    (imageUrlsInput !== undefined && !Array.isArray(imageUrlsInput)) ||
+    referenceImageUrls.some((url) => !url) ||
+    (avatarImageUrl && referenceImageUrls[0] !== avatarImageUrl) ||
+    new Set(referenceImageUrls).size !== referenceImageUrls.length
+  ) {
+    return NextResponse.json(
+      { error: "Reference images must be distinct trusted uploaded files.", ok: false },
+      { status: 400 },
+    );
+  }
+
+  const maxImages = model === "seedance_2_5" ? (referenceVideoUrl ? 29 : 30) : 6;
+  if (referenceImageUrls.length > maxImages) {
+    return NextResponse.json(
+      { error: `This model accepts up to ${maxImages} reference images in UGC Pilot.`, ok: false },
+      { status: 400 },
+    );
+  }
+
   if (body?.referenceVideoUrl && !referenceVideoUrl) {
     return NextResponse.json(
       { error: "The reference video is not a trusted uploaded file.", ok: false },
@@ -166,7 +191,7 @@ export async function handleAIStudioVideoGeneration(request: Request) {
     );
   }
 
-  if (isExploreRecreate && !avatarImageUrl) {
+  if (isExploreRecreate && referenceImageUrls.length === 0) {
     return NextResponse.json(
       {
         error:
@@ -177,9 +202,9 @@ export async function handleAIStudioVideoGeneration(request: Request) {
     );
   }
 
-  if (model === "google_omni" && avatarImageUrl && referenceVideoUrl) {
+  if (model === "google_omni" && referenceVideoUrl) {
     return NextResponse.json(
-      { error: "Google Omni accepts either a reference image or a reference video, not both.", ok: false },
+      { error: "Google Omni video references are unavailable in UGC Pilot. Select Seedance 2.5 to use a video reference.", ok: false },
       { status: 400 },
     );
   }
@@ -287,6 +312,7 @@ export async function handleAIStudioVideoGeneration(request: Request) {
         input: {
           aspectRatio,
           avatarImageUrl,
+          referenceImageUrls,
           batchIndex: index + 1,
           batchSize: quantity,
           durationSeconds,

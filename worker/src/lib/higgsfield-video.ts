@@ -9,6 +9,7 @@ import { getRequiredProviderEnv } from "./provider-env.js";
 
 const TEXT_MODEL = "bytedance/seedance-2.5/text-to-video";
 const IMAGE_MODEL = "bytedance/seedance-2.5/image-to-video";
+const REFERENCE_MODEL = "bytedance/seedance-2.5/reference-to-video";
 const EDIT_MODEL = "bytedance/seedance-2.5/video-edit";
 const STATUS_POLL_INTERVAL_MS = 5_000;
 const STATUS_POLL_WINDOW_MS = 24 * 60_000;
@@ -22,6 +23,7 @@ export async function generateHiggsfieldVideoBuffer(params: {
   providerOperationId?: string;
   providerOutputUrl?: string;
   referenceImageUrl?: string;
+  referenceImageUrls?: string[];
   referenceVideoUrl?: string;
 }) {
   if (params.providerOperationId && params.providerOutputUrl && /^https:\/\//i.test(params.providerOutputUrl)) {
@@ -38,7 +40,8 @@ export async function generateHiggsfieldVideoBuffer(params: {
   }
   if (
     (params.referenceImageUrl && !/^https:\/\//i.test(params.referenceImageUrl)) ||
-    (params.referenceVideoUrl && !/^https:\/\//i.test(params.referenceVideoUrl))
+    (params.referenceVideoUrl && !/^https:\/\//i.test(params.referenceVideoUrl)) ||
+    params.referenceImageUrls?.some((url) => !/^https:\/\//i.test(url))
   ) {
     throw new ProviderRequestNotSubmittedError("Seedance references require HTTPS URLs.");
   }
@@ -51,22 +54,39 @@ export async function generateHiggsfieldVideoBuffer(params: {
   }
 
   const client = createHiggsfieldClient({ credentials, maxRetries: 0 });
+  const imageUrls = params.referenceImageUrls?.length
+    ? params.referenceImageUrls
+    : params.referenceImageUrl ? [params.referenceImageUrl] : [];
+  if (imageUrls.length > (params.referenceVideoUrl ? 29 : 30)) {
+    throw new ProviderRequestNotSubmittedError("Too many Seedance references.");
+  }
   const model = params.referenceVideoUrl
     ? EDIT_MODEL
-    : params.referenceImageUrl ? IMAGE_MODEL : TEXT_MODEL;
+    : imageUrls.length > 1 ? REFERENCE_MODEL
+    : imageUrls.length === 1 ? IMAGE_MODEL : TEXT_MODEL;
   const input = params.referenceVideoUrl
     ? {
         prompt: params.prompt,
         video_url: params.referenceVideoUrl,
-        ...(params.referenceImageUrl ? { image_urls: [params.referenceImageUrl] } : {}),
+        ...(imageUrls.length ? { image_urls: imageUrls } : {}),
         resolution: "720p",
         output_format: "mp4",
         generate_audio: true,
       }
-    : params.referenceImageUrl
+    : imageUrls.length > 1
       ? {
           prompt: params.prompt,
-          image_url: params.referenceImageUrl,
+          image_urls: imageUrls,
+          duration: params.durationSeconds,
+          resolution: "720p",
+          aspect_ratio: params.aspectRatio,
+          output_format: "mp4",
+          generate_audio: true,
+        }
+    : imageUrls.length === 1
+      ? {
+          prompt: params.prompt,
+          image_url: imageUrls[0],
           duration: params.durationSeconds,
           resolution: "720p",
           output_format: "mp4",

@@ -22,9 +22,10 @@ type GenerateGeminiOmniVideoParams = {
   prompt: string;
   providerOperationId?: string;
   referenceImageUrl?: string;
+  referenceImageUrls?: string[];
 };
 
-const DEFAULT_OMNI_MODEL = "gemini-omni-flash-preview";
+const DEFAULT_OMNI_MODEL = "gemini-omni-1.1-flash";
 const POLL_INTERVAL_MS = 10_000;
 const TIMEOUT_MS = 10 * 60_000;
 
@@ -38,6 +39,7 @@ export async function generateGeminiOmniVideoBuffer({
   prompt,
   providerOperationId,
   referenceImageUrl,
+  referenceImageUrls,
 }: GenerateGeminiOmniVideoParams) {
   const ai = getGoogleClient();
   const startedAt = Date.now();
@@ -54,17 +56,21 @@ export async function generateGeminiOmniVideoBuffer({
       );
     }
   } else {
-    const referenceImage = referenceImageUrl
-      ? await downloadReferenceImage(referenceImageUrl)
-      : null;
+    const imageUrls = referenceImageUrls?.length
+      ? referenceImageUrls
+      : referenceImageUrl ? [referenceImageUrl] : [];
+    if (imageUrls.length > 6) {
+      throw new ProviderRequestNotSubmittedError("UGC Pilot accepts up to 6 Google Omni reference images.");
+    }
+    const referenceImages = await Promise.all(imageUrls.map(downloadReferenceImage));
     interaction = await ai.interactions.create({
-      input: referenceImage
+      input: referenceImages.length
         ? [
-            {
-              data: referenceImage.data,
-              mime_type: referenceImage.mimeType,
+            ...referenceImages.map((image) => ({
+              data: image.data,
+              mime_type: image.mimeType,
               type: "image" as const,
-            },
+            })),
             { text: prompt, type: "text" as const },
           ]
         : prompt,

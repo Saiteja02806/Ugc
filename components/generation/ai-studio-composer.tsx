@@ -109,14 +109,14 @@ export function AiStudioComposer({
           ) : null}
           <Field
             className={cn(
-              "grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3",
+              "flex min-w-0 flex-col items-stretch",
               layout === "unified"
                 ? "gap-y-1 px-4 pb-1 pt-3 sm:px-5"
                 : "gap-y-2 px-1 pt-1",
               contextBanner && layout === "unified" && "!pt-1.5",
             )}
           >
-            {leadingControl}
+            {leadingControl ? <div className="min-w-0">{leadingControl}</div> : null}
             <FieldLabel htmlFor={promptId} className="sr-only">
               {ariaLabel}
             </FieldLabel>
@@ -136,16 +136,15 @@ export function AiStudioComposer({
                 layout === "unified"
                   ? "max-h-36 min-h-10 rounded-none px-0 py-0 text-base font-normal leading-7"
                   : "max-h-32 min-h-16 rounded-lg px-2 py-1.5 text-sm font-medium leading-6 focus-visible:ring-2 focus-visible:ring-focus sm:text-[15px]",
-                leadingControl ? "col-start-2 row-start-1" : "col-span-full",
+                "min-w-0",
               )}
               placeholder={placeholder}
             />
             <FieldDescription
               id={promptHelperId}
               className={cn(
-                "col-span-full flex min-w-0 items-start justify-between gap-3 text-xs",
+                "flex min-w-0 items-start justify-between gap-3 text-xs",
                 layout === "unified" ? "px-0" : "px-2",
-                leadingControl && "col-start-2",
                 promptTooLong && "text-destructive",
               )}
               role={promptTooLong ? "alert" : undefined}

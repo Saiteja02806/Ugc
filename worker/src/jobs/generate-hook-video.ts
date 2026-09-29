@@ -31,6 +31,7 @@ import type { WorkerJobContext, WorkerJobOutput } from "./index.js";
 type GenerateHookVideoBaseInput = {
   aspectRatio: HookVideoAspectRatio;
   avatarImageUrl?: string;
+  referenceImageUrls: string[];
   durationSeconds: number;
   hookIdea: string;
   model?: "google_omni" | "seedance_2_5";
@@ -173,14 +174,7 @@ async function generateWithFallback(
   }
 
   if (selectedProvider === "gemini") {
-    return generateWithProvider(
-      job,
-      context,
-      "gemini",
-      "primary",
-      input,
-      prompt,
-    );
+    return generateWithProvider(job, context, "gemini", "primary", input, prompt);
   }
 
   if (selectedProvider === "runway") {
@@ -268,6 +262,7 @@ async function generateWithProvider(
     prompt,
     provider,
     referenceImageUrl: input.avatarImageUrl,
+    referenceImageUrls: input.referenceImageUrls,
     referenceVideoDurationSeconds: input.referenceVideoDurationSeconds ?? null,
     referenceVideoUrl: input.referenceVideoUrl ?? null,
     videoId: input.videoId,
@@ -317,6 +312,7 @@ async function generateWithProvider(
       providerOperationId,
       providerOutputUrl,
       referenceImageUrl: input.avatarImageUrl,
+      referenceImageUrls: input.referenceImageUrls,
       referenceVideoDurationSeconds: input.referenceVideoDurationSeconds,
       referenceVideoUrl: input.referenceVideoUrl,
     };
@@ -361,6 +357,7 @@ async function generateProviderBuffer(
     providerOperationId?: string;
     providerOutputUrl?: string;
     referenceImageUrl?: string;
+    referenceImageUrls?: string[];
     referenceVideoDurationSeconds?: number;
     referenceVideoUrl?: string;
   },
@@ -421,6 +418,7 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
       getOptionalChoice(job.input_json.aspectRatio, hookVideoAspectRatios) ??
       "9:16",
     avatarImageUrl: getOptionalHttpsUrl(job.input_json.avatarImageUrl),
+    referenceImageUrls: getReferenceImageUrls(job.input_json.referenceImageUrls, job.input_json.avatarImageUrl),
     durationSeconds: getGenerationDurationSeconds(job.input_json.durationSeconds),
     hookIdea: getText(job.input_json.hookIdea, "hookIdea", MAX_HOOK_LENGTH),
     model: job.input_json.model === "seedance_2_5"
@@ -540,6 +538,21 @@ function getOptionalHttpsUrl(value: Json | undefined) {
   } catch {
     return undefined;
   }
+}
+
+function getReferenceImageUrls(value: Json | undefined, fallback: Json | undefined): string[] {
+  if (value === undefined) {
+    const url = getOptionalHttpsUrl(fallback);
+    return url ? [url] : [];
+  }
+  if (!Array.isArray(value) || value.length > 30) {
+    throw new Error("generate_hook_video has invalid reference images.");
+  }
+  const urls = value.map(getOptionalHttpsUrl);
+  if (urls.some((url) => !url) || new Set(urls).size !== urls.length) {
+    throw new Error("generate_hook_video has invalid reference images.");
+  }
+  return urls as string[];
 }
 
 function getPathSegment(value: Json | undefined, fieldName: string) {

@@ -83,7 +83,7 @@ export function ReferenceFilesUpload({ active, allowedKinds, disabled, maxFiles,
       }} />
       <Button type="button" variant="ghost" size="sm" className="h-7 rounded-lg px-2 text-xs text-muted" disabled={disabled || busy || selections.length >= maxFiles} title={`Choose, drop, or paste ${allowedKinds.join(", ")} files`} onClick={() => inputRef.current?.click()}>
         {busy ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : null}
-        {busy ? "Uploading…" : "Add files"}
+        {busy ? "Uploading…" : "Add"}
       </Button>
       {selections.map((selection) => (
         <div key={selection.asset.id} className="flex max-w-full min-w-0 flex-wrap items-center gap-1.5 rounded-xl border border-border bg-card-muted/80 p-1 pr-1.5 text-xs">

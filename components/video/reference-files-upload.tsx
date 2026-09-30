@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, X } from "lucide-react";
+import { Loader2, Plus, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getReferenceFileKind, REFERENCE_FILE_ACCEPT, validateReferenceFileBatch } from "@/lib/ai-studio/reference-files";
@@ -81,9 +81,8 @@ export function ReferenceFilesUpload({ active, allowedKinds, disabled, maxFiles,
         event.currentTarget.value = "";
         void addFiles(files);
       }} />
-      <Button type="button" variant="ghost" size="sm" className="h-7 rounded-lg px-2 text-xs text-muted" disabled={disabled || busy || selections.length >= maxFiles} title={`Choose, drop, or paste ${allowedKinds.join(", ")} files`} onClick={() => inputRef.current?.click()}>
-        {busy ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : null}
-        {busy ? "Uploading…" : "Add"}
+      <Button type="button" variant="ghost" size="icon-sm" className="rounded-lg text-muted" aria-label={busy ? "Uploading reference files" : "Add reference files"} disabled={disabled || busy || selections.length >= maxFiles} title={`Choose, drop, or paste ${allowedKinds.join(", ")} files`} onClick={() => inputRef.current?.click()}>
+        {busy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Plus className="size-4" aria-hidden="true" />}
       </Button>
       {selections.map((selection) => (
         <div key={selection.asset.id} className="flex max-w-full min-w-0 flex-wrap items-center gap-1.5 rounded-xl border border-border bg-card-muted/80 p-1 pr-1.5 text-xs">

@@ -9,6 +9,7 @@ import {
   Monitor,
   Pause,
   Play,
+  RefreshCw,
   ScanText,
   Search,
   Sparkles,
@@ -1014,7 +1015,6 @@ export function VideoGenerationStudioPanel({
       />
 
       <AiStudioComposer
-        compact
         accessMessage={composerMessage}
         active={active}
         ariaLabel="Video prompt"
@@ -1071,7 +1071,6 @@ export function VideoGenerationStudioPanel({
         isGenerating={isGenerating}
         layout="unified"
         showPromptHint={generationLocked || hasInsufficientCredits}
-        unifiedMaxWidthClassName="max-w-[1120px]"
         leadingControl={
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <ReferenceImageListUpload
@@ -1107,8 +1106,8 @@ export function VideoGenerationStudioPanel({
         secondaryActions={
           <>
             {generationLocked ? (
-              <Button type="button" variant="ghost" size="sm" disabled={refreshingAccess} onClick={() => void refreshGenerationAccess()}>
-                {refreshingAccess ? "Checking…" : "Refresh access"}
+              <Button type="button" variant="ghost" size="icon-sm" aria-label="Refresh access" title="Refresh access" disabled={refreshingAccess} onClick={() => void refreshGenerationAccess()}>
+                <RefreshCw className={cn("size-3.5", refreshingAccess && "animate-spin motion-reduce:animate-none")} aria-hidden="true" />
               </Button>
             ) : null}
             {effectiveGenerationState === "failed" && !isGenerating ? (
@@ -1145,6 +1144,7 @@ export function VideoGenerationStudioPanel({
             <AiStudioSettingSelect
               ariaLabel="Video model"
               disabled={generationLocked || isGenerating}
+              size="sm"
               options={AI_STUDIO_VIDEO_MODELS.map((value) => ({
                 label:
                   value === "seedance_2_5" ? "Seedance 2.5" : "Omni Flash 1.1",
@@ -1177,6 +1177,7 @@ export function VideoGenerationStudioPanel({
             <AiStudioSettingSelect
               ariaLabel="Video quality"
               disabled={generationLocked || isGenerating}
+              size="sm"
               options={AI_STUDIO_VIDEO_RESOLUTIONS.map((value) => {
                 const supported = isAIStudioVideoResolutionSupported(model, value);
 
@@ -1195,11 +1196,13 @@ export function VideoGenerationStudioPanel({
             <AiStudioSettingSelect
               ariaLabel="Video duration"
               disabled={generationLocked || isGenerating}
-              icon={<Clock3 className="size-4" aria-hidden="true" />}
+              size="sm"
+              icon={<Clock3 className="size-3.5" aria-hidden="true" />}
               options={AI_STUDIO_VIDEO_DURATIONS.filter(
                 (duration) => model === "seedance_2_5" ? duration >= 4 : duration <= 10,
               ).map((duration) => ({
                 label: `${duration} sec · ${duration * creditsPerSecond} credits`,
+                triggerLabel: `${duration} sec`,
                 value: String(duration),
               }))}
               value={String(durationSeconds)}
@@ -1210,6 +1213,7 @@ export function VideoGenerationStudioPanel({
             />
             <CreatorReferencePicker
               active={active}
+              iconOnly
               disabled={
                 generationLocked || isGenerating || creatorReferenceUploadPending
               }
@@ -1223,7 +1227,8 @@ export function VideoGenerationStudioPanel({
             <AiStudioSettingSelect
               ariaLabel="Number of videos"
               disabled={generationLocked || isGenerating}
-              icon={<Video className="size-4" aria-hidden="true" />}
+              size="sm"
+              icon={<Video className="size-3.5" aria-hidden="true" />}
               options={AI_STUDIO_GENERATION_QUANTITIES.map((count) => ({
                 label: `${count} video${count === 1 ? "" : "s"}`,
                 triggerLabel: String(count),
@@ -1236,6 +1241,7 @@ export function VideoGenerationStudioPanel({
               }}
             />
             <AiStudioRatioPicker
+              size="sm"
               value={aspectRatio}
               onChange={(value) => {
                 submissionKeyRef.current = null;

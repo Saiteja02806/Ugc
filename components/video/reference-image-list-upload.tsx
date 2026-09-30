@@ -99,7 +99,9 @@ export function ReferenceImageListUpload({
       >
         {busy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <ImagePlus className="size-4" aria-hidden="true" />}
       </Button>
-      <span className="shrink-0 text-xs text-muted">{selections.length}/{maxImages} images</span>
+      {selections.length > 0 ? (
+        <span className="shrink-0 text-xs text-muted">{selections.length}/{maxImages} images</span>
+      ) : null}
       {selections.map((selection, index) => (
         <div key={selection.asset.id} className="flex max-w-[min(100%,15rem)] min-w-0 items-center gap-1.5 rounded-xl border border-border bg-card-muted/80 p-1 pr-1.5 text-xs">
           {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -69,11 +69,11 @@ test("the unified composer is narrower without squeezing standard layouts", () =
 test("the unified composer stays compact while supporting multiline prompts", () => {
   assert.match(
     composer,
-    /const minimumHeight = compact \? 36 : layout === "unified" \? 40 : 64;/,
+    /const minimumHeight = layout === "unified" \? 40 : 64;/,
   );
   assert.match(
     composer,
-    /const maximumHeight = compact \? 112 : layout === "unified" \? 144 : 128;/,
+    /const maximumHeight = layout === "unified" \? 144 : 128;/,
   );
   assert.match(
     composer,

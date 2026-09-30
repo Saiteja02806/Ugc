@@ -29,7 +29,6 @@ export function AiStudioComposer({
   accessMessage,
   ariaLabel,
   contextBanner,
-  compact = false,
   generateDisabled,
   generateLabel,
   generationLocked,
@@ -52,7 +51,6 @@ export function AiStudioComposer({
   accessMessage?: string | null;
   ariaLabel: string;
   contextBanner?: ReactNode;
-  compact?: boolean;
   generateDisabled: boolean;
   generateLabel: string;
   generationLocked: boolean;
@@ -86,19 +84,18 @@ export function AiStudioComposer({
     }
 
     textarea.style.height = "auto";
-    const minimumHeight = compact ? 36 : layout === "unified" ? 40 : 64;
-    const maximumHeight = compact ? 112 : layout === "unified" ? 144 : 128;
+    const minimumHeight = layout === "unified" ? 40 : 64;
+    const maximumHeight = layout === "unified" ? 144 : 128;
     textarea.style.height = `${Math.min(
       Math.max(textarea.scrollHeight, minimumHeight),
       maximumHeight,
     )}px`;
-  }, [active, compact, layout, prompt]);
+  }, [active, layout, prompt]);
 
   return (
     <div className="sticky bottom-0 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
       <form
         data-layout={layout}
-        data-compact={compact || undefined}
         noValidate
         onSubmit={onSubmit}
         className={cn(
@@ -109,7 +106,6 @@ export function AiStudioComposer({
                 "rounded-[24px] border-border/80 p-0 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15",
               )
             : "max-w-[1024px] rounded-[20px] border-border p-2.5 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 sm:p-3",
-          compact && "rounded-2xl shadow-sm",
         )}
       >
         <FieldGroup className={layout === "unified" ? "gap-0" : "gap-2"}>
@@ -125,10 +121,9 @@ export function AiStudioComposer({
                 ? "gap-y-1 px-4 pb-1 pt-3 sm:px-5"
                 : "gap-y-2 px-1 pt-1",
               contextBanner && layout === "unified" && "!pt-1.5",
-              compact && "gap-y-1 px-3 pb-1 pt-2 sm:grid sm:grid-cols-[auto_minmax(0,1fr)] sm:items-start sm:gap-x-3 sm:px-4",
             )}
           >
-            {leadingControl ? <div className={cn("min-w-0", compact && "max-h-28 overflow-y-auto sm:max-w-64")}>{leadingControl}</div> : null}
+            {leadingControl ? <div className="min-w-0">{leadingControl}</div> : null}
             <FieldLabel htmlFor={promptId} className="sr-only">
               {ariaLabel}
             </FieldLabel>
@@ -149,7 +144,6 @@ export function AiStudioComposer({
                   ? "max-h-36 min-h-10 rounded-none px-0 py-0 text-base font-normal leading-7"
                   : "max-h-32 min-h-16 rounded-lg px-2 py-1.5 text-sm font-medium leading-6 focus-visible:ring-2 focus-visible:ring-focus sm:text-[15px]",
                 "min-w-0",
-                compact && "max-h-28 min-h-9 self-start text-sm leading-6",
               )}
               placeholder={placeholder}
             />
@@ -159,7 +153,6 @@ export function AiStudioComposer({
                 "flex min-w-0 items-start justify-between gap-3 text-xs",
                 layout === "unified" ? "px-0" : "px-2",
                 promptTooLong && "text-destructive",
-                compact && "col-span-2 text-[11px]",
               )}
               role={promptTooLong ? "alert" : undefined}
             >
@@ -186,7 +179,6 @@ export function AiStudioComposer({
             className={cn(
               "flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between",
               layout === "unified" && "px-3 pb-2 sm:px-4 sm:pb-3",
-              compact && "sm:pb-2",
             )}
           >
             <div className="min-w-0 flex-1">
@@ -248,7 +240,6 @@ export function AiStudioComposer({
                     "min-w-0 flex-1 h-10 rounded-full px-5 text-sm font-semibold tracking-[-0.01em] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.22),0_1px_3px_rgba(0,0,0,0.12)] transition-all duration-150 active:scale-[0.98] sm:min-w-[168px]",
                     isGenerating && "ring-2 ring-primary/35 shadow-xs shadow-primary/20",
                     layout === "unified" && "w-full",
-                    compact && "h-9 px-4 sm:min-w-[144px]",
                   )}
                 >
                   {isGenerating ? (
@@ -297,6 +288,7 @@ export function AiStudioSettingSelect<TValue extends string>({
   icon,
   onChange,
   options,
+  size = "default",
   value,
 }: {
   ariaLabel: string;
@@ -309,6 +301,7 @@ export function AiStudioSettingSelect<TValue extends string>({
     triggerLabel?: string;
     value: TValue;
   }[];
+  size?: "default" | "sm";
   value: TValue;
 }) {
   const [open, setOpen] = useState(false);
@@ -363,7 +356,10 @@ export function AiStudioSettingSelect<TValue extends string>({
             aria-label={`${ariaLabel}, currently ${currentOption.label}`}
             aria-haspopup="listbox"
             aria-expanded={open}
-            className="inline-flex h-8 min-w-0 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+            className={cn(
+              "inline-flex h-8 min-w-0 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
+              size === "sm" && "h-7 gap-1 px-2.5 text-[11px]",
+            )}
           />
         }
       >
@@ -466,11 +462,13 @@ export function AiStudioRatioPicker({
   allowedRatios,
   disabled = false,
   onChange,
+  size = "default",
   value,
 }: {
   allowedRatios?: AIStudioAspectRatio[];
   disabled?: boolean;
   onChange: (ratio: AIStudioAspectRatio) => void;
+  size?: "default" | "sm";
   value: AIStudioAspectRatio;
 }) {
   const [open, setOpen] = useState(false);
@@ -488,7 +486,10 @@ export function AiStudioRatioPicker({
             type="button"
             disabled={disabled}
             aria-label={`Aspect ratio, currently ${currentOption.label}`}
-            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+            className={cn(
+              "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
+              size === "sm" && "h-7 gap-1 px-2.5 text-[11px]",
+            )}
           />
         }
       >
@@ -497,9 +498,10 @@ export function AiStudioRatioPicker({
           className={cn(
             "inline-block shrink-0 rounded-[3px] border-2 border-muted-foreground",
             currentOption.iconClassName,
+            size === "sm" && "scale-75",
           )}
         />
-        <span>{currentOption.triggerLabel}</span>
+        <span>{size === "sm" ? currentOption.id : currentOption.triggerLabel}</span>
         <ChevronDown
           className={cn(
             "size-3 text-muted transition-transform duration-200 motion-reduce:transition-none",

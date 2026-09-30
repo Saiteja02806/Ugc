@@ -560,7 +560,7 @@ export function VideoGenerationStudioPanel({
         });
 
         if (!ignore) {
-          setGeneratedVideos(getAIStudioVideoResults(assets));
+          setGeneratedVideos(getAIStudioVideoResults(assets, assets.length));
           setSelectedHistoryVideoId(null);
           setSubmittedJobIds([]);
           setIgnoredPersistedJobId(null);

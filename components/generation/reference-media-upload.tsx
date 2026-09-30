@@ -2,6 +2,7 @@
 
 import {
   FileVideo,
+  ImagePlus,
   Loader2,
   Plus,
   RefreshCw,
@@ -21,12 +22,14 @@ export function ReferenceMediaUpload({
   active = true,
   allowedKinds,
   disabled = false,
+  maxVideoDurationSeconds = 3,
   selection,
   onChange,
 }: {
   active?: boolean;
   allowedKinds: readonly AIStudioReferenceKind[];
   disabled?: boolean;
+  maxVideoDurationSeconds?: number;
   selection: AIStudioReferenceMedia | null;
   onChange: (selection: AIStudioReferenceMedia | null) => void;
 }) {
@@ -39,7 +42,7 @@ export function ReferenceMediaUpload({
     setUploadingKind(kind);
 
     try {
-      onChange(await uploadAIStudioReferenceMedia(file, kind));
+      onChange(await uploadAIStudioReferenceMedia(file, kind, maxVideoDurationSeconds));
     } catch (error) {
       setErrorMessage(
         error instanceof Error && error.message
@@ -49,7 +52,7 @@ export function ReferenceMediaUpload({
     } finally {
       setUploadingKind(null);
     }
-  }, [onChange]);
+  }, [maxVideoDurationSeconds, onChange]);
 
   function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0];
@@ -70,12 +73,13 @@ export function ReferenceMediaUpload({
   const busy = uploadingKind !== null;
   const accepts = allowedKinds.flatMap((kind) => REFERENCE_ACCEPTS[kind]).join(",");
   const allowedLabel = allowedKinds.length > 1 ? "image or video" : allowedKinds[0];
+  const pasteHint = allowedKinds.includes("image") ? " or paste an image" : "";
   const buttonLabel = selection
-    ? `Replace reference ${selection.kind} or paste an image`
-    : `Add reference ${allowedLabel} or paste an image`;
+    ? `Replace reference ${selection.kind}${pasteHint}`
+    : `Add reference ${allowedLabel}${pasteHint}`;
 
   useEffect(() => {
-    if (!active || disabled || busy) {
+    if (!active || disabled || busy || !allowedKinds.includes("image")) {
       return;
     }
 
@@ -142,6 +146,10 @@ export function ReferenceMediaUpload({
           />
         ) : selection ? (
           <RefreshCw className="size-4" aria-hidden="true" />
+        ) : allowedKinds.length === 1 && allowedKinds[0] === "video" ? (
+          <FileVideo className="size-4" aria-hidden="true" />
+        ) : allowedKinds.length === 1 && allowedKinds[0] === "image" ? (
+          <ImagePlus className="size-4" aria-hidden="true" />
         ) : (
           <Plus className="size-4" aria-hidden="true" />
         )}
@@ -205,6 +213,7 @@ export function ReferenceMediaUpload({
 const REFERENCE_ACCEPTS: Record<AIStudioReferenceKind, readonly string[]> = {
   image: ["image/jpeg", "image/png", "image/webp"],
   video: ["video/mp4", "video/quicktime", "video/webm"],
+  audio: ["audio/mpeg", "audio/wav", "audio/x-wav"],
 };
 
 function getReferenceKind(file: File): AIStudioReferenceKind {

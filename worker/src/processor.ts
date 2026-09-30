@@ -985,7 +985,11 @@ function getStructuredErrorCode(error: unknown) {
 
   const code = (error as { code?: unknown }).code;
 
-  return typeof code === "string" && code.trim()
-    ? code.trim().slice(0, 120)
+  if (typeof code === "string" && code.trim()) {
+    return code.trim().slice(0, 120);
+  }
+
+  return /credit balance is too low/i.test(getErrorMessage(error))
+    ? "PROVIDER_INSUFFICIENT_CREDITS"
     : undefined;
 }

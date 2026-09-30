@@ -46,7 +46,7 @@ test("the image prompt uses one unified composer surface", () => {
   );
   assert.match(
     composer,
-    /layout === "unified"[\s\S]*?"max-w-\[944px\] rounded-\[24px\] border-border/,
+    /layout === "unified"[\s\S]*?unifiedMaxWidthClassName \?\? "max-w-\[944px\]"[\s\S]*?"rounded-\[24px\] border-border/,
   );
   assert.match(
     composer,
@@ -184,7 +184,7 @@ test("every image and video settings dropdown uses the shared themed pill", () =
   );
   assert.equal(
     videoWorkspace.match(/<AiStudioSettingSelect\b/g)?.length,
-    3,
+    4,
   );
 
   for (const ariaLabel of ["Image model", "Number of images"]) {
@@ -193,6 +193,7 @@ test("every image and video settings dropdown uses the shared themed pill", () =
 
   for (const ariaLabel of [
     "Video model",
+    "Video quality",
     "Video duration",
     "Number of videos",
   ]) {
@@ -254,8 +255,11 @@ test("AI Studio keeps direct image and video references optional outside Explore
   assert.match(imageWorkspace, /referenceImageUrl: referenceImage\?\.asset\.url \?\? null/);
   assert.match(
     videoWorkspace,
-    /allowedKinds=\{isExploreRecreate \? \["image"\] : \["image", "video"\]\}/,
+    /<ReferenceFilesUpload[\s\S]*?allowedKinds=\{model === "seedance_2_5" && !isExploreRecreate \? \["image", "video", "audio"\] : \["image"\]\}/,
   );
+  assert.match(videoWorkspace, /maxFiles=\{model === "seedance_2_5" \? 30 : 6\}/);
+  assert.match(videoWorkspace, /avatarImageUrl: activeReferenceImageUrl/);
+  assert.match(videoWorkspace, /referenceImageUrls: referenceImages\.map\(\(image\) => image\.asset\.url\)/);
   assert.match(videoWorkspace, /referenceVideoUrl: uploadedReferenceVideo\?\.asset\.url \?\? null/);
   assert.match(videoWorkspace, /referenceVideoDurationSeconds:/);
   assert.match(
@@ -277,7 +281,7 @@ test("Explore Recreate asks for an image before video generation", () => {
     /Required for this Explore recreation\. Choose a look or upload your own image\./,
   );
   assert.match(videoGenerationApi, /isExploreHookVideoId\(body\?\.referenceId\)/);
-  assert.match(videoGenerationApi, /isExploreRecreate && !avatarImageUrl/);
+  assert.match(videoGenerationApi, /isExploreRecreate && referenceImageUrls\.length === 0/);
 });
 
 test("video composer keeps compact controls in the requested order", () => {
@@ -294,7 +298,7 @@ test("video composer keeps compact controls in the requested order", () => {
 
 test("image and video use one compact leading attachment control", () => {
   assert.match(imageWorkspace, /leadingControl=\{[\s\S]*?<ReferenceMediaUpload/);
-  assert.match(videoWorkspace, /leadingControl=\{[\s\S]*?<ReferenceMediaUpload/);
+  assert.match(videoWorkspace, /leadingControl=\{[\s\S]*?<ReferenceFilesUpload/);
   assert.match(referenceUploader, /<Plus className="size-4"/);
   assert.match(referenceUploader, /type="file"[\s\S]*?accept=\{accepts\}/);
   assert.doesNotMatch(referenceUploader, />\s*Upload image\s*</);
@@ -320,6 +324,11 @@ test("video results keep the prompt visible with custom playback controls", () =
   assert.doesNotMatch(videoWorkspace, /getCreativeAssetEditorHref|handleEditVideo/);
   assert.doesNotMatch(videoWorkspace, /setPrompt\(""\);/);
   assert.match(videoResultCard, /video\.prompt/);
+  assert.match(
+    videoResultCard,
+    /max-w-\[54rem\][^\n]*lg:flex-row[^\n]*lg:gap-8/,
+  );
+  assert.doesNotMatch(videoResultCard, /sm:ml-\[10%\]/);
   assert.doesNotMatch(videoResultCard, /\bcontrols\b/);
   assert.match(
     videoResultCard,
@@ -331,11 +340,19 @@ test("video results keep the prompt visible with custom playback controls", () =
   );
 });
 
-test("completed image and video results expose download and open actions", () => {
+test("completed image results expose download and open actions while video cards keep only download", () => {
   assert.match(imageWorkspace, /<AiStudioResultActions[\s\S]*?kind="image"/);
   assert.match(videoWorkspace, /<AiStudioResultActions[\s\S]*?kind="video"/);
   assert.match(resultActions, /download=\{fileName\}/);
   assert.match(resultActions, /aria-label=\{`Open \$\{title\} in a new tab`\}/);
+  assert.match(videoWorkspace, /kind="video"[\s\S]*?showOpenAction=\{false\}/);
+  assert.doesNotMatch(
+    videoWorkspace.slice(
+      videoWorkspace.indexOf("function VideoResultCard"),
+      videoWorkspace.indexOf("function VideoPromptBubble"),
+    ),
+    />\s*Creative Assets\s*</,
+  );
 });
 
 test("the active reference control accepts a pasted image into the composer", () => {
@@ -350,7 +367,7 @@ test("the active reference control accepts a pasted image into the composer", ()
   assert.match(referenceUploader, /width=\{36\}[\s\S]*?height=\{36\}/);
   assert.match(referenceUploader, /Image reference/);
   assert.match(imageWorkspace, /<ReferenceMediaUpload[\s\S]*?active=\{active\}/);
-  assert.match(videoWorkspace, /<ReferenceMediaUpload[\s\S]*?active=\{active\}/);
+  assert.match(videoWorkspace, /<ReferenceFilesUpload[\s\S]*?active=\{active\}/);
 });
 
 test("generation progress has a visible in-place loading state", () => {
@@ -359,7 +376,7 @@ test("generation progress has a visible in-place loading state", () => {
   assert.match(resultSurface, /animate-spin/);
 });
 
-test("image and video previews stay compact enough for the active viewport", () => {
+test("image previews remain compact and video results use the dedicated history layout", () => {
   assert.match(
     imageWorkspace,
     /"9:16": "max-w-\[min\(240px,26dvh\)\]"/,
@@ -374,16 +391,30 @@ test("image and video previews stay compact enough for the active viewport", () 
   );
   assert.match(
     videoWorkspace,
-    /"9:16": "max-w-\[min\(216px,24dvh\)\]"/,
+    /"9:16": "w-\[min\(100%,15rem\)\]"/,
   );
   assert.match(
     videoWorkspace,
-    /getVideoPreviewWidthClassName\(aspectRatio\)/,
+    /getVideoResultWidthClassName\(aspectRatio\)/,
   );
   assert.match(
     videoWorkspace,
-    /getVideoPreviewWidthClassName\(video\.ratio\)/,
+    /getVideoResultWidthClassName\(video\.ratio\)/,
   );
+  assert.match(videoWorkspace, /<VideoPromptBubble createdAt=\{video\.createdAt\} prompt=\{video\.prompt\}/);
+  assert.match(videoWorkspace, /<VideoHistoryDrawer/);
+});
+
+test("the video composer keeps attachments together and stays quiet until guidance is needed", () => {
+  assert.match(
+    videoWorkspace,
+    /showPromptHint=\{generationLocked \|\| hasInsufficientCredits\}/,
+  );
+  assert.match(
+    videoWorkspace,
+    /leadingControl=\{[\s\S]*?<ReferenceFilesUpload/,
+  );
+  assert.match(composer, /promptTooLong \|\| showPromptHint/);
 });
 
 test("access guidance appears once inside the composer", () => {

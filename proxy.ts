@@ -1,17 +1,36 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
+
+import { shouldBlockDeploymentRoute } from "@/lib/mcp/deployment-routing";
+
+const privateRoutePrefixes = [
+  "/ai-studio", "/analytics", "/avatars", "/connected-accounts",
+  "/create-content", "/dashboard", "/demos", "/e2e", "/edit",
+  "/image-gen", "/image-test", "/library", "/onboarding",
+  "/oauth/authorize", "/projects", "/scheduling", "/settings",
+  "/sign-in", "/auth/action", "/updates", "/verify-email",
+  "/video-gen", "/viral",
+];
 
 export function proxy(request: NextRequest) {
-  if (
-    request.nextUrl.pathname === "/create-content" &&
-    process.env.NODE_ENV === "production"
-  ) {
+  const pathname = request.nextUrl.pathname;
+  if (shouldBlockDeploymentRoute({
+    hostname: request.nextUrl.hostname,
+    isMcpOnlyDeployment: process.env.MCP_ONLY_DEPLOYMENT === "true",
+    isProduction: process.env.NODE_ENV === "production",
+    pathname,
+  })) {
+    return new NextResponse(null, { status: 404 });
+  }
+
+  if (process.env.NODE_ENV === "production" && pathname === "/create-content") {
     return new NextResponse(null, { status: 404 });
   }
 
   const response = NextResponse.next();
-  response.headers.set("X-Robots-Tag", "noindex");
-  if (request.nextUrl.pathname.startsWith("/auth/action")) {
+  if (privateRoutePrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
+    response.headers.set("X-Robots-Tag", "noindex");
+  }
+  if (pathname === "/auth/action" || pathname.startsWith("/auth/action/")) {
     response.headers.set("Referrer-Policy", "no-referrer");
     response.headers.set("Cache-Control", "no-store");
   }
@@ -19,29 +38,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/ai-studio/:path*",
-    "/analytics/:path*",
-    "/avatars/:path*",
-    "/connected-accounts/:path*",
-    "/create-content/:path*",
-    "/dashboard/:path*",
-    "/demos/:path*",
-    "/e2e/:path*",
-    "/edit/:path*",
-    "/image-gen/:path*",
-    "/image-test/:path*",
-    "/library/:path*",
-    "/onboarding/:path*",
-    "/oauth/authorize/:path*",
-    "/projects/:path*",
-    "/scheduling/:path*",
-    "/settings/:path*",
-    "/sign-in/:path*",
-    "/auth/action/:path*",
-    "/updates/:path*",
-    "/verify-email/:path*",
-    "/video-gen/:path*",
-    "/viral/:path*",
-  ],
+  matcher: "/:path*",
 };

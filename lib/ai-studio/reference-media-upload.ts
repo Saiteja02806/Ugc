@@ -3,18 +3,19 @@
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { MediaAsset, MediaCollection, MediaRatio } from "@/lib/media/types";
 
-export type AIStudioReferenceKind = "image" | "video";
+export type AIStudioReferenceKind = "image" | "video" | "audio";
 
 export type AIStudioReferenceMedia = {
   asset: MediaAsset;
   kind: AIStudioReferenceKind;
 };
 
-const MAX_REFERENCE_VIDEO_SECONDS = 3;
+const DEFAULT_MAX_REFERENCE_VIDEO_SECONDS = 3;
 
 export async function uploadAIStudioReferenceMedia(
   file: File,
   kind: AIStudioReferenceKind,
+  maxVideoDurationSeconds = DEFAULT_MAX_REFERENCE_VIDEO_SECONDS,
 ): Promise<AIStudioReferenceMedia> {
   const collection: MediaCollection = kind;
   const expectedPrefix = `${kind}/`;
@@ -24,7 +25,8 @@ export async function uploadAIStudioReferenceMedia(
   }
 
   const metadata =
-    kind === "image" ? await readImageMetadata(file) : await readVideoMetadata(file);
+    kind === "image" ? await readImageMetadata(file)
+      : kind === "audio" ? await readAudioMetadata(file) : await readVideoMetadata(file, maxVideoDurationSeconds);
   const token = await getCurrentUserIdToken();
 
   if (!token) {
@@ -137,7 +139,7 @@ async function readImageMetadata(file: File) {
   }
 }
 
-async function readVideoMetadata(file: File) {
+async function readVideoMetadata(file: File, maxDurationSeconds: number) {
   const objectUrl = URL.createObjectURL(file);
 
   try {
@@ -158,8 +160,8 @@ async function readVideoMetadata(file: File) {
       throw new Error("This reference video does not contain valid video data.");
     }
 
-    if (video.duration > MAX_REFERENCE_VIDEO_SECONDS) {
-      throw new Error(`Reference videos can be up to ${MAX_REFERENCE_VIDEO_SECONDS} seconds long.`);
+    if (video.duration > maxDurationSeconds) {
+      throw new Error(`Reference videos can be up to ${maxDurationSeconds} seconds long.`);
     }
 
     const ratio = getRatio(video.videoWidth, video.videoHeight);
@@ -175,6 +177,27 @@ async function readVideoMetadata(file: File) {
       width: video.videoWidth,
     };
   } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function readAudioMetadata(file: File) {
+  const objectUrl = URL.createObjectURL(file);
+  const audio = document.createElement("audio");
+  try {
+    audio.preload = "metadata";
+    await new Promise<void>((resolve, reject) => {
+      audio.onloadedmetadata = () => resolve();
+      audio.onerror = () => reject(new Error("Could not read this audio reference. Use an MP3 or WAV file."));
+      audio.src = objectUrl;
+    });
+    if (!Number.isFinite(audio.duration) || audio.duration <= 0 || audio.duration > 30) {
+      throw new Error("Audio references must contain between 0 and 30 seconds of audio.");
+    }
+    return { durationSeconds: audio.duration, width: null, height: null, ratio: "other" as const };
+  } finally {
+    audio.removeAttribute("src");
+    audio.load();
     URL.revokeObjectURL(objectUrl);
   }
 }

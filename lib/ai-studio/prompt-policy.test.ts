@@ -30,6 +30,6 @@ test("reports mode-specific AI Studio prompt limits", () => {
       "x".repeat(AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH + 1),
       AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
     ) ?? "",
-    /1,000 characters or fewer/,
+    /10,000 characters or fewer/,
   );
 });

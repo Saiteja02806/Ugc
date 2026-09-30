@@ -43,7 +43,9 @@ export function AiStudioComposer({
   placeholder,
   prompt,
   secondaryActions,
+  showPromptHint = true,
   settings,
+  unifiedMaxWidthClassName,
 }: {
   active: boolean;
   accessMessage?: string | null;
@@ -63,7 +65,9 @@ export function AiStudioComposer({
   placeholder: string;
   prompt: string;
   secondaryActions?: ReactNode;
+  showPromptHint?: boolean;
   settings: ReactNode;
+  unifiedMaxWidthClassName?: string;
 }) {
   const promptId = useId();
   const promptHelperId = useId();
@@ -97,7 +101,10 @@ export function AiStudioComposer({
         className={cn(
           "mx-auto w-full border bg-card transition-all duration-200",
           layout === "unified"
-            ? "max-w-[944px] rounded-[24px] border-border/80 p-0 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15"
+            ? cn(
+                unifiedMaxWidthClassName ?? "max-w-[944px]",
+                "rounded-[24px] border-border/80 p-0 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15",
+              )
             : "max-w-[1024px] rounded-[20px] border-border p-2.5 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 sm:p-3",
         )}
       >
@@ -109,14 +116,14 @@ export function AiStudioComposer({
           ) : null}
           <Field
             className={cn(
-              "grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3",
+              "flex min-w-0 flex-col items-stretch",
               layout === "unified"
                 ? "gap-y-1 px-4 pb-1 pt-3 sm:px-5"
                 : "gap-y-2 px-1 pt-1",
               contextBanner && layout === "unified" && "!pt-1.5",
             )}
           >
-            {leadingControl}
+            {leadingControl ? <div className="min-w-0">{leadingControl}</div> : null}
             <FieldLabel htmlFor={promptId} className="sr-only">
               {ariaLabel}
             </FieldLabel>
@@ -136,31 +143,32 @@ export function AiStudioComposer({
                 layout === "unified"
                   ? "max-h-36 min-h-10 rounded-none px-0 py-0 text-base font-normal leading-7"
                   : "max-h-32 min-h-16 rounded-lg px-2 py-1.5 text-sm font-medium leading-6 focus-visible:ring-2 focus-visible:ring-focus sm:text-[15px]",
-                leadingControl ? "col-start-2 row-start-1" : "col-span-full",
+                "min-w-0",
               )}
               placeholder={placeholder}
             />
             <FieldDescription
               id={promptHelperId}
               className={cn(
-                "col-span-full flex min-w-0 items-start justify-between gap-3 text-xs",
+                "flex min-w-0 items-start justify-between gap-3 text-xs",
                 layout === "unified" ? "px-0" : "px-2",
-                leadingControl && "col-start-2",
                 promptTooLong && "text-destructive",
               )}
               role={promptTooLong ? "alert" : undefined}
             >
-              <span className="min-w-0">
-                {promptTooLong
-                  ? `Prompt is ${(
-                      prompt.length - maxLength
-                    ).toLocaleString("en-US")} character${
-                      prompt.length - maxLength === 1 ? "" : "s"
-                    } too long. Shorten it before generating.`
-                  : accessMessage ??
-                    "Press Enter to generate. Use Shift+Enter for a new line."}
-              </span>
-              <span className="shrink-0 tabular-nums font-mono">
+              {promptTooLong || showPromptHint ? (
+                <span className="min-w-0">
+                  {promptTooLong
+                    ? `Prompt is ${(
+                        prompt.length - maxLength
+                      ).toLocaleString("en-US")} character${
+                        prompt.length - maxLength === 1 ? "" : "s"
+                      } too long. Shorten it before generating.`
+                    : accessMessage ??
+                      "Press Enter to generate. Use Shift+Enter for a new line."}
+                </span>
+              ) : null}
+              <span className="ml-auto shrink-0 tabular-nums font-mono">
                 {prompt.length.toLocaleString("en-US")}/
                 {maxLength.toLocaleString("en-US")}
               </span>
@@ -280,13 +288,20 @@ export function AiStudioSettingSelect<TValue extends string>({
   icon,
   onChange,
   options,
+  size = "default",
   value,
 }: {
   ariaLabel: string;
   disabled?: boolean;
   icon?: ReactNode;
   onChange: (value: TValue) => void;
-  options: readonly { label: string; triggerLabel?: string; value: TValue }[];
+  options: readonly {
+    disabled?: boolean;
+    label: string;
+    triggerLabel?: string;
+    value: TValue;
+  }[];
+  size?: "default" | "sm";
   value: TValue;
 }) {
   const [open, setOpen] = useState(false);
@@ -297,10 +312,7 @@ export function AiStudioSettingSelect<TValue extends string>({
     return null;
   }
 
-  function handleOptionKeyDown(
-    event: KeyboardEvent<HTMLButtonElement>,
-    optionIndex: number,
-  ) {
+  function handleOptionKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
     if (
       event.key !== "ArrowDown" &&
       event.key !== "ArrowUp" &&
@@ -313,7 +325,7 @@ export function AiStudioSettingSelect<TValue extends string>({
     event.preventDefault();
     const optionButtons = Array.from(
       event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
-        "[data-ai-studio-setting-option]",
+        "[data-ai-studio-setting-option]:not(:disabled)",
       ) ?? [],
     );
 
@@ -321,14 +333,15 @@ export function AiStudioSettingSelect<TValue extends string>({
       return;
     }
 
+    const currentIndex = Math.max(0, optionButtons.indexOf(event.currentTarget));
     const nextIndex =
       event.key === "Home"
         ? 0
         : event.key === "End"
           ? optionButtons.length - 1
           : event.key === "ArrowDown"
-            ? (optionIndex + 1) % optionButtons.length
-            : (optionIndex - 1 + optionButtons.length) % optionButtons.length;
+            ? (currentIndex + 1) % optionButtons.length
+            : (currentIndex - 1 + optionButtons.length) % optionButtons.length;
 
     optionButtons[nextIndex]?.focus();
   }
@@ -343,7 +356,10 @@ export function AiStudioSettingSelect<TValue extends string>({
             aria-label={`${ariaLabel}, currently ${currentOption.label}`}
             aria-haspopup="listbox"
             aria-expanded={open}
-            className="inline-flex h-8 min-w-0 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+            className={cn(
+              "inline-flex h-8 min-w-0 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
+              size === "sm" && "h-7 gap-1 px-2.5 text-[11px]",
+            )}
           />
         }
       >
@@ -367,23 +383,24 @@ export function AiStudioSettingSelect<TValue extends string>({
         className="w-max min-w-40 max-w-[min(20rem,calc(100vw-1rem))] p-1.5"
       >
         <div role="listbox" aria-label={ariaLabel} className="flex flex-col gap-0.5">
-          {options.map((option, optionIndex) => {
+          {options.map((option) => {
             const isSelected = option.value === value;
 
             return (
               <button
                 key={option.value}
                 type="button"
+                disabled={option.disabled}
                 role="option"
                 aria-selected={isSelected}
                 data-ai-studio-setting-option
-                onKeyDown={(event) => handleOptionKeyDown(event, optionIndex)}
+                onKeyDown={handleOptionKeyDown}
                 onClick={() => {
                   onChange(option.value);
                   setOpen(false);
                 }}
                 className={cn(
-                  "flex w-full cursor-pointer items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+                  "flex w-full cursor-pointer items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-45",
                   isSelected
                     ? "bg-brand-soft font-semibold text-primary"
                     : "text-foreground hover:bg-card-muted",
@@ -445,11 +462,13 @@ export function AiStudioRatioPicker({
   allowedRatios,
   disabled = false,
   onChange,
+  size = "default",
   value,
 }: {
   allowedRatios?: AIStudioAspectRatio[];
   disabled?: boolean;
   onChange: (ratio: AIStudioAspectRatio) => void;
+  size?: "default" | "sm";
   value: AIStudioAspectRatio;
 }) {
   const [open, setOpen] = useState(false);
@@ -467,7 +486,10 @@ export function AiStudioRatioPicker({
             type="button"
             disabled={disabled}
             aria-label={`Aspect ratio, currently ${currentOption.label}`}
-            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+            className={cn(
+              "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
+              size === "sm" && "h-7 gap-1 px-2.5 text-[11px]",
+            )}
           />
         }
       >
@@ -476,9 +498,10 @@ export function AiStudioRatioPicker({
           className={cn(
             "inline-block shrink-0 rounded-[3px] border-2 border-muted-foreground",
             currentOption.iconClassName,
+            size === "sm" && "scale-75",
           )}
         />
-        <span>{currentOption.triggerLabel}</span>
+        <span>{size === "sm" ? currentOption.id : currentOption.triggerLabel}</span>
         <ChevronDown
           className={cn(
             "size-3 text-muted transition-transform duration-200 motion-reduce:transition-none",

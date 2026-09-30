@@ -117,6 +117,17 @@ export function isTerminalBackgroundJobStatus(status: BackgroundJobStatus) {
 }
 
 export function isRetryableBackgroundJob(job: BackgroundJobRecord) {
+  // A provider's terminal failure needs a new, explicitly requested generation.
+  // Replaying this job cannot revive its saved provider operation.
+  if (
+    job.errorCode === "PROVIDER_INSUFFICIENT_CREDITS" ||
+    job.errorCode === "provider_submission_uncertain" ||
+    job.errorCode === "provider_operation_failed" ||
+    isProviderBalanceFailure(job.errorMessage) ||
+    /ended with status (?:failed|moderated|nsfw|canceled|cancelled)/i.test(job.errorMessage ?? "")
+  ) {
+    return false;
+  }
   return (
     (job.status === "failed" || job.status === "stalled") &&
     job.attemptCount < job.maxAttempts
@@ -137,7 +148,7 @@ export function getPublicBackgroundJob(job: BackgroundJobRecord) {
               : job.errorCode || "JOB_FAILED",
             message: hideWallTextFailureDetails
               ? "We’re handling content preparation automatically. No action is needed from you."
-              : getSafeJobErrorMessage(job.errorCode),
+            : getSafeJobErrorMessage(job.errorCode, job.errorMessage),
             retryable: isRetryableBackgroundJob(job),
           }
         : null,
@@ -165,8 +176,22 @@ function isWallTextJob(jobType: BackgroundJobType) {
     jobType === "wall_text_content_plan_generation";
 }
 
-function getSafeJobErrorMessage(errorCode: string | null) {
+function getSafeJobErrorMessage(
+  errorCode: string | null,
+  errorMessage: string | null,
+) {
+  if (
+    errorCode === "PROVIDER_INSUFFICIENT_CREDITS" ||
+    isProviderBalanceFailure(errorMessage)
+  ) {
+    return "Higgsfield's API balance is too low to create this video. Add funds in Higgsfield, then start a new generation. Your UGC Pilot credits were released.";
+  }
+
   switch (errorCode) {
+    case "provider_submission_uncertain":
+      return "The provider could not confirm this request. Check its status in Higgsfield before starting another generation to avoid a duplicate charge.";
+    case "provider_operation_failed":
+      return "The provider rejected this generation. Review your prompt and references, then start a new generation.";
     case "CANCELLED":
       return "This job was cancelled.";
     case "INPUT_INVALID":
@@ -182,4 +207,8 @@ function getSafeJobErrorMessage(errorCode: string | null) {
     default:
       return "The job could not be completed. You can retry it if attempts remain.";
   }
+}
+
+function isProviderBalanceFailure(errorMessage: string | null) {
+  return /credit balance is too low/i.test(errorMessage ?? "");
 }

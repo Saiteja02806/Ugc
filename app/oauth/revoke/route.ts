@@ -16,17 +16,12 @@ export async function POST(request: Request) {
     if (!token || !clientId || form.getAll("token").length !== 1 ||
         form.getAll("client_id").length !== 1) return oauthError("invalid_request");
     const store = getMcpStore();
-    const { data, error } = await store.from("mcp_oauth_tokens")
-      .select("family_id,client_id")
-      .eq("token_hash", hashOAuthSecret(token))
-      .maybeSingle();
+    const { data, error } = await store.rpc("mcp_revoke_token_family", {
+      provided_token_hash: hashOAuthSecret(token),
+      expected_client_id: clientId,
+    });
     if (error) throw error;
-    if (data?.client_id === clientId) {
-      const { error: revokeError } = await store.from("mcp_oauth_tokens")
-        .update({ revoked_at: new Date().toISOString() })
-        .eq("family_id", data.family_id)
-        .is("revoked_at", null);
-      if (revokeError) throw revokeError;
+    if (data) {
       console.info(JSON.stringify({ event: "mcp.oauth.family_revoked", client_ref: clientLogRef(clientId) }));
     }
     return new Response(null, { status: 200, headers: { "Cache-Control": "no-store" } });

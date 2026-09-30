@@ -4,6 +4,7 @@ import { buildPublicStorageUrl } from "@/lib/storage/storage";
 export const MEDIA_UPLOAD_EXPIRES_IN_SECONDS = 10 * 60;
 export const MAX_IMAGE_UPLOAD_BYTES = 25 * 1024 * 1024;
 export const MAX_VIDEO_UPLOAD_BYTES = 250 * 1024 * 1024;
+export const MAX_AUDIO_UPLOAD_BYTES = 25 * 1024 * 1024;
 
 const imageTypes = new Map([
   ["image/jpeg", ".jpg"],
@@ -14,6 +15,11 @@ const videoTypes = new Map([
   ["video/mp4", ".mp4"],
   ["video/quicktime", ".mov"],
   ["video/webm", ".webm"],
+]);
+const audioTypes = new Map([
+  ["audio/mpeg", ".mp3"],
+  ["audio/wav", ".wav"],
+  ["audio/x-wav", ".wav"],
 ]);
 
 export type MediaUploadTarget = {
@@ -39,14 +45,16 @@ export function createMediaUploadTarget(input: {
   const contentType = input.contentType.trim().toLowerCase();
   const fileName = input.fileName.trim();
   const extension = getExpectedExtension(input.collection, contentType);
-  const maxBytes = input.collection === "image" ? MAX_IMAGE_UPLOAD_BYTES : MAX_VIDEO_UPLOAD_BYTES;
+  const maxBytes = getMaxUploadBytes(input.collection);
 
   if (!extension) {
     return {
       error:
         input.collection === "image"
           ? "Upload a JPG, PNG, or WebP image."
-          : "Upload an MP4, MOV, or WebM video.",
+          : input.collection === "audio"
+            ? "Upload an MP3 or WAV audio file."
+            : "Upload an MP4, MOV, or WebM video.",
       ok: false as const,
       status: 400,
     };
@@ -98,17 +106,20 @@ export function createMediaUploadTarget(input: {
 }
 
 export function getAllowedContentTypes(collection: MediaCollection) {
-  return collection === "image" ? Array.from(imageTypes.keys()) : Array.from(videoTypes.keys());
+  return Array.from(getContentTypes(collection).keys());
 }
 
 export function getMaxUploadBytes(collection: MediaCollection) {
-  return collection === "image" ? MAX_IMAGE_UPLOAD_BYTES : MAX_VIDEO_UPLOAD_BYTES;
+  return collection === "image" ? MAX_IMAGE_UPLOAD_BYTES
+    : collection === "audio" ? MAX_AUDIO_UPLOAD_BYTES : MAX_VIDEO_UPLOAD_BYTES;
 }
 
 function getExpectedExtension(collection: MediaCollection, contentType: string) {
-  return collection === "image"
-    ? imageTypes.get(contentType) ?? null
-    : videoTypes.get(contentType) ?? null;
+  return getContentTypes(collection).get(contentType) ?? null;
+}
+
+function getContentTypes(collection: MediaCollection) {
+  return collection === "image" ? imageTypes : collection === "audio" ? audioTypes : videoTypes;
 }
 
 function cleanPathPart(value: string) {

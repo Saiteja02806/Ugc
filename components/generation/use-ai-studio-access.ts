@@ -22,8 +22,8 @@ export function useAIStudioAccess() {
     gcTime: AI_STUDIO_ACCESS_GC_TIME_MS,
     queryFn: ({ signal }) => fetchAIStudioAccess(signal),
     queryKey: ["ai-studio-access", user?.uid ?? "signed-out"],
-    refetchOnWindowFocus: false,
-    retry: false,
+    refetchOnWindowFocus: "always",
+    retry: 1,
     staleTime: AI_STUDIO_ACCESS_STALE_TIME_MS,
   });
 

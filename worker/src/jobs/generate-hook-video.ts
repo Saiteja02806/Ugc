@@ -4,6 +4,7 @@ import {
   createGenerationRequestFingerprint,
   persistProviderSubmissionFailure,
   ProviderOperationTerminalError,
+  ProviderRequestNotSubmittedError,
   ProviderSubmissionUncertainError,
   toProviderPollingRetry,
 } from "../lib/generation-provider.js";
@@ -31,6 +32,9 @@ import type { WorkerJobContext, WorkerJobOutput } from "./index.js";
 type GenerateHookVideoBaseInput = {
   aspectRatio: HookVideoAspectRatio;
   avatarImageUrl?: string;
+  referenceImageUrls: string[];
+  referenceAudioUrls: string[];
+  resolution: HookVideoResolution;
   durationSeconds: number;
   hookIdea: string;
   model?: "google_omni" | "seedance_2_5";
@@ -56,8 +60,10 @@ type GenerateHookVideoInput = GenerateHookVideoBaseInput &
 
 const hookVideoAspectRatios = ["9:16", "16:9"] as const;
 type HookVideoAspectRatio = (typeof hookVideoAspectRatios)[number];
+const hookVideoResolutions = ["480p", "720p", "1080p"] as const;
+type HookVideoResolution = (typeof hookVideoResolutions)[number];
 
-const MAX_HOOK_LENGTH = 1_000;
+const MAX_HOOK_LENGTH = 10_000;
 const MAX_PRODUCT_NAME_LENGTH = 120;
 const MAX_PRODUCT_DESCRIPTION_LENGTH = 500;
 
@@ -157,6 +163,10 @@ async function generateWithFallback(
     ? "higgsfield"
     : input.model === "google_omni" ? "gemini" : preferredProvider;
 
+  if (input.referenceAudioUrls.length && selectedProvider !== "higgsfield") {
+    throw new ProviderRequestNotSubmittedError("Audio references require Seedance 2.5.");
+  }
+
   if (selectedProvider === "higgsfield") {
     return generateWithProvider(job, context, "higgsfield", "primary", input, prompt);
   }
@@ -173,14 +183,7 @@ async function generateWithFallback(
   }
 
   if (selectedProvider === "gemini") {
-    return generateWithProvider(
-      job,
-      context,
-      "gemini",
-      "primary",
-      input,
-      prompt,
-    );
+    return generateWithProvider(job, context, "gemini", "primary", input, prompt);
   }
 
   if (selectedProvider === "runway") {
@@ -267,7 +270,11 @@ async function generateWithProvider(
     model: input.model ?? null,
     prompt,
     provider,
+    resolution: input.resolution,
     referenceImageUrl: input.avatarImageUrl,
+    referenceImageUrls: input.referenceImageUrls,
+    // Keep fingerprints of existing requests unchanged when no audio was attached.
+    ...(input.referenceAudioUrls.length ? { referenceAudioUrls: input.referenceAudioUrls } : {}),
     referenceVideoDurationSeconds: input.referenceVideoDurationSeconds ?? null,
     referenceVideoUrl: input.referenceVideoUrl ?? null,
     videoId: input.videoId,
@@ -317,8 +324,11 @@ async function generateWithProvider(
       providerOperationId,
       providerOutputUrl,
       referenceImageUrl: input.avatarImageUrl,
+      referenceImageUrls: input.referenceImageUrls,
+      referenceAudioUrls: input.referenceAudioUrls,
       referenceVideoDurationSeconds: input.referenceVideoDurationSeconds,
       referenceVideoUrl: input.referenceVideoUrl,
+      resolution: input.resolution,
     };
 
     return {
@@ -361,8 +371,11 @@ async function generateProviderBuffer(
     providerOperationId?: string;
     providerOutputUrl?: string;
     referenceImageUrl?: string;
+    referenceImageUrls?: string[];
+    referenceAudioUrls?: string[];
     referenceVideoDurationSeconds?: number;
     referenceVideoUrl?: string;
+    resolution: HookVideoResolution;
   },
   onOperationSucceeded: (operationId: string, outputUrl?: string) => Promise<void>,
 ) {
@@ -404,6 +417,7 @@ function buildOutput(params: {
     ok: true,
     provider: params.provider,
     ratio: params.input.aspectRatio,
+    resolution: params.input.resolution,
     url: params.uploaded.url,
     videoId: params.input.videoId,
   };
@@ -416,22 +430,30 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
 
   const promptMode =
     job.input_json.promptMode === "direct" ? "direct" : "ugc_template";
+  const model =
+    job.input_json.model === "seedance_2_5"
+      ? "seedance_2_5"
+      : job.input_json.model === "google_omni"
+        ? "google_omni"
+        : undefined;
   const sharedInput: GenerateHookVideoBaseInput = {
     aspectRatio:
       getOptionalChoice(job.input_json.aspectRatio, hookVideoAspectRatios) ??
       "9:16",
     avatarImageUrl: getOptionalHttpsUrl(job.input_json.avatarImageUrl),
+    referenceImageUrls: getReferenceImageUrls(job.input_json.referenceImageUrls, job.input_json.avatarImageUrl),
+    referenceAudioUrls: getReferenceAudioUrls(job.input_json.referenceAudioUrls),
     durationSeconds: getGenerationDurationSeconds(job.input_json.durationSeconds),
     hookIdea: getText(job.input_json.hookIdea, "hookIdea", MAX_HOOK_LENGTH),
-    model: job.input_json.model === "seedance_2_5"
-      ? "seedance_2_5"
-      : job.input_json.model === "google_omni" ? "google_omni" : undefined,
+    model,
     projectId: getPathSegment(job.input_json.projectId, "projectId"),
     provider: getOptionalChoice(job.input_json.provider, hookVideoProviders),
     referenceVideoDurationSeconds: getOptionalDurationSeconds(
       job.input_json.referenceVideoDurationSeconds,
+      job.input_json.model === "seedance_2_5" ? 30 : 3,
     ),
     referenceVideoUrl: getOptionalHttpsUrl(job.input_json.referenceVideoUrl),
+    resolution: getGenerationResolution(job.input_json.resolution, model),
     userId: getPathSegment(job.input_json.userId, "userId"),
     videoId: getPathSegment(job.input_json.videoId, "videoId"),
   };
@@ -467,18 +489,36 @@ function getOutputDurationSeconds(input: GenerateHookVideoInput) {
 }
 
 function getGenerationDurationSeconds(value: Json | undefined) {
-  return typeof value === "number" && Number.isInteger(value) && value >= 3 && value <= 10
+  return typeof value === "number" && Number.isInteger(value) && value >= 3 && value <= 30
     ? value
     : 4;
 }
 
-function getOptionalDurationSeconds(value: Json | undefined) {
+function getGenerationResolution(
+  value: Json | undefined,
+  model: GenerateHookVideoBaseInput["model"],
+): HookVideoResolution {
+  const resolution =
+    getOptionalChoice(value, hookVideoResolutions) ?? "720p";
+
+  if (model === "seedance_2_5" && resolution === "1080p") {
+    throw new Error("Seedance 2.5 supports 480p or 720p video quality.");
+  }
+
+  if (model === "google_omni" && resolution === "480p") {
+    throw new Error("Google Omni supports 720p or 1080p video quality.");
+  }
+
+  return resolution;
+}
+
+function getOptionalDurationSeconds(value: Json | undefined, maxDurationSeconds: number) {
   if (typeof value !== "number") {
     return undefined;
   }
 
-  if (!Number.isFinite(value) || value <= 0 || value > 3) {
-    throw new Error("generate_hook_video reference video must be 3 seconds or shorter.");
+  if (!Number.isFinite(value) || value <= 0 || value > maxDurationSeconds) {
+    throw new Error(`generate_hook_video reference video must be ${maxDurationSeconds} seconds or shorter.`);
   }
 
   return value;
@@ -539,6 +579,33 @@ function getOptionalHttpsUrl(value: Json | undefined) {
   } catch {
     return undefined;
   }
+}
+
+function getReferenceImageUrls(value: Json | undefined, fallback: Json | undefined): string[] {
+  if (value === undefined) {
+    const url = getOptionalHttpsUrl(fallback);
+    return url ? [url] : [];
+  }
+  if (!Array.isArray(value) || value.length > 30) {
+    throw new Error("generate_hook_video has invalid reference images.");
+  }
+  const urls = value.map(getOptionalHttpsUrl);
+  if (urls.some((url) => !url) || new Set(urls).size !== urls.length) {
+    throw new Error("generate_hook_video has invalid reference images.");
+  }
+  return urls as string[];
+}
+
+function getReferenceAudioUrls(value: Json | undefined): string[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > 30) {
+    throw new Error("generate_hook_video has invalid audio references.");
+  }
+  const urls = value.map(getOptionalHttpsUrl);
+  if (urls.some((url) => !url) || new Set(urls).size !== urls.length) {
+    throw new Error("generate_hook_video has invalid audio references.");
+  }
+  return urls as string[];
 }
 
 function getPathSegment(value: Json | undefined, fieldName: string) {

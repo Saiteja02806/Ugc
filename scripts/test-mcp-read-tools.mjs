@@ -18,6 +18,7 @@ const fixtureAsset = (id, updatedAt) => ({
 });
 const firstAsset = fixtureAsset("11111111-1111-4111-8111-111111111111", "2026-09-27T10:00:00.000Z");
 const secondAsset = fixtureAsset("22222222-2222-4222-8222-222222222222", "2026-09-26T10:00:00.000Z");
+const audioAsset = { ...fixtureAsset("55555555-5555-4555-8555-555555555555", "2026-09-28T10:00:00.000Z"), collection: "audio", mime_type: "audio/mpeg" };
 const foreignAsset = { ...fixtureAsset("44444444-4444-4444-8444-444444444444", "2026-09-26T09:00:00.000Z"), user_id: "owner-b" };
 const deletedAsset = { ...fixtureAsset("55555555-5555-4555-8555-555555555555", "2026-09-26T09:00:00.000Z"), deleted_at: "2026-09-27T00:00:00.000Z" };
 const uploadingAsset = { ...fixtureAsset("66666666-6666-4666-8666-666666666666", "2026-09-26T09:00:00.000Z"), status: "uploading" };
@@ -31,6 +32,7 @@ const softDeletedIds = new Set();
 const confirmedIds = new Set();
 const mcpUploadRows = new Map();
 let forceConcurrentConfirm = false;
+let uploadQuotaExceeded = false;
 globalThis.fetch = async (input, init) => {
   const url = new URL(input instanceof Request ? input.url : String(input));
   const method = init?.method ?? (input instanceof Request ? input.method : "GET");
@@ -48,17 +50,44 @@ globalThis.fetch = async (input, init) => {
       token_type: "access",
     });
   }
+  if (url.pathname.endsWith("/rest/v1/rpc/mcp_create_upload_asset")) {
+    if (uploadQuotaExceeded) return Response.json({ code: "P0001", message: "mcp_upload_quota_exceeded" }, { status: 400 });
+    const reservation = JSON.parse(init.body);
+    assert.equal(reservation.p_user_id, "owner-a");
+    assert.equal(reservation.p_max_unconfirmed_count, 5);
+    assert.equal(reservation.p_max_unconfirmed_bytes, 500 * 1024 * 1024);
+    const row = {
+      ...fixtureAsset(reservation.p_asset_id, new Date().toISOString()),
+      user_id: reservation.p_user_id, collection: reservation.p_collection,
+      source_type: reservation.p_source_type, source_record_id: reservation.p_asset_id,
+      title: reservation.p_title, file_name: reservation.p_file_name,
+      file_size_bytes: reservation.p_file_size_bytes, mime_type: reservation.p_mime_type,
+      storage_key: reservation.p_storage_key, url: reservation.p_url,
+      width: null, height: null, ratio: "other", status: "uploading",
+      metadata: { mcpUpload: true }, created_at: new Date().toISOString(),
+    };
+    mcpUploadRows.set(row.id, row);
+    return Response.json(row);
+  }
+  if (url.pathname.endsWith("/rest/v1/rpc/mcp_claim_deleted_upload_cleanup")) {
+    const input = JSON.parse(init.body);
+    const rows = [...mcpUploadRows.values()].filter(row => row.user_id === input.p_user_id &&
+      row.status === "uploading" && row.deleted_at &&
+      row.deleted_at <= input.p_deleted_before && !row.metadata.mcpUploadCleanupComplete &&
+      !row.metadata.mcpUploadCleanupClaimToken).slice(0, input.p_limit);
+    for (const row of rows) row.metadata.mcpUploadCleanupClaimToken = input.p_claim_token;
+    return Response.json(rows);
+  }
+  if (url.pathname.endsWith("/rest/v1/rpc/mcp_finish_deleted_upload_cleanup")) {
+    const input = JSON.parse(init.body);
+    const row = mcpUploadRows.get(input.p_asset_id);
+    if (!row || row.metadata.mcpUploadCleanupClaimToken !== input.p_claim_token) return Response.json(false);
+    delete row.metadata.mcpUploadCleanupClaimToken;
+    row.metadata.mcpUploadCleanupComplete = true;
+    return Response.json(true);
+  }
   if (url.pathname.endsWith("/rest/v1/media_assets")) {
     seenAssetRequests.push(url);
-    if (method === "POST") {
-      const inserted = JSON.parse(init.body);
-      assert.equal(inserted.user_id, "owner-a");
-      assert.equal(inserted.status, "uploading");
-      assert.deepEqual(inserted.metadata, { mcpUpload: true });
-      const row = { ...fixtureAsset(inserted.id, inserted.updated_at), ...inserted, created_at: new Date().toISOString(), deleted_at: null };
-      mcpUploadRows.set(row.id, row);
-      return Response.json(row);
-    }
     const owner = url.searchParams.get("user_id");
     assert.ok(owner === "eq.owner-a" || owner === "eq.owner-b");
     assert.equal(url.searchParams.get("deleted_at"), "is.null");
@@ -66,8 +95,9 @@ globalThis.fetch = async (input, init) => {
     if (method === "PATCH") {
       const pending = mcpUploadRows.get(id?.slice(3));
       if (pending) {
-        assert.equal(url.searchParams.get("status"), "eq.uploading");
-        if (pending.status !== "uploading" || owner !== `eq.${pending.user_id}`) return Response.json(null);
+        const expectedStatus = url.searchParams.get("status");
+        if (expectedStatus && (expectedStatus !== "eq.uploading" || pending.status !== "uploading")) return Response.json(null);
+        if (owner !== `eq.${pending.user_id}`) return Response.json(null);
         Object.assign(pending, JSON.parse(init.body));
         if (forceConcurrentConfirm) {
           forceConcurrentConfirm = false;
@@ -85,10 +115,14 @@ globalThis.fetch = async (input, init) => {
       if (asset) softDeletedIds.add(asset.id);
       return Response.json(asset ? { ...asset, deleted_at: "2026-09-27T12:00:00.000Z" } : null);
     }
-    if (id) return Response.json([...mcpUploadRows.values(), firstAsset, secondAsset, foreignAsset, deletedAsset, uploadingAsset]
+    if (id) return Response.json([...mcpUploadRows.values(), firstAsset, secondAsset, audioAsset, foreignAsset, deletedAsset, uploadingAsset]
       .find((row) => id === `eq.${row.id}` && `eq.${row.user_id}` === owner && !row.deleted_at && !softDeletedIds.has(row.id)) ?? null);
     if (assetListUnavailable) return Response.json({ message: "local asset outage" }, { status: 400 });
     assert.equal(url.searchParams.get("status"), "eq.ready");
+    if (!url.searchParams.get("collection")?.startsWith("eq.")) {
+      // Filtering must happen in SQL before LIMIT so audio cannot poison a page.
+      assert.equal(url.searchParams.get("collection"), "in.(influencer,video,image)");
+    }
     const rows = url.searchParams.get("or")?.includes("updated_at.lt")
       ? [secondAsset] : [firstAsset, secondAsset];
     return Response.json(rows);
@@ -140,6 +174,8 @@ const { decodeAssetCursor, encodeAssetCursor } = await import("../lib/mcp/asset-
 const { POST: mcpRoutePost } = await import("../app/mcp/route.ts");
 const { gcsStorageProvider } = await import("../lib/storage/gcs.ts");
 const signedUploads = [];
+const tombstonedObjects = [];
+const deletedObjects = [];
 let headMode = "ready";
 let headCalls = 0;
 gcsStorageProvider.createSignedPutUrl = async (params) => {
@@ -157,6 +193,13 @@ gcsStorageProvider.headObject = async ({ key }) => {
     ContentLength: headMode === "oversize" ? 26 * 1024 * 1024 : row.file_size_bytes,
   };
 };
+gcsStorageProvider.uploadBuffer = async ({ key, buffer, contentType }) => {
+  assert.deepEqual(buffer, Buffer.from([0]));
+  assert.equal(contentType, "application/octet-stream");
+  tombstonedObjects.push(key);
+  return { key, url: `https://local-mcp-storage.example.test/${key}` };
+};
+gcsStorageProvider.deleteObject = async ({ key }) => { deletedObjects.push(key); };
 
 const resource = new URL("https://mcp.getugcpilot.com/mcp");
 const unauthenticated = await mcpRoutePost(new Request(resource, { method: "POST" }));
@@ -185,7 +228,32 @@ const routeBodyText = await authenticatedRoute.text();
 const routeDataLine = routeBodyText.split("\n").find((line) => line.startsWith("data: "));
 const routeBody = JSON.parse(routeDataLine ? routeDataLine.slice(6) : routeBodyText);
 assert.ok(routeBody.result.tools.some((tool) => tool.name === "get_profile"));
+for (const tool of routeBody.result.tools) {
+  assert.deepEqual(tool.securitySchemes, tool._meta.securitySchemes);
+}
 assert.equal(seenBearerHash, `eq.${createHash("sha256").update(bearerSecret).digest("hex")}`);
+const oversizedRequest = routeRequest();
+const oversized = await mcpRoutePost(new Request(oversizedRequest.url, {
+  method: "POST", headers: oversizedRequest.headers,
+  body: JSON.stringify({ padding: "a".repeat(64 * 1024) }),
+}));
+assert.equal(oversized.status, 413);
+assert.equal(oversized.headers.get("cache-control"), "no-store");
+const streamHeaders = new Headers(oversizedRequest.headers);
+streamHeaders.set("content-length", "1");
+const oversizedStream = await mcpRoutePost(new Request(resource, {
+  method: "POST", headers: streamHeaders, duplex: "half",
+  body: new ReadableStream({ start(controller) {
+    controller.enqueue(new Uint8Array(40 * 1024));
+    controller.enqueue(new Uint8Array(40 * 1024));
+    controller.close();
+  } }),
+}));
+assert.equal(oversizedStream.status, 413);
+const malformed = await mcpRoutePost(new Request(resource, {
+  method: "POST", headers: oversizedRequest.headers, body: "{invalid",
+}));
+assert.equal(malformed.status, 400);
 for (const mode of ["missing", "expired", "revoked", "wrong-resource"]) {
   bearerMode = mode;
   const rejected = await mcpRoutePost(routeRequest());
@@ -223,6 +291,13 @@ for (const tool of discovered.body.result.tools) {
   assert.equal(tool._meta.securitySchemes[0].type, "oauth2");
   assert.equal(tool._meta.securitySchemes[0].scopes.length, 1);
 }
+const listAssetsSchema = discovered.body.result.tools.find((tool) => tool.name === "list_assets").inputSchema;
+assert.match(listAssetsSchema.properties.source_type.description, /combined_render/u);
+assert.match(listAssetsSchema.properties.collection.description, /influencer/u);
+const imageCountSchema = discovered.body.result.tools.find((tool) => tool.name === "generate_image").inputSchema.properties.count;
+assert.deepEqual(imageCountSchema.enum, [1, 2, 4]);
+const capabilitiesSchema = discovered.body.result.tools.find((tool) => tool.name === "get_capabilities").outputSchema;
+assert.deepEqual(capabilitiesSchema.properties.image_generation.properties.counts.items.enum, [1, 2, 4]);
 
 const profile = await call("tools/call", { name: "get_profile", arguments: {} });
 assert.deepEqual(profile.body.result.structuredContent, { id: "owner-a" });
@@ -238,6 +313,8 @@ const asset = await call("tools/call", { name: "get_asset", arguments: { asset_i
 assert.equal(asset.body.result.structuredContent.asset.id, firstAsset.id);
 const crossUser = await call("tools/call", { name: "get_asset", arguments: { asset_id: foreignAsset.id } });
 assert.equal(JSON.parse(crossUser.body.result.content[0].text).code, "NOT_FOUND");
+const unsupportedAsset = await call("tools/call", { name: "get_asset", arguments: { asset_id: audioAsset.id } });
+assert.equal(JSON.parse(unsupportedAsset.body.result.content[0].text).code, "NOT_FOUND");
 const deleted = await call("tools/call", { name: "get_asset", arguments: { asset_id: deletedAsset.id } });
 assert.equal(JSON.parse(deleted.body.result.content[0].text).code, "NOT_FOUND");
 const uploading = await call("tools/call", { name: "get_asset", arguments: { asset_id: uploadingAsset.id } });
@@ -291,8 +368,10 @@ billingMode = "growth";
 const growth = await call("tools/call", { name: "get_entitlements", arguments: {} });
 assert.equal(growth.body.result.structuredContent.plan, "growth");
 assert.equal(growth.body.result.structuredContent.credits_remaining, 585);
+assert.equal(growth.body.result.structuredContent.features.video_generation, true);
 const paidCapabilities = await call("tools/call", { name: "get_capabilities", arguments: {} });
 assert.equal(paidCapabilities.body.result.structuredContent.video_generation.available, true);
+assert.deepEqual(paidCapabilities.body.result.structuredContent.video_generation.durations_seconds, [3, 4, 5, 6, 7, 8, 9, 10]);
 assert.equal(paidCapabilities.body.result.structuredContent.video_generation.max_reference_videos, 0);
 billingMode = "expired-growth";
 const renewedPreview = await call("tools/call", { name: "get_entitlements", arguments: {} });
@@ -317,13 +396,21 @@ const signingOutage = await call("tools/call", { name: "create_upload", argument
 assert.equal(JSON.parse(signingOutage.body.result.content[0].text).code, "STORAGE_UNAVAILABLE");
 assert.equal(mcpUploadRows.size, 0);
 gcsStorageProvider.createSignedPutUrl = signedUrlImplementation;
+uploadQuotaExceeded = true;
+const quotaRejection = await call("tools/call", { name: "create_upload", arguments: createArgs }, writeAuth);
+assert.equal(JSON.parse(quotaRejection.body.result.content[0].text).code, "UPLOAD_QUOTA_EXCEEDED");
+uploadQuotaExceeded = false;
 const createdUpload = await call("tools/call", { name: "create_upload", arguments: createArgs }, writeAuth);
 assert.equal(createdUpload.status, 200, JSON.stringify(createdUpload));
 const uploadReceipt = createdUpload.body.result.structuredContent;
 assert.equal(uploadReceipt.required_headers["Content-Type"], "image/png");
+assert.equal(uploadReceipt.required_headers["x-goog-content-length-range"], "1,1024");
+assert.equal(uploadReceipt.required_headers["x-goog-if-generation-match"], "0");
 assert.ok(Date.parse(uploadReceipt.expires_at) > Date.now());
 assert.match(uploadReceipt.upload_url, /^https:\/\/local-mcp-upload\.example\.test\//);
 assert.equal(signedUploads.at(-1).expiresInSeconds, 600);
+assert.equal(signedUploads.at(-1).maxBytes, 1024);
+assert.equal(signedUploads.at(-1).createOnly, true);
 const uploadedRow = mcpUploadRows.get(uploadReceipt.upload_id);
 assert.equal(uploadedRow.user_id, "owner-a");
 assert.deepEqual(uploadedRow.metadata, { mcpUpload: true });
@@ -393,6 +480,21 @@ const deletion = await call("tools/call", { name: "delete_asset", arguments: { a
 assert.deepEqual(deletion.body.result.structuredContent, { asset_id: firstAsset.id, deleted: true });
 const repeatedDeletion = await call("tools/call", { name: "delete_asset", arguments: { asset_id: firstAsset.id } }, writeAuth);
 assert.equal(JSON.parse(repeatedDeletion.body.result.content[0].text).code, "NOT_FOUND");
+const tombstonesBeforeReadyDelete = tombstonedObjects.length;
+const readyMcpDeletion = await call("tools/call", { name: "delete_asset", arguments: { asset_id: uploadedRow.id } }, writeAuth);
+assert.equal(readyMcpDeletion.body.result.structuredContent.deleted, true);
+assert.equal(tombstonedObjects.length, tombstonesBeforeReadyDelete, "Ready assets keep the soft-delete behavior.");
+const pendingReceipt = await call("tools/call", { name: "create_upload", arguments: createArgs }, writeAuth);
+const pendingId = pendingReceipt.body.result.structuredContent.upload_id;
+const pendingRow = mcpUploadRows.get(pendingId);
+const pendingDeletion = await call("tools/call", { name: "delete_asset", arguments: { asset_id: pendingId } }, writeAuth);
+assert.equal(pendingDeletion.body.result.structuredContent.deleted, true);
+assert.equal(tombstonedObjects.at(-1), pendingRow.storage_key);
+assert.equal(deletedObjects.length, 0, "A still-valid signed URL must retain its tombstone.");
+pendingRow.deleted_at = "2026-09-27T00:00:00.000Z";
+await call("tools/call", { name: "create_upload", arguments: createArgs }, writeAuth);
+assert.equal(deletedObjects.at(-1), pendingRow.storage_key);
+assert.equal(pendingRow.metadata.mcpUploadCleanupComplete, true);
 
 const { markMediaAssetReady } = await import("../lib/media/media-storage.ts");
 const ready = await markMediaAssetReady({ assetId: uploadingAsset.id, userId: "owner-a", width: 640, height: 640, ratio: "1:1", expectedStatus: "uploading" });

@@ -191,7 +191,7 @@ variable "gemini_image_model" {
 variable "gemini_omni_model" {
   description = "Gemini multimodal model used by worker analysis flows."
   type        = string
-  default     = "gemini-omni-flash-preview"
+  default     = "gemini-omni-1.1-flash"
 }
 
 variable "gemini_api_key_secret_id" {

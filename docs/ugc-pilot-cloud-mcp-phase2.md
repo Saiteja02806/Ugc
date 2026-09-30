@@ -1,6 +1,10 @@
 # UGC Pilot Cloud MCP: Phase 2 implementation
 
-Status: local implementation and validation complete on 2026-09-27. Production migration and deployment have **not** been performed. Phase 3 now registers six read-only tools locally; see [Phase 3](ugc-pilot-cloud-mcp-phase3.md).
+Status: local implementation and validation completed on 2026-09-27. On 2026-09-28 the OAuth migration was applied and Phases 2–5 were deployed to the separate `ugc-mcp` Vercel project. Public production health/discovery and the real-account Google sign-in, consent, PKCE exchange, MCP initialization, refresh rotation, and revocation checks pass. Full client, redirect-fallback, and security acceptance remain pending. See the [live rollout record](ugc-pilot-cloud-mcp-live-image-validation.md) and [Phase 3](ugc-pilot-cloud-mcp-phase3.md).
+
+A later security review found a refresh versus revocation race. The atomic
+family-lock migration and matching route change are prepared locally and have
+not been applied to production; see the [security review](ugc-pilot-cloud-mcp-security-review.md).
 
 ## Phase 1 handoff
 
@@ -9,8 +13,8 @@ The user approved the 12-tool [contract](ugc-pilot-cloud-mcp-v1-contracts.md) an
 ## Routes and identity
 
 - `https://mcp.getugcpilot.com/mcp` serves Streamable HTTP through the official MCP TypeScript server SDK. A fresh server and request context are created for each exchange. Legacy 2025 clients use the SDK's stateless compatibility path.
-- `/.well-known/oauth-protected-resource` and `/.well-known/oauth-protected-resource/mcp` advertise the canonical MCP resource and `https://getugcpilot.com` as issuer.
-- `https://getugcpilot.com/.well-known/oauth-authorization-server` advertises the authorization, token, registration, and revocation endpoints; PKCE S256; RFC 9207 `iss`; and the approved scopes.
+- `/.well-known/oauth-protected-resource` and `/.well-known/oauth-protected-resource/mcp` advertise the canonical MCP resource and the configured issuer. The isolated production deployment uses `https://mcp.getugcpilot.com` as issuer.
+- `https://mcp.getugcpilot.com/.well-known/oauth-authorization-server` advertises the authorization, token, registration, and revocation endpoints; PKCE S256; RFC 9207 `iss`; and the approved scopes.
 - `/oauth/authorize` shows the OAuth client name, exact redirect host, and requested scopes. The user signs in with the existing Firebase UI. If Google popup sign-in falls back to a full-page redirect, the global auth handler keeps a verified user on the OAuth consent page when Firebase returns. `/oauth/authorize/decision` verifies the Firebase ID token on the server before issuing a five-minute, single-use authorization code.
 - `/oauth/token` validates client ID, exact redirect URI, resource indicator, and PKCE before issuing an opaque one-hour access token and 30-day rotating refresh token. The authorization-code check, single-use consumption, and both token inserts run in one database transaction so an insert failure leaves the code retryable. Tokens and authorization codes are stored as SHA-256 hashes in the existing Supabase database. Refresh replay revokes the whole token family.
 - `/oauth/revoke` revokes an access/refresh token family. `/oauth/register` supports public OAuth Dynamic Client Registration with validated redirect URIs and an atomic limit of 20 registrations per source IP per hour on Vercel. Client ID Metadata Documents are also accepted over pinned, public-address HTTPS requests with redirects disabled, a 32 KiB size limit, and a five-second absolute response deadline. Registration and consent reject malformed JSON object bodies before touching authentication or storage.
@@ -19,7 +23,7 @@ The user approved the 12-tool [contract](ugc-pilot-cloud-mcp-v1-contracts.md) an
 
 ## Database and configuration
 
-The migration is [`20260927150038_mcp_oauth.sql`](../supabase/migrations/20260927150038_mcp_oauth.sql). It creates four RLS-enabled tables and restricted refresh-rotation and client-registration functions in the existing Supabase project. Only the server-side service role receives table access and function execution. No second backend or user table is introduced.
+The migration is [`20260927202555_mcp_oauth.sql`](../supabase/migrations/20260927202555_mcp_oauth.sql). It creates four RLS-enabled tables and restricted refresh-rotation and client-registration functions in the existing Supabase project. Only the server-side service role receives table access and function execution. No second backend or user table is introduced.
 
 The current `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `NEXT_PUBLIC_FIREBASE_API_KEY` remain required. Optional configuration:
 
@@ -28,7 +32,7 @@ The current `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `NEXT_P
 | `MCP_PUBLIC_URL` | `https://mcp.getugcpilot.com/mcp` | Canonical token audience and resource URI |
 | `MCP_OAUTH_ISSUER` | `https://getugcpilot.com` | First-party authorization server issuer |
 
-The issuer and MCP domains must both route to the existing Next.js app. Live checks found that `www.getugcpilot.com` redirects to the canonical apex host, so the OAuth issuer defaults to `https://getugcpilot.com`. The local DNS lookup resolved `mcp.getugcpilot.com`, but its live `/mcp` response is Vercel's `DEPLOYMENT_NOT_FOUND` rather than the app's 404. The subdomain must be attached to the intended Vercel project during rollout. The connected local database does not yet have the migration: a bearer-token request returned `PGRST205`, and readiness correctly returned 503. The connected UGC Supabase project has only its main branch; there is no isolated remote branch for end-to-end OAuth testing. The local Docker daemon is unavailable, so the migration was verified with PGlite instead of a local Supabase stack. In keeping with the user's instruction to protect live workflows, no production database, domain, or deployment changes were made.
+Initial checks on 2026-09-27 found `DEPLOYMENT_NOT_FOUND` on the MCP domain and absent OAuth tables (`PGRST205`); readiness correctly returned 503. PGlite supplied the isolated migration tests because local Docker was unavailable. These were pre-rollout findings. The user subsequently approved separate-project hosting and additive migrations. On 2026-09-28 `mcp.getugcpilot.com` was attached to `ugc-mcp`, the migration was applied, and production health and both discovery routes returned 200. The MCP project overrides `MCP_OAUTH_ISSUER` with `https://mcp.getugcpilot.com`, so authorization stays on that isolated host. The existing website deployment and its apex/`www` aliases remain unchanged. See the [live rollout record](ugc-pilot-cloud-mcp-live-image-validation.md) for deployment IDs and the remaining credential/authentication checks.
 
 ## Validation performed
 
@@ -43,9 +47,9 @@ The issuer and MCP domains must both route to the existing Next.js app. Live che
 
 ## Remaining rollout work
 
-1. Review and apply the migration to the existing Supabase project, then verify the four tables, function grants, and `/mcp/health` against the deployed site.
-2. Attach `mcp.getugcpilot.com` to the existing Vercel project, deploy the app, and verify the two hostnames serve their intended routes over HTTPS. Test a real Firebase sign-in, client registration/CIMD, consent, code exchange, refresh, revocation, and an authenticated MCP initialization from the production domains.
-3. Validate the locally implemented Phase 3 read-only tools and Phase 4 media mutation tools against authenticated production data after an approved rollout. Generation and job tools belong to later phases.
+1. Complete: apply the OAuth migration, verify its service-role grants, deploy the separate MCP project, attach its custom domain, and verify public production health/discovery and website-route isolation.
+2. Core live flow verified: the user added the authorized domain and Google callback; real Google sign-in, Dynamic Client Registration, consent, PKCE code exchange, refresh rotation, revocation, and authenticated MCP initialization passed on the production MCP domain. Client ID Metadata interoperability, redirect fallback, and remaining security cases still need acceptance.
+3. Authenticated Phase 3 read smoke checks and a real Phase 4 signed upload, confirmation, readback, and soft-delete test passed. The deployed Google Cloud credential signed the storage URL and accessed the object. Cross-account owner isolation and third-party client upload UX remain pending. Phase 5 image jobs and actual queue dispatch still need live acceptance. The connected account is Free with 0 credits; a generation-eligible account is required for the one-image test. Phase 6 waits for live image acceptance.
 
 Production acceptance must use the real domains, per `AGENTS.md`; localhost checks above are only compile and isolated-flow sanity checks.
 
@@ -62,4 +66,4 @@ The six approved read-only tools have concrete existing data sources and are now
 | `get_asset` | `getMediaAssetForOwner` checks owner and nondeleted state. | Requires `status = ready`, then maps the approved metadata/URL shape; unknown and cross-user IDs share `NOT_FOUND`. |
 | `get_capabilities` | AI Studio generation settings define ratios, counts and durations; `getUserSubscription` defines active paid access. | Intersects backend settings with plan and minimum available credits, omits model names, and advertises image references only for video V1. |
 
-The existing media API applies a separate Creative Library visibility filter to its list response. The approved MCP contract says owner-owned, ready, nondeleted assets and explicitly names source types that the website library hides; Phase 3 should follow that contract without silently changing the website list. The live Supabase project has no development branch, so owner isolation and pagination can be tested locally with focused fixtures, while real authenticated acceptance waits for an isolated environment or approved rollout.
+The existing media API applies a separate Creative Library visibility filter to its list response. The approved MCP contract says owner-owned, ready, nondeleted assets and explicitly names source types that the website library hides; Phase 3 should follow that contract without silently changing the website list. Owner isolation and pagination pass focused local fixtures. The approved isolated deployment is live, and real-account read smoke checks passed. Cross-account ownership, pagination, and remaining security/client acceptance still need verification.

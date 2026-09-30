@@ -1,7 +1,7 @@
 import "server-only";
 
 const DEFAULT_RESOURCE = "https://mcp.getugcpilot.com/mcp";
-const DEFAULT_ISSUER = "https://getugcpilot.com";
+const DEFAULT_ISSUER = "https://mcp.getugcpilot.com";
 
 function configuredUrl(value: string | undefined, fallback: string) {
   const parsed = new URL(value?.trim() || fallback);

@@ -313,10 +313,10 @@ export async function getLatestReadyMediaAssetForParent(params: {
 type MarkMediaAssetReadyParams = {
   assetId: string;
   durationSeconds?: number | null;
-  height: number;
+  height: number | null;
   ratio: MediaRatio;
   userId: string;
-  width: number;
+  width: number | null;
 };
 
 export function markMediaAssetReady(params: MarkMediaAssetReadyParams & { expectedStatus: "uploading" }): Promise<MediaAssetRow | null>;

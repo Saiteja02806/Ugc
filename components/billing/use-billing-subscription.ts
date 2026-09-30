@@ -57,6 +57,7 @@ export function getBillingSubscriptionQueryKey(userId: string) {
 
 export function useBillingSubscription(options?: {
   activationPolling?: boolean;
+  refreshOnFocus?: boolean;
 }) {
   const { loading, user } = useAuth();
 
@@ -70,7 +71,7 @@ export function useBillingSubscription(options?: {
       shouldPollForSubscriptionActivation(query.state.data?.status)
         ? 2_000
         : false,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: options?.refreshOnFocus ? "always" : false,
     retry: 1,
     staleTime: options?.activationPolling ? 0 : 30 * 60 * 1_000,
   });

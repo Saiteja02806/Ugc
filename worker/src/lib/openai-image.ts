@@ -2,6 +2,7 @@ import OpenAI, { toFile } from "openai";
 
 import { ProviderRequestNotSubmittedError } from "./generation-provider.js";
 import type { AIStudioImageRatio } from "./image-output.js";
+import { downloadReferenceImageBytes } from "./reference-image-download.js";
 
 const DEFAULT_IMAGE_MODEL = "gpt-image-2";
 
@@ -41,33 +42,9 @@ export async function generateOpenAiImageBuffer(
 }
 
 async function downloadReferenceImage(url: string) {
-  let response: Response;
-
-  try {
-    response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
-  } catch (error) {
-    throw new ProviderRequestNotSubmittedError(
-      "The uploaded reference image could not be downloaded.",
-      { cause: error },
-    );
-  }
-
-  if (!response.ok) {
-    throw new ProviderRequestNotSubmittedError(
-      "The uploaded reference image could not be downloaded.",
-    );
-  }
-
-  const contentType = response.headers.get("content-type")?.split(";", 1)[0] ?? "image/png";
+  const { buffer, contentType } = await downloadReferenceImageBytes(url);
   const extension =
     contentType === "image/jpeg" ? "jpg" : contentType === "image/webp" ? "webp" : "png";
-  const buffer = Buffer.from(await response.arrayBuffer());
-
-  if (buffer.length === 0 || buffer.length > 25 * 1024 * 1024) {
-    throw new ProviderRequestNotSubmittedError(
-      "The uploaded reference image is empty or too large.",
-    );
-  }
 
   return toFile(buffer, `reference.${extension}`, { type: contentType });
 }

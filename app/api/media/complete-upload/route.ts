@@ -71,17 +71,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const width = toPositiveInteger(body?.width);
-    const height = toPositiveInteger(body?.height);
+    const isAudio = asset.collection === "audio";
+    const width = isAudio ? null : toPositiveInteger(body?.width);
+    const height = isAudio ? null : toPositiveInteger(body?.height);
 
-    if (!width || !height) {
+    if (!isAudio && (!width || !height)) {
       return Response.json(
         { ok: false, error: "Media width and height are required." },
         { status: 400 },
       );
     }
 
-    const ratio = isMediaRatio(body?.ratio) ? body.ratio : getRatio(width, height);
+    const ratio = isAudio ? "other" : isMediaRatio(body?.ratio) ? body.ratio : getRatio(width!, height!);
     const durationSeconds =
       asset.collection === "image"
         ? null
@@ -93,7 +94,14 @@ export async function POST(request: Request) {
 
     if (asset.collection !== "image" && durationSeconds === null) {
       return Response.json(
-        { ok: false, error: "Video duration is required." },
+        { ok: false, error: `${isAudio ? "Audio" : "Video"} duration is required.` },
+        { status: 400 },
+      );
+    }
+
+    if (isAudio && durationSeconds! > 30) {
+      return Response.json(
+        { ok: false, error: "Audio references must be 30 seconds or shorter." },
         { status: 400 },
       );
     }

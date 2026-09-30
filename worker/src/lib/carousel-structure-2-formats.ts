@@ -222,7 +222,7 @@ function expandSixSlideFormat(
       ...cover,
       instruction:
         "Reader-first cover: state a specific benefit, tension, mistake, contrast, or curiosity gap that gives the viewer a reason to swipe. Do not begin with a complete personal-story opener such as 'I thought...' or 'I used to...' unless the same line states the viewer payoff.",
-      maximumWords: Math.min(cover.maximumWords, 11),
+      maximumWords: 13,
       minimumWords: 5,
       perspective: "reader_first",
     },
@@ -254,9 +254,9 @@ function expandSixSlideFormat(
       perspective: "first_person",
     },
     {
-      ctaPolicy: "none",
+      ctaPolicy: "native_experiment",
       instruction:
-        "Close with one useful, self-contained takeaway. It should help the reader act on the lesson without an invitation, instruction to save, or call to action.",
+        "Close with useful value. An optional soft CTA may accompany this final slide, but must not replace a promised tip or move to an earlier slide.",
       maximumWords: 30,
       minimumWords: 14,
       perspective: "first_person_then_viewer",

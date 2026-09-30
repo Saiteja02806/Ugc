@@ -2586,7 +2586,7 @@ function parseCurrentWallTextContent(
           ![400, 600, LEGACY_WALL_TEXT_FONT_WEIGHT].includes(
             Number(finalLayout.fontWeight),
           )) ||
-    (isArialBoldV13 && Number(finalLayout.fontSizePx) !== 52) ||
+    (isArialBoldV13 && ![50, 52].includes(Number(finalLayout.fontSizePx))) ||
     ![36, 38, 40, 42, 44, 46, 48, 50, 52].includes(Number(finalLayout.fontSizePx)) ||
     typeof finalLayout.lineHeightPx !== "number" ||
     finalLayout.lineHeightPx <= 0 ||

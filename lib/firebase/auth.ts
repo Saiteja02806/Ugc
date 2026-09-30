@@ -6,8 +6,6 @@ import {
   linkWithCredential,
   onAuthStateChanged,
   reload,
-  sendEmailVerification,
-  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
@@ -17,6 +15,7 @@ import {
 
 import { auth, googleProvider } from "./client";
 import { AUTH_SESSION_COOKIE_NAME } from "./auth-session";
+import type { EmailPurchaseIntent } from "../auth/email-policy";
 
 export { AUTH_SESSION_COOKIE_NAME } from "./auth-session";
 
@@ -115,12 +114,12 @@ export function consumeGoogleRedirectPending() {
   }
 }
 
-export async function signUpWithEmail(email: string, password: string) {
+export async function signUpWithEmail(email: string, password: string, intent: EmailPurchaseIntent = {}) {
   const normalizedEmail = normalizeEmail(email);
   const currentUser = auth.currentUser;
 
   if (canLinkEmailCredential(currentUser, normalizedEmail)) {
-    return linkEmailCredentialToUser(currentUser, normalizedEmail, password);
+    return linkEmailCredentialToUser(currentUser, normalizedEmail, password, intent);
   }
 
   try {
@@ -130,7 +129,7 @@ export async function signUpWithEmail(email: string, password: string) {
       password,
     );
 
-    await sendEmailVerification(result.user);
+    await sendVerificationForUser(result.user, intent);
     await getIdToken(result.user, true);
 
     return mapFirebaseUser(result.user);
@@ -159,10 +158,10 @@ export async function signInWithEmail(email: string, password: string) {
 }
 
 export async function requestPasswordReset(email: string) {
-  await sendPasswordResetEmail(auth, normalizeEmail(email));
+  await postAuthEmail("/api/auth/forgot-password", { email: normalizeEmail(email) });
 }
 
-export async function resendVerificationEmail() {
+export async function resendVerificationEmail(intent: EmailPurchaseIntent = {}) {
   const user = auth.currentUser;
 
   if (!user) {
@@ -179,10 +178,44 @@ export async function resendVerificationEmail() {
     return mapFirebaseUser(user);
   }
 
-  await sendEmailVerification(user);
+  await sendVerificationForUser(user, intent);
   await getIdToken(user, true);
 
   return mapFirebaseUser(user);
+}
+
+async function sendVerificationForUser(user: User, intent: EmailPurchaseIntent) {
+  try {
+    const token = await getIdToken(user, true);
+    await postAuthEmail("/api/auth/send-verification", intent, token);
+  } catch (error) {
+    throw new FirebaseAuthActionError(
+      error instanceof FirebaseAuthActionError ? error.message :
+        "Your account was created, but the verification email could not be sent. Request another on the verification page.",
+      "auth/verification-send-failed",
+    );
+  }
+}
+
+async function postAuthEmail(path: string, body: object, token?: string) {
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch {
+    throw new FirebaseAuthActionError("The email request could not be completed. Please try again.");
+  }
+  if (!response.ok) {
+    const data = await response.json().catch(() => null) as { error?: string } | null;
+    throw new FirebaseAuthActionError(
+      data?.error || "The email request could not be completed. Please try again.",
+      response.status === 429 ? "auth/too-many-requests" : "auth/email-delivery-failed",
+    );
+  }
 }
 
 export async function refreshCurrentFirebaseUser() {
@@ -370,6 +403,7 @@ async function linkEmailCredentialToUser(
   user: User,
   email: string,
   password: string,
+  intent: EmailPurchaseIntent,
 ) {
   if (user.providerData.some((provider) => provider.providerId === "password")) {
     throw new FirebaseAuthActionError(
@@ -383,7 +417,7 @@ async function linkEmailCredentialToUser(
     const result = await linkWithCredential(user, credential);
 
     if (!result.user.emailVerified) {
-      await sendEmailVerification(result.user);
+      await sendVerificationForUser(result.user, intent);
     }
 
     await getIdToken(result.user, true);

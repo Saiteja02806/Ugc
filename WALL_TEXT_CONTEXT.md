@@ -1,6 +1,65 @@
 # Wall-of-text Context
 
-Last updated: 2026-09-14
+Last updated: 2026-09-26
+
+## 2026-09-26 Complete planning ideas and condition handoff (local implementation)
+
+- Planner V17 permits one or two useful sentences per contentIdea, with a
+  60-word ceiling and the existing 400-character storage limit. It no longer
+  requires 8–14 words. A second sentence must add supported detail or a needed
+  condition, not filler. Initial generation, validation, and targeted repair
+  use the same contract. The 200-item target and ten-item chunks are unchanged.
+- Shared extraction instructions explicitly collect applicable conditions
+  from across source sentences and retain them in every standalone claim.
+- Writer V28 receives the immutable approved fact snapshot as
+  qualificationContext alongside its unchanged assignedBusinessFact. The
+  extra context can only restrict that selected claim, never authorize
+  another capability or benefit. Conditions still have to exist in the
+  approved snapshot; this does not recover absent source evidence.
+- Final Wall word limits, typography, layout, reviewer routing, fact IDs,
+  database schema, and existing saved content are unchanged. Prompt adherence
+  is not a deterministic semantic guarantee; live output review remains
+  necessary. These changes are local, not a deployment record.
+
+## 2026-09-25 Plain-language prompts (local implementation)
+
+- Website, typed-description, and mobile-app AI context extraction share a
+  system-level fact-writing contract. Factual descriptions use complete,
+  everyday sentences; categories, reader labels, and search phrases retain
+  their appropriate short forms. Rewrites preserve conditions and approval
+  requirements, omit unsupported meaning, and self-check in the same request.
+- Planner V16 retains one selected fact per idea and the existing JSON and
+  8–14-word idea contract. Clarity and supported meaning take priority over
+  optional situation focuses, concept lanes, and variety targets. Neutral
+  practical observations are valid; emotional conflict is not mandatory.
+  Initial generation and single-item repair share the clarity instructions.
+- Writer V27 asks for text understandable without the private plan, preserves
+  fact qualifications, and permits neutral observations. Repair instructions
+  address the reported issue; shortening is specific to measured layout fit.
+- This is a prompt-only generation change: no fact-rejection UI, normalization
+  pass, new database fields, reviewer-routing changes, or historical rewrites.
+  The fact snapshot, selected-fact safety checks, word range, 50px typography,
+  measured layout, and existing manual Business Context editing remain intact.
+- Existing contexts and 200-item plans retain their saved wording. New prompt
+  versions apply when the relevant generation is run; they do not establish
+  production deployment or measured improvement in reader comprehension.
+
+## 2026-09-25 Wall reference typography and range-only writing
+
+- New automatic Wall cards use the packaged **Arial Bold 700** face at a fixed
+  **50px** size, with the existing 1.10 line-height, 4px black outline, normal
+  tracking, and no shadow. The type size changed from 52px to 50px; the
+  line-height was intentionally not tightened.
+- The Writer receives only each candidate's inclusive 24–48 word range (or a
+  smaller measured maximum on a constrained layout). It has no preferred or
+  target word count, so it may write naturally anywhere inside that range.
+  Repairs reduce the maximum by four words when a measured fit fails.
+- `wall_text_generation_assignments.target_words` remains required by the
+  reservation RPC and historical rows. New reservations store their maximum
+  there solely as compatibility metadata; it is never sent to the Writer or
+  used to steer its copy length.
+- Existing V13 52px cards remain readable and valid without reflow. The new
+  persistence migration admits the 50px V13 layout alongside that legacy size.
 
 ## 2026-09-14 Fact-grounded Wall V2
 

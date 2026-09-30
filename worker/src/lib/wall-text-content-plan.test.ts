@@ -16,6 +16,26 @@ test("uses compact ten-idea Wall Text planning chunks", () => {
   assert.equal(WALL_TEXT_CONTENT_PLAN_CHUNK_SIZE, 10);
 });
 
+test("accepts two useful planning sentences without the old fourteen-word ceiling", () => {
+  const parsed = parseWallTextContentPlanChunk({ briefs: [oneBrief()] }, 1);
+  parsed.items[0]!.contentIdea = "Customers order bread by 4 pm for next-day pickup. Pickup is available Tuesday through Saturday from 8 am to noon.";
+  assert.deepEqual(validateWallTextContentPlanChunk({ existingItems: [], items: parsed.items }), []);
+});
+
+test("allows a complete short planning point without forcing a second sentence", () => {
+  const parsed = parseWallTextContentPlanChunk({ briefs: [oneBrief()] }, 1);
+  parsed.items[0]!.contentIdea = "Every post requires approval before publication.";
+  assert.deepEqual(validateWallTextContentPlanChunk({ existingItems: [], items: parsed.items }), []);
+});
+
+test("rejects three planning sentences and overlong ideas with repairable feedback", () => {
+  const parsed = parseWallTextContentPlanChunk({ briefs: [oneBrief()] }, 1);
+  parsed.items[0]!.contentIdea = "Customers order online. Orders close at 4 pm. Pickup is tomorrow.";
+  assert.match(validateWallTextContentPlanChunk({ existingItems: [], items: parsed.items }).join(" "), /at most two sentences/);
+  parsed.items[0]!.contentIdea = Array.from({ length: 61 }, () => "word").join(" ") + ".";
+  assert.match(validateWallTextContentPlanChunk({ existingItems: [], items: parsed.items }).join(" "), /at most 60 words/);
+});
+
 test("assigns a distinct situation focus to each parent brief in a 200-item plan", () => {
   const focuses = getWallTextBriefSituationFocuses(1, 40);
 

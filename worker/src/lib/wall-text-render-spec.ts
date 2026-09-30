@@ -486,7 +486,7 @@ function normalizeFinalLayout(
           LEGACY_WALL_TEXT_FONT_WEIGHT,
         ].includes(value.fontWeight)) ||
     ![36, 38, 40, 42, 44, 46, 48, 50, 52].includes(value.fontSizePx) ||
-    (value.version === "wall-text-final-layout-v9" && value.fontSizePx !== 52) ||
+    (value.version === "wall-text-final-layout-v9" && ![50, 52].includes(value.fontSizePx)) ||
     !Number.isFinite(value.lineHeightPx) ||
     value.lineHeightPx <= 0 ||
     value.blocks.length < 1 ||

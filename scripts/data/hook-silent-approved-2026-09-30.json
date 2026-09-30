@@ -1,0 +1,366 @@
+{
+  "schemaVersion": "hook-silent-video-manifest-v1",
+  "sourceBatch": "hook-silent-2026-09-30-approved",
+  "reviewedAt": "2026-09-30",
+  "policy": {
+    "audio": "Silent prepared sources use existing Dynamic Hook audio selection; no audio lock added.",
+    "influencerIdentity": "Conservative separate provisional creator keys; no changes to existing identities.",
+    "review": "User approved content, locally decoded and reviewed across five frames.",
+    "textPlacement": "Reviewed across five frames; above-head or below-face positions preserve facial reactions."
+  },
+  "sourceFolders": {
+    "prepared": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\content-import-2026-09-30\\hook-silent"
+  },
+  "originalSourceFolder": "C:/Users/chund/OneDrive/Desktop/hook videos/notbeen",
+  "visualGroups": {
+    "bedroom_reaction": "Influencer reacting in a bedroom or bed setting.",
+    "cafe_reaction": "Influencer seated in a cafe or restaurant environment.",
+    "desk_laptop_reaction": "Influencer reacting while a laptop or desk setup is visually prominent.",
+    "fitness_workspace_reaction": "Fitness-styled influencer moving beside a laptop or workspace.",
+    "headphones_reaction": "Headphones are a prominent part of the influencer reaction.",
+    "indoor_selfie_closeup": "Indoor face-led selfie or close-up reaction without a dominant prop.",
+    "indoor_selfie_medium": "Indoor medium-framed reaction showing more torso or surrounding room.",
+    "office_selfie": "Influencer in a recognizable office or shared-workspace setting.",
+    "phone_reaction": "A phone is visibly involved in the influencer reaction.",
+    "sofa_reaction": "Influencer reacting while seated on a sofa or lounge chair."
+  },
+  "reactionTypes": {
+    "amusement_laughter": "Positive amusement, laughter, or delighted surprise.",
+    "concern_anxiety": "Concern, worry, stress, embarrassment, or anxious realization.",
+    "confidence_approval": "Confident, knowing, satisfied, or approving expression.",
+    "confusion_skepticism": "Confusion, doubt, skepticism, or questioning disbelief.",
+    "curiosity_discovery": "Curiosity, discovery, attention shift, or an emerging realization.",
+    "focused_attention": "Neutral-to-focused action that supplies lower-intensity Hook movement.",
+    "secret_reveal": "Shh, secrecy, concealed information, or a reveal gesture.",
+    "shock_surprise": "Clear shock, surprise, disbelief, or startled realization."
+  },
+  "influencers": {
+    "creator_062": {
+      "displayName": "Creator 062",
+      "identityConfidence": "medium"
+    },
+    "creator_063": {
+      "displayName": "Creator 063",
+      "identityConfidence": "medium"
+    },
+    "creator_064": {
+      "displayName": "Creator 064",
+      "identityConfidence": "medium"
+    },
+    "creator_065": {
+      "displayName": "Creator 065",
+      "identityConfidence": "medium"
+    },
+    "creator_066": {
+      "displayName": "Creator 066",
+      "identityConfidence": "medium"
+    },
+    "creator_067": {
+      "displayName": "Creator 067",
+      "identityConfidence": "medium"
+    },
+    "creator_068": {
+      "displayName": "Creator 068",
+      "identityConfidence": "medium"
+    },
+    "creator_069": {
+      "displayName": "Creator 069",
+      "identityConfidence": "medium"
+    },
+    "creator_070": {
+      "displayName": "Creator 070",
+      "identityConfidence": "medium"
+    },
+    "creator_071": {
+      "displayName": "Creator 071",
+      "identityConfidence": "medium"
+    }
+  },
+  "assets": [
+    {
+      "assetKey": "hook-silent:6a37891360fd439d49fb24509c79714687cd3356390748599f8cffc5a6574238",
+      "catalogName": "creator-062-shock-surprise-6a37891360",
+      "durationSeconds": 3.292,
+      "fileSizeBytes": 722145,
+      "hasAudio": false,
+      "height": 1280,
+      "width": 720,
+      "hookTextPlacement": {
+        "preset": "below_face",
+        "reviewVersion": "hook-multiframe-placement-v2",
+        "reviewedAt": "2026-09-30",
+        "x": 0.5,
+        "y": 0.68
+      },
+      "influencerKey": "creator_062",
+      "originalFileName": "Face_swap_video_editing_instruct_20260928144705-Vmake (online-video-cutter.com).mp4",
+      "originalSha256": "d4de91f632f51b93d415183461a7d8b7f5d4b477d30affaa1a03d49883526d44",
+      "ratio": "9:16",
+      "reactionType": "shock_surprise",
+      "reviewReason": "User approved source content; full decode, start/20%/middle/80%/near-end frames and placement reviewed locally; original audio removed without changing video packets.",
+      "reviewStatus": "approved",
+      "sha256": "6a37891360fd439d49fb24509c79714687cd3356390748599f8cffc5a6574238",
+      "sortOrder": 118,
+      "sourceFolderKey": "prepared",
+      "videoCodec": "h264",
+      "visualGroup": "indoor_selfie_medium"
+    },
+    {
+      "assetKey": "hook-silent:902849d8e331573d97221f5978ee1397dbb6b5193a0d5976aed9cd6dc0e2abd0",
+      "catalogName": "creator-063-confidence-approval-902849d8e3",
+      "durationSeconds": 1.917,
+      "fileSizeBytes": 1604533,
+      "hasAudio": false,
+      "height": 1280,
+      "width": 720,
+      "hookTextPlacement": {
+        "preset": "below_face",
+        "reviewVersion": "hook-multiframe-placement-v2",
+        "reviewedAt": "2026-09-30",
+        "x": 0.5,
+        "y": 0.68
+      },
+      "influencerKey": "creator_063",
+      "originalFileName": "Face_swap_video_editing_instruct…_202608291207.mp4",
+      "originalSha256": "5d8a819bf164b249e2580b9a0e9301f3269854d839d527a281e86ee79c877930",
+      "ratio": "9:16",
+      "reactionType": "confidence_approval",
+      "reviewReason": "User approved source content; full decode, start/20%/middle/80%/near-end frames and placement reviewed locally; original audio removed without changing video packets.",
+      "reviewStatus": "approved",
+      "sha256": "902849d8e331573d97221f5978ee1397dbb6b5193a0d5976aed9cd6dc0e2abd0",
+      "sortOrder": 119,
+      "sourceFolderKey": "prepared",
+      "videoCodec": "h264",
+      "visualGroup": "desk_laptop_reaction"
+    },
+    {
+      "assetKey": "hook-silent:d9df575383bff4bf11506e019d115410506813ba834a2dd7a0cb1eb892803ef8",
+      "catalogName": "creator-064-shock-surprise-d9df575383",
+      "durationSeconds": 4.875,
+      "fileSizeBytes": 1584577,
+      "hasAudio": false,
+      "height": 1280,
+      "width": 720,
+      "hookTextPlacement": {
+        "preset": "above_head",
+        "reviewVersion": "hook-multiframe-placement-v2",
+        "reviewedAt": "2026-09-30",
+        "x": 0.5,
+        "y": 0.15
+      },
+      "influencerKey": "creator_064",
+      "originalFileName": "Perform_face_swap_and_background_20260928145402-Vmake (online-video-cutter.com).mp4",
+      "originalSha256": "661e53fb2192491b282ea383120caf416390a6db0a1c837d6c39f7aa4743a2be",
+      "ratio": "9:16",
+      "reactionType": "shock_surprise",
+      "reviewReason": "User approved source content; full decode, start/20%/middle/80%/near-end frames and placement reviewed locally; original audio removed without changing video packets.",
+      "reviewStatus": "approved",
+      "sha256": "d9df575383bff4bf11506e019d115410506813ba834a2dd7a0cb1eb892803ef8",
+      "sortOrder": 120,
+      "sourceFolderKey": "prepared",
+      "videoCodec": "h264",
+      "visualGroup": "indoor_selfie_closeup"
+    },
+    {
+      "assetKey": "hook-silent:ef4aeb02c7925e1d3c3a513c24edb85afb4f55aa01b000c7f75b0e09047dab9f",
+      "catalogName": "creator-065-concern-anxiety-ef4aeb02c7",
+      "durationSeconds": 8.792,
+      "fileSizeBytes": 8305220,
+      "hasAudio": false,
+      "height": 1280,
+      "width": 720,
+      "hookTextPlacement": {
+        "preset": "above_head",
+        "reviewVersion": "hook-multiframe-placement-v2",
+        "reviewedAt": "2026-09-30",
+        "x": 0.5,
+        "y": 0.15
+      },
+      "influencerKey": "creator_065",
+      "originalFileName": "Perform_face_swap_and_replicate_202608291213.mp4",
+      "originalSha256": "22dd7b8952b9a83124c6610d2abcd7e224da36b13e798c65901146c6760a4f27",
+      "ratio": "9:16",
+      "reactionType": "concern_anxiety",
+      "reviewReason": "User approved source content; full decode, start/20%/middle/80%/near-end frames and placement reviewed locally; original audio removed without changing video packets.",
+      "reviewStatus": "approved",
+      "sha256": "ef4aeb02c7925e1d3c3a513c24edb85afb4f55aa01b000c7f75b0e09047dab9f",
+      "sortOrder": 121,
+      "sourceFolderKey": "prepared",
+      "videoCodec": "h264",
+      "visualGroup": "indoor_selfie_medium"
+    },
+    {
+      "assetKey": "hook-silent:8f048d4224433bf1a2610a94b0565ce6a1b6a04552fdf385e8ca266cb2a64588",
+      "catalogName": "creator-066-shock-surprise-8f048d4224",
+      "durationSeconds": 2.917,
+      "fileSizeBytes": 1249621,
+      "hasAudio": false,
+      "height": 1280,
+      "width": 720,
+      "hookTextPlacement": {
+        "preset": "above_head",
+        "reviewVersion": "hook-multiframe-placement-v2",
+        "reviewedAt": "2026-09-30",
+        "x": 0.5,
+        "y": 0.15
+      },
+      "influencerKey": "creator_066",
+      "originalFileName": "Perform_video_face_swap_and_20260928144900-Vmake (online-video-cutter.com).mp4",
+      "originalSha256": "e693d0604aba24ea9376dffcc7e0bda7469aad7c275fb5c44e882b6ab01a35b8",
+      "ratio": "9:16",
+      "reactionType": "shock_surprise",
+      "reviewReason": "User approved source content; full decode, start/20%/middle/80%/near-end frames and placement reviewed locally; original audio removed without changing video packets.",
+      "reviewStatus": "approved",
+      "sha256": "8f048d4224433bf1a2610a94b0565ce6a1b6a04552fdf385e8ca266cb2a64588",
+      "sortOrder": 122,
+      "sourceFolderKey": "prepared",
+      "videoCodec": "h264",
+      "visualGroup": "desk_laptop_reaction"
+    },
+    {
+      "assetKey": "hook-silent:9c7e34fd98156c6789819ac691db509e8363145029c2032c9feaef1cb3d93435",
+      "catalogName": "creator-067-amusement-laughter-9c7e34fd98",
+      "durationSeconds": 1.792,
+      "fileSizeBytes": 1729303,
+      "hasAudio": false,
+      "height": 1280,
+      "width": 720,
+      "hookTextPlacement": {
+        "preset": "above_head",
+        "reviewVersion": "hook-multiframe-placement-v2",
+        "reviewedAt": "2026-09-30",
+        "x": 0.5,
+        "y": 0.15
+      },
+      "influencerKey": "creator_067",
+      "originalFileName": "Remove_text_swap_face_202608212145.mp4",
+      "originalSha256": "ce4590a376f9c006b60c1239e1a8debea5610f14ecb225455335c9d812fb876c",
+      "ratio": "9:16",
+      "reactionType": "amusement_laughter",
+      "reviewReason": "User approved source content; full decode, start/20%/middle/80%/near-end frames and placement reviewed locally; original audio removed without changing video packets.",
+      "reviewStatus": "approved",
+      "sha256": "9c7e34fd98156c6789819ac691db509e8363145029c2032c9feaef1cb3d93435",
+      "sortOrder": 123,
+      "sourceFolderKey": "prepared",
+      "videoCodec": "h264",
+      "visualGroup": "bedroom_reaction"
+    },
+    {
+      "assetKey": "hook-silent:32644712ca9c8136aa061245f7f94d2bb4e17f0495df38478b6c78096e2c6f74",
+      "catalogName": "creator-068-shock-surprise-32644712ca",
+      "durationSeconds": 3.875,
+      "fileSizeBytes": 3668355,
+      "hasAudio": false,
+      "height": 1280,
+      "width": 720,
+      "hookTextPlacement": {
+        "preset": "above_head",
+        "reviewVersion": "hook-multiframe-placement-v2",
+        "reviewedAt": "2026-09-30",
+        "x": 0.5,
+        "y": 0.15
+      },
+      "influencerKey": "creator_068",
+      "originalFileName": "Swap_face_and_replicate_actions_202608291207.mp4",
+      "originalSha256": "43e8b95eea30cc2dcc03a4d4e403c9da3a50a0734b3f418fd23eec9847cf9a05",
+      "ratio": "9:16",
+      "reactionType": "shock_surprise",
+      "reviewReason": "User approved source content; full decode, start/20%/middle/80%/near-end frames and placement reviewed locally; original audio removed without changing video packets.",
+      "reviewStatus": "approved",
+      "sha256": "32644712ca9c8136aa061245f7f94d2bb4e17f0495df38478b6c78096e2c6f74",
+      "sortOrder": 124,
+      "sourceFolderKey": "prepared",
+      "videoCodec": "h264",
+      "visualGroup": "desk_laptop_reaction"
+    },
+    {
+      "assetKey": "hook-silent:0dcac228917e7d58bfaf24dfd2d35814a4de2fe942c6075efe0c8974997671d5",
+      "catalogName": "creator-069-shock-surprise-0dcac22891",
+      "durationSeconds": 3,
+      "fileSizeBytes": 1261784,
+      "hasAudio": false,
+      "height": 1280,
+      "width": 720,
+      "hookTextPlacement": {
+        "preset": "above_head",
+        "reviewVersion": "hook-multiframe-placement-v2",
+        "reviewedAt": "2026-09-30",
+        "x": 0.5,
+        "y": 0.15
+      },
+      "influencerKey": "creator_069",
+      "originalFileName": "Video_face_swap_and_editing_20260928144913-Vmake (online-video-cutter.com).mp4",
+      "originalSha256": "e8062ae9217cc76dd963bc8ba00bbe8c3db5d11fba02478539374fa7896860f8",
+      "ratio": "9:16",
+      "reactionType": "shock_surprise",
+      "reviewReason": "User approved source content; full decode, start/20%/middle/80%/near-end frames and placement reviewed locally; original audio removed without changing video packets.",
+      "reviewStatus": "approved",
+      "sha256": "0dcac228917e7d58bfaf24dfd2d35814a4de2fe942c6075efe0c8974997671d5",
+      "sortOrder": 125,
+      "sourceFolderKey": "prepared",
+      "videoCodec": "h264",
+      "visualGroup": "desk_laptop_reaction"
+    },
+    {
+      "assetKey": "hook-silent:825266fc25bb5d93d1a954ab7af5baa9dd7d64abfc3ef5dc9dabe053fb30ccef",
+      "catalogName": "creator-070-shock-surprise-825266fc25",
+      "durationSeconds": 4.959,
+      "fileSizeBytes": 1602419,
+      "hasAudio": false,
+      "height": 1280,
+      "width": 720,
+      "hookTextPlacement": {
+        "preset": "above_head",
+        "reviewVersion": "hook-multiframe-placement-v2",
+        "reviewedAt": "2026-09-30",
+        "x": 0.5,
+        "y": 0.15
+      },
+      "influencerKey": "creator_070",
+      "originalFileName": "Video_face_swap_editing_instruct_20260928144908-Vmake (online-video-cutter.com).mp4",
+      "originalSha256": "3365ab929e63bba6fc7948dda9f6ce0f92fba29ae236370ab05ead8fc208527d",
+      "ratio": "9:16",
+      "reactionType": "shock_surprise",
+      "reviewReason": "User approved source content; full decode, start/20%/middle/80%/near-end frames and placement reviewed locally; original audio removed without changing video packets.",
+      "reviewStatus": "approved",
+      "sha256": "825266fc25bb5d93d1a954ab7af5baa9dd7d64abfc3ef5dc9dabe053fb30ccef",
+      "sortOrder": 126,
+      "sourceFolderKey": "prepared",
+      "videoCodec": "h264",
+      "visualGroup": "headphones_reaction"
+    },
+    {
+      "assetKey": "hook-silent:87cd38c9cadecf022f3cf0f8eefb2e263d523a5982ab1ef1f2321c49a4ab6604",
+      "catalogName": "creator-071-concern-anxiety-87cd38c9ca",
+      "durationSeconds": 10,
+      "fileSizeBytes": 3191290,
+      "hasAudio": false,
+      "height": 1280,
+      "width": 720,
+      "hookTextPlacement": {
+        "preset": "above_head",
+        "reviewVersion": "hook-multiframe-placement-v2",
+        "reviewedAt": "2026-09-30",
+        "x": 0.5,
+        "y": 0.15
+      },
+      "influencerKey": "creator_071",
+      "originalFileName": "watermark-removed-Swap_face_and_replicate_actions_202608291212.mp4",
+      "originalSha256": "2d1d74461da55fb1378bb59d566df1ea0a1bb345d08b7c748ad65ca9ac7b0e52",
+      "ratio": "9:16",
+      "reactionType": "concern_anxiety",
+      "reviewReason": "User approved source content; full decode, start/20%/middle/80%/near-end frames and placement reviewed locally; original audio removed without changing video packets.",
+      "reviewStatus": "approved",
+      "sha256": "87cd38c9cadecf022f3cf0f8eefb2e263d523a5982ab1ef1f2321c49a4ab6604",
+      "sortOrder": 127,
+      "sourceFolderKey": "prepared",
+      "videoCodec": "h264",
+      "visualGroup": "indoor_selfie_medium"
+    }
+  ],
+  "summary": {
+    "approvedCount": 10,
+    "rejectedCount": 0,
+    "silentCount": 10
+  }
+}

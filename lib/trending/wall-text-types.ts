@@ -145,7 +145,7 @@ export type WallTextPattern = (typeof WALL_TEXT_PATTERNS)[number];
 export type WallTextSegmentRole = (typeof WALL_TEXT_SEGMENT_ROLES)[number];
 export type WallTextPlacementZone = (typeof WALL_TEXT_PLACEMENT_ZONES)[number];
 // Existing 36-42px layouts remain readable without reflow. The current layout
-// engine emits fixed 52px layouts; earlier saved sizes remain readable.
+// engine emits fixed 50px layouts; earlier saved sizes remain readable.
 export type WallTextFontSize = 36 | 38 | 40 | 42 | 44 | 46 | 48 | 50 | 52;
 export type WallTextNormalizedBox = {
   height: number;

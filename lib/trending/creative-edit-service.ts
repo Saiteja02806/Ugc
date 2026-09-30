@@ -1,4 +1,5 @@
 import "server-only";
+import { hasCarouselSemanticHeading } from "@/lib/carousel/text-presentation";
 
 import {
   getCarouselEditBackgrounds,
@@ -264,6 +265,7 @@ async function buildDefaultContent(params: {
           backgroundUrl,
           ctaText: slide.ctaText ?? "",
           headline: slide.headline,
+          hasHeading: hasCarouselSemanticHeading(status.generation.contentPlanNormalized, slide.slideNumber, slide.structureId, Boolean(slide.subtext)),
           originalBackgroundAssetId: slide.categoryImageAssetId,
           originalBackgroundUrl: backgroundUrl,
           originalVisualRole: slide.visualRole,

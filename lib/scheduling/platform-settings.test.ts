@@ -202,6 +202,15 @@ test("requires manual music confirmation before scheduling", () => {
   assert.equal(
     getScheduleTargetSettingsError({
       connections: [connection],
+      requireTikTokMusicConfirmation: false,
+      settings: { "tiktok-1": { privacyLevel: "PUBLIC_TO_EVERYONE" } },
+      tiktokCapabilities: { "tiktok-1": capabilities },
+    }),
+    null,
+  );
+  assert.equal(
+    getScheduleTargetSettingsError({
+      connections: [connection],
       settings: {
         "tiktok-1": {
           commercialContentDisclosureEnabled: true,

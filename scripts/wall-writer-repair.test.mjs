@@ -5,12 +5,12 @@ import { createWallTextLayout } from '../lib/trending/wall-text-feed-logic.ts';
 import { getWallTextRepairBudget } from '../lib/trending/wall-text-repair-budget.ts';
 
 test('successive fit repairs tighten the budget without dropping below the general copy minimum',()=>{
-  const first=getWallTextRepairBudget({maxWords:32,minWords:12,targetWords:32});
+  const first=getWallTextRepairBudget({maxWords:32,minWords:12});
   const second=getWallTextRepairBudget(first);
-  assert.deepEqual(first,{maxWords:28,targetWords:28});
-  assert.deepEqual(second,{maxWords:24,targetWords:24});
-  assert.deepEqual(getWallTextRepairBudget(getWallTextRepairBudget(second)),{maxWords:24,targetWords:24});
-  assert.deepEqual(getWallTextRepairBudget({maxWords:12,minWords:12,targetWords:12}),{maxWords:12,targetWords:12});
+  assert.deepEqual(first,{maxWords:28});
+  assert.deepEqual(second,{maxWords:24});
+  assert.deepEqual(getWallTextRepairBudget(getWallTextRepairBudget(second)),{maxWords:24});
+  assert.deepEqual(getWallTextRepairBudget({maxWords:12,minWords:12}),{maxWords:12});
 });
 
 test('a rejected candidate gets a targeted rewrite and already accepted items are not regenerated', async () => {
@@ -40,11 +40,12 @@ test('a rejected candidate gets a targeted rewrite and already accepted items ar
     const candidateJson=JSON.parse(requests[1].split('CANDIDATES: REQUIRED WORD RANGES AND ABSOLUTE SAFETY CEILINGS\n')[1].split('\n\nGLOBAL RULES')[0]);
     assert.equal(candidateJson.length,1);
     assert.equal(candidateJson[0].candidateIndex,1);
-    assert.equal(candidateJson[0].maxWords,32);
+    assert.equal(candidateJson[0].maxWords,44);
+    assert.equal(candidateJson[0].targetWords,undefined);
     assert.equal(candidateJson[0].retryFeedback.reason,'layout_fit');
     assert.deepEqual(accepted,[0,1]);
     assert.equal(result[1].content.fullText,repair);
-    assert.equal(result[1].content.finalLayout.fontSizePx,52);
+    assert.equal(result[1].content.finalLayout.fontSizePx,50);
   } finally {
     globalThis.fetch=originalFetch;
     if(originalKey===undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY=originalKey;

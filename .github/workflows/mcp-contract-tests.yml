@@ -1,0 +1,56 @@
+name: MCP contract tests
+
+on:
+  pull_request:
+    paths:
+      - "app/mcp/**"
+      - "app/oauth/**"
+      - "lib/mcp/**"
+      - "lib/media/**"
+      - "lib/billing/**"
+      - "lib/jobs/**"
+      - "lib/queues/**"
+      - "lib/storage/**"
+      - "lib/ai-studio/generation-settings.ts"
+      - "worker/package*.json"
+      - "worker/Dockerfile"
+      - "scripts/*mcp*"
+      - "supabase/migrations/*mcp*"
+      - "package*.json"
+      - ".github/workflows/mcp-contract-tests.yml"
+  push:
+    branches: [main, "codex/mcp-**"]
+    paths:
+      - "app/mcp/**"
+      - "app/oauth/**"
+      - "lib/mcp/**"
+      - "lib/media/**"
+      - "lib/billing/**"
+      - "lib/jobs/**"
+      - "lib/queues/**"
+      - "lib/storage/**"
+      - "lib/ai-studio/generation-settings.ts"
+      - "worker/package*.json"
+      - "worker/Dockerfile"
+      - "scripts/*mcp*"
+      - "supabase/migrations/*mcp*"
+      - "package*.json"
+      - ".github/workflows/mcp-contract-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  mcp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:mcp
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm ci --legacy-peer-deps --prefix worker
+      - run: npm audit --omit=dev --audit-level=high --prefix worker

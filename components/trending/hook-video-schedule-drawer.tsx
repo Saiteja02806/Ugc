@@ -129,6 +129,7 @@ export function HookVideoScheduleDrawer({
   const [minimumScheduleLeadMinutes, setMinimumScheduleLeadMinutes] = useState(
     DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
   );
+  const [musicConfirmationOpen, setMusicConfirmationOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -294,6 +295,7 @@ export function HookVideoScheduleDrawer({
       minimumScheduleLeadMinutes,
       timezone,
       useDefaultScheduleTime,
+      requireTikTokMusicConfirmation: false,
     });
 
     if (validationError) {
@@ -305,7 +307,52 @@ export function HookVideoScheduleDrawer({
     setStage("review");
   }
 
-  async function confirmSchedule() {
+  function getScheduleSettings(confirmTikTokMusic: boolean) {
+    return Object.fromEntries(
+      selectedConnections.map((connection) => {
+        const currentSettings =
+          settings[connection.id] ??
+          getDefaultScheduleTargetSettings(connection.platform);
+
+        return [
+          connection.id,
+          connection.platform === "tiktok" && confirmTikTokMusic
+            ? { ...currentSettings, musicUsageConfirmed: true }
+            : currentSettings,
+        ];
+      }),
+    ) as Record<string, PublishingSettings>;
+  }
+
+  function requestScheduleConfirmation() {
+    if (selectedConnections.some((connection) => connection.platform === "tiktok")) {
+      setMusicConfirmationOpen(true);
+      return;
+    }
+
+    void confirmSchedule(false);
+  }
+
+  async function confirmSchedule(confirmTikTokMusic: boolean) {
+    const confirmedSettings = getScheduleSettings(confirmTikTokMusic);
+    const validationError = getValidationError({
+      scheduledDate,
+      scheduledTime,
+      selectedConnections,
+      settings: confirmedSettings,
+      tiktokCapabilities,
+      minimumScheduleLeadMinutes,
+      timezone,
+      useDefaultScheduleTime,
+      requireTikTokMusicConfirmation: true,
+    });
+
+    if (validationError) {
+      setMusicConfirmationOpen(false);
+      setErrorMessage(validationError);
+      return;
+    }
+
     const selection: HookVideoScheduleSelection = {
       caption,
       scheduledDate,
@@ -313,9 +360,7 @@ export function HookVideoScheduleDrawer({
       targets: selectedConnections.map((connection) => ({
         connectionId: connection.id,
         platform: connection.platform,
-        settings:
-          settings[connection.id] ??
-          getDefaultScheduleTargetSettings(connection.platform),
+        settings: confirmedSettings[connection.id],
       })),
       timezone,
       useDefaultScheduleTime,
@@ -346,7 +391,7 @@ export function HookVideoScheduleDrawer({
       <DialogContent
         showCloseButton={false}
         overlayClassName="bg-overlay [backdrop-filter:none] supports-backdrop-filter:[backdrop-filter:none]"
-        className="max-h-[calc(100dvh-1rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-[18px] border border-border bg-background p-0 ring-0 sm:max-w-[520px]"
+        className="max-h-[calc(100dvh-1rem)] max-w-[calc(100%-1rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-[18px] border border-border bg-background p-0 ring-0 sm:max-h-[calc(100dvh-2rem)] sm:max-w-[960px]"
       >
         <DialogHeader className="flex-row items-center justify-between gap-3 border-b border-border px-4 py-3.5 sm:px-5">
           <div className="flex items-center gap-2">
@@ -388,140 +433,181 @@ export function HookVideoScheduleDrawer({
           </Button>
         </DialogHeader>
 
-        <div className="min-h-0 overflow-y-auto px-4 py-4 sm:px-5">
+        <div className="min-h-0 overflow-y-auto overscroll-contain px-4 py-4 sm:px-7 sm:py-6">
           {stage === "details" ? (
             <>
-              <section aria-labelledby="schedule-accounts-heading">
-                <div className="flex items-center justify-between gap-3">
-                  <h4 id="schedule-accounts-heading" className="text-xs font-semibold text-foreground-strong">
-                    Accounts
-                  </h4>
-                  <span className="flex items-center gap-2 text-xs font-medium text-muted">
-                    {loading ? "Loading" : `${connectedCount} connected`}
-                    {!loading ? (
-                      <Link
-                        href="/settings#instagram-publishing"
-                        className="font-semibold text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                      >
-                        Manage
-                      </Link>
-                    ) : null}
-                  </span>
-                </div>
-
-                {loading ? (
-                  <div className="mt-3 space-y-2">
-                    {[0, 1, 2].map((item) => (
-                      <Skeleton key={item} className="h-14 rounded-[12px]" />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="mt-3 space-y-2">
-                    {visibleConnections.map((connection) => (
-                      <ConnectionRow
-                        key={connection.id}
-                        connection={connection}
-                        selected={selectedConnectionIds.includes(connection.id)}
-                        settings={
-                          settings[connection.id] ??
-                          getDefaultScheduleTargetSettings(connection.platform)
-                        }
-                        tiktokCapability={tiktokCapabilities[connection.id]}
-                        onSettingChange={(key, value) =>
-                          updateSetting(connection.id, key, value)
-                        }
-                        onToggle={() => toggleConnection(connection)}
-                      />
-                    ))}
-                    {visibleConnections.length === 0 ? (
-                      <div className="rounded-[12px] border border-dashed border-border-strong px-3 py-5 text-center">
-                        <p className="text-xs font-medium text-muted">
-                          No {publishingAccountLabel} account connected.
-                        </p>
+              <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.9fr)] xl:items-start">
+                <section aria-labelledby="schedule-accounts-heading">
+                  <div className="flex items-center justify-between gap-3">
+                    <h4 id="schedule-accounts-heading" className="text-xs font-semibold text-foreground-strong">
+                      Destinations
+                    </h4>
+                    <span className="flex items-center gap-2 text-xs font-medium text-muted">
+                      {loading ? "Loading" : `${connectedCount} connected`}
+                      {!loading ? (
                         <Link
                           href="/settings#instagram-publishing"
-                          className="mt-2 inline-flex text-xs font-semibold text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                          className="font-semibold text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         >
-                          Connect an account
+                          Manage
                         </Link>
-                      </div>
-                    ) : null}
+                      ) : null}
+                    </span>
                   </div>
-                )}
-              </section>
 
-              <section
-                className="mt-5 border-t border-border pt-4"
-                aria-labelledby="schedule-caption-heading"
-              >
-                <label className="block text-xs font-semibold text-muted">
-                  <span id="schedule-caption-heading">
-                    Caption <span className="font-medium">(optional)</span>
-                  </span>
-                  <span className="mt-1 block text-[11px] font-medium leading-4 text-muted">
-                    This appears with the published post, separately from the text in your Hook Video.
-                  </span>
-                  <textarea
-                    name="caption"
-                    rows={4}
-                    maxLength={5000}
-                    value={caption}
-                    onChange={(event) => setCaption(event.target.value)}
-                    placeholder="Write a caption for this post..."
-                    className="mt-2 w-full resize-y rounded-control border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground-strong outline-none placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary"
-                  />
-                  <span className="mt-1 block text-right text-[11px] font-medium text-muted">
-                    {caption.length}/5000
-                  </span>
-                </label>
-              </section>
+                  {loading ? (
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      {[0, 1, 2].map((item) => (
+                        <Skeleton key={item} className="h-14 rounded-[12px]" />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      {visibleConnections.map((connection) => (
+                        <ConnectionRow
+                          key={connection.id}
+                          connection={connection}
+                          selected={selectedConnectionIds.includes(connection.id)}
+                          onToggle={() => toggleConnection(connection)}
+                        />
+                      ))}
+                      {visibleConnections.length === 0 ? (
+                        <div className="rounded-[12px] border border-dashed border-border-strong px-3 py-5 text-center sm:col-span-2">
+                          <p className="text-xs font-medium text-muted">
+                            No {publishingAccountLabel} account connected.
+                          </p>
+                          <Link
+                            href="/settings#instagram-publishing"
+                            className="mt-2 inline-flex text-xs font-semibold text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                          >
+                            Connect an account
+                          </Link>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                </section>
 
-              <section className="mt-5 border-t border-border pt-4" aria-labelledby="schedule-time-heading">
-                <h4 id="schedule-time-heading" className="text-xs font-semibold text-foreground-strong">
-                  Date and time
-                </h4>
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  <label className="text-xs font-semibold text-muted">
-                    Date
-                    <input
-                      name="scheduled-date"
-                      type="date"
-                      autoComplete="off"
-                      min={getLocalDate(new Date())}
-                      value={scheduledDate}
-                      onChange={(event) => {
-                        setHasManualScheduleTime(true);
-                        setScheduledDate(event.target.value);
-                      }}
-                      className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                    />
-                  </label>
-                  <label className="text-xs font-semibold text-muted">
-                    Time
-                    <input
-                      name="scheduled-time"
-                      type="time"
-                      autoComplete="off"
-                      step={SOCIAL_SCHEDULING_TIME_STEP_SECONDS}
-                      value={scheduledTime}
-                      onChange={(event) => {
-                        setHasManualScheduleTime(true);
-                        setScheduledTime(event.target.value);
-                      }}
-                      className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                    />
-                  </label>
+                <div className="space-y-5">
+                  <section className="border-t border-border pt-4" aria-labelledby="schedule-caption-heading">
+                    <label className="block text-xs font-semibold text-muted">
+                      <span id="schedule-caption-heading">
+                        Caption <span className="font-medium">(optional)</span>
+                      </span>
+                      <span className="mt-1 block text-[11px] font-medium leading-4 text-muted">
+                        This appears with the published post, separately from the text in your Hook Video.
+                      </span>
+                      <textarea
+                        name="caption"
+                        rows={4}
+                        maxLength={5000}
+                        value={caption}
+                        onChange={(event) => setCaption(event.target.value)}
+                        placeholder="Write a caption for this post..."
+                        className="mt-2 w-full resize-y rounded-control border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground-strong outline-none placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary"
+                      />
+                      <span className="mt-1 block text-right text-[11px] font-medium text-muted">
+                        {caption.length}/5000
+                      </span>
+                    </label>
+                  </section>
+
+                  <section className="border-t border-border pt-4" aria-labelledby="schedule-time-heading">
+                    <h4 id="schedule-time-heading" className="text-xs font-semibold text-foreground-strong">
+                      Publish time
+                    </h4>
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      <label className="text-xs font-semibold text-muted">
+                        Date
+                        <input
+                          name="scheduled-date"
+                          type="date"
+                          autoComplete="off"
+                          min={getLocalDate(new Date())}
+                          value={scheduledDate}
+                          onChange={(event) => {
+                            setHasManualScheduleTime(true);
+                            setScheduledDate(event.target.value);
+                          }}
+                          className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                        />
+                      </label>
+                      <label className="text-xs font-semibold text-muted">
+                        Time
+                        <input
+                          name="scheduled-time"
+                          type="time"
+                          autoComplete="off"
+                          step={SOCIAL_SCHEDULING_TIME_STEP_SECONDS}
+                          value={scheduledTime}
+                          onChange={(event) => {
+                            setHasManualScheduleTime(true);
+                            setScheduledTime(event.target.value);
+                          }}
+                          className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                        />
+                      </label>
+                    </div>
+                    <p className="mt-2 text-[11px] font-medium leading-4 text-muted">
+                      {useDefaultScheduleTime
+                        ? `Leave these unchanged to schedule ${minimumScheduleLeadMinutes} ${
+                            minimumScheduleLeadMinutes === 1 ? "minute" : "minutes"
+                          } after you confirm. Edit either value to choose a specific time.`
+                        : `${timezone}. Schedule at least ${minimumScheduleLeadMinutes} ${
+                            minimumScheduleLeadMinutes === 1 ? "minute" : "minutes"
+                          } ahead.`}
+                    </p>
+                  </section>
                 </div>
-                <p className="mt-2 text-[11px] font-medium leading-4 text-muted">
-                  {useDefaultScheduleTime
-                    ? `Leave these unchanged to schedule ${minimumScheduleLeadMinutes} ${
-                        minimumScheduleLeadMinutes === 1 ? "minute" : "minutes"
-                      } after you confirm. Edit either value to choose a specific time.`
-                    : `${timezone}. Schedule at least ${minimumScheduleLeadMinutes} ${
-                        minimumScheduleLeadMinutes === 1 ? "minute" : "minutes"
-                      } ahead.`}
-                </p>
-              </section>
+              </div>
+
+              {selectedConnections.some(
+                (connection) => connection.platform === "tiktok" || connection.platform === "youtube",
+              ) ? (
+                <section className="mt-6 border-t border-border pt-4" aria-labelledby="schedule-publishing-details-heading">
+                  <div>
+                    <h4 id="schedule-publishing-details-heading" className="text-xs font-semibold text-foreground-strong">
+                      Publishing details
+                    </h4>
+                    <p className="mt-1 text-[11px] font-medium leading-4 text-muted">
+                      Only the selected platforms that need a post-specific choice appear here.
+                    </p>
+                  </div>
+                  <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                    {selectedConnections
+                      .filter((connection) => connection.platform === "tiktok")
+                      .map((connection) => (
+                        <TikTokPublishingDetails
+                          key={connection.id}
+                          connection={connection}
+                          settings={
+                            settings[connection.id] ??
+                            getDefaultScheduleTargetSettings("tiktok")
+                          }
+                          tiktokCapability={tiktokCapabilities[connection.id]}
+                          onSettingChange={(key, value) =>
+                            updateSetting(connection.id, key, value)
+                          }
+                        />
+                      ))}
+                    {selectedConnections
+                      .filter((connection) => connection.platform === "youtube")
+                      .map((connection) => (
+                        <YouTubePublishingDetails
+                          key={connection.id}
+                          connection={connection}
+                          settings={
+                            settings[connection.id] ??
+                            getDefaultScheduleTargetSettings("youtube")
+                          }
+                          onSettingChange={(key, value) =>
+                            updateSetting(connection.id, key, value)
+                          }
+                        />
+                      ))}
+                  </div>
+                </section>
+              ) : null}
             </>
           ) : (
             <ScheduleReview
@@ -582,7 +668,7 @@ export function HookVideoScheduleDrawer({
           <Button
             type="button"
             size="lg"
-            onClick={stage === "details" ? continueToReview : () => void confirmSchedule()}
+            onClick={stage === "details" ? continueToReview : requestScheduleConfirmation}
             disabled={
               loading ||
               submitting ||
@@ -607,25 +693,53 @@ export function HookVideoScheduleDrawer({
           </Button>
         </footer>
       </DialogContent>
+
+      <Dialog
+        open={musicConfirmationOpen}
+        onOpenChange={(open) => {
+          if (!submitting) setMusicConfirmationOpen(open);
+        }}
+      >
+        <DialogContent className="max-w-[420px] rounded-[18px] border border-border bg-background p-0">
+          <DialogHeader className="border-b border-border px-5 py-4">
+            <DialogTitle>Confirm TikTok publishing</DialogTitle>
+            <DialogDescription className="mt-1 text-xs leading-5">
+              By confirming, you agree to TikTok&apos;s Music Usage Confirmation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col-reverse gap-2 px-5 py-4 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setMusicConfirmationOpen(false)}
+              disabled={submitting}
+            >
+              Back
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                setMusicConfirmationOpen(false);
+                void confirmSchedule(true);
+              }}
+              disabled={submitting}
+            >
+              Confirm schedule
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
 
-// Provider-specific controls cover the visible Instagram picker and the
-// verified-account TikTok beta picker.
 function ConnectionRow({
   connection,
   selected,
-  settings,
-  tiktokCapability,
-  onSettingChange,
   onToggle,
 }: {
   connection: SocialConnection;
   selected: boolean;
-  settings: PublishingSettings;
-  tiktokCapability: TikTokScheduleCapabilityState | undefined;
-  onSettingChange: (key: string, value: boolean | string) => void;
   onToggle: () => void;
 }) {
   const { label } = platformDetails[connection.platform];
@@ -651,98 +765,191 @@ function ConnectionRow({
           </span>
         </span>
       </label>
-
-      {selected && connection.platform === "tiktok" ? (
-        <div className="border-t border-border px-3 py-3">
-          {!tiktokCapability ||
-          tiktokCapability.status === "idle" ||
-          tiktokCapability.status === "loading" ? (
-            <p className="flex items-center gap-2 text-xs font-semibold text-muted">
-              <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-              Loading TikTok visibility
-            </p>
-          ) : tiktokCapability.status === "error" ? (
-            <p className="text-xs font-semibold leading-5 text-error">
-              {tiktokCapability.message}
-            </p>
-          ) : (
-            <div className="grid gap-3">
-              {!tiktokCapability.capabilities.directPostAudited ? (
-                <p className="rounded-[8px] border border-primary/25 bg-primary/5 px-2.5 py-2 text-[11px] font-medium leading-4 text-foreground-strong">
-                  {TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE}
-                </p>
-              ) : null}
-              <label className="text-xs font-semibold text-muted">
-                Visibility
-                <select
-                  value={typeof settings.privacyLevel === "string" ? settings.privacyLevel : ""}
-                  onChange={(event) => onSettingChange("privacyLevel", event.target.value)}
-                  className="mt-1.5 h-9 w-full rounded-control border border-border bg-card px-2.5 text-xs font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                >
-                  <option value="">Choose visibility</option>
-                  {tiktokCapability.capabilities.privacyLevels.map((privacyLevel) => (
-                    <option key={privacyLevel} value={privacyLevel}>
-                      {getTikTokPrivacyLabel(privacyLevel)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <fieldset>
-                <legend className="text-xs font-semibold text-foreground-strong">AI-generated content</legend>
-                <label className="mt-2 flex items-start gap-2 text-xs font-medium leading-4 text-foreground-strong">
-                  <input type="checkbox" checked={settings.containsSyntheticMedia !== false} onChange={(event) => onSettingChange("containsSyntheticMedia", event.target.checked)} className="mt-0.5 size-4 shrink-0 accent-primary" />
-                  <span>Contains AI-generated content</span>
-                </label>
-              </fieldset>
-              <fieldset>
-                <legend className="text-xs font-semibold text-foreground-strong">Commercial content</legend>
-                <label className="mt-2 flex items-start gap-2 text-xs font-medium leading-4 text-foreground-strong">
-                  <input type="checkbox" checked={settings.commercialContentDisclosureEnabled === true || settings.brandOrganic === true || settings.brandedContent === true} onChange={(event) => { const enabled = event.target.checked; onSettingChange("commercialContentDisclosureEnabled", enabled); if (!enabled) { onSettingChange("brandOrganic", false); onSettingChange("brandedContent", false); } }} className="mt-0.5 size-4 shrink-0 accent-primary" />
-                  <span>Content disclosure</span>
-                </label>
-                {settings.commercialContentDisclosureEnabled === true || settings.brandOrganic === true || settings.brandedContent === true ? (
-                  <div className="mt-2 grid gap-2 border-l-2 border-primary/30 pl-3">
-                    <label className="flex items-start gap-2 text-xs font-medium leading-4 text-foreground-strong"><input type="checkbox" checked={settings.brandOrganic === true} onChange={(event) => onSettingChange("brandOrganic", event.target.checked)} className="mt-0.5 size-4 shrink-0 accent-primary" /><span>Your brand{settings.brandOrganic === true ? ": Your video will be labeled as ‘Promotional content’." : ""}</span></label>
-                    <label className="flex items-start gap-2 text-xs font-medium leading-4 text-foreground-strong"><input type="checkbox" checked={settings.brandedContent === true} onChange={(event) => { onSettingChange("brandedContent", event.target.checked); if (event.target.checked && settings.privacyLevel === "SELF_ONLY") onSettingChange("privacyLevel", ""); }} className="mt-0.5 size-4 shrink-0 accent-primary" /><span>Branded content{settings.brandedContent === true ? ": Your video will be labeled as ‘Paid partnership’." : ""}</span></label>
-                  </div>
-                ) : null}
-              </fieldset>
-              <label className="flex items-start gap-2 rounded-control border border-border bg-card-muted px-3 py-2 text-xs font-semibold leading-5 text-foreground-strong">
-                <input
-                  type="checkbox"
-                  checked={settings.musicUsageConfirmed === true}
-                  onChange={(event) =>
-                    onSettingChange("musicUsageConfirmed", event.target.checked)
-                  }
-                  className="mt-0.5 size-4 shrink-0 accent-primary"
-                />
-                <span>
-                  By posting, you agree to TikTok&apos;s Music Usage Confirmation.
-                </span>
-              </label>
-            </div>
-          )}
-        </div>
-      ) : null}
-
-      {selected && connection.platform === "youtube" ? (
-        <div className="border-t border-border px-3 py-3">
-          <label className="text-xs font-semibold text-muted">
-            Visibility
-            <select
-              value={typeof settings.privacyStatus === "string" ? settings.privacyStatus : "private"}
-              onChange={(event) => onSettingChange("privacyStatus", event.target.value)}
-              className="mt-1.5 h-9 w-full rounded-control border border-border bg-card px-2.5 text-xs font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-            >
-              <option value="private">Private</option>
-              <option value="unlisted">Unlisted</option>
-              <option value="public">Public</option>
-            </select>
-          </label>
-        </div>
-      ) : null}
     </div>
   );
+}
+
+function TikTokPublishingDetails({
+  connection,
+  settings,
+  tiktokCapability,
+  onSettingChange,
+}: {
+  connection: SocialConnection;
+  settings: PublishingSettings;
+  tiktokCapability: TikTokScheduleCapabilityState | undefined;
+  onSettingChange: (key: string, value: boolean | string) => void;
+}) {
+  const commercialContentEnabled =
+    settings.commercialContentDisclosureEnabled === true ||
+    settings.brandOrganic === true ||
+    settings.brandedContent === true;
+
+  return (
+    <div className="rounded-[12px] border border-border bg-card p-3.5">
+      <div className="flex min-w-0 items-center gap-3">
+        <SocialAccountAvatar connection={connection} />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-foreground-strong">
+            {connection.platformAccountName || connection.platformAccountUsername || "TikTok"}
+          </p>
+          <p className="mt-0.5 text-[11px] font-medium text-muted">TikTok</p>
+        </div>
+      </div>
+
+      {!tiktokCapability ||
+      tiktokCapability.status === "idle" ||
+      tiktokCapability.status === "loading" ? (
+        <p className="mt-4 flex items-center gap-2 text-xs font-semibold text-muted">
+          <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+          Loading TikTok audience choices
+        </p>
+      ) : tiktokCapability.status === "error" ? (
+        <p className="mt-4 text-xs font-semibold leading-5 text-error">
+          {tiktokCapability.message}
+        </p>
+      ) : (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {!tiktokCapability.capabilities.directPostAudited ? (
+            <p className="sm:col-span-2 rounded-[8px] border border-primary/25 bg-primary/5 px-2.5 py-2 text-[11px] font-medium leading-4 text-foreground-strong">
+              {TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE}
+            </p>
+          ) : null}
+          <label className="text-xs font-semibold text-muted">
+            Audience
+            <select
+              value={typeof settings.privacyLevel === "string" ? settings.privacyLevel : ""}
+              onChange={(event) => onSettingChange("privacyLevel", event.target.value)}
+              className="mt-1.5 h-10 w-full rounded-control border border-border bg-background px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            >
+              <option value="">Choose audience</option>
+              {tiktokCapability.capabilities.privacyLevels.map((privacyLevel) => (
+                <option key={privacyLevel} value={privacyLevel}>
+                  {getTikTokPrivacyLabel(privacyLevel)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <details className="rounded-control border border-border bg-background px-3 py-2.5 text-xs text-foreground-strong">
+            <summary className="cursor-pointer list-none font-semibold marker:content-none">
+              <span>Content disclosure</span>
+              <span className="ml-2 font-medium text-muted">
+                {getTikTokDisclosureLabel(settings)}
+              </span>
+            </summary>
+            <div className="mt-3 grid gap-2 border-t border-border pt-3">
+              <label className="flex items-start gap-2 text-xs font-medium leading-4">
+                <input
+                  type="checkbox"
+                  checked={commercialContentEnabled}
+                  onChange={(event) => {
+                    const enabled = event.target.checked;
+                    onSettingChange("commercialContentDisclosureEnabled", enabled);
+                    if (!enabled) {
+                      onSettingChange("brandOrganic", false);
+                      onSettingChange("brandedContent", false);
+                    }
+                  }}
+                  className="mt-0.5 size-4 shrink-0 accent-primary"
+                />
+                <span>This post promotes a business, product, or service</span>
+              </label>
+              {commercialContentEnabled ? (
+                <div className="grid gap-2 border-l-2 border-primary/30 pl-3">
+                  <label className="flex items-start gap-2 text-xs font-medium leading-4">
+                    <input
+                      type="checkbox"
+                      checked={settings.brandOrganic === true}
+                      onChange={(event) => onSettingChange("brandOrganic", event.target.checked)}
+                      className="mt-0.5 size-4 shrink-0 accent-primary"
+                    />
+                    <span>Your brand</span>
+                  </label>
+                  <label className="flex items-start gap-2 text-xs font-medium leading-4">
+                    <input
+                      type="checkbox"
+                      checked={settings.brandedContent === true}
+                      onChange={(event) => {
+                        onSettingChange("brandedContent", event.target.checked);
+                        if (event.target.checked && settings.privacyLevel === "SELF_ONLY") {
+                          onSettingChange("privacyLevel", "");
+                        }
+                      }}
+                      className="mt-0.5 size-4 shrink-0 accent-primary"
+                    />
+                    <span>Paid partnership</span>
+                  </label>
+                </div>
+              ) : null}
+            </div>
+          </details>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function YouTubePublishingDetails({
+  connection,
+  settings,
+  onSettingChange,
+}: {
+  connection: SocialConnection;
+  settings: PublishingSettings;
+  onSettingChange: (key: string, value: boolean | string) => void;
+}) {
+  const privacyStatus =
+    typeof settings.privacyStatus === "string" ? settings.privacyStatus : "private";
+
+  return (
+    <div className="rounded-[12px] border border-border bg-card p-3.5">
+      <div className="flex min-w-0 items-center gap-3">
+        <SocialAccountAvatar connection={connection} />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-foreground-strong">
+            {connection.platformAccountName || connection.platformAccountUsername || "YouTube"}
+          </p>
+          <p className="mt-0.5 text-[11px] font-medium text-muted">YouTube</p>
+        </div>
+      </div>
+      <details className="mt-4 rounded-control border border-border bg-background px-3 py-2.5 text-xs text-foreground-strong">
+        <summary className="cursor-pointer list-none font-semibold marker:content-none">
+          <span>Channel visibility</span>
+          <span className="ml-2 font-medium text-muted">
+            {getYouTubePrivacyLabel(privacyStatus)} · Change
+          </span>
+        </summary>
+        <label className="mt-3 block border-t border-border pt-3 text-xs font-semibold text-muted">
+          Visibility
+          <select
+            value={privacyStatus}
+            onChange={(event) => onSettingChange("privacyStatus", event.target.value)}
+            className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          >
+            <option value="private">Private</option>
+            <option value="unlisted">Unlisted</option>
+            <option value="public">Public</option>
+          </select>
+        </label>
+      </details>
+    </div>
+  );
+}
+
+function getTikTokDisclosureLabel(settings: PublishingSettings) {
+  if (settings.brandOrganic === true && settings.brandedContent === true) {
+    return "Promotional + paid partnership";
+  }
+
+  if (settings.brandOrganic === true) return "Promotional";
+  if (settings.brandedContent === true) return "Paid partnership";
+  return "Not commercial";
+}
+
+function getYouTubePrivacyLabel(value: string) {
+  if (value === "public") return "Public";
+  if (value === "unlisted") return "Unlisted";
+  return "Private";
 }
 
 function ScheduleReview({
@@ -837,6 +1044,7 @@ function getValidationError(params: {
   tiktokCapabilities: Record<string, TikTokScheduleCapabilityState>;
   timezone: string;
   useDefaultScheduleTime: boolean;
+  requireTikTokMusicConfirmation: boolean;
 }) {
   if (params.selectedConnections.length === 0) {
     return "Choose at least one connected account.";
@@ -853,6 +1061,7 @@ function getValidationError(params: {
     connections: params.selectedConnections,
     settings: params.settings,
     tiktokCapabilities: params.tiktokCapabilities,
+    requireTikTokMusicConfirmation: params.requireTikTokMusicConfirmation,
   });
 
   if (settingsError) {

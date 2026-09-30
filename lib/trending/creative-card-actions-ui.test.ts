@@ -36,6 +36,9 @@ const firstVisitGuide = readProjectFile(
 const firstVisitPreview = readProjectFile(
   "app/e2e/trending-walkthrough-preview/page.tsx",
 );
+const swipeGuide = readProjectFile(
+  "components/trending/trending-swipe-guide.tsx",
+);
 const existingWalkthroughBackfill = readProjectFile(
   "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260828113000_backfill_existing_trending_walkthroughs.sql",
 );
@@ -176,7 +179,7 @@ test("restores Adjust as the global content-mix action beside item-level Edit", 
   );
 });
 
-test("teaches new Trending users the difference between editing one post and adjusting future content", () => {
+test("keeps the retired walkthrough assets available only for development previews", () => {
   assert.match(actions, /data-trending-edit-control/);
   assert.match(firstVisitGuide, /type WalkthroughPhase = "preview" \| "controls"/);
   assert.match(firstVisitGuide, /selector: "\[data-trending-edit-control\]"/);
@@ -252,14 +255,7 @@ test("teaches new Trending users the difference between editing one post and adj
     firstVisitPreview,
     /4 content pieces are being prepared\. New content will appear/,
   );
-  assert.match(
-    workspace,
-    /<div className="min-w-0 flex-1">[\s\S]*<TrendingFeedGallery[\s\S]*<TrendingFirstVisitWalkthrough/,
-  );
-  assert.match(
-    workspace,
-    /\{user\?\.uid \? \([\s\S]*<TrendingFirstVisitWalkthrough[\s\S]*userId=\{user\.uid\}/,
-  );
+  assert.doesNotMatch(workspace, /TrendingFirstVisitWalkthrough/);
   assert.doesNotMatch(workspace, /TrendingApplicationDemo/);
   assert.doesNotMatch(workspace, /SHOW_TRENDING_FIRST_VISIT_WALKTHROUGH/);
   assert.match(
@@ -272,6 +268,34 @@ test("teaches new Trending users the difference between editing one post and adj
   assert.match(firstVisitGuide, /data-walkthrough-step=\{step\.kind\}/);
   assert.match(nextConfig, /allowedDevOrigins: \["127\.0\.0\.1"\]/);
   assert.match(firstVisitGuide, /method: "POST"/);
+});
+
+test("shows new Trending accounts a safe, first-card swipe guide", () => {
+  assert.match(existingWalkthroughBackfill, /update public\.business_profiles/i);
+  assert.match(
+    existingWalkthroughBackfill,
+    /set trending_walkthrough_completed_at = now\(\)[\s\S]+where trending_walkthrough_completed_at is null/i,
+  );
+  assert.match(swipeGuide, /data-trending-swipe-guide/);
+  assert.match(swipeGuide, /backdrop-blur-\[16px\]/);
+  assert.match(swipeGuide, /Swipe left/);
+  assert.match(swipeGuide, /Swipe right/);
+  assert.match(swipeGuide, /Tap or swipe card to start/);
+  assert.match(swipeGuide, /prefers-reduced-motion: reduce/);
+  assert.match(swipeGuide, /\/try-ugcpilot\/hand-pointer\.png/);
+  assert.match(workspace, /import \{ TrendingSwipeGuide \}/);
+  assert.match(workspace, /userId=\{user\?\.uid \?\? null\}/);
+  assert.match(workspace, /swipeGuideState === "visible" \? <TrendingSwipeGuide \/> : null/);
+  assert.match(workspace, /fetch\("\/api\/trending\/walkthrough"/);
+  assert.match(workspace, /method: "POST"/);
+  assert.match(
+    workspace,
+    /function handlePointerDown[\s\S]*if \(dismissSwipeGuide\(\)\) \{\s*return;/,
+  );
+  assert.match(
+    workspace,
+    /function requestCreativeDecision[\s\S]*if \(dismissSwipeGuide\(\)\) \{\s*return false;/,
+  );
 });
 
 test("keeps review cards, audio controls, and creative actions flat", () => {
@@ -788,15 +812,14 @@ test("defers the large Trending editor until Edit is opened", () => {
   assert.match(workspace, /function TrendingCreativeEditorLoading\(\)/);
 });
 
-test("defers the Trending Hook composer until an accepted Hook opens it", () => {
-  assert.match(workspace, /const HookVideoComposer = dynamic\(/);
+test("keeps the Trending Hook composer available before an accepted Hook opens it", () => {
   assert.match(
     workspace,
-    /import\("@\/components\/trending\/hook-video-composer"\)/,
+    /import \{ HookVideoComposer \} from "@\/components\/trending\/hook-video-composer"/,
   );
   assert.doesNotMatch(
     workspace,
-    /import \{ HookVideoComposer \} from "@\/components\/trending\/hook-video-composer"/,
+    /const HookVideoComposer = dynamic\(/,
   );
   assert.match(
     workspace,
@@ -806,26 +829,26 @@ test("defers the Trending Hook composer until an accepted Hook opens it", () => 
     workspace,
     /function TrendingHookComposer[\s\S]*useState<HookVideoFlowState>[\s\S]*<HookVideoComposer/,
   );
-  assert.match(workspace, /function HookVideoComposerLoading\(\)/);
+  assert.doesNotMatch(workspace, /function HookVideoComposerLoading\(\)/);
 });
 
-test("Carousel editing keeps content headings and adds the heavy Slide 1 cover treatment", () => {
+test("Carousel editing keeps content headings and shared Slide 1 typography", () => {
   assert.match(editor, /data-carousel-editor-preview=\{/);
   assert.match(editor, /showExactRender \? "exact-render" : "live-render"/);
   assert.match(editor, /function getExactCarouselPreviewUrl/);
-  assert.match(editor, /function Structure2StoryText/);
-  assert.match(editor, /color: "#ffffff"/);
-  assert.match(editor, /fontWeight: layout\.story\.fontSize >= 90 \? 800 : 600/);
+  assert.match(editor, /getCarouselBodyBlocks\(supportingText \|\| \(!hasHeading \? slide\.headline : ""\)\)/);
+  assert.match(editor, /kind === "headline" \? CAROUSEL_HEADING_FONT_SIZE : CAROUSEL_BODY_FONT_SIZE/);
   assert.match(editor, /WebkitTextStroke: "0\.370cqw rgba\(0, 0, 0, 0\.72\)"/);
   assert.match(editor, /function CarouselEditorBackground/);
   assert.match(editor, /story_product_reveal/);
   assert.match(editor, /function CarouselOutlinedText/);
   assert.match(editor, /function CarouselCoverText/);
-  assert.match(editor, /text-\[8\.52cqw\] font-extrabold/);
+  assert.match(editor, /fontSize: `\$\{CAROUSEL_HOOK_FONT_SIZE \/ 10\.8\}cqw`/);
+  assert.match(editor, /className="font-bold leading-\[\.98\] text-white"/);
   assert.match(editor, /primaryText=\{slide\.headline\.trim\(\) \|\| supportingText\}/);
   assert.match(editor, /const isCover = slide\.slideNumber === 1/);
-  assert.match(editor, /fontSize: isCover \? 92 : CAROUSEL_FIXED_EDITOR_FONT_SIZE/);
-  assert.match(editor, /slide\.slideNumber === 1 \? "Hook" : "Headline"/);
+  assert.match(editor, /fontSize: isCover \? CAROUSEL_HOOK_FONT_SIZE : CAROUSEL_FIXED_EDITOR_FONT_SIZE/);
+  assert.match(editor, /slide\.slideNumber === 1 \? "Hook" : slide\.hasHeading === false && !slide\.subtext \? "Text" : "Headline \(optional\)"/);
   assert.match(
     editor,
     /kind === "headline" \? \(\s*<span className="box-decoration-clone rounded-\[1\.8cqw\] bg-white/,

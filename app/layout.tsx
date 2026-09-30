@@ -88,6 +88,7 @@ const arialBoldWallText = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://getugcpilot.com"),
   title: {
     default: "UGC Pilot",
     template: "%s | UGC Pilot",
@@ -146,15 +147,14 @@ export default function RootLayout({
       }}
       suppressHydrationWarning
     >
-      <head>
-        <script
-          id="ugc-pilot-theme"
-          dangerouslySetInnerHTML={{ __html: themeInitializationScript }}
-        />
-      </head>
       <body
         className={`${geistSans.className} min-h-full bg-background text-foreground antialiased`}
       >
+        <Script
+          id="ugc-pilot-theme"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: themeInitializationScript }}
+        />
         <Script
           id="ugc-pilot-retired-content-storage-cleanup"
           strategy="beforeInteractive"

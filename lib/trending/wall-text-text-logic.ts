@@ -406,9 +406,11 @@ export function validateWallTextContent(
     }
     if (
       content.layoutVersion === "wall-text-overlay-v13" &&
-      content.finalLayout.fontSizePx !== 52
+      ![50, 52].includes(content.finalLayout.fontSizePx)
     ) {
-      throw new Error("Wall-of-text V13 must use the fixed 52px font size.");
+      throw new Error(
+        "Wall-of-text V13 must use the approved 50px font size or the preserved 52px legacy size.",
+      );
     }
     if (
       lines.length < MIN_WALL_TEXT_RENDERED_LINES ||

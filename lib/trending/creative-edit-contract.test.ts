@@ -77,7 +77,7 @@ test("Carousel edit preview cannot restore a CTA layer or readability gradient",
   assert.equal(editor.includes("function Structure2CtaText"), false);
   assert.equal(editor.includes("getStructure2ReadabilityBackground"), false);
   assert.equal(editor.includes("supportingText={slide.headline.trim()"), false);
-  assert.equal(editor.includes('{slide.slideNumber === 1 ? "Hook" : "Headline"}'), true);
+  assert.match(editor, /slide\.slideNumber === 1 \? "Hook" : slide\.hasHeading === false && !slide\.subtext \? "Text" : "Headline \(optional\)"/);
 });
 
 test("wall edits remain a renderable two-to-three segment payload", () => {
@@ -152,7 +152,7 @@ test("Wall typing adopts the current Arial Bold treatment when measured metadata
     fontFamily:
       "var(--font-wall-text-arial-bold), Arial, 'Helvetica Neue', sans-serif",
     fontWeight: 700,
-    fontSize: 52,
+    fontSize: 50,
     outlineWidth: 4,
     shadowOpacity: 0,
   };

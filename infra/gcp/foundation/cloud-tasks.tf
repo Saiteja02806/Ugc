@@ -112,6 +112,16 @@ resource "google_project_iam_member" "app_cloud_tasks_enqueuer" {
   member  = "serviceAccount:${google_service_account.app.email}"
 }
 
+# The app cancels/reschedules future social posts by deleting their timer task.
+# Enqueuer does not include deletion; scope the additional role to this queue.
+resource "google_cloud_tasks_queue_iam_member" "app_scheduler_task_deleter" {
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_tasks_queue.social_publish_scheduler.name
+  role     = "roles/cloudtasks.taskDeleter"
+  member   = "serviceAccount:${google_service_account.app.email}"
+}
+
 resource "google_project_iam_member" "worker_cloud_tasks_enqueuer" {
   project = var.project_id
   role    = "roles/cloudtasks.enqueuer"

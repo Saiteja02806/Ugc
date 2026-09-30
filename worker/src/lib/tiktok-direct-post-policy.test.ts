@@ -1,6 +1,23 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getTikTokDirectPostBlock } from "./tiktok-direct-post-policy.js";
+import {
+  getTikTokDirectPostBlock,
+  resolveTikTokDirectPostAuditStatus,
+} from "./tiktok-direct-post-policy.js";
+
+test("approved publishing is the default, with explicit private-testing overrides", () => {
+  for (const value of [undefined, "true", " TRUE "]) {
+    assert.equal(resolveTikTokDirectPostAuditStatus(value), true);
+    assert.equal(getTikTokDirectPostBlock({
+      audited: resolveTikTokDirectPostAuditStatus(value),
+      privacyLevel: "PUBLIC_TO_EVERYONE",
+      privacyLevels: ["PUBLIC_TO_EVERYONE", "SELF_ONLY"],
+    }), null);
+  }
+  for (const value of ["false", " FALSE ", "", "invalid"]) {
+    assert.equal(resolveTikTokDirectPostAuditStatus(value), false);
+  }
+});
 
 test("unaudited publishing needs both a private account and Only me", () => {
   const evaluate = (privacyLevels: string[], privacyLevel = "SELF_ONLY") =>

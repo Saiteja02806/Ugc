@@ -1,4 +1,5 @@
 import sharp from "sharp";
+import { CAROUSEL_BODY_BLOCK_MAX_LINES, CAROUSEL_HEADING_FONT_SIZE, CAROUSEL_TEXT_BLOCK_GAP, getCarouselBodyBlocks, isCarouselOrphanLine, normalizeCarouselText } from "./carousel-text-presentation.js";
 
 import type { CarouselFormat } from "../types.js";
 import type { CarouselRenderStyle } from "./carousel-render-style.js";
@@ -14,7 +15,6 @@ import {
   CAROUSEL_STRUCTURE_1_HEADLINE_MAX_LINES,
   CAROUSEL_STRUCTURE_1_LIST_ITEM_MAX_LINES,
   CAROUSEL_STRUCTURE_1_LIST_TOTAL_MAX_LINES,
-  getCarouselStructure1BodyMaxLines,
   getCarouselStructure1TextFontSize,
   type PlannedCarouselSlide,
 } from "./carousel-slide-plan.js";
@@ -58,6 +58,9 @@ type RegionSignal = {
 };
 
 export type CarouselRenderDiagnostics = {
+  bodyBlockCount?: number;
+  bodyBlockLineCounts?: number[];
+  ctaLineCount?: number;
   bodyFontSize?: number;
   bubbleShapeStrategy:
     | "heading-white-svg-background"
@@ -77,7 +80,7 @@ type BalancedLines = {
 };
 
 export const CAROUSEL_RENDERER_VERSION =
-  "social-cover-single-hook-inter-tight-v24";
+  "social-tiktok-text-blocks-inter-tight-v25";
 export { CAROUSEL_FIXED_FONT_SIZE } from "./carousel-slide-plan.js";
 
 const FORMAT_DIMENSIONS: Record<CarouselFormat, { height: number; width: number }> = {
@@ -196,7 +199,7 @@ async function measureRenderedTextExtents(params: {
 }
 
 function normalizeText(value: string | null | undefined) {
-  return typeof value === "string" ? value.trim().replace(/\s+/g, " ") : "";
+  return normalizeCarouselText(value);
 }
 
 function normalizeComparableText(value: string) {
@@ -251,6 +254,11 @@ function buildBalancedLines(params: {
   maxWidth: number;
   value: string;
 }): BalancedLines {
+  if (params.value.includes("\n")) {
+    const groups = params.value.split("\n").filter(Boolean).map((value) => buildBalancedLines({ ...params, value }));
+    const lines = groups.flatMap((group) => group.lines);
+    return { lines, truncated: groups.some((group) => group.truncated) || lines.length > params.maxLines };
+  }
   const words = params.value.split(/\s+/).filter(Boolean);
 
   if (words.length === 0) {
@@ -287,6 +295,7 @@ function buildBalancedLines(params: {
         }
 
         const rag = params.maxWidth - lineWidth;
+        if (isCarouselOrphanLine(words.slice(startIndex, endIndex).join(" "))) continue;
         const shortLastLinePenalty =
           endIndex === words.length && lineWidth < params.maxWidth * 0.34
             ? params.maxWidth * params.maxWidth * 0.16
@@ -364,7 +373,7 @@ function buildBalancedLines(params: {
   return { lines: lines.slice(0, params.maxLines), truncated };
 }
 
-async function fitMeasuredText(value: string, params: {
+export async function fitMeasuredText(value: string, params: {
   fontSize: number;
   fontFamily: string;
   fontWeight: number;
@@ -387,6 +396,9 @@ async function fitMeasuredText(value: string, params: {
   const cornerSafety = params.getCornerSafety(params.fontSize);
   const maxTextWidth =
     params.maxWidth - 2 * (params.paddingX + cornerSafety);
+  if (value.split(/\s+/u).some((word) => estimateTextWidth(word, params.fontSize) > maxTextWidth * 2)) {
+    throw new Error(`Carousel text could not fit an unrenderable word at the fixed ${params.fontSize}px font size.`);
+  }
   const wrapped = await buildMeasuredLines({
     fontFamily: params.fontFamily,
     fontSize: params.fontSize,
@@ -396,7 +408,7 @@ async function fitMeasuredText(value: string, params: {
     value,
   });
 
-  if (!wrapped.truncated && wrapped.fits) {
+  if (!wrapped.truncated && wrapped.fits && !wrapped.lines.some(isCarouselOrphanLine)) {
     return {
       fontSize: params.fontSize,
       lineHeight: Math.round(params.fontSize * params.lineHeightRatio),
@@ -480,69 +492,6 @@ async function buildMeasuredLines(params: {
   );
 }
 
-async function fitStackedText(values: string[], params: {
-  fontSize: number;
-  fontFamily: string;
-  fontWeight: number;
-  getCornerSafety: (fontSize: number) => number;
-  lineHeightRatio: number;
-  maxLines: number;
-  maxLinesPerValue: number;
-  maxWidth: number;
-  paddingX: number;
-}): Promise<MeasuredWrappedText> {
-  const cleanValues = values.map(normalizeText).filter(Boolean);
-
-  if (cleanValues.length === 0) {
-    return {
-      fontSize: 0,
-      lineHeight: 0,
-      lines: [],
-      measuredLineExtents: [],
-      measuredLineWidths: [],
-    };
-  }
-
-  const cornerSafety = params.getCornerSafety(params.fontSize);
-  const maxTextWidth =
-    params.maxWidth - 2 * (params.paddingX + cornerSafety);
-  const lines: string[] = [];
-  const extents: RenderedTextExtents[] = [];
-
-  for (const value of cleanValues) {
-    const wrapped = await buildMeasuredLines({
-      fontFamily: params.fontFamily,
-      fontSize: params.fontSize,
-      fontWeight: params.fontWeight,
-      maxLines: params.maxLinesPerValue,
-      maxTextWidth,
-      value,
-    });
-
-    if (wrapped.truncated || !wrapped.fits) {
-      throw new Error(
-        `Carousel list text could not fit within ${params.maxLinesPerValue} lines at the fixed ${params.fontSize}px font size.`,
-      );
-    }
-
-    if (lines.length + wrapped.lines.length > params.maxLines) {
-      throw new Error(
-        `Carousel list needs more than ${params.maxLines} visual lines at the fixed ${params.fontSize}px font size.`,
-      );
-    }
-
-    lines.push(...wrapped.lines);
-    extents.push(...wrapped.extents);
-  }
-
-  return {
-    fontSize: params.fontSize,
-    lineHeight: Math.round(params.fontSize * params.lineHeightRatio),
-    lines,
-    measuredLineExtents: extents,
-    measuredLineWidths: extents.map((extent) => extent.width),
-  };
-}
 
 async function downloadImageBuffer(imageUrl: string) {
   const response = await fetch(imageUrl);
@@ -707,7 +656,7 @@ function measurePlainText(params: {
   };
 }
 
-function measureHeadingSvgBackground(params: {
+export function measureHeadingSvgBackground(params: {
   lineHeight: number;
   lines: string[];
   measuredLineExtents?: RenderedTextExtents[];
@@ -910,7 +859,7 @@ function buildPlainWhiteText(params: {
   return `<g>${lines}</g>`;
 }
 
-function buildHeadingSvgText(params: {
+export function buildHeadingSvgText(params: {
   fontSize: number;
   lineHeight: number;
   lines: string[];
@@ -1036,12 +985,11 @@ async function buildOverlaySvg(params: {
   const headlineText = shouldRenderHeadline ? rawHeadlineText : "";
   const bodyText =
     shouldRenderHeadline || rawBodyText ? rawBodyText : rawHeadlineText;
-  const bodyOnlyMode = !headlineText;
   const bodyFontSize = getCarouselStructure1TextFontSize(params.slide);
   const bodyFontWeight = BODY_FONT_WEIGHT;
   const bodyPaddingX = 18;
   const headline = await fitMeasuredText(headlineText, {
-    fontSize: CAROUSEL_FIXED_FONT_SIZE,
+    fontSize: CAROUSEL_HEADING_FONT_SIZE,
     fontFamily: TEXT_FONT_FAMILY,
     fontWeight: BODY_FONT_WEIGHT,
     getCornerSafety: getHeadlineWrapCornerSafety,
@@ -1050,36 +998,39 @@ async function buildOverlaySvg(params: {
     maxWidth: maxTextWidth,
     paddingX: HEADLINE_BACKGROUND_PADDING_X,
   });
-  const body = hasStackedBody
-    ? await fitStackedText(stackedBodyLines, {
-        fontSize: bodyFontSize,
-        fontFamily: TEXT_FONT_FAMILY,
-        fontWeight: bodyFontWeight,
-        getCornerSafety: getBodyWrapCornerSafety,
-        lineHeightRatio: 1.04,
-        maxLines: CAROUSEL_STRUCTURE_1_LIST_TOTAL_MAX_LINES,
-        maxLinesPerValue: CAROUSEL_STRUCTURE_1_LIST_ITEM_MAX_LINES,
-        maxWidth: maxTextWidth,
-        paddingX: bodyPaddingX,
-      })
-    : bodyText
-      ? await fitMeasuredText(bodyText, {
-          fontSize: bodyFontSize,
-          fontFamily: TEXT_FONT_FAMILY,
-          fontWeight: bodyFontWeight,
-          getCornerSafety: getBodyWrapCornerSafety,
-          lineHeightRatio: bodyOnlyMode ? 1.04 : 1.05,
-          maxLines: getCarouselStructure1BodyMaxLines(params.slide.slideNumber),
-          maxWidth: maxTextWidth,
-          paddingX: bodyPaddingX,
-        })
-      : {
-          fontSize: 0,
-          lineHeight: 0,
-          lines: [],
-          measuredLineExtents: [],
-          measuredLineWidths: [],
-        };
+  const bodyValues = hasStackedBody ? stackedBodyLines : getCarouselBodyBlocks(bodyText);
+  if (!hasStackedBody && bodyValues.length > 2) throw new Error("Carousel body copy requires at most two text blocks.");
+  const bodyBlocks = await Promise.all(bodyValues.map((value) => fitMeasuredText(value, {
+    fontSize: bodyFontSize,
+    fontFamily: TEXT_FONT_FAMILY,
+    fontWeight: bodyFontWeight,
+    getCornerSafety: getBodyWrapCornerSafety,
+    lineHeightRatio: 1.16,
+    maxLines: hasStackedBody ? CAROUSEL_STRUCTURE_1_LIST_ITEM_MAX_LINES : CAROUSEL_BODY_BLOCK_MAX_LINES,
+    maxWidth: maxTextWidth,
+    paddingX: bodyPaddingX,
+  })));
+  const cta = await fitMeasuredText(normalizeText(params.slide.ctaText), {
+    fontSize: CAROUSEL_FIXED_FONT_SIZE,
+    fontFamily: TEXT_FONT_FAMILY,
+    fontWeight: BODY_FONT_WEIGHT,
+    getCornerSafety: getBodyWrapCornerSafety,
+    lineHeightRatio: 1.16,
+    maxLines: CAROUSEL_BODY_BLOCK_MAX_LINES,
+    maxWidth: maxTextWidth,
+    paddingX: bodyPaddingX,
+  });
+  if (cta.lines.length) bodyBlocks.push(cta);
+  if (hasStackedBody && bodyBlocks.slice(0, bodyValues.length).reduce((count, block) => count + block.lines.length, 0) > CAROUSEL_STRUCTURE_1_LIST_TOTAL_MAX_LINES) {
+    throw new Error("Carousel list exceeds its fixed eight-line budget.");
+  }
+  const body = {
+    fontSize: bodyFontSize,
+    lineHeight: Math.round(bodyFontSize * 1.16),
+    lines: bodyBlocks.flatMap((block) => block.lines),
+    measuredLineExtents: bodyBlocks.flatMap((block) => block.measuredLineExtents),
+    measuredLineWidths: bodyBlocks.flatMap((block) => block.measuredLineWidths),
+  };
   const headlineMetrics = measureHeadingSvgBackground({
     lineHeight: headline.lineHeight,
     lines: headline.lines,
@@ -1092,9 +1043,15 @@ async function buildOverlaySvg(params: {
     measuredLineExtents: getMeasuredLineExtents(body),
     measuredLineWidths: getMeasuredLineWidths(body),
   });
+  // Keep each authored thought/list item separate. Empty lines are spacing,
+  // never rendered words and never silently flattened into a paragraph.
+  bodyMetrics.groupHeight = bodyBlocks.reduce((height, block) => height + block.lines.length * block.lineHeight, 0)
+    + Math.max(0, bodyBlocks.length - 1) * CAROUSEL_TEXT_BLOCK_GAP;
+  bodyMetrics.maximumTextWidth = Math.max(0, ...bodyBlocks.flatMap((block) => block.measuredLineExtents.map((extent) => Math.max(extent.left, extent.right) * 2)));
   const blockGap =
     body.lines.length > 0 ? clamp(Math.round(body.fontSize * 0.56), 20, 28) : 0;
-  const blockHeight = headlineMetrics.groupHeight + blockGap + bodyMetrics.groupHeight;
+  const blockHeight = headlineMetrics.groupHeight + (headline.lines.length ? blockGap : 0) + bodyMetrics.groupHeight;
+  if (blockHeight > params.height - safeMarginY * 2) throw new Error("Carousel text groups exceed the fixed slide safe area.");
   const preferredCenterY = Math.round(
     params.height *
       (params.normalizedTextPosition
@@ -1120,7 +1077,7 @@ async function buildOverlaySvg(params: {
       )
     : Math.round(params.width / 2);
   const headlineY = blockTop;
-  const bodyY = headlineY + headlineMetrics.groupHeight + blockGap;
+  const bodyY = headlineY + headlineMetrics.groupHeight + (headline.lines.length ? blockGap : 0);
   const headlineMarkup = buildHeadingSvgText({
     fontSize: headline.fontSize,
     lineHeight: headline.lineHeight,
@@ -1129,14 +1086,12 @@ async function buildOverlaySvg(params: {
     x: textX,
     y: headlineY,
   });
-  const bodyMarkup = buildPlainWhiteText({
-    className: "text",
-    fontSize: body.fontSize,
-    lineHeight: body.lineHeight,
-    lines: body.lines,
-    x: textX,
-    y: bodyY,
-  });
+  let bodyOffset = bodyY;
+  const bodyMarkup = bodyBlocks.map((block) => {
+    const markup = buildPlainWhiteText({ className: "text", fontSize: block.fontSize, lineHeight: block.lineHeight, lines: block.lines, x: textX, y: bodyOffset });
+    bodyOffset += block.lines.length * block.lineHeight + CAROUSEL_TEXT_BLOCK_GAP;
+    return markup;
+  }).join("");
   const style = `
     .headline { fill: ${HEADLINE_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${BODY_FONT_WEIGHT}; letter-spacing: 0; }
     .text { fill: ${BODY_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${bodyFontWeight}; letter-spacing: 0; paint-order: stroke fill; stroke: #000000; stroke-linejoin: round; stroke-opacity: 0.72; stroke-width: 4px; }
@@ -1145,6 +1100,9 @@ async function buildOverlaySvg(params: {
   return {
     diagnostics: {
       bodyFontSize,
+      bodyBlockCount: bodyValues.length,
+      bodyBlockLineCounts: bodyBlocks.slice(0, bodyValues.length).map((block) => block.lines.length),
+      ctaLineCount: cta.lines.length,
       bubbleShapeStrategy:
         headline.lines.length > 0
           ? "heading-white-svg-background"

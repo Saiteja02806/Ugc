@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import { preconnect, preload } from "react-dom";
 import { Check, Flame, LoaderCircle, RotateCcw, Volume2, VolumeX, Wifi, X } from "lucide-react";
 
 import { ProductLogoMark } from "@/components/brand/product-logo";
@@ -41,6 +42,7 @@ const CARD_MEDIA = Array.from({ length: 29 }, (_, index) => {
   return {
     video: `${tryUgcPilotMediaBaseUrl}/videos/card-${number}.mp4`,
     audio: `${tryUgcPilotMediaBaseUrl}/audio/track-${number}.mp3`,
+    poster: `/try-ugcpilot/posters/card-${number}.webp`,
   };
 });
 
@@ -309,6 +311,13 @@ export function TryUgcPilotDemo() {
   const activeContext = businessContext ?? DEFAULT_CAL_AI_CONTEXT;
   const brand = activeContext.brand;
   const shouldShowMobileControls = swipedCount >= 3;
+
+  // The poster can paint with the copy while the first video frame is decoded.
+  const topMedia = CARD_MEDIA[swipedCount % CARD_MEDIA.length];
+  if (/^https?:\/\//.test(tryUgcPilotMediaBaseUrl)) {
+    preconnect(new URL(tryUgcPilotMediaBaseUrl).origin);
+  }
+  if (topCard) preload(topMedia.poster, { as: "image", fetchPriority: "high" });
 
   function closeMobileControls() {
     setMobileControlsOpen(false);
@@ -865,11 +874,12 @@ export function TryUgcPilotDemo() {
                   <video
                     ref={isTop ? activeVideo : undefined}
                     src={media.video}
+                    poster={media.poster}
                     autoPlay={isTop && !showSwipeGuide}
                     loop
                     muted
                     playsInline
-                    preload={isTop ? "auto" : "metadata"}
+                    preload={isTop ? "auto" : index === 1 ? "metadata" : "none"}
                     aria-label="Creator content background video"
                     className="absolute inset-0 size-full object-cover"
                   />
@@ -879,7 +889,7 @@ export function TryUgcPilotDemo() {
                       src={media.audio}
                       loop
                       muted={isMediaMuted}
-                      preload="auto"
+                      preload={isMediaMuted ? "none" : "auto"}
                     />
                   ) : null}
                   <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/5 to-black/65" />

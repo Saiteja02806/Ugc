@@ -26,12 +26,15 @@ export type PlannedCarouselSlide = {
   textPosition: "bottom" | "center" | "top";
 };
 
-export const CAROUSEL_FIXED_FONT_SIZE = 60;
-export const CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE = 96;
-export const CAROUSEL_STRUCTURE_1_COVER_MAX_LINES = 3;
+import { CAROUSEL_BODY_FONT_SIZE, CAROUSEL_HOOK_FONT_SIZE, CAROUSEL_HOOK_MAX_LINES, CAROUSEL_HEADING_MAX_LINES } from "./carousel-text-presentation.js";
+import { isCarouselOrphanLine, normalizeCarouselText } from "./carousel-text-presentation.js";
+
+export const CAROUSEL_FIXED_FONT_SIZE = CAROUSEL_BODY_FONT_SIZE;
+export const CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE = CAROUSEL_HOOK_FONT_SIZE;
+export const CAROUSEL_STRUCTURE_1_COVER_MAX_LINES = CAROUSEL_HOOK_MAX_LINES;
 export const CAROUSEL_STRUCTURE_1_FIXED_TEXT_WIDTH = 786;
 export const CAROUSEL_STRUCTURE_2_FIXED_TEXT_WIDTH = 868;
-export const CAROUSEL_STRUCTURE_1_HEADLINE_MAX_LINES = 4;
+export const CAROUSEL_STRUCTURE_1_HEADLINE_MAX_LINES = CAROUSEL_HEADING_MAX_LINES;
 export const CAROUSEL_STRUCTURE_1_BODY_MAX_LINES = 8;
 export const CAROUSEL_STRUCTURE_1_FOLLOWUP_BODY_MAX_LINES = 10;
 export const CAROUSEL_STRUCTURE_1_LIST_ITEM_MAX_LINES = 2;
@@ -65,7 +68,13 @@ export function inspectCarouselFixedTextFit(params: {
   maximumWidth: number;
   value: string;
 }): CarouselFixedTextFit {
-  const value = params.value.trim().replace(/\s+/gu, " ");
+  const value = normalizeCarouselText(params.value);
+  if (value.includes("\n")) {
+    const groups = value.split("\n").filter(Boolean).map((part) => inspectCarouselFixedTextFit({ ...params, value: part }));
+    const lines = groups.flatMap((group) => group.lines);
+    const fits = groups.every((group) => group.fits) && lines.length <= params.maximumLines && !lines.some(isCarouselOrphanLine);
+    return { fits, lines, maximumLineWidth: Math.max(0, ...groups.map((group) => group.maximumLineWidth)), reason: fits ? null : "Authored line breaks exceed the fixed line budget or contain an orphan line." };
+  }
 
   if (!value) {
     return {
@@ -108,7 +117,7 @@ export function inspectCarouselFixedTextFit(params: {
   const maximumLineWidth = Math.ceil(
     Math.max(0, ...lines.map((line) => estimateCarouselFixedTextWidth(line, fontSize))),
   );
-  const fits = lines.length <= params.maximumLines;
+  const fits = lines.length <= params.maximumLines && !lines.some(isCarouselOrphanLine);
 
   return {
     fits,

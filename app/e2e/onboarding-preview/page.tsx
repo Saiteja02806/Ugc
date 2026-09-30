@@ -1,137 +1,108 @@
 "use client";
 
 import { notFound, useSearchParams } from "next/navigation";
-import { Suspense, useRef, useState } from "react";
-import { OnboardingAnalysisStatus } from "@/components/business-profiles/background-business-onboarding";
-
+import { Suspense, useState } from "react";
 import {
-  BusinessIdentityStep,
-  BusinessInformationStep,
-  OnboardingFrame,
-  PrimaryGoalStep,
-} from "@/components/business-profiles/business-profile-onboarding";
+  StreamlinedProgressStep,
+  StreamlinedSourceStep,
+} from "@/components/business-profiles/background-business-onboarding";
+import { OnboardingFrame } from "@/components/business-profiles/business-profile-onboarding";
+import type { OnboardingDraft } from "@/lib/business-profiles/onboarding-draft-contract";
+import type { PublicBackgroundJob } from "@/lib/jobs/background-job-contract";
+
+function previewJob(status: PublicBackgroundJob["status"]): PublicBackgroundJob {
+  const failed = status === "failed";
+
+  return {
+    cancelRequestedAt: null,
+    completedAt: status === "completed" ? "2026-09-25T00:00:00.000Z" : null,
+    createdAt: "2026-09-25T00:00:00.000Z",
+    error: failed ? { code: "PREVIEW_ERROR", message: "Preview setup error", retryable: true } : null,
+    failedAt: failed ? "2026-09-25T00:00:00.000Z" : null,
+    id: `preview-${status}`,
+    jobType: "media_analysis",
+    output: null,
+    outputReference: null,
+    progress: null,
+    projectId: "default-project",
+    queuedAt: "2026-09-25T00:00:00.000Z",
+    stage: null,
+    startedAt: status === "queued" ? null : "2026-09-25T00:00:00.000Z",
+    status,
+    updatedAt: "2026-09-25T00:00:00.000Z",
+  };
+}
 
 function OnboardingPreviewInner() {
   const searchParams = useSearchParams();
-  const stepParam = searchParams.get("step") || "1";
-  const analysisParam = searchParams.get("analysis");
-  const headingRef = useRef<HTMLHeadingElement | null>(null);
-
-  const [intakeType, setIntakeType] = useState<"manual" | "mobile_app_ai_prompt" | "website">("website");
-  const [websiteUrl, setWebsiteUrl] = useState("https://acmeai.com");
-  const [aiIdeContext, setAiIdeContext] = useState("");
-  const [manual, setManual] = useState({
-    brandTone: "Friendly & bold",
-    businessName: "Acme AI",
-    category: "Productivity",
-    mainProblem: "Writing video hooks takes hours every day.",
-    productSummary: "AI copilot that generates high-converting short-form video hooks in seconds.",
-    targetAudience: "Solopreneurs and creator brands.",
-    valueProps: "10x faster hook generation\nProven viral structures\nOne-click export",
-  });
-  const [businessName, setBusinessName] = useState("Acme AI");
-  const [primaryGoals, setPrimaryGoals] = useState<
-    (
-      | "increase_revenue"
-      | "generate_leads"
-      | "increase_signups"
-      | "increase_installs"
-      | "grow_views"
-      | "brand_awareness"
-      | "grow_following"
-      | "increase_engagement"
-      | "website_traffic"
-      | "product_launch"
-    )[]
-  >(
-    stepParam === "3-selected"
-      ? ["increase_revenue", "increase_signups", "brand_awareness"]
-      : [],
+  const step = searchParams.get("step") || "1";
+  const [source, setSource] = useState<"manual" | "website">(
+    step === "1-manual-error" ? "manual" : "website",
   );
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [businessName, setBusinessName] = useState("");
+  const [description, setDescription] = useState("");
+  const failed = step === "2-error";
+  const ready = step === "2-ready" || step === "2-complete";
+  const previewSource = searchParams.get("source");
+  const previewWebsiteUrl = previewSource === "app-store"
+    ? "https://apps.apple.com/in/app/duolingo-language-chess/id570060128"
+    : previewSource === "play-store"
+      ? "https://play.google.com/store/apps/details?id=com.brainyscreenblocker"
+      : websiteUrl || "https://duolingo.com/";
+
+  const draft: OnboardingDraft = {
+    analysisJob: previewJob(failed ? "failed" : ready ? "completed" : "processing"),
+    analysisReady: ready,
+    businessName: "",
+    completed: step === "2-complete",
+    finalizationJob: ready ? previewJob(step === "2-complete" ? "completed" : "processing") : null,
+    id: "preview-onboarding-draft",
+    logoStorageKey: null,
+    logoUrl: null,
+    primaryGoals: ["brand_awareness"],
+    revision: 1,
+    sourceInput: source === "manual"
+      ? {
+          businessName: businessName || "Moonlight Studio",
+          description: description || "We help independent coaches turn client notes into clear, personalized programs.",
+          experience: "streamlined",
+          intakeType: "manual",
+        }
+      : { experience: "streamlined", intakeType: "website", websiteUrl: previewWebsiteUrl },
+    sourceRevision: 1,
+    step: 2,
+    submitted: ready,
+    suggestedName: source === "manual" ? businessName || "Moonlight Studio" : "Duolingo",
+  };
 
   return (
-    <OnboardingFrame>
-      {analysisParam && <OnboardingAnalysisStatus unavailable={analysisParam === "offline"} draft={{
-        sourceInput: { intakeType: "website", websiteUrl },
-        analysisReady: analysisParam === "complete",
-        analysisJob: { status: analysisParam === "failed" ? "failed" : analysisParam === "queued" ? "queued" : "processing" },
-      }} />}
-      <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-floating transition-all duration-300">
-        <div
-          className="h-1.5 bg-[linear-gradient(90deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))]"
-          aria-hidden="true"
+    <OnboardingFrame minimal>
+      {step === "1" || step === "1-manual-error" ? (
+        <StreamlinedSourceStep
+          businessName={businessName}
+          description={description}
+          error={step === "1-manual-error" ? "Unable to analyze that URL. Try entering your product details manually." : null}
+          isSaving={false}
+          source={source}
+          websiteUrl={websiteUrl}
+          onBusinessNameChange={setBusinessName}
+          onDescriptionChange={setDescription}
+          onSourceChange={setSource}
+          onSubmit={(event) => event.preventDefault()}
+          onWebsiteUrlChange={setWebsiteUrl}
         />
-
-        {stepParam === "1" ? (
-          <BusinessInformationStep
-            backgroundMode={!!analysisParam}
-            aiIdeContext={aiIdeContext}
-            copied={false}
-            error={null}
-            intakeType={intakeType}
-            isSaving={false}
-            manual={manual}
-            websiteUrl={websiteUrl}
-            onAiIdeContextChange={setAiIdeContext}
-            onCopyPrompt={() => {}}
-            onIntakeTypeChange={setIntakeType}
-            onManualChange={setManual}
-            onWebsiteUrlChange={setWebsiteUrl}
-          />
-        ) : null}
-
-        {stepParam === "2" ? (
-          <BusinessIdentityStep
-            businessName={businessName}
-            error={null}
-            headingRef={headingRef}
-            isSaving={false}
-            logoPreviewUrl={null}
-            profile={analysisParam ? null : {
-              analysisConfidence: "high",
-              analysisSummary: "AI copilot that automates short-form video creative generation for high growth brands.",
-              businessName: "Acme AI",
-              id: "preview-id",
-              intakeType: "website",
-              logoStorageKey: null,
-              logoUrl: null,
-              onboardingComplete: false,
-              onboardingCompletedAt: null,
-              onboardingMissingFields: [],
-              onboardingRequiredVersion: 1,
-              onboardingStep: 2,
-              onboardingStatus: "incomplete",
-              onboardingVersion: 1,
-              preparationError: null,
-              preparationStatus: "preparing",
-              primaryGoal: null,
-              primaryGoals: [],
-              profileVersion: 1,
-            }}
-            onBack={() => {}}
-            onBusinessNameChange={setBusinessName}
-            onLogoChange={() => {}}
-            onRemoveLogo={() => {}}
-          />
-        ) : null}
-
-        {stepParam === "3" || stepParam === "3-selected" ? (
-          <PrimaryGoalStep
-            error={null}
-            headingRef={headingRef}
-            isSaving={false}
-            primaryGoals={primaryGoals}
-            onBack={() => {}}
-            onPrimaryGoalToggle={(val) => {
-              setPrimaryGoals((current) =>
-                current.includes(val)
-                  ? current.filter((g) => g !== val)
-                  : [...current, val],
-              );
-            }}
-          />
-        ) : null}
-      </div>
+      ) : (
+        <StreamlinedProgressStep
+          draft={draft}
+          error={null}
+          isSaving={false}
+          statusUnavailable={false}
+          onChangeSource={() => {}}
+          onContinue={() => {}}
+          onRetry={() => {}}
+        />
+      )}
     </OnboardingFrame>
   );
 }

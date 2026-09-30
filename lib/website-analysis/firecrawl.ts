@@ -4,6 +4,7 @@ import { WebsiteAnalysisError } from "@/lib/website-analysis/errors";
 
 const FIRECRAWL_SCRAPE_URL = "https://api.firecrawl.dev/v2/scrape";
 const REQUEST_TIMEOUT_MS = 35_000;
+const EXTRA_PAGE_TIMEOUT_MS = 12_000;
 const MAX_PAGES = 4;
 
 type FirecrawlScrapeResponse = {
@@ -40,11 +41,11 @@ function getString(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-async function scrapeSinglePage(url: string): Promise<ScrapedWebsitePage> {
+async function scrapeSinglePage(url: string, timeoutMs = REQUEST_TIMEOUT_MS): Promise<ScrapedWebsitePage> {
   const controller = new AbortController();
   const timeout = setTimeout(() => {
     controller.abort();
-  }, REQUEST_TIMEOUT_MS);
+  }, timeoutMs);
 
   try {
     const response = await fetch(FIRECRAWL_SCRAPE_URL, {
@@ -113,12 +114,12 @@ export async function scrapeWebsitePages({
   const [homepage, ...extraUrls] = urls;
   const pages: ScrapedWebsitePage[] = [await scrapeSinglePage(homepage)];
 
-  for (const url of extraUrls) {
-    try {
-      pages.push(await scrapeSinglePage(url));
-    } catch {
-      // Extra pages are opportunistic context; the homepage is the required source.
-    }
+  const extras = await Promise.allSettled(
+    extraUrls.map((url) => scrapeSinglePage(url, EXTRA_PAGE_TIMEOUT_MS)),
+  );
+  for (const result of extras) {
+    // Extra pages are opportunistic context; the homepage is the required source.
+    if (result.status === "fulfilled") pages.push(result.value);
   }
 
   return pages;

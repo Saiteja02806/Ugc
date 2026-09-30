@@ -13,6 +13,7 @@ const eslintConfig = defineConfig([
     ".tools/**",
     ".impeccable/**",
     "out/**",
+    "output/**",
     "build/**",
     ".tmp/**",
     "tmp/**",

@@ -316,7 +316,7 @@ function expandSixSlideFormat(params: {
     {
       ...baseCta,
       instruction:
-        "Close with one practical, self-contained takeaway. It must read as useful content, not an invitation, instruction to save, or call to action.",
+        "Close with useful, self-contained value. An optional soft CTA may accompany this slide, but must not replace promised content or move to an earlier slide.",
       role: "takeaway_cta",
     },
   ] satisfies CarouselFormatSlideDefinition[];

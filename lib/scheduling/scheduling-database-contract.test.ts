@@ -944,7 +944,7 @@ test("the inline carousel modal implements publishing-account content and time s
   );
   assert.match(
     carouselScheduleModal,
-    /connection\.platform === "youtube"[\s\S]*YouTube accepts video uploads, not carousel posts\./,
+    /connection\.platform === "youtube" && contentKind === "carousel"[\s\S]*YouTube accepts video uploads, not carousel posts\./,
   );
   assert.match(carouselScheduleModal, /Publishing account/);
   assert.match(carouselScheduleModal, /\{carouselConnections\.map\(/);
@@ -962,7 +962,7 @@ test("the inline carousel modal implements publishing-account content and time s
   assert.match(carouselScheduleModal, /label="Schedule for later"/);
   assert.match(carouselScheduleModal, /type="date"/);
   assert.match(carouselScheduleModal, /type="time"/);
-  assert.match(carouselScheduleModal, /Choose who can view the TikTok post\./);
+  assert.match(carouselScheduleModal, /getScheduleTargetSettingsError as getPublishingSettingsError/);
   assert.doesNotMatch(carouselScheduleModal, /Connect Instagram or TikTok above/);
   assert.doesNotMatch(carouselScheduleModal, /Also show the Reel/);
 });
@@ -1151,7 +1151,7 @@ test("the main scheduler uses compact role-based clip and time controls", () => 
   assert.match(schedulingService, /directScheduledVideoCollections/);
 });
 
-test("YouTube video beta is scoped to the approved identity across every scheduling boundary", () => {
+test("YouTube availability is checked consistently across every scheduling boundary", () => {
   for (const route of [
     schedulesRoute,
     scheduleUpdateRoute,

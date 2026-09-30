@@ -1,7 +1,10 @@
 import { setTimeout as delay } from "node:timers/promises";
 
 import { logger } from "../logger.js";
-import { getTikTokDirectPostBlock } from "./tiktok-direct-post-policy.js";
+import {
+  getTikTokDirectPostBlock,
+  resolveTikTokDirectPostAuditStatus,
+} from "./tiktok-direct-post-policy.js";
 import type { TikTokTargetPublishSettings } from "./social-publish-settings.js";
 
 const DEFAULT_MAX_STATUS_POLLS = 18;
@@ -856,7 +859,7 @@ function assertTikTokDirectPostAuditAllowsPrivacy(
   creatorInfo: TikTokCreatorInfo,
 ) {
   const block = getTikTokDirectPostBlock({
-    audited: process.env.TIKTOK_DIRECT_POST_AUDITED?.trim().toLowerCase() === "true",
+    audited: resolveTikTokDirectPostAuditStatus(process.env.TIKTOK_DIRECT_POST_AUDITED),
     privacyLevel,
     privacyLevels: creatorInfo.privacy_level_options ?? [],
   });

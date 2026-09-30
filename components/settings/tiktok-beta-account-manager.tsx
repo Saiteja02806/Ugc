@@ -32,6 +32,7 @@ import {
   removeAccountSocialConnection,
 } from "@/lib/scheduling/account-data-query";
 import { getConnectionPublishingBlockMessage } from "@/lib/scheduling/social-connection-policy";
+import { hasTikTokAnalyticsScope } from "@/lib/social/tiktok-oauth-config";
 import type { SocialConnection } from "@/lib/social/types";
 
 const TIKTOK_PLATFORM = "tiktok" as const;
@@ -213,10 +214,9 @@ export function TikTokBetaAccountManager() {
                 >
                   TikTok
                 </h3>
-                <Badge variant="outline">Beta</Badge>
               </div>
               <p className="mt-1 max-w-xl text-sm leading-6 text-muted">
-                Connect an approved account to schedule Direct Posts and view
+                Connect your TikTok account to schedule posts and view
                 per-video analytics.
               </p>
             </div>
@@ -260,8 +260,8 @@ export function TikTokBetaAccountManager() {
 
           {!loading && connections.length === 0 ? (
             <div className="rounded-[var(--radius-group)] border border-dashed border-border-strong bg-card px-4 py-5 text-sm leading-6 text-muted">
-              No TikTok account is connected yet. Use Connect TikTok to add the
-              approved beta account.
+              No TikTok account is connected yet. Use Connect TikTok to add
+              your account.
             </div>
           ) : null}
 
@@ -270,6 +270,8 @@ export function TikTokBetaAccountManager() {
               {connections.map((connection) => {
                 const publishingBlock =
                   getConnectionPublishingBlockMessage(connection);
+                const needsAnalyticsConsent =
+                  !hasTikTokAnalyticsScope(connection.scopes);
                 const accountName =
                   connection.platformAccountUsername ||
                   connection.platformAccountName ||
@@ -311,7 +313,9 @@ export function TikTokBetaAccountManager() {
                           }
                         >
                           {publishingBlock ??
-                            "Direct Post videos and photo carousels are available."}
+                            (needsAnalyticsConsent
+                              ? "Reconnect once to enable video performance in Analytics."
+                              : "Post scheduling and video performance are enabled for this account.")}
                         </p>
                       </div>
                     </div>

@@ -6,9 +6,12 @@ export type OnboardingDraft = {
   revision: number;
   sourceRevision: number;
   sourceInput: {
+    experience?: "streamlined";
     intakeType: "website" | "manual" | "mobile_app_ai_prompt";
     websiteUrl?: string;
     aiIdeContext?: string;
+    businessName?: string;
+    description?: string;
     manual?: { businessName: string; brandTone?: string; category: string; mainProblem: string;
       productSummary: string; targetAudience: string; valueProps: string };
   };
@@ -30,6 +33,13 @@ export type OnboardingSession = {
   mode: "background" | "legacy";
   draft: OnboardingDraft | null;
 };
+
+export function getStreamlinedSavedBusinessName(
+  draft: Pick<OnboardingDraft, "businessName" | "sourceInput" | "suggestedName">,
+) {
+  if (draft.sourceInput.intakeType === "website") return draft.suggestedName?.trim() ?? "";
+  return draft.sourceInput.businessName?.trim() || draft.suggestedName?.trim() || draft.businessName.trim();
+}
 
 export type OnboardingAnalysisState = Pick<OnboardingDraft, "analysisReady" | "sourceInput"> & {
   analysisJob: Pick<PublicBackgroundJob, "status"> | null;

@@ -79,21 +79,23 @@ test("Structure 1 accepts a six-slide reader-first educational carousel", () => 
   }
 });
 
-test("Structure 1 rejects CTA copy even on its final takeaway slide", () => {
+test("Structure 1 keeps an optional CTA on its final value slide only", () => {
   const format = CAROUSEL_CONTENT_GRAMMAR.formats[0]!;
   const fixture = createFixture(format.id, format.compatibleHookFamilies[0]!);
   Reflect.set(fixture.slides[5]!, "ctaText", "Save this for later.");
 
-  assert.throws(
-    () => parseCarouselContentPlanForAssignment(fixture, {
+  const result = parseCarouselContentPlanForAssignment(fixture, {
       analysis,
       contentFormatId: format.id,
       hookFamilyId: format.compatibleHookFamilies[0]!,
       recentHistory: [],
       slideCount: CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
-    }),
-    /must not include CTA text/i,
-  );
+    });
+  assert.equal(result.plan.slides[5]!.ctaText, "Save this for later.");
+  Reflect.set(fixture.slides[2]!, "ctaText", "Save this for later.");
+  assert.throws(() => parseCarouselContentPlanForAssignment(fixture, {
+    analysis, contentFormatId: format.id, hookFamilyId: format.compatibleHookFamilies[0]!, recentHistory: [], slideCount: 6,
+  }), /final slide only/i);
 });
 
 test("Structure 1 requires one 5-11 word hook and rejects Slide 1 support copy", () => {
@@ -110,7 +112,7 @@ test("Structure 1 requires one 5-11 word hook and rejects Slide 1 support copy",
 
   assert.throws(
     () => parseCarouselContentPlanForAssignment(shortHook, input),
-    /Headline must be 5-11 words/i,
+    /Headline must be 5-13 words/i,
   );
 
   const withSupport = createFixture(format.id, format.compatibleHookFamilies[0]!);
@@ -318,13 +320,13 @@ test("the worker sends a persisted template only as Slide 1 planner guidance", a
     assert.match(requestText, /not let it change Slides 2-6/i);
     assert.match(requestText, /Verified grounding anchors/i);
     assert.match(requestText, /poster cover/i);
-    assert.match(requestText, /96px/i);
+    assert.match(requestText, /72px/i);
     assert.match(requestText, /Inter Tight Bold at 700 weight/i);
-    assert.match(requestText, /normally 5-8 words/i);
-    assert.match(requestText, /42 characters or fewer/i);
+    assert.match(requestText, /normally 6-13 words/i);
+    assert.match(requestText, /four centred display lines at 72px/i);
     assert.match(requestText, /aim for 20-24 words/i);
     assert.match(requestText, /natural or sentence case/i);
-    assert.match(requestText, /adds distinct information the body does not already say/i);
+    assert.match(requestText, /only add one when it names a distinct idea/i);
     // Word limits stay in the prompt and publisher validator. They must not be
     // encoded as regex patterns in the strict decoder schema: gpt-4o-mini can
     // terminate with an empty `length` response when those patterns are present.
@@ -557,12 +559,12 @@ test("the production-shaped five-item batch uses combined formats and a native f
     assert.match(requestText, /list__native/);
     assert.match(requestText, /source.*format_native/);
     assert.match(requestText, /reader-first poster cover/i);
-    assert.match(requestText, /within 3 lines/i);
+    assert.match(requestText, /within 4 lines/i);
     assert.match(requestText, /Inter Tight Bold at 700 weight/i);
-    assert.match(requestText, /normally 5-8 words/i);
-    assert.match(requestText, /42 characters or fewer/i);
+    assert.match(requestText, /normally 6-13 words/i);
+    assert.match(requestText, /four centred display lines at 72px/i);
     assert.match(requestText, /aim for 20-24 words/i);
-    assert.match(requestText, /prefer body_only whenever the selected role permits it/i);
+    assert.match(requestText, /heading is optional/i);
     assert.match(requestText, /grounding\.anchorId/i);
   } finally {
     globalThis.fetch = originalFetch;
@@ -843,9 +845,9 @@ test("Structure 1 reserves the white SVG heading treatment for content slides", 
   assert.equal(heading.whiteBackgroundGroupCount, 1);
   assert.equal(bodyOnly.whiteBackgroundGroupCount, 0);
   assert.equal(cover.whiteBackgroundGroupCount, 0);
-  assert.equal(heading.bodyFontSize, 60);
-  assert.equal(bodyOnly.bodyFontSize, 60);
-  assert.equal(cover.bodyFontSize, 96);
+  assert.equal(heading.bodyFontSize, 48);
+  assert.equal(bodyOnly.bodyFontSize, 48);
+  assert.equal(cover.bodyFontSize, 72);
   assert.equal(heading.headingBackgroundUsesLineFittedPath, true);
   assert.equal(
     heading.headingBackgroundLineCount,
@@ -1103,7 +1105,7 @@ function createDistinctBatchFixture(
           ? null
           : listItems.length > 0
             ? null
-            : theme.bodies[index - 1]!,
+            : fixtureTextBlocks(theme.bodies[index - 1]!),
       headline: index === 0 ? theme.hook : slide.headline,
       listItems,
     };
@@ -1123,7 +1125,7 @@ function createDistinctBatchFixture(
       }
     : {
         ...groundingSlide,
-        body: "Keep campaign planning and reporting connected in one visible workflow instead of scattering decisions, deadlines, and ownership across separate tools.",
+        body: "Keep campaign planning and reporting connected in one visible workflow\n\ninstead of scattering decisions, deadlines, and ownership across separate tools.",
       };
 
   return fixture;
@@ -1191,7 +1193,7 @@ function createFixture(formatId: string, hookFamilyId: string) {
             : valueBodies[index - 1]!;
 
       return {
-        body,
+        body: body ? fixtureTextBlocks(body) : null,
         ctaText: null,
         formatRole: definition.role,
         headline:
@@ -1204,4 +1206,11 @@ function createFixture(formatId: string, hookFamilyId: string) {
       };
     }),
   };
+}
+
+// Test copy deliberately models the new two-thought transport, not a runtime rewrite.
+function fixtureTextBlocks(value: string) {
+  const words = value.split(/\s+/);
+  const midpoint = Math.ceil(words.length / 2);
+  return `${words.slice(0, midpoint).join(" ")}\n\n${words.slice(midpoint).join(" ")}`;
 }

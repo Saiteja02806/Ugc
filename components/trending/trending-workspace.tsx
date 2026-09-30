@@ -56,7 +56,9 @@ import type {
   SchedulePlatformContext,
 } from "@/components/social/platform-selection-modal";
 import { HookVideoCard } from "@/components/trending/hook-video-card";
+import { HookVideoComposer } from "@/components/trending/hook-video-composer";
 import type { HookPreviewAudio } from "@/components/trending/hook-audio-preview";
+import { TrendingSwipeGuide } from "@/components/trending/trending-swipe-guide";
 import type { WallTextDetailActionState } from "@/components/trending/wall-text-detail-view";
 import { WallTextOverlay } from "@/components/trending/wall-text-overlay";
 import { WallTextSavedImage } from "@/components/trending/wall-text-saved-image";
@@ -129,22 +131,6 @@ const TrendingContentMixDialog = dynamic(
       (module) => module.TrendingContentMixDialog,
     ),
   { loading: TrendingContentMixDialogLoading },
-);
-
-const TrendingFirstVisitWalkthrough = dynamic(
-  () =>
-    import("@/components/trending/trending-first-visit-walkthrough").then(
-      (module) => module.TrendingFirstVisitWalkthrough,
-    ),
-  { ssr: false },
-);
-
-const HookVideoComposer = dynamic(
-  () =>
-    import("@/components/trending/hook-video-composer").then(
-      (module) => module.HookVideoComposer,
-    ),
-  { loading: HookVideoComposerLoading },
 );
 
 const PlatformSelectionModal = dynamic(
@@ -588,24 +574,6 @@ function TrendingContentMixDialogLoading() {
           aria-hidden="true"
         />
         Opening Adjust…
-      </div>
-    </div>
-  );
-}
-
-function HookVideoComposerLoading() {
-  return (
-    <div
-      aria-live="polite"
-      className="flex min-h-[540px] items-center justify-center px-5 py-8"
-      role="status"
-    >
-      <div className="flex items-center gap-3 rounded-[var(--radius-panel)] border border-border bg-card px-5 py-4 text-sm font-semibold text-foreground shadow-card">
-        <Loader2
-          className="size-5 shrink-0 animate-spin text-primary motion-reduce:animate-none"
-          aria-hidden="true"
-        />
-        Opening Hook composer…
       </div>
     </div>
   );
@@ -1262,6 +1230,7 @@ export function TrendingWorkspace() {
                 preparing={trendingFeedState === "preparing"}
                 remainingCount={trendingFeedProgress?.remainingCount ?? 0}
                 profile={carouselFeedProfile}
+                userId={user?.uid ?? null}
                 upgradeRequired={trendingUpgradeRequired}
                 onCompleteProfile={openBusinessProfile}
                 onRetryHistory={() => {
@@ -1271,12 +1240,6 @@ export function TrendingWorkspace() {
                 }}
               />
             </div>
-            {user?.uid ? (
-              <TrendingFirstVisitWalkthrough
-                key={user.uid}
-                userId={user.uid}
-              />
-            ) : null}
           </div>
         </section>
         {contentMixOpen ? (
@@ -1309,6 +1272,7 @@ function TrendingFeedGallery({
   onCompleteProfile,
   onRetryHistory,
   profile,
+  userId,
   upgradeRequired,
 }: {
   enqueueDecision: (entry: TrendingDecisionOutboxEntry) => void;
@@ -1324,6 +1288,7 @@ function TrendingFeedGallery({
   onCompleteProfile: () => void;
   onRetryHistory: () => void;
   profile: CarouselProfileFeed | null;
+  userId: string | null;
   upgradeRequired: boolean;
 }) {
   const showSkeleton = loading;
@@ -1402,6 +1367,7 @@ function TrendingFeedGallery({
             pendingSlotCount={pendingSlotCount}
             remainingCount={remainingCount}
             onRetry={onRetryHistory}
+            userId={userId}
             upgradeRequired={upgradeRequired}
           />
         ) : null}
@@ -1542,6 +1508,7 @@ function TrendingFeed({
   pendingSlotCount,
   remainingCount,
   onRetry,
+  userId,
   upgradeRequired,
 }: {
   enqueueDecision: (entry: TrendingDecisionOutboxEntry) => void;
@@ -1551,6 +1518,7 @@ function TrendingFeed({
   pendingSlotCount: number;
   remainingCount: number;
   onRetry: () => void;
+  userId: string | null;
   upgradeRequired: boolean;
 }) {
   const [activeSlideByCarouselId, setActiveSlideByCarouselId] = useState<
@@ -1650,6 +1618,7 @@ function TrendingFeed({
         pendingSlotCount={pendingSlotCount}
         remainingCount={remainingCount}
         onRetry={onRetry}
+        userId={userId}
         upgradeRequired={upgradeRequired}
         onActiveSlideChange={setActiveSlide}
         onActiveSlideMove={moveActiveSlide}
@@ -1882,6 +1851,7 @@ function TrendingDeck({
   onRetry,
   pendingSlotCount,
   remainingCount,
+  userId,
   upgradeRequired,
 }: {
   activeSlideByCarouselId: Record<string, number>;
@@ -1902,6 +1872,7 @@ function TrendingDeck({
   onRetry: () => void;
   pendingSlotCount: number;
   remainingCount: number;
+  userId: string | null;
   upgradeRequired: boolean;
 }) {
   const swipeTimerRef = useRef<number | null>(null);
@@ -1947,6 +1918,76 @@ function TrendingDeck({
   const [exitDirection, setExitDirection] = useState<"left" | "right" | null>(
     null,
   );
+  const [swipeGuideState, setSwipeGuideState] = useState<
+    "checking" | "hidden" | "visible"
+  >(userId ? "checking" : "hidden");
+  const swipeGuideCompletionRef = useRef(false);
+
+  useEffect(() => {
+    if (!userId) {
+      swipeGuideCompletionRef.current = false;
+      return;
+    }
+
+    const controller = new AbortController();
+    let live = true;
+    swipeGuideCompletionRef.current = false;
+
+    async function loadSwipeGuide() {
+      try {
+        const token = await getCurrentUserIdToken();
+        if (!token) throw new Error("No signed-in user is available.");
+
+        const response = await fetch("/api/trending/walkthrough", {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        });
+        const body = (await response.json().catch(() => null)) as
+          | { completed: boolean; ok: true }
+          | null;
+
+        if (live && !controller.signal.aborted) {
+          setSwipeGuideState(
+            response.ok && body?.ok && !body.completed ? "visible" : "hidden",
+          );
+        }
+      } catch {
+        if (live && !controller.signal.aborted) setSwipeGuideState("hidden");
+      }
+    }
+
+    void loadSwipeGuide();
+    return () => {
+      live = false;
+      controller.abort();
+    };
+  }, [userId]);
+
+  const dismissSwipeGuide = useCallback(() => {
+    if (swipeGuideState !== "visible") return false;
+
+    setSwipeGuideState("hidden");
+    if (swipeGuideCompletionRef.current) return true;
+    swipeGuideCompletionRef.current = true;
+
+    void (async () => {
+      try {
+        const token = await getCurrentUserIdToken();
+        if (!token) return;
+
+        await fetch("/api/trending/walkthrough", {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+          method: "POST",
+        });
+      } catch {
+        // The guide remains dismissed for this visit and retries on a later one.
+      }
+    })();
+
+    return true;
+  }, [swipeGuideState]);
   const visibleCandidates = useMemo<TrendingCandidate[]>(
     () =>
       excludeDismissedTrendingFeedItems(
@@ -2259,6 +2300,10 @@ function TrendingDeck({
   function requestCreativeDecision(
     decision: "accepted" | "rejected",
   ) {
+    if (dismissSwipeGuide()) {
+      return false;
+    }
+
     if (
       !activeCandidate ||
       decisionLockRef.current ||
@@ -2422,6 +2467,10 @@ function TrendingDeck({
   }
 
   function handleEditActiveCandidate() {
+    if (dismissSwipeGuide()) {
+      return;
+    }
+
     if (
       !activeCandidate ||
       decisionLockRef.current ||
@@ -2441,6 +2490,10 @@ function TrendingDeck({
       (event.pointerType === "mouse" && event.button !== 0) ||
       target.closest("[data-deck-control]")
     ) {
+      return;
+    }
+
+    if (dismissSwipeGuide()) {
       return;
     }
 
@@ -2734,6 +2787,7 @@ function TrendingDeck({
                   onExitTransitionEnd={handleExitTransitionEnd}
                 />
               ))}
+              {swipeGuideState === "visible" ? <TrendingSwipeGuide /> : null}
               <div
                 aria-hidden="true"
                 className="pointer-events-none absolute inset-0 z-20"
@@ -4051,8 +4105,19 @@ function TrendingReactionDeckCard({
 }) {
   const isActive = depth === 0;
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [soundEnabled, setSoundEnabled] = useState(false);
   const creative = candidate.item.creative;
+  const [soundState, setSoundState] = useState({
+    previewUrl: creative.previewUrl,
+    active: isActive,
+    enabled: false,
+  });
+  const soundEnabled = soundState.enabled;
+  if (soundState.previewUrl !== creative.previewUrl || soundState.active !== isActive) {
+    setSoundState({ previewUrl: creative.previewUrl, active: isActive, enabled: false });
+  }
+  function setSoundEnabled(enabled: boolean) {
+    setSoundState({ previewUrl: creative.previewUrl, active: isActive, enabled });
+  }
   const deckStyle = DECK_CARD_STYLES[depth];
   const cardStyle = getTrendingDeckCardPresentation({
     depth,
@@ -4078,7 +4143,6 @@ function TrendingReactionDeckCard({
   useEffect(() => {
     const video = videoRef.current;
     if (video) video.muted = true;
-    setSoundEnabled(false);
   }, [creative.previewUrl, isActive]);
 
   useEffect(() => {

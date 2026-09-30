@@ -40,6 +40,7 @@ export type TrendingCarouselEditSlide = {
   backgroundUrl: string;
   ctaText: string;
   headline: string;
+  hasHeading?: boolean;
   originalBackgroundAssetId: string | null;
   originalBackgroundUrl: string;
   originalVisualRole: "hook" | "human" | "product_asset" | "static" | null;

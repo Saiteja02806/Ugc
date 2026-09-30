@@ -37,7 +37,7 @@ test("template overflow gets one native cover repair without changing story or a
   const originalFetch = globalThis.fetch;
   const originalKey = process.env.OPENAI_API_KEY;
   process.env.OPENAI_API_KEY = "test-key-no-network";
-  const overflow = "Every delayed approval quietly stalls the next important campaign decision";
+  const overflow = "EverySuperLongDelayedApprovalWord quietly stalls the next extraordinarilyComplicatedCampaignDecisionWithoutAnOwner";
   const source = rawPlan(true);
   source.slides.first!.storyText = overflow;
   let nativeCalls = 0;

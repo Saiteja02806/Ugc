@@ -55,7 +55,7 @@ test("the root layout renders dark before the saved choice is read", () => {
   );
   assert.match(
     layoutSource,
-    /<head>[\s\S]*id="ugc-pilot-theme"[\s\S]*themeInitializationScript[\s\S]*<\/head>/,
+    /<Script\s+id="ugc-pilot-theme"\s+strategy="beforeInteractive"\s+dangerouslySetInnerHTML=\{\{ __html: themeInitializationScript \}\}/,
   );
 });
 

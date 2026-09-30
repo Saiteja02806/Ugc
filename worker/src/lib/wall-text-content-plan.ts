@@ -11,7 +11,7 @@ import { getContentPlanItemConceptLanes } from "./content-plan-concept-lanes.js"
 import { getWallTextBriefSituationFocuses } from "./wall-text-situation-focuses.js";
 
 export const WALL_TEXT_CONTENT_PLAN_PROMPT_VERSION =
-  "wall-text-content-plan-reader-profiles-v15-fact-first-structured-order";
+  "wall-text-content-plan-reader-profiles-v17-complete-ideas";
 // Each item carries seven structured fields in addition to its parent brief.
 // Ten ideas keep a response comfortably below the model's structured-output
 // budget while preserving the five-idea creative-brief grouping.
@@ -196,7 +196,8 @@ function isRepairableWallTextIdeaIssue(issue: string) {
   return (
     issue.includes("repeats an existing content idea") ||
     issue.includes("repeats an existing human moment") ||
-    issue.includes("contentIdea must contain 8 to 14 words") ||
+    issue.includes("contentIdea must contain at most 60 words") ||
+    issue.includes("contentIdea must contain at most two sentences") ||
     issue.includes("production direction instead of a human observation")
   );
 }
@@ -468,10 +469,14 @@ export function validateWallTextContentPlanChunk(params: {
       issues.push(`Brief ${item.briefSlotIndex} idea ${item.itemSlotIndex} is too vague.`);
     }
     const contentIdeaWordCount = countWords(item.contentIdea);
-    if (contentIdeaWordCount < 8 || contentIdeaWordCount > 14) {
+    if (contentIdeaWordCount > 60) {
       issues.push(
-        `Brief ${item.briefSlotIndex} idea ${item.itemSlotIndex} contentIdea must contain 8 to 14 words.`,
+        `Brief ${item.briefSlotIndex} idea ${item.itemSlotIndex} contentIdea must contain at most 60 words.`,
       );
+    }
+    const sentences = [...new Intl.Segmenter("en", { granularity: "sentence" }).segment(item.contentIdea)];
+    if (sentences.length > 2) {
+      issues.push(`Brief ${item.briefSlotIndex} idea ${item.itemSlotIndex} contentIdea must contain at most two sentences.`);
     }
     if (item.feeling.length < 2) {
       issues.push(`Brief ${item.briefSlotIndex} idea ${item.itemSlotIndex} has a vague feeling.`);
@@ -547,6 +552,18 @@ export function getWallTextItemConceptLanes(
   return getContentPlanItemConceptLanes({ briefCount, briefIndexStart });
 }
 
+const WALL_TEXT_PLANNING_CLARITY_RULES = [
+  "Within the required JSON shape and word limits, prioritize supported meaning, then first-read clarity, then variety. Use an assigned theme or concept lane only when it fits naturally; it never justifies an invented fact, forced emotion, or vague wording.",
+  "Write contentIdea and all private writing fields in everyday language a non-marketer understands. Name the person, action, or decision when supported. Describe something the reader can recognize; avoid abstract phrases such as 'a business-specific direction' or 'optimizing the workflow'. Use necessary audience terms only when their meaning is clear.",
+  "Prefer the exact supported input or action over vague words such as direction, process, or tailored. An observation must say something useful beyond 'this feature is relevant when you need it'. Do not disguise the same point by adding 'before', 'from the start', or a different emotional label.",
+  "A plain practical observation is valid. Set feeling to 'neutral' and emotionalTension to 'No particular emotional conflict' when no conflict follows naturally. Never manufacture self-blame, anxiety, relief, or a transformation just to fill these fields.",
+  "Ordinary illustrations must stay directly within the selected fact's meaning. They are possible situations, not reports of actual customers or evidence of a typical behavior, cause, or result. Do not invent named people, quotes, numbers, product steps, or consequences. If a concrete scene needs unsupported details, use a direct practical observation about the fact instead.",
+  "Preserve who acts and every material condition in the selected fact, including may, can, up to, frequency, and human approval. Do not simplify a limited capability into an automatic action or guaranteed result. Private context cannot authorize a claim beyond that fact.",
+  "An idea may use one or two complete sentences, up to 60 words and 400 characters total. The first explains the point; a second may add a supported detail or necessary condition, never a repetition, invented benefit, or unrelated capability. Do not stretch a complete one-sentence point. These are planning sentences, not literal display lines or finished overlay copy.",
+  "Before writing an idea about a capability, check the approved context for conditions that limit that same capability. Preserve those conditions in the idea and supportedAngle; do not rely on a separate planning field to carry them. Other facts may restrict the selected claim, but may not be used to add unrelated claims. If conditions conflict or remain unclear, select a different supported fact rather than guessing.",
+  "Before returning JSON, silently read each idea and private context without the planning labels: can a normal reader tell what happens and why this fact is relevant? Rewrite abstract wording, remove invented meaning, and make related ideas different in substance rather than synonyms. Return only the required fields.",
+] as const;
+
 function buildMessages(params: {
   briefIndexStart: number;
   briefCount: number;
@@ -561,21 +578,22 @@ function buildMessages(params: {
       content: [
         "You create private creative-brief context and content ideas for Wall-of-Text short videos.",
         "The supplied businessDescription and approvedPlanningContext are the only factual source. Do not invent audiences, capabilities, workflows, proof, metrics, guarantees, outcomes, or claims.",
+        ...WALL_TEXT_PLANNING_CLARITY_RULES,
         "approvedPlanningContext.wallTextReaders identifies the intended Wall-of-Text reader categories. Treat its primary reader as the default; use its secondary reader only when it is present and the idea genuinely suits that category. Every audienceContext must name a supported reader category rather than a generic everyone. Do not invent a reader persona because a category is missing.",
         "Every five-idea group has a private parent brief, and every child idea has its own five-field private writing context. The child context—not only the parent—is stored and used later. Neither is visible overlay copy, labels, or a fixed script.",
         "creativeSeed: The central human observation or tension. It is not final copy.",
         "audienceContext: The supported audience segment experiencing that situation. It must not mean everyone.",
-        "humanMoment: One concrete, recognisable everyday event or situation. For example, an unexpected meeting moving the afternoon's work.",
-        "emotionalTension: The inner feeling or conflict created by that moment. For example, frustration mixed with self-blame.",
+        "humanMoment: One concrete, recognisable everyday event or situation directly illustrating the selected fact, or a clear practical observation when a scene would require guessing.",
+        "emotionalTension: The inner feeling or conflict only when it follows naturally from that moment. Otherwise use 'No particular emotional conflict'.",
         "supportedAngle: The factual connection to the business, based only on approved facts. It is not a sales claim or a promise.",
         ...(params.factSelectionRequired
           ? [
               "approvedPlanningContext.approvedFactSnapshot is the complete approved fact list for this plan. For every child, first choose exactly one selectedFactId from that list. Then create its humanMoment and contentIdea from what that exact fact supports. A clear paraphrase or ordinary daily illustration is allowed, but the moment and idea must not introduce a separate event, cause, workflow, problem, or outcome that the fact does not support. Never invent a human moment first and search for a fact to attach later. Do not choose a fact by its list position or by repeated words. If no fact produces a natural, supported moment, select a different fact or create a different child idea.",
             ]
           : []),
-        "Each parent brief has an assigned current-plan situation focus. It is a private planning coverage boundary, not a fact, phrase to copy, required visible scene, or final-copy formula. Every child in that brief must genuinely explore the focus through its private humanMoment. If the literal focus would require an unsupported fact, choose the nearest factual situation that remains clearly distinct instead. Do not keep returning to the business's most obvious object, action, setting, or time cue.",
-        `For every child return ${params.factSelectionRequired ? "selectedFactId first, then " : ""}contentIdea, feeling, audienceContext, privateCreativeSeed, emotionalTension, humanMoment, and supportedAngle. contentIdea must be an 8-to-14-word human observation that a later Wall writer can develop. It must never begin with Show, Depict, Portray, Capture, Highlight, Explore, Imagine, Picture, Present, or Describe. feeling guides tone and is not a phrase the writer must append. The children are not generated from creativeSeed alone.`,
-        "Situation coverage is an editorial quality requirement for the plan, not a rigid rule for the later Writer. Every group of five must use five clearly different concrete reader situations. A situation is different only when at least two of these change: the trigger, the main action, the setting, the point in the routine, the people involved, or the practical constraint. Rewording the same core decision, object, place, or time of day is not different enough. In each ten-idea request, no more than three ideas may occupy the same situation family. At least five of the ten must locate the reader before, around, or after the main problem rather than reenacting its most obvious decision scene: use relevant preparation, changing conditions, available resources, coordination, competing priorities, interruptions, consequences, or reflection when supported. Keep the business topic relevant, but do not make all ten direct variations of the main problem. Each child has an assigned concept lane; use its lane and its parent focus as broad guidance, then create a genuinely different audience, action, setting, tension, or observation. Product capabilities are optional context, not the subject of every idea. Do not write final overlay copy, line breaks, a slide layout, a CTA, a product pitch, or a finished script.",
+        "Each parent brief has an assigned current-plan situation focus. It is optional editorial guidance, not a fact, phrase to copy, required visible scene, or final-copy formula. Explore the focus when supported and natural. If it requires an invented event or forced emotion, use a clear observation directly supported by the selected fact instead. Vary the actual observation instead of copying the focus's abstract wording.",
+        `For every child return ${params.factSelectionRequired ? "selectedFactId first, then " : ""}contentIdea, feeling, audienceContext, privateCreativeSeed, emotionalTension, humanMoment, and supportedAngle. contentIdea must be a complete one- or two-sentence human observation that a later Wall writer can develop. It must never begin with Show, Depict, Portray, Capture, Highlight, Explore, Imagine, Picture, Present, or Describe. feeling guides tone and is not a phrase the writer must append. The children are not generated from creativeSeed alone.`,
+        "Situation coverage is an editorial goal within the available evidence, not permission to invent detail. Aim for five distinct supported situations or practical observations per group. For scenes, vary at least two supported details such as the trigger, main action, setting, point in the routine, people involved, or practical constraint when possible. For observations, change the actual question or point rather than its wording. Rewording the same core decision is not a distinct idea. Spread each ten-idea request across supported situations; consider preparation, use, or reflection when the fact supports them. Never force a scene or outcome to meet a variety quota. The assigned concept lane and parent focus are suggestions subordinate to supported meaning and clarity. Product mentions are optional; the selected fact remains the basis of the idea. Do not write final overlay copy, line breaks, a slide layout, a CTA, a product pitch, or a finished script.",
         "Return the complete JSON object required by the schema. Include every brief, every child idea, and every required field. Do not return commentary, a partial result, or an empty response.",
       ].join(" "),
     },
@@ -618,6 +636,8 @@ function buildSingleIdeaReplacementMessages(params: {
       content: [
         "You repair exactly one private Wall-of-Text plan idea without changing any other plan item.",
         "Use only the supplied business facts. Return a genuinely new individual writing context with a different concrete human situation if the old one was repeated.",
+        ...WALL_TEXT_PLANNING_CLARITY_RULES,
+        "Keep contentIdea a complete one- or two-sentence human observation within 60 words and 400 characters. audienceContext must name a supported reader category. Use humanMoment for a recognizable supported situation or practical observation, privateCreativeSeed for its central point, and supportedAngle for its connection to the selected fact. Do not begin contentIdea with a production direction such as Show or Depict.",
         ...(params.factSelectionRequired
           ? [
               "For the replacement, first select exactly one valid selectedFactId from approvedPlanningContext.approvedFactSnapshot. Then create the new human situation and idea from that fact. Do not introduce a separate event, cause, workflow, problem, or outcome that the fact does not support, and never invent the situation first and attach a fact later.",

@@ -29,16 +29,6 @@ test("user-facing AI and analytics routes only enqueue durable jobs", () => {
       forbidden: ["listInstagramContentInsightsForOwner"],
       path: "app/api/analytics/instagram/content/route.ts",
     },
-    {
-      enqueue: "enqueueAnalyticsSyncJob",
-      forbidden: ["listTikTokPublicVideoAnalyticsForOwner"],
-      path: "app/api/analytics/tiktok/videos/route.ts",
-    },
-    {
-      enqueue: "enqueueAnalyticsSyncJob",
-      forbidden: ["listYouTubeChannelAnalyticsForOwner"],
-      path: "app/api/analytics/youtube/channel/route.ts",
-    },
   ];
 
   for (const contract of contracts) {
@@ -50,6 +40,20 @@ test("user-facing AI and analytics routes only enqueue durable jobs", () => {
     for (const forbidden of contract.forbidden) {
       assert.doesNotMatch(source, new RegExp(forbidden));
     }
+  }
+
+  const socialSnapshotSource = readFileSync(
+    "lib/analytics/social-snapshot.ts",
+    "utf8",
+  );
+  assert.match(socialSnapshotSource, /enqueueAnalyticsSyncJob/);
+  for (const [path, forbidden] of [
+    ["app/api/analytics/tiktok/videos/route.ts", "listTikTokPublicVideoAnalyticsForOwner"],
+    ["app/api/analytics/youtube/channel/route.ts", "listYouTubeChannelAnalyticsForOwner"],
+  ]) {
+    const source = readFileSync(path, "utf8");
+    assert.match(source, /readOrRefreshSocialAnalytics/);
+    assert.doesNotMatch(source, new RegExp(forbidden));
   }
 });
 

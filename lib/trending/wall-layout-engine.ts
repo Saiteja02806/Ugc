@@ -85,7 +85,6 @@ export async function deriveWallTextSpatialBudget(params: {
     maxWords: wordBudget.maximum,
     minWords: wordBudget.minimum,
     spatialMaximum,
-    targetWords: wordBudget.target,
   };
 }
 

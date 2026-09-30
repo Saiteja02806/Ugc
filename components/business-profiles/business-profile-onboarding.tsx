@@ -324,10 +324,15 @@ export function BusinessProfileOnboarding() {
       idempotencyPayloadRef.current = null;
       const failureUpdate = window.setTimeout(() => {
         setStatus("idle");
-        setError(
-          backgroundJob.error?.message ??
-            "We could not analyze that source. Check it and try again.",
-        );
+        if (intakeType === "website") {
+          setIntakeType("manual");
+          setError("Unable to analyze that URL. Try entering your product details manually.");
+        } else {
+          setError(
+            backgroundJob.error?.message ??
+              "We could not analyze that source. Check it and try again.",
+          );
+        }
       }, 0);
       return () => window.clearTimeout(failureUpdate);
     }
@@ -357,7 +362,7 @@ export function BusinessProfileOnboarding() {
     }
 
     void verifyCompletedProfile();
-  }, [backgroundJob, backgroundJobTerminal]);
+  }, [backgroundJob, backgroundJobTerminal, intakeType]);
 
   useEffect(
     () => () => {
@@ -1226,11 +1231,24 @@ export function PrimaryGoalStep({
 export function OnboardingFrame({
   children,
   compact = false,
+  minimal = false,
 }: {
   children: React.ReactNode;
   compact?: boolean;
+  minimal?: boolean;
 }) {
   const shellWidth = compact ? "max-w-[960px]" : "max-w-[1120px]";
+
+  if (minimal) {
+    return (
+      <main className="instagram-theme min-h-dvh bg-background text-foreground">
+        <a href="#business-profile-content" className="sr-only rounded-lg bg-card px-3 py-2 text-sm font-semibold text-foreground focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus-visible:ring-2 focus-visible:ring-focus">Skip to business setup</a>
+        <div id="business-profile-content" className="relative flex min-h-dvh w-full items-center justify-center overflow-x-clip px-5 py-10 sm:px-8 sm:py-14">
+          {children}
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="instagram-theme relative min-h-dvh overflow-x-clip bg-background text-foreground">

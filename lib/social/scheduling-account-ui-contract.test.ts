@@ -35,6 +35,21 @@ test("Post scheduling reserves a visible footer row at short heights", () => {
   assert.match(carouselModal, /<DialogFooter className="[^"]*shrink-0/);
 });
 
+test("Hook scheduling uses the wide, compact platform-details layout", () => {
+  const detailsStart = reelDrawer.indexOf('{stage === "details" ?');
+  const detailsEnd = reelDrawer.indexOf(") : (\n            <ScheduleReview", detailsStart);
+  const detailsStep = reelDrawer.slice(detailsStart, detailsEnd);
+
+  assert.match(reelDrawer, /sm:max-w-\[960px\]/);
+  assert.match(reelDrawer, /xl:grid-cols-\[minmax\(0,1\.1fr\)_minmax\(20rem,0\.9fr\)\]/);
+  assert.match(detailsStep, /Publishing details/);
+  assert.match(reelDrawer, /Content disclosure/);
+  assert.doesNotMatch(detailsStep, /Music Usage Confirmation/);
+  assert.doesNotMatch(detailsStep, /Contains AI-generated content/);
+  assert.match(reelDrawer, /Confirm TikTok publishing/);
+  assert.match(reelDrawer, /requireTikTokMusicConfirmation: false/);
+});
+
 test("Post scheduling keeps the header text-only without a redundant Instagram logo", () => {
   assert.match(carouselHeader, /Instagram post/);
   assert.match(carouselHeader, /\{currentStep\.title\}/);
@@ -42,11 +57,12 @@ test("Post scheduling keeps the header text-only without a redundant Instagram l
   assert.match(carouselModal, /<SocialAccountAvatar connection=\{connection\}/);
 });
 
-test("Text Reels use the shared post scheduler without repeating their on-screen copy", () => {
+test("Text Reels use the shared post scheduler without a redundant preparation card", () => {
   assert.match(carouselModal, /contentType: "wall_text"/);
-  assert.match(carouselModal, /Text Reel is ready to prepare/);
-  assert.match(carouselModal, /Its message already appears on screen/);
+  assert.match(carouselModal, /Review the destination and optionally add a caption for this Text Reel\./);
   assert.match(carouselModal, /Add context to accompany this Text Reel/);
+  assert.doesNotMatch(carouselModal, /Text Reel is ready to prepare/);
+  assert.doesNotMatch(carouselModal, /Its message already appears on screen/);
   assert.doesNotMatch(carouselModal, /Overlay copy/);
 });
 

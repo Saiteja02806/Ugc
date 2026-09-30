@@ -455,7 +455,8 @@ export async function prepareTrendingWallTextIdeas(
         : null,
     maxWords: budget.maxWords,
     sourceKind: candidate.sourceKind,
-    targetWords: budget.targetWords,
+    // target_words is retained for the reservation RPC, not as a writing goal.
+    targetWords: budget.maxWords,
     grounding: groundingByCandidateIndex.get(candidate.candidateIndex) ?? null,
   }));
   const requestHash = createHash("sha256")
@@ -498,7 +499,7 @@ export async function prepareTrendingWallTextIdeas(
       maxWords: budget.maxWords,
       overlayMediaAssetId: candidate.entry.id,
       sourceKind: candidate.sourceKind,
-      targetWords: budget.targetWords,
+      targetWords: budget.maxWords,
     })),
     businessProfileId: profile.id,
     businessProfileVersion: profile.profileVersion,

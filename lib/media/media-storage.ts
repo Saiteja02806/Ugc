@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { mediaCollections } from "@/lib/media/types";
 
 import type {
   MediaAsset,
@@ -73,6 +74,7 @@ export type CreateUploadingMediaAssetInput = {
   fileName: string;
   fileSizeBytes: number;
   mimeType: string;
+  metadata?: Record<string, Json | undefined>;
   projectId?: string | null;
   sourceType: Extract<MediaSourceType, "upload" | "influencer_upload">;
   storageKey: string;
@@ -158,7 +160,7 @@ export async function createUploadingMediaAsset(
       file_size_bytes: input.fileSizeBytes,
       height: null,
       id: input.assetId,
-      metadata: {},
+      metadata: input.metadata ?? {},
       mime_type: input.mimeType,
       parent_asset_id: null,
       project_id: input.projectId ?? null,
@@ -214,6 +216,57 @@ export async function listMediaAssets(params: {
   return data;
 }
 
+/** Bounded owner-scoped listing for MCP. The caller validates filters and cursor. */
+export async function listMediaAssetsPage(params: {
+  collection?: MediaCollection;
+  sourceType?: MediaSourceType;
+  query?: string;
+  after?: { updatedAt: string; id: string };
+  limit: number;
+  userId: string;
+}) {
+  let request = getSupabaseServerClient()
+    .from(MEDIA_ASSETS_TABLE)
+    .select("*")
+    .eq("user_id", params.userId)
+    .eq("status", "ready")
+    .is("deleted_at", null)
+    .order("updated_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(params.limit + 1);
+
+  if (params.collection) request = request.eq("collection", params.collection);
+  else request = request.in("collection", mediaCollections);
+  if (params.sourceType) request = request.eq("source_type", params.sourceType);
+
+  // PostgREST raw OR grammar. Values are quoted, with LIKE wildcards escaped,
+  // and the date/UUID come only from an authenticated, signed cursor.
+  const search = params.query
+    ? (() => {
+        const escaped = params.query.replace(/[\\%_"]/g, (character) => `\\${character}`);
+        const pattern = `"%${escaped}%"`;
+        return [`title.ilike.${pattern}`, `file_name.ilike.${pattern}`];
+      })()
+    : [];
+  const position = params.after
+    ? [
+        `updated_at.lt.${params.after.updatedAt}`,
+        `and(updated_at.eq.${params.after.updatedAt},id.lt.${params.after.id})`,
+      ]
+    : [];
+  if (search.length && position.length) {
+    request = request.or(search.flatMap((term) =>
+      position.map((point) => `and(${term},${point})`),
+    ).join(","));
+  } else if (search.length || position.length) {
+    request = request.or((search.length ? search : position).join(","));
+  }
+
+  const { data, error } = await request;
+  if (error) throw new Error(`Could not list media assets: ${error.message}`);
+  return data ?? [];
+}
+
 export async function getMediaAssetForOwner(params: {
   assetId: string;
   userId: string;
@@ -257,15 +310,19 @@ export async function getLatestReadyMediaAssetForParent(params: {
   return data;
 }
 
-export async function markMediaAssetReady(params: {
+type MarkMediaAssetReadyParams = {
   assetId: string;
   durationSeconds?: number | null;
   height: number;
   ratio: MediaRatio;
   userId: string;
   width: number;
-}) {
-  const { data, error } = await getSupabaseServerClient()
+};
+
+export function markMediaAssetReady(params: MarkMediaAssetReadyParams & { expectedStatus: "uploading" }): Promise<MediaAssetRow | null>;
+export function markMediaAssetReady(params: MarkMediaAssetReadyParams): Promise<MediaAssetRow>;
+export async function markMediaAssetReady(params: MarkMediaAssetReadyParams & { expectedStatus?: "uploading" }) {
+  let query = getSupabaseServerClient()
     .from(MEDIA_ASSETS_TABLE)
     .update({
       duration_seconds: params.durationSeconds ?? null,
@@ -278,8 +335,12 @@ export async function markMediaAssetReady(params: {
     .eq("id", params.assetId)
     .eq("user_id", params.userId)
     .is("deleted_at", null)
-    .select("*")
-    .single();
+    .select("*");
+
+  if (params.expectedStatus) query = query.eq("status", params.expectedStatus);
+  const { data, error } = params.expectedStatus
+    ? await query.maybeSingle()
+    : await query.single();
 
   if (error) {
     throw new Error(`Could not finish media asset: ${error.message}`);

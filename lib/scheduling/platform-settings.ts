@@ -77,6 +77,7 @@ export function getDefaultScheduleTargetSettings(
 
 export function getScheduleTargetSettingsError(params: {
   connections: Array<{ id: string; platform: SchedulePlatform }>;
+  requireTikTokMusicConfirmation?: boolean;
   settings: Record<string, ScheduleTargetSettings>;
   tiktokCapabilities: Record<
     string,
@@ -122,7 +123,10 @@ export function getScheduleTargetSettingsError(params: {
       return TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE;
     }
 
-    if (settings.musicUsageConfirmed !== true) {
+    if (
+      params.requireTikTokMusicConfirmation !== false &&
+      settings.musicUsageConfirmed !== true
+    ) {
       return "Confirm TikTok's Music Usage Confirmation before scheduling.";
     }
 

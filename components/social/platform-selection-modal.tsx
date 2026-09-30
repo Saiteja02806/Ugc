@@ -46,6 +46,11 @@ import {
   type CarouselScheduleSubmission,
 } from "@/lib/scheduling/carousel-scheduling-client";
 import {
+  getDefaultScheduleTargetSettings,
+  getScheduleTargetSettingsError as getPublishingSettingsError,
+  type ScheduleTargetSettings,
+} from "@/lib/scheduling/platform-settings";
+import {
   DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
   getEarliestScheduleTimestamp,
   getZonedDateTimeParts,
@@ -59,10 +64,10 @@ import {
   getTikTokPrivacyLabel,
   isTikTokPrivacyLevel,
   TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE,
-  type TikTokPrivacyLevel,
   type TikTokPublishCapabilities,
 } from "@/lib/social/tiktok-publishing";
 import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
+import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
 import {
   type SocialConnection,
   type SocialConnectionStatus,
@@ -132,7 +137,7 @@ type PlatformDefinition = {
 type ModalStep = "accounts" | "details" | "schedule";
 type ScheduleMode = "choose" | "later";
 type ScheduleContentKind = "carousel" | "wall_text" | "reaction";
-type ConnectionPublishingSettings = Record<string, boolean | string>;
+type ConnectionPublishingSettings = ScheduleTargetSettings;
 type TikTokCapabilitiesState =
   | { status: "loading" }
   | { capabilities: TikTokPublishCapabilities; status: "ready" }
@@ -150,7 +155,7 @@ const platforms: PlatformDefinition[] = [
     platform: "tiktok",
   },
   {
-    description: "YouTube accepts video uploads, not carousel posts.",
+    description: "Channel authorized with YouTube",
     label: "YouTube",
     platform: "youtube",
   },
@@ -195,7 +200,7 @@ function getStepDetails(
     details: {
       description:
         contentKind === "wall_text"
-          ? "Review the destination and optionally add a caption for this ready-to-prepare Reel."
+          ? "Review the destination and optionally add a caption for this Text Reel."
           : "Review the destinations and add a caption only if you want one.",
       number: 3,
       title: "Post details",
@@ -216,6 +221,8 @@ export function PlatformSelectionModal({
 }: PlatformSelectionModalProps) {
   const { user } = useAuth();
   const tiktokBetaEnabled = hasTikTokBetaAccess(user);
+  const youtubeBetaEnabled = hasYouTubeBetaAccess(user);
+  const contentKind = getContentKind(context);
   const queryClient = useQueryClient();
   const accountId = user?.uid ?? "signed-out";
   const [step, setStep] = useState<ModalStep>("accounts");
@@ -428,9 +435,12 @@ export function PlatformSelectionModal({
       platforms.filter(
         (definition) =>
           definition.platform === "instagram" ||
-          (tiktokBetaEnabled && definition.platform === "tiktok"),
+          (tiktokBetaEnabled && definition.platform === "tiktok") ||
+          (youtubeBetaEnabled &&
+            contentKind !== "carousel" &&
+            definition.platform === "youtube"),
       ),
-    [tiktokBetaEnabled],
+    [contentKind, tiktokBetaEnabled, youtubeBetaEnabled],
   );
   const carouselConnections = useMemo(
     () =>
@@ -493,13 +503,12 @@ export function PlatformSelectionModal({
     () => getFutureSlot(currentTime, timezone).date,
     [currentTime, timezone],
   );
-  const contentKind = getContentKind(context);
   const contentLabel = getContentLabel(contentKind);
   const currentStep = getStepDetails(contentKind, tiktokBetaEnabled)[step];
   const canContinueAccounts =
     selectedConnections.length > 0 &&
     selectedConnections.every(
-      (connection) => !getCarouselAccountUnavailableMessage(connection),
+      (connection) => !getPostAccountUnavailableMessage(connection, contentKind),
     );
 
   function resetModal() {
@@ -543,7 +552,7 @@ export function PlatformSelectionModal({
     connection: SocialConnection,
     forceSelected?: boolean,
   ) {
-    if (getCarouselAccountUnavailableMessage(connection)) {
+    if (getPostAccountUnavailableMessage(connection, contentKind)) {
       return;
     }
 
@@ -556,7 +565,7 @@ export function PlatformSelectionModal({
       selectedConnectionIds.length >= MAX_SELECTED_INSTAGRAM_ACCOUNTS
     ) {
       setConfirmError(
-        `Choose up to ${MAX_SELECTED_INSTAGRAM_ACCOUNTS} Instagram accounts per post.`,
+        `Choose up to ${MAX_SELECTED_INSTAGRAM_ACCOUNTS} publishing accounts per post.`,
       );
       return;
     }
@@ -935,7 +944,9 @@ export function PlatformSelectionModal({
                     intent: connection ? "reconnect" : "add",
                     platform: definition.platform,
                     previousConnectionUpdatedAt: connection?.updatedAt ?? null,
-                    returnTo: context.returnTo,
+                    // Video posts have no Carousel Library item to validate.
+                    // The popup returns the new connection to this open modal.
+                    returnTo: "accounts",
                   });
                   return;
                 }
@@ -979,7 +990,7 @@ export function PlatformSelectionModal({
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h3 className="text-sm font-semibold text-foreground">
-                        TikTok caption
+                        Post caption
                       </h3>
                       <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
                         {caption || "No caption"}
@@ -1106,9 +1117,8 @@ function AccountsStep({
   selectedConnectionIds: string[];
   visiblePlatforms: PlatformDefinition[];
 }) {
-  const includesTikTok = visiblePlatforms.some(
-    (definition) => definition.platform === "tiktok",
-  );
+  const contentKind = getContentKind(context);
+  const platformLabels = visiblePlatforms.map((definition) => definition.label).join(", ");
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-5">
       <div>
@@ -1133,7 +1143,7 @@ function AccountsStep({
             {carouselConnections.map((connection) => {
               const checkboxId = `schedule-connection-${connection.id}`;
               const unavailableMessage =
-                getCarouselAccountUnavailableMessage(connection);
+                getPostAccountUnavailableMessage(connection, contentKind);
               const accountName = getConnectionAccountName(connection);
               const selected = selectedConnectionIds.includes(connection.id);
               const status =
@@ -1188,7 +1198,9 @@ function AccountsStep({
                       <span className="mt-1 block text-xs text-muted-foreground">
                         {connection.platform === "instagram"
                           ? "Instagram professional account"
-                          : "TikTok creator account"}
+                          : connection.platform === "youtube"
+                            ? "YouTube channel"
+                            : "TikTok creator account"}
                       </span>
                     </span>
                   </label>
@@ -1261,9 +1273,9 @@ function AccountsStep({
               Connect a publishing account to continue
             </p>
             <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground">
-              UGCPilot needs a connected {includesTikTok ? "Instagram or TikTok" : "Instagram"} account before it can schedule this post.
+              Connect an account on {platformLabels} before scheduling this post.
             </p>
-            <div className="mt-4 flex justify-center">
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
               {visiblePlatforms.map((definition) => (
                 <Button
                   key={definition.platform}
@@ -1293,12 +1305,12 @@ function AccountsStep({
       </fieldset>
 
       {carouselConnections.some((connection) =>
-        Boolean(getCarouselAccountUnavailableMessage(connection)),
+        Boolean(getPostAccountUnavailableMessage(connection, contentKind)),
       ) ? (
         <div className="grid gap-2">
           {carouselConnections.map((connection) => {
             const unavailableMessage =
-              getCarouselAccountUnavailableMessage(connection);
+              getPostAccountUnavailableMessage(connection, contentKind);
 
             return unavailableMessage ? (
               <p
@@ -1390,19 +1402,6 @@ function DetailsStep({
       </div>
 
       <div className="grid content-start gap-5">
-        {isWallText ? (
-          <section className="rounded-card border border-primary/20 bg-primary/5 p-4 sm:p-5">
-            <h3 className="text-sm font-semibold text-foreground">
-              Text Reel is ready to prepare
-            </h3>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Its message already appears on screen. The optional caption
-              below appears with the post, separately from the video
-              text. We start preparing the video after you confirm the schedule.
-            </p>
-          </section>
-        ) : null}
-
         <label className="block rounded-card border border-border bg-card p-4 sm:p-5">
           <span className="text-sm font-semibold text-foreground">
             Post caption{" "}
@@ -1512,16 +1511,58 @@ function CarouselAccountSettings({
 
       {connection.platform === "instagram" ? (
         <p className="mt-2 text-xs leading-5 text-muted-foreground">
-          This will publish as an Instagram {contentKind === "wall_text" ? "Reel" : "feed carousel"}.
+          This will publish as an Instagram {contentKind === "carousel" ? "feed carousel" : "Reel"}.
         </p>
-      ) : (
+      ) : connection.platform === "tiktok" ? (
         <TikTokCarouselSettings
           capabilitiesState={tiktokCapabilities}
           settings={settings}
           onChange={onChange}
           onRetry={onRetry}
         />
+      ) : (
+        <YouTubeVideoSettings settings={settings} onChange={onChange} />
       )}
+    </div>
+  );
+}
+
+function YouTubeVideoSettings({
+  onChange,
+  settings,
+}: {
+  onChange: (key: string, value: boolean | string) => void;
+  settings: ConnectionPublishingSettings;
+}) {
+  return (
+    <div className="mt-3 grid gap-3">
+      <label className="text-xs font-semibold text-foreground">
+        Visibility
+        <select
+          value={getStringSetting(settings, "privacyStatus", "private")}
+          onChange={(event) => onChange("privacyStatus", event.target.value)}
+          className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+        >
+          <option value="private">Private</option>
+          <option value="unlisted">Unlisted</option>
+          <option value="public">Public</option>
+        </select>
+      </label>
+      <SettingCheckbox
+        checked={getBooleanSetting(settings, "madeForKids", false)}
+        label="Made for kids"
+        onChange={(checked) => onChange("madeForKids", checked)}
+      />
+      <SettingCheckbox
+        checked={getBooleanSetting(settings, "notifySubscribers", false)}
+        label="Notify subscribers"
+        onChange={(checked) => onChange("notifySubscribers", checked)}
+      />
+      <SettingCheckbox
+        checked={getBooleanSetting(settings, "containsSyntheticMedia", true)}
+        label="Contains AI-generated content"
+        onChange={(checked) => onChange("containsSyntheticMedia", checked)}
+      />
     </div>
   );
 }
@@ -1879,89 +1920,18 @@ function SettingCheckbox({
 function getDefaultPublishingSettings(
   platform: SocialPlatform,
 ): ConnectionPublishingSettings {
-  if (platform === "instagram") {
-    return { shareToFeed: true };
-  }
-
-  return {
-    allowComment: false,
-    allowDuet: false,
-    allowStitch: false,
-    brandOrganic: false,
-    brandedContent: false,
-    commercialContentDisclosureEnabled: false,
-    containsSyntheticMedia: true,
-    musicUsageConfirmed: false,
-    privacyLevel: "",
-  };
+  return getDefaultScheduleTargetSettings(platform);
 }
 
-function getCarouselAccountUnavailableMessage(connection: SocialConnection) {
-  if (connection.platform === "youtube") {
+function getPostAccountUnavailableMessage(
+  connection: SocialConnection,
+  contentKind: ScheduleContentKind,
+) {
+  if (connection.platform === "youtube" && contentKind === "carousel") {
     return "YouTube accepts video uploads, not carousel posts.";
   }
 
   return getConnectionPublishingBlockMessage(connection);
-}
-
-function getPublishingSettingsError(params: {
-  connections: SocialConnection[];
-  settings: Record<string, ConnectionPublishingSettings>;
-  tiktokCapabilities: Record<string, TikTokCapabilitiesState>;
-}) {
-  for (const connection of params.connections) {
-    if (connection.platform !== "tiktok") {
-      continue;
-    }
-
-    const capabilityState = params.tiktokCapabilities[connection.id];
-
-    if (!capabilityState || capabilityState.status === "loading") {
-      return "Wait for TikTok publishing settings to finish loading.";
-    }
-
-    if (capabilityState.status === "error") {
-      return capabilityState.message;
-    }
-
-    const settings =
-      params.settings[connection.id] ?? getDefaultPublishingSettings("tiktok");
-    const privacyLevel = getStringSetting(settings, "privacyLevel", "");
-
-    if (!isTikTokPrivacyLevel(privacyLevel)) {
-      return "Choose who can view the TikTok post.";
-    }
-
-    const selectedPrivacyLevel: TikTokPrivacyLevel = privacyLevel;
-
-    if (!capabilityState.capabilities.privacyLevels.includes(selectedPrivacyLevel)) {
-      return "Choose a TikTok visibility available for this account.";
-    }
-
-    if (
-      !capabilityState.capabilities.directPostAudited &&
-      selectedPrivacyLevel !== "SELF_ONLY"
-    ) {
-      return TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE;
-    }
-
-    if (
-      getBooleanSetting(settings, "commercialContentDisclosureEnabled", false) &&
-      !getBooleanSetting(settings, "brandOrganic", false) &&
-      !getBooleanSetting(settings, "brandedContent", false)
-    ) {
-      return "Choose Your brand or Branded content before scheduling.";
-    }
-
-    if (
-      getBooleanSetting(settings, "brandedContent", false) &&
-      selectedPrivacyLevel === "SELF_ONLY"
-    ) {
-      return "TikTok paid partnerships cannot use Only me visibility.";
-    }
-  }
-
-  return null;
 }
 
 function getEarliestScheduleSlot(
@@ -2117,7 +2087,7 @@ function getConnectionAccountName(connection: SocialConnection) {
 }
 
 function getPlatformLabel(platform: SocialPlatform) {
-  return platform === "instagram" ? "Instagram" : "TikTok";
+  return platforms.find((definition) => definition.platform === platform)?.label ?? platform;
 }
 
 function getBooleanSetting(

@@ -27,7 +27,7 @@ import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 import { CONTENT_PLAN_OPENAI_MAX_RETRIES, CONTENT_PLAN_OPENAI_TIMEOUT_MS } from "./content-plan-provider-retry.js";
 
 export const CAROUSEL_STRUCTURE_2_PLANNER_VERSION =
-  "llm-carousel-structure-2-writer-v19-shared-hook-templates";
+  "llm-carousel-structure-2-writer-v20-tiktok-text-blocks";
 
 // The OpenAI strict decoder cannot safely carry the whitespace word-count
 // regex. Keep the exact contract in the publisher validator and allow one

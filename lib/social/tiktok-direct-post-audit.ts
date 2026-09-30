@@ -1,12 +1,14 @@
 import "server-only";
 
+import { resolveTikTokDirectPostAuditStatus } from "@/worker/src/lib/tiktok-direct-post-policy";
+
 /**
- * TikTok Direct Post keeps unaudited clients in private-testing mode. This is
- * intentionally server-only: the client receives the derived state alongside
- * the creator capabilities instead of being trusted to decide publish access.
+ * TikTok Direct Post is approved for general availability. Private-testing
+ * environments may explicitly override it. This is server-only: the client
+ * receives the derived state alongside the creator capabilities.
  */
 export function isTikTokDirectPostAudited() {
-  return process.env.TIKTOK_DIRECT_POST_AUDITED?.trim().toLowerCase() === "true";
+  return resolveTikTokDirectPostAuditStatus(process.env.TIKTOK_DIRECT_POST_AUDITED);
 }
 
 export const TIKTOK_DIRECT_POST_AUDIT_REQUIRED_MESSAGE =

@@ -1,10 +1,11 @@
 "use client";
 
 import { Menu } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { ProductLogoMark } from "@/components/brand/product-logo";
+import landingLogo from "@/app/logo.png";
 import { LandingAuthAction } from "@/components/marketing/landing-auth-actions";
 
 type NavItem = {
@@ -60,12 +61,14 @@ export function LandingHeader({
           className="flex min-w-0 items-center gap-3 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           aria-label="UGCPilot home"
         >
-          <ProductLogoMark
-            className={`rounded-control bg-primary p-2 transition-[width,height] duration-300 ease-out motion-reduce:transition-none ${
+          <Image
+            src={landingLogo}
+            alt=""
+            sizes={isScrolled ? "32px" : "36px"}
+            priority
+            className={`rounded-md object-contain transition-[width,height] duration-300 ease-out motion-reduce:transition-none ${
               isScrolled ? "size-8" : "size-9"
             }`}
-            imageClassName="brightness-0 invert"
-            sizes="36px"
           />
           <span className="truncate text-[17px] font-semibold text-foreground-strong">
             UGCPilot
@@ -94,7 +97,7 @@ export function LandingHeader({
             <Link
               key={item.label}
               href={item.href}
-              className="rounded-control transition-colors hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              className="whitespace-nowrap rounded-control transition-colors hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
               {item.label}
             </Link>

@@ -1,4 +1,6 @@
 "use client";
+import localFont from "next/font/local";
+import { CAROUSEL_BODY_FONT_SIZE, CAROUSEL_HEADING_FONT_SIZE, CAROUSEL_HOOK_FONT_SIZE, CAROUSEL_TEXT_BLOCK_GAP, getCarouselBodyBlocks } from "@/lib/carousel/text-presentation";
 
 import {
   Check,
@@ -25,6 +27,7 @@ import {
 } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { CarouselDraggableOverlay } from "@/components/trending/carousel-draggable-overlay";
 import { WallTextSavedImage } from "@/components/trending/wall-text-saved-image";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,7 +56,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { HookInlineSymbols } from "@/components/trending/hook-inline-symbols";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { MediaAsset } from "@/lib/media/types";
 import {
@@ -105,6 +107,13 @@ import {
 } from "@/lib/trending/wall-text-text-logic";
 import { getWallTextRenderBlocks } from "@/lib/trending/wall-text-types";
 import { cn } from "@/lib/utils";
+
+const carouselInterTight = localFont({
+  src: "../../worker/src/assets/fonts/InterTight-VariableFont_wght.ttf",
+  display: "swap",
+  variable: "--font-carousel-inter-tight",
+  weight: "100 900",
+});
 
 type CreativeAssetGroup = {
   createdAt: string;
@@ -1154,6 +1163,9 @@ function EditorPreview({
     const previewPosition =
       structure2Layout?.storyPosition ?? slide.textPosition;
     const supportingText = slide.subtext;
+    const hasHeading = isStructure2
+      ? Boolean(slide.headline.trim() && supportingText)
+      : slide.hasHeading ?? Boolean(supportingText && slide.headline.trim());
 
     return (
       <div
@@ -1162,6 +1174,7 @@ function EditorPreview({
         }
         className={cn(
           "relative mx-auto w-full max-w-[340px] overflow-hidden rounded-xl border border-border bg-foreground-strong [container-type:inline-size]",
+          carouselInterTight.variable,
           slide.renderFormat === "1:1" ? "aspect-square" : "aspect-[4/5]",
         )}
       >
@@ -1177,8 +1190,12 @@ function EditorPreview({
         ) : (
           <CarouselEditorBackground slide={slide} />
         )}
-        <DraggableOverlay
+        <CarouselDraggableOverlay
           ariaLabel={`Move text for slide ${slide.slideNumber}`}
+          key={slide.slideId}
+          enabled={!showExactRender}
+          format={slide.renderFormat}
+          structureId={slide.structureId}
           bounds={
             isStructure2
               ? { maxX: 0.5, maxY: 0.88, minX: 0.5, minY: 0.12 }
@@ -1208,21 +1225,20 @@ function EditorPreview({
             >
               {slide.headline}
             </span>
-          ) : structure2Layout ? (
-            <Structure2StoryText layout={structure2Layout} />
           ) : isCover ? (
             <CarouselCoverText primaryText={slide.headline.trim() || supportingText} />
           ) : (
             <div className="w-[82cqw] text-center">
-              {slide.headline.trim() ? (
+              {slide.headline.trim() && hasHeading ? (
                 <CarouselOutlinedText kind="headline" text={slide.headline} />
               ) : null}
-              {supportingText ? (
-                <CarouselOutlinedText kind="body" text={supportingText} />
-              ) : null}
+              {getCarouselBodyBlocks(supportingText || (!hasHeading ? slide.headline : "")).map((text, index) => (
+                <CarouselOutlinedText key={index} kind="body" text={text} />
+              ))}
+              {slide.ctaText.trim() ? <CarouselOutlinedText kind="body" text={slide.ctaText} /> : null}
             </div>
           )}
-        </DraggableOverlay>
+        </CarouselDraggableOverlay>
       </div>
     );
   }
@@ -1310,7 +1326,7 @@ const STRUCTURE_2_SAFE_X = 72;
 const STRUCTURE_2_SAFE_TOP = 84;
 const STRUCTURE_2_SAFE_BOTTOM = 92;
 const STRUCTURE_2_DIRECT_TEXT_SIDE_BUFFER = 34;
-const CAROUSEL_FIXED_EDITOR_FONT_SIZE = 44;
+const CAROUSEL_FIXED_EDITOR_FONT_SIZE = CAROUSEL_BODY_FONT_SIZE;
 
 type Structure2EditorTextLayout = {
   blockHeight: number;
@@ -1430,33 +1446,6 @@ function CarouselEditorBackground({
   );
 }
 
-function Structure2StoryText({ layout }: { layout: Structure2EditorLayout }) {
-  return (
-    <div
-      className="text-center"
-      style={{
-        color: "#ffffff",
-        fontFamily: 'var(--font-geist-sans), Geist, Arial, Helvetica, sans-serif',
-        fontSize: `${layout.story.fontSize / 10.8}cqw`,
-        fontWeight: layout.story.fontSize >= 90 ? 800 : 600,
-        letterSpacing: 0,
-        lineHeight: layout.story.lineHeight / layout.story.fontSize,
-        paintOrder: "stroke fill",
-        WebkitTextStroke: "0.370cqw rgba(0, 0, 0, 0.72)",
-        width: `${layout.storyBounds.width / 10.8}cqw`,
-      }}
-    >
-      {layout.story.lines.map((line, index) => (
-        <span
-          key={`${index}:${line}`}
-          className="block whitespace-nowrap"
-        >
-          <HookInlineSymbols text={line} />
-        </span>
-      ))}
-    </div>
-  );
-}
 
 function createStructure2EditorLayout(
   slide: TrendingCarouselEditSlide,
@@ -1466,8 +1455,8 @@ function createStructure2EditorLayout(
   const maximumTextWidth = STRUCTURE_2_RENDER_WIDTH - STRUCTURE_2_SAFE_X * 2;
   const treatment = "overlay" as const;
   const story = fitStructure2EditorText({
-    fontSize: isCover ? 92 : CAROUSEL_FIXED_EDITOR_FONT_SIZE,
-    maximumLines: isCover ? 3 : 12,
+    fontSize: isCover ? CAROUSEL_HOOK_FONT_SIZE : CAROUSEL_FIXED_EDITOR_FONT_SIZE,
+    maximumLines: isCover ? 4 : 10,
     maximumWidth:
       maximumTextWidth - STRUCTURE_2_DIRECT_TEXT_SIDE_BUFFER * 2,
     value:
@@ -1611,11 +1600,14 @@ function CarouselOutlinedText({
       className={cn(
         "mx-auto max-w-[78cqw] text-center",
         kind === "headline"
-          ? "text-[4.074cqw] font-semibold leading-[1.04]"
-          : "mt-[2.2cqw] text-[4.074cqw] font-semibold leading-[1.05] text-white",
+          ? "font-semibold leading-[1.04]"
+          : "font-semibold leading-[1.16] text-white",
       )}
       style={{
-        fontFamily: 'var(--font-geist-sans), Geist, Arial, Helvetica, sans-serif',
+        fontFamily: 'var(--font-carousel-inter-tight), Inter Tight, Inter, Arial, sans-serif',
+        fontSize: `${(kind === "headline" ? CAROUSEL_HEADING_FONT_SIZE : CAROUSEL_BODY_FONT_SIZE) / 10.8}cqw`,
+        marginTop: kind === "body" ? `${CAROUSEL_TEXT_BLOCK_GAP / 10.8}cqw` : undefined,
+        whiteSpace: "pre-line",
         letterSpacing: 0,
         ...(kind === "body"
           ? {
@@ -1644,12 +1636,12 @@ function CarouselCoverText({
   return (
     <div className="mx-auto w-[78cqw] text-center">
       <p
-        className="text-[8.52cqw] font-extrabold leading-[.98] text-white"
+        className="font-bold leading-[.98] text-white"
         style={{
-          fontFamily: 'var(--font-geist-sans), Geist, Arial, Helvetica, sans-serif',
+          fontFamily: 'var(--font-carousel-inter-tight), Inter Tight, Inter, Arial, sans-serif',
+          fontSize: `${CAROUSEL_HOOK_FONT_SIZE / 10.8}cqw`,
+          whiteSpace: "pre-line",
           letterSpacing: 0,
-          paintOrder: "stroke fill",
-          WebkitTextStroke: "0.370cqw rgba(0, 0, 0, 0.72)",
         }}
       >
         {primaryText}
@@ -2048,7 +2040,7 @@ function EditorFields({
         <FieldGroup className="mt-5">
           <Field>
             <FieldLabel htmlFor="trending-carousel-headline">
-              {slide.slideNumber === 1 ? "Hook" : "Headline"}
+              {slide.slideNumber === 1 ? "Hook" : slide.hasHeading === false && !slide.subtext ? "Text" : "Headline (optional)"}
             </FieldLabel>
             <Input
               id="trending-carousel-headline"
@@ -2062,12 +2054,20 @@ function EditorFields({
               <FieldLabel htmlFor="trending-carousel-subtext">
                 Supporting text
               </FieldLabel>
-              <Input
+              <textarea
                 id="trending-carousel-subtext"
+                className="min-h-28 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
                 value={slide.subtext}
                 maxLength={360}
                 onChange={(event) => updateSlide("subtext", event.target.value)}
               />
+              <p className="text-xs text-muted-foreground">Separate thoughts with a blank line. Each block should stay within three lines.</p>
+            </Field>
+          ) : null}
+          {slide.slideNumber === content.slides.length || slide.ctaText ? (
+            <Field>
+              <FieldLabel htmlFor="trending-carousel-cta">CTA (optional)</FieldLabel>
+              <Input id="trending-carousel-cta" value={slide.ctaText} maxLength={120} onChange={(event) => updateSlide("ctaText", event.target.value)} />
             </Field>
           ) : null}
         </FieldGroup>

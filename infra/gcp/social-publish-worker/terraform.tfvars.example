@@ -49,8 +49,8 @@ social_reconciliation_interval_seconds = 15
 # properties before applying. Add every production media hostname if necessary.
 tiktok_media_transfer_mode  = "PULL_FROM_URL"
 tiktok_verified_media_hosts = "media.example.com"
-# Set true only after TikTok approves the Direct Post audit.
-tiktok_direct_post_audited = false
+# Direct Post audit is approved; keep the app and worker on the same setting.
+tiktok_direct_post_audited = true
 
 worker_version    = "worker-gcp"
 worker_git_commit = "unknown"

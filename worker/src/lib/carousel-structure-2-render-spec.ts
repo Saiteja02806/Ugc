@@ -33,6 +33,8 @@ export type CarouselStructure2RenderSpec = {
   assetId: string;
   assetUrl: string;
   ctaText: string | null;
+  // Undefined means a legacy single-story render; null is a new body-only slide.
+  headline?: string | null;
   layoutVariant: CarouselStructure2LayoutVariant;
   productVisualEligibility: CarouselStructure2ProductVisualEligibility;
   slideNumber: number;
@@ -93,6 +95,7 @@ export function buildCarouselStructure2RenderSpecs(params: {
       assetId: asset.asset_id,
       assetUrl: asset.base_url,
       ctaText: slide.ctaText,
+      headline: slide.headline,
       layoutVariant: presentation.layoutVariant,
       productVisualEligibility: slide.productVisualEligibility,
       slideNumber: slide.slideNumber,

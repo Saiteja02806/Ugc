@@ -139,7 +139,7 @@ test("account surfaces keep add and reconnect actions distinct", () => {
     settingsSource,
     /expectedConnectionId: connection\.id[\s\S]*intent: "reconnect"/,
   );
-  assert.match(settingsSource, /Add another account/);
+  assert.match(settingsSource, /"Add account"/);
   assert.match(modalSource, /MAX_SELECTED_INSTAGRAM_ACCOUNTS = 5/);
   assert.match(modalSource, /Add another \$\{definition\.label\} account/);
   assert.match(schedulingSource, /normalized\.length > 5/);

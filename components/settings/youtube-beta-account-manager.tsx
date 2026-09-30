@@ -233,10 +233,9 @@ export function YouTubeBetaAccountManager() {
                 >
                   YouTube
                 </h3>
-                <Badge variant="outline">Beta</Badge>
               </div>
               <p className="mt-1 max-w-xl text-sm leading-6 text-muted">
-                Connect an approved channel to schedule video uploads and view
+                Connect your YouTube channel to schedule video uploads and view
                 channel performance in Analytics.
               </p>
             </div>
@@ -281,7 +280,7 @@ export function YouTubeBetaAccountManager() {
           {!loading && connections.length === 0 ? (
             <div className="rounded-[var(--radius-group)] border border-dashed border-border-strong bg-card px-4 py-5 text-sm leading-6 text-muted">
               No YouTube channel is connected yet. Use Connect YouTube to add
-              the approved beta channel.
+              your channel.
             </div>
           ) : null}
 
@@ -335,7 +334,7 @@ export function YouTubeBetaAccountManager() {
                           {publishingBlock ??
                             (needsAnalyticsConsent
                               ? "Reconnect once to enable channel performance in Analytics."
-                              : "Video uploads and channel performance are enabled for this approved beta channel.")}
+                              : "Video uploads and channel performance are enabled for this channel.")}
                         </p>
                       </div>
                     </div>

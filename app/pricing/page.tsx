@@ -4,6 +4,7 @@ import { PricingPage } from "@/components/pricing/pricing-page";
 import { parseBillingInterval } from "@/lib/pricing/plans";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/pricing" },
   title: "Pricing",
   description:
     "Compare monthly and annual UGCPilot Free, Starter, and Growth plans with shared AI credits and daily content limits.",

@@ -66,10 +66,10 @@ test("the dedicated renderer keeps all layouts fixed and inside the safe area", 
       assert.equal(result.diagnostics.layoutVariant, spec.layoutVariant);
       assert.equal(
         result.diagnostics.storyFontSize,
-        spec.slideNumber === 1 ? 96 : 60,
+        spec.slideNumber === 1 ? 72 : 48,
       );
-      assert.equal(result.diagnostics.ctaFontSize, null);
-      assert.equal(result.diagnostics.ctaLineCount, 0);
+      assert.equal(result.diagnostics.ctaFontSize, spec.ctaText ? 48 : null);
+      assert.equal(result.diagnostics.ctaLineCount > 0, Boolean(spec.ctaText));
       assert.equal(
         result.diagnostics.bubbleShapeStrategy,
         spec.slideNumber === 1
@@ -109,7 +109,7 @@ test("the renderer rejects story copy that cannot fit without unsafe shrinking",
         format: "4:5",
         spec,
       }),
-    /unrenderable word/i,
+    /could not fit/i,
   );
 });
 

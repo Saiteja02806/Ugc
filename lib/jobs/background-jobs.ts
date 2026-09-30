@@ -168,6 +168,18 @@ type BackgroundJobsDatabase = {
         };
         Returns: Json;
       };
+      mcp_create_reserved_generation_job: {
+        Args: {
+          p_amount: number;
+          p_fingerprint: string;
+          p_idempotency_key: string;
+          p_input_json: Json;
+          p_job_type: "generate_image" | "generate_hook_video";
+          p_queue_name: string;
+          p_user_id: string;
+        };
+        Returns: Json;
+      };
       claim_video_render_execution_slot: {
         Args: {
           p_claim_token: string;
@@ -395,6 +407,55 @@ export async function createBackgroundJobWithCreationResult(
     created: data.created,
     job: mapBackgroundJob(data.job as BackgroundJobRow),
   };
+}
+
+export class McpGenerationJobError extends Error {
+  constructor(public code: "IDEMPOTENCY_CONFLICT" | "INSUFFICIENT_CREDITS" | "PLAN_REQUIRED", message: string) {
+    super(message);
+  }
+}
+
+/** Atomically reserve credits and create one MCP generation job in Postgres. */
+export async function createReservedMcpGenerationJob(params: {
+  amount: number;
+  fingerprint: string;
+  idempotencyKey: string;
+  input: Record<string, Json | undefined>;
+  jobType: "generate_image" | "generate_hook_video";
+  queueName: string;
+  userId: string;
+}) {
+  const { data, error } = await getSupabaseServerClient().rpc("mcp_create_reserved_generation_job", {
+    p_amount: params.amount,
+    p_fingerprint: params.fingerprint,
+    p_idempotency_key: params.idempotencyKey,
+    p_input_json: toJsonObject(params.input),
+    p_job_type: params.jobType,
+    p_queue_name: params.queueName,
+    p_user_id: params.userId,
+  });
+
+  if (error) {
+    const message = error.message.toLowerCase();
+    if (message.includes("mcp_generation_idempotency_conflict") ||
+        message.includes("mcp_generation_reservation_conflict") ||
+        message.includes("mcp_generation_job_conflict")) {
+      throw new McpGenerationJobError("IDEMPOTENCY_CONFLICT", "This request ID already belongs to different work.");
+    }
+    if (message.includes("insufficient_billing_credits")) {
+      throw new McpGenerationJobError("INSUFFICIENT_CREDITS", "There are not enough credits for this generation.");
+    }
+    if (message.includes("paid_subscription_required")) {
+      throw new McpGenerationJobError("PLAN_REQUIRED", "An active Starter or Growth subscription is required.");
+    }
+    throw new Error(`Could not reserve MCP generation job: ${error.message}`);
+  }
+
+  if (!isBackgroundJobCreationResult(data)) {
+    throw new Error("Could not create or reuse MCP generation job: invalid database response.");
+  }
+
+  return { created: data.created, job: mapBackgroundJob(data.job as BackgroundJobRow) };
 }
 
 function isCreateOrGetBackgroundJobRpcUnavailable(code: string | undefined) {

@@ -2,8 +2,8 @@
 
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { useSyncExternalStore } from "react";
 
-import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { useAuth } from "@/contexts/auth-context";
 import { hasAuthSessionCookie } from "@/lib/firebase/auth-session";
 import { cn } from "@/lib/utils";
@@ -25,11 +25,43 @@ function hasSessionCookie(): boolean {
   return hasAuthSessionCookie(document.cookie);
 }
 
+function subscribeToHydration() {
+  return () => {};
+}
+
+function useHasHydrated() {
+  return useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false,
+  );
+}
+
+function useLandingAuthState(initialHasSession: boolean) {
+  const { loading, user } = useAuth();
+  const hasHydrated = useHasHydrated();
+
+  // The first client render must match the server-rendered marketing page.
+  // Firebase restores the browser session after hydration, so reading it early
+  // can otherwise replace the signed-out server markup during hydration.
+  const hasSession = hasHydrated
+    ? Boolean(user) ||
+      (loading && (initialHasSession || hasSessionCookie()))
+    : initialHasSession;
+
+  return {
+    hasSession,
+    needsEmailVerification: hasHydrated && Boolean(user && !user.emailVerified),
+  };
+}
+
 export function LandingAuthAction({
   appearance,
   initialHasSession,
 }: LandingAuthActionProps) {
-  const { loading, user } = useAuth();
+  const { hasSession, needsEmailVerification } = useLandingAuthState(
+    initialHasSession,
+  );
   const className = cn(
     "inline-flex h-10 items-center rounded-full text-sm font-semibold",
     appearance === "header"
@@ -37,13 +69,7 @@ export function LandingAuthAction({
       : "w-full justify-start px-3",
   );
 
-  const hasSession =
-    Boolean(user) ||
-    (loading && (initialHasSession || hasSessionCookie()));
-
   if (hasSession) {
-    const needsEmailVerification = user && !user.emailVerified;
-
     return (
       <Link
         href={needsEmailVerification ? "/verify-email" : "/dashboard"}
@@ -59,10 +85,10 @@ export function LandingAuthAction({
   }
 
   return (
-    <GoogleSignInButton
-      appearance={appearance}
-      label="Sign in with Google"
-    />
+    <Link href="/sign-in" className={cn(className,
+      "justify-center border border-border bg-card text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+      appearance === "menu" && "justify-start",
+    )}>Sign in</Link>
   );
 }
 
@@ -70,12 +96,9 @@ export function LandingAuthCta({
   className,
   initialHasSession,
 }: LandingAuthCtaProps) {
-  const { loading, user } = useAuth();
-
-  const hasSession =
-    Boolean(user) ||
-    (loading && (initialHasSession || hasSessionCookie()));
-  const needsEmailVerification = user && !user.emailVerified;
+  const { hasSession, needsEmailVerification } = useLandingAuthState(
+    initialHasSession,
+  );
   const href = needsEmailVerification
     ? "/verify-email"
     : hasSession

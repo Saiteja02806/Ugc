@@ -511,7 +511,8 @@ function getFinalLayout(value: Json, contentLayoutVersion: Json | undefined) {
           LEGACY_WALL_TEXT_FONT_WEIGHT,
         ].includes(Number(layout.fontWeight))) ||
     ![36, 38, 40, 42, 44, 46, 48, 50, 52].includes(Number(layout.fontSizePx)) ||
-    (layout.version === "wall-text-final-layout-v9" && Number(layout.fontSizePx) !== 52) ||
+    (layout.version === "wall-text-final-layout-v9" &&
+      ![50, 52].includes(Number(layout.fontSizePx))) ||
     typeof layout.lineHeightPx !== "number" ||
     !Array.isArray(layout.blocks) ||
     layout.blocks.length < 1 ||

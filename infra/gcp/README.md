@@ -57,6 +57,10 @@ The foundation creates:
 Rate and concurrency limits live in `foundation/cloud-tasks.tf` and should be
 kept below downstream provider quotas.
 
+The app service account also requires `roles/cloudtasks.taskDeleter`, scoped
+to `ugc-social-publish-scheduler`, to cancel or reschedule future social posts.
+The project-level enqueuer role alone does not grant task deletion.
+
 ## Required app environment
 
 ```text

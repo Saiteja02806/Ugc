@@ -71,10 +71,11 @@ export async function validateWallTextRenderFit(
   const preferredFontSize = getWallTextFontSize(content);
   if (
     content.finalLayout?.version === "wall-text-final-layout-v9" &&
-    (preferredFontSize !== 52 || content.finalLayout.fontSizePx !== 52)
+    (![50, 52].includes(preferredFontSize) ||
+      ![50, 52].includes(content.finalLayout.fontSizePx))
   ) {
     throw new WallTextRenderFitError(
-      "Wall-of-text V13 must use the fixed 52px font size.",
+      "Wall-of-text V13 must use the approved 50px font size or the preserved 52px legacy size.",
     );
   }
   const fontSizes: WallTextFontSize[] =

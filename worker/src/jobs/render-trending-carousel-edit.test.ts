@@ -391,7 +391,7 @@ test("renders Structure 2 screenshot edits with the story-native renderer", asyn
   const receivedSpec = receivedSpecs[0];
   assert.ok(receivedSpec);
   assert.equal(receivedSpec.assetId, "product-asset-1");
-  assert.equal(receivedSpec.ctaText, null);
+  assert.equal(receivedSpec.ctaText, "Try it");
   assert.equal(receivedSpec.layoutVariant, "story_product_reveal");
   assert.equal(receivedSpec.textTreatment, "overlay");
   assert.equal(receivedSpec.textPosition, "upper");

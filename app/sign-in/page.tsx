@@ -2,19 +2,21 @@
 
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useState } from "react";
 
-import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
+import { AuthMethodPicker } from "@/components/auth/auth-method-picker";
 import { ProductLogoMark } from "@/components/brand/product-logo";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/auth-context";
 import { getPostSignInDestination } from "@/lib/billing/purchase-intent";
+import { getEmailVerificationPath } from "@/lib/auth/email-policy";
 
 export default function SignInPage() {
+  const [hasStartedEmailAuth, setHasStartedEmailAuth] = useState(false);
   return (
     <main className="instagram-theme min-h-screen bg-background px-5 text-foreground sm:px-8">
       <Suspense fallback={null}>
-        <SignInPostAuthRedirect />
+        <SignInPostAuthRedirect skipRedirect={hasStartedEmailAuth} />
       </Suspense>
       <header className="mx-auto flex h-20 max-w-6xl items-center justify-between">
         <Link
@@ -48,16 +50,15 @@ export default function SignInPage() {
               <SelectedPlanContext />
             </Suspense>
             <h1 className="text-balance text-3xl font-bold tracking-normal text-foreground">
-              Sign in to your Instagram workspace
+              Welcome to UGC Pilot
             </h1>
             <p className="mt-3 text-pretty text-sm leading-6 text-muted">
-              Access your business profile, Trending, creative assets,
-              and scheduled posts.
+              Choose how you&apos;d like to continue to your content workspace.
             </p>
           </div>
 
-          <Suspense fallback={<GoogleSignInButton />}>
-            <PurchaseAwareGoogleSignInButton />
+          <Suspense fallback={<p className="text-center text-sm text-muted">Loading sign-in options…</p>}>
+            <PurchaseAwareAuthMethods onAuthFlowStart={() => setHasStartedEmailAuth(true)} />
           </Suspense>
 
           <p className="mt-6 text-center text-xs leading-5 text-muted-subtle">
@@ -77,30 +78,32 @@ export default function SignInPage() {
   );
 }
 
-function SignInPostAuthRedirect() {
+function SignInPostAuthRedirect({ skipRedirect }: { skipRedirect: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading } = useAuth();
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!skipRedirect && !loading && user) {
       router.replace(
         user.emailVerified
           ? getPostSignInDestination(searchParams)
-          : "/verify-email",
+          : getEmailVerificationPath({ plan: searchParams.get("plan") ?? undefined, billing: searchParams.get("billing") ?? undefined }),
       );
     }
-  }, [loading, router, searchParams, user]);
+  }, [loading, router, searchParams, skipRedirect, user]);
 
   return null;
 }
 
-function PurchaseAwareGoogleSignInButton() {
+function PurchaseAwareAuthMethods({ onAuthFlowStart }: { onAuthFlowStart: () => void }) {
   const searchParams = useSearchParams();
 
   return (
-    <GoogleSignInButton
+    <AuthMethodPicker
       successPath={getPostSignInDestination(searchParams)}
+      intent={{ plan: searchParams.get("plan") ?? undefined, billing: searchParams.get("billing") ?? undefined }}
+      onAuthFlowStart={onAuthFlowStart}
     />
   );
 }
@@ -135,7 +138,7 @@ function SelectedPlanContext() {
 function DefaultSignInContext() {
   return (
     <p className="mb-3 text-sm font-bold text-primary">
-      Instagram content workspace
+      Your content workspace
     </p>
   );
 }

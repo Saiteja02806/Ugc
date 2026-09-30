@@ -44,7 +44,7 @@ function shortTakeawayPlan() {
 function multiIssuePlan() {
   const plan = rawPlan(true);
   plan.slides.first!.storyText =
-    "This cover hook deliberately uses too many words for the compact visual space";
+    "This cover hook deliberately uses too many words for the compact visual space before anything changes";
   plan.slides.sixth!.storyText = "Keep your next task visible today.";
   return plan;
 }

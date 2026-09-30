@@ -1,24 +1,29 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import {
+  ArrowDown,
   CreditCard,
   ShieldCheck,
   Zap,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
-import { ProductLogoMark } from "@/components/brand/product-logo";
+import landingLogo from "@/app/logo.png";
 import { LandingAuthCta } from "@/components/marketing/landing-auth-actions";
 import { LandingBottomCta } from "@/components/marketing/landing-bottom-cta";
 import { LandingComparisonSection } from "@/components/marketing/landing-comparison-section";
 import { LandingHeader } from "@/components/marketing/landing-header";
 import { LandingHeroShowcase } from "@/components/marketing/landing-hero-showcase";
+import { LandingMultiPlatformSection } from "@/components/marketing/landing-multi-platform-section";
+import { LandingPlatformBadge } from "@/components/marketing/landing-platforms";
 import { LandingSwipeDeck } from "@/components/marketing/landing-swipe-deck";
 import { AUTH_SESSION_COOKIE_NAME } from "@/lib/firebase/auth-session";
 
 const authHref = "/sign-in";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://getugcpilot.com/" },
   title: {
     absolute: "UGCPilot — YouTube, TikTok & Instagram Content Workspace",
   },
@@ -54,7 +59,11 @@ const workflowSteps = [
 ];
 
 const productFooterLinks = [
-  { label: "Platform formats", href: "#formats" },
+  { label: "Multi-platform publishing", href: "#multi-platform" },
+  { label: "Try UGCPilot", href: "/try-ugcpilot" },
+  { label: "Founder marketing guides", href: "/guides" },
+  { label: "Instagram carousel maker", href: "/instagram-carousel-maker" },
+  { label: "AI UGC video generator", href: "/ai-ugc-video-generator" },
   { label: "Workflow", href: "#workflow" },
   {
     label: "Dating swipe demo",
@@ -68,6 +77,11 @@ const supportFooterLinks = [
   { label: "Contact", href: "/contact" },
   { label: "System status", href: "/status" },
   { label: "Help", href: "/contact" },
+  {
+    label: "Read the founder's post on X",
+    href: "https://x.com/Teja_chundu/status/2102059335430099267",
+    external: true,
+  },
 ];
 
 const legalFooterLinks = [
@@ -84,19 +98,17 @@ export default async function Home() {
 
   return (
     <main className="instagram-theme min-h-screen overflow-x-hidden bg-background text-foreground">
+      <a href="#landing-content" className="sr-only rounded-control bg-card px-4 py-3 text-sm font-semibold text-foreground-strong focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:outline-2 focus:outline-focus">
+        Skip to content
+      </a>
       <LandingHeader initialHasSession={initialHasSession} />
 
       <section className="relative z-0 px-4 pb-0 pt-24 sm:px-6 sm:pb-0 sm:pt-32 lg:px-8 lg:pb-0 lg:pt-36">
         <div className="relative mx-auto flex max-w-[1200px] flex-col items-center gap-8 sm:gap-12 lg:gap-16">
           <div className="w-full max-w-[1200px] text-center">
-            {/* Announcement Pill Badge */}
-            <div className="mb-5 inline-flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-0.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-semibold leading-4 text-foreground shadow-sm sm:mb-6 sm:px-4 sm:text-xs">
-              <span className="text-primary font-semibold">Multi-Platform</span>
-              <span className="text-border-strong">•</span>
-              <span className="min-w-0 text-muted">The All-in-One Content Workspace</span>
-            </div>
+            <LandingPlatformBadge />
 
-            <h1 className="mx-auto max-w-[1200px] text-[clamp(2.25rem,5.28vw,4.8rem)] font-semibold leading-[0.94] tracking-[-0.055em] text-foreground-strong">
+            <h1 id="landing-content" tabIndex={-1} className="mx-auto max-w-[1200px] scroll-mt-24 text-balance text-[clamp(2.25rem,5.28vw,4.8rem)] font-semibold leading-[1.08] tracking-[-0.055em] text-foreground-strong sm:leading-[0.94]">
               <span className="block lg:whitespace-nowrap">
                 Stop guessing!{" "}
                 <span className="relative inline-block">
@@ -155,18 +167,20 @@ export default async function Home() {
               </span>
             </h1>
 
-            <p className="mx-auto mt-7 max-w-[860px] text-base leading-7 text-muted sm:text-lg sm:leading-8">
-              Turn proven formats into ready-to-publish content for YouTube,
-              TikTok, and Instagram. Review, edit, and publish slideshows, hook
-              videos, and text-led videos designed to earn more attention and
-              drive action.
+            <p className="mx-auto mt-7 max-w-[740px] text-pretty text-base leading-7 text-muted sm:text-lg sm:leading-8">
+              Create content for your business. Review it, choose your accounts,
+              and schedule to Instagram, TikTok, and YouTube from one workspace.
             </p>
 
-            <div className="mt-7 flex justify-center sm:mt-8">
+            <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:mt-8 sm:flex-row sm:gap-5">
               <LandingAuthCta
                 className="group inline-flex h-12 w-full max-w-[220px] items-center justify-center rounded-full bg-primary px-6 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:w-auto sm:max-w-none sm:px-7"
                 initialHasSession={initialHasSession}
               />
+              <a href="#multi-platform" className="inline-flex min-h-11 items-center gap-2 rounded-control px-2 text-sm font-medium text-muted transition-colors hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+                See one-click publishing
+                <ArrowDown className="size-4" aria-hidden="true" />
+              </a>
             </div>
           </div>
 
@@ -176,10 +190,41 @@ export default async function Home() {
         </div>
       </section>
 
+      <section
+        id="solutions"
+        className="border-t border-border bg-card-muted/45 px-4 py-16 sm:px-6 sm:py-20 lg:px-8"
+      >
+        <div className="mx-auto max-w-[1200px]">
+          <div className="max-w-2xl">
+            <p className="text-sm font-semibold text-primary">Start with the work in front of you</p>
+            <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-[-0.035em] text-foreground-strong sm:text-5xl">
+              Pick a workflow. Keep the final publishing decision human.
+            </h2>
+          </div>
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            <MarketingPathCard
+              href="/instagram-carousel-maker"
+              title="Instagram carousel maker"
+              description="Turn one business idea into a complete carousel, review it, and prepare it for Instagram."
+            />
+            <MarketingPathCard
+              href="/ai-ugc-video-generator"
+              title="AI UGC video generator"
+              description="Create a short-form video from a focused prompt and reference media in AI Studio."
+            />
+            <MarketingPathCard
+              href="/guides"
+              title="Founder marketing guides"
+              description="Build a clear message and content routine for the website or app you are bringing to market."
+            />
+          </div>
+        </div>
+      </section>
+
       {/* Section 2: One Social Workflow (Connected 4-card container) */}
       <section
         id="workflow"
-        className="relative z-10 -mt-3 sm:-mt-4 lg:-mt-5 border-t border-border bg-background px-4 pt-8 pb-16 sm:px-6 sm:pt-10 sm:pb-20 lg:px-8 lg:pt-12 lg:pb-24 shadow-[0_-12px_32px_rgba(0,0,0,0.04)]"
+        className="relative z-10 scroll-mt-24 border-t border-border bg-background px-4 pt-8 pb-16 sm:px-6 sm:pt-10 sm:pb-20 lg:px-8 lg:pt-12 lg:pb-24"
       >
         <div className="mx-auto max-w-[1200px]">
           {/* Trust Badges sitting cleanly below the cutline centered */}
@@ -237,17 +282,20 @@ export default async function Home() {
       {/* Section 4: Why UGCPilot Comparison Matrix */}
       <LandingComparisonSection />
 
-      {/* Section 5: Connect Multiple Platform Accounts (Connect -> Post Flow) */}
+      <LandingMultiPlatformSection />
+
+      {/* Closing call to action */}
       <LandingBottomCta initialHasSession={initialHasSession} />
 
       <footer className="border-t border-border bg-card px-4 py-12 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-[1200px] gap-10 md:grid-cols-[1.25fr_0.75fr_0.75fr_0.75fr]">
           <div>
             <div className="flex items-center gap-3">
-              <ProductLogoMark
-                className="size-9 rounded-control bg-primary p-2"
-                imageClassName="brightness-0 invert"
+              <Image
+                src={landingLogo}
+                alt=""
                 sizes="36px"
+                className="size-9 rounded-md object-contain"
               />
               <div>
                 <p className="font-semibold text-foreground-strong">UGCPilot</p>
@@ -276,8 +324,31 @@ export default async function Home() {
   );
 }
 
+function MarketingPathCard({
+  href,
+  title,
+  description,
+}: {
+  href: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group rounded-[22px] border border-border bg-card p-6 shadow-card transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-floating focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+    >
+      <p className="text-lg font-semibold text-foreground-strong">{title}</p>
+      <p className="mt-3 text-sm leading-6 text-muted">{description}</p>
+      <span className="mt-6 inline-flex items-center text-sm font-semibold text-primary transition-transform group-hover:translate-x-0.5">
+        Explore workflow <span className="ml-2" aria-hidden="true">→</span>
+      </span>
+    </Link>
+  );
+}
+
 type FooterColumnProps = {
-  links: Array<{ href: string; label: string }>;
+  links: Array<{ external?: boolean; href: string; label: string }>;
   title: string;
 };
 
@@ -290,6 +361,8 @@ function FooterColumn({ links, title }: FooterColumnProps) {
           <Link
             key={`${title}-${link.label}`}
             href={link.href}
+            target={link.external ? "_blank" : undefined}
+            rel={link.external ? "noopener noreferrer" : undefined}
             className="rounded-control transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
             {link.label}

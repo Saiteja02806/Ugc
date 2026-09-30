@@ -61,7 +61,7 @@ test("Structure 2 plans exactly the required six-slide product story", () => {
   }
 });
 
-test("Structure 2 rejects reordering story roles or placing a CTA on any slide", () => {
+test("Structure 2 rejects reordering and early CTA but preserves a final CTA", () => {
   const reordered = makeRawStoryPlan();
   [reordered.slides.second, reordered.slides.third] = [
     reordered.slides.third!,
@@ -81,10 +81,7 @@ test("Structure 2 rejects reordering story roles or placing a CTA on any slide",
 
   const finalCta = makeRawStoryPlan();
   Reflect.set(finalCta.slides.sixth!, "ctaText", "Try this today.");
-  assert.throws(
-    () => parseCarouselStructure2StoryPlan(finalCta, { businessDescription, storyFormatId: "wrong_belief" }),
-    /cannot include a CTA/i,
-  );
+  assert.equal(parseCarouselStructure2StoryPlan(finalCta, { businessDescription, storyFormatId: "wrong_belief" }).slides[5]!.ctaText, "Try this today.");
 });
 
 test("Structure 2 leaves creative cover wording to the prompt and uses a larger cover treatment", () => {
@@ -96,8 +93,8 @@ test("Structure 2 leaves creative cover wording to the prompt and uses a larger 
   });
   const issues = validateCarouselStructure2StoryPlan(plan, { businessDescription });
 
-  assert.equal(CAROUSEL_STRUCTURE_2_COVER_FONT_SIZE, 96);
-  assert.equal(getCarouselStructure2StoryMaxLines(1), 3);
+  assert.equal(CAROUSEL_STRUCTURE_2_COVER_FONT_SIZE, 72);
+  assert.equal(getCarouselStructure2StoryMaxLines(1), 4);
   assert.ok(!issues.some((issue) => issue.code === "perspective"));
 });
 
@@ -133,12 +130,12 @@ test("Structure 2 prompt and schema describe the strict six-slide contract", () 
 
   assert.match(prompt, /exactly six slides/i);
   assert.match(prompt, /only Slide 1 may lead with direct reader wording/i);
-  assert.match(prompt, /normally 5-8 words/i);
-  assert.match(prompt, /42 characters or fewer/i);
-  assert.match(prompt, /aim for 16-22 words/i);
-  assert.match(prompt, /natural or sentence case/i);
+  assert.match(prompt, /normally 6-13 words/i);
+  assert.match(prompt, /at 72px/i);
+  assert.match(prompt, /aim for 16-22 body words/i);
+  assert.match(prompt, /lowercase/i);
   assert.match(prompt, /Inter Tight Bold at 700 weight/i);
-  assert.match(prompt, /Slides 1-6 must return ctaText: null/i);
+  assert.match(prompt, /Slides 1-5 return ctaText: null/i);
   assert.match(prompt, /Slide 4 must explain a real product capability/i);
   assert.doesNotMatch(prompt, /CTA presence and slide position are your creative choice/i);
   assert.match(schema, /sixth/);
@@ -215,7 +212,7 @@ test("Structure 2 rejects a shorter cover that ends in an unmistakable hanging p
 test("Structure 2 rejects a cover hook that cannot safely fit the fixed three-line area", () => {
   const raw = makeRawStoryPlan();
   raw.slides.first!.storyText =
-    "Every delayed approval quietly stalls the next important campaign decision";
+    "EverySuperLongDelayedApprovalWord quietly stalls the next extraordinarilyComplicatedCampaignDecisionWithoutAnOwner";
 
   const plan = parseCarouselStructure2StoryPlan(raw, {
     businessDescription,

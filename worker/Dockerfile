@@ -3,7 +3,7 @@ FROM node:22-bookworm-slim AS build
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install --legacy-peer-deps
+RUN npm ci --legacy-peer-deps
 
 COPY tsconfig.json ./
 COPY src ./src

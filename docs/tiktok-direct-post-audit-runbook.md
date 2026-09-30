@@ -2,10 +2,12 @@
 
 ## Purpose
 
-UGC Pilot supports TikTok Direct Post only for the verified Firebase beta
-account. Public posting remains blocked until TikTok approves the Direct Post
-audit. This is intentional: an unaudited TikTok app may post only with the
-creator's **Only me** visibility and a private creator account.
+As of 2026-09-30, the owner confirmed TikTok Direct Post audit approval. UGC
+Pilot enables connections, scheduling, and analytics for every verified
+signed-in user. The web app and publish worker default to audited posting.
+An explicit `TIKTOK_DIRECT_POST_AUDITED=false` override restores private testing:
+an unaudited TikTok app may post only with the creator's **Only me** visibility
+and a private creator account.
 
 The scheduler checks fresh creator information for the selected connection
 before accepting an unaudited TikTok target (including pending-render plans).
@@ -38,7 +40,7 @@ Then deploy the same values to the app and the social-publish worker:
 ```text
 TIKTOK_MEDIA_TRANSFER_MODE=PULL_FROM_URL
 TIKTOK_VERIFIED_MEDIA_HOSTS=<comma-separated verified hostnames>
-TIKTOK_DIRECT_POST_AUDITED=false
+TIKTOK_DIRECT_POST_AUDITED=true
 ```
 
 The worker refuses unverified media URLs before sending a Direct Post request.
@@ -56,21 +58,21 @@ Keep Login Kit and Content Posting API enabled with only these scopes:
 
 Record an end-to-end review video on production that shows:
 
-1. The approved user connecting a TikTok creator account.
+1. A verified signed-in user connecting their TikTok creator account.
 2. The connected creator identity and TikTok-provided visibility choices.
 3. An editable caption/title and the selected interactions/disclosures.
 4. Manual visibility selection and explicit Music Usage Confirmation consent.
 5. A scheduled video and a 2–35-image photo carousel reaching TikTok.
 6. The resulting post and the per-video analytics view.
 
-Do not present the final product as an internal-only posting tool. The
-single-email restriction is a controlled beta boundary; the audited product
-must remain creator-controlled and eligible for its intended users.
+The product is available to all verified users and remains creator-controlled.
+The former email allowlist is retired.
 
-## After TikTok approves the audit
+## General availability release verification
 
-1. Set `TIKTOK_DIRECT_POST_AUDITED=true` in both the web app and GCP
-   social-publish worker deployment.
+1. Replace any old `TIKTOK_DIRECT_POST_AUDITED=false` override with `true` in
+   both the web app and GCP social-publish worker deployment. Terraform's
+   `tiktok_direct_post_audited` variable must also be `true`.
 2. Redeploy both runtimes.
 3. Confirm the TikTok account is public, select **Everyone** manually, and
    schedule a real public post.

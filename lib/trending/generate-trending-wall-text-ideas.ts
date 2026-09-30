@@ -211,7 +211,9 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
           ? { privateCreativeContext: input.privateCreativeContext }
           : {}),
         ...(input.grounding ? { grounding: input.grounding } : {}),
-        targetWords: budget.targetWords,
+        // The reservation schema still requires targetWords. It is stored as
+        // compatibility metadata only and is never sent to the Writer.
+        targetWords: budget.maxWords,
       };
     }),
   );

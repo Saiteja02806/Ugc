@@ -1,38 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  TIKTOK_BETA_APPROVED_EMAILS,
-  hasTikTokBetaAccess,
-} from "./tiktok-beta-access.ts";
+import { hasTikTokBetaAccess } from "./tiktok-beta-access.ts";
 
-test("TikTok beta access requires an approved verified email", () => {
-  assert.equal(
-    hasTikTokBetaAccess({
-      email: TIKTOK_BETA_APPROVED_EMAILS[0].toUpperCase(),
-      emailVerified: true,
-    }),
-    true,
-  );
-  assert.equal(
-    hasTikTokBetaAccess({
-      email: TIKTOK_BETA_APPROVED_EMAILS[1].toUpperCase(),
-      emailVerified: true,
-    }),
-    true,
-  );
-  assert.equal(
-    hasTikTokBetaAccess({
-      email: TIKTOK_BETA_APPROVED_EMAILS[1],
-      emailVerified: false,
-    }),
-    false,
-  );
-  assert.equal(
-    hasTikTokBetaAccess({
-      email: "another-user@veltech.edu.in",
-      emailVerified: true,
-    }),
-    false,
-  );
+test("TikTok is available to every verified user without an email allowlist", () => {
+  for (const email of ["new-user@example.com", "another-user@veltech.edu.in", null]) {
+    assert.equal(hasTikTokBetaAccess({ email, emailVerified: true }), true);
+  }
+});
+
+test("TikTok retains the signed-in verified-user requirement", () => {
+  assert.equal(hasTikTokBetaAccess(null), false);
+  assert.equal(hasTikTokBetaAccess(undefined), false);
+  for (const emailVerified of [false, null, undefined]) {
+    assert.equal(hasTikTokBetaAccess({ email: "new-user@example.com", emailVerified }), false);
+  }
 });

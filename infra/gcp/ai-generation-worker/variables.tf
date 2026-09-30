@@ -206,6 +206,12 @@ variable "runwayml_api_secret_id" {
   default     = "runwayml-api-secret"
 }
 
+variable "higgsfield_credentials_secret_id" {
+  description = "Optional Secret Manager secret ID injected as HF_CREDENTIALS for Seedance 2.5 video generation."
+  type        = string
+  default     = ""
+}
+
 variable "runway_daily_credit_limit" {
   description = "Maximum Runway credits the worker may spend during one UTC calendar day."
   type        = number
@@ -223,7 +229,7 @@ variable "internal_app_url" {
   # The www host redirects to this canonical host. Cloud Tasks must target the
   # canonical origin directly because it does not preserve this API POST on
   # the redirect chain.
-  default     = "https://getugcpilot.com"
+  default = "https://getugcpilot.com"
 }
 
 variable "scheduling_secret_id" {

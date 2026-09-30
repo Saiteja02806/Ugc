@@ -69,10 +69,19 @@ test("public video jobs explain a provider balance failure without exposing diag
   assert.deepEqual(getPublicBackgroundJob(job).error, {
     code: "JOB_FAILED",
     message:
-      "Higgsfield's API balance is too low to create this video. Add funds in Higgsfield, then retry. Your UGC Pilot credits were released.",
-    retryable: true,
+      "Higgsfield's API balance is too low to create this video. Add funds in Higgsfield, then start a new generation. Your UGC Pilot credits were released.",
+    retryable: false,
   });
   assert.equal(JSON.stringify(getPublicBackgroundJob(job)).includes("request-private"), false);
+});
+
+test("terminal and uncertain provider requests cannot be replayed even with attempts remaining", () => {
+  for (const errorCode of ["PROVIDER_INSUFFICIENT_CREDITS", "provider_operation_failed", "provider_submission_uncertain"]) {
+    const job = { attemptCount: 1, maxAttempts: 3, status: "failed", jobType: "generate_hook_video", errorCode, errorMessage: "private provider diagnostics" } as BackgroundJobRecord;
+    assert.equal(isRetryableBackgroundJob(job), false);
+    assert.equal(getPublicBackgroundJob(job).error?.retryable, false);
+    assert.doesNotMatch(getPublicBackgroundJob(job).error?.message ?? "", /private provider diagnostics|You can retry/);
+  }
 });
 
 test("public Wall jobs never expose private provider or validation diagnostics", () => {

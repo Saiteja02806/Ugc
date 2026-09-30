@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/auth-context";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
+import { getVideoGenerationState } from "@/lib/ai-studio/video-generation-state";
 import { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND } from "@/lib/billing/generation-credit-policy";
 import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import {
@@ -342,6 +343,9 @@ export function VideoGenerationStudioPanel({
   const [latestCompletedVideoId, setLatestCompletedVideoId] = useState<string | null>(null);
   const [generationState, setGenerationState] =
     useState<GenerationState>("empty");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  const [refreshingAccess, setRefreshingAccess] = useState(false);
   const [generatedVideos, setGeneratedVideos] = useState<GeneratedVideo[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyQuery, setHistoryQuery] = useState("");
@@ -457,21 +461,17 @@ export function VideoGenerationStudioPanel({
         : completedWithoutOutput
           ? "Video generation completed without a usable output."
           : null;
-  const effectiveGenerationState: GenerationState =
-    activeJobQueries.some((query) => query.isPending)
-      ? "generating"
-      : durableJobs.some(
-            (job) =>
-              !["cancelled", "completed", "failed"].includes(job.status),
-          )
-        ? "generating"
-        : failedDurableJob || cancelledDurableJob || completedWithoutOutput
-          ? "failed"
-          : generationState;
+  const effectiveGenerationState = getVideoGenerationState({
+    submitting: isSubmitting,
+    loading: activeJobQueries.some((query) => query.isLoading),
+    jobs: durableJobs,
+    fallback: generationState,
+    missingOutput: Boolean(completedWithoutOutput),
+  });
   const isGenerating =
     effectiveGenerationState === "generating";
   const pendingGenerationCount =
-    generationState === "generating" && activeJobIds.length === 0
+    isSubmitting
     ? quantity
     : activeJobQueries.reduce((count, query) => {
         if (query.isPending) {
@@ -723,7 +723,7 @@ export function VideoGenerationStudioPanel({
       generationLocked ||
       hasInsufficientCredits ||
       !trimmedPrompt ||
-      isGenerating
+      isGenerating || submittingRef.current
     ) {
       return;
     }
@@ -742,6 +742,8 @@ export function VideoGenerationStudioPanel({
     setActionError(null);
     setActiveVideoPrompt(trimmedPrompt);
     setGenerationState("generating");
+    submittingRef.current = true;
+    setIsSubmitting(true);
 
     try {
       const token = await getCurrentUserIdToken();
@@ -813,6 +815,39 @@ export function VideoGenerationStudioPanel({
         getErrorMessage(error, "Video generation failed. Try again."),
       );
       setGenerationState("failed");
+    } finally {
+      submittingRef.current = false;
+      setIsSubmitting(false);
+    }
+  }
+
+  function dismissFinishedGeneration() {
+    if (isGenerating) return;
+    setSubmittedJobIds([]);
+    setStoredJobIds([]);
+    setIgnoredPersistedJobId(persistedJobId);
+    persistJobIdInUrl(null, VIDEO_JOB_URL_PARAMETER);
+    if (user) {
+      try {
+        window.localStorage.removeItem(`${VIDEO_JOB_STORAGE_PREFIX}${user.uid}`);
+      } catch { /* Local storage can be unavailable; the job remains saved on the server. */ }
+    }
+    submissionKeyRef.current = null;
+    setGenerationState("empty");
+    setActionError(null);
+    setActionNotice(null);
+  }
+
+  async function refreshGenerationAccess() {
+    if (!user || refreshingAccess) return;
+    setRefreshingAccess(true);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["billing-subscription", user.uid] }),
+        queryClient.invalidateQueries({ queryKey: ["ai-studio-access", user.uid] }),
+      ]);
+    } finally {
+      setRefreshingAccess(false);
     }
   }
 
@@ -845,7 +880,7 @@ export function VideoGenerationStudioPanel({
       (job) => job.status === "failed" && Boolean(job.error?.retryable),
     );
 
-    if (!retryableJob || retryJob.isPending) {
+    if (!retryableJob || retryJob.isPending || generationLocked || isGenerating) {
       return;
     }
 
@@ -979,6 +1014,7 @@ export function VideoGenerationStudioPanel({
       />
 
       <AiStudioComposer
+        compact
         accessMessage={composerMessage}
         active={active}
         ariaLabel="Video prompt"
@@ -1035,7 +1071,7 @@ export function VideoGenerationStudioPanel({
         isGenerating={isGenerating}
         layout="unified"
         showPromptHint={generationLocked || hasInsufficientCredits}
-        unifiedMaxWidthClassName="max-w-[1280px]"
+        unifiedMaxWidthClassName="max-w-[1120px]"
         leadingControl={
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <ReferenceImageListUpload
@@ -1070,6 +1106,16 @@ export function VideoGenerationStudioPanel({
         onTextareaKeyDown={handleTextareaKeyDown}
         secondaryActions={
           <>
+            {generationLocked ? (
+              <Button type="button" variant="ghost" size="sm" disabled={refreshingAccess} onClick={() => void refreshGenerationAccess()}>
+                {refreshingAccess ? "Checking…" : "Refresh access"}
+              </Button>
+            ) : null}
+            {effectiveGenerationState === "failed" && !isGenerating ? (
+              <Button type="button" variant="ghost" size="sm" onClick={dismissFinishedGeneration}>
+                Dismiss error
+              </Button>
+            ) : null}
             {isGenerating ? (
               <Button
                 type="button"
@@ -1081,7 +1127,7 @@ export function VideoGenerationStudioPanel({
                 Cancel
               </Button>
             ) : null}
-            {canRetry ? (
+            {canRetry && !generationLocked && !isGenerating ? (
               <Button
                 type="button"
                 variant="outline"
@@ -1252,8 +1298,8 @@ function OptimisticVideoCard({
 }) {
   return (
     <article className="border-b border-border py-6 first:pt-1 last:border-b-0 animate-in fade-in-0 duration-300 sm:py-8">
-      <div className="mx-auto grid w-full max-w-[62rem] gap-4 lg:w-fit lg:max-w-full lg:grid-cols-[auto_minmax(0,32.5rem)] lg:items-start lg:gap-[clamp(2rem,2.5vw,3rem)]">
-        <div className="order-1 min-w-0 lg:order-2">
+      <div className="mx-auto flex w-full max-w-[54rem] flex-col gap-4 lg:flex-row lg:items-start lg:justify-center lg:gap-8">
+        <div className="order-1 min-w-0 lg:order-2 lg:w-[32.5rem] lg:flex-1">
           <VideoPromptBubble
             createdAt={new Date().toISOString()}
             prompt={prompt || "Creating presenter video…"}
@@ -1263,7 +1309,7 @@ function OptimisticVideoCard({
 
         <div
           className={cn(
-            "order-2 lg:order-1",
+            "order-2 shrink-0 lg:order-1",
             getVideoResultWidthClassName(aspectRatio),
           )}
         >
@@ -1368,14 +1414,14 @@ function VideoResultCard({
           "animate-in fade-in-50 zoom-in-[0.98] duration-500 rounded-[var(--radius-card)] ring-2 ring-emerald-500/40 ring-offset-2 ring-offset-background px-3",
       )}
     >
-      <div className="mx-auto grid w-full max-w-[62rem] gap-4 lg:w-fit lg:max-w-full lg:grid-cols-[auto_minmax(0,32.5rem)] lg:items-start lg:gap-[clamp(2rem,2.5vw,3rem)]">
-        <div className="order-1 min-w-0 lg:order-2">
+      <div className="mx-auto flex w-full max-w-[54rem] flex-col gap-4 lg:flex-row lg:items-start lg:justify-center lg:gap-8">
+        <div className="order-1 min-w-0 lg:order-2 lg:w-[32.5rem] lg:flex-1">
           <VideoPromptBubble createdAt={video.createdAt} prompt={video.prompt} />
         </div>
 
         <div
           className={cn(
-            "order-2 lg:order-1",
+            "order-2 shrink-0 lg:order-1",
             getVideoResultWidthClassName(video.ratio),
           )}
         >

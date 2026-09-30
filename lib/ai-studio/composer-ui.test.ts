@@ -69,11 +69,11 @@ test("the unified composer is narrower without squeezing standard layouts", () =
 test("the unified composer stays compact while supporting multiline prompts", () => {
   assert.match(
     composer,
-    /const minimumHeight = layout === "unified" \? 40 : 64;/,
+    /const minimumHeight = compact \? 36 : layout === "unified" \? 40 : 64;/,
   );
   assert.match(
     composer,
-    /const maximumHeight = layout === "unified" \? 144 : 128;/,
+    /const maximumHeight = compact \? 112 : layout === "unified" \? 144 : 128;/,
   );
   assert.match(
     composer,
@@ -327,7 +327,7 @@ test("video results keep the prompt visible with custom playback controls", () =
   assert.match(videoResultCard, /video\.prompt/);
   assert.match(
     videoResultCard,
-    /lg:grid-cols-\[auto_minmax\(0,32\.5rem\)\][\s\S]*?lg:gap-\[clamp\(2rem,2\.5vw,3rem\)\]/,
+    /max-w-\[54rem\][^\n]*lg:flex-row[^\n]*lg:gap-8/,
   );
   assert.doesNotMatch(videoResultCard, /sm:ml-\[10%\]/);
   assert.doesNotMatch(videoResultCard, /\bcontrols\b/);

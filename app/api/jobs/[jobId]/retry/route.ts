@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireFirebaseUser } from "@/lib/firebase/server-auth";
-import { getPublicBackgroundJob } from "@/lib/jobs/background-job-contract";
+import { getPublicBackgroundJob, isRetryableBackgroundJob } from "@/lib/jobs/background-job-contract";
 import {
   assertBackgroundJobOwner,
   retryAndDispatchBackgroundJob,
@@ -26,6 +26,14 @@ export async function POST(
 
     if (!existing) {
       return json({ ok: false, error: "Job was not found." }, 404);
+    }
+
+    if (!isRetryableBackgroundJob(existing)) {
+      return json({
+        ok: false,
+        error: getPublicBackgroundJob(existing).error?.message ||
+          "This job cannot be retried. Start a new generation instead.",
+      }, 409);
     }
 
     const missing = getMissingBackgroundJobCloudTasksEnvVars([

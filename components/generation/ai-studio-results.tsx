@@ -61,6 +61,7 @@ export function AiStudioResults({
           )}
         >
           <Badge
+            className="max-w-full whitespace-normal text-left leading-relaxed"
             variant={status.tone === "error" ? "destructive" : "secondary"}
             role={status.tone === "error" ? "alert" : "status"}
             aria-live="polite"

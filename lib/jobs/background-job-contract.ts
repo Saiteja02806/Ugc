@@ -117,6 +117,17 @@ export function isTerminalBackgroundJobStatus(status: BackgroundJobStatus) {
 }
 
 export function isRetryableBackgroundJob(job: BackgroundJobRecord) {
+  // A provider's terminal failure needs a new, explicitly requested generation.
+  // Replaying this job cannot revive its saved provider operation.
+  if (
+    job.errorCode === "PROVIDER_INSUFFICIENT_CREDITS" ||
+    job.errorCode === "provider_submission_uncertain" ||
+    job.errorCode === "provider_operation_failed" ||
+    isProviderBalanceFailure(job.errorMessage) ||
+    /ended with status (?:failed|moderated|nsfw|canceled|cancelled)/i.test(job.errorMessage ?? "")
+  ) {
+    return false;
+  }
   return (
     (job.status === "failed" || job.status === "stalled") &&
     job.attemptCount < job.maxAttempts
@@ -173,10 +184,14 @@ function getSafeJobErrorMessage(
     errorCode === "PROVIDER_INSUFFICIENT_CREDITS" ||
     isProviderBalanceFailure(errorMessage)
   ) {
-    return "Higgsfield's API balance is too low to create this video. Add funds in Higgsfield, then retry. Your UGC Pilot credits were released.";
+    return "Higgsfield's API balance is too low to create this video. Add funds in Higgsfield, then start a new generation. Your UGC Pilot credits were released.";
   }
 
   switch (errorCode) {
+    case "provider_submission_uncertain":
+      return "The provider could not confirm this request. Check its status in Higgsfield before starting another generation to avoid a duplicate charge.";
+    case "provider_operation_failed":
+      return "The provider rejected this generation. Review your prompt and references, then start a new generation.";
     case "CANCELLED":
       return "This job was cancelled.";
     case "INPUT_INVALID":

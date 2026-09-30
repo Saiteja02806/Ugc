@@ -11,7 +11,7 @@ const PRO_ACCESS_MESSAGE =
   "An active Starter or Growth subscription is required for AI Studio generation.";
 
 export async function isAIStudioProUser(user: VerifiedFirebaseUser) {
-  const subscription = await getUserSubscription(user.uid);
+  const subscription = await getUserSubscription(user.uid, { strict: true });
 
   return subscription.isActive;
 }

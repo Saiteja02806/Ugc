@@ -29,6 +29,7 @@ export function AiStudioComposer({
   accessMessage,
   ariaLabel,
   contextBanner,
+  compact = false,
   generateDisabled,
   generateLabel,
   generationLocked,
@@ -51,6 +52,7 @@ export function AiStudioComposer({
   accessMessage?: string | null;
   ariaLabel: string;
   contextBanner?: ReactNode;
+  compact?: boolean;
   generateDisabled: boolean;
   generateLabel: string;
   generationLocked: boolean;
@@ -84,18 +86,19 @@ export function AiStudioComposer({
     }
 
     textarea.style.height = "auto";
-    const minimumHeight = layout === "unified" ? 40 : 64;
-    const maximumHeight = layout === "unified" ? 144 : 128;
+    const minimumHeight = compact ? 36 : layout === "unified" ? 40 : 64;
+    const maximumHeight = compact ? 112 : layout === "unified" ? 144 : 128;
     textarea.style.height = `${Math.min(
       Math.max(textarea.scrollHeight, minimumHeight),
       maximumHeight,
     )}px`;
-  }, [active, layout, prompt]);
+  }, [active, compact, layout, prompt]);
 
   return (
     <div className="sticky bottom-0 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
       <form
         data-layout={layout}
+        data-compact={compact || undefined}
         noValidate
         onSubmit={onSubmit}
         className={cn(
@@ -106,6 +109,7 @@ export function AiStudioComposer({
                 "rounded-[24px] border-border/80 p-0 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15",
               )
             : "max-w-[1024px] rounded-[20px] border-border p-2.5 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 sm:p-3",
+          compact && "rounded-2xl shadow-sm",
         )}
       >
         <FieldGroup className={layout === "unified" ? "gap-0" : "gap-2"}>
@@ -121,9 +125,10 @@ export function AiStudioComposer({
                 ? "gap-y-1 px-4 pb-1 pt-3 sm:px-5"
                 : "gap-y-2 px-1 pt-1",
               contextBanner && layout === "unified" && "!pt-1.5",
+              compact && "gap-y-1 px-3 pb-1 pt-2 sm:grid sm:grid-cols-[auto_minmax(0,1fr)] sm:items-start sm:gap-x-3 sm:px-4",
             )}
           >
-            {leadingControl ? <div className="min-w-0">{leadingControl}</div> : null}
+            {leadingControl ? <div className={cn("min-w-0", compact && "max-h-28 overflow-y-auto sm:max-w-64")}>{leadingControl}</div> : null}
             <FieldLabel htmlFor={promptId} className="sr-only">
               {ariaLabel}
             </FieldLabel>
@@ -144,6 +149,7 @@ export function AiStudioComposer({
                   ? "max-h-36 min-h-10 rounded-none px-0 py-0 text-base font-normal leading-7"
                   : "max-h-32 min-h-16 rounded-lg px-2 py-1.5 text-sm font-medium leading-6 focus-visible:ring-2 focus-visible:ring-focus sm:text-[15px]",
                 "min-w-0",
+                compact && "max-h-28 min-h-9 self-start text-sm leading-6",
               )}
               placeholder={placeholder}
             />
@@ -153,6 +159,7 @@ export function AiStudioComposer({
                 "flex min-w-0 items-start justify-between gap-3 text-xs",
                 layout === "unified" ? "px-0" : "px-2",
                 promptTooLong && "text-destructive",
+                compact && "col-span-2 text-[11px]",
               )}
               role={promptTooLong ? "alert" : undefined}
             >
@@ -168,7 +175,7 @@ export function AiStudioComposer({
                       "Press Enter to generate. Use Shift+Enter for a new line."}
                 </span>
               ) : null}
-              <span className="shrink-0 tabular-nums font-mono">
+              <span className="ml-auto shrink-0 tabular-nums font-mono">
                 {prompt.length.toLocaleString("en-US")}/
                 {maxLength.toLocaleString("en-US")}
               </span>
@@ -179,6 +186,7 @@ export function AiStudioComposer({
             className={cn(
               "flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between",
               layout === "unified" && "px-3 pb-2 sm:px-4 sm:pb-3",
+              compact && "sm:pb-2",
             )}
           >
             <div className="min-w-0 flex-1">
@@ -240,6 +248,7 @@ export function AiStudioComposer({
                     "min-w-0 flex-1 h-10 rounded-full px-5 text-sm font-semibold tracking-[-0.01em] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.22),0_1px_3px_rgba(0,0,0,0.12)] transition-all duration-150 active:scale-[0.98] sm:min-w-[168px]",
                     isGenerating && "ring-2 ring-primary/35 shadow-xs shadow-primary/20",
                     layout === "unified" && "w-full",
+                    compact && "h-9 px-4 sm:min-w-[144px]",
                   )}
                 >
                   {isGenerating ? (

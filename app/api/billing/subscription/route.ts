@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 export async function GET(request: Request) {
   try {
     const user = await requireFirebaseUser(request);
-    const subscription = await getUserSubscription(user.uid);
+    const subscription = await getUserSubscription(user.uid, { strict: true });
 
     return NextResponse.json(
       { subscription },

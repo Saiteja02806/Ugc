@@ -213,6 +213,7 @@ export function ReferenceMediaUpload({
 const REFERENCE_ACCEPTS: Record<AIStudioReferenceKind, readonly string[]> = {
   image: ["image/jpeg", "image/png", "image/webp"],
   video: ["video/mp4", "video/quicktime", "video/webm"],
+  audio: ["audio/mpeg", "audio/wav", "audio/x-wav"],
 };
 
 function getReferenceKind(file: File): AIStudioReferenceKind {

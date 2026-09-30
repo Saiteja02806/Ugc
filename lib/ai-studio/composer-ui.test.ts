@@ -255,10 +255,9 @@ test("AI Studio keeps direct image and video references optional outside Explore
   assert.match(imageWorkspace, /referenceImageUrl: referenceImage\?\.asset\.url \?\? null/);
   assert.match(
     videoWorkspace,
-    /<ReferenceImageListUpload[\s\S]*?maxImages=\{maxReferenceImages\}[\s\S]*?allowedKinds=\{\["video"\]\}/,
+    /<ReferenceFilesUpload[\s\S]*?allowedKinds=\{model === "seedance_2_5" && !isExploreRecreate \? \["image", "video", "audio"\] : \["image"\]\}/,
   );
-  assert.match(videoWorkspace, /maxReferenceImages = model === "seedance_2_5"[\s\S]*?\? \(uploadedVideoReference \? 29 : 30\)[\s\S]*?: 6/);
-  assert.match(videoWorkspace, /maxVideoDurationSeconds=\{model === "seedance_2_5" \? 30 : 3\}/);
+  assert.match(videoWorkspace, /maxFiles=\{model === "seedance_2_5" \? 30 : 6\}/);
   assert.match(videoWorkspace, /avatarImageUrl: activeReferenceImageUrl/);
   assert.match(videoWorkspace, /referenceImageUrls: referenceImages\.map\(\(image\) => image\.asset\.url\)/);
   assert.match(videoWorkspace, /referenceVideoUrl: uploadedReferenceVideo\?\.asset\.url \?\? null/);
@@ -299,7 +298,7 @@ test("video composer keeps compact controls in the requested order", () => {
 
 test("image and video use one compact leading attachment control", () => {
   assert.match(imageWorkspace, /leadingControl=\{[\s\S]*?<ReferenceMediaUpload/);
-  assert.match(videoWorkspace, /leadingControl=\{[\s\S]*?<ReferenceMediaUpload/);
+  assert.match(videoWorkspace, /leadingControl=\{[\s\S]*?<ReferenceFilesUpload/);
   assert.match(referenceUploader, /<Plus className="size-4"/);
   assert.match(referenceUploader, /type="file"[\s\S]*?accept=\{accepts\}/);
   assert.doesNotMatch(referenceUploader, />\s*Upload image\s*</);
@@ -368,7 +367,7 @@ test("the active reference control accepts a pasted image into the composer", ()
   assert.match(referenceUploader, /width=\{36\}[\s\S]*?height=\{36\}/);
   assert.match(referenceUploader, /Image reference/);
   assert.match(imageWorkspace, /<ReferenceMediaUpload[\s\S]*?active=\{active\}/);
-  assert.match(videoWorkspace, /<ReferenceMediaUpload[\s\S]*?active=\{active\}/);
+  assert.match(videoWorkspace, /<ReferenceFilesUpload[\s\S]*?active=\{active\}/);
 });
 
 test("generation progress has a visible in-place loading state", () => {
@@ -413,7 +412,7 @@ test("the video composer keeps attachments together and stays quiet until guidan
   );
   assert.match(
     videoWorkspace,
-    /leadingControl=\{[\s\S]*?flex min-w-0 flex-wrap items-center gap-2[\s\S]*?<ReferenceImageListUpload[\s\S]*?<ReferenceMediaUpload/,
+    /leadingControl=\{[\s\S]*?<ReferenceFilesUpload/,
   );
   assert.match(composer, /promptTooLong \|\| showPromptHint/);
 });

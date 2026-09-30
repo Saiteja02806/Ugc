@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test:seedance": "npm run build && node --test dist/lib/higgsfield-video.test.js",
     "test:wall-overlay": "npm run build && node --test --test-concurrency=1 dist/lib/wall-text-overlay-asset.test.js dist/lib/render-engine.test.js dist/lib/wall-text-render-spec.test.js dist/jobs/render-wall-text-video.test.js",
     "build": "tsc -p tsconfig.json",
     "test:reaction-edit": "npm run build && node --test dist/jobs/render-reaction-edit.test.js",

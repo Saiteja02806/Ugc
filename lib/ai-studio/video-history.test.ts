@@ -4,6 +4,7 @@ import test from "node:test";
 import type { AIStudioVideoResult } from "./media-results.ts";
 import {
   filterAIStudioVideoHistory,
+  getTodayAIStudioVideos,
   groupAIStudioVideoHistory,
 } from "./video-history.ts";
 
@@ -47,6 +48,19 @@ test("filters AI Studio video history by prompt and generation settings", () => 
     filterAIStudioVideoHistory(videos, "product").map((video) => video.id),
     ["today"],
   );
+});
+
+test("starts a fresh feed at the user's local midnight without deleting history", () => {
+  const beforeMidnight = new Date(2026, 8, 29, 23, 59, 59);
+  const afterMidnight = new Date(2026, 8, 30, 0, 0, 1);
+  const localVideos = [
+    { ...videos[0], id: "previous", createdAt: beforeMidnight.toISOString() },
+    { ...videos[1], id: "new", createdAt: afterMidnight.toISOString() },
+    { ...videos[0], id: "invalid", createdAt: "invalid" },
+  ];
+  assert.deepEqual(getTodayAIStudioVideos(localVideos, beforeMidnight).map((video) => video.id), ["previous"]);
+  assert.deepEqual(getTodayAIStudioVideos(localVideos, afterMidnight).map((video) => video.id), ["new"]);
+  assert.equal(filterAIStudioVideoHistory(localVideos, "").length, 3);
 });
 
 test("groups AI Studio video history into human-readable dates", () => {

@@ -31,7 +31,7 @@ export async function POST(request: Request) {
 
     if (!body || !isMediaCollection(body.collection)) {
       return Response.json(
-        { ok: false, error: "Choose Influencers, Videos, or Images before uploading." },
+        { ok: false, error: "Choose a valid media collection before uploading." },
         { status: 400 },
       );
     }

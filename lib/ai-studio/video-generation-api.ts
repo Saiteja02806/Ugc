@@ -26,6 +26,7 @@ import {
 } from "@/lib/jobs/background-jobs";
 import { createAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
 import { isTrustedStorageUrl } from "@/lib/storage/storage";
+import { getMediaAssetForOwner } from "@/lib/media/media-storage";
 import {
   BillingAccessError,
   deliverBillingUsageForJob,
@@ -38,6 +39,8 @@ type GenerateVideoRequest = {
   aspectRatio?: unknown;
   avatarImageUrl?: unknown;
   referenceImageUrls?: unknown;
+  referenceAudioUrls?: unknown;
+  referenceAudioAssetIds?: unknown;
   hookIdea?: unknown;
   idempotencyKey?: unknown;
   model?: unknown;
@@ -148,6 +151,10 @@ export async function handleAIStudioVideoGeneration(request: Request) {
     ? imageUrlsInput.map(cleanHttpsUrl)
     : avatarImageUrl ? [avatarImageUrl] : [];
   const referenceVideoUrl = cleanHttpsUrl(body?.referenceVideoUrl);
+  const audioUrlsInput = body?.referenceAudioUrls;
+  const audioAssetIdsInput = body?.referenceAudioAssetIds;
+  const referenceAudioUrls = Array.isArray(audioUrlsInput) ? audioUrlsInput.map(cleanHttpsUrl) : [];
+  const referenceAudioAssetIds = Array.isArray(audioAssetIdsInput) ? audioAssetIdsInput : [];
   const referenceVideoDurationSeconds = cleanReferenceVideoDuration(
     body?.referenceVideoDurationSeconds,
   );
@@ -180,10 +187,30 @@ export async function handleAIStudioVideoGeneration(request: Request) {
     );
   }
 
-  const maxImages = model === "seedance_2_5" ? (referenceVideoUrl ? 29 : 30) : 6;
-  if (referenceImageUrls.length > maxImages) {
+  if (
+    (audioUrlsInput !== undefined && !Array.isArray(audioUrlsInput)) ||
+    (audioAssetIdsInput !== undefined && !Array.isArray(audioAssetIdsInput)) ||
+    referenceAudioUrls.some((url) => !url) ||
+    new Set(referenceAudioUrls).size !== referenceAudioUrls.length ||
+    referenceAudioAssetIds.length !== referenceAudioUrls.length ||
+    new Set(referenceAudioAssetIds).size !== referenceAudioAssetIds.length ||
+    referenceAudioAssetIds.some((id) => typeof id !== "string" || !UUID_PATTERN.test(id))
+  ) {
     return NextResponse.json(
-      { error: `This model accepts up to ${maxImages} reference images in UGC Pilot.`, ok: false },
+      { error: "Audio references must be distinct uploaded audio files.", ok: false },
+      { status: 400 },
+    );
+  }
+  if (referenceAudioUrls.length && (model !== "seedance_2_5" || isExploreRecreate)) {
+    return NextResponse.json(
+      { error: "Select Seedance 2.5 in Videos to use audio references.", ok: false },
+      { status: 400 },
+    );
+  }
+  const maxReferences = model === "seedance_2_5" ? 30 : 6;
+  if (referenceImageUrls.length + referenceAudioUrls.length + (referenceVideoUrl ? 1 : 0) > maxReferences) {
+    return NextResponse.json(
+      { error: `This model accepts up to ${maxReferences} reference files in UGC Pilot.`, ok: false },
       { status: 400 },
     );
   }
@@ -193,6 +220,21 @@ export async function handleAIStudioVideoGeneration(request: Request) {
       { error: "The reference video is not a trusted uploaded file.", ok: false },
       { status: 400 },
     );
+  }
+
+  try {
+    for (let index = 0; index < referenceAudioAssetIds.length; index++) {
+      const asset = await getMediaAssetForOwner({ assetId: referenceAudioAssetIds[index] as string, userId: user.uid });
+      if (!asset || asset.collection !== "audio" || asset.status !== "ready" ||
+          asset.url !== referenceAudioUrls[index] || !asset.duration_seconds || asset.duration_seconds > 30) {
+        return NextResponse.json(
+          { error: "Use an uploaded audio reference of 30 seconds or shorter from your account.", ok: false },
+          { status: 400 },
+        );
+      }
+    }
+  } catch {
+    return NextResponse.json({ error: "Could not verify the audio references. Try again.", ok: false }, { status: 503 });
   }
 
   if (isExploreRecreate && referenceImageUrls.length === 0) {
@@ -330,6 +372,7 @@ export async function handleAIStudioVideoGeneration(request: Request) {
           aspectRatio,
           avatarImageUrl,
           referenceImageUrls,
+          referenceAudioUrls,
           batchIndex: index + 1,
           batchSize: quantity,
           durationSeconds,

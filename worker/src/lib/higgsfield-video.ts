@@ -14,22 +14,18 @@ const EDIT_MODEL = "bytedance/seedance-2.5/video-edit";
 const STATUS_POLL_INTERVAL_MS = 5_000;
 const STATUS_POLL_WINDOW_MS = 24 * 60_000;
 
-export async function generateHiggsfieldVideoBuffer(params: {
+type HiggsfieldVideoInput = {
   aspectRatio: "9:16" | "16:9";
   durationSeconds: number;
-  onOperationCreated: (operationId: string) => Promise<void>;
-  onOperationSucceeded: (operationId: string, outputUrl?: string) => Promise<void>;
   prompt: string;
-  providerOperationId?: string;
-  providerOutputUrl?: string;
   referenceImageUrl?: string;
   referenceImageUrls?: string[];
+  referenceAudioUrls?: string[];
   referenceVideoUrl?: string;
   resolution: "480p" | "720p" | "1080p";
-}) {
-  if (params.providerOperationId && params.providerOutputUrl && /^https:\/\//i.test(params.providerOutputUrl)) {
-    return downloadVideoToBuffer(params.providerOutputUrl);
-  }
+};
+
+export function buildHiggsfieldVideoRequest(params: HiggsfieldVideoInput) {
   if (
     !Number.isInteger(params.durationSeconds) ||
     params.durationSeconds < 4 ||
@@ -42,7 +38,8 @@ export async function generateHiggsfieldVideoBuffer(params: {
   if (
     (params.referenceImageUrl && !/^https:\/\//i.test(params.referenceImageUrl)) ||
     (params.referenceVideoUrl && !/^https:\/\//i.test(params.referenceVideoUrl)) ||
-    params.referenceImageUrls?.some((url) => !/^https:\/\//i.test(url))
+    params.referenceImageUrls?.some((url) => !/^https:\/\//i.test(url)) ||
+    params.referenceAudioUrls?.some((url) => !/^https:\/\//i.test(url))
   ) {
     throw new ProviderRequestNotSubmittedError("Seedance references require HTTPS URLs.");
   }
@@ -52,37 +49,32 @@ export async function generateHiggsfieldVideoBuffer(params: {
     );
   }
 
-  const credentials = getRequiredProviderEnv("HF_CREDENTIALS");
-  if (!/^[^:\s]+:[^:\s]+$/.test(credentials)) {
-    throw new ProviderRequestNotSubmittedError(
-      "HF_CREDENTIALS must use key-id:key-secret format.",
-    );
-  }
-
-  const client = createHiggsfieldClient({ credentials, maxRetries: 0 });
   const imageUrls = params.referenceImageUrls?.length
     ? params.referenceImageUrls
     : params.referenceImageUrl ? [params.referenceImageUrl] : [];
-  if (imageUrls.length > (params.referenceVideoUrl ? 29 : 30)) {
+  const audioUrls = params.referenceAudioUrls ?? [];
+  if (imageUrls.length + audioUrls.length + (params.referenceVideoUrl ? 1 : 0) > 30) {
     throw new ProviderRequestNotSubmittedError("Too many Seedance references.");
   }
   const model = params.referenceVideoUrl
     ? EDIT_MODEL
-    : imageUrls.length > 1 ? REFERENCE_MODEL
+    : imageUrls.length > 1 || audioUrls.length ? REFERENCE_MODEL
     : imageUrls.length === 1 ? IMAGE_MODEL : TEXT_MODEL;
   const input = params.referenceVideoUrl
     ? {
         prompt: params.prompt,
         video_url: params.referenceVideoUrl,
         ...(imageUrls.length ? { image_urls: imageUrls } : {}),
+        ...(audioUrls.length ? { audio_urls: audioUrls } : {}),
         resolution: params.resolution,
         output_format: "mp4",
         generate_audio: true,
       }
-    : imageUrls.length > 1
+    : imageUrls.length > 1 || audioUrls.length
       ? {
           prompt: params.prompt,
-          image_urls: imageUrls,
+          ...(imageUrls.length ? { image_urls: imageUrls } : {}),
+          ...(audioUrls.length ? { audio_urls: audioUrls } : {}),
           duration: params.durationSeconds,
           resolution: params.resolution,
           aspect_ratio: params.aspectRatio,
@@ -105,6 +97,24 @@ export async function generateHiggsfieldVideoBuffer(params: {
           aspect_ratio: params.aspectRatio,
           output_format: "mp4",
         };
+  return { model, input };
+}
+
+export async function generateHiggsfieldVideoBuffer(params: HiggsfieldVideoInput & {
+  onOperationCreated: (operationId: string) => Promise<void>;
+  onOperationSucceeded: (operationId: string, outputUrl?: string) => Promise<void>;
+  providerOperationId?: string;
+  providerOutputUrl?: string;
+}) {
+  if (params.providerOperationId && params.providerOutputUrl && /^https:\/\//i.test(params.providerOutputUrl)) {
+    return downloadVideoToBuffer(params.providerOutputUrl);
+  }
+  const { model, input } = buildHiggsfieldVideoRequest(params);
+  const credentials = getRequiredProviderEnv("HF_CREDENTIALS");
+  if (!/^[^:\s]+:[^:\s]+$/.test(credentials)) {
+    throw new ProviderRequestNotSubmittedError("HF_CREDENTIALS must use key-id:key-secret format.");
+  }
+  const client = createHiggsfieldClient({ credentials, maxRetries: 0 });
   const submitted = params.providerOperationId
     ? null
     : await client.subscribe(model, { input, withPolling: false });

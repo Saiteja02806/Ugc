@@ -5,6 +5,11 @@ export type VideoHistoryGroup = {
   videos: AIStudioVideoResult[];
 };
 
+export function getTodayAIStudioVideos(videos: AIStudioVideoResult[], now = new Date()) {
+  const today = startOfDay(now).getTime();
+  return videos.filter((video) => startOfDay(new Date(video.createdAt)).getTime() === today);
+}
+
 export function filterAIStudioVideoHistory(
   videos: AIStudioVideoResult[],
   query: string,

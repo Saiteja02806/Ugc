@@ -25,7 +25,7 @@ test("Seedance video edits accept a video and reference images", () => {
   assert.match(videoApi, /referenceVideoDurationSeconds,/);
   assert.match(videoApi, /referenceVideoUrl,/);
   assert.match(videoApi, /Google Omni video references are unavailable in UGC Pilot/);
-  assert.match(videoApi, /const maxImages = model === "seedance_2_5" \? \(referenceVideoUrl \? 29 : 30\) : 6/);
+  assert.match(videoApi, /const maxReferences = model === "seedance_2_5" \? 30 : 6/);
   assert.match(videoWorker, /input\.model === "seedance_2_5"[\s\S]*?"higgsfield"/);
   assert.match(videoWorker, /referenceVideoUrl: input\.referenceVideoUrl/);
   assert.match(videoWorker, /referenceImageUrls: input\.referenceImageUrls/);
@@ -75,7 +75,7 @@ test("Wall of Text Recreate carries its reference context and sends the chosen i
     videoWorkspace,
     /referenceContext\?\.type === "hook" \|\| referenceContext\?\.type === "wall_text"/,
   );
-  assert.match(videoWorkspace, /<ReferenceImageListUpload[\s\S]*?selections=\{referenceImages\}/);
+  assert.match(videoWorkspace, /<ReferenceFilesUpload[\s\S]*?selections=\{referenceFiles\}/);
   assert.match(videoWorkspace, /referenceImageUrls: referenceImages\.map\(\(image\) => image\.asset\.url\)/);
   assert.match(videoWorker, /referenceImageUrls: input\.referenceImageUrls/);
   assert.match(

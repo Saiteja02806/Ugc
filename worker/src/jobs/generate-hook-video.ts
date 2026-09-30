@@ -4,6 +4,7 @@ import {
   createGenerationRequestFingerprint,
   persistProviderSubmissionFailure,
   ProviderOperationTerminalError,
+  ProviderRequestNotSubmittedError,
   ProviderSubmissionUncertainError,
   toProviderPollingRetry,
 } from "../lib/generation-provider.js";
@@ -32,6 +33,7 @@ type GenerateHookVideoBaseInput = {
   aspectRatio: HookVideoAspectRatio;
   avatarImageUrl?: string;
   referenceImageUrls: string[];
+  referenceAudioUrls: string[];
   resolution: HookVideoResolution;
   durationSeconds: number;
   hookIdea: string;
@@ -161,6 +163,10 @@ async function generateWithFallback(
     ? "higgsfield"
     : input.model === "google_omni" ? "gemini" : preferredProvider;
 
+  if (input.referenceAudioUrls.length && selectedProvider !== "higgsfield") {
+    throw new ProviderRequestNotSubmittedError("Audio references require Seedance 2.5.");
+  }
+
   if (selectedProvider === "higgsfield") {
     return generateWithProvider(job, context, "higgsfield", "primary", input, prompt);
   }
@@ -267,6 +273,8 @@ async function generateWithProvider(
     resolution: input.resolution,
     referenceImageUrl: input.avatarImageUrl,
     referenceImageUrls: input.referenceImageUrls,
+    // Keep fingerprints of existing requests unchanged when no audio was attached.
+    ...(input.referenceAudioUrls.length ? { referenceAudioUrls: input.referenceAudioUrls } : {}),
     referenceVideoDurationSeconds: input.referenceVideoDurationSeconds ?? null,
     referenceVideoUrl: input.referenceVideoUrl ?? null,
     videoId: input.videoId,
@@ -317,6 +325,7 @@ async function generateWithProvider(
       providerOutputUrl,
       referenceImageUrl: input.avatarImageUrl,
       referenceImageUrls: input.referenceImageUrls,
+      referenceAudioUrls: input.referenceAudioUrls,
       referenceVideoDurationSeconds: input.referenceVideoDurationSeconds,
       referenceVideoUrl: input.referenceVideoUrl,
       resolution: input.resolution,
@@ -363,6 +372,7 @@ async function generateProviderBuffer(
     providerOutputUrl?: string;
     referenceImageUrl?: string;
     referenceImageUrls?: string[];
+    referenceAudioUrls?: string[];
     referenceVideoDurationSeconds?: number;
     referenceVideoUrl?: string;
     resolution: HookVideoResolution;
@@ -432,6 +442,7 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
       "9:16",
     avatarImageUrl: getOptionalHttpsUrl(job.input_json.avatarImageUrl),
     referenceImageUrls: getReferenceImageUrls(job.input_json.referenceImageUrls, job.input_json.avatarImageUrl),
+    referenceAudioUrls: getReferenceAudioUrls(job.input_json.referenceAudioUrls),
     durationSeconds: getGenerationDurationSeconds(job.input_json.durationSeconds),
     hookIdea: getText(job.input_json.hookIdea, "hookIdea", MAX_HOOK_LENGTH),
     model,
@@ -581,6 +592,18 @@ function getReferenceImageUrls(value: Json | undefined, fallback: Json | undefin
   const urls = value.map(getOptionalHttpsUrl);
   if (urls.some((url) => !url) || new Set(urls).size !== urls.length) {
     throw new Error("generate_hook_video has invalid reference images.");
+  }
+  return urls as string[];
+}
+
+function getReferenceAudioUrls(value: Json | undefined): string[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > 30) {
+    throw new Error("generate_hook_video has invalid audio references.");
+  }
+  const urls = value.map(getOptionalHttpsUrl);
+  if (urls.some((url) => !url) || new Set(urls).size !== urls.length) {
+    throw new Error("generate_hook_video has invalid audio references.");
   }
   return urls as string[];
 }

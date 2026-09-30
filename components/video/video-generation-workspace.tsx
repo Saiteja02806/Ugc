@@ -34,9 +34,8 @@ import {
   type AiStudioResultsStatus,
 } from "@/components/generation/ai-studio-results";
 import { AiStudioResultActions } from "@/components/generation/ai-studio-result-actions";
-import { ReferenceMediaUpload } from "@/components/generation/reference-media-upload";
 import { Input } from "@/components/ui/input";
-import { ReferenceImageListUpload } from "@/components/video/reference-image-list-upload";
+import { ReferenceFilesUpload } from "@/components/video/reference-files-upload";
 import { CreatorReferencePicker } from "@/components/video/creator-reference-picker";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,6 +77,8 @@ import {
 } from "@/lib/ai-studio/media-results";
 import {
   filterAIStudioVideoHistory,
+  getTodayAIStudioVideos,
+  getVideoHistoryDateLabel,
   groupAIStudioVideoHistory,
 } from "@/lib/ai-studio/video-history";
 import {
@@ -334,6 +335,8 @@ export function VideoGenerationStudioPanel({
     useState<AIStudioReferenceMedia[]>([]);
   const [uploadedVideoReference, setUploadedVideoReference] =
     useState<AIStudioReferenceMedia | null>(null);
+  const [audioReferences, setAudioReferences] = useState<AIStudioReferenceMedia[]>([]);
+  const [referenceFilesPending, setReferenceFilesPending] = useState(false);
   const [selectedCreatorReferenceId, setSelectedCreatorReferenceId] =
     useState<string | null>(null);
   const [creatorReferenceUploadPending, setCreatorReferenceUploadPending] =
@@ -350,6 +353,8 @@ export function VideoGenerationStudioPanel({
   const [generatedVideos, setGeneratedVideos] = useState<GeneratedVideo[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyQuery, setHistoryQuery] = useState("");
+  const [selectedHistoryVideoId, setSelectedHistoryVideoId] = useState<string | null>(null);
+  const [currentDay, setCurrentDay] = useState(() => new Date());
   const [resultsLoading, setResultsLoading] = useState(true);
   const [resultsError, setResultsError] = useState<string | null>(null);
   const [submittedJobIds, setSubmittedJobIds] = useState<string[]>([]);
@@ -396,10 +401,15 @@ export function VideoGenerationStudioPanel({
     ...additionalImageReferences,
   ];
   const activeReferenceImageUrl = uploadedReference?.asset.url ?? null;
-  const maxReferenceImages = model === "seedance_2_5"
-    ? (uploadedVideoReference ? 29 : 30)
-    : 6;
   const uploadedReferenceVideo = uploadedVideoReference;
+  const referenceFiles = [...referenceImages, ...(uploadedVideoReference ? [uploadedVideoReference] : []), ...audioReferences];
+
+  function handleReferenceFilesChange(selections: AIStudioReferenceMedia[]) {
+    handleImageReferencesChange(selections.filter((selection) => selection.kind === "image"));
+    const video = selections.find((selection) => selection.kind === "video") ?? null;
+    if (video?.asset.id !== uploadedVideoReference?.asset.id) handleVideoReferenceChange(video);
+    setAudioReferences(selections.filter((selection) => selection.kind === "audio"));
+  }
 
   function handleReferenceChange(selection: AIStudioReferenceMedia | null) {
     submissionKeyRef.current = null;
@@ -426,10 +436,6 @@ export function VideoGenerationStudioPanel({
       setAdditionalImageReferences([]);
       setSelectedCreatorReferenceId(null);
     } else {
-      if (referenceImages.length > 29) {
-        setAdditionalImageReferences(referenceImages.slice(1, 29));
-        setActionNotice("The video uses one of Seedance's 30 reference slots; the last image was removed.");
-      }
       const matchingDuration = AI_STUDIO_VIDEO_DURATIONS.find(
         (duration) => duration >= 4 && duration >= selection.asset.durationSeconds!,
       );
@@ -443,7 +449,11 @@ export function VideoGenerationStudioPanel({
     query.data ? [query.data] : [],
   );
   const durableJobs = queriedJobs.filter(
-    (job) => job.jobType === "video_generation",
+    (job) => job.jobType === "video_generation" && (
+      !["cancelled", "completed", "failed"].includes(job.status) ||
+      submittedJobIds.includes(job.id) ||
+      getVideoHistoryDateLabel(job.updatedAt, currentDay) === "Today"
+    ),
   );
   const failedDurableJob = durableJobs.find((job) => job.status === "failed");
   const cancelledDurableJob = durableJobs.find(
@@ -496,6 +506,26 @@ export function VideoGenerationStudioPanel({
   }, [user?.uid]);
 
   useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>;
+    let day = new Date().toDateString();
+    function updateDay() {
+      const now = new Date();
+      day = now.toDateString();
+      setCurrentDay(now);
+      setSelectedHistoryVideoId(null);
+      const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      clearTimeout(timeout);
+      timeout = setTimeout(updateDay, midnight.getTime() - now.getTime() + 100);
+    }
+    function handleFocus() {
+      if (day !== new Date().toDateString()) updateDay();
+    }
+    updateDay();
+    window.addEventListener("focus", handleFocus);
+    return () => { clearTimeout(timeout); window.removeEventListener("focus", handleFocus); };
+  }, []);
+
+  useEffect(() => {
     if (!active || authLoading) {
       return;
     }
@@ -531,6 +561,7 @@ export function VideoGenerationStudioPanel({
 
         if (!ignore) {
           setGeneratedVideos(getAIStudioVideoResults(assets));
+          setSelectedHistoryVideoId(null);
           setSubmittedJobIds([]);
           setIgnoredPersistedJobId(null);
           setStoredJobIds(getStoredVideoJobIds(user.uid));
@@ -724,6 +755,7 @@ export function VideoGenerationStudioPanel({
       generationLocked ||
       hasInsufficientCredits ||
       !trimmedPrompt ||
+      referenceFilesPending || creatorReferenceUploadPending ||
       isGenerating || submittingRef.current
     ) {
       return;
@@ -762,6 +794,8 @@ export function VideoGenerationStudioPanel({
           aspectRatio,
           avatarImageUrl: activeReferenceImageUrl,
           referenceImageUrls: referenceImages.map((image) => image.asset.url),
+          referenceAudioUrls: audioReferences.map((audio) => audio.asset.url),
+          referenceAudioAssetIds: audioReferences.map((audio) => audio.asset.id),
           durationSeconds,
           idempotencyKey,
           model,
@@ -805,6 +839,7 @@ export function VideoGenerationStudioPanel({
       }
       const jobIds = data.jobs.map((job) => job.jobId);
       setStoredJobIds(jobIds);
+      setSelectedHistoryVideoId(null);
       setSubmittedJobIds(jobIds);
       if (data.partial) {
         setActionNotice(data.message);
@@ -934,8 +969,12 @@ export function VideoGenerationStudioPanel({
     historyQuery,
   );
   const historyGroups = groupAIStudioVideoHistory(filteredHistoryVideos);
+  const todayVideos = getTodayAIStudioVideos(generatedVideos, currentDay);
+  const selectedHistoryVideo = generatedVideos.find((video) => video.id === selectedHistoryVideoId);
+  const visibleVideos = selectedHistoryVideo ? [selectedHistoryVideo] : todayVideos;
 
   function focusHistoryVideo(videoId: string) {
+    setSelectedHistoryVideoId(videoId);
     setHistoryOpen(false);
 
     window.requestAnimationFrame(() => {
@@ -958,13 +997,17 @@ export function VideoGenerationStudioPanel({
     >
       <AiStudioResults
         ariaLabel="Generated videos"
-        emptyDescription="Describe the video you want below. Finished generations are saved to your account."
+        emptyDescription="Start a new video below. Your earlier generations are in History."
         gridClassName="grid-cols-1 sm:grid-cols-1 lg:grid-cols-1 xl:grid-cols-1 2xl:grid-cols-1"
-        hasResults={generatedVideos.length > 0 || isGenerating}
+        hasResults={visibleVideos.length > 0 || isGenerating}
         loading={resultsLoading}
         status={resultsStatus}
         toolbar={
-          <Button
+          <div className="flex items-center gap-2">
+            {selectedHistoryVideo ? (
+              <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedHistoryVideoId(null)}>Back to today</Button>
+            ) : null}
+            <Button
             type="button"
             variant="outline"
             size="sm"
@@ -978,7 +1021,8 @@ export function VideoGenerationStudioPanel({
                 {generatedVideos.length}
               </span>
             ) : null}
-          </Button>
+            </Button>
+          </div>
         }
       >
         {isGenerating
@@ -995,7 +1039,7 @@ export function VideoGenerationStudioPanel({
               ),
             )
           : null}
-        {generatedVideos.map((video) => (
+        {visibleVideos.map((video) => (
           <VideoResultCard
             key={video.id}
             video={video}
@@ -1011,7 +1055,7 @@ export function VideoGenerationStudioPanel({
         onSelectVideo={focusHistoryVideo}
         open={historyOpen}
         query={historyQuery}
-        selectedVideoId={latestCompletedVideoId}
+        selectedVideoId={selectedHistoryVideoId ?? latestCompletedVideoId}
       />
 
       <AiStudioComposer
@@ -1064,6 +1108,7 @@ export function VideoGenerationStudioPanel({
           hasInsufficientCredits ||
           !prompt.trim() ||
           creatorReferenceUploadPending ||
+          referenceFilesPending ||
           isGenerating
         }
         generateLabel="Generate video"
@@ -1072,25 +1117,15 @@ export function VideoGenerationStudioPanel({
         layout="unified"
         showPromptHint={generationLocked || hasInsufficientCredits}
         leadingControl={
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <ReferenceImageListUpload
+            <ReferenceFilesUpload
               active={active}
+              allowedKinds={model === "seedance_2_5" && !isExploreRecreate ? ["image", "video", "audio"] : ["image"]}
               disabled={generationLocked || isGenerating || creatorReferenceUploadPending}
-              maxImages={maxReferenceImages}
-              selections={referenceImages}
-              onChange={handleImageReferencesChange}
+              maxFiles={model === "seedance_2_5" ? 30 : 6}
+              selections={referenceFiles}
+              onChange={handleReferenceFilesChange}
+              onPendingChange={setReferenceFilesPending}
             />
-            {!isExploreRecreate && model === "seedance_2_5" ? (
-              <ReferenceMediaUpload
-                active={active}
-                allowedKinds={["video"]}
-                disabled={generationLocked || isGenerating || creatorReferenceUploadPending}
-                maxVideoDurationSeconds={model === "seedance_2_5" ? 30 : 3}
-                selection={uploadedVideoReference}
-                onChange={handleVideoReferenceChange}
-              />
-            ) : null}
-          </div>
         }
         maxLength={AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH}
         name="videoPrompt"
@@ -1143,7 +1178,7 @@ export function VideoGenerationStudioPanel({
           <>
             <AiStudioSettingSelect
               ariaLabel="Video model"
-              disabled={generationLocked || isGenerating}
+              disabled={generationLocked || isGenerating || referenceFilesPending}
               size="sm"
               options={AI_STUDIO_VIDEO_MODELS.map((value) => ({
                 label:
@@ -1157,6 +1192,10 @@ export function VideoGenerationStudioPanel({
                   setDurationSeconds(5);
                 }
                 if (value === "google_omni") {
+                  if (audioReferences.length) {
+                    setAudioReferences([]);
+                    setActionNotice("Audio references were removed. Select Seedance 2.5 to use audio.");
+                  }
                   if (uploadedVideoReference) {
                     setUploadedVideoReference(null);
                     setActionNotice("Removed the video reference. Select Seedance 2.5 to use a video together with images.");
@@ -1215,7 +1254,8 @@ export function VideoGenerationStudioPanel({
               active={active}
               iconOnly
               disabled={
-                generationLocked || isGenerating || creatorReferenceUploadPending
+                generationLocked || isGenerating || creatorReferenceUploadPending || referenceFilesPending ||
+                (!uploadedReference && referenceFiles.length >= (model === "seedance_2_5" ? 30 : 6))
               }
               selection={uploadedReference}
               selectedCreatorId={selectedCreatorReferenceId}

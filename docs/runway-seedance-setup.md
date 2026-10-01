@@ -57,6 +57,21 @@ rewrite applied migrations.
 
 ## Verification and deployment
 
+Terminal provider failures retain a structured job error code. Safety failures
+use `PROVIDER_CONTENT_MODERATION`; other terminal failures use
+`provider_operation_failed`. The provider operation and background job retain
+the same category, and neither is replayed as a new paid generation.
+The public job contract shows an allowlisted explanation, not raw diagnostics,
+request identifiers, secrets or speculative claims about a triggering input.
+It also recognizes known historical Runway `JOB_FAILED` signatures without
+rewriting database rows. The existing Wall privacy boundary is unchanged.
+The moderation message identifies the category without guessing which input
+triggered it. An unavailable moderation service is not classified as a rejection.
+Other failures retain their known timeout/upload/queue reasons; unknown reasons
+are identified honestly and retry advice follows the actual retry eligibility.
+This error-reporting change does not alter prompts, references, model routing,
+moderation settings, generation, credit settlement or subscription pricing.
+
 `npm --prefix worker run test:seedance` covers request construction, paid-request
 containment, legacy recovery and provider routing without paid API calls.
 Deploy Git source, check migrations (no new provider/schema migration required),

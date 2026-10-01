@@ -342,7 +342,7 @@ async function generateWithProvider(
   } catch (error) {
     if (error instanceof ProviderOperationTerminalError) {
       await context.store.markGenerationProviderFailed({
-        errorCode: "provider_operation_failed",
+        errorCode: error.code,
         errorMessage: error.message,
         jobId: job.id,
         operationKey,

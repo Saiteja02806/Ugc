@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mock, test } from "node:test";
 import type RunwayML from "@runwayml/sdk";
 import { buildRunwaySeedanceRequest, generateRunwaySeedanceVideoBuffer } from "./runway-seedance-video.js";
-import { ProviderRequestNotSubmittedError } from "./generation-provider.js";
+import { ProviderOperationTerminalError, ProviderRequestNotSubmittedError } from "./generation-provider.js";
 
 const base = { aspectRatio: "9:16" as const, durationSeconds: 5, resolution: "720p" as const, prompt: "A creator explains the product" };
 const image = "https://storage.example.com/portrait.jpg";
@@ -105,4 +105,41 @@ test("an exhausted budget is a known non-submission, not uncertain acceptance", 
     onOperationCreated: async () => {}, onOperationSucceeded: async () => {},
   }, fakeClient(events, 1_000_000)), ProviderRequestNotSubmittedError);
   assert.deepEqual(events, ["budget"]);
+});
+
+test("a resumed moderation failure retains its reason without creating or downloading another video", async () => {
+  const events: string[] = [];
+  const client = fakeClient(events);
+  const task = {
+    id: "rejected-task",
+    status: "FAILED",
+    failure: "Your request was blocked by this model provider's content moderation system.",
+    failureCode: "INPUT_PREPROCESSING.SAFETY.THIRD_PARTY",
+  };
+  const retrieveMock = mock.method(client.tasks, "retrieve", async (id: string) => {
+    events.push(`poll:${id}`);
+    return task;
+  });
+  const fetchMock = mock.method(globalThis, "fetch", async () => {
+    throw new Error("A rejected task must not download an output");
+  });
+  try {
+    await assert.rejects(generateRunwaySeedanceVideoBuffer({
+      ...base,
+      providerOperationId: task.id,
+      onOperationCreated: async () => { throw new Error("Duplicate paid submission"); },
+      onOperationSucceeded: async () => { throw new Error("A rejected task is not successful"); },
+    }, client), (error) => {
+      assert.ok(error instanceof ProviderOperationTerminalError);
+      assert.equal(error.code, "PROVIDER_CONTENT_MODERATION");
+      assert.equal(error.details, task);
+      assert.match(error.message, /blocked by .*content moderation system/);
+      return true;
+    });
+    assert.deepEqual(events, ["poll:rejected-task"]);
+    assert.equal(fetchMock.mock.callCount(), 0);
+  } finally {
+    retrieveMock.mock.restore();
+    fetchMock.mock.restore();
+  }
 });

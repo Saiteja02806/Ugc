@@ -6,9 +6,22 @@ import {
   assertProviderOperationCanContinue,
   createGenerationRequestFingerprint,
   persistProviderSubmissionFailure,
+  ProviderOperationTerminalError,
   ProviderSubmissionUncertainError,
 } from "./generation-provider.js";
 import type { SupabaseJobStore } from "./supabase.js";
+
+test("terminal provider failures carry a structured code for durable job reporting", () => {
+  for (const failureCode of ["INPUT_PREPROCESSING.SAFETY.THIRD_PARTY", "INPUT_PREPROCESSING.SAFETY.TEXT", "SAFETY.INPUT.IMAGE", "SAFETY.OUTPUT.TEXT"]) {
+    const details = { failureCode, failure: "private provider diagnostics" };
+    const error = new ProviderOperationTerminalError("Runway task failed: content moderation", details);
+    assert.equal(error.code, "PROVIDER_CONTENT_MODERATION");
+    assert.equal(error.details, details);
+  }
+  for (const details of [undefined, null, { failureCode: "INPUT_PREPROCESSING.INTERNAL" }, { failureCode: "THIRD_PARTY.UNAVAILABLE" }, { failureCode: 123 }]) {
+    assert.equal(new ProviderOperationTerminalError("Provider failed", details).code, "provider_operation_failed");
+  }
+});
 
 test("uses a stable fingerprint for the same provider request", () => {
   assert.equal(

@@ -117,12 +117,14 @@ export function isTerminalBackgroundJobStatus(status: BackgroundJobStatus) {
 }
 
 export function isRetryableBackgroundJob(job: BackgroundJobRecord) {
+  const errorCode = getPublicJobErrorCode(job);
   // A provider's terminal failure needs a new, explicitly requested generation.
   // Replaying this job cannot revive its saved provider operation.
   if (
-    job.errorCode === "PROVIDER_INSUFFICIENT_CREDITS" ||
-    job.errorCode === "provider_submission_uncertain" ||
-    job.errorCode === "provider_operation_failed" ||
+    errorCode === "PROVIDER_CONTENT_MODERATION" ||
+    errorCode === "PROVIDER_INSUFFICIENT_CREDITS" ||
+    errorCode === "provider_submission_uncertain" ||
+    errorCode === "provider_operation_failed" ||
     isProviderBalanceFailure(job.errorMessage) ||
     /ended with status (?:failed|moderated|nsfw|canceled|cancelled)/i.test(job.errorMessage ?? "")
   ) {
@@ -136,6 +138,8 @@ export function isRetryableBackgroundJob(job: BackgroundJobRecord) {
 
 export function getPublicBackgroundJob(job: BackgroundJobRecord) {
   const hideWallTextFailureDetails = isWallTextJob(job.jobType);
+  const errorCode = getPublicJobErrorCode(job);
+  const retryable = isRetryableBackgroundJob(job);
   return {
     cancelRequestedAt: job.cancelRequestedAt,
     completedAt: job.completedAt,
@@ -145,11 +149,11 @@ export function getPublicBackgroundJob(job: BackgroundJobRecord) {
         ? {
             code: hideWallTextFailureDetails
               ? "CONTENT_PREPARATION_UNAVAILABLE"
-              : job.errorCode || "JOB_FAILED",
+              : errorCode,
             message: hideWallTextFailureDetails
               ? "We’re handling content preparation automatically. No action is needed from you."
-            : getSafeJobErrorMessage(job.errorCode, job.errorMessage),
-            retryable: isRetryableBackgroundJob(job),
+              : getSafeJobErrorMessage(errorCode, job.errorMessage, retryable),
+            retryable,
           }
         : null,
     failedAt: job.failedAt,
@@ -179,34 +183,61 @@ function isWallTextJob(jobType: BackgroundJobType) {
 function getSafeJobErrorMessage(
   errorCode: string | null,
   errorMessage: string | null,
+  retryable: boolean,
 ) {
   if (
     errorCode === "PROVIDER_INSUFFICIENT_CREDITS" ||
     isProviderBalanceFailure(errorMessage)
   ) {
-    return "Higgsfield's API balance is too low to create this video. Add funds in Higgsfield, then start a new generation. Your UGC Pilot credits were released.";
+    return "The video provider's credit balance is too low to create this video. Contact support before starting a new generation.";
   }
 
   switch (errorCode) {
+    case "PROVIDER_CONTENT_MODERATION":
+      return "The model provider blocked this generation through content moderation. Review your prompt and reference media before starting a new generation.";
     case "provider_submission_uncertain":
-      return "The provider could not confirm this request. Check its status in Higgsfield before starting another generation to avoid a duplicate charge.";
+      return "The provider could not confirm this request. Contact support to check its status before starting another generation to avoid a duplicate charge.";
     case "provider_operation_failed":
-      return "The provider rejected this generation. Review your prompt and references, then start a new generation.";
+      return "The model provider could not complete this generation. This request cannot be resumed. Start a new generation, or contact support if it fails again.";
     case "CANCELLED":
       return "This job was cancelled.";
     case "INPUT_INVALID":
       return "The job input is no longer valid.";
     case "OUTPUT_UPLOAD_FAILED":
-      return "The generated output could not be saved. You can retry the job.";
+      return `The generated output could not be saved. ${getRetryGuidance(retryable)}`;
     case "PROVIDER_TIMEOUT":
-      return "The generation provider timed out. You can retry the job.";
+      return `The generation provider timed out. ${getRetryGuidance(retryable)}`;
     case "QUEUE_DELIVERY_FAILED":
-      return "The job could not be started. You can retry it.";
+      return `The job could not be started. ${getRetryGuidance(retryable)}`;
     case "WORKER_STALLED":
-      return "The job stopped responding. You can retry it.";
+      return `The job stopped responding. ${getRetryGuidance(retryable)}`;
     default:
-      return "The job could not be completed. You can retry it if attempts remain.";
+      return `The job failed, but the cause could not be identified automatically. ${getRetryGuidance(retryable)}`;
   }
+}
+
+function getRetryGuidance(retryable: boolean) {
+  return retryable
+    ? "You can retry the job."
+    : "This job cannot be retried. Contact support with this job's ID.";
+}
+
+function getPublicJobErrorCode(job: BackgroundJobRecord) {
+  const code = job.errorCode || "JOB_FAILED";
+  // Older video workers persisted terminal provider errors as JOB_FAILED.
+  // Recognize only known signatures; never publish arbitrary stored diagnostics.
+  if (
+    (code === "JOB_FAILED" || code === "provider_operation_failed") &&
+    (job.jobType === "generate_hook_video" || job.jobType === "video_generation")
+  ) {
+    if (/^Runway task failed: .*\bblocked by .*content moderation system\b/i.test(job.errorMessage ?? "")) {
+      return "PROVIDER_CONTENT_MODERATION";
+    }
+    if (/^Runway task (?:failed:|was cancelled\.)/i.test(job.errorMessage ?? "")) {
+      return "provider_operation_failed";
+    }
+  }
+  return code;
 }
 
 function isProviderBalanceFailure(errorMessage: string | null) {

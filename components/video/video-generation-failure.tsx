@@ -10,17 +10,21 @@ export function VideoGenerationFailure({
   message,
   jobId,
   onDismiss,
+  dismissLabel = "Dismiss",
   onEditPrompt,
   onRetry,
   retrying = false,
+  retryDisabled = retrying,
 }: {
   title: string;
   message: string;
   jobId?: string;
   onDismiss?: () => void;
+  dismissLabel?: string;
   onEditPrompt?: () => void;
   onRetry?: () => void;
   retrying?: boolean;
+  retryDisabled?: boolean;
 }) {
   const titleId = useId();
   const messageId = useId();
@@ -49,7 +53,7 @@ export function VideoGenerationFailure({
       {onRetry || onEditPrompt || onDismiss ? (
         <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border pt-4">
           {onRetry ? (
-            <Button type="button" size="lg" disabled={retrying} onClick={onRetry} className="px-3.5">
+            <Button type="button" size="lg" disabled={retryDisabled} onClick={onRetry} className="px-3.5">
               <RotateCcw className="size-4" aria-hidden="true" />
               {retrying ? "Retrying…" : "Retry generation"}
             </Button>
@@ -62,7 +66,7 @@ export function VideoGenerationFailure({
           ) : null}
           {onDismiss ? (
             <Button type="button" variant="ghost" size="lg" onClick={onDismiss} className="px-3.5 sm:ml-auto">
-              Dismiss
+              {dismissLabel}
             </Button>
           ) : null}
         </div>

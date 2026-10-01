@@ -24,7 +24,7 @@ export function VideoFailurePreview() {
         <h1 className="text-2xl font-semibold tracking-tight">AI Studio</h1>
         <p className="mt-1 text-sm text-muted">Create platform-ready images and presenter videos from a prompt.</p>
         <div className="mt-3 flex flex-wrap gap-2" aria-label="Local preview scenarios">
-          {[["moderation", "Moderation"], ["retryable", "Retryable"], ["partial", "Partial batch"]].map(([value, label]) => (
+          {[["moderation", "Moderation"], ["retryable", "Retryable"], ["partial", "Partial batch"], ["mixed", "Mixed failures"]].map(([value, label]) => (
             <Button key={value} type="button" variant="outline" size="sm" aria-pressed={scenario === value} onClick={() => { setScenario(value); setDismissed(false); setRetrying(false); }}>{label}</Button>
           ))}
         </div>
@@ -35,15 +35,21 @@ export function VideoFailurePreview() {
         hasResults={scenario === "partial"}
         status={dismissed ? null : { tone: "error", label: message }}
         toolbar={<Button type="button" variant="outline" size="sm" className="rounded-full"><History aria-hidden="true" />History</Button>}
-        failure={<VideoGenerationFailure
+        failure={<div className="space-y-3"><VideoGenerationFailure
           title={scenario === "moderation" ? "Generation blocked" : "Video couldn't be generated"}
           message={message}
           jobId="7330fb5c-938c-474e-826c-3b7089609373"
           onDismiss={() => setDismissed(true)}
+          dismissLabel={scenario === "mixed" ? "Dismiss all" : "Dismiss"}
           onEditPrompt={() => document.querySelector<HTMLTextAreaElement>('textarea[name="videoPrompt"]')?.focus()}
           onRetry={scenario === "moderation" ? undefined : () => setRetrying(true)}
           retrying={retrying}
-        />}
+        />{scenario === "mixed" ? <VideoGenerationFailure
+          title="Generation blocked"
+          message="The model provider blocked this generation through content moderation. Review your prompt and reference media before starting a new generation."
+          jobId="00000000-0000-4000-8000-000000000002"
+          onEditPrompt={() => document.querySelector<HTMLTextAreaElement>('textarea[name="videoPrompt"]')?.focus()}
+        /> : null}</div>}
       >
         <div className="mx-auto rounded-xl border border-border bg-card p-6">Successful video result remains visible</div>
       </AiStudioResults>

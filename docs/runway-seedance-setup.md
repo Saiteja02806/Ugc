@@ -72,6 +72,9 @@ shown only for the displayed failed job when its public error is retryable and
 generation access permits it; moderation failures do not offer a replay button.
 All recovery actions are non-submit buttons. The composer retains Generate,
 active-job Cancel and the existing access controls.
+Mixed failed batches show each job's public reason and its own eligible Retry
+action. A single `Dismiss all` action preserves the existing batch dismissal;
+a blocked sibling never hides another job's recoverable retry.
 
 The image workspace does not opt into this failure panel and retains its
 existing behavior. Reasons and job IDs wrap at narrow widths. The dev-only

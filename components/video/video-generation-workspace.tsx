@@ -967,6 +967,9 @@ export function VideoGenerationStudioPanel({
     durableNotice === resultsErrorMessage
       ? failedDurableJob
       : undefined;
+  const displayedFailedJobs = displayedFailedJob
+    ? durableJobs.filter((job) => job.status === "failed")
+    : [];
 
   function focusVideoPrompt() {
     document
@@ -1012,21 +1015,35 @@ export function VideoGenerationStudioPanel({
         loading={resultsLoading}
         status={resultsStatus}
         failure={resultsErrorMessage && !isGenerating ? (
-          <VideoGenerationFailure
-            title={displayedFailedJob?.error?.code === "PROVIDER_CONTENT_MODERATION"
-              ? "Generation blocked"
-              : jobQueryError || resultsError === resultsErrorMessage
-                ? "Couldn't load your generation"
-                : "Video couldn't be generated"}
-            message={resultsErrorMessage}
-            jobId={displayedFailedJob?.id}
-            onEditPrompt={jobQueryError || resultsError === resultsErrorMessage ? undefined : focusVideoPrompt}
-            onDismiss={resultsError === resultsErrorMessage ? undefined : dismissFinishedGeneration}
-            onRetry={displayedFailedJob?.error?.retryable && !generationLocked
-              ? () => void handleRetryGeneration(displayedFailedJob.id)
-              : undefined}
-            retrying={retryJob.isPending}
-          />
+          <div className="space-y-3">
+            {displayedFailedJobs.length > 0 ? displayedFailedJobs.map((failedJob, index) => (
+              <VideoGenerationFailure
+                key={failedJob.id}
+                title={failedJob.error?.code === "PROVIDER_CONTENT_MODERATION"
+                  ? "Generation blocked"
+                  : "Video couldn't be generated"}
+                message={failedJob.error?.message || "Video generation failed. The provider did not return a failure reason."}
+                jobId={failedJob.id}
+                onEditPrompt={focusVideoPrompt}
+                onDismiss={index === 0 ? dismissFinishedGeneration : undefined}
+                dismissLabel={displayedFailedJobs.length > 1 ? "Dismiss all" : "Dismiss"}
+                onRetry={failedJob.error?.retryable && !generationLocked
+                  ? () => void handleRetryGeneration(failedJob.id)
+                  : undefined}
+                retrying={retryJob.isPending && retryJob.variables === failedJob.id}
+                retryDisabled={retryJob.isPending}
+              />
+            )) : (
+              <VideoGenerationFailure
+                title={jobQueryError || resultsError === resultsErrorMessage
+                  ? "Couldn't load your generation"
+                  : "Video couldn't be generated"}
+                message={resultsErrorMessage}
+                onEditPrompt={jobQueryError || resultsError === resultsErrorMessage ? undefined : focusVideoPrompt}
+                onDismiss={resultsError === resultsErrorMessage ? undefined : dismissFinishedGeneration}
+              />
+            )}
+          </div>
         ) : undefined}
         toolbar={
           <div className="flex items-center gap-2">

@@ -115,8 +115,8 @@ export function AiStudioResults({
           {children}
         </div>
       ) : showFailure ? (
-        <div className="flex min-h-[360px] flex-1 items-center justify-center px-1 pb-12 pt-8 sm:px-5 md:min-h-0">
-          <div className="w-full max-w-xl">{failure}</div>
+        <div className="flex min-h-[360px] flex-1 flex-col px-1 pb-12 pt-8 sm:px-5 md:min-h-0">
+          <div className="my-auto w-full max-w-xl shrink-0 self-center">{failure}</div>
         </div>
       ) : status?.tone === "progress" ? (
         <Empty

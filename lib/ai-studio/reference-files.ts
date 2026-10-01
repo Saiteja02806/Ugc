@@ -28,5 +28,6 @@ export function validateReferenceFileBatch(
   }
   if (existingKinds.length + kinds.length > maxFiles) return `You can attach up to ${maxFiles} reference files in UGC Pilot.`;
   if ([...existingKinds, ...kinds].filter((kind) => kind === "video").length > 1) return "Attach one reference video. Remove the current video to replace it.";
+  if ([...existingKinds, ...kinds].filter((kind) => kind === "audio").length > 10) return "Runway Seedance 2.5 accepts up to 10 audio references.";
   return null;
 }

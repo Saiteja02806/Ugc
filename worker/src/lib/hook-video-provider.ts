@@ -1,0 +1,19 @@
+import { assertProviderOperationCanContinue, ProviderRequestNotSubmittedError } from "./generation-provider.js";
+import { DEFAULT_HOOK_VIDEO_PROVIDER, type HookVideoProvider } from "./ugc-video-prompt.js";
+
+export function resolveHookVideoProvider(input: {
+  model?: "seedance_2_5" | "google_omni";
+  provider?: HookVideoProvider;
+}, legacyOperation: { provider_operation_id: string | null; status: string } | null) {
+  if (legacyOperation) {
+    // A paid or uncertain legacy operation cannot become a fresh Runway task.
+    assertProviderOperationCanContinue({ operation: legacyOperation, shouldSubmit: false });
+    return "higgsfield" as const;
+  }
+  if (input.model === "seedance_2_5") return "runway" as const;
+  if (input.model === "google_omni") return "gemini" as const;
+  if (input.provider === "higgsfield") {
+    throw new ProviderRequestNotSubmittedError("Higgsfield no longer accepts new generations. Select Runway Seedance 2.5.");
+  }
+  return input.provider ?? DEFAULT_HOOK_VIDEO_PROVIDER;
+}

@@ -201,13 +201,13 @@ variable "gemini_api_key_secret_id" {
 }
 
 variable "runwayml_api_secret_id" {
-  description = "Secret Manager secret ID injected as RUNWAYML_API_SECRET for Runway hook-video fallback."
+  description = "Secret Manager secret ID injected as RUNWAYML_API_SECRET for Seedance 2.5 and legacy Runway hook generation."
   type        = string
   default     = "runwayml-api-secret"
 }
 
 variable "higgsfield_credentials_secret_id" {
-  description = "Optional Secret Manager secret ID injected as HF_CREDENTIALS for Seedance 2.5 video generation."
+  description = "Optional Secret Manager secret ID injected as HF_CREDENTIALS for read-only recovery of historical Higgsfield requests."
   type        = string
   default     = ""
 }
@@ -215,7 +215,7 @@ variable "higgsfield_credentials_secret_id" {
 variable "runway_daily_credit_limit" {
   description = "Maximum Runway credits the worker may spend during one UTC calendar day."
   type        = number
-  default     = 100
+  default     = 5000
 
   validation {
     condition     = var.runway_daily_credit_limit > 0 && floor(var.runway_daily_credit_limit) == var.runway_daily_credit_limit

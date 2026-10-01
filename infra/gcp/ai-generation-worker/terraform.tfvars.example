@@ -49,7 +49,7 @@ gemini_omni_model        = "gemini-omni-1.1-flash"
 gemini_api_key_secret_id = "gemini-api-key"
 runwayml_api_secret_id   = "runwayml-api-secret"
 higgsfield_credentials_secret_id = "" # Secret Manager ID containing key-id:key-secret.
-runway_daily_credit_limit = 100
+runway_daily_credit_limit = 5000
 internal_app_url          = "https://getugcpilot.com"
 scheduling_secret_id     = "ugc-internal-scheduling-secret"
 

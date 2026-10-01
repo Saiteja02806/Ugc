@@ -1182,7 +1182,7 @@ export function VideoGenerationStudioPanel({
               size="sm"
               options={AI_STUDIO_VIDEO_MODELS.map((value) => ({
                 label:
-                  value === "seedance_2_5" ? "Seedance 2.5" : "Omni Flash 1.1",
+                  value === "seedance_2_5" ? "Runway · Seedance 2.5" : "Omni Flash 1.1",
                 value,
               }))}
               value={model}

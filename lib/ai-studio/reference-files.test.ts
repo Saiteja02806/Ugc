@@ -21,3 +21,6 @@ test("does not accept two edit videos in one batch or across separate uploads", 
   assert.match(validateReferenceFileBatch(["video/mp4", "video/webm"], [], ["image", "video", "audio"], 30)!, /one reference video/);
   assert.match(validateReferenceFileBatch(["video/mp4"], ["video"], ["image", "video", "audio"], 30)!, /Remove the current video/);
 });
+test("rejects more than ten audio references before uploading", () => {
+  assert.match(validateReferenceFileBatch(Array(11).fill("audio/mpeg"), [], ["image", "video", "audio"], 30) ?? "", /10 audio/);
+});

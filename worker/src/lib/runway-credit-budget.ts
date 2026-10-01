@@ -10,6 +10,17 @@ const RUNWAY_HOOK_VIDEO_DURATION_SECONDS = 4;
 
 type RunwayVideoModel = keyof typeof RUNWAY_VIDEO_CREDITS_PER_SECOND;
 
+export function estimateRunwaySeedanceCredits(
+  resolution: "480p" | "720p",
+  durationSeconds: number,
+  referenceVideoDurationSeconds = 0,
+) {
+  // Seedance 2.5: output 20/30 credits/sec, input video 10/15, minimum 80.
+  const outputRate = resolution === "480p" ? 20 : 30;
+  const inputRate = resolution === "480p" ? 10 : 15;
+  return Math.max(80, outputRate * durationSeconds + inputRate * Math.ceil(referenceVideoDurationSeconds));
+}
+
 type RunwayUsageReader = {
   retrieve(): PromiseLike<{
     usage: {
@@ -83,7 +94,7 @@ export async function assertRunwayDailyCreditBudget(
       0,
     ),
   );
-  const estimatedCreditsFromDailyGenerations = (
+  const hookCreditsFromDailyGenerations = (
     Object.keys(RUNWAY_VIDEO_CREDITS_PER_SECOND) as RunwayVideoModel[]
   ).reduce((total, model) => {
     const dailyGenerations = Math.max(
@@ -97,6 +108,10 @@ export async function assertRunwayDailyCreditBudget(
         estimateRunwayVideoCredits(model, RUNWAY_HOOK_VIDEO_DURATION_SECONDS)
     );
   }, 0);
+  // Seedance counters do not include duration/quality; use its minimum as a
+  // lag fallback, with detailed usage remaining authoritative when larger.
+  const estimatedCreditsFromDailyGenerations = hookCreditsFromDailyGenerations +
+    Math.max(0, organization.usage.models.seedance2_5?.dailyGenerations ?? 0) * 80;
   const usedCredits = Math.max(
     reportedCredits,
     estimatedCreditsFromDailyGenerations,

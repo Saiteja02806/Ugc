@@ -208,6 +208,9 @@ export async function handleAIStudioVideoGeneration(request: Request) {
     );
   }
   const maxReferences = model === "seedance_2_5" ? 30 : 6;
+  if (model === "seedance_2_5" && referenceAudioUrls.length > 10) {
+    return NextResponse.json({ error: "Runway Seedance 2.5 accepts up to 10 audio references.", ok: false }, { status: 400 });
+  }
   if (referenceImageUrls.length + referenceAudioUrls.length + (referenceVideoUrl ? 1 : 0) > maxReferences) {
     return NextResponse.json(
       { error: `This model accepts up to ${maxReferences} reference files in UGC Pilot.`, ok: false },
@@ -222,6 +225,7 @@ export async function handleAIStudioVideoGeneration(request: Request) {
     );
   }
 
+  let referenceAudioDurationSeconds = 0;
   try {
     for (let index = 0; index < referenceAudioAssetIds.length; index++) {
       const asset = await getMediaAssetForOwner({ assetId: referenceAudioAssetIds[index] as string, userId: user.uid });
@@ -232,9 +236,15 @@ export async function handleAIStudioVideoGeneration(request: Request) {
           { status: 400 },
         );
       }
+      referenceAudioDurationSeconds += asset.duration_seconds;
     }
   } catch {
     return NextResponse.json({ error: "Could not verify the audio references. Try again.", ok: false }, { status: 503 });
+  }
+
+  if (model === "seedance_2_5" && referenceAudioUrls.length &&
+      referenceAudioDurationSeconds + (referenceVideoDurationSeconds ?? 0) >= 30) {
+    return NextResponse.json({ error: "Seedance audio and video references must total less than 30 seconds.", ok: false }, { status: 400 });
   }
 
   if (isExploreRecreate && referenceImageUrls.length === 0) {

@@ -9,8 +9,10 @@ import {
   toProviderPollingRetry,
 } from "../lib/generation-provider.js";
 import { generateRunwayHookVideoBuffer } from "../lib/runway-video.js";
+import { generateRunwaySeedanceVideoBuffer } from "../lib/runway-seedance-video.js";
+import { resolveHookVideoProvider } from "../lib/hook-video-provider.js";
 import { generateGeminiOmniVideoBuffer } from "../lib/gemini-omni-video.js";
-import { generateHiggsfieldVideoBuffer } from "../lib/higgsfield-video.js";
+import { resumeLegacyHiggsfieldVideoBuffer } from "../lib/higgsfield-video.js";
 import { getStoredObject, uploadBufferToStorage } from "../lib/storage.js";
 import {
   buildVideoGenerationPrompt,
@@ -130,7 +132,7 @@ export async function runGenerateHookVideoJob(
   await context.store.markGenerationOutputPersisted({
     jobId: job.id,
     metadata: {
-      durationSeconds: getOutputDurationSeconds(input),
+      durationSeconds: getOutputDurationSeconds(input, provider),
       provider,
       ratio: input.aspectRatio,
     },
@@ -158,12 +160,12 @@ async function generateWithFallback(
   input: GenerateHookVideoInput,
   prompt: string,
 ) {
-  const preferredProvider = input.provider ?? DEFAULT_HOOK_VIDEO_PROVIDER;
-  const selectedProvider = input.model === "seedance_2_5"
-    ? "higgsfield"
-    : input.model === "google_omni" ? "gemini" : preferredProvider;
+  const legacyOperation = input.model === "seedance_2_5" || input.provider === "higgsfield"
+    ? await context.store.getGenerationProviderOperation({ jobId: job.id, operationKey: "primary-higgsfield" })
+    : null;
+  const selectedProvider = resolveHookVideoProvider(input, legacyOperation);
 
-  if (input.referenceAudioUrls.length && selectedProvider !== "higgsfield") {
+  if (input.referenceAudioUrls.length && input.model !== "seedance_2_5" && selectedProvider !== "higgsfield") {
     throw new ProviderRequestNotSubmittedError("Audio references require Seedance 2.5.");
   }
 
@@ -319,6 +321,7 @@ async function generateWithProvider(
     const params = {
       aspectRatio: input.aspectRatio,
       durationSeconds: input.durationSeconds,
+      model: input.model,
       onOperationCreated,
       prompt,
       providerOperationId,
@@ -366,6 +369,7 @@ async function generateProviderBuffer(
   params: {
     aspectRatio: HookVideoAspectRatio;
     durationSeconds: number;
+    model?: "google_omni" | "seedance_2_5";
     onOperationCreated: (operationId: string) => Promise<void>;
     prompt: string;
     providerOperationId?: string;
@@ -387,10 +391,13 @@ async function generateProviderBuffer(
   }
 
   if (provider === "higgsfield") {
-    return generateHiggsfieldVideoBuffer({ ...params, onOperationSucceeded });
+    return resumeLegacyHiggsfieldVideoBuffer({ ...params, onOperationSucceeded });
   }
 
   if (provider === "runway") {
+    if (params.model === "seedance_2_5") {
+      return generateRunwaySeedanceVideoBuffer({ ...params, onOperationSucceeded });
+    }
     return generateRunwayHookVideoBuffer({
       ...params,
       onOperationSucceeded,
@@ -411,7 +418,7 @@ function buildOutput(params: {
   uploaded: { key: string; url: string };
 }) {
   return {
-    durationSeconds: getOutputDurationSeconds(params.input),
+    durationSeconds: getOutputDurationSeconds(params.input, params.provider),
     fileSizeBytes: params.bufferSize,
     key: params.uploaded.key,
     ok: true,
@@ -482,7 +489,8 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
   };
 }
 
-function getOutputDurationSeconds(input: GenerateHookVideoInput) {
+function getOutputDurationSeconds(input: GenerateHookVideoInput, provider: HookVideoProvider) {
+  if (input.model === "seedance_2_5" && provider === "runway") return input.durationSeconds;
   return input.referenceVideoUrl
     ? input.referenceVideoDurationSeconds ?? input.durationSeconds
     : input.durationSeconds;

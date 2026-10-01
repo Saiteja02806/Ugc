@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:seedance": "npm run build && node --test dist/lib/higgsfield-video.test.js",
+    "test:seedance": "npm run build && node --test dist/lib/runway-seedance-video.test.js dist/lib/higgsfield-video.test.js dist/jobs/generate-hook-video.test.js",
     "test:wall-overlay": "npm run build && node --test --test-concurrency=1 dist/lib/wall-text-overlay-asset.test.js dist/lib/render-engine.test.js dist/lib/wall-text-render-spec.test.js dist/jobs/render-wall-text-video.test.js",
     "build": "tsc -p tsconfig.json",
     "test:reaction-edit": "npm run build && node --test dist/jobs/render-reaction-edit.test.js",
@@ -16,8 +16,7 @@
     "@fontsource/inter": "^5.2.8",
     "@google-cloud/storage": "8.2.0",
     "@google/genai": "^2.10.0",
-    "@higgsfield/client": "^0.2.6",
-    "@runwayml/sdk": "^4.4.0",
+    "@runwayml/sdk": "4.20.1",
     "@supabase/supabase-js": "^2.108.2",
     "geist": "^1.7.0",
     "google-auth-library": "^10.5.0",

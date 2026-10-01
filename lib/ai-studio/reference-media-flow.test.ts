@@ -8,7 +8,8 @@ const imageWorker = readProjectFile("worker/src/jobs/generate-image.ts");
 const videoWorker = readProjectFile("worker/src/jobs/generate-hook-video.ts");
 const openAiProvider = readProjectFile("worker/src/lib/openai-image.ts");
 const geminiOmniProvider = readProjectFile("worker/src/lib/gemini-omni-video.ts");
-const higgsfieldProvider = readProjectFile("worker/src/lib/higgsfield-video.ts");
+const seedanceProvider = readProjectFile("worker/src/lib/runway-seedance-video.ts");
+const providerRouting = readProjectFile("worker/src/lib/hook-video-provider.ts");
 
 test("uploaded image references reach the image provider", () => {
   assert.match(imageApi, /input: \{[\s\S]*?referenceImageUrl,/);
@@ -26,12 +27,12 @@ test("Seedance video edits accept a video and reference images", () => {
   assert.match(videoApi, /referenceVideoUrl,/);
   assert.match(videoApi, /Google Omni video references are unavailable in UGC Pilot/);
   assert.match(videoApi, /const maxReferences = model === "seedance_2_5" \? 30 : 6/);
-  assert.match(videoWorker, /input\.model === "seedance_2_5"[\s\S]*?"higgsfield"/);
+  assert.match(providerRouting, /input\.model === "seedance_2_5"\) return "runway"/);
   assert.match(videoWorker, /referenceVideoUrl: input\.referenceVideoUrl/);
   assert.match(videoWorker, /referenceImageUrls: input\.referenceImageUrls/);
-  assert.match(higgsfieldProvider, /const EDIT_MODEL = "bytedance\/seedance-2\.5\/video-edit"/);
-  assert.match(higgsfieldProvider, /video_url: params\.referenceVideoUrl/);
-  assert.match(higgsfieldProvider, /image_urls: imageUrls/);
+  assert.match(seedanceProvider, /model: "seedance2_5"/);
+  assert.match(seedanceProvider, /promptVideo: params\.referenceVideoUrl/);
+  assert.match(seedanceProvider, /references: imageUrls\.map/);
 });
 
 test("optional image references reach Google Omni video generation", () => {

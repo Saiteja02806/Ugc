@@ -54,7 +54,7 @@ test("uses demand-scaled request workers for independent AI jobs", () => {
   );
   assert.match(
     aiWorkerVariables,
-    /variable "max_instance_count"[\s\S]*default\s+= 10/,
+    /variable "max_instance_count"[\s\S]*default\s+= 20/,
   );
   assert.match(aiWorkerMain, /cpu_idle\s+= true/);
   assert.match(

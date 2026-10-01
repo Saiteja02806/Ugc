@@ -55,6 +55,30 @@ Retain the legacy Secret Manager credential until the rollout and any older
 requests are conclusively finished; do not delete historical provider rows or
 rewrite applied migrations.
 
+## Video failure presentation
+
+The visible model selector reads `Seedance 2.5`; its model value and Runway
+provider routing remain unchanged. Google Omni keeps its existing label and
+behavior.
+
+Video failures use a readable panel with a title, the public failure reason,
+and grouped recovery actions instead of a small status badge separated from
+the composer buttons. An empty failed session does not also say `No generations
+yet`; successful results in a partial batch remain visible below the panel.
+
+`Edit prompt` focuses the existing composer without clearing its prompt or
+reference media. `Dismiss` uses the existing finished-job dismissal. Retry is
+shown only for the displayed failed job when its public error is retryable and
+generation access permits it; moderation failures do not offer a replay button.
+All recovery actions are non-submit buttons. The composer retains Generate,
+active-job Cancel and the existing access controls.
+
+The image workspace does not opt into this failure panel and retains its
+existing behavior. Reasons and job IDs wrap at narrow widths. The dev-only
+`/e2e/video-failure-preview` fixture never submits jobs and returns 404 in a
+production build. `npm run test:ai-edit` covers rendering and integration
+contracts without paid provider calls.
+
 ## Verification and deployment
 
 Terminal provider failures retain a structured job error code. Safety failures

@@ -37,6 +37,7 @@ import { AiStudioResultActions } from "@/components/generation/ai-studio-result-
 import { Input } from "@/components/ui/input";
 import { ReferenceFilesUpload } from "@/components/video/reference-files-upload";
 import { CreatorReferencePicker } from "@/components/video/creator-reference-picker";
+import { VideoGenerationFailure } from "@/components/video/video-generation-failure";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -468,7 +469,7 @@ export function VideoGenerationStudioPanel({
       ? "Video generation was cancelled."
       : failedDurableJob
         ? failedDurableJob.error?.message ||
-          "Video generation failed. You can retry it."
+          "Video generation failed. The provider did not return a failure reason."
         : completedWithoutOutput
           ? "Video generation completed without a usable output."
           : null;
@@ -911,9 +912,9 @@ export function VideoGenerationStudioPanel({
     }
   }
 
-  async function handleRetryGeneration() {
+  async function handleRetryGeneration(jobId: string) {
     const retryableJob = durableJobs.find(
-      (job) => job.status === "failed" && Boolean(job.error?.retryable),
+      (job) => job.id === jobId && job.status === "failed" && Boolean(job.error?.retryable),
     );
 
     if (!retryableJob || retryJob.isPending || generationLocked || isGenerating) {
@@ -961,9 +962,17 @@ export function VideoGenerationStudioPanel({
         : actionNotice ?? durableNotice
           ? { label: actionNotice ?? durableNotice ?? "", tone: "neutral" }
           : null;
-  const canRetry = durableJobs.some(
-    (job) => job.status === "failed" && Boolean(job.error?.retryable),
-  );
+  const displayedFailedJob =
+    !actionError && !jobQueryError && effectiveGenerationState === "failed" &&
+    durableNotice === resultsErrorMessage
+      ? failedDurableJob
+      : undefined;
+
+  function focusVideoPrompt() {
+    document
+      .querySelector<HTMLTextAreaElement>('#ai-studio-videos-panel textarea[name="videoPrompt"]')
+      ?.focus();
+  }
   const filteredHistoryVideos = filterAIStudioVideoHistory(
     generatedVideos,
     historyQuery,
@@ -1002,6 +1011,23 @@ export function VideoGenerationStudioPanel({
         hasResults={visibleVideos.length > 0 || isGenerating}
         loading={resultsLoading}
         status={resultsStatus}
+        failure={resultsErrorMessage && !isGenerating ? (
+          <VideoGenerationFailure
+            title={displayedFailedJob?.error?.code === "PROVIDER_CONTENT_MODERATION"
+              ? "Generation blocked"
+              : jobQueryError || resultsError === resultsErrorMessage
+                ? "Couldn't load your generation"
+                : "Video couldn't be generated"}
+            message={resultsErrorMessage}
+            jobId={displayedFailedJob?.id}
+            onEditPrompt={jobQueryError || resultsError === resultsErrorMessage ? undefined : focusVideoPrompt}
+            onDismiss={resultsError === resultsErrorMessage ? undefined : dismissFinishedGeneration}
+            onRetry={displayedFailedJob?.error?.retryable && !generationLocked
+              ? () => void handleRetryGeneration(displayedFailedJob.id)
+              : undefined}
+            retrying={retryJob.isPending}
+          />
+        ) : undefined}
         toolbar={
           <div className="flex items-center gap-2">
             {selectedHistoryVideo ? (
@@ -1145,11 +1171,6 @@ export function VideoGenerationStudioPanel({
                 <RefreshCw className={cn("size-3.5", refreshingAccess && "animate-spin motion-reduce:animate-none")} aria-hidden="true" />
               </Button>
             ) : null}
-            {effectiveGenerationState === "failed" && !isGenerating ? (
-              <Button type="button" variant="ghost" size="sm" onClick={dismissFinishedGeneration}>
-                Dismiss error
-              </Button>
-            ) : null}
             {isGenerating ? (
               <Button
                 type="button"
@@ -1159,17 +1180,6 @@ export function VideoGenerationStudioPanel({
                 onClick={() => void handleCancelGeneration()}
               >
                 Cancel
-              </Button>
-            ) : null}
-            {canRetry && !generationLocked && !isGenerating ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                disabled={retryJob.isPending}
-                onClick={() => void handleRetryGeneration()}
-              >
-                Retry
               </Button>
             ) : null}
           </>
@@ -1182,7 +1192,7 @@ export function VideoGenerationStudioPanel({
               size="sm"
               options={AI_STUDIO_VIDEO_MODELS.map((value) => ({
                 label:
-                  value === "seedance_2_5" ? "Runway · Seedance 2.5" : "Omni Flash 1.1",
+                  value === "seedance_2_5" ? "Seedance 2.5" : "Omni Flash 1.1",
                 value,
               }))}
               value={model}

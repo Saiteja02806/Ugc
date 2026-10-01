@@ -22,6 +22,7 @@ export function AiStudioResults({
   children,
   emptyDescription,
   emptyTitle,
+  failure,
   gridClassName,
   hasResults,
   loading = false,
@@ -32,14 +33,17 @@ export function AiStudioResults({
   children: ReactNode;
   emptyDescription?: string;
   emptyTitle?: string;
+  failure?: ReactNode;
   gridClassName?: string;
   hasResults: boolean;
   loading?: boolean;
   status?: AiStudioResultsStatus | null;
   toolbar?: ReactNode;
 }) {
+  const showFailure = status?.tone === "error" && Boolean(failure) && !loading;
   const showStatusBadge =
     Boolean(status) &&
+    !showFailure &&
     !(status?.tone === "progress" && !loading && !hasResults);
 
   return (
@@ -80,6 +84,11 @@ export function AiStudioResults({
         </div>
       ) : null}
 
+      {showFailure && hasResults ? (
+        <div className="mx-auto w-full max-w-2xl shrink-0 px-1 pb-5 pt-3">
+          {failure}
+        </div>
+      ) : null}
       {loading ? (
         <div
           className={cn(
@@ -104,6 +113,10 @@ export function AiStudioResults({
           )}
         >
           {children}
+        </div>
+      ) : showFailure ? (
+        <div className="flex min-h-[360px] flex-1 items-center justify-center px-1 pb-12 pt-8 sm:px-5 md:min-h-0">
+          <div className="w-full max-w-xl">{failure}</div>
         </div>
       ) : status?.tone === "progress" ? (
         <Empty

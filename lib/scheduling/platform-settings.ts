@@ -58,12 +58,12 @@ export function getDefaultScheduleTargetSettings(
       allowComment: false,
       allowDuet: false,
       allowStitch: false,
-      brandOrganic: false,
+      brandOrganic: true,
       brandedContent: false,
-      commercialContentDisclosureEnabled: false,
+      commercialContentDisclosureEnabled: true,
       containsSyntheticMedia: true,
       musicUsageConfirmed: false,
-      privacyLevel: "",
+      privacyLevel: "PUBLIC_TO_EVERYONE",
     };
   }
 

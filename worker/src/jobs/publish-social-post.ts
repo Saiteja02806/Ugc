@@ -1552,7 +1552,7 @@ function getTikTokUserMessage(code: string, fallbackMessage: string) {
   }
 
   if (code === "url_ownership_unverified") {
-    return "TikTok could not access this video source. Try preparing the post again.";
+    return "TikTok could not verify this post's media source. Contact support before retrying.";
   }
 
   if (code === "reached_active_user_cap") {

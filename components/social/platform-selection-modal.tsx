@@ -667,7 +667,8 @@ export function PlatformSelectionModal({
               : settings.allowComment === true,
             privacyLevel:
               isTikTokPrivacyLevel(privacyLevel) &&
-              data.capabilities.privacyLevels.includes(privacyLevel)
+              data.capabilities.privacyLevels.includes(privacyLevel) &&
+              (data.capabilities.directPostAudited || privacyLevel === "SELF_ONLY")
                 ? privacyLevel
                 : "",
           },

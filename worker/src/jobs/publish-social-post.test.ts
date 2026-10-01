@@ -475,6 +475,36 @@ test("marks TikTok permission failures as action required", async () => {
   });
 });
 
+test("explains TikTok slideshow URL verification failures without asking users to regenerate media", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(createOperation({ platform: "tiktok" }), {
+      allowFailure: true,
+      carousel: true,
+      platform: "tiktok",
+    });
+
+    await assert.rejects(runPublishSocialPostJob(createPublishJob(), {
+      publishers: {
+        async tiktokCarousel() {
+          throw new TikTokPublishError(
+            "Unverified media URL",
+            "url_ownership_unverified",
+            "log-photo-url",
+            403,
+            true,
+          );
+        },
+      },
+      store: fixture.store,
+    }), (error) => error instanceof TikTokPublishError && error.code === "url_ownership_unverified");
+
+    assert.deepEqual(fixture.calls, ["claim-operation", "release-operation", "target-action-required"]);
+    assert.equal(fixture.targetErrorCode, "tiktok_url_ownership_unverified");
+    assert.equal(fixture.targetErrorMessage, "TikTok could not verify this post's media source. Contact support before retrying.");
+    assert.equal(getJsonRecord(fixture.targetMetadata.providerError).logId, "log-photo-url");
+  });
+});
+
 for (const code of ["private_account_required", "unaudited_client_can_only_post_to_private_accounts"]) {
   test(`explains both TikTok privacy requirements for ${code} without automatic retry`, async () => {
     await withEncryptionKey(async () => {

@@ -729,7 +729,8 @@ export function ScheduleEditor({
               : settings.allowStitch === true,
             privacyLevel:
               isTikTokPrivacyLevel(privacyLevel) &&
-              data.capabilities.privacyLevels.includes(privacyLevel)
+              data.capabilities.privacyLevels.includes(privacyLevel) &&
+              (data.capabilities.directPostAudited || privacyLevel === "SELF_ONLY")
                 ? privacyLevel
                 : "",
           },

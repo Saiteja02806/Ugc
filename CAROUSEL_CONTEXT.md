@@ -1,6 +1,92 @@
 # Carousel System Context
 
-Last updated: 2026-09-30
+Last updated: 2026-10-01
+
+## 2026-10-01 TikTok slideshow scheduling release
+
+- This release builds on the current production/main source, preserving the
+  Runway video-generation update. It includes the requested Everyone / Your
+  brand defaults, capability handling in all three scheduling forms, and the
+  two photo-publishing fixes below. No additional OAuth scope, slideshow API
+  route, database migration, or video conversion is needed for photo scheduling.
+- The scheduler saves a ready Carousel Library item and exact per-account
+  settings/time; the publish worker loads its stored slides in order and uses
+  TikTok's `PHOTO` / `DIRECT_POST` endpoint with `PULL_FROM_URL`. Production video
+  `FILE_UPLOAD` does not change this photo path.
+- Worker fix: forward the existing `containsSyntheticMedia` setting as the
+  photo API's top-level `is_aigc`, preserving explicit false and the existing
+  true default. The form previously saved this choice but the photo request
+  omitted it. The video disclosure contract is unchanged.
+- Worker fix: URL-verification errors refer to the post's media and direct users
+  to support, rather than incorrectly calling a slideshow a video or suggesting
+  regeneration would repair app ownership verification.
+- Live read-only checks: `mrcool9251` has a valid connection and `video.publish`;
+  TikTok creator-info returned HTTP 200 and includes `PUBLIC_TO_EVERYONE`.
+  The Clara connections remain revoked. All six images in the latest blocked
+  slideshow return HTTP 200 without redirects, are WebP, and are below 20 MB;
+  their existing 1080x1350 render size is preserved.
+- Validation: worker build and 50 focused worker tests pass; 46 Trending
+  scheduling tests pass. New regressions cover the photo AI choice, photo URL
+  pulling under video FILE_UPLOAD, resuming without duplicate initialization,
+  and action-required URL-verification failures.
+- Release targets are the production web app and social-publish worker. The
+  verified prefix and hostname configuration below are already deployed.
+  Production browser verification requires sign-in; no live post was created.
+  One explicitly approved photo post reaching `PUBLISH_COMPLETE` and a
+  `published` target remains necessary for end-to-end acceptance.
+
+## 2026-10-01 TikTok slideshow URL verification and worker configuration deployed
+
+- Production slideshow images remain under the existing public GCS prefix
+  `https://storage.googleapis.com/ugcsaas-media/`. A real image probe returned
+  HTTP 200, WebP, and no redirect. The optional custom media CDN stays disabled.
+- The photo-post code uses `PHOTO` / `DIRECT_POST` with `PULL_FROM_URL`. Before
+  recovery, the worker had no verified media hosts configured and the latest
+  six-slide production target failed with `tiktok_url_ownership_unverified`.
+  Successful video uploads do not establish that photo URL pulling works.
+- Recovery is to verify this exact owned bucket URL prefix in the TikTok app's
+  Production URL properties using its generated signature file, then set
+  `TIKTOK_VERIFIED_MEDIA_HOSTS=storage.googleapis.com` in the worker and its
+  Terraform variables. This hostname allowlist does not verify other GCS
+  buckets. No new CDN, image rewrite, or video transfer-mode change is needed.
+- Reconnect the exact intended TikTok account, then verify one explicitly
+  approved real slideshow on production through provider `PUBLISH_COMPLETE`
+  and a `published` target. The inspected Clara connections are revoked.
+- The owner supplied `tiktok41KhPT9XDx2y5CeAK5W5o2L5LF1GHnOu.txt` from TikTok.
+  Its unchanged 68 bytes are saved in
+  `infra/gcp/social-publish-worker/verification/` and deployed at the root of
+  `gs://ugcsaas-media`. The public HTTPS URL returned HTTP 200, `text/plain`,
+  no redirect, and bytes identical to the original file.
+- The owner's screenshot confirms the storage URL prefix under TikTok's
+  Verified properties; the `getugcpilot.com` domain also remains verified.
+  Deployed worker revision `ugc-social-publish-worker-00057-btp` has
+  `TIKTOK_VERIFIED_MEDIA_HOSTS=storage.googleapis.com` and serves 100% of traffic.
+  The same host is persisted in the ignored production `terraform.tfvars`.
+- Cloud Run confirms Ready and ContainerHealthy after its internal `/healthz`
+  startup probe. The image, service account, and all other environment settings
+  are unchanged. A real slideshow publishing test remains pending; this
+  deployment does not establish `PUBLISH_COMPLETE` or a `published` target.
+  Commands and evidence: `docs/tiktok-direct-post-audit-runbook.md`.
+
+## 2026-10-01 TikTok publishing defaults
+
+- Owner-requested shared defaults for new TikTok targets are Everyone
+  (`PUBLIC_TO_EVERYONE`) and Your brand (`brandOrganic=true`), with commercial
+  disclosure enabled and Paid partnership off. Trending Hook, Text, Reaction,
+  and Carousel scheduling use these defaults without requiring users to
+  reselect them for each post. Choices remain editable and saved per-post
+  settings remain authoritative; no account preference store is added.
+- Fresh creator capabilities still validate the audience. If Everyone is
+  unavailable, or private-testing mode is explicitly configured, clear the
+  unsupported audience and ask for an available choice; never substitute Only
+  me automatically. Music Usage Confirmation remains an explicit final consent.
+- This supersedes the manual-visibility/default-disclosure behavior documented
+  below. It deliberately differs from TikTok's current Content Sharing
+  Guidelines, which require no default audience and commercial disclosure off
+  by default: https://developers.tiktok.com/docs/en/content-sharing-guidelines.
+- This release changes the shared defaults and capability handling in the
+  three scheduling forms. Authenticated production acceptance remains separate
+  from source/release verification.
 
 ## 2026-09-30 Carousel editor drag containment (local)
 

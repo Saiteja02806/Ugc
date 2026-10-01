@@ -45,6 +45,7 @@ import {
 } from "@/lib/scheduling/schedule-time";
 import {
   getTikTokPrivacyLabel,
+  isTikTokPrivacyLevel,
   TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE,
   type TikTokPublishCapabilities,
 } from "@/lib/social/tiktok-publishing";
@@ -231,6 +232,24 @@ export function HookVideoScheduleDrawer({
         ...current,
         [connectionId]: { capabilities: data.capabilities, status: "ready" },
       }));
+      setSettings((current) => {
+        const settings =
+          current[connectionId] ?? getDefaultScheduleTargetSettings("tiktok");
+        const privacyLevel = settings.privacyLevel;
+
+        return {
+          ...current,
+          [connectionId]: {
+            ...settings,
+            privacyLevel:
+              isTikTokPrivacyLevel(privacyLevel) &&
+              data.capabilities.privacyLevels.includes(privacyLevel) &&
+              (data.capabilities.directPostAudited || privacyLevel === "SELF_ONLY")
+                ? privacyLevel
+                : "",
+          },
+        };
+      });
     } catch (error) {
       setTikTokCapabilities((current) => ({
         ...current,

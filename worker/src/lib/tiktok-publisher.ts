@@ -242,6 +242,7 @@ export async function publishTikTokPhotoCarousel(params: {
       "/v2/post/publish/content/init/",
       params.accessToken,
       {
+        is_aigc: params.settings?.containsSyntheticMedia !== false,
         media_type: "PHOTO",
         post_info: {
           auto_add_music: true,

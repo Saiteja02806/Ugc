@@ -16,12 +16,12 @@ test("provides shared defaults for every scheduling surface", () => {
     allowComment: false,
     allowDuet: false,
     allowStitch: false,
-    brandOrganic: false,
+    brandOrganic: true,
     brandedContent: false,
-    commercialContentDisclosureEnabled: false,
+    commercialContentDisclosureEnabled: true,
     containsSyntheticMedia: true,
     musicUsageConfirmed: false,
-    privacyLevel: "",
+    privacyLevel: "PUBLIC_TO_EVERYONE",
   });
   assert.deepEqual(getDefaultScheduleTargetSettings("youtube"), {
     containsSyntheticMedia: true,

@@ -126,7 +126,7 @@ test("requires an image for Hook and Wall of Text Explore recreations", () => {
   );
   assert.match(
     videoWorkspace,
-    /allowedKinds=\{isExploreRecreate \? \["image"\] : \["image", "video"\]\}/,
+    /allowedKinds=\{model === "seedance_2_5" && !isExploreRecreate \? \["image", "video", "audio"\] : \["image"\]\}/,
   );
   assert.match(videoWorkspace, /Explore Recreate/);
   assert.match(videoWorkspace, /Image required/);
@@ -136,7 +136,7 @@ test("requires an image for Hook and Wall of Text Explore recreations", () => {
   );
   assert.match(videoGenerationApi, /isExploreHookVideoId\(body\?\.referenceId\)/);
   assert.match(videoGenerationApi, /isExploreWallTextVideoId\(body\?\.referenceId\)/);
-  assert.match(videoGenerationApi, /isExploreRecreate && !avatarImageUrl/);
+  assert.match(videoGenerationApi, /isExploreRecreate && referenceImageUrls\.length === 0/);
   assert.match(videoGenerationApi, /image-reference-only for better results/);
   assert.doesNotMatch(
     videoGenerationApi,

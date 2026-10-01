@@ -13,7 +13,7 @@ import {
 } from "@/lib/ai-studio/generation-settings";
 import { MCP_VIDEO_DURATIONS, registeredGenerationMcpTools } from "./generation-contract";
 import { getMediaAssetForOwner, listMediaAssetsPage, type MediaAssetRow } from "@/lib/media/media-storage";
-import { mediaCollections, mediaSourceTypes } from "@/lib/media/types";
+import { mediaSourceTypes } from "@/lib/media/types";
 import { decodeAssetCursor, encodeAssetCursor } from "./asset-cursor";
 
 const empty = z.strictObject({});
@@ -25,7 +25,9 @@ const mediaCollectionDescription =
   "Asset group: image for still images, video for videos, or influencer for creator footage.";
 const mediaSourceTypeDescription =
   "How UGC Pilot created the asset: upload (library upload), influencer_upload (creator footage upload), demo_upload (demo footage), catalog_influencer (built-in creator asset), generated_image or generated_video (AI output), edit_export (editor export), combined_render (composed video), wall_text_render, or reaction_render.";
-const mediaCollection = z.enum(mediaCollections).describe(mediaCollectionDescription);
+// Website audio references do not expand the public MCP V1 asset contract.
+export const MCP_MEDIA_COLLECTIONS = ["influencer", "video", "image"] as const;
+const mediaCollection = z.enum(MCP_MEDIA_COLLECTIONS).describe(mediaCollectionDescription);
 const mediaSourceType = z.enum(mediaSourceTypes).describe(mediaSourceTypeDescription);
 export const generationCount = z.literal([1, 2, 4]).describe(
   "Number of outputs to create. Choose 1, 2, or 4.",
@@ -263,7 +265,8 @@ export function registerReadMcpTools(server: McpServer) {
     let rows: MediaAssetRow[];
     try {
       rows = await listMediaAssetsPage({
-        userId, collection: args.collection, sourceType: args.source_type,
+        userId, collection: args.collection, collections: MCP_MEDIA_COLLECTIONS,
+        sourceType: args.source_type,
         query: args.query, limit: args.limit,
         after: cursor ? { updatedAt: cursor.updated_at, id: cursor.id } : undefined,
       });

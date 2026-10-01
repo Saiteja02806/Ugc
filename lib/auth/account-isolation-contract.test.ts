@@ -156,7 +156,7 @@ test("AI Studio access is cached only inside the active Firebase account", () =>
   );
   assert.match(aiStudioAccess, /enabled: !loading && Boolean\(user\)/);
   assert.match(aiStudioAccess, /AI_STUDIO_ACCESS_STALE_TIME_MS/);
-  assert.match(aiStudioAccess, /refetchOnWindowFocus: false/);
+  assert.match(aiStudioAccess, /refetchOnWindowFocus: "always"/);
   assert.doesNotMatch(aiStudioAccess, /useEffect|useState/);
 });
 

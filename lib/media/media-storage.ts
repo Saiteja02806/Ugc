@@ -219,6 +219,7 @@ export async function listMediaAssets(params: {
 /** Bounded owner-scoped listing for MCP. The caller validates filters and cursor. */
 export async function listMediaAssetsPage(params: {
   collection?: MediaCollection;
+  collections?: readonly MediaCollection[];
   sourceType?: MediaSourceType;
   query?: string;
   after?: { updatedAt: string; id: string };
@@ -236,7 +237,7 @@ export async function listMediaAssetsPage(params: {
     .limit(params.limit + 1);
 
   if (params.collection) request = request.eq("collection", params.collection);
-  else request = request.in("collection", mediaCollections);
+  else request = request.in("collection", params.collections ?? mediaCollections);
   if (params.sourceType) request = request.eq("source_type", params.sourceType);
 
   // PostgREST raw OR grammar. Values are quoted, with LIKE wildcards escaped,

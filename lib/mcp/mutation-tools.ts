@@ -5,9 +5,8 @@ import { z } from "zod";
 
 import { getMediaAssetForOwner, markMediaAssetReady, softDeleteMediaAsset, type MediaAssetRow } from "@/lib/media/media-storage";
 import { MEDIA_UPLOAD_EXPIRES_IN_SECONDS } from "@/lib/media/media-upload";
-import { mediaCollections } from "@/lib/media/types";
 import { createSignedPutUrl, headStorageObject } from "@/lib/storage/storage";
-import { asset, executeTool, oauthMetadata, principal, toAsset, ToolFailure } from "./read-tools";
+import { asset, executeTool, MCP_MEDIA_COLLECTIONS, oauthMetadata, principal, toAsset, ToolFailure } from "./read-tools";
 import {
   assertMcpUploadConfirmable,
   isMcpUpload, prepareMcpUploadTarget, UploadValidationError, validateMcpUploadConfirmation,
@@ -18,7 +17,7 @@ import {
 } from "./upload-store";
 
 const httpsUrl = z.url().regex(/^https:\/\//i);
-const uploadCollection = z.enum(mediaCollections).describe(
+const uploadCollection = z.enum(MCP_MEDIA_COLLECTIONS).describe(
   "Asset group: image for still images, video for videos, or influencer for creator footage.",
 );
 

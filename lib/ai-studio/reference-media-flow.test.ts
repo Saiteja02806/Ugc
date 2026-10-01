@@ -22,11 +22,12 @@ test("uploaded image references reach the image provider", () => {
   assert.match(openAiProvider, /downloadReferenceImage\(referenceImageUrl\)/);
 });
 
-test("Seedance video edits accept a video and reference images", () => {
+test("Kling limits new references while legacy Seedance video jobs remain recoverable", () => {
   assert.match(videoApi, /referenceVideoDurationSeconds,/);
   assert.match(videoApi, /referenceVideoUrl,/);
-  assert.match(videoApi, /Google Omni video references are unavailable in UGC Pilot/);
-  assert.match(videoApi, /const maxReferences = model === "seedance_2_5" \? 30 : 6/);
+  assert.match(videoApi, /Video references are unavailable for the current video models/);
+  assert.match(videoApi, /const maxReferences = model === "kling_3_0" \? 2 : 6/);
+  assert.match(providerRouting, /input\.model === "kling_3_0"\) return "runway"/);
   assert.match(providerRouting, /input\.model === "seedance_2_5"\) return "runway"/);
   assert.match(videoWorker, /referenceVideoUrl: input\.referenceVideoUrl/);
   assert.match(videoWorker, /referenceImageUrls: input\.referenceImageUrls/);

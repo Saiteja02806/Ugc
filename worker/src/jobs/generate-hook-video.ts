@@ -12,6 +12,7 @@ import { generateRunwayHookVideoBuffer } from "../lib/runway-video.js";
 import { generateRunwaySeedanceVideoBuffer } from "../lib/runway-seedance-video.js";
 import { resolveHookVideoProvider } from "../lib/hook-video-provider.js";
 import { generateGeminiOmniVideoBuffer } from "../lib/gemini-omni-video.js";
+import { generateKlingVideoBuffer } from "../lib/kling-video.js";
 import { resumeLegacyHiggsfieldVideoBuffer } from "../lib/higgsfield-video.js";
 import { getStoredObject, uploadBufferToStorage } from "../lib/storage.js";
 import {
@@ -39,7 +40,7 @@ type GenerateHookVideoBaseInput = {
   resolution: HookVideoResolution;
   durationSeconds: number;
   hookIdea: string;
-  model?: "google_omni" | "seedance_2_5";
+  model?: "google_omni" | "seedance_2_5" | "kling_3_0";
   projectId: string;
   provider?: HookVideoProvider;
   referenceVideoDurationSeconds?: number;
@@ -369,7 +370,7 @@ async function generateProviderBuffer(
   params: {
     aspectRatio: HookVideoAspectRatio;
     durationSeconds: number;
-    model?: "google_omni" | "seedance_2_5";
+    model?: "google_omni" | "seedance_2_5" | "kling_3_0";
     onOperationCreated: (operationId: string) => Promise<void>;
     prompt: string;
     providerOperationId?: string;
@@ -395,6 +396,9 @@ async function generateProviderBuffer(
   }
 
   if (provider === "runway") {
+    if (params.model === "kling_3_0") {
+      return generateKlingVideoBuffer({ ...params, onOperationSucceeded });
+    }
     if (params.model === "seedance_2_5") {
       return generateRunwaySeedanceVideoBuffer({ ...params, onOperationSucceeded });
     }
@@ -438,6 +442,7 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
   const promptMode =
     job.input_json.promptMode === "direct" ? "direct" : "ugc_template";
   const model =
+    job.input_json.model === "kling_3_0" ? "kling_3_0" :
     job.input_json.model === "seedance_2_5"
       ? "seedance_2_5"
       : job.input_json.model === "google_omni"

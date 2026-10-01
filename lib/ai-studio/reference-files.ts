@@ -23,7 +23,7 @@ export function validateReferenceFileBatch(
   if (kinds.some((kind) => !kind)) return "Use JPG, PNG, WebP, MP4, MOV, WebM, MP3, or WAV files.";
   if (kinds.some((kind) => !allowedKinds.includes(kind!))) {
     return allowedKinds.length === 1
-      ? "This mode accepts image references. Select Seedance 2.5 to add video or audio."
+      ? "This model accepts image references only. Video and audio references are unavailable."
       : "This model does not accept that reference type.";
   }
   if (existingKinds.length + kinds.length > maxFiles) return `You can attach up to ${maxFiles} reference files in UGC Pilot.`;

@@ -86,6 +86,7 @@ function getVideoPrompt(asset: MediaAsset) {
 function getVideoModelLabel(metadata: MediaAsset["metadata"]) {
   const model = getMetadataString(metadata, "model");
 
+  if (model === "kling_3_0") return "Kling 3.0";
   if (model === "seedance_2_5") return "Seedance 2.5";
   if (model === "google_omni") return "Google Omni";
 

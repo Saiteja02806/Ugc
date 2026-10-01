@@ -82,3 +82,12 @@ test("upserts a reconciled result without duplicates", () => {
     ],
   );
 });
+
+test("Kling videos retain their model label alongside earlier Seedance history", () => {
+  const videos = getAIStudioVideoResults([
+    { ...baseAsset, collection: "video", sourceType: "generated_video", id: "kling-video", metadata: { model: "kling_3_0" } },
+    { ...baseAsset, collection: "video", sourceType: "generated_video", id: "seedance-video", metadata: { model: "seedance_2_5" } },
+  ]);
+  assert.equal(videos.find((video) => video.id === "kling-video")?.modelLabel, "Kling 3.0");
+  assert.equal(videos.find((video) => video.id === "seedance-video")?.modelLabel, "Seedance 2.5");
+});

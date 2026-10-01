@@ -255,9 +255,9 @@ test("AI Studio keeps direct image and video references optional outside Explore
   assert.match(imageWorkspace, /referenceImageUrl: referenceImage\?\.asset\.url \?\? null/);
   assert.match(
     videoWorkspace,
-    /<ReferenceFilesUpload[\s\S]*?allowedKinds=\{model === "seedance_2_5" && !isExploreRecreate \? \["image", "video", "audio"\] : \["image"\]\}/,
+    /<ReferenceFilesUpload[\s\S]*?allowedKinds=\{\["image"\]\}/,
   );
-  assert.match(videoWorkspace, /maxFiles=\{model === "seedance_2_5" \? 30 : 6\}/);
+  assert.match(videoWorkspace, /maxFiles=\{model === "kling_3_0" \? 2 : 6\}/);
   assert.match(videoWorkspace, /avatarImageUrl: activeReferenceImageUrl/);
   assert.match(videoWorkspace, /referenceImageUrls: referenceImages\.map\(\(image\) => image\.asset\.url\)/);
   assert.match(videoWorkspace, /referenceVideoUrl: uploadedReferenceVideo\?\.asset\.url \?\? null/);

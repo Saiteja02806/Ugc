@@ -10,6 +10,11 @@ const RUNWAY_HOOK_VIDEO_DURATION_SECONDS = 4;
 
 type RunwayVideoModel = keyof typeof RUNWAY_VIDEO_CREDITS_PER_SECOND;
 
+export function estimateRunwayKlingCredits(durationSeconds: number) {
+  // Kling 3.0 Standard with native audio: 13 Runway credits per second.
+  return durationSeconds * 13;
+}
+
 export function estimateRunwaySeedanceCredits(
   resolution: "480p" | "720p",
   durationSeconds: number,
@@ -111,7 +116,8 @@ export async function assertRunwayDailyCreditBudget(
   // Seedance counters do not include duration/quality; use its minimum as a
   // lag fallback, with detailed usage remaining authoritative when larger.
   const estimatedCreditsFromDailyGenerations = hookCreditsFromDailyGenerations +
-    Math.max(0, organization.usage.models.seedance2_5?.dailyGenerations ?? 0) * 80;
+    Math.max(0, organization.usage.models.seedance2_5?.dailyGenerations ?? 0) * 80 +
+    Math.max(0, organization.usage.models["kling3.0_standard"]?.dailyGenerations ?? 0) * estimateRunwayKlingCredits(3);
   const usedCredits = Math.max(
     reportedCredits,
     estimatedCreditsFromDailyGenerations,

@@ -84,6 +84,7 @@ import {
 } from "@/lib/ai-studio/video-history";
 import {
   AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
+  AI_STUDIO_KLING_PROMPT_MAX_LENGTH,
   getAIStudioPromptLengthError,
   normalizeAIStudioPrompt,
 } from "@/lib/ai-studio/prompt-policy";
@@ -325,7 +326,7 @@ export function VideoGenerationStudioPanel({
     useState<AIStudioVideoAspectRatio>("9:16");
   const [quantity, setQuantity] =
     useState<AIStudioGenerationQuantity>(1);
-  const [model, setModel] = useState<AIStudioVideoModel>("seedance_2_5");
+  const [model, setModel] = useState<AIStudioVideoModel>("kling_3_0");
   const [durationSeconds, setDurationSeconds] =
     useState<AIStudioVideoDuration>(5);
   const [resolution, setResolution] =
@@ -749,7 +750,7 @@ export function VideoGenerationStudioPanel({
     const trimmedPrompt = normalizeAIStudioPrompt(prompt);
     const promptLengthError = getAIStudioPromptLengthError(
       trimmedPrompt,
-      AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
+      model === "kling_3_0" ? AI_STUDIO_KLING_PROMPT_MAX_LENGTH : AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
     );
 
     if (
@@ -769,6 +770,11 @@ export function VideoGenerationStudioPanel({
 
     if (promptLengthError) {
       setActionError(promptLengthError);
+      return;
+    }
+
+    if (model === "kling_3_0" && trimmedPrompt.length < 2) {
+      setActionError("Kling 3.0 requires a prompt of at least 2 characters.");
       return;
     }
 
@@ -1162,15 +1168,15 @@ export function VideoGenerationStudioPanel({
         leadingControl={
             <ReferenceFilesUpload
               active={active}
-              allowedKinds={model === "seedance_2_5" && !isExploreRecreate ? ["image", "video", "audio"] : ["image"]}
+              allowedKinds={["image"]}
               disabled={generationLocked || isGenerating || creatorReferenceUploadPending}
-              maxFiles={model === "seedance_2_5" ? 30 : 6}
+              maxFiles={model === "kling_3_0" ? 2 : 6}
               selections={referenceFiles}
               onChange={handleReferenceFilesChange}
               onPendingChange={setReferenceFilesPending}
             />
         }
-        maxLength={AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH}
+        maxLength={model === "kling_3_0" ? AI_STUDIO_KLING_PROMPT_MAX_LENGTH : AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH}
         name="videoPrompt"
         placeholder="Describe the video you want to create…"
         prompt={prompt}
@@ -1209,23 +1215,27 @@ export function VideoGenerationStudioPanel({
               size="sm"
               options={AI_STUDIO_VIDEO_MODELS.map((value) => ({
                 label:
-                  value === "seedance_2_5" ? "Seedance 2.5" : "Omni Flash 1.1",
+                  value === "kling_3_0" ? "Kling 3.0" : "Omni Flash 1.1",
                 value,
               }))}
               value={model}
               onChange={(value) => {
                 submissionKeyRef.current = null;
-                if (value === "seedance_2_5" && durationSeconds < 4) {
+                if (value === "kling_3_0" && durationSeconds > 15) {
                   setDurationSeconds(5);
+                }
+                if (value === "kling_3_0" && referenceImages.length > 2) {
+                  setAdditionalImageReferences(referenceImages.slice(1, 2));
+                  setActionNotice("Kling 3.0 accepts a first frame and an optional last frame; extra images were removed.");
                 }
                 if (value === "google_omni") {
                   if (audioReferences.length) {
                     setAudioReferences([]);
-                    setActionNotice("Audio references were removed. Select Seedance 2.5 to use audio.");
+                    setActionNotice("Audio references are unavailable for the current video models.");
                   }
                   if (uploadedVideoReference) {
                     setUploadedVideoReference(null);
-                    setActionNotice("Removed the video reference. Select Seedance 2.5 to use a video together with images.");
+                    setActionNotice("Video references are unavailable for the current video models.");
                   }
                   if (referenceImages.length > 6) {
                     setAdditionalImageReferences(referenceImages.slice(1, 6));
@@ -1265,7 +1275,7 @@ export function VideoGenerationStudioPanel({
               size="sm"
               icon={<Clock3 className="size-3.5" aria-hidden="true" />}
               options={AI_STUDIO_VIDEO_DURATIONS.filter(
-                (duration) => model === "seedance_2_5" ? duration >= 4 : duration <= 10,
+                (duration) => model === "kling_3_0" ? duration <= 15 : duration <= 10,
               ).map((duration) => ({
                 label: `${duration} sec · ${duration * creditsPerSecond} credits`,
                 triggerLabel: `${duration} sec`,
@@ -1282,7 +1292,7 @@ export function VideoGenerationStudioPanel({
               iconOnly
               disabled={
                 generationLocked || isGenerating || creatorReferenceUploadPending || referenceFilesPending ||
-                (!uploadedReference && referenceFiles.length >= (model === "seedance_2_5" ? 30 : 6))
+                (!uploadedReference && referenceFiles.length >= (model === "kling_3_0" ? 2 : 6))
               }
               selection={uploadedReference}
               selectedCreatorId={selectedCreatorReferenceId}
@@ -1351,7 +1361,7 @@ function getGeneratedVideoTitle(prompt: string) {
 }
 
 function getVideoModelLabel(model: AIStudioVideoModel | undefined) {
-  return model === "google_omni" ? "Google Omni" : "Seedance 2.5";
+  return model === "google_omni" ? "Google Omni" : "Kling 3.0";
 }
 
 function getErrorMessage(error: unknown, fallback: string) {

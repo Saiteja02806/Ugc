@@ -24,8 +24,8 @@ test("accepts only supported AI Studio settings", () => {
   assert.equal(parseAIStudioImageModel("nano_banana_2"), "nano_banana_2");
   assert.equal(parseAIStudioImageModel("unknown"), "gpt_image");
   assert.equal(parseAIStudioVideoModel("google_omni"), "google_omni");
-  assert.equal(parseAIStudioVideoModel("seedance_2_5"), "seedance_2_5");
-  assert.equal(parseAIStudioVideoModel("unknown"), "seedance_2_5");
+  assert.equal(parseAIStudioVideoModel("kling_3_0"), "kling_3_0");
+  assert.equal(parseAIStudioVideoModel("unknown"), "kling_3_0");
   assert.equal(parseAIStudioVideoDuration(10), 10);
   assert.equal(parseAIStudioVideoDuration(30), 30);
   assert.equal(parseAIStudioVideoDuration(11), 5);
@@ -34,10 +34,10 @@ test("accepts only supported AI Studio settings", () => {
 });
 
 test("limits video quality choices to each provider's supported resolutions", () => {
-  assert.deepEqual(getAIStudioVideoResolutions("seedance_2_5"), ["480p", "720p"]);
+  assert.deepEqual(getAIStudioVideoResolutions("kling_3_0"), ["720p"]);
   assert.deepEqual(getAIStudioVideoResolutions("google_omni"), ["720p", "1080p"]);
   assert.equal(
-    isAIStudioVideoResolutionSupported("seedance_2_5", "1080p"),
+    isAIStudioVideoResolutionSupported("kling_3_0", "1080p"),
     false,
   );
   assert.equal(

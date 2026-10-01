@@ -6,6 +6,7 @@ import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
 import { requireAIStudioProUser } from "@/lib/ai-studio/server-access";
 import {
   AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
+  AI_STUDIO_KLING_PROMPT_MAX_LENGTH,
   getAIStudioPromptLengthError,
   normalizeAIStudioPrompt,
 } from "@/lib/ai-studio/prompt-policy";
@@ -26,7 +27,6 @@ import {
 } from "@/lib/jobs/background-jobs";
 import { createAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
 import { isTrustedStorageUrl } from "@/lib/storage/storage";
-import { getMediaAssetForOwner } from "@/lib/media/media-storage";
 import {
   BillingAccessError,
   deliverBillingUsageForJob,
@@ -201,16 +201,13 @@ export async function handleAIStudioVideoGeneration(request: Request) {
       { status: 400 },
     );
   }
-  if (referenceAudioUrls.length && (model !== "seedance_2_5" || isExploreRecreate)) {
+  if (referenceAudioUrls.length) {
     return NextResponse.json(
-      { error: "Select Seedance 2.5 in Videos to use audio references.", ok: false },
+      { error: "Audio references are unavailable for the current video models.", ok: false },
       { status: 400 },
     );
   }
-  const maxReferences = model === "seedance_2_5" ? 30 : 6;
-  if (model === "seedance_2_5" && referenceAudioUrls.length > 10) {
-    return NextResponse.json({ error: "Runway Seedance 2.5 accepts up to 10 audio references.", ok: false }, { status: 400 });
-  }
+  const maxReferences = model === "kling_3_0" ? 2 : 6;
   if (referenceImageUrls.length + referenceAudioUrls.length + (referenceVideoUrl ? 1 : 0) > maxReferences) {
     return NextResponse.json(
       { error: `This model accepts up to ${maxReferences} reference files in UGC Pilot.`, ok: false },
@@ -225,28 +222,6 @@ export async function handleAIStudioVideoGeneration(request: Request) {
     );
   }
 
-  let referenceAudioDurationSeconds = 0;
-  try {
-    for (let index = 0; index < referenceAudioAssetIds.length; index++) {
-      const asset = await getMediaAssetForOwner({ assetId: referenceAudioAssetIds[index] as string, userId: user.uid });
-      if (!asset || asset.collection !== "audio" || asset.status !== "ready" ||
-          asset.url !== referenceAudioUrls[index] || !asset.duration_seconds || asset.duration_seconds > 30) {
-        return NextResponse.json(
-          { error: "Use an uploaded audio reference of 30 seconds or shorter from your account.", ok: false },
-          { status: 400 },
-        );
-      }
-      referenceAudioDurationSeconds += asset.duration_seconds;
-    }
-  } catch {
-    return NextResponse.json({ error: "Could not verify the audio references. Try again.", ok: false }, { status: 503 });
-  }
-
-  if (model === "seedance_2_5" && referenceAudioUrls.length &&
-      referenceAudioDurationSeconds + (referenceVideoDurationSeconds ?? 0) >= 30) {
-    return NextResponse.json({ error: "Seedance audio and video references must total less than 30 seconds.", ok: false }, { status: 400 });
-  }
-
   if (isExploreRecreate && referenceImageUrls.length === 0) {
     return NextResponse.json(
       {
@@ -258,20 +233,20 @@ export async function handleAIStudioVideoGeneration(request: Request) {
     );
   }
 
-  if (model === "google_omni" && referenceVideoUrl) {
+  if (referenceVideoUrl) {
     return NextResponse.json(
-      { error: "Google Omni video references are unavailable in UGC Pilot. Select Seedance 2.5 to use a video reference.", ok: false },
+      { error: "Video references are unavailable for the current video models. Use an image reference instead.", ok: false },
       { status: 400 },
     );
   }
 
   if (!isAIStudioVideoResolutionSupported(model, resolution)) {
     const supportedResolutions =
-      model === "seedance_2_5" ? "480p or 720p" : "720p or 1080p";
+      model === "kling_3_0" ? "720p" : "720p or 1080p";
 
     return NextResponse.json(
       {
-        error: `${model === "seedance_2_5" ? "Seedance 2.5" : "Google Omni"} supports ${supportedResolutions}.`,
+        error: `${model === "kling_3_0" ? "Kling 3.0" : "Google Omni"} supports ${supportedResolutions}.`,
         ok: false,
       },
       { status: 400 },
@@ -285,33 +260,12 @@ export async function handleAIStudioVideoGeneration(request: Request) {
     );
   }
 
-  if (model === "seedance_2_5" && durationSeconds < 4) {
+  if (model === "kling_3_0" && (durationSeconds < 3 || durationSeconds > 15)) {
     return NextResponse.json(
       {
-        error: "Seedance 2.5 requires a duration of at least 4 seconds.",
+        error: "Kling 3.0 duration must be between 3 and 15 seconds.",
         ok: false,
       },
-      { status: 400 },
-    );
-  }
-
-  if (referenceVideoUrl && !referenceVideoDurationSeconds) {
-    return NextResponse.json(
-      { error: "Reference videos must be 30 seconds or shorter.", ok: false },
-      { status: 400 },
-    );
-  }
-
-  if (model === "google_omni" && referenceVideoDurationSeconds && referenceVideoDurationSeconds > 3) {
-    return NextResponse.json(
-      { error: "Google Omni reference videos must be 3 seconds or shorter.", ok: false },
-      { status: 400 },
-    );
-  }
-
-  if (model === "seedance_2_5" && referenceVideoDurationSeconds && referenceVideoDurationSeconds > durationSeconds) {
-    return NextResponse.json(
-      { error: "Set Seedance duration to at least the reference video's length.", ok: false },
       { status: 400 },
     );
   }
@@ -328,7 +282,7 @@ export async function handleAIStudioVideoGeneration(request: Request) {
 
   const promptLengthError = getAIStudioPromptLengthError(
     prompt,
-    AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
+    model === "kling_3_0" ? AI_STUDIO_KLING_PROMPT_MAX_LENGTH : AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
   );
 
   if (promptLengthError) {
@@ -336,6 +290,10 @@ export async function handleAIStudioVideoGeneration(request: Request) {
       { error: promptLengthError, ok: false },
       { status: 400 },
     );
+  }
+
+  if (model === "kling_3_0" && prompt.length < 2) {
+    return NextResponse.json({ error: "Kling 3.0 requires a prompt of at least 2 characters.", ok: false }, { status: 400 });
   }
 
   const missingRuntimeEnv = getMissingRuntimeEnv();

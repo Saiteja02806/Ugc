@@ -9,6 +9,7 @@ import {
   Monitor,
   Pause,
   Play,
+  Plus,
   RefreshCw,
   ScanText,
   Search,
@@ -78,10 +79,10 @@ import {
 } from "@/lib/ai-studio/media-results";
 import {
   filterAIStudioVideoHistory,
-  getTodayAIStudioVideos,
   getVideoHistoryDateLabel,
   groupAIStudioVideoHistory,
 } from "@/lib/ai-studio/video-history";
+import { appendAIStudioSessionResultIds, getAIStudioSessionResults, isAIStudioSessionCompletion } from "@/lib/ai-studio/generation-session";
 import {
   AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
   AI_STUDIO_KLING_PROMPT_MAX_LENGTH,
@@ -346,6 +347,7 @@ export function VideoGenerationStudioPanel({
   const [referenceImageRequiredDialogOpen, setReferenceImageRequiredDialogOpen] =
     useState(false);
   const [activeVideoPrompt, setActiveVideoPrompt] = useState("");
+  const [activeSubmittedAt, setActiveSubmittedAt] = useState(() => new Date().toISOString());
   const [latestCompletedVideoId, setLatestCompletedVideoId] = useState<string | null>(null);
   const [generationState, setGenerationState] =
     useState<GenerationState>("empty");
@@ -356,6 +358,7 @@ export function VideoGenerationStudioPanel({
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyQuery, setHistoryQuery] = useState("");
   const [selectedHistoryVideoId, setSelectedHistoryVideoId] = useState<string | null>(null);
+  const [currentResultIds, setCurrentResultIds] = useState<string[]>([]);
   const [currentDay, setCurrentDay] = useState(() => new Date());
   const [resultsLoading, setResultsLoading] = useState(true);
   const [resultsError, setResultsError] = useState<string | null>(null);
@@ -367,6 +370,10 @@ export function VideoGenerationStudioPanel({
     string | null
   >(null);
   const resolvedJobIdsRef = useRef(new Set<string>());
+  const foregroundJobIdsRef = useRef(new Set<string>());
+  const foregroundEpochRef = useRef(0);
+  const foregroundAutoResumeRef = useRef(true);
+  const historyOwnerIdRef = useRef<string | null>(null);
   const billingSyncedJobIdsRef = useRef(new Set<string>());
   const submissionKeyRef = useRef<string | null>(null);
   const activeUserIdRef = useRef<string | null>(null);
@@ -454,6 +461,7 @@ export function VideoGenerationStudioPanel({
     (job) => job.jobType === "video_generation" && (
       !["cancelled", "completed", "failed"].includes(job.status) ||
       submittedJobIds.includes(job.id) ||
+      job.id === urlJobId ||
       getVideoHistoryDateLabel(job.updatedAt, currentDay) === "Today"
     ),
   );
@@ -500,6 +508,9 @@ export function VideoGenerationStudioPanel({
   useEffect(() => {
     activeUserIdRef.current = user?.uid ?? null;
     resolvedJobIdsRef.current.clear();
+    foregroundJobIdsRef.current.clear();
+    foregroundEpochRef.current += 1;
+    foregroundAutoResumeRef.current = true;
     billingSyncedJobIdsRef.current.clear();
 
     return () => {
@@ -535,6 +546,12 @@ export function VideoGenerationStudioPanel({
     let ignore = false;
 
     async function loadGeneratedVideos() {
+      if (historyOwnerIdRef.current !== (user?.uid ?? null)) {
+        historyOwnerIdRef.current = user?.uid ?? null;
+        setGeneratedVideos([]);
+        setCurrentResultIds([]);
+        setSelectedHistoryVideoId(null);
+      }
       if (!user) {
         if (!ignore) {
           setGeneratedVideos([]);
@@ -587,6 +604,15 @@ export function VideoGenerationStudioPanel({
       ignore = true;
     };
   }, [active, authLoading, user]);
+
+  useEffect(() => {
+    if (!foregroundAutoResumeRef.current) return;
+    for (const job of durableJobs) {
+      if (!["cancelled", "completed", "failed"].includes(job.status) || job.id === urlJobId) {
+        foregroundJobIdsRef.current.add(job.id);
+      }
+    }
+  }, [durableJobs, urlJobId]);
 
   useEffect(() => {
     if (
@@ -646,6 +672,10 @@ export function VideoGenerationStudioPanel({
     async function restoreCompletedVideo(
       completedJob: (typeof completedJobs)[number],
     ) {
+      const completionEpoch = foregroundEpochRef.current;
+      const isForeground = () => isAIStudioSessionCompletion(
+        completedJob.id, completionEpoch, foregroundEpochRef.current, foregroundJobIdsRef.current,
+      );
       const completedOutput = getVideoJobOutput(completedJob.output);
 
       if (!completedOutput?.url) {
@@ -724,15 +754,17 @@ export function VideoGenerationStudioPanel({
         setGeneratedVideos((currentVideos) =>
           upsertAIStudioResult(currentVideos, nextVideo, Number.POSITIVE_INFINITY),
         );
-        setLatestCompletedVideoId(nextVideo.id);
-        setTimeout(() => setLatestCompletedVideoId(null), 3500);
-        setActiveVideoPrompt("");
-        setGenerationState("completed");
-        setActionNotice(null);
-        setActionError(null);
+        if (isForeground()) {
+          setCurrentResultIds((current) => appendAIStudioSessionResultIds(current, nextVideo.id));
+          setLatestCompletedVideoId(nextVideo.id);
+          setTimeout(() => setLatestCompletedVideoId(null), 3500);
+          setGenerationState("completed");
+          setActionNotice(null);
+          setActionError(null);
+        }
       } catch (error) {
         resolvedJobIdsRef.current.delete(completedJob.id);
-        if (activeUserIdRef.current === userId) {
+        if (activeUserIdRef.current === userId && isForeground()) {
           setGenerationState("failed");
           setActionError(
             getErrorMessage(error, "Could not restore the generated video."),
@@ -781,6 +813,10 @@ export function VideoGenerationStudioPanel({
     setActionNotice(null);
     setActionError(null);
     setActiveVideoPrompt(trimmedPrompt);
+    setActiveSubmittedAt(new Date().toISOString());
+    setSelectedHistoryVideoId(null);
+    foregroundAutoResumeRef.current = false;
+    const submissionEpoch = foregroundEpochRef.current;
     setGenerationState("generating");
     submittingRef.current = true;
     setIsSubmitting(true);
@@ -840,9 +876,13 @@ export function VideoGenerationStudioPanel({
       void queryClient.invalidateQueries({
         queryKey: ["billing-subscription", user.uid],
       });
+      if (activeUserIdRef.current !== user.uid) return;
       persistJobIdInUrl(data.jobId, VIDEO_JOB_URL_PARAMETER);
       for (const job of data.jobs) {
         resolvedJobIdsRef.current.delete(job.jobId);
+        if (submissionEpoch === foregroundEpochRef.current) {
+          foregroundJobIdsRef.current.add(job.jobId);
+        }
       }
       const jobIds = data.jobs.map((job) => job.jobId);
       setStoredJobIds(jobIds);
@@ -987,9 +1027,19 @@ export function VideoGenerationStudioPanel({
     historyQuery,
   );
   const historyGroups = groupAIStudioVideoHistory(filteredHistoryVideos);
-  const todayVideos = getTodayAIStudioVideos(generatedVideos, currentDay);
   const selectedHistoryVideo = generatedVideos.find((video) => video.id === selectedHistoryVideoId);
-  const visibleVideos = selectedHistoryVideo ? [selectedHistoryVideo] : todayVideos;
+  const visibleVideos = getAIStudioSessionResults(generatedVideos, currentResultIds, selectedHistoryVideoId);
+
+  function startNewVideoSession() {
+    if (isGenerating) return;
+    foregroundEpochRef.current += 1;
+    foregroundAutoResumeRef.current = false;
+    foregroundJobIdsRef.current.clear();
+    setCurrentResultIds([]);
+    setSelectedHistoryVideoId(null);
+    dismissFinishedGeneration();
+    focusVideoPrompt();
+  }
 
   function focusHistoryVideo(videoId: string) {
     setSelectedHistoryVideoId(videoId);
@@ -1021,6 +1071,7 @@ export function VideoGenerationStudioPanel({
         loading={resultsLoading}
         status={resultsStatus}
         statusPlacement="inline"
+        scrollToLatestKey={!selectedHistoryVideoId && isSubmitting ? activeSubmittedAt : null}
         failure={resultsErrorMessage && !isGenerating ? (
           <div className="space-y-3">
             {displayedFailedJobs.length > 0 ? displayedFailedJobs.map((failedJob, index) => (
@@ -1055,7 +1106,13 @@ export function VideoGenerationStudioPanel({
         toolbar={
           <div className="flex items-center gap-2">
             {selectedHistoryVideo ? (
-              <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedHistoryVideoId(null)}>Back to today</Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedHistoryVideoId(null)}>Back to session</Button>
+            ) : null}
+            {visibleVideos.length > 0 && !isGenerating ? (
+              <Button type="button" variant="ghost" size="sm" onClick={startNewVideoSession}>
+                <Plus className="size-3.5" aria-hidden="true" />
+                New session
+              </Button>
             ) : null}
             <Button
             type="button"
@@ -1075,7 +1132,14 @@ export function VideoGenerationStudioPanel({
           </div>
         }
       >
-        {isGenerating
+        {visibleVideos.map((video) => (
+          <VideoResultCard
+            key={video.id}
+            video={video}
+            isNew={video.id === latestCompletedVideoId}
+          />
+        ))}
+        {isGenerating && !selectedHistoryVideoId
           ? Array.from(
               { length: Math.max(1, pendingGenerationCount) },
               (_, index) => (
@@ -1092,13 +1156,6 @@ export function VideoGenerationStudioPanel({
               ),
             )
           : null}
-        {visibleVideos.map((video) => (
-          <VideoResultCard
-            key={video.id}
-            video={video}
-            isNew={video.id === latestCompletedVideoId}
-          />
-        ))}
       </AiStudioResults>
 
       <VideoHistoryDrawer

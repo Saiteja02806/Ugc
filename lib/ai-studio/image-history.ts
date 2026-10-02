@@ -1,4 +1,5 @@
 import type { AIStudioImageResult } from "./media-results.ts";
+import { getAIStudioSessionResults, isAIStudioSessionCompletion } from "./generation-session.ts";
 
 export type ImageHistoryGroup = {
   label: string;
@@ -26,7 +27,7 @@ export function isImageCompletionForeground(
   currentEpoch: number,
   foregroundJobIds: ReadonlySet<string>,
 ) {
-  return completionEpoch === currentEpoch && foregroundJobIds.has(jobId);
+  return isAIStudioSessionCompletion(jobId, completionEpoch, currentEpoch, foregroundJobIds);
 }
 
 export function getVisibleAIStudioImages(
@@ -34,12 +35,7 @@ export function getVisibleAIStudioImages(
   currentResultIds: readonly string[],
   selectedHistoryImageId: string | null,
 ) {
-  if (selectedHistoryImageId) {
-    return images.filter((image) => image.id === selectedHistoryImageId);
-  }
-
-  const currentIds = new Set(currentResultIds);
-  return images.filter((image) => currentIds.has(image.id));
+  return getAIStudioSessionResults(images, currentResultIds, selectedHistoryImageId);
 }
 
 export function filterAIStudioImageHistory(

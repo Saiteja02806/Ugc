@@ -1,5 +1,8 @@
+"use client";
+
 import { AlertCircle, Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
+import { useEffect, useRef } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -28,6 +31,7 @@ export function AiStudioResults({
   loading = false,
   status,
   statusPlacement = "toolbar",
+  scrollToLatestKey,
   toolbar,
 }: {
   ariaLabel: string;
@@ -40,8 +44,18 @@ export function AiStudioResults({
   loading?: boolean;
   status?: AiStudioResultsStatus | null;
   statusPlacement?: "toolbar" | "inline";
+  scrollToLatestKey?: string | null;
   toolbar?: ReactNode;
 }) {
+  const resultsRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!scrollToLatestKey) return;
+    const frame = window.requestAnimationFrame(() => {
+      const results = resultsRef.current;
+      if (results) results.scrollTop = results.scrollHeight;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [scrollToLatestKey]);
   const showFailure = status?.tone === "error" && Boolean(failure) && !loading;
   const showStatusBadge =
     Boolean(status) &&
@@ -51,6 +65,7 @@ export function AiStudioResults({
 
   return (
     <section
+      ref={resultsRef}
       aria-label={ariaLabel}
       aria-busy={loading || status?.tone === "progress"}
       className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain"

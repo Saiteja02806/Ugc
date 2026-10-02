@@ -19,7 +19,7 @@ const images: AIStudioImageResult[] = [
   image("today-2", "Second portrait", new Date(2026, 9, 1, 21).toISOString(), "9:16"),
 ];
 
-test("the main canvas starts empty and shows only the current requested batch", () => {
+test("the main canvas starts empty and shows only the current session", () => {
   assert.deepEqual(getVisibleAIStudioImages(images, [], null), []);
   assert.deepEqual(
     getVisibleAIStudioImages(images, ["today-1", "today-2"], null).map(({ id }) => id),
@@ -28,7 +28,7 @@ test("the main canvas starts empty and shows only the current requested batch", 
   assert.equal(images.length, 4, "hiding history must not remove saved images");
 });
 
-test("a selected history image replaces the current batch without duplicating results", () => {
+test("a selected history image temporarily replaces the session without duplicating results", () => {
   assert.deepEqual(
     getVisibleAIStudioImages(images, ["today-1", "today-2"], "older").map(({ id }) => id),
     ["older"],
@@ -82,11 +82,11 @@ test("a saved asset without prompt metadata retains its recovered submitted prom
   assert.equal(refreshed?.prompt, recovered.prompt, "a refresh cannot replace the captured submitted prompt");
 });
 
-test("late completion cannot return to the canvas after navigation or a new batch", () => {
+test("late completion cannot return to the canvas after a new session", () => {
   const jobId = "job-1";
   const eligibleJobs = new Set([jobId]);
   assert.equal(isImageCompletionForeground(jobId, 1, 1, eligibleJobs), true);
-  assert.equal(isImageCompletionForeground(jobId, 1, 2, eligibleJobs), false, "New image or History selection invalidates the older completion");
+  assert.equal(isImageCompletionForeground(jobId, 1, 2, eligibleJobs), false, "New session invalidates the older completion");
   assert.equal(isImageCompletionForeground(jobId, 2, 2, new Set()), false, "dismissed jobs stay in history");
   assert.equal(isImageCompletionForeground(jobId, 1, 3, new Set([jobId])), false, "reusing an ID for a retry does not revive an earlier completion");
   assert.equal(isImageCompletionForeground(jobId, 3, 3, new Set([jobId])), true);

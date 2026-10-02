@@ -16,6 +16,7 @@ import {
 } from "@/components/generation/ai-studio-results";
 import { AiStudioResultActions } from "@/components/generation/ai-studio-result-actions";
 import { ImageGenerationHistory } from "@/components/generation/image-generation-history";
+import { ImagePreviewDialog } from "@/components/generation/image-preview-dialog";
 import { ReferenceMediaUpload } from "@/components/generation/reference-media-upload";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
@@ -46,6 +47,7 @@ import {
   mergeAIStudioImageHistory,
 } from "@/lib/ai-studio/image-history";
 import { normalizeAIStudioPrompt } from "@/lib/ai-studio/prompt-policy";
+import { appendAIStudioSessionResultIds } from "@/lib/ai-studio/generation-session";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
   persistJobIdInUrl,
@@ -240,6 +242,7 @@ export function ImageGenerationStudioPanel({
   const [historyQuery, setHistoryQuery] = useState("");
   const [historyNow, setHistoryNow] = useState(() => new Date());
   const [selectedHistoryImageId, setSelectedHistoryImageId] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<AIStudioImageResult | null>(null);
   const [currentResultIds, setCurrentResultIds] = useState<string[]>([]);
   const [reconciledResultByJob, setReconciledResultByJob] = useState<Record<string, string>>({});
   const [submittedPrompts, setSubmittedPrompts] = useState<Record<string, string>>({});
@@ -328,6 +331,7 @@ export function ImageGenerationStudioPanel({
         setGeneratedAssets([]);
         setCurrentResultIds([]);
         setSelectedHistoryImageId(null);
+        setPreviewImage(null);
         setReconciledResultByJob({});
         setSubmittedPrompts({});
         setResolvingImageJobIds([]);
@@ -540,7 +544,7 @@ export function ImageGenerationStudioPanel({
           );
           if (isForeground()) {
             setCurrentResultIds((current) =>
-              current.includes(nextResult.id) ? current : [...current, nextResult.id],
+              appendAIStudioSessionResultIds(current, nextResult.id),
             );
             setLatestCompletedId(nextResult.id);
             setTimeout(() => setLatestCompletedId(null), 3500);
@@ -579,10 +583,6 @@ export function ImageGenerationStudioPanel({
     }
     setIsSubmitting(true);
     setSelectedHistoryImageId(null);
-    setCurrentResultIds([]);
-    setResolvingImageJobIds([]);
-    foregroundJobIdsRef.current.clear();
-    foregroundEpochRef.current += 1;
     foregroundAutoResumeRef.current = false;
     const submissionEpoch = foregroundEpochRef.current;
     setActivePrompt(trimmedPrompt);
@@ -764,11 +764,7 @@ export function ImageGenerationStudioPanel({
   const imageRows: ImageDisplayRow[] = [];
   const renderedImageIds = new Set<string>();
 
-  if (!selectedHistoryImageId && isSubmitting) {
-    for (let index = 0; index < quantity; index += 1) {
-      imageRows.push({ key: `submitting-${index}`, aspectRatio, createdAt: activeSubmittedAt, prompt: activePrompt, asset: null });
-    }
-  } else if (!selectedHistoryImageId) {
+  if (!selectedHistoryImageId) {
     for (const [index, jobId] of activeJobIds.entries()) {
       const resultId = reconciledResultByJob[jobId];
       const asset = visibleImages.find((image) => image.id === resultId);
@@ -801,11 +797,14 @@ export function ImageGenerationStudioPanel({
     }
   }
 
+  if (!selectedHistoryImageId && isSubmitting) {
+    for (let index = 0; index < quantity; index += 1) {
+      imageRows.push({ key: `submitting-${index}`, aspectRatio, createdAt: activeSubmittedAt, prompt: activePrompt, asset: null });
+    }
+  }
+  imageRows.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+
   function focusHistoryImage(imageId: string) {
-    foregroundEpochRef.current += 1;
-    foregroundAutoResumeRef.current = false;
-    foregroundJobIdsRef.current.clear();
-    setResolvingImageJobIds([]);
     setSelectedHistoryImageId(imageId);
     setHistoryOpen(false);
     window.requestAnimationFrame(() => {
@@ -820,6 +819,17 @@ export function ImageGenerationStudioPanel({
     setResolvingImageJobIds([]);
     setSelectedHistoryImageId(null);
     setCurrentResultIds([]);
+    setSubmittedJobIds([]);
+    setStoredJobIds([]);
+    setIgnoredPersistedJobId(persistedJobId);
+    setActionError(null);
+    setActionNotice(null);
+    submissionKeyRef.current = null;
+    if (user) {
+      try {
+        window.localStorage.removeItem(`${IMAGE_JOB_STORAGE_PREFIX}${user.uid}`);
+      } catch { /* Saved images remain available in History when local storage is blocked. */ }
+    }
     persistJobIdInUrl(null, IMAGE_JOB_URL_PARAMETER);
     document.querySelector<HTMLTextAreaElement>('textarea[name="imagePrompt"]')?.focus();
   }
@@ -844,12 +854,16 @@ export function ImageGenerationStudioPanel({
         loading={resultsLoading}
         status={resultsStatus}
         statusPlacement="inline"
+        scrollToLatestKey={!selectedHistoryImageId && isSubmitting ? activeSubmittedAt : null}
         toolbar={
           <div className="flex items-center gap-2">
+            {selectedHistoryImageId ? (
+              <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedHistoryImageId(null)}>Back to session</Button>
+            ) : null}
             {visibleImages.length > 0 && !isGenerating ? (
               <Button type="button" variant="ghost" size="sm" onClick={startNewImage}>
                 <Plus className="size-3.5" aria-hidden="true" />
-                New image
+                New session
               </Button>
             ) : null}
             <Button type="button" variant="outline" size="sm" disabled={resultsLoading} onClick={() => { setHistoryNow(new Date()); setHistoryOpen(true); }}>
@@ -871,6 +885,7 @@ export function ImageGenerationStudioPanel({
             createdAt={row.createdAt}
             referenceImageUrl={referenceImage?.asset.url ?? null}
             isNew={row.asset?.id === latestCompletedId}
+            onOpenPreview={setPreviewImage}
           />
         ))}
       </AiStudioResults>
@@ -884,6 +899,8 @@ export function ImageGenerationStudioPanel({
         onSelectImage={focusHistoryImage}
         selectedImageId={selectedHistoryImageId}
       />
+
+      <ImagePreviewDialog image={active ? previewImage : null} onClose={() => setPreviewImage(null)} />
 
       <AiStudioComposer
         accessMessage={composerMessage}
@@ -1002,6 +1019,7 @@ function ImageGenerationCard({
   prompt,
   referenceImageUrl,
   isNew = false,
+  onOpenPreview,
 }: {
   asset: AIStudioImageResult | null;
   aspectRatio: AIStudioImageAspectRatio;
@@ -1009,6 +1027,7 @@ function ImageGenerationCard({
   prompt: string;
   referenceImageUrl: string | null;
   isNew?: boolean;
+  onOpenPreview: (image: AIStudioImageResult) => void;
 }) {
   return (
     <article
@@ -1025,8 +1044,16 @@ function ImageGenerationCard({
             style={{ aspectRatio: aspectRatio.replace(":", " / ") }}
           >
             {asset ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={asset.url} alt={asset.title} width={1200} height={getGeneratedImageHeight(aspectRatio)} loading="lazy" decoding="async" className="size-full object-contain" />
+              <button
+                type="button"
+                onClick={() => onOpenPreview(asset)}
+                aria-label="Enlarge generated image"
+                aria-haspopup="dialog"
+                className="block size-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={asset.url} alt={asset.title} width={1200} height={getGeneratedImageHeight(aspectRatio)} loading="lazy" decoding="async" className="size-full object-contain" />
+              </button>
             ) : (
               <>
                 {referenceImageUrl ? (

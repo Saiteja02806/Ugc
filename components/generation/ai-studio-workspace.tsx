@@ -1,12 +1,12 @@
 "use client";
 
-import { Sparkles } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { KeyboardEvent } from "react";
 
 import { useAIStudioAccess } from "@/components/generation/use-ai-studio-access";
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
+import { CreditIcon } from "@/components/icons/credit-icon";
 import { Badge } from "@/components/ui/badge";
 import { VideoGenerationStudioPanel } from "@/components/video/video-generation-workspace";
 import { ImageGenerationStudioPanel } from "@/components/workspace/ugc-chat-workspace";
@@ -69,7 +69,7 @@ export function AIStudioWorkspace({
                 className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
                 title="Manage AI generation credits"
               >
-                <Sparkles className="size-3" aria-hidden="true" />
+                <CreditIcon />
                 <span>{subscription ? `${subscription.creditsRemaining} AI credits` : "Checking credits…"}</span>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
                   · {subscription?.status === "on_hold" ? "Billing on hold" : hasBillingPlan ? "Manage" : "Upgrade"}

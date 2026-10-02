@@ -22,6 +22,7 @@ import {
   type SidebarIconName,
 } from "@/components/icons/sidebar-icon";
 import { DiscordIcon } from "@/components/icons/discord-icon";
+import { CreditIcon } from "@/components/icons/credit-icon";
 import { ProductLogoMark } from "@/components/brand/product-logo";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
@@ -673,7 +674,7 @@ function SidebarPlanCreditsWidget() {
         </Link>
       </div>
       <div className="mt-1.5 flex items-center justify-between text-[11px] font-medium text-muted">
-        <span>Shared AI credits</span>
+        <span className="inline-flex items-center gap-1"><CreditIcon className="size-3.5" />Shared AI credits</span>
         <span className="font-mono font-bold text-foreground">
           {creditsRemaining} / {creditsLimit}
         </span>

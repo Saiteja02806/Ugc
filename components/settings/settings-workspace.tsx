@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/alert";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { CreditIcon } from "@/components/icons/credit-icon";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { InstagramAccountManager } from "@/components/settings/instagram-account-manager";
@@ -497,7 +498,8 @@ export function SettingsWorkspace() {
 
               <div className="grid border-y border-border sm:grid-cols-3 sm:divide-x sm:divide-border">
                 <div className="py-4 sm:pr-5">
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-subtle">
+                  <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-subtle">
+                    <CreditIcon />
                     AI credits remaining
                   </p>
                   <p className="mt-1 text-lg font-black text-foreground-strong font-mono">

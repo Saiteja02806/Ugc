@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH,
   AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
   getAIStudioPromptLengthError,
   normalizeAIStudioPrompt,
@@ -17,11 +16,11 @@ test("normalizes AI Studio prompts without silently truncating them", () => {
   );
 });
 
-test("reports mode-specific AI Studio prompt limits", () => {
+test("reports video validation errors without numeric limit text", () => {
   assert.equal(
     getAIStudioPromptLengthError(
-      "x".repeat(AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH),
-      AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH,
+      "x".repeat(AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH),
+      AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
     ),
     null,
   );
@@ -30,6 +29,6 @@ test("reports mode-specific AI Studio prompt limits", () => {
       "x".repeat(AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH + 1),
       AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
     ) ?? "",
-    /10,000 characters or fewer/,
+    /too long for the selected model/,
   );
 });

@@ -24,7 +24,6 @@ import {
 import type { BackgroundJobRow, Json } from "../types.js";
 import type { WorkerJobContext, WorkerJobOutput } from "./index.js";
 
-const MAX_PROMPT_LENGTH = 2_000;
 type GenerateImageInput = {
   aspectRatio: AIStudioImageRatio;
   generationId: string;
@@ -48,10 +47,6 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
 
   if (typeof prompt !== "string" || !prompt.trim()) {
     throw new Error("generate_image requires input.prompt.");
-  }
-
-  if (prompt.trim().length > MAX_PROMPT_LENGTH) {
-    throw new Error(`generate_image prompt exceeds ${MAX_PROMPT_LENGTH} characters.`);
   }
 
   return {

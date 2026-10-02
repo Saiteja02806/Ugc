@@ -59,7 +59,7 @@ export function AiStudioComposer({
   isGenerating: boolean;
   layout?: "standard" | "unified";
   leadingControl?: ReactNode;
-  maxLength: number;
+  maxLength?: number;
   name: string;
   onPromptChange: (prompt: string) => void;
   onSubmit: (event?: FormEvent<HTMLFormElement>) => void;
@@ -76,7 +76,7 @@ export function AiStudioComposer({
   const controlsId = useId();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [controlsOpen, setControlsOpen] = useState(false);
-  const promptTooLong = prompt.length > maxLength;
+  const promptTooLong = maxLength !== undefined && prompt.length > maxLength;
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -134,7 +134,7 @@ export function AiStudioComposer({
               id={promptId}
               ref={textareaRef}
               rows={1}
-              aria-describedby={promptHelperId}
+              aria-describedby={promptTooLong || showPromptHint ? promptHelperId : undefined}
               aria-invalid={promptTooLong}
               autoComplete="off"
               name={name}
@@ -151,33 +151,25 @@ export function AiStudioComposer({
               )}
               placeholder={placeholder}
             />
-            <FieldDescription
-              id={promptHelperId}
-              className={cn(
-                "flex min-w-0 items-start justify-between gap-3 text-xs",
-                layout === "unified" && leadingControl && !hasAttachments && "col-span-full",
-                layout === "unified" ? "px-0" : "px-2",
-                promptTooLong && "text-destructive",
-              )}
-              role={promptTooLong ? "alert" : undefined}
-            >
-              {promptTooLong || showPromptHint ? (
+            {promptTooLong || showPromptHint ? (
+              <FieldDescription
+                id={promptHelperId}
+                className={cn(
+                  "flex min-w-0 items-start justify-between gap-3 text-xs",
+                  layout === "unified" && leadingControl && !hasAttachments && "col-span-full",
+                  layout === "unified" ? "px-0" : "px-2",
+                  promptTooLong && "text-destructive",
+                )}
+                role={promptTooLong ? "alert" : undefined}
+              >
                 <span className="min-w-0">
                   {promptTooLong
-                    ? `Prompt is ${(
-                        prompt.length - maxLength
-                      ).toLocaleString("en-US")} character${
-                        prompt.length - maxLength === 1 ? "" : "s"
-                      } too long. Shorten it before generating.`
+                    ? "This prompt is too long for the selected model. Shorten it before generating."
                     : accessMessage ??
                       "Press Enter to generate. Use Shift+Enter for a new line."}
                 </span>
-              ) : null}
-              <span className="ml-auto shrink-0 tabular-nums font-mono">
-                {prompt.length.toLocaleString("en-US")}/
-                {maxLength.toLocaleString("en-US")}
-              </span>
-            </FieldDescription>
+              </FieldDescription>
+            ) : null}
           </Field>
 
           <div

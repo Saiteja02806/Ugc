@@ -17,6 +17,12 @@ are disabled. Existing Nano Banana jobs keep their original Gemini recovery
 path, while new requests for that removed option return a refresh message
 before reserving app credits.
 
+AI Studio's image composer, API, and worker do not impose an app character cap
+on image prompts. The full trimmed instruction is sent to the selected provider;
+blank prompts remain invalid. The shared chat composer does not display a
+character counter. Video provider constraints remain enforced with plain
+validation messages, and each provider's own input limits still apply.
+
 Video options remain **Kling 3.0** (Runway) and **Omni Flash 1.1** (Gemini).
 Seedance 2.5 remains hidden at the user's request. Its existing recovery adapter
 is retained.

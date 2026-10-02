@@ -4,11 +4,7 @@ import { NextResponse } from "next/server";
 
 import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
 import { requireAIStudioProUser } from "@/lib/ai-studio/server-access";
-import {
-  AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH,
-  getAIStudioPromptLengthError,
-  normalizeAIStudioPrompt,
-} from "@/lib/ai-studio/prompt-policy";
+import { normalizeAIStudioPrompt } from "@/lib/ai-studio/prompt-policy";
 import {
   AI_STUDIO_IMAGE_MODELS,
   type AIStudioImageModel,
@@ -156,18 +152,6 @@ export async function handleAIStudioImageGeneration(request: Request) {
         message: "Add a prompt before generating an image.",
         ok: false,
       },
-      { status: 400 },
-    );
-  }
-
-  const promptLengthError = getAIStudioPromptLengthError(
-    prompt,
-    AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH,
-  );
-
-  if (promptLengthError) {
-    return NextResponse.json(
-      { message: promptLengthError, ok: false },
       { status: 400 },
     );
   }

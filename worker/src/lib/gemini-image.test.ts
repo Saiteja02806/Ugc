@@ -98,12 +98,28 @@ test("Google terminal failures and missing image data cannot trigger another pai
   }
 });
 
-test("invalid Pro prompts are rejected before calling Google", async () => {
+test("blank Pro prompts are rejected before calling Google", async () => {
   const events: string[] = [];
-  for (const prompt of ["", "x".repeat(2_001)]) {
+  for (const prompt of ["", " \n\t "]) {
     await assert.rejects(generateGemini3ProImageBuffer({ ...base, prompt, ...callbacks(events) }, fakeClient(events)), ProviderRequestNotSubmittedError);
   }
   assert.deepEqual(events, []);
+});
+
+test("long Pro instructions reach Google without an app character cap or truncation", async () => {
+  const events: string[] = [];
+  const client = fakeClient(events);
+  const prompt = `Composition details.\n${"Preserve the natural light. ".repeat(800)}\nKeep the ending instruction.`;
+  const createMock = mock.method(client.interactions, "create", async (request: ReturnType<typeof buildGeminiImageRequest>) => {
+    assert.equal(request.input, prompt);
+    events.push("create");
+    return { id: "google-interaction", status: "completed", output_image: { data: Buffer.from("image").toString("base64") } };
+  });
+  try {
+    await generateGemini3ProImageBuffer({ ...base, prompt, ...callbacks(events) }, client);
+    assert.equal(createMock.mock.callCount(), 1);
+    assert.deepEqual(events, ["create", "persist-id", "persist-success"]);
+  } finally { createMock.mock.restore(); }
 });
 
 test("preserves a reference image in the Gemini image request", () => {

@@ -97,8 +97,8 @@ export async function generateGemini3ProImageBuffer(params: {
     }
   } else {
     const prompt = params.prompt.trim();
-    if (!prompt || prompt.length > 2_000) {
-      throw new ProviderRequestNotSubmittedError("Gemini 3 Pro requires a prompt of 1 to 2,000 characters.");
+    if (!prompt) {
+      throw new ProviderRequestNotSubmittedError("Gemini 3 Pro requires a non-empty prompt.");
     }
     const referenceImage = params.referenceImageUrl
       ? await downloadReferenceImage(params.referenceImageUrl)

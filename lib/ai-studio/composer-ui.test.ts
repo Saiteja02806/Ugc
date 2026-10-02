@@ -428,6 +428,9 @@ test("the redesign preserves prompt and submission behavior", () => {
   assert.match(composer, /onSubmit=\{onSubmit\}/);
   assert.match(composer, /onKeyDown=\{onTextareaKeyDown\}/);
   assert.match(composer, /prompt\.length > maxLength/);
+  assert.match(composer, /maxLength !== undefined/);
+  assert.doesNotMatch(composer, /toLocaleString\("en-US"\)/);
+  assert.doesNotMatch(imageWorkspace, /maxLength=|getAIStudioPromptLengthError/);
   assert.match(composer, /disabled=\{generateDisabled \|\| promptTooLong\}/);
 });
 

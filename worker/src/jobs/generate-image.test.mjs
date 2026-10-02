@@ -86,6 +86,14 @@ test("Gemini 3 Pro goes through Google and produces the existing exact image out
   assert.equal(saved.metadata.model, "gemini-3-pro-image");
 });
 
+test("the image worker passes long instructions to Gemini without truncation", async () => {
+  const inputJob = job();
+  const prompt = `Scene details.\n${"Keep the creator identity and natural daylight. ".repeat(500)}\nUse the final composition instruction.`;
+  inputJob.input_json.prompt = prompt;
+  await runGenerateImageJob(inputJob, context());
+  assert.equal(events.find(([event]) => event === "google-pro")[1].prompt, prompt);
+});
+
 test("accepted operations resume with their saved interaction rather than paying again", async () => {
   await runGenerateImageJob(job(), context({ status: "provider_succeeded", metadata: {}, provider_operation_id: "saved-task", output_url: null }));
   assert.equal(accepted, false);

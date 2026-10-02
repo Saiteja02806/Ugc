@@ -45,11 +45,7 @@ import {
   isImageCompletionForeground,
   mergeAIStudioImageHistory,
 } from "@/lib/ai-studio/image-history";
-import {
-  AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH,
-  getAIStudioPromptLengthError,
-  normalizeAIStudioPrompt,
-} from "@/lib/ai-studio/prompt-policy";
+import { normalizeAIStudioPrompt } from "@/lib/ai-studio/prompt-policy";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
   persistJobIdInUrl,
@@ -571,10 +567,6 @@ export function ImageGenerationStudioPanel({
 
   async function generateFromPrompt(rawPrompt: string) {
     const trimmedPrompt = normalizeAIStudioPrompt(rawPrompt);
-    const promptLengthError = getAIStudioPromptLengthError(
-      trimmedPrompt,
-      AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH,
-    );
 
     if (
       generationLocked ||
@@ -585,12 +577,6 @@ export function ImageGenerationStudioPanel({
     ) {
       return;
     }
-
-    if (promptLengthError) {
-      setActionError(promptLengthError);
-      return;
-    }
-
     setIsSubmitting(true);
     setSelectedHistoryImageId(null);
     setCurrentResultIds([]);
@@ -929,7 +915,6 @@ export function ImageGenerationStudioPanel({
             }}
           />
         }
-        maxLength={AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH}
         name="imagePrompt"
         placeholder="Describe the image you want to create…"
         prompt={prompt}

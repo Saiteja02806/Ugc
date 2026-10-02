@@ -1,4 +1,3 @@
-export const AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH = 2_000;
 export const AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH = 10_000;
 export const AI_STUDIO_KLING_PROMPT_MAX_LENGTH = 2_500;
 
@@ -11,6 +10,6 @@ export function getAIStudioPromptLengthError(
   maxLength: number,
 ) {
   return prompt.length > maxLength
-    ? `Keep the prompt to ${maxLength.toLocaleString("en-US")} characters or fewer.`
+    ? "This prompt is too long for the selected model. Shorten it and try again."
     : null;
 }

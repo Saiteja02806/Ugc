@@ -32,6 +32,7 @@ export function AiStudioComposer({
   generateDisabled,
   generateLabel,
   generationLocked,
+  hasAttachments = true,
   isGenerating,
   layout = "standard",
   leadingControl,
@@ -54,6 +55,7 @@ export function AiStudioComposer({
   generateDisabled: boolean;
   generateLabel: string;
   generationLocked: boolean;
+  hasAttachments?: boolean;
   isGenerating: boolean;
   layout?: "standard" | "unified";
   leadingControl?: ReactNode;
@@ -85,12 +87,12 @@ export function AiStudioComposer({
 
     textarea.style.height = "auto";
     const minimumHeight = layout === "unified" ? 40 : 64;
-    const maximumHeight = layout === "unified" ? 144 : 128;
+    const maximumHeight = layout === "unified" ? 64 : 128;
     textarea.style.height = `${Math.min(
       Math.max(textarea.scrollHeight, minimumHeight),
       maximumHeight,
     )}px`;
-  }, [active, layout, prompt]);
+  }, [active, hasAttachments, layout, prompt]);
 
   return (
     <div className="sticky bottom-0 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
@@ -99,11 +101,11 @@ export function AiStudioComposer({
         noValidate
         onSubmit={onSubmit}
         className={cn(
-          "mx-auto w-full border bg-card transition-all duration-200",
+          "mx-auto w-full border bg-card transition-[border-color,box-shadow] duration-150 motion-reduce:transition-none",
           layout === "unified"
             ? cn(
                 unifiedMaxWidthClassName ?? "max-w-[944px]",
-                "rounded-[24px] border-border/80 p-0 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15",
+                "rounded-[20px] border-border/80 p-0 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15",
               )
             : "max-w-[1024px] rounded-[20px] border-border p-2.5 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 sm:p-3",
         )}
@@ -118,12 +120,13 @@ export function AiStudioComposer({
             className={cn(
               "flex min-w-0 flex-col items-stretch",
               layout === "unified"
-                ? "gap-y-1 px-4 pb-1 pt-3 sm:px-5"
+                ? "gap-y-1 px-4 pb-1.5 pt-3"
                 : "gap-y-2 px-1 pt-1",
               contextBanner && layout === "unified" && "!pt-1.5",
+              layout === "unified" && leadingControl && !hasAttachments && "grid grid-cols-[44px_minmax(0,1fr)] items-start gap-x-2",
             )}
           >
-            {leadingControl ? <div className="min-w-0">{leadingControl}</div> : null}
+            {leadingControl ? <div className={cn("min-w-0", layout === "unified" && !hasAttachments && "col-start-1 row-start-1")}>{leadingControl}</div> : null}
             <FieldLabel htmlFor={promptId} className="sr-only">
               {ariaLabel}
             </FieldLabel>
@@ -141,9 +144,10 @@ export function AiStudioComposer({
               className={cn(
                 "w-full resize-none overflow-y-auto bg-transparent text-foreground outline-none placeholder:text-muted-subtle",
                 layout === "unified"
-                  ? "max-h-36 min-h-10 rounded-none px-0 py-0 text-base font-normal leading-7"
+                  ? "max-h-16 min-h-10 rounded-none px-0 py-0 text-base font-normal leading-6 sm:text-sm"
                   : "max-h-32 min-h-16 rounded-lg px-2 py-1.5 text-sm font-medium leading-6 focus-visible:ring-2 focus-visible:ring-focus sm:text-[15px]",
                 "min-w-0",
+                layout === "unified" && leadingControl && !hasAttachments && "col-start-2 row-start-1 self-center",
               )}
               placeholder={placeholder}
             />
@@ -151,6 +155,7 @@ export function AiStudioComposer({
               id={promptHelperId}
               className={cn(
                 "flex min-w-0 items-start justify-between gap-3 text-xs",
+                layout === "unified" && leadingControl && !hasAttachments && "col-span-full",
                 layout === "unified" ? "px-0" : "px-2",
                 promptTooLong && "text-destructive",
               )}
@@ -210,11 +215,11 @@ export function AiStudioComposer({
               <div
                 id={controlsId}
                 className={cn(
-                  "flex-wrap items-center gap-2",
+                  "items-center gap-2",
                   layout === "unified"
-                    ? "flex"
+                    ? "flex flex-nowrap overflow-x-auto overscroll-x-contain py-1 [&>*]:shrink-0"
                     : cn(
-                        "mt-2 sm:mt-0 sm:flex",
+                        "mt-2 flex-wrap sm:mt-0 sm:flex",
                         controlsOpen ? "flex" : "hidden",
                       ),
                 )}

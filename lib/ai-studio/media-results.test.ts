@@ -39,6 +39,14 @@ test("maps only ready generated image assets", () => {
   assert.equal(results[0]?.aspectRatio, "4:5");
 });
 
+test("image results retain the complete submitted prompt from saved metadata", () => {
+  const prompt = "Create a portrait.\nPreserve the supplied face and natural light.";
+  const [result] = getAIStudioImageResults([{ ...baseAsset, metadata: { prompt } }]);
+  assert.equal(result?.prompt, prompt);
+  assert.equal(result?.title, "Generated image");
+  assert.equal(getAIStudioImageResults([baseAsset])[0]?.prompt, undefined);
+});
+
 test("maps backend video metadata and media asset identity", () => {
   const videoAsset: MediaAsset = {
     ...baseAsset,

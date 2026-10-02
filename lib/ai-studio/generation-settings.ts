@@ -7,7 +7,7 @@ export const AI_STUDIO_IMAGE_ASPECT_RATIOS = [
 
 export const AI_STUDIO_VIDEO_ASPECT_RATIOS = ["9:16", "16:9"] as const;
 export const AI_STUDIO_GENERATION_QUANTITIES = [1, 2, 4] as const;
-export const AI_STUDIO_IMAGE_MODELS = ["nano_banana_2", "gpt_image"] as const;
+export const AI_STUDIO_IMAGE_MODELS = ["gemini_3_pro", "gpt_image"] as const;
 export const AI_STUDIO_VIDEO_MODELS = ["kling_3_0", "google_omni"] as const;
 export const AI_STUDIO_VIDEO_DURATIONS = [3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30] as const;
 export const AI_STUDIO_VIDEO_RESOLUTIONS = ["480p", "720p", "1080p"] as const;

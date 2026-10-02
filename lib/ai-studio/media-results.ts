@@ -4,6 +4,7 @@ export type AIStudioImageResult = {
   aspectRatio: "1:1" | "4:5" | "9:16" | "16:9";
   createdAt: string;
   id: string;
+  prompt?: string;
   title: string;
   url: string;
 };
@@ -42,6 +43,7 @@ export function getAIStudioImageResults(
       aspectRatio: toSupportedRatio(asset.ratio, "4:5"),
       createdAt: asset.createdAt,
       id: asset.id,
+      prompt: getMetadataString(asset.metadata, "prompt") ?? undefined,
       title: asset.title || "Generated image",
       url: asset.url,
     }));

@@ -55,7 +55,7 @@ export function AIStudioWorkspace({
   }
 
   return (
-    <section className="flex min-h-[calc(100dvh-4rem)] flex-1 flex-col overflow-x-hidden bg-background px-3 text-foreground sm:px-5 md:h-dvh md:min-h-0 md:overflow-hidden lg:px-7">
+    <section className="flex h-[calc(100dvh-4rem)] min-h-0 flex-1 flex-col overflow-hidden bg-background px-3 text-foreground sm:px-5 md:h-dvh lg:px-7">
       <div className="mx-auto flex min-h-0 w-full max-w-[1560px] flex-1 flex-col">
         <header className="flex shrink-0 flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">

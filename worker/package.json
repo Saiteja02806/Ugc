@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test:images": "npm run build && node --experimental-test-module-mocks --test dist/lib/image-output.test.js dist/lib/gemini-image.test.js src/jobs/generate-image.test.mjs",
     "test:seedance": "npm run build && node --test dist/lib/runway-seedance-video.test.js dist/lib/higgsfield-video.test.js dist/jobs/generate-hook-video.test.js",
     "test:wall-overlay": "npm run build && node --test --test-concurrency=1 dist/lib/wall-text-overlay-asset.test.js dist/lib/render-engine.test.js dist/lib/wall-text-render-spec.test.js dist/jobs/render-wall-text-video.test.js",
     "build": "tsc -p tsconfig.json",

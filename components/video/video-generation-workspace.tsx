@@ -107,10 +107,10 @@ const VIDEO_JOB_STORAGE_PREFIX = "ugc-ai-studio.latest-video-job.v2.";
 const VIDEO_JOB_METADATA_PREFIX = "ugc-ai-studio.video-job.v2.";
 const VIDEO_JOB_URL_PARAMETER = "videoJob";
 const VIDEO_RESULT_WIDTH_CLASS_NAMES: Record<GeneratedVideo["ratio"], string> = {
-  "4:5": "w-[min(100%,14rem)]",
-  "1:1": "w-[min(100%,16rem)]",
-  "9:16": "w-[min(100%,15rem)]",
-  "16:9": "w-[min(100%,24rem)]",
+  "4:5": "w-[min(100%,calc(34dvh*4/5),16rem)]",
+  "1:1": "w-[min(100%,34dvh,18rem)]",
+  "9:16": "w-[min(100%,calc(34dvh*9/16),11.25rem)]",
+  "16:9": "w-[min(100%,calc(34dvh*16/9),24rem)]",
 };
 
 type GenerateVideoResponse =
@@ -722,7 +722,7 @@ export function VideoGenerationStudioPanel({
         }
 
         setGeneratedVideos((currentVideos) =>
-          upsertAIStudioResult(currentVideos, nextVideo),
+          upsertAIStudioResult(currentVideos, nextVideo, Number.POSITIVE_INFINITY),
         );
         setLatestCompletedVideoId(nextVideo.id);
         setTimeout(() => setLatestCompletedVideoId(null), 3500);
@@ -1020,6 +1020,7 @@ export function VideoGenerationStudioPanel({
         hasResults={visibleVideos.length > 0 || isGenerating}
         loading={resultsLoading}
         status={resultsStatus}
+        statusPlacement="inline"
         failure={resultsErrorMessage && !isGenerating ? (
           <div className="space-y-3">
             {displayedFailedJobs.length > 0 ? displayedFailedJobs.map((failedJob, index) => (
@@ -1084,6 +1085,9 @@ export function VideoGenerationStudioPanel({
                   avatarThumbnail={activeReferenceImageUrl}
                   avatarLabel={uploadedReference?.asset.title ?? null}
                   prompt={activeVideoPrompt}
+                  modelLabel={getVideoModelLabel(model)}
+                  durationSeconds={durationSeconds}
+                  resolution={resolution}
                 />
               ),
             )
@@ -1162,6 +1166,7 @@ export function VideoGenerationStudioPanel({
         }
         generateLabel="Generate video"
         generationLocked={generationLocked}
+        hasAttachments={referenceFiles.length > 0 || referenceFilesPending}
         isGenerating={isGenerating}
         layout="unified"
         showPromptHint={generationLocked || hasInsufficientCredits}
@@ -1373,63 +1378,70 @@ function OptimisticVideoCard({
   avatarThumbnail,
   avatarLabel,
   prompt,
+  modelLabel,
+  durationSeconds,
+  resolution,
 }: {
   aspectRatio: AIStudioVideoAspectRatio;
   avatarThumbnail?: string | null;
   avatarLabel?: string | null;
   prompt?: string;
+  modelLabel: string;
+  durationSeconds: number;
+  resolution: AIStudioVideoResolution;
 }) {
-  return (
-    <article className="border-b border-border py-6 first:pt-1 last:border-b-0 animate-in fade-in-0 duration-300 sm:py-8">
-      <div className="mx-auto flex w-full max-w-[54rem] flex-col gap-4 lg:flex-row lg:items-start lg:justify-center lg:gap-8">
-        <div className="order-1 min-w-0 lg:order-2 lg:w-[32.5rem] lg:flex-1">
-          <VideoPromptBubble
-            createdAt={new Date().toISOString()}
-            prompt={prompt || "Creating presenter video…"}
-            status="Rendering"
-          />
-        </div>
+  const [createdAt] = useState(() => new Date().toISOString());
 
+  return (
+    <article className="mx-auto w-full max-w-[54rem] py-2 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-300">
+      <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:gap-6">
         <div
           className={cn(
-            "order-2 shrink-0 lg:order-1",
+            "shrink-0",
             getVideoResultWidthClassName(aspectRatio),
           )}
         >
-        <div
-          className="relative overflow-hidden rounded-[20px] bg-card-muted ring-1 ring-primary/30 shadow-sm"
-          style={{ aspectRatio: aspectRatio.replace(":", " / ") }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-tr from-primary/[0.04] via-transparent to-primary/[0.08]" />
-          <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 p-4 text-center">
+          <div
+            className="relative overflow-hidden rounded-[16px] bg-card-muted ring-1 ring-primary/20"
+            style={{ aspectRatio: aspectRatio.replace(":", " / ") }}
+          >
             {avatarThumbnail ? (
-              <div className="relative size-12 overflow-hidden rounded-full border-2 border-primary/40 shadow-sm">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={avatarThumbnail}
-                  alt={avatarLabel ?? "Avatar"}
-                  className="size-full object-cover"
-                />
-                <span className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[1px]">
-                  <Loader2 className="size-5 animate-spin text-white" aria-hidden="true" />
-                </span>
-              </div>
-            ) : (
-              <span className="inline-flex size-11 items-center justify-center rounded-full border border-primary/30 bg-card/90 shadow-sm backdrop-blur-md">
-                <Loader2 className="size-5 animate-spin text-primary" aria-hidden="true" />
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={avatarThumbnail}
+                alt={avatarLabel ?? "Video reference"}
+                className="absolute inset-0 size-full object-cover opacity-35"
+              />
+            ) : null}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-black/30 to-black/65" />
+            <div
+              className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-3 text-center"
+              role="status"
+              aria-live="polite"
+            >
+              <span className="inline-flex size-10 items-center justify-center rounded-full border border-white/15 bg-black/35 text-white">
+                <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
               </span>
-            )}
-            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card/85 px-2.5 py-0.5 text-[10px] font-semibold text-foreground-strong backdrop-blur-md">
-              <Sparkles className="size-2.5 text-primary" aria-hidden="true" />
-              Rendering video
-            </span>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-white">Creating your video</p>
+                <p className="text-[11px] leading-4 text-white/70">Your result will appear here.</p>
+              </div>
+            </div>
+          </div>
+          <div className="mt-3">
+            <VideoResultMetadata
+              modelLabel={modelLabel}
+              durationSeconds={durationSeconds}
+              resolution={resolution}
+              ratio={aspectRatio}
+            />
           </div>
         </div>
-        <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary">
-          <Loader2 className="size-3 animate-spin" aria-hidden="true" />
-          Your generation will appear here when it is ready.
-        </p>
+        <div className="w-full min-w-0 sm:max-w-[26rem] sm:flex-1 sm:pt-1">
+          <VideoPromptBubble
+            createdAt={createdAt}
+            prompt={prompt || "Creating presenter video…"}
+          />
         </div>
       </div>
     </article>
@@ -1492,171 +1504,199 @@ function VideoResultCard({
     <article
       id={`ai-studio-video-result-${video.id}`}
       className={cn(
-        "scroll-mt-4 border-b border-border py-6 first:pt-1 last:border-b-0 transition-[transform,box-shadow] duration-300 sm:py-8",
+        "mx-auto w-full max-w-[54rem] scroll-mt-4 py-2",
         isNew &&
-          "animate-in fade-in-50 zoom-in-[0.98] duration-500 rounded-[var(--radius-card)] ring-2 ring-emerald-500/40 ring-offset-2 ring-offset-background px-3",
+          "motion-safe:animate-in motion-safe:fade-in-50 motion-safe:duration-500",
       )}
     >
-      <div className="mx-auto flex w-full max-w-[54rem] flex-col gap-4 lg:flex-row lg:items-start lg:justify-center lg:gap-8">
-        <div className="order-1 min-w-0 lg:order-2 lg:w-[32.5rem] lg:flex-1">
-          <VideoPromptBubble createdAt={video.createdAt} prompt={video.prompt} />
-        </div>
-
+      <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:gap-6">
         <div
           className={cn(
-            "order-2 shrink-0 lg:order-1",
+            "shrink-0",
             getVideoResultWidthClassName(video.ratio),
           )}
         >
-        <div
-          className="relative overflow-hidden rounded-[20px] bg-black shadow-sm"
-          style={{ aspectRatio: video.ratio.replace(":", " / ") }}
-        >
-          <video
-            key={video.url}
-            ref={videoRef}
-            src={video.url}
-            poster={video.thumbnailUrl ?? undefined}
-            aria-label={`${video.title} preview`}
-            className="size-full object-cover"
-            muted={isMuted}
-            playsInline
-            preload="metadata"
-            onEnded={() => {
-              setCurrentTime(displayDuration);
-              setIsPlaying(false);
-            }}
-            onLoadedMetadata={(event) => {
-              const nextDuration = event.currentTarget.duration;
+          <div
+            className="@container/video relative overflow-hidden rounded-[16px] bg-black ring-1 ring-white/5"
+            style={{ aspectRatio: video.ratio.replace(":", " / ") }}
+          >
+            <video
+              key={video.url}
+              ref={videoRef}
+              src={video.url}
+              poster={video.thumbnailUrl ?? undefined}
+              aria-label={`${video.title} preview`}
+              className="size-full object-contain"
+              muted={isMuted}
+              playsInline
+              preload="metadata"
+              onEnded={() => {
+                setCurrentTime(displayDuration);
+                setIsPlaying(false);
+              }}
+              onLoadedMetadata={(event) => {
+                const nextDuration = event.currentTarget.duration;
 
-              setCurrentTime(0);
-              setIsPlaying(false);
+                setCurrentTime(0);
+                setIsPlaying(false);
 
-              if (Number.isFinite(nextDuration)) {
-                setDuration(nextDuration);
+                if (Number.isFinite(nextDuration)) {
+                  setDuration(nextDuration);
+                }
+              }}
+              onPause={() => setIsPlaying(false)}
+              onPlay={() => setIsPlaying(true)}
+              onTimeUpdate={(event) =>
+                setCurrentTime(event.currentTarget.currentTime)
               }
-            }}
-            onPause={() => setIsPlaying(false)}
-            onPlay={() => setIsPlaying(true)}
-            onTimeUpdate={(event) =>
-              setCurrentTime(event.currentTarget.currentTime)
-            }
-          />
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-2 pb-2 pt-9">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex min-w-0 items-center gap-1.5">
+            />
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-2 pb-2 pt-9">
+              <input
+                type="range"
+                aria-label="Seek video"
+                aria-valuetext={`${formatVideoDuration(currentTime)} of ${formatVideoDuration(displayDuration)}`}
+                min={0}
+                max={displayDuration || 1}
+                step={0.1}
+                value={Math.min(currentTime, displayDuration || 1)}
+                disabled={displayDuration <= 0}
+                onChange={(event) => {
+                  const nextTime = Number(event.target.value);
+                  if (videoRef.current) videoRef.current.currentTime = nextTime;
+                  setCurrentTime(nextTime);
+                }}
+                className="mb-2 block h-1 w-full cursor-pointer accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-default"
+              />
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    className="border-white/20 bg-black/40 text-white hover:bg-black/60 hover:text-white"
+                    aria-label={isPlaying ? "Pause video" : "Play video"}
+                    aria-pressed={isPlaying}
+                    onClick={() => void togglePlayback()}
+                  >
+                    {isPlaying ? (
+                      <Pause aria-hidden="true" />
+                    ) : (
+                      <Play aria-hidden="true" />
+                    )}
+                  </Button>
+                  <span className="rounded-md bg-black/55 px-1.5 py-1 text-[11px] font-medium tabular-nums text-white">
+                    {formatVideoDuration(currentTime)}
+                    <span className="hidden @min-[10rem]/video:inline"> / {formatVideoDuration(displayDuration)}</span>
+                  </span>
+                </div>
                 <Button
                   type="button"
                   variant="outline"
                   size="icon-sm"
-                  className="bg-card/90 shadow-sm"
-                  aria-label={isPlaying ? "Pause video" : "Play video"}
-                  aria-pressed={isPlaying}
-                  onClick={() => void togglePlayback()}
+                  className="border-white/20 bg-black/40 text-white hover:bg-black/60 hover:text-white"
+                  aria-label={isMuted ? "Unmute video" : "Mute video"}
+                  aria-pressed={!isMuted}
+                  onClick={toggleMuted}
                 >
-                  {isPlaying ? (
-                    <Pause aria-hidden="true" />
+                  {isMuted ? (
+                    <VolumeX aria-hidden="true" />
                   ) : (
-                    <Play aria-hidden="true" />
+                    <Volume2 aria-hidden="true" />
                   )}
                 </Button>
-                <span className="rounded-md bg-black/55 px-1.5 py-1 text-[11px] font-medium tabular-nums text-white">
-                  {formatVideoDuration(currentTime)} / {formatVideoDuration(displayDuration)}
-                </span>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon-sm"
-                className="bg-card/90 shadow-sm"
-                aria-label={isMuted ? "Unmute video" : "Mute video"}
-                aria-pressed={!isMuted}
-                onClick={toggleMuted}
-              >
-                {isMuted ? (
-                  <VolumeX aria-hidden="true" />
-                ) : (
-                  <Volume2 aria-hidden="true" />
-                )}
-              </Button>
             </div>
           </div>
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs font-medium text-muted">
-          {video.modelLabel ? (
-            <span className="inline-flex items-center gap-1.5 text-foreground/85">
-              <Sparkles className="size-3 text-primary" aria-hidden="true" />
-              {video.modelLabel}
-            </span>
-          ) : null}
-          {displayDuration > 0 ? (
-            <span className="inline-flex items-center gap-1.5">
-              <Clock3 className="size-3" aria-hidden="true" />
-              {formatVideoDuration(displayDuration)}
-            </span>
-          ) : null}
-          {video.resolution ? (
-            <span className="inline-flex items-center gap-1.5">
-              <Monitor className="size-3" aria-hidden="true" />
-              {video.resolution}
-            </span>
-          ) : null}
-          <span>{video.ratio}</span>
-        </div>
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div className="mt-3">
+            <VideoResultMetadata
+              modelLabel={video.modelLabel}
+              durationSeconds={displayDuration}
+              resolution={video.resolution}
+              ratio={video.ratio}
+            />
+          </div>
           <AiStudioResultActions
+            className="mt-3"
             kind="video"
             showOpenAction={false}
             title={video.title}
             url={video.url}
             variant="buttons"
           />
-          <span className="ml-auto hidden text-xs text-muted sm:inline">
-            {formatGeneratedAt(video.createdAt)}
-          </span>
         </div>
+        <div className="w-full min-w-0 sm:max-w-[26rem] sm:flex-1 sm:pt-1">
+          <VideoPromptBubble createdAt={video.createdAt} prompt={video.prompt} />
         </div>
       </div>
     </article>
   );
 }
 
+function VideoResultMetadata({
+  modelLabel,
+  durationSeconds,
+  resolution,
+  ratio,
+}: {
+  modelLabel: string | null;
+  durationSeconds: number;
+  resolution: GeneratedVideo["resolution"];
+  ratio: GeneratedVideo["ratio"];
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] font-medium text-muted">
+      {modelLabel ? (
+        <span className="inline-flex items-center gap-1.5 text-foreground">
+          <Sparkles className="size-3 text-primary" aria-hidden="true" />
+          {modelLabel}
+        </span>
+      ) : null}
+      {durationSeconds > 0 ? (
+        <span className="inline-flex items-center gap-1.5">
+          <Clock3 className="size-3" aria-hidden="true" />
+          {formatVideoDuration(durationSeconds)}
+        </span>
+      ) : null}
+      {resolution ? (
+        <span className="inline-flex items-center gap-1.5">
+          <Monitor className="size-3" aria-hidden="true" />
+          {resolution}
+        </span>
+      ) : null}
+      <span>{ratio}</span>
+    </div>
+  );
+}
+
 function VideoPromptBubble({
   createdAt,
   prompt,
-  status,
 }: {
   createdAt: string;
   prompt: string;
-  status?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="ml-auto max-w-[520px] sm:max-w-[min(520px,62%)]">
-      <div className="mb-1.5 flex items-center justify-end gap-2 px-1 text-[11px] font-medium text-muted">
-        <span className="text-foreground-strong">You</span>
+    <div className="w-full min-w-0">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-0.5 text-[11px] font-medium text-muted">
+        <span className="text-foreground-strong">Prompt</span>
         <span>{formatGeneratedAt(createdAt)}</span>
-        {status ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 font-semibold text-primary">
-            <Loader2 className="size-2.5 animate-spin" aria-hidden="true" />
-            {status}
-          </span>
-        ) : null}
       </div>
       <button
         type="button"
         aria-expanded={expanded}
+        aria-label={expanded ? "Collapse video prompt" : "Show full video prompt"}
         onClick={() => setExpanded((current) => !current)}
         className={cn(
-          "group flex w-full items-start gap-3 rounded-[18px] border border-border bg-card-muted/70 px-4 py-3 text-left shadow-xs transition-colors hover:border-border-strong hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
-          expanded && "max-w-[700px] bg-card",
+          "group flex w-full items-start gap-3 rounded-[14px] border border-border bg-card-muted/50 px-3 py-2.5 text-left transition-colors hover:border-border-strong hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none",
+          expanded && "bg-card",
         )}
       >
         <span
           className={cn(
-            "min-w-0 flex-1 whitespace-pre-wrap text-sm font-medium leading-6 text-foreground",
-            expanded ? "max-h-[26rem] overflow-y-auto pr-2" : "line-clamp-2",
+            "min-w-0 flex-1 whitespace-pre-wrap text-sm font-normal leading-6 text-foreground [overflow-wrap:anywhere]",
+            expanded ? "max-h-48 overflow-y-auto overscroll-contain pr-2" : "line-clamp-3",
           )}
         >
           {prompt}
@@ -1775,15 +1815,30 @@ function VideoHistoryDrawer({
                           className="relative w-[76px] shrink-0 overflow-hidden rounded-xl bg-card-muted"
                           style={{ aspectRatio: video.ratio.replace(":", " / ") }}
                         >
-                          <video
-                            src={video.url}
-                            poster={video.thumbnailUrl ?? undefined}
-                            muted
-                            playsInline
-                            preload="metadata"
-                            className="size-full object-cover"
-                            aria-hidden="true"
-                          />
+                          {video.thumbnailUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={video.thumbnailUrl}
+                              alt=""
+                              loading="lazy"
+                              decoding="async"
+                              className="size-full object-cover"
+                            />
+                          ) : (
+                            <>
+                              <video
+                                src={video.url}
+                                muted
+                                playsInline
+                                preload="none"
+                                className="size-full object-cover"
+                                aria-hidden="true"
+                              />
+                              <span className="absolute inset-0 flex items-center justify-center text-muted">
+                                <Play className="size-4" aria-hidden="true" />
+                              </span>
+                            </>
+                          )}
                           {video.durationSeconds ? (
                             <span className="absolute bottom-1 right-1 rounded bg-black/70 px-1 py-0.5 text-[10px] font-semibold tabular-nums text-white">
                               {formatVideoDuration(video.durationSeconds)}

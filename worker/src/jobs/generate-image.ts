@@ -1,9 +1,13 @@
-import { generateGeminiImageBuffer } from "../lib/gemini-image.js";
+import { generateGeminiImageBuffer, generateGemini3ProImageBuffer, GEMINI_3_PRO_IMAGE_MODEL } from "../lib/gemini-image.js";
 import { generateOpenAiImageBuffer } from "../lib/openai-image.js";
 import {
+  assertProviderOperationCanContinue,
   createGenerationRequestFingerprint,
   persistProviderSubmissionFailure,
+  ProviderOperationTerminalError,
+  ProviderRequestNotSubmittedError,
   ProviderSubmissionUncertainError,
+  toProviderPollingRetry,
 } from "../lib/generation-provider.js";
 import {
   AI_STUDIO_IMAGE_RATIO,
@@ -24,7 +28,8 @@ const MAX_PROMPT_LENGTH = 2_000;
 type GenerateImageInput = {
   aspectRatio: AIStudioImageRatio;
   generationId: string;
-  model: "gpt_image" | "nano_banana_2";
+  // Retain the old model solely for already queued and recoverable jobs.
+  model: "gpt_image" | "nano_banana_2" | "gemini_3_pro";
   prompt: string;
   referenceImageUrl?: string;
 };
@@ -66,7 +71,7 @@ export async function runGenerateImageJob(
   const userId = getPathSegment(job.user_id, "user");
   const projectId = getPathSegment(job.project_id, "default");
   const outputKey = `images/generated/${userId}/${projectId}/${input.generationId}.png`;
-  const provider = input.model === "nano_banana_2" ? "gemini" : "openai";
+  const provider = input.model === "gemini_3_pro" || input.model === "nano_banana_2" ? "gemini" : "openai";
   const stagingKey = `generation-staging/${job.id}/${provider}-image-source.png`;
   const existingOutput = await getStoredObject(outputKey);
 
@@ -95,7 +100,9 @@ export async function runGenerateImageJob(
   });
   let generatedImageBuffer: Buffer;
 
-  if (reservation.shouldSubmit) {
+  if (input.model === "gemini_3_pro") {
+    generatedImageBuffer = await generateGeminiProImageForJob(job, context, input, reservation, stagingKey, operationKey);
+  } else if (reservation.shouldSubmit) {
     let generated;
 
     try {
@@ -199,6 +206,64 @@ export async function runGenerateImageJob(
   return buildOutput(input, uploaded, provider);
 }
 
+async function generateGeminiProImageForJob(
+  job: BackgroundJobRow,
+  context: WorkerJobContext,
+  input: GenerateImageInput,
+  reservation: Awaited<ReturnType<WorkerJobContext["store"]["reserveGenerationProviderOperation"]>>,
+  stagingKey: string,
+  operationKey: string,
+) {
+  const action = assertProviderOperationCanContinue(reservation);
+  let operationSubmitted = action === "resume";
+  const operationId = action === "resume" ? reservation.operation.provider_operation_id ?? undefined : undefined;
+
+  try {
+    const savedStagingKey = getJsonString(reservation.operation.metadata, "stagingKey");
+    if (action === "resume" && savedStagingKey && ["provider_succeeded", "output_persisted"].includes(reservation.operation.status)) {
+      return await downloadStoredObjectBuffer(savedStagingKey);
+    }
+    let acceptedOperationId = operationId;
+    const buffer = await generateGemini3ProImageBuffer({
+      aspectRatio: input.aspectRatio,
+      prompt: input.prompt,
+      referenceImageUrl: input.referenceImageUrl,
+      providerOperationId: operationId,
+      onOperationCreated: async (providerOperationId) => {
+        await context.store.markGenerationProviderSubmitted({ jobId: job.id, operationKey, providerOperationId });
+        operationSubmitted = true;
+        acceptedOperationId = providerOperationId;
+      },
+      onOperationSucceeded: async (providerOperationId) => {
+        await context.store.markGenerationProviderSucceeded({
+          jobId: job.id, operationKey, providerOperationId,
+          metadata: { model: GEMINI_3_PRO_IMAGE_MODEL },
+        });
+        acceptedOperationId = providerOperationId;
+      },
+    });
+    const staged = await uploadBufferToStorage({
+      buffer, cacheControl: "private, max-age=86400", contentType: "image/png", key: stagingKey,
+    });
+    await context.store.markGenerationProviderSucceeded({
+      jobId: job.id, operationKey,
+      providerOperationId: acceptedOperationId,
+      metadata: { model: GEMINI_3_PRO_IMAGE_MODEL, stagingKey: staged.key },
+    });
+    return buffer;
+  } catch (error) {
+    if (error instanceof ProviderOperationTerminalError) {
+      await context.store.markGenerationProviderFailed({
+        jobId: job.id, operationKey, errorCode: error.code,
+        errorMessage: error.message, retryAllowed: false,
+      });
+      throw error;
+    }
+    if (operationSubmitted) throw toProviderPollingRetry(error);
+    return persistProviderSubmissionFailure({ error, jobId: job.id, operationKey, store: context.store });
+  }
+}
+
 function buildOutput(
   input: GenerateImageInput,
   uploaded: { key: string; url: string },
@@ -221,7 +286,9 @@ function buildOutput(
 }
 
 function getImageModel(value: Json | undefined) {
-  return value === "nano_banana_2" ? "nano_banana_2" : "gpt_image";
+  if (value === "gemini_3_pro" || value === "nano_banana_2" || value === "gpt_image") return value;
+  if (value === undefined || value === null) return "gpt_image";
+  throw new ProviderRequestNotSubmittedError("generate_image received an unsupported image model.");
 }
 
 function getAspectRatio(value: Json | undefined): AIStudioImageRatio {

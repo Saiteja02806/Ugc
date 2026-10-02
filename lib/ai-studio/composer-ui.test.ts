@@ -46,19 +46,19 @@ test("the image prompt uses one unified composer surface", () => {
   );
   assert.match(
     composer,
-    /layout === "unified"[\s\S]*?unifiedMaxWidthClassName \?\? "max-w-\[944px\]"[\s\S]*?"rounded-\[24px\] border-border/,
+    /layout === "unified"[\s\S]*?unifiedMaxWidthClassName \?\? "max-w-\[944px\]"[\s\S]*?"rounded-\[20px\] border-border/,
   );
   assert.match(
     composer,
-    /"max-h-36 min-h-10 rounded-none px-0 py-0 text-base font-normal leading-7"/,
+    /"max-h-16 min-h-10 rounded-none px-0 py-0 text-base font-normal leading-6 sm:text-sm"/,
   );
-  assert.match(composer, /layout === "unified"\s*\?\s*"flex"/);
+  assert.match(composer, /layout === "unified"\s*\?\s*"flex flex-nowrap overflow-x-auto/);
 });
 
 test("the unified composer is narrower without squeezing standard layouts", () => {
   assert.match(
     composer,
-    /layout === "unified"[\s\S]*?\? "max-w-\[944px\]/,
+    /unifiedMaxWidthClassName \?\? "max-w-\[944px\]/,
   );
   assert.match(
     composer,
@@ -73,11 +73,11 @@ test("the unified composer stays compact while supporting multiline prompts", ()
   );
   assert.match(
     composer,
-    /const maximumHeight = layout === "unified" \? 144 : 128;/,
+    /const maximumHeight = layout === "unified" \? 64 : 128;/,
   );
   assert.match(
     composer,
-    /layout === "unified"\s*\? "gap-y-1 px-4 pb-1 pt-3 sm:px-5"/,
+    /layout === "unified"\s*\? "gap-y-1 px-4 pb-1.5 pt-3"/,
   );
   assert.doesNotMatch(composer, /max-h-60 min-h-28/);
 });
@@ -95,7 +95,7 @@ test("image and video controls send selected settings to generation APIs", () =>
   assert.match(imageWorkspace, /body: JSON\.stringify\(\{[\s\S]*?aspectRatio,[\s\S]*?quantity,/);
   assert.match(videoWorkspace, /body: JSON\.stringify\(\{[\s\S]*?aspectRatio,[\s\S]*?quantity,/);
   assert.match(imageWorkspace, /ariaLabel="Image model"/);
-  assert.match(imageWorkspace, /Nano Banana 2/);
+  assert.match(imageWorkspace, /Gemini 3 Pro/);
   assert.match(imageWorkspace, /GPT Image/);
   assert.match(imageWorkspace, /model,[\s\S]*?quantity,/);
   assert.match(videoWorkspace, /ariaLabel="Video model"/);
@@ -299,8 +299,8 @@ test("video composer keeps compact controls in the requested order", () => {
 test("image and video use one compact leading attachment control", () => {
   assert.match(imageWorkspace, /leadingControl=\{[\s\S]*?<ReferenceMediaUpload/);
   assert.match(videoWorkspace, /leadingControl=\{[\s\S]*?<ReferenceFilesUpload/);
-  assert.match(referenceUploader, /<Plus className="size-4"/);
-  assert.match(referenceUploader, /type="file"[\s\S]*?accept=\{accepts\}/);
+  assert.match(referenceUploader, /<ImagePlus className="size-4"/);
+  assert.match(referenceUploader, /type="file"[\s\S]*?accept=\{allowedKinds\.flatMap/);
   assert.doesNotMatch(referenceUploader, />\s*Upload image\s*</);
   assert.doesNotMatch(referenceUploader, />\s*Upload video\s*</);
   assert.doesNotMatch(referenceUploader, /generate without a reference/);
@@ -326,7 +326,7 @@ test("video results keep the prompt visible with custom playback controls", () =
   assert.match(videoResultCard, /video\.prompt/);
   assert.match(
     videoResultCard,
-    /max-w-\[54rem\][^\n]*lg:flex-row[^\n]*lg:gap-8/,
+    /max-w-\[54rem\][\s\S]*?sm:flex-row/,
   );
   assert.doesNotMatch(videoResultCard, /sm:ml-\[10%\]/);
   assert.doesNotMatch(videoResultCard, /\bcontrols\b/);
@@ -358,14 +358,14 @@ test("completed image results expose download and open actions while video cards
 test("the active reference control accepts a pasted image into the composer", () => {
   assert.match(
     referenceUploader,
-    /composerForm\.addEventListener\("paste", handlePaste\)/,
+    /form\.addEventListener\("paste", handlePaste\)/,
   );
   assert.match(referenceUploader, /clipboardData\?\.items/);
-  assert.doesNotMatch(referenceUploader, /event\.preventDefault\(\)/);
+  assert.match(referenceUploader, /event\.preventDefault\(\)/);
   assert.match(referenceUploader, /active = true/);
-  assert.match(referenceUploader, /src=\{selection\.asset\.url\}/);
-  assert.match(referenceUploader, /width=\{36\}[\s\S]*?height=\{36\}/);
-  assert.match(referenceUploader, /Image reference/);
+  assert.match(referenceUploader, /url=\{selection\.asset\.url\}/);
+  assert.match(referenceUploader, /<ReferenceUploadPreview/);
+  assert.match(referenceUploader, /onPendingChange\?\.\(true\)/);
   assert.match(imageWorkspace, /<ReferenceMediaUpload[\s\S]*?active=\{active\}/);
   assert.match(videoWorkspace, /<ReferenceFilesUpload[\s\S]*?active=\{active\}/);
 });
@@ -379,7 +379,7 @@ test("generation progress has a visible in-place loading state", () => {
 test("image previews remain compact and video results use the dedicated history layout", () => {
   assert.match(
     imageWorkspace,
-    /"9:16": "max-w-\[min\(240px,26dvh\)\]"/,
+    /"9:16": "max-w-\[min\(160px,20dvh\)\]"/,
   );
   assert.match(
     imageWorkspace,
@@ -387,11 +387,11 @@ test("image previews remain compact and video results use the dedicated history 
   );
   assert.match(
     imageWorkspace,
-    /getImagePreviewWidthClassName\(asset\.aspectRatio\)/,
+    /aspectRatio=\{row\.aspectRatio\}/,
   );
   assert.match(
     videoWorkspace,
-    /"9:16": "w-\[min\(100%,15rem\)\]"/,
+    /"9:16": "w-\[min\(100%,calc\(34dvh\*9\/16\),11\.25rem\)\]"/,
   );
   assert.match(
     videoWorkspace,

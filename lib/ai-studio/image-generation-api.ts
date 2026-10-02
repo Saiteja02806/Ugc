@@ -10,6 +10,8 @@ import {
   normalizeAIStudioPrompt,
 } from "@/lib/ai-studio/prompt-policy";
 import {
+  AI_STUDIO_IMAGE_MODELS,
+  type AIStudioImageModel,
   parseAIStudioGenerationQuantity,
   parseAIStudioImageAspectRatio,
   parseAIStudioImageModel,
@@ -133,6 +135,13 @@ export async function handleAIStudioImageGeneration(request: Request) {
   const quantity = parseAIStudioGenerationQuantity(body?.quantity);
   const model = parseAIStudioImageModel(body?.model);
   const referenceImageUrl = cleanTrustedHttpsUrl(body?.referenceImageUrl);
+
+  if (body?.model !== undefined && !AI_STUDIO_IMAGE_MODELS.includes(body.model as AIStudioImageModel)) {
+    return NextResponse.json(
+      { message: "This image model is unavailable. Refresh AI Studio and choose a model.", ok: false },
+      { status: 400 },
+    );
+  }
 
   if (body?.referenceImageUrl && !referenceImageUrl) {
     return NextResponse.json(

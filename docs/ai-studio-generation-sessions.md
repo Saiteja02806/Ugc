@@ -15,3 +15,13 @@ resume pointer; saved media remains in History and Creative Assets. Sessions
 are local to the mounted workspace, remain intact while switching tabs, and do
 not introduce a new database grouping or change generation/billing behavior.
 An explicit job URL and active-job recovery retain the existing resume flow.
+
+Portrait image previews use a 200px maximum width, capped at 24% of viewport
+height to keep the full preview and composer comfortable on laptop screens.
+Image actions include Copy image; image and video prompts include Copy prompt.
+Prompt copying preserves the full text and line breaks even while collapsed.
+Image copying writes PNG image data to the clipboard, converting other image
+formats at their original pixel dimensions. It never substitutes a copied URL
+for image data. Clipboard permission, fetch, or unsupported-browser failures
+show a readable error and retain Download as the fallback. Copying does not
+create another generation or use generation credits.

@@ -1,6 +1,7 @@
 "use client";
 
 import { Download, ExternalLink } from "lucide-react";
+import { AiStudioCopyButton } from "@/components/generation/ai-studio-copy-button";
 
 import { cn } from "@/lib/utils";
 
@@ -27,7 +28,7 @@ export function AiStudioResultActions({
       : "inline-flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-muted-subtle transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none";
 
   return (
-    <div className={cn("flex shrink-0 items-center gap-1", className)}>
+    <div className={cn("flex shrink-0 flex-wrap items-center gap-1", className)}>
       <a
         href={url}
         download={fileName}
@@ -53,6 +54,7 @@ export function AiStudioResultActions({
           {variant === "buttons" ? "Open" : null}
         </a>
       ) : null}
+      {kind === "image" ? <AiStudioCopyButton kind="image" value={url} /> : null}
     </div>
   );
 }

@@ -15,6 +15,7 @@ import {
   type AiStudioResultsStatus,
 } from "@/components/generation/ai-studio-results";
 import { AiStudioResultActions } from "@/components/generation/ai-studio-result-actions";
+import { AiStudioCopyButton } from "@/components/generation/ai-studio-copy-button";
 import { ImageGenerationHistory } from "@/components/generation/image-generation-history";
 import { ImagePreviewDialog } from "@/components/generation/image-preview-dialog";
 import { ReferenceMediaUpload } from "@/components/generation/reference-media-upload";
@@ -83,7 +84,7 @@ const IMAGE_PREVIEW_WIDTH_CLASS_NAMES: Record<
 > = {
   "4:5": "max-w-[min(240px,32dvh)]",
   "1:1": "max-w-[min(280px,38dvh)]",
-  "9:16": "max-w-[min(160px,20dvh)]",
+  "9:16": "max-w-[min(200px,24dvh)]",
   "16:9": "max-w-[min(420px,56dvh)]",
 };
 const activeJobStatuses = new Set([
@@ -1110,6 +1111,9 @@ function ImagePromptBubble({ createdAt, prompt }: { createdAt: string; prompt: s
         </span>
         {expanded ? <ChevronUp className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden="true" /> : <ChevronDown className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden="true" />}
       </button>
+      {prompt !== MISSING_IMAGE_PROMPT ? (
+        <div className="mt-1 flex justify-end"><AiStudioCopyButton kind="prompt" value={prompt} /></div>
+      ) : null}
     </div>
   );
 }

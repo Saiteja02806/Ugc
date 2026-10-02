@@ -35,6 +35,7 @@ import {
   type AiStudioResultsStatus,
 } from "@/components/generation/ai-studio-results";
 import { AiStudioResultActions } from "@/components/generation/ai-studio-result-actions";
+import { AiStudioCopyButton } from "@/components/generation/ai-studio-copy-button";
 import { Input } from "@/components/ui/input";
 import { ReferenceFilesUpload } from "@/components/video/reference-files-upload";
 import { CreatorReferencePicker } from "@/components/video/creator-reference-picker";
@@ -1764,6 +1765,7 @@ function VideoPromptBubble({
           <ChevronDown className="mt-0.5 size-4 shrink-0 text-muted transition-transform group-hover:translate-y-0.5" aria-hidden="true" />
         )}
       </button>
+      <div className="mt-1 flex justify-end"><AiStudioCopyButton kind="prompt" value={prompt} /></div>
     </div>
   );
 }

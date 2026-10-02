@@ -379,7 +379,7 @@ test("generation progress has a visible in-place loading state", () => {
 test("image previews remain compact and video results use the dedicated history layout", () => {
   assert.match(
     imageWorkspace,
-    /"9:16": "max-w-\[min\(160px,20dvh\)\]"/,
+    /"9:16": "max-w-\[min\(200px,24dvh\)\]"/,
   );
   assert.match(
     imageWorkspace,

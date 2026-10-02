@@ -1,6 +1,7 @@
 "use client";
 
 import { AiStudioResultActions } from "@/components/generation/ai-studio-result-actions";
+import { AiStudioCopyButton } from "@/components/generation/ai-studio-copy-button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import type { AIStudioImageResult } from "@/lib/ai-studio/media-results";
 
@@ -22,9 +23,10 @@ export function ImagePreviewDialog({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={image.url} alt={image.title} className="max-h-[65dvh] max-w-full object-contain" />
             </div>
-            <p className="max-h-24 shrink-0 overflow-y-auto whitespace-pre-wrap text-sm leading-6 [overflow-wrap:anywhere]">
-              {image.prompt || image.title}
-            </p>
+            <div className="flex shrink-0 items-start gap-2">
+              <p className="max-h-24 min-w-0 flex-1 overflow-y-auto whitespace-pre-wrap text-sm leading-6 [overflow-wrap:anywhere]">{image.prompt || image.title}</p>
+              {image.prompt ? <AiStudioCopyButton kind="prompt" value={image.prompt} /> : null}
+            </div>
             <AiStudioResultActions kind="image" title={image.title} url={image.url} />
           </>
         ) : null}

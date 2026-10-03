@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { BillingAccessError } from "@/lib/billing/subscription-db";
 
 import { requireFirebaseUser } from "@/lib/firebase/server-auth";
 import { getPublicBackgroundJob, isRetryableBackgroundJob } from "@/lib/jobs/background-job-contract";
@@ -55,6 +56,9 @@ export async function POST(
 
     return json({ ok: true, job: getPublicBackgroundJob(job) }, 202);
   } catch (error) {
+    if (error instanceof BillingAccessError) {
+      return json({ ok: false, error: error.message }, error.status);
+    }
     const status = getAuthStatus(error);
 
     if (status) {

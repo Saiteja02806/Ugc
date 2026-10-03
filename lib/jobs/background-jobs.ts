@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { BillingAccessError } from "@/lib/billing/subscription-db";
 
 const BACKGROUND_JOBS_TABLE = "background_jobs";
 const UUID_PATTERN =
@@ -702,6 +703,20 @@ export async function retryBackgroundJob(params: {
   );
 
   if (error) {
+    if (error.message.includes("insufficient_billing_credits")) {
+      throw new BillingAccessError("You do not have enough AI credits to retry this generation.");
+    }
+    if (error.message.includes("billing_retry_already_committed") ||
+      error.message.includes("billing_retry_reservation_conflict")) {
+      throw new BillingAccessError("This generation's credit reservation cannot be retried. Start a new generation instead.", 409);
+    }
+    if (error.message.includes("paid_subscription_required") ||
+      error.message.includes("complimentary_generation_access_required")) {
+      throw new BillingAccessError("This generation requires active access to its original credit plan. Update billing before retrying.");
+    }
+    if (error.message.includes("credit_balance_missing")) {
+      throw new BillingAccessError("Your generation credits could not be verified. Try again.", 503);
+    }
     throw new Error(`Could not retry background job: ${error.message}`);
   }
 

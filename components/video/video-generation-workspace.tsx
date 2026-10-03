@@ -645,14 +645,14 @@ export function VideoGenerationStudioPanel({
     const terminalJobs = durableJobs.filter(
       (job) =>
         ["cancelled", "completed", "failed"].includes(job.status) &&
-        !billingSyncedJobIdsRef.current.has(job.id),
+        !billingSyncedJobIdsRef.current.has(`${job.id}:${job.status}:${job.updatedAt}`),
     );
 
     if (terminalJobs.length === 0) {
       return;
     }
 
-    terminalJobs.forEach((job) => billingSyncedJobIdsRef.current.add(job.id));
+    terminalJobs.forEach((job) => billingSyncedJobIdsRef.current.add(`${job.id}:${job.status}:${job.updatedAt}`));
     void queryClient.invalidateQueries({
       queryKey: ["billing-subscription", user.uid],
     });

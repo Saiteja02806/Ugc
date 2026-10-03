@@ -102,6 +102,11 @@ export function useRetryBackgroundJob() {
       void queryClient.invalidateQueries({
         queryKey: ["background-jobs", user?.uid, "active"],
       });
+      if (user) {
+        void queryClient.invalidateQueries({
+          queryKey: ["billing-subscription", user.uid],
+        });
+      }
     },
   });
 }

@@ -11,6 +11,12 @@ export function resolveHookVideoProvider(input: {
     assertProviderOperationCanContinue({ operation: legacyOperation, shouldSubmit: false });
     return "higgsfield" as const;
   }
+  if (input.provider === "openrouter") {
+    if (input.model !== "seedance_2_5") {
+      throw new ProviderRequestNotSubmittedError("OpenRouter video generation requires Seedance 2.5.");
+    }
+    return "openrouter" as const;
+  }
   if (input.model === "seedance_2_5") return "runway" as const;
   if (input.model === "google_omni") return "gemini" as const;
   if (input.provider === "higgsfield") {

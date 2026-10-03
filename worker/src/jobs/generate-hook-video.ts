@@ -10,6 +10,7 @@ import {
 } from "../lib/generation-provider.js";
 import { generateRunwayHookVideoBuffer } from "../lib/runway-video.js";
 import { generateRunwaySeedanceVideoBuffer } from "../lib/runway-seedance-video.js";
+import { generateOpenRouterSeedanceVideoBuffer } from "../lib/openrouter-seedance-video.js";
 import { resolveHookVideoProvider } from "../lib/hook-video-provider.js";
 import { generateGeminiOmniVideoBuffer } from "../lib/gemini-omni-video.js";
 import { generateKlingVideoBuffer } from "../lib/kling-video.js";
@@ -91,7 +92,7 @@ export async function runGenerateHookVideoJob(
         (persistedProvider === "gemini" ||
         persistedProvider === "runway" ||
         persistedProvider === "veo" ||
-        persistedProvider === "higgsfield"
+        persistedProvider === "higgsfield" || persistedProvider === "openrouter"
           ? persistedProvider
           : undefined) ??
         input.provider ??
@@ -130,9 +131,13 @@ export async function runGenerateHookVideoJob(
     contentType: "video/mp4",
     key: outputKey,
   });
+  const completedOperation = provider === "openrouter"
+    ? await context.store.getGenerationProviderOperation({ jobId: job.id, operationKey: generated.operationKey })
+    : null;
   await context.store.markGenerationOutputPersisted({
     jobId: job.id,
     metadata: {
+      ...(completedOperation && isJsonObject(completedOperation.metadata) ? completedOperation.metadata : {}),
       durationSeconds: getOutputDurationSeconds(input, provider),
       provider,
       ratio: input.aspectRatio,
@@ -172,6 +177,10 @@ async function generateWithFallback(
 
   if (selectedProvider === "higgsfield") {
     return generateWithProvider(job, context, "higgsfield", "primary", input, prompt);
+  }
+
+  if (selectedProvider === "openrouter") {
+    return generateWithProvider(job, context, "openrouter", "primary", input, prompt);
   }
 
   if (input.referenceVideoUrl) {
@@ -308,10 +317,11 @@ async function generateWithProvider(
   const onOperationSucceeded = async (
     operationId: string,
     outputUrl?: string,
+    usage?: { costUsd?: number; generationId?: string },
   ) => {
     await context.store.markGenerationProviderSucceeded({
       jobId: job.id,
-      metadata: { provider, role },
+      metadata: { provider, role, ...(usage?.costUsd !== undefined ? { providerCostUsd: usage.costUsd } : {}), ...(usage?.generationId ? { generationId: usage.generationId } : {}) },
       operationKey,
       outputUrl,
       providerOperationId: operationId,
@@ -382,8 +392,11 @@ async function generateProviderBuffer(
     referenceVideoUrl?: string;
     resolution: HookVideoResolution;
   },
-  onOperationSucceeded: (operationId: string, outputUrl?: string) => Promise<void>,
+  onOperationSucceeded: (operationId: string, outputUrl?: string, usage?: { costUsd?: number; generationId?: string }) => Promise<void>,
 ) {
+  if (provider === "openrouter") {
+    return generateOpenRouterSeedanceVideoBuffer({ ...params, onOperationSucceeded });
+  }
   if (provider === "gemini") {
     return generateGeminiOmniVideoBuffer({
       ...params,
@@ -495,7 +508,7 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
 }
 
 function getOutputDurationSeconds(input: GenerateHookVideoInput, provider: HookVideoProvider) {
-  if (input.model === "seedance_2_5" && provider === "runway") return input.durationSeconds;
+  if (input.model === "seedance_2_5" && (provider === "runway" || provider === "openrouter")) return input.durationSeconds;
   return input.referenceVideoUrl
     ? input.referenceVideoDurationSeconds ?? input.durationSeconds
     : input.durationSeconds;

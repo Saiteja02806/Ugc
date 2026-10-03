@@ -3,6 +3,9 @@ import test from "node:test";
 
 import {
   getAIStudioVideoResolutions,
+  getAIStudioVideoDurations,
+  getAIStudioVideoModelLabel,
+  isAIStudioVideoModelAvailable,
   getAIStudioRatioLabel,
   isAIStudioVideoResolutionSupported,
   parseAIStudioGenerationQuantity,
@@ -29,9 +32,24 @@ test("accepts only supported AI Studio settings", () => {
   assert.equal(parseAIStudioVideoModel("unknown"), "kling_3_0");
   assert.equal(parseAIStudioVideoDuration(10), 10);
   assert.equal(parseAIStudioVideoDuration(30), 30);
-  assert.equal(parseAIStudioVideoDuration(11), 5);
+  assert.equal(parseAIStudioVideoDuration(11), 11);
+  assert.equal(parseAIStudioVideoDuration(31), 5);
   assert.equal(parseAIStudioVideoResolution("1080p"), "1080p");
   assert.equal(parseAIStudioVideoResolution("4k"), "720p");
+});
+
+test("Seedance uses its own capabilities and is gated until the provider is ready", () => {
+  assert.equal(parseAIStudioVideoModel("seedance_2_5"), "seedance_2_5");
+  assert.equal(getAIStudioVideoModelLabel("seedance_2_5"), "Seedance 2.5");
+  assert.deepEqual(getAIStudioVideoResolutions("seedance_2_5"), ["480p", "720p"]);
+  assert.equal(isAIStudioVideoResolutionSupported("seedance_2_5", "1080p"), false);
+  assert.deepEqual(getAIStudioVideoDurations("seedance_2_5"), Array.from({ length: 27 }, (_, i) => i + 4));
+  assert.ok(getAIStudioVideoDurations("kling_3_0").every((seconds) => seconds >= 3 && seconds <= 15));
+  assert.ok(getAIStudioVideoDurations("google_omni").every((seconds) => seconds <= 10));
+  assert.equal(isAIStudioVideoModelAvailable("seedance_2_5", false), false);
+  assert.equal(isAIStudioVideoModelAvailable("seedance_2_5", true), true);
+  assert.equal(isAIStudioVideoModelAvailable("kling_3_0", false), true);
+  assert.equal(isAIStudioVideoModelAvailable("google_omni", false), true);
 });
 
 test("limits video quality choices to each provider's supported resolutions", () => {

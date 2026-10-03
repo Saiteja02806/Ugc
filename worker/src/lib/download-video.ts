@@ -1,12 +1,17 @@
 const DEFAULT_TIMEOUT_MS = 120_000;
 const DEFAULT_MAX_BYTES = 500 * 1024 * 1024;
 
+type DownloadOptions = {
+  maxBytes?: number;
+  timeoutMs?: number;
+  headers?: RequestInit["headers"];
+  redirect?: RequestInit["redirect"];
+  fetchImpl?: typeof fetch;
+};
+
 export async function downloadVideoToBuffer(
   url: string,
-  options: {
-    maxBytes?: number;
-    timeoutMs?: number;
-  } = {},
+  options: DownloadOptions = {},
 ) {
   return downloadMediaToBuffer(url, {
     ...options,
@@ -40,6 +45,9 @@ async function downloadMediaToBuffer(
     maxBytes?: number;
     mediaLabel: "audio" | "video";
     timeoutMs?: number;
+    headers?: RequestInit["headers"];
+    redirect?: RequestInit["redirect"];
+    fetchImpl?: typeof fetch;
   },
 ) {
   const parsedUrl = new URL(url);
@@ -56,8 +64,10 @@ async function downloadMediaToBuffer(
   }, options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
 
   try {
-    const response = await fetch(parsedUrl, {
+    const response = await (options.fetchImpl ?? fetch)(parsedUrl, {
       signal: controller.signal,
+      headers: options.headers,
+      redirect: options.redirect,
     });
 
     if (!response.ok) {

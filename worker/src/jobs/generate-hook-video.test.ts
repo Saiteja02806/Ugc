@@ -7,6 +7,12 @@ test("new Seedance requests use Runway, while Omni remains Gemini", () => {
   assert.equal(resolveHookVideoProvider({ model: "seedance_2_5" }, null), "runway");
   assert.equal(resolveHookVideoProvider({ model: "google_omni" }, null), "gemini");
 });
+
+test("explicit OpenRouter Seedance routing preserves accepted legacy tasks", () => {
+  assert.equal(resolveHookVideoProvider({ model: "seedance_2_5", provider: "openrouter" }, null), "openrouter");
+  assert.equal(resolveHookVideoProvider({ model: "seedance_2_5", provider: "openrouter" }, { status: "submitted", provider_operation_id: "legacy" }), "higgsfield");
+  assert.throws(() => resolveHookVideoProvider({ model: "google_omni", provider: "openrouter" }, null), ProviderRequestNotSubmittedError);
+});
 test("does not replace a paid legacy Higgsfield request with a new Runway task", () => {
   for (const status of ["submitted", "provider_succeeded", "output_persisted"]) {
     assert.equal(resolveHookVideoProvider({ model: "seedance_2_5" }, { status, provider_operation_id: "old-task" }), "higgsfield");

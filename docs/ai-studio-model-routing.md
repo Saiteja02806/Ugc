@@ -23,9 +23,14 @@ blank prompts remain invalid. The shared chat composer does not display a
 character counter. Video provider constraints remain enforced with plain
 validation messages, and each provider's own input limits still apply.
 
-Video options remain **Kling 3.0** (Runway) and **Omni Flash 1.1** (Gemini).
-Seedance 2.5 remains hidden at the user's request. Its existing recovery adapter
-is retained.
+Video options are **Kling 3.0** (Runway), **Omni Flash 1.1** (Gemini), and
+**Seedance 2.5** (OpenRouter). Seedance is gated by
+`NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE=true` and remains unavailable until the
+worker, database migration, and inference-key configuration pass release verification.
+Explore's Recreate selector carries the same model into AI Studio.
+New Seedance jobs freeze `provider: "openrouter"`; accepted legacy Runway or
+Higgsfield jobs retain their original recovery adapter. See
+[the OpenRouter integration and release checklist](ai-studio-openrouter-seedance.md).
 
 ## Seedance investigation, 2026-10-02
 
@@ -39,7 +44,10 @@ Seedance guidance, but the API does not identify the exact offending input.
 Earlier Higgsfield insufficient-credit failures are a separate issue.
 
 Do not alter moderation settings or automatically retry rejected content.
-Text-only Seedance can be considered separately if the user asks to restore it.
+The user subsequently requested restoring Seedance through OpenRouter. This
+does not establish that reference-image moderation has changed. The user
+explicitly declined paid generation tests on 2026-10-03; live output and
+moderation behavior remain unverified by this release.
 
 ## Validation and release order
 

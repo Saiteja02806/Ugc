@@ -268,6 +268,19 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
       }
 
       dynamic "env" {
+        for_each = var.openrouter_api_key_secret_id == "" ? [] : [var.openrouter_api_key_secret_id]
+        content {
+          name = "OPENROUTER_API_KEY"
+          value_source {
+            secret_key_ref {
+              secret  = env.value
+              version = "latest"
+            }
+          }
+        }
+      }
+
+      dynamic "env" {
         for_each = var.higgsfield_credentials_secret_id == "" ? [] : [var.higgsfield_credentials_secret_id]
         content {
           name = "HF_CREDENTIALS"

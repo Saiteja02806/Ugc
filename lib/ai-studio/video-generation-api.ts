@@ -17,6 +17,10 @@ import {
   parseAIStudioVideoModel,
   parseAIStudioVideoResolution,
   isAIStudioVideoResolutionSupported,
+  AI_STUDIO_VIDEO_MODELS,
+  isAIStudioVideoModelAvailable,
+  getAIStudioVideoModelLabel,
+  getAIStudioVideoResolutions,
 } from "@/lib/ai-studio/generation-settings";
 import { isExploreHookVideoId } from "@/lib/explore/hook-video-library";
 import { isExploreWallTextVideoId } from "@/lib/explore/wall-text-video-library";
@@ -160,9 +164,15 @@ export async function handleAIStudioVideoGeneration(request: Request) {
   );
   const aspectRatio = parseAIStudioVideoAspectRatio(body?.aspectRatio);
   const quantity = parseAIStudioGenerationQuantity(body?.quantity);
+  if (body?.model !== undefined && !AI_STUDIO_VIDEO_MODELS.some((value) => value === body?.model)) {
+    return NextResponse.json({ error: "Choose a supported video model.", ok: false }, { status: 400 });
+  }
   const model = parseAIStudioVideoModel(body?.model);
   const durationSeconds = parseAIStudioVideoDuration(body?.durationSeconds);
   const resolution = parseAIStudioVideoResolution(body?.resolution);
+  if (!isAIStudioVideoModelAvailable(model)) {
+    return NextResponse.json({ error: "Seedance 2.5 is temporarily unavailable. Choose another video model.", ok: false }, { status: 503 });
+  }
   const isExploreRecreate =
     (body?.referenceType === "hook" && isExploreHookVideoId(body?.referenceId)) ||
     (body?.referenceType === "wall_text" &&
@@ -241,12 +251,11 @@ export async function handleAIStudioVideoGeneration(request: Request) {
   }
 
   if (!isAIStudioVideoResolutionSupported(model, resolution)) {
-    const supportedResolutions =
-      model === "kling_3_0" ? "720p" : "720p or 1080p";
+    const supportedResolutions = getAIStudioVideoResolutions(model).join(" or ");
 
     return NextResponse.json(
       {
-        error: `${model === "kling_3_0" ? "Kling 3.0" : "Google Omni"} supports ${supportedResolutions}.`,
+        error: `${getAIStudioVideoModelLabel(model)} supports ${supportedResolutions}.`,
         ok: false,
       },
       { status: 400 },
@@ -268,6 +277,17 @@ export async function handleAIStudioVideoGeneration(request: Request) {
       },
       { status: 400 },
     );
+  }
+
+  if (model === "seedance_2_5" && body?.durationSeconds !== undefined && (
+    typeof body.durationSeconds !== "number" || !Number.isInteger(body.durationSeconds) ||
+    body.durationSeconds < 4 || body.durationSeconds > 30
+  )) {
+    return NextResponse.json({ error: "Seedance 2.5 duration must be between 4 and 30 seconds.", ok: false }, { status: 400 });
+  }
+
+  if (model === "seedance_2_5" && body?.resolution !== undefined && body.resolution !== "480p" && body.resolution !== "720p") {
+    return NextResponse.json({ error: "Seedance 2.5 supports 480p or 720p video quality.", ok: false }, { status: 400 });
   }
 
   if (!prompt) {
@@ -346,6 +366,7 @@ export async function handleAIStudioVideoGeneration(request: Request) {
           durationSeconds,
           hookIdea: prompt,
           model,
+          ...(model === "seedance_2_5" ? { provider: "openrouter" } : {}),
           promptMode: "direct",
           projectId,
           referenceVideoDurationSeconds,

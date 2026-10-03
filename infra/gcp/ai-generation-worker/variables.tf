@@ -212,6 +212,12 @@ variable "higgsfield_credentials_secret_id" {
   default     = ""
 }
 
+variable "openrouter_api_key_secret_id" {
+  description = "Optional Secret Manager secret ID injected as OPENROUTER_API_KEY for Seedance 2.5 video generation."
+  type        = string
+  default     = ""
+}
+
 variable "runway_daily_credit_limit" {
   description = "Maximum Runway credits the worker may spend during one UTC calendar day."
   type        = number

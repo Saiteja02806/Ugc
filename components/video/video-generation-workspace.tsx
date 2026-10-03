@@ -57,10 +57,12 @@ import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upl
 import {
   AI_STUDIO_GENERATION_QUANTITIES,
   AI_STUDIO_VIDEO_ASPECT_RATIOS,
-  AI_STUDIO_VIDEO_DURATIONS,
   AI_STUDIO_VIDEO_MODELS,
   AI_STUDIO_VIDEO_RESOLUTIONS,
   isAIStudioVideoResolutionSupported,
+  isAIStudioVideoModelAvailable,
+  getAIStudioVideoModelLabel,
+  getAIStudioVideoDurations,
   parseAIStudioVideoModel,
   parseAIStudioVideoResolution,
   type AIStudioGenerationQuantity,
@@ -328,7 +330,10 @@ export function VideoGenerationStudioPanel({
     useState<AIStudioVideoAspectRatio>("9:16");
   const [quantity, setQuantity] =
     useState<AIStudioGenerationQuantity>(1);
-  const [model, setModel] = useState<AIStudioVideoModel>("kling_3_0");
+  const [model, setModel] = useState<AIStudioVideoModel>(() => {
+    const requested = parseAIStudioVideoModel(searchParams.get("model"));
+    return isAIStudioVideoModelAvailable(requested) ? requested : "kling_3_0";
+  });
   const [durationSeconds, setDurationSeconds] =
     useState<AIStudioVideoDuration>(5);
   const [resolution, setResolution] =
@@ -446,7 +451,7 @@ export function VideoGenerationStudioPanel({
       setAdditionalImageReferences([]);
       setSelectedCreatorReferenceId(null);
     } else {
-      const matchingDuration = AI_STUDIO_VIDEO_DURATIONS.find(
+      const matchingDuration = getAIStudioVideoDurations(model).find(
         (duration) => duration >= 4 && duration >= selection.asset.durationSeconds!,
       );
       if (matchingDuration) setDurationSeconds(matchingDuration);
@@ -808,6 +813,11 @@ export function VideoGenerationStudioPanel({
 
     if (model === "kling_3_0" && trimmedPrompt.length < 2) {
       setActionError("Kling 3.0 requires a prompt of at least 2 characters.");
+      return;
+    }
+
+    if (!isAIStudioVideoModelAvailable(model)) {
+      setActionError("Seedance 2.5 is temporarily unavailable. Choose another video model.");
       return;
     }
 
@@ -1215,6 +1225,7 @@ export function VideoGenerationStudioPanel({
           ) : null
         }
         generateDisabled={
+          !isAIStudioVideoModelAvailable(model) ||
           generationLocked ||
           hasInsufficientCredits ||
           !prompt.trim() ||
@@ -1277,13 +1288,17 @@ export function VideoGenerationStudioPanel({
               disabled={generationLocked || isGenerating || referenceFilesPending}
               size="sm"
               options={AI_STUDIO_VIDEO_MODELS.map((value) => ({
-                label:
-                  value === "kling_3_0" ? "Kling 3.0" : "Omni Flash 1.1",
+                label: `${getAIStudioVideoModelLabel(value)}${isAIStudioVideoModelAvailable(value) ? "" : " · temporarily unavailable"}`,
+                disabled: !isAIStudioVideoModelAvailable(value),
                 value,
               }))}
               value={model}
               onChange={(value) => {
                 submissionKeyRef.current = null;
+                const nextModel = value as AIStudioVideoModel;
+                if (!getAIStudioVideoDurations(nextModel).includes(durationSeconds)) {
+                  setDurationSeconds(5);
+                }
                 if (value === "kling_3_0" && durationSeconds > 15) {
                   setDurationSeconds(5);
                 }
@@ -1306,7 +1321,6 @@ export function VideoGenerationStudioPanel({
                   }
                   if (durationSeconds > 10) setDurationSeconds(5);
                 }
-                const nextModel = value as AIStudioVideoModel;
                 if (!isAIStudioVideoResolutionSupported(nextModel, resolution)) {
                   setResolution("720p");
                 }
@@ -1337,9 +1351,7 @@ export function VideoGenerationStudioPanel({
               disabled={generationLocked || isGenerating}
               size="sm"
               icon={<Clock3 className="size-3.5" aria-hidden="true" />}
-              options={AI_STUDIO_VIDEO_DURATIONS.filter(
-                (duration) => model === "kling_3_0" ? duration <= 15 : duration <= 10,
-              ).map((duration) => ({
+              options={getAIStudioVideoDurations(model).map((duration) => ({
                 label: `${duration} sec · ${duration * creditsPerSecond} credits`,
                 triggerLabel: `${duration} sec`,
                 value: String(duration),
@@ -1424,7 +1436,7 @@ function getGeneratedVideoTitle(prompt: string) {
 }
 
 function getVideoModelLabel(model: AIStudioVideoModel | undefined) {
-  return model === "google_omni" ? "Google Omni" : "Kling 3.0";
+  return getAIStudioVideoModelLabel(model ?? "kling_3_0");
 }
 
 function getErrorMessage(error: unknown, fallback: string) {

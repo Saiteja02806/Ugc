@@ -51,14 +51,14 @@ test("renders direct Hook and Wall of Text libraries without Instagram embeds", 
   assert.match(viralWorkspace, />\s*Recreate\s*</);
   assert.doesNotMatch(viralWorkspace, /Use This Hook/);
   assert.match(viralWorkspace, /sourceUrl: item\.videoUrl/);
-  assert.match(viralWorkspace, /exploreRecreate: "1"/);
+  assert.match(readProjectFile("lib/explore/video-generation-link.ts"), /exploreRecreate: "1"/);
   assert.match(viralWorkspace, /referenceType: "hook"/);
   assert.match(viralWorkspace, /referenceType: "wall_text"/);
   assert.match(viralWorkspace, /useBillingSubscription\(\)/);
   assert.match(viralWorkspace, /Upgrade to Pro/);
   assert.match(viralWorkspace, /This Hook performed well on Instagram/);
   assert.match(viralWorkspace, /checkingPlan/);
-  assert.match(viralWorkspace, /href=\{getExploreStudioHref\(item, section\)\}/);
+  assert.match(viralWorkspace, /href=\{getExploreStudioHref\(item, section, model\)\}/);
   assert.match(viralWorkspace, /href="\/pricing"/);
   assert.match(viralWorkspace, /autoPlay=\{autoPlay\}/);
   assert.match(
@@ -126,7 +126,7 @@ test("requires an image for Hook and Wall of Text Explore recreations", () => {
   );
   assert.match(
     videoWorkspace,
-    /allowedKinds=\{model === "seedance_2_5" && !isExploreRecreate \? \["image", "video", "audio"\] : \["image"\]\}/,
+    /allowedKinds=\{\["image"\]\}/,
   );
   assert.match(videoWorkspace, /Explore Recreate/);
   assert.match(videoWorkspace, /Image required/);

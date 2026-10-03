@@ -8,8 +8,9 @@ export const AI_STUDIO_IMAGE_ASPECT_RATIOS = [
 export const AI_STUDIO_VIDEO_ASPECT_RATIOS = ["9:16", "16:9"] as const;
 export const AI_STUDIO_GENERATION_QUANTITIES = [1, 2, 4] as const;
 export const AI_STUDIO_IMAGE_MODELS = ["gemini_3_pro", "gpt_image"] as const;
-export const AI_STUDIO_VIDEO_MODELS = ["kling_3_0", "google_omni"] as const;
+export const AI_STUDIO_VIDEO_MODELS = ["kling_3_0", "google_omni", "seedance_2_5"] as const;
 export const AI_STUDIO_VIDEO_DURATIONS = [3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30] as const;
+const SEEDANCE_VIDEO_DURATIONS = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30] as const;
 export const AI_STUDIO_VIDEO_RESOLUTIONS = ["480p", "720p", "1080p"] as const;
 
 export type AIStudioImageAspectRatio =
@@ -21,7 +22,7 @@ export type AIStudioGenerationQuantity =
 export type AIStudioImageModel = (typeof AI_STUDIO_IMAGE_MODELS)[number];
 export type AIStudioVideoModel = (typeof AI_STUDIO_VIDEO_MODELS)[number];
 export type AIStudioVideoDuration =
-  (typeof AI_STUDIO_VIDEO_DURATIONS)[number];
+  (typeof AI_STUDIO_VIDEO_DURATIONS)[number] | (typeof SEEDANCE_VIDEO_DURATIONS)[number];
 export type AIStudioVideoResolution =
   (typeof AI_STUDIO_VIDEO_RESOLUTIONS)[number];
 
@@ -31,7 +32,24 @@ const AI_STUDIO_VIDEO_RESOLUTIONS_BY_MODEL: Record<
 > = {
   google_omni: ["720p", "1080p"],
   kling_3_0: ["720p"],
+  seedance_2_5: ["480p", "720p"],
 };
+
+export function getAIStudioVideoModelLabel(model: AIStudioVideoModel) {
+  return { kling_3_0: "Kling 3.0", google_omni: "Omni Flash 1.1", seedance_2_5: "Seedance 2.5" }[model];
+}
+
+export function isAIStudioVideoModelAvailable(
+  model: AIStudioVideoModel,
+  seedanceEnabled = process.env.NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE === "true",
+) {
+  return model !== "seedance_2_5" || seedanceEnabled;
+}
+
+export function getAIStudioVideoDurations(model: AIStudioVideoModel): readonly AIStudioVideoDuration[] {
+  if (model === "seedance_2_5") return SEEDANCE_VIDEO_DURATIONS;
+  return AI_STUDIO_VIDEO_DURATIONS.filter((duration) => duration <= (model === "kling_3_0" ? 15 : 10));
+}
 
 export function parseAIStudioImageAspectRatio(
   value: unknown,
@@ -58,7 +76,7 @@ export function parseAIStudioVideoModel(value: unknown): AIStudioVideoModel {
 export function parseAIStudioVideoDuration(
   value: unknown,
 ): AIStudioVideoDuration {
-  return AI_STUDIO_VIDEO_DURATIONS.includes(value as AIStudioVideoDuration)
+  return [...AI_STUDIO_VIDEO_DURATIONS, ...SEEDANCE_VIDEO_DURATIONS].includes(value as AIStudioVideoDuration)
     ? (value as AIStudioVideoDuration)
     : 5;
 }

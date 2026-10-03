@@ -36,7 +36,9 @@ and complimentary/trial users can open their workspace. Pricing refreshes billin
 on entry and on window focus. A failed lookup shows retry and blocks checkout.
 The checkout endpoint rechecks billing strictly and sends an existing managed
 subscriber to their billing portal, preventing a duplicate subscription checkout.
-Sign-in now displays the same billed prices as the pricing catalog.
+Sign-in now displays the same billed prices as the pricing catalog. Billing
+intervals read the current Next.js URL state, so returning from signup preserves
+the annual/monthly selection even when cached server props are stale.
 
 ## Validation
 
@@ -56,4 +58,5 @@ Sign-in now displays the same billed prices as the pricing catalog.
   scheduling usage rows were identical before and after the migration.
 
 No new charged purchase or authenticated daily generation was performed as part
-of this page release. Production page acceptance is checked after web deployment.
+of this page release. Production desktop/mobile acceptance passed with no overflow or browser errors,
+loaded coin images, correct signup prices and zero automated accessibility violations.

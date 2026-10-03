@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { PricingCard } from "@/components/pricing/pricing-card";
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
@@ -19,19 +19,11 @@ type PricingCatalogProps = {
 export function PricingCatalog({
   initialBillingInterval,
 }: PricingCatalogProps) {
-  const [billingInterval, setBillingInterval] =
-    useState<BillingInterval>(initialBillingInterval);
+  const searchParams = useSearchParams();
+  const billingInterval = searchParams
+    ? parseBillingInterval(searchParams.get("billing"))
+    : initialBillingInterval;
   const subscriptionQuery = useBillingSubscription({ freshOnMount: true, refreshOnFocus: true });
-
-  useEffect(() => {
-    function syncBillingInterval() {
-      const searchParams = new URLSearchParams(window.location.search);
-      setBillingInterval(parseBillingInterval(searchParams.get("billing")));
-    }
-
-    window.addEventListener("popstate", syncBillingInterval);
-    return () => window.removeEventListener("popstate", syncBillingInterval);
-  }, []);
 
   function updateBillingInterval(nextInterval: BillingInterval) {
     const url = new URL(window.location.href);
@@ -47,7 +39,6 @@ export function PricingCatalog({
       "",
       `${url.pathname}${url.search}${url.hash}`,
     );
-    setBillingInterval(nextInterval);
   }
 
   const isYearly = billingInterval === "yearly";

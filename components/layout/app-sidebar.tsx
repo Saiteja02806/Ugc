@@ -377,7 +377,7 @@ function SidebarNavigation({
     ...primaryNavigationItems.filter(
       (item) => item.key !== "create-content" || isCreateContentScreenEnabled,
     ),
-    exploreNavigationItem,
+    ...(isCreateContentScreenEnabled ? [exploreNavigationItem] : []),
   ];
 
   return (

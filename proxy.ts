@@ -22,7 +22,12 @@ export function proxy(request: NextRequest) {
     return new NextResponse(null, { status: 404 });
   }
 
-  if (process.env.NODE_ENV === "production" && pathname === "/create-content") {
+  if (
+    process.env.NODE_ENV === "production" &&
+    (pathname === "/create-content" ||
+      pathname === "/explore" ||
+      pathname.startsWith("/explore/"))
+  ) {
     return new NextResponse(null, { status: 404 });
   }
 

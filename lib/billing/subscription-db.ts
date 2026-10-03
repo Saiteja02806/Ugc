@@ -5,7 +5,7 @@ import {
   resolveBillingAccess,
   type BillingAccessSource,
 } from "./complimentary-plan-grants";
-import { ingestDodoUsageEvent } from "@/lib/billing/dodo";
+import { DodoUsageRejectedError, ingestDodoUsageEvent } from "@/lib/billing/dodo";
 import {
   getFreeTrialEntitlement,
   unavailableFreeTrialEntitlement,
@@ -224,16 +224,15 @@ export async function getUserSubscription(
     db
       .from("billing_subscriptions")
       .select(
-        "billing_interval,cancel_at_period_end,current_period_end,current_period_start,last_event_at,plan_key,status",
+        "dodo_subscription_id,billing_interval,cancel_at_period_end,current_period_end,current_period_start,last_event_at,plan_key,status",
       )
       .eq("user_id", userId)
       .order("last_event_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+      .limit(10),
     db
       .from("billing_subscriptions")
       .select(
-        "billing_interval,cancel_at_period_end,current_period_end,current_period_start,last_event_at,plan_key,status",
+        "dodo_subscription_id,billing_interval,cancel_at_period_end,current_period_end,current_period_start,last_event_at,plan_key,status",
       )
       .eq("user_id", userId)
       .eq("status", "active")
@@ -242,7 +241,7 @@ export async function getUserSubscription(
     db
       .from("billing_credit_balances")
       .select(
-        "credit_limit,period_end,period_start,reserved_credits,used_credits",
+        "dodo_subscription_id,credit_limit,period_end,period_start,reserved_credits,used_credits",
       )
       .eq("user_id", userId)
       .maybeSingle(),
@@ -286,7 +285,11 @@ export async function getUserSubscription(
     );
   }
 
-  const row = subscriptionResult.data ?? null;
+  // Prefer the subscription that owns the balance, so an old cancellation
+  // cannot hide the current subscription's payment recovery state.
+  const row = subscriptionResult.data?.find(
+    (subscription) => subscription.dodo_subscription_id === creditsResult.data?.dodo_subscription_id,
+  ) ?? subscriptionResult.data?.[0] ?? null;
   const activeDodoRow = (activeSubscriptionsResult.data ?? []).find(
     (subscription) => subscription.plan_key === "growth",
   ) ?? activeSubscriptionsResult.data?.[0] ?? null;
@@ -333,7 +336,7 @@ export async function getUserSubscription(
       : activeDodoRow?.last_event_at ?? row?.last_event_at,
     configuredDailyContentPieces,
     access.accessSource,
-    Boolean(dodoPlanKey),
+    Boolean(dodoPlanKey) || ["on_hold", "paused", "failed"].includes(row?.status ?? ""),
   );
   const complimentaryCreditsResult =
     access.accessSource === "complimentary" && complimentaryGrant
@@ -528,7 +531,7 @@ export async function releaseBillingCredits(params: {
   }
 }
 
-export async function deliverBillingUsageForJob(jobId: string) {
+export async function deliverBillingUsageForJob(jobId: string): Promise<"delivered" | "skipped" | "deferred"> {
   const db = getClient();
   const { data, error } = await db
     .from("billing_usage_outbox")
@@ -544,11 +547,11 @@ export async function deliverBillingUsageForJob(jobId: string) {
 
   if (
     !data ||
-    data.status === "delivered" ||
+    ["delivered", "skipped"].includes(data.status) ||
     toInteger(data.attempt_count) >= MAX_BILLING_USAGE_ATTEMPTS ||
     isFutureTimestamp(data.next_attempt_at)
   ) {
-    return;
+    return "deferred";
   }
 
   const eventName =
@@ -564,7 +567,7 @@ export async function deliverBillingUsageForJob(jobId: string) {
       eventId: data.event_id,
       eventName,
       metadata: {
-        credits_cost: String(toInteger(data.credit_cost)),
+        credits_cost: toInteger(data.credit_cost),
         generation_kind: data.generation_kind,
         job_id: jobId,
         occurred_at: data.occurred_at,
@@ -590,11 +593,13 @@ export async function deliverBillingUsageForJob(jobId: string) {
     if (updateError) {
       throw new Error(`Could not mark Dodo usage as delivered: ${updateError.message}`);
     }
+    return "delivered";
   } catch (usageError) {
+    const rejected = usageError instanceof DodoUsageRejectedError;
     const attemptCount = toInteger(data.attempt_count) + 1;
     const attemptedAt = new Date();
     const nextAttemptAt =
-      attemptCount >= MAX_BILLING_USAGE_ATTEMPTS
+      rejected || attemptCount >= MAX_BILLING_USAGE_ATTEMPTS
         ? null
         : new Date(
             attemptedAt.getTime() + getBillingUsageRetryDelayMs(attemptCount),
@@ -609,7 +614,7 @@ export async function deliverBillingUsageForJob(jobId: string) {
             ? usageError.message.slice(0, 1000)
             : "Dodo usage delivery failed.",
         next_attempt_at: nextAttemptAt,
-        status: "failed",
+        status: rejected ? "skipped" : "failed",
         updated_at: attemptedAt.toISOString(),
       })
       .eq("event_id", data.event_id);
@@ -621,6 +626,8 @@ export async function deliverBillingUsageForJob(jobId: string) {
       });
     }
 
+    if (updateError) throw new Error(`Could not record usage outcome: ${updateError.message}`);
+    if (rejected) return "skipped";
     throw usageError;
   }
 }
@@ -637,34 +644,32 @@ export async function flushPendingBillingUsageEvents(limit = 50) {
     .order("created_at", { ascending: true })
     .limit(boundedLimit);
 
-  if (error) {
-    throw new Error(`Could not load pending billing usage: ${error.message}`);
-  }
+  if (error) throw new Error(`Could not load pending billing usage: ${error.message}`);
 
-  let delivered = 0;
-  let failed = 0;
-
-  for (const event of data ?? []) {
-    try {
-      await deliverBillingUsageForJob(event.background_job_id);
-      delivered += 1;
-    } catch (usageError) {
-      failed += 1;
-      console.error("Pending Dodo usage delivery failed:", {
-        error:
-          usageError instanceof Error
-            ? usageError.message
-            : "Usage delivery failed.",
-        eventId: event.event_id,
-      });
+  const result = { delivered: 0, failed: 0, skipped: 0, deferred: 0, inspected: 0 };
+  const startedAt = Date.now();
+  const events = data ?? [];
+  // Bound each run to the scheduler's 60-second request deadline.
+  for (let index = 0; index < events.length; index += 4) {
+    if (Date.now() - startedAt >= 25_000) {
+      result.deferred += events.length - index;
+      break;
     }
+    await Promise.all(events.slice(index, index + 4).map(async (event) => {
+      result.inspected += 1;
+      try {
+        const outcome = await deliverBillingUsageForJob(event.background_job_id);
+        result[outcome] += 1;
+      } catch (usageError) {
+        result.failed += 1;
+        console.error("Pending Dodo usage delivery failed:", {
+          error: usageError instanceof Error ? usageError.message : "Usage delivery failed.",
+          eventId: event.event_id,
+        });
+      }
+    }));
   }
-
-  return {
-    delivered,
-    failed,
-    inspected: data?.length ?? 0,
-  };
+  return result;
 }
 
 export function getGenerationCreditCost(kind: "image"): number;

@@ -436,7 +436,9 @@ export function SettingsWorkspace() {
                             ? `Your complimentary ${subscription.displayName} access includes ${subscription.dailyContentPieces} daily drops and ${subscription.sharedMonthlyCredits} monthly AI credits. An existing Dodo subscription remains separate and can be managed below.`
                             : `Your complimentary ${subscription.displayName} access includes ${subscription.dailyContentPieces} daily drops and ${subscription.sharedMonthlyCredits} monthly AI credits. No payment method is attached.`
                           : `Your ${subscription.displayName} subscription includes ${subscription.dailyContentPieces} daily drops and ${subscription.sharedMonthlyCredits} monthly AI credits.`
-                        : subscription?.trial.status === "active" &&
+                        : subscription?.status === "on_hold"
+                          ? "Your payment needs attention. Update your payment method to restore your subscription."
+                          : subscription?.trial.status === "active" &&
                             subscription.trial.contentDaysRemaining > 0
                           ? `Your 3-day trial includes ${subscription.trial.dailyContentPieces} daily ready-to-post concepts. ${subscription.trial.instagramSchedulesLimit === null ? "Unlimited Instagram scheduling is available until the trial ends." : `You have ${subscription.trial.instagramSchedulesRemaining} of ${subscription.trial.instagramSchedulesLimit} Instagram schedules remaining.`}`
                           : subscription?.trial.status === "active"
@@ -446,7 +448,7 @@ export function SettingsWorkspace() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2.5">
-                  {subscription?.isActive && subscription.isDodoManaged ? (
+                  {subscription?.isDodoManaged ? (
                     <Button
                       type="button"
                       size="lg"
@@ -463,7 +465,7 @@ export function SettingsWorkspace() {
                       ) : (
                         <CreditCard data-icon="inline-start" aria-hidden="true" />
                       )}
-                      {isOpeningBilling ? "Opening billing" : "Manage billing"}
+                      {isOpeningBilling ? "Opening billing" : subscription?.status === "on_hold" ? "Update payment method" : "Manage billing"}
                     </Button>
                   ) : subscription?.isActive ? (
                     <Badge

@@ -19,7 +19,7 @@ export async function POST(request: Request) {
 
     if (!subscription.isDodoManaged) {
       return NextResponse.json(
-        { error: "Complimentary access does not have a billing portal." },
+        { error: "No managed subscription is available for this user." },
         { status: 409 },
       );
     }

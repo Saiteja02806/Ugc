@@ -186,7 +186,7 @@ test("billing migration provides idempotency, ordering, credits, and job settlem
 test("usage delivery matches the configured Dodo meter aggregation", () => {
   assert.match(subscriptionDb, /"image\.generation"/);
   assert.match(subscriptionDb, /"video\.generation"/);
-  assert.match(subscriptionDb, /credits_cost: String\(toInteger\(data\.credit_cost\)\)/);
+  assert.match(subscriptionDb, /credits_cost: toInteger\(data\.credit_cost\)/);
   assert.match(subscriptionDb, /flushPendingBillingUsageEvents/);
   assert.match(usageFlushRoute, /verifyCloudTasksOidcRequest/);
   assert.match(usageFlushRoute, /Cache-Control": "no-store"/);

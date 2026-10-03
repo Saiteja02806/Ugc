@@ -1,4 +1,4 @@
-export const FREE_TRIAL_CONTENT_DAYS = 3;
+export const FREE_TRIAL_CONTENT_DAYS = 7;
 export const FREE_TRIAL_DAILY_CONTENT_PIECES = 20;
 /** A null limit means scheduling is unlimited while the trial is active. */
 export const FREE_TRIAL_INSTAGRAM_SCHEDULE_LIMIT: number | null = null;

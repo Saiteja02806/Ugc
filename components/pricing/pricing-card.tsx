@@ -4,10 +4,13 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import type { BillingSubscription } from "@/components/billing/use-billing-subscription";
+import { CreditIcon } from "@/components/icons/credit-icon";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { FREE_TRIAL_CONTENT_DAYS } from "@/lib/billing/free-trial-policy";
+import { resolvePricingPlanAction } from "@/lib/pricing/plan-action";
 import {
   formatPricingAmount,
   getPlanPricing,
@@ -18,6 +21,7 @@ import { cn } from "@/lib/utils";
 
 type PricingCardProps = {
   billingInterval: BillingInterval;
+  isSubscriptionError?: boolean;
   isSubscriptionLoading: boolean;
   plan: PricingPlan;
   subscription: BillingSubscription | null;
@@ -25,6 +29,7 @@ type PricingCardProps = {
 
 export function PricingCard({
   billingInterval,
+  isSubscriptionError = false,
   isSubscriptionLoading,
   plan,
   subscription,
@@ -36,35 +41,30 @@ export function PricingCard({
   const pricing = getPlanPricing(plan, billingInterval);
   const isFree = plan.slug === "free";
   const isGrowth = plan.highlighted;
-  const currentPlanSlug = subscription?.planKey ?? (user ? "free" : null);
-  const isCurrentPlan = Boolean(
-    user &&
-      (subscription?.isActive
-        ? currentPlanSlug === plan.slug
-        : plan.slug === "free"),
-  );
-  const hasManagedSubscription = Boolean(subscription?.isDodoManaged);
   const ctaHref = `/sign-in?plan=${plan.slug}&billing=${billingInterval}`;
-  const ctaText = getCtaText({
-    hasPaidSubscription: hasManagedSubscription,
-    isCurrentPlan,
-    isFree,
+  const action = resolvePricingPlanAction({
+    authLoading: loading,
+    billingInterval,
+    isSubscriptionError,
     isSubscriptionLoading,
-    planName: plan.name,
+    plan,
     signedIn: Boolean(user),
+    subscription,
   });
+  const ctaText = action.label;
+  const isDisabled = isWorking || action.disabled;
 
   async function handleAction() {
-    if (!user) {
+    if (isDisabled) {
+      return;
+    }
+
+    if (action.destination === "sign-in") {
       router.push(ctaHref);
       return;
     }
 
-    if (isSubscriptionLoading) {
-      return;
-    }
-
-    if (isFree && !hasManagedSubscription) {
+    if (action.destination === "workspace") {
       router.push("/dashboard");
       return;
     }
@@ -79,7 +79,7 @@ export function PricingCard({
         throw new Error("Sign in again before continuing to billing.");
       }
 
-      const endpoint = hasManagedSubscription
+      const endpoint = action.destination === "portal"
         ? "/api/billing/portal"
         : "/api/billing/checkout";
       const response = await fetch(endpoint, {
@@ -88,16 +88,14 @@ export function PricingCard({
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: hasManagedSubscription
+        body: action.destination === "portal"
           ? undefined
           : JSON.stringify({ billingInterval, planSlug: plan.slug }),
       });
       const data = (await response.json().catch(() => null)) as
         | { checkoutUrl?: string; error?: string; portalUrl?: string }
         | null;
-      const destination = hasManagedSubscription
-        ? data?.portalUrl
-        : data?.checkoutUrl;
+      const destination = data?.portalUrl ?? data?.checkoutUrl;
 
       if (!response.ok || !destination) {
         throw new Error(data?.error || "Could not open secure billing.");
@@ -123,10 +121,10 @@ export function PricingCard({
           : "border-border hover:border-border-strong hover:shadow-md",
       )}
     >
-      {/* Most Popular Pill with Gradient */}
+      {/* Plan capacity badge */}
       {plan.badgeLabel ? (
         <div className="absolute -top-3 right-6 z-10">
-          <span className="inline-flex items-center rounded-full bg-gradient-to-r from-orange-500 via-rose-500 to-primary px-3 py-0.5 text-[11px] font-semibold text-white shadow-xs">
+          <span className="inline-flex items-center rounded-full bg-primary px-3 py-0.5 text-[11px] font-semibold text-[#1f1f1f] shadow-xs">
             {plan.badgeLabel}
           </span>
         </div>
@@ -138,12 +136,19 @@ export function PricingCard({
           <h2 className="text-xl font-semibold tracking-tight text-foreground-strong">
             {plan.name}
           </h2>
-          {isCurrentPlan ? (
+          {action.badgeLabel ? (
             <Badge
               variant="outline"
-              className="border-success/40 bg-success/10 text-xs font-medium text-success"
+              className={cn(
+                "text-xs font-medium",
+                action.badgeTone === "attention"
+                  ? "border-warning/40 bg-warning/10 text-warning"
+                  : action.badgeTone === "neutral"
+                    ? "border-border bg-card-muted text-muted"
+                    : "border-success/40 bg-success/10 text-success",
+              )}
             >
-              Current plan
+              {action.badgeLabel}
             </Badge>
           ) : null}
         </div>
@@ -157,12 +162,12 @@ export function PricingCard({
             {formatPricingAmount(pricing.monthlyEquivalent)}
           </span>
           <span className="text-xs font-medium uppercase tracking-wider text-muted">
-            / month
+            {isFree ? `for ${FREE_TRIAL_CONTENT_DAYS} days` : "/ month"}
           </span>
         </div>
         <p className="mt-1 min-h-4 text-xs font-normal text-muted">
           {isFree
-            ? "Free forever · No card required"
+            ? `${pricing.billingSummary} · No card required`
             : pricing.savings > 0
               ? `${pricing.billingSummary} (Save ${formatPricingAmount(pricing.savings)}/yr)`
               : pricing.billingSummary}
@@ -171,30 +176,37 @@ export function PricingCard({
 
       {/* 3. CTA Button (Positioned at top) */}
       <div className="mt-5">
-        {!loading && user ? (
+        {action.destination !== "sign-in" ? (
           <button
             type="button"
             onClick={() => void handleAction()}
-            disabled={isWorking || isSubscriptionLoading || isCurrentPlan}
+            disabled={isDisabled}
+            aria-busy={isWorking || (action.disabled && !isSubscriptionError)}
             aria-label={`${ctaText} for ${plan.name} plan`}
             className={cn(
-              "group flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all duration-150 cursor-pointer",
-              isCurrentPlan
+              "group flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-default",
+              isDisabled
                 ? "border border-border bg-card-muted text-muted cursor-default"
                 : isGrowth
                   ? "bg-primary text-primary-foreground hover:bg-primary-hover shadow-sm"
                   : "bg-foreground text-background hover:bg-foreground/90",
             )}
           >
-            {isWorking || isSubscriptionLoading ? (
+            {isWorking || (action.disabled && !isSubscriptionError) ? (
               <LoaderCircle
                 data-icon="inline-start"
                 className="size-4 animate-spin motion-reduce:animate-none"
                 aria-hidden="true"
               />
             ) : null}
-            <span>{isWorking ? "Opening checkout…" : ctaText}</span>
-            {!isWorking && !isSubscriptionLoading && !isCurrentPlan ? (
+            <span>
+              {isWorking
+                ? action.destination === "portal"
+                  ? "Opening billing…"
+                  : "Opening checkout…"
+                : ctaText}
+            </span>
+            {!isDisabled ? (
               <ArrowRight
                 data-icon="inline-end"
                 className="size-4 transition-transform duration-150 group-hover:translate-x-0.5"
@@ -207,7 +219,7 @@ export function PricingCard({
             href={ctaHref}
             aria-label={`${ctaText} for ${plan.name} plan`}
             className={cn(
-              "group flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all duration-150",
+              "group flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
               isGrowth
                 ? "bg-primary text-primary-foreground hover:bg-primary-hover shadow-sm"
                 : "bg-foreground text-background hover:bg-foreground/90",
@@ -233,6 +245,7 @@ export function PricingCard({
       {plan.capacityLabel ? (
         <div className="mt-4">
           <div className="flex items-center gap-2 rounded-xl border border-border bg-card-muted/60 px-3 py-2 text-xs font-medium text-foreground-strong">
+            {!isFree ? <CreditIcon className="size-5" /> : null}
             <span>{plan.capacityLabel}</span>
           </div>
         </div>
@@ -273,31 +286,4 @@ export function PricingCard({
       </div>
     </article>
   );
-}
-
-function getCtaText(params: {
-  hasPaidSubscription: boolean;
-  isCurrentPlan: boolean;
-  isFree: boolean;
-  isSubscriptionLoading: boolean;
-  planName: string;
-  signedIn: boolean;
-}) {
-  if (params.isSubscriptionLoading && params.signedIn) {
-    return "Checking plan…";
-  }
-
-  if (params.hasPaidSubscription) {
-    if (params.isFree) {
-      return "Manage billing";
-    }
-
-    return params.isCurrentPlan ? "Manage current plan" : "Change plan";
-  }
-
-  if (params.isFree) {
-    return params.signedIn ? "Go to dashboard" : "Start for free";
-  }
-
-  return `Get ${params.planName}`;
 }

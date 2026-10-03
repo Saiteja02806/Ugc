@@ -48,7 +48,7 @@ test("plans expose the complete daily content allowance", () => {
   assert.deepEqual(
     pricingPlans.map((plan) => [plan.slug, plan.dailyContentPieces]),
     [
-      ["free", "20/day for 3 days"],
+      ["free", "20/day for 7 days"],
       ["starter", 20],
       ["growth", 50],
     ],
@@ -85,7 +85,7 @@ test("plans map slug to proper display name", () => {
   assert.deepEqual(
     pricingPlans.map((plan) => [plan.slug, plan.name]),
     [
-      ["free", "Free"],
+      ["free", "Free trial"],
       ["starter", "Starter"],
       ["growth", "Growth"],
     ],

@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/auth-context";
 import { getPostSignInDestination } from "@/lib/billing/purchase-intent";
 import { getEmailVerificationPath } from "@/lib/auth/email-policy";
+import { formatPricingAmount, getPlanPricing, parseBillingInterval, pricingPlans } from "@/lib/pricing/plans";
 
 export default function SignInPage() {
   const [hasStartedEmailAuth, setHasStartedEmailAuth] = useState(false);
@@ -111,15 +112,14 @@ function PurchaseAwareAuthMethods({ onAuthFlowStart }: { onAuthFlowStart: () => 
 function SelectedPlanContext() {
   const searchParams = useSearchParams();
   const selectedPlan = searchParams.get("plan");
-  const isYearly = searchParams.get("billing") === "yearly";
-  const planLabel =
-    selectedPlan === "growth"
-      ? `Growth Plan (${isYearly ? "$41/mo billed yearly" : "$49/mo"})`
-      : selectedPlan === "starter"
-        ? `Starter Plan (${isYearly ? "$24/mo billed yearly" : "$29/mo"})`
-        : selectedPlan === "free"
-          ? "Free Plan ($0)"
-          : null;
+  const plan = pricingPlans.find((candidate) => candidate.slug === selectedPlan);
+  const interval = parseBillingInterval(searchParams.get("billing"));
+  const pricing = plan ? getPlanPricing(plan, interval) : null;
+  const planLabel = plan && pricing
+    ? plan.slug === "free"
+      ? `${plan.name} (${pricing.billingSummary} · No card required)`
+      : `${plan.name} (${formatPricingAmount(pricing.billedAmount)}/${interval === "yearly" ? "year" : "month"})`
+    : null;
 
   return planLabel ? (
     <div className="mb-3">

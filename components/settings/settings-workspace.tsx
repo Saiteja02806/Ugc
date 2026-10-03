@@ -440,10 +440,10 @@ export function SettingsWorkspace() {
                           ? "Your payment needs attention. Update your payment method to restore your subscription."
                           : subscription?.trial.status === "active" &&
                             subscription.trial.contentDaysRemaining > 0
-                          ? `Your 3-day trial includes ${subscription.trial.dailyContentPieces} daily ready-to-post concepts. ${subscription.trial.instagramSchedulesLimit === null ? "Unlimited Instagram scheduling is available until the trial ends." : `You have ${subscription.trial.instagramSchedulesRemaining} of ${subscription.trial.instagramSchedulesLimit} Instagram schedules remaining.`}`
+                          ? `Your ${subscription.trial.contentDaysLimit}-day trial includes ${subscription.trial.dailyContentPieces} daily ready-to-post concepts. ${subscription.trial.instagramSchedulesLimit === null ? "Unlimited Instagram scheduling is available until the trial ends." : `You have ${subscription.trial.instagramSchedulesRemaining} of ${subscription.trial.instagramSchedulesLimit} Instagram schedules remaining.`}`
                           : subscription?.trial.status === "active"
                             ? `Your trial content allowance is used. ${subscription.trial.instagramSchedulesLimit === null ? "Unlimited Instagram scheduling remains available until the trial ends." : `You have ${subscription.trial.instagramSchedulesRemaining} of ${subscription.trial.instagramSchedulesLimit} Instagram schedules remaining until the trial ends.`}`
-                            : "Your 3-day free trial has ended. Upgrade to generate content or schedule more Instagram posts."}
+                            : "Your free trial has ended. Upgrade to generate content or schedule more Instagram posts."}
                     </p>
                   </div>
                 </div>

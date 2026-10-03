@@ -163,7 +163,7 @@ export async function assertFreeTrialContentAccess(
 
   if (trial.status !== "active") {
     throw new FreeTrialAccessError(
-      "Your 3-day free trial has ended. Upgrade to generate more content.",
+      "Your free trial has ended. Upgrade to generate more content.",
       "free_trial_content_expired",
     );
   }
@@ -194,7 +194,7 @@ export async function assertFreeTrialContentAccess(
       }
     }
     throw new FreeTrialAccessError(
-      "Your 3-day free trial content allowance has been used. Upgrade to generate more content.",
+      "Your free trial content allowance has been used. Upgrade to generate more content.",
       "free_trial_content_days_exhausted",
     );
   }
@@ -211,7 +211,7 @@ export async function assertFreeTrialInstagramSchedulingAccess(userId: string) {
 
   if (trial.status !== "active") {
     throw new FreeTrialAccessError(
-      "Your 3-day free trial has ended. Upgrade to schedule another Instagram post.",
+      "Your free trial has ended. Upgrade to schedule another Instagram post.",
       "free_trial_schedule_expired",
     );
   }

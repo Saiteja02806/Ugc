@@ -290,7 +290,7 @@ does not modify source assets or repair text already baked outside safe margins.
 
 ### Active trial pack delivery
 
-The three-day pack quota is charged when a daily pack is reserved. While the
+The seven-day pack quota is charged when a daily pack is reserved. While the
 trial is active, feed reads, generation continuation, and completion callbacks
 may finish an existing owner-scoped trial pack after its remaining content-day
 quota reaches zero. They retain that pack's saved daily limit. Creating another
@@ -5127,3 +5127,16 @@ Runtime/font errors propagate as dependency failures instead of copy-fit errors.
   24–48). There is no preferred or target count in the prompt. The durable
   `target_words` reservation field remains for RPC compatibility and stores
   the range maximum, never a copy-generation instruction.
+
+## 2026-10-03 Seven-day trial and pricing alignment
+
+New trials receive seven calendar days and seven daily packs from completed
+onboarding, with 20 concepts per pack and unlimited Instagram scheduling while
+active. The quota is charged when a pack is reserved; its final reserved pack
+can still finish while active. Unexpired trials extend from their original
+start without resetting usage. Expired trials stay closed and longer custom
+trials are preserved. Paid and complimentary access stays unchanged.
+
+The pricing page distinguishes daily content from shared AI generation credits
+and advertises only deployed workflows. See
+`docs/trending-seven-day-trial-2026-10-01.md` for the release migration and checks.

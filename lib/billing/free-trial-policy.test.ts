@@ -9,10 +9,22 @@ import {
   resolveFreeTrialStatus,
 } from "./free-trial-policy.ts";
 
-test("free trial policy has the agreed three-day, twenty-piece, uncapped-scheduling policy", () => {
-  assert.equal(FREE_TRIAL_CONTENT_DAYS, 3);
+test("free trial policy has seven days, twenty daily pieces, and uncapped scheduling", () => {
+  assert.equal(FREE_TRIAL_CONTENT_DAYS, 7);
   assert.equal(FREE_TRIAL_DAILY_CONTENT_PIECES, 20);
   assert.equal(FREE_TRIAL_INSTAGRAM_SCHEDULE_LIMIT, null);
+});
+
+test("a seven-day trial remains active after day three and expires exactly at day seven", () => {
+  const startedAt = "2026-10-01T12:00:00.000Z";
+  const expiresAt = "2026-10-08T12:00:00.000Z";
+  const afterThreeDays = new Date("2026-10-04T12:00:00.000Z");
+
+  assert.equal(resolveFreeTrialStatus({ startedAt, expiresAt, now: afterThreeDays }), "active");
+  assert.equal(getFreeTrialDaysRemaining({ expiresAt, now: new Date(startedAt) }), 7);
+  assert.equal(getFreeTrialDaysRemaining({ expiresAt, now: afterThreeDays }), 4);
+  assert.equal(resolveFreeTrialStatus({ startedAt, expiresAt, now: new Date(expiresAt) }), "expired");
+  assert.equal(getFreeTrialDaysRemaining({ expiresAt, now: new Date(expiresAt) }), 0);
 });
 
 test("free trial access is active only before its explicit expiry", () => {

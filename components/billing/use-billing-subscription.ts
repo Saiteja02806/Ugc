@@ -18,6 +18,7 @@ export type BillingSubscription = {
   currentPeriodStart: string | null;
   dailyContentPieces: number | "Limited";
   displayName: "Free" | "Starter" | "Growth";
+  freeGenerationCredits?: { granted: number; remaining: number; reserved: number; used: number };
   instagramAccounts: number;
   imageGenerationCreditCost: number;
   isActive: boolean;

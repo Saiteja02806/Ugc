@@ -17,6 +17,11 @@ import {
   DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND,
 } from "@/lib/billing/generation-credit-policy";
 import {
+  emptyFreeGenerationCredits,
+  ONE_TIME_FREE_GENERATION_CREDITS,
+  type FreeGenerationCredits,
+} from "@/lib/billing/free-generation-credit-policy";
+import {
   getBillingUsageRetryDelayMs,
   getSubscriptionEntitlementPlanKey,
   MAX_BILLING_USAGE_ATTEMPTS,
@@ -48,6 +53,7 @@ export type UserSubscriptionInfo = {
   currentPeriodStart: string | null;
   dailyContentPieces: number | "Limited";
   displayName: "Free" | "Starter" | "Growth";
+  freeGenerationCredits: FreeGenerationCredits;
   instagramAccounts: number;
   imageGenerationCreditCost: number;
   isActive: boolean;
@@ -176,6 +182,7 @@ export function resolveSubscriptionEntitlements(
           ? "Starter"
           : "Free",
     instagramAccounts: resolveInstagramAccountLimit(paidPlan, isActive),
+    freeGenerationCredits: emptyFreeGenerationCredits(),
     imageGenerationCreditCost: getGenerationCreditCost("image"),
     isActive: isActive && paidPlan !== "free",
     isDodoManaged,
@@ -378,6 +385,22 @@ export async function getUserSubscription(
     previewExpiredCycle ? 0 : toInteger(creditBalance?.reserved_credits),
   );
 
+  let freeGenerationCredits = emptyFreeGenerationCredits();
+  if (!base.isActive) {
+    const freeResult = await db.rpc("ensure_free_generation_credit_balance", { p_user_id: userId });
+    const freeBalance = freeResult.data as FreeGenerationCredits | null;
+    const valid = freeBalance?.granted === ONE_TIME_FREE_GENERATION_CREDITS &&
+      [freeBalance.remaining, freeBalance.reserved, freeBalance.used].every(
+        (amount) => Number.isInteger(amount) && amount >= 0,
+      ) && freeBalance.remaining + freeBalance.reserved + freeBalance.used === freeBalance.granted;
+    if (freeResult.error || !valid) {
+      if (options?.strict) throw new Error("ENTITLEMENTS_UNAVAILABLE");
+      console.warn("Could not load one-time generation credits.");
+    } else {
+      freeGenerationCredits = freeBalance!;
+    }
+  }
+
   return {
     ...base,
     billingInterval:
@@ -389,9 +412,10 @@ export async function getUserSubscription(
     connectedInstagramAccounts: Math.max(0, accountsResult.count ?? 0),
     creditsRemaining: base.isActive
       ? Math.max(creditLimit - creditsUsed - creditsReserved, 0)
-      : 0,
-    creditsReserved: base.isActive ? creditsReserved : 0,
-    creditsUsed: base.isActive ? creditsUsed : 0,
+      : freeGenerationCredits.remaining,
+    creditsReserved: base.isActive ? creditsReserved : freeGenerationCredits.reserved,
+    creditsUsed: base.isActive ? creditsUsed : freeGenerationCredits.used,
+    freeGenerationCredits,
     currentPeriodEnd:
       access.accessSource === "complimentary"
         ? creditBalance?.period_end ?? null
@@ -504,6 +528,11 @@ export async function reserveBillingCredits(params: {
       throw new BillingAccessError(
         "An active Starter or Growth subscription is required.",
       );
+    }
+
+    if (normalized.includes("billing_credit_reservation_released") ||
+      normalized.includes("billing_credit_idempotency_conflict")) {
+      throw new BillingAccessError("This generation request has already been settled. Start a new request.", 409);
     }
 
     throw new Error(`Could not reserve billing credits: ${error.message}`);

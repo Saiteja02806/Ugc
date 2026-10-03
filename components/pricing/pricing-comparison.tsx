@@ -24,7 +24,9 @@ const featureMatrix: FeatureRow[] = [
   { label: "Daily hooks, Wall of Text & carousels", free: `During ${FREE_TRIAL_CONTENT_DAYS}-day trial`, starter: true, growth: true },
   { label: "Review, edit & content library", free: true, starter: true, growth: true },
   { label: "Instagram scheduling", free: "Unlimited during trial", starter: true, growth: true },
-  { label: "AI Studio images & videos", free: false, starter: "Uses shared credits", growth: "Uses shared credits" },
+  { label: "YouTube channel connection", free: true, starter: true, growth: true },
+  { label: "YouTube video scheduling", free: true, starter: true, growth: true },
+  { label: "AI Studio images & videos", free: "Uses free credits", starter: "Uses shared credits", growth: "Uses shared credits" },
   { label: "AI character generation", free: "1 assisted generation", starter: "Uses shared credits", growth: "Uses shared credits" },
   { label: "Connected-account analytics", free: true, starter: true, growth: true },
 ];
@@ -132,7 +134,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                     scope="row"
                     className="px-5 py-3.5 text-xs font-normal text-muted"
                   >
-                    Monthly AI generation credits
+                    AI generation credits
                   </th>
                   {plans.map((plan) => (
                     <td
@@ -142,7 +144,8 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                         plan.highlighted ? "bg-primary/[0.04] text-primary" : "",
                       )}
                     >
-                      <span className="inline-flex items-center justify-center gap-1.5"><CreditIcon />{plan.sharedMonthlyCredits}</span>
+                      <span className="inline-flex items-center justify-center gap-1.5"><CreditIcon />{plan.oneTimeCredits || plan.sharedMonthlyCredits}</span>
+                      <span className="mt-1 block font-sans text-[11px] font-normal text-muted">{plan.oneTimeCredits > 0 ? "Once per account" : "Per month"}</span>
                     </td>
                   ))}
                 </tr>

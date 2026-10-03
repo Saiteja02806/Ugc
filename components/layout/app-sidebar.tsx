@@ -654,7 +654,9 @@ function SidebarPlanCreditsWidget() {
 
   const planLabel = subscription?.displayName ?? "Free";
   const creditsRemaining = subscription?.creditsRemaining ?? 0;
-  const creditsLimit = subscription?.sharedMonthlyCredits ?? 0;
+  const creditsLimit = subscription?.isActive
+    ? subscription.sharedMonthlyCredits
+    : subscription?.freeGenerationCredits?.granted ?? 0;
   const billingHref = "/pricing";
   const actionLabel = "Upgrade";
 
@@ -674,7 +676,7 @@ function SidebarPlanCreditsWidget() {
         </Link>
       </div>
       <div className="mt-1.5 flex items-center justify-between text-[11px] font-medium text-muted">
-        <span className="inline-flex items-center gap-1"><CreditIcon className="size-3.5" />Shared AI credits</span>
+        <span className="inline-flex items-center gap-1"><CreditIcon className="size-3.5" />One-time AI credits</span>
         <span className="font-mono font-bold text-foreground">
           {creditsRemaining} / {creditsLimit}
         </span>

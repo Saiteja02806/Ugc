@@ -8,7 +8,7 @@ test("distinguishes access-check failures from a locked account", () => {
   assert.match(getAIStudioAccessMessage("error") ?? "", /could not be verified/i);
   assert.match(
     getAIStudioAccessMessage("locked") ?? "",
-    /active Starter or Growth/i,
+    /free generation credits.*Starter or Growth/i,
   );
   assert.equal(getAIStudioAccessMessage("pro"), null);
 });

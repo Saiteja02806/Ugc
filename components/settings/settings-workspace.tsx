@@ -443,7 +443,7 @@ export function SettingsWorkspace() {
                           ? `Your ${subscription.trial.contentDaysLimit}-day trial includes ${subscription.trial.dailyContentPieces} daily ready-to-post concepts. ${subscription.trial.instagramSchedulesLimit === null ? "Unlimited Instagram scheduling is available until the trial ends." : `You have ${subscription.trial.instagramSchedulesRemaining} of ${subscription.trial.instagramSchedulesLimit} Instagram schedules remaining.`}`
                           : subscription?.trial.status === "active"
                             ? `Your trial content allowance is used. ${subscription.trial.instagramSchedulesLimit === null ? "Unlimited Instagram scheduling remains available until the trial ends." : `You have ${subscription.trial.instagramSchedulesRemaining} of ${subscription.trial.instagramSchedulesLimit} Instagram schedules remaining until the trial ends.`}`
-                            : "Your free trial has ended. Upgrade to generate content or schedule more Instagram posts."}
+                            : "Your free trial has ended. Upgrade for more daily content or Instagram scheduling. Any unused free AI credits remain available."}
                     </p>
                   </div>
                 </div>
@@ -506,10 +506,10 @@ export function SettingsWorkspace() {
                   </p>
                   <p className="mt-1 text-lg font-black text-foreground-strong font-mono">
                     {subscription?.creditsRemaining ?? 0}{" "}
-                    <span className="text-xs font-normal text-muted">/ {subscription?.sharedMonthlyCredits ?? 0}</span>
+                    <span className="text-xs font-normal text-muted">/ {subscription?.isActive ? subscription.sharedMonthlyCredits : subscription?.freeGenerationCredits?.granted ?? 0}</span>
                   </p>
                   <p className="mt-1 text-[11px] text-muted">
-                    {subscription?.creditsUsed ?? 0} used this month
+                    {subscription?.creditsUsed ?? 0} {subscription?.isActive ? "used this month" : "used · once per account"}
                   </p>
                 </div>
 

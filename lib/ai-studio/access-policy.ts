@@ -13,7 +13,7 @@ export function getAIStudioAccessMessage(state: AIStudioAccessState, subscriptio
       if (subscriptionStatus === "paused") {
         return "Your subscription is paused. Resume it in billing to generate.";
       }
-      return "Generation requires an active Starter or Growth plan.";
+      return "Use your free generation credits, or choose Starter or Growth for more AI credits.";
     case "pro":
       return null;
   }

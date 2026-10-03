@@ -12,6 +12,7 @@ import {
 import Link from "next/link";
 
 import { ProductLogoMark } from "@/components/brand/product-logo";
+import { ONE_TIME_FREE_GENERATION_CREDITS } from "@/lib/billing/free-generation-credit-policy";
 import { FREE_TRIAL_CONTENT_DAYS, FREE_TRIAL_DAILY_CONTENT_PIECES } from "@/lib/billing/free-trial-policy";
 import { PricingCatalog } from "@/components/pricing/pricing-catalog";
 import { PricingComparison } from "@/components/pricing/pricing-comparison";
@@ -32,11 +33,11 @@ const platformFeatures = pricingWorkflows.map((workflow, index) => ({
 const faqs = [
   {
     question: "What does the free trial include?",
-    answer: `Your ${FREE_TRIAL_CONTENT_DAYS}-day trial starts when you complete onboarding. Get ${FREE_TRIAL_DAILY_CONTENT_PIECES} daily content concepts, review and edit them, and schedule Instagram posts while the trial is active. Connect one Instagram account. No payment card is required, and the trial does not automatically become a paid subscription.`,
+    answer: `Your ${FREE_TRIAL_CONTENT_DAYS}-day trial starts when you complete onboarding. Get ${FREE_TRIAL_DAILY_CONTENT_PIECES} daily content concepts, review and edit them, and schedule Instagram posts while the trial is active. Connect one Instagram account and connect YouTube to schedule videos. Your account also gets ${ONE_TIME_FREE_GENERATION_CREDITS} free AI Studio credits once. No payment card is required, and the trial does not automatically become a paid subscription.`,
   },
   {
     question: "What happens when my trial ends?",
-    answer: "Choose Starter or Growth to keep receiving daily content and scheduling new Instagram posts. Signing in again does not restart an expired trial. Custom AI Studio image and video generation requires a paid plan.",
+    answer: "Choose Starter or Growth to keep receiving daily content and scheduling new Instagram posts. Signing in again does not restart an expired trial. Your one-time free AI credits remain available until you spend them. Choose a paid plan for a monthly AI credit allowance.",
   },
   {
     question: "Are daily content concepts separate from AI credits?",
@@ -44,11 +45,11 @@ const faqs = [
   },
   {
     question: "How do UGCPilot credits work?",
-    answer: "Starter includes 200 shared credits each month and Growth includes 600, including on annual subscriptions. Generation cost depends on the model, video duration and settings. Check the displayed credit cost before generating. The free trial does not include a recurring AI credit allowance.",
+    answer: `Free accounts receive ${ONE_TIME_FREE_GENERATION_CREDITS} credits once; these do not refill monthly. Starter includes 200 shared credits each month and Growth includes 600, including on annual subscriptions. Generation cost depends on the model, video duration and settings. Check the displayed credit cost before generating. If a generation costs more than your remaining credits, choose a paid plan to continue.`,
   },
   {
     question: "Which workflows and platforms are included?",
-    answer: "Review daily content, make custom images and videos in AI Studio, create AI characters, and edit and schedule content from your library. Trial scheduling covers Instagram. Other platform options depend on your account and the content format; only supported destinations appear when you schedule.",
+    answer: "Review daily content, make custom images and videos in AI Studio, create AI characters, and edit and schedule content from your library. Instagram scheduling is included during the free trial. YouTube channel connection and video scheduling are available on every plan after you verify your email. YouTube supports video uploads; destination options depend on the content format.",
   },
   {
     question: "How do annual billing and plan changes work?",
@@ -180,7 +181,7 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
                 From the first idea to the scheduled post
               </h2>
               <p className="mt-2 text-sm font-normal text-muted">
-                Try daily content for {FREE_TRIAL_CONTENT_DAYS} days. Add AI generation and more capacity with a paid plan.
+                Try daily content for {FREE_TRIAL_CONTENT_DAYS} days and AI Studio with {ONE_TIME_FREE_GENERATION_CREDITS} free credits. Choose a paid plan for more capacity.
               </p>
             </div>
 

@@ -54,6 +54,7 @@ export const pricingPlans: PricingPlan[] = [
     instagramAccounts: 1,
     capacityLabel: `${FREE_TRIAL_CONTENT_DAYS} days · ${FREE_TRIAL_DAILY_CONTENT_PIECES} daily concepts`,
     features: [
+      `Access to daily content workflows for ${FREE_TRIAL_CONTENT_DAYS} days`,
       `${FREE_TRIAL_DAILY_CONTENT_PIECES} daily concepts for ${FREE_TRIAL_CONTENT_DAYS} days`,
       "Hooks, Wall of Text videos & carousels",
       "Review, edit & save your content",
@@ -69,6 +70,7 @@ export const pricingPlans: PricingPlan[] = [
     dailyContentPieces: 20, instagramAccounts: 3,
     capacityLabel: "200 credits / month",
     features: [
+      "Access to all available workflows",
       "20 ready-to-post concepts daily",
       "Hooks, Wall of Text videos & carousels",
       "AI Studio image & video generation",
@@ -85,6 +87,7 @@ export const pricingPlans: PricingPlan[] = [
     highlighted: true, badgeLabel: "More capacity",
     capacityLabel: "600 credits / month",
     features: [
+      "Access to all available workflows",
       "50 ready-to-post concepts daily",
       "Hooks, Wall of Text videos & carousels",
       "AI Studio image & video generation",

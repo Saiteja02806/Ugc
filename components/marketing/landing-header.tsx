@@ -16,9 +16,6 @@ type NavItem = {
 const navItems: NavItem[] = [
   { label: "Pricing", href: "/pricing" },
 ];
-const topOnlyNavItems: NavItem[] = [
-  { label: "Try UGCPilot", href: "/try-ugcpilot" },
-];
 
 export function LandingHeader({
   initialHasSession,
@@ -81,18 +78,6 @@ export function LandingHeader({
           }`}
           aria-label="Primary navigation"
         >
-          {!isScrolled
-            ? topOnlyNavItems.map((item) => (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className="inline-flex items-center gap-2 rounded-full border border-primary/60 bg-primary/[0.06] px-4 py-2 font-semibold text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-[transform,background-color,border-color,box-shadow] hover:-translate-y-px hover:border-primary hover:bg-primary/[0.12] hover:shadow-[0_8px_20px_rgba(255,107,69,0.16)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                >
-                  <span className="size-1.5 rounded-full bg-primary shadow-[0_0_10px_rgba(255,107,69,0.9)]" aria-hidden="true" />
-                  {item.label}
-                </Link>
-              ))
-            : null}
           {navItems.map((item) => (
             <Link
               key={item.label}
@@ -116,7 +101,7 @@ export function LandingHeader({
             <Menu className="size-5" aria-hidden="true" />
           </summary>
           <div className="absolute right-0 top-12 w-60 rounded-card border border-border bg-card/95 p-2 shadow-floating backdrop-blur-xl">
-            {[...(!isScrolled ? topOnlyNavItems : []), ...navItems].map(
+            {navItems.map(
               (item) => (
                 <Link
                   key={item.label}
@@ -126,11 +111,7 @@ export function LandingHeader({
                       .closest("details")
                       ?.removeAttribute("open")
                   }
-                  className={`block rounded-control px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${
-                    item.label === "Try UGCPilot"
-                      ? "border border-primary/60 bg-primary/[0.06] text-primary hover:border-primary hover:bg-primary/[0.12]"
-                      : "text-muted hover:bg-card-muted hover:text-foreground-strong"
-                  }`}
+                  className="block rounded-control px-3 py-2.5 text-sm font-medium text-muted transition-colors hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 >
                   {item.label}
                 </Link>

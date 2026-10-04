@@ -6,7 +6,7 @@ import {
 
 export const WALL_TEXT_CONTENT_PLAN_MODEL = "gpt-5.6-luna";
 export const WALL_TEXT_CONTENT_PLAN_PROMPT_VERSION =
-  "wall-text-content-plan-reader-profiles-v17-complete-ideas";
+  "wall-text-content-plan-reader-profiles-v19-four-copy-fixes";
 export const WALL_TEXT_CONTENT_PLAN_TARGET_COUNT = 200;
 export const WALL_TEXT_CONTENT_PLAN_BRIEF_COUNT = 40;
 export const WALL_TEXT_CONTENT_PLAN_ITEMS_PER_BRIEF = 5;

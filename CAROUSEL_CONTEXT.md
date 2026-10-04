@@ -5140,3 +5140,41 @@ trials are preserved. Paid and complimentary access stays unchanged.
 The pricing page distinguishes daily content from shared AI generation credits
 and advertises only deployed workflows. See
 `docs/trending-seven-day-trial-2026-10-01.md` for the release migration and checks.
+
+## 2026-10-04 Shared scheduling time-zone release integration
+
+- Scheduling and the shared inline Carousel/Wall/Reaction scheduler use the
+  owner-persisted account time-zone default, initialized once through the
+  verified Firebase identity. Explicit manual date/time edits and saved schedule
+  time zones remain authoritative. The account query is reset on UID changes.
+- The Hook drawer uses the same default and full time-zone selector. Its compact
+  account rows sort only their display copy; destination IDs, provider access,
+  mandatory settings, consent, and the durable scheduling contract are unchanged.
+- The worker checks the durable target's scheduled time before claiming a new
+  provider operation. An early delivery is a durable wait, not a failed provider
+  attempt. Already published outcomes and cancelled-post cleanup retain their
+  idempotent paths. This complements the already-applied database claim/recovery
+  guard; those migrations are not replayed.
+- These source integrations are local, not deployed. No Carousel source,
+  selection, plan, slide, rendered asset, daily slot, or Library ownership rule
+  is changed. Production-domain acceptance and coordinated app/worker deployment
+  remain required.
+
+## 2026-10-04 Reviewed native Trending post-feed checkpoint
+
+- The approved post interaction replaces horizontal swipe presentation with a
+  vertical scrolling feed. Double-tap/Like enters the existing format-specific
+  scheduling or Hook composition flow; scroll/Skip records the existing durable
+  skip decision. Only the active post plays media or accepts actions.
+- A Carousel must be saved to the owner's Library before dismissal and scheduling
+  hand-off. A failed save leaves the post visible and releases its interaction
+  lock. No new publishing operation or provider call is introduced by the gesture.
+- Current-visit review history holds at most 120 posts in the parent feed state,
+  including while the Hook composer is open. History is read-only: revisiting
+  cannot repeat a save, decision, edit, scheduling hand-off, or autoplay.
+- Shared Landing/Try demonstrations use the same gesture primitive without
+  implying that a demo like has actually published a post. Drag/snap timers and
+  listeners are cleaned up on resize, blur and unmount; reduced motion is honored.
+- This checkpoint changes presentation and interaction only. Existing owner,
+  daily assignment, immutable profile, render, recovery and publishing contracts
+  remain authoritative. Offline checks are not production acceptance.

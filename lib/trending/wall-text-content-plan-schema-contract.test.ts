@@ -218,12 +218,12 @@ test("uses five parent fields for five child ideas without prewriting Wall copy"
   assert.match(planner, /OPENAI_WALL_TEXT_PLAN_REASONING_EFFORT/);
   assert.match(
     planner,
-    /wall-text-content-plan-reader-profiles-v17-complete-ideas/i,
+    /wall-text-content-plan-reader-profiles-v19-four-copy-fixes/i,
   );
   assert.match(appPlan, /WALL_TEXT_CONTENT_PLAN_MODEL = "gpt-5\.6-luna"/i);
   assert.match(
     appPlan,
-    /wall-text-content-plan-reader-profiles-v17-complete-ideas/i,
+    /wall-text-content-plan-reader-profiles-v19-four-copy-fixes/i,
   );
 });
 
@@ -430,9 +430,9 @@ test("checks Wall queue admission before plans or daily slots can be reserved", 
 test("keeps planning context private and removes format pressure from the Wall writer", () => {
   assert.match(
     finalWriter,
-    /if its humanMoment is concrete and relevant to the reader, retain that moment or its practical point/i,
+    /check its moment against assignedBusinessFact before using it/i,
   );
-  assert.match(finalWriter, /do not manufacture a scene/i);
+  assert.match(finalWriter, /discard the unsupported scene and explain the fact directly/i);
   assert.match(finalWriter, /Do not print field names or treat creativeSeed as finished copy/i);
   assert.match(finalWriter, /clear paraphrase is valid/i);
   assert.match(finalWriter, /businessName is the product or brand label/i);

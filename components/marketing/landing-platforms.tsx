@@ -1,8 +1,9 @@
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
+import { isSocialPlatformVisible } from "@/lib/social/platform-visibility";
 import type { SocialPlatform } from "@/lib/social/types";
 import { cn } from "@/lib/utils";
 
-export const landingPlatforms = [
+const allLandingPlatforms = [
   { platform: "instagram", label: "Instagram", destination: "Professional account" },
   { platform: "tiktok", label: "TikTok", destination: "TikTok account" },
   { platform: "youtube", label: "YouTube", destination: "YouTube channel" },
@@ -11,6 +12,10 @@ export const landingPlatforms = [
   label: string;
   destination: string;
 }>;
+
+export const landingPlatforms = allLandingPlatforms.filter(({ platform }) =>
+  isSocialPlatformVisible(platform),
+);
 
 export function LandingPlatformMark({
   platform,

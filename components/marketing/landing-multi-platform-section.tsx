@@ -5,6 +5,7 @@ import {
   LandingPlatformMark,
   landingPlatforms,
 } from "@/components/marketing/landing-platforms";
+import { visibleSocialPlatformList } from "@/lib/social/platform-visibility";
 
 const publishingSteps = [
   "Choose your connected accounts",
@@ -27,11 +28,11 @@ export function LandingMultiPlatformSection() {
             className="mt-4 text-balance text-4xl font-semibold leading-[1.06] tracking-[-0.045em] text-foreground-strong sm:text-5xl lg:text-[3.5rem]"
           >
             One post.<br />
-            <span className="text-primary">Three platforms.</span>
+            <span className="text-primary">{landingPlatforms.length === 3 ? "Three" : "Two"} platforms.</span>
           </h2>
           <p className="mt-5 max-w-md text-base leading-7 text-muted sm:text-lg">
-            Your next video can go further. Send it to Instagram, TikTok, and
-            YouTube from the same workspace, with one final confirmation.
+            Your next video can go further. Send it to {visibleSocialPlatformList}
+            {" "}from the same workspace, with one final confirmation.
           </p>
           <ol className="mt-7 space-y-3">
             {publishingSteps.map((step) => (
@@ -89,8 +90,8 @@ export function LandingMultiPlatformSection() {
               fill="none"
               aria-hidden="true"
             >
-              <path d="M0 126H14M14 42V210M14 42H36M14 126H36M14 210H36" stroke="currentColor" strokeWidth="1.5" />
-              <path d="m32 38 4 4-4 4m0 76 4 4-4 4m0 76 4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d={landingPlatforms.length === 3 ? "M0 126H14M14 42V210M14 42H36M14 126H36M14 210H36" : "M0 126H14M14 84V168M14 84H36M14 168H36"} stroke="currentColor" strokeWidth="1.5" />
+              <path d={landingPlatforms.length === 3 ? "m32 38 4 4-4 4m0 76 4 4-4 4m0 76 4 4-4 4" : "m32 80 4 4-4 4m0 76 4 4-4 4"} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
 
             <ul className="grid gap-3" aria-label="Example selected publishing destinations">

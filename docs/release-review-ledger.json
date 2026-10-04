@@ -1,0 +1,254 @@
+{
+  "schemaVersion": 1,
+  "sourceHead": "d7414877ccdca40d5b77510f6563eba6e6c5a1d5",
+  "mainRevision": "3ed9c684b6c710eb9f3c7a4624f7082e8a535daa",
+  "reviewedAt": "2026-10-04T15:56:50.002Z",
+  "scope": "Reviewed Landing, Trending post interaction, Wall wording, product notes and audit-tool checkpoint; not full-release approval.",
+  "decisions": [
+    {
+      "path": "app/page.tsx",
+      "local": "1db6d046217cd61ec73f8c9477eb5d78240b8fa4",
+      "integrated": "1db6d046217cd61ec73f8c9477eb5d78240b8fa4",
+      "resolution": "included",
+      "reason": "Approved presentation and post-feed changes combined with newer main; TypeScript, scoped lint and 15 gesture/scheduling handoff checks passed."
+    },
+    {
+      "path": "components/marketing/landing-header.tsx",
+      "local": "be2e4dee3835b4ca2de9db98696313c4a27efb2c",
+      "integrated": "be2e4dee3835b4ca2de9db98696313c4a27efb2c",
+      "resolution": "included",
+      "reason": "Approved presentation and post-feed changes combined with newer main; TypeScript, scoped lint and 15 gesture/scheduling handoff checks passed."
+    },
+    {
+      "path": "components/marketing/landing-hero-showcase.tsx",
+      "local": "64639dbfbc6882317acd0e4f33d48941c1ccb45e",
+      "integrated": "64639dbfbc6882317acd0e4f33d48941c1ccb45e",
+      "resolution": "included",
+      "reason": "Approved presentation and post-feed changes combined with newer main; TypeScript, scoped lint and 15 gesture/scheduling handoff checks passed."
+    },
+    {
+      "path": "components/marketing/landing-multi-platform-section.tsx",
+      "local": "67e65b1600750a5ce2801d179100757529bad35c",
+      "integrated": "67e65b1600750a5ce2801d179100757529bad35c",
+      "resolution": "included",
+      "reason": "Approved presentation and post-feed changes combined with newer main; TypeScript, scoped lint and 15 gesture/scheduling handoff checks passed."
+    },
+    {
+      "path": "components/marketing/landing-platforms.tsx",
+      "local": "9c6da484a07598067b72e8a6bf52f06f4d9bd2d2",
+      "integrated": "9c6da484a07598067b72e8a6bf52f06f4d9bd2d2",
+      "resolution": "included",
+      "reason": "Approved presentation and post-feed changes combined with newer main; TypeScript, scoped lint and 15 gesture/scheduling handoff checks passed."
+    },
+    {
+      "path": "components/marketing/landing-swipe-deck.tsx",
+      "local": "efb2cbdbbf71cfdbbdadf95d2ff7269c463d3f8d",
+      "integrated": "efb2cbdbbf71cfdbbdadf95d2ff7269c463d3f8d",
+      "resolution": "included",
+      "reason": "Approved presentation and post-feed changes combined with newer main; TypeScript, scoped lint and 15 gesture/scheduling handoff checks passed."
+    },
+    {
+      "path": "components/marketing/try-ugcpilot-demo.tsx",
+      "local": "bc57f8db4abf7a3dddffda63c7182c74b3de05f9",
+      "integrated": "bc57f8db4abf7a3dddffda63c7182c74b3de05f9",
+      "resolution": "included",
+      "reason": "Approved presentation and post-feed changes combined with newer main; TypeScript, scoped lint and 15 gesture/scheduling handoff checks passed."
+    },
+    {
+      "path": "components/trending/creative-card-actions.tsx",
+      "local": "25e4e0d14c7d15ad5ebe9cee940681f1b8f6af24",
+      "integrated": "25e4e0d14c7d15ad5ebe9cee940681f1b8f6af24",
+      "resolution": "included",
+      "reason": "Approved presentation and post-feed changes combined with newer main; TypeScript, scoped lint and 15 gesture/scheduling handoff checks passed."
+    },
+    {
+      "path": "components/trending/post-interaction-feed.module.css",
+      "local": "8f8a27d74dcf9243169fde8599615b6655926d04",
+      "integrated": "8f8a27d74dcf9243169fde8599615b6655926d04",
+      "resolution": "included",
+      "reason": "Approved presentation and post-feed changes combined with newer main; TypeScript, scoped lint and 15 gesture/scheduling handoff checks passed."
+    },
+    {
+      "path": "components/trending/post-interaction-feed.tsx",
+      "local": "0f51cc380294abe200744646d742ae2edc0d86e9",
+      "integrated": "0f51cc380294abe200744646d742ae2edc0d86e9",
+      "resolution": "included",
+      "reason": "Approved presentation and post-feed changes combined with newer main; TypeScript, scoped lint and 15 gesture/scheduling handoff checks passed."
+    },
+    {
+      "path": "components/trending/trending-review-layout.module.css",
+      "local": "094256f57a856cef54cc59bea4bc17049ec05ea2",
+      "integrated": "094256f57a856cef54cc59bea4bc17049ec05ea2",
+      "resolution": "included",
+      "reason": "Approved presentation and post-feed changes combined with newer main; TypeScript, scoped lint and 15 gesture/scheduling handoff checks passed."
+    },
+    {
+      "path": "components/trending/trending-swipe-guide.tsx",
+      "local": "a4da3a31e5e3a187598d4833f150f1665cda0a47",
+      "integrated": "a4da3a31e5e3a187598d4833f150f1665cda0a47",
+      "resolution": "included",
+      "reason": "Approved presentation and post-feed changes combined with newer main; TypeScript, scoped lint and 15 gesture/scheduling handoff checks passed."
+    },
+    {
+      "path": "components/trending/trending-workspace.tsx",
+      "local": "3c2562de6bbbe92bafdab431a5d5e777a46e4e1d",
+      "integrated": "3c2562de6bbbe92bafdab431a5d5e777a46e4e1d",
+      "resolution": "included",
+      "reason": "Approved presentation and post-feed changes combined with newer main; TypeScript, scoped lint and 15 gesture/scheduling handoff checks passed."
+    },
+    {
+      "path": "components/trending/use-post-review-history.ts",
+      "local": "3e61bfaca954b129484be95ed1c6340181b44d6b",
+      "integrated": "3e61bfaca954b129484be95ed1c6340181b44d6b",
+      "resolution": "included",
+      "reason": "Approved presentation and post-feed changes combined with newer main; TypeScript, scoped lint and 15 gesture/scheduling handoff checks passed."
+    },
+    {
+      "path": "lib/social/platform-visibility.ts",
+      "local": "dd937d20cf96221855bf43cf91df10fe39df4380",
+      "integrated": "dd937d20cf96221855bf43cf91df10fe39df4380",
+      "resolution": "included",
+      "reason": "Approved presentation and post-feed changes combined with newer main; TypeScript, scoped lint and 15 gesture/scheduling handoff checks passed."
+    },
+    {
+      "path": "lib/trending/post-interaction.test.ts",
+      "local": "d881dab8ff924091e1a6760d1a23f404d43685ea",
+      "integrated": "d881dab8ff924091e1a6760d1a23f404d43685ea",
+      "resolution": "included",
+      "reason": "Approved presentation and post-feed changes combined with newer main; TypeScript, scoped lint and 15 gesture/scheduling handoff checks passed."
+    },
+    {
+      "path": "lib/trending/post-interaction.ts",
+      "local": "4f25b7678c9916bc33551e25e086454bc154806a",
+      "integrated": "4f25b7678c9916bc33551e25e086454bc154806a",
+      "resolution": "included",
+      "reason": "Approved presentation and post-feed changes combined with newer main; TypeScript, scoped lint and 15 gesture/scheduling handoff checks passed."
+    },
+    {
+      "path": "lib/trending/trending-post-interaction-flow.test.mjs",
+      "local": "a7fee21ee6998c4b91e2e36449f15b0263e860d3",
+      "integrated": "a7fee21ee6998c4b91e2e36449f15b0263e860d3",
+      "resolution": "included",
+      "reason": "Approved presentation and post-feed changes combined with newer main; TypeScript, scoped lint and 15 gesture/scheduling handoff checks passed."
+    },
+    {
+      "path": "lib/trending/wall-copy-prompt-contract.test.ts",
+      "local": null,
+      "integrated": "5e141f80e1358b488c0e929357d01679da6b7029",
+      "resolution": "adapted",
+      "reason": "Approved Wall wording combined with immutable grounding and qualifications; 24 app/contract checks and 15 worker planning tests passed."
+    },
+    {
+      "path": "lib/trending/wall-prompt.ts",
+      "local": "5bf155d8f4b63e54927eec7765e38c7a89fa3da2",
+      "integrated": "5bf155d8f4b63e54927eec7765e38c7a89fa3da2",
+      "resolution": "included",
+      "reason": "Approved Wall wording combined with immutable grounding and qualifications; 24 app/contract checks and 15 worker planning tests passed."
+    },
+    {
+      "path": "lib/trending/wall-text-content-plan-schema-contract.test.ts",
+      "local": "9e0a3e8b1c2724afc85e86df74d691c6b0d5f623",
+      "integrated": "9e0a3e8b1c2724afc85e86df74d691c6b0d5f623",
+      "resolution": "included",
+      "reason": "Approved Wall wording combined with immutable grounding and qualifications; 24 app/contract checks and 15 worker planning tests passed."
+    },
+    {
+      "path": "lib/trending/wall-text-content-plan.ts",
+      "local": "f5c88b94abf17b89c151e987c746945f9f9aea90",
+      "integrated": "f5c88b94abf17b89c151e987c746945f9f9aea90",
+      "resolution": "included",
+      "reason": "Approved Wall wording combined with immutable grounding and qualifications; 24 app/contract checks and 15 worker planning tests passed."
+    },
+    {
+      "path": "public/marketing/showcase/hero-2026-10-03/left_side.mp4",
+      "local": "14268d345bf10ac4ca4f5ae9a511cab20e5a0b05",
+      "integrated": "14268d345bf10ac4ca4f5ae9a511cab20e5a0b05",
+      "resolution": "included",
+      "reason": "Approved runtime media copied and SHA-256 checked; originals preserved."
+    },
+    {
+      "path": "public/marketing/showcase/hero-2026-10-03/left_side.webp",
+      "local": "e5f65353bb9aeb5072089c371825d6d086b82cfe",
+      "integrated": "e5f65353bb9aeb5072089c371825d6d086b82cfe",
+      "resolution": "included",
+      "reason": "Approved runtime media copied and SHA-256 checked; originals preserved."
+    },
+    {
+      "path": "public/marketing/showcase/hero-2026-10-03/middle.mp4",
+      "local": "27d8d89c1779f031ece711bfcc43cdea6b9c04c3",
+      "integrated": "27d8d89c1779f031ece711bfcc43cdea6b9c04c3",
+      "resolution": "included",
+      "reason": "Approved runtime media copied and SHA-256 checked; originals preserved."
+    },
+    {
+      "path": "public/marketing/showcase/hero-2026-10-03/middle.webp",
+      "local": "dd4f68f077d3f1f7bbf3ee3010646ac0a276b912",
+      "integrated": "dd4f68f077d3f1f7bbf3ee3010646ac0a276b912",
+      "resolution": "included",
+      "reason": "Approved runtime media copied and SHA-256 checked; originals preserved."
+    },
+    {
+      "path": "public/marketing/showcase/hero-2026-10-03/right_side.mp4",
+      "local": "ba93ca4df6e3d28b56e7e51772a6fb69bd98a5d4",
+      "integrated": "ba93ca4df6e3d28b56e7e51772a6fb69bd98a5d4",
+      "resolution": "included",
+      "reason": "Approved runtime media copied and SHA-256 checked; originals preserved."
+    },
+    {
+      "path": "public/marketing/showcase/hero-2026-10-03/right_side.webp",
+      "local": "2e885ce6c85a053a8251743bdf38a8930543bca7",
+      "integrated": "2e885ce6c85a053a8251743bdf38a8930543bca7",
+      "resolution": "included",
+      "reason": "Approved runtime media copied and SHA-256 checked; originals preserved."
+    },
+    {
+      "path": "scripts/reconciliation-audit.mjs",
+      "local": null,
+      "integrated": "23a9a0709e659a8acc813a8aca5fb429f44fcc8a",
+      "resolution": "adapted",
+      "reason": "Audit-tool changes reviewed: hash-bound decisions, committed-release and release-only-file coverage; ten offline tests passed."
+    },
+    {
+      "path": "scripts/reconciliation-audit.test.mjs",
+      "local": null,
+      "integrated": "50bc9ad679e0f5aa400ba3a725acc2b6e4a52b1e",
+      "resolution": "adapted",
+      "reason": "Audit-tool changes reviewed: hash-bound decisions, committed-release and release-only-file coverage; ten offline tests passed."
+    },
+    {
+      "path": "worker/src/lib/wall-text-content-plan.ts",
+      "local": "6d44c8668acc7b76ad2f844950cb1d4cceb79589",
+      "integrated": "6d44c8668acc7b76ad2f844950cb1d4cceb79589",
+      "resolution": "included",
+      "reason": "Approved Wall wording combined with immutable grounding and qualifications; 24 app/contract checks and 15 worker planning tests passed."
+    },
+    {
+      "path": "CAROUSEL_CONTEXT.md",
+      "local": "206d7f17b399a73650c6135ef130eb24245c3e6b",
+      "integrated": "c6c9fd4aefa5016bfa111971234cdcf5b827a6ba",
+      "resolution": "adapted",
+      "reason": "Reviewed product notes for the native post-feed checkpoint and the already-integrated, still-local scheduling time-zone work; no production acceptance claimed."
+    },
+    {
+      "path": "components/marketing/landing-comparison-section.tsx",
+      "local": "8d9072741bd08171d1e8931e2ee3479f983c9769",
+      "integrated": "8d9072741bd08171d1e8931e2ee3479f983c9769",
+      "resolution": "included",
+      "reason": "Approved general social-account copy replaces the explicit platform list; presentation-only change."
+    },
+    {
+      "path": "lib/trending/creative-card-actions-ui.test.ts",
+      "local": "77a55cb7d8dce884878ace8450f56d9a52930488",
+      "integrated": "86b8fc3ea2f36179db530fcae284bc25584556c1",
+      "resolution": "adapted",
+      "reason": "Reviewed native-feed expectation changes; retained the already-applied walkthrough backfill check; 56 combined UI/gesture/copy checks passed."
+    },
+    {
+      "path": "docs/complete-release-progress.md",
+      "local": null,
+      "integrated": "ddbcfba674ea445582d942e649e9b1de1c6c2298",
+      "resolution": "adapted",
+      "reason": "Reviewed checkpoint scope, reconciliation root cause, exact offline evidence and remaining full-release gates; no deployment receipt."
+    }
+  ]
+}

@@ -78,7 +78,7 @@ export function LandingComparisonSection() {
                   <span className="text-base leading-none select-none mt-0.5" aria-hidden="true">
                     😅
                   </span>
-                  <span>Juggling YouTube, TikTok, and Instagram logins with manual scheduling routines</span>
+                  <span>Juggling social account logins with manual scheduling routines</span>
                 </li>
               </ul>
             </div>

@@ -19,16 +19,17 @@ import { LandingMultiPlatformSection } from "@/components/marketing/landing-mult
 import { LandingPlatformBadge } from "@/components/marketing/landing-platforms";
 import { LandingSwipeDeck } from "@/components/marketing/landing-swipe-deck";
 import { AUTH_SESSION_COOKIE_NAME } from "@/lib/firebase/auth-session";
+import { visibleSocialPlatformList } from "@/lib/social/platform-visibility";
 
 const authHref = "/sign-in";
 
 export const metadata: Metadata = {
   alternates: { canonical: "https://getugcpilot.com/" },
   title: {
-    absolute: "UGCPilot — YouTube, TikTok & Instagram Content Workspace",
+    absolute: `UGCPilot — ${visibleSocialPlatformList} Content Workspace`,
   },
   description:
-    "Create video-first content and approved publishing workflows for YouTube, TikTok, and Instagram in one workspace.",
+    `Create video-first content and approved publishing workflows for ${visibleSocialPlatformList} in one workspace.`,
 };
 
 const workflowSteps = [
@@ -54,7 +55,7 @@ const workflowSteps = [
     step: "04",
     title: "Approve the schedule",
     description:
-      "Choose the YouTube, TikTok, or Instagram destination and timing, then confirm the final publishing action.",
+      `Choose your ${visibleSocialPlatformList} destinations and timing, then confirm the final publishing action.`,
   },
 ];
 
@@ -103,73 +104,23 @@ export default async function Home() {
       </a>
       <LandingHeader initialHasSession={initialHasSession} />
 
-      <section className="relative z-0 px-4 pb-0 pt-24 sm:px-6 sm:pb-0 sm:pt-32 lg:px-8 lg:pb-0 lg:pt-36">
+      <section className="relative isolate z-0 overflow-hidden [clip-path:inset(0)] px-4 pb-0 pt-24 sm:px-6 sm:pb-0 sm:pt-32 lg:px-8 lg:pb-0 lg:pt-36">
         <div className="relative mx-auto flex max-w-[1200px] flex-col items-center gap-8 sm:gap-12 lg:gap-16">
           <div className="w-full max-w-[1200px] text-center">
             <LandingPlatformBadge />
 
             <h1 id="landing-content" tabIndex={-1} className="mx-auto max-w-[1200px] scroll-mt-24 text-balance text-[clamp(2.25rem,5.28vw,4.8rem)] font-semibold leading-[1.08] tracking-[-0.055em] text-foreground-strong sm:leading-[0.94]">
               <span className="block lg:whitespace-nowrap">
-                Stop guessing!{" "}
-                <span className="relative inline-block">
-                  Start posting
-                  <svg
-                    viewBox="0 0 320 20"
-                    preserveAspectRatio="none"
-                    className="pointer-events-none absolute -bottom-[0.12em] left-[1%] h-[0.18em] w-[99%] overflow-visible"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M5 12C75 4 203 3.5 316 10"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeWidth="3.4"
-                    />
-                  </svg>
-                </span>
-                <svg
-                  viewBox="0 0 52 86"
-                  className="ml-[0.18em] inline-block h-[0.82em] w-[0.5em] -translate-y-[0.04em] overflow-visible"
-                  fill="none"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M31 2 5 45h18L18 84l29-48H29L31 2Z"
-                    fill="currentColor"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                  />
-                </svg>
+                Create. Discover. Publish.
               </span>
               <span className="mt-3 block lg:whitespace-nowrap sm:mt-4">
-                Your next post is{" "}
-                <span className="relative inline-block px-[0.06em]">
-                  ready to go
-                  <svg
-                    viewBox="0 0 520 130"
-                    preserveAspectRatio="none"
-                    className="pointer-events-none absolute -left-[0.08em] -top-[0.14em] h-[1.29em] w-[108%] overflow-visible"
-                    fill="none"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M24 20C104 7 401 7 486 20C503 23 512 40 514 64C516 89 510 108 489 112C378 124 127 123 25 112C9 109 4 88 6 64C7 39 10 24 24 20Z"
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="3.2"
-                    />
-                  </svg>
-                </span>
+                Keep your content moving.
               </span>
             </h1>
 
             <p className="mx-auto mt-7 max-w-[740px] text-pretty text-base leading-7 text-muted sm:text-lg sm:leading-8">
               Create content for your business. Review it, choose your accounts,
-              and schedule to Instagram, TikTok, and YouTube from one workspace.
+              and schedule to {visibleSocialPlatformList} from one workspace.
             </p>
 
             <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:mt-8 sm:flex-row sm:gap-5">
@@ -184,7 +135,8 @@ export default async function Home() {
             </div>
           </div>
 
-          <div className="w-full">
+          {/* Clip the card bottoms at the hero boundary, including tilt and hover overflow. */}
+          <div className="-mb-6 w-full sm:-mb-8 lg:-mb-10">
             <LandingHeroShowcase />
           </div>
         </div>
@@ -300,13 +252,13 @@ export default async function Home() {
               <div>
                 <p className="font-semibold text-foreground-strong">UGCPilot</p>
                 <p className="mt-0.5 text-xs text-muted">
-                  YouTube, TikTok & Instagram content workspace
+                  {visibleSocialPlatformList} content workspace
                 </p>
               </div>
             </div>
             <p className="mt-5 max-w-sm text-sm leading-6 text-muted">
-              Create, review, and schedule content for YouTube, TikTok, and
-              Instagram from your own business context and approved media.
+              Create, review, and schedule content for {visibleSocialPlatformList}
+              {" "}from your own business context and approved media.
             </p>
           </div>
 
@@ -317,7 +269,7 @@ export default async function Home() {
 
         <div className="mx-auto mt-10 flex max-w-[1200px] flex-col gap-3 border-t border-border pt-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} UGCPilot. All rights reserved.</p>
-          <p>YouTube, TikTok, and Instagram are trademarks of their respective owners.</p>
+          <p>{visibleSocialPlatformList} are trademarks of their respective owners.</p>
         </div>
       </footer>
     </main>

@@ -1,17 +1,25 @@
-/* Keep video decisions in the same below-the-frame position at every desktop
-   width. A compact-laptop side layout made the reject and accept actions look
-   detached from the Hook video, especially on scaled laptop displays. */
-@media (min-width: 1024px) and (max-width: 1535.98px) {
-  .stage[data-review-format="video"] {
-    padding-top: 32px;
-  }
-}
-
 /* Size the review preview from the usable CSS viewport, not a claimed device
    diagonal. The smaller width- and height-led values make growth monotonic
    from a 1366×768 laptop through FHD while preventing a wide, short window
    from squeezing its decisions below the fold. */
+.stage [data-post-interaction-feed] {
+  /* Center feedback on the media below the post's 40px format-label space. */
+  --post-heart-offset-y: 20px;
+}
+.stage [data-post-interaction-feed] article[data-trending-vertical-frame] {
+  /* The feed's 240px minimum leaves 200px for media plus its 40px label. */
+  max-width: max(112.5px, calc((100dvh - 402px) * 0.5625));
+}
+.stage [data-post-interaction-feed] article:not([data-trending-vertical-frame]) {
+  max-width: max(160px, calc((100dvh - 402px) * 0.8));
+}
 @media (min-width: 1024px) {
+  .stage [data-post-interaction-feed] article[data-trending-vertical-frame] {
+    max-width: max(112.5px, calc((100dvh - 348px) * 0.5625));
+  }
+  .stage [data-post-interaction-feed] article:not([data-trending-vertical-frame]) {
+    max-width: max(160px, calc((100dvh - 348px) * 0.8));
+  }
   .responsiveCarouselFrame {
     width: min(
       clamp(300px, calc(8.333vw + 220px), 380px),
@@ -39,14 +47,6 @@
    The larger compact cards stay clear of the subtitle by keeping the card
    top steady as its height grows. */
 @media (min-width: 1024px) and (max-height: 820px) {
-  .stage[data-review-format="carousel"] [data-trending-review-frame] {
-    transform: translateY(3px);
-  }
-
-  .stage[data-review-format="video"] [data-trending-review-frame] {
-    transform: translateY(18px);
-  }
-
   /* Keep the controls compact without losing their accessible visible labels. */
   div.compactHeightDecisionGroup {
     margin-top: 0.625rem;
@@ -60,17 +60,5 @@
   .compactHeightDecisionButton > .compactHeightDecisionIcon {
     height: clamp(1.25rem, calc((100dvh - 252px) * 0.0435), 1.5rem);
     width: clamp(1.25rem, calc((100dvh - 252px) * 0.0435), 1.5rem);
-  }
-}
-
-/* At 1536×864, the taller 15.6-inch-class cards use the unused headroom
-   above the deck, leaving the format label, actions, and progress visible. */
-@media (min-width: 1024px) and (min-height: 821px) and (max-height: 880px) {
-  .stage[data-review-format="carousel"] [data-trending-review-frame] {
-    transform: translateY(-6px);
-  }
-
-  .stage[data-review-format="video"] [data-trending-review-frame] {
-    transform: translateY(-18px);
   }
 }

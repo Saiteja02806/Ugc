@@ -1,36 +1,34 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
-import { Images, ScanText, Sparkles } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Clapperboard, Sparkles, UserRound } from "lucide-react";
 
-const slideshowImages = [
-  "/marketing/showcase/slideshow/image_0.jpg",
-  "/marketing/showcase/slideshow/image_1.jpg",
-  "/marketing/showcase/slideshow/image_2.jpg",
-  "/marketing/showcase/slideshow/image_3.jpg",
-  "/marketing/showcase/slideshow/image_4.jpg",
-  "/marketing/showcase/slideshow/image_5.jpg",
-];
+const heroMediaPath = "/marketing/showcase/hero-2026-10-03";
 
 export function LandingHeroShowcase() {
-  const [activeSlide, setActiveSlide] = useState(0);
   const [shouldLoadVideoPreviews, setShouldLoadVideoPreviews] = useState(false);
+  const [shouldLoadSideVideoPreviews, setShouldLoadSideVideoPreviews] = useState(false);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setActiveSlide((prev) => (prev + 1) % slideshowImages.length);
-    }, 2800);
-    return () => clearInterval(timer);
-  }, []);
+    const desktopMedia = window.matchMedia("(min-width: 1024px)");
+    let readyToLoad = false;
 
-  useEffect(() => {
+    function updateSidePreviews() {
+      setShouldLoadSideVideoPreviews(readyToLoad && desktopMedia.matches);
+    }
+
     const timer = window.setTimeout(() => {
+      readyToLoad = true;
       setShouldLoadVideoPreviews(true);
+      updateSidePreviews();
     }, 750);
 
-    return () => clearTimeout(timer);
+    desktopMedia.addEventListener("change", updateSidePreviews);
+
+    return () => {
+      clearTimeout(timer);
+      desktopMedia.removeEventListener("change", updateSidePreviews);
+    };
   }, []);
 
   return (
@@ -48,29 +46,30 @@ export function LandingHeroShowcase() {
       {/* 3-Card Showcase Stage */}
       <div className="relative flex flex-col items-center justify-center gap-6 sm:gap-4 lg:flex-row lg:items-end lg:justify-center">
         {/* ========================================================= */}
-        {/* 1. Left Card: Wall of Text (Tilted -5°, Left corner dipped) */}
+        {/* 1. Left Card: supplied left_side video */}
         {/* ========================================================= */}
         <div className="relative z-0 order-2 hidden w-[240px] shrink-0 lg:order-1 lg:block lg:w-[290px]">
           <div className="transform-gpu transition-transform duration-300 lg:-rotate-[5deg] lg:origin-top-right lg:translate-y-4 hover:scale-[1.02]">
             <article className="group relative aspect-[9/16] w-full overflow-hidden rounded-[20px] sm:rounded-[24px] border border-border/80 bg-black shadow-card ring-1 ring-white/10">
               {/* Subtle format pill */}
               <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5 rounded-full border border-white/20 bg-black/65 px-3 py-1 text-[11px] font-semibold tracking-wide text-white backdrop-blur-md shadow-sm">
-                <ScanText className="size-3.5 text-primary" aria-hidden="true" />
-                <span>Wall of Text</span>
+                <UserRound className="size-3.5 text-primary" aria-hidden="true" />
+                <span>Talking Head</span>
               </div>
 
               {/* Video preview */}
               <video
                 src={
-                  shouldLoadVideoPreviews
-                    ? "/marketing/showcase/wot-preview-v2.mp4"
+                  shouldLoadSideVideoPreviews
+                    ? `${heroMediaPath}/left_side.mp4`
                     : undefined
                 }
                 autoPlay
                 muted
                 loop
                 playsInline
-                poster="/marketing/showcase/wot-preview-poster-v2.webp"
+                poster={`${heroMediaPath}/left_side.webp`}
+                aria-label="Talking-head video preview"
                 preload="metadata"
                 className="size-full object-cover"
               />
@@ -85,7 +84,7 @@ export function LandingHeroShowcase() {
         </div>
 
         {/* ========================================================= */}
-        {/* 2. Center Card: Hook Video (100% visible, Upright 0°, z-20) */}
+        {/* 2. Center Card: supplied middle video */}
         {/* ========================================================= */}
         <div className="relative z-20 order-1 w-[min(72vw,260px)] shrink-0 sm:w-[290px] lg:order-2 lg:w-[325px]">
           <div className="transform-gpu transition-transform duration-300 hover:scale-[1.02]">
@@ -93,24 +92,25 @@ export function LandingHeroShowcase() {
               {/* Format pill with accent */}
               <div className="absolute left-3.5 top-3.5 z-20 flex items-center gap-1.5 rounded-full border border-white/25 bg-black/70 px-3.5 py-1 text-xs font-semibold tracking-wide text-white backdrop-blur-md shadow-md">
                 <Sparkles className="size-3.5 text-amber-400" aria-hidden="true" />
-                <span>Hook+Demo</span>
+                <span>UGC Video</span>
               </div>
 
-              {/* Real Hook Video playback */}
+              {/* Supplied middle video playback */}
               <video
                 src={
                   shouldLoadVideoPreviews
-                    ? "/marketing/showcase/hook-preview-v3.mp4"
+                    ? `${heroMediaPath}/middle.mp4`
                     : undefined
                 }
                 autoPlay
                 muted
                 loop
                 playsInline
-                poster="/marketing/showcase/hook-preview-poster-v3.webp"
+                poster={`${heroMediaPath}/middle.webp`}
+                aria-label="UGC video preview"
                 preload="metadata"
                 onLoadedMetadata={(event) => {
-                  // Always begin the hero preview at its influencer cover frame.
+                  // Begin the supplied video at its first frame.
                   event.currentTarget.currentTime = 0;
                 }}
                 className="size-full object-cover"
@@ -126,100 +126,32 @@ export function LandingHeroShowcase() {
         </div>
 
         {/* ========================================================= */}
-        {/* 3. Right Card: Slideshow (Tilted +5°, Right corner dipped) */}
+        {/* 3. Right Card: supplied right_side video */}
         {/* ========================================================= */}
         <div className="relative z-0 order-3 hidden w-[240px] shrink-0 lg:block lg:w-[290px]">
           <div className="transform-gpu transition-transform duration-300 lg:rotate-[5deg] lg:origin-top-left lg:translate-y-4 hover:scale-[1.02]">
-            {/* Stacked card deck layer underneath to immediately signal a multi-slide carousel */}
-            <div
-              className="absolute -right-1.5 -top-1.5 bottom-1.5 w-full rounded-[22px] sm:rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-[2px]"
-              aria-hidden="true"
-            />
-            <div
-              className="absolute -right-3 -top-3 bottom-3 w-full rounded-[22px] sm:rounded-[26px] border border-white/5 bg-white/[0.02]"
-              aria-hidden="true"
-            />
-
             <article className="group relative aspect-[9/16] w-full overflow-hidden rounded-[20px] sm:rounded-[24px] border border-border/80 bg-black shadow-card ring-1 ring-white/10">
               {/* Subtle format pill */}
               <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5 rounded-full border border-white/20 bg-black/65 px-3 py-1 text-[11px] font-semibold tracking-wide text-white backdrop-blur-md shadow-sm">
-                <Images className="size-3.5 text-accent-pink" aria-hidden="true" />
-                <span>Slideshow</span>
+                <Clapperboard className="size-3.5 text-accent-pink" aria-hidden="true" />
+                <span>Hook+Demo</span>
               </div>
 
-              {/* Multi-slide carousel indicator badge */}
-              <div className="absolute right-3 top-3 z-20 flex items-center gap-1 rounded-full border border-white/20 bg-black/65 px-2.5 py-0.5 font-mono text-[10px] font-medium text-white backdrop-blur-md shadow-sm">
-                <Images className="size-3 text-white/80" aria-hidden="true" />
-                <span>{activeSlide + 1}/{slideshowImages.length}</span>
-              </div>
-
-              {/* Horizontal sliding track for true carousel motion */}
-              <div
-                className="flex size-full transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)]"
-                style={{ transform: `translateX(-${activeSlide * 100}%)` }}
-              >
-                {slideshowImages.map((src, index) => (
-                  <div
-                    key={src}
-                    className="relative size-full shrink-0"
-                  >
-                    <Image
-                      src={src}
-                      alt={`Slideshow slide ${index + 1}`}
-                      fill
-                      sizes="(max-width: 768px) 240px, (max-width: 1024px) 260px, 290px"
-                      className="object-cover"
-                      priority={index === 0}
-                    />
-                  </div>
-                ))}
-              </div>
-
-              {/* Carousel navigation buttons on hover/interaction */}
-              <div className="absolute inset-x-2 top-1/2 z-20 flex -translate-y-1/2 justify-between opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setActiveSlide((prev) =>
-                      prev === 0 ? slideshowImages.length - 1 : prev - 1
-                    )
-                  }
-                  aria-label="Previous slide"
-                  className="flex size-7 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition-colors hover:bg-black/80"
-                >
-                  ‹
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setActiveSlide((prev) =>
-                      (prev + 1) % slideshowImages.length
-                    )
-                  }
-                  aria-label="Next slide"
-                  className="flex size-7 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition-colors hover:bg-black/80"
-                >
-                  ›
-                </button>
-              </div>
-
-              {/* Slide pagination pill dots at bottom */}
-              <div className="absolute inset-x-0 bottom-4 z-20 flex justify-center gap-1.5">
-                {slideshowImages.map((_, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setActiveSlide(idx)}
-                    aria-label={`Go to slide ${idx + 1}`}
-                    className={cn(
-                      "size-1.5 rounded-full transition-all duration-300",
-                      idx === activeSlide
-                        ? "w-4 bg-white shadow-sm"
-                        : "bg-white/40 hover:bg-white/70"
-                    )}
-                  />
-                ))}
-              </div>
+              <video
+                src={
+                  shouldLoadSideVideoPreviews
+                    ? `${heroMediaPath}/right_side.mp4`
+                    : undefined
+                }
+                autoPlay
+                muted
+                loop
+                playsInline
+                poster={`${heroMediaPath}/right_side.webp`}
+                aria-label="Hook and demo video preview"
+                preload="metadata"
+                className="size-full object-cover"
+              />
 
               {/* Subtle edge overlay for visual polish */}
               <div

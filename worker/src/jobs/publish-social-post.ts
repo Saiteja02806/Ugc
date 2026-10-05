@@ -222,6 +222,21 @@ export async function runPublishSocialPostJob(
       }
     }
 
+    const scheduledTimestamp = Date.parse(scheduledAt);
+    const now = Date.now();
+
+    if (!Number.isFinite(scheduledTimestamp)) {
+      throw new Error("Publish target has an invalid scheduled time.");
+    }
+
+    if (scheduledTimestamp > now) {
+      throw new DeferredJobError("Waiting for the scheduled publish time.", {
+        code: "social_publish_not_due",
+        now,
+        retryAfterSeconds: Math.ceil((scheduledTimestamp - now) / 1_000),
+      });
+    }
+
     validatePublishContext(publishContext);
 
     operation = await context.store.claimSocialPublishOperation({
@@ -624,8 +639,8 @@ export async function runPublishSocialPostJob(
     };
   } catch (error) {
     if (error instanceof DeferredJobError) {
-      // Account-lane backpressure is expected when the service is scaled. It
-      // must not mark a target failed or spend one of its provider attempts.
+      // Scheduled waits and account-lane backpressure do not fail the target
+      // or spend a provider attempt.
       throw error;
     }
 

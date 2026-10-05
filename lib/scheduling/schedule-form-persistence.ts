@@ -9,6 +9,21 @@ type ConnectionIdentity = Pick<
   "id" | "platform" | "status"
 >;
 
+/** Preserve saved providers that are temporarily absent from the UI. */
+export function getDormantScheduleTargets(params: {
+  allowedPlatforms: SchedulePlatform[];
+  connections: ConnectionIdentity[];
+  plannedTargets: ScheduleCreateTargetInput[];
+}) {
+  return params.plannedTargets.filter((target) => {
+    const connection = params.connections.find(
+      (candidate) => candidate.id === target.connectionId,
+    );
+    const platform = target.platform ?? connection?.platform;
+    return platform !== undefined && !params.allowedPlatforms.includes(platform);
+  });
+}
+
 export function getInitialScheduleConnectionIds(params: {
   connections: ConnectionIdentity[];
   isCarouselSchedule: boolean;

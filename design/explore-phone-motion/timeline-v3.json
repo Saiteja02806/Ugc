@@ -1,0 +1,77 @@
+{
+  "width": 960,
+  "height": 540,
+  "fps": 24,
+  "frames": 150,
+  "duration": 6.25,
+  "stages": [
+    {
+      "name": "first-creator-phone",
+      "startFrame": 0,
+      "endFrame": 72,
+      "source": "creator-1.mp4",
+      "sourceStartFrame": 66
+    },
+    {
+      "name": "second-creator-phone",
+      "startFrame": 66,
+      "endFrame": 144,
+      "source": "creator-2.mp4",
+      "sourceStartFrame": 162
+    },
+    {
+      "name": "continuous-return",
+      "startFrame": 138,
+      "endFrame": 150,
+      "source": "creator-1.mp4",
+      "sourceStartFrame": 54
+    }
+  ],
+  "caption": {
+    "text": "Your app. On a creator’s phone.",
+    "fullyVisibleFrame": 22,
+    "exitStartFrame": 132,
+    "hiddenFrame": 147
+  },
+  "motion": {
+    "editor": "After Effects",
+    "project": "design/explore-phone-motion/Explore Phone Cover — Product Motion v3.aep",
+    "mainComp": "Explore Phone Cover — Product Motion v3",
+    "nativeRenderTemplate": "H.264 - Match Render Settings - 40 Mbps",
+    "style": "soft paper stage, bold sans-serif heading, upright full-frame video window, mint phone focus corners",
+    "fonts": [
+      "SegoeUIVariable-BoldDisplay",
+      "SegoeUIVariable-RegularDisplay"
+    ],
+    "sourceTextEditable": true,
+    "portraitWindow": {
+      "x": 654,
+      "y": 24,
+      "width": 276.75,
+      "height": 492,
+      "cornerRadius": 22,
+      "mediaScale": 38.4375,
+      "sourceWidth": 720,
+      "sourceHeight": 1280
+    },
+    "transitions": {
+      "type": "six-frame horizontal card slide through a fixed rounded aperture",
+      "ranges": [
+        [
+          66,
+          72
+        ],
+        [
+          138,
+          144
+        ]
+      ],
+      "noDissolve": true
+    },
+    "phoneFocus": "native trimmed corner paths; sparse manually aligned handset position keys; require realignment for replacement footage",
+    "captionFit": "native headline parent automatically fits combined wording into 540px; phone underline follows editable word width",
+    "loop": "return ends on creator-1 source frame 65; next opening starts at source frame 66; text and focus are absent on both seam frames",
+    "referenceNotes": "preview-1 (1).mp4 informed clear statement-to-demonstration pacing; references are not included as source artwork",
+    "demoIncluded": false
+  }
+}

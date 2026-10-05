@@ -12,6 +12,8 @@ background_job_recovery_schedule          = "*/5 * * * *"
 # Bucket names are globally unique. Change this if Terraform reports it is taken.
 media_bucket_name     = "ugcsaas-media"
 media_bucket_location = "US"
+# Separate bucket with enforced public-access prevention; opt in at deployment.
+private_audio_bucket_name = ""
 
 # Keep true while testing-phase media URLs are publicly readable.
 media_bucket_public_read = false

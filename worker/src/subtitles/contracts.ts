@@ -1,6 +1,6 @@
-/** Standalone subtitle contracts. Nothing in the production worker imports this directory. */
+/** Shared timed-subtitle contracts for the lab and the owned Explore worker. */
 export const SUBTITLE_VERSION = "subtitles-v1";
-export const SUBTITLE_STYLES = ["clean", "bold-box", "active-word"] as const;
+export const SUBTITLE_STYLES = ["clean", "bold-box", "active-word", "editorial"] as const;
 export type SubtitleStyle = (typeof SUBTITLE_STYLES)[number];
 export type SubtitlePlacement = "bottom" | "top";
 export const MAX_VIDEO_DURATION_MS = 120_000;
@@ -22,7 +22,7 @@ export type TimedWord = {
 };
 export type SubtitleTranscript = {
   schemaVersion: 1;
-  provider: "openai" | "fixture";
+  provider: "openai" | "elevenlabs" | "fixture";
   model: string;
   language: string | null;
   durationMs: number;
@@ -48,7 +48,7 @@ export function validateTranscript(value: unknown, durationMs: number): Subtitle
   if (!Number.isFinite(durationMs) || durationMs <= 0 || durationMs > MAX_VIDEO_DURATION_MS) {
     throw new SubtitleError("VIDEO_DURATION_INVALID", "Videos must be between 0 and 120 seconds.");
   }
-  if (input.schemaVersion !== 1 || !["openai", "fixture"].includes(String(input.provider)) ||
+  if (input.schemaVersion !== 1 || !["openai", "elevenlabs", "fixture"].includes(String(input.provider)) ||
       typeof input.model !== "string" || !input.model || input.model.length > 100 ||
       (input.language !== null && (typeof input.language !== "string" || input.language.length > 100))) {
     throw new SubtitleError("INVALID_TRANSCRIPT", "Unsupported transcript format.");
@@ -93,7 +93,7 @@ export function validateTranscript(value: unknown, durationMs: number): Subtitle
 
 export function parseStyle(value: string): SubtitleStyle {
   if (!(SUBTITLE_STYLES as readonly string[]).includes(value)) {
-    throw new SubtitleError("INVALID_STYLE", "Choose clean, bold-box, or active-word.");
+    throw new SubtitleError("INVALID_STYLE", "Choose clean, bold-box, active-word, or editorial.");
   }
   return value as SubtitleStyle;
 }

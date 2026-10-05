@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Subtitle generator · UGCPilot</title>
+  <link rel="stylesheet" href="/styles.css"><script src="/client.js" defer></script>
+</head>
+<body>
+  <header class="header"><a class="brand" href="/" aria-label="Subtitle generator home"><span class="cc" aria-hidden="true">cc</span>UGCPilot<span class="brand-divider">/</span><span class="brand-feature">Subtitles</span></a><span class="pilot-tag">Local pilot</span></header>
+  <main>
+    <div class="intro"><p class="eyebrow">Your words, in the frame</p><h1>Add subtitles to your video.</h1><p>Choose a look. Generate captions. Keep a new copy.</p></div>
+    <div class="workspace">
+      <section class="preview-panel" aria-label="Video preview">
+        <div class="preview-top"><span id="preview-label">Your video</span><div class="view-switch" hidden id="view-switch"><button id="view-original" aria-pressed="false">Original</button><button id="view-captions" aria-pressed="true">Subtitles</button></div></div>
+        <div class="preview-stage" id="drop-target"><video id="video" controls playsinline hidden></video><div class="empty-preview" id="empty-preview"><span class="caption-mark" aria-hidden="true">Make every<br><mark>word</mark> count.</span><p>Your video will appear here.</p></div></div>
+        <div class="preview-bottom"><span id="file-name">No video selected</span><span id="duration"></span></div>
+      </section>
+      <section class="controls-panel" aria-label="Subtitle generator">
+        <div class="input-section"><h2>Start with a video</h2><p>Upload a clip with clear English speech.</p><label class="upload-zone" id="upload-zone" for="file"><span class="upload-icon" aria-hidden="true">↑</span><strong>Choose a video</strong><span>or drop it onto the preview</span><input id="file" type="file" accept="video/mp4,video/quicktime,video/webm,video/x-matroska" aria-label="Choose a video"></label><p class="limits">Up to 30 seconds · 50 MB · English</p><button class="sample-button" id="sample" hidden>Use your verified sample <span aria-hidden="true">↗</span></button></div>
+        <div class="generate-section"><div class="section-title"><span class="small-cc" aria-hidden="true">cc</span><h2>Give it subtitles</h2></div><p>Three readable styles, placed at the top or bottom of your video.</p><button class="primary" id="open-styles" disabled>Add subtitles <span aria-hidden="true">→</span></button><p class="quiet">The original stays available. Audio is sent to OpenAI when you generate.</p></div>
+        <div class="status-card" id="progress-card" hidden role="status"><progress aria-label="Generating subtitles"></progress><div><strong id="stage">Preparing your video</strong><p>Keep this page open.</p></div><button class="text-button" id="cancel-page">Stop</button></div>
+        <div class="error-card" id="error" role="alert" hidden></div>
+        <div class="result-card" id="result" hidden><p class="result-label">Subtitles generated</p><h2>Your new video is ready.</h2><p id="result-details"></p><a class="primary" id="download" href="#" download>Download video <span aria-hidden="true">↓</span></a><div class="text-downloads"><a id="srt" href="#" download>Download SRT</a><a id="vtt" href="#" download>Download VTT</a></div><p class="quiet">Watch it once before sharing.</p></div>
+        <p id="configuration" class="configuration" hidden></p>
+      </section>
+    </div>
+  </main>
+  <dialog id="style-dialog" aria-labelledby="dialog-title">
+    <form id="generate-form"><div class="dialog-top"><div><p class="eyebrow">Subtitles</p><h2 id="dialog-title">Choose your style.</h2></div><button type="button" class="close-button" id="close-dialog" aria-label="Close style selection">×</button></div><p class="dialog-description">A handful of styles. The same spoken words.</p>
+      <fieldset class="styles"><legend class="sr-only">Subtitle style</legend>
+        <label class="style-option"><input type="radio" name="style" value="clean" checked><span class="style-example clean-example">Make every<br>word count.</span><span class="style-title">Clean</span><span class="style-description">White text with a soft outline</span></label>
+        <label class="style-option"><input type="radio" name="style" value="bold-box"><span class="style-example box-example"><span>Make every<br>word count.</span></span><span class="style-title">Bold box</span><span class="style-description">A dark backdrop for contrast</span></label>
+        <label class="style-option"><input type="radio" name="style" value="active-word"><span class="style-example active-example"><span>Make every<br><mark>word</mark> count.</span></span><span class="style-title">Word highlight</span><span class="style-description">Follow each spoken word</span></label>
+      </fieldset>
+      <div class="placement"><label for="placement">Position</label><select id="placement"><option value="bottom">Bottom</option><option value="top">Top</option></select><p>Leave your subject in view.</p></div>
+      <div id="dialog-progress" class="dialog-progress" hidden role="status"><progress aria-label="Generating captions"></progress><p id="dialog-stage">Preparing your video</p></div>
+      <div class="dialog-actions"><button type="button" class="secondary" id="dialog-cancel">Cancel</button><button type="submit" class="primary" id="generate">Generate subtitles <span aria-hidden="true">→</span></button></div>
+    </form>
+  </dialog>
+</body>
+</html>

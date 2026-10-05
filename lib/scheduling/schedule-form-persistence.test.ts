@@ -2,10 +2,34 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  getDormantScheduleTargets,
   getInitialScheduleConnectionIds,
   getSocialConnectionAccountLabel,
   getUnavailableSavedInstagramTargets,
 } from "./schedule-form-persistence.ts";
+
+test("hiding a provider preserves typed and legacy saved targets and publishing settings", () => {
+  const savedTikTokTarget = {
+    connectionId: "tiktok-current", platform: "tiktok",
+    settings: { privacyLevel: "SELF_ONLY", brandOrganicToggle: true },
+  } as const;
+  const legacyTikTokTarget = { connectionId: "tiktok-legacy" };
+  const targets = [
+    { connectionId: "instagram-current", platform: "instagram" } as const,
+    savedTikTokTarget, legacyTikTokTarget,
+  ];
+  const connections = [
+    { id: "tiktok-current", platform: "tiktok", status: "connected" } as const,
+    { id: "tiktok-legacy", platform: "tiktok", status: "connected" } as const,
+  ];
+  assert.deepEqual(getDormantScheduleTargets({
+    allowedPlatforms: ["instagram", "youtube"], connections, plannedTargets: targets,
+  }), [savedTikTokTarget, legacyTikTokTarget]);
+  assert.deepEqual(getDormantScheduleTargets({
+    allowedPlatforms: ["instagram", "tiktok", "youtube"], connections, plannedTargets: targets,
+  }), []);
+  assert.equal(targets[1], savedTikTokTarget);
+});
 
 const instagramConnection = {
   id: "instagram-current",

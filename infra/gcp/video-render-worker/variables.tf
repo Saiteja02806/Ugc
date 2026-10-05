@@ -79,7 +79,19 @@ variable "queue_name" {
 variable "worker_job_types" {
   description = "Comma-separated job types allowed for this worker service. Reaction generation performs its final MP4 composition here."
   type        = string
-  default     = "render_edit_video,render_create_content_video,render_schedule_combination,render_wall_text_video,reaction_generation,final_render"
+  default     = "render_demo_video,render_edit_video,render_create_content_video,render_schedule_combination,render_wall_text_video,reaction_generation,final_render"
+}
+
+variable "explore_subtitle_transcription_enabled" {
+  description = "Enable approved Scribe v2 English/60-second transcription only after release checks."
+  type        = bool
+  default     = false
+}
+
+variable "elevenlabs_api_key_secret_id" {
+  description = "Existing Secret Manager secret ID for Scribe. Required only when Explore transcription is enabled. No plaintext key."
+  type        = string
+  default     = ""
 }
 
 variable "worker_visibility_timeout_seconds" {

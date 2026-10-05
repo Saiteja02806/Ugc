@@ -24,7 +24,7 @@ const featureMatrix: FeatureRow[] = [
   { label: "Daily hooks, Wall of Text & carousels", free: `During ${FREE_TRIAL_CONTENT_DAYS}-day trial`, starter: true, growth: true },
   { label: "Review, edit & content library", free: true, starter: true, growth: true },
   { label: "Instagram scheduling", free: "Unlimited during trial", starter: true, growth: true },
-  { label: "YouTube channel connection", free: true, starter: true, growth: true },
+  { label: "Connect Instagram & YouTube", free: true, starter: true, growth: true },
   { label: "YouTube video scheduling", free: true, starter: true, growth: true },
   { label: "AI Studio images & videos", free: "Uses free credits", starter: "Uses shared credits", growth: "Uses shared credits" },
   { label: "AI character generation", free: "1 assisted generation", starter: "Uses shared credits", growth: "Uses shared credits" },
@@ -167,27 +167,6 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                       {typeof plan.dailyContentPieces === "number"
                         ? `${plan.dailyContentPieces} / day`
                         : plan.dailyContentPieces}
-                    </td>
-                  ))}
-                </tr>
-                <tr className="hover:bg-card-muted/30 transition-colors">
-                  <th
-                    scope="row"
-                    className="px-5 py-3.5 text-xs font-normal text-muted"
-                  >
-                    Connected Instagram accounts
-                  </th>
-                  {plans.map((plan) => (
-                    <td
-                      key={plan.slug}
-                      className={cn(
-                        "px-4 py-3.5 text-center text-xs font-medium text-foreground-strong",
-                        plan.highlighted ? "bg-primary/[0.04]" : "",
-                      )}
-                    >
-                      {plan.instagramAccounts === 0
-                        ? "—"
-                        : plan.instagramAccounts}
                     </td>
                   ))}
                 </tr>

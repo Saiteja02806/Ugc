@@ -2,6 +2,12 @@
 
 Implementation and internal release, October 3, 2026.
 
+Historical checkpoint: production observations below refer to October 3.
+The complete release now includes Explore and Audio; see
+`complete-release-progress.md` for current deployment status. The Gemini
+migration is already applied under canonical version `20261003045651`;
+do not replay it under the original local timestamp.
+
 Explore is hidden in production: its navigation entry is omitted and `/explore`
 and every nested route return HTTP 404, including `preview=1`. The character
 APIs retain normal verified-account authentication and ownership checks. This
@@ -19,7 +25,9 @@ previews remain gated to development.
 `/explore/build-character` opens directly into the image workspace. It uses the
 existing AI Studio composer, image-model setting and accessible dialog. Above
 the composer, a dismissible suggestion contains only “Let UGCpilot create your
-first influencer” and “Create it for me.” The assisted action remains in the
+first influencer” and “Create it for me.” This compact card sits above the
+composer, aligned to its right edge on desktop and spanning the available width
+on mobile. The text and button are grouped vertically. The assisted action remains in the
 composer after dismissal. A fresh visitor is asked Male/Female once on entry,
 with Continue saving the preference. Closing the dialog also records that it
 was seen; an unchosen gender remains available inline rather than reopening
@@ -32,6 +40,13 @@ The character chat has no character-count limit or counter. Full descriptions
 reach the planner, including inputs longer than the previous 1,000-character
 and 12,000-character guards. A 1 MiB API transport bound protects request size;
 the planner still produces concise structured instructions for the image worker.
+
+The character model selector offers GPT Image, Gemini 3 Pro, and Nano Banana 2.
+The two Google models use the server-side `GEMINI_API_KEY` through Google's SDK,
+with no Runway image route or fallback. Gemini 3 Pro selects `gemini-3-pro-image`
+independently of the Nano Banana 2 override (`GEMINI_IMAGE_MODEL`, default
+`gemini-3.1-flash-image`). Pro stores the accepted Google interaction ID so retries
+can retrieve that interaction instead of creating another paid request.
 
 The owner clarified that free users get one free AI image generation. The
 character flow implements one assisted image per Firebase account. An active
@@ -59,8 +74,8 @@ selected model keep identity; visual similarity still depends on model output.
    a short private brief and three structured adult specifications. Free jobs use
    the first candidate; paid jobs use all three.
 5. Render fixed realism instructions with natural skin texture, ordinary clothing,
-   everyday settings and smartphone framing. The existing worker handles GPT Image
-   or Nano Banana 2. Every prompt respects its 2,000-character limit.
+   everyday settings and smartphone framing. The existing worker handles GPT Image,
+   Gemini 3 Pro or Nano Banana 2. Every rendered prompt respects its 2,000-character limit.
 6. Reserve paid credits and create all jobs in one database transaction, or claim
    the one free allowance and create one job. Dispatch the durable jobs through
    the existing queue recovery path.
@@ -78,7 +93,7 @@ selected model keep identity; visual similarity still depends on model output.
 | `GET /api/characters` | Owned `{id,name,url,model,gender,createdAt}` records |
 
 Assisted requests require gender and forbid custom prompts/references. Custom
-requests require a prompt. Both supported image models are explicit enum values.
+requests require a prompt. All three supported image models are explicit enum values.
 Client-provided business facts, image URLs, candidate counts and identity specs
 are rejected. Business facts and user descriptions are data in the planner's
 instruction boundary. Specifications require visibly adult creators aged 21–80.
@@ -163,7 +178,8 @@ functions in local PGlite, including concurrent claims, all-or-nothing rollback,
 replay, settlement, function privileges and RLS. Backend/client tests use
 deterministic provider/network fixtures, so they spend no image credits.
 
-Release prerequisites: apply both reviewed character migrations to the target database
+Release prerequisites: apply the reviewed character migrations to the target database,
+including `20261003045651_character_gemini_3_pro_image.sql`,
 before releasing the app; keep existing Firebase, business-profile, image-worker,
 OpenAI planner, image-provider, storage and Cloud Tasks configuration available.
 The optional `OPENAI_CHARACTER_PLANNER_MODEL` defaults to the project's business
@@ -178,3 +194,31 @@ select those jobs/references. Confirm the first gender question stays dismissed
 after reload and a device change, and that a long description reaches the planner.
 Local layout and fixture tests do not confirm
 provider quality or hosted integration behavior.
+
+## Google model follow-up verification, October 3, 2026
+
+The local character UI and API now accept all three models. The additive model
+migration was applied to the shared database; browser RPC permissions remain
+revoked. This follow-up did not deploy the frontend or change Explore visibility.
+The hosted worker already supports both Google model identifiers.
+
+Validation passed: 59 character behavior tests, 12 generation database groups,
+19 worker/provider/image tests, Next.js type checking, worker compilation, and
+scoped ESLint. Tests cover Google character selection and restored references,
+long prompts for all models, one free image regardless of model, paid candidate
+counts, exact Pro model routing, and recovery without duplicate submissions.
+
+Two isolated verified free test accounts created real images through the local
+character API and hosted Google worker, one per model. Both completed with a
+720×1280 PNG, Gemini provider record and Google interaction ID. Generation replay
+reused the job; another free request was denied. Saving twice preserved the media
+ID, and fresh sign-in returned the saved influencer with its selected model.
+Temporary Firebase accounts and business profiles were removed. Job IDs:
+`277b97b6-3cf5-4742-916a-93caaca89cd7` (Pro) and
+`e7db0cd6-bc0d-4e9a-bbef-a0b516ffe4f4` (Nano Banana 2).
+
+An optional direct interaction lookup with the local operator key returned 404;
+the completed worker records and character API responses were verified instead.
+Browser automation remains unavailable for the local screen under its URL policy,
+so the updated dropdown needs a manual refresh in the open tab. Production checks
+still return 404 for Explore and its nested routes, including `preview=1`.

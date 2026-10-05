@@ -99,9 +99,12 @@ export async function POST(request: Request) {
       );
     }
 
-    if (isAudio && durationSeconds! > 30) {
+    // Demo background tracks can be longer than the video and are fitted by
+    // the finishing worker. Keep the existing Create-reference upload cap.
+    const maxAudioSeconds = asset.project_id === "explore-demo" ? 600 : 30;
+    if (isAudio && durationSeconds! > maxAudioSeconds) {
       return Response.json(
-        { ok: false, error: "Audio references must be 30 seconds or shorter." },
+        { ok: false, error: `Audio ${maxAudioSeconds === 600 ? "background tracks" : "references"} must be ${maxAudioSeconds} seconds or shorter.` },
         { status: 400 },
       );
     }

@@ -14,8 +14,9 @@ import styles from "./character-workspace.module.css";
 
 const MODEL_OPTIONS = [
   { value: "gpt_image", label: "GPT Image" },
+  { value: "gemini_3_pro", label: "Gemini 3 Pro" },
   { value: "nano_banana_2", label: "Nano Banana 2" },
-] as const;
+] as const satisfies readonly { value: CharacterImageModel; label: string }[];
 
 export function CharacterWorkspace({ localPreview = false }: { localPreview?: boolean }) {
   const { user, loading } = useAuth();
@@ -137,11 +138,11 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
             <Button size="sm" variant="ghost" onClick={builder.discardPendingRequest}>Start a new request</Button>
           </div>
         </div> : null}
-        {!suggestionDismissed && !selected && !builder.session.jobs.length ? <div className={styles.suggestion}>
+        {!suggestionDismissed && !selected && !builder.session.jobs.length ? <div className={styles.suggestionRow}><div className={styles.suggestion}>
           <p className="text-sm font-medium text-foreground-strong">Let UGCpilot create your first influencer</p>
           <Button size="sm" disabled={busy || assistedLocked || Boolean(pending)} onClick={submitAssisted}>Create it for me</Button>
           <Button variant="ghost" size="icon-sm" className={styles.dismiss} aria-label="Dismiss first influencer suggestion" onClick={() => setSuggestionDismissed(true)}><X className="size-3.5" aria-hidden="true" /></Button>
-        </div> : null}
+        </div></div> : null}
         <AiStudioComposer active ariaLabel="Describe your AI influencer" name="character-prompt" layout="unified"
           prompt={prompt} onPromptChange={setPrompt} placeholder={selected ? "Describe a new outfit, setting or pose for your influencer…" : "Describe the influencer you want to create…"}
           generateLabel={selected ? "Create variation" : "Generate"}

@@ -16,6 +16,7 @@ import {
   getSocialConnectionAnalyticsLabel,
 } from "@/lib/analytics/social-account-selection";
 import type { SocialConnection, SocialPlatform } from "@/lib/social/types";
+import { isSocialPlatformVisible } from "@/lib/social/platform-visibility";
 import { cn } from "@/lib/utils";
 
 const platformOptions: Array<{
@@ -66,7 +67,7 @@ export function SocialAnalyticsBetaControls({
           className="inline-flex w-fit max-w-full items-center rounded-full border border-border bg-card-muted/45 p-1.5 shadow-[0_12px_28px_rgb(0_0_0_/_0.08)]"
           role="group"
         >
-          {platformOptions.map((option) => {
+          {platformOptions.filter((option) => isSocialPlatformVisible(option.platform)).map((option) => {
             const selected = option.platform === platform;
             const platformConnections = getConnectionsForAnalyticsPlatform(
               connections,

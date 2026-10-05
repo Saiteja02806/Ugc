@@ -66,6 +66,14 @@
 /desktop.ini
 /folderico-*.ico
 
+# Generated motion-review images and After Effects recovery copies.
+# Keep these on disk; retain editable projects, source media and final exports.
+/design/explore-character-motion/Preview/**/*.png
+/design/explore-character-motion/Preview/**/*.jpg
+/design/explore-character-motion/Auto-Save/*.aep
+/design/explore-hook-motion/Auto-Save/*.aep
+/design/explore-phone-motion/Auto-Save/*.aep
+
 # debug
 npm-debug.log*
 yarn-debug.log*

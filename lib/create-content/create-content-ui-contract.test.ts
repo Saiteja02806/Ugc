@@ -25,25 +25,23 @@ test("Create Content removes the redundant page header so the workspace and chat
   assert.doesNotMatch(workspaceSource, /<header className="flex flex-col gap-3 border-b/);
 });
 
-test("Create Content is available locally but not exposed by the production page or sidebar", () => {
+test("retired Create Content screen is inaccessible and absent from navigation", () => {
   assert.match(createContentPageSource, /import \{ notFound \} from "next\/navigation"/);
   assert.match(
     createContentPageSource,
-    /if \(process\.env\.NODE_ENV === "production"\) \{[\s\S]*?notFound\(\);/,
+    /export default function CreateContentPage\(\) \{[\s\S]*?notFound\(\);/,
   );
-  assert.match(
-    appSidebarSource,
-    /const isCreateContentScreenEnabled = process\.env\.NODE_ENV !== "production"/,
-  );
-  assert.match(
-    appSidebarSource,
-    /item\.key !== "create-content" \|\| isCreateContentScreenEnabled/,
-  );
-  assert.match(proxySource, /matcher: "\/create-content"/);
-  assert.match(
-    proxySource,
-    /if \(process\.env\.NODE_ENV === "production"\) \{[\s\S]*?status: 404/,
-  );
+  assert.doesNotMatch(createContentPageSource, /CreateContentWorkspace|process\.env\.NODE_ENV/);
+  assert.doesNotMatch(appSidebarSource, /key: "create-content"|href: "\/create-content"/);
+  assert.match(appSidebarSource, /key: "explore"[\s\S]*?href: "\/explore"/);
+  assert.match(appSidebarSource, /key: "audio-generation"[\s\S]*?href: "\/audio-generation"/);
+  assert.doesNotMatch(appSidebarSource, /isExplorePreviewEnabled/);
+  assert.match(proxySource, /matcher: "\/:path\*"/);
+  // The retired page calls notFound in every environment; the proxy retains
+  // private no-index headers and the independent MCP deployment boundary.
+  assert.match(proxySource, /"\/create-content"/);
+  assert.match(proxySource, /response\.headers\.set\("X-Robots-Tag", "noindex"\)/);
+  assert.match(proxySource, /shouldBlockDeploymentRoute/);
 });
 
 test("Create Content uses the same video text renderers as Trending", () => {

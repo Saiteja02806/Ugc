@@ -1,4 +1,5 @@
 import "server-only";
+import importedCatalog from "./imported-catalog.json";
 
 import {
   getExploreVideoPosterStorageKey,
@@ -121,7 +122,7 @@ const EXPLORE_HOOK_VIDEO_ASSETS: ReadonlyArray<ExploreHookVideoAsset> = [
 ];
 
 export function getExploreHookVideos(): Array<ExploreHookVideo> {
-  return EXPLORE_HOOK_VIDEO_ASSETS.map(toExploreHookVideo);
+  return [...EXPLORE_HOOK_VIDEO_ASSETS.map(toExploreHookVideo), ...getPublishedImportedHookVideos()];
 }
 
 export function getExplorePreviewVideo(): ExploreHookVideo {
@@ -137,8 +138,18 @@ export function isExploreHookVideoId(value: unknown): value is string {
 
   return (
     value === EXPLORE_PREVIEW_VIDEO_ASSET.id ||
-    EXPLORE_HOOK_VIDEO_ASSETS.some((asset) => asset.id === value)
+    EXPLORE_HOOK_VIDEO_ASSETS.some((asset) => asset.id === value) ||
+    getPublishedImportedHookVideos().some((asset) => asset.id === value)
   );
+}
+
+function getPublishedImportedHookVideos(): ExploreHookVideo[] {
+  if (importedCatalog.mediaStatus !== "published") return [];
+  return importedCatalog.items.flatMap((item) => item.format === "hook" && "videoFile" in item ? [{
+    id: item.id,
+    posterUrl: buildPublicStorageUrl(`explore/recreate/v1/${item.posterFile}`),
+    videoUrl: buildPublicStorageUrl(`explore/recreate/v1/${item.videoFile}`),
+  }] : []);
 }
 
 export function getExploreHookVideoAssetsForImport() {

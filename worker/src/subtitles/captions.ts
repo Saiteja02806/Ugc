@@ -71,6 +71,7 @@ function assTime(ms: number) {
 }
 
 export function serializeAss(cues: SubtitleCue[], layout: SubtitleLayout, style: SubtitleStyle, placement: SubtitlePlacement) {
+  if (style === "editorial") throw new SubtitleError("EDITORIAL_PLANNER_REQUIRED", "Editorial captions require their measured layout planner.");
   const outline = Math.max(1, Math.round(layout.fontSize * 0.065));
   const x = Math.round(layout.width / 2);
   const y = Math.round(layout.height * (placement === "bottom" ? 0.78 : 0.22));

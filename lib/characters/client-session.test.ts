@@ -17,7 +17,10 @@ test("receipts and uncertain requests survive restore without requiring private 
     selectedCharacterId: "33333333-3333-4333-8333-333333333333",
     pendingRequest: { mode: "assisted", gender: "female", model: "gpt_image", idempotencyKey: "original-request" },
   };
-  assert.deepEqual(parseCharacterClientSession(JSON.stringify(session)), session);
+  for (const model of ["gpt_image", "gemini_3_pro", "nano_banana_2"]) {
+    const selectedSession = { ...session, pendingRequest: { ...session.pendingRequest, model } };
+    assert.deepEqual(parseCharacterClientSession(JSON.stringify(selectedSession)), selectedSession);
+  }
 });
 
 test("browser session storage remains scoped to each account", () => {

@@ -29,32 +29,32 @@ export function ImageGenerationHistory({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="inset-y-0 left-auto right-0 top-0 flex h-dvh w-full max-w-[420px] translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 border-l bg-background p-0 sm:max-w-[420px]">
+      <DialogContent className="inset-y-0 left-auto right-0 top-0 flex h-dvh w-full max-w-[460px] translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 border-l bg-background p-0 sm:max-w-[460px]">
         <header className="shrink-0 border-b border-border px-5 py-5 pr-12">
-          <DialogTitle>Image history</DialogTitle>
-          <DialogDescription className="mt-2 text-xs">Open a generation to view or download it.</DialogDescription>
+          <DialogTitle>Generation history</DialogTitle>
+          <DialogDescription className="mt-1 text-xs">Your completed AI Studio images. Open a generation to view or download it.</DialogDescription>
         </header>
 
-        <div className="shrink-0 px-5 py-4">
+        <div className="shrink-0 border-b border-border px-5 py-4">
           <label className="relative block">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden="true" />
             <Input
               value={query}
               onChange={(event) => onQueryChange(event.target.value)}
-              placeholder="Search images…"
+              placeholder="Search your generations…"
               aria-label="Search image history"
-              className="h-9 rounded-xl pl-9"
+              className="h-10 rounded-full pl-9"
             />
           </label>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-5">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5">
           {hasImages ? (
-            <div className="space-y-5">
+            <div className="space-y-6">
               {groups.map((group) => (
                 <section key={group.label} aria-label={group.label}>
-                  <h2 className="mb-2 px-2 text-[11px] font-medium text-muted">{group.label}</h2>
-                  <div className="space-y-1">
+                  <h2 className="mb-2 text-xs font-semibold text-muted">{group.label}</h2>
+                  <div className="space-y-2">
                     {group.images.map((image) => (
                       <button
                         key={image.id}
@@ -62,16 +62,16 @@ export function ImageGenerationHistory({
                         onClick={() => onSelectImage(image.id)}
                         aria-pressed={selectedImageId === image.id}
                         className={cn(
-                          "flex w-full items-center gap-3 rounded-xl border border-transparent p-2 text-left transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none",
-                          selectedImageId === image.id && "border-primary/40 bg-primary/[0.06]",
+                          "flex w-full items-center gap-3 rounded-[16px] border border-transparent p-2 text-left transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none",
+                          selectedImageId === image.id && "border-primary/60 bg-primary/[0.06]",
                         )}
                       >
-                        <div className="flex h-20 w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-card-muted">
+                        <div className="flex h-20 w-[76px] shrink-0 items-center justify-center overflow-hidden rounded-xl bg-card-muted">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={image.url} alt="" loading="lazy" decoding="async" className="size-full object-contain" />
                         </div>
                         <span className="min-w-0 flex-1">
-                          <span className="line-clamp-2 block text-xs font-medium leading-5 text-foreground">{image.prompt || image.title}</span>
+                          <span className="line-clamp-2 block text-sm font-semibold leading-5 text-foreground">{image.prompt || image.title}</span>
                           <span className="mt-1.5 block text-[11px] text-muted">{image.aspectRatio} · {formatHistoryTime(image.createdAt)}</span>
                         </span>
                         <ArrowUpRight className="size-3.5 shrink-0 text-muted" aria-hidden="true" />
@@ -91,7 +91,7 @@ export function ImageGenerationHistory({
         </div>
 
         <footer className="shrink-0 border-t border-border p-4">
-          <Link href="/avatars" className="flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card text-xs font-medium text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+          <Link href="/avatars" className="flex h-10 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] border border-border bg-card text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none">
             Open Creative Assets
             <ArrowUpRight className="size-3.5" aria-hidden="true" />
           </Link>

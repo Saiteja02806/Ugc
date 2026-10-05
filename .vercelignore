@@ -15,6 +15,7 @@ tmp/
 tmp-logs/
 worker/dist/
 worker/node_modules/
+design/
 
 **/.terraform/
 *.tfplan

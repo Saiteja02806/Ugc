@@ -19,7 +19,6 @@ const STORAGE_PREFIX = "explore/wall-text-videos/2026-09-03";
 // These are direct, user-supplied reference reels. They intentionally remain
 // outside the Trending Wall source catalog and are played muted in Explore.
 const EXPLORE_WALL_TEXT_VIDEO_ASSETS: ReadonlyArray<ExploreWallTextVideoAsset> = [
-  { id: "explore-wall-text-01", sourceFileSha256: "31d42e78ebbe868ee193ff281243948d610140323a593d03dab3258652921c6a", storageKey: `${STORAGE_PREFIX}/31d42e78ebbe868ee193ff281243948d610140323a593d03dab3258652921c6a.mp4` },
   { id: "explore-wall-text-02", sourceFileSha256: "ef2574943fbc3fea26ccb3f5fa51eef88c1077e25742de059f04f1483e0be46e", storageKey: `${STORAGE_PREFIX}/ef2574943fbc3fea26ccb3f5fa51eef88c1077e25742de059f04f1483e0be46e.mp4` },
   { id: "explore-wall-text-03", sourceFileSha256: "e938455aee8c7f6d06498beaf0c83e9261fb3a5dffb50ba01b067f1443a31519", storageKey: `${STORAGE_PREFIX}/e938455aee8c7f6d06498beaf0c83e9261fb3a5dffb50ba01b067f1443a31519.mp4` },
   { id: "explore-wall-text-04", sourceFileSha256: "5c6419b37b1021c03fe6ea119945c6f80c7d752260b63ffb256e231f7cd2f9f9", storageKey: `${STORAGE_PREFIX}/5c6419b37b1021c03fe6ea119945c6f80c7d752260b63ffb256e231f7cd2f9f9.mp4` },

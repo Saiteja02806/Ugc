@@ -1,0 +1,34 @@
+.split { display: flex; min-height: 0; min-width: 0; flex: 1; flex-direction: column; }
+.editor { display: flex; min-height: 0; min-width: 0; flex-direction: column; }
+.divider { display: none; }
+.galleryGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.split .editor :global(form[data-layout]) { border-radius: 16px; box-shadow: none; }
+
+@media (min-width: 1024px) {
+  .split { display: grid; grid-template-columns: var(--recreate-editor-width, clamp(220px, 20%, 320px)) 16px minmax(0, 1fr); }
+  .editor { container: recreate-editor / inline-size; overflow-y: auto; overscroll-behavior: contain; }
+  .divider {
+    position: relative; display: flex; min-height: 0; align-items: center; justify-content: center;
+    cursor: col-resize; touch-action: none; color: var(--muted-subtle); outline: none;
+  }
+  .grip { position: relative; width: 16px; height: 32px; padding-block: 6px; border-radius: 6px; background: var(--background); }
+  .divider:hover, .divider:focus-visible, .split[data-resizing] .divider { color: var(--primary); }
+  .divider:focus-visible .grip { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .split[data-resizing] { cursor: col-resize; user-select: none; -webkit-user-select: none; }
+  .galleryGrid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr)); gap: 16px; }
+}
+
+@container recreate-editor (max-width: 300px) {
+  .panelHeader { padding-inline: 8px; }
+  .panelBody { padding-inline: 8px; }
+  .emptyState { padding-inline: 0; }
+  .emptyState > span { margin-bottom: 12px; }
+  .emptyState > h2 { font-size: 14px; line-height: 20px; }
+  .emptyState > p { font-size: 13px; line-height: 20px; }
+  .editor :global(form[data-compact] [data-slot="field"]) { padding: 8px 10px 2px; }
+  .editor :global(form[data-compact] [data-slot="field-description"]) { padding-bottom: 4px; }
+  .editor :global([data-slot="composer-actions"]) { gap: 6px; padding-inline: 8px; padding-bottom: 8px; }
+  .editor :global([data-slot="composer-settings-label"]) { display: none; }
+  .editor :global(button[aria-label="Generation settings"]) { width: 32px; flex-shrink: 0; padding-inline: 0; }
+  .editor :global(form[data-compact] button[type="submit"]) { gap: 6px; padding-inline: 10px; }
+}

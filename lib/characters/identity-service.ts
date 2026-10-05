@@ -2,8 +2,8 @@ import { z } from "zod";
 
 import type { BackgroundJobRecord } from "../jobs/background-jobs.ts";
 import type { MediaAssetRow } from "../media/media-storage.ts";
-import { CHARACTER_SOURCE, CharacterSpecSchema } from "./schema.ts";
-import type { CharacterSpec } from "./types.ts";
+import { CHARACTER_SOURCE, CharacterImageModelSchema, CharacterSpecSchema } from "./schema.ts";
+import type { CharacterImageModel, CharacterSpec } from "./types.ts";
 
 export { CHARACTER_SOURCE } from "./schema.ts";
 
@@ -11,7 +11,7 @@ export type PublicCharacter = {
   id: string;
   name: string;
   url: string;
-  model: "gpt_image" | "nano_banana_2";
+  model: CharacterImageModel;
   gender: "male" | "female";
   createdAt: string;
 };
@@ -41,7 +41,7 @@ const provenanceSchema = z.object({
   candidateIndex: z.number().int().min(1).max(3),
   generationId: z.string().trim().min(1),
   gender: z.enum(["male", "female"]),
-  model: z.enum(["gpt_image", "nano_banana_2"]),
+  model: CharacterImageModelSchema,
 });
 
 const selectionSchema = z.object({

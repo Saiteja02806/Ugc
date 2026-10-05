@@ -33,7 +33,6 @@ import {
 } from "@/components/ui/alert";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { CreditIcon } from "@/components/icons/credit-icon";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { InstagramAccountManager } from "@/components/settings/instagram-account-manager";
@@ -48,7 +47,7 @@ import { LATEST_PRODUCT_UPDATE } from "@/lib/updates/product-updates";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
-import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
+import { hasTikTokUiAccess } from "@/lib/social/platform-visibility";
 import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
 
 const SETTINGS_SECTIONS = [
@@ -109,7 +108,7 @@ type SettingsSectionId = (typeof SETTINGS_SECTIONS)[number]["id"];
 export function SettingsWorkspace() {
   const router = useRouter();
   const { user, signOut } = useAuth();
-  const tiktokBetaEnabled = hasTikTokBetaAccess(user);
+  const tiktokBetaEnabled = hasTikTokUiAccess(user);
   const youtubeBetaEnabled = hasYouTubeBetaAccess(user);
   const { locked: themeLocked, setTheme, theme } = useTheme();
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -500,8 +499,7 @@ export function SettingsWorkspace() {
 
               <div className="grid border-y border-border sm:grid-cols-3 sm:divide-x sm:divide-border">
                 <div className="py-4 sm:pr-5">
-                  <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-subtle">
-                    <CreditIcon />
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-subtle">
                     AI credits remaining
                   </p>
                   <p className="mt-1 text-lg font-black text-foreground-strong font-mono">

@@ -99,3 +99,17 @@ test("Kling videos retain their model label alongside earlier Seedance history",
   assert.equal(videos.find((video) => video.id === "kling-video")?.modelLabel, "Kling 3.0");
   assert.equal(videos.find((video) => video.id === "seedance-video")?.modelLabel, "Seedance 2.5");
 });
+
+test("image history keeps more than 24 returned assets when a new generation completes", () => {
+  const assets = Array.from({ length: 30 }, (_, index) => ({
+    ...baseAsset,
+    id: `asset-${index}`,
+  }));
+  const results = getAIStudioImageResults(assets, assets.length);
+  assert.equal(results.length, 30);
+  const newResult = { ...results[0]!, id: "new-generation" };
+  const updated = upsertAIStudioResult(results, newResult, results.length + 1);
+  assert.equal(updated.length, 31);
+  assert.equal(updated.at(-1)?.id, "asset-29");
+  assert.equal(upsertAIStudioResult(updated, newResult, updated.length + 1).length, 31);
+});

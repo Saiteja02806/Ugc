@@ -3,6 +3,47 @@
 Reviewed 30 September 2026 against the live page at https://www.getugcpilot.com,
 the attached annotated hero, and the current worktree.
 
+## 3 October 2026 hero headline update
+
+The selected homepage headline is now "Create. Discover. Publish." followed by
+"Keep your content moving." It expresses one shared promise across the creation
+workflows, business-tailored Trending content, and publishing. This supersedes
+the September decision to retain the old posting-focused headline. Existing
+typography and centered layout are retained. The selected treatment is plain
+text: no lightning bolt, underline, outline, or orange emphasis on "moving."
+Both lines inherit the same strong foreground color.
+
+## 3 October 2026 supplied hero media and containment
+
+- Replace only the hero showcase media with the owner's `lanidng_page` assets:
+  `left_side.mp4` on the left, `middle.mp4` in the center, and
+  `right_side.mp4` on the right. The clips are stored under
+  `public/marketing/showcase/hero-2026-10-03/` with matching first-frame WebP
+  posters. MP4 fast-start preparation preserves the encoded video/audio streams.
+- Retain the existing card widths, portrait ratio, side tilts, muted looping
+  playback, and center-only mobile presentation. Remove the two decorative
+  layers behind the right card, which previously indicated a slideshow stack;
+  the new video has one card frame.
+  Badge content now describes Talking Head, UGC Video, and Hook+Demo; the
+  replaced right-hand slideshow controls/count no longer apply to its video.
+- Preserve the existing section overflow and negative-bottom-margin crop.
+  Add isolation and an explicit inset clip to the hero section so transformed
+  cards and their shadows terminate at the same full-width divider, including
+  hover scaling. No rounded bottom edge should extend into the next section.
+- Hidden side videos do not receive a video source below the existing 1024px
+  desktop breakpoint. Resizing to desktop enables them after the existing
+  750ms media delay; the center clip remains the mobile showcase.
+- This is local landing-page work. The interactive daily-feed samples, original
+  showcase assets used elsewhere, product workflows, and publishing are unchanged.
+
+Validation: scoped ESLint and full TypeScript passed. Browser checks at 1440px,
+1024px, and 390px confirmed the positional mapping, playback without media errors,
+no horizontal overflow, and a continuous divider with no card hit targets below
+it. Desktop clips reached readyState 4 and played; mobile played the center clip
+with no video sources on the hidden sides. No console errors were observed.
+Encoded-stream SHA-256 checks matched all three original video/audio streams
+after MP4 preparation. No deployment was made.
+
 ## Assessment
 
 The current page has a coherent visual identity: dark surfaces, a coral CTA,

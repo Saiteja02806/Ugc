@@ -25,7 +25,9 @@ test("uploaded image references reach the image provider", () => {
 test("Kling limits new references while legacy Seedance video jobs remain recoverable", () => {
   assert.match(videoApi, /referenceVideoDurationSeconds,/);
   assert.match(videoApi, /referenceVideoUrl,/);
-  assert.match(videoApi, /Video references are unavailable for the current video models/);
+  assert.match(videoApi, /model !== "seedance_2_5"/);
+  assert.match(videoApi, /Choose Seedance 2.5 to use audio or video references through OpenRouter/);
+  assert.match(videoApi, /getMediaAssetForOwner/);
   assert.match(videoApi, /const maxReferences = model === "kling_3_0" \? 2 : 6/);
   assert.match(providerRouting, /input\.model === "kling_3_0"\) return "runway"/);
   assert.match(providerRouting, /input\.model === "seedance_2_5"\) return "runway"/);

@@ -126,9 +126,27 @@ try {
   await db.exec(functionSql(jobMigration, "create_or_get_background_job_v1"));
   await db.exec("create trigger settle_billing_background_job_trigger after update of status on public.background_jobs for each row execute function public.settle_billing_from_background_job()");
   await db.exec(characterMigration);
+  await db.exec(await source("20261003045651_character_gemini_3_pro_image.sql"));
   // Reproduce Supabase's inherited service-role defaults before hardening.
   await db.exec("grant all on public.character_free_generation_allowances to service_role");
   await db.exec(await source("20261003041318_character_allowance_privileges.sql"));
+
+  await check("all image models retain one free image and three paid candidates", async () => {
+    for (const model of ["gpt_image", "gemini_3_pro", "nano_banana_2"]) {
+      const freeOwner = `free-${model}`;
+      const first = await create({ owner: freeOwner, count: 1, amount: 0, free: true, overrides: { model } });
+      assert.equal(first.result.length, 1);
+      assert.equal(first.result[0].job.input_json.model, model);
+      assert.deepEqual(await state(freeOwner), { jobs: 1, reservations: 0, allowances: 1, reserved: null });
+      await assert.rejects(create({ owner: freeOwner, count: 1, amount: 0, free: true }), /character_free_generation_already_used/);
+      const paidOwner = `paid-${model}`;
+      await paid(paidOwner);
+      const batch = await create({ owner: paidOwner, overrides: { model } });
+      assert.equal(batch.result.length, 3);
+      assert.ok(batch.result.every(entry => entry.job.input_json.model === model));
+      assert.deepEqual(await state(paidOwner), { jobs: 3, reservations: 3, allowances: 0, reserved: 3 });
+    }
+  });
 
   await check("paid generation creates exactly three owned jobs and credit reservations", async () => {
     const owner = "paid-three";

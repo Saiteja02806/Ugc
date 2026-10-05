@@ -88,6 +88,36 @@ variable "worker_job_types" {
   default     = "generate_avatar,generate_image,generate_hook_video,generate_trending_hook_copy,hook_text_generation,wall_text_content_plan_generation,wall_text_generation,media_analysis,analytics_sync,carousel_content_plan_generation,paid_trending_prebuild,reaction_generation,test_worker_job"
 }
 
+variable "enable_audio_generation" {
+  description = "Enable Audio jobs only after the audio migration, private bucket, app credentials, and provider allowance are ready."
+  type        = bool
+  default     = false
+}
+
+variable "private_audio_bucket_name" {
+  description = "Separate GCP audio bucket with uniform access and public access prevention enforced. Never the public media bucket."
+  type        = string
+  default     = ""
+}
+
+variable "elevenlabs_voice_api_key_secret_id" {
+  description = "Existing Secret Manager secret for Audio generation. Values must be provisioned separately."
+  type        = string
+  default     = ""
+}
+
+variable "audio_generation_public_enabled" {
+  description = "Allow eligible paid users after production verification; otherwise only the explicitly invited accounts."
+  type        = bool
+  default     = false
+}
+
+variable "audio_generation_allowed_user_ids" {
+  description = "Comma-separated invited Firebase owner IDs for a bounded Audio rollout."
+  type        = string
+  default     = ""
+}
+
 variable "worker_visibility_timeout_seconds" {
   description = "Worker delivery visibility timeout for image/avatar/hook-video generation jobs."
   type        = number

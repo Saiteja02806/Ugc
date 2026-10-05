@@ -1,5 +1,11 @@
 # Isolated subtitle generator
 
+
+Historical research and offline harness. Production Explore now uses the
+user-approved ElevenLabs Scribe word-timing adapter, English only, with a
+60-second combined-video limit. The WhisperX prototype below is not an
+application or production-worker dependency; see `explore-scribe-integration-2026-10-04.md`.
+
 Implemented and locally evaluated September 30, 2026. This is an operator-run prototype. No application screen, API route, job handler, queue, database migration, media asset, or scheduling flow imports it. Nothing was deployed.
 
 The narrow implementation is our own TypeScript, using the existing OpenAI SDK, FFmpeg and Sharp dependencies and the existing Arial font assets. No GitHub application was cloned, no repository code was vendored, and no dependency or lockfile was changed for this prototype. The repository comparisons and future integration proposal are in [the research document](subtitle-generator-research-2026-09-30.md).
@@ -18,7 +24,7 @@ Outputs are `captioned.mp4`, `captions.ass`, `captions.srt`, `captions.vtt`, `tr
 
 ## Run it
 
-Requires the project's installed dependencies and worker build. No package installation is needed.
+Requires the project's installed dependencies and worker build. The existing Whisper/offline renderer harness needs no additional packages. The isolated WhisperX evaluation described below uses a separate Python environment; no application package manifests are changed for it.
 
 ```powershell
 npm run worker:build
@@ -71,6 +77,26 @@ Actual local evaluation results:
 This is a small diagnostic sample, not a general accuracy benchmark. The voice was generated with OpenAI TTS solely to establish known evaluation text; speech generation is not part of the subtitle implementation. Timestamps were validated, but alignment error against manually annotated speech was not measured.
 
 `gpt-transcribe` gave the more promising text result on these samples, but it is not a complete word-highlight subtitle backend without a verified alignment stage. We did not add a second model or invent timestamps. Whisper is useful for evaluating the pipeline now, but its observed failures and upcoming retirement make it unsuitable as the long-term production choice.
+
+The supplied sample now has user-approved qualitative playback. A separate [standalone subtitle pilot](subtitle-pilot.md) provides upload, a three-style modal, generation, preview and downloads without attaching this code to an existing application feature. Independent word-boundary accuracy scoring remains pending.
+
+## How to get speech and word timing aligned
+
+Use two explicit stages, then render only after the alignment passes checks:
+
+1. Extract mono audio from the exact final video that will be captioned. For composed clips, this means use the final audio mix, not an input clip whose speech may later be replaced.
+2. Send that audio to `gpt-transcribe` for the words. It is OpenAI's recommended recorded-speech model and was exact on our one known English test sample, but the current API response has no word times.
+3. Normalize the transcript for the aligner's supported spelling/number rules while retaining the exact display text and a mapping back to each original token. Run a forced aligner against the same audio. A candidate is the English wav2vec2 alignment model in WhisperX. The aligner uses acoustic evidence to place an already chosen transcript; it does not correct mistranscribed words.
+4. Check that every display word maps to a nonzero interval within the audio, intervals stay in spoken order, and the aligner's quality evidence passes. Do not spread an unmatched word across nearby words or guess a time. Send a failed or low confidence transcript to correction/review; after correction, align again.
+5. Make phrase cues from aligned word times, preserving pauses; run active word highlighting from the aligned intervals; then burn them into a new copy with FFmpeg. Subtitle position is a separate visual check against a safe margin on the actual video frame.
+
+WhisperX maintainers describe this separation as transcription followed by `load_align_model` and `align`. For English the repository defaults to torchaudio's `WAV2VEC2_ASR_BASE_960H`; its larger option uses more memory. Other languages pick different acoustic models. The README describes limitations with overlapping speech and dictionary coverage. Inspection of the installed stable 3.8.6 source found two fallback behaviors: unknown characters can use wildcard emissions, and missing word times can be interpolated. Our isolated harness removes punctuation while retaining display tokens, refuses digits/non-ASCII lexical text pending a reviewed spoken-form mapping, checks all alignment characters against the model dictionary, requests character alignments, and reconstructs each word only from observed characters. It refuses missing evidence and overlapping intervals. Its acoustic score is retained as diagnostic evidence, not calibrated confidence. No automatic quality threshold is inferred from these scores.
+
+On October 1, the user-supplied real video was successfully transcribed with `gpt-transcribe`, aligned with WhisperX 3.8.6 and rendered in all three styles. Python 3.12.14 from the bundled Codex runtime was used to create `.tmp/subtitle-alignment-venv`; CPU Torch/torchaudio and the align-only dependencies were installed there. The model weights and tokenizer are under `.tmp/subtitle-alignment-models`. The full WhisperX ASR/diarization pipeline was deliberately not installed; `pip check` therefore reports those unused optional-for-this-harness package dependencies as missing. This partial environment is an isolated evaluation runtime, not a production worker image. Nothing imports it from an application route, job or screen. Full test details and the outstanding human review are in [the real-video report](subtitle-video-test-2026-10-01.md).
+
+An aligner can make an incorrect transcript look precisely timed, so validate recognition and timing separately. Before production, use permissioned clips with manually checked text and word boundaries, split across clean speech, music/noise, accents, fast speech, intended languages, names/numbers, pauses, silence and overlapping speakers. Report word error rate separately from start/end boundary error, including signed bias, median and 95th percentile. Count missing/extra words and unmatched tokens as failures. Set a launch tolerance before scoring; do not infer quality just because times are in range. The recent [FA-Bench paper](https://arxiv.org/abs/2609.32396) reports that aligner rankings can change on noisy audio and that systems can have systematic time offsets; its authors recommend boundary-based evaluation that also charges recognition mistakes.
+
+For the first meaningful OpenAI-specific test, pair the real transcript from `gpt-transcribe` with an English WhisperX wav2vec2 align-only run on the known-phrase sample and several manually annotated real recordings. Check that spoken starts/ends line up in a video preview, not just that the JSON schema is valid. If a separate Python aligner proves too costly or fragile for this worker, the simpler operational alternative is a transcription API that supplies native word times; that would require a separate provider key. The existing OpenAI key authenticates the transcript request only and does not provide the alignment model or weights.
 
 Before integration, evaluate one supported provider with native word timestamps, such as the AssemblyAI or Deepgram candidates described in the research document, against representative permissioned recordings. Their accuracy has not been tested here because keys were unavailable. Choose based on measured text/timing quality and no-speech behavior, then replace only the provider adapter. Do not assume a provider is best from pricing or documentation alone.
 

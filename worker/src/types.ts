@@ -26,6 +26,7 @@ export type BackgroundJobStatus =
   | "waiting_external_service";
 
 export type BackgroundJobType =
+  | "generate_audio"
   | "analytics_sync"
   | "carousel_content_plan_generation"
   | "carousel_generation"
@@ -58,6 +59,7 @@ export type BackgroundJobType =
   | "wall_text_generation";
 
 export const EXECUTABLE_BACKGROUND_JOB_TYPES = [
+  "generate_audio",
   "final_render",
   "analytics_sync",
   "carousel_content_plan_generation",
@@ -72,6 +74,7 @@ export const EXECUTABLE_BACKGROUND_JOB_TYPES = [
   "publish_social_post",
   "reaction_generation",
   "reaction_render",
+  "render_demo_video",
   "render_create_content_video",
   "render_edit_video",
   "render_schedule_combination",
@@ -122,6 +125,8 @@ export type BackgroundJobRow = {
   error_message: string | null;
   failed_at: string | null;
   id: string;
+  /** Present in persisted jobs; optional for historical worker fixtures. */
+  idempotency_key?: string | null;
   input_json: Json;
   input_reference: string | null;
   job_type: BackgroundJobType;

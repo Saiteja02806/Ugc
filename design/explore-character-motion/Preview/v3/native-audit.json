@@ -1,0 +1,17 @@
+{
+  "comps": 4,
+  "layers": 32,
+  "textLayers": 16,
+  "keys": 209,
+  "expressions": 42,
+  "errors": [],
+  "fonts": [
+    "SegoeUI",
+    "Georgia-Italic",
+    "SegoeUIVariable-SemiboldDisplay",
+    "SegoeUI-Semibold",
+    "Georgia"
+  ],
+  "missing": [],
+  "threeDArtworkPlanes": 3
+}

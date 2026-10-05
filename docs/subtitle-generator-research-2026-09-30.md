@@ -1,5 +1,11 @@
 # Subtitle generator research and integration proposal
 
+
+Historical research and offline harness. Production Explore now uses the
+user-approved ElevenLabs Scribe word-timing adapter, English only, with a
+60-second combined-video limit. The WhisperX prototype below is not an
+application or production-worker dependency; see `explore-scribe-integration-2026-10-04.md`.
+
 Researched September 30, 2026. The application integration below is proposed and has not been production-validated. Existing application source and deployment settings were left intact. Two research agents checked transcription providers and reusable repositories; local code inspection and an isolated FFmpeg smoke test checked architectural fit. Subsequently, a disconnected prototype was implemented and live OpenAI transcription was evaluated; see [the isolated subtitle lab](subtitle-lab.md) for its code, usage, measured results and limitations.
 
 ## Recommendation
@@ -72,7 +78,7 @@ Sources: [AssemblyAI model selection](https://www.assemblyai.com/docs/getting-st
 
 AssemblyAI word timings use milliseconds; Deepgram timings use seconds. Normalize at the provider boundary. Confidence scores need tuning on real clips and are not comparable accuracy guarantees across vendors. AssemblyAI documents a no-spoken-audio error when language detection encounters silence/music; map the known case to “No speech detected.” Sources: [AssemblyAI errors](https://www.assemblyai.com/docs/pre-recorded-audio/guides/common_errors_and_solutions), [Deepgram confidence limitations](https://developers.deepgram.com/docs/confidence).
 
-OpenAI's current deprecation page lists `whisper-1`, `gpt-4o-transcribe`, `gpt-4o-mini-transcribe` and `gpt-4o-transcribe-diarize` for API removal on **February 26, 2027**. Avoid starting a new feature on these hosted models. This retirement does not imply a shutdown of self-hosted open-source Whisper. [Official deprecations](https://developers.openai.com/api/docs/deprecations).
+OpenAI's current deprecation page lists `whisper-1`, `gpt-4o-transcribe`, `gpt-4o-mini-transcribe` and `gpt-4o-transcribe-diarize` for API removal on **February 26, 2027**. Avoid starting a new feature on these hosted models. This retirement does not imply a shutdown of self-hosted open-source Whisper. [Official deprecations](https://developers.openai.com/api/docs/deprecations). For an OpenAI-only prototype path, pair `gpt-transcribe` (words) with an independent forced aligner (times). The detailed WhisperX fit, failure gates, and test plan are in [the lab report](subtitle-lab.md#how-to-get-speech-and-word-timing-aligned).
 
 At the listed base rates, 1,000 one-minute videos cost approximately $3.50 for AssemblyAI or $4.30/$5.20 for Deepgram transcription. These arithmetic estimates exclude optional features, encoding compute, storage, bandwidth and any applicable billing minimums. Obtain an end-to-end cost from the real-video evaluation before defining user credits. Brand/context prompting should be added only if it improves measured results.
 

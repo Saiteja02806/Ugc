@@ -14,6 +14,7 @@ import { useSocialOAuthPopup } from "@/components/social/use-social-oauth-popup"
 import { InstagramProfessionalAccountGuide } from "@/components/social/instagram-professional-account-guide";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR } from "@/lib/social/instagram-professional-account";
+import { isSocialPlatformVisible, visibleSocialPlatformList } from "@/lib/social/platform-visibility";
 import type {
   SocialConnection as Connection,
   SocialPlatform,
@@ -143,7 +144,7 @@ export function ConnectedAccountsWorkspace() {
   }, [connections, renderTrace]);
 
   const groupedConnections = useMemo(() => {
-    return platforms.map((platform) => ({
+    return platforms.filter((platform) => isSocialPlatformVisible(platform.value)).map((platform) => ({
       ...platform,
       connections: connections.filter(
         (connection) => connection.platform === platform.value,
@@ -247,7 +248,7 @@ export function ConnectedAccountsWorkspace() {
               Connected accounts
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
-              Connect user-approved TikTok, Instagram, and YouTube accounts
+              Connect user-approved {visibleSocialPlatformList} accounts
               before scheduling, publishing, or syncing supported account analytics.
             </p>
           </div>
@@ -280,7 +281,7 @@ export function ConnectedAccountsWorkspace() {
           <StatusNotice tone="error" message={displayedError} className="mt-5" />
         ) : null}
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <div className={cn("mt-6 grid gap-4", groupedConnections.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-2")}>
           {groupedConnections.map((platform) => (
             <article
               key={platform.value}

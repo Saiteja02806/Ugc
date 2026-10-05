@@ -98,7 +98,7 @@ import {
 import { getConnectionPublishingBlockMessage } from "@/lib/scheduling/social-connection-policy";
 import type { ScheduledPost } from "@/lib/scheduling/types";
 import type { SocialConnection, SocialPlatform } from "@/lib/social/types";
-import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
+import { hasTikTokUiAccess, isSocialPlatformVisible } from "@/lib/social/platform-visibility";
 import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
 import { cn } from "@/lib/utils";
 
@@ -219,7 +219,7 @@ export function InstagramAnalyticsWorkspace() {
   const { user } = useAuth();
   const betaSocialAnalyticsEnabled = hasYouTubeBetaAccess(user);
   const tiktokBetaEnabled =
-    betaSocialAnalyticsEnabled && hasTikTokBetaAccess(user);
+    betaSocialAnalyticsEnabled && hasTikTokUiAccess(user);
   const accountId = user?.uid ?? "";
 
   const [connections, setConnections] = useState<SocialConnection[]>([]);
@@ -482,8 +482,11 @@ export function InstagramAnalyticsWorkspace() {
 
   const [selectedConnectionId, setSelectedConnectionId] =
     useState<string>("all");
-  const [betaSelectedPlatform, setBetaSelectedPlatform] =
+  const [requestedBetaPlatform, setBetaSelectedPlatform] =
     useState<SocialPlatform>("instagram");
+  const betaSelectedPlatform = isSocialPlatformVisible(requestedBetaPlatform)
+    ? requestedBetaPlatform
+    : "instagram";
   const [betaSelectedConnectionId, setBetaSelectedConnectionId] =
     useState<string>("all");
   const [socialRefreshRequest, setSocialRefreshRequest] = useState(0);

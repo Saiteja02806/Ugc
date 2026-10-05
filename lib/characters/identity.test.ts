@@ -109,6 +109,21 @@ function expectIdentityError(status: number) {
   return (error: unknown) => error instanceof CharacterIdentityError && error.status === status;
 }
 
+test("Google model identities remain selectable, restorable and usable as references", async () => {
+  for (const model of ["gemini_3_pro", "nano_banana_2"]) {
+    const f = fixture();
+    f.job.input = { ...(f.job.input as object), model };
+    f.job.output = { ...(f.job.output as object), model, provider: "gemini" };
+    f.mutateAsset({ metadata: { backgroundJobId: JOB_ID, provider: "gemini" } });
+    const saved = await f.service.select({ jobId: JOB_ID, userId: USER_ID });
+    assert.equal(saved.model, model);
+    assert.equal(saved.id, ASSET_ID);
+    const restored = await f.service.get(ASSET_ID, USER_ID);
+    assert.equal(restored?.model, model);
+    assert.equal(restored?.referenceImageUrl, URL);
+  }
+});
+
 test("select saves one durable identity using the original reference asset and private job snapshot", async () => {
   const f = fixture();
   const character = await f.service.select({ jobId: JOB_ID, userId: USER_ID, name: "  Maya  " });

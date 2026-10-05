@@ -10,6 +10,7 @@ import {
   HOOK_TEXT_FIXED_FONT_SIZE,
   HOOK_TEXT_LAYOUT_VERSION,
 } from "../trending/hook-text-layout.ts";
+import { WALL_TEXT_FIXED_FONT_SIZE } from "../trending/wall-text-visual-style.ts";
 
 const baseCard: Omit<CreateContentCard, "overlay"> = {
   revision: 3,
@@ -37,7 +38,7 @@ test("Create Content export preserves the user's Wall position and Trending visu
   assert.equal(finalLayout.version, "wall-text-final-layout-v9");
   assert.equal(finalLayout.fontFamily, "Arial");
   assert.equal(finalLayout.fontWeight, 700);
-  assert.equal(finalLayout.fontSizePx, 52);
+  assert.equal(finalLayout.fontSizePx, WALL_TEXT_FIXED_FONT_SIZE);
   assert.equal(finalLayout.blocks[0]?.lines.length, 5);
   assert.deepEqual(overlay.wall.layout.safeArea, {
     bottom: 0,

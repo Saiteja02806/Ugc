@@ -20,6 +20,8 @@ import type { ReactNode, RefObject } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
+import { useAccountTimeZone } from "@/components/providers/account-timezone-provider";
+import { getSchedulingTimeZoneOptions } from "@/lib/scheduling/account-timezone";
 import { InstagramCaptionPreview } from "@/components/social/instagram-caption-preview";
 import {
   Popover,
@@ -31,6 +33,7 @@ import {
 } from "@/components/ui/popover";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
+  getDormantScheduleTargets,
   getInitialScheduleConnectionIds,
   getUnavailableSavedInstagramTargets,
 } from "@/lib/scheduling/schedule-form-persistence";
@@ -91,10 +94,6 @@ const scheduleMinuteValues = Array.from(
   { length: Math.ceil(60 / scheduleMinuteStepMinutes) },
   (_, index) => String(index * scheduleMinuteStepMinutes).padStart(2, "0"),
 ).filter((minute) => Number(minute) < 60);
-const defaultTimezone =
-  typeof Intl !== "undefined"
-    ? Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
-    : "UTC";
 
 function getPublishingAccountLabel(
   tiktokBetaEnabled: boolean,
@@ -239,6 +238,7 @@ export function ScheduleEditor({
   errorMessage,
   hookMediaOptions,
   initialClipSelection,
+  initialCaption,
   initialDemoMediaId,
   initialHookMediaId,
   initialPlannedTargets,
@@ -264,6 +264,7 @@ export function ScheduleEditor({
   errorMessage: string | null;
   hookMediaOptions: ScheduleMediaOption[];
   initialClipSelection?: "secondary_only";
+  initialCaption?: string;
   initialDemoMediaId: string;
   initialHookMediaId: string;
   initialPlannedTargets: ScheduleCreateTargetInput[];
@@ -281,6 +282,7 @@ export function ScheduleEditor({
   youtubeBetaEnabled: boolean;
 }) {
   useLockBodyScroll();
+  const defaultTimezone = useAccountTimeZone();
   const dialogRef = useRef<HTMLElement>(null);
 
   const isCarouselSchedule = Boolean(
@@ -336,16 +338,11 @@ export function ScheduleEditor({
   });
   // Keep providers outside the currently selectable publishing surface dormant,
   // so legacy drafts remain lossless when saved.
-  const dormantLegacyTargets = initialPlannedTargets.filter(
-    (target) => {
-      const savedConnection = socialConnections.find(
-        (connection) => connection.id === target.connectionId,
-      );
-      const platform = target.platform ?? savedConnection?.platform;
-
-      return platform !== undefined && !selectablePlatforms.includes(platform);
-    },
-  );
+  const dormantLegacyTargets = getDormantScheduleTargets({
+    allowedPlatforms: selectablePlatforms,
+    connections: socialConnections,
+    plannedTargets: initialPlannedTargets,
+  });
   const [useOpeningClip, setUseOpeningClip] = useState(
     () =>
       getInitialClipSelection({
@@ -374,7 +371,7 @@ export function ScheduleEditor({
   );
   const [refreshingMedia, setRefreshingMedia] = useState(false);
   const [hookPickerError, setHookPickerError] = useState<string | null>(null);
-  const [caption, setCaption] = useState(editingSchedule?.caption ?? "");
+  const [caption, setCaption] = useState(editingSchedule?.caption ?? initialCaption ?? "");
   const [selectedConnectionIds, setSelectedConnectionIds] =
     useState<string[]>(initialConnectionIds);
   const [accountSelectionChanged, setAccountSelectionChanged] = useState(false);
@@ -391,15 +388,12 @@ export function ScheduleEditor({
   const [tiktokCapabilities, setTikTokCapabilities] = useState<
     Record<string, TikTokCapabilitiesState>
   >({});
-  const [scheduledDate, setScheduledDate] = useState(
-    editingScheduledDate ?? initialScheduledDate,
-  );
-  const [scheduledTime, setScheduledTime] = useState(
-    editingScheduledTime ?? initialScheduledTime,
-  );
-  const [timezone, setTimezone] = useState(
-    editingSchedule?.timezone ?? defaultTimezone,
-  );
+  const [scheduledDateOverride, setScheduledDate] = useState<string | null>(editingScheduledDate ?? null);
+  const [scheduledTimeOverride, setScheduledTime] = useState<string | null>(editingScheduledTime ?? null);
+  const scheduledDate = scheduledDateOverride ?? initialScheduledDate;
+  const scheduledTime = scheduledTimeOverride ?? initialScheduledTime;
+  const [timezoneOverride, setTimezone] = useState<string | null>(editingSchedule?.timezone ?? null);
+  const timezone = timezoneOverride ?? defaultTimezone;
   const [currentTime, setCurrentTime] = useState(() => Date.now());
 
   const localHookMediaOptions = hookMediaOptions;
@@ -1120,7 +1114,11 @@ export function ScheduleEditor({
                         aria-invalid={Boolean(scheduleTimeValidation.error)}
                         min={minimumScheduledDate}
                         value={scheduledDate}
-                        onChange={(event) => setScheduledDate(event.target.value)}
+                        onChange={(event) => {
+                          setTimezone(timezone);
+                          setScheduledTime(scheduledTime);
+                          setScheduledDate(event.target.value);
+                        }}
                         className="mt-2 h-11 w-full rounded-control border border-border bg-card-muted px-4 text-sm font-bold text-foreground outline-none transition [color-scheme:dark] hover:border-border-strong focus:border-primary focus:ring-2 focus:ring-primary/15"
                       />
                     </label>
@@ -1136,7 +1134,11 @@ export function ScheduleEditor({
                             : undefined
                         }
                         invalid={Boolean(scheduleTimeValidation.error)}
-                        onChange={setScheduledTime}
+                        onChange={(value) => {
+                          setTimezone(timezone);
+                          setScheduledDate(scheduledDate);
+                          setScheduledTime(value);
+                        }}
                       />
                     </div>
                   </div>
@@ -2946,16 +2948,7 @@ function getStatusPreviewMessage(params: {
 }
 
 function getTimezoneOptions(currentTimezone: string) {
-  return Array.from(
-    new Set([
-      currentTimezone,
-      "UTC",
-      "Asia/Calcutta",
-      "America/New_York",
-      "America/Los_Angeles",
-      "Europe/London",
-    ]),
-  );
+  return getSchedulingTimeZoneOptions(currentTimezone);
 }
 
 function useLockBodyScroll() {

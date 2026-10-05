@@ -55,6 +55,16 @@ test("plans expose the complete daily content allowance", () => {
   );
 });
 
+test("Free pricing consistently advertises the seven-day trial", () => {
+  const free = pricingPlans.find((plan) => plan.slug === "free")!;
+  for (const interval of ["monthly", "yearly"] as const) {
+    assert.equal(getPlanPricing(free, interval).billingSummary, "7-day free trial");
+  }
+  assert.equal(free.capacityLabel, "2 free credits · once per account");
+  assert.ok(free.features.includes("20 daily concepts for 7 days"));
+  assert.ok(free.features.includes("Unlimited Instagram scheduling during trial"));
+});
+
 test("Free allows one Instagram account, Starter three, and Growth five", () => {
   assert.deepEqual(
     pricingPlans.map((plan) => [plan.slug, plan.instagramAccounts]),
@@ -66,17 +76,17 @@ test("Free allows one Instagram account, Starter three, and Growth five", () => 
   );
 });
 
-test("plan feature lists match the advertised Instagram account limits", () => {
+test("plan feature lists describe Instagram and YouTube connection without account counts", () => {
   assert.deepEqual(
     pricingPlans.map((plan) =>
       plan.features.find((feature) =>
-        feature.includes("connected Instagram account"),
+        feature === "Connect Instagram & YouTube",
       ),
     ),
     [
-      "1 connected Instagram account",
-      "3 connected Instagram accounts",
-      "5 connected Instagram accounts",
+      "Connect Instagram & YouTube",
+      "Connect Instagram & YouTube",
+      "Connect Instagram & YouTube",
     ],
   );
 });

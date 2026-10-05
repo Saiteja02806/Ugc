@@ -3,8 +3,10 @@ import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 
 export type SidebarIconName =
+  | "audio"
   | "trending"
   | "viral"
+  | "explore"
   | "image-gen"
   | "video-gen"
   | "demos"
@@ -21,8 +23,10 @@ export type SidebarIconName =
   | "time";
 
 const sidebarIconPaths: Record<SidebarIconName, string> = {
+  audio: "/icons/sidebar/audio.svg",
   trending: "/icons/sidebar/trending.svg",
   viral: "/icons/sidebar/viral.svg",
+  explore: "/icons/sidebar/explore.svg",
   "image-gen": "/icons/sidebar/image-gen.svg",
   "video-gen": "/icons/sidebar/video-gen.svg",
   demos: "/icons/sidebar/demos.svg",

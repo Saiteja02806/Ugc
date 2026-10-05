@@ -28,6 +28,8 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { useAuth } from "@/contexts/auth-context";
+import { useAccountTimeZone } from "@/components/providers/account-timezone-provider";
+import { getDefaultAccountScheduleSlot } from "@/lib/scheduling/account-timezone";
 import type { MediaAsset, MediaSourceType } from "@/lib/media/types";
 import {
   isContentSecondaryClipMediaAsset,
@@ -86,7 +88,6 @@ import {
 } from "@/lib/scheduling/types";
 import {
   DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
-  getEarliestScheduleTimestamp,
   getZonedDateTimeParts,
 } from "@/lib/scheduling/schedule-time";
 import {
@@ -209,6 +210,7 @@ const tabLabels: Record<ScheduleTab, string> = {
 
 export function SchedulingWorkspace() {
   const { user } = useAuth();
+  const accountTimezone = useAccountTimeZone();
   const tiktokBetaEnabled = hasTikTokBetaAccess(user);
   const youtubeBetaEnabled = hasYouTubeBetaAccess(user);
   const hasAdditionalPublishingPlatform =
@@ -309,6 +311,17 @@ export function SchedulingWorkspace() {
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [dayPlannerOpen, setDayPlannerOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [schedulePreviewNow, setSchedulePreviewNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const refresh = () => setSchedulePreviewNow(Date.now());
+    const initial = window.setTimeout(refresh, 0);
+    const timer = window.setInterval(refresh, 30_000);
+    return () => {
+      window.clearTimeout(initial);
+      window.clearInterval(timer);
+    };
+  }, [drawerOpen]);
   const [requireScheduleTarget, setRequireScheduleTarget] = useState(false);
   const [scheduleAccessPrompt, setScheduleAccessPrompt] = useState<
     Exclude<InstagramSchedulingAccessState, "ready"> | null
@@ -337,10 +350,12 @@ export function SchedulingWorkspace() {
   const [calendarStartAt, setCalendarStartAt] = useState(
     () => getSocialSchedulingCalendarStartAt(cachedSchedules?.calendarStartAt),
   );
-  const defaultNewScheduleSlot = getDefaultScheduleSlot(
-    newScheduleInitialDate,
-    minimumScheduleLeadMinutes,
-  );
+  const defaultNewScheduleSlot = getDefaultAccountScheduleSlot({
+    selectedDate: newScheduleInitialDate,
+    minimumLeadMinutes: minimumScheduleLeadMinutes,
+    now: schedulePreviewNow,
+    timezone: accountTimezone,
+  });
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -671,7 +686,7 @@ export function SchedulingWorkspace() {
 
       if (!demoMediaOptions.some((asset) => asset.id === assetId)) {
         initialAssetQueryState.current = "handled";
-        setActionNotice("The rendered Create Content video is not ready to schedule yet.");
+        setActionNotice("The selected video is not ready to schedule yet.");
         return;
       }
 
@@ -3378,32 +3393,6 @@ function toDateKey(date: Date) {
   const day = String(date.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
-}
-
-function getTimeKey(date: Date) {
-  return `${String(date.getHours()).padStart(2, "0")}:${String(
-    date.getMinutes(),
-  ).padStart(2, "0")}`;
-}
-
-function getDefaultScheduleSlot(
-  selectedDate: string,
-  minimumLeadMinutes: number,
-  now = Date.now(),
-) {
-  const currentDate = toDateKey(new Date(now));
-  const earliestDate = new Date(
-    getEarliestScheduleTimestamp({
-      minimumLeadMinutes,
-      now,
-    }),
-  );
-
-  return {
-    date:
-      selectedDate === currentDate ? toDateKey(earliestDate) : selectedDate,
-    time: getTimeKey(earliestDate),
-  };
 }
 
 function getTabItemName(tab: ScheduleTab, count: number) {

@@ -260,7 +260,7 @@ export async function ensureDailyTrendingFeedPlan(params: {
 
     if (databaseMessage.includes("free_trial_content_expired")) {
       throw new FreeTrialAccessError(
-        "Your 3-day free trial has ended. Upgrade to generate more content.",
+        "Your free trial has ended. Upgrade to generate more content.",
         "free_trial_content_expired",
       );
     }
@@ -270,7 +270,7 @@ export async function ensureDailyTrendingFeedPlan(params: {
       databaseMessage.includes("free_trial_daily_content_limit_exceeded")
     ) {
       throw new FreeTrialAccessError(
-        "Your 3-day free trial content allowance has been used. Upgrade to generate more content.",
+        "Your free trial content allowance has been used. Upgrade to generate more content.",
         "free_trial_content_days_exhausted",
       );
     }

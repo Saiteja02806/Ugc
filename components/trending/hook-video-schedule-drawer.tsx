@@ -9,7 +9,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { HookInlineSymbols } from "@/components/trending/hook-inline-symbols";
@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
+import { useAccountTimeZone } from "@/components/providers/account-timezone-provider";
+import { getBrowserTimeZone, getSchedulingTimeZoneOptions } from "@/lib/scheduling/account-timezone";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { SocialAccountAvatar } from "@/components/social/social-account-avatar";
 import {
@@ -38,6 +40,7 @@ import {
 import {
   DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
   getEarliestScheduleTimestamp,
+  getZonedDateTimeParts,
   resolveZonedDateTime,
   ScheduleTimeError,
   SOCIAL_SCHEDULING_TIME_STEP_SECONDS,
@@ -49,7 +52,7 @@ import {
   TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE,
   type TikTokPublishCapabilities,
 } from "@/lib/social/tiktok-publishing";
-import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
+import { hasTikTokUiAccess } from "@/lib/social/platform-visibility";
 import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
 import type { SocialConnection, SocialPlatform } from "@/lib/social/types";
 import { cn } from "@/lib/utils";
@@ -83,10 +86,10 @@ export type VideoPreparationState =
   | { status: "preparing" }
   | { message: string; status: "failed" };
 
-const platformDetails: Record<SocialPlatform, { label: string }> = {
-  instagram: { label: "Instagram" },
-  tiktok: { label: "TikTok" },
-  youtube: { label: "YouTube" },
+const platformDetails: Record<SocialPlatform, { label: string; order: number }> = {
+  instagram: { label: "Instagram", order: 0 },
+  tiktok: { label: "TikTok", order: 1 },
+  youtube: { label: "YouTube", order: 2 },
 };
 
 export function HookVideoScheduleDrawer({
@@ -103,7 +106,7 @@ export function HookVideoScheduleDrawer({
   summary: HookVideoScheduleSummary;
 }) {
   const { user } = useAuth();
-  const tiktokBetaEnabled = hasTikTokBetaAccess(user);
+  const tiktokBetaEnabled = hasTikTokUiAccess(user);
   const youtubeBetaEnabled = hasYouTubeBetaAccess(user);
   const publishingAccountLabel = getPublishingAccountLabel(
     tiktokBetaEnabled,
@@ -111,11 +114,10 @@ export function HookVideoScheduleDrawer({
   );
   const queryClient = useQueryClient();
   const accountId = user?.uid ?? "signed-out";
-  const initialDateTime = useMemo(() => getInitialDateTime(), []);
-  const timezone = useMemo(
-    () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-    [],
-  );
+  const defaultTimezone = useAccountTimeZone();
+  const [timezoneOverride, setTimezone] = useState<string | null>(null);
+  const timezone = timezoneOverride ?? defaultTimezone;
+  const initialDateTime = getInitialDateTime(DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES, timezone);
   const [stage, setStage] = useState<"details" | "review">("details");
   const [connections, setConnections] = useState<SocialConnection[]>([]);
   const [selectedConnectionIds, setSelectedConnectionIds] = useState<string[]>([]);
@@ -123,13 +125,16 @@ export function HookVideoScheduleDrawer({
   const [tiktokCapabilities, setTikTokCapabilities] = useState<
     Record<string, TikTokScheduleCapabilityState>
   >({});
-  const [scheduledDate, setScheduledDate] = useState(initialDateTime.date);
-  const [scheduledTime, setScheduledTime] = useState(initialDateTime.time);
+  const [manualScheduledDate, setScheduledDate] = useState(initialDateTime.date);
+  const [manualScheduledTime, setScheduledTime] = useState(initialDateTime.time);
   const [caption, setCaption] = useState("");
   const [hasManualScheduleTime, setHasManualScheduleTime] = useState(false);
   const [minimumScheduleLeadMinutes, setMinimumScheduleLeadMinutes] = useState(
     DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
   );
+  const automaticDateTime = getInitialDateTime(minimumScheduleLeadMinutes, timezone);
+  const scheduledDate = hasManualScheduleTime ? manualScheduledDate : automaticDateTime.date;
+  const scheduledTime = hasManualScheduleTime ? manualScheduledTime : automaticDateTime.time;
   const [musicConfirmationOpen, setMusicConfirmationOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -161,11 +166,7 @@ export function HookVideoScheduleDrawer({
         Number.isFinite(configuredLeadValue)
         ? Math.max(1, Math.ceil(configuredLeadValue))
         : DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES;
-      const nextDateTime = getInitialDateTime(configuredLeadMinutes);
-
       setMinimumScheduleLeadMinutes(configuredLeadMinutes);
-      setScheduledDate(nextDateTime.date);
-      setScheduledTime(nextDateTime.time);
     } catch (error) {
       setErrorMessage(getErrorMessage(error, "Could not load connected accounts."));
     } finally {
@@ -193,6 +194,15 @@ export function HookVideoScheduleDrawer({
   );
   const selectedConnections = visibleConnections.filter((connection) =>
     selectedConnectionIds.includes(connection.id),
+  );
+  // Sort only the display copy; selection, settings and submission stay intact.
+  const orderedConnections = useMemo(
+    () =>
+      [...visibleConnections].sort(
+        (left, right) =>
+          platformDetails[left.platform].order - platformDetails[right.platform].order,
+      ),
+    [visibleConnections],
   );
   const connectedCount = visibleConnections.filter(
     (connection) => connection.status === "connected",
@@ -455,8 +465,8 @@ export function HookVideoScheduleDrawer({
         <div className="min-h-0 overflow-y-auto overscroll-contain px-4 py-4 sm:px-7 sm:py-6">
           {stage === "details" ? (
             <>
-              <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.9fr)] xl:items-start">
-                <section aria-labelledby="schedule-accounts-heading">
+              <div className="grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-start">
+                <section className="min-w-0" aria-labelledby="schedule-accounts-heading">
                   <div className="flex items-center justify-between gap-3">
                     <h4 id="schedule-accounts-heading" className="text-xs font-semibold text-foreground-strong">
                       Destinations
@@ -475,23 +485,33 @@ export function HookVideoScheduleDrawer({
                   </div>
 
                   {loading ? (
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <div className="mt-3 grid grid-cols-1 gap-2.5">
                       {[0, 1, 2].map((item) => (
                         <Skeleton key={item} className="h-14 rounded-[12px]" />
                       ))}
                     </div>
                   ) : (
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                      {visibleConnections.map((connection) => (
+                    <div className="mt-3 grid grid-cols-1 gap-2.5">
+                      {orderedConnections.map((connection) => (
                         <ConnectionRow
                           key={connection.id}
                           connection={connection}
                           selected={selectedConnectionIds.includes(connection.id)}
                           onToggle={() => toggleConnection(connection)}
-                        />
+                        >
+                          {connection.platform === "tiktok" &&
+                          selectedConnectionIds.includes(connection.id) ? (
+                            <TikTokPublishingDetails
+                              connection={connection}
+                              settings={settings[connection.id] ?? getDefaultScheduleTargetSettings("tiktok")}
+                              tiktokCapability={tiktokCapabilities[connection.id]}
+                              onSettingChange={(key, value) => updateSetting(connection.id, key, value)}
+                            />
+                          ) : null}
+                        </ConnectionRow>
                       ))}
                       {visibleConnections.length === 0 ? (
-                        <div className="rounded-[12px] border border-dashed border-border-strong px-3 py-5 text-center sm:col-span-2">
+                        <div className="rounded-[12px] border border-dashed border-border-strong px-3 py-5 text-center">
                           <p className="text-xs font-medium text-muted">
                             No {publishingAccountLabel} account connected.
                           </p>
@@ -507,7 +527,7 @@ export function HookVideoScheduleDrawer({
                   )}
                 </section>
 
-                <div className="space-y-5">
+                <div className="min-w-0 space-y-5">
                   <section className="border-t border-border pt-4" aria-labelledby="schedule-caption-heading">
                     <label className="block text-xs font-semibold text-muted">
                       <span id="schedule-caption-heading">
@@ -542,10 +562,12 @@ export function HookVideoScheduleDrawer({
                           name="scheduled-date"
                           type="date"
                           autoComplete="off"
-                          min={getLocalDate(new Date())}
+                          min={getZonedDateTimeParts(Date.now(), timezone).date}
                           value={scheduledDate}
                           onChange={(event) => {
                             setHasManualScheduleTime(true);
+                            setTimezone(timezone);
+                            setScheduledTime(scheduledTime);
                             setScheduledDate(event.target.value);
                           }}
                           className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
@@ -561,12 +583,25 @@ export function HookVideoScheduleDrawer({
                           value={scheduledTime}
                           onChange={(event) => {
                             setHasManualScheduleTime(true);
+                            setTimezone(timezone);
+                            setScheduledDate(scheduledDate);
                             setScheduledTime(event.target.value);
                           }}
                           className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                         />
                       </label>
                     </div>
+                    <label className="mt-3 block text-xs font-semibold text-muted">
+                      Time zone
+                      <select
+                        name="schedule-timezone"
+                        value={timezone}
+                        onChange={(event) => setTimezone(event.target.value)}
+                        className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                      >
+                        {getSchedulingTimeZoneOptions(timezone).map((zone) => <option key={zone} value={zone}>{zone.replaceAll("_", " ")}</option>)}
+                      </select>
+                    </label>
                     <p className="mt-2 text-[11px] font-medium leading-4 text-muted">
                       {useDefaultScheduleTime
                         ? `Leave these unchanged to schedule ${minimumScheduleLeadMinutes} ${
@@ -581,34 +616,18 @@ export function HookVideoScheduleDrawer({
               </div>
 
               {selectedConnections.some(
-                (connection) => connection.platform === "tiktok" || connection.platform === "youtube",
+                (connection) => connection.platform === "youtube",
               ) ? (
                 <section className="mt-6 border-t border-border pt-4" aria-labelledby="schedule-publishing-details-heading">
                   <div>
                     <h4 id="schedule-publishing-details-heading" className="text-xs font-semibold text-foreground-strong">
-                      Publishing details
+                      YouTube settings
                     </h4>
                     <p className="mt-1 text-[11px] font-medium leading-4 text-muted">
-                      Only the selected platforms that need a post-specific choice appear here.
+                      Settings for your selected YouTube channels.
                     </p>
                   </div>
                   <div className="mt-3 grid gap-3 lg:grid-cols-2">
-                    {selectedConnections
-                      .filter((connection) => connection.platform === "tiktok")
-                      .map((connection) => (
-                        <TikTokPublishingDetails
-                          key={connection.id}
-                          connection={connection}
-                          settings={
-                            settings[connection.id] ??
-                            getDefaultScheduleTargetSettings("tiktok")
-                          }
-                          tiktokCapability={tiktokCapabilities[connection.id]}
-                          onSettingChange={(key, value) =>
-                            updateSetting(connection.id, key, value)
-                          }
-                        />
-                      ))}
                     {selectedConnections
                       .filter((connection) => connection.platform === "youtube")
                       .map((connection) => (
@@ -630,7 +649,9 @@ export function HookVideoScheduleDrawer({
             </>
           ) : (
             <ScheduleReview
-              connections={selectedConnections}
+              connections={orderedConnections.filter((connection) =>
+                selectedConnectionIds.includes(connection.id),
+              )}
               caption={caption}
               scheduledDate={scheduledDate}
               scheduledTime={scheduledTime}
@@ -753,10 +774,12 @@ export function HookVideoScheduleDrawer({
 }
 
 function ConnectionRow({
+  children,
   connection,
   selected,
   onToggle,
 }: {
+  children?: ReactNode;
   connection: SocialConnection;
   selected: boolean;
   onToggle: () => void;
@@ -784,6 +807,7 @@ function ConnectionRow({
           </span>
         </span>
       </label>
+      {children}
     </div>
   );
 }
@@ -803,18 +827,30 @@ function TikTokPublishingDetails({
     settings.commercialContentDisclosureEnabled === true ||
     settings.brandOrganic === true ||
     settings.brandedContent === true;
+  const settingsError = tiktokCapability?.status === "ready"
+    ? getScheduleTargetSettingsError({
+        connections: [connection],
+        requireTikTokMusicConfirmation: false,
+        settings: { [connection.id]: settings },
+        tiktokCapabilities: { [connection.id]: tiktokCapability },
+      })
+    : null;
+  const needsAttention = tiktokCapability?.status === "error" || Boolean(settingsError);
 
   return (
-    <div className="rounded-[12px] border border-border bg-card p-3.5">
-      <div className="flex min-w-0 items-center gap-3">
-        <SocialAccountAvatar connection={connection} />
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-foreground-strong">
-            {connection.platformAccountName || connection.platformAccountUsername || "TikTok"}
-          </p>
-          <p className="mt-0.5 text-[11px] font-medium text-muted">TikTok</p>
-        </div>
-      </div>
+    <details
+      data-tiktok-publishing-options
+      open={needsAttention || undefined}
+      className="border-t border-border px-3 py-2.5"
+    >
+      <summary className="cursor-pointer text-[11px] font-semibold text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+        TikTok settings{needsAttention ? " · Action needed" : " (optional)"}
+      </summary>
+      {settingsError ? (
+        <p role="alert" className="mt-3 text-xs font-semibold leading-5 text-error">
+          {settingsError}
+        </p>
+      ) : null}
 
       {!tiktokCapability ||
       tiktokCapability.status === "idle" ||
@@ -824,13 +860,13 @@ function TikTokPublishingDetails({
           Loading TikTok audience choices
         </p>
       ) : tiktokCapability.status === "error" ? (
-        <p className="mt-4 text-xs font-semibold leading-5 text-error">
+        <p role="alert" className="mt-4 text-xs font-semibold leading-5 text-error">
           {tiktokCapability.message}
         </p>
       ) : (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="mt-4 grid gap-3">
           {!tiktokCapability.capabilities.directPostAudited ? (
-            <p className="sm:col-span-2 rounded-[8px] border border-primary/25 bg-primary/5 px-2.5 py-2 text-[11px] font-medium leading-4 text-foreground-strong">
+            <p className="rounded-[8px] border border-primary/25 bg-primary/5 px-2.5 py-2 text-[11px] font-medium leading-4 text-foreground-strong">
               {TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE}
             </p>
           ) : null}
@@ -904,7 +940,7 @@ function TikTokPublishingDetails({
           </details>
         </div>
       )}
-    </div>
+    </details>
   );
 }
 
@@ -1137,21 +1173,14 @@ function getPublishingAccountLabel(
 
 function getInitialDateTime(
   minimumLeadMinutes = DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
+  timezone = getBrowserTimeZone(),
 ) {
-  const date = new Date(
+  return getZonedDateTimeParts(
     getEarliestScheduleTimestamp({
       minimumLeadMinutes,
     }),
+    timezone,
   );
-
-  return {
-    date: getLocalDate(date),
-    time: `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`,
-  };
-}
-
-function getLocalDate(date: Date) {
-  return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
 }
 
 function formatScheduleDate(value: string) {

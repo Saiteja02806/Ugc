@@ -32,6 +32,7 @@ export type AppSidebarActiveKey =
   | "trending"
   | "create-content"
   | "explore"
+  | "audio-generation"
   | "ai-studio"
   | "library"
   | "avatars"
@@ -49,16 +50,22 @@ type SidebarItem = {
 
 const primaryNavigationItems: SidebarItem[] = [
   {
+    key: "explore",
+    label: "Explore",
+    href: "/explore",
+    icon: "explore",
+  },
+  {
+    key: "audio-generation",
+    label: "Audio generation",
+    href: "/audio-generation",
+    icon: "audio",
+  },
+  {
     key: "trending",
     label: "Trending",
     href: "/dashboard",
     icon: "trending",
-  },
-  {
-    key: "create-content",
-    label: "Create Content",
-    href: "/create-content",
-    icon: "edit",
   },
   {
     key: "ai-studio",
@@ -80,13 +87,6 @@ const primaryNavigationItems: SidebarItem[] = [
   },
 ];
 
-const exploreNavigationItem: SidebarItem = {
-  key: "explore",
-  label: "Explore",
-  href: "/viral",
-  icon: "viral",
-};
-
 const libraryNavigationItems: SidebarItem[] = [
   {
     key: "library",
@@ -104,7 +104,6 @@ const libraryNavigationItems: SidebarItem[] = [
 
 const SIDEBAR_STORAGE_KEY = "ugc-studio.sidebar-collapsed";
 const SIDEBAR_CHANGE_EVENT = "ugc-studio:sidebar-change";
-const isCreateContentScreenEnabled = process.env.NODE_ENV !== "production";
 
 export function AppSidebar({
   activeKey = "trending",
@@ -373,13 +372,6 @@ function SidebarNavigation({
   collapsed?: boolean;
   onNavigate?: () => void;
 }) {
-  const visiblePrimaryNavigationItems = [
-    ...primaryNavigationItems.filter(
-      (item) => item.key !== "create-content" || isCreateContentScreenEnabled,
-    ),
-    ...(isCreateContentScreenEnabled ? [exploreNavigationItem] : []),
-  ];
-
   return (
     <nav
       aria-label="Primary navigation"
@@ -390,7 +382,7 @@ function SidebarNavigation({
       )}
     >
       <div className="flex flex-col gap-1">
-        {visiblePrimaryNavigationItems.map((item) => (
+        {primaryNavigationItems.map((item) => (
           <SidebarLink
             key={item.key}
             active={item.key === activeKey}

@@ -21,9 +21,36 @@ test("uses the exact model, preserves long prompts and sends images as content g
 });
 
 test("rejects invalid duration, resolution and reference inputs before submission", () => {
-  for (const patch of [{ durationSeconds: 3 }, { durationSeconds: 31 }, { durationSeconds: 4.5 }, { resolution: "1080p" as const }, { prompt: " " }, { referenceImageUrls: ["http://example.com/a.png"] }, { referenceImageUrls: Array.from({ length: 7 }, (_, i) => `https://example.com/${i}.png`) }, { referenceVideoUrl: "https://example.com/a.mp4" }]) {
+  for (const patch of [{ durationSeconds: 3 }, { durationSeconds: 31 }, { durationSeconds: 4.5 }, { resolution: "1080p" as const }, { prompt: " " }, { referenceImageUrls: ["http://example.com/a.png"] }, { referenceImageUrls: Array.from({ length: 7 }, (_, i) => `https://example.com/${i}.png`) }, { referenceVideoUrl: "http://example.com/a.mp4" }, { referenceAudioUrls: ["https://example.com/a.mp3", "https://example.com/b.mp3"] }, { referenceAudioUrls: ["https://example.com/a.mp3"], referenceVideoUrl: "https://example.com/a.mp3" }, { referenceImageUrls: Array.from({ length: 5 }, (_, i) => `https://example.com/${i}.png`), referenceAudioUrls: ["https://example.com/a.mp3"], referenceVideoUrl: "https://example.com/a.mp4" }]) {
     assert.throws(() => buildOpenRouterSeedanceRequest({ ...input, ...patch }), ProviderRequestNotSubmittedError);
   }
+});
+
+test("Create audio and video use OpenRouter's typed reference schema, never demo or soundtrack fields", async () => {
+  const expected = [
+    { type: "image_url", image_url: { url: "https://storage.example.com/person.png" } },
+    { type: "audio_url", audio_url: { url: "https://storage.example.com/voice.mp3" } },
+    { type: "video_url", video_url: { url: "https://storage.example.com/motion.mp4" } },
+  ];
+  let posts = 0;
+  await generateOpenRouterSeedanceVideoBuffer({ ...input, ...callbacks,
+    referenceImageUrls: [expected[0].image_url!.url], referenceAudioUrls: [expected[1].audio_url!.url], referenceVideoUrl: expected[2].video_url!.url,
+  }, { apiKey, fetchImpl: (async (url, init) => {
+    if (String(url).endsWith("/key")) return json({ data: { limit_remaining: 100 } });
+    if (init?.method === "POST") {
+      posts++;
+      assert.equal(String(url), "https://openrouter.ai/api/v1/videos");
+      const body = JSON.parse(String(init.body));
+      assert.deepEqual(body.input_references, expected);
+      assert.equal(body.generate_audio, true);
+      assert.equal(body.model, "bytedance/seedance-2.5");
+      assert.equal(body.backgroundAssetId, undefined);
+      assert.equal(body.demoAssetId, undefined);
+      return json({ id: "reference-job", status: "pending" }, 202);
+    }
+    return String(url).includes("/content") ? video() : json({ status: "completed" });
+  }) as typeof fetch });
+  assert.equal(posts, 1);
 });
 
 test("persists accepted ID before polling, preserves cost and authenticates the canonical download", async () => {
@@ -100,6 +127,17 @@ test("key allowance and management-key rejection occur before any paid call", as
     }) as typeof fetch }), ProviderRequestNotSubmittedError);
     assert.equal(requests, 1);
   }
+});
+
+test("video-reference preflight covers OpenRouter's two-dollar authorization", async () => {
+  let requests = 0;
+  await assert.rejects(generateOpenRouterSeedanceVideoBuffer({ ...input, ...callbacks, referenceVideoUrl: "https://storage.example.com/reference.mp4" }, {
+    apiKey, fetchImpl: (async (_url, init) => {
+      assert.notEqual(init?.method, "POST"); requests++;
+      return json({ data: { limit_remaining: 1.5 } });
+    }) as typeof fetch,
+  }), ProviderRequestNotSubmittedError);
+  assert.equal(requests, 1);
 });
 
 test("preflight networking failures are safe to retry; paid HTTP errors retain their status", async () => {

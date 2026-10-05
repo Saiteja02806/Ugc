@@ -5,7 +5,6 @@ import {
   ChevronDown,
   Loader2,
   SlidersHorizontal,
-  Sparkles,
 } from "lucide-react";
 import type { FormEvent, KeyboardEvent, ReactNode } from "react";
 import { useEffect, useId, useRef, useState } from "react";
@@ -20,12 +19,14 @@ import {
 import {
   Popover,
   PopoverContent,
+  PopoverTitle,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 export function AiStudioComposer({
   active,
+  compact = false,
   accessMessage,
   ariaLabel,
   contextBanner,
@@ -49,6 +50,7 @@ export function AiStudioComposer({
   unifiedMaxWidthClassName,
 }: {
   active: boolean;
+  compact?: boolean;
   accessMessage?: string | null;
   ariaLabel: string;
   contextBanner?: ReactNode;
@@ -86,18 +88,19 @@ export function AiStudioComposer({
     }
 
     textarea.style.height = "auto";
-    const minimumHeight = layout === "unified" ? 40 : 64;
-    const maximumHeight = layout === "unified" ? 64 : 128;
+    const minimumHeight = compact ? 64 : layout === "unified" ? 40 : 64;
+    const maximumHeight = compact ? 96 : layout === "unified" ? 64 : 128;
     textarea.style.height = `${Math.min(
       Math.max(textarea.scrollHeight, minimumHeight),
       maximumHeight,
     )}px`;
-  }, [active, hasAttachments, layout, prompt]);
+  }, [active, compact, hasAttachments, layout, prompt]);
 
   return (
-    <div className="sticky bottom-0 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
+    <div className={cn("shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2", !compact && "sticky bottom-0")}>
       <form
         data-layout={layout}
+        data-compact={compact || undefined}
         noValidate
         onSubmit={onSubmit}
         className={cn(
@@ -108,6 +111,7 @@ export function AiStudioComposer({
                 "rounded-[20px] border-border/80 p-0 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15",
               )
             : "max-w-[1024px] rounded-[20px] border-border p-2.5 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 sm:p-3",
+          compact && "rounded-[28px] shadow-none",
         )}
       >
         <FieldGroup className={layout === "unified" ? "gap-0" : "gap-2"}>
@@ -123,10 +127,10 @@ export function AiStudioComposer({
                 ? "gap-y-1 px-4 pb-1.5 pt-3"
                 : "gap-y-2 px-1 pt-1",
               contextBanner && layout === "unified" && "!pt-1.5",
-              layout === "unified" && leadingControl && !hasAttachments && "grid grid-cols-[44px_minmax(0,1fr)] items-start gap-x-2",
+              !compact && layout === "unified" && leadingControl && !hasAttachments && "grid grid-cols-[44px_minmax(0,1fr)] items-start gap-x-2",
             )}
           >
-            {leadingControl ? <div className={cn("min-w-0", layout === "unified" && !hasAttachments && "col-start-1 row-start-1")}>{leadingControl}</div> : null}
+            {leadingControl && (!compact || hasAttachments) ? <div className={cn("min-w-0", !compact && layout === "unified" && !hasAttachments && "col-start-1 row-start-1")}>{leadingControl}</div> : null}
             <FieldLabel htmlFor={promptId} className="sr-only">
               {ariaLabel}
             </FieldLabel>
@@ -144,10 +148,10 @@ export function AiStudioComposer({
               className={cn(
                 "w-full resize-none overflow-y-auto bg-transparent text-foreground outline-none placeholder:text-muted-subtle",
                 layout === "unified"
-                  ? "max-h-16 min-h-10 rounded-none px-0 py-0 text-base font-normal leading-6 sm:text-sm"
+                  ? compact ? "max-h-24 min-h-16 rounded-none px-0 py-0 text-sm font-normal leading-6" : "max-h-16 min-h-10 rounded-none px-0 py-0 text-base font-normal leading-6 sm:text-sm"
                   : "max-h-32 min-h-16 rounded-lg px-2 py-1.5 text-sm font-medium leading-6 focus-visible:ring-2 focus-visible:ring-focus sm:text-[15px]",
                 "min-w-0",
-                layout === "unified" && leadingControl && !hasAttachments && "col-start-2 row-start-1 self-center",
+                !compact && layout === "unified" && leadingControl && !hasAttachments && "col-start-2 row-start-1 self-center",
               )}
               placeholder={placeholder}
             />
@@ -156,8 +160,9 @@ export function AiStudioComposer({
                 id={promptHelperId}
                 className={cn(
                   "flex min-w-0 items-start justify-between gap-3 text-xs",
-                  layout === "unified" && leadingControl && !hasAttachments && "col-span-full",
+                  !compact && layout === "unified" && leadingControl && !hasAttachments && "col-span-full",
                   layout === "unified" ? "px-0" : "px-2",
+                  compact && "pb-3 text-[11px] leading-4 text-muted-subtle",
                   promptTooLong && "text-destructive",
                 )}
                 role={promptTooLong ? "alert" : undefined}
@@ -173,12 +178,24 @@ export function AiStudioComposer({
           </Field>
 
           <div
+            data-slot={compact ? "composer-actions" : undefined}
             className={cn(
-              "flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between",
+              compact ? "flex items-center justify-between gap-2" : "flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between",
               layout === "unified" && "px-3 pb-2 sm:px-4 sm:pb-3",
             )}
           >
-            <div className="min-w-0 flex-1">
+            {compact ? <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+              {!hasAttachments ? leadingControl : null}
+              <Popover>
+                <PopoverTrigger render={<Button type="button" variant="outline" size="sm" aria-label="Generation settings" title="Generation settings" className="h-9 gap-1.5 rounded-full px-3 text-xs text-foreground" />}>
+                  <SlidersHorizontal className="size-3.5" aria-hidden="true" /><span data-slot="composer-settings-label">Settings</span>
+                </PopoverTrigger>
+                <PopoverContent side="top" align="start" className="w-72 gap-3 rounded-2xl p-4">
+                  <PopoverTitle className="text-sm">Generation settings</PopoverTitle>
+                  <div className="flex flex-wrap items-center gap-2">{settings}</div>
+                </PopoverContent>
+              </Popover>
+            </div> : <div className="min-w-0 flex-1">
               {layout === "standard" ? (
                 <Button
                   type="button"
@@ -218,18 +235,19 @@ export function AiStudioComposer({
               >
                 {settings}
               </div>
-            </div>
+            </div>}
 
             <div
               className={cn(
                 "flex min-w-0 flex-col gap-1.5 sm:items-end",
-                layout === "unified" && "w-full sm:w-auto",
+                layout === "unified" && (compact ? "shrink-0" : "w-full sm:w-auto"),
               )}
             >
               <div className="flex min-w-0 items-center gap-2">
                 {secondaryActions}
                 <Button
                   type="submit"
+                  aria-label={generateLabel}
                   size="lg"
                   disabled={generateDisabled || promptTooLong}
                   title={generationLocked ? accessMessage ?? undefined : undefined}
@@ -237,6 +255,7 @@ export function AiStudioComposer({
                     "min-w-0 flex-1 h-10 rounded-full px-5 text-sm font-semibold tracking-[-0.01em] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.22),0_1px_3px_rgba(0,0,0,0.12)] transition-all duration-150 active:scale-[0.98] sm:min-w-[168px]",
                     isGenerating && "ring-2 ring-primary/35 shadow-xs shadow-primary/20",
                     layout === "unified" && "w-full",
+                    compact && "h-9 rounded-full px-3.5 text-xs font-medium shadow-none sm:min-w-0",
                   )}
                 >
                   {isGenerating ? (
@@ -249,10 +268,7 @@ export function AiStudioComposer({
                       Generating…
                     </>
                   ) : (
-                    <>
-                      {generateLabel}
-                      <Sparkles data-icon="inline-end" aria-hidden="true" />
-                    </>
+                    compact ? "Generate" : generateLabel
                   )}
                 </Button>
               </div>

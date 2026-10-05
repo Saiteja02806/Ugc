@@ -922,8 +922,9 @@ test("the inline carousel modal implements publishing-account content and time s
   assert.match(carouselScheduleModal, /Step \{currentStep\.number\} of 4/);
   assert.match(
     carouselScheduleModal,
-    /const accountLabel = tiktokBetaEnabled \? "publishing account" : "Instagram account"/,
+    /const accountLabel = hasMultiplePlatforms \? "publishing account" : "Instagram account"/,
   );
+  assert.match(carouselScheduleModal, /const hasMultiplePlatforms = visiblePlatforms\.length > 1/);
   assert.match(carouselScheduleModal, /title: `Select \$\{accountLabel\}`/);
   assert.match(carouselScheduleModal, /title: "Post details"/);
   assert.match(carouselScheduleModal, /title: "Schedule"/);

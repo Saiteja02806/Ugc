@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/auth-context";
 import { JobQueryProvider } from "@/components/providers/job-query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { WorkspaceRouteBoundary } from "@/components/layout/workspace-route-boundary";
+import { visibleSocialPlatformList } from "@/lib/social/platform-visibility";
 import {
   THEME_BACKGROUND_COLORS,
   THEME_STORAGE_KEY,
@@ -94,7 +95,7 @@ export const metadata: Metadata = {
     template: "%s | UGC Pilot",
   },
   description:
-    "Create video-first content and approved publishing workflows for YouTube, TikTok, and Instagram in one focused workspace.",
+    `Create video-first content and approved publishing workflows for ${visibleSocialPlatformList} in one focused workspace.`,
 };
 
 const RETIRED_GLOBAL_CONTENT_STORAGE_KEYS = [

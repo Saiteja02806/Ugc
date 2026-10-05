@@ -1,0 +1,99 @@
+{
+  "width": 960,
+  "height": 540,
+  "fps": 24,
+  "frames": 404,
+  "duration": 16.833333333333332,
+  "video": "create-hook-v5.mp4",
+  "poster": "create-hook-v5.webp",
+  "bytes": 2697957,
+  "sources": [
+    {
+      "name": "format1 (1).mp4",
+      "frames": 217
+    },
+    {
+      "name": "format1 (2).mp4",
+      "frames": 144
+    },
+    {
+      "name": "format1 (3).mp4",
+      "frames": 144
+    }
+  ],
+  "excerptStartSeconds": 1,
+  "excerptFrames": 72,
+  "stages": [
+    {
+      "name": "talking-hook-intro",
+      "startFrame": 0,
+      "endFrame": 96,
+      "frames": 96,
+      "sourceStartFrame": 0,
+      "sourceEndFrame": 96
+    },
+    {
+      "name": "demo",
+      "startFrame": 96,
+      "endFrame": 156,
+      "frames": 60,
+      "sourceStartFrame": 259,
+      "sourceEndFrame": 319
+    },
+    {
+      "name": "creator-examples",
+      "startFrame": 156,
+      "endFrame": 319,
+      "frames": 163,
+      "sourceStartFrame": 96,
+      "sourceEndFrame": 259
+    },
+    {
+      "name": "horizontal-and-diagonal-return",
+      "startFrame": 319,
+      "endFrame": 404,
+      "frames": 85,
+      "sourceStartFrame": 319,
+      "sourceEndFrame": 404
+    }
+  ],
+  "transitionFrames": 10,
+  "demo": {
+    "name": "DEMO.mp4",
+    "sourceStart": 2,
+    "startFrame": 96,
+    "endFrame": 156,
+    "frames": 60,
+    "duration": 2.5,
+    "framing": "edge-to-edge sharp crop with caption over the footage"
+  },
+  "captions": [
+    {
+      "text": "Create a talking hook video",
+      "start": 0,
+      "end": 4
+    },
+    {
+      "text": "Add your own demo",
+      "start": 4,
+      "end": 6.5
+    }
+  ],
+  "captionStyle": "native editorial kinetic type, Bodoni Black Italic keywords and Georgia supporting text",
+  "motion": {
+    "editor": "After Effects",
+    "project": "design/explore-hook-motion/Explore Hook Cover — Editorial Motion v5.aep",
+    "nativeRenderTemplate": "H.264 - Match Render Settings - 40 Mbps",
+    "numericKeys": 30,
+    "keyword": "2px outline-to-fill reveal; hook fills over 0.5s, demo over 0.4s; 94% to 100% settle",
+    "supportingText": "staged opening lead; immediate readable demo lead; 0.125-second coordinated exit",
+    "sourceTextEditable": true,
+    "demoDuration": 2.5,
+    "fonts": [
+      "BodoniMTBlack-Italic",
+      "Georgia-Italic",
+      "Georgia"
+    ],
+    "demonstrationHandoff": "actual demo and its title start together at frame 96, immediately after the opening"
+  }
+}

@@ -18,8 +18,13 @@ const videoTypes = new Map([
 ]);
 const audioTypes = new Map([
   ["audio/mpeg", ".mp3"],
+  ["audio/mp3", ".mp3"],
   ["audio/wav", ".wav"],
   ["audio/x-wav", ".wav"],
+  ["audio/mp4", ".m4a"],
+  ["audio/x-m4a", ".m4a"],
+  ["audio/ogg", ".ogg"],
+  ["audio/webm", ".webm"],
 ]);
 
 export type MediaUploadTarget = {
@@ -53,7 +58,7 @@ export function createMediaUploadTarget(input: {
         input.collection === "image"
           ? "Upload a JPG, PNG, or WebP image."
           : input.collection === "audio"
-            ? "Upload an MP3 or WAV audio file."
+            ? "Upload an MP3, WAV, M4A, OGG, or WebM audio file."
             : "Upload an MP4, MOV, or WebM video.",
       ok: false as const,
       status: 400,

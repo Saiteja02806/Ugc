@@ -9,10 +9,10 @@ export type SubtitleTools = { ffmpeg: string; ffprobe: string; fontsDir: string 
 export type VideoInfo = { width: number; height: number; durationMs: number; videoIndex: number; audioIndex: number; audioCodec: string };
 
 /** No shell, no remote media protocols, bounded output, timeout, and cancellation. */
-export async function runMediaCommand(binary: string, args: string[], options: { cwd?: string; signal?: AbortSignal; timeoutMs?: number } = {}) {
+export async function runMediaCommand(binary: string, args: string[], options: { cwd?: string; signal?: AbortSignal; timeoutMs?: number; env?: NodeJS.ProcessEnv } = {}) {
   options.signal?.throwIfAborted();
   return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
-    const child = spawn(binary, args, { cwd: options.cwd, windowsHide: true, shell: false, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(binary, args, { cwd: options.cwd, env: options.env, windowsHide: true, shell: false, stdio: ["ignore", "pipe", "pipe"] });
     let stdout = "", stderr = "", failure: SubtitleError | undefined;
     let forceKill: ReturnType<typeof setTimeout> | undefined;
     const stop = (error: SubtitleError) => {

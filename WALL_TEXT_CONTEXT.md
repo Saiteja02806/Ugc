@@ -1,6 +1,66 @@
 # Wall-of-text Context
 
-Last updated: 2026-09-26
+Last updated: 2026-10-02
+
+## 2026-10-02 Four specific writing corrections (local implementation)
+
+- Planner V19 and Writer V30 retain the concrete examples and explicitly
+  replace posting cadence with posting regularly or a regular posting schedule,
+  preserving whether the source describes a problem.
+- Both prompts remove empty openings and endings. A simple fact gets one
+  sentence; a second sentence is for a different supported detail or condition,
+  not a scene followed by the same point again.
+- Possible editing stays possible. When the source also requires approval
+  before publication, both conditions must remain explicit, even when an older
+  private plan omits approval. If the source actually requires editing, that
+  requirement is retained instead; approval is not invented when absent.
+- Multiple-account support does not establish publishing, simultaneous
+  publishing, bulk posting, a shared post, or a single click. Only capabilities
+  supported by the selected fact may be stated. Explicitly supported
+  simultaneous publishing remains valid.
+- These are instructions and examples inside the existing planner/writer
+  calls. No new AI reviewer, fact-approval UI, normalization stage, database
+  schema, or posting-approval workflow was added. Existing facts, fact IDs,
+  snapshots, 200-item target, chunking, word limits, typography, and layout
+  checks are unchanged by this correction.
+- Final focused testing generated 40 new planning ideas and accepted 38 of 38
+  written cards: 17 saved account inputs, 12 fresh-plan samples, and nine
+  targeted meaning probes. The four specified failures were absent in the final
+  sample; positive controls retained genuine editing and simultaneous-publishing
+  capabilities. All 196 regression checks passed on the final successful runs.
+  See `docs/wall-text-four-copy-fixes-test-2026-10-02.md` for intermediate
+  failures, examples, limits, and the test-process failure that passed on rerun.
+- This is a local test result, not a production deployment, full 200-item V19
+  generation, user-comprehension study, or guarantee that all AI slop is gone.
+
+## 2026-10-02 Concrete writing examples (local implementation)
+
+- Planner V18 and Writer V29 teach clear wording with paired weak/preferred
+  examples: irregular posting without an invented cause, explicit human
+  approval, and draft limits with their qualifications. The writer also
+  demonstrates appointment requests versus confirmed bookings.
+- Examples are style guidance, never additional evidence. Approved facts
+  control meaning, not verbatim wording. Both prompts silently edit their
+  output in the same request; no additional model stage was introduced.
+- Private plan wording is a draft. The writer must repair vague language or
+  unsupported explanations against the assigned fact. Instructions about
+  writing or claims must not leak into posts; real factual conditions remain.
+- The writer's higher-priority system message no longer asks for a literal
+  visible business anchor. It explicitly separates approved fact meaning,
+  restrictive qualification context, fallible private plans, and style examples.
+- Both initial planning and targeted plan repair receive the examples. Fact
+  IDs, snapshots, JSON schemas, the 200-item target, ten-item chunks, final
+  word limits, typography, layout, and reviewer routing are unchanged.
+- This is not a production deployment or a historical plan rewrite. Saved
+  older plans retain their wording; the updated writer can repair that wording
+  only within their approved fact snapshot. Live tests and editorial review
+  are required before claiming a measured clarity improvement.
+- Local evaluation completed a fresh 200-item account plan and 60 fixture
+  ideas. Final writing accepted 63 of 72 cards; nine exhausted on existing
+  safety-check false positives. Editorial review found some clearer wording
+  but also remaining filler, jargon, and inconsistent conditions. See
+  `docs/wall-text-concrete-examples-test-2026-10-02.md`; this is not an
+  unconditional production go-ahead or proof that AI slop is eliminated.
 
 ## 2026-09-26 Complete planning ideas and condition handoff (local implementation)
 

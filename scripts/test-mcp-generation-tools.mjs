@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { ONE_TIME_FREE_GENERATION_CREDITS } from "../lib/billing/free-generation-credit-policy.ts";
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://local-mcp-generation.supabase.co";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "local-test-secret";
@@ -95,7 +96,12 @@ globalThis.fetch = async (input, init) => {
   if (url.pathname.endsWith("/rest/v1/billing_subscriptions")) {
     const paid = plan === "growth";
     const row = { plan_key: "growth", status: "active", last_event_at: now };
-    return Response.json(url.searchParams.get("status") === "eq.active" ? paid ? [row] : [] : paid ? row : null);
+    return Response.json(paid ? [row] : []);
+  }
+  if (url.pathname.endsWith("/rest/v1/rpc/ensure_free_generation_credit_balance")) {
+    assert.equal(JSON.parse(init.body).p_user_id, "owner-a");
+    return Response.json({ granted: ONE_TIME_FREE_GENERATION_CREDITS,
+      remaining: ONE_TIME_FREE_GENERATION_CREDITS, reserved: 0, used: 0 });
   }
   if (url.pathname.endsWith("/rest/v1/billing_credit_balances")) {
     return Response.json(plan === "growth" ? {

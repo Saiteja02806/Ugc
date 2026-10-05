@@ -50,6 +50,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/auth-context";
+import type { RecreateGenerationView } from "@/components/explore/recreate-generation-view";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
 import { getVideoGenerationState } from "@/lib/ai-studio/video-generation-state";
 import { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND } from "@/lib/billing/generation-credit-policy";
@@ -266,12 +267,14 @@ export function VideoGenerationStudioPanel({
   active = true,
   creditsPerSecond = DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND,
   creditsRemaining = null,
+  recreateView,
 }: {
   accessMessage?: string | null;
   accessState?: AIStudioAccessState;
   active?: boolean;
   creditsPerSecond?: number;
   creditsRemaining?: number | null;
+  recreateView?: RecreateGenerationView;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -388,7 +391,7 @@ export function VideoGenerationStudioPanel({
     persistedJobId && persistedJobId !== ignoredPersistedJobId
       ? persistedJobId
       : null;
-  const activeJobIds = Array.from(
+  const activeJobIds = recreateView?.preview ? [] : Array.from(
     new Set([
       ...submittedJobIds,
       ...(urlJobId ? [urlJobId] : []),
@@ -398,7 +401,7 @@ export function VideoGenerationStudioPanel({
   const activeJobQueries = useBackgroundJobs(activeJobIds);
   const cancelJob = useCancelBackgroundJob();
   const retryJob = useRetryBackgroundJob();
-  const generationLocked = accessState !== "pro";
+  const generationLocked = recreateView?.preview === true || accessState !== "pro";
   const creditsPerVideo = durationSeconds * creditsPerSecond;
   const requiredCredits = creditsPerVideo * quantity;
   const hasInsufficientCredits =
@@ -552,6 +555,16 @@ export function VideoGenerationStudioPanel({
     let ignore = false;
 
     async function loadGeneratedVideos() {
+      if (recreateView?.preview) {
+        setGeneratedVideos([]);
+        setStoredJobIds([]);
+        setSubmittedJobIds([]);
+        setCurrentResultIds([]);
+        setSelectedHistoryVideoId(null);
+        setResultsError(null);
+        setResultsLoading(false);
+        return;
+      }
       if (historyOwnerIdRef.current !== (user?.uid ?? null)) {
         historyOwnerIdRef.current = user?.uid ?? null;
         setGeneratedVideos([]);
@@ -609,7 +622,7 @@ export function VideoGenerationStudioPanel({
     return () => {
       ignore = true;
     };
-  }, [active, authLoading, user]);
+  }, [active, authLoading, user, recreateView?.preview]);
 
   useEffect(() => {
     if (!foregroundAutoResumeRef.current) return;
@@ -1076,6 +1089,7 @@ export function VideoGenerationStudioPanel({
     >
       <AiStudioResults
         ariaLabel="Generated videos"
+        emptyContent={recreateView?.emptyContent}
         emptyDescription="Start a new video below. Your earlier generations are in History."
         gridClassName="grid-cols-1 sm:grid-cols-1 lg:grid-cols-1 xl:grid-cols-1 2xl:grid-cols-1"
         hasResults={visibleVideos.length > 0 || isGenerating}
@@ -1114,7 +1128,7 @@ export function VideoGenerationStudioPanel({
             )}
           </div>
         ) : undefined}
-        toolbar={
+        toolbar={recreateView?.preview ? undefined :
           <div className="flex items-center gap-2">
             {selectedHistoryVideo ? (
               <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedHistoryVideoId(null)}>Back to session</Button>
@@ -1180,11 +1194,12 @@ export function VideoGenerationStudioPanel({
       />
 
       <AiStudioComposer
+        compact={Boolean(recreateView)}
         accessMessage={composerMessage}
         active={active}
         ariaLabel="Video prompt"
         contextBanner={
-          referenceContext ? (
+          recreateView?.contextBanner ?? (referenceContext ? (
             <div className="flex items-center justify-between gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs text-foreground shadow-sm">
               <div className="flex items-center gap-2 truncate">
                 <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-selected text-primary">
@@ -1222,7 +1237,7 @@ export function VideoGenerationStudioPanel({
                 <X className="size-3.5" aria-hidden="true" />
               </button>
             </div>
-          ) : null
+          ) : null)
         }
         generateDisabled={
           !isAIStudioVideoModelAvailable(model) ||
@@ -1252,7 +1267,7 @@ export function VideoGenerationStudioPanel({
         }
         maxLength={model === "kling_3_0" ? AI_STUDIO_KLING_PROMPT_MAX_LENGTH : AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH}
         name="videoPrompt"
-        placeholder="Describe the video you want to create…"
+        placeholder={recreateView ? "What would you like to change?" : "Describe the video you want to create…"}
         prompt={prompt}
         onPromptChange={(nextPrompt) => {
           submissionKeyRef.current = null;

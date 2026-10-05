@@ -42,14 +42,23 @@ export function buildOpenRouterSeedanceRequest(input: SeedanceInput) {
   if (!prompt || prompt.length > 10_000) {
     throw new ProviderRequestNotSubmittedError("Add a prompt within the supported video input length.");
   }
-  if (input.referenceAudioUrls?.length || input.referenceVideoUrl) {
-    throw new ProviderRequestNotSubmittedError("Use image references for Seedance 2.5 in UGC Pilot.");
-  }
   const images = input.referenceImageUrls?.length
     ? input.referenceImageUrls : input.referenceImageUrl ? [input.referenceImageUrl] : [];
   if (images.length > 6 || new Set(images).size !== images.length || images.some((url) => !isHttpsUrl(url))) {
     throw new ProviderRequestNotSubmittedError("Seedance 2.5 accepts up to six distinct uploaded image references in UGC Pilot.");
   }
+  const audio = input.referenceAudioUrls ?? [];
+  const media = [...images, ...audio, ...(input.referenceVideoUrl ? [input.referenceVideoUrl] : [])];
+  if (media.length > 6 || audio.length > 1 || media.some(url => !isHttpsUrl(url)) || new Set(media).size !== media.length) {
+    throw new ProviderRequestNotSubmittedError("Use up to six distinct HTTPS references, including one audio and one video reference, in UGC Pilot.");
+  }
+  // OpenRouter Seedance 2.5 accepts all three input_references modalities.
+  // These guide generation; there is no soundtrack mixing or demo append here.
+  const inputReferences = [
+    ...images.map(url => ({ type: "image_url" as const, image_url: { url } })),
+    ...audio.map(url => ({ type: "audio_url" as const, audio_url: { url } })),
+    ...(input.referenceVideoUrl ? [{ type: "video_url" as const, video_url: { url: input.referenceVideoUrl } }] : []),
+  ];
   return {
     model: OPENROUTER_SEEDANCE_MODEL,
     prompt,
@@ -57,7 +66,7 @@ export function buildOpenRouterSeedanceRequest(input: SeedanceInput) {
     resolution: input.resolution,
     aspect_ratio: input.aspectRatio,
     generate_audio: true,
-    ...(images.length ? { input_references: images.map((url) => ({ type: "image_url", image_url: { url } })) } : {}),
+    ...(inputReferences.length ? { input_references: inputReferences } : {}),
   };
 }
 
@@ -82,7 +91,9 @@ export async function generateOpenRouterSeedanceVideoBuffer(input: SeedanceInput
       if (!key || key.is_management_key === true) {
         throw new ProviderRequestNotSubmittedError("Configure a regular OpenRouter inference API key.");
       }
-      const estimatedCost = estimateOpenRouterSeedanceCost(input.resolution as "480p" | "720p", input.durationSeconds);
+      // Video-reference requests require a $2 authorization on OpenRouter.
+      // Keep the larger output estimate as a conservative spending guard.
+      const estimatedCost = Math.max(input.referenceVideoUrl ? 2 : 0, estimateOpenRouterSeedanceCost(input.resolution as "480p" | "720p", input.durationSeconds));
       if (typeof key.limit_remaining === "number" && key.limit_remaining < estimatedCost) {
         throw new ProviderRequestNotSubmittedError("The OpenRouter API key has insufficient remaining spending allowance for this video.");
       }

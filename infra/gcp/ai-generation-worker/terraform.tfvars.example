@@ -9,6 +9,14 @@ environment = "prod"
 # - you are ready to test AI generation intentionally.
 enable_ai_generation_worker = false
 
+# Audio is additive. Enable only after its reviewed migration, private bucket,
+# account allowance and worker secret access have been verified.
+enable_audio_generation             = false
+private_audio_bucket_name           = ""
+elevenlabs_voice_api_key_secret_id   = ""
+audio_generation_public_enabled     = false
+audio_generation_allowed_user_ids   = ""
+
 # Example after running npm run worker:gcp:image:push -- --cloud-build:
 # worker_image_uri = "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker:worker-gcp-20260718143000"
 worker_image_uri = ""

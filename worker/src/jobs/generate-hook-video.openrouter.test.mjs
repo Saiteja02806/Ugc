@@ -62,6 +62,39 @@ test("the real worker submits OpenRouter, validates MP4, stores output and retai
   assert.equal(requests.filter((request) => request.method === "POST").length, 1);
 });
 
+test("the real worker forwards Create voice/video guidance only to OpenRouter and keeps it in the recovery fingerprint", async () => {
+  const ctx = context(), references = {
+    referenceImageUrls: ["https://storage.example.com/creator.png"],
+    referenceAudioUrls: ["https://storage.example.com/voice.mp3"],
+    referenceVideoUrl: "https://storage.example.com/recording.mp4", referenceVideoDurationSeconds: 30,
+  };
+  let posts = 0;
+  mock.method(globalThis, "fetch", async (url, init) => {
+    assert.ok(String(url).startsWith("https://openrouter.ai/api/v1/"));
+    if (String(url).endsWith("/key")) return json({ data: { limit_remaining: 100 } });
+    if (init?.method === "POST") {
+      posts++;
+      const body = JSON.parse(init.body);
+      assert.deepEqual(body.input_references, [
+        { type: "image_url", image_url: { url: references.referenceImageUrls[0] } },
+        { type: "audio_url", audio_url: { url: references.referenceAudioUrls[0] } },
+        { type: "video_url", video_url: { url: references.referenceVideoUrl } },
+      ]);
+      assert.equal(body.generate_audio, true);
+      assert.equal(body.demoAssetId, undefined); assert.equal(body.backgroundAssetId, undefined);
+      return json({ id: "reference-id" }, 202);
+    }
+    return String(url).includes("/content") ? new Response(video, { headers: { "content-type": "video/mp4" } }) : json({ status: "completed" });
+  });
+  const withReferences = { ...job, input_json: { ...job.input_json, ...references } };
+  const result = await runGenerateHookVideoJob(withReferences, ctx);
+  assert.equal(result.provider, "openrouter");
+  assert.equal(posts, 1);
+  // The accepted operation is recoverable without uploading or paying again.
+  await runGenerateHookVideoJob(withReferences, ctx);
+  assert.equal(posts, 1);
+});
+
 test("a transient poll failure resumes the same accepted OpenRouter operation on worker retry", async () => {
   const ctx = context();
   let posts = 0;

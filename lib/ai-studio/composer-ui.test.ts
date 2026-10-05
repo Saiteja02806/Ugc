@@ -69,11 +69,11 @@ test("the unified composer is narrower without squeezing standard layouts", () =
 test("the unified composer stays compact while supporting multiline prompts", () => {
   assert.match(
     composer,
-    /const minimumHeight = layout === "unified" \? 40 : 64;/,
+    /const minimumHeight = compact \? 64 : layout === "unified" \? 40 : 64;/,
   );
   assert.match(
     composer,
-    /const maximumHeight = layout === "unified" \? 64 : 128;/,
+    /const maximumHeight = compact \? 96 : layout === "unified" \? 64 : 128;/,
   );
   assert.match(
     composer,
@@ -252,7 +252,7 @@ test("video references start empty and offer optional creator references", () =>
 
 test("AI Studio keeps direct image and video references optional outside Explore Recreate", () => {
   assert.match(imageWorkspace, /allowedKinds=\{\["image"\]\}/);
-  assert.match(imageWorkspace, /referenceImageUrl: referenceImage\?\.asset\.url \?\? null/);
+  assert.match(imageWorkspace, /referenceImageUrl: referenceImage\?\.asset\.url \?\? recreateView\?\.referenceImageUrl \?\? null/);
   assert.match(
     videoWorkspace,
     /<ReferenceFilesUpload[\s\S]*?allowedKinds=\{\["image"\]\}/,

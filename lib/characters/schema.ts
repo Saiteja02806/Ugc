@@ -5,7 +5,7 @@ export const CHARACTER_VERSION = 1;
 export const CHARACTER_CANDIDATE_COUNT = 3;
 
 export const CharacterGenderSchema = z.enum(["male", "female"]);
-export const CharacterImageModelSchema = z.enum(["gpt_image", "nano_banana_2"]);
+export const CharacterImageModelSchema = z.enum(["gpt_image", "gemini_3_pro", "nano_banana_2"]);
 
 export const CharacterGenerateRequestSchema = z.strictObject({
   mode: z.enum(["assisted", "custom"]),

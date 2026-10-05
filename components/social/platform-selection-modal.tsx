@@ -1,5 +1,8 @@
 "use client";
 
+import { useAccountTimeZone } from "@/components/providers/account-timezone-provider";
+import { getSchedulingTimeZoneOptions } from "@/lib/scheduling/account-timezone";
+
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
@@ -66,7 +69,7 @@ import {
   TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE,
   type TikTokPublishCapabilities,
 } from "@/lib/social/tiktok-publishing";
-import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
+import { hasTikTokUiAccess } from "@/lib/social/platform-visibility";
 import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
 import {
   type SocialConnection,
@@ -161,8 +164,6 @@ const platforms: PlatformDefinition[] = [
   },
 ];
 
-const defaultTimezone =
-  Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 const MAX_SELECTED_INSTAGRAM_ACCOUNTS = 5;
 
 const publishingJourney = [
@@ -186,10 +187,10 @@ function getContentLabel(contentKind: ScheduleContentKind) {
 
 function getStepDetails(
   contentKind: ScheduleContentKind,
-  tiktokBetaEnabled: boolean,
+  hasMultiplePlatforms: boolean,
 ): Record<ModalStep, { description: string; number: 2 | 3 | 4; title: string }> {
   const contentLabel = getContentLabel(contentKind);
-  const accountLabel = tiktokBetaEnabled ? "publishing account" : "Instagram account";
+  const accountLabel = hasMultiplePlatforms ? "publishing account" : "Instagram account";
 
   return {
     accounts: {
@@ -220,7 +221,8 @@ export function PlatformSelectionModal({
   open,
 }: PlatformSelectionModalProps) {
   const { user } = useAuth();
-  const tiktokBetaEnabled = hasTikTokBetaAccess(user);
+  const defaultTimezone = useAccountTimeZone();
+  const tiktokBetaEnabled = hasTikTokUiAccess(user);
   const youtubeBetaEnabled = hasYouTubeBetaAccess(user);
   const contentKind = getContentKind(context);
   const queryClient = useQueryClient();
@@ -238,18 +240,17 @@ export function PlatformSelectionModal({
     Record<string, TikTokCapabilitiesState>
   >({});
   const [caption, setCaption] = useState("");
-  const [timezone, setTimezone] = useState(defaultTimezone);
-  const initialLaterSlot = getEarliestScheduleSlot(
-    Date.now(),
-    DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
-    defaultTimezone,
-  );
-  const [scheduledDate, setScheduledDate] = useState(initialLaterSlot.date);
-  const [scheduledTime, setScheduledTime] = useState(initialLaterSlot.time);
+  const [timezoneOverride, setTimezone] = useState<string | null>(null);
+  const timezone = timezoneOverride ?? defaultTimezone;
+  const [scheduledDateOverride, setScheduledDate] = useState<string | null>(null);
+  const [scheduledTimeOverride, setScheduledTime] = useState<string | null>(null);
   const [minimumLeadMinutes, setMinimumLeadMinutes] = useState(
     DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
   );
   const [currentTime, setCurrentTime] = useState(() => Date.now());
+  const initialLaterSlot = getEarliestScheduleSlot(currentTime, minimumLeadMinutes, timezone);
+  const scheduledDate = scheduledDateOverride ?? initialLaterSlot.date;
+  const scheduledTime = scheduledTimeOverride ?? initialLaterSlot.time;
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
@@ -504,7 +505,8 @@ export function PlatformSelectionModal({
     [currentTime, timezone],
   );
   const contentLabel = getContentLabel(contentKind);
-  const currentStep = getStepDetails(contentKind, tiktokBetaEnabled)[step];
+  const hasMultiplePlatforms = visiblePlatforms.length > 1;
+  const currentStep = getStepDetails(contentKind, hasMultiplePlatforms)[step];
   const canContinueAccounts =
     selectedConnections.length > 0 &&
     selectedConnections.every(
@@ -513,12 +515,6 @@ export function PlatformSelectionModal({
 
   function resetModal() {
     const now = Date.now();
-    const nextSlot = getEarliestScheduleSlot(
-      now,
-      minimumLeadMinutes,
-      defaultTimezone,
-    );
-
     closePopup();
     clearPopupError();
     setStep("accounts");
@@ -527,9 +523,9 @@ export function PlatformSelectionModal({
     setPublishingSettings({});
     setTikTokCapabilities({});
     setCaption("");
-    setTimezone(defaultTimezone);
-    setScheduledDate(nextSlot.date);
-    setScheduledTime(nextSlot.time);
+    setTimezone(null);
+    setScheduledDate(null);
+    setScheduledTime(null);
     setCurrentTime(now);
     setConfirmError(null);
     setRecoveryDraftId(null);
@@ -793,12 +789,14 @@ export function PlatformSelectionModal({
   }
 
   function applyQuickSlot(hoursFromNow: number) {
+    setTimezone(timezone);
     const next = getFutureSlot(currentTime + hoursFromNow * 60 * 60_000, timezone);
     setScheduledDate(next.date);
     setScheduledTime(next.time);
   }
 
   function applyTomorrowSlot(time: string) {
+    setTimezone(timezone);
     setScheduledDate(addDaysToDateKey(minimumScheduledDate, 1));
     setScheduledTime(time);
   }
@@ -821,7 +819,7 @@ export function PlatformSelectionModal({
           <DialogHeader className="relative gap-3 px-5 pb-4 pr-14 pt-5 sm:px-7 sm:pb-5 sm:pr-16 sm:pt-6">
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
-                {tiktokBetaEnabled ? "Publishing post" : "Instagram post"}
+                {hasMultiplePlatforms ? "Publishing post" : "Instagram post"}
               </p>
               <DialogTitle className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">
                 {currentStep.title}
@@ -1024,10 +1022,10 @@ export function PlatformSelectionModal({
                   minimumDate={minimumScheduledDate}
                   time={scheduledTime}
                   timezone={timezone}
-                  onDateChange={setScheduledDate}
+                  onDateChange={(value) => { setTimezone(timezone); setScheduledTime(scheduledTime); setScheduledDate(value); }}
                   onQuickHours={applyQuickSlot}
                   onQuickTomorrow={applyTomorrowSlot}
-                  onTimeChange={setScheduledTime}
+                  onTimeChange={(value) => { setTimezone(timezone); setScheduledDate(scheduledDate); setScheduledTime(value); }}
                   onTimezoneChange={setTimezone}
                 />
               )}
@@ -2029,20 +2027,7 @@ function addDaysToDateKey(dateKey: string, days: number) {
 }
 
 function getTimezoneOptions(currentTimezone: string) {
-  const common = [
-    currentTimezone,
-    "UTC",
-    "Asia/Calcutta",
-    "America/New_York",
-    "America/Chicago",
-    "America/Denver",
-    "America/Los_Angeles",
-    "Europe/London",
-    "Europe/Paris",
-    "Australia/Sydney",
-  ];
-
-  return Array.from(new Set(common.filter(Boolean)));
+  return getSchedulingTimeZoneOptions(currentTimezone);
 }
 
 function getPreferredConnection(connections: SocialConnection[]) {

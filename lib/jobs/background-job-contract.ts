@@ -6,6 +6,7 @@ import type {
 } from "./background-jobs.ts";
 
 export const CANONICAL_BACKGROUND_JOB_TYPES = [
+  "audio_generation",
   "hook_text_generation",
   "trending_prebuild",
   "wall_text_content_plan_generation",
@@ -45,6 +46,7 @@ const canonicalTypeByImplementation: Record<
   BackgroundJobType,
   CanonicalBackgroundJobType
 > = {
+  generate_audio: "audio_generation",
   analytics_sync: "analytics_sync",
   carousel_content_plan_generation: "carousel_generation",
   carousel_generation: "carousel_generation",

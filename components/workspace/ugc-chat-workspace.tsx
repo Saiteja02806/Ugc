@@ -21,6 +21,7 @@ import { ImagePreviewDialog } from "@/components/generation/image-preview-dialog
 import { ReferenceMediaUpload } from "@/components/generation/reference-media-upload";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
+import type { RecreateGenerationView } from "@/components/explore/recreate-generation-view";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
 import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import {
@@ -213,12 +214,14 @@ export function ImageGenerationStudioPanel({
   active = true,
   creditCost = 1,
   creditsRemaining = null,
+  recreateView,
 }: {
   accessMessage?: string | null;
   accessState?: AIStudioAccessState;
   active?: boolean;
   creditCost?: number;
   creditsRemaining?: number | null;
+  recreateView?: RecreateGenerationView;
 }) {
   const { loading: authLoading, user } = useAuth();
   const queryClient = useQueryClient();
@@ -267,11 +270,14 @@ export function ImageGenerationStudioPanel({
   const submissionKeyRef = useRef<string | null>(null);
   const activeUserIdRef = useRef<string | null>(null);
   const persistedJobId = usePersistedJobIdFromUrl(IMAGE_JOB_URL_PARAMETER);
+  useEffect(() => {
+    submissionKeyRef.current = null;
+  }, [recreateView?.referenceImageUrl]);
   const urlJobId =
     persistedJobId && persistedJobId !== ignoredPersistedJobId
       ? persistedJobId
       : null;
-  const activeJobIds = Array.from(
+  const activeJobIds = recreateView?.preview ? [] : Array.from(
     new Set([
       ...submittedJobIds,
       ...(urlJobId ? [urlJobId] : []),
@@ -287,7 +293,7 @@ export function ImageGenerationStudioPanel({
   const durableJobs = queriedJobs.filter(
     (job) => job.jobType === "image_generation",
   );
-  const generationLocked = accessState !== "pro";
+  const generationLocked = recreateView?.preview === true || accessState !== "pro";
   const requiredCredits = creditCost * quantity;
   const hasInsufficientCredits =
     accessState === "pro" &&
@@ -327,6 +333,16 @@ export function ImageGenerationStudioPanel({
     async function loadResults() {
       setHistoryOpen(false);
       setHistoryQuery("");
+      if (recreateView?.preview) {
+        setGeneratedAssets([]);
+        setStoredJobIds([]);
+        setSubmittedJobIds([]);
+        setCurrentResultIds([]);
+        setSelectedHistoryImageId(null);
+        setResultsError(null);
+        setResultsLoading(false);
+        return;
+      }
       if (historyOwnerIdRef.current !== (user?.uid ?? null)) {
         historyOwnerIdRef.current = user?.uid ?? null;
         setGeneratedAssets([]);
@@ -399,7 +415,7 @@ export function ImageGenerationStudioPanel({
     return () => {
       ignore = true;
     };
-  }, [active, authLoading, user]);
+  }, [active, authLoading, user, recreateView?.preview]);
 
   useEffect(() => {
     if (!foregroundAutoResumeRef.current) return;
@@ -615,7 +631,7 @@ export function ImageGenerationStudioPanel({
           model,
           prompt: trimmedPrompt,
           quantity,
-          referenceImageUrl: referenceImage?.asset.url ?? null,
+          referenceImageUrl: referenceImage?.asset.url ?? recreateView?.referenceImageUrl ?? null,
         }),
       });
       const data = (await response.json()) as GenerateResponse;
@@ -848,6 +864,7 @@ export function ImageGenerationStudioPanel({
     >
       <AiStudioResults
         ariaLabel="Generated images"
+        emptyContent={recreateView?.emptyContent}
         emptyTitle="What will you create?"
         emptyDescription="Describe an image below, or add a reference to guide the look. Your completed images are saved in History."
         gridClassName="grid-cols-1 gap-4 sm:grid-cols-1 lg:grid-cols-1 xl:grid-cols-1 2xl:grid-cols-1"
@@ -856,7 +873,7 @@ export function ImageGenerationStudioPanel({
         status={resultsStatus}
         statusPlacement="inline"
         scrollToLatestKey={!selectedHistoryImageId && isSubmitting ? activeSubmittedAt : null}
-        toolbar={
+        toolbar={recreateView?.preview ? undefined :
           <div className="flex items-center gap-2">
             {selectedHistoryImageId ? (
               <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedHistoryImageId(null)}>Back to session</Button>
@@ -904,6 +921,8 @@ export function ImageGenerationStudioPanel({
       <ImagePreviewDialog image={active ? previewImage : null} onClose={() => setPreviewImage(null)} />
 
       <AiStudioComposer
+        compact={Boolean(recreateView)}
+        contextBanner={recreateView?.contextBanner}
         accessMessage={composerMessage}
         active={active}
         ariaLabel="Image prompt"
@@ -934,7 +953,7 @@ export function ImageGenerationStudioPanel({
           />
         }
         name="imagePrompt"
-        placeholder="Describe the image you want to create…"
+        placeholder={recreateView ? "What would you like to change?" : "Describe the image you want to create…"}
         prompt={prompt}
         onPromptChange={(nextPrompt) => {
           submissionKeyRef.current = null;

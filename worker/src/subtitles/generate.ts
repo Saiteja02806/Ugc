@@ -3,10 +3,13 @@ import { constants, createReadStream } from "node:fs";
 import { copyFile, mkdir, mkdtemp, readFile, rename, rm, rmdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
-import { getSubtitleLayout, groupSubtitleWords, serializeAss, serializeSrt, serializeVtt } from "./captions.js";
+import { getSubtitleLayout, serializeAss, serializeSrt, serializeVtt } from "./captions.js";
+import { groupNaturalSubtitleWords } from "./phrases.js";
 import { SUBTITLE_VERSION, SubtitleError, parsePlacement, parseStyle, record, validateTranscript, type SubtitlePlacement, type SubtitleStyle, type SubtitleTranscript } from "./contracts.js";
 import { createTextMeasurer, extractSubtitleAudio, prepareSubtitleFonts, probeVideo, renderSubtitleVideo, type SubtitleTools } from "./media.js";
 import type { TranscriptionProvider } from "./openai-provider.js";
+import { planEditorialPages, serializeEditorialAss } from "./editorial.js";
+import { createEditorialMeasurer, prepareEditorialFonts } from "./editorial-media.js";
 
 export type GenerateSubtitlesInput = {
   inputPath: string;
@@ -92,17 +95,23 @@ export async function generateSubtitles(input: GenerateSubtitlesInput) {
     await copyFile(inputPath, join(workDir, "source-video"));
     const video = await probeVideo(join(workDir, "source-video"), input.tools, input.signal);
     const sourceHash = await hashFile(join(workDir, "source-video"));
-    await prepareSubtitleFonts(input.tools, workDir);
+    if (style === "editorial") await prepareEditorialFonts(input.tools, workDir);
+    else await prepareSubtitleFonts(input.tools, workDir);
+    const layout = getSubtitleLayout(video.width, video.height, style);
+    const editorialMeasure = style === "editorial" ? createEditorialMeasurer(layout, input.tools, workDir, input.signal) : null;
+    const measure = editorialMeasure ? (text: string) => editorialMeasure(text, layout.fontSize, "lead").then(ink => ink.width) : createTextMeasurer(layout, input.tools);
+    await measure("Subtitle font check");
     input.onStage?.("extracting_audio");
     const audioPath = join(workDir, "audio.wav");
     await extractSubtitleAudio(join(workDir, "source-video"), audioPath, video, input.tools, input.signal);
     input.onStage?.("transcribing");
     const { transcript, cacheHit } = await getCachedTranscript({ sourceHash, durationMs: video.durationMs,
       cacheDir: resolve(input.cacheDir), provider: input.provider, audioPath, signal: input.signal });
-    const layout = getSubtitleLayout(video.width, video.height, style);
-    const cues = await groupSubtitleWords(transcript.words, layout, createTextMeasurer(layout, input.tools));
+    if (style === "editorial" && !["en", "eng", "english"].includes(transcript.language?.trim().toLowerCase() ?? "")) throw new SubtitleError("EDITORIAL_LANGUAGE_UNSUPPORTED", "Editorial captions currently support English speech.");
+    const cues = await groupNaturalSubtitleWords(transcript.words, layout, measure);
     input.signal?.throwIfAborted();
-    await writeFile(join(workDir, "captions.ass"), serializeAss(cues, layout, style, placement));
+    const ass = editorialMeasure ? serializeEditorialAss(await planEditorialPages(cues, layout, placement, editorialMeasure), layout) : serializeAss(cues, layout, style, placement);
+    await writeFile(join(workDir, "captions.ass"), ass);
     input.onStage?.("rendering");
     await renderSubtitleVideo(workDir, video, input.tools, input.signal);
     await Promise.all([

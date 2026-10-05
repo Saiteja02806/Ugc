@@ -32,6 +32,40 @@ type PublishMediaSourceType =
   | "generated_video"
   | "upload";
 
+for (const platform of ["instagram", "tiktok", "youtube"] as const) {
+  test(`does not publish an early-delivered ${platform} job`, async () => {
+    await withEncryptionKey(async () => {
+      const scheduledFor = new Date(Date.now() + 24 * 60 * 60_000).toISOString();
+      const fixture = createPublishStore(createOperation({ platform }), { platform, scheduledFor });
+      const unexpectedPublish = async () => {
+        assert.fail("Provider must not be contacted before the chosen time.");
+      };
+      await assert.rejects(runPublishSocialPostJob(createPublishJob(), {
+        store: fixture.store,
+        publishers: {
+          instagram: unexpectedPublish, instagramCarousel: unexpectedPublish,
+          tiktok: unexpectedPublish, tiktokCarousel: unexpectedPublish,
+          youtube: unexpectedPublish,
+        },
+      }), (error: unknown) => error instanceof DeferredJobError &&
+        error.code === "social_publish_not_due" && Date.parse(error.retryAt) <= Date.parse(scheduledFor));
+      assert.deepEqual(fixture.calls, []);
+      assert.equal(fixture.operation.status, "pending");
+    });
+  });
+}
+
+test("a cancelled future post completes cleanup without publishing or deferring", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(createOperation(), {
+      targetStatus: "cancelled", scheduledFor: new Date(Date.now() + 60 * 60_000).toISOString(),
+    });
+    const output = await runPublishSocialPostJob(createPublishJob(), { store: fixture.store });
+    assert.equal(output.cancelled, true);
+    assert.deepEqual(fixture.calls, []);
+  });
+});
+
 test("persists provider initialization before completing a publish", async () => {
   await withEncryptionKey(async () => {
     const fixture = createPublishStore(createOperation());
@@ -894,6 +928,7 @@ function createPublishStore(
     denyClaim?: boolean;
     failTargetPublished?: boolean;
     mediaSourceType?: PublishMediaSourceType;
+    scheduledFor?: string;
     platform?: "instagram" | "tiktok" | "youtube";
     targetStatus?: "cancelled" | "failed" | "scheduled";
     withInstagramRefresh?: boolean;
@@ -910,6 +945,7 @@ function createPublishStore(
     options.mediaSourceType,
     options.carousel,
   );
+  if (options.scheduledFor) context.target.scheduled_for = options.scheduledFor;
   let targetMetadata: Record<string, Json> = {};
   let targetErrorCode: string | null = null;
   let targetErrorMessage = "";

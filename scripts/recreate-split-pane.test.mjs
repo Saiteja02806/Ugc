@@ -35,7 +35,7 @@ test("the splitter has no full-height line or focus outline", () => {
   assert.doesNotMatch(layout, /\.divider::before|\.divider::after/);
   assert.match(layout, /\.divider:focus-visible \.grip \{ outline: 2px solid/);
   assert.doesNotMatch(layout, /\.divider:focus-visible \{[^}]*outline:/);
-  assert.match(layout, /clamp\(220px, 20%, 320px\)/);
+  assert.match(layout, /clamp\(320px, 32%, 420px\)/);
   assert.match(split, /onDoubleClick=\{\(\) => setRequestedWidth\(null\)\}/);
   assert.match(split, /startRequestedWidth: requestedWidth/);
 });
@@ -43,12 +43,26 @@ test("the splitter has no full-height line or focus outline", () => {
 test("narrow recreate controls are compact without losing their names or settings", () => {
   const composer = read("components/generation/ai-studio-composer.tsx");
   assert.match(layout, /@container recreate-editor \(max-width: 300px\)/);
-  assert.match(layout, /composer-settings-label"\]\) \{ display: none/);
-  assert.match(composer, /aria-label="Generation settings" title="Generation settings"/);
-  assert.match(composer, /data-slot="composer-settings-label">Settings<\/span>/);
-  assert.match(composer, /const minimumHeight = compact \? 64/);
-  assert.match(composer, /const maximumHeight = compact \? 96/);
-  assert.match(composer, /<div className="flex flex-wrap items-center gap-2">\{settings\}<\/div>/);
+  assert.doesNotMatch(composer, /composer-settings-label|>Settings<\/span>/);
+  assert.match(composer, /const minimumHeight = compact \? 40/);
+  assert.match(composer, /const maximumHeight = compact \? 72/);
+  assert.match(composer, /<ComposerSettingsRail>\{settings\}<\/ComposerSettingsRail>/);
+  const rail = read("components/generation/composer-settings-rail.tsx");
+  assert.match(rail, /aria-label="Generation settings"/);
+  assert.match(rail, /"More settings"/);
+  assert.match(rail, /scrollBy/);
+  assert.match(rail, /position\.end \? -rail\.current\.scrollLeft/); // Return to the first pill, not a mid-rail loop.
+  assert.match(rail, /ResizeObserver/);
+});
+
+test("only the Recreate composer gets narrower with smaller controls and a responsive footer", () => {
+  assert.match(layout, /\.split \.editor :global\(form\[data-compact\]\) \{ width: calc\(100% - 16px\); max-width: 340px;/);
+  assert.match(layout, /grid-template-columns: minmax\(0, 1fr\) auto/);
+  const narrow = layout.slice(layout.indexOf("@container recreate-editor"));
+  assert.match(narrow, /grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(narrow, /form\[data-compact\]\) \{ width: 100%/);
+  assert.match(layout, /button\[data-slot="popover-trigger"\]\) \{ height: 24px; min-height: 24px/);
+  assert.match(layout, /button\[type="submit"\]\) \{ gap: 4px; padding-inline: 10px; font-size: 11px/);
 });
 
 test("the clearer recreate arrow still selects a reference, not resets playback or drafts", () => {

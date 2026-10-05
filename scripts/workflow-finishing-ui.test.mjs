@@ -6,6 +6,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import * as finishClient from "../lib/explore/workflow-finishing-client.ts";
 import * as scheduleClient from "../lib/explore/workflow-schedule-client.ts";
+import * as schedulingDraft from "../lib/explore/workflow-scheduling-draft.ts";
 import * as defaultMusicClient from "../lib/explore/workflow-default-music-client.ts";
 
 const load = (path, imports, globals = {}) => {
@@ -30,7 +31,7 @@ function harness({ saved = null, lost = false, completed = false, subtitles = fa
     useCallback(fn, deps) { const i = cursor++; if (!slots[i] || deps.some((v, n) => !Object.is(v, slots[i].deps[n]))) slots[i] = { deps, fn }; return slots[i].fn; },
     useEffect(fn, deps) { const i = cursor++; const prior = slots[i]; if (!prior || deps.some((v, n) => !Object.is(v, prior.deps[n]))) effects.push(() => { prior?.cleanup?.(); slots[i] = { deps, cleanup: fn() }; }); },
   };
-  const module = load("components/explore/use-workflow-finishing.ts", {
+  const testModule = load("components/explore/use-workflow-finishing.ts", {
     react, "@/lib/explore/workflow-finishing-client": finishClient,
     "@/lib/explore/workflow-default-music-client": defaultMusicClient,
     "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { assert.equal(owner, "owner"); return "owner-token"; } },
@@ -55,7 +56,7 @@ function harness({ saved = null, lost = false, completed = false, subtitles = fa
       return Response.json({ ok: true, receiptVersion: 1, requestKey: entry.requestKey, outcome: completed || init.method === "POST" ? "completed" : "unconfirmed", mediaAssetId: completed || init.method === "POST" ? output.id : null, message: "Saved output." });
     },
   });
-  return { props, calls, musicReads, uploads, musicAssetId, store, storageKey, render() { cursor = 0; const view = module.useWorkflowFinishing(props); while (effects.length) effects.shift()(); return view; }, unmount() { for (const slot of slots) slot?.cleanup?.(); } };
+  return { props, calls, musicReads, uploads, musicAssetId, store, storageKey, render() { cursor = 0; const view = testModule.useWorkflowFinishing(props); while (effects.length) effects.shift()(); return view; }, unmount() { for (const slot of slots) slot?.cleanup?.(); } };
 }
 
 test("background OFF never fetches or uploads music and always submits a null background", async () => {
@@ -140,13 +141,15 @@ test("a lost upload completion response is recovered through GET and never delet
   }
 });
 
-function schedulingHarness({ kind = "hook", saved = null, lost = false, storageFails = false, locks = true, finished = output } = {}) {
+function schedulingHarness({ kind = "hook", saved = null, lost = false, storageFails = false, locks = true, finished = output, multiple = false } = {}) {
   let cursor = 0, pendingFailure = lost;
   const slots = [], effects = [], calls = [], store = new Map();
   const storageKey = `ugc-explore:schedule:v1:owner:${kind}`;
   if (saved) store.set(storageKey, JSON.stringify(saved));
   const connectionId = saved?.input.targets[0].connectionId ?? randomUUID();
   const props = { enabled: true, ownerId: "owner", kind, source, demo: null, demoAudio: null, playback: "once", scheduleDraft: { connectionId, platform: "instagram", caption: "My caption", date: "2026-10-06", time: "15:30" }, children: value => value };
+  const youtubeId = randomUUID();
+  if (multiple) props.scheduleDraft = { ...props.scheduleDraft, platforms: ["instagram", "youtube"], connectionIds: { instagram: connectionId, youtube: youtubeId } };
   const react = {
     useRef(value) { const i = cursor++; return slots[i] ??= { current: value }; },
     useState(value) { const i = cursor++; if (!(i in slots)) slots[i] = value; return [slots[i], v => { slots[i] = typeof v === "function" ? v(slots[i]) : v; }]; },
@@ -155,11 +158,12 @@ function schedulingHarness({ kind = "hook", saved = null, lost = false, storageF
   };
   const jsx = (type, value) => ({ type, props: value });
   const Editor = () => null;
-  const module = load("components/explore/workflow-finishing-boundary.tsx", {
+  const testModule = load("components/explore/workflow-finishing-boundary.tsx", {
     react, "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: Symbol("Fragment") },
     "next/dynamic": { default: (_loader, options) => { assert.equal(options.ssr, false); return Editor; } },
     "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: { subtitles: false, style: "clean" }, useWorkflowFinishing: () => ({ action: {}, output: finished }) },
     "@/lib/explore/workflow-schedule-client": scheduleClient,
+    "@/lib/explore/workflow-scheduling-draft": schedulingDraft,
     "@/lib/explore/workflow-connected-accounts": { parseWorkflowConnectedAccounts: value => { assert.equal(value.ok, true); return value.connections; } },
     "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { assert.equal(owner, "owner"); return "owner-token"; } },
   }, {
@@ -169,13 +173,13 @@ function schedulingHarness({ kind = "hook", saved = null, lost = false, storageF
     fetch: async (url, init) => {
       calls.push({ url, ...init });
       assert.equal(init.cache, "no-store"); assert.equal(init.headers.Authorization, "Bearer owner-token");
-      if (url === "/api/social/connections") return Response.json({ ok: true, connections: [{ id: connectionId, platform: "instagram" }] });
+      if (url === "/api/social/connections") return Response.json({ ok: true, connections: [{ id: connectionId, platform: "instagram" }, ...(multiple ? [{ id: youtubeId, platform: "youtube" }] : [])] });
       if (url === "/api/schedules?configOnly=1") return Response.json({ ok: true, minimumScheduleLeadMinutes: 5 });
       if (init.method === "POST") {
         const input = JSON.parse(init.body);
         assert.equal(JSON.parse(store.get(storageKey)).input.idempotencyKey, input.idempotencyKey, "persist before POST");
         if (pendingFailure) { pendingFailure = false; throw new Error("lost schedule response"); }
-        return Response.json({ ok: true, schedule: { id: saved?.scheduleId ?? randomUUID(), mediaAssetId: input.source.id, idempotencyKey: input.idempotencyKey, status: "scheduled", targets: [{ socialConnectionId: input.targets[0].connectionId, platform: input.targets[0].platform }] } });
+        return Response.json({ ok: true, schedule: { id: saved?.scheduleId ?? randomUUID(), mediaAssetId: input.source.id, idempotencyKey: input.idempotencyKey, status: "scheduled", targets: input.targets.map(target => ({ socialConnectionId: target.connectionId, platform: target.platform })) } });
       }
       if (url === "/api/schedules") return Response.json({ ok: true, schedules: [] });
       if (saved?.scheduleId && url === `/api/schedules/${saved.scheduleId}`) return Response.json({ ok: true, schedule: { id: saved.scheduleId, mediaAssetId: saved.input.source.id, idempotencyKey: saved.input.idempotencyKey, status: "scheduled", targets: [{ socialConnectionId: connectionId, platform: "instagram" }] } });
@@ -183,21 +187,24 @@ function schedulingHarness({ kind = "hook", saved = null, lost = false, storageF
     },
   });
   const submission = { caption: "Confirmed caption", scheduledSource: { kind: "media_asset", id: finished?.id ?? output.id }, targets: [{ connectionId, platform: "instagram", settings: { placement: "reels" } }], scheduledFor: "2026-10-06T10:00:00.000Z", scheduledDate: "2026-10-06", scheduledTime: "15:30", timezone: "Asia/Calcutta" };
+  if (multiple) submission.targets.push({ connectionId: youtubeId, platform: "youtube", settings: { privacyStatus: "private" } });
   return { calls, props, store, storageKey, submission, render() {
-    cursor = 0; const tree = module.WorkflowFinishingBoundary(props); while (effects.length) effects.shift()();
+    cursor = 0; const tree = testModule.WorkflowFinishingBoundary(props); while (effects.length) effects.shift()();
     return { view: tree.props.children[0].props.value, editor: tree.props.children[1]?.props ?? null };
   }, unmount() { for (const slot of slots) slot?.cleanup?.(); } };
 }
 
-test("both Explore workflows open account confirmation before posting and keep the exact confirmed settings on retry", async () => {
-  for (const kind of ["hook", "phone"]) {
-    const h = schedulingHarness({ kind, lost: true });
+test("both Explore workflows confirm one or both platforms and keep all exact settings on retry", async () => {
+  for (const kind of ["hook", "phone"]) for (const multiple of [false, true]) {
+    const h = schedulingHarness({ kind, lost: true, multiple });
     assert.equal(h.render().view.schedule.disabled, true);
     await tick(); let screen = h.render(); assert.equal(screen.view.schedule.disabled, false);
     screen.view.schedule.onAction(); await tick(); screen = h.render();
     assert.ok(screen.editor); assert.equal(h.calls.some(c => c.method === "POST"), false);
     assert.equal(screen.editor.initialDemoMediaId, output.id); assert.equal(screen.editor.initialCaption, h.props.scheduleDraft.caption);
     assert.equal(screen.editor.initialPlannedTargets[0].connectionId, h.submission.targets[0].connectionId);
+    assert.equal(screen.editor.initialPlannedTargets.length, multiple ? 2 : 1);
+    assert.equal(screen.editor.socialConnections.length, multiple ? 2 : 1);
     assert.equal(screen.editor.requireScheduleTarget, true); assert.equal(screen.editor.minimumScheduleLeadMinutes, 5);
     screen.editor.onSave(h.submission); await tick(); screen = h.render();
     assert.match(screen.view.schedule.error, /lost schedule response/);

@@ -4,6 +4,14 @@ The separate `/audio-generation` screen appears between Explore and Trending. Vo
 
 The integration is disabled by default. No production migration, deployment or live ElevenLabs generation has been performed as part of this implementation. As of October 3, 2026, new audio creation requires an active **UGC Pilot Starter or Growth** entitlement. UGC Free users can browse every screen and listen to voice samples but cannot generate. This application access check is separate from the ElevenLabs account's provider plan.
 
+## Account bookmarks release
+
+As of October 5, 2026, voice rows include **Use It** and a bookmark control. The new **Bookmarks** tab saves voices to the signed-in account across reloads and devices. Use It sets the voice for the existing text-to-speech editor without generating, discarding a draft or altering plan access. Free users can save and select voices, while new audio creation still requires active UGC Starter/Growth access.
+
+Before deploying this web update, apply the prepared `supabase/migrations/20261005042533_audio_voice_bookmarks.sql` through the existing reviewed migration workflow. It adds an isolated, RLS-enabled preference table with server-only access; no provider key or additional worker configuration is needed for bookmarks. Do not apply unrelated pending migrations as part of this step. A bookmark database error leaves the existing audio workflow usable and shows a retry message. This task verified the migration using disposable PostgreSQL and browser/provider fixtures; no production schema change or deployment was performed.
+
+Production acceptance after deployment: save a voice, reload and verify it in Bookmarks, open the same account on a second device, remove it and refresh, confirm a different account sees its own bookmarks, then use a saved voice and verify the script remains unchanged. Check both Free and paid accounts: preview and bookmarking use no TTS, and generation remains paid-only.
+
 ## Where to put the API key
 
 For local development, **add** the following entries to the project's existing `.env.local`; preserve its other configuration:

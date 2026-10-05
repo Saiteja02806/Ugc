@@ -11,6 +11,7 @@ import { WorkflowCreationPanel, type WorkflowSection } from "@/components/explor
 import { WorkflowEditWorkspace, WorkflowScheduleWorkspace } from "@/components/explore/workflow-edit-workspace";
 import { EMPTY_SCHEDULE_DRAFT, WorkflowSchedulingPanel } from "@/components/explore/workflow-scheduling-panel";
 import { WorkflowConnectedAccounts } from "@/components/explore/workflow-connected-accounts";
+import { selectWorkflowAccount, workflowSelectedAccounts, workflowSelectedPlatforms } from "@/lib/explore/workflow-scheduling-draft";
 import { WorkflowPreviewCanvas } from "@/components/explore/workflow-preview-canvas";
 import { useLocalAppScreen } from "@/components/explore/use-local-app-screen";
 import { useLocalWorkflowMedia } from "@/components/explore/use-local-workflow-media";
@@ -97,7 +98,7 @@ function PhoneWorkflowLayout({ generationEnabled, ownerId }: { generationEnabled
               demo={{ ...demo, choose: chooseDemo, remove: removeDemo }} demoAudio={{ ...demoAudio, choose: chooseDemoAudio, remove: removeDemoAudio }} demoAudioPlayback={demoAudioPlayback} onDemoAudioPlaybackChange={setDemoAudioPlayback} />
           </Tabs.Panel>
           <Tabs.Panel value="schedule" keepMounted className={creation.sectionPanel}>
-            <WorkflowSchedulingPanel draft={scheduleDraft} onChange={setScheduleDraft} accountsControl={<WorkflowConnectedAccounts enabled={generationEnabled} active={section === "schedule"} ownerId={ownerId} platform={scheduleDraft.platform} selectedId={scheduleDraft.connectionId ?? ""} onSelect={(connectionId) => setScheduleDraft((current) => ({ ...current, connectionId }))} />} />
+            <WorkflowSchedulingPanel draft={scheduleDraft} onChange={setScheduleDraft} accountsControl={<WorkflowConnectedAccounts enabled={generationEnabled} active={section === "schedule"} ownerId={ownerId} platforms={workflowSelectedPlatforms(scheduleDraft)} selectedIds={workflowSelectedAccounts(scheduleDraft)} onSelect={(platform, id) => setScheduleDraft(current => selectWorkflowAccount(current, platform, id))} />} />
           </Tabs.Panel>
         </WorkflowCreationPanel>
         <section aria-label="Phone video creation workspace" className={creation.main}>

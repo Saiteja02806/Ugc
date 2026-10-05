@@ -24,6 +24,7 @@ export function AiStudioResults({
   ariaLabel,
   children,
   emptyContent,
+  emptyContentClassName,
   emptyDescription,
   emptyTitle,
   failure,
@@ -38,6 +39,7 @@ export function AiStudioResults({
   ariaLabel: string;
   children: ReactNode;
   emptyContent?: ReactNode;
+  emptyContentClassName?: string;
   emptyDescription?: string;
   emptyTitle?: string;
   failure?: ReactNode;
@@ -152,7 +154,7 @@ export function AiStudioResults({
           </EmptyHeader>
         </Empty>
       ) : emptyContent ? (
-        <div className="flex min-h-0 flex-1 items-center px-1 py-5">{emptyContent}</div>
+        <div className={cn("flex min-h-0 flex-1 items-center px-1 py-5", emptyContentClassName)}>{emptyContent}</div>
       ) : (
         <Empty className="min-h-0 flex-1 px-5 py-8">
           <EmptyHeader>

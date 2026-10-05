@@ -68,7 +68,8 @@ test("places Edit in the page header and keeps circular decisions below the card
 
 test("keeps Hook video decisions below the review frame on compact laptops", () => {
   assert.match(workspace, /<PostInteractionFeed[\s\S]*<CreativeDecisionActions/);
-  assert.match(workspace, /h-\[min\(680px,calc\(100dvh-296px\)\)\]/);
+  assert.match(workspace, /reviewLayout\.reviewFeed/);
+  assert.doesNotMatch(workspace, /<p data-post-review-status/);
 });
 
 test("Reaction Reels expose text-only editing and show preparation instead of accepting an old preview", () => {
@@ -271,7 +272,7 @@ test("shows new Trending accounts a safe first-post interaction guide", () => {
   assert.match(swipeGuide, /Double-tap to schedule/);
   assert.match(swipeGuide, /Scroll to skip/);
   assert.match(swipeGuide, /Tap once to start/);
-  assert.match(swipeGuide, /motion-safe:animate-pulse/);
+  assert.match(swipeGuide, /data-trending-guide-heart/);
   assert.match(workspace, /onStart=\{dismissSwipeGuide\}/);
   assert.match(workspace, /fetch\("\/api\/trending\/walkthrough"/);
   assert.match(workspace, /function requestCreativeDecision[\s\S]*if \(dismissSwipeGuide\(\)\) \{\s*return false;/);
@@ -441,8 +442,8 @@ test("grows every review format across practical laptop viewport profiles", () =
     Math.min(Math.max(value, minimum), maximum);
   const carouselWidth = (width: number, height: number) =>
     Math.min(
-      clamp(300, width * 0.08333 + 220, 380),
-      clamp(300, height * 0.41667 - 20, 380),
+      clamp(312, width * 0.08333 + 232, 392),
+      clamp(312, height * 0.41667 - 8, 392),
     );
   const verticalWidth = (width: number, height: number) =>
     Math.min(
@@ -472,7 +473,7 @@ test("grows every review format across practical laptop viewport profiles", () =
 
   assert.deepEqual(
     viewports.map(([width, height]) => Math.round(carouselWidth(width, height))),
-    [300, 340, 340, 380],
+    [312, 352, 352, 392],
   );
   assert.deepEqual(
     viewports.map(([width, height]) => Math.round(verticalWidth(width, height))),

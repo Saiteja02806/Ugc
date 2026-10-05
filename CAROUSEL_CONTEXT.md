@@ -1,6 +1,280 @@
 # Carousel System Context
 
-Last updated: 2026-10-01
+Last updated: 2026-10-05
+
+## 2026-10-03 Scheduled publication time and account region audit
+
+- Production traces confirmed that generic background-job recovery redispatched
+  future `publish_social_post` jobs after the 15-minute stale threshold. The
+  stored IANA time zone and UTC conversion were correct; the publisher lacked a
+  final not-before check. All 48 early publications found on the reported
+  account had a `job_recovered` event before publication.
+- Production migrations `20261003121102_prevent_early_social_publishing` and
+  `20261003122024_account_timezone_preferences` are applied. Recovery selection,
+  locked recovery, and atomic worker claims now require the owner-scoped,
+  current target to be due. Recovery also honors `next_attempt_at`. Cancelled
+  and published targets remain eligible for idempotent cleanup; superseded or
+  orphaned jobs cannot publish. Due jobs and ordinary generation recovery retain
+  their behavior. Production transaction tests passed and rolled back all fixtures.
+- The local worker adds a `DeferredJobError` before claiming a provider operation
+  if the target is still in the future. Waiting cannot contact a social provider,
+  fail the target, or consume a provider retry. Database enforcement already
+  protects the running worker; this extra worker guard awaits deployment.
+- Account publication defaults initialize once from the browser's IANA region
+  at the first verified sign-in. Existing onboarding zones are backfilled.
+  Later devices or visits do not replace the saved account region. The service
+  stores preferences behind the verified Firebase identity; browser roles have
+  no direct table/function access. `Asia/Calcutta` is a supported alias for India,
+  not a shared hardcoded account default. UTC is only the detection fallback.
+- Local Scheduling, inline Carousel, Hook, Reaction, and Wall drawers use the
+  account default. Video drawers now expose the same time-zone choice; all
+  selectors offer supported IANA regions. Existing schedules keep their stored
+  zone, and manual time edits pin the displayed zone so an async preference read
+  cannot reinterpret them. Initial slots and date minimums use zoned parts.
+- App and additional worker changes remain local, with authenticated deployed
+  browser acceptance pending. The production Scheduling URL was checked and
+  redirected to sign-in in the available browser. Full evidence and validation
+  are in `docs/scheduling-timezone-audit-2026-10-03.md`.
+
+## 2026-10-03 Create Content screen removal (local implementation)
+
+- Create Content is retired from both desktop and mobile navigation. Its page,
+  loading state, development preview, copy/card/render API routes, and exclusive
+  application helpers are deleted. The internal render canary is also removed,
+  so the application no longer produces new Create Content jobs.
+- Existing Library media, schedules, database tables, and historical migrations
+  remain intact. The worker retains the legacy render job handler and queue/lease
+  contracts so already queued jobs can finish and existing rendered videos can
+  still be scheduled. This compatibility code does not expose a creation screen.
+- Trending, its Carousel editor and scheduler, Library, and other creation tools
+  retain their existing routes and access rules. Explore retains its development
+  visibility gate.
+- Local verification passes TypeScript, scoped lint, expanded/collapsed navigation
+  in development and production, and 199 focused regression checks covering feed
+  decisions, scheduling, queue contracts, and legacy render completion/retries.
+  The retired page, preview, nested URLs, and GET/POST APIs return 404 in the
+  browser. Deployment and authenticated production acceptance are pending.
+
+## 2026-10-03 Backward post browsing (local implementation)
+
+- Trending, `/try-ugcpilot`, and the homepage daily-feed preview retain up to
+  120 reviewed post snapshots during the current visit. Scroll backward, drag
+  downward, or press Up/PageUp to revisit; move forward to return to new posts.
+  Previous and next media share the same native snap window and mouse release
+  easing. Only the active post exposes controls or plays video/audio. Resizing
+  cancels an unfinished gesture and restores the active post.
+- Revisited posts remain available for video, audio, and slideshow viewing.
+  In the demo and homepage, their heart and edit actions are disabled. Trending
+  now permits explicitly selecting a skipped post as described below; already
+  liked posts and history editing remain disabled. Browsing by itself never
+  repeats a decision, changes daily review counts, or starts a schedule.
+- Trending keeps this history above the Hook composer so it survives the deck's
+  temporary replacement, including the saved creative edit snapshot. Existing
+  owner/day session keys scope the retained history. The final empty state offers
+  **View previous posts** in Trending and Try UGCPilot, including while a demo
+  refill is pending. Browsing preserves live counts and the existing deferred
+  demo-session persistence during refills. A demo reset or successful
+  website analysis clears its history. History is not restored after a reload.
+- Focused decision hand-off tests and real-browser checks cover backward wheel,
+  keyboard, mouse/touch release, unchanged counts, exact media/copy, media controls,
+  final-post/refill return, retained parent history, resizing, inactive playback,
+  and reduced motion. Existing Carousel
+  readiness, save-before-dismiss, outbox, composition, and scheduling contracts
+  are retained. Deployment and authenticated production acceptance remain pending.
+
+## 2026-10-05 First-post guidance heart (local implementation)
+
+- Trending and the public demo retain the same shared first-post guide. Its
+  heart is now a larger, solid white silhouette with a soft warm shadow, matching
+  the white like feedback. Two small scale beats and two staggered ripple rings
+  demonstrate double-tapping, followed by a quiet interval for reading.
+- The decorative icon ignores pointer events through the existing guide and
+  stays hidden from assistive technology. Reduced motion keeps a still heart
+  and removes the rings. Guide eligibility, first-tap acknowledgement, completion
+  persistence, daily decisions, and scheduling are unchanged. This is a local
+  visual change; production deployment remains pending.
+
+## 2026-10-05 Trending skipped-post selection and laptop sizing (local implementation)
+
+- The redundant visible “Previously skipped · Scroll to browse” and general
+  scrolling instruction line are removed from Trending. Screen-reader status and
+  the remaining-post count are retained. Up/PageUp also revisit history when
+  focus is outside the scrolling card, subject to the existing modal/input guards.
+- Selecting a skipped post calls the authenticated `/api/trending/feed/reconsider`
+  endpoint before opening the existing composer or scheduler. Its service-only
+  RPC locks the exact owner/format/assignment/creative scope and changes a recorded
+  rejection to acceptance, preserving the decision ID and original review time.
+  A `reconsidered_at` marker makes a delayed original skip harmless; ordinary
+  conflicting decisions continue to fail closed. A skip still in the outbox is
+  persisted atomically first. This consumes no extra daily slot or generation
+  credits. The browser clears the superseded queued skip after success.
+- Carousel recovery still saves the same content to Library before opening
+  scheduling. A failed selection or save leaves the card retryable. Successful
+  recovery marks the existing history snapshot liked without appending history,
+  replaying the ordinary decision outbox, or decrementing remaining counts again.
+  Hook recovery retains its saved edit snapshot through a deck remount.
+- Portrait previews gain 16px of height and slideshow previews gain about 12px
+  of width at normal laptop sizes. Cards scale with the usable CSS viewport;
+  compact action sizing is scoped to Trending. Short windows preserve both
+  decision controls and the remaining count without page scrolling.
+- Migration `20261005064026_trending_skipped_post_reconsideration.sql` is prepared
+  and verified against local Postgres. It must accompany the application release;
+  production migration, deployment and authenticated acceptance are pending.
+
+## 2026-10-03 Temporary TikTok UI visibility (local implementation)
+
+- TikTok is temporarily hidden through `lib/social/platform-visibility.ts`
+  while content-posting API access is pending. The shared Trending Carousel
+  account modal uses this presentation gate, so Instagram remains selectable
+  and TikTok connect/account/settings controls are absent. Existing Carousel
+  format compatibility, readiness, rendering, and publishing APIs are retained.
+- Saved targets, connections, settings, and provider types remain intact. The
+  schedule editor preserves dormant saved targets when other fields are edited.
+  Re-enable the single TikTok visibility entry after approval and release the
+  frontend. See `docs/tiktok-ui-visibility.md` for the covered surfaces and checks.
+- This is local implementation; deployment and authenticated production
+  acceptance remain pending.
+
+## 2026-10-03 Hero showcase media replacement (local implementation)
+
+- The homepage's three-card hero uses the owner's supplied positional videos:
+  `left_side.mp4`, `middle.mp4`, and `right_side.mp4`, in that order. Its former
+  right-hand image slideshow is replaced by video, so slideshow navigation,
+  pagination, and the two decorative stack layers behind that card are removed
+  only from the hero. The tilted card geometry and
+  center-only mobile layout are retained. Matching first-frame posters and
+  lossless MP4 fast-start preparation support initial loading.
+- Hero overflow, its existing bottom crop, isolation, and an explicit inset
+  clip keep all transformed card/shadow layers inside the section divider.
+  Hidden desktop-side video sources are deferred on narrower screens.
+- The separate homepage daily-feed demo still uses its original Hook, Wall of
+  Text, and Slideshow samples. No product Carousel source, render, readiness,
+  Library save, daily-feed, schedule, or publishing contract is changed.
+  This entry does not assert deployment or production acceptance.
+
+## 2026-10-03 Landing daily feed demo (local implementation)
+
+- The homepage `#interactive-feed` section now demonstrates the same vertical
+  scroll, mouse grab/flick, and double-tap heart as Trending and `/try-ugcpilot`
+  through `PostInteractionFeed`. The heading and instructions teach double-tap
+  approval and scrolling to skip; down-arrow and heart replace the old X/tick.
+- Its existing Hook, Wall of Text, and Slideshow samples still loop. Slideshow
+  arrows change slides within one post, and only the active video plays. Likes
+  hold the post for the shared 720ms feedback with a synchronous duplicate lock
+  and timer cleanup. This is an interactive marketing preview; scheduling starts
+  in Trending, and the homepage sends no save or publishing request.
+- Browser checks exercise the real homepage on desktop/mobile, including
+  controls, native touch/wheel, mouse/keyboard browsing, duplicate likes,
+  format cycling, inactive playback, and reduced motion. Existing product
+  scheduling and Carousel readiness/Library contracts are unchanged.
+
+## 2026-10-03 Scroll motion refinement (local implementation)
+
+- Trending and `/try-ugcpilot` keep native touch/wheel momentum and vertical
+  snapping. Scrolling now commits on native `scrollend`, with a debounce
+  fallback for older browsers. A held touch or mouse gesture cannot retire
+  its post. The next post stays in place through the decision hand-off rather
+  than resetting to the previous post during the busy state.
+- Mouse release considers a recent upward flick as well as the existing 35%
+  distance threshold. Flicks need at least 10% travel; movement speed expires
+  after a 100ms pause. Release and keyboard movement decelerate over 180–320ms
+  into one post without bouncing. Short/paused drags return smoothly. Escape,
+  blur, new gestures, item changes, and busy/unmount cleanup cancel the tween;
+  reduced motion moves instantly. No per-frame React state updates are used.
+- The existing 720ms heart, like locks, Carousel Library save/readiness,
+  scheduling hand-offs, decision outbox, and publishing contracts are retained.
+  Real-frame verification checks flicks, cancellation, touch release, continuity
+  through retirement, reduced motion, and liking after a scroll. This remains
+  local until release and authenticated production verification.
+
+## 2026-10-03 Mouse drag browsing (local implementation)
+
+- Trending and `/try-ugcpilot` show a grab cursor over active post media and
+  a grabbing cursor while the primary mouse button is held. Vertical mouse
+  dragging moves the shared scrolling feed directly, with native snap paused
+  during the drag. Touch, wheel, and keyboard browsing keep their existing
+  behavior.
+- Mouse movement cannot like a post. A release after at least 35% of a post's
+  height snaps to one next post, then uses the existing settled-scroll skip
+  and decision outbox. Short, downward, or reversed drags return to the current
+  post. No decision is committed while a mouse drag is still held.
+- Post controls keep normal clicks. Native image/text dragging is suppressed
+  only for post mouse gestures. Pointer capture supports release outside the
+  card; Escape, window blur, capture loss, item changes, and busy/unmount
+  transitions clear drag state. Cancelled gestures reset without consuming a
+  post. The same readiness, heart feedback, duplicate locks, and scheduling
+  hand-offs remain in place. This change remains local until release.
+
+## 2026-10-03 Like feedback refinement (local implementation)
+
+- Trending and `/try-ugcpilot` now share a solid white heart with a prompt
+  spring pop, restrained overshoot, short settled hold, and soft fade. The
+  feedback lasts 720ms; CSS and the existing decision timer share the same
+  duration constant so advancing cannot cut off the animation.
+- The heart is centered on the post media, including Trending's format-label
+  space. Only transform and opacity animate. Reduced motion keeps the heart
+  still, and feedback stays decorative and ignores pointer events. Duplicate
+  locks, readiness, Library saving, skipping, and scheduling contracts remain
+  intact. Local motion frames and the existing regression checks verify this;
+  production verification remains pending deployment.
+
+## 2026-10-02 Trending scroll feed and double-tap scheduling (local implementation)
+
+- Trending now presents its ordered daily posts in a native vertical scrolling
+  feed. Double-tapping the active post media likes it, shows heart feedback,
+  and enters its existing scheduling flow. A completed user scroll to the next
+  post skips exactly one assignment through the existing decision outbox.
+  Single taps, small movements, controls, programmatic scrolling, and incoming
+  feed updates do not decide a post. Upcoming posts remain inert and preload
+  without autoplay until active; Carousel slides remain one daily post.
+- This supersedes the horizontal swipe deck, stacked preview positioning, and
+  primary X/tick review controls below. Explicit accessible controls are now
+  a down-arrow Skip and a heart Schedule; keyboard shortcuts remain available.
+  Editor save ticks, modal close controls, and internal Carousel slide controls
+  retain their existing jobs. The first-post guide teaches the new gestures
+  and still consumes its acknowledgement without deciding the underlying post.
+  The shared decision component defaults to the existing swipe controls;
+  Trending opts into post controls. The former Create Content screen used the
+  default X/tick controls until its retirement on 3 October.
+- Carousel likes retain the readiness checks and save the exact owner-scoped
+  Library item before retiring the daily post. The saved result is passed
+  directly into the shared scheduler, avoiding a second save. Failed saves
+  leave the post in Trending and release the interaction lock. Text and
+  Reaction likes open their existing shared scheduler directly; Hook likes
+  retain the required composition step before scheduling. Account settings,
+  explicit final scheduling submission, publishing APIs, workers, entitlement
+  accounting, idempotency, and immutable rendered media are unchanged.
+- `/try-ugcpilot` uses the same gesture component and guide. Its heart and
+  down-arrow controls replace the old tick and X. Liking is a demo event;
+  the persisted counter keeps its legacy `postedCount` field for session
+  compatibility but is shown as Liked. Existing analysis, refill, audio,
+  mobile controls, and browser sessions remain supported. Reset and new
+  analysis cancel pending decisions so they cannot consume a new deck's post.
+- Heart feedback respects reduced motion. Post gestures are disabled during
+  saving, scheduling, or editing, and synchronous locks prevent duplicate
+  acceptance. The last ready post can be liked or skipped without replenishing
+  its daily slot; a scheduling dialog stays mounted after that post leaves.
+- Local verification includes gesture/session tests, execution of the real
+  acceptance hand-off functions, the existing Trending scheduling suite, and
+  desktop/mobile browser checks. Details and repeatable commands are in
+  `docs/trending-scroll-feed-2026-10-02.md`. This entry is not a deployment claim;
+  authenticated acceptance on https://www.getugcpilot.com remains a release
+  verification step.
+
+## 2026-10-01 Seven-day Trending trial (released 3 October)
+
+- The shared Trending trial is seven days from completed onboarding, with
+  twenty daily concepts and at most seven reserved daily packs. This applies
+  to the shared feed used by Hook, Wall of Text, and Carousel content.
+- The new migration extends only unexpired trial records to at least seven
+  days from their original start and seven content days. Expired records stay
+  closed; onboarding replay cannot reset a trial. Existing usage, daily limits,
+  scheduling limits, paid subscriptions, and complimentary grants are retained.
+- Pricing derives the duration from the shared policy; Settings describes the
+  stored entitlement. Expiry messages also work for legacy closed trials.
+- The final reserved pack may still finish during an active trial after its
+  seventh allowance is consumed; this does not authorize an eighth pack.
+- This supersedes the three-day policy in historical entries below. The database migration was applied on 3 October 2026 with the pricing release.
 
 ## 2026-10-01 TikTok slideshow scheduling release
 

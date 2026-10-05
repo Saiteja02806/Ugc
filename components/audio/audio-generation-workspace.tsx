@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowDownAZ, ArrowRight, AudioLines, BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, FileAudio, Headphones, Languages, LoaderCircle, LockKeyhole, Megaphone, MessageCircle, MonitorPlay, Pause, Play, Plus, RefreshCw, Search, SlidersHorizontal, Sparkles, Trash2, Upload, Users, X } from "lucide-react";
+import { ArrowDownAZ, ArrowRight, AudioLines, Bookmark, BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, FileAudio, Headphones, Languages, LoaderCircle, LockKeyhole, Megaphone, MessageCircle, MonitorPlay, Pause, Play, Plus, RefreshCw, Search, SlidersHorizontal, Sparkles, Trash2, Upload, Users, X } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,7 @@ import { AudioPlayer } from "./audio-player";
 import { AudioSpeechEditor } from "./audio-speech-editor";
 import { AUDIO_UPGRADE_MESSAGE } from "@/worker/src/lib/audio-access-policy";
 import { VoiceOrb } from "./voice-orb";
+import { useAudioBookmarks } from "./use-audio-bookmarks";
 import "./audio-generation.css";
 
 const TERMINAL = new Set(["completed", "failed", "uncertain", "cancelled"]);
@@ -21,7 +22,7 @@ export function AudioGenerationWorkspace() {
 function AudioGenerationSession({ uid }: { uid: string }) {
   const [data, setData] = useState<AudioBootstrap | null>(null); const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null); const [posting, setPosting] = useState(false); const postingRef = useRef(false);
-  const [view, setView] = useState<"studio" | "library" | "speech" | "voices" | "audio">("studio");
+  const [view, setView] = useState<"studio" | "library" | "bookmarks" | "speech" | "voices" | "audio">("studio");
   const [editorView, setEditorView] = useState<"studio" | "speech">("studio"); const [studioPage, setStudioPage] = useState(0);
   const [purpose, setPurpose] = useState<AudioContentPurpose>("social"); const purposeRef = useRef<AudioContentPurpose>("social");
   const [category, setCategory] = useState<VoiceLibraryFocus>("social"); const [showVoiceForm, setShowVoiceForm] = useState(false);
@@ -53,6 +54,11 @@ function AudioGenerationSession({ uid }: { uid: string }) {
       if (submission.current?.key === saved.key) { submission.current = null; setSavedSubmission(null); setLiveId(null); }
     }
   }, [uid]);
+  const bookmarks = useAudioBookmarks(uid, api);
+  const bookmarkControls = {
+    bookmarkIds: bookmarks.ids, bookmarkPendingIds: bookmarks.pendingIds,
+    bookmarksReady: bookmarks.ready, onBookmark: (id: string) => void bookmarks.toggle(id),
+  };
   const load = useCallback(async (refresh = false) => {
     const current = session.current;
     try {
@@ -104,6 +110,8 @@ function AudioGenerationSession({ uid }: { uid: string }) {
   const selected = data?.assets.find(a => a.id === selectedAssetId && a.status === "ready") ?? null;
   const references = data?.assets.filter(a => a.purpose === "reference" && a.status === "ready") ?? [];
   const allVoices = data?.voices ?? [];
+  const bookmarkedVoices = allVoices.filter(voice => bookmarks.ids.has(voice.id));
+  const missingBookmarks = [...bookmarks.ids].filter(id => !allVoices.some(voice => voice.id === id));
   const chosenVoice = allVoices.find(v => v.id === voiceId);
   const purposeInfo = AUDIO_CONTENT_PURPOSES.find(item => item.id === purpose)!;
   const recommendations = rankVoicesForLibraryFocus(allVoices.filter(v => (view === "voices" ? v.private : !v.private) &&
@@ -227,12 +235,12 @@ function AudioGenerationSession({ uid }: { uid: string }) {
     <header className="audio-page-header">
       <div><h1>Audio generation</h1><p>Discover a voice. Create your next voiceover.</p></div>
       <div className="audio-header-actions">
-        <button type="button" className="audio-icon-button" disabled={loading || posting} aria-label="Refresh voices" onClick={() => void load(true)}><RefreshCw size={17} className={cn(loading && "animate-spin")} /></button>
+        <button type="button" className="audio-icon-button" disabled={loading || posting} aria-label="Refresh voices" onClick={() => { void load(true); bookmarks.refresh(); }}><RefreshCw size={17} className={cn(loading && "animate-spin")} /></button>
       </div>
     </header>
     <nav className="audio-tabs" aria-label="Audio workspace">
       {([
-        ["studio", "Voiceover Studio", AudioLines], ["library", "Voice library", AudioLines], ["speech", "Text to speech", FileAudio], ["voices", "My voices", Users], ["audio", "My audio", Headphones],
+        ["studio", "Voiceover Studio", AudioLines], ["library", "Voice library", AudioLines], ["bookmarks", "Bookmarks", Bookmark], ["speech", "Text to speech", FileAudio], ["voices", "My voices", Users], ["audio", "My audio", Headphones],
       ] as const).map(([value,label,Icon]) => <button key={value} type="button" className={cn("audio-tab", view === value && "is-active")} aria-current={view === value ? "page" : undefined} onClick={() => changeView(value)}><Icon size={16} />{label}</button>)}
     </nav>
     {error ? <p role="alert" className="audio-alert">{error}</p> : null}
@@ -240,11 +248,12 @@ function AudioGenerationSession({ uid }: { uid: string }) {
       <p>{recoveryBlocked ? "This audio request needs review; it will not be submitted again automatically." : `Saved request: ${savedSubmission.payload.name}. Resume uses its original script and voice, not your current form edits.`}</p>
       <div className="flex flex-wrap gap-3 mt-2"><button type="button" className="audio-text-button" disabled={!ready} onClick={() => void submitSpeech()}>Resume saved audio</button><button type="button" className="audio-text-button" disabled={posting} onClick={() => void refreshSavedSubmission()}>Refresh status</button></div>
     </div> : null}
+    {bookmarks.error ? <p role="alert" className="audio-alert audio-bookmark-error">{bookmarks.error}<button type="button" className="audio-text-button" onClick={bookmarks.refresh}>Reload bookmarks</button></p> : null}
 
     {view === "studio" ? <div className="audio-studio">
       <div className="audio-section-heading"><div><h2>Recommended voices</h2><p>A small selection for your next post, ad or product video.</p></div><button type="button" className="audio-text-button" onClick={() => changeView("library")}>View all voices<ArrowRight size={15} /></button></div>
       <div className="audio-studio-purpose" role="group" aria-label="Studio content purpose">{AUDIO_CONTENT_PURPOSES.filter(item => item.id !== "storytelling").map(item => <button key={item.id} type="button" className={cn("audio-category", purpose === item.id && "is-active")} aria-pressed={purpose === item.id} onClick={() => changeCategory(item.id)}>{item.label}</button>)}</div>
-      {loading ? <p role="status" className="audio-empty"><LoaderCircle size={18} className="animate-spin" />Loading recommended voices…</p> : studioVoices.length ? <VoiceList items={studioVoices} compact privateLibrary={false} voiceId={voiceId} playingId={playingId} posting={posting} playSample={playSample} selectVoice={selectVoice} onRemove={id => void removeAudio("voices", id)} /> : <div className="audio-empty"><AudioLines size={25} /><h3>No recommendations available</h3><p>Open the voice library to explore the available styles, or select a saved private voice in My voices.</p></div>}
+      {loading ? <p role="status" className="audio-empty"><LoaderCircle size={18} className="animate-spin" />Loading recommended voices…</p> : studioVoices.length ? <VoiceList items={studioVoices} compact privateLibrary={false} voiceId={voiceId} playingId={playingId} posting={posting} playSample={playSample} selectVoice={selectVoice} {...bookmarkControls} onRemove={id => void removeAudio("voices", id)} /> : <div className="audio-empty"><AudioLines size={25} /><h3>No recommendations available</h3><p>Open the voice library to explore the available styles, or select a saved private voice in My voices.</p></div>}
       <div className="audio-studio-pager"><p className="audio-fine-print">{publicPreview ? "Real voice samples · Preview only" : "Play a sample, then select a voice for your script."}</p><div aria-label="Recommended voice pages"><span className="audio-fine-print" role="status">{studioPageCount ? currentStudioPage + 1 : 0} / {studioPageCount}</span><button type="button" className="audio-icon-button" aria-label="Previous recommended voices" disabled={!studioPageCount || currentStudioPage === 0} onClick={() => changeStudioPage(currentStudioPage - 1)}><ChevronLeft size={18} /></button><button type="button" className="audio-icon-button" aria-label="Next recommended voices" disabled={!studioPageCount || currentStudioPage >= studioPageCount - 1} onClick={() => changeStudioPage(currentStudioPage + 1)}><ChevronRight size={18} /></button></div></div>
     </div> : null}
 
@@ -272,10 +281,16 @@ function AudioGenerationSession({ uid }: { uid: string }) {
 
       {view === "library" ? <div className="audio-section-heading audio-library-heading"><div><h2>{filtered ? "Matching voices" : focusInfo.heading}</h2><p>{filtered ? `${voices.length} ${voices.length === 1 ? "voice" : "voices"} found` : focusInfo.description}</p></div><span className="audio-fine-print">{publicPreview ? "Public demos · Preview before connecting" : `${voices.length} ${voices.length === 1 ? "voice" : "voices"} in your library`}</span></div> : null}
       {loading ? <p role="status" className="audio-empty"><LoaderCircle size={18} className="animate-spin" />Loading voices…</p> : voices.length ? <>
-        <VoiceList items={view === "library" && !filtered ? voices.slice(0,6) : voices} privateLibrary={view === "voices"} voiceId={voiceId} playingId={playingId} posting={posting} playSample={playSample} selectVoice={selectVoice} onRemove={id => void removeAudio("voices", id)} />
-        {view === "library" && !filtered && voices.length > 6 ? <><div className="audio-section-heading audio-more-heading"><h2>More voices to explore</h2><span className="audio-fine-print">Listen to a sample, then choose your voice.</span></div><VoiceList items={voices.slice(6)} privateLibrary={false} voiceId={voiceId} playingId={playingId} posting={posting} playSample={playSample} selectVoice={selectVoice} onRemove={id => void removeAudio("voices", id)} /></> : null}
+        <VoiceList items={view === "library" && !filtered ? voices.slice(0,6) : voices} privateLibrary={view === "voices"} voiceId={voiceId} playingId={playingId} posting={posting} playSample={playSample} selectVoice={selectVoice} {...bookmarkControls} onRemove={id => void removeAudio("voices", id)} />
+        {view === "library" && !filtered && voices.length > 6 ? <><div className="audio-section-heading audio-more-heading"><h2>More voices to explore</h2><span className="audio-fine-print">Listen to a sample, then choose your voice.</span></div><VoiceList items={voices.slice(6)} privateLibrary={false} voiceId={voiceId} playingId={playingId} posting={posting} playSample={playSample} selectVoice={selectVoice} {...bookmarkControls} onRemove={id => void removeAudio("voices", id)} /></> : null}
       </> : <div className="audio-empty"><AudioLines size={25} /><h3>{view === "voices" && !query ? "Make a voice your own" : "No voices found"}</h3><p>{view === "voices" && !query ? "Your private voices will appear here after creation. Your recordings stay private." : "Try another name, accent or style, or clear your filters."}</p>{filtered ? <button type="button" className="audio-text-button" onClick={clearFilters}>Clear filters</button> : null}</div>}
       {publicPreview ? <p className="audio-library-footnote"><Headphones size={14} />Listen to real ElevenLabs voice samples here. Generation uses the voices available on your connected account.</p> : null}
+    </div> : null}
+
+    {view === "bookmarks" ? <div className="audio-bookmarks">
+      <div className="audio-section-heading"><div><h2>Bookmarked voices</h2><p>Your saved picks. Listen to a sample, then use it for your next voiceover.</p></div><button type="button" className="audio-text-button" onClick={() => changeView("library")}>Explore voices<ArrowRight size={15} /></button></div>
+      {loading || bookmarks.loading ? <p role="status" className="audio-empty"><LoaderCircle size={18} className="animate-spin" />Loading bookmarked voices…</p> : bookmarkedVoices.length ? <VoiceList items={bookmarkedVoices} privateLibrary voiceId={voiceId} playingId={playingId} posting={posting} playSample={playSample} selectVoice={selectVoice} {...bookmarkControls} onRemove={id => void removeAudio("voices", id)} /> : <div className="audio-empty"><Bookmark size={27} /><h3>{bookmarks.ready ? "Keep your favorite voices here" : "Bookmarks are unavailable"}</h3><p>{bookmarks.ready ? "Tap the bookmark beside any voice to save it. Your script and selected voice stay as they are." : "Reload your bookmarks to try again. You can still explore voices and use text to speech."}</p><button type="button" className="audio-text-button" onClick={() => bookmarks.ready ? changeView("library") : bookmarks.refresh()}>{bookmarks.ready ? "Browse the voice library" : "Reload bookmarks"}<ArrowRight size={15} /></button></div>}
+      {missingBookmarks.length ? <div className="audio-unavailable-bookmarks"><p className="audio-fine-print">Some saved voices are no longer in your current library. They stay bookmarked in case they become available again.</p>{missingBookmarks.map((id, index) => <div key={id}><span className="audio-fine-print">Unavailable saved voice</span><button type="button" className="audio-text-button" disabled={bookmarks.pendingIds.has(id)} aria-label={`Remove unavailable saved voice ${index + 1} bookmark`} onClick={() => void bookmarks.toggle(id)}>Remove bookmark</button></div>)}</div> : null}
     </div> : null}
 
     {view === "studio" || view === "speech" ? <AudioSpeechEditor
@@ -300,10 +315,11 @@ function AudioGenerationSession({ uid }: { uid: string }) {
   </section>;
 }
 
-function VoiceList({ items, voiceId, playingId, privateLibrary, posting, playSample, selectVoice, onRemove, compact = false }: {
+function VoiceList({ items, voiceId, playingId, privateLibrary, posting, playSample, selectVoice, onRemove, bookmarkIds, bookmarkPendingIds, bookmarksReady, onBookmark, compact = false }: {
   items: AudioVoice[]; voiceId: string; playingId: string | null;
   privateLibrary: boolean; posting: boolean; playSample: (voice: AudioVoice) => void;
   selectVoice: (voice: AudioVoice) => void; onRemove: (id: string) => void;
+  bookmarkIds: ReadonlySet<string>; bookmarkPendingIds: ReadonlySet<string>; bookmarksReady: boolean; onBookmark: (id: string) => void;
   compact?: boolean;
 }) {
     return <div className="audio-voice-grid">{items.map(voice => <article key={voice.id} className={cn("audio-voice-row", voice.id === voiceId && "is-selected")}>
@@ -316,7 +332,11 @@ function VoiceList({ items, voiceId, playingId, privateLibrary, posting, playSam
         <span className="audio-voice-description" title={voice.description}>{compact ? voice.name.split(" - ")[1] || voice.description || "Speech voice" : voice.description || (voice.private ? "Your private voice" : "Speech voice")}</span>
         <span className="audio-voice-meta">{(compact ? [voice.labels.accent, !voice.available ? "Preview only" : null] : [voice.labels.accent, voice.labels.gender, voice.private ? "Private voice" : voiceLanguage(voice), !voice.available ? "Preview only" : null]).filter(Boolean).map((label,index) => <span key={`${label}-${index}`} className={label === "Preview only" ? "audio-voice-preview-only" : undefined}>{displayLabel(label!)}</span>)}</span>
       </button>
-      {voice.profileId && privateLibrary ? <button type="button" className="audio-icon-button" disabled={posting} aria-label={`Remove ${voice.name} private voice`} onClick={() => onRemove(voice.profileId!)}><Trash2 size={15} /></button> : <button type="button" className="audio-icon-button audio-use-voice" aria-label={`Select ${voice.name} for speech`} aria-pressed={voice.id === voiceId} onClick={() => selectVoice(voice)}>{voice.id === voiceId ? <Check size={16} /> : <ArrowRight size={16} />}</button>}
+      <div className="audio-voice-actions">
+        <button type="button" className={cn("audio-use-voice", voice.id === voiceId && "is-active")} aria-label={`Use It: ${voice.name}`} aria-pressed={voice.id === voiceId} onClick={() => selectVoice(voice)}>Use It{voice.id === voiceId ? <Check size={15} /> : <ArrowRight size={15} />}</button>
+        <button type="button" className={cn("audio-icon-button audio-bookmark-voice", bookmarkIds.has(voice.id) && "is-active")} disabled={!bookmarksReady || bookmarkPendingIds.has(voice.id)} aria-label={`${bookmarkIds.has(voice.id) ? "Remove bookmark for" : "Bookmark"} ${voice.name}`} title={bookmarkIds.has(voice.id) ? "Remove bookmark" : "Bookmark voice"} aria-pressed={bookmarkIds.has(voice.id)} onClick={() => onBookmark(voice.id)}>{bookmarkPendingIds.has(voice.id) ? <LoaderCircle size={16} className="animate-spin" /> : <Bookmark size={16} fill={bookmarkIds.has(voice.id) ? "currentColor" : "none"} />}</button>
+        {voice.profileId && privateLibrary ? <button type="button" className="audio-icon-button" disabled={posting} aria-label={`Remove ${voice.name} private voice`} onClick={() => onRemove(voice.profileId!)}><Trash2 size={15} /></button> : null}
+      </div>
     </article>)}</div>;
 }
 const VOICE_CATEGORIES = [

@@ -10,25 +10,25 @@ import { loadWorkflowConnectedAccounts, workflowAccountBlock, workflowAccountLab
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 
 /** Preview and inactive tabs never mount the authenticated lookup. No account is auto-selected. */
-export function WorkflowConnectedAccounts({ enabled, active, ownerId, platform, selectedId, onSelect }: {
+export function WorkflowConnectedAccounts({ enabled, active, ownerId, platforms, selectedIds, onSelect }: {
   enabled: boolean;
   active: boolean;
   ownerId: string | null;
-  platform: string;
-  selectedId: string;
-  onSelect: (id: string) => void;
+  platforms: string[];
+  selectedIds: Record<string, string>;
+  onSelect: (platform: string, id: string) => void;
 }) {
   if (!enabled || !active) return null;
   if (!ownerId) return <p className="text-xs leading-5 text-muted">Sign in to view your connected accounts.</p>;
-  if (!platform) return <p className="text-xs leading-5 text-muted">Choose a platform to see your connected accounts.</p>;
-  return <ConnectedAccounts key={ownerId} ownerId={ownerId} platform={platform} selectedId={selectedId} onSelect={onSelect} />;
+  if (!platforms.length) return <p className="text-xs leading-5 text-muted">Choose a platform to see your connected accounts.</p>;
+  return <ConnectedAccounts key={ownerId} ownerId={ownerId} platforms={platforms} selectedIds={selectedIds} onSelect={onSelect} />;
 }
 
-function ConnectedAccounts({ ownerId, platform, selectedId, onSelect }: {
+function ConnectedAccounts({ ownerId, platforms, selectedIds, onSelect }: {
   ownerId: string;
-  platform: string;
-  selectedId: string;
-  onSelect: (id: string) => void;
+  platforms: string[];
+  selectedIds: Record<string, string>;
+  onSelect: (platform: string, id: string) => void;
 }) {
   const accounts = useQuery({
     queryKey: ["explore-connected-accounts", ownerId],
@@ -38,7 +38,7 @@ function ConnectedAccounts({ ownerId, platform, selectedId, onSelect }: {
     }, signal),
     retry: false, staleTime: 0,
   });
-  const visible = (accounts.data ?? []).filter((account) => account.platform === platform);
+  const visible = (accounts.data ?? []).filter((account) => platforms.includes(account.platform));
   return <div className={creation.scheduleField}>
     <span className="text-sm font-medium">Connected accounts</span>
     {accounts.isPending ? <p role="status" className="text-xs leading-5 text-muted">Loading connected accounts…</p>
@@ -50,17 +50,20 @@ function ConnectedAccounts({ ownerId, platform, selectedId, onSelect }: {
       : <div role="group" aria-label="Connected posting accounts" className={creation.connectedAccounts}>
         {visible.map((account) => {
           const blocked = workflowAccountBlock(account);
+          const platformLabel = account.platform === "youtube" ? "YouTube" : account.platform === "instagram" ? "Instagram" : "TikTok";
           return <Button key={account.id} type="button" variant="ghost" disabled={Boolean(blocked) || accounts.isFetching}
-            aria-pressed={!blocked && selectedId === account.id} aria-label={`Post to ${workflowAccountLabel(account)}`}
+            aria-pressed={!blocked && selectedIds[account.platform] === account.id} aria-label={`Post to ${workflowAccountLabel(account)} on ${platformLabel}`}
             title={blocked ?? workflowAccountLabel(account)} className={creation.connectedAccount}
-            onClick={() => onSelect(account.id)}>
+            onClick={() => onSelect(account.platform, account.id)}>
             <span className={creation.connectedAccountLabel}>{workflowAccountLabel(account)}
+              <span className="block text-xs font-normal text-muted">{platformLabel}</span>
               {blocked && <span className="block text-xs font-normal text-muted">Reconnect to schedule</span>}
             </span>
-            {!blocked && selectedId === account.id && <Check className="size-4 shrink-0" aria-hidden="true" />}
+            {!blocked && selectedIds[account.platform] === account.id && <Check className="size-4 shrink-0" aria-hidden="true" />}
           </Button>;
         })}
       </div>}
+    {!accounts.isPending && !accounts.isError ? platforms.filter(platform => !visible.some(account => account.platform === platform)).map(platform => <p key={platform} className="text-xs text-muted">Connect an account for {platform === "youtube" ? "YouTube" : platform === "instagram" ? "Instagram" : "TikTok"} before scheduling there.</p>) : null}
     <Link href="/settings#instagram-publishing" className="w-fit rounded text-xs text-muted underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-focus">Manage connected accounts</Link>
   </div>;
 }

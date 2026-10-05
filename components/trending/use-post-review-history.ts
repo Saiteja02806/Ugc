@@ -18,6 +18,9 @@ export function usePostReviewHistory<T>() {
     setEntries([]);
     setPosition(null);
   }, []);
+  const markLiked = useCallback((id: string) => {
+    setEntries(current => current.map(entry => entry.id === id ? { ...entry, decision: "liked" } : entry));
+  }, []);
 
   function previous() {
     if (currentPosition <= 0) return false;
@@ -31,7 +34,7 @@ export function usePostReviewHistory<T>() {
   }
 
   return {
-    remember, clear, previous, next, entries,
+    remember, clear, markLiked, previous, next, entries,
     active: position === null ? null : entries[position],
     preceding: entries[currentPosition - 1] ?? null,
     following: position === null ? [] : entries.slice(position + 1),

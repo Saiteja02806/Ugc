@@ -86,11 +86,11 @@ test("failed authentication and malformed responses expose no accounts", async (
 
 test("previews, inactive tabs and signed-out workflows do not mount account queries", () => {
   const actual = ui();
-  const props = { enabled: true, active: true, ownerId: "owner-a", platform: "instagram", selectedId: "", onSelect() {} };
+  const props = { enabled: true, active: true, ownerId: "owner-a", platforms: ["instagram"], selectedIds: {}, onSelect() {} };
   assert.equal(actual.WorkflowConnectedAccounts({ ...props, enabled: false }), null);
   assert.equal(actual.WorkflowConnectedAccounts({ ...props, active: false }), null);
   assert.match(text(actual.WorkflowConnectedAccounts({ ...props, ownerId: null })), /Sign in/);
-  assert.match(text(actual.WorkflowConnectedAccounts({ ...props, platform: "" })), /Choose a platform/);
+  assert.match(text(actual.WorkflowConnectedAccounts({ ...props, platforms: [] })), /Choose a platform/);
   assert.equal(actual.queries.length, 0);
   assert.equal(actual.WorkflowConnectedAccounts(props).props.ownerId, "owner-a");
   assert.equal(actual.queries.length, 0); // The query mounts only in the connected child.
@@ -99,13 +99,13 @@ test("previews, inactive tabs and signed-out workflows do not mount account quer
 test("selection is explicit for one or multiple accounts and never crosses platforms", () => {
   for (const data of [[account()], [account(), account({ id: "connection-b", platformAccountUsername: "example_store" }), account({ id: "youtube-c", platform: "youtube", scopes: ["https://www.googleapis.com/auth/youtube.upload"] })]]) {
     const selected = [], actual = ui({ data });
-    const tree = actual.testConnectedAccounts({ ownerId: "owner-a", platform: "instagram", selectedId: "", onSelect: (id) => selected.push(id) });
+    const tree = actual.testConnectedAccounts({ ownerId: "owner-a", platforms: ["instagram"], selectedIds: {}, onSelect: (platform, id) => selected.push([platform, id]) });
     const buttons = nodes(tree).filter((node) => node.type === "button");
     assert.equal(buttons.length, data.filter((item) => item.platform === "instagram").length);
     assert.ok(buttons.every((button) => button.props["aria-pressed"] === false));
     assert.deepEqual(selected, []);
     buttons[0].props.onClick();
-    assert.deepEqual(selected, ["connection-a"]);
+    assert.deepEqual(selected, [["instagram", "connection-a"]]);
     assert.deepEqual(plain(actual.queries[0].queryKey), ["explore-connected-accounts", "owner-a"]);
     assert.equal(actual.queries[0].retry, false);
     assert.equal(actual.queries[0].staleTime, 0);
@@ -114,17 +114,30 @@ test("selection is explicit for one or multiple accounts and never crosses platf
 
 test("expired or insufficient-permission accounts are visible but not selectable", () => {
   const actual = ui({ data: [account({ status: "expired" }), account({ id: "connection-b", scopes: [] })] });
-  const tree = actual.testConnectedAccounts({ ownerId: "owner-a", platform: "instagram", selectedId: "connection-a", onSelect() {} });
+  const tree = actual.testConnectedAccounts({ ownerId: "owner-a", platforms: ["instagram"], selectedIds: { instagram: "connection-a" }, onSelect() {} });
   const buttons = nodes(tree).filter((node) => node.type === "button");
   assert.ok(buttons.every((button) => button.props.disabled && !button.props["aria-pressed"]));
   assert.match(text(tree), /Reconnect to schedule/);
   assert.equal(nodes(tree).filter((node) => node.type === "check").length, 0);
 });
 
+test("both platform accounts are labelled and independently selected", () => {
+  const actual = ui({ data: [account(), account({ id: "youtube-c", platform: "youtube", scopes: ["https://www.googleapis.com/auth/youtube.upload"], supportsBackgroundRefresh: true })] });
+  const selected = [];
+  const tree = actual.testConnectedAccounts({ ownerId: "owner-a", platforms: ["instagram", "youtube"], selectedIds: { instagram: "connection-a", youtube: "youtube-c" }, onSelect: (platform, id) => selected.push([platform, id]) });
+  const buttons = nodes(tree).filter(node => node.type === "button");
+  assert.equal(buttons.length, 2);
+  assert.ok(buttons.every(button => button.props["aria-pressed"]));
+  assert.match(buttons[0].props["aria-label"], /on Instagram/);
+  assert.match(buttons[1].props["aria-label"], /on YouTube/);
+  buttons[1].props.onClick();
+  assert.deepEqual(selected, [["youtube", "youtube-c"]]);
+});
+
 test("loading/error states cannot display cached accounts or imply posting succeeded", () => {
   for (const state of [{ isPending: true }, { isError: true }]) {
     const actual = ui(state);
-    const tree = actual.testConnectedAccounts({ ownerId: "owner-a", platform: "instagram", selectedId: "connection-a", onSelect() {} });
+    const tree = actual.testConnectedAccounts({ ownerId: "owner-a", platforms: ["instagram"], selectedIds: { instagram: "connection-a" }, onSelect() {} });
     assert.doesNotMatch(text(tree), /example_app|scheduled|published/i);
     assert.match(text(tree), state.isPending ? /Loading/ : /Could not load/);
   }
@@ -134,9 +147,9 @@ test("both workflows share the guarded account control and reset destination on 
   for (const kind of ["hook", "phone"]) {
     const source = read(`components/explore/${kind}-workflow-preview.tsx`);
     assert.match(source, /<WorkflowConnectedAccounts enabled=\{generationEnabled\} active=\{section === "schedule"\} ownerId=\{ownerId\}/);
-    assert.match(source, /setScheduleDraft\(\(current\) => \(\{ \.\.\.current, connectionId \}\)\)/);
+    assert.match(source, /selectWorkflowAccount\(current, platform, id\)/);
   }
-  assert.match(read("components/explore/workflow-scheduling-panel.tsx"), /connectionId: draft.platform === value \? draft.connectionId : ""/);
+  assert.match(read("components/explore/workflow-scheduling-panel.tsx"), /toggleWorkflowPlatform\(draft, value\)/);
   const source = read("components/explore/workflow-connected-accounts.tsx");
   assert.match(source, /getCurrentUserIdToken\(ownerId\)/);
   assert.match(source, /if \(signal.aborted\)/);

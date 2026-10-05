@@ -1,16 +1,17 @@
 import type { z } from "zod";
 import type { BackgroundJobStatus } from "@/lib/jobs/background-jobs";
-import type { CharacterGenderSchema, CharacterImageModelSchema } from "./schema";
+import type { CharacterGenderSchema, CharacterImageCountSchema, CharacterImageModelSchema } from "./schema";
 
 export type { CharacterGenerateRequest, CharacterPlan, CharacterSpec } from "./schema";
 export type CharacterGender = z.infer<typeof CharacterGenderSchema>;
 export type CharacterImageModel = z.infer<typeof CharacterImageModelSchema>;
+export type CharacterImageCount = z.infer<typeof CharacterImageCountSchema>;
 
 export type CharacterJobReceipt = { jobId: string; generationId: string };
 export type CharacterGenerationResponse = {
   ok: true;
   jobs: CharacterJobReceipt[];
-  requestedCount: 1 | 3;
+  requestedCount: CharacterImageCount;
   partial: false;
   message: string;
 };
@@ -20,6 +21,8 @@ export type CharacterGenerationAccess = {
   canGenerate: boolean;
   freeGenerationAvailable: boolean;
   requestedCount: 1 | 3;
+  imageCreditCost: number;
+  affordableImageCount: number;
   creditsRequired: number;
   creditsRemaining: number;
   message: string | null;

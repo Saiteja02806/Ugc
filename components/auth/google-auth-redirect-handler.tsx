@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 
 import { useAuth } from "@/contexts/auth-context";
 import { consumeGoogleRedirectPending } from "@/lib/firebase/auth";
+import { getPostSignInDestination } from "@/lib/billing/purchase-intent";
 
 export function GoogleAuthRedirectHandler() {
   const router = useRouter();
@@ -26,7 +27,9 @@ export function GoogleAuthRedirectHandler() {
       // OAuth request and consent screen instead of sending the user home.
       return;
     }
-    router.replace(user.emailVerified ? "/dashboard" : "/verify-email");
+    const destination = window.location.pathname === "/sign-in"
+      ? getPostSignInDestination(new URLSearchParams(window.location.search)) : "/dashboard";
+    router.replace(user.emailVerified ? destination : "/verify-email");
   }, [loading, router, user]);
 
   return null;

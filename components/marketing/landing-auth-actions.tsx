@@ -72,7 +72,7 @@ export function LandingAuthAction({
   if (hasSession) {
     return (
       <Link
-        href={needsEmailVerification ? "/verify-email" : "/dashboard"}
+        href={needsEmailVerification ? "/verify-email" : "/explore"}
         className={cn(
           className,
           "justify-center bg-primary text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background",
@@ -102,8 +102,8 @@ export function LandingAuthCta({
   const href = needsEmailVerification
     ? "/verify-email"
     : hasSession
-      ? "/dashboard"
-      : "/sign-in";
+      ? "/explore"
+      : "/sign-in?next=explore";
   const label = needsEmailVerification
     ? "Verify email"
     : hasSession

@@ -1090,6 +1090,7 @@ export function VideoGenerationStudioPanel({
       <AiStudioResults
         ariaLabel="Generated videos"
         emptyContent={recreateView?.emptyContent}
+        emptyContentClassName={recreateView ? "items-start pt-8" : undefined}
         emptyDescription="Start a new video below. Your earlier generations are in History."
         gridClassName="grid-cols-1 sm:grid-cols-1 lg:grid-cols-1 xl:grid-cols-1 2xl:grid-cols-1"
         hasResults={visibleVideos.length > 0 || isGenerating}

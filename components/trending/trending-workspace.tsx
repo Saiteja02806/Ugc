@@ -2025,7 +2025,7 @@ export function TrendingDeck({
     activeItemId,
     (candidate) => candidate.item.id,
   );
-  const activeCandidate = postHistory.active?.value ?? visibleCandidates[activeItemIndex] ?? null;
+  const activeCandidate: ReviewedTrendingCandidate | null = postHistory.active?.value ?? visibleCandidates[activeItemIndex] ?? null;
   const activeReactionCreativeId = activeCandidate?.format === "reaction" ? activeCandidate.item.creativeId : null;
   const activeReactionAssignmentId = activeCandidate?.format === "reaction" ? activeCandidate.item.assignmentId : null;
   const activeReactionState = activeCandidate?.format === "reaction" ? activeCandidate.item.creative.textEditState : undefined;
@@ -2283,10 +2283,11 @@ export function TrendingDeck({
     }
 
     if (postHistory.browsing) {
-      return decision === "rejected" ? postHistory.next() : false;
+      if (decision === "rejected") return postHistory.next();
+      if (postHistory.active?.decision !== "skipped") return false;
     }
 
-    const activeEdit = editByCreativeId[activeCandidate.item.creativeId];
+    const activeEdit = editByCreativeId[activeCandidate.item.creativeId] ?? activeCandidate.reviewedEdit;
 
     if (decision === "accepted" && activeCandidate.format === "reaction" &&
         activeCandidate.item.creative.textEditState && activeCandidate.item.creative.textEditState !== "ready") {
@@ -2343,6 +2344,27 @@ export function TrendingDeck({
 
     decisionLockRef.current = true;
     setExitDirection(direction);
+    if (postHistory.browsing) {
+      // Persist the explicit reconsideration before opening a composer or
+      // scheduler that requires a selected assignment. Do not retire this
+      // daily slot, append history, or decrement the remaining count again.
+      void reconsiderSkippedCandidate(candidate, userId)
+        .then(async () => candidate.format === "carousel" ? await saveCarouselToLibrary(candidate) : null)
+        .then((result) => {
+          advancePastActiveItem("right", () => {
+            postHistory.markLiked(candidate.item.id);
+            postHistory.next();
+            decisionLockRef.current = false;
+            openAcceptedCandidate(candidate, result?.item);
+          });
+        })
+        .catch((error) => {
+          decisionLockRef.current = false;
+          setExitDirection(null);
+          showActionNotice({ message: getErrorMessage(error, "Could not select this skipped post. Try again.") });
+        });
+      return true;
+    }
     if (decision === "accepted" && candidate.format === "carousel") {
       // Liking a post promises that this content is kept. Create the
       // owner-scoped Library hand-off before retiring the daily card, so an
@@ -2415,11 +2437,11 @@ export function TrendingDeck({
     });
   }
 
-  function openAcceptedCandidate(candidate: TrendingCandidate, carouselLibraryItem?: { id: string; coverUrl: string | null }) {
+  function openAcceptedCandidate(candidate: ReviewedTrendingCandidate, carouselLibraryItem?: { id: string; coverUrl: string | null }) {
     if (candidate.format === "hook_video") {
       onHookCompose(
         candidate.item,
-        editByCreativeId[candidate.item.creativeId] ?? null,
+        editByCreativeId[candidate.item.creativeId] ?? candidate.reviewedEdit ?? null,
       );
       return;
     }
@@ -2522,7 +2544,10 @@ export function TrendingDeck({
         return;
       }
 
-      if (event.key === "ArrowLeft" || event.key === "ArrowDown") {
+      if (event.key === "ArrowUp" || event.key === "PageUp") {
+        event.preventDefault();
+        postHistory.previous();
+      } else if (event.key === "ArrowLeft" || event.key === "ArrowDown") {
         event.preventDefault();
         completeCandidateSwipe("left");
       } else if (event.key === "ArrowRight" || event.key === "Enter") {
@@ -2700,7 +2725,7 @@ export function TrendingDeck({
           <div data-trending-review-frame className="flex w-full flex-col items-center" onKeyDown={handleDeckKeyDown}>
             <PostInteractionFeed
               label={`Trending posts. ${deckProgressLabel}. Double-tap to schedule, scroll to skip or scroll back to revisit.`}
-              className="h-[min(680px,calc(100dvh-350px))] min-[1024px]:h-[min(680px,calc(100dvh-296px))] min-h-[240px] w-full max-w-[460px]"
+              className={cn("w-full max-w-[460px]", reviewLayout.reviewFeed)}
               disabled={Boolean(exitDirection || scheduleContext || editorCandidate || actionCandidate || wallTextCandidate)}
               liked={exitDirection === "right"}
               onStart={dismissSwipeGuide}
@@ -2718,14 +2743,11 @@ export function TrendingDeck({
             />
             <CreativeDecisionActions
               interaction="post"
-              acceptDisabled={postHistory.browsing || (activeHookPreviewStatus !== null && activeHookPreviewStatus !== "ready")}
+              acceptDisabled={(postHistory.browsing && postHistory.active?.decision !== "skipped") || (activeHookPreviewStatus !== null && activeHookPreviewStatus !== "ready")}
               disabled={Boolean(exitDirection || scheduleContext || editorCandidate || actionCandidate || wallTextCandidate)}
               onAccept={() => requestCreativeDecision("accepted")}
               onReject={() => requestCreativeDecision("rejected")}
             />
-            <p data-post-review-status className="mt-2 text-center text-xs text-muted">{postHistory.active
-              ? `Previously ${postHistory.active.decision} · Scroll to browse`
-              : "Double-tap to schedule · Scroll to skip · Scroll back to revisit"}</p>
             <p data-trending-deck-progress className="mt-1 text-center text-xs text-muted">{deckProgressLabel}</p>
           </div>
           <span className="sr-only" aria-live="polite">
@@ -4438,6 +4460,22 @@ function TrendingPostSkeleton({ active = true }: { active?: boolean }) {
       />
     </div>
   );
+}
+
+async function reconsiderSkippedCandidate(candidate: TrendingCandidate, userId: string | null) {
+  const token = await getCurrentUserIdToken();
+  if (!token) throw new Error("Sign in before selecting a skipped post.");
+  const response = await fetch("/api/trending/feed/reconsider", {
+    method: "POST",
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ assignmentId: candidate.item.assignmentId, creativeId: candidate.item.creativeId, format: candidate.format }),
+  });
+  const data = await response.json().catch(() => null) as { ok: boolean; error?: string } | null;
+  if (!response.ok || data?.ok !== true) throw new Error(data?.error || "Could not select this skipped post. Try again.");
+  if (userId) {
+    writePendingDecisionEntries(userId, removeTrendingDecisionOutboxEntry(readPendingDecisionEntries(userId), candidate.item.assignmentId));
+  }
 }
 
 async function saveCarouselToLibrary(candidate: CompleteCarousel) {

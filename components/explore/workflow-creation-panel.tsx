@@ -16,7 +16,7 @@ export function WorkflowCreationPanel({ kind, section, children, generation, edi
   return <aside aria-label="Creation controls" data-section={section} className={creation.controls}>
     <Tabs.List aria-label="Workflow sections" className={creation.sectionTabs} activateOnFocus>
       <Tabs.Tab value="create" className={creation.sectionTab}>Create</Tabs.Tab>
-      <Tabs.Tab value="edit" className={creation.sectionTab}>Edit video</Tabs.Tab>
+      <Tabs.Tab value="edit" className={creation.sectionTab}>Edited demo</Tabs.Tab>
       <Tabs.Tab value="schedule" className={creation.sectionTab}>Schedule</Tabs.Tab>
     </Tabs.List>
     <div className={creation.controlContent} role="region" aria-label="Workflow section settings">

@@ -6,24 +6,31 @@
   /* Center feedback on the media below the post's 40px format-label space. */
   --post-heart-offset-y: 20px;
 }
+.reviewFeed {
+  height: min(680px, calc(100dvh - 334px));
+  min-height: 240px;
+}
 .stage [data-post-interaction-feed] article[data-trending-vertical-frame] {
   /* The feed's 240px minimum leaves 200px for media plus its 40px label. */
-  max-width: max(112.5px, calc((100dvh - 402px) * 0.5625));
+  max-width: max(112.5px, calc((100dvh - 386px) * 0.5625));
 }
 .stage [data-post-interaction-feed] article:not([data-trending-vertical-frame]) {
-  max-width: max(160px, calc((100dvh - 402px) * 0.8));
+  max-width: max(160px, calc((100dvh - 386px) * 0.8));
 }
 @media (min-width: 1024px) {
+  .reviewFeed {
+    height: min(680px, calc(100dvh - 280px));
+  }
   .stage [data-post-interaction-feed] article[data-trending-vertical-frame] {
-    max-width: max(112.5px, calc((100dvh - 348px) * 0.5625));
+    max-width: max(112.5px, calc((100dvh - 332px) * 0.5625));
   }
   .stage [data-post-interaction-feed] article:not([data-trending-vertical-frame]) {
-    max-width: max(160px, calc((100dvh - 348px) * 0.8));
+    max-width: max(160px, calc((100dvh - 332px) * 0.8));
   }
   .responsiveCarouselFrame {
     width: min(
-      clamp(300px, calc(8.333vw + 220px), 380px),
-      clamp(300px, calc(41.667dvh - 20px), 380px)
+      clamp(312px, calc(8.333vw + 232px), 392px),
+      clamp(312px, calc(41.667dvh - 8px), 392px)
     );
   }
 
@@ -60,5 +67,16 @@
   .compactHeightDecisionButton > .compactHeightDecisionIcon {
     height: clamp(1.25rem, calc((100dvh - 252px) * 0.0435), 1.5rem);
     width: clamp(1.25rem, calc((100dvh - 252px) * 0.0435), 1.5rem);
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 900px) {
+  .stage .compactHeightDecisionGroup {
+    margin-top: 0.625rem;
+  }
+
+  .stage button.compactHeightDecisionButton {
+    height: clamp(3.5rem, calc((100dvh - 280px) * 0.115), 4rem);
+    width: clamp(3.5rem, calc((100dvh - 280px) * 0.115), 4rem);
   }
 }

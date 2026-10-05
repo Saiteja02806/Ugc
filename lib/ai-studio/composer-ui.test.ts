@@ -69,11 +69,11 @@ test("the unified composer is narrower without squeezing standard layouts", () =
 test("the unified composer stays compact while supporting multiline prompts", () => {
   assert.match(
     composer,
-    /const minimumHeight = compact \? 64 : layout === "unified" \? 40 : 64;/,
+    /const minimumHeight = compact \? 40 : layout === "unified" \? 40 : 64;/,
   );
   assert.match(
     composer,
-    /const maximumHeight = compact \? 96 : layout === "unified" \? 64 : 128;/,
+    /const maximumHeight = compact \? 72 : layout === "unified" \? 64 : 128;/,
   );
   assert.match(
     composer,
@@ -152,14 +152,10 @@ test("image defaults to 9:16 and workspaces use the public canonical job names",
 });
 
 test("quantity controls lock with the rest of each generation composer", () => {
-  assert.match(
-    imageWorkspace,
-    /ariaLabel="Number of images"\s+disabled=\{generationLocked \|\| isGenerating\}/,
-  );
-  assert.match(
-    videoWorkspace,
-    /ariaLabel="Number of videos"\s+disabled=\{generationLocked \|\| isGenerating\}/,
-  );
+  for (const [source, label] of [[imageWorkspace, "Number of images"], [videoWorkspace, "Number of videos"]]) {
+    const quantityControl = source.match(new RegExp(`<AiStudioSettingSelect\\b(?:(?!<AiStudioSettingSelect)[\\s\\S])*?ariaLabel="${label}"[\\s\\S]*?/>`))?.[0] ?? "";
+    assert.match(quantityControl, /disabled=\{generationLocked \|\| isGenerating\}/);
+  }
   assert.match(composer, /disabled=\{disabled\}[\s\S]*?aria-expanded=\{open\}/);
 });
 

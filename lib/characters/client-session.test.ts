@@ -18,8 +18,10 @@ test("receipts and uncertain requests survive restore without requiring private 
     pendingRequest: { mode: "assisted", gender: "female", model: "gpt_image", idempotencyKey: "original-request" },
   };
   for (const model of ["gpt_image", "gemini_3_pro", "nano_banana_2"]) {
-    const selectedSession = { ...session, pendingRequest: { ...session.pendingRequest, model } };
-    assert.deepEqual(parseCharacterClientSession(JSON.stringify(selectedSession)), selectedSession);
+    for (const imageCount of [undefined, 1, 2, 3]) {
+      const selectedSession = { ...session, pendingRequest: { ...session.pendingRequest, model, ...(imageCount ? { imageCount } : {}) } };
+      assert.deepEqual(parseCharacterClientSession(JSON.stringify(selectedSession)), selectedSession);
+    }
   }
 });
 

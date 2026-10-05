@@ -11,6 +11,7 @@ const portraits = [
   ["Cozy Bedroom Vlog Selfie.png", "creator-bedroom.webp"],
   ["Selfie Vlog with Mini Microphone.png", "creator-selfie.webp"],
   ["Modern Vlogging Portrait with Microphone.png", "creator-window.webp"],
+  ["kling_20261002_IMAGE_Create_an__4586_0.png", "creator-office-v2.webp"],
 ];
 
 await mkdir(output, { recursive: true });

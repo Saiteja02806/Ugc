@@ -10,6 +10,7 @@ import type { FormEvent, KeyboardEvent, ReactNode } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ComposerSettingsRail } from "@/components/generation/composer-settings-rail";
 import {
   Field,
   FieldDescription,
@@ -19,7 +20,6 @@ import {
 import {
   Popover,
   PopoverContent,
-  PopoverTitle,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -88,8 +88,8 @@ export function AiStudioComposer({
     }
 
     textarea.style.height = "auto";
-    const minimumHeight = compact ? 64 : layout === "unified" ? 40 : 64;
-    const maximumHeight = compact ? 96 : layout === "unified" ? 64 : 128;
+    const minimumHeight = compact ? 40 : layout === "unified" ? 40 : 64;
+    const maximumHeight = compact ? 72 : layout === "unified" ? 64 : 128;
     textarea.style.height = `${Math.min(
       Math.max(textarea.scrollHeight, minimumHeight),
       maximumHeight,
@@ -148,7 +148,7 @@ export function AiStudioComposer({
               className={cn(
                 "w-full resize-none overflow-y-auto bg-transparent text-foreground outline-none placeholder:text-muted-subtle",
                 layout === "unified"
-                  ? compact ? "max-h-24 min-h-16 rounded-none px-0 py-0 text-sm font-normal leading-6" : "max-h-16 min-h-10 rounded-none px-0 py-0 text-base font-normal leading-6 sm:text-sm"
+                  ? compact ? "max-h-18 min-h-10 rounded-none px-0 py-0 text-[13px] font-normal leading-5" : "max-h-16 min-h-10 rounded-none px-0 py-0 text-base font-normal leading-6 sm:text-sm"
                   : "max-h-32 min-h-16 rounded-lg px-2 py-1.5 text-sm font-medium leading-6 focus-visible:ring-2 focus-visible:ring-focus sm:text-[15px]",
                 "min-w-0",
                 !compact && layout === "unified" && leadingControl && !hasAttachments && "col-start-2 row-start-1 self-center",
@@ -162,7 +162,7 @@ export function AiStudioComposer({
                   "flex min-w-0 items-start justify-between gap-3 text-xs",
                   !compact && layout === "unified" && leadingControl && !hasAttachments && "col-span-full",
                   layout === "unified" ? "px-0" : "px-2",
-                  compact && "pb-3 text-[11px] leading-4 text-muted-subtle",
+                  compact && "pb-1 text-[11px] leading-4 text-muted-subtle",
                   promptTooLong && "text-destructive",
                 )}
                 role={promptTooLong ? "alert" : undefined}
@@ -180,21 +180,13 @@ export function AiStudioComposer({
           <div
             data-slot={compact ? "composer-actions" : undefined}
             className={cn(
-              compact ? "flex items-center justify-between gap-2" : "flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between",
+              compact ? "flex flex-col items-stretch gap-1" : "flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between",
               layout === "unified" && "px-3 pb-2 sm:px-4 sm:pb-3",
             )}
           >
-            {compact ? <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+            {compact ? <div className="flex min-w-0 items-center gap-1.5">
               {!hasAttachments ? leadingControl : null}
-              <Popover>
-                <PopoverTrigger render={<Button type="button" variant="outline" size="sm" aria-label="Generation settings" title="Generation settings" className="h-9 gap-1.5 rounded-full px-3 text-xs text-foreground" />}>
-                  <SlidersHorizontal className="size-3.5" aria-hidden="true" /><span data-slot="composer-settings-label">Settings</span>
-                </PopoverTrigger>
-                <PopoverContent side="top" align="start" className="w-72 gap-3 rounded-2xl p-4">
-                  <PopoverTitle className="text-sm">Generation settings</PopoverTitle>
-                  <div className="flex flex-wrap items-center gap-2">{settings}</div>
-                </PopoverContent>
-              </Popover>
+              <ComposerSettingsRail>{settings}</ComposerSettingsRail>
             </div> : <div className="min-w-0 flex-1">
               {layout === "standard" ? (
                 <Button
@@ -240,7 +232,7 @@ export function AiStudioComposer({
             <div
               className={cn(
                 "flex min-w-0 flex-col gap-1.5 sm:items-end",
-                layout === "unified" && (compact ? "shrink-0" : "w-full sm:w-auto"),
+                layout === "unified" && (compact ? "shrink-0 self-end" : "w-full sm:w-auto"),
               )}
             >
               <div className="flex min-w-0 items-center gap-2">
@@ -255,7 +247,7 @@ export function AiStudioComposer({
                     "min-w-0 flex-1 h-10 rounded-full px-5 text-sm font-semibold tracking-[-0.01em] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.22),0_1px_3px_rgba(0,0,0,0.12)] transition-all duration-150 active:scale-[0.98] sm:min-w-[168px]",
                     isGenerating && "ring-2 ring-primary/35 shadow-xs shadow-primary/20",
                     layout === "unified" && "w-full",
-                    compact && "h-9 rounded-full px-3.5 text-xs font-medium shadow-none sm:min-w-0",
+                    compact && "h-8 rounded-full px-3 text-xs font-medium shadow-none sm:min-w-0",
                   )}
                 >
                   {isGenerating ? (

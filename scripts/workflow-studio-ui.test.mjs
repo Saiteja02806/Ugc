@@ -34,14 +34,26 @@ test("workflow motion is short, explicitly scoped and reduced-motion safe", () =
   assert.doesNotMatch(keyframes, /\b(width|height|left|top):/);
 });
 
-test("Recreate gallery columns respond to available width without oversized desktop cards", () => {
+test("Recreate gallery uses two or three columns based on its available width", () => {
   assert.match(styles, /container: workflow-gallery \/ inline-size/);
   assert.match(styles, /@container workflow-gallery \(min-width: 660px\)/);
   assert.match(styles, /@container workflow-gallery \(min-width: 1000px\)/);
   const recreateLayout = read("components/explore/recreate-layout.module.css");
   assert.match(gallery, /const GALLERY_GRID = layout\.galleryGrid/);
-  assert.match(recreateLayout, /repeat\(auto-fill, minmax\(min\(100%, 180px\), 1fr\)\)/);
+  assert.match(recreateLayout, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(recreateLayout, /@container workflow-gallery \(min-width: 660px\)\s*\{\s*\.galleryGrid \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.doesNotMatch(recreateLayout, /auto-fill|repeat\([45],/);
   assert.match(gallery, /className=\{cn\(studio\.gallery,/);
+});
+
+test("gallery covers fill the card without changing the uncropped preview or source", () => {
+  const media = gallery.slice(gallery.indexOf("function ReferenceMedia"), gallery.indexOf("function ReferencePreviewDialog"));
+  assert.match(media, /src=\{reference\.posterUrl\}/);
+  assert.match(media, /src=\{reference\.videoUrl\}/);
+  assert.equal((media.match(/size-full object-cover/g) ?? []).length, 2);
+  assert.doesNotMatch(media, /object-contain|object-fill/);
+  assert.match(preview, /src=\{activeSlideData\.url\}/);
+  assert.match(preview, /object-contain/);
 });
 
 test("reference changes and mode transitions do not remount the generators", () => {

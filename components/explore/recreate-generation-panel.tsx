@@ -33,8 +33,9 @@ export function RecreateGenerationPanel({ localPreview, mode, onModeChange, onPr
   const accessMessage = localPreview ? "Local preview · generation disabled" : getAIStudioAccessMessage(accessState);
   const emptyContent = <div className={cn(layout.emptyState, "max-w-80 px-2 py-3 text-left")}>
     <span className="mb-5 inline-flex size-10 items-center justify-center rounded-2xl bg-primary/10 text-primary"><MessageSquare className="size-4" strokeWidth={1.6} aria-hidden="true" /></span>
-    <h2 className="text-base font-semibold leading-6 tracking-tight text-foreground-strong">{reference ? "Make it your own" : "Start with a reference"}</h2>
-    <p className="mt-2 text-pretty text-sm leading-6 text-muted">{reference ? "Tell us what to change and what to keep." : "Explore the gallery, choose a creative, then describe your changes below."}</p>
+    <h2 className="text-base font-semibold leading-6 tracking-tight text-foreground-strong">{reference ? "Make it your own" : "Find your next format"}</h2>
+    <p className="mt-2 text-pretty text-sm leading-6 text-muted">{reference ? "Describe the new subject, message, or look. Tell us what should stay the same." : "Browse slideshows, text-led videos, and hooks. Preview a format, then choose Recreate to make it your own."}</p>
+    {!reference ? <ol className="mt-5 space-y-3 text-xs leading-5 text-muted"><li><span className="mr-2 text-primary">01</span>Pick a reference from the gallery.</li><li><span className="mr-2 text-primary">02</span>Describe what you want to change.</li><li><span className="mr-2 text-primary">03</span>Choose your model and format below.</li></ol> : null}
   </div>;
   const contextBanner = reference ? <div key={reference.id} className={studio.selection}>
     <div className="flex items-center gap-3 pb-3">
@@ -48,7 +49,7 @@ export function RecreateGenerationPanel({ localPreview, mode, onModeChange, onPr
   </div> : undefined;
   const recreateView = { contextBanner, emptyContent, preview: localPreview, referenceImageUrl: sourceImage };
 
-  return <aside aria-label="Creation chat" className={cn(studio.chat, "flex h-[620px] min-h-0 min-w-0 shrink-0 flex-col bg-card-muted/25 lg:h-auto lg:flex-1 lg:w-full")}>
+  return <aside aria-label="Creation chat" className={cn(studio.chat, "flex h-[540px] min-h-0 min-w-0 shrink-0 flex-col bg-card-muted/25 lg:h-auto lg:flex-1 lg:w-full")}>
     <div className={cn(layout.panelHeader, "flex h-16 shrink-0 items-center px-5")}>
       <div role="tablist" aria-label="Generation type" className="flex w-full rounded-full bg-card-muted/55 p-1">
         {(["images", "videos"] as const).map((value) => <button key={value} id={`ai-studio-${value}-tab`} role="tab" type="button" aria-selected={mode === value} tabIndex={mode === value ? 0 : -1} aria-controls={`ai-studio-${value}-panel`} onClick={() => onModeChange(value)} onKeyDown={(event) => {

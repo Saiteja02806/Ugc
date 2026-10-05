@@ -24,7 +24,7 @@ test("the imported Explore catalogue preserves the supplied content structure", 
   const wallTextVideos = catalog.items.filter((item) => item.format === "wall_text");
 
   assert.equal(catalog.version, 1);
-  assert.equal(catalog.mediaStatus, "staged");
+  assert.equal(catalog.mediaStatus, "published");
   assert.equal(slideshows.length, 49);
   assert.equal(wallTextVideos.length, 28);
   assert.equal(slideshows.reduce((total, item) => total + item.slides.length, 0), 272);
@@ -156,11 +156,11 @@ test("gallery cards are visual-only with one slideshow count on the media", () =
   assert.equal((media.match(/reference\.slides\.length/g) ?? []).length, 1);
 });
 
-test("compact composer keeps settings available without stacking them above Generate", () => {
+test("compact composer exposes settings in a scrollable rail without a Settings launcher", () => {
   const composer = readFileSync(new URL("../components/generation/ai-studio-composer.tsx", import.meta.url), "utf8");
   assert.match(composer, /compact = false/);
-  assert.match(composer, /aria-label="Generation settings"/);
-  assert.match(composer, /<PopoverContent side="top"[\s\S]*?\{settings\}/);
+  assert.match(composer, /<ComposerSettingsRail>\{settings\}<\/ComposerSettingsRail>/);
+  assert.doesNotMatch(composer, /composer-settings-label|>Settings<\/span>/);
   assert.match(composer, /compact \? "Generate" : generateLabel/);
   assert.match(composer, /aria-label=\{generateLabel\}/);
 });
@@ -178,7 +178,7 @@ test("the gallery does not show available video or slideshow totals", () => {
   assert.doesNotMatch(workspace, /<span>\{filtered\.length\}/);
   assert.doesNotMatch(workspace, /format === "slideshow" \? "slideshows" : "videos"/);
   assert.match(workspace, /selectedCategories\.length > 0 \? <div/);
-  assert.match(workspace, /queryKey: \["recreate-references", 2,/);
+  assert.match(workspace, /queryKey: \["recreate-references", 3,/);
 });
 
 test("the slideshow-first gallery mixes filtered cards without changing video order or selection", () => {

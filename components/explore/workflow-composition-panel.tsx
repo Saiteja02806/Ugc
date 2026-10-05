@@ -43,7 +43,7 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
   const timing = demoAudioTiming(demo.asset?.duration, demoAudio.asset?.duration, demoAudioPlayback);
 
   return <section aria-label="Video finishing settings" className={creation.composition}>
-    <h2 className="sr-only">Edit video</h2>
+    <h2 className="sr-only">Edited demo</h2>
     <p className="sr-only">Keep your video on its own, or add a demo after it.</p>
     <div className={creation.editMediaGrid}>
       <section aria-label="Optional demo" className={creation.uploadCard} data-selected={!!demo.asset} aria-busy={demo.loading} onDragOver={(event) => event.preventDefault()} onDrop={(event) => {

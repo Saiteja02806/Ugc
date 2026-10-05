@@ -28,33 +28,19 @@ import {
   CharacterGenerationError,
   generateCharacterBatch,
   getCharacterJobInput,
-  hasUnusedFreeCharacterGeneration,
   isCharacterGenerationJob,
   reserveCharacterGenerationBatch,
   type CharacterGenerationDependencies,
 } from "./generation-service";
 import type { CharacterGenerationAccess, CharacterJobStatusResponse } from "./types";
+import { characterAccessFromCredits, characterRequestCount } from "./access-policy";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TERMINAL_STATUSES = new Set(["cancelled", "completed", "failed"]);
 
 export async function getCharacterGenerationAccess(userId: string): Promise<CharacterGenerationAccess> {
   const subscription = await getUserSubscription(userId, { strict: true, refreshCredits: false });
-  const isPaid = subscription.isActive;
-  const creditsRequired = isPaid ? getGenerationCreditCost("image") * 3 : 0;
-  const freeGenerationAvailable = !isPaid && await hasUnusedFreeCharacterGeneration(userId);
-  const canGenerate = isPaid ? subscription.creditsRemaining >= creditsRequired : freeGenerationAvailable;
-  return {
-    isPaid,
-    canGenerate,
-    freeGenerationAvailable,
-    requestedCount: isPaid ? 3 : 1,
-    creditsRequired,
-    creditsRemaining: subscription.creditsRemaining,
-    message: canGenerate ? null : isPaid
-      ? "You need enough credits to create three influencer candidates."
-      : "Your free influencer generation has been used. Upgrade to create more.",
-  };
+  return characterAccessFromCredits(subscription.isActive, subscription.creditsRemaining, getGenerationCreditCost("image"));
 }
 
 function requireRuntime() {
@@ -80,13 +66,11 @@ const defaultDependencies: CharacterApiDependencies = {
     getExistingJob: (key, userId) => getBackgroundJobByIdempotencyKey(key, { jobType: "generate_image", userId }),
     async requireAccess(userId, request) {
       const access = await getCharacterGenerationAccess(userId);
-      if (!access.isPaid && (request.mode !== "assisted" || request.referenceCharacterId)) {
-        throw new CharacterGenerationError("PLAN_REQUIRED", "Upgrade to create a custom influencer or refine a saved character.", 403);
+      const count = characterRequestCount(access, request);
+      if (!count) {
+        throw new CharacterGenerationError("INSUFFICIENT_CREDITS", "You don’t have enough credits for the selected number of images.", 402);
       }
-      if (!access.canGenerate) {
-        throw new CharacterGenerationError(access.isPaid ? "INSUFFICIENT_CREDITS" : "FREE_ALLOWANCE_USED", access.message || "Character creation is unavailable.", access.isPaid ? 402 : 403);
-      }
-      return { count: access.requestedCount, useFreeAllowance: !access.isPaid };
+      return { count, useFreeAllowance: false };
     },
     getBusinessProfile: getBusinessProfileForUser,
     getReference: getCharacterForUser,

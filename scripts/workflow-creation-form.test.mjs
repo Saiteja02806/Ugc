@@ -44,6 +44,7 @@ function harness({ seedanceEnabled = false } = {}) {
     "@/components/explore/hook-workflow-media-controls": { WorkflowFilePicker: "picker", WorkflowMediaPlayer: "player" },
     "@/components/explore/workflow-audio-reference": { WorkflowAudioReference: "audio-reference" },
     "@/components/generation/ai-studio-composer": { AiStudioSettingSelect: "select" },
+    "@/components/explore/workflow-duration-control": { WorkflowDurationControl: "duration-control" },
     "@/components/ui/button": { Button: "button" },
     "@/components/ui/popover": Object.fromEntries(["Popover", "PopoverContent", "PopoverTitle", "PopoverTrigger"].map((name) => [name, name])),
     "@/lib/ai-studio/creator-references": { CREATOR_REFERENCES: [{ id: "c1", src: "/creator.png", fileName: "creator.png" }] },
@@ -72,7 +73,7 @@ test("the actual shared form has labelled fields and forwards user text verbatim
   const exact = "  Keep my spacing.\nDo not rewrite @creator.  ";
   input.props.onChange({ target: { value: exact } });
   assert.deepEqual(changes, [exact]);
-  assert.deepEqual(nodes(tree).filter((node) => node.type === "select").map((node) => node.props.ariaLabel), [
+  assert.deepEqual(nodes(tree).filter((node) => ["select", "duration-control"].includes(node.type)).map((node) => node.props.ariaLabel), [
     "Hook model", "Hook duration", "Hook quality", "Number of hook videos", "Hook aspect ratio",
   ]);
 });
@@ -98,11 +99,11 @@ test("each workflow offers only the duration and quality choices accepted by the
       const first = nodes(actual.render({ kind }));
       first.find((node) => node.type === "select" && node.props.ariaLabel === `${label} model`).props.onChange(model);
       const next = nodes(actual.render({ kind }));
-      const durations = next.find((node) => node.type === "select" && node.props.ariaLabel === `${label} duration`);
+      const durations = next.find((node) => node.type === "duration-control" && node.props.ariaLabel === `${label} duration`);
       const qualities = next.find((node) => node.type === "select" && node.props.ariaLabel === `${label} quality`);
-      assert.deepEqual(Array.from(durations.props.options, (option) => Number(option.value)), Array.from(backend.getAIStudioVideoDurations(model)));
+      assert.equal(durations.props.model, model);
+      assert.ok(backend.getAIStudioVideoDurations(model).includes(durations.props.value));
       assert.deepEqual(Array.from(qualities.props.options, (option) => option.value), Array.from(backend.getAIStudioVideoResolutions(model)));
-      assert.ok(durations.props.options.some((option) => option.value === durations.props.value));
       assert.ok(qualities.props.options.some((option) => option.value === qualities.props.value));
     }
   }

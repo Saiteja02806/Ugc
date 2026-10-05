@@ -61,7 +61,7 @@ function audioRender(overrides = {}) {
 test("the actual Edit video section offers optional demo without dummy result tiles or media", () => {
   const { tree } = render();
   assert.equal(tree.props["aria-label"], "Video finishing settings");
-  assert.match(text(tree), /Edit video.*Demo Optional/);
+  assert.match(text(tree), /Edited demo.*Demo Optional/);
   assert.equal(nodes(tree).filter((node) => node.type === "ol").length, 0);
   assert.equal(nodes(tree).filter((node) => node.type === "player").length, 0);
   assert.ok(nodes(tree).some((node) => node.type === "button" && node.props.disabled && node.props["aria-label"] === "Select demo audio"));

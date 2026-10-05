@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import creation from "@/components/explore/workflow-creation.module.css";
 import { isSocialPlatformVisible } from "@/lib/social/platform-visibility";
+import { toggleWorkflowPlatform, workflowSelectedPlatforms, type WorkflowScheduleDraft } from "@/lib/explore/workflow-scheduling-draft";
 
-export type WorkflowScheduleDraft = { platform: string; caption: string; date: string; time: string; connectionId?: string };
+export type { WorkflowScheduleDraft } from "@/lib/explore/workflow-scheduling-draft";
 export const EMPTY_SCHEDULE_DRAFT: WorkflowScheduleDraft = { platform: "", caption: "", date: "", time: "", connectionId: "" };
 export const SCHEDULE_PLATFORMS = ([
   { value: "instagram", label: "Instagram" },
@@ -24,18 +25,20 @@ export function WorkflowSchedulingPanel({ draft, onChange, accountsControl }: {
   accountsControl?: ReactNode;
 }) {
   const id = useId();
+  const selected = workflowSelectedPlatforms(draft);
   return <section aria-label="Post scheduling settings" className={creation.scheduling}>
     <h2 className="sr-only">Schedule</h2>
     <p className={creation.sectionHelp}>Choose where and when to share your finished video.</p>
     <div className={creation.scheduleField}>
-      <span className="text-sm font-medium">Platform</span>
-      <div role="group" aria-label="Posting platform" className={creation.platformGrid} style={{ gridTemplateColumns: `repeat(${SCHEDULE_PLATFORMS.length}, minmax(0, 1fr))` }}>
-        {SCHEDULE_PLATFORMS.map(({ value, label }) => <Button key={value} type="button" variant="ghost" aria-label={label} aria-pressed={draft.platform === value} title={label} data-platform={value} className={creation.platformButton} onClick={() => onChange({ ...draft, platform: value, connectionId: draft.platform === value ? draft.connectionId : "" })}>
+      <span className="text-sm font-medium">Platforms</span>
+      <div role="group" aria-label="Posting platforms" className={creation.platformGrid} style={{ gridTemplateColumns: `repeat(${SCHEDULE_PLATFORMS.length}, minmax(0, 1fr))` }}>
+        {SCHEDULE_PLATFORMS.map(({ value, label }) => <Button key={value} type="button" variant="ghost" aria-label={label} aria-pressed={selected.includes(value)} title={label} data-platform={value} className={creation.platformButton} onClick={() => onChange(toggleWorkflowPlatform(draft, value))}>
           <SocialPlatformIcon platform={value} className="size-6" />
           <span aria-hidden="true">{label}</span>
-          {draft.platform === value && <Check className={creation.referenceCheck} aria-hidden="true" />}
+          {selected.includes(value) && <Check className={creation.referenceCheck} aria-hidden="true" />}
         </Button>)}
       </div>
+      <p className="text-xs text-muted">Select one or both platforms.</p>
     </div>
     {accountsControl}
     <div className={creation.scheduleField}>

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import * as schedulingDraft from "../lib/explore/workflow-scheduling-draft.ts";
 
 const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
 const element = (type, props) => typeof type === "function" ? type(props) : ({ type, props });
@@ -39,6 +40,7 @@ function layout(kind) {
     "@/components/explore/workflow-edit-workspace": { WorkflowEditWorkspace: "editing", WorkflowScheduleWorkspace: "scheduling" },
     "@/components/explore/workflow-scheduling-panel": { EMPTY_SCHEDULE_DRAFT: {}, WorkflowSchedulingPanel: "schedule-settings" },
     "@/components/explore/workflow-connected-accounts": { WorkflowConnectedAccounts: "accounts" },
+    "@/lib/explore/workflow-scheduling-draft": schedulingDraft,
     "@/components/explore/workflow-preview-canvas": { WorkflowPreviewCanvas: "canvas" },
     "@/components/explore/use-local-app-screen": { useLocalAppScreen: () => ({ asset: null, loading: false }) },
     "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => attachments[mediaCursor++] },

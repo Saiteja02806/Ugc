@@ -1,15 +1,15 @@
 "use client";
 
-import { ArrowLeft, Check, ImageIcon, Loader2, UserRound, X } from "lucide-react";
+import { ArrowLeft, Check, ImageIcon, Images, Loader2, RectangleVertical, UserRound, X } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useState, type FormEvent, type KeyboardEvent } from "react";
 import { useAuth } from "@/contexts/auth-context";
-import { AiStudioComposer, AiStudioSettingSelect } from "@/components/generation/ai-studio-composer";
+import { AiStudioComposer, AiStudioSetting, AiStudioSettingSelect } from "@/components/generation/ai-studio-composer";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import type { CharacterGender, CharacterImageModel } from "@/lib/characters/types";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import type { CharacterImageCount, CharacterImageModel } from "@/lib/characters/types";
 import { useCharacterBuilder } from "./use-character-builder";
-import { useCharacterPreference } from "./use-character-preference";
 import styles from "./character-workspace.module.css";
 
 const MODEL_OPTIONS = [
@@ -18,6 +18,15 @@ const MODEL_OPTIONS = [
   { value: "nano_banana_2", label: "Nano Banana 2" },
 ] as const satisfies readonly { value: CharacterImageModel; label: string }[];
 
+const COUNT_OPTIONS = [1, 2, 3].map((count) => ({ value: String(count), label: String(count) }));
+
+const EXAMPLE_PORTRAITS = [
+  { src: "/explore/characters/creator-bedroom.webp", alt: "Example AI character holding a small microphone" },
+  { src: "/explore/characters/creator-selfie.webp", alt: "Example AI character in a casual selfie portrait" },
+  { src: "/explore/characters/creator-window.webp", alt: "Example AI character recording at home" },
+  { src: "/explore/characters/creator-office-v2.webp", alt: "Example AI character in a home office" },
+] as const;
+
 export function CharacterWorkspace({ localPreview = false }: { localPreview?: boolean }) {
   const { user, loading } = useAuth();
   return <CharacterScreen key={user?.uid ?? "signed-out"} userId={user?.uid ?? null} authLoading={loading} localPreview={localPreview} />;
@@ -25,44 +34,41 @@ export function CharacterWorkspace({ localPreview = false }: { localPreview?: bo
 
 function CharacterScreen({ userId, authLoading, localPreview }: { userId: string | null; authLoading: boolean; localPreview: boolean }) {
   const builder = useCharacterBuilder(userId);
-  const onboarding = useCharacterPreference(userId, !authLoading);
   const [prompt, setPrompt] = useState("");
   const [model, setModel] = useState<CharacterImageModel>("gpt_image");
-  const [genderChoice, setGenderChoice] = useState<CharacterGender | null>(null);
-  const [genderDismissed, setGenderDismissed] = useState(false);
+  const [count, setCount] = useState<CharacterImageCount>(1);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [suggestionDismissed, setSuggestionDismissed] = useState(false);
   const access = builder.access.data?.access;
   const busy = builder.generate.isPending || builder.inProgress || builder.restoring;
   const pending = builder.session.pendingRequest;
-  const hasHistory = Boolean(builder.session.jobs.length || builder.session.selectedCharacterId || pending || builder.characters.data?.characters.length);
-  const gender = genderChoice ?? onboarding.preference.gender ?? pending?.gender ?? builder.selected?.gender ?? builder.characters.data?.characters[0]?.gender ?? null;
-  const genderOpen = onboarding.ready && !genderDismissed && !onboarding.preference.seen && !hasHistory && !builder.restoring && (!userId || !builder.characters.isPending);
   const accessLoading = Boolean(userId) && builder.access.isPending;
-  const manualLocked = !userId || !access?.isPaid || !access.canGenerate;
-  const assistedLocked = !userId || !gender || !access?.canGenerate || accessLoading;
+  const quantityAffordable = Boolean(access && count <= access.affordableImageCount);
+  const manualLocked = authLoading || !userId || !quantityAffordable || accessLoading || builder.access.isError;
+  const assistedLocked = manualLocked;
   const error = builder.generate.error || builder.select.error;
   const selected = builder.selected;
-  const count = access?.requestedCount ?? 3;
+  const countOptions = access
+    ? COUNT_OPTIONS.filter((option) => Number(option.value) <= access.affordableImageCount || Number(option.value) === count)
+    : COUNT_OPTIONS;
 
   function submitPrompt(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
     if (busy || manualLocked || pending || !prompt.trim()) return;
     builder.generate.mutate({
-      mode: "custom", prompt: prompt.trim(), model,
+      mode: "custom", prompt: prompt.trim(), model, imageCount: count,
       ...(selected ? { referenceCharacterId: selected.id } : {}),
       idempotencyKey: crypto.randomUUID(),
     });
   }
   function submitAssisted() {
-    if (!userId || !gender || busy || assistedLocked || pending) return;
+    if (!userId || busy || assistedLocked || pending) return;
     builder.generate.reset();
-    onboarding.remember(gender);
-    builder.generate.mutate({ mode: "assisted", gender, model, idempotencyKey: crypto.randomUUID() });
+    builder.generate.mutate({ mode: "assisted", model, imageCount: count, idempotencyKey: crypto.randomUUID() });
   }
-  function finishGenderChoice() {
-    onboarding.remember(gender);
-    setGenderDismissed(true);
+  function openLibrary() {
+    setLibraryOpen(true);
+    if (userId) void builder.characters.refetch();
   }
   function handleTextareaKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -72,9 +78,8 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
   const usageLabel = !userId ? "Sign in to generate your influencer."
     : accessLoading ? "Checking generation access…"
     : builder.access.isError ? "Could not load generation access. Try again."
-    : access?.isPaid ? `${count} candidates · ${access.creditsRequired} credits`
-    : access?.freeGenerationAvailable ? "Your first influencer image is free. Use Create it for me."
-    : access?.message ?? "Upgrade to create more influencers.";
+    : access ? `${count} image${count === 1 ? "" : "s"} · ${count * access.imageCreditCost} credit${count * access.imageCreditCost === 1 ? "" : "s"} · ${access.creditsRemaining} available${quantityAffordable ? "" : access.affordableImageCount > 0 ? " — Choose fewer images or get more credits." : " — Get more credits to continue."}`
+    : "Checking generation access…";
 
   return (
     <section className={styles.workspace} aria-label="Build AI character workspace">
@@ -86,8 +91,8 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
           </Link>
           <h1 className="text-xl font-semibold tracking-tight text-foreground-strong sm:text-2xl">Build AI character</h1>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setLibraryOpen(true)} aria-label="My influencers" title="My influencers" className="size-9 shrink-0 px-0 sm:w-auto sm:px-3">
-          <UserRound className="size-4 sm:hidden" aria-hidden="true" /><span className="hidden sm:inline">My influencers</span>
+        <Button variant="outline" size="sm" onClick={openLibrary} aria-label="My influencers" title="My influencers" className={styles.libraryButton}>
+          <UserRound className="size-3.5" aria-hidden="true" /><span>My influencers</span>
         </Button>
       </header>
 
@@ -121,14 +126,22 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
             })}
           </div>
         </> : <div className={styles.empty}>
-          <div className={styles.emptyIcon}><UserRound className="size-6" strokeWidth={1.5} aria-hidden="true" /></div>
-          <p className="text-lg font-medium tracking-tight text-foreground-strong">Your creator starts here</p>
-          <p className="mt-2 text-sm leading-6">Describe your influencer, or let UGCpilot create your first one.</p>
+          <div className={styles.emptyCopy}>
+            <p className={styles.eyebrow}>A face for your ideas</p>
+            <h2 className={styles.emptyTitle}>Your creator starts here.</h2>
+            <p className={styles.emptyDescription}>Build an AI character for yourself or your business. Describe your look, or start with Create it for me.</p>
+          </div>
+          <div className={styles.examples} role="group" aria-label="AI character examples">
+            <div className={styles.exampleStrip}>
+              {EXAMPLE_PORTRAITS.map((portrait) => <div key={portrait.src} className={styles.examplePortrait}>
+                <Image src={portrait.src} alt={portrait.alt} fill loading="eager" sizes="(min-width: 640px) 110px, 22vw" />
+              </div>)}
+            </div>
+          </div>
         </div>}
       </div>
 
       <div className={styles.composerArea}>
-        {onboarding.save.isError ? <div className={styles.notice} role="alert">Your choice is remembered on this browser, but couldn’t be saved to your account. <Button variant="ghost" size="sm" onClick={() => onboarding.remember(gender)}>Retry saving</Button></div> : null}
         {builder.jobs.isError ? <div className={styles.notice} role="alert">{builder.jobs.error.message} <Button variant="ghost" size="sm" onClick={() => void builder.jobs.refetch()}>Check again</Button></div> : null}
         {error ? <div className={styles.notice} role="alert">{error.message}</div> : null}
         {pending && !builder.generate.isPending ? <div className={styles.notice}>
@@ -157,48 +170,30 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
           </div> : undefined}
           settings={<>
             <AiStudioSettingSelect<CharacterImageModel> ariaLabel="Image model" icon={<ImageIcon className="size-3.5" aria-hidden="true" />} options={MODEL_OPTIONS} value={model} onChange={setModel} disabled={busy || Boolean(pending)} />
-            <span className="px-2 text-xs text-muted">9:16 portrait</span>
-            {onboarding.ready && !gender && !genderOpen ? <div className="flex items-center gap-3 px-2 text-xs" role="radiogroup" aria-label="Influencer gender">
-              {(["male", "female"] as const).map((value) => <label key={value} className="flex cursor-pointer items-center gap-1.5"><input type="radio" name="character-gender-inline" value={value} disabled={busy} onChange={() => { setGenderChoice(value); onboarding.remember(value); }} className="accent-primary" />{value === "male" ? "Male" : "Female"}</label>)}
-            </div> : null}
+            <AiStudioSetting icon={<RectangleVertical className="size-3.5" aria-hidden="true" />} label="9:16 portrait" />
+            <AiStudioSettingSelect ariaLabel="Number of images" icon={<Images className="size-3.5" aria-hidden="true" />}
+              options={countOptions} value={String(count)} onChange={(value) => setCount(Number(value) as CharacterImageCount)}
+              disabled={busy || Boolean(pending)} />
             {suggestionDismissed && !selected && !builder.session.jobs.length ? <Button size="sm" variant="ghost" disabled={busy || assistedLocked || Boolean(pending)} onClick={submitAssisted}>Create it for me</Button> : null}
           </>}
           secondaryActions={userId ? builder.access.isError ? <Button size="sm" variant="ghost" onClick={() => void builder.access.refetch()}>Retry access</Button>
-            : !accessLoading && !access?.isPaid ? <Link href="/pricing" className="px-2 py-1 text-xs text-primary hover:underline">Upgrade for custom prompts</Link> : undefined
+            : !accessLoading && access && (!access.isPaid || !quantityAffordable) ? <Link href="/pricing" className="px-2 py-1 text-xs text-primary hover:underline">Get more credits</Link> : undefined
             : <Link href="/sign-in" className="px-2 py-1 text-xs text-primary hover:underline">Sign in</Link>}
         />
       </div>
-
-      <Dialog open={genderOpen} onOpenChange={(open) => { if (!open) finishGenderChoice(); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create your influencer</DialogTitle>
-            <DialogDescription>Would you like a male or female creator? We’ll remember your choice.</DialogDescription>
-          </DialogHeader>
-          <div className={styles.genderChoices} role="radiogroup" aria-label="Influencer gender">
-            {(["male", "female"] as const).map((value) => <label key={value} className={styles.genderChoice}>
-              <input type="radio" name="character-gender" value={value} checked={gender === value} disabled={busy} onChange={() => setGenderChoice(value)} className="accent-primary" />
-              <span className="text-sm font-medium">{value === "male" ? "Male" : "Female"}</span>
-            </label>)}
-          </div>
-          <p className="text-xs text-muted">You can describe a different creator in your prompt whenever you like.</p>
-          <DialogFooter>
-            <Button disabled={!gender} onClick={finishGenderChoice}>Continue</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={libraryOpen} onOpenChange={setLibraryOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>My influencers</DialogTitle><DialogDescription>Choose a saved influencer to keep their identity in your next image.</DialogDescription></DialogHeader>
           <div className={styles.library}>
-            {builder.characters.data?.characters.map((character) => <button key={character.id} type="button" className={`${styles.savedCharacter} outline-none focus-visible:ring-2 focus-visible:ring-focus`} onClick={() => { builder.chooseCharacter(character.id); setLibraryOpen(false); }}>
+            {builder.characters.data?.characters.map((character) => <button key={character.id} type="button" disabled={busy} className={`${styles.savedCharacter} outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50`} onClick={() => { builder.chooseCharacter(character.id); setLibraryOpen(false); }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={character.url} alt={character.name} />
               <span className="text-sm font-medium">{character.name}</span>
               {selected?.id === character.id ? <Check className="ml-auto size-4 text-primary" aria-hidden="true" /> : null}
             </button>)}
-            {!userId ? <p className="text-sm text-muted">Sign in to see your saved influencers.</p> : builder.characters.isPending ? <p className="text-sm text-muted">Loading influencers…</p> : builder.characters.isError ? <><p className="text-sm text-destructive" role="alert">{builder.characters.error.message}</p><Button size="sm" variant="outline" onClick={() => void builder.characters.refetch()}>Try again</Button></> : !builder.characters.data?.characters.length ? <p className="text-sm leading-6 text-muted">Your saved influencers will appear here. Generate an image, then choose “Use this influencer.”</p> : null}
+            {!userId ? <div className="space-y-3"><p className="text-sm text-muted">Sign in to see your saved influencers.</p><Button variant="outline" size="sm" nativeButton={false} render={<Link href="/sign-in" />}>Sign in</Button></div> : builder.characters.isPending ? <p className="text-sm text-muted">Loading influencers…</p> : builder.characters.isError ? <><p className="text-sm text-destructive" role="alert">{builder.characters.error.message}</p><Button size="sm" variant="outline" onClick={() => void builder.characters.refetch()}>Try again</Button></> : !builder.characters.data?.characters.length ? <p className="text-sm leading-6 text-muted">Your saved influencers will appear here. Generate an image, then choose “Use this influencer.”</p> : null}
+            {busy && builder.characters.data?.characters.length ? <p className="text-xs text-muted">Wait for the current generation to finish before switching influencers.</p> : null}
           </div>
         </DialogContent>
       </Dialog>

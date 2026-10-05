@@ -28,6 +28,15 @@ type TrendingCreativeDecisionDatabase = {
         };
         Returns: TrendingCreativeDecisionRow[];
       };
+      reconsider_skipped_trending_creative: {
+        Args: {
+          p_assignment_id: string;
+          p_creative_id: string;
+          p_format: TrendingFeedFormat;
+          p_user_id: string;
+        };
+        Returns: TrendingCreativeDecisionRow[];
+      };
     };
     Tables: {
       trending_creative_decisions: {
@@ -100,6 +109,23 @@ export async function recordTrendingCreativeDecision(params: {
     id: row.id,
     userId: row.user_id,
   };
+}
+
+export async function reconsiderSkippedTrendingCreative(params: {
+  assignmentId: string;
+  creativeId: string;
+  format: TrendingFeedFormat;
+  userId: string;
+}) {
+  const { data, error } = await getClient().rpc("reconsider_skipped_trending_creative", {
+    p_assignment_id: params.assignmentId,
+    p_creative_id: params.creativeId,
+    p_format: params.format,
+    p_user_id: params.userId,
+  });
+  if (error) throw new Error(`Could not select this skipped post: ${error.message}`);
+  if (data?.[0]?.decision !== "accepted") throw new Error("This skipped post was not selected.");
+  return { assignmentId: data[0].assignment_id, decision: data[0].decision };
 }
 
 function getClient() {

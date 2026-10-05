@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import * as schedulingDraft from "../lib/explore/workflow-scheduling-draft.ts";
 
 const read = (path) => readFileSync(new URL(`../components/explore/${path}`, import.meta.url), "utf8");
 const panel = read("workflow-creation-panel.tsx");
@@ -19,6 +20,7 @@ function load(source) {
     "@/components/ui/button": { Button: "button" },
     "@/components/ui/input": { Input: "input" },
     "@/lib/social/platform-visibility": { isSocialPlatformVisible: (platform) => platform !== "tiktok" },
+    "@/lib/explore/workflow-scheduling-draft": schedulingDraft,
     "@/components/generation/ai-studio-composer": { AiStudioSettingSelect: "select" },
     "@/components/explore/workflow-creation.module.css": { default: {} },
     "react/jsx-runtime": { jsx: element, jsxs: element, Fragment: "fragment" },
@@ -71,7 +73,7 @@ test("each section shows only its own primary action and supports keyboard tab a
   for (const section of ["create", "edit", "schedule"]) {
     const tree = WorkflowCreationPanel({ kind: "hook", section, children: "content" });
     const tabs = nodes(tree).filter((node) => node.type === "tab");
-    assert.deepEqual(tabs.map((node) => [node.props.value, text(node)]), [["create", "Create"], ["edit", "Edit video"], ["schedule", "Schedule"]]);
+    assert.deepEqual(tabs.map((node) => [node.props.value, text(node)]), [["create", "Create"], ["edit", "Edited demo"], ["schedule", "Schedule"]]);
     assert.equal(nodes(tree).find((node) => node.type === "tablist").props.activateOnFocus, true);
     const actions = nodes(tree).filter((node) => node.type === "button");
     assert.equal(actions.length, 1);
@@ -104,7 +106,7 @@ test("Schedule uses enabled named platform icons and forwards draft fields verba
   const tree = WorkflowSchedulingPanel({ draft: original, onChange: (draft) => changes.push(draft) });
   const platforms = nodes(tree).filter((node) => node.type === "button");
   assert.deepEqual(platforms.map((node) => [node.props["aria-label"], node.props["aria-pressed"]]), [["Instagram", false], ["YouTube", false]]);
-  assert.equal(nodes(tree).find((node) => node.props.role === "group").props["aria-label"], "Posting platform");
+  assert.equal(nodes(tree).find((node) => node.props.role === "group").props["aria-label"], "Posting platforms");
   assert.deepEqual(nodes(tree).filter((node) => node.type === "platform-icon").map((node) => node.props.platform), ["instagram", "youtube"]);
   platforms[0].props.onClick();
   nodes(tree).find((node) => node.type === "textarea").props.onChange({ target: { value: "  My caption\nunchanged  " } });

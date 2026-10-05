@@ -1,14 +1,13 @@
 "use client";
 
-/* Direct reference media preserves the source image and video dimensions. */
+/* Gallery covers fill their cards; opened previews preserve the full source dimensions. */
 /* eslint-disable @next/next/no-img-element */
 
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Filter, Layers3, LockKeyhole, Play, RefreshCw, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, ArrowRight, Filter, Layers3, Play, RefreshCw, RotateCcw, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 
-import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
 import { RecreateGenerationPanel } from "@/components/explore/recreate-generation-panel";
 import { RecreateSplitPane } from "@/components/explore/recreate-split-pane";
 import studio from "@/components/explore/workflow-studio.module.css";
@@ -33,12 +32,11 @@ const EMPTY_REFERENCES: RecreateReference[] = [];
 export function RecreateWorkspace({ previewReferences }: { previewReferences?: RecreateReference[] }) {
   const { loading: authLoading, user } = useAuth();
   const localPreview = previewReferences !== undefined;
-  const subscriptionQuery = useBillingSubscription();
   const referencesQuery = useQuery({
     enabled: !localPreview && !authLoading && Boolean(user),
     gcTime: 60 * 60 * 1_000,
     queryFn: ({ signal }) => fetchRecreateReferences(signal),
-    queryKey: ["recreate-references", 2, user?.uid ?? "signed-out"],
+    queryKey: ["recreate-references", 3, user?.uid ?? "signed-out"],
     refetchOnWindowFocus: false,
     retry: 1,
     staleTime: 30 * 60 * 1_000,
@@ -55,8 +53,6 @@ export function RecreateWorkspace({ previewReferences }: { previewReferences?: R
     const matching = filterReferences(references, format, selectedCategories);
     return format === "slideshow" ? interleaveReferenceCategories(matching) : matching;
   }, [format, references, selectedCategories]);
-  const hasProAccess = localPreview || subscriptionQuery.data?.isActive === true;
-  const displayedReferences = hasProAccess ? filtered : filtered.slice(0, 1);
   const loading = !localPreview && (authLoading || referencesQuery.isFetching && !referencesQuery.data);
   const ready = localPreview || referencesQuery.isSuccess;
 
@@ -147,9 +143,8 @@ export function RecreateWorkspace({ previewReferences }: { previewReferences?: R
                 <button type="button" onClick={() => setSelectedCategories([])} className="rounded-full px-2 py-1 text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Clear filters</button>
               </div> : null}
               <div className={GALLERY_GRID}>
-                {displayedReferences.map((reference) => <ReferenceCard key={reference.id} isSelected={selectedReference?.id === reference.id} onPreview={() => openPreview(reference)} onRecreate={() => selectReference(reference)} reference={reference} />)}
+                {filtered.map((reference) => <ReferenceCard key={reference.id} isSelected={selectedReference?.id === reference.id} onPreview={() => openPreview(reference)} onRecreate={() => selectReference(reference)} reference={reference} />)}
               </div>
-              {!hasProAccess && filtered.length > displayedReferences.length ? <ProReferenceGate /> : null}
             </> : null}
           </div>
         </section>
@@ -216,8 +211,8 @@ function ReferenceMedia({ reference, onPreview }: { reference: RecreateReference
   }
 
   return <button type="button" aria-label={`Preview ${reference.title}`} onClick={onPreview} onPointerEnter={play} onPointerLeave={stop} onFocus={play} onBlur={stop} className={cn("relative block w-full overflow-hidden bg-card-muted text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus", reference.format === "slideshow" ? "aspect-[4/5]" : "aspect-[9/16]")}>
-    {playable ? <video ref={videoRef} aria-hidden="true" className="absolute inset-0 size-full object-contain" muted loop playsInline preload="none" src={reference.videoUrl} onPlaying={() => setPlaying(true)} onError={() => setFailed(true)} /> : null}
-    <img alt="" src={reference.posterUrl} width={reference.slides[0]?.width ?? 720} height={reference.slides[0]?.height ?? 1280} className={cn("absolute inset-0 size-full object-contain transition-opacity duration-150 motion-reduce:transition-none", playing && "opacity-0")} loading="lazy" onError={() => setFailed(true)} />
+    {playable ? <video ref={videoRef} aria-hidden="true" className="absolute inset-0 size-full object-cover" muted loop playsInline preload="none" src={reference.videoUrl} onPlaying={() => setPlaying(true)} onError={() => setFailed(true)} /> : null}
+    <img alt="" src={reference.posterUrl} width={reference.slides[0]?.width ?? 720} height={reference.slides[0]?.height ?? 1280} className={cn("absolute inset-0 size-full object-cover transition-opacity duration-150 motion-reduce:transition-none", playing && "opacity-0")} loading="lazy" onError={() => setFailed(true)} />
     <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/35 via-transparent to-transparent" />
     {failed ? <span className="absolute inset-0 flex items-center justify-center bg-card-muted/90 px-3 text-center text-xs text-muted">Preview unavailable</span> : null}
     <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-black/45 px-2 py-1 text-[10px] font-medium text-white backdrop-blur-sm">{playable ? <Play className="size-3 fill-current" aria-hidden="true" /> : <><Layers3 className="size-3" aria-hidden="true" />{reference.slides.length}</>}</span>
@@ -254,10 +249,6 @@ function LoadError({ onRetry }: { onRetry: () => void }) {
 
 function EmptyReferences({ format, hasFilters, onClear }: { format: RecreateFormat; hasFilters: boolean; onClear: () => void }) {
   return <div className="flex min-h-75 flex-col items-center justify-center rounded-[24px] bg-card-muted/45 px-6 text-center"><Filter className="size-5 text-muted-subtle" aria-hidden="true" /><p className="mt-3 text-sm font-semibold text-foreground-strong">{hasFilters ? <>No {RECREATE_FORMAT_LABELS[format].toLowerCase()} match this filter</> : <>No {RECREATE_FORMAT_LABELS[format].toLowerCase()} yet</>}</p>{hasFilters ? <Button type="button" variant="outline" className="mt-5 rounded-full" onClick={onClear}>Clear filters</Button> : <p className="mt-2 text-sm leading-6 text-muted">This format will appear here when its references are ready.</p>}</div>;
-}
-
-function ProReferenceGate() {
-  return <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[24px] bg-primary/6 p-4"><div className="flex min-w-0 items-center gap-3"><span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary"><LockKeyhole className="size-3.5" aria-hidden="true" /></span><div><p className="text-sm font-semibold text-foreground-strong">More references are ready to explore</p><p className="text-xs text-muted">Upgrade to open the full Recreate catalogue.</p></div></div><Link href="/pricing" className="inline-flex h-8 items-center rounded-full bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2">View plans</Link></div>;
 }
 
 async function fetchRecreateReferences(signal?: AbortSignal): Promise<RecreateReference[]> {

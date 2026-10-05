@@ -7,10 +7,11 @@ import { useCallback, useId, useRef, useState, type ReactNode } from "react";
 import { WorkflowFilePicker, WorkflowMediaPlayer, type WorkflowAttachment } from "@/components/explore/hook-workflow-media-controls";
 import { WorkflowAudioReference, type WorkflowAudioReferenceProps } from "@/components/explore/workflow-audio-reference";
 import { AiStudioSettingSelect } from "@/components/generation/ai-studio-composer";
+import { WorkflowDurationControl } from "@/components/explore/workflow-duration-control";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { CREATOR_REFERENCES } from "@/lib/ai-studio/creator-references";
-import { AI_STUDIO_GENERATION_QUANTITIES, AI_STUDIO_VIDEO_ASPECT_RATIOS, getAIStudioVideoDurations, getAIStudioVideoResolutions, parseAIStudioGenerationQuantity, parseAIStudioVideoAspectRatio, parseAIStudioVideoDuration, parseAIStudioVideoModel, parseAIStudioVideoResolution } from "@/lib/ai-studio/generation-settings";
+import { AI_STUDIO_GENERATION_QUANTITIES, AI_STUDIO_VIDEO_ASPECT_RATIOS, getAIStudioVideoResolutions, parseAIStudioGenerationQuantity, parseAIStudioVideoAspectRatio, parseAIStudioVideoModel, parseAIStudioVideoResolution } from "@/lib/ai-studio/generation-settings";
 import { getWorkflowVideoModels, type WorkflowGenerationSettings } from "@/lib/explore/workflow-generation-settings";
 import { cn } from "@/lib/utils";
 import studio from "@/components/explore/workflow-studio.module.css";
@@ -37,7 +38,6 @@ export function WorkflowCreationForm({ kind, instructions, onInstructionsChange,
   const helperId = useId();
   const { model, duration, quantity, resolution, aspectRatio } = generationSettings;
   const models = getWorkflowVideoModels();
-  const durations = getAIStudioVideoDurations(model).map((seconds) => ({ value: String(seconds), label: `${seconds} sec` }));
   const qualities = getAIStudioVideoResolutions(model).map((value) => ({ value, label: value }));
   const prefix = kind === "hook" ? "Hook" : "Phone video";
 
@@ -82,7 +82,7 @@ export function WorkflowCreationForm({ kind, instructions, onInstructionsChange,
 
     <div role="group" aria-label={`${prefix} generation settings`} className={creation.settingsGrid}>
       <SettingField label="Model"><AiStudioSettingSelect ariaLabel={`${prefix} model`} value={model} onChange={(value) => onGenerationSettingsChange({ model: parseAIStudioVideoModel(value) })} options={models} /></SettingField>
-      <SettingField label="Duration"><AiStudioSettingSelect ariaLabel={`${prefix} duration`} value={String(duration)} onChange={(value) => onGenerationSettingsChange({ duration: parseAIStudioVideoDuration(Number(value)) })} options={durations} /></SettingField>
+      <SettingField label="Duration"><WorkflowDurationControl key={model} ariaLabel={`${prefix} duration`} model={model} value={duration} onChange={(duration) => onGenerationSettingsChange({ duration })} /></SettingField>
       <SettingField label="Quality"><AiStudioSettingSelect ariaLabel={`${prefix} quality`} value={resolution} onChange={(value) => onGenerationSettingsChange({ resolution: parseAIStudioVideoResolution(value) })} options={qualities} /></SettingField>
       <SettingField label="Videos"><AiStudioSettingSelect ariaLabel={kind === "hook" ? "Number of hook videos" : "Number of phone videos"} value={String(quantity)} onChange={(value) => onGenerationSettingsChange({ quantity: parseAIStudioGenerationQuantity(Number(value)) })} options={OUTPUTS} /></SettingField>
       <SettingField label="Ratio"><AiStudioSettingSelect ariaLabel={`${prefix} aspect ratio`} value={aspectRatio} onChange={(value) => onGenerationSettingsChange({ aspectRatio: parseAIStudioVideoAspectRatio(value) })} options={RATIOS} /></SettingField>

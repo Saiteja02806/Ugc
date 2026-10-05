@@ -10,7 +10,8 @@ export function readScheduleReceipt(raw: string | null, owner: string, kind: "ho
   if (v?.version !== 1 || v.owner !== owner || v.kind !== kind || !input ||
       !/^explore:[0-9a-f-]{36}$/i.test(input.idempotencyKey ?? "") || !isExploreUuid(input.idempotencyKey?.slice(8)) ||
       input.source?.kind !== "media_asset" || !isExploreUuid(input.source.id) ||
-      input.targets?.length !== 1 || !isExploreUuid(input.targets[0].connectionId) || !["instagram", "tiktok", "youtube"].includes(input.targets[0].platform ?? "") ||
+      !Array.isArray(input.targets) || input.targets.length < 1 || input.targets.length > 3 || input.targets.some(target => !isExploreUuid(target?.connectionId) || !["instagram", "tiktok", "youtube"].includes(target?.platform ?? "")) ||
+      new Set(input.targets.map(target => target.connectionId)).size !== input.targets.length || new Set(input.targets.map(target => target.platform)).size !== input.targets.length ||
       typeof input.scheduledFor !== "string" || !Number.isFinite(Date.parse(input.scheduledFor)) ||
       typeof input.timezone !== "string" || input.timezone.length > 100 ||
       typeof input.caption !== "string" || input.caption.length > 10000 ||
@@ -23,7 +24,7 @@ export function verifySavedSchedule(value: unknown, saved: ScheduleReceipt): Sch
   if (!v?.ok || !s || !isExploreUuid(s.id) || (saved.scheduleId && s.id !== saved.scheduleId) ||
       s.mediaAssetId !== saved.input.source.id || s.idempotencyKey !== saved.input.idempotencyKey ||
       !["draft", "scheduling", "scheduled", "publishing", "published", "partially_failed", "failed", "cancelled"].includes(s.status) ||
-      !Array.isArray(s.targets) || s.targets.length !== 1 || !s.targets.some(t => t.socialConnectionId === saved.input.targets![0].connectionId && t.platform === saved.input.targets![0].platform)) throw new Error("The schedule response could not be verified. Keep and resume the saved request.");
+      !Array.isArray(s.targets) || s.targets.length !== saved.input.targets?.length || !saved.input.targets?.every(target => s.targets.some(t => t.socialConnectionId === target.connectionId && t.platform === target.platform))) throw new Error("The schedule response could not be verified. Keep and resume the saved request.");
   return s;
 }
 export function scheduleReceiptMessage(schedule: ScheduledPost): string {

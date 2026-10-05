@@ -25,7 +25,7 @@ import {
   validateCharacterPlan,
   type CharacterPlanningInput,
 } from "./planner";
-import type { CharacterGenerationResponse } from "./types";
+import type { CharacterGenerationResponse, CharacterImageCount } from "./types";
 
 export class CharacterGenerationError extends Error {
   constructor(public code: string, message: string, public status = 400) {
@@ -52,7 +52,7 @@ export type CharacterReservationInput = {
 
 export type CharacterGenerationDependencies = {
   getExistingJob: (key: string, userId: string) => Promise<BackgroundJobRecord | null>;
-  requireAccess: (userId: string, request: CharacterGenerateRequest) => Promise<{ count: 1 | 3; useFreeAllowance: boolean }>;
+  requireAccess: (userId: string, request: CharacterGenerateRequest) => Promise<{ count: CharacterImageCount; useFreeAllowance: boolean }>;
   getBusinessProfile: (userId: string) => Promise<BusinessProfileRecord | null>;
   getReference: (id: string, userId: string) => Promise<CharacterReference | null>;
   plan: (input: CharacterPlanningInput) => Promise<CharacterPlan>;
@@ -81,7 +81,7 @@ export function characterRequestFingerprint(request: CharacterGenerateRequest) {
     model: request.model,
     prompt: request.prompt ?? null,
     referenceCharacterId: request.referenceCharacterId ?? null,
-    count: CHARACTER_CANDIDATE_COUNT,
+    count: request.imageCount ?? CHARACTER_CANDIDATE_COUNT,
   })).digest("hex");
 }
 
@@ -101,10 +101,15 @@ export function isCharacterGenerationJob(job: BackgroundJobRecord) {
     /^[0-9a-f]{64}$/.test(input.characterRequestFingerprint);
 }
 
-function assertOwnedBatch(jobs: BackgroundJobRecord[], userId: string, batchId: string, fingerprint: string) {
+function assertOwnedBatch(jobs: BackgroundJobRecord[], userId: string, batchId: string, fingerprint: string, requestedCount?: CharacterImageCount) {
   const count = getCharacterJobInput(jobs[0])?.batchSize;
-  if ((count !== 1 && count !== CHARACTER_CANDIDATE_COUNT) || jobs.length !== count) {
+  if ((count !== 1 && count !== 2 && count !== CHARACTER_CANDIDATE_COUNT) || jobs.length !== count) {
     throw new CharacterGenerationError("GENERATION_UNAVAILABLE", "The influencer batch is temporarily unavailable. Retry this request.", 503);
+  }
+  // Older fingerprints used count=3 even for a one-image free batch. Preserve
+  // their omitted-count replays, but never treat an explicit 3 as that same batch.
+  if (requestedCount !== undefined && requestedCount !== count) {
+    throw new CharacterGenerationError("IDEMPOTENCY_CONFLICT", "This request already belongs to a different number of images. Start a new request.", 409);
   }
   for (const [index, job] of jobs.entries()) {
     const input = getCharacterJobInput(job);
@@ -122,7 +127,7 @@ function assertOwnedBatch(jobs: BackgroundJobRecord[], userId: string, batchId: 
   }
 }
 
-/** Authenticated owner only; the database reserves all three images atomically. */
+/** Authenticated owner only; the database reserves the entire selected batch atomically. */
 export async function generateCharacterBatch(userId: string, rawRequest: unknown, dependencies: CharacterGenerationDependencies): Promise<CharacterGenerationResponse> {
   const parsed = CharacterGenerateRequestSchema.safeParse(rawRequest);
   if (!parsed.success) {
@@ -138,7 +143,7 @@ export async function generateCharacterBatch(userId: string, rawRequest: unknown
     // A replay must not call the planner, consume more credits or read changed
     // business facts. Recover delivery using the already committed batch.
     jobs = existing.filter((job): job is BackgroundJobRecord => !!job);
-    assertOwnedBatch(jobs, userId, batchId, fingerprint);
+    assertOwnedBatch(jobs, userId, batchId, fingerprint, request.imageCount);
   } else {
     const access = await dependencies.requireAccess(userId, request);
     const reference = request.referenceCharacterId
@@ -187,15 +192,15 @@ export async function generateCharacterBatch(userId: string, rawRequest: unknown
     });
     // A concurrent request may have already committed a different plan for the
     // same semantic input. Always dispatch and return the durable database rows.
-    assertOwnedBatch(jobs, userId, batchId, fingerprint);
+    assertOwnedBatch(jobs, userId, batchId, fingerprint, request.imageCount);
   }
   const dispatched = await Promise.all(jobs.map((job) => dependencies.dispatch(job)));
   return {
     ok: true,
     jobs: dispatched.map((job) => ({ jobId: job.id, generationId: String(getCharacterJobInput(job)?.generationId) })),
-    requestedCount: jobs.length as 1 | 3,
+    requestedCount: jobs.length as CharacterImageCount,
     partial: false,
-    message: jobs.length === 1 ? "Your first influencer is being created." : "Three influencer candidates are being created.",
+    message: jobs.length === 1 ? "Your influencer is being created." : `${jobs.length} influencer candidates are being created.`,
   };
 }
 
@@ -236,7 +241,7 @@ export async function reserveCharacterGenerationBatch(input: CharacterReservatio
       throw new CharacterGenerationError("IDEMPOTENCY_CONFLICT", "This request already belongs to different character instructions.", 409);
     }
     if (message.includes("insufficient_billing_credits")) {
-      throw new CharacterGenerationError("INSUFFICIENT_CREDITS", "You need enough credits to create three influencer candidates.", 402);
+      throw new CharacterGenerationError("INSUFFICIENT_CREDITS", "You don’t have enough credits for the selected number of images.", 402);
     }
     if (message.includes("paid_subscription_required")) {
       throw new CharacterGenerationError("PLAN_REQUIRED", "An active Starter or Growth subscription is required to create an influencer.", 403);

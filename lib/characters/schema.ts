@@ -3,6 +3,7 @@ import { z } from "zod";
 export const CHARACTER_SOURCE = "ugc-pilot-characters";
 export const CHARACTER_VERSION = 1;
 export const CHARACTER_CANDIDATE_COUNT = 3;
+export const CharacterImageCountSchema = z.union([z.literal(1), z.literal(2), z.literal(3)]);
 
 export const CharacterGenderSchema = z.enum(["male", "female"]);
 export const CharacterImageModelSchema = z.enum(["gpt_image", "gemini_3_pro", "nano_banana_2"]);
@@ -11,13 +12,11 @@ export const CharacterGenerateRequestSchema = z.strictObject({
   mode: z.enum(["assisted", "custom"]),
   gender: CharacterGenderSchema.optional(),
   model: CharacterImageModelSchema,
+  imageCount: CharacterImageCountSchema.optional(),
   prompt: z.string().trim().min(1).optional(),
   referenceCharacterId: z.uuid().optional(),
   idempotencyKey: z.string().trim().min(1).max(200),
 }).superRefine((request, context) => {
-  if (request.mode === "assisted" && !request.gender) {
-    context.addIssue({ code: "custom", path: ["gender"], message: "Choose male or female before generating." });
-  }
   if (request.mode === "assisted" && request.prompt) {
     context.addIssue({ code: "custom", path: ["prompt"], message: "Use custom mode to describe your own influencer." });
   }

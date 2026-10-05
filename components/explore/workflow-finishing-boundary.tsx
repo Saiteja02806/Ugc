@@ -6,6 +6,7 @@ import type { ScheduleFormSubmission } from "@/components/scheduling/schedule-ed
 import { DEFAULT_FINISHING_OPTIONS, useWorkflowFinishing, type FinishingOptions, type WorkflowAction } from "@/components/explore/use-workflow-finishing";
 import type { LocalWorkflowMedia } from "@/components/explore/use-local-workflow-media";
 import type { WorkflowScheduleDraft } from "@/components/explore/workflow-scheduling-panel";
+import { workflowScheduleTargets, workflowSelectedPlatforms } from "@/lib/explore/workflow-scheduling-draft";
 import { parseWorkflowConnectedAccounts } from "@/lib/explore/workflow-connected-accounts";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { MediaAsset } from "@/lib/media/types";
@@ -29,6 +30,8 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
   const [receipt, setReceipt] = useState<ScheduleReceipt | null>(null), [confirmedSource, setConfirmedSource] = useState<string | null>(null), [restored, setRestored] = useState(false);
   const active = useRef(true), working = useRef(false);
   const storageKey = `ugc-explore:schedule:v1:${encodeURIComponent(ownerId ?? "")}:${kind}`;
+  const selectedTargets = workflowScheduleTargets(scheduleDraft);
+  const selectedPlatforms = workflowSelectedPlatforms(scheduleDraft);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const authorized = useCallback(async (url: string, init?: RequestInit) => {
     const token = await getCurrentUserIdToken(ownerId ?? undefined);
@@ -114,7 +117,7 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
     if (!ownerId || !finishing.output || working.current) return;
     working.current = true; setBusy(true); setError(null);
     try {
-      if (submission.scheduledSource.kind !== "media_asset" || submission.scheduledSource.id !== finishing.output.id || submission.targets.length !== 1 || submission.targets[0].connectionId !== scheduleDraft.connectionId) throw new Error("Confirm the selected finished video and connected account.");
+      if (submission.scheduledSource.kind !== "media_asset" || submission.scheduledSource.id !== finishing.output.id || !selectedTargets.length || submission.targets.length !== selectedTargets.length || !selectedTargets.every(target => submission.targets.some(candidate => candidate.connectionId === target.connectionId && candidate.platform === target.platform))) throw new Error("Confirm the selected finished video and an account for every selected platform.");
       await locked(async prior => {
         if (prior && (!prior.scheduleId || prior.input.source.id === finishing.output!.id)) { setReceipt(prior); await send(prior); return; }
         // Never discard an uncertain request. An older confirmed output stays
@@ -132,12 +135,12 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
   const media: ScheduleMediaOption[] = output ? [{ id: output.id, mediaUrl: output.url, thumbnailUrl: output.thumbnailUrl ?? undefined, sourceType: "edit_video", status: "ready", title: output.title }] : [];
   const alreadySaved = confirmedSource !== null && (!output || confirmedSource === output.id);
   const resumeSaved = receipt !== null && !receipt.scheduleId;
-  const schedule: WorkflowAction = { busy, disabled: !enabled || !ownerId || !restored || busy || alreadySaved || (!resumeSaved && (!output || !scheduleDraft.connectionId)), error, message: output && !receipt ? "Review platform settings and confirm your schedule." : message, onAction: () => { void start(); }, refresh: () => { void refresh(); } };
+  const schedule: WorkflowAction = { busy, disabled: !enabled || !ownerId || !restored || busy || alreadySaved || (!resumeSaved && (!output || !selectedTargets.length)), error, message: output && !receipt ? "Select an account for each platform, then review and confirm your schedule." : message, onAction: () => { void start(); }, refresh: () => { void refresh(); } };
   return <><FinishingView value={{ edit: finishing.action, schedule, output, options, setOptions }}>{children}</FinishingView>
     {open && output ? <ScheduleEditor demoMediaOptions={media} hookMediaOptions={[]} editingIsCombinedVideo={false} editingPlannedPlatforms={[]} editingSchedule={null} editingScheduledDate={null} editingScheduledTime={null}
-      initialClipSelection="secondary_only" initialDemoMediaId={output.id} initialHookMediaId="" initialCaption={scheduleDraft.caption} initialPlannedTargets={[{ connectionId: scheduleDraft.connectionId!, platform: scheduleDraft.platform as "instagram" | "tiktok" | "youtube" }]}
+      initialClipSelection="secondary_only" initialDemoMediaId={output.id} initialHookMediaId="" initialCaption={scheduleDraft.caption} initialPlannedTargets={selectedTargets}
       initialScheduledDate={scheduleDraft.date} initialScheduledTime={scheduleDraft.time} minimumScheduleLeadMinutes={lead} requireScheduleTarget saving={busy} errorMessage={error}
-      socialConnections={connections.filter(c => c.id === scheduleDraft.connectionId)} tiktokBetaEnabled={scheduleDraft.platform === "tiktok"} youtubeBetaEnabled={scheduleDraft.platform === "youtube"}
+      socialConnections={connections.filter(c => selectedTargets.some(target => target.connectionId === c.id))} tiktokBetaEnabled={selectedPlatforms.includes("tiktok")} youtubeBetaEnabled={selectedPlatforms.includes("youtube")}
       onClose={() => { if (!busy) setOpen(false); }} onRefreshMedia={async () => true} onRefreshConnections={loadConnections} onSave={value => { void save(value); }} /> : null}
   </>;
 }

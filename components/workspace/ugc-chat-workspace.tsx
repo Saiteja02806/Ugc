@@ -865,6 +865,7 @@ export function ImageGenerationStudioPanel({
       <AiStudioResults
         ariaLabel="Generated images"
         emptyContent={recreateView?.emptyContent}
+        emptyContentClassName={recreateView ? "items-start pt-8" : undefined}
         emptyTitle="What will you create?"
         emptyDescription="Describe an image below, or add a reference to guide the look. Your completed images are saved in History."
         gridClassName="grid-cols-1 gap-4 sm:grid-cols-1 lg:grid-cols-1 xl:grid-cols-1 2xl:grid-cols-1"
@@ -992,6 +993,7 @@ export function ImageGenerationStudioPanel({
           <>
             <AiStudioSettingSelect
               ariaLabel="Image model"
+              size={recreateView ? "sm" : "default"}
               disabled={generationLocked || isGenerating}
               options={AI_STUDIO_IMAGE_MODELS.map((value) => ({
                 label: value === "gemini_3_pro" ? "Gemini 3 Pro" : "GPT Image",
@@ -1004,6 +1006,7 @@ export function ImageGenerationStudioPanel({
               }}
             />
             <AiStudioRatioPicker
+              size={recreateView ? "sm" : "default"}
               value={aspectRatio}
               onChange={(value) => {
                 submissionKeyRef.current = null;
@@ -1013,6 +1016,7 @@ export function ImageGenerationStudioPanel({
             />
             <AiStudioSettingSelect
               ariaLabel="Number of images"
+              size={recreateView ? "sm" : "default"}
               disabled={generationLocked || isGenerating}
               icon={<ImageIcon className="size-4" aria-hidden="true" />}
               options={AI_STUDIO_GENERATION_QUANTITIES.map((count) => ({

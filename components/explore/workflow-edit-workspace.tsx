@@ -6,6 +6,7 @@ import { WorkflowMediaPlayer, type WorkflowAttachment } from "@/components/explo
 import { SCHEDULE_PLATFORMS, type WorkflowScheduleDraft } from "@/components/explore/workflow-scheduling-panel";
 import creation from "@/components/explore/workflow-creation.module.css";
 import type { MediaAsset } from "@/lib/media/types";
+import { workflowSelectedPlatforms } from "@/lib/explore/workflow-scheduling-draft";
 
 /** Shows only user-selected demo media, never a stock or pretend generated video. */
 export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, finishedVideo }: {
@@ -32,7 +33,7 @@ export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, f
       <section aria-label="Demo segment" className={creation.segment}>
         <h3 className="text-sm font-medium">Demo <span className="text-xs font-normal text-muted">Optional</span></h3>
         {demo.asset ? <><WorkflowMediaPlayer asset={demo.asset} kind="video" label="Video sequence demo preview" className={creation.demoPlayer} /><p className="truncate text-xs text-muted" title={demo.asset.name}>{demo.asset.name}</p></>
-          : <div className={creation.segmentEmpty}><Video className="size-5 text-muted" aria-hidden="true" /><p>Add a demo in Edit video, or keep your {videoLabel.toLowerCase()} on its own.</p></div>}
+          : <div className={creation.segmentEmpty}><Video className="size-5 text-muted" aria-hidden="true" /><p>Add a demo in Edited demo, or keep your {videoLabel.toLowerCase()} on its own.</p></div>}
       </section>
     </div>
     <section aria-label="Demo audio summary" className={creation.audioSummary}>
@@ -44,9 +45,9 @@ export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, f
 }
 
 export function WorkflowScheduleWorkspace({ draft, finishedVideo }: { draft: WorkflowScheduleDraft; finishedVideo?: MediaAsset | null }) {
-  const platform = SCHEDULE_PLATFORMS.find((option) => option.value === draft.platform)?.label;
+  const platform = workflowSelectedPlatforms(draft).map(value => SCHEDULE_PLATFORMS.find(option => option.value === value)?.label).filter(Boolean).join(" + ");
   return <section aria-label="Post preview" className={creation.editWorkspace}>
-    <div><h2 className={creation.sectionTitle}>Post preview</h2><p className={creation.sectionHelp}>{platform ?? "Choose a platform in Schedule."}</p></div>
+    <div><h2 className={creation.sectionTitle}>Post preview</h2><p className={creation.sectionHelp}>{platform || "Choose a platform in Schedule."}</p></div>
     {finishedVideo ? <WorkflowMediaPlayer asset={{ name: finishedVideo.title, url: finishedVideo.url, duration: finishedVideo.durationSeconds }} kind="video" label="Scheduled finished video preview" /> : <div className={creation.postEmpty}><Video className="size-6 text-muted" aria-hidden="true" /><h3 className="text-lg font-semibold">Your finished video will appear here.</h3><p className={creation.sectionHelp}>Apply edits to save a finished video before scheduling.</p></div>}
     <section aria-label="Post caption preview" className={creation.captionPreview}>
       <h3 className="text-sm font-medium">Post caption</h3>

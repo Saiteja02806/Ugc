@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { BackgroundJobRecord } from "../jobs/background-jobs.ts";
 import type { MediaAssetRow } from "../media/media-storage.ts";
 import { CHARACTER_SOURCE, CharacterImageModelSchema, CharacterSpecSchema, MAX_CHARACTER_PROMPT_LENGTH } from "./schema.ts";
-import type { CharacterImageModel, CharacterSpec } from "./types.ts";
+import type { CharacterHistoryImage, CharacterImageModel, CharacterSpec } from "./types.ts";
 
 export { CHARACTER_SOURCE } from "./schema.ts";
 
@@ -171,6 +171,27 @@ export function serializePublicCharacter(character: TrustedCharacter): PublicCha
     gender: character.gender,
     createdAt: character.createdAt,
   };
+}
+
+// History includes unselected candidates as well as saved identities. Validate
+// the same owned job/output provenance used when saving a character.
+export function serializeCharacterHistoryImage(
+  job: CharacterSourceJob | null, asset: MediaAssetRow, userId: string,
+): CharacterHistoryImage | null {
+  try {
+    const candidate = getTrustedCandidate(job, asset, userId);
+    const marker = getMarker(asset);
+    return {
+      jobId: candidate.jobId,
+      generationId: String((job!.input as Record<string, unknown>).generationId),
+      mediaAssetId: asset.id, url: candidate.url, model: candidate.model,
+      prompt: candidate.userPrompt, createdAt: asset.created_at,
+      saved: asset.collection === "influencer" && marker?.jobId === candidate.jobId,
+    };
+  } catch (error) {
+    if (error instanceof CharacterIdentityError) return null;
+    throw error;
+  }
 }
 
 function getTrustedSelectedCharacter(job: CharacterSourceJob | null, asset: MediaAssetRow | null, userId: string) {

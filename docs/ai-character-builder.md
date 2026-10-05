@@ -1,10 +1,10 @@
 # AI character builder
 
-Latest local change, October 5, 2026: prompt-driven generation replaces assisted
-first-influencer generation. This change, its worker update and migration
-`20261005140000_character_prompt_driven_generation.sql` have not been deployed
-or applied to a hosted database. Earlier validation sections below describe
-historical behavior and do not override this current contract.
+Latest local change, October 5, 2026: completed AI character images belong to
+History rather than being restored into every new workspace visit. This history
+and session change is not deployed. It requires no migration or worker change.
+The preceding prompt-driven release is deployed at commit `6e82f4c`; its additive
+RPC migration was applied as hosted version `20261005140223`.
 
 Local validation for the prompt-driven change passed 59 character/API/session
 tests, 8 database tests (including historical credit tests), 3 provider-boundary
@@ -84,6 +84,44 @@ loading, empty and retry states and stays visible on mobile. Switching saved
 influencers is disabled during an active generation. Selecting one lets a user with credits request a new setting,
 outfit or pose while preserving its facial identity. Reference images help the
 selected model keep identity; visual similarity still depends on model output.
+
+## Current session and history
+
+Results generated during a mounted workspace visit remain visible for that
+visit. On reload or leave-and-return, completed results are hidden and the
+workspace starts clean. The durable client receipt still recovers uncertain
+admissions and unfinished jobs; a recovered unfinished batch stays visible when
+it finishes during the current visit. Historical completed batches never become
+foreground results merely because a status request completes.
+
+The History button loads completed, owned character jobs in cursor pages of 25,
+including candidates that were never selected and images saved to My influencers.
+Jobs and ready media are checked against the same ownership and output provenance
+as character selection. Deleted images, unrelated AI Studio generations and
+untrusted storage URLs are excluded. Legacy planner prompts are not exposed;
+prompt-driven history shows the user's own description. No image is copied or
+deleted, and viewing history makes no generation or credit reservation request.
+
+Opening a history entry explicitly previews that image. Its existing selection
+flow can save the original asset to My influencers without regeneration. Back
+to session restores the current foreground batch. New session clears foreground
+results, prompt and selected reference while retaining durable history and saved
+influencers. Session reset and historical selection are unavailable during an
+active or uncertain request.
+
+`GET /api/characters/history` verifies the Firebase account, ignores supplied
+owner IDs, validates cursor timestamps and UUIDs before constructing filters,
+uses stable `(created_at, id)` ordering and returns `Cache-Control: no-store`.
+It uses two bounded queries per page; it does not query each image separately.
+
+Local validation for this history change: all 87 character tests passed, along
+with full TypeScript, scoped ESLint and the optimized application build. A
+read-only query of hosted storage returned the existing saved portrait and no
+images for an unrelated account; no generation, credit or media writes were
+performed. Local browser checks covered History opening, signed-out messaging,
+desktop and 375px layouts without console errors or horizontal overflow.
+Signed-in browser acceptance on the production domain remains pending because
+this new change has not been deployed.
 
 ## Server flow and contracts
 

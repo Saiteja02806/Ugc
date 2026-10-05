@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Check, ImageIcon, Images, Loader2, RectangleVertical, UserRound, X } from "lucide-react";
+import { ArrowLeft, Check, History, ImageIcon, Images, Loader2, RectangleVertical, UserRound, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, type FormEvent, type KeyboardEvent } from "react";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { CharacterImageCount, CharacterImageModel } from "@/lib/characters/types";
 import { useCharacterBuilder } from "./use-character-builder";
+import { CharacterHistory } from "./character-history";
 import styles from "./character-workspace.module.css";
 
 const MODEL_OPTIONS = [
@@ -33,7 +34,8 @@ export function CharacterWorkspace({ localPreview = false }: { localPreview?: bo
 }
 
 function CharacterScreen({ userId, authLoading, localPreview }: { userId: string | null; authLoading: boolean; localPreview: boolean }) {
-  const builder = useCharacterBuilder(userId);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const builder = useCharacterBuilder(userId, historyOpen);
   const [prompt, setPrompt] = useState("");
   const [model, setModel] = useState<CharacterImageModel>("gpt_image");
   const [count, setCount] = useState<CharacterImageCount>(1);
@@ -84,19 +86,30 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
           </Link>
           <h1 className="text-xl font-semibold tracking-tight text-foreground-strong sm:text-2xl">Build AI character</h1>
         </div>
-        <Button variant="outline" size="sm" onClick={openLibrary} aria-label="My influencers" title="My influencers" className={styles.libraryButton}>
-          <UserRound className="size-3.5" aria-hidden="true" /><span>My influencers</span>
-        </Button>
+        <div className={styles.headerActions}>
+          <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)} aria-label="Character history" title="Character history" className={styles.historyButton}>
+            <History className="size-3.5" aria-hidden="true" /><span>History</span>
+          </Button>
+          <Button variant="outline" size="sm" onClick={openLibrary} aria-label="My influencers" title="My influencers" className={styles.libraryButton}>
+            <UserRound className="size-3.5" aria-hidden="true" /><span>My influencers</span>
+          </Button>
+        </div>
       </header>
 
       <div className={styles.stage} aria-live="polite" aria-busy={busy}>
-        {builder.session.jobs.length ? <div className={styles.resultsPanel}>
-          <p className={styles.resultsHeading}>{builder.inProgress ? "Creating your influencer…" : "Select an image to save it to My influencers."}</p>
+        {builder.visibleJobs.length ? <div className={styles.resultsPanel}>
+          <div className={styles.resultsToolbar}>
+            <p className={styles.resultsHeading}>{builder.inProgress ? "Creating your influencer…" : "Select an image to save it to My influencers."}</p>
+            <div className="flex shrink-0 gap-1">
+              {builder.historyImage ? <Button variant="ghost" size="sm" onClick={builder.returnToSession}>Back to session</Button> : null}
+              <Button variant="outline" size="sm" disabled={busy || Boolean(pending) || builder.select.isPending} onClick={() => { builder.startNewSession(); setPrompt(""); }}>New session</Button>
+            </div>
+          </div>
           <div className={styles.results}>
-            {builder.session.jobs.map((receipt, index) => {
-              const job = builder.jobs.data?.find((candidate) => candidate.id === receipt.jobId);
+            {builder.visibleJobs.map((receipt, index) => {
+              const job = builder.visibleStatuses?.find((candidate) => candidate.id === receipt.jobId);
               const output = job?.output;
-              const saved = Boolean(output && builder.characters.data?.characters.some((character) => character.id === output.mediaAssetId));
+              const saved = Boolean(output && (builder.characters.data?.characters.some((character) => character.id === output.mediaAssetId) || builder.historyImage?.jobId === receipt.jobId && builder.historyImage.saved));
               const active = Boolean(output && selected?.id === output.mediaAssetId);
               const saving = builder.select.isPending && builder.select.variables === receipt.jobId;
               return <article key={receipt.jobId} className={styles.candidate} data-selected={active} aria-label={`Influencer candidate ${index + 1}`}>
@@ -168,6 +181,12 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
             : <Link href="/sign-in" className="px-2 py-1 text-xs text-primary hover:underline">Sign in</Link>}
         />
       </div>
+
+      <CharacterHistory open={historyOpen} onOpenChange={setHistoryOpen} images={builder.historyImages}
+        selectedJobId={builder.historyImage?.jobId ?? null} onSelect={(image) => { builder.openHistoryImage(image); setHistoryOpen(false); }}
+        loading={Boolean(userId) && builder.history.isPending} error={builder.history.error} onRetry={() => void builder.history.refetch()}
+        hasMore={builder.history.hasNextPage} loadingMore={builder.history.isFetchingNextPage} onLoadMore={() => void builder.history.fetchNextPage()}
+        signedIn={Boolean(userId)} busy={busy || Boolean(pending) || builder.select.isPending} />
 
       <Dialog open={libraryOpen} onOpenChange={setLibraryOpen}>
         <DialogContent>

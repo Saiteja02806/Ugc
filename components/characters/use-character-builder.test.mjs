@@ -35,9 +35,13 @@ const queryClient = {
   },
 };
 
-mock.module("react", { defaultExport: React, namedExports: { ...React, useRef: (value) => ({ current: value }) } });
+mock.module("react", { defaultExport: React, namedExports: {
+  ...React, useRef: (value) => ({ current: value }), useEffect: () => {},
+  useState: (initial) => [typeof initial === "function" ? initial() : initial, () => {}],
+} });
 mock.module("@tanstack/react-query", { namedExports: {
   useQueryClient: () => queryClient,
+  useInfiniteQuery: (options) => ({ data: undefined, isPending: true, error: null, __options: options }),
   useQuery: (options) => {
     const key = serializeKey(options.queryKey);
     queries.set(key, options);

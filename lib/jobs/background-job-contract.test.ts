@@ -75,6 +75,68 @@ test("public video jobs explain a provider balance failure without exposing diag
   assert.equal(JSON.stringify(getPublicBackgroundJob(job)).includes("request-private"), false);
 });
 
+const imagePrivacyRejection = `HTTP 400: ${JSON.stringify({
+  error: {
+    code: "InputImageSensitiveContentDetected.PrivacyInformation",
+    message: "The request failed because the input image 'content[1]' may contain real person. Request id: request-private token=private-secret https://private.example/reference.jpg",
+    param: "content[1]",
+    type: "BadRequest",
+  },
+})}`;
+
+test("explains historical image privacy rejections and prevents replaying them", () => {
+  for (const jobType of ["generate_hook_video", "video_generation"] as const) {
+    for (const errorCode of ["JOB_FAILED", "provider_operation_failed", "PROVIDER_CONTENT_MODERATION", null]) {
+      const job = { attemptCount: 1, maxAttempts: 3, status: "failed", jobType, errorCode, errorMessage: imagePrivacyRejection } as BackgroundJobRecord;
+      const error = getPublicBackgroundJob(job).error;
+      assert.equal(error?.code, "PROVIDER_REFERENCE_IMAGE_REJECTED");
+      assert.match(error?.message ?? "", /reference image.*may contain a real person's face/);
+      assert.match(error?.message ?? "", /No video was generated/);
+      assert.match(error?.message ?? "", /approved portrait references/);
+      assert.equal(error?.retryable, false);
+      assert.equal(isRetryableBackgroundJob(job), false);
+      assert.doesNotMatch(JSON.stringify(error), /private-secret|request-private|private\.example|content\[1\]|You can retry|cause could not be identified/);
+    }
+  }
+});
+
+test("recognized image privacy codes remain safe without raw provider diagnostics", () => {
+  const job = { attemptCount: 1, maxAttempts: 3, status: "failed", jobType: "generate_hook_video", errorCode: "PROVIDER_REFERENCE_IMAGE_REJECTED", errorMessage: "private-secret" } as BackgroundJobRecord;
+  assert.equal(getPublicBackgroundJob(job).error?.retryable, false);
+  assert.match(getPublicBackgroundJob(job).error?.message ?? "", /reference image/);
+  assert.doesNotMatch(JSON.stringify(getPublicBackgroundJob(job)), /private-secret/);
+});
+
+test("the new privacy detection preserves an existing moderation classification", () => {
+  const job = { attemptCount: 1, maxAttempts: 3, status: "failed", jobType: "generate_hook_video", errorCode: "PROVIDER_CONTENT_MODERATION", errorMessage: "Runway task failed: private provider details" } as BackgroundJobRecord;
+  assert.equal(getPublicBackgroundJob(job).error?.code, "PROVIDER_CONTENT_MODERATION");
+  assert.equal(isRetryableBackgroundJob(job), false);
+});
+
+test("does not infer portrait rejection from arbitrary text, malformed JSON or other error codes", () => {
+  for (const errorMessage of [
+    "InputImageSensitiveContentDetected.PrivacyInformation private-secret",
+    'HTTP 400: {"error":{"code":"InputImageSensitiveContentDetected.PrivacyInformation"}',
+    'HTTP 400: {"error":{"code":"OtherError","message":"InputImageSensitiveContentDetected.PrivacyInformation"}}',
+    'HTTP 400: {"error":"InputImageSensitiveContentDetected.PrivacyInformation"}',
+    imagePrivacyRejection.replace("HTTP 400:", "HTTP 500:"),
+    `${imagePrivacyRejection}${" ".repeat(65_536)}`,
+  ]) {
+    const job = { attemptCount: 1, maxAttempts: 3, status: "failed", jobType: "generate_hook_video", errorCode: "JOB_FAILED", errorMessage } as BackgroundJobRecord;
+    assert.equal(getPublicBackgroundJob(job).error?.code, "JOB_FAILED");
+    assert.equal(isRetryableBackgroundJob(job), true);
+    assert.doesNotMatch(JSON.stringify(getPublicBackgroundJob(job).error), /private-secret|reference image|real person's face/);
+  }
+});
+
+test("video image rejection detection does not change unrelated jobs or Wall privacy", () => {
+  for (const jobType of ["wall_text_generation", "wall_text_content_plan_generation", "generate_image", "generate_carousel"] as const) {
+    const job = { attemptCount: 1, maxAttempts: 3, status: "failed", jobType, errorCode: "JOB_FAILED", errorMessage: imagePrivacyRejection } as BackgroundJobRecord;
+    assert.equal(getPublicBackgroundJob(job).error?.code, jobType.startsWith("wall_text") ? "CONTENT_PREPARATION_UNAVAILABLE" : "JOB_FAILED");
+    assert.doesNotMatch(JSON.stringify(getPublicBackgroundJob(job).error), /private-secret|request-private|reference image|real person's face/);
+  }
+});
+
 test("terminal and uncertain provider requests cannot be replayed even with attempts remaining", () => {
   for (const errorCode of ["PROVIDER_CONTENT_MODERATION", "PROVIDER_INSUFFICIENT_CREDITS", "provider_operation_failed", "provider_submission_uncertain"]) {
     const job = { attemptCount: 1, maxAttempts: 3, status: "failed", jobType: "generate_hook_video", errorCode, errorMessage: "private provider diagnostics" } as BackgroundJobRecord;

@@ -124,6 +124,7 @@ export function isRetryableBackgroundJob(job: BackgroundJobRecord) {
   // Replaying this job cannot revive its saved provider operation.
   if (
     errorCode === "PROVIDER_CONTENT_MODERATION" ||
+    errorCode === "PROVIDER_REFERENCE_IMAGE_REJECTED" ||
     errorCode === "PROVIDER_INSUFFICIENT_CREDITS" ||
     errorCode === "provider_submission_uncertain" ||
     errorCode === "provider_operation_failed" ||
@@ -195,6 +196,8 @@ function getSafeJobErrorMessage(
   }
 
   switch (errorCode) {
+    case "PROVIDER_REFERENCE_IMAGE_REJECTED":
+      return "Your reference image was rejected by the video provider because it may contain a real person's face. No video was generated. Contact support about approved portrait references before submitting this image again.";
     case "PROVIDER_CONTENT_MODERATION":
       return "The model provider blocked this generation through content moderation. Review your prompt and reference media before starting a new generation.";
     case "provider_submission_uncertain":
@@ -229,9 +232,13 @@ function getPublicJobErrorCode(job: BackgroundJobRecord) {
   // Older video workers persisted terminal provider errors as JOB_FAILED.
   // Recognize only known signatures; never publish arbitrary stored diagnostics.
   if (
-    (code === "JOB_FAILED" || code === "provider_operation_failed") &&
+    (code === "JOB_FAILED" || code === "provider_operation_failed" || code === "PROVIDER_CONTENT_MODERATION") &&
     (job.jobType === "generate_hook_video" || job.jobType === "video_generation")
   ) {
+    if (isProviderImagePrivacyFailure(job.errorMessage)) {
+      return "PROVIDER_REFERENCE_IMAGE_REJECTED";
+    }
+    if (code === "PROVIDER_CONTENT_MODERATION") return code;
     if (/^Runway task failed: .*\bblocked by .*content moderation system\b/i.test(job.errorMessage ?? "")) {
       return "PROVIDER_CONTENT_MODERATION";
     }
@@ -240,6 +247,24 @@ function getPublicJobErrorCode(job: BackgroundJobRecord) {
     }
   }
   return code;
+}
+
+function isProviderImagePrivacyFailure(errorMessage: string | null) {
+  // OpenRouter can wrap this upstream validation error in its message. Older
+  // workers saved that message as JOB_FAILED. Only recognize the exact code in
+  // a structured HTTP 400 response; never guess from a prompt or publish it.
+  if (!errorMessage || errorMessage.length > 65_536) return false;
+  const response = /^HTTP 400:\s*(\{[\s\S]*\})$/u.exec(errorMessage);
+  if (!response) return false;
+  try {
+    const body: unknown = JSON.parse(response[1]);
+    if (!body || typeof body !== "object" || Array.isArray(body)) return false;
+    const error = (body as Record<string, unknown>).error;
+    return Boolean(error && typeof error === "object" && !Array.isArray(error) &&
+      (error as Record<string, unknown>).code === "InputImageSensitiveContentDetected.PrivacyInformation");
+  } catch {
+    return false;
+  }
 }
 
 function isProviderBalanceFailure(errorMessage: string | null) {

@@ -8,6 +8,15 @@ export type CharacterImageModel = z.infer<typeof CharacterImageModelSchema>;
 export type CharacterImageCount = z.infer<typeof CharacterImageCountSchema>;
 
 export type CharacterJobReceipt = { jobId: string; generationId: string };
+export type CharacterHistoryImage = CharacterJobReceipt & {
+  mediaAssetId: string;
+  url: string;
+  prompt: string | null;
+  model: CharacterImageModel;
+  createdAt: string;
+  saved: boolean;
+};
+export type CharacterHistoryPage = { ok: true; images: CharacterHistoryImage[]; nextCursor: string | null };
 export type CharacterGenerationResponse = {
   ok: true;
   jobs: CharacterJobReceipt[];

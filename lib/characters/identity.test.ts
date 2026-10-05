@@ -7,6 +7,7 @@ import {
   CharacterIdentityError,
   CharacterSelectionRequestSchema,
   createCharacterIdentityService,
+  serializeCharacterHistoryImage,
   type CharacterIdentityStore,
   type CharacterSourceJob,
 } from "./identity-service.ts";
@@ -108,6 +109,32 @@ function fixture() {
 function expectIdentityError(status: number) {
   return (error: unknown) => error instanceof CharacterIdentityError && error.status === status;
 }
+
+test("history retains completed candidates before and after saving without leaking legacy master prompts", async () => {
+  const f = fixture();
+  const candidate = serializeCharacterHistoryImage(f.job, f.asset(), USER_ID);
+  assert.equal(candidate?.jobId, JOB_ID);
+  assert.equal(candidate?.mediaAssetId, ASSET_ID);
+  assert.equal(candidate?.saved, false);
+  assert.equal(candidate?.prompt, null);
+  assert.equal(JSON.stringify(candidate).includes("Private"), false);
+  await f.service.select({ jobId: JOB_ID, userId: USER_ID });
+  const saved = serializeCharacterHistoryImage(f.job, f.asset(), USER_ID);
+  assert.equal(saved?.saved, true);
+  assert.equal(saved?.url, candidate?.url);
+});
+
+test("history shows only the owner's user prompt and excludes invalid, unfinished or deleted outputs", () => {
+  const f = fixture();
+  f.job.input = { characterSource: CHARACTER_SOURCE, characterVersion: 2, mode: "custom", promptSource: "user",
+    prompt: "My presenter in a green studio", model: "gpt_image", generationId: GENERATION_ID,
+    candidateIndex: 1, businessProfileId: null, businessProfileVersion: null };
+  assert.equal(serializeCharacterHistoryImage(f.job, f.asset(), USER_ID)?.prompt, "My presenter in a green studio");
+  assert.equal(serializeCharacterHistoryImage(f.job, f.asset(), "another-owner"), null);
+  assert.equal(serializeCharacterHistoryImage({ ...f.job, status: "processing" }, f.asset(), USER_ID), null);
+  assert.equal(serializeCharacterHistoryImage(f.job, { ...f.asset(), deleted_at: new Date().toISOString() }, USER_ID), null);
+  assert.equal(serializeCharacterHistoryImage({ ...f.job, output: { url: "https://foreign.example/face.png" } }, f.asset(), USER_ID), null);
+});
 
 test("Google model identities remain selectable, restorable and usable as references", async () => {
   for (const model of ["gemini_3_pro", "nano_banana_2"]) {

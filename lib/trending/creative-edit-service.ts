@@ -59,13 +59,13 @@ import {
 } from "@/lib/trending/text-color";
 import { isTrendingSourceVideoAsset } from "@/lib/trending/video-source-selection";
 import { getEditableWallTextDraft } from "@/lib/trending/wall-text-db";
-import { createAuthoritativeWallTextContent } from "@/lib/trending/wall-layout-engine";
+import { createAuthoritativeWallTextEdit } from "@/lib/trending/wall-layout-engine";
+import { WALL_TEXT_EDIT_MAX_WIDTH, WALL_TEXT_EDIT_MIN_WIDTH } from "@/lib/trending/wall-text-editor-layout";
 import { getBackfillWallTextFormatId } from "@/lib/trending/wall-formats";
 import { classifyWallTextEdit } from "@/lib/trending/wall-text-edit-attribution";
 import {
   applyWallTextRenderFit,
   WALL_TEXT_RENDER_HEIGHT,
-  WALL_TEXT_RENDER_WIDTH,
   validateWallTextRenderFit,
 } from "@/lib/trending/wall-text-render-validation";
 import { validateWallTextContent } from "@/lib/trending/wall-text-text-logic";
@@ -181,6 +181,7 @@ export async function saveTrendingCreativeEditor(params: {
     userId: params.userId,
   });
   const content = await validateAndNormalizeSubmittedContent({
+    previousContent: existing ? mergeStoredContentWithOwnerDefaults(defaultContent, existing) : defaultContent,
     assignmentId: params.input.assignmentId,
     content: submittedContent,
     creativeId: params.creativeId,
@@ -423,6 +424,7 @@ function mergeSubmittedContent(
 }
 
 async function validateAndNormalizeSubmittedContent(params: {
+  previousContent: TrendingCreativeEditContent;
   assignmentId: string;
   content: TrendingCreativeEditContent;
   creativeId: string;
@@ -629,12 +631,10 @@ async function validateAndNormalizeSubmittedContent(params: {
     const durationSeconds =
       params.source?.resolvedAssetDurationSeconds ?? draft.durationSeconds;
     const currentContent = params.content.content;
-    const sourceContent = {
-      kind: "text" as const,
-      text: currentContent.fullText,
-    };
-    const relaid = await createAuthoritativeWallTextContent({
-      content: sourceContent,
+    const relaid = await createAuthoritativeWallTextEdit({
+      fullText: currentContent.fullText,
+      previousContent: params.previousContent.format === "wall_text"
+        ? params.previousContent.content : draft.text,
       formatId: getBackfillWallTextFormatId(
         currentContent.formatId ?? draft.text.formatId ?? "niche_insight",
       ),
@@ -678,8 +678,8 @@ function validateWallTextPlacement(params: {
     textBox.x,
     textBox.y,
   ];
-  const minimumWidth = 620 / WALL_TEXT_RENDER_WIDTH;
-  const maximumWidth = 780 / WALL_TEXT_RENDER_WIDTH;
+  const minimumWidth = WALL_TEXT_EDIT_MIN_WIDTH;
+  const maximumWidth = WALL_TEXT_EDIT_MAX_WIDTH;
 
   if (
     validNumbers.some(

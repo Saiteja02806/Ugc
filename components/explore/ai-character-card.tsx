@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
 import { useEffect, useRef } from "react";
 
+import { ExploreLinkIndicator } from "@/components/explore/explore-link-indicator";
 import styles from "@/components/explore/explore-workspace.module.css";
 
 const CHARACTER_COVER = "/explore/characters/ai-character-create-yours-v5.mp4";
@@ -47,7 +47,7 @@ export function AICharacterCard({ localPreview = false }: { localPreview?: boole
         </div>
         <div className={styles.characterCaption}>
           <span>Example AI characters</span>
-          <span className={styles.characterAction}>Create yours <ArrowUpRight className="size-3.5" aria-hidden="true" /></span>
+          <span className={styles.characterAction}>Create yours <ExploreLinkIndicator label="AI character builder" className="size-3.5" /></span>
         </div>
       </Link>
     </section>

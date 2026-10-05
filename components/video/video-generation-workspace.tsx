@@ -1076,6 +1076,8 @@ export function VideoGenerationStudioPanel({
     });
   }
 
+  const hasSessionActions = Boolean(selectedHistoryVideo) || (visibleVideos.length > 0 && !isGenerating);
+
   return (
     <div
       id="ai-studio-videos-panel"
@@ -1129,7 +1131,7 @@ export function VideoGenerationStudioPanel({
             )}
           </div>
         ) : undefined}
-        toolbar={recreateView?.preview ? undefined :
+        toolbar={recreateView?.preview ? undefined : recreateView && !hasSessionActions ? undefined :
           <div className="flex items-center gap-2">
             {selectedHistoryVideo ? (
               <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedHistoryVideoId(null)}>Back to session</Button>
@@ -1140,7 +1142,7 @@ export function VideoGenerationStudioPanel({
                 New session
               </Button>
             ) : null}
-            <Button
+            {!recreateView ? <Button
             type="button"
             variant="outline"
             size="sm"
@@ -1154,7 +1156,7 @@ export function VideoGenerationStudioPanel({
                 {generatedVideos.length}
               </span>
             ) : null}
-            </Button>
+            </Button> : null}
           </div>
         }
       >
@@ -1189,7 +1191,7 @@ export function VideoGenerationStudioPanel({
         onClose={() => setHistoryOpen(false)}
         onQueryChange={setHistoryQuery}
         onSelectVideo={focusHistoryVideo}
-        open={historyOpen}
+        open={!recreateView && historyOpen}
         query={historyQuery}
         selectedVideoId={selectedHistoryVideoId ?? latestCompletedVideoId}
       />

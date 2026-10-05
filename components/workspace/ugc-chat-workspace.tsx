@@ -851,6 +851,8 @@ export function ImageGenerationStudioPanel({
     document.querySelector<HTMLTextAreaElement>('textarea[name="imagePrompt"]')?.focus();
   }
 
+  const hasSessionActions = Boolean(selectedHistoryImageId) || (visibleImages.length > 0 && !isGenerating);
+
   return (
     <div
       id="ai-studio-images-panel"
@@ -874,7 +876,7 @@ export function ImageGenerationStudioPanel({
         status={resultsStatus}
         statusPlacement="inline"
         scrollToLatestKey={!selectedHistoryImageId && isSubmitting ? activeSubmittedAt : null}
-        toolbar={recreateView?.preview ? undefined :
+        toolbar={recreateView?.preview ? undefined : recreateView && !hasSessionActions ? undefined :
           <div className="flex items-center gap-2">
             {selectedHistoryImageId ? (
               <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedHistoryImageId(null)}>Back to session</Button>
@@ -885,13 +887,13 @@ export function ImageGenerationStudioPanel({
                 New session
               </Button>
             ) : null}
-            <Button type="button" variant="outline" size="sm" disabled={resultsLoading} onClick={() => { setHistoryNow(new Date()); setHistoryOpen(true); }}>
+            {!recreateView ? <Button type="button" variant="outline" size="sm" disabled={resultsLoading} onClick={() => { setHistoryNow(new Date()); setHistoryOpen(true); }}>
               <History className="size-3.5" aria-hidden="true" />
               History
               {generatedAssets.length > 0 ? (
                 <span className="rounded-full bg-card-muted px-1.5 py-0.5 text-[10px] tabular-nums">{generatedAssets.length}</span>
               ) : null}
-            </Button>
+            </Button> : null}
           </div>
         }
       >
@@ -911,7 +913,7 @@ export function ImageGenerationStudioPanel({
 
       <ImageGenerationHistory
         groups={historyGroups}
-        open={historyOpen && active}
+        open={!recreateView && historyOpen && active}
         onOpenChange={setHistoryOpen}
         query={historyQuery}
         onQueryChange={setHistoryQuery}

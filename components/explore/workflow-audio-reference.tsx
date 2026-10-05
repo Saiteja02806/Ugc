@@ -9,7 +9,7 @@ import studio from "@/components/explore/workflow-studio.module.css";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { WorkflowSavedAudioPicker } from "@/components/explore/workflow-saved-audio-picker";
+import { WorkflowSavedAudioChoices } from "@/components/explore/workflow-saved-audio-choices";
 
 export type WorkflowAudioReferenceProps = {
   ownerId?: string | null;
@@ -33,8 +33,8 @@ export function WorkflowAudioReference({ audioLabel, audio, ownerId }: WorkflowA
     <PopoverContent side="right" align="start" className={cn(studio.floating, creation.floating)}>
       <PopoverTitle>Main voice reference</PopoverTitle>
       <p className="text-sm leading-6 text-muted">Optional audio reference up to 30 seconds for Seedance 2.5 through OpenRouter. It guides the generated {videoName} voice—not background music or demo audio. Files upload only when you Generate in the connected workflow.</p>
-      <WorkflowFilePicker attachment={audio} kind="audio" label={audio.asset ? `Replace ${audioName}` : `Attach ${audioName}`} buttonLabel={audio.asset ? "Replace audio" : "Choose audio"} className="h-9 text-sm" />
-      {ownerId ? <WorkflowSavedAudioPicker ownerId={ownerId} attachment={audio} /> : null}
+      <WorkflowFilePicker attachment={{ ...audio, choose: file => audio.choose(file, { maxDuration: 30 }) }} kind="audio" label={audio.asset ? `Replace ${audioName}` : `Attach ${audioName}`} buttonLabel={audio.asset ? "Replace audio" : "Choose audio"} className="h-9 text-sm" />
+      {open && ownerId ? <WorkflowSavedAudioChoices ownerId={ownerId} audio={audio} onVoiceReference={() => {}} /> : null}
       {audio.asset ? <>
         <div className="flex min-w-0 items-center gap-1"><WorkflowMediaPlayer asset={audio.asset} kind="audio" label={`${audioLabel} preview`} /><RemoveMediaButton label={audioName} onClick={audio.remove} /></div>
         <p className="break-all text-xs text-muted">{audio.asset.name}</p>

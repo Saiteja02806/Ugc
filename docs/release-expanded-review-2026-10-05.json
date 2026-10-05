@@ -1,0 +1,1044 @@
+{
+  "base": "8207241225426d46b5649279047451aba00c61ba",
+  "capturedAt": "2026-10-05T11:30:46.553Z",
+  "reviewedAt": "2026-10-05T11:54:19.931Z",
+  "scope": "All completed project changes, including Wall of Text, Explore, Trending and Audio",
+  "sourceDrift": [],
+  "entries": [
+    {
+      "source": "desktop",
+      "path": "components/trending/wall-text-edit-overlay.tsx",
+      "baseBlob": null,
+      "sourceBlob": "094c383107d6ce3ed0bf1c11b6eb9918faddb704",
+      "rawSha": "a35ebfbd9c5cb23e8aa9fb2b76c1f5aaebdb8825906b73fc8930da2627a4df5d"
+    },
+    {
+      "source": "desktop",
+      "path": "docs/audio-bookmarks-explore-fix.md",
+      "baseBlob": null,
+      "sourceBlob": "a00d6ffd39e36c8918a77931b41630adc980c250",
+      "rawSha": "2f06e3b9cee1730fb93f206c328f13cd7d6e109f3052d608c599047cfa53a349"
+    },
+    {
+      "source": "desktop",
+      "path": "docs/wall-text-manual-edit-formatting-2026-10-05.md",
+      "baseBlob": null,
+      "sourceBlob": "b3b4455a9def7bd534a9baa3137a673297476be8",
+      "rawSha": "f1612f42453fba04c1b0b5ef5499ae1dd812c4271e9fff00d8d9785295c22a65"
+    },
+    {
+      "source": "desktop",
+      "path": "lib/trending/wall-text-editor-layout.ts",
+      "baseBlob": null,
+      "sourceBlob": "902218d68d03eee237ce3c9f73bf5b3085de45cc",
+      "rawSha": "6e000f82b68c9e0cb168ffd2e8b331961a05a366278ee5c68704886bed88d045"
+    },
+    {
+      "source": "desktop",
+      "path": "lib/trending/wall-text-manual-copy.ts",
+      "baseBlob": null,
+      "sourceBlob": "239cc81d763d5d79b1667e30cb0ef36f0617dc77",
+      "rawSha": "8ed7849a3b4ac6fb3e3948132eb1443c57d480fa539b629051683f44b3e7b0e7"
+    },
+    {
+      "source": "desktop",
+      "path": "lib/trending/wall-text-manual-layout.test.mjs",
+      "baseBlob": null,
+      "sourceBlob": "5c2f82d7f8b3f27f083e7a7cf2745d3e9bc187bc",
+      "rawSha": "6c831b4410a736938c089e32182f30a7cef85c8639bf02a83f294ec5fc7f9d53"
+    },
+    {
+      "source": "desktop",
+      "path": "CAROUSEL_CONTEXT.md",
+      "baseBlob": "95c7bc0fc1c4ba0cfb229d128e8b593242c15f17",
+      "sourceBlob": "7cbd529395d70a7623593034a465457e8ab65890",
+      "rawSha": "81fd4e543422dc72b4e00c896bb6bca0b9f551cd43025b25820a0e9122b87dd6"
+    },
+    {
+      "source": "desktop",
+      "path": "WALL_TEXT_CONTEXT.md",
+      "baseBlob": "8799d44b4ebb813bc48f4c60546910ad187a0567",
+      "sourceBlob": "5f420c3458ba53cb4f77f12ae45dcb40e3900b41",
+      "rawSha": "b45bfd28cc6824e6f8e75e1492905c7579d9d164c461ba7d77a16e5facccdb4e"
+    },
+    {
+      "source": "desktop",
+      "path": "app/api/trending/creatives/[format]/[creativeId]/edit/route.ts",
+      "baseBlob": "274f2d8fb9c21680aa22fb2a4fdabfb2536e248a",
+      "sourceBlob": "0ffa5cc70bdaafedcecbf00d68b2b8d2e006db6e",
+      "rawSha": "9ddb215a9793bced670c6e756427a468aa4316c6416deaf700c6bcd654bdd37d"
+    },
+    {
+      "source": "desktop",
+      "path": "app/api/trending/creatives/wall_text/[creativeId]/overlay/route.ts",
+      "baseBlob": "2f34a8df033dfeeb54e06c08f6e1f0836be94a28",
+      "sourceBlob": "c9ae03242879f6a89ba5b628f466a622a2d35dc1",
+      "rawSha": "6733b0041f26b575e5e631bea9d6bc65b2d9cc2be9269269655d023e6b7687f6"
+    },
+    {
+      "source": "desktop",
+      "path": "components/trending/trending-creative-editor.tsx",
+      "baseBlob": "3fe149c5291535d9275faeda8206fdc8656ad4db",
+      "sourceBlob": "e09c2d1a33ac8484217b6708cf0998f62e4da7b6",
+      "rawSha": "fc0c4a3a2168a5c5152d476180ecfc016d8dc4b6ac5604e11f997405131e9e2d"
+    },
+    {
+      "source": "desktop",
+      "path": "components/trending/wall-text-overlay.tsx",
+      "baseBlob": "769cab882f607c4fa7e2ee5929da39d819a20b4f",
+      "sourceBlob": "a9563f96f1d352ec171bd62ba92ca0b2c26e09a4",
+      "rawSha": "40d3c12ab537dc80c3395923573f3967566bcda9a04f518c414535406a631399"
+    },
+    {
+      "source": "desktop",
+      "path": "lib/trending/creative-edit-contract.test.ts",
+      "baseBlob": "5478950bcb64eec5ccb9b7cc8cc8ccb0b60f57ff",
+      "sourceBlob": "21d729774ae133f084fe8ea99a3b998b39bea389",
+      "rawSha": "7f5247174a3b44d4db10028744c68d71500643e24d575a0cd5f950cb695b314a"
+    },
+    {
+      "source": "desktop",
+      "path": "lib/trending/creative-edit-contract.ts",
+      "baseBlob": "076ded08b12edead8bed2d97f010ad01b9148292",
+      "sourceBlob": "d25700c2f28d245785d4877cea3561f846d1d895",
+      "rawSha": "854e3f24e2e43ac5ccf8805bbe1c0768b0082983d1594e5ad572744a927c0ff4"
+    },
+    {
+      "source": "desktop",
+      "path": "lib/trending/creative-edit-schema-contract.test.ts",
+      "baseBlob": "c8bab16d07f4e605bfc0f7ff1dfeb185786ec316",
+      "sourceBlob": "fd5eaac976bc558e28cb6edde6e480f1e78d5eae",
+      "rawSha": "8f0d8cd548cb741003125f8360a50218c45cdc2557de9a844e8783d1485a368a"
+    },
+    {
+      "source": "desktop",
+      "path": "lib/trending/creative-edit-service.ts",
+      "baseBlob": "82a027722ee275376fb77620896ef3b4b6c8bfd4",
+      "sourceBlob": "1fab2506c50809d46d4bdf1f42d05d213912efe2",
+      "rawSha": "1e0a55eea3c3c89a92d2aa983ff7aa8f1c79e6a419d05a8071dae15df7391e56"
+    },
+    {
+      "source": "desktop",
+      "path": "lib/trending/wall-layout-engine.ts",
+      "baseBlob": "18d633a50de8da0d7981b54a854df1553cc5b4f5",
+      "sourceBlob": "1f90378abb7ed8f5583dcc5ed64466497aec7827",
+      "rawSha": "8ac0c02ff5bf8c494baa3577d8bb034f561df552bf46d517819f57af1750c4f0"
+    },
+    {
+      "source": "desktop",
+      "path": "lib/trending/wall-text-render-validation.ts",
+      "baseBlob": "5daa3d26672306faa266ae59f200e7a532b5af40",
+      "sourceBlob": "863c532f26e64ef9e0d1d2f85b8855c2c1453ccb",
+      "rawSha": "f1af83fc5abb2ae21817a60562b346c7cc4ca78fde038ace550f0350642ac7b5"
+    },
+    {
+      "source": "desktop",
+      "path": "lib/trending/wall-text-text-logic.ts",
+      "baseBlob": "a4f5a3b4fcb5bb000ebd74c866162f469e48cd67",
+      "sourceBlob": "d3ad26a32534f6f24cac6d9b9cea9342e3a6ea83",
+      "rawSha": "12ffe15d02fd8ba9eb14de3525e21591a5f23e21e6eb76a0fa398932ea41c3de"
+    },
+    {
+      "source": "desktop",
+      "path": "lib/trending/wall-text-types.ts",
+      "baseBlob": "96887c3834f1e499f5c261fb54e4ebcb70482692",
+      "sourceBlob": "e4f33f27a273a27cbc235e3a9d70b534918eca9d",
+      "rawSha": "66be0d6242e7b3a7eeb3e56d3b6d0fcc845d6e9b5f9edca1c1865c82072acc7c"
+    },
+    {
+      "source": "desktop",
+      "path": "package.json",
+      "baseBlob": "2689a427c07aa451b22fd135c7271a7ea924fa90",
+      "sourceBlob": "92c381e4a685fef10a5d56cb1cfc9d19e9063390",
+      "rawSha": "97114323112a769088b807927dcd9e13f7422cb5b9140e4b3f1ff5f77ca88ace"
+    },
+    {
+      "source": "desktop",
+      "path": "worker/src/jobs/render-wall-text-video.ts",
+      "baseBlob": "c787065c132828493e0faf48d029d393a63a969b",
+      "sourceBlob": "6183bf97a40fa7a106ab858d4075628f02b7a727",
+      "rawSha": "3f4b977e6b2dd802faf4ae9a77245fd9fa602003af33f750433267dfc5a9067f"
+    },
+    {
+      "source": "desktop",
+      "path": "worker/src/lib/wall-text-overlay-renderer.ts",
+      "baseBlob": "3ecd22d9641b23f818f37aea5ea339215865e664",
+      "sourceBlob": "b3decd57205f914053e1de0e9bcc7a2409d1748f",
+      "rawSha": "f7fc7401f05775f8ba43549ceeffbb0e7f27afe355e8a0c830856abe1a3f4531"
+    },
+    {
+      "source": "desktop",
+      "path": "worker/src/lib/wall-text-render-spec.ts",
+      "baseBlob": "30ed603caed0f9281aedd205238233cec88ec89f",
+      "sourceBlob": "a48d5331ea73543286f45cb80caac1a96c35acf5",
+      "rawSha": "e3a1ec3099c55159547aae1ebbad3cc1a95a247507d917b36adcfa0a77f15c0d"
+    },
+    {
+      "source": "explore",
+      "path": "app/explore/loading.tsx",
+      "baseBlob": null,
+      "sourceBlob": "c90e1cd9e120e5bb50cdf3b91110f0b85d6f8458",
+      "rawSha": "d7cecb51183df2879a571241ce0d1fa3e4a96e166016416af0c37392d6cd34c5"
+    },
+    {
+      "source": "explore",
+      "path": "components/explore/explore-link-indicator.tsx",
+      "baseBlob": null,
+      "sourceBlob": "dc11e3206a745b7f88387735c737d5ae8f1d413d",
+      "rawSha": "e55f1fce3710afa773122449f29b3cdda89b23d60a8b77b84625b759a540c4b6"
+    },
+    {
+      "source": "explore",
+      "path": "docs/explore-slideshow-categories-2026-10-05.md",
+      "baseBlob": null,
+      "sourceBlob": "788a143d9b661ddc0826a642173c489e16d66e6d",
+      "rawSha": "0ede8b13523ab57105f80d79ce7fc51e6843476b62d928806f09cdd17cd3928f"
+    },
+    {
+      "source": "explore",
+      "path": "scripts/explore-navigation-ui.test.mjs",
+      "baseBlob": null,
+      "sourceBlob": "2d4cc37f89c159f8fed93055818319cea733e0c5",
+      "rawSha": "f8b754487bd44d68132f5b9a2a669a94628bcaa65bdfc5e452f9a497fa04da5d"
+    },
+    {
+      "source": "explore",
+      "path": "scripts/explore-quick-start-presets.test.mjs",
+      "baseBlob": null,
+      "sourceBlob": "e9074cb80f18fbe7152b062242645746c42b650b",
+      "rawSha": "e2ac0497437b1f3568adf5cfe8ffb3068914757496f963e56731c8a49f4feacb"
+    },
+    {
+      "source": "explore",
+      "path": "scripts/recreate-history-ui.test.mjs",
+      "baseBlob": null,
+      "sourceBlob": "a850194370257273b3fde5063554d842d0d1091f",
+      "rawSha": "e8f13984ae5ab11291095bfced97cc037d465cca7063956536c6c55332eeca6e"
+    },
+    {
+      "source": "explore",
+      "path": "scripts/recreate-resize-behavior.test.mjs",
+      "baseBlob": null,
+      "sourceBlob": "def0d3a04fa1233a2430e573a4b242fda5c6cdf0",
+      "rawSha": "c5ac848bcfb980a1627e5d7b59a679cce456eba5bf5b3cf1acd2099573640df5"
+    },
+    {
+      "source": "explore",
+      "path": "app/explore/create-hook/page.tsx",
+      "baseBlob": "9592b356d71f11e78566aca39e7463d8b63d0e2d",
+      "sourceBlob": "00bffc388f4c9e7718293c3dfd3e4156cf1e920a",
+      "rawSha": "3ae694606cb8944df0d21c8d6f8cf5f34dfd15ea5d8fb597d4eeb5513d7191d0"
+    },
+    {
+      "source": "explore",
+      "path": "app/explore/recreate/page.tsx",
+      "baseBlob": "d6d5007637df38eddbbe7f37310a34273b1b804a",
+      "sourceBlob": "df4901332a9e880199f37a3f6438a79e3074a6db",
+      "rawSha": "8db2f51a1b01326ac01361a29ed001319f3f0abe8ebc02f84baf64a886358097"
+    },
+    {
+      "source": "explore",
+      "path": "components/explore/ai-character-card.tsx",
+      "baseBlob": "f659fab180af7689635aca9df456ae8078272355",
+      "sourceBlob": "06ad9ef689338a14a875b2a4edceecf865d376a9",
+      "rawSha": "0c5ac3edc485f51a78c8ffeac9fe6d928cdcf12a29b3e0784aea6675ab67e349"
+    },
+    {
+      "source": "explore",
+      "path": "components/explore/explore-workflow-card.tsx",
+      "baseBlob": "ee971fd3e77a43cfc450995e65a1e58e6ebfdac7",
+      "sourceBlob": "ce02343b4dc887561b265d18af1bf3aa470911f5",
+      "rawSha": "fea2ba2243617432176c135bd6f5d15dfbd5db66c65dbacc44c913a5a5055fbc"
+    },
+    {
+      "source": "explore",
+      "path": "components/explore/explore-workspace.module.css",
+      "baseBlob": "860f8871ea2f420ca48618855b46bdd558266e59",
+      "sourceBlob": "70044c72277b7f4e9e7e290110b3b32cc6280458",
+      "rawSha": "205213102d2a28255f5fc5ff85d19b668c2719db8a1d2fb1ac0cc8c2db05980f"
+    },
+    {
+      "source": "explore",
+      "path": "components/explore/explore-workspace.tsx",
+      "baseBlob": "7553e10d7d3bf921342442d66ef69f6685bd25db",
+      "sourceBlob": "08cf5d6881b94e147010aa1272ee33beefdcfc3e",
+      "rawSha": "6133ab3f315bc3e36c6b1734003c414c46b7884e8fb2907a20ad3a5688ffae77"
+    },
+    {
+      "source": "explore",
+      "path": "components/explore/hook-workflow-preview.tsx",
+      "baseBlob": "abff290c1990483f289894aa93e2e2a23ff6e09b",
+      "sourceBlob": "e72f78ca0cdfc052f3582d8bb1de3a6d168d7bd8",
+      "rawSha": "8f2ca40485e1099d86b53c09d8a9adb18b3854a1d9ededb326ad541cb38fa107"
+    },
+    {
+      "source": "explore",
+      "path": "components/explore/recreate-layout.module.css",
+      "baseBlob": "420e318649c0659b382880ce4979e9e8773e0121",
+      "sourceBlob": "f6e09ce27c8d83ea8e7a7412847092a4dd5a98f7",
+      "rawSha": "1356b2cc0a3515d292d73a00c6b3f390e3ce3559ea337abba981b51f68e25fd6"
+    },
+    {
+      "source": "explore",
+      "path": "components/explore/recreate-workspace.tsx",
+      "baseBlob": "09532f8a0f9ce99e1b93d9483e97e1e1c44b240a",
+      "sourceBlob": "794fe027a88acd49c204ce0e2d466717184dd62f",
+      "rawSha": "2d0a653dbc3a106cc2dfa0322dc9b427b367a101a3b0d5d5a41d679a32366878"
+    },
+    {
+      "source": "explore",
+      "path": "components/explore/use-workflow-generation-settings.ts",
+      "baseBlob": "ae76d0ffc1cfb8d39f85b8fe64fbc60f497301bf",
+      "sourceBlob": "b92287f700ec7e941d70c90da9188fead98cefd9",
+      "rawSha": "7b87b89fe3d8fc7edd0e84bcbe4a6fb05a586a44bdbe21b8a237995ed28157a8"
+    },
+    {
+      "source": "explore",
+      "path": "components/video/video-generation-workspace.tsx",
+      "baseBlob": "b67e1f682ab39c626fa76b71996aece522f8af3a",
+      "sourceBlob": "f78a215eee35ffbde5e35b8956ebd1c6d4f92e68",
+      "rawSha": "c64ac16c92e672e4ecfe8c1679824883c56a00b174721712a4a87ff7d2545fc3"
+    },
+    {
+      "source": "explore",
+      "path": "components/workspace/ugc-chat-workspace.tsx",
+      "baseBlob": "fc033c2222da014a561d1f1674f2a806611aea3d",
+      "sourceBlob": "7c9cffd26a360b75ea1200cd93aedb409b6f954c",
+      "rawSha": "708eafad590a52ea5beea0a727374a44083891fd8cc98d33c927958600e1e6dc"
+    },
+    {
+      "source": "explore",
+      "path": "docs/explore-ui-review-2026-10-05.md",
+      "baseBlob": "d538b81f459551741d74bab3dc2c2b7ea45651d2",
+      "sourceBlob": "08f68fb4efa2a91e4d05c2f874371b92bc298b56",
+      "rawSha": "90780afcc8d0ac04b66d789f1f1fb317c76a5fdbdec03a7530a257baffc19bc7"
+    },
+    {
+      "source": "explore",
+      "path": "lib/explore/imported-catalog.json",
+      "baseBlob": "02fd3adf02450cb21a830602de92256f4b5931d3",
+      "sourceBlob": "b95d34dc26210319cb379d67c9e500f118ce8325",
+      "rawSha": "16c49b30fb26991def72fcaa24aa6f9924e3f066ce5f6fbba605215188ff1779"
+    },
+    {
+      "source": "explore",
+      "path": "lib/explore/launch-presets.ts",
+      "baseBlob": "764c9dc3552545b1b583d243b7fa79f124fc107f",
+      "sourceBlob": "92ca4d5151fba67219e658a819e620241eeb2fd0",
+      "rawSha": "246d1835ea4d86124a6a0fc3198330c2d3465d1fe386de5b10e5939a0b343829"
+    },
+    {
+      "source": "explore",
+      "path": "lib/explore/workflow-generation-settings.ts",
+      "baseBlob": "cc926955e844cd385cc1ac2fa1d473dfdb520a9a",
+      "sourceBlob": "7a9263fe434cfa85763a81978cbbfe957cb70c18",
+      "rawSha": "ebb4a180f5042392c6447f2bb948f330b3cb32d536410a81efdc4a2b5d267f42"
+    },
+    {
+      "source": "explore",
+      "path": "scripts/explore-catalog-update.test.mjs",
+      "baseBlob": "2464d906fdbdec8704d4bc1179dd28750e043d54",
+      "sourceBlob": "2713e5391c7222dbc974b23a621db8e4bb7745ad",
+      "rawSha": "dd56b5e12a7d8066600b31aa4cd01dfa8d92a97fbd67d6329e859430bdaf309a"
+    },
+    {
+      "source": "explore",
+      "path": "scripts/explore-recreate-catalog-contract.test.mjs",
+      "baseBlob": "eabf289f42e97e2df0ef517bdb87b8bf4b6cef35",
+      "sourceBlob": "d33212120bb2f03e7d9a49b433659d68b4cf2205",
+      "rawSha": "37baff62150c9735391a6d1ca39c77277c62b7bea16fd0e7d5b71fd8f9e9fe6d"
+    },
+    {
+      "source": "explore",
+      "path": "scripts/recreate-split-pane.test.mjs",
+      "baseBlob": "38db9b8410859a66f0bb097b8f804eeb9eb01cc6",
+      "sourceBlob": "2252ca2ff0a98b9246a2681bd2b510a0a6c443c6",
+      "rawSha": "6b22d87b943ecf30bef32eeb196eb823b863e935eaf91a47ef6bf9dc00634fe9"
+    },
+    {
+      "source": "explore",
+      "path": "scripts/workflow-demo-audio-state.test.mjs",
+      "baseBlob": "9d6ae17c702dc2a8e35757483abf0459d580baea",
+      "sourceBlob": "14aefc359c6bbf57fed5b0c58ba7b11d30f08b3e",
+      "rawSha": "a160c632552063f8a0c32fc037dbd43129cd4046964dded6029634e224b8453c"
+    },
+    {
+      "source": "explore",
+      "path": "scripts/workflow-generation-client.test.mjs",
+      "baseBlob": "79250a0de536423b1e3bca0badad228a3ed98a61",
+      "sourceBlob": "a46f10ca49a89ff9ad3a23d5f3e62807e8dd9628",
+      "rawSha": "c4c3c6e726d665b597252cfcd5d62c3b9e492991baaccdce364f0ac4e1f4fbc0"
+    },
+    {
+      "source": "audio",
+      "path": "app/api/audio/selection/route.ts",
+      "baseBlob": null,
+      "sourceBlob": "3c71ed038193fbba97ab563a8bc0977044ac4614",
+      "rawSha": "bbefb9298de37a62245844576fd03ae3a8adabb341e5726fa08e31393057d9ee"
+    },
+    {
+      "source": "audio",
+      "path": "app/api/audio/voices/[voiceId]/sample/route.ts",
+      "baseBlob": null,
+      "sourceBlob": "0c2a8b412c5ce65ab646fc8f0117c5df31630d05",
+      "rawSha": "23ab0ae889dc3c0e5e6932cb53f67600b5c8444016b7ae576624f8de666e5962"
+    },
+    {
+      "source": "audio",
+      "path": "components/audio/use-audio-voice-selection.ts",
+      "baseBlob": null,
+      "sourceBlob": "555077a9d332b3c6d949ac3e65b749ff7bd92aa7",
+      "rawSha": "85fc806e0d933b393a21b7f2312a67c5f8c93947b5db2b39621bf6ba828af54f"
+    },
+    {
+      "source": "audio",
+      "path": "components/explore/workflow-saved-audio-choices.tsx",
+      "baseBlob": null,
+      "sourceBlob": "ab51bb6a4abc5a7bd32cd9f7824117e07093a725",
+      "rawSha": "a4d57caed3bc58652f0f4bf38f51b7d459e6c2455df74a0c5f6c5fe1326fbba9"
+    },
+    {
+      "source": "audio",
+      "path": "components/explore/workflow-saved-audio.module.css",
+      "baseBlob": null,
+      "sourceBlob": "2491bd357ee7674e5df763f0d0b43d6473cbe5b4",
+      "rawSha": "5b91bd25eab61a1a433ee286e5933de16c939d135ceb9c630473497c216b0241"
+    },
+    {
+      "source": "audio",
+      "path": "lib/audio/client.test.mjs",
+      "baseBlob": null,
+      "sourceBlob": "596735defdc825ba17af5cc75c1b58c8195691d0",
+      "rawSha": "11aef18a945d6a94072d208d7b97f7d2d0328af06495448acdcc8239f564806b"
+    },
+    {
+      "source": "audio",
+      "path": "lib/audio/client.ts",
+      "baseBlob": null,
+      "sourceBlob": "a62fc6172a1b4605500fbbeadcf7e5036e4be01c",
+      "rawSha": "dea8b51715e4e777de0391fe6041982da9d1a7aa65e7fbceb47621bd589fa5c6"
+    },
+    {
+      "source": "audio",
+      "path": "lib/audio/library-query.test.ts",
+      "baseBlob": null,
+      "sourceBlob": "2294796cd7a0e0dc3becccb3a990e4d89d102f5f",
+      "rawSha": "09e3a731aecdac8d587677707cc40e9cb00c5bedcd83c69275b69bc53e8a8555"
+    },
+    {
+      "source": "audio",
+      "path": "lib/audio/library-query.ts",
+      "baseBlob": null,
+      "sourceBlob": "645187da816fef28a7ccdad55a3788deab446f5f",
+      "rawSha": "4747702b827d89dccb2e6646419db73836101baa2cea8e788ff0b92d7d3f0ed6"
+    },
+    {
+      "source": "audio",
+      "path": "lib/audio/selection.ts",
+      "baseBlob": null,
+      "sourceBlob": "6d472b88e5b0d4581d2cf02113781eca1301d01d",
+      "rawSha": "e61b03567b2b6802e27a6274b4518244f04abbf91236e52212712ba8f8c52c0b"
+    },
+    {
+      "source": "audio",
+      "path": "lib/audio/voice-sample.test.mjs",
+      "baseBlob": null,
+      "sourceBlob": "f75ca6fb1058c0fd4aa497f3bb974715bec1fcfa",
+      "rawSha": "7d6916d74f6dda8aa60b9281b97f0f049155b4617791a0db71440b91c732a742"
+    },
+    {
+      "source": "audio",
+      "path": "lib/audio/voice-sample.ts",
+      "baseBlob": null,
+      "sourceBlob": "42a51dae88061503c0f7efdd4661f1dc4e9017e1",
+      "rawSha": "8921bb92cbc675231e09afabb71c2de446fd235bf69ec38dc0e7dc9fcfec01ef"
+    },
+    {
+      "source": "audio",
+      "path": "supabase/migrations/20261005090038_audio_voice_selection.sql",
+      "baseBlob": null,
+      "sourceBlob": "f714c696026b498d79f78112c9b41dfce1e96e73",
+      "rawSha": "89744ab9ac6a6c371f9692b2eee2cf9e05826f152e556a1135a09764733e07b8"
+    },
+    {
+      "source": "audio",
+      "path": "components/audio/audio-generation-workspace.tsx",
+      "baseBlob": "e56d3a7621cba9a75a8b5ea2cb7c2a696d1f82f3",
+      "sourceBlob": "c83cec9bf42fef0251c26a3bf11ffcdc48aea795",
+      "rawSha": "88ff20231b7883f3b58cda3a4eae418df84cca1c3072e568e35b9f1ecfc20bb1"
+    },
+    {
+      "source": "audio",
+      "path": "components/audio/use-audio-bookmarks.ts",
+      "baseBlob": "baf5f635146b7f58c9ba9e5f25c2b0b0256f12fe",
+      "sourceBlob": "a89b49d35ec8a8a5121bb283d6c008c37e91c5c2",
+      "rawSha": "a8e0c0902dcd2240205bcc26cc8989213dda255491a2af59f08db62a7b29a90b"
+    },
+    {
+      "source": "audio",
+      "path": "components/explore/use-local-workflow-media.ts",
+      "baseBlob": "d400ae3ee408354f69ffd0ea0a8d7ff051f6f668",
+      "sourceBlob": "3d14663805432faf9ae42f2736c0c6ef7962ccf8",
+      "rawSha": "b0aabaf087efaa3922eec1b81a380742bd26b1fde52b2a8b9a3f70a0e115bd20"
+    },
+    {
+      "source": "audio",
+      "path": "components/explore/workflow-audio-reference.tsx",
+      "baseBlob": "e1b1d0319da45438b528419f2166f1bc3d062b47",
+      "sourceBlob": "676251180eae9f29c57601bb6e2b177cc3158b6f",
+      "rawSha": "4378760299645f82374e818cd17e5a122fe21f395639b0b8e332e94980f3aa5a"
+    },
+    {
+      "source": "audio",
+      "path": "docs/audio-ugc-native-plan.md",
+      "baseBlob": "83db7843f1eaf1b13c4922281ff0163ec1b36b16",
+      "sourceBlob": "0ce1dcf9c400361bb6ab433b8975809fac928c32",
+      "rawSha": "704af79def13e9e87bb1ce29a9010db99e3fa7fe7b5e3045a4516b81565584a5"
+    },
+    {
+      "source": "audio",
+      "path": "lib/audio/api.test.mjs",
+      "baseBlob": "54aef2e7a20b00a9fd297b1038dccf1c1e1888ba",
+      "sourceBlob": "54a236263391a48002c2c3911e0a50f4c455d6db",
+      "rawSha": "78bddf603ab5c54281cce779f29d15c396d2332189f1e8c7a213e1c041ad5d43"
+    },
+    {
+      "source": "audio",
+      "path": "lib/audio/bookmarks-db.test.mjs",
+      "baseBlob": "8886d309e1d912330c06e975ca00551404127c2d",
+      "sourceBlob": "7982dd9ec49fbd9dc545e2db0c514447c75bf835",
+      "rawSha": "427922e90ffd9b5ea1fb4c8323461fab475fc490ce1f6b08d33e5fd3302b7090"
+    },
+    {
+      "source": "audio",
+      "path": "lib/firebase/auth.ts",
+      "baseBlob": "f3b579d56465d3bcdfab77ccd6736dc0687c7c9d",
+      "sourceBlob": "b87f24d5dc042840e51316d2e055dc5715d9624b",
+      "rawSha": "f2db233ce2f04bfd623d70e8b6cbea9572eeccb579472f9d628de06001b33da8"
+    },
+    {
+      "source": "audio",
+      "path": "scripts/workflow-composition-panel.test.mjs",
+      "baseBlob": "1b09a0ab2dc06db36e131f6a978d2a06d7df7242",
+      "sourceBlob": "269d408ae668480ae124dc9ddc71d17b99247312",
+      "rawSha": "46a5ede0576b233313dbd61fefc7d6743d5f394cb9fea2094f162a643427c7fc"
+    }
+  ],
+  "releaseRepairs": [
+    "lib/trending/wall-text-schema-contract.test.ts"
+  ],
+  "priorPreservation": [
+    {
+      "path": "app/api/create-content/cards/[assetId]/route.ts",
+      "local": null,
+      "integrated": "0010bc36a2b289aaad5b4eb41b217f819a565c3c",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "app/api/create-content/cards/route.ts",
+      "local": null,
+      "integrated": "1a61fdb48200409792701c6b1405e6d79f6fbafc",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "app/api/create-content/generate/route.ts",
+      "local": null,
+      "integrated": "51285c66586b4d7771e74c36ca33790e07e427ec",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "app/api/create-content/renders/route.ts",
+      "local": null,
+      "integrated": "1b3b6bc4dca64aa358f97c9dec2b523daba5483f",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "app/api/internal/gcp-cutover/audit/route.ts",
+      "local": "6ce2003b111d770710ac99290ed6db43081fba99",
+      "integrated": "1b556e8fb7238309ccd0f14c6c3ce10f8772aa18",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "app/api/jobs/[jobId]/retry/route.ts",
+      "local": "fb0ecc85114cacc1801d96990fa4cfab7bb2d83f",
+      "integrated": "0f7ce0bbdb6bd968657e09c5e52ddf6700228209",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "app/create-content/loading.tsx",
+      "local": null,
+      "integrated": "a0a3092ca2f3918075ed3926fe45cd0e012b32e8",
+      "resolution": "screen-retirement-only",
+      "reason": "Retire only this screen/loading/preview route using notFound or null; existing backend and in-flight jobs remain. Combined app build and 47 retained contract tests pass."
+    },
+    {
+      "path": "app/create-content/page.tsx",
+      "local": null,
+      "integrated": "1f039b7c1d47b2da30c81279fe802668b0bd054a",
+      "resolution": "screen-retirement-only",
+      "reason": "Retire only this screen/loading/preview route using notFound or null; existing backend and in-flight jobs remain. Combined app build and 47 retained contract tests pass."
+    },
+    {
+      "path": "app/e2e/create-content-preview/page.tsx",
+      "local": null,
+      "integrated": "89443b05cab3c313be9358e3cebe416dec2f6315",
+      "resolution": "screen-retirement-only",
+      "reason": "Retire only this screen/loading/preview route using notFound or null; existing backend and in-flight jobs remain. Combined app build and 47 retained contract tests pass."
+    },
+    {
+      "path": "app/mcp/route.ts",
+      "local": "1b2b5a72b2c6ae1d5a47be2dfb445dc51f73f900",
+      "integrated": "9dacb7a5a6900d9e6d00c4131a658a1647412a3f",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "app/oauth/authorize/oauth-consent.tsx",
+      "local": "c0a340b224dc87fb19646f2263f806c6a4e25051",
+      "integrated": "a84c40f37feec1087a0e23974f3a8d9bab64e5d2",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "app/oauth/authorize/page.tsx",
+      "local": "949653cd1c5645727b94748032003d950501a0b4",
+      "integrated": "e1898f2699e4da2df5e074da1c426926b3dabb7c",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "app/oauth/revoke/route.ts",
+      "local": "cfa0ed9e109e7b279e048665231524f6525a366c",
+      "integrated": "2c6129323d3d28a91a978739384a3876b456d34a",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "components/create-content/create-content-workspace.tsx",
+      "local": null,
+      "integrated": "17ddcdf5347deb7f5821d6d3260b05367dadc961",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "docs/higgsfield-seedance-setup.md",
+      "local": "23e78c5cd75ecd608cfd515e542c0b792c76a4ce",
+      "integrated": "4324d7b6b07343043e5835a64e19c72a7d5e7d05",
+      "resolution": "retained-main",
+      "reason": "Preserved historical research/product notes; compared overlapping newer-main documentation and retained its security contracts. Current Scribe/canonical migration status distinguished from old warnings."
+    },
+    {
+      "path": "docs/ugc-pilot-cloud-mcp-live-image-validation.md",
+      "local": "11746f6c3ea737076e290d2428899598080389e8",
+      "integrated": "371cb71b9446f55f5d91cea54cea8dff265529e7",
+      "resolution": "retained-main",
+      "reason": "Preserved historical research/product notes; compared overlapping newer-main documentation and retained its security contracts. Current Scribe/canonical migration status distinguished from old warnings."
+    },
+    {
+      "path": "docs/ugc-pilot-cloud-mcp-phase2.md",
+      "local": "8553263f619fb78026ad0df88c4932a132520e9f",
+      "integrated": "4002ffe87ea567966dfa464938fad1428b5fc1b3",
+      "resolution": "retained-main",
+      "reason": "Preserved historical research/product notes; compared overlapping newer-main documentation and retained its security contracts. Current Scribe/canonical migration status distinguished from old warnings."
+    },
+    {
+      "path": "docs/ugc-pilot-cloud-mcp-phase3.md",
+      "local": "7f6a88663fe5cf9f7269665cb3e5226e4b1e12f0",
+      "integrated": "4a53039c2e21c61f57312611055f47fe31444daa",
+      "resolution": "retained-main",
+      "reason": "Preserved historical research/product notes; compared overlapping newer-main documentation and retained its security contracts. Current Scribe/canonical migration status distinguished from old warnings."
+    },
+    {
+      "path": "docs/ugc-pilot-cloud-mcp-phase4.md",
+      "local": "afb4cb4c6bc4b0069d868f5bd2fc759dcfbae3cc",
+      "integrated": "1a8cd9e7156b6a155aff9d8e6a0215efbbebbd0b",
+      "resolution": "retained-main",
+      "reason": "Preserved historical research/product notes; compared overlapping newer-main documentation and retained its security contracts. Current Scribe/canonical migration status distinguished from old warnings."
+    },
+    {
+      "path": "docs/ugc-pilot-cloud-mcp-phase5-audit.md",
+      "local": "e43b38899012ad8dbf3d9357f0611bbf1fa37b1c",
+      "integrated": "ed7ab5aec630192a8f66981878b6ea3f3cd462da",
+      "resolution": "retained-main",
+      "reason": "Preserved historical research/product notes; compared overlapping newer-main documentation and retained its security contracts. Current Scribe/canonical migration status distinguished from old warnings."
+    },
+    {
+      "path": "docs/ugc-pilot-cloud-mcp-v1-contracts.md",
+      "local": "a4a07052f8c5ee66bca8a83df2fc4b0b609ea967",
+      "integrated": "5e00c559e3cd1ecc3b8f6fd3373bb7a6647ccf9f",
+      "resolution": "retained-main",
+      "reason": "Preserved historical research/product notes; compared overlapping newer-main documentation and retained its security contracts. Current Scribe/canonical migration status distinguished from old warnings."
+    },
+    {
+      "path": "docs/ugc-pilot-cloud-mcp-v1-tool-schemas.json",
+      "local": "f1f22663ce75dd85c37084df19166423c4114fcc",
+      "integrated": "13b227c51e5b9932185e1fc4ecb298247e8579d5",
+      "resolution": "retained-main",
+      "reason": "Preserved historical research/product notes; compared overlapping newer-main documentation and retained its security contracts. Current Scribe/canonical migration status distinguished from old warnings."
+    },
+    {
+      "path": "index.ts",
+      "local": "d51fb118651b1bb9a9e5db55d405ebec99ecc5f6",
+      "integrated": null,
+      "resolution": "excluded-local-artifact",
+      "reason": "Obsolete paid Higgsfield example excluded. User-approved new generation uses OpenRouter; retain historical recovery."
+    },
+    {
+      "path": "lib/ai-studio/access-policy.test.ts",
+      "local": "9b8470e87c994a2cd4a231113130aebee569f6f1",
+      "integrated": "dda7978753200a4a73ae96fc19d348f5125bdccf",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "lib/ai-studio/generation-settings.test.ts",
+      "local": "e122e7323bb265fc94c2e10a7b4e6cb218ec06fb",
+      "integrated": "6ffcbccbba0a6adeb3f58e20601400a76c94f927",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "lib/ai-studio/generation-settings.ts",
+      "local": "3ff2e5cc15bee3164b96c52f49455d19e2972a57",
+      "integrated": "2a8c24dfbf21e8bbdc3721110b757e6db982e5f4",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "lib/ai-studio/image-history.test.ts",
+      "local": "28a7675c08151a9b736bfa5c940ef2fec017ed54",
+      "integrated": "6516f75769d50754775ab67e98d2fd23353ffd85",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "lib/ai-studio/image-history.ts",
+      "local": "465c013fdf3b58db9f267c0180971226e267a6d6",
+      "integrated": "8603248c10422b7844dfb9309489b4109447c846",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "lib/create-content/card-contract.test.ts",
+      "local": null,
+      "integrated": "80642f52c7d27861c2a9e0c82458a9f29b33ef2a",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "lib/create-content/card-contract.ts",
+      "local": null,
+      "integrated": "cd86e12d69cde8cec2df4d05e929105198971624",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "lib/create-content/card-input-validation.test.ts",
+      "local": null,
+      "integrated": "cf3f454e4d9e0a86bb23a8a4a4df00965e6a7988",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "lib/create-content/card-schema-contract.test.ts",
+      "local": null,
+      "integrated": "d27ae3052cfd343f0c599c59822e8c14bb2592dc",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "lib/create-content/card-storage.ts",
+      "local": null,
+      "integrated": "c418386a314a9cf975415e02624f52dc2b0fa15c",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "lib/create-content/create-content-ui-contract.test.ts",
+      "local": null,
+      "integrated": "95d1353b8064fad23c6170e6f5b5bd5b193eeb19",
+      "resolution": "screen-retirement-only",
+      "reason": "Only retire-screen navigation assertions and the stale fixed Wall font fixture are updated; runtime renderer stays on newer main. All 47 Create Content checks pass."
+    },
+    {
+      "path": "lib/create-content/generation-contract.test.ts",
+      "local": null,
+      "integrated": "fdb364003ec4cd543fc065040818bd5f6c2f47cc",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "lib/create-content/generation-contract.ts",
+      "local": null,
+      "integrated": "4050278bb1b1b7030c5b2ebc8cb39b14636a0173",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "lib/create-content/generation-flow-contract.test.ts",
+      "local": null,
+      "integrated": "c3284f393bdd40d4ecbc2cd19ddc451abb375011",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "lib/create-content/generation-validation.test.ts",
+      "local": null,
+      "integrated": "23ad37946eeda79641e5df29c2a62fedd7145eb0",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "lib/create-content/generation-validation.ts",
+      "local": null,
+      "integrated": "828adc2e593817b94cc4363166f5e13644a08b10",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "lib/create-content/generation.ts",
+      "local": null,
+      "integrated": "1f992f991c1ae1e2536598b7053919aa182d0f32",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "lib/create-content/hook-format-library.ts",
+      "local": null,
+      "integrated": "8f6c560d74621ff982d9e299a259e72bf9200730",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "lib/create-content/render-contract.test.ts",
+      "local": null,
+      "integrated": "59a26c93153a5a493aa5d48c6926d83466fa86a4",
+      "resolution": "screen-retirement-only",
+      "reason": "Only retire-screen navigation assertions and the stale fixed Wall font fixture are updated; runtime renderer stays on newer main. All 47 Create Content checks pass."
+    },
+    {
+      "path": "lib/create-content/render-contract.ts",
+      "local": null,
+      "integrated": "7df3fb923409d3ee4b0558ecb9ed44c939142647",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "lib/create-content/render-flow-contract.test.ts",
+      "local": null,
+      "integrated": "b99a670922df9f397829265aabc702fa23846bcc",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "lib/create-content/render-storage.ts",
+      "local": null,
+      "integrated": "da091f9e31e6ec89241f3f42236e131462d4aceb",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "lib/create-content/text-input-validation.ts",
+      "local": null,
+      "integrated": "d58b23884f71649606ea0b30bec77a465ae56b94",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "lib/create-content/video-assets.test.ts",
+      "local": null,
+      "integrated": "fde176fabf8330a6cdd91a58ffa5743b1053dd7a",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "lib/create-content/video-assets.ts",
+      "local": null,
+      "integrated": "242cfd74c1ed3a471cdf6f556c82aed40816f2a2",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "lib/internal/gcp-cutover-audit-canary.test.ts",
+      "local": "4a0aca95eb4d76adad0d704d9674308bfbaa90f1",
+      "integrated": "1a40b28e09c9df608155382680c8a04beb008639",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "lib/internal/gcp-cutover-audit-canary.ts",
+      "local": "5ad257a9c1c739690a8537c106082a8cf19daa39",
+      "integrated": "0d40afe1f5e019fd6f6d3a4edc6c27d0046d1f9b",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "lib/jobs/background-job-schema-contract.test.ts",
+      "local": "aef5b23128a53c25322a277b976414c5e512ec65",
+      "integrated": "673fe772b938609aefd368c477f63a29234956ee",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "lib/mcp/authorization.ts",
+      "local": "d9d32496b7e9f0a17f415ca7cb713fb09962731a",
+      "integrated": "f67c82a9b4e1dcbe7cacd63b2a0ba41496ab3c7e",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "lib/mcp/client-validation.ts",
+      "local": "9f47ea0c60af28ea29de3b6fe4e802ea2013b39f",
+      "integrated": "0c63259ff95535ac496dea3cebc79daa2f8ffc1a",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "lib/mcp/clients.ts",
+      "local": "e25c3dcde9a5e0fbcc7122a1ce15933c2ecf816f",
+      "integrated": "661f1d1d3637749ba24ff411e30a5bd93821083c",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "lib/mcp/config.ts",
+      "local": "46c981838bb468fac91a5cb177596de45e9940ad",
+      "integrated": "d0c653dbecbf40c1bbf38dd3345d74db8c3d0ac6",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "lib/mcp/mutation-tools.ts",
+      "local": "38043cdd3f8d95261733f1c12f83ca2fc200a42b",
+      "integrated": "39422b31fc61d2dc418590b19ce8f8579262c524",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "lib/mcp/oauth-validation.test.ts",
+      "local": "1a3d2a525a98591fba33013bca6e2c9adb527f4d",
+      "integrated": "f16f15652e4f5c2b3dbad5824850c93ba5e2265a",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "package-lock.json",
+      "local": "761dc6413f3da570ed8663cc31543e0a584f8cf5",
+      "integrated": "0b67429aa1ea12d9a15396e0b9c6e72bca7c356d",
+      "resolution": "retained-main",
+      "reason": "Retain newer main dependency/provider/security fixes; old source is not restored wholesale. Combined app/worker builds and regression suites pass."
+    },
+    {
+      "path": "scripts/test-mcp-generation-migration.mjs",
+      "local": "ff41be599af85510414aaa657e7943b0c9ce4909",
+      "integrated": "015cadcbda3b1f41a1f0b2582d694a22301ef43a",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "scripts/test-mcp-oauth-migration.mjs",
+      "local": "4882f39bf1ed890b7a43c502f75e0be7081705ca",
+      "integrated": "fa6fc39e8977d0f159d3e7be28e0442c9804934c",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "scripts/test-production-create-content-render-canary.mjs",
+      "local": null,
+      "integrated": "832cbb36f9c2a675dc183a210c4ab8e311c658a9",
+      "resolution": "screen-retirement-only",
+      "reason": "Retain the newer main backend, data/job contracts and operational checks unchanged; user authorized retirement of the Create Content screen, not deletion of stored projects, APIs or in-flight jobs. Retained contracts pass 47 offline tests."
+    },
+    {
+      "path": "worker/package-lock.json",
+      "local": "53fa4baac060e04e1925892ab349a378edc8fd46",
+      "integrated": "1a1b4b635f649be4b2858dfae8dec349f4858ecd",
+      "resolution": "retained-main",
+      "reason": "Retain newer main dependency/provider/security fixes; old source is not restored wholesale. Combined app/worker builds and regression suites pass."
+    },
+    {
+      "path": "worker/package.json",
+      "local": "1793e6eed2010049ad7d02a916bf13219a370f16",
+      "integrated": "14a4c0125073f950b4c3c11a95d7c401d4703168",
+      "resolution": "retained-main",
+      "reason": "Retain newer main dependency/provider/security fixes; old source is not restored wholesale. Combined app/worker builds and regression suites pass."
+    },
+    {
+      "path": "worker/src/jobs/generate-hook-video.ts",
+      "local": "5247ba4f6dc832ed1310d659ff7e73e884bdf815",
+      "integrated": "51445833b6775267fce25a1ed4fe7650bb68bac9",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "worker/src/jobs/generate-image.ts",
+      "local": "9ec8a050308cf7ba48691333b7fc3736f9808ad1",
+      "integrated": "b6761df7d3b16228306c15a07dc0704d83e8539c",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "worker/src/lib/gemini-image.ts",
+      "local": "65d0b81c44f531daa7acb01d9134744993ed6958",
+      "integrated": "34e12f63ffa51eaba2f90d6d4686ddfa941b3c04",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "worker/src/lib/higgsfield-video.ts",
+      "local": "811991a57bebc930da3cb5e12ed64f7849cf030e",
+      "integrated": "6acb4c82e696651a6483eeb15a3e901dd23b8d09",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "worker/src/lib/ugc-video-prompt.ts",
+      "local": "93d844ed81466c745c4374aed8916a3a0ca21d3b",
+      "integrated": "c9d88665da38d71479c369df68a8af69a0d4dbc2",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    }
+  ],
+  "validation": {
+    "optimizedBuild": "pass",
+    "applicationTypescript": "pass",
+    "workerBuild": "pass",
+    "combinedOffline": {
+      "tests": 709,
+      "initialPass": 707,
+      "initialFailures": 2,
+      "reason": "Outdated source assertions for manual Wall editing",
+      "correctedFocused": {
+        "tests": 66,
+        "pass": 66
+      }
+    },
+    "workerWallTests": {
+      "tests": 30,
+      "pass": 30
+    },
+    "changedCodeLint": {
+      "errors": 0,
+      "existingWarnings": 2
+    },
+    "signedInProduction": "User explicitly deferred"
+  },
+  "migration": {
+    "file": "supabase/migrations/20261005090038_audio_voice_selection.sql",
+    "hostedVersion": "20261005115049",
+    "sha256": "89744ab9ac6a6c371f9692b2eee2cf9e05826f152e556a1135a09764733e07b8",
+    "rls": true,
+    "browserAccess": false,
+    "serviceAccess": [
+      "select",
+      "insert",
+      "update"
+    ]
+  }
+}

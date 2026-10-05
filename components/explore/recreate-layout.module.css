@@ -3,7 +3,8 @@
 .divider { display: none; }
 .galleryGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .split .editor :global(form[data-layout]) { border-radius: 16px; box-shadow: none; }
-.split .editor :global(form[data-compact]) { width: calc(100% - 16px); max-width: 340px; }
+/* Keep the compact inset, but let the composer follow the draggable editor width. */
+.split .editor :global(form[data-compact]) { width: calc(100% - 16px); max-width: none; }
 .editor :global(form[data-compact] [data-slot="field"]) { gap: 4px; padding: 10px 12px 4px; }
 .editor :global(form[data-compact] [data-slot="field-description"]) { padding-bottom: 0; }
 .editor :global([data-slot="composer-actions"]) {

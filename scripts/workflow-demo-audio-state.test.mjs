@@ -16,6 +16,7 @@ function nodes(value) {
 /** Execute each real parent and its attachment callbacks, without requests or DOM media. */
 function layout(kind) {
   let cursor = 0, mediaCursor = 0;
+  const generationInputs = [];
   const slots = [];
   const attachments = Array.from({ length: 5 }, () => ({
     asset: { name: "selected", url: "blob:fixture", duration: 5 }, loading: false, error: null,
@@ -44,7 +45,10 @@ function layout(kind) {
     "@/components/explore/workflow-preview-canvas": { WorkflowPreviewCanvas: "canvas" },
     "@/components/explore/use-local-app-screen": { useLocalAppScreen: () => ({ asset: null, loading: false }) },
     "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => attachments[mediaCursor++] },
-    "@/components/explore/use-workflow-generation-settings": { useWorkflowGenerationSettings: () => ({ settings: {}, dirty: false, changeSettings() {} }) },
+    "@/components/explore/use-workflow-generation-settings": { useWorkflowGenerationSettings: (initialDuration, initialModel) => {
+      generationInputs.push({ initialDuration, initialModel });
+      return { settings: {}, dirty: false, changeSettings() {} };
+    } },
     "@/components/explore/workflow-generation-boundary": { WorkflowAccountBoundary: ({ children }) => children("owner"), WorkflowGenerationBoundary: ({ children }) => children(null) },
     "@/components/explore/workflow-finishing-boundary": { WorkflowFinishingBoundary: ({ children }) => children({ edit: undefined, schedule: undefined, output: null, options: { subtitles: false, style: "clean" }, setOptions() {} }) },
     "@/components/explore/workflow-studio.module.css": css,
@@ -57,18 +61,26 @@ function layout(kind) {
   vm.runInNewContext(compiled, { exports: exported, require(name) { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; } });
   const component = exported[kind === "hook" ? "HookWorkflowPreview" : "PhoneWorkflowPreview"];
   return {
-    render() {
+    render(props = {}) {
       cursor = 0; mediaCursor = 0;
-      const tree = component({ generationEnabled: false });
+      const tree = component({ generationEnabled: false, ...props });
       return {
         tree,
         composition: nodes(tree).find((node) => node.type === "composition").props,
         tabs: nodes(tree).find((node) => node.type === "tabs").props,
       };
     },
-    demo: attachments[3], audio: attachments[4],
+    demo: attachments[3], audio: attachments[4], generationInputs,
   };
 }
+
+test("Hook quick-start model and duration reach the settings owner through the actual layout", () => {
+  const actual = layout("hook");
+  actual.render({ initialModel: "kling_3_0", initialDuration: 10 });
+  assert.deepEqual(actual.generationInputs, [{ initialModel: "kling_3_0", initialDuration: 10 }]);
+  assert.equal(actual.demo.removed, 0);
+  assert.equal(actual.audio.removed, 0);
+});
 
 for (const kind of ["hook", "phone"]) {
   test(`${kind}: audio replacement resets repeat only after successful selection`, async () => {

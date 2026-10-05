@@ -1,8 +1,10 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDownAZ, ArrowRight, AudioLines, Bookmark, BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, FileAudio, Headphones, Languages, LoaderCircle, LockKeyhole, Megaphone, MessageCircle, MonitorPlay, Pause, Play, Plus, RefreshCw, Search, SlidersHorizontal, Sparkles, Trash2, Upload, Users, X } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
-import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { createAudioApi } from "@/lib/audio/client";
+import { audioLibraryQueryOptions, refreshAudioLibrary } from "@/lib/audio/library-query";
 import { cn } from "@/lib/utils";
 import type { AudioAsset, AudioBootstrap, AudioHistory, AudioVoice } from "@/lib/audio/types";
 import { audioSubmissionStorageKey, readAudioSubmission, audioSubmissionResolved, type SavedAudioSubmission } from "@/lib/audio/submission-client";
@@ -12,15 +14,24 @@ import { AudioSpeechEditor } from "./audio-speech-editor";
 import { AUDIO_UPGRADE_MESSAGE } from "@/worker/src/lib/audio-access-policy";
 import { VoiceOrb } from "./voice-orb";
 import { useAudioBookmarks } from "./use-audio-bookmarks";
+import { useAudioVoiceSelection } from "./use-audio-voice-selection";
 import "./audio-generation.css";
 
 const TERMINAL = new Set(["completed", "failed", "uncertain", "cancelled"]);
 export function AudioGenerationWorkspace() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  if (loading) return <section className="p-8 text-sm text-muted" role="status">Loading audio workspace…</section>;
   return user ? <AudioGenerationSession key={user.uid} uid={user.uid} /> : <section className="p-8 text-sm text-muted">Sign in to generate audio.</section>;
 }
 function AudioGenerationSession({ uid }: { uid: string }) {
-  const [data, setData] = useState<AudioBootstrap | null>(null); const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const api = useMemo(() => createAudioApi(uid), [uid]);
+  const bootstrapOptions = audioLibraryQueryOptions({ userId: uid, load: signal => api<AudioBootstrap>("/api/audio/bootstrap", { signal }) });
+  const bootstrap = useQuery(bootstrapOptions);
+  const data = bootstrap.data ?? null;
+  const loading = bootstrap.isPending;
+  const refreshing = bootstrap.isFetching;
+  const accountReady = bootstrap.isSuccess && !refreshing;
   const [error, setError] = useState<string | null>(null); const [posting, setPosting] = useState(false); const postingRef = useRef(false);
   const [view, setView] = useState<"studio" | "library" | "bookmarks" | "speech" | "voices" | "audio">("studio");
   const [editorView, setEditorView] = useState<"studio" | "speech">("studio"); const [studioPage, setStudioPage] = useState(0);
@@ -35,13 +46,6 @@ function AudioGenerationSession({ uid }: { uid: string }) {
   const submission = useRef<SavedAudioSubmission | null>(null);
   const [savedSubmission, setSavedSubmission] = useState<SavedAudioSubmission | null>(null), [restored, setRestored] = useState(false), [recoveryBlocked, setRecoveryBlocked] = useState(false);
   const preview = useRef<HTMLAudioElement | null>(null); const session = useRef(0);
-  const api = useCallback(async <T,>(path: string, init: RequestInit = {}): Promise<T> => {
-    if (!uid) throw new Error("Sign in to use audio generation.");
-    const current = session.current; const token = await getCurrentUserIdToken(uid);
-    if (!token || current !== session.current) throw new Error("Sign in to use audio generation.");
-    const response = await fetch(path, { ...init, cache: "no-store", headers: { ...init.headers, Authorization: `Bearer ${token}` } });
-    const result = await response.json(); if (current !== session.current) throw new Error("This audio account is no longer active."); if (!response.ok) throw new Error(result.error || "Audio could not be loaded."); return result as T;
-  }, [uid]);
   const reconcileSubmission = useCallback((result: AudioHistory, saved = submission.current) => {
     if (!saved) return;
     const latest = result.requests.find(r => r.requestKey === saved.key);
@@ -55,36 +59,44 @@ function AudioGenerationSession({ uid }: { uid: string }) {
     }
   }, [uid]);
   const bookmarks = useAudioBookmarks(uid, api);
+  const selection = useAudioVoiceSelection(uid, api);
+  const manualVoice = useRef(false);
+  useEffect(() => {
+    if (!manualVoice.current && selection.voiceId && data?.voices.some(voice => voice.id === selection.voiceId)) setVoiceId(selection.voiceId);
+  }, [selection.voiceId, data?.voices]);
   const bookmarkControls = {
     bookmarkIds: bookmarks.ids, bookmarkPendingIds: bookmarks.pendingIds,
-    bookmarksReady: bookmarks.ready, onBookmark: (id: string) => void bookmarks.toggle(id),
+    onBookmark: (id: string) => void bookmarks.toggle(id),
   };
   const load = useCallback(async (refresh = false) => {
     const current = session.current;
     try {
-      const result = await api<AudioBootstrap>(`/api/audio/bootstrap${refresh ? "?refresh=1" : ""}`); if (current !== session.current) return;
-      setData(result); setError(null); setVoiceId(previous => selectInitialVoice(result.voices, purposeRef.current, previous));
+      const result = await refreshAudioLibrary(queryClient, { userId: uid, load: signal => api<AudioBootstrap>(`/api/audio/bootstrap${refresh ? "?refresh=1" : ""}`, { signal }) }); if (current !== session.current) return;
+      setError(null); setVoiceId(previous => selectInitialVoice(result.voices, purposeRef.current, previous));
       reconcileSubmission(result);
       setModelId(previous => result.models.some(m => m.id === previous) ? previous : result.models[0]?.id || "eleven_flash_v2_5");
       return result;
     } catch (err) { if (current === session.current) setError(err instanceof Error ? err.message : "Audio could not be loaded."); }
-    finally { if (current === session.current) setLoading(false); }
-  }, [api, reconcileSubmission]);
+  }, [api, queryClient, uid, reconcileSubmission]);
+  useEffect(() => {
+    if (!data) return;
+    setVoiceId(previous => selectInitialVoice(data.voices, purposeRef.current, previous));
+    setModelId(previous => data.models.some(m => m.id === previous) ? previous : data.models[0]?.id || "eleven_flash_v2_5");
+    reconcileSubmission(data);
+  }, [data, reconcileSubmission]);
   useEffect(() => {
     const current = ++session.current; const sessionRef = session; const previewRef = preview;
-    void api<AudioBootstrap>("/api/audio/bootstrap").then(result => {
+    // Restore browser-only recovery state after mount; initial actions stay locked.
+    void Promise.resolve().then(async () => {
       if (current !== sessionRef.current) return;
-      setData(result); setVoiceId(selectInitialVoice(result.voices, purposeRef.current)); setModelId(result.models[0]?.id || "eleven_flash_v2_5");
       const saved = readAudioSubmission(localStorage.getItem(audioSubmissionStorageKey(uid)), uid);
       submission.current = saved; setSavedSubmission(saved); setRestored(true);
       if (saved) {
-        // Read-only recovery, including requests older than the first history page.
-        void api<AudioHistory>(`/api/audio/history?requestKey=${encodeURIComponent(saved.key)}`).then(history => {
-          if (current === sessionRef.current) reconcileSubmission(history, saved);
-        }).catch(err => { if (current === sessionRef.current) setError(err instanceof Error ? err.message : "The saved audio request could not be checked."); });
+        // Always recover against live history, even when catalogue data is cached.
+        const history = await api<AudioHistory>(`/api/audio/history?requestKey=${encodeURIComponent(saved.key)}`);
+        if (current === sessionRef.current) reconcileSubmission(history, saved);
       }
-    }).catch(err => { if (current === sessionRef.current) setError(err instanceof Error ? err.message : "Audio could not be loaded."); })
-      .finally(() => { if (current === sessionRef.current) setLoading(false); });
+    }).catch(err => { if (current === sessionRef.current) setError(err instanceof Error ? err.message : "The saved audio request could not be checked."); });
     return () => { sessionRef.current++; previewRef.current?.pause(); };
   }, [api, uid, reconcileSubmission]);
   const activeRequests = data?.requests.filter(r => !TERMINAL.has(r.status)) ?? [];
@@ -97,7 +109,10 @@ function AudioGenerationSession({ uid }: { uid: string }) {
       try {
         const savedKey = submission.current?.key;
         const result = await api<AudioHistory>(savedKey ? `/api/audio/history?requestKey=${encodeURIComponent(savedKey)}` : "/api/audio/history"); if (stopped) return;
-        setData(previous => previous ? { ...previous, ...result, requests: savedKey ? [...result.requests, ...previous.requests.filter(r => !result.requests.some(next => next.id === r.id))] : result.requests } : previous);
+        const libraryKey = ["audio-library", uid] as const;
+        // History polling does not make old account/plan availability fresh.
+        const checkedAt = queryClient.getQueryState(libraryKey)?.dataUpdatedAt;
+        queryClient.setQueryData<AudioBootstrap>(libraryKey, previous => previous ? { ...previous, ...result, requests: savedKey ? [...result.requests, ...previous.requests.filter(r => !result.requests.some(next => next.id === r.id))] : result.requests } : previous, { updatedAt: checkedAt });
         const latest = result.requests.find(r => r.id === liveId);
         if (latest?.status === "completed" && latest.outputAssetId) { setSelectedAssetId(latest.outputAssetId); setLiveId(null); }
         reconcileSubmission(result);
@@ -106,7 +121,7 @@ function AudioGenerationSession({ uid }: { uid: string }) {
       finally { busy = false; }
     };
     const timer = setInterval(() => void poll(), 1600); return () => { stopped = true; clearInterval(timer); };
-  }, [api, hasActive, liveId, load, reconcileSubmission]);
+  }, [api, hasActive, liveId, load, queryClient, uid, reconcileSubmission]);
   const selected = data?.assets.find(a => a.id === selectedAssetId && a.status === "ready") ?? null;
   const references = data?.assets.filter(a => a.purpose === "reference" && a.status === "ready") ?? [];
   const allVoices = data?.voices ?? [];
@@ -127,7 +142,7 @@ function AudioGenerationSession({ uid }: { uid: string }) {
   const currentStudioPage = Math.min(studioPage, Math.max(0, studioPageCount - 1));
   const studioVoices = studioShortlist.slice(currentStudioPage * 6, (currentStudioPage + 1) * 6);
   const estimatedSeconds = script.trim() ? Math.max(1, Math.round(script.trim().split(/\s+/).length / (2.5 * speed))) : 0;
-  const ready = Boolean(restored && !recoveryBlocked && data?.generationAccess === "allowed" && !posting && !activeSpeech && (savedSubmission || data.canGenerate && script.trim() && chosenVoice?.available && data.models.some(m => m.id === modelId)));
+  const ready = Boolean(accountReady && restored && !recoveryBlocked && data?.generationAccess === "allowed" && !posting && !activeSpeech && (savedSubmission || data.canGenerate && script.trim() && chosenVoice?.available && data.models.some(m => m.id === modelId)));
   async function submitSpeech() {
     if (!ready || postingRef.current) return; postingRef.current = true; setPosting(true); setError(null); const current = session.current;
     try {
@@ -162,7 +177,7 @@ function AudioGenerationSession({ uid }: { uid: string }) {
     } catch (err) { if (current === session.current) setError(err instanceof Error ? err.message : "Could not check the saved audio request."); }
   }
   async function upload(file: File, purpose: "exact" | "reference") {
-    if (postingRef.current) return;
+    if (!accountReady || !data?.canUpload || postingRef.current) return;
     if (file.size > 3 * 1024 * 1024) { setError("Choose an audio file smaller than 3 MB."); return; }
     postingRef.current = true; setPosting(true); setError(null); const current = session.current;
     try {
@@ -174,7 +189,7 @@ function AudioGenerationSession({ uid }: { uid: string }) {
     finally { postingRef.current = false; if (current === session.current) setPosting(false); }
   }
   async function clone() {
-    if (!data?.canClone || !referenceId || !consent || !voiceName.trim() || postingRef.current) return;
+    if (!accountReady || !data?.canClone || !referenceId || !consent || !voiceName.trim() || postingRef.current) return;
     postingRef.current = true; setPosting(true); setError(null); const current = session.current;
     try { await api("/api/audio/voices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requestKey: crypto.randomUUID(), assetId: referenceId, name: voiceName.trim(), consent }) }); if (current === session.current) await load(true); }
     catch (err) { if (current === session.current) setError(err instanceof Error ? err.message : "The voice could not be created."); }
@@ -207,6 +222,7 @@ function AudioGenerationSession({ uid }: { uid: string }) {
   }
   function chooseAsset(asset: AudioAsset) { setLiveId(null); setSelectedAssetId(asset.id); setView("audio"); }
   function selectVoice(voice: AudioVoice) {
+    manualVoice.current = true; selection.select(voice.id);
     if (editorView === "studio") prepareStudioPurpose();
     preview.current?.pause(); setPlayingId(null); setVoiceId(voice.id); setView(editorView); setError(null);
     if (view !== editorView) requestAnimationFrame(() => scriptInput.current?.focus());
@@ -230,12 +246,14 @@ function AudioGenerationSession({ uid }: { uid: string }) {
   const needsAttention = data?.requests.filter(r => r.status !== "completed" || r.voiceStatus === "verification_required") ?? [];
   const publicPreview = data?.catalogueSource === "public-preview";
   const upgradeRequired = data?.generationAccess === "upgrade_required";
-  const availabilityMessage = upgradeRequired ? AUDIO_UPGRADE_MESSAGE : !data?.canGenerate ? data?.message || (publicPreview ? "Preview voices are ready. Connect and enable your audio account to generate your own script." : "Audio generation is not available yet. You can still explore the voice library.") : chosenVoice && !chosenVoice.available ? "This voice is a preview. Choose an available voice to generate." : null;
+  const availabilityMessage = bootstrap.isError ? "Audio availability could not be refreshed. Refresh voices to try again." : refreshing && data ? "Checking audio availability…" : upgradeRequired ? AUDIO_UPGRADE_MESSAGE : !data?.canGenerate ? data?.message || (publicPreview ? "Preview voices are ready. Connect and enable your audio account to generate your own script." : "Audio generation is not available yet. You can still explore the voice library.") : chosenVoice && !chosenVoice.available ? "This voice is a preview. Choose an available voice to generate." : null;
+  const displayedError = error || (bootstrap.error instanceof Error ? bootstrap.error.message : null);
   return <section className="audio-workspace">
     <header className="audio-page-header">
       <div><h1>Audio generation</h1><p>Discover a voice. Create your next voiceover.</p></div>
       <div className="audio-header-actions">
-        <button type="button" className="audio-icon-button" disabled={loading || posting} aria-label="Refresh voices" onClick={() => { void load(true); bookmarks.refresh(); }}><RefreshCw size={17} className={cn(loading && "animate-spin")} /></button>
+        {refreshing && data ? <span role="status" className="audio-fine-print">Updating voices…</span> : null}
+        <button type="button" className="audio-icon-button" disabled={refreshing || posting} aria-label="Refresh voices" onClick={() => { void load(true); bookmarks.refresh(); }}><RefreshCw size={17} className={cn(refreshing && "animate-spin")} /></button>
       </div>
     </header>
     <nav className="audio-tabs" aria-label="Audio workspace">
@@ -243,12 +261,13 @@ function AudioGenerationSession({ uid }: { uid: string }) {
         ["studio", "Voiceover Studio", AudioLines], ["library", "Voice library", AudioLines], ["bookmarks", "Bookmarks", Bookmark], ["speech", "Text to speech", FileAudio], ["voices", "My voices", Users], ["audio", "My audio", Headphones],
       ] as const).map(([value,label,Icon]) => <button key={value} type="button" className={cn("audio-tab", view === value && "is-active")} aria-current={view === value ? "page" : undefined} onClick={() => changeView(value)}><Icon size={16} />{label}</button>)}
     </nav>
-    {error ? <p role="alert" className="audio-alert">{error}</p> : null}
+    {displayedError ? <p role="alert" className="audio-alert">{displayedError}</p> : null}
     {savedSubmission ? <div className="audio-alert" role="status">
       <p>{recoveryBlocked ? "This audio request needs review; it will not be submitted again automatically." : `Saved request: ${savedSubmission.payload.name}. Resume uses its original script and voice, not your current form edits.`}</p>
       <div className="flex flex-wrap gap-3 mt-2"><button type="button" className="audio-text-button" disabled={!ready} onClick={() => void submitSpeech()}>Resume saved audio</button><button type="button" className="audio-text-button" disabled={posting} onClick={() => void refreshSavedSubmission()}>Refresh status</button></div>
     </div> : null}
     {bookmarks.error ? <p role="alert" className="audio-alert audio-bookmark-error">{bookmarks.error}<button type="button" className="audio-text-button" onClick={bookmarks.refresh}>Reload bookmarks</button></p> : null}
+    {selection.error ? <p role="alert" className="audio-alert">{selection.error}</p> : null}
 
     {view === "studio" ? <div className="audio-studio">
       <div className="audio-section-heading"><div><h2>Recommended voices</h2><p>A small selection for your next post, ad or product video.</p></div><button type="button" className="audio-text-button" onClick={() => changeView("library")}>View all voices<ArrowRight size={15} /></button></div>
@@ -272,10 +291,10 @@ function AudioGenerationSession({ uid }: { uid: string }) {
       {view === "voices" && showVoiceForm ? <div className="audio-reference-form">
         <div className="audio-section-heading"><div><h3>Create your voice</h3><p>A clean recording of one speaker, ideally 1–2 minutes.</p></div><button type="button" className="audio-icon-button" aria-label="Close voice creation" onClick={() => setShowVoiceForm(false)}><X size={18} /></button></div>
         {!data?.canClone ? <p className="audio-inline-note"><LockKeyhole size={14} />{upgradeRequired ? "Create a private voice with Starter or Growth. You can still explore voices and listen to samples." : "Private voice creation is not available on this account yet. You can still browse and preview voices."}</p> : null}
-        <UploadControl disabled={posting || !data?.canUpload} label="Upload voice reference" onFile={file => void upload(file, "reference")} />
+        <UploadControl disabled={posting || !accountReady || !data?.canUpload} label="Upload voice reference" onFile={file => void upload(file, "reference")} />
         <div className="audio-reference-fields"><div><label htmlFor="audio-reference">Reference recording</label><select id="audio-reference" className="audio-input" value={referenceId} onChange={e => setReferenceId(e.target.value)}><option value="">Choose a recording</option>{references.map(asset => <option key={asset.id} value={asset.id}>{asset.name}</option>)}</select></div><div><label htmlFor="audio-voice-name">Voice name</label><input id="audio-voice-name" className="audio-input" value={voiceName} maxLength={100} onChange={e => setVoiceName(e.target.value)} placeholder="My narration voice" /></div></div>
         <label className="audio-consent"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />I own this voice or have permission to clone and use it.</label>
-        <button type="button" className="audio-primary" disabled={!data?.canClone || !referenceId || !references.some(asset => asset.id === referenceId) || !voiceName.trim() || !consent || posting || activeRequests.some(r => r.kind === "clone")} onClick={() => void clone()}>{posting ? <LoaderCircle size={16} className="animate-spin" /> : <AudioLines size={16} />}Create private voice</button>
+        <button type="button" className="audio-primary" disabled={!accountReady || !data?.canClone || !referenceId || !references.some(asset => asset.id === referenceId) || !voiceName.trim() || !consent || posting || activeRequests.some(r => r.kind === "clone")} onClick={() => void clone()}>{posting ? <LoaderCircle size={16} className="animate-spin" /> : <AudioLines size={16} />}Create private voice</button>
         <p className="audio-fine-print">MP3, WAV, M4A, OGG or WebM · Up to 3 MB and 3 minutes</p>
       </div> : null}
 
@@ -304,7 +323,7 @@ function AudioGenerationSession({ uid }: { uid: string }) {
       onExample={insertExample} onBrowseVoices={() => changeView("library")} onGenerate={() => void submitSpeech()}
     /> : null}
 
-    {view === "audio" ? <div className="audio-saved-library"><div className="audio-section-heading"><div><h2>My audio</h2><p>Your voiceovers, references and original recordings.</p></div><UploadControl disabled={posting || !data?.canUpload} label="Upload recording" onFile={file => void upload(file,"exact")} /></div>
+    {view === "audio" ? <div className="audio-saved-library"><div className="audio-section-heading"><div><h2>My audio</h2><p>Your voiceovers, references and original recordings.</p></div><UploadControl disabled={posting || !accountReady || !data?.canUpload} label="Upload recording" onFile={file => void upload(file,"exact")} /></div>
       {data?.assets.length ? <div className="audio-recordings">{data.assets.map(asset => <div className="audio-recording-row" key={asset.id}><FileAudio size={20} /><button type="button" className="audio-recording-name" disabled={asset.status !== "ready"} onClick={() => chooseAsset(asset)}><strong>{asset.name}</strong><span>{asset.status === "processing" ? "Checking recording…" : asset.status === "failed" ? "Recording could not be validated" : asset.purpose === "reference" ? "Voice reference" : asset.purpose === "exact" ? "Original recording" : "Generated voiceover"}{asset.testOnly ? " · Free test" : ""}</span></button><span className="audio-recording-duration">{asset.duration ? formatDuration(asset.duration) : "—"}</span><button type="button" className="audio-icon-button" disabled={asset.status !== "ready"} aria-label={`Open ${asset.name} recording`} onClick={() => chooseAsset(asset)}><Play size={16} /></button><button type="button" className="audio-icon-button" disabled={posting || asset.status === "processing"} aria-label={`Remove ${asset.name} recording`} onClick={() => void removeAudio("assets",asset.id)}><Trash2 size={15} /></button></div>)}</div> : <div className="audio-empty"><Headphones size={28} /><h3>Your next voiceover starts here</h3><p>Generate speech or upload a recording. Your saved audio stays here when you leave this screen.</p><button type="button" className="audio-text-button" onClick={() => changeView("library")}>Explore voices<ArrowRight size={15} /></button></div>}
       <p className="audio-fine-print audio-recordings-note">Uploaded recordings keep their original words and delivery. Uploading uses no speech generation allowance.</p>
     </div> : null}
@@ -315,11 +334,11 @@ function AudioGenerationSession({ uid }: { uid: string }) {
   </section>;
 }
 
-function VoiceList({ items, voiceId, playingId, privateLibrary, posting, playSample, selectVoice, onRemove, bookmarkIds, bookmarkPendingIds, bookmarksReady, onBookmark, compact = false }: {
+function VoiceList({ items, voiceId, playingId, privateLibrary, posting, playSample, selectVoice, onRemove, bookmarkIds, bookmarkPendingIds, onBookmark, compact = false }: {
   items: AudioVoice[]; voiceId: string; playingId: string | null;
   privateLibrary: boolean; posting: boolean; playSample: (voice: AudioVoice) => void;
   selectVoice: (voice: AudioVoice) => void; onRemove: (id: string) => void;
-  bookmarkIds: ReadonlySet<string>; bookmarkPendingIds: ReadonlySet<string>; bookmarksReady: boolean; onBookmark: (id: string) => void;
+  bookmarkIds: ReadonlySet<string>; bookmarkPendingIds: ReadonlySet<string>; onBookmark: (id: string) => void;
   compact?: boolean;
 }) {
     return <div className="audio-voice-grid">{items.map(voice => <article key={voice.id} className={cn("audio-voice-row", voice.id === voiceId && "is-selected")}>
@@ -334,7 +353,7 @@ function VoiceList({ items, voiceId, playingId, privateLibrary, posting, playSam
       </button>
       <div className="audio-voice-actions">
         <button type="button" className={cn("audio-use-voice", voice.id === voiceId && "is-active")} aria-label={`Use It: ${voice.name}`} aria-pressed={voice.id === voiceId} onClick={() => selectVoice(voice)}>Use It{voice.id === voiceId ? <Check size={15} /> : <ArrowRight size={15} />}</button>
-        <button type="button" className={cn("audio-icon-button audio-bookmark-voice", bookmarkIds.has(voice.id) && "is-active")} disabled={!bookmarksReady || bookmarkPendingIds.has(voice.id)} aria-label={`${bookmarkIds.has(voice.id) ? "Remove bookmark for" : "Bookmark"} ${voice.name}`} title={bookmarkIds.has(voice.id) ? "Remove bookmark" : "Bookmark voice"} aria-pressed={bookmarkIds.has(voice.id)} onClick={() => onBookmark(voice.id)}>{bookmarkPendingIds.has(voice.id) ? <LoaderCircle size={16} className="animate-spin" /> : <Bookmark size={16} fill={bookmarkIds.has(voice.id) ? "currentColor" : "none"} />}</button>
+        <button type="button" className={cn("audio-icon-button audio-bookmark-voice", bookmarkIds.has(voice.id) && "is-active")} disabled={bookmarkPendingIds.has(voice.id)} aria-busy={bookmarkPendingIds.has(voice.id)} aria-label={`${bookmarkIds.has(voice.id) ? "Remove bookmark for" : "Bookmark"} ${voice.name}`} title={bookmarkIds.has(voice.id) ? "Remove bookmark" : "Bookmark voice"} aria-pressed={bookmarkIds.has(voice.id)} onClick={() => onBookmark(voice.id)}>{bookmarkPendingIds.has(voice.id) ? <LoaderCircle size={16} className="animate-spin" /> : <Bookmark size={16} fill={bookmarkIds.has(voice.id) ? "currentColor" : "none"} />}</button>
         {voice.profileId && privateLibrary ? <button type="button" className="audio-icon-button" disabled={posting} aria-label={`Remove ${voice.name} private voice`} onClick={() => onRemove(voice.profileId!)}><Trash2 size={15} /></button> : null}
       </div>
     </article>)}</div>;

@@ -1,8 +1,8 @@
 "use client";
 
-import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 
+import { ExploreLinkIndicator } from "@/components/explore/explore-link-indicator";
 import styles from "@/components/explore/explore-workspace.module.css";
 import type { ExploreWorkflow } from "@/lib/explore/workflows";
 
@@ -30,7 +30,7 @@ export function ExploreWorkflowCard({ workflow, localPreview }: { workflow: Expl
             />
           ) : null}
           <span className="absolute bottom-4 right-4 flex size-9 items-center justify-center rounded-full border border-border bg-background/60 text-muted transition-colors group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground motion-reduce:transition-none">
-            <ArrowUpRight className="size-4" aria-hidden="true" />
+            <ExploreLinkIndicator label={workflow.title} className="size-4" />
           </span>
         </div>
         <h3 className="mt-4 text-lg font-semibold tracking-tight text-foreground-strong">{workflow.title}</h3>

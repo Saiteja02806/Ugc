@@ -53,6 +53,6 @@ export function normalizeWorkflowGenerationSettings(
   };
 }
 
-export function createWorkflowGenerationSettings(initialDuration = 5) {
-  return normalizeWorkflowGenerationSettings({ duration: parseAIStudioVideoDuration(initialDuration) });
+export function createWorkflowGenerationSettings(initialDuration = 5, initialModel?: AIStudioVideoModel) {
+  return normalizeWorkflowGenerationSettings({ model: initialModel, duration: parseAIStudioVideoDuration(initialDuration) });
 }

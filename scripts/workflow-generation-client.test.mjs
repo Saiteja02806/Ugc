@@ -257,7 +257,7 @@ test("workflows stay visible, generation requires the explicit server rollout fl
               "next/navigation": { notFound() { throw new Error("NOT_FOUND"); } },
               "@/components/explore/hook-workflow-preview": { HookWorkflowPreview: "hook" },
               "@/components/explore/phone-workflow-preview": { PhoneWorkflowPreview: "phone" },
-              "@/lib/explore/launch-presets": { parseWorkflowDuration: () => 5 },
+              "@/lib/explore/launch-presets": { parseWorkflowDuration: () => 5, parseWorkflowModel: () => undefined },
               "@/lib/explore/workflow-generation-rollout": rollout,
               "react/jsx-runtime": { jsx: (type, props) => ({ type, props }) },
             }, { process: { env: { NODE_ENV: environment, EXPLORE_GENERATION_ENABLED: generationEnabled } } });

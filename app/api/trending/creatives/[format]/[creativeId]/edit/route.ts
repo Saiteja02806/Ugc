@@ -29,10 +29,7 @@ import {
   markTrendingCreativeEditRenderFailed,
   TrendingCreativeEditAccessError,
 } from "@/lib/trending/creative-edits";
-import {
-  MAX_CURRENT_GENERATION_WALL_TEXT_WORDS,
-  MIN_CURRENT_GENERATION_WALL_TEXT_WORDS,
-} from "@/lib/trending/wall-text-text-logic";
+import { WALL_TEXT_MANUAL_MAX_CHARACTERS } from "@/lib/trending/wall-text-manual-copy";
 import {
   DEFAULT_TRENDING_TEXT_COLOR,
   TRENDING_TEXT_COLOR_VALUES,
@@ -109,14 +106,8 @@ const WALL_PATCH_SCHEMA = z
     fullText: z
       .string()
       .trim()
-      .max(600)
-      .refine((value) => {
-        const wordCount = value.split(/\s+/u).filter(Boolean).length;
-        return (
-          wordCount >= MIN_CURRENT_GENERATION_WALL_TEXT_WORDS &&
-          wordCount <= MAX_CURRENT_GENERATION_WALL_TEXT_WORDS
-        );
-      }),
+      .min(1)
+      .max(WALL_TEXT_MANUAL_MAX_CHARACTERS),
     source: SOURCE_SCHEMA.nullable().optional(),
     textColor: TEXT_COLOR_SCHEMA,
     textBox: z

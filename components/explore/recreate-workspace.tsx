@@ -29,7 +29,7 @@ type RecreateReferencesResponse =
 const GALLERY_GRID = layout.galleryGrid;
 const EMPTY_REFERENCES: RecreateReference[] = [];
 
-export function RecreateWorkspace({ previewReferences }: { previewReferences?: RecreateReference[] }) {
+export function RecreateWorkspace({ previewReferences, initialGenerationMode = "images" }: { previewReferences?: RecreateReference[]; initialGenerationMode?: "images" | "videos" }) {
   const { loading: authLoading, user } = useAuth();
   const localPreview = previewReferences !== undefined;
   const referencesQuery = useQuery({
@@ -46,7 +46,7 @@ export function RecreateWorkspace({ previewReferences }: { previewReferences?: R
   const [selectedReference, setSelectedReference] = useState<RecreateReference | null>(null);
   const [previewReference, setPreviewReference] = useState<RecreateReference | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [generationMode, setGenerationMode] = useState<"images" | "videos">("images");
+  const [generationMode, setGenerationMode] = useState<"images" | "videos">(initialGenerationMode);
   const references = previewReferences ?? referencesQuery.data ?? EMPTY_REFERENCES;
   const categories = useMemo(() => referenceCategories(references, format), [format, references]);
   const filtered = useMemo(() => {

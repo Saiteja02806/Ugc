@@ -29,6 +29,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { CarouselDraggableOverlay } from "@/components/trending/carousel-draggable-overlay";
 import { WallTextSavedImage } from "@/components/trending/wall-text-saved-image";
+import { WallTextEditOverlay, WallTextWidthControl } from "@/components/trending/wall-text-edit-overlay";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -62,6 +63,7 @@ import {
   clampNormalizedTextPosition,
   createHookEditContent,
   createWallTextEditContent,
+  updateWallTextEditBox,
   type NormalizedTextPosition,
   type TrendingCarouselEditContent,
   type TrendingCarouselEditSlide,
@@ -98,13 +100,14 @@ import {
   getWallTextEditorTypography,
   getWallTextLetterSpacing,
   getWallTextReviewCardCappedDimension,
+  getWallTextProportionalPreviewDimension,
   WALL_TEXT_INLINE_SAFE_PADDING,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
+  WALL_TEXT_SECTION_GAP,
+  WALL_TEXT_OUTLINE_WIDTH,
+  WALL_TEXT_RASTER_EDGE_GUARD,
 } from "@/lib/trending/wall-text-visual-style";
-import {
-  MAX_CURRENT_GENERATION_WALL_TEXT_WORDS,
-  MIN_CURRENT_GENERATION_WALL_TEXT_WORDS,
-} from "@/lib/trending/wall-text-text-logic";
+import { getWallTextManualBlocks, validateWallTextManualCopy, WALL_TEXT_MANUAL_MAX_CHARACTERS } from "@/lib/trending/wall-text-manual-copy";
 import { getWallTextRenderBlocks } from "@/lib/trending/wall-text-types";
 import { cn } from "@/lib/utils";
 
@@ -1269,10 +1272,7 @@ function EditorPreview({
 
   if (content.format === "wall_text" && item.format === "wall_text") {
     const box = content.layout.textBox;
-    const center = {
-      x: box.x + box.width / 2,
-      y: box.y + box.height / 2,
-    };
+    const useSharedPng = process.env.NEXT_PUBLIC_WALL_TEXT_SHARED_PNG === "true" && Boolean(content.content.finalLayout);
 
     return (
       <VerticalVideoPreview
@@ -1280,40 +1280,21 @@ function EditorPreview({
         title={sourcePreview?.title ?? item.creative.title}
         url={sourcePreview?.url ?? item.creative.previewUrl}
       >
-        {process.env.NEXT_PUBLIC_WALL_TEXT_SHARED_PNG === "true" ? <WallTextSavedImage
+        {useSharedPng ? <WallTextSavedImage
           assignmentId={item.assignmentId} creativeId={item.creativeId} revision={edit?.revision ?? 0}
           text={content.content.fullText}
           draft={JSON.stringify(content) === JSON.stringify(initialContent) ? undefined : {
             fullText: content.content.fullText, textColor: content.textColor, textBox: box,
           }}
         /> : null}
-        <DraggableOverlay
-          ariaLabel="Move Wall-of-text copy"
-          bounds={{
-            maxX: 1 - content.layout.safeArea.right - box.width / 2,
-            maxY: 1 - content.layout.safeArea.bottom - box.height / 2,
-            minX: content.layout.safeArea.left + box.width / 2,
-            minY: content.layout.safeArea.top + box.height / 2,
-          }}
-          position={center}
-          onPositionChange={(position) =>
-            onContentChange({
-              ...content,
-              layout: {
-                ...content.layout,
-                textBox: {
-                  ...box,
-                  x: position.x - box.width / 2,
-                  y: position.y - box.height / 2,
-                },
-              },
-            })
-          }
+        <WallTextEditOverlay
+          layout={content.layout}
+          onBoxChange={(textBox) => onContentChange(updateWallTextEditBox(content, textBox))}
         >
-          {process.env.NEXT_PUBLIC_WALL_TEXT_SHARED_PNG === "true" ? (
+          {useSharedPng ? (
             <div aria-label="Drag to move text" style={{ width: `${box.width * 100}cqw`, height: `${box.height * 100 * 16 / 9}cqw` }} />
           ) : <WallTextOverlayText content={content} />}
-        </DraggableOverlay>
+        </WallTextEditOverlay>
       </VerticalVideoPreview>
     );
   }
@@ -1718,7 +1699,8 @@ function WallTextOverlayText({
   const isPendingAuthoritativeLayout = !content.content.finalLayout;
   const typography = getWallTextEditorTypography(content.content);
   const letterSpacing = getWallTextLetterSpacing(content.content);
-  const previewDimension = getWallTextReviewCardCappedDimension;
+  const previewDimension = isPendingAuthoritativeLayout || content.content.finalLayout?.textMode === "manual"
+    ? getWallTextProportionalPreviewDimension : getWallTextReviewCardCappedDimension;
 
   return (
     <div
@@ -1732,7 +1714,8 @@ function WallTextOverlayText({
         fontWeight: typography.fontWeight,
         letterSpacing:
           letterSpacing === 0 ? "normal" : previewDimension(letterSpacing),
-        paddingInline: previewDimension(WALL_TEXT_INLINE_SAFE_PADDING),
+        paddingInline: previewDimension(WALL_TEXT_INLINE_SAFE_PADDING +
+          (isPendingAuthoritativeLayout ? WALL_TEXT_OUTLINE_WIDTH + WALL_TEXT_RASTER_EDGE_GUARD / 2 : 0)),
         textShadow:
           typography.shadowOpacity > 0
             ? `0 ${previewDimension(1.2)} ${previewDimension(2)} rgb(0 0 0 / ${typography.shadowOpacity})`
@@ -1741,9 +1724,13 @@ function WallTextOverlayText({
       }}
     >
       {isPendingAuthoritativeLayout ? (
-        <p className="m-0 whitespace-normal" style={{ lineHeight: WALL_TEXT_LINE_HEIGHT_FACTOR }}>
-          {content.content.fullText}
-        </p>
+        getWallTextManualBlocks(content.content.fullText).map((block, index) => (
+          <p key={index} className="m-0 whitespace-pre-wrap" style={{
+            lineHeight: WALL_TEXT_LINE_HEIGHT_FACTOR,
+            marginBottom: previewDimension(block.gapAfterPx ?? 0),
+            overflowWrap: "anywhere",
+          }}>{block.lines.join("\n")}</p>
+        ))
       ) : getWallTextRenderBlocks(content.content).map((segment, segmentIndex) => (
         <p
           key={`${segment.role}-${segmentIndex}`}
@@ -1751,6 +1738,8 @@ function WallTextOverlayText({
           style={{
             lineHeight: WALL_TEXT_LINE_HEIGHT_FACTOR,
             whiteSpace: "nowrap",
+            marginBottom: segmentIndex < getWallTextRenderBlocks(content.content).length - 1
+              ? previewDimension(segment.gapAfterPx ?? WALL_TEXT_SECTION_GAP) : 0,
           }}
         >
           {segment.lines.map((line, lineIndex) => (
@@ -2114,7 +2103,7 @@ function EditorFields({
         <textarea
           id="trending-wall-text"
           value={content.content.fullText}
-          maxLength={600}
+          maxLength={WALL_TEXT_MANUAL_MAX_CHARACTERS}
           rows={7}
           onChange={(event) =>
             onContentChange({
@@ -2124,8 +2113,7 @@ function EditorFields({
                   event.target.value,
                   content.content,
                 ),
-                // Keep the user's in-progress whitespace while deriving the
-                // normalized preview segments. The API normalizes on save.
+                // Keep in-progress whitespace and the author's explicit breaks.
                 fullText: event.target.value,
               },
             })
@@ -2133,9 +2121,21 @@ function EditorFields({
           className="min-h-32 w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-xs outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
         />
         <FieldDescription>
-          Use {MIN_CURRENT_GENERATION_WALL_TEXT_WORDS}–{MAX_CURRENT_GENERATION_WALL_TEXT_WORDS} words. The preview keeps a fixed font size
-          while you type. Saving balances the final 5–8 lines inside the same
-          text area.
+          Your line breaks and paragraph spacing are kept. Long lines wrap to
+          fit the text area at the fixed font size. Lists and short phrases are
+          welcome; the complete text must fit inside the preview.
+        </FieldDescription>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="trending-wall-width">Text width</FieldLabel>
+        <WallTextWidthControl
+          id="trending-wall-width"
+          layout={content.layout}
+          onBoxChange={(textBox) => onContentChange(updateWallTextEditBox(content, textBox))}
+        />
+        <FieldDescription>
+          Drag the side handles or use the slider to adjust wrapping. Drag the
+          text to move it. A little padding stays on both sides of the video.
         </FieldDescription>
       </Field>
       <TextColorPicker
@@ -3149,14 +3149,10 @@ function validateContent(content: TrendingCreativeEditContent) {
   }
 
   if (content.format === "wall_text") {
-    const normalized = content.content.fullText.replace(/\s+/gu, " ").trim();
-    const wordCount = normalized.split(/\s+/u).filter(Boolean).length;
-    if (
-      !normalized ||
-      wordCount < MIN_CURRENT_GENERATION_WALL_TEXT_WORDS ||
-      wordCount > MAX_CURRENT_GENERATION_WALL_TEXT_WORDS
-    ) {
-      return `Wall-of-text copy must contain ${MIN_CURRENT_GENERATION_WALL_TEXT_WORDS}–${MAX_CURRENT_GENERATION_WALL_TEXT_WORDS} words and fit the measured 5–8-line layout.`;
+    try {
+      validateWallTextManualCopy(content.content.fullText);
+    } catch (error) {
+      return error instanceof Error ? error.message : "Review the overlay copy before saving.";
     }
   }
 

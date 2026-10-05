@@ -2,6 +2,38 @@
 
 Last updated: 2026-10-05
 
+## 2026-10-05 Trending manual Wall copy formatting (local implementation)
+
+- Wall manual edits preserve explicit line breaks and paragraph gaps in the
+  textarea, browser preview, optional shared PNG preview, saved revision, and
+  worker export. Each authored line wraps greedily only when its measured width
+  exceeds the safe text width; short entries never merge or rebalance together.
+- Manual V13/V9 layouts carry `textMode: manual` and explicit `gapAfterPx`
+  per text block. Their box may grow vertically around its center inside the
+  existing publishing safe area, with vertical raster padding. Font size remains
+  fixed. Browser manual text scales proportionally so preview and export wrap
+  at the same width. Existing generated-card typography remains unchanged.
+  Changing only color or position retains the saved rows and typography through
+  the shared edit-layout helper used by save and shared PNG preview.
+- Manual edits require nonempty text, at most 600 characters, matching measured
+  content, safe placement, and render fit. They allow lists, short phrases, and
+  omitted terminal punctuation. Automated generation retains its word range,
+  balanced 5–8-line contract, sentence ending, and promotional/CTA rules.
+- Wall Edit also exposes left/right width handles and a percentage slider.
+  Manual width ranges from 40% to 94% of the video with at least 3% padding
+  at each horizontal edge. Side drags anchor the opposite edge; the slider
+  expands around the center and stays within the margins. Movement and width
+  controls support keyboard input. The existing vertical safe area still applies.
+  Width edits invalidate measured rows and reflow each authored line at the same
+  fixed font size through preview, saved edit JSON, and worker raster export.
+  Pending copy/width edits use immediate browser wrapping even when the shared
+  PNG feature is enabled; measured saved content can use the shared PNG.
+- This requires releasing the app and supporting render worker together.
+  No database schema change is required: manual content stays in owner-scoped
+  creative edit JSON. Production acceptance remains pending deployment and
+  authenticated checking on https://www.getugcpilot.com. Local validation and
+  evidence are recorded in `docs/wall-text-manual-edit-formatting-2026-10-05.md`.
+
 ## 2026-10-03 Scheduled publication time and account region audit
 
 - Production traces confirmed that generic background-job recovery redispatched

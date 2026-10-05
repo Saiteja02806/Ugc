@@ -20,19 +20,20 @@ import { WorkflowFinishingBoundary } from "@/components/explore/workflow-finishi
 import studio from "@/components/explore/workflow-studio.module.css";
 import creation from "@/components/explore/workflow-creation.module.css";
 import { cn } from "@/lib/utils";
+import type { AIStudioVideoModel } from "@/lib/ai-studio/generation-settings";
 import type { ExploreBackgroundPlayback } from "@/worker/src/lib/explore-background-audio";
 
-export function HookWorkflowPreview({ initialDuration = 5, generationEnabled = false }: { initialDuration?: number; generationEnabled?: boolean }) {
-  return <WorkflowAccountBoundary enabled={generationEnabled}>{(ownerId) => <HookWorkflowLayout key={ownerId ?? "preview"} ownerId={ownerId} initialDuration={initialDuration} generationEnabled={generationEnabled} />}</WorkflowAccountBoundary>;
+export function HookWorkflowPreview({ initialDuration = 5, initialModel, generationEnabled = false }: { initialDuration?: number; initialModel?: AIStudioVideoModel; generationEnabled?: boolean }) {
+  return <WorkflowAccountBoundary enabled={generationEnabled}>{(ownerId) => <HookWorkflowLayout key={ownerId ?? "preview"} ownerId={ownerId} initialDuration={initialDuration} initialModel={initialModel} generationEnabled={generationEnabled} />}</WorkflowAccountBoundary>;
 }
 
-function HookWorkflowLayout({ initialDuration, generationEnabled, ownerId }: { initialDuration: number; generationEnabled: boolean; ownerId: string | null }) {
+function HookWorkflowLayout({ initialDuration, initialModel, generationEnabled, ownerId }: { initialDuration: number; initialModel?: AIStudioVideoModel; generationEnabled: boolean; ownerId: string | null }) {
   const [section, setSection] = useState<WorkflowSection>("create");
   const [scheduleDraft, setScheduleDraft] = useState(EMPTY_SCHEDULE_DRAFT);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const [audioMode, setAudioMode] = useState<"voice" | "recording">("voice");
   const [instructions, setInstructions] = useState("");
-  const generation = useWorkflowGenerationSettings(initialDuration);
+  const generation = useWorkflowGenerationSettings(initialDuration, initialModel);
   const creator = useLocalWorkflowMedia("image");
   const videoReference = useLocalWorkflowMedia("video");
   const hookAudio = useLocalWorkflowMedia("audio");

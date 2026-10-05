@@ -185,10 +185,12 @@ export type WallTextGroundingMetadata = {
   version: "wall-text-grounding-v2";
 };
 export type WallTextLayoutBlock = {
+  gapAfterPx?: number;
   lines: string[];
   role: "item" | "prose" | "text" | "title";
 };
 type WallTextFinalLayoutBase = {
+  textMode?: "manual";
   blocks: WallTextLayoutBlock[];
   fontSizePx: WallTextFontSize;
   lineHeightPx: number;
@@ -284,7 +286,7 @@ export type TrendingWallTextLayout = {
   version: typeof WALL_TEXT_LAYOUT_VERSION;
 };
 
-export function getWallTextRenderBlocks(content: TrendingWallTextContent) {
+export function getWallTextRenderBlocks(content: TrendingWallTextContent): WallTextLayoutBlock[] {
   return (
     content.finalLayout?.blocks ??
     content.segments.map((segment) => ({

@@ -64,7 +64,7 @@ export async function prepareWallTextOverlayAsset(input: WallTextOverlayInput) {
   const content = await reflowWallTextContentForRenderer({
     content: input.text, textBox: input.textBox,
   });
-  await validateWallTextRenderedLineWidths(content, input.textBox);
+  await validateWallTextRenderedLineWidths(content, input.textBox, input.safeArea);
   const { fontHash, inputHash } = await getWallTextOverlayIdentity(input);
   const overlaySvg = buildWallTextOverlaySvg({
     content, placement: input.placement, safeArea: input.safeArea,
@@ -112,11 +112,12 @@ export async function registerWallTextFonts() {
 export async function validateWallTextRenderedLineWidths(
   content: WallTextRenderContent,
   textBox: WallTextNormalizedBox,
+  safeArea?: WallTextSafeArea,
 ) {
   const maximumWidth = getWallTextRasterSafeLineWidth(
     Math.round(textBox.width * WALL_TEXT_RENDER_WIDTH),
   );
-  const layout = buildWallTextRenderLayout({ content, textBox });
+  const layout = buildWallTextRenderLayout({ content, textBox, safeArea });
   const font = await getWallTextFontForContent(content);
 
   for (const segment of layout.segments) {

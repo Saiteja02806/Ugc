@@ -1,6 +1,35 @@
 # Wall-of-text Context
 
-Last updated: 2026-10-02
+Last updated: 2026-10-05
+
+## 2026-10-05 Manual edit formatting and validation (local implementation)
+
+- The Trending Wall editor now keeps authored lines and blank-line spacing.
+  Manual save and optional shared PNG preview use a measured greedy wrap for
+  each explicit line rather than the generated-copy paragraph balancer.
+- Short entries such as “Graphite - code review” stay on one row when they fit.
+  Long lines wrap within their paragraph. Saved V13/V9 layouts mark
+  `textMode: manual` and retain per-block `gapAfterPx` through worker parsing,
+  SVG generation, and raster checks. The browser uses proportional scaling
+  for manual copy so its available width matches export.
+- Manual edits accept phrases and lists without the AI-only sentence-ending,
+  24–48-word, 5–8-row, promotional, or CTA restrictions. Nonempty copy,
+  the 600-character limit, exact content, fixed typography, measured fit,
+  and publishing safe-area checks remain mandatory. The manual box can expand
+  around its existing center, within that safe area, to retain paragraph spacing.
+- Generation and historical saved layouts keep their existing behavior.
+  Changing only color or position preserves their saved rows and typography.
+  Application and render worker deployment must accompany one another; no
+  database migration is needed. Authenticated production acceptance remains
+  pending. See `docs/wall-text-manual-edit-formatting-2026-10-05.md`.
+- Wall Edit has draggable left/right width handles plus a 40–94% width slider.
+  Manual layouts retain at least 3% horizontal edge padding; their existing
+  vertical publishing margins remain. Resizing rewraps authored lines without
+  changing the font or merging list entries. Width and position persist in the
+  creative edit JSON and exported overlay. Keyboard arrows work for movement
+  and width, Shift makes larger steps, and Escape cancels an active gesture.
+  Local browser checks at 196px, 277px, and 391px confirm the supplied heading
+  changes from three lines to two at 94%, while the five tools remain one row each.
 
 ## 2026-10-02 Four specific writing corrections (local implementation)
 

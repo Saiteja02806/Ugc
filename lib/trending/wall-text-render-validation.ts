@@ -153,7 +153,7 @@ export async function validateWallTextRenderFit(
       }
 
       if (segmentIndex < blocks.length - 1) {
-        height += WALL_TEXT_SECTION_GAP;
+        height += segment.gapAfterPx ?? WALL_TEXT_SECTION_GAP;
       }
     }
 

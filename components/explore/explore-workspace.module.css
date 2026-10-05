@@ -30,6 +30,12 @@
   border-color: var(--primary);
 }
 
+/* These are decorative previews, not media controls. The enclosing link owns
+   clicks/taps on the complete cover, including while the video is playing. */
+.cover video, .characterMotion {
+  pointer-events: none;
+}
+
 .creationGrid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

@@ -8,6 +8,7 @@ import {
   type WallTextSegmentRole,
 } from "./wall-text-types.ts";
 import { WALL_TEXT_GENERATION_WORD_RANGE } from "./wall-text-copy-policy.ts";
+import { validateManualWallTextContent } from "./wall-text-manual-copy.ts";
 import type { WebsiteBusinessAnalysis } from "../website-analysis/schema.ts";
 import {
   MAX_WALL_TEXT_VIDEO_DURATION_SECONDS,
@@ -344,6 +345,10 @@ export function validateWallTextContent(
   content: TrendingWallTextContent,
   _durationSeconds: number,
 ) {
+  if (content.finalLayout?.textMode === "manual") {
+    validateManualWallTextContent(content);
+    return;
+  }
   const wordCount = countWords(content.fullText);
   if (
     content.layoutVersion === "wall-text-overlay-v6" ||

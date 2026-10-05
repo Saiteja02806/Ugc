@@ -24,6 +24,7 @@ function harness(code, exportName) {
     "@/components/explore/workflow-creation.module.css": { default: new Proxy({}, { get: (_, key) => key }) },
     "@/components/ui/button": { Button: "button" },
     "@/components/explore/workflow-saved-audio-picker": { WorkflowSavedAudioPicker: "saved-audio-picker" },
+    "@/components/explore/workflow-saved-audio-choices": { WorkflowSavedAudioChoices: "saved-audio-choices" },
     "@/components/ui/popover": Object.fromEntries(["Popover", "PopoverContent", "PopoverTitle", "PopoverTrigger"].map((name) => [name, name])),
     "@/lib/utils": { cn: (...values) => values.join(" ") },
     "@/worker/src/subtitles/explore-policy": { EXPLORE_SUBTITLE_SCOPE_LABEL: "English · up to 60 seconds total" },
@@ -207,7 +208,7 @@ test("actual attachment pickers receive only their own media state", () => {
   assert.equal(pickers.find((node) => node.props.label === "Replace demo").props.attachment, props.demo);
   assert.equal(pickers.find((node) => node.props.label === "Replace demo audio").props.attachment, props.demoAudio);
   const ref = audioRender({ audio: makeAttachment("hook.wav", true) });
-  assert.equal(nodes(ref.tree).find((node) => node.type === "picker").props.attachment, ref.props.audio);
+  assert.equal(nodes(ref.tree).find((node) => node.type === "picker").props.attachment.asset, ref.props.audio.asset);
   assert.match(text(tree), /Added audio belongs to the demo only—not your hook or its generation voice reference/);
 });
 

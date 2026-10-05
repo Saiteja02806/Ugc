@@ -59,3 +59,40 @@ These follow-up changes are local and uncommitted; they have not been pushed or 
 - Browser binding was blocked by the browser safety policy. No alternate browser, indirect browser command, or synthetic screenshot was used. Visual layout acceptance and a new screenshot remain unverified; `recreate-balanced.jpg` shows the preceding layout, not this compact-composer update.
 
 The user requested an image of this latest update. A fresh browser capture still requires access to a user-opened preview tab. No commit, push, deployment, media generation, or social publication occurred.
+
+## Follow-up: chat box follows divider resizing
+
+This follow-up starts from `8207241` on `codex/deploy-trending-explore-audio-20261005`. Earlier sections above record earlier verification stages.
+
+- Root cause: the compact composer had `max-width: 340px`. The splitter changed the editor width correctly, but the chat box stopped expanding at that cap and stayed centered inside a wider editor.
+- Removed only that width cap. The composer retains its percentage-based width and 8px side insets, so it expands/contracts with the editor. The narrow-pane full-width override, short prompt height, small buttons/pills, and three-column gallery are unchanged. The shared selector covers both Image and Video mode.
+- Added tests executing the actual splitter and width helper with isolated React/browser mocks. Left/right drag updates, release, cancellation, keyboard limits/reset, container-size bounds, and stable child identity passed. A CSS regression assertion failed against the old fixed cap and passed after the correction.
+- 61 targeted tests, TypeScript, ESLint on the changed tests, and Git whitespace checks passed. These are code/event-state checks, not fresh rendered browser measurements. Browser visual verification remains pending; the earlier browser-policy block was not bypassed.
+
+This resize correction is local and uncommitted, not pushed or deployed. No source files in the original desktop checkout, backend jobs, generation access, database, cloud configuration, or social publishing behavior were changed.
+
+## Follow-up: remove Recreate History button
+
+- Both Image and Video mode now hide History in the normal Recreate screen, not just local preview. The History drawers also stay closed in Recreate. Stored results, history loading/recovery, and History controls outside Recreate are unchanged.
+- An empty Recreate screen has no leftover toolbar row. Existing New session actions remain available after a completed result; prompt/settings/resize controls are unchanged.
+- Four tests evaluate the actual toolbar and drawer visibility expressions for both modes, checking Recreate, preview, generation in progress, completed results, and standalone History access. The combined related suite passed 71 tests; TypeScript, ESLint, and whitespace checks passed. React review found no new effects, requests, component remounts, or access-control changes.
+- This removal and the preceding resize correction remain local and uncommitted. No push/deployment or fresh browser screenshot was performed; rendered visual acceptance remains pending.
+
+## Follow-up: intermittent Explore workflow navigation investigation
+
+- Inspected the live `8207241` baseline's Explore workflow cards, AI character card, quick starts, destination pages, shared route/auth boundaries and navigation handlers. The cards already use valid Next links; no card click cancellation, disabled state or global navigation lock was found. The existing workflow unsaved-change guards are scoped to their own back links and clean up their unload listeners.
+- Verified a loading-feedback gap: Explore had no `loading.tsx` boundary or link-pending indicator. Its destination pages await runtime search parameters. Local development logs showed compilation taking several seconds, without a navigation error in the inspected log tail. This supports a slow-loading explanation, but does not prove the cause of the user's intermittent production clicks.
+- Production deployment `dpl_86ukASYKZHcGY8FU1nG6dqcaXxaR` was READY on `8207241`. The grouped runtime-error report found no errors for the five Explore routes in the preceding 24 hours. Two detailed runtime-log queries timed out and provided no evidence. Server-error absence does not rule out client-side errors, stalled requests or click interception.
+- Added the existing accessible workspace loading skeleton at the Explore route boundary, and a fixed-size pending indicator inside each workflow, AI character and quick-start link. Next owns the pending/cancellation state; there are no timers, forced reloads, custom click handlers or disabled links. Decorative video/poster covers now pass pointer input to their enclosing links.
+- Six new tests execute the actual presentation components with isolated Next/React contexts. They verify pending/idle feedback, unchanged live/preview destinations and duration parameters, link placement, and the accessible loading boundary; CSS coverage verifies decorative media are click-through. The related regression selection passed **21 tests**, TypeScript and changed-file ESLint passed, and Git whitespace checks passed. The React review found no new effects, duplicate requests or workflow-state resets.
+- The production browser reached sign-in. The user confirmed sign-in was not possible for this check, so authenticated click reproduction and rendered acceptance remain unverified. The exact intermittent failure is not established as solved. No alternate browser was used to bypass the preceding local-preview policy block.
+
+This navigation correction is local and uncommitted, not pushed or deployed. Auth, generation, scheduling, databases and cloud configuration are unchanged; earlier Recreate resize/History edits are preserved.
+
+## Follow-up: named Quick start presets
+
+- Root cause: Quick start encoded destinations and Kling's duration only. Create Hook ignored a requested model, and Recreate always initialized its Image tab even though its existing Video panel already reads the URL model.
+- Seedance now opens workflow 1 with `seedance_2_5`; OmniFlash opens workflow 2 in Video mode with `google_omni`; Kling opens workflow 1 with `kling_3_0` and 10 seconds. Trending stays `/dashboard`, Audio stays `/audio-generation`, and Create app demo stays workflow 3 (`/explore/creator-phone`). A shared link builder keeps live and non-spending preview behavior aligned.
+- Model values are allowlisted. Hook passes the preset into its existing lazy settings initializer, retaining model availability/rollout rules and normal defaults for ordinary or malformed links. Users can still change settings; rerenders/tab changes do not force the preset back. Launch keys distinguish different requested models without keying on selected gallery references or recovered job IDs. Recreate's ordinary entry still starts in Image mode.
+- Eight new preset tests execute the link builder, destination pages, real settings hook and actual Recreate Video initializer with isolated dependencies. One additional parent-layout test verifies Hook forwards both preset values to the settings owner. The navigation tests now cover model query parameters as well. The combined related suite passed **122 tests**, TypeScript, changed-file ESLint and Git whitespace checks passed. React review confirmed no new effects, provider requests or query-driven settings-overwrite loop.
+- This is local code verification, not authenticated production/browser acceptance. The user's preceding sign-in limitation remains; no paid generation, social publishing, migration, backend/cloud change, push or deployment occurred. Previous navigation, Recreate resize and History changes are preserved.

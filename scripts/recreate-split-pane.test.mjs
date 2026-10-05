@@ -55,8 +55,9 @@ test("narrow recreate controls are compact without losing their names or setting
   assert.match(rail, /ResizeObserver/);
 });
 
-test("only the Recreate composer gets narrower with smaller controls and a responsive footer", () => {
-  assert.match(layout, /\.split \.editor :global\(form\[data-compact\]\) \{ width: calc\(100% - 16px\); max-width: 340px;/);
+test("the compact Recreate composer follows its resized pane without a fixed width cap", () => {
+  assert.match(layout, /\.split \.editor :global\(form\[data-compact\]\) \{ width: calc\(100% - 16px\); max-width: none;/);
+  assert.doesNotMatch(layout, /form\[data-compact\]\) \{[^}]*max-width: \d+px/);
   assert.match(layout, /grid-template-columns: minmax\(0, 1fr\) auto/);
   const narrow = layout.slice(layout.indexOf("@container recreate-editor"));
   assert.match(narrow, /grid-template-columns: minmax\(0, 1fr\)/);

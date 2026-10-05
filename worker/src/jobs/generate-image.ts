@@ -24,6 +24,8 @@ import {
 import type { BackgroundJobRow, Json } from "../types.js";
 import type { WorkerJobContext, WorkerJobOutput } from "./index.js";
 
+const MAX_CHARACTER_PROMPT_LENGTH = 32_000;
+
 type GenerateImageInput = {
   aspectRatio: AIStudioImageRatio;
   generationId: string;
@@ -47,6 +49,12 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
 
   if (typeof prompt !== "string" || !prompt.trim()) {
     throw new Error("generate_image requires input.prompt.");
+  }
+
+  const promptDrivenCharacter = job.input_json.characterSource === "ugc-pilot-characters" &&
+    job.input_json.characterVersion === 2 && job.input_json.promptSource === "user" && job.input_json.mode === "custom";
+  if (promptDrivenCharacter && prompt.trim().length > MAX_CHARACTER_PROMPT_LENGTH) {
+    throw new Error(`generate_image prompt exceeds ${MAX_CHARACTER_PROMPT_LENGTH} characters.`);
   }
 
   return {

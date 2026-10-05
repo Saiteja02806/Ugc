@@ -219,11 +219,12 @@ test("Create audio keeps the recording as AI guidance without an unimplemented e
   const buttons = nodes(tree).filter((node) => node.type === "button");
   assert.ok(buttons.every(node => !["Exact recording", "Voice reference"].includes(text(node))));
   assert.deepEqual(changes, []);
-  assert.match(text(tree), /an exact copy of the voice or recording is not guaranteed/);
+  assert.match(text(tree), /Voice guidance · Up to 30 seconds/);
+  assert.doesNotMatch(text(tree), /exact copy|Files upload only|through OpenRouter/);
   assert.equal(audio.asset.name, "voice.wav");
   assert.doesNotMatch(audioSource, /setInstructions|onInstructionsChange|\bfetch\(|localStorage|sessionStorage/);
   const empty = audioRender().tree;
-  assert.match(text(empty), /No audio selected. No sample audio is added/);
+  assert.doesNotMatch(text(empty), /No audio selected. No sample audio is added/);
   assert.match(text(empty), /Select audio/);
   assert.ok(nodes(empty).some((node) => node.type === "AudioLines"));
   assert.doesNotMatch(audioSource, /Mic2/);
@@ -352,12 +353,42 @@ test("audio reference selection and validation states retain the waveform and re
   }
 });
 
-test("both workflows distinguish generation voice references from demo-only playback without implying a live connection", () => {
-  for (const [audioLabel, videoLabel, voiceName] of [["Hook audio", "Hook", "hook"], ["Creator audio", "Phone video", "creator video"]]) {
+test("concise reference pickers preserve uploads, playback, removal, errors and the 30-second limit", async () => {
+  for (const audioLabel of ["Hook audio", "Creator audio"]) {
+    const chosen = [], removed = [], file = { name: "replacement.mp3", type: "audio/mpeg" };
+    const audio = { ...makeAttachment("voice.mp3", true), choose: async (...args) => { chosen.push(args); return true; }, remove: () => removed.push(true) };
+    const { tree } = audioRender({ audioLabel, audio });
+    const popup = nodes(tree).find(node => node.type === "PopoverContent");
+    const paragraphs = nodes(popup).filter(node => node.type === "p");
+    assert.deepEqual(paragraphs.map(text), ["Voice guidance · Up to 30 seconds.", "voice.mp3"]);
+    const picker = nodes(tree).find(node => node.type === "picker");
+    assert.equal(await picker.props.attachment.choose(file), true);
+    assert.equal(chosen[0][0], file);
+    assert.equal(chosen[0][1].maxDuration, 30);
+    assert.equal(nodes(tree).find(node => node.type === "player").props.asset, audio.asset);
+    nodes(tree).find(node => node.type === "remove").props.onClick();
+    assert.deepEqual(removed, [true]);
+    const bad = audioRender({ audioLabel, audio: { ...audio, error: "Invalid audio." } }).tree;
+    assert.equal(text(nodes(bad).find(node => node.props.role === "alert")), "Invalid audio.");
+  }
+  const actual = harness(audioSource, "WorkflowAudioReference");
+  const props = { ...audioRender().props, ownerId: "owner" };
+  const closed = actual.render(props);
+  assert.equal(nodes(closed).filter(node => node.type === "saved-audio-choices").length, 0);
+  nodes(closed).find(node => node.type === "Popover").props.onOpenChange(true);
+  const open = actual.render(props);
+  const saved = nodes(open).find(node => node.type === "saved-audio-choices");
+  assert.equal(saved.props.ownerId, "owner");
+  assert.equal(saved.props.audio, props.audio);
+  assert.doesNotMatch(read("components/explore/workflow-saved-audio-choices.tsx"), /Use sample attaches existing audio|Your recordings up to 30 seconds/);
+});
+
+test("both workflows keep concise voice-reference guidance separate from demo-only playback", () => {
+  for (const [audioLabel, videoLabel] of [["Hook audio", "Hook"], ["Creator audio", "Phone video"]]) {
     const reference = audioRender({ audioLabel, audio: makeAttachment("voice.wav", true) });
     assert.match(text(reference.tree), /Main voice reference/);
-    assert.match(text(reference.tree), new RegExp(`It guides the generated ${voiceName} voice—not background music or demo audio`));
-    assert.match(text(reference.tree), /not background music or demo audio/);
+    assert.match(text(reference.tree), /Voice guidance · Up to 30 seconds/);
+    assert.doesNotMatch(text(reference.tree), /background music|demo audio|OpenRouter|Files upload|exact copy/);
     const demo = render({ videoLabel, demo: makeAttachment("demo.mp4", true), demoAudio: makeAttachment("demo.wav", true) });
     const details = nodes(demo.tree).find((node) => node.props["aria-label"] === "Demo audio details");
     assert.match(text(details), new RegExp(`Added audio belongs to the demo only—not your ${videoLabel.toLowerCase()}`));

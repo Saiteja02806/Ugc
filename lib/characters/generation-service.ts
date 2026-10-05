@@ -2,7 +2,6 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
 import {
   getBackgroundJobForUser,
   type BackgroundJobRecord,
@@ -15,16 +14,8 @@ import {
   CHARACTER_SOURCE,
   CHARACTER_VERSION,
   CharacterGenerateRequestSchema,
-  CharacterSpecSchema,
   type CharacterGenerateRequest,
-  type CharacterPlan,
-  type CharacterSpec,
 } from "./schema";
-import {
-  renderCharacterPrompt,
-  validateCharacterPlan,
-  type CharacterPlanningInput,
-} from "./planner";
 import type { CharacterGenerationResponse, CharacterImageCount } from "./types";
 
 export class CharacterGenerationError extends Error {
@@ -38,7 +29,6 @@ export type CharacterReference = {
   id: string;
   userId: string;
   referenceImageUrl: string;
-  characterSpec: CharacterSpec;
 };
 
 export type CharacterReservationInput = {
@@ -53,9 +43,7 @@ export type CharacterReservationInput = {
 export type CharacterGenerationDependencies = {
   getExistingJob: (key: string, userId: string) => Promise<BackgroundJobRecord | null>;
   requireAccess: (userId: string, request: CharacterGenerateRequest) => Promise<{ count: CharacterImageCount; useFreeAllowance: boolean }>;
-  getBusinessProfile: (userId: string) => Promise<BusinessProfileRecord | null>;
   getReference: (id: string, userId: string) => Promise<CharacterReference | null>;
-  plan: (input: CharacterPlanningInput) => Promise<CharacterPlan>;
   reserveBatch: (input: CharacterReservationInput) => Promise<BackgroundJobRecord[]>;
   dispatch: (job: BackgroundJobRecord) => Promise<BackgroundJobRecord>;
   getImageCreditCost: () => number;
@@ -77,7 +65,6 @@ export function characterRequestFingerprint(request: CharacterGenerateRequest) {
   return createHash("sha256").update(JSON.stringify({
     version: CHARACTER_VERSION,
     mode: request.mode,
-    gender: request.gender ?? null,
     model: request.model,
     prompt: request.prompt ?? null,
     referenceCharacterId: request.referenceCharacterId ?? null,
@@ -96,7 +83,7 @@ export function isCharacterGenerationJob(job: BackgroundJobRecord) {
   const input = getCharacterJobInput(job);
   return job.jobType === "generate_image" &&
     input?.characterSource === CHARACTER_SOURCE &&
-    input.characterVersion === CHARACTER_VERSION &&
+    (input.characterVersion === 1 || input.characterVersion === CHARACTER_VERSION) &&
     typeof input.characterRequestFingerprint === "string" &&
     /^[0-9a-f]{64}$/.test(input.characterRequestFingerprint);
 }
@@ -140,8 +127,7 @@ export async function generateCharacterBatch(userId: string, rawRequest: unknown
     dependencies.getExistingJob(characterChildIdempotencyKey(batchId, index + 1), userId)));
   let jobs: BackgroundJobRecord[];
   if (existing.some(Boolean)) {
-    // A replay must not call the planner, consume more credits or read changed
-    // business facts. Recover delivery using the already committed batch.
+    // Recover delivery using the admitted prompt; never reserve credits twice.
     jobs = existing.filter((job): job is BackgroundJobRecord => !!job);
     assertOwnedBatch(jobs, userId, batchId, fingerprint, request.imageCount);
   } else {
@@ -153,34 +139,22 @@ export async function generateCharacterBatch(userId: string, rawRequest: unknown
         !reference.referenceImageUrl.startsWith("https://") || !isTrustedStorageUrl(reference.referenceImageUrl))) {
       throw new CharacterGenerationError("REFERENCE_NOT_FOUND", "The saved influencer could not be found.", 404);
     }
-    const referenceSpec = reference ? CharacterSpecSchema.parse(reference.characterSpec) : null;
-    const profile = await dependencies.getBusinessProfile(userId);
-    if (profile && profile.userId !== userId) {
-      throw new CharacterGenerationError("GENERATION_UNAVAILABLE", "Your business setup could not be loaded.", 503);
-    }
-    if (request.mode === "assisted" && !profile) {
-      throw new CharacterGenerationError("BUSINESS_PROFILE_REQUIRED", "Complete your business setup before creating an influencer for you.", 409);
-    }
-    const planningInput: CharacterPlanningInput = { request, businessContext: profile?.context ?? null, referenceSpec };
-    const plan = validateCharacterPlan(await dependencies.plan(planningInput), planningInput);
-    const inputs = plan.candidates.slice(0, access.count).map((spec, index): Record<string, Json | undefined> => ({
+    const inputs = Array.from({ length: access.count }, (_, index): Record<string, Json | undefined> => ({
       aspectRatio: "9:16",
       batchId,
       batchIndex: index + 1,
       batchSize: access.count,
-      businessProfileId: profile?.id ?? null,
-      businessProfileVersion: profile?.profileVersion ?? null,
+      businessProfileId: null,
+      businessProfileVersion: null,
       candidateIndex: index + 1,
       characterSource: CHARACTER_SOURCE,
       characterVersion: CHARACTER_VERSION,
       characterRequestFingerprint: fingerprint,
-      characterPlan: plan,
-      characterSpec: spec,
       generationId: (dependencies.createId ?? crypto.randomUUID)(),
-      gender: spec.gender,
       mode: request.mode,
       model: request.model,
-      prompt: renderCharacterPrompt(spec, !!reference),
+      prompt: request.prompt,
+      promptSource: "user",
       referenceCharacterId: reference?.id ?? null,
       referenceImageUrl: reference?.referenceImageUrl ?? null,
     }));
@@ -226,7 +200,7 @@ export async function hasUnusedFreeCharacterGeneration(userId: string) {
 }
 
 export async function reserveCharacterGenerationBatch(input: CharacterReservationInput): Promise<BackgroundJobRecord[]> {
-  const { data, error } = await getDatabaseClient().rpc("character_create_reserved_generation_batch", {
+  const { data, error } = await getDatabaseClient().rpc("character_create_reserved_generation_batch_v2", {
     p_user_id: input.userId,
     p_idempotency_key: input.batchId,
     p_fingerprint: input.fingerprint,

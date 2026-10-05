@@ -70,8 +70,10 @@ test("app screen, optional references, creator audio and appended demo are indep
   for (const name of ["creator", "videoReference", "creatorAudio", "demo", "demoAudio"]) assert.match(workspace, new RegExp(`const ${name} = useLocalWorkflowMedia`));
   assert.match(composer, /accept="image\/\*,video\/\*"/);
   assert.match(composer, /Screen recordings require Seedance 2.5 through OpenRouter/);
-  assert.match(audioReference, /not background music or demo audio/);
-  assert.match(audioReference, /an exact copy of the voice or recording is not guaranteed/);
+  assert.match(audioReference, /Main voice reference/);
+  assert.match(audioReference, /Voice guidance · Up to 30 seconds/);
+  assert.match(workspace, /audioReference: creatorAudio\.asset/);
+  assert.match(workspace, /demoAudio=\{demoAudio\.asset\}/);
   assert.doesNotMatch(audioReference, />Exact recording<\/Button>/);
   assert.match(composition, /during the demo only/);
   assert.match(composition, /Your demo’s original sound is kept/);

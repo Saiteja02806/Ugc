@@ -15,7 +15,7 @@ test("receipts and uncertain requests survive restore without requiring private 
     ...EMPTY_CHARACTER_SESSION,
     jobs: [{ jobId: "11111111-1111-4111-8111-111111111111", generationId: "22222222-2222-4222-8222-222222222222" }],
     selectedCharacterId: "33333333-3333-4333-8333-333333333333",
-    pendingRequest: { mode: "assisted", gender: "female", model: "gpt_image", idempotencyKey: "original-request" },
+    pendingRequest: { mode: "custom", prompt: "An adult creator", model: "gpt_image", idempotencyKey: "original-request" },
   };
   for (const model of ["gpt_image", "gemini_3_pro", "nano_banana_2"]) {
     for (const imageCount of [undefined, 1, 2, 3]) {
@@ -23,6 +23,16 @@ test("receipts and uncertain requests survive restore without requiring private 
       assert.deepEqual(parseCharacterClientSession(JSON.stringify(selectedSession)), selectedSession);
     }
   }
+});
+
+test("removed assisted requests are discarded without losing previous results or saved influencers", () => {
+  const stored = {
+    version: 1,
+    jobs: [{ jobId: "11111111-1111-4111-8111-111111111111", generationId: "generation" }],
+    selectedCharacterId: "33333333-3333-4333-8333-333333333333",
+    pendingRequest: { mode: "assisted", model: "gpt_image", idempotencyKey: "obsolete" },
+  };
+  assert.deepEqual(parseCharacterClientSession(JSON.stringify(stored)), { ...stored, pendingRequest: null });
 });
 
 test("browser session storage remains scoped to each account", () => {

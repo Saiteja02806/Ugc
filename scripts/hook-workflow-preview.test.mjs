@@ -30,8 +30,10 @@ test("layout review cannot generate, render, upload or spend credits", () => {
 test("user-owned references and audio intent are separate from demo background audio", () => {
   assert.match(composer, /Upload creator/);
   assert.match(composer, /Attach video reference/);
-  assert.match(audioReference, /not background music or demo audio/);
-  assert.match(audioReference, /The model uses this as a reference/);
+  assert.match(audioReference, /Main voice reference/);
+  assert.match(audioReference, /Voice guidance · Up to 30 seconds/);
+  assert.match(workspace, /audioReference: hookAudio\.asset/);
+  assert.match(workspace, /demoAudio=\{demoAudio\.asset\}/);
   assert.doesNotMatch(audioReference, />Exact recording<\/Button>/);
   assert.match(composition, /Your demo’s original sound is kept/);
   assert.match(composition, /Uploaded audio is mixed underneath it as background audio during the demo only/);

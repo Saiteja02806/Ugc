@@ -174,10 +174,11 @@ test("text-only prompts remain valid and local reference previews do not promise
   assert.match(text, /Use Seedance 2.5 for a video reference up to 30 seconds/);
   assert.doesNotMatch(source, /disabled=\{!creator.asset|instructions.*creator.asset/);
   const audio = read("components/explore/workflow-audio-reference.tsx");
-  assert.match(audio, /voice—not background music or demo audio/);
-  assert.match(audio, /not background music or demo audio/);
+  assert.match(audio, /Main voice reference/);
+  assert.match(audio, /Voice guidance · Up to 30 seconds/);
+  assert.doesNotMatch(audio, /voice—not background music or demo audio/);
   assert.doesNotMatch(audio, /Exact recording<\/Button>/);
-  assert.match(audio, /The model uses this as a reference/);
+  assert.match(audio, /maxDuration: 30/);
   assert.doesNotMatch(audio, /Use exact recording for the spoken words/);
 });
 

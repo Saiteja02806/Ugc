@@ -2,7 +2,7 @@ import type { z } from "zod";
 import type { BackgroundJobStatus } from "@/lib/jobs/background-jobs";
 import type { CharacterGenderSchema, CharacterImageCountSchema, CharacterImageModelSchema } from "./schema";
 
-export type { CharacterGenerateRequest, CharacterPlan, CharacterSpec } from "./schema";
+export type { CharacterGenerateRequest, CharacterSpec } from "./schema";
 export type CharacterGender = z.infer<typeof CharacterGenderSchema>;
 export type CharacterImageModel = z.infer<typeof CharacterImageModelSchema>;
 export type CharacterImageCount = z.infer<typeof CharacterImageCountSchema>;

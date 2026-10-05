@@ -14,7 +14,10 @@ export const EMPTY_CHARACTER_SESSION: CharacterClientSession = {
 
 export function parseCharacterClientSession(value: string | null): CharacterClientSession {
   try {
-    const parsed = CharacterClientSessionSchema.safeParse(value ? JSON.parse(value) : null);
+    const stored = value ? JSON.parse(value) : null;
+    // Drop the removed assisted action without losing finished images or a saved identity.
+    if (stored?.pendingRequest?.mode === "assisted") stored.pendingRequest = null;
+    const parsed = CharacterClientSessionSchema.safeParse(stored);
     return parsed.success ? parsed.data : EMPTY_CHARACTER_SESSION;
   } catch { return EMPTY_CHARACTER_SESSION; }
 }

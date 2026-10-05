@@ -124,6 +124,45 @@ test("Google model identities remain selectable, restorable and usable as refere
   }
 });
 
+test("prompt-driven characters can be saved, restored and listed without invented identity details", async () => {
+  for (const model of ["gpt_image", "gemini_3_pro", "nano_banana_2"]) {
+    const f = fixture();
+    const prompt = "An adult presenter in a bright studio, wearing a green shirt.";
+    f.job.input = {
+      characterSource: CHARACTER_SOURCE, characterVersion: 2,
+      mode: "custom", promptSource: "user", prompt, model,
+      generationId: GENERATION_ID, candidateIndex: 1,
+      businessProfileId: null, businessProfileVersion: null,
+    };
+    f.job.output = { ...(f.job.output as object), model };
+    const saved = await f.service.select({ jobId: JOB_ID, userId: USER_ID });
+    assert.equal(saved.gender, null);
+    assert.equal(saved.model, model);
+    const trusted = await f.service.get(ASSET_ID, USER_ID);
+    assert.equal(trusted?.userPrompt, prompt);
+    assert.equal(trusted?.characterSpec, null);
+    assert.equal(trusted?.businessProfileId, null);
+    assert.equal(trusted?.referenceImageUrl, URL);
+    assert.deepEqual(await f.service.list(USER_ID), [saved]);
+    assert.equal("userPrompt" in saved, false);
+  }
+});
+
+test("prompt-driven provenance rejects planner additions and missing user prompts", async () => {
+  for (const change of [{ mode: "assisted" }, { promptSource: "planner" }, { prompt: "" },
+    { characterSpec: {} }, { characterPlan: {} }, { gender: "female" }, { businessProfileId: "business" }]) {
+    const f = fixture();
+    f.job.input = {
+      characterSource: CHARACTER_SOURCE, characterVersion: 2,
+      mode: "custom", promptSource: "user", prompt: "An adult presenter", model: "gpt_image",
+      generationId: GENERATION_ID, candidateIndex: 1,
+      businessProfileId: null, businessProfileVersion: null, ...change,
+    };
+    await assert.rejects(f.service.select({ jobId: JOB_ID, userId: USER_ID }), expectIdentityError(400));
+    assert.equal(f.promotions(), 0);
+  }
+});
+
 test("select saves one durable identity using the original reference asset and private job snapshot", async () => {
   const f = fixture();
   const character = await f.service.select({ jobId: JOB_ID, userId: USER_ID, name: "  Maya  " });
@@ -141,7 +180,7 @@ test("select saves one durable identity using the original reference asset and p
   assert.equal(trusted?.referenceStorageKey, KEY);
   assert.equal(trusted?.businessProfileId, "private-business-profile");
   assert.equal(trusted?.businessProfileVersion, 7);
-  assert.equal(trusted?.characterSpec.age, 29);
+  assert.equal(trusted?.characterSpec?.age, 29);
   const publicText = JSON.stringify(character);
   const mediaMetadata = JSON.stringify(f.asset().metadata);
   for (const privateValue of ["private-business-profile", "Private audience/business brief", "Private image generation prompt", "Brown wavy hair"]) {

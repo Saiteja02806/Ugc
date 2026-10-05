@@ -38,14 +38,12 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
   const [model, setModel] = useState<CharacterImageModel>("gpt_image");
   const [count, setCount] = useState<CharacterImageCount>(1);
   const [libraryOpen, setLibraryOpen] = useState(false);
-  const [suggestionDismissed, setSuggestionDismissed] = useState(false);
   const access = builder.access.data?.access;
   const busy = builder.generate.isPending || builder.inProgress || builder.restoring;
   const pending = builder.session.pendingRequest;
   const accessLoading = Boolean(userId) && builder.access.isPending;
   const quantityAffordable = Boolean(access && count <= access.affordableImageCount);
   const manualLocked = authLoading || !userId || !quantityAffordable || accessLoading || builder.access.isError;
-  const assistedLocked = manualLocked;
   const error = builder.generate.error || builder.select.error;
   const selected = builder.selected;
   const countOptions = access
@@ -60,11 +58,6 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
       ...(selected ? { referenceCharacterId: selected.id } : {}),
       idempotencyKey: crypto.randomUUID(),
     });
-  }
-  function submitAssisted() {
-    if (!userId || busy || assistedLocked || pending) return;
-    builder.generate.reset();
-    builder.generate.mutate({ mode: "assisted", model, imageCount: count, idempotencyKey: crypto.randomUUID() });
   }
   function openLibrary() {
     setLibraryOpen(true);
@@ -97,16 +90,18 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
       </header>
 
       <div className={styles.stage} aria-live="polite" aria-busy={busy}>
-        {builder.session.jobs.length ? <>
-          <p className="mb-5 text-center text-sm text-muted">{builder.inProgress ? "Creating your influencer…" : "Choose the creator you want to keep."}</p>
-          <div className={styles.results} data-count={builder.session.jobs.length}>
+        {builder.session.jobs.length ? <div className={styles.resultsPanel}>
+          <p className={styles.resultsHeading}>{builder.inProgress ? "Creating your influencer…" : "Select an image to save it to My influencers."}</p>
+          <div className={styles.results}>
             {builder.session.jobs.map((receipt, index) => {
               const job = builder.jobs.data?.find((candidate) => candidate.id === receipt.jobId);
               const output = job?.output;
               const saved = Boolean(output && builder.characters.data?.characters.some((character) => character.id === output.mediaAssetId));
               const active = Boolean(output && selected?.id === output.mediaAssetId);
-              return <article key={receipt.jobId} className={styles.candidate} aria-label={`Influencer candidate ${index + 1}`}>
-                <div className={styles.portrait}>
+              const saving = builder.select.isPending && builder.select.variables === receipt.jobId;
+              return <article key={receipt.jobId} className={styles.candidate} data-selected={active} aria-label={`Influencer candidate ${index + 1}`}>
+                <button type="button" className={styles.portrait} aria-label={`Select influencer image ${index + 1}`} aria-pressed={active}
+                  disabled={!output || builder.select.isPending || active} onClick={() => builder.select.mutate(receipt.jobId)}>
                   {output ? <>
                     {/* Generated provider URLs are validated by the owned status endpoint. */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -114,22 +109,20 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
                   </> : job?.isTerminal ? <p className="px-5 text-center text-sm text-muted">{job.error || "This candidate could not be created."}</p>
                     : builder.jobs.isError || job?.checkError ? <p className="px-5 text-center text-sm text-muted">{job?.checkError || "Could not check this image. Retry below."}</p>
                     : <div className="flex flex-col items-center gap-3 text-muted"><Loader2 className="size-6 animate-spin motion-reduce:animate-none" aria-hidden="true" /><span className="text-xs">Creating candidate {index + 1}</span></div>}
-                </div>
+                </button>
                 <div className={styles.candidateFooter}>
-                  <span className="text-xs text-muted">Candidate {index + 1}</span>
-                  <Button size="sm" variant={saved ? "outline" : "default"} disabled={!output || builder.select.isPending || active}
-                    onClick={() => builder.select.mutate(receipt.jobId)}>
-                    {active ? <><Check className="size-3.5" aria-hidden="true" /> Saved</> : builder.select.isPending && builder.select.variables === receipt.jobId ? "Saving…" : saved ? "Use saved influencer" : "Use this influencer"}
-                  </Button>
+                  <span className="text-xs text-muted">Image {index + 1}</span>
+                  {saving ? <span className={styles.saveStatus}><Loader2 className="size-3 animate-spin motion-reduce:animate-none" aria-hidden="true" />Saving…</span>
+                    : saved || active ? <span className={styles.saveStatus}><Check className="size-3" aria-hidden="true" />Saved</span> : null}
                 </div>
               </article>;
             })}
           </div>
-        </> : <div className={styles.empty}>
+        </div> : <div className={styles.empty}>
           <div className={styles.emptyCopy}>
             <p className={styles.eyebrow}>A face for your ideas</p>
             <h2 className={styles.emptyTitle}>Your creator starts here.</h2>
-            <p className={styles.emptyDescription}>Build an AI character for yourself or your business. Describe your look, or start with Create it for me.</p>
+            <p className={styles.emptyDescription}>Build an AI character for yourself or your business. Describe the look, setting and style you want.</p>
           </div>
           <div className={styles.examples} role="group" aria-label="AI character examples">
             <div className={styles.exampleStrip}>
@@ -151,11 +144,6 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
             <Button size="sm" variant="ghost" onClick={builder.discardPendingRequest}>Start a new request</Button>
           </div>
         </div> : null}
-        {!suggestionDismissed && !selected && !builder.session.jobs.length ? <div className={styles.suggestionRow}><div className={styles.suggestion}>
-          <p className="text-sm font-medium text-foreground-strong">Let UGCpilot create your first influencer</p>
-          <Button size="sm" disabled={busy || assistedLocked || Boolean(pending)} onClick={submitAssisted}>Create it for me</Button>
-          <Button variant="ghost" size="icon-sm" className={styles.dismiss} aria-label="Dismiss first influencer suggestion" onClick={() => setSuggestionDismissed(true)}><X className="size-3.5" aria-hidden="true" /></Button>
-        </div></div> : null}
         <AiStudioComposer active ariaLabel="Describe your AI influencer" name="character-prompt" layout="unified"
           prompt={prompt} onPromptChange={setPrompt} placeholder={selected ? "Describe a new outfit, setting or pose for your influencer…" : "Describe the influencer you want to create…"}
           generateLabel={selected ? "Create variation" : "Generate"}
@@ -174,7 +162,6 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
             <AiStudioSettingSelect ariaLabel="Number of images" icon={<Images className="size-3.5" aria-hidden="true" />}
               options={countOptions} value={String(count)} onChange={(value) => setCount(Number(value) as CharacterImageCount)}
               disabled={busy || Boolean(pending)} />
-            {suggestionDismissed && !selected && !builder.session.jobs.length ? <Button size="sm" variant="ghost" disabled={busy || assistedLocked || Boolean(pending)} onClick={submitAssisted}>Create it for me</Button> : null}
           </>}
           secondaryActions={userId ? builder.access.isError ? <Button size="sm" variant="ghost" onClick={() => void builder.access.refetch()}>Retry access</Button>
             : !accessLoading && access && (!access.isPaid || !quantityAffordable) ? <Link href="/pricing" className="px-2 py-1 text-xs text-primary hover:underline">Get more credits</Link> : undefined
@@ -192,7 +179,7 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
               <span className="text-sm font-medium">{character.name}</span>
               {selected?.id === character.id ? <Check className="ml-auto size-4 text-primary" aria-hidden="true" /> : null}
             </button>)}
-            {!userId ? <div className="space-y-3"><p className="text-sm text-muted">Sign in to see your saved influencers.</p><Button variant="outline" size="sm" nativeButton={false} render={<Link href="/sign-in" />}>Sign in</Button></div> : builder.characters.isPending ? <p className="text-sm text-muted">Loading influencers…</p> : builder.characters.isError ? <><p className="text-sm text-destructive" role="alert">{builder.characters.error.message}</p><Button size="sm" variant="outline" onClick={() => void builder.characters.refetch()}>Try again</Button></> : !builder.characters.data?.characters.length ? <p className="text-sm leading-6 text-muted">Your saved influencers will appear here. Generate an image, then choose “Use this influencer.”</p> : null}
+            {!userId ? <div className="space-y-3"><p className="text-sm text-muted">Sign in to see your saved influencers.</p><Button variant="outline" size="sm" nativeButton={false} render={<Link href="/sign-in" />}>Sign in</Button></div> : builder.characters.isPending ? <p className="text-sm text-muted">Loading influencers…</p> : builder.characters.isError ? <><p className="text-sm text-destructive" role="alert">{builder.characters.error.message}</p><Button size="sm" variant="outline" onClick={() => void builder.characters.refetch()}>Try again</Button></> : !builder.characters.data?.characters.length ? <p className="text-sm leading-6 text-muted">Your saved influencers will appear here. Generate an image, then select it to save your influencer.</p> : null}
             {busy && builder.characters.data?.characters.length ? <p className="text-xs text-muted">Wait for the current generation to finish before switching influencers.</p> : null}
           </div>
         </DialogContent>

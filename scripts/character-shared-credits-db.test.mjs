@@ -33,7 +33,7 @@ const reserveOther = (db, owner, key, amount = 1, kind = "generate_image") =>
 const balance = async (db, owner) => (await db.query("select used_credits,reserved_credits from free_generation_credit_balances where user_id=$1", [owner])).rows[0];
 const jobCount = async (db, owner) => (await db.query("select count(*)::int n from background_jobs where user_id=$1", [owner])).rows[0].n;
 
-async function fixture({ applyShared = true } = {}) {
+export async function fixture({ applyShared = true, promptDriven = false } = {}) {
   const db = new PGlite();
   await db.exec(`
     create role anon; create role authenticated; create role service_role bypassrls;
@@ -66,6 +66,7 @@ async function fixture({ applyShared = true } = {}) {
   await db.exec(source("20261003110411_one_time_free_generation_credits.sql"));
   await db.exec("create trigger settle_billing after update of status on background_jobs for each row execute function settle_billing_from_background_job()");
   if (applyShared) await db.exec(sharedMigration);
+  if (promptDriven) await db.exec(source("20261005140000_character_prompt_driven_generation.sql"));
   return db;
 }
 

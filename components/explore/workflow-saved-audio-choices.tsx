@@ -92,14 +92,12 @@ function SavedAudioSession({ uid, audio, onVoiceReference }: { uid: string; audi
       {unavailable && library.isSuccess ? <p className="text-xs text-muted">{unavailable} saved {unavailable === 1 ? "voice is" : "voices are"} currently unavailable.</p> : null}
     </section>
     <details className={styles.recordings}><summary>Choose saved audio <span>{recordings.length}</span></summary>
-      <p className="text-xs leading-5 text-muted">Your recordings up to 30 seconds.</p>
       {recordings.length ? <ul className={styles.list}>{recordings.map(asset => <li key={asset.id} className={styles.voiceRow}>
         <AudioLines size={17} className="shrink-0 text-muted" /><div className={styles.details}><strong>{asset.name}</strong><span>{asset.duration ? `${Math.round(asset.duration)}s · ` : ""}{asset.purpose === "generated" ? "Generated audio" : "Recording"}</span></div>
         <Button type="button" variant="outline" className={styles.useButton} disabled={busy} aria-label={`Choose saved audio ${asset.name}`} onClick={() => void attach(`/api/audio/assets/${asset.id}?forExplore=1`, asset.id, asset.name, false)}>{attaching === asset.id ? <LoaderCircle size={14} className="animate-spin" /> : null}Choose</Button>
       </li>)}</ul> : <p className="text-xs text-muted">No saved recordings available.</p>}
     </details>
     {error ? <p role="alert" className={styles.error}>{error}</p> : null}
-    <p className="text-xs leading-5 text-muted">Use sample attaches existing audio as a voice reference. It does not generate speech.</p>
     <Link href="/audio-generation" className={styles.link}>Open voice library →</Link>
   </div>;
 }

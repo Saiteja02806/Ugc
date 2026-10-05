@@ -86,7 +86,7 @@ const CHARACTER_ID = "44444444-4444-4444-8444-444444444444";
 const receipt = { jobId: JOB_ONE, generationId: GENERATION_ID };
 const generation = { ok: true, requestedCount: 1, partial: false, jobs: [receipt], message: "Creating your influencer." };
 const publicCharacter = { id: CHARACTER_ID, name: "Maya", url: "https://media.example.com/portrait.png", gender: "female", model: "gpt_image", createdAt: "2026-10-02T12:00:00.000Z" };
-const request = { mode: "assisted", gender: "female", model: "gpt_image", idempotencyKey: "same-request-key" };
+const request = { mode: "custom", prompt: "An adult creator in a studio", model: "gpt_image", idempotencyKey: "same-request-key" };
 const getSession = (userId) => cache.get(serializeKey(["character-session", userId]));
 const setSession = (userId, changes) => cache.set(serializeKey(["character-session", userId]), { ...clone(EMPTY_CHARACTER_SESSION), ...changes });
 

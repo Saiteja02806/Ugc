@@ -1,6 +1,5 @@
 import "server-only";
 
-import { getBusinessProfileForUser } from "@/lib/business-profiles/db";
 import {
   deliverBillingUsageForJob,
   getGenerationCreditCost,
@@ -23,7 +22,6 @@ import { getMediaAssetForOwner, type MediaAssetRow } from "@/lib/media/media-sto
 import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
 import { isTrustedStorageUrl } from "@/lib/storage/storage";
 import { getCharacterForUser } from "./identity";
-import { createCharacterPlan } from "./planner";
 import {
   CharacterGenerationError,
   generateCharacterBatch,
@@ -72,9 +70,7 @@ const defaultDependencies: CharacterApiDependencies = {
       }
       return { count, useFreeAllowance: false };
     },
-    getBusinessProfile: getBusinessProfileForUser,
     getReference: getCharacterForUser,
-    plan: createCharacterPlan,
     reserveBatch: reserveCharacterGenerationBatch,
     dispatch: dispatchQueuedBackgroundJobForRecovery,
     getImageCreditCost: () => getGenerationCreditCost("image"),

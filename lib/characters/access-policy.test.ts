@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { characterAccessFromCredits, characterRequestCount } from "./access-policy";
 
-const request = { mode: "assisted", model: "gpt_image", idempotencyKey: "quantity" } as const;
+const request = { mode: "custom", prompt: "An adult creator", model: "gpt_image", idempotencyKey: "quantity" } as const;
 
 test("two free credits allow either two single images or one two-image batch", () => {
   for (const [remaining, affordable] of [[2, 2], [1, 1], [0, 0]]) {

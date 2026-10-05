@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 export const CHARACTER_SOURCE = "ugc-pilot-characters";
-export const CHARACTER_VERSION = 1;
+export const CHARACTER_VERSION = 2;
+export const MAX_CHARACTER_PROMPT_LENGTH = 32_000;
 export const CHARACTER_CANDIDATE_COUNT = 3;
 export const CharacterImageCountSchema = z.union([z.literal(1), z.literal(2), z.literal(3)]);
 
@@ -9,28 +10,17 @@ export const CharacterGenderSchema = z.enum(["male", "female"]);
 export const CharacterImageModelSchema = z.enum(["gpt_image", "gemini_3_pro", "nano_banana_2"]);
 
 export const CharacterGenerateRequestSchema = z.strictObject({
-  mode: z.enum(["assisted", "custom"]),
-  gender: CharacterGenderSchema.optional(),
+  mode: z.literal("custom"),
   model: CharacterImageModelSchema,
   imageCount: CharacterImageCountSchema.optional(),
-  prompt: z.string().trim().min(1).optional(),
+  prompt: z.string().trim().min(1, "Describe your influencer before generating.").max(MAX_CHARACTER_PROMPT_LENGTH, "Your description is too long to send. Please shorten it."),
   referenceCharacterId: z.uuid().optional(),
   idempotencyKey: z.string().trim().min(1).max(200),
-}).superRefine((request, context) => {
-  if (request.mode === "assisted" && request.prompt) {
-    context.addIssue({ code: "custom", path: ["prompt"], message: "Use custom mode to describe your own influencer." });
-  }
-  if (request.mode === "custom" && !request.prompt) {
-    context.addIssue({ code: "custom", path: ["prompt"], message: "Describe your influencer before generating." });
-  }
-  if (request.mode === "assisted" && request.referenceCharacterId) {
-    context.addIssue({ code: "custom", path: ["referenceCharacterId"], message: "Use the prompt to refine a saved influencer." });
-  }
 });
 
 const visualDetail = z.string().trim().min(1).max(120);
 
-/** Only the planner supplies this schema. It never comes from the browser. */
+/** Historical v1 identity metadata only; never used to rewrite new prompts. */
 export const CharacterSpecSchema = z.strictObject({
   creatorType: visualDetail,
   gender: CharacterGenderSchema,
@@ -43,12 +33,5 @@ export const CharacterSpecSchema = z.strictObject({
   lighting: visualDetail,
 });
 
-export const CharacterPlanSchema = z.strictObject({
-  schemaVersion: z.literal(CHARACTER_VERSION),
-  creativeBrief: z.string().trim().min(1).max(400),
-  candidates: z.array(CharacterSpecSchema).length(CHARACTER_CANDIDATE_COUNT),
-});
-
 export type CharacterSpec = z.infer<typeof CharacterSpecSchema>;
-export type CharacterPlan = z.infer<typeof CharacterPlanSchema>;
 export type CharacterGenerateRequest = z.infer<typeof CharacterGenerateRequestSchema>;

@@ -1,13 +1,27 @@
 # AI character builder
 
-Implementation and internal release, October 3, 2026. Latest local refinement:
-October 5, 2026; the shared-credit/count changes below are not deployed.
+Latest local change, October 5, 2026: prompt-driven generation replaces assisted
+first-influencer generation. This change, its worker update and migration
+`20261005140000_character_prompt_driven_generation.sql` have not been deployed
+or applied to a hosted database. Earlier validation sections below describe
+historical behavior and do not override this current contract.
 
-Historical checkpoints below refer to earlier local and production observations. The current release keeps the complete Explore and Audio implementations. Gemini is already applied under canonical version 20261003045651 and must not be replayed under the old local timestamp. The character
-APIs retain normal verified-account authentication and ownership checks. This
-release includes the character workspace and backend; the development Explore
-catalog, other workflow previews and unrelated unfinished checkout changes are
-deferred. Existing production image workers remain unchanged.
+Local validation for the prompt-driven change passed 59 character/API/session
+tests, 8 database tests (including historical credit tests), 3 provider-boundary
+worker tests, full application TypeScript, worker build and scoped ESLint. The
+provider tests stub external services; no paid image was generated. Commands:
+
+```sh
+node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/characters/identity.test.ts lib/characters/identity-routes.test.mjs lib/characters/generation.test.mjs lib/characters/reservation.test.mjs lib/characters/client-session.test.ts lib/characters/access-policy.test.ts components/characters/use-character-builder.test.mjs
+node --test scripts/character-prompt-driven-db.test.mjs
+cd worker
+npm run build
+node --experimental-test-module-mocks --test src/jobs/generate-image.test.mjs src/jobs/generate-character-image.test.mjs
+```
+
+The previous complete production release, commit f1b5164, includes Explore,
+Audio, Trending and shared character credits. Gemini migration 20261003045651
+is already applied and must not be replayed under a historical alias.
 
 ## Experience
 
@@ -17,19 +31,16 @@ Quick start links in three columns on the right. Existing unfinished workflow
 previews remain gated to development.
 
 `/explore/build-character` opens directly into the image workspace. It uses the
-existing AI Studio composer, image-model setting and accessible dialog. Above
-the composer, a dismissible suggestion contains only “Let UGCpilot create your
-first influencer” and “Create it for me.” This compact card sits above the
-composer, aligned to its right edge on desktop and spanning the available width
-on mobile. The text and button are grouped vertically. The assisted action remains in the
-composer after dismissal. The empty workspace pairs a short introduction with
+existing AI Studio composer, image-model setting and accessible dialog. There
+is no first-influencer suggestion or “Create it for me” action. Generation
+requires the user's description. The empty workspace pairs a short introduction with
 four supplied portrait examples, each retaining its natural 9:16 proportions.
 The introduction and portraits are centered; the two captions beneath the
 portraits are removed.
 These different characters are inspiration, not identity variations or selected
 references. On small screens, the portraits appear below the introduction.
 The screen does not ask Male/Female, display a Creator pill or submit a hidden
-gender preference. User descriptions reach the planner without this extra step.
+gender preference. User descriptions go directly to the selected image provider.
 The composer shows the image model, a fixed 9:16 portrait pill and an image icon
 with the selected number. The selector defaults to 1 and offers affordable
 quantities up to 3 per batch. Users may submit further batches while credits
@@ -38,10 +49,13 @@ the shared available balance. A changed balance cannot silently change the
 selected quantity; generation locks until it is affordable again.
 No business-context panel, internal brief or generated prompt is shown.
 
-The character chat has no character-count limit or counter. Full descriptions
-reach the planner, including inputs longer than the previous 1,000-character
-and 12,000-character guards. A 1 MiB API transport bound protects request size;
-the planner still produces concise structured instructions for the image worker.
+The composer has no character counter. The API, reservation RPC and image worker
+accept descriptions up to 32,000 characters, including descriptions above the
+old worker's 2,000-character limit. Oversized requests fail before charging
+credits rather than being summarized or truncated. A 1 MiB transport bound also
+protects the API. Surrounding whitespace is trimmed; all remaining text,
+paragraphs and final details are preserved exactly. No business facts, inferred
+appearance, creator specification, master prompt or realism instructions are added.
 
 The character model selector offers GPT Image, Gemini 3 Pro, and Nano Banana 2.
 The two Google models use the server-side `GEMINI_API_KEY` through Google's SDK,
@@ -59,11 +73,12 @@ Configured image costs still apply; video costs remain duration-based.
 
 Every new character image reserves credits through the same billing RPC as
 Explore image/video generation. Admission is atomic for the whole batch.
-Planner or job-creation failures do not consume credits. Existing settlement
+Job-creation failures do not consume credits. Existing settlement
 charges completed images and refunds failed/cancelled images exactly once.
 Replaying an admitted request recovers the same jobs without another charge.
 
-Completed candidates can be saved using “Use this influencer.” My influencers
+Completed candidates are compact, left-aligned portrait cards. Selecting the
+image saves it; there is no separate “Use this influencer” button. My influencers
 refreshes the owned saved-reference list whenever opened. It shows sign-in,
 loading, empty and retry states and stays visible on mobile. Switching saved
 influencers is disabled during an active generation. Selecting one lets a user with credits request a new setting,
@@ -72,16 +87,18 @@ selected model keep identity; visual similarity still depends on model output.
 
 ## Server flow and contracts
 
-1. Verify the Firebase account and strict request schema.
-2. Recover an existing batch for the same account/request key before planning.
-3. Determine free/paid access and required credits, then load the owned business
-   profile and, for variations, a saved owned reference.
-4. Reduce the profile to relevant creative facts. The Character Planner produces
-   a short private brief and three structured adult specifications. Jobs use
-   the first 1, 2 or 3 specifications according to the selected quantity.
-5. Render fixed realism instructions with natural skin texture, ordinary clothing,
-   everyday settings and smartphone framing. The existing worker handles GPT Image,
-   Gemini 3 Pro or Nano Banana 2. Every rendered prompt respects its 2,000-character limit.
+1. Verify the Firebase account and strict request schema. Only `mode: "custom"`
+   with a nonempty user prompt is accepted; assisted calls are rejected.
+2. Recover an admitted v2 batch for the same account/request key without another
+   credit charge. A legacy v1 fingerprint cannot be reused as a v2 request.
+3. Determine access and required credits. For a user-selected saved influencer,
+   verify the owner's reference image. No business profile or planner is read.
+4. Create 1, 2 or 3 jobs with the identical user prompt. New jobs record
+   `characterVersion: 2`, `promptSource: "user"`, and null business context IDs.
+   They contain no generated character specification, gender or private plan.
+5. GPT Image, Gemini 3 Pro and Nano Banana 2 receive that prompt unchanged. If
+   the user selected a saved influencer, the image is the only additional visual
+   reference; no identity preservation instructions are appended to the text.
 6. Reserve shared free/paid credits and create all selected jobs in one database
    transaction. Dispatch the durable jobs through
    the existing queue recovery path.
@@ -93,16 +110,21 @@ selected model keep identity; visual similarity still depends on model output.
 | `GET /api/characters/access` | Owned paid/free eligibility, count and cost |
 | `GET /api/characters/preferences` | Legacy owned `{seen,gender}`; no longer read by this workspace |
 | `POST /api/characters/preferences` | Legacy strict `{gender?}`; retained for compatibility |
-| `POST /api/characters/generate` | `{mode,model,imageCount?,idempotencyKey,gender?,prompt?,referenceCharacterId?}`; numeric `imageCount` is 1, 2 or 3; returns HTTP 202 with that many `{jobId,generationId}` receipts |
+| `POST /api/characters/generate` | `{mode:"custom",model,prompt,imageCount?,idempotencyKey,referenceCharacterId?}`; numeric `imageCount` is 1, 2 or 3; returns HTTP 202 with that many `{jobId,generationId}` receipts |
 | `GET /api/characters/status?jobId=…` | Owned character job status and public image output; no planner input |
 | `POST /api/characters/select` | Strict `{jobId,name?}`; never accepts URL, owner or specification |
-| `GET /api/characters` | Owned `{id,name,url,model,gender,createdAt}` records |
+| `GET /api/characters` | Owned `{id,name,url,model,gender,createdAt}` records; v2 gender is null rather than inferred |
 
 Assisted requests allow an omitted gender and forbid custom prompts/references.
 Custom requests require a prompt. All three supported image models are explicit enum values.
 Client-provided business facts, image URLs, costs and identity specs are
 rejected. Business facts and user descriptions are data in the planner's
 instruction boundary. Specifications require visibly adult creators aged 21–80.
+
+The prompt-driven release uses the service-only
+`character_create_reserved_generation_batch_v2` RPC. Its additive migration leaves
+the previous reservation function unchanged so deployment and rollback do not
+interrupt the previous web release. New app requests only use v2.
 
 ## Persistence and ownership
 
@@ -140,7 +162,9 @@ owned completed character provenance, generated-image source, storage key, URL,
 model and generation ID. The immutable source job retains the specification,
 internal brief, business-profile ID/version and chosen model. Subsequent requests
 derive the trusted image/specification from that source; the browser supplies
-only the saved character ID. Refinement freezes gender, age and appearance.
+only the saved character ID. New refinements use the saved reference image and
+the user's exact description, without a textual identity rewrite. Historical v1
+specifications remain readable solely for compatibility with existing identities.
 
 The client keeps a versioned account-scoped session containing job receipts,
 selected ID and an uncertain submitted request key. It stores no token, business
@@ -189,7 +213,7 @@ replay, settlement, function privileges and RLS. Backend/client tests use
 deterministic provider/network fixtures, so they spend no image credits.
 
 Release prerequisites: apply the reviewed character migrations to the target database,
-including `20261003045651_character_gemini_3_pro_image.sql`,
+including `20261003045336_character_gemini_3_pro_image.sql`,
 `20261003110411_one_time_free_generation_credits.sql`, and
 `20261005045851_character_shared_generation_credits.sql`,
 before releasing the app; keep existing Firebase, business-profile, image-worker,

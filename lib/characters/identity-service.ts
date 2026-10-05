@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import type { BackgroundJobRecord } from "../jobs/background-jobs.ts";
 import type { MediaAssetRow } from "../media/media-storage.ts";
-import { CHARACTER_SOURCE, CharacterImageModelSchema, CharacterSpecSchema } from "./schema.ts";
+import { CHARACTER_SOURCE, CharacterImageModelSchema, CharacterSpecSchema, MAX_CHARACTER_PROMPT_LENGTH } from "./schema.ts";
 import type { CharacterImageModel, CharacterSpec } from "./types.ts";
 
 export { CHARACTER_SOURCE } from "./schema.ts";
@@ -12,7 +12,7 @@ export type PublicCharacter = {
   name: string;
   url: string;
   model: CharacterImageModel;
-  gender: "male" | "female";
+  gender: "male" | "female" | null;
   createdAt: string;
 };
 
@@ -22,7 +22,8 @@ export type TrustedCharacter = PublicCharacter & {
   referenceMediaAssetId: string;
   referenceImageUrl: string;
   referenceStorageKey: string;
-  characterSpec: CharacterSpec;
+  characterSpec: CharacterSpec | null;
+  userPrompt: string | null;
   businessProfileId: string | null;
   businessProfileVersion: number | null;
 };
@@ -32,17 +33,33 @@ export type CharacterSourceJob = Pick<
   "id" | "userId" | "jobType" | "status" | "input" | "output" | "outputReference"
 >;
 
-const provenanceSchema = z.object({
+const commonProvenance = z.object({
   characterSource: z.literal(CHARACTER_SOURCE),
-  characterVersion: z.literal(1),
-  characterSpec: CharacterSpecSchema,
-  businessProfileId: z.string().trim().min(1).nullable(),
-  businessProfileVersion: z.number().int().positive().nullable(),
   candidateIndex: z.number().int().min(1).max(3),
   generationId: z.string().trim().min(1),
-  gender: z.enum(["male", "female"]),
   model: CharacterImageModelSchema,
 });
+
+const provenanceSchema = z.discriminatedUnion("characterVersion", [
+  commonProvenance.extend({
+    characterVersion: z.literal(1),
+    characterSpec: CharacterSpecSchema,
+    gender: z.enum(["male", "female"]),
+    businessProfileId: z.string().trim().min(1).nullable(),
+    businessProfileVersion: z.number().int().positive().nullable(),
+  }),
+  commonProvenance.extend({
+    characterVersion: z.literal(2),
+    mode: z.literal("custom"),
+    promptSource: z.literal("user"),
+    prompt: z.string().trim().min(1).max(MAX_CHARACTER_PROMPT_LENGTH),
+    businessProfileId: z.null(),
+    businessProfileVersion: z.null(),
+    characterSpec: z.never().optional(),
+    characterPlan: z.never().optional(),
+    gender: z.never().optional(),
+  }),
+]);
 
 const selectionSchema = z.object({
   source: z.literal(CHARACTER_SOURCE),
@@ -102,7 +119,7 @@ function getTrustedCandidate(
     throw new CharacterIdentityError("Choose an image from the character builder.", 400);
   }
   const parsed = provenanceSchema.safeParse(job.input);
-  if (!parsed.success || parsed.data.characterSpec.gender !== parsed.data.gender) {
+  if (!parsed.success || (parsed.data.characterVersion === 1 && parsed.data.characterSpec.gender !== parsed.data.gender)) {
     throw new CharacterIdentityError("Choose an image from the character builder.", 400);
   }
   const provenance = parsed.data;
@@ -131,14 +148,15 @@ function getTrustedCandidate(
   return {
     id: asset.id,
     url: asset.url,
-    gender: provenance.gender,
+    gender: provenance.characterVersion === 1 ? provenance.gender : null,
     model: provenance.model,
     userId,
     jobId: job.id,
     referenceMediaAssetId: asset.id,
     referenceImageUrl: asset.url,
     referenceStorageKey: asset.storage_key,
-    characterSpec: provenance.characterSpec,
+    characterSpec: provenance.characterVersion === 1 ? provenance.characterSpec : null,
+    userPrompt: provenance.characterVersion === 2 ? provenance.prompt : null,
     businessProfileId: provenance.businessProfileId,
     businessProfileVersion: provenance.businessProfileVersion,
   };

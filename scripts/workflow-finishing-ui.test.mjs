@@ -65,6 +65,15 @@ test("background OFF never fetches or uploads music and always submits a null ba
   assert.equal(JSON.parse(h.calls[0].body).draft.backgroundAssetId, null); h.unmount();
 });
 
+test("invalid framing context blocks Apply before music, uploads, storage writes or dispatch", async () => {
+  const h=harness({backgroundMusic:true}); h.render();await tick();
+  h.props.demoFramingError="Video shape changed. Record framing again.";
+  const view=h.render();assert.equal(view.action.disabled,true);assert.match(view.action.error,/shape changed/);
+  view.action.onAction();await tick();
+  assert.equal(h.musicReads.length,0);assert.equal(h.uploads.length,0);assert.equal(h.calls.length,0);assert.equal(h.store.size,0);
+  h.props.demoFramingError=null;assert.equal(h.render().action.disabled,false);h.unmount();
+});
+
 test("background ON snapshots owned approved audio only on Apply; retry retains that exact ID", async () => {
   const h = harness({ backgroundMusic: true, lost: true }); h.render(); await tick();
   assert.equal(h.musicReads.length, 0); h.render().action.onAction(); await tick(); await tick();

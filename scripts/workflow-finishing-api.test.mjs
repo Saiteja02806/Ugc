@@ -100,8 +100,8 @@ test("rejects client-chosen owners, URLs, outputs, fingerprints, request mismatc
 
 test("request bodies are bounded even without Content-Length and malformed JSON never writes", async () => {
   const h = harness();
-  assert.equal((await h.start("x".repeat(8193))).status, 413);
-  assert.equal((await h.start(undefined, { "Content-Length": "8193" })).status, 413);
+  assert.equal((await h.start("x".repeat(32769))).status, 413);
+  assert.equal((await h.start(undefined, { "Content-Length": "32769" })).status, 413);
   assert.equal((await h.start(undefined, { "Content-Type": "text/plain" })).status, 415);
   assert.equal((await h.start("not json")).status, 400);
   assert.equal(h.calls.includes("create"), false);
@@ -177,4 +177,20 @@ test("Next route delegates both methods to the authenticated server-only boundar
   const route = readFileSync(new URL("../app/api/explore/finishes/route.ts", import.meta.url), "utf8");
   assert.match(route, /runtime = "nodejs"/); assert.match(route, /POST[\s\S]*handleWorkflowFinishingStart/); assert.match(route, /GET[\s\S]*handleWorkflowFinishingStatus/);
   assert.doesNotMatch(route, /createScribe|ffmpeg|ELEVENLABS_API_KEY/);
+});
+
+test("recorded framing is gated before creating work; legacy fingerprints and owned recovery stay compatible", async () => {
+  const framing = { version: 1, width: .5, height: 1, points: [[0, 0, 0], [10000, 0, 0], [12000, .5, 0]] };
+  const draftChanges = { demoAssetId: sourceId, demoFraming: framing };
+  const off = harness({ draftChanges });
+  assert.equal((await off.start()).status, 503); assert.equal(off.calls.includes("create"), false); assert.equal(off.calls.includes("dispatch"), false);
+  const on = harness({ draftChanges, env: { EXPLORE_DEMO_FRAMING_ENABLED: "true" } });
+  assert.equal((await on.start()).status, 202);
+  const recovered = harness({ draftChanges, prior: true });
+  assert.equal((await recovered.start()).status, 202); assert.equal(recovered.calls.includes("create"), false);
+  const legacy = contract.parseExploreFinishDraft(baseDraft);
+  assert.equal("demoFraming" in legacy, false);
+  assert.equal(on.api.fingerprintExploreFinish(legacy), createHash("sha256").update(JSON.stringify({ renderer: "explore-finish-v1", transcription: providerKey, draft: legacy })).digest("hex"));
+  const moved = contract.parseExploreFinishDraft({ ...baseDraft, ...draftChanges, demoFraming: { ...framing, points: [[0, .1, 0], [12000, .4, 0]] } });
+  assert.notEqual(on.receipt.fingerprint, on.api.fingerprintExploreFinish(moved));
 });

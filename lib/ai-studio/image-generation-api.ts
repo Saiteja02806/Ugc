@@ -18,7 +18,7 @@ import {
   getMissingBackgroundJobStorageEnvVars,
 } from "@/lib/jobs/background-jobs";
 import { createAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
-import { isTrustedStorageUrl } from "@/lib/storage/storage";
+import { canonicalMediaReference, isTrustedMediaReferenceUrl as isTrustedStorageUrl } from "@/lib/media/media-reference";
 import {
   BillingAccessError,
   deliverBillingUsageForJob,
@@ -130,7 +130,9 @@ export async function handleAIStudioImageGeneration(request: Request) {
   const aspectRatio = parseAIStudioImageAspectRatio(body?.aspectRatio);
   const quantity = parseAIStudioGenerationQuantity(body?.quantity);
   const model = parseAIStudioImageModel(body?.model);
-  const referenceImageUrl = cleanTrustedHttpsUrl(body?.referenceImageUrl);
+  let referenceImageUrl: string | null;
+  try { referenceImageUrl = cleanTrustedHttpsUrl(await canonicalMediaReference(body?.referenceImageUrl, user.uid)); }
+  catch { return NextResponse.json({ ok: false, message: "This reference is unavailable to your account." }, { status: 400 }); }
 
   if (body?.model !== undefined && !AI_STUDIO_IMAGE_MODELS.includes(body.model as AIStudioImageModel)) {
     return NextResponse.json(

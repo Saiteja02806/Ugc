@@ -13,18 +13,21 @@ import type { MediaAsset } from "@/lib/media/types";
 import type { SocialConnection } from "@/lib/social/types";
 import type { ScheduleMediaOption } from "@/lib/scheduling/types";
 import { readScheduleReceipt, verifySavedSchedule, scheduleReceiptMessage, type ScheduleReceipt } from "@/lib/explore/workflow-schedule-client";
+import type { DemoFraming } from "@/worker/src/lib/explore-finishing-contract";
 
 const ScheduleEditor = dynamic(() => import("@/components/scheduling/schedule-editor").then(m => m.ScheduleEditor), { ssr: false });
 type WorkflowFinishingView = { edit: WorkflowAction; schedule: WorkflowAction; output: MediaAsset | null; options: FinishingOptions; setOptions: (value: FinishingOptions) => void };
 // The presentational boundary receives values and event handlers, not refs.
 // Rendering the view must not execute a controller's imperative actions.
 function FinishingView({ value, children }: { value: WorkflowFinishingView; children: (value: WorkflowFinishingView) => ReactNode }) { return children(value); }
-export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo, demoAudio, playback, scheduleDraft, children }: {
+export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo, demoAudio, playback, scheduleDraft, children, demoFraming, demoFramingError }: {
   enabled: boolean; ownerId: string | null; kind: "hook" | "phone"; source: MediaAsset | null; demo: LocalWorkflowMedia | null; demoAudio: LocalWorkflowMedia | null; playback: "once" | "repeat"; scheduleDraft: WorkflowScheduleDraft;
   children: (value: WorkflowFinishingView) => ReactNode;
+  demoFraming?: DemoFraming | null;
+  demoFramingError?: string | null;
 }) {
   const [options, setOptions] = useState(DEFAULT_FINISHING_OPTIONS);
-  const finishing = useWorkflowFinishing({ enabled, ownerId, kind, source, demo, demoAudio, playback, options, onRestoreOptions: setOptions });
+  const finishing = useWorkflowFinishing({ enabled, ownerId, kind, source, demo, demoAudio, playback, options, onRestoreOptions: setOptions, demoFraming, demoFramingError });
   const [open, setOpen] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null), [message, setMessage] = useState("Apply edits before scheduling your finished video.");
   const [connections, setConnections] = useState<SocialConnection[]>([]), [lead, setLead] = useState(5);
   const [receipt, setReceipt] = useState<ScheduleReceipt | null>(null), [confirmedSource, setConfirmedSource] = useState<string | null>(null), [restored, setRestored] = useState(false);

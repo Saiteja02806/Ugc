@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 
 import { logger } from "../logger.js";
+import { workerMediaReadUrl } from "../lib/private-media.js";
 import {
   TIKTOK_ACCOUNT_PRIVACY_UNAVAILABLE_MESSAGE,
   TIKTOK_PRIVATE_ACCOUNT_REQUIRED_MESSAGE,
@@ -363,7 +364,7 @@ export async function runPublishSocialPostJob(
             })
           : sourceCarouselImageUrls;
       const videoMedia = publishContext.media;
-      const publishToInstagram = (token: string) =>
+      const publishToInstagram = async (token: string) =>
         carouselImageUrls
           ? publishers.instagramCarousel({
               accessToken: token,
@@ -384,7 +385,7 @@ export async function runPublishSocialPostJob(
               shareToFeed: getInstagramTargetPublishSettings(
                 publishContext.target.settings,
               ).shareToFeed,
-              videoUrl: requireVideoMedia(videoMedia).url,
+              videoUrl: await workerMediaReadUrl(requireVideoMedia(videoMedia), job.user_id!),
             });
       const persistInstagramContainer = async (containerId: string) => {
         operation = await saveProviderOperationOrThrow({
@@ -438,7 +439,7 @@ export async function runPublishSocialPostJob(
         (slide) => slide.rendered_url,
       );
       const videoMedia = publishContext.media;
-      const publishToTikTok = (token: string) =>
+      const publishToTikTok = async (token: string) =>
         carouselImageUrls
           ? publishers.tiktokCarousel({
               accessToken: token,
@@ -480,7 +481,7 @@ export async function runPublishSocialPostJob(
               videoDurationSeconds:
                 requireVideoMedia(videoMedia).duration_seconds,
               videoMimeType: requireVideoMedia(videoMedia).mime_type,
-              videoUrl: requireVideoMedia(videoMedia).url,
+              videoUrl: await workerMediaReadUrl(requireVideoMedia(videoMedia), job.user_id!),
             });
       const persistTikTokInitialization = async (params: {
         initialization: {
@@ -566,7 +567,7 @@ export async function runPublishSocialPostJob(
         settings: getYouTubeTargetPublishSettings(
           publishContext.target.settings,
         ),
-        videoUrl: videoMedia.url,
+        videoUrl: await workerMediaReadUrl(videoMedia, job.user_id),
       });
 
       publishedResult = {

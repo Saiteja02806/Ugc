@@ -111,11 +111,21 @@ test("stores an explicit library save on the Hook draft without touching schedul
     },
     async markHookVideoLibraryRenderCompleted(params: {
       draftId: string;
+      durationSeconds: number;
+      fileName: string;
+      fileSizeBytes: number;
+      height: number;
       mediaAssetId: string;
+      width: number;
     }) {
       events.push("hook-render-completed");
       assert.equal(params.draftId, HOOK_VIDEO_DRAFT_ID);
+      assert.equal(params.durationSeconds, 7.25);
+      assert.equal(params.fileName, "final.mp4");
+      assert.equal(params.fileSizeBytes, 2_048);
+      assert.equal(params.height, 1920);
       assert.equal(params.mediaAssetId, MEDIA_ASSET_ID);
+      assert.equal(params.width, 1080);
     },
     async markHookVideoLibraryRenderFailed() {
       events.push("hook-render-failed");
@@ -416,14 +426,24 @@ function createStore() {
       events.push("finalization-failed");
     },
     async markScheduleCombinationRenderCompleted(params: {
+      durationSeconds: number;
+      fileName: string;
+      fileSizeBytes: number;
+      height: number;
       hookAudioAssetId: string | null;
       mediaAssetId: string;
       renderId: string;
+      width: number;
     }) {
       events.push("render-completed");
+      assert.equal(params.durationSeconds, 7.25);
+      assert.equal(params.fileName, "final.mp4");
+      assert.equal(params.fileSizeBytes, 2_048);
+      assert.equal(params.height, 1920);
       assert.equal(params.hookAudioAssetId, "hook_audio_029");
       assert.equal(params.mediaAssetId, MEDIA_ASSET_ID);
       assert.equal(params.renderId, RENDER_ID);
+      assert.equal(params.width, 1080);
     },
     async markScheduleCombinationRenderFailed() {
       events.push("render-failed");
@@ -446,13 +466,17 @@ function createRenderOutput(payload: {
   scheduleId: string;
 }) {
   return {
+    byteLength: 2_048,
     demoVideoId: payload.demoVideoId,
+    durationSeconds: 7.25,
+    height: 1920,
     hookVideoId: payload.hookVideoId,
     key: "schedules/final.mp4",
     ok: true as const,
     renderId: payload.renderId,
     scheduleId: payload.scheduleId,
     url: "https://cdn.example.com/schedules/final.mp4",
+    width: 1080,
   };
 }
 

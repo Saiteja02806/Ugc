@@ -1,4 +1,5 @@
 import { logger } from "../logger.js";
+import { resolveOwnedPrivateMediaUrl } from "../lib/private-media.js";
 import {
   assertProviderOperationCanContinue,
   createGenerationRequestFingerprint,
@@ -337,11 +338,15 @@ async function generateWithProvider(
       prompt,
       providerOperationId,
       providerOutputUrl,
-      referenceImageUrl: input.avatarImageUrl,
-      referenceImageUrls: input.referenceImageUrls,
-      referenceAudioUrls: input.referenceAudioUrls,
+      referenceImageUrl: !providerOperationId && !providerOutputUrl && input.avatarImageUrl
+        ? await resolveOwnedPrivateMediaUrl(input.avatarImageUrl, job.user_id ?? "") : input.avatarImageUrl,
+      referenceImageUrls: !providerOperationId && !providerOutputUrl
+        ? await Promise.all(input.referenceImageUrls.map(url => resolveOwnedPrivateMediaUrl(url, job.user_id ?? ""))) : input.referenceImageUrls,
+      referenceAudioUrls: !providerOperationId && !providerOutputUrl
+        ? await Promise.all(input.referenceAudioUrls.map(url => resolveOwnedPrivateMediaUrl(url, job.user_id ?? ""))) : input.referenceAudioUrls,
       referenceVideoDurationSeconds: input.referenceVideoDurationSeconds,
-      referenceVideoUrl: input.referenceVideoUrl,
+      referenceVideoUrl: !providerOperationId && !providerOutputUrl && input.referenceVideoUrl
+        ? await resolveOwnedPrivateMediaUrl(input.referenceVideoUrl, job.user_id ?? "") : input.referenceVideoUrl,
       resolution: input.resolution,
     };
 

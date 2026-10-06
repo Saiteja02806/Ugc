@@ -13,6 +13,8 @@ import { EXPLORE_SUBTITLE_SCOPE_LABEL } from "@/worker/src/subtitles/explore-pol
 import { planExploreBackgroundAudio, type ExploreBackgroundPlayback } from "@/worker/src/lib/explore-background-audio";
 import type { FinishingOptions } from "@/components/explore/use-workflow-finishing";
 import { WorkflowSavedAudioPicker } from "@/components/explore/workflow-saved-audio-picker";
+import { WorkflowDemoControls } from "@/components/explore/workflow-demo-controls";
+import type { DemoFraming } from "@/worker/src/lib/explore-finishing-contract";
 
 // Illustrated samples of the standalone renderer's styles, not generated captions.
 const SUBTITLE_STYLES = [
@@ -23,7 +25,7 @@ const SUBTITLE_STYLES = [
 ] as const;
 
 /** Editing is separate from creation and scheduling; attachment ownership stays above. */
-export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudioPlayback, onDemoAudioPlaybackChange, connected = false, options, onOptionsChange, ownerId }: {
+export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudioPlayback, onDemoAudioPlaybackChange, connected = false, options, onOptionsChange, ownerId, demoFramingEnabled = false, demoFraming = null, onDemoFramingChange, outputAspect = 9 / 16, editingBusy = false, demoFramingError = null, onDemoControlsOpen }: {
   videoLabel: "Hook" | "Phone video";
   demo: WorkflowAttachment;
   demoAudio: WorkflowAttachment;
@@ -33,6 +35,13 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
   ownerId?: string | null;
   options?: FinishingOptions;
   onOptionsChange?: (value: FinishingOptions) => void;
+  demoFramingEnabled?: boolean;
+  demoFraming?: DemoFraming | null;
+  onDemoFramingChange?: (value: DemoFraming | null) => void;
+  outputAspect?: number;
+  editingBusy?: boolean;
+  demoFramingError?: string | null;
+  onDemoControlsOpen?: () => void;
 }) {
   const [subtitleStyle, setSubtitleStyle] = useState("clean");
   const selectedStyle = options?.style ?? subtitleStyle;
@@ -67,13 +76,16 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
             <WorkflowFilePicker attachment={demo} kind="video" label="Replace demo" className="h-9 text-sm" />
           </PopoverContent>
         </Popover> : <WorkflowFilePicker attachment={demo} kind="video" label="Add demo" className={creation.editUploadButton} icon={<span className={creation.iconWell}><Video className="size-5" aria-hidden="true" /></span>} />}
-        {demo.asset ? <p className="truncate text-xs text-muted" title={demo.asset.name}>{demo.asset.name}</p>
-          : <p className="sr-only">Add or drop a walkthrough to play after your {videoLabel.toLowerCase()}.</p>}
+        {demo.asset ? <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <p className="min-w-0 flex-[1_1_12rem] truncate text-xs text-muted" title={demo.asset.name}>{demo.asset.name}</p>
+          {demoFramingEnabled && onDemoFramingChange ? <WorkflowDemoControls key={`${demo.asset.url}:${outputAspect}`} asset={demo.asset} value={demoFraming} onChange={onDemoFramingChange} outputAspect={outputAspect} disabled={editingBusy} onOpen={onDemoControlsOpen} /> : null}
+        </div> : <p className="sr-only">Add or drop a walkthrough to play after your {videoLabel.toLowerCase()}.</p>}
+        {demoFramingEnabled && demo.asset && onDemoFramingChange && demoFramingError ? <p role="alert" className="text-xs text-destructive">{demoFramingError} <button type="button" className="underline" disabled={editingBusy} onClick={() => onDemoFramingChange(null)}>Reset framing</button></p> : null}
         {demo.error ? <p role="alert" className="text-sm text-destructive">{demo.error}</p> : null}
       </section>
       <section aria-label="Demo audio attachment" className={creation.uploadCard} data-selected={!!demoAudio.asset} aria-busy={demoAudio.loading} onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); if (demo.asset && event.dataTransfer.files[0]) void demoAudio.choose(event.dataTransfer.files[0]); }}>
         <div className={creation.finishRow}>
-          <h3 className="text-sm font-medium">Demo audio</h3>
+          <h3 className="text-sm font-medium">Demo audio <span className="ml-1 text-xs font-normal text-muted">Optional</span></h3>
           {demoAudio.asset ? <RemoveMediaButton label="demo audio" onClick={demoAudio.remove} /> : null}
         </div>
         {demo.asset ? <WorkflowFilePicker attachment={demoAudio} kind="audio" label={demoAudio.asset ? "Replace demo audio" : "Select demo audio"} buttonLabel={demoAudio.asset ? "Replace audio" : "Select audio"} className={cn(creation.editUploadButton, creation.editAudioButton)} icon={<><AudioLines className="size-5" aria-hidden="true" />{demoAudio.asset ? <Check className={creation.referenceCheck} aria-hidden="true" /> : null}</>} />
@@ -101,7 +113,7 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
             <PopoverContent side="right" align="start" className={cn(studio.floating, creation.floating)}>
               <PopoverTitle>Demo audio</PopoverTitle>
               <p className="text-sm leading-6 text-muted">Added audio belongs to the demo only—not your {videoLabel.toLowerCase()} or its generation voice reference.</p>
-              <p className="text-sm leading-6 text-muted">Your demo’s original sound is kept. Uploaded audio is mixed underneath it as background audio during the demo only.</p>
+              <p className="text-sm leading-6 text-muted">Demo audio is optional. Your demo’s original sound is kept. Uploaded audio is mixed underneath it as background audio during the demo only.</p>
               <p className="text-sm leading-6 text-muted">Longer audio fades out at the demo’s end. Shorter audio plays once unless you select Repeat music. Use Repeat music for loopable music, not spoken recordings. Only the added audio is fitted; your video and source files are unchanged.</p>
               <p className="text-sm leading-6 text-muted">Replacing or removing the demo also clears its selected audio. {connected ? "Apply edits to save the combined playback; review it in your finished video." : "These local audio/video previews are separate; combined playback is not connected yet."}</p>
             </PopoverContent>

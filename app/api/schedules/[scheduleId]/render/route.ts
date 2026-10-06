@@ -33,7 +33,7 @@ import {
   resolveOpeningRenderAsset,
   type RenderableScheduleAsset,
 } from "@/lib/scheduling/render-asset-resolution";
-import { isTrustedStorageUrl } from "@/lib/storage/storage";
+import { isTrustedMediaReferenceUrl as isTrustedStorageUrl } from "@/lib/media/media-reference";
 import { resolveTrendingTextColor } from "@/lib/trending/text-color";
 import {
   resolveHookAudioForComposition,

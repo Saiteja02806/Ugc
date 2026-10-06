@@ -170,7 +170,8 @@ test("editing excludes scheduling and explains shared subtitle scope", () => {
   assert.match(edit, /Demo audio/);
   assert.match(edit, /Applies to spoken audio in the/);
   assert.match(edit, /Music-only sections have no speech captions/);
-  assert.match(workspace, /demo.asset \? <><WorkflowMediaPlayer/);
+  assert.match(workspace, /demo.asset \? <>\{demoFraming \? <WorkflowDemoPreview/);
+  assert.match(workspace, /: <WorkflowMediaPlayer asset=\{demo.asset\}/);
   assert.match(workspace, /className=\{creation.demoPlayer\}/);
   assert.doesNotMatch(workspace, /autoPlay|\.mp4|setInstructions|onInstructionsChange/);
   assert.match(workspace, /draft.caption \|\|/);

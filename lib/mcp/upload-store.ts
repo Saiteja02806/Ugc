@@ -4,6 +4,7 @@ import type { CreateUploadingMediaAssetInput, MediaAssetRow } from "@/lib/media/
 import { MEDIA_UPLOAD_EXPIRES_IN_SECONDS } from "@/lib/media/media-upload";
 import { deleteStorageObject, uploadBufferToStorage } from "@/lib/storage/storage";
 import { getMcpStore } from "./store";
+import { isPrivateUserMedia } from "@/lib/media/media-delivery";
 
 // These limits apply only to MCP reservations awaiting confirmation. A
 // confirmed asset is retained under the existing media-library policy.
@@ -16,6 +17,8 @@ export class McpUploadQuotaError extends Error {}
 
 /** Occupy the object key so a still-valid create-only signed URL cannot refill it. */
 export async function sealDeletedMcpUpload(asset: MediaAssetRow) {
+  // No private cleanup is approved in this rollout. Fail before ANY object write.
+  if (isPrivateUserMedia(asset)) throw new Error("Private MCP cleanup is disabled pending rollout approval.");
   await uploadBufferToStorage({
     key: asset.storage_key,
     buffer: MCP_UPLOAD_TOMBSTONE,

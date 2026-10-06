@@ -17,6 +17,9 @@ function nodes(value) {
 function layout(kind) {
   let cursor = 0, mediaCursor = 0;
   const generationInputs = [];
+  const generationSettings = {aspectRatio:"9:16"};
+  let generated = null;
+  let finishingInputs;
   const slots = [];
   const attachments = Array.from({ length: 5 }, () => ({
     asset: { name: "selected", url: "blob:fixture", duration: 5 }, loading: false, error: null,
@@ -47,10 +50,10 @@ function layout(kind) {
     "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => attachments[mediaCursor++] },
     "@/components/explore/use-workflow-generation-settings": { useWorkflowGenerationSettings: (initialDuration, initialModel) => {
       generationInputs.push({ initialDuration, initialModel });
-      return { settings: {}, dirty: false, changeSettings() {} };
+      return { settings: generationSettings, dirty: false, changeSettings(patch) { Object.assign(generationSettings,patch); } };
     } },
-    "@/components/explore/workflow-generation-boundary": { WorkflowAccountBoundary: ({ children }) => children("owner"), WorkflowGenerationBoundary: ({ children }) => children(null) },
-    "@/components/explore/workflow-finishing-boundary": { WorkflowFinishingBoundary: ({ children }) => children({ edit: undefined, schedule: undefined, output: null, options: { subtitles: false, style: "clean" }, setOptions() {} }) },
+    "@/components/explore/workflow-generation-boundary": { WorkflowAccountBoundary: ({ children }) => children("owner"), WorkflowGenerationBoundary: ({ children }) => children(generated) },
+    "@/components/explore/workflow-finishing-boundary": { WorkflowFinishingBoundary: ({ children, ...inputs }) => { finishingInputs=inputs; return children({ edit: undefined, schedule: undefined, output: null, options: { subtitles: false, style: "clean" }, setOptions() {} }); } },
     "@/components/explore/workflow-studio.module.css": css,
     "@/components/explore/workflow-creation.module.css": css,
     "@/lib/utils": { cn: (...values) => values.join(" ") },
@@ -63,14 +66,17 @@ function layout(kind) {
   return {
     render(props = {}) {
       cursor = 0; mediaCursor = 0;
-      const tree = component({ generationEnabled: false, ...props });
+      const tree = component({ generationEnabled: false, demoFramingEnabled:true, ...props });
       return {
         tree,
         composition: nodes(tree).find((node) => node.type === "composition").props,
         tabs: nodes(tree).find((node) => node.type === "tabs").props,
+        composer: nodes(tree).find((node) => node.type === "composer").props,
+        finishing: finishingInputs,
       };
     },
     demo: attachments[3], audio: attachments[4], generationInputs,
+    selectVideo(video) { generated = video ? {selected:video} : null; },
   };
 }
 
@@ -83,6 +89,39 @@ test("Hook quick-start model and duration reach the settings owner through the a
 });
 
 for (const kind of ["hook", "phone"]) {
+  test(`${kind}: incompatible output shape never reaches finishing; reset and a new saved frame clear the error`, () => {
+    const actual=layout(kind), framing={version:1,width:.5,height:1,points:[[0,0,0]]};
+    actual.render({demoFramingEnabled:true}).composition.onDemoFramingChange(framing);
+    actual.render({demoFramingEnabled:true}).composer.onGenerationSettingsChange({aspectRatio:"16:9"});
+    let view=actual.render({demoFramingEnabled:true});
+    assert.equal(view.composition.demoFraming,null);
+    assert.match(view.composition.demoFramingError,/Video shape changed/);
+    assert.equal(view.finishing.demoFraming,null);
+    assert.match(view.finishing.demoFramingError,/Record framing again/);
+    view.composition.onDemoFramingChange(framing);
+    view=actual.render({demoFramingEnabled:true});
+    assert.equal(view.finishing.demoFraming,framing);assert.equal(view.finishing.demoFramingError,null);
+    actual.selectVideo({width:720,height:1280});
+    view=actual.render({demoFramingEnabled:true});
+    assert.equal(view.finishing.demoFraming,null);assert.match(view.finishing.demoFramingError,/shape changed/);
+    view.composition.onDemoFramingChange(null);
+    assert.equal(actual.render({demoFramingEnabled:true}).finishing.demoFramingError,null);
+  });
+  test(`${kind}: replacing the demo clears its recorded path; failed replacements and tab changes preserve it`, async () => {
+    const actual = layout(kind), framing = { version: 1, width: .5, height: 1, points: [[0, 0, 0], [12000, .5, 0]] };
+    actual.render({ demoFramingEnabled: true }).composition.onDemoFramingChange(framing);
+    actual.render().tabs.onValueChange("schedule");
+    assert.equal(actual.render().composition.demoFraming, framing);
+    actual.demo.accepted = false;
+    await actual.render().composition.demo.choose({});
+    assert.equal(actual.render().composition.demoFraming, framing);
+    actual.demo.accepted = true;
+    await actual.render().composition.demo.choose({});
+    assert.equal(actual.render().composition.demoFraming, null);
+    actual.render().composition.onDemoFramingChange(framing);
+    actual.render().composition.demo.remove();
+    assert.equal(actual.render().composition.demoFraming, null);
+  });
   test(`${kind}: audio replacement resets repeat only after successful selection`, async () => {
     const actual = layout(kind);
     let { composition } = actual.render();

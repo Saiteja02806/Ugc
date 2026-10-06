@@ -103,6 +103,26 @@ test("downloads a bounded generation-pinned snapshot instead of racing a mutable
   await assert.rejects(f.storage.download("owned/source.mp4", destination, 20), error => error.code === "EEXIST");
 });
 
+test("only explicitly private inputs use the private bucket; public inputs and output recovery stay primary", async t => {
+  env(t, { GCP_PRIVATE_MEDIA_BUCKET: "offline-private" });
+  const directory = await workspace(t);
+  const buckets = [];
+  const storage = new ExploreFinishingStorage({ bucket: name => {
+    buckets.push(name);
+    return { file: () => ({ exists: async () => [false], getMetadata: async () => [{ size: "3", generation: "9" }],
+      createReadStream: () => Readable.from([Buffer.from("mp4")]) }) };
+  } });
+  await storage.download("owned/private.mp4", join(directory, "private"), 20, "private_user_media");
+  assert.deepEqual(buckets.splice(0), ["offline-private", "offline-private"]);
+  await storage.download("owned/public.mp4", join(directory, "public"), 20);
+  assert.deepEqual(buckets.splice(0), ["offline-media", "offline-media"]);
+  assert.equal(await storage.existing(receipt), null);
+  assert.deepEqual(buckets.splice(0), ["offline-media"]);
+  process.env.GCP_PRIVATE_MEDIA_BUCKET = "offline-media";
+  await assert.rejects(storage.download("owned/unsafe.mp4", join(directory, "unsafe"), 20, "private_user_media"), /separate/);
+  assert.equal(buckets.length, 0);
+});
+
 test("unsafe keys, missing generation, over-limit data or changing size fail safely", async t => {
   env(t); const dir = await workspace(t); let n = 0;
   for (const key of ["/root", "a/../b", "https://other/file", "a\\b", "a\u0000b"]) await assert.rejects(fixture().storage.download(key, join(dir, `bad-${n++}`), 20));

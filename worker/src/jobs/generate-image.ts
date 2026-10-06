@@ -23,6 +23,7 @@ import {
 } from "../lib/storage.js";
 import type { BackgroundJobRow, Json } from "../types.js";
 import type { WorkerJobContext, WorkerJobOutput } from "./index.js";
+import { resolveOwnedPrivateMediaUrl } from "../lib/private-media.js";
 
 const MAX_CHARACTER_PROMPT_LENGTH = 32_000;
 
@@ -109,17 +110,19 @@ export async function runGenerateImageJob(
     let generated;
 
     try {
+      const referenceImageUrl = input.referenceImageUrl
+        ? await resolveOwnedPrivateMediaUrl(input.referenceImageUrl, job.user_id ?? "") : undefined;
       generated =
         input.model === "nano_banana_2"
           ? await generateGeminiImageBuffer(
               input.prompt,
               input.aspectRatio,
-              input.referenceImageUrl,
+              referenceImageUrl,
             )
           : await generateOpenAiImageBuffer(
               input.prompt,
               input.aspectRatio,
-              input.referenceImageUrl,
+              referenceImageUrl,
             );
     } catch (error) {
       return persistProviderSubmissionFailure({
@@ -230,7 +233,8 @@ async function generateGeminiProImageForJob(
     const buffer = await generateGemini3ProImageBuffer({
       aspectRatio: input.aspectRatio,
       prompt: input.prompt,
-      referenceImageUrl: input.referenceImageUrl,
+      referenceImageUrl: action === "submit" && input.referenceImageUrl
+        ? await resolveOwnedPrivateMediaUrl(input.referenceImageUrl, job.user_id ?? "") : input.referenceImageUrl,
       providerOperationId: operationId,
       onOperationCreated: async (providerOperationId) => {
         await context.store.markGenerationProviderSubmitted({ jobId: job.id, operationKey, providerOperationId });

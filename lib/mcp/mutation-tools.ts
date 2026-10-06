@@ -1,4 +1,6 @@
 import "server-only";
+import { assertPrivateMediaWritesDisabled, privateMediaHead } from "@/lib/media/private-media-storage";
+import { isPrivateUserMedia } from "@/lib/media/media-delivery";
 
 import { McpServer, requireScopes } from "@modelcontextprotocol/server";
 import { z } from "zod";
@@ -73,6 +75,7 @@ export function registerMutationMcpTools(server: McpServer) {
     _meta: oauthMetadata("assets:write"),
   }, async (args, ctx) => executeTool(async () => {
     const userId = principal(ctx, "assets:write");
+    assertPrivateMediaWritesDisabled();
     await cleanupDeletedMcpUploadsForAccount(userId);
     let target: ReturnType<typeof prepareMcpUploadTarget>;
     try {
@@ -143,7 +146,8 @@ export function registerMutationMcpTools(server: McpServer) {
 
     let object;
     try {
-      object = await headStorageObject({ key: current.storage_key });
+      object = isPrivateUserMedia(current) ? await privateMediaHead(current.storage_key)
+        : await headStorageObject({ key: current.storage_key });
     } catch (error) {
       if (error instanceof Error && (error.name === "NoSuchKey" || (error as Error & { code?: string }).code === "NoSuchKey")) {
         throw new ToolFailure("UPLOAD_NOT_READY", "The uploaded file is not available yet.", true);

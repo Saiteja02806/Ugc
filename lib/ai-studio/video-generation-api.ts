@@ -31,7 +31,7 @@ import {
   type Json,
 } from "@/lib/jobs/background-jobs";
 import { createAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
-import { isTrustedStorageUrl } from "@/lib/storage/storage";
+import { canonicalMediaReference, isTrustedMediaReferenceUrl as isTrustedStorageUrl } from "@/lib/media/media-reference";
 import { getMediaAssetForOwner } from "@/lib/media/media-storage";
 import {
   BillingAccessError,
@@ -162,6 +162,19 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     | GenerateVideoRequest
     | null;
   const prompt = normalizeAIStudioPrompt(body?.prompt ?? body?.hookIdea);
+  // Resolve private browser links once, with ownership, before validation/billing.
+  try {
+    if (body) {
+      body.avatarImageUrl = await canonicalMediaReference(body.avatarImageUrl, user.uid);
+      if (Array.isArray(body.referenceImageUrls)) body.referenceImageUrls =
+        await Promise.all(body.referenceImageUrls.map(value => canonicalMediaReference(value, user.uid)));
+      if (Array.isArray(body.referenceAudioUrls)) body.referenceAudioUrls =
+        await Promise.all(body.referenceAudioUrls.map(value => canonicalMediaReference(value, user.uid)));
+      body.referenceVideoUrl = await canonicalMediaReference(body.referenceVideoUrl, user.uid);
+    }
+  } catch {
+    return NextResponse.json({ error: "The selected private reference is unavailable to this account.", ok: false }, { status: 400 });
+  }
   const avatarImageUrl = cleanHttpsUrl(body?.avatarImageUrl);
   const imageUrlsInput = body?.referenceImageUrls;
   const referenceImageUrls = Array.isArray(imageUrlsInput)

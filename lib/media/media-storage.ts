@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { mediaCollections } from "@/lib/media/types";
+import { getProtectedMediaDeliveryUrl, isPrivateUserMedia } from "@/lib/media/media-delivery";
 
 import type {
   MediaAsset,
@@ -311,6 +312,22 @@ export async function getLatestReadyMediaAssetForParent(params: {
   return data;
 }
 
+/** Bearer-token delivery route only; ordinary reads must remain owner-scoped. */
+export async function getReadyMediaAssetForDelivery(assetId: string) {
+  const { data, error } = await getSupabaseServerClient().from(MEDIA_ASSETS_TABLE)
+    .select("*").eq("id", assetId).eq("status", "ready").is("deleted_at", null).maybeSingle();
+  if (error) throw new Error("Could not read private-media delivery record.");
+  return data;
+}
+
+export async function getReadyMediaAssetByKeyForOwner(key: string, owner: string) {
+  const { data, error } = await getSupabaseServerClient().from(MEDIA_ASSETS_TABLE)
+    .select("*").eq("storage_key", key).eq("user_id", owner).eq("status", "ready")
+    .is("deleted_at", null).maybeSingle();
+  if (error) throw new Error("Could not check the selected private reference.");
+  return data;
+}
+
 type MarkMediaAssetReadyParams = {
   assetId: string;
   durationSeconds?: number | null;
@@ -488,10 +505,11 @@ export function serializeMediaAsset(row: MediaAssetRow): MediaAsset {
     sourceRecordId: row.source_record_id,
     sourceType: row.source_type,
     status: row.status,
-    thumbnailUrl: row.thumbnail_url,
+    thumbnailUrl: isPrivateUserMedia(row) && row.thumbnail_url
+      ? getProtectedMediaDeliveryUrl(row.id, Date.now(), "thumbnail") : row.thumbnail_url,
     title: row.title,
     updatedAt: row.updated_at,
-    url: row.url,
+    url: isPrivateUserMedia(row) ? getProtectedMediaDeliveryUrl(row.id) : row.url,
     width: row.width,
   };
 }

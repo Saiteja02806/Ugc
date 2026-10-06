@@ -7,14 +7,17 @@ import { SCHEDULE_PLATFORMS, type WorkflowScheduleDraft } from "@/components/exp
 import creation from "@/components/explore/workflow-creation.module.css";
 import type { MediaAsset } from "@/lib/media/types";
 import { workflowSelectedPlatforms } from "@/lib/explore/workflow-scheduling-draft";
+import { WorkflowDemoPreview } from "@/components/explore/workflow-demo-controls";
+import type { DemoFraming } from "@/worker/src/lib/explore-finishing-contract";
 
 /** Shows only user-selected demo media, never a stock or pretend generated video. */
-export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, finishedVideo }: {
+export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, finishedVideo, demoFraming }: {
   kind: "hook" | "phone";
   demo: WorkflowAttachment;
   demoAudio: WorkflowAttachment;
   generatedVideo?: MediaAsset | null;
   finishedVideo?: MediaAsset | null;
+  demoFraming?: DemoFraming | null;
 }) {
   const videoLabel = kind === "hook" ? "Hook" : "Phone video";
   if (finishedVideo) return <section aria-label="Saved finished video" className={creation.editWorkspace}><h2 className={creation.sectionTitle}>Your finished video</h2><WorkflowMediaPlayer asset={{ name: finishedVideo.title, url: finishedVideo.url, duration: finishedVideo.durationSeconds }} kind="video" label="Finished video preview" /><p className="text-xs text-muted">Saved to your Library. Review the rendered subtitles and audio before scheduling.</p></section>;
@@ -32,13 +35,13 @@ export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, f
       <ArrowRight className={creation.sequenceArrow} aria-hidden="true" />
       <section aria-label="Demo segment" className={creation.segment}>
         <h3 className="text-sm font-medium">Demo <span className="text-xs font-normal text-muted">Optional</span></h3>
-        {demo.asset ? <><WorkflowMediaPlayer asset={demo.asset} kind="video" label="Video sequence demo preview" className={creation.demoPlayer} /><p className="truncate text-xs text-muted" title={demo.asset.name}>{demo.asset.name}</p></>
+        {demo.asset ? <>{demoFraming ? <WorkflowDemoPreview key={`${demo.asset.url}:${JSON.stringify(demoFraming)}`} asset={demo.asset} framing={demoFraming} /> : <WorkflowMediaPlayer asset={demo.asset} kind="video" label="Video sequence demo preview" className={creation.demoPlayer} />}<p className="truncate text-xs text-muted" title={demo.asset.name}>{demo.asset.name}</p></>
           : <div className={creation.segmentEmpty}><Video className="size-5 text-muted" aria-hidden="true" /><p>Add a demo in Edited demo, or keep your {videoLabel.toLowerCase()} on its own.</p></div>}
       </section>
     </div>
     <section aria-label="Demo audio summary" className={creation.audioSummary}>
       <AudioLines className="size-4 shrink-0 text-muted" aria-hidden="true" />
-      <div className="min-w-0"><h3 className="text-sm font-medium">Demo audio</h3><p className="mt-1 truncate text-xs text-muted" title={demoAudio.asset?.name}>{demoAudio.asset?.name ?? (demo.asset ? "Original demo sound preserved. Extra audio is optional." : "Add a demo before choosing its audio.")}</p></div>
+      <div className="min-w-0"><h3 className="text-sm font-medium">Demo audio <span className="ml-1 text-xs font-normal text-muted">Optional</span></h3><p className="mt-1 truncate text-xs text-muted" title={demoAudio.asset?.name}>{demoAudio.asset?.name ?? (demo.asset ? "Original demo sound preserved. Extra audio is optional." : "Add a demo before choosing its audio.")}</p></div>
     </section>
     <p className="text-xs leading-5 text-muted">This is a sequence preview, not a rendered video. Subtitle style applies to spoken audio across both segments.</p>
   </section>;

@@ -1215,11 +1215,15 @@ function createPublishContext(
     },
     media: carousel ? null : {
       collection: "video",
+      deleted_at: null,
       duration_seconds: 12,
+      metadata: {},
       mime_type: "video/mp4",
       source_type: mediaSourceType,
       status: "ready",
+      storage_key: "videos/final.mp4",
       url: "https://cdn.example.com/final.mp4",
+      user_id: "user-test",
     },
     post: {
       caption: "Test caption",

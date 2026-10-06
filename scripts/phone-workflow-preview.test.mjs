@@ -78,8 +78,8 @@ test("app screen, optional references, creator audio and appended demo are indep
   assert.match(composition, /during the demo only/);
   assert.match(composition, /Your demo’s original sound is kept/);
   assert.match(composition, /Uploaded audio is mixed underneath it as background audio during the demo only/);
-  assert.match(workspace, /if \(accepted\) \{ demoAudio\.remove\(\); setDemoAudioPlayback\("once"\); \}/);
-  assert.match(workspace, /function removeDemo\(\) \{\s*demoAudio\.remove\(\);\s*demo\.remove\(\)/);
+  assert.match(workspace, /if \(accepted\) \{ demoAudio\.remove\(\); setDemoAudioPlayback\("once"\); setDemoFraming\(null\); \}/);
+  assert.match(workspace, /function removeDemo\(\) \{\s*setDemoFraming\(null\);\s*demoAudio\.remove\(\);\s*demo\.remove\(\)/);
 });
 
 test("Library stays below the first screen and contains no unapproved media", () => {

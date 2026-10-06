@@ -8,15 +8,17 @@ import { finishStorageKey, readSavedFinish, requestFinish, type FinishStatus, ty
 import { loadWorkflowDefaultMusic } from "@/lib/explore/workflow-default-music-client";
 import type { LocalWorkflowMedia } from "@/components/explore/use-local-workflow-media";
 import type { MediaAsset } from "@/lib/media/types";
-import type { ExploreFinishStyle } from "@/worker/src/lib/explore-finishing-contract";
+import type { DemoFraming, ExploreFinishStyle } from "@/worker/src/lib/explore-finishing-contract";
 
 export type FinishingOptions = { subtitles: boolean; style: ExploreFinishStyle; backgroundMusic: boolean };
 export const DEFAULT_FINISHING_OPTIONS: FinishingOptions = { subtitles: false, style: "clean", backgroundMusic: false };
 export type WorkflowAction = { busy: boolean; disabled: boolean; message: string; error: string | null; onAction: () => void; refresh: () => void };
-export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, demoAudio, playback, options, onRestoreOptions }: {
+export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, demoAudio, playback, options, onRestoreOptions, demoFraming = null, demoFramingError = null }: {
   ownerId: string | null; enabled: boolean; kind: "hook" | "phone"; source: MediaAsset | null;
   demo: LocalWorkflowMedia | null; demoAudio: LocalWorkflowMedia | null; playback: "once" | "repeat"; options: FinishingOptions;
   onRestoreOptions?: (value: FinishingOptions) => void;
+  demoFraming?: DemoFraming | null;
+  demoFramingError?: string | null;
 }) {
   const active = useRef(true), working = useRef(false);
   const saved = useRef<SavedFinish | null>(null);
@@ -26,7 +28,7 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
   const [output, setOutput] = useState<MediaAsset | null>(null);
   const [savedEntry, setSavedEntry] = useState<SavedFinish | null>(null);
   // Inputs change without invalidating a completed request's server identity.
-  const signature = JSON.stringify([source?.id, demo?.url, demoAudio?.url, playback, options]);
+  const signature = JSON.stringify([source?.id, demo?.url, demoAudio?.url, playback, options, demoFraming, demoFramingError]);
   const [completedSignature, setCompletedSignature] = useState<string | null>(null);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const deps = useCallback(() => ({ token: () => getCurrentUserIdToken(ownerId ?? undefined), fetch: (...args: Parameters<typeof fetch>) => fetch(...args), assertActive() { if (!active.current) throw new Error("This account's workflow is no longer active."); } }), [ownerId]);
@@ -75,7 +77,7 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
     deps().assertActive(); uploaded.current.set(asset.file, result.asset.id); return result.asset.id;
   }
   async function apply() {
-    if (working.current || !enabled || !ownerId || !restored || !active.current) return;
+    if (working.current || !enabled || !ownerId || !restored || !active.current || demoFramingError) return;
     working.current = true; setBusy(true); setError(null);
     try {
       if (!navigator.locks) throw new Error("Use a browser with Web Locks support to apply edits safely across tabs.");
@@ -106,7 +108,8 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
             deps().assertActive(); backgroundAssetId = result.asset.id; backgroundPlayback = music.playback;
           }
         }
-        const draft: SavedFinish["draft"] = { version: 1, kind, sourceAssetId: source.id, demoAssetId: await upload(demo, "video"), demoAudioAssetId: await upload(demoAudio, "audio"), demoAudioPlayback: demoAudio ? playback : "once", backgroundAssetId, backgroundPlayback, subtitles: options.subtitles ? { language: "en", style: options.style, placement: "bottom" } : null };
+        const draft: SavedFinish["draft"] = { version: 1, kind, sourceAssetId: source.id, demoAssetId: await upload(demo, "video"), demoAudioAssetId: await upload(demoAudio, "audio"), demoAudioPlayback: demoAudio ? playback : "once", backgroundAssetId, backgroundPlayback, subtitles: options.subtitles ? { language: "en", style: options.style, placement: "bottom" } : null,
+          ...(demoFraming ? { demoFraming } : {}) };
         deps().assertActive();
         const entry: SavedFinish = { version: 1, ownerId, kind, requestKey: crypto.randomUUID(), draft };
         // A storage failure must happen before dispatch, never after a paid request.
@@ -119,12 +122,12 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
   }
   // A recovered output is a saved result, not a reconstruction from missing local
   // files. A different source or newly selected edit must be applied first.
-  const recoveredMatches = completedSignature === null && savedEntry && (!source || source.id === savedEntry.draft.sourceAssetId) && !demo && !demoAudio &&
+  const recoveredMatches = completedSignature === null && savedEntry && (!source || source.id === savedEntry.draft.sourceAssetId) && !demo && !demoAudio && !demoFraming &&
     !!options.backgroundMusic === !!savedEntry.draft.backgroundAssetId &&
     options.subtitles === !!savedEntry.draft.subtitles && (!options.subtitles || options.style === savedEntry.draft.subtitles?.style);
-  const currentOutput = output && (completedSignature === signature || recoveredMatches) ? output : null;
+  const currentOutput = output && !demoFramingError && (completedSignature === signature || recoveredMatches) ? output : null;
   const pending = status?.outcome === "pending" || status?.outcome === "uncertain";
-  const disabled = !enabled || !ownerId || !restored || busy || pending || (!source && !savedEntry);
-  const action: WorkflowAction = { busy, disabled, message: status?.message ?? (source ? "Apply edits to save your finished video." : "Generate a video before applying edits."), error, onAction: () => { void apply(); }, refresh: () => { void refresh(); } };
+  const disabled = !enabled || !ownerId || !restored || busy || pending || !!demoFramingError || (!source && !savedEntry);
+  const action: WorkflowAction = { busy, disabled, message: status?.message ?? (source ? "Apply edits to save your finished video." : "Generate a video before applying edits."), error: demoFramingError ?? error, onAction: () => { void apply(); }, refresh: () => { void refresh(); } };
   return { action, output: currentOutput };
 }

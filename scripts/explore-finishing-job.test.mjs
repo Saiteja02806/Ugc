@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { access } from "node:fs/promises";
 import test from "node:test";
 import { runFinishExploreVideoJob } from "../worker/dist/jobs/finish-explore-video.js";
+import { ExploreFinishingStore } from "../worker/dist/lib/explore-finishing-store.js";
 import { SCRIBE_PROVIDER_KEY } from "../worker/dist/subtitles/elevenlabs-provider.js";
 import { hasWorkerJobHandler } from "../worker/dist/jobs/index.js";
 
@@ -88,6 +89,37 @@ test("subtitles off does not need Scribe configuration or claim speech", async (
   const f = fixture({subtitles:false}); delete f.deps.transcription;
   await runFinishExploreVideoJob(f.job,f.context,f.deps);
   assert.equal(f.submits(),0); for (const event of ["prepare","claim","submit","save"]) assert.equal(f.events.includes(event),false);
+});
+
+test("both workflow kinds forward the owned framing path unchanged to rendering and saved metadata", async () => {
+  const framing = {version:1,width:.375,height:1,points:[[0,0,0],[1000,0,0],[1800,.625,0],[2000,.625,0]]};
+  for (const kind of ["hook","phone"]) {
+    const f=fixture({subtitles:false,draftChanges:{kind,demoFraming:framing}});
+    const before=JSON.stringify(f.receipt.draft), finish=f.deps.finish, upload=f.deps.storage.upload;
+    f.deps.finish=async options=>{assert.deepEqual(options.demoFraming,framing);return finish(options);};
+    f.deps.storage.upload=async (receipt,path,details)=>{assert.deepEqual(details.metadata.demoFraming,framing);return upload(receipt,path,details);};
+    await runFinishExploreVideoJob(f.job,f.context,f.deps);
+    assert.equal(JSON.stringify(f.receipt.draft),before);
+    assert.equal(f.composed(),1);assert.equal(f.submits(),0);
+  }
+});
+
+test("legacy finishing jobs omit framing from renderer options and output metadata", async () => {
+  const f=fixture({subtitles:false}), finish=f.deps.finish, upload=f.deps.storage.upload;
+  f.deps.finish=async options=>{assert.equal(Object.hasOwn(options,"demoFraming"),false);return finish(options);};
+  f.deps.storage.upload=async (receipt,path,details)=>{assert.equal(Object.hasOwn(details.metadata,"demoFraming"),false);return upload(receipt,path,details);};
+  await runFinishExploreVideoJob(f.job,f.context,f.deps);
+});
+
+test("an invalid saved crop path is rejected before downloads or provider work", async () => {
+  const f=fixture({draftChanges:{demoFraming:{version:1,width:.5,height:1,points:[[0,.9,0]]}}});
+  // Exercise the real store boundary: the general fixture intentionally mocks
+  // an already validated receipt for the other worker orchestration tests.
+  const query={select(){return this;},eq(){return this;},maybeSingle:async()=>({data:f.receipt,error:null})};
+  const store=new ExploreFinishingStore({from:()=>query});
+  f.deps.store.read=(...args)=>store.read(...args);
+  await assert.rejects(runFinishExploreVideoJob(f.job,f.context,f.deps));
+  assert.equal(f.events.includes("download"),false);assert.equal(f.composed(),0);assert.equal(f.submits(),0);
 });
 
 test("stored GCP output recovers without composing, transcription, uploads, or Scribe configuration", async () => {

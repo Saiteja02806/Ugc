@@ -12,5 +12,5 @@ export default async function CreateHookPage({ searchParams }: { searchParams: P
   if (mode === "hidden") notFound();
   const duration = parseWorkflowDuration(query.duration);
   const initialModel = parseWorkflowModel(query.model);
-  return <HookWorkflowPreview key={`${initialModel ?? "default"}:${duration}`} initialDuration={duration} initialModel={initialModel} generationEnabled={mode === "generation"} />;
+  return <HookWorkflowPreview key={`${initialModel ?? "default"}:${duration}`} initialDuration={duration} initialModel={initialModel} generationEnabled={mode === "generation"} demoFramingEnabled={process.env.EXPLORE_DEMO_FRAMING_ENABLED === "true" || (process.env.NODE_ENV === "development" && mode === "preview")} />;
 }

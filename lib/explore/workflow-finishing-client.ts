@@ -5,7 +5,7 @@ export type SavedFinish = { version: 1; ownerId: string; kind: "hook" | "phone";
 export const finishStorageKey = (owner: string, kind: "hook" | "phone") => `ugc-explore:finish:v1:${encodeURIComponent(owner)}:${kind}`;
 export function readSavedFinish(raw: string | null, owner: string, kind: "hook" | "phone"): SavedFinish | null {
   if (!raw) return null;
-  if (raw.length > 16384) throw new Error("The saved edit could not be verified.");
+  if (raw.length > 65536) throw new Error("The saved edit could not be verified.");
   const value = JSON.parse(raw) as SavedFinish;
   if (value?.version !== 1 || value.ownerId !== owner || value.kind !== kind || !isExploreUuid(value.requestKey)) throw new Error("The saved edit belongs to another workflow.");
   const draft = parseExploreFinishDraft(value.draft);

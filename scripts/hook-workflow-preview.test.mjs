@@ -85,8 +85,8 @@ test("video/audio controls are permanent and demo changes clear background audio
   assert.ok(workspace.indexOf("<HookWorkflowComposer") < workspace.indexOf('<section aria-label="Hook creation workspace"'));
   assert.doesNotMatch(workspace, /demoOpen|audioOpen|Dialog|Attached demo|Attach audio/);
   assert.doesNotMatch(workspace, /<WorkflowCompositionPanel[^>]*key=/);
-  assert.match(workspace, /function removeDemo\(\) \{\s*demoAudio\.remove\(\);\s*demo\.remove\(\)/);
-  assert.match(workspace, /if \(accepted\) \{ demoAudio\.remove\(\); setDemoAudioPlayback\("once"\); \}/);
+  assert.match(workspace, /function removeDemo\(\) \{\s*setDemoFraming\(null\);\s*demoAudio\.remove\(\);\s*demo\.remove\(\)/);
+  assert.match(workspace, /if \(accepted\) \{ demoAudio\.remove\(\); setDemoAudioPlayback\("once"\); setDemoFraming\(null\); \}/);
 });
 
 test("local media is detached before cleanup and Creator selection adds no prompts", () => {

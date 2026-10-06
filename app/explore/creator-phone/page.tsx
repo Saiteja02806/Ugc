@@ -12,5 +12,5 @@ export default async function CreatorPhonePage({ searchParams }: { searchParams:
   const query = await searchParams;
   const mode = getWorkflowGenerationMode({ environment: process.env.NODE_ENV, generationEnabled: process.env.EXPLORE_GENERATION_ENABLED ?? (process.env.NODE_ENV === "development" ? process.env.EXPLORE_GENERATION_DEVELOPMENT_ENABLED : undefined), preview: query.preview, mode: query.mode });
   if (mode === "hidden") notFound();
-  return <PhoneWorkflowPreview generationEnabled={mode === "generation"} />;
+  return <PhoneWorkflowPreview generationEnabled={mode === "generation"} demoFramingEnabled={process.env.EXPLORE_DEMO_FRAMING_ENABLED === "true" || (process.env.NODE_ENV === "development" && mode === "preview")} />;
 }

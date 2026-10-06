@@ -1,12 +1,13 @@
 import { createHash } from "node:crypto";
 import { constants, createReadStream } from "node:fs";
-import { copyFile, mkdir, stat } from "node:fs/promises";
+import { copyFile, mkdir, stat, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 import { assertExploreSubtitleScope } from "../subtitles/explore-policy.js";
 import { record, SubtitleError } from "../subtitles/contracts.js";
 import { runMediaCommand } from "../subtitles/media.js";
 import { EXPLORE_BACKGROUND_AUDIO_MAX_BYTES, EXPLORE_BACKGROUND_AUDIO_MAX_DURATION_MS, planExploreBackgroundAudio, type ExploreBackgroundPlayback } from "./explore-background-audio.js";
+import { demoFramingExpression, parseDemoFraming, type DemoFraming } from "./explore-finishing-contract.js";
 
 type CompositionTools = { ffmpeg: string; ffprobe: string };
 type VideoInput = { width: number; height: number; durationMs: number; videoIndex: number; audioIndex: number | null };
@@ -91,12 +92,20 @@ function backgroundAudioFilter(input: AudioInput, targetDurationMs: number, labe
 export function buildExploreCompositionFilter(videos: VideoInput[], demoAudio?: Omit<AudioInput, "inputIndex">, options: {
   backgroundMusic?: AudioInput;
   subtitleAudio?: boolean;
+  demoFraming?: DemoFraming;
 } = {}) {
   const { width, height } = videos[0];
   const filters: string[] = [];
   for (const [index, video] of videos.entries()) {
     const seconds = String(video.durationMs / 1000);
-    filters.push(`[${index}:${video.videoIndex}]scale=${width}:${height}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,fps=30,format=yuv420p,setpts=PTS-STARTPTS[v${index}]`);
+    const framing = index === 1 ? options.demoFraming : undefined;
+    if (framing) {
+      const cropWidth = Math.floor(video.width * framing.width / 2) * 2, cropHeight = Math.floor(video.height * framing.height / 2) * 2;
+      if (cropWidth < 64 || cropHeight < 64 || Math.abs((video.width * framing.width) / (video.height * framing.height) / (width / height) - 1) > .015 ||
+          framing.points[framing.points.length - 1][0] > video.durationMs + 50) throw new SubtitleError("COMPOSITION_FRAMING_INVALID", "Record a frame matching your selected video, within the demo's duration and at least 64 pixels wide and high.");
+      const x = demoFramingExpression(framing, 1, video.width), y = demoFramingExpression(framing, 2, video.height);
+      filters.push(`[${index}:${video.videoIndex}]scale=${video.width}:${video.height},setsar=1,setpts=PTS-STARTPTS,fps=30,crop=w=${cropWidth}:h=${cropHeight}:x='${x}':y='${y}':exact=1,scale=${width}:${height}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=black,format=yuv420p[v${index}]`);
+    } else filters.push(`[${index}:${video.videoIndex}]scale=${width}:${height}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,fps=30,format=yuv420p,setpts=PTS-STARTPTS[v${index}]`);
     const selected = video.audioIndex === null ? null : { inputIndex: index, audioIndex: video.audioIndex };
     const original = selected === null ? "anullsrc=channel_layout=stereo:sample_rate=48000" : `[${selected.inputIndex}:${selected.audioIndex}]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo`;
     filters.push(`${original},apad,atrim=duration=${seconds},asetpts=PTS-STARTPTS[main${index}]`);
@@ -134,6 +143,7 @@ export function buildExploreCompositionFilter(videos: VideoInput[], demoAudio?: 
 export async function composeExploreVideo(options: {
   sourcePath: string;
   demoPath?: string;
+  demoFraming?: DemoFraming;
   /** Demo-only background layer; preserves the demo's original soundtrack. */
   demoAudioPath?: string;
   /** Explicit user preference; never infer looping from an uploaded filename. */
@@ -148,6 +158,8 @@ export async function composeExploreVideo(options: {
   signal?: AbortSignal;
 }) {
   options.signal?.throwIfAborted();
+  const demoFraming = options.demoFraming === undefined ? undefined : parseDemoFraming(options.demoFraming);
+  if (demoFraming && !options.demoPath) throw new SubtitleError("COMPOSITION_DEMO_REQUIRED", "Add a demo before recording its framing.");
   if (options.demoAudioPath && !options.demoPath) throw new SubtitleError("COMPOSITION_DEMO_REQUIRED", "Add a demo before adding demo audio.");
   if ((!options.demoAudioPath && options.demoAudioPlayback !== undefined) || (!options.backgroundMusicPath && options.backgroundMusicPlayback !== undefined)) {
     throw new SubtitleError("COMPOSITION_INPUT_INVALID", "Select the background audio before choosing its playback mode.");
@@ -162,6 +174,11 @@ export async function composeExploreVideo(options: {
   // Before creating outputs or any later paid transcription. This is the
   // complete sequence duration, not the length of the generated opening alone.
   if (options.subtitleScope) assertExploreSubtitleScope(options.subtitleScope.language, measuredDurationMs);
+  // Validate framing BEFORE any output or later paid transcription is created.
+  const filter = buildExploreCompositionFilter(videos, demoAudio ? { ...demoAudio, playback: options.demoAudioPlayback } : undefined, {
+    backgroundMusic: backgroundMusic ? { ...backgroundMusic, inputIndex: videos.length + (demoAudio ? 1 : 0), playback: options.backgroundMusicPlayback } : undefined,
+    subtitleAudio: Boolean(options.subtitleScope), demoFraming,
+  });
   options.signal?.throwIfAborted();
   const paths = [options.sourcePath, options.demoPath, options.demoAudioPath, options.backgroundMusicPath].filter((path): path is string => Boolean(path));
   const sourceHashes = await Promise.all(paths.map(hashFile));
@@ -187,10 +204,13 @@ export async function composeExploreVideo(options: {
   }
   const args = ["-nostdin", "-hide_banner", "-loglevel", "error", "-n"];
   for (const [index] of paths.entries()) args.push("-protocol_whitelist", "file,pipe", "-i", `input-${index}`);
-  args.push("-filter_complex", buildExploreCompositionFilter(videos, demoAudio ? { ...demoAudio, playback: options.demoAudioPlayback } : undefined, {
-    backgroundMusic: backgroundMusic ? { ...backgroundMusic, inputIndex: videos.length + (demoAudio ? 1 : 0), playback: options.backgroundMusicPlayback } : undefined,
-    subtitleAudio: Boolean(options.subtitleScope),
-  }), "-map", "[video]", "-map", "[audio]", "-t", String(measuredDurationMs / 1000),
+  if (demoFraming) {
+    // A bounded recording may exceed Windows' command-line length. The graph
+    // is generated from validated numbers, inside this new owned directory.
+    await writeFile(join(workDir, "composition.filter"), filter, { flag: "wx" });
+    args.push("-filter_complex_script", "composition.filter");
+  } else args.push("-filter_complex", filter);
+  args.push("-map", "[video]", "-map", "[audio]", "-t", String(measuredDurationMs / 1000),
     "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-ar", "48000", "-ac", "2", "-movflags", "+faststart", "composed.mp4");
   if (options.subtitleScope) args.push("-map", "[speech]", "-vn", "-t", String(measuredDurationMs / 1000), "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", "speech.wav");
   await runMediaCommand(options.tools.ffmpeg, args, { cwd: workDir, signal: options.signal, timeoutMs: 180_000 });

@@ -24,6 +24,7 @@ function harness(code, exportName) {
     "@/components/explore/workflow-creation.module.css": { default: new Proxy({}, { get: (_, key) => key }) },
     "@/components/ui/button": { Button: "button" },
     "@/components/explore/workflow-saved-audio-picker": { WorkflowSavedAudioPicker: "saved-audio-picker" },
+    "@/components/explore/workflow-demo-controls": { WorkflowDemoControls: "demo-controls", WorkflowDemoPreview: "framed-demo" },
     "@/components/explore/workflow-saved-audio-choices": { WorkflowSavedAudioChoices: "saved-audio-choices" },
     "@/components/ui/popover": Object.fromEntries(["Popover", "PopoverContent", "PopoverTitle", "PopoverTrigger"].map((name) => [name, name])),
     "@/lib/utils": { cn: (...values) => values.join(" ") },
@@ -66,6 +67,16 @@ test("the actual Edit video section offers optional demo without dummy result ti
   assert.equal(nodes(tree).filter((node) => node.type === "ol").length, 0);
   assert.equal(nodes(tree).filter((node) => node.type === "player").length, 0);
   assert.ok(nodes(tree).some((node) => node.type === "button" && node.props.disabled && node.props["aria-label"] === "Select demo audio"));
+});
+
+test("demo controls are opt-in, tied only to the attached demo, and preserve its aspect target", () => {
+  assert.equal(nodes(render({ demo: makeAttachment("demo.mp4", true) }).tree).some(node => node.type === "demo-controls"), false);
+  for (const videoLabel of ["Hook", "Phone video"]) {
+    const onDemoFramingChange = () => {}, { props, tree } = render({ videoLabel, demo: makeAttachment("demo.mp4", true), demoFramingEnabled: true, onDemoFramingChange, outputAspect: 9 / 16, editingBusy: true });
+    const controls = nodes(tree).find(node => node.type === "demo-controls");
+    assert.equal(controls.props.asset, props.demo.asset); assert.equal(controls.props.onChange, onDemoFramingChange);
+    assert.equal(controls.props.outputAspect, 9 / 16); assert.equal(controls.props.disabled, true);
+  }
 });
 
 test("unfinished finishing tools remain off, disabled and explained", () => {
@@ -327,7 +338,7 @@ test("both workflows expose explicit play-once/repeat choices and honest local t
     const workspace = read(`components/explore/${videoLabel === "Hook" ? "hook" : "phone"}-workflow-preview.tsx`);
     assert.match(workspace, /useState<ExploreBackgroundPlayback>\("once"\)/);
     assert.match(workspace, /demoAudioPlayback=\{demoAudioPlayback\} onDemoAudioPlaybackChange=\{setDemoAudioPlayback\}/);
-    assert.match(workspace, /if \(accepted\) \{ demoAudio\.remove\(\); setDemoAudioPlayback\("once"\); \}/);
+    assert.match(workspace, /if \(accepted\) \{ demoAudio\.remove\(\); setDemoAudioPlayback\("once"\); setDemoFraming\(null\); \}/);
     assert.match(workspace, /function removeDemoAudio\(\) \{\s*demoAudio\.remove\(\);\s*setDemoAudioPlayback\("once"\)/);
     assert.match(workspace, /if \(accepted\) setDemoAudioPlayback\("once"\)/);
     assert.doesNotMatch(workspace, /invalidDemoAudio|isDemoAudioTooLong/);

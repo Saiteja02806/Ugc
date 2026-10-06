@@ -1,4 +1,5 @@
 import "server-only";
+import { getProtectedMediaDeliveryUrl, isPrivateUserMedia } from "@/lib/media/media-delivery";
 
 import { McpServer, requireScopes } from "@modelcontextprotocol/server";
 import { z } from "zod";
@@ -120,9 +121,10 @@ export function toAsset(row: MediaAssetRow) {
     file_name: row.file_name,
     file_size_bytes: row.file_size_bytes,
     ratio: row.ratio,
-    thumbnail_url: row.thumbnail_url,
+    thumbnail_url: isPrivateUserMedia(row) && row.thumbnail_url
+      ? getProtectedMediaDeliveryUrl(row.id, Date.now(), "thumbnail") : row.thumbnail_url,
     updated_at: row.updated_at,
-    url: row.url,
+    url: isPrivateUserMedia(row) ? getProtectedMediaDeliveryUrl(row.id) : row.url,
   };
 }
 

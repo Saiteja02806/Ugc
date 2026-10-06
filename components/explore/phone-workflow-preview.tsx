@@ -22,12 +22,13 @@ import studio from "@/components/explore/workflow-studio.module.css";
 import creation from "@/components/explore/workflow-creation.module.css";
 import { cn } from "@/lib/utils";
 import type { ExploreBackgroundPlayback } from "@/worker/src/lib/explore-background-audio";
+import type { DemoFraming } from "@/worker/src/lib/explore-finishing-contract";
 
-export function PhoneWorkflowPreview({ generationEnabled = false }: { generationEnabled?: boolean }) {
-  return <WorkflowAccountBoundary enabled={generationEnabled}>{(ownerId) => <PhoneWorkflowLayout key={ownerId ?? "preview"} ownerId={ownerId} generationEnabled={generationEnabled} />}</WorkflowAccountBoundary>;
+export function PhoneWorkflowPreview({ generationEnabled = false, demoFramingEnabled = false }: { generationEnabled?: boolean; demoFramingEnabled?: boolean }) {
+  return <WorkflowAccountBoundary enabled={generationEnabled}>{(ownerId) => <PhoneWorkflowLayout key={ownerId ?? "preview"} ownerId={ownerId} generationEnabled={generationEnabled} demoFramingEnabled={demoFramingEnabled} />}</WorkflowAccountBoundary>;
 }
 
-function PhoneWorkflowLayout({ generationEnabled, ownerId }: { generationEnabled: boolean; ownerId: string | null }) {
+function PhoneWorkflowLayout({ generationEnabled, ownerId, demoFramingEnabled }: { generationEnabled: boolean; ownerId: string | null; demoFramingEnabled: boolean }) {
   const [section, setSection] = useState<WorkflowSection>("create");
   const [scheduleDraft, setScheduleDraft] = useState(EMPTY_SCHEDULE_DRAFT);
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -41,6 +42,7 @@ function PhoneWorkflowLayout({ generationEnabled, ownerId }: { generationEnabled
   const demo = useLocalWorkflowMedia("video");
   const demoAudio = useLocalWorkflowMedia("audio");
   const [demoAudioPlayback, setDemoAudioPlayback] = useState<ExploreBackgroundPlayback>("once");
+  const [demoFraming, setDemoFraming] = useState<{ frame: DemoFraming; aspect: number } | null>(null);
   const dirty = Boolean(generation.dirty || instructions.length || appScreen.asset || creator.asset || videoReference.asset || creatorAudio.asset || demo.asset || demoAudio.asset || Object.values(scheduleDraft).some(Boolean));
 
   useEffect(() => {
@@ -51,6 +53,7 @@ function PhoneWorkflowLayout({ generationEnabled, ownerId }: { generationEnabled
   }, [dirty]);
 
   function removeDemo() {
+    setDemoFraming(null);
     demoAudio.remove();
     demo.remove();
     setDemoAudioPlayback("once");
@@ -58,7 +61,7 @@ function PhoneWorkflowLayout({ generationEnabled, ownerId }: { generationEnabled
 
   async function chooseDemo(file: File) {
     const accepted = await demo.choose(file);
-    if (accepted) { demoAudio.remove(); setDemoAudioPlayback("once"); }
+    if (accepted) { demoAudio.remove(); setDemoAudioPlayback("once"); setDemoFraming(null); }
     return accepted;
   }
 
@@ -73,7 +76,11 @@ function PhoneWorkflowLayout({ generationEnabled, ownerId }: { generationEnabled
     setDemoAudioPlayback("once");
   }
 
-  return <WorkflowGenerationBoundary enabled={generationEnabled} ownerId={ownerId} draft={{ kind: "phone", instructions, settings: generation.settings, creator: creator.asset, appScreen: appScreen.asset, videoReference: videoReference.asset, audioReference: creatorAudio.asset, referencesPending: creator.loading || appScreen.loading || videoReference.loading || creatorAudio.loading }}>{(run) => <WorkflowFinishingBoundary enabled={generationEnabled} ownerId={ownerId} kind="phone" source={run?.selected ?? null} demo={demo.asset} demoAudio={demoAudio.asset} playback={demoAudioPlayback} scheduleDraft={scheduleDraft}>{(finish) => <section className={cn(studio.studio, creation.shell, "min-w-0")}>
+  return <WorkflowGenerationBoundary enabled={generationEnabled} ownerId={ownerId} draft={{ kind: "phone", instructions, settings: generation.settings, creator: creator.asset, appScreen: appScreen.asset, videoReference: videoReference.asset, audioReference: creatorAudio.asset, referencesPending: creator.loading || appScreen.loading || videoReference.loading || creatorAudio.loading }}>{(run) => {
+    const outputAspect = run?.selected?.width && run.selected.height ? run.selected.width / run.selected.height : generation.settings.aspectRatio === "16:9" ? 16 / 9 : 9 / 16;
+    const framingError = demoFramingEnabled && demoFraming && Math.abs(demoFraming.aspect / outputAspect - 1) > .015 ? "Video shape changed. Record framing again for this shape, or reset it." : null;
+    const currentFraming = demoFramingEnabled && !framingError ? demoFraming?.frame ?? null : null;
+    return <WorkflowFinishingBoundary enabled={generationEnabled} ownerId={ownerId} kind="phone" source={run?.selected ?? null} demo={demo.asset} demoAudio={demoAudio.asset} playback={demoAudioPlayback} scheduleDraft={scheduleDraft} demoFraming={currentFraming} demoFramingError={framingError}>{(finish) => <section className={cn(studio.studio, creation.shell, "min-w-0")}>
     {/* The Library follows the complete first-screen workspace, never its initial viewport. */}
     <div data-phone-first-screen className="flex min-h-[calc(100dvh-4rem)] flex-col md:min-h-dvh">
       <header className={cn(creation.header, "flex shrink-0 items-center gap-3 px-4 py-3 sm:px-6 lg:px-8")}>
@@ -95,6 +102,8 @@ function PhoneWorkflowLayout({ generationEnabled, ownerId }: { generationEnabled
           </Tabs.Panel>
           <Tabs.Panel value="edit" keepMounted className={creation.sectionPanel}>
             <WorkflowCompositionPanel videoLabel="Phone video" connected={generationEnabled} ownerId={ownerId} options={finish.options} onOptionsChange={finish.setOptions}
+              demoFramingEnabled={demoFramingEnabled} demoFraming={currentFraming} demoFramingError={framingError} onDemoFramingChange={frame => setDemoFraming(frame ? { frame, aspect: outputAspect } : null)} editingBusy={finish.edit?.busy}
+              outputAspect={outputAspect} onDemoControlsOpen={() => workspaceRef.current?.querySelectorAll<HTMLMediaElement>("audio, video").forEach(player => player.pause())}
               demo={{ ...demo, choose: chooseDemo, remove: removeDemo }} demoAudio={{ ...demoAudio, choose: chooseDemoAudio, remove: removeDemoAudio }} demoAudioPlayback={demoAudioPlayback} onDemoAudioPlaybackChange={setDemoAudioPlayback} />
           </Tabs.Panel>
           <Tabs.Panel value="schedule" keepMounted className={creation.sectionPanel}>
@@ -103,7 +112,7 @@ function PhoneWorkflowLayout({ generationEnabled, ownerId }: { generationEnabled
         </WorkflowCreationPanel>
         <section aria-label="Phone video creation workspace" className={creation.main}>
           {section === "create" ? <WorkflowPreviewCanvas kind="phone" generation={run ?? undefined} />
-            : section === "edit" ? <WorkflowEditWorkspace kind="phone" demo={demo} demoAudio={demoAudio} generatedVideo={run?.selected} finishedVideo={finish.output} />
+            : section === "edit" ? <WorkflowEditWorkspace kind="phone" demo={demo} demoAudio={demoAudio} generatedVideo={run?.selected} finishedVideo={finish.output} demoFraming={currentFraming} />
             : <WorkflowScheduleWorkspace draft={scheduleDraft} finishedVideo={finish.output} />}
           <div className={creation.canvasFooter}>
             <a href="#phone-reference-library" aria-label="Scroll to Library" className={creation.libraryShortcut} onClick={(event) => {
@@ -121,7 +130,8 @@ function PhoneWorkflowLayout({ generationEnabled, ownerId }: { generationEnabled
     </div>
 
     <PhoneLibrary />
-  </section>}</WorkflowFinishingBoundary>}</WorkflowGenerationBoundary>;
+  </section>}</WorkflowFinishingBoundary>;
+  }}</WorkflowGenerationBoundary>;
 }
 
 function PhoneLibrary() {

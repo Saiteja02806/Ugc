@@ -22,12 +22,13 @@ import creation from "@/components/explore/workflow-creation.module.css";
 import { cn } from "@/lib/utils";
 import type { AIStudioVideoModel } from "@/lib/ai-studio/generation-settings";
 import type { ExploreBackgroundPlayback } from "@/worker/src/lib/explore-background-audio";
+import type { DemoFraming } from "@/worker/src/lib/explore-finishing-contract";
 
-export function HookWorkflowPreview({ initialDuration = 5, initialModel, generationEnabled = false }: { initialDuration?: number; initialModel?: AIStudioVideoModel; generationEnabled?: boolean }) {
-  return <WorkflowAccountBoundary enabled={generationEnabled}>{(ownerId) => <HookWorkflowLayout key={ownerId ?? "preview"} ownerId={ownerId} initialDuration={initialDuration} initialModel={initialModel} generationEnabled={generationEnabled} />}</WorkflowAccountBoundary>;
+export function HookWorkflowPreview({ initialDuration = 5, initialModel, generationEnabled = false, demoFramingEnabled = false }: { initialDuration?: number; initialModel?: AIStudioVideoModel; generationEnabled?: boolean; demoFramingEnabled?: boolean }) {
+  return <WorkflowAccountBoundary enabled={generationEnabled}>{(ownerId) => <HookWorkflowLayout key={ownerId ?? "preview"} ownerId={ownerId} initialDuration={initialDuration} initialModel={initialModel} generationEnabled={generationEnabled} demoFramingEnabled={demoFramingEnabled} />}</WorkflowAccountBoundary>;
 }
 
-function HookWorkflowLayout({ initialDuration, initialModel, generationEnabled, ownerId }: { initialDuration: number; initialModel?: AIStudioVideoModel; generationEnabled: boolean; ownerId: string | null }) {
+function HookWorkflowLayout({ initialDuration, initialModel, generationEnabled, ownerId, demoFramingEnabled }: { initialDuration: number; initialModel?: AIStudioVideoModel; generationEnabled: boolean; ownerId: string | null; demoFramingEnabled: boolean }) {
   const [section, setSection] = useState<WorkflowSection>("create");
   const [scheduleDraft, setScheduleDraft] = useState(EMPTY_SCHEDULE_DRAFT);
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -40,6 +41,7 @@ function HookWorkflowLayout({ initialDuration, initialModel, generationEnabled, 
   const demo = useLocalWorkflowMedia("video");
   const demoAudio = useLocalWorkflowMedia("audio");
   const [demoAudioPlayback, setDemoAudioPlayback] = useState<ExploreBackgroundPlayback>("once");
+  const [demoFraming, setDemoFraming] = useState<{ frame: DemoFraming; aspect: number } | null>(null);
   const dirty = Boolean(generation.dirty || instructions.length || creator.asset || videoReference.asset || hookAudio.asset || demo.asset || demoAudio.asset || Object.values(scheduleDraft).some(Boolean));
 
   useEffect(() => {
@@ -50,6 +52,7 @@ function HookWorkflowLayout({ initialDuration, initialModel, generationEnabled, 
   }, [dirty]);
 
   function removeDemo() {
+    setDemoFraming(null);
     demoAudio.remove();
     demo.remove();
     setDemoAudioPlayback("once");
@@ -57,7 +60,7 @@ function HookWorkflowLayout({ initialDuration, initialModel, generationEnabled, 
 
   async function chooseDemo(file: File) {
     const accepted = await demo.choose(file);
-    if (accepted) { demoAudio.remove(); setDemoAudioPlayback("once"); }
+    if (accepted) { demoAudio.remove(); setDemoAudioPlayback("once"); setDemoFraming(null); }
     return accepted;
   }
 
@@ -72,7 +75,11 @@ function HookWorkflowLayout({ initialDuration, initialModel, generationEnabled, 
     setDemoAudioPlayback("once");
   }
 
-  return <WorkflowGenerationBoundary enabled={generationEnabled} ownerId={ownerId} draft={{ kind: "hook", instructions, settings: generation.settings, creator: creator.asset, videoReference: videoReference.asset, audioReference: hookAudio.asset, referencesPending: creator.loading || videoReference.loading || hookAudio.loading }}>{(run) => <WorkflowFinishingBoundary enabled={generationEnabled} ownerId={ownerId} kind="hook" source={run?.selected ?? null} demo={demo.asset} demoAudio={demoAudio.asset} playback={demoAudioPlayback} scheduleDraft={scheduleDraft}>{(finish) => <section className={cn(studio.studio, creation.shell, "min-w-0")}>
+  return <WorkflowGenerationBoundary enabled={generationEnabled} ownerId={ownerId} draft={{ kind: "hook", instructions, settings: generation.settings, creator: creator.asset, videoReference: videoReference.asset, audioReference: hookAudio.asset, referencesPending: creator.loading || videoReference.loading || hookAudio.loading }}>{(run) => {
+    const outputAspect = run?.selected?.width && run.selected.height ? run.selected.width / run.selected.height : generation.settings.aspectRatio === "16:9" ? 16 / 9 : 9 / 16;
+    const framingError = demoFramingEnabled && demoFraming && Math.abs(demoFraming.aspect / outputAspect - 1) > .015 ? "Video shape changed. Record framing again for this shape, or reset it." : null;
+    const currentFraming = demoFramingEnabled && !framingError ? demoFraming?.frame ?? null : null;
+    return <WorkflowFinishingBoundary enabled={generationEnabled} ownerId={ownerId} kind="hook" source={run?.selected ?? null} demo={demo.asset} demoAudio={demoAudio.asset} playback={demoAudioPlayback} scheduleDraft={scheduleDraft} demoFraming={currentFraming} demoFramingError={framingError}>{(finish) => <section className={cn(studio.studio, creation.shell, "min-w-0")}>
     {/* The Library follows the complete first-screen workspace, never its initial viewport. */}
     <div data-hook-first-screen className="flex min-h-[calc(100dvh-4rem)] flex-col md:min-h-dvh">
       <header className={cn(creation.header, "flex shrink-0 items-center gap-3 px-4 py-3 sm:px-6 lg:px-8")}>
@@ -94,6 +101,8 @@ function HookWorkflowLayout({ initialDuration, initialModel, generationEnabled, 
           </Tabs.Panel>
           <Tabs.Panel value="edit" keepMounted className={creation.sectionPanel}>
             <WorkflowCompositionPanel videoLabel="Hook" connected={generationEnabled} ownerId={ownerId} options={finish.options} onOptionsChange={finish.setOptions}
+              demoFramingEnabled={demoFramingEnabled} demoFraming={currentFraming} demoFramingError={framingError} onDemoFramingChange={frame => setDemoFraming(frame ? { frame, aspect: outputAspect } : null)} editingBusy={finish.edit?.busy}
+              outputAspect={outputAspect} onDemoControlsOpen={() => workspaceRef.current?.querySelectorAll<HTMLMediaElement>("audio, video").forEach(player => player.pause())}
               demo={{ ...demo, choose: chooseDemo, remove: removeDemo }} demoAudio={{ ...demoAudio, choose: chooseDemoAudio, remove: removeDemoAudio }} demoAudioPlayback={demoAudioPlayback} onDemoAudioPlaybackChange={setDemoAudioPlayback} />
           </Tabs.Panel>
           <Tabs.Panel value="schedule" keepMounted className={creation.sectionPanel}>
@@ -102,7 +111,7 @@ function HookWorkflowLayout({ initialDuration, initialModel, generationEnabled, 
         </WorkflowCreationPanel>
         <section aria-label="Hook creation workspace" className={creation.main}>
           {section === "create" ? <WorkflowPreviewCanvas kind="hook" generation={run ?? undefined} />
-            : section === "edit" ? <WorkflowEditWorkspace kind="hook" demo={demo} demoAudio={demoAudio} generatedVideo={run?.selected} finishedVideo={finish.output} />
+            : section === "edit" ? <WorkflowEditWorkspace kind="hook" demo={demo} demoAudio={demoAudio} generatedVideo={run?.selected} finishedVideo={finish.output} demoFraming={currentFraming} />
             : <WorkflowScheduleWorkspace draft={scheduleDraft} finishedVideo={finish.output} />}
           <div className={creation.canvasFooter}>
             <a href="#hook-reference-library" aria-label="Scroll to Library" className={creation.libraryShortcut} onClick={(event) => {
@@ -120,7 +129,8 @@ function HookWorkflowLayout({ initialDuration, initialModel, generationEnabled, 
     </div>
 
     <LibrarySection />
-  </section>}</WorkflowFinishingBoundary>}</WorkflowGenerationBoundary>;
+  </section>}</WorkflowFinishingBoundary>;
+  }}</WorkflowGenerationBoundary>;
 }
 
 function LibrarySection() {

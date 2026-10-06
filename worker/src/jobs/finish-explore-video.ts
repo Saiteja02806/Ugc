@@ -6,6 +6,7 @@ import { ExploreFinishError, isExploreUuid } from "../lib/explore-finishing-cont
 import { ExploreFinishingStore } from "../lib/explore-finishing-store.js";
 import type { ExploreFinishReceipt } from "../lib/explore-finishing-store.js";
 import { ExploreFinishingStorage } from "../lib/explore-finishing-storage.js";
+import { isPrivateMedia } from "../lib/private-media.js";
 import { finishExploreVideo } from "../lib/explore-video-finishing.js";
 import { RetryableJobError } from "../retryable-job-error.js";
 import type { BackgroundJobRow } from "../types.js";
@@ -67,7 +68,8 @@ export async function runFinishExploreVideoJob(job: BackgroundJobRow, context: P
   const directory = await mkdtemp(join(tmpdir(),"ugc-explore-finish-"));
   try {
     await context.checkpoint({ status:"processing",stage:"downloading_owned_media",progress:10 });
-    for (let i=0;i<assets.length;i++) await deps.storage.download(assets[i].storage_key,join(directory,`source-${i}`),selections[i].max);
+    for (let i=0;i<assets.length;i++) await deps.storage.download(assets[i].storage_key,join(directory,`source-${i}`),selections[i].max,
+      isPrivateMedia(assets[i].metadata) ? "private_user_media" : "primary");
     await context.checkpoint({ status:"rendering",stage:"composing_explore_video",progress:30 });
     let i=1;
     const demoPath = draft.demoAssetId ? join(directory,`source-${i++}`) : undefined;
@@ -76,6 +78,7 @@ export async function runFinishExploreVideoJob(job: BackgroundJobRow, context: P
     const tools = { ffmpeg:process.env.FFMPEG_PATH || "ffmpeg",ffprobe:process.env.FFPROBE_PATH || "ffprobe",
       fontsDir:process.env.SUBTITLE_FONTS_DIR || fileURLToPath(new URL("../../assets/fonts/",import.meta.url)) };
     const result = await deps.finish({ sourcePath:join(directory,"source-0"),demoPath,demoAudioPath,backgroundMusicPath,
+      ...(draft.demoFraming ? { demoFraming: draft.demoFraming } : {}),
       ...(demoAudioPath ? { demoAudioPlayback:draft.demoAudioPlayback } : {}),
       ...(backgroundMusicPath ? { backgroundMusicPlayback:draft.backgroundPlayback } : {}),workDir:join(directory,"render"),tools,
       ...(draft.subtitles && subtitleStyle ? { subtitles:{ ...draft.subtitles,style:subtitleStyle,loadTranscript:async (speech) => {
@@ -97,7 +100,8 @@ export async function runFinishExploreVideoJob(job: BackgroundJobRow, context: P
     try {
       output = await deps.storage.upload(receipt,result.outputPath,{ durationSeconds:result.durationMs/1000,width:result.width,height:result.height,
         ratio:assets[0].ratio || "other",metadata:{ sourceHashes:result.sourceHashes,segments:result.segments,
-          demoAudioTiming:result.demoAudioTiming,backgroundMusicTiming:result.backgroundMusicTiming,subtitleStyle:result.subtitleStyle,subtitleWordCount:result.subtitleWordCount } });
+          demoAudioTiming:result.demoAudioTiming,backgroundMusicTiming:result.backgroundMusicTiming,subtitleStyle:result.subtitleStyle,subtitleWordCount:result.subtitleWordCount,
+          ...(draft.demoFraming ? { demoFraming: draft.demoFraming } : {}) } });
     }
     catch (error) {
       if (error instanceof ExploreFinishError) throw error;

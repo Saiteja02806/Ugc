@@ -6,11 +6,11 @@ import { FirebaseAuthRequestError, requireFirebaseUser } from "@/lib/firebase/se
 import { getBackgroundJobForUser, getMissingBackgroundJobStorageEnvVars, type BackgroundJobRecord } from "@/lib/jobs/background-jobs";
 import { dispatchQueuedBackgroundJobForRecovery } from "@/lib/jobs/background-job-service";
 import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
-import { ExploreFinishError, EXPLORE_RENDER_VERSION, isExploreUuid, parseExploreFinishDraft, type ExploreFinishDraft, type ExploreFinishReceipt } from "@/worker/src/lib/explore-finishing-contract";
+import { ExploreFinishError, EXPLORE_RENDER_VERSION, DEMO_FRAMING_RENDER_VERSION, isExploreUuid, parseExploreFinishDraft, type ExploreFinishDraft, type ExploreFinishReceipt } from "@/worker/src/lib/explore-finishing-contract";
 import { SCRIBE_PROVIDER_KEY } from "@/worker/src/subtitles/elevenlabs-contract";
 import { ExploreFinishingRequestStore } from "./workflow-finishing-store";
 
-const MAX_BODY_BYTES = 8 * 1024;
+const MAX_BODY_BYTES = 32 * 1024;
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store", Vary: "Authorization" } });
 const terminal = new Set(["completed", "failed", "cancelled"]);
 const safeErrors: Record<string, string> = {
@@ -25,7 +25,7 @@ const safeErrors: Record<string, string> = {
 
 /** Bind normalized edits to the worker/render policy, not client-supplied IDs. */
 export function fingerprintExploreFinish(draft: ExploreFinishDraft) {
-  return createHash("sha256").update(JSON.stringify({ renderer: EXPLORE_RENDER_VERSION,
+  return createHash("sha256").update(JSON.stringify({ renderer: draft.demoFraming ? DEMO_FRAMING_RENDER_VERSION : EXPLORE_RENDER_VERSION,
     transcription: draft.subtitles ? SCRIBE_PROVIDER_KEY : null, draft })).digest("hex");
 }
 
@@ -92,6 +92,7 @@ export async function handleWorkflowFinishingStart(request: Request) {
     const prior = await store.read(owner, key);
     if (prior && (prior.fingerprint !== fingerprint || JSON.stringify(prior.draft) !== JSON.stringify(draft))) throw new ExploreFinishError("This request was already used for different edits.", 409);
     if (!prior) {
+      if (draft.demoFraming && process.env.EXPLORE_DEMO_FRAMING_ENABLED !== "true") throw new ExploreFinishError("Demo framing is not enabled yet.", 503);
       if (draft.subtitles && process.env.EXPLORE_FINISHING_SUBTITLES_ENABLED !== "true") throw new ExploreFinishError("Subtitle finishing is not enabled yet.", 503);
       if (getMissingBackgroundJobStorageEnvVars().length || getMissingJobQueueEnvVars(["render_demo_video"]).length) throw new ExploreFinishError("Video finishing dispatch is not configured.", 503);
     }

@@ -21,7 +21,6 @@ export function AccountTimeZoneProvider({ children }: { children: ReactNode }) {
       if (!token) throw new Error("Sign in to load your time zone.");
       const response = await fetch("/api/account/timezone", {
         method: "POST",
-        cache: "no-store",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ timezone }),
         signal,

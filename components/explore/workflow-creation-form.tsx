@@ -54,7 +54,7 @@ export function WorkflowCreationForm({ kind, instructions, onInstructionsChange,
         <Popover>
           <PopoverTrigger render={<Button type="button" variant="outline" aria-label="Choose video reference" aria-busy={videoReference.loading} data-state={videoReference.loading ? "loading" : videoReference.error ? "error" : videoReference.asset ? "selected" : "empty"} title={videoReference.asset?.name ?? "Choose an optional video reference"} className={creation.referenceButton} />}>
             {videoReference.asset ? <ReferenceVideoThumbnail url={videoReference.asset.url} /> : <Video className="size-5" aria-hidden="true" />}
-            <span className={creation.referenceLabel}>Choose video</span>{videoReference.asset ? <Check className={creation.referenceCheck} aria-label="Video attached" /> : null}
+            <span className={creation.referenceLabel}>Video reference</span>{videoReference.asset ? <Check className={creation.referenceCheck} aria-label="Video attached" /> : null}
           </PopoverTrigger>
           <PopoverContent side="right" align="start" className={cn(studio.floating, creation.floating)}>
             <PopoverTitle>Video reference</PopoverTitle>

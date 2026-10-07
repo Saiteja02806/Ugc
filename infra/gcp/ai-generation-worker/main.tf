@@ -331,6 +331,37 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
       }
 
       env {
+        name  = "AUDIO_GENERATION_ENABLED"
+        value = tostring(var.enable_audio_generation)
+      }
+
+      dynamic "env" {
+        for_each = var.elevenlabs_api_key_secret_id == "" ? [] : [var.elevenlabs_api_key_secret_id]
+        content {
+          name = "ELEVENLABS_API_KEY"
+          value_source {
+            secret_key_ref {
+              secret  = env.value
+              version = "latest"
+            }
+          }
+        }
+      }
+
+      dynamic "env" {
+        for_each = var.elevenlabs_voice_api_key_secret_id == "" ? [] : [var.elevenlabs_voice_api_key_secret_id]
+        content {
+          name = "ELEVENLABS_VOICE_API_KEY"
+          value_source {
+            secret_key_ref {
+              secret  = env.value
+              version = "latest"
+            }
+          }
+        }
+      }
+
+      env {
         name = "UGC_INTERNAL_SCHEDULING_SECRET"
         value_source {
           secret_key_ref {

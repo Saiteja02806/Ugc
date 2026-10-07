@@ -1,6 +1,6 @@
 import { isExploreUuid, parseExploreFinishDraft, type ExploreFinishDraft } from "../../worker/src/lib/explore-finishing-contract.ts";
 
-export type FinishStatus = { requestKey: string; outcome: "pending" | "completed" | "failed" | "cancelled" | "uncertain" | "unconfirmed"; mediaAssetId: string | null; message: string };
+export type FinishStatus = { requestKey: string; jobId: string | null; outcome: "pending" | "completed" | "failed" | "cancelled" | "uncertain" | "unconfirmed"; mediaAssetId: string | null; message: string };
 export type SavedFinish = { version: 1; ownerId: string; kind: "hook" | "phone"; requestKey: string; draft: ExploreFinishDraft };
 export const finishStorageKey = (owner: string, kind: "hook" | "phone") => `ugc-explore:finish:v1:${encodeURIComponent(owner)}:${kind}`;
 export function readSavedFinish(raw: string | null, owner: string, kind: "hook" | "phone"): SavedFinish | null {
@@ -16,7 +16,8 @@ export function parseFinishStatus(value: unknown, key: string): FinishStatus {
   const v = value as Record<string, unknown> | null;
   if (!v || v.ok !== true || v.receiptVersion !== 1 || v.requestKey !== key || !["pending", "completed", "failed", "cancelled", "uncertain", "unconfirmed"].includes(String(v.outcome)) ||
       (v.mediaAssetId !== null && !isExploreUuid(v.mediaAssetId)) || (v.outcome === "completed" && !isExploreUuid(v.mediaAssetId))) throw new Error("Could not confirm the saved edit. Check its status before starting another.");
-  return { requestKey: key, outcome: v.outcome as FinishStatus["outcome"], mediaAssetId: v.mediaAssetId as string | null, message: typeof v.message === "string" ? v.message.slice(0, 512) : "Checking your saved edit…" };
+  if (v.jobId != null && !isExploreUuid(v.jobId)) throw new Error("Could not verify the finishing job.");
+  return { requestKey: key, jobId: typeof v.jobId === "string" ? v.jobId : null, outcome: v.outcome as FinishStatus["outcome"], mediaAssetId: v.mediaAssetId as string | null, message: typeof v.message === "string" ? v.message.slice(0, 512) : "Checking your saved edit…" };
 }
 export async function requestFinish(deps: { token: () => Promise<string | null>; fetch: typeof fetch; assertActive: () => void }, saved: SavedFinish, submit = false): Promise<FinishStatus> {
   deps.assertActive();

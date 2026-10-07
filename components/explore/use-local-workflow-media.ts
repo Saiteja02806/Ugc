@@ -30,14 +30,14 @@ export function useLocalWorkflowMedia(kind: LocalMediaKind) {
       if (request !== revision.current || options.signal?.aborted) { URL.revokeObjectURL(url); return false; }
       if (options.maxDuration && duration !== null && duration > options.maxDuration) {
         URL.revokeObjectURL(url);
-        setError(`Choose audio up to ${options.maxDuration} seconds long.`);
+        setError(`Choose ${kind} up to ${options.maxDuration} seconds long.`);
         return false;
       }
       setAsset({ name: file.name, url, duration, file });
       return true;
     } catch {
       URL.revokeObjectURL(url);
-      if (request === revision.current) setError(`This ${kind} could not be previewed. Try another file.`);
+      if (request === revision.current && !options.signal?.aborted) setError(`This ${kind} could not be previewed. Try another file.`);
       return false;
     } finally {
       if (request === revision.current) setLoading(false);

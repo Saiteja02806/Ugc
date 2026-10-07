@@ -1,4 +1,5 @@
-import { SubtitleError, type SubtitleCue, type SubtitlePlacement, type SubtitleStyle, type TimedWord } from "./contracts.js";
+import { SubtitleError, subtitlePlacementGeometry, type SubtitleCue, type SubtitlePlacement, type SubtitleStyle, type TimedWord } from "./contracts.js";
+import { isDynamicSubtitleStyle } from "./styles.js";
 
 export type SubtitleLayout = {
   width: number;
@@ -72,9 +73,10 @@ function assTime(ms: number) {
 
 export function serializeAss(cues: SubtitleCue[], layout: SubtitleLayout, style: SubtitleStyle, placement: SubtitlePlacement) {
   if (style === "editorial") throw new SubtitleError("EDITORIAL_PLANNER_REQUIRED", "Editorial captions require their measured layout planner.");
+  if (isDynamicSubtitleStyle(style)) throw new SubtitleError("DYNAMIC_PLANNER_REQUIRED", "This style requires its measured animation planner.");
   const outline = Math.max(1, Math.round(layout.fontSize * 0.065));
   const x = Math.round(layout.width / 2);
-  const y = Math.round(layout.height * (placement === "bottom" ? 0.78 : 0.22));
+  const y = Math.round(layout.height * subtitlePlacementGeometry(placement).anchor);
   const header = `[Script Info]\nScriptType: v4.00+\nPlayResX: ${layout.width}\nPlayResY: ${layout.height}\nWrapStyle: 2\nScaledBorderAndShadow: yes\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Caption,Arial,${layout.fontSize},&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,${layout.bold ? -1 : 0},0,0,0,100,100,0,0,${style === "bold-box" ? 3 : 1},${style === "bold-box" ? outline * 3 : outline},0,5,0,0,0,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`;
   const events: string[] = [];
   for (const cue of cues) {

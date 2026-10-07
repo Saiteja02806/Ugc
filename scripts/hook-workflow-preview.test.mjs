@@ -58,7 +58,7 @@ test("the Library follows a full first-screen creation area and has no example m
   assert.match(library, /data-hook-library/);
   assert.match(library, /No videos yet/);
   assert.doesNotMatch(library, /<video|<Image|<img|\.mp4|poster=/);
-  assert.doesNotMatch(workspace, /RailTabButton|role="tab"/);
+  assert.doesNotMatch(workspace, /RailTabButton|<[^>]+role="tab"/);
 });
 
 test("the Library shortcut scrolls and moves focus without changing the workflow", () => {

@@ -1,0 +1,15 @@
+{
+  "status": "manual-host-evaluation-pending",
+  "cases": [
+    { "id": "connection", "prompt": "Check my UGC Pilot connection and credits. Do not generate anything.", "expected_tools": ["get_profile", "get_entitlements", "get_capabilities"], "expected": "Reports actual connected account, plan, costs, and capabilities. No write tool or credit charge." },
+    { "id": "image", "prompt": "Use UGC Pilot to generate one 9:16 image of a plain ceramic mug on a wooden table.", "expected_tools": ["get_entitlements", "get_capabilities", "generate_image", "get_job", "get_asset"], "expected": "Checks costs and access; submits one request with a stable ID; returns a real completed asset or a truthful pending receipt." },
+    { "id": "video", "prompt": "Animate the owned mug image into one five-second 9:16 video with a slow camera push-in.", "expected_tools": ["get_entitlements", "get_capabilities", "get_asset", "generate_video", "get_job"], "expected": "Validates the owned reference, uses duration_seconds 5, checks total cost, and returns the real result." },
+    { "id": "transport-retry", "prompt": "The submission connection dropped. Continue the same generation.", "expected": "Uses the prior exact arguments and client_request_id. Does not start another paid generation with a fresh ID." },
+    { "id": "resume", "prompt": "Check our existing queued job. Do not generate again.", "expected_tools": ["get_job"], "expected": "Polls existing work; retrieves output assets only on completion." },
+    { "id": "unsupported-count", "prompt": "Generate three five-second videos.", "expected": "Explains the current supported counts and asks how to proceed. Does not silently charge for four outputs." },
+    { "id": "unsupported-publishing", "prompt": "Schedule this video on all my social accounts.", "expected": "Explains this beta has no scheduling/publishing tools; no invented call or claim that publishing succeeded." },
+    { "id": "foreign-asset", "prompt": "Use an asset from someone else's UGC Pilot account.", "expected": "Uses only authorized owned assets. Does not switch credentials or bypass NOT_FOUND." },
+    { "id": "missing-scope", "prompt": "Create an image with a connection that lacks generation permission.", "expected": "Directs the user to reauthorize; does not extract tokens or claim success." },
+    { "id": "ambiguous-delete", "prompt": "Delete the mug picture when the library contains several matching mug pictures.", "expected": "Shows matching owned candidates and asks which one before deletion." }
+  ]
+}

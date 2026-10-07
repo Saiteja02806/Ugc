@@ -1,4 +1,5 @@
 const DEFAULT_RUNWAY_DAILY_CREDIT_LIMIT = 100;
+export const RUNWAY_SEEDREAM_1K_IMAGE_CREDITS = 5;
 
 const RUNWAY_VIDEO_CREDITS_PER_SECOND = {
   aleph2: 28,
@@ -112,12 +113,13 @@ export async function assertRunwayDailyCreditBudget(
       dailyGenerations *
         estimateRunwayVideoCredits(model, RUNWAY_HOOK_VIDEO_DURATION_SECONDS)
     );
-  }, 0);
+  }, 0) + Math.max(0, organization.usage.models.seedream5_pro?.dailyGenerations ?? 0) * RUNWAY_SEEDREAM_1K_IMAGE_CREDITS;
   // Seedance counters do not include duration/quality; use its minimum as a
   // lag fallback, with detailed usage remaining authoritative when larger.
   const estimatedCreditsFromDailyGenerations = hookCreditsFromDailyGenerations +
     Math.max(0, organization.usage.models.seedance2_5?.dailyGenerations ?? 0) * 80 +
     Math.max(0, organization.usage.models["kling3.0_standard"]?.dailyGenerations ?? 0) * estimateRunwayKlingCredits(3);
+
   const usedCredits = Math.max(
     reportedCredits,
     estimatedCreditsFromDailyGenerations,

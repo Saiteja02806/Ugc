@@ -238,8 +238,8 @@ export function ScheduleEditor({
   errorMessage,
   hookMediaOptions,
   initialClipSelection,
-  initialCaption,
   initialDemoMediaId,
+  initialCaption = "",
   initialHookMediaId,
   initialPlannedTargets,
   initialScheduledDate,
@@ -264,8 +264,8 @@ export function ScheduleEditor({
   errorMessage: string | null;
   hookMediaOptions: ScheduleMediaOption[];
   initialClipSelection?: "secondary_only";
-  initialCaption?: string;
   initialDemoMediaId: string;
+  initialCaption?: string;
   initialHookMediaId: string;
   initialPlannedTargets: ScheduleCreateTargetInput[];
   initialScheduledDate: string;
@@ -371,7 +371,7 @@ export function ScheduleEditor({
   );
   const [refreshingMedia, setRefreshingMedia] = useState(false);
   const [hookPickerError, setHookPickerError] = useState<string | null>(null);
-  const [caption, setCaption] = useState(editingSchedule?.caption ?? initialCaption ?? "");
+  const [caption, setCaption] = useState(editingSchedule?.caption ?? initialCaption);
   const [selectedConnectionIds, setSelectedConnectionIds] =
     useState<string[]>(initialConnectionIds);
   const [accountSelectionChanged, setAccountSelectionChanged] = useState(false);
@@ -1114,11 +1114,7 @@ export function ScheduleEditor({
                         aria-invalid={Boolean(scheduleTimeValidation.error)}
                         min={minimumScheduledDate}
                         value={scheduledDate}
-                        onChange={(event) => {
-                          setTimezone(timezone);
-                          setScheduledTime(scheduledTime);
-                          setScheduledDate(event.target.value);
-                        }}
+                        onChange={(event) => { setTimezone(timezone); setScheduledTime(scheduledTime); setScheduledDate(event.target.value); }}
                         className="mt-2 h-11 w-full rounded-control border border-border bg-card-muted px-4 text-sm font-bold text-foreground outline-none transition [color-scheme:dark] hover:border-border-strong focus:border-primary focus:ring-2 focus:ring-primary/15"
                       />
                     </label>
@@ -1134,11 +1130,7 @@ export function ScheduleEditor({
                             : undefined
                         }
                         invalid={Boolean(scheduleTimeValidation.error)}
-                        onChange={(value) => {
-                          setTimezone(timezone);
-                          setScheduledDate(scheduledDate);
-                          setScheduledTime(value);
-                        }}
+                        onChange={(value) => { setTimezone(timezone); setScheduledDate(scheduledDate); setScheduledTime(value); }}
                       />
                     </div>
                   </div>

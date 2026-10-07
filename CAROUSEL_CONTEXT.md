@@ -1,6 +1,17 @@
 # Carousel System Context
 
-Last updated: 2026-10-05
+Last updated: 2026-10-07
+
+## 2026-10-07 complete release reconciliation
+
+- The retired Create Content frontend, exclusive API routes and their support
+  files are removed. Its worker handlers and shared job types remain compatible
+  with queued and historical jobs. Carousel sourcing, matching, readiness,
+  review, rendering and production recovery behavior remain as on current main.
+- Explore Hook and Phone now accept an owned uploaded or Creative Assets video
+  as their opening segment. Source selection feeds the existing finishing and
+  scheduling path; live generation and demo framing remain available. App and
+  shared worker deployments must use the same release revision.
 
 ## 2026-10-05 Trending manual Wall copy formatting (local implementation)
 

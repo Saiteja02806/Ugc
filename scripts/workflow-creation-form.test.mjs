@@ -164,7 +164,7 @@ test("the shared settings hook owns the draft, applies rapid changes to current 
     assert.match(parent, /useWorkflowGenerationSettings\(/);
     assert.match(parent, /generationSettings=\{generation.settings\}/);
     assert.match(parent, /onGenerationSettingsChange=\{generation.changeSettings\}/);
-    assert.match(parent, /const dirty = Boolean\(generation.dirty/);
+    assert.match(parent, /const dirty = Boolean\(selection.dirty \|\| generation.dirty/);
   }
 });
 

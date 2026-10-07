@@ -5,17 +5,21 @@ import { ArrowRight, AudioLines, Video } from "lucide-react";
 import { WorkflowMediaPlayer, type WorkflowAttachment } from "@/components/explore/hook-workflow-media-controls";
 import { SCHEDULE_PLATFORMS, type WorkflowScheduleDraft } from "@/components/explore/workflow-scheduling-panel";
 import creation from "@/components/explore/workflow-creation.module.css";
+import { Button } from "@/components/ui/button";
+import type { LocalWorkflowMedia } from "@/components/explore/use-local-workflow-media";
 import type { MediaAsset } from "@/lib/media/types";
 import { workflowSelectedPlatforms } from "@/lib/explore/workflow-scheduling-draft";
 import { WorkflowDemoPreview } from "@/components/explore/workflow-demo-controls";
 import type { DemoFraming } from "@/worker/src/lib/explore-finishing-contract";
 
 /** Shows only user-selected demo media, never a stock or pretend generated video. */
-export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, finishedVideo, demoFraming }: {
+export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, sourcePreview, onChangeSource, finishedVideo, demoFraming }: {
   kind: "hook" | "phone";
   demo: WorkflowAttachment;
   demoAudio: WorkflowAttachment;
   generatedVideo?: MediaAsset | null;
+  sourcePreview?: LocalWorkflowMedia | null;
+  onChangeSource?: () => void;
   finishedVideo?: MediaAsset | null;
   demoFraming?: DemoFraming | null;
 }) {
@@ -29,7 +33,8 @@ export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, f
     <div className={creation.sequenceGrid}>
       <section aria-label={`${videoLabel} segment`} className={creation.segment}>
         <h3 className="text-sm font-medium">{videoLabel}</h3>
-        {generatedVideo ? <WorkflowMediaPlayer asset={{ name: generatedVideo.title, url: generatedVideo.url, duration: generatedVideo.durationSeconds }} kind="video" label={`${videoLabel} segment preview`} className={creation.demoPlayer} />
+        {onChangeSource ? <Button type="button" variant="ghost" onClick={onChangeSource}>Change video</Button> : null}
+        {sourcePreview ? <WorkflowMediaPlayer asset={sourcePreview} kind="video" label={`${videoLabel} segment preview`} className={creation.demoPlayer} /> : generatedVideo ? <WorkflowMediaPlayer asset={{ name: generatedVideo.title, url: generatedVideo.url, duration: generatedVideo.durationSeconds }} kind="video" label={`${videoLabel} segment preview`} className={creation.demoPlayer} />
           : <div className={creation.segmentEmpty}><Video className="size-5 text-muted" aria-hidden="true" /><p>Your generated {videoLabel.toLowerCase()} will appear here.</p></div>}
       </section>
       <ArrowRight className={creation.sequenceArrow} aria-hidden="true" />

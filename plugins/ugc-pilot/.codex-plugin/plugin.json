@@ -1,0 +1,23 @@
+{
+  "name": "ugc-pilot",
+  "version": "0.1.0",
+  "description": "Generate images and short videos using your UGC Pilot account and credits.",
+  "author": { "name": "UGC Pilot", "url": "https://www.getugcpilot.com" },
+  "homepage": "https://www.getugcpilot.com",
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "UGC Pilot",
+    "shortDescription": "Images and videos in your AI",
+    "longDescription": "Connect your own UGC Pilot account to generate images and 3–10 second videos, browse media, and retrieve results. Generation uses UGC Pilot credits.",
+    "developerName": "UGC Pilot",
+    "category": "Productivity",
+    "logo": "./assets/logo.png",
+    "composerIcon": "./assets/logo.png",
+    "defaultPrompt": [
+      "Check my UGC Pilot connection, plan, credits, and generation options without generating anything.",
+      "Use UGC Pilot to create one vertical product image.",
+      "Use UGC Pilot to animate an image from my library into a five-second vertical video."
+    ]
+  }
+}

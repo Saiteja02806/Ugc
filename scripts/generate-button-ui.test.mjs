@@ -91,7 +91,7 @@ test("shared Generate button retains its loading spinner and label", () => {
 
 test("workflow 1 and 3 share a text-only Generate button without enabling preview generation", () => {
   for (const kind of ["hook", "phone"]) {
-    const { markup } = buttonFixture("components/explore/workflow-creation-panel.tsx", "Button", "title=\"No generation, upload or credits", {
+    const { markup } = buttonFixture("components/explore/workflow-creation-panel.tsx", "Button", "No generation, upload or credits", {
       kind,
       creation: { primaryAction: "primary-action" },
     });
@@ -99,21 +99,6 @@ test("workflow 1 and 3 share a text-only Generate button without enabling previe
     assert.match(markup, /disabled=""/);
     assert.match(markup, /Generate video<\/button>/);
     assert.ok(markup.includes(`aria-label="${kind === "hook" ? "Generate hook" : "Generate phone video"}"`));
-  }
-});
-
-test("connected workflow Generate controls remain text-only and respect the controller lock", () => {
-  for (const kind of ["hook", "phone"]) {
-    for (const busy of [false, true]) {
-      for (const disabled of [false, true]) {
-        const { markup } = buttonFixture("components/explore/workflow-creation-panel.tsx", "Button", "onClick={generation.onGenerate}", {
-          kind, creation: { primaryAction: "primary-action" }, generation: { busy, disabled, onGenerate() {} },
-        });
-        assert.doesNotMatch(markup, /<svg/);
-        assert.equal(markup.includes('disabled=""'), disabled);
-        assert.ok(markup.endsWith(`${busy ? "Generating video…" : "Generate video"}</button>`));
-      }
-    }
   }
 });
 

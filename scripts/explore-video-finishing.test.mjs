@@ -43,11 +43,11 @@ test("subtitles off finishes without any transcription and leaves source files u
   assert.ok((await stat(result.outputPath)).size > 0); assert.equal(hash(await readFile(sourcePath)), before);
 });
 
-test("all four styles burn actual timed captions onto the combined video, preserve sound and source files", async t => {
+test("all seven styles burn actual timed captions onto the combined video, preserve sound and source files", async t => {
   const dir = await workspace(t), sourcePath = join(dir, "opening.mp4"), demoPath = join(dir, "demo.mp4");
   video(sourcePath); video(demoPath, 1, 660);
   const originals = await Promise.all([sourcePath, demoPath].map(async path => hash(await readFile(path))));
-  for (const style of ["clean", "bold-box", "active-word", "editorial"]) {
+  for (const style of ["clean", "bold-box", "active-word", "editorial", "word-pop", "karaoke", "marker-highlight"]) {
     let calls = 0;
     const workDir = join(dir, style);
     const result = await finishExploreVideo({ sourcePath, demoPath, workDir, tools, subtitles: { language: "en", style, loadTranscript: async identity => {
@@ -66,15 +66,44 @@ test("all four styles burn actual timed captions onto the combined video, preser
   }
 });
 
-test("transcription receives original speech only, not either known added background layer", async t => {
+test("transcription receives all final mixed audio on the composed timeline", async t => {
   const dir = await workspace(t), sourcePath = join(dir, "opening.mp4"), demoPath = join(dir, "demo.mp4"), demoAudioPath = join(dir, "music.wav");
   video(sourcePath); video(demoPath, 1, 660);
   execFileSync(ffmpeg, ["-nostdin", "-v", "error", "-n", "-f", "lavfi", "-i", "sine=frequency=880:duration=2", demoAudioPath], { windowsHide: true, timeout: 30000 });
   await finishExploreVideo({ sourcePath, demoPath, demoAudioPath, backgroundMusicPath: demoAudioPath, workDir: join(dir, "render"), tools,
     subtitles: { language: "en", style: "clean", loadTranscript: async identity => {
-      const audio = samples(identity.audioPath); assert.ok(power(audio, 440) > 100 * power(audio, 880)); assert.ok(power(audio, 660) > 100 * power(audio, 880));
+      const audio = samples(identity.audioPath); assert.ok(power(audio, 440) > power(audio, 880)); assert.ok(power(audio, 660) > power(audio, 880));
       return speech(identity.durationMs);
     } } });
+});
+
+test("all positions and styles burn visible pixels in the selected region across opening and demo", async t => {
+  const dir = await workspace(t), sourcePath = join(dir, "opening.mp4"), demoPath = join(dir, "demo.mp4");
+  video(sourcePath); video(demoPath, 1, 660);
+  for (const placement of ["bottom", "middle", "top"]) for (const style of ["clean", "bold-box", "active-word", "editorial", "word-pop", "karaoke", "marker-highlight"]) {
+    const workDir = join(dir, `${style}-${placement}`);
+    const result = await finishExploreVideo({ sourcePath, demoPath, workDir, tools, subtitles: {
+      language: "en", style, placement, loadTranscript: async ({ durationMs }) => speech(durationMs),
+    } });
+    assert.equal(result.subtitlePlacement, placement);
+    assert.equal(hash(extractAac(result.outputPath)), hash(extractAac(join(workDir, "composed.mp4"))));
+    for (const seconds of [.25, 1.5]) {
+      const plain = frame(join(workDir, "composed.mp4"), seconds), rendered = frame(result.outputPath, seconds);
+      const rows = [];
+      for (let y = 0; y < 384; y++) {
+        let changes = 0;
+        for (let x = 0; x < 256; x++) {
+          const i = (y * 256 + x) * 3;
+          if ([0, 1, 2].some(c => Math.abs(rendered[i + c] - plain[i + c]) > 35)) changes++;
+        }
+        if (changes > 5) rows.push(y);
+      }
+      assert.ok(rows.length > 3, `${style}/${placement} must paint visible captions`);
+      const center = (rows[0] + rows.at(-1)) / 2 / 384;
+      const [lo, hi] = placement === "bottom" ? [.60, .92] : placement === "middle" ? [.34, .66] : [.04, .36];
+      assert.ok(center > lo && center < hi, `${style}/${placement} painted at ${center}`);
+    }
+  }
 });
 
 test("Scribe adapter accepts the actual prepared WAV and burns its mocked word timings across both clips", async t => {
@@ -87,8 +116,8 @@ test("Scribe adapter accepts the actual prepared WAV and burns its mocked word t
     const wav = Buffer.from(await options.body.get("file").arrayBuffer());
     assert.equal(hash(wav), preparedHash);
     const audio = execFileSync(ffmpeg, ["-nostdin", "-v", "error", "-i", "pipe:0", "-vn", "-ac", "1", "-ar", "16000", "-f", "f32le", "pipe:1"], { input: wav, windowsHide: true, timeout: 30000 });
-    assert.ok(power(audio, 440) > 100 * power(audio, 880));
-    assert.ok(power(audio, 660) > 100 * power(audio, 880));
+    assert.ok(power(audio, 440) > power(audio, 880));
+    assert.ok(power(audio, 660) > power(audio, 880));
     return Response.json({ language_code: "en", language_probability: 0.98,
       words: [{ type: "word", text: "Opening", start: 0.1, end: 0.4 }, { type: "word", text: "Demo", start: 1.2, end: 1.6 }] });
   });

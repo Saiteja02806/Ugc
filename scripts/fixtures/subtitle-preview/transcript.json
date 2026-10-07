@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "provider": "fixture",
+  "model": "espeak-ng-0.3.0-marks-reviewed-v1",
+  "language": "en",
+  "durationMs": 8000,
+  "words": [
+    {
+      "text": "Make",
+      "startMs": 300,
+      "endMs": 532
+    },
+    {
+      "text": "every",
+      "startMs": 532,
+      "endMs": 834
+    },
+    {
+      "text": "word",
+      "startMs": 834,
+      "endMs": 1112
+    },
+    {
+      "text": "count.",
+      "startMs": 1112,
+      "endMs": 1477
+    },
+    {
+      "text": "Keep",
+      "startMs": 2123,
+      "endMs": 2442
+    },
+    {
+      "text": "your",
+      "startMs": 2442,
+      "endMs": 2618
+    },
+    {
+      "text": "captions",
+      "startMs": 2795,
+      "endMs": 3407
+    },
+    {
+      "text": "beautifully",
+      "startMs": 3407,
+      "endMs": 3907
+    },
+    {
+      "text": "clear,",
+      "startMs": 3907,
+      "endMs": 4503
+    },
+    {
+      "text": "and",
+      "startMs": 4503,
+      "endMs": 4692
+    },
+    {
+      "text": "let",
+      "startMs": 4692,
+      "endMs": 4918
+    },
+    {
+      "text": "your",
+      "startMs": 4918,
+      "endMs": 5057
+    },
+    {
+      "text": "story",
+      "startMs": 5057,
+      "endMs": 5427
+    },
+    {
+      "text": "shine.",
+      "startMs": 5427,
+      "endMs": 5866
+    }
+  ]
+}

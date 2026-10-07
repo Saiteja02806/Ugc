@@ -9,7 +9,7 @@ import type { AIStudioImageRatio } from "./image-output.js";
 import { getRequiredProviderEnv } from "./provider-env.js";
 import { downloadReferenceImageBytes } from "./reference-image-download.js";
 
-const DEFAULT_GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image";
+const DEFAULT_GEMINI_IMAGE_MODEL = "gemini-nano-banana-2.1";
 export const GEMINI_3_PRO_IMAGE_MODEL = "gemini-3-pro-image";
 
 let googleClient: GoogleGenAI | null = null;
@@ -36,12 +36,12 @@ export async function generateGeminiImageBuffer(
 
   if (interaction.status !== "completed") {
     throw new Error(
-      `Nano Banana 2 generation ended with status ${interaction.status}.`,
+      `Nano Banana 2.1 generation ended with status ${interaction.status}.`,
     );
   }
 
   if (!interaction.output_image?.data) {
-    throw new Error("Nano Banana 2 did not return image data.");
+    throw new Error("Nano Banana 2.1 did not return image data.");
   }
 
   return {

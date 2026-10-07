@@ -10,9 +10,9 @@ import type { LocalWorkflowMedia } from "@/components/explore/use-local-workflow
 import type { MediaAsset } from "@/lib/media/types";
 import type { DemoFraming, ExploreFinishStyle } from "@/worker/src/lib/explore-finishing-contract";
 
-export type FinishingOptions = { subtitles: boolean; style: ExploreFinishStyle; backgroundMusic: boolean };
-export const DEFAULT_FINISHING_OPTIONS: FinishingOptions = { subtitles: false, style: "clean", backgroundMusic: false };
-export type WorkflowAction = { busy: boolean; disabled: boolean; message: string; error: string | null; onAction: () => void; refresh: () => void };
+export type FinishingOptions = { subtitles: boolean; style: ExploreFinishStyle; backgroundMusic: boolean; placement?: "bottom" | "middle" | "top" };
+export const DEFAULT_FINISHING_OPTIONS: FinishingOptions = { subtitles: false, style: "clean", backgroundMusic: false, placement: "bottom" };
+export type WorkflowAction = { busy: boolean; disabled: boolean; message: string; error: string | null; onAction: () => void; refresh: () => void; cancel?: () => void };
 export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, demoAudio, playback, options, onRestoreOptions, demoFraming = null, demoFramingError = null }: {
   ownerId: string | null; enabled: boolean; kind: "hook" | "phone"; source: MediaAsset | null;
   demo: LocalWorkflowMedia | null; demoAudio: LocalWorkflowMedia | null; playback: "once" | "repeat"; options: FinishingOptions;
@@ -58,7 +58,7 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
       if (stopped) return;
       try {
         saved.current = readSavedFinish(localStorage.getItem(finishStorageKey(ownerId, kind)), ownerId, kind);
-        if (saved.current) onRestoreOptions?.({ subtitles: !!saved.current.draft.subtitles, style: saved.current.draft.subtitles?.style ?? "clean", backgroundMusic: !!saved.current.draft.backgroundAssetId });
+        if (saved.current) onRestoreOptions?.({ subtitles: !!saved.current.draft.subtitles, style: saved.current.draft.subtitles?.style ?? "clean", backgroundMusic: !!saved.current.draft.backgroundAssetId, placement: saved.current.draft.subtitles?.placement ?? "bottom" });
         setSavedEntry(saved.current); setRestored(true); void refresh();
       } catch (e) { setError(e instanceof Error ? e.message : "Could not verify the saved edit."); }
     });
@@ -93,7 +93,7 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
         if (currentOutput && saved.current && status?.outcome === "completed") {
           await accept(await requestFinish(deps(), saved.current)); return;
         }
-        if (!source) throw new Error("Generate and select a video before applying edits.");
+        if (!source) throw new Error("Upload or choose a video in Create before applying edits.");
         const total = (source.durationSeconds ?? 0) + (demo?.duration ?? 0);
         if (options.subtitles && (!(total > 0) || total > 60)) throw new Error("English auto subtitles support up to 60 seconds in total. Nothing is trimmed.");
         let backgroundAssetId: string | null = null, backgroundPlayback: "once" | "repeat" = "once";
@@ -108,7 +108,7 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
             deps().assertActive(); backgroundAssetId = result.asset.id; backgroundPlayback = music.playback;
           }
         }
-        const draft: SavedFinish["draft"] = { version: 1, kind, sourceAssetId: source.id, demoAssetId: await upload(demo, "video"), demoAudioAssetId: await upload(demoAudio, "audio"), demoAudioPlayback: demoAudio ? playback : "once", backgroundAssetId, backgroundPlayback, subtitles: options.subtitles ? { language: "en", style: options.style, placement: "bottom" } : null,
+        const draft: SavedFinish["draft"] = { version: 1, kind, sourceAssetId: source.id, demoAssetId: await upload(demo, "video"), demoAudioAssetId: await upload(demoAudio, "audio"), demoAudioPlayback: demoAudio ? playback : "once", backgroundAssetId, backgroundPlayback, subtitles: options.subtitles ? { language: "en", style: options.style, placement: options.placement ?? "bottom" } : null,
           ...(demoFraming ? { demoFraming } : {}) };
         deps().assertActive();
         const entry: SavedFinish = { version: 1, ownerId, kind, requestKey: crypto.randomUUID(), draft };
@@ -124,10 +124,24 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
   // files. A different source or newly selected edit must be applied first.
   const recoveredMatches = completedSignature === null && savedEntry && (!source || source.id === savedEntry.draft.sourceAssetId) && !demo && !demoAudio && !demoFraming &&
     !!options.backgroundMusic === !!savedEntry.draft.backgroundAssetId &&
-    options.subtitles === !!savedEntry.draft.subtitles && (!options.subtitles || options.style === savedEntry.draft.subtitles?.style);
+    options.subtitles === !!savedEntry.draft.subtitles && (!options.subtitles || (options.style === savedEntry.draft.subtitles?.style &&
+      (options.placement ?? "bottom") === (savedEntry.draft.subtitles?.placement ?? "bottom")));
   const currentOutput = output && !demoFramingError && (completedSignature === signature || recoveredMatches) ? output : null;
   const pending = status?.outcome === "pending" || status?.outcome === "uncertain";
   const disabled = !enabled || !ownerId || !restored || busy || pending || !!demoFramingError || (!source && !savedEntry);
-  const action: WorkflowAction = { busy, disabled, message: status?.message ?? (source ? "Apply edits to save your finished video." : "Generate a video before applying edits."), error: demoFramingError ?? error, onAction: () => { void apply(); }, refresh: () => { void refresh(); } };
+  async function cancel() {
+    if (working.current || !status?.jobId || !ownerId || !active.current) return;
+    working.current = true; setBusy(true); setError(null);
+    try {
+      const token = await getCurrentUserIdToken(ownerId); deps().assertActive();
+      if (!token) throw new Error("Sign in to cancel finishing.");
+      const response = await fetch(`/api/jobs/${encodeURIComponent(status.jobId)}/cancel`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) throw new Error("Could not confirm cancellation. Refresh the saved request.");
+      if (saved.current) await accept(await requestFinish(deps(), saved.current));
+    } catch (e) { if (active.current) setError(e instanceof Error ? e.message : "Could not confirm cancellation."); }
+    finally { working.current = false; if (active.current) setBusy(false); }
+  }
+  const action: WorkflowAction = { busy, disabled, message: status?.message ?? (source ? "Apply edits to save your finished video." : "Choose a saved video before applying edits."), error: demoFramingError ?? error, onAction: () => { void apply(); }, refresh: () => { void refresh(); },
+    ...(pending && status?.jobId ? { cancel: () => { void cancel(); } } : {}) };
   return { action, output: currentOutput };
 }

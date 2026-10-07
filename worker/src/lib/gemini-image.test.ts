@@ -8,14 +8,14 @@ import { ProviderOperationPollingError, ProviderOperationTerminalError, Provider
 test("builds a supported Gemini image response format", () => {
   const request = buildGeminiImageRequest({
     aspectRatio: "9:16",
-    model: "gemini-3.1-flash-image",
+    model: "gemini-nano-banana-2.1",
     prompt: "A bright product photograph.",
     referenceImage: null,
   });
 
   assert.deepEqual(request, {
     input: "A bright product photograph.",
-    model: "gemini-3.1-flash-image",
+    model: "gemini-nano-banana-2.1",
     response_format: {
       aspect_ratio: "9:16",
       image_size: "1K",
@@ -125,7 +125,7 @@ test("long Pro instructions reach Google without an app character cap or truncat
 test("preserves a reference image in the Gemini image request", () => {
   const request = buildGeminiImageRequest({
     aspectRatio: "1:1",
-    model: "gemini-3.1-flash-image",
+    model: "gemini-nano-banana-2.1",
     prompt: "Restyle this image.",
     referenceImage: { data: "aW1hZ2U=", mimeType: "image/png" },
   });

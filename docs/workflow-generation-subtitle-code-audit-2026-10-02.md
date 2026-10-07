@@ -1,5 +1,7 @@
 # Explore workflow generation and subtitle wiring: code-only audit
 
+Historical audit. October 7 adds gated finishing for owned saved Hook/Phone videos and all seven subtitle styles; see [current implementation and release notes](subtitle-styles-and-finishing-2026-10-07.md). The creation composer is still separate from this finishing path. No production enablement occurred.
+
 Reviewed October 2, 2026. Scope: Workflow 1 (Create a Hook), Workflow 3 (Creator Shows App on Phone), and their shared Edit video panel. The existing standalone video API/worker and subtitle engine were inspected to identify integration boundaries. No generation request, transcription, render, upload, browser exercise, test suite, database query, or deployment was performed for this audit.
 
 ## Verdict

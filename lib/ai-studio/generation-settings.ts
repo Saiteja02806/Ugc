@@ -7,11 +7,12 @@ export const AI_STUDIO_IMAGE_ASPECT_RATIOS = [
 
 export const AI_STUDIO_VIDEO_ASPECT_RATIOS = ["9:16", "16:9"] as const;
 export const AI_STUDIO_GENERATION_QUANTITIES = [1, 2, 4] as const;
-export const AI_STUDIO_IMAGE_MODELS = ["gemini_3_pro", "gpt_image"] as const;
+export const AI_STUDIO_IMAGE_MODELS = ["nano_banana_2", "seedream_5_pro"] as const;
 export const AI_STUDIO_VIDEO_MODELS = ["kling_3_0", "google_omni", "seedance_2_5"] as const;
 export const AI_STUDIO_VIDEO_DURATIONS = [3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30] as const;
 const SEEDANCE_VIDEO_DURATIONS = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30] as const;
 export const AI_STUDIO_VIDEO_RESOLUTIONS = ["480p", "720p", "1080p"] as const;
+
 
 export type AIStudioImageAspectRatio =
   (typeof AI_STUDIO_IMAGE_ASPECT_RATIOS)[number];
@@ -20,6 +21,7 @@ export type AIStudioVideoAspectRatio =
 export type AIStudioGenerationQuantity =
   (typeof AI_STUDIO_GENERATION_QUANTITIES)[number];
 export type AIStudioImageModel = (typeof AI_STUDIO_IMAGE_MODELS)[number];
+export const DEFAULT_AI_STUDIO_IMAGE_MODEL: AIStudioImageModel = "nano_banana_2";
 export type AIStudioVideoModel = (typeof AI_STUDIO_VIDEO_MODELS)[number];
 export type AIStudioVideoDuration =
   (typeof AI_STUDIO_VIDEO_DURATIONS)[number] | (typeof SEEDANCE_VIDEO_DURATIONS)[number];
@@ -64,7 +66,7 @@ export function parseAIStudioImageAspectRatio(
 export function parseAIStudioImageModel(value: unknown): AIStudioImageModel {
   return AI_STUDIO_IMAGE_MODELS.includes(value as AIStudioImageModel)
     ? (value as AIStudioImageModel)
-    : "gpt_image";
+    : DEFAULT_AI_STUDIO_IMAGE_MODEL;
 }
 
 export function parseAIStudioVideoModel(value: unknown): AIStudioVideoModel {

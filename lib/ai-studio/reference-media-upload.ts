@@ -17,7 +17,7 @@ export async function uploadAIStudioReferenceMedia(
   kind: AIStudioReferenceKind,
   maxVideoDurationSeconds = DEFAULT_MAX_REFERENCE_VIDEO_SECONDS,
   expectedUserId?: string,
-  options?: { maxAudioDurationSeconds?: number; requireVideoReferenceRatio?: boolean; purpose?: "explore-demo" },
+  options?: { maxAudioDurationSeconds?: number; requireVideoReferenceRatio?: boolean; purpose?: "explore-demo" | "explore-source" },
 ): Promise<AIStudioReferenceMedia> {
   const collection: MediaCollection = kind;
   const expectedPrefix = `${kind}/`;

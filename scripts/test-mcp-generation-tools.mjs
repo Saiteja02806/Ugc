@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { ONE_TIME_FREE_GENERATION_CREDITS } from "../lib/billing/free-generation-credit-policy.ts";
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://local-mcp-generation.supabase.co";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "local-test-secret";
@@ -24,6 +23,7 @@ let rpcCalls = 0;
 let lastRpcArgs;
 let queueFailure = false;
 let queueCalls = 0;
+let freeCreditWrites = 0;
 
 const asset = {
   id: assetId, user_id: "owner-a", collection: "image", source_type: "upload",
@@ -37,6 +37,15 @@ const asset = {
 globalThis.fetch = async (input, init) => {
   const url = new URL(input instanceof Request ? input.url : String(input));
   const method = init?.method ?? (input instanceof Request ? input.method : "GET");
+  if (url.pathname.endsWith("/rest/v1/rpc/ensure_free_generation_credit_balance")) {
+    freeCreditWrites += 1;
+    return Response.json({ granted: 2, remaining: 2, reserved: 0, used: 0 });
+  }
+  if (url.pathname.endsWith("/rest/v1/free_generation_credit_balances")) {
+    assert.equal(method, "GET");
+    assert.equal(url.searchParams.get("user_id"), "eq.owner-a");
+    return Response.json({ credit_limit: 2, used_credits: 0, reserved_credits: 0 });
+  }
   if (url.hostname === "cloudtasks.googleapis.com") {
     queueCalls += 1;
     assert.equal(method, "POST");
@@ -98,11 +107,6 @@ globalThis.fetch = async (input, init) => {
     const row = { plan_key: "growth", status: "active", last_event_at: now };
     return Response.json(paid ? [row] : []);
   }
-  if (url.pathname.endsWith("/rest/v1/rpc/ensure_free_generation_credit_balance")) {
-    assert.equal(JSON.parse(init.body).p_user_id, "owner-a");
-    return Response.json({ granted: ONE_TIME_FREE_GENERATION_CREDITS,
-      remaining: ONE_TIME_FREE_GENERATION_CREDITS, reserved: 0, used: 0 });
-  }
   if (url.pathname.endsWith("/rest/v1/billing_credit_balances")) {
     return Response.json(plan === "growth" ? {
       credit_limit: 100, used_credits: 0, reserved_credits: 0,
@@ -143,6 +147,7 @@ assert.ok(forbidden._meta?.["mcp/www_authenticate"] || forbidden.isError || forb
 plan = "free";
 assert.equal(errorCode(await call("generate_image", input)), "PLAN_REQUIRED");
 assert.equal(rpcCalls, 0);
+assert.equal(freeCreditWrites, 0, "A denied MCP generation must not allocate free credits");
 plan = "growth";
 const initial = await call("generate_image", input);
 assert.deepEqual(initial.structuredContent, { jobs: [{ job_id: jobId, status: "processing" }], partial: false });

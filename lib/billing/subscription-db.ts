@@ -198,7 +198,7 @@ export function resolveSubscriptionEntitlements(
 
 export async function getUserSubscription(
   userId: string,
-  options?: { strict?: boolean; refreshCredits?: boolean },
+  options?: { strict?: boolean; refreshCredits?: boolean; initializeFreeCredits?: boolean },
 ): Promise<UserSubscriptionInfo> {
   if (!userId.trim()) {
     return resolveSubscriptionEntitlements("free", false, "");
@@ -387,16 +387,35 @@ export async function getUserSubscription(
 
   let freeGenerationCredits = emptyFreeGenerationCredits();
   if (!base.isActive) {
-    const freeResult = await db.rpc("ensure_free_generation_credit_balance", { p_user_id: userId });
-    const freeBalance = freeResult.data as FreeGenerationCredits | null;
+    // Read-only clients must inspect an existing allowance without granting one.
+    // Website callers retain the normal initialization behavior by default.
+    const readOnlyFreeCredits = options?.initializeFreeCredits === false;
+    const freeResult = readOnlyFreeCredits
+      ? await db.from("free_generation_credit_balances")
+          .select("credit_limit,reserved_credits,used_credits")
+          .eq("user_id", userId)
+          .maybeSingle()
+      : await db.rpc("ensure_free_generation_credit_balance", { p_user_id: userId });
+    const storedFreeBalance = freeResult.data as {
+      credit_limit: number; reserved_credits: number; used_credits: number;
+    } | null;
+    const freeBalance = readOnlyFreeCredits
+      ? storedFreeBalance && {
+          granted: storedFreeBalance.credit_limit,
+          remaining: storedFreeBalance.credit_limit - storedFreeBalance.reserved_credits - storedFreeBalance.used_credits,
+          reserved: storedFreeBalance.reserved_credits,
+          used: storedFreeBalance.used_credits,
+        }
+      : freeResult.data as FreeGenerationCredits | null;
+    const missingReadOnlyBalance = readOnlyFreeCredits && !freeResult.error && freeResult.data === null;
     const valid = freeBalance?.granted === ONE_TIME_FREE_GENERATION_CREDITS &&
       [freeBalance.remaining, freeBalance.reserved, freeBalance.used].every(
         (amount) => Number.isInteger(amount) && amount >= 0,
       ) && freeBalance.remaining + freeBalance.reserved + freeBalance.used === freeBalance.granted;
-    if (freeResult.error || !valid) {
+    if (freeResult.error || (!valid && !missingReadOnlyBalance)) {
       if (options?.strict) throw new Error("ENTITLEMENTS_UNAVAILABLE");
       console.warn("Could not load one-time generation credits.");
-    } else {
+    } else if (freeBalance) {
       freeGenerationCredits = freeBalance!;
     }
   }

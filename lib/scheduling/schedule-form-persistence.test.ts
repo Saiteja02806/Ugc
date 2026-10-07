@@ -8,15 +8,17 @@ import {
   getUnavailableSavedInstagramTargets,
 } from "./schedule-form-persistence.ts";
 
-test("hiding a provider preserves typed and legacy saved targets and publishing settings", () => {
+test("hiding TikTok preserves typed and legacy saved targets and publishing settings", () => {
   const savedTikTokTarget = {
-    connectionId: "tiktok-current", platform: "tiktok",
+    connectionId: "tiktok-current",
+    platform: "tiktok",
     settings: { privacyLevel: "SELF_ONLY", brandOrganicToggle: true },
   } as const;
   const legacyTikTokTarget = { connectionId: "tiktok-legacy" };
   const targets = [
     { connectionId: "instagram-current", platform: "instagram" } as const,
-    savedTikTokTarget, legacyTikTokTarget,
+    savedTikTokTarget,
+    legacyTikTokTarget,
   ];
   const connections = [
     { id: "tiktok-current", platform: "tiktok", status: "connected" } as const,

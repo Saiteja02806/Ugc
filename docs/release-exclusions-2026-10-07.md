@@ -1,0 +1,418 @@
+# Release exclusions — October 7, 2026
+
+Every excluded original-checkout path (directory entries cover their ignored descendants):
+
+- `supabase/migrations/20261003045336_character_gemini_3_pro_image.sql`: Canonical 20261003045651 already exists on main and is applied in production; its tests use that canonical filename. No migration intent is omitted or replayed.
+- `.agents/`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.chrome-carousel-upgrade-check/`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.codex-artifacts/`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.codex-audits/`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.codex-auth-check-stderr.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.codex-auth-check-stdout.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.codex-dev-4173.err.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.codex-dev-4173.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.codex-dev-4173.out.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.codex-dev-4300.err.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.codex-dev-4300.out.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.codex-dev-error.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.codex-dev-output.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.codex-dev-shell.err.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.codex-dev-shell.out.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.codex-dev-stderr.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.codex-dev-stdout.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.codex-library-dev-4173.err.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.codex-library-dev-4173.out.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.codex-next-dev.err.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.codex-next-dev.out.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.codex/`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.env.development.local`: Local environment, credentials, private infrastructure variables or local service configuration.
+- `.env.local`: Local environment, credentials, private infrastructure variables or local service configuration.
+- `.mcp-audit-app-tests.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.mcp-audit-lint.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.mcp-audit-typecheck.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.mcp-audit-worker-tests.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.next-dev-4300.err.log`: Dependency cache or generated build output.
+- `.next-dev-4300.out.log`: Dependency cache or generated build output.
+- `.next-dev.err.log`: Dependency cache or generated build output.
+- `.next-dev.out.log`: Dependency cache or generated build output.
+- `.next-server-4300-direct.err.log`: Dependency cache or generated build output.
+- `.next-server-4300-direct.out.log`: Dependency cache or generated build output.
+- `.next-server-4300.err.log`: Dependency cache or generated build output.
+- `.next-server-4300.out.log`: Dependency cache or generated build output.
+- `.next-start-4300.err.log`: Dependency cache or generated build output.
+- `.next-start-4300.out.log`: Dependency cache or generated build output.
+- `.next/`: Dependency cache or generated build output.
+- `.playwright-mcp/`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-all-app-tests.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-app-tests.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-build.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-cloud-build.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-copy-validation.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-env-names.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-final-app.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-final-next.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-final-targeted.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-final-worker.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-merged-types.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-merged-worker.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-next-build.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-production-ai-smoke.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-production-render-smoke-final.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-production-render-smoke.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-production-smoke-final.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-production-smoke.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-reconcile-test.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-validation-recheck.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-validation.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-vercel-errors.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-vercel.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-wall-simulation.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-worker-identity.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-worker-image.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-worker-rollout.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-worker-tests.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.release-worktrees/`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.tmp-release-app-tests.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.tmp-release-build.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.tmp-release-carousel-tests.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.tmp-release-extra.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.tmp-release-final-extra.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.tmp-release-targeted.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.tmp-release-worker-tests.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.tmp/`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.tools/`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.trigger-dev.err.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.trigger-dev.out.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `.vercel/`: Local environment, credentials, private infrastructure variables or local service configuration.
+- `ai-studio-images-desktop.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `artifacts/`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `auth-desktop.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `carousel-candidate1-slide1.webp`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `carousel-candidate1-slide5.webp`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `carousel-candidate2-slide1.webp`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `carousel-final-generated-deck.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `carousel-final-polished-deck-styled.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `carousel-final-polished-deck.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `carousel-final-single-deck.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `carousel-final-slide3-fixed.webp`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `carousel-final-slide3-polished.webp`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `carousel-final-slide5-fixed.webp`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `carousel-final-slide5-polished.webp`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `carousel-ui-check-ready.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `carousel-upgrade-check.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design-qa-onboarding-flow-v3-comparison.jpg`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design-qa-onboarding-step1-comparison.jpg`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design-qa-onboarding-step1-desktop-v3.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design-qa-onboarding-step1-desktop.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design-qa-onboarding-step1-mobile-form.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design-qa-onboarding-step1-mobile-viewport-v3.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design-qa-onboarding-step1-mobile-viewport.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design-qa-onboarding-step2-desktop-v3.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design-qa-onboarding-step2-desktop.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design-qa-onboarding-step2-mobile-v3.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design-qa-onboarding-step2-mobile.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design-qa-onboarding-step3-desktop-v3.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design-qa-onboarding-step3-mobile-grid-v3.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design-qa-onboarding-step3-mobile-v3.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design-qa-onboarding-step3-selected-v3.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design-qa.md`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `"design/explore-character-motion/Auto-Save/Explore AI Character \342\200\224 Build Use Grow v2 auto-save 1.aep"`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `"design/explore-character-motion/Auto-Save/Explore AI Character \342\200\224 Build Use Grow v2 auto-save 2.aep"`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `"design/explore-character-motion/Auto-Save/Explore AI Character \342\200\224 Create Yours v4 auto-save 1.aep"`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `"design/explore-character-motion/Auto-Save/Explore AI Character \342\200\224 Create Yours v4 auto-save 2.aep"`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `"design/explore-character-motion/Auto-Save/Explore AI Character \342\200\224 Create Yours v4 auto-save 3.aep"`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `"design/explore-character-motion/Auto-Save/Explore AI Character \342\200\224 Create Yours v4 auto-save 4.aep"`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-00.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-01.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-02.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-03.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-04.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-05.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-06.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-07.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-08.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-09.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-10.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-11.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-12.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-13.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-14.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-15.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-16.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-17.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-18.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-19.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-20.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-21.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-22.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/review-frame-23.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/storyboard-v2.jpg`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v2-review-0.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v2-review-1.4.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v2-review-10.7.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v2-review-4.8.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v2-review-7.8.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/layout-study.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/native-0.000.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/native-1.600.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/native-10.350.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/native-11.958.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/native-3.650.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/native-5.300.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/native-8.150.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/qa-long-copy-flat-depth.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-00.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-01.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-02.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-03.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-04.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-05.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-06.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-07.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-08.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-09.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-10.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-11.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-12.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-13.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-14.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-15.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-16.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-17.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-18.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-19.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-20.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-21.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-22.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/review-frame-23.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v3/storyboard-v3.jpg`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/explore-desktop.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/explore-mobile.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/native-0.000.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/native-11.100.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/native-13.700.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/native-15.958.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/native-3.400.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/native-5.600.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/native-6.700.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/native-9.000.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/native-final-centered.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-00.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-01.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-02.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-03.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-04.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-05.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-06.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-07.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-08.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-09.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-10.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-11.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-12.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-13.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-14.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-15.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-16.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-17.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-18.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-19.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-20.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-21.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-22.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-23.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-24.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-25.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-26.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-27.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-28.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-29.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-30.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-31.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-32.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-33.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-34.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-35.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/review-36.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v4/storyboard-v4.jpg`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/explore-desktop.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/explore-mobile.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/native-business.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/native-examples.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/native-final-aligned.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/native-final.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/native-initial-reveal.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/native-opening.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/native-subject.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/native-transition-10.1.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/native-transition-2.4.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-00.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-01.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-02.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-03.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-04.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-05.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-06.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-07.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-08.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-09.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-10.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-11.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-12.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-13.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-14.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-15.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-16.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-17.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-18.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-19.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-20.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-21.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-22.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-23.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-24.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-25.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-26.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-27.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-28.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-29.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-30.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-31.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-32.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-33.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-34.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-35.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-36.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-37.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/review-38.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `design/explore-character-motion/Preview/v5/storyboard-v5.jpg`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `"design/explore-hook-motion/Auto-Save/Explore Hook Cover \342\200\224 Editorial Motion v4 auto-save 1.aep"`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `"design/explore-hook-motion/Auto-Save/Explore Hook Cover \342\200\224 Editorial Motion v5 auto-save 1.aep"`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `"design/explore-hook-motion/Auto-Save/Explore Hook Cover \342\200\224 Editorial Motion v6 auto-save 1.aep"`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `"design/explore-phone-motion/Auto-Save/Explore Phone Cover \342\200\224 Clean Loop v6 auto-save 1.aep"`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `"design/explore-phone-motion/Auto-Save/Explore Phone Cover \342\200\224 Screen to Creator v4 auto-save 1.aep"`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `"design/explore-phone-motion/Auto-Save/Explore Phone Cover \342\200\224 Screen to Creator v4 auto-save 2.aep"`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `"design/explore-phone-motion/Auto-Save/Explore Phone Cover \342\200\224 Screen to Creator v4 auto-save 3.aep"`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `"design/explore-phone-motion/Auto-Save/Explore Phone Cover \342\200\224 iPhone Motion v5 auto-save 1.aep"`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `desktop.ini`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `dev-header-preview-4174-error.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `dev-header-preview-4174.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `dev-header-preview-error.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `dev-header-preview.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `dev-header-test-error.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `dev-header-test.log`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `edit-screen-audit/`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `folderico-QfzIGG.ico`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `hatch-pet-runs/`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/ai-generation-worker/.terraform/`: Dependency cache or generated build output.
+- `infra/gcp/ai-generation-worker/ai-generation-worker.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/ai-generation-worker/recovery-canary-fix.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/ai-generation-worker/release-214c1ad.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/ai-generation-worker/release-397b5c9.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/ai-generation-worker/release-5200bcc.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/ai-generation-worker/release-b5e81a3.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/ai-generation-worker/release.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/ai-generation-worker/terraform.tfvars`: Local environment, credentials, private infrastructure variables or local service configuration.
+- `infra/gcp/bootstrap/.terraform/`: Dependency cache or generated build output.
+- `infra/gcp/bootstrap/terraform.tfstate`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/carousel-scheduler/.terraform/`: Dependency cache or generated build output.
+- `infra/gcp/carousel-scheduler/release-5200bcc.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/carousel-scheduler/release.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/carousel-scheduler/terraform.tfvars`: Local environment, credentials, private infrastructure variables or local service configuration.
+- `infra/gcp/carousel-worker/.terraform/`: Dependency cache or generated build output.
+- `infra/gcp/carousel-worker/release-5200bcc.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/carousel-worker/release-b5e81a3.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/carousel-worker/release.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/carousel-worker/terraform.tfvars`: Local environment, credentials, private infrastructure variables or local service configuration.
+- `infra/gcp/foundation/.terraform/`: Dependency cache or generated build output.
+- `infra/gcp/foundation/foundation-final-cutover.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/foundation/foundation-postcutover.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/foundation/foundation-queues-release.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/foundation/foundation-release.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/foundation/terraform.tfvars`: Local environment, credentials, private infrastructure variables or local service configuration.
+- `infra/gcp/reaction-render-worker/.terraform/`: Dependency cache or generated build output.
+- `infra/gcp/reaction-render-worker/release-5200bcc.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/reaction-render-worker/terraform.tfvars`: Local environment, credentials, private infrastructure variables or local service configuration.
+- `infra/gcp/social-publish-worker/.terraform/`: Dependency cache or generated build output.
+- `infra/gcp/social-publish-worker/release-5200bcc.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/social-publish-worker/release-f74a3431dfce.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/social-publish-worker/release.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/social-publish-worker/terraform.tfvars`: Local environment, credentials, private infrastructure variables or local service configuration.
+- `infra/gcp/video-render-worker/.terraform/`: Dependency cache or generated build output.
+- `infra/gcp/video-render-worker/hook_composition_audio.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/video-render-worker/release-214c1ad.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/video-render-worker/release-397b5c9.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/video-render-worker/release-5200bcc.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/video-render-worker/release-564af8d.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/video-render-worker/release-8b946e6.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/video-render-worker/release-f5cfe10.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/video-render-worker/release.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/video-render-worker/terraform.tfvars`: Local environment, credentials, private infrastructure variables or local service configuration.
+- `infra/gcp/video-render-worker/video-render-worker.tfplan`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `infra/gcp/worker-canary/.terraform/`: Dependency cache or generated build output.
+- `landing-all.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-bottom-preview.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-cards-peek-refined.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-cards-under-clean.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-cards-under-section.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-centered-badges.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-comparison-cards.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-comparison-clean-outline.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-comparison-emojis.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-comparison-explore-lib.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-comparison-focus.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-comparison-refined.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-complete.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-cta-closeup.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-cta-scrolled.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-flow-clean.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-formats-full.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-formats-shelf.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-full-buttons.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-full-page.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-hero-aurora-preview.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-hero-clean-full.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-hero-clean.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-hero-dark.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-hero-fixed-white.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-hero-padding-fixed.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-hero-scrolled-header.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-multi-account-detail.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-multi-account-flow.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-multi-account-verified.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-pill-clean.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-redesign-preview.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-screenshot-mobile.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-screenshot-tablet.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-screenshot.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-sections-2-and-3.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-swipe-buttons-zoom.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-swipe-deck-compact.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-swipe-deck-preview.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-swipe-focus.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-swipe-like-dislike.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-swipe-posted.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-trust-badges-moved.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-updated-hooks.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-updated-order-preview.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing-updated-videos.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `landing_page/`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `local-landing-page.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `local-run-logs/`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `next-env.d.ts`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `node_modules/`: Dependency cache or generated build output.
+- `onboarding-flow-audit/`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `output/`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `public/try-ugcpilot/media/`: Generated production demo media is already stored under the configured GCS release prefix.
+- `supabase/.temp/`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `supabase/supabase/`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `tinder/`: Ignored local prototype; the production demo is the already-versioned app/try-ugcpilot implementation.
+- `tmp-logs/`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `tmp/`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `tsconfig.tsbuildinfo`: Dependency cache or generated build output.
+- `ugc-home-desktop.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `ugc-home-header-updated-mobile.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `ugc-home-mobile.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `ugcpilot_logo__1.png`: Ignored local audit, preview, temporary artifact, recovery copy or generated output; not application source.
+- `worker/dist/`: Dependency cache or generated build output.
+- `worker/node_modules/`: Dependency cache or generated build output.

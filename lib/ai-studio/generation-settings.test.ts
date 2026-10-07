@@ -6,6 +6,7 @@ import {
   getAIStudioVideoDurations,
   getAIStudioVideoModelLabel,
   isAIStudioVideoModelAvailable,
+
   getAIStudioRatioLabel,
   isAIStudioVideoResolutionSupported,
   parseAIStudioGenerationQuantity,
@@ -24,9 +25,10 @@ test("accepts only supported AI Studio settings", () => {
   assert.equal(parseAIStudioVideoAspectRatio("4:5"), "9:16");
   assert.equal(parseAIStudioGenerationQuantity(4), 4);
   assert.equal(parseAIStudioGenerationQuantity(3), 1);
-  assert.equal(parseAIStudioImageModel("gemini_3_pro"), "gemini_3_pro");
-  assert.equal(parseAIStudioImageModel("nano_banana_2"), "gpt_image");
-  assert.equal(parseAIStudioImageModel("unknown"), "gpt_image");
+  assert.equal(parseAIStudioImageModel("seedream_5_pro"), "seedream_5_pro");
+  assert.equal(parseAIStudioImageModel("nano_banana_2"), "nano_banana_2");
+  assert.equal(parseAIStudioImageModel("unknown"), "nano_banana_2");
+
   assert.equal(parseAIStudioVideoModel("google_omni"), "google_omni");
   assert.equal(parseAIStudioVideoModel("kling_3_0"), "kling_3_0");
   assert.equal(parseAIStudioVideoModel("unknown"), "kling_3_0");

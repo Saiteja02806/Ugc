@@ -11,8 +11,17 @@ const { values } = parseArgs({ options: {
   input: { type: "string" },
   output: { type: "string", default: "public/explore/covers" },
   temporary: { type: "string", default: ".tmp/explore-recreate-cover" },
+  name: { type: "string", default: "recreate-v2" },
+  "wall-text-1-focus": { type: "string", default: "0.56" },
+  "wall-text-2-focus": { type: "string", default: "0.5" },
 } });
 if (!values.input || !ffmpeg) throw new Error("Pass --input with the format2 folder; ffmpeg-static is required.");
+if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(values.name)) throw new Error("Pass --name as a lowercase asset name without a file extension.");
+const wallTextFocus = ["wall-text-1-focus", "wall-text-2-focus"].map((key) => {
+  const focus = Number(values[key]);
+  if (!Number.isFinite(focus) || focus < 0 || focus > 1) throw new Error(`${key} must be a number between 0 and 1.`);
+  return focus;
+});
 const input = path.resolve(values.input);
 const output = path.resolve(values.output);
 const temporary = path.resolve(values.temporary);
@@ -29,8 +38,8 @@ const SLIDE_FRAMES = 29;
 const clips = [
   { name: "hook-1", source: "hook.mp4", focus: 0.44 },
   { name: "hook-2", source: "hook1.mp4", focus: 0.38 },
-  { name: "wall-of-text-1", source: "WOT_1-Vmake.mp4", focus: 0.56 },
-  { name: "wall-of-text-2", source: "WOT_2-Vmake.mp4", focus: 0.5 },
+  { name: "wall-of-text-1", source: "WOT_1-Vmake.mp4", focus: wallTextFocus[0] },
+  { name: "wall-of-text-2", source: "WOT_2-Vmake.mp4", focus: wallTextFocus[1] },
 ];
 const decks = [
   { name: "slideshow-1", folder: "1", focus: [0.5, 0.48, 0.45, 0.5] },
@@ -71,7 +80,7 @@ for (const clip of clips) {
   const framing = `scale=${WIDTH}:-2,crop=${WIDTH}:${HEIGHT}:0:ih*${clip.focus}-oh/2`;
   const file = path.join(temporary, `${clip.name}.mp4`);
   encode(["-i", source], `fps=${FPS},trim=end_frame=${frames},setpts=PTS-STARTPTS,${framing},${zoomAfter(frames)}`, frames + ZOOM_FRAMES, file);
-  stages.push({ name: clip.name, source: clip.source, file, contentFrames: frames, frames: frames + ZOOM_FRAMES });
+  stages.push({ name: clip.name, source: clip.source, focus: clip.focus, file, contentFrames: frames, frames: frames + ZOOM_FRAMES });
 }
 
 for (const deck of decks) {
@@ -94,7 +103,7 @@ for (const deck of decks) {
 
 const list = path.join(temporary, "sequence.txt");
 writeFileSync(list, stages.map((stage) => `file '${path.basename(stage.file)}'`).join("\n") + "\n");
-const video = path.join(output, "recreate-v2.mp4");
+const video = path.join(output, `${values.name}.mp4`);
 run(ffmpeg, ["-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "1", "-i", list, "-an", "-c:v", "libx264", "-preset", "fast", "-crf", "23", "-pix_fmt", "yuv420p", "-movflags", "+faststart", video]);
 const totalFrames = stages.reduce((sum, stage) => sum + stage.frames, 0);
 const result = probe(video);
@@ -110,12 +119,12 @@ for (let offset = 0; offset + 8 <= bytes.length;) {
   offset += size;
 }
 if (!fastStart) throw new Error("MP4 fast-start metadata is missing.");
-const poster = path.join(output, "recreate-v2.webp");
+const poster = path.join(output, `${values.name}.webp`);
 run(ffmpeg, ["-hide_banner", "-loglevel", "error", "-y", "-i", video, "-frames:v", "1", "-c:v", "libwebp", "-quality", "88", poster]);
 let start = 0;
-writeFileSync(path.join(output, "recreate-v2.json"), JSON.stringify({
+writeFileSync(path.join(output, `${values.name}.json`), JSON.stringify({
   width: WIDTH, height: HEIGHT, fps: FPS, frames: totalFrames, duration: totalFrames / FPS,
   bytes: statSync(video).size, zoomFrames: ZOOM_FRAMES, zoomScale: 1.22, slideFrames: SLIDE_FRAMES, framing: "edge-to-edge sharp crops",
-  stages: stages.map(({ name, source, slides, contentFrames, frames }) => { const entry = { name, source, slides, contentFrames, frames, startFrame: start }; start += frames; return entry; }),
+  stages: stages.map(({ name, source, focus, slides, contentFrames, frames }) => { const entry = { name, source, focus, slides, contentFrames, frames, startFrame: start }; start += frames; return entry; }),
 }, null, 2) + "\n");
 console.log(`Verified ${totalFrames} frames: ${(totalFrames / FPS).toFixed(2)}s, ${(statSync(video).size / 1024 / 1024).toFixed(2)} MiB, silent, fast start.`);

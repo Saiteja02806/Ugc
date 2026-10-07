@@ -1,7 +1,7 @@
 // Package the native AE v5 film, preserving its exact frame count and timing.
 import {spawnSync} from "node:child_process";
 import {createHash} from "node:crypto";
-import {mkdirSync,readFileSync,writeFileSync,copyFileSync,statSync} from "node:fs";
+import {mkdirSync,readFileSync,writeFileSync,copyFileSync} from "node:fs";
 import path from "node:path";
 import ffmpeg from "ffmpeg-static";
 import ffprobe from "ffprobe-static";

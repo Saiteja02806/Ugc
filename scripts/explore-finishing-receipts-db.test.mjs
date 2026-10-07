@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { PGlite } from "@electric-sql/pglite";
+import { SUBTITLE_STYLES } from "../worker/dist/subtitles/styles.js";
 
 const migration = readFileSync(new URL("../supabase/migrations/20261004053418_explore_video_finishing.sql", import.meta.url), "utf8");
+const stylesMigration = readFileSync(new URL("../supabase/migrations/20261007103000_explore_subtitle_styles.sql", import.meta.url), "utf8");
+const sourcesMigration = readFileSync(new URL("../supabase/migrations/20261007132823_explore_existing_video_sources.sql", import.meta.url), "utf8");
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const fingerprint = "a".repeat(64), hash = "b".repeat(64), policy = "elevenlabs:scribe_v2:auto:en:word:v1";
 const draft = (owner = "owner-a", subtitles = true) => ({ version: 1, kind: "hook", sourceAssetId: id(owner === "owner-a" ? 1 : 2),
@@ -20,7 +23,7 @@ async function fixture() {
     create table media_assets(id uuid primary key,user_id text,collection text,status text,deleted_at timestamptz,
       source_type text,source_record_id text,parent_asset_id uuid references media_assets(id),project_id text,title text,mime_type text,
       storage_key text,url text,ratio text,duration_seconds numeric,file_size_bytes bigint,width integer,height integer,metadata jsonb);
-    insert into media_assets(id,user_id,collection,status) values('${id(1)}','owner-a','video','ready'),('${id(2)}','owner-b','video','ready');
+    insert into media_assets(id,user_id,collection,status,mime_type) values('${id(1)}','owner-a','video','ready','video/mp4'),('${id(2)}','owner-b','video','ready','video/mp4');
     create function create_or_get_background_job_v1(p_key text,p_input jsonb,p_reference text,p_type text,p_attempts int,p_project text,p_queue text,p_user text) returns jsonb language plpgsql as $$
       declare j public.background_jobs;
       begin
@@ -42,6 +45,8 @@ async function fixture() {
     grant execute on function create_or_get_background_job_v1(text,jsonb,text,text,int,text,text,text) to service_role;
   `);
   await db.exec(migration);
+  await db.exec(stylesMigration);
+  await db.exec(sourcesMigration);
   await db.exec("set role service_role");
   return db;
 }
@@ -58,6 +63,44 @@ const output = r => ({ storageKey:`explore/finishes/${r.output_asset_id}/video.m
   ratio:"9:16",durationSeconds:1,fileSizeBytes:1000,width:256,height:384,metadata:{subtitleStyle:"clean"} });
 const finalize = async (db,r,token,value = output(r)) =>
   (await db.query("select explore_finalize_video_finish($1,$2,$3,$4,$5::jsonb) result",[r.user_id,r.request_key,r.job_id,token,JSON.stringify(value)])).rows[0].result;
+
+test("both workflows accept owned legacy footage while rejecting images, pending, deleted and foreign assets", async () => {
+  const db = await fixture();
+  try {
+    await db.query("update media_assets set collection='influencer' where id=$1", [id(1)]);
+    for (const [index, kind] of ["hook", "phone"].entries()) {
+      const r = await start(db, id(400 + index), "owner-a", { ...draft(), kind });
+      assert.equal(r.draft.sourceAssetId, id(1));
+      await db.query("update background_jobs set status='completed' where id=$1", [r.job_id]);
+    }
+    for (const patch of ["mime_type='image/png'", "collection='audio'", "status='uploading'", "deleted_at=now()", "user_id='owner-b'"]) {
+      await db.query("update media_assets set collection='influencer',mime_type='video/mp4',status='ready',deleted_at=null,user_id='owner-a' where id=$1", [id(1)]);
+      await db.query(`update media_assets set ${patch} where id=$1`, [id(1)]);
+      await assert.rejects(start(db, id(410)), /explore_finish_asset_unavailable/);
+    }
+    assert.equal((await db.query("select count(*)::int n from background_jobs")).rows[0].n, 2);
+    assert.equal((await db.query("select has_function_privilege('authenticated','explore_create_video_finish(text,uuid,text,jsonb)','execute') allowed")).rows[0].allowed, false);
+  } finally { await db.close(); }
+});
+
+test("database styles match the shared registry and invalid subtitle records roll back their jobs", async () => {
+  const db = await fixture();
+  try {
+    let index = 300;
+    for (const style of SUBTITLE_STYLES) {
+      const options = { ...draft(), subtitles: { language: "en", style } };
+      const receipt = await start(db, id(index++), "owner-a", options);
+      assert.equal(receipt.draft.subtitles.style, style);
+      await db.query("update background_jobs set status='completed' where id=$1", [receipt.job_id]);
+    }
+    const before = (await db.query("select count(*)::int n from background_jobs")).rows[0].n;
+    for (const subtitles of [{language:"en",style:"unknown"}, {language:"en"}, {language:"en",style:null}, {style:"clean"}, {language:"fr",style:"clean"}, {language:"en",style:"clean",placement:null}]) {
+      await assert.rejects(start(db, id(index++), "owner-a", {...draft(),subtitles}), /explore_finish_subtitle_style_check/);
+    }
+    assert.equal((await db.query("select count(*)::int n from background_jobs")).rows[0].n, before);
+    assert.equal((await db.query("select count(*)::int n from explore_video_finishes")).rows[0].n, before);
+  } finally { await db.close(); }
+});
 
 test("owned request creation is atomic, replay retains IDs even after source removal, changed edits conflict", async () => {
   const db = await fixture();
@@ -78,6 +121,27 @@ test("cannot use another owner's sources, deleted sources, demo audio without de
     await assert.rejects(start(db,id(10),"owner-a",{...draft(),demoAudioAssetId:id(1)}),/asset_unavailable/);
     await start(db); await assert.rejects(start(db,id(11)),/explore_finish_busy/);
     assert.equal((await db.query("select count(*)::int n from background_jobs")).rows[0].n,1);
+  } finally { await db.close(); }
+});
+
+test("atomic receipts keep each workflow position unchanged; new positioning edits reuse owned speech", async () => {
+  const db = await fixture();
+  try {
+    let index = 100;
+    for (const kind of ["hook", "phone"]) for (const placement of [undefined, "bottom", "middle", "top"]) {
+      const options = { ...draft(), kind, subtitles: { language: "en", style: "editorial", ...(placement ? { placement } : {}) } };
+      const r = await start(db, id(index++), "owner-a", options), token = await lease(db, r);
+      assert.deepEqual(r.draft, options);
+      assert.deepEqual(await start(db, r.request_key, "owner-a", options), r);
+      const speechClaim = await claim(db, r, token);
+      if (index === 101) { assert.equal(speechClaim.state, "submit"); await save(db, r); }
+      else assert.equal(speechClaim.state, "ready");
+      const result = output(r); result.metadata.subtitlePlacement = placement ?? "bottom";
+      await finalize(db, r, token, result);
+      const asset = (await db.query("select metadata from media_assets where id=$1", [r.output_asset_id])).rows[0];
+      assert.equal(asset.metadata.render.subtitlePlacement, placement ?? "bottom");
+      await db.query("update background_jobs set status='completed' where id=$1", [r.job_id]);
+    }
   } finally { await db.close(); }
 });
 

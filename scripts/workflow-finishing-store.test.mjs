@@ -11,7 +11,7 @@ function load(file, imports = {}, globals = {}) {
   }).outputText, { exports, require: name => { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, ...globals });
   return exports;
 }
-const contract = load("worker/src/lib/explore-finishing-contract.ts");
+const contract = load("worker/src/lib/explore-finishing-contract.ts", { "../subtitles/styles.ts": load("worker/src/subtitles/styles.ts") });
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12,"0")}`;
 const draft = { version: 1, kind: "phone", sourceAssetId: id(1), demoAssetId: null, demoAudioAssetId: null, demoAudioPlayback: "once",
   backgroundAssetId: null, backgroundPlayback: "once", subtitles: null };

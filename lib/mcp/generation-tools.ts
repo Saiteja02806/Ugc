@@ -52,7 +52,7 @@ async function requireGenerationAccess(userId: string, jobType: "generate_image"
   }
   let subscription;
   try {
-    subscription = await getUserSubscription(userId, { strict: true, refreshCredits: false });
+    subscription = await getUserSubscription(userId, { strict: true, refreshCredits: false, initializeFreeCredits: false });
   } catch {
     throw new ToolFailure("GENERATION_UNAVAILABLE", "Current plan and credits are temporarily unavailable.", true);
   }

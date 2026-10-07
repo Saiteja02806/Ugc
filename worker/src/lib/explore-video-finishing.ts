@@ -6,11 +6,13 @@ import { dirname, join } from "node:path";
 import { composeExploreVideo } from "./explore-video-composition.js";
 import { assertExploreSubtitleScope } from "../subtitles/explore-policy.js";
 import { parsePlacement, parseStyle, SubtitleError, validateTranscript, type SubtitlePlacement, type SubtitleStyle } from "../subtitles/contracts.js";
-import { getSubtitleLayout, serializeAss } from "../subtitles/captions.js";
+import { getSubtitleLayout, groupSubtitleWords, serializeAss, serializeSrt, serializeVtt } from "../subtitles/captions.js";
 import { groupNaturalSubtitleWords } from "../subtitles/phrases.js";
 import { createTextMeasurer, prepareSubtitleFonts, probeVideo, renderSubtitleVideo, type SubtitleTools } from "../subtitles/media.js";
 import { planEditorialPages, serializeEditorialAss } from "../subtitles/editorial.js";
 import { createEditorialMeasurer, prepareEditorialFonts } from "../subtitles/editorial-media.js";
+import { createDynamicMeasurer, serializeDynamicAss } from "../subtitles/dynamic.js";
+import { isDynamicSubtitleStyle, subtitleStyleDefinition } from "../subtitles/styles.js";
 
 export type ExploreSpeechIdentity = { audioPath: string; sourceHash: string; durationMs: number; language: "en" };
 export type ExploreFinishingOptions = Omit<Parameters<typeof composeExploreVideo>[0], "subtitleScope"> & {
@@ -41,8 +43,8 @@ export async function finishExploreVideo(options: ExploreFinishingOptions) {
   const placement = subtitles ? parsePlacement(subtitles.placement ?? "bottom") : null;
   if (subtitles && subtitles.language !== "en") assertExploreSubtitleScope(subtitles.language, 1);
   const composition = await composeExploreVideo({ ...options, subtitleScope: subtitles ? { language: subtitles.language } : undefined });
-  if (!subtitles) return { ...composition, subtitleStyle: null, subtitleWordCount: 0 };
-  if (!composition.subtitleAudioPath || !style || !placement) throw new SubtitleError("SUBTITLE_INPUT_INVALID", "The original speech track could not be prepared.");
+  if (!subtitles) return { ...composition, subtitleStyle: null, subtitlePlacement: null, subtitleWordCount: 0, subtitleRenderVersion: null };
+  if (!composition.subtitleAudioPath || !style || !placement) throw new SubtitleError("SUBTITLE_INPUT_INVALID", "The final audio track could not be prepared.");
   assertExploreSubtitleScope(subtitles.language, composition.durationMs);
   const captionDir = join(dirname(composition.outputPath), "subtitles");
   await mkdir(captionDir);
@@ -65,13 +67,18 @@ export async function finishExploreVideo(options: ExploreFinishingOptions) {
   if (!transcript.language || !["en", "eng", "english"].includes(transcript.language.trim().toLowerCase())) {
     throw new SubtitleError("SUBTITLE_LANGUAGE_UNSUPPORTED", "Auto subtitles support English speech only. No captioned output was published.");
   }
-  const cues = await groupNaturalSubtitleWords(transcript.words, layout, measure);
-  const ass = editorialMeasure ? serializeEditorialAss(await planEditorialPages(cues, layout, placement, editorialMeasure), layout) : serializeAss(cues, layout, style, placement);
+  const cues = await (isDynamicSubtitleStyle(style) ? groupSubtitleWords : groupNaturalSubtitleWords)(transcript.words, layout, measure);
+  const ass = editorialMeasure ? serializeEditorialAss(await planEditorialPages(cues, layout, placement, editorialMeasure), layout)
+    : isDynamicSubtitleStyle(style) ? await serializeDynamicAss(cues, layout, style as "word-pop" | "karaoke" | "marker-highlight", placement,
+      createDynamicMeasurer(layout, options.tools, captionDir, options.signal)) : serializeAss(cues, layout, style, placement);
   await writeFile(join(captionDir, "captions.ass"), ass, { flag: "wx" });
+  await writeFile(join(captionDir, "captions.srt"), serializeSrt(cues), { flag: "wx" });
+  await writeFile(join(captionDir, "captions.vtt"), serializeVtt(cues), { flag: "wx" });
   await renderSubtitleVideo(captionDir, video, options.tools, options.signal);
   const outputPath = join(captionDir, "captioned.mp4");
   const result = await probeVideo(outputPath, options.tools, options.signal);
   assertExploreSubtitleScope(subtitles.language, result.durationMs);
   options.signal?.throwIfAborted();
-  return { ...composition, outputPath, subtitleStyle: style, subtitleWordCount: transcript.words.length };
+  return { ...composition, outputPath, subtitleStyle: style, subtitlePlacement: placement, subtitleWordCount: transcript.words.length,
+    subtitleRenderVersion: subtitleStyleDefinition(style).renderVersion };
 }

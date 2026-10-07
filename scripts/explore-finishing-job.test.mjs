@@ -8,6 +8,19 @@ import { hasWorkerJobHandler } from "../worker/dist/jobs/index.js";
 
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12,"0")}`;
 const fp = "a".repeat(64), hash = "b".repeat(64);
+test("worker source lookup admits legacy videos with MIME checks and retains ownership, ready and deletion filters", async () => {
+  for (const collection of ["video", "audio"]) {
+    const calls = [], query = { select() { return this; }, eq(...args) { calls.push(["eq", ...args]); return this; }, in(...args) { calls.push(["in", ...args]); return this; },
+      like(...args) { calls.push(["like", ...args]); return this; }, is(...args) { calls.push(["is", ...args]); return this; }, maybeSingle: async () => ({ data: { storage_key: "owned/source.mp4" }, error: null }) };
+    const store = new ExploreFinishingStore({ from: table => { assert.equal(table, "media_assets"); return query; } });
+    await store.asset("owner-a", id(1), collection);
+    for (const filter of [["eq", "id", id(1)], ["eq", "user_id", "owner-a"], ["eq", "status", "ready"], ["is", "deleted_at", null]]) assert.ok(calls.some(call => JSON.stringify(call) === JSON.stringify(filter)));
+    if (collection === "video") {
+      assert.ok(calls.some(call => JSON.stringify(call) === JSON.stringify(["in", "collection", ["video", "influencer"]])));
+      assert.ok(calls.some(call => JSON.stringify(call) === JSON.stringify(["like", "mime_type", "video/%"])));
+    } else assert.ok(calls.some(call => JSON.stringify(call) === JSON.stringify(["eq", "collection", "audio"])));
+  }
+});
 const transcript = { schemaVersion:1,provider:"elevenlabs",model:"scribe_v2",language:"en",durationMs:2000,
   words:[{text:"Hook",startMs:100,endMs:500},{text:"Demo",startMs:1100,endMs:1500}] };
 function fixture({ subtitles = true, claimState = "submit", receiptStatus = "queued", recovered = null, draftChanges = {} } = {}) {
@@ -36,11 +49,25 @@ function fixture({ subtitles = true, claimState = "submit", receiptStatus = "que
       assert.ok(options.demoAudioPath);assert.ok(options.demoPath);assert.equal(options.backgroundMusicPath,undefined);
       if (options.subtitles) await options.subtitles.loadTranscript({audioPath:"worker-prepared.wav",sourceHash:hash,durationMs:2000,language:"en"});
       return {outputPath:"worker-result.mp4",durationMs:2000,width:256,height:384,sourceHashes:{opening:hash},segments:[],demoAudioTiming:null,
-        backgroundMusicTiming:null,subtitleStyle:options.subtitles?.style ?? null,subtitleWordCount:subtitles ? 2 : 0};},
+        backgroundMusicTiming:null,subtitleStyle:options.subtitles?.style ?? null,subtitlePlacement:options.subtitles?.placement ?? null,subtitleWordCount:subtitles ? 2 : 0};},
   };
   const context = {checkpoint:async ({stage})=>{events.push(`checkpoint:${stage}`);}};
   return {receipt,job,deps,context,events,output,submits:()=>submits,composed:()=>composed,sourcePath:()=>sourcePath};
 }
+
+test("both workflows pass all subtitle positions and styles into export and saved metadata, with legacy Bottom", async () => {
+  for (const kind of ["hook", "phone"]) for (const placement of [undefined, "bottom", "middle", "top"]) for (const style of ["clean", "bold-box", "active-word", "editorial", "word-pop", "karaoke", "marker-highlight"]) {
+    const f = fixture({ draftChanges: { kind, subtitles: { language: "en", style, ...(placement ? { placement } : {}) } } });
+    const finish = f.deps.finish, upload = f.deps.storage.upload;
+    f.deps.finish = options => { assert.equal(options.subtitles.placement, placement ?? "bottom"); assert.equal(options.subtitles.style, style); return finish(options); };
+    f.deps.storage.upload = (r, path, details) => { assert.equal(details.metadata.subtitlePlacement, placement ?? "bottom"); return upload(r, path, details); };
+    await runFinishExploreVideoJob(f.job, f.context, f.deps);
+    assert.equal(f.submits(), 1);
+  }
+  const invalid = fixture({ draftChanges: { subtitles: { language: "en", style: "clean", placement: "center" } } });
+  await assert.rejects(runFinishExploreVideoJob(invalid.job, invalid.context, invalid.deps), e => e.code === "INVALID_PLACEMENT");
+  assert.equal(invalid.submits(), 0); assert.equal(invalid.events.includes("download"), false);
+});
 
 test("Explore finishing is registered without changing existing renderer handlers", () => {
   for (const type of ["render_demo_video","render_edit_video","render_schedule_combination","render_wall_text_video","final_render","generate_hook_video"]) assert.equal(hasWorkerJobHandler(type),true);
@@ -60,8 +87,8 @@ test("a saved transcript is reused without a new paid submission", async () => {
   assert.equal(f.submits(),0); assert.equal(f.events.includes("save"),false); assert.equal(f.events.includes("finalize"),true);
 });
 
-test("all four approved subtitle styles reach the owned finishing renderer without substitution", async () => {
-  for (const style of ["clean", "bold-box", "active-word", "editorial"]) {
+test("all seven approved subtitle styles reach the owned finishing renderer without substitution", async () => {
+  for (const style of ["clean", "bold-box", "active-word", "editorial", "word-pop", "karaoke", "marker-highlight"]) {
     const f = fixture({ draftChanges:{ subtitles:{ language:"en",style,placement:"bottom" } } });
     const finish = f.deps.finish, upload = f.deps.storage.upload;
     f.deps.finish = async options => {
@@ -185,7 +212,22 @@ test("an unconfirmed GCP upload schedules owned-object recovery, not another pai
 });
 
 test("cancellation at transcription checkpoint prevents preparing, claiming, and submitting speech", async () => {
-  const f = fixture(); f.context.checkpoint=async ({stage})=>{if (stage === "transcribing_original_speech") throw new Error("cancelled");};
+  const f = fixture(); f.context.checkpoint=async ({stage})=>{if (stage === "transcribing_composed_audio") throw new Error("cancelled");};
   await assert.rejects(runFinishExploreVideoJob(f.job,f.context,f.deps),/cancelled/);
   assert.equal(f.submits(),0); assert.equal(f.events.includes("prepare"),false); assert.equal(f.events.includes("claim"),false);
+});
+
+test("cancellation during a long composition aborts the render without transcription or uploading", async () => {
+  const f = fixture(); let signal;
+  f.context.checkpoint = async ({stage}) => { if (stage === "finishing_owned_video") throw new Error("cancelled during composition"); };
+  f.deps.finish = async options => {
+    signal = options.signal;
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("cancellation did not reach the renderer")), 7000);
+      signal.addEventListener("abort", () => { clearTimeout(timeout); reject(signal.reason); }, {once:true});
+    });
+  };
+  await assert.rejects(runFinishExploreVideoJob(f.job, f.context, f.deps), /cancelled during composition/);
+  assert.equal(signal.aborted, true); assert.equal(f.submits(), 0);
+  assert.equal(f.events.includes("claim"), false); assert.equal(f.events.includes("upload"), false); assert.equal(f.events.includes("finalize"), false);
 });

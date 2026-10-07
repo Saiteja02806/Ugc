@@ -1,11 +1,11 @@
 import "server-only";
-import importedCatalog from "./imported-catalog.json";
 
 import {
   getExploreVideoPosterStorageKey,
   type ExploreHookVideo,
 } from "@/lib/explore/hook-video-types";
 import { buildPublicStorageUrl } from "@/lib/storage/storage";
+import importedCatalog from "./imported-catalog.json";
 
 export type { ExploreHookVideo } from "@/lib/explore/hook-video-types";
 
@@ -32,8 +32,9 @@ const EXPLORE_PREVIEW_VIDEO_ASSET: ExplorePreviewVideoAsset = {
     "explore/landing-preview/2026-08-29/d12f92b5a902a80f6bfbfe7565fa31254ca265a3cb48db95ab12dcfd101ca3ed.mp4",
 };
 
-// Dedicated Explore catalog. These are short, silent reference clips uploaded
-// for this library only; they do not use a Trending source or data table.
+// Legacy dedicated Explore catalog: these short references are silent. New
+// imported references retain their supplied audio and are previewed muted.
+// Neither catalog uses a Trending source or data table.
 const EXPLORE_HOOK_VIDEO_ASSETS: ReadonlyArray<ExploreHookVideoAsset> = [
   {
     id: "explore-hook-01",

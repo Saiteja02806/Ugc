@@ -126,7 +126,7 @@ try {
   await db.exec(functionSql(jobMigration, "create_or_get_background_job_v1"));
   await db.exec("create trigger settle_billing_background_job_trigger after update of status on public.background_jobs for each row execute function public.settle_billing_from_background_job()");
   await db.exec(characterMigration);
-  await db.exec(await source("20261003045651_character_gemini_3_pro_image.sql"));
+  await db.exec(await source("20261003045336_character_gemini_3_pro_image.sql"));
   // Reproduce Supabase's inherited service-role defaults before hardening.
   await db.exec("grant all on public.character_free_generation_allowances to service_role");
   await db.exec(await source("20261003041318_character_allowance_privileges.sql"));

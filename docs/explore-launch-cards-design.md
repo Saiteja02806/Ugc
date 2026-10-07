@@ -598,3 +598,35 @@ captions. AE reports no missing media or fonts.
 Only the explicit local cover registry now selects v7. V6 and the other covers
 remain preserved. No production gates changed; nothing was pushed or deployed.
 This is local media verification, not authenticated production acceptance.
+
+## Workflow 2 replacement clips — October 7, 2026
+
+The owner replaced `format2/WOT_1-Vmake.mp4` and
+`format2/WOT_2-Vmake.mp4`. The Recreate cover now uses `recreate-v4.mp4`
+and `recreate-v4.webp`, with a new URL to avoid reusing the previous media.
+V3 remains a separate unreleased design candidate.
+
+The two hook clips, both complete ordered slide decks, outgoing zooms and
+edge-to-edge presentation are retained. The replacement clips run for 8.5 and
+6.667 seconds. Their vertical crop focuses are 0.36 and 0.25, respectively,
+to keep the creators' faces visible. The source files are read-only.
+
+Reproduce from the project root:
+
+```powershell
+node scripts/prepare-explore-recreate-cover.mjs --input 'C:/Users/chund/OneDrive/Desktop/workflow/format2' --name recreate-v4 --wall-text-1-focus 0.36 --wall-text-2-focus 0.25
+```
+
+The optional name and focus arguments preserve the renderer's original defaults.
+The final export is 960×540, H.264/yuv420p, 24 fps, 839 frames, 34.958 seconds
+and 3,200,881 bytes, with no audio and fast-start metadata. Full decoding and
+an isolated browser rendering of the existing card component passed, including
+autoplay, looping, poster loading and desktop/mobile sizing without media errors.
+SHA-256 checks confirmed all supplied source files were unchanged by rendering.
+
+Replacement source SHA-256:
+- `WOT_1-Vmake.mp4`: `215f79295120586c0f369c4515aa4e72a113dcba4b28dcf1b1ce1131a35cdc4e`
+- `WOT_2-Vmake.mp4`: `6e5e455779739400d88d46484ba73ec5b88a8f7c95b60c79501c09d5af517f70`
+
+This is a local cover refresh. It has not been pushed, deployed or accepted on
+the production site.

@@ -16,7 +16,7 @@ import styles from "./character-workspace.module.css";
 const MODEL_OPTIONS = [
   { value: "gpt_image", label: "GPT Image" },
   { value: "gemini_3_pro", label: "Gemini 3 Pro" },
-  { value: "nano_banana_2", label: "Nano Banana 2" },
+  { value: "nano_banana_2", label: "Nano Banana 2.1" },
 ] as const satisfies readonly { value: CharacterImageModel; label: string }[];
 
 const COUNT_OPTIONS = [1, 2, 3].map((count) => ({ value: String(count), label: String(count) }));

@@ -1,8 +1,15 @@
 /** Shared timed-subtitle contracts for the lab and the owned Explore worker. */
 export const SUBTITLE_VERSION = "subtitles-v1";
-export const SUBTITLE_STYLES = ["clean", "bold-box", "active-word", "editorial"] as const;
-export type SubtitleStyle = (typeof SUBTITLE_STYLES)[number];
-export type SubtitlePlacement = "bottom" | "top";
+import { isSubtitleStyle, SUBTITLE_STYLES, type SubtitleStyle } from "./styles.js";
+export { SUBTITLE_STYLES, type SubtitleStyle } from "./styles.js";
+export const SUBTITLE_PLACEMENTS = ["bottom", "middle", "top"] as const;
+export type SubtitlePlacement = (typeof SUBTITLE_PLACEMENTS)[number];
+/** Shared preview/export anchors. Existing Top/Bottom geometry stays unchanged. */
+export function subtitlePlacementGeometry(placement: SubtitlePlacement) {
+  return placement === "bottom" ? { anchor: .78, editorialTop: .64, editorialBottom: .88 }
+    : placement === "middle" ? { anchor: .5, editorialTop: .38, editorialBottom: .62 }
+    : { anchor: .22, editorialTop: .08, editorialBottom: .32 };
+}
 export const MAX_VIDEO_DURATION_MS = 120_000;
 export const MAX_VIDEO_BYTES = 250 * 1024 * 1024;
 export const MAX_TRANSCRIPT_WORDS = 2_000;
@@ -91,16 +98,17 @@ export function validateTranscript(value: unknown, durationMs: number): Subtitle
     model: input.model, language: input.language as string | null, durationMs, words };
 }
 
-export function parseStyle(value: string): SubtitleStyle {
-  if (!(SUBTITLE_STYLES as readonly string[]).includes(value)) {
-    throw new SubtitleError("INVALID_STYLE", "Choose clean, bold-box, active-word, or editorial.");
+export function parseStyle(value: unknown): SubtitleStyle {
+  if (!isSubtitleStyle(value)) {
+    throw new SubtitleError("INVALID_STYLE", `Choose an approved subtitle style: ${SUBTITLE_STYLES.join(", ")}.`);
   }
   return value as SubtitleStyle;
 }
 
-export function parsePlacement(value: string): SubtitlePlacement {
-  if (value !== "top" && value !== "bottom") throw new SubtitleError("INVALID_PLACEMENT", "Choose top or bottom.");
-  return value;
+export function parsePlacement(value: unknown): SubtitlePlacement {
+  if (value === undefined) return "bottom";
+  if (!(SUBTITLE_PLACEMENTS as readonly unknown[]).includes(value)) throw new SubtitleError("INVALID_PLACEMENT", "Choose bottom, middle, or top.");
+  return value as SubtitlePlacement;
 }
 
 export function parseLanguage(value: string | undefined): string | undefined {

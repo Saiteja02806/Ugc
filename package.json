@@ -126,7 +126,6 @@
     "worker:gcp:image:push": "node scripts/build-push-gcp-worker-image.mjs",
     "production:gcp-cutover:audit:dry-run": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/test-production-gcp-cutover-audit.mjs --dry-run",
     "production:gcp-cutover:audit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/test-production-gcp-cutover-audit.mjs --execute --yes",
-    "production:create-content-render:canary": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/test-production-create-content-render-canary.mjs",
     "production:gcp-storage:audit:dry-run": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/test-production-gcp-storage-audit.mjs --dry-run",
     "production:gcp-storage:audit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/test-production-gcp-storage-audit.mjs --execute --yes",
     "performance:production:measure": "node scripts/measure-production-latency.mjs",
@@ -151,7 +150,10 @@
     "test:pricing": "node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/pricing/plan-action.test.ts lib/pricing/pricing-actions-render.test.mjs lib/billing/checkout-account-guard.test.mjs",
     "test:free-generation-credits": "node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/billing/free-generation-credits.test.mjs scripts/free-generation-credits-db.test.mjs",
     "test:generation-retry-credits": "node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/generation-job-retry-credits-db.test.mjs lib/jobs/generation-retry-credits.test.mjs",
-    "posttest:billing": "npm run test:pricing && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test scripts/free-trial-seven-days.test.mjs && node --import ./scripts/next-server-only-test-loader.mjs --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/billing/free-trial-delivery-behavior.test.mjs && npm run test:free-generation-credits && npm run test:generation-retry-credits"
+    "posttest:billing": "npm run test:pricing && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test scripts/free-trial-seven-days.test.mjs && node --import ./scripts/next-server-only-test-loader.mjs --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/billing/free-trial-delivery-behavior.test.mjs && npm run test:free-generation-credits && npm run test:generation-retry-credits",
+    "subtitles:test": "node scripts/test-subtitle-finishing.mjs",
+    "test:image-generation": "node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/ai-studio/image-generation-api.test.mjs lib/ai-studio/generation-settings.test.ts && npm run worker:build && node --test worker/dist/lib/seedream-image.test.js worker/dist/lib/gemini-image.test.js worker/dist/lib/generation-provider.test.js worker/dist/lib/runway-credit-budget.test.js worker/dist/lib/image-output.test.js worker/dist/lib/provider-env.test.js && node --experimental-test-module-mocks --test worker/src/jobs/generate-image.test.mjs",
+    "higgsfield:example": "node --env-file=.env.local --experimental-strip-types index.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

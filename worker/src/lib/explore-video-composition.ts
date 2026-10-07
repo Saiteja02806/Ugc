@@ -109,8 +109,7 @@ export function buildExploreCompositionFilter(videos: VideoInput[], demoAudio?: 
     const selected = video.audioIndex === null ? null : { inputIndex: index, audioIndex: video.audioIndex };
     const original = selected === null ? "anullsrc=channel_layout=stereo:sample_rate=48000" : `[${selected.inputIndex}:${selected.audioIndex}]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo`;
     filters.push(`${original},apad,atrim=duration=${seconds},asetpts=PTS-STARTPTS[main${index}]`);
-    if (options.subtitleAudio) filters.push(`[main${index}]asplit=2[original${index}][speech${index}]`);
-    else filters.push(`[main${index}]anull[original${index}]`);
+    filters.push(`[main${index}]anull[original${index}]`);
     if (index === 1 && demoAudio) {
       // Added audio is DEMO-ONLY, never a replacement for original speech.
       // Repeat is explicit; uploaded recordings play once by default.
@@ -121,17 +120,18 @@ export function buildExploreCompositionFilter(videos: VideoInput[], demoAudio?: 
   }
   if (videos.length === 1) {
     filters.push("[v0]null[video];[a0]anull[combinedAudio]");
-    if (options.subtitleAudio) filters.push("[speech0]anull[speech]");
-  } else if (options.subtitleAudio) {
-    // One concat operation establishes the same video/main-speech boundaries.
-    // Separate music-free speech avoids captioning known background layers.
-    filters.push("[v0][a0][speech0][v1][a1][speech1]concat=n=2:v=1:a=2[video][combinedAudio][speech]");
   } else filters.push("[v0][a0][v1][a1]concat=n=2:v=1:a=1[video][combinedAudio]");
   if (options.backgroundMusic) {
     const duration = videos.reduce((sum, video) => sum + video.durationMs, 0) / 1000;
     filters.push(backgroundAudioFilter(options.backgroundMusic, duration * 1000, "music"));
     filters.push("[combinedAudio][music]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,alimiter=limit=0.95:level=false:latency=true[audio]");
   } else filters.push("[combinedAudio]anull[audio]");
+  // Caption the final composed audio, after every optional mix, on exactly the
+  // same timeline as the saved video. Preserve both output and ASR branches.
+  if (options.subtitleAudio) {
+    filters[filters.length - 1] = filters[filters.length - 1].replace(/\[audio\]$/, "[finalAudio]");
+    filters.push("[finalAudio]asplit=2[audio][speech]");
+  }
   return filters.join(";");
 }
 

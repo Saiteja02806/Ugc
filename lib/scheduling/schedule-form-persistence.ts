@@ -20,6 +20,7 @@ export function getDormantScheduleTargets(params: {
       (candidate) => candidate.id === target.connectionId,
     );
     const platform = target.platform ?? connection?.platform;
+
     return platform !== undefined && !params.allowedPlatforms.includes(platform);
   });
 }

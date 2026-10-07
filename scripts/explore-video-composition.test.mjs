@@ -113,7 +113,7 @@ test("background audio is audible only in the demo; a shorter track ends without
   assert.ok(energy(samples(result.outputPath, 2.4, 0.2)) < 1e-8);
 });
 
-test("original opening and demo speech are preserved, while background music is absent from the subtitle audio", async (t) => {
+test("original opening and demo speech are preserved, with final mixed audio on the subtitle timeline", async (t) => {
   const dir = await workspace(t), sourcePath = join(dir, "opening.mp4"), demoPath = join(dir, "demo.mp4"), backgroundMusicPath = join(dir, "music.wav");
   video(sourcePath); video(demoPath, { seconds: 2 }); audio(backgroundMusicPath, 3, 1300);
   const originals = await Promise.all([sourcePath, demoPath, backgroundMusicPath].map(async (path) => digest(await readFile(path))));
@@ -123,13 +123,13 @@ test("original opening and demo speech are preserved, while background music is 
   const opening = samples(result.subtitleAudioPath, 0.2, 0.2), demo = samples(result.subtitleAudioPath, 1.2, 0.2), playback = samples(result.outputPath, 1.2, 0.2);
   assert.ok(tonePower(opening, 440) > 1e-4);
   assert.ok(tonePower(demo, 440) > 1e-4, "The demo's original voice must be preserved");
-  assert.ok(tonePower(demo, 1300) < 1e-7, "Background music must not enter paid transcription");
+  assert.ok(tonePower(demo, 1300) > 1e-5, "Transcription uses the final mixed soundtrack");
   assert.ok(tonePower(playback, 1300) > 1e-5, "Background music remains audible in the rendered soundtrack");
   assert.ok(tonePower(samples(result.subtitleAudioPath, 2.4, 0.2), 440) > 1e-4, "The original demo voice continues for the whole demo");
   assert.deepEqual(await Promise.all([sourcePath, demoPath, backgroundMusicPath].map(async (path) => digest(await readFile(path)))), originals);
 });
 
-test("uploaded demo audio mixes underneath original demo audio and never enters the opening or subtitle speech", async (t) => {
+test("uploaded demo audio mixes underneath original demo audio and never enters the opening, and shares the final subtitle timeline", async (t) => {
   const dir = await workspace(t), sourcePath = join(dir, "opening.mp4"), demoPath = join(dir, "demo.mp4"), demoAudioPath = join(dir, "background.wav");
   video(sourcePath); video(demoPath, { seconds: 2 }); audio(demoAudioPath, 1, 880);
   const inputs = [sourcePath, demoPath, demoAudioPath];
@@ -145,16 +145,16 @@ test("uploaded demo audio mixes underneath original demo audio and never enters 
   assert.ok(tonePower(ending, 880) < 1e-7, "Uploaded audio does not loop");
   const speech = samples(result.subtitleAudioPath, 1.2, 0.2);
   assert.ok(tonePower(speech, 440) > 1e-4);
-  assert.ok(tonePower(speech, 880) < 1e-7, "Background audio is not used as subtitle speech");
+  assert.ok(tonePower(speech, 880) > 1e-5, "Added audio shares the final subtitle timeline");
   assert.deepEqual(await Promise.all(inputs.map(async (path) => digest(await readFile(path)))), originals);
 });
 
-test("demo-only background layers are also excluded from the subtitle track", async (t) => {
+test("demo-only layers share the final subtitle track while the silent opening stays silent", async (t) => {
   const dir = await workspace(t), sourcePath = join(dir, "opening.mp4"), demoPath = join(dir, "demo.mp4"), demoAudioPath = join(dir, "background.wav");
   video(sourcePath, { audio: false }); video(demoPath, { audio: false }); audio(demoAudioPath, 1);
   const result = await composeExploreVideo({ sourcePath, demoPath, demoAudioPath, workDir: join(dir, "render"), tools, subtitleScope: { language: "en" } });
   assert.ok(energy(samples(result.outputPath, 1.2, 0.2)) > 1e-5);
-  assert.ok(energy(samples(result.subtitleAudioPath, 1.2, 0.2)) < 1e-8);
+  assert.ok(energy(samples(result.subtitleAudioPath, 1.2, 0.2)) > 1e-5);
 });
 
 test("audio without a demo, invalid playback, cancelled, offset-video and remote inputs fail safely", async (t) => {
@@ -187,19 +187,19 @@ test("longer demo background audio is fitted and faded without shortening videos
   assert.deepEqual(await Promise.all(paths.map(async (path) => digest(await readFile(path)))), original);
 });
 
-test("explicitly repeated short demo music covers the demo, never the opening or subtitle speech", async (t) => {
+test("explicitly repeated short demo music covers the demo, never the opening, and shares final subtitle audio", async (t) => {
   const dir = await workspace(t), sourcePath = join(dir, "opening.mp4"), demoPath = join(dir, "demo.mp4"), demoAudioPath = join(dir, "short.wav");
   video(sourcePath); video(demoPath, { seconds: 2 }); audio(demoAudioPath, 0.5);
   const result = await composeExploreVideo({ sourcePath, demoPath, demoAudioPath, demoAudioPlayback: "repeat", workDir: join(dir, "render"), tools, subtitleScope: { language: "en" } });
   assert.equal(result.demoAudioTiming.fit, "loop");
   assert.ok(tonePower(samples(result.outputPath, 0.4, 0.1), 880) < 1e-7);
   assert.ok(tonePower(samples(result.outputPath, 2.5, 0.1), 880) > 1e-5, "The short track continues when explicitly repeated");
-  assert.ok(tonePower(samples(result.subtitleAudioPath, 2.5, 0.1), 880) < 1e-7);
+  assert.ok(tonePower(samples(result.subtitleAudioPath, 2.5, 0.1), 880) > 1e-5);
   assert.ok(tonePower(samples(result.subtitleAudioPath, 2.5, 0.1), 440) > 1e-4);
   assert.ok(Math.abs(result.durationMs - 3000) < 150);
 });
 
-test("whole-video music and separate demo audio use distinct inputs and stay out of subtitle speech", async (t) => {
+test("whole-video music and separate demo audio use distinct inputs and share the final subtitle audio", async (t) => {
   const dir = await workspace(t), sourcePath = join(dir, "opening.mp4"), demoPath = join(dir, "demo.mp4"), demoAudioPath = join(dir, "demo-audio.wav"), backgroundMusicPath = join(dir, "whole-video.wav");
   video(sourcePath); video(demoPath, { seconds: 2 }); audio(demoAudioPath, 4, 880); audio(backgroundMusicPath, 0.5, 1300);
   const result = await composeExploreVideo({ sourcePath, demoPath, demoAudioPath, backgroundMusicPath, backgroundMusicPlayback: "repeat", workDir: join(dir, "render"), tools, subtitleScope: { language: "en" } });
@@ -211,7 +211,7 @@ test("whole-video music and separate demo audio use distinct inputs and stay out
   assert.ok(tonePower(opening, 880) < 1e-7);
   for (const frequency of [880, 1300]) {
     assert.ok(tonePower(demo, frequency) > 1e-5);
-    assert.ok(tonePower(speech, frequency) < 1e-7);
+    assert.ok(tonePower(speech, frequency) > 1e-5);
   }
   assert.ok(tonePower(speech, 440) > 1e-4);
   assert.ok(Math.abs(result.durationMs - 3000) < 150);

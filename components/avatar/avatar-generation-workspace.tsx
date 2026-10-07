@@ -339,9 +339,7 @@ export function AvatarGenerationWorkspace({
               Generate another avatar
             </>
           ) : (
-            <>
-              Generate avatar
-            </>
+            "Generate avatar"
           )}
         </button>
 

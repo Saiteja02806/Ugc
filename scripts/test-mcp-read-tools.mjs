@@ -26,6 +26,8 @@ const uploadingAsset = { ...fixtureAsset("66666666-6666-4666-8666-666666666666",
 let billingMode = "outage";
 let brandMode = "missing";
 let refreshCalls = 0;
+let freeCreditWrites = 0;
+let freeCreditMode = "existing";
 let assetListUnavailable = false;
 let bearerMode = "valid";
 let seenBearerHash = null;
@@ -37,6 +39,18 @@ let uploadQuotaExceeded = false;
 globalThis.fetch = async (input, init) => {
   const url = new URL(input instanceof Request ? input.url : String(input));
   const method = init?.method ?? (input instanceof Request ? input.method : "GET");
+  if (url.pathname.endsWith("/rest/v1/rpc/ensure_free_generation_credit_balance")) {
+    freeCreditWrites += 1;
+    return Response.json({ granted: 2, remaining: 2, reserved: 0, used: 0 });
+  }
+  if (url.pathname.endsWith("/rest/v1/free_generation_credit_balances")) {
+    assert.equal(method, "GET", "MCP reads must not create free allowances");
+    assert.equal(url.searchParams.get("user_id"), "eq.owner-a");
+    if (freeCreditMode === "outage") return Response.json({ message: "local free ledger outage" }, { status: 503 });
+    return Response.json(freeCreditMode === "missing" ? null : freeCreditMode === "invalid"
+      ? { credit_limit: 2, used_credits: 2, reserved_credits: 1 }
+      : { credit_limit: 2, used_credits: 0, reserved_credits: 1 });
+  }
   if (url.pathname.endsWith("/rest/v1/mcp_oauth_tokens")) {
     seenBearerHash = url.searchParams.get("token_hash");
     assert.equal(url.searchParams.get("token_type"), "eq.access");
@@ -163,6 +177,7 @@ globalThis.fetch = async (input, init) => {
       credit_limit: 600, used_credits: 10, reserved_credits: 5,
       period_start: "2026-09-01T00:00:00.000Z",
       period_end: billingMode === "expired-growth" ? "2020-09-01T01:00:00.000Z" : "2099-10-01T00:00:00.000Z",
+
     } : null);
   }
   if (url.pathname.endsWith("/rest/v1/subscription_entitlements")) return Response.json([]);
@@ -226,9 +241,21 @@ const routeRequest = () => new Request(resource, {
   },
   body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }),
 });
-const authenticatedRoute = await mcpRoutePost(routeRequest());
+const requestLogs = [];
+const originalInfo = console.info;
+let authenticatedRoute;
+try {
+  console.info = (line) => requestLogs.push(JSON.parse(line));
+  authenticatedRoute = await mcpRoutePost(routeRequest());
+} finally {
+  console.info = originalInfo;
+}
 assert.equal(authenticatedRoute.status, 200);
 assert.equal(authenticatedRoute.headers.get("cache-control"), "no-store");
+const authenticatedRequestId = authenticatedRoute.headers.get("x-request-id");
+assert.match(authenticatedRequestId ?? "", /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+assert.equal(requestLogs.find((entry) => entry.event === "mcp.request").request_id, authenticatedRequestId);
+assert.ok(!JSON.stringify(requestLogs).includes(bearerSecret), "Correlation logs must not disclose credentials");
 const routeBodyText = await authenticatedRoute.text();
 const routeDataLine = routeBodyText.split("\n").find((line) => line.startsWith("data: "));
 const routeBody = JSON.parse(routeDataLine ? routeDataLine.slice(6) : routeBodyText);
@@ -263,11 +290,14 @@ for (const mode of ["missing", "expired", "revoked", "wrong-resource"]) {
   bearerMode = mode;
   const rejected = await mcpRoutePost(routeRequest());
   assert.equal(rejected.status, 401, mode);
+  assert.notEqual(rejected.headers.get("x-request-id"), authenticatedRequestId);
+  assert.ok(rejected.headers.has("x-request-id"));
   assert.match(rejected.headers.get("www-authenticate") ?? "", /resource_metadata=/);
 }
 bearerMode = "store-error";
 const tokenStoreError = await mcpRoutePost(routeRequest());
 assert.equal(tokenStoreError.status, 503);
+assert.ok(tokenStoreError.headers.has("x-request-id"));
 bearerMode = "valid";
 const makeAuth = (firebaseUid, scopes) => ({
   token: "local-test-token", clientId: "local-test-client", scopes,
@@ -366,8 +396,18 @@ assert.equal(JSON.parse(entitlements.body.result.content[0].text).code, "ENTITLE
 billingMode = "free";
 const free = await call("tools/call", { name: "get_entitlements", arguments: {} });
 assert.equal(free.body.result.structuredContent.plan, "free");
-assert.equal(free.body.result.structuredContent.credits_remaining, ONE_TIME_FREE_GENERATION_CREDITS);
 assert.equal(free.body.result.structuredContent.features.video_generation, false);
+assert.equal(free.body.result.structuredContent.credits_remaining, 1);
+assert.equal(free.body.result.structuredContent.credits_reserved, 1);
+freeCreditMode = "missing";
+const noFreeAllocation = await call("tools/call", { name: "get_entitlements", arguments: {} });
+assert.equal(noFreeAllocation.body.result.structuredContent.credits_remaining, 0);
+for (const mode of ["outage", "invalid"]) {
+  freeCreditMode = mode;
+  const unavailableFreeLedger = await call("tools/call", { name: "get_entitlements", arguments: {} });
+  assert.equal(JSON.parse(unavailableFreeLedger.body.result.content[0].text).code, "ENTITLEMENTS_UNAVAILABLE");
+}
+freeCreditMode = "existing";
 const freeCapabilities = await call("tools/call", { name: "get_capabilities", arguments: {} });
 assert.equal(freeCapabilities.body.result.structuredContent.image_generation.available, false);
 billingMode = "growth";
@@ -384,6 +424,7 @@ const renewedPreview = await call("tools/call", { name: "get_entitlements", argu
 assert.equal(renewedPreview.body.result.structuredContent.credits_remaining, 600);
 assert.equal(renewedPreview.body.result.structuredContent.credits_reserved, 0);
 assert.equal(refreshCalls, 0, "read-only tools must not run the billing rollover RPC");
+assert.equal(freeCreditWrites, 0, "MCP reads must not initialize a free credit allocation");
 
 const writeAuth = makeAuth("owner-a", ["assets:write"]);
 const createArgs = {

@@ -12,7 +12,7 @@ import { RetryableJobError } from "../retryable-job-error.js";
 import type { BackgroundJobRow } from "../types.js";
 import type { WorkerJobContext } from "./index.js";
 import { configuredScribeProvider, type ScribeTranscriptionProvider } from "../subtitles/elevenlabs-provider.js";
-import { parseStyle } from "../subtitles/contracts.js";
+import { parsePlacement, parseStyle } from "../subtitles/contracts.js";
 
 export type ExploreFinishingDependencies = {
   store: Pick<ExploreFinishingStore,"read"|"asset"|"claimSpeech"|"saveSpeech"|"finalize">;
@@ -57,6 +57,7 @@ export async function runFinishExploreVideoJob(job: BackgroundJobRow, context: P
   // Reject unknown styles before a paid claim; each approved style uses its
   // matching renderer and font checks without silently substituting a preview.
   const subtitleStyle = draft.subtitles ? parseStyle(draft.subtitles.style) : null;
+  const subtitlePlacement = draft.subtitles ? parsePlacement(draft.subtitles.placement) : null;
   // Verify ALL selected sources before downloading or making provider claims.
   const selections = [
     { id:draft.sourceAssetId,collection:"video" as const,max:250*1024*1024 },
@@ -66,6 +67,10 @@ export async function runFinishExploreVideoJob(job: BackgroundJobRow, context: P
   ];
   const assets = await Promise.all(selections.map(selection => deps.store.asset(job.user_id!,selection.id,selection.collection)));
   const directory = await mkdtemp(join(tmpdir(),"ugc-explore-finish-"));
+  const controller = new AbortController();
+  let checkpointFailure: unknown;
+  let checking = false;
+  let watch: ReturnType<typeof setInterval> | undefined;
   try {
     await context.checkpoint({ status:"processing",stage:"downloading_owned_media",progress:10 });
     for (let i=0;i<assets.length;i++) await deps.storage.download(assets[i].storage_key,join(directory,`source-${i}`),selections[i].max,
@@ -77,30 +82,43 @@ export async function runFinishExploreVideoJob(job: BackgroundJobRow, context: P
     const backgroundMusicPath = draft.backgroundAssetId ? join(directory,`source-${i++}`) : undefined;
     const tools = { ffmpeg:process.env.FFMPEG_PATH || "ffmpeg",ffprobe:process.env.FFPROBE_PATH || "ffprobe",
       fontsDir:process.env.SUBTITLE_FONTS_DIR || fileURLToPath(new URL("../../assets/fonts/",import.meta.url)) };
-    const result = await deps.finish({ sourcePath:join(directory,"source-0"),demoPath,demoAudioPath,backgroundMusicPath,
+    // Cancellation/lost leases stop long media and provider operations too,
+    // rather than waiting until an already finished render is uploaded.
+    watch = setInterval(() => {
+      if (checking || controller.signal.aborted) return;
+      checking = true;
+      void context.checkpoint({ status:"rendering",stage:"finishing_owned_video",progress:40 }).catch(error => {
+        checkpointFailure = error; controller.abort(error);
+      }).finally(() => { checking = false; });
+    }, 5000);
+    const result = await deps.finish({ sourcePath:join(directory,"source-0"),demoPath,demoAudioPath,backgroundMusicPath,signal:controller.signal,
       ...(draft.demoFraming ? { demoFraming: draft.demoFraming } : {}),
       ...(demoAudioPath ? { demoAudioPlayback:draft.demoAudioPlayback } : {}),
       ...(backgroundMusicPath ? { backgroundMusicPlayback:draft.backgroundPlayback } : {}),workDir:join(directory,"render"),tools,
-      ...(draft.subtitles && subtitleStyle ? { subtitles:{ ...draft.subtitles,style:subtitleStyle,loadTranscript:async (speech) => {
-        await context.checkpoint({ status:"waiting_external_service",stage:"transcribing_original_speech",progress:55 });
+      ...(draft.subtitles && subtitleStyle && subtitlePlacement ? { subtitles:{ ...draft.subtitles,style:subtitleStyle,placement:subtitlePlacement,loadTranscript:async (speech) => {
+        await context.checkpoint({ status:"waiting_external_service",stage:"transcribing_composed_audio",progress:55 });
         const duration = Math.ceil(speech.durationMs);
         const provider = deps.transcription!;
-        const prepared = await provider.prepare(speech.audioPath,duration);
+        const prepared = await provider.prepare(speech.audioPath,duration,controller.signal);
         if (prepared.sourceHash !== speech.sourceHash) throw new ExploreFinishError("The speech file changed before transcription.",409);
         const claim = await deps.store.claimSpeech(receipt,job.claim_token!,speech.sourceHash,duration,provider.id);
         if (claim.state === "ready") return claim.transcript;
         if (claim.state === "uncertain") throw new ExploreFinishError("The transcription may already have been submitted. It will not be submitted again automatically.",409,"provider_submission_uncertain");
+        await context.checkpoint({ status:"waiting_external_service",stage:"transcribing_composed_audio",progress:55 });
         const transcript = await prepared.submit();
         // Durable transcript is saved BEFORE caption rendering or output upload.
         return deps.store.saveSpeech(receipt,speech.sourceHash,duration,transcript,provider.id);
       } } } : {}),
     });
+    if (watch) { clearInterval(watch); watch = undefined; }
+    if (checkpointFailure) throw checkpointFailure;
     await context.checkpoint({ status:"uploading_output",stage:"uploading_finished_video",progress:85 });
     let output: Record<string,unknown>;
     try {
       output = await deps.storage.upload(receipt,result.outputPath,{ durationSeconds:result.durationMs/1000,width:result.width,height:result.height,
         ratio:assets[0].ratio || "other",metadata:{ sourceHashes:result.sourceHashes,segments:result.segments,
-          demoAudioTiming:result.demoAudioTiming,backgroundMusicTiming:result.backgroundMusicTiming,subtitleStyle:result.subtitleStyle,subtitleWordCount:result.subtitleWordCount,
+          demoAudioTiming:result.demoAudioTiming,backgroundMusicTiming:result.backgroundMusicTiming,subtitleStyle:result.subtitleStyle,subtitlePlacement:result.subtitlePlacement,subtitleWordCount:result.subtitleWordCount,
+          subtitleRenderVersion:result.subtitleRenderVersion,subtitleAudioTimeline:"final-composition-v1",
           ...(draft.demoFraming ? { demoFraming: draft.demoFraming } : {}) } });
     }
     catch (error) {
@@ -110,9 +128,13 @@ export async function runFinishExploreVideoJob(job: BackgroundJobRow, context: P
       // must recompose, the transcript is already durable, never resubmitted.
       throw new RetryableJobError("The output upload is unconfirmed; the same owned output will be checked before retrying.",{ code:"explore_finish_upload_uncertain",retryAfterSeconds:30 });
     }
+    await context.checkpoint({ status:"uploading_output",stage:"saving_finished_video",progress:95 });
     await finalizeStoredOutput(deps,receipt,job.claim_token,output);
     return { mediaAssetId:receipt.output_asset_id,requestKey:receipt.request_key };
+  } catch (error) {
+    throw checkpointFailure ?? error;
   } finally {
+    if (watch) clearInterval(watch);
     // Only this newly-created worker directory. Never touch uploaded sources.
     if (resolve(directory).startsWith(resolve(tmpdir()) + "/") || resolve(directory).startsWith(resolve(tmpdir()) + "\\")) await rm(directory,{ recursive:true,force:true });
   }

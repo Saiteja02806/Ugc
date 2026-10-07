@@ -39,8 +39,10 @@ export class ExploreFinishingStore {
     return receipt;
   }
   async asset(owner: string, id: string, collection: "video" | "audio") {
-    const { data, error } = await this.db.from("media_assets").select("id,user_id,collection,status,deleted_at,storage_key,ratio,file_size_bytes,source_type,metadata")
-      .eq("id",id).eq("user_id",owner).eq("collection",collection).eq("status","ready").is("deleted_at",null).maybeSingle();
+    let query = this.db.from("media_assets").select("id,user_id,collection,mime_type,status,deleted_at,storage_key,ratio,file_size_bytes,source_type,metadata")
+      .eq("id",id).eq("user_id",owner).eq("status","ready").is("deleted_at",null);
+    query = collection === "video" ? query.in("collection", ["video", "influencer"]).like("mime_type", "video/%") : query.eq("collection", collection);
+    const { data, error } = await query.maybeSingle();
     if (error) throw new ExploreFinishError("Could not check the selected media.",503);
     if (!data || typeof data.storage_key !== "string" || !data.storage_key || data.storage_key.includes("..") || data.storage_key.startsWith("/") || data.storage_key.includes("\\") || data.storage_key.includes(":")) throw new ExploreFinishError("The selected media is unavailable.",404);
     return data;

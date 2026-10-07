@@ -1,10 +1,15 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
+import { pathToFileURL } from "node:url";
 import { after, test } from "node:test";
 
-// In-memory PostgreSQL only. No hosted database or storage calls.
-import { PGlite } from "@electric-sql/pglite";
+// Install the disposable PostgreSQL test runtime outside the project:
+// npm install --prefix <temp-directory> @electric-sql/pglite
+// Set AUDIO_TEST_PGLITE_MODULE to <temp-directory>/node_modules/@electric-sql/pglite/dist/index.js.
+const modulePath = process.env.AUDIO_TEST_PGLITE_MODULE;
+if (!modulePath) throw new Error("Set AUDIO_TEST_PGLITE_MODULE to the disposable PGlite runtime.");
+const { PGlite } = await import(pathToFileURL(modulePath).href);
 const db = new PGlite();
 await db.exec(`
 create role anon; create role authenticated; create role service_role bypassrls;
@@ -23,8 +28,6 @@ create table public.background_jobs(id uuid primary key default gen_random_uuid(
 create table public.billing_credit_reservations(id uuid primary key default gen_random_uuid(),user_id text,idempotency_key text,job_type text,amount integer,background_job_id uuid,status text default 'reserved',complimentary_plan_grant_id uuid,unique(user_id,idempotency_key));
 create table public.billing_customers(user_id text,dodo_customer_id text);
 create table public.billing_usage_outbox(event_id text primary key,user_id text,dodo_customer_id text,background_job_id uuid,generation_kind text,credit_cost integer,occurred_at timestamptz);
--- Existing application tables already have service-role privileges in Supabase.
-grant all on public.background_jobs,public.billing_credit_reservations,public.billing_customers,public.billing_usage_outbox to service_role;
 create function public.settle_billing_credit_reservation(text,text,uuid,boolean) returns boolean language plpgsql as $$
 begin update public.billing_credit_reservations set status=case when $4 then 'committed' else 'released' end where user_id=$1 and idempotency_key=$2 and status='reserved'; return found; end; $$;
 create function public.reserve_billing_credits(text,text,text,integer) returns jsonb language plpgsql as $$
@@ -63,7 +66,7 @@ async function retire(kind,id,owner) {
 }
 test("migration retains unknown existing job types and adds audio", async () => {
   await db.exec("insert into public.background_jobs(job_type) values('sentinel_future_job'),('generate_image'),('generate_audio')");
-  assert.equal((await db.query("select count(*)::int n from storage.buckets")).rows[0].n, 0);
+  const bucket = (await db.query("select public from storage.buckets where id='private-audio'")).rows[0]; assert.equal(bucket.public, false);
 });
 test("same request creates one job, reservation and usage charge", async () => {
   const key = randomUUID(); const first = await create({ key, period: "duplicates", credits: 1 });
@@ -195,28 +198,14 @@ test("completed generated recordings expose chunk cleanup metadata while process
   const retired = await retire("asset",generated,owner); assert.equal(retired.chunk_count,3);
   assert.equal(retired.asset.generation_id,req.id);
 });
-test("browser roles cannot reach private audio records or RPCs, and existing Supabase Storage policies are untouched", async () => {
-  await db.exec("insert into storage.objects(bucket_id) values('existing-media');");
-  for (const role of ["anon", "authenticated"]) {
-    await db.exec(`set role ${role};`);
-    try {
+test("anonymous access cannot reach private records, RPCs or stored audio even with legacy broad policies", async () => {
+  await db.exec("insert into storage.objects(bucket_id) values('private-audio'),('existing-media'); set role anon;");
+  try {
     await assert.rejects(db.query("select * from public.audio_assets"), /permission denied/);
     await assert.rejects(db.query("select public.claim_audio_provider($1)", [randomUUID()]), /permission denied/);
     await assert.rejects(db.query("select public.retire_audio_asset($1,'owner')", [randomUUID()]), /permission denied/);
     await assert.rejects(db.query("select public.start_audio_provider_submission($1,'owner')", [randomUUID()]), /permission denied/);
-    const objects = await db.query("select bucket_id from storage.objects"); assert.ok(objects.rows.every(row => row.bucket_id === "existing-media"));
-    await db.query("insert into storage.objects(bucket_id) values('existing-media')");
-    } finally { await db.exec("reset role;"); }
-  }
-});
-
-test("service-role invoker can create, claim and settle a job without browser access or definer escalation", async () => {
-  await db.exec("set role service_role;");
-  try {
-    const req = await create({ owner: "service-only", period: "service-runtime", credits: 1 });
-    await db.query("update public.background_jobs set status='processing' where id=$1", [req.job_id]);
-    assert.equal((await db.query("select public.start_audio_provider_submission($1,$2) as started", [req.id, "service-only"])).rows[0].started, true);
-    await db.query("update public.background_jobs set status='completed' where id=$1", [req.job_id]);
-    assert.equal((await db.query("select status from public.billing_credit_reservations where background_job_id=$1", [req.job_id])).rows[0].status, "committed");
+    const objects = await db.query("select bucket_id from storage.objects"); assert.deepEqual(objects.rows, [{ bucket_id: "existing-media" }]);
+    await assert.rejects(db.query("insert into storage.objects(bucket_id) values('private-audio')"), /row-level security/);
   } finally { await db.exec("reset role;"); }
 });

@@ -1,12 +1,13 @@
 /** Shared, serializable contract. Clients submit owned asset IDs, never URLs or storage keys. */
 export const EXPLORE_FINISH_VERSION = 1;
-export const EXPLORE_RENDER_VERSION = "explore-finish-v1";
-export const DEMO_FRAMING_RENDER_VERSION = "explore-finish-pan-v1";
+export const EXPLORE_RENDER_VERSION = "explore-finish-v2";
+export const DEMO_FRAMING_RENDER_VERSION = "explore-finish-pan-v2";
 export const MAX_DEMO_FRAMING_POINTS = 512;
 /** Fixed-size viewport; timestamps are relative to the DEMO, not the opening. */
 export type DemoFramingPoint = [timeMs: number, x: number, y: number];
 export type DemoFraming = { version: 1; width: number; height: number; points: DemoFramingPoint[] };
-export const EXPLORE_FINISH_STYLES = ["clean", "bold-box", "active-word", "editorial"] as const;
+import { SUBTITLE_STYLES } from "../subtitles/styles.ts";
+export const EXPLORE_FINISH_STYLES = SUBTITLE_STYLES;
 export type ExploreFinishStyle = (typeof EXPLORE_FINISH_STYLES)[number];
 export type ExploreFinishDraft = {
   version: 1;
@@ -18,7 +19,7 @@ export type ExploreFinishDraft = {
   backgroundAssetId: string | null;
   backgroundPlayback: "once" | "repeat";
   demoFraming?: DemoFraming;
-  subtitles: { language: "en"; style: ExploreFinishStyle; placement: "bottom" | "top" } | null;
+  subtitles: { language: "en"; style: ExploreFinishStyle; placement?: "bottom" | "middle" | "top" } | null;
 };
 export type ExploreFinishReceipt = {
   user_id: string; request_key: string; fingerprint: string; draft: ExploreFinishDraft;
@@ -58,8 +59,11 @@ export function parseExploreFinishDraft(value: unknown): ExploreFinishDraft {
   if (raw.subtitles !== null) {
     const sub = object(raw.subtitles);
     if (Object.keys(sub).some(key => !["language", "style", "placement"].includes(key)) || sub.language !== "en" ||
-        !EXPLORE_FINISH_STYLES.includes(sub.style as ExploreFinishStyle) || (sub.placement !== "top" && sub.placement !== "bottom")) throw new ExploreFinishError("Choose an English subtitle style and placement.");
-    subtitles = { language: "en", style: sub.style as ExploreFinishStyle, placement: sub.placement };
+        !EXPLORE_FINISH_STYLES.includes(sub.style as ExploreFinishStyle) || (sub.placement !== undefined && sub.placement !== "top" && sub.placement !== "middle" && sub.placement !== "bottom")) throw new ExploreFinishError("Choose an English subtitle style and placement.");
+    // Missing placement means Bottom at render time. Keep it omitted here so
+    // durable legacy request fingerprints do not change during recovery.
+    subtitles = { language: "en", style: sub.style as ExploreFinishStyle,
+      ...(sub.placement === undefined ? {} : { placement: sub.placement as "bottom" | "middle" | "top" }) };
   }
   // Omit the new option entirely on legacy drafts: existing fingerprints and
   // interrupted finishing requests must remain byte-for-byte compatible.

@@ -1,5 +1,7 @@
 # Subtitle integration readiness — October 1, 2026
 
+Historical review. The gated saved-video finishing path and seven real previews were implemented locally October 7; see [current implementation and release notes](subtitle-styles-and-finishing-2026-10-07.md). Production enablement and acceptance remain pending.
+
 **Decision: proceed with controlled integration development; do not enable production users yet.** The local subtitle engine and UI work on the approved sample. The deployed-application adapter, runtime and persistence are not implemented. This review added documentation only; no feature was attached, migrated or deployed.
 
 ## Verified now

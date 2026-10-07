@@ -1,12 +1,6 @@
 # Isolated subtitle generator
 
-
-Historical research and offline harness. Production Explore now uses the
-user-approved ElevenLabs Scribe word-timing adapter, English only, with a
-60-second combined-video limit. The WhisperX prototype below is not an
-application or production-worker dependency; see `explore-scribe-integration-2026-10-04.md`.
-
-Implemented and locally evaluated September 30, 2026. This is an operator-run prototype. No application screen, API route, job handler, queue, database migration, media asset, or scheduling flow imports it. Nothing was deployed.
+Originally implemented and locally evaluated September 30, 2026 as an operator-run prototype. As of October 7, its registry and renderer also support the gated Explore saved-video finishing path and seven real previews. See [the implementation and release notes](subtitle-styles-and-finishing-2026-10-07.md). This subtitle change has not been deployed.
 
 The narrow implementation is our own TypeScript, using the existing OpenAI SDK, FFmpeg and Sharp dependencies and the existing Arial font assets. No GitHub application was cloned, no repository code was vendored, and no dependency or lockfile was changed for this prototype. The repository comparisons and future integration proposal are in [the research document](subtitle-generator-research-2026-09-30.md).
 
@@ -17,8 +11,12 @@ The narrow implementation is our own TypeScript, using the existing OpenAI SDK, 
 - `clean`: white text with an outline.
 - `bold-box`: bold white text with a dark background.
 - `active-word`: bold outlined text with the current word highlighted in yellow.
+- `editorial`: expressive measured typography.
+- `word-pop`: one large word with a bounded entrance.
+- `karaoke`: a fixed phrase fills progressively at real word times.
+- `marker-highlight`: a background follows the active word within a fixed phrase.
 
-Both top and bottom placement are supported. Phrase pages contain at most six words, normally at most 2.8 seconds of speech, and split across substantial pauses. A single unusually long word can exceed this page duration; no timestamps are invented to split it. Captions disappear at the phrase's end. Word highlighting follows actual supplied boundaries; ASS rendering has centisecond precision and video frames impose their own timing precision.
+Bottom, Middle, and Top placement are supported. Standard phrase pages contain at most six words, normally at most 2.8 seconds of speech, and split across substantial pauses; the finishing path preserves the classic/Editorial natural phrase planner. A single unusually long word can exceed this page duration; no timestamps are invented to split it. Captions disappear at the phrase's end. Word highlighting follows actual supplied boundaries; ASS rendering has centisecond precision and video frames impose their own timing precision.
 
 Outputs are `captioned.mp4`, `captions.ass`, `captions.srt`, `captions.vtt`, `transcript.json`, and `manifest.json`. The manifest is written last and marks a completed result. SRT/VTT are text exports; they do not preserve the selected burn-in style. Raw transcript text is retained in JSON/SRT. Braces and backslashes are normalized to visible punctuation equivalents in the ASS display to prevent subtitle override-command injection.
 

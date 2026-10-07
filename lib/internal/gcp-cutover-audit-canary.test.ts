@@ -18,23 +18,13 @@ test("keeps the existing AI-generation audit as the default", () => {
   );
 });
 
-test("builds a bounded media-free Create Content render canary", () => {
-  assert.deepEqual(
+test("rejects the retired Create Content render canary", () => {
+  assert.equal(
     resolveGcpCutoverAuditCanary({
       generationId: "generation-2",
       kind: "create-content-render",
     }),
-    {
-      expectedFailure: "overlay must be an object.",
-      input: {
-        canary: "production-create-content-render-invalid-payload",
-        generationId: "generation-2",
-        overlay: null,
-      },
-      jobType: "render_create_content_video",
-      kind: "create-content-render",
-      maxAttempts: 1,
-    },
+    null,
   );
 });
 

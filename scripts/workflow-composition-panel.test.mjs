@@ -10,6 +10,8 @@ const audioSource = read("components/explore/workflow-audio-reference.tsx");
 const styles = read("components/explore/workflow-creation.module.css");
 const element = (type, props = {}) => typeof type === "function" ? type(props) : ({ type, props });
 const audioTiming = {};
+const subtitleStyles = {};
+vm.runInNewContext(ts.transpileModule(read("worker/src/subtitles/styles.ts"), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, { exports: subtitleStyles });
 vm.runInNewContext(ts.transpileModule(read("worker/src/lib/explore-background-audio.ts"), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, { exports: audioTiming, Error });
 
 function harness(code, exportName) {
@@ -30,6 +32,8 @@ function harness(code, exportName) {
     "@/lib/utils": { cn: (...values) => values.join(" ") },
     "@/worker/src/subtitles/explore-policy": { EXPLORE_SUBTITLE_SCOPE_LABEL: "English · up to 60 seconds total" },
     "@/worker/src/lib/explore-background-audio": audioTiming,
+    "@/worker/src/subtitles/styles": subtitleStyles,
+    "@/components/explore/workflow-subtitle-preview": { WorkflowSubtitlePreview: "subtitle-preview" },
     "react/jsx-runtime": { jsx: element, jsxs: element, Fragment: "fragment" },
   };
   const exported = {};
@@ -91,7 +95,7 @@ test("unfinished finishing tools remain off, disabled and explained", () => {
   }
   assert.equal(nodes(tree).find((node) => node.props["aria-label"] === "Scheduling"), undefined);
   assert.match(text(tree), /Music and subtitle rendering are not connected in this local preview/);
-  assert.match(text(tree), /Applies to spoken audio in the hook and demo/);
+  assert.match(text(tree), /English · up to 60 seconds total/);
 });
 
 test("connected subtitle controls save real finishing options and Audio selection stays on the Demo attachment", () => {
@@ -106,7 +110,7 @@ test("connected subtitle controls save real finishing options and Audio selectio
   assert.equal(music.props["aria-checked"], false); music.props.onClick(); assert.equal(changes[3].backgroundMusic, true);
   const picker = nodes(tree).find(n => n.type === "saved-audio-picker"); assert.equal(picker.props.attachment, props.demoAudio); assert.equal(picker.props.ownerId, "owner");
   assert.doesNotMatch(text(tree), /Music and subtitle rendering are not connected in this local preview/);
-  assert.match(text(tree), /Apply edits to render and review actual subtitles/);
+  assert.match(text(tree), /Apply edits to save captions on your video/);
 });
 
 test("visual subtitle choices default to Clean and rerender locally without enabling the generator", () => {
@@ -116,14 +120,14 @@ test("visual subtitle choices default to Clean and rerender locally without enab
   const group = nodes(first).find((node) => node.props["aria-label"] === "Subtitle style samples (local preview only)");
   assert.equal(group.props.role, "group");
   const choices = nodes(group).filter((node) => node.type === "button");
-  assert.deepEqual(choices.map((node) => node.props["data-style"]), ["clean", "bold-box", "active-word", "editorial"]);
+  assert.deepEqual(choices.map((node) => node.props["data-style"]), Array.from(subtitleStyles.SUBTITLE_STYLES));
   assert.deepEqual(choices.filter((node) => node.props["aria-pressed"]).map((node) => node.props["data-style"]), ["clean"]);
-  assert.ok(choices.every((node) => node.props.type === "button" && text(node).includes("simple.")));
+  assert.ok(choices.every((node) => node.props.type === "button" && nodes(node).some(child => child.type === "img" && child.props.src.endsWith(".jpg"))));
   choices.find((node) => node.props["data-style"] === "active-word").props.onClick();
   const next = actual.render(props);
-  assert.deepEqual(nodes(next).filter((node) => node.type === "button" && node.props["aria-pressed"]).map((node) => node.props["data-style"]), ["active-word"]);
+  assert.deepEqual(nodes(next).filter((node) => node.type === "button" && node.props["data-style"] && node.props["aria-pressed"]).map((node) => node.props["data-style"]), ["active-word"]);
   assert.equal(nodes(next).find((node) => node.type === "select"), undefined);
-  assert.match(text(next), /not saved or applied/);
+  assert.match(text(next), /Selecting a style changes your draft only/);
   assert.equal(nodes(next).find((node) => node.props.role === "switch" && node.props["aria-label"] === "Auto subtitles").props.disabled, true);
   assert.doesNotMatch(source, /\bfetch\(|localStorage|sessionStorage|setInstructions|onInstructionsChange/);
 });
@@ -133,13 +137,11 @@ test("subtitle illustrations have distinct treatments while scope and limitation
   const subtitles = nodes(tree).find((node) => node.props["aria-label"] === "Subtitles");
   const help = nodes(subtitles).find((node) => node.props.id === "hook-subtitle-style-help");
   assert.equal(help.props.className, "sr-only");
-  assert.match(text(help), /Illustrative style samples, not rendered subtitles from your video/);
-  assert.match(text(help), /spoken audio in the hook and demo/);
+  assert.match(text(help), /These rendered examples use the same clip and transcript/);
+  assert.match(text(help), /including both segments/);
   assert.equal(nodes(tree).find((node) => node.props.id === "hook-finishing-unavailable").props.className, "sr-only");
   assert.match(styles, /\.subtitleChoices[^}]*repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(styles, /\[data-style="bold-box"\] \.subtitleSampleText[^}]*background: #000b/);
-  assert.match(styles, /\[data-style="active-word"\] \.subtitleSampleWord[^}]*color: #ffdd59/);
-  assert.match(styles, /\.editorialHero[^}]*font-size: 22px/);
+  assert.equal(nodes(tree).filter(node => node.type === "subtitle-preview").length, 1);
   assert.match(styles, /\.subtitleChoice\[aria-pressed="true"\][^}]*border-color: var\(--primary\)/);
 });
 
@@ -278,7 +280,7 @@ test("Demo audio is directly visible in editing, and section changes pause witho
   assert.ok(nodes(sound).some((node) => node.type === "player" && node.props.asset === demoAudio.asset));
   for (const kind of ["hook", "phone"]) {
     const workspace = read(`components/explore/${kind}-workflow-preview.tsx`);
-    assert.match(workspace, /querySelectorAll<HTMLMediaElement>\("audio, video"\)\.forEach\(\(player\) => player\.pause\(\)\)/);
+    assert.match(workspace, /querySelectorAll<HTMLMediaElement>\("audio, video"\)\.forEach\(\(?player\)? => player\.pause\(\)\)/);
     assert.ok(workspace.indexOf("player.pause()") < workspace.indexOf("setSection(value)"));
   }
 });

@@ -8,6 +8,7 @@ import * as finishClient from "../lib/explore/workflow-finishing-client.ts";
 import * as scheduleClient from "../lib/explore/workflow-schedule-client.ts";
 import * as schedulingDraft from "../lib/explore/workflow-scheduling-draft.ts";
 import * as defaultMusicClient from "../lib/explore/workflow-default-music-client.ts";
+import { SUBTITLE_STYLES } from "../worker/dist/subtitles/styles.js";
 
 const load = (path, imports, globals = {}) => {
   const exported = {};
@@ -18,13 +19,14 @@ const load = (path, imports, globals = {}) => {
 const tick = () => new Promise(setImmediate);
 const source = { id: randomUUID(), status: "ready", collection: "video", durationSeconds: 5 };
 const output = { id: randomUUID(), status: "ready", collection: "video", url: "https://storage.googleapis.com/test/finished.mp4" };
-function harness({ saved = null, lost = false, completed = false, subtitles = false, backgroundMusic = false, musicUnavailable = false } = {}) {
+function harness({ saved = null, lost = false, completed = false, subtitles = false, style = "clean", backgroundMusic = false, musicUnavailable = false, kind = "hook", placement = "bottom", pending = false } = {}) {
   let cursor = 0, pendingFailure = lost;
   const slots = [], effects = [], calls = [], musicReads = [], uploads = [], store = new Map();
   const musicAssetId = randomUUID();
-  const storageKey = finishClient.finishStorageKey("owner", "hook");
+  const storageKey = finishClient.finishStorageKey("owner", kind);
   if (saved) store.set(storageKey, JSON.stringify(saved));
-  const props = { ownerId: "owner", enabled: true, kind: "hook", source, demo: null, demoAudio: null, playback: "once", options: { subtitles, style: "clean", backgroundMusic }, onRestoreOptions(value) { props.options = value; } };
+  const props = { ownerId: "owner", enabled: true, kind, source, demo: null, demoAudio: null, playback: "once", options: { subtitles, style, backgroundMusic, placement }, onRestoreOptions(value) { props.options = value; } };
+  const jobId = randomUUID(); let cancelled = false;
   const react = {
     useRef(value) { const i = cursor++; return slots[i] ??= { current: value }; },
     useState(value) { const i = cursor++; if (!(i in slots)) slots[i] = value; return [slots[i], v => { slots[i] = typeof v === "function" ? v(slots[i]) : v; }]; },
@@ -51,13 +53,79 @@ function harness({ saved = null, lost = false, completed = false, subtitles = fa
         return musicUnavailable ? Response.json({ error: "Default background music is not configured yet." }, { status: 503 }) : new Response("offline-music", { headers: { "Content-Type": "audio/mpeg", "X-Explore-Music-Loopable": "true" } });
       }
       calls.push({ url, ...init });
+      if (url === `/api/jobs/${jobId}/cancel`) { cancelled = true; return Response.json({ok:true}); }
       if (init.method === "POST" && pendingFailure) { pendingFailure = false; throw new Error("lost response"); }
       const entry = init.method === "POST" ? JSON.parse(init.body) : JSON.parse(store.get(storageKey));
-      return Response.json({ ok: true, receiptVersion: 1, requestKey: entry.requestKey, outcome: completed || init.method === "POST" ? "completed" : "unconfirmed", mediaAssetId: completed || init.method === "POST" ? output.id : null, message: "Saved output." });
+      return Response.json({ ok: true, receiptVersion: 1, requestKey: entry.requestKey, jobId, outcome: pending ? cancelled ? "cancelled" : "pending" : completed || init.method === "POST" ? "completed" : "unconfirmed", mediaAssetId: !pending && (completed || init.method === "POST") ? output.id : null, message: "Saved output." });
     },
   });
-  return { props, calls, musicReads, uploads, musicAssetId, store, storageKey, render() { cursor = 0; const view = testModule.useWorkflowFinishing(props); while (effects.length) effects.shift()(); return view; }, unmount() { for (const slot of slots) slot?.cleanup?.(); } };
+  return { props, calls, musicReads, uploads, musicAssetId, jobId, store, storageKey, render() { cursor = 0; const view = testModule.useWorkflowFinishing(props); while (effects.length) effects.shift()(); return view; }, unmount() { for (const slot of slots) slot?.cleanup?.(); } };
 }
+
+test("all styles persist exact interrupted requests and changing style requires a new applied export", async () => {
+  for (const style of SUBTITLE_STYLES) {
+    const h = harness({style,subtitles:true,lost:true});
+    h.render(); await tick(); h.render().action.onAction(); await tick();
+    const first = h.calls.find(c => c.method === "POST");
+    assert.equal(JSON.parse(first.body).draft.subtitles.style, style);
+    assert.equal(JSON.parse(h.store.get(h.storageKey)).draft.subtitles.style, style);
+    h.props.options.style = style === "clean" ? "karaoke" : "clean";
+    h.render().action.onAction(); await tick();
+    assert.equal(h.calls.filter(c => c.method === "POST")[1].body, first.body);
+    assert.equal(h.render().output, null);
+    h.render().action.onAction(); await tick();
+    assert.equal(JSON.parse(h.calls.at(-1).body).draft.subtitles.style, h.props.options.style);
+    assert.equal(h.render().output.id, output.id);
+    h.unmount();
+  }
+});
+
+test("cancellation targets the owned pending job and rechecks the same durable request", async () => {
+  const h = harness({pending:true}); h.render(); await tick(); h.render().action.onAction(); await tick();
+  const request = h.calls.find(c => c.method === "POST");
+  const saved = h.store.get(h.storageKey);
+  assert.equal(h.render().action.disabled, true);
+  h.render().action.cancel(); await tick(); await tick();
+  const cancel = h.calls.find(c => c.url === `/api/jobs/${h.jobId}/cancel`);
+  assert.equal(cancel.method, "POST"); assert.equal(cancel.headers.Authorization, "Bearer owner-token");
+  assert.equal(h.calls.filter(c => c.url === "/api/explore/finishes" && c.method === "POST").length, 1);
+  assert.equal(h.store.get(h.storageKey), saved); assert.equal(JSON.parse(request.body).requestKey, JSON.parse(saved).requestKey);
+  assert.equal(h.render().action.cancel, undefined); h.unmount();
+});
+
+test("both workflows persist and submit each position, retain exact interrupted requests and invalidate changed exports", async () => {
+  for (const kind of ["hook", "phone"]) for (const placement of ["bottom", "middle", "top"]) {
+    const h = harness({ kind, placement, subtitles: true, lost: true });
+    h.render(); await tick(); h.render().action.onAction(); await tick();
+    const first = h.calls.find(c => c.method === "POST");
+    assert.equal(JSON.parse(first.body).draft.subtitles.placement, placement);
+    assert.equal(JSON.parse(h.store.get(h.storageKey)).draft.subtitles.placement, placement);
+    h.props.options.placement = placement === "middle" ? "top" : "middle";
+    h.render().action.onAction(); await tick();
+    assert.equal(h.calls.filter(c => c.method === "POST")[1].body, first.body);
+    assert.equal(h.render().output, null, "saved output must not pretend to use changed position");
+    h.render().action.onAction(); await tick();
+    assert.equal(JSON.parse(h.calls.at(-1).body).draft.subtitles.placement, h.props.options.placement);
+    assert.equal(h.render().output.id, output.id);
+    h.unmount();
+  }
+});
+
+test("reload restores each position and legacy omission defaults to Bottom without rewriting the durable request", async () => {
+  for (const kind of ["hook", "phone"]) for (const placement of [undefined, "bottom", "middle", "top"]) {
+    const draft = { version: 1, kind, sourceAssetId: source.id, demoAssetId: null, demoAudioAssetId: null,
+      demoAudioPlayback: "once", backgroundAssetId: null, backgroundPlayback: "once",
+      subtitles: { language: "en", style: "editorial", ...(placement ? { placement } : {}) } };
+    const saved = { version: 1, ownerId: "owner", kind, requestKey: randomUUID(), draft };
+    const h = harness({ kind, saved, completed: true }); h.render(); await tick();
+    assert.equal(h.props.options.placement, placement ?? "bottom");
+    assert.equal(h.render().output.id, output.id);
+    assert.equal(h.calls.some(c => c.method === "POST"), false);
+    assert.deepEqual(JSON.parse(h.store.get(h.storageKey)), saved);
+    h.props.options = { ...h.props.options, placement: (placement ?? "bottom") === "middle" ? "top" : "middle" };
+    assert.equal(h.render().output, null); h.unmount();
+  }
+});
 
 test("background OFF never fetches or uploads music and always submits a null background", async () => {
   const h = harness(); h.render(); await tick(); h.render().action.onAction(); await tick();

@@ -1,15 +1,19 @@
+import { groupNaturalSubtitleWords } from "./phrases.js";
 import { createHash, randomUUID } from "node:crypto";
 import { constants, createReadStream } from "node:fs";
 import { copyFile, mkdir, mkdtemp, readFile, rename, rm, rmdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
-import { getSubtitleLayout, serializeAss, serializeSrt, serializeVtt } from "./captions.js";
-import { groupNaturalSubtitleWords } from "./phrases.js";
+import { getSubtitleLayout, groupSubtitleWords, serializeAss, serializeSrt, serializeVtt } from "./captions.js";
 import { SUBTITLE_VERSION, SubtitleError, parsePlacement, parseStyle, record, validateTranscript, type SubtitlePlacement, type SubtitleStyle, type SubtitleTranscript } from "./contracts.js";
 import { createTextMeasurer, extractSubtitleAudio, prepareSubtitleFonts, probeVideo, renderSubtitleVideo, type SubtitleTools } from "./media.js";
 import type { TranscriptionProvider } from "./openai-provider.js";
-import { planEditorialPages, serializeEditorialAss } from "./editorial.js";
+
+import { EDITORIAL_RENDER_VERSION, planEditorialPages, serializeEditorialAss } from "./editorial.js";
 import { createEditorialMeasurer, prepareEditorialFonts } from "./editorial-media.js";
+import { createDynamicMeasurer, serializeDynamicAss } from "./dynamic.js";
+import { isDynamicSubtitleStyle, subtitleStyleDefinition } from "./styles.js";
+
 
 export type GenerateSubtitlesInput = {
   inputPath: string;
@@ -97,21 +101,36 @@ export async function generateSubtitles(input: GenerateSubtitlesInput) {
     const sourceHash = await hashFile(join(workDir, "source-video"));
     if (style === "editorial") await prepareEditorialFonts(input.tools, workDir);
     else await prepareSubtitleFonts(input.tools, workDir);
-    const layout = getSubtitleLayout(video.width, video.height, style);
-    const editorialMeasure = style === "editorial" ? createEditorialMeasurer(layout, input.tools, workDir, input.signal) : null;
-    const measure = editorialMeasure ? (text: string) => editorialMeasure(text, layout.fontSize, "lead").then(ink => ink.width) : createTextMeasurer(layout, input.tools);
-    await measure("Subtitle font check");
+
     input.onStage?.("extracting_audio");
     const audioPath = join(workDir, "audio.wav");
     await extractSubtitleAudio(join(workDir, "source-video"), audioPath, video, input.tools, input.signal);
     input.onStage?.("transcribing");
     const { transcript, cacheHit } = await getCachedTranscript({ sourceHash, durationMs: video.durationMs,
       cacheDir: resolve(input.cacheDir), provider: input.provider, audioPath, signal: input.signal });
-    if (style === "editorial" && !["en", "eng", "english"].includes(transcript.language?.trim().toLowerCase() ?? "")) throw new SubtitleError("EDITORIAL_LANGUAGE_UNSUPPORTED", "Editorial captions currently support English speech.");
-    const cues = await groupNaturalSubtitleWords(transcript.words, layout, measure);
+    const layout = style === "editorial"
+      ? { width: video.width, height: video.height, fontSize: Math.max(16, Math.round(64 * Math.min(video.width / 720, video.height / 1280))), maxLineWidth: Math.floor(video.width * .8), bold: false }
+      : getSubtitleLayout(video.width, video.height, style);
+    let cues, ass;
+    if (style === "editorial") {
+      if (transcript.language !== "en") throw new SubtitleError("EDITORIAL_LANGUAGE_UNSUPPORTED", "Editorial phrase grouping currently supports English. Choose another style.");
+      const measure = createEditorialMeasurer(layout, input.tools, workDir, input.signal);
+      cues = await groupNaturalSubtitleWords(transcript.words, layout, text => measure(text, layout.fontSize, "lead").then(ink => ink.width));
+      const pages = await planEditorialPages(cues, layout, placement, measure);
+      ass = serializeEditorialAss(pages, layout);
+      await writeFile(join(workDir, "layout.json"), JSON.stringify({ version: EDITORIAL_RENDER_VERSION, pages }, null, 2));
+    } else if (isDynamicSubtitleStyle(style)) {
+      cues = await groupSubtitleWords(transcript.words, layout, createTextMeasurer(layout, input.tools));
+      ass = await serializeDynamicAss(cues, layout, style as "word-pop" | "karaoke" | "marker-highlight", placement,
+        createDynamicMeasurer(layout, input.tools, workDir, input.signal));
+    } else {
+      cues = await groupSubtitleWords(transcript.words, layout, createTextMeasurer(layout, input.tools));
+      ass = serializeAss(cues, layout, style, placement);
+    }
+
     input.signal?.throwIfAborted();
-    const ass = editorialMeasure ? serializeEditorialAss(await planEditorialPages(cues, layout, placement, editorialMeasure), layout) : serializeAss(cues, layout, style, placement);
     await writeFile(join(workDir, "captions.ass"), ass);
+
     input.onStage?.("rendering");
     await renderSubtitleVideo(workDir, video, input.tools, input.signal);
     await Promise.all([
@@ -121,12 +140,12 @@ export async function generateSubtitles(input: GenerateSubtitlesInput) {
     ]);
     input.signal?.throwIfAborted();
     // The directory is new and owned by this run. Publish the manifest last as the completion marker.
-    for (const file of ["captioned.mp4", "captions.ass", "captions.srt", "captions.vtt", "transcript.json"]) {
+    for (const file of ["captioned.mp4", "captions.ass", "captions.srt", "captions.vtt", "transcript.json", ...(style === "editorial" ? ["layout.json"] : [])]) {
       input.signal?.throwIfAborted();
       await copyFile(join(workDir, file), join(outputDir, file), constants.COPYFILE_EXCL);
     }
     const result = { version: SUBTITLE_VERSION, sourceHash, providerId: input.provider.id, style,
-      placement, durationMs: video.durationMs, width: video.width, height: video.height,
+      placement, renderVersion: subtitleStyleDefinition(style).renderVersion, durationMs: video.durationMs, width: video.width, height: video.height,
       wordCount: transcript.words.length, cueCount: cues.length, cacheHit,
       videoPath: join(outputDir, "captioned.mp4"), outputDir };
     input.signal?.throwIfAborted();

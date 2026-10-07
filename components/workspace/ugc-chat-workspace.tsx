@@ -228,7 +228,7 @@ export function ImageGenerationStudioPanel({
   const [prompt, setPrompt] = useState("");
   const [aspectRatio, setAspectRatio] =
     useState<AIStudioImageAspectRatio>("9:16");
-  const [model, setModel] = useState<AIStudioImageModel>("gpt_image");
+  const [model, setModel] = useState<AIStudioImageModel>("nano_banana_2");
   const [quantity, setQuantity] =
     useState<AIStudioGenerationQuantity>(1);
   const [referenceImage, setReferenceImage] =
@@ -998,7 +998,7 @@ export function ImageGenerationStudioPanel({
               size={recreateView ? "sm" : "default"}
               disabled={generationLocked || isGenerating}
               options={AI_STUDIO_IMAGE_MODELS.map((value) => ({
-                label: value === "gemini_3_pro" ? "Gemini 3 Pro" : "GPT Image",
+                label: value === "nano_banana_2" ? "Nano Banana 2.1" : "Seedream 5.0 Pro",
                 value,
               }))}
               value={model}

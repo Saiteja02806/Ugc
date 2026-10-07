@@ -13,16 +13,12 @@ import { EXPLORE_SUBTITLE_SCOPE_LABEL } from "@/worker/src/subtitles/explore-pol
 import { planExploreBackgroundAudio, type ExploreBackgroundPlayback } from "@/worker/src/lib/explore-background-audio";
 import type { FinishingOptions } from "@/components/explore/use-workflow-finishing";
 import { WorkflowSavedAudioPicker } from "@/components/explore/workflow-saved-audio-picker";
+import { SUBTITLE_STYLE_REGISTRY, subtitlePreview, type SubtitleStyle } from "@/worker/src/subtitles/styles";
+import { WorkflowSubtitlePreview } from "@/components/explore/workflow-subtitle-preview";
 import { WorkflowDemoControls } from "@/components/explore/workflow-demo-controls";
 import type { DemoFraming } from "@/worker/src/lib/explore-finishing-contract";
 
-// Illustrated samples of the standalone renderer's styles, not generated captions.
-const SUBTITLE_STYLES = [
-  { value: "clean", label: "Clean" },
-  { value: "bold-box", label: "Bold box" },
-  { value: "active-word", label: "Active word" },
-  { value: "editorial", label: "Editorial" },
-] as const;
+const SUBTITLE_STYLES = SUBTITLE_STYLE_REGISTRY;
 
 /** Editing is separate from creation and scheduling; attachment ownership stays above. */
 export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudioPlayback, onDemoAudioPlaybackChange, connected = false, options, onOptionsChange, ownerId, demoFramingEnabled = false, demoFraming = null, onDemoFramingChange, outputAspect = 9 / 16, editingBusy = false, demoFramingError = null, onDemoControlsOpen }: {
@@ -43,8 +39,10 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
   demoFramingError?: string | null;
   onDemoControlsOpen?: () => void;
 }) {
-  const [subtitleStyle, setSubtitleStyle] = useState("clean");
+  const [subtitleStyle, setSubtitleStyle] = useState<SubtitleStyle>("clean");
+  const [subtitlePlacement, setSubtitlePlacement] = useState<"bottom" | "middle" | "top">("bottom");
   const selectedStyle = options?.style ?? subtitleStyle;
+  const selectedPlacement = options?.placement ?? subtitlePlacement;
   const kind = videoLabel === "Hook" ? "hook" : "phone";
   const unavailableId = `${kind}-finishing-unavailable`;
   const subtitleHelpId = `${kind}-subtitle-style-help`;
@@ -137,23 +135,33 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
             <PopoverContent side="right" align="start" className={cn(studio.floating, creation.floating)}>
               <PopoverTitle>Auto subtitles</PopoverTitle>
               <p className="text-sm leading-6 text-muted">{EXPLORE_SUBTITLE_SCOPE_LABEL}. This includes your {videoLabel.toLowerCase()} and demo together. Nothing is trimmed automatically.</p>
-              <p className="text-sm leading-6 text-muted">{connected ? "Choose a style, turn on subtitles and Apply edits. Review actual captions in your saved finished video." : "Rendering is not connected in this preview. The cards below illustrate styles only."}</p>
+              <p className="text-sm leading-6 text-muted">{connected ? "Choose a style and play its example. Turn on subtitles and Apply edits to save captions on your video." : "Choose a style and play its example. Rendering is not connected in this preview."}</p>
             </PopoverContent>
           </Popover>
         </div>
         {connected && options && onOptionsChange ? <Button type="button" role="switch" aria-label="Auto subtitles" aria-checked={options.subtitles} variant="muted" className="h-7 rounded-full px-3 text-xs" onClick={() => onOptionsChange({ ...options, subtitles: !options.subtitles })}>{options.subtitles ? "On" : "Off"}</Button> : <UnavailableToggle label="Auto subtitles" descriptionId={unavailableId} hideLabel />}
       </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs font-medium">Position</span>
+        <div role="group" aria-label="Subtitle position" className="flex gap-1">
+          {(["bottom", "middle", "top"] as const).map(placement => <Button key={placement} type="button"
+            variant={selectedPlacement === placement ? "muted" : "outline"} className="h-8 px-3 text-xs"
+            aria-pressed={selectedPlacement === placement} onClick={() => {
+              setSubtitlePlacement(placement);
+              if (options && onOptionsChange) onOptionsChange({ ...options, placement });
+            }}>{placement === "bottom" ? "Bottom" : placement === "middle" ? "Middle" : "Top"}</Button>)}
+        </div>
+      </div>
       <div role="group" aria-label={connected ? "Subtitle style samples" : "Subtitle style samples (local preview only)"} aria-describedby={subtitleHelpId} className={creation.subtitleChoices}>
-        {SUBTITLE_STYLES.map((style) => <button key={style.value} type="button" aria-label={`${style.label} subtitle style`} aria-pressed={selectedStyle === style.value} aria-describedby={subtitleHelpId}
-          title={`${style.label} style sample`} className={creation.subtitleChoice} data-style={style.value} onClick={() => { setSubtitleStyle(style.value); if (options && onOptionsChange) onOptionsChange({ ...options, style: style.value }); }}>
-          <span aria-hidden="true" className={creation.subtitleSample}>
-            {style.value === "editorial" ? <><span className={creation.editorialLead}>Make it</span><span className={creation.editorialHero}>simple.</span></>
-              : <span className={creation.subtitleSampleText}>Make it <span className={creation.subtitleSampleWord}>simple.</span></span>}
-          </span>
-          <span className={creation.subtitleChoiceLabel}>{style.label}{selectedStyle === style.value ? <Check className="size-3.5" aria-hidden="true" /> : null}</span>
+        {SUBTITLE_STYLES.map((style) => <button key={style.id} type="button" aria-label={`${style.label} subtitle style`} aria-pressed={selectedStyle === style.id} aria-describedby={subtitleHelpId}
+          title={style.description} className={creation.subtitleChoice} data-style={style.id} onClick={() => { setSubtitleStyle(style.id); if (options && onOptionsChange) onOptionsChange({ ...options, style: style.id }); }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={subtitlePreview(style.id).poster} alt="" loading="lazy" className="aspect-[9/8] w-full rounded-md bg-black object-cover object-bottom" />
+          <span className={creation.subtitleChoiceLabel}>{style.label}{selectedStyle === style.id ? <Check className="size-3.5" aria-hidden="true" /> : null}</span>
         </button>)}
       </div>
-      <p id={subtitleHelpId} className="sr-only">Illustrative style samples, not rendered subtitles from your video. {connected ? "Apply edits to render and review actual subtitles in the saved video." : "Style preference only. It is not saved or applied to a video in this local preview."} Applies to spoken audio in the {kind === "hook" ? "hook" : "phone video"} and demo. Music-only sections have no speech captions. {EXPLORE_SUBTITLE_SCOPE_LABEL}, including both segments; nothing is trimmed automatically.</p>
+      <WorkflowSubtitlePreview style={selectedStyle} />
+      <p id={subtitleHelpId} className="sr-only">Selecting a style changes your draft only. These rendered examples use the same clip and transcript at Bottom position. Apply edits saves subtitles from your final audio. {EXPLORE_SUBTITLE_SCOPE_LABEL}, including both segments; nothing is trimmed automatically.</p>
     </section>
     <p id={unavailableId} className="sr-only">{connected ? "Off keeps original sound without adding default music. On adds the approved default track underneath the original hook and demo sound when you Apply edits. Separately selected demo audio plays during the demo only. If no approved default is configured, Apply edits will explain this; it never chooses unreviewed music." : "Music and subtitle rendering are not connected in this local preview."}</p>
   </section>;

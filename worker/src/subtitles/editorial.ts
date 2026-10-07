@@ -1,5 +1,5 @@
 import { escapeAssText, type SubtitleLayout } from "./captions.js";
-import { SubtitleError, type SubtitleCue, type SubtitlePlacement } from "./contracts.js";
+import { SubtitleError, subtitlePlacementGeometry, type SubtitleCue, type SubtitlePlacement } from "./contracts.js";
 
 export const EDITORIAL_FAMILY = "UGCPilot Editorial Study";
 export const EDITORIAL_RENDER_VERSION = "editorial-v1";
@@ -30,8 +30,9 @@ const label = (cue: SubtitleCue, indices: number[]) => indices.map(i => escapeAs
 export async function planEditorialPages(cues: SubtitleCue[], layout: SubtitleLayout, placement: SubtitlePlacement, measure: MeasureEditorial): Promise<EditorialPage[]> {
   const scale = Math.min(layout.width / 720, layout.height / 1280);
   const margin = Math.round(layout.width * .1), maxWidth = layout.width - margin * 2;
-  const regionTop = layout.height * (placement === "bottom" ? .64 : .08);
-  const regionBottom = layout.height * (placement === "bottom" ? .88 : .32);
+  const geometry = subtitlePlacementGeometry(placement);
+  const regionTop = layout.height * geometry.editorialTop;
+  const regionBottom = layout.height * geometry.editorialBottom;
   const pages: EditorialPage[] = [];
   for (const cue of cues) {
     const keywordIndex = selectEditorialKeyword(cue);

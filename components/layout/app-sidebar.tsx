@@ -1,5 +1,7 @@
 "use client";
 
+import { CreditIcon } from "@/components/icons/credit-icon";
+
 import {
   ExternalLink,
   Menu,
@@ -22,7 +24,6 @@ import {
   type SidebarIconName,
 } from "@/components/icons/sidebar-icon";
 import { DiscordIcon } from "@/components/icons/discord-icon";
-import { CreditIcon } from "@/components/icons/credit-icon";
 import { ProductLogoMark } from "@/components/brand/product-logo";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
@@ -30,7 +31,6 @@ import { useBillingSubscription } from "@/components/billing/use-billing-subscri
 
 export type AppSidebarActiveKey =
   | "trending"
-  | "create-content"
   | "explore"
   | "audio-generation"
   | "ai-studio"
@@ -372,6 +372,8 @@ function SidebarNavigation({
   collapsed?: boolean;
   onNavigate?: () => void;
 }) {
+  const visiblePrimaryNavigationItems = primaryNavigationItems;
+
   return (
     <nav
       aria-label="Primary navigation"
@@ -382,7 +384,7 @@ function SidebarNavigation({
       )}
     >
       <div className="flex flex-col gap-1">
-        {primaryNavigationItems.map((item) => (
+        {visiblePrimaryNavigationItems.map((item) => (
           <SidebarLink
             key={item.key}
             active={item.key === activeKey}

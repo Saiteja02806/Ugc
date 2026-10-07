@@ -29,7 +29,7 @@ export function useLocalAppScreen() {
     try {
       const duration = await readAppScreen(url, validation.kind);
       if (request !== revision.current) { URL.revokeObjectURL(url); return false; }
-      setAsset({ name: file.name, url, duration, kind: validation.kind, file });
+      setAsset({ name: file.name, url, duration, kind: validation.kind });
       return true;
     } catch {
       URL.revokeObjectURL(url);

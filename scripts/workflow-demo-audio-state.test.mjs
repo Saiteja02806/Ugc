@@ -47,6 +47,8 @@ function layout(kind) {
     "@/lib/explore/workflow-scheduling-draft": schedulingDraft,
     "@/components/explore/workflow-preview-canvas": { WorkflowPreviewCanvas: "canvas" },
     "@/components/explore/use-local-app-screen": { useLocalAppScreen: () => ({ asset: null, loading: false }) },
+    "@/components/explore/use-workflow-source-video": { useWorkflowSourceVideo: () => ({mode: "generate", source: null, preview: null, dirty: false}) },
+    "@/components/explore/workflow-video-source-section": { WorkflowVideoSourceSection: "source-section" },
     "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => attachments[mediaCursor++] },
     "@/components/explore/use-workflow-generation-settings": { useWorkflowGenerationSettings: (initialDuration, initialModel) => {
       generationInputs.push({ initialDuration, initialModel });
@@ -61,7 +63,7 @@ function layout(kind) {
   };
   const exported = {};
   const compiled = ts.transpileModule(read(`components/explore/${kind}-workflow-preview.tsx`), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
-  vm.runInNewContext(compiled, { exports: exported, require(name) { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; } });
+  vm.runInNewContext(compiled, { exports: exported, window: { requestAnimationFrame(callback) { callback(); } }, require(name) { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; } });
   const component = exported[kind === "hook" ? "HookWorkflowPreview" : "PhoneWorkflowPreview"];
   return {
     render(props = {}) {

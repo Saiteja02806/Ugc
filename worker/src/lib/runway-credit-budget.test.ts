@@ -96,3 +96,14 @@ test("uses immediate generation counters when detailed credit usage lags", async
   assert.equal(result.usedCredits, 20);
   assert.equal(result.remainingCreditsAfterGeneration, 60);
 });
+
+test("counts Seedream images alongside existing videos when detailed usage lags", async () => {
+  const reader = {
+    retrieve: async () => ({ usage: { models: { gen4_turbo: { dailyGenerations: 1 }, seedream5_pro: { dailyGenerations: 15 } } } }),
+    retrieveUsage: async () => ({ results: [{ usedCredits: [] }] }),
+  };
+  const result = await assertRunwayDailyCreditBudget(reader, 5, { configuredLimit: "100" });
+  assert.equal(result.usedCredits, 95);
+  assert.equal(result.remainingCreditsAfterGeneration, 0);
+  await assert.rejects(assertRunwayDailyCreditBudget(reader, 20, { configuredLimit: "100" }), /100 credits per UTC day/);
+});

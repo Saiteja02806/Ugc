@@ -95,7 +95,7 @@ export async function executeTool(output: () => Promise<Record<string, unknown>>
 
 async function loadEntitlements(userId: string): Promise<UserSubscriptionInfo> {
   try {
-    return await getUserSubscription(userId, { strict: true, refreshCredits: false });
+    return await getUserSubscription(userId, { strict: true, refreshCredits: false, initializeFreeCredits: false });
   } catch {
     throw new ToolFailure("ENTITLEMENTS_UNAVAILABLE", "Current plan and credits are temporarily unavailable.", true);
   }

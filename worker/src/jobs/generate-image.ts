@@ -1,5 +1,6 @@
 import { generateGeminiImageBuffer, generateGemini3ProImageBuffer, GEMINI_3_PRO_IMAGE_MODEL } from "../lib/gemini-image.js";
 import { generateOpenAiImageBuffer } from "../lib/openai-image.js";
+import { generateSeedreamImageBuffer, SEEDREAM_5_PRO_IMAGE_MODEL } from "../lib/seedream-image.js";
 import {
   assertProviderOperationCanContinue,
   createGenerationRequestFingerprint,
@@ -27,11 +28,11 @@ import { resolveOwnedPrivateMediaUrl } from "../lib/private-media.js";
 
 const MAX_CHARACTER_PROMPT_LENGTH = 32_000;
 
+
 type GenerateImageInput = {
   aspectRatio: AIStudioImageRatio;
   generationId: string;
-  // Retain the old model solely for already queued and recoverable jobs.
-  model: "gpt_image" | "nano_banana_2" | "gemini_3_pro";
+  model: "gpt_image" | "gemini_3_pro" | "nano_banana_2" | "seedream_5_pro";
   prompt: string;
   referenceImageUrl?: string;
 };
@@ -56,6 +57,7 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
     job.input_json.characterVersion === 2 && job.input_json.promptSource === "user" && job.input_json.mode === "custom";
   if (promptDrivenCharacter && prompt.trim().length > MAX_CHARACTER_PROMPT_LENGTH) {
     throw new Error(`generate_image prompt exceeds ${MAX_CHARACTER_PROMPT_LENGTH} characters.`);
+
   }
 
   return {
@@ -75,7 +77,7 @@ export async function runGenerateImageJob(
   const userId = getPathSegment(job.user_id, "user");
   const projectId = getPathSegment(job.project_id, "default");
   const outputKey = `images/generated/${userId}/${projectId}/${input.generationId}.png`;
-  const provider = input.model === "gemini_3_pro" || input.model === "nano_banana_2" ? "gemini" : "openai";
+  const provider = input.model === "seedream_5_pro" ? "runway" : input.model === "nano_banana_2" || input.model === "gemini_3_pro" ? "gemini" : "openai";
   const stagingKey = `generation-staging/${job.id}/${provider}-image-source.png`;
   const existingOutput = await getStoredObject(outputKey);
 
@@ -104,8 +106,8 @@ export async function runGenerateImageJob(
   });
   let generatedImageBuffer: Buffer;
 
-  if (input.model === "gemini_3_pro") {
-    generatedImageBuffer = await generateGeminiProImageForJob(job, context, input, reservation, stagingKey, operationKey);
+  if (input.model === "gemini_3_pro" || input.model === "seedream_5_pro") {
+    generatedImageBuffer = await generateDurableImageForJob(job, context, input, reservation, stagingKey, operationKey);
   } else if (reservation.shouldSubmit) {
     let generated;
 
@@ -212,7 +214,7 @@ export async function runGenerateImageJob(
   return buildOutput(input, uploaded, provider);
 }
 
-async function generateGeminiProImageForJob(
+async function generateDurableImageForJob(
   job: BackgroundJobRow,
   context: WorkerJobContext,
   input: GenerateImageInput,
@@ -220,6 +222,8 @@ async function generateGeminiProImageForJob(
   stagingKey: string,
   operationKey: string,
 ) {
+  const generate = input.model === "seedream_5_pro" ? generateSeedreamImageBuffer : generateGemini3ProImageBuffer;
+  const providerModel = input.model === "seedream_5_pro" ? SEEDREAM_5_PRO_IMAGE_MODEL : GEMINI_3_PRO_IMAGE_MODEL;
   const action = assertProviderOperationCanContinue(reservation);
   let operationSubmitted = action === "resume";
   const operationId = action === "resume" ? reservation.operation.provider_operation_id ?? undefined : undefined;
@@ -230,7 +234,7 @@ async function generateGeminiProImageForJob(
       return await downloadStoredObjectBuffer(savedStagingKey);
     }
     let acceptedOperationId = operationId;
-    const buffer = await generateGemini3ProImageBuffer({
+    const buffer = await generate({
       aspectRatio: input.aspectRatio,
       prompt: input.prompt,
       referenceImageUrl: action === "submit" && input.referenceImageUrl
@@ -244,7 +248,7 @@ async function generateGeminiProImageForJob(
       onOperationSucceeded: async (providerOperationId) => {
         await context.store.markGenerationProviderSucceeded({
           jobId: job.id, operationKey, providerOperationId,
-          metadata: { model: GEMINI_3_PRO_IMAGE_MODEL },
+          metadata: { model: providerModel },
         });
         acceptedOperationId = providerOperationId;
       },
@@ -255,13 +259,13 @@ async function generateGeminiProImageForJob(
     await context.store.markGenerationProviderSucceeded({
       jobId: job.id, operationKey,
       providerOperationId: acceptedOperationId,
-      metadata: { model: GEMINI_3_PRO_IMAGE_MODEL, stagingKey: staged.key },
+      metadata: { model: providerModel, stagingKey: staged.key },
     });
     return buffer;
   } catch (error) {
     if (error instanceof ProviderOperationTerminalError) {
       await context.store.markGenerationProviderFailed({
-        jobId: job.id, operationKey, errorCode: error.code,
+        jobId: job.id, operationKey, errorCode: "provider_operation_terminal",
         errorMessage: error.message, retryAllowed: false,
       });
       throw error;
@@ -274,7 +278,7 @@ async function generateGeminiProImageForJob(
 function buildOutput(
   input: GenerateImageInput,
   uploaded: { key: string; url: string },
-  provider: "gemini" | "openai",
+  provider: "gemini" | "openai" | "runway",
 ) {
   const dimensions = getAIStudioImageDimensions(input.aspectRatio);
 
@@ -293,7 +297,7 @@ function buildOutput(
 }
 
 function getImageModel(value: Json | undefined) {
-  if (value === "gemini_3_pro" || value === "nano_banana_2" || value === "gpt_image") return value;
+  if (value === "gemini_3_pro" || value === "nano_banana_2" || value === "gpt_image" || value === "seedream_5_pro") return value;
   if (value === undefined || value === null) return "gpt_image";
   throw new ProviderRequestNotSubmittedError("generate_image received an unsupported image model.");
 }

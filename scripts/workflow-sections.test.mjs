@@ -168,8 +168,8 @@ test("editing excludes scheduling and explains shared subtitle scope", () => {
   assert.match(creationCanvas, /Add your app screen and instructions in Create/);
   assert.doesNotMatch(edit, /Demo sound|<details|aria-label="Scheduling"|Schedule<\/Button>/);
   assert.match(edit, /Demo audio/);
-  assert.match(edit, /Applies to spoken audio in the/);
-  assert.match(edit, /Music-only sections have no speech captions/);
+  assert.match(edit, /EXPLORE_SUBTITLE_SCOPE_LABEL/);
+  assert.match(edit, /including both segments; nothing is trimmed automatically/);
   assert.match(workspace, /demo.asset \? <>\{demoFraming \? <WorkflowDemoPreview/);
   assert.match(workspace, /: <WorkflowMediaPlayer asset=\{demo.asset\}/);
   assert.match(workspace, /className=\{creation.demoPlayer\}/);

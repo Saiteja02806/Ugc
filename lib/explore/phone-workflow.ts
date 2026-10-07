@@ -9,3 +9,7 @@ export function validateAppScreenFile(file: { type: string; size: number }):
   }
   return { kind, error: null };
 }
+
+export function isDemoAudioTooLong(demoDuration: number | null, audioDuration: number | null) {
+  return demoDuration !== null && audioDuration !== null && audioDuration > demoDuration;
+}

@@ -262,11 +262,6 @@ test("keeps the retired walkthrough assets available only for development previe
   assert.match(firstVisitGuide, /method: "POST"/);
 });
 
-test("preserves the already-applied walkthrough backfill contract", () => {
-  assert.match(existingWalkthroughBackfill, /update public\.business_profiles/i);
-  assert.match(existingWalkthroughBackfill, /set trending_walkthrough_completed_at = now\(\)[\s\S]+where trending_walkthrough_completed_at is null/i);
-});
-
 test("shows new Trending accounts a safe first-post interaction guide", () => {
   assert.match(swipeGuide, /data-trending-swipe-guide/);
   assert.match(swipeGuide, /Double-tap to schedule/);

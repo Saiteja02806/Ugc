@@ -12,7 +12,7 @@ function load(file, imports = {}, globals = {}) {
   }).outputText, { exports, require: name => { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, ...globals });
   return exports;
 }
-const contract = load("worker/src/lib/explore-finishing-contract.ts");
+const contract = load("worker/src/lib/explore-finishing-contract.ts", { "../subtitles/styles.ts": load("worker/src/subtitles/styles.ts") });
 const key = "11111111-1111-4111-8111-111111111111", jobId = "22222222-2222-4222-8222-222222222222";
 const outputId = "33333333-3333-4333-8333-333333333333", sourceId = "44444444-4444-4444-8444-444444444444", owner = "owner-a";
 const providerKey = "elevenlabs:scribe_v2:auto:en:word:v1";
@@ -53,6 +53,23 @@ function harness(options = {}) {
   }));
   return { api, receipt, record, calls, env, start, status: (query = `requestKey=${key}`) => api.handleWorkflowFinishingStatus(new Request(`https://www.getugcpilot.com/api/explore/finishes?${query}`)) };
 }
+
+test("both workflows accept all positions and legacy omission without changing old fingerprints", async () => {
+  for (const kind of ["hook", "phone"]) for (const placement of [undefined, "bottom", "middle", "top"]) for (const style of contract.EXPLORE_FINISH_STYLES) {
+    const draft = { ...baseDraft, kind, subtitles: { language: "en", style, ...(placement ? { placement } : {}) } };
+    const h = harness({ draftChanges: draft });
+    const expected = createHash("sha256").update(JSON.stringify({ renderer: "explore-finish-v2", transcription: providerKey, draft })).digest("hex");
+    assert.equal(h.api.fingerprintExploreFinish(contract.parseExploreFinishDraft(draft)), expected);
+    assert.equal((await h.start()).status, 202);
+    assert.deepEqual(JSON.parse(JSON.stringify(h.receipt.draft)), draft);
+    const changed = { ...draft, subtitles: { ...draft.subtitles, placement: placement === "middle" ? "top" : "middle" } };
+    assert.notEqual(h.api.fingerprintExploreFinish(contract.parseExploreFinishDraft(changed)), expected);
+    assert.equal((await h.start({ requestKey: key, draft: changed })).status, 409);
+  }
+  for (const placement of [null, "center", 0, {}, "TOP"]) {
+    assert.throws(() => contract.parseExploreFinishDraft({ ...baseDraft, subtitles: { ...baseDraft.subtitles, placement } }), /placement/);
+  }
+});
 
 test("queues only a verified committed owned job and acknowledges opaque identities, without exposing raw input/output", async () => {
   const h = harness(), response = await h.start(), body = await response.json();
@@ -190,7 +207,7 @@ test("recorded framing is gated before creating work; legacy fingerprints and ow
   assert.equal((await recovered.start()).status, 202); assert.equal(recovered.calls.includes("create"), false);
   const legacy = contract.parseExploreFinishDraft(baseDraft);
   assert.equal("demoFraming" in legacy, false);
-  assert.equal(on.api.fingerprintExploreFinish(legacy), createHash("sha256").update(JSON.stringify({ renderer: "explore-finish-v1", transcription: providerKey, draft: legacy })).digest("hex"));
+  assert.equal(on.api.fingerprintExploreFinish(legacy), createHash("sha256").update(JSON.stringify({ renderer: "explore-finish-v2", transcription: providerKey, draft: legacy })).digest("hex"));
   const moved = contract.parseExploreFinishDraft({ ...baseDraft, ...draftChanges, demoFraming: { ...framing, points: [[0, .1, 0], [12000, .4, 0]] } });
   assert.notEqual(on.receipt.fingerprint, on.api.fingerprintExploreFinish(moved));
 });

@@ -85,7 +85,25 @@ variable "queue_name" {
 variable "worker_job_types" {
   description = "Comma-separated job types allowed for this worker service."
   type        = string
-  default     = "generate_avatar,generate_image,generate_hook_video,generate_trending_hook_copy,hook_text_generation,wall_text_content_plan_generation,wall_text_generation,media_analysis,analytics_sync,carousel_content_plan_generation,paid_trending_prebuild,reaction_generation,test_worker_job"
+  default     = "generate_audio,generate_avatar,generate_image,generate_hook_video,generate_trending_hook_copy,hook_text_generation,wall_text_content_plan_generation,wall_text_generation,media_analysis,analytics_sync,carousel_content_plan_generation,paid_trending_prebuild,reaction_generation,test_worker_job"
+}
+
+variable "enable_audio_generation" {
+  description = "Allow ElevenLabs audio submissions after private storage, the migration and API secret are configured."
+  type        = bool
+  default     = false
+}
+
+variable "elevenlabs_api_key_secret_id" {
+  description = "Optional Secret Manager secret ID injected as ELEVENLABS_API_KEY. Empty keeps existing worker deployments independent of ElevenLabs."
+  type        = string
+  default     = ""
+}
+
+variable "elevenlabs_voice_api_key_secret_id" {
+  description = "Optional restricted voice-management Secret Manager secret ID injected as ELEVENLABS_VOICE_API_KEY."
+  type        = string
+  default     = ""
 }
 
 variable "enable_audio_generation" {
@@ -215,7 +233,7 @@ variable "openai_image_model" {
 variable "gemini_image_model" {
   description = "Gemini image generation model used by worker image-generation flows."
   type        = string
-  default     = "gemini-3.1-flash-image"
+  default     = "gemini-nano-banana-2.1"
 }
 
 variable "gemini_omni_model" {
@@ -231,7 +249,8 @@ variable "gemini_api_key_secret_id" {
 }
 
 variable "runwayml_api_secret_id" {
-  description = "Secret Manager secret ID injected as RUNWAYML_API_SECRET for Seedance 2.5 and legacy Runway hook generation."
+  description = "Secret Manager secret ID injected as RUNWAYML_API_SECRET for Seedream images, Seedance 2.5 and legacy Runway hook generation."
+
   type        = string
   default     = "runwayml-api-secret"
 }

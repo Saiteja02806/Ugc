@@ -7,6 +7,8 @@ import { requireAIStudioProUser } from "@/lib/ai-studio/server-access";
 import { normalizeAIStudioPrompt } from "@/lib/ai-studio/prompt-policy";
 import {
   AI_STUDIO_IMAGE_MODELS,
+  SLIDESHOW_IMAGE_MODELS,
+  DEFAULT_SLIDESHOW_IMAGE_MODEL,
   type AIStudioImageModel,
   parseAIStudioGenerationQuantity,
   parseAIStudioImageAspectRatio,
@@ -130,15 +132,18 @@ export async function handleAIStudioImageGeneration(request: Request) {
   const prompt = normalizeAIStudioPrompt(body?.prompt);
   const aspectRatio = parseAIStudioImageAspectRatio(body?.aspectRatio);
   const quantity = parseAIStudioGenerationQuantity(body?.quantity);
-  const model = parseAIStudioImageModel(body?.model);
   if (body?.exploreFormat !== undefined && body.exploreFormat !== "slideshow") {
     return NextResponse.json({ message: "Choose an image workflow.", ok: false }, { status: 400 });
   }
+  const availableModels: readonly AIStudioImageModel[] =
+    body?.exploreFormat === "slideshow" ? SLIDESHOW_IMAGE_MODELS : AI_STUDIO_IMAGE_MODELS;
+  const model = body?.exploreFormat === "slideshow" && body.model === undefined
+    ? DEFAULT_SLIDESHOW_IMAGE_MODEL : parseAIStudioImageModel(body?.model);
   let referenceImageUrl: string | null;
   try { referenceImageUrl = cleanTrustedHttpsUrl(await canonicalMediaReference(body?.referenceImageUrl, user.uid)); }
   catch { return NextResponse.json({ ok: false, message: "This reference is unavailable to your account." }, { status: 400 }); }
 
-  if (body?.model !== undefined && !AI_STUDIO_IMAGE_MODELS.includes(body.model as AIStudioImageModel)) {
+  if (body?.model !== undefined && !availableModels.includes(body.model as AIStudioImageModel)) {
     return NextResponse.json(
       { message: "This image model is unavailable. Refresh AI Studio and choose a model.", ok: false },
       { status: 400 },

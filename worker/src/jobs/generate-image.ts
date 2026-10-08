@@ -1,5 +1,5 @@
 import { generateGeminiImageBuffer, generateGemini3ProImageBuffer, GEMINI_3_PRO_IMAGE_MODEL } from "../lib/gemini-image.js";
-import { generateOpenAiImageBuffer } from "../lib/openai-image.js";
+import { generateOpenAiImageBuffer, SLIDESHOW_IMAGE_MODEL } from "../lib/openai-image.js";
 import { generateSeedreamImageBuffer, SEEDREAM_5_PRO_IMAGE_MODEL } from "../lib/seedream-image.js";
 import {
   assertProviderOperationCanContinue,
@@ -32,7 +32,7 @@ const MAX_CHARACTER_PROMPT_LENGTH = 32_000;
 type GenerateImageInput = {
   aspectRatio: AIStudioImageRatio;
   generationId: string;
-  model: "gpt_image" | "gemini_3_pro" | "nano_banana_2" | "seedream_5_pro";
+  model: "gpt_image" | "gpt_image_2_5" | "gemini_3_pro" | "nano_banana_2" | "seedream_5_pro";
   prompt: string;
   referenceImageUrl?: string;
 };
@@ -125,6 +125,7 @@ export async function runGenerateImageJob(
               input.prompt,
               input.aspectRatio,
               referenceImageUrl,
+              input.model === "gpt_image_2_5" ? SLIDESHOW_IMAGE_MODEL : undefined,
             );
     } catch (error) {
       return persistProviderSubmissionFailure({
@@ -297,7 +298,7 @@ function buildOutput(
 }
 
 function getImageModel(value: Json | undefined) {
-  if (value === "gemini_3_pro" || value === "nano_banana_2" || value === "gpt_image" || value === "seedream_5_pro") return value;
+  if (value === "gemini_3_pro" || value === "nano_banana_2" || value === "gpt_image" || value === "gpt_image_2_5" || value === "seedream_5_pro") return value;
   if (value === undefined || value === null) return "gpt_image";
   throw new ProviderRequestNotSubmittedError("generate_image received an unsupported image model.");
 }

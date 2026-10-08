@@ -2,17 +2,17 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useRef, useState } from "react";
-import { Images, Upload, RotateCcw } from "lucide-react";
+import { ArrowLeft, ArrowRight, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { readAIStudioReferenceMetadata, uploadAIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import type { RecreateReference } from "@/lib/explore/recreate-types";
 import creation from "./workflow-creation.module.css";
+import styles from "./format-workspace.module.css";
 
-export function SlideshowReferencePicker({ reference, slideIndex, disabled, localPreview, onBrowse, onUpload, onSlide, onBusy, onEdit }: {
+export function SlideshowReferencePicker({ reference, slideIndex, disabled, localPreview, onPreview, onRemove, onUpload, onSlide, onBusy }: {
   reference: RecreateReference | null; slideIndex: number; disabled: boolean; localPreview: boolean;
-  onBrowse: () => void; onUpload: (reference: RecreateReference) => void; onSlide: (index: number) => void; onBusy: (busy: boolean) => void;
-  onEdit: () => void;
+  onPreview: () => void; onRemove: () => void; onUpload: (reference: RecreateReference) => void; onSlide: (index: number) => void; onBusy: (busy: boolean) => void;
 }) {
   const { user } = useAuth();
   const input = useRef<HTMLInputElement>(null);
@@ -57,18 +57,18 @@ export function SlideshowReferencePicker({ reference, slideIndex, disabled, loca
     finally { working.current = false; if (alive.current) { setBusy(false); onBusy(false); } }
   }
   return <section aria-label="Slideshow references" className="space-y-3">
-    <h2 className="text-sm font-medium">Slideshow reference</h2>
-    <div className={creation.referenceGrid}>
-      <Button type="button" variant="outline" className={creation.referenceButton} disabled={disabled || busy} onClick={onBrowse}><Images className="size-5" aria-hidden="true" /><span className={creation.referenceLabel}>Browse slideshows</span></Button>
+    <div className="flex items-center justify-between gap-2"><h2 className="text-sm font-medium">Slideshow reference</h2>{reference ? <Button type="button" variant="ghost" size="icon-sm" disabled={disabled || busy} onClick={onRemove} aria-label="Remove slideshow reference"><X className="size-4" /></Button> : null}</div>
+    <div className={styles.slideshowReferenceTiles}>
+      {reference ? <button type="button" className={styles.slideshowReferenceTile} disabled={disabled || busy} onClick={onPreview} aria-label="Preview selected slideshow"><img src={reference.slides[slideIndex]?.url ?? reference.posterUrl} alt="" width={128} height={128} /><span>Preview slideshow</span></button> : null}
       <Button type="button" variant="outline" className={creation.referenceButton} disabled={disabled || busy} onClick={() => input.current?.click()}><Upload className="size-5" aria-hidden="true" /><span className={creation.referenceLabel}>{busy ? "Uploading…" : "Upload slides"}</span></Button>
     </div>
     <input ref={input} className="sr-only" type="file" multiple accept="image/jpeg,image/png,image/webp" aria-label="Upload slideshow images" tabIndex={-1} onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; if (files.length) void upload(files); }} />
     {error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}
     {reference ? <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2"><p className="min-w-0 truncate text-xs font-medium">{reference.title} · {reference.slides.length} slides</p><button type="button" disabled={disabled || busy} onClick={onBrowse} className="rounded p-1 text-primary focus-visible:outline-2 focus-visible:outline-focus" aria-label="Change slideshow reference"><RotateCcw className="size-4" /></button></div>
-      <div className="flex gap-2 overflow-x-auto p-1">{reference.slides.map((slide, index) => <button key={slide.id} type="button" disabled={disabled || busy} aria-label={`Recreate slide ${index + 1}`} aria-pressed={slideIndex === index} onClick={() => onSlide(index)} className={`w-10 shrink-0 overflow-hidden rounded bg-card-muted ${slideIndex === index ? "ring-2 ring-primary" : ""}`}><img src={slide.url} alt="" width={40} height={50} className="aspect-[4/5] object-contain" /><span className="block text-[10px] text-muted">{index + 1}</span></button>)}</div>
-      <Button type="button" variant="outline" size="sm" disabled={disabled || busy} onClick={onEdit}>Edit these slides</Button>
-    </div> : <p className="text-xs leading-5 text-muted">Choose a slideshow or upload 2–10 slide images in their original order.</p>}
+      <p className="truncate text-xs font-medium">{reference.title}</p>
+      <div className="flex items-center gap-2"><Button type="button" variant="outline" size="icon-sm" aria-label="Previous reference slide" disabled={disabled || busy || slideIndex === 0} onClick={() => onSlide(slideIndex - 1)}><ArrowLeft className="size-4" /></Button><span aria-live="polite" className="text-xs text-muted">Slide {slideIndex + 1} of {reference.slides.length}</span><Button type="button" variant="outline" size="icon-sm" aria-label="Next reference slide" disabled={disabled || busy || slideIndex >= reference.slides.length - 1} onClick={() => onSlide(slideIndex + 1)}><ArrowRight className="size-4" /></Button></div>
+      <p className="text-xs leading-5 text-muted">Describe your changes for this slide, then generate your own image.</p>
+    </div> : <p className="text-xs leading-5 text-muted">Select a slideshow on the right, or upload 2–10 images as a reference.</p>}
     {localPreview && busy ? <p role="status" className="text-xs text-muted">Reading your slide images on this device…</p> : null}
   </section>;
 }

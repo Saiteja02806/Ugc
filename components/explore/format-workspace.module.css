@@ -40,6 +40,13 @@
 .classicMain .results { overflow: visible; }
 .classicMain .resultTabs { border-bottom-color: color-mix(in srgb, var(--border) 45%, transparent); }
 .classicWorkspace .editControls > div, .classicSchedule > div { padding: 0; }
+.slideshowReferenceTiles { display: grid; grid-template-columns: repeat(2, minmax(0, 128px)); gap: 10px; }
+.slideshowReferenceTile { position: relative; display: block; aspect-ratio: 1; overflow: hidden; border: 1px solid var(--primary); border-radius: 8px; background: var(--card-muted); cursor: pointer; }
+.slideshowReferenceTile img { width: 100%; height: 100%; object-fit: contain; }
+.slideshowReferenceTile span { position: absolute; inset: auto 0 0; padding: 6px; background: #000b; color: #fff; font-size: 11px; font-weight: 500; text-align: center; }
+.slideshowReferenceTile:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.slideshowReferenceTile:disabled { cursor: default; opacity: .6; }
+.classicWorkspace[data-format="slideshow"] [data-workflow-design="classic"] textarea::placeholder { font-size: inherit; opacity: 1; }
 @media (min-width: 1024px) {
   .workspace.classicWorkspace { height: 100dvh; min-height: 0; overflow: hidden; }
   .classicWorkspace > div { min-height: 0; }
@@ -47,7 +54,10 @@
   .classicWorkspace aside > div { min-height: 0; overflow-y: auto; }
   .classicWorkspace aside > div > [role="tabpanel"] { min-height: 0; }
   .classicWorkspace [data-workflow-design="classic"] textarea { flex: none; height: clamp(72px, calc(100dvh - 660px), 240px); }
-  .classicWorkspace[data-format="slideshow"] [data-workflow-design="classic"] textarea { height: clamp(72px, calc(100dvh - 800px), 180px); }
+  .classicWorkspace[data-format="slideshow"] aside[data-section="create"] [data-workflow-design="classic"],
+  .classicWorkspace[data-format="slideshow"] aside[data-section="create"] [data-workflow-design="classic"] > div { flex: none; }
+  .classicWorkspace[data-format="slideshow"] aside[data-section="create"] [data-workflow-design="classic"] { gap: 16px; }
+  .classicWorkspace[data-format="slideshow"] [data-workflow-design="classic"] textarea { height: 112px; }
   .classicMain { min-height: 0; overflow-y: auto; }
   .classicMain .referenceArea { max-height: max(399px, calc(100dvh - 145px)); overflow-y: auto; }
 }

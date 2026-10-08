@@ -12,11 +12,13 @@ function renderComposer(overrides = {}, scrollHeight = 20) {
   const imports = {
     react: { useEffect: effect => effects.push(effect), useId: () => "test-prompt", useRef: () => ({ current: null }), useState: initial => [initial, () => {}] },
     "react/jsx-runtime": { jsx: element, jsxs: element },
+    "react-dom": { createPortal: children => children },
+    "@/components/explore/workflow-creation.module.css": { default: {} },
     "lucide-react": Object.fromEntries(["Check", "ChevronDown", "Loader2", "SlidersHorizontal"].map(name => [name, name])),
     "@/components/ui/button": { Button: "button" },
     "@/components/generation/composer-settings-rail": { ComposerSettingsRail: "rail" },
     "@/components/ui/field": Object.fromEntries(["Field", "FieldDescription", "FieldGroup", "FieldLabel"].map(name => [name, name])),
-    "@/components/ui/popover": Object.fromEntries(["Popover", "PopoverContent", "PopoverTrigger"].map(name => [name, name])),
+    "@/components/ui/popover": Object.fromEntries(["Popover", "PopoverContent", "PopoverTitle", "PopoverTrigger"].map(name => [name, name])),
     "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
   };
   const source = readFileSync(new URL("../components/generation/ai-studio-composer.tsx", import.meta.url), "utf8");

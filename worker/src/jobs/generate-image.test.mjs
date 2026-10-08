@@ -12,7 +12,8 @@ const provider = async (model, prompt, ratio, reference) => {
   return { buffer: image, model, requestId: "fixture-request" };
 };
 mock.module(new URL("../../dist/lib/openai-image.js", import.meta.url), { namedExports: {
-  generateOpenAiImageBuffer: (prompt, ratio, reference) => provider("gpt_image", prompt, ratio, reference),
+  SLIDESHOW_IMAGE_MODEL: "gpt-image-2.5-sunburst",
+  generateOpenAiImageBuffer: (prompt, ratio, reference, model) => provider(model ?? "gpt_image", prompt, ratio, reference),
 } });
 mock.module(new URL("../../dist/lib/gemini-image.js", import.meta.url), { namedExports: {
   GEMINI_3_PRO_IMAGE_MODEL: "gemini-3-pro-image",
@@ -69,6 +70,17 @@ test("all three image providers receive the exact character prompt and chosen re
     await runGenerateImageJob(job(model, prompt), context);
     assert.deepEqual(received.at(-1), { model, prompt, ratio: "9:16", reference: "https://media.example.test/owned-reference.png" });
   }
+});
+
+test("slideshow GPT Image 2.5 jobs select Sunburst explicitly and retain the image input", async () => {
+  const prompt = "Preserve this composition and replace the product";
+  const output = await runGenerateImageJob(job("gpt_image_2_5", prompt), context);
+  assert.deepEqual(received.at(-1), {
+    model: "gpt-image-2.5-sunburst", prompt, ratio: "9:16",
+    reference: "https://media.example.test/owned-reference.png",
+  });
+  assert.equal(output.model, "gpt_image_2_5");
+  assert.equal(output.provider, "openai");
 });
 
 test("long character descriptions reach every provider without summaries or truncation", async () => {

@@ -111,10 +111,16 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
   const slideshowEditor = useRef<SlideshowEditorController | null>(null);
   const [savedOutput, setSavedOutput] = useState<SavedOutput | null>(null);
   const [openingOutput, setOpeningOutput] = useState<{ id: string; kind: "media_asset"; url: string; title: string } | null>(null);
-  const markDirty = useCallback(() => { setSavedOutput(null); setOpeningOutput(null); }, []);
+  const [openingRevision, setOpeningRevision] = useState(0);
+  const [demoSelected, setDemoSelected] = useState(false);
+  const reportDemoSelection = useCallback((present: boolean) => setDemoSelected(present), []);
+  const markDirty = useCallback(() => { setSavedOutput(null); setOpeningOutput(null); setOpeningRevision(value => value + 1); }, []);
   const markDemoDirty = useCallback(() => setSavedOutput(null), []);
   const acceptOpening = useCallback((output: { id: string; kind: "media_asset"; url: string; title: string }) => { setOpeningOutput(output); setSavedOutput(output); }, []);
   const acceptOutput = useCallback((output: SavedOutput) => setSavedOutput(output), []);
+  // A selected (or restoring/uploading) demo must be joined or explicitly
+  // skipped. Saving the opening alone must not silently bypass that selection.
+  const scheduleOutput = format !== "slideshow" && demoSelected && savedOutput?.id === openingOutput?.id ? null : savedOutput;
   const referencesQuery = useQuery({
     enabled: !localPreview && !authLoading && Boolean(user),
     queryKey: ["recreate-references", 2, user?.uid ?? "signed-out"],
@@ -170,7 +176,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
   function browseReferences() { setStep("create"); setView("references"); revealOnMobile("preview"); }
 
   function clearVideoEdit() {
-    setSelectedVideo(null); setSavedOutput(null); setOpeningOutput(null);
+    setSelectedVideo(null); markDirty();
     const params = new URLSearchParams(window.location.search); params.delete("editVideoId");
     window.history.replaceState(null, "", `${window.location.pathname}?${params}`);
   }
@@ -182,7 +188,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     setView(mode === "generate" ? "references" : "results");
   }
   function editVideo(video: FormatVideoSource, mode: WorkflowVideoMode) {
-    if (selectedVideo?.id !== video.id) { setSavedOutput(null); setOpeningOutput(null); }
+    if (selectedVideo?.id !== video.id) markDirty();
     setSelectedVideo(video); setStep("edit");
     revealOnMobile("controls");
     const params = new URLSearchParams(window.location.search); params.set("videoSource", mode);
@@ -292,9 +298,9 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
         <div ref={setEditControlsTarget} className={styles.editControls} />
         {step === "edit" && !selectedVideo && format !== "slideshow" ? <p className="p-5 text-sm leading-6 text-muted">{restoredVideo.isFetching ? "Restoring your video edit…" : restoredVideo.isError ? "This saved video is unavailable. Choose another video in Create." : "Generate, upload or choose a video from Creative Assets in Create, then open it in the editor."}</p> : null}
         </Tabs.Panel>
-        {format !== "slideshow" ? <Tabs.Panel value="demo" keepMounted className={creation.sectionPanel}><div ref={setDemoControlsTarget} />{!selectedVideo ? <p className="text-sm leading-6 text-muted">Choose your opening video in Create, then save it in Edit video before joining a demo.</p> : null}</Tabs.Panel> : null}
+        {format !== "slideshow" ? <Tabs.Panel value="demo" keepMounted className={creation.sectionPanel}><div ref={setDemoControlsTarget} /></Tabs.Panel> : null}
         <Tabs.Panel value="schedule" keepMounted className={classic ? cn(creation.sectionPanel, styles.classicSchedule) : styles.sectionPanel}>
-        <FormatSchedulePanel key={`${format}:${savedOutput?.id ?? "empty"}`} actionsTarget={scheduleActionsTarget} active={step === "schedule"} output={savedOutput} localPreview={localPreview} imageOnly={format === "slideshow"} />
+        <FormatSchedulePanel key={`${format}:${scheduleOutput?.id ?? "empty"}`} actionsTarget={scheduleActionsTarget} active={step === "schedule"} output={scheduleOutput} localPreview={localPreview} imageOnly={format === "slideshow"} />
         </Tabs.Panel>
         </div>
         <footer className={classic ? creation.actionFooter : styles.actionFooter} aria-label="Workflow action">
@@ -302,7 +308,6 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
           <div ref={setEditActionsTarget} hidden={step !== "edit"} />
           <div ref={setScheduleActionsTarget} hidden={step !== "schedule"} />
           <div ref={setDemoActionsTarget} hidden={step !== "demo"} />
-          {step === "demo" && !selectedVideo ? <Button type="button" variant="outline" className="h-11 w-full" onClick={() => setStep("create")}>Go to Create</Button> : null}
           {step === "create" && format !== "slideshow" && source.mode !== "generate" ? <div className="space-y-2"><Button type="button" className="h-11 w-full rounded-lg" disabled={!importedReady} onClick={editImportedVideo}>Edit this video</Button><p role="status" className="text-xs leading-5 text-muted">{source.busy ? "Preparing your video…" : importedReady ? "Your video is ready to edit." : "Upload or choose a video to continue."}{localPreview ? " Preview · uploads stay on your device." : ""}</p></div> : null}
           {step === "edit" && !selectedVideo && format !== "slideshow" ? <Button type="button" disabled className="h-11 w-full rounded-lg">Save edits</Button> : null}
         </footer>
@@ -311,7 +316,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
         <div ref={setEditResultsTarget} hidden={step !== "edit"} className={styles.results}>
           {step === "edit" && !selectedVideo && format !== "slideshow" ? <div className={styles.emptyResult}><span className={styles.emptyIcon}><Film aria-hidden="true" /></span><h2 className="text-xl font-semibold">Choose a video to edit</h2><p className="max-w-sm text-sm leading-6 text-muted">Generate a clip, upload your own or choose from Creative Assets. You can then trim it, add text and adjust audio.</p><Button type="button" variant="outline" onClick={() => setStep("create")}>Go to Create</Button></div> : null}
         </div>
-        {format !== "slideshow" ? <div ref={setDemoResultsTarget} hidden={step !== "demo"} className={styles.results}>{step === "demo" && !selectedVideo ? <div className={styles.emptyResult}><span className={styles.emptyIcon}><Film aria-hidden="true" /></span><h2 className="text-xl font-semibold">Opening → Demo</h2><p className="max-w-sm text-sm leading-6 text-muted">Start with your hook or wall-of-text video. Add a demo after saving your opening.</p></div> : null}</div> : null}
+        {format !== "slideshow" ? <div ref={setDemoResultsTarget} hidden={step !== "demo"} className={styles.results} /> : null}
         <div hidden={step !== "create"} className="flex min-h-0 flex-1 flex-col">
           <nav className={styles.resultTabs} aria-label="Creation views">{(["references", "results"] as const).map(value => <button key={value} type="button" aria-pressed={view === value} onClick={() => setView(value)} className={cn(styles.resultTab, view === value && styles.active)}>{value === "references" ? "References" : resultLabel}</button>)}</nav>
           <section hidden={view !== "references"} aria-label="References" className={styles.referenceArea}>
@@ -328,7 +333,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
             </div>
           </section> : null}
         </div>
-        {step === "schedule" ? savedOutput ? <div className={styles.savedPreview}><h2 className="mb-4 text-base font-semibold">Post preview</h2>{savedOutput.kind === "media_asset" ? <video src={savedOutput.url} controls playsInline className="max-h-[65dvh] max-w-full rounded-xl" /> : <div className="grid w-full grid-cols-2 gap-4 xl:grid-cols-3">{(savedOutput.slides ?? [savedOutput.url]).map((url, index) => <figure key={`${index}:${url}`}><img src={url} alt={`Saved slide ${index + 1}`} width={1080} height={1350} className="aspect-[4/5] w-full rounded-xl object-contain" /><figcaption className="mt-2 text-center text-xs text-muted">{index + 1}</figcaption></figure>)}</div>}<p className="mt-3 text-sm text-muted">{savedOutput.title}</p></div> : <div className={styles.emptyResult}><span className={styles.emptyIcon}>{format === "slideshow" ? <Images aria-hidden="true" /> : <Film aria-hidden="true" />}</span><h2 className="text-xl font-semibold">Your final post</h2><p className="max-w-sm text-sm leading-6 text-muted">Save your {format === "slideshow" ? "slideshow" : "video"} in Edit {format === "slideshow" ? "slides" : "video"}. Your finished content will appear here before you schedule it.</p><Button type="button" variant="outline" onClick={() => setStep("edit")}>Go to Edit {format === "slideshow" ? "slides" : "video"}</Button></div> : null}
+        {step === "schedule" ? scheduleOutput ? <div className={styles.savedPreview}><h2 className="mb-4 text-base font-semibold">Post preview</h2>{scheduleOutput.kind === "media_asset" ? <video src={scheduleOutput.url} controls playsInline className="max-h-[65dvh] max-w-full rounded-xl" /> : <div className="grid w-full grid-cols-2 gap-4 xl:grid-cols-3">{(scheduleOutput.slides ?? [scheduleOutput.url]).map((url, index) => <figure key={`${index}:${url}`}><img src={url} alt={`Saved slide ${index + 1}`} width={1080} height={1350} className="aspect-[4/5] w-full rounded-xl object-contain" /><figcaption className="mt-2 text-center text-xs text-muted">{index + 1}</figcaption></figure>)}</div>}<p className="mt-3 text-sm text-muted">{scheduleOutput.title}</p></div> : <div className={styles.emptyResult}><span className={styles.emptyIcon}>{format === "slideshow" ? <Images aria-hidden="true" /> : <Film aria-hidden="true" />}</span><h2 className="text-xl font-semibold">Your final post</h2><p className="max-w-sm text-sm leading-6 text-muted">Save your {format === "slideshow" ? "slideshow" : "video"} in Edit {format === "slideshow" ? "slides" : "video"}. Your finished content will appear here before you schedule it.</p><Button type="button" variant="outline" onClick={() => setStep("edit")}>Go to Edit {format === "slideshow" ? "slides" : "video"}</Button></div> : null}
       </div>
     </div>
     {/* Mounted across steps so job polling and drafts survive navigation. */}
@@ -336,7 +341,8 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     <Suspense fallback={null}><div className="contents">
     {controlsTarget && resultsTarget ? format === "slideshow" ? <ImagePanel active accessState={accessState} accessMessage={localPreview ? "Preview · generation disabled" : getAIStudioAccessMessage(accessState)} creditCost={subscription.data?.imageGenerationCreditCost ?? 1} creditsRemaining={subscription.data?.creditsRemaining ?? null} recreateView={recreateView} /> : <VideoPanel active accessState={accessState} accessMessage={localPreview ? "Preview · generation disabled" : getAIStudioAccessMessage(accessState)} creditsPerSecond={subscription.data?.videoGenerationCreditsPerSecond} creditsRemaining={subscription.data?.creditsRemaining ?? null} recreateView={recreateView} /> : null}
     </div></Suspense>
-    {format !== "slideshow" && selectedVideo ? <><FormatVideoEditor key={`${user?.uid}:${selectedVideo.id}`} format={format} video={selectedVideo} active={step === "edit"} controlsTarget={editControlsTarget} actionsTarget={editActionsTarget} resultsTarget={editResultsTarget} enabled={finishingEnabled && !localPreview} onDirty={markDirty} onSaved={acceptOpening} onContinue={() => setStep("demo")} /><FormatDemoSection key={`demo:${user?.uid}:${selectedVideo.id}:${openingOutput?.id ?? "unsaved"}`} format={format} videoId={selectedVideo.mediaAssetId ?? selectedVideo.id} opening={openingOutput} active={step === "demo"} enabled={finishingEnabled && !localPreview} controlsTarget={demoControlsTarget} actionsTarget={demoActionsTarget} resultsTarget={demoResultsTarget} onDirty={markDemoDirty} onSaved={acceptOutput} onSkip={() => { setSavedOutput(openingOutput); setStep("schedule"); }} onEdit={() => setStep("edit")} onContinue={() => setStep("schedule")} previewAssets={localPreview ? previewAssets : undefined} /></> : null}
+    {format !== "slideshow" && selectedVideo ? <FormatVideoEditor key={`${user?.uid}:${selectedVideo.id}`} format={format} video={selectedVideo} active={step === "edit"} controlsTarget={editControlsTarget} actionsTarget={editActionsTarget} resultsTarget={editResultsTarget} enabled={finishingEnabled && !localPreview} onDirty={markDirty} onSaved={acceptOpening} onContinue={() => setStep("demo")} /> : null}
+    {format !== "slideshow" ? <FormatDemoSection key={`demo:${user?.uid}:${format}`} format={format} videoId={selectedVideo?.mediaAssetId ?? selectedVideo?.id ?? (isExploreUuid(editVideoId) ? editVideoId : null)} opening={openingOutput} openingRevision={openingRevision} active={step === "demo"} enabled={finishingEnabled && !localPreview} controlsTarget={demoControlsTarget} actionsTarget={demoActionsTarget} resultsTarget={demoResultsTarget} onDirty={markDemoDirty} localPreview={localPreview} onSelectionChange={reportDemoSelection} onSaved={acceptOutput} onSkip={() => { setDemoSelected(false); setSavedOutput(openingOutput); setStep("schedule"); }} onContinue={() => setStep("schedule")} previewAssets={localPreview ? previewAssets : undefined} /> : null}
     {format === "slideshow" ? <FormatSlideshowEditor key={`${user?.uid}:${reference?.id ?? "empty"}`} reference={reference} controllerRef={slideshowEditor} slideIndex={activeSlideIndex} active={step === "edit"} generationBusy={generating} controlsTarget={editControlsTarget} actionsTarget={editActionsTarget} resultsTarget={editResultsTarget} localPreview={localPreview} savingEnabled={slideshowSavingEnabled} onDirty={markDirty} onSaved={acceptOutput} onContinue={() => setStep("schedule")} onRegenerate={regenerateSlide} /> : null}
     <ReferencePreviewDialog key={`${previewReference?.id}:${previewSlide}`} initialSlide={previewSlide} open={Boolean(previewReference)} onOpenChange={open => { if (!open) setPreviewReference(null); }} reference={previewReference} />
   </>;

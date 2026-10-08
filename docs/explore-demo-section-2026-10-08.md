@@ -31,16 +31,30 @@ required. The existing deployed final-render worker must handle
 `render_demo_video`, format editing and demo framing; production feature flags
 remain authoritative. Save receipts retain their exact immutable retry keys.
 
-Drafts are scoped to the owner, workflow and opening video. Restoring selected
+Demo upload and Creative Assets controls are available before an opening is
+chosen or saved. Only Save final video requires both owned clips. A selected
+demo stays mounted across opening selection, saving, editing and replacement;
+its trim, framing and soundtrack are preserved. Scheduling cannot silently
+fall back to the opening while a demo is selected, uploading or restoring.
+
+Drafts are scoped to the owner and workflow, independent of the opening video.
+Older opening-scoped drafts migrate when their opening becomes known, only if
+the user has no newer workflow draft or selection. Restoring selected
 assets performs owned reads; starting/retrying a save requires an explicit
 button action. An account change unmounts the previous owner's hooks. Edits,
-replacement or removal clear the final scheduling output.
+replacement or removal clear the final scheduling output. An opening revision
+also invalidates an in-flight or completed final save when the same asset ID is
+reused. A saved crop that does not fit a replacement opening needs reframing or
+Reset demo framing before combining the clips.
 
 ## Verification
 
 - Regression tests exercise clicking Edit video directly for Upload and
   Creative Assets in both video workflows, failed/pending uploads, replacement,
   merged-output scheduling and skipping Demo.
+- Component-state regressions cover adding Demo first, async upload completion
+  across opening changes, preserved trim/framing/audio, invalidated final-save
+  callbacks, draft migration, owner/workflow isolation and framing compatibility.
 - Save coordination tests cover preparation, optional soundtrack, final join,
   disabled preview and failure. Existing hook/API/worker tests cover ownership,
   receipt recovery, cancellation and immutable retries.

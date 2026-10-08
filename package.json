@@ -154,7 +154,6 @@
     "posttest:billing": "npm run test:pricing && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test scripts/free-trial-seven-days.test.mjs && node --import ./scripts/next-server-only-test-loader.mjs --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/billing/free-trial-delivery-behavior.test.mjs && npm run test:free-generation-credits && npm run test:generation-retry-credits",
     "subtitles:test": "node scripts/test-subtitle-finishing.mjs",
     "test:image-generation": "node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/ai-studio/image-generation-api.test.mjs lib/ai-studio/generation-settings.test.ts && npm run worker:build && node --test worker/dist/lib/seedream-image.test.js worker/dist/lib/gemini-image.test.js worker/dist/lib/generation-provider.test.js worker/dist/lib/runway-credit-budget.test.js worker/dist/lib/image-output.test.js worker/dist/lib/provider-env.test.js && node --experimental-test-module-mocks --test worker/src/jobs/generate-image.test.mjs",
-    "higgsfield:example": "node --env-file=.env.local --experimental-strip-types index.ts",
     "production:create-content-render:canary": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/test-production-create-content-render-canary.mjs"
   },
   "dependencies": {

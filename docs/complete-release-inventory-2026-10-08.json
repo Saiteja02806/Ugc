@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "capturedAt": "2026-10-08T07:07:40.702Z",
+  "capturedAt": "2026-10-08T07:26:29.256Z",
   "sourceHead": "d7414877ccdca40d5b77510f6563eba6e6c5a1d5",
   "mainRevision": "0572a958a09e8b5280ca0664304f77acbe4cc7ff",
   "counts": {
     "adapted": 56,
-    "retained-main": 945,
+    "retained-main": 944,
     "included": 139,
-    "excluded-local-artifact": 1
+    "excluded-local-artifact": 2
   },
   "scope": "All intentional original changes and integration-only implementation; this generated inventory does not hash itself.",
   "excludedPaths": [
@@ -30,6 +30,10 @@
     {
       "path": "landing_page/; design preview images and recovery copies; public/try-ugcpilot/media/ (deployment only)",
       "reason": "Local source inputs/review artifacts; reviewed versioned cover/hero exports ship, production Try media uses its configured hosted source."
+    },
+    {
+      "path": "index.ts; package.json scripts.higgsfield:example",
+      "reason": "Obsolete paid Higgsfield example was restored on the main baseline despite the recorded provider retirement. Remove it and its npm script; clean-install application type checking remains enabled and current providers/recovery stay intact."
     }
   ],
   "decisions": [
@@ -2766,9 +2770,9 @@
     {
       "path": "docs/complete-release-2026-10-08.md",
       "local": null,
-      "integrated": "807278aa3a30faae766bac74b207bb0ecf3df90e",
+      "integrated": "95b2ba452d8ea95f85c07df04421e5d0c2b143a4",
       "resolution": "adapted",
-      "reason": "Integrate the reviewed local intent with the current production implementation, preserving owner isolation, provider/billing contracts, model availability and recovery; combined validation passes."
+      "reason": "Integrate the reviewed local intent with the current production implementation, preserving owner isolation, provider/billing contracts, model availability and recovery; combined validation passes. Clean-install deployment correction removes the retired provider example and records its scope."
     },
     {
       "path": "docs/content-library-import-2026-09-30.md",
@@ -3347,9 +3351,9 @@
     {
       "path": "index.ts",
       "local": "d51fb118651b1bb9a9e5db55d405ebec99ecc5f6",
-      "integrated": "d51fb118651b1bb9a9e5db55d405ebec99ecc5f6",
-      "resolution": "retained-main",
-      "reason": "Exact original intent is already present on the pinned main baseline."
+      "integrated": null,
+      "resolution": "excluded-local-artifact",
+      "reason": "Obsolete paid Higgsfield example was restored on the main baseline despite the recorded provider retirement. Remove it and its npm script; clean-install application type checking remains enabled and current providers/recovery stay intact."
     },
     {
       "path": "infra/gcp/README.md",
@@ -5104,9 +5108,9 @@
     {
       "path": "package.json",
       "local": "86baa828680ff7c0130a2f9864a44d493358387e",
-      "integrated": "c52dd3b997723fae12b83faef28b168995147abd",
+      "integrated": "376f6b847b765fe41df6db6c104f86ac5eff5735",
       "resolution": "adapted",
-      "reason": "Integrate the reviewed local intent with the current production implementation, preserving owner isolation, provider/billing contracts, model availability and recovery; combined validation passes."
+      "reason": "Integrate the reviewed local intent with the current production implementation, preserving owner isolation, provider/billing contracts, model availability and recovery; combined validation passes. Clean-install deployment correction removes the retired provider example and records its scope."
     },
     {
       "path": "plugins/ugc-pilot/.claude-plugin/plugin.json",

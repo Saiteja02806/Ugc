@@ -54,6 +54,29 @@ function harness(format, query = "", { local = true, selected = video, catalogue
 }
 
 const catalogue = Array.from({ length: 90 }, (_, index) => ({ id: `wall-${index}`, format: "wall_text", title: `Productivity ${index + 1}`, category: index < 45 ? "productivity" : "other", slides: [], posterUrl: "/poster.jpg", videoUrl: "/reference.mp4" }));
+test("slideshow context supports all, subsets and zero without sending unchecked slides, then resets for a new reference", () => {
+  const refs = ["first", "second"].map(id => ({ id, format: "slideshow", title: id, slides: Array.from({ length: 6 }, (_, index) => ({ id: `${id}-${index}`, url: `https://storage.test/${id}-${index}.png` })) }));
+  const h = harness("slideshow", "refId=first", { catalogue: refs });
+  nodes(h.render()).filter(n => n.type === "div" && typeof n.props?.ref === "function").forEach(n => n.props.ref({ clientWidth: 0 }));
+  const view = () => nodes(h.render()).find(n => n.type === "generation-panel").props.recreateView;
+  assert.deepEqual(Array.from(view().referenceImageUrls), [refs[0].slides[0].url]);
+  view().contextBanner.props.onSelectionChange(["first-1", "first-4"], 4);
+  assert.deepEqual(Array.from(view().referenceImageUrls), [refs[0].slides[4].url, refs[0].slides[1].url]);
+  assert.equal(view().referenceImageUrl, refs[0].slides[4].url);
+  nodes(h.render()).find(n => n.type === "FormatSlideshowEditor").props.onRegenerate(2);
+  assert.deepEqual(Array.from(view().referenceImageUrls), [refs[0].slides[2].url, refs[0].slides[1].url, refs[0].slides[4].url]);
+  view().contextBanner.props.onSelectionChange(refs[0].slides.map(slide => slide.id));
+  assert.equal(view().referenceImageUrls.length, 6);
+  view().contextBanner.props.onSelectionChange([]);
+  assert.equal(view().referenceImageUrl, undefined);
+  assert.equal(view().referenceImageUrls.length, 0);
+  nodes(h.render()).find(n => n.type === "ReferenceCard" && n.props.reference.id === "second").props.onRecreate();
+  assert.deepEqual(Array.from(view().referenceImageUrls), [refs[1].slides[0].url]);
+  view().contextBanner.props.onRemove();
+  assert.equal(view().referenceImageUrl, undefined);
+  assert.equal(view().referenceImageUrls.length, 0);
+});
+
 test("reference batches fill complete rows at different column counts until the catalogue ends", () => {
   for (const columns of [1, 2, 3, 4, 5, 6, 7]) {
     const h = harness("wall_text", "", { selected: null, catalogue });

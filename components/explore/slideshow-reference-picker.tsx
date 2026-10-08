@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Upload, X } from "lucide-react";
+import { Check, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { readAIStudioReferenceMetadata, uploadAIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
@@ -10,9 +10,10 @@ import type { RecreateReference } from "@/lib/explore/recreate-types";
 import creation from "./workflow-creation.module.css";
 import styles from "./format-workspace.module.css";
 
-export function SlideshowReferencePicker({ reference, slideIndex, disabled, localPreview, onPreview, onRemove, onUpload, onSlide, onBusy }: {
+export function SlideshowReferencePicker({ reference, slideIndex, selectedSlideIds, disabled, localPreview, onPreview, onRemove, onUpload, onSelectionChange, onBusy }: {
   reference: RecreateReference | null; slideIndex: number; disabled: boolean; localPreview: boolean;
-  onPreview: () => void; onRemove: () => void; onUpload: (reference: RecreateReference) => void; onSlide: (index: number) => void; onBusy: (busy: boolean) => void;
+  selectedSlideIds: string[];
+  onPreview: () => void; onRemove: () => void; onUpload: (reference: RecreateReference) => void; onSelectionChange: (ids: string[], previewIndex?: number) => void; onBusy: (busy: boolean) => void;
 }) {
   const { user } = useAuth();
   const input = useRef<HTMLInputElement>(null);
@@ -66,8 +67,21 @@ export function SlideshowReferencePicker({ reference, slideIndex, disabled, loca
     {error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}
     {reference ? <div className="space-y-2">
       <p className="truncate text-xs font-medium">{reference.title}</p>
-      <div className="flex items-center gap-2"><Button type="button" variant="outline" size="icon-sm" aria-label="Previous reference slide" disabled={disabled || busy || slideIndex === 0} onClick={() => onSlide(slideIndex - 1)}><ArrowLeft className="size-4" /></Button><span aria-live="polite" className="text-xs text-muted">Slide {slideIndex + 1} of {reference.slides.length}</span><Button type="button" variant="outline" size="icon-sm" aria-label="Next reference slide" disabled={disabled || busy || slideIndex >= reference.slides.length - 1} onClick={() => onSlide(slideIndex + 1)}><ArrowRight className="size-4" /></Button></div>
-      <p className="text-xs leading-5 text-muted">Describe your changes for this slide, then generate your own image.</p>
+      <div role="group" aria-label="Slides to send as reference" className={styles.slideshowContextMode}>
+        <Button type="button" size="sm" variant="ghost" aria-pressed={selectedSlideIds.length === reference.slides.length} disabled={disabled || busy} onClick={() => onSelectionChange(reference.slides.map(slide => slide.id))}>All slides</Button>
+        <Button type="button" size="sm" variant="ghost" aria-pressed={selectedSlideIds.length !== reference.slides.length} disabled={disabled || busy} onClick={() => { if (selectedSlideIds.length === reference.slides.length) onSelectionChange([reference.slides[slideIndex].id]); }}>Selected slides</Button>
+      </div>
+      <div className={styles.slideshowContextStrip} role="group" aria-label="Select reference slides">
+        {reference.slides.map((slide, index) => {
+          const checked = selectedSlideIds.includes(slide.id);
+          return <button key={slide.id} type="button" className={styles.slideshowContextSlide} aria-label={`Slide ${index + 1} as generation reference`} aria-pressed={checked} disabled={disabled || busy} onClick={() => onSelectionChange(checked ? selectedSlideIds.filter(id => id !== slide.id) : [...selectedSlideIds, slide.id], checked ? undefined : index)}>
+            <img src={slide.url} alt="" width={64} height={88} loading="lazy" />
+            <span className={styles.slideshowContextCheck} aria-hidden="true">{checked ? <Check className="size-3" /> : null}</span>
+            <span className={styles.slideshowContextNumber} aria-hidden="true">{index + 1}</span>
+          </button>;
+        })}
+      </div>
+      <p aria-live="polite" className="text-xs leading-5 text-muted">{selectedSlideIds.length ? `${selectedSlideIds.length} of ${reference.slides.length} slides will guide each generated image.` : "Select at least one slide to generate an image."}</p>
     </div> : <p className="text-xs leading-5 text-muted">Select a slideshow on the right, or upload 2–10 images as a reference.</p>}
     {localPreview && busy ? <p role="status" className="text-xs text-muted">Reading your slide images on this device…</p> : null}
   </section>;

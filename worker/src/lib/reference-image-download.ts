@@ -1,6 +1,25 @@
 import { ProviderRequestNotSubmittedError } from "./generation-provider.js";
+import { parseImageReferenceContext } from "./image-reference-context.js";
 
 export const MAX_REFERENCE_IMAGE_BYTES = 25 * 1024 * 1024;
+const MAX_REFERENCE_CONTEXT_BYTES = 50 * 1024 * 1024;
+
+/** Bound the whole multi-image request as well as each individual download. */
+export async function downloadReferenceImageContext(urls: string[], maxContextBytes = MAX_REFERENCE_CONTEXT_BYTES) {
+  const checked = parseImageReferenceContext(urls);
+  const images: Awaited<ReturnType<typeof downloadReferenceImageBytes>>[] = [];
+  let remaining = maxContextBytes;
+  for (const url of checked) {
+    if (remaining <= 0) throw new ProviderRequestNotSubmittedError("Selected reference images exceed 50 MB combined. Select fewer or smaller slides.");
+    const image = await downloadReferenceImageBytes(url, Math.min(remaining, MAX_REFERENCE_IMAGE_BYTES));
+    if (!["image/png", "image/jpeg", "image/webp"].includes(image.contentType)) {
+      throw new ProviderRequestNotSubmittedError("Use JPG, PNG or WebP reference images.");
+    }
+    remaining -= image.buffer.length;
+    images.push(image);
+  }
+  return images;
+}
 
 export async function downloadReferenceImageBytes(
   url: string,

@@ -279,9 +279,10 @@ export function ImageGenerationStudioPanel({
   const submissionKeyRef = useRef<string | null>(null);
   const activeUserIdRef = useRef<string | null>(null);
   const persistedJobId = usePersistedJobIdFromUrl(workflowFormat ? `explore-${workflowFormat}Job` : IMAGE_JOB_URL_PARAMETER);
+  const referenceContextKey = JSON.stringify(recreateView?.referenceImageUrls ?? null);
   useEffect(() => {
     submissionKeyRef.current = null;
-  }, [recreateView?.referenceImageUrl]);
+  }, [recreateView?.referenceImageUrl, referenceContextKey]);
   const urlJobId =
     persistedJobId && persistedJobId !== ignoredPersistedJobId
       ? persistedJobId
@@ -646,6 +647,7 @@ export function ImageGenerationStudioPanel({
           prompt: trimmedPrompt,
           quantity,
           referenceImageUrl: referenceImage?.asset.url ?? recreateView?.referenceImageUrl ?? null,
+          ...(workflowFormat === "slideshow" && recreateView?.referenceImageUrls ? { referenceImageUrls: recreateView.referenceImageUrls } : {}),
         }),
       });
       const data = (await response.json()) as GenerateResponse;
@@ -1046,7 +1048,7 @@ export function ImageGenerationStudioPanel({
             />
             <AiStudioSettingSelect
               ariaLabel="Number of images"
-              fieldLabel={workflow ? "Images" : undefined}
+              fieldLabel={workflow ? "Output images" : undefined}
               fieldLayout={workflow ? "classic" : undefined}
               size={recreateView ? "sm" : "default"}
               disabled={generationLocked && !recreateView?.preview || isGenerating}

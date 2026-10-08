@@ -1,7 +1,28 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { downloadReferenceImageBytes } from "./reference-image-download.js";
+import { downloadReferenceImageBytes, downloadReferenceImageContext } from "./reference-image-download.js";
+
+test("downloads exactly the selected context in order with a combined byte limit", async () => {
+  const originalFetch = globalThis.fetch;
+  const urls = ["https://storage.test/one.png", "https://storage.test/four.png", "https://storage.test/six.png"];
+  const reads: string[] = [];
+  globalThis.fetch = async url => { reads.push(String(url)); return new Response(Uint8Array.from([1, 2]), { headers: { "content-type": "image/png" } }); };
+  try {
+    assert.equal((await downloadReferenceImageContext(urls.slice(0, 2), 4)).length, 2);
+    assert.deepEqual(reads, urls.slice(0, 2));
+    reads.length = 0;
+    await assert.rejects(downloadReferenceImageContext(urls, 4), /combined/);
+    assert.deepEqual(reads, urls.slice(0, 2));
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test("invalid image context stops before provider submission", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response("not an image", { headers: { "content-type": "text/html" } });
+  try { await assert.rejects(downloadReferenceImageContext(["https://storage.test/image.png"]), /JPG, PNG or WebP/); }
+  finally { globalThis.fetch = originalFetch; }
+});
 
 test("accepts a reference at the byte limit", async () => {
   const originalFetch = globalThis.fetch;

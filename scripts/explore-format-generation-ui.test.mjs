@@ -17,7 +17,7 @@ function load(file, imports = {}, globals = {}) {
   }, ...globals });
   return exports;
 }
-function harness(format, { reference = true, access = "pro", captureRequests = false } = {}) {
+function harness(format, { reference = true, referenceUrls, access = "pro", captureRequests = false } = {}) {
   const events = [], controls = {}, results = {};
   const requests = [], states = [], errors = [];
   let cursor = 0;
@@ -58,6 +58,7 @@ function harness(format, { reference = true, access = "pro", captureRequests = f
   } });
   const Panel = format === "slideshow" ? panelModule.ImageGenerationStudioPanel : panelModule.VideoGenerationStudioPanel;
   const props = { active: true, accessState: access, creditsRemaining: 1000, creditCost: 1, recreateView: {
+    referenceImageUrls: referenceUrls,
     preview: false, referenceImageUrl: format === "slideshow" && reference ? "https://example.test/reference.png" : undefined, styleVideo: format !== "slideshow" && reference ? {url:"https://example.test/style.mp4",name:"Style video",duration:null} : undefined, emptyContent: "Empty",
     workflow: { format, controlsTarget: controls, resultsTarget: results, onGenerationStart: () => events.push("show-results") },
   } };
@@ -141,6 +142,20 @@ for (const format of ["hook", "wall_text", "slideshow"]) {
     assert.equal(h.composer.props.promptLabel, "Your instructions");
   });
 }
+
+test("slideshow sends the exact selected context independently of output quantity", async () => {
+  const urls = ["https://example.test/reference.png", "https://example.test/slide-4.png", "https://example.test/slide-6.png"];
+  const h = harness("slideshow", { captureRequests: true, referenceUrls: urls });
+  const count = h.composer.props.settings.props.children.find(node => node.props?.ariaLabel === "Number of images");
+  assert.equal(count.props.fieldLabel, "Output images");
+  count.props.onChange("2");
+  await h.render().composer.props.onSubmit({ preventDefault() {} });
+  await new Promise(setImmediate);
+  assert.equal(h.requests.length, 1, JSON.stringify(h.errors));
+  assert.deepEqual(h.requests[0].body.referenceImageUrls, urls);
+  assert.equal(h.requests[0].body.quantity, 2);
+  assert.equal(h.requests[0].body.prompt, "My requested changes");
+});
 
 test("slideshow uses GPT Image 2.5 by default, offers Nano Banana and omits Seedream", async () => {
   const h = harness("slideshow", { captureRequests: true });

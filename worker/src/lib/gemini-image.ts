@@ -7,7 +7,7 @@ import {
 } from "./generation-provider.js";
 import type { AIStudioImageRatio } from "./image-output.js";
 import { getRequiredProviderEnv } from "./provider-env.js";
-import { downloadReferenceImageBytes } from "./reference-image-download.js";
+import { downloadReferenceImageBytes, downloadReferenceImageContext } from "./reference-image-download.js";
 
 const DEFAULT_GEMINI_IMAGE_MODEL = "gemini-nano-banana-2.1";
 export const GEMINI_3_PRO_IMAGE_MODEL = "gemini-3-pro-image";
@@ -17,12 +17,14 @@ let googleClient: GoogleGenAI | null = null;
 export async function generateGeminiImageBuffer(
   prompt: string,
   aspectRatio: AIStudioImageRatio,
-  referenceImageUrl?: string,
+  referenceImageUrl?: string | string[],
 ) {
   const ai = getGoogleClient();
   const model =
     process.env.GEMINI_IMAGE_MODEL?.trim() || DEFAULT_GEMINI_IMAGE_MODEL;
-  const referenceImage = referenceImageUrl
+  const referenceImages = Array.isArray(referenceImageUrl)
+    ? (await downloadReferenceImageContext(referenceImageUrl)).map(image => ({ data: image.buffer.toString("base64"), mimeType: image.contentType })) : undefined;
+  const referenceImage = typeof referenceImageUrl === "string"
     ? await downloadReferenceImage(referenceImageUrl)
     : null;
   const interaction = await ai.interactions.create(
@@ -31,6 +33,7 @@ export async function generateGeminiImageBuffer(
       model,
       prompt,
       referenceImage,
+      referenceImages,
     }),
   );
 
@@ -56,16 +59,18 @@ export function buildGeminiImageRequest(params: {
   model: string;
   prompt: string;
   referenceImage: { data: string; mimeType: string } | null;
+  referenceImages?: { data: string; mimeType: string }[];
   imageSize?: "1K" | "2K";
 }) {
+  const images = params.referenceImages ?? (params.referenceImage ? [params.referenceImage] : []);
   return {
-    input: params.referenceImage
+    input: images.length
       ? [
-          {
-            data: params.referenceImage.data,
-            mime_type: params.referenceImage.mimeType,
+          ...images.map(image => ({
+            data: image.data,
+            mime_type: image.mimeType,
             type: "image" as const,
-          },
+          })),
           { text: params.prompt, type: "text" as const },
         ]
       : params.prompt,

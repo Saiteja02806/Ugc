@@ -2,7 +2,7 @@ import OpenAI, { toFile } from "openai";
 
 import { ProviderRequestNotSubmittedError } from "./generation-provider.js";
 import type { AIStudioImageRatio } from "./image-output.js";
-import { downloadReferenceImageBytes } from "./reference-image-download.js";
+import { downloadReferenceImageBytes, downloadReferenceImageContext } from "./reference-image-download.js";
 
 const DEFAULT_IMAGE_MODEL = "gpt-image-2";
 export const SLIDESHOW_IMAGE_MODEL = "gpt-image-2.5-sunburst";
@@ -12,14 +12,16 @@ let openaiClient: OpenAI | null = null;
 export async function generateOpenAiImageBuffer(
   prompt: string,
   aspectRatio: AIStudioImageRatio = "9:16",
-  referenceImageUrl?: string,
+  referenceImageUrl?: string | string[],
   modelOverride?: typeof SLIDESHOW_IMAGE_MODEL,
 ) {
   const client = getOpenAIClient();
   const model = modelOverride || process.env.OPENAI_IMAGE_MODEL?.trim() || DEFAULT_IMAGE_MODEL;
   const result = referenceImageUrl
     ? await client.images.edit({
-        image: await downloadReferenceImage(referenceImageUrl),
+        image: Array.isArray(referenceImageUrl)
+          ? await Promise.all((await downloadReferenceImageContext(referenceImageUrl)).map((image, index) => referenceImageFile(image, `reference-${index + 1}`)))
+          : await downloadReferenceImage(referenceImageUrl),
         ...(model === "gpt-image-1" || model === "gpt-image-1.5" ? { input_fidelity: "high" as const } : {}),
         model,
         prompt,
@@ -44,11 +46,14 @@ export async function generateOpenAiImageBuffer(
 }
 
 async function downloadReferenceImage(url: string) {
-  const { buffer, contentType } = await downloadReferenceImageBytes(url);
+  return referenceImageFile(await downloadReferenceImageBytes(url), "reference");
+}
+
+function referenceImageFile({ buffer, contentType }: { buffer: Buffer; contentType: string }, name: string) {
   const extension =
     contentType === "image/jpeg" ? "jpg" : contentType === "image/webp" ? "webp" : "png";
 
-  return toFile(buffer, `reference.${extension}`, { type: contentType });
+  return toFile(buffer, `${name}.${extension}`, { type: contentType });
 }
 
 function getProviderImageSize(aspectRatio: AIStudioImageRatio) {

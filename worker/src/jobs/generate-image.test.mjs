@@ -4,6 +4,11 @@ import { ProviderOperationTerminalError, ProviderSubmissionUncertainError } from
 
 // Exercise the actual worker with provider/storage stubs; no paid requests occur.
 const received = [];
+const resolvedReferences = [], fingerprints = [];
+mock.method(globalThis, "fetch", async () => assert.fail("No network calls are allowed"));
+mock.module(new URL("../../dist/lib/private-media.js", import.meta.url), { namedExports: {
+  resolveOwnedPrivateMediaUrl: async (url, owner) => { resolvedReferences.push({ url, owner }); return url; },
+} });
 const seedreamCalls = [];
 let seedreamError;
 const image = Buffer.from("fixture-image");
@@ -49,7 +54,7 @@ const { runGenerateImageJob } = await import("../../dist/jobs/generate-image.js"
 const context = {
   checkpoint: async () => {},
   store: {
-    reserveGenerationProviderOperation: async () => ({ shouldSubmit: true, operation: { status: "reserved", metadata: {} } }),
+    reserveGenerationProviderOperation: async input => { fingerprints.push(input.requestFingerprint); return { shouldSubmit: true, operation: { status: "reserved", metadata: {} } }; },
     markGenerationProviderSucceeded: async () => {},
     markGenerationProviderSubmitted: async () => {},
     markGenerationOutputPersisted: async () => {},
@@ -62,6 +67,33 @@ const job = (model, prompt) => ({
     characterSource: "ugc-pilot-characters", characterVersion: 2, mode: "custom", promptSource: "user",
     referenceImageUrl: "https://media.example.test/owned-reference.png",
   },
+});
+
+test("slideshow workers resolve every chosen image for its owner and include the complete list in the paid-operation fingerprint", async () => {
+  for (const model of ["gpt_image_2_5", "nano_banana_2"]) {
+    const imageJob = job(model, "Use these slides as context");
+    const urls = [imageJob.input_json.referenceImageUrl, "https://media.example.test/fourth.png", "https://media.example.test/sixth.png"];
+    Object.assign(imageJob.input_json, { exploreFormat: "slideshow", referenceImageUrls: urls });
+    const before = resolvedReferences.length;
+    await runGenerateImageJob(imageJob, context);
+    assert.deepEqual(received.at(-1).reference, urls);
+    assert.deepEqual(resolvedReferences.slice(before), urls.map(url => ({ url, owner: "fixture-user" })));
+    const completeFingerprint = fingerprints.at(-1);
+    imageJob.input_json.referenceImageUrls = urls.slice(0, 1);
+    await runGenerateImageJob(imageJob, context);
+    assert.notEqual(fingerprints.at(-1), completeFingerprint);
+  }
+});
+
+test("unsupported, empty or mismatched context fails without reaching a provider", async () => {
+  const before = received.length, reserved = fingerprints.length;
+  for (const input of [{ referenceImageUrls: [] }, { referenceImageUrls: ["https://media.example.test/excluded.png"] }, { model: "seedream_5_pro", referenceImageUrls: ["https://media.example.test/owned-reference.png"] }]) {
+    const imageJob = job("gpt_image_2_5", "Instructions");
+    Object.assign(imageJob.input_json, { exploreFormat: "slideshow", ...input });
+    await assert.rejects(runGenerateImageJob(imageJob, context));
+  }
+  assert.equal(received.length, before);
+  assert.equal(fingerprints.length, reserved);
 });
 
 test("all three image providers receive the exact character prompt and chosen reference", async () => {

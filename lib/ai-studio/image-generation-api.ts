@@ -21,6 +21,7 @@ import {
 } from "@/lib/jobs/background-jobs";
 import { createAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
 import { canonicalMediaReference, isTrustedMediaReferenceUrl as isTrustedStorageUrl } from "@/lib/media/media-reference";
+import { parseImageReferenceContext } from "@/worker/src/lib/image-reference-context";
 import {
   BillingAccessError,
   deliverBillingUsageForJob,
@@ -37,6 +38,7 @@ type GenerateRequest = {
   prompt?: unknown;
   quantity?: unknown;
   referenceImageUrl?: unknown;
+  referenceImageUrls?: unknown;
 };
 
 type ImageJobOutput = {
@@ -140,19 +142,40 @@ export async function handleAIStudioImageGeneration(request: Request) {
   const model = body?.exploreFormat === "slideshow" && body.model === undefined
     ? DEFAULT_SLIDESHOW_IMAGE_MODEL : parseAIStudioImageModel(body?.model);
   let referenceImageUrl: string | null;
+  let referenceImageUrls: string[] | undefined;
   try { referenceImageUrl = cleanTrustedHttpsUrl(await canonicalMediaReference(body?.referenceImageUrl, user.uid)); }
   catch { return NextResponse.json({ ok: false, message: "This reference is unavailable to your account." }, { status: 400 }); }
-
-  if (body?.model !== undefined && !availableModels.includes(body.model as AIStudioImageModel)) {
+  if (body?.referenceImageUrl && !referenceImageUrl) {
     return NextResponse.json(
-      { message: "This image model is unavailable. Refresh AI Studio and choose a model.", ok: false },
+      { message: "The reference image is not a trusted uploaded file.", ok: false },
       { status: 400 },
     );
   }
 
-  if (body?.referenceImageUrl && !referenceImageUrl) {
+  if (body?.referenceImageUrls !== undefined) {
+    if (body.exploreFormat !== "slideshow") {
+      return NextResponse.json({ ok: false, message: "Multiple slide references are available in Slideshows." }, { status: 400 });
+    }
+    try {
+      const requested = parseImageReferenceContext(body.referenceImageUrls);
+      const canonical: string[] = [];
+      for (const url of requested) {
+        const owned = cleanTrustedHttpsUrl(await canonicalMediaReference(url, user.uid));
+        if (!owned) throw new Error("Untrusted reference.");
+        canonical.push(owned);
+      }
+      referenceImageUrls = parseImageReferenceContext(canonical);
+      // Never silently add an unselected primary image to the requested context.
+      if (referenceImageUrl && referenceImageUrl !== referenceImageUrls[0]) throw new Error("Primary reference mismatch.");
+      referenceImageUrl = referenceImageUrls[0];
+    } catch {
+      return NextResponse.json({ ok: false, message: "Choose 1–14 distinct reference images available to your account." }, { status: 400 });
+    }
+  }
+
+  if (body?.model !== undefined && !availableModels.includes(body.model as AIStudioImageModel)) {
     return NextResponse.json(
-      { message: "The reference image is not a trusted uploaded file.", ok: false },
+      { message: "This image model is unavailable. Refresh AI Studio and choose a model.", ok: false },
       { status: 400 },
     );
   }
@@ -215,6 +238,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
           model,
           prompt,
           referenceImageUrl,
+          ...(referenceImageUrls ? { referenceImageUrls } : {}),
         },
         jobType: IMAGE_JOB_TYPE,
         projectId: "ai-studio",

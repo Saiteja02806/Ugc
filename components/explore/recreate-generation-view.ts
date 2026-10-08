@@ -7,6 +7,7 @@ export type RecreateGenerationView = {
   contextBanner?: ReactNode;
   preview: boolean;
   referenceImageUrl?: string;
+  referenceImageUrls?: string[];
   referenceTitle?: string;
   styleVideo?: { url: string; name: string; duration: number | null };
   onClearReference?: () => void;

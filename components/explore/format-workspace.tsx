@@ -15,6 +15,7 @@ import { EmptyReferences, fetchRecreateReferences, FilterMenu, LoadError, ProRef
 import styles from "@/components/explore/format-workspace.module.css";
 import creation from "@/components/explore/workflow-creation.module.css";
 import { FormatVideoEditor } from "@/components/explore/format-video-editor";
+import { FormatDemoSection } from "@/components/explore/format-demo-section";
 import { FormatSlideshowEditor, type SlideshowEditorController } from "@/components/explore/format-slideshow-editor";
 import { SlideshowReferencePicker } from "@/components/explore/slideshow-reference-picker";
 import { FormatSchedulePanel } from "@/components/explore/format-schedule-panel";
@@ -60,7 +61,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
   const initialMode = searchParams.get("videoSource");
   const source = useWorkflowSourceVideo({ enabled: !localPreview, ownerId: user?.uid ?? null, minDuration: 1,
     initialMode: initialMode === "upload" || initialMode === "assets" ? initialMode : "generate" });
-  const [step, setStep] = useState<"create" | "edit" | "schedule">(() => format !== "slideshow" && (localPreview && previewVideo || isExploreUuid(editVideoId)) ? "edit" : "create");
+  const [step, setStep] = useState<"create" | "edit" | "demo" | "schedule">(() => format !== "slideshow" && (localPreview && previewVideo || isExploreUuid(editVideoId)) ? "edit" : "create");
   const [view, setView] = useState<"references" | "results">(() => searchParams.get(`explore-${format}Job`) ? "results" : "references");
   const [controlsTarget, setControlsTarget] = useState<HTMLDivElement | null>(null);
   const [resultsTarget, setResultsTarget] = useState<HTMLDivElement | null>(null);
@@ -69,6 +70,9 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
   const [createActionsTarget, setCreateActionsTarget] = useState<HTMLDivElement | null>(null);
   const [editActionsTarget, setEditActionsTarget] = useState<HTMLDivElement | null>(null);
   const [scheduleActionsTarget, setScheduleActionsTarget] = useState<HTMLDivElement | null>(null);
+  const [demoControlsTarget, setDemoControlsTarget] = useState<HTMLDivElement | null>(null);
+  const [demoActionsTarget, setDemoActionsTarget] = useState<HTMLDivElement | null>(null);
+  const [demoResultsTarget, setDemoResultsTarget] = useState<HTMLDivElement | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [referencePage, setReferencePage] = useState({ key: "", limit: 12 });
   const [referenceColumns, setReferenceColumns] = useState(1);
@@ -106,7 +110,10 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
   const importedReady = source.ready || Boolean(restoredSource);
   const slideshowEditor = useRef<SlideshowEditorController | null>(null);
   const [savedOutput, setSavedOutput] = useState<SavedOutput | null>(null);
-  const markDirty = useCallback(() => setSavedOutput(null), []);
+  const [openingOutput, setOpeningOutput] = useState<{ id: string; kind: "media_asset"; url: string; title: string } | null>(null);
+  const markDirty = useCallback(() => { setSavedOutput(null); setOpeningOutput(null); }, []);
+  const markDemoDirty = useCallback(() => setSavedOutput(null), []);
+  const acceptOpening = useCallback((output: { id: string; kind: "media_asset"; url: string; title: string }) => { setOpeningOutput(output); setSavedOutput(output); }, []);
   const acceptOutput = useCallback((output: SavedOutput) => setSavedOutput(output), []);
   const referencesQuery = useQuery({
     enabled: !localPreview && !authLoading && Boolean(user),
@@ -163,7 +170,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
   function browseReferences() { setStep("create"); setView("references"); revealOnMobile("preview"); }
 
   function clearVideoEdit() {
-    setSelectedVideo(null); setSavedOutput(null);
+    setSelectedVideo(null); setSavedOutput(null); setOpeningOutput(null);
     const params = new URLSearchParams(window.location.search); params.delete("editVideoId");
     window.history.replaceState(null, "", `${window.location.pathname}?${params}`);
   }
@@ -175,7 +182,8 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     setView(mode === "generate" ? "references" : "results");
   }
   function editVideo(video: FormatVideoSource, mode: WorkflowVideoMode) {
-    setSelectedVideo(video); setSavedOutput(null); setStep("edit");
+    if (selectedVideo?.id !== video.id) { setSavedOutput(null); setOpeningOutput(null); }
+    setSelectedVideo(video); setStep("edit");
     revealOnMobile("controls");
     const params = new URLSearchParams(window.location.search); params.set("videoSource", mode);
     if (video.mediaAssetId) params.set("editVideoId", video.mediaAssetId); else params.delete("editVideoId");
@@ -264,14 +272,14 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     },
   };
 
-  return <><Tabs.Root data-format={format} className={cn(styles.workspace, classic && creation.shell, classic && styles.classicWorkspace)} value={step} onValueChange={value => { if (value === "create" || value === "edit" || value === "schedule") { setStep(value); revealOnMobile("controls"); } }}>
+  return <><Tabs.Root data-format={format} className={cn(styles.workspace, classic && creation.shell, classic && styles.classicWorkspace)} value={step} onValueChange={value => { if (value === "create" || value === "edit" || value === "schedule" || value === "demo" && format !== "slideshow") { if (value === "edit" && format !== "slideshow" && source.mode !== "generate" && importedReady) editImportedVideo(); else { setStep(value); revealOnMobile("controls"); } } }}>
     <header className={classic ? cn(creation.header, "flex shrink-0 items-center gap-3 px-4 py-3 sm:px-6 lg:px-8") : styles.header}>
       {classic ? <><Link prefetch={true} href={localPreview ? "/explore?preview=1" : "/explore"} aria-label="Back to Explore" className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"><ArrowLeft className="size-4" aria-hidden="true" /></Link><span className="hidden text-sm text-muted sm:block">Explore <span className="ml-2" aria-hidden="true">/</span></span><div className="min-w-0"><h1 className="text-base font-semibold tracking-tight text-foreground-strong sm:text-lg">{TITLES[format]}</h1></div></> : <><Link prefetch={true} href={localPreview ? "/explore?preview=1" : "/explore"} className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" />Explore</Link><span aria-hidden="true" className="text-sm text-muted">/</span><div className={styles.heading}><h1 className="text-lg font-semibold tracking-tight">{TITLES[format]}</h1></div></>}
       {!classic ? <span className={styles.mediaBadge}><Images className="size-3.5" aria-hidden="true" />Images only</span> : null}
     </header>
     <div className={classic ? creation.layout : styles.body}>
       <aside ref={controlsArea} data-section={step} className={classic ? creation.controls : styles.controls} aria-label={`${TITLES[format]} controls`}>
-        <Tabs.List className={classic ? creation.sectionTabs : styles.sectionTabs} aria-label="Workflow sections" activateOnFocus>{(["create", "edit", "schedule"] as const).map(value => <Tabs.Tab key={value} value={value} className={classic ? creation.sectionTab : styles.sectionTab}>{value === "create" ? "Create" : value === "edit" ? format === "slideshow" ? "Edit slides" : "Edit video" : "Schedule"}</Tabs.Tab>)}</Tabs.List>
+        <Tabs.List className={cn(classic ? creation.sectionTabs : styles.sectionTabs, format !== "slideshow" && creation.fourSectionTabs)} aria-label="Workflow sections" activateOnFocus>{(format === "slideshow" ? ["create", "edit", "schedule"] as const : ["create", "edit", "demo", "schedule"] as const).map(value => <Tabs.Tab key={value} value={value} className={classic ? creation.sectionTab : styles.sectionTab}>{value === "create" ? "Create" : value === "edit" ? format === "slideshow" ? "Edit slides" : "Edit video" : value === "demo" ? "Demo" : "Schedule"}</Tabs.Tab>)}</Tabs.List>
         <div className={classic ? creation.controlContent : styles.controlContent}>
         <Tabs.Panel value="create" keepMounted className={classic ? creation.sectionPanel : styles.sectionPanel}>
         {format !== "slideshow" ? <div>
@@ -284,6 +292,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
         <div ref={setEditControlsTarget} className={styles.editControls} />
         {step === "edit" && !selectedVideo && format !== "slideshow" ? <p className="p-5 text-sm leading-6 text-muted">{restoredVideo.isFetching ? "Restoring your video edit…" : restoredVideo.isError ? "This saved video is unavailable. Choose another video in Create." : "Generate, upload or choose a video from Creative Assets in Create, then open it in the editor."}</p> : null}
         </Tabs.Panel>
+        {format !== "slideshow" ? <Tabs.Panel value="demo" keepMounted className={creation.sectionPanel}><div ref={setDemoControlsTarget} />{!selectedVideo ? <p className="text-sm leading-6 text-muted">Choose your opening video in Create, then save it in Edit video before joining a demo.</p> : null}</Tabs.Panel> : null}
         <Tabs.Panel value="schedule" keepMounted className={classic ? cn(creation.sectionPanel, styles.classicSchedule) : styles.sectionPanel}>
         <FormatSchedulePanel key={`${format}:${savedOutput?.id ?? "empty"}`} actionsTarget={scheduleActionsTarget} active={step === "schedule"} output={savedOutput} localPreview={localPreview} imageOnly={format === "slideshow"} />
         </Tabs.Panel>
@@ -292,6 +301,8 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
           <div ref={setCreateActionsTarget} hidden={step !== "create" || format !== "slideshow" && source.mode !== "generate"} />
           <div ref={setEditActionsTarget} hidden={step !== "edit"} />
           <div ref={setScheduleActionsTarget} hidden={step !== "schedule"} />
+          <div ref={setDemoActionsTarget} hidden={step !== "demo"} />
+          {step === "demo" && !selectedVideo ? <Button type="button" variant="outline" className="h-11 w-full" onClick={() => setStep("create")}>Go to Create</Button> : null}
           {step === "create" && format !== "slideshow" && source.mode !== "generate" ? <div className="space-y-2"><Button type="button" className="h-11 w-full rounded-lg" disabled={!importedReady} onClick={editImportedVideo}>Edit this video</Button><p role="status" className="text-xs leading-5 text-muted">{source.busy ? "Preparing your video…" : importedReady ? "Your video is ready to edit." : "Upload or choose a video to continue."}{localPreview ? " Preview · uploads stay on your device." : ""}</p></div> : null}
           {step === "edit" && !selectedVideo && format !== "slideshow" ? <Button type="button" disabled className="h-11 w-full rounded-lg">Save edits</Button> : null}
         </footer>
@@ -300,6 +311,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
         <div ref={setEditResultsTarget} hidden={step !== "edit"} className={styles.results}>
           {step === "edit" && !selectedVideo && format !== "slideshow" ? <div className={styles.emptyResult}><span className={styles.emptyIcon}><Film aria-hidden="true" /></span><h2 className="text-xl font-semibold">Choose a video to edit</h2><p className="max-w-sm text-sm leading-6 text-muted">Generate a clip, upload your own or choose from Creative Assets. You can then trim it, add text and adjust audio.</p><Button type="button" variant="outline" onClick={() => setStep("create")}>Go to Create</Button></div> : null}
         </div>
+        {format !== "slideshow" ? <div ref={setDemoResultsTarget} hidden={step !== "demo"} className={styles.results}>{step === "demo" && !selectedVideo ? <div className={styles.emptyResult}><span className={styles.emptyIcon}><Film aria-hidden="true" /></span><h2 className="text-xl font-semibold">Opening → Demo</h2><p className="max-w-sm text-sm leading-6 text-muted">Start with your hook or wall-of-text video. Add a demo after saving your opening.</p></div> : null}</div> : null}
         <div hidden={step !== "create"} className="flex min-h-0 flex-1 flex-col">
           <nav className={styles.resultTabs} aria-label="Creation views">{(["references", "results"] as const).map(value => <button key={value} type="button" aria-pressed={view === value} onClick={() => setView(value)} className={cn(styles.resultTab, view === value && styles.active)}>{value === "references" ? "References" : resultLabel}</button>)}</nav>
           <section hidden={view !== "references"} aria-label="References" className={styles.referenceArea}>
@@ -324,7 +336,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     <Suspense fallback={null}><div className="contents">
     {controlsTarget && resultsTarget ? format === "slideshow" ? <ImagePanel active accessState={accessState} accessMessage={localPreview ? "Preview · generation disabled" : getAIStudioAccessMessage(accessState)} creditCost={subscription.data?.imageGenerationCreditCost ?? 1} creditsRemaining={subscription.data?.creditsRemaining ?? null} recreateView={recreateView} /> : <VideoPanel active accessState={accessState} accessMessage={localPreview ? "Preview · generation disabled" : getAIStudioAccessMessage(accessState)} creditsPerSecond={subscription.data?.videoGenerationCreditsPerSecond} creditsRemaining={subscription.data?.creditsRemaining ?? null} recreateView={recreateView} /> : null}
     </div></Suspense>
-    {format !== "slideshow" && selectedVideo ? <FormatVideoEditor key={`${user?.uid}:${selectedVideo.id}`} format={format} video={selectedVideo} active={step === "edit"} controlsTarget={editControlsTarget} actionsTarget={editActionsTarget} resultsTarget={editResultsTarget} enabled={finishingEnabled && !localPreview} onDirty={markDirty} onSaved={acceptOutput} onContinue={() => setStep("schedule")} /> : null}
+    {format !== "slideshow" && selectedVideo ? <><FormatVideoEditor key={`${user?.uid}:${selectedVideo.id}`} format={format} video={selectedVideo} active={step === "edit"} controlsTarget={editControlsTarget} actionsTarget={editActionsTarget} resultsTarget={editResultsTarget} enabled={finishingEnabled && !localPreview} onDirty={markDirty} onSaved={acceptOpening} onContinue={() => setStep("demo")} /><FormatDemoSection key={`demo:${user?.uid}:${selectedVideo.id}:${openingOutput?.id ?? "unsaved"}`} format={format} videoId={selectedVideo.mediaAssetId ?? selectedVideo.id} opening={openingOutput} active={step === "demo"} enabled={finishingEnabled && !localPreview} controlsTarget={demoControlsTarget} actionsTarget={demoActionsTarget} resultsTarget={demoResultsTarget} onDirty={markDemoDirty} onSaved={acceptOutput} onSkip={() => { setSavedOutput(openingOutput); setStep("schedule"); }} onEdit={() => setStep("edit")} onContinue={() => setStep("schedule")} previewAssets={localPreview ? previewAssets : undefined} /></> : null}
     {format === "slideshow" ? <FormatSlideshowEditor key={`${user?.uid}:${reference?.id ?? "empty"}`} reference={reference} controllerRef={slideshowEditor} slideIndex={activeSlideIndex} active={step === "edit"} generationBusy={generating} controlsTarget={editControlsTarget} actionsTarget={editActionsTarget} resultsTarget={editResultsTarget} localPreview={localPreview} savingEnabled={slideshowSavingEnabled} onDirty={markDirty} onSaved={acceptOutput} onContinue={() => setStep("schedule")} onRegenerate={regenerateSlide} /> : null}
     <ReferencePreviewDialog key={`${previewReference?.id}:${previewSlide}`} initialSlide={previewSlide} open={Boolean(previewReference)} onOpenChange={open => { if (!open) setPreviewReference(null); }} reference={previewReference} />
   </>;

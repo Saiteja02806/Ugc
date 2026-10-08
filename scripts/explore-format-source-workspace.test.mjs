@@ -127,6 +127,50 @@ test("all three workflow return links prefetch the complete Explore menu", () =>
 });
 
 for (const format of ["hook", "wall_text"]) {
+  test(`${format}: Demo follows the saved opening and schedules only the confirmed merged output`, () => {
+    const h = harness(format);
+    nodes(h.render()).find(n => n.type === "Button" && text(n) === "Edit this video").props.onClick();
+    let tree = h.render();
+    const edited = { id: "edited-opening", kind: "media_asset", url: "/edited.mp4", title: "Edited opening" };
+    nodes(tree).find(n => n.type === "FormatVideoEditor").props.onSaved(edited);
+    nodes(tree).find(n => n.type === "FormatVideoEditor").props.onContinue();
+    tree = h.render(); const demo = nodes(tree).find(n => n.type === "FormatDemoSection");
+    assert.equal(demo.props.active, true); assert.equal(demo.props.opening.id, edited.id);
+    demo.props.onDirty(); assert.equal(nodes(h.render()).find(n => n.type === "FormatSchedulePanel").props.output, null);
+    demo.props.onSaved({ id: "merged-final", kind: "media_asset", url: "/joined.mp4", title: "Joined" });
+    demo.props.onContinue(); tree = h.render();
+    assert.equal(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output.id, "merged-final");
+    nodes(tree).find(n => n.type === "FormatVideoEditor").props.onDirty(); tree = h.render();
+    assert.equal(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output, null);
+    assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").props.opening, null);
+  });
+  test(`${format}: skipping demo schedules the saved opening`, () => {
+    const h = harness(format);
+    nodes(h.render()).find(n => n.type === "Button" && text(n) === "Edit this video").props.onClick();
+    nodes(h.render()).find(n => n.type === "FormatVideoEditor").props.onSaved({ id: "opening", kind: "media_asset", url: "/opening.mp4", title: "Opening" });
+    nodes(h.render()).find(n => n.type === "FormatDemoSection").props.onSkip();
+    assert.equal(nodes(h.render()).find(n => n.type === "FormatSchedulePanel").props.output.id, "opening");
+  });
+  for (const mode of ["upload", "assets"]) {
+    test(`${format}: clicking Edit video directly opens the ready ${mode} clip`, () => {
+      const h = harness(format); h.source.mode = mode;
+      const tree = h.render();
+      nodes(tree).find(n => n.type === "tabs-root").props.onValueChange("edit");
+      const editor = nodes(h.render()).find(n => n.type === "FormatVideoEditor");
+      assert.equal(editor.props.active, true);
+      assert.equal(editor.props.video.mediaAssetId, video.id);
+      assert.equal(editor.props.video.url, video.url);
+      assert.equal(h.params().get("videoSource"), mode);
+      assert.equal(h.params().get("editVideoId"), video.id);
+    });
+  }
+  test(`${format}: a pending upload cannot become an editable or schedulable video`, () => {
+    const h = harness(format, "", { selected: null });
+    h.source.mode = "upload"; h.source.busy = true;
+    nodes(h.render()).find(n => n.type === "tabs-root").props.onValueChange("edit");
+    assert.equal(nodes(h.render()).some(n => n.type === "FormatVideoEditor"), false);
+    assert.equal(nodes(h.render()).find(n => n.type === "FormatSchedulePanel").props.output, null);
+  });
   test(`${format}: existing footage opens the same editor and replacement invalidates the saved schedule output`, () => {
     const h = harness(format); let tree = h.render();
     const create = nodes(tree).find(n => n.type === "Button" && text(n) === "Edit this video"); create.props.onClick();

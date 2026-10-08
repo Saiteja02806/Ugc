@@ -27,7 +27,7 @@ function harness(format, query = "", { local = true, selected = video, catalogue
   const window = { location: { pathname: `/explore/${format}`, get search() { return `?${params}`; } }, history: { replaceState(_, __, url) { params = new URLSearchParams(url.split("?")[1]); } }, matchMedia: () => ({ matches: false }), getComputedStyle: () => ({ gridTemplateColumns: Array(columns).fill("200px").join(" ") }) };
   const source = { mode: "assets", source: selected, preview: selected ? { name: selected.title, url: selected.url, duration: selected.durationSeconds } : null,
     ready: Boolean(selected), dirty: Boolean(selected), busy: false, setMode(value) { source.mode = value; }, selectAsset(value) { source.source = value; source.preview = { name: value.title, url: value.url, duration: value.durationSeconds }; source.ready = true; return true; }, removeUpload() {}, chooseUpload: async () => false };
-  const element = (type, props) => typeof type === "function" ? type(props) : { type, props };
+  const element = (type, props, key) => typeof type === "function" ? type(props) : { type, props, key };
   const jsx = { jsx: element, jsxs: element, Fragment: "fragment" };
   // JSX functions are called as module properties by the transpiled component.
   const imports = { window, ResizeObserver: class { constructor(callback) { resizeCallback = callback; } observe() {} disconnect() {} }, "react/jsx-runtime": jsx, react: {
@@ -127,6 +127,38 @@ test("all three workflow return links prefetch the complete Explore menu", () =>
 });
 
 for (const format of ["hook", "wall_text"]) {
+  test(`${format}: Demo is available before an opening and keeps the same identity across opening changes`, () => {
+    const h = harness(format, "", { selected: null });
+    let tree = h.render();
+    nodes(tree).find(n => n.type === "tabs-root").props.onValueChange("demo");
+    tree = h.render();
+    let demo = nodes(tree).find(n => n.type === "FormatDemoSection");
+    assert.ok(demo); assert.equal(demo.props.active, true);
+    const demoKey = demo.key;
+    assert.equal(demo.props.opening, null); assert.equal(demo.props.videoId, null);
+    assert.equal(text(nodes(tree).find(n => n.type === "tabpanel" && n.props.value === "demo")).trim(), "");
+    assert.equal(nodes(tree).some(n => n.type === "Button" && text(n) === "Go to Create"), false);
+    demo.props.onSelectionChange(true);
+    nodes(h.render()).find(n => n.type === "WorkflowVideoSourceSection").props.selection.selectAsset(video);
+    nodes(h.render()).find(n => n.type === "tabs-root").props.onValueChange("edit");
+    tree = h.render(); demo = nodes(tree).find(n => n.type === "FormatDemoSection");
+    assert.equal(demo.key, demoKey, "Opening selection must not remount Demo");
+    const revision = demo.props.openingRevision;
+    const editor = nodes(tree).find(n => n.type === "FormatVideoEditor");
+    editor.props.onSaved({ id: "opening", kind: "media_asset", url: "/opening.mp4", title: "Opening" });
+    tree = h.render(); demo = nodes(tree).find(n => n.type === "FormatDemoSection");
+    assert.equal(demo.key, demoKey, "Saving an opening must not remount Demo");
+    assert.equal(demo.props.opening.id, "opening"); assert.equal(demo.props.openingRevision, revision);
+    assert.equal(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output, null, "Opening alone cannot bypass a selected demo");
+    editor.props.onDirty(); tree = h.render();
+    demo = nodes(tree).find(n => n.type === "FormatDemoSection");
+    assert.equal(demo.key, demoKey, "Editing an opening must not remount Demo");
+    assert.equal(demo.props.opening, null); assert.ok(demo.props.openingRevision > revision);
+    editor.props.onSaved({ id: "opening", kind: "media_asset", url: "/opening.mp4", title: "Opening" });
+    tree = h.render(); assert.equal(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output, null);
+    nodes(h.render()).find(n => n.type === "FormatDemoSection").props.onSkip();
+    assert.equal(nodes(h.render()).find(n => n.type === "FormatSchedulePanel").props.output.id, "opening");
+  });
   test(`${format}: Demo follows the saved opening and schedules only the confirmed merged output`, () => {
     const h = harness(format);
     nodes(h.render()).find(n => n.type === "Button" && text(n) === "Edit this video").props.onClick();

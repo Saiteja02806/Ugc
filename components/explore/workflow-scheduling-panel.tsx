@@ -34,7 +34,7 @@ export function WorkflowSchedulingPanel({ draft, onChange, accountsControl, imag
     <p className={creation.sectionHelp}>Choose where and when to share your {imageOnly ? "slideshow" : "finished video"}.</p>
     <div className={creation.scheduleField}>
       <span className="text-sm font-medium">Platforms</span>
-      <div role="group" aria-label="Posting platforms" className={creation.platformGrid} style={{ gridTemplateColumns: `repeat(${platforms.length}, minmax(0, 1fr))` }}>
+      <div role="group" aria-label="Posting platforms" className={creation.platformGrid} style={{ gridTemplateColumns: `repeat(${platforms.length}, minmax(0, 1fr))`, maxWidth: platforms.length === 1 ? 128 : undefined }}>
         {platforms.map(({ value, label }) => <Button key={value} type="button" variant="ghost" aria-label={label} aria-pressed={selected.includes(value)} title={label} data-platform={value} className={creation.platformButton} onClick={() => onChange(toggleWorkflowPlatform(draft, value))}>
           <SocialPlatformIcon platform={value} className="size-6" />
           <span aria-hidden="true">{label}</span>

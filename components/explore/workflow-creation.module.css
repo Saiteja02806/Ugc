@@ -1,4 +1,4 @@
-/* Scoped to Workflow 1 and Workflow 3. Recreate and generators stay unchanged. */
+/* Shared frame and controls for the classic Explore workflows. */
 .shell { background: var(--background); color: var(--foreground); }
 
 :global(.dark) .shell {
@@ -85,6 +85,8 @@
 .settingsGrid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px 10px; }
 .settingField { display: flex; min-width: 0; flex-direction: column; gap: 4px; grid-column: span 2; }
 .settingField:nth-child(-n+2) { grid-column: span 3; }
+.settingsGrid.imageSettings > .settingField { grid-column: span 3; }
+.settingsGrid.imageSettings > .settingField:first-child { grid-column: 1 / -1; }
 .settingField > span { font-size: 12px; line-height: 16px; }
 .settingField > button {
   width: 100%;

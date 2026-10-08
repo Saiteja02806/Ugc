@@ -443,6 +443,7 @@ function SidebarLink({
   return (
     <Link
       href={item.href}
+      prefetch={item.key === "explore" ? true : undefined}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={cn(
@@ -511,6 +512,7 @@ function CollapsedMagneticNavItem({
   return (
     <Link
       href={item.href}
+      prefetch={item.key === "explore" ? true : undefined}
       onClick={onNavigate}
       onBlur={resetSurface}
       onPointerCancel={resetSurface}

@@ -6,11 +6,12 @@ import { uploadAIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-up
 import { workflowSourceVideoError, type WorkflowVideoMode } from "@/lib/explore/workflow-source-video";
 import type { MediaAsset } from "@/lib/media/types";
 
-export function useWorkflowSourceVideo({ enabled, ownerId, initialMode = "generate", minDuration = 0, onSelected }: { enabled: boolean; ownerId: string | null; initialMode?: WorkflowVideoMode; minDuration?: number; onSelected?: (asset: MediaAsset | null, preview: LocalWorkflowMedia) => void }) {
+export function useWorkflowSourceVideo({ enabled, ownerId, initialMode = "generate", minDuration = 0, onSelected }: { enabled: boolean; ownerId: string | null; initialMode?: WorkflowVideoMode; minDuration?: number; onSelected?: (asset: MediaAsset | null, preview: LocalWorkflowMedia, mode: "upload" | "assets") => void }) {
   const [mode, setMode] = useState<WorkflowVideoMode>(initialMode);
   const local = useLocalWorkflowMedia("video");
   const [uploaded, setUploaded] = useState<MediaAsset | null>(null);
   const [selected, setSelected] = useState<MediaAsset | null>(null);
+  const [acceptedPreview, setAcceptedPreview] = useState<LocalWorkflowMedia | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null);
   const [assetError, setAssetError] = useState<string | null>(null);
   const metadataRequest = useRef<AbortController | null>(null);
@@ -34,15 +35,15 @@ export function useWorkflowSourceVideo({ enabled, ownerId, initialMode = "genera
       if (!active.current || request !== revision.current) return false;
       // Layout review stays browser-only. Live uploads use the existing owned-media API.
       if (enabled && ownerId) {
-        setUploaded(null);
         const result = await uploadAIStudioReferenceMedia(file, "video", 120, ownerId, { requireVideoReferenceRatio: false, purpose: "explore-source" });
         if (!active.current || request !== revision.current) return false;
         const problem = workflowSourceVideoError(result.asset) ?? (result.asset.durationSeconds !== null && result.asset.durationSeconds < minDuration ? `Choose a video at least ${minDuration} second long.` : null);
         if (problem) throw new Error(problem);
         setUploaded(result.asset);
-        onSelected?.(result.asset, { name: result.asset.title, url: result.asset.url, duration: result.asset.durationSeconds });
+        onSelected?.(result.asset, { name: result.asset.title, url: result.asset.url, duration: result.asset.durationSeconds }, "upload");
       } else if (preview) {
-        onSelected?.(null, preview);
+        setAcceptedPreview(preview);
+        onSelected?.(null, preview, "upload");
       }
       return true;
     } catch (e) {
@@ -53,16 +54,20 @@ export function useWorkflowSourceVideo({ enabled, ownerId, initialMode = "genera
   function selectAsset(asset: MediaAsset) {
     const problem = workflowSourceVideoError(asset) ?? (asset.durationSeconds !== null && asset.durationSeconds < minDuration ? `Choose a video at least ${minDuration} second long.` : null);
     if (problem) { setAssetError(problem); return false; }
-    setSelected(asset); setAssetError(null); onSelected?.(asset, { name: asset.title, url: asset.url, duration: asset.durationSeconds }); return true;
+    setSelected(asset); setAssetError(null); onSelected?.(asset, { name: asset.title, url: asset.url, duration: asset.durationSeconds }, "assets"); return true;
   }
-  function removeUpload() { revision.current += 1; metadataRequest.current?.abort(); local.remove(); setUploaded(null); setBusy(false); setError(null); }
+  function removeUpload() { revision.current += 1; metadataRequest.current?.abort(); local.remove(); setUploaded(null); setAcceptedPreview(null); setBusy(false); setError(null); }
   function clearSelection() { removeUpload(); setSelected(null); setAssetError(null); }
+  function clearUploadError() { setError(null); local.clearError(); }
   const uploadError = error ?? local.error;
-  const source = mode === "upload" ? !busy && !uploadError ? uploaded : null : mode === "assets" ? selected : null;
-  const preview = source ? { name: source.title, url: source.url, duration: source.durationSeconds } : mode === "upload" ? local.asset : null;
+  // The last accepted clip stays visible while a replacement is validated.
+  // Pending/error state blocks actions without discarding confirmed media.
+  const source = mode === "upload" ? uploaded : mode === "assets" ? selected : null;
+  const preview = source ? { name: source.title, url: source.url, duration: source.durationSeconds } : mode === "upload" ? acceptedPreview ?? local.asset : null;
   const ready = mode !== "generate" && !!preview && (mode !== "upload" || (!busy && !uploadError)) && (!enabled || !!source);
   return { ownerId, enabled, mode, setMode, source, preview, ready, busy: mode === "upload" && busy,
-    error: mode === "upload" ? uploadError : mode === "assets" ? assetError : null, chooseUpload, selectAsset, removeUpload, clearSelection,
+    error: mode === "upload" ? uploadError : mode === "assets" ? assetError : null, chooseUpload, selectAsset, removeUpload, clearSelection, clearUploadError,
+    canKeepUpload: Boolean(uploaded || acceptedPreview),
     dirty: !!local.asset || !!uploaded || !!selected };
 }
 

@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-10-07
+Last updated: 2026-10-09
 
 ## 2026-10-07 complete release reconciliation
 
@@ -5533,3 +5533,10 @@ and advertises only deployed workflows. See
 - Save final video freezes the chosen inputs. Existing single-video finishing first trims the demo; an optional audio pass starts its soundtrack at the trimmed segment's beginning. The existing concatenation contract then joins the saved opening before the prepared demo. Opening overlays and sound remain in that segment; recorded framing is rebased to demo trim timestamps.
 - Every pass uses the existing owner-bound, idempotent receipt and renderer. Only the confirmed combined asset enters Schedule. Changing either opening edits or demo inputs invalidates the scheduling output. Local selection never dispatches a render. Prompt defaults and slideshow business-context changes are explicitly deferred from this release.
 - Demo upload and Creative Assets are available before choosing or saving an opening. The owner/workflow-scoped draft preserves demo trim, framing and soundtrack across opening changes; untouched legacy opening drafts migrate without replacing newer selections. Only combining requires a saved opening. A selected, uploading or restoring demo prevents scheduling the opening alone until the user explicitly skips it. Opening revisions invalidate stale combined outputs even when an asset ID is reused; incompatible framing must be reset or recorded again.
+
+### 2026-10-09 Explore laptop layout (local)
+
+- Hook and Wall of text use Create, Demo and Schedule; each clip is edited from its preview rather than a separate Edit video tab. Desktop editor headers and actions reserve their own rows, with only the media/tools body scrolling. Stacked and very short windows use normal document flow, and navigation reveals the chosen panel at the same 1024px breakpoint as the layout.
+- Compact video editing uses the available workflow width and exposes an accessible Workflow controls toggle to reveal the still-mounted source panel. Back to previews restores the normal workspace. The compact width boundary includes fractional CSS pixels from display scaling. Portrait media reserves room for its playback controls and Edit actions; an absent optional Demo is a short Add demo row rather than a second full-height card.
+- All three format workflows retain readable 14px generation instructions with at least 160px writing height. Reference tiles stay capped in compact and stacked layouts. Text styling/timing is disclosed on demand; existing clip drafts, portal targets and save/merge handlers remain intact.
+- Scrollbars remain visible with muted narrow thumbs across the workflow, its dialogs and app navigation. The development-only format fixture now also renders Slideshows for free layout checks. Generation, slideshow ownership/export, automatic Carousel sourcing and publishing contracts are unchanged; paid operations and authenticated production acceptance are outside these local checks.

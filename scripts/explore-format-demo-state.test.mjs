@@ -4,7 +4,12 @@ import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
 import { defaultDemoEdit, readFormatDemoDraft, trimmedDemoFraming } from "../lib/explore/format-demo.ts";
-import { parseExploreFormatEdit } from "../worker/src/lib/explore-format-edit.ts";
+import { formatTextLayout, parseExploreFormatEdit } from "../worker/src/lib/explore-format-edit.ts";
+
+const textFields = {};
+vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../components/explore/format-video-text-fields.tsx", import.meta.url), "utf8"), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
+}).outputText, { exports: textFields, require: () => ({ jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "fragment" }) });
 
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const asset = (n, collection = "video") => ({ id: id(n), status: "ready", collection, durationSeconds: 8, width: 720, height: 1280,
@@ -32,7 +37,8 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
   const audio = { asset: null, loading: false, error: null, async choose(file) { this.asset = { name: file.name, url: "blob:audio", duration: 8, file }; return true; }, remove() { this.asset = null; } };
   const props = { format, videoId: null, opening: null, openingRevision: 0, enabled, active: true,
     controlsTarget: { name: "controls" }, actionsTarget: { name: "actions" }, resultsTarget: { name: "results" },
-    onDirty: () => { dirty++; }, onSaved: result => savedReports.push(result), onSkip() {}, onEdit() {}, onCreate() {}, onContinue() {},
+    editActive: true, editControlsTarget: { name: "edit-controls" }, editActionsTarget: { name: "edit-actions" }, editResultsTarget: { name: "edit-results" },
+    onDirty: () => { dirty++; }, onSaved: result => savedReports.push(result), onSkip() {}, onEdit() {}, onEditDone() {}, onCreate() {}, onContinue() {},
     onSelectionChange: present => selectionReports.push(present) };
   function queueEffect(callback, deps, layout = false) {
     const i = cursor++, previous = slots[i];
@@ -73,6 +79,7 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
       return new Promise(resolve => { pendingVideo = { file, callback, resolve }; });
     },
     clearSelection() { sourceState.selected = null; sourceState.uploaded = null; sourceState.preview = null; sourceState.error = null; sourceState.busy = false; },
+    clearUploadError() { sourceState.error = null; },
   };
   const jsx = { jsx: (type, props, key) => ({ type, props, key }), jsxs: (type, props, key) => ({ type, props, key }), Fragment: "fragment" };
   const imports = {
@@ -86,9 +93,10 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
         mode: sourceState.mode, busy: sourceState.busy, error: sourceState.error };
     } },
     "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => audio },
+    "@/components/explore/format-video-text-fields": textFields,
     "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: {}, useWorkflowFinishing() { throw new Error("A selection or prop transition cannot dispatch finishing."); } },
     "@/lib/explore/format-demo": { defaultDemoEdit, readFormatDemoDraft, trimmedDemoFraming },
-    "@/worker/src/lib/explore-format-edit": { parseExploreFormatEdit },
+    "@/worker/src/lib/explore-format-edit": { parseExploreFormatEdit, formatTextLayout },
     "@/lib/explore/format-video-source": { formatVideoFromAsset(value) { if (value.status !== "ready" || value.collection !== "video") throw new Error("Choose an owned ready video."); return value; } },
     "@/lib/firebase/auth": { getCurrentUserIdToken: async () => { throw new Error("Test attempted authentication."); } },
     "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: async () => { throw new Error("Test attempted network media loading."); } },
@@ -130,14 +138,120 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
       sourceState.preview = value ? { name: value.title, url: value.url, duration: value.durationSeconds } : { name: pending.file.name, url: "blob:local-demo", duration: 8 };
       pending.callback?.(value, sourceState.preview); pending.resolve(true);
     },
+    rejectVideoUpload() {
+      assert.ok(pendingVideo); const pending = pendingVideo; pendingVideo = null;
+      sourceState.busy = false; sourceState.error = "Upload rejected"; pending.resolve(false);
+    },
   };
 }
 
 for (const format of ["hook", "wall_text"]) {
+  test(`${format}: background audio is a persisted preference and does not render on toggle`, () => {
+    const h = harness({ format }); h.render({ editActive: false });
+    const toggle = () => h.input("Background audio");
+    assert.equal(toggle().props.role, "switch"); assert.equal(toggle().props["aria-checked"], false);
+    toggle().props.onClick(); h.render();
+    assert.equal(toggle().props["aria-checked"], true);
+    assert.equal(readFormatDemoDraft(h.storage.get(draftKey("owner", format))).backgroundMusic, true);
+    assert.equal(h.saveRun(), undefined); assert.equal(h.uploads.length, 0);
+    h.select(); assert.equal(toggle().props["aria-checked"], true, "Choosing a demo keeps the soundtrack preference");
+    h.button("Remove").props.onClick(); h.render();
+    assert.equal(toggle().props["aria-checked"], true, "Music can accompany an opening without a demo");
+    const restored = harness({ format, storage: h.storage }); restored.render({ opening: output(1) });
+    assert.equal(restored.input("Background audio").props["aria-checked"], true);
+    assert.equal(restored.button("Save final video").props.disabled, false);
+    assert.equal(restored.find(n => n.type === "Button" && text(n) === "Continue without demo"), undefined, "Cannot silently skip selected soundtrack");
+    restored.button("Save final video").props.onClick(); restored.render();
+    assert.equal(restored.saveRun().props.save.demo, null);
+    assert.equal(restored.saveRun().props.save.draft.backgroundMusic, true);
+    restored.input("Background audio").props.onClick(); restored.render();
+    assert.equal(restored.input("Background audio").props["aria-checked"], true, "A pending save keeps its frozen music preference");
+    const run = restored.saveRun(); run.props.onSaved(output(5)); run.props.onBusy(false); restored.render();
+    const dirty = restored.dirty;
+    restored.input("Background audio").props.onClick(); restored.render();
+    assert.equal(restored.saveRun(), undefined); assert.equal(restored.dirty, dirty + 1);
+    assert.equal(restored.input("Background audio").props["aria-checked"], false);
+    assert.ok(restored.button("Continue without demo"));
+  });
+  test(`${format}: a pending source replacement blocks the background audio switch`, () => {
+    const h = harness({ format }); h.render({ pendingSource: true });
+    h.input("Background audio").props.onClick(); h.render();
+    assert.equal(h.input("Background audio").props["aria-checked"], false);
+    assert.equal(h.dirty, 0); assert.equal(h.saveRun(), undefined);
+  });
+  test(`${format}: Demo preview keeps tools hidden until its own Edit action`, () => {
+    const h = harness({ format }); h.render(); h.select();
+    h.render({ active: false, editActive: false, editPreviewActive: true });
+    assert.ok(h.find(n => n.props?.["aria-label"] === "Demo edit preview"));
+    assert.equal(h.find(n => n.props?.["aria-label"] === "Demo trim"), undefined);
+    h.props.onEdit = () => h.render({ editActive: true }); h.render();
+    h.button("Edit demo video").props.onClick();
+    assert.ok(h.find(n => n.props?.["aria-label"] === "Demo trim"));
+    h.find(n => n.props?.["aria-label"] === "Demo trim start").props.onChange({ target: { value: "1" } });
+    h.render({ editActive: false });
+    assert.equal(h.find(n => n.props?.["aria-label"] === "Demo trim"), undefined);
+    h.button("Edit demo video").props.onClick();
+    assert.equal(h.find(n => n.props?.["aria-label"] === "Demo trim start").props.value, 1);
+    assert.equal(h.find(n => n.type === "DemoSaveRun"), undefined);
+  });
+  test(`${format}: changing Demo trim seeks the preview and warns if framing would cut its own text`, () => {
+    const h = harness({ format }); h.select();
+    const player = { currentTime: 7, paused: true, pause() {} };
+    h.input("Demo video being edited").props.ref.current = player;
+    h.edit("Demo trim start", 2); assert.equal(player.currentTime, 2);
+    const fields = h.find(n => n.type === textFields.FormatVideoTextFields);
+    fields.props.onChange({ ...fields.props.editing, text: { value: "Demo title", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 6000 } }); h.render();
+    h.find(n => n.type === "WorkflowDemoControls").props.onChange({ version: 1, width: .5, height: .5, points: [[0, .25, .4]] }); h.render();
+    assert.match(text(h.find(n => n.props?.role === "status")), /crop may cut off this heading/);
+    assert.match(text(h.find(n => n.props?.["aria-label"] === "Demo edit preview")), /Full clip preview/);
+  });
+  test(`${format}: Demo edit entry opens the shared editor and keeps clip text through Apply and restore`, () => {
+    const h = harness({ format }); h.render({ editActive: false, editPreviewActive: true }); h.select();
+    assert.equal(h.find(n => n.props?.["aria-label"] === "Demo trim start"), undefined, "Demo selection screen does not duplicate editing tools");
+    h.props.onEdit = () => h.render({ active: false, editActive: true });
+    h.render(); h.button("Edit demo video").props.onClick();
+    assert.equal(h.input("Demo video being edited").props.src, asset(2).url);
+    assert.equal(h.input("Demo trim end").props.value, 8);
+    const fields = h.find(n => n.type === textFields.FormatVideoTextFields);
+    const overlay = { value: "My demo heading", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 8000 };
+    fields.props.onChange({ ...fields.props.editing, text: overlay }); h.render();
+    const stored = normalize(readFormatDemoDraft(h.storage.get(draftKey("owner", format))));
+    assert.deepEqual(stored.editing.text, overlay);
+    h.props.onEditDone = () => h.render({ active: true, editActive: false }); h.render();
+    h.button("Apply demo edits").props.onClick();
+    assert.equal(h.input("Selected demo video").props.src, asset(2).url);
+    assert.equal(h.input("Upload demo video").props.type, "file");
+    assert.equal(h.find(n => n.props?.["aria-label"] === "Demo trim start"), undefined);
+    const restored = harness({ format, storage: h.storage }); restored.render({ opening: output(1) });
+    assert.deepEqual(normalize(restored.find(n => n.type === textFields.FormatVideoTextFields).props.editing.text), overlay);
+    restored.button("Save final video").props.onClick(); restored.render();
+    assert.deepEqual(normalize(restored.saveRun().props.save.draft.editing.text), overlay);
+    assert.equal(restored.saveRun().props.save.opening.id, id(1));
+  });
+  test(`${format}: failed Demo replacement preserves restored trim, sound, framing and ready save`, async () => {
+    const stored = draft(); stored.framing.height = .5;
+    const storage = new Map([[draftKey("owner", format), JSON.stringify(stored)]]);
+    const h = harness({ format, storage }); h.props.opening = output(1); h.render();
+    assert.equal(h.button("Save final video").props.disabled, false);
+    const previousDirty = h.dirty;
+    const pending = h.input("Upload demo video").props.onChange({ currentTarget: { files: [{ name: "invalid.mp4" }], value: "" } });
+    h.render(); h.rejectVideoUpload(); await new Promise(setImmediate); h.render();
+    assert.ok(h.find(n => n.props?.["aria-label"] === "Selected demo video" && n.props.src === asset(2).url));
+    assert.deepEqual(JSON.parse(storage.get(draftKey("owner", format))), stored);
+    assert.equal(h.dirty, previousDirty); assert.equal(h.button("Save final video").props.disabled, false);
+    assert.match(text(h.find(n => n.props?.role === "alert")), /previous demo is kept/);
+    assert.equal(h.uploads.length, 0); void pending;
+  });
+  test(`${format}: opening replacement blocks Demo actions without turning live upload into preview`, () => {
+    const h = harness({ format }); h.props.pendingSource = true; const tree = h.render();
+    assert.ok(h.find(n => n.type === "fieldset" && n.props.disabled === true));
+    assert.equal(h.button("Save final video").props.disabled, true);
+    assert.equal(nodes(tree).some(n => n.type === "DemoSaveRun"), false);
+  });
   test(`${format}: Demo controls work before an opening, and only owned saved opening enables merging`, () => {
     const h = harness({ format }); h.render();
-    assert.equal(h.button("Upload demo").props.disabled, undefined);
-    assert.equal(h.button("Creative Assets").props.disabled, undefined);
+    assert.equal(h.button("First upload demo").props.disabled, undefined);
+    assert.equal(h.button("Choose from Creative Assets").props.disabled, undefined);
     assert.equal(h.find(node => node.type === "fieldset").props.disabled, false);
     assert.equal(h.button("Save final video").props.disabled, true);
     h.select();

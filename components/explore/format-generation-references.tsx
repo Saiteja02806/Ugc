@@ -86,7 +86,7 @@ export function FormatGenerationReferences({ selection, onChange, onPendingChang
 
   return <section aria-label="Optional generation references" className="space-y-2">
     <p className="text-xs text-muted">Optional references</p>
-    <div className={creation.referenceGrid}>
+    <div className={creation.referenceGrid} data-workflow-reference-grid>
       {(["image", "video"] as const).map(kind => {
         const local = kind === "image" ? localImage.asset : localVideo.asset;
         const isStyle = kind === "video" && selection?.kind !== "video" && Boolean(styleVideo);
@@ -97,7 +97,7 @@ export function FormatGenerationReferences({ selection, onChange, onPendingChang
             const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; if (file) void choose(kind, file);
           }} />
           <Popover open={active && openKind === kind} onOpenChange={open => setOpenKind(open ? kind : null)}>
-            <PopoverTrigger render={<Button type="button" variant="outline" aria-label={isStyle ? "Preview video style reference" : `${asset ? "Replace" : "Add"} ${kind} reference`} aria-busy={pending === kind} title={asset?.name ?? `Choose an optional ${kind} reference`} disabled={disabled || Boolean(pending)} data-state={pending === kind ? "loading" : asset ? "selected" : "empty"} className={creation.referenceButton} />}>
+            <PopoverTrigger render={<Button type="button" variant="outline" data-workflow-tile="reference" aria-label={isStyle ? "Preview video style reference" : `${asset ? "Replace" : "Add"} ${kind} reference`} aria-busy={pending === kind} title={asset?.name ?? `Choose an optional ${kind} reference`} disabled={disabled || Boolean(pending)} data-state={pending === kind ? "loading" : asset ? "selected" : "empty"} className={creation.referenceButton} />}>
               {pending === kind ? <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : asset ? <ReferenceThumbnail kind={kind} asset={asset} /> : kind === "image" ? <>
                 {CREATOR_REFERENCES[0] ? <ReferenceThumbnail kind="image" asset={{ name: "", url: CREATOR_REFERENCES[0].src, duration: null }} available /> : null}<UserRound className="relative size-5" aria-hidden="true" />
               </> : <Video className="size-5" aria-hidden="true" />}
@@ -106,7 +106,7 @@ export function FormatGenerationReferences({ selection, onChange, onPendingChang
             </PopoverTrigger>
             <PopoverContent ref={popup} initialFocus={popup} tabIndex={-1} side="bottom" align="center" className={cn(studio.floating, creation.floating)} style={{ maxHeight: "min(calc(100dvh - 2rem), var(--available-height))", maxWidth: "min(calc(100vw - 2rem), var(--available-width))" }}>
               <PopoverTitle>{isStyle ? "Selected style video" : kind === "image" ? "Choose image" : "Video reference"}</PopoverTitle>
-              <p className="text-sm leading-6 text-muted">{isStyle ? "Watch your selected gallery example. Describe the style you want in your instructions, or upload a video to use as generation input." : kind === "image" ? "Optional image. Your instructions decide how it appears. Choose an image or a video reference." : "Optional video up to 3 seconds, in 9:16 or 16:9. Output follows the clip’s length. Add narration in Edit video."}</p>
+              <p className="text-sm leading-6 text-muted">{isStyle ? "Watch your selected gallery example. Describe the style you want in your instructions, or upload a video to use as generation input." : kind === "image" ? "Optional image. Your instructions decide how it appears. Choose an image or a video reference." : "Optional video up to 3 seconds, in 9:16 or 16:9. Output follows the clip’s length. Choose Edit below your preview to add narration."}</p>
               {asset ? <>{kind === "image" ? <ReferenceImagePreview asset={asset} /> : <WorkflowMediaPlayer asset={asset} kind="video" label={isStyle ? "Selected style video preview" : "Video reference preview"} className="mx-auto aspect-auto h-auto max-h-[40dvh] w-auto max-w-full bg-transparent" />}<p className="break-all text-xs text-muted">{asset.name}</p></> : null}
               <div className="flex flex-wrap items-center gap-2"><Button type="button" variant="outline" disabled={disabled || Boolean(pending)} onClick={() => input.current?.click()} className="h-9 rounded-lg text-sm">{kind === "image" ? "Upload image" : isStyle ? "Upload video reference" : asset ? "Replace video" : "Attach video"}</Button>
                 {asset ? <Button type="button" variant="ghost" aria-label={isStyle ? "Clear style example" : `Remove ${kind} reference`} disabled={disabled || Boolean(pending)} onClick={isStyle ? () => { onClearStyle?.(); setOpenKind(null); } : remove} className="h-9 rounded-lg text-sm">{isStyle ? "Clear example" : kind === "image" ? "None" : "Remove video"}</Button> : null}</div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { CreditIcon } from "@/components/icons/credit-icon";
+import scrollbars from "@/components/ui/quiet-scrollbar.module.css";
 
 import {
   ExternalLink,
@@ -378,6 +379,7 @@ function SidebarNavigation({
     <nav
       aria-label="Primary navigation"
       className={cn(
+        scrollbars.surface,
         "min-h-0 flex-1 py-3.5",
         collapsed ? "px-[10px]" : "px-3",
         collapsed ? "overflow-visible" : "overflow-y-auto overflow-x-hidden",

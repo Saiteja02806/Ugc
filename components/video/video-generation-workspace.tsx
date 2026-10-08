@@ -1262,7 +1262,7 @@ export function VideoGenerationStudioPanel({
       <AiStudioComposer
         portalTarget={workflow?.controlsTarget}
         actionsTarget={workflow?.actionsTarget}
-        promptHelper={workflow ? uploadedReferenceVideo ? "Add a voiceover in Edit video if needed." : workflow.format === "wall_text" ? "Describe the background; add text in Edit video." : "Scene, action and spoken words in quotes." : undefined}
+        promptHelper={workflow ? uploadedReferenceVideo ? "Choose Edit below your preview to add a voiceover." : workflow.format === "wall_text" ? "Describe the background; add your text using Edit below the preview." : "Scene, action and spoken words in quotes." : undefined}
         promptLabel={workflow ? "Your instructions" : undefined}
         settingsSummary={workflow ? `${uploadedReferenceVideo ? "Runway" : model === "seedance_2_5" ? "Seedance 2.5" : "Google Omni"} · ${uploadedReferenceVideo ? `${uploadedReferenceVideo.asset.durationSeconds?.toFixed(1) ?? 3}s clip` : `${durationSeconds}s`} · ${aspectRatio} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}
         referenceControls={workflow ? <FormatGenerationReferences key={user?.uid ?? "preview"} active={workflow.controlsActive} selection={uploadedVideoReference ?? uploadedReference} onChange={handleReferenceChange} onPendingChange={setCreatorReferenceUploadPending} disabled={isGenerating || (!recreateView?.preview && generationLocked)} preview={Boolean(recreateView?.preview)} ownerId={user?.uid} styleVideo={recreateView?.styleVideo} onClearStyle={recreateView?.onClearReference} /> : undefined}

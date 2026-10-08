@@ -61,7 +61,7 @@ export function SlideshowReferencePicker({ reference, slideIndex, selectedSlideI
     <div className="flex items-center justify-between gap-2"><h2 className="text-sm font-medium">Slideshow reference</h2>{reference ? <Button type="button" variant="ghost" size="icon-sm" disabled={disabled || busy} onClick={onRemove} aria-label="Remove slideshow reference"><X className="size-4" /></Button> : null}</div>
     <div className={styles.slideshowReferenceTiles}>
       {reference ? <button type="button" className={styles.slideshowReferenceTile} disabled={disabled || busy} onClick={onPreview} aria-label="Preview selected slideshow"><img src={reference.slides[slideIndex]?.url ?? reference.posterUrl} alt="" width={128} height={128} /><span>Preview slideshow</span></button> : null}
-      <Button type="button" variant="outline" className={creation.referenceButton} disabled={disabled || busy} onClick={() => input.current?.click()}><Upload className="size-5" aria-hidden="true" /><span className={creation.referenceLabel}>{busy ? "Uploading…" : "Upload slides"}</span></Button>
+      <Button type="button" variant="outline" data-workflow-tile="reference" className={creation.referenceButton} disabled={disabled || busy} onClick={() => input.current?.click()}><Upload className="size-5" aria-hidden="true" /><span className={creation.referenceLabel}>{busy ? "Uploading…" : "Upload slides"}</span></Button>
     </div>
     <input ref={input} className="sr-only" type="file" multiple accept="image/jpeg,image/png,image/webp" aria-label="Upload slideshow images" tabIndex={-1} onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; if (files.length) void upload(files); }} />
     {error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}
@@ -82,6 +82,7 @@ export function SlideshowReferencePicker({ reference, slideIndex, selectedSlideI
         })}
       </div>
       <p aria-live="polite" className="text-xs leading-5 text-muted">{selectedSlideIds.length ? `${selectedSlideIds.length} of ${reference.slides.length} slides will guide each generated image.` : "Select at least one slide to generate an image."}</p>
+      {selectedSlideIds.length ? <p className="text-xs leading-5 text-muted">Generate versions for slide {slideIndex + 1}. Choose one of the results to add it in Edit slides.</p> : null}
     </div> : <p className="text-xs leading-5 text-muted">Select a slideshow on the right, or upload 2–10 images as a reference.</p>}
     {localPreview && busy ? <p role="status" className="text-xs text-muted">Reading your slide images on this device…</p> : null}
   </section>;

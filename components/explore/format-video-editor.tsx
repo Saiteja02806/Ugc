@@ -132,7 +132,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   if (!active || !controlsTarget || !resultsTarget) return null;
   const actions = <div className="space-y-2">
     {validation || finishing.action.error ? <p role="alert" className="text-xs leading-5 text-destructive">{validation ?? finishing.action.error}</p> : null}
-    {finishing.output ? <Button type="button" size="lg" onClick={onContinue} className="h-11 w-full rounded-lg">Continue to Schedule</Button> : <Button type="button" size="lg" disabled={finishing.action.disabled || !sourceQuery.data} onClick={finishing.action.onAction} className="h-11 w-full rounded-lg">{finishing.action.busy ? "Saving…" : "Save edits"}</Button>}
+    {finishing.output ? <Button type="button" size="lg" onClick={onContinue} className="h-11 w-full rounded-lg">Continue to Demo</Button> : <Button type="button" size="lg" disabled={finishing.action.disabled || !sourceQuery.data} onClick={finishing.action.onAction} className="h-11 w-full rounded-lg">{finishing.action.busy ? "Saving…" : "Save edits"}</Button>}
     <p role="status" className="text-xs leading-5 text-muted">{enabled ? finishing.output ? "Your final video is saved in Library." : finishing.action.message : "Video saving is unavailable in this preview."}</p>
     {sourceQuery.isError ? <p role="alert" className="text-xs text-destructive">Could not load this saved video. <button type="button" onClick={() => void sourceQuery.refetch()} className="rounded underline focus-visible:outline-2 focus-visible:outline-focus">Retry</button></p> : null}
     {finishing.action.cancel ? <Button type="button" variant="ghost" onClick={finishing.action.cancel}>Cancel save</Button> : null}

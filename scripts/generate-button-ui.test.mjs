@@ -30,11 +30,11 @@ function buttonFixture(path, tag, marker, props) {
     ts.forEachChild(node, visit);
   }
   visit(parsed);
-  assert.equal(matches.length, 1, `Find exactly one ${marker} button`);
+  assert.equal(matches.length, path === composerPath ? 3 : 1, `Find exactly one ${marker} button`);
   const fixture = `const { Button, cn, buttonClassName, Loader2, RefreshCw } = helpers;
     module.exports = function Fixture(props) {
       const { ${Object.keys(props).join(", ")} } = props;
-      return (${matches[0]});
+      return (${matches.at(-1)});
     };`;
   const compiled = ts.transpileModule(fixture, {
     compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS },
@@ -44,7 +44,7 @@ function buttonFixture(path, tag, marker, props) {
   return {
     markup: renderToStaticMarkup(React.createElement(context.module.exports, props)),
     source,
-    button: matches[0],
+    button: matches.at(-1),
   };
 }
 

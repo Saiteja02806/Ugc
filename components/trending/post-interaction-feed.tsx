@@ -144,11 +144,11 @@ export function PostInteractionFeed({ items, previousItem, onPrevious, onLike, o
 
   function scheduleScrollSettlement() {
     if (scrollTimer.current) clearTimeout(scrollTimer.current);
-    // Native scrollend includes momentum and snap completion. Keep the debounce
-    // only as a fallback for older browsers, rather than adding a pause to each post.
-    if (viewportRef.current && !("onscrollend" in viewportRef.current)) {
-      scrollTimer.current = setTimeout(settleScroll, 160);
-    }
+    // scrollend can fire while a touch is still held, or be omitted when a
+    // reversing gesture ends at the same boundary. Keep a fallback even in
+    // browsers exposing scrollend; its native event still commits immediately.
+    // settleScroll guards held gestures, animations, and duplicate decisions.
+    scrollTimer.current = setTimeout(settleScroll, 160);
   }
 
   function snapToPost(top: number) {
@@ -190,6 +190,7 @@ export function PostInteractionFeed({ items, previousItem, onPrevious, onLike, o
       return;
     }
     userScroll.current = true;
+    scheduleScrollSettlement();
   }
 
   function startPointer(event: PointerEvent<HTMLDivElement>) {

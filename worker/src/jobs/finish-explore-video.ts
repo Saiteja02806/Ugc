@@ -92,7 +92,8 @@ export async function runFinishExploreVideoJob(job: BackgroundJobRow, context: P
       }).finally(() => { checking = false; });
     }, 5000);
     const result = await deps.finish({ sourcePath:join(directory,"source-0"),demoPath,demoAudioPath,backgroundMusicPath,signal:controller.signal,
-      ...(draft.demoFraming ? { demoFraming: draft.demoFraming } : {}),
+        ...(draft.demoFraming ? { demoFraming: draft.demoFraming } : {}),
+        ...(draft.editing ? { editing: draft.editing } : {}),
       ...(demoAudioPath ? { demoAudioPlayback:draft.demoAudioPlayback } : {}),
       ...(backgroundMusicPath ? { backgroundMusicPlayback:draft.backgroundPlayback } : {}),workDir:join(directory,"render"),tools,
       ...(draft.subtitles && subtitleStyle && subtitlePlacement ? { subtitles:{ ...draft.subtitles,style:subtitleStyle,placement:subtitlePlacement,loadTranscript:async (speech) => {

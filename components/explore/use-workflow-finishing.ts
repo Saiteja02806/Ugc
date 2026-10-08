@@ -9,16 +9,22 @@ import { loadWorkflowDefaultMusic } from "@/lib/explore/workflow-default-music-c
 import type { LocalWorkflowMedia } from "@/components/explore/use-local-workflow-media";
 import type { MediaAsset } from "@/lib/media/types";
 import type { DemoFraming, ExploreFinishStyle } from "@/worker/src/lib/explore-finishing-contract";
+import type { ExploreFormatEdit } from "@/worker/src/lib/explore-format-edit";
 
 export type FinishingOptions = { subtitles: boolean; style: ExploreFinishStyle; backgroundMusic: boolean; placement?: "bottom" | "middle" | "top" };
 export const DEFAULT_FINISHING_OPTIONS: FinishingOptions = { subtitles: false, style: "clean", backgroundMusic: false, placement: "bottom" };
 export type WorkflowAction = { busy: boolean; disabled: boolean; message: string; error: string | null; onAction: () => void; refresh: () => void; cancel?: () => void };
-export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, demoAudio, playback, options, onRestoreOptions, demoFraming = null, demoFramingError = null }: {
+export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, demoAudio, playback, options, onRestoreOptions, demoFraming = null, demoFramingError = null, editing, backgroundSource = null, backgroundPlayback: formatBackgroundPlayback = "once", scope, onRestoreDraft }: {
   ownerId: string | null; enabled: boolean; kind: "hook" | "phone"; source: MediaAsset | null;
   demo: LocalWorkflowMedia | null; demoAudio: LocalWorkflowMedia | null; playback: "once" | "repeat"; options: FinishingOptions;
   onRestoreOptions?: (value: FinishingOptions) => void;
   demoFraming?: DemoFraming | null;
   demoFramingError?: string | null;
+  editing?: ExploreFormatEdit;
+  backgroundSource?: MediaAsset | null;
+  backgroundPlayback?: "once" | "repeat";
+  scope?: string;
+  onRestoreDraft?: (draft: SavedFinish["draft"]) => void;
 }) {
   const active = useRef(true), working = useRef(false);
   const saved = useRef<SavedFinish | null>(null);
@@ -28,7 +34,8 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
   const [output, setOutput] = useState<MediaAsset | null>(null);
   const [savedEntry, setSavedEntry] = useState<SavedFinish | null>(null);
   // Inputs change without invalidating a completed request's server identity.
-  const signature = JSON.stringify([source?.id, demo?.url, demoAudio?.url, playback, options, demoFraming, demoFramingError]);
+  const signature = JSON.stringify([source?.id, demo?.url, demoAudio?.url, playback, options, demoFraming, demoFramingError, editing, backgroundSource?.id, formatBackgroundPlayback]);
+  const storageKey = finishStorageKey(ownerId ?? "signed-out", kind) + (scope ? `:${encodeURIComponent(scope)}` : "");
   const [completedSignature, setCompletedSignature] = useState<string | null>(null);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const deps = useCallback(() => ({ token: () => getCurrentUserIdToken(ownerId ?? undefined), fetch: (...args: Parameters<typeof fetch>) => fetch(...args), assertActive() { if (!active.current) throw new Error("This account's workflow is no longer active."); } }), [ownerId]);
@@ -57,13 +64,14 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
     void Promise.resolve().then(() => {
       if (stopped) return;
       try {
-        saved.current = readSavedFinish(localStorage.getItem(finishStorageKey(ownerId, kind)), ownerId, kind);
+        saved.current = readSavedFinish(localStorage.getItem(storageKey), ownerId, kind);
         if (saved.current) onRestoreOptions?.({ subtitles: !!saved.current.draft.subtitles, style: saved.current.draft.subtitles?.style ?? "clean", backgroundMusic: !!saved.current.draft.backgroundAssetId, placement: saved.current.draft.subtitles?.placement ?? "bottom" });
+        if (saved.current) onRestoreDraft?.(saved.current.draft);
         setSavedEntry(saved.current); setRestored(true); void refresh();
       } catch (e) { setError(e instanceof Error ? e.message : "Could not verify the saved edit."); }
     });
     return () => { stopped = true; };
-  }, [enabled, ownerId, kind, refresh, onRestoreOptions]);
+  }, [enabled, ownerId, kind, refresh, onRestoreOptions, onRestoreDraft, storageKey]);
   useEffect(() => {
     if (!saved.current || status?.outcome !== "pending") return;
     const timer = setInterval(() => { void refresh(); }, 4000);
@@ -81,9 +89,9 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
     working.current = true; setBusy(true); setError(null);
     try {
       if (!navigator.locks) throw new Error("Use a browser with Web Locks support to apply edits safely across tabs.");
-      await navigator.locks.request(finishStorageKey(ownerId, kind), { ifAvailable: true }, async (lock) => {
+      await navigator.locks.request(storageKey, { ifAvailable: true }, async (lock) => {
         if (!lock) throw new Error("Another tab is applying edits. Refresh status first.");
-        const stored = readSavedFinish(localStorage.getItem(finishStorageKey(ownerId, kind)), ownerId, kind);
+        const stored = readSavedFinish(localStorage.getItem(storageKey), ownerId, kind);
         if (stored && stored.requestKey !== saved.current?.requestKey) { saved.current = stored; setSavedEntry(stored); setCompletedSignature(null); setOutput(null); await accept(await requestFinish(deps(), stored)); return; }
         if (saved.current && !["completed", "failed", "cancelled"].includes(status?.outcome ?? "")) {
           // Explicit resume only; reuses the exact durable draft and identity.
@@ -108,12 +116,12 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
             deps().assertActive(); backgroundAssetId = result.asset.id; backgroundPlayback = music.playback;
           }
         }
-        const draft: SavedFinish["draft"] = { version: 1, kind, sourceAssetId: source.id, demoAssetId: await upload(demo, "video"), demoAudioAssetId: await upload(demoAudio, "audio"), demoAudioPlayback: demoAudio ? playback : "once", backgroundAssetId, backgroundPlayback, subtitles: options.subtitles ? { language: "en", style: options.style, placement: options.placement ?? "bottom" } : null,
-          ...(demoFraming ? { demoFraming } : {}) };
+        const draft: SavedFinish["draft"] = { version: 1, kind, sourceAssetId: source.id, demoAssetId: await upload(demo, "video"), demoAudioAssetId: await upload(demoAudio, "audio"), demoAudioPlayback: demoAudio ? playback : "once", backgroundAssetId: editing ? backgroundSource?.id ?? null : backgroundAssetId, backgroundPlayback: editing && backgroundSource ? formatBackgroundPlayback : backgroundPlayback, subtitles: options.subtitles ? { language: "en", style: options.style, placement: options.placement ?? "bottom" } : null,
+          ...(demoFraming ? { demoFraming } : {}), ...(editing ? { editing } : {}) };
         deps().assertActive();
         const entry: SavedFinish = { version: 1, ownerId, kind, requestKey: crypto.randomUUID(), draft };
         // A storage failure must happen before dispatch, never after a paid request.
-        localStorage.setItem(finishStorageKey(ownerId, kind), JSON.stringify(entry)); saved.current = entry;
+        localStorage.setItem(storageKey, JSON.stringify(entry)); saved.current = entry;
         setSavedEntry(entry); setOutput(null); setCompletedSignature(signature);
         await accept(await requestFinish(deps(), entry, true));
       });
@@ -122,10 +130,10 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
   }
   // A recovered output is a saved result, not a reconstruction from missing local
   // files. A different source or newly selected edit must be applied first.
-  const recoveredMatches = completedSignature === null && savedEntry && (!source || source.id === savedEntry.draft.sourceAssetId) && !demo && !demoAudio && !demoFraming &&
+  const recoveredMatches = completedSignature === null && savedEntry && (!source || source.id === savedEntry.draft.sourceAssetId) && !demo && !demoAudio && !demoFraming && (editing ? JSON.stringify(editing) === JSON.stringify(savedEntry.draft.editing) && (backgroundSource?.id ?? null) === savedEntry.draft.backgroundAssetId && (!backgroundSource || formatBackgroundPlayback === savedEntry.draft.backgroundPlayback) :
     !!options.backgroundMusic === !!savedEntry.draft.backgroundAssetId &&
     options.subtitles === !!savedEntry.draft.subtitles && (!options.subtitles || (options.style === savedEntry.draft.subtitles?.style &&
-      (options.placement ?? "bottom") === (savedEntry.draft.subtitles?.placement ?? "bottom")));
+      (options.placement ?? "bottom") === (savedEntry.draft.subtitles?.placement ?? "bottom"))));
   const currentOutput = output && !demoFramingError && (completedSignature === signature || recoveredMatches) ? output : null;
   const pending = status?.outcome === "pending" || status?.outcome === "uncertain";
   const disabled = !enabled || !ownerId || !restored || busy || pending || !!demoFramingError || (!source && !savedEntry);

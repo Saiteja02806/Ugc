@@ -63,6 +63,7 @@ test("pending feedback reflects Next link status, clears on completion and reser
 test("all three workflow cards keep real links and place feedback inside the corresponding link", () => {
   const { ExploreWorkflowCard } = load("components/explore/explore-workflow-card.tsx", {
     "next/link": link,
+    react: { useRef: () => ({ current: null }), useEffect: () => {} },
     "@/components/explore/explore-link-indicator": indicatorImport,
   });
   for (const workflow of workflows.EXPLORE_WORKFLOWS) {
@@ -100,7 +101,7 @@ test("AI character cover and caption remain inside a single live link without a 
 test("quick starts preserve destinations, duration and preview query parameters with per-link feedback", () => {
   const { ExploreWorkspace } = load("components/explore/explore-workspace.tsx", {
     "next/link": link,
-    "lucide-react": Object.fromEntries(["AudioLines", "Clapperboard", "Heart", "Smartphone", "TrendingUp", "UserRound"].map(name => [name, name])),
+    "lucide-react": Object.fromEntries(["ArrowUpRight", "CalendarDays", "FolderOpen", "ImageIcon", "Sparkles", "TrendingUp", "Video"].map(name => [name, name])),
     "@/components/explore/ai-character-card": { AICharacterCard: "character-card" },
     "@/components/explore/explore-workflow-card": { ExploreWorkflowCard: "workflow-card" },
     "@/components/explore/explore-link-indicator": indicatorImport,
@@ -113,11 +114,13 @@ test("quick starts preserve destinations, duration and preview query parameters 
     anchors.forEach((anchor, index) => {
       const shortcut = presets.EXPLORE_QUICK_STARTS[index];
       const url = new URL(anchor.props.href, "https://getugcpilot.com");
-      assert.equal(url.pathname, shortcut.destination);
+      const expected = new URL(shortcut.destination, "https://getugcpilot.com");
+      assert.equal(url.pathname, expected.pathname);
+      assert.equal(url.searchParams.get("mode"), expected.searchParams.get("mode"));
       assert.equal(url.searchParams.get("preview"), localPreview ? "1" : null);
       assert.equal(url.searchParams.get("model"), "model" in shortcut ? shortcut.model : null);
       assert.equal(url.searchParams.get("duration"), "duration" in shortcut ? String(shortcut.duration) : null);
-      assert.equal(nodes(anchor).find(node => node.type === "indicator").props.label, shortcut.title);
+      assert.equal(anchor.props["data-explore-shortcut"], shortcut.id);
       assert.equal(anchor.props.onClick, undefined);
       assert.equal(anchor.props.disabled, undefined);
     });

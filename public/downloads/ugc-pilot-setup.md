@@ -64,11 +64,17 @@ Use Customize → Connectors → Add custom connector. Enter UGC Pilot and the e
 
 ## ChatGPT web
 
-Install the private UGC Pilot plugin from its actual provided plugin link and connect when prompted. A public-directory listing is a separate reviewed release; do not claim one exists.
+If a private UGC Pilot plugin link has been supplied, install it and connect when prompted. This bundle does not include an install link. A public-directory listing is a separate reviewed release; do not claim one exists.
 
 For developers with developer mode enabled, the current documented path is Settings → Security and login → Developer mode, then Plugins → plus → add the MCP URL. Create the personal connection, authenticate, and install it. Availability may depend on account and workspace policy. Follow the current UI rather than promising every account has developer mode.
 
 Uploading this Markdown guide or a ZIP to an ordinary web conversation does not install a connector. If the host lacks a supported installation path, explain that limitation and offer the manual connector steps.
+
+## Public distribution
+
+The same hosted MCP serves each user's own account through OAuth. OpenAI's plugin submission portal accepts the bundle and MCP endpoint for review; an approved, published directory listing provides the customer install link. Claude requires a separate developer submission for its connector or GitHub-hosted plugin bundle. The ZIP download is useful for supported local plugin installation and review preparation; it does not create either public listing.
+
+Public review is still pending. Publisher/domain verification, installed-client acceptance, a reviewer-accessible walkthrough, and secure reviewer access must be completed before announcing public availability. Never put reviewer passwords, OAuth tokens, or publisher credentials in the bundle.
 
 ## First prompt
 
@@ -78,5 +84,8 @@ Uploading this Markdown guide or a ZIP to an ordinary web conversation does not 
 
 - https://learn.chatgpt.com/docs/extend/mcp
 - https://developers.openai.com/plugins/quickstart
+- https://developers.openai.com/plugins/deploy/submission
+- https://developers.openai.com/plugins/deploy/connect-chatgpt
+- https://claude.com/resources/articles/build-plugins-for-claude
 - https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp
 - https://code.claude.com/docs/en/mcp

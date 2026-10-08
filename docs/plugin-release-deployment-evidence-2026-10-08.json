@@ -1,0 +1,30 @@
+[
+  {
+    "project": "ugc-mcp",
+    "id": "dpl_B9qu1Rkx1xRXYN4XWe8xuErWL9Gb",
+    "url": "https://ugc-i84p421qd-ugcpilot.vercel.app",
+    "target": "production",
+    "status": "READY",
+    "framework": "nextjs",
+    "node_version": "24.x",
+    "build_to_ready_seconds": 114.825,
+    "release_base": "9390357231e31cfb72cdb67df6098d5b3c87aa4d",
+    "source_state": "reviewed-uncommitted-snapshot",
+    "release_scope": "plugin-readiness-0.1.1",
+    "git_dirty": "1"
+  },
+  {
+    "project": "ugc",
+    "id": "dpl_qngKMz26xQpQZkXLiJT673Jd56Qi",
+    "url": "https://ugc-9pqx7e3cs-ugcpilot.vercel.app",
+    "target": "production",
+    "status": "READY",
+    "framework": "nextjs",
+    "node_version": "24.x",
+    "build_to_ready_seconds": 133.472,
+    "release_base": "9390357231e31cfb72cdb67df6098d5b3c87aa4d",
+    "source_state": "reviewed-uncommitted-snapshot",
+    "release_scope": "plugin-readiness-0.1.1",
+    "git_dirty": "1"
+  }
+]

@@ -17,7 +17,7 @@ const file = name => ({ name, type: "video/mp4", size: 2000 });
 const tick = () => new Promise(setImmediate);
 const deferred = () => { let resolve, reject; const promise = new Promise((ok, no) => { resolve = ok; reject = no; }); return { promise, resolve, reject }; };
 
-function harness(enabled = true, ownerId = "owner") {
+function harness(enabled = true, ownerId = "owner", minDuration = 0) {
   let cursor = 0, urlNumber = 0;
   const slots = [], effects = [], players = [], uploads = [], revoked = [];
   const react = {
@@ -35,7 +35,7 @@ function harness(enabled = true, ownerId = "owner") {
     "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia(...args) { const request = deferred(); uploads.push({ args, ...request }); return request.promise; } },
   });
   return { players, uploads, revoked,
-    render() { cursor = 0; const result = source.useWorkflowSourceVideo({ enabled, ownerId }); while (effects.length) effects.shift()(); return result; },
+    render() { cursor = 0; const result = source.useWorkflowSourceVideo({ enabled, ownerId, minDuration }); while (effects.length) effects.shift()(); return result; },
     metadata(duration = 5) { const player = players.at(-1); player.duration = duration; player.onloadedmetadata(); },
     unmount() { for (const slot of slots) slot?.cleanup?.(); },
   };
@@ -70,6 +70,16 @@ test("layout preview never uploads and can preview a local opening clip", async 
   const pending = h.render().chooseUpload(file("local.mp4")); h.metadata(); assert.equal(await pending, true);
   assert.equal(h.render().preview.name, "local.mp4"); assert.equal(h.render().ready, true); assert.equal(h.render().source, null);
   assert.equal(h.uploads.length, 0); h.unmount(); assert.ok(h.revoked.includes("blob:video-1"));
+});
+
+test("format inputs reject sub-second footage before uploading and before choosing a saved asset", async () => {
+  const h = harness(true, "owner", 1); h.render().setMode("upload");
+  const pending = h.render().chooseUpload(file("short.mp4")); h.metadata(.5);
+  assert.equal(await pending, false); assert.equal(h.uploads.length, 0); assert.equal(h.render().ready, false);
+  assert.match(h.render().error, /at least 1 second/);
+  h.render().setMode("assets"); assert.equal(h.render().selectAsset(asset(1, { durationSeconds: .5 })), false);
+  assert.equal(h.render().ready, false); assert.match(h.render().error, /at least 1 second/);
+  assert.equal(h.render().selectAsset(asset(2, { durationSeconds: 1 })), true); assert.equal(h.render().ready, true); h.unmount();
 });
 
 test("invalid and long uploads stay blocked without API work or losing an assets draft", async () => {

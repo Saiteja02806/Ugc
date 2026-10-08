@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { RedirectDestination } from "@/lib/mcp/client-validation";
-
 import { OAuthConsentView } from "./oauth-consent-view";
 
 export function OAuthConsent({
@@ -57,29 +55,56 @@ export function OAuthConsent({
 
   async function switchAccount() {
     if (busy || switchingAccount) return;
-    setSwitchingAccount(true); setError(null);
-    try { await signOut(); } catch { setError("Could not sign out. Refresh the page and try again."); }
-    finally { setSwitchingAccount(false); }
+    setSwitchingAccount(true);
+    setError(null);
+
+    try {
+      await signOut();
+    } catch {
+      setError("Could not sign out. Refresh the page and try again.");
+    } finally {
+      setSwitchingAccount(false);
+    }
   }
+
+  const accountLabel = user?.email ?? user?.displayName ?? "UGC Pilot account";
+  const redirectTitle = redirectDestination === "chatgpt"
+    ? "Return to ChatGPT"
+    : redirectDestination === "claude"
+      ? "Return to Claude"
+      : redirectDestination === "loopback"
+        ? "Return to the app on this device"
+        : `Return to ${redirectHost}`;
+  const redirectDescription = redirectDestination === "chatgpt"
+    ? "After approval, this browser will return securely to ChatGPT."
+    : redirectDestination === "claude"
+      ? "After approval, this browser will return securely to Claude."
+      : redirectDestination === "loopback"
+        ? "This local address returns control to the desktop or command-line app that started the connection. Keep that app open."
+        : "After approval, this browser will return to the requesting app.";
 
   return (
     <OAuthConsentView
       clientName={clientName}
       redirectHost={redirectHost}
-      redirectTitle={redirectDestination === "chatgpt" ? "Return to ChatGPT" : redirectDestination === "claude" ? "Return to Claude" : redirectDestination === "loopback" ? "Return to the app on this device" : `Return to ${redirectHost}`}
+      redirectTitle={redirectTitle}
+      redirectDescription={redirectDescription}
       isLocalCallback={redirectDestination === "loopback"}
-      switchingAccount={switchingAccount}
-      onSwitchAccount={() => void switchAccount()}
-      redirectDescription="After approval, this browser will return to the app that started the connection."
       scopes={scopes}
-      accountLabel={user ? user.email ?? user.displayName ?? "UGC Pilot account" : null}
+      accountLabel={user ? accountLabel : null}
       emailVerified={user?.emailVerified ?? false}
       loading={loading}
       busy={busy}
+      switchingAccount={switchingAccount}
       error={error}
-      signInControl={<GoogleSignInButton successPath={`/oauth/authorize?${authorizationParams}`} />}
+      signInControl={
+        <GoogleSignInButton
+          label="Sign in with Google"
+          successPath={"/oauth/authorize?" + authorizationParams}
+        />
+      }
       onDecision={(approve) => void decide(approve)}
+      onSwitchAccount={() => void switchAccount()}
     />
   );
-
 }

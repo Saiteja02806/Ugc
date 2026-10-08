@@ -12,13 +12,14 @@ import { cn } from "@/lib/utils";
 
 export type WorkflowAttachment = ReturnType<typeof useLocalWorkflowMedia>;
 
-export function WorkflowFilePicker({ attachment, kind, label, icon, buttonLabel, className }: {
+export function WorkflowFilePicker({ attachment, kind, label, icon, buttonLabel, className, disabled = false }: {
   attachment: WorkflowAttachment;
   kind: LocalMediaKind;
   label: string;
   icon?: ReactNode;
   buttonLabel?: string;
   className?: string;
+  disabled?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
   return <>
@@ -27,7 +28,7 @@ export function WorkflowFilePicker({ attachment, kind, label, icon, buttonLabel,
       if (file) void attachment.choose(file);
       event.target.value = "";
     }} />
-    <Button type="button" variant="outline" aria-label={label} className={cn("rounded-full text-xs", className)} disabled={attachment.loading} onClick={() => input.current?.click()}>
+    <Button type="button" variant="outline" aria-label={label} className={cn("rounded-full text-xs", className)} disabled={disabled || attachment.loading} onClick={() => input.current?.click()}>
       {icon}{attachment.loading ? "Reading file…" : buttonLabel ?? label}
     </Button>
   </>;

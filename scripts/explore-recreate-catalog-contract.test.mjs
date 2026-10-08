@@ -149,7 +149,7 @@ test("local preview media is development-only and restricted to the manifest", (
 test("all three approved workflows stay visible with their supplied covers", () => {
   const workflows = readFileSync(new URL("../lib/explore/workflows.ts", import.meta.url), "utf8");
   const liveCatalogue = workflows.slice(workflows.indexOf("export const EXPLORE_WORKFLOWS"), workflows.indexOf("export const LOCAL_PREVIEW_WORKFLOWS"));
-  for (const id of ["create-hook", "recreate", "creator-phone"]) {
+  for (const id of ["hook-video", "wall-of-text", "slideshows"]) {
     assert.match(liveCatalogue, new RegExp(`id: "${id}"`));
     assert.match(liveCatalogue, new RegExp(`destination: "/explore/${id}"`));
     assert.match(liveCatalogue, new RegExp(`coverVideo: "/explore/covers/${id}-v[0-9]+\\.mp4"`));
@@ -171,9 +171,10 @@ test("Recreate uses embedded generation controls and locks paid actions in previ
 test("gallery cards are visual-only with one slideshow count on the media", () => {
   const workspace = readFileSync(new URL("../components/explore/recreate-workspace.tsx", import.meta.url), "utf8");
   const card = workspace.slice(workspace.indexOf("function ReferenceCard("), workspace.indexOf("function ReferenceMedia("));
-  assert.doesNotMatch(card, /<p\b|categoryLabel|slides\.length/);
+  assert.doesNotMatch(card, /categoryLabel|slides\.length|Use reference/);
+  assert.match(card, /compact \?/);
   assert.match(card, /aria-label=\{`Recreate \$\{reference\.title\}`\}/);
-  const media = workspace.slice(workspace.indexOf("function ReferenceMedia("), workspace.indexOf("function ReferencePreviewDialog("));
+  const media = workspace.slice(workspace.indexOf("function ReferenceMedia("), workspace.indexOf("export function ReferencePreviewDialog("));
   assert.equal((media.match(/reference\.slides\.length/g) ?? []).length, 1);
 });
 

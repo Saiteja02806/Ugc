@@ -27,25 +27,16 @@ function loadModule(source, imports, globals = {}) {
 const policy = loadModule(read("lib/explore/phone-workflow.ts"), {});
 const rollout = loadModule(read("lib/explore/workflow-generation-rollout.ts"), {});
 
-test("third workflow is visible in the live catalogue with generation controlled by rollout", () => {
-  assert.match(page, /getWorkflowGenerationMode/);
-  assert.match(page, /if \(mode === "hidden"\) notFound\(\)/);
-  assert.match(page, /generationEnabled=\{mode === "generation"\}/);
-  const registry = read("lib/explore/workflows.ts");
-  const live = registry.slice(registry.indexOf("export const EXPLORE_WORKFLOWS"), registry.indexOf("export const LOCAL_PREVIEW_WORKFLOWS"));
-  assert.match(live, /creator-phone/);
-  assert.match(registry, /id: "creator-phone"[^\n]*status: "available"/);
+test("the former phone workflow is hidden while its implementation is retained", () => {
+  assert.match(page, /notFound\(\)/);
+  assert.doesNotMatch(read("lib/explore/workflows.ts"), /destination: "\/explore\/creator-phone"/);
+  assert.match(workspace, /PhoneWorkflowPreview/);
 });
 
-test("actual route remains visible and non-spending when production generation is not enabled", async () => {
-  for (const [environment, query] of [["production", { preview: "1" }], ["development", {}], ["development", { preview: "0" }], ["development", { preview: "1" }]]) {
-    const route = loadModule(page, {
-      "next/navigation": { notFound() { throw new Error("NOT_FOUND"); } },
-      "@/components/explore/phone-workflow-preview": { PhoneWorkflowPreview: "phone-preview" },
-      "@/lib/explore/workflow-generation-rollout": rollout,
-      "react/jsx-runtime": { jsx: (type) => ({ type }) },
-    }, { process: { env: { NODE_ENV: environment } } });
-    assert.equal((await route.default({ searchParams: Promise.resolve(query) })).type, "phone-preview");
+test("the hidden phone route cannot be reopened with preview or rollout parameters", () => {
+  for (const environment of ["production","development"]) {
+    const route = loadModule(page, {"next/navigation": {notFound() {throw Error("NOT_FOUND")}}}, {process:{env:{NODE_ENV:environment,EXPLORE_GENERATION_ENABLED:"true"}}});
+    assert.throws(() => route.default({searchParams:Promise.resolve({preview:"1"})}), /NOT_FOUND/);
   }
 });
 

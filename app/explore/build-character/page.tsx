@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { CharacterWorkspace } from "@/components/characters/character-workspace";
 
 export const metadata: Metadata = {
-  title: "Build AI character",
+  title: "Build AI influencer",
   description: "Create and save your own realistic social media influencer.",
 };
 

@@ -14,7 +14,7 @@ export function useLocalWorkflowMedia(kind: LocalMediaKind) {
   useEffect(() => () => { revision.current += 1; }, []);
   useEffect(() => () => { if (asset?.url.startsWith("blob:")) URL.revokeObjectURL(asset.url); }, [asset]);
 
-  async function choose(file: File, options: { maxDuration?: number; signal?: AbortSignal } = {}) {
+  async function choose(file: File, options: { minDuration?: number; maxDuration?: number; signal?: AbortSignal; onRead?: (asset: LocalWorkflowMedia) => void } = {}) {
     const request = ++revision.current;
     setError(null);
     const maxMB = kind === "video" ? 250 : kind === "audio" ? 25 : 20;
@@ -28,12 +28,19 @@ export function useLocalWorkflowMedia(kind: LocalMediaKind) {
     try {
       const duration = await readDuration(url, kind);
       if (request !== revision.current || options.signal?.aborted) { URL.revokeObjectURL(url); return false; }
+      if (options.minDuration && duration !== null && duration < options.minDuration) {
+        URL.revokeObjectURL(url);
+        setError(`Choose ${kind} at least ${options.minDuration} second long.`);
+        return false;
+      }
       if (options.maxDuration && duration !== null && duration > options.maxDuration) {
         URL.revokeObjectURL(url);
         setError(`Choose ${kind} up to ${options.maxDuration} seconds long.`);
         return false;
       }
-      setAsset({ name: file.name, url, duration, file });
+      const next = { name: file.name, url, duration, file };
+      setAsset(next);
+      options.onRead?.(next);
       return true;
     } catch {
       URL.revokeObjectURL(url);

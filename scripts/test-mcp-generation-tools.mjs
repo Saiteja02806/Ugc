@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { ONE_TIME_FREE_GENERATION_CREDITS } from "../lib/billing/free-generation-credit-policy.ts";
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://local-mcp-generation.supabase.co";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "local-test-secret";
@@ -37,14 +38,10 @@ const asset = {
 globalThis.fetch = async (input, init) => {
   const url = new URL(input instanceof Request ? input.url : String(input));
   const method = init?.method ?? (input instanceof Request ? input.method : "GET");
-  if (url.pathname.endsWith("/rest/v1/rpc/ensure_free_generation_credit_balance")) {
-    freeCreditWrites += 1;
-    return Response.json({ granted: 2, remaining: 2, reserved: 0, used: 0 });
-  }
   if (url.pathname.endsWith("/rest/v1/free_generation_credit_balances")) {
     assert.equal(method, "GET");
     assert.equal(url.searchParams.get("user_id"), "eq.owner-a");
-    return Response.json({ credit_limit: 2, used_credits: 0, reserved_credits: 0 });
+    return Response.json({ credit_limit: ONE_TIME_FREE_GENERATION_CREDITS, used_credits: 0, reserved_credits: 0 });
   }
   if (url.hostname === "cloudtasks.googleapis.com") {
     queueCalls += 1;
@@ -106,6 +103,12 @@ globalThis.fetch = async (input, init) => {
     const paid = plan === "growth";
     const row = { plan_key: "growth", status: "active", last_event_at: now };
     return Response.json(paid ? [row] : []);
+  }
+  if (url.pathname.endsWith("/rest/v1/rpc/ensure_free_generation_credit_balance")) {
+    freeCreditWrites += 1;
+    assert.equal(JSON.parse(init.body).p_user_id, "owner-a");
+    return Response.json({ granted: ONE_TIME_FREE_GENERATION_CREDITS,
+      remaining: ONE_TIME_FREE_GENERATION_CREDITS, reserved: 0, used: 0 });
   }
   if (url.pathname.endsWith("/rest/v1/billing_credit_balances")) {
     return Response.json(plan === "growth" ? {

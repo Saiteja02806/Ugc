@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
@@ -45,6 +44,5 @@ export function WorkflowSavedAudioPicker({ ownerId, attachment, disabled = false
     <PopoverContent className="w-72"><PopoverTitle>Your audio Library</PopoverTitle>
       {assets.length ? <div className="max-h-64 space-y-1 overflow-auto">{assets.map(a => <Button key={a.id} type="button" variant="ghost" disabled={busy} className="w-full justify-start truncate text-sm" onClick={() => { void select(a); }}>{a.name}</Button>)}</div> : <p className="text-xs text-muted">No ready audio yet. Free-plan test audio and private voice recordings are not offered for posting.</p>}
       {error ? <p role="alert" className="text-xs text-destructive">{error}</p> : null}
-      <Link href="/audio-generation" target="_blank" rel="noopener noreferrer" className="text-xs underline">Open Audio generation</Link>
     </PopoverContent></Popover>;
 }

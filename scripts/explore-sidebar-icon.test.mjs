@@ -40,7 +40,7 @@ test("Explore inherits navigation colors through the shared sidebar mask", () =>
   assert.match(icons, /maskImage:/);
 });
 
-test("production navigation renders Explore and Audio, including their active and collapsed states", () => {
+test("production navigation keeps Explore and hides Audio in active and collapsed states", () => {
   const source = readSource("../components/layout/app-sidebar.tsx");
   const tree = ts.createSourceFile("sidebar.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const declarations = tree.statements.filter((node) =>
@@ -68,8 +68,8 @@ test("production navigation renders Explore and Audio, including their active an
       for (const activeKey of ["explore", "audio-generation"]) {
         const html = renderToStaticMarkup(createElement(Navigation, { collapsed, activeKey }));
         assert.match(html, /href="\/explore"/);
-        assert.match(html, /href="\/audio-generation"/);
-        assert.match(html, new RegExp(`href="/${activeKey}" aria-current="page" data-collapsed="${collapsed}"`));
+        assert.doesNotMatch(html, /href="\/audio-generation"/);
+        if (activeKey === "explore") assert.match(html, new RegExp(`href="/${activeKey}" aria-current="page" data-collapsed="${collapsed}"`));
         assert.doesNotMatch(html, /href="\/create-content"/);
       }
     }

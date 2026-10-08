@@ -26,9 +26,7 @@ export async function uploadAIStudioReferenceMedia(
     throw new Error(`Choose a valid ${kind} file.`);
   }
 
-  const metadata =
-    kind === "image" ? await readImageMetadata(file)
-      : kind === "audio" ? await readAudioMetadata(file, options?.maxAudioDurationSeconds ?? 30) : await readVideoMetadata(file, maxVideoDurationSeconds, options?.requireVideoReferenceRatio ?? true);
+  const metadata = await readAIStudioReferenceMetadata(file, kind, maxVideoDurationSeconds, options);
   const token = await getCurrentUserIdToken(expectedUserId);
 
   if (!token) {
@@ -119,6 +117,15 @@ export async function uploadAIStudioReferenceMedia(
     }
     throw error;
   }
+}
+
+/** Local validation shared by read-only workflow previews and owned uploads. */
+export async function readAIStudioReferenceMetadata(file: File, kind: AIStudioReferenceKind, maxVideoDurationSeconds = DEFAULT_MAX_REFERENCE_VIDEO_SECONDS,
+  options?: { maxAudioDurationSeconds?: number; requireVideoReferenceRatio?: boolean }) {
+  if (!file.type.startsWith(`${kind}/`)) throw new Error(`Choose a valid ${kind} file.`);
+  return kind === "image" ? readImageMetadata(file)
+    : kind === "audio" ? readAudioMetadata(file, options?.maxAudioDurationSeconds ?? 30)
+    : readVideoMetadata(file, maxVideoDurationSeconds, options?.requireVideoReferenceRatio ?? true);
 }
 
 async function readImageMetadata(file: File) {

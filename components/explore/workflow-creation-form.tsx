@@ -123,7 +123,7 @@ function CreatorPicker({ creator }: { creator: WorkflowAttachment }) {
 }
 
 /** No playback or crop controls inside a tile; detach before the blob is released. */
-function ReferenceVideoThumbnail({ url }: { url: string }) {
+export function ReferenceVideoThumbnail({ url }: { url: string }) {
   const current = useRef<HTMLVideoElement | null>(null);
   const playerRef = useCallback((player: HTMLVideoElement | null) => {
     if (current.current && current.current !== player) {

@@ -193,7 +193,10 @@ export async function listActiveHookAudioAssets(): Promise<HookAudioAsset[]> {
   });
 }
 
-/** Explicit release default only; never choose a random/unreviewed library import. */
+/**
+ * Resolves the human-approved per-video override before dynamic matching runs.
+ * A stale or unsafe lock fails closed instead of silently using bad audio.
+ */
 export async function getApprovedHookAudioAsset(id: string): Promise<HookAudioAsset | null> {
   const { data, error } = await getClient().from("hook_audio_assets").select("*")
     .eq("id", requireIdentifier(id, "Audio ID")).eq("status", "active").eq("review_status", "approved").maybeSingle();
@@ -201,10 +204,6 @@ export async function getApprovedHookAudioAsset(id: string): Promise<HookAudioAs
   return data ? parseActiveAsset(data) : null;
 }
 
-/**
- * Resolves the human-approved per-video override before dynamic matching runs.
- * A stale or unsafe lock fails closed instead of silently using bad audio.
- */
 export async function getLockedHookAudioForVideo(params: {
   hookVideoId: string;
 }): Promise<LockedHookAudioSelection | null> {

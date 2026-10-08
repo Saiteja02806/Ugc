@@ -80,6 +80,7 @@ const canonicalTypeByImplementation: Record<
 };
 
 export type PublicBackgroundJob = {
+  exploreFormat?: "hook" | "wall_text" | "slideshow";
   cancelRequestedAt: string | null;
   completedAt: string | null;
   createdAt: string;
@@ -140,10 +141,12 @@ export function isRetryableBackgroundJob(job: BackgroundJobRecord) {
 }
 
 export function getPublicBackgroundJob(job: BackgroundJobRecord) {
+  const format = job.input && typeof job.input === "object" && !Array.isArray(job.input) ? job.input.exploreFormat : undefined;
   const hideWallTextFailureDetails = isWallTextJob(job.jobType);
   const errorCode = getPublicJobErrorCode(job);
   const retryable = isRetryableBackgroundJob(job);
   return {
+    ...((job.jobType === "generate_hook_video" && (format === "hook" || format === "wall_text") || job.jobType === "generate_image" && format === "slideshow") ? { exploreFormat: format as "hook" | "wall_text" | "slideshow" } : {}),
     cancelRequestedAt: job.cancelRequestedAt,
     completedAt: job.completedAt,
     createdAt: job.createdAt,

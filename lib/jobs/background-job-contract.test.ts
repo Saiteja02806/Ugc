@@ -221,3 +221,10 @@ test("public Wall jobs never expose private provider or validation diagnostics",
   assert.equal(publicJob.includes("req_secret"), false);
   assert.equal(publicJob.includes("gpt-5.6-luna"), false);
 });
+
+test("public jobs expose only compatible Explore format tags", () => {
+  for (const [jobType,format,expected] of [["generate_hook_video","hook","hook"],["generate_hook_video","wall_text","wall_text"],["generate_image","slideshow","slideshow"],["generate_image","hook",undefined],["generate_hook_video","slideshow",undefined],["publish_social_post","hook",undefined],["generate_hook_video","private",undefined]]) {
+    const result=getPublicBackgroundJob({jobType,input:{exploreFormat:format,privateSecret:"hidden"}} as unknown as BackgroundJobRecord);
+    assert.equal(result.exploreFormat,expected);assert.equal(JSON.stringify(result).includes("privateSecret"),false);
+  }
+});

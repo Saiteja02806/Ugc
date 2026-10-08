@@ -4,7 +4,7 @@ Implemented October 7, 2026; included in the authorized complete release. See `r
 
 ## User flow
 
-Hook and Phone workflows share seven subtitle choices. Select a style to update the draft, then explicitly press **Play example** in the single player below the cards. Changing style resets the example. Playback pauses when its section/page is hidden or the player leaves the viewport. Examples never autoplay, including with reduced motion. Posters, loading feedback, errors, keyboard playback, and explicit retry are supported.
+Hook and Phone workflows share eight subtitle choices. Select a style to update the draft, then explicitly press **Play example** in the single player below the cards. Changing style resets the example. Playback pauses when its section/page is hidden or the player leaves the viewport. Examples never autoplay, including with reduced motion. Posters, loading feedback, errors, keyboard playback, and explicit retry are supported.
 
 Under Create, **Upload** and **Creative Assets** select a ready, owned opening video, then **Continue to edit** opens finishing. The user may append a demo and its added audio, choose approved default background music, and enable subtitles. **Apply edits** saves a new derivative and preserves the source. Generate retains the current live composer, model settings and durable jobs. Scheduling uses the existing confirmation editor and saved derivative.
 
@@ -17,6 +17,7 @@ Under Create, **Upload** and **Creative Assets** select a ready, owned opening v
 | `word-pop` | Word pop | One large word; bounded 94–100% entrance | `word-pop-v1` |
 | `karaoke` | Karaoke | Fixed phrase; progressive fill at real word times | `karaoke-v1` |
 | `marker-highlight` | Marker highlight | Fixed phrase; background under active word | `marker-highlight-v1` |
+| `serif-box` | Serif black box | Instrument Serif on black; whole words fade from grey to white | `serif-box-v2` |
 
 `worker/src/subtitles/styles.ts` is the browser-safe registry used by the UI, request validation, recovery, standalone renderer, worker, and preview build. Unknown IDs fail closed. SQL repeats the IDs because it cannot import TypeScript; a regression test checks every registry ID and rejects malformed subtitle records atomically. Existing four renderer identities and legacy default Bottom remain available. Bottom, Middle, and Top use shared safe-area geometry.
 
@@ -32,7 +33,7 @@ Composition fingerprints use `explore-finish-v2` or the separately gated `explor
 
 ## Example provenance and verification
 
-All seven eight-second, 480×854 examples share `scripts/fixtures/subtitle-preview/source.mp4` and its frozen transcript. Original script: “Make every word count. Keep your captions beautifully clear, and let your story shine.” The scene is an original generic phone illustration. Offline eSpeak generated the voice; its start/end mark events supply the word intervals. Long and short pauses exercise timing. No timing is estimated from text length.
+All eight eight-second, 480×854 examples share `scripts/fixtures/subtitle-preview/source.mp4` and its frozen transcript. Original script: “Make every word count. Keep your captions beautifully clear, and let your story shine.” The scene is an original generic phone illustration. Offline eSpeak generated the voice; its start/end mark events supply the word intervals. Long and short pauses exercise timing. No timing is estimated from text length.
 
 `scripts/create-subtitle-preview-fixture.mjs` is an optional authoring script. The eSpeak tool (`@echogarden/espeak-ng-emscripten@0.3.0`, GPL) is isolated in ignored `.tmp` and is not a shipped app/worker dependency. Generated source artwork, audio, transcript, and timing events are retained as fixtures. Runtime dependencies/lockfiles were not changed.
 
@@ -60,3 +61,5 @@ Follow the complete-worktree release rules in `AGENTS.md` on a future authorized
 4. Verify production with an authenticated owner: saved source → Apply edits → ready Library derivative → playback. Check final-audio timing, every style, source preservation, reload recovery, cancellation, foreign-source rejection, and scheduling confirmation. Lost-response retry must retain one job/output. Confirm web and worker targets contain the complete intended commit.
 
 Custom size/colors and own-video style audition remain deferred.
+
+The eighth style uses the versioned media in public/subtitle-previews/v2. The new Hook and Wall of Text editors deliberately omit subtitles; the existing shared finishing renderer retains them for preserved workflows.

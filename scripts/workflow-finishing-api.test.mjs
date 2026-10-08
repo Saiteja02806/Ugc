@@ -12,7 +12,8 @@ function load(file, imports = {}, globals = {}) {
   }).outputText, { exports, require: name => { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, ...globals });
   return exports;
 }
-const contract = load("worker/src/lib/explore-finishing-contract.ts", { "../subtitles/styles.ts": load("worker/src/subtitles/styles.ts") });
+const edit = load("worker/src/lib/explore-format-edit.ts", { "./edit-overlay-render-spec.ts": load("worker/src/lib/edit-overlay-render-spec.ts") });
+const contract = load("worker/src/lib/explore-finishing-contract.ts", { "../subtitles/styles.ts": load("worker/src/subtitles/styles.ts"), "./explore-format-edit.ts": edit });
 const key = "11111111-1111-4111-8111-111111111111", jobId = "22222222-2222-4222-8222-222222222222";
 const outputId = "33333333-3333-4333-8333-333333333333", sourceId = "44444444-4444-4444-8444-444444444444", owner = "owner-a";
 const providerKey = "elevenlabs:scribe_v2:auto:en:word:v1";
@@ -210,4 +211,19 @@ test("recorded framing is gated before creating work; legacy fingerprints and ow
   assert.equal(on.api.fingerprintExploreFinish(legacy), createHash("sha256").update(JSON.stringify({ renderer: "explore-finish-v2", transcription: providerKey, draft: legacy })).digest("hex"));
   const moved = contract.parseExploreFinishDraft({ ...baseDraft, ...draftChanges, demoFraming: { ...framing, points: [[0, .1, 0], [12000, .4, 0]] } });
   assert.notEqual(on.receipt.fingerprint, on.api.fingerprintExploreFinish(moved));
+});
+
+test("format editing requires the matching renderer switch and binds manual text without transcription", async () => {
+  const editing = { version: 1, format: "wall_text", trimStartMs: 0, trimEndMs: 5000, originalVolume: .5, musicVolume: .2,
+    text: { value: "My message\n\nAnother paragraph", width: .8, y: .1, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 5000 } };
+  const draftChanges = { subtitles: null, editing };
+  const off = harness({ draftChanges });
+  assert.equal((await off.start()).status, 503); assert.equal(off.calls.includes("create"), false);
+  const on = harness({ draftChanges, env: { EXPLORE_FORMAT_EDITING_ENABLED: "true" } });
+  assert.equal((await on.start()).status, 202);
+  assert.equal(on.receipt.fingerprint, createHash("sha256").update(JSON.stringify({ renderer: "explore-format-edit-v1", transcription: null, draft: on.receipt.draft })).digest("hex"));
+  const replay = harness({ draftChanges, prior: true });
+  assert.equal((await replay.start()).status, 202); assert.equal(replay.calls.includes("create"), false);
+  const changed = contract.parseExploreFinishDraft({ ...baseDraft, ...draftChanges, editing: { ...editing, originalVolume: 0 } });
+  assert.notEqual(on.api.fingerprintExploreFinish(changed), on.receipt.fingerprint);
 });

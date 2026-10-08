@@ -114,10 +114,10 @@ test("Schedule uses enabled named platform icons and forwards draft fields verba
   nodes(tree).find((node) => node.props.type === "time").props.onChange({ target: { value: "14:30" } });
   assert.deepEqual(changes.map((draft) => [draft.platform, draft.caption, draft.date, draft.time]), [["instagram", "", "", ""], ["", "  My caption\nunchanged  ", "", ""], ["", "", "2026-10-20", ""], ["", "", "", "14:30"]]);
   assert.equal(nodes(tree).filter((node) => node.type === "input").length, 2);
-  assert.doesNotMatch(visibleText(tree), /Account|Select platform|device’s time zone|Local draft only|no post will be scheduled/);
-  assert.match(text(tree), /not the video’s subtitles/);
+  assert.doesNotMatch(visibleText(tree), /Account|Select platform|Local draft only|no post will be scheduled/);
+  assert.match(text(tree), /The caption shown below your social post/);
   assert.equal(nodes(tree).find((node) => node.props.type === "date").props["aria-describedby"], "schedule-test-timezone");
-  assert.equal(nodes(tree).find((node) => node.props.id === "schedule-test-timezone").props.className, "sr-only");
+  assert.match(text(nodes(tree).find((node) => node.props.id === "schedule-test-timezone")), /Time zone:/);
   assert.equal(original.caption, "");
   for (const platform of ["instagram", "youtube"]) {
     const selected = WorkflowSchedulingPanel({ draft: { ...original, platform }, onChange() {} });
@@ -164,7 +164,9 @@ test("spare desktop Create space goes to the instructions field without stretchi
 
 test("editing excludes scheduling and explains shared subtitle scope", () => {
   const creationCanvas = read("workflow-preview-canvas.tsx");
-  assert.doesNotMatch(creationCanvas, /demo|schedule|subtitle/i);
+  assert.doesNotMatch(creationCanvas, /WorkflowCompositionPanel|WorkflowSchedulingPanel/);
+  assert.match(creationCanvas, /Selected source video preview/);
+  assert.match(creationCanvas, /Continue to edit/);
   assert.match(creationCanvas, /Add your app screen and instructions in Create/);
   assert.doesNotMatch(edit, /Demo sound|<details|aria-label="Scheduling"|Schedule<\/Button>/);
   assert.match(edit, /Demo audio/);

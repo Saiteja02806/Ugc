@@ -62,7 +62,7 @@ test("only recognized Explore recreations require an image reference", () => {
   assert.match(videoApi, /body\?\.referenceType === "hook"/);
   assert.match(videoApi, /isExploreWallTextVideoId\(body\?\.referenceId\)/);
   assert.match(videoApi, /body\?\.referenceType === "wall_text"/);
-  assert.match(videoApi, /isExploreRecreate && referenceImageUrls\.length === 0/);
+  assert.match(videoApi, /isExploreRecreate && !body\?\.exploreFormat && referenceImageUrls\.length === 0/);
   assert.match(videoApi, /Add a reference image before recreating an Explore video/);
 });
 
@@ -80,7 +80,7 @@ test("Wall of Text Recreate carries its reference context and sends the chosen i
     /referenceContext\?\.type === "hook" \|\| referenceContext\?\.type === "wall_text"/,
   );
   assert.match(videoWorkspace, /<ReferenceFilesUpload[\s\S]*?selections=\{referenceFiles\}/);
-  assert.match(videoWorkspace, /referenceImageUrls: referenceImages\.map\(\(image\) => image\.asset\.url\)/);
+  assert.match(videoWorkspace, /referenceImageUrls: referenceImages\.length \? referenceImages\.map\(\(image\) => image\.asset\.url\)/);
   assert.match(videoWorker, /referenceImageUrls: input\.referenceImageUrls/);
   assert.match(
     geminiOmniProvider,
@@ -89,7 +89,7 @@ test("Wall of Text Recreate carries its reference context and sends the chosen i
 });
 
 test("AI Studio video generation sends the user's prompt without a UGC template", () => {
-  assert.match(videoApi, /hookIdea: prompt,[\s\S]*?promptMode: "direct"/);
+  assert.match(videoApi, /hookIdea:[^\n]*prompt,[\s\S]*?promptMode: "direct"/);
   assert.doesNotMatch(videoApi, /productName: "UGCPilot"/);
   assert.doesNotMatch(videoApi, /productDescription: "Short-form creator content\."/);
   assert.doesNotMatch(videoApi, /cameraStyle: "iphone_selfie"/);

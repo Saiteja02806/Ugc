@@ -46,7 +46,7 @@ const hookDraftRoute = readProjectFile(
   "app/api/trending/hook-videos/drafts/route.ts",
 );
 
-test("places Edit in the page header and keeps circular decisions below the card", () => {
+test("places Edit in the page header and retains accessible circular decisions", () => {
   assert.match(actions, /export function CreativeDecisionActions/);
   assert.match(actions, /variant="creative-reject"/);
   assert.match(actions, /rejectAriaLabel = interaction === "post" \? "Skip to the next post"/);
@@ -66,7 +66,7 @@ test("places Edit in the page header and keeps circular decisions below the card
   assert.match(workspace, /ref=\{setHeaderActionsRoot\}/);
 });
 
-test("keeps Hook video decisions below the review frame on compact laptops", () => {
+test("keeps Hook video decisions with the shared review frame", () => {
   assert.match(workspace, /<PostInteractionFeed[\s\S]*<CreativeDecisionActions/);
   assert.match(workspace, /reviewLayout\.reviewFeed/);
   assert.doesNotMatch(workspace, /<p data-post-review-status/);
@@ -420,7 +420,7 @@ test("keeps scheduling and recovery controls mounted after the final ready post"
 
 test("keeps the Slideshow label above its post in the scrolling feed", () => {
   assert.match(workspace, /format="carousel" positionClassName="bottom-\[calc\(100%\+24px\)\]"/);
-  assert.match(workspace, /function renderFeedCandidate[\s\S]*return <div className="relative flex w-full items-center justify-center pt-10"/);
+  assert.match(workspace, /function renderFeedCandidate[\s\S]*return <div[^>]*className="relative flex w-full items-center justify-center pt-10"/);
   assert.match(workspace, /content: renderFeedCandidate\(slot.candidate, slot.depth, slot.itemIndex\)/);
 });
 

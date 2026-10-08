@@ -86,6 +86,20 @@
       "durationMs": 8000,
       "width": 480,
       "height": 854
+    },
+    {
+      "style": "serif-box",
+      "renderVersion": "serif-box-v2",
+      "sourceHash": "4258bbba66aa6b33537b4b291e7d4a32a71b6e8a0d46aedcb60105d4a11462c2",
+      "transcriptHash": "c08eb6fa7922c569257cab1829a1dc45456c5eca760672746feca9a8f652d2a1",
+      "assHash": "7ebcaef795d862122dd9d05497a360a95bd337ca956a2b2b2c65b4e3580392b0",
+      "videoHash": "ca7728fb49384e80134657247671daf974bb8ab4b7d88d9b919c15b4289aa260",
+      "bytes": 145078,
+      "durationMs": 8000,
+      "width": 480,
+      "height": 854,
+      "video": "/subtitle-previews/v2/serif-box.mp4",
+      "poster": "/subtitle-previews/v2/serif-box.jpg"
     }
   ]
 }

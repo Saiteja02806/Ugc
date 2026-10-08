@@ -1,4 +1,5 @@
 /** Shared, serializable contract. Clients submit owned asset IDs, never URLs or storage keys. */
+import { parseExploreFormatEdit } from "./explore-format-edit.ts";
 export const EXPLORE_FINISH_VERSION = 1;
 export const EXPLORE_RENDER_VERSION = "explore-finish-v2";
 export const DEMO_FRAMING_RENDER_VERSION = "explore-finish-pan-v2";
@@ -19,6 +20,7 @@ export type ExploreFinishDraft = {
   backgroundAssetId: string | null;
   backgroundPlayback: "once" | "repeat";
   demoFraming?: DemoFraming;
+  editing?: import("./explore-format-edit.js").ExploreFormatEdit;
   subtitles: { language: "en"; style: ExploreFinishStyle; placement?: "bottom" | "middle" | "top" } | null;
 };
 export type ExploreFinishReceipt = {
@@ -44,7 +46,7 @@ function playback(value: unknown) {
 }
 export function parseExploreFinishDraft(value: unknown): ExploreFinishDraft {
   const raw = object(value);
-  const fields = ["version", "kind", "sourceAssetId", "demoAssetId", "demoAudioAssetId", "demoAudioPlayback", "backgroundAssetId", "backgroundPlayback", "subtitles", "demoFraming"];
+  const fields = ["version", "kind", "sourceAssetId", "demoAssetId", "demoAudioAssetId", "demoAudioPlayback", "backgroundAssetId", "backgroundPlayback", "subtitles", "demoFraming", "editing"];
   if (Object.keys(raw).some(key => !fields.includes(key)) || raw.version !== 1 || (raw.kind !== "hook" && raw.kind !== "phone")) throw new ExploreFinishError("This finishing draft uses an unsupported format.");
   const sourceAssetId = asset(raw.sourceAssetId, false)!;
   const demoAssetId = asset(raw.demoAssetId);
@@ -53,6 +55,8 @@ export function parseExploreFinishDraft(value: unknown): ExploreFinishDraft {
   const demoAudioPlayback = playback(raw.demoAudioPlayback), backgroundPlayback = playback(raw.backgroundPlayback);
   if (demoAudioAssetId && !demoAssetId) throw new ExploreFinishError("Add a demo before selecting demo audio.");
   const demoFraming = raw.demoFraming === undefined ? undefined : parseDemoFraming(raw.demoFraming);
+  const editing = raw.editing === undefined ? undefined : parseExploreFormatEdit(raw.editing);
+  if (editing && (raw.kind !== "hook" || demoAssetId || demoAudioAssetId || demoFraming || raw.subtitles !== null)) throw new ExploreFinishError("Format editing uses one video and no subtitles.");
   if (demoFraming && !demoAssetId) throw new ExploreFinishError("Add a demo before recording its framing.");
   if ((!demoAudioAssetId && demoAudioPlayback !== "once") || (!backgroundAssetId && backgroundPlayback !== "once")) throw new ExploreFinishError("Select audio before choosing Repeat music.");
   let subtitles: ExploreFinishDraft["subtitles"] = null;
@@ -68,7 +72,7 @@ export function parseExploreFinishDraft(value: unknown): ExploreFinishDraft {
   // Omit the new option entirely on legacy drafts: existing fingerprints and
   // interrupted finishing requests must remain byte-for-byte compatible.
   return { version: 1, kind: raw.kind, sourceAssetId, demoAssetId, demoAudioAssetId, demoAudioPlayback, backgroundAssetId, backgroundPlayback, subtitles,
-    ...(demoFraming ? { demoFraming } : {}) };
+    ...(demoFraming ? { demoFraming } : {}), ...(editing ? { editing } : {}) };
 }
 
 export function parseDemoFraming(value: unknown): DemoFraming {

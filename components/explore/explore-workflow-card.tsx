@@ -1,12 +1,28 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 
 import { ExploreLinkIndicator } from "@/components/explore/explore-link-indicator";
 import styles from "@/components/explore/explore-workspace.module.css";
 import type { ExploreWorkflow } from "@/lib/explore/workflows";
 
 export function ExploreWorkflowCard({ workflow, localPreview }: { workflow: ExploreWorkflow; localPreview: boolean }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const syncPlayback = () => {
+      const video = videoRef.current;
+      if (!video) return;
+      video.autoplay = !preference.matches;
+      if (preference.matches) video.pause();
+      else void video.play().catch(() => {});
+    };
+    syncPlayback();
+    preference.addEventListener("change", syncPlayback);
+    return () => preference.removeEventListener("change", syncPlayback);
+  }, [workflow.coverVideo]);
+
   return (
     <article className={styles.workflowCard}>
       <Link
@@ -20,10 +36,15 @@ export function ExploreWorkflowCard({ workflow, localPreview }: { workflow: Expl
         >
           {workflow.coverVideo ? (
             <video
+              ref={videoRef}
               src={workflow.coverVideo}
               poster={workflow.coverPoster ?? undefined}
               autoPlay muted loop playsInline preload="auto"
-              onCanPlay={(event) => { void event.currentTarget.play().catch(() => {}); }}
+              onCanPlay={(event) => {
+                if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+                  void event.currentTarget.play().catch(() => {});
+                }
+              }}
               width={960} height={540}
               aria-hidden="true" tabIndex={-1}
               className="size-full object-cover"

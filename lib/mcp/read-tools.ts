@@ -128,7 +128,7 @@ export function toAsset(row: MediaAssetRow) {
   };
 }
 
-const readOnly = { readOnlyHint: true } as const;
+const readOnly = { readOnlyHint: true, destructiveHint: false, openWorldHint: false } as const;
 export function oauthMetadata(scope: string, extra: Record<string, unknown> = {}) {
   // SDK v2.1 serializes custom tool descriptor properties through `_meta`.
   // This is the ChatGPT compatibility mirror of the required OAuth scheme.

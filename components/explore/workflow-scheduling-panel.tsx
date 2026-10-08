@@ -19,32 +19,35 @@ export const SCHEDULE_PLATFORMS = ([
 ] as const).filter(({ value }) => isSocialPlatformVisible(value));
 
 /** Pure draft form. Authenticated account display is supplied only by a connected workflow. */
-export function WorkflowSchedulingPanel({ draft, onChange, accountsControl }: {
+export function WorkflowSchedulingPanel({ draft, onChange, accountsControl, imageOnly = false, timezone }: {
   draft: WorkflowScheduleDraft;
   onChange: (draft: WorkflowScheduleDraft) => void;
   accountsControl?: ReactNode;
+  imageOnly?: boolean;
+  timezone?: string;
 }) {
   const id = useId();
   const selected = workflowSelectedPlatforms(draft);
+  const platforms = imageOnly ? SCHEDULE_PLATFORMS.filter(platform => platform.value !== "youtube") : SCHEDULE_PLATFORMS;
   return <section aria-label="Post scheduling settings" className={creation.scheduling}>
     <h2 className="sr-only">Schedule</h2>
-    <p className={creation.sectionHelp}>Choose where and when to share your finished video.</p>
+    <p className={creation.sectionHelp}>Choose where and when to share your {imageOnly ? "slideshow" : "finished video"}.</p>
     <div className={creation.scheduleField}>
       <span className="text-sm font-medium">Platforms</span>
-      <div role="group" aria-label="Posting platforms" className={creation.platformGrid} style={{ gridTemplateColumns: `repeat(${SCHEDULE_PLATFORMS.length}, minmax(0, 1fr))` }}>
-        {SCHEDULE_PLATFORMS.map(({ value, label }) => <Button key={value} type="button" variant="ghost" aria-label={label} aria-pressed={selected.includes(value)} title={label} data-platform={value} className={creation.platformButton} onClick={() => onChange(toggleWorkflowPlatform(draft, value))}>
+      <div role="group" aria-label="Posting platforms" className={creation.platformGrid} style={{ gridTemplateColumns: `repeat(${platforms.length}, minmax(0, 1fr))` }}>
+        {platforms.map(({ value, label }) => <Button key={value} type="button" variant="ghost" aria-label={label} aria-pressed={selected.includes(value)} title={label} data-platform={value} className={creation.platformButton} onClick={() => onChange(toggleWorkflowPlatform(draft, value))}>
           <SocialPlatformIcon platform={value} className="size-6" />
           <span aria-hidden="true">{label}</span>
           {selected.includes(value) && <Check className={creation.referenceCheck} aria-hidden="true" />}
         </Button>)}
       </div>
-      <p className="text-xs text-muted">Select one or both platforms.</p>
+      <p className="text-xs text-muted">Select where you want to post.</p>
     </div>
     {accountsControl}
     <div className={creation.scheduleField}>
       <label htmlFor={`${id}-caption`} className="text-sm font-medium">Post caption</label>
       <textarea id={`${id}-caption`} name="postCaption" autoComplete="off" rows={4} className={creation.prompt} value={draft.caption} onChange={(event) => onChange({ ...draft, caption: event.target.value })} placeholder="Write your post caption…" aria-describedby={`${id}-caption-help`} />
-      <p id={`${id}-caption-help`} className="text-xs leading-5 text-muted">The text below your social post—not the video’s subtitles.</p>
+      <p id={`${id}-caption-help`} className="text-xs leading-5 text-muted">The caption shown below your social post.</p>
     </div>
     <div className={creation.scheduleDateTime}>
       <div className={creation.scheduleField}>
@@ -56,6 +59,6 @@ export function WorkflowSchedulingPanel({ draft, onChange, accountsControl }: {
         <Input id={`${id}-time`} name="postTime" type="time" value={draft.time} onChange={(event) => onChange({ ...draft, time: event.target.value })} aria-describedby={`${id}-timezone`} />
       </div>
     </div>
-    <p id={`${id}-timezone`} className="sr-only">Date and time use your device’s time zone.</p>
+    <p id={`${id}-timezone`} className="text-xs text-muted">Time zone: {timezone ?? "your device’s time zone"}</p>
   </section>;
 }

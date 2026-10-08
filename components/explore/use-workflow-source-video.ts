@@ -6,8 +6,8 @@ import { uploadAIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-up
 import { workflowSourceVideoError, type WorkflowVideoMode } from "@/lib/explore/workflow-source-video";
 import type { MediaAsset } from "@/lib/media/types";
 
-export function useWorkflowSourceVideo({ enabled, ownerId }: { enabled: boolean; ownerId: string | null }) {
-  const [mode, setMode] = useState<WorkflowVideoMode>("generate");
+export function useWorkflowSourceVideo({ enabled, ownerId, initialMode = "generate", minDuration = 0 }: { enabled: boolean; ownerId: string | null; initialMode?: WorkflowVideoMode; minDuration?: number }) {
+  const [mode, setMode] = useState<WorkflowVideoMode>(initialMode);
   const local = useLocalWorkflowMedia("video");
   const [uploaded, setUploaded] = useState<MediaAsset | null>(null);
   const [selected, setSelected] = useState<MediaAsset | null>(null);
@@ -29,14 +29,14 @@ export function useWorkflowSourceVideo({ enabled, ownerId }: { enabled: boolean;
     if (enabled && !ownerId) { setError("Sign in to upload your video."); setBusy(false); return false; }
     setBusy(true);
     try {
-      if (!await local.choose(file, { maxDuration: 120, signal: controller.signal })) return false;
+      if (!await local.choose(file, { minDuration, maxDuration: 120, signal: controller.signal })) return false;
       if (!active.current || request !== revision.current) return false;
       // Layout review stays browser-only. Live uploads use the existing owned-media API.
       if (enabled && ownerId) {
         setUploaded(null);
         const result = await uploadAIStudioReferenceMedia(file, "video", 120, ownerId, { requireVideoReferenceRatio: false, purpose: "explore-source" });
         if (!active.current || request !== revision.current) return false;
-        const problem = workflowSourceVideoError(result.asset);
+        const problem = workflowSourceVideoError(result.asset) ?? (result.asset.durationSeconds !== null && result.asset.durationSeconds < minDuration ? `Choose a video at least ${minDuration} second long.` : null);
         if (problem) throw new Error(problem);
         setUploaded(result.asset);
       }
@@ -47,7 +47,7 @@ export function useWorkflowSourceVideo({ enabled, ownerId }: { enabled: boolean;
     } finally { if (active.current && request === revision.current) setBusy(false); }
   }
   function selectAsset(asset: MediaAsset) {
-    const problem = workflowSourceVideoError(asset);
+    const problem = workflowSourceVideoError(asset) ?? (asset.durationSeconds !== null && asset.durationSeconds < minDuration ? `Choose a video at least ${minDuration} second long.` : null);
     if (problem) { setAssetError(problem); return false; }
     setSelected(asset); setAssetError(null); return true;
   }
@@ -61,4 +61,4 @@ export function useWorkflowSourceVideo({ enabled, ownerId }: { enabled: boolean;
     dirty: !!local.asset || !!uploaded || !!selected };
 }
 
-export type WorkflowVideoSelection = ReturnType<typeof useWorkflowSourceVideo>;
+export type WorkflowVideoSelection = Omit<ReturnType<typeof useWorkflowSourceVideo>, "setMode"> & { setMode: (mode: WorkflowVideoMode) => void };

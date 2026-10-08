@@ -1173,8 +1173,8 @@ export function TrendingWorkspace() {
   }
 
   return (
-    <section className="min-h-dvh flex-1 bg-background px-4 py-4 text-foreground sm:px-6 lg:px-8 lg:py-5 xl:px-10">
-      <div className="mx-auto flex min-h-[calc(100dvh-2rem)] max-w-[1360px] flex-col lg:min-h-[calc(100dvh-2.5rem)]">
+    <section className={cn("min-h-dvh flex-1 bg-background px-4 py-4 text-foreground sm:px-6 lg:px-8 lg:py-5 xl:px-10", reviewLayout.workspace)}>
+      <div className={cn("mx-auto flex min-h-[calc(100dvh-2rem)] max-w-[1360px] flex-col lg:min-h-[calc(100dvh-2.5rem)]", reviewLayout.workspaceContent)}>
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -1191,7 +1191,7 @@ export function TrendingWorkspace() {
                 </Link>
               ) : null}
             </div>
-            <p className="mt-1 max-w-2xl text-[14px] leading-[20px] text-muted sm:text-[15px] sm:leading-[22px]">
+            <p data-trending-intro className="mt-1 max-w-2xl text-[14px] leading-[20px] text-muted sm:text-[15px] sm:leading-[22px]">
               Explore Carousel, Hook, Wall-of-text, and Reaction Reel content
               made from your business profile.
             </p>
@@ -1218,12 +1218,12 @@ export function TrendingWorkspace() {
           </div>
         </header>
 
-        <section className="mt-3 flex min-h-0 flex-1 sm:mt-4">
+        <section className={cn("mt-3 flex min-h-0 flex-1 sm:mt-4", reviewLayout.contentSection)}>
           <div
-            className="relative flex min-h-0 w-full flex-1 items-center py-2 sm:py-3"
+            className={cn("relative flex min-h-0 w-full flex-1 items-center py-2 sm:py-3", reviewLayout.feedTransition)}
             data-trending-feed-transition
           >
-            <div className="min-w-0 flex-1">
+            <div className={cn("min-w-0 flex-1", reviewLayout.feedLayer)}>
               <TrendingFeedGallery
                 key={trendingFeedSessionKey}
                 enqueueDecision={enqueueDecision}
@@ -1347,11 +1347,13 @@ function TrendingFeedGallery({
   }
 
   return (
-    <div data-trending-feed-transition className="relative grid w-full">
+    <div data-trending-feed-transition className={cn("relative grid w-full", reviewLayout.feedGallery)}>
       <div
         aria-hidden={showSkeleton ? undefined : "true"}
         className={cn(
           "col-start-1 row-start-1 transition-opacity duration-200 ease-linear motion-reduce:transition-none",
+          reviewLayout.feedLayer,
+          reviewLayout.skeletonLayer,
           showSkeleton ? "opacity-100" : "pointer-events-none opacity-0",
         )}
       >
@@ -1362,6 +1364,7 @@ function TrendingFeedGallery({
         inert={showSkeleton ? true : undefined}
         className={cn(
           "col-start-1 row-start-1 transition-opacity duration-200 ease-linear motion-reduce:transition-none",
+          reviewLayout.feedLayer,
           showSkeleton ? "pointer-events-none opacity-0" : "opacity-100",
         )}
       >
@@ -1600,7 +1603,7 @@ function TrendingFeed({
   }
 
   return (
-    <div className="flex w-full flex-col gap-10">
+    <div className={cn("flex w-full flex-col gap-10", reviewLayout.feedLayer)}>
       {failure && headerActionsRoot
         ? createPortal(
             <Button
@@ -2683,7 +2686,7 @@ export function TrendingDeck({
 
   function renderFeedCandidate(candidate: ReviewedTrendingCandidate, depth: DeckDepth, itemIndex: number) {
     const reviewedIndex = postHistory.entries.findIndex((entry) => entry.id === candidate.item.id);
-    return <div className="relative flex w-full items-center justify-center pt-10">
+    return <div data-trending-feed-card className="relative flex w-full items-center justify-center pt-10">
       <TrendingDeckCard
         key={candidate.item.id}
         activeSlideByCarouselId={activeSlideByCarouselId}
@@ -2722,7 +2725,7 @@ export function TrendingDeck({
         : null}
       {activeCandidate ? (
         <>
-          <div data-trending-review-frame className="flex w-full flex-col items-center" onKeyDown={handleDeckKeyDown}>
+          <div data-trending-review-frame className={cn("flex w-full flex-col items-center", reviewLayout.reviewFrame)} onKeyDown={handleDeckKeyDown}>
             <PostInteractionFeed
               label={`Trending posts. ${deckProgressLabel}. Double-tap to schedule, scroll to skip or scroll back to revisit.`}
               className={cn("w-full max-w-[460px]", reviewLayout.reviewFeed)}
@@ -3221,6 +3224,7 @@ function TrendingFormatPill({
 
   return (
     <div
+      data-trending-format-label
       className={cn(
         "pointer-events-none absolute left-0 z-40 flex w-full items-center justify-start",
         positionClassName,
@@ -4426,7 +4430,7 @@ function CarouselFeedState({
   );
 }
 
-function TrendingPostSkeleton({ active = true }: { active?: boolean }) {
+export function TrendingPostSkeleton({ active = true }: { active?: boolean }) {
   return (
     <div
       role="status"
@@ -4440,6 +4444,7 @@ function TrendingPostSkeleton({ active = true }: { active?: boolean }) {
       <div className="flex w-full items-center justify-center px-2">
         <div
           aria-hidden="true"
+          data-trending-skeleton-frame
           className={cn(
             VERTICAL_REVIEW_CARD_WIDTH_CLASS,
             skeletonStyles.base,

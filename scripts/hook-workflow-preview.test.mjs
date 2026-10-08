@@ -13,11 +13,10 @@ const composition = read("components/explore/workflow-composition-panel.tsx");
 const audioReference = read("components/explore/workflow-audio-reference.tsx");
 const frontend = workspace + composer + panel + controls + media + composition + audioReference;
 
-test("unfinished hook workflow is gated to explicit development previews", () => {
-  assert.match(page, /getWorkflowGenerationMode/);
-  assert.match(page, /if \(mode === "hidden"\) notFound\(\)/);
-  assert.match(page, /generationEnabled=\{mode === "generation"\}/);
-  assert.match(read("components/explore/explore-workspace.tsx"), /localPreview \? \[\.\.\.LOCAL_PREVIEW_WORKFLOWS, \.\.\.EXPLORE_WORKFLOWS\] : EXPLORE_WORKFLOWS/);
+test("the former talking-head workflow is hidden while its implementation is retained", () => {
+  assert.match(page, /notFound\(\)/);
+  assert.doesNotMatch(read("lib/explore/workflows.ts"), /destination: "\/explore\/create-hook"/);
+  assert.match(workspace, /HookWorkflowPreview/);
 });
 
 test("layout review cannot generate, render, upload or spend credits", () => {

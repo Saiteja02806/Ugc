@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 
-import { RecreateWorkspace } from "@/components/explore/recreate-workspace";
-import { getLocalRecreateReferences } from "@/lib/explore/recreate-catalog";
-import { parseWorkflowModel } from "@/lib/explore/launch-presets";
+import { redirect } from "next/navigation";
+import { isExploreUuid } from "@/worker/src/lib/explore-finishing-contract";
 
 export const metadata: Metadata = {
   title: "Recreate",
@@ -10,10 +9,17 @@ export const metadata: Metadata = {
 };
 
 export default async function RecreatePage({ searchParams }: {
-  searchParams: Promise<{ preview?: string; model?: string | string[] }>;
+  searchParams: Promise<{ preview?: string; refType?: string; refId?: string; sourceUrl?: string; exploreRecreate?: string; imageJob?: string; videoJob?: string }>;
 }) {
   const query = await searchParams;
-  const localPreview = process.env.NODE_ENV === "development" && query.preview === "1";
-  const initialModel = parseWorkflowModel(query.model);
-  return <RecreateWorkspace key={initialModel ?? "default"} initialGenerationMode={initialModel ? "videos" : "images"} previewReferences={localPreview ? getLocalRecreateReferences() : undefined} />;
+  const destination = query.refType === "hook" ? "/explore/hook-video" : query.refType === "wall_text" ? "/explore/wall-of-text" : "/explore/slideshows";
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) if (typeof value === "string" && value.length <= 2048) params.set(key, value);
+  // Jobs created before the split have no format tag. Keep their original
+  // recovery path in Studio instead of dropping them from a scoped workflow.
+  if (isExploreUuid(query.videoJob) || isExploreUuid(query.imageJob)) {
+    params.set("mode", isExploreUuid(query.videoJob) ? "videos" : "images");
+    redirect(`/ai-studio?${params}`);
+  }
+  redirect(`${destination}${params.size ? `?${params}` : ""}`);
 }

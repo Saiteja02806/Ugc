@@ -2,6 +2,7 @@
 
 import { AlertCircle, Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useEffect, useRef } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +36,7 @@ export function AiStudioResults({
   statusPlacement = "toolbar",
   scrollToLatestKey,
   toolbar,
+  portalTarget,
 }: {
   ariaLabel: string;
   children: ReactNode;
@@ -50,6 +52,7 @@ export function AiStudioResults({
   statusPlacement?: "toolbar" | "inline";
   scrollToLatestKey?: string | null;
   toolbar?: ReactNode;
+  portalTarget?: HTMLElement | null;
 }) {
   const resultsRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -67,7 +70,7 @@ export function AiStudioResults({
     !(status?.tone === "progress" && statusPlacement === "inline" && hasResults) &&
     !(status?.tone === "progress" && !loading && !hasResults);
 
-  return (
+  const content = (
     <section
       ref={resultsRef}
       aria-label={ariaLabel}
@@ -168,4 +171,5 @@ export function AiStudioResults({
       )}
     </section>
   );
+  return portalTarget ? createPortal(content, portalTarget) : content;
 }

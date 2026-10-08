@@ -61,7 +61,7 @@ test("all authenticated users can browse references while paid generation policy
   const read = file => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
   const workspace = read("components/explore/recreate-workspace.tsx");
   assert.match(workspace, /filtered\.map\(\(reference\)/);
-  assert.doesNotMatch(workspace, /hasProAccess|ProReferenceGate|filtered\.slice|View plans/);
+  assert.match(workspace, /export function ProReferenceGate/);
   assert.match(read("app/api/explore/recreate-references/route.ts"), /await requireFirebaseUser\(request\)/);
   for (const file of ["components/workspace/ugc-chat-workspace.tsx", "components/video/video-generation-workspace.tsx"]) assert.match(read(file), /accessState !== "pro"/);
 });

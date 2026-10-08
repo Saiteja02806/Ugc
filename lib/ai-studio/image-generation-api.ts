@@ -28,6 +28,7 @@ import {
 } from "@/lib/billing/subscription-db";
 
 type GenerateRequest = {
+  exploreFormat?: unknown;
   aspectRatio?: unknown;
   idempotencyKey?: unknown;
   model?: unknown;
@@ -130,6 +131,9 @@ export async function handleAIStudioImageGeneration(request: Request) {
   const aspectRatio = parseAIStudioImageAspectRatio(body?.aspectRatio);
   const quantity = parseAIStudioGenerationQuantity(body?.quantity);
   const model = parseAIStudioImageModel(body?.model);
+  if (body?.exploreFormat !== undefined && body.exploreFormat !== "slideshow") {
+    return NextResponse.json({ message: "Choose an image workflow.", ok: false }, { status: 400 });
+  }
   let referenceImageUrl: string | null;
   try { referenceImageUrl = cleanTrustedHttpsUrl(await canonicalMediaReference(body?.referenceImageUrl, user.uid)); }
   catch { return NextResponse.json({ ok: false, message: "This reference is unavailable to your account." }, { status: 400 }); }
@@ -199,6 +203,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
         idempotencyKey,
         input: {
           aspectRatio,
+          ...(body?.exploreFormat === "slideshow" ? { exploreFormat: body.exploreFormat } : {}),
           batchIndex: index + 1,
           batchSize: quantity,
           generationId,

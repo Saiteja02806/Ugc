@@ -6,6 +6,7 @@ import { SUBTITLE_STYLES } from "../worker/dist/subtitles/styles.js";
 
 const migration = readFileSync(new URL("../supabase/migrations/20261004053418_explore_video_finishing.sql", import.meta.url), "utf8");
 const stylesMigration = readFileSync(new URL("../supabase/migrations/20261007103000_explore_subtitle_styles.sql", import.meta.url), "utf8");
+const serifBoxMigration = readFileSync(new URL("../supabase/migrations/20261007193641_explore_serif_box_subtitles.sql", import.meta.url), "utf8");
 const sourcesMigration = readFileSync(new URL("../supabase/migrations/20261007132823_explore_existing_video_sources.sql", import.meta.url), "utf8");
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const fingerprint = "a".repeat(64), hash = "b".repeat(64), policy = "elevenlabs:scribe_v2:auto:en:word:v1";
@@ -46,6 +47,7 @@ async function fixture() {
   `);
   await db.exec(migration);
   await db.exec(stylesMigration);
+  await db.exec(serifBoxMigration);
   await db.exec(sourcesMigration);
   await db.exec("set role service_role");
   return db;

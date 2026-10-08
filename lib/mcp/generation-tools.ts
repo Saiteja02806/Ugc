@@ -119,7 +119,7 @@ export function registerGenerationMcpTools(server: McpServer) {
       client_request_id: z.string().trim().min(1).max(200).describe("A caller-generated stable ID. Reuse it only to retry the same request."),
     }),
     outputSchema: z.strictObject({ jobs: z.array(jobReceipt).min(1).max(4), partial: z.boolean() }),
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false, idempotentHint: true },
     scopeChallenge: requireScopes("generation:write"),
     _meta: oauthMetadata("generation:write"),
   }, async (args, ctx) => executeTool(async () => {
@@ -148,7 +148,7 @@ export function registerGenerationMcpTools(server: McpServer) {
       client_request_id: z.string().trim().min(1).max(200).describe("A caller-generated stable ID. Reuse it only to retry the same request."),
     }),
     outputSchema: z.strictObject({ jobs: z.array(jobReceipt).min(1).max(4), partial: z.boolean() }),
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false, idempotentHint: true },
     scopeChallenge: requireScopes("generation:write"),
     _meta: oauthMetadata("generation:write"),
   }, async (args, ctx) => executeTool(async () => {
@@ -185,7 +185,7 @@ export function registerGenerationMcpTools(server: McpServer) {
       created_at: z.iso.datetime(),
       updated_at: z.iso.datetime(),
     }),
-    annotations: { readOnlyHint: true },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     scopeChallenge: requireScopes("jobs:read"),
     _meta: oauthMetadata("jobs:read"),
   }, async ({ job_id }, ctx) => executeTool(async () => {

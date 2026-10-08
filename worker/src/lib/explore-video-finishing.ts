@@ -4,6 +4,8 @@ import { copyFile, mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import { composeExploreVideo } from "./explore-video-composition.js";
+import { renderExploreFormatEdit } from "./explore-format-render.js";
+import type { ExploreFormatEdit } from "./explore-format-edit.js";
 import { assertExploreSubtitleScope } from "../subtitles/explore-policy.js";
 import { parsePlacement, parseStyle, SubtitleError, validateTranscript, type SubtitlePlacement, type SubtitleStyle } from "../subtitles/contracts.js";
 import { getSubtitleLayout, groupSubtitleWords, serializeAss, serializeSrt, serializeVtt } from "../subtitles/captions.js";
@@ -13,10 +15,12 @@ import { planEditorialPages, serializeEditorialAss } from "../subtitles/editoria
 import { createEditorialMeasurer, prepareEditorialFonts } from "../subtitles/editorial-media.js";
 import { createDynamicMeasurer, serializeDynamicAss } from "../subtitles/dynamic.js";
 import { isDynamicSubtitleStyle, subtitleStyleDefinition } from "../subtitles/styles.js";
+import { createSerifBoxMeasurer, groupSerifBoxWords, prepareSerifBoxFonts, serializeSerifBoxAss } from "../subtitles/serif-box.js";
 
 export type ExploreSpeechIdentity = { audioPath: string; sourceHash: string; durationMs: number; language: "en" };
 export type ExploreFinishingOptions = Omit<Parameters<typeof composeExploreVideo>[0], "subtitleScope"> & {
   tools: SubtitleTools;
+  editing?: ExploreFormatEdit;
   subtitles?: {
     language: "en";
     style: SubtitleStyle;
@@ -42,7 +46,8 @@ export async function finishExploreVideo(options: ExploreFinishingOptions) {
   const style = subtitles ? parseStyle(subtitles.style) : null;
   const placement = subtitles ? parsePlacement(subtitles.placement ?? "bottom") : null;
   if (subtitles && subtitles.language !== "en") assertExploreSubtitleScope(subtitles.language, 1);
-  const composition = await composeExploreVideo({ ...options, subtitleScope: subtitles ? { language: subtitles.language } : undefined });
+  const composed = await composeExploreVideo({ ...options, originalVolume: options.editing?.originalVolume, musicVolume: options.editing?.musicVolume, subtitleScope: subtitles ? { language: subtitles.language } : undefined });
+  const composition = options.editing ? { ...composed, ...await renderExploreFormatEdit({ sourcePath: composed.outputPath, width: composed.width, height: composed.height, durationMs: composed.durationMs, editing: options.editing, workDir: options.workDir, tools: options.tools, signal: options.signal }) } : composed;
   if (!subtitles) return { ...composition, subtitleStyle: null, subtitlePlacement: null, subtitleWordCount: 0, subtitleRenderVersion: null };
   if (!composition.subtitleAudioPath || !style || !placement) throw new SubtitleError("SUBTITLE_INPUT_INVALID", "The final audio track could not be prepared.");
   assertExploreSubtitleScope(subtitles.language, composition.durationMs);
@@ -53,10 +58,13 @@ export async function finishExploreVideo(options: ExploreFinishingOptions) {
   assertExploreSubtitleScope(subtitles.language, video.durationMs);
   // Confirm fonts/runtime inputs BEFORE requesting transcription.
   if (style === "editorial") await prepareEditorialFonts(options.tools, captionDir);
+  else if (style === "serif-box") await prepareSerifBoxFonts(options.tools, captionDir);
   else await prepareSubtitleFonts(options.tools, captionDir);
   const layout = getSubtitleLayout(video.width, video.height, style);
   const editorialMeasure = style === "editorial" ? createEditorialMeasurer(layout, options.tools, captionDir, options.signal) : null;
-  const measure = editorialMeasure ? (text: string) => editorialMeasure(text, layout.fontSize, "lead").then(ink => ink.width) : createTextMeasurer(layout, options.tools);
+  const serifMeasure = style === "serif-box" ? createSerifBoxMeasurer(layout, options.tools, captionDir, options.signal) : null;
+  const measure = editorialMeasure ? (text: string) => editorialMeasure(text, layout.fontSize, "lead").then(ink => ink.width)
+    : serifMeasure ? (text: string) => serifMeasure(text).then(ink => ink.width) : createTextMeasurer(layout, options.tools);
   await measure("Subtitle font check");
   const sourceHash = await digestFile(composition.subtitleAudioPath);
   options.signal?.throwIfAborted();
@@ -67,8 +75,10 @@ export async function finishExploreVideo(options: ExploreFinishingOptions) {
   if (!transcript.language || !["en", "eng", "english"].includes(transcript.language.trim().toLowerCase())) {
     throw new SubtitleError("SUBTITLE_LANGUAGE_UNSUPPORTED", "Auto subtitles support English speech only. No captioned output was published.");
   }
-  const cues = await (isDynamicSubtitleStyle(style) ? groupSubtitleWords : groupNaturalSubtitleWords)(transcript.words, layout, measure);
-  const ass = editorialMeasure ? serializeEditorialAss(await planEditorialPages(cues, layout, placement, editorialMeasure), layout)
+  const cues = serifMeasure ? await groupSerifBoxWords(transcript.words, layout, serifMeasure)
+    : await (isDynamicSubtitleStyle(style) ? groupSubtitleWords : groupNaturalSubtitleWords)(transcript.words, layout, measure);
+  const ass = serifMeasure ? await serializeSerifBoxAss(cues, layout, placement, serifMeasure)
+    : editorialMeasure ? serializeEditorialAss(await planEditorialPages(cues, layout, placement, editorialMeasure), layout)
     : isDynamicSubtitleStyle(style) ? await serializeDynamicAss(cues, layout, style as "word-pop" | "karaoke" | "marker-highlight", placement,
       createDynamicMeasurer(layout, options.tools, captionDir, options.signal)) : serializeAss(cues, layout, style, placement);
   await writeFile(join(captionDir, "captions.ass"), ass, { flag: "wx" });

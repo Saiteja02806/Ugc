@@ -1,7 +1,6 @@
-/* Size the review preview from the usable CSS viewport, not a claimed device
-   diagonal. The smaller width- and height-led values make growth monotonic
-   from a 1366×768 laptop through FHD while preventing a wide, short window
-   from squeezing its decisions below the fold. */
+/* Review uses the usable CSS viewport rather than a physical device diagonal.
+   On desktop, the post window receives the height left after the actual header
+   and decision controls; its container dimensions constrain the media. */
 .stage [data-post-interaction-feed] {
   /* Center feedback on the media below the post's 40px format-label space. */
   --post-heart-offset-y: 20px;
@@ -18,14 +17,81 @@
   max-width: max(160px, calc((100dvh - 386px) * 0.8));
 }
 @media (min-width: 1024px) {
-  .reviewFeed {
-    height: min(680px, calc(100dvh - 280px));
+  .workspace {
+    /* The requested laptop reduction applies to the full media frame. */
+    --review-card-scale: 0.9;
+    height: 100dvh;
+    min-height: 0;
+    padding-block: 1rem;
+  }
+  .workspaceContent {
+    height: 100%;
+    min-height: 0;
+  }
+  .contentSection {
+    margin-top: 0.5rem;
+  }
+  .feedTransition {
+    align-items: stretch;
+    padding-block: 0;
+  }
+  .feedGallery, .feedLayer, .stage, .reviewFrame {
+    height: 100%;
+    min-height: 0;
+  }
+  .skeletonLayer {
+    container-type: size;
+    overflow: clip;
+  }
+  .skeletonLayer > div {
+    height: 100%;
+  }
+  .skeletonLayer [data-trending-skeleton-frame] {
+    width: calc(min(320px, calc(100cqw - 16px), max(0px, calc((100cqh - 128px) * 0.5625))) * var(--review-card-scale));
+  }
+  .stage {
+    --review-label-space: 52px;
+    padding-bottom: 0;
+  }
+  .reviewFrame > :not([data-post-interaction-feed]) {
+    flex-shrink: 0;
+  }
+  .reviewFrame {
+    justify-content: center;
+  }
+  .stage .reviewFeed {
+    /* The header and visible decisions take their actual height first. This
+       remaining space is the scrolling post window, including its label. */
+    height: auto;
+    min-height: 0;
+    /* Enough height for the capped media at 87% scaling plus its label;
+       keeping this bound near the card also keeps the decisions close. */
+    max-height: calc(654px + var(--review-label-space));
+    flex: 1 1 0;
+    container-type: size;
+  }
+  .stage[data-review-format="carousel"] .reviewFeed {
+    max-height: calc(546px + var(--review-label-space));
   }
   .stage [data-post-interaction-feed] article[data-trending-vertical-frame] {
-    max-width: max(112.5px, calc((100dvh - 332px) * 0.5625));
+    /* Apply the owner's 10% reduction after the existing viewport constraints,
+       including short windows formerly protected by the preferred width. */
+    width: calc(min(
+      320px,
+      calc(100cqw - 16px),
+      max(0px, calc((100cqh - var(--review-label-space)) * 0.5625)),
+      max(270px, calc((100cqh - var(--review-label-space)) * 0.489375))
+    ) * var(--review-card-scale));
+    max-width: none;
   }
   .stage [data-post-interaction-feed] article:not([data-trending-vertical-frame]) {
-    max-width: max(160px, calc((100dvh - 332px) * 0.8));
+    width: calc(min(
+      380px,
+      calc(100cqw - 16px),
+      max(0px, calc((100cqh - var(--review-label-space)) * 0.8)),
+      max(360px, calc((100cqh - var(--review-label-space)) * 0.696))
+    ) * var(--review-card-scale));
+    max-width: none;
   }
   .responsiveCarouselFrame {
     width: min(
@@ -51,8 +117,7 @@
 
 /* A 1366×768 laptop has enough room for review only when the format label,
    card, decisions, and progress text compose as a single vertical unit.
-   The larger compact cards stay clear of the subtitle by keeping the card
-   top steady as its height grows. */
+   Compact decision targets reserve room for the complete card and captions. */
 @media (min-width: 1024px) and (max-height: 820px) {
   /* Keep the controls compact without losing their accessible visible labels. */
   div.compactHeightDecisionGroup {
@@ -78,5 +143,50 @@
   .stage button.compactHeightDecisionButton {
     height: clamp(3.5rem, calc((100dvh - 280px) * 0.115), 4rem);
     width: clamp(3.5rem, calc((100dvh - 280px) * 0.115), 4rem);
+  }
+}
+
+/* Short desktop windows reclaim space above the current post while retaining
+   the familiar below-card decisions. Progress stays in the accessible label. */
+@media (min-width: 1024px) and (max-height: 820px) {
+  .workspace {
+    padding-block: 0.5rem;
+  }
+
+  .workspace [data-trending-intro] {
+    display: none;
+  }
+
+  .contentSection {
+    margin-top: 0.25rem;
+  }
+
+  .stage {
+    /* 22px pill + 8px gap + 4px clearance. */
+    --review-label-space: 34px;
+  }
+
+  .stage [data-trending-feed-card] {
+    padding-top: 28px;
+  }
+
+  .stage [data-post-interaction-feed] {
+    --post-heart-offset-y: 14px;
+  }
+
+  .stage [data-post-interaction-feed] [data-trending-format-label] {
+    bottom: calc(100% + 8px);
+  }
+
+  .stage .compactHeightDecisionGroup {
+    margin-top: 0.5rem;
+  }
+
+  .stage .compactHeightDecisionGroup > div {
+    gap: 0.25rem;
+  }
+
+  .stage [data-trending-deck-progress] {
+    display: none;
   }
 }

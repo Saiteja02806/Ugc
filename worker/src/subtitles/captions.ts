@@ -10,6 +10,7 @@ export type SubtitleLayout = {
 };
 
 export function getSubtitleLayout(width: number, height: number, style: SubtitleStyle): SubtitleLayout {
+  if (style === "serif-box") return { width, height, fontSize: Math.max(16, Math.round(Math.min(width * .085, height * .048))), maxLineWidth: Math.floor(width * .58), bold: false };
   const fontSize = Math.max(16, Math.round(Math.min(width * 0.06, height * 0.048)));
   return { width, height, fontSize, maxLineWidth: Math.floor(width * 0.82), bold: style !== "clean" };
 }
@@ -72,6 +73,7 @@ function assTime(ms: number) {
 }
 
 export function serializeAss(cues: SubtitleCue[], layout: SubtitleLayout, style: SubtitleStyle, placement: SubtitlePlacement) {
+  if (style === "serif-box") throw new SubtitleError("SERIF_BOX_PLANNER_REQUIRED", "Serif black box captions require their measured box planner.");
   if (style === "editorial") throw new SubtitleError("EDITORIAL_PLANNER_REQUIRED", "Editorial captions require their measured layout planner.");
   if (isDynamicSubtitleStyle(style)) throw new SubtitleError("DYNAMIC_PLANNER_REQUIRED", "This style requires its measured animation planner.");
   const outline = Math.max(1, Math.round(layout.fontSize * 0.065));

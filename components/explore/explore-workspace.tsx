@@ -1,28 +1,18 @@
 "use client";
 
-import { AudioLines, Clapperboard, Heart, Smartphone, TrendingUp, UserRound } from "lucide-react";
+import { ArrowUpRight, CalendarDays, FolderOpen, ImageIcon, Sparkles, TrendingUp, Video } from "lucide-react";
 import Link from "next/link";
 
 import { AICharacterCard } from "@/components/explore/ai-character-card";
-import { ExploreLinkIndicator } from "@/components/explore/explore-link-indicator";
 import { ExploreWorkflowCard } from "@/components/explore/explore-workflow-card";
 import styles from "@/components/explore/explore-workspace.module.css";
-import { EXPLORE_QUICK_STARTS, getQuickStartHref } from "@/lib/explore/launch-presets";
-import { EXPLORE_WORKFLOWS, LOCAL_PREVIEW_WORKFLOWS, LOCAL_PREVIEW_WORKFLOW_COVERS, LOCAL_PREVIEW_WORKFLOW_ORDER } from "@/lib/explore/workflows";
+import { EXPLORE_QUICK_STARTS, getQuickStartPreviewHref } from "@/lib/explore/launch-presets";
+import { EXPLORE_WORKFLOWS } from "@/lib/explore/workflows";
 import { cn } from "@/lib/utils";
 
-const QUICK_START_ICONS = { seedance: UserRound, omni: Heart, trending: TrendingUp, audio: AudioLines, kling: Clapperboard, "app-demo": Smartphone };
+const QUICK_START_ICONS = { studio: Sparkles, trending: TrendingUp, library: FolderOpen, video: Video, image: ImageIcon, schedule: CalendarDays };
 
 export function ExploreWorkspace({ localPreview = false }: { localPreview?: boolean }) {
-  const workflows = localPreview ? [...LOCAL_PREVIEW_WORKFLOWS, ...EXPLORE_WORKFLOWS] : EXPLORE_WORKFLOWS;
-  // Preview and released catalogues use the approved Workflow 1, 2, 3 order.
-  const displayedWorkflows = localPreview ? [...workflows].sort((a, b) => {
-    const order = (id: string) => {
-      const index = LOCAL_PREVIEW_WORKFLOW_ORDER.indexOf(id);
-      return index < 0 ? Number.MAX_SAFE_INTEGER : index;
-    };
-    return order(a.id) - order(b.id);
-  }) : workflows;
   return (
     <section className="min-h-dvh bg-background px-4 py-7 text-foreground sm:px-6 lg:px-8 lg:py-8">
       <div className={styles.page}>
@@ -33,8 +23,8 @@ export function ExploreWorkspace({ localPreview = false }: { localPreview?: bool
       <section aria-labelledby="explore-workflows-title">
       <h2 id="explore-workflows-title" className="mb-3 text-sm font-medium text-muted">Workflows</h2>
       <div className={styles.workflowGrid}>
-        {displayedWorkflows.map((workflow) => (
-          <ExploreWorkflowCard key={workflow.id} workflow={localPreview ? { ...workflow, ...LOCAL_PREVIEW_WORKFLOW_COVERS[workflow.id] } : workflow} localPreview={localPreview} />
+        {EXPLORE_WORKFLOWS.map((workflow) => (
+          <ExploreWorkflowCard key={workflow.id} workflow={workflow} localPreview={localPreview} />
         ))}
       </div>
       </section>
@@ -46,7 +36,7 @@ export function ExploreWorkspace({ localPreview = false }: { localPreview?: bool
         <div className={styles.toolGrid}>
           {EXPLORE_QUICK_STARTS.map((shortcut) => {
             const Icon = QUICK_START_ICONS[shortcut.id];
-            return <Link key={shortcut.id} href={getQuickStartHref(shortcut, localPreview)} data-explore-shortcut={shortcut.id}
+            return <Link key={shortcut.id} href={localPreview ? getQuickStartPreviewHref(shortcut) : shortcut.destination} data-explore-shortcut={shortcut.id}
               aria-label={`${shortcut.title}: ${shortcut.description}. Opens ${shortcut.target}.`}
               className={cn(styles.toolCard, "outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-4 focus-visible:ring-offset-background")}>
               <Icon className="size-[18px] shrink-0 text-muted" strokeWidth={1.7} aria-hidden="true" />
@@ -54,7 +44,7 @@ export function ExploreWorkspace({ localPreview = false }: { localPreview?: bool
                 <h3 className="text-sm font-semibold tracking-tight text-foreground-strong">{shortcut.title}</h3>
                 <p className="mt-1 text-xs leading-[18px] text-muted">{shortcut.description}</p>
               </div>
-              <ExploreLinkIndicator label={shortcut.title} className={cn(styles.arrow, "size-3.5 text-muted")} />
+              <ArrowUpRight className={cn(styles.arrow, "size-3.5 shrink-0 text-muted")} aria-hidden="true" />
             </Link>;
           })}
         </div>

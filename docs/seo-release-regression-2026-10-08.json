@@ -1,0 +1,245 @@
+{
+  "checked_at": "2026-10-08T06:27:23.387Z",
+  "passed": true,
+  "evidence": [
+    {
+      "name": "www canonical redirect",
+      "url": "https://www.getugcpilot.com",
+      "status": 308,
+      "passed": true
+    },
+    {
+      "name": "HTTPS redirect",
+      "url": "http://getugcpilot.com",
+      "status": 308,
+      "passed": true
+    },
+    {
+      "name": "robots",
+      "url": "https://getugcpilot.com/robots.txt",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "sitemap",
+      "url": "https://getugcpilot.com/sitemap.xml",
+      "status": 200,
+      "urls": [
+        "https://getugcpilot.com",
+        "https://getugcpilot.com/pricing",
+        "https://getugcpilot.com/instagram-carousel-maker",
+        "https://getugcpilot.com/ai-ugc-video-generator",
+        "https://getugcpilot.com/social-media-marketing-for-startups",
+        "https://getugcpilot.com/ai-social-media-manager",
+        "https://getugcpilot.com/guides",
+        "https://getugcpilot.com/guides/saas-marketing",
+        "https://getugcpilot.com/guides/saas-content-marketing",
+        "https://getugcpilot.com/guides/mobile-app-marketing",
+        "https://getugcpilot.com/guides/marketing-for-startups",
+        "https://getugcpilot.com/guides/how-to-market-a-website",
+        "https://getugcpilot.com/guides/social-media-marketing-for-saas"
+      ],
+      "passed": true
+    },
+    {
+      "name": "public page with simulated Googlebot",
+      "url": "https://getugcpilot.com/instagram-carousel-maker",
+      "status": 200,
+      "title": "Instagram Carousel Maker | UGC Pilot",
+      "description": "Turn your business context into a complete Instagram carousel, review it, and schedule it for a connected Instagram account with UGCPilot.",
+      "canonical": "https://getugcpilot.com/instagram-carousel-maker",
+      "h1_count": 1,
+      "structured_data_types": [
+        "SoftwareApplication",
+        "FAQPage"
+      ],
+      "passed": true
+    },
+    {
+      "name": "public page with simulated Googlebot",
+      "url": "https://getugcpilot.com",
+      "status": 200,
+      "title": "UGCPilot — Instagram and YouTube Content Workspace",
+      "description": "Create video-first content and approved publishing workflows for Instagram and YouTube in one workspace.",
+      "canonical": "https://getugcpilot.com",
+      "h1_count": 1,
+      "structured_data_types": [],
+      "passed": true
+    },
+    {
+      "name": "public page with simulated Googlebot",
+      "url": "https://getugcpilot.com/pricing",
+      "status": 200,
+      "title": "Pricing | UGC Pilot",
+      "description": "Try UGCPilot free for seven days. Compare Starter and Growth plans for daily content, custom AI images and videos, credits, editing and scheduling.",
+      "canonical": "https://getugcpilot.com/pricing",
+      "h1_count": 1,
+      "structured_data_types": [],
+      "passed": true
+    },
+    {
+      "name": "public page with simulated Googlebot",
+      "url": "https://getugcpilot.com/ai-social-media-manager",
+      "status": 200,
+      "title": "AI Social Media Manager | UGC Pilot",
+      "description": "Bring business context, content formats, review, and publishing decisions together in one focused social content workflow.",
+      "canonical": "https://getugcpilot.com/ai-social-media-manager",
+      "h1_count": 1,
+      "structured_data_types": [
+        "SoftwareApplication",
+        "FAQPage"
+      ],
+      "passed": true
+    },
+    {
+      "name": "public page with simulated Googlebot",
+      "url": "https://getugcpilot.com/ai-ugc-video-generator",
+      "status": 200,
+      "title": "AI UGC Video Generator | UGC Pilot",
+      "description": "Create short-form video from a clear prompt and optional reference media, then keep the result in your UGCPilot content workflow.",
+      "canonical": "https://getugcpilot.com/ai-ugc-video-generator",
+      "h1_count": 1,
+      "structured_data_types": [
+        "SoftwareApplication",
+        "FAQPage"
+      ],
+      "passed": true
+    },
+    {
+      "name": "public page with simulated Googlebot",
+      "url": "https://getugcpilot.com/social-media-marketing-for-startups",
+      "status": 200,
+      "title": "Social Media Marketing for Startups | UGC Pilot",
+      "description": "Build a sustainable social content routine for your startup with videos, text-led posts, and carousels that your team reviews before publishing.",
+      "canonical": "https://getugcpilot.com/social-media-marketing-for-startups",
+      "h1_count": 1,
+      "structured_data_types": [
+        "SoftwareApplication",
+        "FAQPage"
+      ],
+      "passed": true
+    },
+    {
+      "name": "public page with simulated Googlebot",
+      "url": "https://getugcpilot.com/guides/saas-content-marketing",
+      "status": 200,
+      "title": "SaaS Content Marketing: A Founder Guide | UGC Pilot",
+      "description": "Learn how SaaS founders can turn product knowledge, customer questions, and launch insights into useful social content that supports growth every week.",
+      "canonical": "https://getugcpilot.com/guides/saas-content-marketing",
+      "h1_count": 1,
+      "structured_data_types": [
+        "Article",
+        "BreadcrumbList",
+        "FAQPage"
+      ],
+      "passed": true
+    },
+    {
+      "name": "public page with simulated Googlebot",
+      "url": "https://getugcpilot.com/guides",
+      "status": 200,
+      "title": "Marketing Guides for SaaS, Website & App Founders | UGC Pilot",
+      "description": "Practical marketing guides for SaaS, website, and mobile-app founders who need a clear message, useful content, and a sustainable growth routine.",
+      "canonical": "https://getugcpilot.com/guides",
+      "h1_count": 1,
+      "structured_data_types": [],
+      "passed": true
+    },
+    {
+      "name": "public page with simulated Googlebot",
+      "url": "https://getugcpilot.com/guides/saas-marketing",
+      "status": 200,
+      "title": "SaaS Marketing: A Practical Founder Guide | UGC Pilot",
+      "description": "A practical SaaS marketing guide for founders who need to explain their product, reach the right audience, and turn useful content into a weekly growth rhythm.",
+      "canonical": "https://getugcpilot.com/guides/saas-marketing",
+      "h1_count": 1,
+      "structured_data_types": [
+        "Article",
+        "BreadcrumbList",
+        "FAQPage"
+      ],
+      "passed": true
+    },
+    {
+      "name": "public page with simulated Googlebot",
+      "url": "https://getugcpilot.com/guides/mobile-app-marketing",
+      "status": 200,
+      "title": "Mobile App Marketing: A Founder Guide | UGC Pilot",
+      "description": "A practical mobile app marketing guide for founders who need to explain their app, build launch attention, and keep creating useful content after release.",
+      "canonical": "https://getugcpilot.com/guides/mobile-app-marketing",
+      "h1_count": 1,
+      "structured_data_types": [
+        "Article",
+        "BreadcrumbList",
+        "FAQPage"
+      ],
+      "passed": true
+    },
+    {
+      "name": "public page with simulated Googlebot",
+      "url": "https://getugcpilot.com/guides/marketing-for-startups",
+      "status": 200,
+      "title": "Marketing for Startups: A Practical Founder Guide | UGC Pilot",
+      "description": "A startup marketing guide for founders who need to explain a new product clearly, focus limited resources, and build a sustainable content routine.",
+      "canonical": "https://getugcpilot.com/guides/marketing-for-startups",
+      "h1_count": 1,
+      "structured_data_types": [
+        "Article",
+        "BreadcrumbList",
+        "FAQPage"
+      ],
+      "passed": true
+    },
+    {
+      "name": "public page with simulated Googlebot",
+      "url": "https://getugcpilot.com/guides/how-to-market-a-website",
+      "status": 200,
+      "title": "How to Market a Website: A Founder Guide | UGC Pilot",
+      "description": "Learn how website founders can clarify their value, create useful content, and build a simple marketing loop that brings the right visitors back to their product.",
+      "canonical": "https://getugcpilot.com/guides/how-to-market-a-website",
+      "h1_count": 1,
+      "structured_data_types": [
+        "Article",
+        "BreadcrumbList",
+        "FAQPage"
+      ],
+      "passed": true
+    },
+    {
+      "name": "public page with simulated Googlebot",
+      "url": "https://getugcpilot.com/guides/social-media-marketing-for-saas",
+      "status": 200,
+      "title": "Social Media Marketing for SaaS: A Founder Guide | UGC Pilot",
+      "description": "A social media marketing guide for SaaS founders who want to turn product knowledge into useful posts, clearer buyer education, and steady demand creation.",
+      "canonical": "https://getugcpilot.com/guides/social-media-marketing-for-saas",
+      "h1_count": 1,
+      "structured_data_types": [
+        "Article",
+        "BreadcrumbList",
+        "FAQPage"
+      ],
+      "passed": true
+    },
+    {
+      "name": "unique page metadata",
+      "url": "https://getugcpilot.com/sitemap.xml",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "private beta setup stays noindex",
+      "url": "https://getugcpilot.com/connect-ai",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "unknown page",
+      "url": "https://getugcpilot.com/seo-regression-nonexistent-20261008",
+      "status": 404,
+      "passed": true
+    }
+  ],
+  "limitations": [
+    "A simulated user agent does not prove Google indexing, rankings, field Core Web Vitals, rich-result eligibility, or acquisition performance."
+  ]
+}

@@ -372,7 +372,7 @@ function SidebarNavigation({
   collapsed?: boolean;
   onNavigate?: () => void;
 }) {
-  const visiblePrimaryNavigationItems = primaryNavigationItems;
+  const visiblePrimaryNavigationItems = primaryNavigationItems.filter(item => item.key !== "audio-generation");
 
   return (
     <nav

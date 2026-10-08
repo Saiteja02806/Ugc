@@ -132,7 +132,7 @@ test("visual subtitle choices default to Clean and rerender locally without enab
   assert.doesNotMatch(source, /\bfetch\(|localStorage|sessionStorage|setInstructions|onInstructionsChange/);
 });
 
-test("subtitle illustrations have distinct treatments while scope and limitations stay accessible", () => {
+test("subtitle choices show real rendered posters with draft and timing scope explained", () => {
   const { tree } = render();
   const subtitles = nodes(tree).find((node) => node.props["aria-label"] === "Subtitles");
   const help = nodes(subtitles).find((node) => node.props.id === "hook-subtitle-style-help");

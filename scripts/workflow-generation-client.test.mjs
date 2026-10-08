@@ -262,8 +262,7 @@ test("workflows stay visible, generation requires the explicit server rollout fl
               "react/jsx-runtime": { jsx: (type, props) => ({ type, props }) },
             }, { process: { env: { NODE_ENV: environment, EXPLORE_GENERATION_ENABLED: generationEnabled } } });
             const invoke = () => page.default({ searchParams: Promise.resolve({ preview, mode }) });
-            if (value === "hidden") await assert.rejects(invoke(), /NOT_FOUND/);
-            else assert.equal((await invoke()).props.generationEnabled, value === "generation");
+            assert.throws(invoke, /NOT_FOUND/);
           }
         }
       }

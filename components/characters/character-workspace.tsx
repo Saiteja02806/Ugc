@@ -22,10 +22,10 @@ const MODEL_OPTIONS = [
 const COUNT_OPTIONS = [1, 2, 3].map((count) => ({ value: String(count), label: String(count) }));
 
 const EXAMPLE_PORTRAITS = [
-  { src: "/explore/characters/creator-bedroom.webp", alt: "Example AI character holding a small microphone" },
-  { src: "/explore/characters/creator-selfie.webp", alt: "Example AI character in a casual selfie portrait" },
-  { src: "/explore/characters/creator-window.webp", alt: "Example AI character recording at home" },
-  { src: "/explore/characters/creator-office-v2.webp", alt: "Example AI character in a home office" },
+  { src: "/explore/characters/creator-bedroom.webp", alt: "Example AI influencer holding a small microphone" },
+  { src: "/explore/characters/creator-selfie.webp", alt: "Example AI influencer in a casual selfie portrait" },
+  { src: "/explore/characters/creator-window.webp", alt: "Example AI influencer recording at home" },
+  { src: "/explore/characters/creator-office-v2.webp", alt: "Example AI influencer in a home office" },
 ] as const;
 
 export function CharacterWorkspace({ localPreview = false }: { localPreview?: boolean }) {
@@ -77,14 +77,14 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
     : "Checking generation access…";
 
   return (
-    <section className={styles.workspace} aria-label="Build AI character workspace">
+    <section className={styles.workspace} aria-label="Build AI influencer workspace">
       <header className={styles.header}>
         <div className={styles.heading}>
           <Link href={localPreview ? "/explore?preview=1" : "/explore"} aria-label="Back to Explore"
             className="grid size-9 shrink-0 place-items-center rounded-full border border-border text-muted outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus">
             <ArrowLeft className="size-4" aria-hidden="true" />
           </Link>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground-strong sm:text-2xl">Build AI character</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-foreground-strong sm:text-2xl">Build AI influencer</h1>
         </div>
         <div className={styles.headerActions}>
           <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)} aria-label="Character history" title="Character history" className={styles.historyButton}>
@@ -135,9 +135,9 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
           <div className={styles.emptyCopy}>
             <p className={styles.eyebrow}>A face for your ideas</p>
             <h2 className={styles.emptyTitle}>Your creator starts here.</h2>
-            <p className={styles.emptyDescription}>Build an AI character for yourself or your business. Describe the look, setting and style you want.</p>
+            <p className={styles.emptyDescription}>Build an AI influencer for yourself or your business. Describe the look, setting and style you want.</p>
           </div>
-          <div className={styles.examples} role="group" aria-label="AI character examples">
+          <div className={styles.examples} role="group" aria-label="AI influencer examples">
             <div className={styles.exampleStrip}>
               {EXAMPLE_PORTRAITS.map((portrait) => <div key={portrait.src} className={styles.examplePortrait}>
                 <Image src={portrait.src} alt={portrait.alt} fill loading="eager" sizes="(min-width: 640px) 110px, 22vw" />

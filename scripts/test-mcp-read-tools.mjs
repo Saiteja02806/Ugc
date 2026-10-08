@@ -39,17 +39,13 @@ let uploadQuotaExceeded = false;
 globalThis.fetch = async (input, init) => {
   const url = new URL(input instanceof Request ? input.url : String(input));
   const method = init?.method ?? (input instanceof Request ? input.method : "GET");
-  if (url.pathname.endsWith("/rest/v1/rpc/ensure_free_generation_credit_balance")) {
-    freeCreditWrites += 1;
-    return Response.json({ granted: 2, remaining: 2, reserved: 0, used: 0 });
-  }
   if (url.pathname.endsWith("/rest/v1/free_generation_credit_balances")) {
     assert.equal(method, "GET", "MCP reads must not create free allowances");
     assert.equal(url.searchParams.get("user_id"), "eq.owner-a");
     if (freeCreditMode === "outage") return Response.json({ message: "local free ledger outage" }, { status: 503 });
     return Response.json(freeCreditMode === "missing" ? null : freeCreditMode === "invalid"
-      ? { credit_limit: 2, used_credits: 2, reserved_credits: 1 }
-      : { credit_limit: 2, used_credits: 0, reserved_credits: 1 });
+      ? { credit_limit: ONE_TIME_FREE_GENERATION_CREDITS, used_credits: 2, reserved_credits: 1 }
+      : { credit_limit: ONE_TIME_FREE_GENERATION_CREDITS, used_credits: 0, reserved_credits: 1 });
   }
   if (url.pathname.endsWith("/rest/v1/mcp_oauth_tokens")) {
     seenBearerHash = url.searchParams.get("token_hash");
@@ -162,6 +158,7 @@ globalThis.fetch = async (input, init) => {
     return Response.json(null);
   }
   if (url.pathname.endsWith("/rest/v1/rpc/ensure_free_generation_credit_balance")) {
+    freeCreditWrites += 1;
     assert.equal(JSON.parse(init.body).p_user_id, "owner-a");
     return Response.json({ granted: ONE_TIME_FREE_GENERATION_CREDITS,
       remaining: ONE_TIME_FREE_GENERATION_CREDITS, reserved: 0, used: 0 });
@@ -177,7 +174,6 @@ globalThis.fetch = async (input, init) => {
       credit_limit: 600, used_credits: 10, reserved_credits: 5,
       period_start: "2026-09-01T00:00:00.000Z",
       period_end: billingMode === "expired-growth" ? "2020-09-01T01:00:00.000Z" : "2099-10-01T00:00:00.000Z",
-
     } : null);
   }
   if (url.pathname.endsWith("/rest/v1/subscription_entitlements")) return Response.json([]);
@@ -230,6 +226,16 @@ const invalidOrigin = await mcpRoutePost(new Request(resource, {
   headers: { authorization: "Bearer local-route-bearer-secret", origin: "https://other.example.test" },
 }));
 assert.equal(invalidOrigin.status, 403);
+assert.equal(invalidOrigin.headers.get("cache-control"), "no-store");
+const requestIds = new Set();
+function assertRequestId(response) {
+  const requestId = response.headers.get("x-request-id");
+  assert.match(requestId ?? "", /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  assert.ok(!requestIds.has(requestId), "Each HTTP response must have its own server request ID");
+  requestIds.add(requestId);
+  return requestId;
+}
+assertRequestId(invalidOrigin);
 const bearerSecret = "local-route-bearer-secret";
 const routeRequest = () => new Request(resource, {
   method: "POST",
@@ -252,8 +258,7 @@ try {
 }
 assert.equal(authenticatedRoute.status, 200);
 assert.equal(authenticatedRoute.headers.get("cache-control"), "no-store");
-const authenticatedRequestId = authenticatedRoute.headers.get("x-request-id");
-assert.match(authenticatedRequestId ?? "", /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+const authenticatedRequestId = assertRequestId(authenticatedRoute);
 assert.equal(requestLogs.find((entry) => entry.event === "mcp.request").request_id, authenticatedRequestId);
 assert.ok(!JSON.stringify(requestLogs).includes(bearerSecret), "Correlation logs must not disclose credentials");
 const routeBodyText = await authenticatedRoute.text();
@@ -271,6 +276,7 @@ const oversized = await mcpRoutePost(new Request(oversizedRequest.url, {
 }));
 assert.equal(oversized.status, 413);
 assert.equal(oversized.headers.get("cache-control"), "no-store");
+assertRequestId(oversized);
 const streamHeaders = new Headers(oversizedRequest.headers);
 streamHeaders.set("content-length", "1");
 const oversizedStream = await mcpRoutePost(new Request(resource, {
@@ -286,18 +292,18 @@ const malformed = await mcpRoutePost(new Request(resource, {
   method: "POST", headers: oversizedRequest.headers, body: "{invalid",
 }));
 assert.equal(malformed.status, 400);
+assertRequestId(malformed);
 for (const mode of ["missing", "expired", "revoked", "wrong-resource"]) {
   bearerMode = mode;
   const rejected = await mcpRoutePost(routeRequest());
   assert.equal(rejected.status, 401, mode);
-  assert.notEqual(rejected.headers.get("x-request-id"), authenticatedRequestId);
-  assert.ok(rejected.headers.has("x-request-id"));
+  assertRequestId(rejected);
   assert.match(rejected.headers.get("www-authenticate") ?? "", /resource_metadata=/);
 }
 bearerMode = "store-error";
 const tokenStoreError = await mcpRoutePost(routeRequest());
 assert.equal(tokenStoreError.status, 503);
-assert.ok(tokenStoreError.headers.has("x-request-id"));
+assertRequestId(tokenStoreError);
 bearerMode = "valid";
 const makeAuth = (firebaseUid, scopes) => ({
   token: "local-test-token", clientId: "local-test-client", scopes,
@@ -325,7 +331,22 @@ assert.equal(discovered.body.result.tools.find((tool) => tool.name === "get_prof
 for (const tool of discovered.body.result.tools) {
   assert.equal(tool._meta.securitySchemes[0].type, "oauth2");
   assert.equal(tool._meta.securitySchemes[0].scopes.length, 1);
+  const writes = ["create_upload", "confirm_upload", "delete_asset", "generate_image", "generate_video"];
+  const irreversible = ["delete_asset", "generate_image", "generate_video"];
+  assert.equal(tool.annotations.readOnlyHint, !writes.includes(tool.name), `${tool.name}: read-only annotation`);
+  assert.equal(tool.annotations.destructiveHint, irreversible.includes(tool.name), `${tool.name}: destructive annotation`);
+  assert.equal(tool.annotations.openWorldHint, false, `${tool.name}: bounded account annotation`);
 }
+
+// A stateless transport must keep concurrent responses and account contexts separate.
+const concurrentReads = await Promise.all(Array.from({ length: 12 }, (_, index) => call(
+  "tools/call", { name: "get_profile", arguments: {} }, makeAuth(`concurrent-owner-${index}`, ["account:read"]),
+)));
+for (const [index, response] of concurrentReads.entries()) {
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body.result.structuredContent, { id: `concurrent-owner-${index}` });
+}
+
 const listAssetsSchema = discovered.body.result.tools.find((tool) => tool.name === "list_assets").inputSchema;
 assert.match(listAssetsSchema.properties.source_type.description, /combined_render/u);
 assert.match(listAssetsSchema.properties.collection.description, /influencer/u);

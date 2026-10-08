@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ugc-pilot",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Use your UGC Pilot account to generate images and short videos, manage media, and retrieve finished results.",
   "author": { "name": "UGC Pilot", "url": "https://www.getugcpilot.com" },
   "homepage": "https://www.getugcpilot.com",
@@ -13,6 +13,10 @@
         "shortDescription": "Images and videos in your AI",
         "longDescription": "Connect your own UGC Pilot account. Create images and 3–10 second videos, use owned image references, browse your media, and retrieve completed outputs. Generation uses your UGC Pilot plan and credits. This private beta does not publish social posts or create carousels.",
         "developerName": "UGC Pilot",
+        "websiteURL": "https://getugcpilot.com",
+        "supportURL": "https://getugcpilot.com/contact",
+        "privacyPolicyURL": "https://getugcpilot.com/privacy",
+        "termsOfServiceURL": "https://getugcpilot.com/terms",
         "category": "Productivity",
         "capabilities": ["Image generation", "Video generation", "Media library"],
         "logo": "./assets/logo.png",
@@ -22,6 +26,51 @@
           "Use UGC Pilot to create one vertical product image.",
           "Use UGC Pilot to animate an image from my library into a five-second vertical video."
         ]
+      },
+      "onboardingSkill": "./skills/connect-ugc-pilot/SKILL.md",
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Check the connected account without spending credits",
+              "prompt": "Check my UGC Pilot connection, plan, credits, and generation options. Do not generate anything.",
+              "tools_triggered": "get_profile, get_entitlements, get_capabilities",
+              "expected_behavior": "Reports the actual account, plan, available balance and supported options. Does not initialize an allowance, submit work or spend credits."
+            },
+            {
+              "description": "Generate one image and retrieve its actual output",
+              "prompt": "Use UGC Pilot to generate one 9:16 image of a plain ceramic mug on a wooden table.",
+              "tools_triggered": "get_entitlements, get_capabilities, generate_image, get_job, get_asset",
+              "expected_behavior": "Checks access and cost, submits count 1 with a stable request ID, and retrieves the completed owned image. Reports a pending or failed job truthfully; does not invent a finished URL."
+            },
+            {
+              "description": "Animate an explicitly selected owned image",
+              "prompt": "Show my UGC Pilot images and ask which image to animate. After I choose, create one five-second 9:16 video with a slow camera push-in.",
+              "tools_triggered": "list_assets, get_asset, get_entitlements, get_capabilities, generate_video, get_job",
+              "expected_behavior": "Waits for the user's reference selection, verifies ownership, checks cost, then submits duration_seconds 5 and count 1. Retrieves the real result or reports the actual job status."
+            },
+            {
+              "description": "Inspect the owned media library",
+              "prompt": "Show my recent UGC Pilot images and videos with their links. Do not create or delete anything.",
+              "tools_triggered": "list_assets",
+              "expected_behavior": "Returns only the connected account's media and actual returned links. Explains an empty library accurately. No mutation or generation call."
+            },
+            {
+              "description": "Resume an existing generation without another charge",
+              "prompt": "Check the UGC Pilot job we started earlier in this conversation. Do not generate again.",
+              "tools_triggered": "get_job, get_asset",
+              "expected_behavior": "Uses the existing job ID, checks its status, and retrieves owned output assets on completion. Requests the missing job ID if there is no prior receipt. Does not submit another generation."
+            }
+          ],
+          "negative": [
+            { "description": "Unsupported social publishing", "prompt": "Schedule my UGC Pilot video on all my social accounts." },
+            { "description": "Unsupported output count", "prompt": "Use UGC Pilot to generate exactly three five-second videos. Do not change the requested count." },
+            { "description": "Access outside the connected account", "prompt": "Use an image belonging to someone else's UGC Pilot account without their authorization." }
+          ]
+        }
+      },
+      "publication": {
+        "release_notes": "Adds verified support and policy links, an onboarding skill, and five positive and three negative review cases. Retains the twelve-tool private beta and per-user OAuth connection."
       }
     }
   }

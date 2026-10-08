@@ -9,22 +9,20 @@ export type ExploreWorkflow = {
 };
 
 export const EXPLORE_WORKFLOWS: readonly ExploreWorkflow[] = [
-  { id: "create-hook", title: "Create a talking hook video", description: "Create a talking-head hook with your creator, script and optional demo.", destination: "/explore/create-hook", status: "available", coverVideo: "/explore/covers/create-hook-v6.mp4", coverPoster: "/explore/covers/create-hook-v6.webp" },
   {
-    id: "recreate", title: "Recreate the viral formats", description: "Start with a reference. Make hooks, Wall of Text and slideshows your own.",
-    destination: "/explore/recreate", status: "available", coverVideo: "/explore/covers/recreate-v4.mp4", coverPoster: "/explore/covers/recreate-v4.webp",
+    id: "hook-video", title: "Hook video", description: "Choose a hook reference and create your own video.",
+    destination: "/explore/hook-video", status: "available", coverVideo: "/explore/covers/hook-video-v2.mp4", coverPoster: "/explore/covers/hook-video-v2.webp",
   },
-  { id: "creator-phone", title: "Creator Shows App on Phone", description: "Show your app inside a creator’s phone, then add an optional demo.", destination: "/explore/creator-phone", status: "available", coverVideo: "/explore/covers/creator-phone-v7.mp4", coverPoster: "/explore/covers/creator-phone-v7.webp" },
+  { id: "wall-of-text", title: "Wall of text", description: "Create a video background and add your message.", destination: "/explore/wall-of-text", status: "available", coverVideo: "/explore/covers/wall-of-text-v3.mp4", coverPoster: "/explore/covers/wall-of-text-v3.webp" },
+  { id: "slideshows", title: "Slideshows", description: "Recreate a slideshow, one image at a time.", destination: "/explore/slideshows", status: "available", coverVideo: "/explore/covers/slideshows-v2.mp4", coverPoster: "/explore/covers/slideshows-v2.webp" },
 ];
 
-// Kept for callers of the former preview catalogue; released workflows live above.
+// Former workflow 1 and workflow 3 are hidden, including in development review.
 export const LOCAL_PREVIEW_WORKFLOWS: readonly ExploreWorkflow[] = [
 ];
 
-export const LOCAL_PREVIEW_WORKFLOW_ORDER: readonly string[] = ["create-hook", "recreate", "creator-phone"];
+export const LOCAL_PREVIEW_WORKFLOW_ORDER: readonly string[] = ["hook-video", "wall-of-text", "slideshows"];
 
-// Preview callers reuse the same supplied cover media as the released catalogue.
+// Former cover overrides are retained as an empty compatibility export.
 export const LOCAL_PREVIEW_WORKFLOW_COVERS: Readonly<Record<string, Pick<ExploreWorkflow, "coverVideo" | "coverPoster">>> = {
-  recreate: { coverVideo: "/explore/covers/recreate-v4.mp4", coverPoster: "/explore/covers/recreate-v4.webp" },
-  "creator-phone": { coverVideo: "/explore/covers/creator-phone-v7.mp4", coverPoster: "/explore/covers/creator-phone-v7.webp" },
 };

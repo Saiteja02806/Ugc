@@ -19,6 +19,54 @@ export const packageFiles = [
 ];
 const endpoint = "https://mcp.getugcpilot.com/mcp";
 
+export function validateOpenAiMetadata(plugin, knownTools, { submission = false } = {}) {
+  const extension = plugin.extensions?.["com.openai"];
+  const ui = extension?.interface;
+  assert(ui, "Missing OpenAI interface metadata");
+  const httpsUrl = (value, field) => {
+    assert(typeof value === "string" && value.length <= 1024, `Missing or oversized ${field}`);
+    const url = new URL(value);
+    assert(url.protocol === "https:" && !url.username && !url.password, `Invalid HTTPS URL: ${field}`);
+  };
+  for (const field of ["websiteURL", "supportURL", "privacyPolicyURL", "termsOfServiceURL"]) {
+    httpsUrl(ui[field], field);
+  }
+  for (const [field, limit] of [["displayName", 30], ["shortDescription", 30], ["developerName", 80]]) {
+    assert(typeof ui[field] === "string" && ui[field].trim() && ui[field].length <= limit && !/[\r\n\t]/.test(ui[field]), `Invalid ${field}`);
+  }
+  assert(Array.isArray(ui.defaultPrompt) && ui.defaultPrompt.length <= 3, "Invalid default prompts");
+  const prompts = new Set();
+  for (const prompt of ui.defaultPrompt) {
+    assert(typeof prompt === "string" && prompt.trim() && prompt.length <= 128 && !/@|[\r\n\t]/.test(prompt), "Invalid default prompt");
+    const normalized = prompt.normalize("NFKC").trim().replace(/\s+/g, " ");
+    assert(!prompts.has(normalized), "Duplicate default prompt");
+    prompts.add(normalized);
+  }
+  const onboarding = extension.onboardingSkill;
+  assert(typeof onboarding === "string" && onboarding.startsWith("./") && !onboarding.includes("..") && packageFiles.includes(onboarding.slice(2)) && onboarding.endsWith("/SKILL.md"), "Invalid onboarding skill");
+  const review = extension.review;
+  assert(review && !Object.hasOwn(review, "test_credentials") && !Object.hasOwn(review, "reviewer_instructions"), "Reviewer credentials/instructions belong in the secure dashboard");
+  for (const [kind, count] of [["positive", 5], ["negative", 3]]) {
+    const cases = review.test_cases?.[kind];
+    assert(Array.isArray(cases) && cases.length === count, `Expected ${count} ${kind} review cases`);
+    for (const item of cases) {
+      for (const field of kind === "positive" ? ["description", "prompt", "tools_triggered", "expected_behavior"] : ["description", "prompt"]) {
+        assert(typeof item[field] === "string" && item[field].trim(), `Missing ${kind} case ${field}`);
+      }
+      assert(item.description.length <= 4000, "Oversized review description");
+      if (kind === "positive") {
+        for (const tool of item.tools_triggered.split(",").map((value) => value.trim())) {
+          assert(knownTools.has(tool), `Unknown review tool: ${tool}`);
+        }
+      }
+    }
+  }
+  if (review.demo_recording_url !== undefined || submission) {
+    httpsUrl(review.demo_recording_url, "review.demo_recording_url (required before submission)");
+  }
+  return { submissionMaterialsComplete: Boolean(review.demo_recording_url), pending: review.demo_recording_url ? [] : ["review.demo_recording_url"] };
+}
+
 function json(relativePath) {
   return JSON.parse(fs.readFileSync(path.join(pluginDir, relativePath), "utf8"));
 }
@@ -31,7 +79,7 @@ function walk(dir) {
   });
 }
 
-export function validatePackage() {
+export function validatePackage({ submission = false } = {}) {
   assert.deepEqual(walk(pluginDir).sort(), [...packageFiles].sort(), "Unexpected or missing package file");
   const plugin = json("plugin.json");
   const mcp = json("mcp.json");
@@ -65,12 +113,19 @@ export function validatePackage() {
   assert.equal(codex.skills, "./skills/");
   assert.deepEqual(codex.interface.defaultPrompt, ui.defaultPrompt);
   assert.equal(codex.interface.displayName, ui.displayName);
+  for (const field of ["websiteURL", "supportURL", "privacyPolicyURL", "termsOfServiceURL"]) {
+    assert.equal(codex.interface[field], ui[field], `Compatibility metadata differs: ${field}`);
+  }
+  const { interface: portableInterface, ...portableExtension } = plugin.extensions["com.openai"];
+  assert(portableInterface);
+  assert.deepEqual(codex.extensions?.["com.openai"], portableExtension, "Compatibility onboarding/review metadata differs");
 
   const knownTools = new Set(["read", "mutation", "generation"].flatMap((kind) => {
     const code = fs.readFileSync(path.join(root, `lib/mcp/${kind}-tools.ts`), "utf8");
     return [...code.matchAll(/registerTool\("([a-z_]+)"/g)].map((match) => match[1]);
   }));
   assert.equal(knownTools.size, 12, "Review the package contract when the MCP tool surface changes");
+  const reviewReadiness = validateOpenAiMetadata(plugin, knownTools, { submission });
   for (const item of json("evaluation-cases.json").cases) {
     for (const tool of item.expected_tools ?? []) assert(knownTools.has(tool), `Unknown evaluation tool: ${tool}`);
     assert(item.expected?.trim() && item.prompt?.trim());
@@ -104,10 +159,10 @@ export function validatePackage() {
     path: relative,
     sha256: createHash("sha256").update(fs.readFileSync(path.join(pluginDir, relative))).digest("hex"),
   }));
-  return { name: plugin.name, version: plugin.version, endpoint, files, toolCount: knownTools.size };
+  return { name: plugin.name, version: plugin.version, endpoint, files, toolCount: knownTools.size, reviewReadiness };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const result = validatePackage();
-  console.log(JSON.stringify({ status: "passed", name: result.name, version: result.version, files: result.files.length, toolCount: result.toolCount }));
+  const result = validatePackage({ submission: process.argv.includes("--submission") });
+  console.log(JSON.stringify({ status: "passed", name: result.name, version: result.version, files: result.files.length, toolCount: result.toolCount, reviewReadiness: result.reviewReadiness, platformApproval: "not-verified-by-package-validation" }));
 }

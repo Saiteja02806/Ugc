@@ -1,6 +1,6 @@
 {
   "name": "ugc-pilot",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Generate images and short videos using your UGC Pilot account and credits.",
   "author": { "name": "UGC Pilot", "url": "https://www.getugcpilot.com" },
   "homepage": "https://www.getugcpilot.com",

@@ -8,6 +8,7 @@ import ffmpeg from "ffmpeg-static";
 import ffprobe from "ffprobe-static";
 import { finishExploreVideo } from "../worker/dist/lib/explore-video-finishing.js";
 import { createScribeTranscriptionProvider } from "../worker/dist/subtitles/elevenlabs-provider.js";
+import { SUBTITLE_STYLES } from "../worker/dist/subtitles/styles.js";
 
 const tools = { ffmpeg, ffprobe: ffprobe.path, fontsDir: resolve("worker/src/assets/fonts") };
 const hash = buffer => createHash("sha256").update(buffer).digest("hex");
@@ -43,11 +44,11 @@ test("subtitles off finishes without any transcription and leaves source files u
   assert.ok((await stat(result.outputPath)).size > 0); assert.equal(hash(await readFile(sourcePath)), before);
 });
 
-test("all seven styles burn actual timed captions onto the combined video, preserve sound and source files", async t => {
+test("all registered styles burn actual timed captions onto the combined video, preserve sound and source files", async t => {
   const dir = await workspace(t), sourcePath = join(dir, "opening.mp4"), demoPath = join(dir, "demo.mp4");
   video(sourcePath); video(demoPath, 1, 660);
   const originals = await Promise.all([sourcePath, demoPath].map(async path => hash(await readFile(path))));
-  for (const style of ["clean", "bold-box", "active-word", "editorial", "word-pop", "karaoke", "marker-highlight"]) {
+  for (const style of SUBTITLE_STYLES) {
     let calls = 0;
     const workDir = join(dir, style);
     const result = await finishExploreVideo({ sourcePath, demoPath, workDir, tools, subtitles: { language: "en", style, loadTranscript: async identity => {
@@ -80,7 +81,7 @@ test("transcription receives all final mixed audio on the composed timeline", as
 test("all positions and styles burn visible pixels in the selected region across opening and demo", async t => {
   const dir = await workspace(t), sourcePath = join(dir, "opening.mp4"), demoPath = join(dir, "demo.mp4");
   video(sourcePath); video(demoPath, 1, 660);
-  for (const placement of ["bottom", "middle", "top"]) for (const style of ["clean", "bold-box", "active-word", "editorial", "word-pop", "karaoke", "marker-highlight"]) {
+  for (const placement of ["bottom", "middle", "top"]) for (const style of SUBTITLE_STYLES) {
     const workDir = join(dir, `${style}-${placement}`);
     const result = await finishExploreVideo({ sourcePath, demoPath, workDir, tools, subtitles: {
       language: "en", style, placement, loadTranscript: async ({ durationMs }) => speech(durationMs),

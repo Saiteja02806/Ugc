@@ -7,7 +7,9 @@ const joinsNext = new Set(["and", "but", "or", "because", "if", "when"]);
 const awkwardStart = new Set(["of", "to", "with", "for", "in", "on", "at"]);
 
 /** English phrase heuristics, not semantic understanding. Never changes words or timings. */
-export async function groupNaturalSubtitleWords(words: TimedWord[], layout: SubtitleLayout, measure: MeasureText): Promise<SubtitleCue[]> {
+export async function groupNaturalSubtitleWords(words: TimedWord[], layout: SubtitleLayout, measure: MeasureText, options: {
+  maxWords?: number; maxDurationMs?: number; maxLines?: 1 | 2; preferredWords?: number; splitAtCommas?: boolean;
+} = {}): Promise<SubtitleCue[]> {
   const widthCache = new Map<string, Promise<number>>();
   const width = (text: string) => {
     let result = widthCache.get(text);
@@ -18,6 +20,7 @@ export async function groupNaturalSubtitleWords(words: TimedWord[], layout: Subt
     const indices = part.map((_, i) => i);
     const text = (line: number[]) => line.map(i => part[i].text).join(" ");
     if (await width(text(indices)) <= layout.maxLineWidth) return [indices];
+    if (options.maxLines === 1) return null;
     let best: { lines: number[][]; score: number } | undefined;
     for (let i = 1; i < part.length; i++) {
       const lines = [indices.slice(0, i), indices.slice(i)];
@@ -30,7 +33,7 @@ export async function groupNaturalSubtitleWords(words: TimedWord[], layout: Subt
   const chunks: TimedWord[][] = [];
   for (const word of words) {
     const chunk = chunks.at(-1), previous = chunk?.at(-1);
-    if (!chunk || (previous && (word.startMs - previous.endMs >= 400 || /[.!?]$/u.test(previous.text)))) chunks.push([word]);
+    if (!chunk || (previous && (word.startMs - previous.endMs >= 400 || (options.splitAtCommas ? /[,;:.!?]$/u : /[.!?]$/u).test(previous.text)))) chunks.push([word]);
     else chunk.push(word);
   }
   const cues: SubtitleCue[] = [];
@@ -39,12 +42,13 @@ export async function groupNaturalSubtitleWords(words: TimedWord[], layout: Subt
     const choices = new Map<number, { end: number; lines: number[][] }>();
     costs[chunk.length] = 0;
     for (let i = chunk.length - 1; i >= 0; i--) {
-      for (let end = i + 1; end <= Math.min(chunk.length, i + 6); end++) {
+      for (let end = i + 1; end <= Math.min(chunk.length, i + (options.maxWords ?? 6)); end++) {
         const part = chunk.slice(i, end);
-        if (part.at(-1)!.endMs - part[0].startMs > 2800 && part.length > 1) break;
+        if (part.at(-1)!.endMs - part[0].startMs > (options.maxDurationMs ?? 2800) && part.length > 1) break;
         const lines = await linesFor(part);
         if (!lines) continue;
-        let cost = 8 + Math.max(0, 3 - part.length) * 3;
+        let cost = 8 + Math.max(0, (options.preferredWords ?? 3) - part.length) * 3;
+        if (options.preferredWords !== undefined) cost += Math.max(0, part.length - options.preferredWords) ** 2 * 4;
         if (end < chunk.length) {
           const last = part.at(-1)!, next = chunk[end];
           if (unfinished.has(token(last.text))) cost += 24;

@@ -24,6 +24,7 @@ import {
 } from "@/lib/ai-studio/generation-settings";
 import { isExploreHookVideoId } from "@/lib/explore/hook-video-library";
 import { isExploreWallTextVideoId } from "@/lib/explore/wall-text-video-library";
+import { EXPLORE_FORMAT_VIDEO_PROMPT_MAX_LENGTH, WALL_TEXT_VIDEO_BACKGROUND_INSTRUCTIONS, WALL_TEXT_VIDEO_PROMPT_MAX_LENGTH } from "@/lib/explore/format-generation-prompt";
 import { FirebaseAuthRequestError } from "@/lib/firebase/server-auth";
 import {
   getBackgroundJobById,
@@ -42,6 +43,7 @@ import {
 } from "@/lib/billing/subscription-db";
 
 type GenerateVideoRequest = {
+  exploreFormat?: unknown;
   aspectRatio?: unknown;
   avatarImageUrl?: unknown;
   referenceImageUrls?: unknown;
@@ -196,7 +198,14 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     return NextResponse.json({ error: "Choose a supported video model.", ok: false }, { status: 400 });
   }
   const model = parseAIStudioVideoModel(body?.model);
-  const durationSeconds = parseAIStudioVideoDuration(body?.durationSeconds);
+  if (body?.exploreFormat !== undefined && body.exploreFormat !== "hook" && body.exploreFormat !== "wall_text") {
+    return NextResponse.json({ error: "Choose a video workflow.", ok: false }, { status: 400 });
+  }
+  if (body?.exploreFormat && model !== "google_omni") {
+    return NextResponse.json({ error: "Choose the workflow's supported video model.", ok: false }, { status: 400 });
+  }
+  const isFormatVideoReference = Boolean(body?.exploreFormat && referenceVideoUrl && model === "google_omni");
+  const durationSeconds = isFormatVideoReference ? 3 : parseAIStudioVideoDuration(body?.durationSeconds);
   const resolution = parseAIStudioVideoResolution(body?.resolution);
   if (!isAIStudioVideoModelAvailable(model)) {
     return NextResponse.json({ error: "Seedance 2.5 is temporarily unavailable. Choose another video model.", ok: false }, { status: 503 });
@@ -239,7 +248,13 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
       { status: 400 },
     );
   }
-  if ((referenceAudioUrls.length || referenceVideoUrl) && model !== "seedance_2_5") {
+  if (body?.exploreFormat && referenceAudioUrls.length) {
+    return NextResponse.json({ error: "Add narration in Edit video; voice references are not used in this workflow.", ok: false }, { status: 400 });
+  }
+  if (isFormatVideoReference && (referenceImageUrls.length || !referenceVideoDurationSeconds || referenceVideoDurationSeconds > 3)) {
+    return NextResponse.json({ error: "Choose one optional image or a video reference up to 3 seconds.", ok: false }, { status: 400 });
+  }
+  if ((referenceAudioUrls.length || referenceVideoUrl) && model !== "seedance_2_5" && !isFormatVideoReference) {
     return NextResponse.json(
       { error: "Choose Seedance 2.5 to use audio or video references through OpenRouter. Other models support image references only.", ok: false },
       { status: 400 },
@@ -263,7 +278,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     );
   }
 
-  if (isExploreRecreate && referenceImageUrls.length === 0) {
+  if (isExploreRecreate && !body?.exploreFormat && referenceImageUrls.length === 0) {
     return NextResponse.json(
       {
         error:
@@ -334,7 +349,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
 
   const promptLengthError = getAIStudioPromptLengthError(
     prompt,
-    model === "kling_3_0" ? AI_STUDIO_KLING_PROMPT_MAX_LENGTH : AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
+    body?.exploreFormat === "wall_text" ? WALL_TEXT_VIDEO_PROMPT_MAX_LENGTH : body?.exploreFormat === "hook" ? EXPLORE_FORMAT_VIDEO_PROMPT_MAX_LENGTH : model === "kling_3_0" ? AI_STUDIO_KLING_PROMPT_MAX_LENGTH : AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
   );
 
   if (promptLengthError) {
@@ -402,7 +417,8 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
         ...(referenceAudioAssetIds.length ? { referenceAudioAssetIds: referenceAudioAssetIds as string[] } : {}),
         ...(referenceVideoAssetId ? { referenceVideoAssetId } : {}),
         batchIndex: index + 1, batchSize: quantity, durationSeconds,
-        hookIdea: prompt, model,
+        hookIdea: body?.exploreFormat === "wall_text" ? `${prompt}\n${WALL_TEXT_VIDEO_BACKGROUND_INSTRUCTIONS}` : prompt, model,
+        ...(body?.exploreFormat === "hook" || body?.exploreFormat === "wall_text" ? { exploreFormat: body.exploreFormat } : {}),
         ...(model === "seedance_2_5" ? { provider: "openrouter" } : {}),
         promptMode: "direct", projectId,
         referenceVideoDurationSeconds, referenceVideoUrl,
@@ -437,6 +453,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
         idempotencyKey,
         input: {
           aspectRatio,
+          ...(body?.exploreFormat === "hook" || body?.exploreFormat === "wall_text" || body?.exploreFormat === "slideshow" ? { exploreFormat: body.exploreFormat } : {}),
           avatarImageUrl,
           referenceImageUrls,
           referenceAudioUrls,
@@ -445,7 +462,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
           batchIndex: index + 1,
           batchSize: quantity,
           durationSeconds,
-          hookIdea: prompt,
+          hookIdea: body?.exploreFormat === "wall_text" ? `${prompt}\n${WALL_TEXT_VIDEO_BACKGROUND_INSTRUCTIONS}` : prompt,
           model,
           ...(model === "seedance_2_5" ? { provider: "openrouter" } : {}),
           promptMode: "direct",

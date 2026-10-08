@@ -5,6 +5,7 @@ import { runFinishExploreVideoJob } from "../worker/dist/jobs/finish-explore-vid
 import { ExploreFinishingStore } from "../worker/dist/lib/explore-finishing-store.js";
 import { SCRIBE_PROVIDER_KEY } from "../worker/dist/subtitles/elevenlabs-provider.js";
 import { hasWorkerJobHandler } from "../worker/dist/jobs/index.js";
+import { SUBTITLE_STYLES } from "../worker/dist/subtitles/styles.js";
 
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12,"0")}`;
 const fp = "a".repeat(64), hash = "b".repeat(64);
@@ -56,7 +57,7 @@ function fixture({ subtitles = true, claimState = "submit", receiptStatus = "que
 }
 
 test("both workflows pass all subtitle positions and styles into export and saved metadata, with legacy Bottom", async () => {
-  for (const kind of ["hook", "phone"]) for (const placement of [undefined, "bottom", "middle", "top"]) for (const style of ["clean", "bold-box", "active-word", "editorial", "word-pop", "karaoke", "marker-highlight"]) {
+  for (const kind of ["hook", "phone"]) for (const placement of [undefined, "bottom", "middle", "top"]) for (const style of SUBTITLE_STYLES) {
     const f = fixture({ draftChanges: { kind, subtitles: { language: "en", style, ...(placement ? { placement } : {}) } } });
     const finish = f.deps.finish, upload = f.deps.storage.upload;
     f.deps.finish = options => { assert.equal(options.subtitles.placement, placement ?? "bottom"); assert.equal(options.subtitles.style, style); return finish(options); };
@@ -87,8 +88,8 @@ test("a saved transcript is reused without a new paid submission", async () => {
   assert.equal(f.submits(),0); assert.equal(f.events.includes("save"),false); assert.equal(f.events.includes("finalize"),true);
 });
 
-test("all seven approved subtitle styles reach the owned finishing renderer without substitution", async () => {
-  for (const style of ["clean", "bold-box", "active-word", "editorial", "word-pop", "karaoke", "marker-highlight"]) {
+test("all registered subtitle styles reach the owned finishing renderer without substitution", async () => {
+  for (const style of SUBTITLE_STYLES) {
     const f = fixture({ draftChanges:{ subtitles:{ language:"en",style,placement:"bottom" } } });
     const finish = f.deps.finish, upload = f.deps.storage.upload;
     f.deps.finish = async options => {

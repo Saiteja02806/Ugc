@@ -4,7 +4,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Filter, Layers3, Play, RefreshCw, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Filter, Layers3, LockKeyhole, Play, RefreshCw, RotateCcw, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 
@@ -155,7 +155,7 @@ export function RecreateWorkspace({ previewReferences, initialGenerationMode = "
   );
 }
 
-function FilterMenu({ activeCategories, categories, count, disabled, onClear, onToggle }: {
+export function FilterMenu({ activeCategories, categories, count, disabled, onClear, onToggle }: {
   activeCategories: readonly string[];
   categories: Array<{ id: string; label: string; count: number }>;
   count: number;
@@ -179,14 +179,15 @@ function FilterMenu({ activeCategories, categories, count, disabled, onClear, on
   </Popover>;
 }
 
-function ReferenceCard({ isSelected, onPreview, onRecreate, reference }: { isSelected: boolean; onPreview: () => void; onRecreate: () => void; reference: RecreateReference }) {
+export function ReferenceCard({ isSelected, onPreview, onRecreate, reference, compact = false }: { isSelected: boolean; onPreview: () => void; onRecreate: () => void; reference: RecreateReference; compact?: boolean }) {
   return <article className="group min-w-0">
     <div className={cn(studio.mediaFrame, "relative overflow-hidden bg-card-muted ring-offset-background hover:shadow-card", isSelected && "ring-2 ring-primary ring-offset-2")}>
       <ReferenceMedia reference={reference} onPreview={onPreview} />
-      <button type="button" onClick={onRecreate} aria-pressed={isSelected} className={cn("absolute bottom-3 right-3 inline-flex size-10 items-center justify-center rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white", isSelected ? "border-primary bg-primary text-primary-foreground" : "border-white/25 bg-black/60 text-white backdrop-blur-sm hover:bg-primary hover:border-primary")} aria-label={`Recreate ${reference.title}`} title="Recreate">
-        <RotateCcw className="size-5" strokeWidth={1.6} aria-hidden="true" />
+      <button type="button" onClick={onRecreate} aria-pressed={isSelected} className={cn("absolute right-3 inline-flex size-10 items-center justify-center rounded-lg border transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white", compact ? "top-3" : "bottom-3", isSelected ? "border-primary bg-primary text-primary-foreground" : "border-white/25 bg-black/60 text-white backdrop-blur-sm hover:bg-primary hover:border-primary")} aria-label={`Recreate ${reference.title}`} title={isSelected ? "Selected reference" : "Recreate this reference"}>
+        {compact && isSelected ? <Check className="size-5" strokeWidth={2} aria-hidden="true" /> : <RotateCcw className="size-5" strokeWidth={1.6} aria-hidden="true" />}
       </button>
     </div>
+    {compact ? <div className="mt-2 flex min-w-0 items-center justify-between gap-2"><p className="truncate text-xs font-medium" title={reference.title}>{reference.title}</p>{isSelected ? <span className="shrink-0 text-[10px] font-medium text-primary">Selected</span> : null}</div> : null}
   </article>;
 }
 
@@ -219,7 +220,7 @@ function ReferenceMedia({ reference, onPreview }: { reference: RecreateReference
   </button>;
 }
 
-function ReferencePreviewDialog({ onOpenChange, open, reference }: { onOpenChange: (open: boolean) => void; open: boolean; reference: RecreateReference | null }) {
+export function ReferencePreviewDialog({ onOpenChange, open, reference }: { onOpenChange: (open: boolean) => void; open: boolean; reference: RecreateReference | null }) {
   const [activeSlide, setActiveSlide] = useState(0);
   const slideshowReference = reference?.format === "slideshow" ? reference : null;
   const activeSlideData = slideshowReference?.slides[activeSlide] ?? null;
@@ -239,19 +240,23 @@ function ReferencePreviewDialog({ onOpenChange, open, reference }: { onOpenChang
   </Dialog>;
 }
 
-function ReferenceGridSkeleton() {
+export function ReferenceGridSkeleton() {
   return <div className={GALLERY_GRID} aria-busy="true" aria-label="Loading references">{Array.from({ length: 10 }, (_, index) => <div key={index} className="overflow-hidden rounded-[20px] bg-card"><Skeleton className="aspect-[9/16] w-full rounded-none motion-reduce:animate-none" /></div>)}</div>;
 }
 
-function LoadError({ onRetry }: { onRetry: () => void }) {
+export function LoadError({ onRetry }: { onRetry: () => void }) {
   return <div className="flex min-h-75 flex-col items-center justify-center rounded-[24px] bg-card-muted/45 px-6 text-center"><p className="text-sm font-semibold text-foreground-strong">References could not load</p><p className="mt-2 max-w-sm text-sm leading-6 text-muted">Your saved projects remain unchanged. Try loading the catalogue again.</p><Button type="button" variant="outline" className="mt-5 rounded-full" onClick={onRetry}><RefreshCw data-icon="inline-start" aria-hidden="true" /> Try again</Button></div>;
 }
 
-function EmptyReferences({ format, hasFilters, onClear }: { format: RecreateFormat; hasFilters: boolean; onClear: () => void }) {
+export function EmptyReferences({ format, hasFilters, onClear }: { format: RecreateFormat; hasFilters: boolean; onClear: () => void }) {
   return <div className="flex min-h-75 flex-col items-center justify-center rounded-[24px] bg-card-muted/45 px-6 text-center"><Filter className="size-5 text-muted-subtle" aria-hidden="true" /><p className="mt-3 text-sm font-semibold text-foreground-strong">{hasFilters ? <>No {RECREATE_FORMAT_LABELS[format].toLowerCase()} match this filter</> : <>No {RECREATE_FORMAT_LABELS[format].toLowerCase()} yet</>}</p>{hasFilters ? <Button type="button" variant="outline" className="mt-5 rounded-full" onClick={onClear}>Clear filters</Button> : <p className="mt-2 text-sm leading-6 text-muted">This format will appear here when its references are ready.</p>}</div>;
 }
 
-async function fetchRecreateReferences(signal?: AbortSignal): Promise<RecreateReference[]> {
+export function ProReferenceGate() {
+  return <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[24px] bg-primary/6 p-4"><div className="flex min-w-0 items-center gap-3"><span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary"><LockKeyhole className="size-3.5" aria-hidden="true" /></span><div><p className="text-sm font-semibold text-foreground-strong">More references are ready to explore</p><p className="text-xs text-muted">Upgrade to open the full Recreate catalogue.</p></div></div><Link href="/pricing" className="inline-flex h-8 items-center rounded-full bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2">View plans</Link></div>;
+}
+
+export async function fetchRecreateReferences(signal?: AbortSignal): Promise<RecreateReference[]> {
   const token = await getCurrentUserIdToken();
   if (!token) throw new Error("Sign in before opening Recreate.");
   const response = await fetch("/api/explore/recreate-references", {

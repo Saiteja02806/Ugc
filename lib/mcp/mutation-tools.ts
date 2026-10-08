@@ -70,7 +70,7 @@ export function registerMutationMcpTools(server: McpServer) {
         "x-goog-if-generation-match": z.literal("0"),
       }),
     }),
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false, idempotentHint: false },
     scopeChallenge: requireScopes("assets:write"),
     _meta: oauthMetadata("assets:write"),
   }, async (args, ctx) => executeTool(async () => {
@@ -135,7 +135,7 @@ export function registerMutationMcpTools(server: McpServer) {
       duration_seconds: z.number().positive().optional().describe("Required duration in seconds for video uploads; omit for images."),
     }),
     outputSchema: z.strictObject({ asset }),
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false, idempotentHint: true },
     scopeChallenge: requireScopes("assets:write"),
     _meta: oauthMetadata("assets:write"),
   }, async (args, ctx) => executeTool(async () => {
@@ -191,7 +191,7 @@ export function registerMutationMcpTools(server: McpServer) {
     description: "Delete one owned media asset. Unconfirmed MCP uploads are removed from storage; ready assets remain soft-deleted.",
     inputSchema: z.strictObject({ asset_id: z.uuid() }),
     outputSchema: z.strictObject({ asset_id: z.uuid(), deleted: z.literal(true) }),
-    annotations: { readOnlyHint: false, destructiveHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     scopeChallenge: requireScopes("assets:write"),
     _meta: oauthMetadata("assets:write"),
   }, async ({ asset_id }, ctx) => executeTool(async () => {

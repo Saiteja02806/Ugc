@@ -44,6 +44,22 @@ with no video sources on the hidden sides. No console errors were observed.
 Encoded-stream SHA-256 checks matched all three original video/audio streams
 after MP4 preparation. No deployment was made.
 
+## 8 October 2026 left hero video replacement
+
+The left Wall of Text card now uses the supplied
+`landing_page/heeo_Section/left_side.mp4`, prepared as
+`public/marketing/showcase/hero-restored/left_side-v2.mp4` with a matching
+first-frame WebP poster. `scripts/prepare-landing-hero-left.mjs` preserves
+the complete 6.5-second, 720×1280 clip through fast-start remuxing. All 156
+encoded video frames match the original, and the original source is unchanged.
+The preparation manifest records source/output hashes and decode verification.
+The existing card layout, muted looping playback, desktop-only side loading,
+middle video and right slideshow are unchanged. This replacement is local.
+Scoped ESLint and browser checks at 1440px, 1024px and 390px passed: the
+replacement video/poster load, the desktop clip plays muted, the hidden mobile
+side video has no source, and the center video/right slideshow remain intact.
+No media/runtime errors or non-GET API calls occurred.
+
 ## Assessment
 
 The current page has a coherent visual identity: dark surfaces, a coral CTA,

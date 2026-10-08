@@ -76,6 +76,7 @@ export const EXECUTABLE_BACKGROUND_JOB_TYPES = [
   "reaction_render",
   "render_demo_video",
   "render_create_content_video",
+  "render_demo_video",
   "render_edit_video",
   "render_schedule_combination",
   "render_trending_carousel_edit",

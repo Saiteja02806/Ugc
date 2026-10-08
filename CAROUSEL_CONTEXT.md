@@ -5495,3 +5495,11 @@ and advertises only deployed workflows. See
 - This checkpoint changes presentation and interaction only. Existing owner,
   daily assignment, immutable profile, render, recovery and publishing contracts
   remain authoritative. Offline checks are not production acceptance.
+
+## 2026-10-08 Explore format workflows
+
+- Explore exposes separate Hook video, Wall of text, and Slideshows workflows. The older talking-head/demo and creator-phone routes remain hidden; their component code is retained as the visual reference.
+- Hook and Wall of text generate videos only, accept an optional owned image or short video input, and can import existing owned footage for trimming/text/narration. Their Create sidebar reuses the older square reference tiles, instruction field, settings rows and action footer, with no voice-reference tile or subtitle controls.
+- Selecting a gallery video shows that actual clip in a playable style-example tile. It never silently attaches the clip's poster as an image. Gallery examples are visual guidance; uploaded optional media is the explicit provider input. Uploaded video requests include their owned media asset ID.
+- Slideshows generate images only, edit an ordered 2–10 image sequence, and save it to the owner's Library through a restricted, idempotent API. Manually arranged sequences do not invent a Carousel generation/plan record; the existing Library slide foreign key becomes nullable for this path. Automatic Carousel sourcing, matching, plans and readiness remain unchanged.
+- Generation immediately opens Your Video / Your Slides. Editing and saving remain gated until the schema and renderer release are verified.

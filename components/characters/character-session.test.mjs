@@ -43,7 +43,7 @@ const request = { mode: "custom", prompt: image.prompt, model: image.model, imag
 const jobKey = ["character-jobs", owner, [jobId]];
 function mount(id = owner, historyOpen = false) {
   const instance = { slots: [], index: 0 };
-  return { render: function CharacterTestRender() { rendering = instance; instance.index = 0; return useCharacterBuilder(id, historyOpen); },
+  return { render() { rendering = instance; instance.index = 0; return useCharacterBuilder(id, historyOpen); },
     unmount() { for (const value of instance.slots) if (typeof value === "function") value(); } };
 }
 function restore(status = completed) {

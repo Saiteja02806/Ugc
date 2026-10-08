@@ -12,6 +12,7 @@ import type { TranscriptionProvider } from "./openai-provider.js";
 import { EDITORIAL_RENDER_VERSION, planEditorialPages, serializeEditorialAss } from "./editorial.js";
 import { createEditorialMeasurer, prepareEditorialFonts } from "./editorial-media.js";
 import { createDynamicMeasurer, serializeDynamicAss } from "./dynamic.js";
+import { createSerifBoxMeasurer, groupSerifBoxWords, prepareSerifBoxFonts, serializeSerifBoxAss } from "./serif-box.js";
 import { isDynamicSubtitleStyle, subtitleStyleDefinition } from "./styles.js";
 
 
@@ -100,6 +101,7 @@ export async function generateSubtitles(input: GenerateSubtitlesInput) {
     const video = await probeVideo(join(workDir, "source-video"), input.tools, input.signal);
     const sourceHash = await hashFile(join(workDir, "source-video"));
     if (style === "editorial") await prepareEditorialFonts(input.tools, workDir);
+    else if (style === "serif-box") await prepareSerifBoxFonts(input.tools, workDir);
     else await prepareSubtitleFonts(input.tools, workDir);
 
     input.onStage?.("extracting_audio");
@@ -112,7 +114,11 @@ export async function generateSubtitles(input: GenerateSubtitlesInput) {
       ? { width: video.width, height: video.height, fontSize: Math.max(16, Math.round(64 * Math.min(video.width / 720, video.height / 1280))), maxLineWidth: Math.floor(video.width * .8), bold: false }
       : getSubtitleLayout(video.width, video.height, style);
     let cues, ass;
-    if (style === "editorial") {
+    if (style === "serif-box") {
+      const measure = createSerifBoxMeasurer(layout, input.tools, workDir, input.signal);
+      cues = await groupSerifBoxWords(transcript.words, layout, measure);
+      ass = await serializeSerifBoxAss(cues, layout, placement, measure);
+    } else if (style === "editorial") {
       if (transcript.language !== "en") throw new SubtitleError("EDITORIAL_LANGUAGE_UNSUPPORTED", "Editorial phrase grouping currently supports English. Choose another style.");
       const measure = createEditorialMeasurer(layout, input.tools, workDir, input.signal);
       cues = await groupNaturalSubtitleWords(transcript.words, layout, text => measure(text, layout.fontSize, "lead").then(ink => ink.width));

@@ -7,6 +7,7 @@ export const SUBTITLE_STYLE_REGISTRY = [
   { id: "word-pop", label: "Word pop", description: "One large word with a subtle entrance.", renderVersion: "word-pop-v1" },
   { id: "karaoke", label: "Karaoke", description: "A phrase fills as each word is spoken.", renderVersion: "karaoke-v1" },
   { id: "marker-highlight", label: "Marker highlight", description: "A marker follows the active word.", renderVersion: "marker-highlight-v1" },
+  { id: "serif-box", label: "Serif black box", description: "Serif phrases on black, with words fading from grey to white.", renderVersion: "serif-box-v2" },
 ] as const;
 export type SubtitleStyle = (typeof SUBTITLE_STYLE_REGISTRY)[number]["id"];
 export const SUBTITLE_STYLES = SUBTITLE_STYLE_REGISTRY.map(style => style.id);
@@ -18,6 +19,7 @@ export function subtitleStyleDefinition(style: SubtitleStyle) {
 }
 export const isDynamicSubtitleStyle = (style: SubtitleStyle) =>
   style === "word-pop" || style === "karaoke" || style === "marker-highlight";
-export const subtitlePreview = (style: SubtitleStyle) => ({
-  video: `/subtitle-previews/v1/${style}.mp4`, poster: `/subtitle-previews/v1/${style}.jpg`,
-});
+export const subtitlePreview = (style: SubtitleStyle) => {
+  const version = style === "serif-box" ? "v2" : "v1";
+  return { video: `/subtitle-previews/${version}/${style}.mp4`, poster: `/subtitle-previews/${version}/${style}.jpg` };
+};

@@ -238,6 +238,7 @@ export function ScheduleEditor({
   errorMessage,
   hookMediaOptions,
   initialClipSelection,
+  initialLibraryItemId,
   initialDemoMediaId,
   initialCaption = "",
   initialHookMediaId,
@@ -264,6 +265,7 @@ export function ScheduleEditor({
   errorMessage: string | null;
   hookMediaOptions: ScheduleMediaOption[];
   initialClipSelection?: "secondary_only";
+  initialLibraryItemId?: string;
   initialDemoMediaId: string;
   initialCaption?: string;
   initialHookMediaId: string;
@@ -286,11 +288,10 @@ export function ScheduleEditor({
   const dialogRef = useRef<HTMLElement>(null);
 
   const isCarouselSchedule = Boolean(
-    editingSchedule?.sourceKind === "library_item" &&
-      editingSchedule.libraryItemId,
+    initialLibraryItemId || editingSchedule?.sourceKind === "library_item" && editingSchedule.libraryItemId,
   );
   const carouselLibraryItemId = isCarouselSchedule
-    ? editingSchedule?.libraryItemId ?? null
+    ? initialLibraryItemId ?? editingSchedule?.libraryItemId ?? null
     : null;
   const enabledPlatforms = useMemo<SchedulePlatform[]>(
     () => [

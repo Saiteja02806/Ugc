@@ -1,6 +1,23 @@
 # Wall-of-text Context
 
-Last updated: 2026-10-05
+Last updated: 2026-10-08
+
+## 2026-10-08 Explore manual Wall video workflow (local implementation)
+
+- Explore Wall of text is a separate video workflow. Create requests a moving
+  background without generated lettering. Edit video adds a manual text layer
+  with authored line breaks and blank paragraphs, size, width, color, position
+  and timing relative to the trimmed video. It offers no subtitles or ASR.
+- This editor uses a separate, bounded `ExploreFormatEdit` renderer, a
+  600-character manual limit and conservative text-fit validation. It does not
+  alter Trending's V13/V9 typography, generation rules, stored layouts or
+  publication safe-area decisions. Text already baked into source footage
+  remains part of that footage and requires regeneration to change.
+- Trimming applies to video and mixed audio together. Saving creates a new
+  owned final media asset; scheduling references that exact saved output.
+  New edits need the matching worker and the format-editing release switch.
+- See `docs/explore-format-workflows-2026-10-08.md`. Deployment and authenticated
+  production acceptance remain pending.
 
 ## 2026-10-05 Manual edit formatting and validation (local implementation)
 

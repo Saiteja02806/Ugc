@@ -223,6 +223,8 @@ export function ImageGenerationStudioPanel({
   creditsRemaining?: number | null;
   recreateView?: RecreateGenerationView;
 }) {
+  const workflow = recreateView?.workflow;
+  const workflowFormat = workflow?.format;
   const { loading: authLoading, user } = useAuth();
   const queryClient = useQueryClient();
   const [prompt, setPrompt] = useState("");
@@ -269,7 +271,7 @@ export function ImageGenerationStudioPanel({
   const billingSyncedJobIdsRef = useRef(new Set<string>());
   const submissionKeyRef = useRef<string | null>(null);
   const activeUserIdRef = useRef<string | null>(null);
-  const persistedJobId = usePersistedJobIdFromUrl(IMAGE_JOB_URL_PARAMETER);
+  const persistedJobId = usePersistedJobIdFromUrl(workflowFormat ? `explore-${workflowFormat}Job` : IMAGE_JOB_URL_PARAMETER);
   useEffect(() => {
     submissionKeyRef.current = null;
   }, [recreateView?.referenceImageUrl]);
@@ -291,7 +293,7 @@ export function ImageGenerationStudioPanel({
     query.data ? [query.data] : [],
   );
   const durableJobs = queriedJobs.filter(
-    (job) => job.jobType === "image_generation",
+    (job) => job.jobType === "image_generation" && (!workflowFormat || job.exploreFormat === workflowFormat),
   );
   const generationLocked = recreateView?.preview === true || accessState !== "pro";
   const requiredCredits = creditCost * quantity;
@@ -308,6 +310,8 @@ export function ImageGenerationStudioPanel({
     isSubmitting ||
     activeJobQueries.some((query) => query.isPending) ||
     durableJobs.some((job) => activeJobStatuses.has(job.status));
+  const onWorkflowBusyChange = workflow?.onBusyChange;
+  useEffect(() => { onWorkflowBusyChange?.(isGenerating); }, [isGenerating, onWorkflowBusyChange]);
   useEffect(() => {
     activeUserIdRef.current = user?.uid ?? null;
     resolvedJobIdsRef.current.clear();
@@ -395,7 +399,7 @@ export function ImageGenerationStudioPanel({
           );
           setSubmittedJobIds([]);
           setIgnoredPersistedJobId(null);
-          setStoredJobIds(getStoredImageJobIds(user.uid));
+          setStoredJobIds(getStoredImageJobIds(workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid));
         }
       } catch (error) {
         if (!ignore) {
@@ -415,7 +419,7 @@ export function ImageGenerationStudioPanel({
     return () => {
       ignore = true;
     };
-  }, [active, authLoading, user, recreateView?.preview]);
+  }, [active, authLoading, user, recreateView?.preview, workflowFormat]);
 
   useEffect(() => {
     if (!foregroundAutoResumeRef.current) return;
@@ -545,7 +549,7 @@ export function ImageGenerationStudioPanel({
           : {
             aspectRatio:
               output.ratio ??
-              getImageJobAspectRatio(userId, completedJob.id),
+              getImageJobAspectRatio(workflowFormat ? `${userId}.${workflowFormat}` : userId, completedJob.id),
             createdAt: completedJob.completedAt ?? completedJob.updatedAt,
             id: output.generationId ?? completedJob.id,
             prompt: savedPrompt,
@@ -584,7 +588,7 @@ export function ImageGenerationStudioPanel({
     }
 
     void Promise.all(completedJobs.map(reconcileCompletedImage));
-  }, [durableJobs, user]);
+  }, [durableJobs, user, workflowFormat]);
 
   async function generateFromPrompt(rawPrompt: string) {
     const trimmedPrompt = normalizeAIStudioPrompt(rawPrompt);
@@ -594,6 +598,7 @@ export function ImageGenerationStudioPanel({
       hasInsufficientCredits ||
       referenceUploadPending ||
       !trimmedPrompt ||
+      Boolean(workflow && !recreateView?.referenceImageUrl) ||
       isGenerating
     ) {
       return;
@@ -608,6 +613,7 @@ export function ImageGenerationStudioPanel({
     setActionError(null);
 
     try {
+      workflow?.onGenerationStart();
       const token = await getCurrentUserIdToken();
 
       if (!token || !user) {
@@ -627,6 +633,7 @@ export function ImageGenerationStudioPanel({
         },
         body: JSON.stringify({
           aspectRatio,
+          exploreFormat: workflow?.format,
           idempotencyKey,
           model,
           prompt: trimmedPrompt,
@@ -642,14 +649,14 @@ export function ImageGenerationStudioPanel({
         );
       }
 
-      persistImageJobs(user.uid, data.jobs, { aspectRatio, prompt: trimmedPrompt });
+      persistImageJobs(workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid, data.jobs, { aspectRatio, prompt: trimmedPrompt });
       void queryClient.invalidateQueries({
         queryKey: ["billing-subscription", user.uid],
       });
       if (activeUserIdRef.current !== user.uid) {
         return;
       }
-      persistJobIdInUrl(data.jobId, IMAGE_JOB_URL_PARAMETER);
+      persistJobIdInUrl(data.jobId, workflowFormat ? `explore-${workflowFormat}Job` : IMAGE_JOB_URL_PARAMETER);
       for (const job of data.jobs) {
         submittedPromptsRef.current.set(job.jobId, trimmedPrompt);
         resolvedJobIdsRef.current.delete(job.jobId);
@@ -856,15 +863,16 @@ export function ImageGenerationStudioPanel({
   return (
     <div
       id="ai-studio-images-panel"
-      role="tabpanel"
-      aria-labelledby="ai-studio-images-tab"
+      role={workflow ? undefined : "tabpanel"}
+      aria-labelledby={workflow ? undefined : "ai-studio-images-tab"}
       hidden={!active}
-      className={cn(
+      className={workflow ? "contents" : cn(
         "min-h-0 flex-1 flex-col",
         active ? "flex flex-col" : "hidden",
       )}
     >
       <AiStudioResults
+        portalTarget={workflow?.resultsTarget}
         ariaLabel="Generated images"
         emptyContent={recreateView?.emptyContent}
         emptyContentClassName={recreateView ? "items-start pt-8" : undefined}
@@ -907,6 +915,7 @@ export function ImageGenerationStudioPanel({
             referenceImageUrl={referenceImage?.asset.url ?? null}
             isNew={row.asset?.id === latestCompletedId}
             onOpenPreview={setPreviewImage}
+            onSelect={row.asset && workflow?.onSelectImage ? () => workflow.onSelectImage?.(row.asset!) : undefined}
           />
         ))}
       </AiStudioResults>
@@ -924,25 +933,29 @@ export function ImageGenerationStudioPanel({
       <ImagePreviewDialog image={active ? previewImage : null} onClose={() => setPreviewImage(null)} />
 
       <AiStudioComposer
+        portalTarget={workflow?.controlsTarget}
+        actionsTarget={workflow?.actionsTarget}
+        settingsSummary={workflow ? `${model === "nano_banana_2" ? "Nano Banana 2.1" : "Seedream 5.0 Pro"} · ${aspectRatio} · ${quantity} image${quantity === 1 ? "" : "s"}` : undefined}
         compact={Boolean(recreateView)}
         contextBanner={recreateView?.contextBanner}
         accessMessage={composerMessage}
-        active={active}
+        active={workflow?.controlsActive ?? active}
         ariaLabel="Image prompt"
         generateDisabled={
           generationLocked ||
           hasInsufficientCredits ||
           referenceUploadPending ||
           !prompt.trim() ||
+          Boolean(workflow && !recreateView?.referenceImageUrl) ||
           isGenerating
         }
         generateLabel="Generate image"
         generationLocked={generationLocked}
         hasAttachments={Boolean(referenceImage) || referenceUploadPending}
         isGenerating={isGenerating}
-        layout="unified"
+        layout={workflow ? "workflow" : "unified"}
         showPromptHint={generationLocked || hasInsufficientCredits}
-        leadingControl={
+        leadingControl={workflow ? undefined :
           <ReferenceMediaUpload
             active={active}
             allowedKinds={["image"]}
@@ -1046,6 +1059,7 @@ function ImageGenerationCard({
   referenceImageUrl,
   isNew = false,
   onOpenPreview,
+  onSelect,
 }: {
   asset: AIStudioImageResult | null;
   aspectRatio: AIStudioImageAspectRatio;
@@ -1054,6 +1068,7 @@ function ImageGenerationCard({
   referenceImageUrl: string | null;
   isNew?: boolean;
   onOpenPreview: (image: AIStudioImageResult) => void;
+  onSelect?: () => void;
 }) {
   return (
     <article
@@ -1103,6 +1118,7 @@ function ImageGenerationCard({
               <span>{aspectRatio}</span>
               {asset ? <span className="text-foreground">Ready</span> : null}
             </div>
+            {onSelect ? <Button type="button" onClick={onSelect}>Use image in slide</Button> : null}
             {asset ? (
               <AiStudioResultActions kind="image" title={asset.title} url={asset.url} />
             ) : null}

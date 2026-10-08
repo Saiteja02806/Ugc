@@ -78,13 +78,13 @@ async function probeAudio(path: string, tools: CompositionTools, signal?: AbortS
   return { audioIndex: audio.index as number, durationMs: durationMs(audio, format, true) };
 }
 
-type AudioInput = { inputIndex: number; audioIndex: number; durationMs: number; playback?: ExploreBackgroundPlayback };
+type AudioInput = { inputIndex: number; audioIndex: number; durationMs: number; playback?: ExploreBackgroundPlayback; volume?: number };
 function backgroundAudioFilter(input: AudioInput, targetDurationMs: number, label: string) {
   const timing = planExploreBackgroundAudio(input.durationMs, targetDurationMs, input.playback);
   const fade = timing.fadeDurationMs / 1000;
   const filters = [`[${input.inputIndex}:${input.audioIndex}]aresample=48000`, "aformat=sample_fmts=fltp:channel_layouts=stereo", "asetpts=PTS-STARTPTS"];
   if (timing.repeat) filters.push(`aloop=loop=-1:size=${Math.max(1, Math.round(input.durationMs * 48))}:start=0`);
-  filters.push(`atrim=duration=${timing.audibleDurationMs / 1000}`, "asetpts=PTS-STARTPTS", "volume=0.2",
+  filters.push(`atrim=duration=${timing.audibleDurationMs / 1000}`, "asetpts=PTS-STARTPTS", `volume=${input.volume ?? .2}`,
     `afade=t=in:st=0:d=${fade}`, `afade=t=out:st=${(timing.audibleDurationMs - timing.fadeDurationMs) / 1000}:d=${fade}`,
     "apad", `atrim=duration=${targetDurationMs / 1000}`, `asetpts=PTS-STARTPTS[${label}]`);
   return filters.join(",");
@@ -93,6 +93,7 @@ export function buildExploreCompositionFilter(videos: VideoInput[], demoAudio?: 
   backgroundMusic?: AudioInput;
   subtitleAudio?: boolean;
   demoFraming?: DemoFraming;
+  originalVolume?: number;
 } = {}) {
   const { width, height } = videos[0];
   const filters: string[] = [];
@@ -109,7 +110,7 @@ export function buildExploreCompositionFilter(videos: VideoInput[], demoAudio?: 
     const selected = video.audioIndex === null ? null : { inputIndex: index, audioIndex: video.audioIndex };
     const original = selected === null ? "anullsrc=channel_layout=stereo:sample_rate=48000" : `[${selected.inputIndex}:${selected.audioIndex}]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo`;
     filters.push(`${original},apad,atrim=duration=${seconds},asetpts=PTS-STARTPTS[main${index}]`);
-    filters.push(`[main${index}]anull[original${index}]`);
+    filters.push(`[main${index}]${options.originalVolume === undefined ? "anull" : `volume=${options.originalVolume}`}[original${index}]`);
     if (index === 1 && demoAudio) {
       // Added audio is DEMO-ONLY, never a replacement for original speech.
       // Repeat is explicit; uploaded recordings play once by default.
@@ -142,6 +143,8 @@ export function buildExploreCompositionFilter(videos: VideoInput[], demoAudio?: 
  */
 export async function composeExploreVideo(options: {
   sourcePath: string;
+  originalVolume?: number;
+  musicVolume?: number;
   demoPath?: string;
   demoFraming?: DemoFraming;
   /** Demo-only background layer; preserves the demo's original soundtrack. */
@@ -158,6 +161,7 @@ export async function composeExploreVideo(options: {
   signal?: AbortSignal;
 }) {
   options.signal?.throwIfAborted();
+  if ([options.originalVolume, options.musicVolume].some(value => value !== undefined && (!Number.isFinite(value) || value < 0 || value > 1))) throw new SubtitleError("COMPOSITION_INPUT_INVALID", "Choose an audio level between 0 and 100 percent.");
   const demoFraming = options.demoFraming === undefined ? undefined : parseDemoFraming(options.demoFraming);
   if (demoFraming && !options.demoPath) throw new SubtitleError("COMPOSITION_DEMO_REQUIRED", "Add a demo before recording its framing.");
   if (options.demoAudioPath && !options.demoPath) throw new SubtitleError("COMPOSITION_DEMO_REQUIRED", "Add a demo before adding demo audio.");
@@ -176,8 +180,8 @@ export async function composeExploreVideo(options: {
   if (options.subtitleScope) assertExploreSubtitleScope(options.subtitleScope.language, measuredDurationMs);
   // Validate framing BEFORE any output or later paid transcription is created.
   const filter = buildExploreCompositionFilter(videos, demoAudio ? { ...demoAudio, playback: options.demoAudioPlayback } : undefined, {
-    backgroundMusic: backgroundMusic ? { ...backgroundMusic, inputIndex: videos.length + (demoAudio ? 1 : 0), playback: options.backgroundMusicPlayback } : undefined,
-    subtitleAudio: Boolean(options.subtitleScope), demoFraming,
+    backgroundMusic: backgroundMusic ? { ...backgroundMusic, inputIndex: videos.length + (demoAudio ? 1 : 0), playback: options.backgroundMusicPlayback, volume: options.musicVolume } : undefined,
+    subtitleAudio: Boolean(options.subtitleScope), demoFraming, originalVolume: options.originalVolume,
   });
   options.signal?.throwIfAborted();
   const paths = [options.sourcePath, options.demoPath, options.demoAudioPath, options.backgroundMusicPath].filter((path): path is string => Boolean(path));

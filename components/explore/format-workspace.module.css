@@ -40,6 +40,63 @@
 .classicMain .results { overflow: visible; }
 .classicMain .resultTabs { border-bottom-color: color-mix(in srgb, var(--border) 45%, transparent); }
 .classicWorkspace .editControls > div, .classicSchedule > div { padding: 0; }
+.workflowControls { overflow: hidden; }
+.workflowTabs { flex: none; overflow: visible; }
+.workflowContent { min-height: 0; }
+.workflowFooter { flex: none; background: var(--card); }
+.workflowFooter :global(button:disabled) { opacity: 1; color: var(--muted-foreground); background: var(--card-muted); box-shadow: none; }
+.emptyControls { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 8px 0; }
+.emptyControls .emptyIcon { width: 44px; height: 44px; border-radius: 10px; }
+.classicWorkspace:not([data-format="slideshow"]) .workflowControls[data-section="edit"] { align-self: start; }
+.clipStage { container-type: inline-size; gap: 16px; }
+.clipStageHeader { display: flex; flex: none; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; background: var(--background); }
+.clipStageHeader button { min-height: 40px; }
+.clipStageActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.compactControlsToggle { display: none; }
+.clipScrollArea { min-width: 0; min-height: 0; }
+.clipScrollArea:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; border-radius: 8px; }
+.clipEditorBody { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+.clipPreviews { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
+.clipPreviewCard { min-width: 0; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+.clipPreviewCard > section { height: 100%; gap: 12px; }
+.clipPreviewCard button { min-height: 40px; }
+.clipPreviewCard [data-clip-media] { max-width: min(100%, 320px, calc(max(200px, 100dvh - 400px) * var(--clip-aspect))); flex: none; }
+.clipPreviewCard [data-edit-clip] { margin-top: auto; }
+.clipEditorBody[data-editing="true"] .clipPreviews { display: block; }
+.clipEditorBody[data-editing="true"] [data-clip-media] { max-width: min(100%, 420px, calc(clamp(200px, 100dvh - 400px, 480px) * var(--clip-aspect))); }
+.clipTools { padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+.clipTools:focus { outline: none; }
+.clipActions { flex: none; border-top: 1px solid var(--border); padding: 12px; background: var(--card); border-radius: 8px; }
+.clipActions > div { max-width: 420px; margin-inline: auto; }
+.clipActions button { min-height: 44px; }
+.emptyClip { display: flex; flex: 1; min-height: 240px; flex-direction: column; justify-content: center; align-items: center; gap: 16px; padding: 16px; text-align: center; color: var(--muted-foreground); }
+/* An absent optional clip is an invitation, not another full-size preview. */
+.clipPreviews[data-has-demo="false"] > .clipPreviewCard:last-child { padding: 12px 16px; }
+.clipPreviews[data-has-demo="false"] > .clipPreviewCard:last-child > section { align-items: stretch; gap: 8px; }
+.clipPreviews[data-has-demo="false"] .emptyClip { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; flex: none; min-height: 0; gap: 12px; padding: 0; text-align: left; }
+@container (max-width: 439px) {
+  .clipPreviews[data-has-demo="false"] .emptyClip { grid-template-columns: auto minmax(0, 1fr); }
+  .clipPreviews[data-has-demo="false"] .emptyClip > button { grid-column: 1 / -1; width: 100%; }
+}
+@container (min-width: 440px) { .clipPreviews[data-has-demo="true"] { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container (min-width: 600px) {
+  .clipEditorBody[data-editing="true"] { grid-template-columns: minmax(220px, 1fr) minmax(280px, 360px); }
+  .clipEditorBody[data-editing="true"] .clipPreviews { position: sticky; top: 0; align-self: start; }
+}
+.demoSourceActions { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.demoSourceActions > button { width: 100%; height: auto; min-height: 52px; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 12px; text-align: left; font-size: 14px; }
+.backgroundAudioSwitch { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 48px; min-height: 44px; padding: 0; border: 0; border-radius: 24px; background: transparent; cursor: pointer; }
+.backgroundAudioTrack { display: flex; align-items: center; width: 44px; height: 24px; padding: 3px; border-radius: 12px; background: var(--muted); transition: background-color 160ms ease; }
+.backgroundAudioThumb { width: 18px; height: 18px; flex: none; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px #0003; transition: transform 160ms ease; }
+.backgroundAudioSwitch[aria-checked="true"] .backgroundAudioTrack { background: var(--primary); }
+.backgroundAudioSwitch[aria-checked="true"] .backgroundAudioThumb { transform: translateX(20px); }
+.backgroundAudioSwitch:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.backgroundAudioSwitch:disabled { opacity: .55; cursor: default; }
+@media (prefers-reduced-motion: reduce) { .backgroundAudioTrack, .backgroundAudioThumb { transition: none; } }
+.demoOptions { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+.demoOptions summary { cursor: pointer; min-height: 24px; font-size: 13px; font-weight: 500; }
+.demoOptions summary span { float: right; margin-left: 8px; color: var(--muted-foreground); font-size: 11px; font-weight: 400; }
+.demoOptions summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; border-radius: 2px; }
 .slideshowReferenceTiles { display: grid; grid-template-columns: repeat(2, minmax(0, 128px)); gap: 10px; }
 .slideshowReferenceTile { position: relative; display: block; aspect-ratio: 1; overflow: hidden; border: 1px solid var(--primary); border-radius: 8px; background: var(--card-muted); cursor: pointer; }
 .slideshowReferenceTile img { width: 100%; height: 100%; object-fit: contain; }
@@ -57,18 +114,68 @@
 .slideshowContextCheck { position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: 18px; height: 18px; border: 1px solid #fffc; border-radius: 4px; color: #111; background: #0008; }
 .slideshowContextSlide[aria-pressed="true"] .slideshowContextCheck { background: var(--primary); border-color: var(--primary); }
 .slideshowContextNumber { position: absolute; bottom: 0; inset-inline: 0; padding: 2px; background: #000b; color: #fff; text-align: center; font-size: 10px; }
-.classicWorkspace[data-format="slideshow"] [data-workflow-design="classic"] textarea::placeholder { font-size: inherit; opacity: 1; }
+.classicWorkspace [data-workflow-design="classic"] textarea::placeholder { font-size: inherit; opacity: 1; }
+/* Writing has a comfortable minimum; settings can continue below the fold. */
+.classicWorkspace [data-workflow-design="classic"] textarea { flex: none; height: clamp(160px, calc(100dvh - 620px), 240px); min-height: 160px; }
+.classicWorkspace .workflowControls[data-section="create"] [data-workflow-design="classic"],
+.classicWorkspace .workflowControls[data-section="create"] [data-workflow-design="classic"] > div { flex: none; }
+.workflowContent [data-workflow-reference-grid] { grid-template-columns: repeat(2, minmax(0, 128px)); }
+.clipTools textarea { min-height: 144px; resize: vertical; }
 @media (min-width: 1024px) {
   .workspace.classicWorkspace { height: 100dvh; min-height: 0; overflow: hidden; }
   .classicWorkspace > div { min-height: 0; }
   .classicWorkspace aside { min-height: 0; }
-  .classicWorkspace aside > div { min-height: 0; overflow-y: auto; }
-  .classicWorkspace aside > div > [role="tabpanel"] { min-height: 0; }
-  .classicWorkspace [data-workflow-design="classic"] textarea { flex: none; height: clamp(72px, calc(100dvh - 660px), 240px); }
+  .workspace.classicWorkspace .workflowContent { flex: 1; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; scroll-padding-block: 12px; }
+  .classicWorkspace .workflowControls[data-section] .workflowContent > [role="tabpanel"]:not([hidden]) { flex: none; min-height: 0; }
   .classicWorkspace[data-format="slideshow"] aside[data-section="create"] [data-workflow-design="classic"],
   .classicWorkspace[data-format="slideshow"] aside[data-section="create"] [data-workflow-design="classic"] > div { flex: none; }
   .classicWorkspace[data-format="slideshow"] aside[data-section="create"] [data-workflow-design="classic"] { gap: 16px; }
-  .classicWorkspace[data-format="slideshow"] [data-workflow-design="classic"] textarea { height: 112px; }
-  .classicMain { min-height: 0; overflow-y: auto; }
-  .classicMain .referenceArea { max-height: max(399px, calc(100dvh - 145px)); overflow-y: auto; }
+  .workspace.classicWorkspace .classicMain { min-height: 0; overflow: hidden; }
+  .classicMain .referenceArea { flex: 1; min-height: 0; max-height: none; overflow-y: auto; }
+  .classicMain .results, .classicMain .savedPreview { overflow-y: auto; }
+  /* The action row reserves space instead of floating over the editing fields. */
+  .classicMain .clipStage { overflow: hidden; }
+  .clipScrollArea { flex: 1; overflow-y: auto; scrollbar-gutter: stable; scroll-padding-block: 12px; padding-bottom: 12px; }
+}
+@media (max-width: 1366.98px), (max-height: 740px) {
+  .workflowContent [data-workflow-reference-grid] { grid-template-columns: repeat(2, minmax(0, 96px)); }
+  .workflowContent :global([data-workflow-tile="reference"]) { height: 96px; min-height: 96px; }
+  .slideshowReferenceTiles { grid-template-columns: repeat(2, minmax(0, 96px)); }
+}
+/* Compact the frame, not the whole page: readable text and full media remain. */
+@media (min-width: 1024px) and (max-width: 1366.98px), (min-width: 1024px) and (max-height: 740px) {
+  .workspace.classicWorkspace .workflowLayout { grid-template-columns: 336px minmax(0, 1fr); gap: 12px; padding-inline: 16px; padding-bottom: 12px; }
+  .workflowTabs > button { min-height: 44px; padding-block: 10px; }
+  .workspace.classicWorkspace .workflowContent { gap: 10px; padding: 12px; }
+  .workflowFooter { padding: 10px 12px 12px; }
+  .workflowContent :global([data-workflow-design="classic"]) { gap: 10px; }
+  .workflowContent :global([data-workflow-tile="reference"]) { width: 100%; height: 96px; min-height: 96px; }
+  .workflowContent :global([data-workflow-tile="upload"]) { min-height: 104px; }
+  .workflowContent :global([aria-label="Video generation settings"]) button,
+  .workflowContent :global([aria-label="Image generation settings"]) button { padding-inline: 6px; font-size: 13px; }
+  .workflowContent .demoControls, .workflowContent .demoControls > fieldset { display: flex; flex-direction: column; gap: 8px; }
+  .workflowContent .demoControls > *, .workflowContent .demoControls > fieldset > * { margin-block: 0; }
+  .slideshowReferenceTiles { grid-template-columns: repeat(2, minmax(0, 96px)); }
+  .slideshowContextSlide { flex-basis: 56px; height: 80px; }
+  .resultTab { padding-block: 16px 13px; }
+  .referenceArea, .results, .savedPreview { padding: 16px; }
+  .referenceGrid { gap: 16px 12px; }
+  .emptyResult { gap: 12px; min-height: 240px; }
+}
+/* Editing gets the available width on scaled laptop windows. Controls remain
+   mounted and can be revealed explicitly without leaving the current clip. */
+@media (max-width: 1366.98px) {
+  .workspace.classicWorkspace[data-editing="true"][data-controls-expanded="false"] .workflowLayout { grid-template-columns: minmax(0, 1fr); }
+  .workspace.classicWorkspace[data-editing="true"][data-controls-expanded="false"] .workflowControls { display: none; }
+  .compactControlsToggle { display: inline-flex; }
+}
+/* Browser zoom and very short windows use document scrolling rather than
+   squeezing the controls between a fixed tab bar and footer. */
+@media (min-width: 1024px) and (max-height: 520px) {
+  .workspace.classicWorkspace { height: auto; min-height: 100dvh; overflow: visible; }
+  .workspace.classicWorkspace .workflowControls { align-self: start; }
+  .workspace.classicWorkspace .workflowContent { flex: none; overflow: visible; }
+  .workspace.classicWorkspace .classicMain { min-height: 380px; overflow: visible; }
+  .classicMain .referenceArea, .classicMain .results, .classicMain .savedPreview { overflow: visible; }
+  .clipScrollArea { flex: none; overflow: visible; }
 }

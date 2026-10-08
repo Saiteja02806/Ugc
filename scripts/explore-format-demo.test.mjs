@@ -14,10 +14,15 @@ const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const asset = n => ({ id: id(n), status: "ready", collection: "video", durationSeconds: 2, url: `/owned-${n}.mp4`, title: `Video ${n}` });
 const draft = () => ({ version: 1, demoId: id(2), audioId: null, editing: { ...defaultDemoEdit(3), trimStartMs: 500, trimEndMs: 2500 }, framing: null, playback: "once" });
 
-test("demo drafts reject arbitrary IDs, text overlays and invalid timing before saving", () => {
+test("demo drafts reject arbitrary IDs and invalid timing before saving", () => {
   assert.deepEqual(readFormatDemoDraft(JSON.stringify(draft())), draft());
-  for (const patch of [{ demoId: "https://external/video.mp4" }, { audioId: "other-account-file" }, { editing: { ...draft().editing, trimEndMs: 600 } }, { editing: { ...draft().editing, format: "wall_text" } }, { playback: "unknown" }]) assert.equal(readFormatDemoDraft(JSON.stringify({ ...draft(), ...patch })), null);
+  for (const patch of [{ demoId: "https://external/video.mp4" }, { audioId: "other-account-file" }, { editing: { ...draft().editing, trimEndMs: 600 } }, { editing: { ...draft().editing, format: "wall_text" } }, { playback: "unknown" }, { backgroundMusic: "on" }]) assert.equal(readFormatDemoDraft(JSON.stringify({ ...draft(), ...patch })), null);
+  assert.deepEqual(readFormatDemoDraft(JSON.stringify({ ...draft(), backgroundMusic: true })), { ...draft(), backgroundMusic: true });
   assert.equal(readFormatDemoDraft("invalid JSON"), null);
+  const text = { value: "Demo heading", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 2000 };
+  const withText = { ...draft(), editing: { ...draft().editing, text } };
+  assert.deepEqual(readFormatDemoDraft(JSON.stringify(withText)), withText);
+  assert.equal(readFormatDemoDraft(JSON.stringify({ ...withText, editing: { ...withText.editing, text: { ...text, endMs: 9000 } } })), null);
 });
 
 test("demo framing preserves interpolated positions after a trim and removes discarded timestamps", () => {
@@ -50,8 +55,20 @@ function coordinator({ audio = false, disabled = false } = {}) {
   const exported = {};
   const code = ts.transpileModule(readFileSync(new URL("../components/explore/format-demo-section.tsx", import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   vm.runInNewContext(code, { exports: exported, require: name => imports[name] ?? new Proxy({}, { get: (_, key) => String(key) }) });
-  return { calls, outputs, errors, reported, busy, render() { cursor = 0; const result = exported.DemoSaveRun({ ...props, onSaved: output => reported.push(output), onBusy: value => busy.push(value), onContinue() {} }); while (effects.length) effects.shift()(); return result; } };
+  return { props, calls, outputs, errors, reported, busy, render() { cursor = 0; const result = exported.DemoSaveRun({ ...props, onSaved: output => reported.push(output), onBusy: value => busy.push(value), onContinue() {} }); while (effects.length) effects.shift()(); return result; } };
 }
+
+test("pending opening replacement pauses new final-save stages and blocks retry/Continue", () => {
+  const nodes = tree => Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : [];
+  const h = coordinator(); h.props.pendingSource = true; h.render(); assert.equal(h.calls.length, 0);
+  h.props.pendingSource = false; h.render(); assert.deepEqual(h.calls.map(call => call.name), ["prep"]);
+  h.props.pendingSource = true; h.outputs.prep = asset(3); h.render(); assert.deepEqual(h.calls.map(call => call.name), ["prep"]);
+  h.errors.join = "Failed"; const retry = nodes(h.render()).find(node => node.type === "Button" && node.props.children === "Retry final video");
+  assert.equal(retry.props.disabled, true); retry.props.onClick(); assert.equal(h.calls.length, 1);
+  h.props.pendingSource = false; h.errors.join = null; h.render(); assert.deepEqual(h.calls.map(call => call.name), ["prep", "join"]);
+  h.outputs.join = asset(5); h.props.pendingSource = true;
+  const next = nodes(h.render()).find(node => node.type === "Button" && node.props.children === "Continue to Schedule"); assert.equal(next.props.disabled, true);
+});
 
 test("save coordinator waits for owned preparation, joins the saved opening first and reports only the final video", () => {
   const h = coordinator(); h.render(); h.render();
@@ -65,13 +82,39 @@ test("save coordinator waits for owned preparation, joins the saved opening firs
 });
 
 test("added demo audio starts after trimming and is prepared before the final join", () => {
-  const h = coordinator({ audio: true }); h.render(); h.outputs.prep = asset(3); h.render();
+  const h = coordinator({ audio: true });
+  const overlay = { value: "Demo only", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 2000 };
+  h.props.save.draft.editing.text = overlay; h.render(); h.outputs.prep = asset(3); h.render();
   assert.deepEqual(h.calls.map(c => c.name), ["prep", "sound"]);
   assert.equal(h.calls[0].input.backgroundSource, undefined);
+  assert.deepEqual(h.calls[0].input.editing.text, overlay);
+  assert.equal(h.calls[1].input.editing.text, null, "Audio preparation must not draw the demo text a second time");
   assert.equal(h.calls[1].input.backgroundSource.id, id(4));
   assert.equal(h.calls[1].input.editing.trimStartMs, 0); assert.equal(h.calls[1].input.editing.trimEndMs, 2000);
   h.outputs.sound = asset(6); h.render();
   assert.equal(h.calls.at(-1).input.demoSource.id, id(6));
+});
+
+test("default background audio is added once to the final sequence after Demo preparation", () => {
+  const h = coordinator(); h.props.save.draft.backgroundMusic = true; h.render();
+  assert.deepEqual(h.calls.map(c => c.name), ["prep"]);
+  assert.equal(h.calls[0].input.options.backgroundMusic, false);
+  h.outputs.prep = asset(3); h.render();
+  assert.deepEqual(h.calls.map(c => c.name), ["prep", "join"]);
+  assert.equal(h.calls[1].input.options.backgroundMusic, true);
+  assert.equal(h.calls[1].input.editing, undefined, "No post-music trimming offsets the soundtrack");
+  assert.equal(h.calls[1].input.source.id, id(1)); assert.equal(h.calls[1].input.demoSource.id, id(3));
+});
+
+test("background audio can finish a saved opening without requiring a Demo or preparing an empty clip", () => {
+  const h = coordinator(); h.props.save.demo = null; h.props.save.draft.demoId = null; h.props.save.draft.backgroundMusic = true;
+  h.render(); h.render();
+  assert.deepEqual(h.calls.map(c => c.name), ["join"]);
+  assert.equal(h.calls[0].input.source.id, id(1)); assert.equal(h.calls[0].input.demoSource, null);
+  assert.equal(h.calls[0].input.options.backgroundMusic, true);
+  h.outputs.join = asset(5); h.render(); assert.equal(h.reported.at(-1).id, id(5));
+  const preview = coordinator({ disabled: true }); preview.props.save.demo = null; preview.props.save.draft.backgroundMusic = true;
+  preview.render(); assert.equal(preview.calls.length, 0);
 });
 
 test("preview and failed preparation cannot submit the final join", () => {
@@ -88,13 +131,16 @@ test("offline renderer joins an edited wall opening and trimmed demo, keeping te
   run(["-n", "-f", "lavfi", "-i", "sine=frequency=880:duration=2", added]);
   const tools = { ffmpeg, ffprobe: ffprobe.path, fontsDir: resolve("worker/src/assets/fonts") };
   const opening = await finishExploreVideo({ sourcePath: rawOpening, workDir: join(dir, "edited-opening"), tools, editing: { ...defaultDemoEdit(2), format: "wall_text", text: { value: "My own message", width: .8, y: .2, fontSize: 60, color: "#ffffff", startMs: 0, endMs: 2000 } } });
-  const demo = await finishExploreVideo({ sourcePath: rawDemo, workDir: join(dir, "trimmed-demo"), tools, editing: { ...draft().editing, originalVolume: 0 } });
+  const demo = await finishExploreVideo({ sourcePath: rawDemo, workDir: join(dir, "trimmed-demo"), tools, editing: { ...draft().editing, originalVolume: 0, text: { value: "Demo heading", width: .8, y: .2, fontSize: 60, color: "#ffffff", startMs: 500, endMs: 1000 } } });
   const sound = await finishExploreVideo({ sourcePath: demo.outputPath, backgroundMusicPath: added, backgroundPlayback: "once", workDir: join(dir, "demo-audio"), tools, editing: { ...defaultDemoEdit(2), musicVolume: 1 } });
   const final = await finishExploreVideo({ sourcePath: opening.outputPath, demoPath: sound.outputPath, workDir: join(dir, "final"), tools });
   assert.ok(Math.abs(final.durationMs - 4000) < 100); assert.equal(final.subtitleStyle, null);
   const frame = seconds => run(["-ss", String(seconds), "-i", final.outputPath, "-frames:v", "1", "-pix_fmt", "rgb24", "-f", "rawvideo", "pipe:1"]);
   const white = buffer => { let count = 0; for (let i = 0; i < buffer.length; i += 3) if (buffer[i] > 180 && buffer[i + 1] > 180 && buffer[i + 2] > 180) count++; return count; };
-  assert.ok(white(frame(.8)) > 50, "Wall text appears in the opening"); assert.equal(white(frame(2.8)), 0, "Opening text does not bleed onto the demo");
+  assert.ok(white(frame(.8)) > 50, "Wall text appears in the opening");
+  assert.equal(white(frame(2.2)), 0, "Opening text does not bleed onto the demo");
+  assert.ok(white(frame(2.8)) > 50, "Demo text appears at its own selected time");
+  assert.equal(white(frame(3.4)), 0, "Demo text ends at its own selected time");
   const samples = (start, seconds) => run(["-ss", String(start), "-t", String(seconds), "-i", final.outputPath, "-vn", "-ac", "1", "-ar", "16000", "-f", "f32le", "pipe:1"]);
   const power = (buffer, hz) => { let a = 0, b = 0; for (let i = 0; i < buffer.length / 4; i++) { const phase = 2 * Math.PI * hz * i / 16000, v = buffer.readFloatLE(i * 4); a += v * Math.cos(phase); b += v * Math.sin(phase); } return a * a + b * b; };
   const first = samples(.2, .5), second = samples(2.2, .5);

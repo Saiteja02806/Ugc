@@ -65,7 +65,7 @@ export function useLocalWorkflowMedia(kind: LocalMediaKind) {
     setLoading(false);
     setError(null);
   }
-  return { asset, choose, chooseLibraryImage, error, loading, remove };
+  return { asset, choose, chooseLibraryImage, error, loading, remove, clearError: () => setError(null) };
 }
 
 function readDuration(url: string, kind: LocalMediaKind): Promise<number | null> {

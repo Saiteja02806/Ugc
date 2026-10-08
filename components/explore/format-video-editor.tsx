@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { FormatVideoTextFields, trimFormatVideoEdit } from "@/components/explore/format-video-text-fields";
 import { Button } from "@/components/ui/button";
 import { WorkflowFilePicker } from "@/components/explore/hook-workflow-media-controls";
 import { WorkflowSavedAudioPicker } from "@/components/explore/workflow-saved-audio-picker";
@@ -16,14 +17,18 @@ import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { ExploreFinishDraft } from "@/worker/src/lib/explore-finishing-contract";
 import { formatTextLayout, parseExploreFormatEdit, type ExploreFormatEdit } from "@/worker/src/lib/explore-format-edit";
 import { isExploreUuid } from "@/worker/src/lib/explore-finishing-contract";
+import styles from "@/components/explore/format-workspace.module.css";
+import type { CSSProperties } from "react";
 
 const field = "w-full rounded-lg border border-border bg-card-muted px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-focus";
 const defaultEdit = (format: "hook" | "wall_text", duration: number): ExploreFormatEdit => ({ version: 1, format, trimStartMs: 0, trimEndMs: Math.round(duration * 1000), originalVolume: 1, musicVolume: .2, text: null });
 
-export function FormatVideoEditor({ format, video, active, controlsTarget, resultsTarget, actionsTarget, enabled, onDirty, onSaved, onContinue }: {
+export function FormatVideoEditor({ format, video, active, controlsTarget, resultsTarget, actionsTarget, enabled, onDirty, onSaved, onContinue, pendingSource = false, editingActive = true, onEdit }: {
   format: "hook" | "wall_text"; video: FormatVideoSource; active: boolean; controlsTarget: HTMLElement | null; resultsTarget: HTMLElement | null; enabled: boolean;
+  pendingSource?: boolean;
   onDirty: () => void; onSaved: (output: { id: string; kind: "media_asset"; url: string; title: string }) => void; onContinue: () => void;
   actionsTarget?: HTMLElement | null;
+  editingActive?: boolean; onEdit?: () => void;
 }) {
   const { user } = useAuth();
   const owner = user?.uid ?? null;
@@ -97,15 +102,12 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
     persistDraft(next);
   }
   function trim(startMs: number, endMs: number) {
-    const length = endMs - startMs;
-    change({ ...editing, trimStartMs: startMs, trimEndMs: endMs, text: editing.text ? { ...editing.text, startMs: Math.min(editing.text.startMs, Math.max(0, length - 1)), endMs: Math.min(editing.text.endMs, length) } : null });
+    change(trimFormatVideoEdit(editing, startMs, endMs));
+    setTime(0); soundtrack.current?.pause();
     if (player.current) player.current.currentTime = startMs / 1000;
   }
-  function updateText(value: string) {
-    change({ ...editing, text: value ? { ...(editing.text ?? { width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: editing.trimEndMs - editing.trimStartMs }), value } : null });
-  }
   async function chooseAudio(file: File) {
-    if (!owner || uploading || !enabled) return false;
+    if (!owner || uploading || pendingSource || !enabled) return false;
     setUploading(true); setUploadError(null); onDirty();
     persistDraft(editing);
     try {
@@ -124,7 +126,8 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
     if (!audio || !videoPlayer) return;
     audio.volume = editing.musicVolume;
     const length = audio.duration;
-    const expected = playback === "repeat" && Number.isFinite(length) && length > 0 ? videoPlayer.currentTime % length : videoPlayer.currentTime;
+    const elapsed = Math.max(0, videoPlayer.currentTime - editing.trimStartMs / 1000);
+    const expected = playback === "repeat" && Number.isFinite(length) && length > 0 ? elapsed % length : elapsed;
     if (Math.abs(audio.currentTime - expected) > .15 && Number.isFinite(expected)) audio.currentTime = expected;
     if (playback === "once" && Number.isFinite(length) && expected >= length) { audio.pause(); return; }
     if (!videoPlayer.paused) void audio.play().catch(() => {});
@@ -132,7 +135,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   if (!active || !controlsTarget || !resultsTarget) return null;
   const actions = <div className="space-y-2">
     {validation || finishing.action.error ? <p role="alert" className="text-xs leading-5 text-destructive">{validation ?? finishing.action.error}</p> : null}
-    {finishing.output ? <Button type="button" size="lg" onClick={onContinue} className="h-11 w-full rounded-lg">Continue to Demo</Button> : <Button type="button" size="lg" disabled={finishing.action.disabled || !sourceQuery.data} onClick={finishing.action.onAction} className="h-11 w-full rounded-lg">{finishing.action.busy ? "Saving…" : "Save edits"}</Button>}
+    {finishing.output ? <Button type="button" size="lg" disabled={pendingSource} onClick={onContinue} className="h-11 w-full rounded-lg">Continue to Demo</Button> : <Button type="button" size="lg" disabled={pendingSource || finishing.action.disabled || !sourceQuery.data} onClick={() => { if (!pendingSource) finishing.action.onAction(); }} className="h-11 w-full rounded-lg">{finishing.action.busy ? "Saving…" : "Save edits"}</Button>}
     <p role="status" className="text-xs leading-5 text-muted">{enabled ? finishing.output ? "Your final video is saved in Library." : finishing.action.message : "Video saving is unavailable in this preview."}</p>
     {sourceQuery.isError ? <p role="alert" className="text-xs text-destructive">Could not load this saved video. <button type="button" onClick={() => void sourceQuery.refetch()} className="rounded underline focus-visible:outline-2 focus-visible:outline-focus">Retry</button></p> : null}
     {finishing.action.cancel ? <Button type="button" variant="ghost" onClick={finishing.action.cancel}>Cancel save</Button> : null}
@@ -140,31 +143,25 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   </div>;
   const controls = <div className="space-y-5 p-4">
     <div className="flex min-w-0 items-center justify-between gap-2"><p className="truncate text-xs text-muted" title={video.title}>{video.title}</p><span className="shrink-0 text-xs text-muted">{duration}s</span></div>
-    <fieldset className="space-y-5" disabled={uploading}>
+    <fieldset className="space-y-5" disabled={uploading || pendingSource}>
     <section className="space-y-3" aria-label="Trim"><h2 className="text-sm font-semibold">Trim</h2>
       <div className="grid grid-cols-2 gap-3"><label className="space-y-2 text-xs text-muted">Start (seconds)<input aria-label="Trim start" type="number" min={0} max={Math.max(0, editing.trimEndMs / 1000 - 1)} step={.1} value={editing.trimStartMs / 1000} onChange={event => trim(Math.round(Number(event.target.value) * 1000), editing.trimEndMs)} className={field} /></label><label className="space-y-2 text-xs text-muted">End (seconds)<input aria-label="Trim end" type="number" min={editing.trimStartMs / 1000 + 1} max={duration} step={.1} value={editing.trimEndMs / 1000} onChange={event => trim(editing.trimStartMs, Math.round(Number(event.target.value) * 1000))} className={field} /></label></div>
       <input aria-label="Trim start handle" type="range" min={0} max={Math.max(0, editing.trimEndMs - 1000)} step={100} value={editing.trimStartMs} onChange={event => trim(Number(event.target.value), editing.trimEndMs)} className="w-full accent-primary" />
       <input aria-label="Trim end handle" type="range" min={editing.trimStartMs + 1000} max={Math.round(duration * 1000)} step={100} value={editing.trimEndMs} onChange={event => trim(editing.trimStartMs, Number(event.target.value))} className="w-full accent-primary" />
       <p className="text-xs text-muted">Selected: {Math.max(0, editing.trimEndMs - editing.trimStartMs) / 1000}s</p>
     </section>
-    <section className="space-y-3" aria-label="Text"><h2 className="text-sm font-semibold">{format === "wall_text" ? "Your wall of text" : "Text overlay"}</h2>
-      <textarea aria-label={format === "wall_text" ? "Wall of text" : "Overlay text"} value={editing.text?.value ?? ""} onChange={event => updateText(event.target.value)} rows={6} maxLength={600} placeholder={format === "wall_text" ? "Write your message. Keep your line breaks and paragraphs…" : "Add an optional heading…"} className={field} />
-      {editing.text ? <><div className="grid grid-cols-2 gap-3"><label className="space-y-2 text-xs text-muted">Position<select aria-label="Text position" value={editing.text.y} onChange={event => change({ ...editing, text: { ...editing.text!, y: Number(event.target.value) } })} className={field}><option value={.1}>Top</option><option value={.3}>Middle</option><option value={.55}>Lower</option><option value={.18}>Default</option></select></label><label className="space-y-2 text-xs text-muted">Color<input type="color" aria-label="Text color" value={editing.text.color} onChange={event => change({ ...editing, text: { ...editing.text!, color: event.target.value } })} className={field} /></label></div>
-      <label className="block space-y-2 text-xs text-muted">Width · {Math.round(editing.text.width * 100)}%<input type="range" aria-label="Text width" min={40} max={94} value={editing.text.width * 100} onChange={event => change({ ...editing, text: { ...editing.text!, width: Number(event.target.value) / 100 } })} className="w-full accent-primary" /></label>
-      <label className="block space-y-2 text-xs text-muted">Text size · {editing.text.fontSize}<input type="range" aria-label="Text size" min={24} max={84} value={editing.text.fontSize} onChange={event => change({ ...editing, text: { ...editing.text!, fontSize: Number(event.target.value) } })} className="w-full accent-primary" /></label>
-      <div className="grid grid-cols-2 gap-3"><label className="space-y-2 text-xs text-muted">Show from (s)<input type="number" aria-label="Text start time" min={0} step={.1} value={editing.text.startMs / 1000} onChange={event => change({ ...editing, text: { ...editing.text!, startMs: Math.round(Number(event.target.value) * 1000) } })} className={field} /></label><label className="space-y-2 text-xs text-muted">Until (s)<input type="number" aria-label="Text end time" min={.1} max={(editing.trimEndMs - editing.trimStartMs) / 1000} step={.1} value={editing.text.endMs / 1000} onChange={event => change({ ...editing, text: { ...editing.text!, endMs: Math.round(Number(event.target.value) * 1000) } })} className={field} /></label></div></> : null}
-      <p className="text-xs leading-5 text-muted">This overlay stays editable. Text already inside the original video is part of the footage.</p>
-    </section>
-    <section className="space-y-3" aria-label="Audio"><h2 className="text-sm font-semibold">Audio</h2>
+    <FormatVideoTextFields editing={editing} onChange={change} />
+    <details className={styles.demoOptions}><summary>Sound <span>{previewAudioUrl ? "Audio added" : `${Math.round(editing.originalVolume * 100)}% original`}</span></summary><section className="mt-3 space-y-3" aria-label="Audio">
       <label className="block space-y-2 text-xs text-muted">Original volume · {Math.round(editing.originalVolume * 100)}%<input aria-label="Original volume" type="range" min={0} max={100} value={editing.originalVolume * 100} onChange={event => change({ ...editing, originalVolume: Number(event.target.value) / 100 })} className="w-full accent-primary" /></label>
       <div className="flex flex-wrap gap-2"><WorkflowFilePicker attachment={attachment} kind="audio" label="Upload background audio" buttonLabel="Upload audio" disabled={!enabled} /><WorkflowSavedAudioPicker ownerId={owner} attachment={attachment} disabled={!enabled || uploading} /></div>
       {previewAudioUrl ? <><p className="break-words text-xs text-muted">{background?.title ?? localAudio.asset?.name}</p><Button type="button" size="sm" variant="ghost" onClick={attachment.remove}>Remove audio</Button><label className="block space-y-2 text-xs text-muted">Music volume · {Math.round(editing.musicVolume * 100)}%<input aria-label="Music volume" type="range" min={0} max={100} value={editing.musicVolume * 100} onChange={event => change({ ...editing, musicVolume: Number(event.target.value) / 100 })} className="w-full accent-primary" /></label><label className="block space-y-2 text-xs text-muted">Playback<select aria-label="Music playback" value={playback} onChange={event => { const mode = event.target.value as "once" | "repeat"; setPlayback(mode); persistDraft(editing, backgroundId, mode); onDirty(); }} className={field}><option value="once">Play once</option><option value="repeat">Repeat to fit</option></select></label></> : null}
-    </section>
+    </section></details>
     </fieldset>
     {!actionsTarget ? actions : null}
   </div>;
-  const preview = <section className="flex flex-col items-center gap-4" aria-label="Video edit preview"><h2 className="self-start text-base font-semibold">Live preview</h2>
-    <div className="relative max-h-[65dvh] w-full max-w-[min(420px,55dvh)] overflow-hidden rounded-xl bg-black" style={{ aspectRatio: `${width}/${height}` }}>
+  const clipLabel = format === "wall_text" ? "Wall-of-text video" : "Hook video";
+  const preview = <section className="flex flex-col items-center gap-4" aria-label="Video edit preview"><h3 className="self-start text-sm font-semibold">{onEdit ? clipLabel : "Live preview"}</h3>
+    <div data-clip-media className="relative max-h-[65dvh] w-full max-w-[min(420px,55dvh)] overflow-hidden rounded-xl bg-black" style={{ aspectRatio: `${width}/${height}`, "--clip-aspect": width / height } as CSSProperties}>
       <video ref={player} src={sourceQuery.data?.url ?? video.url} playsInline controls preload="metadata" className="size-full object-contain" onLoadedMetadata={event => {
         const d = event.currentTarget.duration;
         const { videoWidth, videoHeight } = event.currentTarget;
@@ -182,8 +179,8 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
       {editing.text && textLayout && time >= editing.text.startMs && time < editing.text.endMs ? <svg aria-label="Text overlay preview" viewBox={`0 0 ${width} ${height}`} className="pointer-events-none absolute inset-0 size-full"><g fill={editing.text.color} stroke="black" strokeWidth={width / 540} paintOrder="stroke" fontFamily="Arial, sans-serif" fontWeight={700} fontSize={textLayout.fontSize} textAnchor="middle">{textLayout.lines.map((line, index) => <text key={index} x={width / 2} y={textLayout.y + index * textLayout.lineHeight + textLayout.fontSize}>{line}</text>)}</g></svg> : null}
     </div>
     {previewAudioUrl ? <audio ref={soundtrack} src={previewAudioUrl} loop={playback === "repeat"} preload="metadata" aria-label="Background audio preview" /> : null}
-    <p className="max-w-md text-center text-xs leading-5 text-muted">Save edits to create your final video in Library.</p>
-    {finishing.output ? <div className="w-full max-w-sm space-y-2"><h3 className="text-sm font-medium">Saved final video</h3><video src={finishing.output.url} controls playsInline className="max-h-80 w-full rounded-xl" /></div> : null}
+    {!editingActive && onEdit ? <><p className="max-w-full truncate text-xs text-muted" title={video.title}>{video.title}</p><Button type="button" variant="outline" data-edit-clip="opening" className="w-full" disabled={pendingSource || uploading} onClick={onEdit}>Edit {format === "wall_text" ? "wall-of-text video" : "hook video"}</Button></> : <p className="max-w-md text-center text-xs leading-5 text-muted">Trim, text and sound apply to this video only.</p>}
+    {editingActive && finishing.output ? <div className="w-full max-w-sm space-y-2"><h3 className="text-sm font-medium">Saved video</h3><video src={finishing.output.url} controls playsInline className="max-h-80 w-full rounded-xl" /></div> : null}
   </section>;
-  return <>{createPortal(controls, controlsTarget)}{createPortal(preview, resultsTarget)}{actionsTarget ? createPortal(actions, actionsTarget) : null}</>;
+  return <>{editingActive ? createPortal(controls, controlsTarget) : null}{createPortal(preview, resultsTarget)}{actionsTarget ? createPortal(actions, actionsTarget) : null}</>;
 }

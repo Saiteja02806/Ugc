@@ -109,6 +109,23 @@ test("replacement and removal ignore late upload completions", async () => {
   h.uploads[2].resolve({ asset: asset(3) }); assert.equal(await third, false); assert.equal(h.render().source, null); assert.equal(h.render().preview, null); h.unmount();
 });
 
+test("invalid or failed replacements retain the accepted owned upload and explicit reuse restores readiness", async () => {
+  const h = harness(true, "owner", 1); h.render().setMode("upload");
+  const first = h.render().chooseUpload(file("first.mp4")); h.metadata(); await tick();
+  h.uploads[0].resolve({ asset: asset(1) }); assert.equal(await first, true);
+  for (const bad of [{ ...file("wrong.png"), type: "image/png" }, { ...file("huge.mp4"), size: 250 * 1024 ** 2 + 1 }]) {
+    assert.equal(await h.render().chooseUpload(bad), false); assert.equal(h.render().source.id, asset(1).id);
+    assert.equal(h.render().ready, false); h.render().clearUploadError(); assert.equal(h.render().ready, true);
+  }
+  const long = h.render().chooseUpload(file("long.mp4")); h.metadata(121); assert.equal(await long, false);
+  assert.equal(h.render().source.id, asset(1).id); h.render().clearUploadError(); assert.equal(h.render().ready, true);
+  const failed = h.render().chooseUpload(file("replacement.mp4")); h.metadata(); await tick();
+  assert.equal(h.render().source.id, asset(1).id); assert.equal(h.render().preview.url, asset(1).url); assert.equal(h.render().ready, false);
+  h.uploads[1].reject(new Error("Storage rejected upload")); assert.equal(await failed, false);
+  assert.equal(h.render().source.id, asset(1).id); assert.equal(h.render().canKeepUpload, true);
+  h.render().clearUploadError(); assert.equal(h.render().ready, true); h.unmount();
+});
+
 test("unmount during upload prevents completion from restoring a source", async () => {
   const h = harness(); h.render().setMode("upload"); const pending = h.render().chooseUpload(file("opening.mp4"));
   h.metadata(); await tick(); h.unmount(); h.uploads[0].resolve({ asset: asset() }); assert.equal(await pending, false); assert.equal(h.render().source, null);

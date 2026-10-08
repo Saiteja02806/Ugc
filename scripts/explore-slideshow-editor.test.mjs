@@ -111,9 +111,10 @@ test("access and release gates stop a save before database mutations", async () 
 
 function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : []; }
 function text(tree) { return Array.isArray(tree) ? tree.map(text).join("") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" ? tree : ""; }
-function editor({ failFirst = false } = {}) {
+function editor({ failFirst = false, generated = true, storedDraft = null } = {}) {
   let cursor = 0, nextRequest = 100;
   const slots = [], storage = new Map(), requests = [], renders = [], uploads = [], saved = [], dirty = [], controller = { current: null };
+  if (storedDraft) storage.set(`ugc-explore:slideshow-draft:v2:owner:uploaded:${id(40)}`, JSON.stringify(storedDraft));
   const element = (type, props) => ({ type, props });
   const react = {
     useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial; return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
@@ -145,13 +146,20 @@ function editor({ failFirst = false } = {}) {
   const control = (type, value) => nodes(render()).find(node => node.type === type && (text(node) === value || node.props["aria-label"] === value));
   const heading = value => nodes(render()).find(node => node.type === "textarea" && node.props.maxLength === 180).props.onChange({ target: { value } });
   const clickSave = async label => { control("Button", label).props.onClick(); await new Promise(setImmediate); };
-  return { render, control, heading, clickSave, requests, renders, uploads, saved, dirty, controller };
+  const useImage = (image, index) => { render(); controller.current.useImage(image, index); };
+  if (generated) {
+    useImage({ id: id(201), url: "https://storage.test/generated-1.png" }, 0);
+    useImage({ id: id(202), url: "https://storage.test/generated-2.png" }, 1);
+    control("button", "Preview slide 1").props.onClick();
+  }
+  return { render, control, heading, clickSave, requests, renders, uploads, saved, dirty, controller, useImage };
 }
-test("saving edited text uploads its rendered image with the owner and keeps untouched slides", async () => {
+test("saving edited text uploads its generated image with the owner and keeps untouched generated slides", async () => {
   const h = editor(); h.heading("My heading"); await h.clickSave("Save slideshow");
   assert.equal(h.renders.length, 1); assert.equal(h.renders[0].design.heading, "My heading");
   assert.equal(h.uploads[0].owner, "owner"); assert.equal(h.uploads[0].kind, "image");
-  assert.equal(h.requests[0].slides[0].mediaAssetId, id(301)); assert.equal(h.requests[0].slides[1].mediaAssetId, id(2));
+  assert.equal(h.renders[0].source, "https://storage.test/generated-1.png");
+  assert.equal(h.requests[0].slides[0].mediaAssetId, id(301)); assert.equal(h.requests[0].slides[1].mediaAssetId, id(202));
   assert.equal(h.saved.length, 1); assert.ok(h.control("Button", "Continue to Schedule"));
   h.heading("Changed heading"); assert.ok(h.control("Button", "Save slideshow")); assert.equal(h.control("Button", "Continue to Schedule"), undefined);
 });
@@ -165,6 +173,33 @@ test("moving an uploaded slide preserves its identity and saves the displayed se
   const h = editor(); h.control("Button", "Move slide later").props.onClick(); await h.clickSave("Save slideshow");
   assert.deepEqual(h.requests[0].slides.map(slide => slide.referenceSlideId), [id(2), id(1)]);
   assert.equal(h.renders.length, 0); assert.equal(h.uploads.length, 0);
+});
+
+test("reference pixels cannot enter the editor or a save before generation", async () => {
+  const h = editor({ generated: false });
+  assert.equal(nodes(h.render()).some(node => node.type === "img"), false);
+  assert.equal(nodes(h.render()).some(node => node.type === "textarea"), false);
+  assert.equal(h.control("Button", "Save slideshow").props.disabled, true);
+  await h.clickSave("Save slideshow");
+  assert.equal(h.requests.length, 0);
+  h.useImage({ id: id(201), url: "https://storage.test/generated-1.png" }, 0);
+  assert.equal(h.control("Button", "Save slideshow").props.disabled, true);
+  assert.equal(nodes(h.render()).find(node => node.type === "img").props.src, "https://storage.test/generated-1.png");
+  h.useImage({ id: id(202), url: "https://storage.test/generated-2.png" }, 1);
+  assert.equal(h.control("Button", "Save slideshow").props.disabled, false);
+  await h.clickSave("Save slideshow");
+  assert.deepEqual(h.requests[0].slides.map(slide => slide.mediaAssetId), [id(201), id(202)]);
+});
+
+test("older drafts retain generated edits while excluding unmodified reference slides", () => {
+  const h = editor({ generated: false, storedDraft: {
+    order: [id(2), id(1)],
+    replacements: { [id(1)]: { id: id(201), url: "https://storage.test/generated-1.png" } },
+    text: { [id(1)]: { ...EMPTY_SLIDE_TEXT, heading: "My saved heading" } },
+  } });
+  assert.equal(nodes(h.render()).filter(node => node.type === "button" && node.props["aria-label"]?.startsWith("Preview slide")).length, 1);
+  assert.equal(nodes(h.render()).find(node => node.type === "textarea").props.value, "My saved heading");
+  assert.equal(h.control("Button", "Restore original image"), undefined);
 });
 
 function imageRoute({ production = true, allowed = true, owned = asset(1), contentType = "image/png", oversized = false, streamOverflow = false } = {}) {

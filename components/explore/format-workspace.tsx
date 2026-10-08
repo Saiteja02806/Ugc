@@ -87,9 +87,11 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
   const [slideshowUploadBusy, setSlideshowUploadBusy] = useState(false);
   const reportBusy = useCallback((busy: boolean) => setGenerating(busy), []);
   const [previewReference, setPreviewReference] = useState<RecreateReference | null>(null);
+  const [previewSlide, setPreviewSlide] = useState(0);
   const mainArea = useRef<HTMLDivElement | null>(null);
   const controlsArea = useRef<HTMLElement | null>(null);
-  const [slideIndex, setSlideIndex] = useState(() => { const value = Number(searchParams.get("slide")); return Number.isInteger(value) && value >= 1 && value <= 10 ? value - 1 : 0; });
+  const [slideIndex, setSlideIndex] = useState(() => { const value = Number(searchParams.get("slide")); return Number.isInteger(value) && value >= 1 && value <= 14 ? value - 1 : 0; });
+  const [slideSelection, setSlideSelection] = useState<{ referenceId: string; ids: string[] } | null>(null);
   const [pickedVideo, setSelectedVideo] = useState<FormatVideoSource | null>(localPreview ? previewVideo ?? null : null);
   const restoredVideo = useQuery({ queryKey: ["explore-edit-restore", user?.uid, format, initialMode, editVideoId], enabled: !localPreview && !pickedVideo && Boolean(user) && format !== "slideshow" && isExploreUuid(editVideoId), queryFn: async () => {
     const token = await getCurrentUserIdToken(user?.uid); if (!token || !editVideoId) throw new Error("Sign in to restore your video edit.");
@@ -141,7 +143,17 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
   const visible = filtered.slice(0, fullAccess ? alignReferenceLimit(referencePage.key === filterKey ? referencePage.limit : 12, referenceColumns) : 1);
   const loading = !localPreview && (authLoading || referencesQuery.isFetching && !referencesQuery.data);
   const activeSlideIndex = reference ? Math.min(slideIndex, Math.max(0, reference.slides.length - 1)) : 0;
-  const sourceImage = format === "slideshow" ? reference?.slides[activeSlideIndex]?.url : reference?.posterUrl;
+  const selectedSlideIds = reference
+    ? slideSelection?.referenceId === reference.id
+      ? slideSelection.ids.filter(id => reference.slides.some(slide => slide.id === id))
+      : [reference.slides[activeSlideIndex]?.id].filter((id): id is string => Boolean(id))
+    : [];
+  // The previewed selected slide is the primary edit target. Other checked
+  // slides supply context; they do not change the requested output quantity.
+  const contextSlides = reference?.slides.filter(slide => selectedSlideIds.includes(slide.id)) ?? [];
+  const primarySlide = contextSlides.find(slide => slide.id === reference?.slides[activeSlideIndex]?.id) ?? contextSlides[0];
+  const sourceImages = primarySlide ? [primarySlide, ...contextSlides.filter(slide => slide.id !== primarySlide.id)].map(slide => slide.url) : [];
+  const sourceImage = format === "slideshow" ? sourceImages[0] : reference?.posterUrl;
   const resultLabel = format === "slideshow" ? "Your Slides" : "Your Video";
 
   function revealOnMobile(target: "controls" | "preview") {
@@ -192,7 +204,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
   function selectReference(next: RecreateReference, fromUpload = false) {
     if (generating || slideshowUploadBusy && !fromUpload) return;
     if (reference?.id !== next.id) { setSavedOutput(null); }
-    setReference(next); setSlideIndex(0);
+    setReference(next); setSlideIndex(0); setSlideSelection(null);
     if (!localPreview && format === "slideshow" && next.id.startsWith("uploaded:")) {
       try { localStorage.setItem(uploadedReferenceKey, JSON.stringify(next)); } catch { /* This session remains usable. */ }
     }
@@ -213,16 +225,33 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     window.history.replaceState(null, "", `${window.location.pathname}?${params}`);
   }
 
+  function selectSlideContext(ids: string[], previewIndex?: number) {
+    if (!reference || generating || slideshowUploadBusy) return;
+    setSlideSelection({ referenceId: reference.id, ids });
+    if (previewIndex !== undefined) chooseSlide(previewIndex);
+    else if (!ids.includes(reference.slides[activeSlideIndex]?.id)) {
+      const first = reference.slides.findIndex(slide => ids.includes(slide.id));
+      if (first >= 0) chooseSlide(first);
+    }
+  }
+
   function clearStyleReference() {
     if (generating) return;
-    setReference(null);
+    setReference(null); setSlideSelection(null);
     const params = new URLSearchParams(window.location.search);
-    for (const key of ["refType", "refId", "sourceUrl", "exploreRecreate"]) params.delete(key);
+    for (const key of ["refType", "refId", "sourceUrl", "exploreRecreate", "slide"]) params.delete(key);
     window.history.replaceState(null, "", `${window.location.pathname}?${params}`);
   }
-  const contextBanner = format !== "slideshow" ? undefined : <SlideshowReferencePicker reference={reference} slideIndex={activeSlideIndex} disabled={generating} localPreview={localPreview} onBrowse={browseReferences} onSlide={chooseSlide} onBusy={setSlideshowUploadBusy} onEdit={() => { setStep("edit"); revealOnMobile("controls"); }} onUpload={next => { selectReference(next, true); setStep("edit"); setView("results"); }} />;
+  function regenerateSlide(index: number) {
+    const id = reference?.slides[index]?.id;
+    if (generating || !id) return;
+    selectSlideContext(Array.from(new Set([...selectedSlideIds, id])), index);
+    setStep("create"); setView("results");
+  }
+  const contextBanner = format !== "slideshow" ? undefined : <SlideshowReferencePicker reference={reference} slideIndex={activeSlideIndex} selectedSlideIds={selectedSlideIds} disabled={generating} localPreview={localPreview} onPreview={() => { setPreviewSlide(activeSlideIndex); setPreviewReference(reference); }} onRemove={clearStyleReference} onSelectionChange={selectSlideContext} onBusy={setSlideshowUploadBusy} onUpload={next => { selectReference(next, true); setStep("create"); }} />;
   const recreateView = {
     contextBanner, referenceImageUrl: format === "slideshow" && !slideshowUploadBusy ? sourceImage : undefined,
+    referenceImageUrls: format === "slideshow" && !slideshowUploadBusy ? sourceImages : undefined,
     styleVideo: format !== "slideshow" && reference?.videoUrl ? { url: reference.videoUrl, name: reference.title, duration: null } : undefined,
     referenceTitle: reference?.title, onClearReference: clearStyleReference, preview: localPreview,
     emptyContent: <div className={styles.emptyResult}><span className={styles.emptyIcon}>{format === "slideshow" ? <Images aria-hidden="true" /> : <Film aria-hidden="true" />}</span><h2 className="text-lg font-semibold">{format === "slideshow" ? "Your images will appear here" : "Your video will appear here"}</h2><p className="max-w-sm text-sm leading-6 text-muted">{format === "slideshow" ? "Choose a reference and describe your changes in Create." : "Add your instructions in Create. You can use a style example or attach your own image or video."} Your generation will appear here, ready to edit.</p><Button type="button" variant="outline" onClick={browseReferences}>Browse references</Button></div>,
@@ -275,7 +304,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
           <nav className={styles.resultTabs} aria-label="Creation views">{(["references", "results"] as const).map(value => <button key={value} type="button" aria-pressed={view === value} onClick={() => setView(value)} className={cn(styles.resultTab, view === value && styles.active)}>{value === "references" ? "References" : resultLabel}</button>)}</nav>
           <section hidden={view !== "references"} aria-label="References" className={styles.referenceArea}>
             <div className="mb-5 flex items-center justify-between gap-3"><p className="text-sm text-muted">Preview a reference, or select <RotateCcw className="inline-block size-3.5 align-middle text-foreground" role="img" aria-label="Recreate" /> to recreate it.</p><FilterMenu activeCategories={categories} categories={options} count={filtered.length} disabled={loading} onClear={() => setCategories([])} onToggle={(category, checked) => setCategories(current => checked ? [...current, category] : current.filter(value => value !== category))} /></div>
-            {loading ? <ReferenceGridSkeleton /> : referencesQuery.isError && !localPreview ? <LoadError onRetry={() => void referencesQuery.refetch()} /> : visible.length ? <div ref={observeReferenceGrid} className={styles.referenceGrid}>{visible.map(item => <ReferenceCard key={item.id} reference={item} compact hideCaption={format === "wall_text"} isSelected={reference?.id === item.id} onPreview={() => setPreviewReference(item)} onRecreate={() => selectReference(item)} />)}</div> : <EmptyReferences format={format} hasFilters={categories.length > 0} onClear={() => setCategories([])} />}
+            {loading ? <ReferenceGridSkeleton /> : referencesQuery.isError && !localPreview ? <LoadError onRetry={() => void referencesQuery.refetch()} /> : visible.length ? <div ref={observeReferenceGrid} className={styles.referenceGrid}>{visible.map(item => <ReferenceCard key={item.id} reference={item} compact hideCaption={format === "wall_text"} isSelected={reference?.id === item.id} onPreview={() => { setPreviewSlide(0); setPreviewReference(item); }} onRecreate={() => selectReference(item)} />)}</div> : <EmptyReferences format={format} hasFilters={categories.length > 0} onClear={() => setCategories([])} />}
             {!fullAccess && filtered.length > 1 ? <ProReferenceGate /> : null}
             {fullAccess && filtered.length > 0 ? <div className="mt-6 flex items-center justify-between gap-3 border-t border-border pt-4"><p className="text-xs text-muted">{visible.length} of {filtered.length} references</p>{visible.length < filtered.length ? <Button type="button" variant="outline" size="sm" onClick={() => setReferencePage({ key: filterKey, limit: visible.length + referenceBatchSize(referenceColumns) })}>Show more references</Button> : null}</div> : null}
           </section>
@@ -296,7 +325,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     {controlsTarget && resultsTarget ? format === "slideshow" ? <ImagePanel active accessState={accessState} accessMessage={localPreview ? "Preview · generation disabled" : getAIStudioAccessMessage(accessState)} creditCost={subscription.data?.imageGenerationCreditCost ?? 1} creditsRemaining={subscription.data?.creditsRemaining ?? null} recreateView={recreateView} /> : <VideoPanel active accessState={accessState} accessMessage={localPreview ? "Preview · generation disabled" : getAIStudioAccessMessage(accessState)} creditsPerSecond={subscription.data?.videoGenerationCreditsPerSecond} creditsRemaining={subscription.data?.creditsRemaining ?? null} recreateView={recreateView} /> : null}
     </div></Suspense>
     {format !== "slideshow" && selectedVideo ? <FormatVideoEditor key={`${user?.uid}:${selectedVideo.id}`} format={format} video={selectedVideo} active={step === "edit"} controlsTarget={editControlsTarget} actionsTarget={editActionsTarget} resultsTarget={editResultsTarget} enabled={finishingEnabled && !localPreview} onDirty={markDirty} onSaved={acceptOutput} onContinue={() => setStep("schedule")} /> : null}
-    {format === "slideshow" ? <FormatSlideshowEditor key={`${user?.uid}:${reference?.id ?? "empty"}`} reference={reference} controllerRef={slideshowEditor} slideIndex={activeSlideIndex} active={step === "edit"} generationBusy={generating} controlsTarget={editControlsTarget} actionsTarget={editActionsTarget} resultsTarget={editResultsTarget} localPreview={localPreview} savingEnabled={slideshowSavingEnabled} onDirty={markDirty} onSaved={acceptOutput} onContinue={() => setStep("schedule")} onRegenerate={index => { if (generating) return; chooseSlide(index); setStep("create"); setView("results"); }} /> : null}
-    <ReferencePreviewDialog open={Boolean(previewReference)} onOpenChange={open => { if (!open) setPreviewReference(null); }} reference={previewReference} />
+    {format === "slideshow" ? <FormatSlideshowEditor key={`${user?.uid}:${reference?.id ?? "empty"}`} reference={reference} controllerRef={slideshowEditor} slideIndex={activeSlideIndex} active={step === "edit"} generationBusy={generating} controlsTarget={editControlsTarget} actionsTarget={editActionsTarget} resultsTarget={editResultsTarget} localPreview={localPreview} savingEnabled={slideshowSavingEnabled} onDirty={markDirty} onSaved={acceptOutput} onContinue={() => setStep("schedule")} onRegenerate={regenerateSlide} /> : null}
+    <ReferencePreviewDialog key={`${previewReference?.id}:${previewSlide}`} initialSlide={previewSlide} open={Boolean(previewReference)} onOpenChange={open => { if (!open) setPreviewReference(null); }} reference={previewReference} />
   </>;
 }

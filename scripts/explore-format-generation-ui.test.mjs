@@ -17,9 +17,9 @@ function load(file, imports = {}, globals = {}) {
   }, ...globals });
   return exports;
 }
-function harness(format, { reference = true, access = "pro", captureRequests = false } = {}) {
+function harness(format, { reference = true, referenceUrls, access = "pro", captureRequests = false } = {}) {
   const events = [], controls = {}, results = {};
-  const requests = [], states = [];
+  const requests = [], states = [], errors = [];
   let cursor = 0;
   let promptSet = false;
   const imports = {
@@ -51,13 +51,14 @@ function harness(format, { reference = true, access = "pro", captureRequests = f
     "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
   };
   const file = format === "slideshow" ? "components/workspace/ugc-chat-workspace.tsx" : "components/video/video-generation-workspace.tsx";
-  const panelModule = load(file, imports, { URLSearchParams, crypto: { randomUUID: () => "fixture-request" }, fetch: async (url, options) => {
+  const panelModule = load(file, imports, { URLSearchParams, console: { error: (...values) => errors.push(values.map(String).join(" ")) }, crypto: { randomUUID: () => "fixture-request" }, fetch: async (url, options) => {
     assert.equal(captureRequests, true, "No network requests are allowed");
     requests.push({ url, ...options, body: JSON.parse(options.body) });
     return { ok: false, json: async () => ({ ok: false, error: "Fixture stops after capturing the request" }) };
   } });
   const Panel = format === "slideshow" ? panelModule.ImageGenerationStudioPanel : panelModule.VideoGenerationStudioPanel;
   const props = { active: true, accessState: access, creditsRemaining: 1000, creditCost: 1, recreateView: {
+    referenceImageUrls: referenceUrls,
     preview: false, referenceImageUrl: format === "slideshow" && reference ? "https://example.test/reference.png" : undefined, styleVideo: format !== "slideshow" && reference ? {url:"https://example.test/style.mp4",name:"Style video",duration:null} : undefined, emptyContent: "Empty",
     workflow: { format, controlsTarget: controls, resultsTarget: results, onGenerationStart: () => events.push("show-results") },
   } };
@@ -68,7 +69,7 @@ function harness(format, { reference = true, access = "pro", captureRequests = f
     return null;
   }
   const render = () => { cursor = 0; const tree = Panel(props); return { composer: find(tree, "AiStudioComposer"), output: find(tree, "AiStudioResults") }; };
-  return { events, controls, results, requests, render, ...render() };
+  return { events, controls, results, requests, errors, render, ...render() };
 }
 
 for (const format of ["hook", "wall_text"]) {
@@ -141,3 +142,31 @@ for (const format of ["hook", "wall_text", "slideshow"]) {
     assert.equal(h.composer.props.promptLabel, "Your instructions");
   });
 }
+
+test("slideshow sends the exact selected context independently of output quantity", async () => {
+  const urls = ["https://example.test/reference.png", "https://example.test/slide-4.png", "https://example.test/slide-6.png"];
+  const h = harness("slideshow", { captureRequests: true, referenceUrls: urls });
+  const count = h.composer.props.settings.props.children.find(node => node.props?.ariaLabel === "Number of images");
+  assert.equal(count.props.fieldLabel, "Output images");
+  count.props.onChange("2");
+  await h.render().composer.props.onSubmit({ preventDefault() {} });
+  await new Promise(setImmediate);
+  assert.equal(h.requests.length, 1, JSON.stringify(h.errors));
+  assert.deepEqual(h.requests[0].body.referenceImageUrls, urls);
+  assert.equal(h.requests[0].body.quantity, 2);
+  assert.equal(h.requests[0].body.prompt, "My requested changes");
+});
+
+test("slideshow uses GPT Image 2.5 by default, offers Nano Banana and omits Seedream", async () => {
+  const h = harness("slideshow", { captureRequests: true });
+  const settings = [h.composer.props.settings.props.children].flat(Infinity);
+  const selector = settings.find(node => node.props?.ariaLabel === "Image model");
+  assert.equal(selector.props.value, "gpt_image_2_5");
+  assert.deepEqual(Array.from(selector.props.options, option => option.value), ["gpt_image_2_5", "nano_banana_2"]);
+  await h.composer.props.onSubmit({ preventDefault() {} });
+  await new Promise(setImmediate);
+  assert.equal(h.requests.length, 1, JSON.stringify(h.errors));
+  assert.equal(h.requests[0].body.model, "gpt_image_2_5");
+  assert.equal(h.requests[0].body.referenceImageUrl, "https://example.test/reference.png");
+  assert.equal(h.requests[0].body.exploreFormat, "slideshow");
+});

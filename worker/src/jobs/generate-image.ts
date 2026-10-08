@@ -1,5 +1,5 @@
 import { generateGeminiImageBuffer, generateGemini3ProImageBuffer, GEMINI_3_PRO_IMAGE_MODEL } from "../lib/gemini-image.js";
-import { generateOpenAiImageBuffer } from "../lib/openai-image.js";
+import { generateOpenAiImageBuffer, SLIDESHOW_IMAGE_MODEL } from "../lib/openai-image.js";
 import { generateSeedreamImageBuffer, SEEDREAM_5_PRO_IMAGE_MODEL } from "../lib/seedream-image.js";
 import {
   assertProviderOperationCanContinue,
@@ -25,6 +25,7 @@ import {
 import type { BackgroundJobRow, Json } from "../types.js";
 import type { WorkerJobContext, WorkerJobOutput } from "./index.js";
 import { resolveOwnedPrivateMediaUrl } from "../lib/private-media.js";
+import { parseImageReferenceContext } from "../lib/image-reference-context.js";
 
 const MAX_CHARACTER_PROMPT_LENGTH = 32_000;
 
@@ -32,9 +33,10 @@ const MAX_CHARACTER_PROMPT_LENGTH = 32_000;
 type GenerateImageInput = {
   aspectRatio: AIStudioImageRatio;
   generationId: string;
-  model: "gpt_image" | "gemini_3_pro" | "nano_banana_2" | "seedream_5_pro";
+  model: "gpt_image" | "gpt_image_2_5" | "gemini_3_pro" | "nano_banana_2" | "seedream_5_pro";
   prompt: string;
   referenceImageUrl?: string;
+  referenceImageUrls?: string[];
 };
 
 function getInput(job: BackgroundJobRow): GenerateImageInput {
@@ -60,12 +62,22 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
 
   }
 
+  const model = getImageModel(job.input_json.model);
+  const referenceImageUrl = getOptionalHttpsUrl(job.input_json.referenceImageUrl);
+  const referenceImageUrls = job.input_json.referenceImageUrls === undefined ? undefined : parseImageReferenceContext(job.input_json.referenceImageUrls);
+  if (referenceImageUrls && (job.input_json.exploreFormat !== "slideshow" || !["gpt_image_2_5", "nano_banana_2"].includes(model))) {
+    throw new Error("This image job does not support slideshow reference context.");
+  }
+  if (referenceImageUrls && referenceImageUrl && referenceImageUrls[0] !== referenceImageUrl) {
+    throw new Error("The primary image must be the first selected reference.");
+  }
   return {
     aspectRatio: getAspectRatio(job.input_json.aspectRatio),
     generationId: generationId.trim(),
-    model: getImageModel(job.input_json.model),
+    model,
     prompt: prompt.trim(),
-    referenceImageUrl: getOptionalHttpsUrl(job.input_json.referenceImageUrl),
+    referenceImageUrl: referenceImageUrls?.[0] ?? referenceImageUrl,
+    referenceImageUrls,
   };
 }
 
@@ -97,6 +109,8 @@ export async function runGenerateImageJob(
     outputKey,
     prompt: input.prompt,
     referenceImageUrl: input.referenceImageUrl ?? null,
+    // Keep older queued jobs' fingerprints unchanged.
+    ...(input.referenceImageUrls ? { referenceImageUrls: input.referenceImageUrls } : {}),
   });
   const reservation = await context.store.reserveGenerationProviderOperation({
     jobId: job.id,
@@ -114,17 +128,21 @@ export async function runGenerateImageJob(
     try {
       const referenceImageUrl = input.referenceImageUrl
         ? await resolveOwnedPrivateMediaUrl(input.referenceImageUrl, job.user_id ?? "") : undefined;
+      const referenceImages = input.referenceImageUrls
+        ? [referenceImageUrl!, ...await Promise.all(input.referenceImageUrls.slice(1).map(url => resolveOwnedPrivateMediaUrl(url, job.user_id ?? "")))]
+        : referenceImageUrl;
       generated =
         input.model === "nano_banana_2"
           ? await generateGeminiImageBuffer(
               input.prompt,
               input.aspectRatio,
-              referenceImageUrl,
+              referenceImages,
             )
           : await generateOpenAiImageBuffer(
               input.prompt,
               input.aspectRatio,
-              referenceImageUrl,
+              referenceImages,
+              input.model === "gpt_image_2_5" ? SLIDESHOW_IMAGE_MODEL : undefined,
             );
     } catch (error) {
       return persistProviderSubmissionFailure({
@@ -297,7 +315,7 @@ function buildOutput(
 }
 
 function getImageModel(value: Json | undefined) {
-  if (value === "gemini_3_pro" || value === "nano_banana_2" || value === "gpt_image" || value === "seedream_5_pro") return value;
+  if (value === "gemini_3_pro" || value === "nano_banana_2" || value === "gpt_image" || value === "gpt_image_2_5" || value === "seedream_5_pro") return value;
   if (value === undefined || value === null) return "gpt_image";
   throw new ProviderRequestNotSubmittedError("generate_image received an unsupported image model.");
 }

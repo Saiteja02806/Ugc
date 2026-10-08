@@ -29,6 +29,10 @@ import {
   AI_STUDIO_GENERATION_QUANTITIES,
   AI_STUDIO_IMAGE_ASPECT_RATIOS,
   AI_STUDIO_IMAGE_MODELS,
+  SLIDESHOW_IMAGE_MODELS,
+  DEFAULT_AI_STUDIO_IMAGE_MODEL,
+  DEFAULT_SLIDESHOW_IMAGE_MODEL,
+  getAIStudioImageModelLabel,
   type AIStudioGenerationQuantity,
   type AIStudioImageAspectRatio,
   type AIStudioImageModel,
@@ -231,7 +235,9 @@ export function ImageGenerationStudioPanel({
   const [prompt, setPrompt] = useState("");
   const [aspectRatio, setAspectRatio] =
     useState<AIStudioImageAspectRatio>("9:16");
-  const [model, setModel] = useState<AIStudioImageModel>("nano_banana_2");
+  const [model, setModel] = useState<AIStudioImageModel>(
+    workflowFormat === "slideshow" ? DEFAULT_SLIDESHOW_IMAGE_MODEL : DEFAULT_AI_STUDIO_IMAGE_MODEL,
+  );
   const [quantity, setQuantity] =
     useState<AIStudioGenerationQuantity>(1);
   const [referenceImage, setReferenceImage] =
@@ -273,9 +279,10 @@ export function ImageGenerationStudioPanel({
   const submissionKeyRef = useRef<string | null>(null);
   const activeUserIdRef = useRef<string | null>(null);
   const persistedJobId = usePersistedJobIdFromUrl(workflowFormat ? `explore-${workflowFormat}Job` : IMAGE_JOB_URL_PARAMETER);
+  const referenceContextKey = JSON.stringify(recreateView?.referenceImageUrls ?? null);
   useEffect(() => {
     submissionKeyRef.current = null;
-  }, [recreateView?.referenceImageUrl]);
+  }, [recreateView?.referenceImageUrl, referenceContextKey]);
   const urlJobId =
     persistedJobId && persistedJobId !== ignoredPersistedJobId
       ? persistedJobId
@@ -552,7 +559,7 @@ export function ImageGenerationStudioPanel({
               output.ratio ??
               getImageJobAspectRatio(workflowFormat ? `${userId}.${workflowFormat}` : userId, completedJob.id),
             createdAt: completedJob.completedAt ?? completedJob.updatedAt,
-            id: output.generationId ?? completedJob.id,
+            id: output.mediaAssetId ?? output.generationId ?? completedJob.id,
             prompt: savedPrompt,
             title: storedPrompt ?? "Generated image",
             url: output.url,
@@ -640,6 +647,7 @@ export function ImageGenerationStudioPanel({
           prompt: trimmedPrompt,
           quantity,
           referenceImageUrl: referenceImage?.asset.url ?? recreateView?.referenceImageUrl ?? null,
+          ...(workflowFormat === "slideshow" && recreateView?.referenceImageUrls ? { referenceImageUrls: recreateView.referenceImageUrls } : {}),
         }),
       });
       const data = (await response.json()) as GenerateResponse;
@@ -940,7 +948,7 @@ export function ImageGenerationStudioPanel({
         referenceControls={workflow ? recreateView?.contextBanner : undefined}
         settingsLabel="Image generation settings"
         settingsClassName={workflow ? creation.imageSettings : undefined}
-        settingsSummary={workflow ? `${model === "nano_banana_2" ? "Nano Banana 2.1" : "Seedream 5.0 Pro"} · ${aspectRatio} · ${quantity} image${quantity === 1 ? "" : "s"}` : undefined}
+        settingsSummary={workflow ? `${getAIStudioImageModelLabel(model)} · ${aspectRatio} · ${quantity} image${quantity === 1 ? "" : "s"}` : undefined}
         compact={Boolean(recreateView)}
         contextBanner={recreateView?.contextBanner}
         accessMessage={composerMessage}
@@ -1017,8 +1025,8 @@ export function ImageGenerationStudioPanel({
               fieldLayout={workflow ? "classic" : undefined}
               size={recreateView ? "sm" : "default"}
               disabled={generationLocked && !recreateView?.preview || isGenerating}
-              options={AI_STUDIO_IMAGE_MODELS.map((value) => ({
-                label: value === "nano_banana_2" ? "Nano Banana 2.1" : "Seedream 5.0 Pro",
+              options={(workflowFormat === "slideshow" ? SLIDESHOW_IMAGE_MODELS : AI_STUDIO_IMAGE_MODELS).map((value) => ({
+                label: getAIStudioImageModelLabel(value),
                 value,
               }))}
               value={model}
@@ -1040,7 +1048,7 @@ export function ImageGenerationStudioPanel({
             />
             <AiStudioSettingSelect
               ariaLabel="Number of images"
-              fieldLabel={workflow ? "Images" : undefined}
+              fieldLabel={workflow ? "Output images" : undefined}
               fieldLayout={workflow ? "classic" : undefined}
               size={recreateView ? "sm" : "default"}
               disabled={generationLocked && !recreateView?.preview || isGenerating}

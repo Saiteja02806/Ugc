@@ -220,8 +220,8 @@ function ReferenceMedia({ reference, onPreview }: { reference: RecreateReference
   </button>;
 }
 
-export function ReferencePreviewDialog({ onOpenChange, open, reference }: { onOpenChange: (open: boolean) => void; open: boolean; reference: RecreateReference | null }) {
-  const [activeSlide, setActiveSlide] = useState(0);
+export function ReferencePreviewDialog({ initialSlide = 0, onOpenChange, open, reference }: { initialSlide?: number; onOpenChange: (open: boolean) => void; open: boolean; reference: RecreateReference | null }) {
+  const [activeSlide, setActiveSlide] = useState(() => Math.max(0, Math.min(initialSlide, (reference?.slides.length ?? 1) - 1)));
   const slideshowReference = reference?.format === "slideshow" ? reference : null;
   const activeSlideData = slideshowReference?.slides[activeSlide] ?? null;
 

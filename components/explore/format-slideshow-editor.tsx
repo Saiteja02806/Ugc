@@ -25,15 +25,18 @@ const hasText = (value: SlideTextDesign) => Boolean(value.heading.trim() || valu
 const fingerprint = (draft: Draft) => JSON.stringify({ order: draft.order, images: draft.order.map(id => draft.replacements[id]?.id ?? null), text: draft.order.map(id => draft.text[id] ?? EMPTY_SLIDE_TEXT) });
 
 function restoreDraft(key: string, legacyKey: string, reference: RecreateReference | null): Draft & { rendered: Record<string, RenderedSlide> } {
-  const fallback = { order: reference?.slides.map(slide => slide.id) ?? [], replacements: {}, text: {}, rendered: {} };
+  const fallback = { order: [] as string[], replacements: {}, text: {}, rendered: {} };
   if (typeof window === "undefined" || !reference) return fallback;
   try {
     const raw = localStorage.getItem(key), legacy = localStorage.getItem(legacyKey);
     if (raw && raw.length > 131_072 || !raw && legacy && legacy.length > 65_536) return fallback;
     const parsed = raw ? JSON.parse(raw) : { replacements: legacy ? JSON.parse(legacy) : {} };
     const ids = new Set(reference.slides.map(slide => slide.id));
-    const order = Array.isArray(parsed.order) && parsed.order.length >= 2 && new Set(parsed.order).size === parsed.order.length && parsed.order.every((id: unknown) => typeof id === "string" && ids.has(id)) ? parsed.order as string[] : fallback.order;
     const replacements = Object.fromEntries(Object.entries(parsed.replacements ?? {}).filter(([id, image]) => { const value = image as AIStudioImageResult; return ids.has(id) && value && isExploreUuid(value.id) && typeof value.url === "string" && value.url.startsWith("https://"); })) as Draft["replacements"];
+    // Reference pixels are generation inputs. Only generated replacements belong
+    // in this editor, including when migrating an older reference-based draft.
+    const previousOrder = Array.isArray(parsed.order) && new Set(parsed.order).size === parsed.order.length ? parsed.order as string[] : reference.slides.map(slide => slide.id);
+    const order = previousOrder.filter(id => ids.has(id) && Boolean(replacements[id]));
     const text: Draft["text"] = {};
     for (const [id, value] of Object.entries(parsed.text ?? {})) { if (ids.has(id)) { try { text[id] = parseSlideText(value); } catch { /* Preserve the image when a design is invalid. */ } } }
     const rendered = Object.fromEntries(Object.entries(parsed.rendered ?? {}).filter(([id, value]) => ids.has(id) && value && isExploreUuid((value as RenderedSlide).id) && typeof (value as RenderedSlide).signature === "string")) as Record<string, RenderedSlide>;
@@ -63,7 +66,7 @@ export function FormatSlideshowEditor({ reference, controllerRef, slideIndex, ac
   const selectedId = selection.externalIndex === slideIndex ? selection.id : reference?.slides[slideIndex]?.id;
   const previewIndex = Math.max(0, draft.order.indexOf(selectedId ?? ""));
   const selected = reference?.slides.find(slide => slide.id === draft.order[previewIndex]);
-  const selectedUrl = selected ? draft.replacements[selected.id]?.url ?? selected.url : "";
+  const selectedUrl = selected ? draft.replacements[selected.id]?.url ?? "" : "";
   const design = selected ? draft.text[selected.id] ?? EMPTY_SLIDE_TEXT : EMPTY_SLIDE_TEXT;
   const previewWidth = dimensions.url === selectedUrl ? dimensions.width : selected?.width ?? 1080;
   const previewHeight = dimensions.url === selectedUrl ? dimensions.height : selected?.height ?? 1350;
@@ -89,11 +92,14 @@ export function FormatSlideshowEditor({ reference, controllerRef, slideIndex, ac
     if (raw.length > 65_536) throw new Error("The saved slideshow request is invalid.");
     const value = JSON.parse(raw) as SavedRequest, ids = new Set(reference?.slides.map(slide => slide.id));
     if (value.version !== 1 || value.owner !== user?.uid || value.referenceId !== reference?.id || !isExploreUuid(value.requestKey) || !Array.isArray(value.slides) || value.slides.length < 2 || value.slides.length > 10 || new Set(value.slides.map(slide => slide.referenceSlideId)).size !== value.slides.length || value.slides.some(slide => !ids.has(slide.referenceSlideId) || slide.mediaAssetId !== null && !isExploreUuid(slide.mediaAssetId)) || value.editFingerprint !== undefined && typeof value.editFingerprint !== "string") throw new Error("Could not verify the saved slideshow request.");
+    // An old draft may contain a save of original references. Start a fresh
+    // generated-image save instead of resuming that obsolete input sequence.
+    if (value.slides.some(slide => slide.mediaAssetId === null || !draft.replacements[slide.referenceSlideId])) return null;
     return value;
   }
   function matches(saved: SavedRequest) {
     if (saved.editFingerprint) return saved.editFingerprint === fingerprint(draft);
-    return draft.order.every(id => !hasText(draft.text[id] ?? EMPTY_SLIDE_TEXT)) && JSON.stringify(saved.slides) === JSON.stringify(draft.order.map(id => ({ referenceSlideId: id, mediaAssetId: draft.replacements[id]?.id ?? (reference?.id.startsWith("uploaded:") ? id : null) })));
+    return draft.order.every(id => !hasText(draft.text[id] ?? EMPTY_SLIDE_TEXT)) && JSON.stringify(saved.slides) === JSON.stringify(draft.order.map(id => ({ referenceSlideId: id, mediaAssetId: draft.replacements[id]?.id ?? null })));
   }
   async function verifyOutput(saved: SavedRequest): Promise<Output> {
     const token = await getCurrentUserIdToken(user?.uid);
@@ -135,9 +141,10 @@ export function FormatSlideshowEditor({ reference, controllerRef, slideIndex, ac
           const slides: SavedRequest["slides"] = [];
           for (const id of draft.order) {
             if (!alive.current) return;
-            const original = reference.slides.find(slide => slide.id === id)!;
-            const source = draft.replacements[id]?.url ?? original.url, text = draft.text[id] ?? EMPTY_SLIDE_TEXT;
-            let mediaAssetId = draft.replacements[id]?.id ?? (reference.id.startsWith("uploaded:") ? id : null);
+            const generated = draft.replacements[id];
+            if (!generated) throw new Error("Generate your own images before saving the slideshow.");
+            const source = generated.url, text = draft.text[id] ?? EMPTY_SLIDE_TEXT;
+            let mediaAssetId = generated.id;
             if (hasText(text)) {
               const signature = JSON.stringify({ source, text });
               if (rendered.current[id]?.signature === signature) mediaAssetId = rendered.current[id].id;
@@ -170,7 +177,7 @@ export function FormatSlideshowEditor({ reference, controllerRef, slideIndex, ac
     if (!selected || working.current) return;
     working.current = true; setBusy(true); setError(null);
     try {
-      const file = await renderSlideText(selectedUrl, design, { referenceId: reference!.id, slideId: selected.id, mediaAssetId: draft.replacements[selected.id]?.id ?? (reference!.id.startsWith("uploaded:") ? selected.id : null), ownerId: user?.uid ?? null, preview: localPreview }); if (!alive.current) return;
+      const file = await renderSlideText(selectedUrl, design, { referenceId: reference!.id, slideId: selected.id, mediaAssetId: draft.replacements[selected.id]?.id ?? null, ownerId: user?.uid ?? null, preview: localPreview }); if (!alive.current) return;
       const url = URL.createObjectURL(file), link = document.createElement("a");
       link.href = url; link.download = `slide-${previewIndex + 1}.png`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (e) { if (alive.current) setError(e instanceof Error ? e.message : "Could not download the slide."); }
@@ -185,7 +192,7 @@ export function FormatSlideshowEditor({ reference, controllerRef, slideIndex, ac
   const actions = <div className="space-y-2">
     {error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}
     {output ? <Button type="button" size="lg" className={creation.primaryAction} onClick={onContinue}>Continue to Schedule</Button> : <Button type="button" size="lg" className={creation.primaryAction} disabled={!reference || localPreview || !savingEnabled || busy || generationBusy || draft.order.length < 2 || draft.order.length > 10} onClick={() => void save()}>{busy ? "Working…" : pending ? "Resume save" : "Save slideshow"}</Button>}
-    <p role="status" className="text-xs leading-5 text-muted">{localPreview ? "Preview · saving disabled" : output ? "Your slideshow is saved in Library." : !savingEnabled ? "Slideshow saving is unavailable right now." : "Save your final sequence before scheduling. No AI credits are used to save edits."}</p>
+    <p role="status" className="text-xs leading-5 text-muted">{draft.order.length < 2 ? "Add at least two generated images to save a slideshow." : localPreview ? "Preview · saving disabled" : output ? "Your slideshow is saved in Library." : !savingEnabled ? "Slideshow saving is unavailable right now." : "Save your final sequence before scheduling. No AI credits are used to save edits."}</p>
   </div>;
   const field = (label: string, children: ReactNode) => {
     const id = `${fieldId}-${label.replace(/[^a-z]/gi, "-")}`;
@@ -194,7 +201,7 @@ export function FormatSlideshowEditor({ reference, controllerRef, slideIndex, ac
   return <>{actionsTarget ? createPortal(actions, actionsTarget) : null}{createPortal(<div className="space-y-4">
     <div className="flex items-center justify-between gap-2"><h2 className="text-sm font-semibold">Your slides</h2><span className="text-xs text-muted">{draft.order.length} slides</span></div>
     {draft.order.length > 10 ? <p role="alert" className="text-xs leading-5 text-destructive">Choose up to 10 slides to save. Remove any slides you do not need.</p> : null}
-    <div className={styles.filmstrip}>{draft.order.map((id, index) => { const slide = reference!.slides.find(value => value.id === id)!; return <button key={id} type="button" aria-label={`Preview slide ${index + 1}`} aria-pressed={previewIndex === index} onClick={() => choose(id)} className={styles.thumbnail}><img src={draft.replacements[id]?.url ?? slide.url} alt="" width={slide.width} height={slide.height} /><span>{index + 1}{draft.replacements[id] || hasText(draft.text[id] ?? EMPTY_SLIDE_TEXT) ? " · Edited" : ""}</span></button>; })}</div>
+    {draft.order.length ? <div className={styles.filmstrip}>{draft.order.map((id, index) => { const slide = reference!.slides.find(value => value.id === id)!; return <button key={id} type="button" aria-label={`Preview slide ${index + 1}`} aria-pressed={previewIndex === index} onClick={() => choose(id)} className={styles.thumbnail}><img src={draft.replacements[id]?.url} alt="" width={slide.width} height={slide.height} /><span>{index + 1}{hasText(draft.text[id] ?? EMPTY_SLIDE_TEXT) ? " · Edited" : ""}</span></button>; })}</div> : null}
     {selected ? <>
       <div className="flex items-center gap-2"><Button type="button" variant="outline" size="icon" aria-label="Move slide earlier" disabled={blocked || previewIndex === 0} onClick={() => move(-1)}><ArrowLeft className="size-4" /></Button><Button type="button" variant="outline" size="icon" aria-label="Move slide later" disabled={blocked || previewIndex === draft.order.length - 1} onClick={() => move(1)}><ArrowRight className="size-4" /></Button><Button type="button" variant="ghost" size="sm" disabled={blocked || draft.order.length <= 2} onClick={() => change({ ...draft, order: draft.order.filter(id => id !== selected.id) })}><Trash2 className="size-4" />Remove slide</Button></div>
       <div className="space-y-3" aria-label="Slide text tools">
@@ -212,10 +219,10 @@ export function FormatSlideshowEditor({ reference, controllerRef, slideIndex, ac
         <p className="text-xs leading-5 text-muted">Text is added above the image. Text already inside the original image stays in place.</p>
         <Button type="button" variant="ghost" size="sm" disabled={blocked || !hasText(design)} onClick={() => updateText(EMPTY_SLIDE_TEXT)}>Clear added text</Button>
       </div>
-      <details className="border-t border-border pt-3"><summary className="cursor-pointer text-xs font-medium">Image &amp; sequence options</summary><div className="mt-3 space-y-2"><Button type="button" variant="outline" disabled={blocked} onClick={() => onRegenerate(reference!.slides.findIndex(slide => slide.id === selected.id))} className="w-full">Recreate this slide</Button>{draft.replacements[selected.id] ? <Button type="button" variant="ghost" size="sm" disabled={blocked} onClick={() => { const replacements = { ...draft.replacements }; delete replacements[selected.id]; change({ ...draft, replacements }); }}>Restore original image</Button> : null}{reference && draft.order.length !== reference.slides.length ? <Button type="button" variant="ghost" size="sm" disabled={blocked} onClick={() => change({ ...draft, order: reference.slides.map(slide => slide.id) })}>Restore removed slides</Button> : null}</div></details>
-    </> : <p className="text-xs text-muted">Choose a slideshow reference or upload your slide images in Create.</p>}
+      <details className="border-t border-border pt-3"><summary className="cursor-pointer text-xs font-medium">Image &amp; sequence options</summary><div className="mt-3 space-y-2"><Button type="button" variant="outline" disabled={blocked} onClick={() => onRegenerate(reference!.slides.findIndex(slide => slide.id === selected.id))} className="w-full">Generate another version</Button>{reference && reference.slides.some(slide => draft.replacements[slide.id] && !draft.order.includes(slide.id)) ? <Button type="button" variant="ghost" size="sm" disabled={blocked} onClick={() => change({ ...draft, order: [...draft.order, ...reference.slides.filter(slide => draft.replacements[slide.id] && !draft.order.includes(slide.id)).map(slide => slide.id)] })}>Restore removed slides</Button> : null}</div></details>
+    </> : <div className="space-y-3"><p className="text-sm leading-6 text-muted">Generate images in Create, then choose Edit image in Your Slides. Your reference is used to guide generation.</p><Button type="button" variant="outline" size="sm" onClick={() => onRegenerate(slideIndex)}>Go to Create</Button></div>}
     {!actionsTarget ? actions : null}
   </div>, controlsTarget)}{createPortal(<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
-    {selected ? <><div className={styles.preview}><img key={selectedUrl} src={selectedUrl} alt={`Slide ${previewIndex + 1} of ${draft.order.length}`} width={selected.width} height={selected.height} onLoad={event => { const image = event.currentTarget; setDimensions({ url: selectedUrl, width: image.naturalWidth, height: image.naturalHeight }); }} />{overlay ? <img src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(overlay)}`} alt="Added slide text preview" className={styles.overlay} /> : null}</div><div className="flex flex-wrap items-center justify-center gap-3"><Button type="button" variant="outline" size="sm" disabled={previewIndex === 0} onClick={() => choose(draft.order[previewIndex - 1])}>Previous</Button><span className="text-sm text-muted">{previewIndex + 1} / {draft.order.length}</span><Button type="button" variant="outline" size="sm" disabled={previewIndex >= draft.order.length - 1} onClick={() => choose(draft.order[previewIndex + 1])}>Next</Button><Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => void download()}><Download className="size-4" />Download slide</Button></div></> : <p className="text-sm text-muted">Select a slideshow in References to begin.</p>}
+    {selected ? <><div className={styles.preview}><img key={selectedUrl} src={selectedUrl} alt={`Slide ${previewIndex + 1} of ${draft.order.length}`} width={selected.width} height={selected.height} onLoad={event => { const image = event.currentTarget; setDimensions({ url: selectedUrl, width: image.naturalWidth, height: image.naturalHeight }); }} />{overlay ? <img src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(overlay)}`} alt="Added slide text preview" className={styles.overlay} /> : null}</div><div className="flex flex-wrap items-center justify-center gap-3"><Button type="button" variant="outline" size="sm" disabled={previewIndex === 0} onClick={() => choose(draft.order[previewIndex - 1])}>Previous</Button><span className="text-sm text-muted">{previewIndex + 1} / {draft.order.length}</span><Button type="button" variant="outline" size="sm" disabled={previewIndex >= draft.order.length - 1} onClick={() => choose(draft.order[previewIndex + 1])}>Next</Button><Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => void download()}><Download className="size-4" />Download slide</Button></div></> : <div className="space-y-2 text-center"><h2 className="text-lg font-semibold">Your generated slides will appear here</h2><p className="text-sm text-muted">Create your own images, then add text and arrange them here.</p></div>}
   </div>, resultsTarget)}</>;
 }

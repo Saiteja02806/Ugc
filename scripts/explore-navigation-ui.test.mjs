@@ -13,13 +13,14 @@ const styles = new Proxy({}, { get: (_target, name) => String(name) });
 
 // Execute the real presentation components with isolated React/Next contexts.
 // This tests link destinations and pending UI, not browser navigation/network.
-function load(path, imports = {}) {
+function load(path, imports = {}, environment = "production") {
   const compiled = ts.transpileModule(read(path), {
     compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
   }).outputText;
   const exported = {};
   vm.runInNewContext(compiled, {
     exports: exported,
+    process: { env: { NODE_ENV: environment } },
     URLSearchParams,
     require: name => {
       if (name === "react/jsx-runtime") return { jsx: element, jsxs: element, Fragment: "fragment" };
@@ -136,6 +137,35 @@ test("Explore route has a loading boundary using the existing accessible workspa
   const source = read("components/layout/workspace-content-loading.tsx");
   assert.match(source, /aria-busy="true"/);
   assert.match(source, /role="status"/);
+});
+
+test("production Explore renders synchronously without consuming request query parameters", () => {
+  const imports = { react: { Suspense: "suspense" },
+    "@/components/explore/explore-workspace": { ExploreWorkspace: "explore" },
+    "@/components/explore/explore-preview-entry": { ExplorePreviewEntry: "preview-entry" } };
+  const { default: Page } = load("app/explore/page.tsx", imports);
+  const searchParams = { then() { throw new Error("Explore must not wait for request query parameters"); } };
+  const tree = Page({ searchParams });
+  assert.equal(tree.type, "explore");
+  assert.equal(tree.props.localPreview, undefined);
+  assert.equal(tree instanceof Promise, false);
+  const { default: DevPage } = load("app/explore/page.tsx", imports, "development");
+  const preview = DevPage({ searchParams });
+  assert.equal(preview.type, "suspense");
+  assert.equal(preview.props.fallback.type, "explore");
+  assert.equal(preview.props.children.type, "preview-entry");
+});
+
+test("Explore preview URL handling stays client-side and cannot enable production preview", () => {
+  let params = new URLSearchParams("preview=1");
+  const imports = { "next/navigation": { useSearchParams: () => params },
+    "@/components/explore/explore-workspace": { ExploreWorkspace: "explore" } };
+  const development = load("components/explore/explore-preview-entry.tsx", imports, "development");
+  const production = load("components/explore/explore-preview-entry.tsx", imports);
+  assert.equal(development.ExplorePreviewEntry().props.localPreview, true);
+  assert.equal(production.ExplorePreviewEntry().props.localPreview, false);
+  params = new URLSearchParams();
+  assert.equal(development.ExplorePreviewEntry().props.localPreview, false);
 });
 
 test("decorative covers pass pointer input to the link rather than acting as media controls", () => {

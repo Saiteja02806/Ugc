@@ -24,9 +24,9 @@
 .referenceArea, .results, .savedPreview { padding: 20px; min-width: 0; }
 .referenceGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr)); gap: 20px 16px; }
 .referenceGrid > article { max-width: 240px; }
-.emptyResult { display: flex; min-height: 320px; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px 8px; text-align: center; }
+.emptyResult { display: flex; min-height: 320px; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px 8px; text-align: center; }
 .emptyIcon { display: grid; place-items: center; width: 56px; height: 56px; margin-bottom: 4px; border: 1px dashed var(--border); border-radius: 14px; color: var(--muted-foreground); }
-.results { flex: 1; min-height: 0; }
+.results { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .savedPreview { display: flex; flex-direction: column; align-items: center; }
 .workspace [hidden] { display: none !important; }
 .resultTab:focus-visible { outline: 2px solid var(--primary); outline-offset: -4px; }
@@ -35,9 +35,9 @@
 @media (min-width: 1024px) { .workspace { height: 100dvh; min-height: 0; overflow: hidden; } .main, .referenceArea, .results { overflow-y: auto; } }
 @media (max-width: 1023px) { .body { grid-template-columns: minmax(0, 1fr); padding: 0 16px 16px; gap: 16px; } .controls { min-height: 420px; } .controlContent { overflow: visible; } .main { min-height: 420px; } .header { padding: 16px; gap: 10px; } .heading { min-width: 0; } .mediaBadge { display: none; } }
 
-/* Hook and Wall of text use the existing talking-head / phone workflow frames. */
+/* All three formats use the existing talking-head / phone workflow frames. */
 .workspace.classicWorkspace { height: auto; min-height: calc(100dvh - 4rem); overflow: visible; }
-.classicMain .results { flex: none; overflow: visible; }
+.classicMain .results { overflow: visible; }
 .classicMain .resultTabs { border-bottom-color: color-mix(in srgb, var(--border) 45%, transparent); }
 .classicWorkspace .editControls > div, .classicSchedule > div { padding: 0; }
 @media (min-width: 1024px) {
@@ -47,6 +47,7 @@
   .classicWorkspace aside > div { min-height: 0; overflow-y: auto; }
   .classicWorkspace aside > div > [role="tabpanel"] { min-height: 0; }
   .classicWorkspace [data-workflow-design="classic"] textarea { flex: none; height: clamp(72px, calc(100dvh - 660px), 240px); }
+  .classicWorkspace[data-format="slideshow"] [data-workflow-design="classic"] textarea { height: clamp(72px, calc(100dvh - 800px), 180px); }
   .classicMain { min-height: 0; overflow-y: auto; }
   .classicMain .referenceArea { max-height: max(399px, calc(100dvh - 145px)); overflow-y: auto; }
 }

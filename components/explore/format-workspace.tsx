@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { useQuery } from "@tanstack/react-query";
 import { Tabs } from "@base-ui/react/tabs";
-import { ArrowLeft, Check, Film, Images, RotateCcw } from "lucide-react";
+import { ArrowLeft, Film, Images, RotateCcw } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -16,6 +16,7 @@ import styles from "@/components/explore/format-workspace.module.css";
 import creation from "@/components/explore/workflow-creation.module.css";
 import { FormatVideoEditor } from "@/components/explore/format-video-editor";
 import { FormatSlideshowEditor, type SlideshowEditorController } from "@/components/explore/format-slideshow-editor";
+import { SlideshowReferencePicker } from "@/components/explore/slideshow-reference-picker";
 import { FormatSchedulePanel } from "@/components/explore/format-schedule-panel";
 import { WorkflowVideoSourceSection } from "@/components/explore/workflow-video-source-section";
 import { WorkflowMediaPlayer } from "@/components/explore/hook-workflow-media-controls";
@@ -31,6 +32,7 @@ import { fetchAIStudioMediaAsset } from "@/lib/ai-studio/media-client";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { isExploreUuid } from "@/worker/src/lib/explore-finishing-contract";
 import { filterReferences, interleaveReferenceCategories, referenceCategories, type RecreateFormat, type RecreateReference } from "@/lib/explore/recreate-types";
+import { alignReferenceLimit, referenceBatchSize } from "@/lib/explore/reference-pagination";
 import { cn } from "@/lib/utils";
 
 const ImagePanel = dynamic(() => import("@/components/workspace/ugc-chat-workspace").then(module => module.ImageGenerationStudioPanel));
@@ -50,7 +52,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
   const { user, loading: authLoading } = useAuth();
   const searchParams = useSearchParams();
   const localPreview = previewReferences !== undefined;
-  const classic = format !== "slideshow";
+  const classic = true;
   const subscription = useBillingSubscription();
   const accountAccess = useAIStudioAccess();
   const accessState = localPreview ? "locked" : accountAccess;
@@ -69,8 +71,20 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
   const [scheduleActionsTarget, setScheduleActionsTarget] = useState<HTMLDivElement | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [referencePage, setReferencePage] = useState({ key: "", limit: 12 });
-  const [selectedReference, setReference] = useState<RecreateReference | null>(null);
+  const [referenceColumns, setReferenceColumns] = useState(1);
+  const uploadedReferenceKey = `ugc-explore:uploaded-slideshow:${user?.uid}`;
+  const [selectedReference, setReference] = useState<RecreateReference | null>(() => {
+    if (format !== "slideshow" || localPreview || typeof window === "undefined" || !user) return null;
+    try {
+      const raw = localStorage.getItem(uploadedReferenceKey);
+      if (!raw || raw.length > 32_768) return null;
+      const value = JSON.parse(raw) as RecreateReference;
+      if (value.id !== searchParams.get("refId") || !value.id.startsWith("uploaded:") || !isExploreUuid(value.id.slice(9)) || value.format !== "slideshow" || !Array.isArray(value.slides) || value.slides.length < 2 || value.slides.length > 10 || new Set(value.slides.map(slide => slide.id)).size !== value.slides.length || value.slides.some(slide => !isExploreUuid(slide.id) || typeof slide.url !== "string" || !slide.url.startsWith("https://") || !Number.isFinite(slide.width) || !Number.isFinite(slide.height) || slide.width <= 0 || slide.height <= 0)) return null;
+      return { ...value, title: "Your uploaded slideshow" };
+    } catch { return null; }
+  });
   const [generating, setGenerating] = useState(false);
+  const [slideshowUploadBusy, setSlideshowUploadBusy] = useState(false);
   const reportBusy = useCallback((busy: boolean) => setGenerating(busy), []);
   const [previewReference, setPreviewReference] = useState<RecreateReference | null>(null);
   const mainArea = useRef<HTMLDivElement | null>(null);
@@ -106,7 +120,25 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
   }, [references, format, categories]);
   const fullAccess = localPreview || subscription.data?.isActive === true;
   const filterKey = `${format}:${categories.join(":")}`;
-  const visible = filtered.slice(0, fullAccess ? referencePage.key === filterKey ? referencePage.limit : 12 : 1);
+  const observeReferenceGrid = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return;
+    function measure() {
+      if (!node || node.clientWidth === 0) return;
+      const tracks = window.getComputedStyle(node).gridTemplateColumns.trim();
+      if (!tracks || tracks === "none") return;
+      const columns = tracks.split(/\s+/).length;
+      setReferenceColumns(columns);
+      setReferencePage(current => {
+        const limit = alignReferenceLimit(current.key === filterKey ? current.limit : 12, columns);
+        return current.key === filterKey && current.limit === limit ? current : { key: filterKey, limit };
+      });
+    }
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [filterKey]);
+  const visible = filtered.slice(0, fullAccess ? alignReferenceLimit(referencePage.key === filterKey ? referencePage.limit : 12, referenceColumns) : 1);
   const loading = !localPreview && (authLoading || referencesQuery.isFetching && !referencesQuery.data);
   const activeSlideIndex = reference ? Math.min(slideIndex, Math.max(0, reference.slides.length - 1)) : 0;
   const sourceImage = format === "slideshow" ? reference?.slides[activeSlideIndex]?.url : reference?.posterUrl;
@@ -157,10 +189,13 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     removeUpload: () => { if (generating) return; clearVideoEdit(); source.removeUpload(); },
   };
 
-  function selectReference(next: RecreateReference) {
-    if (generating) return;
+  function selectReference(next: RecreateReference, fromUpload = false) {
+    if (generating || slideshowUploadBusy && !fromUpload) return;
     if (reference?.id !== next.id) { setSavedOutput(null); }
     setReference(next); setSlideIndex(0);
+    if (!localPreview && format === "slideshow" && next.id.startsWith("uploaded:")) {
+      try { localStorage.setItem(uploadedReferenceKey, JSON.stringify(next)); } catch { /* This session remains usable. */ }
+    }
     revealOnMobile("controls");
     const params = new URLSearchParams(window.location.search);
     for (const key of ["refType", "refId", "sourceUrl", "exploreRecreate", "slide"]) params.delete(key);
@@ -185,16 +220,9 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     for (const key of ["refType", "refId", "sourceUrl", "exploreRecreate"]) params.delete(key);
     window.history.replaceState(null, "", `${window.location.pathname}?${params}`);
   }
-  const contextBanner = format !== "slideshow" ? undefined : <section className="space-y-3" aria-label="Selected reference">
-    <div className="flex items-center justify-between gap-2"><h2 className="text-sm font-medium">{format === "slideshow" ? "Choose a slideshow" : "Choose a reference"}</h2><button type="button" disabled={generating} className="rounded px-1 text-xs text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-focus disabled:opacity-50" onClick={browseReferences}>{reference ? "Change" : "Browse"}</button></div>
-    {reference ? <button type="button" onClick={() => setPreviewReference(reference)} className="flex w-full items-center gap-3 rounded-xl border border-border p-3 text-left focus-visible:outline-2 focus-visible:outline-focus">
-      <img src={sourceImage} alt="" width={36} height={48} className="h-12 w-9 rounded object-contain" />
-      <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{reference.title}</span><span className="text-xs text-muted">{format === "slideshow" ? `${reference.slides.length} slides · Style reference` : "Style reference"}</span></span><Check className="size-4 shrink-0 text-primary" aria-hidden="true" />
-    </button> : <p className="text-xs leading-5 text-muted">Choose a reference on the right to get started.</p>}
-    {format === "slideshow" && reference ? <div className="flex gap-2 overflow-x-auto p-1">{reference.slides.map((slide, index) => <button key={slide.id} type="button" disabled={generating} aria-label={`Recreate slide ${index + 1}`} aria-pressed={index === activeSlideIndex} onClick={() => chooseSlide(index)} className={cn("w-10 shrink-0 overflow-hidden rounded bg-card-muted disabled:opacity-50", index === activeSlideIndex && "ring-2 ring-primary")}><img src={slide.url} alt="" width={40} height={50} className="aspect-[4/5] object-contain" /><span className="block text-[10px] text-muted">{index + 1}</span></button>)}</div> : null}
-  </section>;
+  const contextBanner = format !== "slideshow" ? undefined : <SlideshowReferencePicker reference={reference} slideIndex={activeSlideIndex} disabled={generating} localPreview={localPreview} onBrowse={browseReferences} onSlide={chooseSlide} onBusy={setSlideshowUploadBusy} onEdit={() => { setStep("edit"); revealOnMobile("controls"); }} onUpload={next => { selectReference(next, true); setStep("edit"); setView("results"); }} />;
   const recreateView = {
-    contextBanner, referenceImageUrl: format === "slideshow" ? sourceImage : undefined,
+    contextBanner, referenceImageUrl: format === "slideshow" && !slideshowUploadBusy ? sourceImage : undefined,
     styleVideo: format !== "slideshow" && reference?.videoUrl ? { url: reference.videoUrl, name: reference.title, duration: null } : undefined,
     referenceTitle: reference?.title, onClearReference: clearStyleReference, preview: localPreview,
     emptyContent: <div className={styles.emptyResult}><span className={styles.emptyIcon}>{format === "slideshow" ? <Images aria-hidden="true" /> : <Film aria-hidden="true" />}</span><h2 className="text-lg font-semibold">{format === "slideshow" ? "Your images will appear here" : "Your video will appear here"}</h2><p className="max-w-sm text-sm leading-6 text-muted">{format === "slideshow" ? "Choose a reference and describe your changes in Create." : "Add your instructions in Create. You can use a style example or attach your own image or video."} Your generation will appear here, ready to edit.</p><Button type="button" variant="outline" onClick={browseReferences}>Browse references</Button></div>,
@@ -207,9 +235,9 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     },
   };
 
-  return <><Tabs.Root className={cn(styles.workspace, classic && creation.shell, classic && styles.classicWorkspace)} value={step} onValueChange={value => { if (value === "create" || value === "edit" || value === "schedule") { setStep(value); revealOnMobile("controls"); } }}>
+  return <><Tabs.Root data-format={format} className={cn(styles.workspace, classic && creation.shell, classic && styles.classicWorkspace)} value={step} onValueChange={value => { if (value === "create" || value === "edit" || value === "schedule") { setStep(value); revealOnMobile("controls"); } }}>
     <header className={classic ? cn(creation.header, "flex shrink-0 items-center gap-3 px-4 py-3 sm:px-6 lg:px-8") : styles.header}>
-      {classic ? <><Link href={localPreview ? "/explore?preview=1" : "/explore"} aria-label="Back to Explore" className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"><ArrowLeft className="size-4" aria-hidden="true" /></Link><span className="hidden text-sm text-muted sm:block">Explore <span className="ml-2" aria-hidden="true">/</span></span><div className="min-w-0"><h1 className="text-base font-semibold tracking-tight text-foreground-strong sm:text-lg">{TITLES[format]}</h1></div></> : <><Link href={localPreview ? "/explore?preview=1" : "/explore"} className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" />Explore</Link><span aria-hidden="true" className="text-sm text-muted">/</span><div className={styles.heading}><h1 className="text-lg font-semibold tracking-tight">{TITLES[format]}</h1></div></>}
+      {classic ? <><Link prefetch={true} href={localPreview ? "/explore?preview=1" : "/explore"} aria-label="Back to Explore" className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"><ArrowLeft className="size-4" aria-hidden="true" /></Link><span className="hidden text-sm text-muted sm:block">Explore <span className="ml-2" aria-hidden="true">/</span></span><div className="min-w-0"><h1 className="text-base font-semibold tracking-tight text-foreground-strong sm:text-lg">{TITLES[format]}</h1></div></> : <><Link prefetch={true} href={localPreview ? "/explore?preview=1" : "/explore"} className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" />Explore</Link><span aria-hidden="true" className="text-sm text-muted">/</span><div className={styles.heading}><h1 className="text-lg font-semibold tracking-tight">{TITLES[format]}</h1></div></>}
       {!classic ? <span className={styles.mediaBadge}><Images className="size-3.5" aria-hidden="true" />Images only</span> : null}
     </header>
     <div className={classic ? creation.layout : styles.body}>
@@ -247,13 +275,13 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
           <nav className={styles.resultTabs} aria-label="Creation views">{(["references", "results"] as const).map(value => <button key={value} type="button" aria-pressed={view === value} onClick={() => setView(value)} className={cn(styles.resultTab, view === value && styles.active)}>{value === "references" ? "References" : resultLabel}</button>)}</nav>
           <section hidden={view !== "references"} aria-label="References" className={styles.referenceArea}>
             <div className="mb-5 flex items-center justify-between gap-3"><p className="text-sm text-muted">Preview a reference, or select <RotateCcw className="inline-block size-3.5 align-middle text-foreground" role="img" aria-label="Recreate" /> to recreate it.</p><FilterMenu activeCategories={categories} categories={options} count={filtered.length} disabled={loading} onClear={() => setCategories([])} onToggle={(category, checked) => setCategories(current => checked ? [...current, category] : current.filter(value => value !== category))} /></div>
-            {loading ? <ReferenceGridSkeleton /> : referencesQuery.isError && !localPreview ? <LoadError onRetry={() => void referencesQuery.refetch()} /> : visible.length ? <div className={styles.referenceGrid}>{visible.map(item => <ReferenceCard key={item.id} reference={item} compact isSelected={reference?.id === item.id} onPreview={() => setPreviewReference(item)} onRecreate={() => selectReference(item)} />)}</div> : <EmptyReferences format={format} hasFilters={categories.length > 0} onClear={() => setCategories([])} />}
+            {loading ? <ReferenceGridSkeleton /> : referencesQuery.isError && !localPreview ? <LoadError onRetry={() => void referencesQuery.refetch()} /> : visible.length ? <div ref={observeReferenceGrid} className={styles.referenceGrid}>{visible.map(item => <ReferenceCard key={item.id} reference={item} compact hideCaption={format === "wall_text"} isSelected={reference?.id === item.id} onPreview={() => setPreviewReference(item)} onRecreate={() => selectReference(item)} />)}</div> : <EmptyReferences format={format} hasFilters={categories.length > 0} onClear={() => setCategories([])} />}
             {!fullAccess && filtered.length > 1 ? <ProReferenceGate /> : null}
-            {fullAccess && filtered.length > 0 ? <div className="mt-6 flex items-center justify-between gap-3 border-t border-border pt-4"><p className="text-xs text-muted">{visible.length} of {filtered.length} references</p>{visible.length < filtered.length ? <Button type="button" variant="outline" size="sm" onClick={() => setReferencePage({ key: filterKey, limit: visible.length + 12 })}>Show more references</Button> : null}</div> : null}
+            {fullAccess && filtered.length > 0 ? <div className="mt-6 flex items-center justify-between gap-3 border-t border-border pt-4"><p className="text-xs text-muted">{visible.length} of {filtered.length} references</p>{visible.length < filtered.length ? <Button type="button" variant="outline" size="sm" onClick={() => setReferencePage({ key: filterKey, limit: visible.length + referenceBatchSize(referenceColumns) })}>Show more references</Button> : null}</div> : null}
           </section>
           <div ref={setResultsTarget} hidden={view !== "results" || format !== "slideshow" && source.mode !== "generate"} className={styles.results} />
           {format !== "slideshow" && source.mode !== "generate" ? <section hidden={view !== "results"} aria-label="Selected video" className={styles.results}>
-            <div className="mx-auto flex max-w-xl flex-col items-center gap-4 py-6">
+            <div className="mx-auto flex max-w-xl flex-1 flex-col items-center justify-center gap-4 py-6">
               {importedPreview ? <><WorkflowMediaPlayer asset={importedPreview} kind="video" label="Your selected video" className="max-h-[60dvh] max-w-full rounded-xl" /><h2 className="max-w-full break-words text-center text-base font-semibold">{importedPreview.name}</h2><p className="text-sm text-muted">Use Edit this video to open the editor.</p></> : <div className={styles.emptyResult}><span className={styles.emptyIcon}><Film aria-hidden="true" /></span><h2 className="text-lg font-semibold">Your video will appear here</h2><p className="max-w-sm text-center text-sm leading-6 text-muted">{source.mode === "upload" ? "Upload your video in Create, then trim it or add text in Edit video." : "Choose an existing video from Creative Assets to start editing."}</p></div>}
               {source.busy ? <p role="status" className="text-sm text-muted">{localPreview ? "Reading your video…" : "Uploading your video…"}</p> : null}
             </div>

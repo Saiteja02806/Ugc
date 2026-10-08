@@ -58,6 +58,8 @@ export function AiStudioComposer({
   actionsTarget,
   referenceControls,
   workflowDesign,
+  settingsClassName,
+  settingsLabel = "Video generation settings",
 }: {
   active: boolean;
   compact?: boolean;
@@ -89,6 +91,8 @@ export function AiStudioComposer({
   actionsTarget?: HTMLElement | null;
   referenceControls?: ReactNode;
   workflowDesign?: "classic";
+  settingsClassName?: string;
+  settingsLabel?: string;
 }) {
   const promptId = useId();
   const formId = useId();
@@ -128,7 +132,7 @@ export function AiStudioComposer({
           aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId} placeholder={placeholder} className={creation.prompt} />
         <p id={promptHelperId} role={promptTooLong ? "alert" : undefined} className={promptTooLong ? "text-xs leading-5 text-destructive" : "sr-only"}>{promptTooLong ? `Shorten your instructions by ${excessCharacters} characters.` : promptHelper}</p>
       </div>
-      <div role="group" aria-label="Video generation settings" className={creation.settingsGrid}>{settings}</div>
+      <div role="group" aria-label={settingsLabel} className={cn(creation.settingsGrid, settingsClassName)}>{settings}</div>
       {!actionsTarget ? actions : null}
     </form>;
     return <>{portalTarget ? createPortal(content, portalTarget) : content}{actionsTarget ? createPortal(actions, actionsTarget) : null}</>;

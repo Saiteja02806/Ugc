@@ -179,7 +179,7 @@ export function FilterMenu({ activeCategories, categories, count, disabled, onCl
   </Popover>;
 }
 
-export function ReferenceCard({ isSelected, onPreview, onRecreate, reference, compact = false }: { isSelected: boolean; onPreview: () => void; onRecreate: () => void; reference: RecreateReference; compact?: boolean }) {
+export function ReferenceCard({ isSelected, onPreview, onRecreate, reference, compact = false, hideCaption = false }: { isSelected: boolean; onPreview: () => void; onRecreate: () => void; reference: RecreateReference; compact?: boolean; hideCaption?: boolean }) {
   return <article className="group min-w-0">
     <div className={cn(studio.mediaFrame, "relative overflow-hidden bg-card-muted ring-offset-background hover:shadow-card", isSelected && "ring-2 ring-primary ring-offset-2")}>
       <ReferenceMedia reference={reference} onPreview={onPreview} />
@@ -187,7 +187,7 @@ export function ReferenceCard({ isSelected, onPreview, onRecreate, reference, co
         {compact && isSelected ? <Check className="size-5" strokeWidth={2} aria-hidden="true" /> : <RotateCcw className="size-5" strokeWidth={1.6} aria-hidden="true" />}
       </button>
     </div>
-    {compact ? <div className="mt-2 flex min-w-0 items-center justify-between gap-2"><p className="truncate text-xs font-medium" title={reference.title}>{reference.title}</p>{isSelected ? <span className="shrink-0 text-[10px] font-medium text-primary">Selected</span> : null}</div> : null}
+    {compact && !hideCaption ? <div className="mt-2 flex min-w-0 items-center justify-between gap-2"><p className="truncate text-xs font-medium" title={reference.title}>{reference.title}</p>{isSelected ? <span className="shrink-0 text-[10px] font-medium text-primary">Selected</span> : null}</div> : null}
   </article>;
 }
 

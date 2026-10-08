@@ -1,0 +1,19 @@
+.filmstrip { display: flex; gap: 8px; overflow-x: auto; padding: 2px; }
+.thumbnail { width: 62px; flex: 0 0 auto; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--card-muted); }
+.thumbnail[aria-pressed="true"] { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+.thumbnail img { width: 100%; height: 72px; object-fit: contain; }
+.thumbnail span { display: block; padding: 4px 2px; font-size: 10px; color: var(--muted); }
+.thumbnail:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.field { display: flex; min-width: 0; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 500; }
+.field > textarea, .field > select, .field > input { width: 100%; min-width: 0; border: 1px solid color-mix(in srgb, var(--border) 55%, transparent); border-radius: 8px; background: var(--card-muted); color: var(--foreground); font-size: 13px; font-weight: 400; }
+.field > textarea { padding: 10px 12px; line-height: 21px; resize: vertical; }
+.field > select, .field > input { height: 36px; padding: 6px 8px; }
+.field > input[type="range"] { accent-color: var(--primary); }
+.field > textarea:focus-visible, .field > select:focus-visible, .field > input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.field > :disabled { opacity: .6; }
+:global(.dark) .field > select { color-scheme: dark; }
+.preview { position: relative; max-width: 100%; width: fit-content; }
+.preview > img:first-child { display: block; max-height: 65dvh; max-width: 100%; width: auto; height: auto; border-radius: 12px; }
+.preview > .overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+@media (max-width: 1023px) { .field > select, .field > input { height: 44px; } }

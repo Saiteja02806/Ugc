@@ -22,6 +22,7 @@ import { ReferenceMediaUpload } from "@/components/generation/reference-media-up
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import type { RecreateGenerationView } from "@/components/explore/recreate-generation-view";
+import creation from "@/components/explore/workflow-creation.module.css";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
 import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import {
@@ -875,7 +876,7 @@ export function ImageGenerationStudioPanel({
         portalTarget={workflow?.resultsTarget}
         ariaLabel="Generated images"
         emptyContent={recreateView?.emptyContent}
-        emptyContentClassName={recreateView ? "items-start pt-8" : undefined}
+        emptyContentClassName={workflow ? "justify-center" : recreateView ? "items-start pt-8" : undefined}
         emptyTitle="What will you create?"
         emptyDescription="Describe an image below, or add a reference to guide the look. Your completed images are saved in History."
         gridClassName="grid-cols-1 gap-4 sm:grid-cols-1 lg:grid-cols-1 xl:grid-cols-1 2xl:grid-cols-1"
@@ -935,6 +936,10 @@ export function ImageGenerationStudioPanel({
       <AiStudioComposer
         portalTarget={workflow?.controlsTarget}
         actionsTarget={workflow?.actionsTarget}
+        workflowDesign={workflow ? "classic" : undefined}
+        referenceControls={workflow ? recreateView?.contextBanner : undefined}
+        settingsLabel="Image generation settings"
+        settingsClassName={workflow ? creation.imageSettings : undefined}
         settingsSummary={workflow ? `${model === "nano_banana_2" ? "Nano Banana 2.1" : "Seedream 5.0 Pro"} · ${aspectRatio} · ${quantity} image${quantity === 1 ? "" : "s"}` : undefined}
         compact={Boolean(recreateView)}
         contextBanner={recreateView?.contextBanner}
@@ -1008,8 +1013,10 @@ export function ImageGenerationStudioPanel({
           <>
             <AiStudioSettingSelect
               ariaLabel="Image model"
+              fieldLabel={workflow ? "Model" : undefined}
+              fieldLayout={workflow ? "classic" : undefined}
               size={recreateView ? "sm" : "default"}
-              disabled={generationLocked || isGenerating}
+              disabled={generationLocked && !recreateView?.preview || isGenerating}
               options={AI_STUDIO_IMAGE_MODELS.map((value) => ({
                 label: value === "nano_banana_2" ? "Nano Banana 2.1" : "Seedream 5.0 Pro",
                 value,
@@ -1021,18 +1028,22 @@ export function ImageGenerationStudioPanel({
               }}
             />
             <AiStudioRatioPicker
+              fieldLabel={workflow ? "Ratio" : undefined}
+              fieldLayout={workflow ? "classic" : undefined}
               size={recreateView ? "sm" : "default"}
               value={aspectRatio}
               onChange={(value) => {
                 submissionKeyRef.current = null;
                 setAspectRatio(value);
               }}
-              disabled={generationLocked || isGenerating}
+              disabled={generationLocked && !recreateView?.preview || isGenerating}
             />
             <AiStudioSettingSelect
               ariaLabel="Number of images"
+              fieldLabel={workflow ? "Images" : undefined}
+              fieldLayout={workflow ? "classic" : undefined}
               size={recreateView ? "sm" : "default"}
-              disabled={generationLocked || isGenerating}
+              disabled={generationLocked && !recreateView?.preview || isGenerating}
               icon={<ImageIcon className="size-4" aria-hidden="true" />}
               options={AI_STUDIO_GENERATION_QUANTITIES.map((count) => ({
                 label: `${count} image${count === 1 ? "" : "s"}`,

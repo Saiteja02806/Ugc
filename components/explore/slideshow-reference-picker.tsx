@@ -67,9 +67,10 @@ export function SlideshowReferencePicker({ reference, slideIndex, selectedSlideI
     {error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}
     {reference ? <div className="space-y-2">
       <p className="truncate text-xs font-medium">{reference.title}</p>
+      <p className="text-sm font-medium">Reference images</p>
       <div role="group" aria-label="Slides to send as reference" className={styles.slideshowContextMode}>
-        <Button type="button" size="sm" variant="ghost" aria-pressed={selectedSlideIds.length === reference.slides.length} disabled={disabled || busy} onClick={() => onSelectionChange(reference.slides.map(slide => slide.id))}>All slides</Button>
-        <Button type="button" size="sm" variant="ghost" aria-pressed={selectedSlideIds.length !== reference.slides.length} disabled={disabled || busy} onClick={() => { if (selectedSlideIds.length === reference.slides.length) onSelectionChange([reference.slides[slideIndex].id]); }}>Selected slides</Button>
+        <Button type="button" size="sm" variant="ghost" aria-pressed={selectedSlideIds.length === reference.slides.length} disabled={disabled || busy} onClick={() => onSelectionChange(reference.slides.map(slide => slide.id))}>Use all</Button>
+        <Button type="button" size="sm" variant="ghost" aria-pressed={selectedSlideIds.length !== reference.slides.length} disabled={disabled || busy} onClick={() => { if (selectedSlideIds.length === reference.slides.length) onSelectionChange([reference.slides[slideIndex].id]); }}>Choose images</Button>
       </div>
       <div className={styles.slideshowContextStrip} role="group" aria-label="Select reference slides">
         {reference.slides.map((slide, index) => {
@@ -81,8 +82,8 @@ export function SlideshowReferencePicker({ reference, slideIndex, selectedSlideI
           </button>;
         })}
       </div>
-      <p aria-live="polite" className="text-xs leading-5 text-muted">{selectedSlideIds.length ? `${selectedSlideIds.length} of ${reference.slides.length} slides will guide each generated image.` : "Select at least one slide to generate an image."}</p>
-      {selectedSlideIds.length ? <p className="text-xs leading-5 text-muted">Generate versions for slide {slideIndex + 1}. Choose one of the results to add it in Edit slides.</p> : null}
+      <p aria-live="polite" className="text-[13px] leading-5 text-muted">{selectedSlideIds.length ? `${selectedSlideIds.length} reference image${selectedSlideIds.length === 1 ? "" : "s"} will guide the result.` : "Select at least one reference image."}</p>
+      {selectedSlideIds.length ? <div className="border-t border-border pt-3"><p className="text-sm font-semibold">Creating slide {slideIndex + 1} of {reference.slides.length}</p><p className="mt-1 text-[13px] leading-5 text-muted">Choose how many versions to generate below. Pick one result to add it to Edit slides.</p></div> : null}
     </div> : <p className="text-xs leading-5 text-muted">Select a slideshow on the right, or upload 2–10 images as a reference.</p>}
     {localPreview && busy ? <p role="status" className="text-xs text-muted">Reading your slide images on this device…</p> : null}
   </section>;

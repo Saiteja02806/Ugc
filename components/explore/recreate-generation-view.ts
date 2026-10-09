@@ -20,6 +20,7 @@ export type RecreateGenerationView = {
     onGenerationStart: () => void;
     onBusyChange?: (busy: boolean) => void;
     onSelectVideo?: (result: AIStudioVideoResult) => void;
+    onGeneratedVideo?: (result: AIStudioVideoResult) => void;
     onSelectImage?: (result: AIStudioImageResult) => void;
   };
 };

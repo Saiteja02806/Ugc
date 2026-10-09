@@ -434,3 +434,23 @@ test("legacy opening drafts cannot overwrite a selected or explicitly removed wo
     else assert.equal(h.input("Selected demo video").props.src, asset(3).url);
   }
 });
+
+test("local preview restores its demo fixture without an owned fetch or changing edits", () => {
+  const value = { ...draft(), audioId: null };
+  const storage = new Map([["ugc-explore:demo:preview:v2:owner:hook", JSON.stringify(value)]]);
+  const h = harness({ storage, enabled: false });
+  h.render({ localPreview: true, previewAssets: [asset(2)] });
+  assert.equal(h.input("Selected demo video").props.src, asset(2).url);
+  assert.equal(h.input("Demo trim end").props.value, 6.5);
+  assert.equal(h.queryInputs.some(query => query.enabled), false);
+  assert.equal(h.button("Save final video").props.disabled, true);
+});
+
+test("local preview gives an unavailable fixture a recovery message instead of indefinite restoration", () => {
+  const storage = new Map([["ugc-explore:demo:preview:v2:owner:hook", JSON.stringify(draft())]]);
+  const h = harness({ storage, enabled: false });
+  const tree = h.render({ localPreview: true, previewAssets: [] });
+  assert.ok(text(tree).includes("This preview clip is unavailable."), text(tree));
+  assert.ok(!text(tree).includes("Restoring your demo…"));
+  assert.equal(h.button("Save final video").props.disabled, true);
+});

@@ -45,8 +45,9 @@ function restoreDraft(key: string, legacyKey: string, reference: RecreateReferen
 }
 
 export type SlideshowEditorController = { useImage: (image: AIStudioImageResult, index: number) => void };
-export function FormatSlideshowEditor({ reference, controllerRef, slideIndex, active, generationBusy, controlsTarget, resultsTarget, actionsTarget, localPreview, savingEnabled, onDirty, onSaved, onContinue, onRegenerate }: {
+export function FormatSlideshowEditor({ reference, previewImages, controllerRef, slideIndex, active, generationBusy, controlsTarget, resultsTarget, actionsTarget, localPreview, savingEnabled, onDirty, onSaved, onContinue, onRegenerate }: {
   reference: RecreateReference | null; controllerRef: Ref<SlideshowEditorController>; slideIndex: number; active: boolean; generationBusy: boolean; controlsTarget: HTMLElement | null; resultsTarget: HTMLElement | null; localPreview: boolean; savingEnabled: boolean;
+  previewImages?: AIStudioImageResult[];
   onDirty: () => void; onSaved: (output: Output) => void; onContinue: () => void; onRegenerate: (index: number) => void; actionsTarget?: HTMLElement | null;
 }) {
   const { user } = useAuth();
@@ -55,7 +56,13 @@ export function FormatSlideshowEditor({ reference, controllerRef, slideIndex, ac
   const draftKey = `ugc-explore:slideshow-draft:v2:${user?.uid}:${reference?.id}`;
   // Keep the previous save key so interrupted requests from the old editor resume safely.
   const saveKey = `${legacyKey}:save`;
-  const [draft, setDraft] = useState(() => restoreDraft(draftKey, legacyKey, reference));
+  const [draft, setDraft] = useState(() => {
+    if (localPreview && reference && previewImages?.length) {
+      const slides = reference.slides.slice(0, Math.min(10, previewImages.length));
+      return { order: slides.map(slide => slide.id), replacements: Object.fromEntries(slides.map((slide, index) => [slide.id, previewImages[index]])), text: {}, rendered: {} } as Draft & { rendered: Record<string, RenderedSlide> };
+    }
+    return restoreDraft(draftKey, legacyKey, reference);
+  });
   const rendered = useRef(draft.rendered);
   const [selection, setSelection] = useState({ id: reference?.slides[slideIndex]?.id, externalIndex: slideIndex });
   const [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null);

@@ -19,13 +19,13 @@ const load = (path, imports, globals = {}) => {
 const tick = () => new Promise(setImmediate);
 const source = { id: randomUUID(), status: "ready", collection: "video", durationSeconds: 5 };
 const output = { id: randomUUID(), status: "ready", collection: "video", url: "https://storage.googleapis.com/test/finished.mp4" };
-function harness({ saved = null, lost = false, completed = false, subtitles = false, style = "clean", backgroundMusic = false, musicUnavailable = false, kind = "hook", placement = "bottom", pending = false, scope, demoSource = null } = {}) {
+function harness({ saved = null, lost = false, completed = false, subtitles = false, style = "clean", backgroundMusic = false, musicUnavailable = false, kind = "hook", placement = "bottom", pending = false, scope, demoSource = null, outputFailures = 0, reuseUnchangedSource = false } = {}) {
   let cursor = 0, pendingFailure = lost;
-  const slots = [], effects = [], calls = [], musicReads = [], uploads = [], store = new Map();
+  const slots = [], effects = [], calls = [], musicReads = [], uploads = [], store = new Map(), timers = new Map(), listeners = new Map();
   const musicAssetId = randomUUID();
   const storageKey = finishClient.finishStorageKey("owner", kind) + (scope ? `:${encodeURIComponent(scope)}` : "");
   if (saved) store.set(storageKey, JSON.stringify(saved));
-  const props = { ownerId: "owner", enabled: true, kind, source, demo: null, demoSource, demoAudio: null, playback: "once", scope, options: { subtitles, style, backgroundMusic, placement }, onRestoreOptions(value) { props.options = value; } };
+  const props = { ownerId: "owner", enabled: true, kind, source, demo: null, demoSource, demoAudio: null, playback: "once", scope, reuseUnchangedSource, options: { subtitles, style, backgroundMusic, placement }, onRestoreOptions(value) { props.options = value; } };
   const jobId = randomUUID(); let cancelled = false;
   const react = {
     useRef(value) { const i = cursor++; return slots[i] ??= { current: value }; },
@@ -37,16 +37,19 @@ function harness({ saved = null, lost = false, completed = false, subtitles = fa
     react, "@/lib/explore/workflow-finishing-client": finishClient,
     "@/lib/explore/workflow-default-music-client": defaultMusicClient,
     "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { assert.equal(owner, "owner"); return "owner-token"; } },
-    "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: async id => { assert.equal(id, output.id); return output; } },
+    "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: async (id, _token, options) => { assert.equal(id, output.id); assert.ok(options.signal instanceof AbortSignal); if (outputFailures-- > 0) throw new Error("temporary output lookup failure"); return output; } },
     "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia: async (file, kind, _limit, owner, options) => {
       assert.equal(owner, "owner"); assert.equal(kind, "audio"); assert.equal(options.purpose, "explore-demo");
       assert.equal(file.name, "default-background.mp3"); uploads.push(file); return { asset: { id: musicAssetId } };
     } },
   }, {
     crypto: { randomUUID },
+    AbortSignal,
+    window: { addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: name => listeners.delete(name) },
+    document: { visibilityState: "visible", addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: name => listeners.delete(name) },
     localStorage: { getItem: key => store.get(key) ?? null, setItem: (key, value) => store.set(key, value) },
     navigator: { locks: { request: async (_key, _opts, run) => run({}) } },
-    setInterval: () => 1, clearInterval() {},
+    setInterval: fn => { const id = randomUUID(); timers.set(id, fn); return id; }, clearInterval: id => timers.delete(id),
     fetch: async (url, init) => {
       if (url === "/api/explore/default-music") {
         musicReads.push({ url, ...init });
@@ -56,11 +59,66 @@ function harness({ saved = null, lost = false, completed = false, subtitles = fa
       if (url === `/api/jobs/${jobId}/cancel`) { cancelled = true; return Response.json({ok:true}); }
       if (init.method === "POST" && pendingFailure) { pendingFailure = false; throw new Error("lost response"); }
       const entry = init.method === "POST" ? JSON.parse(init.body) : JSON.parse(store.get(storageKey));
+      if (init.method === "POST" && !pending) completed = true;
       return Response.json({ ok: true, receiptVersion: 1, requestKey: entry.requestKey, jobId, outcome: pending ? cancelled ? "cancelled" : "pending" : completed || init.method === "POST" ? "completed" : "unconfirmed", mediaAssetId: !pending && (completed || init.method === "POST") ? output.id : null, message: "Saved output." });
     },
   });
-  return { props, calls, musicReads, uploads, musicAssetId, jobId, store, storageKey, render() { cursor = 0; const view = testModule.useWorkflowFinishing(props); while (effects.length) effects.shift()(); return view; }, unmount() { for (const slot of slots) slot?.cleanup?.(); } };
+  return { props, calls, musicReads, uploads, musicAssetId, jobId, store, storageKey, timers, listeners,
+    poll() { for (const run of timers.values()) run(); }, event(name) { listeners.get(name)?.(); },
+    render() { cursor = 0; const view = testModule.useWorkflowFinishing(props); while (effects.length) effects.shift()(); return view; }, unmount() { for (const slot of slots) slot?.cleanup?.(); } };
 }
+
+test("a completed output lookup recovers automatically without another render", async () => {
+  for (const kind of ["hook", "phone"]) {
+    const h = harness({ kind, outputFailures: 1 }); h.render(); await tick();
+    h.render().action.onAction(); await tick();
+    const interrupted = h.render();
+    assert.equal(interrupted.status.outcome, "completed"); assert.equal(interrupted.output, null);
+    assert.match(interrupted.action.message, /Loading your finished video/);
+    assert.equal(interrupted.action.disabled, true); assert.equal(h.timers.size, 1);
+    const originalRequest = h.calls[0].body;
+    h.poll(); await tick();
+    assert.equal(h.render().output.id, output.id); assert.equal(h.timers.size, 0);
+    assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
+    assert.equal(JSON.parse(h.store.get(h.storageKey)).requestKey, JSON.parse(originalRequest).requestKey);
+    h.unmount(); assert.equal(h.listeners.size, 0);
+  }
+});
+
+test("returning to the browser retries a pending or missing output lookup", async () => {
+  for (const event of ["focus", "online", "visibilitychange"]) {
+    const h = harness({ outputFailures: 1 }); h.render(); await tick(); h.render().action.onAction(); await tick();
+    h.render(); h.event(event); await tick();
+    assert.equal(h.render().output.id, output.id);
+    assert.equal(h.calls.filter(call => call.method === "POST").length, 1); h.unmount();
+  }
+});
+
+test("an unchanged owned opening avoids rendering and still honors an existing pending receipt", async () => {
+  const h = harness({ reuseUnchangedSource: true }); h.render(); await tick(); h.render().action.onAction(); await tick();
+  assert.equal(h.render().output.id, source.id); assert.equal(h.calls.length, 0); assert.equal(h.store.size, 0); h.unmount();
+  const saved = { version: 1, ownerId: "owner", kind: "hook", requestKey: randomUUID(), draft: { version: 1, kind: "hook", sourceAssetId: source.id, demoAssetId: null, demoAudioAssetId: null, demoAudioPlayback: "once", backgroundAssetId: null, backgroundPlayback: "once", subtitles: null } };
+  const recovered = harness({ saved, pending: true, reuseUnchangedSource: true }); recovered.render(); await tick();
+  assert.equal(recovered.render().output, null); assert.equal(recovered.render().action.disabled, true);
+  assert.equal(recovered.calls.length, 1); assert.equal(recovered.calls[0].method, "GET"); recovered.unmount();
+});
+
+test("a status timeout preserves the original request and never submits a replacement", async () => {
+  const controller = new AbortController();
+  const client = load("lib/explore/workflow-finishing-client.ts", {
+    "../../worker/src/lib/explore-finishing-contract.ts": await import("../worker/src/lib/explore-finishing-contract.ts"),
+  }, { AbortSignal: { timeout(ms) { assert.equal(ms, 30_000); return controller.signal; } } });
+  const saved = { requestKey: randomUUID() };
+  let call;
+  const result = client.requestFinish({ token: async () => "owner-token", assertActive() {}, fetch(url, options) {
+    call = { url, options };
+    return new Promise((_, reject) => options.signal.addEventListener("abort", () => reject(new Error("timeout")), { once: true }));
+  } }, saved);
+  await tick(); controller.abort();
+  await assert.rejects(result, /request is preserved/);
+  assert.equal(call.options.method, "GET"); assert.equal(call.options.body, undefined);
+  assert.equal(call.url, `/api/explore/finishes?requestKey=${saved.requestKey}`);
+});
 
 test("all styles persist exact interrupted requests and changing style requires a new applied export", async () => {
   for (const style of SUBTITLE_STYLES) {

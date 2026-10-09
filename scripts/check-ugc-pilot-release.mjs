@@ -38,7 +38,8 @@ for (const current of ["0.1.0", version]) {
   });
   await check(`checksum ${current}`, `${website}/downloads/${file}.sha256`, 200, {}, async (_, bytes) => {
     const local = await fs.readFile(new URL(`../public/downloads/${file}.sha256`, import.meta.url));
-    assert(bytes.equals(local), "Production checksum differs from reviewed checksum");
+    // Git may check text out with CRLF on Windows; archive bytes remain exact.
+    assert.equal(bytes.toString().replaceAll("\r\n", "\n"), local.toString().replaceAll("\r\n", "\n"), "Production checksum differs from reviewed checksum");
   });
 }
 await check("setup guide", `${website}/downloads/ugc-pilot-${version}-setup.md`, 200, {}, async (_, bytes) => {

@@ -5,6 +5,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import { formatTextLayout, formatTextOverlays, parseExploreFormatEdit } from "../worker/src/lib/explore-format-edit.ts";
 import * as editDraft from "../lib/explore/format-edit-draft.ts";
+import * as unchangedHook from "../lib/explore/unchanged-hook-source.ts";
 
 const jsx = { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "fragment" };
 function load(path, imports) {
@@ -13,6 +14,7 @@ function load(path, imports) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, { exports, localStorage: { getItem: () => null, setItem() {} }, require(name) {
     if (name === "@/lib/explore/format-edit-draft") return editDraft;
+    if (name === "@/lib/explore/unchanged-hook-source") return unchangedHook;
     if (name === "@/worker/src/lib/explore-format-edit") return { formatTextLayout, formatTextOverlays, parseExploreFormatEdit };
     return imports[name] ?? (name === "react/jsx-runtime" ? jsx : new Proxy({}, { get: (_, key) => String(key) }));
   } });

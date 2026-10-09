@@ -44,6 +44,21 @@ export function workflowAccountBlock(account: WorkflowConnectedAccount) {
   return getConnectionPublishingBlockMessage(account);
 }
 
+/** Suggest only an unambiguous, publishable destination for a selected platform. */
+export function findWorkflowSingleAccountSelection(
+  accounts: WorkflowConnectedAccount[],
+  platforms: string[],
+  selectedIds: Record<string, string>,
+  handledPlatforms: ReadonlySet<string>,
+): { platform: string; id: string } | null {
+  for (const platform of platforms) {
+    if (selectedIds[platform] || handledPlatforms.has(platform)) continue;
+    const eligible = accounts.filter(account => account.platform === platform && !workflowAccountBlock(account));
+    if (eligible.length === 1) return { platform, id: eligible[0].id };
+  }
+  return null;
+}
+
 export async function loadWorkflowConnectedAccounts(dependencies: {
   getOwnerToken: () => Promise<string | null>;
   fetch: typeof fetch;

@@ -1,15 +1,16 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import { Check } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import creation from "@/components/explore/workflow-creation.module.css";
-import { loadWorkflowConnectedAccounts, workflowAccountBlock, workflowAccountLabel } from "@/lib/explore/workflow-connected-accounts";
+import { findWorkflowSingleAccountSelection, loadWorkflowConnectedAccounts, workflowAccountBlock, workflowAccountLabel } from "@/lib/explore/workflow-connected-accounts";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 
-/** Preview and inactive tabs never mount the authenticated lookup. No account is auto-selected. */
+/** Preview and inactive tabs never mount the authenticated lookup. */
 export function WorkflowConnectedAccounts({ enabled, active, ownerId, platforms, selectedIds, onSelect }: {
   enabled: boolean;
   active: boolean;
@@ -30,6 +31,7 @@ function ConnectedAccounts({ ownerId, platforms, selectedIds, onSelect }: {
   selectedIds: Record<string, string>;
   onSelect: (platform: string, id: string) => void;
 }) {
+  const handledPlatforms = useRef(new Set<string>());
   const accounts = useQuery({
     queryKey: ["explore-connected-accounts", ownerId],
     queryFn: ({ signal }) => loadWorkflowConnectedAccounts({
@@ -38,6 +40,21 @@ function ConnectedAccounts({ ownerId, platforms, selectedIds, onSelect }: {
     }, signal),
     retry: false, staleTime: 0,
   });
+  useEffect(() => {
+    for (const platform of handledPlatforms.current) {
+      if (!platforms.includes(platform)) handledPlatforms.current.delete(platform);
+    }
+    for (const platform of platforms) {
+      if (selectedIds[platform]) handledPlatforms.current.add(platform);
+    }
+    if (accounts.isPending || accounts.isError || accounts.isFetching || !accounts.data) return;
+    const selection = findWorkflowSingleAccountSelection(accounts.data, platforms, selectedIds, handledPlatforms.current);
+    if (!selection) return;
+    handledPlatforms.current.add(selection.platform);
+    // One update per render also supports callers that replace their whole draft.
+    // A cleared or manually selected account stays under the user's control.
+    onSelect(selection.platform, selection.id);
+  }, [accounts.data, accounts.isPending, accounts.isError, accounts.isFetching, platforms, selectedIds, onSelect]);
   const visible = (accounts.data ?? []).filter((account) => platforms.includes(account.platform));
   return <div className={creation.scheduleField}>
     <span className="text-sm font-medium">Connected accounts</span>
@@ -54,7 +71,7 @@ function ConnectedAccounts({ ownerId, platforms, selectedIds, onSelect }: {
           return <Button key={account.id} type="button" variant="ghost" disabled={Boolean(blocked) || accounts.isFetching}
             aria-pressed={!blocked && selectedIds[account.platform] === account.id} aria-label={`Post to ${workflowAccountLabel(account)} on ${platformLabel}`}
             title={blocked ?? workflowAccountLabel(account)} className={creation.connectedAccount}
-            onClick={() => onSelect(account.platform, account.id)}>
+            onClick={() => { handledPlatforms.current.add(account.platform); onSelect(account.platform, account.id); }}>
             <span className={creation.connectedAccountLabel}>{workflowAccountLabel(account)}
               <span className="block text-xs font-normal text-muted">{platformLabel}</span>
               {blocked && <span className="block text-xs font-normal text-muted">Reconnect to schedule</span>}

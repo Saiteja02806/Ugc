@@ -22,8 +22,19 @@ const element = (type, props = {}) => ({ type, props });
 const nodes = (value) => value == null ? [] : Array.isArray(value) ? value.flatMap(nodes) : typeof value === "object" ? [value, ...nodes(value.props?.children)] : [];
 const text = (value) => value == null ? "" : Array.isArray(value) ? value.map(text).join(" ") : typeof value === "object" ? text(value.props?.children) : String(value);
 function ui(state = {}) {
-  const queries = [];
+  const queries = [], slots = [], effects = [];
+  let cursor = 0;
+  const react = {
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; },
+    useEffect(callback, deps) {
+      const i = cursor++, previous = slots[i];
+      if (!previous || deps.some((value, n) => !Object.is(value, previous.deps[n]))) {
+        slots[i] = { deps }; effects.push(callback);
+      }
+    },
+  };
   const component = load("components/explore/workflow-connected-accounts.tsx", {
+    react,
     "@tanstack/react-query": { useQuery(options) { queries.push(options); return { data: [account()], isPending: false, isError: false, isFetching: false, refetch() {}, ...state }; } },
     "lucide-react": { Check: "check" }, "next/link": { default: "link" },
     "@/components/ui/button": { Button: "button" },
@@ -32,7 +43,10 @@ function ui(state = {}) {
     "@/lib/firebase/auth": { getCurrentUserIdToken: async (owner) => `fake-token-${owner}` },
     "react/jsx-runtime": { jsx: element, jsxs: element },
   }, "\nexports.testConnectedAccounts = ConnectedAccounts;");
-  return { ...component, queries };
+  return { ...component, queries, state,
+    testConnectedAccounts(props) { cursor = 0; return component.testConnectedAccounts(props); },
+    flushEffects() { while (effects.length) effects.shift()(); },
+  };
 }
 
 test("connected account parser preserves only display/selection properties", () => {
@@ -96,10 +110,11 @@ test("previews, inactive tabs and signed-out workflows do not mount account quer
   assert.equal(actual.queries.length, 0); // The query mounts only in the connected child.
 });
 
-test("selection is explicit for one or multiple accounts and never crosses platforms", () => {
-  for (const data of [[account()], [account(), account({ id: "connection-b", platformAccountUsername: "example_store" }), account({ id: "youtube-c", platform: "youtube", scopes: ["https://www.googleapis.com/auth/youtube.upload"] })]]) {
+test("multiple eligible accounts retain manual choice and never cross platforms", () => {
+    const data = [account(), account({ id: "connection-b", platformAccountUsername: "example_store" }), account({ id: "youtube-c", platform: "youtube", scopes: ["https://www.googleapis.com/auth/youtube.upload"] })];
     const selected = [], actual = ui({ data });
     const tree = actual.testConnectedAccounts({ ownerId: "owner-a", platforms: ["instagram"], selectedIds: {}, onSelect: (platform, id) => selected.push([platform, id]) });
+    actual.flushEffects();
     const buttons = nodes(tree).filter((node) => node.type === "button");
     assert.equal(buttons.length, data.filter((item) => item.platform === "instagram").length);
     assert.ok(buttons.every((button) => button.props["aria-pressed"] === false));
@@ -109,7 +124,66 @@ test("selection is explicit for one or multiple accounts and never crosses platf
     assert.deepEqual(plain(actual.queries[0].queryKey), ["explore-connected-accounts", "owner-a"]);
     assert.equal(actual.queries[0].retry, false);
     assert.equal(actual.queries[0].staleTime, 0);
-  }
+});
+
+test("one eligible account per selected platform is selected without an account click", () => {
+  const data = [account(), account({ id: "tiktok-b", platform: "tiktok", scopes: ["video.publish"] }),
+    account({ id: "youtube-c", platform: "youtube", scopes: ["https://www.googleapis.com/auth/youtube.upload"], supportsBackgroundRefresh: true })];
+  const actual = ui({ data }), selected = [];
+  const props = { ownerId: "owner-a", platforms: ["instagram", "tiktok", "youtube"], selectedIds: {},
+    onSelect(platform, id) { selected.push([platform, id]); props.selectedIds = { ...props.selectedIds, [platform]: id }; } };
+  for (let i = 0; i < 4; i++) { actual.testConnectedAccounts(props); actual.flushEffects(); }
+  assert.deepEqual(selected, [["instagram", "connection-a"], ["tiktok", "tiktok-b"], ["youtube", "youtube-c"]]);
+  const buttons = nodes(actual.testConnectedAccounts(props)).filter(node => node.type === "button");
+  assert.ok(buttons.every(button => button.props["aria-pressed"]));
+});
+
+test("automatic selection waits for asynchronous lookup and does not use stale cached data", () => {
+  const actual = ui({ isPending: true }), selected = [];
+  const props = { ownerId: "owner-a", platforms: ["instagram"], selectedIds: {}, onSelect: (platform, id) => selected.push([platform, id]) };
+  actual.testConnectedAccounts(props); actual.flushEffects(); assert.deepEqual(selected, []);
+  Object.assign(actual.state, { isPending: false, isError: true });
+  actual.testConnectedAccounts(props); actual.flushEffects(); assert.deepEqual(selected, []);
+  Object.assign(actual.state, { isError: false, isFetching: true });
+  actual.testConnectedAccounts(props); actual.flushEffects(); assert.deepEqual(selected, []);
+  actual.state.isFetching = false;
+  actual.testConnectedAccounts(props); actual.flushEffects();
+  assert.deepEqual(selected, [["instagram", "connection-a"]]);
+  actual.testConnectedAccounts({ ...props, onSelect: (platform, id) => selected.push([platform, id]) }); actual.flushEffects();
+  assert.equal(selected.length, 1);
+});
+
+test("blocked accounts are excluded from automatic selection using the publishing policy", () => {
+  const actual = ui({ data: [account({ status: "expired" }), account({ id: "instagram-good" }),
+    account({ id: "tiktok-blocked", platform: "tiktok", scopes: [] }),
+    account({ id: "youtube-blocked", platform: "youtube", scopes: ["https://www.googleapis.com/auth/youtube.upload"], supportsBackgroundRefresh: false })] });
+  const selected = [], props = { ownerId: "owner-a", platforms: ["instagram", "tiktok", "youtube"], selectedIds: {},
+    onSelect(platform, id) { selected.push([platform, id]); props.selectedIds = { ...props.selectedIds, [platform]: id }; } };
+  actual.testConnectedAccounts(props); actual.flushEffects(); actual.testConnectedAccounts(props); actual.flushEffects();
+  assert.deepEqual(selected, [["instagram", "instagram-good"]]);
+});
+
+test("manual choices and explicit clearing survive refetches; choosing a platform again starts fresh", () => {
+  const actual = ui(), selected = [], props = { ownerId: "owner-a", platforms: ["instagram"], selectedIds: { instagram: "manual-account" },
+    onSelect(platform, id) { selected.push([platform, id]); props.selectedIds = { ...props.selectedIds, [platform]: id }; } };
+  actual.testConnectedAccounts(props); actual.flushEffects(); assert.deepEqual(selected, []);
+  props.selectedIds = {};
+  actual.state.data = [account()]; actual.testConnectedAccounts(props); actual.flushEffects(); assert.deepEqual(selected, []);
+  props.platforms = [];
+  actual.testConnectedAccounts(props); actual.flushEffects();
+  props.platforms = ["instagram"];
+  actual.testConnectedAccounts(props); actual.flushEffects();
+  assert.deepEqual(selected, [["instagram", "connection-a"]]);
+});
+
+test("platforms selected after accounts have loaded receive their own unique destination", () => {
+  const actual = ui({ data: [account(), account({ id: "tiktok-b", platform: "tiktok", scopes: ["video.publish"] })] });
+  const selected = [], props = { ownerId: "owner-a", platforms: ["instagram"], selectedIds: {},
+    onSelect(platform, id) { selected.push([platform, id]); props.selectedIds = { ...props.selectedIds, [platform]: id }; } };
+  actual.testConnectedAccounts(props); actual.flushEffects();
+  props.platforms = ["instagram", "tiktok"];
+  actual.testConnectedAccounts(props); actual.flushEffects();
+  assert.deepEqual(selected, [["instagram", "connection-a"], ["tiktok", "tiktok-b"]]);
 });
 
 test("expired or insufficient-permission accounts are visible but not selectable", () => {

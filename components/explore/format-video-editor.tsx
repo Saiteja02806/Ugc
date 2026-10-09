@@ -18,6 +18,7 @@ import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { ExploreFinishDraft } from "@/worker/src/lib/explore-finishing-contract";
 import { formatTextLayout, formatTextOverlays, parseExploreFormatEdit, type ExploreFormatEdit } from "@/worker/src/lib/explore-format-edit";
 import { prepareFormatEditForExport, readFormatEditDraft } from "@/lib/explore/format-edit-draft";
+import { canReuseUnchangedHookSource } from "@/lib/explore/unchanged-hook-source";
 import { isExploreUuid } from "@/worker/src/lib/explore-finishing-contract";
 import styles from "@/components/explore/format-workspace.module.css";
 import type { CSSProperties, ReactNode } from "react";
@@ -91,6 +92,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   }, [format, video.mediaAssetId]);
   const finishing = useWorkflowFinishing({ ownerId: owner, enabled, kind: "hook", source: sourceQuery.data ?? null, demo: null, demoAudio: null, playback: "once", options: DEFAULT_FINISHING_OPTIONS,
     editing: exportEditing, backgroundSource: backgroundQuery.data ?? null, backgroundPlayback: playback, scope: `format:${format}:${video.mediaAssetId}`, onRestoreDraft: restore,
+    reuseUnchangedSource: canReuseUnchangedHookSource(sourceQuery.data ?? null, exportEditing, backgroundId),
     demoFramingError: validation ?? uploadError ?? (uploading ? "Uploading background audio…" : backgroundId && !backgroundQuery.data ? "Loading your background audio…" : null),
   });
   const preparationBusy = pendingSource || finishing.action.busy || Boolean(finishing.action.cancel);

@@ -88,22 +88,29 @@ async function main() {
     await page.getByRole('button', {name:'Choose from Creative Assets', exact:true}).click(); await page.getByRole('button', {name:'Choose demo fixture'}).click();
     await page.getByRole('button', {name:'Schedule', exact:true}).evaluate(button => {button.click(); button.click();});
     await page.getByLabel('Scheduled hook', {exact:true}).waitFor(); await page.getByLabel('Scheduled demo', {exact:true}).waitFor();
-    await page.getByRole('button', {name:'Instagram', exact:true}).click(); await page.getByRole('button', {name:'Post to @fixture on Instagram', exact:true}).click();
+    await page.getByRole('button', {name:'Instagram', exact:true}).click();
+    await page.waitForFunction(() => document.querySelector('[aria-label="Post to @fixture on Instagram"]')?.getAttribute('aria-pressed') === 'true');
     await page.getByLabel('Post caption', {exact:true}).fill('Untouched hook and demo'); await page.getByLabel('Date', {exact:true}).fill('2026-12-01'); await page.getByLabel('Time', {exact:true}).fill('10:30');
     assert.equal(await page.getByRole('button', {name:'Review schedule', exact:true}).isDisabled(), true); assert.equal(schedules.length, 0);
-    await waitRenders(1); assert.equal(renders[0].draft.sourceAssetId, '00000000-0000-4000-8000-000000000001'); assert.equal(renders[0].draft.editing.text, null); assert.equal(Object.hasOwn(renders[0].draft.editing, 'textOverlays'), false); complete(0);
-    await waitRenders(2); assert.equal(renders[1].draft.sourceAssetId, receipts.get(renders[0].requestKey).outputId); assert.equal(renders[1].draft.demoAssetId, '00000000-0000-4000-8000-000000000002'); complete(1);
+    await waitRenders(1); assert.equal(renders[0].draft.sourceAssetId, '00000000-0000-4000-8000-000000000001'); assert.equal(renders[0].draft.demoAssetId, '00000000-0000-4000-8000-000000000002'); assert.equal(renders[0].draft.editing, undefined); complete(0);
     await page.getByLabel('Merged final video', {exact:true}).waitFor(); await page.getByRole('button', {name:'Review schedule', exact:true}).click(); await page.getByRole('dialog', {name:'Confirm schedule'}).waitFor(); assert.equal(schedules.length,0);
-    await page.getByRole('button', {name:'Confirm fixture schedule'}).evaluate(button=>{button.click();button.click();}); await page.getByRole('button', {name:'Check saved schedule'}).waitFor(); assert.equal(schedules.length,1); assert.equal(schedules[0].source.id,receipts.get(renders[1].requestKey).outputId); assert.equal(schedules[0].caption,'Untouched hook and demo');
-    console.log('PASS actual FormatDemoSection: untouched demo skips the edit pass; immediate two-clip preview; serialized hook then join; one explicit schedule confirmation');
+    await page.getByRole('button', {name:'Confirm fixture schedule'}).evaluate(button=>{button.click();button.click();}); await page.getByRole('button', {name:'Check saved schedule'}).waitFor(); assert.equal(schedules.length,1); assert.equal(schedules[0].source.id,receipts.get(renders[0].requestKey).outputId); assert.equal(schedules[0].caption,'Untouched hook and demo'); assert.equal(renders.length,1);
+    console.log('PASS actual FormatDemoSection: unchanged hook and demo skip edit passes; immediate two-clip preview; one join; sole Instagram account auto-selected; one explicit schedule confirmation');
     await page.evaluate(()=>localStorage.clear()); await page.reload();
     await page.getByRole('button', {name:'Choose from Creative Assets', exact:true}).click(); await page.getByRole('button', {name:'Choose demo fixture'}).click(); await page.getByRole('button',{name:'Edit demo video',exact:true}).click();
     assert.equal(await page.getByLabel('Overlay text',{exact:true}).inputValue(),''); await page.getByLabel('Overlay text',{exact:true}).fill('First message'); await page.getByLabel('Text end time').fill('2');
     await page.getByRole('button',{name:'Add text',exact:true}).click();await page.getByLabel('Overlay text',{exact:true}).fill('Second message');await page.getByLabel('Text start time').fill('3');await page.getByLabel('Text end time').fill('5');
     await page.getByRole('button',{name:'Add text',exact:true}).click();await page.getByRole('button',{name:'Apply demo edits',exact:true}).click();await page.getByRole('button',{name:'Schedule',exact:true}).click();
-    await waitRenders(3);complete(2);await waitRenders(4);assert.equal(renders[3].draft.sourceAssetId,'00000000-0000-4000-8000-000000000002');assert.deepEqual(renders[3].draft.editing.textOverlays.map(t=>[t.value,t.startMs,t.endMs]),[['First message',0,2000],['Second message',3000,5000]]);complete(3);
-    await waitRenders(5);assert.equal(renders[4].draft.demoAssetId,receipts.get(renders[3].requestKey).outputId);complete(4);await page.getByLabel('Merged final video',{exact:true}).waitFor();assert.equal(overlappingRenders,0);assert.equal(schedules.length,1);assert.deepEqual(errors,[]);
+    await waitRenders(2);assert.equal(renders[1].draft.sourceAssetId,'00000000-0000-4000-8000-000000000002');assert.deepEqual(renders[1].draft.editing.textOverlays.map(t=>[t.value,t.startMs,t.endMs]),[['First message',0,2000],['Second message',3000,5000]]);complete(1);
+    await waitRenders(3);assert.equal(renders[2].draft.demoAssetId,receipts.get(renders[1].requestKey).outputId);complete(2);await page.getByLabel('Merged final video',{exact:true}).waitFor();assert.equal(overlappingRenders,0);assert.equal(schedules.length,1);assert.deepEqual(errors,[]);
     console.log('PASS actual FormatDemoSection: default blank text box, multiple timed messages, blank blocks omitted, serialized edit and join, no automatic scheduling');
+    await page.evaluate(()=>localStorage.clear()); await page.reload(); await page.getByRole('button', {name:'Schedule tab',exact:true}).click();
+    await page.getByRole('button', {name:'Instagram',exact:true}).click();
+    await page.waitForFunction(() => document.querySelector('[aria-label="Post to @fixture on Instagram"]')?.getAttribute('aria-pressed') === 'true');
+    await page.getByLabel('Post caption',{exact:true}).fill('Hook only'); await page.getByLabel('Date',{exact:true}).fill('2026-12-01'); await page.getByLabel('Time',{exact:true}).fill('10:30');
+    await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Review schedule' && !button.disabled));
+    assert.equal(renders.length,3); assert.equal(schedules.length,1); assert.deepEqual(errors,[]);
+    console.log('PASS actual Hook-only schedule: ready unedited MP4 is immediately reviewable without a rendering request or automatic post');
   } catch (e) { console.error({errors, body: await page.locator('body').innerText(), renders}); throw e; }
   finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
 }

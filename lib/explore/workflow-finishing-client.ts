@@ -2,6 +2,7 @@ import { isExploreUuid, parseExploreFinishDraft, type ExploreFinishDraft } from 
 
 export type FinishStatus = { requestKey: string; jobId: string | null; outcome: "pending" | "completed" | "failed" | "cancelled" | "uncertain" | "unconfirmed"; mediaAssetId: string | null; message: string };
 export type SavedFinish = { version: 1; ownerId: string; kind: "hook" | "phone"; requestKey: string; draft: ExploreFinishDraft };
+export const FINISH_REQUEST_TIMEOUT_MS = 30_000;
 export const finishStorageKey = (owner: string, kind: "hook" | "phone") => `ugc-explore:finish:v1:${encodeURIComponent(owner)}:${kind}`;
 export function readSavedFinish(raw: string | null, owner: string, kind: "hook" | "phone"): SavedFinish | null {
   if (!raw) return null;
@@ -23,11 +24,17 @@ export async function requestFinish(deps: { token: () => Promise<string | null>;
   deps.assertActive();
   const token = await deps.token(); deps.assertActive();
   if (!token) throw new Error("Sign in before applying edits.");
-  const response = await deps.fetch(submit ? "/api/explore/finishes" : `/api/explore/finishes?requestKey=${encodeURIComponent(saved.requestKey)}`, {
-    method: submit ? "POST" : "GET", cache: "no-store", headers: { Authorization: `Bearer ${token}`, ...(submit ? { "Content-Type": "application/json", "Idempotency-Key": saved.requestKey } : {}) },
-    ...(submit ? { body: JSON.stringify({ requestKey: saved.requestKey, draft: saved.draft }) } : {}),
-  });
-  const value = await response.json().catch(() => null); deps.assertActive();
-  if (!response.ok) throw new Error(typeof value?.error === "string" ? value.error : "Could not confirm finishing. Keep this request and refresh its status.");
-  return parseFinishStatus(value, saved.requestKey);
+  const signal = AbortSignal.timeout(FINISH_REQUEST_TIMEOUT_MS);
+  try {
+    const response = await deps.fetch(submit ? "/api/explore/finishes" : `/api/explore/finishes?requestKey=${encodeURIComponent(saved.requestKey)}`, {
+      method: submit ? "POST" : "GET", cache: "no-store", signal, headers: { Authorization: `Bearer ${token}`, ...(submit ? { "Content-Type": "application/json", "Idempotency-Key": saved.requestKey } : {}) },
+      ...(submit ? { body: JSON.stringify({ requestKey: saved.requestKey, draft: saved.draft }) } : {}),
+    });
+    const value = await response.json().catch(() => null); deps.assertActive();
+    if (!response.ok) throw new Error(typeof value?.error === "string" ? value.error : "Could not confirm finishing. Keep this request and refresh its status.");
+    return parseFinishStatus(value, saved.requestKey);
+  } catch (error) {
+    if (signal.aborted || error instanceof Error && error.name === "TimeoutError") throw new Error("Checking your saved video took too long. Its request is preserved; checking again will not create another render.");
+    throw error;
+  }
 }

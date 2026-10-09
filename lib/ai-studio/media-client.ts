@@ -30,9 +30,10 @@ export async function fetchAIStudioMediaAssets(params: {
   return data.assets;
 }
 
-export async function fetchAIStudioMediaAsset(assetId: string, token: string) {
+export async function fetchAIStudioMediaAsset(assetId: string, token: string, options?: { signal?: AbortSignal }) {
   const response = await fetch(`/api/media/${encodeURIComponent(assetId)}`, {
     cache: "no-store",
+    signal: options?.signal,
     headers: { Authorization: `Bearer ${token}` },
   });
   const data = (await response.json()) as MediaDetailResponse;

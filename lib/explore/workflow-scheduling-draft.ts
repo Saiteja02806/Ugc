@@ -27,7 +27,7 @@ export function selectWorkflowAccount(draft: WorkflowScheduleDraft, platform: st
   return { ...draft, connectionIds, connectionId: connectionIds[draft.platform] ?? "" };
 }
 
-/** Each selected platform must have its own explicit account choice. */
+/** Each selected platform must have its own resolved account choice. */
 export function workflowScheduleTargets(draft: WorkflowScheduleDraft): ScheduleCreateTargetInput[] {
   const platforms = workflowSelectedPlatforms(draft);
   const accounts = workflowSelectedAccounts(draft);

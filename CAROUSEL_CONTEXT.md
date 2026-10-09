@@ -2,6 +2,101 @@
 
 Last updated: 2026-10-09
 
+## 2026-10-09 Social slideshow hook contract (local implementation)
+
+- Slide 1 communicates one main idea as one curiosity-driven statement in one
+  text block, normally 6-14 words over 2-4 lines. No subtitle, supporting
+  paragraph, second sentence, motivational ad-copy explanation, or body-style
+  cover copy. Explain the idea on Slide 2 onward. This supersedes the cover
+  wording and 72px hook treatment in the September 30 text-presentation entry.
+- Both existing structures use fixed 84px Inter Tight Bold 700 cover text,
+  larger than the unchanged 50px content headings and 48px SemiBold bodies.
+  Four measured lines remain the maximum; overflow requires shorter copy.
+  The publisher accepts 5-14 words to retain compact hooks. First-person
+  problem/changed-belief hooks are explicitly allowed. List promises must
+  match the value actually delivered by the assigned six-slide format.
+- Both generation validators block separate sentences/paragraphs with
+  `hook_structure`. Semantic single newlines, common abbreviations, domains,
+  and decimals remain valid. Curiosity and one-idea resonance are prompt
+  guidance, not a keyword blacklist or a claim to predict performance.
+  Structure 2's bounded targeted repair includes this issue and replaces only
+  the rejected cover while freezing valid Slides 2-6.
+- Initial, batch, complete-plan, targeted and native-cover repair writers
+  receive the same hook guidance. Structure 1 is v50 and Structure 2 v21;
+  renderers are `social-single-statement-hook-inter-tight-v26` and
+  `story-native-single-statement-hook-inter-tight-v12`. The editor inherits
+  the shared 84px constant. Existing saved render bytes remain immutable.
+- Validation and preview evidence are recorded in
+  `docs/slideshow-social-hook-2026-10-09.md`. Deployment and authenticated
+  production acceptance on https://www.getugcpilot.com remain pending.
+
+## 2026-10-09 Trending outer focus outline removal (local fix)
+
+- Removed the orange focus ring around the scrolling post viewport. The ring
+  came from its `focus-visible:ring-focus` styling when keyboard navigation or
+  programmatic focus activated the feed. The viewport remains focusable with
+  the same scrolling and double-tap handlers; individual button focus indicators
+  retain their existing styling. Card size and below-card spacing are unchanged.
+- Local 1366 × 680 and 1536 × 776 checks show no outline or box shadow while
+  the viewport matches `:focus-visible`. All 66 Trending interaction tests and
+  scoped lint passed. This presentation change has not been deployed.
+
+## 2026-10-09 Trending scheduling after revisiting a post (local fix)
+
+- Visit-local `liked` history means the user opened the composer/scheduler; it
+  does not establish that a schedule was saved. Double-tap and Schedule may
+  reopen that post after cancellation or failure. Reopening reuses the exact
+  assignment and does not append history, replay the outbox, reconsider an
+  already accepted decision, or decrement the remaining content count.
+- Explicit Wall-of-Text schedule confirmation resolves the assignment and
+  creative under the authenticated owner, then persists acceptance before
+  loading the selected draft. If an original skip won the outbox race, only
+  this explicit action uses the existing reconsideration RPC. Ordinary outbox
+  decisions keep their conflict checks; a delayed skip cannot undo recovery.
+- Schedule creation still precedes server-side render delivery. Selection
+  does not save content to Creative Assets, generate a replacement, allocate
+  another daily slot, or charge another generation. Card dimensions and
+  below-card controls are unchanged by this repair.
+- Production logs contained a Wall schedule 404. The active deployment was
+  `bd352b7e52ce87f1e046dca8ad2ce6788280d545`; its revisit endpoint and database
+  RPC were present. A rollback-only production diagnostic verified the
+  skipped-to-selected transition without persisting any changes. Regression
+  tests reproduced the disabled liked-history action and selected-draft race
+  before the fix. See `docs/trending-revisited-scheduling-2026-10-09.md` for
+  local validation and release status. This new repair is not deployed yet.
+
+## 2026-10-08 Trending closer below-card controls (production release)
+
+- Skip and Schedule now sit about 12px below the current card on desktop.
+  The preceding 10% card reduction remains intact. Previously, unused space
+  below the centered post increased the visible gap to about 44px at
+  1366 × 680 and 75px at 1536 × 776.
+- A presentation-only ResizeObserver measures the post and snap-window
+  heights, then lifts the existing decision row and visible progress together
+  into that unused space. Their layout space stays reserved, preserving media
+  dimensions and scroll-snap geometry. The calculation ignores scroll position;
+  history browsing and gestures do not move the controls. Mobile is unchanged.
+- All 39 local format/viewport checks confirm unchanged card dimensions,
+  roughly 12px gaps, visible captions, clickable targets and no page overflow.
+  Forward/back browser checks retain selected slides without duplicate reviews.
+  TypeScript, scoped lint and 66 interaction tests passed. Screenshots and
+  measurements are in the report's final section. The isolated production
+  release `591da964e3afb32a40b19a638a9f85fe2912d5da` was built successfully and
+  promoted to getugcpilot.com as `dpl_9vnrJiJYmruBizdZeCTzkoEUDQeF`. Live
+  JavaScript and CSS contain the spacing implementation; all 24 dashboard
+  assets respond successfully. The immediate deployment error scan is clear.
+- The owner's subsequent large-gap screenshot was confirmed to come from the
+  live site before this release. The development fixture
+  now also covers the real Reel Hook renderer with local edited media. All 13
+  additional Hook viewport checks retain the 12px gap and current card sizes.
+  The owner could not sign in through the verification browser and requested
+  local visual checks. Fresh 1366 × 680 and 1536 × 776 checks confirm 12.2px
+  gaps, visible captions and no page overflow using the exact release files.
+  Authenticated production visual acceptance remains unperformed. The scoped
+  release is documented in `docs/trending-controls-production-release-2026-10-08.md`.
+  Direct push to main is awaiting explicit approval after automatic review
+  rejected it; production deployment has completed independently.
+
 ## 2026-10-07 complete release reconciliation
 
 - The retired Create Content frontend, exclusive API routes and their support
@@ -163,6 +258,64 @@ Last updated: 2026-10-09
 - Migration `20261005064026_trending_skipped_post_reconsideration.sql` is prepared
   and verified against local Postgres. It must accompany the application release;
   production migration, deployment and authenticated acceptance are pending.
+
+## 2026-10-09 TikTok disclosure controls hidden (local implementation)
+
+- The owner clarified that Your brand, paid partnership, commercial disclosure,
+  and Music Usage Confirmation should run in the background rather than appear
+  as editable controls. They are removed from the shared Trending Carousel/Text/
+  Reaction modal, Explore/Scheduling editor, and Hook drawer. New-target defaults
+  stay Your brand on, music confirmed, and paid partnership off. Saved brand and
+  partnership choices remain intact.
+- Each form shows a short agreement at its final scheduling action. That action
+  confirms music in the submitted TikTok payload without mutating the saved draft;
+  older false/missing music values no longer block a form with no visible checkbox.
+  Hook's extra confirmation popup is removed. The agreement includes the Branded
+  Content Policy for selected saved paid-partnership targets.
+- Audience, available interaction and AI controls, account errors, creator
+  capabilities, backend normalization, Carousel formats, readiness, ownership,
+  and rendering rules remain enforced. Other-platform and dormant legacy target
+  settings are preserved. Server normalization still rejects missing/false music
+  confirmation in direct API requests.
+- This supersedes the visible-checkbox and fallback-popup choices below. It is
+  the owner's product decision, not a claim that approval waives TikTok's UX
+  guidelines. Local verification: 65 focused tests, full TypeScript, and scoped
+  ESLint passed. Deployment and authenticated production acceptance remain
+  pending. See `docs/tiktok-ui-visibility.md`.
+
+## 2026-10-09 TikTok publishing checkboxes default on (local implementation)
+
+- The owner requested Your brand and Music Usage Confirmation checked for every
+  new TikTok target. Your brand and commercial disclosure already default on;
+  the shared music default is now on as well. Paid partnership remains off.
+  Explore, Scheduling, and Trending's Hook, Text, Reaction, and Carousel flows
+  share these defaults; saved post settings and explicit unchecked choices
+  remain authoritative when creator capabilities refresh.
+- Trending Hook skips the extra music popup when the selected TikTok settings
+  already confirm music usage. The agreement is visible above the final Confirm
+  schedule button. A target without confirmation still requires explicit consent;
+  server normalization continues to reject false or missing confirmation.
+- This supersedes the unchecked music default below. It is the owner's product
+  choice, not a claim that API approval waives TikTok's UX guidelines. No changes
+  are made to account gates, creator capabilities, Carousel formats, readiness,
+  renderers, provider scopes, publishing workers, or existing saved schedules.
+  Deployment and authenticated production acceptance remain pending.
+
+## 2026-10-09 TikTok UI restored after approval (local implementation)
+
+- The owner confirmed TikTok approval and the required permissions/scopes.
+  `socialPlatformVisibility.tiktok` is enabled, superseding the temporary hiding
+  below. The shared Trending Carousel scheduler again shows TikTok accounts,
+  connection actions, and publishing controls to verified users. Landing,
+  Explore, Scheduling, Settings, Connected accounts, and Analytics use the same
+  visibility switch.
+- Carousel format compatibility and existing publishing consent, creator
+  capabilities, ownership, readiness, rendering, and media validation remain
+  enforced. YouTube remains video-only. Saved TikTok targets and settings are
+  preserved and visible again; no migration or provider scope change is needed.
+- This is local implementation. Deployment and authenticated production
+  acceptance on https://www.getugcpilot.com remain pending. See
+  `docs/tiktok-ui-visibility.md` for coverage and verification.
 
 ## 2026-10-03 Temporary TikTok UI visibility (local implementation)
 

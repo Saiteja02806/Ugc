@@ -95,7 +95,7 @@ test("each workflow offers only the duration and quality choices accepted by the
   for (const kind of ["hook", "phone"]) {
     const actual = harness({ seedanceEnabled: true });
     const label = kind === "hook" ? "Hook" : "Phone video";
-    for (const model of backend.AI_STUDIO_VIDEO_MODELS) {
+    for (const model of backend.AI_STUDIO_VIDEO_MODELS.filter(model => backend.isAIStudioVideoModelAvailable(model))) {
       const first = nodes(actual.render({ kind }));
       first.find((node) => node.type === "select" && node.props.ariaLabel === `${label} model`).props.onChange(model);
       const next = nodes(actual.render({ kind }));
@@ -220,7 +220,7 @@ test("both long creation placeholders are visually hidden below the desktop brea
   const desktop = css.match(/@media \(min-width: 1024px\)\s*\{([\s\S]*?)\n\}/)?.[1];
   assert.ok(desktop);
   const hiddenHint = '.composer .prompt::placeholder { font-size: 0; opacity: 0; }';
-  assert.ok(css.indexOf(hiddenHint) >= 0 && css.indexOf(hiddenHint) < css.indexOf("@media"));
+  assert.ok(css.indexOf(hiddenHint) >= 0 && css.indexOf(hiddenHint) < css.indexOf("@media (min-width: 1024px)"));
   assert.match(desktop, /\.composer \.prompt::placeholder\s*\{\s*font-size: inherit; opacity: 1;\s*\}/);
   assert.doesNotMatch(css, /\.prompt\[name="(?:hook|phone)Instructions"\](?!::placeholder)\s*\{/);
 });

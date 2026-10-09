@@ -128,6 +128,30 @@ export async function reconsiderSkippedTrendingCreative(params: {
   return { assignmentId: data[0].assignment_id, decision: data[0].decision };
 }
 
+/** Explicit schedule confirmation can race the browser's queued review write.
+ * Keep ordinary outbox decisions immutable; only this user action may recover
+ * an earlier skip, through the RPC's exact owner/assignment/creative lock. */
+export async function acceptTrendingCreativeForScheduling(params: {
+  assignmentId: string;
+  creativeId: string;
+  format: TrendingFeedFormat;
+  userId: string;
+}) {
+  const { data, error } = await getClient().rpc("record_trending_creative_decision", {
+    p_assignment_id: params.assignmentId,
+    p_creative_id: params.creativeId,
+    p_decision: "accepted",
+    p_format: params.format,
+    p_user_id: params.userId,
+  });
+  if (error?.message === "trending_creative_decision_conflict") {
+    return reconsiderSkippedTrendingCreative(params);
+  }
+  if (error) throw new Error(`Could not select this post for scheduling: ${error.message}`);
+  if (data?.[0]?.decision !== "accepted") throw new Error("This post was not selected for scheduling.");
+  return { assignmentId: data[0].assignment_id, decision: data[0].decision };
+}
+
 function getClient() {
   if (trendingDecisionClient) {
     return trendingDecisionClient;

@@ -8,14 +8,14 @@ const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf
 const load = (file, imports = {}, globals = {}) => {
   const exported = {};
   vm.runInNewContext(ts.transpileModule(read(file), { fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, {
-    exports: exported, require(name) { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, ...globals,
+    exports: exported, require(name) { if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts"); assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, ...globals,
   });
   return exported;
 };
 const backend = load("lib/ai-studio/generation-settings.ts", {}, { process: { env: {} } });
 const settings = load("lib/explore/workflow-generation-settings.ts", { "../ai-studio/generation-settings": backend }, { process: { env: {} } });
 const client = load("lib/explore/workflow-generation-client.ts", {
-  "../ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts"), "./workflow-generation-settings": settings,
+  "../ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts", { "../../worker/src/lib/video-prompt-policy": load("worker/src/lib/video-prompt-policy.ts") }), "./workflow-generation-settings": settings,
 });
 const key = "11111111-1111-4111-8111-111111111111";
 const jobId = "22222222-2222-4222-8222-222222222222";

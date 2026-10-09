@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  getConfirmedScheduleTargetSettings,
   getDefaultScheduleTargetSettings,
   getScheduleTargetSettingsError,
+  getTikTokPublishingAgreement,
   normalizeScheduleTargetSettings,
   SchedulePlatformSettingsError,
 } from "./platform-settings.ts";
@@ -20,7 +22,7 @@ test("provides shared defaults for every scheduling surface", () => {
     brandedContent: false,
     commercialContentDisclosureEnabled: true,
     containsSyntheticMedia: true,
-    musicUsageConfirmed: false,
+    musicUsageConfirmed: true,
     privacyLevel: "PUBLIC_TO_EVERYONE",
   });
   assert.deepEqual(getDefaultScheduleTargetSettings("youtube"), {
@@ -170,19 +172,62 @@ test("rejects private TikTok paid partnerships", () => {
   );
 });
 
-test("requires explicit TikTok Music Usage Confirmation", () => {
-  assert.throws(
-    () =>
-      normalizeScheduleTargetSettings("tiktok", {
-        privacyLevel: "PUBLIC_TO_EVERYONE",
-      }),
-    (error) =>
-      error instanceof SchedulePlatformSettingsError &&
-      error.message.includes("Music Usage Confirmation"),
+test("server normalization rejects missing or false TikTok music confirmation", () => {
+  for (const musicUsageConfirmed of [undefined, false]) {
+    assert.throws(
+      () =>
+        normalizeScheduleTargetSettings("tiktok", {
+          musicUsageConfirmed,
+          privacyLevel: "PUBLIC_TO_EVERYONE",
+        }),
+      (error) =>
+        error instanceof SchedulePlatformSettingsError &&
+        error.message.includes("Music Usage Confirmation"),
+    );
+  }
+});
+
+test("final TikTok confirmation preserves saved settings without mutating the draft", () => {
+  const saved = Object.freeze({
+    ...getDefaultScheduleTargetSettings("tiktok"),
+    brandOrganic: false,
+    brandedContent: true,
+    musicUsageConfirmed: false,
+    allowComment: true,
+  });
+  assert.deepEqual(getConfirmedScheduleTargetSettings("tiktok", saved), {
+    ...saved,
+    musicUsageConfirmed: true,
+  });
+  assert.equal(saved.musicUsageConfirmed, false);
+  for (const platform of ["instagram", "youtube"] as const) {
+    const settings = getDefaultScheduleTargetSettings(platform);
+    assert.deepEqual(getConfirmedScheduleTargetSettings(platform, settings), settings);
+  }
+  assert.deepEqual(
+    getConfirmedScheduleTargetSettings("tiktok"),
+    getDefaultScheduleTargetSettings("tiktok"),
   );
 });
 
-test("requires manual music confirmation before scheduling", () => {
+test("publishing agreement describes only selected TikTok targets", () => {
+  const settings = { "paid-account": { brandedContent: true } };
+  assert.equal(getTikTokPublishingAgreement({
+    connections: [{ id: "instagram", platform: "instagram" }], settings,
+  }), null);
+  assert.equal(getTikTokPublishingAgreement({ connections: [], settings }), null);
+  assert.equal(getTikTokPublishingAgreement({
+    connections: [{ id: "brand-account", platform: "tiktok" }], settings,
+  }), "By confirming this schedule, you agree to TikTok's Music Usage Confirmation.");
+  assert.equal(getTikTokPublishingAgreement({
+    connections: [
+      { id: "brand-account", platform: "tiktok" },
+      { id: "paid-account", platform: "tiktok" },
+    ], settings,
+  }), "By confirming this schedule, you agree to TikTok's Branded Content Policy and Music Usage Confirmation.");
+});
+
+test("rejects missing or unchecked music confirmation before scheduling", () => {
   const connection = { id: "tiktok-1", platform: "tiktok" as const };
   const capabilities = {
     capabilities: {

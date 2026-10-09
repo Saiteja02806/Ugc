@@ -1,13 +1,14 @@
-import { ArrowRight, Check, ChevronRight, Clock3, Lightbulb } from "lucide-react";
+import { ArrowRight, ChevronRight, Clock3 } from "lucide-react";
 import Link from "next/link";
 
-import { LandingAuthCta } from "@/components/marketing/landing-auth-actions";
+import { GuideContentBrief } from "@/components/marketing/guide-content-brief";
 import { LandingHeader } from "@/components/marketing/landing-header";
 
 type GuideSection = {
   title: string;
   paragraphs: readonly string[];
   bullets?: readonly string[];
+  presentation?: "brief" | "example";
 };
 
 type GuideFaq = {
@@ -21,6 +22,7 @@ export type FounderGuide = {
   title: string;
   description: string;
   readingTime: string;
+  author?: string;
   audience: string;
   introduction: string;
   takeaways: readonly string[];
@@ -31,6 +33,7 @@ export type FounderGuide = {
   productHref: string;
   productLabel: string;
   related: readonly string[];
+  sources?: readonly { label: string; href: string }[];
 };
 
 export const founderGuideOpenGraphImage = {
@@ -127,82 +130,191 @@ export const founderGuides = {
   "saas-content-marketing": {
     slug: "saas-content-marketing",
     keyword: "SaaS content marketing",
-    title: "SaaS content marketing: turn product knowledge into a content pipeline",
+    title: "SaaS content marketing: turn customer questions into a week of useful posts",
     description:
-      "Learn how SaaS founders can turn product knowledge, customer questions, and launch insights into useful social content that supports growth every week.",
-    readingTime: "9 min read",
-    audience: "For SaaS founders who need a practical content engine",
+      "Plan useful organic SaaS content from customer questions, with a filled brief, video and slide examples, a weekly plan, and practical ways to review results.",
+    readingTime: "10 min read",
+    author: "UGCPilot",
+    audience: "For SaaS founders planning useful organic content",
     introduction:
-      "SaaS content marketing becomes manageable when it begins with the knowledge your team already has. Product decisions, customer questions, demonstrations, and launch notes contain useful material. A content pipeline helps you shape that material into clear, reviewable posts instead of waiting for a vague new idea.",
+      "SaaS content marketing means publishing explanations, examples, and resources that help the people your software serves. You do not need a new feature announcement every week. Start with a question those people ask, give a complete answer, and adapt it into formats that make the answer easier to use. This guide takes you from a question bank to three useful posts and a review process you can run with a document, spreadsheet, and your existing editor.",
     takeaways: [
-      "Build content from customer questions and product evidence, rather than generic trends.",
-      "Give each piece one job: attract attention, explain a concept, show proof, or support a decision.",
-      "Keep a small library of approved angles so the team can compound its work.",
+      "Choose one audience question and define what someone should learn or do after reading.",
+      "Adapt the answer into a demonstration, a text-led explanation, and a slide story when each adds value.",
+      "Review clarity and useful responses alongside search visibility; a signup is not every post's purpose.",
     ],
     sections: [
       {
-        title: "Create a source list before you create a calendar",
+        title: "Where do useful SaaS content ideas come from?",
         paragraphs: [
-          "A calendar says when to publish. A source list says what the company knows that is worth sharing. Start with onboarding calls, sales conversations, feature launches, support questions, workflow mistakes, and before-and-after examples. These are the raw materials for useful SaaS content.",
-          "Group the source list into themes such as customer education, product method, common objections, and outcomes. Each theme should connect to a question a potential user is likely to ask before trying the product.",
-        ],
-      },
-      {
-        title: "Use content jobs to avoid repeating yourself",
-        paragraphs: [
-          "Give each post a single job. Awareness content names a problem. Education content teaches a concept. Proof content demonstrates a result or workflow. Decision content helps a buyer compare approaches and take a next step. A balanced pipeline uses all four without forcing every post to sell.",
-          "This helps founders see where a message belongs. A new product capability might become an awareness hook, an educational carousel, a short walkthrough, and a proof point in a later post.",
+          "Keep a question bank before filling a publishing calendar. After an onboarding session, support conversation, or product demonstration, record the question someone needed answered. Preserve their wording, the situation, and the source. Remove personal and account details before using those notes in a shared planning document.",
+          "Group questions that ask for the same answer. 'What can I post without a launch?' and 'How do I find ideas between updates?' might belong to one topic. A short factual answer may fit an FAQ; a task with several decisions may need a guide. Search Console queries can add useful language when data is available, but they do not show every question in your market.",
+          "When you have few customers, ask the intended audience about a task they struggled with recently and note the questions they ask in relevant communities. Treat these as research inputs to validate. Do not present an invented conversation as customer evidence.",
         ],
         bullets: [
-          "Awareness: make the hidden problem easy to recognize.",
-          "Education: explain the method or decision clearly.",
-          "Proof: show the workflow, result, or customer evidence.",
-          "Decision: help the buyer choose a next action.",
+          "Question bank fields: original question, audience, task, source, repeated variants, evidence needed, and answer status.",
+          "Useful sources: support notes, onboarding questions, sales conversations, product-use observations, and available search queries.",
         ],
       },
       {
-        title: "Turn one useful idea into several assets",
+        title: "Which question should you answer first?",
         paragraphs: [
-          "Pick one point that your audience needs to understand. Write the complete explanation first, then adapt it. A carousel can make the sequence scannable, a short video can make the opening immediate, and a text-led video can give the statement visual weight. The shared brief keeps every format coherent.",
-          "Do not duplicate the same post verbatim. Let each format contribute something: steps in a carousel, a visual example in video, or a concise argument in a text-led asset.",
+          "Choose a question relevant to the people you serve that you can answer with useful detail. Prefer a clear task over a broad label such as 'marketing tips.' Check whether you can show a method, example, or decision the reader could apply. A popular topic outside your experience is harder to make valuable.",
+          "Write one outcome sentence: 'After this post, the reader can…' If the sentence names several unrelated skills, narrow the topic. Decide whether the piece should teach, demonstrate, compare, or help someone choose a next step. A complete answer can be worthwhile even when its next step is to try an exercise rather than sign up.",
+        ],
+        bullets: [
+          "Audience fit: who asks this, and what are they trying to do?",
+          "Evidence: what can you show or explain from actual experience?",
+          "Scope: can one piece answer it well without sending the reader elsewhere for the essential step?",
+          "Distinctness: does an existing guide already answer it? Improve that guide when appropriate.",
         ],
       },
       {
-        title: "Create a content library that improves over time",
+        title: "What belongs in a useful content brief?",
+        presentation: "brief",
         paragraphs: [
-          "Save approved assets with their source idea, audience, product area, and result. Over time, the team can identify which themes lead to good conversations and which explanations reduce confusion. This library is the compounding asset in SaaS content marketing.",
-          "Use review as a quality control step. Founders and product leads can correct claims, add specificity, and protect the voice of the business before a post is published.",
+          "Write the answer before choosing a format. Name the reader's situation, explain why the problem occurs, and describe the action that addresses it. Record which claims need evidence and where the method has limits. This gives every version the same factual foundation without forcing it to use the same wording.",
+          "Copy the fields below into a document or spreadsheet. Fill them before drafting. The outcome and next action should be specific enough for another person to tell whether the post delivers them.",
+        ],
+        bullets: [
+          "Reader and situation: [Who is this for, and what are they trying to do?]",
+          "Question: [What do they need answered, in their words?]",
+          "Useful outcome: [What can they understand or do after this?]",
+          "Answer and method: [The direct answer, followed by the necessary steps.]",
+          "Evidence and limits: [Demonstration, source, or example; what it cannot prove.]",
+          "Format and next action: [Why this format helps, and a relevant action the reader can take.]",
+        ],
+      },
+      {
+        title: "A filled example: what can I post without a product update?",
+        presentation: "example",
+        paragraphs: [
+          "This is an illustrative planning exercise, not a customer quotation or a measured result. Imagine a solo SaaS founder who has no launch announcement and keeps postponing their next post. The problem is that announcements are their only source of ideas. The answer is to teach a task or answer a recurring question that remains useful between releases.",
+          "The reader's outcome is to choose one question and outline a useful answer. The method is to review a question bank, select an answerable task, write the direct answer, and show a relevant example. The evidence is a sample planning document labeled as illustrative. It proves how to plan the content; it does not prove future views, leads, or rankings.",
+          "A filled brief could read: 'Reader: solo SaaS founder between releases. Question: what can I post when nothing new has shipped? Outcome: choose one useful topic today. Answer: teach a task someone is trying to finish. Method: collect a question, write its answer, and show an example. Limit: validate the topic with the intended audience. Next action: add one real question to your bank and draft its answer.'",
+        ],
+      },
+      {
+        title: "How can that answer become three useful posts?",
+        paragraphs: [
+          "Choose a format based on what it makes easier to understand. You do not have to produce all three. If the explanation works best as a written post, start there. Reuse the underlying answer while giving each asset a different teaching job.",
+          "For a Hook video, open with a specific problem and follow it with a demonstration. Example: 'No product update this week? Answer a question your audience already asks.' Show an illustrative question bank, select one topic, and write a direct answer. If you use a product demo instead, the opening promise must match the task shown in the footage.",
+          "For Wall of text, make the answer readable without a talking-head recording. Example on-screen copy: 'Nothing new to announce? Choose one question. Write the direct answer. Add a practical example. Give the reader one step to try.' Use relevant owned or generated background footage, divide the text into readable parts, and leave enough time to read each part. Check the result on a phone.",
+          "For Slideshows, let the reader inspect the method at their own pace. An image sequence can explain each decision separately. Use the outline below, inspect the order, and correct any image or wording that obscures the point. A slideshow of images and an exported slideshow video are different outputs; choose the one your destination supports.",
+        ],
+        bullets: [
+          "Slide 1 — Problem: 'Nothing new to announce this week?'",
+          "Slide 2 — Reframe: 'Teach a task instead of waiting for a release.'",
+          "Slide 3 — Source: 'Collect a question from a conversation, support note, or research.'",
+          "Slide 4 — Method: 'Write the direct answer and show one practical example.'",
+          "Slide 5 — Action: 'Choose one real question and draft its answer today.'",
+        ],
+      },
+      {
+        title: "What does a manageable publishing week look like?",
+        paragraphs: [
+          "Separate research, creation, review, publishing, and learning. Plan around the time you can actually give the work. The sequence below is one example, not a requirement to post daily or a claim that three posts will outperform one complete explanation.",
+          "Keep the channel focused too. Choose a place where your intended audience already looks for this kind of help. A detailed comparison may need an article; a visual task may benefit from a demonstration. If you publish an article and adapt it for social, make each post useful on its own and link to the longer explanation where that helps.",
+        ],
+        bullets: [
+          "Monday: choose the question, gather evidence, and fill the brief.",
+          "Tuesday: write the full answer and prepare the first useful format.",
+          "Wednesday: review and publish the explanation; collect follow-up questions.",
+          "Thursday: adapt the answer into a demonstration or text-led post if it adds something.",
+          "Friday: publish the reviewed asset and note where people needed more explanation.",
+          "Next planning session: update the question bank and decide what to improve.",
+        ],
+      },
+      {
+        title: "What should you check before publishing?",
+        paragraphs: [
+          "Ask someone unfamiliar with the draft to state its main point and next step. If they cannot, revise the explanation before polishing the design. Check that the opening makes an honest promise, the example fulfills it, and essential instructions are included. Show limitations where they affect the reader's decision.",
+          "Review visual content at phone size. Text should stay readable against the background, remain visible long enough, and avoid covering the important action. Check generated lettering and product details against the source. Use actual captures when describing a product workflow and label illustrative material clearly.",
+          "AI can help organize notes or suggest wording, but verify the answer and any product claim yourself. Manual text overlays do not imply automatic speech captions, and a generated image does not prove a customer outcome. Use media you own or are permitted to use, confirm destination links, and publish only the version you reviewed.",
+        ],
+      },
+      {
+        title: "How do you measure whether the content helped?",
+        paragraphs: [
+          "Choose measures that match the job. For education, useful questions, responses that show understanding, or people reporting they completed the task can reveal whether the explanation worked. Saves and shares can support that picture, but they do not establish that someone understood or acted. A lack of replies does not by itself prove failure.",
+          "For an SEO article, use Search Console to inspect relevant queries, impressions, clicks, and average position over comparable periods. For a social video, inspect the available watch and retention data for signs that the opening or pacing needs work. Keep Organic Search visits separate from Organic Social visits. Availability and definitions differ across reporting tools.",
+          "If the article offers a relevant product next step, track guide-to-product visits and completed new-user signups when instrumentation exists. Keep button clicks distinct from signups. Record the baseline, change date, report filters, and missing data. Search effects take time; other releases, promotions, and audience changes can also affect results.",
+        ],
+        bullets: [
+          "Review log: topic, URL or post, intended outcome, publish date, available metrics, useful responses, unanswered questions, and next change.",
+          "Example decision: if readers keep asking how to choose a question, add a selection example before creating more formats.",
+        ],
+      },
+      {
+        title: "Which mistakes should you avoid?",
+        paragraphs: [
+          "A calendar full of topics is not yet a useful content system. An explanation can still fall short if it makes an unsupported promise, skips a necessary step, or repeats the same idea without adding context. Improve the answer that people need before expanding the publishing schedule.",
+        ],
+        bullets: [
+          "Starting with a trending format before deciding what the audience needs answered.",
+          "Turning every question into a sales pitch that withholds the useful method.",
+          "Copying identical wording into a video, a text post, and slides without adapting the explanation.",
+          "Inventing customer quotations, results, or product capabilities to fill an evidence gap.",
+          "Treating a bigger page count, a fixed word count, or a skill score as proof of search success.",
+        ],
+      },
+      {
+        title: "How do you keep improving the next week's content?",
+        paragraphs: [
+          "Save the approved brief and assets with their source question and review notes. Add new questions as they arrive, group repeats, and correct older answers when product behavior or audience needs change. This makes the library a record of what you have learned rather than a folder of disconnected posts.",
+          "Start the next cycle with one decision: improve a confusing answer, demonstrate a missing step, or address a distinct new question. The next useful action today is simple: find one real question, write what the reader should learn, and complete the brief above. A spreadsheet and your existing editor are enough to begin.",
         ],
       },
     ],
-    checklistTitle: "A SaaS content pipeline checklist",
+    checklistTitle: "Your next useful post: a practical checklist",
     checklist: [
-      "Collect customer questions, product changes, and proof in one source list.",
-      "Select one content job for the next post.",
-      "Write a brief that explains the audience, point, proof, and action.",
-      "Create two formats from the same brief where it adds value.",
-      "Save the approved work and record the response it receives.",
+      "Choose one real audience question and record its source without personal details.",
+      "State what the reader should understand or be able to do after the post.",
+      "Fill the brief, write a complete answer, and add an honest example.",
+      "Choose the format that makes the answer easiest to use; check it on a phone.",
+      "Review claims, visuals, and links before publishing the approved version.",
+      "Save useful responses and missing explanations for the next revision.",
     ],
     faqs: [
       {
-        question: "What content works best for SaaS companies?",
+        question: "What is SaaS content marketing?",
         answer:
-          "Content that helps a potential customer understand a problem, evaluate a method, or see the outcome of a workflow tends to be most useful. The right format depends on how much explanation the idea needs.",
+          "It is publishing useful explanations, demonstrations, comparisons, and resources for the people your software serves. Choose the format and next action according to what the reader needs to understand or do.",
       },
       {
         question: "How do I find SaaS content ideas?",
         answer:
-          "Use customer calls, onboarding questions, sales objections, support conversations, product changes, and common workflow mistakes as your idea sources.",
+          "Record questions from support, onboarding, sales conversations, product-use observations, and available search queries. Group similar questions and choose one you can answer with a useful method and evidence.",
       },
       {
-        question: "Can a small SaaS team do content marketing?",
+        question: "What can I post when I have no product announcement?",
         answer:
-          "Yes. Start with one message each week, adapt it into a few focused formats, and preserve a review step. A small system is easier to maintain and learn from.",
+          "Answer a recurring audience question, demonstrate a task, explain a common mistake, or help someone compare approaches. A useful lesson can stand on its own between product releases.",
+      },
+      {
+        question: "Do I need to film myself to make useful SaaS videos?",
+        answer:
+          "No. A screen demonstration, relevant background footage with readable text, or an image sequence can explain an idea. Choose what makes the task clear, check the result on a phone, and use media you are permitted to use.",
+      },
+      {
+        question: "How often should a small SaaS team publish?",
+        answer:
+          "Choose a cadence you can research, produce, and review reliably. Start with one complete answer and add supporting formats when they contribute something useful. Daily publishing is not a requirement of this method.",
+      },
+      {
+        question: "Will better articles guarantee higher Google rankings?",
+        answer:
+          "No. Helpful content supports the reader's task, but rankings also depend on relevance, competition, technical access, and other signals. Use Search Console to observe changes over time and keep the comparison periods and reporting limits clear.",
       },
     ],
-    productHref: "/instagram-carousel-maker",
-    productLabel: "Create a product explainer carousel",
-    related: ["saas-marketing", "marketing-for-startups", "mobile-app-marketing"],
+    productHref: "/ai-social-media-manager",
+    productLabel: "Explore a workflow for creating and reviewing content",
+    related: ["saas-marketing", "social-media-marketing-for-saas", "marketing-for-startups"],
+    sources: [
+      { label: "Google Search Central: creating helpful, reliable content", href: "https://developers.google.com/search/docs/fundamentals/creating-helpful-content" },
+      { label: "Google Search Console: understanding search performance", href: "https://support.google.com/webmasters/answer/7576553?hl=en" },
+      { label: "Google Analytics: recommended events, including sign_up", href: "https://support.google.com/analytics/answer/9267735?hl=en" },
+    ],
   },
   "mobile-app-marketing": {
     slug: "mobile-app-marketing",
@@ -536,7 +648,7 @@ function toJsonLd(guide: FounderGuide) {
         mainEntityOfPage: url,
         author: {
           "@type": "Organization",
-          name: "UGCPilot",
+          name: guide.author ?? "UGCPilot",
         },
         publisher: {
           "@type": "Organization",
@@ -577,136 +689,133 @@ function toJsonLd(guide: FounderGuide) {
 
 export function FounderGuidePage({ guide }: { guide: FounderGuide }) {
   const relatedGuides = guide.related.map(getFounderGuide);
+  const sections = guide.sections.map((section, index) => ({
+    ...section,
+    id: `guide-section-${index + 1}`,
+  }));
+  const linkClassName = "text-foreground-strong underline decoration-primary/70 underline-offset-4 hover:decoration-primary focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
+  const headingClassName = "text-[23px] font-semibold leading-[1.35] tracking-[-0.025em] text-foreground-strong sm:text-[26px]";
 
   return (
-    <main className="instagram-theme min-h-screen overflow-x-hidden bg-background text-foreground">
+    <main className="instagram-theme min-h-screen bg-background text-foreground">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: toJsonLd(guide) }}
       />
+      <a href="#guide-content" className="sr-only z-50 rounded-md bg-card px-4 py-3 text-foreground-strong focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:outline-none focus:ring-2 focus:ring-focus">
+        Skip to the guide
+      </a>
       <LandingHeader initialHasSession={false} />
 
-      <section className="relative overflow-hidden border-b border-border px-4 pb-16 pt-28 sm:px-6 sm:pb-22 sm:pt-36 lg:px-8">
-        <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[420px] bg-[radial-gradient(ellipse_62%_52%_at_48%_0%,rgba(255,107,69,0.15),transparent_76%)]" />
-        <div className="mx-auto max-w-[900px]">
+      <article id="guide-content" className="mx-auto max-w-[800px] px-5 pb-16 pt-28 sm:px-8 sm:pb-20 sm:pt-32">
+        <header>
           <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-sm text-muted">
-            <Link href="/guides" className="font-medium hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Guides</Link>
-            <ChevronRight className="size-4" aria-hidden="true" />
+            <Link href="/guides" className="inline-flex min-h-11 items-center font-medium hover:text-foreground-strong focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Guides</Link>
+            <ChevronRight className="size-3.5" aria-hidden="true" />
             <span>{guide.keyword}</span>
           </nav>
-          <p className="mt-8 inline-flex rounded-full border border-primary/35 bg-primary/[0.08] px-3 py-1.5 text-xs font-semibold text-primary">{guide.audience}</p>
-          <h1 className="mt-6 max-w-4xl text-4xl font-semibold leading-[0.98] tracking-[-0.05em] text-foreground-strong sm:text-5xl lg:text-6xl">{guide.title}</h1>
-          <p className="mt-6 max-w-3xl text-base leading-7 text-muted sm:text-lg sm:leading-8">{guide.description}</p>
-          <div className="mt-7 flex items-center gap-2 text-sm font-medium text-muted">
-            <Clock3 className="size-4 text-primary" aria-hidden="true" />
-            {guide.readingTime}
+          <p className="mt-5 text-sm font-medium text-muted">{guide.audience}</p>
+          <h1 className="mt-3 text-[30px] font-semibold leading-[1.2] tracking-[-0.035em] text-foreground-strong sm:text-[36px]">{guide.title}</h1>
+          <p className="mt-5 text-[17px] leading-7 text-muted">{guide.description}</p>
+          <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted">
+            <span className="inline-flex items-center gap-2"><Clock3 className="size-4" aria-hidden="true" />{guide.readingTime}</span>
+            {guide.author ? <span>By {guide.author}</span> : null}
           </div>
-        </div>
-      </section>
+        </header>
 
-      <article className="px-4 py-16 sm:px-6 sm:py-22 lg:px-8">
-        <div className="mx-auto grid max-w-[1200px] gap-12 lg:grid-cols-[minmax(0,1fr)_310px] lg:gap-18">
-          <div className="max-w-3xl">
-            <p className="text-lg leading-8 text-foreground-strong sm:text-xl">{guide.introduction}</p>
-            <div className="mt-12 space-y-12">
-              {guide.sections.map((section, index) => (
-                <section key={section.title}>
-                  <p className="font-mono text-xs font-bold text-primary">{String(index + 1).padStart(2, "0")}</p>
-                  <h2 className="mt-3 text-2xl font-semibold tracking-[-0.035em] text-foreground-strong sm:text-3xl">{section.title}</h2>
-                  <div className="mt-5 space-y-4 text-base leading-7 text-muted">
-                    {section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-                  </div>
-                  {section.bullets ? (
-                    <ul className="mt-6 space-y-3 rounded-[20px] border border-border bg-card p-5 text-sm leading-6 text-muted shadow-card">
-                      {section.bullets.map((bullet) => (
-                        <li key={bullet} className="flex gap-3"><Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />{bullet}</li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </section>
+        <details className="mt-8 border-y border-border">
+          <summary className="cursor-pointer py-4 text-sm font-medium text-foreground-strong focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">On this page</summary>
+          <nav aria-label="Guide contents" className="pb-5">
+            <ul className="space-y-1 text-sm leading-6">
+              {sections.map((section) => (
+                <li key={section.id}><a href={`#${section.id}`} className={`inline-flex min-h-11 items-center ${linkClassName}`}>{section.title}</a></li>
+              ))}
+              <li><a href="#guide-checklist" className={`inline-flex min-h-11 items-center ${linkClassName}`}>{guide.checklistTitle}</a></li>
+              <li><a href="#guide-faqs" className={`inline-flex min-h-11 items-center ${linkClassName}`}>Frequently asked questions</a></li>
+              {guide.sources ? <li><a href="#guide-sources" className={`inline-flex min-h-11 items-center ${linkClassName}`}>Sources and further reading</a></li> : null}
+            </ul>
+          </nav>
+        </details>
+
+        <p className="mt-8 text-[17px] leading-[1.75] text-foreground">{guide.introduction}</p>
+
+        <div className="mt-10 space-y-10 sm:space-y-12">
+          {sections.map((section) => (
+            <section key={section.id} id={section.id} className={`scroll-mt-6 ${section.presentation === "example" ? "rounded-r-lg border-l-2 border-primary bg-card-muted p-5 sm:p-6" : ""}`}>
+              <h2 className={headingClassName}>{section.title}</h2>
+              <div className="mt-4 space-y-4 text-[17px] leading-[1.75] text-foreground">
+                {section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+              </div>
+              {section.bullets ? (
+                section.presentation === "brief" ? (
+                  <GuideContentBrief id={`${section.id}-brief`} fields={section.bullets} />
+                ) : (
+                  <ul className="mt-5 list-disc space-y-3 pl-5 text-[17px] leading-[1.75] text-foreground marker:text-muted">
+                    {section.bullets.map((bullet) => <li key={bullet} className="pl-1">{bullet}</li>)}
+                  </ul>
+                )
+              ) : null}
+            </section>
+          ))}
+
+          <section className="border-t border-border pt-8">
+            <h2 className={headingClassName}>Key takeaways</h2>
+            <ul className="mt-4 list-disc space-y-3 pl-5 text-[17px] leading-[1.75] marker:text-muted">
+              {guide.takeaways.map((takeaway) => <li key={takeaway} className="pl-1">{takeaway}</li>)}
+            </ul>
+          </section>
+
+          <section id="guide-checklist" className="scroll-mt-6 border-t border-border pt-8">
+            <h2 className={headingClassName}>{guide.checklistTitle}</h2>
+            <ol className="mt-5 list-decimal space-y-4 pl-6 text-[17px] leading-[1.75] marker:font-medium marker:text-muted">
+              {guide.checklist.map((item) => <li key={item} className="pl-2">{item}</li>)}
+            </ol>
+          </section>
+
+          <section id="guide-faqs" className="scroll-mt-6 border-t border-border pt-8">
+            <h2 className={headingClassName}>Frequently asked questions</h2>
+            <div className="mt-4 divide-y divide-border">
+              {guide.faqs.map((faq) => (
+                <details key={faq.question} className="group">
+                  <summary className="flex cursor-pointer list-none items-start justify-between gap-5 py-4 text-[17px] font-medium leading-7 text-foreground-strong focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden">
+                    {faq.question}<ChevronRight className="mt-1.5 size-4 shrink-0 group-open:rotate-90" aria-hidden="true" />
+                  </summary>
+                  <p className="pb-5 text-[17px] leading-[1.75] text-foreground">{faq.answer}</p>
+                </details>
               ))}
             </div>
-          </div>
+          </section>
 
-          <aside className="h-fit lg:sticky lg:top-24">
-            <div className="rounded-[24px] border border-primary/30 bg-[linear-gradient(145deg,rgba(255,107,69,0.15),rgba(255,107,69,0.04))] p-6 shadow-floating">
-              <Lightbulb className="size-5 text-primary" aria-hidden="true" />
-              <h2 className="mt-4 text-lg font-semibold text-foreground-strong">Key takeaways</h2>
-              <ul className="mt-4 space-y-3 text-sm leading-6 text-muted">
-                {guide.takeaways.map((takeaway) => <li key={takeaway} className="flex gap-3"><span className="mt-2 size-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" />{takeaway}</li>)}
+          {guide.sources ? (
+            <section id="guide-sources" className="scroll-mt-6 border-t border-border pt-8">
+              <h2 className={headingClassName}>Sources and further reading</h2>
+              <ul className="mt-4 space-y-2 text-sm leading-6">
+                {guide.sources.map((source) => (
+                  <li key={source.href}><a href={source.href} className={`inline-flex min-h-11 items-center ${linkClassName}`}>{source.label}</a></li>
+                ))}
               </ul>
-            </div>
-            <Link href={guide.productHref} className="group mt-4 flex rounded-[22px] border border-border bg-card p-5 shadow-card transition-[transform,border-color] hover:-translate-y-0.5 hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-              <span>
-                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Put the system to work</span>
-                <span className="mt-2 block text-sm font-semibold leading-6 text-foreground-strong">{guide.productLabel}</span>
-                <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary">Explore UGCPilot <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></span>
-              </span>
-            </Link>
-          </aside>
+            </section>
+          ) : null}
         </div>
-      </article>
 
-      <section className="border-y border-border bg-card-muted/45 px-4 py-16 sm:px-6 sm:py-22 lg:px-8">
-        <div className="mx-auto max-w-[900px]">
-          <p className="text-sm font-semibold text-primary">Put it into practice</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-foreground-strong sm:text-4xl">{guide.checklistTitle}</h2>
-          <ol className="mt-8 grid gap-3 sm:grid-cols-2">
-            {guide.checklist.map((item, index) => (
-              <li key={item} className="flex gap-4 rounded-[18px] border border-border bg-card p-5 shadow-card">
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/[0.1] text-xs font-bold text-primary">{index + 1}</span>
-                <span className="text-sm leading-6 text-muted">{item}</span>
+        <footer className="mt-12 border-t border-border pt-8">
+          <h2 className={headingClassName}>Keep learning</h2>
+          <ul className="mt-4 space-y-2">
+            {relatedGuides.map((related) => (
+              <li key={related.slug}>
+                <Link href={`/guides/${related.slug}`} className={`inline-flex min-h-11 items-start gap-3 py-2 text-base leading-7 ${linkClassName}`}>
+                  <span>{related.title}</span><ArrowRight className="mt-1.5 size-4 shrink-0" aria-hidden="true" />
+                </Link>
               </li>
             ))}
-          </ol>
-        </div>
-      </section>
-
-      <section className="px-4 py-16 sm:px-6 sm:py-22 lg:px-8">
-        <div className="mx-auto grid max-w-[1200px] gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:gap-16">
-          <div>
-            <p className="text-sm font-semibold text-primary">Questions, answered</p>
-            <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-[-0.04em] text-foreground-strong sm:text-4xl">The details founders ask first.</h2>
-          </div>
-          <div className="divide-y divide-border rounded-[22px] border border-border bg-card px-5 shadow-card sm:px-7">
-            {guide.faqs.map((faq) => (
-              <details key={faq.question} className="group py-5">
-                <summary className="flex cursor-pointer list-none items-start justify-between gap-5 text-base font-semibold text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden">
-                  {faq.question}<span className="mt-1.5 size-2 shrink-0 rounded-full bg-primary transition-transform duration-200 group-open:scale-150 motion-reduce:transition-none" aria-hidden="true" />
-                </summary>
-                <p className="mt-3 pr-6 text-sm leading-6 text-muted">{faq.answer}</p>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="border-t border-border bg-card-muted/45 px-4 py-16 sm:px-6 sm:py-22 lg:px-8">
-        <div className="mx-auto max-w-[1200px]">
-          <p className="text-sm font-semibold text-primary">Keep learning</p>
-          <div className="mt-3 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-            <h2 className="max-w-2xl text-3xl font-semibold tracking-[-0.04em] text-foreground-strong sm:text-4xl">Continue building a marketing system that fits your product.</h2>
-            <Link href="/guides" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">All founder guides <ArrowRight className="size-4" aria-hidden="true" /></Link>
-          </div>
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {relatedGuides.map((related) => (
-              <Link key={related.slug} href={`/guides/${related.slug}`} className="group rounded-[22px] border border-border bg-card p-6 shadow-card transition-[transform,border-color] hover:-translate-y-0.5 hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">{related.keyword}</p>
-                <h3 className="mt-3 text-lg font-semibold leading-6 text-foreground-strong">{related.title}</h3>
-                <span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-primary">Read guide <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="px-4 pb-18 pt-16 sm:px-6 sm:pb-24 sm:pt-22 lg:px-8">
-        <div className="mx-auto max-w-[1200px] rounded-[28px] border border-primary/30 bg-[linear-gradient(130deg,rgba(255,107,69,0.18),rgba(255,107,69,0.05)_58%,rgba(255,255,255,0.02))] px-6 py-10 shadow-floating sm:px-10 sm:py-14 lg:px-14">
-          <h2 className="max-w-3xl text-3xl font-semibold tracking-[-0.04em] text-foreground-strong sm:text-4xl">Turn the next useful idea into content your team can review.</h2>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-muted">Add your product context, choose the right format for the message, and keep the final publishing decision with your team.</p>
-          <div className="mt-8"><LandingAuthCta className="group inline-flex h-12 items-center justify-center rounded-full bg-primary px-6 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background" initialHasSession={false} /></div>
-        </div>
-      </section>
+          </ul>
+          <p className="mt-8 text-sm leading-6 text-muted">
+            Ready to put this into practice?{" "}
+            <Link href={guide.productHref} className={linkClassName}>{guide.productLabel}</Link>.
+          </p>
+          <Link href="/guides" className={`mt-5 inline-flex min-h-11 items-center text-sm ${linkClassName}`}>All founder guides</Link>
+        </footer>
+      </article>
     </main>
   );
 }

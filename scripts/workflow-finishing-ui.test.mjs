@@ -111,6 +111,42 @@ test("both workflows persist and submit each position, retain exact interrupted 
   }
 });
 
+test("owned demo assets are composed without reuploading, retries preserve their identity and replacement invalidates the output", async () => {
+  const h = harness({ lost: true });
+  const demoId = randomUUID();
+  h.props.demoSource = { id: demoId, status: "ready", collection: "video", durationSeconds: 12 };
+  h.render(); await tick(); h.render().action.onAction(); await tick();
+  const first = h.calls.find(call => call.method === "POST");
+  assert.equal(JSON.parse(first.body).draft.sourceAssetId, source.id);
+  assert.equal(JSON.parse(first.body).draft.demoAssetId, demoId);
+  assert.equal(h.uploads.length, 0);
+  h.render().action.onAction(); await tick();
+  assert.equal(h.calls.filter(call => call.method === "POST")[1].body, first.body);
+  assert.equal(h.render().output.id, output.id);
+  h.props.demoSource = { ...h.props.demoSource, id: randomUUID() };
+  assert.equal(h.render().output, null);
+  h.render().action.onAction(); await tick();
+  assert.equal(JSON.parse(h.calls.at(-1).body).draft.demoAssetId, h.props.demoSource.id);
+  assert.notEqual(JSON.parse(h.calls.at(-1).body).requestKey, JSON.parse(first.body).requestKey);
+  h.unmount();
+});
+
+test("recovering a composition accepts only its saved demo identity without starting another export", async () => {
+  const demoId = randomUUID();
+  const saved = { version: 1, ownerId: "owner", kind: "hook", requestKey: randomUUID(), draft: { version: 1, kind: "hook", sourceAssetId: source.id, demoAssetId: demoId, demoAudioAssetId: null, demoAudioPlayback: "once", backgroundAssetId: null, backgroundPlayback: "once", subtitles: null } };
+  const h = harness({ saved, completed: true });
+  const restored = [];
+  h.props.demoSource = { id: demoId, status: "ready", collection: "video", durationSeconds: 12 };
+  h.props.onRestoreDraft = draft => restored.push(draft);
+  h.render(); await tick(); await tick();
+  assert.equal(restored[0].demoAssetId, demoId);
+  assert.equal(h.render().output.id, output.id);
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 0);
+  h.props.demoSource = { ...h.props.demoSource, id: randomUUID() };
+  assert.equal(h.render().output, null);
+  h.unmount();
+});
+
 test("reload restores each position and legacy omission defaults to Bottom without rewriting the durable request", async () => {
   for (const kind of ["hook", "phone"]) for (const placement of [undefined, "bottom", "middle", "top"]) {
     const draft = { version: 1, kind, sourceAssetId: source.id, demoAssetId: null, demoAudioAssetId: null,

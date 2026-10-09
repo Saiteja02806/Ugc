@@ -98,7 +98,7 @@ test("Structure 1 keeps an optional CTA on its final value slide only", () => {
   }), /final slide only/i);
 });
 
-test("Structure 1 requires one 5-11 word hook and rejects Slide 1 support copy", () => {
+test("Structure 1 requires one 5-14 word hook and rejects Slide 1 support copy", () => {
   const format = CAROUSEL_CONTENT_GRAMMAR.formats[0]!;
   const input = {
     analysis,
@@ -112,7 +112,7 @@ test("Structure 1 requires one 5-11 word hook and rejects Slide 1 support copy",
 
   assert.throws(
     () => parseCarouselContentPlanForAssignment(shortHook, input),
-    /Headline must be 5-13 words/i,
+    /Headline must be 5-14 words/i,
   );
 
   const withSupport = createFixture(format.id, format.compatibleHookFamilies[0]!);
@@ -122,6 +122,20 @@ test("Structure 1 requires one 5-11 word hook and rejects Slide 1 support copy",
     () => parseCarouselContentPlanForAssignment(withSupport, input),
     /no supporting body copy/i,
   );
+});
+
+test("Structure 1 blocks two-sentence covers even within the hook word budget", () => {
+  const format = CAROUSEL_CONTENT_GRAMMAR.formats[0]!;
+  const fixture = createFixture(format.id, format.compatibleHookFamilies[0]!);
+  fixture.slides[0]!.headline = "content felt hard. i needed a change";
+  assert.throws(() => parseCarouselContentPlanForAssignment(fixture, { analysis, contentFormatId: format.id, hookFamilyId: format.compatibleHookFamilies[0]!, recentHistory: [], slideCount: 6 }), /one statement only/i);
+  fixture.slides[0]!.headline = "i kept running out of things to post";
+  const valid = parseCarouselContentPlanForAssignment(fixture, { analysis, contentFormatId: format.id, hookFamilyId: format.compatibleHookFamilies[0]!, recentHistory: [], slideCount: 6 });
+  assert.deepEqual(valid.blockingIssues, []);
+  fixture.slides[0]!.headline = "why i kept saying yes to every small task and lost my whole week";
+  assert.deepEqual(parseCarouselContentPlanForAssignment(fixture, { analysis, contentFormatId: format.id, hookFamilyId: format.compatibleHookFamilies[0]!, recentHistory: [], slideCount: 6 }).blockingIssues, []);
+  fixture.slides[0]!.headline += " again";
+  assert.throws(() => parseCarouselContentPlanForAssignment(fixture, { analysis, contentFormatId: format.id, hookFamilyId: format.compatibleHookFamilies[0]!, recentHistory: [], slideCount: 6 }), /Headline must be 5-14 words/i);
 });
 
 test("Structure 1 requires 18-30 words for Slides 2-6 prose", () => {
@@ -319,13 +333,17 @@ test("the worker sends a persisted template only as Slide 1 planner guidance", a
     assert.match(requestText, /I finally cracked the code for \{topic\}/);
     assert.match(requestText, /not let it change Slides 2-6/i);
     assert.match(requestText, /Verified grounding anchors/i);
-    assert.match(requestText, /poster cover/i);
-    assert.match(requestText, /72px/i);
+    assert.match(requestText, /social slideshow cover/i);
+    assert.match(requestText, /84px/i);
     assert.match(requestText, /Inter Tight Bold at 700 weight/i);
-    assert.match(requestText, /normally 6-13 words/i);
-    assert.match(requestText, /four centred display lines at 72px/i);
+    assert.match(requestText, /normally 6-14 words/i);
+    assert.match(requestText, /four centred display lines at 84px/i);
     assert.match(requestText, /aim for 20-24 words/i);
-    assert.match(requestText, /natural or sentence case/i);
+    assert.match(requestText, /conversational lowercase/i);
+    assert.match(requestText, /Hook slide = one statement only/i);
+    assert.match(requestText, /First-person hooks are welcome/i);
+    assert.match(requestText, /Save the explanation for Slide 2 onward/i);
+    assert.doesNotMatch(requestText, /Do not begin a complete personal story|Do not open with a complete personal-story/i);
     assert.match(requestText, /only add one when it names a distinct idea/i);
     // Word limits stay in the prompt and publisher validator. They must not be
     // encoded as regex patterns in the strict decoder schema: gpt-4o-mini can
@@ -558,11 +576,11 @@ test("the production-shaped five-item batch uses combined formats and a native f
     assert.match(requestText, /how_to__cracked_the_code/);
     assert.match(requestText, /list__native/);
     assert.match(requestText, /source.*format_native/);
-    assert.match(requestText, /reader-first poster cover/i);
+    assert.match(requestText, /social slideshow cover/i);
     assert.match(requestText, /within 4 lines/i);
     assert.match(requestText, /Inter Tight Bold at 700 weight/i);
-    assert.match(requestText, /normally 6-13 words/i);
-    assert.match(requestText, /four centred display lines at 72px/i);
+    assert.match(requestText, /normally 6-14 words/i);
+    assert.match(requestText, /four centred display lines at 84px/i);
     assert.match(requestText, /aim for 20-24 words/i);
     assert.match(requestText, /heading is optional/i);
     assert.match(requestText, /grounding\.anchorId/i);
@@ -847,7 +865,7 @@ test("Structure 1 reserves the white SVG heading treatment for content slides", 
   assert.equal(cover.whiteBackgroundGroupCount, 0);
   assert.equal(heading.bodyFontSize, 48);
   assert.equal(bodyOnly.bodyFontSize, 48);
-  assert.equal(cover.bodyFontSize, 72);
+  assert.equal(cover.bodyFontSize, 84);
   assert.equal(heading.headingBackgroundUsesLineFittedPath, true);
   assert.equal(
     heading.headingBackgroundLineCount,

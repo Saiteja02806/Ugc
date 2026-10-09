@@ -298,7 +298,7 @@ function expandSixSlideFormat(params: {
     {
       ...baseHook,
       instruction:
-        "Create a concise reader-first cover that gives a clear reason to swipe. Lead with a specific tension, outcome, contrast, mistake, useful promise, or curiosity gap—not a complete personal story.",
+        "Create one concise social slideshow hook about one main idea. Use a specific tension, outcome, changed belief, mistake, useful promise, or curiosity gap. First-person open loops are welcome. Save the explanation for Slides 2-6.",
       preferredTextModes: ["single_statement"],
       role: "cover_hook",
     },

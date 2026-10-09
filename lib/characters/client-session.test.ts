@@ -17,7 +17,7 @@ test("receipts and uncertain requests survive restore without requiring private 
     selectedCharacterId: "33333333-3333-4333-8333-333333333333",
     pendingRequest: { mode: "custom", prompt: "An adult creator", model: "gpt_image", idempotencyKey: "original-request" },
   };
-  for (const model of ["gpt_image", "gemini_3_pro", "nano_banana_2"]) {
+  for (const model of ["gpt_image", "gemini_3_pro", "nano_banana_2", "seedream_5_pro", "gpt_image_2_5"]) {
     for (const imageCount of [undefined, 1, 2, 3]) {
       const selectedSession = { ...session, pendingRequest: { ...session.pendingRequest, model, ...(imageCount ? { imageCount } : {}) } };
       assert.deepEqual(parseCharacterClientSession(JSON.stringify(selectedSession)), selectedSession);

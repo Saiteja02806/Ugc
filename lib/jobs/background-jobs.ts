@@ -562,6 +562,7 @@ export async function getBackgroundJobForUser(params: {
 
 export async function listBackgroundJobsForUser(params: {
   activeOnly?: boolean;
+  exploreFormat?: "hook" | "wall_text" | "slideshow";
   jobType?: BackgroundJobType;
   projectId?: string;
   completedOnly?: boolean;
@@ -592,6 +593,8 @@ export async function listBackgroundJobsForUser(params: {
   if (params.jobType) {
     query = query.eq("job_type", params.jobType);
   }
+
+  if (params.exploreFormat) query = query.eq("input_json->>exploreFormat", params.exploreFormat);
 
   if (params.projectId) query = query.eq("project_id", params.projectId);
   if (params.completedOnly) query = query.eq("status", "completed");

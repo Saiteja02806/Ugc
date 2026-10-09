@@ -1,5 +1,5 @@
 export type GeneratedVideoHistoryMetadata = {
-  model?: "google_omni" | "seedance_2_5";
+  model?: "google_omni" | "seedance_2_5" | "wan_3_0";
   prompt?: string;
   resolution?: "480p" | "720p" | "1080p";
 };
@@ -17,7 +17,7 @@ export function getGeneratedVideoHistoryMetadata(
   const resolution = input.resolution;
 
   return {
-    ...(model === "google_omni" || model === "seedance_2_5" ? { model } : {}),
+    ...(model === "google_omni" || model === "seedance_2_5" || model === "wan_3_0" ? { model } : {}),
     ...(typeof prompt === "string" && prompt.trim()
       ? { prompt: prompt.trim() }
       : {}),

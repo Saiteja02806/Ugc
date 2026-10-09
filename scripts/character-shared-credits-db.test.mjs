@@ -61,7 +61,7 @@ export async function fixture({ applyShared = true, promptDriven = false } = {})
   }
   await db.exec(functionSql(source("20260905123000_harden_wall_text_regeneration_recovery.sql"), "create_or_get_background_job_v1"));
   await db.exec(source("20261002192039_character_generation_batch.sql"));
-  await db.exec(source("20261003045336_character_gemini_3_pro_image.sql"));
+  await db.exec(source("20261003045651_character_gemini_3_pro_image.sql"));
   await db.exec(source("20261003041318_character_allowance_privileges.sql"));
   await db.exec(source("20261003110411_one_time_free_generation_credits.sql"));
   await db.exec("create trigger settle_billing after update of status on background_jobs for each row execute function settle_billing_from_background_job()");

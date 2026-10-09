@@ -21,7 +21,7 @@ const video = { id: "00000000-0000-4000-8000-000000000001", collection: "influen
   fileSizeBytes: 2000, title: "My saved clip", url: "/owned.mp4", ratio: "16:9", width: 1280, height: 720, metadata: {}, createdAt: "2026-10-08T00:00:00Z" };
 function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : []; }
 function text(tree) { return Array.isArray(tree) ? tree.map(text).join(" ") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" ? tree : ""; }
-function harness(format, query = "", { local = true, selected = video, catalogue = [] } = {}) {
+function harness(format, query = "", { local = true, selected = video, catalogue = [], subscription = { isActive: true } } = {}) {
   let cursor = 0, params = new URLSearchParams(query), columns = 5, resizeCallback, sourceInput;
   const slots = [], queries = [], tokens = [], reads = [];
   const window = { location: { pathname: `/explore/${format}`, get search() { return `?${params}`; } }, history: { replaceState(_, __, url) { params = new URLSearchParams(url.split("?")[1]); } }, matchMedia: () => ({ matches: false }), getComputedStyle: () => ({ gridTemplateColumns: Array(columns).fill("200px").join(" ") }) };
@@ -40,9 +40,9 @@ function harness(format, query = "", { local = true, selected = video, catalogue
     useId: () => "workflow-controls-test",
   }, "next/dynamic": { default: () => "generation-panel" }, "next/link": { default: "link" }, "next/navigation": { useSearchParams: () => params },
   "@base-ui/react/tabs": { Tabs: { Root: "tabs-root", List: "tablist", Tab: "tab", Panel: "tabpanel" } },
-  "@tanstack/react-query": { useQuery(options) { queries.push(options); return {}; } },
+  "@tanstack/react-query": { useQuery(options) { queries.push(options); return options.queryKey[0] === "recreate-references" ? { data: catalogue } : {}; } },
   "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" }, loading: false }) },
-  "@/components/billing/use-billing-subscription": { useBillingSubscription: () => ({}) },
+  "@/components/billing/use-billing-subscription": { useBillingSubscription: () => ({ data: subscription }) },
   "@/components/generation/use-ai-studio-access": { useAIStudioAccess: () => "pro" },
   "@/components/explore/use-workflow-source-video": { useWorkflowSourceVideo(input) { sourceInput = input; return source; } },
   "@/components/explore/format-workspace.module.css": new Proxy({}, { get: (_, key) => key }),

@@ -1,6 +1,21 @@
 # Wall-of-text Context
 
-Last updated: 2026-10-08
+Last updated: 2026-10-09
+
+## 2026-10-09 Revisiting and scheduling Wall posts (local fix)
+
+- A liked review-history entry records opening scheduling, so the user can
+  return to it and double-tap or press Schedule again after cancellation or
+  a failed save. That retry does not review the post or consume its slot again.
+- The schedule endpoint verifies the owner's assignment and resolves its
+  creative on the server, then confirms acceptance before requiring a selected
+  draft. A recorded skip is recovered only through the existing explicit
+  reconsideration RPC; delayed outbox skips cannot reverse that selection.
+- Rendering still starts after the schedule is saved. Explicit Creative Assets
+  saving, source generation, copy/layout, card sizing and publishing identity
+  retain their existing behavior. This local repair requires an app release;
+  no database migration or worker release is needed. Authenticated production
+  acceptance is pending. See `docs/trending-revisited-scheduling-2026-10-09.md`.
 
 ## 2026-10-08 Explore manual Wall video workflow (local implementation)
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import sharp from "sharp";
-import { getCarouselBodyBlocks, hasCarouselSemanticHeading, normalizeCarouselText } from "./carousel-text-presentation.js";
+import { CAROUSEL_HOOK_FONT_SIZE, getCarouselBodyBlocks, getCarouselHookStatementIssue, hasCarouselSemanticHeading, normalizeCarouselText } from "./carousel-text-presentation.js";
 import { inspectCarouselSlideLayout } from "./carousel-render-slide.js";
 import { inspectCarouselStructure2SlideLayout, renderCarouselStructure2SlideFromBuffer } from "./carousel-structure-2-render-slide.js";
 import type { CarouselStructure2RenderSpec } from "./carousel-structure-2-render-spec.js";
@@ -17,6 +17,53 @@ function spec(overrides: Partial<CarouselStructure2RenderSpec> = {}): CarouselSt
 test("normalization preserves intentional lines and separate body thoughts", () => {
   assert.equal(normalizeCarouselText("  first  line\r\nnext line\r\n\r\nsecond thought "), "first line\nnext line\n\nsecond thought");
   assert.deepEqual(getCarouselBodyBlocks(body), ["i used to wait until i felt ready", "now i show up for ten minutes every morning"]);
+});
+
+test("social hooks reject message plus explanation and preserve one thought with semantic lines", () => {
+  for (const hook of [
+    "don't let creative fatigue hold you back. your audience deserves fresh, engaging content.",
+    "content felt hard. i needed a change",
+    "content felt hard? i needed a change",
+    "content felt hard\n\ni needed a change",
+    "content felt hard.\ni needed a change",
+  ]) assert.ok(getCarouselHookStatementIssue(hook), hook);
+  for (const hook of [
+    "5 ways i stopped running out of content ideas",
+    "i kept running out of things to post",
+    "5 shifts that made content creation way easier",
+    "i thought every workout had to feel hard to count",
+    "5 ways i stopped\nrunning out of\ncontent ideas",
+    "why did i keep running out of content ideas?",
+    "how i plan content for U.S. audiences",
+    "how i made 2.5 hours count each week",
+    "why Dr. Lee changed my whole workout plan",
+    "how example.com changed the way i plan content",
+  ]) assert.equal(getCarouselHookStatementIssue(hook), null, hook);
+});
+
+test("reference hooks are one large cover block over two to four lines in both formats", async () => {
+  for (const format of ["1:1", "4:5"] as const) {
+    for (const hook of [
+      "5 ways i stopped running out of content ideas",
+      "i kept running out of things to post",
+      "5 shifts that made content creation way easier",
+      "5 ways i finally stopped missing deadlines while working from home",
+      "i thought every workout had to feel hard to count",
+      "5 shifts that made me learn a new skill fast",
+    ]) {
+      const first = await inspectCarouselSlideLayout({ format, slide: { body: null, ctaText: null, headline: hook, imageDirection: "existing background", layoutPreset: "top-hook", listItems: [], slideNumber: 1, slideType: "hook", subtext: null, textMode: "single_statement", textPosition: "center" } });
+      const second = await inspectCarouselStructure2SlideLayout({ format, spec: spec({ slideNumber: 1, headline: null, storyText: hook, storyRole: CAROUSEL_STRUCTURE_2_STORY_ROLES[0], ctaText: null }) });
+      assert.equal(first.bodyFontSize, 84);
+      assert.equal(second.storyFontSize, 84);
+      for (const layout of [first, second]) {
+        assert.equal(layout.bodyBlockCount, 1);
+        assert.equal(layout.ctaLineCount, 0);
+        assert.equal(layout.whiteBackgroundGroupCount, 0);
+        assert.ok(layout.bodyBlockLineCounts![0]! >= 2 && layout.bodyBlockLineCounts![0]! <= 4, hook);
+      }
+      assert.equal(second.safeAreaContained, true);
+    }
+  }
 });
 
 test("editor heading metadata distinguishes legacy transport text from a real heading", () => {
@@ -70,7 +117,7 @@ test("Structure 2 does not infer a pill from an old story or a body-only slide",
   }
   const cover = await inspectCarouselStructure2SlideLayout({ format: "4:5", spec: spec({ slideNumber: 1, headline: null, storyText: "five shifts that made learning feel easier" }) });
   assert.equal(cover.whiteBackgroundGroupCount, 0);
-  assert.equal(cover.storyFontSize, 72);
+  assert.equal(cover.storyFontSize, CAROUSEL_HOOK_FONT_SIZE);
 });
 
 test("overflow and orphan lines fail explicitly instead of shrinking or flattening", async () => {

@@ -6,11 +6,11 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 
 import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
-import type { PublicBackgroundJob } from "./background-job-contract";
+import type { CanonicalBackgroundJobType, PublicBackgroundJob } from "./background-job-contract";
 
 type JobResponse = { job: PublicBackgroundJob; ok: true };
 type JobsResponse = { jobs: PublicBackgroundJob[]; ok: true };
@@ -18,16 +18,104 @@ type JobsResponse = { jobs: PublicBackgroundJob[]; ok: true };
 const terminalStatuses = new Set(["cancelled", "completed", "failed"]);
 const JOB_URL_CHANGE_EVENT = "ugc-background-job-url-change";
 
-export function useActiveBackgroundJobs() {
+export function useActiveBackgroundJobs({ enabled = true, exploreFormat }: {
+  enabled?: boolean;
+  exploreFormat?: PublicBackgroundJob["exploreFormat"];
+} = {}) {
   const { loading, user } = useAuth();
 
   return useQuery({
-    enabled: !loading && Boolean(user),
-    queryFn: () => fetchJobs("/api/jobs?status=active&limit=100"),
-    queryKey: ["background-jobs", user?.uid, "active"],
+    enabled: enabled && !loading && Boolean(user),
+    queryFn: () => fetchJobs(`/api/jobs?status=active&limit=100${exploreFormat ? `&exploreFormat=${exploreFormat}` : ""}`),
+    queryKey: ["background-jobs", user?.uid, "active", ...(exploreFormat ? [exploreFormat] : [])],
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     refetchInterval: (query) =>
       (query.state.data?.length ?? 0) > 0 ? 5_000 : 30_000,
   });
+}
+
+/** Discover account-owned workflow tasks even when this browser has no saved ID. */
+export function useRecoverableWorkflowJobs(
+  knownJobIds: readonly string[],
+  {
+    enabled,
+    exploreFormat,
+    jobType,
+  }: {
+    enabled: boolean;
+    exploreFormat: PublicBackgroundJob["exploreFormat"];
+    jobType: CanonicalBackgroundJobType;
+  },
+) {
+  const { loading, user } = useAuth();
+  const recoveryEnabled = enabled && Boolean(exploreFormat) && !loading && Boolean(user);
+  const accountJobs = useActiveBackgroundJobs({ enabled: recoveryEnabled, exploreFormat });
+  const ownerKey = `${user?.uid ?? "signed-out"}:${exploreFormat ?? ""}:${jobType}`;
+  const [recovered, setRecovered] = useState<{
+    ownerKey: string;
+    ids: string[];
+    source: PublicBackgroundJob[] | undefined;
+  }>({ ownerKey: "", ids: [], source: undefined });
+  const matchingJobs = recoveryEnabled
+    ? (accountJobs.data ?? []).filter(job => job.jobType === jobType && job.exploreFormat === exploreFormat)
+    : [];
+
+  // Retain discovered IDs when they leave the active list, so their final
+  // status and output are still retrieved by the individual job queries.
+  // Adjust only when the account/scope or query snapshot changes.
+  if (recoveryEnabled && (recovered.ownerKey !== ownerKey || recovered.source !== accountJobs.data)) {
+    setRecovered({
+      ownerKey,
+      source: accountJobs.data,
+      ids: Array.from(new Set([
+        ...(recovered.ownerKey === ownerKey ? recovered.ids : []),
+        ...matchingJobs.map(job => job.id),
+      ])),
+    });
+  }
+
+  const ids = Array.from(new Set([
+    ...knownJobIds,
+    ...(recoveryEnabled && recovered.ownerKey === ownerKey ? recovered.ids : []),
+    ...matchingJobs.map(job => job.id),
+  ]));
+  return {
+    queries: useBackgroundJobs(ids),
+    recovering: recoveryEnabled && (accountJobs.isPending || (accountJobs.isFetching && !accountJobs.isFetchedAfterMount)),
+    recoveryError: recoveryEnabled && accountJobs.isError ? "Could not check ongoing generations. Refresh to try again." : null,
+  };
+}
+
+/** Read browser hints independently of media-history requests. */
+export function useStoredBackgroundJobIds(storageKey: string | null) {
+  const getSnapshot = useCallback(() => {
+    try {
+      return storageKey ? window.localStorage.getItem(storageKey) : null;
+    } catch {
+      return null;
+    }
+  }, [storageKey]);
+  const getServerSnapshot = useCallback(() => null, []);
+  const rawValue = useSyncExternalStore(subscribeToJobStorage, getSnapshot, getServerSnapshot);
+  if (!rawValue) return [];
+  try {
+    const parsed: unknown = JSON.parse(rawValue);
+    return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === "string") : [];
+  } catch {
+    return [rawValue];
+  }
+}
+
+function subscribeToJobStorage(onStoreChange: () => void) {
+  window.addEventListener("storage", onStoreChange);
+  // Accepted submissions save browser metadata before updating the job URL.
+  window.addEventListener(JOB_URL_CHANGE_EVENT, onStoreChange);
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+    window.removeEventListener(JOB_URL_CHANGE_EVENT, onStoreChange);
+  };
 }
 
 export function useBackgroundJob(jobId: string | null) {

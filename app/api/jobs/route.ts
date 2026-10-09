@@ -44,11 +44,18 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const activeOnly = url.searchParams.get("status") === "active";
   const requestedType = url.searchParams.get("type")?.trim() || null;
+  const exploreFormat = url.searchParams.get("exploreFormat")?.trim() || null;
   const limit = Number.parseInt(url.searchParams.get("limit") || "50", 10);
+
+  if (exploreFormat !== null && exploreFormat !== "hook" && exploreFormat !== "wall_text" && exploreFormat !== "slideshow") {
+    return json({ ok: false, error: "Choose a supported workflow." }, 400);
+  }
 
   try {
     const jobs = await listBackgroundJobsForUser({
       activeOnly,
+      exploreFormat: exploreFormat ?? undefined,
+      jobType: exploreFormat ? exploreFormat === "slideshow" ? "generate_image" : "generate_hook_video" : undefined,
       limit: Number.isFinite(limit) ? limit : 50,
       userId: auth.userId,
     });

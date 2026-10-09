@@ -41,12 +41,14 @@ test("Hook scheduling uses the wide, compact platform-details layout", () => {
   const detailsStep = reelDrawer.slice(detailsStart, detailsEnd);
 
   assert.match(reelDrawer, /sm:max-w-\[960px\]/);
-  assert.match(reelDrawer, /xl:grid-cols-\[minmax\(0,1\.1fr\)_minmax\(20rem,0\.9fr\)\]/);
-  assert.match(detailsStep, /Publishing details/);
-  assert.match(reelDrawer, /Content disclosure/);
+  assert.match(detailsStep, /schedule-accounts-heading/);
+  assert.match(detailsStep, /schedule-caption-heading/);
+  assert.match(detailsStep, /schedule-time-heading/);
+  assert.doesNotMatch(reelDrawer, /Content disclosure|Your brand|Paid partnership/);
   assert.doesNotMatch(detailsStep, /Music Usage Confirmation/);
   assert.doesNotMatch(detailsStep, /Contains AI-generated content/);
-  assert.match(reelDrawer, /Confirm TikTok publishing/);
+  assert.doesNotMatch(reelDrawer, /Confirm TikTok publishing|musicConfirmationOpen/);
+  assert.match(reelDrawer, /getTikTokPublishingAgreement/);
   assert.match(reelDrawer, /requireTikTokMusicConfirmation: false/);
 });
 

@@ -1,8 +1,23 @@
 # AI character builder
 
-Latest local change, October 5, 2026: completed AI character images belong to
-History rather than being restored into every new workspace visit. This history
-and session change is not deployed. It requires no migration or worker change.
+Latest local change, October 9, 2026: the influencer selector and request schema
+now include Seedream 5.0 Pro and ChatGPT Image 2.5 Sunburst alongside ChatGPT Image,
+Gemini 3 Pro and Nano Banana 2.1. Both reuse existing shared-worker providers.
+Rollout requires the additive migration
+`20261009093932_character_seedream_sunburst_models.sql` before deploying the web
+selector. The migration extends the existing v2 reservation RPC's model list
+while preserving atomic credit reservation, admitted-request replay, legacy
+job recovery and service-role-only execution. No new credentials are needed.
+This model expansion is local and has not been deployed.
+
+Model expansion validation: 71 application/API/identity/session tests, 17 isolated
+Postgres tests and 13 provider-boundary tests passed. Full application TypeScript,
+worker build and scoped ESLint passed. The local browser shows and selects both
+new options and flags an overlong Seedream prompt without truncating it. Provider
+tests use stubs; no paid generation or hosted database mutation was performed.
+
+Completed AI character images belong to History rather than being restored into
+every new workspace visit. The history and session behavior is retained.
 The preceding prompt-driven release is deployed at commit `6e82f4c`; its additive
 RPC migration was applied as hosted version `20261005140223`.
 
@@ -49,19 +64,30 @@ the shared available balance. A changed balance cannot silently change the
 selected quantity; generation locks until it is affordable again.
 No business-context panel, internal brief or generated prompt is shown.
 
-The composer has no character counter. The API, reservation RPC and image worker
-accept descriptions up to 32,000 characters, including descriptions above the
-old worker's 2,000-character limit. Oversized requests fail before charging
+The composer has no character counter. Descriptions support up to 32,000
+characters except Seedream, whose existing provider limit is 4,000 characters.
+The composer, API and reservation RPC enforce the selected model's limit.
+Oversized requests fail before charging
 credits rather than being summarized or truncated. A 1 MiB transport bound also
 protects the API. Surrounding whitespace is trimmed; all remaining text,
 paragraphs and final details are preserved exactly. No business facts, inferred
 appearance, creator specification, master prompt or realism instructions are added.
 
-The character model selector offers GPT Image, Gemini 3 Pro, and Nano Banana 2.
+The character model selector offers ChatGPT Image, ChatGPT Image 2.5 Sunburst,
+Gemini 3 Pro, Nano Banana 2.1 and Seedream 5.0 Pro. ChatGPT Image remains the default.
+The ChatGPT wording is the user-facing label. The first option uses the OpenAI
+Images API with `gpt-image-2` by default (or the server's `OPENAI_IMAGE_MODEL`
+override); the internal `gpt_image` key is retained. Neither OpenAI image option
+uses Runway or OpenRouter.
+Sunburst uses the explicit `gpt-image-2.5-sunburst` OpenAI model for generation
+and saved-influencer edits, independently of the legacy `OPENAI_IMAGE_MODEL`
+override. Seedream uses the existing Runway `seedream5_pro` route, owned
+reference images and durable provider-operation recovery. Saved identities,
+History and uncertain-request session restore accept all five model IDs.
 The two Google models use the server-side `GEMINI_API_KEY` through Google's SDK,
 with no Runway image route or fallback. Gemini 3 Pro selects `gemini-3-pro-image`
-independently of the Nano Banana 2 override (`GEMINI_IMAGE_MODEL`, default
-`gemini-3.1-flash-image`). Pro stores the accepted Google interaction ID so retries
+independently of the Nano Banana 2.1 override (`GEMINI_IMAGE_MODEL`, default
+`gemini-nano-banana-2.1`). Pro stores the accepted Google interaction ID so retries
 can retrieve that interaction instead of creating another paid request.
 
 The owner's current policy is two lifetime free generation credits shared

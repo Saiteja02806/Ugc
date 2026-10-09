@@ -1,5 +1,5 @@
 import { structure2HookGuidance } from "./carousel-structure-2-hook-templates.js";
-import { CAROUSEL_TEXT_PRESENTATION_GUIDANCE, CAROUSEL_BODY_BLOCK_MAX_LINES, CAROUSEL_HEADING_FONT_SIZE, CAROUSEL_HEADING_MAX_LINES, getCarouselBodyBlocks, isCarouselOrphanLine, normalizeCarouselText } from "./carousel-text-presentation.js";
+import { CAROUSEL_TEXT_PRESENTATION_GUIDANCE, CAROUSEL_HOOK_COPY_GUIDANCE, CAROUSEL_HOOK_MIN_WORDS, CAROUSEL_HOOK_MAX_WORDS, CAROUSEL_BODY_BLOCK_MAX_LINES, CAROUSEL_HEADING_FONT_SIZE, CAROUSEL_HEADING_MAX_LINES, getCarouselBodyBlocks, getCarouselHookStatementIssue, isCarouselOrphanLine, normalizeCarouselText } from "./carousel-text-presentation.js";
 import type {
   CarouselPlanningBrief,
   CarouselRecentAcceptedCopy,
@@ -25,7 +25,7 @@ import {
 } from "./carousel-structure-2-formats.js";
 
 const STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE =
-  "Write one self-contained hook, normally 6-13 words. Use short, natural wording so it stays within four centred display lines at 72px. Default to lowercase, never ALL CAPS. It must read as one dominant thought, not a title plus subtitle or an explanatory story sentence. The hook sits in the image centre, so visualContext must leave a clear, calm central text zone rather than reserving empty space only at the bottom.";
+  `${CAROUSEL_HOOK_COPY_GUIDANCE} Use short, natural wording so it stays within four centred display lines at ${getCarouselStructure2StoryFontSize(1)}px. Never use ALL CAPS. The hook sits in the image centre, so visualContext must leave a clear, calm central text zone rather than reserving empty space only at the bottom.`;
 
 export const CAROUSEL_STRUCTURE_2_STORY_SCHEMA_VERSION =
   "carousel-structure-2-strict-six-slide-text-blocks-v10";
@@ -53,10 +53,10 @@ const MAX_ANGLE_LENGTH = 180;
 const MAX_CTA_TEXT_LENGTH = 360;
 const MAX_STORY_TEXT_LENGTH = 720;
 const MAX_VISUAL_CONTEXT_LENGTH = 220;
-const STRUCTURE_2_COVER_HOOK_MIN_WORDS = 5;
-const STRUCTURE_2_COVER_HOOK_MAX_WORDS = 13;
+const STRUCTURE_2_COVER_HOOK_MIN_WORDS = CAROUSEL_HOOK_MIN_WORDS;
+const STRUCTURE_2_COVER_HOOK_MAX_WORDS = CAROUSEL_HOOK_MAX_WORDS;
 // Forty-two characters is a useful writing target, not the publishing gate.
-// The renderer measures the actual 72px, four-line cover treatment below.
+// The renderer measures the actual fixed-size, four-line cover treatment below.
 // A raw character cap rejects naturally short covers that render cleanly and,
 // when used in Structured Outputs, can cut a model off mid-thought.
 export const CAROUSEL_STRUCTURE_2_COVER_HOOK_PREFERRED_MAX_CHARACTERS = 42;
@@ -118,6 +118,7 @@ export type CarouselStructure2StoryValidationIssue = {
     | "generic_copy"
     | "hook_incomplete"
     | "hook_length"
+    | "hook_structure"
     | "hook_template_placeholder"
     | "invalid_plan"
     | "perspective"
@@ -289,6 +290,10 @@ export function validateCarouselStructure2StoryPlan(
           "Slide 1 ends as an incomplete hook. Return a shorter, self-contained hook instead of a partial final word or hanging phrase.",
         slideNumber: slide.slideNumber,
       });
+    }
+    if (slide.slideNumber === 1) {
+      const message = getCarouselHookStatementIssue(slide.storyText);
+      if (message) issues.push({ code: "hook_structure", message, slideNumber: 1 });
     }
 
     if (!storyFit.fits) {
@@ -653,12 +658,12 @@ export function buildCarouselStructure2BatchMessages(params: {
       content: [
         "Use each creativeSeed as a broad starting point and its emotion as the emotional current. Do not treat either as finished copy or a complete plot.",
         "Use privateCreativeBrief only as flexible human and factual context; its preferredFormatFamily must never override the backend-selected format reference.",
-        "Follow each role's word range as a publishing contract. Slide 1 must be one 5-13 word hook only, with no subtitle or supporting copy. Every prose slide from Slide 2 through Slide 6 must contain 14-30 words. Develop the story beat clearly and prioritize readable copy that fits the stated display area.",
+        `Follow each role's word range as a publishing contract. Slide 1 must be one ${CAROUSEL_HOOK_MIN_WORDS}-${CAROUSEL_HOOK_MAX_WORDS} word hook only, with no subtitle or supporting copy. Every prose slide from Slide 2 through Slide 6 must contain 14-30 words. Develop the story beat clearly and prioritize readable copy that fits the stated display area.`,
         CAROUSEL_TEXT_PRESENTATION_GUIDANCE,
         "For Slides 2-6, aim for 16-22 body words total (accepted 14-30). Use headline for a real optional heading, otherwise null. Put one or two short body thoughts in storyText, separated by \\n\\n, each at most three lines at 48px; do not put the heading into storyText.",
         "Return each plan under its assigned outputKey. Do not return slideNumber, slotIndex, candidateIndex, or storyFormatId; the worker owns those structural values.",
         "Develop genuinely different stories inside the required six-slide sequence. Do not force every item through the same overwhelmed-to-easier arc.",
-        `Slide 1 is reader-first: direct reader wording such as 'you' or 'your' is allowed. ${STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE} Give a specific benefit, tension, mistake, contrast, or curiosity gap; do not force it into a first-person personal-story opener.`,
+        `Slide 1 may use first-person or direct reader wording such as 'you' or 'your'. ${STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE} Give a specific benefit, tension, mistake, contrast, or curiosity gap.`,
         "Perspective boundary: only Slide 1 may lead with direct reader wording. Slides 2-5 must stay in the first-person story voice (I, me, or my). Slide 6 may turn the lesson toward the reader after its takeaway.",
         "Slides 1-5 return ctaText: null. Slide 6 may include a short natural CTA, otherwise null, alongside its useful final value. The renderer displays it on that same slide as plain text, not a button or pill.",
         `Optional content headings use black text on a fitted white SVG pill, at most two lines at 50px. Body blocks and optional CTA are white text without background. Slide 1 uses centered Inter Tight Bold at 700 weight, ${getCarouselStructure2StoryFontSize(1)}px type within ${getCarouselStructure2StoryMaxLines(1)} visual lines. Each body block fits three lines at ${CAROUSEL_FIXED_FONT_SIZE}px. No gradient, tint or CTA button is added. All text groups must fit inside the square safe area; never shrink or truncate.`,
@@ -721,14 +726,14 @@ export function buildCarouselStructure2RepairMessages(params: {
         "Only Slide 1 may lead with direct reader wording. Keep Slides 2-5 in the first-person story voice (I, me, or my); Slide 6 may turn the lesson toward the reader after its takeaway.",
         CAROUSEL_TEXT_PRESENTATION_GUIDANCE,
         "Keep Slides 2-6 readable: aim for 16-22 body words total (accepted 14-30). Preserve distinct optional headline and storyText body blocks separated by \\n\\n; each block fits three lines at 48px.",
-        "Slide 1's 5-13 word single-hook limit and every Slide 2-6 14-30 word range are publishing requirements. Repair the listed blocking issues and preserve slides that already passed validation.",
+        `Slide 1's ${CAROUSEL_HOOK_MIN_WORDS}-${CAROUSEL_HOOK_MAX_WORDS} word single-hook limit and every Slide 2-6 14-30 word range are publishing requirements. Repair the listed blocking issues and preserve slides that already passed validation.`,
         params.repairAttempt === params.repairAttemptLimit
           ? "This is the final bounded copy repair. Before returning, count whitespace-delimited body words in every changed Slide 2-6. Keep any optional CTA on Slide 6 only. Return only a plan that satisfies every listed publishing requirement."
           : null,
         hasSlideOneCoverFitFailure
           ? hasSlideOneCutoff
             ? `Slide 1 ends without a complete thought. Replace it with a shorter, self-contained hook; never leave a partial final word or phrase, and do not add support copy.`
-            : `Slide 1 does not fit its fixed visual treatment. Replace it with a shorter, simpler single hook that fits the real four-line display area at 72px. Do not add support copy.`
+            : `Slide 1 does not fit its fixed visual treatment. Replace it with a shorter, simpler single hook that fits the real four-line display area at ${getCarouselStructure2StoryFontSize(1)}px. Do not add support copy.`
           : null,
         "Validation issues:",
         JSON.stringify(params.issues),
@@ -757,8 +762,8 @@ export function buildCarouselStructure2StoryTextRepairMessages(params: {
       throw new Error("A targeted Structure 2 copy repair requires valid slides.");
     }
     const isCover = slide.slideNumber === 1;
-    const wordRange = isCover ? "5-13" : "14-30";
-    const targetRange = isCover ? "5-8" : "16-22";
+    const wordRange = isCover ? `${CAROUSEL_HOOK_MIN_WORDS}-${CAROUSEL_HOOK_MAX_WORDS}` : "14-30";
+    const targetRange = isCover ? "6-14" : "16-22";
     const lineLimit = getCarouselStructure2StoryMaxLines(slide.slideNumber);
     const fontSize = getCarouselStructure2StoryFontSize(slide.slideNumber);
     return {
@@ -766,7 +771,7 @@ export function buildCarouselStructure2StoryTextRepairMessages(params: {
       hookGuidance: isCover ? structure2HookGuidance(params.assignment) : undefined,
       replacementKey: getTargetedStoryTextKey(slide.slideNumber),
       requirement: isCover
-        ? `Return one self-contained reader-first hook, normally ${targetRange} words and preferably ${CAROUSEL_STRUCTURE_2_COVER_HOOK_PREFERRED_MAX_CHARACTERS} characters or fewer. It must stay within ${wordRange} words and fit within ${lineLimit} visual lines at centered ${fontSize}px type. Never leave a hanging phrase.`
+        ? `${STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE} Return one statement in one block, normally ${targetRange} words. It must stay within ${wordRange} words and fit within ${lineLimit} visual lines at centered ${fontSize}px type. Never leave a hanging phrase.`
         : `Return one or two short ${slide.storyRole} body blocks separated by \\n\\n, totaling ${wordRange} words; aim for ${targetRange} words. Each block must fit three visual lines at ${fontSize}px. Preserve the separate heading and existing CTA.`,
       roleGuidance: getFormatReference(params.assignment.storyFormatId).roleGuidance[
         slide.slideNumber - 1
@@ -789,8 +794,7 @@ export function buildCarouselStructure2StoryTextRepairMessages(params: {
     {
       role: "system" as const,
       content:
-        "Repair only the listed visible Structure 2 storyText values. Return only JSON with one storyTextBySlide object containing exactly the requested replacement keys. Do not return a plan, slide metadata, heading, labels, a CTA, or an explanation. Each replacement must resolve its stated failure while preserving the original slide role and natural story flow.",
-        CAROUSEL_TEXT_PRESENTATION_GUIDANCE,
+        `Repair only the listed visible Structure 2 storyText values. Return only JSON with one storyTextBySlide object containing exactly the requested replacement keys. Do not return a plan, slide metadata, heading, labels, a CTA, or an explanation. Each replacement must resolve its stated failure while preserving the original slide role and natural story flow. ${CAROUSEL_TEXT_PRESENTATION_GUIDANCE}`,
     },
     {
       role: "user" as const,

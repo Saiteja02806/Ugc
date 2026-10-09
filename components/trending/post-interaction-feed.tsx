@@ -324,7 +324,7 @@ export function PostInteractionFeed({ items, previousItem, onPrevious, onLike, o
     aria-label={label}
     aria-busy={disabled}
     tabIndex={0}
-    className={cn("relative isolate rounded-[20px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus", styles.viewport, className)}
+    className={cn("relative isolate rounded-[20px] outline-none", styles.viewport, className)}
     style={{ overflowY: disabled ? "hidden" : undefined }}
     onWheelCapture={armScroll}
     onTouchStartCapture={() => { touchScrolling.current = true; }}

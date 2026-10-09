@@ -38,8 +38,10 @@ import {
   getUnavailableSavedInstagramTargets,
 } from "@/lib/scheduling/schedule-form-persistence";
 import {
+  getConfirmedScheduleTargetSettings,
   getDefaultScheduleTargetSettings,
   getScheduleTargetSettingsError,
+  getTikTokPublishingAgreement,
   type ScheduleTargetSettings,
 } from "@/lib/scheduling/platform-settings";
 import { getConnectionPublishingBlockMessage } from "@/lib/scheduling/social-connection-policy";
@@ -493,8 +495,13 @@ export function ScheduleEditor({
       : null;
   const publishingSettingsError = getPublishingSettingsError({
     connections: selectedConnections,
+    requireTikTokMusicConfirmation: false,
     settings: publishingSettings,
     tiktokCapabilities,
+  });
+  const tiktokPublishingAgreement = getTikTokPublishingAgreement({
+    connections: selectedConnections,
+    settings: publishingSettings,
   });
   const scheduleTimeValidation = useMemo(
     () =>
@@ -792,6 +799,7 @@ export function ScheduleEditor({
       !scheduleTimeValidation.scheduledFor ||
       scheduleTimeValidation.error ||
       captionValidationError ||
+      publishingSettingsError ||
       unavailableSavedTargetError
     ) {
       return;
@@ -823,9 +831,10 @@ export function ScheduleEditor({
         ...selectedConnections.map((connection) => ({
           connectionId: connection.id,
           platform: connection.platform,
-          settings:
-            publishingSettings[connection.id] ??
-            getDefaultPublishingSettings(connection.platform),
+          settings: getConfirmedScheduleTargetSettings(
+            connection.platform,
+            publishingSettings[connection.id],
+          ),
         })),
       ],
       timezone,
@@ -1193,6 +1202,11 @@ export function ScheduleEditor({
         </div>
 
         <div className="border-t border-border bg-card px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-[0_-12px_30px_rgb(16_32_51_/_0.06)] sm:px-6 sm:py-4 lg:px-8">
+          {tiktokPublishingAgreement ? (
+            <p className="mb-3 text-xs leading-5 text-muted">
+              {tiktokPublishingAgreement}
+            </p>
+          ) : null}
           {errorMessage ? (
             <div
               role="alert"
@@ -2505,10 +2519,6 @@ function TikTokAccountSettings({
   const capabilities = capabilitiesState.capabilities;
   const privacyLevel = getStringSetting(settings, "privacyLevel", "");
   const brandedContent = getBooleanSetting(settings, "brandedContent", false);
-  const commercialContentEnabled =
-    getBooleanSetting(settings, "commercialContentDisclosureEnabled", false) ||
-    getBooleanSetting(settings, "brandOrganic", false) ||
-    brandedContent;
 
   return (
     <div className="mt-3 grid gap-3">
@@ -2591,47 +2601,6 @@ function TikTokAccountSettings({
         </div>
       </fieldset>
 
-      <fieldset>
-        <legend className="text-xs font-bold text-foreground">Commercial content</legend>
-        <div className="mt-2 grid gap-2">
-          <SettingCheckbox
-            checked={commercialContentEnabled}
-            description="Turn this on only when this post promotes a business or brand."
-            label="Content disclosure"
-            onChange={(checked) => {
-              onChange("commercialContentDisclosureEnabled", checked);
-              if (!checked) {
-                onChange("brandOrganic", false);
-                onChange("brandedContent", false);
-              }
-            }}
-          />
-          {commercialContentEnabled ? (
-            <div className="grid gap-2 border-l-2 border-primary/30 pl-3 sm:grid-cols-2">
-              <SettingCheckbox
-                checked={getBooleanSetting(settings, "brandOrganic", false)}
-                description={getBooleanSetting(settings, "brandOrganic", false) ? "Your video will be labeled as ‘Promotional content’." : undefined}
-                label="Your brand"
-                onChange={(checked) => onChange("brandOrganic", checked)}
-              />
-              <SettingCheckbox
-                checked={brandedContent}
-                description={brandedContent ? "Your video will be labeled as ‘Paid partnership’." : undefined}
-                label="Branded content"
-                onChange={(checked) => {
-                  onChange("brandedContent", checked);
-                  if (checked && privacyLevel === "SELF_ONLY") onChange("privacyLevel", "");
-                }}
-              />
-            </div>
-          ) : null}
-        </div>
-      </fieldset>
-      <SettingCheckbox
-        checked={getBooleanSetting(settings, "musicUsageConfirmed", false)}
-        label="By posting, you agree to TikTok's Music Usage Confirmation."
-        onChange={(checked) => onChange("musicUsageConfirmed", checked)}
-      />
     </div>
   );
 }
@@ -2687,6 +2656,7 @@ function getDefaultPublishingSettings(
 
 function getPublishingSettingsError(params: {
   connections: SocialConnection[];
+  requireTikTokMusicConfirmation?: boolean;
   settings: Record<string, ConnectionPublishingSettings>;
   tiktokCapabilities: Record<string, TikTokCapabilitiesState>;
 }) {

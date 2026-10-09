@@ -105,11 +105,11 @@ is the section's main visual; additional animation is unnecessary.
 ## Public-launch decision and boundary
 
 The user explicitly confirmed that YouTube and TikTok are launching publicly,
-so the marketing UI has no Beta labels. This is a landing-page implementation;
-the existing verified-email beta allowlists in `lib/social/tiktok-beta-access.ts`
-and `lib/social/youtube-beta-access.ts` still restrict actual publishing access.
-Opening those gates and checking production publishing with real authorized
-accounts remain separate public-launch work.
+so the marketing UI has no Beta labels. Both shared access helpers now allow
+every verified signed-in user. On 9 October 2026, the owner confirmed TikTok
+approval and requested restoring its visibility across the product; the shared
+UI switch is enabled locally. Deployment and checking production publishing
+with real authorized accounts remain separate acceptance work.
 
 This illustration uses a video. Carousel/Slideshow publishing support and the
 Carousel generation, review, and scheduling contracts are unchanged. In

@@ -80,7 +80,7 @@ type BalancedLines = {
 };
 
 export const CAROUSEL_RENDERER_VERSION =
-  "social-tiktok-text-blocks-inter-tight-v25";
+  "social-single-statement-hook-inter-tight-v26";
 export { CAROUSEL_FIXED_FONT_SIZE } from "./carousel-slide-plan.js";
 
 const FORMAT_DIMENSIONS: Record<CarouselFormat, { height: number; width: number }> = {
@@ -1197,6 +1197,9 @@ async function buildCoverOverlaySvg(params: {
   return {
     diagnostics: {
       bodyFontSize: CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE,
+      bodyBlockCount: 1,
+      bodyBlockLineCounts: [primary.lines.length],
+      ctaLineCount: 0,
       bubbleShapeStrategy: "plain-white-text",
       fontFamily: TEXT_FONT_FAMILY,
       headingBackgroundLineCount: 0,

@@ -19,7 +19,8 @@ Compact Create, Edit video (Edit slides for Slideshows) and Schedule tabs sit
 inside one left control card, following the existing talking-hook/creator-phone
 workflow shell. A single shared footer holds the active step's primary action;
 Create uses Generate or Edit this video, Edit uses Save edits / Save slideshow
-and then Continue to Schedule after a successful save, and Schedule uses the
+and then Continue to Demo for Hook or Continue to Schedule for other formats
+after a successful save, and Schedule uses the
 existing Review / Resume / Check saved schedule action. The controls scroll
 above that footer. Generation submits through its original form even though
 its button is portaled into the shared footer. The right panel holds References
@@ -29,6 +30,21 @@ and completed results there. Manual view changes remain in place as jobs update.
 Workflow histories and recoverable jobs are scoped by authenticated owner and
 format. Original AI Studio generation behavior remains available outside these
 workflow presentations.
+
+On reopening a workflow, the generator independently discovers active jobs
+through the authenticated account's existing jobs API and filters them by
+generation type and Explore format before the server's result limit. Browser hints and original job URLs remain
+fallbacks, but another browser can recover an ongoing generation without them.
+Discovery refreshes on mount, reconnect and window focus. Discovered IDs remain
+tracked after leaving the active list so completion and the saved output are
+still retrieved. Account changes reset their scope. References remains the
+default view for a fresh URL; recovering a task does not change the selected tab.
+
+Saved browser job IDs restore independently of loading media history. A slow or
+failed history request cannot block task polling or cover recovered progress
+with loading skeletons. Results completed during a history request are retained
+when that request finishes. These changes reconnect the screen to existing
+server work and do not submit or cancel generation jobs.
 
 Hook and Wall offer Generate / Upload / Creative Assets as video sources. Their
 generation produces only videos. Upload accepts MP4, MOV or WebM, 1–120 seconds,
@@ -40,13 +56,30 @@ API, and edited source IDs restore on refresh without requiring generation tags.
 Custom dimensions are preserved; the player reads missing duration/dimensions.
 The original uploaded or saved footage remains unchanged.
 
+Hook video references are available to signed-in users on the Free plan as well
+as paid plans. Browsing, previewing and selecting Hook references does not depend
+on subscription status, and the reference gallery has no upgrade banner. The
+gallery retains its 12-card pagination. Generation access, credits, saves and
+scheduling continue through their existing controls.
+
 Reference cards use top-right Recreate icons, with a check, outline and caption
 on the selected reference. Media clicks open previews. Hook and Wall reuse the
 talking-head/demo and creator-phone workflow shell and creation CSS directly:
 the same colors, frames, square reference cards, spacious instructions, inline
 settings and shared action footer. Optional references appear before
 instructions and contain only Choose image and Video reference; no voice tile.
-The image picker includes the existing creator examples and custom uploads.
+The image picker places Upload image directly below Choose image, with no
+helper paragraph. Two tabs separate Your images from UGC Pilot images. It opens
+Your images when the account has saved uploads, otherwise UGC Pilot images.
+Users can switch tabs; a completed user upload reveals Your images immediately.
+Your images lists
+the signed-in owner's ready PNG/JPEG/WebP uploads from the existing media API;
+new optional image uploads remain in that account's media storage and can be
+reused after refresh without uploading again. The list loads only when Choose
+image opens. Selecting a saved image rechecks its owned record before attaching
+it. Catalogue copies use a separate project marker and remain in UGC Pilot
+images, including the older AI Studio copies identified by catalogue filenames.
+Preview uploads remain temporary and do not create saved records.
 One attachment is active at a time; custom media overrides the selected gallery
 poster, which otherwise appears in Choose image. Choosing None removes this
 image and its gallery fallback, permitting
@@ -178,6 +211,34 @@ revision does not deploy the site or verify authenticated production tasks.
    Local previews do not establish production integration acceptance.
 
 ## Validation
+
+### Workflow panel revision
+
+Hook now includes the optional Demo step shown in the product reference.
+Empty Hook and Wall of text editors offer Create video, Upload video and
+Creative Assets action cards, each opening the corresponding Create source.
+The repeated source instructions beneath the Create selector are removed.
+The Demo workspace shows the selected hook immediately, uses its saved edit
+after saving, and shows uploaded or owned Creative Assets demo videos alongside
+it. Players pause when leaving Demo. Demo selections survive tab navigation
+and replacing the hook; the combined export is invalidated when either input
+changes. Removing the demo restores the saved opening as the schedule source.
+
+Combining requires a saved owned opening and a ready owned demo. The existing
+finishing API/worker performs the composition with no format-edit payload,
+transcription or automatic music. Owned demo asset IDs are reused without a
+second upload, and retries keep the existing durable request identity. Recovery
+rechecks owned demo media before showing it or enabling Continue to Schedule.
+The optional source parameter in the finishing hook leaves legacy local-file
+demo uploads unchanged. No new API, schema or worker deployment is required.
+
+`scripts/explore-workflow-panels.browser.cjs` checks the actual empty Edit
+actions, selected-hook preview before saving, demo upload and asset selection,
+player pause, tab persistence, removal and responsive layout at 1440, 1280,
+390 and 320 pixels. It uses the development fixture, blocks non-GET API
+requests and writes screenshots into `.tmp/explore-workflow-panels`.
+These checks establish local UI behavior; authenticated production save and
+schedule acceptance remains a release check on the production domain.
 
 Local TypeScript and worker compilation, scoped ESLint, existing composition/
 finishing/receipt tests, format-specific renderer and database tests, generation

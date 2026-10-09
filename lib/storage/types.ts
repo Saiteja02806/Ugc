@@ -20,6 +20,11 @@ export type StorageObjectKeyParams = {
   key: string;
 };
 
+export type CreateSignedDownloadUrlParams = StorageObjectKeyParams & {
+  fileName: string;
+  expiresInSeconds?: number;
+};
+
 export type GetStorageObjectParams = StorageObjectKeyParams & {
   range?: string;
 };
@@ -52,6 +57,7 @@ export type ObjectStorageProvider = {
   buildDirectUrl(key: string): string;
   buildPublicUrl(key: string): string;
   createSignedPutUrl(params: CreateSignedPutUrlParams): Promise<string>;
+  createSignedDownloadUrl(params: CreateSignedDownloadUrlParams): Promise<string>;
   headObject(params: StorageObjectKeyParams): Promise<StorageHeadObjectResult>;
   getObject(params: GetStorageObjectParams): Promise<StorageGetObjectResult>;
   deleteObject(params: StorageObjectKeyParams): Promise<void>;

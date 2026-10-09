@@ -58,7 +58,8 @@ import { appendAIStudioSessionResultIds } from "@/lib/ai-studio/generation-sessi
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
   persistJobIdInUrl,
-  useBackgroundJobs,
+  useRecoverableWorkflowJobs,
+  useStoredBackgroundJobIds,
   useCancelBackgroundJob,
   usePersistedJobIdFromUrl,
   useRetryBackgroundJob,
@@ -145,30 +146,6 @@ function persistImageJobs(
     }
   } catch {
     // The owner-scoped URL remains the resume fallback when storage is blocked.
-  }
-}
-
-function getStoredImageJobIds(userId: string) {
-  try {
-    const rawValue = window.localStorage.getItem(
-      `${IMAGE_JOB_STORAGE_PREFIX}${userId}`,
-    );
-
-    if (!rawValue) {
-      return [];
-    }
-
-    try {
-      const parsed = JSON.parse(rawValue) as unknown;
-
-      return Array.isArray(parsed)
-        ? parsed.filter((value): value is string => typeof value === "string")
-        : [];
-    } catch {
-      return [rawValue];
-    }
-  } catch {
-    return [];
   }
 }
 
@@ -263,7 +240,7 @@ export function ImageGenerationStudioPanel({
   const [resultsError, setResultsError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [storedJobIds, setStoredJobIds] = useState<string[]>([]);
+  const storedJobIds = useStoredBackgroundJobIds(user ? `${IMAGE_JOB_STORAGE_PREFIX}${workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid}` : null);
   const [submittedJobIds, setSubmittedJobIds] = useState<string[]>([]);
   const [ignoredPersistedJobId, setIgnoredPersistedJobId] = useState<
     string | null
@@ -294,7 +271,11 @@ export function ImageGenerationStudioPanel({
       ...storedJobIds,
     ]),
   );
-  const activeJobQueries = useBackgroundJobs(activeJobIds);
+  const { queries: activeJobQueries, recovering: recoveringJobs, recoveryError } = useRecoverableWorkflowJobs(activeJobIds, {
+    enabled: active && !recreateView?.preview,
+    exploreFormat: workflowFormat,
+    jobType: "image_generation",
+  });
   const cancelJob = useCancelBackgroundJob();
   const retryJob = useRetryBackgroundJob();
   const queriedJobs = activeJobQueries.flatMap((query) =>
@@ -347,7 +328,6 @@ export function ImageGenerationStudioPanel({
       setHistoryQuery("");
       if (recreateView?.preview) {
         setGeneratedAssets([]);
-        setStoredJobIds([]);
         setSubmittedJobIds([]);
         setCurrentResultIds([]);
         setSelectedHistoryImageId(null);
@@ -368,7 +348,6 @@ export function ImageGenerationStudioPanel({
       if (!user) {
         if (!ignore) {
           setGeneratedAssets([]);
-          setStoredJobIds([]);
           setCurrentResultIds([]);
           setSelectedHistoryImageId(null);
           setResultsError("Sign in to view your generated images.");
@@ -402,12 +381,9 @@ export function ImageGenerationStudioPanel({
               ? { ...image, prompt: savedPrompt }
               : image;
           });
-          setGeneratedAssets(
-            mergeAIStudioImageHistory(loadedImages, Array.from(reconciledResultsRef.current.values())),
-          );
-          setSubmittedJobIds([]);
-          setIgnoredPersistedJobId(null);
-          setStoredJobIds(getStoredImageJobIds(workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid));
+          setGeneratedAssets(current => mergeAIStudioImageHistory(loadedImages, [
+            ...current, ...Array.from(reconciledResultsRef.current.values()),
+          ]));
         }
       } catch (error) {
         if (!ignore) {
@@ -607,7 +583,7 @@ export function ImageGenerationStudioPanel({
       referenceUploadPending ||
       !trimmedPrompt ||
       Boolean(workflow && !recreateView?.referenceImageUrl) ||
-      isGenerating
+      isGenerating || recoveringJobs
     ) {
       return;
     }
@@ -677,7 +653,6 @@ export function ImageGenerationStudioPanel({
         setSubmittedPrompts((current) => ({ ...current, ...Object.fromEntries(data.jobs.map((job) => [job.jobId, trimmedPrompt])) }));
       }
       const jobIds = data.jobs.map((job) => job.jobId);
-      setStoredJobIds(jobIds);
       setSubmittedJobIds(jobIds);
       if (data.partial) {
         setActionNotice(data.message);
@@ -768,7 +743,7 @@ export function ImageGenerationStudioPanel({
   const durableNotice = cancelledDurableJob
     ? "Image generation was cancelled."
     : null;
-  const resultsErrorMessage = actionError ?? jobQueryError ?? durableError ?? resultsError;
+  const resultsErrorMessage = actionError ?? jobQueryError ?? durableError ?? (isGenerating ? null : resultsError ?? recoveryError);
   const resultsStatus: AiStudioResultsStatus | null = resultsErrorMessage
     ? { label: resultsErrorMessage, tone: "error" }
     : isGenerating
@@ -853,7 +828,6 @@ export function ImageGenerationStudioPanel({
     setSelectedHistoryImageId(null);
     setCurrentResultIds([]);
     setSubmittedJobIds([]);
-    setStoredJobIds([]);
     setIgnoredPersistedJobId(persistedJobId);
     setActionError(null);
     setActionNotice(null);
@@ -889,7 +863,7 @@ export function ImageGenerationStudioPanel({
         emptyDescription="Describe an image below, or add a reference to guide the look. Your completed images are saved in History."
         gridClassName="grid-cols-1 gap-4 sm:grid-cols-1 lg:grid-cols-1 xl:grid-cols-1 2xl:grid-cols-1"
         hasResults={imageRows.length > 0}
-        loading={resultsLoading}
+        loading={(resultsLoading || recoveringJobs) && !isGenerating && generatedAssets.length === 0}
         status={resultsStatus}
         statusPlacement="inline"
         scrollToLatestKey={!selectedHistoryImageId && isSubmitting ? activeSubmittedAt : null}
@@ -960,7 +934,7 @@ export function ImageGenerationStudioPanel({
           referenceUploadPending ||
           !prompt.trim() ||
           Boolean(workflow && !recreateView?.referenceImageUrl) ||
-          isGenerating
+          isGenerating || recoveringJobs
         }
         generateLabel="Generate image"
         generationLocked={generationLocked}

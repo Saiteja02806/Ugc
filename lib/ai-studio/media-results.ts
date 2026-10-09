@@ -90,6 +90,7 @@ function getVideoModelLabel(metadata: MediaAsset["metadata"]) {
 
   if (model === "kling_3_0") return "Kling 3.0";
   if (model === "seedance_2_5") return "Seedance 2.5";
+  if (model === "wan_3_0") return "WAN 3.0";
   if (model === "google_omni") return "Google Omni";
 
   const provider = getMetadataString(metadata, "provider");

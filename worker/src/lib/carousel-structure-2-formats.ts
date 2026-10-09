@@ -221,8 +221,8 @@ function expandSixSlideFormat(
     {
       ...cover,
       instruction:
-        "Reader-first cover: state a specific benefit, tension, mistake, contrast, or curiosity gap that gives the viewer a reason to swipe. Do not begin with a complete personal-story opener such as 'I thought...' or 'I used to...' unless the same line states the viewer payoff.",
-      maximumWords: 13,
+        "Social slideshow cover: one statement about a specific benefit, tension, changed belief, mistake, contrast, or curiosity gap. A short first-person open loop such as 'I thought...' or 'I used to...' is welcome. Save the explanation for Slides 2-6.",
+      maximumWords: 14,
       minimumWords: 5,
       perspective: "reader_first",
     },

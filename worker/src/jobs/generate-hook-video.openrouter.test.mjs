@@ -117,3 +117,45 @@ test("worker moderation failures become non-retryable without falling back to a 
   assert.equal(requests, 1); assert.equal(ctx.operation().last_error_code, "PROVIDER_CONTENT_MODERATION");
   assert.equal(ctx.operation().retry_allowed, false);
 });
+
+test("WAN's real worker path preserves a three-second image hook and persists its result", async () => {
+  const ctx = context(); let posts = 0;
+  mock.method(globalThis, "fetch", async (url, init) => {
+    assert.ok(String(url).startsWith("https://openrouter.ai/api/v1/"));
+    if (String(url).endsWith("/key")) return json({ data: { limit_remaining: 10 } });
+    if (init?.method === "POST") {
+      posts++; const request = JSON.parse(init.body);
+      assert.equal(request.model, "alibaba/wan-3.0"); assert.equal(request.duration, 3); assert.equal(request.resolution, "1080p");
+      assert.deepEqual(request.input_references, [{ type: "image_url", image_url: { url: "https://storage.example.com/creator.png" } }]);
+      return json({ id: "wan-accepted" }, 202);
+    }
+    return String(url).includes("/content") ? new Response(video, { headers: { "content-type": "video/mp4" } }) : json({ status: "completed", usage: { cost: 0.51 } });
+  });
+  const wanJob = { ...job, input_json: { ...job.input_json, model: "wan_3_0", durationSeconds: 3, resolution: "1080p", referenceImageUrls: ["https://storage.example.com/creator.png"] } };
+  const result = await runGenerateHookVideoJob(wanJob, ctx);
+  assert.equal(result.provider, "openrouter"); assert.equal(result.durationSeconds, 3); assert.equal(result.resolution, "1080p");
+  assert.equal(result.url, "https://storage.example.com/videos/hooks/user-1/ai-studio/video-1.mp4");
+  assert.equal(ctx.operation().metadata.providerCostUsd, 0.51);
+  assert.deepEqual(ctx.events, ["save-id", "save-provider-output", "save-stored-output"]);
+  await runGenerateHookVideoJob(wanJob, ctx);
+  assert.equal(posts, 1);
+});
+
+test("WAN recovers polling failures using the accepted ID and never submits again", async () => {
+  const ctx = context(); let posts = 0;
+  mock.method(globalThis, "fetch", async (url, init) => {
+    if (String(url).endsWith("/key")) return json({ data: {} });
+    if (init?.method === "POST") { posts++; return json({ id: "pending-wan" }, 202); }
+    return json({ error: "Provider temporarily unavailable" }, 500);
+  });
+  const wanJob = { ...job, input_json: { ...job.input_json, model: "wan_3_0", durationSeconds: 2 } };
+  for (let i = 0; i < 2; i++) await assert.rejects(runGenerateHookVideoJob(wanJob, ctx), error => error.code === "provider_operation_pending");
+  assert.equal(posts, 1); assert.equal(ctx.operation().provider_operation_id, "pending-wan");
+});
+
+test("WAN invalid duration and timed references are rejected before any provider call", async () => {
+  mock.method(globalThis, "fetch", async () => assert.fail("must reject before provider access"));
+  for (const patch of [{ durationSeconds: 1 }, { referenceAudioUrls: ["https://storage.example.com/voice.mp3"] }, { referenceVideoUrl: "https://storage.example.com/demo.mp4", referenceVideoDurationSeconds: 2 }]) {
+    await assert.rejects(runGenerateHookVideoJob({ ...job, input_json: { ...job.input_json, model: "wan_3_0", ...patch } }, context()));
+  }
+});

@@ -59,6 +59,12 @@
   .reviewFrame {
     justify-content: center;
   }
+  .stage .compactHeightDecisionGroup,
+  .stage [data-trending-deck-progress] {
+    /* Reclaim unused space inside the snap window without changing its height
+       or the approved card size. Keep captions and progress with the buttons. */
+    transform: translateY(calc(-1 * var(--trending-decision-lift, 0px)));
+  }
   .stage .reviewFeed {
     /* The header and visible decisions take their actual height first. This
        remaining space is the scrolling post window, including its label. */

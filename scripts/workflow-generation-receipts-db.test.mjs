@@ -64,6 +64,27 @@ test("every job, credit reservation and receipt commit together; replay keeps al
   } finally { await db.close(); }
 });
 
+test("WAN's three-second batch keeps its provider, settings and credits when an acknowledgement is replayed", async () => {
+  const db = await fixture();
+  const input = inputs().map((entry) => ({
+    ...entry, model: "wan_3_0", provider: "openrouter", durationSeconds: 3, resolution: "1080p",
+    referenceImageUrls: ["https://cdn.example.com/reference.png"],
+  }));
+  try {
+    await db.exec("set role service_role");
+    const first = (await start(db, { input, cost: 12 })).rows[0].result;
+    const replay = (await start(db, { input, cost: 12 })).rows[0].result;
+    assert.equal(first.created, true);
+    assert.equal(replay.created, false);
+    assert.deepEqual(replay.jobs, first.jobs);
+    assert.deepEqual(await counts(db), { jobs: 2, reservations: 2, receipts: 1 });
+    assert.equal((await db.query("select remaining from balances where user_id='owner-a'")).rows[0].remaining, 76);
+    const rows = (await db.query("select input_json from background_jobs order by input_json->>'batchIndex'")).rows;
+    assert.deepEqual(rows.map((row) => row.input_json), input);
+    assert.equal((await resolve(db)).rows[0].result.outcome, "accepted");
+  } finally { await db.close(); }
+});
+
 test("failure on a later reservation rolls back the entire batch instead of stranding partial jobs", async () => {
   const db = await fixture(6);
   try {

@@ -32,13 +32,14 @@ const videoGenerationApi = readProjectFile(
 const billingSubscription = readProjectFile(
   "lib/billing/subscription-db.ts",
 );
+const generationSettings = readProjectFile("lib/ai-studio/generation-settings.ts");
 const promptHelper = composer.slice(
   composer.indexOf("<FieldDescription"),
   composer.indexOf("</FieldDescription>") + "</FieldDescription>".length,
 );
 
 test("the image prompt uses one unified composer surface", () => {
-  assert.match(imageWorkspace, /layout="unified"/);
+  assert.match(imageWorkspace, /layout=\{workflow \? "workflow" : "unified"\}/);
   assert.match(composer, /data-layout=\{layout\}/);
   assert.match(
     composer,
@@ -88,15 +89,16 @@ test("the unified toolbar keeps settings and Generate inside the same form", () 
   assert.match(imageWorkspace, /AiStudioRatioPicker/);
   assert.match(imageWorkspace, /ariaLabel="Number of images"/);
   assert.match(imageWorkspace, /generateLabel="Generate image"/);
-  assert.match(videoWorkspace, /layout="unified"/);
+  assert.match(videoWorkspace, /layout=\{workflow \? "workflow" : "unified"\}/);
 });
 
 test("image and video controls send selected settings to generation APIs", () => {
   assert.match(imageWorkspace, /body: JSON\.stringify\(\{[\s\S]*?aspectRatio,[\s\S]*?quantity,/);
   assert.match(videoWorkspace, /body: JSON\.stringify\(\{[\s\S]*?aspectRatio,[\s\S]*?quantity,/);
   assert.match(imageWorkspace, /ariaLabel="Image model"/);
-  assert.match(imageWorkspace, /Gemini 3 Pro/);
-  assert.match(imageWorkspace, /GPT Image/);
+  assert.match(imageWorkspace, /getAIStudioImageModelLabel/);
+  assert.match(generationSettings, /Nano Banana 2\.1/);
+  assert.match(generationSettings, /GPT Image/);
   assert.match(imageWorkspace, /model,[\s\S]*?quantity,/);
   assert.match(videoWorkspace, /ariaLabel="Video model"/);
   assert.match(videoWorkspace, /Google Omni/);
@@ -154,7 +156,7 @@ test("image defaults to 9:16 and workspaces use the public canonical job names",
 test("quantity controls lock with the rest of each generation composer", () => {
   for (const [source, label] of [[imageWorkspace, "Number of images"], [videoWorkspace, "Number of videos"]]) {
     const quantityControl = source.match(new RegExp(`<AiStudioSettingSelect\\b(?:(?!<AiStudioSettingSelect)[\\s\\S])*?ariaLabel="${label}"[\\s\\S]*?/>`))?.[0] ?? "";
-    assert.match(quantityControl, /disabled=\{generationLocked \|\| isGenerating\}/);
+    assert.match(quantityControl, /disabled=\{generationLocked && !recreateView\?\.preview \|\| isGenerating\}/);
   }
   assert.match(composer, /disabled=\{disabled\}[\s\S]*?aria-expanded=\{open\}/);
 });
@@ -205,7 +207,7 @@ test("video references start empty and offer optional creator references", () =>
   assert.match(videoWorkspace, /useState<string \| null>\(null\)/);
   assert.match(videoWorkspace, /<CreatorReferencePicker/);
   assert.match(videoWorkspace, /settings=\{[\s\S]*?<CreatorReferencePicker/);
-  assert.doesNotMatch(videoWorkspace, /referenceControls=/);
+  assert.match(videoWorkspace, /referenceControls=\{workflow \?[\s\S]*? : undefined\}/);
   assert.match(creatorReferencePicker, /<Popover open=\{open\}/);
   assert.match(creatorReferencePicker, /Creator reference/);
   assert.match(creatorReferencePicker, /Optional\. Choose a look or upload your own image/);
@@ -248,14 +250,14 @@ test("video references start empty and offer optional creator references", () =>
 
 test("AI Studio keeps direct image and video references optional outside Explore Recreate", () => {
   assert.match(imageWorkspace, /allowedKinds=\{\["image"\]\}/);
-  assert.match(imageWorkspace, /referenceImageUrl: referenceImage\?\.asset\.url \?\? recreateView\?\.referenceImageUrl \?\? null/);
+  assert.match(imageWorkspace, /referenceImageUrl: workflowFormat === "slideshow" \? recreateView\?\.referenceImageUrl \?\? null : referenceImage\?\.asset\.url \?\? recreateView\?\.referenceImageUrl \?\? null/);
   assert.match(
     videoWorkspace,
     /<ReferenceFilesUpload[\s\S]*?allowedKinds=\{\["image"\]\}/,
   );
   assert.match(videoWorkspace, /maxFiles=\{model === "kling_3_0" \? 2 : 6\}/);
   assert.match(videoWorkspace, /avatarImageUrl: activeReferenceImageUrl/);
-  assert.match(videoWorkspace, /referenceImageUrls: referenceImages\.map\(\(image\) => image\.asset\.url\)/);
+  assert.match(videoWorkspace, /referenceImageUrls: referenceImages\.length \? referenceImages\.map\(\(image\) => image\.asset\.url\) : activeReferenceImageUrl \? \[activeReferenceImageUrl\] : \[\]/);
   assert.match(videoWorkspace, /referenceVideoUrl: uploadedReferenceVideo\?\.asset\.url \?\? null/);
   assert.match(videoWorkspace, /referenceVideoDurationSeconds:/);
   assert.match(
@@ -277,7 +279,7 @@ test("Explore Recreate asks for an image before video generation", () => {
     /Required for this Explore recreation\. Choose a look or upload your own image\./,
   );
   assert.match(videoGenerationApi, /isExploreHookVideoId\(body\?\.referenceId\)/);
-  assert.match(videoGenerationApi, /isExploreRecreate && referenceImageUrls\.length === 0/);
+  assert.match(videoGenerationApi, /isExploreRecreate && !body\?\.exploreFormat && referenceImageUrls\.length === 0/);
 });
 
 test("video composer keeps compact controls in the requested order", () => {
@@ -288,8 +290,8 @@ test("video composer keeps compact controls in the requested order", () => {
 
   assert.match(composer, /triggerLabel\?: string/);
   assert.match(composer, /triggerLabel: "9:16"/);
-  assert.match(videoSettings, /ariaLabel="Video model"[\s\S]*?ariaLabel="Video duration"[\s\S]*?<CreatorReferencePicker[\s\S]*?ariaLabel="Number of videos"[\s\S]*?<AiStudioRatioPicker/);
-  assert.match(videoSettings, /label: `\$\{count\} video\$\{count === 1 \? "" : "s"\}`,[\s\S]*?triggerLabel: String\(count\)/);
+  assert.match(videoSettings, /ariaLabel="Video model"[\s\S]*?workflow \? durationSetting : qualitySetting[\s\S]*?workflow \? qualitySetting : durationSetting[\s\S]*?<CreatorReferencePicker[\s\S]*?ariaLabel="Number of videos"[\s\S]*?<AiStudioRatioPicker/);
+  assert.match(videoSettings, /label: `\$\{count\} video\$\{count === 1 \? "" : "s"\}`,[\s\S]*?triggerLabel: workflow \? `\$\{count\} video\$\{count === 1 \? "" : "s"\}` : String\(count\)/);
 });
 
 test("image and video use one compact leading attachment control", () => {

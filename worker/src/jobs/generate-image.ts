@@ -26,6 +26,7 @@ import type { BackgroundJobRow, Json } from "../types.js";
 import type { WorkerJobContext, WorkerJobOutput } from "./index.js";
 import { resolveOwnedPrivateMediaUrl } from "../lib/private-media.js";
 import { parseImageReferenceContext } from "../lib/image-reference-context.js";
+import { slideshowReferencePrompt } from "../lib/slideshow-reference-prompt.js";
 
 const MAX_CHARACTER_PROMPT_LENGTH = 32_000;
 
@@ -37,6 +38,7 @@ type GenerateImageInput = {
   prompt: string;
   referenceImageUrl?: string;
   referenceImageUrls?: string[];
+  subjectReferenceIndex?: number;
 };
 
 function getInput(job: BackgroundJobRow): GenerateImageInput {
@@ -71,6 +73,10 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
   if (referenceImageUrls && referenceImageUrl && referenceImageUrls[0] !== referenceImageUrl) {
     throw new Error("The primary image must be the first selected reference.");
   }
+  const subjectReferenceIndex = job.input_json.subjectReferenceIndex;
+  if (subjectReferenceIndex !== undefined && (!referenceImageUrls || !Number.isInteger(subjectReferenceIndex) || subjectReferenceIndex !== referenceImageUrls.length || referenceImageUrls.length < 2)) {
+    throw new ProviderRequestNotSubmittedError("Choose valid layout and subject reference roles.");
+  }
   return {
     aspectRatio: getAspectRatio(job.input_json.aspectRatio),
     generationId: generationId.trim(),
@@ -78,6 +84,7 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
     prompt: prompt.trim(),
     referenceImageUrl: referenceImageUrls?.[0] ?? referenceImageUrl,
     referenceImageUrls,
+    ...(subjectReferenceIndex === undefined ? {} : { subjectReferenceIndex: subjectReferenceIndex as number }),
   };
 }
 
@@ -86,6 +93,9 @@ export async function runGenerateImageJob(
   context: WorkerJobContext,
 ): Promise<WorkerJobOutput> {
   const input = getInput(job);
+  const providerPrompt = input.subjectReferenceIndex
+    ? slideshowReferencePrompt(input.prompt, input.referenceImageUrls!.length, input.subjectReferenceIndex)
+    : input.prompt;
   const userId = getPathSegment(job.user_id, "user");
   const projectId = getPathSegment(job.project_id, "default");
   const outputKey = `images/generated/${userId}/${projectId}/${input.generationId}.png`;
@@ -111,6 +121,7 @@ export async function runGenerateImageJob(
     referenceImageUrl: input.referenceImageUrl ?? null,
     // Keep older queued jobs' fingerprints unchanged.
     ...(input.referenceImageUrls ? { referenceImageUrls: input.referenceImageUrls } : {}),
+    ...(input.subjectReferenceIndex ? { subjectReferenceIndex: input.subjectReferenceIndex } : {}),
   });
   const reservation = await context.store.reserveGenerationProviderOperation({
     jobId: job.id,
@@ -134,12 +145,12 @@ export async function runGenerateImageJob(
       generated =
         input.model === "nano_banana_2"
           ? await generateGeminiImageBuffer(
-              input.prompt,
+              providerPrompt,
               input.aspectRatio,
               referenceImages,
             )
           : await generateOpenAiImageBuffer(
-              input.prompt,
+              providerPrompt,
               input.aspectRatio,
               referenceImages,
               input.model === "gpt_image_2_5" ? SLIDESHOW_IMAGE_MODEL : undefined,

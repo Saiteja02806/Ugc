@@ -21,6 +21,7 @@ import {
 } from "@/lib/jobs/background-jobs";
 import { createAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
 import { canonicalMediaReference, isTrustedMediaReferenceUrl as isTrustedStorageUrl } from "@/lib/media/media-reference";
+import { getMediaAssetForOwner } from "@/lib/media/media-storage";
 import { parseImageReferenceContext } from "@/worker/src/lib/image-reference-context";
 import {
   BillingAccessError,
@@ -39,6 +40,7 @@ type GenerateRequest = {
   quantity?: unknown;
   referenceImageUrl?: unknown;
   referenceImageUrls?: unknown;
+  referenceImageAssetId?: unknown;
 };
 
 type ImageJobOutput = {
@@ -143,6 +145,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
     ? DEFAULT_SLIDESHOW_IMAGE_MODEL : parseAIStudioImageModel(body?.model);
   let referenceImageUrl: string | null;
   let referenceImageUrls: string[] | undefined;
+  let subjectReferenceIndex: number | undefined;
   try { referenceImageUrl = cleanTrustedHttpsUrl(await canonicalMediaReference(body?.referenceImageUrl, user.uid)); }
   catch { return NextResponse.json({ ok: false, message: "This reference is unavailable to your account." }, { status: 400 }); }
   if (body?.referenceImageUrl && !referenceImageUrl) {
@@ -170,6 +173,29 @@ export async function handleAIStudioImageGeneration(request: Request) {
       referenceImageUrl = referenceImageUrls[0];
     } catch {
       return NextResponse.json({ ok: false, message: "Choose 1–14 distinct reference images available to your account." }, { status: 400 });
+    }
+  }
+
+  if (body?.referenceImageAssetId !== undefined) {
+    if (body.exploreFormat !== "slideshow" || typeof body.referenceImageAssetId !== "string" || !UUID_PATTERN.test(body.referenceImageAssetId)) {
+      return NextResponse.json({ ok: false, message: "Choose a valid uploaded reference image." }, { status: 400 });
+    }
+    try {
+      const asset = await getMediaAssetForOwner({ assetId: body.referenceImageAssetId, userId: user.uid });
+      const ownedUrl = asset && cleanTrustedHttpsUrl(await canonicalMediaReference(asset.url, user.uid));
+      if (!asset || asset.status !== "ready" || asset.collection !== "image" || !["image/png", "image/jpeg", "image/webp"].includes(asset.mime_type) || !ownedUrl || !asset.file_size_bytes || asset.file_size_bytes > 25 * 1024 * 1024) {
+        return NextResponse.json({ ok: false, message: "This reference image is no longer available. Upload it again or choose another image." }, { status: 400 });
+      }
+      const layoutReferences = referenceImageUrls ?? (referenceImageUrl ? [referenceImageUrl] : []);
+      const references = [...new Set([...layoutReferences, ownedUrl])];
+      if (references.length > 14) return NextResponse.json({ ok: false, message: "Choose at most 13 layout images when attaching a subject/style image." }, { status: 400 });
+      referenceImageUrl = references[0];
+      if (references.length > 1) {
+        referenceImageUrls = references;
+        if (!layoutReferences.includes(ownedUrl)) subjectReferenceIndex = references.length;
+      }
+    } catch {
+      return NextResponse.json({ ok: false, message: "Could not verify your reference image. Try again before generating." }, { status: 503 });
     }
   }
 
@@ -239,6 +265,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
           prompt,
           referenceImageUrl,
           ...(referenceImageUrls ? { referenceImageUrls } : {}),
+          ...(subjectReferenceIndex ? { subjectReferenceIndex } : {}),
         },
         jobType: IMAGE_JOB_TYPE,
         projectId: "ai-studio",

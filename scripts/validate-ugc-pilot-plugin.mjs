@@ -10,13 +10,11 @@ const Ajv = require("ajv");
 const yaml = require("js-yaml");
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const pluginDir = path.join(root, "plugins/ugc-pilot");
-export const packageFiles = [
-  ".claude-plugin/plugin.json", ".codex-plugin/plugin.json", ".mcp.json",
-  "README.md", "assets/logo.png", "evaluation-cases.json", "mcp.json", "plugin.json",
-  "skills/connect-ugc-pilot/SKILL.md",
-  "skills/connect-ugc-pilot/references/client-setup.md",
-  "skills/create-ugc-media/SKILL.md", "skills/manage-ugc-media/SKILL.md",
-];
+export const packageFiles = JSON.parse(fs.readFileSync(path.join(root, "scripts/ugc-pilot-package-files.json"), "utf8"));
+assert.equal(new Set(packageFiles).size, packageFiles.length, "Duplicate package file");
+for (const relative of packageFiles) {
+  assert(typeof relative === "string" && relative && !relative.includes("\\") && !path.isAbsolute(relative) && !relative.split("/").some((part) => !part || part === "." || part === ".."), `Invalid package path: ${relative}`);
+}
 const endpoint = "https://mcp.getugcpilot.com/mcp";
 
 export function validateOpenAiMetadata(plugin, knownTools, { submission = false } = {}) {
@@ -79,6 +77,22 @@ function walk(dir) {
   });
 }
 
+export function validateResourceLinks(text, relative) {
+  const markdown = [...text.matchAll(/\]\(([^)]+)\)/g)].map((entry) => entry[1]);
+  // Catch declared backtick resource paths as well as clickable Markdown links.
+  const declared = [...text.matchAll(/`((?:references|schemas|evals|examples|tests)\/[^`\s]+\.(?:md|json|csv))`/g)].map((entry) => entry[1]);
+  for (const raw of [...markdown, ...declared]) {
+    const link = raw.replace(/^<|>$/g, "").split(/\s+"/)[0];
+    if (/^(?:https?:|mailto:|#)/.test(link)) continue;
+    assert(!/^[a-z]+:/i.test(link), `Unsupported reference URL: ${link}`);
+    const target = decodeURIComponent(link.split(/[?#]/)[0]);
+    const full = path.resolve(path.dirname(path.join(pluginDir, relative)), target);
+    const packaged = path.relative(pluginDir, full).replaceAll("\\", "/");
+    assert(!packaged.startsWith("../") && !path.isAbsolute(packaged), `Escaping reference: ${link}`);
+    assert(packageFiles.includes(packaged) && fs.existsSync(full), `Missing packaged reference in ${relative}: ${link}`);
+  }
+}
+
 export function validatePackage({ submission = false } = {}) {
   assert.deepEqual(walk(pluginDir).sort(), [...packageFiles].sort(), "Unexpected or missing package file");
   const plugin = json("plugin.json");
@@ -126,8 +140,11 @@ export function validatePackage({ submission = false } = {}) {
   }));
   assert.equal(knownTools.size, 12, "Review the package contract when the MCP tool surface changes");
   const reviewReadiness = validateOpenAiMetadata(plugin, knownTools, { submission });
+  const skillNames = new Set(packageFiles.filter((relative) => relative.endsWith("/SKILL.md")).map((relative) => path.basename(path.dirname(relative))));
   for (const item of json("evaluation-cases.json").cases) {
     for (const tool of item.expected_tools ?? []) assert(knownTools.has(tool), `Unknown evaluation tool: ${tool}`);
+    for (const tool of item.forbidden_tools ?? []) assert(knownTools.has(tool), `Unknown forbidden tool: ${tool}`);
+    for (const skill of item.expected_skills ?? []) assert(skillNames.has(skill), `Unknown evaluation skill: ${skill}`);
     assert(item.expected?.trim() && item.prompt?.trim());
   }
   for (const relative of packageFiles) {
@@ -141,14 +158,11 @@ export function validatePackage({ submission = false } = {}) {
       assert(match, `Missing frontmatter: ${relative}`);
       const metadata = yaml.load(match[1]);
       assert.equal(metadata.name, path.basename(path.dirname(relative)));
-      assert(typeof metadata.description === "string" && metadata.description.trim());
-      const links = [...text.matchAll(/\]\(([^)]+)\)/g)].map((entry) => entry[1]);
-      for (const link of links.filter((value) => !/^https?:/.test(value))) {
-        const full = path.resolve(path.dirname(path.join(pluginDir, relative)), link);
-        assert(full.startsWith(pluginDir + path.sep), `Escaping reference: ${link}`);
-        assert(fs.existsSync(full), `Missing reference: ${link}`);
-      }
+      assert(typeof metadata.description === "string" && metadata.description.trim() && metadata.description.length <= 1024);
+      for (const key of Object.keys(metadata)) assert(["name", "description", "license", "allowed-tools", "compatibility", "metadata"].includes(key), `Unsupported frontmatter field ${key}: ${relative}`);
     }
+    if (relative.endsWith(".md")) validateResourceLinks(text, relative);
+    if (relative.includes("/schemas/") || relative.endsWith("references/output-schema.json")) ajv.compile(JSON.parse(text));
   }
   const icon = fs.readFileSync(path.join(pluginDir, "assets/logo.png"));
   assert.equal(icon.subarray(1, 4).toString(), "PNG");
@@ -159,10 +173,10 @@ export function validatePackage({ submission = false } = {}) {
     path: relative,
     sha256: createHash("sha256").update(fs.readFileSync(path.join(pluginDir, relative))).digest("hex"),
   }));
-  return { name: plugin.name, version: plugin.version, endpoint, files, toolCount: knownTools.size, reviewReadiness };
+  return { name: plugin.name, version: plugin.version, endpoint, files, skillCount: skillNames.size, toolCount: knownTools.size, reviewReadiness };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const result = validatePackage({ submission: process.argv.includes("--submission") });
-  console.log(JSON.stringify({ status: "passed", name: result.name, version: result.version, files: result.files.length, toolCount: result.toolCount, reviewReadiness: result.reviewReadiness, platformApproval: "not-verified-by-package-validation" }));
+  console.log(JSON.stringify({ status: "passed", name: result.name, version: result.version, files: result.files.length, skillCount: result.skillCount, toolCount: result.toolCount, reviewReadiness: result.reviewReadiness, platformApproval: "not-verified-by-package-validation" }));
 }

@@ -40,7 +40,8 @@ export class ExploreFinishingStorage {
     if (!bucket) throw new ExploreFinishError("Finished-video storage is not configured.",503);
     return this.storage.bucket(bucket);
   }
-  async download(key: string, destination: string, maxBytes: number, location: "primary" | "private_user_media" = "primary") {
+  async download(key: string, destination: string, maxBytes: number, location: "primary" | "private_user_media" = "primary", signal?: AbortSignal) {
+    signal?.throwIfAborted();
     if (!key || key.startsWith("/") || key.includes("..") || /[:\\\u0000-\u001f]/.test(key)) throw new ExploreFinishError("Invalid saved-media storage key.");
     const file = this.bucket(location).file(key);
     const [metadata] = await file.getMetadata();
@@ -51,7 +52,8 @@ export class ExploreFinishingStorage {
       received += chunk.length;
       callback(received > maxBytes ? new ExploreFinishError("The media download exceeded its size limit.",413) : null,chunk);
     } });
-    await pipeline(this.bucket(location).file(key,{ generation:metadata.generation }).createReadStream(),bounded,createWriteStream(destination,{ flags:"wx" }));
+    signal?.throwIfAborted();
+    await pipeline(this.bucket(location).file(key,{ generation:metadata.generation }).createReadStream(),bounded,createWriteStream(destination,{ flags:"wx" }), { signal });
     if (received !== size) throw new ExploreFinishError("The selected media changed while downloading.",409);
   }
   private outputFile(receipt: ExploreFinishReceipt) { return this.bucket().file(exploreFinishOutputKey(receipt.output_asset_id)); }

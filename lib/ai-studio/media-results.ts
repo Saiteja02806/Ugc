@@ -5,6 +5,9 @@ export type AIStudioImageResult = {
   createdAt: string;
   id: string;
   prompt?: string;
+  /** A job preview can precede its ready owner-scoped media record. */
+  mediaAssetId?: string | null;
+  sourceJobId?: string;
   title: string;
   url: string;
 };
@@ -43,6 +46,8 @@ export function getAIStudioImageResults(
       aspectRatio: toSupportedRatio(asset.ratio, "4:5"),
       createdAt: asset.createdAt,
       id: asset.id,
+      mediaAssetId: asset.id,
+      sourceJobId: asset.sourceRecordId ?? undefined,
       prompt: getMetadataString(asset.metadata, "prompt") ?? undefined,
       title: asset.title || "Generated image",
       url: asset.url,

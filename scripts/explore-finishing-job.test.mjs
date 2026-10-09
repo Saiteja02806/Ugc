@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { access } from "node:fs/promises";
+import { dirname } from "node:path";
 import test from "node:test";
 import { runFinishExploreVideoJob } from "../worker/dist/jobs/finish-explore-video.js";
 import { ExploreFinishingStore } from "../worker/dist/lib/explore-finishing-store.js";
@@ -219,8 +220,8 @@ test("cancellation at transcription checkpoint prevents preparing, claiming, and
 });
 
 test("cancellation during a long composition aborts the render without transcription or uploading", async () => {
-  const f = fixture(); let signal;
-  f.context.checkpoint = async ({stage}) => { if (stage === "finishing_owned_video") throw new Error("cancelled during composition"); };
+  const f = fixture(); let signal, renderChecks = 0;
+  f.context.checkpoint = async ({stage}) => { if (stage === "composing_explore_video" && ++renderChecks > 1) throw new Error("cancelled during composition"); };
   f.deps.finish = async options => {
     signal = options.signal;
     await new Promise((resolve, reject) => {
@@ -231,4 +232,56 @@ test("cancellation during a long composition aborts the render without transcrip
   await assert.rejects(runFinishExploreVideoJob(f.job, f.context, f.deps), /cancelled during composition/);
   assert.equal(signal.aborted, true); assert.equal(f.submits(), 0);
   assert.equal(f.events.includes("claim"), false); assert.equal(f.events.includes("upload"), false); assert.equal(f.events.includes("finalize"), false);
+});
+
+test("verified independent media downloads start together and complete before rendering", async () => {
+  const f = fixture({ subtitles:false }), pending = [];
+  f.deps.storage.download = async (key,destination,maximum,location,signal) => {
+    assert.ok(f.events.includes(`asset:${id(3)}`), "All ownership checks precede every download");
+    assert.equal(signal.aborted,false); assert.equal(location,"primary");
+    await new Promise(resolve => pending.push(resolve));
+  };
+  const run = runFinishExploreVideoJob(f.job,f.context,f.deps);
+  for (let i=0;i<100 && pending.length < 3;i++) await new Promise(resolve => setTimeout(resolve,5));
+  assert.equal(pending.length,3,"Every selected input starts without waiting for an earlier input");
+  assert.equal(f.composed(),0); for (const complete of pending) complete();
+  await run; assert.equal(f.composed(),1); assert.equal(f.events.includes("finalize"),true);
+});
+
+test("a failed download aborts siblings and waits for their settlement before directory cleanup", async () => {
+  const f = fixture({subtitles:false}); let release, destination, stopped;
+  f.deps.storage.download = async (key,path,maximum,location,signal) => {
+    if (key === id(1)) throw new Error("download failed");
+    if (key === id(2)) {
+      destination=path; stopped=signal;
+      await new Promise(resolve => { release=resolve; });
+    }
+  };
+  let ended=false;
+  const run = runFinishExploreVideoJob(f.job,f.context,f.deps).finally(() => { ended=true; });
+  const rejection = assert.rejects(run,/download failed/);
+  for (let i=0;i<100 && !release;i++) await new Promise(resolve => setTimeout(resolve,5));
+  assert.equal(stopped.aborted,true); assert.equal(ended,false);
+  await access(dirname(destination)); release(); await rejection;
+  await assert.rejects(access(dirname(destination)),error => error.code === "ENOENT");
+  assert.equal(f.composed(),0); assert.equal(f.events.includes("upload"),false);
+});
+
+test("long transcription keeps its actual stage and progress during cancellation checkpoints", async () => {
+  const f = fixture(), checkpoints = [];
+  f.context.checkpoint = async state => { checkpoints.push(state); };
+  const prepare = f.deps.transcription.prepare;
+  f.deps.transcription.prepare = async (...args) => {
+    const prepared=await prepare(...args);
+    return {...prepared,submit:async () => {
+      await new Promise(resolve => setTimeout(resolve,5200));
+      return prepared.submit();
+    }};
+  };
+  await runFinishExploreVideoJob(f.job,f.context,f.deps);
+  const start=checkpoints.findIndex(value => value.stage === "transcribing_composed_audio");
+  const end=checkpoints.findIndex(value => value.stage === "rendering_video_subtitles");
+  const transcriptionChecks=checkpoints.slice(start,end);
+  assert.ok(transcriptionChecks.length >= 3);
+  for (const state of transcriptionChecks) assert.deepEqual(state,{status:"waiting_external_service",stage:"transcribing_composed_audio",progress:55});
 });

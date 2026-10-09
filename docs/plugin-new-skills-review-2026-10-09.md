@@ -1,5 +1,7 @@
 # New UGC Pilot skills review — 9 October 2026
 
+**Historical inventory:** the user subsequently renamed these sources and added two video-prompt skills. Use the [revised five-role review](plugin-skill-roles-review-2026-10-09.md) for the current files and intended routing. The evidence below records the earlier source snapshot.
+
 The added material contains two creative skills and one transcription reference collection. Both skills can improve planning and copy, but neither is currently discoverable in the `ugc-pilot` package. Adding files to the parent `plugins` directory does not update installed clients, the downloadable ZIP, or the website's generation prompts.
 
 This was a source and package review. No plugin source, installed configuration, MCP service, worker, production deployment, or downloadable package was changed. Signed-in host activation and finished media acceptance were not performed.

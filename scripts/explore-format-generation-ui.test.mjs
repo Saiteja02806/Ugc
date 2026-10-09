@@ -12,6 +12,7 @@ function load(file, imports = {}, globals = {}) {
   vm.runInNewContext(code, { exports, process: { env: {} }, require: name => {
     if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts");
     if (name in imports) return imports[name];
+    if (name === "@/lib/explore/slideshow-image") return { resolveSlideshowImage: async image => image };
     if (name.startsWith("./")) return load(path.posix.join(path.posix.dirname(file), name), imports, globals);
     if (name.startsWith("@/components/") || name === "lucide-react") return new Proxy({}, { get: (_, component) => String(component) });
     throw new Error(`Unexpected import ${name}`);

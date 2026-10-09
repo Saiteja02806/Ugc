@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
-import { validateOpenAiMetadata, validatePackage } from "./validate-ugc-pilot-plugin.mjs";
+import { validateOpenAiMetadata, validatePackage, validateResourceLinks } from "./validate-ugc-pilot-plugin.mjs";
 
 const original = JSON.parse(fs.readFileSync(new URL("../plugins/ugc-pilot/plugin.json", import.meta.url), "utf8"));
 const tools = new Set(["get_profile", "get_entitlements", "get_capabilities", "list_assets", "get_asset", "generate_image", "generate_video", "get_job"]);
@@ -13,8 +13,17 @@ const altered = (mutate) => {
 
 test("the full bundle passes while reporting the missing review recording", () => {
   const result = validatePackage();
-  assert.equal(result.version, "0.1.1");
+  assert.equal(result.version, "0.1.2");
+  assert.equal(result.skillCount, 8);
   assert.deepEqual(result.reviewReadiness, { submissionMaterialsComplete: false, pending: ["review.demo_recording_url"] });
+});
+
+test("references must exist inside the allowlisted package, including supporting Markdown", () => {
+  const relative = "skills/emotion-hook-director/references/performance-guide.md";
+  validateResourceLinks("[shared](../../../references/creative-workflow.md#context)", relative);
+  for (const text of ["[missing](absent.md)", "`references/absent.md`", "[escape](../../../../../../.env.local)", "[local](file:///secret.txt)"]) {
+    assert.throws(() => validateResourceLinks(text, relative), /Missing packaged reference|Escaping reference|Unsupported reference/);
+  }
 });
 
 test("submission fails until a recording is supplied", () => {

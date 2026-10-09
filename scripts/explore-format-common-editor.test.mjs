@@ -3,7 +3,8 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
-import { formatTextLayout, parseExploreFormatEdit } from "../worker/src/lib/explore-format-edit.ts";
+import { formatTextLayout, formatTextOverlays, parseExploreFormatEdit } from "../worker/src/lib/explore-format-edit.ts";
+import * as editDraft from "../lib/explore/format-edit-draft.ts";
 
 const jsx = { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "fragment" };
 function load(path, imports) {
@@ -11,6 +12,8 @@ function load(path, imports) {
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL(`../${path}`, import.meta.url), "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, { exports, localStorage: { getItem: () => null, setItem() {} }, require(name) {
+    if (name === "@/lib/explore/format-edit-draft") return editDraft;
+    if (name === "@/worker/src/lib/explore-format-edit") return { formatTextLayout, formatTextOverlays, parseExploreFormatEdit };
     return imports[name] ?? (name === "react/jsx-runtime" ? jsx : new Proxy({}, { get: (_, key) => String(key) }));
   } });
   return exports;
@@ -22,16 +25,17 @@ const editing = { version: 1, format: "hook", trimStartMs: 2000, trimEndMs: 8000
 test("shared opening and demo text controls retain timing within the edited clip", () => {
   let next;
   const tree = fields.FormatVideoTextFields({ editing, onChange: value => { next = value; } });
-  nodes(tree).find(n => n.props?.["aria-label"] === "Overlay text").props.onChange({ target: { value: "My own heading" } });
-  assert.equal(next.text.endMs, 6000);
-  assert.equal(parseExploreFormatEdit(next).text.value, "My own heading");
-  next.text.startMs = 4000;
+  tree.props.onChange([{ value: "My own heading", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 6000 }]);
+  assert.equal(next.textOverlays[0].endMs, 6000);
+  assert.equal(parseExploreFormatEdit(next).textOverlays[0].value, "My own heading");
+  next.textOverlays[0].startMs = 4000;
   const trimmed = fields.trimFormatVideoEdit(next, 3000, 5000);
-  assert.equal(trimmed.text.startMs, 1999); assert.equal(trimmed.text.endMs, 2000);
+  assert.equal(trimmed.textOverlays[0].startMs, 1999); assert.equal(trimmed.textOverlays[0].endMs, 2000);
   assert.doesNotThrow(() => parseExploreFormatEdit(trimmed));
   const clear = fields.FormatVideoTextFields({ editing: trimmed, onChange: value => { next = value; } });
-  nodes(clear).find(n => n.props?.["aria-label"] === "Overlay text").props.onChange({ target: { value: "" } });
+  clear.props.onChange([]);
   assert.equal(next.text, null);
+  assert.deepEqual(next.textOverlays, []);
 });
 
 for (const format of ["hook", "wall_text"]) {

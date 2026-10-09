@@ -68,8 +68,9 @@ test("slideshow context supports all, subsets and zero without sending unchecked
   view().contextBanner.props.onSelectionChange(["first-1", "first-4"], 4);
   assert.deepEqual(Array.from(view().referenceImageUrls), [refs[0].slides[4].url, refs[0].slides[1].url]);
   assert.equal(view().referenceImageUrl, refs[0].slides[4].url);
-  nodes(h.render()).find(n => n.type === "FormatSlideshowEditor").props.onRegenerate(2);
-  assert.deepEqual(Array.from(view().referenceImageUrls), [refs[0].slides[2].url, refs[0].slides[1].url, refs[0].slides[4].url]);
+  nodes(h.render()).find(n => n.type === "FormatSlideshowEditor").props.onRegenerate(2, { id: video.id, url: "https://owned.test/generated.png" });
+  assert.deepEqual(Array.from(view().referenceImageUrls), [refs[0].slides[4].url, refs[0].slides[1].url]);
+  assert.equal(view().referenceImageAssetId, video.id);
   view().contextBanner.props.onSelectionChange(refs[0].slides.map(slide => slide.id));
   assert.equal(view().referenceImageUrls.length, 6);
   view().contextBanner.props.onSelectionChange([]);
@@ -205,10 +206,11 @@ for (const format of ["hook", "wall_text"]) {
   test(`${format}: Schedule recovery returns to previews and cannot activate a removed Edit tab`, () => {
     const h = harness(format, "", { selected: null });
     nodes(h.render()).find(n => n.type === "tabs-root").props.onValueChange("schedule");
-    nodes(h.render()).find(n => n.type === "Button" && text(n) === "Go to videos").props.onClick();
+    nodes(h.render()).find(n => n.type === "FormatDemoSection").props.onContinue();
+    nodes(h.render()).find(n => n.type === "tabs-root").props.onValueChange("create");
     const tree = h.render();
     assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "create");
-    assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Clip previews and editor").props.hidden, false);
+    assert.ok(nodes(tree).find(n => n.type === "WorkflowVideoSourceSection"));
     nodes(tree).find(n => n.type === "tabs-root").props.onValueChange("edit");
     assert.equal(nodes(h.render()).find(n => n.type === "tabs-root").props.value, "create");
     assert.equal(nodes(h.render()).some(n => n.type === "tabpanel" && n.props.value === "edit"), false);
@@ -466,6 +468,7 @@ test("slideshow keeps its Edit slides tab and image-selection transition", () =>
   assert.deepEqual(nodes(tree).filter(n => n.type === "tab").map(n => text(n)), ["Create", "Edit slides", "Schedule"]);
   nodes(tree).filter(n => n.type === "div" && typeof n.props?.ref === "function").forEach(n => n.props.ref({ clientWidth: 0 }));
   tree = h.render();
+  nodes(tree).find(n => n.type === "FormatSlideshowEditor").props.controllerRef.current = { useImage: () => true };
   nodes(tree).find(n => n.type === "generation-panel").props.recreateView.workflow.onSelectImage({ id: "image", url: "/image.png" });
   tree = h.render();
   assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "edit");

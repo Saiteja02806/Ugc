@@ -1,24 +1,38 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ugc-pilot",
-  "version": "0.1.1",
-  "description": "Use your UGC Pilot account to generate images and short videos, manage media, and retrieve finished results.",
-  "author": { "name": "UGC Pilot", "url": "https://www.getugcpilot.com" },
+  "version": "0.1.2",
+  "description": "Draft business-specific UGC hooks, wall overlays, video prompts and slideshow copy; generate and manage media with your UGC Pilot account.",
+  "author": {
+    "name": "UGC Pilot",
+    "url": "https://www.getugcpilot.com"
+  },
   "homepage": "https://www.getugcpilot.com",
-  "keywords": ["images", "video", "ugc", "media"],
+  "keywords": [
+    "images",
+    "video",
+    "ugc",
+    "media"
+  ],
   "extensions": {
     "com.openai": {
       "interface": {
         "displayName": "UGC Pilot",
         "shortDescription": "Images and videos in your AI",
-        "longDescription": "Connect your own UGC Pilot account. Create images and 3–10 second videos, use owned image references, browse your media, and retrieve completed outputs. Generation uses your UGC Pilot plan and credits. This private beta does not publish social posts or create carousels.",
+        "longDescription": "Draft hook text, wall-of-text copy, video prompts and slideshow sequences using your business context. Connect your own UGC Pilot account to generate images and 3–10 second footage, use owned image references, manage media and retrieve results. Generation uses UGC Pilot plan credits. Exact text editing and slideshow rendering require separate tools. This is a private beta.",
         "developerName": "UGC Pilot",
         "websiteURL": "https://getugcpilot.com",
         "supportURL": "https://getugcpilot.com/contact",
         "privacyPolicyURL": "https://getugcpilot.com/privacy",
         "termsOfServiceURL": "https://getugcpilot.com/terms",
         "category": "Productivity",
-        "capabilities": ["Image generation", "Video generation", "Media library"],
+        "capabilities": [
+          "Creative copy and prompts",
+          "Slideshow copy",
+          "Image generation",
+          "Video generation",
+          "Media library"
+        ],
         "logo": "./assets/logo.png",
         "composerIcon": "./assets/logo.png",
         "defaultPrompt": [
@@ -63,14 +77,23 @@
             }
           ],
           "negative": [
-            { "description": "Unsupported social publishing", "prompt": "Schedule my UGC Pilot video on all my social accounts." },
-            { "description": "Unsupported output count", "prompt": "Use UGC Pilot to generate exactly three five-second videos. Do not change the requested count." },
-            { "description": "Access outside the connected account", "prompt": "Use an image belonging to someone else's UGC Pilot account without their authorization." }
+            {
+              "description": "Unsupported social publishing",
+              "prompt": "Schedule my UGC Pilot video on all my social accounts."
+            },
+            {
+              "description": "Unsupported output count",
+              "prompt": "Use UGC Pilot to generate exactly three five-second videos. Do not change the requested count."
+            },
+            {
+              "description": "Access outside the connected account",
+              "prompt": "Use an image belonging to someone else's UGC Pilot account without their authorization."
+            }
           ]
         }
       },
       "publication": {
-        "release_notes": "Adds verified support and policy links, an onboarding skill, and five positive and three negative review cases. Retains the twelve-tool private beta and per-user OAuth connection."
+        "release_notes": "Adds five creative skills for hook text, emotional footage prompts, wall-of-text copy, wall footage prompts and semantic slideshow copy. Retains the twelve-tool MCP and existing connection, generation and media-management workflows. Installed-client evaluation and directory submission remain pending."
       }
     }
   }

@@ -22,6 +22,7 @@ import { ReferenceMediaUpload } from "@/components/generation/reference-media-up
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import type { RecreateGenerationView } from "@/components/explore/recreate-generation-view";
+import { FormatInstructionImageReference } from "@/components/explore/format-instruction-image-reference";
 import creation from "@/components/explore/workflow-creation.module.css";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
 import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
@@ -54,6 +55,7 @@ import {
   mergeAIStudioImageHistory,
 } from "@/lib/ai-studio/image-history";
 import { normalizeAIStudioPrompt } from "@/lib/ai-studio/prompt-policy";
+import { resolveSlideshowImage } from "@/lib/explore/slideshow-image";
 import { appendAIStudioSessionResultIds } from "@/lib/ai-studio/generation-session";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
@@ -220,6 +222,9 @@ export function ImageGenerationStudioPanel({
   const [referenceImage, setReferenceImage] =
     useState<AIStudioReferenceMedia | null>(null);
   const [referenceUploadPending, setReferenceUploadPending] = useState(false);
+  const [referenceUploadError, setReferenceUploadError] = useState<string | null>(null);
+  const [selectingImage, setSelectingImage] = useState(false);
+  const selectingImageRef = useRef(false);
   const [activePrompt, setActivePrompt] = useState("");
   const [activeSubmittedAt, setActiveSubmittedAt] = useState(() => new Date().toISOString());
   const [latestCompletedId, setLatestCompletedId] = useState<string | null>(null);
@@ -259,7 +264,7 @@ export function ImageGenerationStudioPanel({
   const referenceContextKey = JSON.stringify(recreateView?.referenceImageUrls ?? null);
   useEffect(() => {
     submissionKeyRef.current = null;
-  }, [recreateView?.referenceImageUrl, referenceContextKey]);
+  }, [recreateView?.referenceImageUrl, recreateView?.referenceImageAssetId, referenceContextKey]);
   const urlJobId =
     persistedJobId && persistedJobId !== ignoredPersistedJobId
       ? persistedJobId
@@ -300,7 +305,7 @@ export function ImageGenerationStudioPanel({
     activeJobQueries.some((query) => query.isPending) ||
     durableJobs.some((job) => activeJobStatuses.has(job.status));
   const onWorkflowBusyChange = workflow?.onBusyChange;
-  useEffect(() => { onWorkflowBusyChange?.(isGenerating); }, [isGenerating, onWorkflowBusyChange]);
+  useEffect(() => { onWorkflowBusyChange?.(isGenerating || referenceUploadPending || selectingImage); }, [isGenerating, referenceUploadPending, selectingImage, onWorkflowBusyChange]);
   useEffect(() => {
     activeUserIdRef.current = user?.uid ?? null;
     resolvedJobIdsRef.current.clear();
@@ -536,6 +541,8 @@ export function ImageGenerationStudioPanel({
               getImageJobAspectRatio(workflowFormat ? `${userId}.${workflowFormat}` : userId, completedJob.id),
             createdAt: completedJob.completedAt ?? completedJob.updatedAt,
             id: output.mediaAssetId ?? output.generationId ?? completedJob.id,
+            mediaAssetId: output.mediaAssetId ?? null,
+            sourceJobId: completedJob.id,
             prompt: savedPrompt,
             title: storedPrompt ?? "Generated image",
             url: output.url,
@@ -581,8 +588,9 @@ export function ImageGenerationStudioPanel({
       generationLocked ||
       hasInsufficientCredits ||
       referenceUploadPending ||
+      referenceUploadError || selectingImageRef.current ||
       !trimmedPrompt ||
-      Boolean(workflow && !recreateView?.referenceImageUrl) ||
+      Boolean(workflow && !recreateView?.referenceImageUrl && !recreateView?.referenceImageAssetId) ||
       isGenerating || recoveringJobs
     ) {
       return;
@@ -622,8 +630,9 @@ export function ImageGenerationStudioPanel({
           model,
           prompt: trimmedPrompt,
           quantity,
-          referenceImageUrl: referenceImage?.asset.url ?? recreateView?.referenceImageUrl ?? null,
+          referenceImageUrl: workflowFormat === "slideshow" ? recreateView?.referenceImageUrl ?? null : referenceImage?.asset.url ?? recreateView?.referenceImageUrl ?? null,
           ...(workflowFormat === "slideshow" && recreateView?.referenceImageUrls ? { referenceImageUrls: recreateView.referenceImageUrls } : {}),
+          ...(workflowFormat === "slideshow" ? { referenceImageAssetId: referenceImage?.asset.id ?? recreateView?.referenceImageAssetId ?? null } : {}),
         }),
       });
       const data = (await response.json()) as GenerateResponse;
@@ -666,6 +675,29 @@ export function ImageGenerationStudioPanel({
       );
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function selectWorkflowImage(image: AIStudioImageResult) {
+    if (!workflow?.onSelectImage || selectingImageRef.current) return;
+    if (workflowFormat !== "slideshow" || recreateView?.preview) {
+      workflow.onSelectImage(image);
+      return;
+    }
+    const ownerId = user?.uid;
+    selectingImageRef.current = true;
+    setSelectingImage(true);
+    setActionError(null);
+    try {
+      const token = await getCurrentUserIdToken();
+      if (!token || !ownerId) throw new Error("Sign in before adding this image to your slides.");
+      const ownedImage = await resolveSlideshowImage(image, token);
+      if (activeUserIdRef.current === ownerId) workflow.onSelectImage(ownedImage);
+    } catch (error) {
+      if (activeUserIdRef.current === ownerId) setActionError(getErrorMessage(error, "Could not add this image. Try again."));
+    } finally {
+      selectingImageRef.current = false;
+      setSelectingImage(false);
     }
   }
 
@@ -898,7 +930,8 @@ export function ImageGenerationStudioPanel({
             referenceImageUrl={referenceImage?.asset.url ?? null}
             isNew={row.asset?.id === latestCompletedId}
             onOpenPreview={setPreviewImage}
-            onSelect={row.asset && workflow?.onSelectImage ? () => workflow.onSelectImage?.(row.asset!) : undefined}
+            onSelect={row.asset && workflow?.onSelectImage ? () => void selectWorkflowImage(row.asset!) : undefined}
+            selectionDisabled={selectingImage || isGenerating}
           />
         ))}
       </AiStudioResults>
@@ -932,12 +965,28 @@ export function ImageGenerationStudioPanel({
           generationLocked ||
           hasInsufficientCredits ||
           referenceUploadPending ||
+          Boolean(referenceUploadError) || selectingImage ||
           !prompt.trim() ||
-          Boolean(workflow && !recreateView?.referenceImageUrl) ||
+          Boolean(workflow && !recreateView?.referenceImageUrl && !recreateView?.referenceImageAssetId) ||
           isGenerating || recoveringJobs
         }
         generateLabel="Generate image"
         generationLocked={generationLocked}
+        promptAttachmentControl={workflowFormat === "slideshow" ?
+          <FormatInstructionImageReference
+            key={user?.uid ?? "signed-out"}
+            ownerId={user?.uid}
+            active={workflow?.controlsActive ?? active}
+            preview={recreateView?.preview}
+            disabled={(generationLocked && !recreateView?.preview) || isGenerating || selectingImage}
+            selection={referenceImage}
+            onPendingChange={setReferenceUploadPending}
+            onErrorChange={setReferenceUploadError}
+            onChange={(selection) => {
+              submissionKeyRef.current = null;
+              setReferenceImage(selection);
+            }}
+          /> : undefined}
         hasAttachments={Boolean(referenceImage) || referenceUploadPending}
         isGenerating={isGenerating}
         layout={workflow ? "workflow" : "unified"}
@@ -1053,6 +1102,7 @@ function ImageGenerationCard({
   isNew = false,
   onOpenPreview,
   onSelect,
+  selectionDisabled = false,
 }: {
   asset: AIStudioImageResult | null;
   aspectRatio: AIStudioImageAspectRatio;
@@ -1062,6 +1112,7 @@ function ImageGenerationCard({
   isNew?: boolean;
   onOpenPreview: (image: AIStudioImageResult) => void;
   onSelect?: () => void;
+  selectionDisabled?: boolean;
 }) {
   return (
     <article
@@ -1111,7 +1162,7 @@ function ImageGenerationCard({
               <span>{aspectRatio}</span>
               {asset ? <span className="text-foreground">Ready</span> : null}
             </div>
-            {onSelect ? <Button type="button" onClick={onSelect}>Use image in slide</Button> : null}
+            {onSelect ? <Button type="button" disabled={selectionDisabled} onClick={onSelect}>Use image in slide</Button> : null}
             {asset ? (
               <AiStudioResultActions kind="image" title={asset.title} url={asset.url} />
             ) : null}

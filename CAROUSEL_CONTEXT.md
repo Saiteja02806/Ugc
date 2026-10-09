@@ -2,6 +2,238 @@
 
 Last updated: 2026-10-09
 
+
+## 2026-10-09 Explore slideshow ownership and reference guidance (local revision)
+
+- The owner confirmed that catalogue slides guide layout, while a separate
+  image attached through the Instructions plus button guides subject/style.
+  Those roles reach both supported image providers in that order. Explicit
+  instructions remain intact; business context is optional and is not silently
+  injected into this manual workflow.
+- Edit slides contains only the owner's generated or uploaded output images,
+  with an independently ordered 2-10 image sequence. Selecting catalogue
+  guidance does not insert it into the final post. This supersedes the October
+  8 complete-reference-sequence behavior below. Regeneration replaces its
+  selected owned slide; generating a new slide appends one output.
+- The v2 save validates ready owned assets and preserves the existing atomic
+  Library RPC and publishing contract. Interrupted saves retain the exact
+  sequence and request identity; legacy v1 receipts remain recoverable.
+  A newer owned draft takes precedence over an older completed legacy receipt.
+  Automatic Trending Carousel architecture is unchanged.
+- After the local A/B trial, the owner chose preview-side editing for Hook.
+  Hook keeps Create / Demo / Schedule; each clip's preview opens its explicitly
+  named editor. Returning from hook edits opened in Demo restores the two-clip
+  preview. Hook and demo share the responsive editor frame and compact actions.
+  A remains available in the development comparison fixture.
+- One empty text box appears on opening a video editor. Additional blocks keep
+  independent timing/style. Blank blocks are local draft state and are excluded
+  from preview/export; legacy no-text receipts retain their original shape.
+  Local checks cover playback, trim, text, separate hook/demo drafts, reload,
+  preview/reopen and 320-1440px layouts. See
+  `docs/explore-workflow-audit-2026-10-09.md` for findings and limitations.
+  Deployment and authenticated production acceptance are pending.
+
+## 2026-10-08 Explore format workflows (local implementation)
+
+- Explore now separates Hook video, Wall of text, and Slideshows. The first two
+  generate videos; Slideshows generates images. The former talking-hook and
+  creator-phone entries and standalone audio page are hidden. AI character
+  creation and existing Trending workflows retain their behavior.
+- The studio follows the older workflow shell: compact Create / Edit / Schedule
+  tabs within one left control card, one shared action footer, and right-side
+  References / Your Video (or Your Slides). Submitting generation
+  selects results immediately. Subsequent job updates do not change that view.
+- Hook and Wall of text also accept uploaded or owned Creative Assets videos,
+  including ready legacy creator footage. All sources use the same trim/text/
+  audio editor. Uploads use the existing owned-media completion path; selected
+  source IDs and edit drafts restore with owner checks. Video-only generation
+  and image-only slideshow generation retain their original boundaries.
+- Reference cards use a top-right Recreate icon with an accessible name and
+  keyboard focus; selected references have an orange check, outline and caption.
+  Preview stays a separate card action. One footer button shows the current
+  model, duration, ratio and count, and opens generation settings in a popover.
+  Step controls scroll above the same desktop action footer. Hook and Wall use
+  a compact optional style-example row, a 72px instructions field, and separate
+  image/video guidance tiles. Custom media overrides the gallery poster;
+  one guidance attachment is active at a time, and generation waits for upload
+  completion. Removing the style example also permits prompt-only generation.
+  Short video guidance uses the existing Runway path, accepts at most three
+  seconds, displays the actual source length and reserves three seconds of
+  credits; image/text generation remains Google Omni. The legacy Recreate
+  image requirement is retained outside these two new formats. Wall prompts
+  reserve room within the worker's 1,000-character limit for the background-only
+  instruction. Preview references stay local and generation is always locked.
+  Mobile actions reveal their target. Settings
+  close when leaving Generate/Create without interrupting background job polling.
+- Explore covers now follow the older Recreate presentation: one example at a
+  time fills the landscape card, with top/bottom cropping and a brief zoom
+  between examples. Both Hook and Wall clips play in full; the slideshow cover
+  includes both decks in numeric order. These are cover-only crops; reference
+  images and editor framing are unchanged. Versioned v2 media retains all
+  fourteen source hashes and preserves the previous covers.
+- Quick start has six entries: AI Studio, Trending content, Library, Video
+  generation, Image generation and Schedule a post. The two generation links
+  open the existing AI Studio mode; scheduling opens the existing calendar.
+- Explore slideshow edits preserve the complete reference sequence and its
+  order. A generated image replaces one selected slide. Authenticated saves
+  use an idempotent, service-only RPC and existing Library carousel publishing;
+  they do not create synthetic automatic Carousel generation records.
+- Migration `20261008001500_explore_format_workflows.sql` permits nullable
+  automatic generation IDs for these Library slide rows and tags owned
+  generated media from the matching background job. Automatic Carousel
+  generation, image sourcing, rendering and readiness rules are unchanged.
+- New saves require `EXPLORE_SLIDESHOW_SAVING_ENABLED`. Video trim, manual text
+  and audio edits require `EXPLORE_FINISHING_ENABLED` plus
+  `EXPLORE_FORMAT_EDITING_ENABLED` and the matching worker release. Neither
+  editor offers subtitles. The preexisting production Explore visibility gate
+  remains. Deployment and authenticated production acceptance are pending.
+- See `docs/explore-format-workflows-2026-10-08.md` for scope, assets, validation
+  and rollout dependencies.
+
+## 2026-10-08 Trending requested 10% laptop reduction (local implementation)
+
+- The owner explicitly requested a further 10–15% reduction for 14-inch laptops
+  and 10% for 15.6-inch laptops. The implementation uses 10% for both, meeting
+  both requests without inferring physical screen size from browser width.
+  A shared desktop media factor of 0.9 applies after the preceding viewport
+  constraints, including the previously protected short-window sizes. This
+  supersedes the sizing in the preceding entry.
+- At 1366 × 680 the portrait changes from 270 × 480 to 243 × 432; at
+  1366 × 768 from about 286 × 509 to 258 × 458; at 1536 × 776 from about
+  290 × 515 to 261 × 464. The effective desktop portrait cap is 288px and
+  slideshow cap 342px. The loading frame receives the same factor. Media and
+  saved text retain their proportions, and Skip/Schedule stay below the card
+  with their original targets and captions. Mobile and interaction code are
+  unchanged.
+- All 39 local format/viewport checks and 66 interaction tests passed again.
+  Browser scroll-back restored the selected third slideshow image without
+  another decision. The current report and full-screen evidence are in the
+  final section of `docs/trending-laptop-layout-2026-10-07.md`. Deployment and
+  authenticated production acceptance remain pending.
+
+## 2026-10-08 Trending final visual size review (local implementation)
+
+- A repeated full-screen visual review found the short 14-inch HD portrait
+  reasonably balanced, while taller HD and scaled FHD cards could lose a little
+  more visual weight. Growth is now 87% of available media height instead of
+  92%; portrait width caps at 320px instead of 340px, and slideshow width at
+  380px instead of 400px. This supersedes the preceding sizing entry.
+- Preferred 270px portrait and 360px slideshow widths remain protected when
+  space permits. The 1366 × 680 portrait stays 270 × 480 with 13px sample Wall
+  type. The 1366 × 768 portrait becomes 286 × 509, and 1536 × 776 becomes
+  290 × 515, about 5.4% smaller than the preceding pass. Both actions remain
+  below the card, visible without document scrolling. Source ratios and saved
+  text proportions remain intact; no interaction or persistence code changed.
+- All 39 desktop format/viewport checks passed again, as did 66 interaction
+  tests. Browser forward/back navigation restored the saved slide selection
+  without another review. Full-screen screenshots and current measurements are
+  recorded in the final section of `docs/trending-laptop-layout-2026-10-07.md`.
+  Deployment and authenticated production acceptance remain pending.
+
+## 2026-10-08 Trending restrained laptop sizing (local implementation)
+
+- The owner asked for a modest size reduction after the enlarged cards felt
+  too heavy. Below-card Skip and Schedule remain the presentation contract.
+  Desktop portrait cards now cap at 340px wide and 4:5 slideshow frames at
+  400px. Growth uses 92% of available media height, with preferred width floors
+  of 270px and 360px when the actual viewport permits; the complete card and
+  both decisions still take precedence over those floors.
+- At 1366 × 680, the portrait is about 270 × 480 instead of 280 × 497. At
+  1536 × 776 it is about 307 × 545 instead of 333 × 592. The shorter 600px
+  windows retain their height-constrained size to avoid another readability
+  regression. Saved text scales with the complete media; mobile is unchanged.
+- The existing compact header treatment is retained. Feed height caps follow
+  the new media caps so below-card decisions stay close on taller windows.
+  This supersedes the sizing measurements in the previous entry, while keeping
+  its action placement, interaction handling, and persistence behavior.
+- All 39 local format/viewport geometry checks and 66 interaction tests passed.
+  Scroll-back restores the selected slide and history. The current full build
+  is blocked by unrelated Explore imports (`./edit-overlay-render-spec.js` and
+  `@/lib/supabase/env`), outside this CSS-only presentation change. Measurements
+  and screenshots are recorded in `docs/trending-laptop-layout-2026-10-07.md`.
+  Deployment and authenticated production acceptance remain pending.
+
+## 2026-10-08 Trending below-card laptop actions (local implementation)
+
+- The owner rejected the compact side-action presentation. Skip and Schedule
+  stay together below the active card at every desktop size. This supersedes
+  the side-button decision in the 2026-10-07 compact laptop entry below.
+- Short desktop windows still prioritize the card over the introductory
+  subtitle and visible remaining count. Reduced outer/header-to-feed spacing,
+  28px feed padding, and an 8px format-label gap reclaim space above the card.
+  The format pill stays attached to its post, complete media and saved text
+  proportions are preserved, and both 56px-minimum actions retain captions.
+- At 1366 × 680, the portrait starts near y=83 instead of y=136 and measures
+  about 280 × 497, versus 230 × 409 in the earlier below-action layout. The
+  card and both button captions fit without document scrolling. Progress
+  remains in the feed label and live announcement. Taller desktop and mobile
+  presentation, interaction handling, and persistence remain in place.
+- Local browser, interaction, and lint validation is recorded in
+  `docs/trending-laptop-layout-2026-10-07.md`. Next compiled the application, but
+  the current full build's type check is blocked by video-generation types
+  outside these layout files. Deployment and production acceptance are pending.
+
+## 2026-10-07 Hero source-folder media restoration (local implementation)
+
+- Supersedes the 2026-10-03 hero media replacement below. The homepage hero
+  now uses `landing_page/heeo_Section/left_side.mp4` (Wall of Text),
+  `middle.mp4` (Hook+Demo), and the six ordered `right_side/image_*.jpg`
+  slideshow images. Public copies live under `/marketing/showcase/hero-restored`;
+  the videos are losslessly prepared for fast start with matching posters.
+- The slideshow restores automatic advance, arrows, and pagination inside the
+  existing right card. Card sizes, tilt, hero crop, and straight section cutoff
+  remain unchanged, as do all sections below the hero and the separate daily-feed
+  demo. Mobile retains its center-only preview. No product Carousel pipeline or
+  publishing behavior changes. Deployment and production acceptance are pending.
+
+## 2026-10-07 Trending compact laptop card priority (local implementation)
+
+- At desktop widths of at least 1024 CSS pixels and browser heights up to
+  820 CSS pixels, the active Trending post takes priority over the introductory
+  subtitle and visible remaining count. Those two secondary text elements are
+  hidden while the feed label and live announcement retain progress information.
+- Skip and Schedule move beside the post in a vertical pair, retaining their
+  captions, keyboard hints, accessible names, and at least 56px targets. The
+  feed column follows the media's height-limited width so the controls remain
+  close to the card. Both buttons and the complete source content fit without
+  document scrolling. This supersedes below-card control placement for short
+  desktop windows only; taller desktop and mobile presentations keep their
+  existing arrangement.
+- Local checks at 1366 × 650 enlarged the 9:16 card from about 214 × 380 to
+  296 × 526, with sample Wall type increasing from 10.3px to 14.3px. At
+  1366 × 680 the card is about 313 × 556. The existing feed's next/previous
+  transitions, saved slide selection, scheduling handlers, and source ratios
+  are retained. Measurements and verification are in
+  `docs/trending-laptop-layout-2026-10-07.md`; deployment and authenticated
+  production acceptance remain pending.
+
+## 2026-10-07 Trending available-height layout and scroll settlement (local implementation)
+
+- Desktop Trending uses the actual remaining workspace height after its header,
+  decision buttons, captions, and progress count. The post window measures that
+  remaining space through CSS size containment; portrait and 4:5 media use its
+  width and height, including the existing 52px label clearance. Reduced outer
+  spacing enlarges laptop cards while keeping Skip and Schedule visible without
+  page scrolling. Larger windows cap and center the complete review unit. This
+  supersedes the fixed desktop viewport deductions and prior laptop width curves
+  for the scrolling feed. Mobile presentation and complete-image containment
+  remain in place; Wall overlays continue scaling with their saved media layout.
+  The loading layer uses its available height too, preventing an invisible
+  placeholder from extending the page behind the ready feed.
+- The shared scrolling feed retains native scrollend and also schedules a
+  debounce fallback in browsers that support it. A completed touch can therefore
+  settle after a native event fired while the finger was still held. Wheel input
+  also arms the fallback when reversal produces no new scroll event at a boundary.
+  Held gestures, animations, disabled actions, and the existing commit lock guard
+  settlement. Backward browsing still only changes visit-local history.
+- These are local application changes. Authenticated production acceptance is
+  pending: https://www.getugcpilot.com/dashboard redirected to sign-in in the
+  available browser. No deployment or migration is included in this change.
+  Local validation and measured viewport sizes are recorded in
+  `docs/trending-laptop-layout-2026-10-07.md`.
+
+
+
 ## 2026-10-09 Social slideshow hook contract (local implementation)
 
 - Slide 1 communicates one main idea as one curiosity-driven statement in one

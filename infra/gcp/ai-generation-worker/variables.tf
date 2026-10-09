@@ -88,20 +88,8 @@ variable "worker_job_types" {
   default     = "generate_audio,generate_avatar,generate_image,generate_hook_video,generate_trending_hook_copy,hook_text_generation,wall_text_content_plan_generation,wall_text_generation,media_analysis,analytics_sync,carousel_content_plan_generation,paid_trending_prebuild,reaction_generation,test_worker_job"
 }
 
-variable "enable_audio_generation" {
-  description = "Allow ElevenLabs audio submissions after private storage, the migration and API secret are configured."
-  type        = bool
-  default     = false
-}
-
 variable "elevenlabs_api_key_secret_id" {
   description = "Optional Secret Manager secret ID injected as ELEVENLABS_API_KEY. Empty keeps existing worker deployments independent of ElevenLabs."
-  type        = string
-  default     = ""
-}
-
-variable "elevenlabs_voice_api_key_secret_id" {
-  description = "Optional restricted voice-management Secret Manager secret ID injected as ELEVENLABS_VOICE_API_KEY."
   type        = string
   default     = ""
 }

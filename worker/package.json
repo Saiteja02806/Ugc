@@ -22,7 +22,8 @@
     "geist": "^1.7.0",
     "google-auth-library": "^10.5.0",
     "openai": "^6.45.0",
-    "sharp": "0.35.5"
+    "sharp": "0.35.5",
+    "@higgsfield/client": "^0.2.6"
   },
   "devDependencies": {
     "@types/node": "^20",

@@ -11,6 +11,7 @@ function load(file, imports = {}, globals = {}) {
   }).outputText;
   vm.runInNewContext(code, { exports, Error, URL, URLSearchParams, Headers, process: { env: {} }, require(name) { if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts");
     if (name in imports) return imports[name];
+    if (name === "@/lib/explore/slideshow-image") return { resolveSlideshowImage: async image => image };
     if(name === "next/link") return "Link";
     if(name === "./generation-session.ts" || name === "@/lib/ai-studio/generation-session") return load("lib/ai-studio/generation-session.ts");
     if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts");

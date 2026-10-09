@@ -126,3 +126,22 @@ test("signed-out observers do not start authenticated catalog requests", async (
     client.clear();
   }
 });
+
+test("retiring a Wall of Text reference cannot reuse the old cached library", async () => {
+  const client = new QueryClient();
+  let calls = 0;
+  client.setQueryData(["explore-video-library", "user-a", "wall_text"], library);
+  try {
+    const refreshed = await client.fetchQuery(exploreVideoLibraryQueryOptions({
+      userId: "user-a", section: "wall_text",
+      load: async () => { calls++; return { items: [], preview: null }; },
+    }));
+    assert.equal(calls, 1);
+    assert.deepEqual(refreshed.items, []);
+    assert.deepEqual(exploreVideoLibraryQueryOptions({
+      userId: "user-a", section: "hook", load: async () => library,
+    }).queryKey, ["explore-video-library", "user-a", "hook"]);
+  } finally {
+    client.clear();
+  }
+});

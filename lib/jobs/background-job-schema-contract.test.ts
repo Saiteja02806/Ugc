@@ -257,13 +257,13 @@ test("binds an AI worker image SHA to its Cloud Run identity and canary", () => 
   assert.match(cutoverAuditScript, /assertWorkerReleaseIdentity/);
 });
 
-test("routes the Create Content render canary through the signed app launcher", () => {
+test("routes the supported rollout canary through the signed app launcher", () => {
   const cutoverAuditRoute = readFileSync(
     "app/api/internal/gcp-cutover/audit/route.ts",
     "utf8",
   );
   const createContentCanary = readFileSync(
-    "scripts/test-production-create-content-render-canary.mjs",
+    "lib/internal/gcp-cutover-audit-canary.ts",
     "utf8",
   );
 
@@ -271,10 +271,9 @@ test("routes the Create Content render canary through the signed app launcher", 
   assert.match(cutoverAuditRoute, /getMissingRuntimeEnv\(canary\.jobType\)/);
   assert.match(cutoverAuditRoute, /getMissingCloudRunRenderJobEnvVars/);
   assert.match(cutoverAuditRoute, /getMissingCloudTasksOidcEnvVars/);
-  assert.match(createContentCanary, /canaryKind:\s*"create-content-render"/);
-  assert.match(createContentCanary, /taskQueueName:\s*"ugc-video-render"/);
-  assert.match(createContentCanary, /--expected-app-release-sha/);
-  assert.match(createContentCanary, /expectedWorkerReleaseSha/);
+  assert.match(createContentCanary, /ai-generation/);
+  assert.match(createContentCanary, /generate_image/);
+  assert.match(cutoverAuditRoute, /getAppReleaseIdentity/);
   assert.doesNotMatch(createContentCanary, /buildBackgroundJobCloudTaskRequest/);
   assert.doesNotMatch(createContentCanary, /GoogleAuth/);
 });
@@ -283,10 +282,6 @@ test("preserves the Cloud Run launch operation after a worker terminalizes", () 
   const backgroundJobs = readFileSync("lib/jobs/background-jobs.ts", "utf8");
   const launchRenderRoute = readFileSync(
     "app/api/internal/jobs/launch-render/route.ts",
-    "utf8",
-  );
-  const createContentCanary = readFileSync(
-    "scripts/test-production-create-content-render-canary.mjs",
     "utf8",
   );
 
@@ -302,11 +297,6 @@ test("preserves the Cloud Run launch operation after a worker terminalizes", () 
   assert.match(backgroundJobs, /cloud_run_operation_id/);
   assert.match(backgroundJobs, /attachCloudRunOperationToBackgroundJob/);
   assert.match(launchRenderRoute, /cloudRunOperationId: execution\.operationName/);
-  assert.match(createContentCanary, /cloud_run_operation_id/);
-  assert.doesNotMatch(
-    createContentCanary,
-    /!job\.worker_execution_id \|\| !job\.worker_id/,
-  );
 });
 
 test("rejects legacy direct-worker task targets for every video render", () => {

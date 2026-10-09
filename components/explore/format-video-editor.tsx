@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FormatVideoTextFields, trimFormatVideoEdit } from "@/components/explore/format-video-text-fields";
@@ -15,21 +16,24 @@ import { formatVideoFromAsset, type FormatVideoSource } from "@/lib/explore/form
 import { uploadAIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { ExploreFinishDraft } from "@/worker/src/lib/explore-finishing-contract";
-import { formatTextLayout, parseExploreFormatEdit, type ExploreFormatEdit } from "@/worker/src/lib/explore-format-edit";
+import { formatTextLayout, formatTextOverlays, parseExploreFormatEdit, type ExploreFormatEdit } from "@/worker/src/lib/explore-format-edit";
+import { prepareFormatEditForExport, readFormatEditDraft } from "@/lib/explore/format-edit-draft";
 import { isExploreUuid } from "@/worker/src/lib/explore-finishing-contract";
 import styles from "@/components/explore/format-workspace.module.css";
 import type { CSSProperties, ReactNode } from "react";
 
 const field = "w-full rounded-lg border border-border bg-card-muted px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-focus";
 const defaultEdit = (format: "hook" | "wall_text", duration: number): ExploreFormatEdit => ({ version: 1, format, trimStartMs: 0, trimEndMs: Math.round(duration * 1000), originalVolume: 1, musicVolume: .2, text: null });
+export type FormatPreparationStatus = { busy: boolean; error: string | null; message: string };
 
-export function FormatVideoEditor({ format, video, active, controlsTarget, resultsTarget, actionsTarget, enabled, onDirty, onSaved, onContinue, pendingSource = false, editingActive = true, onEdit, previewActions }: {
+export function FormatVideoEditor({ format, video, active, controlsTarget, resultsTarget, actionsTarget, enabled, onDirty, onSaved, onContinue, pendingSource = false, editingActive = true, onEdit, previewActions, prepareRequest = 0, onPreparationChange, onBackToPreview }: {
   format: "hook" | "wall_text"; video: FormatVideoSource; active: boolean; controlsTarget: HTMLElement | null; resultsTarget: HTMLElement | null; enabled: boolean;
   pendingSource?: boolean;
   onDirty: () => void; onSaved: (output: { id: string; kind: "media_asset"; url: string; title: string }) => void; onContinue: () => void;
   actionsTarget?: HTMLElement | null;
   editingActive?: boolean; onEdit?: () => void;
   previewActions?: ReactNode;
+  prepareRequest?: number; onPreparationChange?: (status: FormatPreparationStatus) => void; onBackToPreview?: () => void;
 }) {
   const { user } = useAuth();
   const owner = user?.uid ?? null;
@@ -37,9 +41,9 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   const [initialDraft] = useState(() => {
     try {
       const raw = typeof window !== "undefined" ? localStorage.getItem(draftKey) : null;
-      if (raw && raw.length < 16384) {
+      if (raw && raw.length < 65536) {
         const value = JSON.parse(raw);
-        const editing = parseExploreFormatEdit(value.editing ?? value);
+        const editing = readFormatEditDraft(value.editing ?? value);
         if (editing.format === format) return { editing, backgroundId: isExploreUuid(value.backgroundId) ? value.backgroundId as string : null, playback: value.playback === "repeat" ? "repeat" as const : "once" as const, restored: true };
       }
     } catch { /* An invalid local draft cannot replace the server receipt. */ }
@@ -73,20 +77,32 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   }});
   const width = sourceQuery.data?.width ?? naturalSize?.width ?? video.width ?? 1080;
   const height = sourceQuery.data?.height ?? naturalSize?.height ?? video.height ?? (video.ratio === "16:9" ? 608 : video.ratio === "1:1" ? 1080 : video.ratio === "4:5" ? 1350 : 1920);
-  const textLayout = editing.text ? formatTextLayout(editing.text, width, height) : null;
+  const exportEditing = prepareFormatEditForExport(editing);
+  const overlays = formatTextOverlays(exportEditing);
+  const textLayouts = overlays.map(text => formatTextLayout(text, width, height));
   let validation: string | null = null;
-  try { parseExploreFormatEdit(editing); } catch (error) { validation = error instanceof Error ? error.message : "Review your edits."; }
+  try { parseExploreFormatEdit(exportEditing); } catch (error) { validation = error instanceof Error ? error.message : "Review your edits."; }
   if (editing.trimEndMs > duration * 1000 + 50) validation = "Keep the trim range inside this video.";
-  if (textLayout && !textLayout.fits) validation = "Your text does not fit. Reduce its size or move it higher.";
-  if (format === "wall_text" && !editing.text?.value.trim()) validation = "Add your wall of text before saving.";
+  if (textLayouts.some(layout => !layout.fits)) validation = "Your text does not fit. Reduce its size or move it higher.";
+  if (format === "wall_text" && !overlays.some(text => text.value.trim())) validation = "Add your wall of text before saving.";
   const restore = useCallback((draft: ExploreFinishDraft) => {
     if (localDraftExists.current || !draft.editing || draft.editing.format !== format || draft.sourceAssetId !== video.mediaAssetId) return;
     setEditing(draft.editing); setBackgroundId(draft.backgroundAssetId); setPlayback(draft.backgroundPlayback);
   }, [format, video.mediaAssetId]);
   const finishing = useWorkflowFinishing({ ownerId: owner, enabled, kind: "hook", source: sourceQuery.data ?? null, demo: null, demoAudio: null, playback: "once", options: DEFAULT_FINISHING_OPTIONS,
-    editing, backgroundSource: backgroundQuery.data ?? null, backgroundPlayback: playback, scope: `format:${format}:${video.mediaAssetId}`, onRestoreDraft: restore,
+    editing: exportEditing, backgroundSource: backgroundQuery.data ?? null, backgroundPlayback: playback, scope: `format:${format}:${video.mediaAssetId}`, onRestoreDraft: restore,
     demoFramingError: validation ?? uploadError ?? (uploading ? "Uploading background audio…" : backgroundId && !backgroundQuery.data ? "Loading your background audio…" : null),
   });
+  const preparationBusy = pendingSource || finishing.action.busy || Boolean(finishing.action.cancel);
+  const preparationError = validation ?? finishing.action.error ?? (sourceQuery.isError ? "Could not load this video. Return to the editor and retry." : null);
+  const preparationMessage = finishing.action.message;
+  useEffect(() => { onPreparationChange?.({ busy: preparationBusy, error: preparationError, message: preparationMessage }); }, [onPreparationChange, preparationBusy, preparationError, preparationMessage]);
+  const handledPrepareRequest = useRef(0);
+  useEffect(() => {
+    if (!prepareRequest || handledPrepareRequest.current === prepareRequest || pendingSource || finishing.output || finishing.action.disabled || !sourceQuery.data) return;
+    handledPrepareRequest.current = prepareRequest;
+    finishing.action.onAction();
+  }, [prepareRequest, pendingSource, finishing.output, finishing.action, sourceQuery.data]);
   useEffect(() => {
     if (finishing.output) onSaved({ id: finishing.output.id, kind: "media_asset", url: finishing.output.url, title: finishing.output.title });
   }, [finishing.output, onSaved]);
@@ -99,7 +115,8 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
     try { localStorage.setItem(draftKey, JSON.stringify({ version: 1, editing: next, backgroundId: audioId, playback: mode })); } catch { /* No provider request is made by editing. */ }
   }
   function change(next: ExploreFormatEdit) {
-    setEditing(next); onDirty();
+    setEditing(next);
+    if (JSON.stringify(prepareFormatEditForExport(next)) !== JSON.stringify(exportEditing)) onDirty();
     persistDraft(next);
   }
   function trim(startMs: number, endMs: number) {
@@ -136,7 +153,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   if (!active || !controlsTarget || !resultsTarget) return null;
   const actions = <div className="space-y-2">
     {validation || finishing.action.error ? <p role="alert" className="text-xs leading-5 text-destructive">{validation ?? finishing.action.error}</p> : null}
-    {finishing.output ? <Button type="button" size="lg" disabled={pendingSource} onClick={onContinue} className="h-11 w-full rounded-lg">Continue to Demo</Button> : <Button type="button" size="lg" disabled={pendingSource || finishing.action.disabled || !sourceQuery.data} onClick={() => { if (!pendingSource) finishing.action.onAction(); }} className="h-11 w-full rounded-lg">{finishing.action.busy ? "Saving…" : "Save edits"}</Button>}
+    <div className="flex flex-wrap items-center gap-2">{finishing.output ? <Button type="button" disabled={pendingSource} onClick={onContinue} className="h-10 rounded-lg px-4">Continue to Demo</Button> : <Button type="button" disabled={pendingSource || finishing.action.disabled || !sourceQuery.data} onClick={() => { if (!pendingSource) finishing.action.onAction(); }} className="h-10 min-w-28 rounded-lg px-4">{finishing.action.busy || finishing.action.cancel ? "Saving…" : "Save edits"}</Button>}{onBackToPreview ? <Button type="button" variant="outline" onClick={onBackToPreview} className="h-10 rounded-lg px-3"><ArrowLeft className="size-4" aria-hidden="true" />Back to previews</Button> : null}</div>
     <p role="status" className="text-xs leading-5 text-muted">{enabled ? finishing.output ? "Your final video is saved in Library." : finishing.action.message : "Video saving is unavailable in this preview."}</p>
     {sourceQuery.isError ? <p role="alert" className="text-xs text-destructive">Could not load this saved video. <button type="button" onClick={() => void sourceQuery.refetch()} className="rounded underline focus-visible:outline-2 focus-visible:outline-focus">Retry</button></p> : null}
     {finishing.action.cancel ? <Button type="button" variant="ghost" onClick={finishing.action.cancel}>Cancel save</Button> : null}
@@ -151,7 +168,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
       <input aria-label="Trim end handle" type="range" min={editing.trimStartMs + 1000} max={Math.round(duration * 1000)} step={100} value={editing.trimEndMs} onChange={event => trim(editing.trimStartMs, Number(event.target.value))} className="w-full accent-primary" />
       <p className="text-xs text-muted">Selected: {Math.max(0, editing.trimEndMs - editing.trimStartMs) / 1000}s</p>
     </section>
-    <FormatVideoTextFields editing={editing} onChange={change} />
+    <FormatVideoTextFields editing={editing} onChange={change} timeMs={time} onSeek={timeMs => { if (player.current) player.current.currentTime = (editing.trimStartMs + timeMs) / 1000; setTime(timeMs); }} />
     <details className={styles.demoOptions}><summary>Sound <span>{previewAudioUrl ? "Audio added" : `${Math.round(editing.originalVolume * 100)}% original`}</span></summary><section className="mt-3 space-y-3" aria-label="Audio">
       <label className="block space-y-2 text-xs text-muted">Original volume · {Math.round(editing.originalVolume * 100)}%<input aria-label="Original volume" type="range" min={0} max={100} value={editing.originalVolume * 100} onChange={event => change({ ...editing, originalVolume: Number(event.target.value) / 100 })} className="w-full accent-primary" /></label>
       <div className="flex flex-wrap gap-2"><WorkflowFilePicker attachment={attachment} kind="audio" label="Upload background audio" buttonLabel="Upload audio" disabled={!enabled} /><WorkflowSavedAudioPicker ownerId={owner} attachment={attachment} disabled={!enabled || uploading} /></div>
@@ -177,7 +194,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
         if (event.currentTarget.currentTime * 1000 >= editing.trimEndMs) { event.currentTarget.pause(); event.currentTarget.currentTime = editing.trimStartMs / 1000; }
         synchronizeSound();
       }} />
-      {editing.text && textLayout && time >= editing.text.startMs && time < editing.text.endMs ? <svg aria-label="Text overlay preview" viewBox={`0 0 ${width} ${height}`} className="pointer-events-none absolute inset-0 size-full"><g fill={editing.text.color} stroke="black" strokeWidth={width / 540} paintOrder="stroke" fontFamily="Arial, sans-serif" fontWeight={700} fontSize={textLayout.fontSize} textAnchor="middle">{textLayout.lines.map((line, index) => <text key={index} x={width / 2} y={textLayout.y + index * textLayout.lineHeight + textLayout.fontSize}>{line}</text>)}</g></svg> : null}
+      {overlays.map((text, overlayIndex) => { const layout = textLayouts[overlayIndex]; return time >= text.startMs && time < text.endMs ? <svg key={overlayIndex} aria-label={`Text overlay ${overlayIndex + 1} preview`} viewBox={`0 0 ${width} ${height}`} className="pointer-events-none absolute inset-0 size-full"><g fill={text.color} stroke="black" strokeWidth={width / 540} paintOrder="stroke" fontFamily="Arial, sans-serif" fontWeight={700} fontSize={layout.fontSize} textAnchor="middle">{layout.lines.map((line, index) => <text key={index} x={width / 2} y={layout.y + index * layout.lineHeight + layout.fontSize}>{line}</text>)}</g></svg> : null; })}
     </div>
     {previewAudioUrl ? <audio ref={soundtrack} src={previewAudioUrl} loop={playback === "repeat"} preload="metadata" aria-label="Background audio preview" /> : null}
     {!editingActive && onEdit ? <><p className="max-w-full truncate text-xs text-muted" title={video.title}>{video.title}</p><div className={styles.clipCardActions}><Button type="button" variant="outline" data-edit-clip="opening" disabled={pendingSource || uploading} onClick={onEdit}>Edit {format === "wall_text" ? "wall-of-text video" : "hook video"}</Button>{previewActions}</div></> : <p className="max-w-md text-center text-xs leading-5 text-muted">Trim, text and sound apply to this video only.</p>}

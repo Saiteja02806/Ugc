@@ -4,7 +4,8 @@ import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
 import { defaultDemoEdit, readFormatDemoDraft, trimmedDemoFraming } from "../lib/explore/format-demo.ts";
-import { formatTextLayout, parseExploreFormatEdit } from "../worker/src/lib/explore-format-edit.ts";
+import { formatTextLayout, formatTextOverlays, parseExploreFormatEdit } from "../worker/src/lib/explore-format-edit.ts";
+import * as editDraft from "../lib/explore/format-edit-draft.ts";
 
 const textFields = {};
 vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../components/explore/format-video-text-fields.tsx", import.meta.url), "utf8"), {
@@ -38,7 +39,7 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
   const props = { format, videoId: null, opening: null, openingRevision: 0, enabled, active: true,
     controlsTarget: { name: "controls" }, actionsTarget: { name: "actions" }, resultsTarget: { name: "results" },
     editActive: true, editControlsTarget: { name: "edit-controls" }, editActionsTarget: { name: "edit-actions" }, editResultsTarget: { name: "edit-results" },
-    onDirty: () => { dirty++; }, onSaved: result => savedReports.push(result), onSkip() {}, onEdit() {}, onEditDone() {}, onCreate() {}, onContinue() {},
+    onDirty: () => { dirty++; }, onSaved: result => savedReports.push(result), onSkip() {}, onEdit() {}, onEditDone() {}, onCreate() {}, onContinue() { props.prepareRequest = (props.prepareRequest ?? 0) + 1; props.scheduleActive = true; },
     onSelectionChange: present => selectionReports.push(present) };
   function queueEffect(callback, deps, layout = false) {
     const i = cursor++, previous = slots[i];
@@ -96,7 +97,8 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
     "@/components/explore/format-video-text-fields": textFields,
     "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: {}, useWorkflowFinishing() { throw new Error("A selection or prop transition cannot dispatch finishing."); } },
     "@/lib/explore/format-demo": { defaultDemoEdit, readFormatDemoDraft, trimmedDemoFraming },
-    "@/worker/src/lib/explore-format-edit": { parseExploreFormatEdit, formatTextLayout },
+    "@/worker/src/lib/explore-format-edit": { parseExploreFormatEdit, formatTextLayout, formatTextOverlays },
+    "@/lib/explore/format-edit-draft": editDraft,
     "@/lib/explore/format-video-source": { formatVideoFromAsset(value) { if (value.status !== "ready" || value.collection !== "video") throw new Error("Choose an owned ready video."); return value; } },
     "@/lib/firebase/auth": { getCurrentUserIdToken: async () => { throw new Error("Test attempted authentication."); } },
     "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: async () => { throw new Error("Test attempted network media loading."); } },
@@ -127,7 +129,7 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
   }
   const find = (predicate) => nodes(tree).find(predicate);
   return { render, props, storage, ownedAssets, queryInputs, uploads, selectionReports, savedReports, get dirty() { return dirty; },
-    find, button(label) { const found = find(node => node.type === "Button" && text(node).trim() === label); assert.ok(found, `Missing ${label}`); return found; },
+    find, button(label) { const found = find(node => node.type === "Button" && text(node).trim() === (label === "Save final video" ? "Schedule" : label)); assert.ok(found, `Missing ${label}`); return found; },
     input(label) { const found = find(node => node.props?.["aria-label"] === label); assert.ok(found, `Missing ${label}`); return found; },
     select(value = asset(2)) { render(); const picker = find(node => node.type === "WorkflowVideoAssetPicker"); assert.equal(picker.props.onSelect(value), true); return render(); },
     edit(label, value) { this.input(label).props.onChange({ target: { value: String(value) } }); return render(); },
@@ -259,10 +261,11 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(h.selectionReports.at(-1), true);
     assert.equal(h.button("Save final video").props.disabled, true);
     h.render({ opening: output(99), openingRevision: 1 });
-    assert.equal(h.button("Save final video").props.disabled, true, "An unverified opening cannot merge");
+    h.button("Save final video").props.onClick(); h.render();
+    assert.equal(h.saveRun(), undefined, "Schedule may open, but an unverified opening cannot merge");
     h.render({ videoId: id(1), opening: output(1), openingRevision: 2 });
     assert.equal(h.button("Save final video").props.disabled, false);
-    assert.equal(h.saveRun(), undefined, "Selecting a demo cannot start a render");
+    assert.equal(h.saveRun().props.save.opening.id, id(1), "The explicit Schedule request waits until the opening becomes verified");
   });
 
   test(`${format}: creating, saving, editing and replacing an opening retain demo trim, framing and audio`, async () => {

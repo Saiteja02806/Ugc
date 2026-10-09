@@ -1,7 +1,7 @@
 {
   "name": "ugc-pilot",
-  "version": "0.1.1",
-  "description": "Generate images and short videos using your UGC Pilot account and credits.",
+  "version": "0.1.2",
+  "description": "Draft business-specific UGC hooks, wall overlays, video prompts and slideshow copy; generate and manage media with your UGC Pilot account.",
   "author": {
     "name": "UGC Pilot",
     "url": "https://www.getugcpilot.com"
@@ -12,7 +12,7 @@
   "interface": {
     "displayName": "UGC Pilot",
     "shortDescription": "Images and videos in your AI",
-    "longDescription": "Connect your own UGC Pilot account to generate images and 3–10 second videos, browse media, and retrieve results. Generation uses UGC Pilot credits.",
+    "longDescription": "Draft hook text, wall-of-text copy, video prompts and slideshow sequences using your business context. Connect your own UGC Pilot account to generate images and 3–10 second footage, use owned image references, manage media and retrieve results. Generation uses UGC Pilot plan credits. Exact text editing and slideshow rendering require separate tools. This is a private beta.",
     "developerName": "UGC Pilot",
     "websiteURL": "https://getugcpilot.com",
     "supportURL": "https://getugcpilot.com/contact",
@@ -81,7 +81,7 @@
         }
       },
       "publication": {
-        "release_notes": "Adds verified support and policy links, an onboarding skill, and five positive and three negative review cases. Retains the twelve-tool private beta and per-user OAuth connection."
+        "release_notes": "Adds five creative skills for hook text, emotional footage prompts, wall-of-text copy, wall footage prompts and semantic slideshow copy. Retains the twelve-tool MCP and existing connection, generation and media-management workflows. Installed-client evaluation and directory submission remain pending."
       }
     }
   }

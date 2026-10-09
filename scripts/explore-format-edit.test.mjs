@@ -7,7 +7,7 @@ import test from "node:test";
 import ffmpeg from "ffmpeg-static";
 import ffprobe from "ffprobe-static";
 import { finishExploreVideo } from "../worker/dist/lib/explore-video-finishing.js";
-import { parseExploreFormatEdit, formatTextLayout } from "../worker/dist/lib/explore-format-edit.js";
+import { parseExploreFormatEdit, formatTextLayout, formatTextOverlays, MAX_FORMAT_TEXT_OVERLAYS } from "../worker/dist/lib/explore-format-edit.js";
 import { parseExploreFinishDraft } from "../worker/dist/lib/explore-finishing-contract.js";
 
 const edit = () => ({ version: 1, format: "wall_text", trimStartMs: 500, trimEndMs: 2500, originalVolume: 0, musicVolume: .2,
@@ -27,6 +27,48 @@ test("trim and text timing are bounded, format editing never allows subtitles or
   assert.deepEqual(parseExploreFinishDraft({ ...draft, editing: edit() }).editing, edit());
   assert.throws(() => parseExploreFinishDraft({ ...draft, editing: edit(), subtitles: { language: "en", style: "clean" } }), /no subtitles/);
   assert.throws(() => parseExploreFinishDraft({ ...draft, editing: edit(), kind: "phone" }), /one video/);
+});
+
+test("multiple text blocks retain independent styles and timing without changing legacy drafts", () => {
+  const legacy = edit();
+  assert.deepEqual(parseExploreFormatEdit(legacy), legacy);
+  assert.equal(Object.hasOwn(parseExploreFormatEdit(legacy), "textOverlays"), false);
+  const texts = [
+    { ...legacy.text, value: "First message", endMs: 800, color: "#ff0000" },
+    { ...legacy.text, value: "Second message", startMs: 1000, endMs: 1900, color: "#00ff00" },
+  ];
+  const parsed = parseExploreFormatEdit({ ...legacy, text: null, textOverlays: texts });
+  assert.deepEqual(formatTextOverlays(parsed), texts);
+  for (const textOverlays of [[...texts, { ...texts[0], endMs: 2001 }], Array.from({ length: MAX_FORMAT_TEXT_OVERLAYS + 1 }, () => texts[0])]) {
+    assert.throws(() => parseExploreFormatEdit({ ...legacy, text: null, textOverlays }));
+  }
+  assert.throws(() => parseExploreFormatEdit({ ...legacy, textOverlays: texts }), /one supported text format/);
+});
+
+test("real export displays successive text blocks at their own times and preserves both in the draft", async () => {
+  await mkdir(resolve(".tmp"), { recursive: true });
+  const dir = await mkdtemp(join(resolve(".tmp"), "explore-text-sequence-"));
+  const sourcePath = join(dir, "source.mp4");
+  execFileSync(ffmpeg, ["-hide_banner", "-loglevel", "error", "-n", "-f", "lavfi", "-i", "color=c=blue:s=360x640:r=30:d=3", "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-t", "3", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", sourcePath], { windowsHide: true });
+  const legacy = edit();
+  const editing = { ...legacy, text: null, textOverlays: [
+    { ...legacy.text, value: "First message", color: "#ff0000", startMs: 100, endMs: 800 },
+    { ...legacy.text, value: "Second message", color: "#00ff00", startMs: 1100, endMs: 1900 },
+  ] };
+  const result = await finishExploreVideo({ sourcePath, editing, workDir: join(dir, "render"), tools: { ffmpeg, ffprobe: ffprobe.path, fontsDir: resolve("worker/src/assets/fonts") } });
+  const frame = time => execFileSync(ffmpeg, ["-v", "error", "-ss", String(time), "-i", result.outputPath, "-frames:v", "1", "-vf", "format=rgb24", "-f", "rawvideo", "pipe:1"], { windowsHide: true, maxBuffer: 4 * 1024 * 1024 });
+  const colors = buffer => {
+    const count = { red: 0, green: 0 };
+    for (let i = 0; i < buffer.length; i += 3) {
+      if (buffer[i] > 150 && buffer[i + 1] < 100 && buffer[i + 2] < 120) count.red++;
+      if (buffer[i + 1] > 150 && buffer[i] < 100 && buffer[i + 2] < 120) count.green++;
+    }
+    return count;
+  };
+  const first = colors(frame(.4)), gap = colors(frame(.95)), second = colors(frame(1.5));
+  assert.ok(first.red > 100); assert.equal(first.green, 0);
+  assert.deepEqual(gap, { red: 0, green: 0 });
+  assert.ok(second.green > 100); assert.equal(second.red, 0);
 });
 test("real export trims video/audio together, respects text timing, mutes original sound, and preserves source bytes", async () => {
   await mkdir(resolve(".tmp"), { recursive: true });

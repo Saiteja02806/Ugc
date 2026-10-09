@@ -118,6 +118,10 @@ Wall requests a background without
 lettering; its message is an editable manual text layer. Both video editors
 provide trim start/end, timed text with position/width/size/color, original volume,
 optional uploaded or saved background audio, music volume and playback mode.
+Hook, demo and Wall editors support up to 20 independent text blocks, each with
+its own start/end time and style. Timing is relative to the trimmed clip and
+uses the same half-open intervals in live preview and FFmpeg export. Existing
+single-overlay drafts remain readable without changing their saved fingerprints.
 There is no subtitle control or transcription request. Drafts persist by owner,
 format and source, including selected owned background audio. A saved receipt
 cannot replace a newer local draft. Saving produces a separate final video;
@@ -198,6 +202,9 @@ revision does not deploy the site or verify authenticated production tasks.
    for Library image sequences, and the service-only `explore_save_slideshow` RPC.
 2. Deploy the worker with the format renderer and optional volume mixing. Old
    finishing drafts omit the new field and keep their previous fingerprints.
+   The 2026-10-09 text-sequence revision requires the worker's `textOverlays`
+   parser and renderer before the updated app submits that field. New sequences
+   use `explore-format-edit-text-v2`; legacy single-text requests retain v1.
 3. Deploy the app. Enable `EXPLORE_FORMAT_EDITING_ENABLED` together with existing
    `EXPLORE_FINISHING_ENABLED` only after matching worker readiness. Enable
    `EXPLORE_SLIDESHOW_SAVING_ENABLED` after the migration. Examples default false;
@@ -231,6 +238,32 @@ second upload, and retries keep the existing durable request identity. Recovery
 rechecks owned demo media before showing it or enabling Continue to Schedule.
 The optional source parameter in the finishing hook leaves legacy local-file
 demo uploads unchanged. No new API, schema or worker deployment is required.
+
+### Schedule handoff and timed demo text (2026-10-09)
+
+Demo's primary action is now Schedule. It immediately opens Schedule with both
+clips visible, then prepares the saved hook edits, demo edits (if needed), and
+combined final video in that order. This respects the existing per-owner active
+finishing-job limit. Review schedule is available only when the exact finished
+asset is ready; selecting accounts and entering caption/date/time is possible
+during preparation, and those settings survive completion. Nothing is posted
+until the scheduling review is confirmed. A failed preparation can be explicitly
+retried using the durable finishing receipt.
+
+Demo editing uses the same trim, audio and timed-text editor as the hook. Its
+original source and edited asset are stored separately, scoped to the owner and
+original hook. Reopening or reloading edits restores the original footage and
+editable overlay draft, avoiding text being burned into a new editing source.
+Changes to either segment invalidate the combined output. Selecting Schedule
+without a demo prepares and schedules the edited hook alone.
+
+No database migration is needed for this revision: text arrays use the existing
+validated JSON draft. Deploy the updated renderer before the app as described
+above. Local validation includes the real FFmpeg text sequence, existing owned
+API/receipt/recovery checks, and `scripts/format-hook-schedule.browser.cjs`, which
+runs the real editing, finishing and scheduling components against isolated
+HTTP fixtures. Authenticated production acceptance remains a separate deployed
+site check.
 
 `scripts/explore-workflow-panels.browser.cjs` checks the actual empty Edit
 actions, selected-hook preview before saving, demo upload and asset selection,

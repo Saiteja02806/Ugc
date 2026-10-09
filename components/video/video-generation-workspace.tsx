@@ -1210,6 +1210,7 @@ export function VideoGenerationStudioPanel({
             key={video.id}
             video={video}
             onSelect={workflow?.onSelectVideo ? () => workflow.onSelectVideo?.(video) : undefined}
+            selectLabel={workflowFormat === "hook" ? "Edit hook video" : "Edit video"}
             isNew={video.id === latestCompletedVideoId}
           />
         ))}
@@ -1571,10 +1572,12 @@ function VideoResultCard({
   video,
   isNew = false,
   onSelect,
+  selectLabel = "Edit video",
 }: {
   video: GeneratedVideo;
   isNew?: boolean;
   onSelect?: () => void;
+  selectLabel?: string;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isMuted, setIsMuted] = useState(true);
@@ -1736,7 +1739,7 @@ function VideoResultCard({
               ratio={video.ratio}
             />
           </div>
-          {onSelect ? <Button type="button" className="mt-3" disabled={!video.mediaAssetId} onClick={onSelect}>Edit video</Button> : null}
+          {onSelect ? <Button type="button" className="mt-3" disabled={!video.mediaAssetId} onClick={onSelect}>{selectLabel}</Button> : null}
           <AiStudioResultActions
             className="mt-3"
             kind="video"

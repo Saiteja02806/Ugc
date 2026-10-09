@@ -35,6 +35,7 @@ function harness(options = {}) {
     "@/lib/jobs/background-job-service": { dispatchQueuedBackgroundJobForRecovery: async job => { calls.push("dispatch"); assert.equal(job, record); return options.dispatchResult ?? job; } },
     "@/lib/queues/job-queue": { getMissingJobQueueEnvVars: types => { assert.deepEqual(Array.from(types), ["render_demo_video"]); return options.missingQueue ? ["private-queue-env"] : []; } },
     "@/worker/src/lib/explore-finishing-contract": contract,
+    "@/worker/src/lib/explore-format-edit": edit,
     "@/worker/src/subtitles/elevenlabs-contract": { SCRIBE_PROVIDER_KEY: providerKey },
     "./workflow-finishing-store": { ExploreFinishingRequestStore: class {
       async read(uid, requestKey) { calls.push("read"); assert.equal(uid, owner); assert.equal(requestKey, key); if (options.readError) throw options.readError; return options.prior ? receipt : committed ?? null; }
@@ -78,6 +79,26 @@ test("queues only a verified committed owned job and acknowledges opaque identit
   assert.equal(body.outcome, "pending"); assert.equal(body.jobId, jobId); assert.equal(body.mediaAssetId, null);
   assert.ok(h.calls.indexOf("create") < h.calls.indexOf("dispatch"));
   assert.doesNotMatch(JSON.stringify(body), /owner-a|fingerprint|private-|storageKey|sourceAssetId|api-key|scribe_v2/);
+});
+
+test("pending saves explain processor startup, download, render, transcription and finalization separately", async () => {
+  for (const [status,stage,message] of [
+    ["queued","queued",/waiting for the video processor/],
+    ["queued","render_job_launched",/Preparing the video processor/],
+    ["processing","downloading_owned_media",/Preparing your selected clips/],
+    ["rendering","composing_explore_video",/Rendering your video edits/],
+    ["waiting_external_service","transcribing_composed_audio",/Transcribing/],
+    ["uploading_output","uploading_finished_video",/Saving the finished file/],
+    ["uploading_output","saving_finished_video",/Confirming it in your media library/],
+    ["cancel_requested","composing_explore_video",/Cancellation requested/],
+    ["stalled","composing_explore_video",/stopped responding/],
+  ]) {
+    const h=harness({prior:true,jobStatus:status}); h.record.stage=stage;
+    const body=await (await h.status()).json();
+    assert.equal(body.outcome,"pending"); assert.match(body.message,message);
+    assert.equal(h.calls.includes("dispatch"),false); assert.equal(h.calls.includes("create"),false);
+    assert.doesNotMatch(JSON.stringify(body),/private-|owner-a|fingerprint|storageKey/);
+  }
 });
 
 test("both routes require verified owner identity; start also requires generation access", async () => {
@@ -226,4 +247,15 @@ test("format editing requires the matching renderer switch and binds manual text
   assert.equal((await replay.start()).status, 202); assert.equal(replay.calls.includes("create"), false);
   const changed = contract.parseExploreFinishDraft({ ...baseDraft, ...draftChanges, editing: { ...editing, originalVolume: 0 } });
   assert.notEqual(on.api.fingerprintExploreFinish(changed), on.receipt.fingerprint);
+});
+
+test("text sequences use a new renderer fingerprint while single-text receipts retain their identity", async () => {
+  const text = { value: "First", width: .8, y: .1, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 2000 };
+  const editing = { version: 1, format: "hook", trimStartMs: 0, trimEndMs: 8000, originalVolume: 1, musicVolume: .2, text: null, textOverlays: [text, { ...text, value: "Second", startMs: 3000, endMs: 5000 }] };
+  const h = harness({ draftChanges: { subtitles: null, editing }, env: { EXPLORE_FORMAT_EDITING_ENABLED: "true" } });
+  assert.equal((await h.start()).status, 202);
+  assert.equal(h.receipt.fingerprint, createHash("sha256").update(JSON.stringify({ renderer: "explore-format-edit-text-v2", transcription: null, draft: h.receipt.draft })).digest("hex"));
+  const changed = contract.parseExploreFinishDraft({ ...h.receipt.draft, editing: { ...editing, textOverlays: [text, { ...editing.textOverlays[1], startMs: 4000 }] } });
+  assert.notEqual(h.api.fingerprintExploreFinish(changed), h.receipt.fingerprint);
+  assert.equal((await h.start({ requestKey: key, draft: changed })).status, 409);
 });

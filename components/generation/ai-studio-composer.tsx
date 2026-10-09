@@ -60,6 +60,7 @@ export function AiStudioComposer({
   workflowDesign,
   settingsClassName,
   settingsLabel = "Video generation settings",
+  promptAttachmentControl,
 }: {
   active: boolean;
   compact?: boolean;
@@ -93,6 +94,7 @@ export function AiStudioComposer({
   workflowDesign?: "classic";
   settingsClassName?: string;
   settingsLabel?: string;
+  promptAttachmentControl?: ReactNode;
 }) {
   const promptId = useId();
   const formId = useId();
@@ -128,8 +130,10 @@ export function AiStudioComposer({
       {referenceControls}
       <div className={creation.instructionsField}>
         <label htmlFor={promptId} className="block text-sm font-medium">{promptLabel ?? "Your instructions"}</label>
-        <textarea id={promptId} name={name} value={prompt} rows={4} autoComplete="off" onChange={event => onPromptChange(event.target.value)}
-          aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId} placeholder={placeholder} className={creation.prompt} />
+        <div className="relative"><textarea id={promptId} name={name} value={prompt} rows={4} autoComplete="off" onChange={event => onPromptChange(event.target.value)}
+          aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId} placeholder={placeholder} className={cn(creation.prompt, promptAttachmentControl && "pb-14")} />
+          {promptAttachmentControl}
+        </div>
         <p id={promptHelperId} role={promptTooLong ? "alert" : undefined} className={promptTooLong ? "text-xs leading-5 text-destructive" : "sr-only"}>{promptTooLong ? `Shorten your instructions by ${excessCharacters} characters.` : promptHelper}</p>
       </div>
       <div role="group" aria-label={settingsLabel} className={cn(creation.settingsGrid, settingsClassName)}>{settings}</div>

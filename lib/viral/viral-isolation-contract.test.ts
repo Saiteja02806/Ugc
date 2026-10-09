@@ -34,10 +34,11 @@ test("opens Explore without changing the separate Trending dashboard", () => {
   );
 });
 
-test("shows Explore and Audio in production navigation without bypassing workspace access", () => {
+test("shows Explore while keeping standalone Audio out of the primary navigation", () => {
   assert.match(sidebar, /key: "explore",\s*label: "Explore",\s*href: "\/explore"/);
   assert.match(sidebar, /key: "audio-generation",\s*label: "Audio generation",\s*href: "\/audio-generation"/);
-  assert.match(sidebar, /primaryNavigationItems\.map/);
+  assert.match(sidebar, /visiblePrimaryNavigationItems\.map/);
+  assert.match(sidebar, /primaryNavigationItems\.filter\(item => item\.key !== "audio-generation"\)/);
   assert.doesNotMatch(sidebar, /isExploreScreenEnabled|isCreateContentScreenEnabled|exploreNavigationItem/);
   assert.doesNotMatch(sidebar, /useViralReviewerAccess/);
 });
@@ -138,7 +139,7 @@ test("requires an image for Hook and Wall of Text Explore recreations", () => {
   );
   assert.match(videoGenerationApi, /isExploreHookVideoId\(body\?\.referenceId\)/);
   assert.match(videoGenerationApi, /isExploreWallTextVideoId\(body\?\.referenceId\)/);
-  assert.match(videoGenerationApi, /isExploreRecreate && referenceImageUrls\.length === 0/);
+  assert.match(videoGenerationApi, /isExploreRecreate && !body\?\.exploreFormat && referenceImageUrls\.length === 0/);
   assert.match(videoGenerationApi, /image-reference-only for better results/);
   assert.doesNotMatch(
     videoGenerationApi,

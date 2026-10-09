@@ -96,6 +96,25 @@ test("unsupported, empty or mismatched context fails without reaching a provider
   assert.equal(fingerprints.length, reserved);
 });
 
+test("new Instructions attachment jobs distinguish layout images from subject/style without changing legacy contexts", async () => {
+  for (const model of ["gpt_image_2_5", "nano_banana_2"]) {
+    const imageJob = job(model, "Keep the layout and use my product");
+    const urls = [imageJob.input_json.referenceImageUrl, "https://media.example.test/layout-2.png", "https://media.example.test/product.png"];
+    Object.assign(imageJob.input_json, { exploreFormat: "slideshow", referenceImageUrls: urls });
+    await runGenerateImageJob(imageJob, context);
+    const legacyFingerprint = fingerprints.at(-1);
+    assert.equal(received.at(-1).prompt, imageJob.input_json.prompt);
+    imageJob.input_json.subjectReferenceIndex = 3;
+    await runGenerateImageJob(imageJob, context);
+    assert.match(received.at(-1).prompt, /Use images 1 through 2.*Use image 3/s);
+    assert.ok(received.at(-1).prompt.endsWith(imageJob.input_json.prompt));
+    assert.deepEqual(received.at(-1).reference, urls);
+    assert.notEqual(fingerprints.at(-1), legacyFingerprint);
+    imageJob.input_json.subjectReferenceIndex = 2;
+    await assert.rejects(runGenerateImageJob(imageJob, context), /reference roles/);
+  }
+});
+
 test("all three image providers receive the exact character prompt and chosen reference", async () => {
   const prompt = "An adult fashion creator with glossy makeup in a clean studio.\nHands outside frame. Pink satin dress.";
   for (const model of ["gpt_image", "gemini_3_pro", "nano_banana_2"]) {

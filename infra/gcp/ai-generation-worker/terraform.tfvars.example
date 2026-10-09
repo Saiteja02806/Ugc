@@ -66,6 +66,4 @@ scheduling_secret_id     = "ugc-internal-scheduling-secret"
 worker_version    = "worker-gcp"
 worker_git_commit = "unknown"
 # Optional ElevenLabs pilot. Secret values belong in Secret Manager, not this file.
-enable_audio_generation          = false
 elevenlabs_api_key_secret_id      = ""
-elevenlabs_voice_api_key_secret_id = ""

@@ -40,6 +40,7 @@ function harness(storage = new Map()) {
     useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; },
     useEffect(callback, deps) { const i = cursor++, previous = slots[i]; if (!previous || deps.some((value, n) => !Object.is(value, previous.deps[n]))) { slots[i] = { deps, cleanup: previous?.cleanup }; effects.push(() => { previous?.cleanup?.(); slots[i].cleanup = callback(); }); } },
   };
+  react.useLayoutEffect = react.useEffect;
   const jsx = { jsx: (type, props, key) => ({ type, props, key }), jsxs: (type, props, key) => ({ type, props, key }), Fragment: "fragment" };
   const imports = { react, "react/jsx-runtime": jsx, "react-dom": { createPortal: children => children },
     "next/dynamic": { default: () => "ScheduleEditor" }, "next/link": { default: "Link" },

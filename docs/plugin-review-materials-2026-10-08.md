@@ -4,7 +4,7 @@ This document supplies review explanations, not a claim of approval. The portabl
 
 ## Tool annotation justifications
 
-These explanations belong in the submission dashboard after scanning the deployed server. The annotation values must agree with the scan. They are not an invented MCP wire extension.
+These are supporting explanations for a scan finding or appeal; use them if the active portal asks. Current Plugin guidelines say justification fields are no longer required, while the remote-MCP review page still discusses them. The annotation values must agree with the scan. These explanations are not an invented MCP wire extension. The [later application check](plugin-directory-applications-2026-10-08.md) also adds Claude eligibility/licensing gates and clarifies its two submission types.
 
 | Tool | Read-only | Destructive | Open world | Justification |
 | --- | --- | --- | --- | --- |

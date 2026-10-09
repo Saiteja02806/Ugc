@@ -25,6 +25,8 @@ async function check(name, url, status, options = {}, inspect = async () => {}) 
 await check("setup page", `${website}/connect-ai`, 200, {}, (_, bytes) => {
   const html = bytes.toString();
   assert(html.includes(`/downloads/ugc-pilot-${version}.zip`), "Setup page points to a different package");
+  assert(html.includes(`/downloads/ugc-pilot-${version}-setup.md`), "Setup page points to a different guide");
+  assert(html.includes(`/downloads/ugc-pilot-${version}.zip.sha256`), "Setup page points to a different checksum");
   assert(html.includes("noindex"), "Private beta setup must remain noindex");
 });
 for (const current of ["0.1.0", version]) {
@@ -39,8 +41,8 @@ for (const current of ["0.1.0", version]) {
     assert(bytes.equals(local), "Production checksum differs from reviewed checksum");
   });
 }
-await check("setup guide", `${website}/downloads/ugc-pilot-setup.md`, 200, {}, async (_, bytes) => {
-  assert(bytes.equals(await fs.readFile(new URL("../public/downloads/ugc-pilot-setup.md", import.meta.url))), "Production guide differs from reviewed source");
+await check("setup guide", `${website}/downloads/ugc-pilot-${version}-setup.md`, 200, {}, async (_, bytes) => {
+  assert(bytes.equals(await fs.readFile(new URL(`../public/downloads/ugc-pilot-${version}-setup.md`, import.meta.url))), "Production guide differs from reviewed source");
 });
 for (const path of ["/contact", "/terms"]) await check(path, `${website}${path}`, 200);
 await check("AI privacy disclosure", `${website}/privacy`, 200, {}, (_, bytes) => {

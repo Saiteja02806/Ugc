@@ -1,0 +1,165 @@
+{
+  "date": "2026-10-09",
+  "revision": "user-clarified-five-role-review",
+  "scope": "Static source and package review. No host routing evaluation, generation, source integration or deployment.",
+  "bundledSkills": [
+    "connect-ugc-pilot",
+    "create-ugc-media",
+    "manage-ugc-media"
+  ],
+  "files": [
+    {
+      "intendedRole": "hook_video_prompt",
+      "path": "plugins/HOOK_VIDEO_GENERATION_SKILL.md",
+      "sha256": "05e007b7bed0f8a8484609a69ce56f365ac080154bba65c9858d60c93be1bd9d",
+      "bytes": 13206,
+      "metadata": {
+        "name": "emotion-hook-director",
+        "description": "Direct realistic emotion-led UGC and AI-influencer video hooks. Use when a user asks for a hook video prompt, reaction prompt, facial expression, emotional performance, or a short influencer clip (especially 3–5 seconds). Translate the requested feeling into a believable second-by-second facial and physical performance, with camera, identity, audio, and editing constraints. Works for image-to-video or text-to-video."
+      },
+      "unsupportedByCodexQuickValidator": [],
+      "discoverableInCurrentBundle": false,
+      "resources": [
+        {
+          "path": "references/reference-video-observations.md",
+          "exists": false
+        },
+        {
+          "path": "references/emotion-recipes.md",
+          "exists": false
+        },
+        {
+          "path": "references/prompt-patterns.md",
+          "exists": false
+        },
+        {
+          "path": "references/evaluation.md",
+          "exists": false
+        },
+        {
+          "path": "examples/ready-to-use-prompts.md",
+          "exists": false
+        },
+        {
+          "path": "references/integration-schema.json",
+          "exists": false
+        }
+      ]
+    },
+    {
+      "intendedRole": "hook_copy",
+      "path": "plugins/UGC_HOOK_INTELLIGENCE.md",
+      "sha256": "41c62ae7f148c4aad6e3eea063204c1f365e99660f4dec5c787f1b39c744ba38",
+      "bytes": 39555,
+      "metadata": {
+        "name": "ugc-hook-intelligence",
+        "description": "Research, transcribe, classify, generate, and validate high-retention, wall-of-text hooks for short-form UGC, SaaS marketing, app demos, and AI-influencer reels. Use for screenshot hook extraction, hook ideation, reaction-based creator ads, silent visual hooks, A/B variations, and 3–5 second intro scripts. Includes a reference library of Instagram hook structures and quality rules."
+      },
+      "unsupportedByCodexQuickValidator": [],
+      "discoverableInCurrentBundle": false,
+      "resources": [
+        {
+          "path": "references/source-hook-library.md",
+          "exists": false
+        },
+        {
+          "path": "references/hook-patterns.md",
+          "exists": false
+        },
+        {
+          "path": "schemas/hook-output.schema.json",
+          "exists": false
+        },
+        {
+          "path": "references/visual-production.md",
+          "exists": false
+        },
+        {
+          "path": "references/examples.md",
+          "exists": false
+        },
+        {
+          "path": "evals/cases.json",
+          "exists": false
+        }
+      ]
+    },
+    {
+      "intendedRole": "wall_copy",
+      "path": "plugins/WALLOFTEXT_GENERATION.md",
+      "sha256": "372e9c7bb70edf62314da3bbb7c062bb4428a44cdd253092072ff31b50cb121c",
+      "bytes": 50538,
+      "metadata": null,
+      "unsupportedByCodexQuickValidator": [],
+      "discoverableInCurrentBundle": false,
+      "resources": []
+    },
+    {
+      "intendedRole": "wall_video_prompt",
+      "path": "plugins/WALLOFTEXT_VIDEO_GENERATION.md",
+      "sha256": "a41759390ead9f7c0fb6d220f562743c562c68e2fe48596024b7280f67d59bdb",
+      "bytes": 24549,
+      "metadata": {
+        "name": "wall-text-video-generation",
+        "version": "2.1.0",
+        "description": "VIDEO-ONLY skill. Converts exact, already-approved text from an upstream writing skill into realistic reference-matched 9:16 social-video footage prompts plus a deterministic text-overlay render plan. Routes among close selfie, moving selfie, everyday activity, lifestyle POV, environment-only, persistent-text montage, short statement, and exceptional demo hybrid. Does not author or revise the overlay words.\n"
+      },
+      "unsupportedByCodexQuickValidator": [
+        "version"
+      ],
+      "discoverableInCurrentBundle": false,
+      "resources": [
+        {
+          "path": "references/reference_audit.md",
+          "exists": false
+        },
+        {
+          "path": "references/reference_annotations.csv",
+          "exists": false
+        },
+        {
+          "path": "references/new9_audit.md",
+          "exists": false
+        },
+        {
+          "path": "schemas/video_output.schema.json",
+          "exists": false
+        },
+        {
+          "path": "tests/fixtures.json",
+          "exists": false
+        },
+        {
+          "path": "examples/usage_examples.md",
+          "exists": false
+        }
+      ]
+    },
+    {
+      "intendedRole": "slideshow_copy",
+      "path": "plugins/SLIDESHOWS_TEXT_GENERATION_SKILL/ugc-native-slideshow/SKILL.md",
+      "sha256": "c72b80f2d2dab6cfd49a633d3054d96e81793c7d213b77a9e0057db1056fcc7c",
+      "bytes": 20584,
+      "metadata": {
+        "name": "ugc-native-slideshow",
+        "description": "Generate native-looking TikTok, Instagram, Reels, Shorts, and carousel slideshows for UGCpilot. Use when creating, rewriting, structuring, or reviewing slideshow hooks, body-slide copy, slide counts, text hierarchy, product placement, visual intents, typography roles, or slideshow output data. Covers personal-shift listicles, story/confession slideshows, educational methods, quick tips, fitness routines, product-assisted slideshows, and CTA slides."
+      },
+      "unsupportedByCodexQuickValidator": [],
+      "discoverableInCurrentBundle": false,
+      "resources": []
+    }
+  ],
+  "missingResourceTargets": 18,
+  "knownChecks": {
+    "existingPackageValidation": "passed separately",
+    "existingPackageRegressionTests": {
+      "passed": 6,
+      "failed": 0
+    }
+  },
+  "limitations": [
+    "Resource paths checked relative to supplied files; required packaged copies do not yet exist.",
+    "Unsupported frontmatter comparison uses local Codex quick-validator keys, not every host schema.",
+    "Claims about reference-clip audits were read but not independently verified; referenced artifacts absent."
+  ]
+}

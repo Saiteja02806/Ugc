@@ -70,48 +70,73 @@ export async function runFinishExploreVideoJob(job: BackgroundJobRow, context: P
   const controller = new AbortController();
   let checkpointFailure: unknown;
   let checking = false;
+  let checkInFlight: Promise<void> | undefined;
   let watch: ReturnType<typeof setInterval> | undefined;
+  let currentStage: Parameters<WorkerJobContext["checkpoint"]>[0] = { status:"processing",stage:"downloading_owned_media",progress:10 };
+  const checkpoint: WorkerJobContext["checkpoint"] = async stage => {
+    await checkInFlight;
+    controller.signal.throwIfAborted();
+    currentStage = stage;
+    await context.checkpoint(stage);
+  };
   try {
-    await context.checkpoint({ status:"processing",stage:"downloading_owned_media",progress:10 });
-    for (let i=0;i<assets.length;i++) await deps.storage.download(assets[i].storage_key,join(directory,`source-${i}`),selections[i].max,
-      isPrivateMedia(assets[i].metadata) ? "private_user_media" : "primary");
-    await context.checkpoint({ status:"rendering",stage:"composing_explore_video",progress:30 });
+    await checkpoint(currentStage);
+    // Preserve the actual current stage while checking cancellation/ownership;
+    // a long transcription must not be relabelled as rendering every 5 seconds.
+    watch = setInterval(() => {
+      if (checking || controller.signal.aborted) return;
+      checking = true;
+      checkInFlight = context.checkpoint(currentStage).catch(error => {
+        checkpointFailure = error; controller.abort(error);
+      }).finally(() => { checking = false; checkInFlight = undefined; });
+    }, 5000);
+    // At most four inputs, all already owner-checked and individually bounded.
+    // Wait for every stream to settle before deleting this worker directory.
+    let downloadFailure: unknown;
+    const downloads = await Promise.allSettled(assets.map(async (asset,index) => {
+      try {
+        await deps.storage.download(asset.storage_key,join(directory,`source-${index}`),selections[index].max,
+          isPrivateMedia(asset.metadata) ? "private_user_media" : "primary",controller.signal);
+      } catch (error) {
+        downloadFailure ??= error; controller.abort(error); throw error;
+      }
+    }));
+    if (downloads.some(result => result.status === "rejected")) throw downloadFailure;
+    controller.signal.throwIfAborted();
+    await checkpoint({ status:"rendering",stage:"composing_explore_video",progress:30 });
     let i=1;
     const demoPath = draft.demoAssetId ? join(directory,`source-${i++}`) : undefined;
     const demoAudioPath = draft.demoAudioAssetId ? join(directory,`source-${i++}`) : undefined;
     const backgroundMusicPath = draft.backgroundAssetId ? join(directory,`source-${i++}`) : undefined;
     const tools = { ffmpeg:process.env.FFMPEG_PATH || "ffmpeg",ffprobe:process.env.FFPROBE_PATH || "ffprobe",
       fontsDir:process.env.SUBTITLE_FONTS_DIR || fileURLToPath(new URL("../../assets/fonts/",import.meta.url)) };
-    // Cancellation/lost leases stop long media and provider operations too,
-    // rather than waiting until an already finished render is uploaded.
-    watch = setInterval(() => {
-      if (checking || controller.signal.aborted) return;
-      checking = true;
-      void context.checkpoint({ status:"rendering",stage:"finishing_owned_video",progress:40 }).catch(error => {
-        checkpointFailure = error; controller.abort(error);
-      }).finally(() => { checking = false; });
-    }, 5000);
     const result = await deps.finish({ sourcePath:join(directory,"source-0"),demoPath,demoAudioPath,backgroundMusicPath,signal:controller.signal,
         ...(draft.demoFraming ? { demoFraming: draft.demoFraming } : {}),
         ...(draft.editing ? { editing: draft.editing } : {}),
       ...(demoAudioPath ? { demoAudioPlayback:draft.demoAudioPlayback } : {}),
       ...(backgroundMusicPath ? { backgroundMusicPlayback:draft.backgroundPlayback } : {}),workDir:join(directory,"render"),tools,
       ...(draft.subtitles && subtitleStyle && subtitlePlacement ? { subtitles:{ ...draft.subtitles,style:subtitleStyle,placement:subtitlePlacement,loadTranscript:async (speech) => {
-        await context.checkpoint({ status:"waiting_external_service",stage:"transcribing_composed_audio",progress:55 });
+        await checkpoint({ status:"waiting_external_service",stage:"transcribing_composed_audio",progress:55 });
         const duration = Math.ceil(speech.durationMs);
         const provider = deps.transcription!;
         const prepared = await provider.prepare(speech.audioPath,duration,controller.signal);
         if (prepared.sourceHash !== speech.sourceHash) throw new ExploreFinishError("The speech file changed before transcription.",409);
         const claim = await deps.store.claimSpeech(receipt,job.claim_token!,speech.sourceHash,duration,provider.id);
-        if (claim.state === "ready") return claim.transcript;
+        if (claim.state === "ready") {
+          await checkpoint({status:"rendering",stage:"rendering_video_subtitles",progress:65});
+          return claim.transcript;
+        }
         if (claim.state === "uncertain") throw new ExploreFinishError("The transcription may already have been submitted. It will not be submitted again automatically.",409,"provider_submission_uncertain");
-        await context.checkpoint({ status:"waiting_external_service",stage:"transcribing_composed_audio",progress:55 });
+        await checkpoint({ status:"waiting_external_service",stage:"transcribing_composed_audio",progress:55 });
         const transcript = await prepared.submit();
         // Durable transcript is saved BEFORE caption rendering or output upload.
-        return deps.store.saveSpeech(receipt,speech.sourceHash,duration,transcript,provider.id);
+        const savedTranscript = await deps.store.saveSpeech(receipt,speech.sourceHash,duration,transcript,provider.id);
+        await checkpoint({status:"rendering",stage:"rendering_video_subtitles",progress:65});
+        return savedTranscript;
       } } } : {}),
     });
     if (watch) { clearInterval(watch); watch = undefined; }
+    await checkInFlight;
     if (checkpointFailure) throw checkpointFailure;
     await context.checkpoint({ status:"uploading_output",stage:"uploading_finished_video",progress:85 });
     let output: Record<string,unknown>;
@@ -136,6 +161,7 @@ export async function runFinishExploreVideoJob(job: BackgroundJobRow, context: P
     throw checkpointFailure ?? error;
   } finally {
     if (watch) clearInterval(watch);
+    await checkInFlight;
     // Only this newly-created worker directory. Never touch uploaded sources.
     if (resolve(directory).startsWith(resolve(tmpdir()) + "/") || resolve(directory).startsWith(resolve(tmpdir()) + "\\")) await rm(directory,{ recursive:true,force:true });
   }

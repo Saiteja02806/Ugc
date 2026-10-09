@@ -103,6 +103,22 @@ test("downloads a bounded generation-pinned snapshot instead of racing a mutable
   await assert.rejects(f.storage.download("owned/source.mp4", destination, 20), error => error.code === "EEXIST");
 });
 
+test("download cancellation destroys the pinned stream instead of waiting for all source bytes", async t => {
+  env(t); const dir=await workspace(t), controller=new AbortController();
+  let stream, released;
+  const storage=new ExploreFinishingStorage({bucket:()=>({file:(name,options)=>({
+    getMetadata:async()=>[{size:"11",generation:"7"}],
+    createReadStream:()=>{
+      assert.equal(options.generation,"7");
+      stream=new Readable({read(){}}); released=true; return stream;
+    },
+  })})});
+  const run=storage.download("owned/source.mp4",join(dir,"cancelled"),20,"primary",controller.signal);
+  const rejected=assert.rejects(run,error=>error.name === "AbortError");
+  for (let i=0;i<100 && !released;i++) await new Promise(resolve=>setTimeout(resolve,5));
+  assert.ok(stream); controller.abort(); await rejected; assert.equal(stream.destroyed,true);
+});
+
 test("only explicitly private inputs use the private bucket; public inputs and output recovery stay primary", async t => {
   env(t, { GCP_PRIVATE_MEDIA_BUCKET: "offline-private" });
   const directory = await workspace(t);

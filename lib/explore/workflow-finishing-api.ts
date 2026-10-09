@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createHash } from "node:crypto";
+import { FORMAT_TEXT_SEQUENCE_RENDER_VERSION } from "@/worker/src/lib/explore-format-edit";
 import { requireAIStudioProUser } from "@/lib/ai-studio/server-access";
 import { FirebaseAuthRequestError, requireFirebaseUser } from "@/lib/firebase/server-auth";
 import { getBackgroundJobForUser, getMissingBackgroundJobStorageEnvVars, type BackgroundJobRecord } from "@/lib/jobs/background-jobs";
@@ -25,7 +26,7 @@ const safeErrors: Record<string, string> = {
 
 /** Bind normalized edits to the worker/render policy, not client-supplied IDs. */
 export function fingerprintExploreFinish(draft: ExploreFinishDraft) {
-  return createHash("sha256").update(JSON.stringify({ renderer: draft.editing ? "explore-format-edit-v1" : draft.demoFraming ? DEMO_FRAMING_RENDER_VERSION : EXPLORE_RENDER_VERSION,
+  return createHash("sha256").update(JSON.stringify({ renderer: draft.editing ? draft.editing.textOverlays === undefined ? "explore-format-edit-v1" : FORMAT_TEXT_SEQUENCE_RENDER_VERSION : draft.demoFraming ? DEMO_FRAMING_RENDER_VERSION : EXPLORE_RENDER_VERSION,
     transcription: draft.subtitles ? SCRIBE_PROVIDER_KEY : null, draft })).digest("hex");
 }
 
@@ -58,6 +59,20 @@ function verifyJob(job: BackgroundJobRecord | null, receipt: ExploreFinishReceip
   return job;
 }
 
+function pendingFinishMessage(job: BackgroundJobRecord) {
+  if (job.status === "cancel_requested") return "Cancellation requested. Waiting for video processing to stop safely.";
+  if (job.status === "stalled") return "Video processing stopped responding. Check the save status or cancel this save before trying again.";
+  if (job.stage === "render_job_launched") return "Your video is queued. Preparing the video processor…";
+  if (job.status === "queued") return "Your finishing request is saved and waiting for the video processor.";
+  if (job.stage === "downloading_owned_media") return "Preparing your selected clips for editing…";
+  if (job.stage === "transcribing_composed_audio") return "Transcribing the finished video's audio…";
+  if (job.stage === "uploading_finished_video") return "Your video is rendered. Saving the finished file…";
+  if (job.stage === "saving_finished_video") return "Your finished file is saved. Confirming it in your media library…";
+  if (job.status === "rendering") return "Rendering your video edits…";
+  if (job.status === "waiting_external_service") return "Waiting for video processing to finish…";
+  return "Your finishing request is saved and is being processed.";
+}
+
 async function responseFor(store: ExploreFinishingRequestStore, receipt: ExploreFinishReceipt, job: BackgroundJobRecord, status = 200) {
   const verified = verifyJob(job, receipt);
   if (receipt.status === "completed") await store.asset(receipt.user_id, receipt.output_asset_id, "video");
@@ -71,7 +86,7 @@ async function responseFor(store: ExploreFinishingRequestStore, receipt: Explore
     mediaAssetId: outcome === "completed" ? receipt.output_asset_id : null,
     message: outcome === "completed" ? "Your finished video is saved." : uncertain ? "Transcription needs review; no automatic resubmission will be made." :
       outcome === "failed" ? typeof failureMessage === "string" ? failureMessage : "Finishing did not complete. Your original media is unchanged." :
-      outcome === "cancelled" ? "Finishing was cancelled. Your original media is unchanged." : "Your finishing request is saved and is being processed." }, status);
+      outcome === "cancelled" ? "Finishing was cancelled. Your original media is unchanged." : pendingFinishMessage(verified) }, status);
 }
 
 /** Queues a committed, owned edit only. No ffmpeg or paid ASR in the app route. */

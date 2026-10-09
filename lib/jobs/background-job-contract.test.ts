@@ -36,6 +36,19 @@ test("classifies active and terminal states", () => {
   assert.equal(isTerminalBackgroundJobStatus("stalled"), false);
 });
 
+test("public jobs expose only an allowlisted media format, without exposing their private input", () => {
+  for (const [jobType, exploreFormat] of [["generate_hook_video", "hook"], ["generate_hook_video", "wall_text"], ["generate_image", "slideshow"]] as const) {
+    const job = { jobType, status: "completed", input: { exploreFormat, privatePrompt: "private-input-value" } } as unknown as BackgroundJobRecord;
+    const result = getPublicBackgroundJob(job);
+    assert.equal(result.exploreFormat, exploreFormat);
+    assert.equal(JSON.stringify(result).includes("private-input-value"), false);
+  }
+  for (const [jobType, exploreFormat] of [["generate_hook_video", "slideshow"], ["generate_image", "hook"], ["render_demo_video", "wall_text"], ["generate_image", "unknown"]] as const) {
+    const job = { jobType, status: "completed", input: { exploreFormat } } as unknown as BackgroundJobRecord;
+    assert.equal(Object.hasOwn(getPublicBackgroundJob(job), "exploreFormat"), false);
+  }
+});
+
 test("public jobs expose safe errors and retry state without internal errors", () => {
   const job = {
     attemptCount: 1,

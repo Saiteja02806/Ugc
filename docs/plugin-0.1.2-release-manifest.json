@@ -1,0 +1,173 @@
+{
+  "version": "0.1.2",
+  "endpoint": "https://mcp.getugcpilot.com/mcp",
+  "fileCount": 31,
+  "skillCount": 8,
+  "toolCount": 12,
+  "artifacts": [
+    {
+      "path": "public/downloads/ugc-pilot-0.1.2.zip",
+      "bytes": 84471,
+      "sha256": "f655694302524f9c02bba46bd8e1acaea0b5319418de1eb63ac5eaea4f21b0b3"
+    },
+    {
+      "path": "public/downloads/ugc-pilot-0.1.2.zip.sha256",
+      "bytes": 86,
+      "sha256": "06268d7e27c54d4abca40e82da830baa6c6a7e6db306dfc2218cf2e0df2935d9"
+    },
+    {
+      "path": "public/downloads/ugc-pilot-0.1.2-setup.md",
+      "bytes": 8832,
+      "sha256": "8340120f78cd2e91d4a654f1993c209cc79677fd1bb92b673001a981dede19ab"
+    }
+  ],
+  "sources": [
+    {
+      "path": ".claude-plugin/plugin.json",
+      "sha256": "b3870d2530558beccaa41efc6f940450f7c3b27a6aa2583fad32b3fe84971db0"
+    },
+    {
+      "path": ".codex-plugin/plugin.json",
+      "sha256": "ea8bd258798e620dcd3b66ea612c3b04afc357f333df78c93c47d8245d9b57e0"
+    },
+    {
+      "path": ".mcp.json",
+      "sha256": "708520207ebe98a13c0ddf6ee02870fae38b6b1e7ab3436adbfec7f4b9afa750"
+    },
+    {
+      "path": "README.md",
+      "sha256": "01c4dfa54c7180bf2d106b2f1237e1e9d8fedfb052bba31f370265455cfaf651"
+    },
+    {
+      "path": "assets/logo.png",
+      "sha256": "44a9e46f81ff6618d620647510c31e1c625f426c10ce8b50c8dae248522f7d36"
+    },
+    {
+      "path": "evaluation-cases.json",
+      "sha256": "0640d6706718e68164d610f5db841659db68a630444abd2e151eca0a5c296b21"
+    },
+    {
+      "path": "mcp.json",
+      "sha256": "bb7c3f883c86a1db43500fbf6f07ee9cb6bd084cc0af4c46ce62a9a12b92ab77"
+    },
+    {
+      "path": "plugin.json",
+      "sha256": "86d479abbbe6000f6da018fdac42fbb502c8d95f6189f934bc8cd1f62c83183c"
+    },
+    {
+      "path": "references/creative-workflow.md",
+      "sha256": "620cbd81a058a69c67d1de76cab462521d8111bea4a0dba9d22c80b8daa490a8"
+    },
+    {
+      "path": "skills/connect-ugc-pilot/SKILL.md",
+      "sha256": "f2b6c5bab5ccb3b5974b5e8ac835fa939bd2d2da0204a6733a31618efd7877f4"
+    },
+    {
+      "path": "skills/connect-ugc-pilot/references/client-setup.md",
+      "sha256": "7eb90f124b973e4c80d04c223fb7fd7d34f24a418c4856974b5e7ff8a25e0426"
+    },
+    {
+      "path": "skills/create-ugc-media/SKILL.md",
+      "sha256": "e610cd08aed15b76d9ef0aaac88f9bd6b6dd8b8ef6ea556c036e60eb2254a25f"
+    },
+    {
+      "path": "skills/emotion-hook-director/SKILL.md",
+      "sha256": "f180d2295501efc9c51119da4a3b8bba31767487c1b78a97697be9eca9e81472"
+    },
+    {
+      "path": "skills/emotion-hook-director/references/performance-guide.md",
+      "sha256": "63808536b3df5b76681a76440b5f3b9af14900e39a545f1b120feb6b3005e8ba"
+    },
+    {
+      "path": "skills/emotion-hook-director/schemas/director-output.schema.json",
+      "sha256": "bc3240f53f04ac6d0344049ec170d42289790b15573c5309666668a507e5c531"
+    },
+    {
+      "path": "skills/manage-ugc-media/SKILL.md",
+      "sha256": "06f43542a0b6367ad7813a707d4793fa5666e88b78300b7f067ef250926916c3"
+    },
+    {
+      "path": "skills/ugc-hook-intelligence/SKILL.md",
+      "sha256": "15ba203b7e92d2abb0b5056d52dae75477c5fb62cfc815a6dac32713af014cb0"
+    },
+    {
+      "path": "skills/ugc-hook-intelligence/references/examples.md",
+      "sha256": "27fa6da3e141a68aceace0578c068b9378233511b5a58e1e6a22c677727fd9f6"
+    },
+    {
+      "path": "skills/ugc-hook-intelligence/references/hook-patterns.md",
+      "sha256": "dd3fb3470b37f1d8d24f458c3de8ed0423720ab768d90b506e39489933d76383"
+    },
+    {
+      "path": "skills/ugc-hook-intelligence/references/source-hook-library.md",
+      "sha256": "5cb90abd0bae93a150e56824c7b6528cf2812e3941352e45553b1662e40d1ae6"
+    },
+    {
+      "path": "skills/ugc-hook-intelligence/schemas/hook-output.schema.json",
+      "sha256": "55283d15455f3f038f0b4a88980f6a0eca5bf5cf23fd5696b653276374f66185"
+    },
+    {
+      "path": "skills/ugc-native-slideshow/SKILL.md",
+      "sha256": "7f9a41d4d505ebb67ce71dbee6885732b6b64ce45d32a93a58395bf84f840c4c"
+    },
+    {
+      "path": "skills/ugc-native-slideshow/references/layout-guide.md",
+      "sha256": "f1329904d5ab9158dacc8c46f8738a207ce1ca3b8b7801752be3bc08907fdaaf"
+    },
+    {
+      "path": "skills/ugc-native-slideshow/references/output-schema.json",
+      "sha256": "cfac74e731fa10305592f427bd739b2becb2dd0d6398456cd8c4a52d1477614a"
+    },
+    {
+      "path": "skills/ugc-native-slideshow/references/pattern-library.md",
+      "sha256": "a183d93b5064362988c6d8d494c423fb0ee5a2d61542312cf48a24471132394f"
+    },
+    {
+      "path": "skills/wall-text-generation/SKILL.md",
+      "sha256": "00883bee3206814f80d50d21bf461e0f118e9b479d5a546c6cec22315f653008"
+    },
+    {
+      "path": "skills/wall-text-generation/references/writing-guide.md",
+      "sha256": "08780fb97162f8fba1289b85b13190cd309172a5f140ecd2f57846f806318204"
+    },
+    {
+      "path": "skills/wall-text-generation/schemas/wall-copy.schema.json",
+      "sha256": "c363fb246c26cb570d7d1f1827a71624db1c65eb3eb8e9858d79c2e65bd6bdb4"
+    },
+    {
+      "path": "skills/wall-text-video-generation/SKILL.md",
+      "sha256": "9b6eb595d59fca064c60a507ae7b41f2ff306cb004f0ee2a9dc9de003b8666c5"
+    },
+    {
+      "path": "skills/wall-text-video-generation/references/visual-guide.md",
+      "sha256": "6f1f4aadaee342d8bb1d082b1ad0c03a6c25d2ba5555d5d18a200c4262f88ee8"
+    },
+    {
+      "path": "skills/wall-text-video-generation/schemas/video-output.schema.json",
+      "sha256": "c6034acfdbdbeb65b627ef0b8e882079188c46964fd9ec6120b8cd5f516257d8"
+    }
+  ],
+  "validation": {
+    "package": "passed",
+    "zipCrcAndInventory": "passed by builder",
+    "archiveSourceEquality": "passed by builder",
+    "priorArchivesUnchanged": true,
+    "connectAiLinksMatch": true,
+    "packageAndCreativeTests": {
+      "passed": 16,
+      "failed": 0
+    },
+    "deterministicBuildTests": {
+      "passed": 3,
+      "failed": 0
+    },
+    "submissionMaterials": {
+      "submissionMaterialsComplete": false,
+      "pending": [
+        "review.demo_recording_url"
+      ]
+    },
+    "platformApproval": "not-verified-by-package-validation",
+    "deployment": "pending"
+  }
+}

@@ -3,6 +3,7 @@ import type { AIStudioImageResult, AIStudioVideoResult } from "@/lib/ai-studio/m
 
 /** Optional presentation for the existing generators inside Recreate. */
 export type RecreateGenerationView = {
+  referenceImageAssetId?: string;
   emptyContent: ReactNode;
   contextBanner?: ReactNode;
   preview: boolean;

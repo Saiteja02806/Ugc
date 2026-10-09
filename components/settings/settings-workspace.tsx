@@ -40,6 +40,7 @@ import { TikTokBetaAccountManager } from "@/components/settings/tiktok-beta-acco
 import { YouTubeBetaAccountManager } from "@/components/settings/youtube-beta-account-manager";
 import { AppScreenshotsSettings } from "@/components/settings/app-screenshots-settings";
 import { BusinessContextSettings } from "@/components/settings/business-context-settings";
+import { PublishingPreferencesSettings } from "@/components/settings/publishing-preferences-settings";
 import { SupportFeedbackSettings } from "@/components/settings/support-feedback-settings";
 import { useTheme } from "@/components/providers/theme-provider";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
@@ -594,7 +595,7 @@ export function SettingsWorkspace() {
           {activeSection === "preferences" ? (
           <SettingsSection
             id="preferences"
-            description="Choose how UGC Pilot looks and behaves on this device."
+            description="Choose your account publishing defaults and this device's appearance."
             icon={<Palette className="size-5" aria-hidden="true" />}
             title="Preferences"
           >
@@ -642,6 +643,7 @@ export function SettingsWorkspace() {
                   : `Use ${theme === "light" ? "dark" : "light"} theme`}
               </Button>
             </div>
+            <PublishingPreferencesSettings />
           </SettingsSection>
           ) : null}
 

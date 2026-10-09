@@ -20,6 +20,8 @@ export type ExploreFinishDraft = {
   backgroundAssetId: string | null;
   backgroundPlayback: "once" | "repeat";
   demoFraming?: DemoFraming;
+  /** Crop/pan the sole clip after its independent trim/text/audio preparation. */
+  sourceFraming?: DemoFraming;
   editing?: import("./explore-format-edit.js").ExploreFormatEdit;
   subtitles: { language: "en"; style: ExploreFinishStyle; placement?: "bottom" | "middle" | "top" } | null;
 };
@@ -46,7 +48,7 @@ function playback(value: unknown) {
 }
 export function parseExploreFinishDraft(value: unknown): ExploreFinishDraft {
   const raw = object(value);
-  const fields = ["version", "kind", "sourceAssetId", "demoAssetId", "demoAudioAssetId", "demoAudioPlayback", "backgroundAssetId", "backgroundPlayback", "subtitles", "demoFraming", "editing"];
+  const fields = ["version", "kind", "sourceAssetId", "demoAssetId", "demoAudioAssetId", "demoAudioPlayback", "backgroundAssetId", "backgroundPlayback", "subtitles", "demoFraming", "sourceFraming", "editing"];
   if (Object.keys(raw).some(key => !fields.includes(key)) || raw.version !== 1 || (raw.kind !== "hook" && raw.kind !== "phone")) throw new ExploreFinishError("This finishing draft uses an unsupported format.");
   const sourceAssetId = asset(raw.sourceAssetId, false)!;
   const demoAssetId = asset(raw.demoAssetId);
@@ -55,6 +57,8 @@ export function parseExploreFinishDraft(value: unknown): ExploreFinishDraft {
   const demoAudioPlayback = playback(raw.demoAudioPlayback), backgroundPlayback = playback(raw.backgroundPlayback);
   if (demoAudioAssetId && !demoAssetId) throw new ExploreFinishError("Add a demo before selecting demo audio.");
   const demoFraming = raw.demoFraming === undefined ? undefined : parseDemoFraming(raw.demoFraming);
+  const sourceFraming = raw.sourceFraming === undefined ? undefined : parseDemoFraming(raw.sourceFraming);
+  if (sourceFraming && (raw.kind !== "hook" || demoAssetId || demoAudioAssetId || demoFraming || raw.editing !== undefined || raw.subtitles !== null)) throw new ExploreFinishError("Single-clip framing requires one prepared video and no subtitles.");
   const editing = raw.editing === undefined ? undefined : parseExploreFormatEdit(raw.editing);
   if (editing && (raw.kind !== "hook" || demoAssetId || demoAudioAssetId || demoFraming || raw.subtitles !== null)) throw new ExploreFinishError("Format editing uses one video and no subtitles.");
   if (demoFraming && !demoAssetId) throw new ExploreFinishError("Add a demo before recording its framing.");
@@ -72,7 +76,7 @@ export function parseExploreFinishDraft(value: unknown): ExploreFinishDraft {
   // Omit the new option entirely on legacy drafts: existing fingerprints and
   // interrupted finishing requests must remain byte-for-byte compatible.
   return { version: 1, kind: raw.kind, sourceAssetId, demoAssetId, demoAudioAssetId, demoAudioPlayback, backgroundAssetId, backgroundPlayback, subtitles,
-    ...(demoFraming ? { demoFraming } : {}), ...(editing ? { editing } : {}) };
+    ...(demoFraming ? { demoFraming } : {}), ...(sourceFraming ? { sourceFraming } : {}), ...(editing ? { editing } : {}) };
 }
 
 export function parseDemoFraming(value: unknown): DemoFraming {

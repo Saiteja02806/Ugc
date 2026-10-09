@@ -376,6 +376,13 @@ export async function claimDueTrendingFeedReconciliations(params?: {
   }));
 }
 
+export async function getTrendingFeedReconciliationStatus(sourceJobId: string) {
+  const { data, error } = await getClient().from("trending_feed_reconciliation_outbox")
+    .select("status").eq("source_job_id", sourceJobId).maybeSingle();
+  if (error) throw new Error(`Could not read Trending reconciliation: ${error.message}`);
+  return data?.status ?? null;
+}
+
 export async function completeTrendingFeedReconciliation(params: {
   sourceJobId: string;
 }) {

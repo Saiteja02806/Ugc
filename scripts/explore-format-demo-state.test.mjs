@@ -6,6 +6,7 @@ import ts from "typescript";
 import { defaultDemoEdit, readFormatDemoDraft, trimmedDemoFraming } from "../lib/explore/format-demo.ts";
 import { formatTextLayout, formatTextOverlays, parseExploreFormatEdit } from "../worker/src/lib/explore-format-edit.ts";
 import * as editDraft from "../lib/explore/format-edit-draft.ts";
+import { canReuseUnchangedHookSource } from "../lib/explore/unchanged-hook-source.ts";
 
 const textFields = {};
 vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../components/explore/format-video-text-fields.tsx", import.meta.url), "utf8"), {
@@ -97,6 +98,7 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
     "@/components/explore/format-video-text-fields": textFields,
     "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: {}, useWorkflowFinishing() { throw new Error("A selection or prop transition cannot dispatch finishing."); } },
     "@/lib/explore/format-demo": { defaultDemoEdit, readFormatDemoDraft, trimmedDemoFraming },
+    "@/lib/explore/unchanged-hook-source": { canReuseUnchangedHookSource },
     "@/worker/src/lib/explore-format-edit": { parseExploreFormatEdit, formatTextLayout, formatTextOverlays },
     "@/lib/explore/format-edit-draft": editDraft,
     "@/lib/explore/format-video-source": { formatVideoFromAsset(value) { if (value.status !== "ready" || value.collection !== "video") throw new Error("Choose an owned ready video."); return value; } },
@@ -250,7 +252,7 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(h.button("Save final video").props.disabled, true);
     assert.equal(nodes(tree).some(n => n.type === "DemoSaveRun"), false);
   });
-  test(`${format}: Demo controls work before an opening, and only owned saved opening enables merging`, () => {
+  test(`${format}: a demo can schedule alone, while merging waits for an owned opening`, () => {
     const h = harness({ format }); h.render();
     assert.equal(h.button("First upload demo").props.disabled, undefined);
     assert.equal(h.button("Choose from Creative Assets").props.disabled, undefined);
@@ -259,7 +261,7 @@ for (const format of ["hook", "wall_text"]) {
     h.select();
     assert.equal(h.input("Selected demo video").props.src, asset(2).url);
     assert.equal(h.selectionReports.at(-1), true);
-    assert.equal(h.button("Save final video").props.disabled, true);
+    assert.equal(h.button("Save final video").props.disabled, false);
     h.render({ opening: output(99), openingRevision: 1 });
     h.button("Save final video").props.onClick(); h.render();
     assert.equal(h.saveRun(), undefined, "Schedule may open, but an unverified opening cannot merge");
@@ -307,7 +309,9 @@ for (const format of ["hook", "wall_text"]) {
     h.completeVideoUpload(); await Promise.resolve(); h.render();
     assert.equal(h.input("Selected demo video").props.src, asset(2).url);
     assert.equal(h.find(node => node.type === "fieldset").props.disabled, false);
-    assert.equal(h.button("Save final video").props.disabled, true);
+    assert.equal(h.button("Save final video").props.disabled, false, "Schedule opens a preparation preview while the replacement is verified");
+    h.button("Save final video").props.onClick(); h.render();
+    assert.equal(h.saveRun(), undefined, "An unprepared selected opening must not be treated as a demo-only request");
     h.render({ opening: output(3), openingRevision: 3 });
     assert.equal(h.button("Save final video").props.disabled, false);
     assert.equal(readFormatDemoDraft(h.storage.get(draftKey("owner", format))).demoId, id(2));
@@ -446,7 +450,7 @@ test("local preview restores its demo fixture without an owned fetch or changing
   assert.equal(h.input("Selected demo video").props.src, asset(2).url);
   assert.equal(h.input("Demo trim end").props.value, 6.5);
   assert.equal(h.queryInputs.some(query => query.enabled), false);
-  assert.equal(h.button("Save final video").props.disabled, true);
+  assert.equal(h.button("Save final video").props.disabled, false, "Local preview allows navigation but cannot dispatch finishing");
 });
 
 test("local preview gives an unavailable fixture a recovery message instead of indefinite restoration", () => {

@@ -21,6 +21,7 @@ import {
 } from "@/lib/trending/hook-text-layout";
 import {
   loadTrendingCreativeEditor,
+  loadTrendingCreativeReadView,
   saveTrendingCreativeEditor,
 } from "@/lib/trending/creative-edit-service";
 import {
@@ -153,7 +154,9 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   try {
-    const edit = await loadTrendingCreativeEditor({
+    const load = new URL(request.url).searchParams.get("view") === "history"
+      ? loadTrendingCreativeReadView : loadTrendingCreativeEditor;
+    const edit = await load({
       assignmentId: scope.value.assignmentId,
       creativeId: scope.value.creativeId,
       format: scope.value.format,

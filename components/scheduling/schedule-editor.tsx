@@ -32,6 +32,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { requestPublishingPreferences } from "@/lib/scheduling/publishing-preferences-client";
 import {
   getDormantScheduleTargets,
   getInitialScheduleConnectionIds,
@@ -244,6 +245,7 @@ export function ScheduleEditor({
   initialDemoMediaId,
   initialCaption = "",
   initialHookMediaId,
+  finalVideo,
   initialPlannedTargets,
   initialScheduledDate,
   initialScheduledTime,
@@ -271,6 +273,8 @@ export function ScheduleEditor({
   initialDemoMediaId: string;
   initialCaption?: string;
   initialHookMediaId: string;
+  /** Explore has already prepared this exact output; composition stays fixed. */
+  finalVideo?: ScheduleMediaOption;
   initialPlannedTargets: ScheduleCreateTargetInput[];
   initialScheduledDate: string;
   initialScheduledTime: string;
@@ -353,7 +357,7 @@ export function ScheduleEditor({
         editingSchedule,
         hasHookOptions: hookMediaOptions.length > 0,
         hasSecondaryOptions: demoMediaOptions.length > 0,
-        requestedSelection: initialClipSelection,
+        requestedSelection: finalVideo ? "secondary_only" : initialClipSelection,
       }).useHook,
   );
   const [useSecondaryClip, setUseSecondaryClip] = useState(
@@ -363,14 +367,14 @@ export function ScheduleEditor({
         editingSchedule,
         hasHookOptions: hookMediaOptions.length > 0,
         hasSecondaryOptions: demoMediaOptions.length > 0,
-        requestedSelection: initialClipSelection,
+        requestedSelection: finalVideo ? "secondary_only" : initialClipSelection,
       }).useSecondary,
   );
   const [selectedHookMediaId, setSelectedHookMediaId] = useState<string>(
     initialHookMediaId,
   );
   const [selectedDemoMediaId, setSelectedDemoMediaId] = useState<string>(
-    initialDemoMediaId,
+    finalVideo?.id ?? initialDemoMediaId,
   );
   const [refreshingMedia, setRefreshingMedia] = useState(false);
   const [hookPickerError, setHookPickerError] = useState<string | null>(null);
@@ -391,6 +395,28 @@ export function ScheduleEditor({
   const [tiktokCapabilities, setTikTokCapabilities] = useState<
     Record<string, TikTokCapabilitiesState>
   >({});
+  const [aiDisclosureDefault, setAiDisclosureDefault] = useState(true);
+  const [preferencesError, setPreferencesError] = useState<string | null>(null);
+  const [preferencesLoading, setPreferencesLoading] = useState(!editingSchedule);
+  useEffect(() => {
+    if (editingSchedule) return;
+    const controller = new AbortController();
+    void requestPublishingPreferences(undefined, controller.signal).then((preferences) => {
+      if (!controller.signal.aborted) setAiDisclosureDefault(preferences.containsSyntheticMedia);
+    }).catch(() => {
+      if (!controller.signal.aborted) setPreferencesError("Your account default could not load. Review the AI content setting for this post in publishing options.");
+    }).finally(() => {
+      if (!controller.signal.aborted) setPreferencesLoading(false);
+    });
+    return () => controller.abort();
+  }, [editingSchedule]);
+  const effectivePublishingSettings = useMemo(() => Object.fromEntries(
+    publishingConnections.map((connection) => [connection.id, {
+      ...getDefaultPublishingSettings(connection.platform),
+      ...(connection.platform !== "instagram" ? { containsSyntheticMedia: aiDisclosureDefault } : {}),
+      ...publishingSettings[connection.id],
+    }]),
+  ), [aiDisclosureDefault, publishingConnections, publishingSettings]);
   const [scheduledDateOverride, setScheduledDate] = useState<string | null>(editingScheduledDate ?? null);
   const [scheduledTimeOverride, setScheduledTime] = useState<string | null>(editingScheduledTime ?? null);
   const scheduledDate = scheduledDateOverride ?? initialScheduledDate;
@@ -496,12 +522,12 @@ export function ScheduleEditor({
   const publishingSettingsError = getPublishingSettingsError({
     connections: selectedConnections,
     requireTikTokMusicConfirmation: false,
-    settings: publishingSettings,
+    settings: effectivePublishingSettings,
     tiktokCapabilities,
   });
   const tiktokPublishingAgreement = getTikTokPublishingAgreement({
     connections: selectedConnections,
-    settings: publishingSettings,
+    settings: effectivePublishingSettings,
   });
   const scheduleTimeValidation = useMemo(
     () =>
@@ -545,7 +571,7 @@ export function ScheduleEditor({
   });
   const hasSelectedConnections = selectedConnections.length > 0;
   const canSaveDraft = Boolean(
-    !mediaValidationError &&
+    !(preferencesLoading && selectedConnections.some((connection) => connection.platform !== "instagram")) && !mediaValidationError &&
       (isCarouselSchedule ? carouselLibraryItemId : selectedPublishMedia) &&
       scheduledDate &&
       scheduledTime &&
@@ -646,7 +672,7 @@ export function ScheduleEditor({
         ? current
         : {
             ...current,
-            [connectionId]: getDefaultPublishingSettings(connection.platform),
+            [connectionId]: {},
           },
     );
 
@@ -713,7 +739,7 @@ export function ScheduleEditor({
       }));
       setPublishingSettings((current) => {
         const settings =
-          current[connectionId] ?? getDefaultPublishingSettings("tiktok");
+          current[connectionId] ?? {};
         const privacyLevel = settings.privacyLevel;
 
         return {
@@ -833,7 +859,7 @@ export function ScheduleEditor({
           platform: connection.platform,
           settings: getConfirmedScheduleTargetSettings(
             connection.platform,
-            publishingSettings[connection.id],
+            effectivePublishingSettings[connection.id],
           ),
         })),
       ],
@@ -871,7 +897,7 @@ export function ScheduleEditor({
                 id="schedule-drawer-title"
                 className="text-lg font-bold tracking-normal text-foreground"
               >
-                {isCarouselSchedule
+                {finalVideo ? "Review schedule" : isCarouselSchedule
                   ? `Schedule ${hasAdditionalCarouselPublishingPlatform ? "publishing" : "Instagram"} carousel`
                   : editingSchedule
                     ? `Edit ${hasAdditionalVideoPublishingPlatform ? "publishing" : "Instagram"} schedule`
@@ -881,7 +907,7 @@ export function ScheduleEditor({
                 id="schedule-drawer-description"
                 className="mt-1 max-w-2xl text-sm font-medium leading-6 text-muted"
               >
-                {isCarouselSchedule
+                {finalVideo ? `Review your finished video, choose your ${publishingAccountLabel} account, and set the publish time.` : isCarouselSchedule
                   ? `Confirm the carousel, choose your ${publishingAccountLabel} account, and set the publish time.`
                   : `Choose real media, your ${publishingAccountLabel} account, and when the post should publish.`}
               </p>
@@ -930,14 +956,16 @@ export function ScheduleEditor({
               step="1"
               title="Media"
               description={
-                isCarouselSchedule
+                finalVideo ? "Review your finished video and optional caption" : isCarouselSchedule
                   ? "Saved carousel and optional caption"
                   : "Choose a hook, a secondary clip, or both in sequence"
               }
             >
               <div className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)] xl:gap-6">
                 <div className="grid content-start gap-4">
-                  {isCarouselSchedule && editingSchedule ? (
+                  {finalVideo ? (
+                    <FinalVideoPreview key={finalVideo.id} video={finalVideo} />
+                  ) : isCarouselSchedule && editingSchedule ? (
                     <ScheduledCarouselSourceCard schedule={editingSchedule} />
                   ) : (
                     <>
@@ -1029,7 +1057,9 @@ export function ScheduleEditor({
                 </div>
 
                 <div className="grid content-start gap-4">
-                  {isCarouselSchedule && editingSchedule ? (
+                  {finalVideo ? (
+                    <p className="rounded-control border border-border bg-card-muted/45 px-4 py-3 text-sm leading-6 text-muted">This finished video will be published to each selected account. Return to Explore to edit it.</p>
+                  ) : isCarouselSchedule && editingSchedule ? (
                     <CarouselSchedulePreview schedule={editingSchedule} />
                   ) : (
                     <CompositionPreview
@@ -1091,13 +1121,15 @@ export function ScheduleEditor({
               {selectedConnections.length > 0 ? (
                 <PlatformPublishingSettings
                   connections={selectedConnections}
+                  isPhoto={isCarouselSchedule}
                   errorMessage={publishingSettingsError}
-                  settings={publishingSettings}
+                  settings={effectivePublishingSettings}
                   tiktokCapabilities={tiktokCapabilities}
                   onChange={updatePublishingSetting}
                   onRetryTikTok={loadTikTokCapabilities}
                 />
               ) : null}
+              {preferencesError && selectedConnections.some((connection) => connection.platform !== "instagram") ? <p role="status" className="mt-3 max-w-xl text-xs leading-5 text-muted">{preferencesError}</p> : null}
             </ScheduleFlowSection>
 
             <ScheduleFlowSection
@@ -1185,7 +1217,7 @@ export function ScheduleEditor({
                   ) : null}
                 </div>
 
-                <StatusPreview
+                {finalVideo ? <p className="self-start rounded-control border border-border bg-card-muted/45 px-4 py-3 text-sm leading-6 text-muted">Your finished video is ready. Confirm the accounts, caption and publish time before scheduling.</p> : <StatusPreview
                   openingMedia={isCarouselSchedule ? null : selectedHookMedia}
                   scheduledMedia={
                     isCarouselSchedule
@@ -1195,7 +1227,7 @@ export function ScheduleEditor({
                   status={status}
                   useHookClip={isCarouselSchedule ? false : useOpeningClip}
                   useSecondaryClip={isCarouselSchedule ? true : useSecondaryClip}
-                />
+                />}
               </div>
             </ScheduleFlowSection>
           </div>
@@ -1221,7 +1253,9 @@ export function ScheduleEditor({
               {unavailableSavedTargetError
                 ? unavailableSavedTargetError
                 : hasSelectedConnections
-                  ? shouldCombineClips
+                  ? finalVideo
+                    ? "This finished video will be scheduled to your selected accounts."
+                    : shouldCombineClips
                     ? "We prepare one combined video first, then schedule it automatically when ready."
                     : isCarouselSchedule
                       ? "The saved carousel will be scheduled to the selected account."
@@ -2066,6 +2100,15 @@ function ScheduleMediaVisual({
   );
 }
 
+function FinalVideoPreview({ video }: { video: ScheduleMediaOption }) {
+  const [duration, setDuration] = useState<number | null>(null);
+  return <section aria-label="Final video review" className="space-y-3 rounded-[var(--radius-card)] border border-border bg-card-muted/30 p-4">
+    <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-bold text-foreground">Final video</h3><span className="text-xs text-muted">{duration ? `${Math.round(duration * 10) / 10}s` : video.durationLabel ?? "Ready to publish"}</span></div>
+    <video src={video.mediaUrl} poster={video.thumbnailUrl} controls playsInline preload="metadata" aria-label="Finished video to schedule" className="mx-auto max-h-[48dvh] w-full rounded-control bg-black object-contain" onLoadedMetadata={event => { const seconds = event.currentTarget.duration; if (Number.isFinite(seconds) && seconds > 0) setDuration(seconds); }} />
+    <p className="break-words text-xs leading-5 text-muted">{video.title}</p>
+  </section>;
+}
+
 function CompositionPreview({
   openingMedia,
   scheduledMedia,
@@ -2307,6 +2350,7 @@ function ConnectedAccountSelector({
 
 function PlatformPublishingSettings({
   connections,
+  isPhoto,
   errorMessage,
   onChange,
   onRetryTikTok,
@@ -2314,6 +2358,7 @@ function PlatformPublishingSettings({
   tiktokCapabilities,
 }: {
   connections: SocialConnection[];
+  isPhoto: boolean;
   errorMessage: string | null;
   onChange: (
     connectionId: string,
@@ -2332,15 +2377,16 @@ function PlatformPublishingSettings({
           id="publishing-settings-title"
           className="text-sm font-bold text-foreground"
         >
-          Reel placement
+          Publishing options
         </h3>
       </div>
 
       <div className="mt-2 grid gap-2">
-        {connections.map((connection) => (
+        {connections.filter((connection) => connection.platform === "tiktok").map((connection) => (
           <PlatformAccountSettings
             key={connection.id}
             connection={connection}
+            isPhoto={isPhoto}
             settings={
               settings[connection.id] ??
               getDefaultPublishingSettings(connection.platform)
@@ -2350,6 +2396,10 @@ function PlatformPublishingSettings({
             onRetryTikTok={() => onRetryTikTok(connection.id)}
           />
         ))}
+        {connections.some((connection) => connection.platform !== "tiktok") ? <details className="rounded-control border border-border p-3">
+          <summary className="cursor-pointer text-sm font-semibold text-foreground">More publishing options</summary>
+          <div className="mt-3 grid gap-2">{connections.filter((connection) => connection.platform !== "tiktok").map((connection) => <PlatformAccountSettings key={connection.id} connection={connection} isPhoto={isPhoto} settings={settings[connection.id] ?? getDefaultPublishingSettings(connection.platform)} onChange={(key, value) => onChange(connection.id, key, value)} onRetryTikTok={() => onRetryTikTok(connection.id)} />)}</div>
+        </details> : null}
       </div>
 
       {errorMessage ? (
@@ -2367,12 +2417,14 @@ function PlatformPublishingSettings({
 
 function PlatformAccountSettings({
   connection,
+  isPhoto,
   onChange,
   onRetryTikTok,
   settings,
   tiktokCapabilities,
 }: {
   connection: SocialConnection;
+  isPhoto: boolean;
   onChange: (key: string, value: boolean | string) => void;
   onRetryTikTok: () => void;
   settings: ConnectionPublishingSettings;
@@ -2417,8 +2469,6 @@ function PlatformAccountSettings({
             <p className="truncate text-xs font-semibold text-muted">{accountName}</p>
           </div>
 
-      {/* Dormant future multi-platform support: this YouTube branch is kept
-          intact but receives no connections in the Instagram-only editor. */}
       {connection.platform === "youtube" ? (
         <div className="mt-3 grid gap-3">
           <label className="block">
@@ -2461,10 +2511,9 @@ function PlatformAccountSettings({
         </div>
       ) : null}
 
-      {/* Dormant future multi-platform support: TikTok settings remain
-          implemented so re-enabling the platform does not require a rewrite. */}
       {connection.platform === "tiktok" ? (
         <TikTokAccountSettings
+          isPhoto={isPhoto}
           capabilitiesState={tiktokCapabilities}
           settings={settings}
           onChange={onChange}
@@ -2479,11 +2528,13 @@ function PlatformAccountSettings({
 
 function TikTokAccountSettings({
   capabilitiesState,
+  isPhoto,
   onChange,
   onRetry,
   settings,
 }: {
   capabilitiesState?: TikTokCapabilitiesState;
+  isPhoto: boolean;
   onChange: (key: string, value: boolean | string) => void;
   onRetry: () => void;
   settings: ConnectionPublishingSettings;
@@ -2572,25 +2623,23 @@ function TikTokAccountSettings({
             label="Comments"
             onChange={(checked) => onChange("allowComment", checked)}
           />
-          <SettingCheckbox
+          {!isPhoto ? <SettingCheckbox
             checked={getBooleanSetting(settings, "allowDuet", false)}
             disabled={capabilities.interactions.duetsDisabled}
             label="Duets"
             onChange={(checked) => onChange("allowDuet", checked)}
-          />
-          <SettingCheckbox
+          /> : null}
+          {!isPhoto ? <SettingCheckbox
             checked={getBooleanSetting(settings, "allowStitch", false)}
             disabled={capabilities.interactions.stitchesDisabled}
             label="Stitches"
             onChange={(checked) => onChange("allowStitch", checked)}
-          />
+          /> : null}
         </div>
       </fieldset>
 
-      <fieldset>
-        <legend className="text-xs font-bold text-foreground">
-          AI-generated content
-        </legend>
+      <details className="rounded-control border border-border p-3">
+        <summary className="cursor-pointer text-xs font-bold text-foreground">AI content disclosure · {getBooleanSetting(settings, "containsSyntheticMedia", true) ? "On" : "Off"}</summary>
         <div className="mt-2">
           <SettingCheckbox
             checked={getBooleanSetting(settings, "containsSyntheticMedia", true)}
@@ -2599,7 +2648,8 @@ function TikTokAccountSettings({
             onChange={(checked) => onChange("containsSyntheticMedia", checked)}
           />
         </div>
-      </fieldset>
+        <a href="/settings#preferences" target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs text-primary underline underline-offset-4">Set your default in Settings (opens a new tab)</a>
+      </details>
 
     </div>
   );

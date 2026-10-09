@@ -18,6 +18,7 @@ import type {
 import type { SupabaseJobStore } from "./lib/supabase.js";
 import { DeferredJobError, RetryableJobError } from "./retryable-job-error.js";
 import { reconcileTrendingFeedInApp } from "./lib/trending-feed-reconciliation.js";
+import { enqueueTrendingFeedReconciliationTask } from "./lib/trending-feed-reconciliation-dispatch.js";
 import type { BackgroundJobRow } from "./types.js";
 
 type ProcessMessageParams = {
@@ -25,6 +26,7 @@ type ProcessMessageParams = {
   dependencies?: {
     heartbeatIntervalMs?: number;
     reconcileTrendingFeed?: typeof reconcileTrendingFeedInApp;
+    enqueueTrendingReconciliation?: typeof enqueueTrendingFeedReconciliationTask;
     runJob?: typeof runWorkerJob;
   };
   message: WorkerDeliveryMessage;
@@ -349,6 +351,7 @@ async function processClaimableJob(params: {
       reconcileTrendingFeed:
         dependencies?.reconcileTrendingFeed ?? reconcileTrendingFeedInApp,
       store,
+      enqueueTrendingReconciliation: dependencies?.enqueueTrendingReconciliation,
     });
 
     await deleteDeliveryMessage({ config, message, queue });
@@ -406,6 +409,7 @@ async function processClaimableJob(params: {
           message,
           queue,
           store,
+          enqueueTrendingReconciliation: dependencies?.enqueueTrendingReconciliation,
         });
         return false;
       }
@@ -431,6 +435,7 @@ async function processClaimableJob(params: {
       message,
       queue,
       store,
+      enqueueTrendingReconciliation: dependencies?.enqueueTrendingReconciliation,
     });
     return false;
   }
@@ -493,8 +498,25 @@ async function reconcileCompletedTrendingFeed(params: {
   job: BackgroundJobRow;
   reconcileTrendingFeed: typeof reconcileTrendingFeedInApp;
   store: SupabaseJobStore;
+  enqueueTrendingReconciliation?: typeof enqueueTrendingFeedReconciliationTask;
 }) {
   if (!params.job.user_id || !trendingDeliveryJobTypes.has(params.job.job_type)) {
+    return;
+  }
+
+  if (params.job.job_type === "generate_carousel") {
+    // Terminal status already committed its durable outbox. Dispatch admission
+    // independently; failure leaves that row available to scheduled recovery.
+    try {
+      await (params.enqueueTrendingReconciliation ?? enqueueTrendingFeedReconciliationTask)({
+        sourceJobId: params.job.id, userId: params.job.user_id,
+        dispatchRevision: params.job.updated_at,
+      });
+    } catch (error) {
+      logger.error("Could not dispatch durable Carousel reconciliation", {
+        jobId: params.job.id, error: getErrorMessage(error),
+      });
+    }
     return;
   }
 
@@ -624,6 +646,7 @@ async function failKnownJobAndDeleteMessage(params: {
   message?: WorkerDeliveryMessage;
   queue?: WorkerQueueTransport;
   store: SupabaseJobStore;
+  enqueueTrendingReconciliation?: typeof enqueueTrendingFeedReconciliationTask;
 }) {
   const messageId = params.message?.id ?? "database-recovery";
 
@@ -665,6 +688,7 @@ async function failKnownJobAndDeleteMessage(params: {
       job: failedJob,
       reconcileTrendingFeed: reconcileTrendingFeedInApp,
       store: params.store,
+      enqueueTrendingReconciliation: params.enqueueTrendingReconciliation,
     });
 
     await deleteDeliveryMessage(params);

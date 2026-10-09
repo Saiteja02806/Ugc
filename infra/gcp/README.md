@@ -72,6 +72,7 @@ GCP_CLOUD_TASKS_LOCATION=us-central1
 GCP_CLOUD_TASKS_SERVICE_ACCOUNT_EMAIL=ugc-scheduler-sa@ugcsaas.iam.gserviceaccount.com
 GCP_AI_GENERATION_TASK_URL=<Cloud Run service URL>
 GCP_CAROUSEL_TASK_URL=<Cloud Run service URL>
+GCP_CAROUSEL_EDIT_TASK_URL=<dedicated Carousel edit Cloud Run service URL>
 GCP_MEDIA_PROCESSING_TASK_URL=<Cloud Run service URL>
 GCP_SOCIAL_PUBLISH_TASK_URL=<Cloud Run service URL>
 # Must be the internal app launcher, not the legacy video worker service.
@@ -84,6 +85,19 @@ GCP_STORAGE_PUBLIC_BASE_URL=https://storage.googleapis.com/ugcsaas-media
 For an app hosted outside GCP, also configure the `ugc-app-sa` credential using
 `GOOGLE_CLOUD_CREDENTIALS_JSON`, or the split client-email/private-key values.
 Never commit credentials.
+
+Slideshow hook/image edits use `ugc-carousel-edit` and the dedicated
+`ugc-carousel-edit-worker`, with one warm instance and one concurrent request.
+Generation retains its existing serial queue/worker. Terminal generation jobs
+enqueue authenticated feed admission into `ugc-trending-reconciliation`; the
+database outbox and recovery scheduler retain failed deliveries.
+
+Release the screenshot metadata migration and provision both new queues plus
+the edit service before assigning `GCP_CAROUSEL_EDIT_TASK_URL` and releasing the
+web changes. Deploy the independent reconciliation API before updating the
+generation worker to dispatch to it. Keep the generation worker able to handle
+older edit deliveries already on `ugc-carousel` until they drain. The edit
+service adds one warm instance; do not raise shared generation concurrency.
 
 ## Existing production release order
 

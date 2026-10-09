@@ -234,6 +234,26 @@ test("recorded framing is gated before creating work; legacy fingerprints and ow
   assert.notEqual(on.receipt.fingerprint, on.api.fingerprintExploreFinish(moved));
 });
 
+test("standalone demo framing uses the owned single-clip contract and the existing framing gate", async () => {
+  const sourceFraming = { version: 1, width: .5, height: 1, points: [[0, 0, 0], [5000, .5, 0]] };
+  const draftChanges = { subtitles: null, sourceFraming };
+  const off = harness({ draftChanges });
+  assert.equal((await off.start()).status, 503);
+  assert.equal(off.calls.includes("create"), false);
+  assert.equal(off.calls.includes("dispatch"), false);
+  const on = harness({ draftChanges, env: { EXPLORE_DEMO_FRAMING_ENABLED: "true" } });
+  assert.equal((await on.start()).status, 202);
+  assert.equal(on.receipt.draft.sourceAssetId, sourceId);
+  assert.equal(on.receipt.draft.demoAssetId, null);
+  assert.equal(on.receipt.fingerprint, createHash("sha256").update(JSON.stringify({ renderer: "explore-finish-single-pan-v1", transcription: null, draft: on.receipt.draft })).digest("hex"));
+  const moved = contract.parseExploreFinishDraft({ ...on.receipt.draft, sourceFraming: { ...sourceFraming, points: [[0, .25, 0]] } });
+  assert.notEqual(on.receipt.fingerprint, on.api.fingerprintExploreFinish(moved));
+  assert.equal((await on.start({ requestKey: key, draft: moved })).status, 409);
+  const recovered = harness({ draftChanges, prior: true });
+  assert.equal((await recovered.start()).status, 202);
+  assert.equal(recovered.calls.includes("create"), false);
+});
+
 test("format editing requires the matching renderer switch and binds manual text without transcription", async () => {
   const editing = { version: 1, format: "wall_text", trimStartMs: 0, trimEndMs: 5000, originalVolume: .5, musicVolume: .2,
     text: { value: "My message\n\nAnother paragraph", width: .8, y: .1, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 5000 } };

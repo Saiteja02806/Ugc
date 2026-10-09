@@ -30,6 +30,21 @@ async function inputs(directory) {
   return { sourcePath, demoPath };
 }
 const framing = { version: 1, width: 1 / 3, height: 1, points: [[0, 0, 0], [1000, 0, 0], [3000, 2 / 3, 0], [4000, 2 / 3, 0]] };
+test("a standalone demo pans from its first frame, preserving one duration, audio and original file", async t => {
+  const directory = await workspace(t), { demoPath } = await inputs(directory);
+  const before = await digest(demoPath);
+  const sourceFraming = { version: 1, width: .5, height: .5, points: [[0, 0, 0], [1000, 0, 0], [3000, .5, 0], [4000, .5, 0]] };
+  const result = await composeExploreVideo({ sourcePath: demoPath, sourceFraming, workDir: join(directory, "standalone"), tools });
+  assert.equal(result.width, 384); assert.equal(result.height, 256);
+  assert.ok(Math.abs(result.durationMs - 4000) < 150); assert.equal(result.segments.length, 1);
+  assert.equal(result.segments[0].hasOriginalAudio, true); assert.equal(await digest(demoPath), before);
+  const samples = run(["-i", result.outputPath, "-vf", "format=rgb24,crop=1:1:192:128:exact=1", "-an", "-f", "rawvideo", "-pix_fmt", "rgb24", "pipe:1"]);
+  const red = Array.from({ length: samples.length / 3 }, (_, i) => samples[i * 3]);
+  assert.equal(red.length, 120); assert.ok(red[100] - red[10] > 100);
+  assert.ok(Math.max(...red.slice(31, 91).map((value, i) => Math.abs(value - red[i + 30]))) <= 8);
+  assert.ok((await stat(join(directory, "standalone/composition.filter"))).size > 0);
+  await assert.rejects(composeExploreVideo({ sourcePath: demoPath, demoPath, sourceFraming, workDir: join(directory, "duplicate"), tools }), /Single-clip framing/);
+});
 test("real export pans continuously at DEMO timestamps, preserves the opening, all source files, speech and total duration", async t => {
   const directory = await workspace(t), input = await inputs(directory);
   const before = await Promise.all([digest(input.sourcePath), digest(input.demoPath)]);

@@ -1,0 +1,217 @@
+resource "google_cloud_run_v2_service" "carousel_edit_worker" {
+  count = var.enable_carousel_edit_worker ? 1 : 0
+
+  project  = var.project_id
+  name     = "ugc-carousel-edit-worker"
+  location = var.region
+  labels   = local.labels
+  ingress  = "INGRESS_TRAFFIC_INTERNAL_ONLY"
+
+  template {
+    service_account                  = var.worker_service_account_email
+    timeout                          = "${var.request_timeout_seconds}s"
+    max_instance_request_concurrency = 1
+
+    scaling {
+      min_instance_count = 1
+      max_instance_count = 1
+    }
+
+    containers {
+      image = var.worker_image_uri
+
+      ports {
+        container_port = var.container_port
+      }
+
+      resources {
+        # Keep one request-based instance warm for interactive edit latency.
+        # Retain the one-instance maximum until database reservation is
+        # explicitly safe for parallel writers.
+        cpu_idle          = true
+        startup_cpu_boost = true
+
+        limits = {
+          cpu    = var.cpu
+          memory = var.memory
+        }
+      }
+
+      startup_probe {
+        failure_threshold     = 12
+        initial_delay_seconds = 0
+        period_seconds        = 5
+        timeout_seconds       = 3
+
+        http_get {
+          path = "/healthz"
+          port = var.container_port
+        }
+      }
+
+      env {
+        name  = "NODE_ENV"
+        value = "production"
+      }
+
+      env {
+        name  = "GCP_PROJECT_ID"
+        value = var.project_id
+      }
+
+      env {
+        name  = "GOOGLE_CLOUD_PROJECT"
+        value = var.project_id
+      }
+
+      env {
+        name  = "QUEUE_PROVIDER"
+        value = "gcp"
+      }
+
+      env {
+        name  = "WORKER_QUEUE_PROVIDER"
+        value = "gcp"
+      }
+
+      env {
+        name  = "WORKER_TRANSPORT"
+        value = "cloud-tasks"
+      }
+
+      env {
+        name  = "WORKER_QUEUE_NAME"
+        value = "carousel-edit"
+      }
+
+      env {
+        name  = "WORKER_JOB_TYPES"
+        value = "render_trending_carousel_edit"
+      }
+
+      env {
+        name  = "WORKER_VISIBILITY_TIMEOUT_SECONDS"
+        value = tostring(var.worker_visibility_timeout_seconds)
+      }
+
+      env {
+        name  = "WORKER_RUNTIME_NAME"
+        value = "gcp-cloud-run-service"
+      }
+
+      env {
+        name  = "WORKER_ID"
+        value = "ugc-carousel-edit-worker:${var.worker_version}:${var.worker_git_commit}"
+      }
+
+      env {
+        name  = "WORKER_VERSION"
+        value = var.worker_version
+      }
+
+      env {
+        name  = "WORKER_GIT_COMMIT"
+        value = var.worker_git_commit
+      }
+
+      env {
+        name  = "STORAGE_PROVIDER"
+        value = var.storage_provider
+      }
+
+      env {
+        name  = "GCP_STORAGE_BUCKET"
+        value = var.gcp_storage_bucket
+      }
+
+      env {
+        name  = "GCP_STORAGE_PUBLIC_BASE_URL"
+        value = var.gcp_storage_public_base_url
+      }
+
+      env {
+        name  = "UGC_INTERNAL_APP_URL"
+        value = var.internal_app_url
+      }
+
+      env {
+        name  = "CAROUSEL_BROAD_MATCHER_MODE"
+        value = var.carousel_broad_matcher_mode
+      }
+
+      env {
+        name  = "CAROUSEL_BROAD_MATCHER_CANARY_BUSINESS_PROFILE_IDS"
+        value = var.carousel_broad_matcher_canary_business_profile_ids
+      }
+
+      env {
+        name  = "CAROUSEL_BROAD_MATCHER_CANARY_USER_IDS"
+        value = var.carousel_broad_matcher_canary_user_ids
+      }
+
+      env {
+        name  = "CAROUSEL_DISABLE_CATEGORY_FALLBACK"
+        value = tostring(var.carousel_disable_category_fallback)
+      }
+
+      env {
+        name = "SUPABASE_URL"
+        value_source {
+          secret_key_ref {
+            secret  = "supabase-url"
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "SUPABASE_SERVICE_ROLE_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = "supabase-service-role-key"
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "OPENAI_API_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = "openai-api-key"
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "UGC_INTERNAL_SCHEDULING_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = var.scheduling_secret_id
+            version = "latest"
+          }
+        }
+      }
+    }
+  }
+
+  # Cloud Tasks must always reach the latest healthy worker revision. Without
+  # this explicit target, a historical revision pin can leave a new deployment
+  # ready but receiving no Carousel jobs.
+  traffic {
+    percent = 100
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+  }
+}
+
+resource "google_cloud_run_v2_service_iam_member" "carousel_edit_cloud_tasks_invoker" {
+  count = var.enable_carousel_edit_worker ? 1 : 0
+
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_service.carousel_edit_worker[0].name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.scheduler_service_account_email}"
+}
+

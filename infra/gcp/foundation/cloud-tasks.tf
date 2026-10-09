@@ -46,6 +46,20 @@ locals {
       max_attempts          = 5
       max_retry_duration    = "3600s"
     }
+    carousel-edit = {
+      # Interactive rendering gets its own service; generation remains serial.
+      concurrent_dispatches = 1
+      dispatches_per_second = 5
+      max_attempts          = 5
+      max_retry_duration    = "3600s"
+    }
+    trending-reconciliation = {
+      # Durable feed admission never occupies a generation/render dispatch.
+      concurrent_dispatches = 5
+      dispatches_per_second = 5
+      max_attempts          = 20
+      max_retry_duration    = "86400s"
+    }
     media-processing = {
       concurrent_dispatches = 10
       dispatches_per_second = 5

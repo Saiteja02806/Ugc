@@ -23,7 +23,7 @@ test("provides shared defaults for every scheduling surface", () => {
     commercialContentDisclosureEnabled: true,
     containsSyntheticMedia: true,
     musicUsageConfirmed: true,
-    privacyLevel: "PUBLIC_TO_EVERYONE",
+    privacyLevel: "",
   });
   assert.deepEqual(getDefaultScheduleTargetSettings("youtube"), {
     containsSyntheticMedia: true,

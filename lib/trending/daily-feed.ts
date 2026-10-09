@@ -45,6 +45,7 @@ import {
   getDailyCarouselRefillPlan,
   hasTerminalDailyCarouselGenerationFailure,
   selectAssignableDailyCarouselCandidates,
+  shouldWaitForDailyCarouselSuccessor,
 } from "@/lib/trending/daily-replenishment-logic";
 import type {
   TrendingCarouselSourceRecord,
@@ -771,6 +772,16 @@ async function reconcileDailyCarouselRefill(params: {
         });
       }
     }
+    return;
+  }
+
+  // A dispatched failed reservation is immutable. If a successor is currently
+  // disallowed (active sibling or bounded budget), wait rather than replaying
+  // the old deterministic key. Jobless preparations retain exact-item recovery.
+  if (shouldWaitForDailyCarouselSuccessor({
+    replacedPartialBatch, hasExistingBatch: Boolean(refillBatch),
+    hasTerminalFailure, generations: existingBatchCandidates,
+  })) {
     return;
   }
 

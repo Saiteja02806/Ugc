@@ -82,6 +82,50 @@ test("a two-statement hook receives a cover-only repair with every body slide fr
     const prompt = JSON.stringify(requests[1]!.messages);
     assert.match(prompt, /Hook slide = one statement only/);
     assert.match(prompt, /First-person hooks are welcome/);
+    const messages = requests[1]!.messages as Array<{ role: string; content: string }>;
+    const system = messages.find(message => message.role === "system")!.content;
+    assert.match(system, /body-block instructions NEVER apply to the cover/);
+    assert.match(system, /slide1 NEVER uses a blank line/);
+    assert.match(system, /excluding headline and ctaText/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = originalKey;
+  }
+});
+
+test("renderer overflow is repaired before a candidate is accepted even when estimated fit passes", async () => {
+  const { buildCarouselStructure2StoryPlanBatch: buildBatch } = await import(new URL("./carousel-structure-2-planner.js?measured-fit-regression", import.meta.url).href) as typeof import("./carousel-structure-2-planner.js");
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = "test-key-no-network";
+  const rejected = rawPlan(true);
+  Reflect.set(rejected.slides.sixth!, "headline", null);
+  rejected.slides.sixth!.storyText = "I used WWWWWWWWWWWWWWWW for planning.\n\nMy next task had an owner and context so I could continue.";
+  const distinctHooks = ["why my Monday plan fell apart", "how changing priorities derailed my week",
+    "i kept restarting work after every change", "my task list forgot the next decision", "what i missed when planning my week"];
+  rejected.slides.first!.storyText = distinctHooks[0]!;
+  const replacement = "Keep your next task visible as priorities change.\n\nA clear owner and context help you continue without starting over.";
+  const requests: Array<Record<string, unknown>> = [];
+  globalThis.fetch = async (_input, init) => {
+    requests.push(JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>);
+    const content = requests.length === 1
+      ? { plans: Object.fromEntries(CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS.map((key, index) => {
+          const plan = index === 0 ? rejected : rawPlan(true);
+          plan.slides.first!.storyText = distinctHooks[index]!;
+          return [key, plan];
+        })) }
+      : { storyTextBySlide: { slide6: replacement } };
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(content) }, finish_reason: "stop" }] }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  try {
+    const plans = await buildBatch({ assignments, businessDescription });
+    assert.equal(plans.length, 5);
+    assert.equal(requests.length, 2);
+    const repaired = plans.find(plan => plan.slotIndex === 0)!;
+    assert.equal(repaired.plan.slides[5]!.storyText, replacement);
+    assert.ok(repaired.validationResult.initialIssues.some(issue => issue.slideNumber === 6 && /Actual renderer/.test(issue.message)));
+    assert.deepEqual(repaired.plan.slides.slice(0,5).map(slide => slide.storyText), CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS.slice(0,5).map(key => rejected.slides[key]!.storyText));
   } finally {
     globalThis.fetch = originalFetch;
     if (originalKey === undefined) delete process.env.OPENAI_API_KEY;

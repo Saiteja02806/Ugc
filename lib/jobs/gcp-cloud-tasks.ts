@@ -22,6 +22,7 @@ let cloudTasksAuth: GoogleAuth | null = null;
 const dispatchUrlEnvByQueueName = {
   "ai-generation": "GCP_AI_GENERATION_TASK_URL",
   carousel: "GCP_CAROUSEL_TASK_URL",
+  "carousel-edit": "GCP_CAROUSEL_EDIT_TASK_URL",
   "media-processing": "GCP_MEDIA_PROCESSING_TASK_URL",
   "reaction-render": "GCP_REACTION_RENDER_TASK_URL",
   "social-publish": "GCP_SOCIAL_PUBLISH_TASK_URL",
@@ -51,7 +52,7 @@ export function getMissingBackgroundJobCloudTasksEnvVars(
     const dispatchUrl = getBackgroundJobDispatchUrl(queueName, env);
 
     if (!dispatchUrl) {
-      missing.add(`${envName} or GCP_BACKGROUND_JOB_TASK_URL`);
+      missing.add(getRequiredDispatchConfigName(queueName));
     } else if (
       queueName === "video-render" &&
       !isVideoRenderLauncherDispatchUrl(dispatchUrl)
@@ -128,7 +129,7 @@ function getRequiredDispatchUrl(jobType: BackgroundJobType) {
 
   if (!dispatchUrl) {
     throw new Error(
-      `Missing ${getDispatchUrlEnvName(queueName)} or GCP_BACKGROUND_JOB_TASK_URL.`,
+      `Missing ${getRequiredDispatchConfigName(queueName)}.`,
     );
   }
 
@@ -149,9 +150,9 @@ export function getBackgroundJobDispatchUrl(
   env: Record<string, string | undefined> = process.env,
 ) {
   const explicitUrl = env[getDispatchUrlEnvName(queueName)]?.trim();
-  // A generic fallback can point at the legacy one-shot video launcher. Never
-  // send a per-Reel Reaction task there: it needs the dedicated service URL.
-  const fallbackUrl = queueName === "reaction-render"
+  // Interactive edits and Reaction renders require their dedicated services.
+  // A common URL can point at the generation service or video launcher.
+  const fallbackUrl = queueName === "reaction-render" || queueName === "carousel-edit"
     ? undefined
     : env.GCP_BACKGROUND_JOB_TASK_URL?.trim();
 
@@ -164,6 +165,12 @@ function getDispatchUrlEnvName(queueName: string) {
       queueName as keyof typeof dispatchUrlEnvByQueueName
     ] || "GCP_BACKGROUND_JOB_TASK_URL"
   );
+}
+
+function getRequiredDispatchConfigName(queueName: string) {
+  const name = getDispatchUrlEnvName(queueName);
+  return queueName === "carousel-edit" || queueName === "reaction-render"
+    ? name : `${name} or GCP_BACKGROUND_JOB_TASK_URL`;
 }
 
 function getVideoRenderLauncherConfigurationError(envName: string) {

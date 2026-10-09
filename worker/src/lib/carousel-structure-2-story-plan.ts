@@ -10,7 +10,6 @@ import {
   inspectCarouselFixedTextFit,
 } from "./carousel-slide-plan.js";
 import {
-  CAROUSEL_STRUCTURE_2_STORY_MAX_LINES,
   CAROUSEL_STRUCTURE_2_STORY_MAX_WORDS,
   doesCarouselStructure2TextFitSafeArea,
   getCarouselStructure2StoryFontSize,
@@ -26,6 +25,9 @@ import {
 
 const STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE =
   `${CAROUSEL_HOOK_COPY_GUIDANCE} Use short, natural wording so it stays within four centred display lines at ${getCarouselStructure2StoryFontSize(1)}px. Never use ALL CAPS. The hook sits in the image centre, so visualContext must leave a clear, calm central text zone rather than reserving empty space only at the bottom.`;
+
+const STRUCTURE_2_OUTPUT_COPY_CONTRACT =
+  `Apply these rules separately to each slide, not one common paragraph style. Slide 1/first/slide1: exactly ONE complete statement, ${CAROUSEL_HOOK_MIN_WORDS}-${CAROUSEL_HOOK_MAX_WORDS} words, aim for 6-10 short words. No second sentence, explanation, subtitle, or blank line; body-block instructions NEVER apply to the cover. Example of the shape only: "i kept making content without a clear plan". Slides 2-6/second through sixth: count only storyText, excluding headline and ctaText, and return 14-30 whitespace-delimited words total; aim for 18-22. Normally use two short blocks of 7-12 words separated by a blank line; each block fits at most three lines at 48px. Count their combined words, not each block separately. Preserve first-person I/me/my on Slides 2-5. Slide 6 still needs at least 14 words of useful takeaway; a short slogan or product invitation does not satisfy that requirement. Check each field against its own rule before returning.`;
 
 export const CAROUSEL_STRUCTURE_2_STORY_SCHEMA_VERSION =
   "carousel-structure-2-strict-six-slide-text-blocks-v10";
@@ -494,6 +496,9 @@ export function buildCarouselStructure2StoryPlanSchema() {
             type: "string",
           },
           storyText: {
+            description: isCover
+              ? `One complete ${CAROUSEL_HOOK_MIN_WORDS}-${CAROUSEL_HOOK_MAX_WORDS}-word hook. No second sentence or blank line. Aim for 6-10 short words; body paragraph rules do not apply here.`
+              : "14-30 body words total excluding headline and ctaText. Aim for 18-22 words across one or two short blocks. Slides 2-5 use I/me/my; Slide 6 is a useful takeaway, not a short slogan.",
             maxLength:
               isCover
                 ? CAROUSEL_STRUCTURE_2_COVER_HOOK_SCHEMA_MAX_CHARACTERS
@@ -565,6 +570,9 @@ export function buildCarouselStructure2StoryTextRepairSchema(
                 key === getTargetedStoryTextKey(1)
                   ? CAROUSEL_STRUCTURE_2_COVER_HOOK_SCHEMA_MAX_CHARACTERS
                   : MAX_STORY_TEXT_LENGTH,
+              description: key === getTargetedStoryTextKey(1)
+                ? `Replace with ONE complete ${CAROUSEL_HOOK_MIN_WORDS}-${CAROUSEL_HOOK_MAX_WORDS}-word hook, normally 6-10 short words. No second sentence, explanation or blank line.`
+                : "Replace with 14-30 storyText words total, aiming for 18-22. Count across both blocks, excluding the separate heading/CTA. Preserve first-person voice on Slides 2-5.",
               minLength: 1,
               type: "string",
             },
@@ -651,7 +659,7 @@ export function buildCarouselStructure2BatchMessages(params: {
     {
       role: "system" as const,
       content:
-        "You write native Instagram product-story carousels for Structure 2. Create exactly five independent carousels with exactly six slides each. Every carousel follows this strict sequence: reader-first cover, problem, realization, product mechanism, modest proof or result, useful takeaway. Private creative briefs add context but are not visible labels or compulsory plots. Return only the requested JSON.",
+        `You write native Instagram product-story carousels for Structure 2. Create exactly five independent carousels with exactly six slides each. Every carousel follows this strict sequence: reader-first cover, problem, realization, product mechanism, modest proof or result, useful takeaway. Private creative briefs add context but are not visible labels or compulsory plots. ${STRUCTURE_2_OUTPUT_COPY_CONTRACT} Return only the requested JSON.`,
     },
     {
       role: "user" as const,
@@ -677,6 +685,7 @@ export function buildCarouselStructure2BatchMessages(params: {
         JSON.stringify(assignments),
         "Last accepted Carousel copies (exact visible text):",
         JSON.stringify(normalizeRecentHistory(params.recentHistory)),
+        STRUCTURE_2_OUTPUT_COPY_CONTRACT,
       ].join("\n"),
     },
   ];
@@ -706,7 +715,7 @@ export function buildCarouselStructure2RepairMessages(params: {
     {
       role: "system" as const,
       content:
-        "Repair one Structure 2 JSON plan. Preserve valid AI copy unless a structural or renderability issue requires changing it. Keep the selected format reference, creative seed, emotion, and six-slide sequence: reader-first cover, problem, realization, product mechanism, modest proof or result, then useful final value with an optional CTA on Slide 6 only. Do not return slideNumber, slotIndex, candidateIndex, or storyFormatId; the worker owns those structural values. Return only repaired JSON.",
+        `Repair one Structure 2 JSON plan. Preserve valid AI copy unless a structural or renderability issue requires changing it. Keep the selected format reference, creative seed, emotion, and six-slide sequence: reader-first cover, problem, realization, product mechanism, modest proof or result, then useful final value with an optional CTA on Slide 6 only. Do not return slideNumber, slotIndex, candidateIndex, or storyFormatId; the worker owns those structural values. ${STRUCTURE_2_OUTPUT_COPY_CONTRACT} Return only repaired JSON.`,
     },
     {
       role: "user" as const,
@@ -763,7 +772,7 @@ export function buildCarouselStructure2StoryTextRepairMessages(params: {
     }
     const isCover = slide.slideNumber === 1;
     const wordRange = isCover ? `${CAROUSEL_HOOK_MIN_WORDS}-${CAROUSEL_HOOK_MAX_WORDS}` : "14-30";
-    const targetRange = isCover ? "6-14" : "16-22";
+    const targetRange = isCover ? "6-10" : "18-22";
     const lineLimit = getCarouselStructure2StoryMaxLines(slide.slideNumber);
     const fontSize = getCarouselStructure2StoryFontSize(slide.slideNumber);
     return {
@@ -794,7 +803,7 @@ export function buildCarouselStructure2StoryTextRepairMessages(params: {
     {
       role: "system" as const,
       content:
-        `Repair only the listed visible Structure 2 storyText values. Return only JSON with one storyTextBySlide object containing exactly the requested replacement keys. Do not return a plan, slide metadata, heading, labels, a CTA, or an explanation. Each replacement must resolve its stated failure while preserving the original slide role and natural story flow. ${CAROUSEL_TEXT_PRESENTATION_GUIDANCE}`,
+        `Repair only the listed visible Structure 2 storyText values. Return only JSON with one storyTextBySlide object containing exactly the requested replacement keys. Do not return a plan, slide metadata, heading, labels, a CTA, or an explanation. Each replacement must resolve its stated failure while preserving the original slide role and natural story flow. ${STRUCTURE_2_OUTPUT_COPY_CONTRACT} Body blocks may use a blank line; slide1 NEVER uses a blank line. Do not carry the failed cover's two-sentence pattern into its replacement.`,
     },
     {
       role: "user" as const,

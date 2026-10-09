@@ -63,7 +63,7 @@ export function getDefaultScheduleTargetSettings(
       commercialContentDisclosureEnabled: true,
       containsSyntheticMedia: true,
       musicUsageConfirmed: true,
-      privacyLevel: "PUBLIC_TO_EVERYONE",
+      privacyLevel: "",
     };
   }
 

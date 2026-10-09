@@ -14,12 +14,13 @@ import type { ExploreFormatEdit } from "@/worker/src/lib/explore-format-edit";
 export type FinishingOptions = { subtitles: boolean; style: ExploreFinishStyle; backgroundMusic: boolean; placement?: "bottom" | "middle" | "top" };
 export const DEFAULT_FINISHING_OPTIONS: FinishingOptions = { subtitles: false, style: "clean", backgroundMusic: false, placement: "bottom" };
 export type WorkflowAction = { busy: boolean; disabled: boolean; message: string; error: string | null; onAction: () => void; refresh: () => void; cancel?: () => void };
-export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, demoSource = null, demoAudio, playback, options, onRestoreOptions, demoFraming = null, demoFramingError = null, editing, backgroundSource = null, backgroundPlayback: formatBackgroundPlayback = "once", scope, onRestoreDraft, reuseUnchangedSource = false }: {
+export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, demoSource = null, demoAudio, playback, options, onRestoreOptions, demoFraming = null, sourceFraming = null, demoFramingError = null, editing, backgroundSource = null, backgroundPlayback: formatBackgroundPlayback = "once", scope, onRestoreDraft, reuseUnchangedSource = false }: {
   ownerId: string | null; enabled: boolean; kind: "hook" | "phone"; source: MediaAsset | null;
   demo: LocalWorkflowMedia | null; demoAudio: LocalWorkflowMedia | null; playback: "once" | "repeat"; options: FinishingOptions;
   demoSource?: MediaAsset | null;
   onRestoreOptions?: (value: FinishingOptions) => void;
   demoFraming?: DemoFraming | null;
+  sourceFraming?: DemoFraming | null;
   demoFramingError?: string | null;
   editing?: ExploreFormatEdit;
   backgroundSource?: MediaAsset | null;
@@ -36,7 +37,7 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
   const [output, setOutput] = useState<MediaAsset | null>(null);
   const [savedEntry, setSavedEntry] = useState<SavedFinish | null>(null);
   // Inputs change without invalidating a completed request's server identity.
-  const signature = JSON.stringify([source?.id, demo?.url, demoAudio?.url, playback, options, demoFraming, demoFramingError, editing, backgroundSource?.id, formatBackgroundPlayback, demoSource?.id]);
+  const signature = JSON.stringify([source?.id, demo?.url, demoAudio?.url, playback, options, demoFraming, sourceFraming, demoFramingError, editing, backgroundSource?.id, formatBackgroundPlayback, demoSource?.id]);
   const storageKey = finishStorageKey(ownerId ?? "signed-out", kind) + (scope ? `:${encodeURIComponent(scope)}` : "");
   const [completedSignature, setCompletedSignature] = useState<string | null>(null);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
@@ -123,7 +124,7 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
         if (!source) throw new Error("Upload or choose a video in Create before applying edits.");
         // Reuse only after checking durable recovery and the cross-tab lock.
         // Existing requests must finish recovering before this shortcut is used.
-        if (reuseUnchangedSource && !saved.current && !demo && !demoSource && !demoAudio && !demoFraming && !backgroundSource && !options.backgroundMusic && !options.subtitles) {
+        if (reuseUnchangedSource && !saved.current && !demo && !demoSource && !demoAudio && !demoFraming && !sourceFraming && !backgroundSource && !options.backgroundMusic && !options.subtitles) {
           setOutput(source); setCompletedSignature(signature); return;
         }
         const total = (source.durationSeconds ?? 0) + (demoSource?.durationSeconds ?? demo?.duration ?? 0);
@@ -141,7 +142,7 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
           }
         }
         const draft: SavedFinish["draft"] = { version: 1, kind, sourceAssetId: source.id, demoAssetId: demoSource?.id ?? await upload(demo, "video"), demoAudioAssetId: await upload(demoAudio, "audio"), demoAudioPlayback: demoAudio ? playback : "once", backgroundAssetId: editing ? backgroundSource?.id ?? null : backgroundAssetId, backgroundPlayback: editing && backgroundSource ? formatBackgroundPlayback : backgroundPlayback, subtitles: options.subtitles ? { language: "en", style: options.style, placement: options.placement ?? "bottom" } : null,
-          ...(demoFraming ? { demoFraming } : {}), ...(editing ? { editing } : {}) };
+          ...(demoFraming ? { demoFraming } : {}), ...(sourceFraming ? { sourceFraming } : {}), ...(editing ? { editing } : {}) };
         deps().assertActive();
         const entry: SavedFinish = { version: 1, ownerId, kind, requestKey: crypto.randomUUID(), draft };
         // A storage failure must happen before dispatch, never after a paid request.
@@ -154,7 +155,7 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
   }
   // A recovered output is a saved result, not a reconstruction from missing local
   // files. A different source or newly selected edit must be applied first.
-  const recoveredMatches = completedSignature === null && savedEntry && (!source || source.id === savedEntry.draft.sourceAssetId) && !demo && !demoAudio && (demoSource ? demoSource.id === savedEntry.draft.demoAssetId : !savedEntry.draft.demoAssetId || !scope?.startsWith("format-demo:")) && (demoSource ? JSON.stringify(demoFraming ?? undefined) === JSON.stringify(savedEntry.draft.demoFraming) : !demoFraming) && (editing ? JSON.stringify(editing) === JSON.stringify(savedEntry.draft.editing) && (backgroundSource?.id ?? null) === savedEntry.draft.backgroundAssetId && (!backgroundSource || formatBackgroundPlayback === savedEntry.draft.backgroundPlayback) :
+  const recoveredMatches = completedSignature === null && savedEntry && JSON.stringify(sourceFraming ?? undefined) === JSON.stringify(savedEntry.draft.sourceFraming) && (!source || source.id === savedEntry.draft.sourceAssetId) && !demo && !demoAudio && (demoSource ? demoSource.id === savedEntry.draft.demoAssetId : !savedEntry.draft.demoAssetId || !scope?.startsWith("format-demo:")) && (demoSource ? JSON.stringify(demoFraming ?? undefined) === JSON.stringify(savedEntry.draft.demoFraming) : !demoFraming) && (editing ? JSON.stringify(editing) === JSON.stringify(savedEntry.draft.editing) && (backgroundSource?.id ?? null) === savedEntry.draft.backgroundAssetId && (!backgroundSource || formatBackgroundPlayback === savedEntry.draft.backgroundPlayback) :
     !!options.backgroundMusic === !!savedEntry.draft.backgroundAssetId &&
     options.subtitles === !!savedEntry.draft.subtitles && (!options.subtitles || (options.style === savedEntry.draft.subtitles?.style &&
       (options.placement ?? "bottom") === (savedEntry.draft.subtitles?.placement ?? "bottom"))));

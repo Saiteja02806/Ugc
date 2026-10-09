@@ -9,6 +9,14 @@ vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.Mo
   exports: exported, require: name => { assert.equal(name, "@/worker/src/lib/explore-finishing-contract"); return contract; }, Error,
 });
 const frame = { version: 1, width: .3, height: 1, points: [[0, 0, 0], [10000, 0, 0], [12000, .7, 0], [14000, .7, 0]] };
+test("single-clip framing accepts a prepared video, rejects duplicate composition and leaves legacy drafts unchanged", () => {
+  const draft = { version: 1, kind: "hook", sourceAssetId: "00000000-0000-4000-8000-000000000001", demoAssetId: null, demoAudioAssetId: null, demoAudioPlayback: "once", backgroundAssetId: null, backgroundPlayback: "once", subtitles: null };
+  assert.deepEqual(contract.parseExploreFinishDraft(draft), draft);
+  assert.deepEqual(contract.parseExploreFinishDraft({ ...draft, sourceFraming: frame }).sourceFraming, frame);
+  for (const patch of [{ kind: "phone" }, { demoAssetId: draft.sourceAssetId }, { demoFraming: frame }, { subtitles: { language: "en", style: "clean" } }, { editing: {} }]) {
+    assert.throws(() => contract.parseExploreFinishDraft({ ...draft, sourceFraming: frame, ...patch }), /Single-clip framing/);
+  }
+});
 test("preview holds the left for ten seconds and shows every intermediate position during the drag", () => {
   const parsed = contract.parseDemoFraming(frame);
   assert.deepEqual(contract.demoFramingPosition(parsed, 9999), { x: 0, y: 0 });

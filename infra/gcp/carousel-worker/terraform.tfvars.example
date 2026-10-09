@@ -8,6 +8,7 @@ environment = "prod"
 #   supabase-service-role-key, and openai-api-key;
 # - GCS media public read has been enabled for the testing cutover.
 enable_carousel_worker = false
+enable_carousel_edit_worker = false
 
 # Example after running npm run worker:gcp:image:push -- --cloud-build:
 # worker_image_uri = "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker:worker-gcp-20260718143000"

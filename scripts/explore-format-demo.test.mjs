@@ -8,10 +8,11 @@ import ts from "typescript";
 import ffmpeg from "ffmpeg-static";
 import ffprobe from "ffprobe-static";
 import { defaultDemoEdit, readFormatDemoDraft, trimmedDemoFraming } from "../lib/explore/format-demo.ts";
+import { canReuseUnchangedHookSource } from "../lib/explore/unchanged-hook-source.ts";
 import { finishExploreVideo } from "../worker/dist/lib/explore-video-finishing.js";
 
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-const asset = n => ({ id: id(n), status: "ready", collection: "video", durationSeconds: 2, url: `/owned-${n}.mp4`, title: `Video ${n}` });
+const asset = n => ({ id: id(n), status: "ready", collection: "video", mimeType: "video/mp4", durationSeconds: 2, url: `/owned-${n}.mp4`, title: `Video ${n}` });
 const draft = () => ({ version: 1, demoId: id(2), audioId: null, editing: { ...defaultDemoEdit(3), trimStartMs: 500, trimEndMs: 2500 }, framing: null, playback: "once" });
 
 test("demo drafts reject arbitrary IDs and invalid timing before saving", () => {
@@ -45,7 +46,8 @@ function coordinator({ audio = false, disabled = false } = {}) {
   };
   const jsx = { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "fragment" };
   const imports = { react, "react/jsx-runtime": jsx, "react-dom": {}, "@tanstack/react-query": {}, "lucide-react": {},
-    "@/lib/explore/format-demo": { trimmedDemoFraming },
+    "@/lib/explore/format-demo": { trimmedDemoFraming, defaultDemoEdit },
+    "@/lib/explore/unchanged-hook-source": { canReuseUnchangedHookSource },
     "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: { subtitles: false, style: "clean", backgroundMusic: false }, useWorkflowFinishing(input) {
       const name = input.scope.startsWith("format-demo-prep:") ? "prep" : input.scope.startsWith("format-demo-sound:") ? "sound" : "join";
       const output = outputs[name];
@@ -121,6 +123,38 @@ test("preview and failed preparation cannot submit the final join", () => {
   const preview = coordinator({ disabled: true }); preview.render(); assert.equal(preview.calls.length, 0);
   const failed = coordinator(); failed.render(); failed.errors.prep = "Render failed"; failed.render();
   assert.deepEqual(failed.calls.map(c => c.name), ["prep"]); assert.equal(failed.reported.length, 0); assert.equal(failed.busy.at(-1), false);
+});
+
+test("an unchanged demo alone uses its owned output without a fake opening or second clip", () => {
+  const h = coordinator(); h.props.save.opening = null;
+  h.props.save.draft.editing = defaultDemoEdit(2);
+  h.render(); h.render();
+  assert.deepEqual(h.calls.map(c => c.name), ["join"]);
+  assert.equal(h.calls[0].input.source.id, id(2));
+  assert.equal(h.calls[0].input.demoSource, null);
+  assert.equal(h.calls[0].input.reuseUnchangedSource, true);
+  h.outputs.join = asset(2); h.render();
+  assert.equal(h.reported.at(-1).id, id(2));
+});
+
+test("a demo alone keeps trim, text, audio and rebased crop, with no duplicate clip", () => {
+  const h = coordinator({ audio: true }); h.props.save.opening = null;
+  h.props.save.draft.framing = { version: 1, width: .5, height: .5, points: [[0, 0, 0], [3000, .5, .5]] };
+  h.props.save.draft.editing.text = { value: "Demo only", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 2000 };
+  h.render(); h.outputs.prep = asset(3); h.render(); h.outputs.sound = asset(6); h.render();
+  assert.deepEqual(h.calls.map(c => c.name), ["prep", "sound", "join"]);
+  assert.equal(h.calls[0].input.editing.trimStartMs, 500);
+  assert.equal(h.calls[1].input.editing.text, null);
+  const join = h.calls.at(-1).input;
+  assert.equal(join.source.id, id(6)); assert.equal(join.demoSource, null);
+  assert.equal(join.demoFraming, null); assert.equal(join.editing, undefined);
+  assert.deepEqual(JSON.parse(JSON.stringify(join.sourceFraming)), trimmedDemoFraming(h.props.save.draft.framing, h.props.save.draft.editing));
+});
+
+test("a non-MP4 demo alone is prepared even when no visible edits were made", () => {
+  const h = coordinator(); h.props.save.opening = null;
+  h.props.save.demo.mimeType = "video/quicktime"; h.props.save.draft.editing = defaultDemoEdit(2);
+  h.render(); assert.deepEqual(h.calls.map(c => c.name), ["prep"]);
 });
 
 test("offline renderer joins an edited wall opening and trimmed demo, keeping text and added sound in their segments", async () => {

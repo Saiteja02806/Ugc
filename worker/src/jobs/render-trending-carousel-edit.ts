@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { getErrorMessage, logger } from "../logger.js";
 import {
   CAROUSEL_RENDERER_VERSION,
@@ -24,9 +25,9 @@ import type {
 import type { WorkerJobOutput } from "./index.js";
 
 const TRENDING_CAROUSEL_EDIT_RENDERER_VERSION =
-  `${CAROUSEL_RENDERER_VERSION}-normalized-edit-v2`;
+  `${CAROUSEL_RENDERER_VERSION}-normalized-edit-v3`;
 const TRENDING_CAROUSEL_STRUCTURE_2_EDIT_RENDERER_VERSION =
-  `${CAROUSEL_STRUCTURE_2_RENDERER_VERSION}-normalized-edit-v3`;
+  `${CAROUSEL_STRUCTURE_2_RENDERER_VERSION}-normalized-edit-v4`;
 
 type TrendingCarouselEditJobInput = {
   carouselId: string;
@@ -149,6 +150,7 @@ export async function runRenderTrendingCarouselEditJob(
       orderedOriginalSlides.map((slide) => [slide.slide_number, slide]),
     );
     const renderedSlides: Array<{
+      renderFingerprint: string;
       renderedS3Key: string;
       renderedUrl: string;
       slideNumber: number;
@@ -162,10 +164,22 @@ export async function runRenderTrendingCarouselEditJob(
         );
       }
 
+      const renderFingerprint = createHash("sha256").update(JSON.stringify({
+        version: generation.structure_id === "structure_2"
+          ? TRENDING_CAROUSEL_STRUCTURE_2_EDIT_RENDERER_VERSION : TRENDING_CAROUSEL_EDIT_RENDERER_VERSION,
+        format: generation.format,
+        sourceRendererVersion: generation.renderer_version,
+        originalSlide,
+        editedSlide,
+        textStyle: originalTextStyle,
+        plannedSlide: plannedSlideByNumber.get(editedSlide.slideNumber) ?? null,
+      })).digest("hex");
       return {
         editedSlide,
         originalSlide,
-        reusableRender: getReusableOriginalRender(originalSlide, editedSlide),
+        renderFingerprint,
+        reusableRender: getReusablePreviousRender(edit, editedSlide.slideNumber, renderFingerprint) ??
+          getReusableOriginalRender(originalSlide, editedSlide),
       };
     });
     const slideRenderCount = editSlidesWithSource.filter(
@@ -176,11 +190,13 @@ export async function runRenderTrendingCarouselEditJob(
     for (const {
       editedSlide,
       originalSlide,
+      renderFingerprint,
       reusableRender,
     } of editSlidesWithSource) {
       if (reusableRender) {
         renderedSlides.push({
           ...reusableRender,
+          renderFingerprint,
           slideNumber: editedSlide.slideNumber,
         });
         logger.info("Trending Carousel edit slide reused", {
@@ -255,6 +271,7 @@ export async function runRenderTrendingCarouselEditJob(
       });
 
       renderedSlides.push({
+        renderFingerprint,
         renderedS3Key: uploaded.key,
         renderedUrl: uploaded.url,
         slideNumber: editedSlide.slideNumber,
@@ -486,6 +503,20 @@ function parsePlannedSlide(value: Json): PlannedCarouselSlide {
     textMode,
     textPosition,
   };
+}
+
+function getReusablePreviousRender(edit: TrendingCreativeEditRow, slideNumber: number, fingerprint: string) {
+  const output = edit.render_output_json;
+  if (!output || typeof output !== "object" || Array.isArray(output) || !Array.isArray(output.slides)) return null;
+  for (const value of output.slides) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    if (value.slideNumber !== slideNumber || value.renderFingerprint !== fingerprint) continue;
+    if (typeof value.renderedS3Key !== "string" || !value.renderedS3Key.trim()) return null;
+    try {
+      return { renderedS3Key: value.renderedS3Key, renderedUrl: getHttpUrl(value.renderedUrl, "cached renderedUrl") };
+    } catch { return null; }
+  }
+  return null;
 }
 
 function getReusableOriginalRender(

@@ -362,7 +362,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
         {format === "slideshow" ? <Tabs.Panel value="edit" keepMounted className={classic ? creation.sectionPanel : styles.sectionPanel}><div ref={setEditControlsTarget} className={styles.editControls} /></Tabs.Panel> : null}
         {format !== "slideshow" ? <Tabs.Panel value="demo" keepMounted className={creation.sectionPanel}><div ref={setDemoControlsTarget} /></Tabs.Panel> : null}
         <Tabs.Panel value="schedule" keepMounted className={classic ? cn(creation.sectionPanel, styles.classicSchedule) : styles.sectionPanel}>
-        <FormatSchedulePanel key={`${format}:${selectedVideo?.id ?? "owned-slides"}`} format={format} draftScopeId={selectedVideo?.id ?? "owned-slides"} preparing={format !== "slideshow" && !scheduleOutput} pendingSource={source.busy} actionsTarget={scheduleActionsTarget} active={step === "schedule"} output={scheduleOutput} localPreview={localPreview} imageOnly={format === "slideshow"} />
+        <FormatSchedulePanel key={`${format}:${selectedVideo?.id ?? "owned-slides"}`} format={format} draftScopeId={selectedVideo?.id ?? "owned-slides"} preparing={format !== "slideshow" && Boolean(selectedVideo || demoSelected || source.busy) && !scheduleOutput} pendingSource={source.busy} actionsTarget={scheduleActionsTarget} active={step === "schedule"} output={scheduleOutput} localPreview={localPreview} imageOnly={format === "slideshow"} />
         </Tabs.Panel>
         </div>
         <footer hidden={format !== "slideshow" && (editExpanded || step === "create" && source.mode !== "generate")} className={classic ? cn(creation.actionFooter, styles.workflowFooter) : styles.actionFooter} aria-label="Workflow action">
@@ -383,8 +383,8 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
                 {!selectedVideo ? <div className={styles.emptyClip}>
                   <span className={styles.emptyClipIcon}><Film aria-hidden="true" /></span>
                   <div className={styles.emptyClipCopy}>
-                    <div className={styles.emptyClipTitle}><h3>{format === "wall_text" ? "Wall of text" : "Hook video"}</h3></div>
-                    <p aria-live="polite">{restoredVideo.isFetching ? "Restoring your video…" : source.busy ? "Preparing your opening video…" : restoredVideo.isError ? "This saved clip is unavailable. Choose another in Create." : "Your opening is selected automatically when you generate, upload or choose a clip in Create."}</p>
+                    <div className={styles.emptyClipTitle}><h3>{format === "wall_text" ? "Wall of text" : "Hook video"}</h3><span className={styles.clipOptional}>Optional</span></div>
+                    <p aria-live="polite">{restoredVideo.isFetching ? "Restoring your video…" : source.busy ? "Preparing your opening video…" : restoredVideo.isError ? "This saved clip is unavailable. Choose another in Create." : demoSelected ? "You can schedule your demo on its own, or add an opening in Create." : "Add an opening in Create, a demo in Demo, or both."}</p>
                   </div>
                   <Button type="button" variant="outline" disabled={generating || source.busy || restoredVideo.isFetching} onClick={chooseOpeningInCreate}>Go to Create</Button>
                 </div> : null}

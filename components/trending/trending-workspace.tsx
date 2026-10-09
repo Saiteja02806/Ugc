@@ -43,7 +43,7 @@ import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/contexts/auth-context";
 import { CarouselEditRenderStatus } from "@/components/trending/carousel-edit-render-status";
-import { shouldApplyCarouselEditRefresh } from "@/lib/trending/carousel-edit-render-status";
+import { getLatestTrendingEdit, shouldApplyCarouselEditRefresh } from "@/lib/trending/carousel-edit-render-status";
 import { shouldPollTrendingFeed } from "@/lib/trending/daily-feed-status";
 import {
   type BillingSubscription,
@@ -2159,7 +2159,7 @@ export function TrendingDeck({
     async function refreshPendingEdits() {
       const refreshed = await Promise.all(
         pendingEdits.map((entry) =>
-          loadTrendingCreativeEdit(entry).catch(() => null),
+          loadTrendingCreativeEdit(entry).catch(() => ({ ...entry, refreshError: "Refresh unavailable" })),
         ),
       );
 
@@ -2179,7 +2179,8 @@ export function TrendingDeck({
             !previous ||
             previous.revision !== entry.revision ||
             previous.renderState !== entry.renderState ||
-            previous.updatedAt !== entry.updatedAt
+            previous.updatedAt !== entry.updatedAt ||
+            previous.refreshError !== entry.refreshError
           ) {
             next[entry.creativeId] = entry;
             changed = true;
@@ -2734,7 +2735,7 @@ export function TrendingDeck({
         activeSlideByCarouselId={activeSlideByCarouselId}
         candidate={candidate}
         depth={depth}
-        edit={candidate.reviewedEdit !== undefined ? candidate.reviewedEdit : editByCreativeId[candidate.item.creativeId] ?? null}
+        edit={getLatestTrendingEdit(editByCreativeId[candidate.item.creativeId], candidate.reviewedEdit)}
         dragX={0} exitDirection={null} isDragging={false} presentation="feed"
         itemCount={reviewedIndex >= 0 ? postHistory.entries.length : visibleCandidates.length}
         itemIndex={reviewedIndex >= 0 ? reviewedIndex : itemIndex}
@@ -4718,10 +4719,11 @@ async function loadTrendingCreativeEditScope(scope: {
     "edit",
   ].join("/");
   const response = await fetch(
-    `${endpoint}?assignmentId=${encodeURIComponent(scope.assignmentId)}`,
+    `${endpoint}?assignmentId=${encodeURIComponent(scope.assignmentId)}&view=history`,
     {
       cache: "no-store",
       headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(10_000),
     },
   );
   const data = (await response.json().catch(() => null)) as

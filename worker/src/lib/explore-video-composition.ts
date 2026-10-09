@@ -93,13 +93,14 @@ export function buildExploreCompositionFilter(videos: VideoInput[], demoAudio?: 
   backgroundMusic?: AudioInput;
   subtitleAudio?: boolean;
   demoFraming?: DemoFraming;
+  sourceFraming?: DemoFraming;
   originalVolume?: number;
 } = {}) {
   const { width, height } = videos[0];
   const filters: string[] = [];
   for (const [index, video] of videos.entries()) {
     const seconds = String(video.durationMs / 1000);
-    const framing = index === 1 ? options.demoFraming : undefined;
+    const framing = index === 1 ? options.demoFraming : options.sourceFraming;
     if (framing) {
       const cropWidth = Math.floor(video.width * framing.width / 2) * 2, cropHeight = Math.floor(video.height * framing.height / 2) * 2;
       if (cropWidth < 64 || cropHeight < 64 || Math.abs((video.width * framing.width) / (video.height * framing.height) / (width / height) - 1) > .015 ||
@@ -147,6 +148,7 @@ export async function composeExploreVideo(options: {
   musicVolume?: number;
   demoPath?: string;
   demoFraming?: DemoFraming;
+  sourceFraming?: DemoFraming;
   /** Demo-only background layer; preserves the demo's original soundtrack. */
   demoAudioPath?: string;
   /** Explicit user preference; never infer looping from an uploaded filename. */
@@ -163,6 +165,8 @@ export async function composeExploreVideo(options: {
   options.signal?.throwIfAborted();
   if ([options.originalVolume, options.musicVolume].some(value => value !== undefined && (!Number.isFinite(value) || value < 0 || value > 1))) throw new SubtitleError("COMPOSITION_INPUT_INVALID", "Choose an audio level between 0 and 100 percent.");
   const demoFraming = options.demoFraming === undefined ? undefined : parseDemoFraming(options.demoFraming);
+  const sourceFraming = options.sourceFraming === undefined ? undefined : parseDemoFraming(options.sourceFraming);
+  if (sourceFraming && options.demoPath) throw new SubtitleError("COMPOSITION_FRAMING_INVALID", "Single-clip framing requires one video.");
   if (demoFraming && !options.demoPath) throw new SubtitleError("COMPOSITION_DEMO_REQUIRED", "Add a demo before recording its framing.");
   if (options.demoAudioPath && !options.demoPath) throw new SubtitleError("COMPOSITION_DEMO_REQUIRED", "Add a demo before adding demo audio.");
   if ((!options.demoAudioPath && options.demoAudioPlayback !== undefined) || (!options.backgroundMusicPath && options.backgroundMusicPlayback !== undefined)) {
@@ -181,7 +185,7 @@ export async function composeExploreVideo(options: {
   // Validate framing BEFORE any output or later paid transcription is created.
   const filter = buildExploreCompositionFilter(videos, demoAudio ? { ...demoAudio, playback: options.demoAudioPlayback } : undefined, {
     backgroundMusic: backgroundMusic ? { ...backgroundMusic, inputIndex: videos.length + (demoAudio ? 1 : 0), playback: options.backgroundMusicPlayback, volume: options.musicVolume } : undefined,
-    subtitleAudio: Boolean(options.subtitleScope), demoFraming, originalVolume: options.originalVolume,
+    subtitleAudio: Boolean(options.subtitleScope), demoFraming, sourceFraming, originalVolume: options.originalVolume,
   });
   options.signal?.throwIfAborted();
   const paths = [options.sourcePath, options.demoPath, options.demoAudioPath, options.backgroundMusicPath].filter((path): path is string => Boolean(path));
@@ -208,7 +212,7 @@ export async function composeExploreVideo(options: {
   }
   const args = ["-nostdin", "-hide_banner", "-loglevel", "error", "-n"];
   for (const [index] of paths.entries()) args.push("-protocol_whitelist", "file,pipe", "-i", `input-${index}`);
-  if (demoFraming) {
+  if (demoFraming || sourceFraming) {
     // A bounded recording may exceed Windows' command-line length. The graph
     // is generated from validated numbers, inside this new owned directory.
     await writeFile(join(workDir, "composition.filter"), filter, { flag: "wx" });

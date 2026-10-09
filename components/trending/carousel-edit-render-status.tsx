@@ -4,7 +4,7 @@ import type { TrendingCreativeEditRecord } from "@/lib/trending/creative-edit-co
 import { cn } from "@/lib/utils";
 
 export function CarouselEditRenderStatus({ edit, active }: {
-  edit: Pick<TrendingCreativeEditRecord, "renderState" | "renderError"> | null;
+  edit: Pick<TrendingCreativeEditRecord, "renderState" | "renderError" | "refreshError"> | null;
   active: boolean;
 }) {
   const status = getCarouselEditRenderStatus(edit);
@@ -28,7 +28,8 @@ export function CarouselEditRenderStatus({ edit, active }: {
     {status.message ? <div
       data-carousel-edit-error
       role={active ? "alert" : undefined}
-      className="pointer-events-none absolute inset-x-3 bottom-14 z-30 rounded-lg border border-red-500/30 bg-card/95 px-3 py-2 text-center text-xs leading-4 text-foreground"
+      className={cn("pointer-events-none absolute inset-x-3 bottom-14 z-30 rounded-lg border bg-card/95 px-3 py-2 text-center text-xs leading-4 text-foreground",
+        status.tone === "pending" ? "border-amber-500/30" : "border-red-500/30")}
     >{status.message}</div> : null}
   </>;
 }

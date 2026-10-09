@@ -140,7 +140,7 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
   const resumeSaved = receipt !== null && !receipt.scheduleId;
   const schedule: WorkflowAction = { busy, disabled: !enabled || !ownerId || !restored || busy || alreadySaved || (!resumeSaved && (!output || !selectedTargets.length)), error, message: output && !receipt ? "Select an account for each platform, then review and confirm your schedule." : message, onAction: () => { void start(); }, refresh: () => { void refresh(); } };
   return <><FinishingView value={{ edit: finishing.action, schedule, output, options, setOptions }}>{children}</FinishingView>
-    {open && output ? <ScheduleEditor demoMediaOptions={media} hookMediaOptions={[]} editingIsCombinedVideo={false} editingPlannedPlatforms={[]} editingSchedule={null} editingScheduledDate={null} editingScheduledTime={null}
+    {open && output ? <ScheduleEditor finalVideo={media[0]} demoMediaOptions={media} hookMediaOptions={[]} editingIsCombinedVideo={false} editingPlannedPlatforms={[]} editingSchedule={null} editingScheduledDate={null} editingScheduledTime={null}
       initialClipSelection="secondary_only" initialDemoMediaId={output.id} initialHookMediaId="" initialCaption={scheduleDraft.caption} initialPlannedTargets={selectedTargets}
       initialScheduledDate={scheduleDraft.date} initialScheduledTime={scheduleDraft.time} minimumScheduleLeadMinutes={lead} requireScheduleTarget saving={busy} errorMessage={error}
       socialConnections={connections.filter(c => selectedTargets.some(target => target.connectionId === c.id))} tiktokBetaEnabled={selectedPlatforms.includes("tiktok")} youtubeBetaEnabled={selectedPlatforms.includes("youtube")}

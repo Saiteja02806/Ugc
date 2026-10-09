@@ -437,6 +437,59 @@ test("retries an atomic completion failure without losing the saved output", asy
   );
 });
 
+test("Carousel completion dispatches reconciliation independently without claiming or waiting for feed admission", async () => {
+  const job = createJob(); job.job_type = "generate_carousel"; job.user_id = "owner";
+  const store = createJobStore(job);
+  store.claimTrendingFeedReconciliation = async () => { throw new Error("must not claim inside rendering request"); };
+  const dispatched: string[] = [];
+  const commands: string[] = [];
+  await processWorkerMessage({ config: { ...createConfig(), allowedJobTypes: ["generate_carousel"] },
+    dependencies: { runJob: async () => ({ ok: true }),
+      enqueueTrendingReconciliation: async params => { dispatched.push(params.sourceJobId); },
+      reconcileTrendingFeed: async () => { throw new Error("must not block rendering"); } },
+    message: createMessage("generate_carousel"), queue: createQueue(commands), store });
+  assert.deepEqual(dispatched, [job.id]);
+  assert.equal(job.status, "completed");
+  assert.ok(commands.includes("DeleteMessageCommand"));
+});
+
+test("terminal Carousel failure dispatches feed recovery without holding the render request", async () => {
+  const job = createJob(); job.job_type = "generate_carousel";
+  const store = createJobStore(job);
+  store.markFailed = (async () => {
+    job.claim_token = null; job.status = "failed";
+    return { ...job };
+  }) as SupabaseJobStore["markFailed"];
+  store.claimTrendingFeedReconciliation = async () => { throw new Error("must not claim inside failed generation"); };
+  const dispatched: string[] = [];
+  const commands: string[] = [];
+  await processWorkerMessage({ config: createConfig(["generate_carousel"]),
+    dependencies: { runJob: async () => { throw new Error("Copy does not fit"); },
+      enqueueTrendingReconciliation: async params => { dispatched.push(params.sourceJobId); } },
+    message: createMessage("generate_carousel"), queue: createQueue(commands), store });
+  assert.deepEqual(dispatched, [job.id]);
+  assert.equal(job.status, "failed");
+  assert.ok(commands.includes("DeleteMessageCommand"));
+});
+
+test("a failed independent dispatch preserves terminal output and leaves durable recovery available", async () => {
+  const job = createJob(); job.job_type = "generate_carousel";
+  const store = createJobStore(job);
+  let synchronousClaims = 0;
+  store.claimTrendingFeedReconciliation = async () => {
+    synchronousClaims += 1;
+    return { attempt_count: 1, source_job_id: job.id, user_id: job.user_id ?? "" };
+  };
+  const commands: string[] = [];
+  await processWorkerMessage({ config: createConfig(["generate_carousel"]),
+    dependencies: { runJob: async () => ({ ok: true }),
+      enqueueTrendingReconciliation: async () => { throw new Error("Cloud Tasks temporarily unavailable"); } },
+    message: createMessage("generate_carousel"), queue: createQueue(commands), store });
+  assert.equal(job.status, "completed");
+  assert.equal(synchronousClaims, 0);
+  assert.ok(commands.includes("DeleteMessageCommand"));
+});
+
 test("defers an early duplicate delivery until the stored retry time", async () => {
   const job = createJob();
   const commands: string[] = [];

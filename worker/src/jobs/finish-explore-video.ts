@@ -112,6 +112,7 @@ export async function runFinishExploreVideoJob(job: BackgroundJobRow, context: P
       fontsDir:process.env.SUBTITLE_FONTS_DIR || fileURLToPath(new URL("../../assets/fonts/",import.meta.url)) };
     const result = await deps.finish({ sourcePath:join(directory,"source-0"),demoPath,demoAudioPath,backgroundMusicPath,signal:controller.signal,
         ...(draft.demoFraming ? { demoFraming: draft.demoFraming } : {}),
+        ...(draft.sourceFraming ? { sourceFraming: draft.sourceFraming } : {}),
         ...(draft.editing ? { editing: draft.editing } : {}),
       ...(demoAudioPath ? { demoAudioPlayback:draft.demoAudioPlayback } : {}),
       ...(backgroundMusicPath ? { backgroundMusicPlayback:draft.backgroundPlayback } : {}),workDir:join(directory,"render"),tools,
@@ -145,7 +146,8 @@ export async function runFinishExploreVideoJob(job: BackgroundJobRow, context: P
         ratio:assets[0].ratio || "other",metadata:{ sourceHashes:result.sourceHashes,segments:result.segments,
           demoAudioTiming:result.demoAudioTiming,backgroundMusicTiming:result.backgroundMusicTiming,subtitleStyle:result.subtitleStyle,subtitlePlacement:result.subtitlePlacement,subtitleWordCount:result.subtitleWordCount,
           subtitleRenderVersion:result.subtitleRenderVersion,subtitleAudioTimeline:"final-composition-v1",
-          ...(draft.demoFraming ? { demoFraming: draft.demoFraming } : {}) } });
+          ...(draft.demoFraming ? { demoFraming: draft.demoFraming } : {}),
+          ...(draft.sourceFraming ? { sourceFraming: draft.sourceFraming } : {}) } });
     }
     catch (error) {
       if (error instanceof ExploreFinishError) throw error;

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getCarouselEditRenderStatus, shouldApplyCarouselEditRefresh } from "./carousel-edit-render-status.ts";
+import { getCarouselEditRenderStatus, getLatestTrendingEdit, shouldApplyCarouselEditRefresh } from "./carousel-edit-render-status.ts";
+import type { TrendingCreativeEditRecord } from "./creative-edit-contract.ts";
 
 test("only a completed render claims Edited; queued and rendering edits say Updating", () => {
   assert.equal(getCarouselEditRenderStatus(null), null);
@@ -10,6 +11,23 @@ test("only a completed render claims Edited; queued and rendering edits say Upda
   }
   assert.deepEqual(getCarouselEditRenderStatus({ renderState: "ready", renderError: null }),
     { label: "Edited", tone: "ready", message: null });
+});
+
+test("a returned card prefers the completed live revision over its pending history snapshot", () => {
+  const snapshot = { revision: 2, updatedAt: "2026-10-09T20:02:12Z", renderState: "queued" } as TrendingCreativeEditRecord;
+  const ready = { ...snapshot, updatedAt: "2026-10-09T20:06:05Z", renderState: "ready" as const };
+  assert.equal(getLatestTrendingEdit(ready, snapshot), ready);
+  assert.equal(getLatestTrendingEdit(ready, null), ready);
+  assert.equal(getLatestTrendingEdit(undefined, snapshot), snapshot);
+  assert.equal(getLatestTrendingEdit(snapshot, ready), ready);
+  assert.equal(getLatestTrendingEdit({ ...ready, revision: 1 }, snapshot), snapshot);
+});
+
+test("a refresh failure never claims render failure or completed output", () => {
+  const status = getCarouselEditRenderStatus({ renderState: "rendering", renderError: null, refreshError: "offline" });
+  assert.equal(status?.label, "Checking update");
+  assert.equal(status?.tone, "pending");
+  assert.match(status?.message ?? "", /Retrying automatically/);
 });
 
 test("render failures explain the next action instead of claiming Edited", () => {

@@ -65,6 +65,7 @@ test("adds a version and attempt to the background job message", () => {
 
 test("maps carousel jobs to the logical GCP queue", () => {
   assert.equal(getQueueNameForJobType("generate_carousel"), "carousel");
+  assert.equal(getQueueNameForJobType("render_trending_carousel_edit"), "carousel-edit");
 });
 
 test("maps all active production job types to migrated GCP queues", () => {

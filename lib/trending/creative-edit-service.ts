@@ -35,6 +35,7 @@ import {
 import { chooseLibraryAsset } from "@/lib/trending/creative-edit-source-selection";
 import {
   assertEditableTrendingCreative,
+  assertReadableTrendingCreative,
   getTrendingCreativeEdit,
   TrendingCreativeEditAccessError,
   upsertTrendingCreativeEdit,
@@ -78,6 +79,28 @@ export async function loadTrendingCreativeEditor(params: {
   userId: string;
 }): Promise<TrendingCreativeEditRecord> {
   await assertEditableTrendingCreative(params);
+
+  return loadTrendingCreativeRecord(params);
+}
+
+export async function loadTrendingCreativeReadView(params: {
+  assignmentId: string;
+  creativeId: string;
+  format: TrendingCreativeEditFormat;
+  userId: string;
+}): Promise<TrendingCreativeEditRecord> {
+  if (params.format === "wall_text") return loadTrendingWallTextPreview(params);
+  if (params.format === "hook_video") return loadTrendingCreativeEditor(params);
+  await assertReadableTrendingCreative(params);
+  return loadTrendingCreativeRecord(params);
+}
+
+async function loadTrendingCreativeRecord(params: {
+  assignmentId: string;
+  creativeId: string;
+  format: TrendingCreativeEditFormat;
+  userId: string;
+}): Promise<TrendingCreativeEditRecord> {
 
   const [defaultContent, row] = await Promise.all([
     buildDefaultContent(params),

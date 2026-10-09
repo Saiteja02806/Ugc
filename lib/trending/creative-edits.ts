@@ -137,6 +137,24 @@ export async function assertEditableTrendingCreative(params: {
   format: TrendingCreativeEditFormat;
   userId: string;
 }) {
+  return assertTrendingCreativeAssignment(params, false);
+}
+
+export async function assertReadableTrendingCreative(params: {
+  assignmentId: string;
+  creativeId: string;
+  format: TrendingCreativeEditFormat;
+  userId: string;
+}) {
+  return assertTrendingCreativeAssignment(params, true);
+}
+
+async function assertTrendingCreativeAssignment(params: {
+  assignmentId: string;
+  creativeId: string;
+  format: TrendingCreativeEditFormat;
+  userId: string;
+}, readOnly: boolean) {
   const client = getClient();
   const result =
     params.format === "carousel"
@@ -146,7 +164,7 @@ export async function assertEditableTrendingCreative(params: {
           .eq("id", params.assignmentId)
           .eq("carousel_id", params.creativeId)
           .eq("user_id", params.userId)
-          .in("state", ["pending", "in_progress", "accepted"])
+          .in("state", readOnly ? ["pending", "in_progress", "accepted", "completed_skipped"] : ["pending", "in_progress", "accepted"])
           .maybeSingle()
       : params.format === "hook_video"
         ? await client
@@ -155,7 +173,7 @@ export async function assertEditableTrendingCreative(params: {
             .eq("id", params.assignmentId)
             .eq("hook_suggestion_id", params.creativeId)
             .eq("user_id", params.userId)
-            .in("state", ["active", "selected"])
+            .in("state", readOnly ? ["active", "selected", "completed_skipped"] : ["active", "selected"])
             .maybeSingle()
         : await client
             .from("user_wall_text_assignments")
@@ -163,7 +181,7 @@ export async function assertEditableTrendingCreative(params: {
             .eq("id", params.assignmentId)
             .eq("wall_text_creative_id", params.creativeId)
             .eq("user_id", params.userId)
-            .in("state", ["active", "selected"])
+            .in("state", readOnly ? ["active", "selected", "completed_skipped"] : ["active", "selected"])
             .maybeSingle();
   const { data, error } = result;
 
@@ -262,7 +280,9 @@ export async function upsertTrendingCreativeEdit(params: {
     position_json: params.positions,
     render_error: null,
     render_job_id: null,
-    render_output_json: null,
+    // A server-written ready output carries per-slide fingerprints for reuse.
+    // Pending/failed status never makes this previous output scheduleable.
+    render_output_json: params.format === "carousel" ? existing?.render_output_json ?? null : null,
     render_status: "draft" as const,
     resolved_media_asset_id: params.resolvedMediaAssetId ?? null,
     revision: (existing?.revision ?? 0) + 1,

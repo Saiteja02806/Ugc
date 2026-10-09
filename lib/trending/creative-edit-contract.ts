@@ -105,6 +105,8 @@ export type TrendingCreativeEditRenderState =
   | "rendering";
 
 export type TrendingCreativeEditRecord = {
+  // Client-only refresh failure; distinct from the backend render result.
+  refreshError?: string | null;
   assignmentId: string;
   content: TrendingCreativeEditContent;
   creativeId: string;

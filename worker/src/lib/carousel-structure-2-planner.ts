@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { resolveStructure2HookTemplate } from "./carousel-structure-2-hook-templates.js";
+import { getCarouselStructure2MeasuredCopyIssues } from "./carousel-structure-2-measured-copy-fit.js";
 
 import {
   assertCarouselStructure2StoryAssignments,
@@ -27,7 +28,7 @@ import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 import { CONTENT_PLAN_OPENAI_MAX_RETRIES, CONTENT_PLAN_OPENAI_TIMEOUT_MS } from "./content-plan-provider-retry.js";
 
 export const CAROUSEL_STRUCTURE_2_PLANNER_VERSION =
-  "llm-carousel-structure-2-writer-v21-single-statement-social-hook";
+  "llm-carousel-structure-2-writer-v22-role-specific-copy-contract";
 
 // The OpenAI strict decoder cannot safely carry the whitespace word-count
 // regex. Keep the exact contract in the publisher validator and allow one
@@ -188,6 +189,9 @@ export async function buildCarouselStructure2StoryPlanBatch(
             recentHistory: acceptedHistory,
           }),
         );
+        if (validation.blockingIssues.length === 0) {
+          validation.blockingIssues.push(...await getCarouselStructure2MeasuredCopyIssues(parsedPlan));
+        }
         initialIssues = validation.blockingIssues;
         advisoryIssues = validation.advisoryIssues;
       } catch (error) {
@@ -356,6 +360,9 @@ async function attemptIsolatedRepair(params: {
         }),
       );
       const finalIssues = validation.blockingIssues;
+      if (finalIssues.length === 0) {
+        finalIssues.push(...await getCarouselStructure2MeasuredCopyIssues(repairedPlan));
+      }
 
       if (finalIssues.length === 0) {
         return createLlmResult({
@@ -401,6 +408,9 @@ async function attemptIsolatedRepair(params: {
           const nativeValidation = partitionCarouselStructure2ValidationIssues(validateCarouselStructure2StoryPlan(nativePlan, {
             businessDescription: params.businessDescription, recentHistory: params.recentHistory,
           }));
+          if (nativeValidation.blockingIssues.length === 0) {
+            nativeValidation.blockingIssues.push(...await getCarouselStructure2MeasuredCopyIssues(nativePlan));
+          }
           if (!nativeValidation.blockingIssues.length) {
             const result = createLlmResult({ assignment: nativeAssignment, plan: nativePlan,
               advisoryIssues: nativeValidation.advisoryIssues, initialBatchResponse: params.initialBatchResponse,

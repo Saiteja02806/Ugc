@@ -2,6 +2,80 @@
 
 Last updated: 2026-10-10
 
+## 2026-10-10 Slideshow latency, screenshot persistence and history repairs (local implementation)
+
+- Interactive slideshow renders now target `carousel-edit` / `ugc-carousel-edit`
+  and a dedicated `ugc-carousel-edit-worker`. Terraform defines one warm
+  instance, one concurrent request and a one-instance maximum. Full generation
+  retains its serial queue and service. Provision the edit service/queue and set
+  `GCP_CAROUSEL_EDIT_TASK_URL` before deploying this routing change; a generic
+  generation URL is deliberately not a fallback for edits.
+- A terminal `generate_carousel` request dispatches feed admission to
+  `ugc-trending-reconciliation` instead of awaiting the app's slow reconciliation
+  call. Tasks have a retry-stable source-job/terminal-revision identity and use
+  verified scheduler OIDC. The app checks terminal job ownership, claims the
+  durable database outbox and only acknowledges completed/absent work. Busy
+  claims and temporary failures retry; the existing scheduled outbox recovery
+  remains available if task creation fails. Existing signed callbacks remain
+  compatible. Deploy the API before the dispatching generation worker.
+- Migration `20261009202401_align_six_slide_product_screenshot_metadata.sql`
+  widens only the live metadata check's product slot set from 4/5 to 4/5/6,
+  preserving every other predicate and validating existing rows. This aligns
+  persistence with the existing six-slide final screenshot reservation; it does
+  not change crop/rendering or rewrite earlier slideshows.
+- Read-only Carousel status access accepts owned `completed_skipped` assignments;
+  mutations retain active/selected access. Cards prefer the latest edit revision
+  and timestamp over their captured history snapshot. Refresh failures show
+  `Checking update` and retry automatically, with a ten-second request bound.
+  Wall text reads continue through their existing history preview accessor.
+- Saves retain server-written prior Carousel output for per-slide reuse, while
+  resetting readiness. Workers reuse a prior edited slide only when its complete
+  input/renderer fingerprint matches. Changed copy, background, position or
+  renderer invalidates reuse. Edit renderer revisions are Structure 1 v3 and
+  Structure 2 v4; automatic generation keeps its current v13 renderer.
+- Structure 2 v22 planner prompts and schemas explicitly distinguish the
+  single-statement cover from body paragraphs and final takeaway word counts.
+  Existing font sizes, publishing validation and bounded repair attempts remain.
+  Before accepting initial or repaired copy, the planner now also checks actual
+  renderer font metrics and the combined heading/body/CTA safe area in the square
+  format. This catches overflow missed by estimated widths before image work.
+  Failed dispatched reservations wait for an eligible successor instead of
+  replaying the old reservation; jobless preparation recovery remains supported.
+- Implementation tests, an isolated live text-only repair probe and rollout
+  prerequisites are recorded in `docs/trending-slideshow-repairs-2026-10-10.md`.
+  These new repairs have not yet been pushed, migrated or deployed; historical
+  production findings below describe the inspected release.
+
+## 2026-10-10 Deployment verification and follow-up production diagnosis
+
+- The October 9/10 local Trending changes below were subsequently pushed and
+  deployed in `3f352026e9ecefeba5877242738efdc65b3d86b1`. The production website
+  later advanced to descendant `526f26a20ca50326220d87885c033393addafcaf`; worker
+  source is unchanged between those commits. Carousel revision
+  `ugc-carousel-worker-00107-qd5` serves the released image at 100%, with minimum
+  and maximum instances 1 and concurrency 1. Historical pending/local rollout
+  statements below describe their original implementation stage.
+- Real Hook library edit records demonstrate an approximately four-second
+  update when idle, and a separate 230-second queue wait behind full generation.
+  Warm instances remove scale-from-zero delay, but edits and generation still
+  share a single dispatch slot. Terminal generation requests can also retain
+  that slot while awaiting reconciliation.
+- The live Structure 2 metadata constraint still restricts product screenshots
+  to slides 4/5, conflicting with the established six-slide final-slot contract.
+  Recent screenshot generations render and then fail persistence. Existing
+  slides generated before screenshot upload correctly retain their saved images
+  during hook-only edits. The intended slide-6 product placement is unchanged;
+  no repair migration has been applied during this read-only follow-up.
+- Additional diagnosed defects are captured edit snapshots overriding newer
+  ready history state, edit-status polling rejecting skipped Carousel
+  assignments, unnecessary rerenders of unchanged previously edited body slides,
+  exhausted copy repairs, and production reservation replay conflicts. Existing
+  bounded recovery is already present live; exact conflict guard/request pairing
+  still needs tracing. No new application or production repair was made.
+- See `docs/trending-slideshow-production-root-causes-2026-10-10.md` for timing,
+  persistence evidence, repair priorities and acceptance limits. Production
+  generation is not fully healthy merely because the release deployed.
+
 ## 2026-10-10 Manual image uploads on every Trending slideshow slide (local implementation)
 
 - Edit creative offers an independent image upload for the selected slide in
@@ -6025,3 +6099,10 @@ and advertises only deployed workflows. See
 - Compact video editing uses the available workflow width and exposes an accessible Workflow controls toggle to reveal the still-mounted source panel. Back to previews restores the normal workspace. The compact width boundary includes fractional CSS pixels from display scaling. Portrait media reserves room for its playback controls and Edit actions; an absent optional Demo is a short Add demo row rather than a second full-height card.
 - All three format workflows retain readable 14px generation instructions with at least 160px writing height. Reference tiles stay capped in compact and stacked layouts. Text styling/timing is disclosed on demand; existing clip drafts, portal targets and save/merge handlers remain intact.
 - Scrollbars remain visible with muted narrow thumbs across the workflow, its dialogs and app navigation. The development-only format fixture now also renders Slideshows for free layout checks. Generation, slideshow ownership/export, automatic Carousel sourcing and publishing contracts are unchanged; paid operations and authenticated production acceptance are outside these local checks.
+
+### 2026-10-10 Explore scheduling review and publishing preferences (local)
+
+- Explore video workflows pass the confirmed final owned video to scheduling as one playable, fixed video with its duration. The generic scheduler retains Hook/Secondary selection for independently composed posts; Explore does not offer a second composition of its already finished video. Slideshows retain their saved, ordered image sequence.
+- Hook and Wall of text can schedule an opening alone, a demo alone, or opening followed by demo. A selected but unprepared opening is never silently skipped. Neither clip selected blocks preparation. An unchanged, ready owned MP4 can be scheduled directly; standalone demo trim, text, sound and crop/pan still apply before scheduling. Source framing is an optional single-clip extension behind the existing framing gate, with a distinct renderer fingerprint; omitted legacy fields and receipts keep their identities.
+- Optional publishing controls are collapsed. TikTok's required visibility selection and supported interaction choices remain available; privacy is not silently preset. Photo posts omit video-only Duet/Stitch controls. An owner-persisted AI content disclosure default in Settings initializes new TikTok/YouTube posts, while explicit per-post choices and saved schedule settings remain authoritative. This preference does not alter Carousel sourcing, plans, rendering, readiness or publishing ownership.
+- These changes have local component/browser, database permission and renderer checks. The publishing-preference migration and the website/worker contract must be released together before production acceptance. Local fixtures cannot publish real posts or replace authenticated verification.

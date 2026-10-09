@@ -22,6 +22,12 @@ variable "enable_carousel_worker" {
   default     = false
 }
 
+variable "enable_carousel_edit_worker" {
+  description = "Enable the independent warm interactive Carousel edit service after its queue and image are ready."
+  type        = bool
+  default     = false
+}
+
 variable "worker_image_uri" {
   description = "Artifact Registry image URI for the worker container."
   type        = string

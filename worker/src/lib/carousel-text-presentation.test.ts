@@ -138,7 +138,7 @@ test("new Structure 2 headings and bodies round-trip without changing asset assi
   assert.ok(rows.every((row) => row.category_image_asset_id === "asset-1"));
 });
 
-test("the screenshot composition remains contained and both output dimensions stay unchanged", async () => {
+test("the screenshot composition keeps both output dimensions and text placement safe", async () => {
   const source = await sharp({ create: { width: 500, height: 900, channels: 3, background: "#48764c" } }).png().toBuffer();
   for (const format of ["1:1", "4:5"] as const) {
     const result = await renderCarouselStructure2SlideFromBuffer({ assetBuffer: source, format, spec: spec({ slideNumber: 6, storyRole: "takeaway_cta", layoutVariant: "story_product_reveal", visualRole: "product_asset", productVisualEligibility: "preferred", ctaText: "try one small step today" }) });

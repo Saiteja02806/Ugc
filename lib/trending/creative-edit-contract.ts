@@ -38,12 +38,17 @@ export type TrendingCreativeEditSource = {
 
 export type TrendingCarouselEditSlide = {
   backgroundAssetId: string | null;
+  // Derived by the server for manual image replacements; never accepted from PATCH.
+  backgroundCrop?: "centre";
   backgroundUrl: string;
   ctaText: string;
   headline: string;
   hasHeading?: boolean;
   originalBackgroundAssetId: string | null;
   originalBackgroundUrl: string;
+  originalHeadline?: string;
+  originalSubtext?: string;
+  sourceRendererVersion?: string | null;
   originalVisualRole: "hook" | "human" | "product_asset" | "static" | null;
   productVisualEligibility: "allowed" | "forbidden" | "preferred" | null;
   renderFormat: "1:1" | "4:5";

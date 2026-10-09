@@ -6,6 +6,106 @@ import type { BackgroundJobRow } from "../types.js";
 import { CAROUSEL_RENDERER_VERSION } from "../lib/carousel-render-slide.js";
 import { CAROUSEL_STRUCTURE_2_RENDERER_VERSION } from "../lib/carousel-structure-2-render-slide.js";
 import { runRenderTrendingCarouselEditJob } from "./render-trending-carousel-edit.js";
+import type { renderCarouselSlideWithDiagnostics } from "../lib/carousel-render-slide.js";
+import type { renderCarouselStructure2SlideWithDiagnostics } from "../lib/carousel-structure-2-render-slide.js";
+
+for (const structureId of ["structure_1", "structure_2"] as const) {
+  for (const replaceAll of [false, true]) {
+    test(`${structureId} renders ${replaceAll ? "all six independent uploads" : "a body-slide upload and reuses the other five source images"}`, async () => {
+      const originals = Array.from({ length: 6 }, (_, index) => ({ id: `slide-${index + 1}`, slide_number: index + 1,
+        category_image_asset_id: `original-${index + 1}`, headline: "Original text", subtext: "", cta_text: "",
+        visual_role: index === 0 ? "hook" : "human", text_position: "center", story_format_id: "wrong_belief",
+        story_role: index === 0 ? "recognition" : "failure_scene", story_layout_variant: "story_overlay_only",
+        product_visual_eligibility: "forbidden", rendered_url: `https://storage.test/original-${index + 1}.webp`, rendered_s3_key: `original-${index + 1}.webp` }));
+      const edited = originals.map((slide, index) => {
+        const replaced = replaceAll || index === 2;
+        return { slideId: slide.id, slideNumber: slide.slide_number, headline: slide.headline, subtext: "", ctaText: "",
+          backgroundAssetId: replaced ? `upload-${index + 1}` : slide.category_image_asset_id,
+          backgroundUrl: `https://storage.test/${replaced ? "upload" : "original"}-${index + 1}.png`,
+          backgroundCrop: replaced ? "centre" : undefined, textPosition: { x: .5, y: .5 }, visualRole: slide.visual_role };
+      });
+      const received: Array<{ number: number; url: string; crop?: string }> = [];
+      let readyOutput: unknown;
+      const store = {
+        getTrendingCarouselEdit: async () => ({ id: "edit", creative_id: "carousel", render_job_id: "job", render_status: "queued",
+          content_json: { format: "carousel", slides: edited } }),
+        getCarouselGeneration: async () => ({ user_id: "owner", status: "completed", format: "4:5", structure_id: structureId, slide_count: 6, content_plan_normalized: null }),
+        listCarouselSlides: async () => originals,
+        markTrendingCarouselEditRendering: async () => undefined,
+        markTrendingCarouselEditReady: async (params: { output: unknown }) => { readyOutput = params.output; },
+      } as unknown as SupabaseJobStore;
+      await runRenderTrendingCarouselEditJob({ id: "job", job_type: "render_trending_carousel_edit",
+        input_json: { userId: "owner", carouselId: "carousel", editId: "edit", revision: 1 } } as unknown as BackgroundJobRow, {
+        store, checkpoint: async () => undefined,
+        dependencies: {
+          renderCarouselSlide: async input => {
+            assert.equal(structureId, "structure_1"); received.push({ number: input.slide.slideNumber, url: input.assetUrl });
+            return { buffer: Buffer.from("rendered"), diagnostics: {} } as Awaited<ReturnType<typeof renderCarouselSlideWithDiagnostics>>;
+          },
+          renderCarouselStructure2Slide: async input => {
+            assert.equal(structureId, "structure_2"); received.push({ number: input.spec.slideNumber, url: input.assetUrl, crop: input.spec.backgroundCrop });
+            assert.equal(input.spec.productVisualEligibility, "forbidden");
+            assert.equal(input.spec.backgroundCrop, "centre");
+            return { buffer: Buffer.from("rendered"), diagnostics: {} } as Awaited<ReturnType<typeof renderCarouselStructure2SlideWithDiagnostics>>;
+          },
+          uploadRenderedCarouselSlide: async ({ slideNumber }) => ({ key: `edited-${slideNumber}.webp`, url: `https://storage.test/edited-${slideNumber}.webp` }),
+        },
+      });
+      assert.deepEqual(received.map(slide => slide.number), replaceAll ? [1, 2, 3, 4, 5, 6] : [3]);
+      assert.deepEqual(received.map(slide => slide.url), (replaceAll ? [1, 2, 3, 4, 5, 6] : [3]).map(number => `https://storage.test/upload-${number}.png`));
+      const output = readyOutput as { slides: Array<{ slideNumber: number; renderedUrl: string }> };
+      assert.equal(output.slides.length, 6);
+      assert.deepEqual(output.slides.map(slide => slide.renderedUrl), originals.map((_, index) => `https://storage.test/${replaceAll || index === 2 ? "edited" : "original"}-${index + 1}.webp`));
+    });
+  }
+}
+
+for (const structureId of ["structure_1", "structure_2"] as const) {
+  for (const changesCopy of [false, true]) {
+    test(`${structureId} image replacement ${changesCopy ? "uses current typography for changed copy" : "keeps authoritative original hook typography"}`, async () => {
+      const originalCopy = "Why being always available keeps draining you";
+      let fontSize: number | undefined;
+      let ready = false;
+      const store = {
+        getTrendingCarouselEdit: async () => ({ id: "edit", creative_id: "carousel", render_job_id: "job",
+          render_status: "queued", content_json: { format: "carousel", slides: [{
+            backgroundAssetId: "new-image", backgroundUrl: "https://example.test/new.webp",
+            ctaText: "", headline: changesCopy ? "Why your daily plan keeps falling apart" : originalCopy,
+            subtext: "", slideId: "slide", slideNumber: 1, visualRole: "hook",
+            textPosition: { x: .5, y: .5 },
+            // Deliberately invalid client metadata: the worker must derive it from the source rows.
+            sourceRendererVersion: "unknown", originalHeadline: "tampered", originalSubtext: "tampered",
+          }] } }),
+        getCarouselGeneration: async () => ({ user_id: "owner", status: "completed", format: "4:5",
+          structure_id: structureId, slide_count: 1, content_plan_normalized: null,
+          renderer_version: structureId === "structure_2" ? "story-native-tiktok-text-blocks-inter-tight-v11" : "social-tiktok-text-blocks-inter-tight-v25" }),
+        listCarouselSlides: async () => [{ id: "slide", slide_number: 1, category_image_asset_id: "old-image",
+          headline: originalCopy, subtext: "", cta_text: "", visual_role: "hook", text_position: "center",
+          story_format_id: "wrong_belief", story_role: "recognition", story_layout_variant: "story_overlay_only",
+          rendered_url: "https://example.test/original.webp", rendered_s3_key: "original.webp" }],
+        markTrendingCarouselEditRendering: async () => undefined,
+        markTrendingCarouselEditReady: async () => { ready = true; },
+      } as unknown as SupabaseJobStore;
+      await runRenderTrendingCarouselEditJob({ id: "job", job_type: "render_trending_carousel_edit",
+        input_json: { userId: "owner", carouselId: "carousel", editId: "edit", revision: 1 } } as unknown as BackgroundJobRow, {
+        store, checkpoint: async () => undefined,
+        dependencies: {
+          renderCarouselSlide: async (input) => {
+            fontSize = input.coverFontSize;
+            return { buffer: Buffer.from("image"), diagnostics: {} } as Awaited<ReturnType<typeof renderCarouselSlideWithDiagnostics>>;
+          },
+          renderCarouselStructure2Slide: async (input) => {
+            fontSize = input.spec.coverFontSize;
+            return { buffer: Buffer.from("image"), diagnostics: {} } as Awaited<ReturnType<typeof renderCarouselStructure2SlideWithDiagnostics>>;
+          },
+          uploadRenderedCarouselSlide: async () => ({ key: "edited.webp", url: "https://example.test/edited.webp" }),
+        },
+      });
+      assert.equal(fontSize, changesCopy ? 84 : 72);
+      assert.equal(ready, true);
+    });
+  }
+}
 
 test("renders and persists a normalized immutable Carousel edit", async () => {
   let receivedPosition: { x: number; y: number } | undefined;
@@ -121,7 +221,7 @@ test("renders and persists a normalized immutable Carousel edit", async () => {
   });
   assert.equal(receivedTextStyle, "plain");
   assert.deepEqual(readyOutput, {
-    rendererVersion: `${CAROUSEL_RENDERER_VERSION}-normalized-edit-v1`,
+    rendererVersion: `${CAROUSEL_RENDERER_VERSION}-normalized-edit-v2`,
     slides: [
       {
         renderedS3Key: "carousels/rendered/user/edit/slide.webp",
@@ -260,7 +360,7 @@ test("reuses immutable output for unchanged Carousel slides", async () => {
   assert.deepEqual(renderedSlideNumbers, [2]);
   assert.deepEqual(uploadedSlideNumbers, [2]);
   assert.deepEqual(readyOutput, {
-    rendererVersion: `${CAROUSEL_RENDERER_VERSION}-normalized-edit-v1`,
+    rendererVersion: `${CAROUSEL_RENDERER_VERSION}-normalized-edit-v2`,
     slides: [
       {
         renderedS3Key: "carousels/original/slide-1.webp",
@@ -397,7 +497,7 @@ test("renders Structure 2 screenshot edits with the story-native renderer", asyn
   assert.equal(receivedSpec.textPosition, "upper");
   assert.equal(receivedSpec.visualRole, "product_asset");
   assert.deepEqual(readyOutput, {
-    rendererVersion: `${CAROUSEL_STRUCTURE_2_RENDERER_VERSION}-normalized-edit-v1`,
+    rendererVersion: `${CAROUSEL_STRUCTURE_2_RENDERER_VERSION}-normalized-edit-v3`,
     slides: [
       {
         renderedS3Key: "carousels/rendered/user/edit/slide-4.webp",

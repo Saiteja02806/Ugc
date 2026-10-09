@@ -693,14 +693,15 @@ test("Carousel editing keeps content headings and shared Slide 1 typography", ()
   assert.match(editor, /kind === "headline" \? CAROUSEL_HEADING_FONT_SIZE : CAROUSEL_BODY_FONT_SIZE/);
   assert.match(editor, /WebkitTextStroke: "0\.370cqw rgba\(0, 0, 0, 0\.72\)"/);
   assert.match(editor, /function CarouselEditorBackground/);
-  assert.match(editor, /story_product_reveal/);
+  assert.match(editor, /App screenshots use the same full-frame centre crop/);
   assert.match(editor, /function CarouselOutlinedText/);
   assert.match(editor, /function CarouselCoverText/);
-  assert.match(editor, /fontSize: `\$\{CAROUSEL_HOOK_FONT_SIZE \/ 10\.8\}cqw`/);
+  assert.match(editor, /fontSize: `\$\{fontSize \/ 10\.8\}cqw`/);
+  assert.match(editor, /fontSize=\{getCarouselEditHookFontSize\(slide\)\}/);
   assert.match(editor, /className="font-bold leading-\[\.98\] text-white"/);
   assert.match(editor, /primaryText=\{slide\.headline\.trim\(\) \|\| supportingText\}/);
   assert.match(editor, /const isCover = slide\.slideNumber === 1/);
-  assert.match(editor, /fontSize: isCover \? CAROUSEL_HOOK_FONT_SIZE : CAROUSEL_FIXED_EDITOR_FONT_SIZE/);
+  assert.match(editor, /fontSize: isCover \? getCarouselEditHookFontSize\(slide\) : CAROUSEL_FIXED_EDITOR_FONT_SIZE/);
   assert.match(editor, /slide\.slideNumber === 1 \? "Hook" : slide\.hasHeading === false && !slide\.subtext \? "Text" : "Headline \(optional\)"/);
   assert.match(
     editor,

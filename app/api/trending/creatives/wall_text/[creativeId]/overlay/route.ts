@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { requireFirebaseUser, FirebaseAuthRequestError } from "@/lib/firebase/server-auth";
-import { loadTrendingCreativeEditor } from "@/lib/trending/creative-edit-service";
+import { loadTrendingCreativeEditor, loadTrendingWallTextPreview } from "@/lib/trending/creative-edit-service";
 import { TrendingCreativeEditAccessError } from "@/lib/trending/creative-edits";
 import { ensureStoredWallTextOverlay } from "@/lib/trending/wall-text-overlay-storage";
 import type { WallTextOverlayInput } from "@/worker/src/lib/wall-text-overlay-renderer";
@@ -32,7 +32,11 @@ export async function GET(request: Request, context: { params: Promise<{ creativ
     const assignmentId = z.string().uuid().parse(url.searchParams.get("assignmentId"));
     z.string().uuid().parse(creativeId);
     const revision = z.coerce.number().int().nonnegative().parse(url.searchParams.get("revision"));
-    const record = await loadTrendingCreativeEditor({ assignmentId, creativeId, userId: user.uid, format: "wall_text" });
+    const scope = { assignmentId, creativeId, userId: user.uid };
+    // Draft previews remain editing operations. Saved overlays only need viewing access.
+    const record = request.method === "POST"
+      ? await loadTrendingCreativeEditor({ ...scope, format: "wall_text" })
+      : await loadTrendingWallTextPreview(scope);
     if (record.content.format !== "wall_text" || record.revision !== revision) {
       return Response.json({ error: "This text changed. Refresh the card to load its latest version." }, { status: 409 });
     }

@@ -42,6 +42,8 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/contexts/auth-context";
+import { CarouselEditRenderStatus } from "@/components/trending/carousel-edit-render-status";
+import { shouldApplyCarouselEditRefresh } from "@/lib/trending/carousel-edit-render-status";
 import { shouldPollTrendingFeed } from "@/lib/trending/daily-feed-status";
 import {
   type BillingSubscription,
@@ -2172,6 +2174,7 @@ export function TrendingDeck({
         refreshed.forEach((entry) => {
           if (!entry) return;
           const previous = current[entry.creativeId];
+          if (!shouldApplyCarouselEditRefresh(previous, entry)) return;
           if (
             !previous ||
             previous.revision !== entry.revision ||
@@ -2187,8 +2190,14 @@ export function TrendingDeck({
       });
     }
 
-    const timer = window.setInterval(() => void refreshPendingEdits(), 2_500);
-    void refreshPendingEdits();
+    let inFlight = false;
+    const timer = window.setInterval(async () => {
+      if (inFlight) return;
+      inFlight = true;
+      try { await refreshPendingEdits(); } finally { inFlight = false; }
+    }, 1_000);
+    inFlight = true;
+    void refreshPendingEdits().finally(() => { inFlight = false; });
 
     return () => {
       stopped = true;
@@ -4298,15 +4307,7 @@ function CarouselDeckCard({
         style={cardStyle}
       >
         {isActive ? <TrendingFormatPill candidate={candidate} format="carousel" positionClassName="bottom-[calc(100%+24px)]" /> : null}
-        {edit ? (
-          <div
-            data-trending-edited-badge
-            className="pointer-events-none absolute right-2.5 top-2.5 z-30 inline-flex items-center gap-1 rounded-full border border-emerald-500/35 bg-card/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-500"
-          >
-            <Check className="size-2.5 stroke-[3]" aria-hidden="true" />
-            <span>Edited</span>
-          </div>
-        ) : null}
+        <CarouselEditRenderStatus edit={edit ?? null} active={isActive} />
         <div className="relative size-full overflow-hidden rounded-[20px] bg-card ring-1 ring-black/5">
           {/* Rendered Carousel slides are immutable Cloud Storage creative assets. */}
           {/* Preserve their full composition when a source has a different ratio. */}

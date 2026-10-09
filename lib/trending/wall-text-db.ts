@@ -2102,13 +2102,30 @@ export async function getEditableWallTextDraft(params: {
   creativeId: string;
   userId: string;
 }): Promise<SavedWallTextDraft | null> {
+  return loadWallTextAssignmentDraft(params, ["active", "selected"]);
+}
+
+/** Viewing a previously skipped post must not select it or grant editing access. */
+export async function getWallTextPreviewDraft(params: {
+  assignmentId: string;
+  creativeId: string;
+  userId: string;
+}): Promise<SavedWallTextDraft | null> {
+  return loadWallTextAssignmentDraft(params, ["active", "selected", "completed_skipped"]);
+}
+
+async function loadWallTextAssignmentDraft(params: {
+  assignmentId: string;
+  creativeId: string;
+  userId: string;
+}, states: UserWallTextAssignmentRow["state"][]): Promise<SavedWallTextDraft | null> {
   const { data: assignment, error } = await getClient()
     .from("user_wall_text_assignments")
     .select("*")
     .eq("id", params.assignmentId)
     .eq("wall_text_creative_id", params.creativeId)
     .eq("user_id", params.userId)
-    .in("state", ["active", "selected"])
+    .in("state", states)
     .maybeSingle();
 
   if (error) {

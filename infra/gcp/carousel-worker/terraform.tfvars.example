@@ -20,7 +20,8 @@ worker_job_types             = "generate_carousel,render_trending_carousel_edit"
 
 worker_visibility_timeout_seconds = 900
 # Keep one maximum until Carousel reservations are safe for parallel writers.
-min_instance_count                = 0
+# One warm instance avoids cold starts for interactive slideshow edits.
+min_instance_count                = 1
 max_instance_count                = 1
 request_timeout_seconds           = 300
 cpu                               = "1"

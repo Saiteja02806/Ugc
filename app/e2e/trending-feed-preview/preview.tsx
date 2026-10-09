@@ -7,7 +7,8 @@ import reviewLayout from "@/components/trending/trending-review-layout.module.cs
 import { WALL_TEXT_CONTENT_LAYOUT_VERSION, WALL_TEXT_LAYOUT_VERSION } from "@/lib/trending/wall-text-types";
 import type { TrendingCreativeEditRecord } from "@/lib/trending/creative-edit-contract";
 
-const candidates: ComponentProps<typeof TrendingDeck>["candidates"] = [0, 1, 2].map(index => ({
+const previewIndexes = Array.from({ length: 20 }, (_, index) => index);
+const candidates: ComponentProps<typeof TrendingDeck>["candidates"] = previewIndexes.map(index => ({
   format: "reaction",
   item: {
     id: `preview-post-${index}`, assignmentId: `preview-assignment-${index}`, creativeId: `preview-creative-${index}`,
@@ -18,14 +19,14 @@ const candidates: ComponentProps<typeof TrendingDeck>["candidates"] = [0, 1, 2].
   },
 }));
 
-const carouselCandidates: ComponentProps<typeof TrendingDeck>["candidates"] = [0, 1, 2].map(index => {
+const carouselCandidates: ComponentProps<typeof TrendingDeck>["candidates"] = previewIndexes.map(index => {
   const slides = [0, 1, 2].map(slide => ({ headline: "Layout preview", renderedUrl: `/marketing/showcase-part2/slideshow/image_${slide}.jpg`, slideNumber: slide + 1, slideType: "body", status: "ready" as const, subtext: null }));
   const carousel = { candidateIndex: index, carouselId: `preview-carousel-${index}`, categorySlug: null, generationBatchId: "preview", projectId: "preview", readySlideCount: 3,
     selectedAngle: `Preview slideshow ${index + 1}`, slideCount: 3, slides, status: "completed" as const, thumbnailUrl: slides[0].renderedUrl, updatedAt: "2026-10-05T00:00:00Z" };
   return { format: "carousel", carousel, slides, item: { ...candidates[index].item, format: "carousel", creative: carousel } };
 });
 
-const wallCandidates: ComponentProps<typeof TrendingDeck>["candidates"] = [0, 1, 2].map(index => ({
+const wallCandidates: ComponentProps<typeof TrendingDeck>["candidates"] = previewIndexes.map(index => ({
   format: "wall_text",
   item: { ...candidates[index].item, format: "wall_text", creative: {
     aspectRatio: "9:16", durationSeconds: 10, previewUrl: "/try-ugcpilot/media/videos/card-29.mp4",
@@ -45,7 +46,7 @@ const wallCandidates: ComponentProps<typeof TrendingDeck>["candidates"] = [0, 1,
 // route can load this media without requesting a protected catalog session.
 const hookCandidates: Array<ComponentProps<typeof TrendingDeck>["candidates"][number] & {
   reviewedEdit: TrendingCreativeEditRecord;
-}> = [0, 1, 2].map(index => ({
+}> = previewIndexes.map(index => ({
   format: "hook_video",
   item: { ...candidates[index].item, format: "hook_video", creative: {
     aspectRatio: "9:16", durationSeconds: 10, influencerId: "preview-hook", influencerName: "Preview",
@@ -74,6 +75,7 @@ export function TrendingFeedPreview() {
   const [reviewedAssignments, setReviewedAssignments] = useState<string[]>([]);
   const [deckVersion, setDeckVersion] = useState(0);
   const [format, setFormat] = useState("reaction");
+  const [editState, setEditState] = useState<"none" | TrendingCreativeEditRecord["renderState"]>("none");
   const [activeSlideByCarouselId, setActiveSlideByCarouselId] = useState<Record<string, number>>({});
   const postHistory = usePostReviewHistory<ComponentProps<typeof TrendingDeck>["candidates"][number]>();
   const decisions = reviewedAssignments.length;
@@ -82,6 +84,11 @@ export function TrendingFeedPreview() {
     <header className="flex items-start justify-between gap-4"><div className="min-w-0"><h1 className="text-[30px] font-semibold leading-9 sm:text-[32px] sm:leading-10">Trending</h1><p data-trending-intro className="mt-1 max-w-2xl text-[14px] leading-[20px] text-muted sm:text-[15px] sm:leading-[22px]">Explore Carousel, Hook, Wall-of-text, and Reaction Reel content made from your business profile.</p></div>
       <div className="flex shrink-0 gap-3"><select aria-label="Preview format" value={format} onChange={event => { setFormat(event.target.value); setReviewedAssignments([]); postHistory.clear(); setDeckVersion(version => version + 1); }}>
         <option value="reaction">Reaction Reel</option><option value="carousel">Slideshow</option><option value="wall_text">Wall of Text</option><option value="hook_video">Reel Hook</option></select>
+        {format === "carousel" ? <select aria-label="Preview edit status" value={editState}
+          onChange={event => setEditState(event.target.value as typeof editState)}>
+          <option value="none">No edit</option><option value="queued">Updating</option>
+          <option value="failed">Text fit failed</option><option value="ready">Edited</option>
+        </select> : null}
         <button type="button" className="text-xs text-muted" onClick={() => setDeckVersion(version => version + 1)}>Reopen review deck</button></div>
     </header>
     <span data-preview-reviewed className="sr-only" aria-live="polite">Development preview · {decisions} reviewed</span>
@@ -94,11 +101,20 @@ export function TrendingFeedPreview() {
     <div className={`col-start-1 row-start-1 ${reviewLayout.feedLayer}`}>
     <div className={`flex w-full flex-col ${reviewLayout.feedLayer}`}>
     <TrendingDeck key={deckVersion} reviewHistory={postHistory}
-      candidates={(format === "carousel" ? carouselCandidates : format === "wall_text" ? wallCandidates : format === "hook_video" ? hookCandidates : candidates).filter(candidate => !reviewedAssignments.includes(candidate.item.assignmentId))}
+      candidates={(format === "carousel" ? carouselCandidates.map(candidate => ({ ...candidate,
+        reviewedEdit: editState === "none" ? null : {
+          assignmentId: candidate.item.assignmentId, creativeId: candidate.item.creativeId,
+          content: { format: "carousel", slides: [], version: "trending-creative-edit-v1" },
+          format: "carousel", id: "preview-edit", renderError: editState === "failed"
+            ? "Carousel text could not fit within 4 lines at the fixed 84px font size." : null,
+          renderJobId: "preview-job", renderOutput: null, renderState: editState,
+          revision: 1, source: null, updatedAt: "2026-10-09T00:00:00Z",
+        } satisfies TrendingCreativeEditRecord,
+      })) : format === "wall_text" ? wallCandidates : format === "hook_video" ? hookCandidates : candidates).filter(candidate => !reviewedAssignments.includes(candidate.item.assignmentId))}
       activeSlideByCarouselId={activeSlideByCarouselId} enqueueDecision={entry => setReviewedAssignments(current => [...current, entry.assignmentId])}
       failure={null} headerActionsRoot={null} onActiveSlideChange={(id, index) => setActiveSlideByCarouselId(current => ({ ...current, [id]: index }))}
       onActiveSlideMove={(id, direction, count) => setActiveSlideByCarouselId(current => ({ ...current, [id]: ((current[id] ?? 0) + direction + count) % count }))}
-      onHookCompose={() => {}} onRetry={() => {}} pendingSlotCount={0} remainingCount={3 - decisions} userId={null} upgradeRequired={false} />
+      onHookCompose={() => {}} onRetry={() => {}} pendingSlotCount={0} remainingCount={previewIndexes.length - decisions} userId={null} upgradeRequired={false} />
     </div></div></div></div>
     </section>
     </div>

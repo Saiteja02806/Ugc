@@ -5,6 +5,7 @@ import {
   type CarouselNormalizedTextPosition,
 } from "../lib/carousel-render-slide.js";
 import { getCarouselRenderStyle } from "../lib/carousel-render-style.js";
+import { getCarouselEditHookFontSize } from "../lib/carousel-edit-cover-typography.js";
 import {
   CAROUSEL_STRUCTURE_2_RENDERER_VERSION,
   renderCarouselStructure2SlideWithDiagnostics as defaultRenderCarouselStructure2Slide,
@@ -23,9 +24,9 @@ import type {
 import type { WorkerJobOutput } from "./index.js";
 
 const TRENDING_CAROUSEL_EDIT_RENDERER_VERSION =
-  `${CAROUSEL_RENDERER_VERSION}-normalized-edit-v1`;
+  `${CAROUSEL_RENDERER_VERSION}-normalized-edit-v2`;
 const TRENDING_CAROUSEL_STRUCTURE_2_EDIT_RENDERER_VERSION =
-  `${CAROUSEL_STRUCTURE_2_RENDERER_VERSION}-normalized-edit-v1`;
+  `${CAROUSEL_STRUCTURE_2_RENDERER_VERSION}-normalized-edit-v3`;
 
 type TrendingCarouselEditJobInput = {
   carouselId: string;
@@ -36,6 +37,7 @@ type TrendingCarouselEditJobInput = {
 
 type EditableCarouselSlide = {
   backgroundAssetId: string | null;
+  backgroundCrop?: "centre";
   backgroundUrl: string;
   ctaText: string;
   headline: string;
@@ -201,9 +203,23 @@ export async function runRenderTrendingCarouselEditJob(
           ? await dependencies.renderCarouselStructure2Slide({
               assetUrl: editedSlide.backgroundUrl,
               format: generation.format,
-              spec: createStructure2EditRenderSpec(originalSlide, editedSlide),
+              spec: {
+                ...createStructure2EditRenderSpec(originalSlide, editedSlide),
+                coverFontSize: getCarouselEditHookFontSize({
+                  ...editedSlide,
+                  originalHeadline: originalSlide.headline,
+                  originalSubtext: originalSlide.subtext ?? "",
+                  sourceRendererVersion: generation.renderer_version,
+                }),
+              },
             })
           : await dependencies.renderCarouselSlide({
+              coverFontSize: getCarouselEditHookFontSize({
+                ...editedSlide,
+                originalHeadline: originalSlide.headline,
+                originalSubtext: originalSlide.subtext ?? "",
+                sourceRendererVersion: generation.renderer_version,
+              }),
               assetUrl: editedSlide.backgroundUrl,
               format: generation.format,
               normalizedTextPosition: editedSlide.textPosition,
@@ -378,6 +394,7 @@ function parseEditedSlides(edit: TrendingCreativeEditRow): EditableCarouselSlide
             ? slide.backgroundAssetId.trim()
             : null,
         backgroundUrl: getHttpUrl(slide.backgroundUrl, "backgroundUrl"),
+        backgroundCrop: slide.backgroundCrop === "centre" ? "centre" as const : undefined,
         ctaText: getOptionalString(slide.ctaText, 120),
         headline: getOptionalString(slide.headline, 180),
         slideId: getRequiredString(slide.slideId, "slideId"),
@@ -652,6 +669,7 @@ function createStructure2EditRenderSpec(
       edited.backgroundAssetId ??
       getRequiredString(original.category_image_asset_id, "category_image_asset_id"),
     assetUrl: edited.backgroundUrl,
+    backgroundCrop: edited.backgroundCrop,
     ctaText: edited.ctaText || null,
     headline: edited.slideNumber === 1 ? null : edited.subtext ? edited.headline || null : undefined,
     layoutVariant: isProduct

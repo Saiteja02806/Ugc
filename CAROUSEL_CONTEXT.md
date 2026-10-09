@@ -1,6 +1,103 @@
 # Carousel System Context
 
-Last updated: 2026-10-09
+Last updated: 2026-10-10
+
+## 2026-10-10 Manual image uploads on every Trending slideshow slide (local implementation)
+
+- Edit creative offers an independent image upload for the selected slide in
+  both structures, including the hook and all body/final slides. JPG, PNG and
+  WebP files up to 25 MB retain their original dimensions. Each slide can be
+  restored to its generated background without resetting its text or other slides.
+- Manual uploads use the existing owner-scoped signed media upload/completion
+  flow with project purpose `trending-carousel-slide`. They are separate from
+  the Settings app screenshot library and are not included in automatic image
+  matching. The existing Hook library and eligible app screenshot pickers remain.
+- The edit save service accepts ready owned images with that purpose on every
+  slide, deriving URLs and a centre crop from server records. Client URLs, crop
+  metadata and roles cannot override this validation. Automatic Structure 2
+  product eligibility and the single app screenshot rule remain intact; manual
+  backgrounds retain the source slide's role/layout. No database migration.
+- Both preview and export fill the frame proportionally without stretching.
+  Structure 2 manual backgrounds explicitly use centre cropping instead of the
+  attention crop used for normal catalogue backgrounds. Its edit output is now
+  `normalized-edit-v3`; automatic generation keeps its existing v13 renderer.
+- Pending uploads block save/close and other image pickers. Users may switch
+  slides and edit text; completion targets the captured slide ID with a functional
+  state update. Failure preserves the previous background and displays recovery.
+- Local validation covers all six uploads, asynchronous selection/text races,
+  ownership/readiness and save normalization, original restoration, signed PUT
+  and completion acknowledgement recovery, both worker structures and six
+  manual-upload crop pixel checks. Shared editor parts are visually checked at
+  1366 × 680 and 1536 × 776 in a browser-only fixture. This is not authenticated
+  production acceptance. See `docs/trending-slide-image-uploads-2026-10-10.md`.
+  No changes have been pushed or deployed for this feature.
+
+## 2026-10-10 Trending history text and scroll settlement (local fixes)
+
+- Saved Wall-of-Text overlays use a read-only assignment lookup that accepts
+  `active`, `selected` and `completed_skipped`. It still verifies the exact
+  assignment, creative and authenticated owner, plus the requested edit
+  revision. Editor draft previews and save operations retain active/selected
+  access. Browsing history does not select a card or replay its decision.
+- The former overlay GET reused editing access, so a successfully persisted
+  skip made its text preview return 404 when that card remounted in history.
+  Preview access is now separate from editing access.
+- Native `scrollend` at the resting position no longer clears a newly armed
+  wheel gesture. Only the 160ms idle fallback expires a gesture that stays at
+  rest. This fixes a reproduced event-order race in both browsing directions
+  while preserving held-touch, drag, modal and duplicate-decision guards.
+- The development fixture contains 20 posts. Four forward and four backward
+  native wheel scrolls reach every earlier post at 1366 × 680 and 1536 × 776;
+  a repeated history cycle preserves the four-review count. The browser layout
+  check uses local DOM text, and separate route/database regression tests cover
+  the shared-PNG preview access repair. No authenticated production flow was
+  exercised. See `docs/trending-history-text-and-scroll-2026-10-10.md`.
+
+## 2026-10-10 Slideshow edit responsiveness (local implementation)
+
+- An image-only or position-only hook edit preserves the original 72px cover
+  typography for known Structure 2 v11 and Structure 1 v25 sources when the
+  saved headline/subtext are unchanged. The worker derives this eligibility
+  from authoritative source rows; submitted metadata cannot enable it.
+  Changed hook copy and current/unknown source renderers retain fixed 84px.
+  The editor uses the same rule, and edit renderer output is versioned v2.
+- Trending shows Updating for queued/rendering edits, Update failed with a
+  persistent recovery message for failures, and Edited only for ready renders.
+  Polling runs once per second without overlapping requests and rejects older
+  revision/timestamp responses. Unchanged slide assets are still reused.
+- Carousel worker configuration now prepares one warm instance, with the
+  existing maximum of one and concurrency of one. This addresses the measured
+  cold start at the expense of idle hosting charges once applied. Infrastructure
+  and application rollout remain pending; no live minimum-instance setting has
+  changed. Generation/edit backlog and render/upload time still remain possible.
+- This preserves existing copy for the diagnosed image replacement failure;
+  it does not add synchronous pre-save text-fit validation or silently shrink
+  edited copy. Later render failures are displayed clearly. Evidence and rollout
+  limits are recorded in `docs/trending-slideshow-hook-edit-latency-2026-10-09.md`.
+
+## 2026-10-09 Full-frame app screenshots (local implementation)
+
+- The owner confirmed that landscape app screenshots should zoom to fill a
+  slideshow slide instead of appearing as a smaller image over a blurred
+  duplicate. Structure 2 product slides now use a proportional centre crop
+  for all uploaded ratios, including 16:9, 4:5 and 9:16. Excess edges may be
+  cropped; images are never stretched. This supersedes the contained product
+  screenshot composition in the August 23 editor-fidelity entry.
+- The live editor uses the same full-frame centre crop, without the former
+  padded screenshot, blurred backdrop or preview-only inset border. Uploads
+  retain their original bytes and dimensions, and Settings continues showing
+  the complete image in its library thumbnails.
+- The Structure 2 renderer is `story-native-full-frame-product-inter-tight-v13`.
+  Existing saved images remain immutable; new generation and changed-slide
+  edit renders use this composition. Normal library background crops, text
+  rules, output sizes, sourcing, ownership and scheduling remain unchanged.
+- Six pixel checks cover all three source ratios in both 4:5 and square exports;
+  each failed on the preceding layout and passes on the full-frame crop. All
+  37 scoped rendering, edit reuse, sourcing and upload contract tests pass,
+  along with web TypeScript, worker build and scoped lint. Rendered before/after
+  evidence is recorded in `docs/app-screenshot-full-frame-2026-10-09.md`.
+  This change is local; deployment and authenticated production acceptance
+  remain pending.
 
 ## 2026-10-09 Explore slideshow ownership and reference guidance (local revision)
 

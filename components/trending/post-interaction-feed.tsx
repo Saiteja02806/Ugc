@@ -148,7 +148,7 @@ export function PostInteractionFeed({ items, previousItem, onPrevious, onLike, o
     // reversing gesture ends at the same boundary. Keep a fallback even in
     // browsers exposing scrollend; its native event still commits immediately.
     // settleScroll guards held gestures, animations, and duplicate decisions.
-    scrollTimer.current = setTimeout(settleScroll, 160);
+    scrollTimer.current = setTimeout(() => settleScroll(true), 160);
   }
 
   function snapToPost(top: number) {
@@ -290,7 +290,7 @@ export function PostInteractionFeed({ items, previousItem, onPrevious, onLike, o
     } else previousTap.current = tap;
   }
 
-  function settleScroll() {
+  function settleScroll(fromIdleTimer = false) {
     const viewport = viewportRef.current;
     if (!viewport || mouseDrag.current || touchScrolling.current || snapFrame.current !== null || committingScroll.current) return;
     const offset = viewport.scrollTop - restingTop();
@@ -310,7 +310,10 @@ export function PostInteractionFeed({ items, previousItem, onPrevious, onLike, o
         snapToPost(restingTop());
       }
     } else if (Math.abs(offset) < 1) {
-      userScroll.current = false;
+      // A late scrollend from re-centering the previous card can arrive just
+      // after the next wheel gesture is armed. Only the idle timer may clear
+      // that gesture at rest; otherwise its subsequent movement is ignored.
+      if (fromIdleTimer) userScroll.current = false;
     } else if (!userScroll.current || callbacks.current.disabled) {
       viewport.scrollTo({ top: restingTop(), behavior: "instant" });
     }
@@ -375,7 +378,7 @@ export function PostInteractionFeed({ items, previousItem, onPrevious, onLike, o
       pointerStart.current = null;
       scheduleScrollSettlement();
     }}
-    onScrollEnd={settleScroll}
+    onScrollEnd={() => settleScroll()}
   >
     {hasPrevious && previousItem ? <div key={`previous:${previousItem.id}`} data-post-history-item={previousItem.id} className={styles.post} aria-hidden="true" inert>
       {previousItem.content}

@@ -15,6 +15,8 @@
     "dev": "next dev",
     "test:trending-interaction": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/trending/post-interaction.test.ts lib/trending/post-scroll-settlement.test.mjs lib/trending/trending-post-interaction-flow.test.mjs lib/trending/creative-card-actions-ui.test.ts lib/trending/wall-text-review-card-scale.test.ts",
     "test:trending-revisit-scheduling": "node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/trending/wall-text-revisited-scheduling.test.mjs lib/trending/trending-reconsider-route.test.mjs scripts/trending-skipped-reconsideration-db.test.mjs",
+    "test:trending-revisit-preview": "node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/trending/wall-text-preview-revisit.test.mjs",
+    "test:trending-slide-images": "node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/trending/carousel-slide-images.test.mjs lib/trending/carousel-slide-image-upload.test.mjs",
     "build": "next build",
     "test:onboarding-background": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test scripts/onboarding-background-db.test.mjs lib/business-profiles/onboarding-rollout.test.ts",
     "test:onboarding-concurrency": "node --test scripts/onboarding-background-concurrency.test.mjs",

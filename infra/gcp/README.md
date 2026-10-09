@@ -28,7 +28,9 @@ must never be used as frontend state.
 - `ai-generation-worker/`: request-based AI generation, Hook/Wall copy, media
   analysis, and analytics synchronization jobs. It scales from zero to its
   Terraform maximum only while Cloud Tasks has work to deliver.
-- `carousel-worker/`: Carousel generation jobs.
+- `carousel-worker/`: Carousel generation and interactive slideshow edit jobs.
+  One minimum instance stays warm to avoid an edit waiting for a cold start;
+  the one-job concurrency limit remains. This incurs idle instance charges.
 - `video-render-worker/`: a request-based compatibility receiver plus the
   authoritative one-shot `ugc-video-render-job` for edit,
   schedule-combination, and wall-text renders. A Job starts for one render and

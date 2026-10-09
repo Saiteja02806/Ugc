@@ -1,5 +1,6 @@
 import "server-only";
 import { hasCarouselSemanticHeading } from "@/lib/carousel/text-presentation";
+import { getOwnedCarouselSlideImages } from "@/lib/trending/carousel-slide-images";
 
 import {
   getCarouselEditBackgrounds,
@@ -58,7 +59,7 @@ import {
   resolveTrendingTextColor,
 } from "@/lib/trending/text-color";
 import { isTrendingSourceVideoAsset } from "@/lib/trending/video-source-selection";
-import { getEditableWallTextDraft } from "@/lib/trending/wall-text-db";
+import { getEditableWallTextDraft, getWallTextPreviewDraft } from "@/lib/trending/wall-text-db";
 import { createAuthoritativeWallTextEdit } from "@/lib/trending/wall-layout-engine";
 import { WALL_TEXT_EDIT_MAX_WIDTH, WALL_TEXT_EDIT_MIN_WIDTH } from "@/lib/trending/wall-text-editor-layout";
 import { getBackfillWallTextFormatId } from "@/lib/trending/wall-formats";
@@ -97,6 +98,26 @@ export async function loadTrendingCreativeEditor(params: {
     row,
     source,
   });
+}
+
+/** Read-only overlay access also permits owned posts in visit history.
+ * The editor/save paths retain their stricter active/selected checks. */
+export async function loadTrendingWallTextPreview(params: {
+  assignmentId: string;
+  creativeId: string;
+  userId: string;
+}): Promise<TrendingCreativeEditRecord> {
+  const draft = await getWallTextPreviewDraft(params);
+  if (!draft) {
+    throw new TrendingCreativeEditAccessError("This text preview is no longer available.", 404);
+  }
+  const row = await getTrendingCreativeEdit({ ...params, format: "wall_text" });
+  const defaults: TrendingWallTextEditContent = {
+    content: draft.text, format: "wall_text", layout: draft.layout,
+    textColor: DEFAULT_TRENDING_TEXT_COLOR, version: TRENDING_CREATIVE_EDIT_VERSION,
+  };
+  return serializeRecord({ ...params, format: "wall_text", row, source: null,
+    content: row ? mergeStoredContentWithOwnerDefaults(defaults, row) : defaults });
 }
 
 export async function loadSavedTrendingCreativeEditForDownstream(params: {
@@ -269,6 +290,9 @@ async function buildDefaultContent(params: {
           hasHeading: hasCarouselSemanticHeading(status.generation.contentPlanNormalized, slide.slideNumber, slide.structureId, Boolean(slide.subtext)),
           originalBackgroundAssetId: slide.categoryImageAssetId,
           originalBackgroundUrl: backgroundUrl,
+          originalHeadline: slide.headline,
+          originalSubtext: slide.subtext ?? "",
+          sourceRendererVersion: status.generation.rendererVersion,
           originalVisualRole: slide.visualRole,
           productVisualEligibility: slide.productVisualEligibility,
           renderFormat: status.generation.format,
@@ -462,9 +486,11 @@ async function validateAndNormalizeSubmittedContent(params: {
         return asset ? [[assetId, asset] as const] : [];
       }),
     );
-    const changedProductAssetIds = changedBackgroundAssetIds.filter(
+    const nonHookAssetIds = changedBackgroundAssetIds.filter(
       (assetId) => !hyperHookAssetsById.has(assetId),
     );
+    const uploadedImagesById = await getOwnedCarouselSlideImages(nonHookAssetIds, params.userId);
+    const changedProductAssetIds = nonHookAssetIds.filter(assetId => !uploadedImagesById.has(assetId));
     let productAssetsById = new Map<
       string,
       Awaited<ReturnType<typeof getCarouselProductAssetsByIds>>[number]
@@ -525,6 +551,17 @@ async function validateAndNormalizeSubmittedContent(params: {
           ...slide,
           backgroundAssetId: sourceSlide.categoryImageAssetId,
           backgroundUrl: slide.originalBackgroundUrl,
+          backgroundCrop: undefined,
+          visualRole: slide.originalVisualRole,
+        };
+      }
+
+      const uploadedImage = slide.backgroundAssetId ? uploadedImagesById.get(slide.backgroundAssetId) : null;
+      if (uploadedImage) {
+        return {
+          ...slide,
+          backgroundUrl: uploadedImage.url,
+          backgroundCrop: "centre" as const,
           visualRole: slide.originalVisualRole,
         };
       }
@@ -544,6 +581,7 @@ async function validateAndNormalizeSubmittedContent(params: {
         return {
           ...slide,
           backgroundUrl: getCarouselHyperHookAssetUrl(hyperHookAsset),
+          backgroundCrop: undefined,
           visualRole: "hook" as const,
         };
       }
@@ -572,6 +610,7 @@ async function validateAndNormalizeSubmittedContent(params: {
       return {
         ...slide,
         backgroundUrl: productAsset.url,
+        backgroundCrop: undefined,
         visualRole: "product_asset" as const,
       };
     });
@@ -726,6 +765,7 @@ function mergeStoredContentWithOwnerDefaults(
                 typeof edited.backgroundUrl === "string"
                   ? edited.backgroundUrl
                   : slide.backgroundUrl,
+              backgroundCrop: edited.backgroundCrop === "centre" ? "centre" : undefined,
               ctaText: edited.ctaText,
               headline: edited.headline,
               subtext: edited.subtext,

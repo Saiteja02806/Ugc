@@ -1,6 +1,7 @@
 "use client";
 import localFont from "next/font/local";
 import { CAROUSEL_BODY_FONT_SIZE, CAROUSEL_HEADING_FONT_SIZE, CAROUSEL_HOOK_FONT_SIZE, CAROUSEL_TEXT_BLOCK_GAP, getCarouselBodyBlocks } from "@/lib/carousel/text-presentation";
+import { getCarouselEditHookFontSize } from "@/lib/carousel/edit-cover-typography";
 
 import {
   Check,
@@ -28,6 +29,8 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { CarouselDraggableOverlay } from "@/components/trending/carousel-draggable-overlay";
+import { CarouselSlideImageSection } from "@/components/trending/carousel-slide-image-section";
+import { applyCarouselSlideImage, restoreOriginalCarouselBackground } from "@/lib/trending/carousel-slide-image-selection";
 import { WallTextSavedImage } from "@/components/trending/wall-text-saved-image";
 import { WallTextEditOverlay, WallTextWidthControl } from "@/components/trending/wall-text-edit-overlay";
 import { Button } from "@/components/ui/button";
@@ -224,6 +227,8 @@ export function TrendingCreativeEditor({
   const [productAssets, setProductAssets] = useState<CarouselProductAsset[]>([]);
   const [productAssetsLoading, setProductAssetsLoading] = useState(false);
   const [productAssetsUploading, setProductAssetsUploading] = useState(false);
+  const [slideImageUploading, setSlideImageUploading] = useState(false);
+  const slideImageBusyRef = useRef(false);
   const [productAssetsError, setProductAssetsError] = useState<string | null>(
     null,
   );
@@ -261,6 +266,8 @@ export function TrendingCreativeEditor({
     setActiveSlideIndex(0);
     setProtectedHookPreviewUrl(null);
     setProductAssets([]);
+    slideImageBusyRef.current = false;
+    setSlideImageUploading(false);
     setProductAssetsError(null);
     setHyperHookAssets([]);
     setHyperHookAssetsError(null);
@@ -651,6 +658,7 @@ export function TrendingCreativeEditor({
               ...slide,
               backgroundAssetId: asset.id,
               backgroundUrl: asset.url,
+              backgroundCrop: undefined,
               visualRole: "hook",
             }
           : slide,
@@ -801,6 +809,7 @@ export function TrendingCreativeEditor({
             ...slide,
             backgroundAssetId: asset.id,
             backgroundUrl: asset.url,
+            backgroundCrop: undefined,
             visualRole: "product_asset",
           };
         }
@@ -874,7 +883,7 @@ export function TrendingCreativeEditor({
   }
 
   async function saveEdit() {
-    if (!item || !content || !edit || saving) {
+    if (!item || !content || !edit || saving || slideImageBusyRef.current || productAssetsUploading) {
       return;
     }
 
@@ -940,13 +949,13 @@ export function TrendingCreativeEditor({
     <Dialog
       open={Boolean(item)}
       onOpenChange={(open) => {
-        if (!open && !saving) {
+        if (!open && !saving && !slideImageBusyRef.current) {
           onClose();
         }
       }}
     >
       <DialogContent
-        showCloseButton={!saving}
+        showCloseButton={!saving && !slideImageUploading}
         className="grid max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-5xl"
       >
         <DialogHeader className="border-b border-border bg-card px-5 py-4 pr-14 sm:px-6">
@@ -958,8 +967,9 @@ export function TrendingCreativeEditor({
           </div>
           <DialogTitle>Edit creative</DialogTitle>
           <DialogDescription>
-            Your current design and media stay unchanged unless you choose a
-            Hook library image, app screenshot, or Creative Assets video.
+            {item?.format === "carousel"
+              ? "Edit each slide’s text and upload your own slide images. You can also choose from the Hook library or app screenshots."
+              : "Edit your text and choose a Creative Assets video."}
           </DialogDescription>
         </DialogHeader>
 
@@ -1001,6 +1011,17 @@ export function TrendingCreativeEditor({
 
                 {content.format === "carousel" ? (
                   <>
+                    {content.slides[activeSlideIndex] ? <CarouselSlideImageSection
+                      key={item.assignmentId}
+                      slide={content.slides[activeSlideIndex]}
+                      disabled={saving || productAssetsUploading}
+                      onBusyChange={(busy) => { slideImageBusyRef.current = busy; setSlideImageUploading(busy); }}
+                      onUploaded={(slideId, asset) => setContent(current => applyCarouselSlideImage(current, slideId, asset))}
+                      onRestore={(slideId) => setContent(current => current?.format === "carousel" ? {
+                        ...current, slides: current.slides.map(slide => slide.slideId === slideId ? restoreOriginalCarouselBackground(slide) : slide),
+                      } : current)}
+                    /> : null}
+                    <fieldset disabled={saving || slideImageUploading} className="contents">
                     <HyperHookLibrarySection
                       assets={hyperHookAssets}
                       content={content}
@@ -1038,6 +1059,7 @@ export function TrendingCreativeEditor({
                         if (file) void uploadProductAsset(file);
                       }}
                     />
+                    </fieldset>
                   </>
                 ) : (
                   <CreativeAssetsSection
@@ -1077,7 +1099,7 @@ export function TrendingCreativeEditor({
           <Button
             type="button"
             variant="outline"
-            disabled={saving}
+            disabled={saving || slideImageUploading}
             onClick={onClose}
           >
             Cancel
@@ -1090,6 +1112,7 @@ export function TrendingCreativeEditor({
               loading ||
               saving ||
               productAssetsUploading ||
+              slideImageUploading ||
               Boolean(loadingGroupId)
             }
             onClick={() => void saveEdit()}
@@ -1110,7 +1133,7 @@ export function TrendingCreativeEditor({
   );
 }
 
-function EditorPreview({
+export function EditorPreview({
   activeSlideIndex,
   content,
   edit,
@@ -1229,7 +1252,7 @@ function EditorPreview({
               {slide.headline}
             </span>
           ) : isCover ? (
-            <CarouselCoverText primaryText={slide.headline.trim() || supportingText} />
+            <CarouselCoverText primaryText={slide.headline.trim() || supportingText} fontSize={getCarouselEditHookFontSize(slide)} />
           ) : (
             <div className="w-[82cqw] text-center">
               {slide.headline.trim() && hasHeading ? (
@@ -1387,43 +1410,15 @@ function CarouselEditorBackground({
     );
   }
 
-  const isProduct = slide.visualRole === "product_asset";
-  const layoutVariant = isProduct
-    ? "story_product_reveal"
-    : slide.storyLayoutVariant ?? "story_overlay_only";
   return (
-    <>
-      {isProduct ? (
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={slide.backgroundUrl || slide.renderedUrl}
-            alt=""
-            draggable={false}
-            className="absolute -inset-5 size-[calc(100%+2.5rem)] scale-110 object-cover blur-xl brightness-[.54] saturate-[.82]"
-          />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={slide.backgroundUrl || slide.renderedUrl}
-            alt=""
-            draggable={false}
-            className="absolute inset-[4.5%] size-[91%] object-contain"
-          />
-        </>
-      ) : (
-        // Carousel library backgrounds are normalized to the render aspect ratio.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={slide.backgroundUrl || slide.renderedUrl}
-          alt=""
-          draggable={false}
-          className="absolute inset-0 size-full object-cover"
-        />
-      )}
-      {layoutVariant === "story_product_reveal" ? (
-        <div className="pointer-events-none absolute inset-[4%] rounded-[3cqw] border border-white/20" />
-      ) : null}
-    </>
+    // App screenshots use the same full-frame centre crop as the saved render.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={slide.backgroundUrl || slide.renderedUrl}
+      alt=""
+      draggable={false}
+      className="absolute inset-0 size-full object-cover"
+    />
   );
 }
 
@@ -1436,7 +1431,7 @@ function createStructure2EditorLayout(
   const maximumTextWidth = STRUCTURE_2_RENDER_WIDTH - STRUCTURE_2_SAFE_X * 2;
   const treatment = "overlay" as const;
   const story = fitStructure2EditorText({
-    fontSize: isCover ? CAROUSEL_HOOK_FONT_SIZE : CAROUSEL_FIXED_EDITOR_FONT_SIZE,
+    fontSize: isCover ? getCarouselEditHookFontSize(slide) : CAROUSEL_FIXED_EDITOR_FONT_SIZE,
     maximumLines: isCover ? 4 : 10,
     maximumWidth:
       maximumTextWidth - STRUCTURE_2_DIRECT_TEXT_SIDE_BUFFER * 2,
@@ -1611,8 +1606,10 @@ function CarouselOutlinedText({
 
 function CarouselCoverText({
   primaryText,
+  fontSize = CAROUSEL_HOOK_FONT_SIZE,
 }: {
   primaryText: string;
+  fontSize?: number;
 }) {
   return (
     <div className="mx-auto w-[78cqw] text-center">
@@ -1620,7 +1617,7 @@ function CarouselCoverText({
         className="font-bold leading-[.98] text-white"
         style={{
           fontFamily: 'var(--font-carousel-inter-tight), Inter Tight, Inter, Arial, sans-serif',
-          fontSize: `${CAROUSEL_HOOK_FONT_SIZE / 10.8}cqw`,
+          fontSize: `${fontSize / 10.8}cqw`,
           whiteSpace: "pre-line",
           letterSpacing: 0,
         }}
@@ -1966,7 +1963,7 @@ function DraggableOverlay({
   );
 }
 
-function EditorFields({
+export function EditorFields({
   activeSlideIndex,
   content,
   onActiveSlideIndexChange,
@@ -3186,17 +3183,6 @@ function getProductAssetEligibleSlideIndexes(
   return content.slides.flatMap((slide, index) =>
     isProductAssetEligibleSlide(slide) ? [index] : [],
   );
-}
-
-function restoreOriginalCarouselBackground(
-  slide: TrendingCarouselEditContent["slides"][number],
-) {
-  return {
-    ...slide,
-    backgroundAssetId: slide.originalBackgroundAssetId,
-    backgroundUrl: slide.originalBackgroundUrl,
-    visualRole: slide.originalVisualRole,
-  };
 }
 
 function isReadyVideoAsset(asset: MediaAsset) {

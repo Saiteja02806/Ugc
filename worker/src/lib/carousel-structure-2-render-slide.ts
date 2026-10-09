@@ -20,7 +20,7 @@ import {
 } from "./carousel-structure-2-layout.js";
 
 export const CAROUSEL_STRUCTURE_2_RENDERER_VERSION =
-  "story-native-single-statement-hook-inter-tight-v12";
+  "story-native-full-frame-product-inter-tight-v13";
 
 const FORMAT_DIMENSIONS: Record<
   CarouselFormat,
@@ -104,6 +104,7 @@ export async function renderCarouselStructure2SlideFromBuffer(params: {
   });
   const background = await buildStructure2Background({
     assetBuffer: params.assetBuffer,
+    backgroundCrop: params.spec.backgroundCrop,
     height: dimensions.height,
     layoutVariant: params.spec.layoutVariant,
     width: dimensions.width,
@@ -147,7 +148,10 @@ async function buildCarouselStructure2Overlay(params: {
   };
   const values = isCover ? [params.spec.storyText] : getCarouselBodyBlocks(params.spec.storyText);
   if (!isCover && values.length > 2) throw new Error("Structure 2 body copy requires at most two text blocks.");
-  const stories = await Promise.all(values.map((value) => fit(value, getCarouselStructure2StoryFontSize(params.spec.slideNumber), isCover || params.spec.headline === undefined ? getCarouselStructure2StoryMaxLines(params.spec.slideNumber) : CAROUSEL_BODY_BLOCK_MAX_LINES)));
+  const storyFontSize = isCover
+    ? params.spec.coverFontSize ?? getCarouselStructure2StoryFontSize(1)
+    : getCarouselStructure2StoryFontSize(params.spec.slideNumber);
+  const stories = await Promise.all(values.map((value) => fit(value, storyFontSize, isCover || params.spec.headline === undefined ? getCarouselStructure2StoryMaxLines(params.spec.slideNumber) : CAROUSEL_BODY_BLOCK_MAX_LINES)));
   if (!stories.length) throw new Error("Structure 2 renderer cannot render empty story copy.");
   const story = stories[0]!;
   const heading = await fit(isCover ? "" : params.spec.headline ?? "", CAROUSEL_HEADING_FONT_SIZE, CAROUSEL_HEADING_MAX_LINES);
@@ -239,45 +243,19 @@ async function buildCarouselStructure2Overlay(params: {
 
 async function buildStructure2Background(params: {
   assetBuffer: Buffer;
+  backgroundCrop?: "centre";
   height: number;
   layoutVariant: CarouselStructure2RenderSpec["layoutVariant"];
   width: number;
 }) {
-  if (params.layoutVariant !== "story_product_reveal") {
-    return sharp(params.assetBuffer)
-      .rotate()
-      .resize(params.width, params.height, {
-        fit: "cover",
-        position: "attention",
-      })
-      .removeAlpha()
-      .toBuffer();
-  }
-
-  const softenedBackground = await sharp(params.assetBuffer)
+  // App screenshots fill the slide with a proportional centre crop. Keep the
+  // attention crop for the existing normalized library backgrounds.
+  return sharp(params.assetBuffer)
     .rotate()
-    .resize(params.width, params.height, { fit: "cover", position: "centre" })
-    .blur(24)
-    .modulate({ brightness: 0.54, saturation: 0.82 })
-    .removeAlpha()
-    .toBuffer();
-  const contained = await sharp(params.assetBuffer)
-    .rotate()
-    .resize(params.width - 96, params.height - 150, {
-      fit: "inside",
-      withoutEnlargement: false,
+    .resize(params.width, params.height, {
+      fit: "cover",
+      position: params.backgroundCrop === "centre" || params.layoutVariant === "story_product_reveal" ? "centre" : "attention",
     })
-    .ensureAlpha()
-    .toBuffer({ resolveWithObject: true });
-
-  return sharp(softenedBackground)
-    .composite([
-      {
-        input: contained.data,
-        left: Math.round((params.width - contained.info.width) / 2),
-        top: Math.round((params.height - contained.info.height) / 2),
-      },
-    ])
     .removeAlpha()
     .toBuffer();
 }

@@ -25,6 +25,7 @@ export type CarouselNormalizedTextPosition = {
 };
 
 type RenderCarouselSlideInput = {
+  coverFontSize?: 72 | 84;
   assetUrl: string;
   businessName?: string | null;
   format: CarouselFormat;
@@ -956,6 +957,7 @@ function buildSvgDocument(params: {
 }
 
 async function buildOverlaySvg(params: {
+  coverFontSize?: 72 | 84;
   format: CarouselFormat;
   height: number;
   normalizedTextPosition?: CarouselNormalizedTextPosition;
@@ -1124,6 +1126,7 @@ async function buildOverlaySvg(params: {
 }
 
 async function buildCoverOverlaySvg(params: {
+  coverFontSize?: 72 | 84;
   format: CarouselFormat;
   height: number;
   normalizedTextPosition?: CarouselNormalizedTextPosition;
@@ -1145,7 +1148,7 @@ async function buildCoverOverlaySvg(params: {
   // is legacy supporting copy and must never create a second visual layer.
   const primaryText = headline || body;
   const primary = await fitMeasuredText(primaryText, {
-    fontSize: CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE,
+    fontSize: params.coverFontSize ?? CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE,
     fontFamily: TEXT_FONT_FAMILY,
     fontWeight: CAROUSEL_COVER_FONT_WEIGHT,
     getCornerSafety: getBodyWrapCornerSafety,
@@ -1220,6 +1223,7 @@ async function buildCoverOverlaySvg(params: {
 }
 
 async function buildValidatedOverlay(params: {
+  coverFontSize?: 72 | 84;
   format: CarouselFormat;
   height: number;
   normalizedTextPosition?: CarouselNormalizedTextPosition;
@@ -1265,6 +1269,7 @@ export async function renderCarouselSlideWithDiagnostics(
     width: dimensions.width,
   });
   const overlay = await buildValidatedOverlay({
+    coverFontSize: input.coverFontSize,
     format: input.format,
     height: dimensions.height,
     normalizedTextPosition: input.normalizedTextPosition,

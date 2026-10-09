@@ -30,7 +30,7 @@ test("Structure 2 owns a dedicated renderer and persistence adapter", async () =
     read("worker/src/lib/carousel-structure-2-render-spec.ts"),
   ]);
 
-  assert.match(renderer, /story-native-single-statement-hook-inter-tight-v12/);
+  assert.match(renderer, /story-native-full-frame-product-inter-tight-v13/);
   assert.match(renderer, /buildHeadingSvgText/);
   assert.match(renderer, /getCarouselBodyBlocks/);
   assert.match(renderer, /story_product_reveal/);

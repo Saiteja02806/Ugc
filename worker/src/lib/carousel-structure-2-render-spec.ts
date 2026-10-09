@@ -32,7 +32,11 @@ export type CarouselStructure2VisualRole =
 export type CarouselStructure2RenderSpec = {
   assetId: string;
   assetUrl: string;
+  // Explicit manual image replacement, derived by the save service.
+  backgroundCrop?: "centre";
   ctaText: string | null;
+  // Server-selected only for a saved cover whose copy is unchanged.
+  coverFontSize?: 72 | 84;
   // Undefined means a legacy single-story render; null is a new body-only slide.
   headline?: string | null;
   layoutVariant: CarouselStructure2LayoutVariant;

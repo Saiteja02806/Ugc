@@ -65,9 +65,9 @@ variable "worker_visibility_timeout_seconds" {
 }
 
 variable "min_instance_count" {
-  description = "Minimum request-based Cloud Run instances. Use 0 to eliminate idle worker CPU cost."
+  description = "Keep one request-based instance warm for interactive slideshow edits. Use 0 only when idle savings are preferred over edit latency."
   type        = number
-  default     = 0
+  default     = 1
 }
 
 variable "max_instance_count" {

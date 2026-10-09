@@ -25,9 +25,9 @@ resource "google_cloud_run_v2_service" "carousel_worker" {
       }
 
       resources {
-        # Carousel work is HTTP-request based. It may scale to zero when there
-        # is no work; its one-instance maximum is retained until its database
-        # reservation is explicitly made safe for parallel writers.
+        # Keep one request-based instance warm for interactive edit latency.
+        # Retain the one-instance maximum until database reservation is
+        # explicitly safe for parallel writers.
         cpu_idle          = true
         startup_cpu_boost = true
 

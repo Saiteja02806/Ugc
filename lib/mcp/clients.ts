@@ -2,11 +2,14 @@ import "server-only";
 
 import { lookup } from "node:dns/promises";
 import https from "node:https";
-import { isIP } from "node:net";
+import { isIP, type LookupFunction } from "node:net";
 import { randomBytes } from "node:crypto";
 import ipaddr from "ipaddr.js";
 
-import { validRedirectUri } from "./client-validation";
+import {
+  supportsPublicClientTokenExchange,
+  validRedirectUri,
+} from "./client-validation";
 import { getMcpStore } from "./store";
 
 export type McpOAuthClient = {
@@ -50,10 +53,10 @@ async function fetchClientMetadata(clientId: string): Promise<McpOAuthClient | n
         !Array.isArray(metadata.redirect_uris) ||
         metadata.redirect_uris.length === 0 || metadata.redirect_uris.length > 10 ||
         !metadata.redirect_uris.every((uri) => typeof uri === "string" && validRedirectUri(uri)) ||
-        (metadata.token_endpoint_auth_method && metadata.token_endpoint_auth_method !== "none")) return null;
+        !supportsPublicClientTokenExchange(metadata)) return null;
     return {
       clientId,
-      clientName: metadata.client_name.slice(0, 100),
+      clientName: metadata.client_name.trim().slice(0, 100),
       redirectUris: metadata.redirect_uris as string[],
     };
   } catch {
@@ -83,11 +86,24 @@ function publicAddress(address: string) {
   }
 }
 
+export function createPinnedLookup(address: { address: string; family: number }): LookupFunction {
+  return (_hostname, options, callback) => {
+    // Node 24 enables autoSelectFamily for HTTPS requests. In that mode it asks
+    // custom lookups for an array, even though this request must remain pinned
+    // to the single public address we verified above.
+    if (options.all) {
+      callback(null, [address]);
+      return;
+    }
+    callback(null, address.address, address.family);
+  };
+}
+
 function pinnedHttpsJson(url: URL, address: { address: string; family: number }, timeoutMs: number) {
   return new Promise<string>((resolve, reject) => {
     const request = https.get(url, {
       headers: { Accept: "application/json" },
-      lookup: (_hostname, _options, callback) => callback(null, address.address, address.family),
+      lookup: createPinnedLookup(address),
     }, (response) => {
       if (response.statusCode !== 200 ||
           !response.headers["content-type"]?.includes("application/json")) {

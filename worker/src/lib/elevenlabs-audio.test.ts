@@ -6,6 +6,11 @@ import { ElevenLabsAudio, ElevenLabsError, getElevenLabsApiKey, toAudioVoice } f
 test("the canonical uppercase key takes precedence over the existing lowercase alias", () => {
   assert.equal(getElevenLabsApiKey({ ELEVENLABS_API_KEY: "canonical-test", elevenlabs_api_key: "alias-test" }), "canonical-test");
 });
+
+test("voice-generation credentials take precedence without changing Scribe's separate key setting", () => {
+  assert.equal(getElevenLabsApiKey({ ELEVENLABS_VOICE_API_KEY: " voice-only ", ELEVENLABS_API_KEY: "scribe-key", elevenlabs_api_key: "legacy" }), "voice-only");
+  assert.equal(getElevenLabsApiKey({ ELEVENLABS_VOICE_API_KEY: " ", ELEVENLABS_API_KEY: "scribe-key" }), "scribe-key");
+});
 test("server key lookup trims whitespace and accepts the existing lowercase alias", () => {
   assert.equal(getElevenLabsApiKey({ ELEVENLABS_API_KEY: "  canonical-test \n", elevenlabs_api_key: "alias-test" }), "canonical-test");
   assert.equal(getElevenLabsApiKey({ ELEVENLABS_API_KEY: " \n ", elevenlabs_api_key: "  alias-test  " }), "alias-test");

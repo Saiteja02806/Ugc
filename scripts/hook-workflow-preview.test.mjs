@@ -13,9 +13,10 @@ const composition = read("components/explore/workflow-composition-panel.tsx");
 const audioReference = read("components/explore/workflow-audio-reference.tsx");
 const frontend = workspace + composer + panel + controls + media + composition + audioReference;
 
-test("unfinished hook workflow is gated to explicit development previews", () => {
-  assert.match(page, /process\.env\.NODE_ENV !== "development" \|\| query\.preview !== "1"\) notFound\(\)/);
-  assert.match(read("components/explore/explore-workspace.tsx"), /localPreview \? \[\.\.\.LOCAL_PREVIEW_WORKFLOWS, \.\.\.EXPLORE_WORKFLOWS\] : EXPLORE_WORKFLOWS/);
+test("the former talking-head workflow is hidden while its implementation is retained", () => {
+  assert.match(page, /notFound\(\)/);
+  assert.doesNotMatch(read("lib/explore/workflows.ts"), /destination: "\/explore\/create-hook"/);
+  assert.match(workspace, /HookWorkflowPreview/);
 });
 
 test("layout review cannot generate, render, upload or spend credits", () => {
@@ -28,11 +29,15 @@ test("layout review cannot generate, render, upload or spend credits", () => {
 test("user-owned references and audio intent are separate from demo background audio", () => {
   assert.match(composer, /Upload creator/);
   assert.match(composer, /Attach video reference/);
-  assert.match(audioReference, /Use as voice reference/);
-  assert.match(audioReference, /Use exact recording/);
-  assert.match(composition, /The demo’s original sound stays as it is/);
-  assert.match(workspace, /demoAudio\.asset\.duration/);
-  assert.match(composition, /Audio is longer than the demo/);
+  assert.match(audioReference, /Main voice reference/);
+  assert.match(audioReference, /Voice guidance · Up to 30 seconds/);
+  assert.match(workspace, /audioReference: hookAudio\.asset/);
+  assert.match(workspace, /demoAudio=\{demoAudio\.asset\}/);
+  assert.doesNotMatch(audioReference, />Exact recording<\/Button>/);
+  assert.match(composition, /Your demo’s original sound is kept/);
+  assert.match(composition, /Uploaded audio is mixed underneath it as background audio during the demo only/);
+  assert.match(workspace, /demoAudioPlayback=\{demoAudioPlayback\}/);
+  assert.match(composition, /Longer audio fades out at the demo’s end/);
 });
 
 test("the workflow keeps user instructions authoritative and removes test-hook controls", () => {
@@ -52,7 +57,7 @@ test("the Library follows a full first-screen creation area and has no example m
   assert.match(library, /data-hook-library/);
   assert.match(library, /No videos yet/);
   assert.doesNotMatch(library, /<video|<Image|<img|\.mp4|poster=/);
-  assert.doesNotMatch(workspace, /RailTabButton|<button[^>]*role="tab"/);
+  assert.doesNotMatch(workspace, /RailTabButton|<[^>]+role="tab"/);
 });
 
 test("the Library shortcut scrolls and moves focus without changing the workflow", () => {
@@ -79,8 +84,8 @@ test("video/audio controls are permanent and demo changes clear background audio
   assert.ok(workspace.indexOf("<HookWorkflowComposer") < workspace.indexOf('<section aria-label="Hook creation workspace"'));
   assert.doesNotMatch(workspace, /demoOpen|audioOpen|Dialog|Attached demo|Attach audio/);
   assert.doesNotMatch(workspace, /<WorkflowCompositionPanel[^>]*key=/);
-  assert.match(workspace, /function removeDemo\(\) \{\s*demoAudio\.remove\(\);\s*demo\.remove\(\)/);
-  assert.match(workspace, /if \(accepted\) demoAudio\.remove\(\)/);
+  assert.match(workspace, /function removeDemo\(\) \{\s*setDemoFraming\(null\);\s*demoAudio\.remove\(\);\s*demo\.remove\(\)/);
+  assert.match(workspace, /if \(accepted\) \{ demoAudio\.remove\(\); setDemoAudioPlayback\("once"\); setDemoFraming\(null\); \}/);
 });
 
 test("local media is detached before cleanup and Creator selection adds no prompts", () => {

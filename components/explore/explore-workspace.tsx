@@ -6,6 +6,7 @@ import Link from "next/link";
 import { AICharacterCard } from "@/components/explore/ai-character-card";
 import { ExploreWorkflowCard } from "@/components/explore/explore-workflow-card";
 import styles from "@/components/explore/explore-workspace.module.css";
+import scrollbars from "@/components/ui/quiet-scrollbar.module.css";
 import { EXPLORE_QUICK_STARTS, getQuickStartPreviewHref } from "@/lib/explore/launch-presets";
 import { EXPLORE_WORKFLOWS } from "@/lib/explore/workflows";
 import { cn } from "@/lib/utils";
@@ -14,7 +15,7 @@ const QUICK_START_ICONS = { studio: Sparkles, trending: TrendingUp, library: Fol
 
 export function ExploreWorkspace({ localPreview = false }: { localPreview?: boolean }) {
   return (
-    <section className="min-h-dvh bg-background px-4 py-7 text-foreground sm:px-6 lg:px-8 lg:py-8">
+    <section className={cn(scrollbars.surface, scrollbars.page, "min-h-dvh bg-background px-4 py-7 text-foreground sm:px-6 lg:px-8 lg:py-8")}>
       <div className={styles.page}>
       <header className="mb-7">
         <h1 className="text-3xl font-semibold tracking-[-0.04em] text-foreground-strong">Explore</h1>

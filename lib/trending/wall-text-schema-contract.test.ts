@@ -704,7 +704,8 @@ test("measures new final Wall lines with packaged Arial Bold before saving autho
   assert.match(layoutEngineSource, /blocks,/);
   assert.match(layoutEngineSource, /fontSizePx: fontSize/);
   assert.match(layoutEngineSource, /lineHeightPx,/);
-  assert.match(layoutEngineSource, /textBox: params\.layout\.textBox/);
+  assert.match(layoutEngineSource, /textBox: finalLayout\.textBox/);
+  assert.match(layoutEngineSource, /let textBox = params\.layout\.textBox/);
   assert.match(layoutEngineSource, /maximumWidth = getWallTextSafeLineWidth\(textBoxWidth\)/);
   assert.match(visualStyleSource, /WALL_TEXT_INLINE_SAFE_PADDING = 15/);
   assert.match(visualStyleSource, /WALL_TEXT_RASTER_EDGE_GUARD = 2/);
@@ -1108,9 +1109,16 @@ test("uses packaged Arial Bold glyphs at 700 for new Wall content while retainin
   );
 });
 
-test("keeps the Wall editor save gate aligned with the current 24-48 word contract", () => {
-  assert.match(editorSource, /wordCount < MIN_CURRENT_GENERATION_WALL_TEXT_WORDS \|\|[\s\S]+wordCount > MAX_CURRENT_GENERATION_WALL_TEXT_WORDS/);
-  assert.match(editorSource, /MIN_CURRENT_GENERATION_WALL_TEXT_WORDS\}–\$\{MAX_CURRENT_GENERATION_WALL_TEXT_WORDS\} words and fit the measured 5–8-line layout/);
+test("separates authored Wall edit validation from generated copy limits", () => {
+  const manualCopySource = readFileSync(new URL("./wall-text-manual-copy.ts", import.meta.url), "utf8");
+  assert.match(editorSource, /validateWallTextManualCopy\(content\.content\.fullText\)/);
+  assert.match(editorSource, /maxLength=\{WALL_TEXT_MANUAL_MAX_CHARACTERS\}/);
+  assert.match(manualCopySource, /WALL_TEXT_MANUAL_MAX_CHARACTERS = 600/);
+  assert.match(manualCopySource, /if \(!normalized\) throw new Error/);
+  assert.match(textLogicSource, /textMode === "manual"[\s\S]+validateManualWallTextContent\(content\);[\s\S]+return;/);
+  assert.match(textLogicSource, /minimumWords =[\s\S]+MIN_CURRENT_GENERATION_WALL_TEXT_WORDS/);
+  assert.match(textLogicSource, /maximumWords =[\s\S]+MAX_CURRENT_GENERATION_WALL_TEXT_WORDS/);
+  assert.match(textLogicSource, /wordCount < minimumWords \|\| wordCount > maximumWords/);
   assert.match(textLogicSource, /MIN_SHORT_WALL_TEXT_WORDS = 15/);
   assert.doesNotMatch(editorSource, /exact limit is checked against the selected clip/);
 });

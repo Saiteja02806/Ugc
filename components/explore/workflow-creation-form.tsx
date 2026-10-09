@@ -7,40 +7,38 @@ import { useCallback, useId, useRef, useState, type ReactNode } from "react";
 import { WorkflowFilePicker, WorkflowMediaPlayer, type WorkflowAttachment } from "@/components/explore/hook-workflow-media-controls";
 import { WorkflowAudioReference, type WorkflowAudioReferenceProps } from "@/components/explore/workflow-audio-reference";
 import { AiStudioSettingSelect } from "@/components/generation/ai-studio-composer";
+import { WorkflowDurationControl } from "@/components/explore/workflow-duration-control";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { CREATOR_REFERENCES } from "@/lib/ai-studio/creator-references";
+import { AI_STUDIO_GENERATION_QUANTITIES, AI_STUDIO_VIDEO_ASPECT_RATIOS, getAIStudioVideoResolutions, parseAIStudioGenerationQuantity, parseAIStudioVideoAspectRatio, parseAIStudioVideoModel, parseAIStudioVideoResolution } from "@/lib/ai-studio/generation-settings";
+import { getWorkflowVideoModels, type WorkflowGenerationSettings } from "@/lib/explore/workflow-generation-settings";
 import { cn } from "@/lib/utils";
 import studio from "@/components/explore/workflow-studio.module.css";
 import creation from "@/components/explore/workflow-creation.module.css";
 
-// Existing local-preview choices, not a verified provider capability matrix.
-const MODELS = [{ value: "seedance_2_5", label: "Seedance 2.5" }, { value: "google_omni", label: "Google Omni" }] as const;
-const DURATIONS = [4, 5, 6, 7, 8, 9, 10].map((seconds) => ({ value: String(seconds), label: `${seconds} sec` }));
-const OUTPUTS = [1, 2, 4].map((count) => ({ value: String(count), label: `${count} video${count > 1 ? "s" : ""}` }));
-const QUALITIES = [{ value: "720p", label: "720p" }, { value: "1080p", label: "1080p" }];
-const RATIOS = [{ value: "9:16", label: "9:16" }, { value: "16:9", label: "16:9" }];
+const OUTPUTS = AI_STUDIO_GENERATION_QUANTITIES.map((count) => ({ value: String(count), label: `${count} video${count > 1 ? "s" : ""}` }));
+const RATIOS = AI_STUDIO_VIDEO_ASPECT_RATIOS.map((ratio) => ({ value: ratio, label: ratio }));
 
 export type WorkflowCreationFormProps = WorkflowAudioReferenceProps & {
   instructions: string;
   onInstructionsChange: (value: string) => void;
   creator: WorkflowAttachment;
   videoReference: WorkflowAttachment;
-  initialDuration?: number;
+  generationSettings: WorkflowGenerationSettings;
+  onGenerationSettingsChange: (patch: Partial<WorkflowGenerationSettings>) => void;
 };
 
 /** One mounted form at every size. Only the user can change instructions. */
-export function WorkflowCreationForm({ kind, instructions, onInstructionsChange, creator, videoReference, audio, audioLabel, audioMode, onAudioModeChange, appScreenControl, initialDuration = 5 }: WorkflowCreationFormProps & {
+export function WorkflowCreationForm({ kind, instructions, onInstructionsChange, creator, videoReference, audio, audioLabel, audioMode, onAudioModeChange, ownerId, appScreenControl, generationSettings, onGenerationSettingsChange }: WorkflowCreationFormProps & {
   kind: "hook" | "phone";
   appScreenControl?: ReactNode;
 }) {
   const promptId = useId();
   const helperId = useId();
-  const [model, setModel] = useState("seedance_2_5");
-  const [duration, setDuration] = useState(String(initialDuration));
-  const [outputs, setOutputs] = useState("1");
-  const [quality, setQuality] = useState("720p");
-  const [ratio, setRatio] = useState("9:16");
+  const { model, duration, quantity, resolution, aspectRatio } = generationSettings;
+  const models = getWorkflowVideoModels();
+  const qualities = getAIStudioVideoResolutions(model).map((value) => ({ value, label: value }));
   const prefix = kind === "hook" ? "Hook" : "Phone video";
 
   return <section aria-label={kind === "hook" ? "Hook composer" : "Phone video composer"} className={creation.composer}>
@@ -60,14 +58,14 @@ export function WorkflowCreationForm({ kind, instructions, onInstructionsChange,
           </PopoverTrigger>
           <PopoverContent side="right" align="start" className={cn(studio.floating, creation.floating)}>
             <PopoverTitle>Video reference</PopoverTitle>
-            <p className="text-sm leading-6 text-muted">Optional. Your instructions decide how this video is used.</p>
+            <p className="text-sm leading-6 text-muted">Use Seedance 2.5 for a video reference up to 30 seconds. It guides generation through OpenRouter; it is not appended as a demo. Files upload only when you Generate in the connected workflow.</p>
             {videoReference.asset ? <><WorkflowMediaPlayer asset={videoReference.asset} kind="video" label="Video reference preview" className="mx-auto aspect-auto h-auto max-h-[40dvh] w-auto max-w-full bg-transparent" /><p className="break-all text-xs text-muted">{videoReference.asset.name}</p></> : null}
             <WorkflowFilePicker attachment={videoReference} kind="video" label={videoReference.asset ? "Replace video reference" : "Attach video reference"} className="h-9 text-sm" />
             {videoReference.asset ? <Button type="button" variant="ghost" aria-label="Remove video reference" className="h-9 rounded-lg text-sm" onClick={videoReference.remove}>Remove video</Button> : null}
             {videoReference.error ? <p role="alert" className="text-sm text-destructive">{videoReference.error}</p> : null}
           </PopoverContent>
         </Popover>
-        <WorkflowAudioReference audio={audio} audioLabel={audioLabel} audioMode={audioMode} onAudioModeChange={onAudioModeChange} />
+        <WorkflowAudioReference audio={audio} audioLabel={audioLabel} audioMode={audioMode} onAudioModeChange={onAudioModeChange} ownerId={ownerId} />
       </div>
       {creator.loading || videoReference.loading || audio.loading ? <p role="status" className={creation.sectionHelp}>Reading your reference…</p> : null}
       {creator.error || videoReference.error || audio.error ? <p role="alert" className="text-xs leading-5 text-destructive">{creator.error || videoReference.error || audio.error}</p> : null}
@@ -80,14 +78,14 @@ export function WorkflowCreationForm({ kind, instructions, onInstructionsChange,
         placeholder={kind === "hook" ? "Example: A creator looks into the camera and says, “Still planning your day in five apps? Try this instead.” Use natural lighting, a close-up shot, and a casual, friendly tone." : "Example: A creator holds a phone toward the camera and says, “This app keeps my day in one place.” Show the attached app screen inside the phone. Use natural lighting and a casual, friendly delivery."} aria-describedby={helperId}
         className={creation.prompt} />
     </div>
-    <p id={helperId} className="sr-only">Nothing is prefilled or rewritten. Your instructions stay unchanged.</p>
+    <p id={helperId} className="sr-only">Nothing is prefilled or rewritten. Your instructions stay unchanged. Text-only prompts are supported; reference images are optional.</p>
 
     <div role="group" aria-label={`${prefix} generation settings`} className={creation.settingsGrid}>
-      <SettingField label="Model"><AiStudioSettingSelect ariaLabel={`${prefix} model`} value={model} onChange={setModel} options={MODELS} /></SettingField>
-      <SettingField label="Duration"><AiStudioSettingSelect ariaLabel={`${prefix} duration`} value={duration} onChange={setDuration} options={DURATIONS} /></SettingField>
-      <SettingField label="Quality"><AiStudioSettingSelect ariaLabel={`${prefix} quality`} value={quality} onChange={setQuality} options={QUALITIES} /></SettingField>
-      <SettingField label="Videos"><AiStudioSettingSelect ariaLabel={kind === "hook" ? "Number of hook videos" : "Number of phone videos"} value={outputs} onChange={setOutputs} options={OUTPUTS} /></SettingField>
-      <SettingField label="Ratio"><AiStudioSettingSelect ariaLabel={`${prefix} aspect ratio`} value={ratio} onChange={setRatio} options={RATIOS} /></SettingField>
+      <SettingField label="Model"><AiStudioSettingSelect ariaLabel={`${prefix} model`} value={model} onChange={(value) => onGenerationSettingsChange({ model: parseAIStudioVideoModel(value) })} options={models} /></SettingField>
+      <SettingField label="Duration"><WorkflowDurationControl key={model} ariaLabel={`${prefix} duration`} model={model} value={duration} onChange={(duration) => onGenerationSettingsChange({ duration })} /></SettingField>
+      <SettingField label="Quality"><AiStudioSettingSelect ariaLabel={`${prefix} quality`} value={resolution} onChange={(value) => onGenerationSettingsChange({ resolution: parseAIStudioVideoResolution(value) })} options={qualities} /></SettingField>
+      <SettingField label="Videos"><AiStudioSettingSelect ariaLabel={kind === "hook" ? "Number of hook videos" : "Number of phone videos"} value={String(quantity)} onChange={(value) => onGenerationSettingsChange({ quantity: parseAIStudioGenerationQuantity(Number(value)) })} options={OUTPUTS} /></SettingField>
+      <SettingField label="Ratio"><AiStudioSettingSelect ariaLabel={`${prefix} aspect ratio`} value={aspectRatio} onChange={(value) => onGenerationSettingsChange({ aspectRatio: parseAIStudioVideoAspectRatio(value) })} options={RATIOS} /></SettingField>
     </div>
   </section>;
 }

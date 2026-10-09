@@ -21,19 +21,21 @@ import studio from "@/components/explore/workflow-studio.module.css";
 type Kind = "image" | "video";
 
 /** Optional generation guidance; imported editor footage uses the separate source picker. */
-export function FormatGenerationReferences({ selection, onChange, onPendingChange, disabled, preview, ownerId, defaultImage, onClearDefault, active = true }: {
+export function FormatGenerationReferences({ selection, onChange, onPendingChange, disabled, preview, ownerId, styleVideo, onClearStyle, active = true, videoInputEnabled = true }: {
   selection: AIStudioReferenceMedia | null;
   onChange: (selection: AIStudioReferenceMedia | null) => void;
   onPendingChange: (pending: boolean) => void;
   disabled: boolean;
   preview: boolean;
   ownerId?: string;
-  defaultImage?: LocalWorkflowMedia;
-  onClearDefault?: () => void;
+  styleVideo?: LocalWorkflowMedia;
+  onClearStyle?: () => void;
   active?: boolean;
+  videoInputEnabled?: boolean;
 }) {
   const imageInput = useRef<HTMLInputElement>(null);
   const videoInput = useRef<HTMLInputElement>(null);
+  const popup = useRef<HTMLDivElement>(null);
   const revision = useRef(0);
   const localImage = useLocalWorkflowMedia("image");
   const localVideo = useLocalWorkflowMedia("video");
@@ -57,7 +59,7 @@ export function FormatGenerationReferences({ selection, onChange, onPendingChang
   if (wasActive !== active) { setWasActive(active); setOpenKind(null); }
 
   async function choose(kind: Kind, input: File | (() => Promise<File>), onAccepted?: () => void, source: "upload" | "catalog" = "upload") {
-    if (disabled || pending) return;
+    if (disabled || pending || kind === "video" && !videoInputEnabled) return;
     const request = ++revision.current;
     setError(null); setPending(kind); onPendingChange(true);
     try {
@@ -118,38 +120,39 @@ export function FormatGenerationReferences({ selection, onChange, onPendingChang
       if (request === revision.current) { setPending(null); onPendingChange(false); }
     }
   }
-  function remove() { localImage.remove(); localVideo.remove(); setError(null); onChange(null); onClearDefault?.(); setOpenKind(null); }
+  function remove() { localImage.remove(); localVideo.remove(); setError(null); onChange(null); setOpenKind(null); }
   const localError = localImage.error ?? localVideo.error;
   const catalogSelection = selection?.kind === "image" && (selection.asset.projectId === CATALOG_REFERENCE_IMAGE_PROJECT || selection.asset.projectId === "ai-studio") ? selection.asset.fileName : null;
 
   return <section aria-label="Optional generation references" className="space-y-2">
     <p className="text-xs text-muted">Optional references</p>
-    <div className={creation.referenceGrid}>
-      {(["image", "video"] as const).map(kind => {
+    <div className={creation.referenceGrid} data-workflow-reference-grid>
+      {(["image", "video"] as const).filter(kind => kind === "image" || videoInputEnabled || Boolean(styleVideo)).map(kind => {
         const local = kind === "image" ? localImage.asset : localVideo.asset;
-        const asset = selection?.kind === kind ? { name: selection.asset.fileName ?? selection.asset.title, url: selection.asset.url, duration: selection.asset.durationSeconds } : !selection && kind === "image" && defaultImage ? defaultImage : preview && !selection ? local : null;
+        const isStyle = kind === "video" && selection?.kind !== "video" && Boolean(styleVideo);
+        const asset = selection?.kind === kind ? { name: selection.asset.fileName ?? selection.asset.title, url: selection.asset.url, duration: selection.asset.durationSeconds } : isStyle ? styleVideo : preview && !selection ? local : null;
         const input = kind === "image" ? imageInput : videoInput;
-        const uploadActions = <div className="flex flex-wrap items-center gap-2"><Button type="button" variant="outline" disabled={disabled || Boolean(pending)} onClick={() => input.current?.click()} className="h-9 rounded-lg text-sm">{kind === "image" ? "Upload image" : asset ? "Replace video" : "Attach video"}</Button>
-          {asset ? <Button type="button" variant="ghost" aria-label={`Remove ${kind} reference`} disabled={disabled || Boolean(pending)} onClick={remove} className="h-9 rounded-lg text-sm">{kind === "image" ? "None" : "Remove video"}</Button> : null}
+        const uploadActions = <div className="flex flex-wrap items-center gap-2">{kind === "image" || videoInputEnabled ? <Button type="button" variant="outline" disabled={disabled || Boolean(pending)} onClick={() => input.current?.click()} className="h-9 rounded-lg text-sm">{kind === "image" ? "Upload image" : isStyle ? "Upload video reference" : asset ? "Replace video" : "Attach video"}</Button> : null}
+          {asset ? <Button type="button" variant="ghost" aria-label={isStyle ? "Clear style example" : `Remove ${kind} reference`} disabled={disabled || Boolean(pending)} onClick={isStyle ? () => { onClearStyle?.(); setOpenKind(null); } : remove} className="h-9 rounded-lg text-sm">{isStyle ? "Clear example" : kind === "image" ? "None" : "Remove video"}</Button> : null}
           {kind === "image" && activeImageTab === "user" && !preview && ownerId ? <Button type="button" variant="ghost" size="icon-sm" aria-label="Refresh your images" title="Refresh your images" disabled={Boolean(pending) || imagesQuery.isFetching} onClick={() => void imagesQuery.refetch()}><RefreshCw className={cn("size-3.5", imagesQuery.isFetching && "animate-spin motion-reduce:animate-none")} aria-hidden="true" /></Button> : null}
         </div>;
         return <div key={kind} className="relative min-w-0">
-          <input ref={input} type="file" className="hidden" aria-label={`Choose optional ${kind} reference`} accept={kind === "image" ? "image/png,image/jpeg,image/webp" : "video/mp4,video/quicktime,video/webm"} disabled={disabled || Boolean(pending)} onChange={event => {
+          <input ref={input} type="file" className="hidden" aria-label={`Choose optional ${kind} reference`} accept={kind === "image" ? "image/png,image/jpeg,image/webp" : "video/mp4,video/quicktime,video/webm"} disabled={disabled || Boolean(pending) || kind === "video" && !videoInputEnabled} onChange={event => {
             const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; if (file) void choose(kind, file);
           }} />
           <Popover open={active && openKind === kind} onOpenChange={open => { if (open && kind === "image") setImageTab(null); setOpenKind(open ? kind : null); }}>
-            <PopoverTrigger render={<Button type="button" variant="outline" aria-label={`${asset ? "Replace" : "Add"} ${kind} reference`} aria-busy={pending === kind} title={asset?.name ?? `Choose an optional ${kind} reference`} disabled={disabled || Boolean(pending)} data-state={pending === kind ? "loading" : asset ? "selected" : "empty"} className={creation.referenceButton} />}>
+            <PopoverTrigger render={<Button type="button" variant="outline" data-workflow-tile="reference" aria-label={isStyle ? "Preview video style reference" : `${asset ? "Replace" : "Add"} ${kind} reference`} aria-busy={pending === kind} title={asset?.name ?? `Choose an optional ${kind} reference`} disabled={disabled || Boolean(pending)} data-state={pending === kind ? "loading" : asset ? "selected" : "empty"} className={creation.referenceButton} />}>
               {pending === kind ? <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : asset ? <ReferenceThumbnail kind={kind} asset={asset} /> : kind === "image" ? <>
                 {CREATOR_REFERENCES[0] ? <ReferenceThumbnail kind="image" asset={{ name: "", url: CREATOR_REFERENCES[0].src, duration: null }} available /> : null}<UserRound className="relative size-5" aria-hidden="true" />
               </> : <Video className="size-5" aria-hidden="true" />}
-              <span className={creation.referenceLabel}>{pending === kind ? "Preparing…" : kind === "image" ? "Choose image" : "Video reference"}</span>
-              {asset ? <Check className={creation.referenceCheck} aria-label={`${kind} attached`} /> : null}
+              <span className={creation.referenceLabel}>{pending === kind ? "Preparing…" : isStyle ? "Style video" : kind === "image" ? "Choose image" : "Choose video"}</span>
+              {asset ? <Check className={creation.referenceCheck} aria-label={isStyle ? "Video style selected" : `${kind} attached`} /> : null}
             </PopoverTrigger>
-            <PopoverContent side="right" align="start" className={cn(studio.floating, creation.floating)}>
-              <PopoverTitle>{kind === "image" ? "Choose image" : "Video reference"}</PopoverTitle>
-              {kind === "image" ? uploadActions : <p className="text-sm leading-6 text-muted">Optional video up to 3 seconds, in 9:16 or 16:9. Output follows the clip’s length. Add narration in Edit video.</p>}
-              {asset ? <>{kind === "image" ? <ReferenceImagePreview asset={asset} /> : <WorkflowMediaPlayer asset={asset} kind="video" label="Video reference preview" className="mx-auto aspect-auto h-auto max-h-[40dvh] w-auto max-w-full bg-transparent" />}<p className="break-all text-xs text-muted">{asset.name}</p></> : null}
-              {kind === "video" ? uploadActions : null}
+            <PopoverContent ref={popup} initialFocus={popup} tabIndex={-1} side="bottom" align="center" className={cn(studio.floating, creation.floating)} style={{ maxHeight: "min(calc(100dvh - 2rem), var(--available-height))", maxWidth: "min(calc(100vw - 2rem), var(--available-width))" }}>
+              <PopoverTitle>{isStyle ? "Selected style video" : kind === "image" ? "Choose image" : "Video reference"}</PopoverTitle>
+              <p className="text-sm leading-6 text-muted">{isStyle ? videoInputEnabled ? "Watch your selected gallery example. Describe the style you want in your instructions, or upload a video to use as generation input." : "Watch your selected gallery example and describe the style you want. WAN 3.0 uses image references for generation." : kind === "image" ? videoInputEnabled ? "Optional image. Your instructions decide how it appears. Choose an image or a video reference." : "Optional image. Your instructions decide how it appears in your WAN 3.0 video." : "Optional video up to 3 seconds, in 9:16 or 16:9. Output follows the clip’s length. Choose Edit below your preview to add narration."}</p>
+              {asset ? <>{kind === "image" ? <ReferenceImagePreview asset={asset} /> : <WorkflowMediaPlayer asset={asset} kind="video" label={isStyle ? "Selected style video preview" : "Video reference preview"} className="mx-auto aspect-auto h-auto max-h-[40dvh] w-auto max-w-full bg-transparent" />}<p className="break-all text-xs text-muted">{asset.name}</p></> : null}
+              {uploadActions}
               {kind === "image" ? <Tabs.Root value={activeImageTab} onValueChange={value => { if (value === "user" || value === "catalog") setImageTab(value); }} className="space-y-3">
                 <Tabs.List aria-label="Image sources" className="flex gap-1 rounded-lg border border-border bg-card-muted p-1">
                   <Tabs.Tab value="user" type="button" className="flex-1 rounded-md px-2 py-2 text-xs font-medium text-muted hover:text-foreground-strong data-[active]:bg-card data-[active]:text-foreground-strong">Your images</Tabs.Tab>

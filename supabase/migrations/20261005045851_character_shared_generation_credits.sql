@@ -123,4 +123,3 @@ from public, anon, authenticated;
 grant execute on function public.character_create_reserved_generation_batch(text, text, text, integer, jsonb, text, boolean)
 to service_role;
 select pg_notify('pgrst', 'reload schema');
-

@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { mediaCollections } from "@/lib/media/types";
+import { getProtectedMediaDeliveryUrl, isPrivateUserMedia } from "@/lib/media/media-delivery";
 
 import type {
   MediaAsset,
@@ -219,6 +220,7 @@ export async function listMediaAssets(params: {
 /** Bounded owner-scoped listing for MCP. The caller validates filters and cursor. */
 export async function listMediaAssetsPage(params: {
   collection?: MediaCollection;
+  collections?: readonly MediaCollection[];
   sourceType?: MediaSourceType;
   query?: string;
   after?: { updatedAt: string; id: string };
@@ -236,7 +238,7 @@ export async function listMediaAssetsPage(params: {
     .limit(params.limit + 1);
 
   if (params.collection) request = request.eq("collection", params.collection);
-  else request = request.in("collection", mediaCollections);
+  else request = request.in("collection", params.collections ?? mediaCollections);
   if (params.sourceType) request = request.eq("source_type", params.sourceType);
 
   // PostgREST raw OR grammar. Values are quoted, with LIKE wildcards escaped,
@@ -307,6 +309,22 @@ export async function getLatestReadyMediaAssetForParent(params: {
     throw new Error(`Could not load rendered media asset: ${error.message}`);
   }
 
+  return data;
+}
+
+/** Bearer-token delivery route only; ordinary reads must remain owner-scoped. */
+export async function getReadyMediaAssetForDelivery(assetId: string) {
+  const { data, error } = await getSupabaseServerClient().from(MEDIA_ASSETS_TABLE)
+    .select("*").eq("id", assetId).eq("status", "ready").is("deleted_at", null).maybeSingle();
+  if (error) throw new Error("Could not read private-media delivery record.");
+  return data;
+}
+
+export async function getReadyMediaAssetByKeyForOwner(key: string, owner: string) {
+  const { data, error } = await getSupabaseServerClient().from(MEDIA_ASSETS_TABLE)
+    .select("*").eq("storage_key", key).eq("user_id", owner).eq("status", "ready")
+    .is("deleted_at", null).maybeSingle();
+  if (error) throw new Error("Could not check the selected private reference.");
   return data;
 }
 
@@ -487,10 +505,11 @@ export function serializeMediaAsset(row: MediaAssetRow): MediaAsset {
     sourceRecordId: row.source_record_id,
     sourceType: row.source_type,
     status: row.status,
-    thumbnailUrl: row.thumbnail_url,
+    thumbnailUrl: isPrivateUserMedia(row) && row.thumbnail_url
+      ? getProtectedMediaDeliveryUrl(row.id, Date.now(), "thumbnail") : row.thumbnail_url,
     title: row.title,
     updatedAt: row.updated_at,
-    url: row.url,
+    url: isPrivateUserMedia(row) ? getProtectedMediaDeliveryUrl(row.id) : row.url,
     width: row.width,
   };
 }

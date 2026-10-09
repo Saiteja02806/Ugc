@@ -22,9 +22,11 @@ type GenerateGeminiOmniVideoParams = {
   prompt: string;
   providerOperationId?: string;
   referenceImageUrl?: string;
+  referenceImageUrls?: string[];
+  resolution: "480p" | "720p" | "1080p";
 };
 
-const DEFAULT_OMNI_MODEL = "gemini-omni-flash-preview";
+const DEFAULT_OMNI_MODEL = "gemini-omni-1.1-flash";
 const POLL_INTERVAL_MS = 10_000;
 const TIMEOUT_MS = 10 * 60_000;
 
@@ -38,11 +40,19 @@ export async function generateGeminiOmniVideoBuffer({
   prompt,
   providerOperationId,
   referenceImageUrl,
+  referenceImageUrls,
+  resolution,
 }: GenerateGeminiOmniVideoParams) {
   const ai = getGoogleClient();
   const startedAt = Date.now();
   const model = process.env.GEMINI_OMNI_MODEL?.trim() || DEFAULT_OMNI_MODEL;
   let interaction;
+
+  if (resolution === "480p") {
+    throw new ProviderRequestNotSubmittedError(
+      "Google Omni supports 720p or 1080p video quality.",
+    );
+  }
 
   if (providerOperationId) {
     try {
@@ -54,18 +64,22 @@ export async function generateGeminiOmniVideoBuffer({
       );
     }
   } else {
-    const referenceImage = referenceImageUrl
-      ? await downloadReferenceImage(referenceImageUrl)
-      : null;
-    await validateOmniInputTokens(ai, model, prompt, referenceImage);
+    const imageUrls = referenceImageUrls?.length
+      ? referenceImageUrls
+      : referenceImageUrl ? [referenceImageUrl] : [];
+    if (imageUrls.length > 6) {
+      throw new ProviderRequestNotSubmittedError("UGC Pilot accepts up to 6 Google Omni reference images.");
+    }
+    const referenceImages = await Promise.all(imageUrls.map(downloadReferenceImage));
+    await validateOmniInputTokens(ai, model, prompt, referenceImages);
     interaction = await ai.interactions.create({
-      input: referenceImage
+      input: referenceImages.length
         ? [
-            {
-              data: referenceImage.data,
-              mime_type: referenceImage.mimeType,
+            ...referenceImages.map((image) => ({
+              data: image.data,
+              mime_type: image.mimeType,
               type: "image" as const,
-            },
+            })),
             { text: prompt, type: "text" as const },
           ]
         : prompt,
@@ -74,6 +88,7 @@ export async function generateGeminiOmniVideoBuffer({
         aspect_ratio: aspectRatio,
         delivery: "uri",
         duration: `${durationSeconds}s`,
+        resolution,
         type: "video",
       },
     });
@@ -155,7 +170,7 @@ async function validateOmniInputTokens(
   ai: GoogleGenAI,
   model: string,
   prompt: string,
-  referenceImage: { data: string; mimeType: string } | null,
+  referenceImages: { data: string; mimeType: string }[],
 ) {
   let inputTokenLimit: number | undefined;
   let totalTokens: number | undefined;
@@ -165,8 +180,8 @@ async function validateOmniInputTokens(
       ai.models.get({ model }),
       ai.models.countTokens({
         model,
-        contents: referenceImage
-          ? [{ inlineData: referenceImage }, { text: prompt }]
+        contents: referenceImages.length
+          ? [...referenceImages.map(image => ({ inlineData: image })), { text: prompt }]
           : prompt,
       }),
     ]);

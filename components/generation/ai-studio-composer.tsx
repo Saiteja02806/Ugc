@@ -11,6 +11,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
+import { ComposerSettingsRail } from "@/components/generation/composer-settings-rail";
 import {
   Field,
   FieldDescription,
@@ -35,6 +36,7 @@ export function AiStudioComposer({
   generateDisabled,
   generateLabel,
   generationLocked,
+  hasAttachments = true,
   isGenerating,
   layout = "standard",
   leadingControl,
@@ -46,7 +48,9 @@ export function AiStudioComposer({
   placeholder,
   prompt,
   secondaryActions,
+  showPromptHint = true,
   settings,
+  unifiedMaxWidthClassName,
   portalTarget,
   promptHelper,
   promptLabel,
@@ -54,6 +58,8 @@ export function AiStudioComposer({
   actionsTarget,
   referenceControls,
   workflowDesign,
+  settingsClassName,
+  settingsLabel = "Video generation settings",
   promptAttachmentControl,
 }: {
   active: boolean;
@@ -64,6 +70,7 @@ export function AiStudioComposer({
   generateDisabled: boolean;
   generateLabel: string;
   generationLocked: boolean;
+  hasAttachments?: boolean;
   isGenerating: boolean;
   layout?: "standard" | "unified" | "workflow";
   leadingControl?: ReactNode;
@@ -75,7 +82,9 @@ export function AiStudioComposer({
   placeholder: string;
   prompt: string;
   secondaryActions?: ReactNode;
+  showPromptHint?: boolean;
   settings: ReactNode;
+  unifiedMaxWidthClassName?: string;
   portalTarget?: HTMLElement | null;
   promptHelper?: string;
   promptLabel?: string;
@@ -83,6 +92,8 @@ export function AiStudioComposer({
   actionsTarget?: HTMLElement | null;
   referenceControls?: ReactNode;
   workflowDesign?: "classic";
+  settingsClassName?: string;
+  settingsLabel?: string;
   promptAttachmentControl?: ReactNode;
 }) {
   const promptId = useId();
@@ -92,7 +103,7 @@ export function AiStudioComposer({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [controlsOpen, setControlsOpen] = useState(false);
   const promptTooLong = maxLength !== undefined && prompt.length > maxLength;
-  const excessCharacters = maxLength === undefined ? 0 : prompt.length - maxLength;
+  const excessCharacters = maxLength !== undefined ? Math.max(0, prompt.length - maxLength) : 0;
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -102,18 +113,17 @@ export function AiStudioComposer({
     }
 
     textarea.style.height = "auto";
-    const minimumHeight = compact ? 64 : layout === "unified" ? 40 : 64;
-    const maximumHeight = compact ? 96 : layout === "unified" ? 144 : 128;
+    const minimumHeight = compact ? 40 : layout === "unified" ? 40 : 64;
+    const maximumHeight = compact ? 72 : layout === "unified" ? 64 : 128;
     textarea.style.height = `${Math.min(
       Math.max(textarea.scrollHeight, minimumHeight),
       maximumHeight,
     )}px`;
-  }, [active, compact, layout, prompt]);
+  }, [active, compact, hasAttachments, layout, prompt]);
 
   if (layout === "workflow" && workflowDesign === "classic") {
     const actions = <div className="space-y-2">
-      <p role="status" className="text-xs leading-5 text-muted">{accessMessage}</p>
-      {secondaryActions ? <div className="flex flex-wrap gap-2">{secondaryActions}</div> : null}
+      <div className="flex items-center justify-between gap-2"><p role="status" className="text-xs leading-5 text-muted">{accessMessage}</p>{secondaryActions ? <div className="flex shrink-0 gap-2">{secondaryActions}</div> : null}</div>
       <Button type="submit" form={formId} aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className={creation.primaryAction}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button>
     </div>;
     const content = <form id={formId} data-layout="workflow" data-workflow-design="classic" noValidate onSubmit={onSubmit} className={creation.composer}>
@@ -121,11 +131,12 @@ export function AiStudioComposer({
       <div className={creation.instructionsField}>
         <label htmlFor={promptId} className="block text-sm font-medium">{promptLabel ?? "Your instructions"}</label>
         <div className="relative"><textarea id={promptId} name={name} value={prompt} rows={4} autoComplete="off" onChange={event => onPromptChange(event.target.value)}
-          aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId} placeholder={placeholder} className={creation.prompt} />
-          {promptAttachmentControl}</div>
+          aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId} placeholder={placeholder} className={cn(creation.prompt, promptAttachmentControl && "pb-14")} />
+          {promptAttachmentControl}
+        </div>
         <p id={promptHelperId} role={promptTooLong ? "alert" : undefined} className={promptTooLong ? "text-xs leading-5 text-destructive" : "sr-only"}>{promptTooLong ? `Shorten your instructions by ${excessCharacters} characters.` : promptHelper}</p>
       </div>
-      <div role="group" aria-label="Video generation settings" className={creation.settingsGrid}>{settings}</div>
+      <div role="group" aria-label={settingsLabel} className={cn(creation.settingsGrid, settingsClassName)}>{settings}</div>
       {!actionsTarget ? actions : null}
     </form>;
     return <>{portalTarget ? createPortal(content, portalTarget) : content}{actionsTarget ? createPortal(actions, actionsTarget) : null}</>;
@@ -153,10 +164,9 @@ export function AiStudioComposer({
       {contextBanner}
       <div className="space-y-2">
         <label htmlFor={promptId} className="block text-sm font-medium">{promptLabel ?? "Your instructions"}</label>
-        <div className="relative"><textarea id={promptId} name={name} value={prompt} rows={4} autoComplete="off" onChange={event => onPromptChange(event.target.value)}
+        <textarea id={promptId} name={name} value={prompt} rows={4} autoComplete="off" onChange={event => onPromptChange(event.target.value)}
           aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId}
-          placeholder={placeholder} className={cn("w-full resize-y rounded-lg border border-border/60 bg-card-muted/40 px-3 py-2.5 text-sm leading-6 text-foreground outline-none placeholder:text-muted-subtle focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-focus", promptAttachmentControl ? "h-[128px] min-h-[128px] pb-16" : "h-[72px] min-h-[72px]")} />
-          {promptAttachmentControl}</div>
+          placeholder={placeholder} className="h-[72px] min-h-[72px] w-full resize-y rounded-lg border border-border/60 bg-card-muted/40 px-3 py-2.5 text-sm leading-6 text-foreground outline-none placeholder:text-muted-subtle focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-focus" />
         <p id={promptHelperId} role={promptTooLong ? "alert" : undefined} className="text-xs leading-5 text-muted">{promptTooLong ? `Shorten your instructions by ${excessCharacters} characters.` : promptHelper}</p>
       </div>
       {referenceControls}
@@ -175,9 +185,12 @@ export function AiStudioComposer({
         noValidate
         onSubmit={onSubmit}
         className={cn(
-          "mx-auto w-full border bg-card transition-all duration-200",
+          "mx-auto w-full border bg-card transition-[border-color,box-shadow] duration-150 motion-reduce:transition-none",
           layout === "unified"
-            ? "max-w-[944px] rounded-[24px] border-border/80 p-0 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15"
+            ? cn(
+                unifiedMaxWidthClassName ?? "max-w-[944px]",
+                "rounded-[20px] border-border/80 p-0 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15",
+              )
             : "max-w-[1024px] rounded-[20px] border-border p-2.5 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 sm:p-3",
           compact && "rounded-[28px] shadow-none",
         )}
@@ -190,14 +203,15 @@ export function AiStudioComposer({
           ) : null}
           <Field
             className={cn(
-              "grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3",
+              "flex min-w-0 flex-col items-stretch",
               layout === "unified"
-                ? "gap-y-1 px-4 pb-1 pt-3 sm:px-5"
+                ? "gap-y-1 px-4 pb-1.5 pt-3"
                 : "gap-y-2 px-1 pt-1",
               contextBanner && layout === "unified" && "!pt-1.5",
+              !compact && layout === "unified" && leadingControl && !hasAttachments && "grid grid-cols-[44px_minmax(0,1fr)] items-start gap-x-2",
             )}
           >
-            {!compact && leadingControl}
+            {leadingControl && (!compact || hasAttachments) ? <div className={cn("min-w-0", !compact && layout === "unified" && !hasAttachments && "col-start-1 row-start-1")}>{leadingControl}</div> : null}
             <FieldLabel htmlFor={promptId} className="sr-only">
               {ariaLabel}
             </FieldLabel>
@@ -205,7 +219,7 @@ export function AiStudioComposer({
               id={promptId}
               ref={textareaRef}
               rows={1}
-              aria-describedby={promptHelperId}
+              aria-describedby={promptTooLong || showPromptHint ? promptHelperId : undefined}
               aria-invalid={promptTooLong}
               autoComplete="off"
               name={name}
@@ -215,58 +229,45 @@ export function AiStudioComposer({
               className={cn(
                 "w-full resize-none overflow-y-auto bg-transparent text-foreground outline-none placeholder:text-muted-subtle",
                 layout === "unified"
-                  ? cn("max-h-36 min-h-10 rounded-none px-0 py-0 font-normal", compact ? "text-sm leading-6" : "text-base leading-7")
+                  ? compact ? "max-h-18 min-h-10 rounded-none px-0 py-0 text-[13px] font-normal leading-5" : "max-h-16 min-h-10 rounded-none px-0 py-0 text-base font-normal leading-6 sm:text-sm"
                   : "max-h-32 min-h-16 rounded-lg px-2 py-1.5 text-sm font-medium leading-6 focus-visible:ring-2 focus-visible:ring-focus sm:text-[15px]",
-                leadingControl && !compact ? "col-start-2 row-start-1" : "col-span-full",
+                "min-w-0",
+                !compact && layout === "unified" && leadingControl && !hasAttachments && "col-start-2 row-start-1 self-center",
               )}
               placeholder={placeholder}
             />
-            <FieldDescription
-              id={promptHelperId}
-              className={cn(
-                "col-span-full flex min-w-0 items-start justify-between gap-3 text-xs",
-                layout === "unified" ? "px-0" : "px-2",
-                leadingControl && !compact && "col-start-2",
-                compact && "pb-3 text-[11px] leading-4 text-muted-subtle",
-                promptTooLong && "text-destructive",
-              )}
-              role={promptTooLong ? "alert" : undefined}
-            >
-              <span className="min-w-0">
-                {promptTooLong
-                  ? `Prompt is ${(
-                      excessCharacters
-                    ).toLocaleString("en-US")} character${
-                      excessCharacters === 1 ? "" : "s"
-                    } too long. Shorten it before generating.`
-                  : accessMessage ??
-                    "Press Enter to generate. Use Shift+Enter for a new line."}
-              </span>
-              {maxLength !== undefined ? <span className={cn("shrink-0 tabular-nums font-mono", compact && "hidden")}>
-                {prompt.length.toLocaleString("en-US")}/
-                {maxLength.toLocaleString("en-US")}
-              </span> : null}
-            </FieldDescription>
+            {promptTooLong || showPromptHint ? (
+              <FieldDescription
+                id={promptHelperId}
+                className={cn(
+                  "flex min-w-0 items-start justify-between gap-3 text-xs",
+                  !compact && layout === "unified" && leadingControl && !hasAttachments && "col-span-full",
+                  layout === "unified" ? "px-0" : "px-2",
+                  compact && "pb-1 text-[11px] leading-4 text-muted-subtle",
+                  promptTooLong && "text-destructive",
+                )}
+                role={promptTooLong ? "alert" : undefined}
+              >
+                <span className="min-w-0">
+                  {promptTooLong
+                    ? "This prompt is too long for the selected model. Shorten it before generating."
+                    : accessMessage ??
+                      "Press Enter to generate. Use Shift+Enter for a new line."}
+                </span>
+              </FieldDescription>
+            ) : null}
           </Field>
 
           <div
             data-slot={compact ? "composer-actions" : undefined}
             className={cn(
-              compact ? "flex items-center justify-between gap-2" : "flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between",
+              compact ? "flex flex-col items-stretch gap-1" : "flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between",
               layout === "unified" && "px-3 pb-2 sm:px-4 sm:pb-3",
             )}
           >
-            {compact ? <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
-              {leadingControl}
-              <Popover>
-                <PopoverTrigger render={<Button type="button" variant="outline" size="sm" aria-label="Generation settings" title="Generation settings" className="h-9 gap-1.5 rounded-full px-3 text-xs text-foreground" />}>
-                  <SlidersHorizontal className="size-3.5" aria-hidden="true" /><span data-slot="composer-settings-label">Settings</span>
-                </PopoverTrigger>
-                <PopoverContent side="top" align="start" className="w-72 gap-3 rounded-2xl p-4">
-                  <PopoverTitle className="text-sm">Generation settings</PopoverTitle>
-                  <div className="flex flex-wrap items-center gap-2">{settings}</div>
-                </PopoverContent>
-              </Popover>
+            {compact ? <div className="flex min-w-0 items-center gap-1.5">
+              {!hasAttachments ? leadingControl : null}
+              <ComposerSettingsRail>{settings}</ComposerSettingsRail>
             </div> : <div className="min-w-0 flex-1">
               {layout === "standard" ? (
                 <Button
@@ -296,11 +297,11 @@ export function AiStudioComposer({
               <div
                 id={controlsId}
                 className={cn(
-                  "flex-wrap items-center gap-2",
+                  "items-center gap-2",
                   layout === "unified"
-                    ? "flex"
+                    ? "flex flex-nowrap overflow-x-auto overscroll-x-contain py-1 [&>*]:shrink-0"
                     : cn(
-                        "mt-2 sm:mt-0 sm:flex",
+                        "mt-2 flex-wrap sm:mt-0 sm:flex",
                         controlsOpen ? "flex" : "hidden",
                       ),
                 )}
@@ -312,7 +313,7 @@ export function AiStudioComposer({
             <div
               className={cn(
                 "flex min-w-0 flex-col gap-1.5 sm:items-end",
-                layout === "unified" && (compact ? "shrink-0" : "w-full sm:w-auto"),
+                layout === "unified" && (compact ? "shrink-0 self-end" : "w-full sm:w-auto"),
               )}
             >
               <div className="flex min-w-0 items-center gap-2">
@@ -327,7 +328,7 @@ export function AiStudioComposer({
                     "min-w-0 flex-1 h-10 rounded-full px-5 text-sm font-semibold tracking-[-0.01em] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.22),0_1px_3px_rgba(0,0,0,0.12)] transition-all duration-150 active:scale-[0.98] sm:min-w-[168px]",
                     isGenerating && "ring-2 ring-primary/35 shadow-xs shadow-primary/20",
                     layout === "unified" && "w-full",
-                    compact && "h-9 rounded-full px-3.5 text-xs font-medium shadow-none sm:min-w-0",
+                    compact && "h-8 rounded-full px-3 text-xs font-medium shadow-none sm:min-w-0",
                   )}
                 >
                   {isGenerating ? (
@@ -376,6 +377,7 @@ export function AiStudioSettingSelect<TValue extends string>({
   icon,
   onChange,
   options,
+  size = "default",
   value,
 }: {
   ariaLabel: string;
@@ -385,7 +387,13 @@ export function AiStudioSettingSelect<TValue extends string>({
   disabled?: boolean;
   icon?: ReactNode;
   onChange: (value: TValue) => void;
-  options: readonly { label: string; triggerLabel?: string; value: TValue }[];
+  options: readonly {
+    disabled?: boolean;
+    label: string;
+    triggerLabel?: string;
+    value: TValue;
+  }[];
+  size?: "default" | "sm";
   value: TValue;
 }) {
   const [open, setOpen] = useState(false);
@@ -396,10 +404,7 @@ export function AiStudioSettingSelect<TValue extends string>({
     return null;
   }
 
-  function handleOptionKeyDown(
-    event: KeyboardEvent<HTMLButtonElement>,
-    optionIndex: number,
-  ) {
+  function handleOptionKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
     if (
       event.key !== "ArrowDown" &&
       event.key !== "ArrowUp" &&
@@ -412,7 +417,7 @@ export function AiStudioSettingSelect<TValue extends string>({
     event.preventDefault();
     const optionButtons = Array.from(
       event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
-        "[data-ai-studio-setting-option]",
+        "[data-ai-studio-setting-option]:not(:disabled)",
       ) ?? [],
     );
 
@@ -420,14 +425,15 @@ export function AiStudioSettingSelect<TValue extends string>({
       return;
     }
 
+    const currentIndex = Math.max(0, optionButtons.indexOf(event.currentTarget));
     const nextIndex =
       event.key === "Home"
         ? 0
         : event.key === "End"
           ? optionButtons.length - 1
           : event.key === "ArrowDown"
-            ? (optionIndex + 1) % optionButtons.length
-            : (optionIndex - 1 + optionButtons.length) % optionButtons.length;
+            ? (currentIndex + 1) % optionButtons.length
+            : (currentIndex - 1 + optionButtons.length) % optionButtons.length;
 
     optionButtons[nextIndex]?.focus();
   }
@@ -444,7 +450,11 @@ export function AiStudioSettingSelect<TValue extends string>({
             aria-label={`${ariaLabel}, currently ${currentOption.label}`}
             aria-haspopup="listbox"
             aria-expanded={open}
-            className={cn("inline-flex h-8 min-w-0 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50", fieldLabel && "h-11 w-full justify-between rounded-lg")}
+            className={cn(
+              "inline-flex h-8 min-w-0 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
+              size === "sm" && "h-7 gap-1 px-2.5 text-[11px]",
+              fieldLayout === "classic" && creation.settingButton,
+            )}
           />
         }
       >
@@ -468,23 +478,24 @@ export function AiStudioSettingSelect<TValue extends string>({
         className="w-max min-w-40 max-w-[min(20rem,calc(100vw-1rem))] p-1.5"
       >
         <div role="listbox" aria-label={ariaLabel} className="flex flex-col gap-0.5">
-          {options.map((option, optionIndex) => {
+          {options.map((option) => {
             const isSelected = option.value === value;
 
             return (
               <button
                 key={option.value}
                 type="button"
+                disabled={option.disabled}
                 role="option"
                 aria-selected={isSelected}
                 data-ai-studio-setting-option
-                onKeyDown={(event) => handleOptionKeyDown(event, optionIndex)}
+                onKeyDown={handleOptionKeyDown}
                 onClick={() => {
                   onChange(option.value);
                   setOpen(false);
                 }}
                 className={cn(
-                  "flex w-full cursor-pointer items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+                  "flex w-full cursor-pointer items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-45",
                   isSelected
                     ? "bg-brand-soft font-semibold text-primary"
                     : "text-foreground hover:bg-card-muted",
@@ -530,7 +541,7 @@ export const AI_STUDIO_RATIO_OPTIONS: {
     id: "9:16",
     label: "9:16 vertical",
     triggerLabel: "9:16",
-    sublabel: "Reel / Story / Short",
+    sublabel: "Reel / Story / TikTok",
     iconClassName: "h-5 w-3",
   },
   {
@@ -548,6 +559,7 @@ export function AiStudioRatioPicker({
   fieldLayout,
   disabled = false,
   onChange,
+  size = "default",
   value,
 }: {
   allowedRatios?: AIStudioAspectRatio[];
@@ -555,6 +567,7 @@ export function AiStudioRatioPicker({
   fieldLayout?: "classic";
   disabled?: boolean;
   onChange: (ratio: AIStudioAspectRatio) => void;
+  size?: "default" | "sm";
   value: AIStudioAspectRatio;
 }) {
   const [open, setOpen] = useState(false);
@@ -574,7 +587,11 @@ export function AiStudioRatioPicker({
             type="button"
             disabled={disabled}
             aria-label={`Aspect ratio, currently ${currentOption.label}`}
-            className={cn("inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50", fieldLabel && "h-11 w-full justify-between rounded-lg")}
+            className={cn(
+              "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
+              size === "sm" && "h-7 gap-1 px-2.5 text-[11px]",
+              fieldLayout === "classic" && creation.settingButton,
+            )}
           />
         }
       >
@@ -583,9 +600,10 @@ export function AiStudioRatioPicker({
           className={cn(
             "inline-block shrink-0 rounded-[3px] border-2 border-muted-foreground",
             currentOption.iconClassName,
+            size === "sm" && "scale-75",
           )}
         /> : null}
-        <span>{fieldLayout === "classic" ? currentOption.id : currentOption.triggerLabel}</span>
+        <span>{size === "sm" ? currentOption.id : currentOption.triggerLabel}</span>
         <ChevronDown
           className={cn(
             "size-3 text-muted transition-transform duration-200 motion-reduce:transition-none",

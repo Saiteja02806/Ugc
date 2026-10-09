@@ -1,6 +1,6 @@
 // Optional authoring tool. Offline eSpeak is isolated in .tmp; no app runtime
 // dependency, provider, credentials or user media. Frozen outputs are reviewed.
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { execFileSync } from "node:child_process";
@@ -11,7 +11,7 @@ const root = resolve("scripts/fixtures/subtitle-preview");
 await mkdir(root, { recursive: true });
 const modulePath = resolve(process.argv[2] ?? ".tmp/subtitle-preview-tools/node_modules/@echogarden/espeak-ng-emscripten/espeak-ng.js");
 const { default: initialize } = await import(pathToFileURL(modulePath).href);
-const module = await initialize(), voice = new module.eSpeakNGWorker();
+const espeakModule = await initialize(), voice = new espeakModule.eSpeakNGWorker();
 voice.set_voice("en-us"); voice.set_rate(180); voice.set_pitch(50); voice.set_range(50);
 const labels = "Make every word count. Keep your captions beautifully clear, and let your story shine.".split(" ");
 const ssml = labels.map((text, i) => `${i === 4 ? '<break time="650ms"/>' : i === 6 ? '<break time="180ms"/>' : ""}<mark name="s${i}"/>${text}<mark name="e${i}"/>`).join(" ");

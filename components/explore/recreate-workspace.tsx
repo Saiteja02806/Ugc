@@ -1,6 +1,6 @@
 "use client";
 
-/* Direct reference media preserves the source image and video dimensions. */
+/* Gallery covers fill their cards; opened previews preserve the full source dimensions. */
 /* eslint-disable @next/next/no-img-element */
 
 import { useQuery } from "@tanstack/react-query";
@@ -8,7 +8,6 @@ import { ArrowLeft, ArrowRight, Check, Filter, Layers3, LockKeyhole, Play, Refre
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 
-import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
 import { RecreateGenerationPanel } from "@/components/explore/recreate-generation-panel";
 import { RecreateSplitPane } from "@/components/explore/recreate-split-pane";
 import studio from "@/components/explore/workflow-studio.module.css";
@@ -30,15 +29,14 @@ type RecreateReferencesResponse =
 const GALLERY_GRID = layout.galleryGrid;
 const EMPTY_REFERENCES: RecreateReference[] = [];
 
-export function RecreateWorkspace({ previewReferences }: { previewReferences?: RecreateReference[] }) {
+export function RecreateWorkspace({ previewReferences, initialGenerationMode = "images" }: { previewReferences?: RecreateReference[]; initialGenerationMode?: "images" | "videos" }) {
   const { loading: authLoading, user } = useAuth();
   const localPreview = previewReferences !== undefined;
-  const subscriptionQuery = useBillingSubscription();
   const referencesQuery = useQuery({
     enabled: !localPreview && !authLoading && Boolean(user),
     gcTime: 60 * 60 * 1_000,
     queryFn: ({ signal }) => fetchRecreateReferences(signal),
-    queryKey: ["recreate-references", 2, user?.uid ?? "signed-out"],
+    queryKey: ["recreate-references", 3, user?.uid ?? "signed-out"],
     refetchOnWindowFocus: false,
     retry: 1,
     staleTime: 30 * 60 * 1_000,
@@ -48,15 +46,13 @@ export function RecreateWorkspace({ previewReferences }: { previewReferences?: R
   const [selectedReference, setSelectedReference] = useState<RecreateReference | null>(null);
   const [previewReference, setPreviewReference] = useState<RecreateReference | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [generationMode, setGenerationMode] = useState<"images" | "videos">("images");
+  const [generationMode, setGenerationMode] = useState<"images" | "videos">(initialGenerationMode);
   const references = previewReferences ?? referencesQuery.data ?? EMPTY_REFERENCES;
   const categories = useMemo(() => referenceCategories(references, format), [format, references]);
   const filtered = useMemo(() => {
     const matching = filterReferences(references, format, selectedCategories);
     return format === "slideshow" ? interleaveReferenceCategories(matching) : matching;
   }, [format, references, selectedCategories]);
-  const hasProAccess = localPreview || subscriptionQuery.data?.isActive === true;
-  const displayedReferences = hasProAccess ? filtered : filtered.slice(0, 1);
   const loading = !localPreview && (authLoading || referencesQuery.isFetching && !referencesQuery.data);
   const ready = localPreview || referencesQuery.isSuccess;
 
@@ -147,9 +143,8 @@ export function RecreateWorkspace({ previewReferences }: { previewReferences?: R
                 <button type="button" onClick={() => setSelectedCategories([])} className="rounded-full px-2 py-1 text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Clear filters</button>
               </div> : null}
               <div className={GALLERY_GRID}>
-                {displayedReferences.map((reference) => <ReferenceCard key={reference.id} isSelected={selectedReference?.id === reference.id} onPreview={() => openPreview(reference)} onRecreate={() => selectReference(reference)} reference={reference} />)}
+                {filtered.map((reference) => <ReferenceCard key={reference.id} isSelected={selectedReference?.id === reference.id} onPreview={() => openPreview(reference)} onRecreate={() => selectReference(reference)} reference={reference} />)}
               </div>
-              {!hasProAccess && filtered.length > displayedReferences.length ? <ProReferenceGate /> : null}
             </> : null}
           </div>
         </section>
@@ -184,7 +179,7 @@ export function FilterMenu({ activeCategories, categories, count, disabled, onCl
   </Popover>;
 }
 
-export function ReferenceCard({ isSelected, onPreview, onRecreate, reference, compact = false }: { isSelected: boolean; onPreview: () => void; onRecreate: () => void; reference: RecreateReference; compact?: boolean }) {
+export function ReferenceCard({ isSelected, onPreview, onRecreate, reference, compact = false, hideCaption = false }: { isSelected: boolean; onPreview: () => void; onRecreate: () => void; reference: RecreateReference; compact?: boolean; hideCaption?: boolean }) {
   return <article className="group min-w-0">
     <div className={cn(studio.mediaFrame, "relative overflow-hidden bg-card-muted ring-offset-background hover:shadow-card", isSelected && "ring-2 ring-primary ring-offset-2")}>
       <ReferenceMedia reference={reference} onPreview={onPreview} />
@@ -192,7 +187,7 @@ export function ReferenceCard({ isSelected, onPreview, onRecreate, reference, co
         {compact && isSelected ? <Check className="size-5" strokeWidth={2} aria-hidden="true" /> : <RotateCcw className="size-5" strokeWidth={1.6} aria-hidden="true" />}
       </button>
     </div>
-    {compact ? <div className="mt-2 flex min-w-0 items-center justify-between gap-2"><p className="truncate text-xs font-medium" title={reference.title}>{reference.title}</p>{isSelected ? <span className="shrink-0 text-[10px] font-medium text-primary">Selected</span> : null}</div> : null}
+    {compact && !hideCaption ? <div className="mt-2 flex min-w-0 items-center justify-between gap-2"><p className="truncate text-xs font-medium" title={reference.title}>{reference.title}</p>{isSelected ? <span className="shrink-0 text-[10px] font-medium text-primary">Selected</span> : null}</div> : null}
   </article>;
 }
 
@@ -217,16 +212,16 @@ function ReferenceMedia({ reference, onPreview }: { reference: RecreateReference
   }
 
   return <button type="button" aria-label={`Preview ${reference.title}`} onClick={onPreview} onPointerEnter={play} onPointerLeave={stop} onFocus={play} onBlur={stop} className={cn("relative block w-full overflow-hidden bg-card-muted text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus", reference.format === "slideshow" ? "aspect-[4/5]" : "aspect-[9/16]")}>
-    {playable ? <video ref={videoRef} aria-hidden="true" className="absolute inset-0 size-full object-contain" muted loop playsInline preload="none" src={reference.videoUrl} onPlaying={() => setPlaying(true)} onError={() => setFailed(true)} /> : null}
-    <img alt="" src={reference.posterUrl} width={reference.slides[0]?.width ?? 720} height={reference.slides[0]?.height ?? 1280} className={cn("absolute inset-0 size-full object-contain transition-opacity duration-150 motion-reduce:transition-none", playing && "opacity-0")} loading="lazy" onError={() => setFailed(true)} />
+    {playable ? <video ref={videoRef} aria-hidden="true" className="absolute inset-0 size-full object-cover" muted loop playsInline preload="none" src={reference.videoUrl} onPlaying={() => setPlaying(true)} onError={() => setFailed(true)} /> : null}
+    <img alt="" src={reference.posterUrl} width={reference.slides[0]?.width ?? 720} height={reference.slides[0]?.height ?? 1280} className={cn("absolute inset-0 size-full object-cover transition-opacity duration-150 motion-reduce:transition-none", playing && "opacity-0")} loading="lazy" onError={() => setFailed(true)} />
     <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/35 via-transparent to-transparent" />
     {failed ? <span className="absolute inset-0 flex items-center justify-center bg-card-muted/90 px-3 text-center text-xs text-muted">Preview unavailable</span> : null}
     <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-black/45 px-2 py-1 text-[10px] font-medium text-white backdrop-blur-sm">{playable ? <Play className="size-3 fill-current" aria-hidden="true" /> : <><Layers3 className="size-3" aria-hidden="true" />{reference.slides.length}</>}</span>
   </button>;
 }
 
-export function ReferencePreviewDialog({ onOpenChange, open, reference }: { onOpenChange: (open: boolean) => void; open: boolean; reference: RecreateReference | null }) {
-  const [activeSlide, setActiveSlide] = useState(0);
+export function ReferencePreviewDialog({ initialSlide = 0, onOpenChange, open, reference }: { initialSlide?: number; onOpenChange: (open: boolean) => void; open: boolean; reference: RecreateReference | null }) {
+  const [activeSlide, setActiveSlide] = useState(() => Math.max(0, Math.min(initialSlide, (reference?.slides.length ?? 1) - 1)));
   const slideshowReference = reference?.format === "slideshow" ? reference : null;
   const activeSlideData = slideshowReference?.slides[activeSlide] ?? null;
 

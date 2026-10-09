@@ -1,8 +1,8 @@
 "use client";
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { AudioApi } from "@/lib/audio/client";
 
-type AudioApi = <T>(path: string, init?: RequestInit) => Promise<T>;
 type Bookmarks = { voiceIds: string[] };
 
 export function useAudioBookmarks(uid: string, api: AudioApi) {
@@ -12,17 +12,21 @@ export function useAudioBookmarks(uid: string, api: AudioApi) {
   const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(new Set());
   const [saveError, setSaveError] = useState<string | null>(null);
   const query = useQuery({
-    queryKey, staleTime: 30_000, retry: false, refetchOnWindowFocus: false,
+    queryKey, enabled: Boolean(uid), staleTime: 30_000, retry: false, refetchOnWindowFocus: true,
     queryFn: ({ signal }) => api<Bookmarks>("/api/audio/bookmarks", { signal }),
   });
 
   async function toggle(voiceId: string) {
-    if (!query.data || pending.current.has(voiceId)) return;
-    const bookmarked = !query.data.voiceIds.includes(voiceId);
+    if (!uid || pending.current.has(voiceId)) return;
     pending.current.add(voiceId); setPendingIds(new Set(pending.current)); setSaveError(null);
     try {
       // A stale read cannot overwrite a save. Other voices can save independently.
-      await client.cancelQueries({ queryKey });
+      if (client.getQueryData<Bookmarks>(queryKey)) await client.cancelQueries({ queryKey });
+      // A failed initial read must not leave every bookmark permanently disabled.
+      const current = client.getQueryData<Bookmarks>(queryKey) ?? await client.fetchQuery<Bookmarks>({
+        queryKey, queryFn: ({ signal }) => api<Bookmarks>("/api/audio/bookmarks", { signal }),
+      });
+      const bookmarked = !current.voiceIds.includes(voiceId);
       await api("/api/audio/bookmarks", {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ voiceId, bookmarked }),

@@ -29,7 +29,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { useAuth } from "@/contexts/auth-context";
 import { useAccountTimeZone } from "@/components/providers/account-timezone-provider";
-import { getBrowserTimeZone } from "@/lib/scheduling/account-timezone";
+import { getDefaultAccountScheduleSlot } from "@/lib/scheduling/account-timezone";
 import type { MediaAsset, MediaSourceType } from "@/lib/media/types";
 import {
   isContentSecondaryClipMediaAsset,
@@ -88,7 +88,6 @@ import {
 } from "@/lib/scheduling/types";
 import {
   DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
-  getEarliestScheduleTimestamp,
   getZonedDateTimeParts,
 } from "@/lib/scheduling/schedule-time";
 import {
@@ -117,7 +116,7 @@ import {
   SCHEDULING_CATALOG_GC_TIME_MS,
 } from "@/lib/scheduling/workspace-query-cache";
 import type { SocialConnection } from "@/lib/social/types";
-import { hasTikTokUiAccess, isSocialPlatformVisible } from "@/lib/social/platform-visibility";
+import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
 import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
 import type { ScheduleFormSubmission } from "@/components/scheduling/schedule-editor";
 import { cn } from "@/lib/utils";
@@ -212,7 +211,7 @@ const tabLabels: Record<ScheduleTab, string> = {
 export function SchedulingWorkspace() {
   const { user } = useAuth();
   const accountTimezone = useAccountTimeZone();
-  const tiktokBetaEnabled = hasTikTokUiAccess(user);
+  const tiktokBetaEnabled = hasTikTokBetaAccess(user);
   const youtubeBetaEnabled = hasYouTubeBetaAccess(user);
   const hasAdditionalPublishingPlatform =
     tiktokBetaEnabled || youtubeBetaEnabled;
@@ -318,7 +317,10 @@ export function SchedulingWorkspace() {
     const refresh = () => setSchedulePreviewNow(Date.now());
     const initial = window.setTimeout(refresh, 0);
     const timer = window.setInterval(refresh, 30_000);
-    return () => { window.clearTimeout(initial); window.clearInterval(timer); };
+    return () => {
+      window.clearTimeout(initial);
+      window.clearInterval(timer);
+    };
   }, [drawerOpen]);
   const [requireScheduleTarget, setRequireScheduleTarget] = useState(false);
   const [scheduleAccessPrompt, setScheduleAccessPrompt] = useState<
@@ -348,12 +350,12 @@ export function SchedulingWorkspace() {
   const [calendarStartAt, setCalendarStartAt] = useState(
     () => getSocialSchedulingCalendarStartAt(cachedSchedules?.calendarStartAt),
   );
-  const defaultNewScheduleSlot = getDefaultScheduleSlot(
-    newScheduleInitialDate,
-    minimumScheduleLeadMinutes,
-    schedulePreviewNow,
-    accountTimezone,
-  );
+  const defaultNewScheduleSlot = getDefaultAccountScheduleSlot({
+    selectedDate: newScheduleInitialDate,
+    minimumLeadMinutes: minimumScheduleLeadMinutes,
+    now: schedulePreviewNow,
+    timezone: accountTimezone,
+  });
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -2064,28 +2066,15 @@ function ScheduleTargetStatusList({
   ) => void;
   retryingPublishTargetId?: string | null;
 }) {
-  const targets = (draft.targets ?? []).filter((target) =>
-    isSocialPlatformVisible(target.platform),
-  );
-  const visiblePlatforms = draft.platforms.filter(isSocialPlatformVisible);
+  const targets = draft.targets ?? [];
   const plannedAccounts = (draft.plannedConnectionIds ?? []).flatMap(
     (connectionId) => {
       const label = draft.accountLabelsByConnectionId?.[connectionId];
       const platform = draft.plannedPlatformsByConnectionId?.[connectionId];
 
-      return label && (!platform || isSocialPlatformVisible(platform))
-        ? [{ connectionId, label, platform }]
-        : [];
+      return label ? [{ connectionId, label, platform }] : [];
     },
   );
-
-  // Hide only the provider details; keep the saved post and its targets intact.
-  if (
-    targets.length === 0 && plannedAccounts.length === 0 &&
-    visiblePlatforms.length === 0 && draft.platforms.length > 0
-  ) {
-    return null;
-  }
 
   if (targets.length === 0) {
     return (
@@ -2110,8 +2099,8 @@ function ScheduleTargetStatusList({
               {account.label}
             </span>
           ))
-        ) : visiblePlatforms.length > 0 ? (
-          visiblePlatforms.map((platform) => (
+        ) : draft.platforms.length > 0 ? (
+          draft.platforms.map((platform) => (
             <span
               key={platform}
               className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-2.5 py-1"
@@ -3404,28 +3393,6 @@ function toDateKey(date: Date) {
   const day = String(date.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
-}
-
-function getDefaultScheduleSlot(
-  selectedDate: string,
-  minimumLeadMinutes: number,
-  now = Date.now(),
-  timezone = getBrowserTimeZone(),
-) {
-  const currentDate = getZonedDateTimeParts(now, timezone).date;
-  const earliest = getZonedDateTimeParts(
-    getEarliestScheduleTimestamp({
-      minimumLeadMinutes,
-      now,
-    }),
-    timezone,
-  );
-
-  return {
-    date:
-      selectedDate === currentDate ? earliest.date : selectedDate,
-    time: earliest.time,
-  };
 }
 
 function getTabItemName(tab: ScheduleTab, count: number) {

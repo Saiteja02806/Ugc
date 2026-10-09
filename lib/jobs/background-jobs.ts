@@ -29,8 +29,8 @@ export type BackgroundJobStatus =
   | "waiting_external_service";
 
 export type BackgroundJobType =
-  | "analytics_sync"
   | "generate_audio"
+  | "analytics_sync"
   | "carousel_content_plan_generation"
   | "carousel_generation"
   | "final_render"

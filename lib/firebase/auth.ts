@@ -237,7 +237,7 @@ export async function refreshCurrentFirebaseUser() {
   return mapFirebaseUser(user);
 }
 
-export async function getCurrentUserIdToken(expectedUserId?: string) {
+export async function getCurrentUserIdToken(expectedUserId?: string, forceRefresh = false) {
   const e2eTestToken = getEditRenderE2ETestToken();
 
   if (e2eTestToken) {
@@ -253,7 +253,7 @@ export async function getCurrentUserIdToken(expectedUserId?: string) {
   if (expectedUserId && user?.uid !== expectedUserId) {
     throw new Error("Your signed-in account changed. Reload to continue.");
   }
-  const token = user ? await getIdToken(user) : null;
+  const token = user ? await getIdToken(user, forceRefresh) : null;
   if (expectedUserId && auth.currentUser?.uid !== expectedUserId) {
     throw new Error("Your signed-in account changed. Reload to continue.");
   }

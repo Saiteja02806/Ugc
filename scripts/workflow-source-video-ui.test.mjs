@@ -62,7 +62,7 @@ test("reuse footer continues only when ready and edit/schedule keep their existi
   const action = { disabled: false, busy: false, message: "Ready", onAction() {}, refresh() {} };
   for (const section of ["edit", "schedule"]) {
     const tree = mod.WorkflowCreationPanel({ kind: "phone", section, create: { message: "Wrong message" }, edit: action, schedule: action });
-    assert.deepEqual(nodes(tree).filter(n => n.type === "button").map(text), [section === "edit" ? "Apply edits" : "Schedule post", "Refresh status"]);
+    assert.deepEqual(nodes(tree).filter(n => n.type === "button").map(text), [section === "edit" ? "Apply edits" : "Schedule post"]);
     assert.ok(!text(tree).includes("Wrong message"));
   }
 });
@@ -74,7 +74,9 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
     const finishing = { options: {}, setOptions() {}, output: null };
     const imports = {
       react: rt.react, "react/jsx-runtime": jsx, "@base-ui/react/tabs": { Tabs: { Root: "tabs-root", Panel: "tabs-panel" } }, "lucide-react": { ArrowLeft: "arrow", BookOpen: "book" }, "next/link": { default: "link" },
-      "@/components/explore/workflow-owned-video-boundary": { WorkflowOwnedVideoBoundary: ({ children }) => children(selection) },
+      "@/components/explore/use-workflow-source-video": { useWorkflowSourceVideo: () => selection },
+      "@/components/explore/use-workflow-generation-settings": { useWorkflowGenerationSettings: () => ({ dirty: false, settings: { aspectRatio: "9:16" }, changeSettings() {} }) },
+      "@/components/explore/workflow-generation-boundary": { WorkflowAccountBoundary: ({children}) => children("owner"), WorkflowGenerationBoundary: ({children}) => children(null) },
       "@/components/explore/workflow-finishing-boundary": { WorkflowFinishingBoundary: ({ children }) => children(finishing) },
       "@/components/explore/workflow-video-source-section": { WorkflowVideoSourceSection: "source-section" },
       "@/components/explore/workflow-creation-panel": { WorkflowCreationPanel: "creation-panel" },
@@ -89,8 +91,8 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       "@/lib/utils": { cn: (...values) => values.join(" ") }, "@/components/explore/workflow-creation.module.css": css, "@/components/explore/workflow-studio.module.css": css,
       [`@/components/explore/${kind}-workflow-composer`]: kind === "hook" ? { HookWorkflowComposer: "composer" } : { PhoneWorkflowComposer: "composer", AppScreenPicker: "app-screen" },
     };
-    const mod = load(`components/explore/${kind}-workflow-preview.tsx`, imports, { window: { addEventListener() {}, removeEventListener() {} }, requestAnimationFrame: fn => fn() });
-    const render = () => rt.render(() => (kind === "hook" ? mod.HookWorkflowPreview : mod.PhoneWorkflowPreview)({ finishingEnabled: true }));
+    const mod = load(`components/explore/${kind}-workflow-preview.tsx`, imports, { window: { addEventListener() {}, removeEventListener() {}, requestAnimationFrame: fn => fn() }, requestAnimationFrame: fn => fn() });
+    const render = () => rt.render(() => (kind === "hook" ? mod.HookWorkflowPreview : mod.PhoneWorkflowPreview)({ generationEnabled: true }));
     let tree = render(); nodes(tree).find(n => n.type === "composer").props.onInstructionsChange("Keep my original prompt");
     selection.mode = "upload"; tree = render();
     assert.equal(nodes(tree).find(n => n.type === "composer").props.instructions, "Keep my original prompt");
@@ -100,7 +102,7 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
     nodes(tree).find(n => n.type === "creation-panel").props.create.onAction(); tree = render();
     assert.equal(nodes(tree).find(n => n.type === "creation-panel").props.section, "edit");
     assert.equal(nodes(tree).find(n => n.type === "edit-workspace").props.generatedVideo.id, asset.id);
-    nodes(tree).find(n => n.type === "button" && text(n) === "Change video").props.onClick(); tree = render();
+    nodes(tree).find(n => n.type === "edit-workspace").props.onChangeSource(); tree = render();
     selection.mode = "generate"; tree = render(); assert.equal(nodes(tree).find(n => n.props.className === "generationFields").props.hidden, false);
     assert.equal(nodes(tree).find(n => n.type === "composer").props.instructions, "Keep my original prompt"); rt.unmount();
   }

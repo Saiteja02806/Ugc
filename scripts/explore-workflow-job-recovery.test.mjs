@@ -9,8 +9,14 @@ function load(file, imports = {}, globals = {}) {
   const code = ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), "utf8"), {
     fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
   }).outputText;
-  vm.runInNewContext(code, { exports, Error, URL, URLSearchParams, Headers, require(name) {
+  vm.runInNewContext(code, { exports, Error, URL, URLSearchParams, Headers, process: { env: {} }, require(name) { if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts");
     if (name in imports) return imports[name];
+    if (name === "@/lib/explore/slideshow-image") return { resolveSlideshowImage: async image => image };
+    if(name === "next/link") return "Link";
+    if(name === "./generation-session.ts" || name === "@/lib/ai-studio/generation-session") return load("lib/ai-studio/generation-session.ts");
+    if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts");
+    if(name === "@/lib/ai-studio/video-generation-state") return load("lib/ai-studio/video-generation-state.ts");
+    if(name === "@/lib/ai-studio/video-history") return load("lib/ai-studio/video-history.ts");
     if (name.startsWith("@/components/") || name === "lucide-react") return new Proxy({}, { get: (_, key) => String(key) });
     throw new Error(`Unexpected import: ${name}`);
   }, ...globals });
@@ -38,7 +44,7 @@ function harness(format, { saved = false, listed = true, history = "failure", di
   const storage = new Map(saved ? [[`ugc-ai-studio.latest-${image ? "image" : "video"}-job.v2.owner.${format}`, JSON.stringify([job.id])]] : []);
   const auth = { useAuth: () => ({ loading: false, user }) };
   const react = {
-    useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
+    useMemo: fn => fn(), useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
       return [slots[i], next => { const value = typeof next === "function" ? next(slots[i]) : next;
         if (!Object.is(value, slots[i])) { slots[i] = value; stateChanged = true; } }]; },
     useRef(value) { const i = cursor++; return slots[i] ??= { current: value }; },
@@ -95,7 +101,7 @@ function harness(format, { saved = false, listed = true, history = "failure", di
     "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
   };
   const mod = load(image ? "components/workspace/ugc-chat-workspace.tsx" : "components/video/video-generation-workspace.tsx", imports,
-    { window, fetch: transport, setTimeout: () => 1 });
+    { window, fetch: transport, setTimeout: () => 1, clearTimeout() {} });
   const Panel = image ? mod.ImageGenerationStudioPanel : mod.VideoGenerationStudioPanel;
   const props = { active: true, accessState: "pro", creditsRemaining: 1000, creditCost: 1, recreateView: {
     preview: localPreview, referenceImageUrl: "/reference.png",
@@ -158,7 +164,7 @@ for (const format of ["hook", "wall_text", "slideshow"]) {
   test(`${format}: task remains tracked after leaving the active list and restores its completed output`, async () => {
     const h = harness(format); await h.settle(); h.finish(); const tree = await h.settle();
     assert.deepEqual(h.ids(), [h.job.id]); assert.equal(h.composer().props.isGenerating, false);
-    const card = tree.find(n => typeof n.type === "function" && ["VideoResultCard", "GeneratedAssetCard"].includes(n.type.name));
+    const card = tree.find(n => typeof n.type === "function" && ["VideoResultCard", "ImageGenerationCard"].includes(n.type.name));
     assert.equal((card.props.video ?? card.props.asset).url, h.asset.url); h.unmount();
   });
   test(`${format}: slow history cannot erase a result recovered while it was loading`, async () => {

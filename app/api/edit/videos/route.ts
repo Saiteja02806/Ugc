@@ -15,6 +15,7 @@ import {
   getEditableVideoSource,
   isEditableMediaAsset,
 } from "@/lib/media/editable-video";
+import { withPrivateEditDelivery } from "@/lib/edit/private-video-delivery";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,7 +30,7 @@ export async function GET(request: Request) {
     const videos = await listEditableVideosForOwner(user.uid);
 
     return Response.json(
-      { ok: true, videos },
+      { ok: true, videos: await Promise.all(videos.map(video => withPrivateEditDelivery(video, user.uid))) },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
@@ -94,14 +95,14 @@ export async function POST(request: Request) {
           : sourceAsset.ratio,
       source: getEditableVideoSource(sourceAsset),
       sourceVideoId: sourceAsset.id,
-      sourceVideoUrl: sourceAsset.url,
-      thumbnailUrl: sourceAsset.thumbnailUrl,
+      sourceVideoUrl: sourceRow.url,
+      thumbnailUrl: sourceRow.thumbnail_url,
       title: sourceAsset.title,
       userId: user.uid,
     });
 
     return Response.json(
-      { ok: true, video },
+      { ok: true, video: await withPrivateEditDelivery(video, user.uid) },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {

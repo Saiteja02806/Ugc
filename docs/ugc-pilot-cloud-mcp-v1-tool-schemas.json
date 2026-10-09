@@ -199,7 +199,7 @@
           "upload_id": { "$ref": "#/$defs/uuid" },
           "upload_url": { "$ref": "#/$defs/httpsUrl" },
           "expires_at": { "$ref": "#/$defs/timestamp" },
-          "required_headers": { "type": "object", "properties": { "Content-Type": { "type": "string" } }, "required": ["Content-Type"], "additionalProperties": false }
+          "required_headers": { "type": "object", "properties": { "Content-Type": { "type": "string" }, "x-goog-content-length-range": { "type": "string" }, "x-goog-if-generation-match": { "const": "0" } }, "required": ["Content-Type", "x-goog-content-length-range", "x-goog-if-generation-match"], "additionalProperties": false }
         },
         "required": ["upload_id", "upload_url", "expires_at", "required_headers"],
         "additionalProperties": false

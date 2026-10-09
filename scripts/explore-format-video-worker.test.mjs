@@ -14,13 +14,20 @@ const requests = [], operations = [], stored = [];
 const buffer = Buffer.from([0, 0, 0, 24, 102, 116, 121, 112, 109, 112, 52, 50]);
 const provider = name => async params => { requests.push({ provider: name, ...params }); await params.onOperationCreated("operation-fixture"); await params.onOperationSucceeded("operation-fixture", "https://output.test/video.mp4"); return buffer; };
 const { runGenerateHookVideoJob } = load("worker/src/jobs/generate-hook-video.ts", {
+  "../lib/private-media.js": { resolveOwnedPrivateMediaUrl: async url => url },
   "../logger.js": { logger: { info() {} } },
   "../lib/generation-provider.js": { assertProviderOperationCanContinue: () => "submit", createGenerationRequestFingerprint: value => JSON.stringify(value),
     persistProviderSubmissionFailure: () => assert.fail("Unexpected provider failure"), toProviderPollingRetry: error => error,
-    ProviderOperationTerminalError: class extends Error {}, ProviderSubmissionUncertainError: class extends Error {}, },
+    ProviderOperationTerminalError: class extends Error {}, ProviderRequestNotSubmittedError: class extends Error {}, ProviderSubmissionUncertainError: class extends Error {}, },
+  "../lib/hook-video-provider.js": { resolveHookVideoProvider: () => "gemini" },
+  "../lib/runway-seedance-video.js": { generateRunwaySeedanceVideoBuffer: provider("runway-seedance") },
+  "../lib/openrouter-wan-video.js": { generateOpenRouterWanVideoBuffer: provider("openrouter") },
+  "../lib/video-prompt-policy.js": load("worker/src/lib/video-prompt-policy.ts"),
+  "../lib/openrouter-seedance-video.js": { generateOpenRouterSeedanceVideoBuffer: provider("openrouter") },
+  "../lib/kling-video.js": { generateKlingVideoBuffer: provider("kling") },
   "../lib/runway-video.js": { generateRunwayHookVideoBuffer: provider("runway") },
   "../lib/gemini-omni-video.js": { generateGeminiOmniVideoBuffer: provider("gemini") },
-  "../lib/higgsfield-video.js": { generateHiggsfieldVideoBuffer: provider("higgsfield") },
+  "../lib/higgsfield-video.js": { resumeLegacyHiggsfieldVideoBuffer: provider("higgsfield") },
   "../lib/veo-video.js": { generateVeoHookVideoBuffer: provider("veo") },
   "../lib/storage.js": { getStoredObject: async () => null, uploadBufferToStorage: async input => { stored.push(input); return { key: input.key, url: "https://owned.test/final.mp4" }; } },
   "../lib/ugc-video-prompt.js": load("worker/src/lib/ugc-video-prompt.ts"),
@@ -29,6 +36,7 @@ const { runGenerateHookVideoJob } = load("worker/src/jobs/generate-hook-video.ts
   "../retryable-job-error.js": { RetryableJobError: class extends Error {} },
 });
 const context = { checkpoint: async () => {}, store: {
+  getGenerationProviderOperation: async () => null,
   reserveGenerationProviderOperation: async input => { operations.push(input); return {}; },
   markGenerationProviderSubmitted: async () => {}, markGenerationProviderSucceeded: async () => {},
   markGenerationOutputPersisted: async () => {},

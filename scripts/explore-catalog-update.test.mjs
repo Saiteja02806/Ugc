@@ -186,3 +186,32 @@ test("verified publication exposes imported Hooks once and preserves local/live 
   assert.deepEqual(local.map((item) => item.id), live.map((item) => item.id));
   assert.equal(live.every((item) => !item.posterUrl.startsWith("/api/explore/local-media/")), true);
 });
+
+test("both new slideshow categories use the existing production filters and category mixing", () => {
+  const { library } = loadRecreateCatalog("published", "production");
+  const references = library.getRecreateReferences();
+  const source = readFileSync(new URL("../lib/explore/recreate-types.ts", import.meta.url), "utf8");
+  const loadedModule = { exports: {} };
+  const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  vm.runInNewContext(code, { module: loadedModule, exports: loadedModule.exports });
+  const { referenceCategories, filterReferences, interleaveReferenceCategories } = loadedModule.exports;
+  for (const [id, label, count] of [["calory-tracking", "Calory Tracking", 6], ["pet-tracking", "Pet Tracking", 3]]) {
+    const category = referenceCategories(references, "slideshow").find((item) => item.id === id);
+    assert.equal(category.label, label);
+    assert.equal(category.count, count);
+    const filtered = filterReferences(references, "slideshow", [id]);
+    assert.equal(filtered.length, count);
+    assert.equal(filtered.every((item) => item.category === id && item.slides.length >= 2), true);
+    assert.equal(filtered.every((item) => library.isKnownRecreateReferenceId(item.id)), true);
+    assert.equal(filtered.every((item) => item.slides.every((slide) => slide.url.startsWith("https://example.test/explore/recreate/v1/"))), true);
+    assert.equal(referenceCategories(references, "wall_text").some((item) => item.id === id), false);
+    assert.equal(referenceCategories(references, "hook").some((item) => item.id === id), false);
+  }
+  const matching = filterReferences(references, "slideshow", ["fitness", "calory-tracking", "pet-tracking"]);
+  const before = JSON.stringify(matching);
+  const mixed = interleaveReferenceCategories(matching);
+  assert.equal(mixed.length, matching.length);
+  assert.equal(new Set(mixed.map((item) => item.id)).size, matching.length);
+  assert.deepEqual(Array.from(mixed.slice(0, 6), (item) => item.category), ["fitness", "calory-tracking", "pet-tracking", "fitness", "calory-tracking", "pet-tracking"]);
+  assert.equal(JSON.stringify(matching), before);
+});

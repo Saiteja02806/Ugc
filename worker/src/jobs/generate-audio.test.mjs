@@ -44,7 +44,7 @@ mock.module("../lib/audio-store.ts", { namedExports: {
   },
   getAudioRequest: async (id, uid) => id === request.id && uid === request.user_id ? { ...request } : null,
   patchAudioRequest: async (_id, patch) => Object.assign(request, patch),
-  readPrivateAudio: async key => files.get(key), savePrivateAudio: async (key, bytes) => { files.set(key, bytes); },
+  readPrivateAudio: async key => files.get(key), readOptionalPrivateAudio: async key => files.get(key) ?? null, savePrivateAudio: async (key, bytes) => { files.set(key, bytes); },
 } });
 mock.module("../lib/audio-media.ts", { namedExports: { probeAudio: async () => 2 } });
 mock.module("../lib/elevenlabs-audio.ts", { namedExports: { ElevenLabsAudio: Provider, ElevenLabsError, getElevenLabsApiKey } });

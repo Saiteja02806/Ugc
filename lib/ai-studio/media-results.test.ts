@@ -39,12 +39,25 @@ test("maps only ready generated image assets", () => {
   assert.equal(results[0]?.aspectRatio, "4:5");
 });
 
+test("image results retain the complete submitted prompt from saved metadata", () => {
+  const prompt = "Create a portrait.\nPreserve the supplied face and natural light.";
+  const [result] = getAIStudioImageResults([{ ...baseAsset, metadata: { prompt } }]);
+  assert.equal(result?.prompt, prompt);
+  assert.equal(result?.title, "Generated image");
+  assert.equal(getAIStudioImageResults([baseAsset])[0]?.prompt, undefined);
+});
+
 test("maps backend video metadata and media asset identity", () => {
   const videoAsset: MediaAsset = {
     ...baseAsset,
     collection: "video",
     durationSeconds: 4,
     id: "video-1",
+    metadata: {
+      model: "seedance_2_5",
+      prompt: "A cinematic product launch at sunset",
+      resolution: "720p",
+    },
     mimeType: "video/mp4",
     ratio: "9:16",
     sourceType: "generated_video",
@@ -56,7 +69,10 @@ test("maps backend video metadata and media asset identity", () => {
   assert.equal(result?.mediaAssetId, "video-1");
   assert.equal(result?.durationSeconds, 4);
   assert.equal(result?.createdAt, videoAsset.createdAt);
-  assert.equal(result?.prompt, videoAsset.title);
+  assert.equal(result?.prompt, "A cinematic product launch at sunset");
+  assert.equal(result?.modelLabel, "Seedance 2.5");
+  assert.equal(result?.resolution, "720p");
+  assert.equal(result?.thumbnailUrl, null);
 });
 
 test("upserts a reconciled result without duplicates", () => {
@@ -75,8 +91,22 @@ test("upserts a reconciled result without duplicates", () => {
   );
 });
 
+test("video history retains each model label including WAN and earlier Seedance jobs", () => {
+  const videos = getAIStudioVideoResults([
+    { ...baseAsset, collection: "video", sourceType: "generated_video", id: "kling-video", metadata: { model: "kling_3_0" } },
+    { ...baseAsset, collection: "video", sourceType: "generated_video", id: "seedance-video", metadata: { model: "seedance_2_5" } },
+    { ...baseAsset, collection: "video", sourceType: "generated_video", id: "wan-video", metadata: { model: "wan_3_0" } },
+  ]);
+  assert.equal(videos.find((video) => video.id === "kling-video")?.modelLabel, "Kling 3.0");
+  assert.equal(videos.find((video) => video.id === "seedance-video")?.modelLabel, "Seedance 2.5");
+  assert.equal(videos.find((video) => video.id === "wan-video")?.modelLabel, "WAN 3.0");
+});
+
 test("image history keeps more than 24 returned assets when a new generation completes", () => {
-  const assets = Array.from({ length: 30 }, (_, index) => ({ ...baseAsset, id: `asset-${index}` }));
+  const assets = Array.from({ length: 30 }, (_, index) => ({
+    ...baseAsset,
+    id: `asset-${index}`,
+  }));
   const results = getAIStudioImageResults(assets, assets.length);
   assert.equal(results.length, 30);
   const newResult = { ...results[0]!, id: "new-generation" };

@@ -77,17 +77,27 @@ const base = process.env.EXPLORE_PREVIEW_BASE_URL || 'http://localhost:3000';
       assert.equal(await recreateButtons.first().getAttribute('aria-pressed'), 'true');
       if (route !== 'slideshows') {
         const optional = page.getByRole('region', { name: 'Optional generation references', exact: true });
-        assert.equal(await optional.getByRole('button', { name: 'Replace image reference', exact: true }).isEnabled(), true);
-        assert.equal(await optional.getByRole('button', { name: 'Add video reference', exact: true }).isEnabled(), true);
+        assert.equal(await optional.getByRole('button', { name: 'Add image reference', exact: true }).isEnabled(), true);
+        const styleButton=optional.getByRole('button', { name: 'Preview video style reference', exact: true });
+        assert.equal(await styleButton.isEnabled(), true);
+        await styleButton.click();
+        const stylePlayer=page.getByLabel('Selected style video preview', {exact:true});
+        await stylePlayer.waitFor();
+        assert.equal(await stylePlayer.evaluate(video => video.tagName), 'VIDEO');
+        assert.equal(await stylePlayer.evaluate(video => video.currentSrc.includes('.mp4')), true);
+        await stylePlayer.evaluate(video => video.play());
+        await page.screenshot({ path: `.tmp/explore-format-split/${route}-selected-style-video.png`, fullPage: false });
+        await page.keyboard.press('Escape');
+        await page.locator('[data-slot="popover-content"]').waitFor({state:'detached'});
         assert.equal(await page.getByText('Choose a reference', { exact: true }).count(), 0);
-        await optional.getByRole('button', { name: 'Replace image reference', exact: true }).click();
+        await optional.getByRole('button', { name: 'Add image reference', exact: true }).click();
         await page.getByLabel('Choose optional image reference', { exact: true }).setInputFiles('public/explore/covers/hook-video-v2.webp');
         await page.getByRole('button', { name: 'Remove image reference', exact: true }).waitFor();
         await page.getByRole('button', { name: 'Use creator 1', exact: true }).click();
         await page.waitForFunction(() => { const tile = document.querySelector('[aria-label="Replace image reference"]'); return tile && !tile.disabled && !tile.getAttribute('title').includes('hook-video-v2.webp'); });
         await page.keyboard.press('Escape');
         await page.locator('[data-slot="popover-content"]').waitFor({ state: 'detached' });
-        await optional.getByRole('button', { name: 'Add video reference', exact: true }).click();
+        await optional.getByRole('button', { name: 'Preview video style reference', exact: true }).click();
         await page.getByLabel('Choose optional video reference', { exact: true }).setInputFiles(join(process.env.USERPROFILE, 'OneDrive/Desktop/workflow/format2/hook.mp4'));
         await page.getByRole('button', { name: 'Remove video reference', exact: true }).waitFor();
         assert.equal(await page.getByRole('button', { name: 'Remove image reference', exact: true }).count(), 0);
@@ -102,6 +112,9 @@ const base = process.env.EXPLORE_PREVIEW_BASE_URL || 'http://localhost:3000';
         await page.keyboard.press('Escape');
         await page.locator('[data-slot="popover-content"]').waitFor({ state: 'detached' });
         assert.equal(await page.getByRole('region', { name: 'Selected style example' }).count(), 0);
+        assert.equal(await recreateButtons.first().getAttribute('aria-pressed'), 'true');
+        await optional.getByRole('button', {name:'Preview video style reference',exact:true}).click();
+        await page.getByRole('button',{name:'Clear style example',exact:true}).click();
         assert.equal(await recreateButtons.first().getAttribute('aria-pressed'), 'false');
         await recreateButtons.first().click();
       } else assert.equal(await page.getByRole('region', { name: 'Optional generation references', exact: true }).count(), 0);
@@ -196,9 +209,19 @@ const base = process.env.EXPLORE_PREVIEW_BASE_URL || 'http://localhost:3000';
       } else {
         await page.getByRole('region', { name: 'Optional generation references' }).getByRole('button', { name: /^(Add|Replace) image reference$/ }).click();
         await page.locator('[data-slot="popover-content"]').waitFor();
+        const imagePopup = await page.locator('[data-slot="popover-content"]').boundingBox();
+        assert.ok(imagePopup.x >= 0 && imagePopup.x + imagePopup.width <= 391 && imagePopup.y >= 0 && imagePopup.y + imagePopup.height <= 845,'Image picker must fit mobile');
         await page.screenshot({ path: `.tmp/explore-format-split/${route}-image-mobile.png`, fullPage: false, animations: 'disabled' });
         await page.keyboard.press('Escape');
         await page.locator('[data-slot="popover-content"]').waitFor({ state: 'detached' });
+        await page.getByRole('button',{name:'Preview video style reference',exact:true}).click();
+        await page.waitForFunction(()=>{const v=document.querySelector('video[aria-label="Selected style video preview"]');return v&&v.readyState>=1;});
+        await page.locator('[data-slot="popover-content"]').evaluate(e=>Promise.all(e.getAnimations().map(a=>a.finished.catch(()=>{}))));
+        const videoPopup = await page.locator('[data-slot="popover-content"]').boundingBox();
+        assert.ok(videoPopup.x >= 0 && videoPopup.x + videoPopup.width <= 391 && videoPopup.y >= 0 && videoPopup.y + videoPopup.height <= 845,'Video picker must fit mobile');
+        await page.screenshot({path:`.tmp/explore-format-split/${route}-video-mobile.png`,fullPage:false,animations:'disabled'});
+        await page.keyboard.press('Escape');
+        await page.locator('[data-slot="popover-content"]').waitFor({state:'detached'});
         await page.evaluate(() => window.scrollTo(0, 0));
       }
       await page.screenshot({ path: `.tmp/explore-format-split/${route}-mobile.png`, fullPage: false });
@@ -265,7 +288,7 @@ const base = process.env.EXPLORE_PREVIEW_BASE_URL || 'http://localhost:3000';
     }
     for (const legacy of ['hook', 'phone']) {
       await page.goto(`${base}/e2e/explore-format-preview?legacy=${legacy}`, { waitUntil: 'networkidle' });
-      for (const [tab, name] of [['Create','create'], ['Edit video','edit'], ['Schedule','schedule']]) {
+      for (const [tab, name] of [['Create','create'], ['Edited demo','edit'], ['Schedule','schedule']]) {
         await page.getByRole('tab', { name: tab, exact: true }).click();
         await page.screenshot({ path: `.tmp/explore-format-split/legacy-${legacy}-${name}.png`, fullPage: false });
       }
@@ -283,3 +306,4 @@ const base = process.env.EXPLORE_PREVIEW_BASE_URL || 'http://localhost:3000';
     console.log('PASS no browser errors or provider/account writes');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
+

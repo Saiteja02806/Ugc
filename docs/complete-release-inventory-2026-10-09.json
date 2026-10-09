@@ -1,0 +1,993 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-09T11:06:51.149Z",
+  "sourceHead": "d7414877ccdca40d5b77510f6563eba6e6c5a1d5",
+  "releaseBase": "0f36048501060830bb58597f68013f8204e4217f",
+  "mainBase": "d506d65fff921a43a9362fd631e5a64c710e5246",
+  "sourceStatusPaths": 1184,
+  "previouslyReconciledUnchangedPaths": 1069,
+  "previousInventory": "docs/complete-release-inventory-2026-10-08.json",
+  "pendingPaths": [
+    ".env.example",
+    "CAROUSEL_CONTEXT.md",
+    "WALL_TEXT_CONTEXT.md",
+    "app/api/jobs/route.ts",
+    "app/api/trending/wall-text/schedules/route.ts",
+    "app/e2e/trending-feed-preview/preview.tsx",
+    "app/guides/saas-content-marketing/page.tsx",
+    "components/characters/character-workspace.tsx",
+    "components/explore/format-generation-references.tsx",
+    "components/explore/format-workspace.tsx",
+    "components/explore/workflow-creation.module.css",
+    "components/generation/ai-studio-result-actions.tsx",
+    "components/marketing/founder-guide-page.tsx",
+    "components/scheduling/schedule-editor.tsx",
+    "components/social/platform-selection-modal.tsx",
+    "components/trending/hook-video-schedule-drawer.tsx",
+    "components/trending/post-interaction-feed.tsx",
+    "components/trending/trending-review-layout.module.css",
+    "components/trending/trending-workspace.tsx",
+    "components/video/video-generation-workspace.tsx",
+    "components/workspace/ugc-chat-workspace.tsx",
+    "docs/ai-character-builder.md",
+    "docs/ai-studio-model-routing.md",
+    "docs/carousel-text-presentation.md",
+    "docs/explore-format-workflows-2026-10-08.md",
+    "docs/founder-seo-growth-plan.md",
+    "docs/landing-page-multi-platform-review.md",
+    "docs/tiktok-ui-visibility.md",
+    "docs/trending-laptop-layout-2026-10-07.md",
+    "lib/ai-studio/generated-video-history-metadata.test.ts",
+    "lib/ai-studio/generated-video-history-metadata.ts",
+    "lib/ai-studio/generation-settings.test.ts",
+    "lib/ai-studio/generation-settings.ts",
+    "lib/ai-studio/media-results.test.ts",
+    "lib/ai-studio/media-results.ts",
+    "lib/ai-studio/openrouter-video-api.test.mjs",
+    "lib/ai-studio/prompt-policy.test.ts",
+    "lib/ai-studio/prompt-policy.ts",
+    "lib/ai-studio/reference-media-upload.ts",
+    "lib/ai-studio/video-generation-api.test.mjs",
+    "lib/ai-studio/video-generation-api.ts",
+    "lib/carousel/structure-2-renderer-contract.test.ts",
+    "lib/characters/client-session.test.ts",
+    "lib/characters/generation.test.mjs",
+    "lib/characters/identity.test.ts",
+    "lib/characters/schema.ts",
+    "lib/explore/format-generation-prompt.ts",
+    "lib/explore/workflow-generation-settings.ts",
+    "lib/jobs/background-job-client.ts",
+    "lib/jobs/background-jobs.ts",
+    "lib/scheduling/platform-settings.test.ts",
+    "lib/scheduling/platform-settings.ts",
+    "lib/social/platform-visibility.test.mjs",
+    "lib/social/platform-visibility.ts",
+    "lib/social/scheduling-account-ui-contract.test.ts",
+    "lib/storage/gcs.ts",
+    "lib/storage/storage.ts",
+    "lib/storage/types.ts",
+    "lib/trending/creative-decisions.ts",
+    "lib/trending/trending-platform-scheduling-ui.test.mjs",
+    "lib/trending/trending-platform-scheduling.test.mjs",
+    "lib/trending/trending-post-interaction-flow.test.mjs",
+    "lib/trending/wall-text-db.ts",
+    "package.json",
+    "scripts/carousel-structure-2-hooks-db.test.mjs",
+    "scripts/character-shared-credits-db.test.mjs",
+    "scripts/check-carousel-editor-containment.mjs",
+    "scripts/check-carousel-text-presentation.mjs",
+    "scripts/explore-format-generation-ui.test.mjs",
+    "scripts/explore-format-reference-upload.test.mjs",
+    "scripts/explore-format-source-workspace.test.mjs",
+    "scripts/explore-format-video-worker.test.mjs",
+    "scripts/explore-sidebar-icon.test.mjs",
+    "scripts/trending-skipped-reconsideration-db.test.mjs",
+    "scripts/workflow-creation-form.test.mjs",
+    "scripts/workflow-finishing-ui.test.mjs",
+    "scripts/workflow-generation-api-contract.test.mjs",
+    "scripts/workflow-generation-client.test.mjs",
+    "scripts/workflow-generation-receipts-db.test.mjs",
+    "scripts/workflow-generation-recovery.test.mjs",
+    "worker/src/jobs/generate-character-image.test.mjs",
+    "worker/src/jobs/generate-hook-video.openrouter.test.mjs",
+    "worker/src/jobs/generate-hook-video.ts",
+    "worker/src/lib/carousel-content-grammar.test.ts",
+    "worker/src/lib/carousel-content-grammar.ts",
+    "worker/src/lib/carousel-llm-slide-plan.ts",
+    "worker/src/lib/carousel-render-slide.ts",
+    "worker/src/lib/carousel-structure-2-formats.ts",
+    "worker/src/lib/carousel-structure-2-hook-templates.ts",
+    "worker/src/lib/carousel-structure-2-planner.test.ts",
+    "worker/src/lib/carousel-structure-2-planner.ts",
+    "worker/src/lib/carousel-structure-2-render-slide.test.ts",
+    "worker/src/lib/carousel-structure-2-render-slide.ts",
+    "worker/src/lib/carousel-structure-2-story-plan.test.ts",
+    "worker/src/lib/carousel-structure-2-story-plan.ts",
+    "worker/src/lib/carousel-text-presentation.test.ts",
+    "worker/src/lib/carousel-text-presentation.ts",
+    "worker/src/lib/gemini-omni-video.ts",
+    "worker/src/lib/hook-video-provider.ts",
+    "worker/src/lib/openrouter-seedance-video.ts",
+    "app/api/media/[assetId]/download/route.ts",
+    "components/explore/format-demo-workspace.tsx",
+    "components/explore/workflow-video-start-actions.tsx",
+    "components/generation/video-download-button.tsx",
+    "components/marketing/guide-content-brief.tsx",
+    "docs/plugin-new-skills-evidence-2026-10-09.json",
+    "docs/plugin-new-skills-review-2026-10-09.md",
+    "docs/seo-article-brief-saas-weekly-content.md",
+    "docs/seo-day-delivery-2026-10-09.md",
+    "docs/seo-day-plan-2026-10-09.md",
+    "docs/seo-guide-review-copy-2026-10-09.md",
+    "docs/seo-live-research-2026-10-09.json",
+    "docs/seo-measurement-setup-2026-10-09.md",
+    "docs/seo-organic-distribution-2026-10-09.md",
+    "docs/seo-workflow-keyword-research-2026-10-09.json",
+    "docs/seo-workflow-problem-map.md",
+    "docs/slideshow-social-hook-2026-10-09.md",
+    "docs/trending-controls-production-release-2026-10-08.md",
+    "docs/trending-revisited-scheduling-2026-10-09.md",
+    "docs/video-prompt-limits.md",
+    "lib/characters/image-models.ts",
+    "lib/explore/format-reference-images.ts",
+    "lib/media/video-download-client.test.mjs",
+    "lib/media/video-download-client.ts",
+    "lib/media/video-download.test.mjs",
+    "lib/media/video-download.ts",
+    "lib/storage/signed-download.test.mjs",
+    "lib/trending/wall-text-revisited-scheduling.test.mjs",
+    "plugins/HOOK_VIDEO_GENERATION_SKILL.md",
+    "plugins/SLIDESHOWS_TEXT_GENERATION_SKILL/ugc-native-slideshow/README.md",
+    "plugins/SLIDESHOWS_TEXT_GENERATION_SKILL/ugc-native-slideshow/SKILL.md",
+    "plugins/SLIDESHOWS_TEXT_GENERATION_SKILL/ugc-native-slideshow/references/output-schema.json",
+    "plugins/SLIDESHOWS_TEXT_GENERATION_SKILL/ugc-native-slideshow/references/pattern-library.md",
+    "plugins/UGC_HOOK_INTELLIGENCE.md",
+    "plugins/WALLOFTEXT_GENERATION.md",
+    "scripts/character-image-models-db.test.mjs",
+    "scripts/explore-reference-images.test.mjs",
+    "scripts/explore-workflow-job-recovery-api.test.mjs",
+    "scripts/explore-workflow-job-recovery.test.mjs",
+    "scripts/explore-workflow-panels.browser.cjs",
+    "scripts/video-download.browser.cjs",
+    "supabase/migrations/20261009093932_character_seedream_sunburst_models.sql",
+    "worker/src/jobs/generate-hook-video.test.mjs",
+    "worker/src/lib/gemini-omni-video.test.mjs",
+    "worker/src/lib/openrouter-video.ts",
+    "worker/src/lib/openrouter-wan-video.test.ts",
+    "worker/src/lib/openrouter-wan-video.ts",
+    "worker/src/lib/video-prompt-policy.ts"
+  ],
+  "sourceDecisions": [
+    {
+      "path": "CAROUSEL_CONTEXT.md",
+      "sourceHash": "13bc4d6e2af63158df764f804669d38fcafcfcc3",
+      "releaseHash": "c00fb38477e26f54ebd7573a27ecc0df7c5daf5a",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "WALL_TEXT_CONTEXT.md",
+      "sourceHash": "28a4783cfbb4745266f108569afc85246f892fb0",
+      "releaseHash": "28a4783cfbb4745266f108569afc85246f892fb0",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "components/scheduling/schedule-editor.tsx",
+      "sourceHash": "f99dc77b50156657205ffb7e88c8e1a880449bf5",
+      "releaseHash": "f99dc77b50156657205ffb7e88c8e1a880449bf5",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "components/social/platform-selection-modal.tsx",
+      "sourceHash": "f7f866c9a5b69d87e203106065ee87c616349e15",
+      "releaseHash": "f7f866c9a5b69d87e203106065ee87c616349e15",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "components/trending/hook-video-schedule-drawer.tsx",
+      "sourceHash": "6678663e8efdcec427a33c7eecbefaf937f64faf",
+      "releaseHash": "6678663e8efdcec427a33c7eecbefaf937f64faf",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "components/trending/trending-review-layout.module.css",
+      "sourceHash": "1f5525e536ef714889496f73d1d2fc0af8188fb5",
+      "releaseHash": "1f5525e536ef714889496f73d1d2fc0af8188fb5",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "components/trending/trending-workspace.tsx",
+      "sourceHash": "1018328e00474e1b67386710b2f1f93b846cf068",
+      "releaseHash": "1018328e00474e1b67386710b2f1f93b846cf068",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "components/video/video-generation-workspace.tsx",
+      "sourceHash": "7f01108adf721c5e3e3afb9e6c9ddc5b2f436bc1",
+      "releaseHash": "65a26ecd32764b0ea80930a01e33304caaeaaab9",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "components/workspace/ugc-chat-workspace.tsx",
+      "sourceHash": "c9a017a3044f708238dba49d44d1b65e9587709a",
+      "releaseHash": "6434e0c69be0ce44b3bbd4164018f63b9a018692",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/ai-studio/reference-media-upload.ts",
+      "sourceHash": "78182ade88d80f6d2bc7bce778ae531f7e7d6f17",
+      "releaseHash": "78182ade88d80f6d2bc7bce778ae531f7e7d6f17",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/ai-studio/video-generation-api.ts",
+      "sourceHash": "88f4b77a061d9e3bdb76e447b78f76473a0e0212",
+      "releaseHash": "6408c6bceb9cc9cb5bf2e0e3f7644967bcf75337",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/carousel/structure-2-renderer-contract.test.ts",
+      "sourceHash": "d120196b57b3dff68de267d49ca1bd0b42066c34",
+      "releaseHash": "d120196b57b3dff68de267d49ca1bd0b42066c34",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/jobs/background-job-client.ts",
+      "sourceHash": "5f67611c02446f8dec524e80121b79bbc33f555e",
+      "releaseHash": "5f67611c02446f8dec524e80121b79bbc33f555e",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/jobs/background-jobs.ts",
+      "sourceHash": "52b9d80d7fd75a205c1ea8dfb322d2194d342719",
+      "releaseHash": "fed6f3a86810f7a86962786d735ec65ce0cdb573",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/scheduling/platform-settings.test.ts",
+      "sourceHash": "6d08659fc2882fb6c50aa71b2e2e4be02b7574ca",
+      "releaseHash": "6d08659fc2882fb6c50aa71b2e2e4be02b7574ca",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/scheduling/platform-settings.ts",
+      "sourceHash": "810fbbf2dcfdd8db36af447f894bef12ef13675e",
+      "releaseHash": "810fbbf2dcfdd8db36af447f894bef12ef13675e",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/social/scheduling-account-ui-contract.test.ts",
+      "sourceHash": "28f7c898b82f55e6e53ee57a7caf82afffff2640",
+      "releaseHash": "28f7c898b82f55e6e53ee57a7caf82afffff2640",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/storage/gcs.ts",
+      "sourceHash": "8cca4d2e63de96fd6327ee7da351d45d8d12fd55",
+      "releaseHash": "8cca4d2e63de96fd6327ee7da351d45d8d12fd55",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/storage/types.ts",
+      "sourceHash": "23fd3fe79c1fc6c679bf5899141b533cfc76807c",
+      "releaseHash": "23fd3fe79c1fc6c679bf5899141b533cfc76807c",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/trending/creative-decisions.ts",
+      "sourceHash": "799b4a2fe4284e22318e4ee9a6c469b3e5ce2361",
+      "releaseHash": "799b4a2fe4284e22318e4ee9a6c469b3e5ce2361",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/trending/wall-text-db.ts",
+      "sourceHash": "78229af88c59db2c8f3e1527d30ca43a80c4b8d7",
+      "releaseHash": "78229af88c59db2c8f3e1527d30ca43a80c4b8d7",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "package.json",
+      "sourceHash": "5a30b5cfee0246b3204f4a99b02c5f26d62adb4a",
+      "releaseHash": "41a267348e6be06053e3f612566f0844ee2620bc",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "worker/src/jobs/generate-hook-video.ts",
+      "sourceHash": "cba23dbf03b294d6d9f3659aa5e8552f0e665a2a",
+      "releaseHash": "1c8463e5eb4ee13e4a8e760b3648ab1d8ffb2d8a",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "worker/src/lib/carousel-content-grammar.test.ts",
+      "sourceHash": "11b9786b48e70932f04f496f2f1d3a660c7ae377",
+      "releaseHash": "11b9786b48e70932f04f496f2f1d3a660c7ae377",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "worker/src/lib/carousel-content-grammar.ts",
+      "sourceHash": "f65a7d2a83a325fed50ca9f65954589ef747227f",
+      "releaseHash": "f65a7d2a83a325fed50ca9f65954589ef747227f",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "worker/src/lib/carousel-llm-slide-plan.ts",
+      "sourceHash": "6a67c1bbd653bbd7f50595d5f826cb5b4485f7a6",
+      "releaseHash": "6a67c1bbd653bbd7f50595d5f826cb5b4485f7a6",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "worker/src/lib/carousel-render-slide.ts",
+      "sourceHash": "85c727056800ae55ff302c8e59eed9280010046f",
+      "releaseHash": "85c727056800ae55ff302c8e59eed9280010046f",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "worker/src/lib/carousel-structure-2-formats.ts",
+      "sourceHash": "ac8a5946b3194fb6c5b5c22d0e0e1c414e3aadbf",
+      "releaseHash": "ac8a5946b3194fb6c5b5c22d0e0e1c414e3aadbf",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "worker/src/lib/carousel-structure-2-planner.test.ts",
+      "sourceHash": "5762a9046249c295bc1d803fa8a11872f3da5255",
+      "releaseHash": "5762a9046249c295bc1d803fa8a11872f3da5255",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "worker/src/lib/carousel-structure-2-planner.ts",
+      "sourceHash": "f05b558e934c55a96ea279c3f0259fa2e7232a1f",
+      "releaseHash": "f05b558e934c55a96ea279c3f0259fa2e7232a1f",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "worker/src/lib/carousel-structure-2-render-slide.test.ts",
+      "sourceHash": "878115847b81a3cd23a57d858b5e287aced606ff",
+      "releaseHash": "878115847b81a3cd23a57d858b5e287aced606ff",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "worker/src/lib/carousel-structure-2-render-slide.ts",
+      "sourceHash": "fa8e3ef686ec2d2ca80ddd5b0be9fb18d1405318",
+      "releaseHash": "fa8e3ef686ec2d2ca80ddd5b0be9fb18d1405318",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "worker/src/lib/carousel-structure-2-story-plan.test.ts",
+      "sourceHash": "fbd4791878e9f007ec32265e9633d4c52a6b9d65",
+      "releaseHash": "fbd4791878e9f007ec32265e9633d4c52a6b9d65",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "worker/src/lib/carousel-structure-2-story-plan.ts",
+      "sourceHash": "4afcebad6ca9f7fa0847f2443580862a73df59b8",
+      "releaseHash": "4afcebad6ca9f7fa0847f2443580862a73df59b8",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "app/e2e/trending-feed-preview/preview.tsx",
+      "sourceHash": "4d08860ca09f2df2bd5a456fc221a8c565c7d319",
+      "releaseHash": "4d08860ca09f2df2bd5a456fc221a8c565c7d319",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "app/guides/saas-content-marketing/page.tsx",
+      "sourceHash": "07132c47be9310251779f22cc2ae42aa6f22a35f",
+      "releaseHash": "07132c47be9310251779f22cc2ae42aa6f22a35f",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "components/explore/format-generation-references.tsx",
+      "sourceHash": "9b68ae864d6e2a1cda6b59ce0a0850cf4a0e4ae0",
+      "releaseHash": "7d9a3c384e77448c326051989f06cea2cba8d78f",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "components/explore/format-video-editor.tsx",
+      "sourceHash": "3cc8f6b6e5f8d87641014fdac8f2d82f8c263c03",
+      "releaseHash": "e59669bf5a3206a2c02d1d569cf9754adfbefd97",
+      "resolution": "retained-current-release",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "components/explore/format-workspace.tsx",
+      "sourceHash": "b43bb468ddb932686db3b1864c532293115a3dbc",
+      "releaseHash": "432f87f332680a0074f8336136ae7725c54944a0",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "components/explore/use-workflow-finishing.ts",
+      "sourceHash": "3808cfdb0c45abedbcafcba37ee41949b28dd9a4",
+      "releaseHash": "4272133b13f6e71038b313c8ff82a94eb36a2b9d",
+      "resolution": "retained-current-release",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "components/explore/workflow-creation.module.css",
+      "sourceHash": "5bbb3295d6b5fc1deb2c0db5917ef68b141f4206",
+      "releaseHash": "0856009a90a02d1f17043a7eb486293ee9fc23f5",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "components/marketing/founder-guide-page.tsx",
+      "sourceHash": "4752094d01c65ca21cf4af9fc58f8e8e15ef8d0b",
+      "releaseHash": "4752094d01c65ca21cf4af9fc58f8e8e15ef8d0b",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "components/trending/post-interaction-feed.tsx",
+      "sourceHash": "b79575c5c0df6458342d75e642b1b030ade6b117",
+      "releaseHash": "b79575c5c0df6458342d75e642b1b030ade6b117",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "docs/carousel-text-presentation.md",
+      "sourceHash": "ba56b03db86fe39f6b8543214cc3f1bff43c3691",
+      "releaseHash": "ba56b03db86fe39f6b8543214cc3f1bff43c3691",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "docs/explore-format-workflows-2026-10-08.md",
+      "sourceHash": "f95c42d3847e86af5984271ce377e887663b934d",
+      "releaseHash": "f95c42d3847e86af5984271ce377e887663b934d",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "docs/founder-seo-growth-plan.md",
+      "sourceHash": "5a92745548f5a2a68cc89a313e8c3f74d9135c08",
+      "releaseHash": "5a92745548f5a2a68cc89a313e8c3f74d9135c08",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "docs/landing-page-multi-platform-review.md",
+      "sourceHash": "32e47cb44b82d0cf3cec9d2062270ca7f7f2e278",
+      "releaseHash": "32e47cb44b82d0cf3cec9d2062270ca7f7f2e278",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "docs/tiktok-ui-visibility.md",
+      "sourceHash": "e6eea2cf7c19b51f8f68a47920ffb00710622d5c",
+      "releaseHash": "e6eea2cf7c19b51f8f68a47920ffb00710622d5c",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "docs/trending-laptop-layout-2026-10-07.md",
+      "sourceHash": "d4a19d37c53d8366d8309ddcb64d461eb9f7c670",
+      "releaseHash": "d4a19d37c53d8366d8309ddcb64d461eb9f7c670",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/ai-studio/video-generation-api.test.mjs",
+      "sourceHash": "c5955773eae21c822961128af17f256410932a39",
+      "releaseHash": "d1961d198de387b6cbd966a5826cac26cbc7340d",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/explore/format-generation-prompt.ts",
+      "sourceHash": "1c131ef35cd83ed17086fafd4d7cfbab2549af26",
+      "releaseHash": "6d6f970063b833977fbce03bdcad0ab20625a3bb",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/social/platform-visibility.test.mjs",
+      "sourceHash": "f574c183f4d52ef788342f38944b4536ab71905b",
+      "releaseHash": "f574c183f4d52ef788342f38944b4536ab71905b",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/social/platform-visibility.ts",
+      "sourceHash": "fddf338b754c1c19056ec90f25a6d563fce39d6b",
+      "releaseHash": "fddf338b754c1c19056ec90f25a6d563fce39d6b",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/trending/trending-platform-scheduling-ui.test.mjs",
+      "sourceHash": "2ca85fb6c77dc7eff7fd5384297e5924b680183a",
+      "releaseHash": "2ca85fb6c77dc7eff7fd5384297e5924b680183a",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/trending/trending-platform-scheduling.test.mjs",
+      "sourceHash": "f55ffbe5b14fe26b2a5ba022b1c57dbac2414235",
+      "releaseHash": "f55ffbe5b14fe26b2a5ba022b1c57dbac2414235",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/trending/trending-post-interaction-flow.test.mjs",
+      "sourceHash": "ab09d4aa6054fad205d48c4c49a7a0c0bdba4ede",
+      "releaseHash": "ab09d4aa6054fad205d48c4c49a7a0c0bdba4ede",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "scripts/check-carousel-editor-containment.mjs",
+      "sourceHash": "d171487c4995bdd36ddc1caeea22b53c528dc288",
+      "releaseHash": "d171487c4995bdd36ddc1caeea22b53c528dc288",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "scripts/check-carousel-text-presentation.mjs",
+      "sourceHash": "4818d6612c8f64535da30bf73f680e4a67675eda",
+      "releaseHash": "4818d6612c8f64535da30bf73f680e4a67675eda",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "scripts/explore-format-generation-ui.test.mjs",
+      "sourceHash": "5c81242ec035eef6be85cce6effc54c3d3696d3a",
+      "releaseHash": "64281bb83693c3ed2617e19187fe0b932cffaebc",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "scripts/explore-format-reference-upload.test.mjs",
+      "sourceHash": "f5b93bbcbd39ec969afd5295b35db184fd393065",
+      "releaseHash": "f5b93bbcbd39ec969afd5295b35db184fd393065",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "scripts/explore-format-source-workspace.test.mjs",
+      "sourceHash": "ac4cf1ec1979ffb43d9f30b9d8d01822d3f64be7",
+      "releaseHash": "f307a065b407078dce416e1da185aa6479c0ef28",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "scripts/trending-skipped-reconsideration-db.test.mjs",
+      "sourceHash": "b82ea3c8aaff153653092704f4028f86bfcb6955",
+      "releaseHash": "b82ea3c8aaff153653092704f4028f86bfcb6955",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "scripts/workflow-finishing-ui.test.mjs",
+      "sourceHash": "8724445b06a4aa72928d8ac4e605de66e4ed91aa",
+      "releaseHash": "084a16160df8d74fed5d2a473017f68a9ab6167b",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "worker/src/lib/carousel-text-presentation.test.ts",
+      "sourceHash": "48e21de53398e85bb1ab5940aca0c298497fa95e",
+      "releaseHash": "48e21de53398e85bb1ab5940aca0c298497fa95e",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "worker/src/lib/carousel-text-presentation.ts",
+      "sourceHash": "0050c6c0afd766b26da6deacc1b1a3bd6a0cc57b",
+      "releaseHash": "0050c6c0afd766b26da6deacc1b1a3bd6a0cc57b",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "app/api/jobs/route.ts",
+      "sourceHash": "48954c08749e89dcfd6e92b2564891c9ab9e13c8",
+      "releaseHash": "48954c08749e89dcfd6e92b2564891c9ab9e13c8",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "app/api/trending/wall-text/schedules/route.ts",
+      "sourceHash": "ebd353b0a8629ef904a379be6d1d4cf33395d3b4",
+      "releaseHash": "ebd353b0a8629ef904a379be6d1d4cf33395d3b4",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "components/generation/ai-studio-result-actions.tsx",
+      "sourceHash": "99ce101a83dcfb6b4fee6923083333191778d4ee",
+      "releaseHash": "8095dea201d0aadeb78f8170ca9d520033f720eb",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/ai-studio/prompt-policy.test.ts",
+      "sourceHash": "15b43cd0667b9399b016c4a6c4d01c27a898892a",
+      "releaseHash": "4b1f488625f1c386e4063a43ba0cdc9f3e1b749e",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/ai-studio/prompt-policy.ts",
+      "sourceHash": "e57c83d5c4a6141140d57fc42eb314e148050722",
+      "releaseHash": "2e71d44ea946223bcca456ae2f889ec6f758b143",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/storage/storage.ts",
+      "sourceHash": "7b6310ffedac738699a66164e6e89adc99414399",
+      "releaseHash": "7b6310ffedac738699a66164e6e89adc99414399",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "worker/src/lib/carousel-structure-2-hook-templates.ts",
+      "sourceHash": "c90351b915004af1e3b8c024ee1c12701d1d2fa6",
+      "releaseHash": "c90351b915004af1e3b8c024ee1c12701d1d2fa6",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "worker/src/lib/gemini-omni-video.ts",
+      "sourceHash": "07db77f94bd546c2a33c18110721ea07a294f5ff",
+      "releaseHash": "05e201de423581fc06f38a3d0214e7a017d1c626",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "app/api/media/[assetId]/download/route.ts",
+      "sourceHash": "dfbe5f0f368758958befadcaa3770b3cf911920f",
+      "releaseHash": "dfbe5f0f368758958befadcaa3770b3cf911920f",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "components/explore/format-demo-workspace.tsx",
+      "sourceHash": "609752b8e976e60d772e6641dfb2b150b861d9e5",
+      "releaseHash": "609752b8e976e60d772e6641dfb2b150b861d9e5",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "components/explore/workflow-video-start-actions.tsx",
+      "sourceHash": "80f497312f69e5e00466bc3302f67e6b4c8cec74",
+      "releaseHash": "80f497312f69e5e00466bc3302f67e6b4c8cec74",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "components/generation/video-download-button.tsx",
+      "sourceHash": "453798423f4238612adccc87f7c8e2db5246bf04",
+      "releaseHash": "bf90874a9b828f1b53488bafe86aed51a85dcbfc",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "components/marketing/guide-content-brief.tsx",
+      "sourceHash": "dddb8bdc72709c0815b7e1a08f50678f457f54e1",
+      "releaseHash": "dddb8bdc72709c0815b7e1a08f50678f457f54e1",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "docs/plugin-new-skills-evidence-2026-10-09.json",
+      "sourceHash": "0f513621b833d3fa576a875195199172d58ae4e2",
+      "releaseHash": "0f513621b833d3fa576a875195199172d58ae4e2",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "docs/plugin-new-skills-review-2026-10-09.md",
+      "sourceHash": "9d493f64a0f921c310bb6690ec4a6cde9b5dc14f",
+      "releaseHash": "9d493f64a0f921c310bb6690ec4a6cde9b5dc14f",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "docs/seo-article-brief-saas-weekly-content.md",
+      "sourceHash": "6806803f2cde68ff6938bf2d5b4b6f08dd27a1d3",
+      "releaseHash": "6806803f2cde68ff6938bf2d5b4b6f08dd27a1d3",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "docs/seo-day-delivery-2026-10-09.md",
+      "sourceHash": "e90cbd1a2a9c8913b9db7c57b32e959ad03cd792",
+      "releaseHash": "e90cbd1a2a9c8913b9db7c57b32e959ad03cd792",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "docs/seo-day-plan-2026-10-09.md",
+      "sourceHash": "db2e655e29949a3cfa4fa9c7bd85eba54726fedc",
+      "releaseHash": "db2e655e29949a3cfa4fa9c7bd85eba54726fedc",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "docs/seo-guide-review-copy-2026-10-09.md",
+      "sourceHash": "f6cb2ee50c2b68c1fc320cc38ada35f64e190f6f",
+      "releaseHash": "f6cb2ee50c2b68c1fc320cc38ada35f64e190f6f",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "docs/seo-live-research-2026-10-09.json",
+      "sourceHash": "e86d3d70ab1fd63754358ddd4298a8c323329307",
+      "releaseHash": "e86d3d70ab1fd63754358ddd4298a8c323329307",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "docs/seo-measurement-setup-2026-10-09.md",
+      "sourceHash": "aa47c8b4a00bd89110f3f1442b70774541ac525b",
+      "releaseHash": "aa47c8b4a00bd89110f3f1442b70774541ac525b",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "docs/seo-organic-distribution-2026-10-09.md",
+      "sourceHash": "c2516c1e69865ac5a2c27baa8957dea8ff969d2c",
+      "releaseHash": "c2516c1e69865ac5a2c27baa8957dea8ff969d2c",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "docs/seo-workflow-keyword-research-2026-10-09.json",
+      "sourceHash": "69c3ae62249c9f077118dfc92f5633a5aab012ec",
+      "releaseHash": "69c3ae62249c9f077118dfc92f5633a5aab012ec",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "docs/seo-workflow-problem-map.md",
+      "sourceHash": "ec647e05c5f2ff195ef5692213c9c4d5ac610469",
+      "releaseHash": "ec647e05c5f2ff195ef5692213c9c4d5ac610469",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "docs/slideshow-social-hook-2026-10-09.md",
+      "sourceHash": "a933d2b4ca447c795f39c913a2e6420cf7537af6",
+      "releaseHash": "a933d2b4ca447c795f39c913a2e6420cf7537af6",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "docs/trending-controls-production-release-2026-10-08.md",
+      "sourceHash": "cb83bb941f4e7b382fe60093509358c7d2847d62",
+      "releaseHash": "cb83bb941f4e7b382fe60093509358c7d2847d62",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "docs/trending-revisited-scheduling-2026-10-09.md",
+      "sourceHash": "c2b692af295800fa037135224b5e478da9a4e27c",
+      "releaseHash": "c2b692af295800fa037135224b5e478da9a4e27c",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "docs/video-prompt-limits.md",
+      "sourceHash": "ab4ee2807eb10b06791c79050f7b5295ecb69544",
+      "releaseHash": "02dc1f108e904e19e953bd2142916efdb0fea766",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/explore/format-reference-images.ts",
+      "sourceHash": "06d7a4d7302d2a6a95982c88121610693cdc1377",
+      "releaseHash": "06d7a4d7302d2a6a95982c88121610693cdc1377",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/media/video-download-client.test.mjs",
+      "sourceHash": "f37ce830ce4159803038f36c53f062a9b64ad3f2",
+      "releaseHash": "f37ce830ce4159803038f36c53f062a9b64ad3f2",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/media/video-download-client.ts",
+      "sourceHash": "d6faf2f4a3823ec4b2ad8b6a686c058ddca35561",
+      "releaseHash": "d6faf2f4a3823ec4b2ad8b6a686c058ddca35561",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/media/video-download.test.mjs",
+      "sourceHash": "b73dd42de8683068e07506836ba7f1f833042dbf",
+      "releaseHash": "b73dd42de8683068e07506836ba7f1f833042dbf",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/media/video-download.ts",
+      "sourceHash": "ecafa139fe6daf0d4daf9745395c3ee7ace5be3c",
+      "releaseHash": "ecafa139fe6daf0d4daf9745395c3ee7ace5be3c",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/storage/signed-download.test.mjs",
+      "sourceHash": "64764b38f9d79502f20c79e93711768e0aa4333f",
+      "releaseHash": "64764b38f9d79502f20c79e93711768e0aa4333f",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "lib/trending/wall-text-revisited-scheduling.test.mjs",
+      "sourceHash": "441ad7b13e0272041aa322240972dfcb47e487fd",
+      "releaseHash": "441ad7b13e0272041aa322240972dfcb47e487fd",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "plugins/HOOK_VIDEO_GENERATION_SKILL.md",
+      "sourceHash": "2d139f17099e3e142a5b2dd5f4781a9471a1c6d0",
+      "releaseHash": "2d139f17099e3e142a5b2dd5f4781a9471a1c6d0",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "plugins/SLIDESHOWS_TEXT_GENERATION_SKILL/ugc-native-slideshow/README.md",
+      "sourceHash": "9db295b03bd20792bd883eb2fece081635478357",
+      "releaseHash": "9db295b03bd20792bd883eb2fece081635478357",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "plugins/SLIDESHOWS_TEXT_GENERATION_SKILL/ugc-native-slideshow/SKILL.md",
+      "sourceHash": "7c2f2212202660787c8c49c939edbe0221e8b740",
+      "releaseHash": "7c2f2212202660787c8c49c939edbe0221e8b740",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "plugins/SLIDESHOWS_TEXT_GENERATION_SKILL/ugc-native-slideshow/references/output-schema.json",
+      "sourceHash": "ada67d934db73fc3909022389f61aa37804ca0e7",
+      "releaseHash": "ada67d934db73fc3909022389f61aa37804ca0e7",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "plugins/SLIDESHOWS_TEXT_GENERATION_SKILL/ugc-native-slideshow/references/pattern-library.md",
+      "sourceHash": "a3e62f0521e90c08695429a550e07583856da624",
+      "releaseHash": "a3e62f0521e90c08695429a550e07583856da624",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "plugins/UGC_HOOK_INTELLIGENCE.md",
+      "sourceHash": "191354d348c3f934f523711efded88789e967ec5",
+      "releaseHash": "191354d348c3f934f523711efded88789e967ec5",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "plugins/WALLOFTEXT_GENERATION.md",
+      "sourceHash": "b1165bffc512b04796b6f17e70d3387278049d62",
+      "releaseHash": "b1165bffc512b04796b6f17e70d3387278049d62",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "scripts/explore-reference-images.test.mjs",
+      "sourceHash": "c7af98ea5144f119361e3abd4f55138e03d69c6b",
+      "releaseHash": "ebac846a035b59aa24077731cc1f1412982e942c",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "scripts/explore-workflow-job-recovery-api.test.mjs",
+      "sourceHash": "0c04ed93191bc861984730f6e73e9c479e92e9a1",
+      "releaseHash": "0c04ed93191bc861984730f6e73e9c479e92e9a1",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "scripts/explore-workflow-job-recovery.test.mjs",
+      "sourceHash": "be0fe0b622fe33802925135f53fd587ef50d346b",
+      "releaseHash": "479278ecf538f77d86eecb85a069de7789b78f2f",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "scripts/explore-workflow-panels.browser.cjs",
+      "sourceHash": "6aa53dcb9c04b068fdab94af2aea7eaa3ae4e5eb",
+      "releaseHash": "0dfc862ff42211f2e7a4f8be7fdd0de7c24bc318",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "scripts/video-download.browser.cjs",
+      "sourceHash": "44f7c903f3b138983fe82ae108d01b6ed2195017",
+      "releaseHash": "44f7c903f3b138983fe82ae108d01b6ed2195017",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "worker/src/jobs/generate-hook-video.test.mjs",
+      "sourceHash": "e654480c4ec34f9a5d8c7b196ac4f33b52d1d4fc",
+      "releaseHash": "83f4c7a033f48e77758b88101f244ff8dca37e40",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "worker/src/lib/gemini-omni-video.test.mjs",
+      "sourceHash": "e89804f124277f6ba77e20d679c74e37f58e05e4",
+      "releaseHash": "e89804f124277f6ba77e20d679c74e37f58e05e4",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    },
+    {
+      "path": "worker/src/lib/video-prompt-policy.ts",
+      "sourceHash": "2f4b21ae2f0365417242852eaab489ae6d800cd0",
+      "releaseHash": "e5cb87a3ec84f6c1f8b495c604fc897384bf1a6f",
+      "resolution": "included-or-adapted",
+      "reason": "Merge intentional incoming behavior while preserving the approved three-tab video workflow, preview editing, compact controls drawer, owner-scoped recovery, and current provider routing."
+    }
+  ],
+  "excludedPaths": [
+    {
+      "path": "supabase/migrations/20261003045336_character_gemini_3_pro_image.sql",
+      "reason": "Exclude duplicate migration alias. The canonical production 20261003045651 character_gemini_3_pro_image migration is retained and already applied."
+    },
+    {
+      "path": "supabase/migrations/20261005045851_character_shared_generation_credits.sql (local delta)",
+      "reason": "Retain existing main file unchanged and do not replay the local alias delta; canonical character_shared_generation_credits was already applied as 20261005082254."
+    },
+    {
+      "path": ".env* except .env.example; .tools/; .codex/; .agents/; .aws/; .vercel/; **/.terraform/; *.tfstate*; *.tfvars except examples",
+      "reason": "Private environment, authentication, credentials or infrastructure state; never shipped."
+    },
+    {
+      "path": ".tmp/; .next/; node_modules/; worker/dist/; worker/node_modules/; tmp*/; *logs*/; browser/QA screenshots",
+      "reason": "Temporary verification, build output, dependencies and logs; preserved locally where needed."
+    },
+    {
+      "path": "landing_page/; design preview images and recovery copies; public/try-ugcpilot/media/ (deployment only)",
+      "reason": "Local source inputs/review artifacts; reviewed versioned cover/hero exports ship, production Try media uses its configured hosted source."
+    },
+    {
+      "path": "index.ts; package.json scripts.higgsfield:example",
+      "reason": "Obsolete paid Higgsfield example was restored on the main baseline despite the recorded provider retirement. Remove it and its npm script; clean-install application type checking remains enabled and current providers/recovery stay intact."
+    }
+  ]
+}

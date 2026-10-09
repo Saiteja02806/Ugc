@@ -25,12 +25,9 @@ The existing model selection and `GEMINI_OMNI_MODEL` override are unchanged.
 
 ## Other generation paths
 
-The existing 1,000-character application safeguards for Seedance and Runway are
-preserved by this change; they are not a claim that every model has that native
-limit. Higgsfield's [Seedance 2.5 schema](https://open.higgsfield.ai/models/bytedance/seedance-2.5/text-to-video/api-reference)
-publishes a minimum prompt length but no maximum. Verify each exact provider
-model's contract before changing these safeguards. Direct prompts are rejected,
-rather than silently shortened, if they exceed a character safeguard. Legacy
-UGC-template processing retains its existing normalization.
+Seedance 2.5 and WAN 3.0 retain the verified 10,000-character provider safeguard,
+Kling 3.0 retains 2,500, and Google Omni video-reference requests through Runway
+retain 1,000. Direct prompts fail before submission if they exceed the selected
+limit; legacy UGC templates retain their existing normalization.
 
 This needs both the frontend/API and the AI generation worker to be released.

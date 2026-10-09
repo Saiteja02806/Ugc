@@ -131,10 +131,14 @@ function getRunwayClient() {
   return runwayClient;
 }
 
-async function waitForRunwayOutput(client: RunwayML, taskId: string) {
+export async function waitForRunwayOutput(
+  client: RunwayML,
+  taskId: string,
+  timeoutMs = RUNWAY_TIMEOUT_MS,
+) {
   const startedAt = Date.now();
 
-  while (Date.now() - startedAt <= RUNWAY_TIMEOUT_MS) {
+  while (Date.now() - startedAt <= timeoutMs) {
     let task;
 
     try {

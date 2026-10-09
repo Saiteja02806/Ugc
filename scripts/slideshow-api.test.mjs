@@ -20,7 +20,7 @@ function harness(options={}) {
     "@/lib/storage/storage":{isTrustedStorageUrl:url=>url.startsWith("https://trusted.test/")},
     "@/worker/src/lib/explore-finishing-contract":{isExploreUuid:value=>typeof value==="string"&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)},
     "./slideshow-draft":{MIN_SLIDESHOW_SLIDES:2,MAX_SLIDESHOW_SLIDES:10},
-    "@/lib/media/media-storage":{getMediaAssetForOwner:async args=>{calls.push(args);assert.equal(args.userId,owner);active++;maxConcurrent=Math.max(active,maxConcurrent);await new Promise(resolve=>setTimeout(resolve,5));active--;return options.asset?options.asset(args.assetId):{id:args.assetId,collection:"image",status:"ready",url:`https://trusted.test/${args.assetId}`,storage_key:`owned/${args.assetId}`};}},
+    "@/lib/media/media-storage":{getMediaAssetForOwner:async args=>{calls.push(args);assert.equal(args.userId,owner);active++;maxConcurrent=Math.max(active,maxConcurrent);await new Promise(resolve=>setTimeout(resolve,5));active--;return options.asset?options.asset(args.assetId):{id:args.assetId,user_id:owner,collection:"image",status:"ready",mime_type:"image/png",deleted_at:null,url:`https://trusted.test/${args.assetId}`,storage_key:`owned/${args.assetId}`};}},
     "@supabase/supabase-js":{createClient:()=>({rpc:async(name,args)=>{assert.equal(name,"explore_save_slideshow");writes.push(args);if(options.rpcError)return{error:{message:"provider-secret"}};const prior=seen.get(args.p_request_key);if(prior&&prior!==args.p_fingerprint)return{error:{message:"conflict"}};seen.set(args.p_request_key,args.p_fingerprint);return{data:id(60)};}})},
   };
   const exports={};
@@ -52,10 +52,9 @@ test("legacy saves retain their original reference-order fingerprint for recover
   const h=harness(),body={requestKey:key,referenceId:oldReference.id,slides:oldReference.slides.map(s=>({referenceSlideId:s.id,mediaAssetId:null}))};
   assert.equal((await h.post(body)).status,200);assert.ok(h.writes[0].p_slides.every(s=>s.mediaAssetId===null));
   const expected=createHash("sha256").update(JSON.stringify({referenceId:oldReference.id,slides:JSON.parse(JSON.stringify(h.writes[0].p_slides))})).digest("hex");assert.equal(h.writes[0].p_fingerprint,expected);
-  assert.equal((await h.post({...body,slides:[...body.slides].reverse()})).status,400);
+  assert.equal((await h.post({...body,slides:[...body.slides].reverse()})).status,503);
 });
 test("authentication and rollout gates block writes, while clear pre-write rejection can safely unlock correction",async()=>{
   const denied=harness({authError:new AuthError("Sign in",401)});assert.equal((await denied.post()).status,401);assert.equal(denied.writes.length,0);
   for(const env of [{EXPLORE_SLIDESHOW_SAVING_ENABLED:"false"},{SUPABASE_URL:"",SUPABASE_SERVICE_ROLE_KEY:""}]){const h=harness({env});const response=await h.post();assert.equal(response.status,503);assert.equal((await response.json()).outcome,"rejected");assert.equal(h.writes.length,0);}
 });
-

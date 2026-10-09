@@ -2,7 +2,13 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
 
-import { validRedirectUri } from "./client-validation.ts";
+import {
+  classifyRedirectDestination,
+  redirectUriMatches,
+  supportsPublicClientTokenExchange,
+  validRedirectUri,
+} from "./client-validation.ts";
+import { createPinnedLookup } from "./clients.ts";
 import { matchesPkce, pkceChallenge } from "./pkce.ts";
 import { parseMcpScopes } from "./scopes.ts";
 
@@ -13,6 +19,110 @@ test("redirect URIs require HTTPS except local loopback clients", () => {
   assert.equal(validRedirectUri("http://evil.example/callback"), false);
   assert.equal(validRedirectUri("https://user:pass@example.com/callback"), false);
   assert.equal(validRedirectUri("https://example.com/callback#fragment"), false);
+});
+
+test("hosted callbacks require an exact registered URI", () => {
+  assert.equal(
+    redirectUriMatches(
+      "https://chatgpt.com/connector_platform_oauth_redirect",
+      "https://chatgpt.com/connector_platform_oauth_redirect",
+    ),
+    true,
+  );
+  assert.equal(
+    redirectUriMatches("https://claude.ai/api/mcp/auth_callback", "https://claude.ai/api/mcp/auth_callback/"),
+    false,
+  );
+  assert.equal(
+    redirectUriMatches("https://example.com/callback", "https://example.com:444/callback"),
+    false,
+  );
+});
+
+test("portless loopback registrations accept only a changed ephemeral port", () => {
+  assert.equal(
+    redirectUriMatches("http://127.0.0.1/callback/abc", "http://127.0.0.1:61019/callback/abc"),
+    true,
+  );
+  assert.equal(
+    redirectUriMatches("http://localhost/callback?flow=abc", "http://localhost:3118/callback?flow=abc"),
+    true,
+  );
+  assert.equal(
+    redirectUriMatches("http://[::1]/callback", "http://[::1]:49152/callback"),
+    true,
+  );
+  assert.equal(
+    redirectUriMatches("http://127.0.0.1:4000/callback", "http://127.0.0.1:61019/callback"),
+    false,
+  );
+  assert.equal(
+    redirectUriMatches("http://127.0.0.1/callback", "http://localhost:61019/callback"),
+    false,
+  );
+  assert.equal(
+    redirectUriMatches("http://localhost/callback", "http://localhost:3118/different"),
+    false,
+  );
+  assert.equal(
+    redirectUriMatches("http://localhost/callback?flow=abc", "http://localhost:3118/callback?flow=def"),
+    false,
+  );
+  assert.equal(
+    redirectUriMatches("http://localhost/callback", "http://localhost.attacker.test:3118/callback"),
+    false,
+  );
+  assert.equal(
+    redirectUriMatches("http://localhost/callback", "https://localhost:3118/callback"),
+    false,
+  );
+});
+
+test("CIMD selects none from the supported method intersection", () => {
+  assert.equal(supportsPublicClientTokenExchange({}), true);
+  assert.equal(supportsPublicClientTokenExchange({ token_endpoint_auth_method: "none" }), true);
+  assert.equal(supportsPublicClientTokenExchange({ token_endpoint_auth_method: "private_key_jwt" }), false);
+  assert.equal(supportsPublicClientTokenExchange({
+    token_endpoint_auth_methods_supported: ["none", "private_key_jwt"],
+    token_endpoint_auth_method: "private_key_jwt",
+  }), true);
+  assert.equal(supportsPublicClientTokenExchange({
+    token_endpoint_auth_methods_supported: ["private_key_jwt"],
+    token_endpoint_auth_method: "none",
+  }), false);
+  assert.equal(supportsPublicClientTokenExchange({ token_endpoint_auth_methods_supported: "none" }), false);
+  assert.equal(supportsPublicClientTokenExchange({ token_endpoint_auth_method: 0 }), false);
+});
+
+test("pinned client-metadata lookups support Node's address-list mode", async () => {
+  const lookup = createPinnedLookup({ address: "203.0.113.10", family: 4 });
+  const single = await new Promise<{ address: string | { address: string; family: number }[]; family?: number }>((resolve, reject) => {
+    lookup("metadata.example.test", { all: false }, (error, address, family) => {
+      if (error) reject(error);
+      else resolve({ address, family });
+    });
+  });
+  assert.equal(single.address, "203.0.113.10");
+  assert.equal(single.family, 4);
+
+  const many = await new Promise<{ address: string | { address: string; family: number }[]; family?: number }>((resolve, reject) => {
+    lookup("metadata.example.test", { all: true }, (error, address, family) => {
+      if (error) reject(error);
+      else resolve({ address, family });
+    });
+  });
+  assert.deepEqual(many.address, [{ address: "203.0.113.10", family: 4 }]);
+  assert.equal(many.family, undefined);
+});
+
+test("consent copy identifies only official callback shapes", () => {
+  assert.equal(classifyRedirectDestination("https://chatgpt.com/connector_platform_oauth_redirect"), "chatgpt");
+  assert.equal(classifyRedirectDestination("https://chatgpt.com/connector/oauth/callback-id"), "chatgpt");
+  assert.equal(classifyRedirectDestination("https://chatgpt.com/unrelated"), "hosted");
+  assert.equal(classifyRedirectDestination("https://claude.ai/api/mcp/auth_callback"), "claude");
+  assert.equal(classifyRedirectDestination("https://claude.ai/other"), "hosted");
+  assert.equal(classifyRedirectDestination("http://127.0.0.1:61019/callback/abc"), "loopback");
+  assert.equal(classifyRedirectDestination("https://example.com/oauth/callback"), "hosted");
 });
 
 test("PKCE accepts the matching S256 verifier and rejects substitutions", () => {

@@ -1,8 +1,9 @@
 import { runGenerateAvatarJob } from "./generate-avatar.js";
-import { runFinishExploreVideoJob } from "./finish-explore-video.js";
+import { runGenerateAudioJob } from "./generate-audio.js";
 import { runPublishSocialPostJob } from "./publish-social-post.js";
 import { runTestWorkerJob } from "./test-worker-job.js";
 import { runRenderEditVideoJob } from "./render-edit-video.js";
+import { runFinishExploreVideoJob } from "./finish-explore-video.js";
 import { runRenderCreateContentVideoJob } from "./render-create-content-video.js";
 import { runRenderScheduleCombinationJob } from "./render-schedule-combination.js";
 import { runRenderTrendingCarouselEditJob } from "./render-trending-carousel-edit.js";
@@ -12,7 +13,6 @@ import { runGenerateCarouselContentPlanJob } from "./generate-carousel-content-p
 import { runGenerateWallTextContentPlanJob } from "./generate-wall-text-content-plan.js";
 import { runGenerateHookVideoJob } from "./generate-hook-video.js";
 import { runGenerateImageJob } from "./generate-image.js";
-import { runGenerateAudioJob } from "./generate-audio.js";
 import { runGenerateTrendingHookCopyJob } from "./generate-trending-hook-copy.js";
 import { runGenerateWallTextJob } from "./generate-wall-text.js";
 import { runGenerateReactionJob } from "./generate-reaction.js";
@@ -38,10 +38,7 @@ export async function runWorkerJob(
   job: BackgroundJobRow,
   context: WorkerJobContext,
 ) {
-  if (job.job_type === "render_demo_video") return runFinishExploreVideoJob(job, context);
-  if (job.job_type === "generate_audio") {
-    return runGenerateAudioJob(job, context);
-  }
+  if (job.job_type === "generate_audio") return runGenerateAudioJob(job, context);
   if (job.job_type === "final_render") {
     return runRenderReactionEditJob(job, context);
   }
@@ -54,8 +51,11 @@ export async function runWorkerJob(
     return runRenderEditVideoJob(job, context);
   }
 
+  if (job.job_type === "render_demo_video") {
+    return runFinishExploreVideoJob(job, context);
+  }
+
   if (job.job_type === "render_create_content_video") {
-    // The creation screen is retired; finish jobs queued before its removal.
     return runRenderCreateContentVideoJob(job, context);
   }
 

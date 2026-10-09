@@ -35,7 +35,7 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
   const [output, setOutput] = useState<MediaAsset | null>(null);
   const [savedEntry, setSavedEntry] = useState<SavedFinish | null>(null);
   // Inputs change without invalidating a completed request's server identity.
-  const signature = JSON.stringify([source?.id, demo?.url, demoSource?.id, demoAudio?.url, playback, options, demoFraming, demoFramingError, editing, backgroundSource?.id, formatBackgroundPlayback]);
+  const signature = JSON.stringify([source?.id, demo?.url, demoAudio?.url, playback, options, demoFraming, demoFramingError, editing, backgroundSource?.id, formatBackgroundPlayback, demoSource?.id]);
   const storageKey = finishStorageKey(ownerId ?? "signed-out", kind) + (scope ? `:${encodeURIComponent(scope)}` : "");
   const [completedSignature, setCompletedSignature] = useState<string | null>(null);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
@@ -131,7 +131,7 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
   }
   // A recovered output is a saved result, not a reconstruction from missing local
   // files. A different source or newly selected edit must be applied first.
-  const recoveredMatches = completedSignature === null && savedEntry && (!source || source.id === savedEntry.draft.sourceAssetId) && !demo && (!demoSource || demoSource.id === savedEntry.draft.demoAssetId) && !demoAudio && !demoFraming && (editing ? JSON.stringify(editing) === JSON.stringify(savedEntry.draft.editing) && (backgroundSource?.id ?? null) === savedEntry.draft.backgroundAssetId && (!backgroundSource || formatBackgroundPlayback === savedEntry.draft.backgroundPlayback) :
+  const recoveredMatches = completedSignature === null && savedEntry && (!source || source.id === savedEntry.draft.sourceAssetId) && !demo && !demoAudio && (demoSource ? demoSource.id === savedEntry.draft.demoAssetId : !savedEntry.draft.demoAssetId || !scope?.startsWith("format-demo:")) && (demoSource ? JSON.stringify(demoFraming ?? undefined) === JSON.stringify(savedEntry.draft.demoFraming) : !demoFraming) && (editing ? JSON.stringify(editing) === JSON.stringify(savedEntry.draft.editing) && (backgroundSource?.id ?? null) === savedEntry.draft.backgroundAssetId && (!backgroundSource || formatBackgroundPlayback === savedEntry.draft.backgroundPlayback) :
     !!options.backgroundMusic === !!savedEntry.draft.backgroundAssetId &&
     options.subtitles === !!savedEntry.draft.subtitles && (!options.subtitles || (options.style === savedEntry.draft.subtitles?.style &&
       (options.placement ?? "bottom") === (savedEntry.draft.subtitles?.placement ?? "bottom"))));
@@ -152,5 +152,5 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
   }
   const action: WorkflowAction = { busy, disabled, message: status?.message ?? (source ? "Apply edits to save your finished video." : "Choose a saved video before applying edits."), error: demoFramingError ?? error, onAction: () => { void apply(); }, refresh: () => { void refresh(); },
     ...(pending && status?.jobId ? { cancel: () => { void cancel(); } } : {}) };
-  return { action, output: currentOutput };
+  return { action, output: currentOutput, status };
 }

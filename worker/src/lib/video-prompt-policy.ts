@@ -9,7 +9,7 @@ export function getVideoPromptCharacterLimit({
   hasReferenceVideo = false,
   provider,
 }: {
-  model?: "google_omni" | "seedance_2_5";
+  model?: "google_omni" | "seedance_2_5" | "wan_3_0" | "kling_3_0";
   hasReferenceVideo?: boolean;
   provider?: string;
 }) {
@@ -20,5 +20,7 @@ export function getVideoPromptCharacterLimit({
     return undefined;
   }
 
+  if (model === "kling_3_0") return 2_500;
+  if (model === "seedance_2_5" || model === "wan_3_0") return 10_000;
   return LEGACY_VIDEO_PROMPT_MAX_LENGTH;
 }

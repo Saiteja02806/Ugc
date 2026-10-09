@@ -1,5 +1,11 @@
 # Subtitle generator research and integration proposal
 
+
+Historical research and offline harness. Production Explore now uses the
+user-approved ElevenLabs Scribe word-timing adapter, English only, with a
+60-second combined-video limit. The WhisperX prototype below is not an
+application or production-worker dependency; see `explore-scribe-integration-2026-10-04.md`.
+
 Researched September 30, 2026. The application integration below is proposed and has not been production-validated. Existing application source and deployment settings were left intact. Two research agents checked transcription providers and reusable repositories; local code inspection and an isolated FFmpeg smoke test checked architectural fit. Subsequently, a disconnected prototype was implemented and live OpenAI transcription was evaluated; see [the isolated subtitle lab](subtitle-lab.md) for its code, usage, measured results and limitations.
 
 ## Recommendation

@@ -10,18 +10,10 @@ begin
     execute format('alter table public.background_jobs add constraint background_jobs_job_type_check check (job_type = %L or %s)',
       'generate_audio', regexp_replace(v_definition, '^CHECK \((.*)\)$', '\1'));
   end if;
-  if exists (select 1 from storage.buckets where id = 'private-audio' and public) then
-    raise exception 'private_audio_bucket_is_public';
-  end if;
 end;
 $block$;
-insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('private-audio', 'private-audio', false, 12582912,
-  array['audio/mpeg','audio/mp3','audio/wav','audio/x-wav','audio/mp4','audio/x-m4a','audio/ogg','audio/webm'])
-on conflict (id) do nothing;
--- Existing broad permissive policies must not accidentally expose this bucket.
-create policy private_audio_app_only on storage.objects as restrictive for all to anon, authenticated
-  using (bucket_id <> 'private-audio') with check (bucket_id <> 'private-audio');
+-- Audio bytes live in the separately configured private GCP bucket.
+-- No Supabase Storage bucket or browser object policies are created.
 
 create table public.audio_assets (
   id uuid primary key, user_id text not null, name text not null,
@@ -90,7 +82,7 @@ create function public.create_audio_generation_request(
   p_payload jsonb, p_period text, p_characters integer, p_cost_micros bigint,
   p_global_character_limit integer, p_user_character_limit integer,
   p_cost_limit_micros bigint, p_request_limit integer, p_credits integer
-) returns jsonb language plpgsql security definer set search_path = '' as $function$
+) returns jsonb language plpgsql security invoker set search_path = '' as $function$
 declare v_existing public.audio_generation_requests; v_job jsonb; v_job_id uuid;
   v_asset public.audio_assets; v_profile public.audio_voice_profiles;
 begin
@@ -162,7 +154,7 @@ end;
 $function$;
 
 create function public.claim_audio_provider(p_request_id uuid)
-returns boolean language plpgsql security definer set search_path = '' as $function$
+returns boolean language plpgsql security invoker set search_path = '' as $function$
 declare v_id uuid;
 begin
   update public.audio_provider_lease set request_id = p_request_id, expires_at = now() + interval '5 minutes'
@@ -171,12 +163,12 @@ begin
 end;
 $function$;
 create function public.release_audio_provider(p_request_id uuid)
-returns void language sql security definer set search_path = '' as $function$
+returns void language sql security invoker set search_path = '' as $function$
   update public.audio_provider_lease set request_id = null, expires_at = now() where request_id = p_request_id;
 $function$;
 
 create function public.start_audio_provider_submission(p_id uuid, p_user_id text)
-returns boolean language plpgsql security definer set search_path = '' as $function$
+returns boolean language plpgsql security invoker set search_path = '' as $function$
 declare v_status text; v_id uuid;
 begin
   -- Cancellation and terminal transitions already lock the job first. Use
@@ -195,7 +187,7 @@ $function$;
 -- Retire records before external cleanup. This closes admission races and
 -- preserves owner-visible cleanup metadata until an explicit retry succeeds.
 create function public.retire_audio_voice(p_id uuid, p_user_id text)
-returns jsonb language plpgsql security definer set search_path = '' as $function$
+returns jsonb language plpgsql security invoker set search_path = '' as $function$
 declare v_profile public.audio_voice_profiles;
 begin
   select * into v_profile from public.audio_voice_profiles where id = p_id and user_id = p_user_id for update;
@@ -210,7 +202,7 @@ begin
 end;
 $function$;
 create function public.retire_audio_asset(p_id uuid, p_user_id text)
-returns jsonb language plpgsql security definer set search_path = '' as $function$
+returns jsonb language plpgsql security invoker set search_path = '' as $function$
 declare v_asset public.audio_assets; v_chunks integer;
 begin
   select * into v_asset from public.audio_assets where id = p_id and user_id = p_user_id for update;
@@ -231,7 +223,7 @@ end;
 $function$;
 
 create function public.settle_audio_job_terminal()
-returns trigger language plpgsql security definer set search_path = '' as $function$
+returns trigger language plpgsql security invoker set search_path = '' as $function$
 declare v_request public.audio_generation_requests;
 begin
   if new.job_type <> 'generate_audio' or new.status not in ('failed','cancelled') then return new; end if;

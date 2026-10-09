@@ -5,6 +5,10 @@ import { getMcpResource } from "@/lib/mcp/config";
 import { readLimitedBody, requestWithBody } from "@/lib/mcp/http";
 import { clientLogRef } from "@/lib/mcp/logging";
 import { mcpHandler } from "@/lib/mcp/server";
+import {
+  includesToolsListRequest,
+  withToolSecuritySchemes,
+} from "@/lib/mcp/tool-auth-metadata";
 
 export const runtime = "nodejs";
 
@@ -38,14 +42,29 @@ async function handle(request: Request) {
     const authentication = await authenticateMcpRequest(request);
     if (authentication instanceof Response) return finish(authentication);
     clientRef = clientLogRef(authentication.principal.clientId);
+    let mirrorToolAuth = false;
+
     if (request.method === "POST") {
+      // Tools receive metadata and asset IDs; media bytes use signed uploads.
+      // Bound the actual stream even when Content-Length is absent or false.
       const body = await readLimitedBody(request, 64 * 1024);
+      if (request.headers.get("content-type")?.includes("application/json")) {
+        try {
+          mirrorToolAuth = includesToolsListRequest(JSON.parse(body));
+        } catch {
+          // Let the transport return its normal JSON-RPC parse error.
+        }
+      }
       request = requestWithBody(request, body);
     }
-    const response = await mcpHandler.fetch(request, {
+    const transportResponse = await mcpHandler.fetch(request, {
       authInfo: authentication.authInfo,
     });
+    const response = mirrorToolAuth
+      ? await withToolSecuritySchemes(transportResponse)
+      : transportResponse;
     return finish(response);
+
   } catch (error) {
     if (error instanceof Error && error.message === "request_too_large") {
       return finish(Response.json({ error: "request_too_large" }, {

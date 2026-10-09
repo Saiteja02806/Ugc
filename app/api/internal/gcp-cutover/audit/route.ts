@@ -23,7 +23,9 @@ import {
   markBackgroundJobFailed,
   type BackgroundJobType,
 } from "@/lib/jobs/background-jobs";
+import { getMissingCloudRunRenderJobEnvVars } from "@/lib/jobs/gcp-cloud-run-jobs";
 import { getGcpProjectId } from "@/lib/queues/config";
+import { getMissingCloudTasksOidcEnvVars } from "@/lib/scheduling/cloud-tasks-oidc-auth";
 import {
   getMissingSocialSchedulerEnvVars,
   getSocialSchedulerProviderName,
@@ -263,6 +265,12 @@ function getMissingRuntimeEnv(jobType: BackgroundJobType) {
       ...getMissingJobQueueEnvVars([jobType]),
       ...getMissingStorageEnvVars(),
       ...getMissingSocialSchedulerEnvVars(),
+      ...(jobType === "render_create_content_video"
+        ? [
+            ...getMissingCloudRunRenderJobEnvVars(),
+            ...getMissingCloudTasksOidcEnvVars(),
+          ]
+        : []),
     ]),
   );
 }

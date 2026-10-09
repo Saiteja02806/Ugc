@@ -35,14 +35,16 @@ export async function handleSlideshowSave(request: Request) {
     const ownedSequence = body.version === 2;
     if (!(ownedSequence && body.referenceId === null || typeof body.referenceId === "string" && body.referenceId.length > 0 && body.referenceId.length <= 160)) return reject("Choose a valid slideshow reference.");
     const reference = typeof body.referenceId === "string" ? getRecreateReferences().find(item => item.id === body.referenceId && item.format === "slideshow") : undefined;
-    if (body.referenceId !== null && !reference || !ownedSequence && (!reference || body.slides.length !== reference.slides.length)) return reject("This slideshow reference is unavailable.");
+    const uploaded = typeof body.referenceId === "string" && body.referenceId.startsWith("uploaded:") && isExploreUuid(body.referenceId.slice(9));
+    if (body.referenceId !== null && !reference && !uploaded || !ownedSequence && !reference && !uploaded) return reject("This slideshow reference is unavailable.");
 
     const choices: { referenceSlideId: string; mediaAssetId: string | null }[] = [];
     const positions = new Set<string>();
     for (const [index, value] of body.slides.entries()) {
       if (!record(value) || typeof value.referenceSlideId !== "string" || !value.referenceSlideId || value.referenceSlideId.length > 160 || positions.has(value.referenceSlideId) ||
         !(isExploreUuid(value.mediaAssetId) || !ownedSequence && value.mediaAssetId === null)) return reject("Choose an owned ready image for every slide.");
-      if (!ownedSequence && value.referenceSlideId !== reference?.slides[index].id) return reject("Keep the reference slides in their original order.");
+      const original = reference?.slides.find(slide => slide.id === value.referenceSlideId);
+      if (!ownedSequence && !original && (!uploaded || !isExploreUuid(value.referenceSlideId) || !isExploreUuid(value.mediaAssetId))) return reject("Choose slides from this reference or upload your own slideshow.");
       positions.add(value.referenceSlideId);
       choices.push({ referenceSlideId: value.referenceSlideId, mediaAssetId: value.mediaAssetId as string | null });
     }
@@ -53,16 +55,16 @@ export async function handleSlideshowSave(request: Request) {
     const slides = [];
     for (const [index, chosen] of choices.entries()) {
       const asset = chosen.mediaAssetId ? byId.get(chosen.mediaAssetId) : null;
-      if (chosen.mediaAssetId && (!asset || asset.collection !== "image" || asset.status !== "ready")) return reject("Choose a ready image from your account.");
-      const url = asset?.url ?? reference?.slides[index].url;
+      if (chosen.mediaAssetId && (!asset || asset.user_id !== user.uid || asset.deleted_at != null || asset.collection !== "image" || asset.status !== "ready" || !["image/jpeg", "image/png", "image/webp"].includes(asset.mime_type ?? ""))) return reject("Choose a ready image from your account.");
+      const url = asset?.url ?? reference?.slides.find(slide => slide.id === chosen.referenceSlideId)?.url;
       if (typeof url !== "string" || !url.startsWith("https://") || !isTrustedStorageUrl(url)) return reject("This slide is unavailable for publishing.");
       slides.push({ slideNumber: index + 1, referenceSlideId: chosen.referenceSlideId, mediaAssetId: asset?.id ?? null, renderedUrl: url, renderedS3Key: asset?.storage_key ?? null });
     }
     // Keep v1 fingerprints intact so an interrupted legacy save is recoverable.
     const fingerprint = createHash("sha256").update(JSON.stringify(ownedSequence
       ? { version: 2, referenceId: body.referenceId, slides }
-      : { referenceId: reference!.id, slides })).digest("hex");
-    const title = reference?.title ?? "My slideshow";
+      : { referenceId: body.referenceId, slides })).digest("hex");
+    const title = reference?.title ?? (uploaded ? "Your uploaded slideshow" : "My slideshow");
     const databaseUrl = process.env.SUPABASE_URL?.trim() ?? process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
     const databaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
     if (!databaseUrl || !databaseKey) return reject("Slideshow saving is unavailable.", 503);

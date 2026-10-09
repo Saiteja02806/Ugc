@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { AUDIO_BUCKET, AudioError, type AudioRequest } from "./audio-contract.ts";
+import { AudioError, type AudioRequest } from "./audio-contract.ts";
 
 let client: SupabaseClient | null = null;
 export function audioDb() {
@@ -33,12 +33,4 @@ export async function patchAudioRequest(id: string, patch: Record<string, unknow
   const { error } = await audioDb().from("audio_generation_requests").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", id);
   if (error) throw new AudioError("Audio progress could not be saved.", 503);
 }
-export async function savePrivateAudio(key: string, buffer: Uint8Array, contentType = "audio/mpeg") {
-  const { error } = await audioDb().storage.from(AUDIO_BUCKET).upload(key, buffer, { contentType, cacheControl: "0", upsert: true });
-  if (error) throw new AudioError("The audio file could not be saved.", 503);
-}
-export async function readPrivateAudio(key: string) {
-  const { data, error } = await audioDb().storage.from(AUDIO_BUCKET).download(key);
-  if (error || !data) throw new AudioError("The audio file could not be loaded.", 404);
-  return new Uint8Array(await data.arrayBuffer());
-}
+export { savePrivateAudio, readPrivateAudio, readOptionalPrivateAudio, deletePrivateAudio, privateAudioConfigured } from "./audio-storage.ts";

@@ -14,10 +14,16 @@ export class ProviderRequestNotSubmittedError extends Error {
 }
 
 export class ProviderOperationTerminalError extends Error {
+  readonly code: "PROVIDER_CONTENT_MODERATION" | "provider_operation_failed";
   readonly details: unknown;
 
   constructor(message: string, details?: unknown) {
     super(message, { cause: details });
+    const failureCode = details && typeof details === "object" && "failureCode" in details
+      ? details.failureCode : null;
+    this.code = typeof failureCode === "string" &&
+      /^(?:INPUT_PREPROCESSING\.SAFETY\.|SAFETY\.)/i.test(failureCode)
+      ? "PROVIDER_CONTENT_MODERATION" : "provider_operation_failed";
     this.details = details;
     this.name = "ProviderOperationTerminalError";
   }

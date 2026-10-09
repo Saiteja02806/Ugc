@@ -8,6 +8,7 @@ export type SlideshowOutput = { id: string; kind: "library_item"; url: string; t
 export type SlideshowSaveRequest = {
   version: 1 | 2; owner: string; requestKey: string; referenceId: string | null;
   slides: { referenceSlideId: string; mediaAssetId: string | null }[]; output?: SlideshowOutput;
+  sourceSlides?: SlideshowSlideChoice[]; editFingerprint?: string;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -38,16 +39,18 @@ export function readSlideshowDraft(raw: string | null, owner: string): Slideshow
 }
 
 export function readSlideshowSaveRequest(raw: string | null, owner: string): SlideshowSaveRequest | null {
-  if (!raw || raw.length > 16384) return null;
+  if (!raw || raw.length > 65536) return null;
   try {
     const value: unknown = JSON.parse(raw);
     if (!isRecord(value) || (value.version !== 1 && value.version !== 2) || value.owner !== owner || !isExploreUuid(value.requestKey) ||
       !(value.referenceId === null && value.version === 2 || typeof value.referenceId === "string" && value.referenceId.length > 0 && value.referenceId.length <= 160)) return null;
     const slides = readChoices(value.slides, value.version === 1);
     if (!slides || slides.length < MIN_SLIDESHOW_SLIDES) return null;
+    const sourceSlides = value.sourceSlides === undefined ? undefined : readChoices(value.sourceSlides, false);
+    if (value.sourceSlides !== undefined && (!sourceSlides || sourceSlides.length !== slides.length) || value.editFingerprint !== undefined && (typeof value.editFingerprint !== "string" || value.editFingerprint.length > 16384)) return null;
     const output = value.output === undefined ? undefined : readSlideshowOutput(value.output, slides.length);
     if (value.output !== undefined && !output) return null;
-    return { version: value.version, owner, requestKey: value.requestKey, referenceId: value.referenceId as string | null, slides, ...(output ? { output } : {}) };
+    return { version: value.version, owner, requestKey: value.requestKey, referenceId: value.referenceId as string | null, slides, ...(output ? { output } : {}), ...(sourceSlides ? { sourceSlides: sourceSlides as SlideshowSlideChoice[] } : {}), ...(typeof value.editFingerprint === "string" ? { editFingerprint: value.editFingerprint } : {}) };
   } catch { return null; }
 }
 

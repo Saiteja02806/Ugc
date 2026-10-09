@@ -8,9 +8,7 @@ type QueueConfig = {
 };
 
 const jobQueueConfig = {
-  generate_audio: {
-    queueName: "ai-generation",
-  },
+  generate_audio: { queueName: "ai-generation" },
   analytics_sync: {
     queueName: "ai-generation",
   },

@@ -7,7 +7,23 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
   labels   = local.labels
   ingress  = "INGRESS_TRAFFIC_INTERNAL_ONLY"
 
+  # The revision must not start before its newly enabled provider secret is readable.
+  # The dependency is an empty resource collection while Audio remains disabled.
+  depends_on = [google_secret_manager_secret_iam_member.audio_worker_accessor]
+
   lifecycle {
+    precondition {
+      condition     = var.enable_audio_generation || !contains([for job_type in split(",", var.worker_job_types) : trimspace(job_type)], "generate_audio")
+      error_message = "Use enable_audio_generation to admit Audio jobs together with their bucket and credentials."
+    }
+    precondition {
+      condition = !var.enable_audio_generation || (
+        trimspace(var.private_audio_bucket_name) != "" &&
+        var.private_audio_bucket_name != var.gcp_storage_bucket &&
+        trimspace(var.elevenlabs_voice_api_key_secret_id) != ""
+      )
+      error_message = "Audio requires its separate private bucket and existing ElevenLabs voice secret before enabling jobs."
+    }
     # Reaction planning creates one durable render job per selected Reel. Those
     # jobs cannot reach the dedicated renderer unless this worker is given its
     # exact Cloud Run task endpoint. Fail the plan before a partial daily pack
@@ -139,7 +155,28 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
 
       env {
         name  = "WORKER_JOB_TYPES"
-        value = var.worker_job_types
+        value = local.effective_worker_job_types
+      }
+
+      dynamic "env" {
+        for_each = local.audio_env
+        content {
+          name  = env.key
+          value = env.value
+        }
+      }
+
+      dynamic "env" {
+        for_each = var.enable_audio_generation ? [var.elevenlabs_voice_api_key_secret_id] : []
+        content {
+          name = "ELEVENLABS_VOICE_API_KEY"
+          value_source {
+            secret_key_ref {
+              secret  = env.value
+              version = "latest"
+            }
+          }
+        }
       }
 
       env {
@@ -268,6 +305,19 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
       }
 
       dynamic "env" {
+        for_each = var.openrouter_api_key_secret_id == "" ? [] : [var.openrouter_api_key_secret_id]
+        content {
+          name = "OPENROUTER_API_KEY"
+          value_source {
+            secret_key_ref {
+              secret  = env.value
+              version = "latest"
+            }
+          }
+        }
+      }
+
+      dynamic "env" {
         for_each = var.higgsfield_credentials_secret_id == "" ? [] : [var.higgsfield_credentials_secret_id]
         content {
           name = "HF_CREDENTIALS"
@@ -280,28 +330,10 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
         }
       }
 
-      env {
-        name  = "AUDIO_GENERATION_ENABLED"
-        value = tostring(var.enable_audio_generation)
-      }
-
       dynamic "env" {
         for_each = var.elevenlabs_api_key_secret_id == "" ? [] : [var.elevenlabs_api_key_secret_id]
         content {
           name = "ELEVENLABS_API_KEY"
-          value_source {
-            secret_key_ref {
-              secret  = env.value
-              version = "latest"
-            }
-          }
-        }
-      }
-
-      dynamic "env" {
-        for_each = var.elevenlabs_voice_api_key_secret_id == "" ? [] : [var.elevenlabs_voice_api_key_secret_id]
-        content {
-          name = "ELEVENLABS_VOICE_API_KEY"
           value_source {
             secret_key_ref {
               secret  = env.value
@@ -340,4 +372,13 @@ resource "google_cloud_run_v2_service_iam_member" "cloud_tasks_invoker" {
   name     = google_cloud_run_v2_service.ai_generation_worker[0].name
   role     = "roles/run.invoker"
   member   = "serviceAccount:${var.scheduler_service_account_email}"
+}
+
+# Non-authoritative member binding: does not replace any existing secret IAM.
+resource "google_secret_manager_secret_iam_member" "audio_worker_accessor" {
+  count     = var.enable_ai_generation_worker && var.enable_audio_generation ? 1 : 0
+  project   = var.project_id
+  secret_id = var.elevenlabs_voice_api_key_secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${var.worker_service_account_email}"
 }

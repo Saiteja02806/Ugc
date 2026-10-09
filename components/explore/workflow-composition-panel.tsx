@@ -135,7 +135,7 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
             <PopoverContent side="right" align="start" className={cn(studio.floating, creation.floating)}>
               <PopoverTitle>Auto subtitles</PopoverTitle>
               <p className="text-sm leading-6 text-muted">{EXPLORE_SUBTITLE_SCOPE_LABEL}. This includes your {videoLabel.toLowerCase()} and demo together. Nothing is trimmed automatically.</p>
-              <p className="text-sm leading-6 text-muted">Choose a style and play its example. Turn on subtitles and Apply edits to save captions on your video.</p>
+              <p className="text-sm leading-6 text-muted">{connected ? "Choose a style and play its example. Turn on subtitles and Apply edits to save captions on your video." : "Choose a style and play its example. Rendering is not connected in this preview."}</p>
             </PopoverContent>
           </Popover>
         </div>

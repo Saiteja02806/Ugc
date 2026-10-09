@@ -1,0 +1,22 @@
+/* Keep overflow discoverable without competing with the content. */
+.surface, .surface *, :global(html):has(.page), :global(body):has(.page) * {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--muted) 14%, transparent) transparent;
+}
+.surface::-webkit-scrollbar, .surface *::-webkit-scrollbar, :global(html):has(.page)::-webkit-scrollbar, :global(body):has(.page) *::-webkit-scrollbar { width: 4px; height: 4px; }
+.surface::-webkit-scrollbar-track, .surface *::-webkit-scrollbar-track, :global(html):has(.page)::-webkit-scrollbar-track, :global(body):has(.page) *::-webkit-scrollbar-track { background: transparent; }
+.surface::-webkit-scrollbar-thumb, .surface *::-webkit-scrollbar-thumb, :global(html):has(.page)::-webkit-scrollbar-thumb, :global(body):has(.page) *::-webkit-scrollbar-thumb {
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--muted) 14%, transparent);
+}
+.surface::-webkit-scrollbar-thumb:hover, .surface *::-webkit-scrollbar-thumb:hover, :global(html):has(.page)::-webkit-scrollbar-thumb:hover, :global(body):has(.page) *::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--muted) 18%, transparent);
+}
+.surface::-webkit-scrollbar-button, .surface *::-webkit-scrollbar-button, :global(html):has(.page)::-webkit-scrollbar-button, :global(body):has(.page) *::-webkit-scrollbar-button { display: none; }
+/* Chromium prefers standard scrollbar properties over its custom track rules. */
+@supports selector(::-webkit-scrollbar) {
+  .surface, .surface *, :global(html):has(.page), :global(body):has(.page) * { scrollbar-width: auto; scrollbar-color: auto; }
+}
+@media (forced-colors: active) {
+  .surface, .surface *, :global(html):has(.page), :global(body):has(.page) * { scrollbar-color: auto; scrollbar-width: auto; }
+}

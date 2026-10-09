@@ -22,6 +22,8 @@ function fixture({collection="audio",project="explore-demo",foreign=false,type=c
       markMediaAssetReady:async args=>{ready.push(args);return asset;},serializeMediaAsset:value=>value,
     },
     "@/lib/media/media-upload":policy,"@/lib/media/types":mediaTypes,
+    "@/lib/media/media-delivery":{isPrivateUserMedia:()=>true},
+    "@/lib/media/private-media-storage":{privateMediaHead:async()=>{heads++;return {ContentType:type,ContentLength:size};}},
     "@/lib/storage/storage":{headStorageObject:async()=>{heads++;return {ContentType:type,ContentLength:size};}},
   },{Response,console});
   return {ready,heads:()=>heads,complete:(body={})=>route.POST(new Request("https://www.getugcpilot.com/api/media/complete-upload",{method:"POST",body:JSON.stringify({assetId:asset.id,key:asset.storage_key,...body})}))};

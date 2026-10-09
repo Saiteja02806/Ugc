@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "mediaStatus": "staged",
-  "release": "694b3e0db7a22f17a978",
+  "mediaStatus": "published",
+  "release": "ec980f7d578350bba1be",
   "items": [
     {
       "id": "explore-slideshow-fitness-2ac394bae86d6779",
@@ -2509,6 +2509,420 @@
       "videoFile": "842d28bf48c766a188996d3d6d756b10b150170354482d9a2572a62778d3043f.mp4",
       "durationSeconds": 2.9,
       "slides": []
+    },
+    {
+      "id": "explore-slideshow-calory-tracking-4b4e24290206c567",
+      "format": "slideshow",
+      "title": "Calory Tracking 01",
+      "category": "calory-tracking",
+      "categoryLabel": "Calory Tracking",
+      "posterFile": "0c603de66b4f933aa62a929c0a04cd482183188ab30c4a5d94a9983649bf72c4.jpg",
+      "slides": [
+        {
+          "id": "slide-1-0c603de66b4f",
+          "file": "0c603de66b4f933aa62a929c0a04cd482183188ab30c4a5d94a9983649bf72c4.jpg",
+          "width": 1170,
+          "height": 2080
+        },
+        {
+          "id": "slide-2-19e1c7d30664",
+          "file": "19e1c7d30664f0b1918bc03592d3a694e7695b2eef38c95c29d4c71d3d29a7f1.jpg",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "id": "slide-3-5a23db42325d",
+          "file": "5a23db42325d641b40d8637bacf060e2a5c22893c4af2ff6c04530c1d08b7da1.jpg",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "id": "slide-4-943622d5a097",
+          "file": "943622d5a097a68a97be2f4ff13fa3a85c72bade05f5e6054320a3f0c6ed1232.jpg",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "id": "slide-5-eaccc12590a5",
+          "file": "eaccc12590a5ec0d4a2e6fc9c974f284091d970196004c61ecb47e4c993aafb9.jpg",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "id": "slide-6-ab0f8bfaa837",
+          "file": "ab0f8bfaa8375c99096bd9b6523c2ccf472a7a139e03c714b81b7feb4eeae80b.jpg",
+          "width": 1080,
+          "height": 1920
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-calory-tracking-7c60bfaf6dbdf900",
+      "format": "slideshow",
+      "title": "Calory Tracking 02",
+      "category": "calory-tracking",
+      "categoryLabel": "Calory Tracking",
+      "posterFile": "09581e4f10ce260412a18876cb839125a30bb07633fa1fdb7bb7dd6eb89de54c.jpg",
+      "slides": [
+        {
+          "id": "slide-1-09581e4f10ce",
+          "file": "09581e4f10ce260412a18876cb839125a30bb07633fa1fdb7bb7dd6eb89de54c.jpg",
+          "width": 1170,
+          "height": 2080
+        },
+        {
+          "id": "slide-2-bb6e2acd4af4",
+          "file": "bb6e2acd4af49b408dd88018fcc286304d58c0d062818fca97982af70049b3dc.jpg",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "id": "slide-3-9d48ed15738f",
+          "file": "9d48ed15738f243f88b62ffa26be9cdc8022e6b846981520173c3a10ea0f2c17.jpg",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "id": "slide-4-f8b8f51f5e2d",
+          "file": "f8b8f51f5e2d5c1c42f0d0fd6a3274988d49ddfbba4661929b8fde21229c9e49.jpg",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "id": "slide-5-80d419489c59",
+          "file": "80d419489c5993080cbeed06b6b47ba82f060c71c9ce54a5cd9e046dce3156fe.jpg",
+          "width": 1080,
+          "height": 1920
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-calory-tracking-f36925740259ef23",
+      "format": "slideshow",
+      "title": "Calory Tracking 03",
+      "category": "calory-tracking",
+      "categoryLabel": "Calory Tracking",
+      "posterFile": "7e30156f99fbc06acf7a40b993b90cb09db03621dd581992a9377d1b5a7359f4.jpg",
+      "slides": [
+        {
+          "id": "slide-1-7e30156f99fb",
+          "file": "7e30156f99fbc06acf7a40b993b90cb09db03621dd581992a9377d1b5a7359f4.jpg",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "id": "slide-2-2014957a43bd",
+          "file": "2014957a43bdc3d5cb1ea63415a5c74c9110d0c61338f014ca1c9ce3fee1e67a.jpg",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "id": "slide-3-d0b51afe76af",
+          "file": "d0b51afe76af87837915f9ec43baa591faecda479f76bb910655111f1a9f4a60.jpg",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "id": "slide-4-15f36c3f02f8",
+          "file": "15f36c3f02f8c532ec356f9416ba1944a3a88343f04682caa53e827f71fb2577.jpg",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "id": "slide-5-7678f3f78cef",
+          "file": "7678f3f78cefa11ba4bc79c237e248e413626595ce147930a494f3d9a7194941.jpg",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "id": "slide-6-5fcddde2a1c7",
+          "file": "5fcddde2a1c7e38c3c62e605417a77943403696931ac8ab8fa1c77c707529352.jpg",
+          "width": 1080,
+          "height": 1920
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-calory-tracking-161a2ed4a2f1c64f",
+      "format": "slideshow",
+      "title": "Calory Tracking 04",
+      "category": "calory-tracking",
+      "categoryLabel": "Calory Tracking",
+      "posterFile": "76729bb3fad6a3447b1f4b03416a2cb3db13c0faeac8a796d480780e83a98097.jpg",
+      "slides": [
+        {
+          "id": "slide-1-76729bb3fad6",
+          "file": "76729bb3fad6a3447b1f4b03416a2cb3db13c0faeac8a796d480780e83a98097.jpg",
+          "width": 1170,
+          "height": 2080
+        },
+        {
+          "id": "slide-2-91a6c5942c98",
+          "file": "91a6c5942c98ee5b9ed78c31f3c77a8ec6ed3f107a74541451b83f19f444db15.jpg",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "id": "slide-3-17d85f285a26",
+          "file": "17d85f285a2682036c1d5df3cc94d339f1a3b3790b6cce5edc6ce124dd15b2aa.jpg",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "id": "slide-4-d80dccfec5b0",
+          "file": "d80dccfec5b03689d65ed43a43b59e9e8fe47fc16c8713ec48957fcdb4d94a74.jpg",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "id": "slide-5-c5f8117a746d",
+          "file": "c5f8117a746dbf8dab373ebed3dca648e80004b554273cb92e5a92b617301369.jpg",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "id": "slide-6-a6c0d3949bd0",
+          "file": "a6c0d3949bd0c6cee9ac0c84923383b4fe4e676a026df394ec9235a52a53e27d.jpg",
+          "width": 1080,
+          "height": 1920
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-calory-tracking-db582602ad18c075",
+      "format": "slideshow",
+      "title": "Calory Tracking 05",
+      "category": "calory-tracking",
+      "categoryLabel": "Calory Tracking",
+      "posterFile": "de61e99b15a36dd494850a9cd3f6b6a725217b380a9de8034823624ee93a427a.jpg",
+      "slides": [
+        {
+          "id": "slide-1-de61e99b15a3",
+          "file": "de61e99b15a36dd494850a9cd3f6b6a725217b380a9de8034823624ee93a427a.jpg",
+          "width": 1534,
+          "height": 2730
+        },
+        {
+          "id": "slide-2-dbdcbe48542f",
+          "file": "dbdcbe48542ff841181eafb941ec913ce76fece47f73c1335242c37c5116c92a.jpg",
+          "width": 1088,
+          "height": 1930
+        },
+        {
+          "id": "slide-3-b6d14dc37977",
+          "file": "b6d14dc3797790a323a72007bfc3d3c6ac25a11d35aecf3e2c02f2df8469ec23.jpg",
+          "width": 1088,
+          "height": 1930
+        },
+        {
+          "id": "slide-4-1ef58f18d568",
+          "file": "1ef58f18d56838f39860e6dd8480bdae04cd3c4a13af939d03ab33729a5cd7f6.jpg",
+          "width": 1088,
+          "height": 1934
+        },
+        {
+          "id": "slide-5-9992976c9ca5",
+          "file": "9992976c9ca523b1c752d149c01108e6fd6efeb99e8b0b12b1f9416cb3e207a3.jpg",
+          "width": 1088,
+          "height": 1930
+        },
+        {
+          "id": "slide-6-270131cbc04c",
+          "file": "270131cbc04c316f1310c9d55bd84150cd78a1d29e96ab8725f3712836e0e593.jpg",
+          "width": 1088,
+          "height": 1934
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-calory-tracking-341c772318097c7c",
+      "format": "slideshow",
+      "title": "Calory Tracking 06",
+      "category": "calory-tracking",
+      "categoryLabel": "Calory Tracking",
+      "posterFile": "a577307b8eebcc470f718b31246f96e1eff4af6f126177e3fa5c290fdf921ce3.jpg",
+      "slides": [
+        {
+          "id": "slide-1-a577307b8eeb",
+          "file": "a577307b8eebcc470f718b31246f96e1eff4af6f126177e3fa5c290fdf921ce3.jpg",
+          "width": 1534,
+          "height": 2730
+        },
+        {
+          "id": "slide-2-d9a701b12c72",
+          "file": "d9a701b12c7274d9537ff6dedd5dd2df97b49157566a6c3f0546308b0e332ee5.jpg",
+          "width": 1088,
+          "height": 1934
+        },
+        {
+          "id": "slide-3-90d2a44b1652",
+          "file": "90d2a44b16523e898189faed8df985c96238c7eefbbd695a4e58dc42689b5173.jpg",
+          "width": 1088,
+          "height": 1934
+        },
+        {
+          "id": "slide-4-57d06fb344ce",
+          "file": "57d06fb344ce3f2dd19feafc2ba7cd964ced34312d41f32fb7ac21be66cbdf98.jpg",
+          "width": 1170,
+          "height": 2080
+        },
+        {
+          "id": "slide-5-41372f8e1352",
+          "file": "41372f8e1352220d5df553aaadfbf52e4f86cdb6776b166ead35129fcce4f2be.jpg",
+          "width": 1088,
+          "height": 1934
+        },
+        {
+          "id": "slide-6-8f6def22fddd",
+          "file": "8f6def22fddd10e24db89a24df5c87646d4ec8beda8a55b7a670ed6dea958083.jpg",
+          "width": 1088,
+          "height": 1934
+        },
+        {
+          "id": "slide-7-8517831c3342",
+          "file": "8517831c33429ae9f779ab9504f44ac23784565999593d89605e8dab5ffcd780.jpg",
+          "width": 1088,
+          "height": 1934
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-pet-tracking-113fdb3d0649be00",
+      "format": "slideshow",
+      "title": "Pet Tracking 01",
+      "category": "pet-tracking",
+      "categoryLabel": "Pet Tracking",
+      "posterFile": "e9184c92fc6b19eaff6eb8a2143fd7ce2bd6bbb0b7a901a3aa36a932dee9fd5e.jpg",
+      "slides": [
+        {
+          "id": "slide-1-e9184c92fc6b",
+          "file": "e9184c92fc6b19eaff6eb8a2143fd7ce2bd6bbb0b7a901a3aa36a932dee9fd5e.jpg",
+          "width": 1920,
+          "height": 2560
+        },
+        {
+          "id": "slide-2-d56740909f1f",
+          "file": "d56740909f1f309cc0e2fd070dbb3451bd733a3ce85f5e12446ed5c3e19c62d7.jpg",
+          "width": 1080,
+          "height": 1440
+        },
+        {
+          "id": "slide-3-4371ecf0e769",
+          "file": "4371ecf0e7699ab3e62e4111a4b7c60a40af21b0f97f6be346dcbdb7bc759dd6.jpg",
+          "width": 1080,
+          "height": 1440
+        },
+        {
+          "id": "slide-4-494b28d0e21c",
+          "file": "494b28d0e21cb7797b90990cddcda747d7c41536231328adc246a5f85c4e0705.jpg",
+          "width": 1080,
+          "height": 1440
+        },
+        {
+          "id": "slide-5-29772c49141c",
+          "file": "29772c49141c4c2bd0ea7d4b3b45240f19d0d3efd0f10bf4b89ce0bf9edb38e1.jpg",
+          "width": 1200,
+          "height": 1600
+        },
+        {
+          "id": "slide-6-8fe9710f1f0f",
+          "file": "8fe9710f1f0f0a8002385abacf0c23894fe40b499b9080c6caaa095577ee4ff3.jpg",
+          "width": 1080,
+          "height": 1440
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-pet-tracking-891d144e7edbae48",
+      "format": "slideshow",
+      "title": "Pet Tracking 02",
+      "category": "pet-tracking",
+      "categoryLabel": "Pet Tracking",
+      "posterFile": "bdb4ccfc972a2dd85a0b0fd0d10561f44ce4f64d81d957ecf1ae2c168b5c6d72.jpg",
+      "slides": [
+        {
+          "id": "slide-1-bdb4ccfc972a",
+          "file": "bdb4ccfc972a2dd85a0b0fd0d10561f44ce4f64d81d957ecf1ae2c168b5c6d72.jpg",
+          "width": 1440,
+          "height": 1920
+        },
+        {
+          "id": "slide-2-012bf31f8c4d",
+          "file": "012bf31f8c4d267fe49ef588ecc89fbaaf23c6a45f34594bc9e70d5a5b0351c1.jpg",
+          "width": 1080,
+          "height": 1440
+        },
+        {
+          "id": "slide-3-d66542d4dbbd",
+          "file": "d66542d4dbbd5ea94d1152292b12cfde81e00972ae9bb451f79ba95bfedf7799.jpg",
+          "width": 1080,
+          "height": 1440
+        },
+        {
+          "id": "slide-4-2c1221366330",
+          "file": "2c12213663304e42c52bd22ab2da67969ac0b59360af78e9f8f5b2b609813e23.jpg",
+          "width": 1080,
+          "height": 1440
+        },
+        {
+          "id": "slide-5-b448c00cc7fb",
+          "file": "b448c00cc7fb2476f3c03182dca4121a3fc0e2164cd5451a2f7207efa99a4ce0.jpg",
+          "width": 1080,
+          "height": 1440
+        },
+        {
+          "id": "slide-6-5b5d4777e772",
+          "file": "5b5d4777e772bf00e17bb94f5b77661f8faf4c745c95ff869de642861ac9d552.jpg",
+          "width": 1200,
+          "height": 1600
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-pet-tracking-7923154b7da6f465",
+      "format": "slideshow",
+      "title": "Pet Tracking 03",
+      "category": "pet-tracking",
+      "categoryLabel": "Pet Tracking",
+      "posterFile": "7c7a8c1f042f009d1ae66f7a6952a83c47dfb203b6138352bdee38f188501a24.jpg",
+      "slides": [
+        {
+          "id": "slide-1-7c7a8c1f042f",
+          "file": "7c7a8c1f042f009d1ae66f7a6952a83c47dfb203b6138352bdee38f188501a24.jpg",
+          "width": 1080,
+          "height": 1440
+        },
+        {
+          "id": "slide-2-3accfe4d5b4a",
+          "file": "3accfe4d5b4a6e7542d5f25baf9882f12fc91996d3287f2ae8fda9a9bd79228c.jpg",
+          "width": 1080,
+          "height": 1440
+        },
+        {
+          "id": "slide-3-a7a64e7a79a5",
+          "file": "a7a64e7a79a5b48eb314029f1627b9719046fa16b4ed8725cc19bbe90a803dae.jpg",
+          "width": 1080,
+          "height": 1440
+        },
+        {
+          "id": "slide-4-0834918bafd9",
+          "file": "0834918bafd967d484c2db400cfea831df2541588da62caefb58dddf2bf8962c.jpg",
+          "width": 1080,
+          "height": 1440
+        },
+        {
+          "id": "slide-5-6a0a536f1c34",
+          "file": "6a0a536f1c34492c3026a182ed7b72fc73c414701b78bf9269dd87e89543ee03.jpg",
+          "width": 1200,
+          "height": 1600
+        },
+        {
+          "id": "slide-6-82f0f02c725e",
+          "file": "82f0f02c725e5307a1f53b676799bec25699cd53b1eb869fc3bfcc82bf7760ad.jpg",
+          "width": 1080,
+          "height": 1440
+        }
+      ]
     }
   ]
 }

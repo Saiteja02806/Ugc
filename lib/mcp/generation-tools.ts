@@ -13,7 +13,7 @@ import {
 } from "@/lib/jobs/background-jobs";
 import { getMediaAssetForOwner } from "@/lib/media/media-storage";
 import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
-import { isTrustedStorageUrl } from "@/lib/storage/storage";
+import { isTrustedMediaReferenceUrl as isTrustedStorageUrl } from "@/lib/media/media-reference";
 import { generationChildIdempotencyKey, generationRequestFingerprint } from "./generation-idempotency";
 import { MCP_VIDEO_DURATIONS } from "./generation-contract";
 import { executeTool, generationCount, oauthMetadata, principal, ToolFailure } from "./read-tools";

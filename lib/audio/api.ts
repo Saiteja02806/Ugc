@@ -7,9 +7,12 @@ import { getBackgroundJobById } from "@/lib/jobs/background-jobs";
 import { dispatchQueuedBackgroundJobForRecovery } from "@/lib/jobs/background-job-service";
 import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
 import { AUDIO_MAX_UPLOAD_BYTES, AUDIO_UPLOAD_TYPES, AudioError, audioCostMicros, audioObjectPrefix, isAudioUuid, isVoiceEligible, parseAudioRequestKey, parseAudioSpeech, type AudioAccount, type AudioModel, type AudioRequest, type AudioVoice } from "@/worker/src/lib/audio-contract";
-import { audioDb, audioRpc, getAudioRequest, readPrivateAudio, savePrivateAudio } from "@/worker/src/lib/audio-store";
+import { audioDb, audioRpc, getAudioRequest, readPrivateAudio, savePrivateAudio, deletePrivateAudio, privateAudioConfigured } from "@/worker/src/lib/audio-store";
 import { ElevenLabsAudio, getElevenLabsApiKey, toAudioVoice } from "@/worker/src/lib/elevenlabs-audio";
 import type { AudioBootstrap, AudioHistory } from "./types";
+import { getGoogleServiceAccountCredentials } from "@/lib/gcp/credentials";
+import { setPrivateAudioCredentials } from "@/worker/src/lib/audio-storage";
+setPrivateAudioCredentials(() => getGoogleServiceAccountCredentials() ?? undefined);
 import { publicElevenLabsCatalogue } from "./public-voice-catalogue";
 import { AUDIO_UPGRADE_MESSAGE, hasAudioGenerationSubscription, type AudioGenerationAccess } from "@/worker/src/lib/audio-access-policy";
 
@@ -91,14 +94,16 @@ async function userVoices(userId: string, data: Catalogue) {
   }
   return { voices: list, verificationUpdated };
 }
-async function history(userId: string): Promise<AudioHistory> {
+async function history(userId: string, requestKey?: string): Promise<AudioHistory> {
+  let requests = audioDb().from("audio_generation_requests").select("id,request_key,kind,name,status,error_message,created_at,output_asset_id,voice_profile_id,test_only,credits").eq("user_id", userId);
+  if (requestKey) requests = requests.eq("request_key", parseAudioRequestKey(requestKey));
   const [assetsResult, requestsResult, profilesResult] = await Promise.all([
     audioDb().from("audio_assets").select("id,name,purpose,status,duration_seconds,created_at,generation_id,test_only,cleanup_completed_at").eq("user_id", userId).or("status.neq.deleted,cleanup_completed_at.is.null").order("created_at", { ascending: false }).limit(100),
-    audioDb().from("audio_generation_requests").select("id,kind,name,status,error_message,created_at,output_asset_id,voice_profile_id,test_only,credits").eq("user_id", userId).order("created_at", { ascending: false }).limit(50),
+    requests.order("created_at", { ascending: false }).limit(50),
     audioDb().from("audio_voice_profiles").select("id,name,status,provider_voice_id").eq("user_id", userId),
   ]);
   if (assetsResult.error || requestsResult.error || profilesResult.error) throw new AudioError("Audio history is unavailable. Check the audio database setup.", 503);
-  return { assets: (assetsResult.data ?? []).filter(a => a.status !== "deleted").map(a => ({ id: a.id, name: a.name, purpose: a.purpose, status: a.status, duration: a.duration_seconds === null ? null : Number(a.duration_seconds), createdAt: a.created_at, generationId: a.generation_id, testOnly: a.test_only })), requests: (requestsResult.data ?? []).map(r => ({ id: r.id, kind: r.kind, name: r.name, status: r.status, error: r.error_message, createdAt: r.created_at, outputAssetId: r.output_asset_id, voiceProfileId: r.voice_profile_id, voiceStatus: profilesResult.data?.find(p => p.id === r.voice_profile_id)?.status ?? null, testOnly: r.test_only, credits: r.credits })), cleanupPending: [...(assetsResult.data ?? []).filter(a => a.status === "deleted" && !a.cleanup_completed_at).map(a => ({ id: a.id, name: a.name, kind: "asset" as const })), ...(profilesResult.data ?? []).filter(p => p.status === "deleted" && p.provider_voice_id).map(p => ({ id: p.id, name: p.name, kind: "voice" as const }))] };
+  return { assets: (assetsResult.data ?? []).filter(a => a.status !== "deleted").map(a => ({ id: a.id, name: a.name, purpose: a.purpose, status: a.status, duration: a.duration_seconds === null ? null : Number(a.duration_seconds), createdAt: a.created_at, generationId: a.generation_id, testOnly: a.test_only })), requests: (requestsResult.data ?? []).map(r => ({ id: r.id, requestKey: r.request_key, kind: r.kind, name: r.name, status: r.status, error: r.error_message, createdAt: r.created_at, outputAssetId: r.output_asset_id, voiceProfileId: r.voice_profile_id, voiceStatus: profilesResult.data?.find(p => p.id === r.voice_profile_id)?.status ?? null, testOnly: r.test_only, credits: r.credits })), cleanupPending: [...(assetsResult.data ?? []).filter(a => a.status === "deleted" && !a.cleanup_completed_at).map(a => ({ id: a.id, name: a.name, kind: "asset" as const })), ...(profilesResult.data ?? []).filter(p => p.status === "deleted" && p.provider_voice_id).map(p => ({ id: p.id, name: p.name, kind: "voice" as const }))] };
 }
 function json(data: unknown, status = 200) { return NextResponse.json(data, { status, headers: { "Cache-Control": "private, no-store" } }); }
 export function audioApiError(error: unknown) {
@@ -115,7 +120,7 @@ export async function handleAudioBootstrap(request: Request) {
     const user = await requireFirebaseUser(request);
     const planAccess = await generationAccess(user.uid);
     let saved: AudioHistory = { assets: [], requests: [] }; let message: string | null = null; let storageReady = false;
-    try { saved = await history(user.uid); storageReady = true; } catch (error) { message = error instanceof AudioError ? error.message : "Audio storage is unavailable."; }
+    try { saved = await history(user.uid); storageReady = privateAudioConfigured(); } catch (error) { message = error instanceof AudioError ? error.message : "Audio storage is unavailable."; }
     const configured = Boolean(getElevenLabsApiKey());
     let account: AudioAccount | null = null; let voices: AudioVoice[] = []; let models: AudioModel[] = [];
     if (configured && enabled() && storageReady) {
@@ -139,7 +144,7 @@ export async function handleAudioBootstrap(request: Request) {
     return json(result);
   } catch (error) { return audioApiError(error); }
 }
-export async function handleAudioHistory(request: Request) { try { const user = await requireFirebaseUser(request); return json(await history(user.uid)); } catch (error) { return audioApiError(error); } }
+export async function handleAudioHistory(request: Request) { try { const user = await requireFirebaseUser(request); return json(await history(user.uid, new URL(request.url).searchParams.get("requestKey") ?? undefined)); } catch (error) { return audioApiError(error); } }
 async function createRequest(userId: string, kind: string, key: string, payload: Record<string, unknown>, account: AudioAccount | null) {
   if (getMissingJobQueueEnvVars(["generate_audio"]).length) throw new AudioError("The audio worker has not been configured yet.", 503);
   const fingerprint = createHash("sha256").update(JSON.stringify({ kind, ...payload, testOnly: undefined })).digest("hex");
@@ -209,7 +214,7 @@ export async function handleAudioUpload(request: Request) {
         // Remove only this attempt's unreferenced object, never the winner's.
         const settled = await audioDb().from("audio_assets").select("*").eq("id", assetId).maybeSingle();
         if (settled.error) throw new AudioError("The audio upload could not be saved.", 503);
-        if (settled.data?.object_key !== objectKey) await audioDb().storage.from("private-audio").remove([objectKey]);
+        if (settled.data?.object_key !== objectKey) await deletePrivateAudio([objectKey]);
         if (!settled.data) throw new AudioError("The audio upload could not be saved.", 503);
         if (settled.data.user_id !== user.uid || settled.data.checksum !== checksum || settled.data.purpose !== purpose) throw new AudioError("This upload ID already belongs to another recording.", 409);
         existing = settled.data;
@@ -225,7 +230,7 @@ export async function handleAudioUpload(request: Request) {
         const lookup = await audioDb().from("audio_generation_requests").select("id").eq("user_id", user.uid).eq("request_key", key).maybeSingle();
         if (!lookup.error && !lookup.data) {
           const removed = await audioDb().from("audio_assets").delete().eq("id", assetId).eq("user_id", user.uid);
-          if (!removed.error) await audioDb().storage.from("private-audio").remove([objectKey]);
+          if (!removed.error) await deletePrivateAudio([objectKey]);
         }
       }
       throw error;
@@ -256,6 +261,7 @@ export async function handleAudioAsset(request: Request, assetId: string) {
     const user = await requireFirebaseUser(request); if (!isAudioUuid(assetId)) throw new AudioError("Audio not found.", 404);
     const { data: asset, error } = await audioDb().from("audio_assets").select("*").eq("id", assetId).eq("user_id", user.uid).eq("status", "ready").maybeSingle();
     if (error || !asset) throw new AudioError("Audio not found.", 404);
+    if (new URL(request.url).searchParams.get("forExplore") === "1" && (asset.test_only || asset.purpose === "reference")) throw new AudioError("Choose commercial audio, not a free test or private voice recording.", 403);
     const bytes = await readPrivateAudio(asset.object_key); let start = 0; let end = bytes.length - 1; let status = 200;
     const range = request.headers.get("range");
     if (range) {
@@ -321,8 +327,8 @@ export async function handleDeleteAudioAsset(request: Request, assetId: string) 
     if (asset.generation_id) {
       for (let index = 0; index < retired.chunk_count; index++) keys.push(`${audioObjectPrefix(user.uid, asset.generation_id)}/chunks/${index}.mp3`);
     }
-    const removed = await audioDb().storage.from("private-audio").remove(keys);
-    if (removed.error) throw new AudioError("The recording is hidden. Retry removal to finish deleting its files.", 503);
+    try { await deletePrivateAudio(keys); }
+    catch { throw new AudioError("The recording is hidden. Retry removal to finish deleting its files.", 503); }
     const updated = await audioDb().from("audio_assets").update({ cleanup_completed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", assetId).eq("user_id", user.uid).eq("status", "deleted");
     if (updated.error) throw new AudioError("The recording is hidden and its files were removed. Retry removal to finish updating its history.", 503);
     return json({ deleted: true });

@@ -114,6 +114,8 @@ test("the existing media API authenticates list and single-image requests and ig
     serializeMediaAsset: value => value, getMediaAssetForOwner: async args => { calls.push(args); return args.assetId === "owned-image" ? image() : null; } };
   const types = load("lib/media/types.ts", {});
   const list = load("app/api/media/route.ts", {
+    "@/lib/ai-studio/generated-video-history-metadata": { getGeneratedVideoHistoryMetadata: () => ({}) },
+    "@/lib/jobs/background-jobs": { getBackgroundJobsByIds: async () => [] },
     "@/lib/firebase/server-auth": auth, "@/lib/media/media-storage": media, "@/lib/media/types": types,
     "@/lib/media/media-library-visibility": load("lib/media/media-library-visibility.ts", {}),
   }, { Response, URL, console });

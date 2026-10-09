@@ -1,215 +1,108 @@
 "use client";
 
-import {
-  FileVideo,
-  Loader2,
-  Plus,
-  RefreshCw,
-  X,
-} from "lucide-react";
-import type { ChangeEvent } from "react";
+import { ImagePlus, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-
+import { ReferenceUploadPreview } from "@/components/generation/reference-upload-preview";
 import { Button } from "@/components/ui/button";
-import {
-  uploadAIStudioReferenceMedia,
-  type AIStudioReferenceKind as UploadReferenceKind,
-  type AIStudioReferenceMedia,
-} from "@/lib/ai-studio/reference-media-upload";
-type AIStudioReferenceKind = Exclude<UploadReferenceKind, "audio">;
+import { uploadAIStudioReferenceMedia, type AIStudioReferenceKind, type AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 
-export function ReferenceMediaUpload({
-  active = true,
-  allowedKinds,
-  disabled = false,
-  selection,
-  onChange,
-}: {
+export function ReferenceMediaUpload({ active = true, allowedKinds, disabled = false, maxVideoDurationSeconds = 3, selection, onChange, onPendingChange }: {
   active?: boolean;
   allowedKinds: readonly AIStudioReferenceKind[];
   disabled?: boolean;
+  maxVideoDurationSeconds?: number;
   selection: AIStudioReferenceMedia | null;
   onChange: (selection: AIStudioReferenceMedia | null) => void;
+  onPendingChange?: (pending: boolean) => void;
 }) {
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const [uploadingKind, setUploadingKind] = useState<AIStudioReferenceKind | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const busyRef = useRef(false);
+  const previewUrlRef = useRef<string | null>(null);
+  const [pending, setPending] = useState<{ file: File; kind: AIStudioReferenceKind; url?: string } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const busy = pending !== null;
 
-  const selectFile = useCallback(async (kind: AIStudioReferenceKind, file: File) => {
+  useEffect(() => () => {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+  }, []);
+
+  const selectFile = useCallback(async (file: File) => {
+    if (disabled || busyRef.current) return;
+    const kind = file.type.startsWith("video/") ? "video" : file.type.startsWith("audio/") ? "audio" : "image";
     setErrorMessage(null);
-    setUploadingKind(kind);
-
+    if (!allowedKinds.includes(kind)) {
+      setErrorMessage(`Choose a reference ${allowedKinds.join(" or ")}.`);
+      return;
+    }
+    busyRef.current = true;
+    const url = kind === "image" ? URL.createObjectURL(file) : undefined;
+    previewUrlRef.current = url ?? null;
+    setPending({ file, kind, url });
+    onPendingChange?.(true);
     try {
-      onChange(await uploadAIStudioReferenceMedia(file, kind));
+      onChange(await uploadAIStudioReferenceMedia(file, kind, maxVideoDurationSeconds));
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error && error.message
-          ? error.message
-          : `Could not upload this reference ${kind}.`,
-      );
+      setErrorMessage(error instanceof Error && error.message ? error.message : `Could not upload this reference ${kind}.`);
     } finally {
-      setUploadingKind(null);
+      if (url) URL.revokeObjectURL(url);
+      previewUrlRef.current = null;
+      busyRef.current = false;
+      setPending(null);
+      onPendingChange?.(false);
     }
-  }, [onChange]);
-
-  function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.currentTarget.files?.[0];
-    event.currentTarget.value = "";
-
-    if (file) {
-      const kind = getReferenceKind(file);
-
-      if (!allowedKinds.includes(kind)) {
-        setErrorMessage(`Choose a reference ${allowedKinds.join(" or ")}.`);
-        return;
-      }
-
-      void selectFile(kind, file);
-    }
-  }
-
-  const busy = uploadingKind !== null;
-  const accepts = allowedKinds.flatMap((kind) => REFERENCE_ACCEPTS[kind]).join(",");
-  const allowedLabel = allowedKinds.length > 1 ? "image or video" : allowedKinds[0];
-  const buttonLabel = selection
-    ? `Replace reference ${selection.kind} or paste an image`
-    : `Add reference ${allowedLabel} or paste an image`;
+  }, [allowedKinds, disabled, maxVideoDurationSeconds, onChange, onPendingChange]);
 
   useEffect(() => {
-    if (!active || disabled || busy) {
-      return;
-    }
-
-    const composerForm = inputRef.current?.closest("form");
-
-    if (!composerForm) {
-      return;
-    }
-
+    if (!active) return;
+    const form = inputRef.current?.closest("form");
+    if (!form) return;
     function handlePaste(event: ClipboardEvent) {
-      const clipboardData = event.clipboardData;
-      const itemFile = Array.from(clipboardData?.items ?? [])
-        .find(
-          (item) => item.kind === "file" && item.type.startsWith("image/"),
-        )
-        ?.getAsFile();
-      const file =
-        itemFile ??
-        Array.from(clipboardData?.files ?? []).find((candidate) =>
-          candidate.type.startsWith("image/"),
-        );
-
-      if (!file) {
-        return;
-      }
-
-      if (!allowedKinds.includes("image")) {
-        setErrorMessage(`Choose a reference ${allowedKinds.join(" or ")}.`);
-        return;
-      }
-
-      void selectFile("image", file);
+      const file = Array.from(event.clipboardData?.files ?? []).find((candidate) => candidate.type.startsWith("image/")) ?? Array.from(event.clipboardData?.items ?? []).find((item) => item.kind === "file" && item.type.startsWith("image/"))?.getAsFile();
+      if (!file) return;
+      event.preventDefault();
+      void selectFile(file);
     }
+    function handleDragOver(event: DragEvent) {
+      if (event.dataTransfer?.types.includes("Files")) event.preventDefault();
+    }
+    function handleDrop(event: DragEvent) {
+      const file = event.dataTransfer?.files[0];
+      if (!file) return;
+      event.preventDefault();
+      void selectFile(file);
+    }
+    form.addEventListener("paste", handlePaste);
+    form.addEventListener("dragover", handleDragOver);
+    form.addEventListener("drop", handleDrop);
+    return () => {
+      form.removeEventListener("paste", handlePaste);
+      form.removeEventListener("dragover", handleDragOver);
+      form.removeEventListener("drop", handleDrop);
+    };
+  }, [active, selectFile]);
 
-    composerForm.addEventListener("paste", handlePaste);
-
-    return () => composerForm.removeEventListener("paste", handlePaste);
-  }, [active, allowedKinds, busy, disabled, selectFile]);
-
+  const allowedLabel = allowedKinds.join(" or ");
+  const buttonLabel = selection ? `Replace reference ${selection.kind}` : `Add reference ${allowedLabel}`;
   return (
-    <>
-      <input
-        ref={inputRef}
-        type="file"
-        accept={accepts}
-        className="hidden"
-        aria-label={buttonLabel}
-        onChange={handleInputChange}
-      />
-      <Button
-        type="button"
-        variant="muted"
-        size="icon-lg"
-        className="col-start-1 row-start-1 size-9 min-w-9 max-w-9 rounded-full border border-border/80 bg-card-muted/80 text-muted shadow-xs transition-all duration-150 hover:border-border hover:bg-card hover:text-foreground-strong active:scale-95"
-        aria-label={buttonLabel}
-        title={buttonLabel}
-        disabled={disabled || busy}
-        onClick={() => inputRef.current?.click()}
-      >
-        {busy ? (
-          <Loader2
-            className="size-4 animate-spin motion-reduce:animate-none"
-            aria-hidden="true"
-          />
-        ) : selection ? (
-          <RefreshCw className="size-4" aria-hidden="true" />
-        ) : (
-          <Plus className="size-4" aria-hidden="true" />
-        )}
-      </Button>
-
-      {selection || errorMessage ? (
-        <div
-          className="col-span-full col-start-1 row-start-2 mt-1 flex min-w-0 flex-col items-start gap-1.5"
-          aria-live="polite"
-        >
-          {selection ? (
-            <div className="inline-flex max-w-full items-center gap-2 rounded-xl border border-border bg-card-muted/80 p-1.5 pr-2.5 text-xs shadow-xs">
-              {selection.kind === "image" ? (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={selection.asset.url}
-                    alt=""
-                    width={36}
-                    height={36}
-                    className="size-9 shrink-0 rounded-lg object-cover ring-1 ring-border/80"
-                  />
-                  <span className="shrink-0 font-medium text-muted">Image reference</span>
-                </>
-              ) : (
-                <>
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
-                    <FileVideo className="size-4" aria-hidden="true" />
-                  </span>
-                  <span className="shrink-0 font-medium text-muted">Video reference</span>
-                </>
-              )}
-              <span className="min-w-0 truncate font-medium text-foreground">
-                {selection.asset.fileName || selection.asset.title}
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className="-my-1 -mr-1"
-                aria-label={`Remove reference ${selection.kind}`}
-                disabled={disabled || busy}
-                onClick={() => onChange(null)}
-              >
-                <X aria-hidden="true" />
-              </Button>
-            </div>
-          ) : null}
-
-          {errorMessage ? (
-            <p role="alert" className="max-w-80 text-xs font-medium text-destructive">
-              {errorMessage}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-    </>
+    <div className="min-w-0 space-y-1.5">
+      <div className="flex min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain px-1 py-1.5">
+        <input ref={inputRef} type="file" accept={allowedKinds.flatMap((kind) => REFERENCE_ACCEPTS[kind]).join(",")} className="hidden" aria-label={buttonLabel} onChange={(event) => {
+          const file = event.currentTarget.files?.[0];
+          event.currentTarget.value = "";
+          if (file) void selectFile(file);
+        }} />
+        <Button type="button" variant="muted" size="icon-sm" className="size-9 shrink-0 rounded-lg border border-dashed border-border text-muted" aria-label={buttonLabel} title={`${buttonLabel}. Choose, drop, or paste a file.`} disabled={disabled || busy} onClick={() => inputRef.current?.click()}>
+          {busy ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : selection ? <RefreshCw className="size-4" aria-hidden="true" /> : <ImagePlus className="size-4" aria-hidden="true" />}
+        </Button>
+        {pending ? <ReferenceUploadPreview kind={pending.kind} url={pending.url} name={pending.file.name} label="Reference" pending /> : selection ? <ReferenceUploadPreview kind={selection.kind} url={selection.asset.url} name={`reference ${selection.kind}`} label="Reference" disabled={disabled || busy} onRemove={() => onChange(null)} /> : null}
+      </div>
+      {errorMessage ? <p role="alert" className="text-xs font-medium text-destructive">{errorMessage}</p> : null}
+    </div>
   );
 }
 
-const REFERENCE_ACCEPTS: Record<Exclude<AIStudioReferenceKind, "audio">, readonly string[]> = {
+const REFERENCE_ACCEPTS: Record<AIStudioReferenceKind, readonly string[]> = {
   image: ["image/jpeg", "image/png", "image/webp"],
   video: ["video/mp4", "video/quicktime", "video/webm"],
+  audio: ["audio/mpeg", "audio/wav", "audio/x-wav"],
 };
-
-function getReferenceKind(file: File): Exclude<AIStudioReferenceKind, "audio"> {
-  return file.type.startsWith("video/") || /\.(mp4|mov|webm)$/i.test(file.name)
-    ? "video"
-    : "image";
-}

@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH,
   AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
   getAIStudioPromptLengthError,
   getAIStudioVideoPromptMaxLength,
@@ -18,11 +17,11 @@ test("normalizes AI Studio prompts without silently truncating them", () => {
   );
 });
 
-test("reports mode-specific AI Studio prompt limits", () => {
+test("reports video validation errors without numeric limit text", () => {
   assert.equal(
     getAIStudioPromptLengthError(
-      "x".repeat(AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH),
-      AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH,
+      "x".repeat(AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH),
+      AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
     ),
     null,
   );
@@ -31,7 +30,7 @@ test("reports mode-specific AI Studio prompt limits", () => {
       "x".repeat(AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH + 1),
       AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
     ) ?? "",
-    /1,000 characters or fewer/,
+    /too long for the selected model/,
   );
 });
 
@@ -44,5 +43,5 @@ test("Omni accepts a long prompt while reference-video and other model safeguard
     getAIStudioVideoPromptMaxLength({ model: "google_omni", hasReferenceVideo: true }),
     1000,
   );
-  assert.equal(getAIStudioVideoPromptMaxLength({ model: "seedance_2_5" }), 1000);
+  assert.equal(getAIStudioVideoPromptMaxLength({ model: "seedance_2_5" }), 10000);
 });

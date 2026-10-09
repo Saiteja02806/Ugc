@@ -1,11 +1,18 @@
 "use client";
 
 import {
+  ChevronDown,
+  ChevronUp,
   Clock3,
+  History,
   Loader2,
+  Monitor,
   Pause,
   Play,
+  Plus,
+  RefreshCw,
   ScanText,
+  Search,
   Sparkles,
   Video,
   Volume2,
@@ -13,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { FormEvent, KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -27,9 +35,12 @@ import {
   type AiStudioResultsStatus,
 } from "@/components/generation/ai-studio-results";
 import { AiStudioResultActions } from "@/components/generation/ai-studio-result-actions";
-import { ReferenceMediaUpload } from "@/components/generation/reference-media-upload";
+import { AiStudioCopyButton } from "@/components/generation/ai-studio-copy-button";
+import { Input } from "@/components/ui/input";
+import { ReferenceFilesUpload } from "@/components/video/reference-files-upload";
 import { FormatGenerationReferences } from "@/components/explore/format-generation-references";
 import { CreatorReferencePicker } from "@/components/video/creator-reference-picker";
+import { VideoGenerationFailure } from "@/components/video/video-generation-failure";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -42,18 +53,26 @@ import {
 import { useAuth } from "@/contexts/auth-context";
 import type { RecreateGenerationView } from "@/components/explore/recreate-generation-view";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
+import { getVideoGenerationState } from "@/lib/ai-studio/video-generation-state";
 import { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND } from "@/lib/billing/generation-credit-policy";
 import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import { getExploreVideoPromptMaxLength } from "@/lib/explore/format-generation-prompt";
 import {
   AI_STUDIO_GENERATION_QUANTITIES,
   AI_STUDIO_VIDEO_ASPECT_RATIOS,
-  AI_STUDIO_VIDEO_DURATIONS,
   AI_STUDIO_VIDEO_MODELS,
+  AI_STUDIO_VIDEO_RESOLUTIONS,
+  isAIStudioVideoResolutionSupported,
+  isAIStudioVideoModelAvailable,
+  getAIStudioVideoModelLabel,
+  getAIStudioVideoDurations,
+  parseAIStudioVideoModel,
+  parseAIStudioVideoResolution,
   type AIStudioGenerationQuantity,
   type AIStudioVideoAspectRatio,
   type AIStudioVideoDuration,
   type AIStudioVideoModel,
+  type AIStudioVideoResolution,
 } from "@/lib/ai-studio/generation-settings";
 import {
   fetchAIStudioMediaAsset,
@@ -64,6 +83,12 @@ import {
   type AIStudioVideoResult,
   upsertAIStudioResult,
 } from "@/lib/ai-studio/media-results";
+import {
+  filterAIStudioVideoHistory,
+  getVideoHistoryDateLabel,
+  groupAIStudioVideoHistory,
+} from "@/lib/ai-studio/video-history";
+import { appendAIStudioSessionResultIds, getAIStudioSessionResults, isAIStudioSessionCompletion } from "@/lib/ai-studio/generation-session";
 import {
   getAIStudioPromptLengthError,
   normalizeAIStudioPrompt,
@@ -87,11 +112,11 @@ type GeneratedVideo = AIStudioVideoResult;
 const VIDEO_JOB_STORAGE_PREFIX = "ugc-ai-studio.latest-video-job.v2.";
 const VIDEO_JOB_METADATA_PREFIX = "ugc-ai-studio.video-job.v2.";
 const VIDEO_JOB_URL_PARAMETER = "videoJob";
-const VIDEO_PREVIEW_WIDTH_CLASS_NAMES: Record<GeneratedVideo["ratio"], string> = {
-  "4:5": "max-w-[min(216px,30dvh)]",
-  "1:1": "max-w-[min(216px,36dvh)]",
-  "9:16": "max-w-[min(216px,24dvh)]",
-  "16:9": "max-w-[216px]",
+const VIDEO_RESULT_WIDTH_CLASS_NAMES: Record<GeneratedVideo["ratio"], string> = {
+  "4:5": "w-[min(100%,calc(34dvh*4/5),16rem)]",
+  "1:1": "w-[min(100%,34dvh,18rem)]",
+  "9:16": "w-[min(100%,calc(34dvh*9/16),11.25rem)]",
+  "16:9": "w-[min(100%,calc(34dvh*16/9),24rem)]",
 };
 
 type GenerateVideoResponse =
@@ -134,7 +159,9 @@ function persistPendingVideoMetadata(
   metadata: {
     aspectRatio: AIStudioVideoAspectRatio;
     avatarName: string;
+    model: AIStudioVideoModel;
     prompt: string;
+    resolution: AIStudioVideoResolution;
   },
 ) {
   try {
@@ -154,7 +181,16 @@ function persistPendingVideoMetadata(
   }
 }
 
-function getPendingVideoMetadata(userId: string, jobId: string) {
+function getPendingVideoMetadata(
+  userId: string,
+  jobId: string,
+): {
+  aspectRatio: AIStudioVideoAspectRatio;
+  avatarName: string;
+  model: AIStudioVideoModel;
+  prompt: string;
+  resolution: AIStudioVideoResolution;
+} | null {
   try {
     const rawValue = window.localStorage.getItem(
       `${VIDEO_JOB_METADATA_PREFIX}${userId}.${jobId}`,
@@ -176,7 +212,9 @@ function getPendingVideoMetadata(userId: string, jobId: string) {
           : "9:16",
       avatarName:
         typeof value.avatarName === "string" ? value.avatarName : "",
+      model: parseAIStudioVideoModel(value.model),
       prompt: typeof value.prompt === "string" ? value.prompt : "",
+      resolution: parseAIStudioVideoResolution(value.resolution),
     };
   } catch {
     return null;
@@ -274,11 +312,23 @@ export function VideoGenerationStudioPanel({
     useState<AIStudioVideoAspectRatio>("9:16");
   const [quantity, setQuantity] =
     useState<AIStudioGenerationQuantity>(1);
-  const [model, setModel] = useState<AIStudioVideoModel>(recreateView?.workflow ? "google_omni" : "seedance_2_5");
+  const [model, setModel] = useState<AIStudioVideoModel>(() => {
+    if (workflow) return "google_omni";
+    const requested = parseAIStudioVideoModel(searchParams.get("model"));
+    return isAIStudioVideoModelAvailable(requested) ? requested : "kling_3_0";
+  });
   const [durationSeconds, setDurationSeconds] =
     useState<AIStudioVideoDuration>(5);
+  const [resolution, setResolution] =
+    useState<AIStudioVideoResolution>("720p");
   const [uploadedReference, setUploadedReference] =
     useState<AIStudioReferenceMedia | null>(null);
+  const [additionalImageReferences, setAdditionalImageReferences] =
+    useState<AIStudioReferenceMedia[]>([]);
+  const [uploadedVideoReference, setUploadedVideoReference] =
+    useState<AIStudioReferenceMedia | null>(null);
+  const [audioReferences, setAudioReferences] = useState<AIStudioReferenceMedia[]>([]);
+  const [referenceFilesPending, setReferenceFilesPending] = useState(false);
   const [selectedCreatorReferenceId, setSelectedCreatorReferenceId] =
     useState<string | null>(null);
   const [creatorReferenceUploadPending, setCreatorReferenceUploadPending] =
@@ -286,10 +336,19 @@ export function VideoGenerationStudioPanel({
   const [referenceImageRequiredDialogOpen, setReferenceImageRequiredDialogOpen] =
     useState(false);
   const [activeVideoPrompt, setActiveVideoPrompt] = useState("");
+  const [activeSubmittedAt, setActiveSubmittedAt] = useState(() => new Date().toISOString());
   const [latestCompletedVideoId, setLatestCompletedVideoId] = useState<string | null>(null);
   const [generationState, setGenerationState] =
     useState<GenerationState>("empty");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  const [refreshingAccess, setRefreshingAccess] = useState(false);
   const [generatedVideos, setGeneratedVideos] = useState<GeneratedVideo[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyQuery, setHistoryQuery] = useState("");
+  const [selectedHistoryVideoId, setSelectedHistoryVideoId] = useState<string | null>(null);
+  const [currentResultIds, setCurrentResultIds] = useState<string[]>([]);
+  const [currentDay, setCurrentDay] = useState(() => new Date());
   const [resultsLoading, setResultsLoading] = useState(true);
   const [resultsError, setResultsError] = useState<string | null>(null);
   const [submittedJobIds, setSubmittedJobIds] = useState<string[]>([]);
@@ -300,6 +359,10 @@ export function VideoGenerationStudioPanel({
     string | null
   >(null);
   const resolvedJobIdsRef = useRef(new Set<string>());
+  const foregroundJobIdsRef = useRef(new Set<string>());
+  const foregroundEpochRef = useRef(0);
+  const foregroundAutoResumeRef = useRef(true);
+  const historyOwnerIdRef = useRef<string | null>(null);
   const billingSyncedJobIdsRef = useRef(new Set<string>());
   const submissionKeyRef = useRef<string | null>(null);
   const activeUserIdRef = useRef<string | null>(null);
@@ -308,7 +371,14 @@ export function VideoGenerationStudioPanel({
     persistedJobId && persistedJobId !== ignoredPersistedJobId
       ? persistedJobId
       : null;
-  const activeJobIds = Array.from(
+  const openingGenerationJobIdsRef = useRef(new Set(urlJobId ? [urlJobId] : []));
+  const onGeneratedVideoRef = useRef(workflow?.onGeneratedVideo);
+  useEffect(() => { onGeneratedVideoRef.current = workflow?.onGeneratedVideo; }, [workflow?.onGeneratedVideo]);
+  useEffect(() => {
+    if (!urlJobId) openingGenerationJobIdsRef.current.clear();
+    else if (!openingGenerationJobIdsRef.current.has(urlJobId)) openingGenerationJobIdsRef.current = new Set([urlJobId]);
+  }, [urlJobId]);
+  const activeJobIds = recreateView?.preview ? [] : Array.from(
     new Set([
       ...submittedJobIds,
       ...(urlJobId ? [urlJobId] : []),
@@ -322,7 +392,7 @@ export function VideoGenerationStudioPanel({
   });
   const cancelJob = useCancelBackgroundJob();
   const retryJob = useRetryBackgroundJob();
-  const generationLocked = accessState !== "pro" || Boolean(recreateView?.preview);
+  const generationLocked = recreateView?.preview === true || accessState !== "pro";
   const creditsPerVideo = durationSeconds * creditsPerSecond;
   const requiredCredits = creditsPerVideo * quantity;
   const hasInsufficientCredits =
@@ -335,36 +405,76 @@ export function VideoGenerationStudioPanel({
       ? `This generation needs ${requiredCredits} AI credits. You have ${creditsRemaining}.`
       : `This generation uses ${requiredCredits} AI credits (${creditsPerSecond} per second).`;
 
-  const uploadedReferenceImage =
-    uploadedReference?.kind === "image" ? uploadedReference : null;
-  const uploadedReferenceVideo =
-    uploadedReference?.kind === "video" ? uploadedReference : null;
-  const promptMaxLength = getExploreVideoPromptMaxLength({
-    model,
-    hasReferenceVideo: Boolean(uploadedReferenceVideo),
-    format: workflowFormat,
-  });
-  const activeReferenceImageUrl =
-    uploadedReferenceVideo ? null : uploadedReferenceImage?.asset.url ?? (model === "google_omni" ? recreateView?.referenceImageUrl : null) ?? null;
+  const referenceImages = [
+    ...(uploadedReference ? [uploadedReference] : []),
+    ...additionalImageReferences,
+  ];
+  const activeReferenceImageUrl = uploadedReference?.asset.url ?? (workflow && !uploadedVideoReference ? recreateView?.referenceImageUrl : null) ?? null;
+  const uploadedReferenceVideo = uploadedVideoReference;
+  const promptMaxLength = getExploreVideoPromptMaxLength({ model, hasReferenceVideo: Boolean(uploadedReferenceVideo), format: workflowFormat === "slideshow" ? undefined : workflowFormat });
+  const referenceFiles = [...referenceImages, ...(uploadedVideoReference ? [uploadedVideoReference] : []), ...audioReferences];
+
+  function handleReferenceFilesChange(selections: AIStudioReferenceMedia[]) {
+    handleImageReferencesChange(selections.filter((selection) => selection.kind === "image"));
+    const video = selections.find((selection) => selection.kind === "video") ?? null;
+    if (video?.asset.id !== uploadedVideoReference?.asset.id) handleVideoReferenceChange(video);
+    setAudioReferences(selections.filter((selection) => selection.kind === "audio"));
+  }
 
   function handleReferenceChange(selection: AIStudioReferenceMedia | null) {
     submissionKeyRef.current = null;
     setSelectedCreatorReferenceId(null);
-    setUploadedReference(selection);
-    if (workflow && selection?.kind === "video") {
-      setDurationSeconds(3);
-      if (selection.asset.ratio === "9:16" || selection.asset.ratio === "16:9") setAspectRatio(selection.asset.ratio);
+    if (workflow) {
+      setAdditionalImageReferences([]);
+      setUploadedReference(selection?.kind === "image" ? selection : null);
+      setUploadedVideoReference(selection?.kind === "video" ? selection : null);
+      if (selection?.kind === "video") {
+        setDurationSeconds(3);
+        if (selection.asset.ratio === "9:16" || selection.asset.ratio === "16:9") setAspectRatio(selection.asset.ratio);
+      }
+      return;
     }
-    if (selection && model === "seedance_2_5") {
-      setModel("google_omni");
-      setActionNotice("Switched to Google Omni for reference-based generation.");
+    setUploadedReference(selection);
+    if (!selection) setAdditionalImageReferences([]);
+    if (selection && model === "google_omni") setUploadedVideoReference(null);
+  }
+
+  function handleImageReferencesChange(selections: AIStudioReferenceMedia[]) {
+    submissionKeyRef.current = null;
+    setSelectedCreatorReferenceId(null);
+    setUploadedReference(selections[0] ?? null);
+    setAdditionalImageReferences(selections.slice(1));
+    if (selections.length && model === "google_omni") setUploadedVideoReference(null);
+  }
+
+  function handleVideoReferenceChange(selection: AIStudioReferenceMedia | null) {
+    submissionKeyRef.current = null;
+    setUploadedVideoReference(selection);
+    if (!selection) return;
+    if (model === "google_omni") {
+      setUploadedReference(null);
+      setAdditionalImageReferences([]);
+      setSelectedCreatorReferenceId(null);
+    } else {
+      const matchingDuration = getAIStudioVideoDurations(model).find(
+        (duration) => duration >= 4 && duration >= selection.asset.durationSeconds!,
+      );
+      if (matchingDuration) setDurationSeconds(matchingDuration);
+    }
+    if (selection.asset.ratio === "9:16" || selection.asset.ratio === "16:9") {
+      setAspectRatio(selection.asset.ratio);
     }
   }
   const queriedJobs = activeJobQueries.flatMap((query) =>
     query.data ? [query.data] : [],
   );
   const durableJobs = queriedJobs.filter(
-    (job) => job.jobType === "video_generation" && (!workflowFormat || job.exploreFormat === workflowFormat),
+    (job) => job.jobType === "video_generation" && (!workflowFormat || job.exploreFormat === workflowFormat) && (
+      !["cancelled", "completed", "failed"].includes(job.status) ||
+      submittedJobIds.includes(job.id) ||
+      job.id === urlJobId ||
+      getVideoHistoryDateLabel(job.updatedAt, currentDay) === "Today"
+    ),
   );
   const failedDurableJob = durableJobs.find((job) => job.status === "failed");
   const cancelledDurableJob = durableJobs.find(
@@ -379,27 +489,23 @@ export function VideoGenerationStudioPanel({
       ? "Video generation was cancelled."
       : failedDurableJob
         ? failedDurableJob.error?.message ||
-          "Video generation failed. You can retry it."
+          "Video generation failed. The provider did not return a failure reason."
         : completedWithoutOutput
           ? "Video generation completed without a usable output."
           : null;
-  const effectiveGenerationState: GenerationState =
-    activeJobQueries.some((query) => query.isPending)
-      ? "generating"
-      : durableJobs.some(
-            (job) =>
-              !["cancelled", "completed", "failed"].includes(job.status),
-          )
-        ? "generating"
-        : failedDurableJob || cancelledDurableJob || completedWithoutOutput
-          ? "failed"
-          : generationState;
+  const effectiveGenerationState = getVideoGenerationState({
+    submitting: isSubmitting,
+    loading: activeJobQueries.some((query) => query.isLoading),
+    jobs: durableJobs,
+    fallback: generationState,
+    missingOutput: Boolean(completedWithoutOutput),
+  });
   const isGenerating =
     effectiveGenerationState === "generating";
   const onWorkflowBusyChange = workflow?.onBusyChange;
   useEffect(() => { onWorkflowBusyChange?.(isGenerating); }, [isGenerating, onWorkflowBusyChange]);
   const pendingGenerationCount =
-    generationState === "generating" && activeJobIds.length === 0
+    isSubmitting
     ? quantity
     : activeJobQueries.reduce((count, query) => {
         if (query.isPending) {
@@ -415,12 +521,35 @@ export function VideoGenerationStudioPanel({
   useEffect(() => {
     activeUserIdRef.current = user?.uid ?? null;
     resolvedJobIdsRef.current.clear();
+    foregroundJobIdsRef.current.clear();
+    foregroundEpochRef.current += 1;
+    foregroundAutoResumeRef.current = true;
     billingSyncedJobIdsRef.current.clear();
 
     return () => {
       activeUserIdRef.current = null;
     };
   }, [user?.uid]);
+
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>;
+    let day = new Date().toDateString();
+    function updateDay() {
+      const now = new Date();
+      day = now.toDateString();
+      setCurrentDay(now);
+      setSelectedHistoryVideoId(null);
+      const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      clearTimeout(timeout);
+      timeout = setTimeout(updateDay, midnight.getTime() - now.getTime() + 100);
+    }
+    function handleFocus() {
+      if (day !== new Date().toDateString()) updateDay();
+    }
+    updateDay();
+    window.addEventListener("focus", handleFocus);
+    return () => { clearTimeout(timeout); window.removeEventListener("focus", handleFocus); };
+  }, []);
 
   useEffect(() => {
     if (!active || authLoading) {
@@ -430,10 +559,25 @@ export function VideoGenerationStudioPanel({
     let ignore = false;
 
     async function loadGeneratedVideos() {
+      if (recreateView?.preview) {
+        setGeneratedVideos([]);
+        setSubmittedJobIds([]);
+        setCurrentResultIds([]);
+        setSelectedHistoryVideoId(null);
+        setResultsError(null);
+        setResultsLoading(false);
+        return;
+      }
+      if (historyOwnerIdRef.current !== (user?.uid ?? null)) {
+        historyOwnerIdRef.current = user?.uid ?? null;
+        setGeneratedVideos([]);
+        setCurrentResultIds([]);
+        setSelectedHistoryVideoId(null);
+      }
       if (!user) {
         if (!ignore) {
           setGeneratedVideos([]);
-          setResultsError(recreateView?.preview ? null : "Sign in to view your generated videos.");
+          setResultsError("Sign in to view your generated videos.");
           setResultsLoading(false);
         }
         return;
@@ -456,10 +600,9 @@ export function VideoGenerationStudioPanel({
         });
 
         if (!ignore) {
-          const history = getAIStudioVideoResults(workflowFormat ? assets.filter(asset => asset.metadata.exploreFormat === workflowFormat) : assets);
-          // A task may finish while history is loading. Keep that new result.
-          setGeneratedVideos(current => [...current, ...history.filter(video => !current.some(result => result.id === video.id))]
-            .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)).slice(0, 24));
+          setGeneratedVideos(current => Array.from(new Map([
+            ...getAIStudioVideoResults(assets, assets.length), ...current,
+          ].map(video => [video.id, video])).values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
         }
       } catch (error) {
         if (!ignore) {
@@ -480,6 +623,15 @@ export function VideoGenerationStudioPanel({
       ignore = true;
     };
   }, [active, authLoading, user, recreateView?.preview, workflowFormat]);
+
+  useEffect(() => {
+    if (!foregroundAutoResumeRef.current) return;
+    for (const job of durableJobs) {
+      if (!["cancelled", "completed", "failed"].includes(job.status) || job.id === urlJobId) {
+        foregroundJobIdsRef.current.add(job.id);
+      }
+    }
+  }, [durableJobs, urlJobId]);
 
   useEffect(() => {
     if (
@@ -539,6 +691,10 @@ export function VideoGenerationStudioPanel({
     async function restoreCompletedVideo(
       completedJob: (typeof completedJobs)[number],
     ) {
+      const completionEpoch = foregroundEpochRef.current;
+      const isForeground = () => isAIStudioSessionCompletion(
+        completedJob.id, completionEpoch, foregroundEpochRef.current, foregroundJobIdsRef.current,
+      );
       const completedOutput = getVideoJobOutput(completedJob.output);
 
       if (!completedOutput?.url) {
@@ -587,7 +743,9 @@ export function VideoGenerationStudioPanel({
         const nextVideo: GeneratedVideo = persistedVideo
           ? {
               ...persistedVideo,
+              modelLabel: getVideoModelLabel(metadata?.model),
               prompt: metadata?.prompt || persistedVideo.prompt,
+              resolution: metadata?.resolution ?? persistedVideo.resolution,
             }
           : {
               createdAt: completedJob.completedAt ?? completedJob.updatedAt,
@@ -597,10 +755,13 @@ export function VideoGenerationStudioPanel({
                 completedOutput.videoId ??
                 completedJob.id,
               mediaAssetId: completedOutput.mediaAssetId,
+              modelLabel: getVideoModelLabel(metadata?.model),
               prompt: completedPrompt,
               ratio:
                 completedOutput.ratio ?? metadata?.aspectRatio ?? "9:16",
+              resolution: metadata?.resolution ?? null,
               status: "Ready",
+              thumbnailUrl: null,
               title: getGeneratedVideoTitle(completedPrompt),
               url: completedOutputUrl,
             };
@@ -610,17 +771,20 @@ export function VideoGenerationStudioPanel({
         }
 
         setGeneratedVideos((currentVideos) =>
-          upsertAIStudioResult(currentVideos, nextVideo),
+          upsertAIStudioResult(currentVideos, nextVideo, Number.POSITIVE_INFINITY),
         );
-        setLatestCompletedVideoId(nextVideo.id);
-        setTimeout(() => setLatestCompletedVideoId(null), 3500);
-        setActiveVideoPrompt("");
-        setGenerationState("completed");
-        setActionNotice(null);
-        setActionError(null);
+        if (isForeground()) {
+          setCurrentResultIds((current) => appendAIStudioSessionResultIds(current, nextVideo.id));
+          if (openingGenerationJobIdsRef.current.has(completedJob.id)) onGeneratedVideoRef.current?.(nextVideo);
+          setLatestCompletedVideoId(nextVideo.id);
+          setTimeout(() => setLatestCompletedVideoId(null), 3500);
+          setGenerationState("completed");
+          setActionNotice(null);
+          setActionError(null);
+        }
       } catch (error) {
         resolvedJobIdsRef.current.delete(completedJob.id);
-        if (activeUserIdRef.current === userId) {
+        if (activeUserIdRef.current === userId && isForeground()) {
           setGenerationState("failed");
           setActionError(
             getErrorMessage(error, "Could not restore the generated video."),
@@ -645,8 +809,8 @@ export function VideoGenerationStudioPanel({
       generationLocked ||
       hasInsufficientCredits ||
       !trimmedPrompt ||
-      creatorReferenceUploadPending ||
-      isGenerating || recoveringJobs
+      referenceFilesPending || creatorReferenceUploadPending ||
+      isGenerating || recoveringJobs || submittingRef.current
     ) {
       return;
     }
@@ -661,10 +825,27 @@ export function VideoGenerationStudioPanel({
       return;
     }
 
+    if (model === "kling_3_0" && trimmedPrompt.length < 2) {
+      setActionError("Kling 3.0 requires a prompt of at least 2 characters.");
+      return;
+    }
+
+    if (!isAIStudioVideoModelAvailable(model)) {
+      setActionError(`${getAIStudioVideoModelLabel(model)} is temporarily unavailable. Choose another video model.`);
+      return;
+    }
+
     setActionNotice(null);
     setActionError(null);
     setActiveVideoPrompt(trimmedPrompt);
+    setActiveSubmittedAt(new Date().toISOString());
+    setSelectedHistoryVideoId(null);
+    foregroundAutoResumeRef.current = false;
+    openingGenerationJobIdsRef.current.clear();
+    const submissionEpoch = foregroundEpochRef.current;
     setGenerationState("generating");
+    submittingRef.current = true;
+    setIsSubmitting(true);
     workflow?.onGenerationStart();
 
     try {
@@ -683,14 +864,19 @@ export function VideoGenerationStudioPanel({
           aspectRatio,
           exploreFormat: workflow?.format,
           avatarImageUrl: activeReferenceImageUrl,
+          referenceImageUrls: referenceImages.length ? referenceImages.map((image) => image.asset.url) : activeReferenceImageUrl ? [activeReferenceImageUrl] : [],
+          referenceAudioUrls: audioReferences.map((audio) => audio.asset.url),
+          referenceAudioAssetIds: audioReferences.map((audio) => audio.asset.id),
           durationSeconds,
           idempotencyKey,
           model,
           prompt: trimmedPrompt,
           quantity,
+          resolution,
           referenceVideoDurationSeconds:
             uploadedReferenceVideo?.asset.durationSeconds ?? null,
           referenceVideoUrl: uploadedReferenceVideo?.asset.url ?? null,
+          referenceVideoAssetId: uploadedReferenceVideo?.asset.id ?? null,
           referenceId: referenceContext?.id ?? null,
           referenceType: referenceContext?.type ?? null,
           referenceUrl: referenceContext?.sourceUrl ?? null,
@@ -711,17 +897,25 @@ export function VideoGenerationStudioPanel({
       }
       persistPendingVideoMetadata(workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid, data.jobs, {
         aspectRatio,
-        avatarName: uploadedReference?.asset.title ?? "",
+        avatarName: uploadedReference?.asset.title ?? uploadedVideoReference?.asset.title ?? "",
+        model,
         prompt: trimmedPrompt,
+        resolution,
       });
       void queryClient.invalidateQueries({
         queryKey: ["billing-subscription", user.uid],
       });
+      if (activeUserIdRef.current !== user.uid) return;
       persistJobIdInUrl(data.jobId, workflowFormat ? `explore-${workflowFormat}Job` : VIDEO_JOB_URL_PARAMETER);
+      if (submissionEpoch === foregroundEpochRef.current) openingGenerationJobIdsRef.current = new Set(data.jobs.map(job => job.jobId));
       for (const job of data.jobs) {
         resolvedJobIdsRef.current.delete(job.jobId);
+        if (submissionEpoch === foregroundEpochRef.current) {
+          foregroundJobIdsRef.current.add(job.jobId);
+        }
       }
       const jobIds = data.jobs.map((job) => job.jobId);
+      setSelectedHistoryVideoId(null);
       setSubmittedJobIds(jobIds);
       if (data.partial) {
         setActionNotice(data.message);
@@ -733,6 +927,38 @@ export function VideoGenerationStudioPanel({
         getErrorMessage(error, "Video generation failed. Try again."),
       );
       setGenerationState("failed");
+    } finally {
+      submittingRef.current = false;
+      setIsSubmitting(false);
+    }
+  }
+
+  function dismissFinishedGeneration() {
+    if (isGenerating) return;
+    setSubmittedJobIds([]);
+    setIgnoredPersistedJobId(persistedJobId);
+    if (user) {
+      try {
+        window.localStorage.removeItem(`${VIDEO_JOB_STORAGE_PREFIX}${workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid}`);
+      } catch { /* Local storage can be unavailable; the job remains saved on the server. */ }
+    }
+    persistJobIdInUrl(null, workflowFormat ? `explore-${workflowFormat}Job` : VIDEO_JOB_URL_PARAMETER);
+    submissionKeyRef.current = null;
+    setGenerationState("empty");
+    setActionError(null);
+    setActionNotice(null);
+  }
+
+  async function refreshGenerationAccess() {
+    if (!user || refreshingAccess) return;
+    setRefreshingAccess(true);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["billing-subscription", user.uid] }),
+        queryClient.invalidateQueries({ queryKey: ["ai-studio-access", user.uid] }),
+      ]);
+    } finally {
+      setRefreshingAccess(false);
     }
   }
 
@@ -760,12 +986,12 @@ export function VideoGenerationStudioPanel({
     }
   }
 
-  async function handleRetryGeneration() {
+  async function handleRetryGeneration(jobId: string) {
     const retryableJob = durableJobs.find(
-      (job) => job.status === "failed" && Boolean(job.error?.retryable),
+      (job) => job.id === jobId && job.status === "failed" && Boolean(job.error?.retryable),
     );
 
-    if (!retryableJob || retryJob.isPending) {
+    if (!retryableJob || retryJob.isPending || generationLocked || isGenerating) {
       return;
     }
 
@@ -810,9 +1036,91 @@ export function VideoGenerationStudioPanel({
         : actionNotice ?? durableNotice
           ? { label: actionNotice ?? durableNotice ?? "", tone: "neutral" }
           : null;
-  const canRetry = durableJobs.some(
-    (job) => job.status === "failed" && Boolean(job.error?.retryable),
+  const displayedFailedJob =
+    !actionError && !jobQueryError && effectiveGenerationState === "failed" &&
+    durableNotice === resultsErrorMessage
+      ? failedDurableJob
+      : undefined;
+  const displayedFailedJobs = displayedFailedJob
+    ? durableJobs.filter((job) => job.status === "failed")
+    : [];
+
+  function focusVideoPrompt() {
+    document
+      .querySelector<HTMLTextAreaElement>('#ai-studio-videos-panel textarea[name="videoPrompt"]')
+      ?.focus();
+  }
+  const filteredHistoryVideos = filterAIStudioVideoHistory(
+    generatedVideos,
+    historyQuery,
   );
+  const historyGroups = groupAIStudioVideoHistory(filteredHistoryVideos);
+  const selectedHistoryVideo = generatedVideos.find((video) => video.id === selectedHistoryVideoId);
+  const visibleVideos = getAIStudioSessionResults(generatedVideos, currentResultIds, selectedHistoryVideoId);
+
+  function startNewVideoSession() {
+    if (isGenerating) return;
+    foregroundEpochRef.current += 1;
+    foregroundAutoResumeRef.current = false;
+    foregroundJobIdsRef.current.clear();
+    setCurrentResultIds([]);
+    setSelectedHistoryVideoId(null);
+    dismissFinishedGeneration();
+    focusVideoPrompt();
+  }
+
+  function focusHistoryVideo(videoId: string) {
+    setSelectedHistoryVideoId(videoId);
+    setHistoryOpen(false);
+
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById(`ai-studio-video-result-${videoId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  const qualitySetting = (<AiStudioSettingSelect
+              ariaLabel="Video quality"
+              fieldLabel={workflow ? "Quality" : undefined}
+              fieldLayout={workflow ? "classic" : undefined}
+              disabled={generationLocked || isGenerating}
+              size="sm"
+              options={AI_STUDIO_VIDEO_RESOLUTIONS.map((value) => {
+                const supported = isAIStudioVideoResolutionSupported(model, value);
+
+                return {
+                  disabled: !supported,
+                  label: supported ? value : `${value} · unavailable for this model`,
+                  value,
+                };
+              })}
+              value={resolution}
+              onChange={(value) => {
+                submissionKeyRef.current = null;
+                setResolution(value as AIStudioVideoResolution);
+              }}
+            />);
+  const durationSetting = (<AiStudioSettingSelect
+              ariaLabel="Video duration"
+              fieldLabel={workflow ? "Duration" : undefined}
+              fieldLayout={workflow ? "classic" : undefined}
+              disabled={generationLocked && !recreateView?.preview || isGenerating || Boolean(workflow && uploadedReferenceVideo)}
+              size="sm"
+              icon={<Clock3 className="size-3.5" aria-hidden="true" />}
+              options={getAIStudioVideoDurations(model).map((duration) => ({
+                label: `${duration} sec · ${duration * creditsPerSecond} credits`,
+                triggerLabel: workflow && uploadedReferenceVideo ? `${uploadedReferenceVideo.asset.durationSeconds?.toFixed(1) ?? 3}s clip` : `${duration} sec`,
+                value: String(duration),
+              }))}
+              value={String(durationSeconds)}
+              onChange={(value) => {
+                submissionKeyRef.current = null;
+                setDurationSeconds(Number(value) as AIStudioVideoDuration);
+              }}
+            />);
+
+  const hasSessionActions = Boolean(selectedHistoryVideo) || (visibleVideos.length > 0 && !isGenerating);
 
   return (
     <div
@@ -829,13 +1137,84 @@ export function VideoGenerationStudioPanel({
         portalTarget={workflow?.resultsTarget}
         ariaLabel="Generated videos"
         emptyContent={recreateView?.emptyContent}
-        emptyDescription="Describe the video you want below. Finished generations are saved to your account."
+        emptyContentClassName={workflow ? "justify-center" : recreateView ? "items-start pt-8" : undefined}
+        emptyDescription="Start a new video below. Your earlier generations are in History."
         gridClassName="grid-cols-1 sm:grid-cols-1 lg:grid-cols-1 xl:grid-cols-1 2xl:grid-cols-1"
-        hasResults={generatedVideos.length > 0 || isGenerating}
+        hasResults={visibleVideos.length > 0 || isGenerating}
         loading={(resultsLoading || recoveringJobs) && !isGenerating && generatedVideos.length === 0}
         status={resultsStatus}
+        statusPlacement="inline"
+        scrollToLatestKey={!selectedHistoryVideoId && isSubmitting ? activeSubmittedAt : null}
+        failure={resultsErrorMessage && !isGenerating ? (
+          <div className="space-y-3">
+            {displayedFailedJobs.length > 0 ? displayedFailedJobs.map((failedJob, index) => (
+              <VideoGenerationFailure
+                key={failedJob.id}
+                title={failedJob.error?.code === "PROVIDER_CONTENT_MODERATION"
+                  ? "Generation blocked"
+                  : "Video couldn't be generated"}
+                message={failedJob.error?.message || "Video generation failed. The provider did not return a failure reason."}
+                jobId={failedJob.id}
+                onEditPrompt={focusVideoPrompt}
+                onDismiss={index === 0 ? dismissFinishedGeneration : undefined}
+                dismissLabel={displayedFailedJobs.length > 1 ? "Dismiss all" : "Dismiss"}
+                onRetry={failedJob.error?.retryable && !generationLocked
+                  ? () => void handleRetryGeneration(failedJob.id)
+                  : undefined}
+                retrying={retryJob.isPending && retryJob.variables === failedJob.id}
+                retryDisabled={retryJob.isPending}
+              />
+            )) : (
+              <VideoGenerationFailure
+                title={jobQueryError || resultsError === resultsErrorMessage
+                  ? "Couldn't load your generation"
+                  : "Video couldn't be generated"}
+                message={resultsErrorMessage}
+                onEditPrompt={jobQueryError || resultsError === resultsErrorMessage ? undefined : focusVideoPrompt}
+                onDismiss={resultsError === resultsErrorMessage ? undefined : dismissFinishedGeneration}
+              />
+            )}
+          </div>
+        ) : undefined}
+        toolbar={recreateView?.preview ? undefined : recreateView && !hasSessionActions ? undefined :
+          <div className="flex items-center gap-2">
+            {selectedHistoryVideo ? (
+              <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedHistoryVideoId(null)}>Back to session</Button>
+            ) : null}
+            {visibleVideos.length > 0 && !isGenerating ? (
+              <Button type="button" variant="ghost" size="sm" onClick={startNewVideoSession}>
+                <Plus className="size-3.5" aria-hidden="true" />
+                New session
+              </Button>
+            ) : null}
+            {!recreateView ? <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setHistoryOpen(true)}
+            className="gap-2 rounded-full bg-card/90 px-3 shadow-xs"
+          >
+            <History className="size-3.5" aria-hidden="true" />
+            History
+            {generatedVideos.length > 0 ? (
+              <span className="rounded-full bg-card-muted px-1.5 py-0.5 text-[10px] tabular-nums text-muted">
+                {generatedVideos.length}
+              </span>
+            ) : null}
+            </Button> : null}
+          </div>
+        }
       >
-        {isGenerating
+        {visibleVideos.map((video) => (
+          <VideoResultCard
+            key={video.id}
+            video={video}
+            onSelect={workflow?.onSelectVideo ? () => workflow.onSelectVideo?.(video) : undefined}
+            selectLabel={workflowFormat === "hook" ? "Edit hook video" : "Edit video"}
+            isNew={video.id === latestCompletedVideoId}
+          />
+        ))}
+        {isGenerating && !selectedHistoryVideoId
           ? Array.from(
               { length: Math.max(1, pendingGenerationCount) },
               (_, index) => (
@@ -845,28 +1224,32 @@ export function VideoGenerationStudioPanel({
                   avatarThumbnail={activeReferenceImageUrl}
                   avatarLabel={uploadedReference?.asset.title ?? null}
                   prompt={activeVideoPrompt}
+                  modelLabel={getVideoModelLabel(model)}
+                  durationSeconds={durationSeconds}
+                  resolution={resolution}
                 />
               ),
             )
           : null}
-        {generatedVideos.map((video) => (
-          <VideoResultCard
-            key={video.id}
-            video={video}
-            isNew={video.id === latestCompletedVideoId}
-            selectLabel={workflow?.format === "hook" ? "Edit hook video" : "Edit video"}
-            onSelect={workflow?.onSelectVideo ? () => workflow.onSelectVideo?.(video) : undefined}
-          />
-        ))}
       </AiStudioResults>
+
+      <VideoHistoryDrawer
+        groups={historyGroups}
+        onClose={() => setHistoryOpen(false)}
+        onQueryChange={setHistoryQuery}
+        onSelectVideo={focusHistoryVideo}
+        open={!recreateView && historyOpen}
+        query={historyQuery}
+        selectedVideoId={selectedHistoryVideoId ?? latestCompletedVideoId}
+      />
 
       <AiStudioComposer
         portalTarget={workflow?.controlsTarget}
         actionsTarget={workflow?.actionsTarget}
-        promptHelper={workflow ? uploadedReferenceVideo ? "Use Edit below the preview to adjust text and audio." : workflow.format === "wall_text" ? "Describe the background; add text in Edit video." : "Scene, action and spoken words in quotes." : undefined}
+        promptHelper={workflow ? uploadedReferenceVideo ? "Choose Edit below your preview to add a voiceover." : workflow.format === "wall_text" ? "Describe the background; add your text using Edit below the preview." : "Scene, action and spoken words in quotes." : undefined}
         promptLabel={workflow ? "Your instructions" : undefined}
-        settingsSummary={workflow ? `${uploadedReferenceVideo ? "Runway" : model === "seedance_2_5" ? "Seedance 2.5" : "Google Omni"} · ${uploadedReferenceVideo ? `${uploadedReferenceVideo.asset.durationSeconds?.toFixed(1) ?? 3}s clip` : `${durationSeconds}s`} · ${aspectRatio} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}
-        referenceControls={workflow ? <FormatGenerationReferences key={user?.uid ?? "preview"} active={workflow.controlsActive} selection={uploadedReference} onChange={handleReferenceChange} onPendingChange={setCreatorReferenceUploadPending} disabled={isGenerating || (!recreateView?.preview && generationLocked)} preview={Boolean(recreateView?.preview)} ownerId={user?.uid} defaultImage={recreateView?.referenceImageUrl ? { url: recreateView.referenceImageUrl, name: recreateView.referenceTitle ?? "Selected example", duration: null } : undefined} onClearDefault={recreateView?.onClearReference} /> : undefined}
+        settingsSummary={workflow ? `${uploadedReferenceVideo ? "Runway" : model === "wan_3_0" ? "WAN 3.0" : model === "seedance_2_5" ? "Seedance 2.5" : "Google Omni"} · ${uploadedReferenceVideo ? `${uploadedReferenceVideo.asset.durationSeconds?.toFixed(1) ?? 3}s clip` : `${durationSeconds}s`} · ${aspectRatio} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}
+        referenceControls={workflow ? <FormatGenerationReferences key={user?.uid ?? "preview"} active={workflow.controlsActive} selection={uploadedVideoReference ?? uploadedReference} onChange={handleReferenceChange} onPendingChange={setCreatorReferenceUploadPending} disabled={isGenerating || (!recreateView?.preview && generationLocked)} preview={Boolean(recreateView?.preview)} ownerId={user?.uid} styleVideo={recreateView?.styleVideo} onClearStyle={recreateView?.onClearReference} videoInputEnabled={model !== "wan_3_0"} /> : undefined}
         compact={Boolean(recreateView)}
         accessMessage={composerMessage}
         active={workflow?.controlsActive ?? active}
@@ -913,37 +1296,31 @@ export function VideoGenerationStudioPanel({
           ) : null)
         }
         generateDisabled={
+          !isAIStudioVideoModelAvailable(model) ||
           generationLocked ||
           hasInsufficientCredits ||
           !prompt.trim() ||
           creatorReferenceUploadPending ||
+          referenceFilesPending ||
           isGenerating || recoveringJobs
         }
         generateLabel="Generate video"
         generationLocked={generationLocked}
+        hasAttachments={referenceFiles.length > 0 || referenceFilesPending}
         isGenerating={isGenerating}
         layout={workflow ? "workflow" : "unified"}
         workflowDesign={workflow ? "classic" : undefined}
+        showPromptHint={generationLocked || hasInsufficientCredits}
         leadingControl={workflow ? undefined :
-          <ReferenceMediaUpload
-            active={active}
-            allowedKinds={isExploreRecreate ? ["image"] : ["image", "video"]}
-            disabled={
-              generationLocked || isGenerating || creatorReferenceUploadPending
-            }
-            selection={uploadedReference}
-            onChange={(selection) => {
-              handleReferenceChange(selection);
-
-              if (
-                selection?.kind === "video" &&
-                (selection.asset.ratio === "9:16" ||
-                  selection.asset.ratio === "16:9")
-              ) {
-                setAspectRatio(selection.asset.ratio);
-              }
-            }}
-          />
+            <ReferenceFilesUpload
+              active={active}
+              allowedKinds={["image"]}
+              disabled={generationLocked || isGenerating || creatorReferenceUploadPending}
+              maxFiles={model === "kling_3_0" ? 2 : 6}
+              selections={referenceFiles}
+              onChange={handleReferenceFilesChange}
+              onPendingChange={setReferenceFilesPending}
+            />
         }
         maxLength={promptMaxLength}
         name="videoPrompt"
@@ -958,6 +1335,11 @@ export function VideoGenerationStudioPanel({
         onTextareaKeyDown={handleTextareaKeyDown}
         secondaryActions={
           <>
+            {generationLocked ? (
+              <Button type="button" variant="ghost" size="icon-sm" aria-label="Refresh access" title="Refresh access" disabled={refreshingAccess} onClick={() => void refreshGenerationAccess()}>
+                <RefreshCw className={cn("size-3.5", refreshingAccess && "animate-spin motion-reduce:animate-none")} aria-hidden="true" />
+              </Button>
+            ) : null}
             {isGenerating ? (
               <Button
                 type="button"
@@ -969,17 +1351,6 @@ export function VideoGenerationStudioPanel({
                 Cancel
               </Button>
             ) : null}
-            {canRetry ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                disabled={retryJob.isPending}
-                onClick={() => void handleRetryGeneration()}
-              >
-                Retry
-              </Button>
-            ) : null}
           </>
         }
         settings={
@@ -988,49 +1359,61 @@ export function VideoGenerationStudioPanel({
               ariaLabel="Video model"
               fieldLabel={workflow ? "Model" : undefined}
               fieldLayout={workflow ? "classic" : undefined}
-              disabled={generationLocked && !recreateView?.preview || isGenerating || Boolean(workflow && uploadedReferenceVideo)}
-              options={AI_STUDIO_VIDEO_MODELS.filter(value => !workflow || value === "google_omni").map((value) => ({
-                label:
-                  workflow && uploadedReferenceVideo ? "Runway" : value === "seedance_2_5" ? "Seedance 2.5" : "Google Omni",
+              disabled={generationLocked && !recreateView?.preview || isGenerating || referenceFilesPending || Boolean(workflow && uploadedReferenceVideo)}
+              size="sm"
+              options={AI_STUDIO_VIDEO_MODELS.filter(value => !workflow || value === "google_omni" || value === "wan_3_0").map((value) => ({
+                label: workflow && uploadedReferenceVideo ? "Runway" : `${getAIStudioVideoModelLabel(value)}${isAIStudioVideoModelAvailable(value) ? "" : " · temporarily unavailable"}`,
+                disabled: !isAIStudioVideoModelAvailable(value),
                 value,
               }))}
               value={model}
               onChange={(value) => {
                 submissionKeyRef.current = null;
-                if (value === "seedance_2_5" && uploadedReference) {
-                  setUploadedReference(null);
-                  setSelectedCreatorReferenceId(null);
-                  setActionNotice("Removed the reference for Seedance text-to-video generation.");
+                const nextModel = value as AIStudioVideoModel;
+                if (value === "wan_3_0" && (audioReferences.length || uploadedVideoReference)) {
+                  setAudioReferences([]);
+                  setUploadedVideoReference(null);
+                  setActionNotice("WAN 3.0 uses image references. Audio and video references were removed from this generation.");
                 }
-                if (value === "seedance_2_5" && durationSeconds < 4) {
+                if (!getAIStudioVideoDurations(nextModel).includes(durationSeconds)) {
                   setDurationSeconds(5);
                 }
-                setModel(value as AIStudioVideoModel);
+                if (value === "kling_3_0" && durationSeconds > 15) {
+                  setDurationSeconds(5);
+                }
+                if (value === "kling_3_0" && referenceImages.length > 2) {
+                  setAdditionalImageReferences(referenceImages.slice(1, 2));
+                  setActionNotice("Kling 3.0 accepts a first frame and an optional last frame; extra images were removed.");
+                }
+                if (value === "google_omni") {
+                  if (audioReferences.length) {
+                    setAudioReferences([]);
+                    setActionNotice("Audio references are unavailable for the current video models.");
+                  }
+                  if (uploadedVideoReference) {
+                    setUploadedVideoReference(null);
+                    setActionNotice("Video references are unavailable for the current video models.");
+                  }
+                  if (referenceImages.length > 6) {
+                    setAdditionalImageReferences(referenceImages.slice(1, 6));
+                    setActionNotice("Google Omni accepts up to 6 reference images in UGC Pilot; extra images were removed.");
+                  }
+                  if (durationSeconds > 10) setDurationSeconds(5);
+                }
+                if (!isAIStudioVideoResolutionSupported(nextModel, resolution)) {
+                  setResolution("720p");
+                }
+                setModel(nextModel);
               }}
             />
-            <AiStudioSettingSelect
-              ariaLabel="Video duration"
-              fieldLabel={workflow ? "Duration" : undefined}
-              fieldLayout={workflow ? "classic" : undefined}
-              disabled={generationLocked && !recreateView?.preview || isGenerating || Boolean(workflow && uploadedReferenceVideo)}
-              icon={workflow ? undefined : <Clock3 className="size-4" aria-hidden="true" />}
-              options={AI_STUDIO_VIDEO_DURATIONS.filter(
-                (duration) => model !== "seedance_2_5" || duration >= 4,
-              ).map((duration) => ({
-                label: `${duration} sec · ${duration * creditsPerSecond} credits`,
-                ...(workflow ? { triggerLabel: uploadedReferenceVideo ? `${uploadedReferenceVideo.asset.durationSeconds?.toFixed(1) ?? 3}s clip` : `${duration} sec` } : {}),
-                value: String(duration),
-              }))}
-              value={String(durationSeconds)}
-              onChange={(value) => {
-                submissionKeyRef.current = null;
-                setDurationSeconds(Number(value) as AIStudioVideoDuration);
-              }}
-            />
+            {workflow ? durationSetting : qualitySetting}
+            {workflow ? qualitySetting : durationSetting}
             {workflow ? null : <CreatorReferencePicker
               active={active}
+              iconOnly
               disabled={
-                generationLocked || isGenerating || creatorReferenceUploadPending
+                generationLocked || isGenerating || creatorReferenceUploadPending || referenceFilesPending ||
+                (!uploadedReference && referenceFiles.length >= (model === "kling_3_0" ? 2 : 6))
               }
               selection={uploadedReference}
               selectedCreatorId={selectedCreatorReferenceId}
@@ -1044,7 +1427,8 @@ export function VideoGenerationStudioPanel({
               fieldLabel={workflow ? "Videos" : undefined}
               fieldLayout={workflow ? "classic" : undefined}
               disabled={generationLocked && !recreateView?.preview || isGenerating}
-              icon={workflow ? undefined : <Video className="size-4" aria-hidden="true" />}
+              size="sm"
+              icon={<Video className="size-3.5" aria-hidden="true" />}
               options={AI_STUDIO_GENERATION_QUANTITIES.map((count) => ({
                 label: `${count} video${count === 1 ? "" : "s"}`,
                 triggerLabel: workflow ? `${count} video${count === 1 ? "" : "s"}` : String(count),
@@ -1059,6 +1443,7 @@ export function VideoGenerationStudioPanel({
             <AiStudioRatioPicker
               fieldLabel={workflow ? "Ratio" : undefined}
               fieldLayout={workflow ? "classic" : undefined}
+              size="sm"
               value={aspectRatio}
               onChange={(value) => {
                 submissionKeyRef.current = null;
@@ -1100,6 +1485,10 @@ function getGeneratedVideoTitle(prompt: string) {
     : singleLinePrompt;
 }
 
+function getVideoModelLabel(model: AIStudioVideoModel | undefined) {
+  return getAIStudioVideoModelLabel(model ?? "kling_3_0");
+}
+
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
@@ -1109,70 +1498,70 @@ function OptimisticVideoCard({
   avatarThumbnail,
   avatarLabel,
   prompt,
+  modelLabel,
+  durationSeconds,
+  resolution,
 }: {
   aspectRatio: AIStudioVideoAspectRatio;
   avatarThumbnail?: string | null;
   avatarLabel?: string | null;
   prompt?: string;
+  modelLabel: string;
+  durationSeconds: number;
+  resolution: AIStudioVideoResolution;
 }) {
-  return (
-    <article className="grid min-w-0 gap-5 border-b border-border py-5 first:pt-1 last:border-b-0 animate-in fade-in-0 duration-300 lg:grid-cols-[minmax(0,1fr)_216px] lg:items-center">
-      <div className="order-2 min-w-0 space-y-3 lg:order-1 lg:py-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-xs font-medium tracking-[0.12em] text-muted uppercase">
-            Your prompt
-          </p>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary shadow-xs backdrop-blur-md">
-            <Loader2 className="size-3 animate-spin" aria-hidden="true" />
-            Rendering…
-          </span>
-        </div>
-        <h3 className="max-w-3xl text-base font-medium leading-7 text-foreground/85 sm:text-lg">
-          {prompt || "Creating presenter video…"}
-        </h3>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-muted">
-          <span className="inline-flex items-center gap-1.5 animate-pulse text-primary">
-            <Sparkles className="size-3" aria-hidden="true" />
-            Creating your video…
-          </span>
-        </div>
-      </div>
+  const [createdAt] = useState(() => new Date().toISOString());
 
-      <div
-        className={cn(
-          "order-1 w-full justify-self-start lg:order-2 lg:justify-self-end",
-          getVideoPreviewWidthClassName(aspectRatio),
-        )}
-      >
+  return (
+    <article className="mx-auto w-full max-w-[54rem] py-2 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-300">
+      <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:gap-6">
         <div
-          className="relative overflow-hidden rounded-[20px] bg-card-muted ring-1 ring-primary/30 shadow-sm"
-          style={{ aspectRatio: aspectRatio.replace(":", " / ") }}
+          className={cn(
+            "shrink-0",
+            getVideoResultWidthClassName(aspectRatio),
+          )}
         >
-          <div className="absolute inset-0 bg-gradient-to-tr from-primary/[0.04] via-transparent to-primary/[0.08]" />
-          <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 p-4 text-center">
+          <div
+            className="relative overflow-hidden rounded-[16px] bg-card-muted ring-1 ring-primary/20"
+            style={{ aspectRatio: aspectRatio.replace(":", " / ") }}
+          >
             {avatarThumbnail ? (
-              <div className="relative size-12 overflow-hidden rounded-full border-2 border-primary/40 shadow-sm">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={avatarThumbnail}
-                  alt={avatarLabel ?? "Avatar"}
-                  className="size-full object-cover"
-                />
-                <span className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[1px]">
-                  <Loader2 className="size-5 animate-spin text-white" aria-hidden="true" />
-                </span>
-              </div>
-            ) : (
-              <span className="inline-flex size-11 items-center justify-center rounded-full border border-primary/30 bg-card/90 shadow-sm backdrop-blur-md">
-                <Loader2 className="size-5 animate-spin text-primary" aria-hidden="true" />
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={avatarThumbnail}
+                alt={avatarLabel ?? "Video reference"}
+                className="absolute inset-0 size-full object-cover opacity-35"
+              />
+            ) : null}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-black/30 to-black/65" />
+            <div
+              className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-3 text-center"
+              role="status"
+              aria-live="polite"
+            >
+              <span className="inline-flex size-10 items-center justify-center rounded-full border border-white/15 bg-black/35 text-white">
+                <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
               </span>
-            )}
-            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card/85 px-2.5 py-0.5 text-[10px] font-semibold text-foreground-strong backdrop-blur-md">
-              <Sparkles className="size-2.5 text-primary" aria-hidden="true" />
-              Rendering video
-            </span>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-white">Creating your video</p>
+                <p className="text-[11px] leading-4 text-white/70">Your result will appear here.</p>
+              </div>
+            </div>
           </div>
+          <div className="mt-3">
+            <VideoResultMetadata
+              modelLabel={modelLabel}
+              durationSeconds={durationSeconds}
+              resolution={resolution}
+              ratio={aspectRatio}
+            />
+          </div>
+        </div>
+        <div className="w-full min-w-0 sm:max-w-[26rem] sm:flex-1 sm:pt-1">
+          <VideoPromptBubble
+            createdAt={createdAt}
+            prompt={prompt || "Creating presenter video…"}
+          />
         </div>
       </div>
     </article>
@@ -1237,140 +1626,401 @@ function VideoResultCard({
 
   return (
     <article
+      id={`ai-studio-video-result-${video.id}`}
       className={cn(
-        "grid min-w-0 gap-5 border-b border-border py-5 first:pt-1 last:border-b-0 transition-[transform,box-shadow] duration-300 lg:grid-cols-[minmax(0,1fr)_216px] lg:items-center",
+        "mx-auto w-full max-w-[54rem] scroll-mt-4 py-2",
         isNew &&
-          "animate-in fade-in-50 zoom-in-[0.98] duration-500 rounded-[var(--radius-card)] ring-2 ring-emerald-500/40 ring-offset-2 ring-offset-background px-3",
+          "motion-safe:animate-in motion-safe:fade-in-50 motion-safe:duration-500",
       )}
     >
-      <div className="order-2 min-w-0 space-y-3 lg:order-1 lg:py-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-xs font-medium tracking-[0.12em] text-muted uppercase">
-            Your prompt
-          </p>
-          <span
-            className={cn(
-              "rounded-full px-2 py-0.5 text-[11px] font-medium",
-              video.status === "Ready"
-                ? "bg-success/10 text-success"
-                : video.status === "Failed"
-                  ? "bg-error/10 text-error"
-                  : "bg-card-muted text-muted",
-            )}
-          >
-            {video.status}
-          </span>
-        </div>
-        <h3 className="max-w-3xl text-base font-medium leading-7 text-foreground sm:text-lg">
-          {video.prompt}
-        </h3>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-muted">
-          {displayDuration > 0 ? (
-            <span className="inline-flex items-center gap-1">
-              <Clock3 className="size-3" aria-hidden="true" />
-              {formatVideoDuration(displayDuration)}
-            </span>
-          ) : null}
-          <span>{formatGeneratedAt(video.createdAt)}</span>
-          {onSelect ? <Button type="button" onClick={onSelect} disabled={!video.mediaAssetId}>{selectLabel}</Button> : null}
-          <AiStudioResultActions
-            className="ml-auto sm:ml-0"
-            kind="video"
-            mediaAssetId={video.mediaAssetId}
-            title={video.title}
-            url={video.url}
-          />
-        </div>
-      </div>
-
-      <div
-        className={cn(
-          "order-1 w-full justify-self-start lg:order-2 lg:justify-self-end",
-          getVideoPreviewWidthClassName(video.ratio),
-        )}
-      >
+      <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:gap-6">
         <div
-          className="relative overflow-hidden rounded-[20px] bg-black shadow-sm"
-          style={{ aspectRatio: video.ratio.replace(":", " / ") }}
+          className={cn(
+            "shrink-0",
+            getVideoResultWidthClassName(video.ratio),
+          )}
         >
-          <video
-            key={video.url}
-            ref={videoRef}
-            src={video.url}
-            aria-label={`${video.title} preview`}
-            className="size-full object-cover"
-            muted={isMuted}
-            playsInline
-            preload="metadata"
-            onEnded={() => {
-              setCurrentTime(displayDuration);
-              setIsPlaying(false);
-            }}
-            onLoadedMetadata={(event) => {
-              const nextDuration = event.currentTarget.duration;
+          <div
+            className="@container/video relative overflow-hidden rounded-[16px] bg-black ring-1 ring-white/5"
+            style={{ aspectRatio: video.ratio.replace(":", " / ") }}
+          >
+            <video
+              key={video.url}
+              ref={videoRef}
+              src={video.url}
+              poster={video.thumbnailUrl ?? undefined}
+              aria-label={`${video.title} preview`}
+              className="size-full object-contain"
+              muted={isMuted}
+              playsInline
+              preload="metadata"
+              onEnded={() => {
+                setCurrentTime(displayDuration);
+                setIsPlaying(false);
+              }}
+              onLoadedMetadata={(event) => {
+                const nextDuration = event.currentTarget.duration;
 
-              setCurrentTime(0);
-              setIsPlaying(false);
+                setCurrentTime(0);
+                setIsPlaying(false);
 
-              if (Number.isFinite(nextDuration)) {
-                setDuration(nextDuration);
+                if (Number.isFinite(nextDuration)) {
+                  setDuration(nextDuration);
+                }
+              }}
+              onPause={() => setIsPlaying(false)}
+              onPlay={() => setIsPlaying(true)}
+              onTimeUpdate={(event) =>
+                setCurrentTime(event.currentTarget.currentTime)
               }
-            }}
-            onPause={() => setIsPlaying(false)}
-            onPlay={() => setIsPlaying(true)}
-            onTimeUpdate={(event) =>
-              setCurrentTime(event.currentTarget.currentTime)
-            }
-          />
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-2 pb-2 pt-9">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex min-w-0 items-center gap-1.5">
+            />
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-2 pb-2 pt-9">
+              <input
+                type="range"
+                aria-label="Seek video"
+                aria-valuetext={`${formatVideoDuration(currentTime)} of ${formatVideoDuration(displayDuration)}`}
+                min={0}
+                max={displayDuration || 1}
+                step={0.1}
+                value={Math.min(currentTime, displayDuration || 1)}
+                disabled={displayDuration <= 0}
+                onChange={(event) => {
+                  const nextTime = Number(event.target.value);
+                  if (videoRef.current) videoRef.current.currentTime = nextTime;
+                  setCurrentTime(nextTime);
+                }}
+                className="mb-2 block h-1 w-full cursor-pointer accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-default"
+              />
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    className="border-white/20 bg-black/40 text-white hover:bg-black/60 hover:text-white"
+                    aria-label={isPlaying ? "Pause video" : "Play video"}
+                    aria-pressed={isPlaying}
+                    onClick={() => void togglePlayback()}
+                  >
+                    {isPlaying ? (
+                      <Pause aria-hidden="true" />
+                    ) : (
+                      <Play aria-hidden="true" />
+                    )}
+                  </Button>
+                  <span className="rounded-md bg-black/55 px-1.5 py-1 text-[11px] font-medium tabular-nums text-white">
+                    {formatVideoDuration(currentTime)}
+                    <span className="hidden @min-[10rem]/video:inline"> / {formatVideoDuration(displayDuration)}</span>
+                  </span>
+                </div>
                 <Button
                   type="button"
                   variant="outline"
                   size="icon-sm"
-                  className="bg-card/90 shadow-sm"
-                  aria-label={isPlaying ? "Pause video" : "Play video"}
-                  aria-pressed={isPlaying}
-                  onClick={() => void togglePlayback()}
+                  className="border-white/20 bg-black/40 text-white hover:bg-black/60 hover:text-white"
+                  aria-label={isMuted ? "Unmute video" : "Mute video"}
+                  aria-pressed={!isMuted}
+                  onClick={toggleMuted}
                 >
-                  {isPlaying ? (
-                    <Pause aria-hidden="true" />
+                  {isMuted ? (
+                    <VolumeX aria-hidden="true" />
                   ) : (
-                    <Play aria-hidden="true" />
+                    <Volume2 aria-hidden="true" />
                   )}
                 </Button>
-                <span className="rounded-md bg-black/55 px-1.5 py-1 text-[11px] font-medium tabular-nums text-white">
-                  {formatVideoDuration(currentTime)} / {formatVideoDuration(displayDuration)}
-                </span>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon-sm"
-                className="bg-card/90 shadow-sm"
-                aria-label={isMuted ? "Unmute video" : "Mute video"}
-                aria-pressed={!isMuted}
-                onClick={toggleMuted}
-              >
-                {isMuted ? (
-                  <VolumeX aria-hidden="true" />
-                ) : (
-                  <Volume2 aria-hidden="true" />
-                )}
-              </Button>
             </div>
           </div>
+          <div className="mt-3">
+            <VideoResultMetadata
+              modelLabel={video.modelLabel}
+              durationSeconds={displayDuration}
+              resolution={video.resolution}
+              ratio={video.ratio}
+            />
+          </div>
+          {onSelect ? <Button type="button" className="mt-3" disabled={!video.mediaAssetId} onClick={onSelect}>{selectLabel}</Button> : null}
+          <AiStudioResultActions
+            className="mt-3"
+            kind="video"
+            showOpenAction={false}
+            title={video.title}
+            url={video.url}
+            variant="buttons"
+          />
+        </div>
+        <div className="w-full min-w-0 sm:max-w-[26rem] sm:flex-1 sm:pt-1">
+          <VideoPromptBubble createdAt={video.createdAt} prompt={video.prompt} />
         </div>
       </div>
     </article>
   );
 }
 
-function getVideoPreviewWidthClassName(
+function VideoResultMetadata({
+  modelLabel,
+  durationSeconds,
+  resolution,
+  ratio,
+}: {
+  modelLabel: string | null;
+  durationSeconds: number;
+  resolution: GeneratedVideo["resolution"];
+  ratio: GeneratedVideo["ratio"];
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] font-medium text-muted">
+      {modelLabel ? (
+        <span className="inline-flex items-center gap-1.5 text-foreground">
+          <Sparkles className="size-3 text-primary" aria-hidden="true" />
+          {modelLabel}
+        </span>
+      ) : null}
+      {durationSeconds > 0 ? (
+        <span className="inline-flex items-center gap-1.5">
+          <Clock3 className="size-3" aria-hidden="true" />
+          {formatVideoDuration(durationSeconds)}
+        </span>
+      ) : null}
+      {resolution ? (
+        <span className="inline-flex items-center gap-1.5">
+          <Monitor className="size-3" aria-hidden="true" />
+          {resolution}
+        </span>
+      ) : null}
+      <span>{ratio}</span>
+    </div>
+  );
+}
+
+function VideoPromptBubble({
+  createdAt,
+  prompt,
+}: {
+  createdAt: string;
+  prompt: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="w-full min-w-0">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-0.5 text-[11px] font-medium text-muted">
+        <span className="text-foreground-strong">Prompt</span>
+        <span>{formatGeneratedAt(createdAt)}</span>
+      </div>
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-label={expanded ? "Collapse video prompt" : "Show full video prompt"}
+        onClick={() => setExpanded((current) => !current)}
+        className={cn(
+          "group flex w-full items-start gap-3 rounded-[14px] border border-border bg-card-muted/50 px-3 py-2.5 text-left transition-colors hover:border-border-strong hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none",
+          expanded && "bg-card",
+        )}
+      >
+        <span
+          className={cn(
+            "min-w-0 flex-1 whitespace-pre-wrap text-sm font-normal leading-6 text-foreground [overflow-wrap:anywhere]",
+            expanded ? "max-h-48 overflow-y-auto overscroll-contain pr-2" : "line-clamp-3",
+          )}
+        >
+          {prompt}
+        </span>
+        {expanded ? (
+          <ChevronUp className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden="true" />
+        ) : (
+          <ChevronDown className="mt-0.5 size-4 shrink-0 text-muted transition-transform group-hover:translate-y-0.5" aria-hidden="true" />
+        )}
+      </button>
+      <div className="mt-1 flex justify-end"><AiStudioCopyButton kind="prompt" value={prompt} /></div>
+    </div>
+  );
+}
+
+function VideoHistoryDrawer({
+  groups,
+  onClose,
+  onQueryChange,
+  onSelectVideo,
+  open,
+  query,
+  selectedVideoId,
+}: {
+  groups: ReturnType<typeof groupAIStudioVideoHistory>;
+  onClose: () => void;
+  onQueryChange: (value: string) => void;
+  onSelectVideo: (videoId: string) => void;
+  open: boolean;
+  query: string;
+  selectedVideoId: string | null;
+}) {
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function handleKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, open]);
+
+  if (!open) {
+    return null;
+  }
+
+  const hasVideos = groups.some((group) => group.videos.length > 0);
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <button
+        type="button"
+        aria-label="Close generation history"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/45 backdrop-blur-[1px]"
+      />
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-label="Generation history"
+        className="relative flex h-full w-full max-w-[460px] flex-col border-l border-border bg-background shadow-2xl animate-in slide-in-from-right duration-200"
+      >
+        <header className="flex shrink-0 items-center justify-between border-b border-border px-5 py-5">
+          <div>
+            <p className="text-base font-semibold text-foreground-strong">Generation History</p>
+            <p className="mt-1 text-xs text-muted">Your completed AI Studio videos</p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Close history"
+            onClick={onClose}
+          >
+            <X aria-hidden="true" />
+          </Button>
+        </header>
+
+        <div className="shrink-0 border-b border-border px-5 py-4">
+          <label className="relative block">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden="true" />
+            <Input
+              value={query}
+              onChange={(event) => onQueryChange(event.target.value)}
+              placeholder="Search your generations…"
+              aria-label="Search your generations"
+              className="h-10 rounded-full pl-9"
+            />
+          </label>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+          {hasVideos ? (
+            <div className="space-y-6">
+              {groups.map((group) => (
+                <section key={group.label} aria-label={group.label}>
+                  <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted">
+                    {group.label}
+                  </h2>
+                  <div className="space-y-2">
+                    {group.videos.map((video) => (
+                      <button
+                        key={video.id}
+                        type="button"
+                        onClick={() => onSelectVideo(video.id)}
+                        className={cn(
+                          "flex w-full items-center gap-3 rounded-[16px] border border-transparent p-2 text-left transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+                          selectedVideoId === video.id && "border-primary/60 bg-primary/[0.06]",
+                        )}
+                      >
+                        <div
+                          className="relative w-[76px] shrink-0 overflow-hidden rounded-xl bg-card-muted"
+                          style={{ aspectRatio: video.ratio.replace(":", " / ") }}
+                        >
+                          {video.thumbnailUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={video.thumbnailUrl}
+                              alt=""
+                              loading="lazy"
+                              decoding="async"
+                              className="size-full object-cover"
+                            />
+                          ) : (
+                            <>
+                              <video
+                                src={video.url}
+                                muted
+                                playsInline
+                                preload="none"
+                                className="size-full object-cover"
+                                aria-hidden="true"
+                              />
+                              <span className="absolute inset-0 flex items-center justify-center text-muted">
+                                <Play className="size-4" aria-hidden="true" />
+                              </span>
+                            </>
+                          )}
+                          {video.durationSeconds ? (
+                            <span className="absolute bottom-1 right-1 rounded bg-black/70 px-1 py-0.5 text-[10px] font-semibold tabular-nums text-white">
+                              {formatVideoDuration(video.durationSeconds)}
+                            </span>
+                          ) : null}
+                        </div>
+                        <span className="min-w-0 flex-1">
+                          <span className="line-clamp-2 block text-sm font-semibold leading-5 text-foreground">
+                            {getVideoHistoryTitle(video)}
+                          </span>
+                          <span className="mt-1.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] font-medium text-muted">
+                            {video.modelLabel ? <span>{video.modelLabel}</span> : null}
+                            {video.resolution ? <span>{video.resolution}</span> : null}
+                            <span>{video.ratio}</span>
+                          </span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          ) : (
+            <div className="flex min-h-48 flex-col items-center justify-center px-5 text-center">
+              <History className="size-6 text-muted" aria-hidden="true" />
+              <p className="mt-3 text-sm font-semibold text-foreground">No matching videos</p>
+              <p className="mt-1 text-xs leading-5 text-muted">
+                Try another search term or create a video from this workspace.
+              </p>
+            </div>
+          )}
+        </div>
+
+        <footer className="shrink-0 border-t border-border p-4">
+          <Link
+            href="/avatars"
+            className="flex h-10 w-full items-center justify-center rounded-[var(--radius-control)] border border-border bg-card text-sm font-semibold text-foreground transition-colors hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            Open Creative Assets
+          </Link>
+        </footer>
+      </aside>
+    </div>
+  );
+}
+
+function getVideoHistoryTitle(video: GeneratedVideo) {
+  return video.prompt === "Generated influencer video" || video.prompt === "Generated video"
+    ? video.title
+    : video.prompt;
+}
+
+function getVideoResultWidthClassName(
   aspectRatio: GeneratedVideo["ratio"],
 ) {
-  return VIDEO_PREVIEW_WIDTH_CLASS_NAMES[aspectRatio];
+  return VIDEO_RESULT_WIDTH_CLASS_NAMES[aspectRatio];
 }
 
 function formatVideoDuration(durationSeconds: number) {

@@ -88,20 +88,38 @@ variable "worker_job_types" {
   default     = "generate_audio,generate_avatar,generate_image,generate_hook_video,generate_trending_hook_copy,hook_text_generation,wall_text_content_plan_generation,wall_text_generation,media_analysis,analytics_sync,carousel_content_plan_generation,paid_trending_prebuild,reaction_generation,test_worker_job"
 }
 
-variable "enable_audio_generation" {
-  description = "Allow ElevenLabs audio submissions after private storage, the migration and API secret are configured."
-  type        = bool
-  default     = false
-}
-
 variable "elevenlabs_api_key_secret_id" {
   description = "Optional Secret Manager secret ID injected as ELEVENLABS_API_KEY. Empty keeps existing worker deployments independent of ElevenLabs."
   type        = string
   default     = ""
 }
 
+variable "enable_audio_generation" {
+  description = "Enable Audio jobs only after the audio migration, private bucket, app credentials, and provider allowance are ready."
+  type        = bool
+  default     = false
+}
+
+variable "private_audio_bucket_name" {
+  description = "Separate GCP audio bucket with uniform access and public access prevention enforced. Never the public media bucket."
+  type        = string
+  default     = ""
+}
+
 variable "elevenlabs_voice_api_key_secret_id" {
-  description = "Optional restricted voice-management Secret Manager secret ID injected as ELEVENLABS_VOICE_API_KEY."
+  description = "Existing Secret Manager secret for Audio generation. Values must be provisioned separately."
+  type        = string
+  default     = ""
+}
+
+variable "audio_generation_public_enabled" {
+  description = "Allow eligible paid users after production verification; otherwise only the explicitly invited accounts."
+  type        = bool
+  default     = false
+}
+
+variable "audio_generation_allowed_user_ids" {
+  description = "Comma-separated invited Firebase owner IDs for a bounded Audio rollout."
   type        = string
   default     = ""
 }
@@ -209,7 +227,7 @@ variable "gemini_image_model" {
 variable "gemini_omni_model" {
   description = "Gemini multimodal model used by worker analysis flows."
   type        = string
-  default     = "gemini-omni-flash-preview"
+  default     = "gemini-omni-1.1-flash"
 }
 
 variable "gemini_api_key_secret_id" {
@@ -219,13 +237,20 @@ variable "gemini_api_key_secret_id" {
 }
 
 variable "runwayml_api_secret_id" {
-  description = "Secret Manager secret ID injected as RUNWAYML_API_SECRET for Seedream images and Runway hook-video fallback."
+  description = "Secret Manager secret ID injected as RUNWAYML_API_SECRET for Seedream images, Seedance 2.5 and legacy Runway hook generation."
+
   type        = string
   default     = "runwayml-api-secret"
 }
 
 variable "higgsfield_credentials_secret_id" {
-  description = "Optional Secret Manager secret ID injected as HF_CREDENTIALS for Seedance 2.5 video generation."
+  description = "Optional Secret Manager secret ID injected as HF_CREDENTIALS for read-only recovery of historical Higgsfield requests."
+  type        = string
+  default     = ""
+}
+
+variable "openrouter_api_key_secret_id" {
+  description = "Optional Secret Manager secret ID injected as OPENROUTER_API_KEY for Seedance 2.5 video generation."
   type        = string
   default     = ""
 }
@@ -233,7 +258,7 @@ variable "higgsfield_credentials_secret_id" {
 variable "runway_daily_credit_limit" {
   description = "Maximum Runway credits the worker may spend during one UTC calendar day."
   type        = number
-  default     = 100
+  default     = 5000
 
   validation {
     condition     = var.runway_daily_credit_limit > 0 && floor(var.runway_daily_credit_limit) == var.runway_daily_credit_limit

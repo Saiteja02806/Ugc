@@ -4,12 +4,12 @@ import { NextResponse } from "next/server";
 
 import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
 import { requireAIStudioProUser } from "@/lib/ai-studio/server-access";
+import { normalizeAIStudioPrompt } from "@/lib/ai-studio/prompt-policy";
 import {
-  AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH,
-  getAIStudioPromptLengthError,
-  normalizeAIStudioPrompt,
-} from "@/lib/ai-studio/prompt-policy";
-import {
+  AI_STUDIO_IMAGE_MODELS,
+  SLIDESHOW_IMAGE_MODELS,
+  DEFAULT_SLIDESHOW_IMAGE_MODEL,
+  type AIStudioImageModel,
   parseAIStudioGenerationQuantity,
   parseAIStudioImageAspectRatio,
   parseAIStudioImageModel,
@@ -20,8 +20,9 @@ import {
   getMissingBackgroundJobStorageEnvVars,
 } from "@/lib/jobs/background-jobs";
 import { createAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
-import { isTrustedStorageUrl } from "@/lib/storage/storage";
+import { canonicalMediaReference, isTrustedMediaReferenceUrl as isTrustedStorageUrl } from "@/lib/media/media-reference";
 import { getMediaAssetForOwner } from "@/lib/media/media-storage";
+import { parseImageReferenceContext } from "@/worker/src/lib/image-reference-context";
 import {
   BillingAccessError,
   deliverBillingUsageForJob,
@@ -38,6 +39,7 @@ type GenerateRequest = {
   prompt?: unknown;
   quantity?: unknown;
   referenceImageUrl?: unknown;
+  referenceImageUrls?: unknown;
   referenceImageAssetId?: unknown;
 };
 
@@ -134,11 +136,18 @@ export async function handleAIStudioImageGeneration(request: Request) {
   const prompt = normalizeAIStudioPrompt(body?.prompt);
   const aspectRatio = parseAIStudioImageAspectRatio(body?.aspectRatio);
   const quantity = parseAIStudioGenerationQuantity(body?.quantity);
-  const model = parseAIStudioImageModel(body?.model);
-  let referenceImageUrl = cleanTrustedHttpsUrl(body?.referenceImageUrl);
+  if (body?.exploreFormat !== undefined && body.exploreFormat !== "slideshow") {
+    return NextResponse.json({ message: "Choose an image workflow.", ok: false }, { status: 400 });
+  }
+  const availableModels: readonly AIStudioImageModel[] =
+    body?.exploreFormat === "slideshow" ? SLIDESHOW_IMAGE_MODELS : AI_STUDIO_IMAGE_MODELS;
+  const model = body?.exploreFormat === "slideshow" && body.model === undefined
+    ? DEFAULT_SLIDESHOW_IMAGE_MODEL : parseAIStudioImageModel(body?.model);
+  let referenceImageUrl: string | null;
   let referenceImageUrls: string[] | undefined;
-  if (body?.exploreFormat !== undefined && body.exploreFormat !== "slideshow") return NextResponse.json({ message: "Choose an image workflow.", ok: false }, { status: 400 });
-
+  let subjectReferenceIndex: number | undefined;
+  try { referenceImageUrl = cleanTrustedHttpsUrl(await canonicalMediaReference(body?.referenceImageUrl, user.uid)); }
+  catch { return NextResponse.json({ ok: false, message: "This reference is unavailable to your account." }, { status: 400 }); }
   if (body?.referenceImageUrl && !referenceImageUrl) {
     return NextResponse.json(
       { message: "The reference image is not a trusted uploaded file.", ok: false },
@@ -146,26 +155,56 @@ export async function handleAIStudioImageGeneration(request: Request) {
     );
   }
 
+  if (body?.referenceImageUrls !== undefined) {
+    if (body.exploreFormat !== "slideshow") {
+      return NextResponse.json({ ok: false, message: "Multiple slide references are available in Slideshows." }, { status: 400 });
+    }
+    try {
+      const requested = parseImageReferenceContext(body.referenceImageUrls);
+      const canonical: string[] = [];
+      for (const url of requested) {
+        const owned = cleanTrustedHttpsUrl(await canonicalMediaReference(url, user.uid));
+        if (!owned) throw new Error("Untrusted reference.");
+        canonical.push(owned);
+      }
+      referenceImageUrls = parseImageReferenceContext(canonical);
+      // Never silently add an unselected primary image to the requested context.
+      if (referenceImageUrl && referenceImageUrl !== referenceImageUrls[0]) throw new Error("Primary reference mismatch.");
+      referenceImageUrl = referenceImageUrls[0];
+    } catch {
+      return NextResponse.json({ ok: false, message: "Choose 1–14 distinct reference images available to your account." }, { status: 400 });
+    }
+  }
+
   if (body?.referenceImageAssetId !== undefined) {
     if (body.exploreFormat !== "slideshow" || typeof body.referenceImageAssetId !== "string" || !UUID_PATTERN.test(body.referenceImageAssetId)) {
-      return NextResponse.json({ message: "Choose a valid uploaded reference image.", ok: false }, { status: 400 });
+      return NextResponse.json({ ok: false, message: "Choose a valid uploaded reference image." }, { status: 400 });
     }
     try {
       const asset = await getMediaAssetForOwner({ assetId: body.referenceImageAssetId, userId: user.uid });
-      const ownedUrl = cleanTrustedHttpsUrl(asset?.url);
+      const ownedUrl = asset && cleanTrustedHttpsUrl(await canonicalMediaReference(asset.url, user.uid));
       if (!asset || asset.status !== "ready" || asset.collection !== "image" || !["image/png", "image/jpeg", "image/webp"].includes(asset.mime_type) || !ownedUrl || !asset.file_size_bytes || asset.file_size_bytes > 25 * 1024 * 1024) {
-        return NextResponse.json({ message: "This reference image is no longer available. Upload it again or choose another image.", ok: false }, { status: 400 });
+        return NextResponse.json({ ok: false, message: "This reference image is no longer available. Upload it again or choose another image." }, { status: 400 });
       }
-      const urls = [...new Set([...(referenceImageUrl ? [referenceImageUrl] : []), ownedUrl])];
-      // Keep old one-image jobs and their durable fingerprints unchanged.
-      referenceImageUrl = urls[0];
-      if (urls.length > 1) referenceImageUrls = urls;
+      const layoutReferences = referenceImageUrls ?? (referenceImageUrl ? [referenceImageUrl] : []);
+      const references = [...new Set([...layoutReferences, ownedUrl])];
+      if (references.length > 14) return NextResponse.json({ ok: false, message: "Choose at most 13 layout images when attaching a subject/style image." }, { status: 400 });
+      referenceImageUrl = references[0];
+      if (references.length > 1) {
+        referenceImageUrls = references;
+        if (!layoutReferences.includes(ownedUrl)) subjectReferenceIndex = references.length;
+      }
     } catch {
-      return NextResponse.json({ message: "Could not verify your reference image. Try again before generating.", ok: false }, { status: 503 });
+      return NextResponse.json({ ok: false, message: "Could not verify your reference image. Try again before generating." }, { status: 503 });
     }
   }
-  // Only the server may resolve the ordered provider URL list from owned assets.
-  if (body && "referenceImageUrls" in body) return NextResponse.json({ message: "Choose references using the image attachment control.", ok: false }, { status: 400 });
+
+  if (body?.model !== undefined && !availableModels.includes(body.model as AIStudioImageModel)) {
+    return NextResponse.json(
+      { message: "This image model is unavailable. Refresh AI Studio and choose a model.", ok: false },
+      { status: 400 },
+    );
+  }
 
   if (!prompt) {
     return NextResponse.json(
@@ -173,18 +212,6 @@ export async function handleAIStudioImageGeneration(request: Request) {
         message: "Add a prompt before generating an image.",
         ok: false,
       },
-      { status: 400 },
-    );
-  }
-
-  const promptLengthError = getAIStudioPromptLengthError(
-    prompt,
-    AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH,
-  );
-
-  if (promptLengthError) {
-    return NextResponse.json(
-      { message: promptLengthError, ok: false },
       { status: 400 },
     );
   }
@@ -238,6 +265,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
           prompt,
           referenceImageUrl,
           ...(referenceImageUrls ? { referenceImageUrls } : {}),
+          ...(subjectReferenceIndex ? { subjectReferenceIndex } : {}),
         },
         jobType: IMAGE_JOB_TYPE,
         projectId: "ai-studio",

@@ -1,5 +1,5 @@
-import { MCP_VIDEO_DURATIONS, registeredGenerationMcpTools } from "./generation-contract";
 import "server-only";
+import { getProtectedMediaDeliveryUrl, isPrivateUserMedia } from "@/lib/media/media-delivery";
 
 import { McpServer, requireScopes } from "@modelcontextprotocol/server";
 import { z } from "zod";
@@ -11,25 +11,35 @@ import {
   AI_STUDIO_GENERATION_QUANTITIES,
   AI_STUDIO_IMAGE_ASPECT_RATIOS,
   AI_STUDIO_VIDEO_ASPECT_RATIOS,
-
 } from "@/lib/ai-studio/generation-settings";
+import { MCP_VIDEO_DURATIONS, registeredGenerationMcpTools } from "./generation-contract";
 import { getMediaAssetForOwner, listMediaAssetsPage, type MediaAssetRow } from "@/lib/media/media-storage";
-import { mediaCollections, mediaSourceTypes } from "@/lib/media/types";
+import { mediaSourceTypes } from "@/lib/media/types";
 import { decodeAssetCursor, encodeAssetCursor } from "./asset-cursor";
 
 const empty = z.strictObject({});
-const uuid = z.uuid();
+const uuid = z.uuid().describe("A UGC Pilot resource ID.");
 const sourceUrl = z.url().regex(/^https?:\/\//i);
 const httpsUrl = z.url().regex(/^https:\/\//i);
 const nullableText = z.string().nullable();
-export const generationCount = z.literal([1, 2, 4]).describe("Number of outputs to create. Choose 1, 2, or 4.");
-const videoDuration = z.literal(MCP_VIDEO_DURATIONS);
+const mediaCollectionDescription =
+  "Asset group: image for still images, video for videos, or influencer for creator footage.";
+const mediaSourceTypeDescription =
+  "How UGC Pilot created the asset: upload (library upload), influencer_upload (creator footage upload), demo_upload (demo footage), catalog_influencer (built-in creator asset), generated_image or generated_video (AI output), edit_export (editor export), combined_render (composed video), wall_text_render, or reaction_render.";
+// Website audio references do not expand the public MCP V1 asset contract.
+export const MCP_MEDIA_COLLECTIONS = ["influencer", "video", "image"] as const;
+const mediaCollection = z.enum(MCP_MEDIA_COLLECTIONS).describe(mediaCollectionDescription);
+const mediaSourceType = z.enum(mediaSourceTypes).describe(mediaSourceTypeDescription);
+export const generationCount = z.literal([1, 2, 4]).describe(
+  "Number of outputs to create. Choose 1, 2, or 4.",
+);
 const videoToolRegistered = registeredGenerationMcpTools.includes("generate_video");
+const videoDuration = z.literal(MCP_VIDEO_DURATIONS);
 const assetSummary = z.strictObject({
   id: uuid,
   title: z.string(),
-  collection: z.enum(mediaCollections),
-  source_type: z.enum(mediaSourceTypes),
+  collection: mediaCollection,
+  source_type: mediaSourceType,
   mime_type: z.string(),
   width: z.number().int().positive().nullable(),
   height: z.number().int().positive().nullable(),
@@ -111,9 +121,10 @@ export function toAsset(row: MediaAssetRow) {
     file_name: row.file_name,
     file_size_bytes: row.file_size_bytes,
     ratio: row.ratio,
-    thumbnail_url: row.thumbnail_url,
+    thumbnail_url: isPrivateUserMedia(row) && row.thumbnail_url
+      ? getProtectedMediaDeliveryUrl(row.id, Date.now(), "thumbnail") : row.thumbnail_url,
     updated_at: row.updated_at,
-    url: row.url,
+    url: isPrivateUserMedia(row) ? getProtectedMediaDeliveryUrl(row.id) : row.url,
   };
 }
 
@@ -236,11 +247,11 @@ export function registerReadMcpTools(server: McpServer) {
   server.registerTool("list_assets", {
     description: "Find ready assets owned by the connected account, with search and pagination.",
     inputSchema: z.strictObject({
-      collection: z.enum(mediaCollections).optional(),
-      source_type: z.enum(mediaSourceTypes).optional(),
-      query: z.string().trim().min(1).max(100).optional(),
-      limit: z.number().int().min(1).max(50).default(20),
-      cursor: z.string().min(1).max(2048).optional(),
+      collection: mediaCollection.optional().describe(`Optionally limit results. ${mediaCollectionDescription}`),
+      source_type: mediaSourceType.optional().describe(`Optionally limit results. ${mediaSourceTypeDescription}`),
+      query: z.string().trim().min(1).max(100).optional().describe("Optional words to find in asset titles."),
+      limit: z.number().int().min(1).max(50).default(20).describe("Maximum number of results to return, from 1 through 50."),
+      cursor: z.string().min(1).max(2048).optional().describe("The next_cursor returned by an earlier call with the same filters."),
     }),
     outputSchema: z.strictObject({ items: z.array(assetSummary), next_cursor: z.string().min(1).nullable() }),
     annotations: readOnly,
@@ -256,7 +267,8 @@ export function registerReadMcpTools(server: McpServer) {
     let rows: MediaAssetRow[];
     try {
       rows = await listMediaAssetsPage({
-        userId, collection: args.collection, sourceType: args.source_type,
+        userId, collection: args.collection, collections: MCP_MEDIA_COLLECTIONS,
+        sourceType: args.source_type,
         query: args.query, limit: args.limit,
         after: cursor ? { updatedAt: cursor.updated_at, id: cursor.id } : undefined,
       });
@@ -275,14 +287,14 @@ export function registerReadMcpTools(server: McpServer) {
 
   server.registerTool("get_asset", {
     description: "Get one ready, undeleted asset owned by this account.",
-    inputSchema: z.strictObject({ asset_id: uuid }),
+    inputSchema: z.strictObject({ asset_id: uuid.describe("ID of the ready asset to retrieve.") }),
     outputSchema: z.strictObject({ asset }),
     annotations: readOnly,
     scopeChallenge: requireScopes("assets:read"),
     _meta: oauthMetadata("assets:read"),
   }, async ({ asset_id }, ctx) => executeTool(async () => {
     const row = await getMediaAssetForOwner({ assetId: asset_id, userId: principal(ctx, "assets:read") });
-    if (!row || row.status !== "ready" || !assetSummary.shape.collection.safeParse(row.collection).success) {
+    if (!row || row.status !== "ready" || !mediaCollection.safeParse(row.collection).success) {
       throw new ToolFailure("NOT_FOUND", "Asset not found.");
     }
     if (!asset.safeParse(toAsset(row)).success) throw new ToolFailure("INTERNAL_ERROR", "The asset metadata is incomplete.", true);
@@ -302,7 +314,8 @@ export function registerReadMcpTools(server: McpServer) {
   }, async (_args, ctx) => executeTool(async () => {
     const subscription = await loadEntitlements(principal(ctx, "account:read"));
     const imageAvailable = subscription.isActive && subscription.creditsRemaining >= subscription.imageGenerationCreditCost;
-    const videoAvailable = videoToolRegistered && subscription.isActive && subscription.creditsRemaining >= 3 * subscription.videoGenerationCreditsPerSecond;
+    const videoAvailable = videoToolRegistered && subscription.isActive &&
+      subscription.creditsRemaining >= 3 * subscription.videoGenerationCreditsPerSecond;
     return {
       image_generation: {
         available: imageAvailable,

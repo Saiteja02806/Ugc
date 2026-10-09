@@ -7,6 +7,8 @@ import {
 import { getAllowedContentTypes, getMaxUploadBytes } from "@/lib/media/media-upload";
 import { isMediaRatio } from "@/lib/media/types";
 import { headStorageObject } from "@/lib/storage/storage";
+import { isPrivateUserMedia } from "@/lib/media/media-delivery";
+import { privateMediaHead } from "@/lib/media/private-media-storage";
 
 export const runtime = "nodejs";
 
@@ -46,7 +48,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const object = await headStorageObject({ key });
+    const object = isPrivateUserMedia(asset) ? await privateMediaHead(key) : await headStorageObject({ key });
     const objectType = object.ContentType?.split(";", 1)[0]?.trim().toLowerCase() || "";
     const objectSize = object.ContentLength ?? 0;
 

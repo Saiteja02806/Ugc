@@ -25,24 +25,18 @@ function loadModule(source, imports, globals = {}) {
   return exported;
 }
 const policy = loadModule(read("lib/explore/phone-workflow.ts"), {});
+const rollout = loadModule(read("lib/explore/workflow-generation-rollout.ts"), {});
 
-test("third workflow is local-only and does not change the live catalogue", () => {
-  assert.match(page, /process\.env\.NODE_ENV !== "development" \|\| query\.preview !== "1"\) notFound\(\)/);
-  const registry = read("lib/explore/workflows.ts");
-  const live = registry.slice(registry.indexOf("export const EXPLORE_WORKFLOWS"), registry.indexOf("export const LOCAL_PREVIEW_WORKFLOWS"));
-  assert.doesNotMatch(live, /creator-phone/);
-  assert.match(registry, /id: "creator-phone"[^\n]*coverVideo: null/);
+test("the former phone workflow is hidden while its implementation is retained", () => {
+  assert.match(page, /notFound\(\)/);
+  assert.doesNotMatch(read("lib/explore/workflows.ts"), /destination: "\/explore\/creator-phone"/);
+  assert.match(workspace, /PhoneWorkflowPreview/);
 });
 
-test("actual route rejects production and implicit preview requests", async () => {
-  for (const [environment, query, accepted] of [["production", { preview: "1" }, false], ["development", {}, false], ["development", { preview: "0" }, false], ["development", { preview: "1" }, true]]) {
-    const route = loadModule(page, {
-      "next/navigation": { notFound() { throw new Error("NOT_FOUND"); } },
-      "@/components/explore/phone-workflow-preview": { PhoneWorkflowPreview: "phone-preview" },
-      "react/jsx-runtime": { jsx: (type) => ({ type }) },
-    }, { process: { env: { NODE_ENV: environment } } });
-    if (accepted) assert.equal((await route.default({ searchParams: Promise.resolve(query) })).type, "phone-preview");
-    else await assert.rejects(route.default({ searchParams: Promise.resolve(query) }), /NOT_FOUND/);
+test("the hidden phone route cannot be reopened with preview or rollout parameters", () => {
+  for (const environment of ["production","development"]) {
+    const route = loadModule(page, {"next/navigation": {notFound() {throw Error("NOT_FOUND")}}}, {process:{env:{NODE_ENV:environment,EXPLORE_GENERATION_ENABLED:"true"}}});
+    assert.throws(() => route.default({searchParams:Promise.resolve({preview:"1"})}), /NOT_FOUND/);
   }
 });
 
@@ -66,13 +60,17 @@ test("app screen, optional references, creator audio and appended demo are indep
   assert.match(workspace, /const appScreen = useLocalAppScreen\(\)/);
   for (const name of ["creator", "videoReference", "creatorAudio", "demo", "demoAudio"]) assert.match(workspace, new RegExp(`const ${name} = useLocalWorkflowMedia`));
   assert.match(composer, /accept="image\/\*,video\/\*"/);
-  assert.match(composer, /inside the phone/);
-  assert.match(audioReference, /Use as voice reference/);
-  assert.match(audioReference, /Use exact recording/);
+  assert.match(composer, /Screen recordings require Seedance 2.5 through OpenRouter/);
+  assert.match(audioReference, /Main voice reference/);
+  assert.match(audioReference, /Voice guidance · Up to 30 seconds/);
+  assert.match(workspace, /audioReference: creatorAudio\.asset/);
+  assert.match(workspace, /demoAudio=\{demoAudio\.asset\}/);
+  assert.doesNotMatch(audioReference, />Exact recording<\/Button>/);
   assert.match(composition, /during the demo only/);
-  assert.match(composition, /The demo’s original sound stays as it is/);
-  assert.match(workspace, /if \(accepted\) demoAudio\.remove\(\)/);
-  assert.match(workspace, /function removeDemo\(\) \{\s*demoAudio\.remove\(\);\s*demo\.remove\(\)/);
+  assert.match(composition, /Your demo’s original sound is kept/);
+  assert.match(composition, /Uploaded audio is mixed underneath it as background audio during the demo only/);
+  assert.match(workspace, /if \(accepted\) \{ demoAudio\.remove\(\); setDemoAudioPlayback\("once"\); setDemoFraming\(null\); \}/);
+  assert.match(workspace, /function removeDemo\(\) \{\s*setDemoFraming\(null\);\s*demoAudio\.remove\(\);\s*demo\.remove\(\)/);
 });
 
 test("Library stays below the first screen and contains no unapproved media", () => {
@@ -108,12 +106,11 @@ test("app-screen validation accepts either source kind and rejects empty, oversi
   for (const file of [{ type: "audio/wav", size: 200 }, { type: "", size: 200 }, { type: "image/png", size: 0 }, { type: "video/mp4", size: NaN }, { type: "image/png", size: 21 * 1024 ** 2 }, { type: "video/mp4", size: 251 * 1024 ** 2 }]) assert.notEqual(policy.validateAppScreenFile(file).error, null);
 });
 
-test("demo audio validation allows equal duration and does not assume a missing duration", () => {
-  assert.equal(policy.isDemoAudioTooLong(5, 5), false);
-  assert.equal(policy.isDemoAudioTooLong(5, 4), false);
-  assert.equal(policy.isDemoAudioTooLong(5, 6), true);
-  assert.equal(policy.isDemoAudioTooLong(null, 6), false);
-  assert.equal(policy.isDemoAudioTooLong(5, null), false);
+test("phone demo audio uses the same duration-fitting preference as the hook workflow", () => {
+  assert.doesNotMatch(workspace, /isDemoAudioTooLong|invalidDemoAudio/);
+  assert.match(workspace, /demoAudioPlayback=\{demoAudioPlayback\}/);
+  assert.match(workspace, /useState<ExploreBackgroundPlayback>\("once"\)/);
+  assert.match(composition, /planExploreBackgroundAudio\(audioSeconds \* 1000, demoSeconds \* 1000, playback\)/);
 });
 
 /** Execute the actual hook with a small deterministic React/DOM harness. */

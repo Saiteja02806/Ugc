@@ -36,33 +36,35 @@ for (const platform of ["instagram", "tiktok", "youtube"] as const) {
   test(`does not publish an early-delivered ${platform} job`, async () => {
     await withEncryptionKey(async () => {
       const scheduledFor = new Date(Date.now() + 24 * 60 * 60_000).toISOString();
-      const fixture = createPublishStore(createOperation({ platform }), {
-        platform,
-        scheduledFor,
-      });
+      const fixture = createPublishStore(createOperation({ platform }), { platform, scheduledFor });
       const unexpectedPublish = async () => {
         assert.fail("Provider must not be contacted before the chosen time.");
       };
-      await assert.rejects(
-        runPublishSocialPostJob(createPublishJob(), {
-          store: fixture.store,
-          publishers: {
-            instagram: unexpectedPublish,
-            instagramCarousel: unexpectedPublish,
-            tiktok: unexpectedPublish,
-            tiktokCarousel: unexpectedPublish,
-            youtube: unexpectedPublish,
-          },
-        }),
-        (error: unknown) => error instanceof DeferredJobError &&
-          error.code === "social_publish_not_due" &&
-          Date.parse(error.retryAt) <= Date.parse(scheduledFor),
-      );
+      await assert.rejects(runPublishSocialPostJob(createPublishJob(), {
+        store: fixture.store,
+        publishers: {
+          instagram: unexpectedPublish, instagramCarousel: unexpectedPublish,
+          tiktok: unexpectedPublish, tiktokCarousel: unexpectedPublish,
+          youtube: unexpectedPublish,
+        },
+      }), (error: unknown) => error instanceof DeferredJobError &&
+        error.code === "social_publish_not_due" && Date.parse(error.retryAt) <= Date.parse(scheduledFor));
       assert.deepEqual(fixture.calls, []);
       assert.equal(fixture.operation.status, "pending");
     });
   });
 }
+
+test("a cancelled future post completes cleanup without publishing or deferring", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(createOperation(), {
+      targetStatus: "cancelled", scheduledFor: new Date(Date.now() + 60 * 60_000).toISOString(),
+    });
+    const output = await runPublishSocialPostJob(createPublishJob(), { store: fixture.store });
+    assert.equal(output.cancelled, true);
+    assert.deepEqual(fixture.calls, []);
+  });
+});
 
 test("persists provider initialization before completing a publish", async () => {
   await withEncryptionKey(async () => {
@@ -99,18 +101,6 @@ test("persists provider initialization before completing a publish", async () =>
     assert.equal(typeof output.scheduledAt, "string");
     assert.equal(fixture.operation.provider_operation_id, "instagram-container-1");
     assert.equal(fixture.operation.status, "published");
-  });
-});
-
-test("a cancelled future post completes cleanup without publishing or deferring", async () => {
-  await withEncryptionKey(async () => {
-    const fixture = createPublishStore(createOperation(), {
-      targetStatus: "cancelled",
-      scheduledFor: new Date(Date.now() + 60 * 60_000).toISOString(),
-    });
-    const output = await runPublishSocialPostJob(createPublishJob(), { store: fixture.store });
-    assert.equal(output.cancelled, true);
-    assert.deepEqual(fixture.calls, []);
   });
 });
 
@@ -1225,11 +1215,15 @@ function createPublishContext(
     },
     media: carousel ? null : {
       collection: "video",
+      deleted_at: null,
       duration_seconds: 12,
+      metadata: {},
       mime_type: "video/mp4",
       source_type: mediaSourceType,
       status: "ready",
+      storage_key: "videos/final.mp4",
       url: "https://cdn.example.com/final.mp4",
+      user_id: "user-test",
     },
     post: {
       caption: "Test caption",

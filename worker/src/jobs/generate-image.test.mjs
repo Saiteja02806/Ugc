@@ -4,6 +4,11 @@ import { ProviderOperationTerminalError, ProviderSubmissionUncertainError } from
 
 // Exercise the actual worker with provider/storage stubs; no paid requests occur.
 const received = [];
+const resolvedReferences = [], fingerprints = [];
+mock.method(globalThis, "fetch", async () => assert.fail("No network calls are allowed"));
+mock.module(new URL("../../dist/lib/private-media.js", import.meta.url), { namedExports: {
+  resolveOwnedPrivateMediaUrl: async (url, owner) => { resolvedReferences.push({ url, owner }); return url; },
+} });
 const seedreamCalls = [];
 let seedreamError;
 const image = Buffer.from("fixture-image");
@@ -12,7 +17,8 @@ const provider = async (model, prompt, ratio, reference) => {
   return { buffer: image, model, requestId: "fixture-request" };
 };
 mock.module(new URL("../../dist/lib/openai-image.js", import.meta.url), { namedExports: {
-  generateOpenAiImageBuffer: (prompt, ratio, reference) => provider("gpt_image", prompt, ratio, reference),
+  SLIDESHOW_IMAGE_MODEL: "gpt-image-2.5-sunburst",
+  generateOpenAiImageBuffer: (prompt, ratio, reference, model) => provider(model ?? "gpt_image", prompt, ratio, reference),
 } });
 mock.module(new URL("../../dist/lib/gemini-image.js", import.meta.url), { namedExports: {
   GEMINI_3_PRO_IMAGE_MODEL: "gemini-3-pro-image",
@@ -48,7 +54,7 @@ const { runGenerateImageJob } = await import("../../dist/jobs/generate-image.js"
 const context = {
   checkpoint: async () => {},
   store: {
-    reserveGenerationProviderOperation: async () => ({ shouldSubmit: true, operation: { status: "reserved", metadata: {} } }),
+    reserveGenerationProviderOperation: async input => { fingerprints.push(input.requestFingerprint); return { shouldSubmit: true, operation: { status: "reserved", metadata: {} } }; },
     markGenerationProviderSucceeded: async () => {},
     markGenerationProviderSubmitted: async () => {},
     markGenerationOutputPersisted: async () => {},
@@ -63,12 +69,69 @@ const job = (model, prompt) => ({
   },
 });
 
+test("slideshow workers resolve every chosen image for its owner and include the complete list in the paid-operation fingerprint", async () => {
+  for (const model of ["gpt_image_2_5", "nano_banana_2"]) {
+    const imageJob = job(model, "Use these slides as context");
+    const urls = [imageJob.input_json.referenceImageUrl, "https://media.example.test/fourth.png", "https://media.example.test/sixth.png"];
+    Object.assign(imageJob.input_json, { exploreFormat: "slideshow", referenceImageUrls: urls });
+    const before = resolvedReferences.length;
+    await runGenerateImageJob(imageJob, context);
+    assert.deepEqual(received.at(-1).reference, urls);
+    assert.deepEqual(resolvedReferences.slice(before), urls.map(url => ({ url, owner: "fixture-user" })));
+    const completeFingerprint = fingerprints.at(-1);
+    imageJob.input_json.referenceImageUrls = urls.slice(0, 1);
+    await runGenerateImageJob(imageJob, context);
+    assert.notEqual(fingerprints.at(-1), completeFingerprint);
+  }
+});
+
+test("unsupported, empty or mismatched context fails without reaching a provider", async () => {
+  const before = received.length, reserved = fingerprints.length;
+  for (const input of [{ referenceImageUrls: [] }, { referenceImageUrls: ["https://media.example.test/excluded.png"] }, { model: "seedream_5_pro", referenceImageUrls: ["https://media.example.test/owned-reference.png"] }]) {
+    const imageJob = job("gpt_image_2_5", "Instructions");
+    Object.assign(imageJob.input_json, { exploreFormat: "slideshow", ...input });
+    await assert.rejects(runGenerateImageJob(imageJob, context));
+  }
+  assert.equal(received.length, before);
+  assert.equal(fingerprints.length, reserved);
+});
+
+test("new Instructions attachment jobs distinguish layout images from subject/style without changing legacy contexts", async () => {
+  for (const model of ["gpt_image_2_5", "nano_banana_2"]) {
+    const imageJob = job(model, "Keep the layout and use my product");
+    const urls = [imageJob.input_json.referenceImageUrl, "https://media.example.test/layout-2.png", "https://media.example.test/product.png"];
+    Object.assign(imageJob.input_json, { exploreFormat: "slideshow", referenceImageUrls: urls });
+    await runGenerateImageJob(imageJob, context);
+    const legacyFingerprint = fingerprints.at(-1);
+    assert.equal(received.at(-1).prompt, imageJob.input_json.prompt);
+    imageJob.input_json.subjectReferenceIndex = 3;
+    await runGenerateImageJob(imageJob, context);
+    assert.match(received.at(-1).prompt, /Use images 1 through 2.*Use image 3/s);
+    assert.ok(received.at(-1).prompt.endsWith(imageJob.input_json.prompt));
+    assert.deepEqual(received.at(-1).reference, urls);
+    assert.notEqual(fingerprints.at(-1), legacyFingerprint);
+    imageJob.input_json.subjectReferenceIndex = 2;
+    await assert.rejects(runGenerateImageJob(imageJob, context), /reference roles/);
+  }
+});
+
 test("all three image providers receive the exact character prompt and chosen reference", async () => {
   const prompt = "An adult fashion creator with glossy makeup in a clean studio.\nHands outside frame. Pink satin dress.";
   for (const model of ["gpt_image", "gemini_3_pro", "nano_banana_2"]) {
     await runGenerateImageJob(job(model, prompt), context);
     assert.deepEqual(received.at(-1), { model, prompt, ratio: "9:16", reference: "https://media.example.test/owned-reference.png" });
   }
+});
+
+test("slideshow GPT Image 2.5 jobs select Sunburst explicitly and retain the image input", async () => {
+  const prompt = "Preserve this composition and replace the product";
+  const output = await runGenerateImageJob(job("gpt_image_2_5", prompt), context);
+  assert.deepEqual(received.at(-1), {
+    model: "gpt-image-2.5-sunburst", prompt, ratio: "9:16",
+    reference: "https://media.example.test/owned-reference.png",
+  });
+  assert.equal(output.model, "gpt_image_2_5");
+  assert.equal(output.provider, "openai");
 });
 
 test("long character descriptions reach every provider without summaries or truncation", async () => {
@@ -79,41 +142,14 @@ test("long character descriptions reach every provider without summaries or trun
   }
 });
 
-test("prompt limits are enforced before any provider call without changing other image generators", async () => {
+test("character prompt limits are enforced while other image generators preserve long instructions", async () => {
   const before = received.length;
   await assert.rejects(runGenerateImageJob(job("gpt_image", "x".repeat(32001)), context), /32000 characters/);
   const generic = job("gpt_image", "x".repeat(2001));
   delete generic.input_json.characterSource;
-  await assert.rejects(runGenerateImageJob(generic, context), /2000 characters/);
   assert.equal(received.length, before);
-});
-
-test("slideshow references retain ordered layout and owned image at every current provider boundary", async () => {
-  const references = ["https://media.example.test/layout.png", "https://media.example.test/product.png"];
-  for (const model of ["nano_banana_2", "seedream_5_pro"]) {
-    const imageJob = job(model, "Keep image 1 layout and use image 2 product.");
-    delete imageJob.input_json.characterSource;
-    imageJob.input_json.exploreFormat = "slideshow";
-    imageJob.input_json.referenceImageUrl = references[0];
-    imageJob.input_json.referenceImageUrls = references;
-    await runGenerateImageJob(imageJob, context);
-    if (model === "nano_banana_2") assert.deepEqual(received.at(-1).reference, references);
-    else assert.deepEqual(seedreamCalls.at(-1).referenceImageUrls, references);
-    const providerPrompt = model === "nano_banana_2" ? received.at(-1).prompt : seedreamCalls.at(-1).prompt;
-    assert.match(providerPrompt, /^Use image 1 as the layout and composition reference\. Use image 2 as the subject, product or style reference/);
-    assert.ok(providerPrompt.endsWith(imageJob.input_json.prompt), "The complete user instructions remain unchanged");
-  }
-});
-
-test("malformed or excessive slideshow reference arrays cannot submit provider requests", async () => {
-  const before = received.length + seedreamCalls.length;
-  for (const references of [[], ["https://x.test/one.png", "https://x.test/two.png", "https://x.test/three.png"], [""], ["https://x.test/one.png", "https://x.test/one.png"]]) {
-    const imageJob = job("nano_banana_2", "Keep layout");
-    imageJob.input_json.exploreFormat = "slideshow";
-    imageJob.input_json.referenceImageUrls = references;
-    await assert.rejects(runGenerateImageJob(imageJob, context));
-  }
-  assert.equal(received.length + seedreamCalls.length, before);
+  await runGenerateImageJob(generic, context);
+  assert.equal(received.at(-1).prompt, generic.input_json.prompt);
 });
 
 function seedreamFixture({ shouldSubmit = true, status = "reserved", operationId = null, metadata = {} } = {}) {

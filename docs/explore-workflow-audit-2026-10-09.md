@@ -1,7 +1,8 @@
 # Explore workflow audit — October 9, 2026
 
-These changes are local. No release or production writes were requested.
-Production integration acceptance remains pending on https://www.getugcpilot.com.
+The owner subsequently authorized deployment of every intentional project change.
+This audit accompanies the combined release; hosted integration acceptance is
+recorded separately after rollout to https://www.getugcpilot.com.
 
 ## Save latency: observed cause and remaining investigation
 

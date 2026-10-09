@@ -1,32 +1,38 @@
 import { GoogleGenAI } from "@google/genai";
 
-import { ProviderOperationPollingError, ProviderOperationTerminalError, ProviderRequestNotSubmittedError } from "./generation-provider.js";
+import {
+  ProviderOperationPollingError,
+  ProviderOperationTerminalError,
+  ProviderRequestNotSubmittedError,
+} from "./generation-provider.js";
 import type { AIStudioImageRatio } from "./image-output.js";
 import { getRequiredProviderEnv } from "./provider-env.js";
+import { downloadReferenceImageBytes, downloadReferenceImageContext } from "./reference-image-download.js";
 
 const DEFAULT_GEMINI_IMAGE_MODEL = "gemini-nano-banana-2.1";
 export const GEMINI_3_PRO_IMAGE_MODEL = "gemini-3-pro-image";
-const MAX_REFERENCE_IMAGE_BYTES = 25 * 1024 * 1024;
 
 let googleClient: GoogleGenAI | null = null;
 
 export async function generateGeminiImageBuffer(
   prompt: string,
   aspectRatio: AIStudioImageRatio,
-  referenceImageUrl?: string | readonly string[],
+  referenceImageUrl?: string | string[],
 ) {
   const ai = getGoogleClient();
   const model =
     process.env.GEMINI_IMAGE_MODEL?.trim() || DEFAULT_GEMINI_IMAGE_MODEL;
-  const referenceImages = referenceImageUrl
-    ? await Promise.all((typeof referenceImageUrl === "string" ? [referenceImageUrl] : referenceImageUrl).map(downloadReferenceImage))
-    : [];
+  const referenceImages = Array.isArray(referenceImageUrl)
+    ? (await downloadReferenceImageContext(referenceImageUrl)).map(image => ({ data: image.buffer.toString("base64"), mimeType: image.contentType })) : undefined;
+  const referenceImage = typeof referenceImageUrl === "string"
+    ? await downloadReferenceImage(referenceImageUrl)
+    : null;
   const interaction = await ai.interactions.create(
     buildGeminiImageRequest({
       aspectRatio,
       model,
       prompt,
-      referenceImage: null,
+      referenceImage,
       referenceImages,
     }),
   );
@@ -57,11 +63,14 @@ export function buildGeminiImageRequest(params: {
   imageSize?: "1K" | "2K";
 }) {
   const images = params.referenceImages ?? (params.referenceImage ? [params.referenceImage] : []);
-  if (images.length > 2) throw new ProviderRequestNotSubmittedError("This slideshow request can use at most two image references.");
   return {
     input: images.length
       ? [
-          ...images.map(image => ({ data: image.data, mime_type: image.mimeType, type: "image" as const })),
+          ...images.map(image => ({
+            data: image.data,
+            mime_type: image.mimeType,
+            type: "image" as const,
+          })),
           { text: params.prompt, type: "text" as const },
         ]
       : params.prompt,
@@ -78,7 +87,6 @@ export async function generateGemini3ProImageBuffer(params: {
   aspectRatio: AIStudioImageRatio;
   prompt: string;
   referenceImageUrl?: string;
-  referenceImageUrls?: string[];
   providerOperationId?: string;
   onOperationCreated: (operationId: string) => Promise<void>;
   onOperationSucceeded: (operationId: string) => Promise<void>;
@@ -143,32 +151,8 @@ function getGoogleClient() {
 }
 
 async function downloadReferenceImage(url: string) {
-  let response: Response;
-
-  try {
-    response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
-  } catch (error) {
-    throw new ProviderRequestNotSubmittedError(
-      "The uploaded reference image could not be downloaded.",
-      { cause: error },
-    );
-  }
-
-  if (!response.ok) {
-    throw new ProviderRequestNotSubmittedError(
-      "The uploaded reference image could not be downloaded.",
-    );
-  }
-
-  const mimeType =
-    response.headers.get("content-type")?.split(";", 1)[0] ?? "image/png";
-  const buffer = Buffer.from(await response.arrayBuffer());
-
-  if (
-    !mimeType.startsWith("image/") ||
-    buffer.length === 0 ||
-    buffer.length > MAX_REFERENCE_IMAGE_BYTES
-  ) {
+  const { buffer, contentType: mimeType } = await downloadReferenceImageBytes(url);
+  if (!mimeType.startsWith("image/")) {
     throw new ProviderRequestNotSubmittedError(
       "The uploaded reference image is invalid or too large.",
     );

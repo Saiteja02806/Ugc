@@ -29,7 +29,7 @@ export function AppScreenPicker({ attachment }: { attachment: AppScreenAttachmen
       </PopoverTrigger>
       <PopoverContent side="right" align="start" className={cn(studio.floating, creation.floating)}>
         <PopoverTitle>App screen</PopoverTitle>
-        <p className="text-sm leading-5 text-muted">Attach the screenshot or screen recording to show inside the phone. This is separate from an optional demo after the video.</p>
+        <p className="text-sm leading-5 text-muted">Attach an app screenshot or a reference screen recording. This is separate from an optional demo after the video.</p>
         {attachment.asset ? <><AppScreenMedia asset={attachment.asset} /><p className="break-all text-sm text-muted">{attachment.asset.name}</p></> : null}
         <input ref={input} type="file" accept="image/*,video/*" hidden aria-label="Upload app screen" onChange={(event) => {
           const file = event.target.files?.[0];
@@ -39,7 +39,8 @@ export function AppScreenPicker({ attachment }: { attachment: AppScreenAttachmen
         <Button type="button" variant="outline" className="rounded-lg text-sm" disabled={attachment.loading} onClick={() => input.current?.click()}>
           <Plus className="size-3.5" aria-hidden="true" />{attachment.loading ? "Reading file…" : attachment.asset ? "Replace app screen" : "Attach app screen"}
         </Button>
-        <p className="text-sm leading-5 text-muted">Screenshots up to 20 MB · recordings up to 250 MB. Files stay in this browser session only.</p>
+        <p className="text-sm leading-5 text-muted">Screenshots up to 20 MB · recordings up to 30 seconds and 250 MB. Files upload only when you Generate in the connected workflow.</p>
+        <p className="text-xs leading-5 text-muted">Screen recordings require Seedance 2.5 through OpenRouter. Choose one reference video here or in Choose video, not both.</p>
         {attachment.error ? <p role="alert" className="text-sm text-destructive">{attachment.error}</p> : null}
       </PopoverContent>
     </Popover>

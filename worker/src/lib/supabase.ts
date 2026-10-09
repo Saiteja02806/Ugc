@@ -1098,6 +1098,10 @@ export class SupabaseJobStore {
     autoFinalize: boolean;
     compositionFingerprint: string;
     demoVideoId: string;
+    durationSeconds: number;
+    fileName: string;
+    fileSizeBytes: number;
+    height: number;
     hookAudioAssetId: string | null;
     hookVideoId: string;
     key: string;
@@ -1109,15 +1113,16 @@ export class SupabaseJobStore {
     title: string;
     url: string;
     userId: string;
+    width: number;
   }) {
     const now = new Date().toISOString();
 
     await this.saveMediaAsset({
       collection: "video",
-      duration_seconds: null,
-      file_name: null,
-      file_size_bytes: null,
-      height: null,
+      duration_seconds: params.durationSeconds,
+      file_name: params.fileName,
+      file_size_bytes: params.fileSizeBytes,
+      height: params.height,
       id: params.mediaAssetId,
       metadata: {
         compositionFingerprint: params.compositionFingerprint,
@@ -1140,7 +1145,7 @@ export class SupabaseJobStore {
       updated_at: now,
       url: params.url,
       user_id: params.userId,
-      width: null,
+      width: params.width,
     });
 
     await this.patchScheduledPost({
@@ -1202,6 +1207,10 @@ export class SupabaseJobStore {
     compositionFingerprint: string;
     demoVideoId: string;
     draftId: string;
+    durationSeconds: number;
+    fileName: string;
+    fileSizeBytes: number;
+    height: number;
     hookAudioAssetId: string | null;
     hookVideoId: string;
     key: string;
@@ -1212,15 +1221,16 @@ export class SupabaseJobStore {
     title: string;
     url: string;
     userId: string;
+    width: number;
   }) {
     const now = new Date().toISOString();
 
     await this.saveMediaAsset({
       collection: "video",
-      duration_seconds: null,
-      file_name: null,
-      file_size_bytes: null,
-      height: null,
+      duration_seconds: params.durationSeconds,
+      file_name: params.fileName,
+      file_size_bytes: params.fileSizeBytes,
+      height: params.height,
       id: params.mediaAssetId,
       metadata: {
         compositionFingerprint: params.compositionFingerprint,
@@ -1244,7 +1254,7 @@ export class SupabaseJobStore {
       updated_at: now,
       url: params.url,
       user_id: params.userId,
-      width: null,
+      width: params.width,
     });
 
     const { data, error } = await this.client

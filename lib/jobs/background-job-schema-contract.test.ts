@@ -54,7 +54,7 @@ test("uses demand-scaled request workers for independent AI jobs", () => {
   );
   assert.match(
     aiWorkerVariables,
-    /variable "max_instance_count"[\s\S]*default\s+= 10/,
+    /variable "max_instance_count"[\s\S]*default\s+= 20/,
   );
   assert.match(aiWorkerMain, /cpu_idle\s+= true/);
   assert.match(
@@ -255,6 +255,27 @@ test("binds an AI worker image SHA to its Cloud Run identity and canary", () => 
   assert.match(cutoverAuditRoute, /getAppReleaseIdentity\(\)/);
   assert.match(cutoverAuditScript, /--expected-release-sha/);
   assert.match(cutoverAuditScript, /assertWorkerReleaseIdentity/);
+});
+
+test("routes the supported rollout canary through the signed app launcher", () => {
+  const cutoverAuditRoute = readFileSync(
+    "app/api/internal/gcp-cutover/audit/route.ts",
+    "utf8",
+  );
+  const createContentCanary = readFileSync(
+    "lib/internal/gcp-cutover-audit-canary.ts",
+    "utf8",
+  );
+
+  assert.match(cutoverAuditRoute, /resolveGcpCutoverAuditCanary/);
+  assert.match(cutoverAuditRoute, /getMissingRuntimeEnv\(canary\.jobType\)/);
+  assert.match(cutoverAuditRoute, /getMissingCloudRunRenderJobEnvVars/);
+  assert.match(cutoverAuditRoute, /getMissingCloudTasksOidcEnvVars/);
+  assert.match(createContentCanary, /ai-generation/);
+  assert.match(createContentCanary, /generate_image/);
+  assert.match(cutoverAuditRoute, /getAppReleaseIdentity/);
+  assert.doesNotMatch(createContentCanary, /buildBackgroundJobCloudTaskRequest/);
+  assert.doesNotMatch(createContentCanary, /GoogleAuth/);
 });
 
 test("preserves the Cloud Run launch operation after a worker terminalizes", () => {

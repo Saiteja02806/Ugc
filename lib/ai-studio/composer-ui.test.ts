@@ -32,13 +32,14 @@ const videoGenerationApi = readProjectFile(
 const billingSubscription = readProjectFile(
   "lib/billing/subscription-db.ts",
 );
+const generationSettings = readProjectFile("lib/ai-studio/generation-settings.ts");
 const promptHelper = composer.slice(
   composer.indexOf("<FieldDescription"),
   composer.indexOf("</FieldDescription>") + "</FieldDescription>".length,
 );
 
 test("the image prompt uses one unified composer surface", () => {
-  assert.match(imageWorkspace, /layout="unified"/);
+  assert.match(imageWorkspace, /layout=\{workflow \? "workflow" : "unified"\}/);
   assert.match(composer, /data-layout=\{layout\}/);
   assert.match(
     composer,
@@ -46,19 +47,19 @@ test("the image prompt uses one unified composer surface", () => {
   );
   assert.match(
     composer,
-    /layout === "unified"[\s\S]*?"max-w-\[944px\] rounded-\[24px\] border-border/,
+    /layout === "unified"[\s\S]*?unifiedMaxWidthClassName \?\? "max-w-\[944px\]"[\s\S]*?"rounded-\[20px\] border-border/,
   );
   assert.match(
     composer,
-    /"max-h-36 min-h-10 rounded-none px-0 py-0 font-normal", compact \? "text-sm leading-6" : "text-base leading-7"/,
+    /"max-h-16 min-h-10 rounded-none px-0 py-0 text-base font-normal leading-6 sm:text-sm"/,
   );
-  assert.match(composer, /layout === "unified"\s*\?\s*"flex"/);
+  assert.match(composer, /layout === "unified"\s*\?\s*"flex flex-nowrap overflow-x-auto/);
 });
 
 test("the unified composer is narrower without squeezing standard layouts", () => {
   assert.match(
     composer,
-    /layout === "unified"[\s\S]*?\? "max-w-\[944px\]/,
+    /unifiedMaxWidthClassName \?\? "max-w-\[944px\]/,
   );
   assert.match(
     composer,
@@ -69,15 +70,15 @@ test("the unified composer is narrower without squeezing standard layouts", () =
 test("the unified composer stays compact while supporting multiline prompts", () => {
   assert.match(
     composer,
-    /const minimumHeight = compact \? 88 : layout === "unified" \? 40 : 64;/,
+    /const minimumHeight = compact \? 40 : layout === "unified" \? 40 : 64;/,
   );
   assert.match(
     composer,
-    /const maximumHeight = layout === "unified" \? 144 : 128;/,
+    /const maximumHeight = compact \? 72 : layout === "unified" \? 64 : 128;/,
   );
   assert.match(
     composer,
-    /layout === "unified"\s*\? "gap-y-1 px-4 pb-1 pt-3 sm:px-5"/,
+    /layout === "unified"\s*\? "gap-y-1 px-4 pb-1.5 pt-3"/,
   );
   assert.doesNotMatch(composer, /max-h-60 min-h-28/);
 });
@@ -88,16 +89,16 @@ test("the unified toolbar keeps settings and Generate inside the same form", () 
   assert.match(imageWorkspace, /AiStudioRatioPicker/);
   assert.match(imageWorkspace, /ariaLabel="Number of images"/);
   assert.match(imageWorkspace, /generateLabel="Generate image"/);
-  assert.match(videoWorkspace, /layout="unified"/);
+  assert.match(videoWorkspace, /layout=\{workflow \? "workflow" : "unified"\}/);
 });
 
 test("image and video controls send selected settings to generation APIs", () => {
   assert.match(imageWorkspace, /body: JSON\.stringify\(\{[\s\S]*?aspectRatio,[\s\S]*?quantity,/);
   assert.match(videoWorkspace, /body: JSON\.stringify\(\{[\s\S]*?aspectRatio,[\s\S]*?quantity,/);
   assert.match(imageWorkspace, /ariaLabel="Image model"/);
-  assert.match(imageWorkspace, /Nano Banana 2/);
-  assert.match(imageWorkspace, /Seedream 5\.0 Pro/);
-  assert.doesNotMatch(imageWorkspace, /GPT Image|FLUX/);
+  assert.match(imageWorkspace, /getAIStudioImageModelLabel/);
+  assert.match(generationSettings, /Nano Banana 2\.1/);
+  assert.match(generationSettings, /GPT Image/);
   assert.match(imageWorkspace, /model,[\s\S]*?quantity,/);
   assert.match(videoWorkspace, /ariaLabel="Video model"/);
   assert.match(videoWorkspace, /Google Omni/);
@@ -153,14 +154,10 @@ test("image defaults to 9:16 and workspaces use the public canonical job names",
 });
 
 test("quantity controls lock with the rest of each generation composer", () => {
-  assert.match(
-    imageWorkspace,
-    /ariaLabel="Number of images"\s+disabled=\{generationLocked \|\| isGenerating\}/,
-  );
-  assert.match(
-    videoWorkspace,
-    /ariaLabel="Number of videos"\s+disabled=\{generationLocked \|\| isGenerating\}/,
-  );
+  for (const [source, label] of [[imageWorkspace, "Number of images"], [videoWorkspace, "Number of videos"]]) {
+    const quantityControl = source.match(new RegExp(`<AiStudioSettingSelect\\b(?:(?!<AiStudioSettingSelect)[\\s\\S])*?ariaLabel="${label}"[\\s\\S]*?/>`))?.[0] ?? "";
+    assert.match(quantityControl, /disabled=\{generationLocked && !recreateView\?\.preview \|\| isGenerating\}/);
+  }
   assert.match(composer, /disabled=\{disabled\}[\s\S]*?aria-expanded=\{open\}/);
 });
 
@@ -185,7 +182,7 @@ test("every image and video settings dropdown uses the shared themed pill", () =
   );
   assert.equal(
     videoWorkspace.match(/<AiStudioSettingSelect\b/g)?.length,
-    3,
+    4,
   );
 
   for (const ariaLabel of ["Image model", "Number of images"]) {
@@ -194,6 +191,7 @@ test("every image and video settings dropdown uses the shared themed pill", () =
 
   for (const ariaLabel of [
     "Video model",
+    "Video quality",
     "Video duration",
     "Number of videos",
   ]) {
@@ -209,7 +207,7 @@ test("video references start empty and offer optional creator references", () =>
   assert.match(videoWorkspace, /useState<string \| null>\(null\)/);
   assert.match(videoWorkspace, /<CreatorReferencePicker/);
   assert.match(videoWorkspace, /settings=\{[\s\S]*?<CreatorReferencePicker/);
-  assert.doesNotMatch(videoWorkspace, /referenceControls=/);
+  assert.match(videoWorkspace, /referenceControls=\{workflow \?[\s\S]*? : undefined\}/);
   assert.match(creatorReferencePicker, /<Popover open=\{open\}/);
   assert.match(creatorReferencePicker, /Creator reference/);
   assert.match(creatorReferencePicker, /Optional\. Choose a look or upload your own image/);
@@ -252,11 +250,14 @@ test("video references start empty and offer optional creator references", () =>
 
 test("AI Studio keeps direct image and video references optional outside Explore Recreate", () => {
   assert.match(imageWorkspace, /allowedKinds=\{\["image"\]\}/);
-  assert.match(imageWorkspace, /referenceImageUrl: referenceImage\?\.asset\.url \?\? recreateView\?\.referenceImageUrl \?\? null/);
+  assert.match(imageWorkspace, /referenceImageUrl: workflowFormat === "slideshow" \? recreateView\?\.referenceImageUrl \?\? null : referenceImage\?\.asset\.url \?\? recreateView\?\.referenceImageUrl \?\? null/);
   assert.match(
     videoWorkspace,
-    /allowedKinds=\{isExploreRecreate \? \["image"\] : \["image", "video"\]\}/,
+    /<ReferenceFilesUpload[\s\S]*?allowedKinds=\{\["image"\]\}/,
   );
+  assert.match(videoWorkspace, /maxFiles=\{model === "kling_3_0" \? 2 : 6\}/);
+  assert.match(videoWorkspace, /avatarImageUrl: activeReferenceImageUrl/);
+  assert.match(videoWorkspace, /referenceImageUrls: referenceImages\.length \? referenceImages\.map\(\(image\) => image\.asset\.url\) : activeReferenceImageUrl \? \[activeReferenceImageUrl\] : \[\]/);
   assert.match(videoWorkspace, /referenceVideoUrl: uploadedReferenceVideo\?\.asset\.url \?\? null/);
   assert.match(videoWorkspace, /referenceVideoDurationSeconds:/);
   assert.match(
@@ -278,7 +279,7 @@ test("Explore Recreate asks for an image before video generation", () => {
     /Required for this Explore recreation\. Choose a look or upload your own image\./,
   );
   assert.match(videoGenerationApi, /isExploreHookVideoId\(body\?\.referenceId\)/);
-  assert.match(videoGenerationApi, /isExploreRecreate && !avatarImageUrl/);
+  assert.match(videoGenerationApi, /isExploreRecreate && !body\?\.exploreFormat && referenceImageUrls\.length === 0/);
 });
 
 test("video composer keeps compact controls in the requested order", () => {
@@ -289,15 +290,15 @@ test("video composer keeps compact controls in the requested order", () => {
 
   assert.match(composer, /triggerLabel\?: string/);
   assert.match(composer, /triggerLabel: "9:16"/);
-  assert.match(videoSettings, /ariaLabel="Video model"[\s\S]*?ariaLabel="Video duration"[\s\S]*?<CreatorReferencePicker[\s\S]*?ariaLabel="Number of videos"[\s\S]*?<AiStudioRatioPicker/);
-  assert.match(videoSettings, /label: `\$\{count\} video\$\{count === 1 \? "" : "s"\}`,[\s\S]*?triggerLabel: String\(count\)/);
+  assert.match(videoSettings, /ariaLabel="Video model"[\s\S]*?workflow \? durationSetting : qualitySetting[\s\S]*?workflow \? qualitySetting : durationSetting[\s\S]*?<CreatorReferencePicker[\s\S]*?ariaLabel="Number of videos"[\s\S]*?<AiStudioRatioPicker/);
+  assert.match(videoSettings, /label: `\$\{count\} video\$\{count === 1 \? "" : "s"\}`,[\s\S]*?triggerLabel: workflow \? `\$\{count\} video\$\{count === 1 \? "" : "s"\}` : String\(count\)/);
 });
 
 test("image and video use one compact leading attachment control", () => {
   assert.match(imageWorkspace, /leadingControl=\{[\s\S]*?<ReferenceMediaUpload/);
-  assert.match(videoWorkspace, /leadingControl=\{[\s\S]*?<ReferenceMediaUpload/);
-  assert.match(referenceUploader, /<Plus className="size-4"/);
-  assert.match(referenceUploader, /type="file"[\s\S]*?accept=\{accepts\}/);
+  assert.match(videoWorkspace, /leadingControl=\{[\s\S]*?<ReferenceFilesUpload/);
+  assert.match(referenceUploader, /<ImagePlus className="size-4"/);
+  assert.match(referenceUploader, /type="file"[\s\S]*?accept=\{allowedKinds\.flatMap/);
   assert.doesNotMatch(referenceUploader, />\s*Upload image\s*</);
   assert.doesNotMatch(referenceUploader, />\s*Upload video\s*</);
   assert.doesNotMatch(referenceUploader, /generate without a reference/);
@@ -321,6 +322,11 @@ test("video results keep the prompt visible with custom playback controls", () =
   assert.doesNotMatch(videoWorkspace, /getCreativeAssetEditorHref|handleEditVideo/);
   assert.doesNotMatch(videoWorkspace, /setPrompt\(""\);/);
   assert.match(videoResultCard, /video\.prompt/);
+  assert.match(
+    videoResultCard,
+    /max-w-\[54rem\][\s\S]*?sm:flex-row/,
+  );
+  assert.doesNotMatch(videoResultCard, /sm:ml-\[10%\]/);
   assert.doesNotMatch(videoResultCard, /\bcontrols\b/);
   assert.match(
     videoResultCard,
@@ -332,26 +338,34 @@ test("video results keep the prompt visible with custom playback controls", () =
   );
 });
 
-test("completed image and video results expose download and open actions", () => {
+test("completed image results expose download and open actions while video cards keep only download", () => {
   assert.match(imageWorkspace, /<AiStudioResultActions[\s\S]*?kind="image"/);
   assert.match(videoWorkspace, /<AiStudioResultActions[\s\S]*?kind="video"/);
   assert.match(resultActions, /download=\{fileName\}/);
   assert.match(resultActions, /aria-label=\{`Open \$\{title\} in a new tab`\}/);
+  assert.match(videoWorkspace, /kind="video"[\s\S]*?showOpenAction=\{false\}/);
+  assert.doesNotMatch(
+    videoWorkspace.slice(
+      videoWorkspace.indexOf("function VideoResultCard"),
+      videoWorkspace.indexOf("function VideoPromptBubble"),
+    ),
+    />\s*Creative Assets\s*</,
+  );
 });
 
 test("the active reference control accepts a pasted image into the composer", () => {
   assert.match(
     referenceUploader,
-    /composerForm\.addEventListener\("paste", handlePaste\)/,
+    /form\.addEventListener\("paste", handlePaste\)/,
   );
   assert.match(referenceUploader, /clipboardData\?\.items/);
-  assert.doesNotMatch(referenceUploader, /event\.preventDefault\(\)/);
+  assert.match(referenceUploader, /event\.preventDefault\(\)/);
   assert.match(referenceUploader, /active = true/);
-  assert.match(referenceUploader, /src=\{selection\.asset\.url\}/);
-  assert.match(referenceUploader, /width=\{36\}[\s\S]*?height=\{36\}/);
-  assert.match(referenceUploader, /Image reference/);
+  assert.match(referenceUploader, /url=\{selection\.asset\.url\}/);
+  assert.match(referenceUploader, /<ReferenceUploadPreview/);
+  assert.match(referenceUploader, /onPendingChange\?\.\(true\)/);
   assert.match(imageWorkspace, /<ReferenceMediaUpload[\s\S]*?active=\{active\}/);
-  assert.match(videoWorkspace, /<ReferenceMediaUpload[\s\S]*?active=\{active\}/);
+  assert.match(videoWorkspace, /<ReferenceFilesUpload[\s\S]*?active=\{active\}/);
 });
 
 test("generation progress has a visible in-place loading state", () => {
@@ -360,10 +374,10 @@ test("generation progress has a visible in-place loading state", () => {
   assert.match(resultSurface, /animate-spin/);
 });
 
-test("image and video previews stay compact enough for the active viewport", () => {
+test("image previews remain compact and video results use the dedicated history layout", () => {
   assert.match(
     imageWorkspace,
-    /"9:16": "max-w-\[min\(240px,26dvh\)\]"/,
+    /"9:16": "max-w-\[min\(200px,24dvh\)\]"/,
   );
   assert.match(
     imageWorkspace,
@@ -371,20 +385,34 @@ test("image and video previews stay compact enough for the active viewport", () 
   );
   assert.match(
     imageWorkspace,
-    /getImagePreviewWidthClassName\(asset\.aspectRatio\)/,
+    /aspectRatio=\{row\.aspectRatio\}/,
   );
   assert.match(
     videoWorkspace,
-    /"9:16": "max-w-\[min\(216px,24dvh\)\]"/,
+    /"9:16": "w-\[min\(100%,calc\(34dvh\*9\/16\),11\.25rem\)\]"/,
   );
   assert.match(
     videoWorkspace,
-    /getVideoPreviewWidthClassName\(aspectRatio\)/,
+    /getVideoResultWidthClassName\(aspectRatio\)/,
   );
   assert.match(
     videoWorkspace,
-    /getVideoPreviewWidthClassName\(video\.ratio\)/,
+    /getVideoResultWidthClassName\(video\.ratio\)/,
   );
+  assert.match(videoWorkspace, /<VideoPromptBubble createdAt=\{video\.createdAt\} prompt=\{video\.prompt\}/);
+  assert.match(videoWorkspace, /<VideoHistoryDrawer/);
+});
+
+test("the video composer keeps attachments together and stays quiet until guidance is needed", () => {
+  assert.match(
+    videoWorkspace,
+    /showPromptHint=\{generationLocked \|\| hasInsufficientCredits\}/,
+  );
+  assert.match(
+    videoWorkspace,
+    /leadingControl=\{[\s\S]*?<ReferenceFilesUpload/,
+  );
+  assert.match(composer, /promptTooLong \|\| showPromptHint/);
 });
 
 test("access guidance appears once inside the composer", () => {
@@ -398,6 +426,9 @@ test("the redesign preserves prompt and submission behavior", () => {
   assert.match(composer, /onSubmit=\{onSubmit\}/);
   assert.match(composer, /onKeyDown=\{onTextareaKeyDown\}/);
   assert.match(composer, /prompt\.length > maxLength/);
+  assert.match(composer, /maxLength !== undefined/);
+  assert.doesNotMatch(composer, /toLocaleString\("en-US"\)/);
+  assert.doesNotMatch(imageWorkspace, /maxLength=|getAIStudioPromptLengthError/);
   assert.match(composer, /disabled=\{generateDisabled \|\| promptTooLong\}/);
 });
 

@@ -8,7 +8,7 @@ Live uploads use the existing authenticated media upload/completion endpoints wi
 
 Creative Assets selection uses the existing owner-scoped `/api/media` list, including ready video MIME assets in both `video` and legacy `influencer` collections. Existing library visibility filtering is retained by that endpoint. Finishing reservations and worker lookups independently enforce ownership, ready status, absence of deletion and video MIME. The migration `20261007132823_explore_existing_video_sources.sql` patches only source eligibility in the current reservation RPC, preserving durable request replay, subtitle validation and service-only grants.
 
-Release requires deploying the app and worker and applying that migration. Existing `EXPLORE_FINISHING_ENABLED` and catalogue gates are unchanged. Generation in these pages remains a preview. Existing phone footage is used as supplied; this change does not replace an app screen inside an already filmed phone.
+Release requires deploying the app and worker and applying that migration. Existing `EXPLORE_GENERATION_ENABLED`, `EXPLORE_FINISHING_ENABLED`, demo-framing and catalogue gates are unchanged. Live generation and its durable jobs remain available in Generate mode. Existing phone footage is used as supplied; this change does not replace an app screen inside an already filmed phone.
 
 Validation:
 
@@ -20,4 +20,4 @@ node --experimental-transform-types --test scripts/workflow-source-video.test.mj
 
 Local browser acceptance covers existing-clip upload → Workspace preview → Continue to edit → original opening segment, returning to Generate with the prompt preserved, the Creative Assets sign-in state and mobile layout without horizontal overflow. Production acceptance requires the deployed, authenticated workflow and real owned assets on `https://www.getugcpilot.com`.
 
-The focused validation above passes 119 tests. The older `hook-workflow-preview`, `phone-workflow-preview` and `workflow-sections` suites also contain pre-existing stale assertions about catalogue gates, demo audio behavior, platform visibility and local-preview footer wording. They are not the acceptance tests for the new authenticated source flow; their outdated expectations remain to be reconciled separately.
+Release reconciliation includes the current production generation, private audio, scheduling and demo-framing behavior. The full Explore regression suite includes source selection and existing workflow behavior; fixture imports and assertions have been updated for the shared source section and seven subtitle styles.

@@ -1,12 +1,12 @@
 "use client";
 
-import { Sparkles } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { KeyboardEvent } from "react";
 
 import { useAIStudioAccess } from "@/components/generation/use-ai-studio-access";
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
+import { CreditIcon } from "@/components/icons/credit-icon";
 import { Badge } from "@/components/ui/badge";
 import { VideoGenerationStudioPanel } from "@/components/video/video-generation-workspace";
 import { ImageGenerationStudioPanel } from "@/components/workspace/ugc-chat-workspace";
@@ -43,9 +43,10 @@ export function AIStudioWorkspace({
   const searchParams = useSearchParams();
   const mode = toAIStudioMode(searchParams.get("mode") ?? initialMode);
   const accessState = useAIStudioAccess();
-  const subscriptionQuery = useBillingSubscription();
+  const subscriptionQuery = useBillingSubscription({ refreshOnFocus: true });
   const subscription = subscriptionQuery.data;
-  const accessMessage = getAIStudioAccessMessage(accessState);
+  const hasBillingPlan = subscription && (subscription.isActive || subscription.status !== "free");
+  const accessMessage = getAIStudioAccessMessage(accessState, subscription?.status);
 
   function selectMode(nextMode: AIStudioMode) {
     const params = new URLSearchParams(searchParams.toString());
@@ -67,14 +68,14 @@ export function AIStudioWorkspace({
                 hasFreeCredits={!subscription?.isActive && (subscription?.freeGenerationCredits?.granted ?? 0) > 0}
               />
               <Link
-                href={subscription?.isActive ? "/settings#subscription-billing" : "/pricing"}
+                href={hasBillingPlan ? "/settings#subscription-billing" : "/pricing"}
                 className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
                 title="Manage AI generation credits"
               >
-                <Sparkles className="size-3" aria-hidden="true" />
-                <span>{subscription?.creditsRemaining ?? 0} AI credits</span>
+                <CreditIcon />
+                <span>{subscription ? `${subscription.creditsRemaining} AI credits` : "Checking credits…"}</span>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
-                  · {subscription?.isActive ? "Manage" : "Upgrade"}
+                  · {subscription?.status === "on_hold" ? "Billing on hold" : hasBillingPlan ? "Manage" : "Upgrade"}
                 </span>
               </Link>
             </div>

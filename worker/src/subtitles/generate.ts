@@ -1,3 +1,4 @@
+import { groupNaturalSubtitleWords } from "./phrases.js";
 import { createHash, randomUUID } from "node:crypto";
 import { constants, createReadStream } from "node:fs";
 import { copyFile, mkdir, mkdtemp, readFile, rename, rm, rmdir, writeFile } from "node:fs/promises";
@@ -7,12 +8,13 @@ import { getSubtitleLayout, groupSubtitleWords, serializeAss, serializeSrt, seri
 import { SUBTITLE_VERSION, SubtitleError, parsePlacement, parseStyle, record, validateTranscript, type SubtitlePlacement, type SubtitleStyle, type SubtitleTranscript } from "./contracts.js";
 import { createTextMeasurer, extractSubtitleAudio, prepareSubtitleFonts, probeVideo, renderSubtitleVideo, type SubtitleTools } from "./media.js";
 import type { TranscriptionProvider } from "./openai-provider.js";
-import { groupNaturalSubtitleWords } from "./phrases.js";
+
 import { EDITORIAL_RENDER_VERSION, planEditorialPages, serializeEditorialAss } from "./editorial.js";
 import { createEditorialMeasurer, prepareEditorialFonts } from "./editorial-media.js";
 import { createDynamicMeasurer, serializeDynamicAss } from "./dynamic.js";
-import { isDynamicSubtitleStyle, subtitleStyleDefinition } from "./styles.js";
 import { createSerifBoxMeasurer, groupSerifBoxWords, prepareSerifBoxFonts, serializeSerifBoxAss } from "./serif-box.js";
+import { isDynamicSubtitleStyle, subtitleStyleDefinition } from "./styles.js";
+
 
 export type GenerateSubtitlesInput = {
   inputPath: string;
@@ -101,6 +103,7 @@ export async function generateSubtitles(input: GenerateSubtitlesInput) {
     if (style === "editorial") await prepareEditorialFonts(input.tools, workDir);
     else if (style === "serif-box") await prepareSerifBoxFonts(input.tools, workDir);
     else await prepareSubtitleFonts(input.tools, workDir);
+
     input.onStage?.("extracting_audio");
     const audioPath = join(workDir, "audio.wav");
     await extractSubtitleAudio(join(workDir, "source-video"), audioPath, video, input.tools, input.signal);
@@ -130,8 +133,10 @@ export async function generateSubtitles(input: GenerateSubtitlesInput) {
       cues = await groupSubtitleWords(transcript.words, layout, createTextMeasurer(layout, input.tools));
       ass = serializeAss(cues, layout, style, placement);
     }
+
     input.signal?.throwIfAborted();
     await writeFile(join(workDir, "captions.ass"), ass);
+
     input.onStage?.("rendering");
     await renderSubtitleVideo(workDir, video, input.tools, input.signal);
     await Promise.all([

@@ -27,7 +27,8 @@ export function getPostSignInDestination(
   const intent = parsePurchaseIntent(searchParams);
 
   if (!intent || intent.planSlug === "free") {
-    return "/dashboard";
+    // A fixed allowlisted destination, not an arbitrary redirect URL.
+    return searchParams.get("next") === "explore" ? "/explore" : "/dashboard";
   }
 
   const params = new URLSearchParams({

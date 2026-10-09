@@ -3,7 +3,7 @@
 import { GripVertical } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
-import { clampRecreateEditorWidth, recreateEditorDefault, recreateEditorMaximum, RECREATE_EDITOR_MAX, RECREATE_EDITOR_MIN } from "@/lib/explore/recreate-pane-size";
+import { clampRecreateEditorWidth, recreateEditorDefault, recreateEditorMaximum, RECREATE_EDITOR_DEFAULT_MIN, RECREATE_EDITOR_MAX, RECREATE_EDITOR_MIN } from "@/lib/explore/recreate-pane-size";
 import layout from "@/components/explore/recreate-layout.module.css";
 
 type Drag = { pointerId: number; startX: number; startWidth: number; startRequestedWidth: number | null; handle: HTMLDivElement };
@@ -18,7 +18,7 @@ export function RecreateSplitPane({ children }: { children: [ReactNode, ReactNod
   const frame = useRef<number | null>(null);
   const pendingWidth = useRef<number | null>(null);
   const [requestedWidth, setRequestedWidth] = useState<number | null>(null);
-  const [defaultWidth, setDefaultWidth] = useState(RECREATE_EDITOR_MIN);
+  const [defaultWidth, setDefaultWidth] = useState(RECREATE_EDITOR_DEFAULT_MIN);
   const [maximum, setMaximum] = useState(RECREATE_EDITOR_MAX);
   const [dragging, setDragging] = useState(false);
   const width = Math.min(requestedWidth ?? defaultWidth, maximum);

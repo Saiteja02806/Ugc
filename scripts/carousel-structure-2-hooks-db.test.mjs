@@ -10,8 +10,13 @@ const db = new PGlite({ extensions: { pgcrypto, uuid_ossp } });
 before(async () => {
   await db.exec('create role anon; create role authenticated; create role service_role bypassrls; create schema extensions;');
   const root = new URL('../supabase/migrations/', import.meta.url);
+  const appliedSql = new Set();
   for (const file of (await readdir(root)).filter(f => f.endsWith('.sql')).sort()) {
-    try { await db.exec((await readFile(new URL(file, root), 'utf8')).replace(/\r\n/g, '\n')); }
+    const sql = (await readFile(new URL(file, root), 'utf8')).replace(/\r\n/g, '\n');
+    // The reconciled ledger retains exact timestamp aliases; execute each SQL body once.
+    if (appliedSql.has(sql)) continue;
+    appliedSql.add(sql);
+    try { await db.exec(sql); }
     catch (error) { throw new Error(`Migration ${file}: ${error.message}`); }
   }
 }, { timeout: 120000 });

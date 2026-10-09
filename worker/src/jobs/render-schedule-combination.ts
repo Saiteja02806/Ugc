@@ -93,6 +93,10 @@ export async function runRenderScheduleCombinationJob(
         compositionFingerprint: payload.compositionFingerprint,
         demoVideoId: payload.demoVideoId,
         draftId: payload.hookVideoDraftId,
+        durationSeconds: result.durationSeconds,
+        fileName: fileNameFromStorageKey(result.key),
+        fileSizeBytes: result.byteLength,
+        height: result.height,
         hookAudioAssetId: payload.hookAudio?.audioAssetId ?? null,
         hookVideoId: payload.hookVideoId,
         key: result.key,
@@ -103,12 +107,17 @@ export async function runRenderScheduleCombinationJob(
         title: payload.title,
         url: result.url,
         userId: payload.userId,
+        width: result.width,
       });
     } else {
       await context.store.markScheduleCombinationRenderCompleted({
         autoFinalize: payload.autoFinalize,
         compositionFingerprint: payload.compositionFingerprint,
         demoVideoId: payload.demoVideoId,
+        durationSeconds: result.durationSeconds,
+        fileName: fileNameFromStorageKey(result.key),
+        fileSizeBytes: result.byteLength,
+        height: result.height,
         hookAudioAssetId: payload.hookAudio?.audioAssetId ?? null,
         hookVideoId: payload.hookVideoId,
         key: result.key,
@@ -120,6 +129,7 @@ export async function runRenderScheduleCombinationJob(
         title: payload.title,
         url: result.url,
         userId: payload.userId,
+        width: result.width,
       });
     }
 
@@ -225,6 +235,16 @@ export async function runRenderScheduleCombinationJob(
       mediaAssetId,
     } satisfies Record<string, Json>;
   }
+}
+
+function fileNameFromStorageKey(key: string) {
+  const fileName = key.split("/").at(-1)?.trim();
+
+  if (!fileName) {
+    throw new Error("Combined render storage key is missing its file name.");
+  }
+
+  return fileName;
 }
 
 function parseRenderScheduleCombinationPayload(

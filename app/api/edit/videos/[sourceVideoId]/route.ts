@@ -1,4 +1,5 @@
 import { normalizeEditableVideoDraftInput } from "@/lib/edit/video-library";
+import { withPrivateEditDelivery } from "@/lib/edit/private-video-delivery";
 import {
   getEditableVideoForOwner,
   saveEditableVideoDraftForOwner,
@@ -35,7 +36,7 @@ export async function GET(
     }
 
     return Response.json(
-      { ok: true, video },
+      { ok: true, video: await withPrivateEditDelivery(video, user.uid) },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
@@ -76,7 +77,7 @@ export async function PATCH(
     }
 
     return Response.json(
-      { ok: true, video },
+      { ok: true, video: await withPrivateEditDelivery(video, user.uid) },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {

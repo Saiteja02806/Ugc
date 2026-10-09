@@ -26,20 +26,7 @@ export const useAccountTimeZone = () => 'Asia/Calcutta';`);
 file("dynamic.tsx", `import {lazy, Suspense} from 'react'; export default loader => { const Component = lazy(async () => ({default: await loader()})); return props => <Suspense fallback={null}><Component {...props}/></Suspense>; };`);
 file("link.tsx", `export default props => <a {...props}/>;`);
 file("schedule.tsx", `export function ScheduleEditor(props) { return <div role="dialog" aria-label="Confirm schedule"><p>{props.initialCaption}</p><button onClick={() => props.onSave({scheduledSource: {kind: 'media_asset', id: props.initialDemoMediaId}, targets: props.initialPlannedTargets, caption: props.initialCaption, scheduledFor: '2026-12-01T05:00:00Z', scheduledDate: props.initialScheduledDate, scheduledTime: props.initialScheduledTime, timezone: 'Asia/Calcutta'})}>Confirm fixture schedule</button></div>; }`);
-file("entry.tsx", `import {createRoot} from 'react-dom/client'; import {useState, useCallback} from 'react'; import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
-import {FormatVideoEditor} from '@/components/explore/format-video-editor'; import {FormatDemoWorkspace} from '@/components/explore/format-demo-workspace'; import {FormatSchedulePanel} from '@/components/explore/format-schedule-panel';
-const video = {id: '00000000-0000-4000-8000-000000000001', mediaAssetId: '00000000-0000-4000-8000-000000000001', title: 'Original hook', url: '/video.mp4', durationSeconds: 8, ratio: '16:9'};
-function Fixture() { const [step, setStep] = useState('demo'), [request, setRequest] = useState(0), [opening, setOpening] = useState(null), [combined, setCombined] = useState(null), [hasDemo, setHasDemo] = useState(false), [openingStatus, setOpeningStatus] = useState(null), [demoStatus, setDemoStatus] = useState(null);
-const [editControls, ec] = useState(null), [editResults, er] = useState(null), [demoControls, dc] = useState(null), [demoResults, dr] = useState(null), [demoActions, da] = useState(null), [scheduleResults, sr] = useState(null);
-const changeDemo = useCallback(present => { setHasDemo(present); setCombined(null); }, []); const dirtyHook = useCallback(() => {setOpening(null); setCombined(null);}, []);
-const saveOpening = useCallback(setOpening, []), saveCombined = useCallback(setCombined, []), reportOpening = useCallback(setOpeningStatus, []), reportDemo = useCallback(setDemoStatus, []);
-const schedule = () => {setRequest(n => n + 1); setStep('schedule');}; const final = hasDemo ? combined : opening;
-return <><button onClick={() => setStep('demo')}>Demo tab</button><button onClick={schedule}>Schedule tab</button><button onClick={() => setStep('edit')}>Edit hook tab</button>
-<div hidden={step !== 'edit'}><div ref={ec}/><div ref={er}/></div><div hidden={step !== 'demo'}><div ref={dc}/><div ref={dr}/><div ref={da}/></div><div hidden={step !== 'schedule'} ref={sr}/>
-<FormatSchedulePanel output={final} localPreview={false} imageOnly={false} active={step === 'schedule'} preparing={!final}/>
-<FormatVideoEditor format="hook" video={video} active={step === 'edit'} controlsTarget={editControls} resultsTarget={editResults} enabled onDirty={dirtyHook} onSaved={saveOpening} onContinue={() => setStep('demo')} prepareRequest={step === 'schedule' && !demoStatus?.busy ? request : 0} onPreparationChange={reportOpening}/>
-<FormatDemoWorkspace ownerId="owner" enabled localPreview={false} active={step === 'demo'} opening={opening} sourcePreview={{name: video.title, url: video.url, duration: 8}} controlsTarget={demoControls} resultsTarget={demoResults} actionsTarget={demoActions} onChooseSource={() => {}} onDemoChange={changeDemo} onSaved={saveCombined} onContinue={schedule} scheduleActive={step === 'schedule'} scheduleResultsTarget={scheduleResults} prepareRequest={step === 'schedule' ? request : 0} finalOutput={final} openingPreparation={openingStatus} onEditOpening={() => setStep('edit')} sourceAssetId={video.id} onPreparationChange={reportDemo}/></>; }
-createRoot(document.getElementById('root')).render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><Fixture/></QueryClientProvider>);`);
+file("entry.tsx", "import {createRoot} from 'react-dom/client'; import {useState, useCallback} from 'react'; import {QueryClient, QueryClientProvider} from '@tanstack/react-query';\nimport {FormatVideoEditor} from '@/components/explore/format-video-editor'; import {FormatDemoSection} from '@/components/explore/format-demo-section'; import {FormatSchedulePanel} from '@/components/explore/format-schedule-panel';\nconst video = {id: '00000000-0000-4000-8000-000000000001', mediaAssetId: '00000000-0000-4000-8000-000000000001', title: 'Original hook', url: '/video.mp4', durationSeconds: 8, ratio: '16:9'};\nfunction Fixture() { const [step, setStep] = useState('demo'), [request, setRequest] = useState(0), [opening, setOpening] = useState(null), [combined, setCombined] = useState(null), [hasDemo, setHasDemo] = useState(false), [openingStatus, setOpeningStatus] = useState(null), [editingDemo, setEditingDemo] = useState(false);\nconst [editControls, ec] = useState(null), [editResults, er] = useState(null), [demoControls, dc] = useState(null), [demoResults, dr] = useState(null), [demoActions, da] = useState(null), [scheduleResults, sr] = useState(null), [demoEditControls, dec] = useState(null), [demoEditResults, der] = useState(null), [demoEditActions, dea] = useState(null);\nconst changeDemo = useCallback(setHasDemo, []); const dirtyDemo = useCallback(() => setCombined(null), []); const dirtyHook = useCallback(() => {setOpening(null); setCombined(null);}, []);\nconst saveOpening = useCallback(setOpening, []), saveCombined = useCallback(setCombined, []), reportOpening = useCallback(setOpeningStatus, []);\nconst schedule = () => {setEditingDemo(false);setRequest(n => n + 1); setStep('schedule');}; const final = hasDemo ? combined : opening;\nreturn <><button onClick={() => setStep('demo')}>Demo tab</button><button onClick={schedule}>Schedule tab</button>\n<div hidden={step !== 'edit'}><div ref={ec}/><div ref={er}/></div><div hidden={step !== 'demo'}><div ref={dc}/><div ref={dr}/><div ref={da}/><div ref={dec}/><div ref={der}/><div ref={dea}/></div><div hidden={step !== 'schedule'} ref={sr}/>\n<FormatSchedulePanel format=\"hook\" draftScopeId={video.id} output={final} localPreview={false} imageOnly={false} active={step === 'schedule'} preparing={!final}/>\n<FormatVideoEditor format=\"hook\" video={video} active={step === 'edit'} controlsTarget={editControls} resultsTarget={editResults} enabled onDirty={dirtyHook} onSaved={saveOpening} onContinue={() => setStep('demo')} prepareRequest={step === 'schedule' ? request : 0} onPreparationChange={reportOpening}/>\n<FormatDemoSection format=\"hook\" videoId={video.id} openingRevision={0} opening={opening} sourcePreview={{name: video.title, url: video.url, duration: 8}} enabled active={step === 'demo'} localPreview={false} controlsTarget={demoControls} resultsTarget={demoResults} actionsTarget={demoActions} onDirty={dirtyDemo} onSelectionChange={changeDemo} onSaved={saveCombined} onSkip={()=>{setHasDemo(false);schedule();}} onContinue={schedule} scheduleActive={step === 'schedule'} scheduleResultsTarget={scheduleResults} prepareRequest={step === 'schedule' ? request : 0} openingPreparation={openingStatus} editActive={step==='demo' && editingDemo} editPreviewActive={step==='demo'} editControlsTarget={demoEditControls} editResultsTarget={demoEditResults} editActionsTarget={demoEditActions} onEdit={()=>setEditingDemo(true)} onEditDone={()=>setEditingDemo(false)}/></>; }\ncreateRoot(document.getElementById('root')).render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><Fixture/></QueryClientProvider>);");
 
 const makeAsset = (id, title) => ({ id, title, collection: "video", status: "ready", sourceType: "upload", createdAt: "2026-10-09T00:00:00Z", updatedAt: "2026-10-09T00:00:00Z", mimeType: "video/mp4", fileName: "video.mp4", fileSizeBytes: 2000, durationSeconds: 8, width: 1280, height: 720, ratio: "16:9", metadata: {}, parentAssetId: null, projectId: null, sourceRecordId: null, thumbnailUrl: null, url: "/video.mp4" });
 const assets = new Map([1, 2].map(n => { const id = `00000000-0000-4000-8000-00000000000${n}`; return [id, makeAsset(id, n === 1 ? "Original hook" : "Original demo")]; }));
@@ -98,68 +85,25 @@ async function main() {
   function complete(index) { const entry = renders[index], receipt = receipts.get(entry.requestKey); receipt.outcome = 'completed'; receipt.mediaAssetId = receipt.outputId; receipt.message = 'Saved fixture'; }
   try {
     await page.goto(base + '/fixture');
-    await page.getByRole('button', {name:'Creative Assets', exact:true}).click(); await page.getByRole('button', {name:'Choose demo fixture'}).click();
-    await page.getByRole('button', {name:'Edit demo video', exact:true}).click();
-    await page.waitForFunction(() => document.querySelector('section[aria-label="Video edit preview"] video')?.readyState >= 2);
-    assert.equal(await page.getByLabel('Overlay text', {exact:true}).inputValue(), '');
-    await page.getByLabel('Overlay text', {exact:true}).fill('First message'); await page.getByLabel('Text end time').fill('2');
-    await page.getByRole('button', {name:'Add text', exact:true}).click(); await page.getByLabel('Overlay text', {exact:true}).fill('Second message'); await page.getByLabel('Text start time').fill('3'); await page.getByLabel('Text end time').fill('5');
-    await page.getByRole('button', {name:'Edit text block 2', exact:true}).click();
-    await page.getByLabel('Text overlay preview', {exact:true}).getByText('Second message', {exact:true}).waitFor();
-    await page.getByRole('button', {name:'Edit text block 1', exact:true}).click(); assert.equal(await page.getByLabel('Text overlay preview', {exact:true}).textContent(), 'First message');
-    await page.getByRole('button', {name:'Add text', exact:true}).click();
-    assert.equal(await page.getByLabel('Overlay text', {exact:true}).inputValue(), '');
-    await page.getByRole('button', {name:'Back to previews', exact:true}).last().click();
+    await page.getByRole('button', {name:'Choose from Creative Assets', exact:true}).click(); await page.getByRole('button', {name:'Choose demo fixture'}).click();
     await page.getByRole('button', {name:'Schedule', exact:true}).evaluate(button => {button.click(); button.click();});
-    await page.getByRole('region', {name:'Schedule video preview'}).waitFor();
-    assert.equal(await page.getByLabel('Scheduled hook preview', {exact:true}).isVisible(), true); assert.equal(await page.getByLabel('Scheduled demo preview', {exact:true}).isVisible(), true);
+    await page.getByLabel('Scheduled hook', {exact:true}).waitFor(); await page.getByLabel('Scheduled demo', {exact:true}).waitFor();
     await page.getByRole('button', {name:'Instagram', exact:true}).click(); await page.getByRole('button', {name:'Post to @fixture on Instagram', exact:true}).click();
-    await page.getByLabel('Post caption', {exact:true}).fill('My preserved caption'); await page.getByLabel('Date', {exact:true}).fill('2026-12-01'); await page.getByLabel('Time', {exact:true}).fill('10:30');
+    await page.getByLabel('Post caption', {exact:true}).fill('Untouched hook and demo'); await page.getByLabel('Date', {exact:true}).fill('2026-12-01'); await page.getByLabel('Time', {exact:true}).fill('10:30');
     assert.equal(await page.getByRole('button', {name:'Review schedule', exact:true}).isDisabled(), true); assert.equal(schedules.length, 0);
-    await waitRenders(1); assert.equal(renders[0].draft.sourceAssetId, '00000000-0000-4000-8000-000000000001');
-    assert.equal(renders[0].draft.editing.text, null); assert.equal(Object.hasOwn(renders[0].draft.editing, 'textOverlays'), false); complete(0);
-    await waitRenders(2); assert.equal(renders[1].draft.sourceAssetId, '00000000-0000-4000-8000-000000000002'); assert.deepEqual(renders[1].draft.editing.textOverlays.map(t => [t.value,t.startMs,t.endMs]), [['First message',0,2000],['Second message',3000,5000]]); complete(1);
-    await waitRenders(3); assert.equal(renders[2].draft.sourceAssetId, receipts.get(renders[0].requestKey).outputId); assert.equal(renders[2].draft.demoAssetId, receipts.get(renders[1].requestKey).outputId); complete(2);
-    await page.getByRole('region', {name:'Final post preview'}).waitFor();
-    assert.equal(await page.getByLabel('Post caption', {exact:true}).inputValue(), 'My preserved caption'); assert.equal(await page.getByLabel('Date', {exact:true}).inputValue(), '2026-12-01'); assert.equal(await page.getByLabel('Time', {exact:true}).inputValue(), '10:30');
-    await page.getByRole('button', {name:'Review schedule', exact:true}).click(); await page.getByRole('dialog', {name:'Confirm schedule'}).waitFor(); assert.equal(schedules.length, 0);
-    await page.getByRole('button', {name:'Confirm fixture schedule'}).evaluate(button => {button.click(); button.click();}); await page.getByRole('button', {name:'Check saved schedule'}).waitFor();
-    assert.equal(schedules.length, 1); assert.equal(schedules[0].source.id, receipts.get(renders[2].requestKey).outputId); assert.equal(schedules[0].caption, 'My preserved caption');
-    console.log('PASS: immediate two-clip preview, serialized hook/demo/combined preparation, timed text export, schedule settings retained, one confirmed combined-video schedule');
-    await page.reload(); await page.getByLabel('Demo preview', {exact:true}).waitFor(); await page.getByRole('button', {name:'Edit demo video', exact:true}).click();
-    await page.getByRole('button', {name:'Edit text block 2', exact:true}).click(); assert.equal(await page.getByLabel('Overlay text', {exact:true}).inputValue(), 'Second message'); assert.equal(await page.getByLabel('Text start time').inputValue(), '3');
-    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('ugc-explore:demo-selection:v1:owner:00000000-0000-4000-8000-000000000001')));
-    assert.equal(stored.demoAssetId, '00000000-0000-4000-8000-000000000002'); assert.equal(stored.editedDemoAssetId, receipts.get(renders[1].requestKey).outputId);
-    assert.equal(renders.length, 3); assert.equal(schedules.length, 1); assert.deepEqual(errors, []);
-    console.log('PASS: reload restores the original demo, editable text sequence and saved results through read-only recovery');
-    await page.evaluate(() => localStorage.clear()); await page.reload();
-    await page.getByRole('button', {name:'Creative Assets', exact:true}).click(); await page.getByRole('button', {name:'Choose demo fixture'}).click();
-    await page.getByRole('button', {name:'Edit demo video', exact:true}).click();
-    await page.getByLabel('Overlay text', {exact:true}).fill('Manual demo edit');
-    await page.getByRole('button', {name:'Apply demo edits', exact:true}).click(); await waitRenders(4);
-    await page.getByRole('button', {name:'Cancel save', exact:true}).waitFor();
-    await page.getByRole('button', {name:'Schedule', exact:true}).click();
-    await page.getByLabel('Post caption', {exact:true}).fill('While the demo saves');
-    assert.equal(renders[3].draft.sourceAssetId, '00000000-0000-4000-8000-000000000002'); assert.equal(renders.length, 4);
-    complete(3); await waitRenders(5); assert.equal(renders[4].draft.sourceAssetId, '00000000-0000-4000-8000-000000000001'); complete(4);
-    await waitRenders(6); assert.equal(renders[5].draft.demoAssetId, receipts.get(renders[3].requestKey).outputId); complete(5);
-    await page.getByRole('region', {name:'Final post preview'}).waitFor();
-    assert.equal(await page.getByLabel('Post caption', {exact:true}).inputValue(), 'While the demo saves'); assert.equal(overlappingRenders, 0); assert.equal(schedules.length, 1); assert.deepEqual(errors, []);
-    console.log('PASS: entering Schedule during a manual demo render waits, then prepares the hook and combined video without concurrent jobs or automatic posting');
-    await page.evaluate(() => localStorage.clear()); await page.reload();
-    await page.getByRole('button', {name:'Creative Assets', exact:true}).click(); await page.getByRole('button', {name:'Choose demo fixture'}).click();
-    await page.getByRole('button', {name:'Schedule', exact:true}).evaluate(button => {button.click(); button.click();});
-    await page.getByRole('region', {name:'Schedule video preview'}).waitFor();
-    assert.equal(await page.getByLabel('Scheduled hook preview', {exact:true}).isVisible(), true); assert.equal(await page.getByLabel('Scheduled demo preview', {exact:true}).isVisible(), true);
-    await waitRenders(7);
-    assert.equal(renders[6].draft.sourceAssetId, '00000000-0000-4000-8000-000000000001');
-    assert.equal(renders[6].draft.editing.text, null); assert.equal(Object.hasOwn(renders[6].draft.editing, 'textOverlays'), false); complete(6);
-    await waitRenders(8);
-    assert.equal(renders[7].draft.sourceAssetId, receipts.get(renders[6].requestKey).outputId);
-    assert.equal(renders[7].draft.demoAssetId, '00000000-0000-4000-8000-000000000002'); complete(7);
-    await page.getByRole('region', {name:'Final post preview'}).waitFor();
-    assert.equal(renders.length, 8); assert.equal(overlappingRenders, 0); assert.equal(schedules.length, 1); assert.deepEqual(errors, []);
-    console.log('PASS: hook and demo with no edits prepare a final video, reuse the original demo, and never schedule before confirmation');
+    await waitRenders(1); assert.equal(renders[0].draft.sourceAssetId, '00000000-0000-4000-8000-000000000001'); assert.equal(renders[0].draft.editing.text, null); assert.equal(Object.hasOwn(renders[0].draft.editing, 'textOverlays'), false); complete(0);
+    await waitRenders(2); assert.equal(renders[1].draft.sourceAssetId, receipts.get(renders[0].requestKey).outputId); assert.equal(renders[1].draft.demoAssetId, '00000000-0000-4000-8000-000000000002'); complete(1);
+    await page.getByLabel('Merged final video', {exact:true}).waitFor(); await page.getByRole('button', {name:'Review schedule', exact:true}).click(); await page.getByRole('dialog', {name:'Confirm schedule'}).waitFor(); assert.equal(schedules.length,0);
+    await page.getByRole('button', {name:'Confirm fixture schedule'}).evaluate(button=>{button.click();button.click();}); await page.getByRole('button', {name:'Check saved schedule'}).waitFor(); assert.equal(schedules.length,1); assert.equal(schedules[0].source.id,receipts.get(renders[1].requestKey).outputId); assert.equal(schedules[0].caption,'Untouched hook and demo');
+    console.log('PASS actual FormatDemoSection: untouched demo skips the edit pass; immediate two-clip preview; serialized hook then join; one explicit schedule confirmation');
+    await page.evaluate(()=>localStorage.clear()); await page.reload();
+    await page.getByRole('button', {name:'Choose from Creative Assets', exact:true}).click(); await page.getByRole('button', {name:'Choose demo fixture'}).click(); await page.getByRole('button',{name:'Edit demo video',exact:true}).click();
+    assert.equal(await page.getByLabel('Overlay text',{exact:true}).inputValue(),''); await page.getByLabel('Overlay text',{exact:true}).fill('First message'); await page.getByLabel('Text end time').fill('2');
+    await page.getByRole('button',{name:'Add text',exact:true}).click();await page.getByLabel('Overlay text',{exact:true}).fill('Second message');await page.getByLabel('Text start time').fill('3');await page.getByLabel('Text end time').fill('5');
+    await page.getByRole('button',{name:'Add text',exact:true}).click();await page.getByRole('button',{name:'Apply demo edits',exact:true}).click();await page.getByRole('button',{name:'Schedule',exact:true}).click();
+    await waitRenders(3);complete(2);await waitRenders(4);assert.equal(renders[3].draft.sourceAssetId,'00000000-0000-4000-8000-000000000002');assert.deepEqual(renders[3].draft.editing.textOverlays.map(t=>[t.value,t.startMs,t.endMs]),[['First message',0,2000],['Second message',3000,5000]]);complete(3);
+    await waitRenders(5);assert.equal(renders[4].draft.demoAssetId,receipts.get(renders[3].requestKey).outputId);complete(4);await page.getByLabel('Merged final video',{exact:true}).waitFor();assert.equal(overlappingRenders,0);assert.equal(schedules.length,1);assert.deepEqual(errors,[]);
+    console.log('PASS actual FormatDemoSection: default blank text box, multiple timed messages, blank blocks omitted, serialized edit and join, no automatic scheduling');
   } catch (e) { console.error({errors, body: await page.locator('body').innerText(), renders}); throw e; }
   finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
 }

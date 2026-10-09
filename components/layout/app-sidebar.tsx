@@ -1,6 +1,7 @@
 "use client";
 
 import { CreditIcon } from "@/components/icons/credit-icon";
+import scrollbars from "@/components/ui/quiet-scrollbar.module.css";
 
 import {
   ExternalLink,
@@ -104,7 +105,6 @@ const libraryNavigationItems: SidebarItem[] = [
 
 const SIDEBAR_STORAGE_KEY = "ugc-studio.sidebar-collapsed";
 const SIDEBAR_CHANGE_EVENT = "ugc-studio:sidebar-change";
-const isExploreScreenEnabled = process.env.NODE_ENV !== "production";
 
 export function AppSidebar({
   activeKey = "trending",
@@ -373,16 +373,13 @@ function SidebarNavigation({
   collapsed?: boolean;
   onNavigate?: () => void;
 }) {
-  const visiblePrimaryNavigationItems = [
-    ...primaryNavigationItems.filter(
-      (item) => item.key !== "audio-generation" && (item.key !== "explore" || isExploreScreenEnabled),
-    ),
-  ];
+  const visiblePrimaryNavigationItems = primaryNavigationItems.filter(item => item.key !== "audio-generation");
 
   return (
     <nav
       aria-label="Primary navigation"
       className={cn(
+        scrollbars.surface,
         "min-h-0 flex-1 py-3.5",
         collapsed ? "px-[10px]" : "px-3",
         collapsed ? "overflow-visible" : "overflow-y-auto overflow-x-hidden",
@@ -448,6 +445,7 @@ function SidebarLink({
   return (
     <Link
       href={item.href}
+      prefetch={item.key === "explore" ? true : undefined}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={cn(
@@ -516,6 +514,7 @@ function CollapsedMagneticNavItem({
   return (
     <Link
       href={item.href}
+      prefetch={item.key === "explore" ? true : undefined}
       onClick={onNavigate}
       onBlur={resetSurface}
       onPointerCancel={resetSurface}

@@ -120,6 +120,20 @@ export function isTerminalBackgroundJobStatus(status: BackgroundJobStatus) {
 }
 
 export function isRetryableBackgroundJob(job: BackgroundJobRecord) {
+  const errorCode = getPublicJobErrorCode(job);
+  // A provider's terminal failure needs a new, explicitly requested generation.
+  // Replaying this job cannot revive its saved provider operation.
+  if (
+    errorCode === "PROVIDER_CONTENT_MODERATION" ||
+    errorCode === "PROVIDER_REFERENCE_IMAGE_REJECTED" ||
+    errorCode === "PROVIDER_INSUFFICIENT_CREDITS" ||
+    errorCode === "provider_submission_uncertain" ||
+    errorCode === "provider_operation_failed" ||
+    isProviderBalanceFailure(job.errorMessage) ||
+    /ended with status (?:failed|moderated|nsfw|canceled|cancelled)/i.test(job.errorMessage ?? "")
+  ) {
+    return false;
+  }
   return (
     (job.status === "failed" || job.status === "stalled") &&
     job.attemptCount < job.maxAttempts
@@ -127,9 +141,10 @@ export function isRetryableBackgroundJob(job: BackgroundJobRecord) {
 }
 
 export function getPublicBackgroundJob(job: BackgroundJobRecord) {
+  const format = job.input && typeof job.input === "object" && !Array.isArray(job.input) ? job.input.exploreFormat : undefined;
   const hideWallTextFailureDetails = isWallTextJob(job.jobType);
-  const input = job.input && typeof job.input === "object" && !Array.isArray(job.input) ? job.input : null;
-  const format = input?.exploreFormat;
+  const errorCode = getPublicJobErrorCode(job);
+  const retryable = isRetryableBackgroundJob(job);
   return {
     ...((job.jobType === "generate_hook_video" && (format === "hook" || format === "wall_text") || job.jobType === "generate_image" && format === "slideshow") ? { exploreFormat: format as "hook" | "wall_text" | "slideshow" } : {}),
     cancelRequestedAt: job.cancelRequestedAt,
@@ -140,11 +155,11 @@ export function getPublicBackgroundJob(job: BackgroundJobRecord) {
         ? {
             code: hideWallTextFailureDetails
               ? "CONTENT_PREPARATION_UNAVAILABLE"
-              : job.errorCode || "JOB_FAILED",
+              : errorCode,
             message: hideWallTextFailureDetails
               ? "We’re handling content preparation automatically. No action is needed from you."
-              : getSafeJobErrorMessage(job.errorCode),
-            retryable: isRetryableBackgroundJob(job),
+              : getSafeJobErrorMessage(errorCode, job.errorMessage, retryable),
+            retryable,
           }
         : null,
     failedAt: job.failedAt,
@@ -171,21 +186,90 @@ function isWallTextJob(jobType: BackgroundJobType) {
     jobType === "wall_text_content_plan_generation";
 }
 
-function getSafeJobErrorMessage(errorCode: string | null) {
+function getSafeJobErrorMessage(
+  errorCode: string | null,
+  errorMessage: string | null,
+  retryable: boolean,
+) {
+  if (
+    errorCode === "PROVIDER_INSUFFICIENT_CREDITS" ||
+    isProviderBalanceFailure(errorMessage)
+  ) {
+    return "The video provider's credit balance is too low to create this video. Contact support before starting a new generation.";
+  }
+
   switch (errorCode) {
+    case "PROVIDER_REFERENCE_IMAGE_REJECTED":
+      return "Your reference image was rejected by the video provider because it may contain a real person's face. No video was generated. Contact support about approved portrait references before submitting this image again.";
+    case "PROVIDER_CONTENT_MODERATION":
+      return "The model provider blocked this generation through content moderation. Review your prompt and reference media before starting a new generation.";
+    case "provider_submission_uncertain":
+      return "The provider could not confirm this request. Contact support to check its status before starting another generation to avoid a duplicate charge.";
+    case "provider_operation_failed":
+      return "The model provider could not complete this generation. This request cannot be resumed. Start a new generation, or contact support if it fails again.";
     case "CANCELLED":
       return "This job was cancelled.";
     case "INPUT_INVALID":
       return "The job input is no longer valid.";
     case "OUTPUT_UPLOAD_FAILED":
-      return "The generated output could not be saved. You can retry the job.";
+      return `The generated output could not be saved. ${getRetryGuidance(retryable)}`;
     case "PROVIDER_TIMEOUT":
-      return "The generation provider timed out. You can retry the job.";
+      return `The generation provider timed out. ${getRetryGuidance(retryable)}`;
     case "QUEUE_DELIVERY_FAILED":
-      return "The job could not be started. You can retry it.";
+      return `The job could not be started. ${getRetryGuidance(retryable)}`;
     case "WORKER_STALLED":
-      return "The job stopped responding. You can retry it.";
+      return `The job stopped responding. ${getRetryGuidance(retryable)}`;
     default:
-      return "The job could not be completed. You can retry it if attempts remain.";
+      return `The job failed, but the cause could not be identified automatically. ${getRetryGuidance(retryable)}`;
   }
+}
+
+function getRetryGuidance(retryable: boolean) {
+  return retryable
+    ? "You can retry the job."
+    : "This job cannot be retried. Contact support with this job's ID.";
+}
+
+function getPublicJobErrorCode(job: BackgroundJobRecord) {
+  const code = job.errorCode || "JOB_FAILED";
+  // Older video workers persisted terminal provider errors as JOB_FAILED.
+  // Recognize only known signatures; never publish arbitrary stored diagnostics.
+  if (
+    (code === "JOB_FAILED" || code === "provider_operation_failed" || code === "PROVIDER_CONTENT_MODERATION") &&
+    (job.jobType === "generate_hook_video" || job.jobType === "video_generation")
+  ) {
+    if (isProviderImagePrivacyFailure(job.errorMessage)) {
+      return "PROVIDER_REFERENCE_IMAGE_REJECTED";
+    }
+    if (code === "PROVIDER_CONTENT_MODERATION") return code;
+    if (/^Runway task failed: .*\bblocked by .*content moderation system\b/i.test(job.errorMessage ?? "")) {
+      return "PROVIDER_CONTENT_MODERATION";
+    }
+    if (/^Runway task (?:failed:|was cancelled\.)/i.test(job.errorMessage ?? "")) {
+      return "provider_operation_failed";
+    }
+  }
+  return code;
+}
+
+function isProviderImagePrivacyFailure(errorMessage: string | null) {
+  // OpenRouter can wrap this upstream validation error in its message. Older
+  // workers saved that message as JOB_FAILED. Only recognize the exact code in
+  // a structured HTTP 400 response; never guess from a prompt or publish it.
+  if (!errorMessage || errorMessage.length > 65_536) return false;
+  const response = /^HTTP 400:\s*(\{[\s\S]*\})$/u.exec(errorMessage);
+  if (!response) return false;
+  try {
+    const body: unknown = JSON.parse(response[1]);
+    if (!body || typeof body !== "object" || Array.isArray(body)) return false;
+    const error = (body as Record<string, unknown>).error;
+    return Boolean(error && typeof error === "object" && !Array.isArray(error) &&
+      (error as Record<string, unknown>).code === "InputImageSensitiveContentDetected.PrivacyInformation");
+  } catch {
+    return false;
+  }
+}
+
+function isProviderBalanceFailure(errorMessage: string | null) {
+  return /credit balance is too low/i.test(errorMessage ?? "");
 }

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import * as schedulingDraft from "../lib/explore/workflow-scheduling-draft.ts";
 
 const read = (path) => readFileSync(new URL(`../components/explore/${path}`, import.meta.url), "utf8");
 const panel = read("workflow-creation-panel.tsx");
@@ -18,6 +19,8 @@ function load(source) {
     "@/components/social/platform-icon": { SocialPlatformIcon: "platform-icon" },
     "@/components/ui/button": { Button: "button" },
     "@/components/ui/input": { Input: "input" },
+    "@/lib/social/platform-visibility": { isSocialPlatformVisible: (platform) => platform !== "tiktok" },
+    "@/lib/explore/workflow-scheduling-draft": schedulingDraft,
     "@/components/generation/ai-studio-composer": { AiStudioSettingSelect: "select" },
     "@/components/explore/workflow-creation.module.css": { default: {} },
     "react/jsx-runtime": { jsx: element, jsxs: element, Fragment: "fragment" },
@@ -70,7 +73,7 @@ test("each section shows only its own primary action and supports keyboard tab a
   for (const section of ["create", "edit", "schedule"]) {
     const tree = WorkflowCreationPanel({ kind: "hook", section, children: "content" });
     const tabs = nodes(tree).filter((node) => node.type === "tab");
-    assert.deepEqual(tabs.map((node) => [node.props.value, text(node)]), [["create", "Create"], ["edit", "Edit video"], ["schedule", "Schedule"]]);
+    assert.deepEqual(tabs.map((node) => [node.props.value, text(node)]), [["create", "Create"], ["edit", "Edited demo"], ["schedule", "Schedule"]]);
     assert.equal(nodes(tree).find((node) => node.type === "tablist").props.activateOnFocus, true);
     const actions = nodes(tree).filter((node) => node.type === "button");
     assert.equal(actions.length, 1);
@@ -80,27 +83,43 @@ test("each section shows only its own primary action and supports keyboard tab a
   }
 });
 
-test("Schedule uses three named platform icons and forwards draft fields verbatim", () => {
+test("connected Apply edits and Schedule post forward real actions and render guarded progress/errors", () => {
+  const { WorkflowCreationPanel } = load(panel);
+  for (const kind of ["hook", "phone"]) for (const section of ["edit", "schedule"]) {
+    let calls = 0, refreshes = 0;
+    const action = { disabled: false, busy: false, message: "Ready to confirm.", error: "A response was lost.", onAction() { calls++; }, refresh() { refreshes++; } };
+    const tree = WorkflowCreationPanel({ kind, section, [section]: action, children: "settings" });
+    const buttons = nodes(tree).filter(n => n.type === "button");
+    const primary = buttons.find(n => text(n) === (section === "edit" ? "Apply edits" : "Schedule post"));
+    assert.equal(primary.props.disabled, false); primary.props.onClick(); assert.equal(calls, 1);
+    assert.match(visibleText(tree), /Ready to confirm/); assert.match(text(nodes(tree).find(n => n.props.role === "alert")), /response was lost/);
+    buttons.find(n => text(n) === "Refresh status").props.onClick(); assert.equal(refreshes, 1);
+    const busy = WorkflowCreationPanel({ kind, section, [section]: { ...action, busy: true, disabled: true }, children: "settings" });
+    assert.equal(nodes(busy).filter(n => n.type === "button").every(n => n.props.disabled), true);
+  }
+});
+
+test("Schedule uses enabled named platform icons and forwards draft fields verbatim", () => {
   const { WorkflowSchedulingPanel } = load(schedule);
   const original = { platform: "", caption: "", date: "", time: "" };
   const changes = [];
   const tree = WorkflowSchedulingPanel({ draft: original, onChange: (draft) => changes.push(draft) });
   const platforms = nodes(tree).filter((node) => node.type === "button");
-  assert.deepEqual(platforms.map((node) => [node.props["aria-label"], node.props["aria-pressed"]]), [["Instagram", false], ["TikTok", false], ["YouTube", false]]);
-  assert.equal(nodes(tree).find((node) => node.props.role === "group").props["aria-label"], "Posting platform");
-  assert.deepEqual(nodes(tree).filter((node) => node.type === "platform-icon").map((node) => node.props.platform), ["instagram", "tiktok", "youtube"]);
+  assert.deepEqual(platforms.map((node) => [node.props["aria-label"], node.props["aria-pressed"]]), [["Instagram", false], ["YouTube", false]]);
+  assert.equal(nodes(tree).find((node) => node.props.role === "group").props["aria-label"], "Posting platforms");
+  assert.deepEqual(nodes(tree).filter((node) => node.type === "platform-icon").map((node) => node.props.platform), ["instagram", "youtube"]);
   platforms[0].props.onClick();
   nodes(tree).find((node) => node.type === "textarea").props.onChange({ target: { value: "  My caption\nunchanged  " } });
   nodes(tree).find((node) => node.props.type === "date").props.onChange({ target: { value: "2026-10-20" } });
   nodes(tree).find((node) => node.props.type === "time").props.onChange({ target: { value: "14:30" } });
   assert.deepEqual(changes.map((draft) => [draft.platform, draft.caption, draft.date, draft.time]), [["instagram", "", "", ""], ["", "  My caption\nunchanged  ", "", ""], ["", "", "2026-10-20", ""], ["", "", "", "14:30"]]);
   assert.equal(nodes(tree).filter((node) => node.type === "input").length, 2);
-  assert.doesNotMatch(visibleText(tree), /Account|Select platform|device’s time zone|Local draft only|no post will be scheduled/);
-  assert.match(text(tree), /not the video’s subtitles/);
+  assert.doesNotMatch(visibleText(tree), /Account|Select platform|Local draft only|no post will be scheduled/);
+  assert.match(text(tree), /The caption shown below your social post/);
   assert.equal(nodes(tree).find((node) => node.props.type === "date").props["aria-describedby"], "schedule-test-timezone");
-  assert.equal(nodes(tree).find((node) => node.props.id === "schedule-test-timezone").props.className, "sr-only");
+  assert.match(text(nodes(tree).find((node) => node.props.id === "schedule-test-timezone")), /Time zone:/);
   assert.equal(original.caption, "");
-  for (const platform of ["instagram", "tiktok", "youtube"]) {
+  for (const platform of ["instagram", "youtube"]) {
     const selected = WorkflowSchedulingPanel({ draft: { ...original, platform }, onChange() {} });
     const pressed = nodes(selected).filter((node) => node.props["aria-pressed"] === true);
     assert.equal(pressed.length, 1);
@@ -146,14 +165,15 @@ test("spare desktop Create space goes to the instructions field without stretchi
 test("editing excludes scheduling and explains shared subtitle scope", () => {
   const creationCanvas = read("workflow-preview-canvas.tsx");
   assert.doesNotMatch(creationCanvas, /WorkflowCompositionPanel|WorkflowSchedulingPanel/);
-  assert.match(creationCanvas, /Selected hook video preview/);
+  assert.match(creationCanvas, /Selected source video preview/);
   assert.match(creationCanvas, /Continue to edit/);
   assert.match(creationCanvas, /Add your app screen and instructions in Create/);
   assert.doesNotMatch(edit, /Demo sound|<details|aria-label="Scheduling"|Schedule<\/Button>/);
   assert.match(edit, /Demo audio/);
-  assert.match(edit, /Applies to spoken audio in the/);
-  assert.match(edit, /Music-only sections have no speech captions/);
-  assert.match(workspace, /demo.asset \? <><WorkflowMediaPlayer/);
+  assert.match(edit, /EXPLORE_SUBTITLE_SCOPE_LABEL/);
+  assert.match(edit, /including both segments; nothing is trimmed automatically/);
+  assert.match(workspace, /demo.asset \? <>\{demoFraming \? <WorkflowDemoPreview/);
+  assert.match(workspace, /: <WorkflowMediaPlayer asset=\{demo.asset\}/);
   assert.match(workspace, /className=\{creation.demoPlayer\}/);
   assert.doesNotMatch(workspace, /autoPlay|\.mp4|setInstructions|onInstructionsChange/);
   assert.match(workspace, /draft.caption \|\|/);

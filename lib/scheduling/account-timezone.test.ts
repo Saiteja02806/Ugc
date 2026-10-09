@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getBrowserTimeZone, getSchedulingTimeZoneOptions } from "./account-timezone.ts";
+import { getBrowserTimeZone, getDefaultAccountScheduleSlot, getSchedulingTimeZoneOptions } from "./account-timezone.ts";
 import { getZonedDateTimeParts, resolveZonedDateTime } from "./schedule-time.ts";
 
 test("detects each browser region without a shared India default", () => {
@@ -34,4 +34,18 @@ test("offers regions outside the previous small selector list", () => {
   assert.ok(options.includes("Asia/Calcutta"));
   assert.ok(options.includes("Asia/Tokyo"));
   assert.equal(new Set(options).size, options.length);
+});
+
+test("the default slot uses the account's local day and includes the full lead time across midnight", () => {
+  assert.deepEqual(getDefaultAccountScheduleSlot({
+    selectedDate: "2026-10-04", timezone: "Asia/Kolkata", minimumLeadMinutes: 5,
+    now: Date.parse("2026-10-04T18:28:30.000Z"),
+  }), { date: "2026-10-05", time: "00:04" });
+});
+
+test("the default slot preserves an explicitly selected later day", () => {
+  assert.deepEqual(getDefaultAccountScheduleSlot({
+    selectedDate: "2026-10-08", timezone: "America/New_York", minimumLeadMinutes: 5,
+    now: Date.parse("2026-10-04T12:00:00.000Z"),
+  }), { date: "2026-10-08", time: "08:05" });
 });

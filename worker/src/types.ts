@@ -26,8 +26,8 @@ export type BackgroundJobStatus =
   | "waiting_external_service";
 
 export type BackgroundJobType =
-  | "analytics_sync"
   | "generate_audio"
+  | "analytics_sync"
   | "carousel_content_plan_generation"
   | "carousel_generation"
   | "final_render"
@@ -74,6 +74,7 @@ export const EXECUTABLE_BACKGROUND_JOB_TYPES = [
   "publish_social_post",
   "reaction_generation",
   "reaction_render",
+  "render_demo_video",
   "render_create_content_video",
   "render_demo_video",
   "render_edit_video",
@@ -125,6 +126,7 @@ export type BackgroundJobRow = {
   error_message: string | null;
   failed_at: string | null;
   id: string;
+  /** Present in persisted jobs; optional for historical worker fixtures. */
   idempotency_key?: string | null;
   input_json: Json;
   input_reference: string | null;
@@ -327,7 +329,7 @@ export type SocialPublishAccountLaneUpdate = Partial<{
   updated_at: string;
 }>;
 
-export type GenerationProvider = "gemini" | "higgsfield" | "openai" | "runway" | "veo";
+export type GenerationProvider = "gemini" | "higgsfield" | "openai" | "openrouter" | "runway" | "veo";
 
 export type GenerationProviderOperationStatus =
   | "failed"

@@ -1,9 +1,9 @@
 "use client";
 
-import { History, ImageIcon, Loader2, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronUp, History, ImageIcon, Loader2, Plus } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { FormEvent, KeyboardEvent } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   AiStudioComposer,
@@ -15,20 +15,25 @@ import {
   type AiStudioResultsStatus,
 } from "@/components/generation/ai-studio-results";
 import { AiStudioResultActions } from "@/components/generation/ai-studio-result-actions";
+import { AiStudioCopyButton } from "@/components/generation/ai-studio-copy-button";
 import { ImageGenerationHistory } from "@/components/generation/image-generation-history";
+import { ImagePreviewDialog } from "@/components/generation/image-preview-dialog";
 import { ReferenceMediaUpload } from "@/components/generation/reference-media-upload";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import type { RecreateGenerationView } from "@/components/explore/recreate-generation-view";
 import { FormatInstructionImageReference } from "@/components/explore/format-instruction-image-reference";
-import { resolveSlideshowImage } from "@/lib/explore/slideshow-image";
+import creation from "@/components/explore/workflow-creation.module.css";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
 import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import {
   AI_STUDIO_GENERATION_QUANTITIES,
   AI_STUDIO_IMAGE_ASPECT_RATIOS,
   AI_STUDIO_IMAGE_MODELS,
+  SLIDESHOW_IMAGE_MODELS,
   DEFAULT_AI_STUDIO_IMAGE_MODEL,
+  DEFAULT_SLIDESHOW_IMAGE_MODEL,
+  getAIStudioImageModelLabel,
   type AIStudioGenerationQuantity,
   type AIStudioImageAspectRatio,
   type AIStudioImageModel,
@@ -44,14 +49,14 @@ import {
 } from "@/lib/ai-studio/media-results";
 import {
   filterAIStudioImageHistory,
-  getTodayAIStudioImages,
+  getVisibleAIStudioImages,
   groupAIStudioImageHistory,
+  isImageCompletionForeground,
+  mergeAIStudioImageHistory,
 } from "@/lib/ai-studio/image-history";
-import {
-  AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH,
-  getAIStudioPromptLengthError,
-  normalizeAIStudioPrompt,
-} from "@/lib/ai-studio/prompt-policy";
+import { normalizeAIStudioPrompt } from "@/lib/ai-studio/prompt-policy";
+import { resolveSlideshowImage } from "@/lib/explore/slideshow-image";
+import { appendAIStudioSessionResultIds } from "@/lib/ai-studio/generation-session";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
   persistJobIdInUrl,
@@ -81,14 +86,15 @@ type GenerateResponse =
 const IMAGE_JOB_STORAGE_PREFIX = "ugc-ai-studio.latest-image-job.v2.";
 const IMAGE_JOB_METADATA_PREFIX = "ugc-ai-studio.image-job.v2.";
 const IMAGE_JOB_URL_PARAMETER = "imageJob";
+const MISSING_IMAGE_PROMPT = "The prompt wasn't saved for this image.";
 const IMAGE_PREVIEW_WIDTH_CLASS_NAMES: Record<
   AIStudioImageAspectRatio,
   string
 > = {
-  "4:5": "max-w-[min(320px,38dvh)]",
-  "1:1": "max-w-[min(360px,46dvh)]",
-  "9:16": "max-w-[min(240px,26dvh)]",
-  "16:9": "max-w-[min(560px,82dvh)]",
+  "4:5": "max-w-[min(240px,32dvh)]",
+  "1:1": "max-w-[min(280px,38dvh)]",
+  "9:16": "max-w-[min(200px,24dvh)]",
+  "16:9": "max-w-[min(420px,56dvh)]",
 };
 const activeJobStatuses = new Set([
   "cancel_requested",
@@ -111,6 +117,7 @@ function getImageJobOutput(output: Json | null) {
       typeof output.generationId === "string" ? output.generationId : null,
     mediaAssetId:
       typeof output.mediaAssetId === "string" ? output.mediaAssetId : null,
+    prompt: typeof output.prompt === "string" && output.prompt.trim() ? output.prompt : null,
     ratio:
       typeof output.ratio === "string" &&
       AI_STUDIO_IMAGE_ASPECT_RATIOS.includes(
@@ -156,9 +163,9 @@ function getImageJobPrompt(userId: string, jobId: string) {
       "prompt" in value &&
       typeof value.prompt === "string"
       ? value.prompt
-      : "Generated image";
+      : null;
   } catch {
-    return "Generated image";
+    return null;
   }
 }
 
@@ -206,29 +213,35 @@ export function ImageGenerationStudioPanel({
   const queryClient = useQueryClient();
   const [prompt, setPrompt] = useState("");
   const [aspectRatio, setAspectRatio] =
-    useState<AIStudioImageAspectRatio>(workflow ? "4:5" : "9:16");
+    useState<AIStudioImageAspectRatio>("9:16");
   const [model, setModel] = useState<AIStudioImageModel>(
-    DEFAULT_AI_STUDIO_IMAGE_MODEL,
+    workflowFormat === "slideshow" ? DEFAULT_SLIDESHOW_IMAGE_MODEL : DEFAULT_AI_STUDIO_IMAGE_MODEL,
   );
   const [quantity, setQuantity] =
     useState<AIStudioGenerationQuantity>(1);
   const [referenceImage, setReferenceImage] =
     useState<AIStudioReferenceMedia | null>(null);
-  const [referencePending, setReferencePending] = useState(false);
-  const [referenceError, setReferenceError] = useState<string | null>(null);
-  const [activePrompt, setActivePrompt] = useState("");
-  const [latestCompletedId, setLatestCompletedId] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [referenceUploadPending, setReferenceUploadPending] = useState(false);
+  const [referenceUploadError, setReferenceUploadError] = useState<string | null>(null);
   const [selectingImage, setSelectingImage] = useState(false);
   const selectingImageRef = useRef(false);
+  const [activePrompt, setActivePrompt] = useState("");
+  const [activeSubmittedAt, setActiveSubmittedAt] = useState(() => new Date().toISOString());
+  const [latestCompletedId, setLatestCompletedId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [generatedAssets, setGeneratedAssets] = useState<
     AIStudioImageResult[]
   >([]);
   const [resultsLoading, setResultsLoading] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyQuery, setHistoryQuery] = useState("");
+  const [historyNow, setHistoryNow] = useState(() => new Date());
   const [selectedHistoryImageId, setSelectedHistoryImageId] = useState<string | null>(null);
-  const [currentDay, setCurrentDay] = useState(() => new Date());
+  const [previewImage, setPreviewImage] = useState<AIStudioImageResult | null>(null);
+  const [currentResultIds, setCurrentResultIds] = useState<string[]>([]);
+  const [reconciledResultByJob, setReconciledResultByJob] = useState<Record<string, string>>({});
+  const [submittedPrompts, setSubmittedPrompts] = useState<Record<string, string>>({});
+  const [resolvingImageJobIds, setResolvingImageJobIds] = useState<string[]>([]);
   const [resultsError, setResultsError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -238,15 +251,25 @@ export function ImageGenerationStudioPanel({
     string | null
   >(null);
   const resolvedJobIdsRef = useRef(new Set<string>());
+  const foregroundJobIdsRef = useRef(new Set<string>());
+  const foregroundEpochRef = useRef(0);
+  const foregroundAutoResumeRef = useRef(true);
+  const reconciledResultsRef = useRef(new Map<string, AIStudioImageResult>());
+  const submittedPromptsRef = useRef(new Map<string, string>());
+  const historyOwnerIdRef = useRef<string | null>(null);
   const billingSyncedJobIdsRef = useRef(new Set<string>());
   const submissionKeyRef = useRef<string | null>(null);
   const activeUserIdRef = useRef<string | null>(null);
   const persistedJobId = usePersistedJobIdFromUrl(workflowFormat ? `explore-${workflowFormat}Job` : IMAGE_JOB_URL_PARAMETER);
+  const referenceContextKey = JSON.stringify(recreateView?.referenceImageUrls ?? null);
+  useEffect(() => {
+    submissionKeyRef.current = null;
+  }, [recreateView?.referenceImageUrl, recreateView?.referenceImageAssetId, referenceContextKey]);
   const urlJobId =
     persistedJobId && persistedJobId !== ignoredPersistedJobId
       ? persistedJobId
       : null;
-  const activeJobIds = Array.from(
+  const activeJobIds = recreateView?.preview ? [] : Array.from(
     new Set([
       ...submittedJobIds,
       ...(urlJobId ? [urlJobId] : []),
@@ -266,7 +289,7 @@ export function ImageGenerationStudioPanel({
   const durableJobs = queriedJobs.filter(
     (job) => job.jobType === "image_generation" && (!workflowFormat || job.exploreFormat === workflowFormat),
   );
-  const generationLocked = accessState !== "pro" || Boolean(recreateView?.preview);
+  const generationLocked = recreateView?.preview === true || accessState !== "pro";
   const requiredCredits = creditCost * quantity;
   const hasInsufficientCredits =
     accessState === "pro" &&
@@ -282,50 +305,21 @@ export function ImageGenerationStudioPanel({
     activeJobQueries.some((query) => query.isPending) ||
     durableJobs.some((job) => activeJobStatuses.has(job.status));
   const onWorkflowBusyChange = workflow?.onBusyChange;
-  useEffect(() => { onWorkflowBusyChange?.(isGenerating || selectingImage); }, [isGenerating, selectingImage, onWorkflowBusyChange]);
-  const pendingGenerationCount = isSubmitting
-    ? quantity
-    : activeJobQueries.reduce((count, query) => {
-        if (query.isPending) {
-          return count + 1;
-        }
-
-        return query.data && activeJobStatuses.has(query.data.status)
-          ? count + 1
-          : count;
-      }, 0);
-
+  useEffect(() => { onWorkflowBusyChange?.(isGenerating || referenceUploadPending || selectingImage); }, [isGenerating, referenceUploadPending, selectingImage, onWorkflowBusyChange]);
   useEffect(() => {
     activeUserIdRef.current = user?.uid ?? null;
     resolvedJobIdsRef.current.clear();
+    foregroundJobIdsRef.current.clear();
+    foregroundEpochRef.current += 1;
+    foregroundAutoResumeRef.current = true;
+    reconciledResultsRef.current.clear();
+    submittedPromptsRef.current.clear();
     billingSyncedJobIdsRef.current.clear();
 
     return () => {
       activeUserIdRef.current = null;
     };
   }, [user?.uid]);
-
-  useEffect(() => {
-    let day = new Date().toDateString();
-    let timeoutId: number;
-    function updateDay() {
-      const now = new Date();
-      if (now.toDateString() !== day) {
-        day = now.toDateString();
-        setCurrentDay(now);
-        setSelectedHistoryImageId(null);
-      }
-      window.clearTimeout(timeoutId);
-      const nextDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-      timeoutId = window.setTimeout(updateDay, nextDay.getTime() - now.getTime() + 100);
-    }
-    updateDay();
-    window.addEventListener("focus", updateDay);
-    return () => {
-      window.clearTimeout(timeoutId);
-      window.removeEventListener("focus", updateDay);
-    };
-  }, []);
 
   useEffect(() => {
     if (!active || authLoading) {
@@ -337,11 +331,31 @@ export function ImageGenerationStudioPanel({
     async function loadResults() {
       setHistoryOpen(false);
       setHistoryQuery("");
-      setSelectedHistoryImageId(null);
+      if (recreateView?.preview) {
+        setGeneratedAssets([]);
+        setSubmittedJobIds([]);
+        setCurrentResultIds([]);
+        setSelectedHistoryImageId(null);
+        setResultsError(null);
+        setResultsLoading(false);
+        return;
+      }
+      if (historyOwnerIdRef.current !== (user?.uid ?? null)) {
+        historyOwnerIdRef.current = user?.uid ?? null;
+        setGeneratedAssets([]);
+        setCurrentResultIds([]);
+        setSelectedHistoryImageId(null);
+        setPreviewImage(null);
+        setReconciledResultByJob({});
+        setSubmittedPrompts({});
+        setResolvingImageJobIds([]);
+      }
       if (!user) {
         if (!ignore) {
           setGeneratedAssets([]);
-          setResultsError(recreateView?.preview ? null : "Sign in to view your generated images.");
+          setCurrentResultIds([]);
+          setSelectedHistoryImageId(null);
+          setResultsError("Sign in to view your generated images.");
           setResultsLoading(false);
         }
         return;
@@ -364,9 +378,17 @@ export function ImageGenerationStudioPanel({
         });
 
         if (!ignore) {
-          const history = getAIStudioImageResults(workflowFormat ? assets.filter(asset => asset.metadata.exploreFormat === workflowFormat) : assets, assets.length);
-          setGeneratedAssets(current => [...current, ...history.filter(image => !current.some(result => result.id === image.id))]
-            .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)));
+          const assetJobs = new Map(assets.map((asset) => [asset.id, asset.sourceRecordId]));
+          const loadedImages = getAIStudioImageResults(assets, assets.length).map((image) => {
+            const jobId = assetJobs.get(image.id);
+            const savedPrompt = jobId ? submittedPromptsRef.current.get(jobId) ?? getImageJobPrompt(user.uid, jobId) : null;
+            return savedPrompt
+              ? { ...image, prompt: savedPrompt }
+              : image;
+          });
+          setGeneratedAssets(current => mergeAIStudioImageHistory(loadedImages, [
+            ...current, ...Array.from(reconciledResultsRef.current.values()),
+          ]));
         }
       } catch (error) {
         if (!ignore) {
@@ -387,6 +409,15 @@ export function ImageGenerationStudioPanel({
       ignore = true;
     };
   }, [active, authLoading, user, recreateView?.preview, workflowFormat]);
+
+  useEffect(() => {
+    if (!foregroundAutoResumeRef.current) return;
+    for (const job of durableJobs) {
+      if (activeJobStatuses.has(job.status) || job.id === urlJobId) {
+        foregroundJobIdsRef.current.add(job.id);
+      }
+    }
+  }, [durableJobs, urlJobId]);
 
   useEffect(() => {
     if (
@@ -446,16 +477,26 @@ export function ImageGenerationStudioPanel({
     async function reconcileCompletedImage(
       completedJob: (typeof completedJobs)[number],
     ) {
+      const completionEpoch = foregroundEpochRef.current;
+      const isForeground = () => isImageCompletionForeground(
+        completedJob.id,
+        completionEpoch,
+        foregroundEpochRef.current,
+        foregroundJobIdsRef.current,
+      );
       const output = getImageJobOutput(completedJob.output);
 
       if (!output?.url) {
-        if (activeUserIdRef.current === userId) {
+        if (activeUserIdRef.current === userId && isForeground()) {
           setActionError("Image generation completed without a usable output.");
         }
         return;
       }
 
       try {
+        if (isForeground()) {
+          setResolvingImageJobIds((current) => current.includes(completedJob.id) ? current : [...current, completedJob.id]);
+        }
         const token = await getCurrentUserIdToken();
 
         if (!token) {
@@ -490,8 +531,11 @@ export function ImageGenerationStudioPanel({
           // catches up or the media endpoint is temporarily unavailable.
         }
 
-        const nextResult: AIStudioImageResult =
-          persistedResult ?? {
+        const storedPrompt = getImageJobPrompt(userId, completedJob.id);
+        const savedPrompt = submittedPromptsRef.current.get(completedJob.id) ?? storedPrompt ?? output.prompt ?? persistedResult?.prompt;
+        const nextResult: AIStudioImageResult = persistedResult
+          ? { ...persistedResult, prompt: savedPrompt }
+          : {
             aspectRatio:
               output.ratio ??
               getImageJobAspectRatio(workflowFormat ? `${userId}.${workflowFormat}` : userId, completedJob.id),
@@ -499,26 +543,37 @@ export function ImageGenerationStudioPanel({
             id: output.mediaAssetId ?? output.generationId ?? completedJob.id,
             mediaAssetId: output.mediaAssetId ?? null,
             sourceJobId: completedJob.id,
-            title: getImageJobPrompt(workflowFormat ? `${userId}.${workflowFormat}` : userId, completedJob.id),
+            prompt: savedPrompt,
+            title: storedPrompt ?? "Generated image",
             url: output.url,
           };
 
         if (activeUserIdRef.current === userId) {
+          reconciledResultsRef.current.set(nextResult.id, nextResult);
+          setReconciledResultByJob((current) => ({ ...current, [completedJob.id]: nextResult.id }));
           setGeneratedAssets((current) =>
             upsertAIStudioResult(current, nextResult, current.length + 1),
           );
-          setLatestCompletedId(nextResult.id);
-          setTimeout(() => setLatestCompletedId(null), 3500);
-          setActivePrompt("");
-          setActionNotice(null);
-          setActionError(null);
+          if (isForeground()) {
+            setCurrentResultIds((current) =>
+              appendAIStudioSessionResultIds(current, nextResult.id),
+            );
+            setLatestCompletedId(nextResult.id);
+            setTimeout(() => setLatestCompletedId(null), 3500);
+            setActionNotice(null);
+            setActionError(null);
+          }
         }
       } catch (error) {
         resolvedJobIdsRef.current.delete(completedJob.id);
-        if (activeUserIdRef.current === userId) {
+        if (activeUserIdRef.current === userId && isForeground()) {
           setActionError(
             getErrorMessage(error, "Could not restore the generated image."),
           );
+        }
+      } finally {
+        if (activeUserIdRef.current === userId) {
+          setResolvingImageJobIds((current) => current.filter((jobId) => jobId !== completedJob.id));
         }
       }
     }
@@ -528,35 +583,29 @@ export function ImageGenerationStudioPanel({
 
   async function generateFromPrompt(rawPrompt: string) {
     const trimmedPrompt = normalizeAIStudioPrompt(rawPrompt);
-    const promptLengthError = getAIStudioPromptLengthError(
-      trimmedPrompt,
-      AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH,
-    );
 
     if (
       generationLocked ||
       hasInsufficientCredits ||
+      referenceUploadPending ||
+      referenceUploadError || selectingImageRef.current ||
       !trimmedPrompt ||
-      Boolean(workflow && !recreateView?.referenceImageUrl && !referenceImage) ||
-      referencePending || Boolean(referenceError) || Boolean(workflow?.editingBusy) ||
-      isGenerating || selectingImageRef.current || recoveringJobs
+      Boolean(workflow && !recreateView?.referenceImageUrl && !recreateView?.referenceImageAssetId) ||
+      isGenerating || recoveringJobs
     ) {
       return;
     }
-
-    if (promptLengthError) {
-      setActionError(promptLengthError);
-      return;
-    }
-
     setIsSubmitting(true);
     setSelectedHistoryImageId(null);
+    foregroundAutoResumeRef.current = false;
+    const submissionEpoch = foregroundEpochRef.current;
     setActivePrompt(trimmedPrompt);
-    workflow?.onGenerationStart();
+    setActiveSubmittedAt(new Date().toISOString());
     setActionNotice(null);
     setActionError(null);
 
     try {
+      workflow?.onGenerationStart();
       const token = await getCurrentUserIdToken();
 
       if (!token || !user) {
@@ -581,8 +630,9 @@ export function ImageGenerationStudioPanel({
           model,
           prompt: trimmedPrompt,
           quantity,
-          referenceImageUrl: workflow ? recreateView?.referenceImageUrl ?? null : referenceImage?.asset.url ?? recreateView?.referenceImageUrl ?? null,
-          ...(workflow && referenceImage ? { referenceImageAssetId: referenceImage.asset.id } : {}),
+          referenceImageUrl: workflowFormat === "slideshow" ? recreateView?.referenceImageUrl ?? null : referenceImage?.asset.url ?? recreateView?.referenceImageUrl ?? null,
+          ...(workflowFormat === "slideshow" && recreateView?.referenceImageUrls ? { referenceImageUrls: recreateView.referenceImageUrls } : {}),
+          ...(workflowFormat === "slideshow" ? { referenceImageAssetId: referenceImage?.asset.id ?? recreateView?.referenceImageAssetId ?? null } : {}),
         }),
       });
       const data = (await response.json()) as GenerateResponse;
@@ -597,9 +647,19 @@ export function ImageGenerationStudioPanel({
       void queryClient.invalidateQueries({
         queryKey: ["billing-subscription", user.uid],
       });
+      if (activeUserIdRef.current !== user.uid) {
+        return;
+      }
       persistJobIdInUrl(data.jobId, workflowFormat ? `explore-${workflowFormat}Job` : IMAGE_JOB_URL_PARAMETER);
       for (const job of data.jobs) {
+        submittedPromptsRef.current.set(job.jobId, trimmedPrompt);
         resolvedJobIdsRef.current.delete(job.jobId);
+        if (submissionEpoch === foregroundEpochRef.current) {
+          foregroundJobIdsRef.current.add(job.jobId);
+        }
+      }
+      if (activeUserIdRef.current === user.uid) {
+        setSubmittedPrompts((current) => ({ ...current, ...Object.fromEntries(data.jobs.map((job) => [job.jobId, trimmedPrompt])) }));
       }
       const jobIds = data.jobs.map((job) => job.jobId);
       setSubmittedJobIds(jobIds);
@@ -615,6 +675,29 @@ export function ImageGenerationStudioPanel({
       );
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function selectWorkflowImage(image: AIStudioImageResult) {
+    if (!workflow?.onSelectImage || selectingImageRef.current) return;
+    if (workflowFormat !== "slideshow" || recreateView?.preview) {
+      workflow.onSelectImage(image);
+      return;
+    }
+    const ownerId = user?.uid;
+    selectingImageRef.current = true;
+    setSelectingImage(true);
+    setActionError(null);
+    try {
+      const token = await getCurrentUserIdToken();
+      if (!token || !ownerId) throw new Error("Sign in before adding this image to your slides.");
+      const ownedImage = await resolveSlideshowImage(image, token);
+      if (activeUserIdRef.current === ownerId) workflow.onSelectImage(ownedImage);
+    } catch (error) {
+      if (activeUserIdRef.current === ownerId) setActionError(getErrorMessage(error, "Could not add this image. Try again."));
+    } finally {
+      selectingImageRef.current = false;
+      setSelectingImage(false);
     }
   }
 
@@ -653,6 +736,8 @@ export function ImageGenerationStudioPanel({
 
     try {
       resolvedJobIdsRef.current.delete(retryableJob.id);
+      foregroundJobIdsRef.current.add(retryableJob.id);
+      setSelectedHistoryImageId(null);
       await retryJob.mutateAsync(retryableJob.id);
       setActionNotice(null);
       setActionError(null);
@@ -701,14 +786,63 @@ export function ImageGenerationStudioPanel({
   const canRetry = durableJobs.some(
     (job) => job.status === "failed" && Boolean(job.error?.retryable),
   );
-  const historyGroups = groupAIStudioImageHistory(
-    filterAIStudioImageHistory(generatedAssets, historyQuery),
-    currentDay,
+  const historyGroups = useMemo(
+    () => groupAIStudioImageHistory(filterAIStudioImageHistory(generatedAssets, historyQuery), historyNow),
+    [generatedAssets, historyQuery, historyNow],
   );
-  const selectedHistoryImage = generatedAssets.find((asset) => asset.id === selectedHistoryImageId);
-  const visibleImages = selectedHistoryImage
-    ? [selectedHistoryImage]
-    : getTodayAIStudioImages(generatedAssets, currentDay);
+  const visibleImages = useMemo(
+    () => getVisibleAIStudioImages(generatedAssets, currentResultIds, selectedHistoryImageId),
+    [generatedAssets, currentResultIds, selectedHistoryImageId],
+  );
+  type ImageDisplayRow = {
+    key: string;
+    aspectRatio: AIStudioImageAspectRatio;
+    createdAt: string;
+    prompt: string;
+    asset: AIStudioImageResult | null;
+  };
+  const imageRows: ImageDisplayRow[] = [];
+  const renderedImageIds = new Set<string>();
+
+  if (!selectedHistoryImageId) {
+    for (const [index, jobId] of activeJobIds.entries()) {
+      const resultId = reconciledResultByJob[jobId];
+      const asset = visibleImages.find((image) => image.id === resultId);
+      const query = activeJobQueries[index];
+      const job = query?.data;
+      if (asset) {
+        renderedImageIds.add(asset.id);
+        imageRows.push({ key: jobId, aspectRatio: asset.aspectRatio, createdAt: job?.createdAt ?? asset.createdAt, prompt: asset.prompt || MISSING_IMAGE_PROMPT, asset });
+      } else if (
+        query?.isPending ||
+        job?.jobType === "image_generation" && (
+          activeJobStatuses.has(job.status) ||
+          job.status === "completed" && resolvingImageJobIds.includes(jobId) && !resultId
+        )
+      ) {
+        imageRows.push({
+          key: jobId,
+          aspectRatio: user ? getImageJobAspectRatio(user.uid, jobId) : aspectRatio,
+          createdAt: job?.createdAt ?? activeSubmittedAt,
+          prompt: submittedPrompts[jobId] ?? (user ? getImageJobPrompt(user.uid, jobId) ?? MISSING_IMAGE_PROMPT : activePrompt),
+          asset: null,
+        });
+      }
+    }
+  }
+
+  for (const asset of visibleImages) {
+    if (!renderedImageIds.has(asset.id)) {
+      imageRows.push({ key: asset.id, aspectRatio: asset.aspectRatio, createdAt: asset.createdAt, prompt: asset.prompt || MISSING_IMAGE_PROMPT, asset });
+    }
+  }
+
+  if (!selectedHistoryImageId && isSubmitting) {
+    for (let index = 0; index < quantity; index += 1) {
+      imageRows.push({ key: `submitting-${index}`, aspectRatio, createdAt: activeSubmittedAt, prompt: activePrompt, asset: null });
+    }
+  }
+  imageRows.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
 
   function focusHistoryImage(imageId: string) {
     setSelectedHistoryImageId(imageId);
@@ -717,6 +851,29 @@ export function ImageGenerationStudioPanel({
       document.getElementById(`ai-studio-image-result-${imageId}`)?.scrollIntoView({ block: "nearest" });
     });
   }
+
+  function startNewImage() {
+    foregroundEpochRef.current += 1;
+    foregroundAutoResumeRef.current = false;
+    foregroundJobIdsRef.current.clear();
+    setResolvingImageJobIds([]);
+    setSelectedHistoryImageId(null);
+    setCurrentResultIds([]);
+    setSubmittedJobIds([]);
+    setIgnoredPersistedJobId(persistedJobId);
+    setActionError(null);
+    setActionNotice(null);
+    submissionKeyRef.current = null;
+    if (user) {
+      try {
+        window.localStorage.removeItem(`${IMAGE_JOB_STORAGE_PREFIX}${user.uid}`);
+      } catch { /* Saved images remain available in History when local storage is blocked. */ }
+    }
+    persistJobIdInUrl(null, IMAGE_JOB_URL_PARAMETER);
+    document.querySelector<HTMLTextAreaElement>('textarea[name="imagePrompt"]')?.focus();
+  }
+
+  const hasSessionActions = Boolean(selectedHistoryImageId) || (visibleImages.length > 0 && !isGenerating);
 
   return (
     <div
@@ -733,78 +890,72 @@ export function ImageGenerationStudioPanel({
         portalTarget={workflow?.resultsTarget}
         ariaLabel="Generated images"
         emptyContent={recreateView?.emptyContent}
-        gridClassName={recreateView ? "grid-cols-1 sm:grid-cols-1 lg:grid-cols-1 2xl:grid-cols-1" : undefined}
-        emptyTitle="Create an image"
-        emptyDescription="Start a new image below. Your earlier generations are in History."
-        hasResults={visibleImages.length > 0 || isGenerating}
-        loading={(resultsLoading || recoveringJobs) && !isGenerating && visibleImages.length === 0}
+        emptyContentClassName={workflow ? "justify-center" : recreateView ? "items-start pt-8" : undefined}
+        emptyTitle="What will you create?"
+        emptyDescription="Describe an image below, or add a reference to guide the look. Your completed images are saved in History."
+        gridClassName="grid-cols-1 gap-4 sm:grid-cols-1 lg:grid-cols-1 xl:grid-cols-1 2xl:grid-cols-1"
+        hasResults={imageRows.length > 0}
+        loading={(resultsLoading || recoveringJobs) && !isGenerating && generatedAssets.length === 0}
         status={resultsStatus}
-        toolbar={
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {selectedHistoryImage ? (
-              <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedHistoryImageId(null)}>
-                Back to today
+        statusPlacement="inline"
+        scrollToLatestKey={!selectedHistoryImageId && isSubmitting ? activeSubmittedAt : null}
+        toolbar={recreateView?.preview ? undefined : recreateView && !hasSessionActions ? undefined :
+          <div className="flex items-center gap-2">
+            {selectedHistoryImageId ? (
+              <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedHistoryImageId(null)}>Back to session</Button>
+            ) : null}
+            {visibleImages.length > 0 && !isGenerating ? (
+              <Button type="button" variant="ghost" size="sm" onClick={startNewImage}>
+                <Plus className="size-3.5" aria-hidden="true" />
+                New session
               </Button>
             ) : null}
-            <Button type="button" variant="outline" size="sm" disabled={resultsLoading} onClick={() => setHistoryOpen(true)}>
-              <History className="size-4" aria-hidden="true" />
+            {!recreateView ? <Button type="button" variant="outline" size="sm" disabled={resultsLoading} onClick={() => { setHistoryNow(new Date()); setHistoryOpen(true); }}>
+              <History className="size-3.5" aria-hidden="true" />
               History
               {generatedAssets.length > 0 ? (
                 <span className="rounded-full bg-card-muted px-1.5 py-0.5 text-[10px] tabular-nums">{generatedAssets.length}</span>
               ) : null}
-            </Button>
+            </Button> : null}
           </div>
         }
       >
-        {isGenerating
-          ? Array.from(
-              { length: Math.max(1, pendingGenerationCount) },
-              (_, index) => (
-                <OptimisticImageCard
-                  key={`pending-image-${index}`}
-                  aspectRatio={aspectRatio}
-                  prompt={activePrompt}
-                />
-              ),
-            )
-          : null}
-        {visibleImages.map((asset) => (
-          <GeneratedAssetCard
-            key={asset.id}
-            asset={asset}
-            isNew={asset.id === latestCompletedId}
-            selectionDisabled={selectingImage || isGenerating || referencePending || Boolean(workflow?.editingBusy)}
-            onSelect={workflow?.onSelectImage ? () => { void (async () => {
-              if (selectingImageRef.current || isGenerating || referencePending || workflow.editingBusy) return;
-              const ownerId = user?.uid;
-              selectingImageRef.current = true; setSelectingImage(true); onWorkflowBusyChange?.(true);
-              try {
-                if (!ownerId) throw new Error("Sign in to use your image.");
-                const token = await getCurrentUserIdToken(ownerId);
-                if (!token) throw new Error("Sign in to use your image.");
-                const owned = await resolveSlideshowImage(asset, token);
-                if (activeUserIdRef.current === ownerId) { setActionError(null); workflow.onSelectImage?.(owned); }
-              } catch (error) { if (activeUserIdRef.current === ownerId) setActionError(getErrorMessage(error, "Could not load your saved image. Try Use this image again.")); }
-              finally { selectingImageRef.current = false; if (activeUserIdRef.current === ownerId) setSelectingImage(false); }
-            })(); } : undefined}
+        {imageRows.map((row) => (
+          <ImageGenerationCard
+            key={row.key}
+            asset={row.asset}
+            aspectRatio={row.aspectRatio}
+            prompt={row.prompt}
+            createdAt={row.createdAt}
+            referenceImageUrl={referenceImage?.asset.url ?? null}
+            isNew={row.asset?.id === latestCompletedId}
+            onOpenPreview={setPreviewImage}
+            onSelect={row.asset && workflow?.onSelectImage ? () => void selectWorkflowImage(row.asset!) : undefined}
+            selectionDisabled={selectingImage || isGenerating}
           />
         ))}
       </AiStudioResults>
 
       <ImageGenerationHistory
         groups={historyGroups}
-        open={historyOpen && active}
+        open={!recreateView && historyOpen && active}
         onOpenChange={setHistoryOpen}
         query={historyQuery}
         onQueryChange={setHistoryQuery}
         onSelectImage={focusHistoryImage}
-        selectedImageId={selectedHistoryImageId ?? latestCompletedId}
+        selectedImageId={selectedHistoryImageId}
       />
+
+      <ImagePreviewDialog image={active ? previewImage : null} onClose={() => setPreviewImage(null)} />
 
       <AiStudioComposer
         portalTarget={workflow?.controlsTarget}
         actionsTarget={workflow?.actionsTarget}
-        settingsSummary={workflow ? `${model === "nano_banana_2" ? "Nano Banana 2.1" : "Seedream 5.0 Pro"} · ${aspectRatio} · ${quantity} image${quantity === 1 ? "" : "s"}` : undefined}
+        workflowDesign={workflow ? "classic" : undefined}
+        referenceControls={workflow ? recreateView?.contextBanner : undefined}
+        settingsLabel="Image generation settings"
+        settingsClassName={workflow ? creation.imageSettings : undefined}
+        settingsSummary={workflow ? `${getAIStudioImageModelLabel(model)} · ${aspectRatio} · ${quantity} image${quantity === 1 ? "" : "s"}` : undefined}
         compact={Boolean(recreateView)}
         contextBanner={recreateView?.contextBanner}
         accessMessage={composerMessage}
@@ -813,28 +964,46 @@ export function ImageGenerationStudioPanel({
         generateDisabled={
           generationLocked ||
           hasInsufficientCredits ||
+          referenceUploadPending ||
+          Boolean(referenceUploadError) || selectingImage ||
           !prompt.trim() ||
-          Boolean(workflow && !recreateView?.referenceImageUrl && !referenceImage) ||
-          referencePending || Boolean(referenceError) || Boolean(workflow?.editingBusy) ||
-          isGenerating || selectingImage || recoveringJobs
+          Boolean(workflow && !recreateView?.referenceImageUrl && !recreateView?.referenceImageAssetId) ||
+          isGenerating || recoveringJobs
         }
         generateLabel="Generate image"
         generationLocked={generationLocked}
-        isGenerating={isGenerating}
-        layout={workflow ? "workflow" : "unified"}
-        promptAttachmentControl={workflow ? <FormatInstructionImageReference key={user?.uid ?? "signed-out"} selection={referenceImage} ownerId={user?.uid} active={workflow.controlsActive ?? active} preview={recreateView?.preview} disabled={generationLocked && !recreateView?.preview || isGenerating || selectingImage || Boolean(workflow.editingBusy)} onPendingChange={setReferencePending} onErrorChange={setReferenceError} onChange={selection => { submissionKeyRef.current = null; setReferenceImage(selection); }} /> : undefined}
-        leadingControl={!workflow ?
-          <ReferenceMediaUpload
-            active={active}
-            allowedKinds={["image"]}
-            disabled={generationLocked || isGenerating}
+        promptAttachmentControl={workflowFormat === "slideshow" ?
+          <FormatInstructionImageReference
+            key={user?.uid ?? "signed-out"}
+            ownerId={user?.uid}
+            active={workflow?.controlsActive ?? active}
+            preview={recreateView?.preview}
+            disabled={(generationLocked && !recreateView?.preview) || isGenerating || selectingImage}
             selection={referenceImage}
+            onPendingChange={setReferenceUploadPending}
+            onErrorChange={setReferenceUploadError}
             onChange={(selection) => {
               submissionKeyRef.current = null;
               setReferenceImage(selection);
             }}
           /> : undefined}
-        maxLength={AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH}
+        hasAttachments={Boolean(referenceImage) || referenceUploadPending}
+        isGenerating={isGenerating}
+        layout={workflow ? "workflow" : "unified"}
+        showPromptHint={generationLocked || hasInsufficientCredits}
+        leadingControl={workflow ? undefined :
+          <ReferenceMediaUpload
+            active={active}
+            allowedKinds={["image"]}
+            disabled={generationLocked || isGenerating}
+            selection={referenceImage}
+            onPendingChange={setReferenceUploadPending}
+            onChange={(selection) => {
+              submissionKeyRef.current = null;
+              setReferenceImage(selection);
+            }}
+          />
+        }
         name="imagePrompt"
         placeholder={recreateView ? "What would you like to change?" : "Describe the image you want to create…"}
         prompt={prompt}
@@ -851,7 +1020,7 @@ export function ImageGenerationStudioPanel({
               <Button
                 type="button"
                 variant="outline"
-                size="lg"
+                size="sm"
                 disabled={cancelJob.isPending}
                 onClick={() => void handleCancelGeneration()}
               >
@@ -862,7 +1031,7 @@ export function ImageGenerationStudioPanel({
               <Button
                 type="button"
                 variant="outline"
-                size="lg"
+                size="sm"
                 disabled={retryJob.isPending}
                 onClick={() => void handleRetryGeneration()}
               >
@@ -875,11 +1044,12 @@ export function ImageGenerationStudioPanel({
           <>
             <AiStudioSettingSelect
               ariaLabel="Image model"
-              className={workflow ? "col-span-2" : undefined}
               fieldLabel={workflow ? "Model" : undefined}
-              disabled={generationLocked || isGenerating || selectingImage || Boolean(workflow?.editingBusy)}
-              options={AI_STUDIO_IMAGE_MODELS.map((value) => ({
-                label: value === "nano_banana_2" ? "Nano Banana 2.1" : "Seedream 5.0 Pro",
+              fieldLayout={workflow ? "classic" : undefined}
+              size={recreateView ? "sm" : "default"}
+              disabled={generationLocked && !recreateView?.preview || isGenerating}
+              options={(workflowFormat === "slideshow" ? SLIDESHOW_IMAGE_MODELS : AI_STUDIO_IMAGE_MODELS).map((value) => ({
+                label: getAIStudioImageModelLabel(value),
                 value,
               }))}
               value={model}
@@ -890,17 +1060,21 @@ export function ImageGenerationStudioPanel({
             />
             <AiStudioRatioPicker
               fieldLabel={workflow ? "Ratio" : undefined}
+              fieldLayout={workflow ? "classic" : undefined}
+              size={recreateView ? "sm" : "default"}
               value={aspectRatio}
               onChange={(value) => {
                 submissionKeyRef.current = null;
                 setAspectRatio(value);
               }}
-              disabled={generationLocked || isGenerating || selectingImage || Boolean(workflow?.editingBusy)}
+              disabled={generationLocked && !recreateView?.preview || isGenerating}
             />
             <AiStudioSettingSelect
               ariaLabel="Number of images"
-              fieldLabel={workflow ? "Images" : undefined}
-              disabled={generationLocked || isGenerating || selectingImage || Boolean(workflow?.editingBusy)}
+              fieldLabel={workflow ? "Versions for this slide" : undefined}
+              fieldLayout={workflow ? "classic" : undefined}
+              size={recreateView ? "sm" : "default"}
+              disabled={generationLocked && !recreateView?.preview || isGenerating}
               icon={<ImageIcon className="size-4" aria-hidden="true" />}
               options={AI_STUDIO_GENERATION_QUANTITIES.map((count) => ({
                 label: `${count} image${count === 1 ? "" : "s"}`,
@@ -919,102 +1093,113 @@ export function ImageGenerationStudioPanel({
   );
 }
 
-function OptimisticImageCard({
+function ImageGenerationCard({
+  asset,
   aspectRatio,
+  createdAt,
   prompt,
+  referenceImageUrl,
+  isNew = false,
+  onOpenPreview,
+  onSelect,
+  selectionDisabled = false,
 }: {
+  asset: AIStudioImageResult | null;
   aspectRatio: AIStudioImageAspectRatio;
-  prompt?: string;
+  createdAt: string;
+  prompt: string;
+  referenceImageUrl: string | null;
+  isNew?: boolean;
+  onOpenPreview: (image: AIStudioImageResult) => void;
+  onSelect?: () => void;
+  selectionDisabled?: boolean;
 }) {
   return (
     <article
+      id={asset ? `ai-studio-image-result-${asset.id}` : undefined}
       className={cn(
-        "group w-full min-w-0 justify-self-start animate-in fade-in-0 duration-300",
-        getImagePreviewWidthClassName(aspectRatio),
+        "mx-auto w-full max-w-[54rem] scroll-mt-4",
+        isNew && "motion-safe:animate-in motion-safe:fade-in-50 motion-safe:duration-300",
       )}
     >
-      <div
-        className="relative overflow-hidden rounded-[var(--radius-card)] bg-card-muted/70 ring-1 ring-primary/30"
-        style={{ aspectRatio: aspectRatio.replace(":", " / ") }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-tr from-primary/[0.04] via-transparent to-primary/[0.08]" />
-
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 p-4 text-center">
-          <span className="inline-flex size-10 items-center justify-center rounded-full border border-primary/30 bg-card/90 shadow-sm backdrop-blur-md">
-            <Loader2 className="size-4 animate-spin text-primary" aria-hidden="true" />
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-border-strong bg-card/85 px-2.5 py-1 text-[11px] font-semibold text-foreground-strong shadow-xs backdrop-blur-md">
-            <Sparkles className="size-3 text-primary" aria-hidden="true" />
-            Generating image…
-          </span>
+      <div className="flex flex-col items-start gap-4 sm:flex-row sm:gap-6">
+        <div data-image-preview className={cn("w-full shrink-0 sm:mt-12", getImagePreviewWidthClassName(aspectRatio))}>
+          <div
+            className={cn("relative overflow-hidden rounded-2xl border bg-card-muted/70", asset ? "border-border" : "border-primary/20")}
+            style={{ aspectRatio: aspectRatio.replace(":", " / ") }}
+          >
+            {asset ? (
+              <button
+                type="button"
+                onClick={() => onOpenPreview(asset)}
+                aria-label="Enlarge generated image"
+                aria-haspopup="dialog"
+                className="block size-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={asset.url} alt={asset.title} width={1200} height={getGeneratedImageHeight(aspectRatio)} loading="lazy" decoding="async" className="size-full object-contain" />
+              </button>
+            ) : (
+              <>
+                {referenceImageUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={referenceImageUrl} alt="" className="absolute inset-0 size-full scale-110 object-cover opacity-15 blur-xl" />
+                ) : null}
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center" role="status" aria-live="polite">
+                  <span className="inline-flex size-9 items-center justify-center rounded-xl border border-border bg-card/90">
+                    <Loader2 className="size-4 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
+                  </span>
+                  <div>
+                    <p className="text-xs font-medium text-foreground">Creating your image</p>
+                    <p className="mt-1 text-[11px] leading-4 text-muted">It will appear here when ready.</p>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+          <div className="mt-2.5 space-y-3">
+            <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted">
+              <span>{aspectRatio}</span>
+              {asset ? <span className="text-foreground">Ready</span> : null}
+            </div>
+            {onSelect ? <Button type="button" disabled={selectionDisabled} onClick={onSelect}>Use image in slide</Button> : null}
+            {asset ? (
+              <AiStudioResultActions kind="image" title={asset.title} url={asset.url} />
+            ) : null}
+          </div>
         </div>
-      </div>
-      <div className="mt-2 flex items-center justify-between gap-2 px-1">
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate text-xs font-semibold text-foreground/85">
-            {prompt || "Creating image…"}
-          </h3>
-          <p className="mt-0.5 text-xs text-muted-subtle animate-pulse">
-            Polishing details…
-          </p>
+        <div data-image-details className="w-full min-w-0 self-start sm:ml-auto sm:max-w-[26rem] sm:flex-1">
+          <ImagePromptBubble createdAt={createdAt} prompt={prompt} />
         </div>
       </div>
     </article>
   );
 }
 
-function GeneratedAssetCard({
-  asset,
-  isNew = false,
-  onSelect,
-  selectionDisabled = false,
-}: {
-  asset: AIStudioImageResult;
-  isNew?: boolean;
-  onSelect?: () => void;
-  selectionDisabled?: boolean;
-}) {
+function ImagePromptBubble({ createdAt, prompt }: { createdAt: string; prompt: string }) {
+  const [expanded, setExpanded] = useState(false);
   return (
-    <article
-      id={`ai-studio-image-result-${asset.id}`}
-      className={cn(
-        "group w-full min-w-0 justify-self-start transition-[transform,box-shadow] duration-300",
-        getImagePreviewWidthClassName(asset.aspectRatio),
-        isNew &&
-          "animate-in fade-in-50 zoom-in-[0.98] duration-500 rounded-[var(--radius-card)] ring-2 ring-emerald-500/40 ring-offset-2 ring-offset-background",
-      )}
-    >
-      <div
-        className="overflow-hidden rounded-[var(--radius-card)] bg-card-muted ring-1 ring-border"
-        style={{ aspectRatio: asset.aspectRatio.replace(":", " / ") }}
+    <div className="w-full min-w-0">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-0.5 text-[11px] font-medium text-muted">
+        <span className="text-foreground-strong">Prompt</span>
+        <span>{formatGeneratedAt(createdAt)}</span>
+      </div>
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-label={expanded ? "Collapse image prompt" : "Show full image prompt"}
+        onClick={() => setExpanded((current) => !current)}
+        className="flex w-full items-start gap-3 rounded-[14px] border border-border bg-card-muted/50 px-3 py-2.5 text-left transition-colors hover:border-border-strong hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={asset.url}
-          alt={asset.title}
-          width={1200}
-          height={getGeneratedImageHeight(asset.aspectRatio)}
-          loading="lazy"
-          className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-        />
-      </div>
-      <div className="mt-2 flex items-center justify-between gap-2 px-1">
-        <div className="min-w-0">
-          <h3 className="truncate text-xs font-semibold text-foreground">
-            {asset.title}
-          </h3>
-          <p className="mt-0.5 text-xs text-muted-subtle">
-            {formatGeneratedAt(asset.createdAt)}
-          </p>
-        </div>
-        {onSelect ? <Button type="button" onClick={onSelect} disabled={selectionDisabled}>Use this image</Button> : null}
-        <AiStudioResultActions
-          kind="image"
-          title={asset.title}
-          url={asset.url}
-        />
-      </div>
-    </article>
+        <span className={cn("min-w-0 flex-1 whitespace-pre-wrap text-sm font-normal leading-6 text-foreground [overflow-wrap:anywhere]", expanded ? "max-h-48 overflow-y-auto overscroll-contain pr-2" : "line-clamp-3")}>
+          {prompt}
+        </span>
+        {expanded ? <ChevronUp className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden="true" /> : <ChevronDown className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden="true" />}
+      </button>
+      {prompt !== MISSING_IMAGE_PROMPT ? (
+        <div className="mt-1 flex justify-end"><AiStudioCopyButton kind="prompt" value={prompt} /></div>
+      ) : null}
+    </div>
   );
 }
 

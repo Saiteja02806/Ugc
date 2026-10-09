@@ -10,10 +10,46 @@ import {
 import type { WorkerQueueTransport } from "./lib/queue-types.js";
 import type { SupabaseJobStore } from "./lib/supabase.js";
 import { toContentPlanProviderRetry } from "./lib/content-plan-provider-retry.js";
+import { ProviderOperationTerminalError } from "./lib/generation-provider.js";
 import { EmptyWallTextContentPlanResponseError } from "./lib/wall-text-content-plan.js";
 import { toWallTextContentPlanRetry } from "./jobs/generate-wall-text-content-plan.js";
 import { DeferredJobError, RetryableJobError } from "./retryable-job-error.js";
 import type { BackgroundJobRow } from "./types.js";
+
+test("persists terminal provider reasons instead of JOB_FAILED without retrying the paid request", async () => {
+  for (const failureCode of ["INPUT_PREPROCESSING.SAFETY.THIRD_PARTY", "THIRD_PARTY.UNAVAILABLE"]) {
+    const job = createJob();
+    const commands: string[] = [];
+    const store = createJobStore(job);
+    let handlerCalls = 0;
+    let savedCode: string | undefined;
+    store.markFailed = (async (params) => {
+      savedCode = params.errorCode;
+      job.claim_token = null;
+      job.status = "failed";
+      return { ...job };
+    }) as SupabaseJobStore["markFailed"];
+
+    await processWorkerMessage({
+      config: createConfig(),
+      dependencies: {
+        async runJob() {
+          handlerCalls += 1;
+          throw new ProviderOperationTerminalError("Runway task failed: provider rejection", { failureCode });
+        },
+      },
+      message: createMessage(),
+      queue: createQueue(commands),
+      store,
+    });
+
+    assert.equal(savedCode, failureCode.includes("SAFETY") ? "PROVIDER_CONTENT_MODERATION" : "provider_operation_failed");
+    assert.equal(job.status, "failed");
+    assert.equal(handlerCalls, 1);
+    assert.equal(commands.filter((name) => name === "DeleteMessageCommand").length, 1);
+    assert.equal(commands.filter((name) => name === "ChangeMessageVisibilityCommand").length, 0);
+  }
+});
 
 test("only one delivery can claim and execute a background job", async () => {
   const job = createJob();

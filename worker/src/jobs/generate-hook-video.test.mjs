@@ -12,9 +12,13 @@ const generate = provider => async params => {
   return buffer;
 };
 for (const [file, name, provider] of [
+  ["runway-seedance-video", "generateRunwaySeedanceVideoBuffer", "runway"],
+  ["openrouter-seedance-video", "generateOpenRouterSeedanceVideoBuffer", "openrouter"],
+  ["openrouter-wan-video", "generateOpenRouterWanVideoBuffer", "openrouter"],
+  ["kling-video", "generateKlingVideoBuffer", "kling"],
   ["gemini-omni-video", "generateGeminiOmniVideoBuffer", "gemini"],
   ["runway-video", "generateRunwayHookVideoBuffer", "runway"],
-  ["higgsfield-video", "generateHiggsfieldVideoBuffer", "higgsfield"],
+  ["higgsfield-video", "resumeLegacyHiggsfieldVideoBuffer", "higgsfield"],
   ["veo-video", "generateVeoHookVideoBuffer", "veo"],
 ]) {
   mock.module(new URL(`../../dist/lib/${file}.js`, import.meta.url), { namedExports: { [name]: generate(provider) } });
@@ -68,11 +72,11 @@ test("the actual worker preserves long Omni prompts and their final narration", 
 test("other direct paths reject excess text before reserving a provider operation", async () => {
   const before = received.length;
   for (const input of [
-    { model: "seedance_2_5" },
+    { model: "seedance_2_5", hookIdea: "x".repeat(10001) },
     { referenceVideoUrl: "https://owned-media.example.test/video.mp4", referenceVideoDurationSeconds: 2.8 },
   ]) {
-    const f = fixture({ ...input, hookIdea: "x".repeat(1001) });
-    await assert.rejects(runGenerateHookVideoJob(f.job, f.context), /1,000 characters/);
+    const f = fixture({ hookIdea: "x".repeat(1001), ...input });
+    await assert.rejects(runGenerateHookVideoJob(f.job, f.context), /too long for the selected model/);
     assert.deepEqual(f.events, []);
   }
   assert.equal(received.length, before);

@@ -1,6 +1,7 @@
 "use client";
 
 import { Download, ExternalLink } from "lucide-react";
+import { AiStudioCopyButton } from "@/components/generation/ai-studio-copy-button";
 
 import { VideoDownloadButton } from "@/components/generation/video-download-button";
 
@@ -10,23 +11,29 @@ export function AiStudioResultActions({
   className,
   mediaAssetId,
   kind,
+  showOpenAction = true,
   title,
   url,
+  variant = "icons",
 }: {
   className?: string;
   mediaAssetId?: string | null;
   kind: "image" | "video";
+  showOpenAction?: boolean;
   title: string;
   url: string;
+  variant?: "icons" | "buttons";
 }) {
   const mediaLabel = kind === "image" ? "image" : "video";
   const fileName = getDownloadFileName({ kind, title, url });
   const actionClassName =
-    "inline-flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-muted-subtle transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none";
+    variant === "buttons"
+      ? "inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-[var(--radius-control)] border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none"
+      : "inline-flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-muted-subtle transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none";
 
   return (
-    <div className={cn("flex shrink-0 items-center gap-1", className)}>
-      {kind === "video" ? <VideoDownloadButton assetId={mediaAssetId} url={url} title={title} className={actionClassName} /> : <a
+    <div className={cn("flex shrink-0 flex-wrap items-center gap-1", className)}>
+      {kind === "video" ? <VideoDownloadButton assetId={mediaAssetId} className={actionClassName} title={title} url={url} label={variant === "buttons" ? "Download" : undefined} /> : <a
         href={url}
         download={fileName}
         target="_blank"
@@ -36,17 +43,22 @@ export function AiStudioResultActions({
         className={actionClassName}
       >
         <Download className="size-3.5" aria-hidden="true" />
+        {variant === "buttons" ? "Download" : null}
       </a>}
-      <a
-        href={url}
-        target="_blank"
-        rel="noreferrer"
-        aria-label={`Open ${title} in a new tab`}
-        title={`Open ${mediaLabel} in a new tab`}
-        className={actionClassName}
-      >
-        <ExternalLink className="size-3.5" aria-hidden="true" />
-      </a>
+      {showOpenAction ? (
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={`Open ${title} in a new tab`}
+          title={`Open ${mediaLabel} in a new tab`}
+          className={actionClassName}
+        >
+          <ExternalLink className="size-3.5" aria-hidden="true" />
+          {variant === "buttons" ? "Open" : null}
+        </a>
+      ) : null}
+      {kind === "image" ? <AiStudioCopyButton kind="image" value={url} /> : null}
     </div>
   );
 }

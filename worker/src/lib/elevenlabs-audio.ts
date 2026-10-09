@@ -4,7 +4,7 @@ const BASE = "https://api.elevenlabs.io";
 type VoiceRecord = Record<string, unknown> & { voice_id: string; name: string };
 /** Server runtimes only. Never import credential access into client components. */
 export function getElevenLabsApiKey(environment: Readonly<Record<string, string | undefined>> = process.env): string {
-  return environment.ELEVENLABS_API_KEY?.trim() || environment.elevenlabs_api_key?.trim() || "";
+  return environment.ELEVENLABS_VOICE_API_KEY?.trim() || environment.ELEVENLABS_API_KEY?.trim() || environment.elevenlabs_api_key?.trim() || "";
 }
 export class ElevenLabsError extends AudioError {
   constructor(message: string, status: number, public readonly uncertain = false) { super(message, status, "elevenlabs_error"); }
@@ -14,7 +14,7 @@ export class ElevenLabsAudio {
   async request(path: string, init: RequestInit = {}, timeout = 20000) {
     if (!this.key) throw new AudioError("Audio generation has not been connected yet.", 503, "audio_not_configured");
     let response: Response;
-    try { response = await this.fetcher(`${BASE}${path}`, { ...init, signal: AbortSignal.timeout(timeout), headers: { ...init.headers, "xi-api-key": this.key } }); }
+    try { response = await this.fetcher(`${BASE}${path}`, { ...init, redirect: "error", signal: AbortSignal.timeout(timeout), headers: { ...init.headers, "xi-api-key": this.key } }); }
     catch { throw new ElevenLabsError("ElevenLabs could not be reached. Check the generation history before trying again.", 503, init.method === "POST"); }
     if (!response.ok) {
       // Never surface provider payloads, scripts, request headers or credentials.

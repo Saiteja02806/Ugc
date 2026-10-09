@@ -14,6 +14,7 @@ import { EDIT_OVERLAY_FONT_FAMILY, EDIT_OVERLAY_OUTPUT_DIMENSIONS, EDIT_OVERLAY_
 import { buildHookInlineSymbolSvg, hasHookInlineSymbols, tokenizeHookInlineSymbols } from "./hook-inline-symbols.ts";
 import { buildWallTextOverlaySvg, type WallTextNormalizedBox, type WallTextRenderContent, type WallTextSafeArea } from "./wall-text-render-spec.ts";
 import { logger } from "../logger.ts";
+import { resolveOwnedPrivateMediaUrl } from "./private-media.js";
 
 export type RenderRatio = "9:16" | "1:1" | "4:5" | "16:9";
 export type TextOverlayPosition = "top" | "middle" | "bottom";
@@ -107,13 +108,17 @@ export type RenderScheduleCombinationPayload = {
 };
 
 export type RenderScheduleCombinationOutput = {
+  byteLength: number;
   demoVideoId: string;
+  durationSeconds: number;
+  height: number;
   hookVideoId: string;
   key: string;
   ok: true;
   renderId: string;
   scheduleId: string;
   url: string;
+  width: number;
 };
 
 export type RenderWallTextVideoOutput = {
@@ -208,7 +213,9 @@ export async function renderEditedVideoToStorage(
   const outputPath = join(workDir, "rendered.mp4");
 
   try {
-    const sourceBuffer = await downloadVideoToBuffer(payload.sourceVideoUrl);
+    const sourceBuffer = await downloadVideoToBuffer(
+      await resolveOwnedPrivateMediaUrl(payload.sourceVideoUrl, payload.userId),
+    );
     const preparedTextOverlays = payload.draft.textOverlays
       .map((overlay, index) =>
         buildPreparedTextOverlay({
@@ -290,7 +297,8 @@ export async function renderEditedVideoToStorage(
 export async function renderScheduleCombinationToStorage(
   payload: RenderScheduleCombinationPayload,
 ): Promise<RenderScheduleCombinationOutput> {
-  const renderedBuffer = await renderScheduleCombinationToBuffer(payload);
+  const { buffer: renderedBuffer, metadata } =
+    await renderScheduleCombinationWithMetadata(payload);
   const key = buildScheduleCombinationVideoKey(payload);
   const result = await uploadBufferToStorage({
     key,
@@ -309,17 +317,28 @@ export async function renderScheduleCombinationToStorage(
   });
 
   return {
+    byteLength: renderedBuffer.length,
     ok: true,
     demoVideoId: payload.demoVideoId,
+    durationSeconds: metadata.durationSeconds,
+    height: metadata.height,
     hookVideoId: payload.hookVideoId,
     renderId: payload.renderId,
     scheduleId: payload.scheduleId,
     key: result.key,
     url: result.url,
+    width: metadata.width,
   };
 }
 
 export async function renderScheduleCombinationToBuffer(
+  payload: RenderScheduleCombinationPayload,
+) {
+  // Preserve the Buffer contract used by offline render canaries.
+  return (await renderScheduleCombinationWithMetadata(payload)).buffer;
+}
+
+async function renderScheduleCombinationWithMetadata(
   payload: RenderScheduleCombinationPayload,
 ) {
   const workDir = await mkdtemp(join(tmpdir(), "ugc-combine-render-"));
@@ -351,12 +370,12 @@ export async function renderScheduleCombinationToBuffer(
 
   try {
     const [hookBuffer, demoBuffer, hookAudioBuffer] = await Promise.all([
-      downloadVideoToBuffer(payload.hookVideoUrl),
-      downloadVideoToBuffer(payload.demoVideoUrl),
+      resolveOwnedPrivateMediaUrl(payload.hookVideoUrl, payload.userId).then(downloadVideoToBuffer),
+      resolveOwnedPrivateMediaUrl(payload.demoVideoUrl, payload.userId).then(downloadVideoToBuffer),
       payload.hookAudio
-        ? downloadAudioToBuffer(payload.hookAudio.audioUrl, {
+        ? resolveOwnedPrivateMediaUrl(payload.hookAudio.audioUrl, payload.userId).then(url => downloadAudioToBuffer(url, {
             maxBytes: 50 * 1024 * 1024,
-          }).catch((error) => {
+          })).catch((error) => {
             // Audio is optional for the composition. A storage outage must not
             // turn an otherwise valid Trending video into a failed render.
             logger.warn("Could not download composition soundtrack", {
@@ -486,13 +505,16 @@ export async function renderScheduleCombinationToBuffer(
       await copyFile(concatenatedSegmentsPath, outputPath);
     }
 
-    await validateRenderedVideoFile(outputPath, payload.renderId, {
+    const metadata = await validateRenderedVideoFile(outputPath, payload.renderId, {
       expectedAudioCodecName: "aac",
       logLabel: "schedule combination",
       requireAudio: true,
     });
 
-    return await readFile(outputPath);
+    return {
+      buffer: await readFile(outputPath),
+      metadata,
+    };
   } finally {
     await rm(workDir, {
       force: true,
@@ -1510,6 +1532,8 @@ async function validateRenderedVideoFile(
     ...metadata,
     renderId,
   });
+
+  return metadata;
 }
 
 async function getMediaDurationSeconds(inputPath: string) {

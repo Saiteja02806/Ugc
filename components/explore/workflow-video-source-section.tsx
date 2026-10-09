@@ -8,7 +8,7 @@ import type { WorkflowVideoSelection } from "@/components/explore/use-workflow-s
 import type { MediaAsset } from "@/lib/media/types";
 import creation from "@/components/explore/workflow-creation.module.css";
 
-export function WorkflowVideoSourceSection({ kind, selection, disabled = false, label: customLabel, description, previewAssets }: { kind: "hook" | "phone"; selection: WorkflowVideoSelection; disabled?: boolean; label?: string; description?: string; previewAssets?: MediaAsset[] }) {
+export function WorkflowVideoSourceSection({ kind, selection, disabled = false, label: customLabel, description, previewAssets, uploadHint = "MP4, MOV or WebM · Up to 250 MB" }: { kind: "hook" | "phone"; selection: WorkflowVideoSelection; disabled?: boolean; label?: string; description?: string; previewAssets?: MediaAsset[]; uploadHint?: string }) {
   const heading = useId(), input = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const label = customLabel ?? (kind === "hook" ? "Hook video" : "Creator / phone video");
@@ -22,10 +22,10 @@ export function WorkflowVideoSourceSection({ kind, selection, disabled = false, 
     <input ref={input} type="file" accept="video/mp4,video/quicktime,video/webm" aria-label={`Upload ${label.toLowerCase()}`} hidden onChange={event => {
       const file = event.target.files?.[0]; if (file) void selection.chooseUpload(file); event.target.value = "";
     }} />
-    {selection.mode === "upload" && !video ? <Button type="button" variant="outline" className={creation.sourceUpload} disabled={disabled || selection.busy} onClick={() => input.current?.click()}>
-      <Upload className="size-5" aria-hidden="true" /><span>Upload video</span><span className="text-xs font-normal text-muted">MP4, MOV or WebM · Up to 250 MB</span>
+    {selection.mode === "upload" && !video ? <Button type="button" variant="outline" data-workflow-tile="upload" className={creation.sourceUpload} disabled={disabled || selection.busy} onClick={() => input.current?.click()}>
+      <Upload className="size-5" aria-hidden="true" /><span>Upload video</span><span className="text-xs font-normal text-muted">{uploadHint}</span>
     </Button> : null}
-    {selection.mode === "assets" && !video ? <Button type="button" variant="outline" className={creation.sourceUpload} disabled={disabled} onClick={() => setOpen(true)}>
+    {selection.mode === "assets" && !video ? <Button type="button" variant="outline" data-workflow-tile="upload" className={creation.sourceUpload} disabled={disabled} onClick={() => setOpen(true)}>
       <FolderOpen className="size-5" aria-hidden="true" /><span>Choose from Creative Assets</span>
     </Button> : null}
     {selection.mode !== "generate" && video ? <div className={creation.sourceSummary}>
@@ -35,6 +35,7 @@ export function WorkflowVideoSourceSection({ kind, selection, disabled = false, 
     </div> : null}
     {selection.busy ? <p role="status" className={creation.sectionHelp}>{selection.enabled ? "Uploading your video…" : "Reading your video…"}</p> : null}
     {selection.error ? <p role="alert" className="text-xs text-destructive">{selection.error}</p> : null}
+    {selection.mode === "upload" && selection.error && selection.canKeepUpload ? <Button type="button" variant="outline" size="sm" onClick={selection.clearUploadError}>Keep previous video</Button> : null}
     <WorkflowVideoAssetPicker open={open} onOpenChange={setOpen} ownerId={selection.ownerId} selectedId={selection.source?.id} onSelect={selection.selectAsset} description={description} previewAssets={!selection.enabled ? previewAssets : undefined} />
   </section>;
 }

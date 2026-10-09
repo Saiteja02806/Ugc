@@ -7,6 +7,16 @@ resource "google_cloud_run_v2_service" "video_render_worker" {
   labels   = local.labels
   ingress  = "INGRESS_TRAFFIC_INTERNAL_ONLY"
 
+  # Grant the conditional provider access before starting a revision that uses it.
+  depends_on = [google_secret_manager_secret_iam_member.explore_scribe_accessor]
+
+  lifecycle {
+    precondition {
+      condition     = !var.explore_subtitle_transcription_enabled || trimspace(var.elevenlabs_api_key_secret_id) != ""
+      error_message = "Configure an existing ElevenLabs secret ID before enabling Explore transcription."
+    }
+  }
+
   template {
     service_account                  = var.worker_service_account_email
     timeout                          = "${var.request_timeout_seconds}s"
@@ -135,6 +145,24 @@ resource "google_cloud_run_v2_service" "video_render_worker" {
       }
 
       env {
+        name  = "EXPLORE_SUBTITLE_TRANSCRIPTION_ENABLED"
+        value = tostring(var.explore_subtitle_transcription_enabled)
+      }
+
+      dynamic "env" {
+        for_each = local.explore_transcription_secrets
+        content {
+          name = env.key
+          value_source {
+            secret_key_ref {
+              secret  = env.value
+              version = "latest"
+            }
+          }
+        }
+      }
+
+      env {
         name = "SUPABASE_URL"
         value_source {
           secret_key_ref {
@@ -194,13 +222,31 @@ resource "google_cloud_run_v2_service_iam_member" "cloud_tasks_invoker" {
   member   = "serviceAccount:${var.scheduler_service_account_email}"
 }
 
+# Add a member only; never replace an existing secret's policy.
+resource "google_secret_manager_secret_iam_member" "explore_scribe_accessor" {
+  count     = var.enable_video_render_worker && var.explore_subtitle_transcription_enabled ? 1 : 0
+  project   = var.project_id
+  secret_id = var.elevenlabs_api_key_secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${var.worker_service_account_email}"
+}
+
 resource "google_cloud_run_v2_job" "video_render_worker" {
   count = var.enable_video_render_worker ? 1 : 0
+
+  depends_on = [google_secret_manager_secret_iam_member.explore_scribe_accessor]
 
   project  = var.project_id
   name     = var.job_name
   location = var.region
   labels   = local.labels
+
+  lifecycle {
+    precondition {
+      condition     = !var.explore_subtitle_transcription_enabled || trimspace(var.elevenlabs_api_key_secret_id) != ""
+      error_message = "Configure an existing ElevenLabs secret ID before enabling Explore transcription."
+    }
+  }
 
   template {
     task_count = 1
@@ -226,6 +272,19 @@ resource "google_cloud_run_v2_job" "video_render_worker" {
           content {
             name  = env.key
             value = env.value
+          }
+        }
+
+        dynamic "env" {
+          for_each = local.explore_transcription_secrets
+          content {
+            name = env.key
+            value_source {
+              secret_key_ref {
+                secret  = env.value
+                version = "latest"
+              }
+            }
           }
         }
 
@@ -299,6 +358,6 @@ resource "google_cloud_run_v2_job_iam_member" "app_launcher" {
   # run.jobs.run. `roles/run.invoker` only permits invoking a Cloud Run
   # Service and leaves the app launcher returning retryable 503 responses.
   # The custom role has only that permission and is scoped to this one Job.
-  role     = google_project_iam_custom_role.video_render_job_runner[0].name
-  member   = "serviceAccount:${var.app_launcher_service_account_email}"
+  role   = google_project_iam_custom_role.video_render_job_runner[0].name
+  member = "serviceAccount:${var.app_launcher_service_account_email}"
 }

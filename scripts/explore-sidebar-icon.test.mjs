@@ -5,6 +5,8 @@ import { GalleryVerticalEnd } from "lucide-react";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import sharp from "sharp";
+import ts from "typescript";
+import * as jsxRuntime from "react/jsx-runtime";
 
 const readSource = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 
@@ -36,4 +38,45 @@ test("Explore inherits navigation colors through the shared sidebar mask", () =>
   assert.match(icons, /size-5 shrink-0 bg-current/);
   assert.match(icons, /WebkitMaskImage:/);
   assert.match(icons, /maskImage:/);
+});
+
+test("production navigation keeps Explore and hides Audio in active and collapsed states", () => {
+  const source = readSource("../components/layout/app-sidebar.tsx");
+  const tree = ts.createSourceFile("sidebar.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const declarations = tree.statements.filter((node) =>
+    ts.isFunctionDeclaration(node) && node.name?.text === "SidebarNavigation" ||
+    ts.isVariableStatement(node) && node.declarationList.declarations.some((declaration) =>
+      ["primaryNavigationItems", "libraryNavigationItems"].includes(declaration.name.getText(tree))),
+  );
+  assert.equal(declarations.length, 3, "execute the real navigation and its two item lists");
+  const compiled = ts.transpileModule(declarations.map((node) => node.getText(tree)).join("\n"), {
+    compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS },
+  }).outputText;
+  const SidebarLink = ({ item, active, collapsed }) => createElement("a", {
+    href: item.href, "aria-current": active ? "page" : undefined,
+    "data-collapsed": String(collapsed), "data-icon": item.icon,
+  }, item.label);
+  const originalEnvironment = process.env.NODE_ENV;
+  try {
+    process.env.NODE_ENV = "production";
+    const Navigation = new Function("require", "exports", "SidebarLink", "cn", "scrollbars", `${compiled}\nreturn SidebarNavigation;`)(
+      (id) => { assert.equal(id, "react/jsx-runtime"); return jsxRuntime; },
+      {},
+      SidebarLink, (...values) => values.filter(Boolean).join(" "), { quiet: "quiet-scrollbar" },
+    );
+    for (const collapsed of [false, true]) {
+      for (const activeKey of ["explore", "audio-generation"]) {
+        const html = renderToStaticMarkup(createElement(Navigation, { collapsed, activeKey }));
+        assert.match(html, /href="\/explore"/);
+        assert.doesNotMatch(html, /href="\/audio-generation"/);
+        if (activeKey === "explore") assert.match(html, new RegExp(`href="/${activeKey}" aria-current="page" data-collapsed="${collapsed}"`));
+        assert.doesNotMatch(html, /href="\/create-content"/);
+      }
+    }
+    assert.match(readSource("../components/icons/sidebar-icon.tsx"), /audio: "\/icons\/sidebar\/audio\.svg"/);
+    assert.match(readSource("../public/icons/sidebar/audio.svg"), /<svg[\s\S]*<path/);
+  } finally {
+    if (originalEnvironment === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = originalEnvironment;
+  }
 });

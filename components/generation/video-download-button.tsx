@@ -13,6 +13,7 @@ type VideoDownloadButtonProps = {
   className: string;
   title: string;
   url: string;
+  label?: string;
 };
 
 export function VideoDownloadButton(props: VideoDownloadButtonProps) {
@@ -21,7 +22,7 @@ export function VideoDownloadButton(props: VideoDownloadButtonProps) {
     {...props} userId={user?.uid} />;
 }
 
-function OwnedVideoDownloadButton({ assetId, className, title, url, userId }: VideoDownloadButtonProps & { userId?: string }) {
+function OwnedVideoDownloadButton({ assetId, className, title, url, userId, label }: VideoDownloadButtonProps & { userId?: string }) {
   const pending = useRef<AbortController | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +68,7 @@ function OwnedVideoDownloadButton({ assetId, className, title, url, userId }: Vi
       className={`${className} disabled:cursor-wait disabled:opacity-50`}>
       {busy ? <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
         : <Download className="size-3.5" aria-hidden="true" />}
+      {label}
     </button>
     {error ? <span role="alert" className="max-w-64 text-xs text-destructive">{error}</span> : null}
   </span>;

@@ -2,7 +2,11 @@
 
 Current status (30 September 2026): see [the production audit](mcp-production-readiness-audit-2026-09-30.md). The corrected MCP and video adapter are deployed. Public image/video generation, polling, uploads, default asset listing and billing pass. Existing clients must refresh permissions and tool discovery. The dated plan below is historical.
 
-Status: implemented and locally validated on 2026-09-28. The migration has not been applied to production, and the MCP service has not been deployed or tested with a live image provider.
+Status: implemented and locally validated on 2026-09-28. Both MCP migrations are now applied, and Phases 2–5 are deployed to the separate `ugc-mcp` project. No live image provider job has run. Authenticated image and credit acceptance remain pending; see the [live rollout record](ugc-pilot-cloud-mcp-live-image-validation.md).
+
+A later focused security review found that both provider reference-image paths
+read an entire response before checking 25 MiB. A bounded shared downloader is
+prepared locally and remains undeployed; see the [security review](ugc-pilot-cloud-mcp-security-review.md).
 
 ## Behavior
 
@@ -19,4 +23,4 @@ Status: implemented and locally validated on 2026-09-28. The migration has not b
 
 ## Deployment boundary and remaining work
 
-This MCP-specific wrapper leaves the existing website image-generation code unchanged. The website's previously identified duplicate-reservation release race is still separate work. Production acceptance requires applying the Phase 2 OAuth migration and this Phase 5 migration, deploying the MCP route at its approved domain, then testing real OAuth, credit reservation and settlement, queue dispatch and recovery, provider completion, and output ownership. The recovery scheduler is optional in Terraform, so its live enabled state must also be checked before relying on unattended recovery. None of those production changes has been made here. Phase 6 video generation and its billing rules remain separate.
+This MCP-specific wrapper leaves the existing website image-generation code unchanged. The website's previously identified duplicate-reservation release race is still separate work. The Phase 2 OAuth migration and Phase 5 atomic wrapper are applied, and the MCP route is deployed at its approved domain. Core production OAuth checks passed. Phase 5 acceptance still requires a live credit reservation and settlement, queue dispatch and recovery, provider completion, and output ownership. Read-only live Google Cloud checks confirm the image queue RUNNING, worker Ready, and the recovery scheduler ENABLED every five minutes. A real MCP signed upload now confirms that the deployed Google Cloud credential works for storage signing and object access. Actual queue delivery and recovery still require a real job. The production helper `scripts/verify-mcp-live-image.mjs` passed authenticated read mode; image mode has not run because the connected account reports Free, inactive, 0 credits, and image generation unavailable. The advertised image price is 1 credit. Use an existing generation-eligible account for the single paid test, then audit its reservation/queue/output. Phase 6 video generation waits for live image acceptance.

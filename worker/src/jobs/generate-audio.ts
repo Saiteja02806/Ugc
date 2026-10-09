@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { AUDIO_BUCKET, AUDIO_MAX_OUTPUT_BYTES, AudioError, audioObjectPrefix, isAudioUuid, isVoiceEligible, type AudioRequest } from "../lib/audio-contract.ts";
-import { audioDb, audioRpc, getAudioRequest, patchAudioRequest, readPrivateAudio, savePrivateAudio } from "../lib/audio-store.ts";
+import { AUDIO_MAX_OUTPUT_BYTES, AudioError, audioObjectPrefix, isAudioUuid, isVoiceEligible, type AudioRequest } from "../lib/audio-contract.ts";
+import { audioDb, audioRpc, getAudioRequest, patchAudioRequest, readPrivateAudio, readOptionalPrivateAudio, savePrivateAudio } from "../lib/audio-store.ts";
 import { probeAudio } from "../lib/audio-media.ts";
 import { ElevenLabsAudio, ElevenLabsError, getElevenLabsApiKey } from "../lib/elevenlabs-audio.ts";
 import { DeferredJobError, RetryableJobError } from "../retryable-job-error.ts";
@@ -13,14 +13,6 @@ async function startSubmission(id: string, userId: string) {
   if (!started) throw new DeferredJobError("This audio request has already been submitted or has ended.", { code: "audio_submission_already_started", retryAfterSeconds: 10 });
 }
 
-async function optionalStoredAudio(key: string) {
-  const { data, error } = await audioDb().storage.from(AUDIO_BUCKET).download(key);
-  if (error) {
-    if (String(error.message).toLowerCase().includes("not found") || String((error as unknown as { statusCode: string }).statusCode) === "404") return null;
-    throw new RetryableJobError("Saved audio could not be read yet.", { code: "audio_storage_unavailable", retryAfterSeconds: 30 });
-  }
-  return data ? new Uint8Array(await data.arrayBuffer()) : null;
-}
 async function saveReadyAsset(request: AudioRequest, bytes: Uint8Array, key: string) {
   const duration = await probeAudio(bytes);
   const { error } = await audioDb().from("audio_assets").upsert({ id: request.id, user_id: request.user_id, name: request.name, purpose: "generated", object_key: key, mime_type: "audio/mpeg", size_bytes: bytes.length, duration_seconds: duration, checksum: createHash("sha256").update(bytes).digest("hex"), status: "ready", test_only: request.test_only, generation_id: request.id });
@@ -50,7 +42,7 @@ export async function runGenerateAudioJob(job: BackgroundJobRow, context: Worker
 
   const finalKey = `${audioObjectPrefix(request.user_id, id)}/final.mp3`;
   if (request.kind === "speech" && request.provider_started_at) {
-    const saved = await optionalStoredAudio(finalKey);
+    const saved = await readOptionalPrivateAudio(finalKey);
     if (saved) return saveReadyAsset(request, saved, finalKey);
     await patchAudioRequest(id, { status: "uncertain", error_message: "The provider may have generated this audio. It will not be submitted again automatically." });
     throw new AudioError("The audio submission is uncertain. Check its history before starting a new generation.", 409);

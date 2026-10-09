@@ -1,12 +1,12 @@
 # Subtitle styles and saved-video finishing
 
-Implemented locally October 7, 2026. Not pushed or deployed. Production acceptance on `https://www.getugcpilot.com` remains required after an authorized release. No real user media, hosted uploads, paid transcription, or publishing was used during implementation.
+Implemented October 7, 2026; included in the authorized complete release. See `release-2026-10-07.md` for release verification. Offline validation uses fixtures without paid transcription or publishing.
 
 ## User flow
 
 Hook and Phone workflows share eight subtitle choices. Select a style to update the draft, then explicitly press **Play example** in the single player below the cards. Changing style resets the example. Playback pauses when its section/page is hidden or the player leaves the viewport. Examples never autoplay, including with reduced motion. Posters, loading feedback, errors, keyboard playback, and explicit retry are supported.
 
-With finishing enabled, **Edit video → Your saved video** selects a ready, owned Library video. The user may append a demo and its added audio, choose approved default background music, and enable subtitles. **Apply edits** saves a new derivative and preserves the source. The current creation composer/model settings retain their behavior; finishing does not enable the unfinished generation buttons. Scheduling uses the existing confirmation editor and saved derivative.
+Under Create, **Upload** and **Creative Assets** select a ready, owned opening video, then **Continue to edit** opens finishing. The user may append a demo and its added audio, choose approved default background music, and enable subtitles. **Apply edits** saves a new derivative and preserves the source. Generate retains the current live composer, model settings and durable jobs. Scheduling uses the existing confirmation editor and saved derivative.
 
 | ID | Label | Behavior | Renderer version |
 | --- | --- | --- | --- |
@@ -19,7 +19,7 @@ With finishing enabled, **Edit video → Your saved video** selects a ready, own
 | `marker-highlight` | Marker highlight | Fixed phrase; background under active word | `marker-highlight-v1` |
 | `serif-box` | Serif black box | Instrument Serif on black; whole words fade from grey to white | `serif-box-v2` |
 
-`worker/src/subtitles/styles.ts` is the browser-safe registry used by the UI, request validation, recovery, standalone renderer, worker, and preview build. Unknown IDs fail closed. SQL repeats the IDs because it cannot import TypeScript; a regression test checks every registry ID and rejects malformed subtitle records atomically. Existing four renderer identities and legacy default Bottom remain available. Bottom, Middle, and Top use safe-area geometry; Serif black box places Bottom at 75% of frame height to match its reference.
+`worker/src/subtitles/styles.ts` is the browser-safe registry used by the UI, request validation, recovery, standalone renderer, worker, and preview build. Unknown IDs fail closed. SQL repeats the IDs because it cannot import TypeScript; a regression test checks every registry ID and rejects malformed subtitle records atomically. Existing four renderer identities and legacy default Bottom remain available. Bottom, Middle, and Top use shared safe-area geometry.
 
 ## Rendering and recovery
 
@@ -37,7 +37,7 @@ All eight eight-second, 480×854 examples share `scripts/fixtures/subtitle-previ
 
 `scripts/create-subtitle-preview-fixture.mjs` is an optional authoring script. The eSpeak tool (`@echogarden/espeak-ng-emscripten@0.3.0`, GPL) is isolated in ignored `.tmp` and is not a shipped app/worker dependency. Generated source artwork, audio, transcript, and timing events are retained as fixtures. Runtime dependencies/lockfiles were not changed.
 
-`scripts/build-subtitle-previews.mjs` calls production `finishExploreVideo` with that offline transcript. The original seven public videos/posters are in `public/subtitle-previews/v1`; corrected Serif black box media is in `public/subtitle-previews/v2`. The central v1 manifest records source, transcript, ASS, video hashes and renderer versions. All examples preserve identical AAC packets. Builds require fresh media paths and write the manifest last. The selected-style build can target a new version directory while updating the central manifest; see `subtitle-serif-black-box-2026-10-08.md` for the correction and command.
+`scripts/build-subtitle-previews.mjs` calls production `finishExploreVideo` with that offline transcript. Public videos/posters are in `public/subtitle-previews/v1`; its manifest records source, transcript, ASS, video hashes and renderer versions. All examples preserve identical AAC packets. Builds require fresh output directories and write the manifest last; regenerate into a new directory, review, then promote the complete set.
 
 ```powershell
 npm run worker:build
@@ -61,3 +61,5 @@ Follow the complete-worktree release rules in `AGENTS.md` on a future authorized
 4. Verify production with an authenticated owner: saved source → Apply edits → ready Library derivative → playback. Check final-audio timing, every style, source preservation, reload recovery, cancellation, foreign-source rejection, and scheduling confirmation. Lost-response retry must retain one job/output. Confirm web and worker targets contain the complete intended commit.
 
 Custom size/colors and own-video style audition remain deferred.
+
+The eighth style uses the versioned media in public/subtitle-previews/v2. The new Hook and Wall of Text editors deliberately omit subtitles; the existing shared finishing renderer retains them for preserved workflows.

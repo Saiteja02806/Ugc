@@ -1,5 +1,6 @@
-export const RECREATE_EDITOR_DEFAULT_FRACTION = 0.2;
-export const RECREATE_EDITOR_DEFAULT_MAX = 320;
+export const RECREATE_EDITOR_DEFAULT_FRACTION = 0.32;
+export const RECREATE_EDITOR_DEFAULT_MIN = 320;
+export const RECREATE_EDITOR_DEFAULT_MAX = 420;
 export const RECREATE_EDITOR_MIN = 220;
 export const RECREATE_EDITOR_MAX = 560;
 export const RECREATE_GALLERY_MIN = 320;
@@ -11,12 +12,15 @@ export function recreateEditorMaximum(containerWidth: number) {
 }
 
 export function recreateEditorDefault(containerWidth: number) {
-  return clampRecreateEditorWidth(Math.min(RECREATE_EDITOR_DEFAULT_MAX,
-    containerWidth * RECREATE_EDITOR_DEFAULT_FRACTION), containerWidth);
+  return clampRecreateEditorWidth(preferredEditorWidth(containerWidth), containerWidth);
 }
 
 export function clampRecreateEditorWidth(width: number, containerWidth: number) {
-  const requested = Number.isFinite(width) ? width : Math.min(RECREATE_EDITOR_DEFAULT_MAX,
-    containerWidth * RECREATE_EDITOR_DEFAULT_FRACTION);
+  const requested = Number.isFinite(width) ? width : preferredEditorWidth(containerWidth);
   return Math.round(Math.max(RECREATE_EDITOR_MIN, Math.min(requested, recreateEditorMaximum(containerWidth))));
+}
+
+function preferredEditorWidth(containerWidth: number) {
+  return Math.min(RECREATE_EDITOR_DEFAULT_MAX, Math.max(RECREATE_EDITOR_DEFAULT_MIN,
+    containerWidth * RECREATE_EDITOR_DEFAULT_FRACTION));
 }

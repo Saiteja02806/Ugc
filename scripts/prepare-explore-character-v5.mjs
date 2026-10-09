@@ -1,7 +1,7 @@
 // Package the native AE v5 film, preserving its exact frame count and timing.
 import {spawnSync} from "node:child_process";
 import {createHash} from "node:crypto";
-import {mkdirSync,readFileSync,writeFileSync,copyFileSync,statSync} from "node:fs";
+import {mkdirSync,readFileSync,writeFileSync,copyFileSync} from "node:fs";
 import path from "node:path";
 import ffmpeg from "ffmpeg-static";
 import ffprobe from "ffprobe-static";
@@ -51,4 +51,3 @@ const pub=path.resolve("public/explore/characters");mkdirSync(pub,{recursive:tru
 copyFileSync(video,path.join(pub,"ai-character-create-yours-v5.mp4"));
 copyFileSync(path.join(out,"ai-character-v5.webp"),path.join(pub,"ai-character-create-yours-v5.webp"));
 console.log(JSON.stringify(manifest));
-

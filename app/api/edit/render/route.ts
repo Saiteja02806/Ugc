@@ -22,7 +22,7 @@ import {
   getMissingBackgroundJobStorageEnvVars,
   markBackgroundJobFailed,
 } from "@/lib/jobs/background-jobs";
-import { isTrustedStorageUrl } from "@/lib/storage/storage";
+import { canonicalMediaReference, isTrustedMediaReferenceUrl } from "@/lib/media/media-reference";
 import { getMediaAssetForOwner } from "@/lib/media/media-storage";
 import {
   markDemoVideoFailed,
@@ -173,20 +173,6 @@ function cleanSeconds(value: unknown) {
     : null;
 }
 
-function cleanOptionalUrl(value: unknown) {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  try {
-    const url = new URL(value.trim());
-
-    return ["http:", "https:"].includes(url.protocol) ? url.toString() : null;
-  } catch {
-    return null;
-  }
-}
-
 function cleanSourceVideoUrl(value: unknown) {
   if (typeof value !== "string") {
     return null;
@@ -257,7 +243,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const sourceVideoUrl = cleanSourceVideoUrl(body.sourceVideoUrl);
+  let canonicalSource: unknown;
+  try { canonicalSource = await canonicalMediaReference(body.sourceVideoUrl, user.uid); }
+  catch { return NextResponse.json({ ok: false, error: "This video is unavailable to your account." }, { status: 404 }); }
+  const sourceVideoUrl = cleanSourceVideoUrl(canonicalSource);
 
   if (!sourceVideoUrl) {
     return NextResponse.json(
@@ -269,7 +258,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!isTrustedStorageUrl(sourceVideoUrl)) {
+  if (!isTrustedMediaReferenceUrl(sourceVideoUrl)) {
     return NextResponse.json(
       {
         ok: false,
@@ -371,7 +360,7 @@ export async function POST(request: Request) {
         source,
         sourceVideoId,
         sourceVideoUrl,
-        thumbnailUrl: cleanOptionalUrl(body.thumbnailUrl),
+        thumbnailUrl: sourceAsset.thumbnail_url,
         title: cleanText(body.title, "Untitled video", 140),
         userId: user.uid,
       });

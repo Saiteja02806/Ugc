@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   assertRunwayDailyCreditBudget,
   estimateRunwayVideoCredits,
+  estimateRunwaySeedanceCredits,
   getRunwayUtcCreditWindow,
   resolveRunwayDailyCreditLimit,
 } from "./runway-credit-budget.js";
@@ -31,6 +32,13 @@ test("uses one UTC calendar day for credit accounting", () => {
       startDate: "2026-08-01",
     },
   );
+});
+
+test("counts Seedance quality, output length, and rounded reference video seconds", () => {
+  assert.equal(estimateRunwaySeedanceCredits("480p", 4), 80);
+  assert.equal(estimateRunwaySeedanceCredits("720p", 5), 150);
+  assert.equal(estimateRunwaySeedanceCredits("720p", 5, 3.1), 210);
+  assert.equal(estimateRunwaySeedanceCredits("480p", 30, 30), 900);
 });
 
 test("allows a generation that reaches exactly 100 credits", async () => {

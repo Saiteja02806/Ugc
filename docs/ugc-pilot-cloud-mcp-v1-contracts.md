@@ -195,12 +195,22 @@ output: {
   upload_id: string; // UUID, same as reserved media asset ID
   upload_url: string; // HTTPS signed PUT URL
   expires_at: string; // UTC timestamp, currently 10 minutes after issuance
-  required_headers: { "Content-Type": string };
+  required_headers: {
+    "Content-Type": string;
+    "x-goog-content-length-range": string; // 1,file_size_bytes
+    "x-goog-if-generation-match": "0"; // upload to a new object only
+  };
 };
 ```
 
 The MIME type must match the collection. No arbitrary `project_id`, storage key,
 or owner ID comes from the model.
+The signed PUT enforces the declared maximum size at GCS and rejects a second
+write to the same object. The client must send every `required_headers` entry.
+The service allows at most five outstanding, unconfirmed MCP uploads and
+500 MiB of their declared bytes per account. An owner-deleted unconfirmed
+upload stays in that quota until its storage cleanup succeeds; a quota
+rejection does not return an upload URL.
 
 ### 7. `confirm_upload`
 
@@ -228,8 +238,12 @@ stored object still matches; it must never register another asset.
 
 ### 8. `delete_asset`
 
-Description: soft-delete exactly one owned asset. The backing storage object
-is not immediately purged; previously shared public URLs may still work.
+Description: delete exactly one owned asset. Ready assets retain the existing
+soft-delete behavior, so previously shared public URLs may still work.
+Owner-deleted, unconfirmed MCP uploads are sealed with a tiny tombstone to
+block their still-valid signed URL; the tombstone is removed after the URL's
+validity window. Cleanup does not set a deadline for confirming an active
+upload.
 
 ```ts
 input: { asset_id: string }; // UUID
@@ -348,9 +362,9 @@ are proposed as part of the contract, not an existing auth feature.
 | `get_saas_brand` | `brand:read` | Completed owner profile | Read only | `getBusinessProfileForUser` |
 | `list_assets` | `assets:read` | Own ready, undeleted rows | Read only | `listMediaAssets` (add search/pagination) |
 | `get_asset` | `assets:read` | Own ready, undeleted row | Read only | `getMediaAssetForOwner` |
-| `create_upload` | `assets:write` | Own record; server-set owner | Write | `createMediaUploadTarget`, `createUploadingMediaAsset`, `createSignedPutUrl` |
+| `create_upload` | `assets:write` | Own record; server-set owner | Write | `createMediaUploadTarget`, MCP quota reservation RPC, `createSignedPutUrl` |
 | `confirm_upload` | `assets:write` | Own pending upload | Write | `getMediaAssetForOwner`, `headStorageObject`, `markMediaAssetReady` |
-| `delete_asset` | `assets:write` | Own undeleted row | Destructive hint | `softDeleteMediaAsset` |
+| `delete_asset` | `assets:write` | Own undeleted row | Destructive hint | Conditional MCP upload deletion or `softDeleteMediaAsset` |
 | `get_capabilities` | `account:read` | Self plan | Read only | `getUserSubscription`, AI Studio settings |
 | `generate_image` | `generation:write` | Active Starter/Growth, enough credits, owned reference | Write, costly | AI Studio image job/credit services |
 | `generate_video` | `generation:write` | Active Starter/Growth, enough credits, owned reference | Write, costly | AI Studio video job/credit services |
@@ -400,7 +414,7 @@ existence. Unknown or cross-user IDs both return `NOT_FOUND`.
 | `get_saas_brand` | `ONBOARDING_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_INCOMPLETE` |
 | `list_assets` | `INVALID_CURSOR`, `ASSETS_UNAVAILABLE` |
 | `get_asset` | `NOT_FOUND` |
-| `create_upload` | `UNSUPPORTED_MEDIA_TYPE`, `FILE_TOO_LARGE`, `STORAGE_UNAVAILABLE` |
+| `create_upload` | `UNSUPPORTED_MEDIA_TYPE`, `FILE_TOO_LARGE`, `UPLOAD_QUOTA_EXCEEDED`, `STORAGE_UNAVAILABLE` |
 | `confirm_upload` | `NOT_FOUND`, `UPLOAD_NOT_READY`, `UPLOAD_MISMATCH`, `UNSUPPORTED_MEDIA_TYPE`, `FILE_TOO_LARGE`, `STORAGE_UNAVAILABLE` |
 | `delete_asset` | `NOT_FOUND` |
 | `generate_image`, `generate_video` | `PLAN_REQUIRED`, `INSUFFICIENT_CREDITS`, `REFERENCE_NOT_FOUND`, `UNSUPPORTED_REFERENCE`, `IDEMPOTENCY_CONFLICT`, `GENERATION_UNAVAILABLE` |

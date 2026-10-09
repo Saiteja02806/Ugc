@@ -12,9 +12,26 @@ function nodes(node) {
   if (!node || typeof node !== "object") return [];
   return [node, ...nodes(node.props?.children)];
 }
-function harness() {
+function generationModules(seedanceEnabled = false) {
+  const load = (file, imports = {}) => {
+    const exported = {};
+    vm.runInNewContext(ts.transpileModule(read(file), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, {
+      exports: exported,
+      process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: String(seedanceEnabled) } },
+      require: (name) => { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; },
+    });
+    return exported;
+  };
+  const backend = load("lib/ai-studio/generation-settings.ts");
+  const workflow = load("lib/explore/workflow-generation-settings.ts", { "../ai-studio/generation-settings": backend });
+  return { backend, workflow };
+}
+
+function harness({ seedanceEnabled = false } = {}) {
   let cursor = 0;
   const slots = [];
+  const { backend, workflow } = generationModules(seedanceEnabled);
+  let generationSettings = workflow.createWorkflowGenerationSettings();
   const imports = {
     react: {
       useId() { return `field-${cursor++}`; },
@@ -27,9 +44,12 @@ function harness() {
     "@/components/explore/hook-workflow-media-controls": { WorkflowFilePicker: "picker", WorkflowMediaPlayer: "player" },
     "@/components/explore/workflow-audio-reference": { WorkflowAudioReference: "audio-reference" },
     "@/components/generation/ai-studio-composer": { AiStudioSettingSelect: "select" },
+    "@/components/explore/workflow-duration-control": { WorkflowDurationControl: "duration-control" },
     "@/components/ui/button": { Button: "button" },
     "@/components/ui/popover": Object.fromEntries(["Popover", "PopoverContent", "PopoverTitle", "PopoverTrigger"].map((name) => [name, name])),
     "@/lib/ai-studio/creator-references": { CREATOR_REFERENCES: [{ id: "c1", src: "/creator.png", fileName: "creator.png" }] },
+    "@/lib/ai-studio/generation-settings": backend,
+    "@/lib/explore/workflow-generation-settings": workflow,
     "@/lib/utils": { cn: (...values) => values.join(" ") },
     "@/components/explore/workflow-studio.module.css": { default: {} },
     "@/components/explore/workflow-creation.module.css": { default: new Proxy({}, { get: (_, key) => key }) },
@@ -40,7 +60,7 @@ function harness() {
     exports: exported, require: (name) => { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; },
   });
   const attachment = { asset: null, error: null, loading: false, choose() {}, remove() {}, chooseLibraryImage() {} };
-  return { render(overrides = {}) { cursor = 0; return exported.WorkflowCreationForm({ kind: "hook", instructions: "", onInstructionsChange() {}, creator: attachment, videoReference: attachment, audio: attachment, audioLabel: "Hook audio", audioMode: "voice", onAudioModeChange() {}, ...overrides }); } };
+  return { render(overrides = {}) { cursor = 0; return exported.WorkflowCreationForm({ kind: "hook", instructions: "", onInstructionsChange() {}, creator: attachment, videoReference: attachment, audio: attachment, audioLabel: "Hook audio", audioMode: "voice", onAudioModeChange() {}, generationSettings, onGenerationSettingsChange(patch) { generationSettings = workflow.normalizeWorkflowGenerationSettings({ ...generationSettings, ...patch }); }, ...overrides }); } };
 }
 
 test("the actual shared form has labelled fields and forwards user text verbatim", () => {
@@ -53,7 +73,7 @@ test("the actual shared form has labelled fields and forwards user text verbatim
   const exact = "  Keep my spacing.\nDo not rewrite @creator.  ";
   input.props.onChange({ target: { value: exact } });
   assert.deepEqual(changes, [exact]);
-  assert.deepEqual(nodes(tree).filter((node) => node.type === "select").map((node) => node.props.ariaLabel), [
+  assert.deepEqual(nodes(tree).filter((node) => ["select", "duration-control"].includes(node.type)).map((node) => node.props.ariaLabel), [
     "Hook model", "Hook duration", "Hook quality", "Number of hook videos", "Hook aspect ratio",
   ]);
 });
@@ -61,12 +81,105 @@ test("the actual shared form has labelled fields and forwards user text verbatim
 test("settings retain their selections when the form rerenders with attachments or instructions", () => {
   const actual = harness();
   const first = actual.render();
-  nodes(first).find((node) => node.type === "select" && node.props.ariaLabel === "Hook quality").props.onChange("1080p");
+  nodes(first).find((node) => node.type === "select" && node.props.ariaLabel === "Hook model").props.onChange("google_omni");
+  nodes(actual.render()).find((node) => node.type === "select" && node.props.ariaLabel === "Hook quality").props.onChange("1080p");
   nodes(first).find((node) => node.type === "select" && node.props.ariaLabel === "Number of hook videos").props.onChange("4");
   const next = actual.render({ instructions: "Still mine.", videoReference: { asset: { name: "my.mp4", url: "blob:my" } } });
   assert.equal(nodes(next).find((node) => node.type === "select" && node.props.ariaLabel === "Hook quality").props.value, "1080p");
   assert.equal(nodes(next).find((node) => node.type === "select" && node.props.ariaLabel === "Number of hook videos").props.value, "4");
   assert.equal(nodes(next).find((node) => node.type === "textarea").props.value, "Still mine.");
+});
+
+test("each workflow offers only the duration and quality choices accepted by the configured application API", () => {
+  const { backend } = generationModules(true);
+  for (const kind of ["hook", "phone"]) {
+    const actual = harness({ seedanceEnabled: true });
+    const label = kind === "hook" ? "Hook" : "Phone video";
+    for (const model of backend.AI_STUDIO_VIDEO_MODELS.filter(model => backend.isAIStudioVideoModelAvailable(model))) {
+      const first = nodes(actual.render({ kind }));
+      first.find((node) => node.type === "select" && node.props.ariaLabel === `${label} model`).props.onChange(model);
+      const next = nodes(actual.render({ kind }));
+      const durations = next.find((node) => node.type === "duration-control" && node.props.ariaLabel === `${label} duration`);
+      const qualities = next.find((node) => node.type === "select" && node.props.ariaLabel === `${label} quality`);
+      assert.equal(durations.props.model, model);
+      assert.ok(backend.getAIStudioVideoDurations(model).includes(durations.props.value));
+      assert.deepEqual(Array.from(qualities.props.options, (option) => option.value), Array.from(backend.getAIStudioVideoResolutions(model)));
+      assert.ok(qualities.props.options.some((option) => option.value === qualities.props.value));
+    }
+  }
+});
+
+test("disabled Seedance is neither offered nor used as the default", () => {
+  const all = nodes(harness().render());
+  const model = all.find((node) => node.type === "select" && node.props.ariaLabel === "Hook model");
+  assert.equal(model.props.value, "kling_3_0");
+  assert.deepEqual(Array.from(model.props.options, (option) => option.value), ["kling_3_0", "google_omni"]);
+  assert.equal(model.props.options[1].label, "Omni Flash 1.1");
+  const enabled = nodes(harness({ seedanceEnabled: true }).render()).find((node) => node.type === "select" && node.props.ariaLabel === "Hook model");
+  assert.equal(enabled.props.value, "seedance_2_5");
+  assert.ok(enabled.props.options.some((option) => option.value === "seedance_2_5"));
+});
+
+test("model changes atomically reset incompatible settings but retain valid output and ratio choices", () => {
+  const { workflow } = generationModules(true);
+  const seedance = workflow.normalizeWorkflowGenerationSettings({ model: "seedance_2_5", duration: 30, resolution: "480p", quantity: 4, aspectRatio: "16:9" });
+  const omni = workflow.normalizeWorkflowGenerationSettings({ ...seedance, model: "google_omni" });
+  assert.equal(omni.duration, 5);
+  assert.equal(omni.resolution, "720p");
+  assert.equal(omni.quantity, 4);
+  assert.equal(omni.aspectRatio, "16:9");
+  const kling = workflow.normalizeWorkflowGenerationSettings({ ...omni, resolution: "1080p", duration: 10, model: "kling_3_0" });
+  assert.equal(kling.duration, 10);
+  assert.equal(kling.resolution, "720p");
+  const disabled = generationModules().workflow.normalizeWorkflowGenerationSettings(seedance);
+  assert.equal(disabled.model, "kling_3_0");
+  assert.equal(disabled.duration, 5);
+  assert.equal(disabled.resolution, "720p");
+});
+
+test("the shared settings hook owns the draft, applies rapid changes to current state, and tracks unsaved settings", () => {
+  const { workflow } = generationModules(true);
+  let current;
+  const exported = {};
+  const imports = {
+    react: { useState(initial) { current ??= initial(); return [current, (update) => { current = update(current); }]; } },
+    "@/lib/explore/workflow-generation-settings": workflow,
+  };
+  vm.runInNewContext(ts.transpileModule(read("components/explore/use-workflow-generation-settings.ts"), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, {
+    exports: exported, require: (name) => { assert.ok(name in imports); return imports[name]; },
+  });
+  let hook = exported.useWorkflowGenerationSettings(10);
+  assert.equal(hook.settings.duration, 10);
+  assert.equal(hook.dirty, false);
+  hook.changeSettings({ quantity: 4 });
+  hook.changeSettings({ aspectRatio: "16:9" });
+  hook = exported.useWorkflowGenerationSettings(10);
+  assert.equal(hook.settings.quantity, 4);
+  assert.equal(hook.settings.aspectRatio, "16:9");
+  assert.equal(hook.dirty, true);
+  hook.changeSettings({ quantity: 1, aspectRatio: "9:16" });
+  assert.equal(exported.useWorkflowGenerationSettings(10).dirty, false);
+  for (const file of ["hook-workflow-preview", "phone-workflow-preview"]) {
+    const parent = read(`components/explore/${file}.tsx`);
+    assert.match(parent, /useWorkflowGenerationSettings\(/);
+    assert.match(parent, /generationSettings=\{generation.settings\}/);
+    assert.match(parent, /onGenerationSettingsChange=\{generation.changeSettings\}/);
+    assert.match(parent, /const dirty = Boolean\(selection.dirty \|\| generation.dirty/);
+  }
+});
+
+test("text-only prompts remain valid and local reference previews do not promise unsupported generation behavior", () => {
+  const text = nodes(harness().render()).filter((node) => node.type === "p").map((node) => node.props.children).join(" ");
+  assert.match(text, /Text-only prompts are supported; reference images are optional/);
+  assert.match(text, /Use Seedance 2.5 for a video reference up to 30 seconds/);
+  assert.doesNotMatch(source, /disabled=\{!creator.asset|instructions.*creator.asset/);
+  const audio = read("components/explore/workflow-audio-reference.tsx");
+  assert.match(audio, /Main voice reference/);
+  assert.match(audio, /Voice guidance · Up to 30 seconds/);
+  assert.doesNotMatch(audio, /voice—not background music or demo audio/);
+  assert.doesNotMatch(audio, /Exact recording<\/Button>/);
+  assert.match(audio, /maxDuration: 30/);
+  assert.doesNotMatch(audio, /Use exact recording for the spoken words/);
 });
 
 test("the hook example is placeholder text only and never becomes an instruction value", () => {
@@ -107,7 +220,7 @@ test("both long creation placeholders are visually hidden below the desktop brea
   const desktop = css.match(/@media \(min-width: 1024px\)\s*\{([\s\S]*?)\n\}/)?.[1];
   assert.ok(desktop);
   const hiddenHint = '.composer .prompt::placeholder { font-size: 0; opacity: 0; }';
-  assert.ok(css.indexOf(hiddenHint) >= 0 && css.indexOf(hiddenHint) < css.indexOf("@media"));
+  assert.ok(css.indexOf(hiddenHint) >= 0 && css.indexOf(hiddenHint) < css.indexOf("@media (min-width: 1024px)"));
   assert.match(desktop, /\.composer \.prompt::placeholder\s*\{\s*font-size: inherit; opacity: 1;\s*\}/);
   assert.doesNotMatch(css, /\.prompt\[name="(?:hook|phone)Instructions"\](?!::placeholder)\s*\{/);
 });

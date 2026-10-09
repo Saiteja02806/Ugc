@@ -99,6 +99,7 @@ Last updated: 2026-10-10
   This change is local; deployment and authenticated production acceptance
   remain pending.
 
+
 ## 2026-10-09 Explore slideshow ownership and reference guidance (local revision)
 
 - The owner confirmed that catalogue slides guide layout, while a separate
@@ -128,101 +129,6 @@ Last updated: 2026-10-10
   preview/reopen and 320-1440px layouts. See
   `docs/explore-workflow-audit-2026-10-09.md` for findings and limitations.
   Deployment and authenticated production acceptance are pending.
-
-## 2026-10-09 Social slideshow hook contract (local implementation)
-
-- Slide 1 communicates one main idea as one curiosity-driven statement in one
-  text block, normally 6-14 words over 2-4 lines. No subtitle, supporting
-  paragraph, second sentence, motivational ad-copy explanation, or body-style
-  cover copy. Explain the idea on Slide 2 onward. This supersedes the cover
-  wording and 72px hook treatment in the September 30 text-presentation entry.
-- Both existing structures use fixed 84px Inter Tight Bold 700 cover text,
-  larger than the unchanged 50px content headings and 48px SemiBold bodies.
-  Four measured lines remain the maximum; overflow requires shorter copy.
-  The publisher accepts 5-14 words to retain compact hooks. First-person
-  problem/changed-belief hooks are explicitly allowed. List promises must
-  match the value actually delivered by the assigned six-slide format.
-- Both generation validators block separate sentences/paragraphs with
-  `hook_structure`. Semantic single newlines, common abbreviations, domains,
-  and decimals remain valid. Curiosity and one-idea resonance are prompt
-  guidance, not a keyword blacklist or a claim to predict performance.
-  Structure 2's bounded targeted repair includes this issue and replaces only
-  the rejected cover while freezing valid Slides 2-6.
-- Initial, batch, complete-plan, targeted and native-cover repair writers
-  receive the same hook guidance. Structure 1 is v50 and Structure 2 v21;
-  renderers are `social-single-statement-hook-inter-tight-v26` and
-  `story-native-single-statement-hook-inter-tight-v12`. The editor inherits
-  the shared 84px constant. Existing saved render bytes remain immutable.
-- Validation and preview evidence are recorded in
-  `docs/slideshow-social-hook-2026-10-09.md`. Deployment and authenticated
-  production acceptance on https://www.getugcpilot.com remain pending.
-
-## 2026-10-09 Trending outer focus outline removal (local fix)
-
-- Removed the orange focus ring around the scrolling post viewport. The ring
-  came from its `focus-visible:ring-focus` styling when keyboard navigation or
-  programmatic focus activated the feed. The viewport remains focusable with
-  the same scrolling and double-tap handlers; individual button focus indicators
-  retain their existing styling. Card size and below-card spacing are unchanged.
-- Local 1366 × 680 and 1536 × 776 checks show no outline or box shadow while
-  the viewport matches `:focus-visible`. All 66 Trending interaction tests and
-  scoped lint passed. This presentation change has not been deployed.
-
-## 2026-10-09 Trending scheduling after revisiting a post (local fix)
-
-- Visit-local `liked` history means the user opened the composer/scheduler; it
-  does not establish that a schedule was saved. Double-tap and Schedule may
-  reopen that post after cancellation or failure. Reopening reuses the exact
-  assignment and does not append history, replay the outbox, reconsider an
-  already accepted decision, or decrement the remaining content count.
-- Explicit Wall-of-Text schedule confirmation resolves the assignment and
-  creative under the authenticated owner, then persists acceptance before
-  loading the selected draft. If an original skip won the outbox race, only
-  this explicit action uses the existing reconsideration RPC. Ordinary outbox
-  decisions keep their conflict checks; a delayed skip cannot undo recovery.
-- Schedule creation still precedes server-side render delivery. Selection
-  does not save content to Creative Assets, generate a replacement, allocate
-  another daily slot, or charge another generation. Card dimensions and
-  below-card controls are unchanged by this repair.
-- Production logs contained a Wall schedule 404. The active deployment was
-  `bd352b7e52ce87f1e046dca8ad2ce6788280d545`; its revisit endpoint and database
-  RPC were present. A rollback-only production diagnostic verified the
-  skipped-to-selected transition without persisting any changes. Regression
-  tests reproduced the disabled liked-history action and selected-draft race
-  before the fix. See `docs/trending-revisited-scheduling-2026-10-09.md` for
-  local validation and release status. This new repair is not deployed yet.
-
-## 2026-10-08 Trending closer below-card controls (production release)
-
-- Skip and Schedule now sit about 12px below the current card on desktop.
-  The preceding 10% card reduction remains intact. Previously, unused space
-  below the centered post increased the visible gap to about 44px at
-  1366 × 680 and 75px at 1536 × 776.
-- A presentation-only ResizeObserver measures the post and snap-window
-  heights, then lifts the existing decision row and visible progress together
-  into that unused space. Their layout space stays reserved, preserving media
-  dimensions and scroll-snap geometry. The calculation ignores scroll position;
-  history browsing and gestures do not move the controls. Mobile is unchanged.
-- All 39 local format/viewport checks confirm unchanged card dimensions,
-  roughly 12px gaps, visible captions, clickable targets and no page overflow.
-  Forward/back browser checks retain selected slides without duplicate reviews.
-  TypeScript, scoped lint and 66 interaction tests passed. Screenshots and
-  measurements are in the report's final section. The isolated production
-  release `591da964e3afb32a40b19a638a9f85fe2912d5da` was built successfully and
-  promoted to getugcpilot.com as `dpl_9vnrJiJYmruBizdZeCTzkoEUDQeF`. Live
-  JavaScript and CSS contain the spacing implementation; all 24 dashboard
-  assets respond successfully. The immediate deployment error scan is clear.
-- The owner's subsequent large-gap screenshot was confirmed to come from the
-  live site before this release. The development fixture
-  now also covers the real Reel Hook renderer with local edited media. All 13
-  additional Hook viewport checks retain the 12px gap and current card sizes.
-  The owner could not sign in through the verification browser and requested
-  local visual checks. Fresh 1366 × 680 and 1536 × 776 checks confirm 12.2px
-  gaps, visible captions and no page overflow using the exact release files.
-  Authenticated production visual acceptance remains unperformed. The scoped
-  release is documented in `docs/trending-controls-production-release-2026-10-08.md`.
-  Direct push to main is awaiting explicit approval after automatic review
-  rejected it; production deployment has completed independently.
 
 ## 2026-10-08 Explore format workflows (local implementation)
 
@@ -423,6 +329,113 @@ Last updated: 2026-10-10
   Local validation and measured viewport sizes are recorded in
   `docs/trending-laptop-layout-2026-10-07.md`.
 
+
+
+## 2026-10-09 Social slideshow hook contract (local implementation)
+
+- Slide 1 communicates one main idea as one curiosity-driven statement in one
+  text block, normally 6-14 words over 2-4 lines. No subtitle, supporting
+  paragraph, second sentence, motivational ad-copy explanation, or body-style
+  cover copy. Explain the idea on Slide 2 onward. This supersedes the cover
+  wording and 72px hook treatment in the September 30 text-presentation entry.
+- Both existing structures use fixed 84px Inter Tight Bold 700 cover text,
+  larger than the unchanged 50px content headings and 48px SemiBold bodies.
+  Four measured lines remain the maximum; overflow requires shorter copy.
+  The publisher accepts 5-14 words to retain compact hooks. First-person
+  problem/changed-belief hooks are explicitly allowed. List promises must
+  match the value actually delivered by the assigned six-slide format.
+- Both generation validators block separate sentences/paragraphs with
+  `hook_structure`. Semantic single newlines, common abbreviations, domains,
+  and decimals remain valid. Curiosity and one-idea resonance are prompt
+  guidance, not a keyword blacklist or a claim to predict performance.
+  Structure 2's bounded targeted repair includes this issue and replaces only
+  the rejected cover while freezing valid Slides 2-6.
+- Initial, batch, complete-plan, targeted and native-cover repair writers
+  receive the same hook guidance. Structure 1 is v50 and Structure 2 v21;
+  renderers are `social-single-statement-hook-inter-tight-v26` and
+  `story-native-single-statement-hook-inter-tight-v12`. The editor inherits
+  the shared 84px constant. Existing saved render bytes remain immutable.
+- Validation and preview evidence are recorded in
+  `docs/slideshow-social-hook-2026-10-09.md`. Deployment and authenticated
+  production acceptance on https://www.getugcpilot.com remain pending.
+
+## 2026-10-09 Trending outer focus outline removal (local fix)
+
+- Removed the orange focus ring around the scrolling post viewport. The ring
+  came from its `focus-visible:ring-focus` styling when keyboard navigation or
+  programmatic focus activated the feed. The viewport remains focusable with
+  the same scrolling and double-tap handlers; individual button focus indicators
+  retain their existing styling. Card size and below-card spacing are unchanged.
+- Local 1366 × 680 and 1536 × 776 checks show no outline or box shadow while
+  the viewport matches `:focus-visible`. All 66 Trending interaction tests and
+  scoped lint passed. This presentation change has not been deployed.
+
+## 2026-10-09 Trending scheduling after revisiting a post (local fix)
+
+- Visit-local `liked` history means the user opened the composer/scheduler; it
+  does not establish that a schedule was saved. Double-tap and Schedule may
+  reopen that post after cancellation or failure. Reopening reuses the exact
+  assignment and does not append history, replay the outbox, reconsider an
+  already accepted decision, or decrement the remaining content count.
+- Explicit Wall-of-Text schedule confirmation resolves the assignment and
+  creative under the authenticated owner, then persists acceptance before
+  loading the selected draft. If an original skip won the outbox race, only
+  this explicit action uses the existing reconsideration RPC. Ordinary outbox
+  decisions keep their conflict checks; a delayed skip cannot undo recovery.
+- Schedule creation still precedes server-side render delivery. Selection
+  does not save content to Creative Assets, generate a replacement, allocate
+  another daily slot, or charge another generation. Card dimensions and
+  below-card controls are unchanged by this repair.
+- Production logs contained a Wall schedule 404. The active deployment was
+  `bd352b7e52ce87f1e046dca8ad2ce6788280d545`; its revisit endpoint and database
+  RPC were present. A rollback-only production diagnostic verified the
+  skipped-to-selected transition without persisting any changes. Regression
+  tests reproduced the disabled liked-history action and selected-draft race
+  before the fix. See `docs/trending-revisited-scheduling-2026-10-09.md` for
+  local validation and release status. This new repair is not deployed yet.
+
+## 2026-10-08 Trending closer below-card controls (production release)
+
+- Skip and Schedule now sit about 12px below the current card on desktop.
+  The preceding 10% card reduction remains intact. Previously, unused space
+  below the centered post increased the visible gap to about 44px at
+  1366 × 680 and 75px at 1536 × 776.
+- A presentation-only ResizeObserver measures the post and snap-window
+  heights, then lifts the existing decision row and visible progress together
+  into that unused space. Their layout space stays reserved, preserving media
+  dimensions and scroll-snap geometry. The calculation ignores scroll position;
+  history browsing and gestures do not move the controls. Mobile is unchanged.
+- All 39 local format/viewport checks confirm unchanged card dimensions,
+  roughly 12px gaps, visible captions, clickable targets and no page overflow.
+  Forward/back browser checks retain selected slides without duplicate reviews.
+  TypeScript, scoped lint and 66 interaction tests passed. Screenshots and
+  measurements are in the report's final section. The isolated production
+  release `591da964e3afb32a40b19a638a9f85fe2912d5da` was built successfully and
+  promoted to getugcpilot.com as `dpl_9vnrJiJYmruBizdZeCTzkoEUDQeF`. Live
+  JavaScript and CSS contain the spacing implementation; all 24 dashboard
+  assets respond successfully. The immediate deployment error scan is clear.
+- The owner's subsequent large-gap screenshot was confirmed to come from the
+  live site before this release. The development fixture
+  now also covers the real Reel Hook renderer with local edited media. All 13
+  additional Hook viewport checks retain the 12px gap and current card sizes.
+  The owner could not sign in through the verification browser and requested
+  local visual checks. Fresh 1366 × 680 and 1536 × 776 checks confirm 12.2px
+  gaps, visible captions and no page overflow using the exact release files.
+  Authenticated production visual acceptance remains unperformed. The scoped
+  release is documented in `docs/trending-controls-production-release-2026-10-08.md`.
+  Direct push to main is awaiting explicit approval after automatic review
+  rejected it; production deployment has completed independently.
+
+## 2026-10-07 complete release reconciliation
+
+- The retired Create Content frontend, exclusive API routes and their support
+  files are removed. Its worker handlers and shared job types remain compatible
+  with queued and historical jobs. Carousel sourcing, matching, readiness,
+  review, rendering and production recovery behavior remain as on current main.
+- Explore Hook and Phone now accept an owned uploaded or Creative Assets video
+  as their opening segment. Source selection feeds the existing finishing and
+  scheduling path; live generation and demo framing remain available. App and
+  shared worker deployments must use the same release revision.
 
 ## 2026-10-05 Trending manual Wall copy formatting (local implementation)
 
@@ -1076,7 +1089,7 @@ does not modify source assets or repair text already baked outside safe margins.
 
 ### Active trial pack delivery
 
-The content-day pack quota is charged when a daily pack is reserved. While the
+The seven-day pack quota is charged when a daily pack is reserved. While the
 trial is active, feed reads, generation continuation, and completion callbacks
 may finish an existing owner-scoped trial pack after its remaining content-day
 quota reaches zero. They retain that pack's saved daily limit. Creating another
@@ -5926,3 +5939,89 @@ trials are preserved. Paid and complimentary access stays unchanged.
 The pricing page distinguishes daily content from shared AI generation credits
 and advertises only deployed workflows. See
 `docs/trending-seven-day-trial-2026-10-01.md` for the release migration and checks.
+
+## 2026-10-04 Shared scheduling time-zone release integration
+
+- Scheduling and the shared inline Carousel/Wall/Reaction scheduler use the
+  owner-persisted account time-zone default, initialized once through the
+  verified Firebase identity. Explicit manual date/time edits and saved schedule
+  time zones remain authoritative. The account query is reset on UID changes.
+- The Hook drawer uses the same default and full time-zone selector. Its compact
+  account rows sort only their display copy; destination IDs, provider access,
+  mandatory settings, consent, and the durable scheduling contract are unchanged.
+- The worker checks the durable target's scheduled time before claiming a new
+  provider operation. An early delivery is a durable wait, not a failed provider
+  attempt. Already published outcomes and cancelled-post cleanup retain their
+  idempotent paths. This complements the already-applied database claim/recovery
+  guard; those migrations are not replayed.
+- These source integrations are local, not deployed. No Carousel source,
+  selection, plan, slide, rendered asset, daily slot, or Library ownership rule
+  is changed. Production-domain acceptance and coordinated app/worker deployment
+  remain required.
+
+## 2026-10-04 Reviewed native Trending post-feed checkpoint
+
+- The approved post interaction replaces horizontal swipe presentation with a
+  vertical scrolling feed. Double-tap/Like enters the existing format-specific
+  scheduling or Hook composition flow; scroll/Skip records the existing durable
+  skip decision. Only the active post plays media or accepts actions.
+- A Carousel must be saved to the owner's Library before dismissal and scheduling
+  hand-off. A failed save leaves the post visible and releases its interaction
+  lock. No new publishing operation or provider call is introduced by the gesture.
+- Current-visit review history holds at most 120 posts in the parent feed state,
+  including while the Hook composer is open. History is read-only: revisiting
+  cannot repeat a save, decision, edit, scheduling hand-off, or autoplay.
+- Shared Landing/Try demonstrations use the same gesture primitive without
+  implying that a demo like has actually published a post. Drag/snap timers and
+  listeners are cleaned up on resize, blur and unmount; reduced motion is honored.
+- This checkpoint changes presentation and interaction only. Existing owner,
+  daily assignment, immutable profile, render, recovery and publishing contracts
+  remain authoritative. Offline checks are not production acceptance.
+
+## 2026-10-08 Explore format workflows
+
+- Explore exposes separate Hook video, Wall of text, and Slideshows workflows. The older talking-head/demo and creator-phone routes remain hidden; their component code is retained as the visual reference.
+- Hook and Wall of text generate videos only, accept an optional owned image or short video input, and can import existing owned footage for trimming/text/narration. Their Create sidebar reuses the older square reference tiles, instruction field, settings rows and action footer, with no voice-reference tile or subtitle controls.
+- Selecting a gallery video shows that actual clip in a playable style-example tile. It never silently attaches the clip's poster as an image. Gallery examples are visual guidance; uploaded optional media is the explicit provider input. Uploaded video requests include their owned media asset ID.
+- Slideshows generate images only, edit an ordered 2–10 image sequence, and save it to the owner's Library through a restricted, idempotent API. Manually arranged sequences do not invent a Carousel generation/plan record; the existing Library slide foreign key becomes nullable for this path. Automatic Carousel sourcing, matching, plans and readiness remain unchanged.
+- Generation immediately opens Your Video / Your Slides. Editing and saving remain gated until the schema and renderer release are verified.
+
+### 2026-10-08 Manual slideshow editor follow-up
+
+- Slideshows shares the older workflow sidebar and footer. Users choose slideshow examples from the right-hand gallery or upload 2–10 JPG/PNG/WebP reference images; image model, ratio and image-count controls stay in Create. Uploading references does not call a generation provider.
+- Edit slides adds per-slide heading/body text, font, size, alignment, position, colors and allowlisted SVG background shapes. The same vector overlay drives preview and PNG export. Edited pixels are uploaded as owned ready image assets before Library saving; scheduling uses the confirmed saved images.
+- Users may reorder or remove generated slides, retaining 2–10 images for saving. Reference slides guide generation and do not automatically enter the editor. Every generated or edited output resolves to an owned, ready, non-deleted image; no arbitrary client URL is trusted by the save API.
+- Browser exports load catalogue slides or owned ready images through a size-bounded, same-origin endpoint. It accepts catalogue/asset IDs, never a client URL, rejects redirects and non-raster responses, and disables caching of account images. Guest access is limited to catalogue images in development preview; production exports require existing Pro access.
+- Drafts are owner/reference scoped. Interrupted Library saves preserve their immutable request key and resolved asset IDs; completed saves are verified against the owner's Library before scheduling. Automatic Carousel generation, sourcing, plans, readiness and publishing workers are unchanged. This follow-up is included in the complete Explore release; production deployment is verified separately against the merged commit.
+
+### 2026-10-08 Slideshow reference and model refinement
+
+- Create removes the redundant Browse slideshows tile and the reference-only Edit these slides action. Its fields flow together within the scrolling sidebar instead of stretching the instruction field above Model. A selected reference uses a square preview tile; opening its full slideshow starts at the selected reference slide.
+- Selecting or uploading a slideshow stays in Create. Only generated replacements enter Edit slides, receive text overlays and become Library outputs. Older drafts preserve their generated replacements and text while dropping unmodified reference pixels. Interrupted saves containing generated/edited asset IDs retain their immutable retry contract; obsolete reference-only saves are not resumed.
+- The slideshow model selector defaults to GPT Image 2.5 and offers Nano Banana 2.1 as the alternative. Seedream is removed from this workflow; standalone AI Studio keeps its existing model options and default. The API enforces the workflow-specific allowlist before credit reservation.
+- The image worker maps `gpt_image_2_5` explicitly to OpenAI `gpt-image-2.5-sunburst` for reference-based editing. It cannot silently inherit the older `OPENAI_IMAGE_MODEL` value. The provider fence, output ownership, credit reservation, ratio handling and disabled SDK retries remain in force. The updated worker must be released before advertising the new frontend default in production.
+
+### 2026-10-08 Explicit slideshow generation context
+
+- Beneath the selected preview, Create shows every source slide in a horizontally scrolling thumbnail strip. All slides selects the complete slideshow; Selected slides lets users include any subset, including one slide. Empty selections cannot generate. Choosing or uploading another slideshow resets to its first slide.
+- The checked images become the explicit `referenceImageUrls` context for every requested output. The selected preview slide is first when included, with the remaining references in their original order. Output images controls the number of new images, independently of reference count; reference pixels still never enter Edit slides automatically.
+- API validation canonicalizes every input with the current owner before billing or queueing. Worker input and provider fingerprints retain the exact reference list; every private image is resolved for that owner. GPT Image 2.5 receives a file array and Nano Banana 2.1 receives multiple image parts plus the instructions. Legacy single-image jobs retain their previous input and fingerprint contract.
+- Context is limited to 14 distinct references (the catalogue has at most 12 and uploads at most 10), 25 MB per input and 50 MB combined downloads. Oversized context fails before provider submission. No database schema or automatic Carousel sourcing/matching/rendering behavior changes. Coordinated worker and website deployment remains required; offline checks do not call paid generation.
+
+### 2026-10-08 Optional demo in Hook and Wall of text
+
+- Video workflows add Create → Edit video → Demo → Schedule. Clicking Edit video opens the ready uploaded/Creative Assets clip through the same handoff as Edit this video. Slideshows keeps its three existing sections.
+- Demo accepts an owned uploaded or Creative Assets video, with replace/remove, playable preview, trim, the older framing/pan controls, original volume and optional uploaded/saved audio. Users can continue with just the saved opening. No generation prompt, provider, subtitle or Carousel behavior changes.
+- Save final video freezes the chosen inputs. Existing single-video finishing first trims the demo; an optional audio pass starts its soundtrack at the trimmed segment's beginning. The existing concatenation contract then joins the saved opening before the prepared demo. Opening overlays and sound remain in that segment; recorded framing is rebased to demo trim timestamps.
+- Every pass uses the existing owner-bound, idempotent receipt and renderer. Only the confirmed combined asset enters Schedule. Changing either opening edits or demo inputs invalidates the scheduling output. Local selection never dispatches a render. Prompt defaults and slideshow business-context changes are explicitly deferred from this release.
+- Demo upload and Creative Assets are available before choosing or saving an opening. The owner/workflow-scoped draft preserves demo trim, framing and soundtrack across opening changes; untouched legacy opening drafts migrate without replacing newer selections. Only combining requires a saved opening. A selected, uploading or restoring demo prevents scheduling the opening alone until the user explicitly skips it. Opening revisions invalidate stale combined outputs even when an asset ID is reused; incompatible framing must be reset or recorded again.
+
+### 2026-10-09 Explore laptop layout (local)
+
+- Narrow windows now show a persistent Controls / Preview switch. Both panels stay mounted, so changing views preserves source selections, generation state and slide edits. In compact video editing, reopening Workflow controls uses a temporary full-width controls view with Back to editor instead of compressing the media/tools pane. This replaces the earlier side-by-side expanded-controls mode.
+- Slideshow Create labels the reference-image selection separately from the active slide and versions requested for that slide. Reference selection and output quantity contracts are unchanged. The development-only preview can seed two sample outputs for populated editor layout checks; it cannot save or generate, and production never accepts these fixture pixels as owned outputs.
+
+- Hook and Wall of text use Create, Demo and Schedule; each clip is edited from its preview rather than a separate Edit video tab. Desktop editor headers and actions reserve their own rows, with only the media/tools body scrolling. Stacked and very short windows use normal document flow, and navigation reveals the chosen panel at the same 1024px breakpoint as the layout.
+- Compact video editing uses the available workflow width and exposes an accessible Workflow controls toggle to reveal the still-mounted source panel. Back to previews restores the normal workspace. The compact width boundary includes fractional CSS pixels from display scaling. Portrait media reserves room for its playback controls and Edit actions; an absent optional Demo is a short Add demo row rather than a second full-height card.
+- All three format workflows retain readable 14px generation instructions with at least 160px writing height. Reference tiles stay capped in compact and stacked layouts. Text styling/timing is disclosed on demand; existing clip drafts, portal targets and save/merge handlers remain intact.
+- Scrollbars remain visible with muted narrow thumbs across the workflow, its dialogs and app navigation. The development-only format fixture now also renders Slideshows for free layout checks. Generation, slideshow ownership/export, automatic Carousel sourcing and publishing contracts are unchanged; paid operations and authenticated production acceptance are outside these local checks.

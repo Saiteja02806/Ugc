@@ -19,13 +19,13 @@ const load = (path, imports, globals = {}) => {
 const tick = () => new Promise(setImmediate);
 const source = { id: randomUUID(), status: "ready", collection: "video", durationSeconds: 5 };
 const output = { id: randomUUID(), status: "ready", collection: "video", url: "https://storage.googleapis.com/test/finished.mp4" };
-function harness({ saved = null, lost = false, completed = false, subtitles = false, style = "clean", backgroundMusic = false, musicUnavailable = false, kind = "hook", placement = "bottom", pending = false } = {}) {
+function harness({ saved = null, lost = false, completed = false, subtitles = false, style = "clean", backgroundMusic = false, musicUnavailable = false, kind = "hook", placement = "bottom", pending = false, scope, demoSource = null } = {}) {
   let cursor = 0, pendingFailure = lost;
   const slots = [], effects = [], calls = [], musicReads = [], uploads = [], store = new Map();
   const musicAssetId = randomUUID();
-  const storageKey = finishClient.finishStorageKey("owner", kind);
+  const storageKey = finishClient.finishStorageKey("owner", kind) + (scope ? `:${encodeURIComponent(scope)}` : "");
   if (saved) store.set(storageKey, JSON.stringify(saved));
-  const props = { ownerId: "owner", enabled: true, kind, source, demo: null, demoAudio: null, playback: "once", options: { subtitles, style, backgroundMusic, placement }, onRestoreOptions(value) { props.options = value; } };
+  const props = { ownerId: "owner", enabled: true, kind, source, demo: null, demoSource, demoAudio: null, playback: "once", scope, options: { subtitles, style, backgroundMusic, placement }, onRestoreOptions(value) { props.options = value; } };
   const jobId = randomUUID(); let cancelled = false;
   const react = {
     useRef(value) { const i = cursor++; return slots[i] ??= { current: value }; },
@@ -167,6 +167,32 @@ test("background OFF never fetches or uploads music and always submits a null ba
   const h = harness(); h.render(); await tick(); h.render().action.onAction(); await tick();
   assert.equal(h.musicReads.length, 0); assert.equal(h.uploads.length, 0);
   assert.equal(JSON.parse(h.calls[0].body).draft.backgroundAssetId, null); h.unmount();
+});
+
+test("an owned prepared demo joins by asset ID without downloading or reuploading its video", async () => {
+  const demo = { ...source, id: randomUUID(), durationSeconds: 4 };
+  const h = harness({ demoSource: demo, scope: "format-demo:hook:opening" });
+  h.render(); await tick(); h.render().action.onAction(); await tick();
+  const draft = JSON.parse(h.calls.find(call => call.method === "POST").body).draft;
+  assert.equal(draft.sourceAssetId, source.id); assert.equal(draft.demoAssetId, demo.id);
+  assert.equal(draft.subtitles, null); assert.equal(draft.backgroundAssetId, null);
+  assert.equal(draft.demoAudioAssetId, null); assert.equal(h.uploads.length, 0);
+  assert.equal(h.render().output.id, output.id);
+  h.props.demoSource = { ...demo, id: randomUUID() };
+  assert.equal(h.render().output, null, "replacing the demo invalidates the schedule output");
+  h.unmount();
+});
+
+test("restoring a merged demo verifies the exact demo and framing without a new render", async () => {
+  const demo = { ...source, id: randomUUID() };
+  const framing = { version: 1, width: .5, height: 1, points: [[0, .25, 0]] };
+  const saved = { version: 1, ownerId: "owner", kind: "hook", requestKey: randomUUID(), draft: { version: 1, kind: "hook", sourceAssetId: source.id, demoAssetId: demo.id, demoAudioAssetId: null, demoAudioPlayback: "once", backgroundAssetId: null, backgroundPlayback: "once", subtitles: null, demoFraming: framing } };
+  const h = harness({ saved, completed: true, demoSource: demo, scope: "format-demo:hook:opening" });
+  h.props.demoFraming = framing; h.render(); await tick();
+  assert.equal(h.render().output.id, output.id); assert.equal(h.calls.some(c => c.method === "POST"), false);
+  h.props.demoSource = null; assert.equal(h.render().output, null);
+  h.props.demoSource = demo; h.props.demoFraming = null; assert.equal(h.render().output, null);
+  h.unmount();
 });
 
 test("invalid framing context blocks Apply before music, uploads, storage writes or dispatch", async () => {

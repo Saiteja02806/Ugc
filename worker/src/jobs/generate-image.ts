@@ -1,7 +1,6 @@
 import { generateGeminiImageBuffer, generateGemini3ProImageBuffer, GEMINI_3_PRO_IMAGE_MODEL } from "../lib/gemini-image.js";
-import { generateOpenAiImageBuffer } from "../lib/openai-image.js";
+import { generateOpenAiImageBuffer, SLIDESHOW_IMAGE_MODEL } from "../lib/openai-image.js";
 import { generateSeedreamImageBuffer, SEEDREAM_5_PRO_IMAGE_MODEL } from "../lib/seedream-image.js";
-import { slideshowReferencePrompt } from "../lib/slideshow-reference-prompt.js";
 import {
   assertProviderOperationCanContinue,
   createGenerationRequestFingerprint,
@@ -25,17 +24,21 @@ import {
 } from "../lib/storage.js";
 import type { BackgroundJobRow, Json } from "../types.js";
 import type { WorkerJobContext, WorkerJobOutput } from "./index.js";
+import { resolveOwnedPrivateMediaUrl } from "../lib/private-media.js";
+import { parseImageReferenceContext } from "../lib/image-reference-context.js";
+import { slideshowReferencePrompt } from "../lib/slideshow-reference-prompt.js";
 
-const MAX_PROMPT_LENGTH = 2_000;
-// Keep in sync with the character request schema and its atomic reservation RPC.
 const MAX_CHARACTER_PROMPT_LENGTH = 32_000;
+
+
 type GenerateImageInput = {
   aspectRatio: AIStudioImageRatio;
   generationId: string;
-  model: "gpt_image" | "gemini_3_pro" | "nano_banana_2" | "seedream_5_pro";
+  model: "gpt_image" | "gpt_image_2_5" | "gemini_3_pro" | "nano_banana_2" | "seedream_5_pro";
   prompt: string;
   referenceImageUrl?: string;
   referenceImageUrls?: string[];
+  subjectReferenceIndex?: number;
 };
 
 function getInput(job: BackgroundJobRow): GenerateImageInput {
@@ -54,24 +57,34 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
     throw new Error("generate_image requires input.prompt.");
   }
 
-  const promptLimit = job.input_json.characterSource === "ugc-pilot-characters" &&
-    job.input_json.characterVersion === 2 && job.input_json.promptSource === "user" && job.input_json.mode === "custom"
-    ? MAX_CHARACTER_PROMPT_LENGTH : MAX_PROMPT_LENGTH;
-  if (prompt.trim().length > promptLimit) {
-    throw new Error(`generate_image prompt exceeds ${promptLimit} characters.`);
+  const promptDrivenCharacter = job.input_json.characterSource === "ugc-pilot-characters" &&
+    job.input_json.characterVersion === 2 && job.input_json.promptSource === "user" && job.input_json.mode === "custom";
+  if (promptDrivenCharacter && prompt.trim().length > MAX_CHARACTER_PROMPT_LENGTH) {
+    throw new Error(`generate_image prompt exceeds ${MAX_CHARACTER_PROMPT_LENGTH} characters.`);
+
   }
 
-  const referenceImageUrls = getReferenceImageUrls(job.input_json.referenceImageUrls);
-  if (referenceImageUrls && (job.input_json.exploreFormat !== "slideshow" || !["nano_banana_2", "seedream_5_pro"].includes(String(job.input_json.model)))) {
-    throw new ProviderRequestNotSubmittedError("Multiple image references are only supported by slideshow image models.");
+  const model = getImageModel(job.input_json.model);
+  const referenceImageUrl = getOptionalHttpsUrl(job.input_json.referenceImageUrl);
+  const referenceImageUrls = job.input_json.referenceImageUrls === undefined ? undefined : parseImageReferenceContext(job.input_json.referenceImageUrls);
+  if (referenceImageUrls && (job.input_json.exploreFormat !== "slideshow" || !["gpt_image_2_5", "nano_banana_2"].includes(model))) {
+    throw new Error("This image job does not support slideshow reference context.");
+  }
+  if (referenceImageUrls && referenceImageUrl && referenceImageUrls[0] !== referenceImageUrl) {
+    throw new Error("The primary image must be the first selected reference.");
+  }
+  const subjectReferenceIndex = job.input_json.subjectReferenceIndex;
+  if (subjectReferenceIndex !== undefined && (!referenceImageUrls || !Number.isInteger(subjectReferenceIndex) || subjectReferenceIndex !== referenceImageUrls.length || referenceImageUrls.length < 2)) {
+    throw new ProviderRequestNotSubmittedError("Choose valid layout and subject reference roles.");
   }
   return {
     aspectRatio: getAspectRatio(job.input_json.aspectRatio),
     generationId: generationId.trim(),
-    model: getImageModel(job.input_json.model),
+    model,
     prompt: prompt.trim(),
-    referenceImageUrl: getOptionalHttpsUrl(job.input_json.referenceImageUrl),
-    ...(referenceImageUrls ? { referenceImageUrls } : {}),
+    referenceImageUrl: referenceImageUrls?.[0] ?? referenceImageUrl,
+    referenceImageUrls,
+    ...(subjectReferenceIndex === undefined ? {} : { subjectReferenceIndex: subjectReferenceIndex as number }),
   };
 }
 
@@ -80,7 +93,9 @@ export async function runGenerateImageJob(
   context: WorkerJobContext,
 ): Promise<WorkerJobOutput> {
   const input = getInput(job);
-  const providerPrompt = slideshowReferencePrompt(input.prompt, input.referenceImageUrls?.length ?? 0);
+  const providerPrompt = input.subjectReferenceIndex
+    ? slideshowReferencePrompt(input.prompt, input.referenceImageUrls!.length, input.subjectReferenceIndex)
+    : input.prompt;
   const userId = getPathSegment(job.user_id, "user");
   const projectId = getPathSegment(job.project_id, "default");
   const outputKey = `images/generated/${userId}/${projectId}/${input.generationId}.png`;
@@ -102,9 +117,11 @@ export async function runGenerateImageJob(
     generationId: input.generationId,
     model: input.model,
     outputKey,
-    prompt: providerPrompt,
+    prompt: input.prompt,
     referenceImageUrl: input.referenceImageUrl ?? null,
+    // Keep older queued jobs' fingerprints unchanged.
     ...(input.referenceImageUrls ? { referenceImageUrls: input.referenceImageUrls } : {}),
+    ...(input.subjectReferenceIndex ? { subjectReferenceIndex: input.subjectReferenceIndex } : {}),
   });
   const reservation = await context.store.reserveGenerationProviderOperation({
     jobId: job.id,
@@ -120,17 +137,23 @@ export async function runGenerateImageJob(
     let generated;
 
     try {
+      const referenceImageUrl = input.referenceImageUrl
+        ? await resolveOwnedPrivateMediaUrl(input.referenceImageUrl, job.user_id ?? "") : undefined;
+      const referenceImages = input.referenceImageUrls
+        ? [referenceImageUrl!, ...await Promise.all(input.referenceImageUrls.slice(1).map(url => resolveOwnedPrivateMediaUrl(url, job.user_id ?? "")))]
+        : referenceImageUrl;
       generated =
         input.model === "nano_banana_2"
           ? await generateGeminiImageBuffer(
               providerPrompt,
               input.aspectRatio,
-              input.referenceImageUrls ?? input.referenceImageUrl,
+              referenceImages,
             )
           : await generateOpenAiImageBuffer(
               providerPrompt,
               input.aspectRatio,
-              input.referenceImageUrl,
+              referenceImages,
+              input.model === "gpt_image_2_5" ? SLIDESHOW_IMAGE_MODEL : undefined,
             );
     } catch (error) {
       return persistProviderSubmissionFailure({
@@ -242,9 +265,9 @@ async function generateDurableImageForJob(
     let acceptedOperationId = operationId;
     const buffer = await generate({
       aspectRatio: input.aspectRatio,
-      prompt: slideshowReferencePrompt(input.prompt, input.referenceImageUrls?.length ?? 0),
-      referenceImageUrl: input.referenceImageUrl,
-      ...(input.referenceImageUrls ? { referenceImageUrls: input.referenceImageUrls } : {}),
+      prompt: input.prompt,
+      referenceImageUrl: action === "submit" && input.referenceImageUrl
+        ? await resolveOwnedPrivateMediaUrl(input.referenceImageUrl, job.user_id ?? "") : input.referenceImageUrl,
       providerOperationId: operationId,
       onOperationCreated: async (providerOperationId) => {
         await context.store.markGenerationProviderSubmitted({ jobId: job.id, operationKey, providerOperationId });
@@ -303,7 +326,7 @@ function buildOutput(
 }
 
 function getImageModel(value: Json | undefined) {
-  if (value === "gemini_3_pro" || value === "nano_banana_2" || value === "gpt_image" || value === "seedream_5_pro") return value;
+  if (value === "gemini_3_pro" || value === "nano_banana_2" || value === "gpt_image" || value === "gpt_image_2_5" || value === "seedream_5_pro") return value;
   if (value === undefined || value === null) return "gpt_image";
   throw new ProviderRequestNotSubmittedError("generate_image received an unsupported image model.");
 }
@@ -326,18 +349,6 @@ function getOptionalHttpsUrl(value: Json | undefined) {
   }
 
   return url.toString();
-}
-
-function getReferenceImageUrls(value: Json | undefined) {
-  if (value === undefined) return undefined;
-  if (!Array.isArray(value) || value.length < 1 || value.length > 2) throw new ProviderRequestNotSubmittedError("A slideshow can use at most two image references.");
-  const urls = value.map(item => {
-    const url = getOptionalHttpsUrl(item);
-    if (!url) throw new ProviderRequestNotSubmittedError("Every slideshow image reference must use HTTPS.");
-    return url;
-  });
-  if (new Set(urls).size !== urls.length) throw new ProviderRequestNotSubmittedError("Choose separate image references.");
-  return urls;
 }
 
 function getJsonString(value: Json, key: string) {

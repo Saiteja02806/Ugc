@@ -1,0 +1,18 @@
+.library { display: flex; flex-direction: column; gap: 16px; border-top: 1px solid var(--border); padding-top: 14px; }
+.heading { display: flex; align-items: center; gap: 7px; margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--foreground-strong); }
+.list { list-style: none; display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; }
+.voiceRow { display: flex; align-items: center; gap: 9px; min-width: 0; padding-block: 5px; }
+.preview { position: relative; display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border-radius: 50%; outline-offset: 3px; overflow: hidden; }
+.preview > :first-child { width: 36px; height: 36px; border-radius: 50%; background: radial-gradient(circle at 28% 24%, var(--orb-light), transparent 65%), linear-gradient(var(--orb-angle), var(--orb-mid), var(--orb-dark)); }
+.preview:disabled { opacity: .5; }
+.playIcon { position: absolute; display: grid; place-items: center; color: white; }
+.details { display: flex; flex: 1; flex-direction: column; min-width: 0; gap: 3px; }
+.details strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; color: var(--foreground-strong); }
+.details span { font-size: 10px; color: var(--muted); line-height: 15px; overflow-wrap: anywhere; }
+.useButton { height: 36px; padding-inline: 10px; font-size: 11px; border-radius: 9px; flex-shrink: 0; gap: 4px; }
+.recordings summary { cursor: pointer; display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--foreground-strong); padding-bottom: 8px; }
+.recordings summary span { color: var(--muted); font-weight: 400; }
+.recordings > p { margin-block: 4px 10px; }
+.error { margin: 0; display: flex; flex-direction: column; gap: 6px; color: var(--destructive); font-size: 12px; line-height: 18px; }
+.error button { display: inline-flex; align-items: center; gap: 5px; width: fit-content; color: var(--foreground-strong); padding-block: 5px; }
+.link { color: var(--foreground-strong); font-size: 12px; font-weight: 500; }

@@ -126,3 +126,7 @@ production generation acceptance.
 
 Final visual comparisons are in the ignored
 `C:/Users/chund/OneDrive/Desktop/UGC/.tmp/explore-classic-workflows/` directory.
+
+## Final selected-video correction
+
+Gallery video selection now shows a playable Style video tile rather than populating Choose image with a poster. Explicit uploaded media remains separate generation input, with its owned video asset ID included in the request. Settings rows match the older workflow: Model/Duration, then Quality/Videos/Ratio. Reference popups are bounded to the available viewport and focus their container to avoid clipping the introduction on small screens. See explore-reference-verification-2026-10-08.md for the distinction between style guidance and provider input.

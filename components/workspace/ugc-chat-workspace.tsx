@@ -1048,7 +1048,7 @@ export function ImageGenerationStudioPanel({
             />
             <AiStudioSettingSelect
               ariaLabel="Number of images"
-              fieldLabel={workflow ? "Output images" : undefined}
+              fieldLabel={workflow ? "Versions for this slide" : undefined}
               fieldLayout={workflow ? "classic" : undefined}
               size={recreateView ? "sm" : "default"}
               disabled={generationLocked && !recreateView?.preview || isGenerating}

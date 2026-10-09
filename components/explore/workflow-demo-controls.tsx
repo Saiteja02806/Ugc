@@ -15,10 +15,10 @@ export function WorkflowDemoControls({ asset, value, onChange, outputAspect, dis
   return <div className="ml-auto flex shrink-0 items-center justify-end gap-1.5">
     <Dialog open={open} onOpenChange={next => { if (next) onOpen?.(); setOpen(next); }}>
       <DialogTrigger render={<Button type="button" variant="outline" className="h-8 gap-1.5 px-2.5 text-xs" disabled={disabled} />}>
-        <SlidersHorizontal className="size-3.5" aria-hidden="true" />Demo controls{value ? <><span className="size-1.5 rounded-full bg-primary" aria-hidden="true" /><span className="sr-only">, framing applied</span></> : null}
+        <SlidersHorizontal className="size-3.5" aria-hidden="true" />Adjust crop &amp; pan{value ? <><span className="size-1.5 rounded-full bg-primary" aria-hidden="true" /><span className="sr-only">, framing applied</span></> : null}
       </DialogTrigger>
       {open ? <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
-        <DialogTitle>Demo controls</DialogTitle>
+        <DialogTitle>Adjust crop &amp; pan</DialogTitle>
         <DialogDescription>Choose what viewers see. Record your movement to pan smoothly across the demo.</DialogDescription>
         <DemoFramingEditor asset={asset} value={value} outputAspect={outputAspect} onSave={next => { onChange(next); setOpen(false); }} onCancel={() => setOpen(false)} />
       </DialogContent> : null}

@@ -53,6 +53,12 @@
 .clipStageHeader button { min-height: 40px; }
 .clipStageActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .compactControlsToggle { display: none; }
+.paneNavigation, .controlsReturn { display: none; }
+.paneNavigation { flex: none; gap: 4px; margin: 0 16px 12px; padding: 4px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+.paneNavigation > button { flex: 1; min-height: 40px; font-size: 14px; }
+.paneNavigation > button[aria-pressed="true"] { background: var(--card-muted); color: var(--foreground); font-weight: 600; }
+.controlsReturn { flex: none; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 12px; border-bottom: 1px solid var(--border); }
+.controlsReturn button { min-height: 40px; }
 .clipScrollArea { min-width: 0; min-height: 0; }
 .clipScrollArea:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; border-radius: 8px; }
 .clipEditorBody { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
@@ -61,7 +67,8 @@
 .clipPreviewCard > section { height: 100%; gap: 12px; }
 .clipPreviewCard button { min-height: 40px; }
 .clipPreviewCard [data-clip-media] { max-width: min(100%, 320px, calc(max(200px, 100dvh - 400px) * var(--clip-aspect))); flex: none; }
-.clipPreviewCard [data-edit-clip] { margin-top: auto; }
+.clipPreviewCard [data-edit-clip] { width: fit-content; max-width: 100%; margin-inline: auto; }
+.clipCardActions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; margin-top: auto; }
 .clipEditorBody[data-editing="true"] .clipPreviews { display: block; }
 .clipEditorBody[data-editing="true"] [data-clip-media] { max-width: min(100%, 420px, calc(clamp(200px, 100dvh - 400px, 480px) * var(--clip-aspect))); }
 .clipTools { padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
@@ -69,14 +76,22 @@
 .clipActions { flex: none; border-top: 1px solid var(--border); padding: 12px; background: var(--card); border-radius: 8px; }
 .clipActions > div { max-width: 420px; margin-inline: auto; }
 .clipActions button { min-height: 44px; }
-.emptyClip { display: flex; flex: 1; min-height: 240px; flex-direction: column; justify-content: center; align-items: center; gap: 16px; padding: 16px; text-align: center; color: var(--muted-foreground); }
-/* An absent optional clip is an invitation, not another full-size preview. */
-.clipPreviews[data-has-demo="false"] > .clipPreviewCard:last-child { padding: 12px 16px; }
-.clipPreviews[data-has-demo="false"] > .clipPreviewCard:last-child > section { align-items: stretch; gap: 8px; }
-.clipPreviews[data-has-demo="false"] .emptyClip { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; flex: none; min-height: 0; gap: 12px; padding: 0; text-align: left; }
+.emptyClip { display: grid; width: 100%; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 16px; color: var(--muted-foreground); }
+.emptyClipIcon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: var(--card-muted); }
+.emptyClipIcon svg { width: 20px; height: 20px; }
+.emptyClipCopy { display: grid; min-width: 0; gap: 5px; }
+.emptyClipTitle { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.emptyClipTitle h3 { color: var(--foreground); font-size: 14px; line-height: 1.5; font-weight: 600; }
+.emptyClipCopy p { font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.clipOptional { font-size: 12px; line-height: 1.5; color: var(--muted-foreground); }
+.emptyClip > button { white-space: normal; }
+/* Empty clips share one layout; their title and guidance stay together. */
+.clipPreviewCard[data-clip-empty="true"] { align-self: start; container-type: inline-size; }
+.clipPreviewCard[data-clip-empty="true"] > section { align-items: stretch; gap: 0; }
+.clipPreviews[data-has-clips="false"] { width: 100%; max-width: 760px; gap: 12px; }
 @container (max-width: 439px) {
-  .clipPreviews[data-has-demo="false"] .emptyClip { grid-template-columns: auto minmax(0, 1fr); }
-  .clipPreviews[data-has-demo="false"] .emptyClip > button { grid-column: 1 / -1; width: 100%; }
+  .emptyClip { grid-template-columns: auto minmax(0, 1fr); gap: 12px; }
+  .emptyClip > button { grid-column: 1 / -1; width: 100%; }
 }
 @container (min-width: 440px) { .clipPreviews[data-has-demo="true"] { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @container (min-width: 600px) {
@@ -165,9 +180,20 @@
 /* Editing gets the available width on scaled laptop windows. Controls remain
    mounted and can be revealed explicitly without leaving the current clip. */
 @media (max-width: 1366.98px) {
-  .workspace.classicWorkspace[data-editing="true"][data-controls-expanded="false"] .workflowLayout { grid-template-columns: minmax(0, 1fr); }
+  .workspace.classicWorkspace[data-editing="true"] .workflowLayout { grid-template-columns: minmax(0, 1fr); }
   .workspace.classicWorkspace[data-editing="true"][data-controls-expanded="false"] .workflowControls { display: none; }
+  .workspace.classicWorkspace[data-editing="true"][data-controls-expanded="true"] .classicMain { display: none; }
+  .workspace.classicWorkspace[data-editing="true"][data-controls-expanded="true"] .workflowControls { width: 100%; max-width: 480px; justify-self: center; }
+  .controlsReturn { display: flex; }
   .compactControlsToggle { display: inline-flex; }
+}
+/* Both panels stay mounted. Smaller windows show one at a time, without
+   forcing users past the entire form to reach their preview. */
+@media (max-width: 1023.98px) {
+  .paneNavigation { display: flex; position: sticky; top: 0; z-index: 10; }
+  .workspace.classicWorkspace[data-pane="preview"] .workflowControls,
+  .workspace.classicWorkspace[data-pane="controls"] .classicMain { display: none; }
+  .workspace.classicWorkspace[data-editing="true"][data-pane="controls"] .workflowControls { display: flex; }
 }
 /* Browser zoom and very short windows use document scrolling rather than
    squeezing the controls between a fixed tab bar and footer. */

@@ -25,7 +25,7 @@ function load(path, imports = {}, environment = "production") {
     require: name => {
       if (name === "react/jsx-runtime") return { jsx: element, jsxs: element, Fragment: "fragment" };
       if (name === "@/lib/utils") return { cn };
-      if (name.endsWith("explore-workspace.module.css")) return { default: styles, __esModule: true };
+      if (name.endsWith("explore-workspace.module.css") || name.endsWith("quiet-scrollbar.module.css")) return { default: styles, __esModule: true };
       assert.ok(Object.hasOwn(imports, name), `Unexpected dependency ${name}`);
       return imports[name];
     },

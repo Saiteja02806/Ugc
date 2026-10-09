@@ -17,9 +17,10 @@ function load(file, imports = {}, globals = {}) {
   }, ...globals });
   return exports;
 }
-function harness(format, { reference = true, referenceUrls, access = "pro", captureRequests = false } = {}) {
+function harness(format, { reference = true, referenceUrls, access = "pro", captureRequests = false, completedJob = null, persistedJobId = completedJob?.id ?? null } = {}) {
   const events = [], controls = {}, results = {};
   const requests = [], states = [], errors = [];
+  const effects = [], readyVideos = [];
   let cursor = 0;
   let promptSet = false;
   const imports = {
@@ -28,7 +29,7 @@ function harness(format, { reference = true, referenceUrls, access = "pro", capt
         const index = cursor++;
         if (!promptSet && value === "") { promptSet = true; value = "My requested changes"; }
         if (!(index in states)) states[index] = value;
-        return [states[index], next => { states[index] = typeof next === "function" ? next(states[index]) : next; }]; }, useRef: value => ({ current: value }), useEffect: () => {}, useMemo: fn => fn(),
+        return [states[index], next => { states[index] = typeof next === "function" ? next(states[index]) : next; }]; }, useRef: value => ({ current: value }), useEffect: callback => { if (completedJob) effects.push(callback); }, useMemo: fn => fn(),
     },
     "react/jsx-runtime": { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "Fragment" },
     "@tanstack/react-query": { useQueryClient: () => ({ invalidateQueries: async () => {} }) },
@@ -37,7 +38,9 @@ function harness(format, { reference = true, referenceUrls, access = "pro", capt
     "@/contexts/auth-context": { useAuth: () => ({ loading: false, user: { uid: "test-owner" } }) },
     "@/lib/billing/generation-credit-policy": { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND: 4 },
     "@/lib/ai-studio/generation-settings": load("lib/ai-studio/generation-settings.ts"),
-    "@/lib/ai-studio/media-client": {},
+    "@/lib/ai-studio/media-client": completedJob ? { fetchAIStudioMediaAssets: async () => [], fetchAIStudioMediaAsset: async id => ({
+      id, collection: "video", sourceType: "generated_video", status: "ready", title: "Generated hook", url: "/generated-hook.mp4", durationSeconds: 3, ratio: "9:16", createdAt: "2026-10-09T00:00:00Z", metadata: {},
+    }) } : {},
     "@/lib/ai-studio/media-results": load("lib/ai-studio/media-results.ts"),
     "@/lib/ai-studio/image-history": load("lib/ai-studio/image-history.ts"),
     "@/lib/ai-studio/video-history": load("lib/ai-studio/video-history.ts"),
@@ -45,13 +48,13 @@ function harness(format, { reference = true, referenceUrls, access = "pro", capt
     "@/lib/ai-studio/generation-session": load("lib/ai-studio/generation-session.ts"),
     "@/lib/ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts"),
     "@/lib/explore/format-generation-prompt": load("lib/explore/format-generation-prompt.ts", { "@/lib/ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts") }),
-    "@/lib/firebase/auth": { getCurrentUserIdToken: () => { events.push("waiting-for-auth"); return captureRequests ? Promise.resolve("fixture-token") : new Promise(() => {}); } },
-    "@/lib/jobs/background-job-client": { useBackgroundJobs: () => [], usePersistedJobIdFromUrl: () => null,
+    "@/lib/firebase/auth": { getCurrentUserIdToken: () => { events.push("waiting-for-auth"); return captureRequests || completedJob ? Promise.resolve("fixture-token") : new Promise(() => {}); } },
+    "@/lib/jobs/background-job-client": { useBackgroundJobs: () => completedJob ? [{ data: completedJob }] : [], usePersistedJobIdFromUrl: () => persistedJobId,
       useCancelBackgroundJob: () => ({}), useRetryBackgroundJob: () => ({}) },
     "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
   };
   const file = format === "slideshow" ? "components/workspace/ugc-chat-workspace.tsx" : "components/video/video-generation-workspace.tsx";
-  const panelModule = load(file, imports, { URLSearchParams, console: { error: (...values) => errors.push(values.map(String).join(" ")) }, crypto: { randomUUID: () => "fixture-request" }, fetch: async (url, options) => {
+  const panelModule = load(file, imports, { URLSearchParams, setTimeout: () => 1, clearTimeout() {}, window: { addEventListener() {}, removeEventListener() {}, setTimeout: () => 1, clearTimeout() {}, localStorage: { getItem: () => null, setItem() {} } }, console: { error: (...values) => errors.push(values.map(String).join(" ")) }, crypto: { randomUUID: () => "fixture-request" }, fetch: async (url, options) => {
     assert.equal(captureRequests, true, "No network requests are allowed");
     requests.push({ url, ...options, body: JSON.parse(options.body) });
     return { ok: false, json: async () => ({ ok: false, error: "Fixture stops after capturing the request" }) };
@@ -60,7 +63,7 @@ function harness(format, { reference = true, referenceUrls, access = "pro", capt
   const props = { active: true, accessState: access, creditsRemaining: 1000, creditCost: 1, recreateView: {
     referenceImageUrls: referenceUrls,
     preview: false, referenceImageUrl: format === "slideshow" && reference ? "https://example.test/reference.png" : undefined, styleVideo: format !== "slideshow" && reference ? {url:"https://example.test/style.mp4",name:"Style video",duration:null} : undefined, emptyContent: "Empty",
-    workflow: { format, controlsTarget: controls, resultsTarget: results, onGenerationStart: () => events.push("show-results") },
+    workflow: { format, controlsTarget: controls, resultsTarget: results, onGenerationStart: () => events.push("show-results"), onGeneratedVideo: video => readyVideos.push(video) },
   } };
   function find(node, type) {
     if (!node || typeof node !== "object") return null;
@@ -69,10 +72,22 @@ function harness(format, { reference = true, referenceUrls, access = "pro", capt
     return null;
   }
   const render = () => { cursor = 0; const tree = Panel(props); return { composer: find(tree, "AiStudioComposer"), output: find(tree, "AiStudioResults") }; };
-  return { events, controls, results, requests, errors, render, ...render() };
+  return { events, controls, results, requests, errors, readyVideos, flushEffects: async () => { for (const effect of effects.splice(0)) effect(); await new Promise(resolve => setImmediate(resolve)); }, render, ...render() };
 }
 
 for (const format of ["hook", "wall_text"]) {
+  test(`${format}: restoring the current completed generation notifies the opening card without a result click`, async () => {
+    const h = harness(format, { completedJob: { id: "current-job", jobType: "video_generation", exploreFormat: format, status: "completed", output: { mediaAssetId: "ready-video", url: "/generated-hook.mp4", ratio: "9:16" }, updatedAt: "2026-10-09T00:00:00Z" } });
+    await h.flushEffects();
+    assert.equal(h.readyVideos.length, 1); assert.equal(h.readyVideos[0].mediaAssetId, "ready-video");
+    assert.equal(h.readyVideos[0].durationSeconds, 3); assert.equal(h.requests.length, 0);
+  });
+  test(`${format}: unrelated and other-workflow completions cannot replace the opening`, async () => {
+    for (const other of [false, true]) {
+      const h = harness(format, { persistedJobId: "current-job", completedJob: { id: other ? "current-job" : "historical-job", jobType: "video_generation", exploreFormat: other ? "slideshow" : format, status: "completed", output: { mediaAssetId: "wrong-video", url: "/wrong.mp4" }, updatedAt: "2026-10-09T00:00:00Z" } });
+      await h.flushEffects(); assert.equal(h.readyVideos.length, 0); assert.equal(h.requests.length, 0);
+    }
+  });
   test(`${format}: a gallery video remains playable guidance and never becomes an image attachment`, async () => {
     const h = harness(format, { captureRequests: true });
     assert.equal(h.composer.props.referenceControls.props.styleVideo.url, "https://example.test/style.mp4");
@@ -147,7 +162,7 @@ test("slideshow sends the exact selected context independently of output quantit
   const urls = ["https://example.test/reference.png", "https://example.test/slide-4.png", "https://example.test/slide-6.png"];
   const h = harness("slideshow", { captureRequests: true, referenceUrls: urls });
   const count = h.composer.props.settings.props.children.find(node => node.props?.ariaLabel === "Number of images");
-  assert.equal(count.props.fieldLabel, "Output images");
+  assert.equal(count.props.fieldLabel, "Versions for this slide");
   count.props.onChange("2");
   await h.render().composer.props.onSubmit({ preventDefault() {} });
   await new Promise(setImmediate);

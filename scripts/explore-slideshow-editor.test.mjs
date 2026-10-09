@@ -111,7 +111,7 @@ test("access and release gates stop a save before database mutations", async () 
 
 function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : []; }
 function text(tree) { return Array.isArray(tree) ? tree.map(text).join("") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" ? tree : ""; }
-function editor({ failFirst = false, generated = true, storedDraft = null } = {}) {
+function editor({ failFirst = false, generated = true, storedDraft = null, localPreview = false, previewImages } = {}) {
   let cursor = 0, nextRequest = 100;
   const slots = [], storage = new Map(), requests = [], renders = [], uploads = [], saved = [], dirty = [], controller = { current: null };
   if (storedDraft) storage.set(`ugc-explore:slideshow-draft:v2:owner:uploaded:${id(40)}`, JSON.stringify(storedDraft));
@@ -141,7 +141,7 @@ function editor({ failFirst = false, generated = true, storedDraft = null } = {}
       return { ok: true, json: async () => ({ ok: true, id: id(99), kind: "library_item", title: "Saved", url: "https://storage.test/first.png", slides: body.slides.map((_, i) => `https://storage.test/${i}.png`) }) };
     },
   });
-  const props = { reference: { id: `uploaded:${id(40)}`, slides: [asset(1), asset(2)].map(value => ({ id: value.id, url: value.url, width: 540, height: 960 })) }, controllerRef: controller, slideIndex: 0, active: true, generationBusy: false, controlsTarget: {}, resultsTarget: {}, localPreview: false, savingEnabled: true, onDirty: () => dirty.push(true), onSaved: output => saved.push(output), onContinue: () => {}, onRegenerate: () => {} };
+  const props = { reference: { id: `uploaded:${id(40)}`, slides: [asset(1), asset(2)].map(value => ({ id: value.id, url: value.url, width: 540, height: 960 })) }, previewImages, controllerRef: controller, slideIndex: 0, active: true, generationBusy: false, controlsTarget: {}, resultsTarget: {}, localPreview, savingEnabled: true, onDirty: () => dirty.push(true), onSaved: output => saved.push(output), onContinue: () => {}, onRegenerate: () => {} };
   const render = () => { cursor = 0; return mod.FormatSlideshowEditor(props); };
   const control = (type, value) => nodes(render()).find(node => node.type === type && (text(node) === value || node.props["aria-label"] === value));
   const heading = value => nodes(render()).find(node => node.type === "textarea" && node.props.maxLength === 180).props.onChange({ target: { value } });
@@ -189,6 +189,20 @@ test("reference pixels cannot enter the editor or a save before generation", asy
   assert.equal(h.control("Button", "Save slideshow").props.disabled, false);
   await h.clickSave("Save slideshow");
   assert.deepEqual(h.requests[0].slides.map(slide => slide.mediaAssetId), [id(201), id(202)]);
+});
+
+test("sample slideshow outputs are editable only in local preview and cannot be saved", async () => {
+  const previewImages = [1, 2].map(n => ({ id: id(200 + n), url: `/sample-${n}.png` }));
+  const h = editor({ generated: false, localPreview: true, previewImages });
+  h.heading("Sample heading");
+  assert.equal(nodes(h.render()).find(node => node.type === "textarea" && node.props.maxLength === 180).props.value, "Sample heading");
+  assert.equal(h.control("Button", "Save slideshow").props.disabled, true);
+  await h.clickSave("Save slideshow");
+  assert.equal(h.requests.length, 0); assert.equal(h.uploads.length, 0);
+  const live = editor({ generated: false, previewImages });
+  assert.equal(nodes(live.render()).some(node => node.type === "textarea"), false);
+  await live.clickSave("Save slideshow");
+  assert.equal(live.requests.length, 0);
 });
 
 test("older drafts retain generated edits while excluding unmodified reference slides", () => {

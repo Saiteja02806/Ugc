@@ -397,6 +397,13 @@ export function VideoGenerationStudioPanel({
     persistedJobId && persistedJobId !== ignoredPersistedJobId
       ? persistedJobId
       : null;
+  const openingGenerationJobIdsRef = useRef(new Set(urlJobId ? [urlJobId] : []));
+  const onGeneratedVideoRef = useRef(workflow?.onGeneratedVideo);
+  useEffect(() => { onGeneratedVideoRef.current = workflow?.onGeneratedVideo; }, [workflow?.onGeneratedVideo]);
+  useEffect(() => {
+    if (!urlJobId) openingGenerationJobIdsRef.current.clear();
+    else if (!openingGenerationJobIdsRef.current.has(urlJobId)) openingGenerationJobIdsRef.current = new Set([urlJobId]);
+  }, [urlJobId]);
   const activeJobIds = recreateView?.preview ? [] : Array.from(
     new Set([
       ...submittedJobIds,
@@ -793,6 +800,7 @@ export function VideoGenerationStudioPanel({
         );
         if (isForeground()) {
           setCurrentResultIds((current) => appendAIStudioSessionResultIds(current, nextVideo.id));
+          if (openingGenerationJobIdsRef.current.has(completedJob.id)) onGeneratedVideoRef.current?.(nextVideo);
           setLatestCompletedVideoId(nextVideo.id);
           setTimeout(() => setLatestCompletedVideoId(null), 3500);
           setGenerationState("completed");
@@ -858,6 +866,7 @@ export function VideoGenerationStudioPanel({
     setActiveSubmittedAt(new Date().toISOString());
     setSelectedHistoryVideoId(null);
     foregroundAutoResumeRef.current = false;
+    openingGenerationJobIdsRef.current.clear();
     const submissionEpoch = foregroundEpochRef.current;
     setGenerationState("generating");
     submittingRef.current = true;
@@ -923,6 +932,7 @@ export function VideoGenerationStudioPanel({
       });
       if (activeUserIdRef.current !== user.uid) return;
       persistJobIdInUrl(data.jobId, workflowFormat ? `explore-${workflowFormat}Job` : VIDEO_JOB_URL_PARAMETER);
+      if (submissionEpoch === foregroundEpochRef.current) openingGenerationJobIdsRef.current = new Set(data.jobs.map(job => job.jobId));
       for (const job of data.jobs) {
         resolvedJobIdsRef.current.delete(job.jobId);
         if (submissionEpoch === foregroundEpochRef.current) {

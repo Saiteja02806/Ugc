@@ -18,17 +18,18 @@ import type { ExploreFinishDraft } from "@/worker/src/lib/explore-finishing-cont
 import { formatTextLayout, parseExploreFormatEdit, type ExploreFormatEdit } from "@/worker/src/lib/explore-format-edit";
 import { isExploreUuid } from "@/worker/src/lib/explore-finishing-contract";
 import styles from "@/components/explore/format-workspace.module.css";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 const field = "w-full rounded-lg border border-border bg-card-muted px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-focus";
 const defaultEdit = (format: "hook" | "wall_text", duration: number): ExploreFormatEdit => ({ version: 1, format, trimStartMs: 0, trimEndMs: Math.round(duration * 1000), originalVolume: 1, musicVolume: .2, text: null });
 
-export function FormatVideoEditor({ format, video, active, controlsTarget, resultsTarget, actionsTarget, enabled, onDirty, onSaved, onContinue, pendingSource = false, editingActive = true, onEdit }: {
+export function FormatVideoEditor({ format, video, active, controlsTarget, resultsTarget, actionsTarget, enabled, onDirty, onSaved, onContinue, pendingSource = false, editingActive = true, onEdit, previewActions }: {
   format: "hook" | "wall_text"; video: FormatVideoSource; active: boolean; controlsTarget: HTMLElement | null; resultsTarget: HTMLElement | null; enabled: boolean;
   pendingSource?: boolean;
   onDirty: () => void; onSaved: (output: { id: string; kind: "media_asset"; url: string; title: string }) => void; onContinue: () => void;
   actionsTarget?: HTMLElement | null;
   editingActive?: boolean; onEdit?: () => void;
+  previewActions?: ReactNode;
 }) {
   const { user } = useAuth();
   const owner = user?.uid ?? null;
@@ -179,7 +180,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
       {editing.text && textLayout && time >= editing.text.startMs && time < editing.text.endMs ? <svg aria-label="Text overlay preview" viewBox={`0 0 ${width} ${height}`} className="pointer-events-none absolute inset-0 size-full"><g fill={editing.text.color} stroke="black" strokeWidth={width / 540} paintOrder="stroke" fontFamily="Arial, sans-serif" fontWeight={700} fontSize={textLayout.fontSize} textAnchor="middle">{textLayout.lines.map((line, index) => <text key={index} x={width / 2} y={textLayout.y + index * textLayout.lineHeight + textLayout.fontSize}>{line}</text>)}</g></svg> : null}
     </div>
     {previewAudioUrl ? <audio ref={soundtrack} src={previewAudioUrl} loop={playback === "repeat"} preload="metadata" aria-label="Background audio preview" /> : null}
-    {!editingActive && onEdit ? <><p className="max-w-full truncate text-xs text-muted" title={video.title}>{video.title}</p><Button type="button" variant="outline" data-edit-clip="opening" className="w-full" disabled={pendingSource || uploading} onClick={onEdit}>Edit {format === "wall_text" ? "wall-of-text video" : "hook video"}</Button></> : <p className="max-w-md text-center text-xs leading-5 text-muted">Trim, text and sound apply to this video only.</p>}
+    {!editingActive && onEdit ? <><p className="max-w-full truncate text-xs text-muted" title={video.title}>{video.title}</p><div className={styles.clipCardActions}><Button type="button" variant="outline" data-edit-clip="opening" disabled={pendingSource || uploading} onClick={onEdit}>Edit {format === "wall_text" ? "wall-of-text video" : "hook video"}</Button>{previewActions}</div></> : <p className="max-w-md text-center text-xs leading-5 text-muted">Trim, text and sound apply to this video only.</p>}
     {editingActive && finishing.output ? <div className="w-full max-w-sm space-y-2"><h3 className="text-sm font-medium">Saved video</h3><video src={finishing.output.url} controls playsInline className="max-h-80 w-full rounded-xl" /></div> : null}
   </section>;
   return <>{editingActive ? createPortal(controls, controlsTarget) : null}{createPortal(preview, resultsTarget)}{actionsTarget ? createPortal(actions, actionsTarget) : null}</>;

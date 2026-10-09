@@ -231,7 +231,7 @@ function getReactionCatalogClient() {
 }
 
 export function getCompletedReactionCoverageShortfall(params: {
-  jobs: readonly BackgroundJobRecord[];
+  jobs: readonly Pick<BackgroundJobRecord, "input" | "jobType" | "output" | "status">[];
   profile: Pick<BusinessProfileRecord, "id" | "profileVersion">;
   requestKey: string;
 }): Extract<ReactionRefillResult, { kind: "coverage_shortfall" }> | null {
@@ -402,7 +402,7 @@ function hasMatchingFactSnapshot(value: unknown, expected: BusinessFactSnapshot)
 }
 
 function isMatchingReactionCoverageJob(
-  job: BackgroundJobRecord,
+  job: Pick<BackgroundJobRecord, "input" | "jobType" | "output" | "status">,
   profile: Pick<BusinessProfileRecord, "id" | "profileVersion">,
   requestKey: string,
 ) {

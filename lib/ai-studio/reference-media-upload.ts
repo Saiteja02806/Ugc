@@ -3,18 +3,21 @@
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { MediaAsset, MediaCollection, MediaRatio } from "@/lib/media/types";
 
-export type AIStudioReferenceKind = "image" | "video";
+export type AIStudioReferenceKind = "image" | "video" | "audio";
 
 export type AIStudioReferenceMedia = {
   asset: MediaAsset;
   kind: AIStudioReferenceKind;
 };
 
-const MAX_REFERENCE_VIDEO_SECONDS = 3;
+const DEFAULT_MAX_REFERENCE_VIDEO_SECONDS = 3;
 
 export async function uploadAIStudioReferenceMedia(
   file: File,
   kind: AIStudioReferenceKind,
+  maxVideoDurationSeconds = DEFAULT_MAX_REFERENCE_VIDEO_SECONDS,
+  expectedUserId?: string,
+  options?: { maxAudioDurationSeconds?: number; requireVideoReferenceRatio?: boolean; purpose?: "explore-demo" | "explore-source" | "explore-reference" | "explore-catalog-reference" | "explore-slides" },
 ): Promise<AIStudioReferenceMedia> {
   const collection: MediaCollection = kind;
   const expectedPrefix = `${kind}/`;
@@ -23,9 +26,8 @@ export async function uploadAIStudioReferenceMedia(
     throw new Error(`Choose a valid ${kind} file.`);
   }
 
-  const metadata =
-    kind === "image" ? await readImageMetadata(file) : await readVideoMetadata(file);
-  const token = await getCurrentUserIdToken();
+  const metadata = await readAIStudioReferenceMetadata(file, kind, maxVideoDurationSeconds, options);
+  const token = await getCurrentUserIdToken(expectedUserId);
 
   if (!token) {
     throw new Error(`Sign in before uploading a reference ${kind}.`);
@@ -37,7 +39,7 @@ export async function uploadAIStudioReferenceMedia(
       contentType: file.type,
       fileName: file.name,
       fileSize: file.size,
-      projectId: "ai-studio",
+      projectId: options?.purpose ?? "ai-studio",
       title: getFileTitle(file.name, kind),
     }),
     headers: {
@@ -65,6 +67,7 @@ export async function uploadAIStudioReferenceMedia(
     throw new Error(prepared.error || `Could not prepare this reference ${kind}.`);
   }
 
+  let completionAttempted = false;
   try {
     const uploadResponse = await fetch(prepared.uploadUrl, {
       body: file,
@@ -76,6 +79,7 @@ export async function uploadAIStudioReferenceMedia(
       throw new Error(`The reference ${kind} could not be uploaded.`);
     }
 
+    completionAttempted = true;
     const completedResponse = await fetch("/api/media/complete-upload", {
       body: JSON.stringify({
         assetId: prepared.assetId,
@@ -97,18 +101,31 @@ export async function uploadAIStudioReferenceMedia(
       ok?: boolean;
     };
 
-    if (!completedResponse.ok || !completed.ok || !completed.asset) {
+    if (!completedResponse.ok || !completed.ok || completed.asset?.id !== prepared.assetId || completed.asset.status !== "ready" || completed.asset.collection !== kind) {
       throw new Error(completed.error || `Could not finish this reference ${kind} upload.`);
     }
 
     return { asset: completed.asset, kind };
   } catch (error) {
-    await fetch(`/api/media/${encodeURIComponent(prepared.assetId)}`, {
-      headers: { Authorization: `Bearer ${token}` },
-      method: "DELETE",
-    }).catch(() => undefined);
+    // A lost acknowledgement does not mean the upload failed. Never delete a
+    // potentially committed asset; first recover it through the owner API.
+    if (completionAttempted) {
+      const recovered = await fetch(`/api/media/${encodeURIComponent(prepared.assetId)}`, {
+        cache: "no-store", headers: { Authorization: `Bearer ${token}` },
+      }).then(async response => response.ok ? response.json() : null).catch(() => null);
+      if (recovered?.ok && recovered.asset?.id === prepared.assetId && recovered.asset.status === "ready" && recovered.asset.collection === kind) return { asset: recovered.asset, kind };
+    }
     throw error;
   }
+}
+
+/** Local validation shared by read-only workflow previews and owned uploads. */
+export async function readAIStudioReferenceMetadata(file: File, kind: AIStudioReferenceKind, maxVideoDurationSeconds = DEFAULT_MAX_REFERENCE_VIDEO_SECONDS,
+  options?: { maxAudioDurationSeconds?: number; requireVideoReferenceRatio?: boolean }) {
+  if (!file.type.startsWith(`${kind}/`)) throw new Error(`Choose a valid ${kind} file.`);
+  return kind === "image" ? readImageMetadata(file)
+    : kind === "audio" ? readAudioMetadata(file, options?.maxAudioDurationSeconds ?? 30)
+    : readVideoMetadata(file, maxVideoDurationSeconds, options?.requireVideoReferenceRatio ?? true);
 }
 
 async function readImageMetadata(file: File) {
@@ -137,7 +154,7 @@ async function readImageMetadata(file: File) {
   }
 }
 
-async function readVideoMetadata(file: File) {
+async function readVideoMetadata(file: File, maxDurationSeconds: number, requireReferenceRatio: boolean) {
   const objectUrl = URL.createObjectURL(file);
 
   try {
@@ -158,13 +175,13 @@ async function readVideoMetadata(file: File) {
       throw new Error("This reference video does not contain valid video data.");
     }
 
-    if (video.duration > MAX_REFERENCE_VIDEO_SECONDS) {
-      throw new Error(`Reference videos can be up to ${MAX_REFERENCE_VIDEO_SECONDS} seconds long.`);
+    if (video.duration > maxDurationSeconds) {
+      throw new Error(`Reference videos can be up to ${maxDurationSeconds} seconds long.`);
     }
 
     const ratio = getRatio(video.videoWidth, video.videoHeight);
 
-    if (ratio !== "9:16" && ratio !== "16:9") {
+    if (requireReferenceRatio && ratio !== "9:16" && ratio !== "16:9") {
       throw new Error("Use a 9:16 vertical or 16:9 landscape reference video.");
     }
 
@@ -175,6 +192,27 @@ async function readVideoMetadata(file: File) {
       width: video.videoWidth,
     };
   } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function readAudioMetadata(file: File, maxDurationSeconds: number) {
+  const objectUrl = URL.createObjectURL(file);
+  const audio = document.createElement("audio");
+  try {
+    audio.preload = "metadata";
+    await new Promise<void>((resolve, reject) => {
+      audio.onloadedmetadata = () => resolve();
+      audio.onerror = () => reject(new Error("Could not read this audio reference. Use an MP3 or WAV file."));
+      audio.src = objectUrl;
+    });
+    if (!Number.isFinite(audio.duration) || audio.duration <= 0 || audio.duration > maxDurationSeconds) {
+      throw new Error(`Audio must contain between 0 and ${maxDurationSeconds} seconds of audio.`);
+    }
+    return { durationSeconds: audio.duration, width: null, height: null, ratio: "other" as const };
+  } finally {
+    audio.removeAttribute("src");
+    audio.load();
     URL.revokeObjectURL(objectUrl);
   }
 }

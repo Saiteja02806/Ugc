@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "renderer": "finishExploreVideo",
+  "placement": "bottom",
+  "examples": [
+    {
+      "style": "clean",
+      "renderVersion": "classic-v1",
+      "sourceHash": "4258bbba66aa6b33537b4b291e7d4a32a71b6e8a0d46aedcb60105d4a11462c2",
+      "transcriptHash": "c08eb6fa7922c569257cab1829a1dc45456c5eca760672746feca9a8f652d2a1",
+      "assHash": "bdc65bb3809a29ff0a6ee164f26a9fe567f714d03d997e9626471b6a937ce61f",
+      "videoHash": "7a5c66640809f06c35fd7d9ad8613266ecf943b295e697ee16ffe910af955ecb",
+      "bytes": 128741,
+      "durationMs": 8000,
+      "width": 480,
+      "height": 854
+    },
+    {
+      "style": "bold-box",
+      "renderVersion": "classic-v1",
+      "sourceHash": "4258bbba66aa6b33537b4b291e7d4a32a71b6e8a0d46aedcb60105d4a11462c2",
+      "transcriptHash": "c08eb6fa7922c569257cab1829a1dc45456c5eca760672746feca9a8f652d2a1",
+      "assHash": "bba6e6ccc2c08c1b8cb466b6d9f95d38f4795d2891dc75eef2ad595495fe2876",
+      "videoHash": "493abb6297ce0f4da89aac577a5a3fad8d8e3e483d918c33a47c6df09ac767b0",
+      "bytes": 128111,
+      "durationMs": 8000,
+      "width": 480,
+      "height": 854
+    },
+    {
+      "style": "active-word",
+      "renderVersion": "classic-v1",
+      "sourceHash": "4258bbba66aa6b33537b4b291e7d4a32a71b6e8a0d46aedcb60105d4a11462c2",
+      "transcriptHash": "c08eb6fa7922c569257cab1829a1dc45456c5eca760672746feca9a8f652d2a1",
+      "assHash": "8768457830881d594ff70d6d2ecb2f38dba8207da45f7eaf60e12dcccd7ad961",
+      "videoHash": "f9eee7d3d26845b02350d47009cc8544c5884dc5775c542def902d339d41b684",
+      "bytes": 144430,
+      "durationMs": 8000,
+      "width": 480,
+      "height": 854
+    },
+    {
+      "style": "editorial",
+      "renderVersion": "editorial-v1",
+      "sourceHash": "4258bbba66aa6b33537b4b291e7d4a32a71b6e8a0d46aedcb60105d4a11462c2",
+      "transcriptHash": "c08eb6fa7922c569257cab1829a1dc45456c5eca760672746feca9a8f652d2a1",
+      "assHash": "a1a4143d98366e4d09910f7e0a5f7ebd7f44d75e9007465a75c1d67051d650b2",
+      "videoHash": "b1a3ad50d11e13cdb0371ffcfb0787dcd5668a8c391ad6e304f3190478d0a4e0",
+      "bytes": 190254,
+      "durationMs": 8000,
+      "width": 480,
+      "height": 854
+    },
+    {
+      "style": "word-pop",
+      "renderVersion": "word-pop-v1",
+      "sourceHash": "4258bbba66aa6b33537b4b291e7d4a32a71b6e8a0d46aedcb60105d4a11462c2",
+      "transcriptHash": "c08eb6fa7922c569257cab1829a1dc45456c5eca760672746feca9a8f652d2a1",
+      "assHash": "82a9ade2b6904ebd585fa01842e9aa932a241753b64580772d9fa437332984a5",
+      "videoHash": "47c82f505a0656646ca0463a38c46c7aae8e3830f6c29724ab0ad1cb874fbefe",
+      "bytes": 154513,
+      "durationMs": 8000,
+      "width": 480,
+      "height": 854
+    },
+    {
+      "style": "karaoke",
+      "renderVersion": "karaoke-v1",
+      "sourceHash": "4258bbba66aa6b33537b4b291e7d4a32a71b6e8a0d46aedcb60105d4a11462c2",
+      "transcriptHash": "c08eb6fa7922c569257cab1829a1dc45456c5eca760672746feca9a8f652d2a1",
+      "assHash": "90bb99e11f36389205b80080d9eeb043bcb4bf84e741f846af6a7160dc2a8803",
+      "videoHash": "e87353f91afa7d476367b087fb091f41d2e1d39c15e56bc2eb0eebd02ad67c3f",
+      "bytes": 140811,
+      "durationMs": 8000,
+      "width": 480,
+      "height": 854
+    },
+    {
+      "style": "marker-highlight",
+      "renderVersion": "marker-highlight-v1",
+      "sourceHash": "4258bbba66aa6b33537b4b291e7d4a32a71b6e8a0d46aedcb60105d4a11462c2",
+      "transcriptHash": "c08eb6fa7922c569257cab1829a1dc45456c5eca760672746feca9a8f652d2a1",
+      "assHash": "2088ee2548baa678061ff9bca5f0e64d0c0b3f224d48748b33c95fee5668ceea",
+      "videoHash": "27f6a9bee514298048afd667d0534afe0b016cc6639da558839b428c3819b9a9",
+      "bytes": 142897,
+      "durationMs": 8000,
+      "width": 480,
+      "height": 854
+    },
+    {
+      "style": "serif-box",
+      "renderVersion": "serif-box-v2",
+      "sourceHash": "4258bbba66aa6b33537b4b291e7d4a32a71b6e8a0d46aedcb60105d4a11462c2",
+      "transcriptHash": "c08eb6fa7922c569257cab1829a1dc45456c5eca760672746feca9a8f652d2a1",
+      "assHash": "7ebcaef795d862122dd9d05497a360a95bd337ca956a2b2b2c65b4e3580392b0",
+      "videoHash": "ca7728fb49384e80134657247671daf974bb8ab4b7d88d9b919c15b4289aa260",
+      "bytes": 145078,
+      "durationMs": 8000,
+      "width": 480,
+      "height": 854,
+      "video": "/subtitle-previews/v2/serif-box.mp4",
+      "poster": "/subtitle-previews/v2/serif-box.jpg"
+    }
+  ]
+}

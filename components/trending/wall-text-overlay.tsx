@@ -15,6 +15,7 @@ import {
   getWallTextTypography,
   WALL_TEXT_INLINE_SAFE_PADDING,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
+  WALL_TEXT_SECTION_GAP,
 } from "@/lib/trending/wall-text-visual-style";
 import {
   DEFAULT_TRENDING_TEXT_COLOR,
@@ -48,7 +49,7 @@ export function WallTextOverlay({
   const letterSpacing = getWallTextLetterSpacing(content);
   const typography = getWallTextTypography(content);
   const previewDimension =
-    scaleMode === "review-card-capped"
+    scaleMode === "review-card-capped" && content.finalLayout?.textMode !== "manual"
       ? getWallTextReviewCardCappedDimension
       : getWallTextProportionalPreviewDimension;
 
@@ -88,6 +89,8 @@ export function WallTextOverlay({
             style={{
               lineHeight: WALL_TEXT_LINE_HEIGHT_FACTOR,
               whiteSpace: "nowrap",
+              marginBottom: segmentIndex < getWallTextRenderBlocks(content).length - 1
+                ? previewDimension(segment.gapAfterPx ?? WALL_TEXT_SECTION_GAP) : 0,
             }}
           >
             {segment.lines.map((line, lineIndex) => (

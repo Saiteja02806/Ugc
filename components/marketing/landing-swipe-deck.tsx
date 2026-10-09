@@ -1,16 +1,19 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import {
-  Check,
+  ArrowDown,
   ChevronLeft,
   ChevronRight,
   Images,
+  Heart,
   ScanText,
   Sparkles,
-  X,
 } from "lucide-react";
+import { PostInteractionFeed } from "@/components/trending/post-interaction-feed";
+import { usePostReviewHistory } from "@/components/trending/use-post-review-history";
+import { POST_LIKE_FEEDBACK_MS } from "@/lib/trending/post-interaction";
 import { cn } from "@/lib/utils";
 
 interface DeckItem {
@@ -63,20 +66,31 @@ function CardContent({
   onPrevSlide,
   onNextSlide,
   isInteractive = false,
+  isActive = false,
 }: {
   item: DeckItem;
   activeSlide?: number;
   onPrevSlide?: (e: React.MouseEvent) => void;
   onNextSlide?: (e: React.MouseEvent) => void;
   isInteractive?: boolean;
+  isActive?: boolean;
 }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (isActive) void video.play().catch(() => undefined);
+    else video.pause();
+  }, [isActive, item.videoSrc]);
+
   return (
     <div className="relative size-full overflow-hidden select-none pointer-events-none">
       {item.type === "slideshow" && item.slides ? (
         /* Slideshow Deck */
         <div className="relative size-full">
           <div
-            className="flex size-full transition-transform duration-500 ease-out"
+            data-landing-slide-strip
+            className="flex size-full transition-transform duration-500 ease-out motion-reduce:transition-none"
             style={{ transform: `translateX(-${activeSlide * 100}%)` }}
           >
             {item.slides.map((src, idx) => (
@@ -132,9 +146,10 @@ function CardContent({
       ) : (
         /* Video Player for Hook & Wall of Text */
         <video
+          ref={videoRef}
           key={item.videoSrc}
           src={item.videoSrc}
-          autoPlay
+          autoPlay={isActive}
           muted
           loop
           playsInline
@@ -161,72 +176,71 @@ function CardContent({
 
 export function LandingSwipeDeck() {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [flyDirection, setFlyDirection] = useState<"left" | "right" | null>(null);
+  const [isLiked, setIsLiked] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
+  const decisionLock = useRef(false);
+  const decisionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const postHistory = usePostReviewHistory<DeckItem>();
+  const reviewSequence = useRef(0);
+  const upcoming = deckItems.map((_, index) => deckItems[(currentIndex + index) % deckItems.length]);
+  const feedPosts = (postHistory.active
+    ? [postHistory.active, ...postHistory.following].map((entry) => ({ id: entry.id, item: entry.value }))
+    : []).concat(upcoming.map((item) => ({ id: item.id, item }))).slice(0, 3);
 
-  const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const cardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => () => {
+    if (decisionTimer.current !== null) clearTimeout(decisionTimer.current);
+  }, []);
 
-  const handleDecision = useCallback(
-    (direction: "left" | "right") => {
-      if (flyDirection) return;
-      setFlyDirection(direction);
+  function advance(like: boolean) {
+    decisionTimer.current = null;
+    postHistory.remember({ id: `reviewed-${++reviewSequence.current}`, value: deckItems[currentIndex],
+      decision: like ? "liked" : "skipped" });
+    setCurrentIndex((index) => (index + 1) % deckItems.length);
+    setActiveSlide(0);
+    setIsLiked(false);
+    decisionLock.current = false;
+  }
 
-      setTimeout(() => {
-        setCurrentIndex((prev) => (prev + 1) % deckItems.length);
-        setFlyDirection(null);
-        setDragOffset({ x: 0, y: 0 });
-        setActiveSlide(0);
-      }, 320);
-    },
-    [flyDirection]
-  );
-
-  // Pointer/Touch Drag Handlers
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (flyDirection) return;
-    // Don't drag if clicking chevron buttons
-    if ((e.target as HTMLElement).closest("button")) return;
-
-    setIsDragging(true);
-    dragStartRef.current = { x: e.clientX, y: e.clientY };
-    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDragging || flyDirection) return;
-    const dx = e.clientX - dragStartRef.current.x;
-    const dy = e.clientY - dragStartRef.current.y;
-    setDragOffset({ x: dx, y: dy * 0.35 });
-  };
-
-  const handlePointerUp = () => {
-    if (!isDragging || flyDirection) return;
-    setIsDragging(false);
-
-    if (dragOffset.x > 75) {
-      handleDecision("right");
-    } else if (dragOffset.x < -75) {
-      handleDecision("left");
-    } else {
-      setDragOffset({ x: 0, y: 0 });
+  function handleDecision(like: boolean) {
+    if (decisionLock.current) return false;
+    if (postHistory.browsing) {
+      if (like) return false;
+      setActiveSlide(0);
+      return postHistory.next();
     }
-  };
+    decisionLock.current = true;
+    if (like) {
+      setIsLiked(true);
+      decisionTimer.current = setTimeout(() => advance(true), POST_LIKE_FEEDBACK_MS);
+    } else advance(false);
+    return true;
+  }
 
-  // 3 items in current order
-  const activeItem = deckItems[currentIndex % deckItems.length];
-  const secondItem = deckItems[(currentIndex + 1) % deckItems.length];
-  const thirdItem = deckItems[(currentIndex + 2) % deckItems.length];
+  function previousPost() {
+    setActiveSlide(0);
+    return postHistory.previous();
+  }
 
-  const rotationDeg = dragOffset.x * 0.08;
-  const isPassing = dragOffset.x < -30;
-  const isApproving = dragOffset.x > 30;
+  function renderPost(item: DeckItem, isActive: boolean) {
+    return <div data-post-like-target className="relative size-full overflow-hidden rounded-[20px]">
+      <CardContent item={item} activeSlide={isActive ? activeSlide : 0}
+        isActive={isActive} isInteractive={isActive}
+        onPrevSlide={(event) => {
+          event.stopPropagation();
+          setActiveSlide((slide) => (slide - 1 + (item.slides?.length || 1)) % (item.slides?.length || 1));
+        }}
+        onNextSlide={(event) => {
+          event.stopPropagation();
+          setActiveSlide((slide) => (slide + 1) % (item.slides?.length || 1));
+        }}
+      />
+    </div>;
+  }
 
   return (
     <section
       id="interactive-feed"
+      aria-labelledby="landing-feed-heading"
       className="relative overflow-hidden border-y border-border bg-card-muted/40 px-4 py-16 sm:px-6 lg:px-8 lg:py-20"
     >
       <div className="mx-auto max-w-[1200px]">
@@ -235,134 +249,58 @@ export function LandingSwipeDeck() {
           <p className="text-sm font-semibold text-primary">
             Interactive Daily Feed
           </p>
-          <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-[-0.035em] text-foreground-strong sm:text-5xl">
-            Swipe to approve your daily content.
+          <h2 id="landing-feed-heading" className="mt-3 text-3xl font-semibold leading-tight tracking-[-0.035em] text-foreground-strong sm:text-5xl">
+            Double-tap to approve your daily content.
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-muted">
-            Test the workflow in real-time. Swipe right or click ✓ to post, swipe left or click ✕ to reject.
+            Double-tap to like, scroll to skip. In Trending, a like starts scheduling.
           </p>
         </div>
 
-        {/* Swipe Deck Arena */}
         <div className="relative mx-auto mt-10 flex w-full max-w-[500px] flex-col items-center justify-center">
-          {/* Central Compact 9:16 Vertical Card Deck */}
           <div className="relative flex w-full max-w-[270px] sm:max-w-[290px] flex-col items-center">
-            {/* Deck Container */}
-            <div className="relative aspect-[9/16] w-full select-none touch-none">
-              {/* ========================================================= */}
-              {/* Card 3: Deepest Layer (Offset Right 18px, 4° tilt) with REAL Content */}
-              {/* ========================================================= */}
-              <div
-                className="absolute inset-0 z-0 overflow-hidden rounded-[22px] border border-border/70 bg-black shadow-sm transition-transform duration-300 pointer-events-none"
-                style={{
-                  transform: "translateX(18px) translateY(6px) rotate(3.5deg) scale(0.92)",
-                  opacity: 0.45,
-                }}
-                aria-hidden="true"
-              >
-                <CardContent item={thirdItem} />
-              </div>
-
-              {/* ========================================================= */}
-              {/* Card 2: Middle Layer (Offset Right 9px, 2° tilt) with REAL Content */}
-              {/* ========================================================= */}
-              <div
-                className="absolute inset-0 z-10 overflow-hidden rounded-[22px] border border-border/80 bg-black shadow-card transition-transform duration-300 pointer-events-none"
-                style={{
-                  transform: "translateX(9px) translateY(3px) rotate(1.8deg) scale(0.96)",
-                  opacity: 0.85,
-                }}
-                aria-hidden="true"
-              >
-                <CardContent item={secondItem} />
-              </div>
-
-              {/* ========================================================= */}
-              {/* Card 1: Active Interactive Front Card */}
-              {/* ========================================================= */}
-              <div
-                ref={cardRef}
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerUp={handlePointerUp}
-                onPointerCancel={handlePointerUp}
-                className={cn(
-                  "group absolute inset-0 z-20 flex flex-col justify-between overflow-hidden rounded-[22px] border-2 border-border-strong bg-black shadow-floating cursor-grab active:cursor-grabbing transform-gpu select-none",
-                  !isDragging && !flyDirection && "transition-transform duration-300 ease-out",
-                  flyDirection === "left" && "transition-all duration-300 -translate-x-[160%] -rotate-12 opacity-0",
-                  flyDirection === "right" && "transition-all duration-300 translate-x-[160%] rotate-12 opacity-0"
-                )}
-                style={
-                  !flyDirection
-                    ? {
-                        transform: `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) rotate(${rotationDeg}deg)`,
-                      }
-                    : undefined
-                }
-              >
-                {/* Stamp: REJECTED ✕ (Red) */}
-                <div
-                  className={cn(
-                    "pointer-events-none absolute left-3 top-14 z-30 -rotate-12 rounded-lg border-2 border-red-500 bg-red-500/25 px-3 py-1 text-sm font-black tracking-wider text-red-500 backdrop-blur-md transition-opacity duration-150",
-                    isPassing || flyDirection === "left" ? "opacity-100 scale-105" : "opacity-0"
-                  )}
-                >
-                  REJECTED ✕
-                </div>
-
-                {/* Stamp: POSTED ✓ (Green) */}
-                <div
-                  className={cn(
-                    "pointer-events-none absolute right-3 top-14 z-30 rotate-12 rounded-lg border-2 border-emerald-500 bg-emerald-500/25 px-3 py-1 text-sm font-black tracking-wider text-emerald-400 backdrop-blur-md transition-opacity duration-150",
-                    isApproving || flyDirection === "right" ? "opacity-100 scale-105" : "opacity-0"
-                  )}
-                >
-                  POSTED ✓
-                </div>
-
-                {/* Card Media (Clean unblocked 9:16) */}
-                <CardContent
-                  item={activeItem}
-                  activeSlide={activeSlide}
-                  isInteractive={true}
-                  onPrevSlide={(e) => {
-                    e.stopPropagation();
-                    setActiveSlide((prev) =>
-                      prev === 0 ? (activeItem.slides?.length || 1) - 1 : prev - 1
-                    );
-                  }}
-                  onNextSlide={(e) => {
-                    e.stopPropagation();
-                    setActiveSlide((prev) =>
-                      (prev + 1) % (activeItem.slides?.length || 1)
-                    );
-                  }}
+            <div className="relative aspect-[9/16] w-full select-none">
+              <div className="absolute inset-0">
+                <PostInteractionFeed
+                  label="Daily content preview. Double-tap to like, scroll to skip or scroll back to revisit."
+                  className="h-full w-full border border-border-strong bg-black"
+                  disabled={isLiked}
+                  liked={isLiked}
+                  onLike={() => handleDecision(true)}
+                  onSkip={() => handleDecision(false)}
+                  onPrevious={previousPost}
+                  previousItem={postHistory.preceding ? {
+                    id: postHistory.preceding.id, content: renderPost(postHistory.preceding.value, false),
+                  } : null}
+                  items={feedPosts.map((post, index) => ({ id: post.id, content: renderPost(post.item, index === 0) }))}
                 />
               </div>
             </div>
 
-            {/* Circular Action Buttons Below Card: (✕ Dislike) & (✓ Like) */}
             <div className="mt-6 flex items-center justify-center gap-6">
-              {/* Dislike (✕) Button */}
               <button
                 type="button"
-                onClick={() => handleDecision("left")}
-                aria-label="Dislike post"
-                className="group/btn flex size-14 items-center justify-center rounded-full border border-red-500/25 bg-card text-red-500 shadow-card transition-all duration-200 hover:scale-110 hover:border-red-500 hover:bg-red-500/10 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                disabled={isLiked}
+                onClick={() => handleDecision(false)}
+                aria-label="Skip preview post"
+                className="group/btn flex size-14 items-center justify-center rounded-full border border-red-500/25 bg-card text-red-500 transition duration-200 hover:scale-105 hover:border-red-500 hover:bg-red-500/10 active:scale-95 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 motion-reduce:transform-none motion-reduce:transition-none"
               >
-                <X className="size-6 stroke-[2.6] transition-transform duration-200 group-hover/btn:scale-110" />
+                <ArrowDown className="size-6 stroke-[2.6]" aria-hidden="true" />
               </button>
 
-              {/* Like (✓) Button */}
               <button
                 type="button"
-                onClick={() => handleDecision("right")}
-                aria-label="Like and post"
-                className="group/btn flex size-14 items-center justify-center rounded-full border border-emerald-500/25 bg-card text-emerald-500 shadow-card transition-all duration-200 hover:scale-110 hover:border-emerald-500 hover:bg-emerald-500/10 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                disabled={isLiked || postHistory.browsing}
+                onClick={() => handleDecision(true)}
+                aria-label="Like preview post"
+                className="group/btn flex size-14 items-center justify-center rounded-full border border-emerald-500/25 bg-card text-emerald-500 transition duration-200 hover:scale-105 hover:border-emerald-500 hover:bg-emerald-500/10 active:scale-95 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 motion-reduce:transform-none motion-reduce:transition-none"
               >
-                <Check className="size-6 stroke-[2.8] transition-transform duration-200 group-hover/btn:scale-110" />
+                <Heart className="size-6 stroke-[2.6]" aria-hidden="true" />
               </button>
             </div>
+            <p data-post-review-status className="mt-4 text-center text-xs text-muted">{postHistory.active
+              ? `Previously ${postHistory.active.decision} · Scroll to browse`
+              : `Interactive preview · ${currentIndex + 1} of ${deckItems.length} · Scroll back to revisit`}</p>
           </div>
         </div>
       </div>

@@ -1,0 +1,325 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UGC Pilot Cloud MCP V1 tool contract schemas (Phase 1 draft)",
+  "$defs": {
+    "uuid": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "httpsUrl": { "type": "string", "format": "uri", "pattern": "^https://" },
+    "sourceUrl": { "type": "string", "format": "uri", "pattern": "^https?://" },
+    "collection": { "enum": ["image", "video", "influencer"] },
+    "sourceType": { "enum": ["upload", "influencer_upload", "demo_upload", "catalog_influencer", "generated_image", "generated_video", "edit_export", "combined_render", "wall_text_render", "reaction_render"] },
+    "ratio": { "enum": ["9:16", "1:1", "4:5", "16:9", "other"] },
+    "jobStatus": { "enum": ["created", "queued", "processing", "waiting_external_service", "rendering", "uploading_output", "cancel_requested", "stalled", "completed", "failed", "cancelled"] },
+    "nullablePositiveInteger": { "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "null" }] },
+    "nullablePositiveNumber": { "oneOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "null" }] },
+    "nullableString": { "type": ["string", "null"] },
+    "nullableHttpsUrl": { "oneOf": [{ "$ref": "#/$defs/httpsUrl" }, { "type": "null" }] },
+    "nullableSourceUrl": { "oneOf": [{ "$ref": "#/$defs/sourceUrl" }, { "type": "null" }] },
+    "emptyInput": { "type": "object", "properties": {}, "additionalProperties": false },
+    "assetSummary": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "title": { "type": "string" },
+        "collection": { "$ref": "#/$defs/collection" },
+        "source_type": { "$ref": "#/$defs/sourceType" },
+        "mime_type": { "type": "string" },
+        "width": { "$ref": "#/$defs/nullablePositiveInteger" },
+        "height": { "$ref": "#/$defs/nullablePositiveInteger" },
+        "duration_seconds": { "$ref": "#/$defs/nullablePositiveNumber" },
+        "created_at": { "$ref": "#/$defs/timestamp" }
+      },
+      "required": ["id", "title", "collection", "source_type", "mime_type", "width", "height", "duration_seconds", "created_at"],
+      "additionalProperties": false
+    },
+    "asset": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "title": { "type": "string" },
+        "collection": { "$ref": "#/$defs/collection" },
+        "source_type": { "$ref": "#/$defs/sourceType" },
+        "mime_type": { "type": "string" },
+        "width": { "$ref": "#/$defs/nullablePositiveInteger" },
+        "height": { "$ref": "#/$defs/nullablePositiveInteger" },
+        "duration_seconds": { "$ref": "#/$defs/nullablePositiveNumber" },
+        "created_at": { "$ref": "#/$defs/timestamp" },
+        "file_name": { "$ref": "#/$defs/nullableString" },
+        "file_size_bytes": { "$ref": "#/$defs/nullablePositiveInteger" },
+        "ratio": { "$ref": "#/$defs/ratio" },
+        "thumbnail_url": { "$ref": "#/$defs/nullableHttpsUrl" },
+        "updated_at": { "$ref": "#/$defs/timestamp" },
+        "url": { "$ref": "#/$defs/httpsUrl" }
+      },
+      "required": ["id", "title", "collection", "source_type", "mime_type", "width", "height", "duration_seconds", "created_at", "file_name", "file_size_bytes", "ratio", "thumbnail_url", "updated_at", "url"],
+      "additionalProperties": false
+    },
+    "generationReceipt": {
+      "type": "object",
+      "properties": {
+        "jobs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "properties": {
+              "job_id": { "$ref": "#/$defs/uuid" },
+              "status": { "$ref": "#/$defs/jobStatus" }
+            },
+            "required": ["job_id", "status"],
+            "additionalProperties": false
+          }
+        },
+        "partial": { "type": "boolean" }
+      },
+      "required": ["jobs", "partial"],
+      "additionalProperties": false
+    }
+  },
+  "tools": {
+    "get_profile": {
+      "inputSchema": { "$ref": "#/$defs/emptyInput" },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 1 },
+          "email": { "type": "string", "format": "email" },
+          "nickname": { "type": "string", "minLength": 1 }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    "get_entitlements": {
+      "inputSchema": { "$ref": "#/$defs/emptyInput" },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "plan": { "enum": ["free", "starter", "growth"] },
+          "access_source": { "enum": ["free", "dodo", "complimentary"] },
+          "active": { "type": "boolean" },
+          "credits_remaining": { "type": "integer", "minimum": 0 },
+          "credits_reserved": { "type": "integer", "minimum": 0 },
+          "image_credit_cost": { "type": "integer", "minimum": 0 },
+          "video_credits_per_second": { "type": "integer", "minimum": 0 },
+          "features": {
+            "type": "object",
+            "properties": {
+              "image_generation": { "type": "boolean" },
+              "video_generation": { "type": "boolean" }
+            },
+            "required": ["image_generation", "video_generation"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["plan", "access_source", "active", "credits_remaining", "credits_reserved", "image_credit_cost", "video_credits_per_second", "features"],
+        "additionalProperties": false
+      }
+    },
+    "get_saas_brand": {
+      "inputSchema": { "$ref": "#/$defs/emptyInput" },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": { "$ref": "#/$defs/uuid" },
+          "name": { "type": "string", "minLength": 1 },
+          "source_url": { "$ref": "#/$defs/nullableSourceUrl" },
+          "logo_url": { "$ref": "#/$defs/nullableHttpsUrl" },
+          "context": {
+            "type": "object",
+            "properties": {
+              "product_summary": { "type": "string", "minLength": 20 },
+              "target_audience": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+              "category": { "$ref": "#/$defs/nullableString" },
+              "business_model": { "enum": ["b2b", "b2c", "both", null] },
+              "main_problem": { "$ref": "#/$defs/nullableString" },
+              "main_promise": { "$ref": "#/$defs/nullableString" },
+              "value_propositions": { "type": "array", "items": { "type": "string" } },
+              "differentiators": { "type": "array", "items": { "type": "string" } },
+              "brand_tone": { "$ref": "#/$defs/nullableString" },
+              "claims_to_avoid": { "type": "array", "items": { "type": "string" } },
+              "missing_info": { "type": "array", "items": { "type": "string" } }
+            },
+            "required": ["product_summary", "target_audience", "category", "business_model", "main_problem", "main_promise", "value_propositions", "differentiators", "brand_tone", "claims_to_avoid", "missing_info"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["id", "name", "source_url", "logo_url", "context"],
+        "additionalProperties": false
+      }
+    },
+    "list_assets": {
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "collection": { "$ref": "#/$defs/collection" },
+          "source_type": { "$ref": "#/$defs/sourceType" },
+          "query": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 },
+          "cursor": { "type": "string", "minLength": 1, "maxLength": 2048 }
+        },
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "items": { "type": "array", "items": { "$ref": "#/$defs/assetSummary" } },
+          "next_cursor": { "oneOf": [{ "type": "string", "minLength": 1 }, { "type": "null" }] }
+        },
+        "required": ["items", "next_cursor"],
+        "additionalProperties": false
+      }
+    },
+    "get_asset": {
+      "inputSchema": { "type": "object", "properties": { "asset_id": { "$ref": "#/$defs/uuid" } }, "required": ["asset_id"], "additionalProperties": false },
+      "outputSchema": { "type": "object", "properties": { "asset": { "$ref": "#/$defs/asset" } }, "required": ["asset"], "additionalProperties": false }
+    },
+    "create_upload": {
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "collection": { "$ref": "#/$defs/collection" },
+          "file_name": { "type": "string", "minLength": 1, "maxLength": 255, "pattern": "^[^/\\\\\\u0000]+$" },
+          "mime_type": { "enum": ["image/jpeg", "image/png", "image/webp", "video/mp4", "video/quicktime", "video/webm"] },
+          "file_size_bytes": { "type": "integer", "minimum": 1 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 140 }
+        },
+        "required": ["collection", "file_name", "mime_type", "file_size_bytes"],
+        "additionalProperties": false,
+        "allOf": [
+          { "if": { "properties": { "collection": { "const": "image" } }, "required": ["collection"] }, "then": { "properties": { "mime_type": { "enum": ["image/jpeg", "image/png", "image/webp"] }, "file_size_bytes": { "maximum": 26214400 } } } },
+          { "if": { "properties": { "collection": { "enum": ["video", "influencer"] } }, "required": ["collection"] }, "then": { "properties": { "mime_type": { "enum": ["video/mp4", "video/quicktime", "video/webm"] }, "file_size_bytes": { "maximum": 262144000 } } } }
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "upload_id": { "$ref": "#/$defs/uuid" },
+          "upload_url": { "$ref": "#/$defs/httpsUrl" },
+          "expires_at": { "$ref": "#/$defs/timestamp" },
+          "required_headers": { "type": "object", "properties": { "Content-Type": { "type": "string" } }, "required": ["Content-Type"], "additionalProperties": false }
+        },
+        "required": ["upload_id", "upload_url", "expires_at", "required_headers"],
+        "additionalProperties": false
+      }
+    },
+    "confirm_upload": {
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "upload_id": { "$ref": "#/$defs/uuid" },
+          "width": { "type": "integer", "minimum": 1 },
+          "height": { "type": "integer", "minimum": 1 },
+          "duration_seconds": { "type": "number", "exclusiveMinimum": 0 }
+        },
+        "required": ["upload_id", "width", "height"],
+        "additionalProperties": false
+      },
+      "outputSchema": { "type": "object", "properties": { "asset": { "$ref": "#/$defs/asset" } }, "required": ["asset"], "additionalProperties": false }
+    },
+    "delete_asset": {
+      "inputSchema": { "type": "object", "properties": { "asset_id": { "$ref": "#/$defs/uuid" } }, "required": ["asset_id"], "additionalProperties": false },
+      "outputSchema": { "type": "object", "properties": { "asset_id": { "$ref": "#/$defs/uuid" }, "deleted": { "const": true } }, "required": ["asset_id", "deleted"], "additionalProperties": false }
+    },
+    "get_capabilities": {
+      "inputSchema": { "$ref": "#/$defs/emptyInput" },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "image_generation": {
+            "type": "object",
+            "properties": {
+              "available": { "type": "boolean" },
+              "aspect_ratios": { "type": "array", "uniqueItems": true, "items": { "enum": ["4:5", "1:1", "9:16", "16:9"] } },
+              "counts": { "type": "array", "uniqueItems": true, "items": { "enum": [1, 2, 4] } },
+              "max_reference_images": { "enum": [0, 1] }
+            },
+            "required": ["available", "aspect_ratios", "counts", "max_reference_images"],
+            "additionalProperties": false
+          },
+          "video_generation": {
+            "type": "object",
+            "properties": {
+              "available": { "type": "boolean" },
+              "aspect_ratios": { "type": "array", "uniqueItems": true, "items": { "enum": ["9:16", "16:9"] } },
+              "durations_seconds": { "type": "array", "uniqueItems": true, "items": { "enum": [3, 4, 5, 6, 7, 8, 9, 10] } },
+              "counts": { "type": "array", "uniqueItems": true, "items": { "enum": [1, 2, 4] } },
+              "max_reference_images": { "enum": [0, 1] },
+              "max_reference_videos": { "const": 0 }
+            },
+            "required": ["available", "aspect_ratios", "durations_seconds", "counts", "max_reference_images", "max_reference_videos"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["image_generation", "video_generation"],
+        "additionalProperties": false
+      }
+    },
+    "generate_image": {
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "prompt": { "type": "string", "minLength": 1, "maxLength": 2000 },
+          "aspect_ratio": { "enum": ["4:5", "1:1", "9:16", "16:9"], "default": "9:16" },
+          "reference_asset_id": { "$ref": "#/$defs/uuid" },
+          "count": { "enum": [1, 2, 4], "default": 1 },
+          "client_request_id": { "type": "string", "minLength": 1, "maxLength": 200 }
+        },
+        "required": ["prompt", "client_request_id"],
+        "additionalProperties": false
+      },
+      "outputSchema": { "$ref": "#/$defs/generationReceipt" }
+    },
+    "generate_video": {
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "prompt": { "type": "string", "minLength": 1, "maxLength": 1000 },
+          "aspect_ratio": { "enum": ["9:16", "16:9"], "default": "9:16" },
+          "duration_seconds": { "enum": [3, 4, 5, 6, 7, 8, 9, 10] },
+          "reference_asset_id": { "$ref": "#/$defs/uuid" },
+          "count": { "enum": [1, 2, 4], "default": 1 },
+          "client_request_id": { "type": "string", "minLength": 1, "maxLength": 200 }
+        },
+        "required": ["prompt", "duration_seconds", "client_request_id"],
+        "additionalProperties": false
+      },
+      "outputSchema": { "$ref": "#/$defs/generationReceipt" }
+    },
+    "get_job": {
+      "inputSchema": { "type": "object", "properties": { "job_id": { "$ref": "#/$defs/uuid" } }, "required": ["job_id"], "additionalProperties": false },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": { "$ref": "#/$defs/uuid" },
+          "type": { "enum": ["image_generation", "video_generation"] },
+          "status": { "$ref": "#/$defs/jobStatus" },
+          "progress": { "oneOf": [{ "type": "number", "minimum": 0, "maximum": 100 }, { "type": "null" }] },
+          "stage": { "$ref": "#/$defs/nullableString" },
+          "output_asset_ids": { "type": "array", "items": { "$ref": "#/$defs/uuid" } },
+          "error": {
+            "oneOf": [
+              { "type": "null" },
+              {
+                "type": "object",
+                "properties": {
+                  "code": { "type": "string", "minLength": 1 },
+                  "message": { "type": "string", "minLength": 1 },
+                  "retryable": { "type": "boolean" }
+                },
+                "required": ["code", "message", "retryable"],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "created_at": { "$ref": "#/$defs/timestamp" },
+          "updated_at": { "$ref": "#/$defs/timestamp" }
+        },
+        "required": ["id", "type", "status", "progress", "stage", "output_asset_ids", "error", "created_at", "updated_at"],
+        "additionalProperties": false
+      }
+    }
+  }
+}

@@ -28,6 +28,7 @@ import {
 } from "@/components/generation/ai-studio-results";
 import { AiStudioResultActions } from "@/components/generation/ai-studio-result-actions";
 import { ReferenceMediaUpload } from "@/components/generation/reference-media-upload";
+import { FormatGenerationReferences } from "@/components/explore/format-generation-references";
 import { CreatorReferencePicker } from "@/components/video/creator-reference-picker";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,9 +40,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/auth-context";
+import type { RecreateGenerationView } from "@/components/explore/recreate-generation-view";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
 import { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND } from "@/lib/billing/generation-credit-policy";
 import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
+import { getExploreVideoPromptMaxLength } from "@/lib/explore/format-generation-prompt";
 import {
   AI_STUDIO_GENERATION_QUANTITIES,
   AI_STUDIO_VIDEO_ASPECT_RATIOS,
@@ -62,14 +65,14 @@ import {
   upsertAIStudioResult,
 } from "@/lib/ai-studio/media-results";
 import {
-  AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
   getAIStudioPromptLengthError,
   normalizeAIStudioPrompt,
 } from "@/lib/ai-studio/prompt-policy";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
   persistJobIdInUrl,
-  useBackgroundJobs,
+  useRecoverableWorkflowJobs,
+  useStoredBackgroundJobIds,
   useCancelBackgroundJob,
   usePersistedJobIdFromUrl,
   useRetryBackgroundJob,
@@ -180,30 +183,6 @@ function getPendingVideoMetadata(userId: string, jobId: string) {
   }
 }
 
-function getStoredVideoJobIds(userId: string) {
-  try {
-    const rawValue = window.localStorage.getItem(
-      `${VIDEO_JOB_STORAGE_PREFIX}${userId}`,
-    );
-
-    if (!rawValue) {
-      return [];
-    }
-
-    try {
-      const parsed = JSON.parse(rawValue) as unknown;
-
-      return Array.isArray(parsed)
-        ? parsed.filter((value): value is string => typeof value === "string")
-        : [];
-    } catch {
-      return [rawValue];
-    }
-  } catch {
-    return [];
-  }
-}
-
 function extractInstagramShortcode(sourceUrl: string | null): string | null {
   if (!sourceUrl) return null;
   try {
@@ -227,13 +206,17 @@ export function VideoGenerationStudioPanel({
   active = true,
   creditsPerSecond = DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND,
   creditsRemaining = null,
+  recreateView,
 }: {
   accessMessage?: string | null;
   accessState?: AIStudioAccessState;
   active?: boolean;
   creditsPerSecond?: number;
   creditsRemaining?: number | null;
+  recreateView?: RecreateGenerationView;
 }) {
+  const workflow = recreateView?.workflow;
+  const workflowFormat = workflow?.format;
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -268,7 +251,7 @@ export function VideoGenerationStudioPanel({
       ? referenceParamContext
       : null;
   const isExploreRecreate =
-    hasExploreRecreateParam &&
+    !workflow && hasExploreRecreateParam &&
     (referenceContext?.type === "hook" || referenceContext?.type === "wall_text");
 
   function handleDismissReference() {
@@ -291,9 +274,9 @@ export function VideoGenerationStudioPanel({
     useState<AIStudioVideoAspectRatio>("9:16");
   const [quantity, setQuantity] =
     useState<AIStudioGenerationQuantity>(1);
-  const [model, setModel] = useState<AIStudioVideoModel>("google_omni");
+  const [model, setModel] = useState<AIStudioVideoModel>(recreateView?.workflow ? "google_omni" : "seedance_2_5");
   const [durationSeconds, setDurationSeconds] =
-    useState<AIStudioVideoDuration>(4);
+    useState<AIStudioVideoDuration>(5);
   const [uploadedReference, setUploadedReference] =
     useState<AIStudioReferenceMedia | null>(null);
   const [selectedCreatorReferenceId, setSelectedCreatorReferenceId] =
@@ -312,7 +295,7 @@ export function VideoGenerationStudioPanel({
   const [submittedJobIds, setSubmittedJobIds] = useState<string[]>([]);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [storedJobIds, setStoredJobIds] = useState<string[]>([]);
+  const storedJobIds = useStoredBackgroundJobIds(user ? `${VIDEO_JOB_STORAGE_PREFIX}${workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid}` : null);
   const [ignoredPersistedJobId, setIgnoredPersistedJobId] = useState<
     string | null
   >(null);
@@ -320,7 +303,7 @@ export function VideoGenerationStudioPanel({
   const billingSyncedJobIdsRef = useRef(new Set<string>());
   const submissionKeyRef = useRef<string | null>(null);
   const activeUserIdRef = useRef<string | null>(null);
-  const persistedJobId = usePersistedJobIdFromUrl(VIDEO_JOB_URL_PARAMETER);
+  const persistedJobId = usePersistedJobIdFromUrl(workflowFormat ? `explore-${workflowFormat}Job` : VIDEO_JOB_URL_PARAMETER);
   const urlJobId =
     persistedJobId && persistedJobId !== ignoredPersistedJobId
       ? persistedJobId
@@ -332,10 +315,14 @@ export function VideoGenerationStudioPanel({
       ...storedJobIds,
     ]),
   );
-  const activeJobQueries = useBackgroundJobs(activeJobIds);
+  const { queries: activeJobQueries, recovering: recoveringJobs, recoveryError } = useRecoverableWorkflowJobs(activeJobIds, {
+    enabled: active && !recreateView?.preview,
+    exploreFormat: workflowFormat,
+    jobType: "video_generation",
+  });
   const cancelJob = useCancelBackgroundJob();
   const retryJob = useRetryBackgroundJob();
-  const generationLocked = accessState !== "pro";
+  const generationLocked = accessState !== "pro" || Boolean(recreateView?.preview);
   const creditsPerVideo = durationSeconds * creditsPerSecond;
   const requiredCredits = creditsPerVideo * quantity;
   const hasInsufficientCredits =
@@ -352,19 +339,32 @@ export function VideoGenerationStudioPanel({
     uploadedReference?.kind === "image" ? uploadedReference : null;
   const uploadedReferenceVideo =
     uploadedReference?.kind === "video" ? uploadedReference : null;
+  const promptMaxLength = getExploreVideoPromptMaxLength({
+    model,
+    hasReferenceVideo: Boolean(uploadedReferenceVideo),
+    format: workflowFormat,
+  });
   const activeReferenceImageUrl =
-    uploadedReferenceImage?.asset.url ?? null;
+    uploadedReferenceVideo ? null : uploadedReferenceImage?.asset.url ?? (model === "google_omni" ? recreateView?.referenceImageUrl : null) ?? null;
 
   function handleReferenceChange(selection: AIStudioReferenceMedia | null) {
     submissionKeyRef.current = null;
     setSelectedCreatorReferenceId(null);
     setUploadedReference(selection);
+    if (workflow && selection?.kind === "video") {
+      setDurationSeconds(3);
+      if (selection.asset.ratio === "9:16" || selection.asset.ratio === "16:9") setAspectRatio(selection.asset.ratio);
+    }
+    if (selection && model === "seedance_2_5") {
+      setModel("google_omni");
+      setActionNotice("Switched to Google Omni for reference-based generation.");
+    }
   }
   const queriedJobs = activeJobQueries.flatMap((query) =>
     query.data ? [query.data] : [],
   );
   const durableJobs = queriedJobs.filter(
-    (job) => job.jobType === "video_generation",
+    (job) => job.jobType === "video_generation" && (!workflowFormat || job.exploreFormat === workflowFormat),
   );
   const failedDurableJob = durableJobs.find((job) => job.status === "failed");
   const cancelledDurableJob = durableJobs.find(
@@ -396,6 +396,8 @@ export function VideoGenerationStudioPanel({
           : generationState;
   const isGenerating =
     effectiveGenerationState === "generating";
+  const onWorkflowBusyChange = workflow?.onBusyChange;
+  useEffect(() => { onWorkflowBusyChange?.(isGenerating); }, [isGenerating, onWorkflowBusyChange]);
   const pendingGenerationCount =
     generationState === "generating" && activeJobIds.length === 0
     ? quantity
@@ -431,8 +433,7 @@ export function VideoGenerationStudioPanel({
       if (!user) {
         if (!ignore) {
           setGeneratedVideos([]);
-          setStoredJobIds([]);
-          setResultsError("Sign in to view your generated videos.");
+          setResultsError(recreateView?.preview ? null : "Sign in to view your generated videos.");
           setResultsLoading(false);
         }
         return;
@@ -455,10 +456,10 @@ export function VideoGenerationStudioPanel({
         });
 
         if (!ignore) {
-          setGeneratedVideos(getAIStudioVideoResults(assets));
-          setSubmittedJobIds([]);
-          setIgnoredPersistedJobId(null);
-          setStoredJobIds(getStoredVideoJobIds(user.uid));
+          const history = getAIStudioVideoResults(workflowFormat ? assets.filter(asset => asset.metadata.exploreFormat === workflowFormat) : assets);
+          // A task may finish while history is loading. Keep that new result.
+          setGeneratedVideos(current => [...current, ...history.filter(video => !current.some(result => result.id === video.id))]
+            .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)).slice(0, 24));
         }
       } catch (error) {
         if (!ignore) {
@@ -478,7 +479,7 @@ export function VideoGenerationStudioPanel({
     return () => {
       ignore = true;
     };
-  }, [active, authLoading, user]);
+  }, [active, authLoading, user, recreateView?.preview, workflowFormat]);
 
   useEffect(() => {
     if (
@@ -505,14 +506,14 @@ export function VideoGenerationStudioPanel({
     const terminalJobs = durableJobs.filter(
       (job) =>
         ["cancelled", "completed", "failed"].includes(job.status) &&
-        !billingSyncedJobIdsRef.current.has(job.id),
+        !billingSyncedJobIdsRef.current.has(`${job.id}:${job.status}:${job.updatedAt}`),
     );
 
     if (terminalJobs.length === 0) {
       return;
     }
 
-    terminalJobs.forEach((job) => billingSyncedJobIdsRef.current.add(job.id));
+    terminalJobs.forEach((job) => billingSyncedJobIdsRef.current.add(`${job.id}:${job.status}:${job.updatedAt}`));
     void queryClient.invalidateQueries({
       queryKey: ["billing-subscription", user.uid],
     });
@@ -553,7 +554,7 @@ export function VideoGenerationStudioPanel({
           throw new Error("Sign in to restore the generated video.");
         }
 
-        const metadata = getPendingVideoMetadata(userId, completedJob.id);
+        const metadata = getPendingVideoMetadata(workflowFormat ? `${userId}.${workflowFormat}` : userId, completedJob.id);
         let persistedVideo: GeneratedVideo | null = null;
 
         try {
@@ -629,7 +630,7 @@ export function VideoGenerationStudioPanel({
     }
 
     void Promise.all(completedJobs.map(restoreCompletedVideo));
-  }, [durableJobs, user]);
+  }, [durableJobs, user, workflowFormat]);
 
   async function handleSubmit(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
@@ -637,14 +638,15 @@ export function VideoGenerationStudioPanel({
     const trimmedPrompt = normalizeAIStudioPrompt(prompt);
     const promptLengthError = getAIStudioPromptLengthError(
       trimmedPrompt,
-      AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
+      promptMaxLength,
     );
 
     if (
       generationLocked ||
       hasInsufficientCredits ||
       !trimmedPrompt ||
-      isGenerating
+      creatorReferenceUploadPending ||
+      isGenerating || recoveringJobs
     ) {
       return;
     }
@@ -663,6 +665,7 @@ export function VideoGenerationStudioPanel({
     setActionError(null);
     setActiveVideoPrompt(trimmedPrompt);
     setGenerationState("generating");
+    workflow?.onGenerationStart();
 
     try {
       const token = await getCurrentUserIdToken();
@@ -678,6 +681,7 @@ export function VideoGenerationStudioPanel({
       const response = await fetch("/api/ai-studio/videos/generate", {
         body: JSON.stringify({
           aspectRatio,
+          exploreFormat: workflow?.format,
           avatarImageUrl: activeReferenceImageUrl,
           durationSeconds,
           idempotencyKey,
@@ -705,7 +709,7 @@ export function VideoGenerationStudioPanel({
           data.ok === false ? data.error : "Video generation could not start.",
         );
       }
-      persistPendingVideoMetadata(user.uid, data.jobs, {
+      persistPendingVideoMetadata(workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid, data.jobs, {
         aspectRatio,
         avatarName: uploadedReference?.asset.title ?? "",
         prompt: trimmedPrompt,
@@ -713,12 +717,11 @@ export function VideoGenerationStudioPanel({
       void queryClient.invalidateQueries({
         queryKey: ["billing-subscription", user.uid],
       });
-      persistJobIdInUrl(data.jobId, VIDEO_JOB_URL_PARAMETER);
+      persistJobIdInUrl(data.jobId, workflowFormat ? `explore-${workflowFormat}Job` : VIDEO_JOB_URL_PARAMETER);
       for (const job of data.jobs) {
         resolvedJobIdsRef.current.delete(job.jobId);
       }
       const jobIds = data.jobs.map((job) => job.jobId);
-      setStoredJobIds(jobIds);
       setSubmittedJobIds(jobIds);
       if (data.partial) {
         setActionNotice(data.message);
@@ -795,7 +798,7 @@ export function VideoGenerationStudioPanel({
     actionError ??
     jobQueryError ??
     (effectiveGenerationState === "failed" ? durableNotice : null) ??
-    resultsError;
+    (isGenerating ? null : resultsError ?? recoveryError);
   const resultsStatus: AiStudioResultsStatus | null =
     resultsErrorMessage
       ? {
@@ -814,20 +817,22 @@ export function VideoGenerationStudioPanel({
   return (
     <div
       id="ai-studio-videos-panel"
-      role="tabpanel"
-      aria-labelledby="ai-studio-videos-tab"
+      role={workflow ? undefined : "tabpanel"}
+      aria-labelledby={workflow ? undefined : "ai-studio-videos-tab"}
       hidden={!active}
-      className={cn(
+      className={workflow ? "contents" : cn(
         "min-h-0 flex-1 flex-col",
         active ? "flex flex-col" : "hidden",
       )}
     >
       <AiStudioResults
+        portalTarget={workflow?.resultsTarget}
         ariaLabel="Generated videos"
+        emptyContent={recreateView?.emptyContent}
         emptyDescription="Describe the video you want below. Finished generations are saved to your account."
         gridClassName="grid-cols-1 sm:grid-cols-1 lg:grid-cols-1 xl:grid-cols-1 2xl:grid-cols-1"
         hasResults={generatedVideos.length > 0 || isGenerating}
-        loading={resultsLoading}
+        loading={(resultsLoading || recoveringJobs) && !isGenerating && generatedVideos.length === 0}
         status={resultsStatus}
       >
         {isGenerating
@@ -849,16 +854,25 @@ export function VideoGenerationStudioPanel({
             key={video.id}
             video={video}
             isNew={video.id === latestCompletedVideoId}
+            selectLabel={workflow?.format === "hook" ? "Edit hook video" : "Edit video"}
+            onSelect={workflow?.onSelectVideo ? () => workflow.onSelectVideo?.(video) : undefined}
           />
         ))}
       </AiStudioResults>
 
       <AiStudioComposer
+        portalTarget={workflow?.controlsTarget}
+        actionsTarget={workflow?.actionsTarget}
+        promptHelper={workflow ? uploadedReferenceVideo ? "Use Edit below the preview to adjust text and audio." : workflow.format === "wall_text" ? "Describe the background; add text in Edit video." : "Scene, action and spoken words in quotes." : undefined}
+        promptLabel={workflow ? "Your instructions" : undefined}
+        settingsSummary={workflow ? `${uploadedReferenceVideo ? "Runway" : model === "seedance_2_5" ? "Seedance 2.5" : "Google Omni"} · ${uploadedReferenceVideo ? `${uploadedReferenceVideo.asset.durationSeconds?.toFixed(1) ?? 3}s clip` : `${durationSeconds}s`} · ${aspectRatio} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}
+        referenceControls={workflow ? <FormatGenerationReferences key={user?.uid ?? "preview"} active={workflow.controlsActive} selection={uploadedReference} onChange={handleReferenceChange} onPendingChange={setCreatorReferenceUploadPending} disabled={isGenerating || (!recreateView?.preview && generationLocked)} preview={Boolean(recreateView?.preview)} ownerId={user?.uid} defaultImage={recreateView?.referenceImageUrl ? { url: recreateView.referenceImageUrl, name: recreateView.referenceTitle ?? "Selected example", duration: null } : undefined} onClearDefault={recreateView?.onClearReference} /> : undefined}
+        compact={Boolean(recreateView)}
         accessMessage={composerMessage}
-        active={active}
+        active={workflow?.controlsActive ?? active}
         ariaLabel="Video prompt"
         contextBanner={
-          referenceContext ? (
+          recreateView?.contextBanner ?? (referenceContext ? (
             <div className="flex items-center justify-between gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs text-foreground shadow-sm">
               <div className="flex items-center gap-2 truncate">
                 <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-selected text-primary">
@@ -896,20 +910,21 @@ export function VideoGenerationStudioPanel({
                 <X className="size-3.5" aria-hidden="true" />
               </button>
             </div>
-          ) : null
+          ) : null)
         }
         generateDisabled={
           generationLocked ||
           hasInsufficientCredits ||
           !prompt.trim() ||
           creatorReferenceUploadPending ||
-          isGenerating
+          isGenerating || recoveringJobs
         }
         generateLabel="Generate video"
         generationLocked={generationLocked}
         isGenerating={isGenerating}
-        layout="unified"
-        leadingControl={
+        layout={workflow ? "workflow" : "unified"}
+        workflowDesign={workflow ? "classic" : undefined}
+        leadingControl={workflow ? undefined :
           <ReferenceMediaUpload
             active={active}
             allowedKinds={isExploreRecreate ? ["image"] : ["image", "video"]}
@@ -930,9 +945,9 @@ export function VideoGenerationStudioPanel({
             }}
           />
         }
-        maxLength={AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH}
+        maxLength={promptMaxLength}
         name="videoPrompt"
-        placeholder="Describe the video you want to create…"
+        placeholder={workflow ? workflow.format === "wall_text" ? "A quiet café at sunset, with a slow camera pan…" : "A creator speaks to camera: “Here’s one thing I wish I knew…”" : recreateView ? "What would you like to change?" : "Describe the video you want to create…"}
         prompt={prompt}
         onPromptChange={(nextPrompt) => {
           submissionKeyRef.current = null;
@@ -971,23 +986,39 @@ export function VideoGenerationStudioPanel({
           <>
             <AiStudioSettingSelect
               ariaLabel="Video model"
-              disabled={generationLocked || isGenerating}
-              options={AI_STUDIO_VIDEO_MODELS.map((value) => ({
-                label: "Google Omni",
+              fieldLabel={workflow ? "Model" : undefined}
+              fieldLayout={workflow ? "classic" : undefined}
+              disabled={generationLocked && !recreateView?.preview || isGenerating || Boolean(workflow && uploadedReferenceVideo)}
+              options={AI_STUDIO_VIDEO_MODELS.filter(value => !workflow || value === "google_omni").map((value) => ({
+                label:
+                  workflow && uploadedReferenceVideo ? "Runway" : value === "seedance_2_5" ? "Seedance 2.5" : "Google Omni",
                 value,
               }))}
               value={model}
               onChange={(value) => {
                 submissionKeyRef.current = null;
+                if (value === "seedance_2_5" && uploadedReference) {
+                  setUploadedReference(null);
+                  setSelectedCreatorReferenceId(null);
+                  setActionNotice("Removed the reference for Seedance text-to-video generation.");
+                }
+                if (value === "seedance_2_5" && durationSeconds < 4) {
+                  setDurationSeconds(5);
+                }
                 setModel(value as AIStudioVideoModel);
               }}
             />
             <AiStudioSettingSelect
               ariaLabel="Video duration"
-              disabled={generationLocked || isGenerating}
-              icon={<Clock3 className="size-4" aria-hidden="true" />}
-              options={AI_STUDIO_VIDEO_DURATIONS.map((duration) => ({
+              fieldLabel={workflow ? "Duration" : undefined}
+              fieldLayout={workflow ? "classic" : undefined}
+              disabled={generationLocked && !recreateView?.preview || isGenerating || Boolean(workflow && uploadedReferenceVideo)}
+              icon={workflow ? undefined : <Clock3 className="size-4" aria-hidden="true" />}
+              options={AI_STUDIO_VIDEO_DURATIONS.filter(
+                (duration) => model !== "seedance_2_5" || duration >= 4,
+              ).map((duration) => ({
                 label: `${duration} sec · ${duration * creditsPerSecond} credits`,
+                ...(workflow ? { triggerLabel: uploadedReferenceVideo ? `${uploadedReferenceVideo.asset.durationSeconds?.toFixed(1) ?? 3}s clip` : `${duration} sec` } : {}),
                 value: String(duration),
               }))}
               value={String(durationSeconds)}
@@ -996,7 +1027,7 @@ export function VideoGenerationStudioPanel({
                 setDurationSeconds(Number(value) as AIStudioVideoDuration);
               }}
             />
-            <CreatorReferencePicker
+            {workflow ? null : <CreatorReferencePicker
               active={active}
               disabled={
                 generationLocked || isGenerating || creatorReferenceUploadPending
@@ -1007,14 +1038,16 @@ export function VideoGenerationStudioPanel({
               onPendingChange={setCreatorReferenceUploadPending}
               onSelectedCreatorChange={setSelectedCreatorReferenceId}
               required={isExploreRecreate}
-            />
+            />}
             <AiStudioSettingSelect
               ariaLabel="Number of videos"
-              disabled={generationLocked || isGenerating}
-              icon={<Video className="size-4" aria-hidden="true" />}
+              fieldLabel={workflow ? "Videos" : undefined}
+              fieldLayout={workflow ? "classic" : undefined}
+              disabled={generationLocked && !recreateView?.preview || isGenerating}
+              icon={workflow ? undefined : <Video className="size-4" aria-hidden="true" />}
               options={AI_STUDIO_GENERATION_QUANTITIES.map((count) => ({
                 label: `${count} video${count === 1 ? "" : "s"}`,
-                triggerLabel: String(count),
+                triggerLabel: workflow ? `${count} video${count === 1 ? "" : "s"}` : String(count),
                 value: String(count),
               }))}
               value={String(quantity)}
@@ -1024,13 +1057,15 @@ export function VideoGenerationStudioPanel({
               }}
             />
             <AiStudioRatioPicker
+              fieldLabel={workflow ? "Ratio" : undefined}
+              fieldLayout={workflow ? "classic" : undefined}
               value={aspectRatio}
               onChange={(value) => {
                 submissionKeyRef.current = null;
                 setAspectRatio(value as AIStudioVideoAspectRatio);
               }}
               allowedRatios={["9:16", "16:9"]}
-              disabled={generationLocked || isGenerating}
+              disabled={generationLocked && !recreateView?.preview || isGenerating}
             />
           </>
         }
@@ -1098,7 +1133,7 @@ function OptimisticVideoCard({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-muted">
           <span className="inline-flex items-center gap-1.5 animate-pulse text-primary">
             <Sparkles className="size-3" aria-hidden="true" />
-            Synthesizing avatar & audio…
+            Creating your video…
           </span>
         </div>
       </div>
@@ -1147,9 +1182,13 @@ function OptimisticVideoCard({
 function VideoResultCard({
   video,
   isNew = false,
+  onSelect,
+  selectLabel = "Edit video",
 }: {
   video: GeneratedVideo;
   isNew?: boolean;
+  onSelect?: () => void;
+  selectLabel?: string;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isMuted, setIsMuted] = useState(true);
@@ -1233,9 +1272,11 @@ function VideoResultCard({
             </span>
           ) : null}
           <span>{formatGeneratedAt(video.createdAt)}</span>
+          {onSelect ? <Button type="button" onClick={onSelect} disabled={!video.mediaAssetId}>{selectLabel}</Button> : null}
           <AiStudioResultActions
             className="ml-auto sm:ml-0"
             kind="video"
+            mediaAssetId={video.mediaAssetId}
             title={video.title}
             url={video.url}
           />

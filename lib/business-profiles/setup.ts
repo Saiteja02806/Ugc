@@ -6,34 +6,54 @@ import { parseAiIdeBusinessContext } from "./ai-context";
 import { saveBusinessProfile } from "./db";
 import { dispatchOnboardingJobs, getOnboardingDraft, mutateOnboardingDraft } from "./onboarding-drafts";
 import {
+  BusinessDescriptionSchema,
   ManualBusinessProfileSchema,
   buildManualBusinessAnalysis,
 } from "./schema";
+import {
+  analyzeBusinessDescription,
+} from "@/lib/website-analysis/analyze-business";
 import { analyzeWebsiteInput } from "@/lib/website-analysis/process";
+import { requireUrlBusinessContext } from "@/lib/website-analysis/onboarding-quality";
 import {
   getWebsiteAnalysisBySourceJobId,
   insertWebsiteAnalysis,
 } from "@/lib/website-analysis/supabase";
 
 const websiteSetupSchema = z.object({
+  experience: z.literal("streamlined").optional(),
   intakeType: z.literal("website"),
   websiteUrl: z.string().trim().min(1).max(2_048),
 });
 
 const mobileAppSetupSchema = z.object({
   aiIdeContext: z.string().trim().min(1).max(24_000),
+  experience: z.literal("streamlined").optional(),
   intakeType: z.literal("mobile_app_ai_prompt"),
 });
 
-const manualSetupSchema = z.object({
+const structuredManualSetupSchema = z.object({
+  experience: z.literal("streamlined").optional(),
   intakeType: z.literal("manual"),
   manual: ManualBusinessProfileSchema,
 });
 
-export const BusinessProfileSetupInputSchema = z.discriminatedUnion(
-  "intakeType",
-  [websiteSetupSchema, mobileAppSetupSchema, manualSetupSchema],
-);
+const describedManualSetupSchema = z.object({
+  businessName: z.string().trim().min(1).max(120),
+  description: BusinessDescriptionSchema.shape.description,
+  experience: z.literal("streamlined"),
+  intakeType: z.literal("manual"),
+});
+
+// The old structured manual payload remains valid for resumable drafts. New
+// onboarding collects one concise description and structures it in the same
+// durable background job as website input.
+export const BusinessProfileSetupInputSchema = z.union([
+  websiteSetupSchema,
+  mobileAppSetupSchema,
+  structuredManualSetupSchema,
+  describedManualSetupSchema,
+]);
 
 export type BusinessProfileSetupInput = z.infer<
   typeof BusinessProfileSetupInputSchema
@@ -52,6 +72,9 @@ export async function processBusinessProfileSetupJob(params: {
   }
   if (params.draftId && !draft) throw new Error("The onboarding draft is unavailable.");
   const normalized = await getOrCreateAnalysis(params);
+  if (params.input.intakeType === "website") {
+    requireUrlBusinessContext(normalized.analysis, normalized.websiteUrl ?? params.input.websiteUrl);
+  }
   if (draft) {
     const updated = await mutateOnboardingDraft(params.userId, "attach", {
       draftId: draft.id, sourceRevision: params.sourceRevision,
@@ -113,6 +136,7 @@ async function getOrCreateAnalysis(params: {
 async function normalizeProfileInput(input: BusinessProfileSetupInput) {
   if (input.intakeType === "website") {
     const result = await analyzeWebsiteInput(input.websiteUrl);
+    requireUrlBusinessContext(result.analysis, result.websiteUrl);
 
     return {
       analysis: result.analysis,
@@ -127,6 +151,15 @@ async function normalizeProfileInput(input: BusinessProfileSetupInput) {
       analysis: await parseAiIdeBusinessContext(input.aiIdeContext),
       normalizedDomain: null,
       sourceContext: input.aiIdeContext,
+      websiteUrl: null,
+    };
+  }
+
+  if ("description" in input) {
+    return {
+      analysis: await analyzeBusinessDescription(input.description),
+      normalizedDomain: null,
+      sourceContext: input.description,
       websiteUrl: null,
     };
   }

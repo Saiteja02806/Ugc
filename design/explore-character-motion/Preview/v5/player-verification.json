@@ -1,0 +1,37 @@
+{
+  "localLayoutVerification": true,
+  "status": 200,
+  "desktop": {
+    "width": 383.328125,
+    "height": 215.609375,
+    "overflow": false,
+    "src": "http://127.0.0.1:3100/explore/characters/ai-character-create-yours-v5.mp4",
+    "duration": 16,
+    "autoplay": true,
+    "muted": true,
+    "loop": true,
+    "controls": false,
+    "playing": true,
+    "destination": "/explore/build-character?preview=1"
+  },
+  "mobile": {
+    "width": 356,
+    "height": 200.25,
+    "overflow": false
+  },
+  "reducedMotion": {
+    "paused": true,
+    "videoHidden": true,
+    "posterLoaded": true
+  },
+  "loop": {
+    "restarted": true,
+    "playing": true,
+    "time": 0.613267
+  },
+  "navigation": {
+    "url": "http://127.0.0.1:3100/explore/build-character?preview=1",
+    "title": ""
+  },
+  "errors": []
+}

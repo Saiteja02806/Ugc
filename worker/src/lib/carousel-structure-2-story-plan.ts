@@ -1,4 +1,5 @@
 import { structure2HookGuidance } from "./carousel-structure-2-hook-templates.js";
+import { CAROUSEL_TEXT_PRESENTATION_GUIDANCE, CAROUSEL_HOOK_COPY_GUIDANCE, CAROUSEL_HOOK_MIN_WORDS, CAROUSEL_HOOK_MAX_WORDS, CAROUSEL_BODY_BLOCK_MAX_LINES, CAROUSEL_HEADING_FONT_SIZE, CAROUSEL_HEADING_MAX_LINES, getCarouselBodyBlocks, getCarouselHookStatementIssue, isCarouselOrphanLine, normalizeCarouselText } from "./carousel-text-presentation.js";
 import type {
   CarouselPlanningBrief,
   CarouselRecentAcceptedCopy,
@@ -24,10 +25,10 @@ import {
 } from "./carousel-structure-2-formats.js";
 
 const STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE =
-  "Write one self-contained hook, normally 5-8 words and 42 characters or fewer; 11 words remains the absolute limit. Use short, natural wording so it stays within three centred display lines. Use natural or sentence case, never ALL CAPS. It must read as one dominant thought, not a title plus subtitle or an explanatory story sentence. The hook sits in the image centre, so visualContext must leave a clear, calm central text zone rather than reserving empty space only at the bottom.";
+  `${CAROUSEL_HOOK_COPY_GUIDANCE} Use short, natural wording so it stays within four centred display lines at ${getCarouselStructure2StoryFontSize(1)}px. Never use ALL CAPS. The hook sits in the image centre, so visualContext must leave a clear, calm central text zone rather than reserving empty space only at the bottom.`;
 
 export const CAROUSEL_STRUCTURE_2_STORY_SCHEMA_VERSION =
-  "carousel-structure-2-strict-six-slide-story-v9";
+  "carousel-structure-2-strict-six-slide-text-blocks-v10";
 export const CAROUSEL_STRUCTURE_2_STORY_HISTORY_LIMIT = 10;
 /** Names the six rendered slides inside one Structure 2 carousel. */
 export const CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS = [
@@ -52,16 +53,16 @@ const MAX_ANGLE_LENGTH = 180;
 const MAX_CTA_TEXT_LENGTH = 360;
 const MAX_STORY_TEXT_LENGTH = 720;
 const MAX_VISUAL_CONTEXT_LENGTH = 220;
-const STRUCTURE_2_COVER_HOOK_MIN_WORDS = 5;
-const STRUCTURE_2_COVER_HOOK_MAX_WORDS = 11;
+const STRUCTURE_2_COVER_HOOK_MIN_WORDS = CAROUSEL_HOOK_MIN_WORDS;
+const STRUCTURE_2_COVER_HOOK_MAX_WORDS = CAROUSEL_HOOK_MAX_WORDS;
 // Forty-two characters is a useful writing target, not the publishing gate.
-// The renderer measures the actual 96px, three-line cover treatment below.
+// The renderer measures the actual fixed-size, four-line cover treatment below.
 // A raw character cap rejects naturally short covers that render cleanly and,
 // when used in Structured Outputs, can cut a model off mid-thought.
 export const CAROUSEL_STRUCTURE_2_COVER_HOOK_PREFERRED_MAX_CHARACTERS = 42;
 // Keep strict Structured Outputs broad. The publishing validator owns the
 // meaningful constraints: a compact word range, a complete thought, and the
-// measured three-line render fit.
+// measured four-line render fit.
 export const CAROUSEL_STRUCTURE_2_COVER_HOOK_SCHEMA_MAX_CHARACTERS =
   MAX_STORY_TEXT_LENGTH;
 const GENERIC_COPY_PATTERN =
@@ -78,6 +79,7 @@ export type CarouselStructure2ProductVisualEligibility =
   | "preferred";
 
 export type CarouselStructure2StorySlide = {
+  headline?: string | null;
   ctaText: string | null;
   productVisualEligibility: CarouselStructure2ProductVisualEligibility;
   slideNumber: number;
@@ -116,6 +118,7 @@ export type CarouselStructure2StoryValidationIssue = {
     | "generic_copy"
     | "hook_incomplete"
     | "hook_length"
+    | "hook_structure"
     | "hook_template_placeholder"
     | "invalid_plan"
     | "perspective"
@@ -161,9 +164,9 @@ export function parseCarouselStructure2StoryPlan(
         `Structure 2 slide ${slide.slideNumber} must use the ${reference?.storyRole ?? "configured"} role.`,
       );
     }
-    if (slide.ctaText) {
+    if (slide.ctaText && slide.slideNumber !== 6) {
       throw new Error(
-        `Structure 2 slide ${slide.slideNumber} cannot include a CTA.`,
+        `Structure 2 slide ${slide.slideNumber} cannot include a CTA before Slide 6.`,
       );
     }
   }
@@ -187,7 +190,7 @@ function parseStorySlide(value: unknown, index: number) {
   const record = asRecord(value, label);
   assertExactObjectKeys(
     record,
-    ["ctaText", "storyRole", "storyText", "visualContext"],
+    ["ctaText", ...(Object.hasOwn(record, "headline") ? ["headline"] : []), "storyRole", "storyText", "visualContext"],
     label,
   );
   const storyRole = getRequiredString(record.storyRole, `${label} role`, 80);
@@ -202,6 +205,7 @@ function parseStorySlide(value: unknown, index: number) {
 
   const resolvedRole = storyRole as CarouselStructure2StoryRole;
   return {
+    ...(Object.hasOwn(record, "headline") ? { headline: getOptionalString(record.headline, `${label} heading`, 100) } : {}),
     ctaText: getOptionalString(record.ctaText, `${label} CTA`, MAX_CTA_TEXT_LENGTH),
     productVisualEligibility: getProductVisualEligibility(resolvedRole),
     slideNumber: index + 1,
@@ -234,9 +238,9 @@ export function validateCarouselStructure2StoryPlan(
   const seenCopy: string[] = [];
 
   for (const slide of plan.slides) {
-    const copy = slide.storyText;
+    const copy = [slide.headline, slide.storyText, slide.ctaText].filter(Boolean).join(" ");
     const reference = format.slides[slide.slideNumber - 1];
-    const wordCount = countWords(copy);
+    const wordCount = countWords(slide.storyText);
     const storyWordCount = countWords(slide.storyText);
     const storyFontSize = getCarouselStructure2StoryFontSize(slide.slideNumber);
     const storyMaximumLines = getCarouselStructure2StoryMaxLines(
@@ -248,6 +252,21 @@ export function validateCarouselStructure2StoryPlan(
       maximumWidth: CAROUSEL_STRUCTURE_2_FIXED_TEXT_WIDTH,
       value: slide.storyText,
     });
+    if (slide.headline) {
+      const headingFit = inspectCarouselFixedTextFit({ fontSize: CAROUSEL_HEADING_FONT_SIZE, maximumLines: CAROUSEL_HEADING_MAX_LINES, maximumWidth: 786, value: slide.headline });
+      if (slide.slideNumber === 1 || countWords(slide.headline) > 10 || !headingFit.fits || slide.headline.split("\n").some(isCarouselOrphanLine)) {
+        issues.push({ code: "story_structure", message: "Use an optional heading of at most 10 words and two fitted lines on content slides only.", slideNumber: slide.slideNumber });
+      }
+    }
+    if (slide.ctaText && !inspectCarouselFixedTextFit({ fontSize: CAROUSEL_FIXED_FONT_SIZE, maximumLines: CAROUSEL_BODY_BLOCK_MAX_LINES, maximumWidth: 786, value: slide.ctaText }).fits) {
+      issues.push({ code: "cta_mismatch", message: "Keep the optional CTA within three plain-text lines at 48px.", slideNumber: slide.slideNumber });
+    }
+    if (slide.slideNumber !== 1 && slide.headline !== undefined) {
+      const blocks = getCarouselBodyBlocks(slide.storyText);
+      if (blocks.length > 2 || blocks.some((block) => !inspectCarouselFixedTextFit({ fontSize: CAROUSEL_FIXED_FONT_SIZE, maximumLines: CAROUSEL_BODY_BLOCK_MAX_LINES, maximumWidth: 786, value: block }).fits || block.split("\n").some(isCarouselOrphanLine))) {
+        issues.push({ code: "render_fit", message: "Write at most two separate body blocks, each fitting three lines at 48px; preserve semantic line breaks.", slideNumber: slide.slideNumber });
+      }
+    }
 
     if (
       slide.slideNumber === 1 &&
@@ -271,6 +290,10 @@ export function validateCarouselStructure2StoryPlan(
           "Slide 1 ends as an incomplete hook. Return a shorter, self-contained hook instead of a partial final word or hanging phrase.",
         slideNumber: slide.slideNumber,
       });
+    }
+    if (slide.slideNumber === 1) {
+      const message = getCarouselHookStatementIssue(slide.storyText);
+      if (message) issues.push({ code: "hook_structure", message, slideNumber: 1 });
     }
 
     if (!storyFit.fits) {
@@ -322,16 +345,16 @@ export function validateCarouselStructure2StoryPlan(
         slideNumber: slide.slideNumber,
       });
     }
-    if (slide.ctaText) {
+    if (slide.ctaText && slide.slideNumber !== 6) {
       issues.push({
         code: "cta_mismatch",
-        message: "Carousel slides must not include a CTA.",
+        message: "Optional CTA text belongs on Slide 6 only.",
         slideNumber: slide.slideNumber,
       });
     }
     if (
       reference?.perspective === "first_person" &&
-      /\b(you|your)\b/i.test(slide.storyText)
+      /\b(you|your)\b/i.test(copy)
     ) {
       issues.push({
         code: "perspective",
@@ -342,7 +365,7 @@ export function validateCarouselStructure2StoryPlan(
     if (
       reference?.productMention === "forbidden" &&
       params.businessDescription &&
-      includesBusinessName(slide.storyText, params.businessDescription)
+      includesBusinessName(copy, params.businessDescription)
     ) {
       issues.push({
         code: "product_timing",
@@ -385,7 +408,7 @@ export function validateCarouselStructure2StoryPlan(
 
   const currentHook = plan.slides[0]?.storyText ?? "";
   const currentFullCopy = plan.slides
-    .flatMap((slide) => [slide.storyText, slide.ctaText])
+    .flatMap((slide) => [slide.headline, slide.storyText, slide.ctaText])
     .filter((value): value is string => Boolean(value))
     .join(" ");
 
@@ -459,6 +482,7 @@ export function buildCarouselStructure2StoryPlanSchema() {
         {
         additionalProperties: false,
         properties: {
+          headline: isCover ? { type: "null" } : { anyOf: [{ type: "string", minLength: 1, maxLength: 100 }, { type: "null" }] },
           ctaText: {
             anyOf: [
               { maxLength: MAX_CTA_TEXT_LENGTH, minLength: 1, type: "string" },
@@ -483,7 +507,7 @@ export function buildCarouselStructure2StoryPlanSchema() {
             type: "string",
           },
         },
-        required: ["ctaText", "storyRole", "storyText", "visualContext"],
+        required: ["ctaText", "headline", "storyRole", "storyText", "visualContext"],
         type: "object",
         },
       ];
@@ -634,14 +658,15 @@ export function buildCarouselStructure2BatchMessages(params: {
       content: [
         "Use each creativeSeed as a broad starting point and its emotion as the emotional current. Do not treat either as finished copy or a complete plot.",
         "Use privateCreativeBrief only as flexible human and factual context; its preferredFormatFamily must never override the backend-selected format reference.",
-        "Follow each role's word range as a publishing contract. Slide 1 must be one 5-11 word hook only, with no subtitle or supporting copy. Every prose slide from Slide 2 through Slide 6 must contain 14-30 words. Develop the story beat clearly and prioritize readable copy that fits the stated display area.",
-        "For Slides 2-6, aim for 16-22 words (the accepted range is 14-30) and count words before returning. Keep the thought specific and complete, while staying within ten visual lines at centered 60px type; never rely on shrink-to-fit behavior.",
+        `Follow each role's word range as a publishing contract. Slide 1 must be one ${CAROUSEL_HOOK_MIN_WORDS}-${CAROUSEL_HOOK_MAX_WORDS} word hook only, with no subtitle or supporting copy. Every prose slide from Slide 2 through Slide 6 must contain 14-30 words. Develop the story beat clearly and prioritize readable copy that fits the stated display area.`,
+        CAROUSEL_TEXT_PRESENTATION_GUIDANCE,
+        "For Slides 2-6, aim for 16-22 body words total (accepted 14-30). Use headline for a real optional heading, otherwise null. Put one or two short body thoughts in storyText, separated by \\n\\n, each at most three lines at 48px; do not put the heading into storyText.",
         "Return each plan under its assigned outputKey. Do not return slideNumber, slotIndex, candidateIndex, or storyFormatId; the worker owns those structural values.",
         "Develop genuinely different stories inside the required six-slide sequence. Do not force every item through the same overwhelmed-to-easier arc.",
-        `Slide 1 is reader-first: direct reader wording such as 'you' or 'your' is allowed. ${STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE} Give a specific benefit, tension, mistake, contrast, or curiosity gap; do not force it into a first-person personal-story opener.`,
+        `Slide 1 may use first-person or direct reader wording such as 'you' or 'your'. ${STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE} Give a specific benefit, tension, mistake, contrast, or curiosity gap.`,
         "Perspective boundary: only Slide 1 may lead with direct reader wording. Slides 2-5 must stay in the first-person story voice (I, me, or my). Slide 6 may turn the lesson toward the reader after its takeaway.",
-        "Slides 1-6 must return ctaText: null. Slide 6 is a self-contained takeaway, not a call to action.",
-        `Every story uses white text directly on the image; do not expect a white SVG background, gradient, tint, or secondary CTA label. Slide 1 uses centered Inter Tight Bold at 700 weight, ${getCarouselStructure2StoryFontSize(1)}px type within ${getCarouselStructure2StoryMaxLines(1)} visual lines; Slides 2-6 use centered Inter Tight SemiBold at ${CAROUSEL_FIXED_FONT_SIZE}px within ${CAROUSEL_STRUCTURE_2_STORY_MAX_LINES} visual lines. All text must fit inside the square safe area. The renderer will not shrink or truncate copy.`,
+        "Slides 1-5 return ctaText: null. Slide 6 may include a short natural CTA, otherwise null, alongside its useful final value. The renderer displays it on that same slide as plain text, not a button or pill.",
+        `Optional content headings use black text on a fitted white SVG pill, at most two lines at 50px. Body blocks and optional CTA are white text without background. Slide 1 uses centered Inter Tight Bold at 700 weight, ${getCarouselStructure2StoryFontSize(1)}px type within ${getCarouselStructure2StoryMaxLines(1)} visual lines. Each body block fits three lines at ${CAROUSEL_FIXED_FONT_SIZE}px. No gradient, tint or CTA button is added. All text groups must fit inside the square safe area; never shrink or truncate.`,
         "Follow roleGuidance in its given order. Do not reorder, repeat, or omit story roles.",
         "Slide 4 must explain a real product capability that directly addresses the Slide 2 problem. Keep product connections natural and grounded only in businessDescription; never invent a capability.",
         "Do not invent precise features, proof, metrics, customers, guarantees, health outcomes, financial outcomes, or performance claims.",
@@ -681,7 +706,7 @@ export function buildCarouselStructure2RepairMessages(params: {
     {
       role: "system" as const,
       content:
-        "Repair one Structure 2 JSON plan. Preserve valid AI copy unless a structural or renderability issue requires changing it. Keep the selected format reference, creative seed, emotion, and six-slide sequence: reader-first cover, problem, realization, product mechanism, modest proof or result, then a self-contained takeaway. Slides 1-6 must return ctaText: null. Do not return slideNumber, slotIndex, candidateIndex, or storyFormatId; the worker owns those structural values. Return only repaired JSON.",
+        "Repair one Structure 2 JSON plan. Preserve valid AI copy unless a structural or renderability issue requires changing it. Keep the selected format reference, creative seed, emotion, and six-slide sequence: reader-first cover, problem, realization, product mechanism, modest proof or result, then useful final value with an optional CTA on Slide 6 only. Do not return slideNumber, slotIndex, candidateIndex, or storyFormatId; the worker owns those structural values. Return only repaired JSON.",
     },
     {
       role: "user" as const,
@@ -699,15 +724,16 @@ export function buildCarouselStructure2RepairMessages(params: {
         JSON.stringify(getFormatReference(params.assignment.storyFormatId)),
         `Slide 1 is reader-first, so direct reader wording such as 'you' or 'your' is allowed. ${STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Tight Bold at 700 weight and must create a specific reason to swipe within ${getCarouselStructure2StoryMaxLines(1)} visual lines at ${getCarouselStructure2StoryFontSize(1)}px type.`,
         "Only Slide 1 may lead with direct reader wording. Keep Slides 2-5 in the first-person story voice (I, me, or my); Slide 6 may turn the lesson toward the reader after its takeaway.",
-        "Keep Slides 2-6 substantial but readable: aim for 16-22 words (the accepted range is 14-30), count words before returning, never exceed 30, and stay within ten visual lines at centered 60px type.",
-        "Slide 1's 5-11 word single-hook limit and every Slide 2-6 14-30 word range are publishing requirements. Repair the listed blocking issues and preserve slides that already passed validation.",
+        CAROUSEL_TEXT_PRESENTATION_GUIDANCE,
+        "Keep Slides 2-6 readable: aim for 16-22 body words total (accepted 14-30). Preserve distinct optional headline and storyText body blocks separated by \\n\\n; each block fits three lines at 48px.",
+        `Slide 1's ${CAROUSEL_HOOK_MIN_WORDS}-${CAROUSEL_HOOK_MAX_WORDS} word single-hook limit and every Slide 2-6 14-30 word range are publishing requirements. Repair the listed blocking issues and preserve slides that already passed validation.`,
         params.repairAttempt === params.repairAttemptLimit
-          ? "This is the final bounded copy repair. Before returning, count whitespace-delimited words in every changed Slide 2-6 and make sure the complete plan has no close paraphrase or CTA. Return only a plan that satisfies every listed publishing requirement."
+          ? "This is the final bounded copy repair. Before returning, count whitespace-delimited body words in every changed Slide 2-6. Keep any optional CTA on Slide 6 only. Return only a plan that satisfies every listed publishing requirement."
           : null,
         hasSlideOneCoverFitFailure
           ? hasSlideOneCutoff
             ? `Slide 1 ends without a complete thought. Replace it with a shorter, self-contained hook; never leave a partial final word or phrase, and do not add support copy.`
-            : `Slide 1 does not fit its fixed visual treatment. Replace it with a shorter, simpler single hook that fits the real three-line display area; approximately ${CAROUSEL_STRUCTURE_2_COVER_HOOK_PREFERRED_MAX_CHARACTERS} characters or fewer is a useful target, not a hard limit. Do not add support copy.`
+            : `Slide 1 does not fit its fixed visual treatment. Replace it with a shorter, simpler single hook that fits the real four-line display area at ${getCarouselStructure2StoryFontSize(1)}px. Do not add support copy.`
           : null,
         "Validation issues:",
         JSON.stringify(params.issues),
@@ -736,8 +762,8 @@ export function buildCarouselStructure2StoryTextRepairMessages(params: {
       throw new Error("A targeted Structure 2 copy repair requires valid slides.");
     }
     const isCover = slide.slideNumber === 1;
-    const wordRange = isCover ? "5-11" : "14-30";
-    const targetRange = isCover ? "5-8" : "16-22";
+    const wordRange = isCover ? `${CAROUSEL_HOOK_MIN_WORDS}-${CAROUSEL_HOOK_MAX_WORDS}` : "14-30";
+    const targetRange = isCover ? "6-14" : "16-22";
     const lineLimit = getCarouselStructure2StoryMaxLines(slide.slideNumber);
     const fontSize = getCarouselStructure2StoryFontSize(slide.slideNumber);
     return {
@@ -745,8 +771,8 @@ export function buildCarouselStructure2StoryTextRepairMessages(params: {
       hookGuidance: isCover ? structure2HookGuidance(params.assignment) : undefined,
       replacementKey: getTargetedStoryTextKey(slide.slideNumber),
       requirement: isCover
-        ? `Return one self-contained reader-first hook, normally ${targetRange} words and preferably ${CAROUSEL_STRUCTURE_2_COVER_HOOK_PREFERRED_MAX_CHARACTERS} characters or fewer. It must stay within ${wordRange} words and fit within ${lineLimit} visual lines at centered ${fontSize}px type. Never leave a hanging phrase.`
-        : `Return one complete ${slide.storyRole} sentence of ${wordRange} words; aim for ${targetRange} words and count whitespace-delimited words before returning. It must fit within ${lineLimit} visual lines at centered ${fontSize}px type.`,
+        ? `${STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE} Return one statement in one block, normally ${targetRange} words. It must stay within ${wordRange} words and fit within ${lineLimit} visual lines at centered ${fontSize}px type. Never leave a hanging phrase.`
+        : `Return one or two short ${slide.storyRole} body blocks separated by \\n\\n, totaling ${wordRange} words; aim for ${targetRange} words. Each block must fit three visual lines at ${fontSize}px. Preserve the separate heading and existing CTA.`,
       roleGuidance: getFormatReference(params.assignment.storyFormatId).roleGuidance[
         slide.slideNumber - 1
       ],
@@ -756,7 +782,7 @@ export function buildCarouselStructure2StoryTextRepairMessages(params: {
         slide.slideNumber >= 2 && slide.slideNumber <= 5
           ? "Keep the replacement in first-person story voice (I, me, or my)."
           : slide.slideNumber === 6
-            ? "Make this a useful self-contained takeaway, never a CTA."
+            ? "Preserve the useful final value; any existing CTA remains in its separate field on this same slide."
             : null,
     };
   });
@@ -768,7 +794,7 @@ export function buildCarouselStructure2StoryTextRepairMessages(params: {
     {
       role: "system" as const,
       content:
-        "Repair only the listed visible Structure 2 storyText values. Return only JSON with one storyTextBySlide object containing exactly the requested replacement keys. Do not return a plan, slide metadata, labels, a CTA, or an explanation. Each replacement must resolve its stated failure while preserving the original slide role and natural story flow.",
+        `Repair only the listed visible Structure 2 storyText values. Return only JSON with one storyTextBySlide object containing exactly the requested replacement keys. Do not return a plan, slide metadata, heading, labels, a CTA, or an explanation. Each replacement must resolve its stated failure while preserving the original slide role and natural story flow. ${CAROUSEL_TEXT_PRESENTATION_GUIDANCE}`,
     },
     {
       role: "user" as const,
@@ -1069,7 +1095,7 @@ function getRequiredString(value: unknown, label: string, maximum: number) {
   if (typeof value !== "string" || !value.trim()) {
     throw new Error(`${label} must be a non-empty string.`);
   }
-  const normalized = value.trim().replace(/\s+/g, " ");
+  const normalized = normalizeCarouselText(value);
   if (normalized.length > maximum) {
     throw new Error(`${label} exceeds ${maximum} characters.`);
   }

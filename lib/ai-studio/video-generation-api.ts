@@ -5,7 +5,6 @@ import { NextResponse } from "next/server";
 import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
 import { requireAIStudioProUser } from "@/lib/ai-studio/server-access";
 import {
-  AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
   getAIStudioPromptLengthError,
   normalizeAIStudioPrompt,
 } from "@/lib/ai-studio/prompt-policy";
@@ -17,6 +16,7 @@ import {
 } from "@/lib/ai-studio/generation-settings";
 import { isExploreHookVideoId } from "@/lib/explore/hook-video-library";
 import { isExploreWallTextVideoId } from "@/lib/explore/wall-text-video-library";
+import { getExploreVideoPromptMaxLength, WALL_TEXT_VIDEO_BACKGROUND_INSTRUCTIONS } from "@/lib/explore/format-generation-prompt";
 import { FirebaseAuthRequestError } from "@/lib/firebase/server-auth";
 import {
   getBackgroundJobById,
@@ -33,6 +33,7 @@ import {
 } from "@/lib/billing/subscription-db";
 
 type GenerateVideoRequest = {
+  exploreFormat?: unknown;
   aspectRatio?: unknown;
   avatarImageUrl?: unknown;
   hookIdea?: unknown;
@@ -146,7 +147,12 @@ export async function handleAIStudioVideoGeneration(request: Request) {
   const aspectRatio = parseAIStudioVideoAspectRatio(body?.aspectRatio);
   const quantity = parseAIStudioGenerationQuantity(body?.quantity);
   const model = parseAIStudioVideoModel(body?.model);
-  const durationSeconds = parseAIStudioVideoDuration(body?.durationSeconds);
+  // New format workflows show video guidance as a source-length transformation.
+  // Bound its reservation to the supported three-second input instead of the
+  // duration previously selected for text/image generation.
+  const durationSeconds = body?.exploreFormat && referenceVideoUrl
+    ? 3 : parseAIStudioVideoDuration(body?.durationSeconds);
+  if (body?.exploreFormat !== undefined && body.exploreFormat !== "hook" && body.exploreFormat !== "wall_text") return NextResponse.json({ error: "Choose a video workflow.", ok: false }, { status: 400 });
   const isExploreRecreate =
     (body?.referenceType === "hook" && isExploreHookVideoId(body?.referenceId)) ||
     (body?.referenceType === "wall_text" &&
@@ -166,7 +172,7 @@ export async function handleAIStudioVideoGeneration(request: Request) {
     );
   }
 
-  if (isExploreRecreate && !avatarImageUrl) {
+  if (isExploreRecreate && !body?.exploreFormat && !avatarImageUrl) {
     return NextResponse.json(
       {
         error:
@@ -180,6 +186,27 @@ export async function handleAIStudioVideoGeneration(request: Request) {
   if (avatarImageUrl && referenceVideoUrl) {
     return NextResponse.json(
       { error: "Choose either a reference image or a reference video, not both.", ok: false },
+      { status: 400 },
+    );
+  }
+
+  if (model === "seedance_2_5" && (avatarImageUrl || referenceVideoUrl)) {
+    return NextResponse.json(
+      {
+        error:
+          "Seedance 2.5 supports text prompts here. Select Google Omni to use a reference.",
+        ok: false,
+      },
+      { status: 400 },
+    );
+  }
+
+  if (model === "seedance_2_5" && durationSeconds < 4) {
+    return NextResponse.json(
+      {
+        error: "Seedance 2.5 requires a duration of at least 4 seconds.",
+        ok: false,
+      },
       { status: 400 },
     );
   }
@@ -203,7 +230,11 @@ export async function handleAIStudioVideoGeneration(request: Request) {
 
   const promptLengthError = getAIStudioPromptLengthError(
     prompt,
-    AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
+    getExploreVideoPromptMaxLength({
+      model,
+      hasReferenceVideo: Boolean(referenceVideoUrl),
+      format: typeof body?.exploreFormat === "string" ? body.exploreFormat : undefined,
+    }),
   );
 
   if (promptLengthError) {
@@ -255,11 +286,12 @@ export async function handleAIStudioVideoGeneration(request: Request) {
         idempotencyKey,
         input: {
           aspectRatio,
+          ...(body?.exploreFormat === "hook" || body?.exploreFormat === "wall_text" || body?.exploreFormat === "slideshow" ? { exploreFormat: body.exploreFormat } : {}),
           avatarImageUrl,
           batchIndex: index + 1,
           batchSize: quantity,
           durationSeconds,
-          hookIdea: prompt,
+          hookIdea: body?.exploreFormat === "wall_text" ? `${prompt}\n${WALL_TEXT_VIDEO_BACKGROUND_INSTRUCTIONS}` : prompt,
           model,
           promptMode: "direct",
           projectId,

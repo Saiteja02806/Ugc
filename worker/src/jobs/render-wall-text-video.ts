@@ -211,7 +211,7 @@ function getWallTextRenderFailureIdentity(value: Json) {
   };
 }
 
-function parseRenderWallTextVideoPayload(
+export function parseRenderWallTextVideoPayload(
   value: Json,
 ): RenderWallTextVideoPayload {
   const input = getRecord(value, "input_json");
@@ -427,10 +427,14 @@ function getWallTextAudio(
 function getWallTextContent(value: Json | undefined): WallTextRenderContent {
   const content = getRecord(value, "text");
   const fullText = getRequiredString(content.fullText, "text.fullText", 600);
+  const finalLayout = content.finalLayout
+    ? getFinalLayout(content.finalLayout, content.layoutVersion)
+    : undefined;
+  const isManual = finalLayout?.textMode === "manual";
 
   if (
     !Array.isArray(content.segments) ||
-    content.segments.length < 2 ||
+    content.segments.length < (isManual ? 1 : 2) ||
     content.segments.length > 3
   ) {
     throw new Error("text.segments must contain 2–3 semantic segments.");
@@ -443,7 +447,7 @@ function getWallTextContent(value: Json | undefined): WallTextRenderContent {
     if (
       !Array.isArray(segment.lines) ||
       segment.lines.length < 1 ||
-      segment.lines.length > 4
+      segment.lines.length > (isManual ? 48 : 4)
     ) {
       throw new Error(
         `text.segments[${segmentIndex}].lines must contain 1–4 lines.`,
@@ -461,10 +465,6 @@ function getWallTextContent(value: Json | undefined): WallTextRenderContent {
       role,
     } satisfies WallTextSegment;
   });
-  const finalLayout = content.finalLayout
-    ? getFinalLayout(content.finalLayout, content.layoutVersion)
-    : undefined;
-
   return {
     ...(finalLayout ? { finalLayout } : {}),
     fullText,
@@ -475,7 +475,7 @@ function getWallTextContent(value: Json | undefined): WallTextRenderContent {
   };
 }
 
-function getFinalLayout(value: Json, contentLayoutVersion: Json | undefined) {
+function getFinalLayout(value: Json, contentLayoutVersion: Json | undefined): NonNullable<WallTextRenderContent["finalLayout"]> {
   const layout = getRecord(value, "text.finalLayout");
   const isArialRegularRolloutEnvelope =
     contentLayoutVersion === "wall-text-overlay-v8" &&
@@ -511,11 +511,13 @@ function getFinalLayout(value: Json, contentLayoutVersion: Json | undefined) {
           LEGACY_WALL_TEXT_FONT_WEIGHT,
         ].includes(Number(layout.fontWeight))) ||
     ![36, 38, 40, 42, 44, 46, 48, 50, 52].includes(Number(layout.fontSizePx)) ||
-    (layout.version === "wall-text-final-layout-v9" && Number(layout.fontSizePx) !== 52) ||
+    (layout.version === "wall-text-final-layout-v9" &&
+      ![50, 52].includes(Number(layout.fontSizePx))) ||
     typeof layout.lineHeightPx !== "number" ||
     !Array.isArray(layout.blocks) ||
     layout.blocks.length < 1 ||
-    layout.blocks.length > 6
+    layout.blocks.length > (layout.textMode === "manual" ? 48 : 6) ||
+    (layout.textMode !== undefined && (layout.textMode !== "manual" || layout.version !== "wall-text-final-layout-v9"))
   ) {
     throw new Error("text.finalLayout is invalid.");
   }
@@ -529,6 +531,9 @@ function getFinalLayout(value: Json, contentLayoutVersion: Json | undefined) {
       throw new Error(`text.finalLayout.blocks[${blockIndex}] is invalid.`);
     }
     return {
+      ...(layout.textMode === "manual" ? {
+        gapAfterPx: getBoundedNumber(block.gapAfterPx ?? 18, `text.finalLayout.blocks[${blockIndex}].gapAfterPx`, 0, 1920, true),
+      } : {}),
       lines: block.lines.map((line, lineIndex) =>
         getRequiredString(
           line,
@@ -549,11 +554,11 @@ function getFinalLayout(value: Json, contentLayoutVersion: Json | undefined) {
     layout.version === "wall-text-final-layout-v8" ||
     layout.version === "wall-text-final-layout-v9";
   const lineCount = blocks.reduce((total, block) => total + block.lines.length, 0);
-  if (layout.version === "wall-text-final-layout-v9" && lineCount < 5) {
+  if (layout.textMode !== "manual" && layout.version === "wall-text-final-layout-v9" && lineCount < 5) {
     throw new Error("text.finalLayout V13 must contain one 5-8 line text block.");
   }
   if (
-    isV2OrV3OrV4OrV5OrV6OrV7OrV8OrV9 &&
+    layout.textMode !== "manual" && isV2OrV3OrV4OrV5OrV6OrV7OrV8OrV9 &&
     (blocks.length !== 1 ||
       blocks[0]?.role !== "text" ||
       lineCount < 4 ||
@@ -577,6 +582,7 @@ function getFinalLayout(value: Json, contentLayoutVersion: Json | undefined) {
   }
   if (layout.version === "wall-text-final-layout-v9") {
     return {
+      ...(layout.textMode === "manual" ? { textMode: "manual" as const } : {}),
       blocks,
       fontFamily: "Arial" as const,
       fontSizePx,

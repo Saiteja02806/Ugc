@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { FREE_TRIAL_CONTENT_DAYS } from "@/lib/billing/free-trial-policy";
 import { SchedulingRequestError } from "@/lib/scheduling/errors";
 import type {
   ScheduledPost,
@@ -426,7 +427,7 @@ export async function insertScheduledPostTargets(
 
     if (databaseMessage.includes("free_trial_schedule_expired")) {
       throw new SchedulingRequestError(
-        "Your 3-day free trial has ended. Upgrade to schedule another Instagram post.",
+        `Your ${FREE_TRIAL_CONTENT_DAYS}-day free trial has ended. Upgrade to schedule another Instagram post.`,
         402,
         "free_trial_schedule_expired",
       );

@@ -1,0 +1,185 @@
+import assert from "node:assert/strict";
+import { mock, test } from "node:test";
+import { ProviderOperationTerminalError, ProviderSubmissionUncertainError } from "../../dist/lib/generation-provider.js";
+
+// Exercise the actual worker with provider/storage stubs; no paid requests occur.
+const received = [];
+const seedreamCalls = [];
+let seedreamError;
+const image = Buffer.from("fixture-image");
+const provider = async (model, prompt, ratio, reference) => {
+  received.push({ model, prompt, ratio, reference });
+  return { buffer: image, model, requestId: "fixture-request" };
+};
+mock.module(new URL("../../dist/lib/openai-image.js", import.meta.url), { namedExports: {
+  generateOpenAiImageBuffer: (prompt, ratio, reference) => provider("gpt_image", prompt, ratio, reference),
+} });
+mock.module(new URL("../../dist/lib/gemini-image.js", import.meta.url), { namedExports: {
+  GEMINI_3_PRO_IMAGE_MODEL: "gemini-3-pro-image",
+  generateGeminiImageBuffer: (prompt, ratio, reference) => provider("nano_banana_2", prompt, ratio, reference),
+  generateGemini3ProImageBuffer: async params => {
+    await provider("gemini_3_pro", params.prompt, params.aspectRatio, params.referenceImageUrl);
+    await params.onOperationCreated("fixture-request");
+    await params.onOperationSucceeded("fixture-request");
+    return image;
+  },
+} });
+mock.module(new URL("../../dist/lib/seedream-image.js", import.meta.url), { namedExports: {
+  SEEDREAM_5_PRO_IMAGE_MODEL: "seedream5_pro",
+  generateSeedreamImageBuffer: async params => {
+    seedreamCalls.push(params);
+    if (!params.providerOperationId) await params.onOperationCreated("saved-seedream-task");
+    if (seedreamError) throw seedreamError;
+    await params.onOperationSucceeded(params.providerOperationId ?? "saved-seedream-task");
+    return image;
+  },
+} });
+mock.module(new URL("../../dist/lib/image-output.js", import.meta.url), { namedExports: {
+  AI_STUDIO_IMAGE_RATIO: "9:16", AI_STUDIO_IMAGE_RATIOS: ["4:5", "1:1", "9:16", "16:9"],
+  getAIStudioImageDimensions: () => ({ width: 720, height: 1280 }),
+  prepareAIStudioImageOutput: async buffer => buffer,
+} });
+mock.module(new URL("../../dist/lib/storage.js", import.meta.url), { namedExports: {
+  getStoredObject: async () => null,
+  downloadStoredObjectBuffer: async key => { assert.equal(key, "saved-seedream-source.png"); return image; },
+  uploadBufferToStorage: async ({ key }) => ({ key, url: `https://media.example.test/${key}` }),
+} });
+const { runGenerateImageJob } = await import("../../dist/jobs/generate-image.js");
+const context = {
+  checkpoint: async () => {},
+  store: {
+    reserveGenerationProviderOperation: async () => ({ shouldSubmit: true, operation: { status: "reserved", metadata: {} } }),
+    markGenerationProviderSucceeded: async () => {},
+    markGenerationProviderSubmitted: async () => {},
+    markGenerationOutputPersisted: async () => {},
+  },
+};
+const job = (model, prompt) => ({
+  id: "fixture-job", user_id: "fixture-user", project_id: "ai-studio",
+  input_json: {
+    model, prompt, generationId: "fixture-generation", aspectRatio: "9:16",
+    characterSource: "ugc-pilot-characters", characterVersion: 2, mode: "custom", promptSource: "user",
+    referenceImageUrl: "https://media.example.test/owned-reference.png",
+  },
+});
+
+test("all three image providers receive the exact character prompt and chosen reference", async () => {
+  const prompt = "An adult fashion creator with glossy makeup in a clean studio.\nHands outside frame. Pink satin dress.";
+  for (const model of ["gpt_image", "gemini_3_pro", "nano_banana_2"]) {
+    await runGenerateImageJob(job(model, prompt), context);
+    assert.deepEqual(received.at(-1), { model, prompt, ratio: "9:16", reference: "https://media.example.test/owned-reference.png" });
+  }
+});
+
+test("long character descriptions reach every provider without summaries or truncation", async () => {
+  const prompt = "Precise requested styling and studio composition. ".repeat(300) + "Final detail: no desk, no props.";
+  for (const model of ["gpt_image", "gemini_3_pro", "nano_banana_2"]) {
+    await runGenerateImageJob(job(model, prompt), context);
+    assert.equal(received.at(-1).prompt, prompt);
+  }
+});
+
+test("prompt limits are enforced before any provider call without changing other image generators", async () => {
+  const before = received.length;
+  await assert.rejects(runGenerateImageJob(job("gpt_image", "x".repeat(32001)), context), /32000 characters/);
+  const generic = job("gpt_image", "x".repeat(2001));
+  delete generic.input_json.characterSource;
+  await assert.rejects(runGenerateImageJob(generic, context), /2000 characters/);
+  assert.equal(received.length, before);
+});
+
+test("slideshow references retain ordered layout and owned image at every current provider boundary", async () => {
+  const references = ["https://media.example.test/layout.png", "https://media.example.test/product.png"];
+  for (const model of ["nano_banana_2", "seedream_5_pro"]) {
+    const imageJob = job(model, "Keep image 1 layout and use image 2 product.");
+    delete imageJob.input_json.characterSource;
+    imageJob.input_json.exploreFormat = "slideshow";
+    imageJob.input_json.referenceImageUrl = references[0];
+    imageJob.input_json.referenceImageUrls = references;
+    await runGenerateImageJob(imageJob, context);
+    if (model === "nano_banana_2") assert.deepEqual(received.at(-1).reference, references);
+    else assert.deepEqual(seedreamCalls.at(-1).referenceImageUrls, references);
+    const providerPrompt = model === "nano_banana_2" ? received.at(-1).prompt : seedreamCalls.at(-1).prompt;
+    assert.match(providerPrompt, /^Use image 1 as the layout and composition reference\. Use image 2 as the subject, product or style reference/);
+    assert.ok(providerPrompt.endsWith(imageJob.input_json.prompt), "The complete user instructions remain unchanged");
+  }
+});
+
+test("malformed or excessive slideshow reference arrays cannot submit provider requests", async () => {
+  const before = received.length + seedreamCalls.length;
+  for (const references of [[], ["https://x.test/one.png", "https://x.test/two.png", "https://x.test/three.png"], [""], ["https://x.test/one.png", "https://x.test/one.png"]]) {
+    const imageJob = job("nano_banana_2", "Keep layout");
+    imageJob.input_json.exploreFormat = "slideshow";
+    imageJob.input_json.referenceImageUrls = references;
+    await assert.rejects(runGenerateImageJob(imageJob, context));
+  }
+  assert.equal(received.length + seedreamCalls.length, before);
+});
+
+function seedreamFixture({ shouldSubmit = true, status = "reserved", operationId = null, metadata = {} } = {}) {
+  const events = [];
+  const record = name => async input => { events.push({ name, ...input }); };
+  const imageJob = job("seedream_5_pro", "A candid adult portrait with natural skin texture.");
+  delete imageJob.input_json.characterSource;
+  return { imageJob, events, context: { checkpoint: async () => {}, store: {
+    reserveGenerationProviderOperation: async input => {
+      events.push({ name: "reserve", ...input });
+      return { shouldSubmit, operation: { status, provider_operation_id: operationId, metadata } };
+    },
+    markGenerationProviderSubmitted: record("submitted"),
+    markGenerationProviderSucceeded: record("succeeded"),
+    markGenerationOutputPersisted: record("persisted"),
+    markGenerationProviderFailed: record("failed"),
+    markGenerationProviderSubmissionUncertain: record("uncertain"),
+  } } };
+}
+
+test("Seedream selection routes through Runway, preserves the reference and persists the provider task", async () => {
+  const f = seedreamFixture();
+  const output = await runGenerateImageJob(f.imageJob, f.context);
+  assert.equal(output.model, "seedream_5_pro");
+  assert.equal(output.provider, "runway");
+  assert.equal(seedreamCalls.at(-1).referenceImageUrl, f.imageJob.input_json.referenceImageUrl);
+  assert.equal(seedreamCalls.at(-1).prompt, f.imageJob.input_json.prompt);
+  assert.equal(f.events[0].provider, "runway");
+  assert.equal(f.events[0].operationKey, "runway-image");
+  assert.equal(f.events.find(event => event.name === "submitted").providerOperationId, "saved-seedream-task");
+  assert.deepEqual(f.events.findLast(event => event.name === "succeeded").metadata, {
+    model: "seedream5_pro", stagingKey: "generation-staging/fixture-job/runway-image-source.png",
+  });
+  assert.equal(f.events.at(-1).name, "persisted");
+});
+
+test("Seedream retries resume the saved task and reuse staged images", async () => {
+  const f = seedreamFixture({ shouldSubmit: false, status: "submitted", operationId: "existing-seedream-task" });
+  await runGenerateImageJob(f.imageJob, f.context);
+  assert.equal(seedreamCalls.at(-1).providerOperationId, "existing-seedream-task");
+  assert.equal(f.events.some(event => event.name === "submitted"), false);
+  const staged = seedreamFixture({ shouldSubmit: false, status: "provider_succeeded", operationId: "existing-seedream-task", metadata: { stagingKey: "saved-seedream-source.png" } });
+  const before = seedreamCalls.length;
+  await runGenerateImageJob(staged.imageJob, staged.context);
+  assert.equal(seedreamCalls.length, before);
+});
+
+test("an uncertain Seedream reservation cannot submit a duplicate generation", async () => {
+  const f = seedreamFixture({ shouldSubmit: false });
+  const before = seedreamCalls.length;
+  await assert.rejects(runGenerateImageJob(f.imageJob, f.context), ProviderSubmissionUncertainError);
+  assert.equal(seedreamCalls.length, before);
+});
+
+test("Seedream polling failures retain the task and terminal failures disable resubmission", async () => {
+  try {
+    seedreamError = new Error("Temporary polling outage");
+    const pending = seedreamFixture();
+    await assert.rejects(runGenerateImageJob(pending.imageJob, pending.context), error => error.code === "provider_operation_pending");
+    assert.equal(pending.events.find(event => event.name === "submitted").providerOperationId, "saved-seedream-task");
+    assert.equal(pending.events.some(event => event.name === "uncertain" || event.name === "failed"), false);
+    seedreamError = new ProviderOperationTerminalError("Provider rejected the image");
+    const failed = seedreamFixture({ shouldSubmit: false, status: "submitted", operationId: "failed-task" });
+    await assert.rejects(runGenerateImageJob(failed.imageJob, failed.context), ProviderOperationTerminalError);
+    assert.equal(failed.events.find(event => event.name === "failed").retryAllowed, false);
+  } finally {
+    seedreamError = undefined;
+  }
+});

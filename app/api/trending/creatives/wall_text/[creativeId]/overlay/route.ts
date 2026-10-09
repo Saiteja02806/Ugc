@@ -4,7 +4,8 @@ import { loadTrendingCreativeEditor } from "@/lib/trending/creative-edit-service
 import { TrendingCreativeEditAccessError } from "@/lib/trending/creative-edits";
 import { ensureStoredWallTextOverlay } from "@/lib/trending/wall-text-overlay-storage";
 import type { WallTextOverlayInput } from "@/worker/src/lib/wall-text-overlay-renderer";
-import { createAuthoritativeWallTextContent } from "@/lib/trending/wall-layout-engine";
+import { createAuthoritativeWallTextEdit } from "@/lib/trending/wall-layout-engine";
+import { getWallTextEditSafeArea, WALL_TEXT_EDIT_MIN_WIDTH, WALL_TEXT_EDIT_MAX_WIDTH } from "@/lib/trending/wall-text-editor-layout";
 import { getBackfillWallTextFormatId } from "@/lib/trending/wall-formats";
 import { TRENDING_TEXT_COLOR_VALUES } from "@/lib/trending/text-color";
 
@@ -16,7 +17,7 @@ const draftSchema = z.object({
   fullText: z.string().trim().min(1).max(600),
   textColor: z.enum(TRENDING_TEXT_COLOR_VALUES),
   textBox: z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1),
-    width: z.number().positive().max(1), height: z.number().positive().max(1) }),
+    width: z.number().min(WALL_TEXT_EDIT_MIN_WIDTH).max(WALL_TEXT_EDIT_MAX_WIDTH), height: z.number().positive().max(1) }),
 });
 
 export async function POST(request: Request, context: { params: Promise<{ creativeId: string }> }) {
@@ -41,15 +42,17 @@ export async function GET(request: Request, context: { params: Promise<{ creativ
       if (raw.length > 4096) return Response.json({ error: "Preview request is too large." }, { status: 413 });
       const draft = draftSchema.parse(JSON.parse(raw));
       const box = draft.textBox;
-      if (box.x < layout.safeArea.left || box.y < layout.safeArea.top ||
-          box.x + box.width > 1 - layout.safeArea.right + 0.000001 ||
+      const safeArea = getWallTextEditSafeArea(layout.safeArea);
+      if (box.x < safeArea.left || box.y < safeArea.top ||
+          box.x + box.width > 1 - safeArea.right + 0.000001 ||
           box.y + box.height > 1 - layout.safeArea.bottom + 0.000001) {
         return Response.json({ error: "Text must remain inside the safe area." }, { status: 400 });
       }
-      const prepared = await createAuthoritativeWallTextContent({
-        content: { kind: "text", text: draft.fullText },
+      const prepared = await createAuthoritativeWallTextEdit({
+        fullText: draft.fullText,
+        previousContent: content,
         formatId: getBackfillWallTextFormatId(content.formatId ?? "niche_insight"),
-        layout: { ...layout, textBox: box },
+        layout: { ...layout, safeArea, textBox: box },
       });
       content = prepared.content; layout = prepared.layout; textColor = draft.textColor;
     }

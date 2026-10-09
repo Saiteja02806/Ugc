@@ -62,7 +62,10 @@ export function AIStudioWorkspace({
               <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
                 AI Studio
               </h1>
-              <AIStudioAccessBadge state={accessState} />
+              <AIStudioAccessBadge
+                state={subscription ? accessState : "checking"}
+                hasFreeCredits={!subscription?.isActive && (subscription?.freeGenerationCredits?.granted ?? 0) > 0}
+              />
               <Link
                 href={subscription?.isActive ? "/settings#subscription-billing" : "/pricing"}
                 className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
@@ -181,14 +184,14 @@ function AIStudioModeToggle({
   );
 }
 
-function AIStudioAccessBadge({ state }: { state: AIStudioAccessState }) {
+function AIStudioAccessBadge({ state, hasFreeCredits = false }: { state: AIStudioAccessState; hasFreeCredits?: boolean }) {
   if (state !== "pro") {
     return null;
   }
 
   return (
     <Badge variant="pro" role="status" aria-live="polite">
-      Pro
+      {hasFreeCredits ? "Free credits" : "Pro"}
     </Badge>
   );
 }

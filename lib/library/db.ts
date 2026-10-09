@@ -36,7 +36,7 @@ type LibraryItemRow = {
 };
 
 type LibraryCarouselSlideRow = {
-  carousel_generation_id: string;
+  carousel_generation_id: string | null;
   carousel_slide_id: string | null;
   created_at: string;
   headline: string | null;
@@ -92,7 +92,7 @@ type LibraryDatabase = {
 };
 
 export type LibraryCarouselSlideRecord = {
-  carouselGenerationId: string;
+  carouselGenerationId: string | null;
   carouselSlideId: string | null;
   headline: string | null;
   id: string;

@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UGC Native Slideshow Output",
+  "type": "object",
+  "required": ["format", "slides"],
+  "properties": {
+    "format": {
+      "type": "string",
+      "enum": [
+        "personal_shift",
+        "story_confession",
+        "quick_tips",
+        "educational_method",
+        "fitness_routine",
+        "product_assisted",
+        "goal_based_routine"
+      ]
+    },
+    "slides": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["role", "presentation_mode", "visual_intent"],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["cover", "body", "result", "cta"]
+          },
+          "presentation_mode": {
+            "type": "string",
+            "enum": [
+              "cover",
+              "outlined_story",
+              "pill_story",
+              "numbered_shift",
+              "minimal_statement",
+              "educational_method",
+              "routine_explanation",
+              "cta"
+            ]
+          },
+          "hook": {"type": ["string", "null"]},
+          "subline": {"type": ["string", "null"]},
+          "headline": {"type": ["string", "null"]},
+          "body_1": {"type": ["string", "null"]},
+          "body_2": {"type": ["string", "null"]},
+          "example": {"type": ["string", "null"]},
+          "why": {"type": ["string", "null"]},
+          "cue": {"type": ["string", "null"]},
+          "visual_intent": {"type": "string"},
+          "product_reference": {"type": ["string", "null"]}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -10,10 +10,10 @@ export const LEGACY_WALL_TEXT_REGULAR_FONT_WEIGHT = 400;
 export const LEGACY_WALL_TEXT_ARIAL_BOLD_FONT_WEIGHT = 500;
 export const LEGACY_WALL_TEXT_FONT_WEIGHT = 700;
 export const WALL_TEXT_LINE_HEIGHT_FACTOR = 1.1;
-// The approved B treatment uses 52px Arial Bold. Layouts never shrink below
+// The approved B treatment uses 50px Arial Bold. Layouts never shrink below
 // it merely to keep fewer lines: copy must be rewritten or reflowed instead.
-export const WALL_TEXT_FIXED_FONT_SIZE = 52;
-export const WALL_TEXT_MAXIMUM_FONT_SIZE = 52;
+export const WALL_TEXT_FIXED_FONT_SIZE = 50;
+export const WALL_TEXT_MAXIMUM_FONT_SIZE = 50;
 // Historical content without an explicit size retains its original fallback.
 export const WALL_TEXT_MINIMUM_FONT_SIZE = 44;
 // V9 uses the approved 4px edge. V8 and V7 stay as persisted so old cards do

@@ -5,6 +5,7 @@ import {
   type ExploreHookVideo,
 } from "@/lib/explore/hook-video-types";
 import { buildPublicStorageUrl } from "@/lib/storage/storage";
+import importedCatalog from "./imported-catalog.json";
 
 export type { ExploreHookVideo } from "@/lib/explore/hook-video-types";
 
@@ -31,8 +32,9 @@ const EXPLORE_PREVIEW_VIDEO_ASSET: ExplorePreviewVideoAsset = {
     "explore/landing-preview/2026-08-29/d12f92b5a902a80f6bfbfe7565fa31254ca265a3cb48db95ab12dcfd101ca3ed.mp4",
 };
 
-// Dedicated Explore catalog. These are short, silent reference clips uploaded
-// for this library only; they do not use a Trending source or data table.
+// Legacy dedicated Explore catalog: these short references are silent. New
+// imported references retain their supplied audio and are previewed muted.
+// Neither catalog uses a Trending source or data table.
 const EXPLORE_HOOK_VIDEO_ASSETS: ReadonlyArray<ExploreHookVideoAsset> = [
   {
     id: "explore-hook-01",
@@ -121,7 +123,7 @@ const EXPLORE_HOOK_VIDEO_ASSETS: ReadonlyArray<ExploreHookVideoAsset> = [
 ];
 
 export function getExploreHookVideos(): Array<ExploreHookVideo> {
-  return EXPLORE_HOOK_VIDEO_ASSETS.map(toExploreHookVideo);
+  return [...EXPLORE_HOOK_VIDEO_ASSETS.map(toExploreHookVideo), ...getPublishedImportedHookVideos()];
 }
 
 export function getExplorePreviewVideo(): ExploreHookVideo {
@@ -137,8 +139,18 @@ export function isExploreHookVideoId(value: unknown): value is string {
 
   return (
     value === EXPLORE_PREVIEW_VIDEO_ASSET.id ||
-    EXPLORE_HOOK_VIDEO_ASSETS.some((asset) => asset.id === value)
+    EXPLORE_HOOK_VIDEO_ASSETS.some((asset) => asset.id === value) ||
+    getPublishedImportedHookVideos().some((asset) => asset.id === value)
   );
+}
+
+function getPublishedImportedHookVideos(): ExploreHookVideo[] {
+  if (importedCatalog.mediaStatus !== "published") return [];
+  return importedCatalog.items.flatMap((item) => item.format === "hook" && "videoFile" in item ? [{
+    id: item.id,
+    posterUrl: buildPublicStorageUrl(`explore/recreate/v1/${item.posterFile}`),
+    videoUrl: buildPublicStorageUrl(`explore/recreate/v1/${item.videoFile}`),
+  }] : []);
 }
 
 export function getExploreHookVideoAssetsForImport() {

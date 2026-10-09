@@ -8,6 +8,7 @@ import {
   type WallTextSegmentRole,
 } from "./wall-text-types.ts";
 import { WALL_TEXT_GENERATION_WORD_RANGE } from "./wall-text-copy-policy.ts";
+import { validateManualWallTextContent } from "./wall-text-manual-copy.ts";
 import type { WebsiteBusinessAnalysis } from "../website-analysis/schema.ts";
 import {
   MAX_WALL_TEXT_VIDEO_DURATION_SECONDS,
@@ -344,6 +345,10 @@ export function validateWallTextContent(
   content: TrendingWallTextContent,
   _durationSeconds: number,
 ) {
+  if (content.finalLayout?.textMode === "manual") {
+    validateManualWallTextContent(content);
+    return;
+  }
   const wordCount = countWords(content.fullText);
   if (
     content.layoutVersion === "wall-text-overlay-v6" ||
@@ -406,9 +411,11 @@ export function validateWallTextContent(
     }
     if (
       content.layoutVersion === "wall-text-overlay-v13" &&
-      content.finalLayout.fontSizePx !== 52
+      ![50, 52].includes(content.finalLayout.fontSizePx)
     ) {
-      throw new Error("Wall-of-text V13 must use the fixed 52px font size.");
+      throw new Error(
+        "Wall-of-text V13 must use the approved 50px font size or the preserved 52px legacy size.",
+      );
     }
     if (
       lines.length < MIN_WALL_TEXT_RENDERED_LINES ||

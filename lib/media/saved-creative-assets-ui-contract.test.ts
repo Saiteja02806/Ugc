@@ -103,7 +103,7 @@ test("saved content waits for Firebase to restore the signed-in user", () => {
 
   assert.match(
     authSource,
-    /export async function getCurrentUserIdToken\(\)[\s\S]*await auth\.authStateReady\(\)/,
+    /export async function getCurrentUserIdToken\([^)]*\)[\s\S]*await auth\.authStateReady\(\)/,
   );
 });
 

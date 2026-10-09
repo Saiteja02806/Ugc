@@ -1,0 +1,146 @@
+{
+  "checked_at": "2026-10-08T06:17:25.500Z",
+  "client": "existing authenticated Codex connection",
+  "endpoint": "https://mcp.getugcpilot.com/mcp",
+  "request_id": "ugc-plugin-release-20261008-mug-v2",
+  "receipt": {
+    "jobs": [
+      {
+        "job_id": "403f911e-51d9-4f49-96c1-f51d29e26f85",
+        "status": "queued"
+      }
+    ],
+    "partial": false
+  },
+  "completed_job": {
+    "id": "403f911e-51d9-4f49-96c1-f51d29e26f85",
+    "type": "image_generation",
+    "status": "completed",
+    "progress": 100,
+    "stage": "completed",
+    "output_asset_ids": [
+      "c33e9898-5fb3-4ea3-972a-2b75a5bebf09"
+    ],
+    "error": null,
+    "created_at": "2026-10-08T06:07:41.056Z",
+    "updated_at": "2026-10-08T06:08:00.153Z"
+  },
+  "replay": {
+    "jobs": [
+      {
+        "job_id": "403f911e-51d9-4f49-96c1-f51d29e26f85",
+        "status": "completed"
+      }
+    ],
+    "partial": false
+  },
+  "output": {
+    "id": "c33e9898-5fb3-4ea3-972a-2b75a5bebf09",
+    "mime_type": "image/png",
+    "width": 720,
+    "height": 1280,
+    "file_size_bytes": null
+  },
+  "credits_before": 186,
+  "credits_after": 185,
+  "credits_reserved_after": 0,
+  "concurrent_job_reads": [
+    {
+      "status": "fulfilled",
+      "value": {
+        "i": 0,
+        "isError": false,
+        "status": "completed"
+      }
+    },
+    {
+      "status": "fulfilled",
+      "value": {
+        "i": 1,
+        "isError": false,
+        "status": "completed"
+      }
+    },
+    {
+      "status": "fulfilled",
+      "value": {
+        "i": 2,
+        "isError": false,
+        "status": "completed"
+      }
+    },
+    {
+      "status": "fulfilled",
+      "value": {
+        "i": 3,
+        "isError": false,
+        "status": "completed"
+      }
+    },
+    {
+      "status": "fulfilled",
+      "value": {
+        "i": 4,
+        "isError": false,
+        "status": "completed"
+      }
+    },
+    {
+      "status": "fulfilled",
+      "value": {
+        "i": 5,
+        "isError": false,
+        "status": "completed"
+      }
+    },
+    {
+      "status": "fulfilled",
+      "value": {
+        "i": 6,
+        "isError": false,
+        "status": "completed"
+      }
+    },
+    {
+      "status": "fulfilled",
+      "value": {
+        "i": 7,
+        "isError": false,
+        "status": "completed"
+      }
+    }
+  ],
+  "upload_attempts": [
+    {
+      "attempt": 1,
+      "isError": true,
+      "error": "tool call error: tool call failed for `ugc-pilot/create_upload`\n\nCaused by:\n    Transport send error: Transport [rmcp::transport::worker::WorkerTransport<rmcp::transport::streamable_http_client::StreamableHttpClientWorker<rmcp::transport::auth::AuthClient<codex_rmcp_client::http_client_adapter::StreamableHttpClientAdapter>>>] error: Insufficient scope"
+    },
+    {
+      "attempt": 2,
+      "isError": true,
+      "error": "tool call error: tool call failed for `ugc-pilot/create_upload`\n\nCaused by:\n    Transport send error: Transport [rmcp::transport::worker::WorkerTransport<rmcp::transport::streamable_http_client::StreamableHttpClientWorker<rmcp::transport::auth::AuthClient<codex_rmcp_client::http_client_adapter::StreamableHttpClientAdapter>>>] error: Insufficient scope"
+    },
+    {
+      "attempt": 3,
+      "isError": true,
+      "error": "Insufficient scope",
+      "server_status": 403,
+      "request_id": "e79451de-6162-402b-8451-271726bc0d32"
+    }
+  ],
+  "upload_record_check": "Read-only production query verified zero matching test upload records after all three failed/rejected calls.",
+  "limitations": [
+    "Fresh ChatGPT/Claude/Claude Code login and installed-plugin checks deferred by user.",
+    "Transport failures remain unresolved.",
+    "No new video generation in this release check; previous paid video job and asset remain accessible.",
+    "Real upload/confirm/delete needs reconnect and explicit assets:write consent. The existing connection does not grant that permission."
+  ],
+  "existing_connection_scopes": [
+    "account:read",
+    "brand:read",
+    "assets:read",
+    "generation:write",
+    "jobs:read"
+  ]
+}

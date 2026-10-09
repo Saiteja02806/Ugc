@@ -6,7 +6,6 @@ import {
   ImageIcon,
   Loader2,
   RefreshCw,
-  Sparkles,
   UserRound,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -340,10 +339,7 @@ export function AvatarGenerationWorkspace({
               Generate another avatar
             </>
           ) : (
-            <>
-              <Sparkles className="mr-2 size-4" />
-              Generate avatar
-            </>
+            "Generate avatar"
           )}
         </button>
 

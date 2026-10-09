@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 
 import { useAuth } from "@/contexts/auth-context";
+import { AccountTimeZoneProvider } from "./account-timezone-provider";
 
 export function JobQueryProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -32,6 +33,8 @@ function AccountQueryClientProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <AccountTimeZoneProvider>{children}</AccountTimeZoneProvider>
+    </QueryClientProvider>
   );
 }

@@ -20,6 +20,8 @@ import type { ReactNode, RefObject } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
+import { useAccountTimeZone } from "@/components/providers/account-timezone-provider";
+import { getSchedulingTimeZoneOptions } from "@/lib/scheduling/account-timezone";
 import { InstagramCaptionPreview } from "@/components/social/instagram-caption-preview";
 import {
   Popover,
@@ -31,12 +33,15 @@ import {
 } from "@/components/ui/popover";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
+  getDormantScheduleTargets,
   getInitialScheduleConnectionIds,
   getUnavailableSavedInstagramTargets,
 } from "@/lib/scheduling/schedule-form-persistence";
 import {
+  getConfirmedScheduleTargetSettings,
   getDefaultScheduleTargetSettings,
   getScheduleTargetSettingsError,
+  getTikTokPublishingAgreement,
   type ScheduleTargetSettings,
 } from "@/lib/scheduling/platform-settings";
 import { getConnectionPublishingBlockMessage } from "@/lib/scheduling/social-connection-policy";
@@ -91,10 +96,6 @@ const scheduleMinuteValues = Array.from(
   { length: Math.ceil(60 / scheduleMinuteStepMinutes) },
   (_, index) => String(index * scheduleMinuteStepMinutes).padStart(2, "0"),
 ).filter((minute) => Number(minute) < 60);
-const defaultTimezone =
-  typeof Intl !== "undefined"
-    ? Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
-    : "UTC";
 
 function getPublishingAccountLabel(
   tiktokBetaEnabled: boolean,
@@ -239,7 +240,9 @@ export function ScheduleEditor({
   errorMessage,
   hookMediaOptions,
   initialClipSelection,
+  initialLibraryItemId,
   initialDemoMediaId,
+  initialCaption = "",
   initialHookMediaId,
   initialPlannedTargets,
   initialScheduledDate,
@@ -264,7 +267,9 @@ export function ScheduleEditor({
   errorMessage: string | null;
   hookMediaOptions: ScheduleMediaOption[];
   initialClipSelection?: "secondary_only";
+  initialLibraryItemId?: string;
   initialDemoMediaId: string;
+  initialCaption?: string;
   initialHookMediaId: string;
   initialPlannedTargets: ScheduleCreateTargetInput[];
   initialScheduledDate: string;
@@ -281,14 +286,14 @@ export function ScheduleEditor({
   youtubeBetaEnabled: boolean;
 }) {
   useLockBodyScroll();
+  const defaultTimezone = useAccountTimeZone();
   const dialogRef = useRef<HTMLElement>(null);
 
   const isCarouselSchedule = Boolean(
-    editingSchedule?.sourceKind === "library_item" &&
-      editingSchedule.libraryItemId,
+    initialLibraryItemId || editingSchedule?.sourceKind === "library_item" && editingSchedule.libraryItemId,
   );
   const carouselLibraryItemId = isCarouselSchedule
-    ? editingSchedule?.libraryItemId ?? null
+    ? initialLibraryItemId ?? editingSchedule?.libraryItemId ?? null
     : null;
   const enabledPlatforms = useMemo<SchedulePlatform[]>(
     () => [
@@ -336,16 +341,11 @@ export function ScheduleEditor({
   });
   // Keep providers outside the currently selectable publishing surface dormant,
   // so legacy drafts remain lossless when saved.
-  const dormantLegacyTargets = initialPlannedTargets.filter(
-    (target) => {
-      const savedConnection = socialConnections.find(
-        (connection) => connection.id === target.connectionId,
-      );
-      const platform = target.platform ?? savedConnection?.platform;
-
-      return platform !== undefined && !selectablePlatforms.includes(platform);
-    },
-  );
+  const dormantLegacyTargets = getDormantScheduleTargets({
+    allowedPlatforms: selectablePlatforms,
+    connections: socialConnections,
+    plannedTargets: initialPlannedTargets,
+  });
   const [useOpeningClip, setUseOpeningClip] = useState(
     () =>
       getInitialClipSelection({
@@ -374,7 +374,7 @@ export function ScheduleEditor({
   );
   const [refreshingMedia, setRefreshingMedia] = useState(false);
   const [hookPickerError, setHookPickerError] = useState<string | null>(null);
-  const [caption, setCaption] = useState(editingSchedule?.caption ?? "");
+  const [caption, setCaption] = useState(editingSchedule?.caption ?? initialCaption);
   const [selectedConnectionIds, setSelectedConnectionIds] =
     useState<string[]>(initialConnectionIds);
   const [accountSelectionChanged, setAccountSelectionChanged] = useState(false);
@@ -391,15 +391,12 @@ export function ScheduleEditor({
   const [tiktokCapabilities, setTikTokCapabilities] = useState<
     Record<string, TikTokCapabilitiesState>
   >({});
-  const [scheduledDate, setScheduledDate] = useState(
-    editingScheduledDate ?? initialScheduledDate,
-  );
-  const [scheduledTime, setScheduledTime] = useState(
-    editingScheduledTime ?? initialScheduledTime,
-  );
-  const [timezone, setTimezone] = useState(
-    editingSchedule?.timezone ?? defaultTimezone,
-  );
+  const [scheduledDateOverride, setScheduledDate] = useState<string | null>(editingScheduledDate ?? null);
+  const [scheduledTimeOverride, setScheduledTime] = useState<string | null>(editingScheduledTime ?? null);
+  const scheduledDate = scheduledDateOverride ?? initialScheduledDate;
+  const scheduledTime = scheduledTimeOverride ?? initialScheduledTime;
+  const [timezoneOverride, setTimezone] = useState<string | null>(editingSchedule?.timezone ?? null);
+  const timezone = timezoneOverride ?? defaultTimezone;
   const [currentTime, setCurrentTime] = useState(() => Date.now());
 
   const localHookMediaOptions = hookMediaOptions;
@@ -498,8 +495,13 @@ export function ScheduleEditor({
       : null;
   const publishingSettingsError = getPublishingSettingsError({
     connections: selectedConnections,
+    requireTikTokMusicConfirmation: false,
     settings: publishingSettings,
     tiktokCapabilities,
+  });
+  const tiktokPublishingAgreement = getTikTokPublishingAgreement({
+    connections: selectedConnections,
+    settings: publishingSettings,
   });
   const scheduleTimeValidation = useMemo(
     () =>
@@ -729,7 +731,8 @@ export function ScheduleEditor({
               : settings.allowStitch === true,
             privacyLevel:
               isTikTokPrivacyLevel(privacyLevel) &&
-              data.capabilities.privacyLevels.includes(privacyLevel)
+              data.capabilities.privacyLevels.includes(privacyLevel) &&
+              (data.capabilities.directPostAudited || privacyLevel === "SELF_ONLY")
                 ? privacyLevel
                 : "",
           },
@@ -796,6 +799,7 @@ export function ScheduleEditor({
       !scheduleTimeValidation.scheduledFor ||
       scheduleTimeValidation.error ||
       captionValidationError ||
+      publishingSettingsError ||
       unavailableSavedTargetError
     ) {
       return;
@@ -827,9 +831,10 @@ export function ScheduleEditor({
         ...selectedConnections.map((connection) => ({
           connectionId: connection.id,
           platform: connection.platform,
-          settings:
-            publishingSettings[connection.id] ??
-            getDefaultPublishingSettings(connection.platform),
+          settings: getConfirmedScheduleTargetSettings(
+            connection.platform,
+            publishingSettings[connection.id],
+          ),
         })),
       ],
       timezone,
@@ -1119,7 +1124,7 @@ export function ScheduleEditor({
                         aria-invalid={Boolean(scheduleTimeValidation.error)}
                         min={minimumScheduledDate}
                         value={scheduledDate}
-                        onChange={(event) => setScheduledDate(event.target.value)}
+                        onChange={(event) => { setTimezone(timezone); setScheduledTime(scheduledTime); setScheduledDate(event.target.value); }}
                         className="mt-2 h-11 w-full rounded-control border border-border bg-card-muted px-4 text-sm font-bold text-foreground outline-none transition [color-scheme:dark] hover:border-border-strong focus:border-primary focus:ring-2 focus:ring-primary/15"
                       />
                     </label>
@@ -1135,7 +1140,7 @@ export function ScheduleEditor({
                             : undefined
                         }
                         invalid={Boolean(scheduleTimeValidation.error)}
-                        onChange={setScheduledTime}
+                        onChange={(value) => { setTimezone(timezone); setScheduledDate(scheduledDate); setScheduledTime(value); }}
                       />
                     </div>
                   </div>
@@ -1197,6 +1202,11 @@ export function ScheduleEditor({
         </div>
 
         <div className="border-t border-border bg-card px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-[0_-12px_30px_rgb(16_32_51_/_0.06)] sm:px-6 sm:py-4 lg:px-8">
+          {tiktokPublishingAgreement ? (
+            <p className="mb-3 text-xs leading-5 text-muted">
+              {tiktokPublishingAgreement}
+            </p>
+          ) : null}
           {errorMessage ? (
             <div
               role="alert"
@@ -2509,10 +2519,6 @@ function TikTokAccountSettings({
   const capabilities = capabilitiesState.capabilities;
   const privacyLevel = getStringSetting(settings, "privacyLevel", "");
   const brandedContent = getBooleanSetting(settings, "brandedContent", false);
-  const commercialContentEnabled =
-    getBooleanSetting(settings, "commercialContentDisclosureEnabled", false) ||
-    getBooleanSetting(settings, "brandOrganic", false) ||
-    brandedContent;
 
   return (
     <div className="mt-3 grid gap-3">
@@ -2595,47 +2601,6 @@ function TikTokAccountSettings({
         </div>
       </fieldset>
 
-      <fieldset>
-        <legend className="text-xs font-bold text-foreground">Commercial content</legend>
-        <div className="mt-2 grid gap-2">
-          <SettingCheckbox
-            checked={commercialContentEnabled}
-            description="Turn this on only when this post promotes a business or brand."
-            label="Content disclosure"
-            onChange={(checked) => {
-              onChange("commercialContentDisclosureEnabled", checked);
-              if (!checked) {
-                onChange("brandOrganic", false);
-                onChange("brandedContent", false);
-              }
-            }}
-          />
-          {commercialContentEnabled ? (
-            <div className="grid gap-2 border-l-2 border-primary/30 pl-3 sm:grid-cols-2">
-              <SettingCheckbox
-                checked={getBooleanSetting(settings, "brandOrganic", false)}
-                description={getBooleanSetting(settings, "brandOrganic", false) ? "Your video will be labeled as ‘Promotional content’." : undefined}
-                label="Your brand"
-                onChange={(checked) => onChange("brandOrganic", checked)}
-              />
-              <SettingCheckbox
-                checked={brandedContent}
-                description={brandedContent ? "Your video will be labeled as ‘Paid partnership’." : undefined}
-                label="Branded content"
-                onChange={(checked) => {
-                  onChange("brandedContent", checked);
-                  if (checked && privacyLevel === "SELF_ONLY") onChange("privacyLevel", "");
-                }}
-              />
-            </div>
-          ) : null}
-        </div>
-      </fieldset>
-      <SettingCheckbox
-        checked={getBooleanSetting(settings, "musicUsageConfirmed", false)}
-        label="By posting, you agree to TikTok's Music Usage Confirmation."
-        onChange={(checked) => onChange("musicUsageConfirmed", checked)}
-      />
     </div>
   );
 }
@@ -2691,6 +2656,7 @@ function getDefaultPublishingSettings(
 
 function getPublishingSettingsError(params: {
   connections: SocialConnection[];
+  requireTikTokMusicConfirmation?: boolean;
   settings: Record<string, ConnectionPublishingSettings>;
   tiktokCapabilities: Record<string, TikTokCapabilitiesState>;
 }) {
@@ -2945,16 +2911,7 @@ function getStatusPreviewMessage(params: {
 }
 
 function getTimezoneOptions(currentTimezone: string) {
-  return Array.from(
-    new Set([
-      currentTimezone,
-      "UTC",
-      "Asia/Calcutta",
-      "America/New_York",
-      "America/Los_Angeles",
-      "Europe/London",
-    ]),
-  );
+  return getSchedulingTimeZoneOptions(currentTimezone);
 }
 
 function useLockBodyScroll() {

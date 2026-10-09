@@ -1,5 +1,11 @@
 // Dependency-free policy shared with the web scheduler. Kept in the worker
 // source tree so the independently built worker can compile it unchanged.
+export function resolveTikTokDirectPostAuditStatus(value: string | undefined) {
+  // Direct Post audit approval is confirmed. Retain an explicit override for
+  // private-testing environments and use the same default in both runtimes.
+  return (value ?? "true").trim().toLowerCase() === "true";
+}
+
 export const TIKTOK_PRIVATE_ACCOUNT_REQUIRED_MESSAGE =
   "TikTok requires a private account and Only me post visibility while UGC Pilot's Direct Post app is unaudited. Set the selected TikTok account to private in TikTok, or choose a private connected account, then try again. Only me alone is not enough.";
 

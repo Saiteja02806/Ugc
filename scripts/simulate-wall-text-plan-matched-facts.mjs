@@ -28,17 +28,19 @@ if (!process.env.OPENAI_API_KEY?.trim()) {
 console.log(`Starting a ${cardCount}-card Wall fact-selection simulation with no database writes.`);
 
 const [
-  { buildWallTextPlanningContext },
+  { buildWallTextPlanningContext, WALL_TEXT_CONTENT_PLAN_PROMPT_VERSION },
   { buildWallTextFactGroundingAssignments, selectWallTextGroundingFact },
   { createWallTextLayout },
   { generateBusinessTrendingWallTextIdeas },
   { generateWallTextContentPlanChunk },
+  { WALL_TEXT_PROMPT_VERSION },
 ] = await Promise.all([
   import("../lib/trending/wall-text-content-plan.ts"),
   import("../lib/trending/wall-text-grounding.ts"),
   import("../lib/trending/wall-text-feed-logic.ts"),
   import("../lib/trending/generate-trending-wall-text-ideas.ts"),
   import("../worker/dist/lib/wall-text-content-plan.js"),
+  import("../lib/trending/wall-prompt.ts"),
 ]);
 
 // This fixture has the same decision shape as the reported production issue:
@@ -145,8 +147,8 @@ const report = generated.map((idea) => {
 console.log(JSON.stringify({
   databaseWrites: false,
   generatedCards: report,
-  plannerPromptVersion: "wall-text-content-plan-reader-profiles-v15-fact-first-structured-order",
-  writerPromptVersion: "wall-text-writer-prompt-v26-plan-matched-fact-business-name-role",
+  plannerPromptVersion: WALL_TEXT_CONTENT_PLAN_PROMPT_VERSION,
+  writerPromptVersion: WALL_TEXT_PROMPT_VERSION,
 }, null, 2));
 
 function loadEnvFile(filePath) {

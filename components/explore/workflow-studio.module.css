@@ -1,0 +1,166 @@
+/* Presentation only: shared by the two workflows, never the standalone generators. */
+.studio {
+  --workflow-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.studio button,
+.studio a {
+  touch-action: manipulation;
+  transition-property: color, background-color, border-color, box-shadow, opacity;
+  transition-duration: 140ms;
+}
+
+.header {
+  min-height: 76px;
+}
+
+.composer,
+.chat form[data-layout] {
+  border-radius: 28px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.1);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.chat form[data-layout] {
+  border-color: color-mix(in srgb, var(--border) 65%, transparent);
+}
+
+.chat form[data-layout]:focus-within {
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+.chat [role="tabpanel"] {
+  animation: reveal 180ms var(--workflow-ease);
+}
+
+.chat [role="tabpanel"][hidden] {
+  animation: none;
+}
+
+.tab {
+  border-radius: 999px;
+  transition: color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
+}
+
+.mediaFrame {
+  border-radius: 20px;
+  transition: box-shadow 160ms ease;
+}
+
+.gallery {
+  container: workflow-gallery / inline-size;
+}
+
+.galleryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@container workflow-gallery (min-width: 660px) {
+  .galleryGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+}
+
+@container workflow-gallery (min-width: 1000px) {
+  .galleryGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.selection {
+  animation: reveal 180ms var(--workflow-ease);
+}
+
+.panelEnter {
+  animation: panel-in 220ms var(--workflow-ease);
+}
+
+.floating,
+.dialog,
+.drawer {
+  --workflow-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Reused settings menus are portaled outside the studio. Scope their visual
+   treatment to a page that actually contains this module's studio root. */
+:global(body):has(.studio) :global([data-slot="popover-content"]) {
+  --workflow-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  border-radius: 24px;
+}
+
+:global(body):has(.studio) :global([data-ai-studio-setting-option]) {
+  border-radius: 999px;
+  transition: color 140ms ease, background-color 140ms ease;
+}
+
+.floating[data-open],
+.dialog[data-open],
+:global(body):has(.studio) :global([data-slot="popover-content"][data-open]) {
+  animation: reveal 180ms var(--workflow-ease);
+}
+
+.floating[data-closed],
+.dialog[data-closed],
+:global(body):has(.studio) :global([data-slot="popover-content"][data-closed]) {
+  animation: conceal 140ms ease-in;
+}
+
+.drawer[data-open] {
+  animation: panel-in 220ms var(--workflow-ease);
+}
+
+.drawer[data-closed] {
+  animation: panel-out 180ms ease-in;
+}
+
+.dialog :global([data-slot="dialog-close"]),
+.drawer :global([data-slot="dialog-close"]) {
+  border-radius: 999px;
+}
+
+.overlay[data-open],
+.overlay[data-closed] {
+  animation-duration: 180ms;
+}
+
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes conceal {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes panel-in {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes panel-out {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(16px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio *,
+  .floating,
+  .floating *,
+  .dialog,
+  .dialog *,
+  .drawer,
+  .drawer *,
+  .overlay,
+  .overlay *,
+  :global(body):has(.studio) :global([data-slot="popover-content"]),
+  :global(body):has(.studio) :global([data-slot="popover-content"]) * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "ugc-pilot": {
+      "type": "http",
+      "url": "https://mcp.getugcpilot.com/mcp"
+    }
+  }
+}

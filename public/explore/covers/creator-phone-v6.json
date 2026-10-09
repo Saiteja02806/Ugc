@@ -1,0 +1,137 @@
+{
+  "basename": "creator-phone-v6",
+  "width": 960,
+  "height": 540,
+  "fps": 24,
+  "frames": 216,
+  "duration": 9,
+  "posterTime": 0.75,
+  "stages": [
+    {
+      "name": "framed-iphone-and-kinetic-title",
+      "startFrame": 0,
+      "endFrame": 34
+    },
+    {
+      "name": "natural-phone-to-real-handset",
+      "startFrame": 30,
+      "endFrame": 73
+    },
+    {
+      "name": "creator-result",
+      "startFrame": 73,
+      "endFrame": 143
+    },
+    {
+      "name": "alternate-example",
+      "startFrame": 141,
+      "endFrame": 195
+    },
+    {
+      "name": "clean-phone-return-with-caption",
+      "startFrame": 189,
+      "endFrame": 216
+    }
+  ],
+  "caption": {
+    "phrases": [
+      {
+        "text": "Your app.",
+        "startFrame": 0,
+        "endFrame": 34
+      },
+      {
+        "text": "On their phone.",
+        "startFrame": 45,
+        "endFrame": 77
+      },
+      {
+        "text": "Create your video.",
+        "startFrame": 75,
+        "endFrame": 144
+      },
+      {
+        "text": "Your app.",
+        "startFrame": 202,
+        "fullyVisibleFrame": 212,
+        "endFrame": 216,
+        "continuesAcrossLoop": true
+      }
+    ],
+    "noRepeatedHeadlineForSecondCreator": true,
+    "loopBoundary": "Both input text layers are fully visible in the final frames and at frame zero, at identical positions. The closing phrase begins returning at 8.4 seconds; both words are fully visible by 8.8 seconds."
+  },
+  "motion": {
+    "editor": "After Effects",
+    "project": "design/explore-phone-motion/Explore Phone Cover — Clean Loop v6.aep",
+    "mainComp": "Explore Phone Cover — Clean Loop v6",
+    "nativeRenderTemplate": "H.264 - Match Render Settings - 40 Mbps",
+    "style": "Explore charcoal stage, orange keyword accents, supplied iPhone at natural proportions, clean movement and phrase-based kinetic sans serif",
+    "fonts": [
+      "SegoeUIVariable-BoldDisplay"
+    ],
+    "sourceTextEditable": true,
+    "screenFit": "Uniformly scaled phone moves toward creator 1 handset at 3 seconds. Rotation preserves the image geometry; frame 73 sharply hands off to the original footage. The physical handset is not forced to the exact mockup shape.",
+    "creator1": {
+      "source": "Media/creator-1.mp4",
+      "sourceTime": "composition time + 1.25 seconds",
+      "anchorPoint": [
+        360,
+        575
+      ],
+      "position": [
+        717,
+        270
+      ],
+      "scale": 67.5
+    },
+    "creator2": {
+      "source": "Media/creator-2.mp4",
+      "sourceTime": "composition time + 0.75 seconds",
+      "anchorPoint": [
+        360,
+        605
+      ],
+      "position": [
+        237,
+        270
+      ],
+      "scale": 62.5
+    },
+    "return": "The framed iPhone returns using native 3D Y rotation and uniform scale, without contour graphics. Your app. reappears on the right and stays fully visible across the nine-second loop boundary.",
+    "demoIncluded": false,
+    "footageBlur": false,
+    "playbackControls": false,
+    "screenArtBaked": true,
+    "referenceMediaIncluded": false,
+    "phoneImage": "Media/iphone-task-agenda.png",
+    "phoneImageDimensions": [
+      375,
+      666
+    ],
+    "phoneSurfaceDimensions": [
+      400,
+      800
+    ],
+    "phoneImageScale": [
+      132.2,
+      132.2
+    ],
+    "preserveSourceAspectRatio": true,
+    "scaleConstraint": "Main phone Scale expression locks X, Y and Z to the same value. No Corner Pin or independent width/height scale is applied to the supplied image.",
+    "frameArtBaked": true,
+    "decorativeOutlines": false,
+    "disabledDecorativeLayers": [
+      "DEPTH — trailing app plane",
+      "RETURN — contour into next loop",
+      "Phone v6 — Framed iPhone / TRAVEL — edge light"
+    ],
+    "openingContinuity": "The phone continues a small uniform scale/position drift between its early settled pose and transfer, preventing a frozen interval after removing the edge-light graphics."
+  },
+  "video": "creator-phone-v6.mp4",
+  "poster": "creator-phone-v6.webp",
+  "bytes": 1250866,
+  "silent": true,
+  "fastStart": true,
+  "fullDecodeVerified": true
+}

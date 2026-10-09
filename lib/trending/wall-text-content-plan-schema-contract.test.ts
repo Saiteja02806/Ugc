@@ -197,7 +197,7 @@ test("uses five parent fields for five child ideas without prewriting Wall copy"
     /creativeSeed: The central human observation or tension\. It is not final copy/i,
     /audienceContext: The supported audience segment experiencing that situation\. It must not mean everyone/i,
     /humanMoment: One concrete, recognisable everyday event or situation/i,
-    /emotionalTension: The inner feeling or conflict created by that moment/i,
+    /emotionalTension: The inner feeling or conflict only when it follows naturally from that moment/i,
     /supportedAngle: The factual connection to the business, based only on approved facts\. It is not a sales claim or a promise/i,
   ]) {
     assert.match(planner, definition);
@@ -218,22 +218,22 @@ test("uses five parent fields for five child ideas without prewriting Wall copy"
   assert.match(planner, /OPENAI_WALL_TEXT_PLAN_REASONING_EFFORT/);
   assert.match(
     planner,
-    /wall-text-content-plan-reader-profiles-v15-fact-first-structured-order/i,
+    /wall-text-content-plan-reader-profiles-v19-four-copy-fixes/i,
   );
   assert.match(appPlan, /WALL_TEXT_CONTENT_PLAN_MODEL = "gpt-5\.6-luna"/i);
   assert.match(
     appPlan,
-    /wall-text-content-plan-reader-profiles-v15-fact-first-structured-order/i,
+    /wall-text-content-plan-reader-profiles-v19-four-copy-fixes/i,
   );
 });
 
 test("stores a Wall item's exact private context and broad lane", () => {
   assert.match(itemContextMigration, /wall_text_content_plan_items[\s\S]*private_context jsonb/i);
   assert.match(planner, /getWallTextItemConceptLanes/);
-  assert.match(planner, /Every group of five must use five clearly different concrete reader situations/i);
-  assert.match(planner, /at least two of these change: the trigger, the main action, the setting, the point in the routine, the people involved, or the practical constraint/i);
-  assert.match(planner, /no more than three ideas may occupy the same situation family/i);
-  assert.match(planner, /At least five of the ten must locate the reader before, around, or after the main problem rather than reenacting its most obvious decision scene/i);
+  assert.match(planner, /Aim for five distinct supported situations or practical observations per group/i);
+  assert.match(planner, /vary at least two supported details/i);
+  assert.match(planner, /Never force a scene or outcome to meet a variety quota/i);
+  assert.match(planner, /concept lane and parent focus are suggestions subordinate to supported meaning and clarity/i);
   assert.match(planner, /assignedBriefSituationFocuses/);
   assert.match(planner, /current-plan situation focus/i);
   assert.match(planner, /first choose exactly one selectedFactId from that list/i);
@@ -430,9 +430,9 @@ test("checks Wall queue admission before plans or daily slots can be reserved", 
 test("keeps planning context private and removes format pressure from the Wall writer", () => {
   assert.match(
     finalWriter,
-    /if its humanMoment is concrete and emotionally relevant, retain that moment or its emotional core/i,
+    /check its moment against assignedBusinessFact before using it/i,
   );
-  assert.match(finalWriter, /do not manufacture a scene/i);
+  assert.match(finalWriter, /discard the unsupported scene and explain the fact directly/i);
   assert.match(finalWriter, /Do not print field names or treat creativeSeed as finished copy/i);
   assert.match(finalWriter, /clear paraphrase is valid/i);
   assert.match(finalWriter, /businessName is the product or brand label/i);

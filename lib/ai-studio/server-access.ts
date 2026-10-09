@@ -8,12 +8,14 @@ import {
 } from "@/lib/firebase/server-auth";
 
 const PRO_ACCESS_MESSAGE =
-  "An active Starter or Growth subscription is required for AI Studio generation.";
+  "Your free generation credits have been used. Choose Starter or Growth for more AI credits.";
 
 export async function isAIStudioProUser(user: VerifiedFirebaseUser) {
-  const subscription = await getUserSubscription(user.uid);
+  const subscription = await getUserSubscription(user.uid, { strict: true });
 
-  return subscription.isActive;
+  // "isPro" is the existing client capability flag. Free generation credits
+  // enable AI Studio without activating a subscription or other paid features.
+  return subscription.isActive || subscription.freeGenerationCredits.granted > 0;
 }
 
 export async function requireAIStudioProUser(request: Request) {

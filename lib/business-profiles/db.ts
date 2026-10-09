@@ -119,6 +119,7 @@ export type BusinessProfileRecord = {
   primaryGoals: PrimaryGoals;
   profileVersion: number;
   projectId: string;
+  sourceUrl: string | null;
   trendingTimezone: string | null;
   trendingWalkthroughCompletedAt: string | null;
   userId: string;
@@ -621,6 +622,7 @@ function mapProfile(row: BusinessProfileRow): BusinessProfileRecord {
     primaryGoals,
     profileVersion: row.profile_version,
     projectId: row.project_id,
+    sourceUrl: row.source_url ?? null,
     trendingTimezone: row.trending_timezone,
     trendingWalkthroughCompletedAt:
       row.trending_walkthrough_completed_at ?? null,

@@ -16,9 +16,9 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
       condition = !contains(
         [for job_type in split(",", var.worker_job_types) : trimspace(job_type)],
         "reaction_generation",
-      ) || can(regex(
-        "^https://[^/?#]+/tasks/jobs$",
-        trimspace(var.reaction_render_task_url),
+        ) || can(regex(
+          "^https://[^/?#]+/tasks/jobs$",
+          trimspace(var.reaction_render_task_url),
       ))
       error_message = "reaction_render_task_url must be the dedicated HTTPS Reaction worker /tasks/jobs endpoint whenever worker_job_types includes reaction_generation."
     }
@@ -263,6 +263,50 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
           secret_key_ref {
             secret  = var.runwayml_api_secret_id
             version = "latest"
+          }
+        }
+      }
+
+      dynamic "env" {
+        for_each = var.higgsfield_credentials_secret_id == "" ? [] : [var.higgsfield_credentials_secret_id]
+        content {
+          name = "HF_CREDENTIALS"
+          value_source {
+            secret_key_ref {
+              secret  = env.value
+              version = "latest"
+            }
+          }
+        }
+      }
+
+      env {
+        name  = "AUDIO_GENERATION_ENABLED"
+        value = tostring(var.enable_audio_generation)
+      }
+
+      dynamic "env" {
+        for_each = var.elevenlabs_api_key_secret_id == "" ? [] : [var.elevenlabs_api_key_secret_id]
+        content {
+          name = "ELEVENLABS_API_KEY"
+          value_source {
+            secret_key_ref {
+              secret  = env.value
+              version = "latest"
+            }
+          }
+        }
+      }
+
+      dynamic "env" {
+        for_each = var.elevenlabs_voice_api_key_secret_id == "" ? [] : [var.elevenlabs_voice_api_key_secret_id]
+        content {
+          name = "ELEVENLABS_VOICE_API_KEY"
+          value_source {
+            secret_key_ref {
+              secret  = env.value
+              version = "latest"
+            }
           }
         }
       }

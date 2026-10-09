@@ -8,8 +8,8 @@ import {
   Send,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 import { ProductLogoMark } from "@/components/brand/product-logo";
 import { buttonClassName } from "@/components/ui/button";
@@ -18,15 +18,36 @@ import {
   getFirebaseAuthErrorMessage,
   resendVerificationEmail,
 } from "@/lib/firebase/auth";
+import { getEmailSignInPath } from "@/lib/auth/email-policy";
+import { getPostSignInDestination } from "@/lib/billing/purchase-intent";
 
 export default function VerifyEmailPage() {
+  return <Suspense fallback={<main className="min-h-screen bg-background" />}><VerifyEmailContent /></Suspense>;
+}
+
+function VerifyEmailContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const intent = { plan: searchParams.get("plan") ?? undefined, billing: searchParams.get("billing") ?? undefined };
+  const signInPath = getEmailSignInPath(intent);
+  const successPath = getPostSignInDestination(searchParams);
   const { user, loading, refreshUser, signOut } = useAuth();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(
+    searchParams.get("delivery") === "failed"
+      ? "Your account was created, but we couldn't send the verification email. Request another below."
+      : null,
+  );
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (!resendCooldown) return;
+    const timer = window.setTimeout(() => setResendCooldown((seconds) => seconds - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [resendCooldown]);
 
   useEffect(() => {
     if (loading) {
@@ -34,14 +55,14 @@ export default function VerifyEmailPage() {
     }
 
     if (!user) {
-      router.replace("/sign-in");
+      router.replace(signInPath);
       return;
     }
 
     if (user.emailVerified) {
-      router.replace("/dashboard");
+      router.replace(successPath);
     }
-  }, [loading, router, user]);
+  }, [loading, router, signInPath, successPath, user]);
 
   async function handleRefreshVerification() {
     setIsRefreshing(true);
@@ -53,7 +74,7 @@ export default function VerifyEmailPage() {
 
       if (refreshedUser?.emailVerified) {
         setStatusMessage("Email verified. Opening your workspace…");
-        router.replace("/dashboard");
+        router.replace(successPath);
         return;
       }
 
@@ -71,8 +92,9 @@ export default function VerifyEmailPage() {
     setErrorMessage(null);
 
     try {
-      const refreshedUser = await resendVerificationEmail();
+      const refreshedUser = await resendVerificationEmail(intent);
       await refreshUser();
+      setResendCooldown(60);
 
       setStatusMessage(
         refreshedUser.emailVerified
@@ -93,7 +115,7 @@ export default function VerifyEmailPage() {
 
     try {
       await signOut();
-      router.replace("/sign-in");
+      router.replace(signInPath);
     } catch (error) {
       setErrorMessage(getFirebaseAuthErrorMessage(error));
       setIsSigningOut(false);
@@ -131,11 +153,11 @@ export default function VerifyEmailPage() {
               Check your inbox
             </h1>
             <p className="mt-3 text-sm leading-6 text-muted">
-              We sent a verification link to{" "}
+              Verify{" "}
               <span className="font-bold text-foreground">
                 {user?.email ?? "your email"}
               </span>
-              .
+              {" "}using the link in your inbox.
             </p>
           </div>
 
@@ -162,7 +184,7 @@ export default function VerifyEmailPage() {
             <button
               type="button"
               onClick={handleResendVerification}
-              disabled={loading || isRefreshing || isResending}
+              disabled={loading || isRefreshing || isResending || resendCooldown > 0}
               className={buttonClassName({
                 className: "h-12 w-full gap-2 rounded-2xl",
                 variant: "secondary",
@@ -176,7 +198,7 @@ export default function VerifyEmailPage() {
               ) : (
                 <Send className="size-4" aria-hidden="true" />
               )}
-              {isResending ? "Sending…" : "Resend verification email"}
+              {isResending ? "Sending…" : resendCooldown ? `Resend in ${resendCooldown}s` : "Resend verification email"}
             </button>
           </div>
 

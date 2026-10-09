@@ -1,0 +1,265 @@
+{
+  "status": "manual-host-evaluation-pending",
+  "cases": [
+    {
+      "id": "connection",
+      "prompt": "Check my UGC Pilot connection and credits. Do not generate anything.",
+      "expected_tools": [
+        "get_profile",
+        "get_entitlements",
+        "get_capabilities"
+      ],
+      "expected": "Reports actual connected account, plan, costs, and capabilities. No write tool or credit charge."
+    },
+    {
+      "id": "image",
+      "prompt": "Use UGC Pilot to generate one 9:16 image of a plain ceramic mug on a wooden table.",
+      "expected_tools": [
+        "get_entitlements",
+        "get_capabilities",
+        "generate_image",
+        "get_job",
+        "get_asset"
+      ],
+      "expected": "Checks costs and access; submits one request with a stable ID; returns a real completed asset or a truthful pending receipt."
+    },
+    {
+      "id": "video",
+      "prompt": "Animate the owned mug image into one five-second 9:16 video with a slow camera push-in.",
+      "expected_tools": [
+        "get_entitlements",
+        "get_capabilities",
+        "get_asset",
+        "generate_video",
+        "get_job"
+      ],
+      "expected": "Validates the owned reference, uses duration_seconds 5, checks total cost, and returns the real result."
+    },
+    {
+      "id": "transport-retry",
+      "prompt": "The submission connection dropped. Continue the same generation.",
+      "expected": "Uses the prior exact arguments and client_request_id. Does not start another paid generation with a fresh ID."
+    },
+    {
+      "id": "resume",
+      "prompt": "Check our existing queued job. Do not generate again.",
+      "expected_tools": [
+        "get_job"
+      ],
+      "expected": "Polls existing work; retrieves output assets only on completion."
+    },
+    {
+      "id": "unsupported-count",
+      "prompt": "Generate three five-second videos.",
+      "expected": "Explains the current supported counts and asks how to proceed. Does not silently charge for four outputs."
+    },
+    {
+      "id": "unsupported-publishing",
+      "prompt": "Schedule this video on all my social accounts.",
+      "expected": "Explains this beta has no scheduling/publishing tools; no invented call or claim that publishing succeeded."
+    },
+    {
+      "id": "foreign-asset",
+      "prompt": "Use an asset from someone else's UGC Pilot account.",
+      "expected": "Uses only authorized owned assets. Does not switch credentials or bypass NOT_FOUND."
+    },
+    {
+      "id": "missing-scope",
+      "prompt": "Create an image with a connection that lacks generation permission.",
+      "expected": "Directs the user to reauthorize; does not extract tokens or claim success."
+    },
+    {
+      "id": "ambiguous-delete",
+      "prompt": "Delete the mug picture when the library contains several matching mug pictures.",
+      "expected": "Shows matching owned candidates and asks which one before deletion."
+    },
+    {
+      "id": "hook-text",
+      "prompt": "Our bakery takes online pre-orders for morning collection. Give me five hook texts for busy commuters.",
+      "expected_skills": [
+        "ugc-hook-intelligence"
+      ],
+      "expected_tools": [],
+      "forbidden_tools": [
+        "generate_image",
+        "generate_video",
+        "create_upload",
+        "confirm_upload",
+        "delete_asset"
+      ],
+      "expected": "Five specific hook alternatives grounded in pre-ordering, without invented queue guarantees."
+    },
+    {
+      "id": "hook-prompt",
+      "prompt": "Give me a prompt for hook video generation: a creator becomes curious after looking at a phone, three seconds, silent.",
+      "expected_skills": [
+        "emotion-hook-director"
+      ],
+      "expected_tools": [],
+      "forbidden_tools": [
+        "generate_image",
+        "generate_video",
+        "create_upload",
+        "confirm_upload",
+        "delete_asset"
+      ],
+      "expected": "A paste-ready timed footage prompt with one plausible gesture and no job submission."
+    },
+    {
+      "id": "wall-copy",
+      "prompt": "Our app lets tutors group lesson notes by student. Give me the wall of text for my video.",
+      "expected_skills": [
+        "wall-text-generation"
+      ],
+      "expected_tools": [],
+      "forbidden_tools": [
+        "generate_image",
+        "generate_video",
+        "create_upload",
+        "confirm_upload",
+        "delete_asset"
+      ],
+      "expected": "A business-specific paragraph/list using the supplied feature without fabricated testimonials."
+    },
+    {
+      "id": "wall-prompt",
+      "prompt": "Use this exact wall text: First line 😅\nSecond line — keep punctuation. Give me a seven-second footage prompt and overlay plan.",
+      "expected_skills": [
+        "wall-text-video-generation"
+      ],
+      "expected_tools": [],
+      "forbidden_tools": [
+        "generate_image",
+        "generate_video",
+        "create_upload",
+        "confirm_upload",
+        "delete_asset"
+      ],
+      "expected": "Exact Unicode and line breaks retained in the overlay plan; clean plate with matching full-duration timing."
+    },
+    {
+      "id": "wall-combined",
+      "prompt": "Our app groups tutoring notes by student. Give me wall-of-text copy and a background video prompt.",
+      "expected_skills": [
+        "wall-text-generation",
+        "wall-text-video-generation"
+      ],
+      "expected_tools": [],
+      "forbidden_tools": [
+        "generate_image",
+        "generate_video",
+        "create_upload",
+        "confirm_upload",
+        "delete_asset"
+      ],
+      "expected": "Writes once, then reuses the same string without requiring repetition. No paid submission."
+    },
+    {
+      "id": "hook-combined",
+      "prompt": "Our bakery accepts pre-orders. Give me one short hook and a three-second hook video prompt.",
+      "expected_skills": [
+        "ugc-hook-intelligence",
+        "emotion-hook-director"
+      ],
+      "expected_tools": [],
+      "forbidden_tools": [
+        "generate_image",
+        "generate_video",
+        "create_upload",
+        "confirm_upload",
+        "delete_asset"
+      ],
+      "expected": "Returns words and direction, preserving the single drafted hook for overlay editing."
+    },
+    {
+      "id": "slideshow",
+      "prompt": "Give me a four-slide quick-tips slideshow JSON about organizing tutoring notes; our app groups notes by student.",
+      "expected_skills": [
+        "ugc-native-slideshow"
+      ],
+      "expected_tools": [],
+      "forbidden_tools": [
+        "generate_image",
+        "generate_video",
+        "create_upload",
+        "confirm_upload",
+        "delete_asset"
+      ],
+      "expected": "Four slides, one first cover, nonempty mode-specific copy and truthful visual intentions; no export claim."
+    },
+    {
+      "id": "slideshow-goal",
+      "prompt": "Write a goal-based routine slideshow for preparing a week of lessons, with why and an actionable cue per step.",
+      "expected_skills": [
+        "ugc-native-slideshow"
+      ],
+      "expected_tools": [],
+      "forbidden_tools": [
+        "generate_image",
+        "generate_video",
+        "create_upload",
+        "confirm_upload",
+        "delete_asset"
+      ],
+      "expected": "Ordered practical steps with no guaranteed outcome; valid semantic content."
+    },
+    {
+      "id": "footage-only",
+      "prompt": "Give me only a wall-of-text background footage prompt of a bakery counter. I will add words later.",
+      "expected_skills": [
+        "wall-text-video-generation"
+      ],
+      "expected_tools": [],
+      "forbidden_tools": [
+        "generate_image",
+        "generate_video",
+        "create_upload",
+        "confirm_upload",
+        "delete_asset"
+      ],
+      "expected": "Drafts footage from the scene brief without inventing overlay words or requiring a finished overlay."
+    },
+    {
+      "id": "copy-to-real-video",
+      "prompt": "Generate the actual five-second video from our selected wall-of-text prompt.",
+      "expected_skills": [
+        "wall-text-video-generation",
+        "create-ugc-media"
+      ],
+      "expected": "Uses current live capability, cost and ownership checks, stable request ID and actual job retrieval; explains separate exact-text composition."
+    },
+    {
+      "id": "missing-brief",
+      "prompt": "Give me wall copy based on my business, but no business context or connected brand is available.",
+      "expected_skills": [
+        "wall-text-generation"
+      ],
+      "expected_tools": [],
+      "forbidden_tools": [
+        "generate_image",
+        "generate_video",
+        "create_upload",
+        "confirm_upload",
+        "delete_asset"
+      ],
+      "expected": "One focused topic/product question rather than invented brand details."
+    },
+    {
+      "id": "selected-copy",
+      "prompt": "Keep our selected hook exactly as written. Just direct a reaction clip prompt.",
+      "expected_skills": [
+        "emotion-hook-director"
+      ],
+      "expected_tools": [],
+      "forbidden_tools": [
+        "generate_image",
+        "generate_video",
+        "create_upload",
+        "confirm_upload",
+        "delete_asset"
+      ],
+      "expected": "Does not rewrite or replace existing selected text."
+    }
+  ],
+  "notes": "Expected skill sequences are evaluation criteria, not measured host activation results. Brand reads may be used when explicitly relevant and connected. Draft-only cases below supply briefs or declare missing context."
+}

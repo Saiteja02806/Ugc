@@ -13,9 +13,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   uploadAIStudioReferenceMedia,
-  type AIStudioReferenceKind,
+  type AIStudioReferenceKind as UploadReferenceKind,
   type AIStudioReferenceMedia,
 } from "@/lib/ai-studio/reference-media-upload";
+type AIStudioReferenceKind = Exclude<UploadReferenceKind, "audio">;
 
 export function ReferenceMediaUpload({
   active = true,
@@ -202,12 +203,12 @@ export function ReferenceMediaUpload({
   );
 }
 
-const REFERENCE_ACCEPTS: Record<AIStudioReferenceKind, readonly string[]> = {
+const REFERENCE_ACCEPTS: Record<Exclude<AIStudioReferenceKind, "audio">, readonly string[]> = {
   image: ["image/jpeg", "image/png", "image/webp"],
   video: ["video/mp4", "video/quicktime", "video/webm"],
 };
 
-function getReferenceKind(file: File): AIStudioReferenceKind {
+function getReferenceKind(file: File): Exclude<AIStudioReferenceKind, "audio"> {
   return file.type.startsWith("video/") || /\.(mp4|mov|webm)$/i.test(file.name)
     ? "video"
     : "image";

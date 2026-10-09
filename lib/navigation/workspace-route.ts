@@ -21,9 +21,10 @@ type WorkspaceRouteDefinition = Omit<
 const workspaceRoutes: ReadonlyArray<WorkspaceRouteDefinition> = [
   { prefix: "/dashboard/billing", activeKey: "trending", access: "authentication" },
   { prefix: "/dashboard", activeKey: "trending", access: "profile" },
-  { prefix: "/create-content", activeKey: "create-content", access: "profile" },
   { prefix: "/ai-studio", activeKey: "ai-studio", access: "profile" },
   { prefix: "/analytics", activeKey: "analytics", access: "profile" },
+  { prefix: "/explore", activeKey: "explore", access: "profile" },
+  { prefix: "/audio-generation", activeKey: "audio-generation", access: "authentication" },
   { prefix: "/viral", activeKey: "explore", access: "profile" },
   { prefix: "/library", activeKey: "library", access: "profile" },
   { prefix: "/scheduling", activeKey: "scheduling", access: "profile" },

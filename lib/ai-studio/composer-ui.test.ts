@@ -50,7 +50,7 @@ test("the image prompt uses one unified composer surface", () => {
   );
   assert.match(
     composer,
-    /"max-h-36 min-h-10 rounded-none px-0 py-0 text-base font-normal leading-7"/,
+    /"max-h-36 min-h-10 rounded-none px-0 py-0 font-normal", compact \? "text-sm leading-6" : "text-base leading-7"/,
   );
   assert.match(composer, /layout === "unified"\s*\?\s*"flex"/);
 });
@@ -69,7 +69,7 @@ test("the unified composer is narrower without squeezing standard layouts", () =
 test("the unified composer stays compact while supporting multiline prompts", () => {
   assert.match(
     composer,
-    /const minimumHeight = layout === "unified" \? 40 : 64;/,
+    /const minimumHeight = compact \? 88 : layout === "unified" \? 40 : 64;/,
   );
   assert.match(
     composer,
@@ -96,7 +96,8 @@ test("image and video controls send selected settings to generation APIs", () =>
   assert.match(videoWorkspace, /body: JSON\.stringify\(\{[\s\S]*?aspectRatio,[\s\S]*?quantity,/);
   assert.match(imageWorkspace, /ariaLabel="Image model"/);
   assert.match(imageWorkspace, /Nano Banana 2/);
-  assert.match(imageWorkspace, /GPT Image/);
+  assert.match(imageWorkspace, /Seedream 5\.0 Pro/);
+  assert.doesNotMatch(imageWorkspace, /GPT Image|FLUX/);
   assert.match(imageWorkspace, /model,[\s\S]*?quantity,/);
   assert.match(videoWorkspace, /ariaLabel="Video model"/);
   assert.match(videoWorkspace, /Google Omni/);
@@ -251,7 +252,7 @@ test("video references start empty and offer optional creator references", () =>
 
 test("AI Studio keeps direct image and video references optional outside Explore Recreate", () => {
   assert.match(imageWorkspace, /allowedKinds=\{\["image"\]\}/);
-  assert.match(imageWorkspace, /referenceImageUrl: referenceImage\?\.asset\.url \?\? null/);
+  assert.match(imageWorkspace, /referenceImageUrl: referenceImage\?\.asset\.url \?\? recreateView\?\.referenceImageUrl \?\? null/);
   assert.match(
     videoWorkspace,
     /allowedKinds=\{isExploreRecreate \? \["image"\] : \["image", "video"\]\}/,

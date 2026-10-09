@@ -1,4 +1,5 @@
 const DEFAULT_RUNWAY_DAILY_CREDIT_LIMIT = 100;
+export const RUNWAY_SEEDREAM_1K_IMAGE_CREDITS = 5;
 
 const RUNWAY_VIDEO_CREDITS_PER_SECOND = {
   aleph2: 28,
@@ -96,7 +97,9 @@ export async function assertRunwayDailyCreditBudget(
       dailyGenerations *
         estimateRunwayVideoCredits(model, RUNWAY_HOOK_VIDEO_DURATION_SECONDS)
     );
-  }, 0);
+  }, 0) +
+    Math.max(0, organization.usage.models.seedream5_pro?.dailyGenerations ?? 0) *
+      RUNWAY_SEEDREAM_1K_IMAGE_CREDITS;
   const usedCredits = Math.max(
     reportedCredits,
     estimatedCreditsFromDailyGenerations,

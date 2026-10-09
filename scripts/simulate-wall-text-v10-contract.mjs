@@ -51,9 +51,9 @@ const samples = [
   },
   {
     expectedFailure:
-      "Wall-of-text copy cannot fit five to eight balanced lines at the fixed 52px font size.",
-    name: "33-words-long-phrases-rejected",
-    text: "Scoop after scoop from a family casserole leaves you guessing portions, but a quick photo with Cal AI's depth sensor gives a volume-based calorie and nutrient estimate that restores confidence in your tracking.",
+      "Wall-of-text copy cannot fit five to eight balanced lines at the fixed 50px font size.",
+    name: "33-long-words-rejected",
+    text: `${Array(33).fill("mischaracterization").join(" ")}.`,
   },
 ];
 
@@ -99,7 +99,7 @@ for (const sample of samples) {
   assert.ok(lines.every((line) => countWords(line) >= 2));
   assert.equal(content.finalLayout.fontFamily, "Arial");
   assert.equal(content.finalLayout.fontWeight, 700);
-  assert.equal(content.finalLayout.fontSizePx, 52);
+  assert.equal(content.finalLayout.fontSizePx, 50);
   assert.equal(content.layoutVersion, "wall-text-overlay-v13");
   assert.equal(content.finalLayout.version, "wall-text-final-layout-v9");
 

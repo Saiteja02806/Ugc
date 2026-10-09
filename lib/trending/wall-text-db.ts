@@ -2024,8 +2024,28 @@ export async function getSavedWallTextDraft(params: {
   return (await hydrateSavedWallTextDrafts([assignment], params.userId))[0] ?? null;
 }
 
+/** Resolve the owned creative before an explicit schedule confirmation selects
+ * it. This also permits a previously skipped post to be reconsidered safely. */
+export async function getWallTextSchedulingAssignment(params: {
+  assignmentId: string;
+  userId: string;
+}) {
+  const { data: assignment, error } = await getClient()
+    .from("user_wall_text_assignments")
+    .select("id,wall_text_creative_id")
+    .eq("id", params.assignmentId)
+    .eq("user_id", params.userId)
+    .in("state", ["active", "selected", "completed_skipped"])
+    .maybeSingle();
+
+  if (error) throw new Error(`Could not verify this Wall-of-text selection: ${error.message}`);
+  return assignment
+    ? { assignmentId: assignment.id, creativeId: assignment.wall_text_creative_id }
+    : null;
+}
+
 /**
- * Loads a reviewed Wall-of-text assignment for internal rendering or
+ * Loads a selected Wall-of-text assignment for internal rendering or
  * scheduling. Selection removes it from the daily feed; it does not mean the
  * user saved it to Creative Assets.
  */
@@ -2586,7 +2606,7 @@ function parseCurrentWallTextContent(
           ![400, 600, LEGACY_WALL_TEXT_FONT_WEIGHT].includes(
             Number(finalLayout.fontWeight),
           )) ||
-    (isArialBoldV13 && Number(finalLayout.fontSizePx) !== 52) ||
+    (isArialBoldV13 && ![50, 52].includes(Number(finalLayout.fontSizePx))) ||
     ![36, 38, 40, 42, 44, 46, 48, 50, 52].includes(Number(finalLayout.fontSizePx)) ||
     typeof finalLayout.lineHeightPx !== "number" ||
     finalLayout.lineHeightPx <= 0 ||

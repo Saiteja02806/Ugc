@@ -1,0 +1,38 @@
+{
+  "width": 960,
+  "height": 540,
+  "fps": 24,
+  "frames": 552,
+  "duration": 23,
+  "bytes": 2768002,
+  "soloWidth": 620,
+  "sources": [
+    {
+      "source": "Influencer_presenting_productivi_20261002151259.mp4",
+      "frames": 240,
+      "splitStart": 4
+    },
+    {
+      "source": "final_opal.mp4",
+      "frames": 240,
+      "splitStart": 7
+    }
+  ],
+  "stages": [
+    {
+      "name": "diagonal",
+      "frames": 72,
+      "startFrame": 0
+    },
+    {
+      "name": "video-1",
+      "frames": 240,
+      "startFrame": 72
+    },
+    {
+      "name": "video-2",
+      "frames": 240,
+      "startFrame": 312
+    }
+  ]
+}

@@ -10,6 +10,7 @@ import {
   Image as ImageIcon,
   Loader2,
   Pencil,
+  Pause,
   Play,
   Plus,
   RefreshCw,
@@ -25,6 +26,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/contexts/auth-context";
+import { VideoPreview } from "@/components/media/video-preview";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -59,6 +61,7 @@ import type {
   MediaSourceType,
 } from "@/lib/media/types";
 import { cn } from "@/lib/utils";
+import { getVideoPreviewAspectRatio } from "@/lib/media/video-preview";
 
 type MediaListResponse =
   | { assets: MediaAsset[]; ok: true }
@@ -131,7 +134,7 @@ export function UserMediaCollection({
   const [groups, setGroups] = useState<CreativeAssetGroup[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [aspectRatioMode, setAspectRatioMode] = useState<AspectRatioMode>(
-    collection === "video" ? "9:16" : "adaptive",
+    "adaptive",
   );
   const [uploadTasks, setUploadTasks] = useState<UploadTask[]>([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -939,12 +942,12 @@ export function UserMediaCollection({
       aspectRatioMode === "9:16" ||
       (aspectRatioMode === "adaptive" && collection === "video")
     ) {
-      return "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5";
+      return "grid grid-cols-2 items-start sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5";
     }
     if (aspectRatioMode === "1:1") {
-      return "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3.5";
+      return "grid grid-cols-2 items-start sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3.5";
     }
-    return "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5";
+    return "grid grid-cols-1 items-start sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5";
   }, [aspectRatioMode, collection]);
 
   return (
@@ -1737,6 +1740,16 @@ function MediaAssetCard({
   const statusVariant = getCreativeAssetCardStatusVariant(editProject);
 
   const [isPlaying, setIsPlaying] = useState(false);
+  const [hasPlayed, setHasPlayed] = useState(false);
+  const [previewAspect, setPreviewAspect] = useState<{ src: string; value: string } | null>(null);
+  const aspectRatio = previewAspect?.src === displayState.playbackUrl
+    ? previewAspect.value
+    : getVideoPreviewAspectRatio(asset);
+
+  function togglePlayback() {
+    if (!isPlaying) setHasPlayed(true);
+    setIsPlaying((current) => !current);
+  }
 
   const cardAspectClass = useMemo(() => {
     if (aspectRatioMode === "9:16") return "aspect-[9/16]";
@@ -1758,6 +1771,9 @@ function MediaAssetCard({
           isDarkVariant ? "bg-[#090b10]" : "bg-[#090b10]",
           cardAspectClass,
         )}
+        style={aspectRatioMode === "adaptive" && !isImage
+          ? { aspectRatio }
+          : undefined}
       >
         {isImage ? (
           <Image
@@ -1768,56 +1784,31 @@ function MediaAssetCard({
             className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
             sizes="(max-width: 640px) 100vw, 25vw"
           />
-        ) : isPlaying ? (
-          <video
-            key={displayState.playbackUrl}
-            src={displayState.playbackUrl}
-            poster={asset.thumbnailUrl || undefined}
-            preload="auto"
-            autoPlay
-            controls
-            playsInline
-            className="size-full object-cover"
-            onEnded={() => setIsPlaying(false)}
-          />
         ) : (
-          <div
-            role="button"
-            tabIndex={0}
-            aria-label={`Play ${asset.title}`}
-            onClick={() => setIsPlaying(true)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                setIsPlaying(true);
-              }
-            }}
-            className="relative size-full cursor-pointer"
-          >
-            {asset.thumbnailUrl ? (
-              <Image
-                src={asset.thumbnailUrl}
-                alt={asset.title}
-                fill
-                unoptimized
-                className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                sizes="(max-width: 640px) 100vw, 25vw"
-              />
-            ) : (
-              <video
-                src={displayState.playbackUrl}
-                preload="none"
-                muted
-                playsInline
-                className="size-full object-cover"
-              />
-            )}
-            <div className="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100">
-              <span className="flex size-10 items-center justify-center rounded-full border border-white/40 bg-white/95 text-slate-950 shadow-md backdrop-blur-md transition-all group-hover:scale-105 active:scale-95">
-                <Play className="ml-0.5 size-4 fill-current text-current" aria-hidden="true" />
-              </span>
-            </div>
-          </div>
+          <>
+            <VideoPreview
+              src={displayState.playbackUrl}
+              poster={displayState.playbackUrl === asset.url ? asset.thumbnailUrl : null}
+              title={asset.title}
+              onAspectRatioChange={(value) => setPreviewAspect({ src: displayState.playbackUrl, value })}
+              playing={isPlaying}
+              controls={isPlaying}
+              muted={false}
+              onPlaybackStateChange={setIsPlaying}
+            />
+            {!isPlaying ? (
+              <button
+                type="button"
+                aria-label={`Play ${asset.title} preview`}
+                onClick={togglePlayback}
+                className="absolute inset-0 flex items-center justify-center bg-black/10 opacity-0 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white"
+              >
+                <span className="flex size-10 items-center justify-center rounded-full bg-white/95 text-slate-950 shadow-md">
+                  <Play className="ml-0.5 size-4 fill-current text-current" aria-hidden="true" />
+                </span>
+              </button>
+            ) : null}
+          </>
         )}
 
         {/* Ratio & Duration Badges Overlay */}
@@ -1859,7 +1850,18 @@ function MediaAssetCard({
             </Badge>
           </div>
         </div>
-        <div className="mt-3 flex items-center gap-2">
+        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_32px] gap-2">
+          {!isImage ? (
+            <button
+              type="button"
+              onClick={togglePlayback}
+              aria-label={`${isPlaying ? "Pause" : hasPlayed ? "Resume" : "Play"} ${asset.title}`}
+              className="col-span-2 inline-flex h-8 items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white/95 px-2.5 text-xs font-semibold text-slate-950 shadow-xs hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            >
+              {isPlaying ? <Pause className="size-3.5" aria-hidden="true" /> : <Play className="size-3.5 fill-current" aria-hidden="true" />}
+              {isPlaying ? "Pause" : hasPlayed ? "Resume" : "Play"}
+            </button>
+          ) : null}
           {!isImage ? (
             <Link
               href={getCreativeAssetEditorHref(asset.id)}

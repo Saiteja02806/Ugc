@@ -3,22 +3,12 @@ export type YouTubeBetaIdentity = {
   emailVerified: boolean | null | undefined;
 };
 
-/** Approved YouTube beta identities are deliberately auditable in source. */
-export const YOUTUBE_BETA_APPROVED_EMAILS: readonly string[] = [
-  "vtu19403@veltech.edu.in",
-  "m28013655@gmail.com",
-];
-
+/**
+ * YouTube is available to every verified user. Keep the legacy helper name so
+ * OAuth, scheduling, retries, and analytics share the same rollout policy.
+ */
 export function hasYouTubeBetaAccess(
   identity: YouTubeBetaIdentity | null | undefined,
 ) {
-  if (!identity?.emailVerified || !identity.email) {
-    return false;
-  }
-
-  return YOUTUBE_BETA_APPROVED_EMAILS.includes(normalizeEmail(identity.email));
-}
-
-function normalizeEmail(value: string) {
-  return value.trim().toLowerCase();
+  return identity?.emailVerified === true;
 }

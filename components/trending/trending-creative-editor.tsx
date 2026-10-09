@@ -1,4 +1,6 @@
 "use client";
+import localFont from "next/font/local";
+import { CAROUSEL_BODY_FONT_SIZE, CAROUSEL_HEADING_FONT_SIZE, CAROUSEL_HOOK_FONT_SIZE, CAROUSEL_TEXT_BLOCK_GAP, getCarouselBodyBlocks } from "@/lib/carousel/text-presentation";
 
 import {
   Check,
@@ -25,7 +27,9 @@ import {
 } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { CarouselDraggableOverlay } from "@/components/trending/carousel-draggable-overlay";
 import { WallTextSavedImage } from "@/components/trending/wall-text-saved-image";
+import { WallTextEditOverlay, WallTextWidthControl } from "@/components/trending/wall-text-edit-overlay";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -53,13 +57,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { HookInlineSymbols } from "@/components/trending/hook-inline-symbols";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { MediaAsset } from "@/lib/media/types";
 import {
   clampNormalizedTextPosition,
   createHookEditContent,
   createWallTextEditContent,
+  updateWallTextEditBox,
   type NormalizedTextPosition,
   type TrendingCarouselEditContent,
   type TrendingCarouselEditSlide,
@@ -96,15 +100,23 @@ import {
   getWallTextEditorTypography,
   getWallTextLetterSpacing,
   getWallTextReviewCardCappedDimension,
+  getWallTextProportionalPreviewDimension,
   WALL_TEXT_INLINE_SAFE_PADDING,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
+  WALL_TEXT_SECTION_GAP,
+  WALL_TEXT_OUTLINE_WIDTH,
+  WALL_TEXT_RASTER_EDGE_GUARD,
 } from "@/lib/trending/wall-text-visual-style";
-import {
-  MAX_CURRENT_GENERATION_WALL_TEXT_WORDS,
-  MIN_CURRENT_GENERATION_WALL_TEXT_WORDS,
-} from "@/lib/trending/wall-text-text-logic";
+import { getWallTextManualBlocks, validateWallTextManualCopy, WALL_TEXT_MANUAL_MAX_CHARACTERS } from "@/lib/trending/wall-text-manual-copy";
 import { getWallTextRenderBlocks } from "@/lib/trending/wall-text-types";
 import { cn } from "@/lib/utils";
+
+const carouselInterTight = localFont({
+  src: "../../worker/src/assets/fonts/InterTight-VariableFont_wght.ttf",
+  display: "swap",
+  variable: "--font-carousel-inter-tight",
+  weight: "100 900",
+});
 
 type CreativeAssetGroup = {
   createdAt: string;
@@ -1154,6 +1166,9 @@ function EditorPreview({
     const previewPosition =
       structure2Layout?.storyPosition ?? slide.textPosition;
     const supportingText = slide.subtext;
+    const hasHeading = isStructure2
+      ? Boolean(slide.headline.trim() && supportingText)
+      : slide.hasHeading ?? Boolean(supportingText && slide.headline.trim());
 
     return (
       <div
@@ -1162,6 +1177,7 @@ function EditorPreview({
         }
         className={cn(
           "relative mx-auto w-full max-w-[340px] overflow-hidden rounded-xl border border-border bg-foreground-strong [container-type:inline-size]",
+          carouselInterTight.variable,
           slide.renderFormat === "1:1" ? "aspect-square" : "aspect-[4/5]",
         )}
       >
@@ -1177,8 +1193,12 @@ function EditorPreview({
         ) : (
           <CarouselEditorBackground slide={slide} />
         )}
-        <DraggableOverlay
+        <CarouselDraggableOverlay
           ariaLabel={`Move text for slide ${slide.slideNumber}`}
+          key={slide.slideId}
+          enabled={!showExactRender}
+          format={slide.renderFormat}
+          structureId={slide.structureId}
           bounds={
             isStructure2
               ? { maxX: 0.5, maxY: 0.88, minX: 0.5, minY: 0.12 }
@@ -1208,21 +1228,20 @@ function EditorPreview({
             >
               {slide.headline}
             </span>
-          ) : structure2Layout ? (
-            <Structure2StoryText layout={structure2Layout} />
           ) : isCover ? (
             <CarouselCoverText primaryText={slide.headline.trim() || supportingText} />
           ) : (
             <div className="w-[82cqw] text-center">
-              {slide.headline.trim() ? (
+              {slide.headline.trim() && hasHeading ? (
                 <CarouselOutlinedText kind="headline" text={slide.headline} />
               ) : null}
-              {supportingText ? (
-                <CarouselOutlinedText kind="body" text={supportingText} />
-              ) : null}
+              {getCarouselBodyBlocks(supportingText || (!hasHeading ? slide.headline : "")).map((text, index) => (
+                <CarouselOutlinedText key={index} kind="body" text={text} />
+              ))}
+              {slide.ctaText.trim() ? <CarouselOutlinedText kind="body" text={slide.ctaText} /> : null}
             </div>
           )}
-        </DraggableOverlay>
+        </CarouselDraggableOverlay>
       </div>
     );
   }
@@ -1253,10 +1272,7 @@ function EditorPreview({
 
   if (content.format === "wall_text" && item.format === "wall_text") {
     const box = content.layout.textBox;
-    const center = {
-      x: box.x + box.width / 2,
-      y: box.y + box.height / 2,
-    };
+    const useSharedPng = process.env.NEXT_PUBLIC_WALL_TEXT_SHARED_PNG === "true" && Boolean(content.content.finalLayout);
 
     return (
       <VerticalVideoPreview
@@ -1264,40 +1280,21 @@ function EditorPreview({
         title={sourcePreview?.title ?? item.creative.title}
         url={sourcePreview?.url ?? item.creative.previewUrl}
       >
-        {process.env.NEXT_PUBLIC_WALL_TEXT_SHARED_PNG === "true" ? <WallTextSavedImage
+        {useSharedPng ? <WallTextSavedImage
           assignmentId={item.assignmentId} creativeId={item.creativeId} revision={edit?.revision ?? 0}
           text={content.content.fullText}
           draft={JSON.stringify(content) === JSON.stringify(initialContent) ? undefined : {
             fullText: content.content.fullText, textColor: content.textColor, textBox: box,
           }}
         /> : null}
-        <DraggableOverlay
-          ariaLabel="Move Wall-of-text copy"
-          bounds={{
-            maxX: 1 - content.layout.safeArea.right - box.width / 2,
-            maxY: 1 - content.layout.safeArea.bottom - box.height / 2,
-            minX: content.layout.safeArea.left + box.width / 2,
-            minY: content.layout.safeArea.top + box.height / 2,
-          }}
-          position={center}
-          onPositionChange={(position) =>
-            onContentChange({
-              ...content,
-              layout: {
-                ...content.layout,
-                textBox: {
-                  ...box,
-                  x: position.x - box.width / 2,
-                  y: position.y - box.height / 2,
-                },
-              },
-            })
-          }
+        <WallTextEditOverlay
+          layout={content.layout}
+          onBoxChange={(textBox) => onContentChange(updateWallTextEditBox(content, textBox))}
         >
-          {process.env.NEXT_PUBLIC_WALL_TEXT_SHARED_PNG === "true" ? (
+          {useSharedPng ? (
             <div aria-label="Drag to move text" style={{ width: `${box.width * 100}cqw`, height: `${box.height * 100 * 16 / 9}cqw` }} />
           ) : <WallTextOverlayText content={content} />}
-        </DraggableOverlay>
+        </WallTextEditOverlay>
       </VerticalVideoPreview>
     );
   }
@@ -1310,7 +1307,7 @@ const STRUCTURE_2_SAFE_X = 72;
 const STRUCTURE_2_SAFE_TOP = 84;
 const STRUCTURE_2_SAFE_BOTTOM = 92;
 const STRUCTURE_2_DIRECT_TEXT_SIDE_BUFFER = 34;
-const CAROUSEL_FIXED_EDITOR_FONT_SIZE = 44;
+const CAROUSEL_FIXED_EDITOR_FONT_SIZE = CAROUSEL_BODY_FONT_SIZE;
 
 type Structure2EditorTextLayout = {
   blockHeight: number;
@@ -1430,33 +1427,6 @@ function CarouselEditorBackground({
   );
 }
 
-function Structure2StoryText({ layout }: { layout: Structure2EditorLayout }) {
-  return (
-    <div
-      className="text-center"
-      style={{
-        color: "#ffffff",
-        fontFamily: 'var(--font-geist-sans), Geist, Arial, Helvetica, sans-serif',
-        fontSize: `${layout.story.fontSize / 10.8}cqw`,
-        fontWeight: layout.story.fontSize >= 90 ? 800 : 600,
-        letterSpacing: 0,
-        lineHeight: layout.story.lineHeight / layout.story.fontSize,
-        paintOrder: "stroke fill",
-        WebkitTextStroke: "0.370cqw rgba(0, 0, 0, 0.72)",
-        width: `${layout.storyBounds.width / 10.8}cqw`,
-      }}
-    >
-      {layout.story.lines.map((line, index) => (
-        <span
-          key={`${index}:${line}`}
-          className="block whitespace-nowrap"
-        >
-          <HookInlineSymbols text={line} />
-        </span>
-      ))}
-    </div>
-  );
-}
 
 function createStructure2EditorLayout(
   slide: TrendingCarouselEditSlide,
@@ -1466,8 +1436,8 @@ function createStructure2EditorLayout(
   const maximumTextWidth = STRUCTURE_2_RENDER_WIDTH - STRUCTURE_2_SAFE_X * 2;
   const treatment = "overlay" as const;
   const story = fitStructure2EditorText({
-    fontSize: isCover ? 92 : CAROUSEL_FIXED_EDITOR_FONT_SIZE,
-    maximumLines: isCover ? 3 : 12,
+    fontSize: isCover ? CAROUSEL_HOOK_FONT_SIZE : CAROUSEL_FIXED_EDITOR_FONT_SIZE,
+    maximumLines: isCover ? 4 : 10,
     maximumWidth:
       maximumTextWidth - STRUCTURE_2_DIRECT_TEXT_SIDE_BUFFER * 2,
     value:
@@ -1611,11 +1581,14 @@ function CarouselOutlinedText({
       className={cn(
         "mx-auto max-w-[78cqw] text-center",
         kind === "headline"
-          ? "text-[4.074cqw] font-semibold leading-[1.04]"
-          : "mt-[2.2cqw] text-[4.074cqw] font-semibold leading-[1.05] text-white",
+          ? "font-semibold leading-[1.04]"
+          : "font-semibold leading-[1.16] text-white",
       )}
       style={{
-        fontFamily: 'var(--font-geist-sans), Geist, Arial, Helvetica, sans-serif',
+        fontFamily: 'var(--font-carousel-inter-tight), Inter Tight, Inter, Arial, sans-serif',
+        fontSize: `${(kind === "headline" ? CAROUSEL_HEADING_FONT_SIZE : CAROUSEL_BODY_FONT_SIZE) / 10.8}cqw`,
+        marginTop: kind === "body" ? `${CAROUSEL_TEXT_BLOCK_GAP / 10.8}cqw` : undefined,
+        whiteSpace: "pre-line",
         letterSpacing: 0,
         ...(kind === "body"
           ? {
@@ -1644,12 +1617,12 @@ function CarouselCoverText({
   return (
     <div className="mx-auto w-[78cqw] text-center">
       <p
-        className="text-[8.52cqw] font-extrabold leading-[.98] text-white"
+        className="font-bold leading-[.98] text-white"
         style={{
-          fontFamily: 'var(--font-geist-sans), Geist, Arial, Helvetica, sans-serif',
+          fontFamily: 'var(--font-carousel-inter-tight), Inter Tight, Inter, Arial, sans-serif',
+          fontSize: `${CAROUSEL_HOOK_FONT_SIZE / 10.8}cqw`,
+          whiteSpace: "pre-line",
           letterSpacing: 0,
-          paintOrder: "stroke fill",
-          WebkitTextStroke: "0.370cqw rgba(0, 0, 0, 0.72)",
         }}
       >
         {primaryText}
@@ -1726,7 +1699,8 @@ function WallTextOverlayText({
   const isPendingAuthoritativeLayout = !content.content.finalLayout;
   const typography = getWallTextEditorTypography(content.content);
   const letterSpacing = getWallTextLetterSpacing(content.content);
-  const previewDimension = getWallTextReviewCardCappedDimension;
+  const previewDimension = isPendingAuthoritativeLayout || content.content.finalLayout?.textMode === "manual"
+    ? getWallTextProportionalPreviewDimension : getWallTextReviewCardCappedDimension;
 
   return (
     <div
@@ -1740,7 +1714,8 @@ function WallTextOverlayText({
         fontWeight: typography.fontWeight,
         letterSpacing:
           letterSpacing === 0 ? "normal" : previewDimension(letterSpacing),
-        paddingInline: previewDimension(WALL_TEXT_INLINE_SAFE_PADDING),
+        paddingInline: previewDimension(WALL_TEXT_INLINE_SAFE_PADDING +
+          (isPendingAuthoritativeLayout ? WALL_TEXT_OUTLINE_WIDTH + WALL_TEXT_RASTER_EDGE_GUARD / 2 : 0)),
         textShadow:
           typography.shadowOpacity > 0
             ? `0 ${previewDimension(1.2)} ${previewDimension(2)} rgb(0 0 0 / ${typography.shadowOpacity})`
@@ -1749,9 +1724,13 @@ function WallTextOverlayText({
       }}
     >
       {isPendingAuthoritativeLayout ? (
-        <p className="m-0 whitespace-normal" style={{ lineHeight: WALL_TEXT_LINE_HEIGHT_FACTOR }}>
-          {content.content.fullText}
-        </p>
+        getWallTextManualBlocks(content.content.fullText).map((block, index) => (
+          <p key={index} className="m-0 whitespace-pre-wrap" style={{
+            lineHeight: WALL_TEXT_LINE_HEIGHT_FACTOR,
+            marginBottom: previewDimension(block.gapAfterPx ?? 0),
+            overflowWrap: "anywhere",
+          }}>{block.lines.join("\n")}</p>
+        ))
       ) : getWallTextRenderBlocks(content.content).map((segment, segmentIndex) => (
         <p
           key={`${segment.role}-${segmentIndex}`}
@@ -1759,6 +1738,8 @@ function WallTextOverlayText({
           style={{
             lineHeight: WALL_TEXT_LINE_HEIGHT_FACTOR,
             whiteSpace: "nowrap",
+            marginBottom: segmentIndex < getWallTextRenderBlocks(content.content).length - 1
+              ? previewDimension(segment.gapAfterPx ?? WALL_TEXT_SECTION_GAP) : 0,
           }}
         >
           {segment.lines.map((line, lineIndex) => (
@@ -2048,7 +2029,7 @@ function EditorFields({
         <FieldGroup className="mt-5">
           <Field>
             <FieldLabel htmlFor="trending-carousel-headline">
-              {slide.slideNumber === 1 ? "Hook" : "Headline"}
+              {slide.slideNumber === 1 ? "Hook" : slide.hasHeading === false && !slide.subtext ? "Text" : "Headline (optional)"}
             </FieldLabel>
             <Input
               id="trending-carousel-headline"
@@ -2062,12 +2043,20 @@ function EditorFields({
               <FieldLabel htmlFor="trending-carousel-subtext">
                 Supporting text
               </FieldLabel>
-              <Input
+              <textarea
                 id="trending-carousel-subtext"
+                className="min-h-28 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
                 value={slide.subtext}
                 maxLength={360}
                 onChange={(event) => updateSlide("subtext", event.target.value)}
               />
+              <p className="text-xs text-muted-foreground">Separate thoughts with a blank line. Each block should stay within three lines.</p>
+            </Field>
+          ) : null}
+          {slide.slideNumber === content.slides.length || slide.ctaText ? (
+            <Field>
+              <FieldLabel htmlFor="trending-carousel-cta">CTA (optional)</FieldLabel>
+              <Input id="trending-carousel-cta" value={slide.ctaText} maxLength={120} onChange={(event) => updateSlide("ctaText", event.target.value)} />
             </Field>
           ) : null}
         </FieldGroup>
@@ -2114,7 +2103,7 @@ function EditorFields({
         <textarea
           id="trending-wall-text"
           value={content.content.fullText}
-          maxLength={600}
+          maxLength={WALL_TEXT_MANUAL_MAX_CHARACTERS}
           rows={7}
           onChange={(event) =>
             onContentChange({
@@ -2124,8 +2113,7 @@ function EditorFields({
                   event.target.value,
                   content.content,
                 ),
-                // Keep the user's in-progress whitespace while deriving the
-                // normalized preview segments. The API normalizes on save.
+                // Keep in-progress whitespace and the author's explicit breaks.
                 fullText: event.target.value,
               },
             })
@@ -2133,9 +2121,21 @@ function EditorFields({
           className="min-h-32 w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-xs outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
         />
         <FieldDescription>
-          Use {MIN_CURRENT_GENERATION_WALL_TEXT_WORDS}–{MAX_CURRENT_GENERATION_WALL_TEXT_WORDS} words. The preview keeps a fixed font size
-          while you type. Saving balances the final 5–8 lines inside the same
-          text area.
+          Your line breaks and paragraph spacing are kept. Long lines wrap to
+          fit the text area at the fixed font size. Lists and short phrases are
+          welcome; the complete text must fit inside the preview.
+        </FieldDescription>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="trending-wall-width">Text width</FieldLabel>
+        <WallTextWidthControl
+          id="trending-wall-width"
+          layout={content.layout}
+          onBoxChange={(textBox) => onContentChange(updateWallTextEditBox(content, textBox))}
+        />
+        <FieldDescription>
+          Drag the side handles or use the slider to adjust wrapping. Drag the
+          text to move it. A little padding stays on both sides of the video.
         </FieldDescription>
       </Field>
       <TextColorPicker
@@ -3149,14 +3149,10 @@ function validateContent(content: TrendingCreativeEditContent) {
   }
 
   if (content.format === "wall_text") {
-    const normalized = content.content.fullText.replace(/\s+/gu, " ").trim();
-    const wordCount = normalized.split(/\s+/u).filter(Boolean).length;
-    if (
-      !normalized ||
-      wordCount < MIN_CURRENT_GENERATION_WALL_TEXT_WORDS ||
-      wordCount > MAX_CURRENT_GENERATION_WALL_TEXT_WORDS
-    ) {
-      return `Wall-of-text copy must contain ${MIN_CURRENT_GENERATION_WALL_TEXT_WORDS}–${MAX_CURRENT_GENERATION_WALL_TEXT_WORDS} words and fit the measured 5–8-line layout.`;
+    try {
+      validateWallTextManualCopy(content.content.fullText);
+    } catch (error) {
+      return error instanceof Error ? error.message : "Review the overlay copy before saving.";
     }
   }
 

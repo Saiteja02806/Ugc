@@ -4,6 +4,8 @@ import {
   formatPricingAmount,
   type PricingPlan,
 } from "@/lib/pricing/plans";
+import { CreditIcon } from "@/components/icons/credit-icon";
+import { FREE_TRIAL_CONTENT_DAYS } from "@/lib/billing/free-trial-policy";
 import { cn } from "@/lib/utils";
 
 type PricingComparisonProps = {
@@ -17,43 +19,16 @@ type FeatureRow = {
   starter: string | boolean;
 };
 
+
 const featureMatrix: FeatureRow[] = [
-  {
-    label: "Proven viral format discovery",
-    free: true,
-    starter: true,
-    growth: true,
-  },
-  {
-    label: "Reel hooks, Wall-text & Carousels",
-    free: false,
-    starter: true,
-    growth: true,
-  },
-  {
-    label: "Product asset editor & library",
-    free: "Preview only",
-    starter: true,
-    growth: true,
-  },
-  {
-    label: "1-Click Instagram scheduling",
-    free: false,
-    starter: true,
-    growth: true,
-  },
-  {
-    label: "Performance & reach analytics",
-    free: false,
-    starter: "Advanced",
-    growth: "Advanced",
-  },
-  {
-    label: "Priority generation queues",
-    free: false,
-    starter: false,
-    growth: true,
-  },
+  { label: "Daily hooks, Wall of Text & carousels", free: `During ${FREE_TRIAL_CONTENT_DAYS}-day trial`, starter: true, growth: true },
+  { label: "Review, edit & content library", free: true, starter: true, growth: true },
+  { label: "Instagram scheduling", free: "Unlimited during trial", starter: true, growth: true },
+  { label: "Connect Instagram & YouTube", free: true, starter: true, growth: true },
+  { label: "YouTube video scheduling", free: true, starter: true, growth: true },
+  { label: "AI Studio images & videos", free: "Uses free credits", starter: "Uses shared credits", growth: "Uses shared credits" },
+  { label: "AI character generation", free: "1 assisted generation", starter: "Uses shared credits", growth: "Uses shared credits" },
+  { label: "Connected-account analytics", free: true, starter: true, growth: true },
 ];
 
 export function PricingComparison({ plans }: PricingComparisonProps) {
@@ -79,7 +54,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
         </div>
 
         <div className="mt-8 min-w-0 max-w-full overflow-hidden rounded-2xl border border-border bg-card shadow-xs">
-          <div className="max-w-full overflow-x-auto overscroll-x-contain">
+          <div role="region" aria-label="Plan comparison table" tabIndex={0} className="max-w-full overflow-x-auto overscroll-x-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
             <table className="w-full min-w-[620px] table-fixed border-collapse text-left">
               <caption className="sr-only">
                 Free, Starter, and Growth price, credit, and feature comparison
@@ -128,7 +103,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                       )}
                     >
                       {plan.prices.monthly === 0
-                        ? "Free"
+                        ? `$0 / ${FREE_TRIAL_CONTENT_DAYS}-day trial`
                         : `${formatPricingAmount(plan.prices.monthly)}/mo`}
                     </td>
                   ))}
@@ -149,7 +124,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                       )}
                     >
                       {plan.prices.yearly === 0
-                        ? "Free"
+                        ? "No subscription"
                         : `${formatPricingAmount(plan.prices.yearly)}/yr`}
                     </td>
                   ))}
@@ -159,7 +134,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                     scope="row"
                     className="px-5 py-3.5 text-xs font-normal text-muted"
                   >
-                    Monthly AI generation credits
+                    AI generation credits
                   </th>
                   {plans.map((plan) => (
                     <td
@@ -169,7 +144,8 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                         plan.highlighted ? "bg-primary/[0.04] text-primary" : "",
                       )}
                     >
-                      {plan.sharedMonthlyCredits}
+                      <span className="inline-flex items-center justify-center gap-1.5"><CreditIcon />{plan.oneTimeCredits || plan.sharedMonthlyCredits}</span>
+                      <span className="mt-1 block font-sans text-[11px] font-normal text-muted">{plan.oneTimeCredits > 0 ? "Once per account" : "Per month"}</span>
                     </td>
                   ))}
                 </tr>
@@ -191,27 +167,6 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                       {typeof plan.dailyContentPieces === "number"
                         ? `${plan.dailyContentPieces} / day`
                         : plan.dailyContentPieces}
-                    </td>
-                  ))}
-                </tr>
-                <tr className="hover:bg-card-muted/30 transition-colors">
-                  <th
-                    scope="row"
-                    className="px-5 py-3.5 text-xs font-normal text-muted"
-                  >
-                    Connected Instagram accounts
-                  </th>
-                  {plans.map((plan) => (
-                    <td
-                      key={plan.slug}
-                      className={cn(
-                        "px-4 py-3.5 text-center text-xs font-medium text-foreground-strong",
-                        plan.highlighted ? "bg-primary/[0.04]" : "",
-                      )}
-                    >
-                      {plan.instagramAccounts === 0
-                        ? "—"
-                        : plan.instagramAccounts}
                     </td>
                   ))}
                 </tr>
@@ -243,6 +198,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                             val ? (
                               <span
                                 className="inline-flex justify-center"
+                                role="img"
                                 aria-label="Included"
                               >
                                 <span className="flex size-4 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -255,6 +211,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                             ) : (
                               <span
                                 className="inline-flex justify-center"
+                                role="img"
                                 aria-label="Not included"
                               >
                                 <Minus

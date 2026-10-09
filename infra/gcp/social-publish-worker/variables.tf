@@ -197,9 +197,9 @@ variable "tiktok_verified_media_hosts" {
 }
 
 variable "tiktok_direct_post_audited" {
-  description = "Set true only after TikTok approves the Direct Post audit for public/follower visibility."
+  description = "TikTok Direct Post audit is approved. Set false only for private testing."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "worker_version" {

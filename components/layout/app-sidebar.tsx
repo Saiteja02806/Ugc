@@ -1,5 +1,7 @@
 "use client";
 
+import { CreditIcon } from "@/components/icons/credit-icon";
+
 import {
   ExternalLink,
   Menu,
@@ -29,8 +31,8 @@ import { useBillingSubscription } from "@/components/billing/use-billing-subscri
 
 export type AppSidebarActiveKey =
   | "trending"
-  | "create-content"
   | "explore"
+  | "audio-generation"
   | "ai-studio"
   | "library"
   | "avatars"
@@ -48,16 +50,22 @@ type SidebarItem = {
 
 const primaryNavigationItems: SidebarItem[] = [
   {
+    key: "explore",
+    label: "Explore",
+    href: "/explore",
+    icon: "explore",
+  },
+  {
+    key: "audio-generation",
+    label: "Audio generation",
+    href: "/audio-generation",
+    icon: "audio",
+  },
+  {
     key: "trending",
     label: "Trending",
     href: "/dashboard",
     icon: "trending",
-  },
-  {
-    key: "create-content",
-    label: "Create Content",
-    href: "/create-content",
-    icon: "edit",
   },
   {
     key: "ai-studio",
@@ -79,13 +87,6 @@ const primaryNavigationItems: SidebarItem[] = [
   },
 ];
 
-const exploreNavigationItem: SidebarItem = {
-  key: "explore",
-  label: "Explore",
-  href: "/viral",
-  icon: "viral",
-};
-
 const libraryNavigationItems: SidebarItem[] = [
   {
     key: "library",
@@ -103,7 +104,7 @@ const libraryNavigationItems: SidebarItem[] = [
 
 const SIDEBAR_STORAGE_KEY = "ugc-studio.sidebar-collapsed";
 const SIDEBAR_CHANGE_EVENT = "ugc-studio:sidebar-change";
-const isCreateContentScreenEnabled = process.env.NODE_ENV !== "production";
+const isExploreScreenEnabled = process.env.NODE_ENV !== "production";
 
 export function AppSidebar({
   activeKey = "trending",
@@ -374,9 +375,8 @@ function SidebarNavigation({
 }) {
   const visiblePrimaryNavigationItems = [
     ...primaryNavigationItems.filter(
-      (item) => item.key !== "create-content" || isCreateContentScreenEnabled,
+      (item) => item.key !== "audio-generation" && (item.key !== "explore" || isExploreScreenEnabled),
     ),
-    exploreNavigationItem,
   ];
 
   return (
@@ -653,7 +653,9 @@ function SidebarPlanCreditsWidget() {
 
   const planLabel = subscription?.displayName ?? "Free";
   const creditsRemaining = subscription?.creditsRemaining ?? 0;
-  const creditsLimit = subscription?.sharedMonthlyCredits ?? 0;
+  const creditsLimit = subscription?.isActive
+    ? subscription.sharedMonthlyCredits
+    : subscription?.freeGenerationCredits?.granted ?? 0;
   const billingHref = "/pricing";
   const actionLabel = "Upgrade";
 
@@ -673,7 +675,7 @@ function SidebarPlanCreditsWidget() {
         </Link>
       </div>
       <div className="mt-1.5 flex items-center justify-between text-[11px] font-medium text-muted">
-        <span>Shared AI credits</span>
+        <span className="inline-flex items-center gap-1"><CreditIcon className="size-3.5" />One-time AI credits</span>
         <span className="font-mono font-bold text-foreground">
           {creditsRemaining} / {creditsLimit}
         </span>

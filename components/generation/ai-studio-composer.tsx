@@ -5,10 +5,10 @@ import {
   ChevronDown,
   Loader2,
   SlidersHorizontal,
-  Sparkles,
 } from "lucide-react";
 import type { FormEvent, KeyboardEvent, ReactNode } from "react";
 import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,12 +20,15 @@ import {
 import {
   Popover,
   PopoverContent,
+  PopoverTitle,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import creation from "@/components/explore/workflow-creation.module.css";
 
 export function AiStudioComposer({
   active,
+  compact = false,
   accessMessage,
   ariaLabel,
   contextBanner,
@@ -44,8 +47,17 @@ export function AiStudioComposer({
   prompt,
   secondaryActions,
   settings,
+  portalTarget,
+  promptHelper,
+  promptLabel,
+  settingsSummary,
+  actionsTarget,
+  referenceControls,
+  workflowDesign,
+  promptAttachmentControl,
 }: {
   active: boolean;
+  compact?: boolean;
   accessMessage?: string | null;
   ariaLabel: string;
   contextBanner?: ReactNode;
@@ -53,9 +65,9 @@ export function AiStudioComposer({
   generateLabel: string;
   generationLocked: boolean;
   isGenerating: boolean;
-  layout?: "standard" | "unified";
+  layout?: "standard" | "unified" | "workflow";
   leadingControl?: ReactNode;
-  maxLength: number;
+  maxLength?: number;
   name: string;
   onPromptChange: (prompt: string) => void;
   onSubmit: (event?: FormEvent<HTMLFormElement>) => void;
@@ -64,13 +76,23 @@ export function AiStudioComposer({
   prompt: string;
   secondaryActions?: ReactNode;
   settings: ReactNode;
+  portalTarget?: HTMLElement | null;
+  promptHelper?: string;
+  promptLabel?: string;
+  settingsSummary?: string;
+  actionsTarget?: HTMLElement | null;
+  referenceControls?: ReactNode;
+  workflowDesign?: "classic";
+  promptAttachmentControl?: ReactNode;
 }) {
   const promptId = useId();
+  const formId = useId();
   const promptHelperId = useId();
   const controlsId = useId();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [controlsOpen, setControlsOpen] = useState(false);
-  const promptTooLong = prompt.length > maxLength;
+  const promptTooLong = maxLength !== undefined && prompt.length > maxLength;
+  const excessCharacters = maxLength === undefined ? 0 : prompt.length - maxLength;
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -80,18 +102,76 @@ export function AiStudioComposer({
     }
 
     textarea.style.height = "auto";
-    const minimumHeight = layout === "unified" ? 40 : 64;
-    const maximumHeight = layout === "unified" ? 144 : 128;
+    const minimumHeight = compact ? 64 : layout === "unified" ? 40 : 64;
+    const maximumHeight = compact ? 96 : layout === "unified" ? 144 : 128;
     textarea.style.height = `${Math.min(
       Math.max(textarea.scrollHeight, minimumHeight),
       maximumHeight,
     )}px`;
-  }, [active, layout, prompt]);
+  }, [active, compact, layout, prompt]);
+
+  if (layout === "workflow" && workflowDesign === "classic") {
+    const actions = <div className="space-y-2">
+      <p role="status" className="text-xs leading-5 text-muted">{accessMessage}</p>
+      {secondaryActions ? <div className="flex flex-wrap gap-2">{secondaryActions}</div> : null}
+      <Button type="submit" form={formId} aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className={creation.primaryAction}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button>
+    </div>;
+    const content = <form id={formId} data-layout="workflow" data-workflow-design="classic" noValidate onSubmit={onSubmit} className={creation.composer}>
+      {referenceControls}
+      <div className={creation.instructionsField}>
+        <label htmlFor={promptId} className="block text-sm font-medium">{promptLabel ?? "Your instructions"}</label>
+        <div className="relative"><textarea id={promptId} name={name} value={prompt} rows={4} autoComplete="off" onChange={event => onPromptChange(event.target.value)}
+          aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId} placeholder={placeholder} className={creation.prompt} />
+          {promptAttachmentControl}</div>
+        <p id={promptHelperId} role={promptTooLong ? "alert" : undefined} className={promptTooLong ? "text-xs leading-5 text-destructive" : "sr-only"}>{promptTooLong ? `Shorten your instructions by ${excessCharacters} characters.` : promptHelper}</p>
+      </div>
+      <div role="group" aria-label="Video generation settings" className={creation.settingsGrid}>{settings}</div>
+      {!actionsTarget ? actions : null}
+    </form>;
+    return <>{portalTarget ? createPortal(content, portalTarget) : content}{actionsTarget ? createPortal(actions, actionsTarget) : null}</>;
+  }
+
+  if (layout === "workflow") {
+    const actions = <div className={cn("space-y-2", !actionsTarget && "shrink-0 border-t border-border bg-card p-5")}>
+      <Popover key={active ? "visible-controls" : "hidden-controls"}>
+        <PopoverTrigger render={<Button type="button" variant="outline" size="sm" aria-label="Generation settings" title="Change generation settings" className="h-9 w-full min-w-0 justify-start gap-2 rounded-lg px-3 text-xs" />}>
+          <SlidersHorizontal className="size-3.5 shrink-0 text-muted" aria-hidden="true" />
+          <span className="min-w-0 flex-1 truncate text-left tabular-nums" aria-label="Current generation settings">{settingsSummary ?? "Generation settings"}</span>
+          <ChevronDown className="size-3 shrink-0 text-muted" aria-hidden="true" />
+        </PopoverTrigger>
+        <PopoverContent side="top" align="start" sideOffset={8} className="max-h-[min(32rem,calc(100dvh-2rem))] w-[min(328px,calc(100vw-2rem))] gap-4 overflow-y-auto overscroll-contain rounded-xl p-4">
+          <PopoverTitle className="text-sm">Generation settings</PopoverTitle>
+          <div className="grid grid-cols-2 gap-3">{settings}</div>
+        </PopoverContent>
+      </Popover>
+      {secondaryActions ? <div className="flex flex-wrap gap-2">{secondaryActions}</div> : null}
+      <Button type="submit" form={formId} size="lg" aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className="h-11 w-full rounded-lg">{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button>
+      <p role="status" className="text-xs leading-5 text-muted">{accessMessage}</p>
+    </div>;
+    const content = <form id={formId} data-layout="workflow" noValidate onSubmit={onSubmit} className="flex h-full min-h-0 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+      {contextBanner}
+      <div className="space-y-2">
+        <label htmlFor={promptId} className="block text-sm font-medium">{promptLabel ?? "Your instructions"}</label>
+        <div className="relative"><textarea id={promptId} name={name} value={prompt} rows={4} autoComplete="off" onChange={event => onPromptChange(event.target.value)}
+          aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId}
+          placeholder={placeholder} className={cn("w-full resize-y rounded-lg border border-border/60 bg-card-muted/40 px-3 py-2.5 text-sm leading-6 text-foreground outline-none placeholder:text-muted-subtle focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-focus", promptAttachmentControl ? "h-[128px] min-h-[128px] pb-16" : "h-[72px] min-h-[72px]")} />
+          {promptAttachmentControl}</div>
+        <p id={promptHelperId} role={promptTooLong ? "alert" : undefined} className="text-xs leading-5 text-muted">{promptTooLong ? `Shorten your instructions by ${excessCharacters} characters.` : promptHelper}</p>
+      </div>
+      {referenceControls}
+      {leadingControl ? <details className="rounded-lg border border-border px-3 py-2"><summary className="cursor-pointer rounded py-1 text-xs font-medium text-muted focus-visible:outline-2 focus-visible:outline-focus">Optional reference image</summary><p className="my-2 text-xs leading-5 text-muted">Add an image to guide the appearance. The selected reference is used by default.</p>{leadingControl}</details> : null}
+      </div>
+      {!actionsTarget ? actions : null}
+    </form>;
+    return <>{portalTarget ? createPortal(content, portalTarget) : content}{actionsTarget ? createPortal(actions, actionsTarget) : null}</>;
+  }
 
   return (
-    <div className="sticky bottom-0 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
+    <div className={cn("shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2", !compact && "sticky bottom-0")}>
       <form
         data-layout={layout}
+        data-compact={compact || undefined}
         noValidate
         onSubmit={onSubmit}
         className={cn(
@@ -99,6 +179,7 @@ export function AiStudioComposer({
           layout === "unified"
             ? "max-w-[944px] rounded-[24px] border-border/80 p-0 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15"
             : "max-w-[1024px] rounded-[20px] border-border p-2.5 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 sm:p-3",
+          compact && "rounded-[28px] shadow-none",
         )}
       >
         <FieldGroup className={layout === "unified" ? "gap-0" : "gap-2"}>
@@ -116,7 +197,7 @@ export function AiStudioComposer({
               contextBanner && layout === "unified" && "!pt-1.5",
             )}
           >
-            {leadingControl}
+            {!compact && leadingControl}
             <FieldLabel htmlFor={promptId} className="sr-only">
               {ariaLabel}
             </FieldLabel>
@@ -134,9 +215,9 @@ export function AiStudioComposer({
               className={cn(
                 "w-full resize-none overflow-y-auto bg-transparent text-foreground outline-none placeholder:text-muted-subtle",
                 layout === "unified"
-                  ? "max-h-36 min-h-10 rounded-none px-0 py-0 text-base font-normal leading-7"
+                  ? cn("max-h-36 min-h-10 rounded-none px-0 py-0 font-normal", compact ? "text-sm leading-6" : "text-base leading-7")
                   : "max-h-32 min-h-16 rounded-lg px-2 py-1.5 text-sm font-medium leading-6 focus-visible:ring-2 focus-visible:ring-focus sm:text-[15px]",
-                leadingControl ? "col-start-2 row-start-1" : "col-span-full",
+                leadingControl && !compact ? "col-start-2 row-start-1" : "col-span-full",
               )}
               placeholder={placeholder}
             />
@@ -145,7 +226,8 @@ export function AiStudioComposer({
               className={cn(
                 "col-span-full flex min-w-0 items-start justify-between gap-3 text-xs",
                 layout === "unified" ? "px-0" : "px-2",
-                leadingControl && "col-start-2",
+                leadingControl && !compact && "col-start-2",
+                compact && "pb-3 text-[11px] leading-4 text-muted-subtle",
                 promptTooLong && "text-destructive",
               )}
               role={promptTooLong ? "alert" : undefined}
@@ -153,27 +235,39 @@ export function AiStudioComposer({
               <span className="min-w-0">
                 {promptTooLong
                   ? `Prompt is ${(
-                      prompt.length - maxLength
+                      excessCharacters
                     ).toLocaleString("en-US")} character${
-                      prompt.length - maxLength === 1 ? "" : "s"
+                      excessCharacters === 1 ? "" : "s"
                     } too long. Shorten it before generating.`
                   : accessMessage ??
                     "Press Enter to generate. Use Shift+Enter for a new line."}
               </span>
-              <span className="shrink-0 tabular-nums font-mono">
+              {maxLength !== undefined ? <span className={cn("shrink-0 tabular-nums font-mono", compact && "hidden")}>
                 {prompt.length.toLocaleString("en-US")}/
                 {maxLength.toLocaleString("en-US")}
-              </span>
+              </span> : null}
             </FieldDescription>
           </Field>
 
           <div
+            data-slot={compact ? "composer-actions" : undefined}
             className={cn(
-              "flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between",
+              compact ? "flex items-center justify-between gap-2" : "flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between",
               layout === "unified" && "px-3 pb-2 sm:px-4 sm:pb-3",
             )}
           >
-            <div className="min-w-0 flex-1">
+            {compact ? <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+              {leadingControl}
+              <Popover>
+                <PopoverTrigger render={<Button type="button" variant="outline" size="sm" aria-label="Generation settings" title="Generation settings" className="h-9 gap-1.5 rounded-full px-3 text-xs text-foreground" />}>
+                  <SlidersHorizontal className="size-3.5" aria-hidden="true" /><span data-slot="composer-settings-label">Settings</span>
+                </PopoverTrigger>
+                <PopoverContent side="top" align="start" className="w-72 gap-3 rounded-2xl p-4">
+                  <PopoverTitle className="text-sm">Generation settings</PopoverTitle>
+                  <div className="flex flex-wrap items-center gap-2">{settings}</div>
+                </PopoverContent>
+              </Popover>
+            </div> : <div className="min-w-0 flex-1">
               {layout === "standard" ? (
                 <Button
                   type="button"
@@ -213,18 +307,19 @@ export function AiStudioComposer({
               >
                 {settings}
               </div>
-            </div>
+            </div>}
 
             <div
               className={cn(
                 "flex min-w-0 flex-col gap-1.5 sm:items-end",
-                layout === "unified" && "w-full sm:w-auto",
+                layout === "unified" && (compact ? "shrink-0" : "w-full sm:w-auto"),
               )}
             >
               <div className="flex min-w-0 items-center gap-2">
                 {secondaryActions}
                 <Button
                   type="submit"
+                  aria-label={generateLabel}
                   size="lg"
                   disabled={generateDisabled || promptTooLong}
                   title={generationLocked ? accessMessage ?? undefined : undefined}
@@ -232,6 +327,7 @@ export function AiStudioComposer({
                     "min-w-0 flex-1 h-10 rounded-full px-5 text-sm font-semibold tracking-[-0.01em] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.22),0_1px_3px_rgba(0,0,0,0.12)] transition-all duration-150 active:scale-[0.98] sm:min-w-[168px]",
                     isGenerating && "ring-2 ring-primary/35 shadow-xs shadow-primary/20",
                     layout === "unified" && "w-full",
+                    compact && "h-9 rounded-full px-3.5 text-xs font-medium shadow-none sm:min-w-0",
                   )}
                 >
                   {isGenerating ? (
@@ -244,10 +340,7 @@ export function AiStudioComposer({
                       Generating…
                     </>
                   ) : (
-                    <>
-                      {generateLabel}
-                      <Sparkles data-icon="inline-end" aria-hidden="true" />
-                    </>
+                    compact ? "Generate" : generateLabel
                   )}
                 </Button>
               </div>
@@ -276,6 +369,9 @@ export function AiStudioSetting({
 
 export function AiStudioSettingSelect<TValue extends string>({
   ariaLabel,
+  className,
+  fieldLabel,
+  fieldLayout,
   disabled = false,
   icon,
   onChange,
@@ -283,6 +379,9 @@ export function AiStudioSettingSelect<TValue extends string>({
   value,
 }: {
   ariaLabel: string;
+  className?: string;
+  fieldLabel?: string;
+  fieldLayout?: "classic";
   disabled?: boolean;
   icon?: ReactNode;
   onChange: (value: TValue) => void;
@@ -334,6 +433,8 @@ export function AiStudioSettingSelect<TValue extends string>({
   }
 
   return (
+    <div className={cn(fieldLayout === "classic" ? creation.settingField : fieldLabel ? "min-w-0 space-y-2" : "contents", className)}>
+    {fieldLabel ? <span className={fieldLayout === "classic" ? "text-sm font-medium" : "block text-xs text-muted"}>{fieldLabel}</span> : null}
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={
@@ -343,7 +444,7 @@ export function AiStudioSettingSelect<TValue extends string>({
             aria-label={`${ariaLabel}, currently ${currentOption.label}`}
             aria-haspopup="listbox"
             aria-expanded={open}
-            className="inline-flex h-8 min-w-0 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+            className={cn("inline-flex h-8 min-w-0 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50", fieldLabel && "h-11 w-full justify-between rounded-lg")}
           />
         }
       >
@@ -398,7 +499,7 @@ export function AiStudioSettingSelect<TValue extends string>({
           })}
         </div>
       </PopoverContent>
-    </Popover>
+    </Popover></div>
   );
 }
 
@@ -429,7 +530,7 @@ export const AI_STUDIO_RATIO_OPTIONS: {
     id: "9:16",
     label: "9:16 vertical",
     triggerLabel: "9:16",
-    sublabel: "Reel / Story / TikTok",
+    sublabel: "Reel / Story / Short",
     iconClassName: "h-5 w-3",
   },
   {
@@ -443,11 +544,15 @@ export const AI_STUDIO_RATIO_OPTIONS: {
 
 export function AiStudioRatioPicker({
   allowedRatios,
+  fieldLabel,
+  fieldLayout,
   disabled = false,
   onChange,
   value,
 }: {
   allowedRatios?: AIStudioAspectRatio[];
+  fieldLabel?: string;
+  fieldLayout?: "classic";
   disabled?: boolean;
   onChange: (ratio: AIStudioAspectRatio) => void;
   value: AIStudioAspectRatio;
@@ -460,6 +565,8 @@ export function AiStudioRatioPicker({
     options.find((option) => option.id === value) ?? options[0]!;
 
   return (
+    <div className={fieldLayout === "classic" ? creation.settingField : fieldLabel ? "min-w-0 space-y-2" : "contents"}>
+    {fieldLabel ? <span className={fieldLayout === "classic" ? "text-sm font-medium" : "block text-xs text-muted"}>{fieldLabel}</span> : null}
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={
@@ -467,18 +574,18 @@ export function AiStudioRatioPicker({
             type="button"
             disabled={disabled}
             aria-label={`Aspect ratio, currently ${currentOption.label}`}
-            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+            className={cn("inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50", fieldLabel && "h-11 w-full justify-between rounded-lg")}
           />
         }
       >
-        <span
+        {fieldLayout !== "classic" ? <span
           aria-hidden="true"
           className={cn(
             "inline-block shrink-0 rounded-[3px] border-2 border-muted-foreground",
             currentOption.iconClassName,
           )}
-        />
-        <span>{currentOption.triggerLabel}</span>
+        /> : null}
+        <span>{fieldLayout === "classic" ? currentOption.id : currentOption.triggerLabel}</span>
         <ChevronDown
           className={cn(
             "size-3 text-muted transition-transform duration-200 motion-reduce:transition-none",
@@ -537,6 +644,6 @@ export function AiStudioRatioPicker({
           })}
         </div>
       </PopoverContent>
-    </Popover>
+    </Popover></div>
   );
 }

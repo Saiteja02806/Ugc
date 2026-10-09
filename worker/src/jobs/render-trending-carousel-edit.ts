@@ -541,7 +541,7 @@ function createFallbackPlannedSlide(slide: CarouselSlideRow): PlannedCarouselSli
 
   return {
     body: slide.subtext,
-    ctaText: null,
+    ctaText: slide.cta_text,
     headline: slide.headline,
     imageDirection: slide.image_direction ?? "",
     layoutPreset: getChoice(
@@ -591,13 +591,15 @@ function applyEditToPlannedSlide(
   }
 
   const isBodyOnly =
-    original.textMode === "body_only" || original.textMode === "single_statement";
-  const bodyOnlyCopy = edited.headline || edited.subtext || null;
+    original.textMode === "body_only" || original.textMode === "single_statement" ||
+    (!original.headline && original.textMode !== "checklist" && original.textMode !== "question_list");
+  const bodyOnlyCopy = edited.subtext !== (original.body ?? original.subtext ?? "")
+    ? edited.subtext || null : edited.headline || edited.subtext || null;
 
   return {
     ...original,
     body: isBodyOnly ? bodyOnlyCopy : edited.subtext || null,
-    ctaText: null,
+    ctaText: edited.ctaText || null,
     headline: isBodyOnly ? null : edited.headline || null,
     listItems:
       original.textMode === "checklist" || original.textMode === "question_list"
@@ -650,7 +652,8 @@ function createStructure2EditRenderSpec(
       edited.backgroundAssetId ??
       getRequiredString(original.category_image_asset_id, "category_image_asset_id"),
     assetUrl: edited.backgroundUrl,
-    ctaText: null,
+    ctaText: edited.ctaText || null,
+    headline: edited.slideNumber === 1 ? null : edited.subtext ? edited.headline || null : undefined,
     layoutVariant: isProduct
       ? "story_product_reveal"
       : getChoice(
@@ -674,7 +677,7 @@ function createStructure2EditRenderSpec(
       edited.slideNumber === 1
         ? edited.headline.trim() || edited.subtext.trim()
         : edited.subtext
-          ? `${edited.headline} ${edited.subtext}`
+          ? edited.subtext
           : edited.headline,
     textPosition:
       edited.textPosition.y < 0.42

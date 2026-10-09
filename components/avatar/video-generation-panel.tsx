@@ -96,7 +96,7 @@ const cameraStyleOptions: Array<{
   value: HookVideoCameraStyle;
 }> = [
   { label: "iPhone selfie", value: "iphone_selfie" },
-  { label: "TikTok UGC", value: "tiktok_ugc" },
+  { label: "Casual UGC", value: "tiktok_ugc" },
   { label: "Home office", value: "home_office" },
   { label: "Desk setup", value: "desk_setup" },
 ];

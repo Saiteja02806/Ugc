@@ -1,0 +1,49 @@
+{
+  "version": 3,
+  "name": "wall-of-text-v3",
+  "sourceFolder": "landing_page/WOT",
+  "width": 960,
+  "height": 540,
+  "fps": 24,
+  "layout": "one example at a time, edge-to-edge crops",
+  "fullVideoDuration": true,
+  "zoomFrames": 8,
+  "frames": 376,
+  "duration": 15.666666666666666,
+  "bytes": 2130623,
+  "sha256": "b2b861a3206d9d587ca58e5ccb427c052734be7f1530328cad82d46eb0f7eb29",
+  "posterTime": 1,
+  "silent": true,
+  "fastStart": true,
+  "fullDecodeVerified": true,
+  "stages": [
+    {
+      "source": "WOT_1-Vmake - Copy.mp4",
+      "file": "wall-of-text-v3-0.mp4",
+      "focus": 0.56,
+      "sourceDuration": 6.5,
+      "contentFrames": 156,
+      "frames": 164
+    },
+    {
+      "source": "WOT_2-Vmake - Copy.mp4",
+      "file": "wall-of-text-v3-1.mp4",
+      "focus": 0.5,
+      "sourceDuration": 8.5,
+      "contentFrames": 204,
+      "frames": 212
+    }
+  ],
+  "sources": [
+    {
+      "file": "WOT_1-Vmake - Copy.mp4",
+      "bytes": 2351211,
+      "sha256": "fb0876187acace43d16d1deed6f08992de6ee2b8e8699a64dfd2c719bac5bb23"
+    },
+    {
+      "file": "WOT_2-Vmake - Copy.mp4",
+      "bytes": 8509475,
+      "sha256": "523c636358f2007ecc83b6f1dffedd18756d7445fb3435663695b36d75d45c39"
+    }
+  ]
+}

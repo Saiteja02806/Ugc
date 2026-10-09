@@ -1,38 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  YOUTUBE_BETA_APPROVED_EMAILS,
-  hasYouTubeBetaAccess,
-} from "./youtube-beta-access.ts";
+import { hasYouTubeBetaAccess } from "./youtube-beta-access.ts";
 
-test("YouTube beta access requires an approved verified email", () => {
-  assert.equal(
-    hasYouTubeBetaAccess({
-      email: YOUTUBE_BETA_APPROVED_EMAILS[0].toUpperCase(),
-      emailVerified: true,
-    }),
-    true,
-  );
-  assert.equal(
-    hasYouTubeBetaAccess({
-      email: YOUTUBE_BETA_APPROVED_EMAILS[1].toUpperCase(),
-      emailVerified: true,
-    }),
-    true,
-  );
-  assert.equal(
-    hasYouTubeBetaAccess({
-      email: YOUTUBE_BETA_APPROVED_EMAILS[1],
-      emailVerified: false,
-    }),
-    false,
-  );
-  assert.equal(
-    hasYouTubeBetaAccess({
-      email: "another-user@veltech.edu.in",
-      emailVerified: true,
-    }),
-    false,
-  );
+test("YouTube is available to every verified user without an email allowlist", () => {
+  for (const email of ["new-user@example.com", "another-user@veltech.edu.in", null]) {
+    assert.equal(hasYouTubeBetaAccess({ email, emailVerified: true }), true);
+  }
+});
+
+test("YouTube retains the signed-in verified-user requirement", () => {
+  assert.equal(hasYouTubeBetaAccess(null), false);
+  assert.equal(hasYouTubeBetaAccess(undefined), false);
+  for (const emailVerified of [false, null, undefined]) {
+    assert.equal(hasYouTubeBetaAccess({ email: "new-user@example.com", emailVerified }), false);
+  }
 });

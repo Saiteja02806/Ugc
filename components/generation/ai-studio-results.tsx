@@ -1,5 +1,6 @@
 import { AlertCircle, Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -22,32 +23,43 @@ export function AiStudioResults({
   children,
   emptyDescription,
   emptyTitle,
+  emptyContent,
   gridClassName,
   hasResults,
   loading = false,
   status,
+  toolbar,
+  portalTarget,
 }: {
   ariaLabel: string;
   children: ReactNode;
   emptyDescription?: string;
   emptyTitle?: string;
+  emptyContent?: ReactNode;
   gridClassName?: string;
   hasResults: boolean;
   loading?: boolean;
   status?: AiStudioResultsStatus | null;
+  toolbar?: ReactNode;
+  portalTarget?: HTMLElement | null;
 }) {
   const showStatusBadge =
     Boolean(status) &&
     !(status?.tone === "progress" && !loading && !hasResults);
 
-  return (
+  const content = (
     <section
       aria-label={ariaLabel}
       aria-busy={loading || status?.tone === "progress"}
-      className="relative flex min-h-[420px] min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain md:min-h-0"
+      className={cn("relative flex min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain", emptyContent ? "min-h-0" : "min-h-[420px] md:min-h-0")}
     >
+      {toolbar ? (
+        <div className="sticky top-0 z-20 flex min-h-12 shrink-0 items-center justify-end bg-background/90 px-1 pb-2 pt-1 backdrop-blur-sm">
+          {toolbar}
+        </div>
+      ) : null}
       {showStatusBadge && status ? (
-        <div className="sticky top-0 z-10 flex shrink-0 justify-start px-1 pb-2 pt-1">
+        <div className={cn("sticky z-10 flex shrink-0 justify-start px-1 pb-2 pt-1", toolbar ? "top-12" : "top-0")}>
           <Badge
             variant={status.tone === "error" ? "destructive" : "secondary"}
             role={status.tone === "error" ? "alert" : "status"}
@@ -112,6 +124,8 @@ export function AiStudioResults({
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
+      ) : emptyContent ? (
+        <div className="flex min-h-32 flex-1 flex-col justify-start py-6">{emptyContent}</div>
       ) : (
         <Empty className="min-h-[360px] flex-1 px-5 pb-28 pt-16 sm:pb-32 md:min-h-0">
           <EmptyHeader>
@@ -125,4 +139,5 @@ export function AiStudioResults({
       )}
     </section>
   );
+  return portalTarget ? createPortal(content, portalTarget) : content;
 }

@@ -54,6 +54,7 @@ const completedProfile = {
   primaryGoals: ["increase_revenue", "brand_awareness"] as PrimaryGoal[],
   profileVersion: 1,
   projectId: "default-project",
+  sourceUrl: null,
   trendingTimezone: null,
   trendingWalkthroughCompletedAt: null,
   userId: "user-1",

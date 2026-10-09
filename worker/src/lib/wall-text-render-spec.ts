@@ -28,7 +28,9 @@ export type WallTextSegment = {
 export type WallTextRenderContent = {
   finalLayout?:
     | {
+        textMode?: "manual";
         blocks: Array<{
+          gapAfterPx?: number;
           lines: string[];
           role: "prose" | "text" | "title" | "item";
         }>;
@@ -40,7 +42,9 @@ export type WallTextRenderContent = {
         version: "wall-text-final-layout-v9";
       }
     | {
+        textMode?: "manual";
         blocks: Array<{
+          gapAfterPx?: number;
           lines: string[];
           role: "prose" | "text" | "title" | "item";
         }>;
@@ -52,7 +56,9 @@ export type WallTextRenderContent = {
         version: "wall-text-final-layout-v8";
       }
     | {
+        textMode?: "manual";
         blocks: Array<{
+          gapAfterPx?: number;
           lines: string[];
           role: "prose" | "text" | "title" | "item";
         }>;
@@ -64,7 +70,9 @@ export type WallTextRenderContent = {
         version: "wall-text-final-layout-v7";
       }
     | {
+        textMode?: "manual";
         blocks: Array<{
+          gapAfterPx?: number;
           lines: string[];
           role: "prose" | "text" | "title" | "item";
         }>;
@@ -76,7 +84,9 @@ export type WallTextRenderContent = {
         version: "wall-text-final-layout-v6";
       }
     | {
+        textMode?: "manual";
         blocks: Array<{
+          gapAfterPx?: number;
           lines: string[];
           role: "prose" | "text" | "title" | "item";
         }>;
@@ -88,7 +98,9 @@ export type WallTextRenderContent = {
         version: "wall-text-final-layout-v5";
       }
     | {
+        textMode?: "manual";
         blocks: Array<{
+          gapAfterPx?: number;
           lines: string[];
           role: "prose" | "text" | "title" | "item";
         }>;
@@ -100,7 +112,9 @@ export type WallTextRenderContent = {
         version: "wall-text-final-layout-v4";
       }
     | {
+        textMode?: "manual";
         blocks: Array<{
+          gapAfterPx?: number;
           lines: string[];
           role: "prose" | "text" | "title" | "item";
         }>;
@@ -112,8 +126,10 @@ export type WallTextRenderContent = {
         version: "wall-text-final-layout-v3";
       }
     | {
-    blocks: Array<{
-      lines: string[];
+    textMode?: "manual";
+        blocks: Array<{
+          gapAfterPx?: number;
+          lines: string[];
       role: "prose" | "text" | "title" | "item";
     }>;
     fontFamily: "Inter";
@@ -255,6 +271,7 @@ export function buildWallTextRenderLayout(params: {
   const textBox = normalizeTextBox(
     content.finalLayout?.textBox ?? params.textBox ?? WALL_TEXT_DEFAULT_TEXT_BOX,
     safeArea,
+    content.finalLayout?.textMode === "manual",
   );
   const pixelTextBox = {
     height: Math.round(textBox.height * WALL_TEXT_RENDER_HEIGHT),
@@ -280,6 +297,7 @@ export function buildWallTextRenderLayout(params: {
     getWallTextFontSize(content, totalLineCount);
   const segmentMetrics = renderBlocks.map((segment) => {
     return {
+      gapAfterPx: "gapAfterPx" in segment ? segment.gapAfterPx ?? WALL_TEXT_SECTION_GAP : WALL_TEXT_SECTION_GAP,
       fontSize,
       fontWeight:
         content.finalLayout?.fontWeight ??
@@ -294,7 +312,7 @@ export function buildWallTextRenderLayout(params: {
     (height, segment, index) =>
       height +
       segment.lines.length * segment.lineHeight +
-      (index < segmentMetrics.length - 1 ? WALL_TEXT_SECTION_GAP : 0),
+      (index < segmentMetrics.length - 1 ? segment.gapAfterPx : 0),
     0,
   );
 
@@ -315,7 +333,7 @@ export function buildWallTextRenderLayout(params: {
     segmentTop += segment.lines.length * segment.lineHeight;
 
     if (index < segmentMetrics.length - 1) {
-      segmentTop += WALL_TEXT_SECTION_GAP;
+      segmentTop += segment.gapAfterPx;
     }
 
     return layoutSegment;
@@ -440,7 +458,7 @@ function normalizeWallTextContent(
     if (
       segment.role !== expectedRoles[index] ||
       lines.length < 1 ||
-      lines.length > 4 ||
+      (content.finalLayout?.textMode !== "manual" && lines.length > 4) ||
       lines.some((line) => !line)
     ) {
       throw new Error("Wall-of-text contains an invalid semantic segment.");
@@ -486,27 +504,32 @@ function normalizeFinalLayout(
           LEGACY_WALL_TEXT_FONT_WEIGHT,
         ].includes(value.fontWeight)) ||
     ![36, 38, 40, 42, 44, 46, 48, 50, 52].includes(value.fontSizePx) ||
-    (value.version === "wall-text-final-layout-v9" && value.fontSizePx !== 52) ||
+    (value.version === "wall-text-final-layout-v9" && ![50, 52].includes(value.fontSizePx)) ||
     !Number.isFinite(value.lineHeightPx) ||
     value.lineHeightPx <= 0 ||
     value.blocks.length < 1 ||
-    value.blocks.length > 6
+    value.blocks.length > (value.textMode === "manual" ? 48 : 6) ||
+    (value.textMode !== undefined && (value.textMode !== "manual" || value.version !== "wall-text-final-layout-v9"))
   ) {
     throw new Error("Wall-of-text final layout is invalid.");
   }
 
   const normalizedBase = {
+    ...(value.textMode === "manual" ? { textMode: "manual" as const } : {}),
     fontSizePx: normalizeWallTextFontSize(value.fontSizePx),
     lineHeightPx: getWallTextLineHeight(normalizeWallTextFontSize(value.fontSizePx)),
     blocks: value.blocks.map((block) => {
       if (
         !["prose", "text", "title", "item"].includes(block.role) ||
         block.lines.length < 1 ||
-        block.lines.some((line) => !line.trim())
+        block.lines.some((line) => !line.trim()) ||
+        (block.gapAfterPx !== undefined &&
+          (value.textMode !== "manual" || !Number.isFinite(block.gapAfterPx) || block.gapAfterPx < 0 || block.gapAfterPx > WALL_TEXT_RENDER_HEIGHT))
       ) {
         throw new Error("Wall-of-text final layout contains an invalid block.");
       }
       return {
+        ...(block.gapAfterPx !== undefined ? { gapAfterPx: block.gapAfterPx } : {}),
         lines: block.lines.map((line) => line.replace(/\s+/gu, " ").trim()),
         role: block.role,
       };
@@ -580,6 +603,12 @@ function normalizeFinalLayout(
     (total, block) => total + block.lines.length,
     0,
   );
+  if (normalized.textMode === "manual") {
+    if (normalized.blocks.some((block) => block.role !== "text")) {
+      throw new Error("Wall-of-text manual layout must contain text blocks.");
+    }
+    return normalized;
+  }
   if (normalized.version === "wall-text-final-layout-v9" && lineCount < 5) {
     throw new Error("Wall-of-text V13 must contain one 5-8 line text block.");
   }
@@ -600,13 +629,15 @@ function normalizeFinalLayout(
 function normalizeTextBox(
   value: WallTextNormalizedBox,
   safeArea: WallTextSafeArea,
+  manual = false,
 ) {
   const entries = [value.height, value.width, value.x, value.y];
 
   if (
     entries.some((entry) => !Number.isFinite(entry) || entry < 0 || entry > 1) ||
-    value.width < 620 / WALL_TEXT_RENDER_WIDTH ||
-    value.width > 780 / WALL_TEXT_RENDER_WIDTH ||
+    value.width < (manual ? 0.4 : 620 / WALL_TEXT_RENDER_WIDTH) ||
+    value.width > (manual ? 0.94 : 780 / WALL_TEXT_RENDER_WIDTH) ||
+    (manual && (value.x < 0.03 || value.x + value.width > 0.97 + 0.000001)) ||
     value.x < safeArea.left ||
     value.y < safeArea.top ||
     value.x + value.width > 1 - safeArea.right + 0.001 ||

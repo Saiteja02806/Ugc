@@ -47,7 +47,7 @@ import { LATEST_PRODUCT_UPDATE } from "@/lib/updates/product-updates";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
-import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
+import { hasTikTokUiAccess } from "@/lib/social/platform-visibility";
 import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
 
 const SETTINGS_SECTIONS = [
@@ -108,7 +108,7 @@ type SettingsSectionId = (typeof SETTINGS_SECTIONS)[number]["id"];
 export function SettingsWorkspace() {
   const router = useRouter();
   const { user, signOut } = useAuth();
-  const tiktokBetaEnabled = hasTikTokBetaAccess(user);
+  const tiktokBetaEnabled = hasTikTokUiAccess(user);
   const youtubeBetaEnabled = hasYouTubeBetaAccess(user);
   const { locked: themeLocked, setTheme, theme } = useTheme();
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -435,17 +435,19 @@ export function SettingsWorkspace() {
                             ? `Your complimentary ${subscription.displayName} access includes ${subscription.dailyContentPieces} daily drops and ${subscription.sharedMonthlyCredits} monthly AI credits. An existing Dodo subscription remains separate and can be managed below.`
                             : `Your complimentary ${subscription.displayName} access includes ${subscription.dailyContentPieces} daily drops and ${subscription.sharedMonthlyCredits} monthly AI credits. No payment method is attached.`
                           : `Your ${subscription.displayName} subscription includes ${subscription.dailyContentPieces} daily drops and ${subscription.sharedMonthlyCredits} monthly AI credits.`
-                        : subscription?.trial.status === "active" &&
+                        : subscription?.status === "on_hold"
+                          ? "Your payment needs attention. Update your payment method to restore your subscription."
+                          : subscription?.trial.status === "active" &&
                             subscription.trial.contentDaysRemaining > 0
-                          ? `Your 3-day trial includes ${subscription.trial.dailyContentPieces} daily ready-to-post concepts. ${subscription.trial.instagramSchedulesLimit === null ? "Unlimited Instagram scheduling is available until the trial ends." : `You have ${subscription.trial.instagramSchedulesRemaining} of ${subscription.trial.instagramSchedulesLimit} Instagram schedules remaining.`}`
+                          ? `Your ${subscription.trial.contentDaysLimit}-day trial includes ${subscription.trial.dailyContentPieces} daily ready-to-post concepts. ${subscription.trial.instagramSchedulesLimit === null ? "Unlimited Instagram scheduling is available until the trial ends." : `You have ${subscription.trial.instagramSchedulesRemaining} of ${subscription.trial.instagramSchedulesLimit} Instagram schedules remaining.`}`
                           : subscription?.trial.status === "active"
                             ? `Your trial content allowance is used. ${subscription.trial.instagramSchedulesLimit === null ? "Unlimited Instagram scheduling remains available until the trial ends." : `You have ${subscription.trial.instagramSchedulesRemaining} of ${subscription.trial.instagramSchedulesLimit} Instagram schedules remaining until the trial ends.`}`
-                            : "Your 3-day free trial has ended. Upgrade to generate content or schedule more Instagram posts."}
+                            : "Your free trial has ended. Upgrade for more daily content or Instagram scheduling. Any unused free AI credits remain available."}
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2.5">
-                  {subscription?.isActive && subscription.isDodoManaged ? (
+                  {subscription?.isDodoManaged ? (
                     <Button
                       type="button"
                       size="lg"
@@ -462,7 +464,7 @@ export function SettingsWorkspace() {
                       ) : (
                         <CreditCard data-icon="inline-start" aria-hidden="true" />
                       )}
-                      {isOpeningBilling ? "Opening billing" : "Manage billing"}
+                      {isOpeningBilling ? "Opening billing" : subscription?.status === "on_hold" ? "Update payment method" : "Manage billing"}
                     </Button>
                   ) : subscription?.isActive ? (
                     <Badge
@@ -502,10 +504,10 @@ export function SettingsWorkspace() {
                   </p>
                   <p className="mt-1 text-lg font-black text-foreground-strong font-mono">
                     {subscription?.creditsRemaining ?? 0}{" "}
-                    <span className="text-xs font-normal text-muted">/ {subscription?.sharedMonthlyCredits ?? 0}</span>
+                    <span className="text-xs font-normal text-muted">/ {subscription?.isActive ? subscription.sharedMonthlyCredits : subscription?.freeGenerationCredits?.granted ?? 0}</span>
                   </p>
                   <p className="mt-1 text-[11px] text-muted">
-                    {subscription?.creditsUsed ?? 0} used this month
+                    {subscription?.creditsUsed ?? 0} {subscription?.isActive ? "used this month" : "used · once per account"}
                   </p>
                 </div>
 

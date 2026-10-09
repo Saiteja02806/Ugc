@@ -8,7 +8,7 @@ import {
   requiredTikTokOAuthScopes,
 } from "./tiktok-oauth-config.ts";
 
-test("requests only the approved TikTok beta scopes", () => {
+test("requests only the approved TikTok product scopes", () => {
   assert.deepEqual(requiredTikTokOAuthScopes, [
     "user.info.basic",
     "video.publish",

@@ -21,6 +21,7 @@ import {
 } from "@/lib/jobs/background-jobs";
 import { createAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
 import { isTrustedStorageUrl } from "@/lib/storage/storage";
+import { getMediaAssetForOwner } from "@/lib/media/media-storage";
 import {
   BillingAccessError,
   deliverBillingUsageForJob,
@@ -30,12 +31,14 @@ import {
 } from "@/lib/billing/subscription-db";
 
 type GenerateRequest = {
+  exploreFormat?: unknown;
   aspectRatio?: unknown;
   idempotencyKey?: unknown;
   model?: unknown;
   prompt?: unknown;
   quantity?: unknown;
   referenceImageUrl?: unknown;
+  referenceImageAssetId?: unknown;
 };
 
 type ImageJobOutput = {
@@ -132,7 +135,9 @@ export async function handleAIStudioImageGeneration(request: Request) {
   const aspectRatio = parseAIStudioImageAspectRatio(body?.aspectRatio);
   const quantity = parseAIStudioGenerationQuantity(body?.quantity);
   const model = parseAIStudioImageModel(body?.model);
-  const referenceImageUrl = cleanTrustedHttpsUrl(body?.referenceImageUrl);
+  let referenceImageUrl = cleanTrustedHttpsUrl(body?.referenceImageUrl);
+  let referenceImageUrls: string[] | undefined;
+  if (body?.exploreFormat !== undefined && body.exploreFormat !== "slideshow") return NextResponse.json({ message: "Choose an image workflow.", ok: false }, { status: 400 });
 
   if (body?.referenceImageUrl && !referenceImageUrl) {
     return NextResponse.json(
@@ -140,6 +145,27 @@ export async function handleAIStudioImageGeneration(request: Request) {
       { status: 400 },
     );
   }
+
+  if (body?.referenceImageAssetId !== undefined) {
+    if (body.exploreFormat !== "slideshow" || typeof body.referenceImageAssetId !== "string" || !UUID_PATTERN.test(body.referenceImageAssetId)) {
+      return NextResponse.json({ message: "Choose a valid uploaded reference image.", ok: false }, { status: 400 });
+    }
+    try {
+      const asset = await getMediaAssetForOwner({ assetId: body.referenceImageAssetId, userId: user.uid });
+      const ownedUrl = cleanTrustedHttpsUrl(asset?.url);
+      if (!asset || asset.status !== "ready" || asset.collection !== "image" || !["image/png", "image/jpeg", "image/webp"].includes(asset.mime_type) || !ownedUrl || !asset.file_size_bytes || asset.file_size_bytes > 25 * 1024 * 1024) {
+        return NextResponse.json({ message: "This reference image is no longer available. Upload it again or choose another image.", ok: false }, { status: 400 });
+      }
+      const urls = [...new Set([...(referenceImageUrl ? [referenceImageUrl] : []), ownedUrl])];
+      // Keep old one-image jobs and their durable fingerprints unchanged.
+      referenceImageUrl = urls[0];
+      if (urls.length > 1) referenceImageUrls = urls;
+    } catch {
+      return NextResponse.json({ message: "Could not verify your reference image. Try again before generating.", ok: false }, { status: 503 });
+    }
+  }
+  // Only the server may resolve the ordered provider URL list from owned assets.
+  if (body && "referenceImageUrls" in body) return NextResponse.json({ message: "Choose references using the image attachment control.", ok: false }, { status: 400 });
 
   if (!prompt) {
     return NextResponse.json(
@@ -204,12 +230,14 @@ export async function handleAIStudioImageGeneration(request: Request) {
         idempotencyKey,
         input: {
           aspectRatio,
+          ...(body?.exploreFormat === "slideshow" ? { exploreFormat: body.exploreFormat } : {}),
           batchIndex: index + 1,
           batchSize: quantity,
           generationId,
           model,
           prompt,
           referenceImageUrl,
+          ...(referenceImageUrls ? { referenceImageUrls } : {}),
         },
         jobType: IMAGE_JOB_TYPE,
         projectId: "ai-studio",

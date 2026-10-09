@@ -1,6 +1,902 @@
 # Carousel System Context
 
-Last updated: 2026-09-23
+Last updated: 2026-10-09
+
+## 2026-10-09 Explore slideshow ownership and reference guidance (local revision)
+
+- The owner confirmed that catalogue slides guide layout, while a separate
+  image attached through the Instructions plus button guides subject/style.
+  Those roles reach both supported image providers in that order. Explicit
+  instructions remain intact; business context is optional and is not silently
+  injected into this manual workflow.
+- Edit slides contains only the owner's generated or uploaded output images,
+  with an independently ordered 2-10 image sequence. Selecting catalogue
+  guidance does not insert it into the final post. This supersedes the October
+  8 complete-reference-sequence behavior below. Regeneration replaces its
+  selected owned slide; generating a new slide appends one output.
+- The v2 save validates ready owned assets and preserves the existing atomic
+  Library RPC and publishing contract. Interrupted saves retain the exact
+  sequence and request identity; legacy v1 receipts remain recoverable.
+  A newer owned draft takes precedence over an older completed legacy receipt.
+  Automatic Trending Carousel architecture is unchanged.
+- After the local A/B trial, the owner chose preview-side editing for Hook.
+  Hook keeps Create / Demo / Schedule; each clip's preview opens its explicitly
+  named editor. Returning from hook edits opened in Demo restores the two-clip
+  preview. Hook and demo share the responsive editor frame and compact actions.
+  A remains available in the development comparison fixture.
+- One empty text box appears on opening a video editor. Additional blocks keep
+  independent timing/style. Blank blocks are local draft state and are excluded
+  from preview/export; legacy no-text receipts retain their original shape.
+  Local checks cover playback, trim, text, separate hook/demo drafts, reload,
+  preview/reopen and 320-1440px layouts. See
+  `docs/explore-workflow-audit-2026-10-09.md` for findings and limitations.
+  Deployment and authenticated production acceptance are pending.
+
+## 2026-10-09 Social slideshow hook contract (local implementation)
+
+- Slide 1 communicates one main idea as one curiosity-driven statement in one
+  text block, normally 6-14 words over 2-4 lines. No subtitle, supporting
+  paragraph, second sentence, motivational ad-copy explanation, or body-style
+  cover copy. Explain the idea on Slide 2 onward. This supersedes the cover
+  wording and 72px hook treatment in the September 30 text-presentation entry.
+- Both existing structures use fixed 84px Inter Tight Bold 700 cover text,
+  larger than the unchanged 50px content headings and 48px SemiBold bodies.
+  Four measured lines remain the maximum; overflow requires shorter copy.
+  The publisher accepts 5-14 words to retain compact hooks. First-person
+  problem/changed-belief hooks are explicitly allowed. List promises must
+  match the value actually delivered by the assigned six-slide format.
+- Both generation validators block separate sentences/paragraphs with
+  `hook_structure`. Semantic single newlines, common abbreviations, domains,
+  and decimals remain valid. Curiosity and one-idea resonance are prompt
+  guidance, not a keyword blacklist or a claim to predict performance.
+  Structure 2's bounded targeted repair includes this issue and replaces only
+  the rejected cover while freezing valid Slides 2-6.
+- Initial, batch, complete-plan, targeted and native-cover repair writers
+  receive the same hook guidance. Structure 1 is v50 and Structure 2 v21;
+  renderers are `social-single-statement-hook-inter-tight-v26` and
+  `story-native-single-statement-hook-inter-tight-v12`. The editor inherits
+  the shared 84px constant. Existing saved render bytes remain immutable.
+- Validation and preview evidence are recorded in
+  `docs/slideshow-social-hook-2026-10-09.md`. Deployment and authenticated
+  production acceptance on https://www.getugcpilot.com remain pending.
+
+## 2026-10-09 Trending outer focus outline removal (local fix)
+
+- Removed the orange focus ring around the scrolling post viewport. The ring
+  came from its `focus-visible:ring-focus` styling when keyboard navigation or
+  programmatic focus activated the feed. The viewport remains focusable with
+  the same scrolling and double-tap handlers; individual button focus indicators
+  retain their existing styling. Card size and below-card spacing are unchanged.
+- Local 1366 × 680 and 1536 × 776 checks show no outline or box shadow while
+  the viewport matches `:focus-visible`. All 66 Trending interaction tests and
+  scoped lint passed. This presentation change has not been deployed.
+
+## 2026-10-09 Trending scheduling after revisiting a post (local fix)
+
+- Visit-local `liked` history means the user opened the composer/scheduler; it
+  does not establish that a schedule was saved. Double-tap and Schedule may
+  reopen that post after cancellation or failure. Reopening reuses the exact
+  assignment and does not append history, replay the outbox, reconsider an
+  already accepted decision, or decrement the remaining content count.
+- Explicit Wall-of-Text schedule confirmation resolves the assignment and
+  creative under the authenticated owner, then persists acceptance before
+  loading the selected draft. If an original skip won the outbox race, only
+  this explicit action uses the existing reconsideration RPC. Ordinary outbox
+  decisions keep their conflict checks; a delayed skip cannot undo recovery.
+- Schedule creation still precedes server-side render delivery. Selection
+  does not save content to Creative Assets, generate a replacement, allocate
+  another daily slot, or charge another generation. Card dimensions and
+  below-card controls are unchanged by this repair.
+- Production logs contained a Wall schedule 404. The active deployment was
+  `bd352b7e52ce87f1e046dca8ad2ce6788280d545`; its revisit endpoint and database
+  RPC were present. A rollback-only production diagnostic verified the
+  skipped-to-selected transition without persisting any changes. Regression
+  tests reproduced the disabled liked-history action and selected-draft race
+  before the fix. See `docs/trending-revisited-scheduling-2026-10-09.md` for
+  local validation and release status. This new repair is not deployed yet.
+
+## 2026-10-08 Trending closer below-card controls (production release)
+
+- Skip and Schedule now sit about 12px below the current card on desktop.
+  The preceding 10% card reduction remains intact. Previously, unused space
+  below the centered post increased the visible gap to about 44px at
+  1366 × 680 and 75px at 1536 × 776.
+- A presentation-only ResizeObserver measures the post and snap-window
+  heights, then lifts the existing decision row and visible progress together
+  into that unused space. Their layout space stays reserved, preserving media
+  dimensions and scroll-snap geometry. The calculation ignores scroll position;
+  history browsing and gestures do not move the controls. Mobile is unchanged.
+- All 39 local format/viewport checks confirm unchanged card dimensions,
+  roughly 12px gaps, visible captions, clickable targets and no page overflow.
+  Forward/back browser checks retain selected slides without duplicate reviews.
+  TypeScript, scoped lint and 66 interaction tests passed. Screenshots and
+  measurements are in the report's final section. The isolated production
+  release `591da964e3afb32a40b19a638a9f85fe2912d5da` was built successfully and
+  promoted to getugcpilot.com as `dpl_9vnrJiJYmruBizdZeCTzkoEUDQeF`. Live
+  JavaScript and CSS contain the spacing implementation; all 24 dashboard
+  assets respond successfully. The immediate deployment error scan is clear.
+- The owner's subsequent large-gap screenshot was confirmed to come from the
+  live site before this release. The development fixture
+  now also covers the real Reel Hook renderer with local edited media. All 13
+  additional Hook viewport checks retain the 12px gap and current card sizes.
+  The owner could not sign in through the verification browser and requested
+  local visual checks. Fresh 1366 × 680 and 1536 × 776 checks confirm 12.2px
+  gaps, visible captions and no page overflow using the exact release files.
+  Authenticated production visual acceptance remains unperformed. The scoped
+  release is documented in `docs/trending-controls-production-release-2026-10-08.md`.
+  Direct push to main is awaiting explicit approval after automatic review
+  rejected it; production deployment has completed independently.
+
+## 2026-10-08 Explore format workflows (local implementation)
+
+- Explore now separates Hook video, Wall of text, and Slideshows. The first two
+  generate videos; Slideshows generates images. The former talking-hook and
+  creator-phone entries and standalone audio page are hidden. AI character
+  creation and existing Trending workflows retain their behavior.
+- The studio follows the older workflow shell: compact Create / Edit / Schedule
+  tabs within one left control card, one shared action footer, and right-side
+  References / Your Video (or Your Slides). Submitting generation
+  selects results immediately. Subsequent job updates do not change that view.
+- Hook and Wall of text also accept uploaded or owned Creative Assets videos,
+  including ready legacy creator footage. All sources use the same trim/text/
+  audio editor. Uploads use the existing owned-media completion path; selected
+  source IDs and edit drafts restore with owner checks. Video-only generation
+  and image-only slideshow generation retain their original boundaries.
+- Reference cards use a top-right Recreate icon with an accessible name and
+  keyboard focus; selected references have an orange check, outline and caption.
+  Preview stays a separate card action. One footer button shows the current
+  model, duration, ratio and count, and opens generation settings in a popover.
+  Step controls scroll above the same desktop action footer. Hook and Wall use
+  a compact optional style-example row, a 72px instructions field, and separate
+  image/video guidance tiles. Custom media overrides the gallery poster;
+  one guidance attachment is active at a time, and generation waits for upload
+  completion. Removing the style example also permits prompt-only generation.
+  Short video guidance uses the existing Runway path, accepts at most three
+  seconds, displays the actual source length and reserves three seconds of
+  credits; image/text generation remains Google Omni. The legacy Recreate
+  image requirement is retained outside these two new formats. Wall prompts
+  reserve room within the worker's 1,000-character limit for the background-only
+  instruction. Preview references stay local and generation is always locked.
+  Mobile actions reveal their target. Settings
+  close when leaving Generate/Create without interrupting background job polling.
+- Explore covers now follow the older Recreate presentation: one example at a
+  time fills the landscape card, with top/bottom cropping and a brief zoom
+  between examples. Both Hook and Wall clips play in full; the slideshow cover
+  includes both decks in numeric order. These are cover-only crops; reference
+  images and editor framing are unchanged. Versioned v2 media retains all
+  fourteen source hashes and preserves the previous covers.
+- Quick start has six entries: AI Studio, Trending content, Library, Video
+  generation, Image generation and Schedule a post. The two generation links
+  open the existing AI Studio mode; scheduling opens the existing calendar.
+- Explore slideshow edits preserve the complete reference sequence and its
+  order. A generated image replaces one selected slide. Authenticated saves
+  use an idempotent, service-only RPC and existing Library carousel publishing;
+  they do not create synthetic automatic Carousel generation records.
+- Migration `20261008001500_explore_format_workflows.sql` permits nullable
+  automatic generation IDs for these Library slide rows and tags owned
+  generated media from the matching background job. Automatic Carousel
+  generation, image sourcing, rendering and readiness rules are unchanged.
+- New saves require `EXPLORE_SLIDESHOW_SAVING_ENABLED`. Video trim, manual text
+  and audio edits require `EXPLORE_FINISHING_ENABLED` plus
+  `EXPLORE_FORMAT_EDITING_ENABLED` and the matching worker release. Neither
+  editor offers subtitles. The preexisting production Explore visibility gate
+  remains. Deployment and authenticated production acceptance are pending.
+- See `docs/explore-format-workflows-2026-10-08.md` for scope, assets, validation
+  and rollout dependencies.
+
+## 2026-10-08 Trending requested 10% laptop reduction (local implementation)
+
+- The owner explicitly requested a further 10–15% reduction for 14-inch laptops
+  and 10% for 15.6-inch laptops. The implementation uses 10% for both, meeting
+  both requests without inferring physical screen size from browser width.
+  A shared desktop media factor of 0.9 applies after the preceding viewport
+  constraints, including the previously protected short-window sizes. This
+  supersedes the sizing in the preceding entry.
+- At 1366 × 680 the portrait changes from 270 × 480 to 243 × 432; at
+  1366 × 768 from about 286 × 509 to 258 × 458; at 1536 × 776 from about
+  290 × 515 to 261 × 464. The effective desktop portrait cap is 288px and
+  slideshow cap 342px. The loading frame receives the same factor. Media and
+  saved text retain their proportions, and Skip/Schedule stay below the card
+  with their original targets and captions. Mobile and interaction code are
+  unchanged.
+- All 39 local format/viewport checks and 66 interaction tests passed again.
+  Browser scroll-back restored the selected third slideshow image without
+  another decision. The current report and full-screen evidence are in the
+  final section of `docs/trending-laptop-layout-2026-10-07.md`. Deployment and
+  authenticated production acceptance remain pending.
+
+## 2026-10-08 Trending final visual size review (local implementation)
+
+- A repeated full-screen visual review found the short 14-inch HD portrait
+  reasonably balanced, while taller HD and scaled FHD cards could lose a little
+  more visual weight. Growth is now 87% of available media height instead of
+  92%; portrait width caps at 320px instead of 340px, and slideshow width at
+  380px instead of 400px. This supersedes the preceding sizing entry.
+- Preferred 270px portrait and 360px slideshow widths remain protected when
+  space permits. The 1366 × 680 portrait stays 270 × 480 with 13px sample Wall
+  type. The 1366 × 768 portrait becomes 286 × 509, and 1536 × 776 becomes
+  290 × 515, about 5.4% smaller than the preceding pass. Both actions remain
+  below the card, visible without document scrolling. Source ratios and saved
+  text proportions remain intact; no interaction or persistence code changed.
+- All 39 desktop format/viewport checks passed again, as did 66 interaction
+  tests. Browser forward/back navigation restored the saved slide selection
+  without another review. Full-screen screenshots and current measurements are
+  recorded in the final section of `docs/trending-laptop-layout-2026-10-07.md`.
+  Deployment and authenticated production acceptance remain pending.
+
+## 2026-10-08 Trending restrained laptop sizing (local implementation)
+
+- The owner asked for a modest size reduction after the enlarged cards felt
+  too heavy. Below-card Skip and Schedule remain the presentation contract.
+  Desktop portrait cards now cap at 340px wide and 4:5 slideshow frames at
+  400px. Growth uses 92% of available media height, with preferred width floors
+  of 270px and 360px when the actual viewport permits; the complete card and
+  both decisions still take precedence over those floors.
+- At 1366 × 680, the portrait is about 270 × 480 instead of 280 × 497. At
+  1536 × 776 it is about 307 × 545 instead of 333 × 592. The shorter 600px
+  windows retain their height-constrained size to avoid another readability
+  regression. Saved text scales with the complete media; mobile is unchanged.
+- The existing compact header treatment is retained. Feed height caps follow
+  the new media caps so below-card decisions stay close on taller windows.
+  This supersedes the sizing measurements in the previous entry, while keeping
+  its action placement, interaction handling, and persistence behavior.
+- All 39 local format/viewport geometry checks and 66 interaction tests passed.
+  Scroll-back restores the selected slide and history. The current full build
+  is blocked by unrelated Explore imports (`./edit-overlay-render-spec.js` and
+  `@/lib/supabase/env`), outside this CSS-only presentation change. Measurements
+  and screenshots are recorded in `docs/trending-laptop-layout-2026-10-07.md`.
+  Deployment and authenticated production acceptance remain pending.
+
+## 2026-10-08 Trending below-card laptop actions (local implementation)
+
+- The owner rejected the compact side-action presentation. Skip and Schedule
+  stay together below the active card at every desktop size. This supersedes
+  the side-button decision in the 2026-10-07 compact laptop entry below.
+- Short desktop windows still prioritize the card over the introductory
+  subtitle and visible remaining count. Reduced outer/header-to-feed spacing,
+  28px feed padding, and an 8px format-label gap reclaim space above the card.
+  The format pill stays attached to its post, complete media and saved text
+  proportions are preserved, and both 56px-minimum actions retain captions.
+- At 1366 × 680, the portrait starts near y=83 instead of y=136 and measures
+  about 280 × 497, versus 230 × 409 in the earlier below-action layout. The
+  card and both button captions fit without document scrolling. Progress
+  remains in the feed label and live announcement. Taller desktop and mobile
+  presentation, interaction handling, and persistence remain in place.
+- Local browser, interaction, and lint validation is recorded in
+  `docs/trending-laptop-layout-2026-10-07.md`. Next compiled the application, but
+  the current full build's type check is blocked by video-generation types
+  outside these layout files. Deployment and production acceptance are pending.
+
+## 2026-10-07 Hero source-folder media restoration (local implementation)
+
+- Supersedes the 2026-10-03 hero media replacement below. The homepage hero
+  now uses `landing_page/heeo_Section/left_side.mp4` (Wall of Text),
+  `middle.mp4` (Hook+Demo), and the six ordered `right_side/image_*.jpg`
+  slideshow images. Public copies live under `/marketing/showcase/hero-restored`;
+  the videos are losslessly prepared for fast start with matching posters.
+- The slideshow restores automatic advance, arrows, and pagination inside the
+  existing right card. Card sizes, tilt, hero crop, and straight section cutoff
+  remain unchanged, as do all sections below the hero and the separate daily-feed
+  demo. Mobile retains its center-only preview. No product Carousel pipeline or
+  publishing behavior changes. Deployment and production acceptance are pending.
+
+## 2026-10-07 Trending compact laptop card priority (local implementation)
+
+- At desktop widths of at least 1024 CSS pixels and browser heights up to
+  820 CSS pixels, the active Trending post takes priority over the introductory
+  subtitle and visible remaining count. Those two secondary text elements are
+  hidden while the feed label and live announcement retain progress information.
+- Skip and Schedule move beside the post in a vertical pair, retaining their
+  captions, keyboard hints, accessible names, and at least 56px targets. The
+  feed column follows the media's height-limited width so the controls remain
+  close to the card. Both buttons and the complete source content fit without
+  document scrolling. This supersedes below-card control placement for short
+  desktop windows only; taller desktop and mobile presentations keep their
+  existing arrangement.
+- Local checks at 1366 × 650 enlarged the 9:16 card from about 214 × 380 to
+  296 × 526, with sample Wall type increasing from 10.3px to 14.3px. At
+  1366 × 680 the card is about 313 × 556. The existing feed's next/previous
+  transitions, saved slide selection, scheduling handlers, and source ratios
+  are retained. Measurements and verification are in
+  `docs/trending-laptop-layout-2026-10-07.md`; deployment and authenticated
+  production acceptance remain pending.
+
+## 2026-10-07 Trending available-height layout and scroll settlement (local implementation)
+
+- Desktop Trending uses the actual remaining workspace height after its header,
+  decision buttons, captions, and progress count. The post window measures that
+  remaining space through CSS size containment; portrait and 4:5 media use its
+  width and height, including the existing 52px label clearance. Reduced outer
+  spacing enlarges laptop cards while keeping Skip and Schedule visible without
+  page scrolling. Larger windows cap and center the complete review unit. This
+  supersedes the fixed desktop viewport deductions and prior laptop width curves
+  for the scrolling feed. Mobile presentation and complete-image containment
+  remain in place; Wall overlays continue scaling with their saved media layout.
+  The loading layer uses its available height too, preventing an invisible
+  placeholder from extending the page behind the ready feed.
+- The shared scrolling feed retains native scrollend and also schedules a
+  debounce fallback in browsers that support it. A completed touch can therefore
+  settle after a native event fired while the finger was still held. Wheel input
+  also arms the fallback when reversal produces no new scroll event at a boundary.
+  Held gestures, animations, disabled actions, and the existing commit lock guard
+  settlement. Backward browsing still only changes visit-local history.
+- These are local application changes. Authenticated production acceptance is
+  pending: https://www.getugcpilot.com/dashboard redirected to sign-in in the
+  available browser. No deployment or migration is included in this change.
+  Local validation and measured viewport sizes are recorded in
+  `docs/trending-laptop-layout-2026-10-07.md`.
+
+
+## 2026-10-05 Trending manual Wall copy formatting (local implementation)
+
+- Wall manual edits preserve explicit line breaks and paragraph gaps in the
+  textarea, browser preview, optional shared PNG preview, saved revision, and
+  worker export. Each authored line wraps greedily only when its measured width
+  exceeds the safe text width; short entries never merge or rebalance together.
+- Manual V13/V9 layouts carry `textMode: manual` and explicit `gapAfterPx`
+  per text block. Their box may grow vertically around its center inside the
+  existing publishing safe area, with vertical raster padding. Font size remains
+  fixed. Browser manual text scales proportionally so preview and export wrap
+  at the same width. Existing generated-card typography remains unchanged.
+  Changing only color or position retains the saved rows and typography through
+  the shared edit-layout helper used by save and shared PNG preview.
+- Manual edits require nonempty text, at most 600 characters, matching measured
+  content, safe placement, and render fit. They allow lists, short phrases, and
+  omitted terminal punctuation. Automated generation retains its word range,
+  balanced 5–8-line contract, sentence ending, and promotional/CTA rules.
+- Wall Edit also exposes left/right width handles and a percentage slider.
+  Manual width ranges from 40% to 94% of the video with at least 3% padding
+  at each horizontal edge. Side drags anchor the opposite edge; the slider
+  expands around the center and stays within the margins. Movement and width
+  controls support keyboard input. The existing vertical safe area still applies.
+  Width edits invalidate measured rows and reflow each authored line at the same
+  fixed font size through preview, saved edit JSON, and worker raster export.
+  Pending copy/width edits use immediate browser wrapping even when the shared
+  PNG feature is enabled; measured saved content can use the shared PNG.
+- This requires releasing the app and supporting render worker together.
+  No database schema change is required: manual content stays in owner-scoped
+  creative edit JSON. Production acceptance remains pending deployment and
+  authenticated checking on https://www.getugcpilot.com. Local validation and
+  evidence are recorded in `docs/wall-text-manual-edit-formatting-2026-10-05.md`.
+
+## 2026-10-03 Scheduled publication time and account region audit
+
+- Production traces confirmed that generic background-job recovery redispatched
+  future `publish_social_post` jobs after the 15-minute stale threshold. The
+  stored IANA time zone and UTC conversion were correct; the publisher lacked a
+  final not-before check. All 48 early publications found on the reported
+  account had a `job_recovered` event before publication.
+- Production migrations `20261003121102_prevent_early_social_publishing` and
+  `20261003122024_account_timezone_preferences` are applied. Recovery selection,
+  locked recovery, and atomic worker claims now require the owner-scoped,
+  current target to be due. Recovery also honors `next_attempt_at`. Cancelled
+  and published targets remain eligible for idempotent cleanup; superseded or
+  orphaned jobs cannot publish. Due jobs and ordinary generation recovery retain
+  their behavior. Production transaction tests passed and rolled back all fixtures.
+- The local worker adds a `DeferredJobError` before claiming a provider operation
+  if the target is still in the future. Waiting cannot contact a social provider,
+  fail the target, or consume a provider retry. Database enforcement already
+  protects the running worker; this extra worker guard awaits deployment.
+- Account publication defaults initialize once from the browser's IANA region
+  at the first verified sign-in. Existing onboarding zones are backfilled.
+  Later devices or visits do not replace the saved account region. The service
+  stores preferences behind the verified Firebase identity; browser roles have
+  no direct table/function access. `Asia/Calcutta` is a supported alias for India,
+  not a shared hardcoded account default. UTC is only the detection fallback.
+- Local Scheduling, inline Carousel, Hook, Reaction, and Wall drawers use the
+  account default. Video drawers now expose the same time-zone choice; all
+  selectors offer supported IANA regions. Existing schedules keep their stored
+  zone, and manual time edits pin the displayed zone so an async preference read
+  cannot reinterpret them. Initial slots and date minimums use zoned parts.
+- App and additional worker changes remain local, with authenticated deployed
+  browser acceptance pending. The production Scheduling URL was checked and
+  redirected to sign-in in the available browser. Full evidence and validation
+  are in `docs/scheduling-timezone-audit-2026-10-03.md`.
+
+## 2026-10-03 Create Content screen removal (local implementation)
+
+- Create Content is retired from both desktop and mobile navigation. Its page,
+  loading state, development preview, copy/card/render API routes, and exclusive
+  application helpers are deleted. The internal render canary is also removed,
+  so the application no longer produces new Create Content jobs.
+- Existing Library media, schedules, database tables, and historical migrations
+  remain intact. The worker retains the legacy render job handler and queue/lease
+  contracts so already queued jobs can finish and existing rendered videos can
+  still be scheduled. This compatibility code does not expose a creation screen.
+- Trending, its Carousel editor and scheduler, Library, and other creation tools
+  retain their existing routes and access rules. Explore retains its development
+  visibility gate.
+- Local verification passes TypeScript, scoped lint, expanded/collapsed navigation
+  in development and production, and 199 focused regression checks covering feed
+  decisions, scheduling, queue contracts, and legacy render completion/retries.
+  The retired page, preview, nested URLs, and GET/POST APIs return 404 in the
+  browser. Deployment and authenticated production acceptance are pending.
+
+## 2026-10-03 Backward post browsing (local implementation)
+
+- Trending, `/try-ugcpilot`, and the homepage daily-feed preview retain up to
+  120 reviewed post snapshots during the current visit. Scroll backward, drag
+  downward, or press Up/PageUp to revisit; move forward to return to new posts.
+  Previous and next media share the same native snap window and mouse release
+  easing. Only the active post exposes controls or plays video/audio. Resizing
+  cancels an unfinished gesture and restores the active post.
+- Revisited posts remain available for video, audio, and slideshow viewing.
+  In the demo and homepage, their heart and edit actions are disabled. Trending
+  now permits explicitly selecting a skipped post as described below; already
+  liked posts and history editing remain disabled. Browsing by itself never
+  repeats a decision, changes daily review counts, or starts a schedule.
+- Trending keeps this history above the Hook composer so it survives the deck's
+  temporary replacement, including the saved creative edit snapshot. Existing
+  owner/day session keys scope the retained history. The final empty state offers
+  **View previous posts** in Trending and Try UGCPilot, including while a demo
+  refill is pending. Browsing preserves live counts and the existing deferred
+  demo-session persistence during refills. A demo reset or successful
+  website analysis clears its history. History is not restored after a reload.
+- Focused decision hand-off tests and real-browser checks cover backward wheel,
+  keyboard, mouse/touch release, unchanged counts, exact media/copy, media controls,
+  final-post/refill return, retained parent history, resizing, inactive playback,
+  and reduced motion. Existing Carousel
+  readiness, save-before-dismiss, outbox, composition, and scheduling contracts
+  are retained. Deployment and authenticated production acceptance remain pending.
+
+## 2026-10-05 First-post guidance heart (local implementation)
+
+- Trending and the public demo retain the same shared first-post guide. Its
+  heart is now a larger, solid white silhouette with a soft warm shadow, matching
+  the white like feedback. Two small scale beats and two staggered ripple rings
+  demonstrate double-tapping, followed by a quiet interval for reading.
+- The decorative icon ignores pointer events through the existing guide and
+  stays hidden from assistive technology. Reduced motion keeps a still heart
+  and removes the rings. Guide eligibility, first-tap acknowledgement, completion
+  persistence, daily decisions, and scheduling are unchanged. This is a local
+  visual change; production deployment remains pending.
+
+## 2026-10-05 Trending skipped-post selection and laptop sizing (local implementation)
+
+- The redundant visible “Previously skipped · Scroll to browse” and general
+  scrolling instruction line are removed from Trending. Screen-reader status and
+  the remaining-post count are retained. Up/PageUp also revisit history when
+  focus is outside the scrolling card, subject to the existing modal/input guards.
+- Selecting a skipped post calls the authenticated `/api/trending/feed/reconsider`
+  endpoint before opening the existing composer or scheduler. Its service-only
+  RPC locks the exact owner/format/assignment/creative scope and changes a recorded
+  rejection to acceptance, preserving the decision ID and original review time.
+  A `reconsidered_at` marker makes a delayed original skip harmless; ordinary
+  conflicting decisions continue to fail closed. A skip still in the outbox is
+  persisted atomically first. This consumes no extra daily slot or generation
+  credits. The browser clears the superseded queued skip after success.
+- Carousel recovery still saves the same content to Library before opening
+  scheduling. A failed selection or save leaves the card retryable. Successful
+  recovery marks the existing history snapshot liked without appending history,
+  replaying the ordinary decision outbox, or decrementing remaining counts again.
+  Hook recovery retains its saved edit snapshot through a deck remount.
+- Portrait previews gain 16px of height and slideshow previews gain about 12px
+  of width at normal laptop sizes. Cards scale with the usable CSS viewport;
+  compact action sizing is scoped to Trending. Short windows preserve both
+  decision controls and the remaining count without page scrolling.
+- Migration `20261005064026_trending_skipped_post_reconsideration.sql` is prepared
+  and verified against local Postgres. It must accompany the application release;
+  production migration, deployment and authenticated acceptance are pending.
+
+## 2026-10-09 TikTok disclosure controls hidden (local implementation)
+
+- The owner clarified that Your brand, paid partnership, commercial disclosure,
+  and Music Usage Confirmation should run in the background rather than appear
+  as editable controls. They are removed from the shared Trending Carousel/Text/
+  Reaction modal, Explore/Scheduling editor, and Hook drawer. New-target defaults
+  stay Your brand on, music confirmed, and paid partnership off. Saved brand and
+  partnership choices remain intact.
+- Each form shows a short agreement at its final scheduling action. That action
+  confirms music in the submitted TikTok payload without mutating the saved draft;
+  older false/missing music values no longer block a form with no visible checkbox.
+  Hook's extra confirmation popup is removed. The agreement includes the Branded
+  Content Policy for selected saved paid-partnership targets.
+- Audience, available interaction and AI controls, account errors, creator
+  capabilities, backend normalization, Carousel formats, readiness, ownership,
+  and rendering rules remain enforced. Other-platform and dormant legacy target
+  settings are preserved. Server normalization still rejects missing/false music
+  confirmation in direct API requests.
+- This supersedes the visible-checkbox and fallback-popup choices below. It is
+  the owner's product decision, not a claim that approval waives TikTok's UX
+  guidelines. Local verification: 65 focused tests, full TypeScript, and scoped
+  ESLint passed. Deployment and authenticated production acceptance remain
+  pending. See `docs/tiktok-ui-visibility.md`.
+
+## 2026-10-09 TikTok publishing checkboxes default on (local implementation)
+
+- The owner requested Your brand and Music Usage Confirmation checked for every
+  new TikTok target. Your brand and commercial disclosure already default on;
+  the shared music default is now on as well. Paid partnership remains off.
+  Explore, Scheduling, and Trending's Hook, Text, Reaction, and Carousel flows
+  share these defaults; saved post settings and explicit unchecked choices
+  remain authoritative when creator capabilities refresh.
+- Trending Hook skips the extra music popup when the selected TikTok settings
+  already confirm music usage. The agreement is visible above the final Confirm
+  schedule button. A target without confirmation still requires explicit consent;
+  server normalization continues to reject false or missing confirmation.
+- This supersedes the unchecked music default below. It is the owner's product
+  choice, not a claim that API approval waives TikTok's UX guidelines. No changes
+  are made to account gates, creator capabilities, Carousel formats, readiness,
+  renderers, provider scopes, publishing workers, or existing saved schedules.
+  Deployment and authenticated production acceptance remain pending.
+
+## 2026-10-09 TikTok UI restored after approval (local implementation)
+
+- The owner confirmed TikTok approval and the required permissions/scopes.
+  `socialPlatformVisibility.tiktok` is enabled, superseding the temporary hiding
+  below. The shared Trending Carousel scheduler again shows TikTok accounts,
+  connection actions, and publishing controls to verified users. Landing,
+  Explore, Scheduling, Settings, Connected accounts, and Analytics use the same
+  visibility switch.
+- Carousel format compatibility and existing publishing consent, creator
+  capabilities, ownership, readiness, rendering, and media validation remain
+  enforced. YouTube remains video-only. Saved TikTok targets and settings are
+  preserved and visible again; no migration or provider scope change is needed.
+- This is local implementation. Deployment and authenticated production
+  acceptance on https://www.getugcpilot.com remain pending. See
+  `docs/tiktok-ui-visibility.md` for coverage and verification.
+
+## 2026-10-03 Temporary TikTok UI visibility (local implementation)
+
+- TikTok is temporarily hidden through `lib/social/platform-visibility.ts`
+  while content-posting API access is pending. The shared Trending Carousel
+  account modal uses this presentation gate, so Instagram remains selectable
+  and TikTok connect/account/settings controls are absent. Existing Carousel
+  format compatibility, readiness, rendering, and publishing APIs are retained.
+- Saved targets, connections, settings, and provider types remain intact. The
+  schedule editor preserves dormant saved targets when other fields are edited.
+  Re-enable the single TikTok visibility entry after approval and release the
+  frontend. See `docs/tiktok-ui-visibility.md` for the covered surfaces and checks.
+- This is local implementation; deployment and authenticated production
+  acceptance remain pending.
+
+## 2026-10-03 Hero showcase media replacement (local implementation)
+
+- The homepage's three-card hero uses the owner's supplied positional videos:
+  `left_side.mp4`, `middle.mp4`, and `right_side.mp4`, in that order. Its former
+  right-hand image slideshow is replaced by video, so slideshow navigation,
+  pagination, and the two decorative stack layers behind that card are removed
+  only from the hero. The tilted card geometry and
+  center-only mobile layout are retained. Matching first-frame posters and
+  lossless MP4 fast-start preparation support initial loading.
+- Hero overflow, its existing bottom crop, isolation, and an explicit inset
+  clip keep all transformed card/shadow layers inside the section divider.
+  Hidden desktop-side video sources are deferred on narrower screens.
+- The separate homepage daily-feed demo still uses its original Hook, Wall of
+  Text, and Slideshow samples. No product Carousel source, render, readiness,
+  Library save, daily-feed, schedule, or publishing contract is changed.
+  This entry does not assert deployment or production acceptance.
+
+## 2026-10-03 Landing daily feed demo (local implementation)
+
+- The homepage `#interactive-feed` section now demonstrates the same vertical
+  scroll, mouse grab/flick, and double-tap heart as Trending and `/try-ugcpilot`
+  through `PostInteractionFeed`. The heading and instructions teach double-tap
+  approval and scrolling to skip; down-arrow and heart replace the old X/tick.
+- Its existing Hook, Wall of Text, and Slideshow samples still loop. Slideshow
+  arrows change slides within one post, and only the active video plays. Likes
+  hold the post for the shared 720ms feedback with a synchronous duplicate lock
+  and timer cleanup. This is an interactive marketing preview; scheduling starts
+  in Trending, and the homepage sends no save or publishing request.
+- Browser checks exercise the real homepage on desktop/mobile, including
+  controls, native touch/wheel, mouse/keyboard browsing, duplicate likes,
+  format cycling, inactive playback, and reduced motion. Existing product
+  scheduling and Carousel readiness/Library contracts are unchanged.
+
+## 2026-10-03 Scroll motion refinement (local implementation)
+
+- Trending and `/try-ugcpilot` keep native touch/wheel momentum and vertical
+  snapping. Scrolling now commits on native `scrollend`, with a debounce
+  fallback for older browsers. A held touch or mouse gesture cannot retire
+  its post. The next post stays in place through the decision hand-off rather
+  than resetting to the previous post during the busy state.
+- Mouse release considers a recent upward flick as well as the existing 35%
+  distance threshold. Flicks need at least 10% travel; movement speed expires
+  after a 100ms pause. Release and keyboard movement decelerate over 180–320ms
+  into one post without bouncing. Short/paused drags return smoothly. Escape,
+  blur, new gestures, item changes, and busy/unmount cleanup cancel the tween;
+  reduced motion moves instantly. No per-frame React state updates are used.
+- The existing 720ms heart, like locks, Carousel Library save/readiness,
+  scheduling hand-offs, decision outbox, and publishing contracts are retained.
+  Real-frame verification checks flicks, cancellation, touch release, continuity
+  through retirement, reduced motion, and liking after a scroll. This remains
+  local until release and authenticated production verification.
+
+## 2026-10-03 Mouse drag browsing (local implementation)
+
+- Trending and `/try-ugcpilot` show a grab cursor over active post media and
+  a grabbing cursor while the primary mouse button is held. Vertical mouse
+  dragging moves the shared scrolling feed directly, with native snap paused
+  during the drag. Touch, wheel, and keyboard browsing keep their existing
+  behavior.
+- Mouse movement cannot like a post. A release after at least 35% of a post's
+  height snaps to one next post, then uses the existing settled-scroll skip
+  and decision outbox. Short, downward, or reversed drags return to the current
+  post. No decision is committed while a mouse drag is still held.
+- Post controls keep normal clicks. Native image/text dragging is suppressed
+  only for post mouse gestures. Pointer capture supports release outside the
+  card; Escape, window blur, capture loss, item changes, and busy/unmount
+  transitions clear drag state. Cancelled gestures reset without consuming a
+  post. The same readiness, heart feedback, duplicate locks, and scheduling
+  hand-offs remain in place. This change remains local until release.
+
+## 2026-10-03 Like feedback refinement (local implementation)
+
+- Trending and `/try-ugcpilot` now share a solid white heart with a prompt
+  spring pop, restrained overshoot, short settled hold, and soft fade. The
+  feedback lasts 720ms; CSS and the existing decision timer share the same
+  duration constant so advancing cannot cut off the animation.
+- The heart is centered on the post media, including Trending's format-label
+  space. Only transform and opacity animate. Reduced motion keeps the heart
+  still, and feedback stays decorative and ignores pointer events. Duplicate
+  locks, readiness, Library saving, skipping, and scheduling contracts remain
+  intact. Local motion frames and the existing regression checks verify this;
+  production verification remains pending deployment.
+
+## 2026-10-02 Trending scroll feed and double-tap scheduling (local implementation)
+
+- Trending now presents its ordered daily posts in a native vertical scrolling
+  feed. Double-tapping the active post media likes it, shows heart feedback,
+  and enters its existing scheduling flow. A completed user scroll to the next
+  post skips exactly one assignment through the existing decision outbox.
+  Single taps, small movements, controls, programmatic scrolling, and incoming
+  feed updates do not decide a post. Upcoming posts remain inert and preload
+  without autoplay until active; Carousel slides remain one daily post.
+- This supersedes the horizontal swipe deck, stacked preview positioning, and
+  primary X/tick review controls below. Explicit accessible controls are now
+  a down-arrow Skip and a heart Schedule; keyboard shortcuts remain available.
+  Editor save ticks, modal close controls, and internal Carousel slide controls
+  retain their existing jobs. The first-post guide teaches the new gestures
+  and still consumes its acknowledgement without deciding the underlying post.
+  The shared decision component defaults to the existing swipe controls;
+  Trending opts into post controls. The former Create Content screen used the
+  default X/tick controls until its retirement on 3 October.
+- Carousel likes retain the readiness checks and save the exact owner-scoped
+  Library item before retiring the daily post. The saved result is passed
+  directly into the shared scheduler, avoiding a second save. Failed saves
+  leave the post in Trending and release the interaction lock. Text and
+  Reaction likes open their existing shared scheduler directly; Hook likes
+  retain the required composition step before scheduling. Account settings,
+  explicit final scheduling submission, publishing APIs, workers, entitlement
+  accounting, idempotency, and immutable rendered media are unchanged.
+- `/try-ugcpilot` uses the same gesture component and guide. Its heart and
+  down-arrow controls replace the old tick and X. Liking is a demo event;
+  the persisted counter keeps its legacy `postedCount` field for session
+  compatibility but is shown as Liked. Existing analysis, refill, audio,
+  mobile controls, and browser sessions remain supported. Reset and new
+  analysis cancel pending decisions so they cannot consume a new deck's post.
+- Heart feedback respects reduced motion. Post gestures are disabled during
+  saving, scheduling, or editing, and synchronous locks prevent duplicate
+  acceptance. The last ready post can be liked or skipped without replenishing
+  its daily slot; a scheduling dialog stays mounted after that post leaves.
+- Local verification includes gesture/session tests, execution of the real
+  acceptance hand-off functions, the existing Trending scheduling suite, and
+  desktop/mobile browser checks. Details and repeatable commands are in
+  `docs/trending-scroll-feed-2026-10-02.md`. This entry is not a deployment claim;
+  authenticated acceptance on https://www.getugcpilot.com remains a release
+  verification step.
+
+## 2026-10-01 Seven-day Trending trial (released 3 October)
+
+- The shared Trending trial is seven days from completed onboarding, with
+  twenty daily concepts and at most seven reserved daily packs. This applies
+  to the shared feed used by Hook, Wall of Text, and Carousel content.
+- The new migration extends only unexpired trial records to at least seven
+  days from their original start and seven content days. Expired records stay
+  closed; onboarding replay cannot reset a trial. Existing usage, daily limits,
+  scheduling limits, paid subscriptions, and complimentary grants are retained.
+- Pricing derives the duration from the shared policy; Settings describes the
+  stored entitlement. Expiry messages also work for legacy closed trials.
+- The final reserved pack may still finish during an active trial after its
+  seventh allowance is consumed; this does not authorize an eighth pack.
+- This supersedes the three-day policy in historical entries below. The database migration was applied on 3 October 2026 with the pricing release.
+
+## 2026-10-01 TikTok slideshow scheduling release
+
+- This release builds on the current production/main source, preserving the
+  Runway video-generation update. It includes the requested Everyone / Your
+  brand defaults, capability handling in all three scheduling forms, and the
+  two photo-publishing fixes below. No additional OAuth scope, slideshow API
+  route, database migration, or video conversion is needed for photo scheduling.
+- The scheduler saves a ready Carousel Library item and exact per-account
+  settings/time; the publish worker loads its stored slides in order and uses
+  TikTok's `PHOTO` / `DIRECT_POST` endpoint with `PULL_FROM_URL`. Production video
+  `FILE_UPLOAD` does not change this photo path.
+- Worker fix: forward the existing `containsSyntheticMedia` setting as the
+  photo API's top-level `is_aigc`, preserving explicit false and the existing
+  true default. The form previously saved this choice but the photo request
+  omitted it. The video disclosure contract is unchanged.
+- Worker fix: URL-verification errors refer to the post's media and direct users
+  to support, rather than incorrectly calling a slideshow a video or suggesting
+  regeneration would repair app ownership verification.
+- Live read-only checks: `mrcool9251` has a valid connection and `video.publish`;
+  TikTok creator-info returned HTTP 200 and includes `PUBLIC_TO_EVERYONE`.
+  The Clara connections remain revoked. All six images in the latest blocked
+  slideshow return HTTP 200 without redirects, are WebP, and are below 20 MB;
+  their existing 1080x1350 render size is preserved.
+- Validation: worker build and 50 focused worker tests pass; 46 Trending
+  scheduling tests pass. New regressions cover the photo AI choice, photo URL
+  pulling under video FILE_UPLOAD, resuming without duplicate initialization,
+  and action-required URL-verification failures.
+- Release targets are the production web app and social-publish worker. The
+  verified prefix and hostname configuration below are already deployed.
+  Production browser verification requires sign-in; no live post was created.
+  One explicitly approved photo post reaching `PUBLISH_COMPLETE` and a
+  `published` target remains necessary for end-to-end acceptance.
+
+## 2026-10-01 TikTok slideshow URL verification and worker configuration deployed
+
+- Production slideshow images remain under the existing public GCS prefix
+  `https://storage.googleapis.com/ugcsaas-media/`. A real image probe returned
+  HTTP 200, WebP, and no redirect. The optional custom media CDN stays disabled.
+- The photo-post code uses `PHOTO` / `DIRECT_POST` with `PULL_FROM_URL`. Before
+  recovery, the worker had no verified media hosts configured and the latest
+  six-slide production target failed with `tiktok_url_ownership_unverified`.
+  Successful video uploads do not establish that photo URL pulling works.
+- Recovery is to verify this exact owned bucket URL prefix in the TikTok app's
+  Production URL properties using its generated signature file, then set
+  `TIKTOK_VERIFIED_MEDIA_HOSTS=storage.googleapis.com` in the worker and its
+  Terraform variables. This hostname allowlist does not verify other GCS
+  buckets. No new CDN, image rewrite, or video transfer-mode change is needed.
+- Reconnect the exact intended TikTok account, then verify one explicitly
+  approved real slideshow on production through provider `PUBLISH_COMPLETE`
+  and a `published` target. The inspected Clara connections are revoked.
+- The owner supplied `tiktok41KhPT9XDx2y5CeAK5W5o2L5LF1GHnOu.txt` from TikTok.
+  Its unchanged 68 bytes are saved in
+  `infra/gcp/social-publish-worker/verification/` and deployed at the root of
+  `gs://ugcsaas-media`. The public HTTPS URL returned HTTP 200, `text/plain`,
+  no redirect, and bytes identical to the original file.
+- The owner's screenshot confirms the storage URL prefix under TikTok's
+  Verified properties; the `getugcpilot.com` domain also remains verified.
+  Deployed worker revision `ugc-social-publish-worker-00057-btp` has
+  `TIKTOK_VERIFIED_MEDIA_HOSTS=storage.googleapis.com` and serves 100% of traffic.
+  The same host is persisted in the ignored production `terraform.tfvars`.
+- Cloud Run confirms Ready and ContainerHealthy after its internal `/healthz`
+  startup probe. The image, service account, and all other environment settings
+  are unchanged. A real slideshow publishing test remains pending; this
+  deployment does not establish `PUBLISH_COMPLETE` or a `published` target.
+  Commands and evidence: `docs/tiktok-direct-post-audit-runbook.md`.
+
+## 2026-10-01 TikTok publishing defaults
+
+- Owner-requested shared defaults for new TikTok targets are Everyone
+  (`PUBLIC_TO_EVERYONE`) and Your brand (`brandOrganic=true`), with commercial
+  disclosure enabled and Paid partnership off. Trending Hook, Text, Reaction,
+  and Carousel scheduling use these defaults without requiring users to
+  reselect them for each post. Choices remain editable and saved per-post
+  settings remain authoritative; no account preference store is added.
+- Fresh creator capabilities still validate the audience. If Everyone is
+  unavailable, or private-testing mode is explicitly configured, clear the
+  unsupported audience and ask for an available choice; never substitute Only
+  me automatically. Music Usage Confirmation remains an explicit final consent.
+- This supersedes the manual-visibility/default-disclosure behavior documented
+  below. It deliberately differs from TikTok's current Content Sharing
+  Guidelines, which require no default audience and commercial disclosure off
+  by default: https://developers.tiktok.com/docs/en/content-sharing-guidelines.
+- This release changes the shared defaults and capability handling in the
+  three scheduling forms. Authenticated production acceptance remains separate
+  from source/release verification.
+
+## 2026-09-30 Carousel editor drag containment (local)
+
+- Structure 1 and Structure 2 live previews measure the full text group,
+  including body blocks, CTA, inline heading-pill padding and text overhang.
+  Pointer and arrow-key movement clamp that measured group inside the existing
+  renderer safe margins, not merely a 10%-90% centre-anchor range. Structure 2
+  remains horizontally locked; both 1:1 and 4:5 sizes are preserved.
+- Measurement refreshes after text edits, viewport resize and font loading.
+  Preview-only clamping never saves content or marks an untouched slide edited.
+  The immutable saved-render preview remains exact until explicit interaction.
+  An oversized group shows a shorten-to-fit warning and cannot be dragged into
+  a falsely valid position; no font shrinking or copy truncation is introduced.
+- This is a Carousel-only browser change. Hook and Wall-of-Text drag controls,
+  export renderers, image sourcing/selection, uploaded screenshot composition,
+  API/persistence contracts and historical render files are unchanged. Local
+  checks do not assert deployment or authenticated production acceptance.
+
+## 2026-09-30 TikTok-style text on the existing slideshow formats (local)
+
+- Owner-confirmed scope: keep only Structure 1 and Structure 2, their existing
+  15 educational and eight product-story format IDs, rotation, six-slide roles,
+  and slideshow sizes. Output remains 1080x1080 (1:1) or 1080x1350 (4:5), never
+  9:16. The three architectures and collage/image proposals in the supplied
+  reference are explicitly **not** adopted.
+- This supersedes the September 20 single-paragraph/96px-cover/60px-body
+  presentation and all-slides-no-CTA decisions below, for new renders only.
+  Hooks use one clean-white Inter Tight Bold message at fixed 72px, up to four
+  lines. Writing normally targets 6-13 words; the publisher accepts 5-13 to
+  retain compact legacy-compatible hooks, with measured fit authoritative.
+- A real content heading is optional, normally 4-10 words, at fixed 50px and
+  at most two lines. Only that heading gets dark text on the existing measured,
+  line-fitted white SVG path. No premade/decorative SVG or body box is added.
+  Cover hooks do not receive a pill. Never manufacture a heading to activate it.
+- Normal body copy uses fixed 48px Inter Tight SemiBold white text with the
+  established dark outline, no background. One or two distinct thoughts are
+  transported as body/storyText separated by a blank line; each fits at most
+  three visual lines, with 32px separation. Single newlines preserve authored
+  semantic line breaks. Existing list modes/counts remain authoritative and
+  items remain individual text groups. No shrink, truncation or fallback copy.
+- Both initial and repair writers receive the same presentation rules. The
+  existing body-word budgets remain: Structure 1 18-30, Structure 2 14-30 total
+  body words. Grounding, prohibited claims, ownership and bounded repairs stay
+  enforced. Orphan lines containing only for/and/to/the/of/but are rejected.
+- An optional short CTA is permitted on Slide 6 alongside useful final value,
+  never in place of promised content. It is drawn as plain white text on that
+  same slide, not a pill/button; existing authored CTA fields are preserved
+  during explicit edits rather than silently suppressed. There is no new CTA
+  slide or image-role change.
+- Structure 2's plan/schema adds nullable semantic `headline` while keeping
+  `storyText` for the body. Persistence reuses existing columns: new cover hook
+  in headline; content heading (or empty string) in headline and body in subtext.
+  Legacy plans/specs without semantic headline retain their plain story
+  treatment. The legacy headline database column alone never implies a pill.
+  No database migration or historical-row rewrite is needed.
+- Image selection/reservation, safety/relevance, approved uploaded screenshot
+  consideration and Slide 6 placement, screenshot containment/blur, image crop,
+  brightness/saturation and fallback pools are unchanged. No collages, new
+  sourcing strategy or product-in-context replacement is introduced.
+- Completed rendered assets remain immutable. Unchanged edited slides reuse
+  their exact saved render; intentional re-renders use versioned new keys.
+  Browser editing keeps body line breaks and the same packaged Inter Tight
+  font/size hierarchy; its temporary layout is a preview, while the worker's
+  measured SVG fit remains the export authority.
+- Versioned writers: Structure 1 v49, Structure 2 v20; renderers:
+  `social-tiktok-text-blocks-inter-tight-v25` and
+  `story-native-tiktok-text-blocks-inter-tight-v11`. Full specification:
+  `docs/carousel-text-presentation.md`. This is local implementation, not a
+  deployment claim. Coordinated web/worker release and authenticated production
+  checks on https://www.getugcpilot.com remain separate acceptance gates.
+
+## 2026-09-30 TikTok and YouTube general availability
+
+- TikTok and YouTube connections, scheduling create/edit/finalization/retries,
+  and analytics are available to every verified signed-in user. The former
+  email allowlists are removed from the shared access helpers used by both
+  server routes and frontend controls; their legacy names remain for caller
+  compatibility. This supersedes the verified-email beta restrictions below.
+- The shared Analytics platform/account selector and existing Instagram,
+  TikTok, and YouTube analytics views are available to those same users.
+  Owner scoping, genuine provider metrics, snapshot freshness, and per-account
+  filtering remain enforced. Older connections missing analytics consent
+  must reconnect to grant the existing requested scopes.
+- The inline Carousel scheduler now offers Instagram and TikTok to all
+  verified users. YouTube remains video-only. Carousel Library ownership,
+  complete-slide previews, media validation, and explicit TikTok visibility
+  and publishing consent remain enforced.
+- The same modal offers YouTube for Trending Text and Reaction Reels, with
+  channel visibility, audience, notification, and AI disclosure settings.
+  Video add/reconnect actions use the accounts OAuth popup context because
+  those posts have no Carousel Library item. TikTok Music Usage Confirmation
+  is validated before submission using the shared platform settings policy.
+- Code-level verification confirms ready Reaction Reels create publishing
+  tasks before success; Text Reels save the account/settings/time first,
+  then the server queues rendering and the worker finalizes publishing.
+  Hook videos save a pending composition and start rendering through the
+  existing follow-up render request; failed starts remain retryable in
+  Scheduling. These are local code/test findings, not production acceptance.
+- The owner confirmed TikTok Direct Post audit approval. Both web and worker
+  default to audited publishing, and deployment templates set
+  `TIKTOK_DIRECT_POST_AUDITED=true`. An explicit false setting restores private
+  testing restrictions. Existing deployed false overrides must be changed to
+  true in both runtimes when releasing this change.
+
+### 2026-09-26 Shared extraction condition preservation
+
+Business Context extraction now explicitly repeats applicable source limits
+in each standalone claim, including ordering deadlines, pickup windows, plan
+limits, and required approval. No Carousel API, planner, renderer, review,
+schema, or frontend behavior is changed by this Wall-focused update.
+
+## 2026-09-25 Shared Business Context language (local implementation)
+
+- Website, typed-description, and mobile-app AI context extraction share plain-
+  English factual writing instructions. Descriptions preserve source meaning
+  and qualifications; labels/search queries remain short. Unsupported or
+  ambiguous meaning is omitted using existing schema fields. Creative guidance
+  is confined to its existing fields rather than influencing factual wording.
+- This changes newly analyzed Business Context used by all formats. Carousel
+  planning, rendering, schema, profile-version ownership, and historical assets
+  are unchanged. There is no new review gate, model call, or migration.
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -8,6 +904,43 @@ Read it before changing Carousel API routes, workers, image sourcing, matching,
 rendering, database schema, review scripts, or frontend behavior.
 
 ## Product Goal
+
+### Explore reference catalogue additions (2026-09-30, local only)
+
+The owner's new source folders add 11 complete slideshows / 70 slides to
+Recreate: Habit (2), Interior Design (3), Relationship (3), Screen Blocker (3).
+Habit, Interior Design and Screen Blocker are new compact-filter categories.
+The local gallery now has 49 slideshows across 12 categories. Each source
+subfolder remains one ordered slideshow; original images are never altered.
+Seven supplied Hook clips are added to Recreate, retaining their original audio
+and bytes while gallery previews play muted. Workflow 1 Library and covers are
+not populated by these additions.
+
+Catalogue preparation is additive and repeatable: preserve saved IDs, titles,
+slide order and missing old references; reject conflicting replacements; never
+downgrade a published batch. The original 66 imported items are unchanged.
+New content stays staged and development-preview-only until a separate approved
+cloud import verifies assets. This does not change Trending Carousel sourcing,
+matching, writing, rendering, ownership, readiness or scheduling, and does not
+assert deployment. Details: `docs/explore-catalog-update-2026-09-30.md`.
+
+### Explore Recreate reference presentation (2026-09-30, local only)
+
+Explore's Recreate gallery is a reference-browsing surface, separate from the
+automatic Trending Carousel generation pipeline. Each imported slideshow stays
+one complete ordered reference. Its gallery and preview keep the full source
+image with `object-contain`; the main preview follows the natural image ratio
+to avoid artificial dark side bars, rather than cropping the source. Category
+names remain inside the compact filter, without numeric filter counts. Numbered
+internal titles and duplicate category/slide-count captions are not exposed;
+the media badge and preview's current-slide position remain useful navigation.
+
+The gallery responds to its own available width, and selected-reference
+thumbnails identify the chosen slide without reconstructing its typography.
+Short fades/slides respect reduced motion and do not remount generator panels.
+No Carousel source, matcher, writer, renderer, ownership, readiness, Library,
+scheduling, schema or immutable rendered asset is changed by this local UI pass.
+Nothing in this entry asserts deployment or authenticated production acceptance.
 
 ### Monotonic laptop Trending composition (2026-09-16)
 
@@ -46,7 +979,7 @@ does not modify source assets or repair text already baked outside safe margins.
 
 ### Active trial pack delivery
 
-The three-day pack quota is charged when a daily pack is reserved. While the
+The content-day pack quota is charged when a daily pack is reserved. While the
 trial is active, feed reads, generation continuation, and completion callbacks
 may finish an existing owner-scoped trial pack after its remaining content-day
 quota reaches zero. They retain that pack's saved daily limit. Creating another
@@ -88,10 +1021,11 @@ Ready-to-post Trending formats use one shared Instagram scheduling shell:
 `Post`, `Account`, `Details`, then `Publish`. Carousel and Slideshow content
 enter with the complete post already selected and retain their optional caption;
 Wall-of-Text enters the same shell as a Text Reel, retains the same optional
-caption, and shows only a compact preview and the publication settings instead
-of repeating the full on-screen copy inside the scheduling UI. Its durable
-schedule is still saved before the background render begins. Hook videos remain
-separate because they must collect and combine a demo video before scheduling.
+caption, and shows only a compact preview, caption controls, and publication
+settings. It does not add a redundant ready-to-prepare information card or
+repeat the full on-screen copy inside the scheduling UI. Its durable schedule
+is still saved before the background render begins. Hook videos remain separate
+because they must collect and combine a demo video before scheduling.
 
 The shared picker can add or reconnect an Instagram account from a Wall-of-Text
 schedule without requiring a Carousel Library item. Carousel scheduling keeps
@@ -2801,10 +3735,12 @@ Name: **Verify v26 and replace the stale production assignment**
 ## 2026-08-22 Trending Hook Flow Bundle Boundaries
 
 - The live Trending feed keeps Hook composition state in its existing parent
-  wrapper, but loads the large `HookVideoComposer` client module only after an
-  accepted Hook enters composition. Closing the composer clears the parent
-  composition and returns to the already-loaded in-memory daily pack; it does
-  not refresh or regenerate the feed.
+  wrapper and includes `HookVideoComposer` in the initial Trending client
+  bundle. The composer still opens only after an accepted Hook enters
+  composition, but a right swipe no longer depends on loading a fresh client
+  chunk that may be stale after a deployment. Closing the composer clears the
+  parent composition and returns to the already-loaded in-memory daily pack; it
+  does not refresh or regenerate the feed.
 - The shared Hook/Wall scheduling drawer is loaded only when its existing
   open or pending-schedule state is present in Trending, Hook composition, or
   the Saved Hook library. A blocking scheduling status covers the short chunk
@@ -3836,121 +4772,30 @@ Name: **Verify v26 and replace the stale production assignment**
   current paid pack immediately after payment activation; future-day prebuild
   remains a separate, explicitly controlled rollout.
 
-## 2026-08-27 First-Visit Trending Walkthrough
+## 2026-09-25 First-Visit Trending Swipe Guide
 
-### Application video presentation (2026-09-13)
-
-The original animated walkthrough remains preserved and its display is currently
-disabled in Trending. The replacement application video uses a centered rounded
-presentation screen capped at 960 CSS pixels wide and constrained by the
-available feed height and width. Its inner 16:9 frame displays the complete
-recording with contain fitting, so neither side is cropped. The quiet outer
-screen provides a margin below the video for the Skip button at its lower
-right. There is no heading; the screen has a subtle border and shadow, and the
-native playback controls remain within the video. Skip removes the presentation
-screen only; background feed generation continues independently. The developer
-walkthrough preview currently displays this application video.
-
-### Preserved animated walkthrough behavior
-
-- After a completed business onboarding, an owner who has not yet completed
-  the Trending walkthrough sees one auto-playing desktop canvas
-  at the top of the real Trending feed area on their first visit. Its compact
-  internal header reads `How our Trending feed works` and keeps the Skip
-  control at the right, separated from the visual stage by one quiet
-  divider. It has no surrounding tutorial copy. The walkthrough is an
-  independently positioned right-hand video panel instead of a normal layout
-  column or a full-feed overlay. The underlying Trending state remains fully
-  visible and usable without a blur, tint, or black scrim. The completion
-  timestamp is
-  owner-scoped on `business_profiles`; once the animation completes it records
-  idempotently, so it is not a browser-only or global preference.
-- The guide reuses the real Hook and Wall-of-Text preview media from the
-  landing-page swipe demo, plus its Slideshow imagery. The distinct landing
-  `DEMO.mp4` screen recording is used only for the dragged Hook demo and its
-  resulting composition preview; it must never reuse the Hook source. It uses a
-  desktop-native visible gesture sequence: a natural hand pointer swipes the
-  review card right without decorative motion lines or placeholder destination
-  cards. The canvas deliberately omits the mock browser chrome, sidebar, and
-  empty side regions, keeping only the media and the contextually relevant
-  action surface; for Hook a cursor drags
-  demo footage into the composition slot; then the cursor tip lands inside the
-  Schedule button, clicks it, and the scheduled post appears. The Wall-of-Text
-  and Slideshow formats visibly swipe right and schedule in the same canvas.
-- Once that visual sequence completes, it keeps the real Trending workspace
-  unblocked and starts a two-step coach mark rather than only flashing the
-  controls. First, a small pointer card anchored to the real item-level `Edit`
-  control says `Edit this post` and explains that it changes the copy, media,
-  or layout of the post being viewed only. Then a matching card anchored to
-  `Adjust` says `Adjust future content` and explains that it changes the mix
-  of future Trending posts, not the current post. The active control receives
-  the existing restrained glow, and the customer advances with `Next` then
-  `Got it`; there is no dimmer, scrim, layout change, or replacement
-  walkthrough container. A fresh feed can still be preparing when the canvas
-  finishes, so the coach mark waits for a real active `Edit` button instead of
-  silently timing out before its explanation can be shown. Content preparation
-  continues through the normal Trending feed request throughout.
-- Migration `20260828113000_backfill_existing_trending_walkthroughs.sql` marks
-  profiles that existed at this release as complete. Profiles created after
-  that migration retain the null completion timestamp and are the first users
-  eligible for this education. The completion remains owner-scoped and
-  idempotent after `Got it` or Skip.
-- The walkthrough is absolutely anchored to the right edge of the feed and
-  occupies zero layout width. It never adds a second or duplicated generation
-  status card. The real feed retains its full-width layout, so its loading or
-  `Generating for you` state and real pending-slot count remain centered at the
-  exact same page position they use without the walkthrough. The walkthrough
-  canvas stays 640px wide; on narrower viewports the page may clip its outside
-  edge instead of shifting or shrinking the real feed. It disappears after
-  completion or Skip. It is mounted above the feed's loading, empty, and
-  preparing branches so progress refreshes cannot unmount or restart it.
-- The visual canvas has a fixed internal heading strip and divider so the Skip
-  action and the walkthrough purpose remain stable while scenes change. The
-  media, gesture, demo, and scheduling surfaces are centered as one composition
-  inside the taller stage below that header. Skip immediately records the
-  walkthrough as complete and removes only the guide; it must not abort, pause,
-  or replace the background Trending feed request or its generation work.
-- The walkthrough is anchored to the bottom-right edge of the available feed
-  viewport as an independent video-like surface. It is not vertically centered
-  or top-aligned beside `Generating for you`: its lower edge meets the end of
-  the real feed area and bleeds 12px downward and 16px rightward through the
-  feed's inner gutter, while the generation state stays centered in that full
-  area. Its developer preview preserves the same relationship. The page stays
-  locked to the dynamic viewport so any allowed edge clipping cannot create a
-  stray document scrollbar.
-- The walkthrough is eligible only at a viewport width of at least 1024 CSS
-  pixels. Phone-sized viewports do not fetch, mount, animate, or record the
-  guide as complete; the same owner can therefore receive the first-visit guide
-  later on a laptop. On supported laptop widths the canvas is pinned by its
-  right edge, and the fixed header's Skip button cannot shrink, so any permitted
-  narrow-width clipping occurs on the canvas's left side rather than cutting
-  off Skip.
-- The desktop canvas remains capped at 640px wide so the walkthrough stays
-  focused instead of spanning the workspace, but its height may grow to 500px
-  when the viewport permits. The visual stage uses all remaining height beneath
-  the fixed header and re-centers each scene within it, rather than stretching
-  the canvas width or leaving the media crowded against the top. Its main
-  dropped-demo frame uses contain fitting so the complete supplied demo stays
-  visible instead of being cropped. Hook, Wall-of-Text, and Slideshow labels
-  occupy a separate compact row above their 9:16 media frame and must never
-  overlap creator captions inside the media. The developer preview always runs
-  the complete swipe gesture; the authenticated walkthrough still respects an
-  owner's reduced-motion preference. One continuous sequence clock advances
-  every preview, swipe, demo, and schedule scene so a frame render cannot reset
-  or stall the walkthrough.
-- An accepted swipe never ends on a context-free tick. The Hook acceptance cue
-  pairs its check with `Add demo`, while Wall-of-Text and Slideshow pair theirs
-  with `Schedule post`, matching the action shown immediately afterward. Scene
-  layers crossfade for 420ms so the prior result remains visible while the next
-  action arrives. Slideshow frames preload when the walkthrough mounts and each
-  image fades into the fixed media frame, preventing a black first frame or a
-  hard cut between slides. The final confirmation reads `You're ready` instead
-  of displaying an unexplained check alone.
-- This is product education only. It does not fetch, decide, save, edit,
-  upload, create a draft for, or schedule a real Trending creative. The daily
-  feed continues preparing normally behind the guide, and the user reaches the
-  unchanged real Trending workspace as soon as the canvas completes; the
-  unobtrusive coach mark remains only until they acknowledge the two controls.
+- Trending no longer mounts an onboarding video or animated walkthrough in the
+  authenticated workspace. The application-video screen remains available only
+  to the developer preview route.
+- A newly created account whose owner-scoped
+  `trending_walkthrough_completed_at` is null sees the Try UGC Pilot-style
+  guide only after its first ready Trending card is available. The historical
+  walkthrough backfill leaves existing accounts complete, so this rollout does
+  not reintroduce onboarding for them.
+- The guide is rendered directly over the active review card for every
+  Trending format. It blurs and darkens that card, shows left Skip and right
+  Accept directions with the shared hand asset, and stays visually scoped to
+  the card rather than covering the page, feed loading state, or controls.
+- The first card pointer, swipe, keyboard decision, Edit action, or decision
+  button dismisses the guide without editing, skipping, accepting, saving, or
+  scheduling the card. Dismissal then records the existing owner-scoped
+  completion timestamp through the authenticated walkthrough endpoint. The
+  write is idempotent; a failed write leaves the guide hidden for the current
+  visit and lets a later visit retry.
+- The guide respects reduced-motion preferences and announces the directions
+  to assistive technology. It is presentation-only: daily-feed preparation,
+  content selection, and all decision and scheduling behavior remain
+  unchanged.
 
 ## 2026-08-27 Free Trial Entitlements
 
@@ -4779,6 +5624,29 @@ Runtime/font errors propagate as dependency failures instead of copy-fit errors.
   scheduler. It does not change Carousel source ownership, slide rendering,
   caption behavior, or the Library-to-Social scheduling boundary.
 
+## 2026-09-25 Hook schedule layout and confirmation boundary
+
+- The Hook video schedule drawer shares the Wall-of-Text desktop dialog width:
+  it is responsive within the viewport and may grow to 960px. Its fixed header
+  and action footer remain visible while only the form body may scroll.
+- On desktop, destination selection is placed beside caption and publish-time
+  controls. Selected TikTok and YouTube accounts place only their compact,
+  post-specific publishing details below that primary form. The previous
+  expanded account-card checklist is retired: generated Hook media retains its
+  safe default AI disclosure without a routine checkbox, commercial disclosure
+  remains a collapsed optional control, and YouTube visibility remains a
+  collapsed account detail.
+- TikTok still requires an explicit manual audience choice from the current
+  creator capability response; the application must not preselect visibility.
+  The audit restriction and provider-specific commercial-content choices remain
+  enforced. Music Usage Confirmation is no longer displayed in the main
+  scheduling form. The final TikTok confirmation dialog records that explicit
+  consent immediately before schedule submission, and server-side normalization
+  continues to reject any target without it.
+- This is a Hook-scheduling presentation and confirmation timing change only.
+  It does not alter account gates, selected targets, captions, time validation,
+  durable scheduling, media rendering, or provider publishing behavior.
+
 ## 2026-09-23 Verified YouTube scheduling beta
 
 - Video scheduling is enabled only for the verified Firebase identity
@@ -4910,3 +5778,54 @@ Runtime/font errors propagate as dependency failures instead of copy-fit errors.
   not assert production rollout: migration application, coordinated web/worker
   deployment, mode verification and bounded direct/fallback canaries on
   `https://www.getugcpilot.com` are separate release gates.
+
+## 2026-09-25 Streamlined business onboarding presentation
+
+- New background-onboarding sessions use a two-screen presentation: one source
+  screen and one durable setup-progress screen. The prior identity and goal
+  screens remain in source for legacy and already-started draft sessions; they
+  are not deleted or repurposed.
+- The source screen accepts either a public website or a short manual product
+  brief. Manual briefs retain the existing `manual` intake type, add an explicit
+  `experience: streamlined` marker for safe resume behavior, and use the
+  existing background analysis worker to turn the description into grounded
+  business context. This does not create another profile, analysis store,
+  Carousel source, or generation worker.
+- Once analysis is attached, streamlined sessions persist the supplied or
+  analyzed business name and the default `brand_awareness` purpose before the
+  existing durable finalizer runs. The established profile-version, trial,
+  ownership, idempotency, and `prebuildTrendingAfterOnboarding` boundaries are
+  unchanged. A legacy draft retains its previously chosen identity and goals.
+- Progress copy may describe the upcoming Wall-of-Text, Hook, and Carousel
+  preparation, but it must be driven by durable job states and must not claim a
+  format is complete before the finalizer has committed. The unified feed
+  remains the source of truth for its actual per-format readiness.
+- The streamlined source and progress views intentionally use an unframed,
+  centered canvas: one centered prompt or status list and only the
+  current-status toast. The old decorative progress rails were removed because
+  they did not represent the two-screen onboarding flow. This is
+  presentation-only; it does not change Carousel generation or readiness behavior.
+
+## 2026-09-25 Wall reference typography and range-only writing
+
+- New Wall-of-Text output uses the packaged Arial Bold 700 face at fixed 50px
+  with the existing 1.10 line-height, 4px outline, normal tracking, and no
+  shadow. The fixed 52px V13 layout remains accepted only for saved legacy
+  cards; no historical card is reflowed by this decision.
+- Writer requests carry only the inclusive measured word range (normally
+  24–48). There is no preferred or target count in the prompt. The durable
+  `target_words` reservation field remains for RPC compatibility and stores
+  the range maximum, never a copy-generation instruction.
+
+## 2026-10-03 Seven-day trial and pricing alignment
+
+New trials receive seven calendar days and seven daily packs from completed
+onboarding, with 20 concepts per pack and unlimited Instagram scheduling while
+active. The quota is charged when a pack is reserved; its final reserved pack
+can still finish while active. Unexpired trials extend from their original
+start without resetting usage. Expired trials stay closed and longer custom
+trials are preserved. Paid and complimentary access stays unchanged.
+
+The pricing page distinguishes daily content from shared AI generation credits
+and advertises only deployed workflows. See
+`docs/trending-seven-day-trial-2026-10-01.md` for the release migration and checks.

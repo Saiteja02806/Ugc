@@ -6,6 +6,7 @@ import type {
 } from "./background-jobs.ts";
 
 export const CANONICAL_BACKGROUND_JOB_TYPES = [
+  "audio_generation",
   "hook_text_generation",
   "trending_prebuild",
   "wall_text_content_plan_generation",
@@ -45,6 +46,7 @@ const canonicalTypeByImplementation: Record<
   BackgroundJobType,
   CanonicalBackgroundJobType
 > = {
+  generate_audio: "audio_generation",
   analytics_sync: "analytics_sync",
   carousel_content_plan_generation: "carousel_generation",
   carousel_generation: "carousel_generation",
@@ -78,6 +80,7 @@ const canonicalTypeByImplementation: Record<
 };
 
 export type PublicBackgroundJob = {
+  exploreFormat?: "hook" | "wall_text" | "slideshow";
   cancelRequestedAt: string | null;
   completedAt: string | null;
   createdAt: string;
@@ -125,7 +128,10 @@ export function isRetryableBackgroundJob(job: BackgroundJobRecord) {
 
 export function getPublicBackgroundJob(job: BackgroundJobRecord) {
   const hideWallTextFailureDetails = isWallTextJob(job.jobType);
+  const input = job.input && typeof job.input === "object" && !Array.isArray(job.input) ? job.input : null;
+  const format = input?.exploreFormat;
   return {
+    ...((job.jobType === "generate_hook_video" && (format === "hook" || format === "wall_text") || job.jobType === "generate_image" && format === "slideshow") ? { exploreFormat: format as "hook" | "wall_text" | "slideshow" } : {}),
     cancelRequestedAt: job.cancelRequestedAt,
     completedAt: job.completedAt,
     createdAt: job.createdAt,

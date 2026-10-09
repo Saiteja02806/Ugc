@@ -9,6 +9,8 @@ import {
 } from "../lib/generation-provider.js";
 import { generateRunwayHookVideoBuffer } from "../lib/runway-video.js";
 import { generateGeminiOmniVideoBuffer } from "../lib/gemini-omni-video.js";
+import { generateHiggsfieldVideoBuffer } from "../lib/higgsfield-video.js";
+import { getVideoPromptCharacterLimit } from "../lib/video-prompt-policy.js";
 import { getStoredObject, uploadBufferToStorage } from "../lib/storage.js";
 import {
   buildVideoGenerationPrompt,
@@ -32,7 +34,7 @@ type GenerateHookVideoBaseInput = {
   avatarImageUrl?: string;
   durationSeconds: number;
   hookIdea: string;
-  model?: "google_omni";
+  model?: "google_omni" | "seedance_2_5";
   projectId: string;
   provider?: HookVideoProvider;
   referenceVideoDurationSeconds?: number;
@@ -80,7 +82,8 @@ export async function runGenerateHookVideoJob(
       provider:
         (persistedProvider === "gemini" ||
         persistedProvider === "runway" ||
-        persistedProvider === "veo"
+        persistedProvider === "veo" ||
+        persistedProvider === "higgsfield"
           ? persistedProvider
           : undefined) ??
         input.provider ??
@@ -151,7 +154,13 @@ async function generateWithFallback(
   prompt: string,
 ) {
   const preferredProvider = input.provider ?? DEFAULT_HOOK_VIDEO_PROVIDER;
-  const selectedProvider = input.model === "google_omni" ? "gemini" : preferredProvider;
+  const selectedProvider = input.model === "seedance_2_5"
+    ? "higgsfield"
+    : input.model === "google_omni" ? "gemini" : preferredProvider;
+
+  if (selectedProvider === "higgsfield") {
+    return generateWithProvider(job, context, "higgsfield", "primary", input, prompt);
+  }
 
   if (input.referenceVideoUrl) {
     return generateWithProvider(
@@ -277,6 +286,8 @@ async function generateWithProvider(
     action === "resume"
       ? reservation.operation.provider_operation_id ?? undefined
       : undefined;
+  const providerOutputUrl =
+    action === "resume" ? reservation.operation.output_url ?? undefined : undefined;
   const onOperationCreated = async (operationId: string) => {
     await context.store.markGenerationProviderSubmitted({
       jobId: job.id,
@@ -305,6 +316,7 @@ async function generateWithProvider(
       onOperationCreated,
       prompt,
       providerOperationId,
+      providerOutputUrl,
       referenceImageUrl: input.avatarImageUrl,
       referenceVideoDurationSeconds: input.referenceVideoDurationSeconds,
       referenceVideoUrl: input.referenceVideoUrl,
@@ -348,6 +360,7 @@ async function generateProviderBuffer(
     onOperationCreated: (operationId: string) => Promise<void>;
     prompt: string;
     providerOperationId?: string;
+    providerOutputUrl?: string;
     referenceImageUrl?: string;
     referenceVideoDurationSeconds?: number;
     referenceVideoUrl?: string;
@@ -359,6 +372,10 @@ async function generateProviderBuffer(
       ...params,
       onOperationSucceeded,
     });
+  }
+
+  if (provider === "higgsfield") {
+    return generateHiggsfieldVideoBuffer({ ...params, onOperationSucceeded });
   }
 
   if (provider === "runway") {
@@ -400,20 +417,38 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
 
   const promptMode =
     job.input_json.promptMode === "direct" ? "direct" : "ugc_template";
+  const model = job.input_json.model === "seedance_2_5"
+    ? "seedance_2_5"
+    : job.input_json.model === "google_omni" ? "google_omni" : undefined;
+  const provider = getOptionalChoice(job.input_json.provider, hookVideoProviders);
+  const referenceVideoUrl = getOptionalHttpsUrl(job.input_json.referenceVideoUrl);
+  const hookIdea = getText(
+    job.input_json.hookIdea,
+    "hookIdea",
+    promptMode === "direct" ? undefined : MAX_HOOK_LENGTH,
+  );
+  const promptMaxLength = getVideoPromptCharacterLimit({
+    model,
+    provider,
+    hasReferenceVideo: Boolean(referenceVideoUrl),
+  });
+  if (promptMode === "direct" && promptMaxLength !== undefined && hookIdea.length > promptMaxLength) {
+    throw new Error(`Keep the prompt to ${promptMaxLength.toLocaleString("en-US")} characters or fewer.`);
+  }
   const sharedInput: GenerateHookVideoBaseInput = {
     aspectRatio:
       getOptionalChoice(job.input_json.aspectRatio, hookVideoAspectRatios) ??
       "9:16",
     avatarImageUrl: getOptionalHttpsUrl(job.input_json.avatarImageUrl),
     durationSeconds: getGenerationDurationSeconds(job.input_json.durationSeconds),
-    hookIdea: getText(job.input_json.hookIdea, "hookIdea", MAX_HOOK_LENGTH),
-    model: job.input_json.model === "google_omni" ? "google_omni" : undefined,
+    hookIdea,
+    model,
     projectId: getPathSegment(job.input_json.projectId, "projectId"),
-    provider: getOptionalChoice(job.input_json.provider, hookVideoProviders),
+    provider,
     referenceVideoDurationSeconds: getOptionalDurationSeconds(
       job.input_json.referenceVideoDurationSeconds,
     ),
-    referenceVideoUrl: getOptionalHttpsUrl(job.input_json.referenceVideoUrl),
+    referenceVideoUrl,
     userId: getPathSegment(job.input_json.userId, "userId"),
     videoId: getPathSegment(job.input_json.videoId, "videoId"),
   };
@@ -470,12 +505,12 @@ function isJsonObject(value: Json | undefined): value is Record<string, Json | u
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
-function getText(value: Json | undefined, fieldName: string, maxLength: number) {
+function getText(value: Json | undefined, fieldName: string, maxLength: number | undefined) {
   if (typeof value !== "string" || !value.trim()) {
     throw new Error(`generate_hook_video requires input.${fieldName}.`);
   }
 
-  return value.trim().slice(0, maxLength);
+  return maxLength === undefined ? value.trim() : value.trim().slice(0, maxLength);
 }
 
 function getOptionalText(value: Json | undefined, maxLength: number) {

@@ -10,7 +10,9 @@ import {
 import {
   startWallTextScheduleRender,
 } from "@/lib/scheduling/wall-text-render-start";
-import { getSelectedWallTextDraft } from "@/lib/trending/wall-text-db";
+import { getSelectedWallTextDraft, getWallTextSchedulingAssignment } from "@/lib/trending/wall-text-db";
+import { acceptTrendingCreativeForScheduling } from "@/lib/trending/creative-decisions";
+import { markDailyTrendingSlotDecided } from "@/lib/trending/unified-daily-feed-db";
 import { WallTextScheduleRequestSchema } from "@/lib/trending/wall-text-scheduling-contract";
 import { getWallTextPreviewTitle } from "@/lib/trending/wall-text-text-logic";
 import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
@@ -42,6 +44,18 @@ export async function POST(request: Request) {
   }
 
   try {
+    const assignment = await getWallTextSchedulingAssignment({
+      assignmentId: parsed.data.assignmentId,
+      userId,
+    });
+    if (!assignment) {
+      return json({ message: "This Wall-of-text video is no longer available.", ok: false }, 404);
+    }
+
+    // Confirm selection on the server before requiring a selected draft. The
+    // browser's accepted/skip outbox may still be in flight when the user saves.
+    await acceptTrendingCreativeForScheduling({ ...assignment, format: "wall_text", userId });
+    await markDailyTrendingSlotDecided({ assignmentId: assignment.assignmentId, format: "wall_text", userId });
     const draft = await getSelectedWallTextDraft({
       assignmentId: parsed.data.assignmentId,
       userId,

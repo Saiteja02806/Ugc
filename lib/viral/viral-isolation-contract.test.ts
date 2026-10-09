@@ -34,9 +34,10 @@ test("opens Explore without changing the separate Trending dashboard", () => {
   );
 });
 
-test("shows Explore after Analytics to every signed-in workspace user", () => {
-  assert.match(sidebar, /label: "Analytics"[\s\S]*label: "Explore"/);
-  assert.match(sidebar, /\.\.\.primaryNavigationItems(?:\.filter\([\s\S]*?\))?,[\s\S]*exploreNavigationItem/);
+test("preserves the development-only Explore navigation gate", () => {
+  assert.match(sidebar, /const primaryNavigationItems:[\s\S]*?key: "explore",\s*label: "Explore",\s*href: "\/explore"/);
+  assert.match(sidebar, /const isExploreScreenEnabled = process\.env\.NODE_ENV !== "production"/);
+  assert.match(sidebar, /\.\.\.primaryNavigationItems\.filter\(\s*\(item\) => item\.key !== "audio-generation" && \(item\.key !== "explore" \|\| isExploreScreenEnabled\)/);
   assert.doesNotMatch(sidebar, /useViralReviewerAccess/);
 });
 

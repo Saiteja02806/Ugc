@@ -5,7 +5,7 @@ import {
   resolveBillingAccess,
   type BillingAccessSource,
 } from "./complimentary-plan-grants";
-import { ingestDodoUsageEvent } from "@/lib/billing/dodo";
+import { DodoUsageRejectedError, ingestDodoUsageEvent } from "@/lib/billing/dodo";
 import {
   getFreeTrialEntitlement,
   unavailableFreeTrialEntitlement,
@@ -16,6 +16,11 @@ import {
   DEFAULT_IMAGE_GENERATION_CREDITS,
   DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND,
 } from "@/lib/billing/generation-credit-policy";
+import {
+  emptyFreeGenerationCredits,
+  ONE_TIME_FREE_GENERATION_CREDITS,
+  type FreeGenerationCredits,
+} from "@/lib/billing/free-generation-credit-policy";
 import {
   getBillingUsageRetryDelayMs,
   getSubscriptionEntitlementPlanKey,
@@ -48,6 +53,7 @@ export type UserSubscriptionInfo = {
   currentPeriodStart: string | null;
   dailyContentPieces: number | "Limited";
   displayName: "Free" | "Starter" | "Growth";
+  freeGenerationCredits: FreeGenerationCredits;
   instagramAccounts: number;
   imageGenerationCreditCost: number;
   isActive: boolean;
@@ -176,6 +182,7 @@ export function resolveSubscriptionEntitlements(
           ? "Starter"
           : "Free",
     instagramAccounts: resolveInstagramAccountLimit(paidPlan, isActive),
+    freeGenerationCredits: emptyFreeGenerationCredits(),
     imageGenerationCreditCost: getGenerationCreditCost("image"),
     isActive: isActive && paidPlan !== "free",
     isDodoManaged,
@@ -191,21 +198,25 @@ export function resolveSubscriptionEntitlements(
 
 export async function getUserSubscription(
   userId: string,
+  options?: { strict?: boolean; refreshCredits?: boolean; initializeFreeCredits?: boolean },
 ): Promise<UserSubscriptionInfo> {
   if (!userId.trim()) {
     return resolveSubscriptionEntitlements("free", false, "");
   }
 
   const db = getClient();
-  const refreshResult = await db.rpc("refresh_billing_credit_balance", {
-    p_user_id: userId,
-  });
+  if (options?.refreshCredits !== false) {
+    const refreshResult = await db.rpc("refresh_billing_credit_balance", {
+      p_user_id: userId,
+    });
 
-  if (refreshResult.error) {
-    console.warn(
-      `Could not refresh billing credit cycle for user ${userId}:`,
-      refreshResult.error.message,
-    );
+    if (refreshResult.error) {
+      if (options?.strict) throw new Error("ENTITLEMENTS_UNAVAILABLE");
+      console.warn(
+        `Could not refresh billing credit cycle for user ${userId}:`,
+        refreshResult.error.message,
+      );
+    }
   }
 
   const [
@@ -220,16 +231,15 @@ export async function getUserSubscription(
     db
       .from("billing_subscriptions")
       .select(
-        "billing_interval,cancel_at_period_end,current_period_end,current_period_start,last_event_at,plan_key,status",
+        "dodo_subscription_id,billing_interval,cancel_at_period_end,current_period_end,current_period_start,last_event_at,plan_key,status",
       )
       .eq("user_id", userId)
       .order("last_event_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+      .limit(10),
     db
       .from("billing_subscriptions")
       .select(
-        "billing_interval,cancel_at_period_end,current_period_end,current_period_start,last_event_at,plan_key,status",
+        "dodo_subscription_id,billing_interval,cancel_at_period_end,current_period_end,current_period_start,last_event_at,plan_key,status",
       )
       .eq("user_id", userId)
       .eq("status", "active")
@@ -238,7 +248,7 @@ export async function getUserSubscription(
     db
       .from("billing_credit_balances")
       .select(
-        "credit_limit,period_end,period_start,reserved_credits,used_credits",
+        "dodo_subscription_id,credit_limit,period_end,period_start,reserved_credits,used_credits",
       )
       .eq("user_id", userId)
       .maybeSingle(),
@@ -259,6 +269,15 @@ export async function getUserSubscription(
     getActiveComplimentaryPlanGrant(userId),
   ]);
 
+  if (options?.strict && [
+    subscriptionResult.error,
+    activeSubscriptionsResult.error,
+    creditsResult.error,
+    entitlementsResult.error,
+  ].some(Boolean)) {
+    throw new Error("ENTITLEMENTS_UNAVAILABLE");
+  }
+
   if (subscriptionResult.error) {
     console.warn(
       `Could not fetch billing subscription for user ${userId}:`,
@@ -273,7 +292,11 @@ export async function getUserSubscription(
     );
   }
 
-  const row = subscriptionResult.data ?? null;
+  // Prefer the subscription that owns the balance, so an old cancellation
+  // cannot hide the current subscription's payment recovery state.
+  const row = subscriptionResult.data?.find(
+    (subscription) => subscription.dodo_subscription_id === creditsResult.data?.dodo_subscription_id,
+  ) ?? subscriptionResult.data?.[0] ?? null;
   const activeDodoRow = (activeSubscriptionsResult.data ?? []).find(
     (subscription) => subscription.plan_key === "growth",
   ) ?? activeSubscriptionsResult.data?.[0] ?? null;
@@ -320,7 +343,7 @@ export async function getUserSubscription(
       : activeDodoRow?.last_event_at ?? row?.last_event_at,
     configuredDailyContentPieces,
     access.accessSource,
-    Boolean(dodoPlanKey),
+    Boolean(dodoPlanKey) || ["on_hold", "paused", "failed"].includes(row?.status ?? ""),
   );
   const complimentaryCreditsResult =
     access.accessSource === "complimentary" && complimentaryGrant
@@ -332,6 +355,7 @@ export async function getUserSubscription(
       : null;
 
   if (complimentaryCreditsResult?.error) {
+    if (options?.strict) throw new Error("ENTITLEMENTS_UNAVAILABLE");
     console.error(
       `Could not load complimentary credit balance for user ${userId}:`,
       complimentaryCreditsResult.error.message,
@@ -342,15 +366,59 @@ export async function getUserSubscription(
     access.accessSource === "complimentary"
       ? complimentaryCreditsResult?.data
       : creditsResult.data;
+  if (options?.strict && base.isActive && !creditBalance) {
+    throw new Error("ENTITLEMENTS_UNAVAILABLE");
+  }
+  // MCP reads must not roll the billing row forward. The reservation RPC will
+  // perform the actual rollover when the user next starts a generation.
+  const previewExpiredCycle = options?.refreshCredits === false &&
+    access.accessSource === "dodo" &&
+    Boolean(creditBalance?.period_end) &&
+    Date.parse(creditBalance!.period_end) <= Date.now();
   const creditLimit = Math.max(
     0,
     toInteger(creditBalance?.credit_limit, base.sharedMonthlyCredits),
   );
-  const creditsUsed = Math.max(0, toInteger(creditBalance?.used_credits));
+  const creditsUsed = previewExpiredCycle ? 0 : Math.max(0, toInteger(creditBalance?.used_credits));
   const creditsReserved = Math.max(
     0,
-    toInteger(creditBalance?.reserved_credits),
+    previewExpiredCycle ? 0 : toInteger(creditBalance?.reserved_credits),
   );
+
+  let freeGenerationCredits = emptyFreeGenerationCredits();
+  if (!base.isActive) {
+    // Read-only clients must inspect an existing allowance without granting one.
+    // Website callers retain the normal initialization behavior by default.
+    const readOnlyFreeCredits = options?.initializeFreeCredits === false;
+    const freeResult = readOnlyFreeCredits
+      ? await db.from("free_generation_credit_balances")
+          .select("credit_limit,reserved_credits,used_credits")
+          .eq("user_id", userId)
+          .maybeSingle()
+      : await db.rpc("ensure_free_generation_credit_balance", { p_user_id: userId });
+    const storedFreeBalance = freeResult.data as {
+      credit_limit: number; reserved_credits: number; used_credits: number;
+    } | null;
+    const freeBalance = readOnlyFreeCredits
+      ? storedFreeBalance && {
+          granted: storedFreeBalance.credit_limit,
+          remaining: storedFreeBalance.credit_limit - storedFreeBalance.reserved_credits - storedFreeBalance.used_credits,
+          reserved: storedFreeBalance.reserved_credits,
+          used: storedFreeBalance.used_credits,
+        }
+      : freeResult.data as FreeGenerationCredits | null;
+    const missingReadOnlyBalance = readOnlyFreeCredits && !freeResult.error && freeResult.data === null;
+    const valid = freeBalance?.granted === ONE_TIME_FREE_GENERATION_CREDITS &&
+      [freeBalance.remaining, freeBalance.reserved, freeBalance.used].every(
+        (amount) => Number.isInteger(amount) && amount >= 0,
+      ) && freeBalance.remaining + freeBalance.reserved + freeBalance.used === freeBalance.granted;
+    if (freeResult.error || (!valid && !missingReadOnlyBalance)) {
+      if (options?.strict) throw new Error("ENTITLEMENTS_UNAVAILABLE");
+      console.warn("Could not load one-time generation credits.");
+    } else if (freeBalance) {
+      freeGenerationCredits = freeBalance!;
+    }
+  }
 
   return {
     ...base,
@@ -363,9 +431,10 @@ export async function getUserSubscription(
     connectedInstagramAccounts: Math.max(0, accountsResult.count ?? 0),
     creditsRemaining: base.isActive
       ? Math.max(creditLimit - creditsUsed - creditsReserved, 0)
-      : 0,
-    creditsReserved: base.isActive ? creditsReserved : 0,
-    creditsUsed: base.isActive ? creditsUsed : 0,
+      : freeGenerationCredits.remaining,
+    creditsReserved: base.isActive ? creditsReserved : freeGenerationCredits.reserved,
+    creditsUsed: base.isActive ? creditsUsed : freeGenerationCredits.used,
+    freeGenerationCredits,
     currentPeriodEnd:
       access.accessSource === "complimentary"
         ? creditBalance?.period_end ?? null
@@ -480,6 +549,11 @@ export async function reserveBillingCredits(params: {
       );
     }
 
+    if (normalized.includes("billing_credit_reservation_released") ||
+      normalized.includes("billing_credit_idempotency_conflict")) {
+      throw new BillingAccessError("This generation request has already been settled. Start a new request.", 409);
+    }
+
     throw new Error(`Could not reserve billing credits: ${error.message}`);
   }
 
@@ -505,7 +579,7 @@ export async function releaseBillingCredits(params: {
   }
 }
 
-export async function deliverBillingUsageForJob(jobId: string) {
+export async function deliverBillingUsageForJob(jobId: string): Promise<"delivered" | "skipped" | "deferred"> {
   const db = getClient();
   const { data, error } = await db
     .from("billing_usage_outbox")
@@ -521,11 +595,11 @@ export async function deliverBillingUsageForJob(jobId: string) {
 
   if (
     !data ||
-    data.status === "delivered" ||
+    ["delivered", "skipped"].includes(data.status) ||
     toInteger(data.attempt_count) >= MAX_BILLING_USAGE_ATTEMPTS ||
     isFutureTimestamp(data.next_attempt_at)
   ) {
-    return;
+    return "deferred";
   }
 
   const eventName =
@@ -541,7 +615,7 @@ export async function deliverBillingUsageForJob(jobId: string) {
       eventId: data.event_id,
       eventName,
       metadata: {
-        credits_cost: String(toInteger(data.credit_cost)),
+        credits_cost: toInteger(data.credit_cost),
         generation_kind: data.generation_kind,
         job_id: jobId,
         occurred_at: data.occurred_at,
@@ -567,11 +641,13 @@ export async function deliverBillingUsageForJob(jobId: string) {
     if (updateError) {
       throw new Error(`Could not mark Dodo usage as delivered: ${updateError.message}`);
     }
+    return "delivered";
   } catch (usageError) {
+    const rejected = usageError instanceof DodoUsageRejectedError;
     const attemptCount = toInteger(data.attempt_count) + 1;
     const attemptedAt = new Date();
     const nextAttemptAt =
-      attemptCount >= MAX_BILLING_USAGE_ATTEMPTS
+      rejected || attemptCount >= MAX_BILLING_USAGE_ATTEMPTS
         ? null
         : new Date(
             attemptedAt.getTime() + getBillingUsageRetryDelayMs(attemptCount),
@@ -586,7 +662,7 @@ export async function deliverBillingUsageForJob(jobId: string) {
             ? usageError.message.slice(0, 1000)
             : "Dodo usage delivery failed.",
         next_attempt_at: nextAttemptAt,
-        status: "failed",
+        status: rejected ? "skipped" : "failed",
         updated_at: attemptedAt.toISOString(),
       })
       .eq("event_id", data.event_id);
@@ -598,6 +674,8 @@ export async function deliverBillingUsageForJob(jobId: string) {
       });
     }
 
+    if (updateError) throw new Error(`Could not record usage outcome: ${updateError.message}`);
+    if (rejected) return "skipped";
     throw usageError;
   }
 }
@@ -614,34 +692,32 @@ export async function flushPendingBillingUsageEvents(limit = 50) {
     .order("created_at", { ascending: true })
     .limit(boundedLimit);
 
-  if (error) {
-    throw new Error(`Could not load pending billing usage: ${error.message}`);
-  }
+  if (error) throw new Error(`Could not load pending billing usage: ${error.message}`);
 
-  let delivered = 0;
-  let failed = 0;
-
-  for (const event of data ?? []) {
-    try {
-      await deliverBillingUsageForJob(event.background_job_id);
-      delivered += 1;
-    } catch (usageError) {
-      failed += 1;
-      console.error("Pending Dodo usage delivery failed:", {
-        error:
-          usageError instanceof Error
-            ? usageError.message
-            : "Usage delivery failed.",
-        eventId: event.event_id,
-      });
+  const result = { delivered: 0, failed: 0, skipped: 0, deferred: 0, inspected: 0 };
+  const startedAt = Date.now();
+  const events = data ?? [];
+  // Bound each run to the scheduler's 60-second request deadline.
+  for (let index = 0; index < events.length; index += 4) {
+    if (Date.now() - startedAt >= 25_000) {
+      result.deferred += events.length - index;
+      break;
     }
+    await Promise.all(events.slice(index, index + 4).map(async (event) => {
+      result.inspected += 1;
+      try {
+        const outcome = await deliverBillingUsageForJob(event.background_job_id);
+        result[outcome] += 1;
+      } catch (usageError) {
+        result.failed += 1;
+        console.error("Pending Dodo usage delivery failed:", {
+          error: usageError instanceof Error ? usageError.message : "Usage delivery failed.",
+          eventId: event.event_id,
+        });
+      }
+    }));
   }
-
-  return {
-    delivered,
-    failed,
-    inspected: data?.length ?? 0,
-  };
+  return result;
 }
 
 export function getGenerationCreditCost(kind: "image"): number;

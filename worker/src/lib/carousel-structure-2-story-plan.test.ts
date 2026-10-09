@@ -61,7 +61,7 @@ test("Structure 2 plans exactly the required six-slide product story", () => {
   }
 });
 
-test("Structure 2 rejects reordering story roles or placing a CTA on any slide", () => {
+test("Structure 2 rejects reordering and early CTA but preserves a final CTA", () => {
   const reordered = makeRawStoryPlan();
   [reordered.slides.second, reordered.slides.third] = [
     reordered.slides.third!,
@@ -81,10 +81,7 @@ test("Structure 2 rejects reordering story roles or placing a CTA on any slide",
 
   const finalCta = makeRawStoryPlan();
   Reflect.set(finalCta.slides.sixth!, "ctaText", "Try this today.");
-  assert.throws(
-    () => parseCarouselStructure2StoryPlan(finalCta, { businessDescription, storyFormatId: "wrong_belief" }),
-    /cannot include a CTA/i,
-  );
+  assert.equal(parseCarouselStructure2StoryPlan(finalCta, { businessDescription, storyFormatId: "wrong_belief" }).slides[5]!.ctaText, "Try this today.");
 });
 
 test("Structure 2 leaves creative cover wording to the prompt and uses a larger cover treatment", () => {
@@ -96,8 +93,8 @@ test("Structure 2 leaves creative cover wording to the prompt and uses a larger 
   });
   const issues = validateCarouselStructure2StoryPlan(plan, { businessDescription });
 
-  assert.equal(CAROUSEL_STRUCTURE_2_COVER_FONT_SIZE, 96);
-  assert.equal(getCarouselStructure2StoryMaxLines(1), 3);
+  assert.equal(CAROUSEL_STRUCTURE_2_COVER_FONT_SIZE, 84);
+  assert.equal(getCarouselStructure2StoryMaxLines(1), 4);
   assert.ok(!issues.some((issue) => issue.code === "perspective"));
 });
 
@@ -133,12 +130,16 @@ test("Structure 2 prompt and schema describe the strict six-slide contract", () 
 
   assert.match(prompt, /exactly six slides/i);
   assert.match(prompt, /only Slide 1 may lead with direct reader wording/i);
-  assert.match(prompt, /normally 5-8 words/i);
-  assert.match(prompt, /42 characters or fewer/i);
-  assert.match(prompt, /aim for 16-22 words/i);
-  assert.match(prompt, /natural or sentence case/i);
+  assert.match(prompt, /normally 6-14 words/i);
+  assert.match(prompt, /at 84px/i);
+  assert.match(prompt, /Hook slide = one statement only/i);
+  assert.match(prompt, /First-person hooks are welcome/i);
+  assert.match(prompt, /Save the explanation for Slide 2 onward/i);
+  assert.doesNotMatch(prompt, /Do not begin with a complete personal-story/i);
+  assert.match(prompt, /aim for 16-22 body words/i);
+  assert.match(prompt, /lowercase/i);
   assert.match(prompt, /Inter Tight Bold at 700 weight/i);
-  assert.match(prompt, /Slides 1-6 must return ctaText: null/i);
+  assert.match(prompt, /Slides 1-5 return ctaText: null/i);
   assert.match(prompt, /Slide 4 must explain a real product capability/i);
   assert.doesNotMatch(prompt, /CTA presence and slide position are your creative choice/i);
   assert.match(schema, /sixth/);
@@ -160,6 +161,24 @@ test("Structure 2 prompt and schema describe the strict six-slide contract", () 
   // and publishing validation remain the authoritative count contract.
   assert.equal("pattern" in firstStoryText, false);
   assert.equal("pattern" in secondStoryText, false);
+});
+
+test("Structure 2 blocks two-statement covers and accepts first-person open loops", () => {
+  for (const hook of ["content felt hard. i needed a change", "content felt hard\n\ni needed a change"]) {
+    const raw = makeRawStoryPlan();
+    raw.slides.first!.storyText = hook;
+    const plan = parseCarouselStructure2StoryPlan(raw, { businessDescription, storyFormatId: "wrong_belief" });
+    const { blockingIssues } = partitionCarouselStructure2ValidationIssues(validateCarouselStructure2StoryPlan(plan, { businessDescription }));
+    assert.ok(blockingIssues.some((issue) => issue.code === "hook_structure" && issue.slideNumber === 1));
+  }
+  const raw = makeRawStoryPlan();
+  raw.slides.first!.storyText = "i kept running out of things to post";
+  const plan = parseCarouselStructure2StoryPlan(raw, { businessDescription, storyFormatId: "wrong_belief" });
+  assert.deepEqual(partitionCarouselStructure2ValidationIssues(validateCarouselStructure2StoryPlan(plan, { businessDescription })).blockingIssues, []);
+  plan.slides[0]!.storyText = "why i kept saying yes to every small task and lost my whole week";
+  assert.deepEqual(partitionCarouselStructure2ValidationIssues(validateCarouselStructure2StoryPlan(plan, { businessDescription })).blockingIssues, []);
+  plan.slides[0]!.storyText += " again";
+  assert.ok(validateCarouselStructure2StoryPlan(plan, { businessDescription }).some((issue) => issue.code === "hook_length"));
 });
 
 test("Structure 2 rejects a cover that ends in a lone truncated letter", () => {
@@ -215,7 +234,7 @@ test("Structure 2 rejects a shorter cover that ends in an unmistakable hanging p
 test("Structure 2 rejects a cover hook that cannot safely fit the fixed three-line area", () => {
   const raw = makeRawStoryPlan();
   raw.slides.first!.storyText =
-    "Every delayed approval quietly stalls the next important campaign decision";
+    "EverySuperLongDelayedApprovalWord quietly stalls the next extraordinarilyComplicatedCampaignDecisionWithoutAnOwner";
 
   const plan = parseCarouselStructure2StoryPlan(raw, {
     businessDescription,

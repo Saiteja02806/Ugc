@@ -4,6 +4,9 @@ export type AIStudioImageResult = {
   aspectRatio: "1:1" | "4:5" | "9:16" | "16:9";
   createdAt: string;
   id: string;
+  /** A job preview may exist before its owned media record can be read. */
+  mediaAssetId?: string | null;
+  sourceJobId?: string;
   title: string;
   url: string;
 };

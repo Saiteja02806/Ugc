@@ -3,7 +3,6 @@ import type { BackgroundJobType } from "../jobs/background-jobs.ts";
 export const GCP_CUTOVER_AUDIT_CANARY_KINDS = [
   "ai-generation",
   "carousel-generation",
-  "create-content-render",
 ] as const;
 
 export type GcpCutoverAuditCanaryKind =
@@ -30,22 +29,6 @@ export function resolveGcpCutoverAuditCanary(params: {
       },
       jobType: "generate_image",
       kind: "ai-generation",
-    };
-  }
-
-  if (params.kind === "create-content-render") {
-    return {
-      expectedFailure: "overlay must be an object.",
-      // The worker rejects this direct, deliberately invalid payload before it
-      // can resolve a render record, source media, storage, FFmpeg, or AI.
-      input: {
-        canary: "production-create-content-render-invalid-payload",
-        generationId: params.generationId,
-        overlay: null,
-      },
-      jobType: "render_create_content_video",
-      kind: "create-content-render",
-      maxAttempts: 1,
     };
   }
 

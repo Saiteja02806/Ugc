@@ -8,12 +8,12 @@ import {
   TikTokPublishError,
 } from "./tiktok-publisher.js";
 
-test("initializes a TikTok photo carousel with ordered pull URLs", async () => {
+test("initializes a TikTok photo carousel with ordered pull URLs even when videos use file upload", async () => {
   const initBodies: Array<Record<string, unknown>> = [];
   const initialized: string[] = [];
 
   await withTikTokEnv(
-    { mode: "PULL_FROM_URL", verifiedHosts: "cdn.example.com" },
+    { mode: "FILE_UPLOAD", verifiedHosts: "cdn.example.com" },
     async () => {
       await withMockFetch(async (input, init) => {
         const url = new URL(String(input));
@@ -88,6 +88,7 @@ test("initializes a TikTok photo carousel with ordered pull URLs", async () => {
   });
   assert.equal(initBodies[0]?.media_type, "PHOTO");
   assert.equal(initBodies[0]?.post_mode, "DIRECT_POST");
+  assert.equal(initBodies[0]?.is_aigc, true);
   assert.deepEqual(initBodies[0]?.post_info, {
     auto_add_music: true,
     brand_content_toggle: false,
@@ -98,6 +99,84 @@ test("initializes a TikTok photo carousel with ordered pull URLs", async () => {
     title: "Photo caption",
   });
   assert.deepEqual(initialized, ["photo-publish-1"]);
+});
+
+test("honors the creator's disabled AI-content label for a TikTok photo post", async () => {
+  let photoRequest: Record<string, unknown> | undefined;
+
+  await withTikTokEnv(
+    { mode: "FILE_UPLOAD", verifiedHosts: "storage.googleapis.com" },
+    async () => {
+      await withMockFetch(async (input, init) => {
+        const path = new URL(String(input)).pathname;
+        if (path.endsWith("/creator_info/query/")) {
+          return tiktokResponse({ privacy_level_options: ["PUBLIC_TO_EVERYONE"] });
+        }
+        if (path.endsWith("/content/init/")) {
+          photoRequest = JSON.parse(String(init?.body));
+          return tiktokResponse({ publish_id: "photo-without-ai-label" });
+        }
+        assert.equal(path.endsWith("/status/fetch/"), true);
+        return tiktokResponse({ status: "PUBLISH_COMPLETE" });
+      }, async () => {
+        await publishTikTokPhotoCarousel({
+          accessToken: "access-token",
+          caption: "Photo caption",
+          imageUrls: [
+            "https://storage.googleapis.com/ugcsaas-media/slide-1.webp",
+            "https://storage.googleapis.com/ugcsaas-media/slide-2.webp",
+          ],
+          settings: {
+            containsSyntheticMedia: false,
+            privacyLevel: "PUBLIC_TO_EVERYONE",
+          },
+        });
+      });
+    },
+  );
+
+  assert.equal(photoRequest?.is_aigc, false);
+  assert.equal(photoRequest?.media_type, "PHOTO");
+  assert.equal("is_aigc" in (photoRequest?.post_info as Record<string, unknown>), false);
+});
+
+test("resumes a TikTok photo publish ID without initializing a duplicate post", async () => {
+  const requestedPaths: string[] = [];
+
+  await withTikTokEnv({ mode: "FILE_UPLOAD" }, async () => {
+    await withMockFetch(async (input, init) => {
+      const path = new URL(String(input)).pathname;
+      requestedPaths.push(path);
+      if (path.endsWith("/creator_info/query/")) {
+        return tiktokResponse({ privacy_level_options: ["PUBLIC_TO_EVERYONE"] });
+      }
+      assert.equal(path.endsWith("/status/fetch/"), true);
+      assert.deepEqual(JSON.parse(String(init?.body)), {
+        publish_id: "existing-photo-publish",
+      });
+      return tiktokResponse({ status: "PUBLISH_COMPLETE" });
+    }, async () => {
+      const result = await publishTikTokPhotoCarousel({
+        accessToken: "access-token",
+        caption: "Photo caption",
+        imageUrls: [
+          "https://storage.googleapis.com/ugcsaas-media/slide-1.webp",
+          "https://storage.googleapis.com/ugcsaas-media/slide-2.webp",
+        ],
+        onPublishInitialized: async () => {
+          assert.fail("An existing photo post must not be initialized again.");
+        },
+        publishId: "existing-photo-publish",
+        settings: { privacyLevel: "PUBLIC_TO_EVERYONE" },
+      });
+      assert.equal(result.publishId, "existing-photo-publish");
+    });
+  });
+
+  assert.deepEqual(requestedPaths, [
+    "/v2/post/publish/creator_info/query/",
+    "/v2/post/publish/status/fetch/",
+  ]);
 });
 
 test("sends the selected TikTok privacy, interaction, and disclosure settings", async () => {

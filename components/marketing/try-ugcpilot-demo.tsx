@@ -1,9 +1,13 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { Check, Flame, LoaderCircle, RotateCcw, Volume2, VolumeX, Wifi, X } from "lucide-react";
+import { preconnect, preload } from "react-dom";
+import { ArrowDown, Heart, Check, Flame, LoaderCircle, RotateCcw, Volume2, VolumeX, Wifi } from "lucide-react";
 
+import { PostInteractionFeed } from "@/components/trending/post-interaction-feed";
+import { usePostReviewHistory } from "@/components/trending/use-post-review-history";
+import { TrendingSwipeGuide } from "@/components/trending/trending-swipe-guide";
+import { POST_LIKE_FEEDBACK_MS } from "@/lib/trending/post-interaction";
 import { ProductLogoMark } from "@/components/brand/product-logo";
 import {
   Dialog,
@@ -41,6 +45,7 @@ const CARD_MEDIA = Array.from({ length: 29 }, (_, index) => {
   return {
     video: `${tryUgcPilotMediaBaseUrl}/videos/card-${number}.mp4`,
     audio: `${tryUgcPilotMediaBaseUrl}/audio/track-${number}.mp3`,
+    poster: `/try-ugcpilot/posters/card-${number}.webp`,
   };
 });
 
@@ -276,6 +281,7 @@ function errorMessage(payload: unknown) {
 export function TryUgcPilotDemo() {
   const [url, setUrl] = useState("");
   const [cards, setCards] = useState<WallOfTextPost[]>(DEMO_POSTS);
+  const postHistory = usePostReviewHistory<{ card: WallOfTextPost; mediaIndex: number }>();
   const [businessContext, setBusinessContext] = useState<BusinessContext | null>(null);
   const [nextPostNumber, setNextPostNumber] = useState(17);
   const [recentHooks, setRecentHooks] = useState<string[]>([]);
@@ -286,15 +292,14 @@ export function TryUgcPilotDemo() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isRefilling, setIsRefilling] = useState(false);
   const [notice, setNotice] = useState("Loaded Cal AI Wall-of-Text content.");
-  const [dragX, setDragX] = useState(0);
-  const [dragging, setDragging] = useState(false);
   const [exitDirection, setExitDirection] = useState<"left" | "right" | null>(null);
   const [showSwipeGuide, setShowSwipeGuide] = useState(true);
   const [isMediaMuted, setIsMediaMuted] = useState(true);
   const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
   const [isSessionRestored, setIsSessionRestored] = useState(false);
   const [browserStorageAvailable, setBrowserStorageAvailable] = useState(false);
-  const dragStartX = useRef<number | null>(null);
+  const decisionLock = useRef(false);
+  const decisionTimer = useRef<number | null>(null);
   const refillAttemptFor = useRef<string | null>(null);
   const refillInFlight = useRef(false);
   const refillRequestId = useRef(0);
@@ -304,11 +309,21 @@ export function TryUgcPilotDemo() {
   const activeAudio = useRef<HTMLAudioElement | null>(null);
   const mobileControlsLauncher = useRef<HTMLButtonElement | null>(null);
 
-  const topCard = cards[0];
+  const topCard = postHistory.active?.value.card ?? cards[0];
+  const feedPosts = (postHistory.active
+    ? [postHistory.active, ...postHistory.following].map((entry) => ({ id: entry.id, ...entry.value }))
+    : []).concat(cards.map((card, index) => ({ id: card.id, card, mediaIndex: swipedCount + index }))).slice(0, 3);
   const readyCount = cards.length;
   const activeContext = businessContext ?? DEFAULT_CAL_AI_CONTEXT;
   const brand = activeContext.brand;
   const shouldShowMobileControls = swipedCount >= 3;
+
+  // The poster can paint with the copy while the first video frame is decoded.
+  const topMedia = CARD_MEDIA[(postHistory.active?.value.mediaIndex ?? swipedCount) % CARD_MEDIA.length];
+  if (/^https?:\/\//.test(tryUgcPilotMediaBaseUrl)) {
+    preconnect(new URL(tryUgcPilotMediaBaseUrl).origin);
+  }
+  if (topCard) preload(topMedia.poster, { as: "image", fetchPriority: "high" });
 
   function closeMobileControls() {
     setMobileControlsOpen(false);
@@ -343,7 +358,7 @@ export function TryUgcPilotDemo() {
           return;
         }
       }
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+      if (event.defaultPrevented || event.repeat || event.metaKey || event.ctrlKey || event.altKey || event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || (event.target as HTMLElement)?.closest("button, [contenteditable=true]")) return;
       if (event.key === "ArrowLeft") {
         event.preventDefault();
         swipe("left");
@@ -407,7 +422,6 @@ export function TryUgcPilotDemo() {
       !browserStorageAvailable ||
       isAnalyzing ||
       isRefilling ||
-      dragging ||
       exitDirection
     ) {
       return;
@@ -436,7 +450,6 @@ export function TryUgcPilotDemo() {
     browserStorageAvailable,
     businessContext,
     cards,
-    dragging,
     exitDirection,
     generatedCount,
     isAnalyzing,
@@ -454,7 +467,7 @@ export function TryUgcPilotDemo() {
   useEffect(() => {
     let animationFrame: number | null = null;
     try {
-      if (window.localStorage.getItem("ugcpilot-demo-swipe-guide-seen") === "true") {
+      if (window.localStorage.getItem("ugcpilot-demo-feed-guide-seen") === "true") {
         animationFrame = window.requestAnimationFrame(() => setShowSwipeGuide(false));
       }
     } catch {
@@ -466,13 +479,14 @@ export function TryUgcPilotDemo() {
   }, []);
 
   function dismissSwipeGuide() {
-    if (!showSwipeGuide) return;
+    if (!showSwipeGuide) return false;
     setShowSwipeGuide(false);
     try {
-      window.localStorage.setItem("ugcpilot-demo-swipe-guide-seen", "true");
+      window.localStorage.setItem("ugcpilot-demo-feed-guide-seen", "true");
     } catch {
       // The guide still dismisses for the current visit when storage is unavailable.
     }
+    return true;
   }
 
   function playSwipeSound(direction: "left" | "right") {
@@ -508,7 +522,7 @@ export function TryUgcPilotDemo() {
       oscillator.start(now);
       oscillator.stop(now + (direction === "left" ? 0.13 : 0.24));
     } catch {
-      // Sound feedback is optional; swiping must still work when audio is unavailable.
+      // Sound feedback is optional; reviewing must still work when audio is unavailable.
     }
   }
 
@@ -623,31 +637,44 @@ export function TryUgcPilotDemo() {
       });
   }, [businessContext, isAnalyzing, nextPostNumber, readyCount, recentHooks]);
 
+  function cancelPendingDecision() {
+    if (decisionTimer.current) window.clearTimeout(decisionTimer.current);
+    decisionTimer.current = null;
+    decisionLock.current = false;
+    setExitDirection(null);
+  }
+
+  useEffect(() => () => {
+    if (decisionTimer.current) window.clearTimeout(decisionTimer.current);
+  }, []);
+
   function swipe(direction: "left" | "right") {
-    // A first interaction is only an onboarding acknowledgement. It must not
-    // perform the Skip/Posted action the tutorial is explaining.
-    if (showSwipeGuide) {
-      dismissSwipeGuide();
-      return;
-    }
-    if (!topCard || exitDirection) return;
-    // Swipe feedback is a separate interaction cue. Keep it available for a
-    // first-time visitor even when the optional background track is muted.
+    if (dismissSwipeGuide()) return false;
+    if (!topCard || decisionLock.current || isAnalyzing || mobileControlsOpen) return false;
+    if (postHistory.browsing) return direction === "left" ? postHistory.next() : false;
+    const reviewedId = topCard.id;
+    const version = deckVersion.current;
+    decisionLock.current = true;
     playSwipeSound(direction);
     setExitDirection(direction);
-    window.setTimeout(() => {
-      setCards((current) => current.slice(1));
+    decisionTimer.current = window.setTimeout(() => {
+      decisionTimer.current = null;
+      if (version !== deckVersion.current) { decisionLock.current = false; return; }
+      postHistory.remember({ id: reviewedId, value: { card: topCard, mediaIndex: swipedCount },
+        decision: direction === "right" ? "liked" : "skipped" });
+      setCards((current) => current[0]?.id === reviewedId ? current.slice(1) : current);
       setSwipedCount((count) => count + 1);
       if (direction === "right") {
         setPostedCount((count) => count + 1);
-        setNotice(`Posted: “${topCard.hook}”`);
+        setNotice(`Liked in demo: “${topCard.hook}”`);
       } else {
         setSkippedCount((count) => count + 1);
         setNotice(`Skipped: “${topCard.hook}”`);
       }
-      setDragX(0);
+      decisionLock.current = false;
       setExitDirection(null);
-    }, 260);
+    }, direction === "left" ? 0 : POST_LIKE_FEEDBACK_MS);
+    return true;
   }
 
   async function analyze(event: React.FormEvent<HTMLFormElement>) {
@@ -655,6 +682,7 @@ export function TryUgcPilotDemo() {
     const requestedUrl = url.trim();
     if (!requestedUrl || isAnalyzing) return;
 
+    cancelPendingDecision();
     deckVersion.current += 1;
     refillRequestId.current += 1;
     refillInFlight.current = false;
@@ -676,6 +704,7 @@ export function TryUgcPilotDemo() {
 
       refillAttemptFor.current = null;
       setBusinessContext(data.businessContext);
+      postHistory.clear();
       setCards(data.posts);
       setNextPostNumber(17);
       setRecentHooks(data.posts.map((post) => post.hook).slice(-32));
@@ -693,11 +722,13 @@ export function TryUgcPilotDemo() {
   }
 
   function resetDemo() {
+    cancelPendingDecision();
     deckVersion.current += 1;
     refillRequestId.current += 1;
     refillInFlight.current = false;
     refillAttemptFor.current = null;
     setBusinessContext(null);
+    postHistory.clear();
     setCards(DEMO_POSTS);
     setRecentHooks([]);
     setSwipedCount(0);
@@ -705,7 +736,6 @@ export function TryUgcPilotDemo() {
     setPostedCount(0);
     setSkippedCount(0);
     setNextPostNumber(17);
-    setDragX(0);
     setExitDirection(null);
     setIsRefilling(false);
     setMobileControlsOpen(false);
@@ -718,32 +748,64 @@ export function TryUgcPilotDemo() {
     }
   }
 
-  function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
-    if (!topCard || exitDirection) return;
-    // The tutorial is deliberately a separate first step. Do not begin a
-    // drag in the same gesture that makes the instructions disappear.
-    if (showSwipeGuide) {
-      dismissSwipeGuide();
-      return;
-    }
-    dragStartX.current = event.clientX;
-    setDragging(true);
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }
-
-  function onPointerMove(event: React.PointerEvent<HTMLDivElement>) {
-    if (!dragging || dragStartX.current === null) return;
-    setDragX(event.clientX - dragStartX.current);
-  }
-
-  function onPointerEnd() {
-    if (!dragging) return;
-    const finalDragX = dragX;
-    dragStartX.current = null;
-    setDragging(false);
-    if (finalDragX > 90) swipe("right");
-    else if (finalDragX < -90) swipe("left");
-    else setDragX(0);
+  function renderDemoPost(card: WallOfTextPost, mediaIndex: number, isTop: boolean, depth = 1) {
+    const media = CARD_MEDIA[mediaIndex % CARD_MEDIA.length] ?? CARD_MEDIA[0];
+    return (
+      <div
+        data-post-like-target
+        className="relative size-full select-none overflow-hidden rounded-[31px] border border-white/10 bg-zinc-900 xl:rounded-[29px]"
+      >
+        <video
+          ref={isTop ? activeVideo : undefined}
+          src={media.video}
+          poster={media.poster}
+          autoPlay={isTop && !showSwipeGuide}
+          loop
+          muted
+          playsInline
+          preload={isTop ? "auto" : depth === 1 ? "metadata" : "none"}
+          aria-label="Creator content background video"
+          className="absolute inset-0 size-full object-cover"
+        />
+        {isTop ? (
+          <audio
+            ref={activeAudio}
+            src={media.audio}
+            loop
+            muted={isMediaMuted}
+            preload={isMediaMuted ? "none" : "auto"}
+          />
+        ) : null}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/5 to-black/65" />
+        {isTop ? (
+          <button
+            type="button"
+            aria-label={isMediaMuted ? "Turn on background audio" : "Mute background audio"}
+            aria-pressed={!isMediaMuted}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              toggleMediaAudio();
+            }}
+            className="absolute right-5 top-5 z-30 grid size-12 place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-[0_5px_16px_rgba(0,0,0,0.45)] backdrop-blur-sm transition hover:bg-black/65 xl:right-4 xl:top-4 xl:size-11"
+          >
+            {isMediaMuted ? <VolumeX className="size-4" aria-hidden="true" /> : <Volume2 className="size-4" aria-hidden="true" />}
+          </button>
+        ) : null}
+        <div
+          className="absolute left-1/2 top-[185px] w-[min(295px,calc(100%-72px))] -translate-x-1/2 break-words whitespace-pre-line text-center text-base font-semibold leading-[1.42] tracking-[-0.15px] text-white [paint-order:stroke_fill] [text-shadow:0_2px_5px_rgba(0,0,0,0.82)]"
+          style={{
+            fontFamily: "var(--font-try-ugcpilot-wall-text), Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Rounded', 'Plus Jakarta Sans', Roboto, sans-serif",
+            // Fractional, stacked shadow offsets rasterize independently and can
+            // leave visible seams inside glyphs at different browser zoom/DPRs.
+            WebkitTextStroke: "1px rgba(0, 0, 0, 0.92)",
+          }}
+        >
+          {card.wallOfText}
+        </div>
+        {isTop && showSwipeGuide ? <TrendingSwipeGuide demo /> : null}
+      </div>
+    );
   }
 
   return (
@@ -770,7 +832,7 @@ export function TryUgcPilotDemo() {
           posts generated
         </p>
         <p className="mt-1 text-xs font-medium text-zinc-400">
-          Posted {postedCount} / Skipped {skippedCount} / Generating {isAnalyzing ? 16 : isRefilling ? 10 : 0}
+          Liked {postedCount} / Skipped {skippedCount} / Generating {isAnalyzing ? 16 : isRefilling ? 10 : 0}
         </p>
         <p className="mt-2 truncate text-xs leading-4 text-zinc-500">{notice}</p>
       </aside>
@@ -842,83 +904,23 @@ export function TryUgcPilotDemo() {
             </div>
 
             <div className="absolute inset-x-[clamp(12px,5.5vw,28px)] bottom-[120px] top-[122px] xl:inset-x-4 xl:bottom-[104px]" aria-label={`${readyCount} content cards ready`}>
-            {cards.slice(0, 3).map((card, index) => {
-              const isTop = index === 0;
-              const rotation = isTop ? dragX * 0.075 : 0;
-              const transform = exitDirection && isTop
-                ? `translateX(${exitDirection === "right" ? 520 : -520}px) translateY(20px) rotate(${exitDirection === "right" ? 24 : -24}deg)`
-                : isTop
-                  ? `translateX(${dragX}px) rotate(${rotation}deg)`
-                  : `translateY(${index * 12}px) scale(${1 - index * 0.04})`;
-              const media = CARD_MEDIA[(swipedCount + index) % CARD_MEDIA.length] ?? CARD_MEDIA[0];
-              return (
-                <div
-                  key={card.id}
-                  onPointerDown={isTop ? onPointerDown : undefined}
-                  onPointerMove={isTop ? onPointerMove : undefined}
-                  onPointerUp={isTop ? onPointerEnd : undefined}
-                  onPointerCancel={isTop ? onPointerEnd : undefined}
-                  aria-label={isTop ? "Wall-of-Text content card. Swipe left to skip or right to post." : undefined}
-                  className={`absolute inset-0 overflow-hidden rounded-[31px] border border-white/10 bg-zinc-900 shadow-[0_20px_45px_rgba(0,0,0,0.5)] xl:rounded-[29px] ${isTop ? "cursor-grab touch-none select-none active:cursor-grabbing" : "pointer-events-none"} ${dragging ? "transition-none" : "transition-[transform,opacity] duration-300"}`}
-                  style={{ transform, zIndex: 30 - index, opacity: isTop && exitDirection ? 0 : 1 }}
-                >
-                  <video
-                    ref={isTop ? activeVideo : undefined}
-                    src={media.video}
-                    autoPlay={isTop && !showSwipeGuide}
-                    loop
-                    muted
-                    playsInline
-                    preload={isTop ? "auto" : "metadata"}
-                    aria-label="Creator content background video"
-                    className="absolute inset-0 size-full object-cover"
-                  />
-                  {isTop ? (
-                    <audio
-                      ref={activeAudio}
-                      src={media.audio}
-                      loop
-                      muted={isMediaMuted}
-                      preload="auto"
-                    />
-                  ) : null}
-                  <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/5 to-black/65" />
-                  {isTop ? (
-                    <button
-                      type="button"
-                      aria-label={isMediaMuted ? "Turn on background audio" : "Mute background audio"}
-                      aria-pressed={!isMediaMuted}
-                      onPointerDown={(event) => event.stopPropagation()}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        toggleMediaAudio();
-                      }}
-                      className="absolute right-5 top-5 z-30 grid size-12 place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-[0_5px_16px_rgba(0,0,0,0.45)] backdrop-blur-sm transition hover:bg-black/65 xl:right-4 xl:top-4 xl:size-11"
-                    >
-                      {isMediaMuted ? <VolumeX className="size-4" aria-hidden="true" /> : <Volume2 className="size-4" aria-hidden="true" />}
-                    </button>
-                  ) : null}
-                  <div
-                    className="absolute left-1/2 top-[185px] w-[min(295px,calc(100%-72px))] -translate-x-1/2 break-words whitespace-pre-line text-center text-base font-semibold leading-[1.42] tracking-[-0.15px] text-white [paint-order:stroke_fill] [text-shadow:0_2px_5px_rgba(0,0,0,0.82)]"
-                    style={{
-                      fontFamily: "var(--font-try-ugcpilot-wall-text), Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Rounded', 'Plus Jakarta Sans', Roboto, sans-serif",
-                      // Fractional, stacked shadow offsets rasterize independently and can
-                      // leave visible seams inside glyphs at different browser zoom/DPRs.
-                      WebkitTextStroke: "1px rgba(0, 0, 0, 0.92)",
-                    }}
-                  >
-                    {card.wallOfText}
-                  </div>
-                  <div className={`absolute left-6 top-9 rounded-lg border-4 px-3 py-1 text-xl font-black tracking-wider transition-opacity ${dragX > 0 || exitDirection === "right" ? "border-emerald-300 text-emerald-200" : "border-emerald-300 text-emerald-200 opacity-0"}`}>
-                    POSTED
-                  </div>
-                  <div className={`absolute right-6 top-9 rounded-lg border-4 px-3 py-1 text-xl font-black tracking-wider transition-opacity ${dragX < 0 || exitDirection === "left" ? "border-rose-300 text-rose-200" : "border-rose-300 text-rose-200 opacity-0"}`}>
-                    SKIP
-                  </div>
-                  {isTop && showSwipeGuide ? <SwipeGuide /> : null}
-                </div>
-              );
-            })}
+            {topCard ? <PostInteractionFeed
+              label="Try UGCPilot demo posts. Double-tap to like or scroll to skip."
+              className="h-full w-full"
+              disabled={Boolean(exitDirection) || isAnalyzing || mobileControlsOpen || !isSessionRestored}
+              liked={exitDirection === "right"}
+              onStart={dismissSwipeGuide}
+              onLike={() => swipe("right")}
+              onSkip={() => swipe("left")}
+              onPrevious={postHistory.previous}
+              previousItem={postHistory.preceding ? {
+                id: postHistory.preceding.id,
+                content: renderDemoPost(postHistory.preceding.value.card, postHistory.preceding.value.mediaIndex, false),
+              } : null}
+              items={feedPosts.map((post, index) => ({ id: post.id,
+                content: renderDemoPost(post.card, post.mediaIndex, index === 0, index),
+              }))}
+            /> : null}
 
             {!topCard && (isAnalyzing || isRefilling) ? (
               <div className="absolute inset-0 z-50 flex flex-col items-center justify-center px-8 text-center" role="status" aria-live="polite">
@@ -927,34 +929,45 @@ export function TryUgcPilotDemo() {
                 <p className="mt-2 text-sm leading-6 text-zinc-300">
                   {isAnalyzing ? "Building your personalized deck…" : "Preparing your next cards…"}
                 </p>
+                {postHistory.canGoBack && !isAnalyzing ? <button type="button" onClick={postHistory.previous}
+                  className="mt-4 rounded-full border border-white/25 px-4 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
+                  View previous posts
+                </button> : null}
               </div>
             ) : !topCard ? (
               <div className="absolute inset-0 z-50 flex flex-col items-center justify-center px-8 text-center">
                 <Check className="size-9 text-emerald-300" aria-hidden="true" />
                 <h2 className="mt-3 text-xl font-bold">Deck reviewed</h2>
                 <p className="mt-2 text-sm leading-6 text-zinc-300">Analyze another website or reset this demonstration deck to continue.</p>
+                {postHistory.canGoBack ? <button type="button" onClick={postHistory.previous}
+                  className="mt-4 rounded-full border border-white/25 px-4 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
+                  View previous posts
+                </button> : null}
               </div>
             ) : null}
             </div>
 
+            {postHistory.entries.length > 0 ? <p data-post-review-status className="absolute inset-x-4 top-[101px] z-40 text-center text-xs text-zinc-400">
+              {postHistory.active ? `Previously ${postHistory.active.decision} · Scroll to browse` : "Scroll back to revisit"}
+            </p> : null}
             <div className="absolute inset-x-0 bottom-0 z-40 flex h-[120px] items-center justify-center gap-[116px] bg-[#101011] xl:h-[104px] xl:gap-20">
               <button
                 type="button"
-                aria-label="Skip"
+                aria-label="Skip to the next demo post"
                 onClick={() => swipe("left")}
-                disabled={!topCard || Boolean(exitDirection)}
+                disabled={!topCard || Boolean(exitDirection) || isAnalyzing || !isSessionRestored}
                 className="grid size-[84px] place-items-center rounded-full border border-rose-400/35 bg-white/5 text-rose-400 shadow-[0_12px_28px_rgba(0,0,0,0.45)] transition hover:scale-105 hover:bg-rose-400/10 disabled:opacity-50 xl:size-[68px]"
               >
-                <X className="size-7" aria-hidden="true" />
+                <ArrowDown className="size-7" aria-hidden="true" />
               </button>
               <button
                 type="button"
-                aria-label="Posted"
+                aria-label="Like this demo post"
                 onClick={() => swipe("right")}
-                disabled={!topCard || Boolean(exitDirection)}
+                disabled={postHistory.browsing || !topCard || Boolean(exitDirection) || isAnalyzing || !isSessionRestored}
                 className="grid size-[84px] place-items-center rounded-full border border-emerald-400/35 bg-white/5 text-emerald-400 shadow-[0_12px_28px_rgba(0,0,0,0.45)] transition hover:scale-105 hover:bg-emerald-400/10 disabled:opacity-50 xl:size-[68px]"
               >
-                <Check className="size-7" aria-hidden="true" />
+                <Heart className="size-7" aria-hidden="true" />
               </button>
             </div>
             <div className="absolute bottom-2 left-1/2 z-50 h-[4.5px] w-[130px] -translate-x-1/2 rounded-full bg-white/25" aria-hidden="true" />
@@ -1041,78 +1054,6 @@ function ProductControlPanel({
         </p>
       ) : null}
     </div>
-  );
-}
-
-function SwipeGuide() {
-  return (
-    <>
-      <style>{`
-        @keyframes ugcpilot-guide-hand-glide {
-          0%, 100% { transform: translateX(0) rotate(0deg); }
-          15%, 32% { transform: translateX(36px) rotate(9deg); }
-          50% { transform: translateX(0) rotate(0deg); }
-          65%, 82% { transform: translateX(-36px) rotate(-9deg); }
-        }
-        @keyframes ugcpilot-guide-left-pulse {
-          0%, 50%, 100% { opacity: 0.6; transform: scale(0.98); }
-          65%, 82% { opacity: 1; transform: scale(1.06); }
-        }
-        @keyframes ugcpilot-guide-right-pulse {
-          0%, 48%, 100% { opacity: 0.6; transform: scale(0.98); }
-          15%, 32% { opacity: 1; transform: scale(1.06); }
-        }
-        @keyframes ugcpilot-guide-ring-pulse {
-          0% { transform: scale(0.7); opacity: 0.8; }
-          100% { transform: scale(1.55); opacity: 0; }
-        }
-        .ugcpilot-guide-hand { animation: ugcpilot-guide-hand-glide 3.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; }
-        .ugcpilot-guide-left { animation: ugcpilot-guide-left-pulse 3.2s ease-in-out infinite; }
-        .ugcpilot-guide-right { animation: ugcpilot-guide-right-pulse 3.2s ease-in-out infinite; }
-        .ugcpilot-guide-ring { animation: ugcpilot-guide-ring-pulse 2s ease-out infinite; }
-        @media (prefers-reduced-motion: reduce) {
-          .ugcpilot-guide-hand, .ugcpilot-guide-left, .ugcpilot-guide-right, .ugcpilot-guide-ring { animation: none; }
-        }
-      `}</style>
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-30 select-none rounded-[31px] bg-black/[0.58] text-center backdrop-blur-[16px] xl:rounded-[29px]"
-      >
-        <div className="absolute left-1/2 top-[47%] flex w-[310px] max-w-[calc(100%-24px)] -translate-x-1/2 -translate-y-1/2 items-center justify-between">
-          <div className="ugcpilot-guide-left flex w-[86px] flex-col items-center gap-1.5 text-white drop-shadow-[0_3px_8px_rgba(0,0,0,0.9)]">
-            <svg viewBox="0 0 44 32" width="34" height="25" fill="none" aria-hidden="true">
-              <path d="M40 26 C26 26 12 18 6 6" stroke="#f43f5e" strokeWidth="2.6" strokeLinecap="round" />
-              <polyline points="14 5 5 5 5 14" stroke="#f43f5e" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span className="text-xs font-extrabold uppercase tracking-[0.4px]">Swipe left</span>
-            <span className="rounded-full border-[1.5px] border-white/40 bg-rose-500/[0.88] px-[11px] py-[3px] text-[11px] font-extrabold uppercase tracking-[0.8px] text-white shadow-[0_4px_16px_rgba(244,63,94,0.7)]">Skip</span>
-          </div>
-          <div className="ugcpilot-guide-hand relative grid size-[76px] place-items-center">
-            <span className="ugcpilot-guide-ring absolute size-[58px] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.35)_0%,transparent_70%)]" />
-            <Image
-              src="/try-ugcpilot/hand-pointer.png"
-              alt=""
-              width={62}
-              height={62}
-              className="relative size-[62px] select-none object-contain drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]"
-              draggable={false}
-              unoptimized
-            />
-          </div>
-          <div className="ugcpilot-guide-right flex w-[86px] flex-col items-center gap-1.5 text-white drop-shadow-[0_3px_8px_rgba(0,0,0,0.9)]">
-            <svg viewBox="0 0 44 32" width="34" height="25" fill="none" aria-hidden="true">
-              <path d="M4 26 C18 26 32 18 38 6" stroke="#10b981" strokeWidth="2.6" strokeLinecap="round" />
-              <polyline points="30 5 39 5 39 14" stroke="#10b981" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span className="text-xs font-extrabold uppercase tracking-[0.4px]">Swipe right</span>
-            <span className="rounded-full border-[1.5px] border-white/40 bg-emerald-500/[0.88] px-[11px] py-[3px] text-[11px] font-extrabold uppercase tracking-[0.8px] text-white shadow-[0_4px_16px_rgba(16,185,129,0.7)]">Posted</span>
-          </div>
-        </div>
-        <span className="absolute left-1/2 top-[61%] -translate-x-1/2 whitespace-nowrap rounded-full border border-white/30 bg-black/[0.72] px-[18px] py-[7px] text-[11.5px] font-semibold tracking-[0.3px] text-white shadow-[0_4px_20px_rgba(0,0,0,0.7)]">
-          Tap or swipe card to start
-        </span>
-      </div>
-    </>
   );
 }
 

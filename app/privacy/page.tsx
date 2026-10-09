@@ -17,6 +17,7 @@ export default function PrivacyPolicyPage() {
     <LegalPageShell
       eyebrow="Privacy Policy"
       title="How UGC Pilot handles user data"
+      updated="Effective October 8, 2026"
       description="This policy explains what information we process when users create content for YouTube, TikTok, and Instagram, upload media, and schedule approved content through UGC Pilot."
     >
       <div className="space-y-8">
@@ -209,6 +210,40 @@ export default function PrivacyPolicyPage() {
             <li>Cloud hosting, database, storage, email, analytics, error monitoring, and payment providers.</li>
             <li>Law enforcement, regulators, or legal requesters when required by applicable law.</li>
           </LegalList>
+        </LegalSection>
+
+        <LegalSection title="Connections to AI assistants">
+          <p>
+            When you connect UGC Pilot to an AI assistant such as ChatGPT,
+            Codex, or Claude, you sign in to your own UGC Pilot account and
+            approve the displayed permissions. We process the account identifier,
+            OAuth client and permission records, token hashes and expiry or
+            revocation records needed to authenticate those requests. Credentials
+            are not included in the downloadable plugin bundle.
+          </p>
+          <p>
+            Depending on the permissions and requests you approve, the connected
+            assistant can receive your account identifier, plan and credit balance,
+            business profile, media metadata and links, and generation job status.
+            It can also upload or delete selected media and request image or video
+            generation. Generation prompts and reference media are processed by
+            the generation providers used for the requested feature. Generation
+            uses your UGC Pilot credits.
+          </p>
+          <p>
+            Information returned to your assistant is also subject to that
+            provider&apos;s data handling terms. Media links returned by the service
+            may be accessible to anyone who has the link; share them carefully.
+            Disconnect through your assistant&apos;s connection controls. OAuth clients
+            can request token revocation; contact support if you need help removing
+            access. Disconnecting does not cancel work already submitted.
+          </p>
+          <p>
+            MCP request diagnostics record a request identifier, method, response
+            status, duration and a hashed client reference to investigate failures.
+            These request logs do not include bearer tokens, generation prompts or
+            account email addresses.
+          </p>
         </LegalSection>
 
         <LegalSection title="Cookies and analytics">

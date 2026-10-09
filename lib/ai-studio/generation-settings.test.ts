@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  AI_STUDIO_IMAGE_MODELS,
   getAIStudioRatioLabel,
   parseAIStudioGenerationQuantity,
   parseAIStudioImageAspectRatio,
@@ -19,11 +20,16 @@ test("accepts only supported AI Studio settings", () => {
   assert.equal(parseAIStudioGenerationQuantity(4), 4);
   assert.equal(parseAIStudioGenerationQuantity(3), 1);
   assert.equal(parseAIStudioImageModel("nano_banana_2"), "nano_banana_2");
-  assert.equal(parseAIStudioImageModel("unknown"), "gpt_image");
+  assert.deepEqual(AI_STUDIO_IMAGE_MODELS, ["nano_banana_2", "seedream_5_pro"]);
+  assert.equal(parseAIStudioImageModel("seedream_5_pro"), "seedream_5_pro");
+  assert.equal(parseAIStudioImageModel("gpt_image"), "nano_banana_2");
+  assert.equal(parseAIStudioImageModel(undefined), "nano_banana_2");
+  assert.equal(parseAIStudioImageModel("unknown"), "nano_banana_2");
   assert.equal(parseAIStudioVideoModel("google_omni"), "google_omni");
-  assert.equal(parseAIStudioVideoModel("unknown"), "google_omni");
+  assert.equal(parseAIStudioVideoModel("seedance_2_5"), "seedance_2_5");
+  assert.equal(parseAIStudioVideoModel("unknown"), "seedance_2_5");
   assert.equal(parseAIStudioVideoDuration(10), 10);
-  assert.equal(parseAIStudioVideoDuration(11), 4);
+  assert.equal(parseAIStudioVideoDuration(11), 5);
 });
 
 test("provides clear labels for supported ratios", () => {

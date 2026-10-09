@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "wall-text-held-assets-v1",
+  "reviewedAt": "2026-09-30",
+  "sourceBatch": "wall-text-real-2026-09-30",
+  "policy": "Evidence only; this is not an executable importer manifest. These files are intentionally excluded from the active catalog.",
+  "notUploaded": [
+    {
+      "fileName": "Perform_face_swap_in_video_20260925182825-Vmake.mp4",
+      "originalSha256": "d9454bfa1ceb91274f6cbf74ba7bb6f51fec8debd3cbb68af806c0349b2aefb6",
+      "durationSeconds": 8,
+      "reason": "Cuts to unrelated branded product-demo footage before six seconds; a clean Wall-only segment is below the existing minimum."
+    },
+    {
+      "fileName": "Perform_video_face_swap_and_20260925161929-Vmake.mp4",
+      "originalSha256": "78b1ca79b9575dc76cb0af2761c7811974e9048e8fb619ddb213b915416cd69a",
+      "durationSeconds": 4.352,
+      "reason": "Below the existing six-second Wall minimum; preserved without looping, slowing, or padding."
+    },
+    {
+      "fileName": "Remove_text_and_swap_face_20260925161454-Vmake.mp4",
+      "originalSha256": "10166849673aaa26802a620f334497cf5423b8b0560cb29d78e1b455b730d0a4",
+      "durationSeconds": 5.184,
+      "reason": "Below the existing six-second Wall minimum; preserved without looping, slowing, or padding."
+    },
+    {
+      "fileName": "Swap_face_and_replicate_actions_20260925161512-Vmake.mp4",
+      "originalSha256": "f4ef19f290976606e6dad16b88bbbdcd4da6ddc43d8337ad7ef47c5201e47adb",
+      "durationSeconds": 5.184,
+      "reason": "Below the existing six-second Wall minimum; preserved without looping, slowing, or padding."
+    },
+    {
+      "fileName": "Swap_face_in_video_20260925161853-Vmake.mp4",
+      "originalSha256": "2ae151258c511aa47e6343eabc026ef36c69b39c75df01e85de6cbc69cbb4f8b",
+      "durationSeconds": 5.504,
+      "reason": "Below the existing six-second Wall minimum; preserved without looping, slowing, or padding."
+    },
+    {
+      "fileName": "Video_face_swap_and_edit_20260925182840-Vmake.mp4",
+      "originalSha256": "85b1ac5c6929fe8954f55028f35225f21683860a49262b5014cdc608093f99e1",
+      "durationSeconds": 8,
+      "reason": "Cuts to unrelated branded product-demo footage before six seconds; a clean Wall-only segment is below the existing minimum."
+    }
+  ],
+  "storedInactive": [
+    {
+      "fileName": "Swap_face_in_video_20260925161846-Vmake.mp4",
+      "sha256": "185db640a2c8ab698d775696996cf86a50a6038369c1d0154eac4fc567f5d473",
+      "catalogName": "indoor-closeup-20260930-12",
+      "reason": "Stored for future placement review; eye overlap in changing/tilted close-up framing. Keep ineligible."
+    },
+    {
+      "fileName": "Video_face_swap_and_edit_20260925161920-Vmake.mp4",
+      "sha256": "964b3948b5bb0ae1171f107f67ba1bd1d750825ad3a32624bbfd42b27c52f11d",
+      "catalogName": "indoor-closeup-20260930-14",
+      "reason": "Stored for future placement review; eye overlap in changing/tilted close-up framing. Keep ineligible."
+    }
+  ]
+}

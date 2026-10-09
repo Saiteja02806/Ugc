@@ -298,7 +298,7 @@ function expandSixSlideFormat(params: {
     {
       ...baseHook,
       instruction:
-        "Create a concise reader-first cover that gives a clear reason to swipe. Lead with a specific tension, outcome, contrast, mistake, useful promise, or curiosity gap—not a complete personal story.",
+        "Create one concise social slideshow hook about one main idea. Use a specific tension, outcome, changed belief, mistake, useful promise, or curiosity gap. First-person open loops are welcome. Save the explanation for Slides 2-6.",
       preferredTextModes: ["single_statement"],
       role: "cover_hook",
     },
@@ -316,7 +316,7 @@ function expandSixSlideFormat(params: {
     {
       ...baseCta,
       instruction:
-        "Close with one practical, self-contained takeaway. It must read as useful content, not an invitation, instruction to save, or call to action.",
+        "Close with useful, self-contained value. An optional soft CTA may accompany this slide, but must not replace promised content or move to an earlier slide.",
       role: "takeaway_cta",
     },
   ] satisfies CarouselFormatSlideDefinition[];

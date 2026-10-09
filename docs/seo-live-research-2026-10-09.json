@@ -1,0 +1,224 @@
+{
+  "captured_on": "2026-10-09",
+  "domain": "getugcpilot.com",
+  "market": {
+    "country": "United States",
+    "language": "en",
+    "locId": 2840
+  },
+  "authorization": "Up to two free report subjects; no paid generation or monthly credits.",
+  "keyword_overview": {
+    "keyword": "saas content marketing",
+    "search_volume": 720,
+    "cpc": 21.96,
+    "seo_difficulty": 34,
+    "paid_difficulty": 2,
+    "competition": 0.02,
+    "search_intent": "Commercial",
+    "language": "English",
+    "location": "United States",
+    "monthly_searches": [
+      {
+        "period": "202604",
+        "search_volume": 590
+      },
+      {
+        "period": "202605",
+        "search_volume": 590
+      },
+      {
+        "period": "202606",
+        "search_volume": 320
+      },
+      {
+        "period": "202607",
+        "search_volume": 720
+      }
+    ]
+  },
+  "mobile_pagespeed": {
+    "done": true,
+    "report": {
+      "MOBILE": {
+        "status": "ok",
+        "lab_metrics": {
+          "First Contentful Paint": "1.5 s",
+          "Largest Contentful Paint": "11.1 s",
+          "Speed Index": "4.7 s",
+          "Time to Interactive": "12.4 s",
+          "Cumulative Layout Shift": "0",
+          "Total Blocking Time": "29 ms"
+        },
+        "opportunities": [
+          {
+            "opportunity": "Unused Javascript",
+            "estimated_savings": "300 ms",
+            "size_reduction_kb": 109
+          },
+          {
+            "opportunity": "Redirects",
+            "estimated_savings": "630 ms",
+            "size_reduction_kb": null
+          }
+        ]
+      }
+    }
+  },
+  "serp_analysis": {
+    "serpEntries": [
+      {
+        "url": "http://NODOMAIN",
+        "title": null,
+        "domain": "NODOMAIN",
+        "position": 1,
+        "type": "ai_overview"
+      },
+      {
+        "url": "http://www.reddit.com/r/SaaS/comments/1od4mcl/content_marketing_for_saas_is_dead_and_everyones/",
+        "title": "Content marketing for SaaS is dead and everyone's still ...",
+        "domain": "reddit.com",
+        "position": 2,
+        "type": "organic",
+        "clicks": 286,
+        "domainAuthority": 92,
+        "facebookShares": null,
+        "pinterestShares": null,
+        "redditShares": null
+      },
+      {
+        "url": "http://thedigitalelevator.com/blog/saas-content-marketing-examples/",
+        "title": "5 SaaS Content Marketing Examples to Use in 2026",
+        "domain": "thedigitalelevator.com",
+        "position": 3,
+        "type": "organic",
+        "clicks": 37,
+        "domainAuthority": 31,
+        "facebookShares": null,
+        "pinterestShares": null,
+        "redditShares": null
+      },
+      {
+        "url": "http://www.marketermilk.com/blog/saas-content-marketing",
+        "title": "My best SaaS content marketing strategy guide for 2025",
+        "domain": "marketermilk.com",
+        "position": 4,
+        "type": "organic",
+        "clicks": 12,
+        "domainAuthority": 35,
+        "facebookShares": null,
+        "pinterestShares": null,
+        "redditShares": null
+      },
+      {
+        "url": "http://www.semrush.com/blog/saas-content-marketing/",
+        "title": "SaaS Content Marketing: The 9-Step Roadmap for Success",
+        "domain": "semrush.com",
+        "position": 5,
+        "type": "organic",
+        "clicks": 10,
+        "domainAuthority": 86,
+        "facebookShares": 23,
+        "pinterestShares": 4,
+        "redditShares": null
+      },
+      {
+        "url": "http://directiveconsulting.com/blog/guide-to-b2b-saas-content-marketing/",
+        "title": "A Guide to Content Marketing for B2B SaaS",
+        "domain": "directiveconsulting.com",
+        "position": 6,
+        "type": "organic",
+        "clicks": 6,
+        "domainAuthority": 47,
+        "facebookShares": null,
+        "pinterestShares": null,
+        "redditShares": null
+      }
+    ],
+    "newData": true,
+    "keyword": "saas content marketing",
+    "updated_at": "2026-10-09",
+    "limits": {
+      "monthly_keyword_metrics_updates_limits": 10,
+      "monthly_keyword_metrics_updates_used": 0
+    },
+    "location": "United States",
+    "language": "English"
+  },
+  "quota_after": {
+    "limits": {
+      "competitors_per_project": 2,
+      "content_ideas": 10,
+      "keyword_lists": 3,
+      "keywords": 20,
+      "keywords_per_keyword_list": 30,
+      "keywords_per_project": 25,
+      "locations_per_project": 1,
+      "pages_to_crawl": 150,
+      "projects": 1,
+      "pitch_projects": 0,
+      "pitch_brands": 0,
+      "reports": 3,
+      "top_pages": 10,
+      "brands": 1,
+      "prompts_per_brand": 10,
+      "prompts_per_keyword": 10,
+      "addons": {
+        "2022_addon_domain": {
+          "competitors_per_project": 3,
+          "keywords_per_project": 125
+        }
+      },
+      "ranking_update_frequency": "weekly",
+      "monthly_keyword_metrics_updates_limits": 10,
+      "monthly_keyword_metrics_updates_used": 0,
+      "brand_operations_limits": 100,
+      "brand_operations_used": 0,
+      "topics_per_brand": 10,
+      "aiw_words_limits": 2000,
+      "aiw_words_used": 0
+    },
+    "usage": {
+      "account": {
+        "projects": {
+          "used": 0,
+          "limit": 1
+        },
+        "users": {
+          "used": 1,
+          "limit": 1
+        },
+        "monthly_keyword_metrics_updates": {
+          "used": 0,
+          "limit": 10
+        },
+        "keywords": {
+          "used": 0,
+          "limit": 25
+        },
+        "competitors": {
+          "used": 0,
+          "limit": 2
+        },
+        "reports": {
+          "used": 1,
+          "limit": 3
+        },
+        "prompts": {
+          "used": 0,
+          "limit": 10,
+          "projects_with_prompts": 0
+        },
+        "aiw_words": {
+          "used": 0,
+          "limit": 2000
+        }
+      },
+      "projects": []
+    }
+  },
+  "limitations": [
+    "Provider keyword estimates are not Search Console metrics.",
+    "Mobile results are a domain-level lab audit; no browser field data was returned.",
+    "Organic signup, indexing, impressions and clicks have not been established."
+  ]
+}

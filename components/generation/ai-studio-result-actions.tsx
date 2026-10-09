@@ -2,15 +2,19 @@
 
 import { Download, ExternalLink } from "lucide-react";
 
+import { VideoDownloadButton } from "@/components/generation/video-download-button";
+
 import { cn } from "@/lib/utils";
 
 export function AiStudioResultActions({
   className,
+  mediaAssetId,
   kind,
   title,
   url,
 }: {
   className?: string;
+  mediaAssetId?: string | null;
   kind: "image" | "video";
   title: string;
   url: string;
@@ -22,7 +26,7 @@ export function AiStudioResultActions({
 
   return (
     <div className={cn("flex shrink-0 items-center gap-1", className)}>
-      <a
+      {kind === "video" ? <VideoDownloadButton assetId={mediaAssetId} url={url} title={title} className={actionClassName} /> : <a
         href={url}
         download={fileName}
         target="_blank"
@@ -32,7 +36,7 @@ export function AiStudioResultActions({
         className={actionClassName}
       >
         <Download className="size-3.5" aria-hidden="true" />
-      </a>
+      </a>}
       <a
         href={url}
         target="_blank"

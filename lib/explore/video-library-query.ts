@@ -20,7 +20,7 @@ export function exploreVideoLibraryQueryOptions({
 }) {
   return queryOptions({
     enabled: Boolean(userId),
-    queryKey: ["explore-video-library", userId, section] as const,
+    queryKey: [section === "wall_text" ? "explore-video-library-v2" : "explore-video-library", userId, section] as const,
     queryFn: ({ signal }) => load(signal),
     staleTime: 30 * 60 * 1_000,
     gcTime: 60 * 60 * 1_000,

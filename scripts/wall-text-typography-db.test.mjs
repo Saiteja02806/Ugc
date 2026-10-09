@@ -4,9 +4,10 @@ import test from "node:test";
 import { PGlite } from "@electric-sql/pglite";
 
 const migrations = new URL("../supabase/migrations/", import.meta.url);
-const currentMigration = "20260908172213_apply_wall_text_b_52px_typography_v13.sql";
+const approvedTypographyMigration = "20260908172213_apply_wall_text_b_52px_typography_v13.sql";
+const compactTypographyMigration = "20260925170000_allow_wall_text_v13_50px_typography.sql";
 
-test("B migration preserves stored typography and only admits the approved new contract", { timeout: 60_000 }, async () => {
+test("V13 migrations preserve 52px cards and admit the compact 50px contract", { timeout: 60_000 }, async () => {
   const db = new PGlite();
   try {
     // Execute the actual baseline CHECK and every subsequent typography migration.
@@ -20,7 +21,7 @@ test("B migration preserves stored typography and only admits the approved new c
       text_content jsonb not null,
       constraint wall_text_creatives_text_content_chk ${constraint[1]}
     )`);
-    for (const file of (await readdir(migrations)).filter((f) => f.endsWith(".sql") && f > "20260829093001" && f < currentMigration).sort()) {
+    for (const file of (await readdir(migrations)).filter((f) => f.endsWith(".sql") && f > "20260829093001" && f < approvedTypographyMigration).sort()) {
       if (file.includes("production_baseline")) continue;
       const sql = await readFile(new URL(file, migrations), "utf8");
       if (sql.includes("wall_text_creatives_text_content_chk")) await db.exec(sql);
@@ -30,7 +31,7 @@ test("B migration preserves stored typography and only admits the approved new c
       "but a quick photo with", "Cal AI's depth sensor gives", "a volume-based calorie and",
       "nutrient estimate that restores", "confidence in your tracking.",
     ];
-    const current = {
+    const legacyV13 = {
       kind: "wall_text", layoutVersion: "wall-text-overlay-v13", formatId: "freeform",
       fullText: lines.join(" "), sourceContent: { kind: "text", text: lines.join(" ") },
       finalLayout: {
@@ -40,25 +41,32 @@ test("B migration preserves stored typography and only admits the approved new c
         blocks: [{ role: "text", lines }],
       },
     };
-    const previous = structuredClone(current);
+    const previous = structuredClone(legacyV13);
     previous.layoutVersion = "wall-text-overlay-v12";
     Object.assign(previous.finalLayout, { version: "wall-text-final-layout-v8", fontSizePx: 44, lineHeightPx: 48.4 });
     const insert = (content) => db.query("insert into wall_text_creatives(text_content) values ($1) returning text_content, generator_version", [content]);
     await insert(previous);
-    await assert.rejects(insert(current), { code: "23514" });
-    await db.exec(await readFile(new URL(currentMigration, migrations), "utf8"));
+    await assert.rejects(insert(legacyV13), { code: "23514" });
+    await db.exec(await readFile(new URL(approvedTypographyMigration, migrations), "utf8"));
     assert.deepEqual((await db.query("select text_content from wall_text_creatives where id = 1")).rows[0].text_content, previous);
-    const result = (await insert(current)).rows[0];
-    assert.deepEqual(result.text_content, current);
+    const legacyResult = (await insert(legacyV13)).rows[0];
+    assert.deepEqual(legacyResult.text_content, legacyV13);
+    assert.equal(legacyResult.generator_version, "business-profile-wall-text-v9");
+    await db.exec(await readFile(new URL(compactTypographyMigration, migrations), "utf8"));
+    const currentV13 = structuredClone(legacyV13);
+    currentV13.finalLayout.fontSizePx = 50;
+    currentV13.finalLayout.lineHeightPx = 55;
+    const result = (await insert(currentV13)).rows[0];
+    assert.deepEqual(result.text_content, currentV13);
     assert.equal(result.generator_version, "business-profile-wall-text-v9");
     await insert(previous); // Older app instances can still write during rollout.
     for (const [field, value] of [["fontSizePx", 44], ["fontSizePx", 48], ["fontWeight", 400], ["fontFamily", "Inter"]]) {
-      const invalid = structuredClone(current);
+      const invalid = structuredClone(currentV13);
       invalid.finalLayout[field] = value;
       await assert.rejects(insert(invalid), { code: "23514" }, `${field}=${value} must not be stored as B`);
     }
     for (const count of [4, 9]) {
-      const invalid = structuredClone(current);
+      const invalid = structuredClone(currentV13);
       invalid.finalLayout.blocks[0].lines = Array.from({ length: count }, () => "Some example words");
       await assert.rejects(insert(invalid), { code: "23514" });
     }

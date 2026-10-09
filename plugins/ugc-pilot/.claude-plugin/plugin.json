@@ -1,0 +1,11 @@
+{
+  "name": "ugc-pilot",
+  "version": "0.1.2",
+  "description": "Draft business-specific UGC hooks, wall overlays, video prompts and slideshow copy; generate and manage media with your UGC Pilot account.",
+  "author": {
+    "name": "UGC Pilot",
+    "url": "https://www.getugcpilot.com"
+  },
+  "homepage": "https://www.getugcpilot.com",
+  "mcpServers": "./.mcp.json"
+}

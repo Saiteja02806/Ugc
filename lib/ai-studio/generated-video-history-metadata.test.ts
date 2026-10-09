@@ -3,6 +3,12 @@ import test from "node:test";
 
 import { getGeneratedVideoHistoryMetadata } from "./generated-video-history-metadata.ts";
 
+test("retains WAN's exact model identity when restoring generated video history", () => {
+  assert.deepEqual(getGeneratedVideoHistoryMetadata({ model: "wan_3_0", hookIdea: "My curiosity hook", resolution: "1080p" }), {
+    model: "wan_3_0", prompt: "My curiosity hook", resolution: "1080p",
+  });
+});
+
 test("extracts safe display metadata from an AI Studio video job input", () => {
   assert.deepEqual(
     getGeneratedVideoHistoryMetadata({

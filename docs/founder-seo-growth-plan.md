@@ -7,14 +7,74 @@ website, or mobile app and need help marketing it. The site should help them
 clarify the product message, create useful content, and turn that work into a
 repeatable publishing workflow in UGCPilot.
 
+The editorial priority is useful organic education. Help readers understand
+their audience, make clearer content, diagnose weak results, and improve their
+process without requiring a purchase or paid distribution. Product workflows
+appear when they help demonstrate a solution to the chosen problem.
+
 The intended journey is:
 
 ```text
 Founder searches for a marketing problem
-  -> founder guide solves the immediate problem
-  -> related product workflow shows how to apply the method
-  -> trial or sign-in CTA begins product evaluation
+  -> founder guide explains the problem and teaches a useful method
+  -> founder can apply the method with their existing tools
+  -> optional product example shows how a related workflow helps
+  -> interested readers can begin product evaluation
 ```
+
+## Organic content standard clarified on 9 October 2026
+
+Plan both educational articles and practical workflow examples. Educational
+articles can fully answer a relevant question without a product walkthrough.
+Workflow examples first teach the underlying method, then show a verified
+application in UGC Pilot. Neither type needs to assume an ad campaign.
+
+Every brief should identify what the reader will understand and what they can
+do better after reading. Explain causes, decisions, steps, examples, common
+mistakes, and ways to evaluate improvement as relevant to the task. Provide
+enough guidance to act with the reader's existing tools. Product mentions and
+calls to action should serve that task and remain proportionate.
+
+Prioritize topics at the intersection of reader needs and the intended founder
+audience. The workflow map is one source of ideas; also investigate broader
+questions about organic content planning, clarity, audience fit, and measurement.
+Do not require every educational topic to map to a product feature.
+
+## Editorial workflow adopted on 9 October 2026
+
+Use the following process for each new article or substantive guide update:
+
+1. Choose one specific reader problem and a concrete outcome.
+2. Research search intent using relevant search results, customer questions,
+   and available keyword or Search Console evidence. Label missing data.
+3. Build an article brief covering audience, questions, sources, original
+   examples, screenshots, internal links, and the reader's next action.
+4. Draft and review with Agentic SEO Skill's article/content workflow. Verify
+   extracted findings against the actual page and review facts, usefulness,
+   product accuracy, and overlap with existing guides. Do not optimize toward
+   arbitrary word counts or keyword-density targets.
+5. Publish and evaluate indexing, relevant impressions and clicks, completed
+   organic signups, and activation against a recorded baseline.
+
+Use [Agentic SEO Skill](https://github.com/Bhanunamikaze/Agentic-SEO-Skill)
+for article improvement and [Codex SEO](https://github.com/AgriciDaniel/codex-seo)
+for product-page and technical audits. Adoption of Codex SEO's installed
+runtime remains subject to clarifying its membership-dependent top-level
+license. Measurement setup proceeds alongside content production.
+
+The first brief is [customer questions into a week of useful SaaS
+content](seo-article-brief-saas-weekly-content.md). Improve the existing
+SaaS content marketing guide before introducing another overlapping URL.
+The user will supply real product screenshots; never replace missing proof
+with invented customer outcomes or mock screenshots presented as real.
+
+Include problems the new Hook video, Wall of text, and Slideshows workflows
+can solve alongside broader organic education. Use the
+[workflow problem map](seo-workflow-problem-map.md) for
+prioritized angles, search evidence, worked examples, and product limitations.
+The weekly SaaS content guide connects these focused tasks. Verify the
+authenticated workflows on production before publishing step-by-step claims
+of availability; the current release notes establish local implementation.
 
 ## Research source and demand signals
 
@@ -71,16 +131,29 @@ navigation, homepage, and footer. Every guide is included in the sitemap.
 
 ## Next content releases
 
+For the immediate execution order, use the
+[9 October SEO day plan](seo-day-plan-2026-10-09.md). It timeboxes measurement,
+technical review, intent research, one educational guide update, and publication
+readiness without waiting for rankings to begin the next useful task.
+
 Prioritize evidence-rich additions rather than more generic keyword pages:
 
-1. A launch-content template for mobile-app founders, linked from the mobile
-   app marketing guide.
-2. A SaaS product-explainer carousel example, linked from the SaaS content
-   marketing guide.
-3. A website-founder content brief template, linked from the website marketing
-   guide.
-4. Founder case studies once customer permission and outcomes are available.
-5. Country-and-language research for Germany, France, and other target markets
+1. Improve `/guides/saas-content-marketing` with the weekly brief and an
+   educational example built around customer questions. Hook video, Wall of
+   text, and Slideshows can demonstrate its practical application.
+   Research supporting education topics such as choosing useful organic
+   content ideas and diagnosing unclear openings; integrate them into existing
+   guides or add a distinct article when intent and coverage justify it.
+2. Build a focused brief for turning an existing product demo into a short
+   social video through Hook video and its optional Demo step.
+3. Build a focused brief for a faceless product Reel using Wall of text and
+   readable manual overlays.
+4. Build a focused brief for a step-by-step product explanation through
+   Slideshows, including individual slide review and correction.
+5. Adapt the proven examples into mobile-app launch and website-founder
+   templates where they add a distinct task rather than duplicate a guide.
+6. Founder case studies once customer permission and outcomes are available.
+7. Country-and-language research for Germany, France, and other target markets
    before publishing localized content.
 
 ## Measurement plan

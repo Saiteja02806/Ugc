@@ -49,8 +49,10 @@ import {
   type CarouselScheduleSubmission,
 } from "@/lib/scheduling/carousel-scheduling-client";
 import {
+  getConfirmedScheduleTargetSettings,
   getDefaultScheduleTargetSettings,
   getScheduleTargetSettingsError as getPublishingSettingsError,
+  getTikTokPublishingAgreement,
   type ScheduleTargetSettings,
 } from "@/lib/scheduling/platform-settings";
 import {
@@ -476,8 +478,13 @@ export function PlatformSelectionModal({
   );
   const publishingSettingsError = getPublishingSettingsError({
     connections: selectedConnections,
+    requireTikTokMusicConfirmation: false,
     settings: publishingSettings,
     tiktokCapabilities,
+  });
+  const tiktokPublishingAgreement = getTikTokPublishingAgreement({
+    connections: selectedConnections,
+    settings: publishingSettings,
   });
   const laterValidation = useMemo(
     () =>
@@ -762,9 +769,10 @@ export function PlatformSelectionModal({
         targets: selectedConnections.map((connection) => ({
           connectionId: connection.id,
           platform: connection.platform,
-          settings:
-            publishingSettings[connection.id] ??
-            getDefaultPublishingSettings(connection.platform),
+          settings: getConfirmedScheduleTargetSettings(
+            connection.platform,
+            publishingSettings[connection.id],
+          ),
         })),
         timezone,
         useDefaultScheduleTime: mode === "asap",
@@ -1005,6 +1013,11 @@ export function PlatformSelectionModal({
                   </div>
                 </section>
               )}
+              {tiktokPublishingAgreement ? (
+                <p className="text-xs leading-5 text-muted-foreground">
+                  {tiktokPublishingAgreement}
+                </p>
+              ) : null}
               {scheduleMode === "choose" ? (
                 <ScheduleChoiceStep
                   earliestLabel={formatScheduleInstant(
@@ -1602,10 +1615,6 @@ function TikTokCarouselSettings({
   const capabilities = capabilitiesState.capabilities;
   const privacyLevel = getStringSetting(settings, "privacyLevel", "");
   const brandedContent = getBooleanSetting(settings, "brandedContent", false);
-  const commercialContentEnabled =
-    getBooleanSetting(settings, "commercialContentDisclosureEnabled", false) ||
-    getBooleanSetting(settings, "brandOrganic", false) ||
-    brandedContent;
 
   return (
     <div className="mt-3 grid gap-3">
@@ -1653,40 +1662,6 @@ function TikTokCarouselSettings({
           />
         </div>
       </fieldset>
-      <fieldset>
-        <legend className="text-xs font-semibold text-foreground">Commercial content</legend>
-        <div className="mt-2 grid gap-2">
-          <SettingCheckbox
-            checked={commercialContentEnabled}
-            label="Content disclosure"
-            onChange={(checked) => {
-              onChange("commercialContentDisclosureEnabled", checked);
-              if (!checked) { onChange("brandOrganic", false); onChange("brandedContent", false); }
-            }}
-          />
-          {commercialContentEnabled ? (
-            <div className="grid gap-2 border-l-2 border-primary/30 pl-3 sm:grid-cols-2">
-              <SettingCheckbox
-                checked={getBooleanSetting(settings, "brandOrganic", false)}
-                label="Your brand"
-                onChange={(checked) => onChange("brandOrganic", checked)}
-              />
-              {getBooleanSetting(settings, "brandOrganic", false) ? <p className="text-[11px] font-medium leading-4 text-muted-foreground">Your video will be labeled as ‘Promotional content’.</p> : null}
-              <SettingCheckbox
-                checked={brandedContent}
-                label="Branded content"
-                onChange={(checked) => { onChange("brandedContent", checked); if (checked && privacyLevel === "SELF_ONLY") onChange("privacyLevel", ""); }}
-              />
-              {brandedContent ? <p className="text-[11px] font-medium leading-4 text-muted-foreground">Your video will be labeled as ‘Paid partnership’.</p> : null}
-            </div>
-          ) : null}
-        </div>
-      </fieldset>
-      <SettingCheckbox
-        checked={getBooleanSetting(settings, "musicUsageConfirmed", false)}
-        label="By posting, you agree to TikTok's Music Usage Confirmation."
-        onChange={(checked) => onChange("musicUsageConfirmed", checked)}
-      />
     </div>
   );
 }

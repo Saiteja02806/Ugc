@@ -10,6 +10,7 @@ function load(file, imports = {}, globals = {}) {
   const code = ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), "utf8"), { fileName: file,
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   vm.runInNewContext(code, { exports, process: { env: {} }, require: name => {
+    if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts");
     if (name in imports) return imports[name];
     if (name.startsWith("./")) return load(path.posix.join(path.posix.dirname(file), name), imports, globals);
     if (name.startsWith("@/components/") || name === "lucide-react") return new Proxy({}, { get: (_, component) => String(component) });
@@ -17,7 +18,7 @@ function load(file, imports = {}, globals = {}) {
   }, ...globals });
   return exports;
 }
-function harness(format, { reference = true, referenceUrls, access = "pro", captureRequests = false, completedJob = null, persistedJobId = completedJob?.id ?? null } = {}) {
+function harness(format, { reference = true, referenceUrls, access = "pro", captureRequests = false, completedJob = null, persistedJobId = completedJob?.id ?? null, wanEnabled = false } = {}) {
   const events = [], controls = {}, results = {};
   const requests = [], states = [], errors = [];
   const effects = [], readyVideos = [];
@@ -37,7 +38,7 @@ function harness(format, { reference = true, referenceUrls, access = "pro", capt
     "next/link": "Link",
     "@/contexts/auth-context": { useAuth: () => ({ loading: false, user: { uid: "test-owner" } }) },
     "@/lib/billing/generation-credit-policy": { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND: 4 },
-    "@/lib/ai-studio/generation-settings": load("lib/ai-studio/generation-settings.ts"),
+    "@/lib/ai-studio/generation-settings": load("lib/ai-studio/generation-settings.ts", {}, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: String(wanEnabled) } } }),
     "@/lib/ai-studio/media-client": completedJob ? { fetchAIStudioMediaAssets: async () => [], fetchAIStudioMediaAsset: async id => ({
       id, collection: "video", sourceType: "generated_video", status: "ready", title: "Generated hook", url: "/generated-hook.mp4", durationSeconds: 3, ratio: "9:16", createdAt: "2026-10-09T00:00:00Z", metadata: {},
     }) } : {},
@@ -46,10 +47,10 @@ function harness(format, { reference = true, referenceUrls, access = "pro", capt
     "@/lib/ai-studio/video-history": load("lib/ai-studio/video-history.ts"),
     "@/lib/ai-studio/video-generation-state": load("lib/ai-studio/video-generation-state.ts"),
     "@/lib/ai-studio/generation-session": load("lib/ai-studio/generation-session.ts"),
-    "@/lib/ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts"),
+    "@/lib/ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts", { "../../worker/src/lib/video-prompt-policy": load("worker/src/lib/video-prompt-policy.ts") }),
     "@/lib/explore/format-generation-prompt": load("lib/explore/format-generation-prompt.ts", { "@/lib/ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts") }),
     "@/lib/firebase/auth": { getCurrentUserIdToken: () => { events.push("waiting-for-auth"); return captureRequests || completedJob ? Promise.resolve("fixture-token") : new Promise(() => {}); } },
-    "@/lib/jobs/background-job-client": { useBackgroundJobs: () => completedJob ? [{ data: completedJob }] : [], usePersistedJobIdFromUrl: () => persistedJobId,
+    "@/lib/jobs/background-job-client": { useStoredBackgroundJobIds: () => [], useRecoverableWorkflowJobs: () => ({ queries: completedJob ? [{ data: completedJob }] : [], recovering: false, recoveryError: null }), useBackgroundJobs: () => completedJob ? [{ data: completedJob }] : [], usePersistedJobIdFromUrl: () => persistedJobId,
       useCancelBackgroundJob: () => ({}), useRetryBackgroundJob: () => ({}) },
     "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
   };
@@ -76,6 +77,23 @@ function harness(format, { reference = true, referenceUrls, access = "pro", capt
 }
 
 for (const format of ["hook", "wall_text"]) {
+  test(`${format}: choosing WAN exposes its settings and sends the exact three-second request`, async () => {
+    const h = harness(format, { captureRequests: true, wanEnabled: true });
+    const setting = (composer, label) => composer.props.settings.props.children.find(node => node?.props?.ariaLabel === label);
+    const model = setting(h.composer, "Video model");
+    assert.equal(model.props.options.find(option => option.value === "wan_3_0").disabled, false);
+    model.props.onChange("wan_3_0");
+    let composer = h.render().composer;
+    assert.equal(composer.props.referenceControls.props.videoInputEnabled, false);
+    setting(composer, "Video duration").props.onChange("3");
+    setting(composer, "Video quality").props.onChange("1080p");
+    composer = h.render().composer;
+    assert.match(composer.props.settingsSummary, /WAN 3\.0.*3s/);
+    await composer.props.onSubmit({ preventDefault() {} });
+    assert.equal(h.requests[0].body.model, "wan_3_0");
+    assert.equal(h.requests[0].body.durationSeconds, 3); assert.equal(h.requests[0].body.resolution, "1080p");
+    assert.equal(h.requests[0].body.exploreFormat, format);
+  });
   test(`${format}: restoring the current completed generation notifies the opening card without a result click`, async () => {
     const h = harness(format, { completedJob: { id: "current-job", jobType: "video_generation", exploreFormat: format, status: "completed", output: { mediaAssetId: "ready-video", url: "/generated-hook.mp4", ratio: "9:16" }, updatedAt: "2026-10-09T00:00:00Z" } });
     await h.flushEffects();

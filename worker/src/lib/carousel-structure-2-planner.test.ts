@@ -49,6 +49,46 @@ function multiIssuePlan() {
   return plan;
 }
 
+test("a two-statement hook receives a cover-only repair with every body slide frozen", async () => {
+  // Each OpenAI instance captures its fetch implementation. Isolate this mock
+  // from the following test's cached client without changing production code.
+  const { buildCarouselStructure2StoryPlanBatch } = await import(new URL("./carousel-structure-2-planner.js?single-hook-regression", import.meta.url).href) as typeof import("./carousel-structure-2-planner.js");
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = "test-key-no-network";
+  const rejected = rawPlan(true);
+  rejected.slides.first!.storyText = "content felt hard. i needed a change";
+  const requests: Array<Record<string, unknown>> = [];
+  globalThis.fetch = async (_input, init) => {
+    requests.push(JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>);
+    const content = requests.length === 1
+      ? { plans: Object.fromEntries(CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS.map((key, index) => [key, index === 0 ? rejected : rawPlan(true)])) }
+      : { storyTextBySlide: { slide1: "i kept running out of things to post" } };
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(content) }, finish_reason: "stop" }] }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  try {
+    const plans = await buildCarouselStructure2StoryPlanBatch({ assignments, businessDescription });
+    assert.equal(plans.length, 5);
+    assert.equal(requests.length, 2, "one batch request and one isolated cover repair");
+    const repaired = plans.find((plan) => plan.slotIndex === 0)!;
+    assert.equal(repaired.plan.slides[0]!.storyText, "i kept running out of things to post");
+    assert.ok(repaired.validationResult.initialIssues.some((issue) => issue.code === "hook_structure"));
+    assert.equal(repaired.validationResult.repaired, true);
+    for (const [index, key] of CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS.entries()) {
+      if (index > 0) assert.equal(repaired.plan.slides[index]!.storyText, rejected.slides[key]!.storyText);
+    }
+    const schema = requests[1]!.response_format as { json_schema: { schema: { properties: { storyTextBySlide: { properties: Record<string, unknown> } } } } };
+    assert.deepEqual(Object.keys(schema.json_schema.schema.properties.storyTextBySlide.properties), ["slide1"]);
+    const prompt = JSON.stringify(requests[1]!.messages);
+    assert.match(prompt, /Hook slide = one statement only/);
+    assert.match(prompt, /First-person hooks are welcome/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = originalKey;
+  }
+});
+
 test("retains a valid candidate between failures and diagnoses only the rejected slots", async () => {
   const originalFetch = globalThis.fetch;
   const originalKey = process.env.OPENAI_API_KEY;

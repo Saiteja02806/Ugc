@@ -149,7 +149,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     const result = filterReferences(references, format, categories);
     return format === "slideshow" ? interleaveReferenceCategories(result) : result;
   }, [references, format, categories]);
-  const fullAccess = localPreview || subscription.data?.isActive === true;
+  const canBrowseAllReferences = format === "hook" || localPreview || subscription.data?.isActive === true;
   const filterKey = `${format}:${categories.join(":")}`;
   const observeReferenceGrid = useCallback((node: HTMLDivElement | null) => {
     if (!node) return;
@@ -169,7 +169,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     observer.observe(node);
     return () => observer.disconnect();
   }, [filterKey, setReferencePage]);
-  const visible = filtered.slice(0, fullAccess ? alignReferenceLimit(referencePage.key === filterKey ? referencePage.limit : 12, referenceColumns) : 1);
+  const visible = filtered.slice(0, canBrowseAllReferences ? alignReferenceLimit(referencePage.key === filterKey ? referencePage.limit : 12, referenceColumns) : 1);
   const loading = !localPreview && (authLoading || referencesQuery.isFetching && !referencesQuery.data);
   const activeSlideIndex = reference ? Math.min(slideIndex, Math.max(0, reference.slides.length - 1)) : 0;
   const selectedSlideIds = reference
@@ -392,8 +392,8 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
           <section hidden={view !== "references"} aria-label="References" className={styles.referenceArea}>
             <div className="mb-5 flex items-center justify-between gap-3"><p className="text-sm text-muted">Preview a reference, or select <RotateCcw className="inline-block size-3.5 align-middle text-foreground" role="img" aria-label="Recreate" /> to recreate it.</p><FilterMenu activeCategories={categories} categories={options} count={filtered.length} disabled={loading} onClear={() => setCategories([])} onToggle={(category, checked) => setCategories(current => checked ? [...current, category] : current.filter(value => value !== category))} /></div>
             {loading ? <ReferenceGridSkeleton /> : referencesQuery.isError && !localPreview ? <LoadError onRetry={() => void referencesQuery.refetch()} /> : visible.length ? <div ref={observeReferenceGrid} className={styles.referenceGrid}>{visible.map(item => <ReferenceCard key={item.id} reference={item} compact hideCaption={format === "wall_text"} isSelected={reference?.id === item.id} onPreview={() => { setPreviewSlide(0); setPreviewReference(item); }} onRecreate={() => selectReference(item)} />)}</div> : <EmptyReferences format={format} hasFilters={categories.length > 0} onClear={() => setCategories([])} />}
-            {!fullAccess && filtered.length > 1 ? <ProReferenceGate /> : null}
-            {fullAccess && filtered.length > 0 ? <div className="mt-6 flex items-center justify-between gap-3 border-t border-border pt-4"><p className="text-xs text-muted">{visible.length} of {filtered.length} references</p>{visible.length < filtered.length ? <Button type="button" variant="outline" size="sm" onClick={() => setReferencePage({ key: filterKey, limit: visible.length + referenceBatchSize(referenceColumns) })}>Show more references</Button> : null}</div> : null}
+            {!canBrowseAllReferences && filtered.length > 1 ? <ProReferenceGate /> : null}
+            {canBrowseAllReferences && filtered.length > 0 ? <div className="mt-6 flex items-center justify-between gap-3 border-t border-border pt-4"><p className="text-xs text-muted">{visible.length} of {filtered.length} references</p>{visible.length < filtered.length ? <Button type="button" variant="outline" size="sm" onClick={() => setReferencePage({ key: filterKey, limit: visible.length + referenceBatchSize(referenceColumns) })}>Show more references</Button> : null}</div> : null}
           </section>
           <div ref={setResultsTarget} hidden={view !== "results" || format !== "slideshow" && source.mode !== "generate"} className={styles.results} />
         </div>

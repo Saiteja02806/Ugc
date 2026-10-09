@@ -4,8 +4,8 @@ import { socialPlatforms, type SocialPlatform } from "./types";
 /** UI rollout only. Keep provider APIs, credentials and saved targets intact. */
 export const socialPlatformVisibility: Readonly<Record<SocialPlatform, boolean>> = {
   instagram: true,
-  // Restore this after content-posting API access is approved.
-  tiktok: false,
+  // TikTok content-posting API access is approved.
+  tiktok: true,
   youtube: true,
 };
 

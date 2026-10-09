@@ -2,7 +2,10 @@
 
 Implemented locally on 7 October 2026 and corrected on 8 October to keep both
 actions below the card, then reduce excessive card growth. The final section
-records the current requested 10% reduction and supersedes earlier measurements.
+records the closer below-card controls; the requested 10% card reduction remains
+the current size decision. Later dated entries supersede earlier measurements.
+The final recheck confirms that the owner's screenshot came from the live site,
+which has not received the local spacing change.
 This is not a deployment record; validation entries describe their dated pass.
 
 ## Scope and behavior
@@ -426,3 +429,133 @@ Full-viewport evidence, saved after source video loading:
 
 This is a local implementation, with deployment and authenticated production
 acceptance pending.
+
+## 8 October follow-up: bring the buttons closer to the card
+
+The owner identified the excessive gap between the smaller card and its
+below-card Skip and Schedule buttons. The visible gap now targets 12 CSS pixels
+for every desktop format. The current card dimensions and 10% reduction are
+unchanged. Both buttons, their captions and visible remaining count move
+together; button sizes, icons and keyboard hints retain their behavior.
+
+The gap came from spare space below the centered post inside the snap window,
+in addition to the decision row's margin. A ResizeObserver in TrendingDeck
+measures the active post wrapper, feed and decision row. It sets a CSS lift
+from their heights, without reading scroll position. The desktop stylesheet
+translates the row and progress into the unused space while retaining their
+original flow space. Feed height, snap distance and media sizing therefore
+remain unchanged. The observer refreshes on active-card changes and resizes,
+and disconnects when the card changes or the deck unmounts. Mobile has no lift.
+
+Representative Reaction Reel measurements:
+
+| Usable viewport | Card, unchanged | Previous visible gap | Current visible gap |
+| --- | --- | --- | --- |
+| 1366 × 680, short 14-inch HD example | 243 × 432 | 43.7px | 12.2px |
+| 1366 × 768, taller HD example | 258 × 458 | 74.5px | 12.1px |
+| 1536 × 776, 15.6-inch scaled FHD example | 261 × 464 | 75.3px | 12.2px |
+| 1920 × 950, unscaled FHD example | 288 × 512 | 93.0px | 12.0px |
+
+All 39 format/viewport combinations from the preceding matrix passed. Each
+card matched its saved baseline within 0.1px, and gaps stayed within 0.3px of
+12px. Complete cards, format pills, buttons, captions and visible progress fit
+without document overflow. Both targets remain at least 56px, and hit testing
+confirms each button receives clicks in its translated position. All eight
+sample Wall lines remain within the card without horizontal overflow.
+
+Actual browser checks confirmed that clicking Skip at 1536 × 776 advances once,
+scrolling back restores the selected third slide, and returning forward does
+not repeat the review. A fresh wheel decision at 1366 × 680 also advances once
+and restores the selected second slide on return. Resizing across 820/822px
+keeps history intact and preserves the close spacing. The heart button reaches
+the preview's existing sign-in guard; authenticated saving/scheduling was not
+tested. At 390 × 844, decision and progress transforms remain `none`.
+
+`npm run test:trending-interaction` passed all 66 tests. Scoped ESLint and
+`npx tsc --noEmit --incremental false` passed. The development preview compiled
+the update. No additional full production build was run in this pass; the
+earlier build results are retained in their dated sections.
+
+Full-viewport screenshots were inspected visually and saved without editing:
+
+- `.tmp/trending-laptop-readability/14-inch-close-buttons-1366x680.png`
+- `.tmp/trending-laptop-readability/15-6-inch-close-buttons-1536x776.png`
+- `.tmp/trending-laptop-readability/close-button-spacing-measurements-2026-10-08.json`
+
+This is a local layout implementation using representative browser viewports.
+Deployment and authenticated production acceptance remain pending.
+
+## 8 October live screenshot and Reel Hook recheck
+
+The owner confirmed that the subsequent screenshot showing the large gap came
+from the live getugcpilot.com site. The spacing change is still local and has
+not been deployed; the screenshot does not show the current local layout.
+Opening the live dashboard in the available browser redirected to sign-in,
+so authenticated production geometry could not be measured in this session.
+
+The development-only Trending preview now includes Reel Hook using the actual
+TrendingHookDeckCard and HookVideoCard components. A fixture supplies a local
+edited-source video through the existing edit contract; it does not change
+production preview authentication or playback code. No additional production
+layout change was needed: the shared spacing rule already applies to Hook.
+
+All 13 additional Hook viewport checks passed. At 1366 × 680 the card is
+243 × 432 with a 12.2px gap; at 1536 × 776 it is about 261 × 464 with a
+12.2px gap. The other formats' 39 preceding checks remain recorded above.
+The Hook measurements match the portrait size baseline within 0.1px. Full
+cards, format pills, controls and captions fit with no document overflow;
+buttons remain below the card, at least 56px wide, and receive hit testing.
+Both laptop screenshots were visually inspected with loaded video media.
+
+Clicking Skip advances the Hook once and retains the close gap. Scrolling
+back restores history with the same gap and reviewed count. In this anonymous
+fixture, returning to a reviewed Hook uses the protected-preview placeholder
+because the production history captures the current fetched edit record; the
+fixture supplies its initial edit directly. This check establishes geometry
+and history behavior, not authenticated catalog preview recovery.
+
+TypeScript and scoped ESLint passed after extending the fixture. Production
+interaction code is unchanged, so the preceding 66-test result is retained;
+those tests were not repeated for this fixture-only addition.
+
+Additional full-viewport evidence:
+
+- `.tmp/trending-laptop-readability/14-inch-hook-close-buttons-1366x680.png`
+- `.tmp/trending-laptop-readability/15-6-inch-hook-close-buttons-1536x776.png`
+- `.tmp/trending-laptop-readability/hook-close-button-spacing-measurements-2026-10-08.json`
+
+The live site still needs a release of the local Trending changes, followed by
+authenticated production acceptance. No source was pushed or deployed here.
+
+## 8 October production release
+
+The subsequent authorized release is now deployed to getugcpilot.com. Vercel
+successfully built and promoted commit `591da964e3afb32a40b19a638a9f85fe2912d5da`
+as deployment `dpl_9vnrJiJYmruBizdZeCTzkoEUDQeF`, based on the then-current live
+commit `0a8bc1beecea03b811940e0b371d988b504a6c5a`. The release adds the gap fix
+while retaining the production card sizing, scroll-back fix and slideshow
+changes. The earlier pending-deployment statements describe the preceding
+local-only checks.
+
+All 66 interaction tests, scoped ESLint and TypeScript passed in the isolated
+release checkout. The remote production build also passed TypeScript and
+generated all 151 static pages. Live dashboard JavaScript and CSS contain the
+spacing implementation; all 24 referenced dashboard assets returned HTTP 200.
+The dashboard and connection page both returned HTTP 200, and the immediate
+deployment-specific error scan returned no errors.
+
+The owner reported that signing in through the verification browser was not
+possible and requested local visual checks. Fresh Hook checks at 1366 × 680
+and 1536 × 776 measured 12.20px and 12.19px gaps, respectively, with both
+captions visible, successful button hit testing and no document overflow.
+The two production presentation files match the local preview byte-for-byte.
+These checks are local visual evidence, not signed-in production acceptance.
+
+- `.tmp/trending-laptop-readability/release-14-inch-hook-1366x680.jpg`
+- `.tmp/trending-laptop-readability/release-15-6-inch-hook-1536x776.jpg`
+- `.tmp/trending-laptop-readability/release-local-checks-20261008.json`
+- `.tmp/trending-live-asset-verification-20261008.json`
+
+The production release is complete. A direct push of the isolated source
+commit to main was not executed because automatic approval review requires
+explicit branch authorization. That approval was requested separately.

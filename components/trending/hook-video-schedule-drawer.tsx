@@ -32,8 +32,10 @@ import {
   loadAccountSocialConnections,
 } from "@/lib/scheduling/account-data-query";
 import {
+  getConfirmedScheduleTargetSettings,
   getDefaultScheduleTargetSettings,
   getScheduleTargetSettingsError,
+  getTikTokPublishingAgreement,
   type ScheduleTargetSettings,
   type TikTokScheduleCapabilityState,
 } from "@/lib/scheduling/platform-settings";
@@ -135,7 +137,6 @@ export function HookVideoScheduleDrawer({
   const automaticDateTime = getInitialDateTime(minimumScheduleLeadMinutes, timezone);
   const scheduledDate = hasManualScheduleTime ? manualScheduledDate : automaticDateTime.date;
   const scheduledTime = hasManualScheduleTime ? manualScheduledTime : automaticDateTime.time;
-  const [musicConfirmationOpen, setMusicConfirmationOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -195,6 +196,10 @@ export function HookVideoScheduleDrawer({
   const selectedConnections = visibleConnections.filter((connection) =>
     selectedConnectionIds.includes(connection.id),
   );
+  const tiktokPublishingAgreement = getTikTokPublishingAgreement({
+    connections: selectedConnections,
+    settings,
+  });
   // Sort only the display copy; selection, settings and submission stay intact.
   const orderedConnections = useMemo(
     () =>
@@ -336,34 +341,23 @@ export function HookVideoScheduleDrawer({
     setStage("review");
   }
 
-  function getScheduleSettings(confirmTikTokMusic: boolean) {
+  function getScheduleSettings() {
     return Object.fromEntries(
       selectedConnections.map((connection) => {
-        const currentSettings =
-          settings[connection.id] ??
-          getDefaultScheduleTargetSettings(connection.platform);
-
         return [
           connection.id,
-          connection.platform === "tiktok" && confirmTikTokMusic
-            ? { ...currentSettings, musicUsageConfirmed: true }
-            : currentSettings,
+          getConfirmedScheduleTargetSettings(connection.platform, settings[connection.id]),
         ];
       }),
     ) as Record<string, PublishingSettings>;
   }
 
   function requestScheduleConfirmation() {
-    if (selectedConnections.some((connection) => connection.platform === "tiktok")) {
-      setMusicConfirmationOpen(true);
-      return;
-    }
-
-    void confirmSchedule(false);
+    void confirmSchedule();
   }
 
-  async function confirmSchedule(confirmTikTokMusic: boolean) {
-    const confirmedSettings = getScheduleSettings(confirmTikTokMusic);
+  async function confirmSchedule() {
+    const confirmedSettings = getScheduleSettings();
     const validationError = getValidationError({
       scheduledDate,
       scheduledTime,
@@ -377,7 +371,6 @@ export function HookVideoScheduleDrawer({
     });
 
     if (validationError) {
-      setMusicConfirmationOpen(false);
       setErrorMessage(validationError);
       return;
     }
@@ -705,6 +698,11 @@ export function HookVideoScheduleDrawer({
         </div>
 
         <footer className="border-t border-border bg-background px-4 py-3 sm:px-5">
+          {stage === "review" && tiktokPublishingAgreement ? (
+            <p className="mb-2 text-xs leading-5 text-muted">
+              {tiktokPublishingAgreement}
+            </p>
+          ) : null}
           <Button
             type="button"
             size="lg"
@@ -734,41 +732,6 @@ export function HookVideoScheduleDrawer({
         </footer>
       </DialogContent>
 
-      <Dialog
-        open={musicConfirmationOpen}
-        onOpenChange={(open) => {
-          if (!submitting) setMusicConfirmationOpen(open);
-        }}
-      >
-        <DialogContent className="max-w-[420px] rounded-[18px] border border-border bg-background p-0">
-          <DialogHeader className="border-b border-border px-5 py-4">
-            <DialogTitle>Confirm TikTok publishing</DialogTitle>
-            <DialogDescription className="mt-1 text-xs leading-5">
-              By confirming, you agree to TikTok&apos;s Music Usage Confirmation.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col-reverse gap-2 px-5 py-4 sm:flex-row sm:justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setMusicConfirmationOpen(false)}
-              disabled={submitting}
-            >
-              Back
-            </Button>
-            <Button
-              type="button"
-              onClick={() => {
-                setMusicConfirmationOpen(false);
-                void confirmSchedule(true);
-              }}
-              disabled={submitting}
-            >
-              Confirm schedule
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </Dialog>
   );
 }
@@ -823,10 +786,6 @@ function TikTokPublishingDetails({
   tiktokCapability: TikTokScheduleCapabilityState | undefined;
   onSettingChange: (key: string, value: boolean | string) => void;
 }) {
-  const commercialContentEnabled =
-    settings.commercialContentDisclosureEnabled === true ||
-    settings.brandOrganic === true ||
-    settings.brandedContent === true;
   const settingsError = tiktokCapability?.status === "ready"
     ? getScheduleTargetSettingsError({
         connections: [connection],
@@ -885,59 +844,6 @@ function TikTokPublishingDetails({
               ))}
             </select>
           </label>
-          <details className="rounded-control border border-border bg-background px-3 py-2.5 text-xs text-foreground-strong">
-            <summary className="cursor-pointer list-none font-semibold marker:content-none">
-              <span>Content disclosure</span>
-              <span className="ml-2 font-medium text-muted">
-                {getTikTokDisclosureLabel(settings)}
-              </span>
-            </summary>
-            <div className="mt-3 grid gap-2 border-t border-border pt-3">
-              <label className="flex items-start gap-2 text-xs font-medium leading-4">
-                <input
-                  type="checkbox"
-                  checked={commercialContentEnabled}
-                  onChange={(event) => {
-                    const enabled = event.target.checked;
-                    onSettingChange("commercialContentDisclosureEnabled", enabled);
-                    if (!enabled) {
-                      onSettingChange("brandOrganic", false);
-                      onSettingChange("brandedContent", false);
-                    }
-                  }}
-                  className="mt-0.5 size-4 shrink-0 accent-primary"
-                />
-                <span>This post promotes a business, product, or service</span>
-              </label>
-              {commercialContentEnabled ? (
-                <div className="grid gap-2 border-l-2 border-primary/30 pl-3">
-                  <label className="flex items-start gap-2 text-xs font-medium leading-4">
-                    <input
-                      type="checkbox"
-                      checked={settings.brandOrganic === true}
-                      onChange={(event) => onSettingChange("brandOrganic", event.target.checked)}
-                      className="mt-0.5 size-4 shrink-0 accent-primary"
-                    />
-                    <span>Your brand</span>
-                  </label>
-                  <label className="flex items-start gap-2 text-xs font-medium leading-4">
-                    <input
-                      type="checkbox"
-                      checked={settings.brandedContent === true}
-                      onChange={(event) => {
-                        onSettingChange("brandedContent", event.target.checked);
-                        if (event.target.checked && settings.privacyLevel === "SELF_ONLY") {
-                          onSettingChange("privacyLevel", "");
-                        }
-                      }}
-                      className="mt-0.5 size-4 shrink-0 accent-primary"
-                    />
-                    <span>Paid partnership</span>
-                  </label>
-                </div>
-              ) : null}
-            </div>
-          </details>
         </div>
       )}
     </details>
@@ -989,16 +895,6 @@ function YouTubePublishingDetails({
       </details>
     </div>
   );
-}
-
-function getTikTokDisclosureLabel(settings: PublishingSettings) {
-  if (settings.brandOrganic === true && settings.brandedContent === true) {
-    return "Promotional + paid partnership";
-  }
-
-  if (settings.brandOrganic === true) return "Promotional";
-  if (settings.brandedContent === true) return "Paid partnership";
-  return "Not commercial";
 }
 
 function getYouTubePrivacyLabel(value: string) {

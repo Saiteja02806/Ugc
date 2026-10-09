@@ -71,6 +71,7 @@ export async function generateGeminiOmniVideoBuffer({
       throw new ProviderRequestNotSubmittedError("UGC Pilot accepts up to 6 Google Omni reference images.");
     }
     const referenceImages = await Promise.all(imageUrls.map(downloadReferenceImage));
+    await validateOmniInputTokens(ai, model, prompt, referenceImages);
     interaction = await ai.interactions.create({
       input: referenceImages.length
         ? [
@@ -163,6 +164,53 @@ function getGoogleClient() {
   }
 
   return googleClient;
+}
+
+async function validateOmniInputTokens(
+  ai: GoogleGenAI,
+  model: string,
+  prompt: string,
+  referenceImages: { data: string; mimeType: string }[],
+) {
+  let inputTokenLimit: number | undefined;
+  let totalTokens: number | undefined;
+
+  try {
+    const [modelInfo, count] = await Promise.all([
+      ai.models.get({ model }),
+      ai.models.countTokens({
+        model,
+        contents: referenceImages.length
+          ? [...referenceImages.map(image => ({ inlineData: image })), { text: prompt }]
+          : prompt,
+      }),
+    ]);
+    inputTokenLimit = modelInfo.inputTokenLimit;
+    totalTokens = count.totalTokens;
+  } catch (error) {
+    // These are read-only preflight requests. No video was submitted, so a
+    // temporary outage must remain retryable rather than an uncertain paid call.
+    throw new ProviderRequestNotSubmittedError(
+      "Could not check Google Omni's prompt limit. Please try again.",
+      { cause: error, retryable: true },
+    );
+  }
+
+  if (
+    inputTokenLimit === undefined || !Number.isSafeInteger(inputTokenLimit) || inputTokenLimit <= 0 ||
+    totalTokens === undefined || !Number.isSafeInteger(totalTokens) || totalTokens < 0
+  ) {
+    throw new ProviderRequestNotSubmittedError(
+      "Could not check Google Omni's prompt limit. Please try again.",
+      { retryable: true },
+    );
+  }
+
+  if (totalTokens > inputTokenLimit) {
+    throw new ProviderRequestNotSubmittedError(
+      `Google Omni supports up to ${inputTokenLimit.toLocaleString("en-US")} input tokens, including reference images. Shorten your prompt and try again.`,
+    );
+  }
 }
 
 async function downloadReferenceImage(url: string) {

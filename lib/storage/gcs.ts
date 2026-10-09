@@ -6,6 +6,7 @@ import {
   getMissingVercelGcpCredentialEnvVars,
 } from "../gcp/credentials.ts";
 import type {
+  CreateSignedDownloadUrlParams,
   CreateSignedPutUrlParams,
   GetStorageObjectParams,
   ObjectStorageProvider,
@@ -211,6 +212,25 @@ async function headObject(params: StorageObjectKeyParams) {
   }
 }
 
+async function createSignedDownloadUrl(params: CreateSignedDownloadUrlParams) {
+  const expiresInSeconds = params.expiresInSeconds ?? 300;
+  if (!Number.isSafeInteger(expiresInSeconds) || expiresInSeconds < 1 || expiresInSeconds > 600) {
+    throw new Error("Invalid download URL lifetime.");
+  }
+  if (!/^[a-z0-9][a-z0-9._-]{0,119}$/i.test(params.fileName)) {
+    throw new Error("Invalid download filename.");
+  }
+  const config = getStorageConfig();
+  const file = getStorageClient(config).bucket(config.bucket).file(cleanGcsKey(params.key));
+  const [url] = await file.getSignedUrl({
+    action: "read",
+    version: "v4",
+    expires: Date.now() + expiresInSeconds * 1000,
+    promptSaveAs: params.fileName,
+  });
+  return url;
+}
+
 async function getObject(
   params: GetStorageObjectParams,
 ): Promise<StorageGetObjectResult> {
@@ -413,6 +433,7 @@ export const gcsStorageProvider: ObjectStorageProvider = {
   buildDirectUrl,
   buildPublicUrl,
   createSignedPutUrl,
+  createSignedDownloadUrl,
   headObject,
   getObject,
   deleteObject,

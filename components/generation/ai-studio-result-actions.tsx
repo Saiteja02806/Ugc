@@ -3,10 +3,13 @@
 import { Download, ExternalLink } from "lucide-react";
 import { AiStudioCopyButton } from "@/components/generation/ai-studio-copy-button";
 
+import { VideoDownloadButton } from "@/components/generation/video-download-button";
+
 import { cn } from "@/lib/utils";
 
 export function AiStudioResultActions({
   className,
+  mediaAssetId,
   kind,
   showOpenAction = true,
   title,
@@ -14,6 +17,7 @@ export function AiStudioResultActions({
   variant = "icons",
 }: {
   className?: string;
+  mediaAssetId?: string | null;
   kind: "image" | "video";
   showOpenAction?: boolean;
   title: string;
@@ -29,7 +33,7 @@ export function AiStudioResultActions({
 
   return (
     <div className={cn("flex shrink-0 flex-wrap items-center gap-1", className)}>
-      <a
+      {kind === "video" ? <VideoDownloadButton assetId={mediaAssetId} className={actionClassName} title={title} url={url} label={variant === "buttons" ? "Download" : undefined} /> : <a
         href={url}
         download={fileName}
         target="_blank"
@@ -40,7 +44,7 @@ export function AiStudioResultActions({
       >
         <Download className="size-3.5" aria-hidden="true" />
         {variant === "buttons" ? "Download" : null}
-      </a>
+      </a>}
       {showOpenAction ? (
         <a
           href={url}

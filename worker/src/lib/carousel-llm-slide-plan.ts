@@ -35,10 +35,10 @@ import {
   type CarouselHookTemplateFit,
 } from "./carousel-hook-templates.js";
 import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
-import { CAROUSEL_TEXT_PRESENTATION_GUIDANCE, CAROUSEL_BODY_BLOCK_MAX_LINES, CAROUSEL_HEADING_FONT_SIZE, getCarouselBodyBlocks, normalizeCarouselText } from "./carousel-text-presentation.js";
+import { CAROUSEL_TEXT_PRESENTATION_GUIDANCE, CAROUSEL_HOOK_COPY_GUIDANCE, CAROUSEL_HOOK_MIN_WORDS, CAROUSEL_HOOK_MAX_WORDS, CAROUSEL_BODY_BLOCK_MAX_LINES, CAROUSEL_HEADING_FONT_SIZE, getCarouselBodyBlocks, getCarouselHookStatementIssue, normalizeCarouselText } from "./carousel-text-presentation.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v49-tiktok-text-blocks";
+  "llm-carousel-planner-v50-single-statement-social-hook";
 export const CAROUSEL_V1_ASSIGNMENT_REQUIRED_ERROR =
   "Carousel V1 requires exactly six slides plus a backend-selected content format and compatible hook family.";
 
@@ -54,17 +54,17 @@ const MAX_LIST_ITEM_LENGTH = 88;
 const MIN_REQUIRED_BODY_WORDS = 18;
 const FIRST_SLIDE_MIN_BODY_WORDS = 4;
 const FIRST_SLIDE_MAX_BODY_WORDS = 12;
-const FIRST_SLIDE_MIN_HEADLINE_WORDS = 5;
-// The Structure 1 cover has three centered 96px lines in a fixed 786px area.
-// The 5-13 word contract remains authoritative, while this cap prevents a
+const FIRST_SLIDE_MIN_HEADLINE_WORDS = CAROUSEL_HOOK_MIN_WORDS;
+// The Structure 1 cover has four centered fixed-size lines in a 786px area.
+// The compact word contract remains authoritative, while this cap prevents a
 // technically valid hook from reaching the renderer with no safe line break.
 const FIRST_SLIDE_MAX_HEADLINE_LENGTH = 100;
-const FIRST_SLIDE_MAX_HEADLINE_WORDS = 13;
+const FIRST_SLIDE_MAX_HEADLINE_WORDS = CAROUSEL_HOOK_MAX_WORDS;
 const FOLLOWUP_SLIDE_MAX_BODY_WORDS = 30;
 const MIN_HEADLINE_WORDS = 3;
 const MAX_HEADLINE_WORDS = 10;
 const FIRST_SLIDE_HOOK_COPY_GUIDANCE =
-  "Write exactly one self-contained hook in the headline field, normally 6-13 words; 13 words remains the absolute limit. Use short, natural wording so it stays within four centred display lines at 72px. Set body to null: Slide 1 has no subtitle, supporting copy, or second text layer. Use natural or sentence case, never ALL CAPS. The hook is centered over the image, so imageDirection must leave a clear, calm central text zone rather than reserving empty space only at the bottom.";
+  `${CAROUSEL_HOOK_COPY_GUIDANCE} ${CAROUSEL_HOOK_MAX_WORDS} words remains the absolute limit. Use short, natural wording so it stays within four centred display lines at ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px. Put the hook in headline and set body to null: Slide 1 has no subtitle, supporting copy, or second text layer. Never use ALL CAPS. The hook is centered over the image, so imageDirection must leave a clear, calm central text zone rather than reserving empty space only at the bottom.`;
 const VISUAL_SUBJECT_TERMS =
   "(?:human|humans|person|people|face|faces|hand|hands|body|bodies|silhouette|silhouettes|man|men|woman|women|child|children|team|customer|customers|worker|workers)";
 const PROHIBITED_VISUAL_SUBJECT_PATTERN =
@@ -142,6 +142,7 @@ export type CarouselPlanValidationIssue = {
     | "headline_length"
     | "hook_alignment"
     | "hook_quality"
+    | "hook_structure"
     | "incomplete_ending"
     | "invalid_plan"
     | "multiple_ideas"
@@ -1502,6 +1503,10 @@ export function validateCarouselContentPlan(
 
     const hookQualityIssue = getSlideOneHookQualityIssue(slide);
     if (hookQualityIssue) issues.push(hookQualityIssue);
+    if (slide.slideNumber === 1) {
+      const message = getCarouselHookStatementIssue(slide.headline ?? "");
+      if (message) issues.push({ code: "hook_structure", message, slideNumber: 1 });
+    }
 
     if (slide.slideType === "solution" && isProblemFramedCopy(slide.body)) {
       issues.push({
@@ -2149,7 +2154,7 @@ function buildGrammarPlannerMessages(
           ? "- The selected template contains a personal-result, time, metric, or performance implication. Keep its structure, but remove or soften that implication unless the supplied business context directly supports it."
           : null,
         `- On Slides 2-6, headlines are optional. When present, use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words, at most ${MAX_HEADLINE_LENGTH} characters, and no more than two visual lines. Slide 1 requires one ${FIRST_SLIDE_MIN_HEADLINE_WORDS}-${FIRST_SLIDE_MAX_HEADLINE_WORDS}-word headline hook, at most ${FIRST_SLIDE_MAX_HEADLINE_LENGTH} characters.`,
-        `- Slide 1 is a poster cover, not a normal heading/body slide. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in Inter Tight Bold at 700 weight, centered at ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px, with no added gradient or outline. The one hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines. The renderer never shrinks or truncates copy. It must create a specific reason to swipe through a tension, outcome, contrast, mistake, useful promise, or curiosity gap. Do not begin a complete personal story with “I thought,” “I used to,” “Recently I,” “Here is my story,” or “I learned” unless the same line states a specific reader payoff.`,
+        `- Slide 1 is a social slideshow cover. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in Inter Tight Bold at 700 weight, centered at ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px, with no added gradient or outline. The one hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines. The renderer never shrinks or truncates copy. A short first-person problem or changed belief can leave a strong open loop; explain the story on Slides 2-6.`,
         `- Slides 2-6 body copy must each be one or two short body blocks separated by \\n\\n. Aim for 20-24 words (the hard accepted range is 18-30); count words before returning, and never exceed ${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words or ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters.`,
         `- Slides 2-6 use centered Inter Tight SemiBold at fixed ${CAROUSEL_FIXED_FONT_SIZE}px type. Their actual headlines receive one measured white SVG background with dark text; body and list text remain white directly on the image. Slide 1 never uses the white SVG background: its cover hook is clean white display text over the unchanged image blend. Headlines remain optional: never add one merely to obtain the SVG background. Slides 2-6 body copy must fit within ${getCarouselStructure1BodyMaxLines(2)} lines; each list item within two; list groups within eight total. The renderer will not shrink or truncate copy.`,
         CAROUSEL_TEXT_PRESENTATION_GUIDANCE,
@@ -2258,7 +2263,7 @@ function buildBatchPlannerMessages(
         "When a slot's combinedFormat.hookOverlay source is template, use that pattern only for Slide 1. Adapt {topic}; never copy it verbatim, do not change Slides 2-6 or their format roles, and never increase the Slide 1 copy budget. For adapt_if_unsupported claims, remove or soften unsupported personal, time, metric, or performance promises.",
         "Use simple, specific, natural copy. Prioritize useful information over promotion.",
         `Optional headlines on Slides 2-6 must use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words and at most ${MAX_HEADLINE_LENGTH} characters. Slide 1 requires one ${FIRST_SLIDE_MIN_HEADLINE_WORDS}-${FIRST_SLIDE_MAX_HEADLINE_WORDS}-word headline hook, at most ${FIRST_SLIDE_MAX_HEADLINE_LENGTH} characters. Headlines remain optional and are never added merely to obtain the white SVG treatment.`,
-        `Slide 1 is a reader-first poster cover, not a complete personal-story opener. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Tight Bold at 700 weight and ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px, with no added gradient or outline. Its one hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines. The renderer never shrinks or truncates copy. Give a specific reason to swipe through a tension, outcome, contrast, mistake, useful promise, or curiosity gap.`,
+        `Slide 1 is a social slideshow cover. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Tight Bold at 700 weight and ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px, with no added gradient or outline. Its one hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines. The renderer never shrinks or truncates copy. Give a specific reason to swipe through a tension, outcome, contrast, mistake, useful promise, or curiosity gap.`,
         CAROUSEL_TEXT_PRESENTATION_GUIDANCE,
         `Slides 2-6 body copy must each be one or two short body blocks separated by \\n\\n. Aim for 20-24 words (the hard accepted range is 18-30); count words before returning, and never exceed ${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words or ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters.`,
         "Never invent numbers, product capabilities, proof, customers, brands, health claims, financial claims, or guaranteed outcomes.",
@@ -2729,7 +2734,7 @@ function buildRepairMessages(params: {
         "Private creative brief (context only):",
         JSON.stringify(params.planningBrief),
         `Every Slide 2-6 headline is optional; when present it must be ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words, at most ${MAX_HEADLINE_LENGTH} characters, and at most two visual lines. Slide 1 requires one ${FIRST_SLIDE_MIN_HEADLINE_WORDS}-${FIRST_SLIDE_MAX_HEADLINE_WORDS}-word headline hook, at most ${FIRST_SLIDE_MAX_HEADLINE_LENGTH} characters.`,
-        `Slide 1 must be a reader-first poster cover: a specific benefit, tension, mistake, contrast, or curiosity gap. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Tight Bold at 700 weight and ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px, with no added gradient or outline. Do not open with a complete personal-story sentence such as 'I thought...', 'I used to...', or 'Recently I...'. Its one hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} measured lines. The renderer never shrinks or truncates copy.`,
+        `Slide 1 must be a social slideshow cover: a specific benefit, tension, mistake, contrast, or curiosity gap. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Tight Bold at 700 weight and ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px, with no added gradient or outline. Preserve a valid first-person open loop. Its one hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} measured lines. The renderer never shrinks or truncates copy.`,
         hasSlideOneCoverFitFailure
           ? `Slide 1 exceeded its fixed cover budget. Replace it with a shorter, simpler single hook that fits within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines at ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px and ${FIRST_SLIDE_MAX_HEADLINE_LENGTH} characters. Do not add a subtitle or support line to solve the overflow.`
           : null,

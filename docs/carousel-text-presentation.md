@@ -1,6 +1,6 @@
 # Existing slideshow formats: text presentation
 
-Owner-confirmed scope, 2026-09-30. This is a text-only update to Structure 1
+Owner-confirmed scope, 2026-09-30; social hook refinement, 2026-10-09. This is a text-only update to Structure 1
 and Structure 2, not a new Carousel architecture.
 
 ## What stays fixed
@@ -24,16 +24,33 @@ the established contained screenshot composition is preserved.
 
 | Content | Treatment | Fixed size | Line budget |
 | --- | --- | ---: | --- |
-| Opening hook | Clean white, no pill or supporting layer | 72px Bold | 4 |
+| Opening hook | One statement, clean white, no pill or supporting layer | 84px Bold | 4 |
 | Optional heading | Dark text on a fitted white SVG pill | 50px SemiBold | 2 |
 | Each body thought | White, no background, existing outline | 48px SemiBold | 3 |
 | Optional final CTA | White, no background, existing outline | 48px SemiBold | 3 |
 
 Inter Tight remains the export font; the editor loads that same packaged face.
-A hook normally uses 6-13 words. The publisher permits 5-13 words for compact
+A hook normally uses 6-14 words. The publisher permits 5-14 words for compact
 legacy-compatible hooks and still checks real fixed-size fit. A content heading
 normally uses 4-10 words, is optional, and must say something distinct from its
 body. A heading is not inferred from an asset role or the name of a saved field.
+
+The cover communicates one main idea in one text block, usually two to four
+lines. It creates curiosity through a concrete problem, changed belief, tension,
+or honest promise. First-person hooks are welcome: `i kept running out of things
+to post` and `i thought every workout had to feel hard to count` leave the
+explanation for Slide 2 onward. A list promise is appropriate only when the
+following slides actually deliver that list; do not force one into a product
+story. Avoid motivational ad copy and message-plus-explanation covers.
+
+Both generation validators reject multiple sentences or separate cover
+paragraphs as `hook_structure`, even when the text meets the word budget.
+Intentional single line breaks, common abbreviations, domains, and decimal
+numbers do not create additional statements. Curiosity and one-idea quality
+remain writing guidance; the validator does not claim to prove engagement or
+ban particular first-person phrases. Structure 2 can repair the hook alone
+while preserving all valid body slides. Fixed fit remains authoritative:
+overflow requires shorter copy, never smaller type or truncated text.
 
 Normal slides contain one or two separate thoughts, not a single long
 paragraph. Prefer two short blocks of 7-16 words each, within the unchanged

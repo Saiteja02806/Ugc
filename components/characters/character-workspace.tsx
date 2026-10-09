@@ -9,15 +9,10 @@ import { AiStudioComposer, AiStudioSetting, AiStudioSettingSelect } from "@/comp
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { CharacterImageCount, CharacterImageModel } from "@/lib/characters/types";
+import { CHARACTER_IMAGE_MODEL_OPTIONS, getCharacterPromptLimit } from "@/lib/characters/image-models";
 import { useCharacterBuilder } from "./use-character-builder";
 import { CharacterHistory } from "./character-history";
 import styles from "./character-workspace.module.css";
-
-const MODEL_OPTIONS = [
-  { value: "gpt_image", label: "GPT Image" },
-  { value: "gemini_3_pro", label: "Gemini 3 Pro" },
-  { value: "nano_banana_2", label: "Nano Banana 2.1" },
-] as const satisfies readonly { value: CharacterImageModel; label: string }[];
 
 const COUNT_OPTIONS = [1, 2, 3].map((count) => ({ value: String(count), label: String(count) }));
 
@@ -43,6 +38,8 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
   const access = builder.access.data?.access;
   const busy = builder.generate.isPending || builder.inProgress || builder.restoring;
   const pending = builder.session.pendingRequest;
+  const promptLimit = getCharacterPromptLimit(model);
+  const promptTooLong = prompt.length > promptLimit;
   const accessLoading = Boolean(userId) && builder.access.isPending;
   const quantityAffordable = Boolean(access && count <= access.affordableImageCount);
   const manualLocked = authLoading || !userId || !quantityAffordable || accessLoading || builder.access.isError;
@@ -54,7 +51,7 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
 
   function submitPrompt(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
-    if (busy || manualLocked || pending || !prompt.trim()) return;
+    if (busy || manualLocked || pending || promptTooLong || !prompt.trim()) return;
     builder.generate.mutate({
       mode: "custom", prompt: prompt.trim(), model, imageCount: count,
       ...(selected ? { referenceCharacterId: selected.id } : {}),
@@ -160,7 +157,8 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
         <AiStudioComposer active ariaLabel="Describe your AI influencer" name="character-prompt" layout="unified"
           prompt={prompt} onPromptChange={setPrompt} placeholder={selected ? "Describe a new outfit, setting or pose for your influencer…" : "Describe the influencer you want to create…"}
           generateLabel={selected ? "Create variation" : "Generate"}
-          generateDisabled={busy || manualLocked || Boolean(pending) || !prompt.trim()}
+          generateDisabled={busy || manualLocked || Boolean(pending) || promptTooLong || !prompt.trim()}
+          maxLength={promptLimit}
           generationLocked={manualLocked} isGenerating={builder.generate.isPending || builder.inProgress}
           onSubmit={submitPrompt} onTextareaKeyDown={handleTextareaKeyDown} accessMessage={usageLabel}
           contextBanner={selected ? <div className={styles.reference}>
@@ -170,7 +168,7 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
             <Button size="icon-sm" variant="ghost" className="ml-auto" aria-label="Remove influencer reference" onClick={() => builder.chooseCharacter(null)}><X className="size-3.5" aria-hidden="true" /></Button>
           </div> : undefined}
           settings={<>
-            <AiStudioSettingSelect<CharacterImageModel> ariaLabel="Image model" icon={<ImageIcon className="size-3.5" aria-hidden="true" />} options={MODEL_OPTIONS} value={model} onChange={setModel} disabled={busy || Boolean(pending)} />
+            <AiStudioSettingSelect<CharacterImageModel> ariaLabel="Image model" icon={<ImageIcon className="size-3.5" aria-hidden="true" />} options={CHARACTER_IMAGE_MODEL_OPTIONS} value={model} onChange={setModel} disabled={busy || Boolean(pending)} />
             <AiStudioSetting icon={<RectangleVertical className="size-3.5" aria-hidden="true" />} label="9:16 portrait" />
             <AiStudioSettingSelect ariaLabel="Number of images" icon={<Images className="size-3.5" aria-hidden="true" />}
               options={countOptions} value={String(count)} onChange={(value) => setCount(Number(value) as CharacterImageCount)}

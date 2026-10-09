@@ -71,3 +71,16 @@ test("provides clear labels for supported ratios", () => {
   assert.equal(getAIStudioRatioLabel("4:5"), "4:5 portrait");
   assert.equal(getAIStudioRatioLabel("9:16"), "9:16 vertical");
 });
+
+test("WAN capabilities support three-second hooks independently of Seedance's rollout", () => {
+  assert.equal(parseAIStudioVideoModel("wan_3_0"), "wan_3_0");
+  assert.equal(getAIStudioVideoModelLabel("wan_3_0"), "WAN 3.0");
+  assert.equal(parseAIStudioVideoDuration(2), 2);
+  assert.deepEqual(getAIStudioVideoDurations("wan_3_0"), Array.from({ length: 29 }, (_, i) => i + 2));
+  assert.deepEqual(getAIStudioVideoResolutions("wan_3_0"), ["480p", "720p", "1080p"]);
+  assert.equal(isAIStudioVideoModelAvailable("wan_3_0", false, true), true);
+  assert.equal(isAIStudioVideoModelAvailable("wan_3_0", true, false), false);
+  assert.equal(isAIStudioVideoModelAvailable("seedance_2_5", false, true), false);
+  assert.ok(!getAIStudioVideoDurations("google_omni").includes(2));
+  assert.ok(!getAIStudioVideoDurations("kling_3_0").includes(2));
+});

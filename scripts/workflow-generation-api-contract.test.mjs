@@ -41,8 +41,10 @@ const { handleAIStudioVideoGeneration } = await import("../lib/ai-studio/video-g
 const { createWorkflowGenerationClient } = await import("../lib/explore/workflow-generation-client.ts");
 const { normalizeWorkflowGenerationSettings } = await import("../lib/explore/workflow-generation-settings.ts");
 const initialEnabled = process.env.NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE;
-beforeEach(() => { jobs.clear(); reservations.clear(); ownedAssets.clear(); uploads.length = 0; failChild = null; process.env.NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE = "true"; });
+const initialWanEnabled = process.env.NEXT_PUBLIC_ENABLE_OPENROUTER_WAN;
+beforeEach(() => { jobs.clear(); reservations.clear(); ownedAssets.clear(); uploads.length = 0; failChild = null; process.env.NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE = "true"; process.env.NEXT_PUBLIC_ENABLE_OPENROUTER_WAN = "true"; });
 after(() => { if (initialEnabled === undefined) delete process.env.NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE; else process.env.NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE = initialEnabled; });
+after(() => { if (initialWanEnabled === undefined) delete process.env.NEXT_PUBLIC_ENABLE_OPENROUTER_WAN; else process.env.NEXT_PUBLIC_ENABLE_OPENROUTER_WAN = initialWanEnabled; });
 
 const draft = (overrides = {}) => ({ kind: "hook", instructions: "A creator explains a useful app.", settings: normalizeWorkflowGenerationSettings({ model: "google_omni", quantity: 2 }, true), creator: null, appScreen: null, videoReference: null, audioReference: null, ...overrides });
 function client(overrides = {}) {
@@ -66,7 +68,7 @@ function client(overrides = {}) {
 
 test("both workflow clients reach the real API's text-only contract for every available model", async () => {
   for (const kind of ["hook", "phone"]) {
-    for (const model of ["kling_3_0", "google_omni", "seedance_2_5"]) {
+    for (const model of ["kling_3_0", "google_omni", "seedance_2_5", "wan_3_0"]) {
       jobs.clear(); reservations.clear();
       const input = draft({ kind, settings: normalizeWorkflowGenerationSettings({ model, quantity: 2 }, true) });
       const batch = await client().generate(input);
@@ -80,7 +82,7 @@ test("both workflow clients reach the real API's text-only contract for every av
         assert.equal(job.input.model, model);
         assert.equal(job.input.hookIdea, input.instructions);
         assert.deepEqual(job.input.referenceImageUrls, []);
-        assert.equal(job.input.provider, model === "seedance_2_5" ? "openrouter" : undefined);
+        assert.equal(job.input.provider, model === "seedance_2_5" || model === "wan_3_0" ? "openrouter" : undefined);
       }
       assert.equal(reservations.size, 2);
     }
@@ -88,7 +90,7 @@ test("both workflow clients reach the real API's text-only contract for every av
 });
 
 test("creator and app screenshots reach the real API as uploaded multi-image guidance", async () => {
-  for (const model of ["google_omni", "seedance_2_5"]) {
+  for (const model of ["google_omni", "seedance_2_5", "wan_3_0"]) {
     jobs.clear(); reservations.clear(); uploads.length = 0;
     await client().generate(draft({ kind: "phone", settings: normalizeWorkflowGenerationSettings({ model }, true),
       creator: { name: "creator.png", url: "blob:creator" }, appScreen: { name: "app.png", url: "blob:app", kind: "image" },

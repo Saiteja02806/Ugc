@@ -20,7 +20,7 @@ import {
 } from "./carousel-structure-2-layout.js";
 
 export const CAROUSEL_STRUCTURE_2_RENDERER_VERSION =
-  "story-native-tiktok-text-blocks-inter-tight-v11";
+  "story-native-single-statement-hook-inter-tight-v12";
 
 const FORMAT_DIMENSIONS: Record<
   CarouselFormat,

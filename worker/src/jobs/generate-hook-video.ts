@@ -12,10 +12,12 @@ import {
 import { generateRunwayHookVideoBuffer } from "../lib/runway-video.js";
 import { generateRunwaySeedanceVideoBuffer } from "../lib/runway-seedance-video.js";
 import { generateOpenRouterSeedanceVideoBuffer } from "../lib/openrouter-seedance-video.js";
+import { generateOpenRouterWanVideoBuffer } from "../lib/openrouter-wan-video.js";
 import { resolveHookVideoProvider } from "../lib/hook-video-provider.js";
 import { generateGeminiOmniVideoBuffer } from "../lib/gemini-omni-video.js";
 import { generateKlingVideoBuffer } from "../lib/kling-video.js";
 import { resumeLegacyHiggsfieldVideoBuffer } from "../lib/higgsfield-video.js";
+import { getVideoPromptCharacterLimit } from "../lib/video-prompt-policy.js";
 import { getStoredObject, uploadBufferToStorage } from "../lib/storage.js";
 import {
   buildVideoGenerationPrompt,
@@ -42,7 +44,7 @@ type GenerateHookVideoBaseInput = {
   resolution: HookVideoResolution;
   durationSeconds: number;
   hookIdea: string;
-  model?: "google_omni" | "seedance_2_5" | "kling_3_0";
+  model?: "google_omni" | "seedance_2_5" | "kling_3_0" | "wan_3_0";
   projectId: string;
   provider?: HookVideoProvider;
   referenceVideoDurationSeconds?: number;
@@ -171,6 +173,9 @@ async function generateWithFallback(
     ? await context.store.getGenerationProviderOperation({ jobId: job.id, operationKey: "primary-higgsfield" })
     : null;
   const selectedProvider = resolveHookVideoProvider(input, legacyOperation);
+  if (input.model === "wan_3_0" && (input.referenceVideoUrl || input.referenceAudioUrls.length)) {
+    throw new ProviderRequestNotSubmittedError("WAN 3.0 supports image references in UGC Pilot. Choose Seedance 2.5 for audio or video references.");
+  }
 
   if (input.referenceAudioUrls.length && input.model !== "seedance_2_5" && selectedProvider !== "higgsfield") {
     throw new ProviderRequestNotSubmittedError("Audio references require Seedance 2.5.");
@@ -385,7 +390,7 @@ async function generateProviderBuffer(
   params: {
     aspectRatio: HookVideoAspectRatio;
     durationSeconds: number;
-    model?: "google_omni" | "seedance_2_5" | "kling_3_0";
+    model?: "google_omni" | "seedance_2_5" | "kling_3_0" | "wan_3_0";
     onOperationCreated: (operationId: string) => Promise<void>;
     prompt: string;
     providerOperationId?: string;
@@ -400,6 +405,7 @@ async function generateProviderBuffer(
   onOperationSucceeded: (operationId: string, outputUrl?: string, usage?: { costUsd?: number; generationId?: string }) => Promise<void>,
 ) {
   if (provider === "openrouter") {
+    if (params.model === "wan_3_0") return generateOpenRouterWanVideoBuffer({ ...params, onOperationSucceeded });
     return generateOpenRouterSeedanceVideoBuffer({ ...params, onOperationSucceeded });
   }
   if (provider === "gemini") {
@@ -460,12 +466,20 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
   const promptMode =
     job.input_json.promptMode === "direct" ? "direct" : "ugc_template";
   const model =
+    job.input_json.model === "wan_3_0" ? "wan_3_0" :
     job.input_json.model === "kling_3_0" ? "kling_3_0" :
     job.input_json.model === "seedance_2_5"
       ? "seedance_2_5"
       : job.input_json.model === "google_omni"
         ? "google_omni"
         : undefined;
+  const provider = getOptionalChoice(job.input_json.provider, hookVideoProviders);
+  const referenceVideoUrl = getOptionalHttpsUrl(job.input_json.referenceVideoUrl);
+  const hookIdea = getText(job.input_json.hookIdea, "hookIdea", promptMode === "direct" ? undefined : MAX_HOOK_LENGTH);
+  const promptMaxLength = getVideoPromptCharacterLimit({ model, provider, hasReferenceVideo: Boolean(referenceVideoUrl) });
+  if (promptMode === "direct" && promptMaxLength !== undefined && hookIdea.length > promptMaxLength) {
+    throw new ProviderRequestNotSubmittedError("This prompt is too long for the selected model. Shorten it and try again.");
+  }
   const sharedInput: GenerateHookVideoBaseInput = {
     aspectRatio:
       getOptionalChoice(job.input_json.aspectRatio, hookVideoAspectRatios) ??
@@ -473,16 +487,16 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
     avatarImageUrl: getOptionalHttpsUrl(job.input_json.avatarImageUrl),
     referenceImageUrls: getReferenceImageUrls(job.input_json.referenceImageUrls, job.input_json.avatarImageUrl),
     referenceAudioUrls: getReferenceAudioUrls(job.input_json.referenceAudioUrls),
-    durationSeconds: getGenerationDurationSeconds(job.input_json.durationSeconds),
-    hookIdea: getText(job.input_json.hookIdea, "hookIdea", MAX_HOOK_LENGTH),
+    durationSeconds: getGenerationDurationSeconds(job.input_json.durationSeconds, model),
+    hookIdea,
     model,
     projectId: getPathSegment(job.input_json.projectId, "projectId"),
-    provider: getOptionalChoice(job.input_json.provider, hookVideoProviders),
+    provider,
     referenceVideoDurationSeconds: getOptionalDurationSeconds(
       job.input_json.referenceVideoDurationSeconds,
       job.input_json.model === "seedance_2_5" ? 30 : 3,
     ),
-    referenceVideoUrl: getOptionalHttpsUrl(job.input_json.referenceVideoUrl),
+    referenceVideoUrl,
     resolution: getGenerationResolution(job.input_json.resolution, model),
     userId: getPathSegment(job.input_json.userId, "userId"),
     videoId: getPathSegment(job.input_json.videoId, "videoId"),
@@ -513,13 +527,21 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
 }
 
 function getOutputDurationSeconds(input: GenerateHookVideoInput, provider: HookVideoProvider) {
+  if (input.model === "wan_3_0" && provider === "openrouter") return input.durationSeconds;
   if (input.model === "seedance_2_5" && (provider === "runway" || provider === "openrouter")) return input.durationSeconds;
   return input.referenceVideoUrl
     ? input.referenceVideoDurationSeconds ?? input.durationSeconds
     : input.durationSeconds;
 }
 
-function getGenerationDurationSeconds(value: Json | undefined) {
+function getGenerationDurationSeconds(value: Json | undefined, model: GenerateHookVideoBaseInput["model"]) {
+  if (model === "wan_3_0") {
+    if (value === undefined) return 5;
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 2 || value > 30) {
+      throw new ProviderRequestNotSubmittedError("WAN 3.0 duration must be between 2 and 30 seconds.");
+    }
+    return value;
+  }
   return typeof value === "number" && Number.isInteger(value) && value >= 3 && value <= 30
     ? value
     : 4;
@@ -529,6 +551,9 @@ function getGenerationResolution(
   value: Json | undefined,
   model: GenerateHookVideoBaseInput["model"],
 ): HookVideoResolution {
+  if (model === "wan_3_0" && value !== undefined && !hookVideoResolutions.includes(value as HookVideoResolution)) {
+    throw new ProviderRequestNotSubmittedError("WAN 3.0 supports 480p, 720p or 1080p video quality.");
+  }
   const resolution =
     getOptionalChoice(value, hookVideoResolutions) ?? "720p";
 
@@ -559,12 +584,12 @@ function isJsonObject(value: Json | undefined): value is Record<string, Json | u
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
-function getText(value: Json | undefined, fieldName: string, maxLength: number) {
+function getText(value: Json | undefined, fieldName: string, maxLength: number | undefined) {
   if (typeof value !== "string" || !value.trim()) {
     throw new Error(`generate_hook_video requires input.${fieldName}.`);
   }
 
-  return value.trim().slice(0, maxLength);
+  return maxLength === undefined ? value.trim() : value.trim().slice(0, maxLength);
 }
 
 function getOptionalText(value: Json | undefined, maxLength: number) {

@@ -9,11 +9,11 @@ import {
 const guide = getFounderGuide("saas-content-marketing");
 
 export const metadata: Metadata = {
-  title: "SaaS Content Marketing: A Founder Guide",
+  title: "SaaS Content Marketing: A Practical Weekly Plan",
   description: guide.description,
   alternates: { canonical: "/guides/saas-content-marketing" },
-  openGraph: { title: "SaaS Content Marketing: A Founder Guide | UGCPilot", description: guide.description, url: "/guides/saas-content-marketing", type: "article", images: [founderGuideOpenGraphImage] },
-  twitter: { card: "summary_large_image", title: "SaaS Content Marketing: A Founder Guide | UGCPilot", description: guide.description, images: [founderGuideOpenGraphImage] },
+  openGraph: { title: "SaaS Content Marketing: A Practical Weekly Plan | UGCPilot", description: guide.description, url: "/guides/saas-content-marketing", type: "article", images: [founderGuideOpenGraphImage] },
+  twitter: { card: "summary_large_image", title: "SaaS Content Marketing: A Practical Weekly Plan | UGCPilot", description: guide.description, images: [founderGuideOpenGraphImage] },
 };
 
 export default function SaaSContentMarketingGuidePage() { return <FounderGuidePage guide={guide} />; }

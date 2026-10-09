@@ -66,7 +66,7 @@ test("the dedicated renderer keeps all layouts fixed and inside the safe area", 
       assert.equal(result.diagnostics.layoutVariant, spec.layoutVariant);
       assert.equal(
         result.diagnostics.storyFontSize,
-        spec.slideNumber === 1 ? 72 : 48,
+        spec.slideNumber === 1 ? 84 : 48,
       );
       assert.equal(result.diagnostics.ctaFontSize, spec.ctaText ? 48 : null);
       assert.equal(result.diagnostics.ctaLineCount > 0, Boolean(spec.ctaText));

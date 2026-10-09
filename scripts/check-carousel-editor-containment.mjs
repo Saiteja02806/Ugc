@@ -6,6 +6,7 @@ import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 import ts from "typescript";
+import { CAROUSEL_HOOK_FONT_SIZE } from "../worker/dist/lib/carousel-text-presentation.js";
 
 const require = createRequire(import.meta.url);
 const browserRequire = process.env.CAROUSEL_BROWSER_DEPENDENCIES
@@ -87,7 +88,7 @@ body{margin:40px;background:#202625;color:white;font-family:InterTight,Arial}
 .heading{font-size:4.62963cqw;font-weight:600;line-height:1.04}
 .heading span{box-decoration-break:clone;background:white;color:#111316;border-radius:1.8cqw;padding:.7cqw 2.2cqw}
 .group .body{font-size:4.44444cqw;font-weight:600;line-height:1.16;margin-top:2.96296cqw;-webkit-text-stroke:.370cqw rgba(0,0,0,.72);paint-order:stroke fill}
-.cover{width:78cqw;text-align:center}.hook{font-size:6.66667cqw;font-weight:700;line-height:.98;margin:0;white-space:pre-line}
+.cover{width:78cqw;text-align:center}.hook{font-size:${CAROUSEL_HOOK_FONT_SIZE / 10.8}cqw;font-weight:700;line-height:.98;margin:0;white-space:pre-line}
 [role=alert]{position:absolute;bottom:8px;background:white;color:black;font:12px Arial}
 </style></head><body><div id="root"></div><script>${bundle.replaceAll("</script", "<\\/script")}</script></body></html>`;
 const browser = await chromium.launch({ channel: process.env.CAROUSEL_BROWSER_CHANNEL || "msedge", headless: true });

@@ -152,7 +152,7 @@ test("Google model identities remain selectable, restorable and usable as refere
 });
 
 test("prompt-driven characters can be saved, restored and listed without invented identity details", async () => {
-  for (const model of ["gpt_image", "gemini_3_pro", "nano_banana_2"]) {
+  for (const model of ["gpt_image", "gemini_3_pro", "nano_banana_2", "seedream_5_pro", "gpt_image_2_5"]) {
     const f = fixture();
     const prompt = "An adult presenter in a bright studio, wearing a green shirt.";
     f.job.input = {
@@ -171,6 +171,7 @@ test("prompt-driven characters can be saved, restored and listed without invente
     assert.equal(trusted?.businessProfileId, null);
     assert.equal(trusted?.referenceImageUrl, URL);
     assert.deepEqual(await f.service.list(USER_ID), [saved]);
+    assert.equal(serializeCharacterHistoryImage(f.job, f.asset(), USER_ID)?.model, model);
     assert.equal("userPrompt" in saved, false);
   }
 });

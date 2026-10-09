@@ -33,6 +33,7 @@ import {
   useCallback,
   useEffect,
   useEffectEvent,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -1893,6 +1894,7 @@ export function TrendingDeck({
   const swipeCompletionRef = useRef<(() => void) | null>(null);
   const actionNoticeTimerRef = useRef<number | null>(null);
   const decisionLockRef = useRef(false);
+  const reviewFrameRef = useRef<HTMLDivElement>(null);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [optimisticallyDismissedItemIds, setOptimisticallyDismissedItemIds] =
     useState<Set<string>>(() => new Set());
@@ -2029,6 +2031,35 @@ export function TrendingDeck({
     (candidate) => candidate.item.id,
   );
   const activeCandidate: ReviewedTrendingCandidate | null = postHistory.active?.value ?? visibleCandidates[activeItemIndex] ?? null;
+  const activeReviewItemId = activeCandidate?.item.id;
+
+  useLayoutEffect(() => {
+    const frame = reviewFrameRef.current;
+    const feed = frame?.querySelector<HTMLElement>("[data-post-interaction-feed]");
+    const post = feed?.querySelector<HTMLElement>("[data-post-feed-active=true] [data-trending-feed-card]");
+    const decisions = frame?.querySelector<HTMLElement>("[aria-label='Creative decisions']");
+    if (!frame || !feed || !post || !decisions) return;
+
+    const updateDecisionSpacing = () => {
+      // Each post is centered in the snap window. Use heights, not scroll
+      // position, so browsing history and dragging cannot move the controls.
+      const spaceBelowPost = Math.max(0, (feed.clientHeight - post.getBoundingClientRect().height) / 2);
+      const actionMargin = Number.parseFloat(getComputedStyle(decisions).marginTop) || 0;
+      const lift = Math.max(0, spaceBelowPost + actionMargin - 12);
+      frame.style.setProperty("--trending-decision-lift", `${lift}px`);
+    };
+
+    const observer = new ResizeObserver(updateDecisionSpacing);
+    observer.observe(feed);
+    observer.observe(post);
+    observer.observe(decisions);
+    updateDecisionSpacing();
+    return () => {
+      observer.disconnect();
+      frame.style.removeProperty("--trending-decision-lift");
+    };
+  }, [activeReviewItemId]);
+
   const activeReactionCreativeId = activeCandidate?.format === "reaction" ? activeCandidate.item.creativeId : null;
   const activeReactionAssignmentId = activeCandidate?.format === "reaction" ? activeCandidate.item.assignmentId : null;
   const activeReactionState = activeCandidate?.format === "reaction" ? activeCandidate.item.creative.textEditState : undefined;
@@ -2287,7 +2318,6 @@ export function TrendingDeck({
 
     if (postHistory.browsing) {
       if (decision === "rejected") return postHistory.next();
-      if (postHistory.active?.decision !== "skipped") return false;
     }
 
     const activeEdit = editByCreativeId[activeCandidate.item.creativeId] ?? activeCandidate.reviewedEdit;
@@ -2348,14 +2378,17 @@ export function TrendingDeck({
     decisionLockRef.current = true;
     setExitDirection(direction);
     if (postHistory.browsing) {
+      const wasSkipped = postHistory.active?.decision === "skipped";
       // Persist the explicit reconsideration before opening a composer or
       // scheduler that requires a selected assignment. Do not retire this
       // daily slot, append history, or decrement the remaining count again.
-      void reconsiderSkippedCandidate(candidate, userId)
+      // A liked entry records opening scheduling, not successfully saving it.
+      // Reopen it after cancellation/failure without replaying that decision.
+      void (wasSkipped ? reconsiderSkippedCandidate(candidate, userId) : Promise.resolve())
         .then(async () => candidate.format === "carousel" ? await saveCarouselToLibrary(candidate) : null)
         .then((result) => {
           advancePastActiveItem("right", () => {
-            postHistory.markLiked(candidate.item.id);
+            if (wasSkipped) postHistory.markLiked(candidate.item.id);
             postHistory.next();
             decisionLockRef.current = false;
             openAcceptedCandidate(candidate, result?.item);
@@ -2725,7 +2758,7 @@ export function TrendingDeck({
         : null}
       {activeCandidate ? (
         <>
-          <div data-trending-review-frame className={cn("flex w-full flex-col items-center", reviewLayout.reviewFrame)} onKeyDown={handleDeckKeyDown}>
+          <div ref={reviewFrameRef} data-trending-review-frame className={cn("flex w-full flex-col items-center", reviewLayout.reviewFrame)} onKeyDown={handleDeckKeyDown}>
             <PostInteractionFeed
               label={`Trending posts. ${deckProgressLabel}. Double-tap to schedule, scroll to skip or scroll back to revisit.`}
               className={cn("w-full max-w-[460px]", reviewLayout.reviewFeed)}
@@ -2746,7 +2779,7 @@ export function TrendingDeck({
             />
             <CreativeDecisionActions
               interaction="post"
-              acceptDisabled={(postHistory.browsing && postHistory.active?.decision !== "skipped") || (activeHookPreviewStatus !== null && activeHookPreviewStatus !== "ready")}
+              acceptDisabled={activeHookPreviewStatus !== null && activeHookPreviewStatus !== "ready"}
               disabled={Boolean(exitDirection || scheduleContext || editorCandidate || actionCandidate || wallTextCandidate)}
               onAccept={() => requestCreativeDecision("accepted")}
               onReject={() => requestCreativeDecision("rejected")}

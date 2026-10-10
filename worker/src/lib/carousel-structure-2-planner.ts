@@ -13,7 +13,7 @@ import {
   createCarouselStructure2InvalidPlanIssue,
   dedupeCarouselStructure2ValidationIssues,
   formatCarouselStructure2ValidationIssues,
-  parseCarouselStructure2StoryBatch,
+  parseCarouselStructure2StoryBatchResponse,
   parseCarouselStructure2StoryPlan,
   parseCarouselStructure2StoryTextRepair,
   partitionCarouselStructure2ValidationIssues,
@@ -28,7 +28,7 @@ import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 import { CONTENT_PLAN_OPENAI_MAX_RETRIES, CONTENT_PLAN_OPENAI_TIMEOUT_MS } from "./content-plan-provider-retry.js";
 
 export const CAROUSEL_STRUCTURE_2_PLANNER_VERSION =
-  "llm-carousel-structure-2-writer-v22-role-specific-copy-contract";
+  "llm-carousel-structure-2-writer-v23-actionable-copy-repair";
 
 // The OpenAI strict decoder cannot safely carry the whitespace word-count
 // regex. Keep the exact contract in the publisher validator and allow one
@@ -77,6 +77,7 @@ export type CarouselStructure2StoryPlanResult = {
     ok: boolean;
     repairAttempted: boolean;
     repaired: boolean;
+    providerEnvelopeRepaired: boolean;
   };
 };
 
@@ -129,6 +130,7 @@ export async function buildCarouselStructure2StoryPlanBatch(
   let initialBatchResponse: string | null = null;
   let rawPlans = new Map<number, unknown>();
   let batchFailure: CarouselStructure2StoryValidationIssue | null = null;
+  let providerEnvelopeRepaired = false;
 
   try {
     const completion = await getOpenAIClient().chat.completions.create({
@@ -153,10 +155,12 @@ export async function buildCarouselStructure2StoryPlanBatch(
       );
     }
 
-    rawPlans = parseCarouselStructure2StoryBatch(
-      JSON.parse(initialBatchResponse),
+    const parsedBatch = parseCarouselStructure2StoryBatchResponse(
+      initialBatchResponse,
       assignments,
     );
+    rawPlans = parsedBatch.plans;
+    providerEnvelopeRepaired = parsedBatch.envelopeClosingBraces > 0;
   } catch (error) {
     // Provider outages and empty responses contain no candidate copy to repair.
     // Do not amplify one failed request into five more provider requests.
@@ -210,6 +214,7 @@ export async function buildCarouselStructure2StoryPlanBatch(
         repairResponse: null,
         repaired: false,
       });
+      result.validationResult.providerEnvelopeRepaired = providerEnvelopeRepaired;
       results.push(result);
       acceptedHistory.push(toRecentHistory(parsedPlan, assignment.slotIndex));
       continue;
@@ -229,6 +234,7 @@ export async function buildCarouselStructure2StoryPlanBatch(
     });
 
     if (repaired) {
+      repaired.validationResult.providerEnvelopeRepaired = providerEnvelopeRepaired;
       results.push(repaired);
       acceptedHistory.push(
         toRecentHistory(repaired.plan, assignment.slotIndex),
@@ -526,6 +532,7 @@ function createLlmResult(params: {
       ok: true,
       repairAttempted: params.repaired,
       repaired: params.repaired,
+      providerEnvelopeRepaired: false,
     },
   };
 }

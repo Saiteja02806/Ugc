@@ -2,6 +2,27 @@
 
 Last updated: 2026-10-10
 
+## 2026-10-10 Generation acceptance and actionable copy repair
+
+- The `bb83ce3` production release includes the six-slide screenshot migration,
+  v22 measured copy planner, independent reconciliation and dedicated edit queue.
+  A subsequent real run completed nine six-slide Carousels, including nine final
+  product screenshots. The previously exhausted October 10 feed now has seven
+  ready and three decided Carousel slots, with no ownership/output mismatch.
+- One candidate still failed because repair attempts repeatedly reused a blocked
+  phrase without identifying it. The v23 worker repair names the exact rejected
+  phrase and gives the same quality guidance to initial and repair requests.
+  Fixed typography, word ranges, grounding and measured rendering remain gates.
+- A second production response contained all five complete plans but omitted an
+  outer closing brace and emitted whitespace until its token limit. The worker
+  can append at most the two outer object terminators; exact batch keys and all
+  existing candidate parsing/validation remain mandatory. It never reconstructs
+  missing text or fields. `providerEnvelopeRepaired` records this syntax repair.
+  Compact JSON and real scene descriptions are explicit model instructions.
+- The v23 repair is validated locally and prepared for a scoped generation-worker
+  release. See `docs/carousel-generation-repairs-2026-10-10.md` for acceptance
+  evidence and current rollout state. Existing saved images are not rewritten.
+
 ## 2026-10-10 Slideshow latency, screenshot persistence and history repairs (local implementation)
 
 - Interactive slideshow renders now target `carousel-edit` / `ugc-carousel-edit`

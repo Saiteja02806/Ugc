@@ -11,6 +11,7 @@ import {
   CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS,
   buildCarouselStructure2StoryPlanSchema,
   parseCarouselStructure2StoryBatch,
+  parseCarouselStructure2StoryBatchResponse,
   parseCarouselStructure2StoryPlan,
   parseCarouselStructure2StoryTextRepair,
   partitionCarouselStructure2ValidationIssues,
@@ -37,6 +38,36 @@ test("Structure 2 rejects template placeholders and unsupported multiplier promi
     const plan = parseCarouselStructure2StoryPlan(raw, { businessDescription, storyFormatId: "wrong_belief" });
     assert.ok(validateCarouselStructure2StoryPlan(plan, { businessDescription }).some(issue => issue.code === code));
   }
+});
+
+test("batch envelope recovery preserves complete plans and rejects truncated content", () => {
+  const assignments = makeAssignments(CAROUSEL_STRUCTURE_2_FORMAT_IDS.slice(0, 5));
+  const batch = { plans: Object.fromEntries(CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS.map(key => [key, makeRawStoryPlan()])) };
+  const response = JSON.stringify(batch);
+  for (const missingBraces of [0, 1, 2]) {
+    const clipped = missingBraces ? response.slice(0, -missingBraces) + "\n ".repeat(6000) : response;
+    const recovered = parseCarouselStructure2StoryBatchResponse(clipped, assignments);
+    assert.equal(recovered.envelopeClosingBraces, missingBraces);
+    assert.deepEqual([...recovered.plans.values()], Object.values(batch.plans));
+  }
+  for (const invalid of [
+    response.slice(0, -3),
+    response.slice(0, response.indexOf("Todaywise") + 4),
+    response + " unexpected output",
+    response.replace('"plans":{', '"plans":{,'),
+    JSON.stringify({ plans: { first: makeRawStoryPlan() } }).slice(0, -1),
+  ]) {
+    assert.throws(() => parseCarouselStructure2StoryBatchResponse(invalid, assignments));
+  }
+});
+
+test("generic-copy rejection identifies the phrase that a repair must remove", () => {
+  const raw = makeRawStoryPlan();
+  raw.slides.third!.storyText = "I realized that focusing on one platform reduces stress.\n\nThis clarity helps me connect better with my audience.";
+  const plan = parseCarouselStructure2StoryPlan(raw, { businessDescription, storyFormatId: "wrong_belief" });
+  const issue = validateCarouselStructure2StoryPlan(plan, { businessDescription }).find(issue => issue.code === "generic_copy");
+  assert.equal(issue?.slideNumber, 3);
+  assert.match(issue?.message ?? "", /blocked phrase "one platform"/);
 });
 
 test("Structure 2 plans exactly the required six-slide product story", () => {

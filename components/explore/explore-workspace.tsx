@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, CalendarDays, FolderOpen, ImageIcon, Sparkles, TrendingUp, Video } from "lucide-react";
+import { ArrowUpRight, CalendarDays, FolderOpen, Headphones, ImageIcon, Sparkles, TrendingUp, Video } from "lucide-react";
 import Link from "next/link";
 
 import { AICharacterCard } from "@/components/explore/ai-character-card";
@@ -11,7 +11,7 @@ import { EXPLORE_QUICK_STARTS, getQuickStartPreviewHref } from "@/lib/explore/la
 import { EXPLORE_WORKFLOWS } from "@/lib/explore/workflows";
 import { cn } from "@/lib/utils";
 
-const QUICK_START_ICONS = { studio: Sparkles, trending: TrendingUp, library: FolderOpen, video: Video, image: ImageIcon, schedule: CalendarDays };
+const QUICK_START_ICONS = { studio: Sparkles, trending: TrendingUp, library: FolderOpen, video: Video, image: ImageIcon, audio: Headphones, schedule: CalendarDays };
 
 export function ExploreWorkspace({ localPreview = false }: { localPreview?: boolean }) {
   return (

@@ -10,6 +10,7 @@ export const EXPLORE_QUICK_STARTS = [
   { id: "library", title: "Library", description: "Find your saved creations", target: "Library", destination: "/library" },
   { id: "video", title: "Video generation", description: "Create a video from a prompt", target: "AI Studio Videos", destination: "/ai-studio?mode=videos" },
   { id: "image", title: "Image generation", description: "Create an image from a prompt", target: "AI Studio Images", destination: "/ai-studio?mode=images" },
+  { id: "audio", title: "Audio generation", description: "Generate speech and explore voices", target: "Audio generation", destination: "/audio-generation" },
   { id: "schedule", title: "Schedule a post", description: "Choose your accounts and timing", target: "Scheduled", destination: "/scheduling" },
 ] as const;
 

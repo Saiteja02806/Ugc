@@ -1,6 +1,6 @@
 # Carousel generation repair and acceptance — 10 October 2026
 
-Status: v23 worker repair validated locally; scoped release being prepared.
+Status: v23 repair committed, pushed and deployed in `9e3a1306cafb431c4af4ddc470e30b0f068f6fd6`.
 Concurrent Explore, scheduling and image-generation changes are preserved.
 
 ## Current production delivery
@@ -62,6 +62,25 @@ Prompts request compact JSON and real scene descriptions rather than file paths.
 
 ## Rollout and limits
 
+Cloud Build `5f3bf9b9-69f8-4ce7-98a3-84a156e6c6ea` succeeded using the clean
+committed worker source. The image digest is
+`sha256:1aa2154ba2c1969d71f0c7950f4dc5bdbaf5aace8a183c96d8f94b1f8afb9f1f`.
+Generation revision `ugc-carousel-worker-00110-lpb` became ready at
+`2026-10-10T06:34:16.104Z` (12:04 IST) and serves 100% of traffic. Startup
+logs verify build/runtime commit `9e3a130`, `workerReleaseVerified: true`,
+`llm-carousel-structure-2-writer-v23-actionable-copy-repair`, available fonts
+and configured OpenAI. Its warm minimum, maximum instances and concurrency
+remain one. The dedicated edit worker retains the preceding working release.
+
+Production website aliases, including `www.getugcpilot.com`, resolve to READY
+deployment `dpl_94sKRBZADvLDSsA6M5rGVSXhDRs4` on the same source commit.
+The real homepage returns HTTP 200; the signed-out feed API returns its expected
+HTTP 401 JSON response. A direct worker version request from this workstation
+returned a gateway 404 because ingress is internal-only. Runtime verification
+therefore uses the actual startup
+record and Cloud Run readiness/traffic instead of claiming that request passed.
+No worker access controls were changed for the check.
+
 The intended release contains only the generation-worker planner, parser,
 regressions and Carousel documentation. The production schema and edit worker
 already contain the preceding fixes. The existing deployment configuration and
@@ -71,3 +90,4 @@ Production delivery has been observed on v22. The v23 change additionally has
 local regressions and a synthetic live provider check; it does not guarantee
 every future model response will pass validation. A rejected surplus candidate
 does not imply failed delivery when the user's reserved feed is fully populated.
+No new customer generation was started on v23 during this acceptance check.

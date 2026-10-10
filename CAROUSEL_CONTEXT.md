@@ -19,9 +19,11 @@ Last updated: 2026-10-10
   existing candidate parsing/validation remain mandatory. It never reconstructs
   missing text or fields. `providerEnvelopeRepaired` records this syntax repair.
   Compact JSON and real scene descriptions are explicit model instructions.
-- The v23 repair is validated locally and prepared for a scoped generation-worker
-  release. See `docs/carousel-generation-repairs-2026-10-10.md` for acceptance
-  evidence and current rollout state. Existing saved images are not rewritten.
+- The v23 repair is released in `9e3a130`. Generation revision
+  `ugc-carousel-worker-00110-lpb` is ready at 100% traffic; startup logs verify
+  matching build/runtime commits and the v23 planner. The production website
+  also serves that commit. See `docs/carousel-generation-repairs-2026-10-10.md`
+  for acceptance evidence. Existing saved images are not rewritten.
 
 ## 2026-10-10 Slideshow latency, screenshot persistence and history repairs (local implementation)
 

@@ -14,7 +14,7 @@ const clients = [
       "Start a new chat if the tools have not appeared, then try the connection-check prompt below. Install the beta plugin through your trusted plugin source to add its workflow skills.",
     ],
     docs: "https://learn.chatgpt.com/docs/extend/mcp",
-    command: "codex mcp add ugc-pilot --url https://mcp.getugcpilot.com/mcp\ncodex mcp login ugc-pilot --scopes account:read,brand:read,assets:read,assets:write,generation:write,jobs:read",
+    command: "codex mcp add ugc-pilot --url https://mcp.getugcpilot.com/mcp\ncodex mcp login ugc-pilot --scopes account:read,brand:read,assets:read,assets:write,generation:write,jobs:read,creative:write,jobs:write",
   },
   {
     name: "ChatGPT", label: "Web and desktop",

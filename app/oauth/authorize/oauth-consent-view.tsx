@@ -49,9 +49,14 @@ const SCOPE_DETAILS: Record<string, { title: string; description: string; icon: 
     icon: Sparkles,
   },
   "jobs:read": {
-    title: "Generation and finishing progress",
-    description: "Check job status and retrieve completed results.",
+    title: "Operation history and progress",
+    description: "View your application jobs, progress, and completed results.",
     icon: Eye,
+  },
+  "jobs:write": {
+    title: "Cancel and retry jobs",
+    description: "Cancel selected jobs and retry supported failures. Retrying a generation can reserve your credits again.",
+    icon: Sparkles,
   },
   "creative:write": {
     title: "Edit and finish videos",

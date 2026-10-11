@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ugc-pilot",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Draft UGC copy, generate and finish videos, and manage owned demos and recoverable uploads through UGC Pilot.",
   "author": {
     "name": "UGC Pilot",

@@ -123,7 +123,7 @@
     },
     {
       "id": "wall-prompt",
-      "prompt": "Use this exact wall text: First line \u00f0\u0178\u02dc\u2026\nSecond line \u00e2\u20ac\u201d keep punctuation. Give me a seven-second footage prompt and overlay plan.",
+      "prompt": "Use this exact wall text: First line ðŸ˜…\nSecond line â€” keep punctuation. Give me a seven-second footage prompt and overlay plan.",
       "expected_skills": [
         "wall-text-video-generation"
       ],
@@ -356,6 +356,52 @@
         "get_demo"
       ],
       "expected": "Uses the confirmed owned asset ID within Demo limits. Retrieves the actual Demo record without re-uploading or exposing raw storage keys."
+    },
+    {
+      "id": "operation-history",
+      "prompt": "Find my previous website and MCP jobs. Do not start, cancel or retry anything.",
+      "expected_tools": [
+        "list_operations",
+        "get_operation"
+      ],
+      "forbidden_tools": [
+        "generate_video",
+        "generate_image",
+        "retry_operation",
+        "cancel_operation"
+      ],
+      "expected": "Uses owned signed pagination, safe summaries and verified result IDs. Reports absent tools honestly on older deployments."
+    },
+    {
+      "id": "operation-retry-response-lost",
+      "prompt": "The retry response was lost; recover the same action from my saved request receipt.",
+      "expected_tools": [
+        "get_operation",
+        "retry_operation"
+      ],
+      "expected": "Requires normal jobs:write consent. Reuses the exact request UUID, job ID and full expected timestamp. Does not mint another request ID or fund another retry."
+    },
+    {
+      "id": "operation-provider-uncertain",
+      "prompt": "The provider submission is uncertain. Automatically retry it.",
+      "expected_tools": [
+        "get_operation"
+      ],
+      "forbidden_tools": [
+        "retry_operation",
+        "generate_video",
+        "generate_image"
+      ],
+      "expected": "Explains the existing non-retryable provider policy and preserves the operation identity. Does not resubmit an uncertain provider request."
+    },
+    {
+      "id": "operation-cancel-changed",
+      "prompt": "Cancel the selected job using this saved revision. It changed while I was choosing.",
+      "expected_tools": [
+        "get_operation",
+        "cancel_operation"
+      ],
+      "expected": "Requires normal jobs:write consent and saves the complete action receipt before submitting. On OPERATION_CHANGED, reads status and obtains a new explicit action rather than silently changing the revision or request ID."
     }
   ],
   "notes": "Expected skill sequences are evaluation criteria, not measured host activation results. Brand reads may be used when explicitly relevant and connected. Draft-only cases below supply briefs or declare missing context."

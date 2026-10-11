@@ -18,6 +18,9 @@ import {
   McpUploadQuotaError, sealDeletedMcpUpload, softDeleteUnconfirmedMcpUpload,
 } from "./upload-store";
 
+import { leaseUploadUrl, reserveRecoverableUpload } from "./upload-recovery";
+import { uploadProbe } from "./upload-probe";
+
 const httpsUrl = z.url().regex(/^https:\/\//i);
 const uploadCollection = z.enum(MCP_MEDIA_COLLECTIONS).describe(
   "Asset group: image for still images, video for videos, or influencer for creator footage.",
@@ -52,8 +55,9 @@ function assertHttpsUrl(value: string) {
 
 export function registerMutationMcpTools(server: McpServer) {
   server.registerTool("create_upload", {
-    description: "Reserve one media asset and return a temporary URL for directly uploading its bytes.",
+    description: "Reserve a media asset and return a temporary upload URL. Preserve an optional request_id before calling to recover a lost response without a duplicate reservation.",
     inputSchema: z.strictObject({
+      request_id: z.uuid().optional().describe("Stable UUID for this upload intent. Reuse it with identical inputs after a lost response; recover it through get_upload."),
       collection: uploadCollection,
       file_name: z.string().trim().min(1).max(255).regex(/^[^/\\\0]+$/).describe("The display file name. Folder paths are not allowed."),
       mime_type: z.enum(["image/jpeg", "image/png", "image/webp", "video/mp4", "video/quicktime", "video/webm"]).describe("Actual MIME type of the bytes that will be uploaded."),
@@ -84,6 +88,15 @@ export function registerMutationMcpTools(server: McpServer) {
         mimeType: args.mime_type, title: args.title, userId,
       });
     } catch (error) { asToolFailure(error); }
+
+    if (args.request_id) {
+      const row = await reserveRecoverableUpload({ assetId: target.assetId, collection: target.collection,
+        fileName: target.fileName, fileSizeBytes: target.fileSize, mimeType: target.contentType,
+        sourceType: target.collection === "influencer" ? "influencer_upload" : "upload",
+        storageKey: target.key, title: target.title, url: target.publicUrl, userId }, args.request_id);
+      if (row.status !== "uploading") throw new ToolFailure("UPLOAD_ALREADY_CONFIRMED", "Recover this request ID with get_upload instead of creating another upload.");
+      return leaseUploadUrl(userId, row.id);
+    }
 
     const expiresAt = new Date(Date.now() + MEDIA_UPLOAD_EXPIRES_IN_SECONDS * 1000).toISOString();
     let uploadUrl: string;
@@ -163,6 +176,14 @@ export function registerMutationMcpTools(server: McpServer) {
       });
     } catch (error) { asToolFailure(error); }
     if (checked.alreadyReady) return { asset: responseAsset(current) };
+
+    const measured = await uploadProbe.run(current);
+    if (measured.width !== args.width || measured.height !== args.height ||
+        (measured.durationSeconds !== null && Math.abs(measured.durationSeconds - (args.duration_seconds ?? 0)) > 0.05)) {
+      throw new ToolFailure("UPLOAD_MISMATCH", "The supplied dimensions or duration differ from the actual stored media.");
+    }
+    checked.durationSeconds = measured.durationSeconds;
+
 
     const ready = await markMediaAssetReady({
       assetId: current.id,

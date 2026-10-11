@@ -8,7 +8,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { inspectFile, uploadFile, recoverUpload, downloadAsset } from '../plugins/ugc-pilot/skills/manage-ugc-media/scripts/transfer-media.mjs';
+import { inspectFile, prepareUpload, uploadFile, recoverUpload, downloadAsset } from '../plugins/ugc-pilot/skills/manage-ugc-media/scripts/transfer-media.mjs';
 
 const run = promisify(execFile);
 const require = createRequire(import.meta.url);
@@ -196,4 +196,22 @@ test('CLI errors never print signed URLs, provider errors or credentials', async
   assert(!error.stderr.includes('private-secret'));
   const invalid = receiptPath('invalid-recovery'); await writeFile(invalid, JSON.stringify({ upload_url: 'provider-secret' }));
   await rejects(recoverUpload(invalid), 'INVALID_RECEIPT');
+});
+
+test('pre-reservation intent saves a stable request ID and exact metadata before any MCP request', async () => {
+  const intent = path.join(dir, 'intent-only.json');
+  const prepared = await prepareUpload(video, { receiptPath: intent, collection: 'influencer', ffprobe, title: '  Hook  ' });
+  assert.equal(prepared.create_upload.title, 'Hook');
+  assert.match(prepared.create_upload.request_id, /^[a-f0-9-]{36}$/);
+  assert.deepEqual(prepared.inspection, inspection);
+  const saved = JSON.parse(await readFile(intent, 'utf8'));
+  assert.doesNotMatch(JSON.stringify(saved), /signature|upload_url|storage.googleapis|[A-Za-z]:\\/);
+  const recovered = await recoverUpload(intent);
+  assert.deepEqual(recovered.get_upload, { request_id: prepared.create_upload.request_id });
+  assert.deepEqual(recovered.create_upload, prepared.create_upload);
+  assert.deepEqual(recovered.inspection, inspection);
+  await rejects(prepareUpload(video, { receiptPath: intent, collection: 'influencer', ffprobe }), 'RECEIPT_EXISTS');
+  saved.create_upload.upload_url = 'https://untrusted.example.test';
+  await writeFile(intent, JSON.stringify(saved));
+  await rejects(recoverUpload(intent), 'INVALID_RECEIPT');
 });

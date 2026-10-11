@@ -123,7 +123,7 @@
     },
     {
       "id": "wall-prompt",
-      "prompt": "Use this exact wall text: First line 😅\nSecond line — keep punctuation. Give me a seven-second footage prompt and overlay plan.",
+      "prompt": "Use this exact wall text: First line \u00f0\u0178\u02dc\u2026\nSecond line \u00e2\u20ac\u201d keep punctuation. Give me a seven-second footage prompt and overlay plan.",
       "expected_skills": [
         "wall-text-video-generation"
       ],
@@ -309,9 +309,17 @@
     {
       "id": "upload-interrupted-transfer",
       "prompt": "The hook file transfer lost its response, but we saved hook-upload.json. Recover this upload without duplicating it.",
-      "expected_skills": ["manage-ugc-media"],
-      "expected_tools": ["confirm_upload"],
-      "forbidden_tools": ["create_upload", "generate_video", "generate_image"],
+      "expected_skills": [
+        "manage-ugc-media"
+      ],
+      "expected_tools": [
+        "confirm_upload"
+      ],
+      "forbidden_tools": [
+        "create_upload",
+        "generate_video",
+        "generate_image"
+      ],
       "expected": "Reads the non-secret receipt through the packaged helper, confirms the same upload ID with measured metadata, and does not repeat PUT. Unconfirmed storage is reported honestly. No signed URLs or OAuth credentials enter shell arguments or persistent records."
     },
     {
@@ -321,6 +329,33 @@
         "finish-ugc-video"
       ],
       "expected": "Uses normal incremental OAuth consent for creative:write. Does not reuse generation permission as editing authorization or extract tokens."
+    },
+    {
+      "id": "lost-upload-reservation",
+      "prompt": "The upload reservation response was lost. Recover the saved request ID without creating a duplicate upload.",
+      "expected_tools": [
+        "get_upload"
+      ],
+      "expected": "Uses the saved stable request ID, reports the actual state, and retries identical create_upload inputs only when the same intent is absent. Never substitutes a new request ID."
+    },
+    {
+      "id": "expired-upload-link",
+      "prompt": "Resume my unfinished upload whose upload link expired.",
+      "expected_tools": [
+        "get_upload",
+        "renew_upload"
+      ],
+      "expected": "Resolve the same reservation and previous transfer. Renew only when storage is absent and the previous transfer is terminal; existing bytes go to confirmation. No overwrite or duplicate reservation."
+    },
+    {
+      "id": "dedicated-demo-library",
+      "prompt": "Register my confirmed product-tour upload as a Demo and find it in my Demo library.",
+      "expected_tools": [
+        "register_demo",
+        "list_demos",
+        "get_demo"
+      ],
+      "expected": "Uses the confirmed owned asset ID within Demo limits. Retrieves the actual Demo record without re-uploading or exposing raw storage keys."
     }
   ],
   "notes": "Expected skill sequences are evaluation criteria, not measured host activation results. Brand reads may be used when explicitly relevant and connected. Draft-only cases below supply briefs or declare missing context."

@@ -42,9 +42,9 @@ class PluginBuildTests(unittest.TestCase):
             for name in builder.FILES:
                 self.assertEqual(package.read("ugc-pilot/" + name), (builder.SOURCE / name).read_bytes())
             versions = [json.loads(package.read("ugc-pilot/" + name))["version"] for name in ["plugin.json", ".codex-plugin/plugin.json", ".claude-plugin/plugin.json"]]
-            self.assertEqual(versions, ["0.1.4"] * 3)
+            self.assertEqual(versions, ["0.1.5"] * 3)
         self.assertIn(hashlib.sha256(before).hexdigest(), archive.with_suffix(".zip.sha256").read_text())
-        self.assertTrue((self.destination / "ugc-pilot-0.1.4-setup.md").exists())
+        self.assertTrue((self.destination / "ugc-pilot-0.1.5-setup.md").exists())
         self.assertFalse((self.destination / "ugc-pilot-setup.md").exists())
 
     def test_existing_version_is_never_replaced_with_different_bytes(self):

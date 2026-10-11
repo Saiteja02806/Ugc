@@ -1,10 +1,10 @@
-# UGC Pilot private beta — 0.1.4 candidate
+# UGC Pilot private beta — 0.1.5 candidate
 
 Draft UGC copy and video prompts in ordinary language, then use your connected UGC Pilot account when you ask to generate media. This package includes nine skills: the existing connection, generation and media-library workflows plus five creative workflows and a video-finishing workflow.
 
 The package points to the existing hosted MCP at **https://mcp.getugcpilot.com/mcp**. It includes no server executable, credentials, or automatic installation script. Generation uses your UGC Pilot plan and credits, separately from your AI subscription.
 
-Terminal-capable IDEs can use the bundled [local transfer helper](skills/manage-ugc-media/references/local-transfer.md) to measure and upload actual hook/demo files, recover confirmation from a saved receipt, and download completed media without overwriting existing files. It requires Node.js 22+ and ffprobe. Hosts without process/file access need their own transfer mechanism. The helper never handles account OAuth or submits generation.
+Terminal-capable IDEs can use the bundled [local transfer helper](skills/manage-ugc-media/references/local-transfer.md) to measure and upload actual hook/demo files, recover reservation from a saved intent and confirmation from a saved transfer receipt, and download completed media without overwriting existing files. It requires Node.js 22+ and ffprobe. Hosts without process/file access need their own transfer mechanism. The helper never handles account OAuth or submits generation.
 
 ## Install and sign in
 
@@ -38,7 +38,7 @@ The AI selects skills by deliverable and context, not fixed command keywords. Co
 3. “Animate that image into one five-second vertical video with a slow camera push-in. Return the finished video link.”
 4. “Check the progress of the UGC Pilot job we already started. Do not create a new generation.”
 
-The current MCP supports account/brand reads, image/video library access, uploads/deletion, image generation, short-video generation, and job polling. Counts are 1, 2, or 4; clips are 3–10 seconds and prompts are limited to 1,000 characters. Ask the AI to check live capabilities before spending credits. This source candidate includes finishing capability checks, exact video edits/demo composition and finishing status, plus local file transfer. Deployment requires `MCP_VIDEO_FINISHING_ENABLED=true`, matching existing Explore renderer gates, and explicit `creative:write` permission. This package does not enable a deployed server. Slideshow rendering, audio generation, dedicated Demo registration, server draft/history APIs, scheduling and publishing remain outside this MCP slice.
+The current MCP supports account/brand reads, image/video library access, uploads/deletion, image generation, short-video generation, and job polling. Counts are 1, 2, or 4; clips are 3–10 seconds and prompts are limited to 1,000 characters. Ask the AI to check live capabilities before spending credits. This source candidate includes finishing capability checks, exact video edits/demo composition and finishing status, plus local file transfer. Deployment requires `MCP_VIDEO_FINISHING_ENABLED=true`, matching existing Explore renderer gates, and explicit `creative:write` permission. This package does not enable a deployed server. Dedicated Demo registration/list/get/delete and upload lookup/list/renewal extend the coordinated source contract to twenty-two tools. The helper saves a stable request ID before reservation; new confirmations probe stored bytes on the server. Check discovered tools because deployment and installed-host updates are separate. Slideshow rendering, audio generation, server draft/history APIs, scheduling and publishing remain outside this MCP slice.
 
 ## Verification status
 

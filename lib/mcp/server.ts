@@ -8,9 +8,11 @@ import { registerFinishingMcpTools, registeredFinishingMcpTools } from "./finish
 
 import { registerDemoMcpTools, registeredDemoMcpTools } from "./demo-tools";
 
+import { registerUploadRecoveryMcpTools, registeredUploadRecoveryMcpTools } from "./upload-recovery-tools";
+
 export const registeredMcpTools: readonly string[] = [
   ...registeredReadMcpTools, ...registeredMutationMcpTools, ...registeredGenerationMcpTools,
-  ...registeredFinishingMcpTools, ...registeredDemoMcpTools,
+  ...registeredFinishingMcpTools, ...registeredDemoMcpTools, ...registeredUploadRecoveryMcpTools,
 ];
 
 export const mcpHandler = createMcpHandler(
@@ -21,6 +23,7 @@ export const mcpHandler = createMcpHandler(
     registerGenerationMcpTools(server);
     registerFinishingMcpTools(server);
     registerDemoMcpTools(server);
+    registerUploadRecoveryMcpTools(server);
     return server;
   },
   {

@@ -34,6 +34,8 @@ Before registration can be exposed in production, apply and verify the additive 
 
 No production media was generated, uploaded, registered, deleted, rendered or transcribed during these checks. The candidate migration has not been applied and the candidate server/website changes have not been deployed. Installed Codex/Claude plugin behavior and production Demo workflow acceptance remain pending.
 
+The code candidate was pushed as commit `0eb09ea119f6d1b34488a6ab363521ba44aa8b90` in [draft PR #32](https://github.com/Saiteja02806/Ugc/pull/32), stacked on the finishing release PR. Both remote MCP contract runs and the migration guard passed. The `ugc` website preview `dpl_GpfH2wyZA1fEpxm1dhUDKeC5g4u1` is READY and reports that exact commit. The separate `trending-release-web-3f35202` preview failed at prerender with `Firebase auth/invalid-api-key`; its log shows compile/TypeScript passed before that environment failure. Production aliases were not changed. A successful website preview/build is not authenticated production acceptance.
+
 ## Broader goal
 
 Normal Codex CLI OAuth reconnect completed successfully with the requested `creative:write` scope. This chat still exposes twelve cached UGC tools. Production continues to run the previously deployed fifteen-tool server with new finishing creation disabled. Fresh authenticated discovery, deliberate finishing activation, local package installation and acceptance of hook → demo → finished download in both Codex and Claude remain required.

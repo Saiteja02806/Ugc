@@ -49,9 +49,14 @@ const SCOPE_DETAILS: Record<string, { title: string; description: string; icon: 
     icon: Sparkles,
   },
   "jobs:read": {
-    title: "Generation progress",
+    title: "Generation and finishing progress",
     description: "Check job status and retrieve completed results.",
     icon: Eye,
+  },
+  "creative:write": {
+    title: "Edit and finish videos",
+    description: "Render your selected clips, demos, text, audio, and requested subtitles.",
+    icon: Sparkles,
   },
 };
 

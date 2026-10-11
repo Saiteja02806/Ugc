@@ -4,9 +4,11 @@ import { createMcpHandler, McpServer } from "@modelcontextprotocol/server";
 import { registerGenerationMcpTools, registeredGenerationMcpTools } from "./generation-tools";
 import { registerMutationMcpTools, registeredMutationMcpTools } from "./mutation-tools";
 import { registerReadMcpTools, registeredReadMcpTools } from "./read-tools";
+import { registerFinishingMcpTools, registeredFinishingMcpTools } from "./finishing-tools";
 
 export const registeredMcpTools: readonly string[] = [
   ...registeredReadMcpTools, ...registeredMutationMcpTools, ...registeredGenerationMcpTools,
+  ...registeredFinishingMcpTools,
 ];
 
 export const mcpHandler = createMcpHandler(
@@ -15,6 +17,7 @@ export const mcpHandler = createMcpHandler(
     registerReadMcpTools(server);
     registerMutationMcpTools(server);
     registerGenerationMcpTools(server);
+    registerFinishingMcpTools(server);
     return server;
   },
   {

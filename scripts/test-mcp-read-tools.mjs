@@ -331,12 +331,18 @@ assert.equal(discovered.body.result.tools.find((tool) => tool.name === "get_prof
 for (const tool of discovered.body.result.tools) {
   assert.equal(tool._meta.securitySchemes[0].type, "oauth2");
   assert.equal(tool._meta.securitySchemes[0].scopes.length, 1);
-  const writes = ["create_upload", "confirm_upload", "delete_asset", "generate_image", "generate_video"];
-  const irreversible = ["delete_asset", "generate_image", "generate_video"];
+  const writes = ["create_upload", "confirm_upload", "delete_asset", "generate_image", "generate_video", "finish_video"];
+  const irreversible = ["delete_asset", "generate_image", "generate_video", "finish_video"];
   assert.equal(tool.annotations.readOnlyHint, !writes.includes(tool.name), `${tool.name}: read-only annotation`);
   assert.equal(tool.annotations.destructiveHint, irreversible.includes(tool.name), `${tool.name}: destructive annotation`);
   assert.equal(tool.annotations.openWorldHint, false, `${tool.name}: bounded account annotation`);
 }
+
+const finishingTool = discovered.body.result.tools.find((tool) => tool.name === "finish_video");
+assert.deepEqual(finishingTool._meta.securitySchemes[0].scopes, ["creative:write"]);
+assert.equal(finishingTool.inputSchema.additionalProperties, false);
+assert.equal(finishingTool.inputSchema.properties.draft.additionalProperties, false);
+assert.deepEqual(discovered.body.result.tools.find((tool) => tool.name === "get_video_finish")._meta.securitySchemes[0].scopes, ["jobs:read"]);
 
 // A stateless transport must keep concurrent responses and account contexts separate.
 const concurrentReads = await Promise.all(Array.from({ length: 12 }, (_, index) => call(

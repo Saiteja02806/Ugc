@@ -1,0 +1,52 @@
+# Remaining work for complete IDE operation
+
+Rechecked on 11 October 2026 against current MCP registration, tool schemas, plugin source, upload/finishing services and customer-facing website API routes. This was a source/connected-session audit. No generation, upload, render, transcription, publishing, installation or deployment was performed. Offline test results are recorded in the existing implementation reports; tests were not rerun for this read-only audit.
+
+## Current boundary
+
+Latest recheck: the connected session still exposes twelve UGC Pilot tools, while current source registers fifteen. Authenticated Vercel deployment metadata shows the newest READY production MCP deployment is `dpl_6URjMHPBDM9s95kpwhWP2mLyMNSm`, from commit `526f26a20ca50326220d87885c033393addafcaf` ("Fix Explore account selection and finished-video recovery"). The reviewed local finishing/transfer candidate has not been established as a released production version. Plugin source is 0.1.4; the website download links still advertise 0.1.2. This recheck did not generate, upload, render, publish or deploy anything.
+
+`lib/mcp/server.ts` registers fifteen source tools: six account/brand/media reads, three upload/deletion tools, three generation/status tools and three new finishing tools. The UGC Pilot tools exposed in this connected session are still the original twelve. Session discovery can be cached; this does not prove the exact server release or feature-gate state. Fresh production discovery and authenticated host acceptance remain necessary.
+
+Basic image/video generation, owned image/video/creator-footage browsing, upload reservation/confirmation, deletion and MCP generation polling already have adapters. Video generation is restricted to a fixed `google_omni` input, 3–10 seconds, one optional image reference and the V1 output options. Website generation offers a broader model/resolution/reference contract. See `lib/mcp/generation-tools.ts:140` and `lib/ai-studio/video-generation-api.ts:49`.
+
+## Implemented locally, release/acceptance incomplete
+
+| Item | What is ready | What is still required |
+| --- | --- | --- |
+| Explore finishing | `get_video_finishing_capabilities`, `finish_video`, `get_video_finish`; owned opening/demo composition; trim/text/volumes, framing and English subtitles within the shared contract | Deploy the shared adapter, verify queue/renderer configuration, deliberately activate the MCP gate, obtain `creative:write` consent and refresh discovery. Existing individual editing/framing/subtitle gates still apply. |
+| Local upload/download | Plugin 0.1.4's Node/ffprobe helper streams actual bytes, saves confirmation recovery inputs and downloads to a new file | Install/update the reviewed package and verify runtime/file/process support in Codex and Claude Code. Production local-file transfers and finished output acceptance remain untested. |
+| Complete video journey | Source adapters and plugin instructions can chain upload/generation, owned inputs, preparation stages, composition, receipt reads and output retrieval | Run the complete authorized journey against production in both IDE hosts, including interrupted responses and rejection of foreign assets. A passing offline fixture is not that acceptance run. |
+
+The local plugin manifest is 0.1.4. The website setup page still links to 0.1.2 (`app/connect-ai/page.tsx:62`). Public downloads have not been coordinated with the candidate. Finishing creation requires `MCP_VIDEO_FINISHING_ENABLED`; reads by known finishing request key are separate from creation. See `lib/mcp/finishing-tools.ts:73`.
+
+## Missing MCP implementation or broader application parity
+
+| Area | Specifically missing | Existing source evidence |
+| --- | --- | --- |
+| Dedicated Demo library | Dedicated demo create/confirm/register/list/delete adapters and the `demo_upload` classification used by legacy Trending. A generic video can be an Explore demo, but it is not a dedicated Demo record. | `app/api/demo/create-upload-url/route.ts`, `app/api/demo/complete-upload/route.ts`, `lib/trending/hook-video-sources.ts:35` |
+| Upload resilience and server validation | Request-key idempotency for reservations; lookup after a lost reservation response; expired signed-URL renewal; actual backend upload probing. Known-ID confirmation recovery exists. New generic writes fail closed when the private-media rollout flag is enabled; private upload support remains incomplete. | `lib/mcp/mutation-tools.ts:54`, `lib/mcp/upload-validation.ts`, `lib/media/private-media-storage.ts:54` |
+| Saved drafts and general operations | Mutable owner-scoped creative drafts, draft discovery, revision-safe updates, full operation/history listing, cancellation and supported retry adapters. `get_video_finish` requires a known key and `get_job` covers MCP generation jobs only. | `lib/explore/workflow-finishing-service.ts:120`, `lib/mcp/generation-tools.ts:174`, `app/api/jobs`, browser draft storage in `components/explore/format-slideshow-editor.tsx` |
+| Complete generation options | Website model and resolution selection, model-specific durations, multiple image references, video/audio references and supported format inputs. Character/avatar generation, history, selection and preferences also have no MCP adapters. | `lib/ai-studio/video-generation-api.ts`, `lib/ai-studio/generation-settings.ts`, `app/api/characters`, `app/api/avatars` |
+| Audio | Voice catalogue/samples and supported voice operations, generation, audio upload/library/history/delete, bookmarks, selection and default-music discovery. The local finisher can accept already known owned audio IDs, but the public MCP asset collection excludes audio. | `lib/mcp/read-tools.ts:29`, `lib/audio/api.ts`, `app/api/audio`, `app/api/explore/default-music/route.ts` |
+| Full editor, references and remix | The dedicated Edit application's source/render workflows; Recreate/reference catalogue discovery, reviewed reference text, text-remix submission/recovery and paired reference soundtrack selection. Plugin copy drafting exists; it does not expose those application-backed features. | `app/api/edit`, `app/api/explore/recreate-references/route.ts`, `app/api/explore/reference-text/route.ts`, `app/api/explore/remix-text/route.ts`, `lib/explore/paired-reference-library.ts` |
+| Slideshows | Ordered saved drafts, text/layout changes, reorder/remove, server-rendered slide images and verified Library save/retrieval. The current export measures/renders text using browser canvas and needs a backend renderer for IDE parity. Plugin slideshow copy/JSON is already available as drafting. | `lib/explore/slideshow-text-client.ts:7`, `components/explore/format-slideshow-editor.tsx`, `app/api/explore/slideshows` |
+| Trending and automatic Carousel | Feed preparation/history, content mix, source selection, accept/save/skip/reconsider, revision-safe creative edits, render status and Library save. These need adapters to the current flow. The retired manual Carousel generate route intentionally returns 410. | `app/api/trending`, `app/api/carousel/history/route.ts`, `app/api/carousel/generate/route.ts` |
+| Creative Assets and Library | Group/folder create/rename/delete and membership; application Library save/list/get/delete and ordered slideshow/Carousel outputs; remaining owned asset metadata operations. Generic `list_assets` is not full application Library coverage. | `app/api/media/groups`, `app/api/library`, `app/api/explore/hook-videos/route.ts`, `app/api/explore/wall-text-videos/route.ts` |
+| Business onboarding and settings | Website/business analysis and onboarding start/update/submit/retry, logo and Business Context edits, product screenshots, timezone and publishing defaults. Current brand access is a read of the completed profile. Billing checkout/portal handoffs and customer feedback also have no MCP adapters. | `lib/mcp/read-tools.ts:183`, `app/api/business-profile`, `app/api/business-context`, `app/api/settings/app-screenshots/route.ts`, `app/api/account`, `app/api/billing`, `app/api/feedback` |
+| Social connections and publishing | List/connect/reconnect/disconnect and settings; an IDE-readable OAuth completion handoff; schedules/calendar create/read/update/cancel, publish/render and per-target retries. Provider authentication/consent remains part of the connection flow. | `app/api/social`, `lib/social/oauth.ts`, `app/api/schedules` |
+| Analytics | Existing Instagram/TikTok/YouTube reports, date ranges and freshness, explicit refresh/job recovery and accurate missing/unavailable metrics. | `app/api/analytics`, `app/api/internal/jobs/sync-analytics/route.ts` |
+
+These missing adapters are verified against the complete source tool registration; existing website routes are predominantly Firebase-authenticated. The MCP OAuth principal should call shared owner-aware services. Passing an MCP token to an existing Firebase route does not provide the missing integration. Additional domains need scoped permissions, capability reporting, ownership checks, idempotent write semantics and appropriate contract/host tests.
+
+This audit concerns ordinary customer application operation. Internal worker, webhook, debug and administrator endpoints are implementation dependencies, not a proposed unrestricted IDE administration surface.
+
+## Recommended order
+
+1. Release and accept the complete basic hook/demo journey in Codex and Claude Code.
+2. Complete dedicated Demo handling, upload resilience and discoverable drafts/history.
+3. Add audio and the remaining generation/reference/editor capabilities.
+4. Add Creative Assets/Library, slideshow rendering and current Trending/automatic Carousel workflows.
+5. Add business/settings, social scheduling/publishing and analytics parity.
+
+The minimum video journey is much nearer than complete application parity. Finishing code being present is not evidence that the whole application is exposed through MCP.

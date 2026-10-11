@@ -16,6 +16,7 @@ User-stated facts are inputs, not independently verified facts. Do not invent me
 | Footage prompt for wall-of-text / overlay plan | [Wall Text Video Generation](../skills/wall-text-video-generation/SKILL.md) |
 | Slideshow copy / slide sequence / semantic JSON | [UGC Native Slideshow](../skills/ugc-native-slideshow/SKILL.md) |
 | Generate the actual image or video | [Create UGC Media](../skills/create-ugc-media/SKILL.md) |
+| Attach a demo / trim / render exact video text | [Finish UGC Video](../skills/finish-ugc-video/SKILL.md) |
 
 These are instructions for the host model, not a keyword router. Use the requested deliverable and conversation context. For an ambiguous “make a hook,” infer text from a copywriting conversation and a prompt from a directing conversation; otherwise ask whether they want words, a prompt, or a generated clip.
 
@@ -27,4 +28,4 @@ For a director, selected text is immutable, including Unicode, punctuation, emoj
 
 When the user asks to generate, hand off to Create UGC Media. It checks current access, capabilities, total cost, ownership and retries using the same request ID. The current MCP accepts a prompt of at most 1,000 characters, whole durations 3–10 seconds and counts 1, 2 or 4; discover live aspect ratios and options before submission. Adapt long creative direction into a supported prompt without losing essential constraints; do not silently truncate, change count/duration or submit another paid job on retry. Negative prompts, audio plans and overlay specifications here are creative/editing data, not separate supported MCP arguments.
 
-MCP generation returns footage. Exact overlay composition, slideshow rendering and social publishing are separate operations; this package contains no compositor, Carousel adapter or publishing tool. Do not promise an edited wall-of-text video or exported slideshow from a footage job. A requested duration beyond the live limits needs an explicit supported alternative before generation. Do not fabricate a result URL.
+MCP generation returns footage. Exact video overlays and demo composition use the separate finishing workflow when deployed capabilities permit it. Complete its renderer stages before promising an edited wall-of-text video. Slideshow rendering, Carousel adapters and social publishing remain separate capabilities. A requested duration beyond the live limits needs an explicit supported alternative before generation. Do not fabricate a result URL.

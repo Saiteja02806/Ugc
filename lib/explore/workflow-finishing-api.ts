@@ -1,35 +1,13 @@
 import "server-only";
 
-import { createHash } from "node:crypto";
-import { FORMAT_TEXT_SEQUENCE_RENDER_VERSION } from "@/worker/src/lib/explore-format-edit";
 import { requireAIStudioProUser } from "@/lib/ai-studio/server-access";
 import { FirebaseAuthRequestError, requireFirebaseUser } from "@/lib/firebase/server-auth";
-import { getBackgroundJobForUser, getMissingBackgroundJobStorageEnvVars, type BackgroundJobRecord } from "@/lib/jobs/background-jobs";
-import { dispatchQueuedBackgroundJobForRecovery } from "@/lib/jobs/background-job-service";
-import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
-import { ExploreFinishError, EXPLORE_RENDER_VERSION, DEMO_FRAMING_RENDER_VERSION, isExploreUuid, parseExploreFinishDraft, type ExploreFinishDraft, type ExploreFinishReceipt } from "@/worker/src/lib/explore-finishing-contract";
-import { SCRIBE_PROVIDER_KEY } from "@/worker/src/subtitles/elevenlabs-contract";
-import { ExploreFinishingRequestStore } from "./workflow-finishing-store";
+import { ExploreFinishError, isExploreUuid } from "@/worker/src/lib/explore-finishing-contract";
+import { startWorkflowFinishingForOwner, getWorkflowFinishingForOwner } from "./workflow-finishing-service";
+export { fingerprintExploreFinish } from "./workflow-finishing-service";
 
 const MAX_BODY_BYTES = 32 * 1024;
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store", Vary: "Authorization" } });
-const terminal = new Set(["completed", "failed", "cancelled"]);
-const safeErrors: Record<string, string> = {
-  SUBTITLE_LANGUAGE_UNSUPPORTED: "Auto subtitles support English speech only.",
-  SUBTITLE_DURATION_UNSUPPORTED: "Auto subtitles support up to 60 seconds in total. Your video was not shortened.",
-  NO_SPEECH: "No speech was detected. Your original video is unchanged.",
-  PROVIDER_REQUEST_UNCERTAIN: "The transcription response is unconfirmed. It will not be submitted again automatically.",
-  provider_submission_uncertain: "The transcription may already have been submitted. It will not be submitted again automatically.",
-  PROVIDER_AUTH_FAILED: "Subtitle transcription is unavailable. Your original video is unchanged.",
-  PROVIDER_RATE_LIMIT: "The subtitle provider is temporarily unavailable. Your original video is unchanged.",
-};
-
-/** Bind normalized edits to the worker/render policy, not client-supplied IDs. */
-export function fingerprintExploreFinish(draft: ExploreFinishDraft) {
-  return createHash("sha256").update(JSON.stringify({ renderer: draft.sourceFraming ? "explore-finish-single-pan-v1" : draft.editing ? draft.editing.textOverlays === undefined ? "explore-format-edit-v1" : FORMAT_TEXT_SEQUENCE_RENDER_VERSION : draft.demoFraming ? DEMO_FRAMING_RENDER_VERSION : EXPLORE_RENDER_VERSION,
-    transcription: draft.subtitles ? SCRIBE_PROVIDER_KEY : null, draft })).digest("hex");
-}
-
 async function bodyJson(request: Request) {
   if (request.headers.get("Content-Type")?.split(";", 1)[0].trim().toLowerCase() !== "application/json") throw new ExploreFinishError("Send a JSON finishing draft.", 415);
   const declared = request.headers.get("Content-Length");
@@ -49,46 +27,6 @@ async function bodyJson(request: Request) {
   } finally { await reader.cancel().catch(() => undefined); reader.releaseLock(); }
 }
 
-function verifyJob(job: BackgroundJobRecord | null, receipt: ExploreFinishReceipt) {
-  const input = job?.input;
-  if (!job || job.id !== receipt.job_id || job.userId !== receipt.user_id || job.jobType !== "render_demo_video" || job.projectId !== "explore" ||
-      job.idempotencyKey !== `explore-finish:${receipt.request_key}` || !input || typeof input !== "object" || Array.isArray(input) ||
-      input.version !== 1 || input.userId !== receipt.user_id || input.requestKey !== receipt.request_key ||
-      input.outputAssetId !== receipt.output_asset_id || input.fingerprint !== receipt.fingerprint) throw new ExploreFinishError("The saved finishing job could not be verified.", 409);
-  if (job.status === "completed" && receipt.status !== "completed") throw new ExploreFinishError("The finished-media record is not confirmed yet.", 503);
-  return job;
-}
-
-function pendingFinishMessage(job: BackgroundJobRecord) {
-  if (job.status === "cancel_requested") return "Cancellation requested. Waiting for video processing to stop safely.";
-  if (job.status === "stalled") return "Video processing stopped responding. Check the save status or cancel this save before trying again.";
-  if (job.stage === "render_job_launched") return "Your video is queued. Preparing the video processor…";
-  if (job.status === "queued") return "Your finishing request is saved and waiting for the video processor.";
-  if (job.stage === "downloading_owned_media") return "Preparing your selected clips for editing…";
-  if (job.stage === "transcribing_composed_audio") return "Transcribing the finished video's audio…";
-  if (job.stage === "uploading_finished_video") return "Your video is rendered. Saving the finished file…";
-  if (job.stage === "saving_finished_video") return "Your finished file is saved. Confirming it in your media library…";
-  if (job.status === "rendering") return "Rendering your video edits…";
-  if (job.status === "waiting_external_service") return "Waiting for video processing to finish…";
-  return "Your finishing request is saved and is being processed.";
-}
-
-async function responseFor(store: ExploreFinishingRequestStore, receipt: ExploreFinishReceipt, job: BackgroundJobRecord, status = 200) {
-  const verified = verifyJob(job, receipt);
-  if (receipt.status === "completed") await store.asset(receipt.user_id, receipt.output_asset_id, "video");
-  const uncertain = receipt.status === "uncertain" || ["PROVIDER_REQUEST_UNCERTAIN", "provider_submission_uncertain"].includes(verified.errorCode ?? "");
-  const outcome = receipt.status === "completed" ? "completed" : uncertain ? "uncertain" :
-    verified.status === "failed" ? "failed" : verified.status === "cancelled" ? "cancelled" : "pending";
-  const failureMessage = safeErrors[verified.errorCode ?? ""];
-  return json({ ok: true, receiptVersion: 1, requestKey: receipt.request_key, kind: receipt.draft.kind,
-    jobId: receipt.job_id, outcome, status: verified.status,
-    progress: typeof verified.progress === "number" && Number.isFinite(verified.progress) ? Math.max(0, Math.min(100, verified.progress)) : null,
-    mediaAssetId: outcome === "completed" ? receipt.output_asset_id : null,
-    message: outcome === "completed" ? "Your finished video is saved." : uncertain ? "Transcription needs review; no automatic resubmission will be made." :
-      outcome === "failed" ? typeof failureMessage === "string" ? failureMessage : "Finishing did not complete. Your original media is unchanged." :
-      outcome === "cancelled" ? "Finishing was cancelled. Your original media is unchanged." : pendingFinishMessage(verified) }, status);
-}
-
 /** Queues a committed, owned edit only. No ffmpeg or paid ASR in the app route. */
 export async function handleWorkflowFinishingStart(request: Request) {
   try {
@@ -101,23 +39,8 @@ export async function handleWorkflowFinishingStart(request: Request) {
     const raw = body as Record<string, unknown>;
     if (Object.keys(raw).some(key => !["requestKey", "draft"].includes(key)) || !isExploreUuid(raw.requestKey) ||
         request.headers.get("Idempotency-Key")?.toLowerCase() !== raw.requestKey.toLowerCase()) throw new ExploreFinishError("Invalid finishing request identity.");
-    const key = raw.requestKey.toLowerCase(), draft = parseExploreFinishDraft(raw.draft), fingerprint = fingerprintExploreFinish(draft);
-    const store = new ExploreFinishingRequestStore();
-    // Replays recover their job even if new subtitle creation is off.
-    const prior = await store.read(owner, key);
-    if (prior && (prior.fingerprint !== fingerprint || JSON.stringify(prior.draft) !== JSON.stringify(draft))) throw new ExploreFinishError("This request was already used for different edits.", 409);
-    if (!prior) {
-      if (draft.editing && process.env.EXPLORE_FORMAT_EDITING_ENABLED !== "true") throw new ExploreFinishError("Format video editing is not enabled yet.", 503);
-      if ((draft.demoFraming || draft.sourceFraming) && process.env.EXPLORE_DEMO_FRAMING_ENABLED !== "true") throw new ExploreFinishError("Demo framing is not enabled yet.", 503);
-      if (draft.subtitles && process.env.EXPLORE_FINISHING_SUBTITLES_ENABLED !== "true") throw new ExploreFinishError("Subtitle finishing is not enabled yet.", 503);
-      if (getMissingBackgroundJobStorageEnvVars().length || getMissingJobQueueEnvVars(["render_demo_video"]).length) throw new ExploreFinishError("Video finishing dispatch is not configured.", 503);
-    }
-    const receipt = prior ?? await store.create(owner, key, fingerprint, draft);
-    const job = verifyJob(await getBackgroundJobForUser({ jobId: receipt.job_id, userId: owner }), receipt);
-    // A lost queue acknowledgement leaves this job available to durable
-    // recovery; never create a replacement job here.
-    const dispatched = receipt.status === "queued" && !terminal.has(job.status) ? await dispatchQueuedBackgroundJobForRecovery(job) : job;
-    return await responseFor(store, receipt, dispatched, receipt.status === "completed" ? 200 : 202);
+    const { result, httpStatus } = await startWorkflowFinishingForOwner(owner, raw.requestKey, raw.draft);
+    return json(result, httpStatus);
   } catch (error) { return errorResponse(error); }
 }
 
@@ -128,11 +51,7 @@ export async function handleWorkflowFinishingStatus(request: Request) {
     const owner = (await requireFirebaseUser(request)).uid;
     const query = new URL(request.url).searchParams, key = query.get("requestKey");
     if (!isExploreUuid(key) || Array.from(query.keys()).some(name => name !== "requestKey") || query.getAll("requestKey").length !== 1) throw new ExploreFinishError("Invalid saved finishing identity.");
-    const normalized = key.toLowerCase(), store = new ExploreFinishingRequestStore(), receipt = await store.read(owner, normalized);
-    if (!receipt) return json({ ok: true, receiptVersion: 1, requestKey: normalized, outcome: "unconfirmed", jobId: null, mediaAssetId: null,
-      message: "This request is not confirmed yet. Keep the same request identity when checking or submitting again." });
-    const job = verifyJob(await getBackgroundJobForUser({ jobId: receipt.job_id, userId: owner }), receipt);
-    return await responseFor(store, receipt, job);
+    return json(await getWorkflowFinishingForOwner(owner, key));
   } catch (error) { return errorResponse(error); }
 }
 

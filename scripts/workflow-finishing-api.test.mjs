@@ -24,7 +24,7 @@ class AuthError extends Error { constructor(message = "Sign in", status = 401) {
 function harness(options = {}) {
   const calls = [], env = { EXPLORE_FINISHING_ENABLED: "true", EXPLORE_FINISHING_SUBTITLES_ENABLED: "true", ...options.env };
   let receipt, committed, record;
-  const api = load("lib/explore/workflow-finishing-api.ts", {
+  const service = load("lib/explore/workflow-finishing-service.ts", {
     "server-only": {}, "node:crypto": { createHash },
     "@/lib/ai-studio/server-access": { requireAIStudioProUser: async () => { calls.push("access"); if (options.authError) throw options.authError; return { uid: owner }; } },
     "@/lib/firebase/server-auth": { FirebaseAuthRequestError: AuthError, requireFirebaseUser: async () => { calls.push("auth"); if (options.authError) throw options.authError; return { uid: owner }; } },
@@ -42,6 +42,13 @@ function harness(options = {}) {
       async create(uid, requestKey, fingerprint, draft) { calls.push("create"); assert.equal(uid, owner); assert.equal(requestKey, key); assert.equal(fingerprint, receipt.fingerprint); assert.deepEqual(JSON.parse(JSON.stringify(draft)), receipt.draft); if (options.createError) throw options.createError; committed = receipt; return receipt; }
       async asset(uid, assetId, type) { calls.push("asset"); assert.equal(uid, owner); assert.equal(assetId, outputId); assert.equal(type, "video"); if (options.assetError) throw options.assetError; return { id: outputId }; }
     } },
+  }, { Response, URL, Buffer, process: { env } });
+  const api = load("lib/explore/workflow-finishing-api.ts", {
+    "server-only": {},
+    "@/lib/ai-studio/server-access": { requireAIStudioProUser: async () => { calls.push("access"); if (options.authError) throw options.authError; return { uid: owner }; } },
+    "@/lib/firebase/server-auth": { FirebaseAuthRequestError: AuthError, requireFirebaseUser: async () => { calls.push("auth"); if (options.authError) throw options.authError; return { uid: owner }; } },
+    "@/worker/src/lib/explore-finishing-contract": contract,
+    "./workflow-finishing-service": service,
   }, { Response, URL, Buffer, process: { env } });
   const draft = { ...baseDraft, ...options.draftChanges };
   receipt = { user_id: owner, request_key: key, job_id: jobId, output_asset_id: outputId, status: options.receiptStatus ?? "queued",

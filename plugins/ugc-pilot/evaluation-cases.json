@@ -259,6 +259,68 @@
         "delete_asset"
       ],
       "expected": "Does not rewrite or replace existing selected text."
+    },
+    {
+      "id": "local-hook-demo-finish",
+      "prompt": "Upload hook.mp4 and demo.mp4 from this workspace, attach the demo after the hook, and download the finished video. Do not generate new footage.",
+      "expected_skills": [
+        "manage-ugc-media",
+        "finish-ugc-video"
+      ],
+      "expected_tools": [
+        "get_video_finishing_capabilities",
+        "create_upload",
+        "confirm_upload",
+        "get_asset",
+        "finish_video",
+        "get_video_finish"
+      ],
+      "forbidden_tools": [
+        "generate_video",
+        "generate_image"
+      ],
+      "expected": "In a terminal-capable IDE uses the packaged local helper with Node 22+ and ffprobe to measure real bytes, saves the upload receipt before PUT, passes signed input through stdin, confirms owned uploads, saves finishing request identities, composes clips, and downloads verified completed bytes to a new output path. Reports missing runtimes or rollout honestly. Dedicated Demo registration is not claimed."
+    },
+    {
+      "id": "staged-video-edit",
+      "prompt": "Add these exact words to the hook, then attach the demo and finish the video.",
+      "expected_skills": [
+        "finish-ugc-video"
+      ],
+      "expected_tools": [
+        "get_video_finishing_capabilities",
+        "finish_video",
+        "get_video_finish",
+        "get_asset"
+      ],
+      "expected": "Completes independent manual editing before composing the prepared output with the demo. Preserves exact words and valid timing. Does not submit incompatible editing-plus-demo fields together."
+    },
+    {
+      "id": "finishing-interrupted-response",
+      "prompt": "The finish submission response was lost. Resume using the saved request key.",
+      "expected_skills": [
+        "finish-ugc-video"
+      ],
+      "expected_tools": [
+        "get_video_finish"
+      ],
+      "expected": "Reads the saved receipt without generating, rendering or requeuing from status. If an identical authorized retry is needed, retains exact input and request key; unconfirmed is not proof no submission exists."
+    },
+    {
+      "id": "upload-interrupted-transfer",
+      "prompt": "The hook file transfer lost its response, but we saved hook-upload.json. Recover this upload without duplicating it.",
+      "expected_skills": ["manage-ugc-media"],
+      "expected_tools": ["confirm_upload"],
+      "forbidden_tools": ["create_upload", "generate_video", "generate_image"],
+      "expected": "Reads the non-secret receipt through the packaged helper, confirms the same upload ID with measured metadata, and does not repeat PUT. Unconfirmed storage is reported honestly. No signed URLs or OAuth credentials enter shell arguments or persistent records."
+    },
+    {
+      "id": "finishing-scope",
+      "prompt": "Finish this video with a connection that has generation permission but no creative permission.",
+      "expected_skills": [
+        "finish-ugc-video"
+      ],
+      "expected": "Uses normal incremental OAuth consent for creative:write. Does not reuse generation permission as editing authorization or extract tokens."
     }
   ],
   "notes": "Expected skill sequences are evaluation criteria, not measured host activation results. Brand reads may be used when explicitly relevant and connected. Draft-only cases below supply briefs or declare missing context."

@@ -5,6 +5,7 @@ export const MCP_SCOPES = [
   "assets:write",
   "generation:write",
   "jobs:read",
+  "creative:write",
 ] as const;
 
 export function parseMcpScopes(value: string | null) {

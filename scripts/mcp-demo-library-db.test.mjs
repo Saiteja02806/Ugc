@@ -4,7 +4,7 @@ import test from "node:test";
 import { PGlite } from "@electric-sql/pglite";
 
 const baseline = readFileSync(new URL("../supabase/migrations/20260829093001_production_baseline_v1.sql", import.meta.url), "utf8");
-const migration = readFileSync(new URL("../supabase/migrations/20261011142003_mcp_demo_library.sql", import.meta.url), "utf8");
+const migration = readFileSync(new URL("../supabase/migrations/20261011144624_mcp_demo_library.sql", import.meta.url), "utf8");
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 async function setup() {
   const db = new PGlite();

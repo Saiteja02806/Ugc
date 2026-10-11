@@ -10,7 +10,7 @@ async function setup() {
     grant select,update on background_jobs to service_role;
     revoke all on function request_background_job_cancel(uuid,text) from public,anon,authenticated;
     grant execute on function request_background_job_cancel(uuid,text) to service_role;`);
-  await db.exec(readMigration('20261011172649_mcp_operation_recovery'));
+  await db.exec(readMigration('20261011191633_mcp_operation_recovery'));
   return db;
 }
 const control = async (db, job, request, version, action='retry', owner='free-user', allowed=true) =>

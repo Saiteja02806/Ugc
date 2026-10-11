@@ -6,9 +6,11 @@ import { registerMutationMcpTools, registeredMutationMcpTools } from "./mutation
 import { registerReadMcpTools, registeredReadMcpTools } from "./read-tools";
 import { registerFinishingMcpTools, registeredFinishingMcpTools } from "./finishing-tools";
 
+import { registerDemoMcpTools, registeredDemoMcpTools } from "./demo-tools";
+
 export const registeredMcpTools: readonly string[] = [
   ...registeredReadMcpTools, ...registeredMutationMcpTools, ...registeredGenerationMcpTools,
-  ...registeredFinishingMcpTools,
+  ...registeredFinishingMcpTools, ...registeredDemoMcpTools,
 ];
 
 export const mcpHandler = createMcpHandler(
@@ -18,6 +20,7 @@ export const mcpHandler = createMcpHandler(
     registerMutationMcpTools(server);
     registerGenerationMcpTools(server);
     registerFinishingMcpTools(server);
+    registerDemoMcpTools(server);
     return server;
   },
   {

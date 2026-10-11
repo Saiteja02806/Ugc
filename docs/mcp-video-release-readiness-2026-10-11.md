@@ -1,5 +1,7 @@
 # MCP video release readiness — 11 October 2026
 
+Latest release: commit `ac83ad8aef61a896f43619bc35f94754096e2a5a` is now live in both the website (`dpl_HfNnhqxv5yXdz5N7q9BeGcqnwCZA`) and MCP (`dpl_31tdj2yrJ2FGXACeATAv48BF9ZxK`) targets. The website compatibility build was promoted first. Dedicated Demo migration `20261011144624` is applied and verified. The new MCP build enables finishing creation. Normal OAuth reconnect succeeded and fresh authenticated Codex discovery returned nineteen tools. This chat's catalogue remains cached at twelve; complete production execution and installed-package acceptance in Codex and Claude remain pending. The sections below retain the first gated release's historical evidence. See `mcp-demo-library-candidate-2026-10-11.md` for the latest release checks.
+
 The isolated candidate is based on website production commit `e4cd22228b72e9b0c41f5cc3cd00e860082f281b` in the managed `mcp-full-app-access` worktree. Only the reviewed MCP adapter, shared finishing boundary, plugin source, tests and associated documentation were copied from the original checkout. Unrelated ongoing website, Carousel and worker changes in that checkout remain outside this scoped MCP release. The original checkout is not the deployment source.
 
 ## Verified before staging

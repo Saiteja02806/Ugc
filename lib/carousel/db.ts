@@ -1,6 +1,10 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { resolveStructure2HookTemplate } from "../../worker/src/lib/carousel-structure-2-hook-templates.ts";
 import { getCarouselHookTemplateMode } from "./hook-template-runtime";
+import {
+  canReadPreservedRetiredCarouselSlide,
+  isPreservedRetiredCarouselSource,
+} from "./historical-source-retirement.ts";
 
 import type { CarouselBusinessVisualProfileId } from "@/lib/carousel/business-visual-profile";
 import {
@@ -804,7 +808,7 @@ export class CarouselProductAssetConflictError extends Error {
 
 function isRuntimeSafeCategoryImageAsset(
   asset: CategoryImageAssetRow,
-): asset is CategoryImageAssetRow {
+): boolean {
   return (
     asset.status === "ready" &&
     asset.subject_review_status === "approved" &&
@@ -987,11 +991,11 @@ function mapSlide(row: CarouselSlideRow): CarouselSlideRecord {
   };
 }
 
-async function getRuntimeSafeCategoryImageAssetIds(assetIds: string[]) {
+async function getCarouselSlideSourceAssets(assetIds: string[]) {
   const uniqueAssetIds = Array.from(new Set(assetIds.filter(Boolean)));
 
   if (uniqueAssetIds.length === 0) {
-    return new Set<string>();
+    return new Map<string, CategoryImageAssetRow>();
   }
 
   const { data, error } = await getSupabaseServerClient()
@@ -1003,26 +1007,40 @@ async function getRuntimeSafeCategoryImageAssetIds(assetIds: string[]) {
     throw new Error(`Could not verify carousel image safety: ${error.message}`);
   }
 
-  return new Set(
-    (data ?? [])
-      .filter(isRuntimeSafeCategoryImageAsset)
-      .map((asset) => asset.id),
-  );
+  return new Map((data ?? []).map((asset) => [asset.id, asset]));
 }
 
-async function mapRuntimeSafeSlides(rows: CarouselSlideRow[]) {
-  const safeAssetIds = await getRuntimeSafeCategoryImageAssetIds(
+async function mapRuntimeSafeSlides(
+  rows: CarouselSlideRow[],
+  completedCarouselIds: ReadonlySet<string>,
+) {
+  const assetsById = await getCarouselSlideSourceAssets(
     rows
       .map((row) => row.category_image_asset_id)
       .filter((assetId): assetId is string => Boolean(assetId)),
   );
 
   return rows
-    .filter(
-      (row) =>
-        Boolean(row.category_image_asset_id) &&
-        safeAssetIds.has(row.category_image_asset_id as string),
-    )
+    .filter((row) => {
+      const asset = row.category_image_asset_id
+        ? assetsById.get(row.category_image_asset_id)
+        : null;
+      return Boolean(
+        asset &&
+          (isRuntimeSafeCategoryImageAsset(asset) ||
+            (asset.library_asset_id !== null &&
+              asset.asset_role !== null &&
+              canReadPreservedRetiredCarouselSlide({
+                asset,
+                generationStatus: completedCarouselIds.has(
+                  row.carousel_generation_id,
+                )
+                  ? "completed"
+                  : "uncompleted",
+                slide: row,
+              }))),
+      );
+    })
     .map(mapSlide);
 }
 
@@ -1979,7 +1997,10 @@ export async function getCarouselGenerationStatus(carouselId: string) {
 
   return {
     generation,
-    slides: await mapRuntimeSafeSlides(data ?? []),
+    slides: await mapRuntimeSafeSlides(
+      data ?? [],
+      new Set(generation.status === "completed" ? [generation.id] : []),
+    ),
   };
 }
 
@@ -2012,6 +2033,7 @@ export async function reserveCarouselContentAssignment(params: {
   }
 }
 
+/** Resolve only IDs from an owned, readable existing Carousel's source slides. */
 export async function getCarouselEditBackgrounds(assetIds: string[]) {
   const ids = Array.from(new Set(assetIds.filter(Boolean)));
 
@@ -2021,7 +2043,9 @@ export async function getCarouselEditBackgrounds(assetIds: string[]) {
 
   const { data, error } = await getSupabaseServerClient()
     .from(CATEGORY_IMAGE_ASSETS_TABLE)
-    .select("id,base_url,is_active,runtime_exclusion_reason,status,subject_review_status")
+    .select(
+      "id,base_url,is_active,runtime_exclusion_reason,source_metadata,status,subject_review_status",
+    )
     .in("id", ids);
 
   if (error) {
@@ -2029,10 +2053,11 @@ export async function getCarouselEditBackgrounds(assetIds: string[]) {
   }
 
   return (data ?? []).flatMap((asset) =>
-    asset.is_active &&
-    asset.status === "ready" &&
-    asset.subject_review_status === "approved" &&
-    asset.runtime_exclusion_reason === null
+    (asset.is_active &&
+      asset.status === "ready" &&
+      asset.subject_review_status === "approved" &&
+      asset.runtime_exclusion_reason === null) ||
+    isPreservedRetiredCarouselSource(asset)
       ? [{ id: asset.id, url: asset.base_url }]
       : [],
   ) satisfies CarouselEditBackground[];
@@ -2320,7 +2345,14 @@ async function getCarouselGenerationStatusesForRows(
     throw new Error(`Could not load carousel batch slides: ${slideError.message}`);
   }
 
-  const safeSlides = await mapRuntimeSafeSlides(slideRows ?? []);
+  const safeSlides = await mapRuntimeSafeSlides(
+    slideRows ?? [],
+    new Set(
+      generations
+        .filter((generation) => generation.status === "completed")
+        .map((generation) => generation.id),
+    ),
+  );
   const slidesByCarouselId = new Map<string, CarouselSlideRecord[]>();
 
   for (const slide of safeSlides) {

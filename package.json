@@ -100,7 +100,7 @@
     "carousel:local-images:verify-import": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/verify-local-carousel-image-import.mjs",
     "carousel:bucket-images:archive": "node scripts/archive-carousel-bucket-assets.mjs",
     "carousel:source-library:reset": "node scripts/reset-carousel-source-library.mjs",
-    "carousel:role-library:test": "node --test scripts/carousel-role-library-contract.test.mjs && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test lib/carousel/image-library-category.test.ts lib/carousel/image-library-relevance.test.ts lib/carousel/related-static-reservation-contract.test.ts && npm run worker:build && node --test worker/dist/lib/carousel-image-library-relevance.test.js",
+    "carousel:role-library:test": "node --test scripts/carousel-role-library-contract.test.mjs scripts/carousel-role-library-retirements.test.mjs scripts/carousel-retired-source-replay-db.test.mjs && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test lib/carousel/image-library-category.test.ts lib/carousel/image-library-relevance.test.ts lib/carousel/related-static-reservation-contract.test.ts && npm run worker:build && node --test worker/dist/lib/carousel-image-library-relevance.test.js",
     "carousel:role-library:prepare": "node scripts/prepare-carousel-role-library.mjs",
     "carousel:role-library:import": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/import-carousel-role-library.mjs",
     "carousel:role-library:verify": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/verify-carousel-role-library.mjs",

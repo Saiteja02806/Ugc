@@ -16,6 +16,7 @@ import {
   uploadBufferToStorage,
 } from "../lib/storage/storage.ts";
 import {
+  assertCarouselRoleManifestHasNoRetiredSources,
   assertCarouselRolePoolMinimums,
   summarizeCarouselRoleAssets,
 } from "./carousel-role-library.mjs";
@@ -348,6 +349,8 @@ function validateManifest(value, manifestDirectory) {
   const uniqueIds = new Set();
   const uniqueHashes = new Set();
   const uniqueKeys = new Set();
+
+  assertCarouselRoleManifestHasNoRetiredSources(items);
 
   for (const asset of items) {
     if (!asset.libraryAssetId || !asset.category || !asset.role) {

@@ -8,6 +8,12 @@ import {
 import path from "node:path";
 
 import {
+  CAROUSEL_RETIRED_SOURCE_SHA256S,
+  assertCarouselRoleManifestHasNoRetiredSources,
+  isPreservedCarouselRoleAssetRetirement,
+} from "./carousel-role-library.mjs";
+
+import {
   buildPublicStorageUrl,
   deleteStorageObject,
   getMissingStorageEnvVars,
@@ -154,12 +160,16 @@ function buildPlan(params) {
   );
   const additions = [];
   const retained = [];
+  const preservedRetirements = [];
   const staleById = new Map();
 
   for (const asset of params.desiredAssets) {
     const existing = remoteById.get(asset.libraryAssetId);
 
     if (existing) {
+      if (isPreservedCarouselRoleAssetRetirement(existing)) {
+        throw new Error(`Refusing to restore preserved retired asset ${existing.library_asset_id}.`);
+      }
       assertRemoteIdentity(asset, existing);
       retained.push({ ...asset, remoteId: existing.id });
       continue;
@@ -168,6 +178,9 @@ function buildPlan(params) {
     const collision = remoteByHash.get(asset.dbRow.source_file_sha256);
 
     if (collision) {
+      if (isPreservedCarouselRoleAssetRetirement(collision)) {
+        throw new Error(`Refusing to replace preserved retired asset ${collision.library_asset_id}.`);
+      }
       staleById.set(collision.id, {
         ...collision,
         staleReason: `canonical identity moves to ${asset.libraryAssetId}`,
@@ -179,6 +192,13 @@ function buildPlan(params) {
 
   for (const remote of params.remoteAssets) {
     const sourcePath = getRemoteSourcePath(remote);
+
+    if (isPreservedCarouselRoleAssetRetirement(remote)) {
+      if (matchesAnyPrefix(sourcePath, params.reconcilePrefixes)) {
+        preservedRetirements.push(remote);
+      }
+      continue;
+    }
 
     if (
       matchesAnyPrefix(sourcePath, params.reconcilePrefixes) &&
@@ -212,7 +232,7 @@ function buildPlan(params) {
     }
   }
 
-  return { additions, refreshes, retained, stale };
+  return { additions, refreshes, retained, preservedRetirements, stale };
 }
 
 async function loadRemoteRoleAssets() {
@@ -223,7 +243,7 @@ async function loadRemoteRoleAssets() {
     const { data, error } = await supabase
       .from("category_image_assets")
       .select(
-        "id,asset_role,base_s3_key,category_slug,is_active,library_asset_id,source_file_sha256,source_filename,source_folder,source_metadata,source_original_s3_key,status,subject_review_status,thumb_s3_key",
+        "id,asset_role,base_s3_key,category_slug,is_active,library_asset_id,runtime_exclusion_reason,source_file_sha256,source_filename,source_folder,source_metadata,source_original_s3_key,status,subject_review_status,thumb_s3_key",
       )
       .not("library_asset_id", "is", null)
       .order("id")
@@ -275,10 +295,15 @@ async function readPreflight(staleIds) {
 }
 
 async function deleteStaleDatabaseRows(items) {
+  const preserved = items.find(isPreservedCarouselRoleAssetRetirement);
+  if (preserved) {
+    throw new Error(`Refusing to delete preserved retired asset ${preserved.library_asset_id}.`);
+  }
   const ids = items.map((item) => item.id);
   const libraryIds = items.map((item) => item.library_asset_id);
   const idArray = sqlUuidArray(ids);
   const libraryIdArray = sqlTextArray(libraryIds);
+  const retiredHashArray = sqlTextArray(CAROUSEL_RETIRED_SOURCE_SHA256S);
 
   await queryDatabase(`
     begin;
@@ -286,6 +311,20 @@ async function deleteStaleDatabaseRows(items) {
 
     do $$
     begin
+      perform 1 from public.category_image_assets
+      where id = any(${idArray}) for update;
+
+      if exists (
+        select 1 from public.category_image_assets
+        where id = any(${idArray})
+          and (
+            source_metadata #>> '{retirement,preserveHistoricalRenders}' = 'true'
+            or lower(source_file_sha256) = any(${retiredHashArray})
+          )
+      ) then
+        raise exception 'carousel_role_library_reconcile_preserved_retirement';
+      end if;
+
       if exists (
         select 1
         from public.background_jobs
@@ -328,6 +367,10 @@ async function deleteStaleDatabaseRows(items) {
 }
 
 async function deleteStaleStorageObjects(items) {
+  const preserved = items.find(isPreservedCarouselRoleAssetRetirement);
+  if (preserved) {
+    throw new Error(`Refusing to delete preserved retired asset objects ${preserved.library_asset_id}.`);
+  }
   const keys = unique(
     items.flatMap((item) => [
       item.base_s3_key,
@@ -466,6 +509,8 @@ function validateManifest(value, directory) {
     throw new Error("Manifest is partial or its deduplicated count is stale.");
   }
 
+  assertCarouselRoleManifestHasNoRetiredSources(assets);
+
   for (const asset of assets) {
     if (
       !asset.libraryAssetId ||
@@ -571,6 +616,12 @@ function summarizePlan(value) {
     refreshCount: value.refreshes.length,
     refreshes: value.refreshes.map(toAssetReference),
     retainedCount: value.retained.length,
+    preservedRetirementCount: value.preservedRetirements.length,
+    preservedRetirements: value.preservedRetirements.map((item) => ({
+      id: item.id,
+      libraryAssetId: item.library_asset_id,
+      sourcePath: getRemoteSourcePath(item),
+    })),
     stale: value.stale.map((item) => ({
       category: item.category_slug,
       id: item.id,
@@ -604,6 +655,7 @@ function printPlan(value, preflight, reportPath) {
   console.log(`Desired scoped assets: ${desiredAssets.length}`);
   console.log(`Additions: ${value.additions.length}`);
   console.log(`Retained: ${value.retained.length}`);
+  console.log(`Preserved retirements: ${value.preservedRetirements.length}`);
   console.log(`Refreshed: ${value.refreshes.length}`);
   console.log(`Stale removals: ${value.stale.length}`);
   console.log(`Active Carousel jobs: ${preflight.activeCarouselJobCount}`);

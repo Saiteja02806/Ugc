@@ -8,7 +8,7 @@ import { PGlite } from '@electric-sql/pglite';
 const release = fileURLToPath(new URL('../', import.meta.url));
 const baseline = readFileSync(`${release}/supabase/migrations/20260829093001_production_baseline_v1.sql`, 'utf8');
 const quota = readFileSync(`${release}/supabase/migrations/20260928151747_mcp_upload_quota.sql`, 'utf8');
-const candidate = readFileSync(new URL('../supabase/migrations/20261011150832_mcp_upload_recovery.sql', import.meta.url), 'utf8');
+const candidate = readFileSync(new URL('../supabase/migrations/20261011171055_mcp_upload_recovery.sql', import.meta.url), 'utf8');
 async function setup() {
   const db = new PGlite();
   await db.exec('create role anon; create role authenticated; create role service_role bypassrls;');

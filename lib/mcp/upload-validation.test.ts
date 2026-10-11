@@ -72,3 +72,16 @@ test("video confirmation requires duration and enforces the collection limit", (
   });
   assert.equal(code(() => validateMcpUploadConfirmation({ ...params, object: { ContentType: "video/mp4", ContentLength: 251 * 1024 * 1024 }, input: { width: 1080, height: 1920, durationSeconds: 4 } })), "FILE_TOO_LARGE");
 });
+
+test("registered MCP Demo confirmation replays without accepting unrelated Demo records", () => {
+  const demo = { ...image, collection: "video", mime_type: "video/mp4", source_type: "demo_upload",
+    status: "ready", width: 720, height: 1280, duration_seconds: 12, metadata: { mcpUpload: true, mcpDemo: true } } as unknown as MediaAssetRow;
+  const object = { ContentType: "video/mp4", ContentLength: 1024 };
+  const input = { width: 720, height: 1280, durationSeconds: 12 };
+  assert.equal(validateMcpUploadConfirmation({ asset: demo, object, input }).alreadyReady, true);
+  for (const asset of [{ ...demo, metadata: { mcpUpload: true } }, { ...demo, status: "uploading" },
+    { ...demo, metadata: { mcpDemo: true } }]) {
+    assert.equal(code(() => validateMcpUploadConfirmation({ asset: asset as MediaAssetRow, object, input })), "NOT_FOUND");
+  }
+  assert.equal(code(() => validateMcpUploadConfirmation({ asset: demo, object, input: { ...input, durationSeconds: 11 } })), "UPLOAD_MISMATCH");
+});

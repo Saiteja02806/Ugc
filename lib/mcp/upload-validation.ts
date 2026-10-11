@@ -25,7 +25,9 @@ export function isMcpUpload(asset: MediaAssetRow) {
 
 export function assertMcpUploadConfirmable(asset: MediaAssetRow) {
   if (!isMcpUpload(asset) ||
-      (asset.source_type !== "upload" && asset.source_type !== "influencer_upload")) {
+      (asset.source_type !== "upload" && asset.source_type !== "influencer_upload" &&
+       !(asset.source_type === "demo_upload" && asset.status === "ready" &&
+         asset.metadata && typeof asset.metadata === "object" && !Array.isArray(asset.metadata) && asset.metadata.mcpDemo === true))) {
     throw new UploadValidationError("NOT_FOUND", "Upload not found.");
   }
   if (asset.status !== "uploading" && asset.status !== "ready") {

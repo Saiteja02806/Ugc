@@ -7,7 +7,7 @@ description: Attach a demo to owned UGC Pilot footage, trim or add exact video t
 
 Use discovered `get_video_finishing_capabilities`, `finish_video`, and `get_video_finish`. Check capabilities before new work. If tools or a requested feature are unavailable, report that state. Finishing requires `creative:write`, recovery `jobs:read`, and output retrieval `assets:read`. Existing generation permission does not grant editing permission; use normal OAuth reauthorization when needed.
 
-Resolve the opening and optional demo to ready owned asset IDs using `get_asset`. For local files, use signed PUT and confirmation with actual bytes; see [media management](../manage-ugc-media/SKILL.md). A generic ready uploaded video can serve as the Explore demo; it does not register it in the dedicated Demo library. Generate new footage only when requested, using [media creation](../create-ugc-media/SKILL.md).
+Resolve the opening and optional demo to ready owned asset IDs using `get_asset`. For local files, use signed PUT and confirmation with actual bytes; see [media management](../manage-ugc-media/SKILL.md). A generic ready uploaded video can serve as the Explore demo. To add it to the dedicated Demo library, use discovered `register_demo` after confirmation; this preserves its source asset ID. Browse registered demos through `list_demos`/`get_demo`. Generate new footage only when requested, using [media creation](../create-ugc-media/SKILL.md).
 
 Read the discovered finishing schema for exact fields. The minimal composition is `draft: {sourceAssetId: openingId, demoAssetId: demoId}`. The opening plays first, then the demo. Optional audio inputs must be existing owned assets; this workflow has no audio generation/upload tools. Preserve chosen clips, wording, order and audio. Add paid subtitles only when requested and reported available.
 
@@ -29,4 +29,4 @@ For `completed`, call `get_asset` for returned `output_asset_ids`. Use actual UR
 
 In a terminal-capable IDE, use the bundled [local transfer helper](../manage-ugc-media/references/local-transfer.md) to verify and save the download. Preserve the user's existing files by choosing a new output path.
 
-Scheduling, publishing, unfinished server draft editing, operation-history discovery and dedicated Demo registration remain separate capabilities. Do not invent tools. Hosts without local-file/binary-transfer support require a supported bridge or attachment mechanism for local upload/download.
+Scheduling, publishing, unfinished server draft editing, operation-history discovery remain separate capabilities. Do not invent tools. Hosts without local-file/binary-transfer support require a supported bridge or attachment mechanism for local upload/download.

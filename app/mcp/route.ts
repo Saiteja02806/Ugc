@@ -11,6 +11,7 @@ import {
 } from "@/lib/mcp/tool-auth-metadata";
 
 export const runtime = "nodejs";
+export const maxDuration = 180;
 
 async function handle(request: Request) {
   const requestId = randomUUID();

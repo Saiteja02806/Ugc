@@ -52,3 +52,5 @@ This audit concerns ordinary customer application operation. Internal worker, we
 5. Add business/settings, social scheduling/publishing and analytics parity.
 
 The minimum video journey is much nearer than complete application parity. Finishing code being present is not evidence that the whole application is exposed through MCP.
+
+Upload recovery progress: normal approval review recovered on the next continuation. Stable reservation request keys, upload lookup/list/renew tools and server byte probing are now integrated in `codex/mcp-upload-recovery`, extending source discovery to twenty-two tools. Full MCP regressions, TypeScript, actual-byte probing and transfer tests, baseline SQL tests and plugin package checks passed. Plugin 0.1.5 saves a durable intent before reservation. Production migration/release and Codex/Claude execution remain incomplete. See `mcp-upload-recovery-draft-2026-10-11.md` for exact evidence.

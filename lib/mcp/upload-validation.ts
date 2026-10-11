@@ -103,7 +103,7 @@ export function validateMcpUploadConfirmation(params: {
     throw new UploadValidationError("INVALID_INPUT", "Image uploads do not have a video duration.");
   }
   if (asset.status === "ready" && (asset.width !== input.width || asset.height !== input.height ||
-      asset.duration_seconds !== durationSeconds)) {
+      (asset.duration_seconds !== durationSeconds && !(typeof asset.duration_seconds === "number" && typeof durationSeconds === "number" && Math.abs(asset.duration_seconds - durationSeconds) <= 0.05)))) {
     throw new UploadValidationError("UPLOAD_MISMATCH", "The saved media dimensions or duration differ from this confirmation.");
   }
 

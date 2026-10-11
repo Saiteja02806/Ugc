@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ugc-pilot",
-  "version": "0.1.4",
-  "description": "Draft UGC copy, generate media, and finish owned hook/demo videos through your UGC Pilot account.",
+  "version": "0.1.5",
+  "description": "Draft UGC copy, generate and finish videos, and manage owned demos and recoverable uploads through UGC Pilot.",
   "author": {
     "name": "UGC Pilot",
     "url": "https://www.getugcpilot.com"
@@ -32,7 +32,8 @@
           "Image generation",
           "Video generation",
           "Media library",
-          "Video finishing where enabled"
+          "Video finishing where enabled",
+          "Demo library and upload recovery where deployed"
         ],
         "logo": "./assets/logo.png",
         "composerIcon": "./assets/logo.png",
@@ -94,7 +95,7 @@
         }
       },
       "publication": {
-        "release_notes": "Adds owned hook/demo video finishing instructions and a local upload/download helper requiring Node.js 22+ and ffprobe. Preserves the existing twelve MCP tools; three additional finishing tools require a coordinated server release, enabled capabilities and creative:write consent. Codex and Claude Code production acceptance and directory submission remain pending."
+        "release_notes": "Adds dedicated Demo registration/list/get/delete and upload reservation recovery with stable request IDs, lookup, renewal and server byte probing. The local helper saves an intent receipt before reservation. Requires the matching twenty-two-tool server release; installed Codex/Claude acceptance and public directory submission remain pending."
       }
     }
   }

@@ -79,6 +79,12 @@ const canonicalTypeByImplementation: Record<
   wall_text_generation: "wall_text_generation",
 };
 
+/** Customer history includes website jobs as well as MCP jobs. */
+export function getImplementationBackgroundJobTypes(type?: CanonicalBackgroundJobType): BackgroundJobType[] {
+  return (Object.keys(canonicalTypeByImplementation) as BackgroundJobType[])
+    .filter(key => key !== "test_worker_job" && (!type || canonicalTypeByImplementation[key] === type));
+}
+
 export type PublicBackgroundJob = {
   exploreFormat?: "hook" | "wall_text" | "slideshow";
   cancelRequestedAt: string | null;

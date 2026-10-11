@@ -10,7 +10,7 @@ Alternatively, with the user's authorization to add this server, run:
 
 ```sh
 codex mcp add ugc-pilot --url https://mcp.getugcpilot.com/mcp
-codex mcp login ugc-pilot --scopes account:read,brand:read,assets:read,assets:write,generation:write,jobs:read,creative:write
+codex mcp login ugc-pilot --scopes account:read,brand:read,assets:read,assets:write,generation:write,jobs:read,creative:write,jobs:write
 ```
 
 The add command may already offer OAuth; use login only if sign-in is still needed. Reuse a correct existing entry. If it points elsewhere, explain the mismatch before replacing it. Start a new session after installation if tools are not discovered. A local MCP config does not automatically connect ChatGPT web.

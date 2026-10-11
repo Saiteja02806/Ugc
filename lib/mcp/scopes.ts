@@ -5,6 +5,7 @@ export const MCP_SCOPES = [
   "assets:write",
   "generation:write",
   "jobs:read",
+  "jobs:write",
   "creative:write",
 ] as const;
 

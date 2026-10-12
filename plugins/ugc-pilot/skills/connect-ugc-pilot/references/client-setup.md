@@ -15,6 +15,26 @@ codex mcp login ugc-pilot --scopes account:read,brand:read,assets:read,assets:wr
 
 The add command may already offer OAuth; use login only if sign-in is still needed. Reuse a correct existing entry. If it points elsewhere, explain the mismatch before replacing it. Start a new session after installation if tools are not discovered. A local MCP config does not automatically connect ChatGPT web.
 
+### Load the bundled skills locally
+
+For a supported repository marketplace, copy the extracted `ugc-pilot` folder into your workspace's `plugins/` directory. Add an entry to `.agents/plugins/marketplace.json` at that workspace root (merge with an existing catalogue rather than replacing it):
+
+```json
+{
+  "name": "ugc-pilot-local",
+  "plugins": [
+    {
+      "name": "ugc-pilot",
+      "source": { "source": "local", "path": "./plugins/ugc-pilot" },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "interface": { "displayName": "UGC Pilot" }
+    }
+  ]
+}
+```
+
+The source path resolves from the workspace root. Restart the desktop app through its normal UI, then choose this local source in the Plugins Directory and install/update UGC Pilot. Host support and organization policy can differ; do not claim installation from a file copy alone. Verify that the Edit skill and transfer helper load and a read-only tool succeeds. If the plugin already supplies a working MCP connection, reuse it instead of adding another copy.
+
 ## Claude Code
 
 Install the supplied Claude-compatible plugin through a trusted local source or marketplace. For local evaluation, use `claude --plugin-dir /absolute/path/to/ugc-pilot`; run `/mcp` to complete OAuth. Do not also add the same MCP separately unless the plugin connection is unavailable, to avoid duplicate tools.
@@ -35,9 +55,17 @@ Use Customize → Connectors → Add custom connector. Enter UGC Pilot and the e
 
 If a private UGC Pilot plugin link has been supplied, install it and connect when prompted. This bundle does not include an install link. A public-directory listing is a separate reviewed release; do not claim one exists.
 
-For developers with developer mode enabled, the current documented path is Settings → Security and login → Developer mode, then Plugins → plus → add the MCP URL. Create the personal connection, authenticate, and install it. Availability may depend on account and workspace policy. Follow the current UI rather than promising every account has developer mode.
+Where custom connections are available, go to ChatGPT Plugins → plus → Add custom MCP server, enter the endpoint and finish the normal OAuth flow. Availability depends on account and workspace policy. Follow the current client UI; do not promise every account has the same setup options.
 
 Uploading this Markdown guide or a ZIP to an ordinary web conversation does not install a connector. If the host lacks a supported installation path, explain that limitation and offer the manual connector steps.
+
+## Package updates and tool refresh
+
+Extract a new version into a fresh folder so the older bundle remains available. In Claude Code, restart with `claude --plugin-dir /absolute/path/to/ugc-pilot` pointing to the new folder and use `/mcp` to check the connection. In Codex, update the same `ugc-pilot` plugin through its supported local source or Plugins Directory flow; a repository/personal marketplace can point at the extracted folder. Do not edit installed cache files or create duplicate server entries to force an update. Follow the host's supported refresh/restart flow, then verify discovered tools in a new session when necessary.
+
+Adding the MCP endpoint connects server tools; loading the package adds its skills and local helper. Neither step proves both are active. This release expects 33 server tools, including `open_edit_draft`, `update_edit_draft`, `get_edit_export_capabilities`, `export_edit_draft` and `get_edit_export`. If discovery is stale, refresh the connection through the client. Reauthenticate only for expired sign-in or missing scopes, not merely because new tools appeared. An existing `creative:write` grant covers the Edit tools. Do not generate media or change a draft just to check discovery.
+
+The local transfer helper needs Node.js 22+, ffprobe and a host process API that can pass ephemeral JSON on stdin. A browser-only connector cannot read an IDE file path. Use the bundled local transfer reference after the package is loaded.
 
 ## Public distribution
 
@@ -53,6 +81,8 @@ Public review is still pending. Publisher/domain verification, installed-client 
 
 - https://learn.chatgpt.com/docs/extend/mcp
 - https://developers.openai.com/plugins/quickstart
+- https://developers.openai.com/plugins/build/plugins
+- https://code.claude.com/docs/en/plugins
 - https://developers.openai.com/plugins/deploy/submission
 - https://developers.openai.com/plugins/deploy/connect-chatgpt
 - https://claude.com/resources/articles/build-plugins-for-claude

@@ -1,0 +1,169 @@
+{
+  "version": "0.1.7",
+  "endpoint": "https://mcp.getugcpilot.com/mcp",
+  "tool_count": 33,
+  "skill_count": 10,
+  "line_endings": "Packaged Markdown/JSON/MJS use canonical LF; binary files are unchanged.",
+  "artifacts": [
+    {
+      "path": "public/downloads/ugc-pilot-0.1.7.zip",
+      "bytes": 104028,
+      "sha256": "0d70bd3a1fdee00286146d4441371053f34e43389652280335153b786a4fdd18"
+    },
+    {
+      "path": "public/downloads/ugc-pilot-0.1.7.zip.sha256",
+      "bytes": 86,
+      "sha256": "6653d6c12ea2e2b1b77e9b0f5c32594572785d6971ef48a7816c06f924a7402a"
+    },
+    {
+      "path": "public/downloads/ugc-pilot-0.1.7-setup.md",
+      "bytes": 13815,
+      "sha256": "da7951c14700b5d4590f2140e3bb4475e9fa25c70f35a783b349e2a5db763ef2"
+    }
+  ],
+  "entries": [
+    {
+      "path": ".claude-plugin/plugin.json",
+      "sha256": "ff4da456155d7a4c56931db7e78ff77ed22290ec59aa3ca997d5e9bc9b61c6d7"
+    },
+    {
+      "path": ".codex-plugin/plugin.json",
+      "sha256": "e2fdb76c39ab862fb876a7fcaa3d391ce6db7d9fe587b9c2923b3712544d0fd3"
+    },
+    {
+      "path": ".mcp.json",
+      "sha256": "3318d752bdf18b1afc653d91bc5ae485979b3711507fb52b2ad5ebc72fdf3a72"
+    },
+    {
+      "path": "README.md",
+      "sha256": "567b34c07d128de5c08ac82585962bb66ba9713b568173172bbde23cb6d61a66"
+    },
+    {
+      "path": "assets/logo.png",
+      "sha256": "44a9e46f81ff6618d620647510c31e1c625f426c10ce8b50c8dae248522f7d36"
+    },
+    {
+      "path": "evaluation-cases.json",
+      "sha256": "41c931d660f9cb70a1222e219c4ca3de3c7ef23a587ed9077bbd5dd05bd54d99"
+    },
+    {
+      "path": "mcp.json",
+      "sha256": "5f21bb3408bbdb4fb3d3327c0abb5cd16eee087816347aefdd3b569d1295790d"
+    },
+    {
+      "path": "plugin.json",
+      "sha256": "5ead612a452b181013626697b348fa744bc45da8dd4f7edca860875829818412"
+    },
+    {
+      "path": "references/creative-workflow.md",
+      "sha256": "d2748a0f046540f8de0a5d213430e9250af4811a923c28d6ab4b8c40f54e5238"
+    },
+    {
+      "path": "skills/connect-ugc-pilot/SKILL.md",
+      "sha256": "2d51a482dbe301a4d2d26380d49b7189dd15406e761e3f39fd7f49d12f4f336b"
+    },
+    {
+      "path": "skills/connect-ugc-pilot/references/client-setup.md",
+      "sha256": "fd53c4323e3e719d6b318ade843704da38c3babdd5a48b56e2f0fdf2ad404ef6"
+    },
+    {
+      "path": "skills/create-ugc-media/SKILL.md",
+      "sha256": "96e51365a5c91ebee4a02b3dfd873f75ae795bd3a6292b7ea137b2c04efc56cb"
+    },
+    {
+      "path": "skills/edit-ugc-draft/SKILL.md",
+      "sha256": "64566c52e240edbbd303714f2538000360bf7817c3f5f8a3050f599a6a618042"
+    },
+    {
+      "path": "skills/emotion-hook-director/SKILL.md",
+      "sha256": "a45bb1d7c99fd33f39fcb882df17baf6196b7a5f22fbea00bd63bda2609c1353"
+    },
+    {
+      "path": "skills/emotion-hook-director/references/performance-guide.md",
+      "sha256": "e718c6e9ae3a29d45a67a4b6b3fc158ddb378fccc8f94f8ec1fac574e5ce6d9f"
+    },
+    {
+      "path": "skills/emotion-hook-director/schemas/director-output.schema.json",
+      "sha256": "5808d194fd86b3f0b60bf2a4be84173e23948dea1427b8570f4621af89444139"
+    },
+    {
+      "path": "skills/finish-ugc-video/SKILL.md",
+      "sha256": "56acddac1bf4db92861c86f951032117097fcbc48c9fa90383886fc3f76fdf6f"
+    },
+    {
+      "path": "skills/manage-ugc-media/SKILL.md",
+      "sha256": "fbbf1350bb3905766cd3decfaaa2e8a7f85e3ea7f58e5085b44a1a8e01c3653b"
+    },
+    {
+      "path": "skills/manage-ugc-media/references/local-transfer.md",
+      "sha256": "15ad41e3488ab6ab4b2335dd95904a93b54ca468a90987642407cfaa7b4340a1"
+    },
+    {
+      "path": "skills/manage-ugc-media/scripts/transfer-media.mjs",
+      "sha256": "9af12b76dae4e32afe4b554318aa302c5f42fd80535f44ea7f4669fbabf8f22e"
+    },
+    {
+      "path": "skills/ugc-hook-intelligence/SKILL.md",
+      "sha256": "f7f1710ccca5f3824add770ce98b7b8c69417dccd2bf7c2f9bb7f122804b8fca"
+    },
+    {
+      "path": "skills/ugc-hook-intelligence/references/examples.md",
+      "sha256": "bf008c0ab9e6fa35f0b5a6712cc6d748bc89b4dbeb836cbfa01f7a957fe812bc"
+    },
+    {
+      "path": "skills/ugc-hook-intelligence/references/hook-patterns.md",
+      "sha256": "b22744a2876a1c4bfd123e1a7914aac92ab5911d633f629dcd3d7f07cc44f7d9"
+    },
+    {
+      "path": "skills/ugc-hook-intelligence/references/source-hook-library.md",
+      "sha256": "ee769812522e828ca7f792147ae41501c1356b1e537e7df377826e3b8c617c2b"
+    },
+    {
+      "path": "skills/ugc-hook-intelligence/schemas/hook-output.schema.json",
+      "sha256": "154f5e417e392bf9eff9488b87943cc49c81fca3ec162a9b495aedb638d9c440"
+    },
+    {
+      "path": "skills/ugc-native-slideshow/SKILL.md",
+      "sha256": "b564ff0d3837deb12aea263b13208321a0c9c5d3e06bf4c91c985a5f064f0394"
+    },
+    {
+      "path": "skills/ugc-native-slideshow/references/layout-guide.md",
+      "sha256": "165cb02e5c2740b90ea7abe342b899d529cf9d3288be2f7cbd23403c456a0409"
+    },
+    {
+      "path": "skills/ugc-native-slideshow/references/output-schema.json",
+      "sha256": "12cad9d8a71ca1235d3bc46f2f04fb2b7d0186c5c727bdc5c9ab729ce0ed7580"
+    },
+    {
+      "path": "skills/ugc-native-slideshow/references/pattern-library.md",
+      "sha256": "3a5ada2ee33893fe9b14fd340c496d909065cfba95bc8d9fcea6dc85cffebb71"
+    },
+    {
+      "path": "skills/wall-text-generation/SKILL.md",
+      "sha256": "f1d8beeee62884fc0d49659538200d3d7e408c74e6a1c0939fb5012df21ee477"
+    },
+    {
+      "path": "skills/wall-text-generation/references/writing-guide.md",
+      "sha256": "f79b369d38eaf5e1298a67ae31550c2a3bb6df958daeb7362aa88727987ab66f"
+    },
+    {
+      "path": "skills/wall-text-generation/schemas/wall-copy.schema.json",
+      "sha256": "a230e5483acff8b9115dae6e17631789b986a08feee3b065b968f546c734f2b0"
+    },
+    {
+      "path": "skills/wall-text-video-generation/SKILL.md",
+      "sha256": "f410af9560fc5a98483e6baf08914647604794ae53cf0b2dca52f01601df39fd"
+    },
+    {
+      "path": "skills/wall-text-video-generation/references/visual-guide.md",
+      "sha256": "fae2d7ba3a6ff159a2651694a5f1d943b1ad5599bcb3540d4914bc0079eb391d"
+    },
+    {
+      "path": "skills/wall-text-video-generation/schemas/video-output.schema.json",
+      "sha256": "3736d1c247f05b9b40a3774c3f210a6abaa8f3a09a973858ec6f5963be5c04e7"
+    }
+  ],
+  "limitations": [
+    "Package checks do not prove installed Codex/Claude skill activation or a customer render/upload/download. Public directory approval is separate."
+  ]
+}

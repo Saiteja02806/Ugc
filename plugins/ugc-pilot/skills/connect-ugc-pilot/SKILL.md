@@ -17,7 +17,7 @@ Once tools are available:
 2. Call `get_entitlements` and report plan/access, spendable credits, reserved credits, and generation costs returned by the server.
 3. Call `get_capabilities` and report the actual available formats, durations, and counts.
 
-For editing or demo composition, also check `get_video_finishing_capabilities` when discovered. This reports actual eligibility and rollout gates without submitting a render.
+For demo composition, check `get_video_finishing_capabilities` when discovered. For the dedicated Edit-page export, check `get_edit_export_capabilities`. Both are read-only. Draft listing/reading uses `assets:read`; opening/saving/export uses the existing `creative:write`, and export status uses `jobs:read`. Tool catalogue refresh alone does not require new consent when those permissions were already approved.
 
 A Codex, ChatGPT, or Claude subscription does not supply UGC Pilot generation credits. Check the UGC Pilot account's actual entitlements. This connection check is read-only; do not generate a sample unless the user requests generation.
 

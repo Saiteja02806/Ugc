@@ -29,4 +29,4 @@ For `completed`, call `get_asset` for returned `output_asset_ids`. Use actual UR
 
 In a terminal-capable IDE, use the bundled [local transfer helper](../manage-ugc-media/references/local-transfer.md) to verify and save the download. Preserve the user's existing files by choosing a new output path.
 
-Scheduling, publishing, unfinished server draft editing, operation-history discovery remain separate capabilities. Do not invent tools. Hosts without local-file/binary-transfer support require a supported bridge or attachment mechanism for local upload/download.
+For the dedicated Edit page's saved trim/text drafts and export, use [Edit drafts](../edit-ugc-draft/SKILL.md). Use discovered `list_operations`/`get_operation` for owned background-job history; finishing request IDs can be recovered there when available. Scheduling, publishing and Explore/slideshow working drafts remain separate capabilities. Do not invent tools. Hosts without local-file/binary-transfer support require a supported bridge or attachment mechanism for local upload/download.

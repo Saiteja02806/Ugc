@@ -1,6 +1,6 @@
 # Plugin 0.1.7 IDE workflow package — 12 October 2026
 
-Status: prepared in the isolated MCP checkout; website release/production file acceptance pending. Full application access and installed Codex/Claude customer journeys remain unfinished.
+Status: released to the production website at runtime commit `37aa1849768dbadd08388ef2534566cab9ae5d4b`; exact served download/link acceptance passed. Full application access and installed Codex/Claude customer journeys remain unfinished.
 
 The public setup page previously linked 0.1.2 while the local 0.1.6 candidate described a 26-tool contract. This release preserves `ugc-pilot` identity, hosted Streamable HTTP endpoint and per-user OAuth, and packages the existing local transfer helper with an additive `edit-ugc-draft` skill. The ten skills cover copy/generation, owned library/Demo transfer, finishing and the same dedicated Edit drafts/export as the application. The matching server contract has 33 tools; native chat discovery may still expose 30. Package installation, tool refresh and OAuth consent are distinct steps.
 
@@ -17,3 +17,15 @@ Verify the real production setup links, exact new ZIP/checksum/guide and unchang
 Setup guidance was checked against official OpenAI plugin packaging/MCP docs and Claude Code plugin/MCP docs on 12 October. Supported local marketplace setup is documented without writing user caches, credentials or host configuration. An authenticated existing connection remains reusable; only missing/expired consent requires login.
 
 Sources: https://developers.openai.com/plugins/build/plugins ; https://learn.chatgpt.com/docs/extend/mcp ; https://code.claude.com/docs/en/plugins ; https://code.claude.com/docs/en/mcp .
+
+## Hosted release evidence
+
+Reviewed source/remote commit: `37aa1849768dbadd08388ef2534566cab9ae5d4b`. [Draft PR #38](https://github.com/Saiteja02806/Ugc/pull/38) is stacked on the Edit export branch and attached to this chat. Both source-commit MCP CI runs `38234989981` (push) and `38235017944` (PR) passed, including Ubuntu package/builder and dependency audits. All 35 archived entries exactly match committed Git blobs; no local credentials/config, temporary fixtures/logs or unrelated root source changes were staged. The primary root has other work and is not the release checkout.
+
+Website project `prj_mVOxt7AUko5egMAESaxjGyC60Kvu`, deployment `dpl_LftnberM53eK7xYhfw5pUQRMghrB`, URL `ugc-ej7wlsxis-ugcpilot.vercel.app`. The hosted build reached READY at the exact reviewed project/commit and production target before promotion. Managed protected staging fetch of `/connect-ai` returned 200 with the 0.1.7 ZIP and guide links. Before promotion, both website domains pointed at `dpl_CSji6apQuMfvuyHwu8P1VZt7s2Tb`, source `bb83ce32773011562702adb90ed6966a4279cc7e`; Git ancestry verified that complete production commit is already retained in the candidate. Its identity was rechecked immediately before promotion. No unrelated release was cancelled or removed.
+
+After successful promotion, `www.getugcpilot.com` and `getugcpilot.com` both point to `dpl_LftnberM53eK7xYhfw5pUQRMghrB`. MCP alias remains `dpl_6TXM14iycLbHQR19Df2LYn4vkqXG`, runtime `3696a24e17ef5a431c6c240d5edfb5c4f94d70bc`; no MCP/worker/database deployment was needed. The website restores/preserves the full reviewed shared Edit opening/save/export stack along with the production ancestor.
+
+The production release checker returned all **22 checks passed** at `2026-10-12T10:20:22.008Z`: actual noindex setup links, exact 0.1.7 ZIP and canonical guide bytes, checksums, unchanged 0.1.0/0.1.1/0.1.2 archives, support/legal/privacy pages, MCP ready health, OAuth issuer/resource, 401 bearer guards, origin rejection, route isolation and invalid OAuth request rejection. These calls submit no customer media action. New-deployment error/fatal log grouping over 30 minutes returned no entries (short observation window; not full journey proof).
+
+Fresh authenticated normal Codex CLI discovery returned 33 tools, OAuth status and no tools error. Native `ugc-pilot-3` finishing capabilities reported available/manual editing/framing/subtitles. Native chat still exposes the 30-tool cached catalogue, so the three dedicated export tools have not been accepted through a native call here. No token/password was extracted and no hidden session was created. Package release does not install/update cached host skills; manual Codex/Claude activation, actual requested media export/download, private upload parity and wider application access remain pending.

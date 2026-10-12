@@ -6,7 +6,8 @@ import {
   type EditableVideoDraftInput,
 } from "@/lib/edit/video-library";
 
-import { updateSavedEditDraftForOwner } from "./saved-drafts";
+import { getSavedEditDraftForOwner, updateSavedEditDraftForOwner } from "./saved-drafts";
+import { EditDraftError } from "./draft-contract";
 
 const EDITABLE_VIDEOS_TABLE = "editable_videos";
 const VIDEO_RENDER_JOBS_TABLE = "video_render_jobs";
@@ -322,10 +323,10 @@ export async function ensureEditableVideo(
 }
 
 export async function saveEditableVideoDraftForOwner(params: {
-  draft: EditableVideoDraftInput; sourceVideoId: string; userId: string; requestId: string; expectedRevision: number;
+  draft: EditableVideoDraftInput; draftId: string; sourceVideoId: string; userId: string; requestId: string; expectedRevision: number;
 }) {
-  const current = await getEditableVideoRowForOwner(params);
-  if (!current) return null;
+  const current = await getSavedEditDraftForOwner(params.userId, params.draftId);
+  if (current.source_video_id !== params.sourceVideoId) throw new EditDraftError("NOT_FOUND", "The saved Edit draft was not found for this video.", 404);
   const receipt = await updateSavedEditDraftForOwner({ userId: params.userId, draftId: current.id,
     requestId: params.requestId, expectedRevision: params.expectedRevision, draft: params.draft });
   return serializeEditableVideo(receipt.video as EditableVideoRow);

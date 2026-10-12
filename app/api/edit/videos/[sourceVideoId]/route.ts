@@ -15,6 +15,7 @@ export const dynamic = "force-dynamic";
 
 type UpdateEditableVideoBody = {
   draft?: unknown;
+  draftId?: unknown;
   requestId?: unknown;
   expectedRevision?: unknown;
 };
@@ -57,12 +58,13 @@ export async function PATCH(
     const body = (await request.json().catch(() => null)) as
       | UpdateEditableVideoBody
       | null;
-    if (!z.uuid().safeParse(body?.requestId).success || !editDraftRevision.safeParse(body?.expectedRevision).success)
+    if (!z.uuid().safeParse(body?.draftId).success || !z.uuid().safeParse(body?.requestId).success || !editDraftRevision.safeParse(body?.expectedRevision).success)
       throw new EditDraftError("DRAFT_PRECONDITION_REQUIRED", "Reload this editor to save your changes safely.", 428);
     const draft = parseEditDraft(body?.draft);
 
     const video = await saveEditableVideoDraftForOwner({
       draft,
+      draftId: body!.draftId as string,
       requestId: body!.requestId as string,
       expectedRevision: body!.expectedRevision as number,
       sourceVideoId,

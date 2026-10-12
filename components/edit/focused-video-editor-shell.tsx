@@ -111,7 +111,7 @@ export function FocusedVideoEditorShell({
         throw new Error(getApiError(data, "Video not found."));
       }
 
-      if (!Number.isSafeInteger(data.video.draftRevision)) throw new Error("Reload this editor to enable safe draft saves.");
+      if (!data.video.draftId || !Number.isSafeInteger(data.video.draftRevision)) throw new Error("Reload this editor to enable safe draft saves.");
       saveSessionRef.current = new EditDraftSaveSession(data.video.draftRevision!);
       setSaveConflict(false);
       const initialDraft = getDraftForRender(data.video, null);
@@ -169,7 +169,7 @@ export function FocusedVideoEditorShell({
           const result = await session.save(currentDraft, async (saveRequest) => {
             const token = await requireToken();
             const response = await fetch(`/api/edit/videos/${encodeURIComponent(currentVideo.id)}`, {
-              body: JSON.stringify(saveRequest), method: "PATCH",
+              body: JSON.stringify({ ...saveRequest, draftId: currentVideo.draftId }), method: "PATCH",
               headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
             });
             const data = await response.json() as { ok?: boolean; video?: EditableVideo; error?: string; code?: string };

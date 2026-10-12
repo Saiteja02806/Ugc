@@ -114,7 +114,7 @@ test('actual website GET/PATCH and MCP get/update share one draft and reject sta
     ...(body?{body:JSON.stringify(body)}:{})});
   const initial=await(await websiteGet(request(),context)).json();
   assert.equal(initial.video.draftRevision,0);assert.equal(initial.video.draftId,id(1));
-  const input={draft:content('website'),requestId:id(10),expectedRevision:0};
+  const input={draftId:id(1),draft:content('website'),requestId:id(10),expectedRevision:0};
   const accepted=await(await websiteSave(request(input),context)).json();assert.equal(accepted.video.draftRevision,1);
   assert.deepEqual((await h.call('get_edit_draft',{draft_id:id(1)})).structuredContent.content,content('website'));
   await h.call('update_edit_draft',{draft_id:id(1),request_id:id(11),expected_revision:1,content:content('IDE')});
@@ -131,4 +131,16 @@ test('a definitely rejected draft can be corrected without replaying invalid edi
   await assert.rejects(session.save(content('rejected'),async()=>{calls++;throw new EditDraftError('INVALID_DRAFT','bad trim',400);}));
   const saved=await session.save(content('corrected'),async request=>{calls++;assert.equal(request.expectedRevision,2);assert.equal(request.draft.textOverlays[0].text,'corrected');return {draftRevision:3};});
   assert.equal(calls,2);assert.equal(saved.draftRevision,3);
+});
+
+test('website saves target the opened draft even when legacy projects share a source; mismatched source/draft IDs fail closed',async()=>{
+  const h=harness();h.rows.set(id(1),h.row(1));h.rows.set(id(2),{...h.row(2),source_video_id:id(101),project_id:'legacy'});
+  const context={params:Promise.resolve({sourceVideoId:id(101)})};
+  const request=(draftId,revision=0)=>new Request('https://example.test/api/edit/videos/'+id(101),{
+    method:'PATCH',headers:{authorization:'Bearer fixture-owner-a','content-type':'application/json'},
+    body:JSON.stringify({draftId,draft:content('selected'),requestId:id(50),expectedRevision:revision})});
+  const saved=await websiteSave(request(id(2)),context);assert.equal(saved.status,200);
+  assert.equal(h.rows.get(id(2)).draft_json.textOverlays[0].text,'selected');assert.equal(h.rows.get(id(1)).draft_json.textOverlays[0].text,'original');
+  h.rows.set(id(3),h.row(3));assert.equal((await websiteSave(request(id(3)),context)).status,404);
+  assert.equal((await websiteSave(request(id(2)),{params:Promise.resolve({sourceVideoId:id(103)})})).status,404);
 });

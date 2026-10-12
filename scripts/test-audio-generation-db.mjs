@@ -1,14 +1,13 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { after, test } from "node:test";
 
 // Install the disposable PostgreSQL test runtime outside the project:
 // npm install --prefix <temp-directory> @electric-sql/pglite
 // Set AUDIO_TEST_PGLITE_MODULE to <temp-directory>/node_modules/@electric-sql/pglite/dist/index.js.
-const modulePath = process.env.AUDIO_TEST_PGLITE_MODULE;
-if (!modulePath) throw new Error("Set AUDIO_TEST_PGLITE_MODULE to the disposable PGlite runtime.");
+const modulePath = process.env.AUDIO_TEST_PGLITE_MODULE || fileURLToPath(new URL("../node_modules/@electric-sql/pglite/dist/index.js", import.meta.url));
 const { PGlite } = await import(pathToFileURL(modulePath).href);
 const db = new PGlite();
 await db.exec(`
@@ -64,9 +63,9 @@ async function profile(owner, source, status = "ready") {
 async function retire(kind,id,owner) {
   return (await db.query(`select public.retire_audio_${kind}($1,$2) as retired`, [id,owner])).rows[0].retired;
 }
-test("migration retains unknown existing job types and adds audio", async () => {
+test("migration retains unknown existing job types and adds audio without provisioning retired Supabase audio storage", async () => {
   await db.exec("insert into public.background_jobs(job_type) values('sentinel_future_job'),('generate_image'),('generate_audio')");
-  const bucket = (await db.query("select public from storage.buckets where id='private-audio'")).rows[0]; assert.equal(bucket.public, false);
+  assert.equal((await db.query("select count(*)::int as n from storage.buckets where id='private-audio'")).rows[0].n, 0);
 });
 test("same request creates one job, reservation and usage charge", async () => {
   const key = randomUUID(); const first = await create({ key, period: "duplicates", credits: 1 });
@@ -198,14 +197,15 @@ test("completed generated recordings expose chunk cleanup metadata while process
   const retired = await retire("asset",generated,owner); assert.equal(retired.chunk_count,3);
   assert.equal(retired.asset.generation_id,req.id);
 });
-test("anonymous access cannot reach private records, RPCs or stored audio even with legacy broad policies", async () => {
-  await db.exec("insert into storage.objects(bucket_id) values('private-audio'),('existing-media'); set role anon;");
+test("anonymous access cannot reach private records or RPCs; unrelated legacy storage policy stays unchanged", async () => {
+  await db.exec("insert into storage.objects(bucket_id) values('existing-media'); set role anon;");
   try {
     await assert.rejects(db.query("select * from public.audio_assets"), /permission denied/);
     await assert.rejects(db.query("select public.claim_audio_provider($1)", [randomUUID()]), /permission denied/);
     await assert.rejects(db.query("select public.retire_audio_asset($1,'owner')", [randomUUID()]), /permission denied/);
     await assert.rejects(db.query("select public.start_audio_provider_submission($1,'owner')", [randomUUID()]), /permission denied/);
     const objects = await db.query("select bucket_id from storage.objects"); assert.deepEqual(objects.rows, [{ bucket_id: "existing-media" }]);
-    await assert.rejects(db.query("insert into storage.objects(bucket_id) values('private-audio')"), /row-level security/);
+    // Private audio bytes are in the separate GCS bucket, not storage.objects.
+    // GCS public-access-prevention, pinned reads and size checks have separate tests.
   } finally { await db.exec("reset role;"); }
 });

@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ugc-pilot",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Draft UGC copy, generate and finish videos, edit saved drafts, and transfer owned media through UGC Pilot.",
   "author": {
     "name": "UGC Pilot",
@@ -96,7 +96,7 @@
         }
       },
       "publication": {
-        "release_notes": "Packages the local transfer helper, Demo/upload recovery, operation history and shared Edit-page open/save/export workflows for the 33-tool server contract. Preserves the hosted MCP endpoint and per-user OAuth. Installed Codex/Claude journey acceptance and public directory approval remain pending."
+        "release_notes": "Adds explicit private-bucket local transfer support for the gated 33-tool server upload rollout. Preserves existing public reservations and the hosted endpoint/OAuth. A separate private user-media bucket, activation and installed Codex/Claude journey acceptance remain pending."
       }
     }
   }

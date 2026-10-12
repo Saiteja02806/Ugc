@@ -1,4 +1,4 @@
-# UGC Pilot private beta — 0.1.7
+# UGC Pilot private beta — 0.1.8 candidate
 
 Draft UGC copy and video prompts in ordinary language, then use your connected UGC Pilot account when you ask to generate media. This package includes ten skills covering connection, generation, media transfer, five creative workflows, video finishing, and shared Edit drafts/export.
 
@@ -47,7 +47,7 @@ The coordinated server contract contains **33 tools**. Tool discovery and live c
 - Owner-scoped operation history and supported cancellation/retry. Writes require `jobs:write`, the exact operation revision and a stable request UUID. Retry can reserve credits under the original plan; replay recovers the accepted action.
 - Shared Edit-page opening, listing, reading and revision-safe saving, plus dedicated export capabilities/submission/status. Save/open do not render. Export snapshots a saved revision using the website's renderer. See [Edit workflow](skills/edit-ugc-draft/SKILL.md). Persist the dedicated export UUID because generic job history does not yet recover it.
 
-Full application parity remains unfinished. Explore/slideshow working drafts, slideshow rendering, audio generation/upload, advanced generation/character choices, full Library/business settings, Carousel actions, social publishing and analytics require additional implementation. Private-media upload routes can be unavailable; the helper does not bypass that state.
+Full application parity remains unfinished. Explore/slideshow working drafts, slideshow rendering, audio generation/upload, advanced generation/character choices, full Library/business settings, Carousel actions, social publishing and analytics require additional implementation. Private-media upload support is a separately gated server rollout. It requires a verified separate private bucket and its signing/read/cleanup configuration; the helper validates the server's explicit bucket descriptor and never bypasses unavailable storage.
 
 ## Verification status
 

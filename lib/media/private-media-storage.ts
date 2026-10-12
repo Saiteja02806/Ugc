@@ -17,6 +17,14 @@ export function validPrivateStorageKey(key: string) {
   return key;
 }
 
+/** Check the durable row identity before reading/writing a configured bucket. */
+export function assertPrivateMediaIdentity(key: string, canonicalUrl: string) {
+  const safeKey = validPrivateStorageKey(key);
+  const expected = `https://storage.googleapis.com/${privateMediaBucketName()}/${safeKey}`;
+  if (canonicalUrl !== expected) throw new Error("Private media storage identity changed.");
+  return safeKey;
+}
+
 function privateFile(key: string) {
   const credentials = getGoogleServiceAccountCredentials();
   return new Storage({ ...(credentials ? { credentials } : {}),

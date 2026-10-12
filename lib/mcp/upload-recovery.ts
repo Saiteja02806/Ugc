@@ -1,8 +1,9 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import type { CreateUploadingMediaAssetInput, MediaAssetRow } from "@/lib/media/media-storage";
-import { createSignedPutUrl } from "@/lib/storage/storage";
-import { assertPrivateMediaWritesDisabled } from "@/lib/media/private-media-storage";
+import { signMcpUpload } from "./upload-storage";
+import { isPrivateUserMedia } from "@/lib/media/media-delivery";
+import { privateMediaBucketName } from "@/lib/media/private-media-storage";
 import { getMcpStore } from "./store";
 import { isMcpUpload, assertMcpUploadConfirmable } from "./upload-validation";
 import { ToolFailure } from "./read-tools";
@@ -24,7 +25,7 @@ export async function reserveRecoverableUpload(input: CreateUploadingMediaAssetI
     collection: input.collection, file_name: input.fileName, file_size_bytes: input.fileSizeBytes,
     mime_type: input.mimeType, title: input.title,
   })).digest("hex");
-  const { data, error } = await getMcpStore().rpc("mcp_reserve_upload", {
+  const { data, error } = await getMcpStore().rpc(isPrivateUserMedia({id: input.assetId, metadata: input.metadata}) ? "mcp_reserve_private_upload" : "mcp_reserve_upload", {
     p_user_id: input.userId, p_request_id: requestId, p_fingerprint: fingerprint,
     p_asset_id: input.assetId, p_collection: input.collection, p_source_type: input.sourceType,
     p_file_name: input.fileName, p_file_size_bytes: input.fileSizeBytes,
@@ -69,18 +70,20 @@ export async function listUploadsForOwner(input: { userId: string; limit: number
 }
 
 export async function leaseUploadUrl(userId: string, uploadId: string) {
-  assertPrivateMediaWritesDisabled();
   const { data, error } = await getMcpStore().rpc("mcp_lease_upload_url", { p_user_id: userId, p_asset_id: uploadId });
   if (error || !data || typeof data !== "object" || Array.isArray(data)) rpcFailure(error?.message);
   const row = data as MediaAssetRow;
   assertMcpUploadConfirmable(row);
+  if (row.id !== uploadId || row.user_id !== userId || row.status !== "uploading" || row.deleted_at !== null)
+    throw new ToolFailure("NOT_FOUND", "Upload not found.");
   const expiresAt = String(metadata(row).mcpUploadUrlExpiresAt ?? "");
   const seconds = Math.floor((Date.parse(expiresAt) - Date.now()) / 1000);
   if (!Number.isFinite(seconds) || seconds < 1 || seconds > 600) throw new ToolFailure("UPLOAD_LINK_EXPIRED", "Renew the upload link for this same upload ID.", true);
   try {
-    const uploadUrl = await createSignedPutUrl({ key: row.storage_key, contentType: row.mime_type!, maxBytes: row.file_size_bytes!, createOnly: true, expiresInSeconds: seconds });
+    const uploadUrl = await signMcpUpload(row, seconds);
     if (!uploadUrl.startsWith("https://")) throw new Error("Invalid destination");
     return { upload_id: row.id, upload_url: uploadUrl, expires_at: expiresAt,
+      ...(isPrivateUserMedia(row) ? {storage_bucket:privateMediaBucketName()} : {}),
       required_headers: { "Content-Type": row.mime_type!, "x-goog-content-length-range": `1,${row.file_size_bytes}`, "x-goog-if-generation-match": "0" as const } };
-  } catch { throw new ToolFailure("STORAGE_UNAVAILABLE", "Could not sign this upload destination. Recover the same reservation with get_upload.", true); }
+  } catch (error) { if (error instanceof ToolFailure) throw error; throw new ToolFailure("STORAGE_UNAVAILABLE", "Could not sign this upload destination. Recover the same reservation with get_upload.", true); }
 }

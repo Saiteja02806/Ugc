@@ -5,7 +5,7 @@ description: Generate requested images, short videos or speech through the conne
 
 # Create UGC Pilot media
 
-Use the connected UGC Pilot tools. If absent, explain the connection step; do not substitute another provider and call its output UGC Pilot media. Use tool discovery and `get_capabilities` as the current contract.
+Use the connected UGC Pilot tools. If absent, explain the connection step; do not substitute another provider and call its output UGC Pilot media. Use tool discovery as the current contract. When `get_generation_options` is discovered, read the [advanced generation workflow](references/advanced-generation.md) before submitting a new image/video request. Prefer its application model/quality/reference tools when enabled. The V1 steps below apply when those tools are unavailable or disabled and the requested settings fit their contract; do not silently substitute V1 for requested advanced settings.
 
 ## Prepare the requested generation
 

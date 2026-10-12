@@ -39,24 +39,24 @@ function isMcpGenerationJob(job: BackgroundJobRecord) {
     /^[0-9a-f]{64}$/.test(input.mcpRequestFingerprint);
 }
 
-function asGenerationFailure(error: unknown): never {
+export function asGenerationFailure(error: unknown): never {
   if (error instanceof McpGenerationJobError) {
     throw new ToolFailure(error.code, error.message);
   }
   throw new ToolFailure("GENERATION_UNAVAILABLE", "Generation is temporarily unavailable.", true);
 }
 
-async function requireGenerationAccess(userId: string, jobType: "generate_image" | "generate_hook_video") {
+export async function requireGenerationAccess(userId: string, jobType: "generate_image" | "generate_hook_video", allowFreeCredits = false) {
   if (getMissingBackgroundJobStorageEnvVars().length || getMissingJobQueueEnvVars([jobType]).length) {
     throw new ToolFailure("GENERATION_UNAVAILABLE", "Generation is temporarily unavailable.", true);
   }
   let subscription;
   try {
-    subscription = await getUserSubscription(userId, { strict: true, refreshCredits: false, initializeFreeCredits: false });
+    subscription = await getUserSubscription(userId, { strict: true, refreshCredits: false, initializeFreeCredits: allowFreeCredits });
   } catch {
     throw new ToolFailure("GENERATION_UNAVAILABLE", "Current plan and credits are temporarily unavailable.", true);
   }
-  if (!subscription.isActive) {
+  if (!subscription.isActive && !(allowFreeCredits && subscription.freeGenerationCredits.granted > 0)) {
     throw new ToolFailure("PLAN_REQUIRED", "An active Starter or Growth subscription is required.");
   }
 }

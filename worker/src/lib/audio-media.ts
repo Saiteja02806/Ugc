@@ -18,16 +18,16 @@ function run(binary: string, args: string[]) {
     child.on("close", code => { clearTimeout(timer); if (code === 0) resolve(text); else reject(new AudioError(stderr ? "Choose a complete, playable audio recording." : "Audio validation failed.")); });
   });
 }
-export async function probeAudio(buffer: Uint8Array) {
+export async function probeAudio(buffer: Uint8Array, binaries: { ffprobe?: string; ffmpeg?: string } = {}) {
   if (buffer.length < 32 || buffer.length > AUDIO_MAX_OUTPUT_BYTES) throw new AudioError("The audio file size is unsupported.");
   const dir = await mkdtemp(join(tmpdir(), "ugc-audio-"));
   try {
     const path = join(dir, "recording"); await writeFile(path, buffer);
-    const result = JSON.parse(await run(process.env.FFPROBE_PATH || "ffprobe", ["-v", "error", "-format_whitelist", AUDIO_DEMUXERS, "-protocol_whitelist", "file,pipe", "-show_streams", "-show_format", "-of", "json", path])) as { streams?: Array<{ codec_type: string; disposition?: { attached_pic?: number } }>; format?: { duration?: string } };
+    const result = JSON.parse(await run(binaries.ffprobe || process.env.FFPROBE_PATH || "ffprobe", ["-v", "error", "-format_whitelist", AUDIO_DEMUXERS, "-protocol_whitelist", "file,pipe", "-show_streams", "-show_format", "-of", "json", path])) as { streams?: Array<{ codec_type: string; disposition?: { attached_pic?: number } }>; format?: { duration?: string } };
     if (!result.streams?.some(s => s.codec_type === "audio") || result.streams.some(s => s.codec_type === "video" && s.disposition?.attached_pic !== 1)) throw new AudioError("Choose an audio recording without video.");
     const duration = Number(result.format?.duration);
     if (!Number.isFinite(duration) || duration <= 0 || duration > 180) throw new AudioError("Audio recordings must be shorter than three minutes.");
-    await run(process.env.FFMPEG_PATH || "ffmpeg", ["-v", "error", "-xerror", "-format_whitelist", AUDIO_DEMUXERS, "-protocol_whitelist", "file,pipe", "-i", path, "-map", "0:a:0", "-f", "null", "-"]);
+    await run(binaries.ffmpeg || process.env.FFMPEG_PATH || "ffmpeg", ["-v", "error", "-xerror", "-format_whitelist", AUDIO_DEMUXERS, "-protocol_whitelist", "file,pipe", "-i", path, "-map", "0:a:0", "-f", "null", "-"]);
     return duration;
   } finally { await rm(dir, { recursive: true, force: true }); }
 }

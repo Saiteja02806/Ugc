@@ -7,7 +7,8 @@ const firebaseAuthHelperDomain =
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1"],
   outputFileTracingIncludes: {
-    "/mcp": ["./node_modules/ffprobe-static/bin/linux/x64/ffprobe", "./node_modules/ffprobe-static/bin/win32/x64/ffprobe.exe"],
+    "/api/audio/transfer": ["./node_modules/ffmpeg-static/ffmpeg", "./node_modules/ffmpeg-static/ffmpeg.exe", "./node_modules/ffprobe-static/bin/linux/x64/ffprobe", "./node_modules/ffprobe-static/bin/win32/x64/ffprobe.exe"],
+    "/mcp": ["./node_modules/ffmpeg-static/ffmpeg", "./node_modules/ffmpeg-static/ffmpeg.exe", "./node_modules/ffprobe-static/bin/linux/x64/ffprobe", "./node_modules/ffprobe-static/bin/win32/x64/ffprobe.exe"],
     "/api/trending/**": ["./worker/src/assets/fonts/*.ttf", "./node_modules/@fontsource/inter/files/inter-latin-400-normal.woff2"],
     "/api/scheduling/**": ["./worker/src/assets/fonts/*.ttf", "./node_modules/@fontsource/inter/files/inter-latin-400-normal.woff2"],
     "/api/internal/jobs/prepare-wall-text": [

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Shared CommonJS browser fixture helper. */
 // Next.js Webpack and Turbopack place compiled CSS in different directories.
 const fs = require('node:fs');
 const path = require('node:path');

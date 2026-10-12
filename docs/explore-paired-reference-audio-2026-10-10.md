@@ -50,7 +50,7 @@ The focused suite passed all 98 tests. Targeted ESLint checks passed for the cha
 
 The production Next.js build, worker build and full TypeScript check passed locally. No paid video generation or transcription request was submitted during validation.
 
-Media registration is complete in GCP. The application changes and migration have not been deployed/applied by this task. Release the worker and web application with this same catalog and apply only the reviewed `20261010160317_explore_reference_audio_pairing.sql` migration using the project's normal release workflow. It preserves existing Explore format tagging and adds pairing identity from an owned, server-created generation job.
+Media registration is complete in GCP. The application changes and migration have not been deployed/applied by this task. Release the worker and web application with this same catalog and apply only the reviewed `20261012135247_explore_reference_audio_pairing.sql` migration using the project's normal release workflow. It preserves existing Explore format tagging and adds pairing identity from an owned, server-created generation job.
 
 Final acceptance after release must use `https://www.getugcpilot.com`: select one reference of each format, generate, edit, reload, append a speech-bearing demo to a hook, export, and confirm the paired track stays continuous and appears once.
 

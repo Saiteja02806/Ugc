@@ -282,8 +282,11 @@ async function main() {
     }
     assert.deepEqual(errors, []);
   } catch (error) {
-    console.error("BROWSER_STATE", (await page.locator("body").innerText()).slice(0, 2500), errors);
-    await page.screenshot({ path: path.join(out, "failed-check.png"), fullPage: true });
+    console.error("ORIGINAL_BROWSER_FAILURE", error);
+    if (!page.isClosed()) {
+      console.error("BROWSER_STATE", (await page.locator("body").innerText()).slice(0, 2500), errors);
+      await page.screenshot({ path: path.join(out, "failed-check.png"), fullPage: true });
+    }
     throw error;
   } finally { releasePreferences(); await browser.close(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
 }

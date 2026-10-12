@@ -24,7 +24,7 @@ const diagnosticsMigration = readFileSync(
 
 const reusableBackgroundMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260924110000_allow_wall_text_background_reuse.sql",
+    "../../supabase/migrations/20260923203545_allow_wall_text_background_reuse.sql",
     import.meta.url,
   ),
   "utf8",

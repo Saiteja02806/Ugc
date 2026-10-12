@@ -12,6 +12,7 @@ mock.module("@google-cloud/storage",{namedExports:{Storage:class{bucket(name){ca
   file(key){calls.push({key});return file;}};}}}});
 mock.module("@/lib/gcp/credentials",{namedExports:{getGoogleServiceAccountCredentials:()=>null}});
 mock.module("@/lib/storage/storage",{namedExports:{
+ buildPublicStorageUrl: key => `https://public.example/${key}`,
  createSignedPutUrl:async params=>{calls.push({publicSign:params});return "https://public.example/fixture";},
  headStorageObject:async params=>{calls.push({publicHead:params});return {ContentLength:1024,ContentType:"video/mp4"};},
  uploadBufferToStorage:async params=>{calls.push({publicSave:params});},

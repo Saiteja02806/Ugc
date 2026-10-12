@@ -5,7 +5,7 @@ import { PGlite } from "@electric-sql/pglite";
 
 const db = new PGlite();
 await db.exec("create role anon; create role authenticated; create role service_role bypassrls;");
-await db.exec(await readFile(new URL("../supabase/migrations/20261002200207_character_preferences.sql", import.meta.url), "utf8"));
+await db.exec(await readFile(new URL("../supabase/migrations/20261003041127_character_preferences.sql", import.meta.url), "utf8"));
 after(async () => { await db.close(); });
 
 const read = async (owner) => (await db.query("select * from public.character_preferences where user_id = $1", [owner])).rows[0] ?? null;

@@ -30,3 +30,9 @@ The Node helper handles binary transfer outside model context; audio is not base
 Full 44-tool MCP regressions, TypeScript, touched-file lint, Next.js production compile, worker compile, ten decoder/private-storage checks, seven package validation checks and four immutable builder checks passed. Actual Next route traces contain bundled ffmpeg and ffprobe for audio upload and ffmpeg for MCP readiness. Exact-commit CI is recorded after verification. No production release is claimed. Source metadata/status success is not full media journey acceptance.
 
 Remaining audio work includes eligible audio/default-music video import, sample delivery, cloning/verification/removal/cleanup adapters, package/version distribution and hosted cross-IDE transfer/recovery acceptance. Full application parity and the original user-intended hook/demo/finished local download journey remain unfinished.
+
+## Published candidate
+
+Candidate commit e0ee95379ade203ac4fe88ead282533427ac389c is pushed in attached draft PR #42 (https://github.com/Saiteja02806/Ugc/pull/42), stacked on codex/mcp-audio-access. Exact-commit MCP CI 38256707573 and 38256718701 completed successfully, including all 44-tool/audio adapter and SQL regressions, package validation/build checks and app/worker dependency audits. The actual Node CLI prepare/recover entrypoints additionally passed with a disposable 32,044-byte WAV and no network access; receipts contain no transfer capability.
+
+All seventeen intentional source/route/worker-helper/config/test/evidence paths are committed. Unrelated primary-root project changes, local credentials/configuration, temporary fixtures/logs and build/cache output remain excluded. No intentional isolated source path was omitted. This candidate and its helper are not deployed or in the public 0.1.8 archive; no production media or database/bucket/IAM state was mutated.

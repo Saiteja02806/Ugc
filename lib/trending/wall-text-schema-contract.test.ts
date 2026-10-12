@@ -209,7 +209,7 @@ const workerOverlayRendererSource = readFileSync(
 );
 const compactArialBoldV13Migration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260925170000_allow_wall_text_v13_50px_typography.sql",
+    "../../supabase/migrations/20261001042901_allow_wall_text_v13_50px_typography.sql",
     import.meta.url,
   ),
   "utf8",

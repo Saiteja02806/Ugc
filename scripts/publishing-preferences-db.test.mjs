@@ -9,7 +9,7 @@ test("publishing preference migration isolates account rows and denies direct br
     await db.exec("create role anon; create role authenticated; create role service_role bypassrls; grant usage on schema public to service_role;");
     await db.exec(await readFile(new URL("../supabase/migrations/20261009204135_account_publishing_preferences.sql", import.meta.url), "utf8"));
     await db.query("insert into public.user_publishing_preferences(user_id,contains_synthetic_media) values ('existing-owner',false)");
-    await db.exec(await readFile(new URL("../supabase/migrations/20261011131530_expanded_account_publishing_defaults.sql", import.meta.url), "utf8"));
+    await db.exec(await readFile(new URL("../supabase/migrations/20261012135300_expanded_account_publishing_defaults.sql", import.meta.url), "utf8"));
     assert.deepEqual((await db.query("select contains_synthetic_media,tiktok_privacy_level,tiktok_allow_comments,youtube_privacy_status,youtube_made_for_kids,youtube_notify_subscribers from public.user_publishing_preferences where user_id='existing-owner'")).rows, [{contains_synthetic_media:false,tiktok_privacy_level:"PUBLIC_TO_EVERYONE",tiktok_allow_comments:true,youtube_privacy_status:"public",youtube_made_for_kids:false,youtube_notify_subscribers:false}]);
     await db.exec("set role service_role");
     await db.query("insert into public.user_publishing_preferences(user_id) values ($1)", ["owner-a"]);

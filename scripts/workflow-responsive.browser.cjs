@@ -36,7 +36,7 @@ voiceFixture.write('data', 36); voiceFixture.writeUInt32LE(16000, 40);
       for (const kind of clipEditorOnly ? ['talking-head'] : referenceCardsOnly ? ['hook', 'wall_text'] : focusOnly ? ['talking-head'] : ['hook', 'wall_text', 'talking-head', 'phone']) {
         const legacy = kind === 'talking-head' || kind === 'phone';
         const query = legacy ? `legacy=${kind === 'phone' ? 'phone' : 'hook'}` : `format=${kind}&sources=1`;
-        await page.goto(`${base}/e2e/explore-format-preview?${query}`, { waitUntil: 'networkidle', timeout: 60000 });
+        await page.goto(`${base}/e2e/explore-format-preview?${query}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
         const tabs = page.getByRole('tablist', { name: 'Workflow sections', exact: true });
         await tabs.waitFor();
         assert.equal(await tabs.count(), 1, 'one stage navigation');
@@ -220,7 +220,7 @@ voiceFixture.write('data', 36); voiceFixture.writeUInt32LE(16000, 40);
     assert.deepEqual(writes, [], 'no provider or publishing writes');
     writeFileSync(`${output}/results.json`, JSON.stringify({ results, errors, writes }, null, 2));
   } catch (error) {
-    await page.screenshot({ path: `${output}/failed-check.png`, fullPage: true, animations: 'disabled' });
+    await page.screenshot({ path: `${output}/failed-check.png`, fullPage: true, animations: 'disabled', timeout: 10000 }).catch(() => {});
     throw error;
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

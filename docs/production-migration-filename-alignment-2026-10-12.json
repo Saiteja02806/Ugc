@@ -1,0 +1,163 @@
+[
+  {
+    "source": "supabase/migrations/20260923191000_store_wall_text_plan_selected_fact.sql",
+    "target": "supabase/migrations/20260923160227_store_wall_text_plan_selected_fact.sql",
+    "action": "rename to authoritative applied version",
+    "sqlBodyChanged": false,
+    "storedExecutionTimeoutPrefix": false
+  },
+  {
+    "source": "supabase/migrations/20260923193000_stage_fact_matched_wall_plans_for_pro.sql",
+    "target": "supabase/migrations/20260923160429_stage_fact_matched_wall_plans_for_pro.sql",
+    "action": "rename to authoritative applied version",
+    "sqlBodyChanged": false,
+    "storedExecutionTimeoutPrefix": false
+  },
+  {
+    "source": "supabase/migrations/20260924110000_allow_wall_text_background_reuse.sql",
+    "target": "supabase/migrations/20260923203545_allow_wall_text_background_reuse.sql",
+    "action": "rename to authoritative applied version",
+    "sqlBodyChanged": false,
+    "storedExecutionTimeoutPrefix": false
+  },
+  {
+    "source": "supabase/migrations/20260925170000_allow_wall_text_v13_50px_typography.sql",
+    "target": "supabase/migrations/20261001042901_allow_wall_text_v13_50px_typography.sql",
+    "action": "rename to authoritative applied version",
+    "sqlBodyChanged": false,
+    "storedExecutionTimeoutPrefix": true
+  },
+  {
+    "source": "supabase/migrations/20260927150038_mcp_oauth.sql",
+    "target": "supabase/migrations/20260927202555_mcp_oauth.sql",
+    "action": "remove duplicate; retain applied-version source",
+    "sqlBodyChanged": false,
+    "storedExecutionTimeoutPrefix": false
+  },
+  {
+    "source": "supabase/migrations/20260927183258_mcp_atomic_generation_job.sql",
+    "target": "supabase/migrations/20260927202613_mcp_atomic_generation_job.sql",
+    "action": "remove duplicate; retain applied-version source",
+    "sqlBodyChanged": false,
+    "storedExecutionTimeoutPrefix": false
+  },
+  {
+    "source": "supabase/migrations/20260929120000_allow_higgsfield_generation_provider.sql",
+    "target": "supabase/migrations/20260928205436_allow_higgsfield_generation_provider.sql",
+    "action": "rename to authoritative applied version",
+    "sqlBodyChanged": false,
+    "storedExecutionTimeoutPrefix": false
+  },
+  {
+    "source": "supabase/migrations/20260930153000_ai_studio_audio_references.sql",
+    "target": "supabase/migrations/20260930093912_ai_studio_audio_references.sql",
+    "action": "rename to authoritative applied version",
+    "sqlBodyChanged": false,
+    "storedExecutionTimeoutPrefix": false
+  },
+  {
+    "source": "supabase/migrations/20260930160000_auth_email_rate_limits.sql",
+    "target": "supabase/migrations/20260930155642_auth_email_rate_limits.sql",
+    "action": "rename to authoritative applied version",
+    "sqlBodyChanged": false,
+    "storedExecutionTimeoutPrefix": false
+  },
+  {
+    "source": "supabase/migrations/20261002192039_character_generation_batch.sql",
+    "target": "supabase/migrations/20261003041121_character_generation_batch.sql",
+    "action": "rename to authoritative applied version",
+    "sqlBodyChanged": false,
+    "storedExecutionTimeoutPrefix": false
+  },
+  {
+    "source": "supabase/migrations/20261002200207_character_preferences.sql",
+    "target": "supabase/migrations/20261003041127_character_preferences.sql",
+    "action": "rename to authoritative applied version",
+    "sqlBodyChanged": false,
+    "storedExecutionTimeoutPrefix": false
+  },
+  {
+    "source": "supabase/migrations/20261003041318_character_allowance_privileges.sql",
+    "target": "supabase/migrations/20261003041415_character_allowance_privileges.sql",
+    "action": "rename to authoritative applied version",
+    "sqlBodyChanged": false,
+    "storedExecutionTimeoutPrefix": false
+  },
+  {
+    "source": "supabase/migrations/20261003051936_allow_openrouter_generation_provider.sql",
+    "target": "supabase/migrations/20261003061100_allow_openrouter_generation_provider.sql",
+    "action": "rename to authoritative applied version",
+    "sqlBodyChanged": false,
+    "storedExecutionTimeoutPrefix": false
+  },
+  {
+    "source": "supabase/migrations/20261005042533_audio_voice_bookmarks.sql",
+    "target": "supabase/migrations/20261005082228_audio_voice_bookmarks.sql",
+    "action": "rename to authoritative applied version",
+    "sqlBodyChanged": false,
+    "storedExecutionTimeoutPrefix": false
+  },
+  {
+    "source": "supabase/migrations/20261005045851_character_shared_generation_credits.sql",
+    "target": "supabase/migrations/20261005082254_character_shared_generation_credits.sql",
+    "action": "rename to authoritative applied version",
+    "sqlBodyChanged": false,
+    "storedExecutionTimeoutPrefix": false
+  },
+  {
+    "source": "supabase/migrations/20261005064026_trending_skipped_post_reconsideration.sql",
+    "target": "supabase/migrations/20261005082258_trending_skipped_post_reconsideration.sql",
+    "action": "rename to authoritative applied version",
+    "sqlBodyChanged": false,
+    "storedExecutionTimeoutPrefix": false
+  },
+  {
+    "source": "supabase/migrations/20261005090038_audio_voice_selection.sql",
+    "target": "supabase/migrations/20261005115049_audio_voice_selection.sql",
+    "action": "rename to authoritative applied version",
+    "sqlBodyChanged": false,
+    "storedExecutionTimeoutPrefix": false
+  },
+  {
+    "source": "supabase/migrations/20261005140000_character_prompt_driven_generation.sql",
+    "target": "supabase/migrations/20261005140223_character_prompt_driven_generation.sql",
+    "action": "rename to authoritative applied version",
+    "sqlBodyChanged": false,
+    "storedExecutionTimeoutPrefix": false
+  },
+  {
+    "source": "supabase/migrations/20261007103000_explore_subtitle_styles.sql",
+    "target": "supabase/migrations/20261007153721_explore_subtitle_styles.sql",
+    "action": "rename to authoritative applied version",
+    "sqlBodyChanged": false,
+    "storedExecutionTimeoutPrefix": false
+  },
+  {
+    "source": "supabase/migrations/20261007132823_explore_existing_video_sources.sql",
+    "target": "supabase/migrations/20261007153742_explore_existing_video_sources.sql",
+    "action": "rename to authoritative applied version",
+    "sqlBodyChanged": false,
+    "storedExecutionTimeoutPrefix": false
+  },
+  {
+    "source": "supabase/migrations/20261007193641_explore_serif_box_subtitles.sql",
+    "target": "supabase/migrations/20261008071151_explore_serif_box_subtitles.sql",
+    "action": "rename to authoritative applied version",
+    "sqlBodyChanged": false,
+    "storedExecutionTimeoutPrefix": false
+  },
+  {
+    "source": "supabase/migrations/20261008001500_explore_format_workflows.sql",
+    "target": "supabase/migrations/20261008071155_explore_format_workflows.sql",
+    "action": "rename to authoritative applied version",
+    "sqlBodyChanged": false,
+    "storedExecutionTimeoutPrefix": false
+  },
+  {
+    "source": "supabase/migrations/20261009093932_character_seedream_sunburst_models.sql",
+    "target": "supabase/migrations/20261009111108_character_seedream_sunburst_models.sql",
+    "action": "rename to authoritative applied version",
+    "sqlBodyChanged": false,
+    "storedExecutionTimeoutPrefix": false
+  }
+]

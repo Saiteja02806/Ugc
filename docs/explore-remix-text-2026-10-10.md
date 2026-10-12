@@ -119,7 +119,7 @@ slide's stable identity when slides are reordered.
 
 1. The current catalogue review is complete. Future new or changed references
    must be visually reviewed before generation is enabled for their copy.
-2. Apply `20261010151817_explore_reference_text_remix.sql` through the established
+2. Apply `20261012135237_explore_reference_text_remix.sql` through the established
    Supabase migration process. Browser roles have no direct access to receipts.
 3. Set `EXPLORE_TEXT_REMIX_ENABLED=true` and an existing `OPENAI_API_KEY` on the
    web runtime. Optional `OPENAI_TEXT_REMIX_MODEL` is independent of the business

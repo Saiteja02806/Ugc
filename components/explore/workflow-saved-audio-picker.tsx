@@ -20,11 +20,15 @@ function SavedAudioLibrary({ ownerId, attachment, disabled = false, buttonLabel 
   const [loading, setLoading] = useState(false), [loaded, setLoaded] = useState(false), [attempt, setAttempt] = useState(0);
   const active = useRef(true);
   const selecting = useRef(false);
+  function beginLoad() { setLoading(true); setLoaded(false); setAssets([]); setError(null); }
+  function changeOpen(next: boolean) {
+    if (next && ownerId && !localPreview) beginLoad();
+    setOpen(next);
+  }
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   useEffect(() => {
     if (!open || !ownerId || localPreview) return;
     const controller = new AbortController();
-    setLoading(true); setLoaded(false); setAssets([]); setError(null);
     void (async () => {
       try {
         const token = await getCurrentUserIdToken(ownerId); if (!token) throw new Error("Sign in to select saved audio.");
@@ -55,7 +59,7 @@ function SavedAudioLibrary({ ownerId, attachment, disabled = false, buttonLabel 
     } catch (e) { if (active.current) setError(e instanceof Error ? e.message : "Could not select saved audio."); }
     finally { selecting.current = false; if (active.current) setBusy(false); }
   }
-  return <Popover open={open} onOpenChange={setOpen}><PopoverTrigger render={<Button type="button" variant="outline" disabled={disabled || busy || attachment.loading} className="h-9 text-xs" />}>{buttonLabel}</PopoverTrigger>
+  return <Popover open={open} onOpenChange={changeOpen}><PopoverTrigger render={<Button type="button" variant="outline" disabled={disabled || busy || attachment.loading} className="h-9 text-xs" />}>{buttonLabel}</PopoverTrigger>
     <PopoverContent align="start" className="w-72 max-w-[calc(100vw-32px)] p-3"><PopoverTitle>Audio library</PopoverTitle>
       {localPreview ? <p className="text-xs leading-5 text-muted">Saved tracks appear here when you sign in to the app. This local preview doesn&apos;t load your account library.</p> : !ownerId ? <p className="text-xs leading-5 text-muted">Sign in to choose audio from your library.</p> : <>
         {loading || !loaded && !error ? <p role="status" className="text-xs text-muted">Loading your audio…</p> : assets.length ? <div className={`${quietScrollbar.surface} max-h-64 space-y-1 overflow-auto`}>{assets.map(a => <Button key={a.id} type="button" variant="ghost" disabled={disabled || busy || attachment.loading} className="h-auto min-h-9 w-full justify-start whitespace-normal break-words px-2 py-2 text-left text-xs" onClick={() => { void select(a); }}>{a.name}</Button>)}</div> : !error ? <>
@@ -63,7 +67,7 @@ function SavedAudioLibrary({ ownerId, attachment, disabled = false, buttonLabel 
           <Link href="/audio-generation" className="text-xs text-primary underline-offset-4 hover:underline focus-visible:underline">Open Audio generation</Link>
         </> : null}
         {loaded ? <p className="text-xs leading-5 text-muted">Ready tracks only. Test audio and private voice references stay out of this library.</p> : null}
-        {error ? <div className="space-y-2"><p role="alert" className="text-xs leading-5 text-destructive">{error}</p><Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => setAttempt(n => n + 1)}>Retry loading audio</Button></div> : null}
+        {error ? <div className="space-y-2"><p role="alert" className="text-xs leading-5 text-destructive">{error}</p><Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => { beginLoad(); setAttempt(n => n + 1); }}>Retry loading audio</Button></div> : null}
       </>}
     </PopoverContent></Popover>;
 }

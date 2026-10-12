@@ -17,7 +17,7 @@ function functionSql(source, name) {
 const source = async (name) => readFile(new URL(`../supabase/migrations/${name}`, import.meta.url), "utf8");
 const jobMigration = await source("20260905123000_harden_wall_text_regeneration_recovery.sql");
 const billingMigration = await source("20260910105839_add_complimentary_plan_grants.sql");
-const characterMigration = await source("20261002192039_character_generation_batch.sql");
+const characterMigration = await source("20261003041121_character_generation_batch.sql");
 assert.ok(characterMigration.trim(), "Character generation migration must be saved before running its tests.");
 
 const db = new PGlite();
@@ -129,7 +129,7 @@ try {
   await db.exec(await source("20261003045336_character_gemini_3_pro_image.sql"));
   // Reproduce Supabase's inherited service-role defaults before hardening.
   await db.exec("grant all on public.character_free_generation_allowances to service_role");
-  await db.exec(await source("20261003041318_character_allowance_privileges.sql"));
+  await db.exec(await source("20261003041415_character_allowance_privileges.sql"));
 
   await check("all image models retain one free image and three paid candidates", async () => {
     for (const model of ["gpt_image", "gemini_3_pro", "nano_banana_2"]) {

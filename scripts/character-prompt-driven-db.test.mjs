@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { fixture } from "./character-shared-credits-db.test.mjs";
 
-const sql = readFileSync(new URL("../supabase/migrations/20261005140000_character_prompt_driven_generation.sql", import.meta.url), "utf8");
+const sql = readFileSync(new URL("../supabase/migrations/20261005140223_character_prompt_driven_generation.sql", import.meta.url), "utf8");
 const legacyCall = "select * from public.character_create_reserved_generation_batch($1,$2,$3,1,$4,'ai-generation',false)";
 const call = "select * from public.character_create_reserved_generation_batch_v2($1,$2,$3,1,$4,'ai-generation',false)";
 const fingerprint = "d".repeat(64);

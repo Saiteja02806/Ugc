@@ -26,7 +26,7 @@ const row = n => ({ id: id(n), user_id: "owner-a", project_id: "test-project-001
 
 function harness(options = {}) {
   const calls = [], tools = new Map(), rows = [row(1), row(2), row(3)];
-  const module = load("lib/mcp/demo-tools.ts", {
+  const toolModule = load("lib/mcp/demo-tools.ts", {
     "server-only": {}, "zod": { z }, "@modelcontextprotocol/server": { requireScopes: (...scopes) => scopes },
     "./read-tools": { executeTool, oauthMetadata, principal, ToolFailure }, "./asset-cursor": { decodeAssetCursor, encodeAssetCursor },
     "@/lib/demo/demo-storage": { findDemoVideo: async input => {
@@ -43,7 +43,7 @@ function harness(options = {}) {
       listDemosForOwner: async input => { calls.push(["list", input]); return rows.slice(0, input.limit + 1); },
     },
   });
-  module.registerDemoMcpTools({ registerTool(name, config, callback) { tools.set(name, { config, callback }); } });
+  toolModule.registerDemoMcpTools({ registerTool(name, config, callback) { tools.set(name, { config, callback }); } });
   async function call(name, input = {}, owner = "owner-a", scopes = ["assets:read", "assets:write"]) {
     const tool = tools.get(name), parsed = tool.config.inputSchema.parse(input);
     const result = await tool.callback(parsed, { http: { authInfo: { scopes, extra: { firebaseUid: owner } } } });
@@ -103,7 +103,7 @@ function deleteRoute(options = {}) {
   const legacyKey = `demos/raw/owner-a/test-project-001/${id(1)}.mp4`;
   if (options.legacy) demo.source_s3_key = legacyKey;
   const upload = load("lib/demo/demo-upload.ts", { "@/lib/storage/storage": { buildPublicStorageUrl: key => `https://cdn.example.test/${key}` } });
-  const module = load("app/api/demo/delete/route.ts", {
+  const toolModule = load("app/api/demo/delete/route.ts", {
     "@/lib/demo/demo-api": {
       authenticateDemoRequest: async () => ({ ok: true, user: { uid: "owner-a" } }),
       getStorageDiagnostic: () => "fixture", getDemoId: value => value, getProjectId: value => value ?? "test-project-001",
@@ -119,7 +119,7 @@ function deleteRoute(options = {}) {
     "@/lib/demo/demo-upload": upload,
     "@/lib/storage/storage": { deleteStorageObject: async input => { calls.push(["storage-delete", input]); } },
   });
-  return { calls, run: key => module.DELETE(new Request("https://www.getugcpilot.com/api/demo/delete", {
+  return { calls, run: key => toolModule.DELETE(new Request("https://www.getugcpilot.com/api/demo/delete", {
     method: "DELETE", body: JSON.stringify({ demoId: id(1), projectId: "test-project-001", key }),
   })) };
 }

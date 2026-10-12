@@ -4,7 +4,7 @@ import test from "node:test";
 import { PGlite } from "@electric-sql/pglite";
 import catalog from "../worker/src/lib/explore-paired-reference-catalog.json" with { type: "json" };
 
-const migration = readFileSync(new URL("../supabase/migrations/20261010160317_explore_reference_audio_pairing.sql", import.meta.url), "utf8");
+const migration = readFileSync(new URL("../supabase/migrations/20261012135247_explore_reference_audio_pairing.sql", import.meta.url), "utf8");
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 async function database(t) {
   const db = new PGlite(); t.after(() => db.close());

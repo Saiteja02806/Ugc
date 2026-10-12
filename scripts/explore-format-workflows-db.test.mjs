@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { PGlite } from "@electric-sql/pglite";
-const migration = readFileSync(new URL("../supabase/migrations/20261008001500_explore_format_workflows.sql", import.meta.url), "utf8");
+const migration = readFileSync(new URL("../supabase/migrations/20261008071155_explore_format_workflows.sql", import.meta.url), "utf8");
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 async function database(t) {
   const db = new PGlite(); t.after(() => db.close());

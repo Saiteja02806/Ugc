@@ -138,7 +138,7 @@ Last updated: 2026-10-12
   instead of repeated visibility/comment questions. It opens separately to keep
   the current post; returning refreshes defaults without losing the caption.
   The additive migration
-  `20261011131530_expanded_account_publishing_defaults.sql` extends the existing
+  `20261012135300_expanded_account_publishing_defaults.sql` extends the existing
   service-only preference table, preserving disclosure values and row isolation.
   Older AI-only PUT requests update only that field and preserve newer preferences.
   Apply this migration before releasing the updated website. It is local only.
@@ -379,7 +379,7 @@ Last updated: 2026-10-12
   paragraphs and approximate length while requiring supported business facts.
   Similar structure does not promise equivalent reach. Uploaded references are
   outside this initial catalogue extraction path.
-- Migration `20261010151817_explore_reference_text_remix.sql` adds private,
+- Migration `20261012135237_explore_reference_text_remix.sql` adds private,
   service-role-only request receipts. An atomic per-account claim precedes each
   paid request, bounds requests to 20 per 24 hours and rejects changed payloads
   under an existing key. Completed replies return the frozen source snapshot.

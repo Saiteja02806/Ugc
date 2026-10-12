@@ -5,7 +5,7 @@ import test from "node:test";
 import { fixture } from "./character-shared-credits-db.test.mjs";
 
 // Apply the real additive migration to isolated Postgres. No hosted data or providers.
-const sql = readFileSync(new URL("../supabase/migrations/20261009093932_character_seedream_sunburst_models.sql", import.meta.url), "utf8");
+const sql = readFileSync(new URL("../supabase/migrations/20261009111108_character_seedream_sunburst_models.sql", import.meta.url), "utf8");
 const signature = "public.character_create_reserved_generation_batch_v2(text,text,text,integer,jsonb,text,boolean)";
 const call = "select * from public.character_create_reserved_generation_batch_v2($1,$2,$3,1,$4,'ai-generation',false)";
 const fingerprint = "e".repeat(64);

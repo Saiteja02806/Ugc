@@ -29,7 +29,7 @@ platform; no ineffective setting or unsupported outbound field was added.
 
 ## Persistence and compatibility
 
-- Local migration `20261011131530_expanded_account_publishing_defaults.sql` adds
+- Local migration `20261012135300_expanded_account_publishing_defaults.sql` adds
   five non-null, validated TikTok/YouTube preference columns. Existing disclosure
   values, RLS and service-only permissions are preserved.
 - Authentication derives ownership from Firebase on every read and write.

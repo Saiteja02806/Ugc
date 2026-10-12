@@ -5,9 +5,9 @@ import { PGlite } from "@electric-sql/pglite";
 import { SUBTITLE_STYLES } from "../worker/dist/subtitles/styles.js";
 
 const migration = readFileSync(new URL("../supabase/migrations/20261004053418_explore_video_finishing.sql", import.meta.url), "utf8");
-const stylesMigration = readFileSync(new URL("../supabase/migrations/20261007103000_explore_subtitle_styles.sql", import.meta.url), "utf8");
-const serifBoxMigration = readFileSync(new URL("../supabase/migrations/20261007193641_explore_serif_box_subtitles.sql", import.meta.url), "utf8");
-const sourcesMigration = readFileSync(new URL("../supabase/migrations/20261007132823_explore_existing_video_sources.sql", import.meta.url), "utf8");
+const stylesMigration = readFileSync(new URL("../supabase/migrations/20261007153721_explore_subtitle_styles.sql", import.meta.url), "utf8");
+const serifBoxMigration = readFileSync(new URL("../supabase/migrations/20261008071151_explore_serif_box_subtitles.sql", import.meta.url), "utf8");
+const sourcesMigration = readFileSync(new URL("../supabase/migrations/20261007153742_explore_existing_video_sources.sql", import.meta.url), "utf8");
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const fingerprint = "a".repeat(64), hash = "b".repeat(64), policy = "elevenlabs:scribe_v2:auto:en:word:v1";
 const draft = (owner = "owner-a", subtitles = true) => ({ version: 1, kind: "hook", sourceAssetId: id(owner === "owner-a" ? 1 : 2),

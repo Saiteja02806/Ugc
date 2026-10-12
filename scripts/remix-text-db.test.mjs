@@ -10,7 +10,7 @@ test("remix claims enforce ownership, idempotency, quota and browser denial", as
   const claim = async (owner, n, fingerprint = hash) => (await db.query("select public.explore_claim_text_remix($1,$2,$3,$4) as result", [owner, id(n), fingerprint, input])).rows[0].result;
   try {
     await db.exec("create role anon; create role authenticated; create role service_role bypassrls; grant usage on schema public to service_role;");
-    await db.exec(await readFile(new URL("../supabase/migrations/20261010151817_explore_reference_text_remix.sql", import.meta.url), "utf8"));
+    await db.exec(await readFile(new URL("../supabase/migrations/20261012135237_explore_reference_text_remix.sql", import.meta.url), "utf8"));
     await db.exec("set role service_role");
     assert.equal((await claim("owner-a", 1)).claimed, true);
     assert.equal((await claim("owner-a", 1)).claimed, false);

@@ -1,6 +1,6 @@
 # Combined production release — 12 October 2026
 
-Status: preparing; no release completion is claimed in this document yet.
+Status: validated source and additive database preparation; deployment pending.
 
 The user authorized auditing and deploying the current changes, including all
 screen updates. The initial inventory records 444 changed/new paths. The release
@@ -75,14 +75,26 @@ before publication.
 
 - Worker/website TypeScript initially passed; all 603 compiled worker checks
   pass with a workspace temporary directory.
-- The first 930 application checks exposed outdated screen fixtures plus
-  Windows sandbox restrictions. Fixtures are updated to retain actual draft,
-  access and reference-selection assertions. Full final reruns are required.
+- All 932 selected application checks pass, including access isolation, durable
+  request recovery, slideshow contracts, workflow references and publishing defaults.
+- Website production compilation, TypeScript, MCP regressions, plugin 0.1.8
+  integrity (33 tools, ten skills), worker compilation and dependency audits pass.
+  Scoped lint has zero errors and nine existing unused-symbol warnings.
 - Production compilation found a slideshow CSS Module selector without a local
   class. It is now scoped to `.workspace`, preserving the focus ring while
   allowing compilation. The repaired Webpack build passed.
-- Initial browser fixtures require a stable compiled CSS asset tree; run final
-  browser checks against the frozen release to avoid competing build output.
+- Browser checks pass for desktop/mobile Trending publishing, six-slide image
+  replacement, slideshow creation/recreation/recovery, character references,
+  reference stacks, Remix Text and Explore scheduling. The Remix fixture now
+  waits for source text to load before reading it; its exact-text assertions stay intact.
+- Production now has the three reviewed additive migrations: text Remix receipts
+  `20261012135237`, reference audio pairing `20261012135247` and publishing
+  defaults `20261012135300`. RLS/privilege/default checks pass; all 126 local
+  migration versions match the production ledger. Historical filename alignment
+  preserves SQL bodies and does not replay migrations.
+- Complete manifests: [included paths](production-release-included-paths-2026-10-12.txt)
+  and [all 404 excluded local paths and their reasons](production-release-excluded-paths-2026-10-12.md).
+  No intentional project change in this branch is omitted.
 
 ## Rollback and limits
 

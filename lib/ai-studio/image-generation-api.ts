@@ -18,6 +18,7 @@ import { FirebaseAuthRequestError } from "@/lib/firebase/server-auth";
 import {
   getBackgroundJobById,
   getMissingBackgroundJobStorageEnvVars,
+  type Json,
 } from "@/lib/jobs/background-jobs";
 import { createAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
 import { canonicalMediaReference, isTrustedMediaReferenceUrl as isTrustedStorageUrl } from "@/lib/media/media-reference";
@@ -32,7 +33,7 @@ import {
   reserveBillingCredits,
 } from "@/lib/billing/subscription-db";
 
-type GenerateRequest = {
+export type GenerateRequest = {
   exploreFormat?: unknown;
   aspectRatio?: unknown;
   idempotencyKey?: unknown;
@@ -112,6 +113,13 @@ function getSafeOutput(output: unknown) {
   };
 }
 
+export type ValidatedWorkflowImageBatch = {
+  amountPerImage: number;
+  inputs: Record<string, Json | undefined>[];
+  requestKey: string;
+  userId: string;
+};
+
 export async function handleAIStudioImageGeneration(request: Request) {
   let user;
 
@@ -136,6 +144,20 @@ export async function handleAIStudioImageGeneration(request: Request) {
   const body = (await request.json().catch(() => null)) as
     | GenerateRequest
     | null;
+  return generateAIStudioImageForOwner(user.uid, body, request.headers.get("Idempotency-Key"));
+}
+
+/** Shared server-only entry point. Callers must authenticate and enforce generation
+ * access first. Uses the same validation before the atomic batch adapter or website
+ * reservation path; never forwards MCP OAuth credentials through Firebase HTTP. */
+export async function generateAIStudioImageForOwner(
+  userId: string,
+  body: GenerateRequest | null,
+  idempotencyHeader: string | null,
+  options?: { startBatch: (batch: ValidatedWorkflowImageBatch) => Promise<Response> },
+) {
+  if (!userId.trim()) throw new Error("An authenticated owner is required.");
+  const user = { uid: userId };
   const prompt = normalizeAIStudioPrompt(body?.prompt);
   const aspectRatio = parseAIStudioImageAspectRatio(body?.aspectRatio ?? (body?.exploreFormat === "slideshow" ? "4:5" : undefined));
   const quantity = parseAIStudioGenerationQuantity(body?.quantity);
@@ -289,8 +311,31 @@ export async function handleAIStudioImageGeneration(request: Request) {
   }
 
   const baseIdempotencyKey = cleanIdempotencyKey(
-    request.headers.get("Idempotency-Key") ?? body?.idempotencyKey,
+    idempotencyHeader ?? body?.idempotencyKey,
   );
+  const buildInput = (index: number, generationId: string): Record<string, Json | undefined> => ({
+    aspectRatio,
+    ...(body?.exploreFormat === "slideshow" ? { exploreFormat: body.exploreFormat } : {}),
+    batchIndex: index + 1,
+    batchSize: quantity,
+    generationId,
+    model,
+    prompt,
+    referenceImageUrl,
+    ...(referenceImageUrls ? { referenceImageUrls } : {}),
+    ...(subjectReferenceIndex ? { subjectReferenceIndex } : {}),
+    ...(additionalReferenceStartIndex ? { additionalReferenceStartIndex } : {}),
+    ...(regenerationReferenceIndex ? { regenerationReferenceIndex } : {}),
+    ...(slideshowReferenceContract ? { slideshowReferenceContract } : {}),
+  });
+  if (options) {
+    return options.startBatch({
+      amountPerImage: getGenerationCreditCost("image"),
+      requestKey: baseIdempotencyKey,
+      userId: user.uid,
+      inputs: Array.from({ length: quantity }, (_, index) => buildInput(index, crypto.randomUUID())),
+    });
+  }
   const queuedJobs: { generationId: string; jobId: string }[] = [];
   let queueError: unknown = null;
 
@@ -313,21 +358,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
       creditsReserved = true;
       const backgroundJob = await createAndDispatchBackgroundJob({
         idempotencyKey,
-        input: {
-          aspectRatio,
-          ...(body?.exploreFormat === "slideshow" ? { exploreFormat: body.exploreFormat } : {}),
-          batchIndex: index + 1,
-          batchSize: quantity,
-          generationId,
-          model,
-          prompt,
-          referenceImageUrl,
-          ...(referenceImageUrls ? { referenceImageUrls } : {}),
-          ...(subjectReferenceIndex ? { subjectReferenceIndex } : {}),
-          ...(additionalReferenceStartIndex ? { additionalReferenceStartIndex } : {}),
-          ...(regenerationReferenceIndex ? { regenerationReferenceIndex } : {}),
-          ...(slideshowReferenceContract ? { slideshowReferenceContract } : {}),
-        },
+        input: buildInput(index, generationId),
         jobType: IMAGE_JOB_TYPE,
         projectId: "ai-studio",
         userId: user.uid,

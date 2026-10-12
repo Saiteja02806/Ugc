@@ -123,7 +123,7 @@
     },
     {
       "id": "wall-prompt",
-      "prompt": "Use this exact wall text: First line ðŸ˜…\nSecond line â€” keep punctuation. Give me a seven-second footage prompt and overlay plan.",
+      "prompt": "Use this exact wall text: First line \u00f0\u0178\u02dc\u2026\nSecond line \u00e2\u20ac\u201d keep punctuation. Give me a seven-second footage prompt and overlay plan.",
       "expected_skills": [
         "wall-text-video-generation"
       ],
@@ -571,6 +571,57 @@
         "get_asset"
       ],
       "expected": "Checks eligible non-test/non-reference recording and import availability, persists a stable import request and uses only its ready independent media_asset_id. Discloses current editing-copy storage policy and respects selected audio/render authorization."
+    },
+    {
+      "id": "advanced-generation-readiness",
+      "prompt": "Check which video models, qualities and reference options my account supports. Do not generate anything.",
+      "expected_skills": [
+        "create-ugc-media"
+      ],
+      "expected_tools": [
+        "get_generation_options",
+        "get_entitlements"
+      ],
+      "forbidden_tools": [
+        "generate_video_with_options",
+        "generate_image_with_options",
+        "generate_video",
+        "generate_image"
+      ],
+      "expected": "Reads current gates and format limits without submitting content; does not present an unavailable model as enabled."
+    },
+    {
+      "id": "advanced-video-choice",
+      "prompt": "Generate my approved 15-second portrait video using Kling at 720p with the selected image reference.",
+      "expected_skills": [
+        "create-ugc-media"
+      ],
+      "expected_tools": [
+        "get_generation_options",
+        "get_entitlements",
+        "generate_video_with_options",
+        "get_job",
+        "get_asset"
+      ],
+      "forbidden_tools": [
+        "generate_video"
+      ],
+      "expected": "Honors the chosen model/quality/duration, checks credits and owned references, persists a stable UUID before submission and reports unavailable creation rather than silently downgrading."
+    },
+    {
+      "id": "advanced-interrupted-request",
+      "prompt": "Recover the advanced video batch whose submission response was lost, using my saved UUID.",
+      "expected_skills": [
+        "create-ugc-media"
+      ],
+      "expected_tools": [
+        "get_generation_request"
+      ],
+      "forbidden_tools": [
+        "generate_video",
+        "generate_image"
+      ],
+      "expected": "Reads the saved exact kind/UUID before any authorized replay, tracks accepted/partial jobs and never invents a replacement request ID or changes a frozen reference snapshot."
     }
   ],
   "notes": "Expected skill sequences are evaluation criteria, not measured host activation results. Brand reads may be used when explicitly relevant and connected. Draft-only cases below supply briefs or declare missing context."

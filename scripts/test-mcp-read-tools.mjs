@@ -334,8 +334,8 @@ assert.equal(discovered.body.result.tools.find((tool) => tool.name === "get_prof
 for (const tool of discovered.body.result.tools) {
   assert.equal(tool._meta.securitySchemes[0].type, "oauth2");
   assert.equal(tool._meta.securitySchemes[0].scopes.length, 1);
-  const writes = ["create_upload", "confirm_upload", "delete_asset", "generate_image", "generate_video", "finish_video", "register_demo", "delete_demo", "renew_upload", "cancel_operation", "retry_operation", "update_edit_draft", "open_edit_draft", "export_edit_draft", "generate_audio", "create_audio_upload", "import_audio_for_video", "set_audio_voice_selection", "set_audio_voice_bookmark"];
-  const irreversible = ["delete_asset", "generate_image", "generate_video", "finish_video", "delete_demo", "cancel_operation", "retry_operation", "update_edit_draft", "export_edit_draft", "generate_audio"];
+  const writes = ["generate_image_with_options", "generate_video_with_options", "create_upload", "confirm_upload", "delete_asset", "generate_image", "generate_video", "finish_video", "register_demo", "delete_demo", "renew_upload", "cancel_operation", "retry_operation", "update_edit_draft", "open_edit_draft", "export_edit_draft", "generate_audio", "create_audio_upload", "import_audio_for_video", "set_audio_voice_selection", "set_audio_voice_bookmark"];
+  const irreversible = ["generate_image_with_options", "generate_video_with_options", "delete_asset", "generate_image", "generate_video", "finish_video", "delete_demo", "cancel_operation", "retry_operation", "update_edit_draft", "export_edit_draft", "generate_audio"];
   assert.equal(tool.annotations.readOnlyHint, !writes.includes(tool.name), `${tool.name}: read-only annotation`);
   assert.equal(tool.annotations.destructiveHint, irreversible.includes(tool.name), `${tool.name}: destructive annotation`);
   assert.equal(tool.annotations.openWorldHint, false, `${tool.name}: bounded account annotation`);

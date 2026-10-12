@@ -44,7 +44,7 @@ import {
   reserveBillingCredits,
 } from "@/lib/billing/subscription-db";
 
-type GenerateVideoRequest = {
+export type GenerateVideoRequest = {
   exploreFormat?: unknown;
   aspectRatio?: unknown;
   avatarImageUrl?: unknown;
@@ -172,6 +172,20 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   const body = (await request.json().catch(() => null)) as
     | GenerateVideoRequest
     | null;
+  return generateAIStudioVideoForOwner(user.uid, body, request.headers.get("Idempotency-Key"), options);
+}
+
+/** Shared server-only entry point. Callers must authenticate and enforce generation
+ * access first. Uses the same validation before the atomic batch adapter or website
+ * reservation path; never forwards MCP OAuth credentials through Firebase HTTP. */
+export async function generateAIStudioVideoForOwner(
+  userId: string,
+  body: GenerateVideoRequest | null,
+  idempotencyHeader: string | null,
+  options?: { startBatch: (batch: ValidatedWorkflowVideoBatch) => Promise<Response> },
+) {
+  if (!userId.trim()) throw new Error("An authenticated owner is required.");
+  const user = { uid: userId };
   const prompt = normalizeAIStudioPrompt(body?.prompt ?? body?.hookIdea);
   // Resolve private browser links once, with ownership, before validation/billing.
   try {
@@ -456,7 +470,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
 
   const projectId = "ai-studio";
   const baseIdempotencyKey = cleanIdempotencyKey(
-    request.headers.get("Idempotency-Key") ?? body?.idempotencyKey,
+    idempotencyHeader ?? body?.idempotencyKey,
   );
   if (options) {
     return options.startBatch({

@@ -1,4 +1,4 @@
-# UGC Pilot private beta — 0.1.9 candidate
+# UGC Pilot private beta — 0.1.10 candidate
 
 Draft UGC copy and video prompts in ordinary language, then use your connected UGC Pilot account when you ask to generate media. This package includes ten skills covering connection, generation, media transfer, five creative workflows, video finishing, shared Edit drafts/export, and speech/private audio transfer where enabled.
 
@@ -16,6 +16,8 @@ Terminal-capable IDEs can use the bundled [local transfer helper](skills/manage-
 For exact CLI commands and troubleshooting, read [client setup](skills/connect-ugc-pilot/references/client-setup.md). Reading or uploading this ZIP in a web chat alone does not install an MCP connection.
 
 The host must load this skill package for the five creative workflows to be discoverable. Adding the MCP URL alone connects the tools; it does not install these local Markdown skills. A web-client connector and a plugin directory listing are separate distribution paths. This package has not been approved for a public directory, and existing installed/cached versions need an explicit update before they gain the new skills.
+
+For application model, quality, duration and multiple-reference choices, use the [advanced generation workflow](skills/create-ugc-media/references/advanced-generation.md) when its discovered capabilities are enabled. Installing this package does not enable server creation gates. Character/avatar adapters and finished slideshow text rendering remain separate missing capabilities.
 
 ## Creative requests
 

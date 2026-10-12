@@ -49,6 +49,7 @@ export async function createAndDispatchBackgroundJob(
 }
 
 export async function createAndDispatchReservedMcpGenerationJob(params: {
+  advanced?: boolean;
   amount: number;
   fingerprint: string;
   idempotencyKey: string;

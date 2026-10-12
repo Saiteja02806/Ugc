@@ -182,6 +182,18 @@ type BackgroundJobsDatabase = {
         };
         Returns: Json;
       };
+      mcp_create_reserved_advanced_generation_job: {
+        Args: {
+          p_amount: number;
+          p_fingerprint: string;
+          p_idempotency_key: string;
+          p_input_json: Json;
+          p_job_type: "generate_image" | "generate_hook_video";
+          p_queue_name: string;
+          p_user_id: string;
+        };
+        Returns: Json;
+      };
       claim_video_render_execution_slot: {
         Args: {
           p_claim_token: string;
@@ -419,6 +431,7 @@ export class McpGenerationJobError extends Error {
 
 /** Atomically reserve credits and create one MCP generation job in Postgres. */
 export async function createReservedMcpGenerationJob(params: {
+  advanced?: boolean;
   amount: number;
   fingerprint: string;
   idempotencyKey: string;
@@ -427,7 +440,7 @@ export async function createReservedMcpGenerationJob(params: {
   queueName: string;
   userId: string;
 }) {
-  const { data, error } = await getSupabaseServerClient().rpc("mcp_create_reserved_generation_job", {
+  const { data, error } = await getSupabaseServerClient().rpc(params.advanced ? "mcp_create_reserved_advanced_generation_job" : "mcp_create_reserved_generation_job", {
     p_amount: params.amount,
     p_fingerprint: params.fingerprint,
     p_idempotency_key: params.idempotencyKey,

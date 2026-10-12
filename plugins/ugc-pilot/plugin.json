@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ugc-pilot",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "Draft UGC copy, generate speech and media, finish videos, edit saved drafts, and transfer owned media through UGC Pilot where enabled.",
   "author": {
     "name": "UGC Pilot",

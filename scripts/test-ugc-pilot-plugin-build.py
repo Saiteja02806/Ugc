@@ -46,17 +46,17 @@ class PluginBuildTests(unittest.TestCase):
                 if Path(name).suffix in {".md", ".json", ".mjs"}:
                     self.assertNotIn(b"\r\n", package.read("ugc-pilot/" + name))
             versions = [json.loads(package.read("ugc-pilot/" + name))["version"] for name in ["plugin.json", ".codex-plugin/plugin.json", ".claude-plugin/plugin.json"]]
-            self.assertEqual(versions, ["0.1.9"] * 3)
+            self.assertEqual(versions, ["0.1.10"] * 3)
         self.assertIn(hashlib.sha256(before).hexdigest(), archive.with_suffix(".zip.sha256").read_text())
-        self.assertTrue((self.destination / "ugc-pilot-0.1.9-setup.md").exists())
+        self.assertTrue((self.destination / "ugc-pilot-0.1.10-setup.md").exists())
         self.assertFalse((self.destination / "ugc-pilot-setup.md").exists())
-        guide = (self.destination / "ugc-pilot-0.1.9-setup.md").read_text(encoding="utf-8")
+        guide = (self.destination / "ugc-pilot-0.1.10-setup.md").read_text(encoding="utf-8")
         self.assertNotIn("](skills/", guide)
         self.assertIn("skills/edit-ugc-draft/SKILL.md", guide)
         self.assertIn(".agents/plugins/marketplace.json", guide)
 
     def test_reviewed_public_archive_matches_current_canonical_source(self):
-        archive = ROOT / "public/downloads/ugc-pilot-0.1.9.zip"
+        archive = ROOT / "public/downloads/ugc-pilot-0.1.10.zip"
         with zipfile.ZipFile(archive) as package:
             self.assertIsNone(package.testzip())
             self.assertEqual(sorted(package.namelist()), sorted("ugc-pilot/" + name for name in builder.FILES))

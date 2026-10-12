@@ -55,6 +55,10 @@ function matchesRoutePrefix(pathname: string, prefix: string) {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 
+export function isFocusedVideoWorkflowRoute(pathname: string) {
+  return ["/explore/hook-video", "/explore/wall-of-text", "/explore/create-hook", "/explore/slideshows"].includes(pathname.replace(/\/$/, ""));
+}
+
 function shouldDefaultSidebarToCollapsed(pathname: string) {
   return (
     /^\/avatars\/media\/[^/]+\/edit$/.test(pathname) ||

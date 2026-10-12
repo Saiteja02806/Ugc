@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
+import { usePublishingPreferencesDefault } from "@/components/scheduling/use-publishing-preferences-default";
 import { useAccountTimeZone } from "@/components/providers/account-timezone-provider";
 import { getBrowserTimeZone, getSchedulingTimeZoneOptions } from "@/lib/scheduling/account-timezone";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
@@ -49,9 +50,6 @@ import {
   validateScheduleLeadTime,
 } from "@/lib/scheduling/schedule-time";
 import {
-  getTikTokPrivacyLabel,
-  isTikTokPrivacyLevel,
-  TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE,
   type TikTokPublishCapabilities,
 } from "@/lib/social/tiktok-publishing";
 import { hasTikTokUiAccess } from "@/lib/social/platform-visibility";
@@ -116,6 +114,7 @@ export function HookVideoScheduleDrawer({
   );
   const queryClient = useQueryClient();
   const accountId = user?.uid ?? "signed-out";
+  const publishingPreferences = usePublishingPreferencesDefault(user?.uid ?? null);
   const defaultTimezone = useAccountTimeZone();
   const [timezoneOverride, setTimezone] = useState<string | null>(null);
   const timezone = timezoneOverride ?? defaultTimezone;
@@ -123,7 +122,7 @@ export function HookVideoScheduleDrawer({
   const [stage, setStage] = useState<"details" | "review">("details");
   const [connections, setConnections] = useState<SocialConnection[]>([]);
   const [selectedConnectionIds, setSelectedConnectionIds] = useState<string[]>([]);
-  const [settings, setSettings] = useState<Record<string, PublishingSettings>>({});
+  const [settingsOverrides, setSettings] = useState<Record<string, PublishingSettings>>({});
   const [tiktokCapabilities, setTikTokCapabilities] = useState<
     Record<string, TikTokScheduleCapabilityState>
   >({});
@@ -196,6 +195,37 @@ export function HookVideoScheduleDrawer({
   const selectedConnections = visibleConnections.filter((connection) =>
     selectedConnectionIds.includes(connection.id),
   );
+  const settings = useMemo(() => Object.fromEntries(
+    connections.map((connection) => {
+      const capability = tiktokCapabilities[connection.id];
+      return [connection.id, {
+      ...getDefaultScheduleTargetSettings(connection.platform),
+      ...(connection.platform !== "instagram"
+        ? { containsSyntheticMedia: publishingPreferences.containsSyntheticMedia }
+        : {}),
+      ...(connection.platform === "tiktok" ? {
+        privacyLevel: publishingPreferences.tiktokPrivacyLevel,
+        allowComment: publishingPreferences.tiktokAllowComments,
+      } : {}),
+      ...(connection.platform === "youtube" ? {
+        privacyStatus: publishingPreferences.youtubePrivacyStatus,
+        madeForKids: publishingPreferences.youtubeMadeForKids,
+        notifySubscribers: publishingPreferences.youtubeNotifySubscribers,
+      } : {}),
+      ...settingsOverrides[connection.id],
+      ...(connection.platform === "tiktok" && capability?.status === "ready" ? {
+        ...(capability.capabilities.interactions.commentsDisabled ? { allowComment: false } : {}),
+        ...(capability.capabilities.interactions.duetsDisabled ? { allowDuet: false } : {}),
+        ...(capability.capabilities.interactions.stitchesDisabled ? { allowStitch: false } : {}),
+      } : {}),
+      }];
+    }),
+  ), [connections, publishingPreferences.containsSyntheticMedia, publishingPreferences.tiktokPrivacyLevel, publishingPreferences.tiktokAllowComments, publishingPreferences.youtubePrivacyStatus, publishingPreferences.youtubeMadeForKids, publishingPreferences.youtubeNotifySubscribers, settingsOverrides, tiktokCapabilities]);
+  const usesPublishingPreferences = selectedConnections.some(
+    (connection) => connection.platform !== "instagram",
+  );
+  const preferencesPending = usesPublishingPreferences && publishingPreferences.loading;
+  const preferencesUnavailable = usesPublishingPreferences && Boolean(publishingPreferences.error);
   const tiktokPublishingAgreement = getTikTokPublishingAgreement({
     connections: selectedConnections,
     settings,
@@ -247,24 +277,6 @@ export function HookVideoScheduleDrawer({
         ...current,
         [connectionId]: { capabilities: data.capabilities, status: "ready" },
       }));
-      setSettings((current) => {
-        const settings =
-          current[connectionId] ?? getDefaultScheduleTargetSettings("tiktok");
-        const privacyLevel = settings.privacyLevel;
-
-        return {
-          ...current,
-          [connectionId]: {
-            ...settings,
-            privacyLevel:
-              isTikTokPrivacyLevel(privacyLevel) &&
-              data.capabilities.privacyLevels.includes(privacyLevel) &&
-              (data.capabilities.directPostAudited || privacyLevel === "SELF_ONLY")
-                ? privacyLevel
-                : "",
-          },
-        };
-      });
     } catch (error) {
       setTikTokCapabilities((current) => ({
         ...current,
@@ -290,9 +302,7 @@ export function HookVideoScheduleDrawer({
         ? current
         : {
             ...current,
-            [connection.id]: getDefaultScheduleTargetSettings(
-              connection.platform,
-            ),
+            [connection.id]: {},
           },
     );
 
@@ -320,6 +330,7 @@ export function HookVideoScheduleDrawer({
   }
 
   function continueToReview() {
+    if (preferencesPending || preferencesUnavailable) return;
     const validationError = getValidationError({
       scheduledDate,
       scheduledTime,
@@ -357,6 +368,7 @@ export function HookVideoScheduleDrawer({
   }
 
   async function confirmSchedule() {
+    if (preferencesPending || preferencesUnavailable) return;
     const confirmedSettings = getScheduleSettings();
     const validationError = getValidationError({
       scheduledDate,
@@ -499,6 +511,7 @@ export function HookVideoScheduleDrawer({
                               settings={settings[connection.id] ?? getDefaultScheduleTargetSettings("tiktok")}
                               tiktokCapability={tiktokCapabilities[connection.id]}
                               onSettingChange={(key, value) => updateSetting(connection.id, key, value)}
+                              onRetry={() => void loadTikTokCapabilities(connection.id)}
                             />
                           ) : null}
                         </ConnectionRow>
@@ -614,10 +627,10 @@ export function HookVideoScheduleDrawer({
                 <section className="mt-6 border-t border-border pt-4" aria-labelledby="schedule-publishing-details-heading">
                   <div>
                     <h4 id="schedule-publishing-details-heading" className="text-xs font-semibold text-foreground-strong">
-                      YouTube settings
+                      YouTube destinations
                     </h4>
                     <p className="mt-1 text-[11px] font-medium leading-4 text-muted">
-                      Settings for your selected YouTube channels.
+                      Uses your saved publishing defaults.
                     </p>
                   </div>
                   <div className="mt-3 grid gap-3 lg:grid-cols-2">
@@ -655,6 +668,13 @@ export function HookVideoScheduleDrawer({
             />
           )}
 
+          {usesPublishingPreferences && (publishingPreferences.loading || publishingPreferences.error) ? (
+            <p role={publishingPreferences.loading ? "status" : "alert"} className="mt-4 text-xs leading-5 text-muted">
+              {publishingPreferences.loading ? "Loading your publishing defaults…" : publishingPreferences.error}
+            </p>
+          ) : null}
+          {preferencesUnavailable ? <Button type="button" variant="outline" size="sm" onClick={publishingPreferences.retry} className="mt-2">Retry loading defaults</Button> : null}
+          <a href="/settings#preferences" target="_blank" rel="noopener noreferrer" className="mt-4 inline-block text-xs font-semibold text-muted underline underline-offset-4 hover:text-foreground-strong">Change default settings</a>
           {errorMessage ? (
             <p role="alert" className="mt-4 border-l-2 border-error px-3 py-1 text-sm font-semibold leading-5 text-error">
               {errorMessage}
@@ -709,6 +729,8 @@ export function HookVideoScheduleDrawer({
             onClick={stage === "details" ? continueToReview : requestScheduleConfirmation}
             disabled={
               loading ||
+              preferencesPending ||
+              preferencesUnavailable ||
               submitting ||
               (stage === "review" && !canConfirmPreparation)
             }
@@ -775,126 +797,25 @@ function ConnectionRow({
   );
 }
 
-function TikTokPublishingDetails({
-  connection,
-  settings,
-  tiktokCapability,
-  onSettingChange,
-}: {
+function TikTokPublishingDetails({ connection, tiktokCapability, onRetry }: {
   connection: SocialConnection;
   settings: PublishingSettings;
   tiktokCapability: TikTokScheduleCapabilityState | undefined;
   onSettingChange: (key: string, value: boolean | string) => void;
+  onRetry: () => void;
 }) {
-  const settingsError = tiktokCapability?.status === "ready"
-    ? getScheduleTargetSettingsError({
-        connections: [connection],
-        requireTikTokMusicConfirmation: false,
-        settings: { [connection.id]: settings },
-        tiktokCapabilities: { [connection.id]: tiktokCapability },
-      })
-    : null;
-  const needsAttention = tiktokCapability?.status === "error" || Boolean(settingsError);
-
-  return (
-    <details
-      data-tiktok-publishing-options
-      open={needsAttention || undefined}
-      className="border-t border-border px-3 py-2.5"
-    >
-      <summary className="cursor-pointer text-[11px] font-semibold text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-        TikTok settings{needsAttention ? " · Action needed" : " (optional)"}
-      </summary>
-      {settingsError ? (
-        <p role="alert" className="mt-3 text-xs font-semibold leading-5 text-error">
-          {settingsError}
-        </p>
-      ) : null}
-
-      {!tiktokCapability ||
-      tiktokCapability.status === "idle" ||
-      tiktokCapability.status === "loading" ? (
-        <p className="mt-4 flex items-center gap-2 text-xs font-semibold text-muted">
-          <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-          Loading TikTok audience choices
-        </p>
-      ) : tiktokCapability.status === "error" ? (
-        <p role="alert" className="mt-4 text-xs font-semibold leading-5 text-error">
-          {tiktokCapability.message}
-        </p>
-      ) : (
-        <div className="mt-4 grid gap-3">
-          {!tiktokCapability.capabilities.directPostAudited ? (
-            <p className="rounded-[8px] border border-primary/25 bg-primary/5 px-2.5 py-2 text-[11px] font-medium leading-4 text-foreground-strong">
-              {TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE}
-            </p>
-          ) : null}
-          <label className="text-xs font-semibold text-muted">
-            Audience
-            <select
-              value={typeof settings.privacyLevel === "string" ? settings.privacyLevel : ""}
-              onChange={(event) => onSettingChange("privacyLevel", event.target.value)}
-              className="mt-1.5 h-10 w-full rounded-control border border-border bg-background px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-            >
-              <option value="">Choose audience</option>
-              {tiktokCapability.capabilities.privacyLevels.map((privacyLevel) => (
-                <option key={privacyLevel} value={privacyLevel}>
-                  {getTikTokPrivacyLabel(privacyLevel)}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      )}
-    </details>
-  );
+  if (!tiktokCapability || tiktokCapability.status === "idle" || tiktokCapability.status === "loading") return <p role="status" className="px-3 py-2 text-xs text-muted">Checking TikTok account settings…</p>;
+  if (tiktokCapability.status === "error") return <div className="px-3 py-2 text-xs text-error"><p role="alert">{connection.platformAccountName || 'TikTok'}: {tiktokCapability.message}</p><Button type="button" size="sm" variant="outline" onClick={onRetry}>Retry TikTok account</Button></div>;
+  return null;
 }
 
-function YouTubePublishingDetails({
-  connection,
-  settings,
-  onSettingChange,
-}: {
+function YouTubePublishingDetails({ connection, settings }: {
   connection: SocialConnection;
   settings: PublishingSettings;
   onSettingChange: (key: string, value: boolean | string) => void;
 }) {
-  const privacyStatus =
-    typeof settings.privacyStatus === "string" ? settings.privacyStatus : "private";
-
-  return (
-    <div className="rounded-[12px] border border-border bg-card p-3.5">
-      <div className="flex min-w-0 items-center gap-3">
-        <SocialAccountAvatar connection={connection} />
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-foreground-strong">
-            {connection.platformAccountName || connection.platformAccountUsername || "YouTube"}
-          </p>
-          <p className="mt-0.5 text-[11px] font-medium text-muted">YouTube</p>
-        </div>
-      </div>
-      <details className="mt-4 rounded-control border border-border bg-background px-3 py-2.5 text-xs text-foreground-strong">
-        <summary className="cursor-pointer list-none font-semibold marker:content-none">
-          <span>Channel visibility</span>
-          <span className="ml-2 font-medium text-muted">
-            {getYouTubePrivacyLabel(privacyStatus)} · Change
-          </span>
-        </summary>
-        <label className="mt-3 block border-t border-border pt-3 text-xs font-semibold text-muted">
-          Visibility
-          <select
-            value={privacyStatus}
-            onChange={(event) => onSettingChange("privacyStatus", event.target.value)}
-            className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-          >
-            <option value="private">Private</option>
-            <option value="unlisted">Unlisted</option>
-            <option value="public">Public</option>
-          </select>
-        </label>
-      </details>
-    </div>
-  );
+  const privacyStatus = typeof settings.privacyStatus === 'string' ? settings.privacyStatus : 'public';
+  return <p className="text-xs text-muted">{connection.platformAccountName || 'YouTube'} · {getYouTubePrivacyLabel(privacyStatus)}</p>;
 }
 
 function getYouTubePrivacyLabel(value: string) {

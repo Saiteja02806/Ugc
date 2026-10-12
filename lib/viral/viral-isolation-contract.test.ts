@@ -34,11 +34,11 @@ test("opens Explore without changing the separate Trending dashboard", () => {
   );
 });
 
-test("shows Explore while keeping standalone Audio out of the primary navigation", () => {
+test("shows Explore and standalone Audio in the primary navigation", () => {
   assert.match(sidebar, /key: "explore",\s*label: "Explore",\s*href: "\/explore"/);
   assert.match(sidebar, /key: "audio-generation",\s*label: "Audio generation",\s*href: "\/audio-generation"/);
   assert.match(sidebar, /visiblePrimaryNavigationItems\.map/);
-  assert.match(sidebar, /primaryNavigationItems\.filter\(item => item\.key !== "audio-generation"\)/);
+  assert.doesNotMatch(sidebar, /primaryNavigationItems\.filter\(item => item\.key !== "audio-generation"\)/);
   assert.doesNotMatch(sidebar, /isExploreScreenEnabled|isCreateContentScreenEnabled|exploreNavigationItem/);
   assert.doesNotMatch(sidebar, /useViralReviewerAccess/);
 });

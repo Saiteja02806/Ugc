@@ -4,7 +4,7 @@ import test from "node:test";
 import { validateOpenAiMetadata, validatePackage, validateResourceLinks } from "./validate-ugc-pilot-plugin.mjs";
 
 const original = JSON.parse(fs.readFileSync(new URL("../plugins/ugc-pilot/plugin.json", import.meta.url), "utf8"));
-const tools = new Set(["get_profile", "get_entitlements", "get_capabilities", "list_assets", "get_asset", "generate_image", "generate_video", "get_job"]);
+const tools = new Set(["get_profile", "get_entitlements", "get_capabilities", "list_assets", "get_asset", "generate_image", "generate_video", "get_job", "get_video_finishing_capabilities", "finish_video", "get_video_finish"]);
 const altered = (mutate) => {
   const plugin = structuredClone(original);
   mutate(plugin.extensions["com.openai"]);
@@ -13,8 +13,9 @@ const altered = (mutate) => {
 
 test("the full bundle passes while reporting the missing review recording", () => {
   const result = validatePackage();
-  assert.equal(result.version, "0.1.2");
-  assert.equal(result.skillCount, 8);
+  assert.equal(result.version, "0.1.4");
+  assert.equal(result.skillCount, 9);
+  assert.equal(result.toolCount, 15);
   assert.deepEqual(result.reviewReadiness, { submissionMaterialsComplete: false, pending: ["review.demo_recording_url"] });
 });
 

@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { createPortal } from "react-dom";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import type { ScheduleFormSubmission } from "@/components/scheduling/schedule-editor";
 import { WorkflowConnectedAccounts } from "@/components/explore/workflow-connected-accounts";
 import { EMPTY_SCHEDULE_DRAFT, WorkflowSchedulingPanel } from "@/components/explore/workflow-scheduling-panel";
@@ -18,14 +19,16 @@ import { parseWorkflowConnectedAccounts } from "@/lib/explore/workflow-connected
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { ScheduleMediaOption } from "@/lib/scheduling/types";
 import type { SocialConnection } from "@/lib/social/types";
+import reviewStyles from "@/components/explore/workflow-schedule-review.module.css";
 
 const ScheduleEditor = dynamic(() => import("@/components/scheduling/schedule-editor").then(module => module.ScheduleEditor), { ssr: false });
-export function FormatSchedulePanel({ output, localPreview, imageOnly, active, actionsTarget, format, pendingSource = false, preparing = false, draftScopeId }: {
+export function FormatSchedulePanel({ output, localPreview, imageOnly, active, actionsTarget, format, pendingSource = false, preparing = false, draftScopeId, onBackToEdit }: {
   output: { id: string; kind: "media_asset" | "library_item"; url: string; title: string } | null; localPreview: boolean; imageOnly: boolean; active: boolean;
   actionsTarget?: HTMLElement | null;
   format: "hook" | "wall_text" | "slideshow";
   pendingSource?: boolean;
   preparing?: boolean; draftScopeId?: string;
+  onBackToEdit?: () => void;
 }) {
   const { user } = useAuth();
   const timezone = useAccountTimeZone();
@@ -136,14 +139,32 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, a
     finally { working.current = false; if (alive.current) setBusy(false); }
   }
   const media: ScheduleMediaOption[] = output && output.kind === "media_asset" ? [{ id: output.id, sourceType: "combined_video", status: "ready", title: output.title, mediaUrl: output.url }] : [];
-  const actions = <div hidden={!active} className="space-y-2">
+  const actionHelp = localPreview ? "Preview · scheduling disabled" : pendingSource ? "Wait for your selected video to finish uploading." : !output ? preparing ? "Your final video must finish preparing before you review the schedule." : imageOnly ? "Save your final edits before scheduling." : "Add at least one video in Create or Demo before scheduling." : busy ? "Checking your video and scheduling settings…" : !receipt && !targets.length ? "Choose a connected account for each selected platform." : "Confirm your accounts and publishing settings in the next step.";
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(draft.date) ? new Date(`${draft.date}T12:00:00Z`) : null;
+  const timing = date && Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === draft.date && /^([01]\d|2[0-3]):[0-5]\d$/.test(draft.time)
+    ? `${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(date)}, ${draft.time}`
+    : "Choose date and time";
+  const destinations = platforms.map(platform => platform === "instagram" ? imageOnly ? "Instagram" : "Instagram Reels" : platform === "tiktok" ? "TikTok" : "YouTube").join(" + ");
+  const selectedAccounts = workflowSelectedAccounts(draft);
+  const selectedAccountCount = new Set(platforms.map(platform => selectedAccounts[platform]).filter(Boolean)).size;
+  const actions = <div hidden={!active} className={reviewStyles.actions}>
     {error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}
     {message ? <p role="status" className="text-xs leading-5 text-muted">{message}</p> : null}
-    <Button type="button" size="lg" className="h-11 w-full rounded-lg" disabled={localPreview || pendingSource || !output || busy || !receipt && !targets.length} onClick={() => void review()}>{busy ? "Checking…" : receipt && !receipt.scheduleId ? "Resume schedule" : receipt?.scheduleId ? "Check saved schedule" : "Review schedule"}</Button>
-    <p className="text-xs leading-5 text-muted">{!output ? preparing ? "Your final video must finish preparing before you review the schedule." : imageOnly ? "Save your final edits before scheduling." : "Add at least one video in Create or Demo before scheduling." : localPreview ? "Preview · scheduling disabled" : "Review your accounts, time and platform settings before confirming."}</p>
+    <div className={reviewStyles.actionRow}>
+      {onBackToEdit ? <Button type="button" variant="outline" disabled={busy} className={reviewStyles.backButton} onClick={onBackToEdit}><ArrowLeft size={16} aria-hidden="true" />Back to Edit</Button> : <span />}
+      <div className={reviewStyles.reviewAction}>
+        <p className={reviewStyles.actionHelp} role="status">{actionHelp}</p>
+        <Button type="button" size="lg" className={reviewStyles.reviewButton} disabled={localPreview || pendingSource || !output || busy || !receipt && !targets.length} onClick={() => void review()}>{busy ? "Checking…" : receipt && !receipt.scheduleId ? "Resume schedule" : receipt?.scheduleId ? "Check saved schedule" : "Review schedule"}<ArrowRight size={16} aria-hidden="true" /></Button>
+      </div>
+    </div>
     {receipt?.scheduleId ? <Link href="/scheduling" className="block text-center text-sm text-primary underline">View in Scheduling</Link> : null}
   </div>;
-  return <><div hidden={!active} className="space-y-5 p-4"><WorkflowSchedulingPanel draft={draft} onChange={setDraft} imageOnly={imageOnly} timezone={timezone} accountsControl={<WorkflowConnectedAccounts enabled={!localPreview} active={active} ownerId={user?.uid ?? null} platforms={platforms} selectedIds={workflowSelectedAccounts(draft)} onSelect={(platform, id) => setDraft(selectWorkflowAccount(draft, platform, id))} />} />
+  return <><div hidden={!active} className={reviewStyles.panel}><WorkflowSchedulingPanel draft={draft} onChange={setDraft} imageOnly={imageOnly} timezone={timezone} presentation="review" accountsControl={<WorkflowConnectedAccounts enabled={!localPreview} active={active} ownerId={user?.uid ?? null} platforms={platforms} selectedIds={workflowSelectedAccounts(draft)} onSelect={(platform, id) => setDraft(selectWorkflowAccount(draft, platform, id))} />} />
+    <section aria-label="Schedule summary" className={reviewStyles.summary}>
+      <h3 className="sr-only">Schedule summary</h3>
+      <p className={reviewStyles.summaryDestination}>{destinations || "Choose where to publish"}</p>
+      <p>{selectedAccountCount === platforms.length && selectedAccountCount > 0 ? `${selectedAccountCount} ${selectedAccountCount === 1 ? "account" : "accounts"} selected` : "Choose an account for each platform"}<span aria-hidden="true"> · </span>{timing}<span aria-hidden="true"> · </span>{timezone || "Your device’s time zone"}</p>
+    </section>
     {!actionsTarget ? actions : null}
     {active && open && reviewedKey === key && output ? <ScheduleEditor finalVideo={imageOnly ? undefined : media[0]} demoMediaOptions={media} hookMediaOptions={[]} editingIsCombinedVideo={false} editingPlannedPlatforms={[]} editingSchedule={null} editingScheduledDate={null} editingScheduledTime={null} initialLibraryItemId={output.kind === "library_item" ? output.id : undefined}
       initialClipSelection="secondary_only" initialDemoMediaId={output.kind === "media_asset" ? output.id : ""} initialHookMediaId="" initialCaption={draft.caption} initialPlannedTargets={targets} initialScheduledDate={draft.date} initialScheduledTime={draft.time} minimumScheduleLeadMinutes={lead} requireScheduleTarget saving={busy} errorMessage={error}

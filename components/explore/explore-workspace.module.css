@@ -7,8 +7,9 @@
 .workflowGrid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 20px;
-  padding-block: 4px 12px;
+  gap: 28px 20px;
+  align-items: start;
+  padding: 6px;
 }
 
 .workflowCard {
@@ -36,34 +37,9 @@
   pointer-events: none;
 }
 
-.creationGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 28px;
-  margin-top: 32px;
-  align-items: start;
-}
-
-.quickStarts, .characterSection {
+.quickStarts {
   min-width: 0;
   width: 100%;
-}
-
-.characterCard {
-  display: block;
-  overflow: hidden;
-  margin-top: 16px;
-  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
-  border-radius: 12px;
-  background: var(--card-muted);
-  outline: none;
-  transition: border-color 160ms ease;
-}
-
-.characterCard:hover { border-color: var(--primary); }
-.characterCard:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 4px;
 }
 
 .characterMotion {
@@ -86,45 +62,38 @@
   inset: 0;
 }
 
-.characterCaption {
-  display: flex;
-  min-height: 52px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.characterAction {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  flex-shrink: 0;
-  color: var(--foreground-strong);
-  font-weight: 500;
-}
-
 .toolGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 10px;
-  margin-top: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  aspect-ratio: 16 / 9;
+  gap: 12px;
 }
 
 .toolCard {
+  position: relative;
   display: flex;
+  flex-direction: column;
   min-width: 0;
-  min-height: 84px;
+  min-height: 0;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  gap: 8px;
   border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
   border-radius: 12px;
   background: var(--card-muted);
-  padding: 12px 14px;
+  padding: 10px;
   transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.toolTitle {
+  max-width: 100%;
+  color: var(--foreground-strong);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .toolCard:hover {
@@ -138,15 +107,14 @@
 }
 
 .arrow {
+  position: absolute;
+  top: 8px;
+  right: 8px;
   transition: color 160ms ease, transform 160ms ease;
 }
 
 @container explore (min-width: 560px) {
   .workflowGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .toolGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -157,19 +125,10 @@
   }
 }
 
-@container explore (min-width: 960px) {
-  .creationGrid {
-    grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr);
-    gap: 24px;
-  }
-
-  .toolGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .characterVideo { display: none; }
 
-  .cover, .toolCard, .arrow, .characterCard {
+  .cover, .toolCard, .arrow {
     transition: none;
   }
 

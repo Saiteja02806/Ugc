@@ -2,6 +2,7 @@
 
 import { CreditIcon } from "@/components/icons/credit-icon";
 import scrollbars from "@/components/ui/quiet-scrollbar.module.css";
+import { useWorkflowNavigation } from "@/components/layout/workflow-navigation";
 
 import {
   ExternalLink,
@@ -114,8 +115,12 @@ export function AppSidebar({
   defaultCollapsed?: boolean;
 }) {
   const { user } = useAuth();
-  const [isMobileNavigationOpen, setIsMobileNavigationOpen] = useState(false);
-  const mobileNavigationId = useId();
+  const workflowNavigation = useWorkflowNavigation();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const isMobileNavigationOpen = workflowNavigation?.enabled ? workflowNavigation.open : mobileOpen;
+  const setIsMobileNavigationOpen = workflowNavigation?.enabled ? workflowNavigation.setOpen : setMobileOpen;
+  const fallbackNavigationId = useId();
+  const mobileNavigationId = workflowNavigation?.enabled ? workflowNavigation.id : fallbackNavigationId;
   const mobileNavigationRef = useRef<HTMLElement>(null);
   const mobileCloseButtonRef = useRef<HTMLButtonElement>(null);
   const collapsed = useSyncExternalStore(
@@ -178,7 +183,7 @@ export function AppSidebar({
         previouslyFocused.focus();
       }
     };
-  }, [isMobileNavigationOpen]);
+  }, [isMobileNavigationOpen, setIsMobileNavigationOpen]);
 
   function toggleSidebar() {
     setSidebarPreference(!collapsed);
@@ -204,7 +209,8 @@ export function AppSidebar({
       <aside
         id="ugc-desktop-sidebar"
         className={cn(
-          "sticky top-0 z-[var(--z-sidebar)] hidden h-dvh shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200 ease-out motion-reduce:transition-none md:flex",
+          "sticky top-0 z-[var(--z-sidebar)] hidden h-dvh shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200 ease-out motion-reduce:transition-none",
+          !workflowNavigation?.enabled && "md:flex",
           collapsed ? "w-[60px]" : "w-[196px]",
         )}
       >
@@ -243,7 +249,7 @@ export function AppSidebar({
       </aside>
 
       {isMobileNavigationOpen ? (
-        <div className="fixed inset-0 z-[var(--z-modal)] md:hidden">
+        <div className={cn("fixed inset-0 z-[var(--z-modal)]", !workflowNavigation?.enabled && "md:hidden")}>
           <button
             type="button"
             tabIndex={-1}
@@ -373,7 +379,7 @@ function SidebarNavigation({
   collapsed?: boolean;
   onNavigate?: () => void;
 }) {
-  const visiblePrimaryNavigationItems = primaryNavigationItems.filter(item => item.key !== "audio-generation");
+  const visiblePrimaryNavigationItems = primaryNavigationItems;
 
   return (
     <nav

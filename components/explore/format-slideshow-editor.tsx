@@ -3,12 +3,14 @@
 /* eslint-disable @next/next/no-img-element */
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, ArrowRight, Download, Plus, Upload } from "lucide-react";
+import { ArrowLeft, ArrowRight, Plus, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import type { AIStudioImageResult } from "@/lib/ai-studio/media-results";
 import { fetchAIStudioMediaAsset } from "@/lib/ai-studio/media-client";
 import { uploadAIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
+import { readRemixSource, resolveRemixSource } from "@/lib/explore/remix-source";
+import type { ReferenceText } from "@/lib/explore/reference-text";
 import type { RecreateReference } from "@/lib/explore/recreate-types";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { isExploreUuid } from "@/worker/src/lib/explore-finishing-contract";
@@ -17,6 +19,7 @@ import type { MediaAsset } from "@/lib/media/types";
 import { EMPTY_SLIDE_TEXT, parseSlideText, type SlideTextDesign } from "@/lib/explore/slideshow-text";
 import { createSlideTextSvg, renderSlideText } from "@/lib/explore/slideshow-text-client";
 import { FormatSlideshowTextTools } from "./format-slideshow-text-tools";
+import { RemixTextSection } from "./remix-text-section";
 import textStyles from "./slideshow-editor.module.css";
 import { MAX_SLIDESHOW_SLIDES, MIN_SLIDESHOW_SLIDES, moveSlideshowSlide, readSlideshowDraft, readSlideshowOutput, readSlideshowSaveRequest, sameSlideshowChoices,
   type SlideshowOutput, type SlideshowSaveRequest, type SlideshowSlideChoice } from "@/lib/explore/slideshow-draft";
@@ -26,22 +29,22 @@ export type SlideshowEditorController = { useImage: (image: AIStudioImageResult,
 
 function imageFromAsset(asset: MediaAsset): AIStudioImageResult {
   if (!isExploreUuid(asset.id) || asset.collection !== "image" || asset.status !== "ready" || !asset.url.startsWith("https://")) throw new Error("This slide is unavailable. Remove it or choose another image.");
-  return { id: asset.id, url: asset.url, title: asset.title, createdAt: asset.createdAt,
+  return { ...(Object.hasOwn(asset.metadata ?? {}, "remixTextSource") ? { remixTextSource: readRemixSource(asset.metadata.remixTextSource) } : {}), id: asset.id, url: asset.url, title: asset.title, createdAt: asset.createdAt,
     aspectRatio: asset.ratio === "1:1" || asset.ratio === "9:16" || asset.ratio === "16:9" ? asset.ratio : "4:5" };
 }
 function choices(slides: readonly EditorSlide[]) { return slides.map(({ referenceSlideId, mediaAssetId }) => ({ referenceSlideId, mediaAssetId })); }
 const hasText = (text: SlideTextDesign) => Boolean(text.heading.trim() || text.body.trim());
-function readTextDraft(raw: string | null): Record<string, SlideTextDesign> {
+function readTextDraft(raw: string | null, activeIds: ReadonlySet<string>): Record<string, SlideTextDesign> {
   if (!raw || raw.length > 65536) return {};
-  try { const parsed = JSON.parse(raw); if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {}; return Object.fromEntries(Object.entries(parsed).slice(0, 10).flatMap(([id, value]) => { try { return [[id, parseSlideText(value)]]; } catch { return []; } })); } catch { return {}; }
+  try { const parsed = JSON.parse(raw); if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {}; return Object.fromEntries(Object.entries(parsed).filter(([id]) => activeIds.has(id)).slice(0, MAX_SLIDESHOW_SLIDES).flatMap(([id, value]) => { try { return [[id, parseSlideText(value)]]; } catch { return []; } })); } catch { return {}; }
 }
 
-export function FormatSlideshowEditor({ reference, legacyReferences, previewImages, controllerRef, active, generationBusy, controlsTarget, resultsTarget, actionsTarget, localPreview, savingEnabled, onDirty, onSaved, onContinue, onRegenerate, onBackToPreview, onGoToCreate, onBusyChange }: {
+export function FormatSlideshowEditor({ reference, legacyReferences, previewImages, previewText, controllerRef, active, generationBusy, controlsTarget, resultsTarget, actionsTarget, localPreview, savingEnabled, onDirty, onSaved, onContinue, onRegenerate, onBackToPreview, onGoToCreate, onBusyChange }: {
   reference: RecreateReference | null; legacyReferences?: readonly RecreateReference[]; controllerRef: Ref<SlideshowEditorController>; slideIndex?: number; active: boolean; generationBusy: boolean;
   controlsTarget: HTMLElement | null; resultsTarget: HTMLElement | null; actionsTarget?: HTMLElement | null; localPreview: boolean; savingEnabled: boolean;
   onDirty: () => void; onSaved: (output: SlideshowOutput) => void; onContinue: () => void; onRegenerate: (index: number, image: AIStudioImageResult) => void;
   onBackToPreview?: () => void; onGoToCreate?: () => void; onBusyChange?: (busy: boolean) => void;
-  previewImages?: AIStudioImageResult[];
+  previewImages?: AIStudioImageResult[]; previewText?: ReferenceText | null;
 }) {
   const { user } = useAuth();
   const owner = user?.uid ?? null;
@@ -49,7 +52,15 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
   const saveKey = `${draftKey}:save`;
   const [slides, setSlides] = useState<EditorSlide[]>(() => localPreview ? (previewImages ?? []).slice(0, 10).map((image, index) => ({ referenceSlideId: reference?.slides[index]?.id ?? `preview-${index}`, mediaAssetId: image.id, image })) : []);
   const slideRef = useRef<EditorSlide[]>(slides);
-  const [text, setText] = useState<Record<string, SlideTextDesign>>(() => typeof window === "undefined" || localPreview ? {} : readTextDraft(localStorage.getItem(`${draftKey}:text`)));
+  const [text, setText] = useState<Record<string, SlideTextDesign>>(() => {
+    if (typeof window === "undefined" || localPreview || !owner) return {};
+    try {
+      const saved = readSlideshowSaveRequest(localStorage.getItem(saveKey), owner);
+      const draft = readSlideshowDraft(localStorage.getItem(draftKey), owner);
+      const sequence = saved && !saved.output ? saved.sourceSlides ?? saved.slides : draft?.slides ?? saved?.sourceSlides ?? saved?.slides ?? [];
+      return readTextDraft(localStorage.getItem(`${draftKey}:text`), new Set(sequence.map(slide => slide.referenceSlideId)));
+    } catch { return {}; }
+  });
   const renderedText = useRef<Record<string, { signature: string; id: string }>>({});
   const [dimensions, setDimensions] = useState({ url: "", width: 1080, height: 1350 });
   const [previewIndex, setPreviewIndex] = useState(0);
@@ -86,7 +97,13 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
   }, [draftKey, owner, localPreview]);
   const change = useCallback((next: EditorSlide[], index = 0) => {
     revision.current += 1; persist(next); setLegacyPreview([]); setPreviewIndex(Math.max(0, Math.min(index, next.length - 1))); setOutput(null); onDirty();
-  }, [persist, onDirty]);
+    const activeIds = new Set(next.map(slide => slide.referenceSlideId));
+    const activeText = Object.fromEntries(Object.entries(text).filter(([id]) => activeIds.has(id)));
+    if (Object.keys(activeText).length !== Object.keys(text).length) {
+      setText(activeText);
+      if (owner && !localPreview) try { localStorage.setItem(`${draftKey}:text`, JSON.stringify(activeText)); } catch { /* The active edits remain in this tab. */ }
+    }
+  }, [persist, onDirty, text, owner, localPreview, draftKey]);
   const startNewSlide = useCallback(() => { replacementTarget.current = null; }, []);
   function editFingerprint(sequence: SlideshowSaveRequest["slides"]) { return JSON.stringify({ slides: sequence, text: sequence.map(slide => text[slide.referenceSlideId] ?? EMPTY_SLIDE_TEXT) }); }
   function matchesSaved(saved: SlideshowSaveRequest, sequence: SlideshowSaveRequest["slides"]) { return sameSlideshowChoices(saved.sourceSlides ?? saved.slides, sequence) && (!saved.editFingerprint || saved.editFingerprint === editFingerprint(sequence)); }
@@ -105,7 +122,7 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
 
   async function loadChoices(sequence: SlideshowSaveRequest["slides"], token: string): Promise<EditorSlide[]> {
     const ids = [...new Set(sequence.flatMap(slide => slide.mediaAssetId ? [slide.mediaAssetId] : []))];
-    const resolved = await Promise.allSettled(ids.map(async id => [id, imageFromAsset(await fetchAIStudioMediaAsset(id, token))] as const));
+    const resolved = await Promise.allSettled(ids.map(async id => [id, imageFromAsset(await fetchAIStudioMediaAsset(id, token, { remixSource: true }))] as const));
     const images = new Map(resolved.flatMap(result => result.status === "fulfilled" ? [result.value] : []));
     return sequence.flatMap(slide => slide.mediaAssetId ? [{ referenceSlideId: slide.referenceSlideId, mediaAssetId: slide.mediaAssetId, image: images.get(slide.mediaAssetId) ?? null,
       ...(images.has(slide.mediaAssetId) ? {} : { error: "This slide is unavailable. Remove or replace it." }) }] : []);
@@ -184,7 +201,7 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
           const parsed = JSON.parse(oldDraftRaw);
           if (parsed && Array.isArray(parsed.order) && parsed.order.length <= 10 && new Set(parsed.order).size === parsed.order.length && parsed.replacements && typeof parsed.replacements === "object") {
             const order = parsed.order.filter((id: unknown) => typeof id === "string" && id.length <= 160 && isExploreUuid(parsed.replacements[id]?.id)) as string[];
-            older = { order, replacements: parsed.replacements, text: readTextDraft(JSON.stringify(parsed.text ?? {})) };
+            older = { order, replacements: parsed.replacements, text: readTextDraft(JSON.stringify(parsed.text ?? {}), new Set(order)) };
           }
         }
         if (older?.order.length && (!saved || saved.slides.every(slide => slide.mediaAssetId !== null))) {
@@ -305,6 +322,7 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
   }
   function goToCreate() { startNewSlide(); onGoToCreate?.(); }
   const selected = slides[Math.min(previewIndex, Math.max(0, slides.length - 1))];
+  const slideSource = selected?.image?.remixTextSource !== undefined ? resolveRemixSource(selected.image.remixTextSource, legacyReferences ?? (reference ? [reference] : []), "slideshow") : { reference, slideId: reference?.slides.find(s => s.id === selected?.referenceSlideId)?.id ?? null };
   const design = selected ? text[selected.referenceSlideId] ?? EMPTY_SLIDE_TEXT : EMPTY_SLIDE_TEXT;
   const selectedUrl = selected?.image?.url ?? "";
   const overlay = useMemo(() => typeof document === "undefined" || !hasText(design) ? "" : createSlideTextSvg(design, dimensions.url === selectedUrl ? dimensions.width : 1080, dimensions.url === selectedUrl ? dimensions.height : 1350), [design, dimensions, selectedUrl]);
@@ -314,13 +332,6 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
     revision.current += 1; setText(next); setOutput(null); setError(null); onDirty();
     if (owner && !localPreview) try { localStorage.setItem(`${draftKey}:text`, JSON.stringify(next)); } catch { /* Edits remain in this tab. */ }
   }
-  async function download() {
-    if (!selected?.image || working.current || locked) return;
-    working.current = true; setBusy(true); setError(null);
-    try { const file = await renderSlideText(selected.image.url, design, { referenceId: reference?.id ?? "owned", slideId: selected.referenceSlideId, mediaAssetId: selected.mediaAssetId, ownerId: owner, preview: localPreview }); if (!alive.current) return; const url = URL.createObjectURL(file), link = document.createElement("a"); link.href = url; link.download = `slide-${previewIndex + 1}.png`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
-    catch (error) { if (alive.current) setError(error instanceof Error ? error.message : "Could not download the slide."); }
-    finally { working.current = false; if (alive.current) setBusy(false); }
-  }
   const previewUrls = legacyPreview.length && !slides.length ? output?.slides ?? legacyPreview : slides.map(slide => slide.image?.url ?? null);
   const canSave = Boolean(pending) || slides.length >= MIN_SLIDESHOW_SLIDES && slides.every(slide => slide.image);
   const actions = <div className="space-y-2">
@@ -329,25 +340,37 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
     <p role="status" className="text-xs leading-5 text-muted">{restoring ? "Restoring your slides…" : uploading ? "Uploading your slide images…" : localPreview ? "Preview · uploads and saving disabled" : output ? "Your slideshow is saved in Library." : !savingEnabled ? "Slideshow saving is unavailable right now." : slides.length < 2 && !pending ? "Add at least two generated or uploaded images to save a slideshow." : "Save this sequence before scheduling."}</p>
   </div>;
   if (!active || !controlsTarget || !resultsTarget) return null;
-  return <>{actionsTarget ? createPortal(actions, actionsTarget) : null}{createPortal(<div className="space-y-5 p-4">
-    <div className="flex items-center justify-between gap-3"><h2 className="text-sm font-semibold">Your slides</h2><span className="text-xs text-muted">{slides.length} / 10</span></div>
-    <p className="text-xs leading-5 text-muted">Add your generated or uploaded images, then arrange the order. Catalogue references guide the design.</p>
-    <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={locked || generationBusy || slides.length >= 10} onClick={goToCreate}><Plus aria-hidden="true" />Add slide</Button><Button type="button" variant="outline" disabled={locked || generationBusy || localPreview || !owner || slides.length >= 10} onClick={() => uploadInput.current?.click()}><Upload aria-hidden="true" />Upload slides</Button></div>
+  return <>{actionsTarget ? createPortal(actions, actionsTarget) : null}{createPortal(<div className={textStyles.inspector}>
+    <header className={textStyles.inspectorHeading}><div><h2>{selected ? `Edit slide ${previewIndex + 1}` : "Edit your slides"}</h2><p>Text and appearance</p></div>{selected ? <span>{previewIndex + 1} / {slides.length}</span> : null}</header>
     <input ref={uploadInput} type="file" accept="image/jpeg,image/png,image/webp" multiple className="sr-only" aria-label="Upload slideshow images" onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; void upload(files, false); }} />
     <input ref={replaceInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="Replace slideshow image" onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; void upload(files, true); }} />
-    {slides.length ? <div className="grid grid-cols-3 gap-3">{slides.map((slide, index) => <button key={slide.referenceSlideId} type="button" aria-label={`Preview slide ${index + 1}`} aria-pressed={previewIndex === index} onClick={() => setPreviewIndex(index)} className={`overflow-hidden rounded-lg border ${previewIndex === index ? "border-primary ring-1 ring-primary" : "border-border"}`}>{slide.image ? <img src={slide.image.url} alt="" width={1080} height={1350} className="aspect-[4/5] w-full object-contain" /> : <span className="flex aspect-[4/5] items-center justify-center p-2 text-xs text-destructive">Unavailable</span>}<span className="block py-1 text-xs">{index + 1}</span></button>)}</div> : !pending && !output ? <p className="text-xs leading-5 text-muted">Generate images in Create, then choose Use this image in Your Slides. You can also upload finished slide images here.</p> : null}
-    {selected ? <div className="space-y-3">
-      {selected.image ? <FormatSlideshowTextTools design={design} disabled={locked || generationBusy} onChange={updateText} /> : null}
+    {selected ? <div className={textStyles.inspectorContent}>
+      {selected.image ? <RemixTextSection key={`${owner}:${selected.referenceSlideId}`} owner={owner} targetKey={`slide:${selected.referenceSlideId}`} format="slideshow" reference={slideSource.reference} previewSource={previewText} defaultSlideId={slideSource.slideId} disabled={locked || generationBusy} localPreview={localPreview} onUse={output => updateText({ heading: output.heading, body: output.body })}><FormatSlideshowTextTools design={design} disabled={locked || generationBusy} onChange={updateText} /></RemixTextSection> : null}
       {selected.error ? <p role="alert" className="text-xs text-destructive">{selected.error}</p> : null}
+      <details className={textStyles.disclosure}><summary>Slide image<span>Replace or recreate</span></summary><div className={textStyles.imageActions}>
       <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={locked || generationBusy || !selected.image} onClick={() => { replacementTarget.current = selected.referenceSlideId; onRegenerate(previewIndex, selected.image!); }}>Recreate slide {previewIndex + 1}</Button><Button type="button" variant="outline" disabled={locked || generationBusy || localPreview || !owner} onClick={() => replaceInput.current?.click()}>Replace image</Button></div>
       {selected.previous ? <Button type="button" variant="ghost" disabled={locked || generationBusy} onClick={() => { const next = [...slideRef.current]; const previous = selected.previous!; next[previewIndex] = { ...selected, mediaAssetId: previous.id, image: previous, previous: undefined }; change(next, previewIndex); }}>Restore previous image</Button> : null}
-      <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" aria-label={`Move slide ${previewIndex + 1} earlier`} disabled={locked || generationBusy || previewIndex === 0} onClick={() => change(moveSlideshowSlide(slideRef.current, previewIndex, previewIndex - 1), previewIndex - 1)}><ArrowLeft aria-hidden="true" />Earlier</Button><Button type="button" variant="outline" aria-label={`Move slide ${previewIndex + 1} later`} disabled={locked || generationBusy || previewIndex >= slides.length - 1} onClick={() => change(moveSlideshowSlide(slideRef.current, previewIndex, previewIndex + 1), previewIndex + 1)}><ArrowRight aria-hidden="true" />Later</Button><Button type="button" variant="ghost" disabled={locked || generationBusy} onClick={() => { if (replacementTarget.current === selected.referenceSlideId) startNewSlide(); change(slideRef.current.filter(slide => slide.referenceSlideId !== selected.referenceSlideId), previewIndex); }}>Remove slide</Button></div>
-    </div> : null}
-    <p className="text-xs leading-5 text-muted">Text inside an image is part of that image. Use Recreate slide with your text instructions to change it, or upload a replacement.</p>
+      <p>Text already inside an image is part of that image. Recreate or replace the image to change it.</p>
+      </div></details>
+    </div> : <div className={textStyles.emptyInspector}><p>Add images, then select a slide to edit its text.</p>{onGoToCreate ? <Button type="button" variant="outline" onClick={goToCreate}>Go to Create</Button> : null}</div>}
     {!actionsTarget ? actions : null}
-  </div>, controlsTarget)}{createPortal(<section aria-label="Slideshow edit preview" className="flex min-w-0 flex-col items-center gap-4">
-    <div className="flex w-full flex-wrap items-center justify-between gap-3"><h2 className="text-base font-semibold">Your slideshow</h2>{onBackToPreview ? <Button type="button" variant="outline" onClick={onBackToPreview}><ArrowLeft aria-hidden="true" />Back to preview</Button> : null}</div>
-    {previewUrls.length ? <>{previewUrls[Math.min(previewIndex, previewUrls.length - 1)] ? <img src={previewUrls[Math.min(previewIndex, previewUrls.length - 1)]!} alt={`Slide ${previewIndex + 1} of ${previewUrls.length}`} width={1080} height={1350} className="max-h-[65dvh] max-w-full rounded-xl object-contain" /> : <p className="text-sm text-destructive">This image is unavailable. Replace it or remove this slide.</p>}<div className="flex items-center gap-4"><Button type="button" variant="outline" disabled={previewIndex === 0} onClick={() => setPreviewIndex(index => index - 1)}>Previous</Button><span className="text-sm text-muted">{previewIndex + 1} / {previewUrls.length}</span><Button type="button" variant="outline" disabled={previewIndex >= previewUrls.length - 1} onClick={() => setPreviewIndex(index => index + 1)}>Next</Button></div></> : <div className="flex min-h-64 flex-col items-center justify-center gap-3 text-center"><h3 className="text-lg font-semibold">{restoring ? "Restoring your slides…" : "Your slides will appear here"}</h3><p className="max-w-md text-sm leading-6 text-muted">Generate your own images in Create or upload finished slide images. Then arrange them here before scheduling.</p>{onGoToCreate ? <Button type="button" variant="outline" onClick={goToCreate}>Go to Create</Button> : null}</div>}
-    {onBackToPreview && previewUrls.length ? <Button type="button" variant="ghost" onClick={onBackToPreview}>Back to preview</Button> : null}
+  </div>, controlsTarget)}{createPortal(<section aria-label="Slideshow edit preview" className={textStyles.editorPreview}>
+    <header className={textStyles.previewHeading}><div><h2>Your slideshow</h2><p>{previewUrls.length ? `${previewUrls.length} slides · Select a slide to edit` : "Build your slide sequence"}</p></div>{onBackToPreview ? <Button type="button" variant="outline" onClick={onBackToPreview}><ArrowLeft aria-hidden="true" />Back to preview</Button> : null}</header>
+    <div className={textStyles.previewCanvas}>
+    {previewUrls.length ? <>{previewUrls[Math.min(previewIndex, previewUrls.length - 1)] ? <div className={textStyles.preview}>
+      <img key={previewUrls[Math.min(previewIndex, previewUrls.length - 1)]} src={previewUrls[Math.min(previewIndex, previewUrls.length - 1)]!} alt={`Slide ${previewIndex + 1} of ${previewUrls.length}`} width={dimensions.url === selectedUrl ? dimensions.width : 1080} height={dimensions.url === selectedUrl ? dimensions.height : 1350} onLoad={event => {
+        const image = event.currentTarget;
+        if (!image.naturalWidth || !image.naturalHeight) return;
+        const scale = Math.min(1, 2048 / Math.max(image.naturalWidth, image.naturalHeight));
+        setDimensions({ url: selectedUrl, width: Math.round(image.naturalWidth * scale), height: Math.round(image.naturalHeight * scale) });
+      }} />
+      {selected?.image && overlay ? <img data-slide-text-overlay src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(overlay)}`} alt={[design.heading, design.body].filter(value => value.trim()).join("\n")} width={dimensions.url === selectedUrl ? dimensions.width : 1080} height={dimensions.url === selectedUrl ? dimensions.height : 1350} className={textStyles.overlay} /> : null}
+    </div> : <p className="text-sm text-destructive">This image is unavailable. Replace it or remove this slide.</p>}<div className={textStyles.previewNavigation}><Button type="button" variant="ghost" disabled={previewIndex === 0} onClick={() => setPreviewIndex(index => index - 1)}><ArrowLeft aria-hidden="true" />Previous</Button><span>{previewIndex + 1} / {previewUrls.length}</span><Button type="button" variant="ghost" disabled={previewIndex >= previewUrls.length - 1} onClick={() => setPreviewIndex(index => index + 1)}>Next<ArrowRight aria-hidden="true" /></Button></div></> : <div className="flex min-h-64 flex-col items-center justify-center gap-3 text-center"><h3 className="text-lg font-semibold">{restoring ? "Restoring your slides…" : "Your slides will appear here"}</h3><p className="max-w-md text-sm leading-6 text-muted">Generate your own images in Create or upload finished slide images. Then arrange them here before scheduling.</p></div>}
+    </div>
+    <section className={textStyles.sequence} aria-label="Slide sequence">
+      <div className={textStyles.sequenceHeading}><div><h3>Your slides</h3><span>{slides.length} / 10</span></div><div><Button type="button" variant="outline" disabled={locked || generationBusy || slides.length >= 10} onClick={goToCreate}><Plus aria-hidden="true" />Add slide</Button><Button type="button" variant="outline" disabled={locked || generationBusy || localPreview || !owner || slides.length >= 10} onClick={() => uploadInput.current?.click()}><Upload aria-hidden="true" />Upload slides</Button></div></div>
+      {slides.length ? <div role="group" aria-label="Choose a slide" className={textStyles.filmstrip}>{slides.map((slide, index) => <button key={slide.referenceSlideId} type="button" aria-label={`Preview slide ${index + 1}`} aria-pressed={previewIndex === index} onClick={() => setPreviewIndex(index)} className={textStyles.thumbnail}>{slide.image ? <img src={slide.image.url} alt="" width={1080} height={1350} /> : <span className={textStyles.unavailable}>Unavailable</span>}<span>{index + 1}</span></button>)}</div> : <p>Generate or upload your own slide images to begin.</p>}
+      {selected ? <div className={textStyles.arrangement}><p>Slide {previewIndex + 1} of {slides.length}</p><div><Button type="button" variant="ghost" aria-label={`Move slide ${previewIndex + 1} earlier`} disabled={locked || generationBusy || previewIndex === 0} onClick={() => change(moveSlideshowSlide(slideRef.current, previewIndex, previewIndex - 1), previewIndex - 1)}><ArrowLeft aria-hidden="true" />Earlier</Button><Button type="button" variant="ghost" aria-label={`Move slide ${previewIndex + 1} later`} disabled={locked || generationBusy || previewIndex >= slides.length - 1} onClick={() => change(moveSlideshowSlide(slideRef.current, previewIndex, previewIndex + 1), previewIndex + 1)}><ArrowRight aria-hidden="true" />Later</Button><Button type="button" variant="ghost" onClick={() => { if (replacementTarget.current === selected.referenceSlideId) startNewSlide(); change(slideRef.current.filter(slide => slide.referenceSlideId !== selected.referenceSlideId), previewIndex); }} disabled={locked || generationBusy}>Remove slide</Button></div></div> : null}
+    </section>
   </section>, resultsTarget)}</>;
 }

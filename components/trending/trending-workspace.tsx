@@ -44,6 +44,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { CarouselEditRenderStatus } from "@/components/trending/carousel-edit-render-status";
 import { getLatestTrendingEdit, shouldApplyCarouselEditRefresh } from "@/lib/trending/carousel-edit-render-status";
+import { refreshTrendingCarouselEdit } from "@/lib/trending/carousel-edit-refresh";
 import { shouldPollTrendingFeed } from "@/lib/trending/daily-feed-status";
 import {
   type BillingSubscription,
@@ -112,7 +113,7 @@ import type {
   HookInfluencerSummary,
   HookInfluencerVideoSummary,
 } from "@/lib/trending/hook-video-types";
-import type { TrendingCreativeEditRecord } from "@/lib/trending/creative-edit-contract";
+import type { TrendingCarouselEditStatus, TrendingCreativeEditRecord } from "@/lib/trending/creative-edit-contract";
 import { cn } from "@/lib/utils";
 
 import skeletonStyles from "./trending-post-skeleton.module.css";
@@ -1918,6 +1919,10 @@ export function TrendingDeck({
   const [editByCreativeId, setEditByCreativeId] = useState<
     Record<string, TrendingCreativeEditRecord>
   >({});
+  const latestEditsRef = useRef(editByCreativeId);
+  useEffect(() => { latestEditsRef.current = editByCreativeId; }, [editByCreativeId]);
+  const hasPendingCarouselEdits = Object.values(editByCreativeId).some(entry =>
+    entry.format === "carousel" && (entry.renderState === "queued" || entry.renderState === "rendering"));
   const [actionNotice, setActionNotice] = useState<CarouselActionNotice | null>(
     null,
   );
@@ -2144,23 +2149,17 @@ export function TrendingDeck({
   ]);
 
   useEffect(() => {
-    const pendingEdits = Object.values(editByCreativeId).filter(
-      (entry) =>
-        entry.format === "carousel" &&
-        (entry.renderState === "queued" || entry.renderState === "rendering"),
-    );
-
-    if (pendingEdits.length === 0) {
-      return;
-    }
-
+    if (!hasPendingCarouselEdits) return;
     let stopped = false;
+    const controller = new AbortController();
 
     async function refreshPendingEdits() {
+      const pendingEdits = Object.values(latestEditsRef.current).filter(entry =>
+        entry.format === "carousel" && (entry.renderState === "queued" || entry.renderState === "rendering"));
       const refreshed = await Promise.all(
-        pendingEdits.map((entry) =>
-          loadTrendingCreativeEdit(entry).catch(() => ({ ...entry, refreshError: "Refresh unavailable" })),
-        ),
+        pendingEdits.map(entry => refreshTrendingCarouselEdit(entry,
+          () => loadTrendingCarouselStatus(entry, controller.signal),
+          () => loadTrendingCreativeEditScope(entry, controller.signal))),
       );
 
       if (stopped) {
@@ -2202,9 +2201,10 @@ export function TrendingDeck({
 
     return () => {
       stopped = true;
+      controller.abort();
       window.clearInterval(timer);
     };
-  }, [editByCreativeId]);
+  }, [hasPendingCarouselEdits]);
 
   useEffect(() => {
     if (
@@ -4679,14 +4679,16 @@ function writePendingDecisionEntries(
   }
 }
 
-async function loadTrendingCreativeEdit(
-  edit: TrendingCreativeEditRecord,
-) {
-  return loadTrendingCreativeEditScope({
-    assignmentId: edit.assignmentId,
-    creativeId: edit.creativeId,
-    format: edit.format,
+async function loadTrendingCarouselStatus(edit: TrendingCreativeEditRecord, signal: AbortSignal) {
+  const token = await getCurrentUserIdToken();
+  if (!token) throw new Error("Sign in before checking this Trending edit.");
+  const response = await fetch(`/api/trending/creatives/carousel/${encodeURIComponent(edit.creativeId)}/edit?assignmentId=${encodeURIComponent(edit.assignmentId)}&view=status`, {
+    cache: "no-store", headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)]),
   });
+  const data = await response.json().catch(() => null) as { ok?: boolean; status?: TrendingCarouselEditStatus } | null;
+  if (!response.ok || !data?.ok || !data.status) throw new Error("Could not check this Trending update.");
+  return data.status;
 }
 
 async function loadTrendingCreativeEditForItem(item: TrendingFeedItem) {
@@ -4705,7 +4707,7 @@ async function loadTrendingCreativeEditScope(scope: {
   assignmentId: string;
   creativeId: string;
   format: TrendingCreativeEditRecord["format"];
-}) {
+}, signal?: AbortSignal) {
   const token = await getCurrentUserIdToken();
 
   if (!token) {
@@ -4723,7 +4725,7 @@ async function loadTrendingCreativeEditScope(scope: {
     {
       cache: "no-store",
       headers: { Authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(10_000),
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(10_000)]) : AbortSignal.timeout(10_000),
     },
   );
   const data = (await response.json().catch(() => null)) as

@@ -1,4 +1,97 @@
+import { readFileSync } from "node:fs";
 import path from "node:path";
+
+const retirementPolicy = JSON.parse(
+  readFileSync(new URL("./carousel-role-library-retirements.json", import.meta.url), "utf8"),
+);
+
+if (
+  retirementPolicy.version !== "carousel-role-library-retirements-v1" ||
+  !Array.isArray(retirementPolicy.retirements)
+) {
+  throw new Error("Invalid Carousel role-library retirement policy.");
+}
+
+const sourceRetirements = retirementPolicy.retirements.map((retirement) => {
+  if (
+    !retirement.retiredAt ||
+    !retirement.reason ||
+    !Array.isArray(retirement.sourceFileSha256s) ||
+    retirement.sourceFileSha256s.some((hash) => !/^[a-f0-9]{64}$/.test(hash)) ||
+    !Array.isArray(retirement.exactSourcePaths) ||
+    !Array.isArray(retirement.sourcePathPrefixes)
+  ) {
+    throw new Error("Invalid Carousel source retirement entry.");
+  }
+  return {
+    ...retirement,
+    hashes: new Set(retirement.sourceFileSha256s),
+    exactPaths: new Set(retirement.exactSourcePaths.map(normalizeRetirementPath)),
+    prefixes: retirement.sourcePathPrefixes.map(normalizeRetirementPath),
+  };
+});
+
+export const CAROUSEL_RETIRED_SOURCE_SHA256S = Object.freeze([
+  ...new Set(sourceRetirements.flatMap((retirement) => retirement.sourceFileSha256s)),
+]);
+
+export function getCarouselRoleSourceRetirement({ relativePath, sourceFileSha256 }) {
+  const normalizedPath = normalizeRetirementPath(relativePath ?? "");
+  const normalizedHash = (sourceFileSha256 ?? "").trim().toLowerCase();
+
+  for (const retirement of sourceRetirements) {
+    const hashMatch = retirement.hashes.has(normalizedHash);
+    const pathMatch = retirement.exactPaths.has(normalizedPath) ||
+      retirement.prefixes.some((prefix) =>
+        normalizedPath === prefix || normalizedPath.startsWith(`${prefix}/`),
+      );
+    if (hashMatch || pathMatch) {
+      return {
+        reason: "user-retired-carousel-source",
+        detail: retirement.reason,
+        retiredAt: retirement.retiredAt,
+        matchedBy: hashMatch ? "sha256" : "source-path",
+      };
+    }
+  }
+  return null;
+}
+
+export function assertCarouselRoleManifestHasNoRetiredSources(assets) {
+  for (const asset of assets) {
+    const sourceFileSha256 = asset.dbRow?.source_file_sha256;
+    const sourcePaths = [
+      asset.source?.relativePath,
+      asset.dbRow?.source_metadata?.sourceRelativePath,
+      asset.dbRow?.source_folder && asset.dbRow?.source_filename
+        ? `${asset.dbRow.source_folder}/${asset.dbRow.source_filename}`
+        : undefined,
+    ];
+    for (const relativePath of sourcePaths) {
+      const retirement = getCarouselRoleSourceRetirement({ relativePath, sourceFileSha256 });
+      if (retirement) {
+        throw new Error(
+          `Manifest contains retired Carousel source ${asset.libraryAssetId ?? relativePath ?? sourceFileSha256} (${retirement.matchedBy}, retired ${retirement.retiredAt}): ${retirement.detail}. Prepare a new manifest before importing or reconciling.`,
+        );
+      }
+    }
+  }
+}
+
+export function isPreservedCarouselRoleAssetRetirement(asset) {
+  return asset.source_metadata?.retirement?.preserveHistoricalRenders === true ||
+    getCarouselRoleSourceRetirement({
+      sourceFileSha256: asset.source_file_sha256,
+      relativePath: asset.source_metadata?.sourceRelativePath ||
+        [asset.source_folder, asset.source_filename].filter(Boolean).join("/"),
+    }) !== null;
+}
+
+function normalizeRetirementPath(value) {
+  return path.posix.normalize(value.replaceAll("\\", "/").trim())
+    .replace(/\/$/, "")
+    .toLowerCase();
+}
 
 export const CAROUSEL_LIBRARY_CATEGORIES = Object.freeze([
   "dating",

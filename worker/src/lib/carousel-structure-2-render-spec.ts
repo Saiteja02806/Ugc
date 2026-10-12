@@ -35,8 +35,8 @@ export type CarouselStructure2RenderSpec = {
   // Explicit manual image replacement, derived by the save service.
   backgroundCrop?: "centre";
   ctaText: string | null;
-  // Server-selected only for a saved cover whose copy is unchanged.
-  coverFontSize?: 72 | 84;
+  // Intentional edits adopt the current fixed cover typography.
+  coverFontSize?: 72;
   // Undefined means a legacy single-story render; null is a new body-only slide.
   headline?: string | null;
   layoutVariant: CarouselStructure2LayoutVariant;

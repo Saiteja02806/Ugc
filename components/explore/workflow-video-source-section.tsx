@@ -8,17 +8,24 @@ import type { WorkflowVideoSelection } from "@/components/explore/use-workflow-s
 import type { MediaAsset } from "@/lib/media/types";
 import creation from "@/components/explore/workflow-creation.module.css";
 
-export function WorkflowVideoSourceSection({ kind, selection, disabled = false, label: customLabel, description, previewAssets, uploadHint = "MP4, MOV or WebM · Up to 250 MB" }: { kind: "hook" | "phone"; selection: WorkflowVideoSelection; disabled?: boolean; label?: string; description?: string; previewAssets?: MediaAsset[]; uploadHint?: string }) {
+export function WorkflowVideoSourceSection({ kind, selection, disabled = false, label: customLabel, description, previewAssets, uploadHint = "MP4, MOV or WebM · Up to 250 MB", presentation = "classic" }: { kind: "hook" | "phone"; selection: WorkflowVideoSelection; disabled?: boolean; label?: string; description?: string; previewAssets?: MediaAsset[]; uploadHint?: string; presentation?: "classic" | "focused" }) {
   const heading = useId(), input = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const label = customLabel ?? (kind === "hook" ? "Hook video" : "Creator / phone video");
   const video = selection.preview;
-  return <section className={creation.sourceSection} aria-labelledby={heading}>
+  return <section className={creation.sourceSection} aria-labelledby={heading} data-source-presentation={presentation}>
     <h2 id={heading} className="text-sm font-medium">{label}</h2>
     <div className={creation.sourceModes} role="group" aria-label={`${label} source`}>
-      {([ ["generate", "Generate"], ["upload", "Upload"], ["assets", "Creative Assets"] ] as const).map(([mode, text]) =>
+      {presentation === "focused" ? <>
+        <Button type="button" variant="ghost" disabled={disabled || selection.busy} aria-pressed={selection.mode === "generate"} onClick={() => selection.setMode("generate")}>Generate</Button>
+        <Button type="button" variant="ghost" disabled={disabled || selection.busy} aria-pressed={selection.mode !== "generate"} onClick={() => { if (selection.mode === "generate") selection.setMode("upload"); }}>Use video</Button>
+      </> : ([ ["generate", "Generate"], ["upload", "Upload"], ["assets", "Creative Assets"] ] as const).map(([mode, text]) =>
         <Button key={mode} type="button" variant="ghost" disabled={disabled || selection.busy} aria-pressed={selection.mode === mode} onClick={() => selection.setMode(mode)}>{text}</Button>)}
     </div>
+    {presentation === "focused" && selection.mode !== "generate" ? <div className={creation.existingSources} role="group" aria-label="Existing video source">
+      <Button type="button" variant="ghost" disabled={disabled || selection.busy} aria-pressed={selection.mode === "upload"} onClick={() => selection.setMode("upload")}>Upload</Button>
+      <Button type="button" variant="ghost" disabled={disabled || selection.busy} aria-pressed={selection.mode === "assets"} onClick={() => selection.setMode("assets")}>Creative Assets</Button>
+    </div> : null}
     <input ref={input} type="file" accept="video/mp4,video/quicktime,video/webm" aria-label={`Upload ${label.toLowerCase()}`} hidden onChange={event => {
       const file = event.target.files?.[0]; if (file) void selection.chooseUpload(file); event.target.value = "";
     }} />

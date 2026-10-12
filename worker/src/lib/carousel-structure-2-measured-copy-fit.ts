@@ -1,4 +1,5 @@
 import { inspectCarouselStructure2SlideLayout } from "./carousel-structure-2-render-slide.js";
+import { CAROUSEL_BODY_FONT_SIZE, CAROUSEL_HOOK_FONT_SIZE } from "./carousel-text-presentation.js";
 import type { CarouselStructure2StoryPlan, CarouselStructure2StoryValidationIssue } from "./carousel-structure-2-story-plan.js";
 
 /** Reuse the renderer's font metrics before reserving/downloading any images.
@@ -21,7 +22,7 @@ export async function getCarouselStructure2MeasuredCopyIssues(plan: CarouselStru
       const message = error instanceof Error ? error.message : String(error);
       if (!/text could not fit|text groups do not fit|text does not fit the safe area|body copy requires|cannot render empty story/i.test(message)) throw error;
       issues.push({ code: "render_fit", slideNumber: slide.slideNumber,
-        message: `Actual renderer font measurements rejected this slide: ${message} Keep at most two short body blocks, each within three lines at 48px; keep the cover within four lines at 84px.` });
+        message: `Actual renderer font measurements rejected this slide: ${message} Keep at most two short body blocks, each within three lines at ${CAROUSEL_BODY_FONT_SIZE}px; keep the cover within four lines at ${CAROUSEL_HOOK_FONT_SIZE}px.` });
     }
   }
   return issues;

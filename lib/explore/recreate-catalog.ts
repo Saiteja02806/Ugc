@@ -43,16 +43,20 @@ export function getRecreateReferences(): RecreateReference[] {
     slides: [],
     title: `Hook ${String(index + 1).padStart(2, "0")}`,
     videoUrl: item.videoUrl,
+    ...(item.durationSeconds === undefined ? {} : { durationSeconds: item.durationSeconds }),
+    ...(item.pairedAudio ? { pairedAudio: item.pairedAudio } : {}),
   }));
   const existingWallText = getExploreWallTextVideos().map((item, index): RecreateReference => ({
-    category: "productivity",
-    categoryLabel: "Productivity",
+    category: item.pairedAudio ? null : "productivity",
+    categoryLabel: item.pairedAudio ? null : "Productivity",
     format: "wall_text",
     id: item.id,
     posterUrl: item.posterUrl,
     slides: [],
-    title: `Productivity ${String(index + 1).padStart(2, "0")}`,
+    title: `${item.pairedAudio ? "Wall of text" : "Productivity"} ${String(index + 1).padStart(2, "0")}`,
     videoUrl: item.videoUrl,
+    ...(item.durationSeconds === undefined ? {} : { durationSeconds: item.durationSeconds }),
+    ...(item.pairedAudio ? { pairedAudio: item.pairedAudio } : {}),
   }));
 
   // Published imported Hooks already enter through the dedicated Hook library.

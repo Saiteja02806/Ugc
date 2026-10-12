@@ -3,6 +3,8 @@ import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { mediaCollections } from "@/lib/media/types";
 import { getProtectedMediaDeliveryUrl, isPrivateUserMedia } from "@/lib/media/media-delivery";
+import { buildPublicStorageUrl } from "@/lib/storage/storage";
+import { getAssetReferenceSoundtrack, getExplorePairedReference, referenceAudioBaseStorageKey } from "@/worker/src/lib/explore-reference-soundtrack";
 
 import type {
   MediaAsset,
@@ -288,6 +290,24 @@ export async function getMediaAssetForOwner(params: {
   return data;
 }
 
+/** Bounded lookup for multi-slide edits; never reads another owner's assets. */
+export async function getMediaAssetsForOwnerByIds(params: {
+  assetIds: string[];
+  userId: string;
+}) {
+  const assetIds = [...new Set(params.assetIds)];
+  if (assetIds.length > 20) throw new Error("Choose at most 20 slide images.");
+  if (assetIds.length === 0) return [];
+  const { data, error } = await getSupabaseServerClient()
+    .from(MEDIA_ASSETS_TABLE)
+    .select("*")
+    .eq("user_id", params.userId)
+    .in("id", assetIds)
+    .is("deleted_at", null);
+  if (error) throw new Error(`Could not load slide images: ${error.message}`);
+  return data ?? [];
+}
+
 export async function getLatestReadyMediaAssetForParent(params: {
   parentAssetId: string;
   sourceType: MediaSourceType;
@@ -489,6 +509,10 @@ export async function upsertReadyMediaAsset(input: UpsertReadyMediaAssetInput) {
 }
 
 export function serializeMediaAsset(row: MediaAssetRow): MediaAsset {
+  const metadata = isJsonObject(row.metadata) ? row.metadata : {};
+  const soundtrack = row.source_type === "generated_video" || metadata.exploreFinish === true ? getAssetReferenceSoundtrack(metadata) : null;
+  const reference = soundtrack ? getExplorePairedReference(soundtrack.referenceId) : null;
+  if (soundtrack?.cleanStorageKey && soundtrack.cleanStorageKey !== referenceAudioBaseStorageKey(row.id)) throw new Error("The reference audio base belongs to another asset.");
   return {
     collection: row.collection,
     createdAt: row.created_at,
@@ -497,7 +521,9 @@ export function serializeMediaAsset(row: MediaAssetRow): MediaAsset {
     fileSizeBytes: row.file_size_bytes,
     height: row.height,
     id: row.id,
-    metadata: isJsonObject(row.metadata) ? row.metadata : {},
+    metadata: { ...metadata, ...(reference && soundtrack ? { referenceAudioPreview: { referenceId: reference.id, title: reference.audioTitle,
+      audioUrl: buildPublicStorageUrl(reference.audioStorageKey), volume: soundtrack.volume,
+      cleanVideoUrl: soundtrack.cleanStorageKey ? buildPublicStorageUrl(soundtrack.cleanStorageKey) : null } } : {}) },
     mimeType: row.mime_type,
     parentAssetId: row.parent_asset_id,
     projectId: row.project_id,

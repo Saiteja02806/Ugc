@@ -1,6 +1,43 @@
 # AI character builder
 
-Latest local change, October 9, 2026: the influencer selector and request schema
+Latest local change, October 12, 2026: users can attach, paste or drop a JPG,
+PNG or WebP image into the character composer and describe the style, look or
+setting they want. The attachment is a direct image reference for generation;
+it does not need to be saved to My influencers. The UI previews the attachment,
+blocks generation during upload and keeps failed uploads visible until retried
+or explicitly removed. Uploads bind to the account that initiated them, and
+unmounted composers ignore late completions.
+
+`POST /api/characters/generate` accepts `referenceImageAssetId`, mutually
+exclusive with `referenceCharacterId`. The backend looks up the owned ready
+image, verifies its MIME type, 25 MB limit, deletion state and canonical storage
+URL, then stores its ID and `referenceImageUrl` in every candidate job. Invalid
+references fail before any credit reservation or dispatch; there is no silent
+text-only fallback. Raw user-supplied image URLs remain rejected. Workers use
+the existing image-input path for all five character models, including signing
+private assets at execution time. Prompts reach the provider unchanged.
+
+The attachment ID is included in new request fingerprints and uncertain client
+receipts. Retries recover the same jobs and image; changing or removing the
+attachment under the same idempotency key conflicts. Older request fingerprints
+remain unchanged. The existing reservation RPC stores the new field, so no
+database migration or provider changes are required for this feature.
+
+This change is local and has not been deployed. Validation uses isolated
+database tests and mocked providers; production image similarity still requires
+an authenticated generation after deployment.
+
+Validation for uploaded references: character/API/identity/session/component
+tests, nine isolated Postgres tests and 23 worker/provider tests pass. Full
+application TypeScript, worker build and scoped ESLint pass. The isolated browser
+check renders the real character composer, upload client and generation hook;
+it verifies chooser/paste/drop attachments, pending/error locks, asset IDs in
+requests, fresh-session reset, and recovery of the identical image/request key
+after reload. It uses fixture upload/generation endpoints, makes no paid requests
+and passes at desktop and mobile widths. Run it with
+`node scripts/character-reference.browser.cjs` (Windows uses installed Edge).
+
+Previous local change, October 9, 2026: the influencer selector and request schema
 now include Seedream 5.0 Pro and ChatGPT Image 2.5 Sunburst alongside ChatGPT Image,
 Gemini 3 Pro and Nano Banana 2.1. Both reuse existing shared-worker providers.
 Rollout requires the additive migration

@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import type { RecreateGenerationView } from "@/components/explore/recreate-generation-view";
 import { FormatInstructionImageReference } from "@/components/explore/format-instruction-image-reference";
+import { MAX_IMAGE_REFERENCE_CONTEXT } from "@/worker/src/lib/image-reference-context";
 import creation from "@/components/explore/workflow-creation.module.css";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
 import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
@@ -213,7 +214,7 @@ export function ImageGenerationStudioPanel({
   const queryClient = useQueryClient();
   const [prompt, setPrompt] = useState("");
   const [aspectRatio, setAspectRatio] =
-    useState<AIStudioImageAspectRatio>("9:16");
+    useState<AIStudioImageAspectRatio>(workflowFormat === "slideshow" ? "4:5" : "9:16");
   const [model, setModel] = useState<AIStudioImageModel>(
     workflowFormat === "slideshow" ? DEFAULT_SLIDESHOW_IMAGE_MODEL : DEFAULT_AI_STUDIO_IMAGE_MODEL,
   );
@@ -221,6 +222,12 @@ export function ImageGenerationStudioPanel({
     useState<AIStudioGenerationQuantity>(1);
   const [referenceImage, setReferenceImage] =
     useState<AIStudioReferenceMedia | null>(null);
+  const [instructionReferenceState, setInstructionReferenceState] = useState<{ ownerId: string | null; images: AIStudioReferenceMedia[] }>({ ownerId: null, images: [] });
+  const instructionReferences = instructionReferenceState.ownerId === (user?.uid ?? null) ? instructionReferenceState.images : [];
+  const layoutReferenceCount = recreateView?.referenceImageUrls?.length ?? (recreateView?.referenceImageUrl ? 1 : 0);
+  const regenerationReferenceCount = recreateView?.referenceImageAssetId && !instructionReferences.some(selection => selection.asset.id === recreateView.referenceImageAssetId) ? 1 : 0;
+  const instructionReferenceLimit = Math.max(0, MAX_IMAGE_REFERENCE_CONTEXT - layoutReferenceCount - regenerationReferenceCount);
+  const tooManyReferences = workflowFormat === "slideshow" && instructionReferences.length > instructionReferenceLimit;
   const [referenceUploadPending, setReferenceUploadPending] = useState(false);
   const [referenceUploadError, setReferenceUploadError] = useState<string | null>(null);
   const [selectingImage, setSelectingImage] = useState(false);
@@ -534,7 +541,7 @@ export function ImageGenerationStudioPanel({
         const storedPrompt = getImageJobPrompt(userId, completedJob.id);
         const savedPrompt = submittedPromptsRef.current.get(completedJob.id) ?? storedPrompt ?? output.prompt ?? persistedResult?.prompt;
         const nextResult: AIStudioImageResult = persistedResult
-          ? { ...persistedResult, prompt: savedPrompt }
+          ? { ...persistedResult, prompt: savedPrompt, remixTextSource: completedJob.remixTextSource ?? null }
           : {
             aspectRatio:
               output.ratio ??
@@ -543,6 +550,7 @@ export function ImageGenerationStudioPanel({
             id: output.mediaAssetId ?? output.generationId ?? completedJob.id,
             mediaAssetId: output.mediaAssetId ?? null,
             sourceJobId: completedJob.id,
+            remixTextSource: completedJob.remixTextSource ?? null,
             prompt: savedPrompt,
             title: storedPrompt ?? "Generated image",
             url: output.url,
@@ -589,8 +597,9 @@ export function ImageGenerationStudioPanel({
       hasInsufficientCredits ||
       referenceUploadPending ||
       referenceUploadError || selectingImageRef.current ||
+      tooManyReferences ||
       !trimmedPrompt ||
-      Boolean(workflow && !recreateView?.referenceImageUrl && !recreateView?.referenceImageAssetId) ||
+      Boolean(workflow && !recreateView?.referenceImageUrl && !recreateView?.referenceImageAssetId && !instructionReferences.length) ||
       isGenerating || recoveringJobs
     ) {
       return;
@@ -631,8 +640,9 @@ export function ImageGenerationStudioPanel({
           prompt: trimmedPrompt,
           quantity,
           referenceImageUrl: workflowFormat === "slideshow" ? recreateView?.referenceImageUrl ?? null : referenceImage?.asset.url ?? recreateView?.referenceImageUrl ?? null,
-          ...(workflowFormat === "slideshow" && recreateView?.referenceImageUrls ? { referenceImageUrls: recreateView.referenceImageUrls } : {}),
-          ...(workflowFormat === "slideshow" ? { referenceImageAssetId: referenceImage?.asset.id ?? recreateView?.referenceImageAssetId ?? null } : {}),
+          ...(workflowFormat === "slideshow" && recreateView?.referenceImageUrls?.length ? { referenceImageUrls: recreateView.referenceImageUrls } : {}),
+          ...(workflowFormat === "slideshow" && instructionReferences.length ? { referenceImageAssetIds: instructionReferences.map(selection => selection.asset.id) } : {}),
+          ...(workflowFormat === "slideshow" && recreateView?.referenceImageAssetId ? { regenerationImageAssetId: recreateView.referenceImageAssetId } : {}),
         }),
       });
       const data = (await response.json()) as GenerateResponse;
@@ -958,7 +968,7 @@ export function ImageGenerationStudioPanel({
         settingsSummary={workflow ? `${getAIStudioImageModelLabel(model)} · ${aspectRatio} · ${quantity} image${quantity === 1 ? "" : "s"}` : undefined}
         compact={Boolean(recreateView)}
         contextBanner={recreateView?.contextBanner}
-        accessMessage={composerMessage}
+        accessMessage={tooManyReferences ? `Use up to ${MAX_IMAGE_REFERENCE_CONTEXT} reference images in total. Remove an attached image or select fewer slideshow references.` : composerMessage}
         active={workflow?.controlsActive ?? active}
         ariaLabel="Image prompt"
         generateDisabled={
@@ -966,8 +976,9 @@ export function ImageGenerationStudioPanel({
           hasInsufficientCredits ||
           referenceUploadPending ||
           Boolean(referenceUploadError) || selectingImage ||
+          tooManyReferences ||
           !prompt.trim() ||
-          Boolean(workflow && !recreateView?.referenceImageUrl && !recreateView?.referenceImageAssetId) ||
+          Boolean(workflow && !recreateView?.referenceImageUrl && !recreateView?.referenceImageAssetId && !instructionReferences.length) ||
           isGenerating || recoveringJobs
         }
         generateLabel="Generate image"
@@ -979,18 +990,19 @@ export function ImageGenerationStudioPanel({
             active={workflow?.controlsActive ?? active}
             preview={recreateView?.preview}
             disabled={(generationLocked && !recreateView?.preview) || isGenerating || selectingImage}
-            selection={referenceImage}
+            selections={instructionReferences}
+            maxImages={instructionReferenceLimit}
             onPendingChange={setReferenceUploadPending}
             onErrorChange={setReferenceUploadError}
-            onChange={(selection) => {
+            onChange={(update) => {
               submissionKeyRef.current = null;
-              setReferenceImage(selection);
+              setInstructionReferenceState(previous => ({ ownerId: user?.uid ?? null, images: typeof update === "function" ? update(previous.ownerId === (user?.uid ?? null) ? previous.images : []) : update }));
             }}
           /> : undefined}
-        hasAttachments={Boolean(referenceImage) || referenceUploadPending}
+        hasAttachments={Boolean(referenceImage) || instructionReferences.length > 0 || referenceUploadPending}
         isGenerating={isGenerating}
         layout={workflow ? "workflow" : "unified"}
-        showPromptHint={generationLocked || hasInsufficientCredits}
+        showPromptHint={generationLocked || hasInsufficientCredits || tooManyReferences}
         leadingControl={workflow ? undefined :
           <ReferenceMediaUpload
             active={active}

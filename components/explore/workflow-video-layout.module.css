@@ -1,0 +1,99 @@
+/* Each stage owns its proportions; controls do not inherit the sidebar grid. */
+.videoWorkspace { container: workflow-video / inline-size; }
+.videoWorkspace.videoWorkspace > header { min-height: 56px; padding-block: 6px; }
+.videoWorkspace.videoWorkspace .videoLayout {
+  display: grid; width: 100%; max-width: 1380px; margin-inline: auto;
+  grid-template-columns: minmax(0, 620px) minmax(0, 1fr);
+  gap: 24px; padding: 12px 24px 24px; align-items: start;
+}
+.controls { container: workflow-form / inline-size; }
+.preview { container: workflow-gallery / inline-size; }
+.videoWorkspace.videoWorkspace .controls { align-self: start; max-height: 100%; }
+.videoWorkspace.videoWorkspace .controls > div { padding: 20px; }
+.videoWorkspace.videoWorkspace .controls > footer { margin-top: 0; padding: 16px 20px; }
+.createIntro { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; margin-bottom: 18px; }
+.taskHeading { color: var(--foreground-strong); font-size: 24px; line-height: 32px; font-weight: 650; letter-spacing: -.025em; text-wrap: balance; }
+.createIntro > section { display: contents; }
+.createIntro > section > h2 { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.createIntro > section > div[role="group"]:first-of-type { grid-column: 2; grid-row: 1; }
+.createIntro > section > :not(h2):not(div[role="group"]:first-of-type), .createIntro > p { grid-column: 1 / -1; }
+.videoWorkspace.videoWorkspace .controls form textarea { min-height: 112px; height: 112px; background: var(--background); }
+.videoWorkspace.videoWorkspace .exampleGrid { grid-template-columns: repeat(auto-fill, minmax(0, 164px)); justify-content: start; gap: 18px 16px; }
+.exampleGrid > article { width: 100%; max-width: 164px; }
+.videoWorkspace.videoWorkspace .controls [data-workflow-reference-grid] { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+.referenceGroup { display: grid; gap: 12px; padding-block: 16px; border-block: 1px solid color-mix(in srgb, var(--border) 65%, transparent); }
+.referenceHeading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.referenceHeading h3 { font-size: 14px; font-weight: 600; }
+.referenceHeading span { font-size: 12px; color: var(--muted); }
+.referenceCard { display: grid; min-width: 0; min-height: 76px; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-content: center; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px; background: color-mix(in srgb, var(--card-muted) 25%, var(--card)); }
+.referenceCard h4 { grid-column: 1; font-size: 13px; font-weight: 600; line-height: 20px; }
+.referenceCard > p { grid-column: 1; color: var(--muted); font-size: 12px; line-height: 18px; }
+.referenceCard > div:last-child { grid-column: 2; grid-row: 1 / 3; margin: 0; }
+.remixOverview { position: relative; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.remixOverview > h2 { padding-right: 170px; font-size: 14px; line-height: 32px; font-weight: 600; }
+.remixOverview > p { margin-block: 6px 10px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.remixOverview [data-remix-manual-entry] { position: absolute; top: 8px; right: 0; margin: 0; }
+.remixOverview [data-remix-manual-entry] button { min-height: 32px; padding-inline: 10px; gap: 6px; color: var(--foreground); font-size: 12px; }
+.videoWorkspace[data-stage="demo"][data-editing="false"] .controls [aria-label="Background audio settings"] { gap: 4px; padding-top: 10px; }
+.videoWorkspace[data-stage="demo"][data-editing="false"] .controls [aria-label="Background audio settings"] > div:last-child:not(:first-child) { margin-top: 0; gap: 6px; }
+.referenceCard[data-reference-state="empty"] { grid-template-columns: minmax(0, 1fr); }
+.referenceCard[data-reference-state="empty"] > div:last-child { grid-column: 1; grid-row: auto; }
+.videoWorkspace.videoWorkspace .referenceCard [data-workflow-tile="reference"] { min-height: 32px; height: 32px; aspect-ratio: auto; flex-direction: row; border-color: transparent; background: transparent; padding: 0; }
+.videoWorkspace.videoWorkspace .referenceCard [data-workflow-tile="reference"]:hover { background: var(--card-muted); }
+.videoWorkspace .referenceCard [data-workflow-tile="reference"]:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* The overview shows both clips, even before an optional demo is chosen. */
+@container workflow-video (min-width: 1024px) {
+  .videoWorkspace.videoWorkspace[data-stage="demo"] .videoLayout { max-width: none; grid-template-columns: minmax(360px, 420px) minmax(0, 1fr); }
+  .videoWorkspace[data-stage="demo"][data-editing="false"] .controls [data-demo-source="upload"] { min-width: 0; }
+  .videoWorkspace.videoWorkspace[data-stage="schedule"] .videoLayout { max-width: 1600px; grid-template-columns: minmax(360px, .88fr) minmax(0, 1.12fr); grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+  .videoWorkspace.videoWorkspace[data-stage="demo"][data-editing="false"] .controls,
+  .videoWorkspace.videoWorkspace[data-stage="demo"][data-editing="false"] .preview,
+  .videoWorkspace.videoWorkspace[data-stage="schedule"] .controls,
+  .videoWorkspace.videoWorkspace[data-stage="schedule"] .preview { align-self: stretch; height: 100%; }
+  .videoWorkspace[data-stage="schedule"] .controls { grid-column: 2; grid-row: 1; }
+  .videoWorkspace[data-stage="schedule"] .preview { grid-column: 1; grid-row: 1; }
+}
+.videoWorkspace.videoWorkspace[data-editing="true"] .videoLayout { grid-template-columns: minmax(0, 1fr); max-width: 1100px; }
+.videoWorkspace.videoWorkspace[data-stage="demo"][data-editing="false"] .preview { align-self: start; min-height: 0; }
+.videoWorkspace.videoWorkspace[data-stage="demo"] .controls > footer button { width: auto; min-width: 140px; max-width: 100%; }
+/* Schedule owns two review cards and one action bar, independent of editor panes. */
+.videoWorkspace.videoWorkspace[data-stage="schedule"] .controls { min-height: 0; border: 0; background: transparent; overflow: visible; }
+.videoWorkspace.videoWorkspace[data-stage="schedule"] .controls > div { padding: 0; scrollbar-gutter: auto; }
+.videoWorkspace.videoWorkspace[data-stage="schedule"] .preview { background: var(--card); }
+.videoWorkspace.videoWorkspace[data-stage="schedule"] .preview > div:not([hidden]) { padding: 0; min-height: 0; }
+.scheduleFooter { flex: none; width: 100%; padding: 16px 24px; border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent); background: var(--background); }
+.scheduleFooter > div { width: 100%; max-width: 1552px; margin-inline: auto; }
+@media (min-width: 1024px) and (min-height: 521px) {
+  .videoWorkspace.videoWorkspace[data-stage="schedule"] .preview > div:not([hidden]) { overflow: hidden; }
+}
+@media (min-width: 1024px) and (max-width: 1366px) {
+  .videoWorkspace.videoWorkspace[data-stage="schedule"] .videoLayout { gap: 16px; padding-inline: 16px; }
+  .scheduleFooter { padding-inline: 16px; }
+}
+@container workflow-form (max-width: 519px) {
+  .createIntro { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .createIntro > section > div[role="group"]:first-of-type { grid-column: 1; grid-row: 2; }
+}
+@container workflow-form (max-width: 439px) {
+  .videoWorkspace.videoWorkspace .controls [data-workflow-reference-grid] { grid-template-columns: minmax(0, 1fr); }
+  .referenceCard, .referenceCard[data-reference-state="empty"] { grid-template-columns: minmax(0, 1fr) auto; min-height: 64px; }
+  .referenceCard[data-reference-state="empty"] > div:last-child { grid-column: 2; grid-row: 1 / 3; }
+}
+@container workflow-video (max-width: 1023px) {
+  .videoWorkspace.videoWorkspace .videoLayout { grid-template-columns: minmax(0, 1fr); max-width: 680px; padding-inline: 16px; }
+  .videoWorkspace .paneNavigation { display: flex; }
+  .videoWorkspace[data-pane="preview"] .controls, .videoWorkspace[data-pane="controls"] .preview { display: none; }
+  .videoWorkspace[data-pane="controls"] .controls { display: flex; }
+  .videoWorkspace.videoWorkspace[data-stage="schedule"] .controls, .videoWorkspace.videoWorkspace[data-stage="schedule"] .preview { min-height: 0; }
+  .scheduleFooter { position: sticky; bottom: 0; z-index: 5; padding: 12px 16px; }
+}
+@media (max-height: 740px) {
+  .videoWorkspace.videoWorkspace .videoLayout { padding-top: 8px; padding-bottom: 12px; gap: 16px; }
+  .videoWorkspace.videoWorkspace .controls > div { padding: 16px; }
+  .createIntro { margin-bottom: 14px; }
+  .referenceGroup { gap: 10px; padding-block: 12px; }
+  .remixOverview { margin-top: 6px; padding-top: 6px; }
+  .remixOverview > p { margin-block: 4px 6px; }
+  .remixOverview [data-remix-manual-entry] { top: 4px; }
+}
+@media (min-width: 1024px) and (max-height: 520px) { .videoWorkspace.videoWorkspace .videoLayout { align-items: start; } .videoWorkspace.videoWorkspace[data-stage="schedule"] { height: auto; overflow: visible; } }

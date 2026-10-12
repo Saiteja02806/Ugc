@@ -72,7 +72,7 @@ test("Wall of Text Recreate carries its reference context and sends the chosen i
   );
 
   assert.match(videoWorkspace, /refTypeParam === "wall_text"/);
-  assert.match(videoWorkspace, /referenceId: referenceContext\?\.id \?\? null/);
+  assert.match(videoWorkspace, /referenceId: galleryVideoReference\?\.id \?\? referenceContext\?\.id \?\? null/);
   assert.match(videoWorkspace, /referenceType: referenceContext\?\.type \?\? null/);
   assert.match(videoWorkspace, /referenceUrl: referenceContext\?\.sourceUrl \?\? null/);
   assert.match(

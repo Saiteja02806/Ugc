@@ -4,7 +4,7 @@ import { ProviderOperationTerminalError, ProviderSubmissionUncertainError } from
 
 // Exercise the actual worker with provider/storage stubs; no paid requests occur.
 const received = [];
-const resolvedReferences = [], fingerprints = [];
+const resolvedReferences = [], fingerprints = [], outputOptions = [];
 mock.method(globalThis, "fetch", async () => assert.fail("No network calls are allowed"));
 mock.module(new URL("../../dist/lib/private-media.js", import.meta.url), { namedExports: {
   resolveOwnedPrivateMediaUrl: async (url, owner) => { resolvedReferences.push({ url, owner }); return url; },
@@ -12,13 +12,13 @@ mock.module(new URL("../../dist/lib/private-media.js", import.meta.url), { named
 const seedreamCalls = [];
 let seedreamError;
 const image = Buffer.from("fixture-image");
-const provider = async (model, prompt, ratio, reference) => {
-  received.push({ model, prompt, ratio, reference });
+const provider = async (model, prompt, ratio, reference, nativeAspectRatio = false) => {
+  received.push({ model, prompt, ratio, reference, nativeAspectRatio });
   return { buffer: image, model, requestId: "fixture-request" };
 };
 mock.module(new URL("../../dist/lib/openai-image.js", import.meta.url), { namedExports: {
   SLIDESHOW_IMAGE_MODEL: "gpt-image-2.5-sunburst",
-  generateOpenAiImageBuffer: (prompt, ratio, reference, model) => provider(model ?? "gpt_image", prompt, ratio, reference),
+  generateOpenAiImageBuffer: (prompt, ratio, reference, model, nativeAspectRatio) => provider(model ?? "gpt_image", prompt, ratio, reference, nativeAspectRatio),
 } });
 mock.module(new URL("../../dist/lib/gemini-image.js", import.meta.url), { namedExports: {
   GEMINI_3_PRO_IMAGE_MODEL: "gemini-3-pro-image",
@@ -43,7 +43,7 @@ mock.module(new URL("../../dist/lib/seedream-image.js", import.meta.url), { name
 mock.module(new URL("../../dist/lib/image-output.js", import.meta.url), { namedExports: {
   AI_STUDIO_IMAGE_RATIO: "9:16", AI_STUDIO_IMAGE_RATIOS: ["4:5", "1:1", "9:16", "16:9"],
   getAIStudioImageDimensions: () => ({ width: 720, height: 1280 }),
-  prepareAIStudioImageOutput: async buffer => buffer,
+  prepareAIStudioImageOutput: async (buffer, ratio, options) => { outputOptions.push(options); return buffer; },
 } });
 mock.module(new URL("../../dist/lib/storage.js", import.meta.url), { namedExports: {
   getStoredObject: async () => null,
@@ -96,6 +96,60 @@ test("unsupported, empty or mismatched context fails without reaching a provider
   assert.equal(fingerprints.length, reserved);
 });
 
+test("versioned jobs send both providers explicit style, attachment and recreation roles with the intact user prompt", async () => {
+  for (const model of ["gpt_image_2_5", "nano_banana_2"]) {
+    const prompt = 'Use my second attached image for the product. Include "My headline" in the middle.';
+    const imageJob = job(model, prompt);
+    const urls = [imageJob.input_json.referenceImageUrl, "https://media.example.test/style-2.png", "https://media.example.test/person.png", "https://media.example.test/product.png", "https://media.example.test/current-slide.png"];
+    Object.assign(imageJob.input_json, { exploreFormat: "slideshow", aspectRatio: "4:5", referenceImageUrls: urls, slideshowReferenceContract: { version: 2, styleReferenceIndices: [1, 2], attachmentReferenceIndices: [3, 4], regenerationReferenceIndex: 5 } });
+    await runGenerateImageJob(imageJob, context);
+    const result = received.at(-1);
+    assert.deepEqual(result.reference, urls);
+    assert.match(result.prompt, /4:5 aspect ratio/);
+    assert.match(result.prompt, /style references: image 1, image 2/);
+    assert.match(result.prompt, /attachment 1 = image 3; attachment 2 = image 4/);
+    assert.match(result.prompt, /Image 5 is the existing slide being edited and is the main edit target/);
+    assert.match(result.prompt, /without reproducing reference captions/);
+    assert.match(result.prompt, /explicitly request visible text.*near the middle/s);
+    assert.ok(result.prompt.endsWith(prompt));
+    assert.equal(result.nativeAspectRatio, model === "gpt_image_2_5");
+    assert.equal(outputOptions.at(-1).preserveComposition, true);
+    const fingerprint = fingerprints.at(-1);
+    imageJob.input_json.slideshowReferenceContract.attachmentReferenceIndices.reverse();
+    await runGenerateImageJob(imageJob, context);
+    assert.notEqual(fingerprints.at(-1), fingerprint);
+  }
+});
+
+test("layout-only and attachment-free recreation requests have explicit roles while legacy jobs stay unchanged", async () => {
+  const imageJob = job("gpt_image_2_5", "Change the background");
+  Object.assign(imageJob.input_json, { exploreFormat: "slideshow", slideshowReferenceContract: { version: 2, styleReferenceIndices: [1], attachmentReferenceIndices: [] } });
+  await runGenerateImageJob(imageJob, context);
+  assert.match(received.at(-1).prompt, /Image 1 is the selected slide/);
+  imageJob.input_json.slideshowReferenceContract = { version: 2, styleReferenceIndices: [], attachmentReferenceIndices: [], regenerationReferenceIndex: 1 };
+  await runGenerateImageJob(imageJob, context);
+  assert.match(received.at(-1).prompt, /Image 1 is the existing slide being edited/);
+  delete imageJob.input_json.slideshowReferenceContract;
+  await runGenerateImageJob(imageJob, context);
+  assert.equal(received.at(-1).prompt, imageJob.input_json.prompt);
+  assert.equal(received.at(-1).nativeAspectRatio, false);
+  assert.equal(outputOptions.at(-1).preserveComposition, false);
+});
+
+test("invalid or oversized versioned contracts fail before reserving or contacting a provider", async () => {
+  const before = received.length, reserved = fingerprints.length;
+  for (const roles of [{ version: 3, styleReferenceIndices: [1], attachmentReferenceIndices: [] }, { version: 2, styleReferenceIndices: [], attachmentReferenceIndices: [] }, { version: 2, styleReferenceIndices: [2], attachmentReferenceIndices: [] }, { version: 2, styleReferenceIndices: [1], attachmentReferenceIndices: [], regenerationReferenceIndex: "1" }]) {
+    const imageJob = job("gpt_image_2_5", "Use the reference");
+    Object.assign(imageJob.input_json, { exploreFormat: "slideshow", slideshowReferenceContract: roles });
+    await assert.rejects(runGenerateImageJob(imageJob, context), /references/);
+  }
+  const imageJob = job("gpt_image_2_5", "x".repeat(32_000));
+  Object.assign(imageJob.input_json, { exploreFormat: "slideshow", slideshowReferenceContract: { version: 2, styleReferenceIndices: [1], attachmentReferenceIndices: [] } });
+  await assert.rejects(runGenerateImageJob(imageJob, context), /32,000/);
+  assert.equal(received.length, before);
+  assert.equal(fingerprints.length, reserved);
+});
+
 test("new Instructions attachment jobs distinguish layout images from subject/style without changing legacy contexts", async () => {
   for (const model of ["gpt_image_2_5", "nano_banana_2"]) {
     const imageJob = job(model, "Keep the layout and use my product");
@@ -115,11 +169,59 @@ test("new Instructions attachment jobs distinguish layout images from subject/st
   }
 });
 
+test("new multi-image jobs pass all six layouts and both user references to either provider", async () => {
+  for (const model of ["gpt_image_2_5", "nano_banana_2"]) {
+    const imageJob = job(model, "Use my first image for the product and my second for the style.");
+    const urls = [imageJob.input_json.referenceImageUrl, ...Array.from({ length: 7 }, (_, index) => `https://media.example.test/reference-${index + 2}.png`)];
+    Object.assign(imageJob.input_json, { exploreFormat: "slideshow", referenceImageUrls: urls, additionalReferenceStartIndex: 7 });
+    const before = resolvedReferences.length;
+    await runGenerateImageJob(imageJob, context);
+    assert.deepEqual(received.at(-1).reference, urls);
+    assert.deepEqual(resolvedReferences.slice(before), urls.map(url => ({ url, owner: "fixture-user" })));
+    assert.match(received.at(-1).prompt, /image 1 as the primary slideshow layout.*images 2 through 6 as additional slideshow layout context.*images 7 through 8 as the user's additional image references/s);
+    assert.ok(received.at(-1).prompt.endsWith(imageJob.input_json.prompt));
+    const completeFingerprint = fingerprints.at(-1);
+    imageJob.input_json.additionalReferenceStartIndex = 1;
+    await runGenerateImageJob(imageJob, context);
+    assert.match(received.at(-1).prompt, /^Use images 1 through 8 as the user's image references/);
+    assert.doesNotMatch(received.at(-1).prompt, /slideshow layout/);
+    assert.notEqual(fingerprints.at(-1), completeFingerprint);
+  }
+});
+
+test("invalid multi-reference roles fail before reserving or invoking a provider", async () => {
+  const before = received.length, reserved = fingerprints.length;
+  for (const input of [{ additionalReferenceStartIndex: 0 }, { additionalReferenceStartIndex: 3 }, { additionalReferenceStartIndex: 1.5 }, { additionalReferenceStartIndex: "1" }, { additionalReferenceStartIndex: 1, subjectReferenceIndex: 2 }, { additionalReferenceStartIndex: 1, referenceImageUrls: undefined }]) {
+    const imageJob = job("gpt_image_2_5", "Use references");
+    Object.assign(imageJob.input_json, { exploreFormat: "slideshow", referenceImageUrls: [imageJob.input_json.referenceImageUrl, "https://media.example.test/extra.png"], ...input });
+    await assert.rejects(runGenerateImageJob(imageJob, context), /reference roles/);
+  }
+  assert.equal(received.length, before);
+  assert.equal(fingerprints.length, reserved);
+});
+
+test("regeneration target stays after the user's ordered references and receives a separate prompt role", async () => {
+  const imageJob = job("gpt_image_2_5", "Use my first attached image for the product.");
+  const urls = [imageJob.input_json.referenceImageUrl, "https://media.example.test/product.png", "https://media.example.test/style.png", "https://media.example.test/slide-being-edited.png"];
+  Object.assign(imageJob.input_json, { exploreFormat: "slideshow", referenceImageUrls: urls, additionalReferenceStartIndex: 2, regenerationReferenceIndex: 4 });
+  await runGenerateImageJob(imageJob, context);
+  assert.deepEqual(received.at(-1).reference, urls);
+  assert.match(received.at(-1).prompt, /images 2 through 3 as the user's additional image references.*selected order.*image 4 as the existing slide being edited/s);
+  const fingerprint = fingerprints.at(-1);
+  delete imageJob.input_json.regenerationReferenceIndex;
+  await runGenerateImageJob(imageJob, context);
+  assert.notEqual(fingerprints.at(-1), fingerprint);
+  for (const input of [{ regenerationReferenceIndex: 0 }, { regenerationReferenceIndex: 2 }, { regenerationReferenceIndex: "4" }, { regenerationReferenceIndex: 4, additionalReferenceStartIndex: undefined }]) {
+    Object.assign(imageJob.input_json, { additionalReferenceStartIndex: 2, ...input });
+    await assert.rejects(runGenerateImageJob(imageJob, context), /regeneration reference roles/);
+  }
+});
+
 test("all three image providers receive the exact character prompt and chosen reference", async () => {
   const prompt = "An adult fashion creator with glossy makeup in a clean studio.\nHands outside frame. Pink satin dress.";
   for (const model of ["gpt_image", "gemini_3_pro", "nano_banana_2"]) {
     await runGenerateImageJob(job(model, prompt), context);
-    assert.deepEqual(received.at(-1), { model, prompt, ratio: "9:16", reference: "https://media.example.test/owned-reference.png" });
+    assert.deepEqual(received.at(-1), { model, prompt, ratio: "9:16", reference: "https://media.example.test/owned-reference.png", nativeAspectRatio: false });
   }
 });
 
@@ -129,6 +231,7 @@ test("slideshow GPT Image 2.5 jobs select Sunburst explicitly and retain the ima
   assert.deepEqual(received.at(-1), {
     model: "gpt-image-2.5-sunburst", prompt, ratio: "9:16",
     reference: "https://media.example.test/owned-reference.png",
+    nativeAspectRatio: false,
   });
   assert.equal(output.model, "gpt_image_2_5");
   assert.equal(output.provider, "openai");

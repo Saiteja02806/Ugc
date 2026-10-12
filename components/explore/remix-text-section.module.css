@@ -1,0 +1,52 @@
+.section { min-width: 0; }
+.manualEntry { display: flex; margin-bottom: 10px; }
+.control { border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
+.overviewControl { border: 0; border-radius: 0; background: transparent; }
+.overviewHeader { display: flex; min-height: 20px; align-items: center; gap: 12px; margin-bottom: 8px; }
+.overviewLabel { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; font-weight: 550; }
+.availability { color: var(--muted); font-size: 11px; font-weight: 400; }
+.overviewGenerate { min-width: 120px; max-width: 100%; min-height: 40px; padding-inline: 18px; }
+.overviewGenerate:disabled { border-color: var(--border); background: var(--card-muted); color: var(--muted); opacity: 1; }
+.overviewActions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.optionsToggle { min-height: 36px; padding-inline: 0 8px; color: var(--muted); font-size: 12px; gap: 6px; }
+.optionsToggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+.optionSet { color: var(--foreground); font-size: 10px; }
+.overviewOptions { display: grid; gap: 6px; }
+.overviewOptions[hidden] { display: none; }
+.contextLink { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.trigger { display: flex; min-height: 44px; align-items: center; gap: 8px; padding: 10px 12px; color: var(--foreground); font-size: 13px; font-weight: 550; cursor: pointer; list-style: none; }
+.trigger::-webkit-details-marker { display: none; }
+.trigger[aria-disabled="true"] { opacity: .55; cursor: default; }
+.hint { margin-left: auto; color: var(--muted); font-size: 11px; font-weight: 400; }
+.chevron { flex: none; color: var(--muted); }
+.control[open] > .trigger .chevron { transform: rotate(180deg); }
+.section button:focus-visible, .section a:focus-visible, .section summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.flow { display: grid; gap: 10px; border-top: 1px solid var(--border); padding: 12px; }
+.overviewFlow { gap: 8px; border-top: 0; padding: 0; }
+.label { display: grid; min-width: 0; gap: 5px; font-size: 12px; font-weight: 500; color: var(--foreground); }
+.field { display: block; box-sizing: border-box; width: 100%; min-height: 36px; border: 1px solid var(--border); border-radius: 6px; padding: 8px; background: var(--background); color: var(--foreground); font: inherit; font-size: 13px; font-weight: 400; line-height: 1.5; }
+textarea.field { resize: vertical; }
+.field:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.field:disabled { opacity: .6; }
+.option { color: var(--muted); font-size: 12px; }
+.option > summary { padding-block: 4px; cursor: pointer; }
+.option > summary span { margin-left: 6px; font-size: 11px; opacity: .8; }
+.option > .label { margin-top: 8px; }
+.sourceField { min-height: 84px; max-height: 160px; padding: 10px; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 25%, transparent) transparent; }
+.context { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.context strong { color: var(--foreground); font-weight: 500; overflow-wrap: anywhere; }
+.context a { margin-left: auto; color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.generate { width: 100%; min-height: 40px; }
+.notice { margin: 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
+.error { color: var(--error); }
+.draft { display: grid; gap: 10px; }
+.draftTitle { margin: 0; font-size: 12px; font-weight: 550; color: var(--foreground); }
+.scope { margin: 0; border-top: 1px solid var(--border); padding-top: 10px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.overviewScope { border-top: 0; padding-top: 0; }
+.manual { min-width: 0; margin-top: 12px; }
+.manual[hidden] { display: none; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (max-width: 599px) {
+  .trigger { min-height: 44px; }
+  .field { font-size: 16px; }
+}

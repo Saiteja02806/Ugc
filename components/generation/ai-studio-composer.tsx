@@ -7,7 +7,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import type { FormEvent, KeyboardEvent, ReactNode } from "react";
-import { useEffect, useId, useRef, useState } from "react";
+import { Children, Fragment, isValidElement, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import creation from "@/components/explore/workflow-creation.module.css";
+import focused from "@/components/explore/workflow-focused-composer.module.css";
 
 export function AiStudioComposer({
   active,
@@ -61,6 +62,8 @@ export function AiStudioComposer({
   settingsClassName,
   settingsLabel = "Video generation settings",
   promptAttachmentControl,
+  estimatedCredits,
+  outputSummary,
 }: {
   active: boolean;
   compact?: boolean;
@@ -91,10 +94,12 @@ export function AiStudioComposer({
   settingsSummary?: string;
   actionsTarget?: HTMLElement | null;
   referenceControls?: ReactNode;
-  workflowDesign?: "classic";
+  workflowDesign?: "classic" | "focused";
   settingsClassName?: string;
   settingsLabel?: string;
   promptAttachmentControl?: ReactNode;
+  estimatedCredits?: number;
+  outputSummary?: string;
 }) {
   const promptId = useId();
   const formId = useId();
@@ -121,6 +126,33 @@ export function AiStudioComposer({
     )}px`;
   }, [active, compact, hasAttachments, layout, prompt]);
 
+  if (layout === "workflow" && workflowDesign === "focused") {
+    // Video settings arrive in the existing Model, Duration, Quality, Videos, Ratio order.
+    // Keep every control mounted; only the two less frequent choices move into a disclosure.
+    const fields = Children.toArray(isValidElement<{ children: ReactNode }>(settings) && settings.type === Fragment ? settings.props.children : settings);
+    const grouped = fields.length === 5;
+    const actions = <div className={focused.actions}>
+      <div className={focused.actionInfo}>
+        {estimatedCredits !== undefined ? <p className={focused.estimate}>Estimated cost <strong>{estimatedCredits} credits</strong></p> : null}
+        <div className={focused.statusRow}><p role="status">{accessMessage}</p>{secondaryActions}</div>
+      </div>
+      <Button type="submit" form={formId} aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className={focused.generate}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button>
+    </div>;
+    const content = <form id={formId} data-layout="workflow" data-workflow-design="focused" noValidate onSubmit={onSubmit} className={focused.composer}>
+      {contextBanner}
+      {referenceControls}
+      <div className={focused.brief}>
+        <label htmlFor={promptId}>{promptLabel ?? "What should the creator say and do?"}</label>
+        <p id={promptHelperId} role={promptTooLong ? "alert" : undefined} className={promptTooLong ? "text-destructive" : undefined}>{promptTooLong ? `Shorten your instructions by ${excessCharacters} characters.` : promptHelper}</p>
+        <div className="relative"><textarea id={promptId} name={name} value={prompt} rows={4} autoComplete="off" onChange={event => onPromptChange(event.target.value)} aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId} placeholder={placeholder} className={cn(focused.prompt, promptAttachmentControl && creation.promptWithAttachments)} />{promptAttachmentControl}</div>
+      </div>
+      <div role="group" aria-label={settingsLabel} className={focused.primarySettings}>{grouped ? [fields[0], fields[1], fields[4]] : fields}</div>
+      {grouped ? <details className={focused.output}><summary>Output settings<span>{outputSummary}</span><ChevronDown aria-hidden="true" className="size-4" /></summary><div role="group" aria-label="Output settings" className={focused.outputFields}>{fields[2]}{fields[3]}</div></details> : null}
+      {!actionsTarget ? actions : null}
+    </form>;
+    return <>{portalTarget ? createPortal(content, portalTarget) : content}{actionsTarget ? createPortal(actions, actionsTarget) : null}</>;
+  }
+
   if (layout === "workflow" && workflowDesign === "classic") {
     const actions = <div className="space-y-2">
       <div className="flex items-center justify-between gap-2"><p role="status" className="text-xs leading-5 text-muted">{accessMessage}</p>{secondaryActions ? <div className="flex shrink-0 gap-2">{secondaryActions}</div> : null}</div>
@@ -131,7 +163,7 @@ export function AiStudioComposer({
       <div className={creation.instructionsField}>
         <label htmlFor={promptId} className="block text-sm font-medium">{promptLabel ?? "Your instructions"}</label>
         <div className="relative"><textarea id={promptId} name={name} value={prompt} rows={4} autoComplete="off" onChange={event => onPromptChange(event.target.value)}
-          aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId} placeholder={placeholder} className={cn(creation.prompt, promptAttachmentControl && "pb-14")} />
+          aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId} placeholder={placeholder} className={cn(creation.prompt, promptAttachmentControl && creation.promptWithAttachments)} />
           {promptAttachmentControl}
         </div>
         <p id={promptHelperId} role={promptTooLong ? "alert" : undefined} className={promptTooLong ? "text-xs leading-5 text-destructive" : "sr-only"}>{promptTooLong ? `Shorten your instructions by ${excessCharacters} characters.` : promptHelper}</p>

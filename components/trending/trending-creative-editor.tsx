@@ -2,6 +2,7 @@
 import localFont from "next/font/local";
 import { CAROUSEL_BODY_FONT_SIZE, CAROUSEL_HEADING_FONT_SIZE, CAROUSEL_HOOK_FONT_SIZE, CAROUSEL_TEXT_BLOCK_GAP, getCarouselBodyBlocks } from "@/lib/carousel/text-presentation";
 import { getCarouselEditHookFontSize } from "@/lib/carousel/edit-cover-typography";
+import { CAROUSEL_BODY_FONT_WEIGHT, CAROUSEL_COVER_FONT_WEIGHT, CAROUSEL_HEADING_FONT_WEIGHT, CAROUSEL_STATEMENT_FONT_WEIGHT, CAROUSEL_HOOK_LINE_HEIGHT, CAROUSEL_TEXT_OUTLINE_WIDTH } from "@/lib/carousel/cover-typography";
 
 import {
   Check,
@@ -29,7 +30,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { CarouselDraggableOverlay } from "@/components/trending/carousel-draggable-overlay";
-import { CarouselSlideImageSection } from "@/components/trending/carousel-slide-image-section";
+import { CarouselSlideImageSection, type CarouselSlideImagePreview } from "@/components/trending/carousel-slide-image-section";
 import { applyCarouselSlideImage, restoreOriginalCarouselBackground } from "@/lib/trending/carousel-slide-image-selection";
 import { WallTextSavedImage } from "@/components/trending/wall-text-saved-image";
 import { WallTextEditOverlay, WallTextWidthControl } from "@/components/trending/wall-text-edit-overlay";
@@ -114,10 +115,10 @@ import { getWallTextManualBlocks, validateWallTextManualCopy, WALL_TEXT_MANUAL_M
 import { getWallTextRenderBlocks } from "@/lib/trending/wall-text-types";
 import { cn } from "@/lib/utils";
 
-const carouselInterTight = localFont({
-  src: "../../worker/src/assets/fonts/InterTight-VariableFont_wght.ttf",
+const carouselInter = localFont({
+  src: "../../worker/src/assets/fonts/Inter-VariableFont_wght.ttf",
   display: "swap",
-  variable: "--font-carousel-inter-tight",
+  variable: "--font-carousel-inter",
   weight: "100 900",
 });
 
@@ -228,6 +229,7 @@ export function TrendingCreativeEditor({
   const [productAssetsLoading, setProductAssetsLoading] = useState(false);
   const [productAssetsUploading, setProductAssetsUploading] = useState(false);
   const [slideImageUploading, setSlideImageUploading] = useState(false);
+  const [slideImagePreview, setSlideImagePreview] = useState<CarouselSlideImagePreview | null>(null);
   const slideImageBusyRef = useRef(false);
   const [productAssetsError, setProductAssetsError] = useState<string | null>(
     null,
@@ -268,6 +270,7 @@ export function TrendingCreativeEditor({
     setProductAssets([]);
     slideImageBusyRef.current = false;
     setSlideImageUploading(false);
+    setSlideImagePreview(null);
     setProductAssetsError(null);
     setHyperHookAssets([]);
     setHyperHookAssetsError(null);
@@ -444,7 +447,7 @@ export function TrendingCreativeEditor({
 
     try {
       const token = await requireToken();
-      const response = await fetch("/api/trending/carousel-hyper-hooks", {
+      const response = await fetch(`/api/trending/carousel-hyper-hooks?carouselId=${encodeURIComponent(item.creativeId)}`, {
         cache: "no-store",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -989,6 +992,7 @@ export function TrendingCreativeEditor({
                   item={item}
                   sourcePreview={sourcePreview}
                   activeSlideIndex={activeSlideIndex}
+                  slideImagePreview={slideImagePreview}
                   onContentChange={setContent}
                 />
                 <div className="mt-4 flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground">
@@ -1016,6 +1020,7 @@ export function TrendingCreativeEditor({
                       slide={content.slides[activeSlideIndex]}
                       disabled={saving || productAssetsUploading}
                       onBusyChange={(busy) => { slideImageBusyRef.current = busy; setSlideImageUploading(busy); }}
+                      onPreviewChange={setSlideImagePreview}
                       onUploaded={(slideId, asset) => setContent(current => applyCarouselSlideImage(current, slideId, asset))}
                       onRestore={(slideId) => setContent(current => current?.format === "carousel" ? {
                         ...current, slides: current.slides.map(slide => slide.slideId === slideId ? restoreOriginalCarouselBackground(slide) : slide),
@@ -1142,6 +1147,7 @@ export function EditorPreview({
   item,
   onContentChange,
   sourcePreview,
+  slideImagePreview = null,
 }: {
   activeSlideIndex: number;
   content: TrendingCreativeEditContent;
@@ -1150,6 +1156,7 @@ export function EditorPreview({
   initialContent: TrendingCreativeEditContent | null;
   item: TrendingFeedItem;
   onContentChange: (content: TrendingCreativeEditContent) => void;
+  slideImagePreview?: CarouselSlideImagePreview | null;
   sourcePreview: {
     thumbnailUrl: string | null;
     title: string;
@@ -1157,14 +1164,17 @@ export function EditorPreview({
   } | null;
 }) {
   if (content.format === "carousel" && item.format === "carousel") {
-    const slide =
+    const confirmedSlide =
       content.slides[
         Math.min(activeSlideIndex, Math.max(content.slides.length - 1, 0))
       ];
 
-    if (!slide) {
+    if (!confirmedSlide) {
       return null;
     }
+    const previewPending = slideImagePreview?.slideId === confirmedSlide.slideId;
+    const slide = previewPending ? { ...confirmedSlide, backgroundUrl: slideImagePreview.url,
+      backgroundCrop: "centre" as const, visualRole: confirmedSlide.originalVisualRole } : confirmedSlide;
 
     const initialSlide =
       initialContent?.format === "carousel"
@@ -1178,6 +1188,7 @@ export function EditorPreview({
     });
     const showExactRender = Boolean(
       exactRenderedUrl &&
+        !previewPending &&
         initialSlide &&
         !hasCarouselSlidePreviewChanged(initialSlide, slide),
     );
@@ -1200,10 +1211,11 @@ export function EditorPreview({
         }
         className={cn(
           "relative mx-auto w-full max-w-[340px] overflow-hidden rounded-xl border border-border bg-foreground-strong [container-type:inline-size]",
-          carouselInterTight.variable,
+          carouselInter.variable,
           slide.renderFormat === "1:1" ? "aspect-square" : "aspect-[4/5]",
         )}
       >
+        {previewPending ? <Badge className="absolute right-2 top-2 z-20" role="status">Uploading image…</Badge> : null}
         {showExactRender ? (
           // The immutable rendered asset is the source of truth until a field changes.
           // eslint-disable-next-line @next/next/no-img-element
@@ -1259,9 +1271,9 @@ export function EditorPreview({
                 <CarouselOutlinedText kind="headline" text={slide.headline} />
               ) : null}
               {getCarouselBodyBlocks(supportingText || (!hasHeading ? slide.headline : "")).map((text, index) => (
-                <CarouselOutlinedText key={index} kind="body" text={text} />
+                <CarouselOutlinedText key={index} kind={hasHeading ? "body" : "statement"} text={text} />
               ))}
-              {slide.ctaText.trim() ? <CarouselOutlinedText kind="body" text={slide.ctaText} /> : null}
+              {slide.ctaText.trim() ? <CarouselOutlinedText kind={hasHeading ? "body" : "statement"} text={slide.ctaText} /> : null}
             </div>
           )}
         </CarouselDraggableOverlay>
@@ -1568,7 +1580,7 @@ function CarouselOutlinedText({
   kind,
   text,
 }: {
-  kind: "body" | "headline";
+  kind: "body" | "headline" | "statement";
   text: string;
 }) {
   return (
@@ -1576,19 +1588,20 @@ function CarouselOutlinedText({
       className={cn(
         "mx-auto max-w-[78cqw] text-center",
         kind === "headline"
-          ? "font-semibold leading-[1.04]"
-          : "font-semibold leading-[1.16] text-white",
+          ? "leading-[1.04]"
+          : "leading-[1.16] text-white",
       )}
       style={{
-        fontFamily: 'var(--font-carousel-inter-tight), Inter Tight, Inter, Arial, sans-serif',
+        fontFamily: 'var(--font-carousel-inter), Inter, Arial, sans-serif',
+        fontWeight: kind === "headline" ? CAROUSEL_HEADING_FONT_WEIGHT : kind === "statement" ? CAROUSEL_STATEMENT_FONT_WEIGHT : CAROUSEL_BODY_FONT_WEIGHT,
         fontSize: `${(kind === "headline" ? CAROUSEL_HEADING_FONT_SIZE : CAROUSEL_BODY_FONT_SIZE) / 10.8}cqw`,
-        marginTop: kind === "body" ? `${CAROUSEL_TEXT_BLOCK_GAP / 10.8}cqw` : undefined,
+        marginTop: kind !== "headline" ? `${CAROUSEL_TEXT_BLOCK_GAP / 10.8}cqw` : undefined,
         whiteSpace: "pre-line",
         letterSpacing: 0,
-        ...(kind === "body"
+        ...(kind !== "headline"
           ? {
               paintOrder: "stroke fill",
-              WebkitTextStroke: "0.370cqw rgba(0, 0, 0, 0.72)",
+              WebkitTextStroke: `${CAROUSEL_TEXT_OUTLINE_WIDTH / 10.8}cqw rgba(0, 0, 0, 0.72)`,
             }
           : {}),
       }}
@@ -1614,9 +1627,13 @@ function CarouselCoverText({
   return (
     <div className="mx-auto w-[78cqw] text-center">
       <p
-        className="font-bold leading-[.98] text-white"
+        className="text-white"
         style={{
-          fontFamily: 'var(--font-carousel-inter-tight), Inter Tight, Inter, Arial, sans-serif',
+          fontFamily: 'var(--font-carousel-inter), Inter, Arial, sans-serif',
+          fontWeight: CAROUSEL_COVER_FONT_WEIGHT,
+          lineHeight: CAROUSEL_HOOK_LINE_HEIGHT,
+          paintOrder: "stroke fill",
+          WebkitTextStroke: `${CAROUSEL_TEXT_OUTLINE_WIDTH / 10.8}cqw rgba(0, 0, 0, 0.72)`,
           fontSize: `${fontSize / 10.8}cqw`,
           whiteSpace: "pre-line",
           letterSpacing: 0,

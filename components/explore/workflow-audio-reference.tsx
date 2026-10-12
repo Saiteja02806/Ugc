@@ -1,6 +1,6 @@
 "use client";
 
-import { AudioLines, Check } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 
 import { RemoveMediaButton, WorkflowFilePicker, WorkflowMediaPlayer, type WorkflowAttachment } from "@/components/explore/hook-workflow-media-controls";
@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { WorkflowSavedAudioChoices } from "@/components/explore/workflow-saved-audio-choices";
+import { WorkflowReferencePreview } from "@/components/explore/workflow-reference-preview";
+import reference from "@/components/explore/workflow-reference-preview.module.css";
 
 export type WorkflowAudioReferenceProps = {
   ownerId?: string | null;
@@ -23,15 +25,15 @@ export type WorkflowAudioReferenceProps = {
 export function WorkflowAudioReference({ audioLabel, audio, ownerId }: WorkflowAudioReferenceProps) {
   const [open, setOpen] = useState(false);
   const audioName = audioLabel.toLowerCase();
-  return <Popover open={open} onOpenChange={setOpen}>
-    <PopoverTrigger render={<Button type="button" variant="outline" className={creation.referenceButton} aria-busy={audio.loading} data-state={audio.loading ? "loading" : audio.error ? "error" : audio.asset ? "selected" : "empty"} aria-label={`Select audio, ${audioName}${audio.asset ? ` selected: ${audio.asset.name}` : " optional"}`} title={audio.asset?.name ?? "Choose an optional audio reference"} />}>
-      <AudioLines className="relative size-5" aria-hidden="true" />
-      <span className={creation.referenceLabel}>Select audio</span>
-      {audio.asset ? <Check className={creation.referenceCheck} aria-label="Audio attached" /> : null}
+  return <div className={reference.picker}>
+    {audio.asset ? <WorkflowReferencePreview key={audio.asset.url} kind="voice" url={audio.asset.url} name={audio.asset.name} /> : null}
+    <Popover open={open} onOpenChange={setOpen}>
+    <PopoverTrigger render={<Button type="button" variant="outline" className={cn(creation.referenceButton, reference.action)} aria-busy={audio.loading} data-state={audio.loading ? "loading" : audio.error ? "error" : audio.asset ? "selected" : "empty"} aria-label={`Select audio, ${audioName}${audio.asset ? ` selected: ${audio.asset.name}` : " optional"}`} title={audio.asset?.name ?? "Choose an optional audio reference"} />}>
+      {!audio.asset ? <span className={creation.referenceLabel}>Choose audio</span> : null}<Plus className={reference.add} aria-hidden="true" />
     </PopoverTrigger>
     <PopoverContent side="right" align="start" className={cn(studio.floating, creation.floating)}>
-      <PopoverTitle>Main voice reference</PopoverTitle>
-      <p className="text-xs text-muted">Voice guidance · Up to 30 seconds.</p>
+      <PopoverTitle>Voice reference</PopoverTitle>
+      <p className="text-xs text-muted">Guide vocal delivery with an audio clip. Requires Seedance 2.5 · Up to 30 seconds.</p>
       <WorkflowFilePicker attachment={{ ...audio, choose: file => audio.choose(file, { maxDuration: 30 }) }} kind="audio" label={audio.asset ? `Replace ${audioName}` : `Attach ${audioName}`} buttonLabel={audio.asset ? "Replace audio" : "Choose audio"} className="h-9 text-sm" />
       {open && ownerId ? <WorkflowSavedAudioChoices ownerId={ownerId} audio={audio} onVoiceReference={() => {}} /> : null}
       {audio.asset ? <>
@@ -40,5 +42,5 @@ export function WorkflowAudioReference({ audioLabel, audio, ownerId }: WorkflowA
       </> : null}
       {audio.error ? <p role="alert" className="text-sm text-destructive">{audio.error}</p> : null}
     </PopoverContent>
-  </Popover>;
+  </Popover></div>;
 }

@@ -71,6 +71,7 @@ const defaultDependencies: CharacterApiDependencies = {
       return { count, useFreeAllowance: false };
     },
     getReference: getCharacterForUser,
+    getReferenceAsset: (assetId, userId) => getMediaAssetForOwner({ assetId, userId }),
     reserveBatch: reserveCharacterGenerationBatch,
     dispatch: dispatchQueuedBackgroundJobForRecovery,
     getImageCreditCost: () => getGenerationCreditCost("image"),

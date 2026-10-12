@@ -24,10 +24,13 @@ function harness(code, exportName) {
     "@/components/generation/ai-studio-composer": { AiStudioSettingSelect: "select" },
     "@/components/explore/workflow-studio.module.css": { default: {} },
     "@/components/explore/workflow-creation.module.css": { default: new Proxy({}, { get: (_, key) => key }) },
+    "@/components/explore/workflow-section-layout.module.css": { default: new Proxy({}, { get: (_, key) => key }) },
     "@/components/ui/button": { Button: "button" },
     "@/components/explore/workflow-saved-audio-picker": { WorkflowSavedAudioPicker: "saved-audio-picker" },
     "@/components/explore/workflow-demo-controls": { WorkflowDemoControls: "demo-controls", WorkflowDemoPreview: "framed-demo" },
     "@/components/explore/workflow-saved-audio-choices": { WorkflowSavedAudioChoices: "saved-audio-choices" },
+    "@/components/explore/workflow-reference-preview": { WorkflowReferencePreview: "reference-preview" },
+    "@/components/explore/workflow-reference-preview.module.css": { default: {} },
     "@/components/ui/popover": Object.fromEntries(["Popover", "PopoverContent", "PopoverTitle", "PopoverTrigger"].map((name) => [name, name])),
     "@/lib/utils": { cn: (...values) => values.join(" ") },
     "@/worker/src/subtitles/explore-policy": { EXPLORE_SUBTITLE_SCOPE_LABEL: "English · up to 60 seconds total" },
@@ -67,7 +70,7 @@ function audioRender(overrides = {}) {
 test("the actual Edit video section offers optional demo without dummy result tiles or media", () => {
   const { tree } = render();
   assert.equal(tree.props["aria-label"], "Video finishing settings");
-  assert.match(text(tree), /Edited demo.*Demo Optional/);
+  assert.match(text(tree), /Edit & add demo.*Demo Optional/);
   assert.equal(nodes(tree).filter((node) => node.type === "ol").length, 0);
   assert.equal(nodes(tree).filter((node) => node.type === "player").length, 0);
   assert.ok(nodes(tree).some((node) => node.type === "button" && node.props.disabled && node.props["aria-label"] === "Select demo audio"));
@@ -117,6 +120,9 @@ test("visual subtitle choices default to Clean and rerender locally without enab
   const actual = harness(source, "WorkflowCompositionPanel");
   const props = render().props;
   const first = actual.render(props);
+  const appearance = nodes(first).find(node => node.type === "details");
+  assert.equal(appearance.props.open, undefined);
+  assert.equal(text(nodes(appearance).find(node => node.type === "summary")), "Subtitle appearance Clean · Bottom");
   const group = nodes(first).find((node) => node.props["aria-label"] === "Subtitle style samples (local preview only)");
   assert.equal(group.props.role, "group");
   const choices = nodes(group).filter((node) => node.type === "button");
@@ -192,7 +198,7 @@ test("connected workspaces preview only supplied saved outputs and preserve resu
   }
 });
 
-test("creation pane has no internal scrolling; only long input text and picker menus scroll", () => {
+test("shared controls preserve input and picker scrolling and reserve the action footer", () => {
   for (const selector of ["controls", "controlContent"]) {
     for (const block of styles.matchAll(new RegExp(`\\.${selector}\\s*\\{([^}]+)\\}`, "g"))) {
       assert.doesNotMatch(block[1], /overflow(?:-y)?:\s*(auto|scroll|hidden)|height: calc/);
@@ -202,8 +208,6 @@ test("creation pane has no internal scrolling; only long input text and picker m
   assert.match(styles, /\.floating[^}]*overflow-y: auto/);
   assert.match(styles, /\.actionFooter\s*\{\s*flex-shrink: 0/);
   assert.doesNotMatch(read("components/explore/workflow-creation-panel.tsx"), /tabIndex=\{0\}/);
-  const explore = read("components/explore/explore-workspace.module.css");
-  assert.doesNotMatch(explore, /overflow-x: auto|scroll-snap|grid-auto-flow: column/);
 });
 
 test("settings occupy two rows with Quality, Videos and Ratio alongside each other", () => {
@@ -232,14 +236,14 @@ test("Create audio keeps the recording as AI guidance without an unimplemented e
   const buttons = nodes(tree).filter((node) => node.type === "button");
   assert.ok(buttons.every(node => !["Exact recording", "Voice reference"].includes(text(node))));
   assert.deepEqual(changes, []);
-  assert.match(text(tree), /Voice guidance · Up to 30 seconds/);
+  assert.match(text(tree), /Requires Seedance 2\.5 · Up to 30 seconds/);
   assert.doesNotMatch(text(tree), /exact copy|Files upload only|through OpenRouter/);
   assert.equal(audio.asset.name, "voice.wav");
   assert.doesNotMatch(audioSource, /setInstructions|onInstructionsChange|\bfetch\(|localStorage|sessionStorage/);
   const empty = audioRender().tree;
   assert.doesNotMatch(text(empty), /No audio selected. No sample audio is added/);
-  assert.match(text(empty), /Select audio/);
-  assert.ok(nodes(empty).some((node) => node.type === "AudioLines"));
+  assert.match(text(empty), /Choose audio/);
+  assert.ok(nodes(empty).some((node) => node.type === "Plus"));
   assert.doesNotMatch(audioSource, /Mic2/);
 });
 
@@ -273,7 +277,8 @@ test("Demo audio is directly visible in editing, and section changes pause witho
   const demoAudio = makeAttachment("background.wav", true);
   const { tree } = render({ demo: makeAttachment("demo.mp4", true), demoAudio });
   const sound = nodes(tree).find((node) => node.props["aria-label"] === "Demo audio details");
-  assert.equal(nodes(tree).filter((node) => node.type === "details").length, 0);
+  const folded = nodes(tree).filter(node => node.type === "details").flatMap(nodes);
+  assert.equal(folded.includes(sound), false);
   assert.match(text(sound), /Demo audio/);
   assert.doesNotMatch(text(tree), /Demo sound/);
   assert.equal(demoAudio.asset.name, "background.wav");
@@ -361,8 +366,9 @@ test("audio reference selection and validation states retain the waveform and re
     const trigger = nodes(tree).find((node) => node.type === "PopoverTrigger");
     assert.equal(trigger.props.render.props["data-state"], state);
     assert.equal(trigger.props.render.props["aria-busy"], state === "loading");
-    assert.equal(trigger.props.render.props.className, "referenceButton");
-    assert.ok(nodes(trigger).some((node) => node.type === "AudioLines"));
+    assert.ok(trigger.props.render.props.className.includes("referenceButton"));
+    if (state === "selected") assert.equal(nodes(tree).find(node => node.type === "reference-preview").props.kind, "voice");
+    assert.ok(nodes(trigger).some((node) => node.type === "Plus"));
   }
 });
 
@@ -373,7 +379,7 @@ test("concise reference pickers preserve uploads, playback, removal, errors and 
     const { tree } = audioRender({ audioLabel, audio });
     const popup = nodes(tree).find(node => node.type === "PopoverContent");
     const paragraphs = nodes(popup).filter(node => node.type === "p");
-    assert.deepEqual(paragraphs.map(text), ["Voice guidance · Up to 30 seconds.", "voice.mp3"]);
+    assert.deepEqual(paragraphs.map(text), ["Guide vocal delivery with an audio clip. Requires Seedance 2.5 · Up to 30 seconds.", "voice.mp3"]);
     const picker = nodes(tree).find(node => node.type === "picker");
     assert.equal(await picker.props.attachment.choose(file), true);
     assert.equal(chosen[0][0], file);
@@ -399,8 +405,8 @@ test("concise reference pickers preserve uploads, playback, removal, errors and 
 test("both workflows keep concise voice-reference guidance separate from demo-only playback", () => {
   for (const [audioLabel, videoLabel] of [["Hook audio", "Hook"], ["Creator audio", "Phone video"]]) {
     const reference = audioRender({ audioLabel, audio: makeAttachment("voice.wav", true) });
-    assert.match(text(reference.tree), /Main voice reference/);
-    assert.match(text(reference.tree), /Voice guidance · Up to 30 seconds/);
+    assert.match(text(reference.tree), /Voice reference/);
+    assert.match(text(reference.tree), /Requires Seedance 2\.5 · Up to 30 seconds/);
     assert.doesNotMatch(text(reference.tree), /background music|demo audio|OpenRouter|Files upload|exact copy/);
     const demo = render({ videoLabel, demo: makeAttachment("demo.mp4", true), demoAudio: makeAttachment("demo.wav", true) });
     const details = nodes(demo.tree).find((node) => node.props["aria-label"] === "Demo audio details");

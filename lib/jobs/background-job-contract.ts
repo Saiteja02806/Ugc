@@ -4,6 +4,7 @@ import type {
   BackgroundJobType,
   Json,
 } from "./background-jobs.ts";
+import { remixSourceFromJob, type RemixTextSource } from "../explore/remix-source.ts";
 
 export const CANONICAL_BACKGROUND_JOB_TYPES = [
   "audio_generation",
@@ -80,6 +81,7 @@ const canonicalTypeByImplementation: Record<
 };
 
 export type PublicBackgroundJob = {
+  remixTextSource?: RemixTextSource | null;
   exploreFormat?: "hook" | "wall_text" | "slideshow";
   cancelRequestedAt: string | null;
   completedAt: string | null;
@@ -146,6 +148,7 @@ export function getPublicBackgroundJob(job: BackgroundJobRecord) {
   const errorCode = getPublicJobErrorCode(job);
   const retryable = isRetryableBackgroundJob(job);
   return {
+    ...((job.jobType === "generate_hook_video" || job.jobType === "generate_image") ? { remixTextSource: remixSourceFromJob(job.input) } : {}),
     ...((job.jobType === "generate_hook_video" && (format === "hook" || format === "wall_text") || job.jobType === "generate_image" && format === "slideshow") ? { exploreFormat: format as "hook" | "wall_text" | "slideshow" } : {}),
     cancelRequestedAt: job.cancelRequestedAt,
     completedAt: job.completedAt,

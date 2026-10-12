@@ -2,6 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { characterSessionStorageKey, EMPTY_CHARACTER_SESSION, parseCharacterClientSession } from "./client-session.ts";
 
+test("uncertain uploaded-reference requests restore the exact attachment ID without a signed URL", () => {
+  const pendingRequest = { mode: "custom", model: "gpt_image", imageCount: 1, prompt: "Make an influencer in this style", idempotencyKey: "same-key", referenceImageAssetId: "11111111-1111-4111-8111-111111111111" };
+  const restored = parseCharacterClientSession(JSON.stringify({ ...EMPTY_CHARACTER_SESSION, pendingRequest }));
+  assert.deepEqual(restored.pendingRequest, pendingRequest);
+});
+
 test("session restore rejects corrupted, obsolete and untrusted data", () => {
   for (const value of [null, "{", "null", JSON.stringify({ ...EMPTY_CHARACTER_SESSION, version: 2 }),
     JSON.stringify({ ...EMPTY_CHARACTER_SESSION, privateBrief: "not part of the client session" }),

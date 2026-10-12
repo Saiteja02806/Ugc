@@ -3,13 +3,14 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import * as remixSource from "../lib/explore/remix-source.ts";
 const load = (path, imports) => {
   const exports = {};
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL(path, import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, { exports, require: name => { assert.ok(name in imports); return imports[name]; } });
   return exports;
 };
-const results = load("../lib/ai-studio/media-results.ts", {});
-const asset = { id: "actual-media-id", url: "https://owned.test/image", status: "ready", collection: "image", sourceType: "generated_image", ratio: "4:5", title: "Ready image", createdAt: "2026-10-09", sourceRecordId: "job-id" };
+const results = load("../lib/ai-studio/media-results.ts", { "../explore/remix-source.ts": remixSource });
+const asset = { id: "actual-media-id", url: "https://owned.test/image", status: "ready", collection: "image", sourceType: "generated_image", ratio: "4:5", title: "Ready image", createdAt: "2026-10-09", sourceRecordId: "job-id", metadata: { remixTextSource: null } };
 test("transient lookup failure retains the real media ID for a successful owned retry", async () => {
   let failed = true;
   const calls = [];

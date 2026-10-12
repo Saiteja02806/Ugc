@@ -195,11 +195,11 @@ for (const item of cases) {
   if (
     layoutDiagnostics.bubbleShapeStrategy !== expectedStrategy ||
     layoutDiagnostics.whiteBackgroundGroupCount !== expectedWhiteBackgroundGroups ||
-    !layoutDiagnostics.fontFamily.includes("Inter Tight") ||
+    !layoutDiagnostics.fontFamily.startsWith("Inter,") ||
     layoutDiagnostics.maxTextWidth <= 0
   ) {
     throw new Error(
-      `Centered Inter Tight layout audit failed for ${item.background}.`,
+      `Centered Inter layout audit failed for ${item.background}.`,
     );
   }
 

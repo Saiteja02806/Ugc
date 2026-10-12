@@ -7,6 +7,10 @@ import {
   CAROUSEL_BODY_FONT_WEIGHT,
   CAROUSEL_COVER_FONT_WEIGHT,
   CAROUSEL_FONT_FAMILY,
+  CAROUSEL_HEADING_FONT_WEIGHT,
+  CAROUSEL_STATEMENT_FONT_WEIGHT,
+  CAROUSEL_HOOK_LINE_HEIGHT,
+  CAROUSEL_TEXT_OUTLINE_WIDTH,
 } from "./carousel-cover-typography.js";
 import {
   CAROUSEL_FIXED_FONT_SIZE,
@@ -25,7 +29,7 @@ export type CarouselNormalizedTextPosition = {
 };
 
 type RenderCarouselSlideInput = {
-  coverFontSize?: 72 | 84;
+  coverFontSize?: 72;
   assetUrl: string;
   businessName?: string | null;
   format: CarouselFormat;
@@ -63,6 +67,9 @@ export type CarouselRenderDiagnostics = {
   bodyBlockLineCounts?: number[];
   ctaLineCount?: number;
   bodyFontSize?: number;
+  bodyFontWeight?: number;
+  headingFontWeight?: number;
+  textLineHeight?: number;
   bubbleShapeStrategy:
     | "heading-white-svg-background"
     | "plain-white-text"
@@ -81,7 +88,7 @@ type BalancedLines = {
 };
 
 export const CAROUSEL_RENDERER_VERSION =
-  "social-single-statement-hook-inter-tight-v26";
+  "social-single-statement-hook-inter-medium-v27";
 export { CAROUSEL_FIXED_FONT_SIZE } from "./carousel-slide-plan.js";
 
 const FORMAT_DIMENSIONS: Record<CarouselFormat, { height: number; width: number }> = {
@@ -957,7 +964,7 @@ function buildSvgDocument(params: {
 }
 
 async function buildOverlaySvg(params: {
-  coverFontSize?: 72 | 84;
+  coverFontSize?: 72;
   format: CarouselFormat;
   height: number;
   normalizedTextPosition?: CarouselNormalizedTextPosition;
@@ -988,12 +995,12 @@ async function buildOverlaySvg(params: {
   const bodyText =
     shouldRenderHeadline || rawBodyText ? rawBodyText : rawHeadlineText;
   const bodyFontSize = getCarouselStructure1TextFontSize(params.slide);
-  const bodyFontWeight = BODY_FONT_WEIGHT;
+  const bodyFontWeight = shouldRenderHeadline ? BODY_FONT_WEIGHT : CAROUSEL_STATEMENT_FONT_WEIGHT;
   const bodyPaddingX = 18;
   const headline = await fitMeasuredText(headlineText, {
     fontSize: CAROUSEL_HEADING_FONT_SIZE,
     fontFamily: TEXT_FONT_FAMILY,
-    fontWeight: BODY_FONT_WEIGHT,
+    fontWeight: CAROUSEL_HEADING_FONT_WEIGHT,
     getCornerSafety: getHeadlineWrapCornerSafety,
     lineHeightRatio: 1.04,
     maxLines: CAROUSEL_STRUCTURE_1_HEADLINE_MAX_LINES,
@@ -1015,7 +1022,7 @@ async function buildOverlaySvg(params: {
   const cta = await fitMeasuredText(normalizeText(params.slide.ctaText), {
     fontSize: CAROUSEL_FIXED_FONT_SIZE,
     fontFamily: TEXT_FONT_FAMILY,
-    fontWeight: BODY_FONT_WEIGHT,
+    fontWeight: bodyFontWeight,
     getCornerSafety: getBodyWrapCornerSafety,
     lineHeightRatio: 1.16,
     maxLines: CAROUSEL_BODY_BLOCK_MAX_LINES,
@@ -1095,13 +1102,16 @@ async function buildOverlaySvg(params: {
     return markup;
   }).join("");
   const style = `
-    .headline { fill: ${HEADLINE_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${BODY_FONT_WEIGHT}; letter-spacing: 0; }
+    .headline { fill: ${HEADLINE_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${CAROUSEL_HEADING_FONT_WEIGHT}; letter-spacing: 0; }
     .text { fill: ${BODY_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${bodyFontWeight}; letter-spacing: 0; paint-order: stroke fill; stroke: #000000; stroke-linejoin: round; stroke-opacity: 0.72; stroke-width: 4px; }
   `;
 
   return {
     diagnostics: {
       bodyFontSize,
+      bodyFontWeight,
+      headingFontWeight: CAROUSEL_HEADING_FONT_WEIGHT,
+      textLineHeight: body.lineHeight,
       bodyBlockCount: bodyValues.length,
       bodyBlockLineCounts: bodyBlocks.slice(0, bodyValues.length).map((block) => block.lines.length),
       ctaLineCount: cta.lines.length,
@@ -1126,7 +1136,7 @@ async function buildOverlaySvg(params: {
 }
 
 async function buildCoverOverlaySvg(params: {
-  coverFontSize?: 72 | 84;
+  coverFontSize?: 72;
   format: CarouselFormat;
   height: number;
   normalizedTextPosition?: CarouselNormalizedTextPosition;
@@ -1152,7 +1162,7 @@ async function buildCoverOverlaySvg(params: {
     fontFamily: TEXT_FONT_FAMILY,
     fontWeight: CAROUSEL_COVER_FONT_WEIGHT,
     getCornerSafety: getBodyWrapCornerSafety,
-    lineHeightRatio: 0.98,
+    lineHeightRatio: CAROUSEL_HOOK_LINE_HEIGHT,
     maxLines: CAROUSEL_STRUCTURE_1_COVER_MAX_LINES,
     maxWidth: maxTextWidth,
     paddingX: 18,
@@ -1199,11 +1209,13 @@ async function buildCoverOverlaySvg(params: {
   });
   return {
     diagnostics: {
-      bodyFontSize: CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE,
+      bodyFontSize: primary.fontSize,
+      bodyFontWeight: CAROUSEL_COVER_FONT_WEIGHT,
+      textLineHeight: primary.lineHeight,
       bodyBlockCount: 1,
       bodyBlockLineCounts: [primary.lines.length],
       ctaLineCount: 0,
-      bubbleShapeStrategy: "plain-white-text",
+      bubbleShapeStrategy: "plain-white-text-with-outline",
       fontFamily: TEXT_FONT_FAMILY,
       headingBackgroundLineCount: 0,
       headingBackgroundLineWidths: [],
@@ -1215,7 +1227,7 @@ async function buildCoverOverlaySvg(params: {
       content: primaryMarkup,
       height: params.height,
       style: `
-        .cover-primary { fill: ${BODY_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${CAROUSEL_COVER_FONT_WEIGHT}; letter-spacing: -0.02em; }
+        .cover-primary { fill: ${BODY_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${CAROUSEL_COVER_FONT_WEIGHT}; letter-spacing: 0; paint-order: stroke fill; stroke: #000000; stroke-linejoin: round; stroke-opacity: 0.72; stroke-width: ${CAROUSEL_TEXT_OUTLINE_WIDTH}px; }
       `,
       width: params.width,
     }),
@@ -1223,7 +1235,7 @@ async function buildCoverOverlaySvg(params: {
 }
 
 async function buildValidatedOverlay(params: {
-  coverFontSize?: 72 | 84;
+  coverFontSize?: 72;
   format: CarouselFormat;
   height: number;
   normalizedTextPosition?: CarouselNormalizedTextPosition;

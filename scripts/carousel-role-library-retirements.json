@@ -1,0 +1,57 @@
+{
+  "version": "carousel-role-library-retirements-v1",
+  "retirements": [
+    {
+      "retiredAt": "2026-10-11",
+      "reason": "User rejected the wrong Productivity part-2 hook images and one Productivity human image. Prevent future import of these sources and their exact copies.",
+      "exactSourcePaths": [
+        "productivity-human/Pinterest_2026-08-16 (61)/pinterest_029.jpg"
+      ],
+      "sourcePathPrefixes": [
+        "productivity_humanhookpart-2/human/"
+      ],
+      "sourceFileSha256s": [
+        "0602309cb2176ecf40beb2f65f3699b8f4a8ba28637f8d2334f8893c3db48fcd",
+        "0d489be6bf4d68db85667afc7c1c62d40b446bbd1f5ff7c2d087147c5ada2746",
+        "1082b2b1a4708530565d2ed20a4123b839c28532737ca729c3f1b20909277553",
+        "15c972e5259fb69aa97f724ae120d923304c69228ec1836cbf269288cd288f11",
+        "15f6bbdd6683c02066f4f3fabd40da09c0444192afef559cc44ae656fd9895d7",
+        "1a47ec386147b103ed45da34107fea07d040eb9dec4891f6645368509c3faccf",
+        "1a56ec162de4e4d25faef07d1f910fcdeafaac0dd85e91453e88fb2838520d61",
+        "1a9cb7010020457a1d5d085502cf49babb4b04bb3f4e85ab23042701f94d2887",
+        "22d2da0051d6a72a8089a0f522dfb9a9bbe34dd2b7eca90caecc30dfb815c260",
+        "2417083d20d8d563851e862cefb5ad21301378e64e61521d0a7e7a1e9c1a9fff",
+        "275a6b4db3b35d928284a6f31b81f6bea9193ed78c15115b03fe09308bf981fb",
+        "306a494c57d0d68f61f99a9c00451bdd6a34c980de492a0782d3d1c8a85c404f",
+        "3e3d2576c8f05e9421b34b8515969a8c2d88d59db4f3b29b7941751a27749e16",
+        "4b7804036b908d8e41a8f5dcc38eff76477f5af32e85feeda3b46a6492b3e27d",
+        "50dd020b797640a3f5a78dbe29c75b773d58d45f45b97f66462ece47a799b877",
+        "51d18d5a2bf8ce76f9f3fb2466a79355c22daca4daa6b0d97f26c15387748b16",
+        "524f444a92f7bb7ba057e80c0f2f54af6b11b943057e43b17d6fd8ec14b3ebd9",
+        "5376d2af70bbd25ff1fac8a3fcbcd999eff3ed44d264f3e091eb1e032fc77efa",
+        "6ad4b5751a6d0e5418d27256790d188cdb7bf932f7513c1b21c49aabb762cc72",
+        "7580254b9d0fc3e53b9e636812c7be773761c02ab15ca26dae6c18477035d962",
+        "7ef66f3294881560fbe3bed75b797dec7300bdd2144ff7f9aa85e9b7968e1e48",
+        "84768aa585babd620680147aed01e7dfa99f63eef66ce8e223be7842376025c6",
+        "9b46ea50b47436bf1cd3f84917cdcb97d839ffb78f2c42498ee74464deae7f06",
+        "9b5b3710e1151001221ae2fd8a26162f5a0df5896234ff0f829fc14093f0ace6",
+        "9f31f562b5216f7366cbc666d028c9a2fd3b005a9065e30c2ea586048e38652e",
+        "a0e0f30e27f8918db0144c3777bbe6b54d4ecd62ca078297d2382d3f57a1aa65",
+        "be3147512f74632af4f497ae9cb6aefd33ff6db8375cf56989a9ffa4a86f8002",
+        "be8277896b1a41dd6d6a764a63c8b517eed57ce4b45f20ce26042edbbc535ace",
+        "d296fe81ee6de6e25a447ff5e540c1705fbd2560d77df80274ab147d5f5975dc",
+        "e05fef9b5f8c24c700cfaa6c806378c8f884284c3100691aaa4bb2156a882d26",
+        "e187b33355f3aaf900bd44edc7e6f396560eedb28f9cab0d894b1e1a1ec88584",
+        "e63a9d907b633b4cbf7fce0d6bea43ed7387c16bd8a676863c53ffb63413cf2a",
+        "e6d0f1a963460148a8e7cd4713c01d366a92323b5ead85832fd60250197d2493",
+        "e8b05864520ee18d7861f6d00a2c21e547a11b58bfb6c86cf9608dcc0c1f1ac2",
+        "eaec9a18c0f3a545d56b371df80e2e6c88a59fbd1c73a009f631b72916c56885",
+        "f0e91a81e1335e6fc8c5a8d94f0c19e1f31e509eb7acaa21da9a2921e0bc5f02",
+        "f56cfe2dbd5adb93a861d5f8bad0d946aed5b63ca16c9aa5de4ec746bce34186",
+        "f6ea95e646e194ff6d61d19d5832841848df6e074472e061a658deb9f490d076",
+        "f821b7e2a9ecd2d6808de82ccb32d7bda6ac0b389809076ff975431e648100a4",
+        "ff7f45fdffb7f1e9fd838bd4c877b9331b20b116947e171d964c79eed8cbb4ec"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,3863 @@
+{
+  "date": "2026-10-12",
+  "scope": "Isolated fresh text trials; no customer jobs or publication",
+  "trials": [
+    {
+      "id": "list-and-voice",
+      "evidence": "docs/carousel-copy-fixes-list-and-voice-provider-evidence-2026-10-12.json",
+      "startedAt": "2026-10-12T11:32:26.131Z",
+      "completedAt": "2026-10-12T11:38:46.037Z",
+      "versions": {
+        "beforeS1": "llm-carousel-planner-v52-lowercase-body-validation",
+        "afterS1": "llm-carousel-planner-v53-list-body-contract",
+        "beforeS2": "llm-carousel-structure-2-writer-v24-inter-medium-typography",
+        "afterS2": "llm-carousel-structure-2-writer-v25-reader-scenario-v1"
+      },
+      "summary": [
+        {
+          "structure": "structure_1",
+          "arm": "before",
+          "requested": 20,
+          "accepted": 0,
+          "businesses": [
+            {
+              "business": "ugc-pilot",
+              "accepted": 0
+            },
+            {
+              "business": "cal-ai",
+              "accepted": 0
+            },
+            {
+              "business": "calendly",
+              "accepted": 0
+            },
+            {
+              "business": "moo",
+              "accepted": 0
+            }
+          ]
+        },
+        {
+          "structure": "structure_1",
+          "arm": "after",
+          "requested": 20,
+          "accepted": 0,
+          "businesses": [
+            {
+              "business": "cal-ai",
+              "accepted": 0
+            },
+            {
+              "business": "ugc-pilot",
+              "accepted": 0
+            },
+            {
+              "business": "moo",
+              "accepted": 0
+            },
+            {
+              "business": "calendly",
+              "accepted": 0
+            }
+          ]
+        },
+        {
+          "structure": "structure_2",
+          "arm": "before",
+          "requested": 20,
+          "accepted": 14,
+          "businesses": [
+            {
+              "business": "ugc-pilot",
+              "accepted": 0
+            },
+            {
+              "business": "cal-ai",
+              "accepted": 5
+            },
+            {
+              "business": "calendly",
+              "accepted": 4
+            },
+            {
+              "business": "moo",
+              "accepted": 5
+            }
+          ]
+        },
+        {
+          "structure": "structure_2",
+          "arm": "after",
+          "requested": 20,
+          "accepted": 20,
+          "businesses": [
+            {
+              "business": "cal-ai",
+              "accepted": 5
+            },
+            {
+              "business": "ugc-pilot",
+              "accepted": 5
+            },
+            {
+              "business": "moo",
+              "accepted": 5
+            },
+            {
+              "business": "calendly",
+              "accepted": 5
+            }
+          ]
+        }
+      ],
+      "usage": {
+        "calls": 67,
+        "promptTokens": 395317,
+        "completionTokens": 78025,
+        "totalTokens": 473342
+      },
+      "httpFailures": 0,
+      "initialListBodies": [
+        {
+          "arm": "before",
+          "listSlides": 24,
+          "nonNullBodies": 24
+        },
+        {
+          "arm": "after",
+          "listSlides": 24,
+          "nonNullBodies": 0
+        }
+      ],
+      "storyVoice": [
+        {
+          "arm": "before",
+          "plans": 14,
+          "personalStorySlides": 74
+        },
+        {
+          "arm": "after",
+          "plans": 20,
+          "personalStorySlides": 0
+        }
+      ],
+      "countedRepairCalls": 0,
+      "preflight": {
+        "unchangedLegacyBusinessPrompts": 4,
+        "unchangedLegacyS2Plans": 44,
+        "s1DraftsReplayed": 105,
+        "replayAcceptedBefore": 0,
+        "replayAcceptedAfter": 0
+      },
+      "failedAttempts": [
+        {
+          "business": "ugc-pilot",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 1: Slide 1 must contain one hook text block, with no separate paragraph or explanation. Slide 2: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 2: Body must use at least 18 words and at most 300 characters. Slide 2: Each slide body must express one clear idea. Slide 3: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 3: Body must use at least 18 words and at most 300 characters. Slide 3: Each slide body must express one clear idea. Slide 4: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 4: Body must use at least 18 words and at most 300 characters. Slide 4: Each slide body must express one clear idea. Slide 4: Body copy contains a grammar or spacing problem. Slide 5: Body must use at least 18 words and at most 300 characters. Slide 6: Body must use at least 18 words and at most 300 characters. Slide 6: Body copy contains a grammar or spacing problem."
+        },
+        {
+          "business": "ugc-pilot",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 2: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 2: Body must use at least 18 words and at most 300 characters. Slide 2: Each slide body must express one clear idea. Slide 2: Body copy contains a grammar or spacing problem. Slide 2: Copy is generic instead of specific to the supplied evidence. Slide 3: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 3: Body must use at least 18 words and at most 300 characters. Slide 3: Each slide body must express one clear idea. Slide 4: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 4: Body must use at least 18 words and at most 300 characters. Slide 4: Each slide body must express one clear idea. Slide 5: Headline and body repeat the same idea. Slide 6: Body must use at least 18 words and at most 300 characters."
+        },
+        {
+          "business": "cal-ai",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 4: Copy is generic instead of specific to the supplied evidence. Slide 5: Body block 1 must fit within 3 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 5: Body must use at least 18 words and at most 300 characters. Slide 6: Body must use at least 18 words and at most 300 characters."
+        },
+        {
+          "business": "cal-ai",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Body must use at least 18 words and at most 300 characters. Slide 6: Body must use at least 18 words and at most 300 characters."
+        },
+        {
+          "business": "cal-ai",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 2: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 2: Each slide body must express one clear idea. Slide 2: Headline and body repeat the same idea. Slide 3: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 3: Body must use at least 18 words and at most 300 characters. Slide 3: Each slide body must express one clear idea. Slide 3: Body copy contains a grammar or spacing problem. Slide 4: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 4: Headline must be 3-10 words and at most 100 characters. Slide 4: Body must use at least 18 words and at most 300 characters. Slide 4: Each slide body must express one clear idea. Slide 5: Body copy contains a grammar or spacing problem. Slide 6: Body must use at least 18 words and at most 300 characters."
+        },
+        {
+          "business": "cal-ai",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 2: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 2: Headline and body repeat the same idea. Slide 3: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 3: Body must use at least 18 words and at most 300 characters. Slide 3: Headline and body repeat the same idea. Slide 4: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 6: Body must use at least 18 words and at most 300 characters."
+        },
+        {
+          "business": "ugc-pilot",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Body must use at least 18 words and at most 300 characters. Slide 6: Body must use at least 18 words and at most 300 characters."
+        },
+        {
+          "business": "ugc-pilot",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Body block 1 must fit within 3 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 5: Body must use at least 18 words and at most 300 characters. Slide 6: Body block 1 must fit within 3 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 6: Body must use at least 18 words and at most 300 characters. Slide 6: Body copy contains a grammar or spacing problem."
+        },
+        {
+          "business": "ugc-pilot",
+          "structure": "structure_2",
+          "arm": "before",
+          "attempt": 1,
+          "success": false
+        },
+        {
+          "business": "calendly",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 2: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 2: Body must use at least 18 words and at most 300 characters. Slide 2: Headline and body repeat the same idea. Slide 3: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 3: Body must use at least 18 words and at most 300 characters. Slide 4: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 4: Body must use at least 18 words and at most 300 characters. Slide 5: Body must use at least 18 words and at most 300 characters. Slide 5: Headline and body repeat the same idea. Slide 6: Body must use at least 18 words and at most 300 characters. Slide 6: Body copy contains a grammar or spacing problem. Slide 6: Copy is generic instead of specific to the supplied evidence. Carousel concept does not connect to its selected verified grounding."
+        },
+        {
+          "business": "calendly",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 2: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 2: Body must use at least 18 words and at most 300 characters. Slide 3: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 3: Body must use at least 18 words and at most 300 characters. Slide 3: Headline and body repeat the same idea. Slide 4: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 4: Body must use at least 18 words and at most 300 characters. Slide 4: Body copy contains a grammar or spacing problem. Slide 4: Headline and body repeat the same idea. Slide 5: Body must use at least 18 words and at most 300 characters. Slide 5: Headline and body repeat the same idea. Slide 6: Body must use at least 18 words and at most 300 characters."
+        },
+        {
+          "business": "moo",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 2: List line 1 must fit within 2 lines at the fixed 48px font size. Copy needs 3 lines but the fixed layout allows 2. Slide 5: Each slide body must express one clear idea. Slide 6: Body must use at least 18 words and at most 300 characters."
+        },
+        {
+          "business": "moo",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Headline and body repeat the same idea. Slide 6: Body must use at least 18 words and at most 300 characters. Slide 6: Body copy contains a grammar or spacing problem. Slide 6: Headline and body repeat the same idea."
+        },
+        {
+          "business": "calendly",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Copy is generic instead of specific to the supplied evidence. Slide 6: Body must use at least 18 words and at most 300 characters. Carousel concept does not connect to its selected verified grounding. Slide 3: Carousel middle slides do not deliver the selected verified grounding."
+        },
+        {
+          "business": "calendly",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Copy is generic instead of specific to the supplied evidence. Slide 6: Body must use at least 18 words and at most 300 characters. Carousel concept does not connect to its selected verified grounding. Slide 3: Carousel middle slides do not deliver the selected verified grounding."
+        },
+        {
+          "business": "moo",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 2: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 2: Each slide body must express one clear idea. Slide 3: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 3: Body must use at least 18 words and at most 300 characters. Slide 3: Each slide body must express one clear idea. Slide 4: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 4: Body must use at least 18 words and at most 300 characters. Slide 4: Each slide body must express one clear idea. Slide 5: Each slide body must express one clear idea. Slide 5: Headline and body repeat the same idea. Slide 6: Body copy contains a grammar or spacing problem."
+        },
+        {
+          "business": "moo",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 2: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 2: Each slide body must express one clear idea. Slide 2: Body copy contains a grammar or spacing problem. Slide 3: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 3: Body must use at least 18 words and at most 300 characters. Slide 3: Each slide body must express one clear idea. Slide 4: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 4: Each slide body must express one clear idea. Slide 5: Body must use at least 18 words and at most 300 characters. Slide 6: Body must use at least 18 words and at most 300 characters."
+        },
+        {
+          "business": "calendly",
+          "structure": "structure_2",
+          "arm": "before",
+          "attempt": 1,
+          "success": false
+        }
+      ]
+    },
+    {
+      "id": "body-feedback",
+      "evidence": "docs/carousel-copy-fixes-body-feedback-provider-evidence-2026-10-12.json",
+      "startedAt": "2026-10-12T11:41:41.894Z",
+      "completedAt": "2026-10-12T11:45:38.508Z",
+      "versions": {
+        "beforeS1": "llm-carousel-planner-v53-list-body-contract",
+        "afterS1": "llm-carousel-planner-v54-body-count-feedback",
+        "beforeS2": "llm-carousel-structure-2-writer-v24-inter-medium-typography",
+        "afterS2": "llm-carousel-structure-2-writer-v25-reader-scenario-v1"
+      },
+      "summary": [
+        {
+          "structure": "structure_1",
+          "arm": "before",
+          "requested": 20,
+          "accepted": 0,
+          "businesses": [
+            {
+              "business": "ugc-pilot",
+              "accepted": 0
+            },
+            {
+              "business": "cal-ai",
+              "accepted": 0
+            },
+            {
+              "business": "calendly",
+              "accepted": 0
+            },
+            {
+              "business": "moo",
+              "accepted": 0
+            }
+          ]
+        },
+        {
+          "structure": "structure_1",
+          "arm": "after",
+          "requested": 20,
+          "accepted": 0,
+          "businesses": [
+            {
+              "business": "cal-ai",
+              "accepted": 0
+            },
+            {
+              "business": "ugc-pilot",
+              "accepted": 0
+            },
+            {
+              "business": "moo",
+              "accepted": 0
+            },
+            {
+              "business": "calendly",
+              "accepted": 0
+            }
+          ]
+        }
+      ],
+      "usage": {
+        "calls": 32,
+        "promptTokens": 276748,
+        "completionTokens": 53404,
+        "totalTokens": 330152
+      },
+      "httpFailures": 0,
+      "initialListBodies": [
+        {
+          "arm": "before",
+          "listSlides": 24,
+          "nonNullBodies": 0
+        },
+        {
+          "arm": "after",
+          "listSlides": 24,
+          "nonNullBodies": 0
+        }
+      ],
+      "storyVoice": [],
+      "countedRepairCalls": 0,
+      "preflight": {
+        "unchangedLegacyBusinessPrompts": 4,
+        "unchangedLegacyS2Plans": 44,
+        "s1DraftsReplayed": 105,
+        "replayAcceptedBefore": 0,
+        "replayAcceptedAfter": 0
+      },
+      "failedAttempts": [
+        {
+          "business": "ugc-pilot",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Body copy contains a grammar or spacing problem. Slide 6: Body must use at least 18 words and at most 300 characters."
+        },
+        {
+          "business": "ugc-pilot",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 1: Cover hook must fit within 4 lines at the fixed 72px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 1: Headline must be 5-14 words and at most 100 characters."
+        },
+        {
+          "business": "cal-ai",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Body copy contains a grammar or spacing problem. Slide 5: Copy is generic instead of specific to the supplied evidence. Slide 6: Body must use at least 18 words and at most 300 characters. Actual body: 13 words and 92 characters; count the body alone, excluding the headline, list and CTA."
+        },
+        {
+          "business": "cal-ai",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Body must use at least 18 words and at most 300 characters. Actual body: 15 words and 93 characters; count the body alone, excluding the headline, list and CTA. Slide 6: Body must use at least 18 words and at most 300 characters. Actual body: 16 words and 90 characters; count the body alone, excluding the headline, list and CTA."
+        },
+        {
+          "business": "ugc-pilot",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 6: Body must use at least 18 words and at most 300 characters. Actual body: 15 words and 102 characters; count the body alone, excluding the headline, list and CTA. Carousel concept does not connect to its selected verified grounding."
+        },
+        {
+          "business": "ugc-pilot",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Headline and body repeat the same idea."
+        },
+        {
+          "business": "cal-ai",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Body must use at least 18 words and at most 300 characters."
+        },
+        {
+          "business": "cal-ai",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Body must use at least 18 words and at most 300 characters. Slide 6: Body must use at least 18 words and at most 300 characters."
+        },
+        {
+          "business": "calendly",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Body must use at least 18 words and at most 300 characters. Slide 5: Copy is generic instead of specific to the supplied evidence. Slide 6: Body must use at least 18 words and at most 300 characters. Carousel concept does not connect to its selected verified grounding. Slide 3: Carousel middle slides do not deliver the selected verified grounding."
+        },
+        {
+          "business": "calendly",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Body must use at least 18 words and at most 300 characters. Slide 5: Copy is generic instead of specific to the supplied evidence. Slide 6: Body must use at least 18 words and at most 300 characters. Carousel concept does not connect to its selected verified grounding."
+        },
+        {
+          "business": "moo",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Body must use at least 18 words and at most 300 characters. Actual body: 14 words and 84 characters; count the body alone, excluding the headline, list and CTA. Slide 6: Body must use at least 18 words and at most 300 characters. Actual body: 13 words and 74 characters; count the body alone, excluding the headline, list and CTA."
+        },
+        {
+          "business": "moo",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Each slide body must express one clear idea. Slide 5: Headline and body repeat the same idea."
+        },
+        {
+          "business": "calendly",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Body must use at least 18 words and at most 300 characters. Actual body: 15 words and 99 characters; count the body alone, excluding the headline, list and CTA. Slide 5: Headline and body repeat the same idea. Slide 6: Body must use at least 18 words and at most 300 characters. Actual body: 13 words and 79 characters; count the body alone, excluding the headline, list and CTA. Carousel concept does not connect to its selected verified grounding."
+        },
+        {
+          "business": "calendly",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 6: Body must use at least 18 words and at most 300 characters. Actual body: 12 words and 78 characters; count the body alone, excluding the headline, list and CTA. Carousel concept does not connect to its selected verified grounding. Slide 3: Carousel middle slides do not deliver the selected verified grounding."
+        },
+        {
+          "business": "moo",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 2: Copy is generic instead of specific to the supplied evidence. Slide 5: Body must use at least 18 words and at most 300 characters. Slide 6: Body must use at least 18 words and at most 300 characters. Slide 6: Copy is generic instead of specific to the supplied evidence."
+        },
+        {
+          "business": "moo",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Body must use at least 18 words and at most 300 characters. Slide 6: Body must use at least 18 words and at most 300 characters. Slide 6: Headline and body repeat the same idea."
+        }
+      ]
+    },
+    {
+      "id": "counted-repair",
+      "evidence": "docs/carousel-copy-fixes-counted-repair-provider-evidence-2026-10-12.json",
+      "startedAt": "2026-10-12T11:57:20.898Z",
+      "completedAt": "2026-10-12T12:01:38.714Z",
+      "versions": {
+        "beforeS1": "llm-carousel-planner-v54-body-count-feedback",
+        "afterS1": "llm-carousel-planner-v54-body-count-feedback",
+        "beforeS2": "llm-carousel-structure-2-writer-v24-inter-medium-typography",
+        "afterS2": "llm-carousel-structure-2-writer-v25-reader-scenario-v1"
+      },
+      "summary": [
+        {
+          "structure": "structure_1",
+          "arm": "before",
+          "requested": 20,
+          "accepted": 0,
+          "businesses": [
+            {
+              "business": "ugc-pilot",
+              "accepted": 0
+            },
+            {
+              "business": "cal-ai",
+              "accepted": 0
+            },
+            {
+              "business": "calendly",
+              "accepted": 0
+            },
+            {
+              "business": "moo",
+              "accepted": 0
+            }
+          ]
+        },
+        {
+          "structure": "structure_1",
+          "arm": "after",
+          "requested": 20,
+          "accepted": 0,
+          "businesses": [
+            {
+              "business": "cal-ai",
+              "accepted": 0
+            },
+            {
+              "business": "ugc-pilot",
+              "accepted": 0
+            },
+            {
+              "business": "moo",
+              "accepted": 0
+            },
+            {
+              "business": "calendly",
+              "accepted": 0
+            }
+          ]
+        }
+      ],
+      "usage": {
+        "calls": 37,
+        "promptTokens": 317128,
+        "completionTokens": 57503,
+        "totalTokens": 374631
+      },
+      "httpFailures": 0,
+      "initialListBodies": [
+        {
+          "arm": "before",
+          "listSlides": 24,
+          "nonNullBodies": 0
+        },
+        {
+          "arm": "after",
+          "listSlides": 24,
+          "nonNullBodies": 0
+        }
+      ],
+      "storyVoice": [],
+      "countedRepairCalls": 1,
+      "preflight": {
+        "unchangedLegacyBusinessPrompts": 4,
+        "unchangedLegacyS2Plans": 44,
+        "s1DraftsReplayed": 105,
+        "replayAcceptedBefore": 0,
+        "replayAcceptedAfter": 0
+      },
+      "failedAttempts": [
+        {
+          "business": "ugc-pilot",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 6: Body must use at least 18 words and at most 300 characters. Actual body: 12 words and 65 characters; count the body alone, excluding the headline, list and CTA."
+        },
+        {
+          "business": "ugc-pilot",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 3: Body must use at least 18 words and at most 300 characters. Actual body: 16 words and 123 characters; count the body alone, excluding the headline, list and CTA. Slide 5: Headline and body repeat the same idea. Carousel concept does not connect to its selected verified grounding. Slide 3: Carousel middle slides do not deliver the selected verified grounding."
+        },
+        {
+          "business": "cal-ai",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 2: Headline and body repeat the same idea. Slide 3: Copy is generic instead of specific to the supplied evidence. Slide 5: Body must use at least 18 words and at most 300 characters. Actual body: 17 words and 120 characters; count the body alone, excluding the headline, list and CTA. Slide 5: Headline and body repeat the same idea."
+        },
+        {
+          "business": "cal-ai",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 6: Body must use at least 18 words and at most 300 characters. Actual body: 16 words and 102 characters; count the body alone, excluding the headline, list and CTA."
+        },
+        {
+          "business": "ugc-pilot",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 3: Body copy contains a grammar or spacing problem. Slide 5: Body copy contains a grammar or spacing problem. Slide 6: Headline and body repeat the same idea. Carousel concept does not connect to its selected verified grounding. Slide 3: Carousel middle slides do not deliver the selected verified grounding."
+        },
+        {
+          "business": "ugc-pilot",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Each slide body must express one clear idea."
+        },
+        {
+          "business": "cal-ai",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 2: Body must use at least 18 words and at most 300 characters. Actual body: 15 words and 100 characters; count the body alone, excluding the headline, list and CTA. Slide 3: Body must use at least 18 words and at most 300 characters. Actual body: 13 words and 88 characters; count the body alone, excluding the headline, list and CTA. Slide 3: Body copy contains a grammar or spacing problem. Slide 4: Body must use at least 18 words and at most 300 characters. Actual body: 17 words and 121 characters; count the body alone, excluding the headline, list and CTA. Slide 6: Body must use at least 18 words and at most 300 characters. Actual body: 17 words and 117 characters; count the body alone, excluding the headline, list and CTA."
+        },
+        {
+          "business": "cal-ai",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Body must use at least 18 words and at most 300 characters. Actual body: 17 words and 99 characters; count the body alone, excluding the headline, list and CTA."
+        },
+        {
+          "business": "calendly",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Body must use at least 18 words and at most 300 characters. Actual body: 16 words and 110 characters; count the body alone, excluding the headline, list and CTA. Slide 6: Body must use at least 18 words and at most 300 characters. Actual body: 12 words and 75 characters; count the body alone, excluding the headline, list and CTA. Carousel concept does not connect to its selected verified grounding. Slide 3: Carousel middle slides do not deliver the selected verified grounding."
+        },
+        {
+          "business": "calendly",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Body must use at least 18 words and at most 300 characters. Actual body: 17 words and 115 characters; count the body alone, excluding the headline, list and CTA. Slide 5: Copy is generic instead of specific to the supplied evidence. Slide 6: Body must use at least 18 words and at most 300 characters. Actual body: 17 words and 109 characters; count the body alone, excluding the headline, list and CTA. Carousel concept does not connect to its selected verified grounding."
+        },
+        {
+          "business": "moo",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Each slide body must express one clear idea. Carousel concept does not connect to its selected verified grounding."
+        },
+        {
+          "business": "moo",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 2: Body copy contains a grammar or spacing problem. Slide 6: Body must use at least 18 words and at most 300 characters. Actual body: 17 words and 120 characters; count the body alone, excluding the headline, list and CTA."
+        },
+        {
+          "business": "calendly",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Headline and body repeat the same idea. Slide 6: Body must use at least 18 words and at most 300 characters. Actual body: 14 words and 99 characters; count the body alone, excluding the headline, list and CTA. Slide 6: Copy is generic instead of specific to the supplied evidence. Carousel concept does not connect to its selected verified grounding. Slide 3: Carousel middle slides do not deliver the selected verified grounding."
+        },
+        {
+          "business": "calendly",
+          "structure": "structure_1",
+          "arm": "after",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 6: Body must use at least 18 words and at most 300 characters. Actual body: 15 words and 100 characters; count the body alone, excluding the headline, list and CTA. Carousel concept does not connect to its selected verified grounding."
+        },
+        {
+          "business": "moo",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 1,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Body must use at least 18 words and at most 300 characters. Actual body: 16 words and 100 characters; count the body alone, excluding the headline, list and CTA. Slide 6: Body must use at least 18 words and at most 300 characters. Actual body: 16 words and 94 characters; count the body alone, excluding the headline, list and CTA."
+        },
+        {
+          "business": "moo",
+          "structure": "structure_1",
+          "arm": "before",
+          "attempt": 2,
+          "success": false,
+          "error": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Body must use at least 18 words and at most 300 characters. Actual body: 15 words and 91 characters; count the body alone, excluding the headline, list and CTA. Slide 6: Body must use at least 18 words and at most 300 characters. Actual body: 15 words and 82 characters; count the body alone, excluding the headline, list and CTA."
+        }
+      ]
+    }
+  ],
+  "layout": {
+    "inspections": 240,
+    "failures": 0,
+    "results": [
+      {
+        "business": "cal-ai",
+        "slot": 0,
+        "slide": 1,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 0,
+        "slide": 2,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 0,
+        "slide": 3,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 0,
+        "slide": 4,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 0,
+        "slide": 5,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 5,
+        "bodyBlockLineCounts": [
+          3,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 0,
+        "slide": 6,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 5,
+        "bodyBlockLineCounts": [
+          3,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 0,
+        "slide": 1,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 0,
+        "slide": 2,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 0,
+        "slide": 3,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 0,
+        "slide": 4,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 0,
+        "slide": 5,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 5,
+        "bodyBlockLineCounts": [
+          3,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 0,
+        "slide": 6,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 5,
+        "bodyBlockLineCounts": [
+          3,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 1,
+        "slide": 1,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 1,
+        "slide": 2,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 1,
+        "slide": 3,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 1,
+        "slide": 4,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 5,
+        "bodyBlockLineCounts": [
+          3,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 1,
+        "slide": 5,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 1,
+        "slide": 6,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 1,
+        "slide": 1,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 1,
+        "slide": 2,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 1,
+        "slide": 3,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 1,
+        "slide": 4,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 5,
+        "bodyBlockLineCounts": [
+          3,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 1,
+        "slide": 5,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 1,
+        "slide": 6,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 2,
+        "slide": 1,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 2,
+        "slide": 2,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 2,
+        "slide": 3,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 5,
+        "bodyBlockLineCounts": [
+          3,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 2,
+        "slide": 4,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 2,
+        "slide": 5,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 2,
+        "slide": 6,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 2,
+        "slide": 1,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 2,
+        "slide": 2,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 2,
+        "slide": 3,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 5,
+        "bodyBlockLineCounts": [
+          3,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 2,
+        "slide": 4,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 2,
+        "slide": 5,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 2,
+        "slide": 6,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 3,
+        "slide": 1,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 3,
+        "slide": 2,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 5,
+        "bodyBlockLineCounts": [
+          3,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 3,
+        "slide": 3,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 5,
+        "bodyBlockLineCounts": [
+          3,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 3,
+        "slide": 4,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 3,
+        "slide": 5,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 3,
+        "slide": 6,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 3,
+        "slide": 1,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 3,
+        "slide": 2,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 5,
+        "bodyBlockLineCounts": [
+          3,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 3,
+        "slide": 3,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 5,
+        "bodyBlockLineCounts": [
+          3,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 3,
+        "slide": 4,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 3,
+        "slide": 5,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 3,
+        "slide": 6,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 4,
+        "slide": 1,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 4,
+        "slide": 2,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 4,
+        "slide": 3,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 4,
+        "slide": 4,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 4,
+        "slide": 5,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 4,
+        "slide": 6,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 4,
+        "slide": 1,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 4,
+        "slide": 2,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 4,
+        "slide": 3,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 4,
+        "slide": 4,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 4,
+        "slide": 5,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "cal-ai",
+        "slot": 4,
+        "slide": 6,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 0,
+        "slide": 1,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 0,
+        "slide": 2,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 0,
+        "slide": 3,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 0,
+        "slide": 4,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 0,
+        "slide": 5,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 0,
+        "slide": 6,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 0,
+        "slide": 1,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 0,
+        "slide": 2,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 0,
+        "slide": 3,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 0,
+        "slide": 4,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 0,
+        "slide": 5,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 0,
+        "slide": 6,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 1,
+        "slide": 1,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 1,
+        "slide": 2,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 1,
+        "slide": 3,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 1,
+        "slide": 4,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 1,
+        "slide": 5,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 1,
+        "slide": 6,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 1,
+        "slide": 1,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 1,
+        "slide": 2,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 1,
+        "slide": 3,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 1,
+        "slide": 4,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 1,
+        "slide": 5,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 1,
+        "slide": 6,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 2,
+        "slide": 1,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 2,
+        "slide": 2,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 2,
+        "slide": 3,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 2,
+        "slide": 4,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 2,
+        "slide": 5,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 2,
+        "slide": 6,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 2,
+        "slide": 1,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 2,
+        "slide": 2,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 2,
+        "slide": 3,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 2,
+        "slide": 4,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 2,
+        "slide": 5,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 2,
+        "slide": 6,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 3,
+        "slide": 1,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 3,
+        "slide": 2,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 3,
+        "slide": 3,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 3,
+        "slide": 4,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 3,
+        "slide": 5,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 3,
+        "slide": 6,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          2,
+          1
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 3,
+        "slide": 1,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 3,
+        "slide": 2,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 3,
+        "slide": 3,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 3,
+        "slide": 4,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 3,
+        "slide": 5,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 3,
+        "slide": 6,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          2,
+          1
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 4,
+        "slide": 1,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 4,
+        "slide": 2,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          2,
+          1
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 4,
+        "slide": 3,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 4,
+        "slide": 4,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 4,
+        "slide": 5,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 4,
+        "slide": 6,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 4,
+        "slide": 1,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 4,
+        "slide": 2,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          2,
+          1
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 4,
+        "slide": 3,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 4,
+        "slide": 4,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 4,
+        "slide": 5,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "ugc-pilot",
+        "slot": 4,
+        "slide": 6,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 0,
+        "slide": 1,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 0,
+        "slide": 2,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 0,
+        "slide": 3,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 5,
+        "bodyBlockLineCounts": [
+          3,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 0,
+        "slide": 4,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 0,
+        "slide": 5,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 0,
+        "slide": 6,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 0,
+        "slide": 1,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 0,
+        "slide": 2,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 0,
+        "slide": 3,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 5,
+        "bodyBlockLineCounts": [
+          3,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 0,
+        "slide": 4,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 0,
+        "slide": 5,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 0,
+        "slide": 6,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 1,
+        "slide": 1,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 1,
+        "slide": 2,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 1,
+        "slide": 3,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 1,
+        "slide": 4,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 1,
+        "slide": 5,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 1,
+        "slide": 6,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 1,
+        "slide": 1,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 1,
+        "slide": 2,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 1,
+        "slide": 3,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 1,
+        "slide": 4,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 1,
+        "slide": 5,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 1,
+        "slide": 6,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 2,
+        "slide": 1,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 2,
+        "slide": 2,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 2,
+        "slide": 3,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 2,
+        "slide": 4,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 2,
+        "slide": 5,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 2,
+        "slide": 6,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 2,
+        "slide": 1,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 2,
+        "slide": 2,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 2,
+        "slide": 3,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 2,
+        "slide": 4,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 2,
+        "slide": 5,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 2,
+        "slide": 6,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 3,
+        "slide": 1,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 3,
+        "slide": 2,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 3,
+        "slide": 3,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 3,
+        "slide": 4,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 3,
+        "slide": 5,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 3,
+        "slide": 6,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 3,
+        "slide": 1,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 3,
+        "slide": 2,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 3,
+        "slide": 3,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 3,
+        "slide": 4,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 3,
+        "slide": 5,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 3,
+        "slide": 6,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 4,
+        "slide": 1,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 4,
+        "slide": 2,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 4,
+        "slide": 3,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 4,
+        "slide": 4,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 5,
+        "bodyBlockLineCounts": [
+          3,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 4,
+        "slide": 5,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 4,
+        "slide": 6,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 4,
+        "slide": 1,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 4,
+        "slide": 2,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 4,
+        "slide": 3,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 4,
+        "slide": 4,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 5,
+        "bodyBlockLineCounts": [
+          3,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 4,
+        "slide": 5,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "moo",
+        "slot": 4,
+        "slide": 6,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 0,
+        "slide": 1,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 0,
+        "slide": 2,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 0,
+        "slide": 3,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 0,
+        "slide": 4,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 0,
+        "slide": 5,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 0,
+        "slide": 6,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 0,
+        "slide": 1,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 0,
+        "slide": 2,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 0,
+        "slide": 3,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 0,
+        "slide": 4,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 0,
+        "slide": 5,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 0,
+        "slide": 6,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 1,
+        "slide": 1,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 2,
+        "bodyBlockLineCounts": [
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 1,
+        "slide": 2,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 1,
+        "slide": 3,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 1,
+        "slide": 4,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 1,
+        "slide": 5,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 1,
+        "slide": 6,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 1,
+        "slide": 1,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 2,
+        "bodyBlockLineCounts": [
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 1,
+        "slide": 2,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 1,
+        "slide": 3,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 1,
+        "slide": 4,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 1,
+        "slide": 5,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 1,
+        "slide": 6,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 2,
+        "slide": 1,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 2,
+        "slide": 2,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 2,
+        "slide": 3,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 2,
+        "slide": 4,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 2,
+        "slide": 5,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 2,
+        "slide": 6,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 2,
+        "slide": 1,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 2,
+        "slide": 2,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 2,
+        "slide": 3,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 2,
+        "slide": 4,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 2,
+        "slide": 5,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 2,
+        "slide": 6,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 3,
+        "slide": 1,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 2,
+        "bodyBlockLineCounts": [
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 3,
+        "slide": 2,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 3,
+        "slide": 3,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 3,
+        "slide": 4,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 3,
+        "slide": 5,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 3,
+        "slide": 6,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 3,
+        "slide": 1,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 2,
+        "bodyBlockLineCounts": [
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 3,
+        "slide": 2,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 3,
+        "slide": 3,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 3,
+        "slide": 4,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 3,
+        "slide": 5,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 3,
+        "slide": 6,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 4,
+        "slide": 1,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 4,
+        "slide": 2,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 4,
+        "slide": 3,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 4,
+        "slide": 4,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 4,
+        "slide": 5,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 4,
+        "slide": 6,
+        "format": "1:1",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 4,
+        "slide": 1,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 72,
+        "storyLineCount": 3,
+        "bodyBlockLineCounts": [
+          3
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 4,
+        "slide": 2,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 4,
+        "slide": 3,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 4,
+        "slide": 4,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 4,
+        "slide": 5,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      },
+      {
+        "business": "calendly",
+        "slot": 4,
+        "slide": 6,
+        "format": "4:5",
+        "safeAreaContained": true,
+        "storyFontSize": 48,
+        "storyLineCount": 4,
+        "bodyBlockLineCounts": [
+          2,
+          2
+        ]
+      }
+    ]
+  },
+  "totalUsage": {
+    "calls": 136,
+    "totalTokens": 1178125
+  },
+  "countedRepairExample": {
+    "business": "ugc-pilot",
+    "providerRequestId": "req_34114e437c514db08eb57772e13a3009",
+    "response": {
+      "bodiesBySlide": {
+        "slide5": {
+          "firstWords": [
+            "embrace",
+            "creativity",
+            "and",
+            "allow",
+            "flexibility",
+            "in",
+            "your",
+            "content",
+            "strategy."
+          ],
+          "secondWords": [
+            "consistency",
+            "is",
+            "important",
+            "but",
+            "quality",
+            "matters",
+            "too.",
+            "discover",
+            "your",
+            "balance!"
+          ]
+        }
+      }
+    },
+    "finalError": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 5: Each slide body must express one clear idea."
+  }
+}

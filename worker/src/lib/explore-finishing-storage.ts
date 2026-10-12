@@ -6,6 +6,7 @@ import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { ExploreFinishError, exploreFinishOutputKey, EXPLORE_RENDER_VERSION } from "./explore-finishing-contract.js";
 import type { ExploreFinishReceipt } from "./explore-finishing-store.js";
+import { referenceAudioBaseStorageKey } from "./explore-reference-soundtrack.js";
 
 const MAX_OUTPUT_BYTES = 250 * 1024 * 1024;
 function httpsBase(base: string) {
@@ -57,6 +58,15 @@ export class ExploreFinishingStorage {
     if (received !== size) throw new ExploreFinishError("The selected media changed while downloading.",409);
   }
   private outputFile(receipt: ExploreFinishReceipt) { return this.bucket().file(exploreFinishOutputKey(receipt.output_asset_id)); }
+  private async verifyAudioBase(receipt: ExploreFinishReceipt, key: string) {
+    if (key !== referenceAudioBaseStorageKey(receipt.output_asset_id)) throw new ExploreFinishError("Invalid reference audio base.", 409);
+    const [metadata] = await this.bucket().file(key).getMetadata();
+    const bytes = Number(metadata.size), saved = metadata.metadata;
+    if (!Number.isSafeInteger(bytes) || bytes <= 0 || bytes > MAX_OUTPUT_BYTES || metadata.contentType !== "video/mp4" ||
+      saved?.ownerId !== receipt.user_id || saved?.requestKey !== receipt.request_key || saved?.fingerprint !== receipt.fingerprint || saved?.renderer !== EXPLORE_RENDER_VERSION || saved?.referenceAudioBase !== "true") {
+      throw new ExploreFinishError("The reference audio base belongs to different work.", 409);
+    }
+  }
   async existing(receipt: ExploreFinishReceipt) {
     const file = this.outputFile(receipt);
     const [exists] = await file.exists();
@@ -67,15 +77,36 @@ export class ExploreFinishingStorage {
         saved?.fingerprint !== receipt.fingerprint || saved?.renderer !== EXPLORE_RENDER_VERSION || typeof saved.output !== "string") throw new ExploreFinishError("The stored finished video belongs to different work.",409);
     let output: unknown;
     try { output = JSON.parse(saved.output); } catch { throw new ExploreFinishError("The stored video receipt is invalid.",409); }
-    return validateOutput(output,receipt,file.name,Number(metadata.size));
+    const validated = validateOutput(output,receipt,file.name,Number(metadata.size));
+    const details = validated.metadata as { referenceSoundtrack?: { cleanStorageKey?: unknown } } | undefined;
+    if (details?.referenceSoundtrack) {
+      if (typeof details.referenceSoundtrack.cleanStorageKey !== "string") throw new ExploreFinishError("The reference audio base is unconfirmed.", 409);
+      await this.verifyAudioBase(receipt, details.referenceSoundtrack.cleanStorageKey);
+    }
+    return validated;
   }
-  async upload(receipt: ExploreFinishReceipt, outputPath: string, details: { durationSeconds:number; width:number; height:number; ratio:string; metadata:Record<string,unknown> }) {
+  async upload(receipt: ExploreFinishReceipt, outputPath: string, details: { durationSeconds:number; width:number; height:number; ratio:string; metadata:Record<string,unknown>; referenceAudioBasePath?: string }) {
     const file = this.outputFile(receipt);
     const bytes = (await stat(outputPath)).size;
     if (!bytes || bytes > MAX_OUTPUT_BYTES) throw new ExploreFinishError("The finished output exceeds the video size limit.",413);
     const base = process.env.GCP_STORAGE_PUBLIC_BASE_URL?.trim() || process.env.GCS_PUBLIC_BASE_URL?.trim();
     if (!base) throw new ExploreFinishError("The finished-video URL is not configured.",503);
-    const output = validateOutput({ ...details,fileSizeBytes:bytes,storageKey:file.name,url:`${httpsBase(base)}/${file.name}` },receipt,file.name,bytes);
+    const { referenceAudioBasePath, ...publishedDetails } = details;
+    const output = validateOutput({ ...publishedDetails,fileSizeBytes:bytes,storageKey:file.name,url:`${httpsBase(base)}/${file.name}` },receipt,file.name,bytes);
+    if (details.metadata.referenceSoundtrack && !referenceAudioBasePath) throw new ExploreFinishError("The reference audio base is required before publication.", 409);
+    const soundtrack = details.metadata.referenceSoundtrack as { cleanStorageKey?: unknown } | undefined;
+    if (soundtrack && soundtrack.cleanStorageKey !== referenceAudioBaseStorageKey(receipt.output_asset_id)) throw new ExploreFinishError("The reference audio base belongs to another video.", 409);
+    if (referenceAudioBasePath) {
+      const key = referenceAudioBaseStorageKey(receipt.output_asset_id), cleanBytes = (await stat(referenceAudioBasePath)).size;
+      if (!cleanBytes || cleanBytes > MAX_OUTPUT_BYTES) throw new ExploreFinishError("The audio base exceeds the video size limit.", 413);
+      try {
+        await this.bucket().upload(referenceAudioBasePath, { destination: key, resumable: false, preconditionOpts: { ifGenerationMatch: 0 }, metadata: {
+          contentType: "video/mp4", cacheControl: "public,max-age=31536000,immutable",
+          metadata: { ownerId: receipt.user_id, requestKey: receipt.request_key, fingerprint: receipt.fingerprint, renderer: EXPLORE_RENDER_VERSION, referenceAudioBase: "true" },
+        } });
+      } catch (error) { if ((error as { code?: unknown }).code !== 412) throw error; }
+      await this.verifyAudioBase(receipt, key);
+    }
     try {
       await this.bucket().upload(outputPath,{ destination:file.name,resumable:false,preconditionOpts:{ ifGenerationMatch:0 },metadata:{
         contentType:"video/mp4",cacheControl:"public,max-age=31536000,immutable",

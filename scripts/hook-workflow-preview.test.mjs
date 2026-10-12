@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import ts from "typescript";
 
 const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
 const page = read("app/explore/create-hook/page.tsx");
@@ -13,10 +14,33 @@ const composition = read("components/explore/workflow-composition-panel.tsx");
 const audioReference = read("components/explore/workflow-audio-reference.tsx");
 const frontend = workspace + composer + panel + controls + media + composition + audioReference;
 
-test("the former talking-head workflow is hidden while its implementation is retained", () => {
-  assert.match(page, /notFound\(\)/);
-  assert.doesNotMatch(read("lib/explore/workflows.ts"), /destination: "\/explore\/create-hook"/);
+test("Talking Head + Demo connects in production while explicit layout previews stay non-spending", async () => {
+  assert.doesNotMatch(page, /notFound\(\)/);
+  assert.match(read("lib/explore/workflows.ts"), /destination: "\/explore\/create-hook"/);
   assert.match(workspace, /HookWorkflowPreview/);
+  const compiled = ts.transpileModule(page, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS } }).outputText;
+  const exports = {};
+  new Function("require", "exports", compiled)(name => {
+    if (name === "react/jsx-runtime") return { jsx: (type, props) => ({ type, props }) };
+    assert.equal(name, "@/components/explore/hook-workflow-preview");
+    return { HookWorkflowPreview: "HookWorkflowPreview" };
+  }, exports);
+  const flags = ["EXPLORE_GENERATION_ENABLED", "EXPLORE_DEMO_FRAMING_ENABLED"];
+  const previous = flags.map(key => process.env[key]);
+  try {
+    process.env.EXPLORE_DEMO_FRAMING_ENABLED = "true";
+    for (const enabled of ["true", "false"]) {
+      process.env.EXPLORE_GENERATION_ENABLED = enabled;
+      for (const preview of [undefined, "1"]) {
+        const rendered = await exports.default({ searchParams: Promise.resolve({ preview }) });
+        assert.equal(rendered.type, "HookWorkflowPreview");
+        assert.equal(rendered.props.generationEnabled, enabled === "true" && preview !== "1");
+        assert.equal(rendered.props.demoFramingEnabled, true);
+      }
+    }
+  } finally {
+    flags.forEach((key, index) => previous[index] === undefined ? delete process.env[key] : process.env[key] = previous[index]);
+  }
 });
 
 test("layout review cannot generate, render, upload or spend credits", () => {
@@ -29,8 +53,8 @@ test("layout review cannot generate, render, upload or spend credits", () => {
 test("user-owned references and audio intent are separate from demo background audio", () => {
   assert.match(composer, /Upload creator/);
   assert.match(composer, /Attach video reference/);
-  assert.match(audioReference, /Main voice reference/);
-  assert.match(audioReference, /Voice guidance · Up to 30 seconds/);
+  assert.match(audioReference, /<PopoverTitle>Voice reference<\/PopoverTitle>/);
+  assert.match(audioReference, /Requires Seedance 2\.5 · Up to 30 seconds/);
   assert.match(workspace, /audioReference: hookAudio\.asset/);
   assert.match(workspace, /demoAudio=\{demoAudio\.asset\}/);
   assert.doesNotMatch(audioReference, />Exact recording<\/Button>/);
@@ -51,7 +75,7 @@ test("the workflow keeps user instructions authoritative and removes test-hook c
 });
 
 test("the Library follows a full first-screen creation area and has no example media", () => {
-  assert.match(workspace, /data-hook-first-screen[^\n]*min-h-\[calc\(100dvh-4rem\)\][^\n]*md:min-h-dvh/);
+  assert.match(workspace, /data-hook-first-screen[^\n]*sections\.workspace/);
   assert.ok(workspace.indexOf("<LibrarySection />") > workspace.indexOf("<HookWorkflowComposer"));
   const library = workspace.slice(workspace.indexOf("function LibrarySection()"));
   assert.match(library, /data-hook-library/);
@@ -73,15 +97,15 @@ test("the creation form has visible labels and reflows without remounting settin
   for (const label of ["Model", "Duration", "Quality", "Videos", "Ratio"]) {
     assert.ok(composer.includes(`<SettingField label="${label}"`));
   }
-  assert.match(composer, /className=\{creation\.prompt\}/);
-  assert.match(composer, /className=\{creation\.settingsGrid\}/);
+  assert.match(composer, /className=\{kind === "hook" \? focused\.prompt : creation\.prompt\}/);
+  assert.match(composer, /className=\{kind === "hook" \? focused\.primarySettings : creation\.settingsGrid\}/);
   assert.match(composer, /One mounted form at every size/);
   assert.doesNotMatch(composer, /ResizeObserver|SettingsStrip/);
 });
 
 test("video/audio controls are permanent and demo changes clear background audio", () => {
   assert.match(workspace, /<WorkflowCreationPanel kind="hook"/);
-  assert.ok(workspace.indexOf("<HookWorkflowComposer") < workspace.indexOf('<section aria-label="Hook creation workspace"'));
+  assert.ok(workspace.indexOf("<HookWorkflowComposer") < workspace.indexOf('aria-label="Hook creation workspace"'));
   assert.doesNotMatch(workspace, /demoOpen|audioOpen|Dialog|Attached demo|Attach audio/);
   assert.doesNotMatch(workspace, /<WorkflowCompositionPanel[^>]*key=/);
   assert.match(workspace, /function removeDemo\(\) \{\s*setDemoFraming\(null\);\s*demoAudio\.remove\(\);\s*demo\.remove\(\)/);

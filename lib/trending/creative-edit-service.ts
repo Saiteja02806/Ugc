@@ -6,6 +6,7 @@ import {
   getCarouselEditBackgrounds,
   getCarouselGenerationStatus,
   getCarouselProductAssetsByIds,
+  listActiveCarouselCategoryHooks,
 } from "@/lib/carousel/db";
 import { resolveCarouselImageLibraryCategory } from "@/lib/carousel/image-library-category";
 import {
@@ -27,6 +28,7 @@ import {
   type TrendingCreativeEditContent,
   type TrendingCreativeEditFormat,
   type TrendingCreativeEditRecord,
+  type TrendingCarouselEditStatus,
   type TrendingCreativeEditSaveInput,
   type TrendingCreativeEditSource,
   type TrendingHookEditContent,
@@ -37,6 +39,7 @@ import {
   assertEditableTrendingCreative,
   assertReadableTrendingCreative,
   getTrendingCreativeEdit,
+  getTrendingCarouselEditStatus,
   TrendingCreativeEditAccessError,
   upsertTrendingCreativeEdit,
   type TrendingCreativeEditRow,
@@ -93,6 +96,21 @@ export async function loadTrendingCreativeReadView(params: {
   if (params.format === "hook_video") return loadTrendingCreativeEditor(params);
   await assertReadableTrendingCreative(params);
   return loadTrendingCreativeRecord(params);
+}
+
+export async function loadTrendingCarouselEditStatus(params: {
+  assignmentId: string;
+  creativeId: string;
+  userId: string;
+}): Promise<TrendingCarouselEditStatus> {
+  await assertReadableTrendingCreative({ ...params, format: "carousel" });
+  const row = await getTrendingCarouselEditStatus(params);
+  return {
+    assignmentId: params.assignmentId, creativeId: params.creativeId, format: "carousel",
+    id: row?.id ?? null, revision: row?.revision ?? 0,
+    renderState: row?.render_status ?? "draft", renderError: row?.render_error ?? null,
+    updatedAt: row?.updated_at ?? null,
+  };
 }
 
 async function loadTrendingCreativeRecord(params: {
@@ -246,6 +264,7 @@ export async function saveTrendingCreativeEditor(params: {
     assignmentId: params.input.assignmentId,
     content,
     creativeId: params.creativeId,
+    expectedRevision: params.input.expectedRevision,
     format: params.format,
     positions: getPositionPayload(content),
     resolvedMediaAssetId: source?.resolvedAssetId ?? null,
@@ -509,8 +528,13 @@ async function validateAndNormalizeSubmittedContent(params: {
         return asset ? [[assetId, asset] as const] : [];
       }),
     );
+    const categoryHookAssets = await listActiveCarouselCategoryHooks(
+      resolveCarouselImageLibraryCategory({ categorySlug: status.generation.categorySlug }),
+      changedBackgroundAssetIds.filter(assetId => !hyperHookAssetsById.has(assetId)),
+    );
+    const categoryHooksById = new Map(categoryHookAssets.map(asset => [asset.id, asset]));
     const nonHookAssetIds = changedBackgroundAssetIds.filter(
-      (assetId) => !hyperHookAssetsById.has(assetId),
+      (assetId) => !hyperHookAssetsById.has(assetId) && !categoryHooksById.has(assetId),
     );
     const uploadedImagesById = await getOwnedCarouselSlideImages(nonHookAssetIds, params.userId);
     const changedProductAssetIds = nonHookAssetIds.filter(assetId => !uploadedImagesById.has(assetId));
@@ -587,6 +611,15 @@ async function validateAndNormalizeSubmittedContent(params: {
           backgroundCrop: "centre" as const,
           visualRole: slide.originalVisualRole,
         };
+      }
+
+      const categoryHookAsset = slide.backgroundAssetId
+        ? categoryHooksById.get(slide.backgroundAssetId) : null;
+      if (categoryHookAsset) {
+        if (slide.slideNumber !== 1) {
+          throw new TrendingCreativeEditAccessError("Category hooks can replace only the Slide 1 background.", 400);
+        }
+        return { ...slide, backgroundUrl: categoryHookAsset.url, backgroundCrop: undefined, visualRole: "hook" as const };
       }
 
       const hyperHookAsset = slide.backgroundAssetId

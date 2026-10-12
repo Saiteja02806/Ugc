@@ -9,7 +9,9 @@ const { webpack } = require("next/dist/compiled/webpack/webpack");
 let playwright;
 try { playwright = require("playwright"); }
 catch { playwright = require(path.join(process.env.USERPROFILE, ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright")); }
-const root = path.resolve(__dirname, ".."), out = path.join(root, ".tmp/format-hook-schedule-browser");
+const talkingHead = process.argv.includes('--talking-head');
+const serving = process.argv.includes('--serve');
+const root = path.resolve(__dirname, ".."), out = path.join(root, talkingHead ? ".tmp/talking-head-editor-browser" : ".tmp/format-hook-schedule-browser");
 fs.mkdirSync(out, { recursive: true });
 const file = (name, content) => fs.writeFileSync(path.join(out, name), content);
 file("loader.cjs", `const ts = require(${JSON.stringify(require.resolve("typescript"))}); module.exports = source => ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, jsx: ts.JsxEmit.ReactJSX } }).outputText;`);
@@ -33,16 +35,21 @@ const assets = new Map([1, 2].map(n => { const id = `00000000-0000-4000-8000-000
 const connectionId = "00000000-0000-4000-8000-000000000099";
 const connections = [{ id: connectionId, platform: "instagram", platformAccountName: "Fixture", platformAccountUsername: "fixture", status: "connected", scopes: ["instagram_business_content_publish"], supportsBackgroundRefresh: true }];
 const receipts = new Map(), renders = [], schedules = [];
+const uploads = [];
+const talkingHeadFixture = talkingHead ? require('./talking-head-editor-fixture.cjs') : null;
+if (talkingHeadFixture) talkingHeadFixture.setup({file, assets, makeAsset});
 let overlappingRenders = 0;
 function json(response, body) { response.setHeader("Content-Type", "application/json"); response.end(JSON.stringify(body)); }
 async function main() {
   const ui = path.join(out, "ui.tsx"), media = path.join(out, "media.ts");
   const aliases = { "@/contexts/auth-context": path.join(out, "auth.ts"), "@/lib/firebase/auth": path.join(out, "auth.ts"), "@/lib/ai-studio/media-client": media, "@/lib/ai-studio/reference-media-upload": media, "@/components/scheduling/schedule-editor": path.join(out, "schedule.tsx"), "next/dynamic": path.join(out, "dynamic.tsx"), "next/link": path.join(out, "link.tsx"), "@": root };
+  if (talkingHead) aliases['@/lib/explore/workflow-default-music-client'] = path.join(out, 'music.ts');
   for (const modulePath of ['components/ui/button', 'components/ui/input', 'components/explore/hook-workflow-media-controls', 'components/explore/workflow-saved-audio-picker', 'components/explore/workflow-video-start-actions', 'components/explore/workflow-video-asset-picker', 'components/providers/account-timezone-provider']) aliases['@/' + modulePath] = ui;
   delete aliases['@']; aliases['@'] = root;
   await new Promise((resolve, reject) => { const compiler = webpack({mode: "development", devtool: false, context: root, entry: path.join(out, "entry.tsx"), output: {path: out, filename: "bundle.js"}, resolve: {extensions: ['.tsx', '.ts', '.js'], alias: aliases}, module: {rules: [{test: /\.tsx?$/, use: path.join(out, "loader.cjs")}, {test: /\.css$/, use: path.join(out, "css.cjs")}]}}); compiler.run((error, stats) => compiler.close(() => error || stats.hasErrors() ? reject(error || new Error(stats.toString({all:false, errors:true}))) : resolve())); });
   const server = http.createServer(async (request, response) => {
     const url = new URL(request.url, 'http://fixture');
+    if (serving && url.pathname === '/fixture-status') return json(response, {renders, schedules, uploads, overlappingRenders});
     if (url.pathname === '/fixture') { response.setHeader('Content-Type', 'text/html'); return response.end('<div id="root"></div><script>window.process={env:{}}</script><script src="/bundle.js"></script>'); }
     if (url.pathname === '/bundle.js') { response.setHeader('Content-Type', 'text/javascript'); return response.end(fs.readFileSync(path.join(out, 'bundle.js'))); }
     if (/^\/[a-zA-Z0-9_-]+\.bundle\.js$/.test(url.pathname) && fs.existsSync(path.join(out, path.basename(url.pathname)))) { response.setHeader('Content-Type', 'text/javascript'); return response.end(fs.readFileSync(path.join(out, path.basename(url.pathname)))); }
@@ -54,6 +61,11 @@ async function main() {
       response.setHeader('Content-Length', bytes.length); return response.end(bytes);
     }
     if (url.pathname.startsWith('/fixture-media/')) return json(response, assets.get(url.pathname.split('/').at(-1)));
+    if (talkingHead && url.pathname === '/fixture-upload') {
+      uploads.push({kind: url.searchParams.get('kind'), name: url.searchParams.get('name')});
+      const n = url.searchParams.get('kind') === 'video' ? 2 : url.searchParams.get('name') === 'default.wav' ? 4 : 3;
+      return json(response, {asset: assets.get(`00000000-0000-4000-8000-00000000000${n}`)});
+    }
     if (url.pathname.startsWith('/api/')) assert.equal(request.headers.authorization, 'Bearer fixture-owner');
     if (url.pathname === '/api/social/connections') return json(response, {ok:true, connections});
     if (url.pathname === '/api/explore/finishes') {
@@ -63,7 +75,12 @@ async function main() {
         const entry = JSON.parse(body); receipt = receipts.get(entry.requestKey);
         if (!receipt) {
           if ([...receipts.values()].some(value => value.outcome === 'pending')) { overlappingRenders++; response.statusCode = 409; return json(response, {ok:false, error:'A finishing job is already running.'}); }
-          const n = renders.length + 10; const id = `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`; receipt = {ok:true, receiptVersion:1, requestKey:entry.requestKey, jobId:id, outcome:'pending', mediaAssetId:null, message:'Preparing fixture video…', outputId:id}; receipts.set(entry.requestKey, receipt); renders.push(entry); assets.set(id, makeAsset(id, entry.draft.demoAssetId ? 'Combined hook and demo' : 'Edited clip'));
+          const n = renders.length + 10; const id = `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`; receipt = {ok:true, receiptVersion:1, requestKey:entry.requestKey, jobId:id, outcome:'pending', mediaAssetId:null, message:'Preparing fixture video…', outputId:id}; receipts.set(entry.requestKey, receipt); renders.push(entry); const result = makeAsset(id, entry.draft.demoAssetId ? 'Combined hook and demo' : 'Edited clip');
+          if (talkingHead) result.durationSeconds = entry.draft.editing ? (entry.draft.editing.trimEndMs - entry.draft.editing.trimStartMs) / 1000 : (assets.get(entry.draft.sourceAssetId)?.durationSeconds ?? 0) + (assets.get(entry.draft.demoAssetId)?.durationSeconds ?? 0);
+          assets.set(id, result);
+          // Interactive local verification completes only the mocked HTTP job.
+          // Real export bytes are verified separately by the renderer tests.
+          if (serving) { receipt.outcome = 'completed'; receipt.mediaAssetId = id; receipt.message = 'Saved fixture'; }
         }
       } else receipt = receipts.get(url.searchParams.get('requestKey'));
       return json(response, receipt);
@@ -75,7 +92,8 @@ async function main() {
     }
     response.statusCode = 404; response.end();
   });
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  await new Promise(resolve => server.listen(serving ? 3108 : 0, '127.0.0.1', resolve));
+  if (serving) { console.log(`LOCAL_EDITOR_PREVIEW http://127.0.0.1:${server.address().port}/fixture (mocked auth, renders and scheduling; no live writes)`); return; }
   let browser;
   try { browser = await playwright.chromium.launch({headless:true, ...(process.platform === 'win32' ? {channel:'msedge'} : {})}); }
   catch (e) { await new Promise(resolve => server.close(resolve)); throw e; }
@@ -84,8 +102,9 @@ async function main() {
   async function waitRenders(count) { const deadline = Date.now() + 20000; while (renders.length < count && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50)); assert.equal(renders.length, count); }
   function complete(index) { const entry = renders[index], receipt = receipts.get(entry.requestKey); receipt.outcome = 'completed'; receipt.mediaAssetId = receipt.outputId; receipt.message = 'Saved fixture'; }
   try {
+    if (talkingHeadFixture) { await talkingHeadFixture.run({page, base, renders, schedules, uploads, receipts, waitRenders, complete, errors, overlapping: () => overlappingRenders}); return; }
     await page.goto(base + '/fixture');
-    await page.getByRole('button', {name:'Choose from Creative Assets', exact:true}).click(); await page.getByRole('button', {name:'Choose demo fixture'}).click();
+    await page.getByRole('button', {name:'Creative Assets', exact:true}).click(); await page.getByRole('button', {name:'Choose demo fixture'}).click();
     await page.getByRole('button', {name:'Schedule', exact:true}).evaluate(button => {button.click(); button.click();});
     await page.getByLabel('Scheduled hook', {exact:true}).waitFor(); await page.getByLabel('Scheduled demo', {exact:true}).waitFor();
     await page.getByRole('button', {name:'Instagram', exact:true}).click();
@@ -97,7 +116,7 @@ async function main() {
     await page.getByRole('button', {name:'Confirm fixture schedule'}).evaluate(button=>{button.click();button.click();}); await page.getByRole('button', {name:'Check saved schedule'}).waitFor(); assert.equal(schedules.length,1); assert.equal(schedules[0].source.id,receipts.get(renders[0].requestKey).outputId); assert.equal(schedules[0].caption,'Untouched hook and demo'); assert.equal(renders.length,1);
     console.log('PASS actual FormatDemoSection: unchanged hook and demo skip edit passes; immediate two-clip preview; one join; sole Instagram account auto-selected; one explicit schedule confirmation');
     await page.evaluate(()=>localStorage.clear()); await page.reload();
-    await page.getByRole('button', {name:'Choose from Creative Assets', exact:true}).click(); await page.getByRole('button', {name:'Choose demo fixture'}).click(); await page.getByRole('button',{name:'Edit demo video',exact:true}).click();
+    await page.getByRole('button', {name:'Creative Assets', exact:true}).click(); await page.getByRole('button', {name:'Choose demo fixture'}).click(); await page.getByRole('button',{name:'Edit demo video',exact:true}).click();
     assert.equal(await page.getByLabel('Overlay text',{exact:true}).inputValue(),''); await page.getByLabel('Overlay text',{exact:true}).fill('First message'); await page.getByLabel('Text end time').fill('2');
     await page.getByRole('button',{name:'Add text',exact:true}).click();await page.getByLabel('Overlay text',{exact:true}).fill('Second message');await page.getByLabel('Text start time').fill('3');await page.getByLabel('Text end time').fill('5');
     await page.getByRole('button',{name:'Add text',exact:true}).click();await page.getByRole('button',{name:'Apply demo edits',exact:true}).click();await page.getByRole('button',{name:'Schedule',exact:true}).click();
@@ -112,7 +131,7 @@ async function main() {
     assert.equal(renders.length,3); assert.equal(schedules.length,1); assert.deepEqual(errors,[]);
     console.log('PASS actual Hook-only schedule: ready unedited MP4 is immediately reviewable without a rendering request or automatic post');
     await page.evaluate(()=>localStorage.clear()); await page.goto(base + '/fixture?demoOnly=1');
-    await page.getByRole('button',{name:'Choose from Creative Assets',exact:true}).click(); await page.getByRole('button',{name:'Choose demo fixture'}).click();
+    await page.getByRole('button',{name:'Creative Assets',exact:true}).click(); await page.getByRole('button',{name:'Choose demo fixture'}).click();
     await page.getByRole('button',{name:'Schedule',exact:true}).click();
     await page.getByLabel('Merged final video',{exact:true}).waitFor();
     assert.equal(await page.getByLabel('Scheduled hook',{exact:true}).count(),0);

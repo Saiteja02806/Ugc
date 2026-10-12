@@ -8,6 +8,10 @@ import {
   CAROUSEL_BODY_FONT_WEIGHT,
   CAROUSEL_COVER_FONT_WEIGHT,
   CAROUSEL_FONT_FAMILY,
+  CAROUSEL_HEADING_FONT_WEIGHT,
+  CAROUSEL_STATEMENT_FONT_WEIGHT,
+  CAROUSEL_HOOK_LINE_HEIGHT,
+  CAROUSEL_TEXT_OUTLINE_WIDTH,
 } from "./carousel-cover-typography.js";
 import { CAROUSEL_FIXED_FONT_SIZE, fitMeasuredText, measureHeadingSvgBackground, buildHeadingSvgText } from "./carousel-render-slide.js";
 import { CAROUSEL_BODY_BLOCK_MAX_LINES, CAROUSEL_HEADING_FONT_SIZE, CAROUSEL_HEADING_MAX_LINES, CAROUSEL_TEXT_BLOCK_GAP, getCarouselBodyBlocks } from "./carousel-text-presentation.js";
@@ -20,7 +24,7 @@ import {
 } from "./carousel-structure-2-layout.js";
 
 export const CAROUSEL_STRUCTURE_2_RENDERER_VERSION =
-  "story-native-full-frame-product-inter-tight-v13";
+  "story-native-full-frame-product-inter-medium-v14";
 
 const FORMAT_DIMENSIONS: Record<
   CarouselFormat,
@@ -48,6 +52,10 @@ type Bounds = {
 };
 
 export type CarouselStructure2RenderDiagnostics = {
+  fontFamily?: string;
+  storyFontWeight?: number;
+  headingFontWeight?: number;
+  textLineHeight?: number;
   bubbleShapeStrategy: "heading-white-svg-background" | "plain-white-text" | "plain-white-text-with-outline";
   bodyBlockCount?: number;
   bodyBlockLineCounts?: number[];
@@ -138,10 +146,12 @@ async function buildCarouselStructure2Overlay(params: {
   const maximumRenderableTextWidth =
     maximumTextWidth - DIRECT_TEXT_SIDE_BUFFER * 2;
   const isCover = params.spec.slideNumber === 1;
-  const fit = async (value: string, fontSize: number, maximumLines: number): Promise<TextLayout & { measuredLineWidths: number[]; measuredLineExtents: { left: number; right: number; width: number }[] }> => {
+  const hasHeading = !isCover && Boolean(params.spec.headline?.trim());
+  const storyFontWeight = isCover ? CAROUSEL_COVER_FONT_WEIGHT : hasHeading ? CAROUSEL_BODY_FONT_WEIGHT : CAROUSEL_STATEMENT_FONT_WEIGHT;
+  const fit = async (value: string, fontSize: number, maximumLines: number, fontWeight = storyFontWeight, lineHeightRatio = isCover ? CAROUSEL_HOOK_LINE_HEIGHT : 1.16): Promise<TextLayout & { measuredLineWidths: number[]; measuredLineExtents: { left: number; right: number; width: number }[] }> => {
     const layout = await fitMeasuredText(value, {
-      fontSize, fontFamily: FONT_FAMILY, fontWeight: isCover ? CAROUSEL_COVER_FONT_WEIGHT : CAROUSEL_BODY_FONT_WEIGHT,
-      getCornerSafety: () => 0, lineHeightRatio: fontSize === CAROUSEL_HEADING_FONT_SIZE ? 1.04 : isCover ? 0.98 : 1.16, maxLines: maximumLines,
+      fontSize, fontFamily: FONT_FAMILY, fontWeight,
+      getCornerSafety: () => 0, lineHeightRatio, maxLines: maximumLines,
       maxWidth: maximumRenderableTextWidth, paddingX: 0,
     });
     return { ...layout, blockHeight: layout.lines.length * layout.lineHeight, maximumLineWidth: Math.max(0, ...layout.measuredLineExtents.map((extent) => Math.max(extent.left, extent.right) * 2)) };
@@ -154,7 +164,7 @@ async function buildCarouselStructure2Overlay(params: {
   const stories = await Promise.all(values.map((value) => fit(value, storyFontSize, isCover || params.spec.headline === undefined ? getCarouselStructure2StoryMaxLines(params.spec.slideNumber) : CAROUSEL_BODY_BLOCK_MAX_LINES)));
   if (!stories.length) throw new Error("Structure 2 renderer cannot render empty story copy.");
   const story = stories[0]!;
-  const heading = await fit(isCover ? "" : params.spec.headline ?? "", CAROUSEL_HEADING_FONT_SIZE, CAROUSEL_HEADING_MAX_LINES);
+  const heading = await fit(isCover ? "" : params.spec.headline ?? "", CAROUSEL_HEADING_FONT_SIZE, CAROUSEL_HEADING_MAX_LINES, CAROUSEL_HEADING_FONT_WEIGHT, 1.04);
   const headingMetrics = measureHeadingSvgBackground(heading);
   const cta = await fit(isCover ? "" : params.spec.ctaText ?? "", CAROUSEL_FIXED_FONT_SIZE, CAROUSEL_BODY_BLOCK_MAX_LINES);
   const storyWidth = Math.max(...stories.map((block) => block.maximumLineWidth));
@@ -194,10 +204,12 @@ async function buildCarouselStructure2Overlay(params: {
   }
 
   const diagnostics: CarouselStructure2RenderDiagnostics = {
+    fontFamily: FONT_FAMILY,
+    storyFontWeight,
+    headingFontWeight: CAROUSEL_HEADING_FONT_WEIGHT,
+    textLineHeight: story.lineHeight,
     bubbleShapeStrategy:
-      heading.lines.length ? "heading-white-svg-background" : params.spec.slideNumber === 1
-        ? "plain-white-text"
-        : "plain-white-text-with-outline",
+      heading.lines.length ? "heading-white-svg-background" : "plain-white-text-with-outline",
     ctaBounds,
     headingBounds,
     bodyBlockCount: stories.length,
@@ -218,23 +230,20 @@ async function buildCarouselStructure2Overlay(params: {
   const storyMarkup = stories.map((block) => {
     const markup = buildPlainWhiteTextMarkup({
     bounds: { ...storyBounds, y: blockY, height: block.blockHeight },
-    fontWeight:
-      params.spec.slideNumber === 1
-        ? CAROUSEL_COVER_FONT_WEIGHT
-        : CAROUSEL_BODY_FONT_WEIGHT,
+    fontWeight: storyFontWeight,
     layout: block,
-    outlined: params.spec.slideNumber !== 1,
+    outlined: true,
     });
     blockY += block.blockHeight + CAROUSEL_TEXT_BLOCK_GAP;
     return markup;
   }).join("");
   const headingMarkup = buildHeadingSvgText({ fontSize: heading.fontSize, lineHeight: heading.lineHeight, lines: heading.lines, metrics: headingMetrics, x: params.width / 2, y: storyTop });
-  const ctaMarkup = ctaBounds ? buildPlainWhiteTextMarkup({ bounds: ctaBounds, layout: cta, fontWeight: CAROUSEL_BODY_FONT_WEIGHT, outlined: true }) : "";
+  const ctaMarkup = ctaBounds ? buildPlainWhiteTextMarkup({ bounds: ctaBounds, layout: cta, fontWeight: storyFontWeight, outlined: true }) : "";
   return {
     diagnostics,
     svg: Buffer.from(`
       <svg width="${params.width}" height="${params.height}" viewBox="0 0 ${params.width} ${params.height}" xmlns="http://www.w3.org/2000/svg">
-        <style>.headline { fill: #111316; font-family: ${FONT_FAMILY}; font-weight: ${CAROUSEL_BODY_FONT_WEIGHT}; }</style>
+        <style>.headline { fill: #111316; font-family: ${FONT_FAMILY}; font-weight: ${CAROUSEL_HEADING_FONT_WEIGHT}; }</style>
         ${headingMarkup}${storyMarkup}${ctaMarkup}
       </svg>
     `),
@@ -272,7 +281,7 @@ function buildPlainWhiteTextMarkup(params: {
   const lines = params.layout.lines
     .map(
       (line, index) =>
-        `<text x="${centerX}" y="${baselineStart + index * params.layout.lineHeight}" fill="#ffffff" font-family="${FONT_FAMILY}" font-size="${params.layout.fontSize}" font-weight="${params.fontWeight}" letter-spacing="-0.015em" ${params.outlined ? 'paint-order="stroke fill" stroke="#000000" stroke-linejoin="round" stroke-opacity="0.72" stroke-width="4"' : ""} text-anchor="middle">${escapeXml(line)}</text>`,
+        `<text x="${centerX}" y="${baselineStart + index * params.layout.lineHeight}" fill="#ffffff" font-family="${FONT_FAMILY}" font-size="${params.layout.fontSize}" font-weight="${params.fontWeight}" letter-spacing="0" ${params.outlined ? `paint-order="stroke fill" stroke="#000000" stroke-linejoin="round" stroke-opacity="0.72" stroke-width="${CAROUSEL_TEXT_OUTLINE_WIDTH}"` : ""} text-anchor="middle">${escapeXml(line)}</text>`,
     )
     .join("");
 

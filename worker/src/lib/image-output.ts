@@ -23,12 +23,14 @@ export function getAIStudioImageDimensions(ratio: AIStudioImageRatio) {
 export async function prepareAIStudioImageOutput(
   imageBuffer: Buffer,
   ratio: AIStudioImageRatio = AI_STUDIO_IMAGE_RATIO,
+  options: { preserveComposition?: boolean } = {},
 ) {
   const dimensions = getAIStudioImageDimensions(ratio);
 
   return sharp(imageBuffer)
     .resize({
-      fit: "cover",
+      fit: options.preserveComposition ? "contain" : "cover",
+      ...(options.preserveComposition ? { background: "#ffffff" } : {}),
       height: dimensions.height,
       position: "attention",
       width: dimensions.width,

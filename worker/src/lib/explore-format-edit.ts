@@ -1,6 +1,7 @@
 import { estimateEditOverlayLineWidth } from "./edit-overlay-render-spec.ts";
 
-export type ExploreFormatText = { value: string; width: number; y: number; fontSize: number; color: string; startMs: number; endMs: number };
+export type FormatTextPreset = "bold" | "snapchat-classic";
+export type ExploreFormatText = { value: string; width: number; y: number; fontSize: number; color: string; startMs: number; endMs: number; preset?: FormatTextPreset; backgroundOpacity?: number };
 export type ExploreFormatEdit = { version: 1; format: "hook" | "wall_text"; trimStartMs: number; trimEndMs: number; originalVolume: number; musicVolume: number; text: ExploreFormatText | null; textOverlays?: ExploreFormatText[] };
 export const MAX_FORMAT_TEXT_OVERLAYS = 20;
 export const FORMAT_TEXT_SEQUENCE_RENDER_VERSION = "explore-format-edit-text-v2";
@@ -17,10 +18,12 @@ export function parseExploreFormatEdit(value: unknown): ExploreFormatEdit {
   const trimmedDurationMs = v.trimEndMs - v.trimStartMs;
   function parseText(value: unknown): ExploreFormatText {
     const t = obj(value);
-    if (Object.keys(t).some(key => !["value", "width", "y", "fontSize", "color", "startMs", "endMs"].includes(key)) || typeof t.value !== "string" || !t.value.trim() || t.value.length > 600 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(t.value) ||
+    if (Object.keys(t).some(key => !["value", "width", "y", "fontSize", "color", "startMs", "endMs", "preset", "backgroundOpacity"].includes(key)) || typeof t.value !== "string" || !t.value.trim() || t.value.length > 600 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(t.value) ||
         !finite(t.width) || t.width < .4 || t.width > .94 || !finite(t.y) || t.y < .03 || t.y > .9 || !finite(t.fontSize) || t.fontSize < 24 || t.fontSize > 84 ||
         typeof t.color !== "string" || !/^#[0-9a-f]{6}$/i.test(t.color) || !finite(t.startMs) || !finite(t.endMs) || !Number.isInteger(t.startMs) || !Number.isInteger(t.endMs) || t.startMs < 0 || t.endMs <= t.startMs || t.endMs > trimmedDurationMs) throw new Error("Choose valid text, position, and timing within your trimmed video.");
-    return { value: t.value.replaceAll("\r\n", "\n"), width: t.width, y: t.y, fontSize: t.fontSize, color: t.color.toLowerCase(), startMs: t.startMs, endMs: t.endMs };
+    if (t.preset !== undefined && t.preset !== "bold" && t.preset !== "snapchat-classic" || t.backgroundOpacity !== undefined && (t.preset !== "snapchat-classic" || !finite(t.backgroundOpacity) || t.backgroundOpacity < 0 || t.backgroundOpacity > 1)) throw new Error("Choose a supported text preset and background opacity.");
+    return { value: t.value.replaceAll("\r\n", "\n"), width: t.width, y: t.y, fontSize: t.fontSize, color: t.color.toLowerCase(), startMs: t.startMs, endMs: t.endMs,
+      ...(t.preset === undefined ? {} : { preset: t.preset as FormatTextPreset }), ...(t.backgroundOpacity === undefined ? {} : { backgroundOpacity: t.backgroundOpacity as number }) };
   }
   const text = v.text === null ? null : parseText(v.text);
   let textOverlays: ExploreFormatText[] | undefined;
@@ -54,6 +57,24 @@ export function formatTextLayout(text: ExploreFormatText, width: number, height:
     }
     lines.push(line.trimEnd());
   }
-  const lineHeight = fontSize * 1.35;
-  return { fontSize, lineHeight, lines, y: height * text.y, fits: lines.length <= 40 && height * text.y + lines.length * lineHeight <= height * .97 };
+  const classic = text.preset === "snapchat-classic", padding = classic ? width * .018 : 0;
+  const lineHeight = fontSize * (classic ? 1.2 : 1.35);
+  const background = classic ? { x: 0, y: height * text.y, width, height: lines.length * lineHeight + padding * 2, opacity: text.backgroundOpacity ?? .58 } : null;
+  return { fontSize, lineHeight, lines, y: height * text.y + padding, fontWeight: classic ? 400 : 700, background,
+    fits: lines.length <= 40 && height * text.y + padding * 2 + lines.length * lineHeight <= height * .97 };
+}
+
+/** Selecting a preset changes typography, never authored copy or timing. */
+export function applyFormatTextPreset(text: ExploreFormatText, preset: FormatTextPreset): ExploreFormatText {
+  const plain = { ...text }; delete plain.preset; delete plain.backgroundOpacity;
+  return preset === "snapchat-classic" ? { ...plain, preset, backgroundOpacity: .58, fontSize: 56, color: "#ffffff", width: .94, y: .075 }
+    : { ...plain, fontSize: 48, width: .8, y: .18, color: "#ffffff" };
+}
+
+const escapeXml = (text: string) => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&apos;");
+
+/** The same layout supplies React preview and transparent caption PNG export. */
+export function createFormatTextSvg(text: ExploreFormatText, width: number, height: number): string {
+  const layout = formatTextLayout(text, width, height), background = layout.background;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${background ? `<rect x="0" y="${background.y}" width="${width}" height="${background.height}" fill="#000000" fill-opacity="${background.opacity}"/>` : ""}<g fill="${escapeXml(text.color)}" font-family="Arial, Helvetica, sans-serif" font-weight="${layout.fontWeight}" font-size="${layout.fontSize}" text-anchor="middle"${background ? "" : ` stroke="black" stroke-width="${width / 540}" paint-order="stroke"`}>${layout.lines.map((line,i)=>`<text x="${width / 2}" y="${layout.y + i * layout.lineHeight + layout.fontSize}">${escapeXml(line)}</text>`).join("")}</g></svg>`;
 }

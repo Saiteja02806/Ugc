@@ -56,3 +56,13 @@ test("Sunburst text generation uses the same explicit model, while older callers
   await generateOpenAiImageBuffer("Legacy", "1:1");
   assert.equal(requests.at(-1).model, "gpt-image-2");
 });
+
+test("new slideshow requests compose directly at every selected ratio without changing legacy sizing", async () => {
+  for (const [ratio, size] of [["4:5", "1024x1280"], ["9:16", "720x1280"], ["16:9", "1280x720"], ["1:1", "1024x1024"]]) {
+    await generateOpenAiImageBuffer("Keep the full composition", ratio, ["https://storage.test/style.png", "https://storage.test/product.png"], SLIDESHOW_IMAGE_MODEL, true);
+    assert.equal(requests.at(-1).size, size);
+    assert.equal(requests.at(-1).image.length, 2);
+  }
+  await generateOpenAiImageBuffer("Legacy portrait", "4:5", undefined, SLIDESHOW_IMAGE_MODEL);
+  assert.equal(requests.at(-1).size, "1024x1536");
+});

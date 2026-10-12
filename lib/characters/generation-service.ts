@@ -7,7 +7,10 @@ import {
   type BackgroundJobRecord,
   type Json,
 } from "@/lib/jobs/background-jobs";
-import { isTrustedStorageUrl } from "@/lib/storage/storage";
+import { buildDirectStorageUrl, buildPublicStorageUrl, isTrustedStorageUrl } from "@/lib/storage/storage";
+import type { MediaAssetRow } from "@/lib/media/media-storage";
+import { privateKeyForMediaUrl } from "@/lib/media/media-reference";
+import { MAX_REFERENCE_IMAGE_BYTES } from "@/lib/generation/reference-image";
 import { gatewayRetryFetch } from "@/lib/supabase/gateway-retry-fetch";
 import {
   CHARACTER_CANDIDATE_COUNT,
@@ -44,6 +47,7 @@ export type CharacterGenerationDependencies = {
   getExistingJob: (key: string, userId: string) => Promise<BackgroundJobRecord | null>;
   requireAccess: (userId: string, request: CharacterGenerateRequest) => Promise<{ count: CharacterImageCount; useFreeAllowance: boolean }>;
   getReference: (id: string, userId: string) => Promise<CharacterReference | null>;
+  getReferenceAsset: (id: string, userId: string) => Promise<MediaAssetRow | null>;
   reserveBatch: (input: CharacterReservationInput) => Promise<BackgroundJobRecord[]>;
   dispatch: (job: BackgroundJobRecord) => Promise<BackgroundJobRecord>;
   getImageCreditCost: () => number;
@@ -68,6 +72,8 @@ export function characterRequestFingerprint(request: CharacterGenerateRequest) {
     model: request.model,
     prompt: request.prompt ?? null,
     referenceCharacterId: request.referenceCharacterId ?? null,
+    // Preserve fingerprints for requests admitted before uploaded references existed.
+    ...(request.referenceImageAssetId ? { referenceImageAssetId: request.referenceImageAssetId } : {}),
     count: request.imageCount ?? CHARACTER_CANDIDATE_COUNT,
   })).digest("hex");
 }
@@ -86,6 +92,25 @@ export function isCharacterGenerationJob(job: BackgroundJobRecord) {
     (input.characterVersion === 1 || input.characterVersion === CHARACTER_VERSION) &&
     typeof input.characterRequestFingerprint === "string" &&
     /^[0-9a-f]{64}$/.test(input.characterRequestFingerprint);
+}
+
+function uploadedReferenceUrl(asset: MediaAssetRow | null, assetId: string, userId: string) {
+  if (!asset || asset.id !== assetId || asset.user_id !== userId || asset.status !== "ready" ||
+      asset.deleted_at !== null || asset.collection !== "image" ||
+      !["image/png", "image/jpeg", "image/webp"].includes(asset.mime_type) ||
+      !asset.file_size_bytes || asset.file_size_bytes <= 0 || asset.file_size_bytes > MAX_REFERENCE_IMAGE_BYTES || !asset.storage_key) {
+    throw new CharacterGenerationError("REFERENCE_NOT_FOUND", "This reference image is no longer available. Upload it again or remove it before generating.", 404);
+  }
+  let trusted = false;
+  try {
+    const privateKey = privateKeyForMediaUrl(asset.url);
+    trusted = asset.url.startsWith("https://") && (privateKey
+      ? privateKey === asset.storage_key && typeof asset.metadata === "object" && asset.metadata !== null && !Array.isArray(asset.metadata) && asset.metadata.storageLocation === "private_user_media"
+      : isTrustedStorageUrl(asset.url) && (asset.url === buildPublicStorageUrl(asset.storage_key) || asset.url === buildDirectStorageUrl(asset.storage_key)));
+  } catch { /* Malformed or unconfigured references fail before reserving credits. */ }
+  if (!trusted) throw new CharacterGenerationError("REFERENCE_NOT_FOUND", "This reference image could not be verified. Upload it again or remove it before generating.", 404);
+  // Store the canonical URL; the worker signs private media only when executing.
+  return asset.url;
 }
 
 function assertOwnedBatch(jobs: BackgroundJobRecord[], userId: string, batchId: string, fingerprint: string, requestedCount?: CharacterImageCount) {
@@ -139,6 +164,9 @@ export async function generateCharacterBatch(userId: string, rawRequest: unknown
         !reference.referenceImageUrl.startsWith("https://") || !isTrustedStorageUrl(reference.referenceImageUrl))) {
       throw new CharacterGenerationError("REFERENCE_NOT_FOUND", "The saved influencer could not be found.", 404);
     }
+    const referenceImageUrl = request.referenceImageAssetId
+      ? uploadedReferenceUrl(await dependencies.getReferenceAsset(request.referenceImageAssetId, userId), request.referenceImageAssetId, userId)
+      : reference?.referenceImageUrl ?? null;
     const inputs = Array.from({ length: access.count }, (_, index): Record<string, Json | undefined> => ({
       aspectRatio: "9:16",
       batchId,
@@ -156,7 +184,8 @@ export async function generateCharacterBatch(userId: string, rawRequest: unknown
       prompt: request.prompt,
       promptSource: "user",
       referenceCharacterId: reference?.id ?? null,
-      referenceImageUrl: reference?.referenceImageUrl ?? null,
+      ...(request.referenceImageAssetId ? { referenceImageAssetId: request.referenceImageAssetId } : {}),
+      referenceImageUrl,
     }));
     jobs = await dependencies.reserveBatch({
       userId, batchId, fingerprint,

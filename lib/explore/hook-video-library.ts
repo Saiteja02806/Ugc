@@ -6,6 +6,7 @@ import {
 } from "@/lib/explore/hook-video-types";
 import { buildPublicStorageUrl } from "@/lib/storage/storage";
 import importedCatalog from "./imported-catalog.json";
+import { getPairedExploreVideos } from "./paired-reference-library";
 
 export type { ExploreHookVideo } from "@/lib/explore/hook-video-types";
 
@@ -123,7 +124,7 @@ const EXPLORE_HOOK_VIDEO_ASSETS: ReadonlyArray<ExploreHookVideoAsset> = [
 ];
 
 export function getExploreHookVideos(): Array<ExploreHookVideo> {
-  return [...EXPLORE_HOOK_VIDEO_ASSETS.map(toExploreHookVideo), ...getPublishedImportedHookVideos()];
+  return [...EXPLORE_HOOK_VIDEO_ASSETS.map(toExploreHookVideo), ...getPublishedImportedHookVideos(), ...getPairedExploreVideos("hook")];
 }
 
 export function getExplorePreviewVideo(): ExploreHookVideo {
@@ -140,7 +141,8 @@ export function isExploreHookVideoId(value: unknown): value is string {
   return (
     value === EXPLORE_PREVIEW_VIDEO_ASSET.id ||
     EXPLORE_HOOK_VIDEO_ASSETS.some((asset) => asset.id === value) ||
-    getPublishedImportedHookVideos().some((asset) => asset.id === value)
+    getPublishedImportedHookVideos().some((asset) => asset.id === value) ||
+    getPairedExploreVideos("hook").some((asset) => asset.id === value)
   );
 }
 

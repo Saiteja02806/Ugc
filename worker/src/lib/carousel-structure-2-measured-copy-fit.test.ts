@@ -16,7 +16,7 @@ function makePlan() {
 
 test("real font metrics reject a valid word-count body that would overflow its rendering block", async () => {
   const plan = makePlan();
-  plan.slides[5]!.storyText = "I used WWWWWWWWWWWWWWWW for planning.\n\nMy next task had an owner and context so I could continue.";
+  plan.slides[5]!.storyText = "I used WWWWWWWWWWWWWWWWWWWWWW for planning.\n\nMy next task had an owner and context so I could continue.";
   assert.ok(!validateCarouselStructure2StoryPlan(plan, { businessDescription: "Todaywise helps me plan my work." }).some(issue => issue.slideNumber === 6 && issue.code === "word_count"));
   assert.ok(!validateCarouselStructure2StoryPlan(plan, { businessDescription: "Todaywise helps me plan my work." }).some(issue => issue.slideNumber === 6 && issue.code === "render_fit"),
     "the previous width estimate misses this real glyph overflow");

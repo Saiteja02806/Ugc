@@ -10,11 +10,12 @@ import type { LocalWorkflowMedia } from "@/components/explore/use-local-workflow
 import type { MediaAsset } from "@/lib/media/types";
 import type { DemoFraming, ExploreFinishStyle } from "@/worker/src/lib/explore-finishing-contract";
 import type { ExploreFormatEdit } from "@/worker/src/lib/explore-format-edit";
+import { getReferenceAudioPreview } from "@/lib/explore/reference-audio-preview";
 
 export type FinishingOptions = { subtitles: boolean; style: ExploreFinishStyle; backgroundMusic: boolean; placement?: "bottom" | "middle" | "top" };
 export const DEFAULT_FINISHING_OPTIONS: FinishingOptions = { subtitles: false, style: "clean", backgroundMusic: false, placement: "bottom" };
 export type WorkflowAction = { busy: boolean; disabled: boolean; message: string; error: string | null; onAction: () => void; refresh: () => void; cancel?: () => void };
-export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, demoSource = null, demoAudio, playback, options, onRestoreOptions, demoFraming = null, sourceFraming = null, demoFramingError = null, editing, backgroundSource = null, backgroundPlayback: formatBackgroundPlayback = "once", scope, onRestoreDraft, reuseUnchangedSource = false }: {
+export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, demoSource = null, demoAudio, playback, options, onRestoreOptions, demoFraming = null, sourceFraming = null, demoFramingError = null, editing, backgroundSource = null, backgroundPlayback: formatBackgroundPlayback = "once", scope, onRestoreDraft, reuseUnchangedSource = false, fastStatus = false }: {
   ownerId: string | null; enabled: boolean; kind: "hook" | "phone"; source: MediaAsset | null;
   demo: LocalWorkflowMedia | null; demoAudio: LocalWorkflowMedia | null; playback: "once" | "repeat"; options: FinishingOptions;
   demoSource?: MediaAsset | null;
@@ -28,6 +29,8 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
   scope?: string;
   onRestoreDraft?: (draft: SavedFinish["draft"]) => void;
   reuseUnchangedSource?: boolean;
+  /** Foreground finishing can notice completion promptly; this only reads status. */
+  fastStatus?: boolean;
 }) {
   const active = useRef(true), working = useRef(false);
   const saved = useRef<SavedFinish | null>(null);
@@ -76,14 +79,17 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
     return () => { stopped = true; };
   }, [enabled, ownerId, kind, refresh, onRestoreOptions, onRestoreDraft, storageKey]);
   const loadingOutput = status?.outcome === "completed" && status.mediaAssetId !== output?.id;
-  const needsRecovery = Boolean(savedEntry) && (!status || status.outcome === "pending" || status.outcome === "unconfirmed" || loadingOutput);
+  const needsRecovery = Boolean(savedEntry) && (!status || status.outcome === "pending" || status.outcome === "uncertain" || status.outcome === "unconfirmed" || loadingOutput);
   useEffect(() => {
     if (!needsRecovery) return;
     // A completed receipt is not yet a usable preview if its owned-media GET
     // failed. Recover that same result without dispatching another render.
-    const timer = setInterval(() => { void refresh(); }, 4000);
+    const timer = setInterval(() => {
+      if (fastStatus && typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      void refresh();
+    }, fastStatus ? 1000 : 4000);
     return () => clearInterval(timer);
-  }, [needsRecovery, refresh]);
+  }, [needsRecovery, refresh, fastStatus]);
   useEffect(() => {
     if (!needsRecovery || typeof window === "undefined") return;
     const recover = () => { void refresh(); };
@@ -130,7 +136,7 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
         const total = (source.durationSeconds ?? 0) + (demoSource?.durationSeconds ?? demo?.duration ?? 0);
         if (options.subtitles && (!(total > 0) || total > 60)) throw new Error("English auto subtitles support up to 60 seconds in total. Nothing is trimmed.");
         let backgroundAssetId: string | null = null, backgroundPlayback: "once" | "repeat" = "once";
-        if (options.backgroundMusic) {
+        if (options.backgroundMusic && !backgroundSource && !editing && !getReferenceAudioPreview(source)) {
           // Reuse the owned snapshot of a recovered edit instead of choosing
           // new music after reload or repeating an acknowledged upload.
           if (savedEntry?.draft.backgroundAssetId) {
@@ -141,7 +147,7 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
             deps().assertActive(); backgroundAssetId = result.asset.id; backgroundPlayback = music.playback;
           }
         }
-        const draft: SavedFinish["draft"] = { version: 1, kind, sourceAssetId: source.id, demoAssetId: demoSource?.id ?? await upload(demo, "video"), demoAudioAssetId: await upload(demoAudio, "audio"), demoAudioPlayback: demoAudio ? playback : "once", backgroundAssetId: editing ? backgroundSource?.id ?? null : backgroundAssetId, backgroundPlayback: editing && backgroundSource ? formatBackgroundPlayback : backgroundPlayback, subtitles: options.subtitles ? { language: "en", style: options.style, placement: options.placement ?? "bottom" } : null,
+        const draft: SavedFinish["draft"] = { version: 1, kind, sourceAssetId: source.id, demoAssetId: demoSource?.id ?? await upload(demo, "video"), demoAudioAssetId: await upload(demoAudio, "audio"), demoAudioPlayback: demoAudio ? playback : "once", backgroundAssetId: backgroundSource?.id ?? (editing ? null : backgroundAssetId), backgroundPlayback: backgroundSource ? formatBackgroundPlayback : backgroundPlayback, subtitles: options.subtitles ? { language: "en", style: options.style, placement: options.placement ?? "bottom" } : null,
           ...(demoFraming ? { demoFraming } : {}), ...(sourceFraming ? { sourceFraming } : {}), ...(editing ? { editing } : {}) };
         deps().assertActive();
         const entry: SavedFinish = { version: 1, ownerId, kind, requestKey: crypto.randomUUID(), draft };
@@ -156,7 +162,7 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
   // A recovered output is a saved result, not a reconstruction from missing local
   // files. A different source or newly selected edit must be applied first.
   const recoveredMatches = completedSignature === null && savedEntry && JSON.stringify(sourceFraming ?? undefined) === JSON.stringify(savedEntry.draft.sourceFraming) && (!source || source.id === savedEntry.draft.sourceAssetId) && !demo && !demoAudio && (demoSource ? demoSource.id === savedEntry.draft.demoAssetId : !savedEntry.draft.demoAssetId || !scope?.startsWith("format-demo:")) && (demoSource ? JSON.stringify(demoFraming ?? undefined) === JSON.stringify(savedEntry.draft.demoFraming) : !demoFraming) && (editing ? JSON.stringify(editing) === JSON.stringify(savedEntry.draft.editing) && (backgroundSource?.id ?? null) === savedEntry.draft.backgroundAssetId && (!backgroundSource || formatBackgroundPlayback === savedEntry.draft.backgroundPlayback) :
-    !!options.backgroundMusic === !!savedEntry.draft.backgroundAssetId &&
+    (backgroundSource ? backgroundSource.id === savedEntry.draft.backgroundAssetId && formatBackgroundPlayback === savedEntry.draft.backgroundPlayback : !!options.backgroundMusic === !!savedEntry.draft.backgroundAssetId) &&
     options.subtitles === !!savedEntry.draft.subtitles && (!options.subtitles || (options.style === savedEntry.draft.subtitles?.style &&
       (options.placement ?? "bottom") === (savedEntry.draft.subtitles?.placement ?? "bottom"))));
   const currentOutput = output && !demoFramingError && (completedSignature === signature || recoveredMatches) ? output : null;

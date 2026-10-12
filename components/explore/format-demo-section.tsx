@@ -9,11 +9,14 @@ import { WorkflowVideoAssetPicker } from "@/components/explore/workflow-video-as
 import { WorkflowDemoControls } from "@/components/explore/workflow-demo-controls";
 import { WorkflowSavedAudioPicker } from "@/components/explore/workflow-saved-audio-picker";
 import { FormatVideoTextFields, trimFormatVideoEdit } from "@/components/explore/format-video-text-fields";
+import { FormatVideoTextOverlay } from "@/components/explore/format-video-text-overlay";
+import { WorkflowSequencePreview } from "@/components/explore/workflow-sequence-preview";
 import { useLocalWorkflowMedia } from "@/components/explore/use-local-workflow-media";
 import { useWorkflowSourceVideo } from "@/components/explore/use-workflow-source-video";
 import { DEFAULT_FINISHING_OPTIONS, useWorkflowFinishing } from "@/components/explore/use-workflow-finishing";
 import creation from "@/components/explore/workflow-creation.module.css";
 import styles from "@/components/explore/format-workspace.module.css";
+import scheduleStyles from "@/components/explore/workflow-final-video.module.css";
 import { useAuth } from "@/contexts/auth-context";
 import { fetchAIStudioMediaAsset } from "@/lib/ai-studio/media-client";
 import { uploadAIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
@@ -22,10 +25,13 @@ import { defaultDemoEdit, readFormatDemoDraft, trimmedDemoFraming, type FormatDe
 import { formatVideoFromAsset } from "@/lib/explore/format-video-source";
 import { prepareFormatEditForExport } from "@/lib/explore/format-edit-draft";
 import { canReuseUnchangedHookSource } from "@/lib/explore/unchanged-hook-source";
-import type { FormatPreparationStatus } from "@/components/explore/format-video-editor";
+import type { FormatOpeningPreview, FormatPreparationStatus } from "@/components/explore/format-video-editor";
+import { mapSequencePreviewDemoReference, type SequencePreviewAudio, type SequencePreviewSegment } from "@/lib/explore/sequence-preview";
+import { loadWorkflowDefaultMusic } from "@/lib/explore/workflow-default-music-client";
 import type { MediaAsset } from "@/lib/media/types";
 import { formatTextLayout, formatTextOverlays, parseExploreFormatEdit } from "@/worker/src/lib/explore-format-edit";
 import type { CSSProperties } from "react";
+import { getReferenceAudioPreview } from "@/lib/explore/reference-audio-preview";
 type VideoOutput = {
     id: string;
     kind: "media_asset";
@@ -37,12 +43,13 @@ type DemoSave = {
     openingRevision: number;
     demo: MediaAsset | null;
     audio: MediaAsset | null;
+    background: MediaAsset | null;
     draft: FormatDemoDraft;
 };
 const field = "w-full rounded-lg border border-border bg-card-muted px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-focus";
 /** The demo uses existing owned-media edit and concatenation contracts. The
  * opening is already saved, so its text/audio cannot bleed into the demo. */
-export function FormatDemoSection({ format, videoId, opening, openingRevision, enabled, active, controlsTarget, actionsTarget, resultsTarget, onDirty, onSelectionChange, onSaved, onSkip, onContinue, localPreview = false, previewAssets, pendingSource = false, editActive = false, editPreviewActive = false, editControlsTarget = null, editActionsTarget = null, editResultsTarget = null, onEdit, onEditDone, onAdd, prepareRequest = 0, scheduleActive = false, scheduleResultsTarget = null, openingPreparation, sourcePreview = null }: {
+export function FormatDemoSection({ format, videoId, opening, openingRevision, enabled, active, controlsTarget, actionsTarget, resultsTarget, onDirty, onSelectionChange, onFinalRequiredChange, onSaved, onSkip, onContinue, localPreview = false, previewAssets, pendingSource = false, editActive = false, editPreviewActive = false, editControlsTarget = null, editActionsTarget = null, editResultsTarget = null, onEdit, onEditDone, onAdd, prepareRequest = 0, scheduleActive = false, scheduleResultsTarget = null, openingPreparation, openingPreview = null, sourcePreview = null, finalVideo = null }: {
     format: "hook" | "wall_text";
     videoId: string | null;
     opening: VideoOutput | null;
@@ -54,6 +61,7 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
     resultsTarget: HTMLElement | null;
     onDirty: () => void;
     onSelectionChange: (present: boolean) => void;
+    onFinalRequiredChange?: (required: boolean) => void;
     onSaved: (output: VideoOutput) => void;
     onSkip: () => void;
     onContinue: () => void;
@@ -69,6 +77,8 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
     onEditDone?: () => void;
     onAdd?: () => void;
     prepareRequest?: number; scheduleActive?: boolean; scheduleResultsTarget?: HTMLElement | null;
+    finalVideo?: VideoOutput | null;
+    openingPreview?: FormatOpeningPreview | null;
     openingPreparation?: FormatPreparationStatus; sourcePreview?: { name: string; url: string; duration: number | null } | null;
 }) {
     const { user } = useAuth();
@@ -85,6 +95,7 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
     const [draft, setDraft] = useState<FormatDemoDraft>(initial ?? { version: 1, demoId: null, audioId: null, editing: defaultDemoEdit(5), framing: null, playback: "once" });
     const [assetsOpen, setAssetsOpen] = useState(false);
     const [uploadingAudio, setUploadingAudio] = useState(false), [audioError, setAudioError] = useState<string | null>(null);
+    const [uploadingBackground, setUploadingBackground] = useState(false), [backgroundError, setBackgroundError] = useState<string | null>(null);
     const [selectionChanged, setSelectionChanged] = useState(false);
     const [videoError, setVideoError] = useState<string | null>(null);
     const [legacyChecked, setLegacyChecked] = useState<string | null>(null);
@@ -92,8 +103,12 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
     const [final, setFinal] = useState<VideoOutput | null>(null);
     const [naturalDuration, setNaturalDuration] = useState(0);
     const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
+    const [finalMediaInfo, setFinalMediaInfo] = useState<{ id: string; duration: number; width: number; height: number; error?: boolean } | null>(null);
     const [previewTime, setPreviewTime] = useState(0);
     const [scheduleProgressTarget, setScheduleProgressTarget] = useState<HTMLDivElement | null>(null);
+    const [watchedSequence, setWatchedSequence] = useState<string | null>(null);
+    const [finishedSequence, setFinishedSequence] = useState<string | null>(null);
+    const [defaultMusicPreview, setDefaultMusicPreview] = useState<{ owner: string | null; url: string; playback: "once" | "repeat" } | null>(null);
     // Migrate an older opening-scoped draft once its opening becomes known.
     // Never replace a workflow draft or a selection already made this session.
     if (!localPreview && owner && videoId && legacyChecked !== videoId) {
@@ -117,7 +132,7 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
         previewPlayer.current?.pause(); }, [active]);
     useEffect(() => { if (!editActive && !editPreviewActive) { editPlayer.current?.pause(); editAudio.current?.pause(); } }, [editActive, editPreviewActive]);
     const selection = useWorkflowSourceVideo({ enabled, ownerId: owner, initialMode: "upload", minDuration: 1, onSelected: (asset, preview) => {
-            const next: FormatDemoDraft = { version: 1, demoId: asset?.id ?? null, audioId: null, editing: defaultDemoEdit(preview.duration ?? 5), framing: null, playback: "once", ...(draft.backgroundMusic !== undefined ? { backgroundMusic: draft.backgroundMusic } : {}) };
+            const next: FormatDemoDraft = { version: 1, demoId: asset?.id ?? null, audioId: null, editing: defaultDemoEdit(preview.duration ?? 5), framing: null, playback: "once", ...(draft.backgroundMusic !== undefined ? { backgroundMusic: draft.backgroundMusic } : {}), ...(draft.backgroundAudioId !== undefined ? { backgroundAudioId: draft.backgroundAudioId } : {}), ...(draft.backgroundPlayback !== undefined ? { backgroundPlayback: draft.backgroundPlayback } : {}) };
             setDraft(next);
             setNaturalDuration(0);
             setNaturalSize(null); setPreviewTime(0);
@@ -129,6 +144,7 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
             catch { /* Selecting media does not dispatch a render. */ }
         } });
     const audio = useLocalWorkflowMedia("audio");
+    const backgroundAudio = useLocalWorkflowMedia("audio");
     const loadAsset = async (id: string, kind: "video" | "audio") => {
         const token = await getCurrentUserIdToken(owner ?? undefined);
         if (!token)
@@ -143,6 +159,7 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
     const openingQuery = useQuery({ queryKey: ["format-demo-opening", owner, opening?.id], enabled: enabled && !!owner && !!opening, queryFn: () => loadAsset(opening!.id, "video") });
     const demoQuery = useQuery({ queryKey: ["format-demo-restore", owner, draft.demoId], enabled: enabled && !!owner && !!draft.demoId && !selectionChanged, queryFn: () => loadAsset(draft.demoId!, "video") });
     const audioQuery = useQuery({ queryKey: ["format-demo-audio", owner, draft.audioId], enabled: enabled && !!owner && !!draft.audioId, queryFn: () => loadAsset(draft.audioId!, "audio") });
+    const backgroundQuery = useQuery({ queryKey: ["format-background-audio", owner, draft.backgroundAudioId], enabled: enabled && !!owner && !!draft.backgroundAudioId, queryFn: () => loadAsset(draft.backgroundAudioId!, "audio") });
     // Development fixtures restore from their local catalogue only. Live
     // restoration continues to require the owner-scoped asset query.
     const previewDemo = localPreview ? previewAssets?.find(asset => asset.id === draft.demoId && asset.status === "ready" && asset.mimeType.startsWith("video/")) : undefined;
@@ -154,9 +171,10 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
     useLayoutEffect(() => { saveContext.current = activeSave; }, [activeSave]);
     const hasDemo = Boolean(preview || draft.demoId || selection.busy);
     useEffect(() => { onSelectionChange(hasDemo); }, [hasDemo, onSelectionChange]);
-    const busy = pendingSource || Boolean(activeSave && saveBusy) || selection.busy || uploadingAudio;
+    useEffect(() => { onFinalRequiredChange?.(hasDemo || draft.backgroundMusic === true); }, [hasDemo, draft.backgroundMusic, onFinalRequiredChange]);
+    const busy = pendingSource || Boolean(activeSave && saveBusy) || selection.busy || uploadingAudio || uploadingBackground;
     const duration = preview?.duration ?? naturalDuration;
-    const width = demo?.width ?? naturalSize?.width ?? 1080, height = demo?.height ?? naturalSize?.height ?? 1920;
+    const width = naturalSize?.width ?? demo?.width ?? 1080, height = naturalSize?.height ?? demo?.height ?? 1920;
     const exportEditing = prepareFormatEditForExport(draft.editing);
     const overlays = formatTextOverlays(exportEditing);
     const textLayouts = overlays.map(text => formatTextLayout(text, width, height));
@@ -174,19 +192,31 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
     }
     if (!validation && textLayouts.some(layout => !layout.fits)) validation = "Your text does not fit. Reduce its size or move it higher.";
     const openingAsset = openingQuery.data;
+    const referenceAudio = getReferenceAudioPreview(openingAsset);
+    const needsDefaultMusic = draft.backgroundMusic === true && !draft.backgroundAudioId && !backgroundAudio.asset && !referenceAudio && !openingPreview?.referenceAudio;
+    const defaultMusicQuery = useQuery({ queryKey: ["format-default-music-preview", owner], enabled: enabled && !!owner && needsDefaultMusic, staleTime: 5 * 60_000,
+      queryFn: () => loadWorkflowDefaultMusic({ token: () => getCurrentUserIdToken(owner ?? undefined), fetch: (...args: Parameters<typeof fetch>) => fetch(...args), assertActive() { if (!alive.current) throw new Error("This workflow is no longer active."); } }) });
+    useEffect(() => {
+      if (!defaultMusicQuery.data) return;
+      const url = URL.createObjectURL(defaultMusicQuery.data.file);
+      const playback = defaultMusicQuery.data.playback;
+      let subscribed = true;
+      queueMicrotask(() => { if (subscribed) setDefaultMusicPreview({ owner, url, playback }); });
+      return () => { subscribed = false; URL.revokeObjectURL(url); };
+    }, [defaultMusicQuery.data, owner]);
     if (!validation && draft.framing && demo?.width && demo.height && openingAsset?.width && openingAsset.height &&
         Math.abs((demo.width * draft.framing.width) / (demo.height * draft.framing.height) / (openingAsset.width / openingAsset.height) - 1) > .015) {
         validation = "Reframe your demo to match the opening, or reset framing to fit the full clip.";
     }
     const hasOpening = Boolean(videoId || opening || sourcePreview);
-    const ready = !pendingSource && (hasOpening ? !!openingQuery.data : !!demo) && (hasDemo ? !!demo : draft.backgroundMusic === true) && !selection.busy && !selection.error && !validation && !audioError && !uploadingAudio && (!draft.audioId || !!audioQuery.data);
+    const ready = !pendingSource && (hasOpening ? !!openingQuery.data : !!demo) && (hasDemo ? !!demo : draft.backgroundMusic === true) && !selection.busy && !selection.error && !validation && !audioError && !backgroundError && !uploadingAudio && !uploadingBackground && (!draft.audioId || !!audioQuery.data) && (!draft.backgroundMusic || !draft.backgroundAudioId || !!backgroundQuery.data);
     const handledPrepareRequest = useRef(0);
     useEffect(() => {
         if (!prepareRequest || handledPrepareRequest.current === prepareRequest || !enabled || !ready || currentFinal || activeSave) return;
         handledPrepareRequest.current = prepareRequest;
         setSaveBusy(true); setFinal(null);
-        setSave({ opening: openingQuery.data ?? null, openingRevision, demo: demo ?? null, audio: audioQuery.data ?? null, draft: { ...draft, editing: exportEditing, demoId: demo?.id ?? null } });
-    }, [prepareRequest, enabled, ready, currentFinal, activeSave, openingQuery.data, openingRevision, demo, audioQuery.data, draft, exportEditing]);
+        setSave({ opening: openingQuery.data ?? null, openingRevision, demo: demo ?? null, audio: audioQuery.data ?? null, background: draft.backgroundMusic ? backgroundQuery.data ?? null : null, draft: { ...draft, editing: exportEditing, demoId: demo?.id ?? null } });
+    }, [prepareRequest, enabled, ready, currentFinal, activeSave, openingQuery.data, openingRevision, demo, audioQuery.data, backgroundQuery.data, draft, exportEditing]);
     function change(next: FormatDemoDraft) { setDraft(next); if (JSON.stringify({ ...next, editing: prepareFormatEditForExport(next.editing) }) !== JSON.stringify({ ...draft, editing: exportEditing })) { setSave(null); setSaveBusy(false); setFinal(null); onDirty(); } try {
         localStorage.setItem(key, JSON.stringify(next));
     }
@@ -241,6 +271,20 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
         }
     }
     const audioAttachment = { ...audio, choose: chooseAudio, loading: uploadingAudio || audio.loading, remove: () => { audio.remove(); setAudioError(null); change({ ...draft, audioId: null, playback: "once" }); } };
+    async function chooseBackgroundAudio(file: File) {
+        if (busy) return false;
+        setUploadingBackground(true); setBackgroundError(null); setFinal(null); onDirty();
+        try {
+            if (!await backgroundAudio.choose(file, { maxDuration: 600 })) return false;
+            if (!enabled || !owner) { change({ ...draft, backgroundMusic: true, backgroundAudioId: null }); return true; }
+            const uploaded = await uploadAIStudioReferenceMedia(file, "audio", 120, owner, { maxAudioDurationSeconds: 600, purpose: "explore-demo" });
+            if (!alive.current) return false;
+            change({ ...draft, backgroundMusic: true, backgroundAudioId: uploaded.asset.id, backgroundPlayback: "repeat" });
+            return true;
+        } catch (error) { if (alive.current) setBackgroundError(error instanceof Error ? error.message : "Could not upload background audio."); return false; }
+        finally { if (alive.current) setUploadingBackground(false); }
+    }
+    const backgroundAttachment = { ...backgroundAudio, choose: chooseBackgroundAudio, loading: uploadingBackground || backgroundAudio.loading, remove: () => { backgroundAudio.remove(); setBackgroundError(null); change({ ...draft, backgroundAudioId: null }); } };
     const saved = useCallback((output: VideoOutput) => {
         if (activeSave && saveContext.current === activeSave) { setFinal(output); onSaved(output); }
     }, [activeSave, onSaved]);
@@ -256,7 +300,7 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
         setAudioError(null);
         setNaturalDuration(0);
         setNaturalSize(null); setPreviewTime(0);
-        change({ version: 1, demoId: null, audioId: null, editing: defaultDemoEdit(5), framing: null, playback: "once", ...(draft.backgroundMusic !== undefined ? { backgroundMusic: draft.backgroundMusic } : {}) });
+        change({ version: 1, demoId: null, audioId: null, editing: defaultDemoEdit(5), framing: null, playback: "once", ...(draft.backgroundMusic !== undefined ? { backgroundMusic: draft.backgroundMusic } : {}), ...(draft.backgroundAudioId !== undefined ? { backgroundAudioId: draft.backgroundAudioId } : {}), ...(draft.backgroundPlayback !== undefined ? { backgroundPlayback: draft.backgroundPlayback } : {}) });
     } };
     const skip = () => { if (!busy) {
         removeDemo();
@@ -266,24 +310,30 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
     {demoQuery.isError || audioQuery.isError || openingQuery.isError ? <p role="alert" className="text-xs text-destructive">Could not restore a saved clip or audio. <button type="button" className="underline" onClick={() => { void openingQuery.refetch(); void demoQuery.refetch(); void audioQuery.refetch(); }}>Retry</button></p> : null}</>;
     const controls = <div className={`${styles.demoControls} space-y-4`}>
       <h2 className="text-sm font-semibold">Demo <span className="ml-1 text-xs font-normal text-muted">Optional</span></h2>
-      <fieldset disabled={busy} className="space-y-4">
+      <fieldset disabled={busy} className="min-w-0 space-y-4">
         <div className={styles.demoSourceActions}>
-          <Button type="button" variant="outline" data-demo-source="upload" className={creation.editUploadButton} onClick={() => fileInput.current?.click()}><Upload className="size-5" aria-hidden="true"/>{preview ? "Replace demo" : "First upload demo"}</Button>
-          <Button type="button" variant="outline" className={creation.editUploadButton} onClick={() => setAssetsOpen(true)}><FolderOpen className="size-5" aria-hidden="true"/>Choose from Creative Assets</Button>
+          <Button type="button" variant="outline" data-demo-source="upload" className={creation.editUploadButton} onClick={() => fileInput.current?.click()}><Upload className="size-4" aria-hidden="true"/>{preview ? "Replace demo" : "Upload demo"}</Button>
+          <Button type="button" variant="outline" className={creation.editUploadButton} onClick={() => setAssetsOpen(true)}><FolderOpen className="size-4" aria-hidden="true"/>Creative Assets</Button>
           <input ref={fileInput} type="file" accept="video/mp4,video/quicktime,video/webm" className="sr-only" aria-label="Upload demo video" onChange={event => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; if (file) void chooseVideo(file); }}/>
         </div>
         {preview ? <div className="flex items-center gap-2"><p className="min-w-0 flex-1 truncate text-xs text-muted" title={preview.name}>{preview.name}</p><Button type="button" size="sm" variant="ghost" onClick={removeDemo}>Remove</Button></div>
           : <p className="text-xs leading-5 text-muted">MP4, MOV or WebM · 1–120 seconds · Up to 250 MB.</p>}
         <section className={creation.editGroup} aria-label="Background audio settings">
-          <div className={creation.finishRow}><span className="text-sm font-medium">Background audio</span><button type="button" role="switch" aria-label="Background audio" aria-checked={draft.backgroundMusic === true} disabled={busy} className={styles.backgroundAudioSwitch} onClick={() => { if (!busy) change({ ...draft, backgroundMusic: !draft.backgroundMusic }); }}><span className={styles.backgroundAudioTrack} aria-hidden="true"><span className={styles.backgroundAudioThumb}/></span></button></div>
+          {referenceAudio ? <p className="text-xs leading-5 text-muted">Reference audio: {referenceAudio.title}. This track continues across your video. Demo speech stays audible.</p> : <div className={creation.finishRow}><span className="text-sm font-medium">Background audio</span><button type="button" role="switch" aria-label="Background audio" aria-checked={draft.backgroundMusic === true} disabled={busy} className={styles.backgroundAudioSwitch} onClick={() => { if (!busy) change({ ...draft, backgroundMusic: !draft.backgroundMusic }); }}><span className={styles.backgroundAudioTrack} aria-hidden="true"><span className={styles.backgroundAudioThumb}/></span></button></div>}
+          {!referenceAudio ? <div className={styles.backgroundChoices}>
+            <div className="flex flex-wrap gap-2"><WorkflowFilePicker attachment={backgroundAttachment} kind="audio" label="Upload background audio" buttonLabel="Upload audio" disabled={busy} /><WorkflowSavedAudioPicker ownerId={owner} attachment={backgroundAttachment} buttonLabel="Audio Library" disabled={busy} localPreview={localPreview} /></div>
+            {draft.backgroundAudioId || backgroundAudio.asset ? <><p className="break-words text-xs text-muted">{backgroundQuery.data?.title ?? backgroundAudio.asset?.name ?? "Loading your audio…"}</p><audio controls src={backgroundQuery.data?.url ?? backgroundAudio.asset?.url} className="h-8 w-full" aria-label="Selected background audio" /><div className="flex items-center justify-between gap-2"><label className="text-xs text-muted">Playback<select aria-label="Background audio playback" value={draft.backgroundPlayback ?? "repeat"} onChange={event => change({ ...draft, backgroundPlayback: event.target.value as "once" | "repeat" })} className={field}><option value="once">Play once</option><option value="repeat">Repeat to fit</option></select></label><Button type="button" size="sm" variant="ghost" onClick={backgroundAttachment.remove}>Remove audio</Button></div></> : null}
+            <p className="text-xs leading-5 text-muted">Plays across your video. Turn on to use the default track, or choose your own.</p>
+            {backgroundError || backgroundAudio.error ? <p role="alert" className="text-xs text-destructive">{backgroundError ?? backgroundAudio.error}</p> : null}
+            {backgroundQuery.isError ? <p role="alert" className="text-xs text-destructive">Could not restore background audio. <button type="button" className="underline" onClick={() => void backgroundQuery.refetch()}>Retry</button></p> : null}
+          </div> : null}
         </section>
       </fieldset>
       {problems}
     </div>;
     const editingControls = <div className="space-y-4">
-      <div><h2 className="text-sm font-semibold">Editing demo</h2><p className="mt-1 truncate text-xs text-muted" title={preview?.name}>{preview?.name ?? (localPreview ? "Preview clip unavailable" : "Restoring your demo…")}</p></div>
-      {preview ? <fieldset disabled={busy} className="space-y-4">
-        <section className="space-y-3" aria-label="Demo trim"><h3 className="text-sm font-semibold">Trim demo</h3><div className="grid grid-cols-2 gap-3">{(["trimStartMs", "trimEndMs"] as const).map((name, index) => <label key={name} className="space-y-2 text-xs text-muted">{index === 0 ? "Start" : "End"} (seconds)<input type="number" aria-label={index === 0 ? "Demo trim start" : "Demo trim end"} min={0} max={duration} step={.1} value={draft.editing[name] / 1000} className={field} onChange={event => trimDemo(name === "trimStartMs" ? Math.round(Number(event.target.value) * 1000) : draft.editing.trimStartMs, name === "trimEndMs" ? Math.round(Number(event.target.value) * 1000) : draft.editing.trimEndMs)}/></label>)}</div><p className="text-xs text-muted">Selected: {Math.max(0, draft.editing.trimEndMs - draft.editing.trimStartMs) / 1000}s</p></section>
+      {preview ? <fieldset disabled={busy} className="min-w-0 space-y-4">
+        <section aria-label="Demo trim"><details className={styles.demoOptions}><summary>Trim demo <span>{Math.max(0, draft.editing.trimEndMs - draft.editing.trimStartMs) / 1000}s selected</span></summary><div className="mt-3 space-y-3"><div className="grid grid-cols-2 gap-3">{(["trimStartMs", "trimEndMs"] as const).map((name, index) => <label key={name} className="space-y-2 text-xs text-muted">{index === 0 ? "Start" : "End"} (seconds)<input type="number" aria-label={index === 0 ? "Demo trim start" : "Demo trim end"} min={0} max={duration} step={.1} value={draft.editing[name] / 1000} className={field} onChange={event => trimDemo(name === "trimStartMs" ? Math.round(Number(event.target.value) * 1000) : draft.editing.trimStartMs, name === "trimEndMs" ? Math.round(Number(event.target.value) * 1000) : draft.editing.trimEndMs)}/></label>)}</div><p className="text-xs text-muted">Selected: {Math.max(0, draft.editing.trimEndMs - draft.editing.trimStartMs) / 1000}s</p></div></details></section>
         <FormatVideoTextFields editing={draft.editing} onChange={editing => change({ ...draft, editing })} timeMs={previewTime} onSeek={timeMs => { if (editPlayer.current) editPlayer.current.currentTime = (draft.editing.trimStartMs + timeMs) / 1000; setPreviewTime(timeMs); }} />
         {textMayBeCropped ? <p role="status" className="text-xs leading-5 text-muted">Your crop may cut off this heading. Move the text inside the visible area or adjust Crop & zoom before saving.</p> : null}
         <details className={styles.demoOptions}><summary>Crop & zoom <span>{draft.framing ? "Custom framing" : "Full clip"}</span></summary><div className="mt-3 space-y-3">
@@ -291,7 +341,7 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
         </div></details>
         <details className={styles.demoOptions}><summary>Sound <span>{draft.audioId || audio.asset ? "Audio added" : `${Math.round(draft.editing.originalVolume * 100)}% original`}</span></summary><div className="mt-3 space-y-3">
           <label className="block space-y-2 text-xs text-muted">Original sound · {Math.round(draft.editing.originalVolume * 100)}%<input type="range" aria-label="Demo original volume" min={0} max={100} value={draft.editing.originalVolume * 100} onChange={event => change({ ...draft, editing: { ...draft.editing, originalVolume: Number(event.target.value) / 100 } })} className="w-full accent-primary"/></label>
-          <div className="flex flex-wrap gap-2"><WorkflowFilePicker attachment={audioAttachment} kind="audio" label="Upload demo audio" buttonLabel="Upload audio" disabled={busy}/><WorkflowSavedAudioPicker ownerId={owner} attachment={audioAttachment} disabled={busy || !enabled}/></div>
+          <div className="flex flex-wrap gap-2"><WorkflowFilePicker attachment={audioAttachment} kind="audio" label="Upload demo audio" buttonLabel="Upload audio" disabled={busy}/><WorkflowSavedAudioPicker ownerId={owner} attachment={audioAttachment} disabled={busy} localPreview={localPreview}/></div>
           {draft.audioId || audio.asset ? <><p className="break-words text-xs text-muted">{audioQuery.data?.title ?? audio.asset?.name}</p><Button type="button" size="sm" variant="ghost" onClick={audioAttachment.remove}>Remove audio</Button><label className="block space-y-2 text-xs text-muted">Added audio · {Math.round(draft.editing.musicVolume * 100)}%<input type="range" aria-label="Demo added audio volume" min={0} max={100} value={draft.editing.musicVolume * 100} className="w-full accent-primary" onChange={event => change({ ...draft, editing: { ...draft.editing, musicVolume: Number(event.target.value) / 100 } })}/></label><label className="block space-y-2 text-xs text-muted">Playback<select aria-label="Demo audio playback" value={draft.playback} className={field} onChange={event => change({ ...draft, playback: event.target.value as "once" | "repeat" })}><option value="once">Play once</option><option value="repeat">Repeat to fit demo</option></select></label></> : null}
           <p className="text-xs leading-5 text-muted">Added audio plays during the demo only. The sound mix is applied when you save the final video.</p>
         </div></details>
@@ -300,7 +350,7 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
       </fieldset> : <p className="text-sm leading-6 text-muted">Add a demo in the Demo section to edit it here.</p>}
       {problems}
     </div>;
-    const editingActions = <div className="space-y-2"><div className="flex flex-wrap items-center gap-2"><Button type="button" className="h-10 rounded-lg px-4" disabled={busy || !preview || !!validation} onClick={() => { if (!busy && preview && !validation) onEditDone?.(); }}>Apply demo edits</Button>{onEditDone ? <Button type="button" variant="outline" className="h-10 rounded-lg px-3" onClick={onEditDone}><ArrowLeft className="size-4" aria-hidden="true" />Back to previews</Button> : null}</div><p className="text-xs leading-5 text-muted">Your edits are kept for this demo. Choose Schedule in Demo to prepare your final video.</p></div>;
+    const editingActions = <div className={styles.clipActionContent}><div className={styles.clipActionButtons}><Button type="button" className="h-10 rounded-lg px-4" disabled={busy || !preview || !!validation} onClick={() => { if (!busy && preview && !validation) onEditDone?.(); }}>Apply demo edits</Button>{onEditDone ? <Button type="button" variant="outline" className="h-10 rounded-lg px-3" onClick={onEditDone}><ArrowLeft className="size-4" aria-hidden="true" />Back to previews</Button> : null}</div><p className="text-xs leading-5 text-muted">Edits stay with this demo. Prepare the final video in Schedule.</p></div>;
     const previewAudioUrl = audioQuery.data?.url ?? audio.asset?.url;
     function synchronizeEditSound() {
         const sound = editAudio.current, video = editPlayer.current;
@@ -312,8 +362,8 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
         if (Math.abs(sound.currentTime - position) > .15) sound.currentTime = position;
         if (!video.paused) void sound.play().catch(() => {});
     }
-    const editingPreview = <section className="flex flex-col items-center gap-4" aria-label="Demo edit preview">{preview ? <h3 className="self-start text-sm font-semibold">{editActive ? `Demo · ${draft.framing ? "Full clip preview" : "Live preview"}` : "Demo video"}</h3> : null}
-      {preview ? <div data-clip-media className="relative max-h-[65dvh] w-full max-w-[min(420px,55dvh)] overflow-hidden rounded-xl bg-black" style={{ aspectRatio: `${width}/${height}`, "--clip-aspect": width / height } as CSSProperties}>
+    const editingPreview = <section className="flex flex-col items-center gap-4" aria-label="Demo edit preview" style={{ "--clip-aspect": width / height } as CSSProperties}>{preview ? <div className={styles.clipPreviewHeading}><h3>{editActive ? draft.framing ? "Full clip preview" : "Live preview" : "Demo video"}</h3><span>{width * 16 === height * 9 ? "9:16" : width * 9 === height * 16 ? "16:9" : width === height ? "1:1" : width < height ? "Portrait" : "Landscape"}</span></div> : null}
+      {preview ? <div data-clip-media data-clip-orientation={width < height ? "portrait" : width > height ? "landscape" : "square"} className="relative max-h-[65dvh] w-full max-w-[min(420px,55dvh)] overflow-hidden rounded-xl bg-black" style={{ aspectRatio: `${width}/${height}`, "--clip-aspect": width / height } as CSSProperties}>
         <video ref={editPlayer} src={preview.url} aria-label="Demo video being edited" controls playsInline preload="metadata" className="size-full object-contain" onLoadedMetadata={event => {
           const video = event.currentTarget;
           if (video.videoWidth > 0 && video.videoHeight > 0) setNaturalSize({ width: video.videoWidth, height: video.videoHeight });
@@ -325,7 +375,7 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
           if (video.currentTime * 1000 >= draft.editing.trimEndMs) { video.pause(); video.currentTime = draft.editing.trimStartMs / 1000; }
           synchronizeEditSound();
         }} />
-        {overlays.map((text, overlayIndex) => { const layout = textLayouts[overlayIndex]; return previewTime >= text.startMs && previewTime < text.endMs ? <svg key={overlayIndex} aria-label={`Demo text overlay ${overlayIndex + 1} preview`} viewBox={`0 0 ${width} ${height}`} className="pointer-events-none absolute inset-0 size-full"><g fill={text.color} stroke="black" strokeWidth={width / 540} paintOrder="stroke" fontFamily="Arial, sans-serif" fontWeight={700} fontSize={layout.fontSize} textAnchor="middle">{layout.lines.map((line, index) => <text key={index} x={width / 2} y={layout.y + index * layout.lineHeight + layout.fontSize}>{line}</text>)}</g></svg> : null; })}
+        {overlays.map((text, overlayIndex) => previewTime >= text.startMs && previewTime < text.endMs ? <FormatVideoTextOverlay key={overlayIndex} label={`Demo text overlay ${overlayIndex + 1} preview`} text={text} width={width} height={height} /> : null)}
       </div> : <div className={styles.emptyClip}>
         <span className={styles.emptyClipIcon}><Video aria-hidden="true" /></span>
         <div className={styles.emptyClipCopy}>
@@ -335,9 +385,9 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
         {onAdd && !active ? <Button type="button" variant="outline" disabled={busy} onClick={onAdd}>{draft.demoId ? "Choose another demo" : "Add demo"}</Button> : null}
       </div>}
       {previewAudioUrl ? <audio ref={editAudio} src={previewAudioUrl} loop={draft.playback === "repeat"} preload="metadata" aria-label="Demo added audio preview" /> : null}
-      {!editActive && preview ? <><p className="max-w-full truncate text-xs text-muted" title={preview.name}>{preview.name}</p><div className={styles.clipCardActions}><Button type="button" variant="outline" data-edit-clip="demo" disabled={busy || !onEdit} onClick={onEdit}>Edit demo video</Button><Button type="button" variant="outline" aria-label="Change demo video" disabled={busy || !onAdd} onClick={onAdd}>Change</Button></div>{draft.framing ? <p className="text-xs leading-5 text-muted">Full clip preview. Your crop applies when you save.</p> : null}</> : editActive ? <p className="max-w-md text-center text-xs leading-5 text-muted">{draft.framing ? "Full clip preview. Review your crop in Crop & zoom; it applies when you save." : "Trim, text and sound apply to this demo only."}</p> : null}
+      {!editActive && preview ? <><p className="max-w-full truncate text-xs text-muted" title={preview.name}>{preview.name}</p><div className={styles.clipCardActions}><Button type="button" variant="outline" data-edit-clip="demo" disabled={busy || !onEdit} onClick={onEdit}>Edit demo video</Button><Button type="button" variant="outline" aria-label="Change demo video" disabled={busy || !onAdd} onClick={onAdd}>Change</Button></div>{draft.framing ? <p className="text-xs leading-5 text-muted">Full clip preview. Your crop applies when you save.</p> : null}</> : editActive && draft.framing ? <p className="max-w-md text-center text-xs leading-5 text-muted">Full clip preview. Review your crop in Crop & zoom; it applies when you save.</p> : null}
     </section>;
-    const actions = <div className="space-y-2"><Button type="button" className="h-11 w-full rounded-lg" disabled={pendingSource || selection.busy || !sourcePreview && !opening && !demo || Boolean(validation && preview)} onClick={onContinue}>Schedule</Button><p className="text-xs leading-5 text-muted">Review your {hasDemo && hasOpening ? "hook and demo" : "video"} and choose when to post. Your final video is prepared in Schedule.</p>
+    const actions = <div className="space-y-2"><Button type="button" className="h-11 w-full rounded-lg" disabled={pendingSource || selection.busy || !sourcePreview && !opening && !demo || Boolean(validation && preview)} onClick={onContinue}>Schedule</Button><p className="text-xs leading-5 text-muted">Review your {hasDemo && hasOpening ? format === "wall_text" ? "wall-of-text video and demo" : "hook and demo" : "video"} and choose when to post. Your final video is prepared in Schedule.</p>
     {opening && !draft.backgroundMusic ? <Button type="button" variant="ghost" className="w-full" disabled={busy} onClick={skip}>Continue without demo</Button> : null}
   </div>;
     const results = <section className="mx-auto w-full max-w-3xl space-y-5 p-4 sm:p-6" aria-label="Opening and demo preview"><h2 className="text-base font-semibold">{currentFinal ? "Your final video" : "Your video sequence"}</h2>{currentFinal ? <video src={currentFinal.url} controls playsInline aria-label="Merged final video" className="mx-auto max-h-[65dvh] max-w-full rounded-xl"/> : <div className="grid grid-cols-1 gap-5 sm:grid-cols-2"><figure><figcaption className="mb-3 text-sm font-medium">1 · {format === "wall_text" ? "Wall of text" : "Hook"}</figcaption>{opening ? <video src={opening.url} controls playsInline preload="metadata" aria-label="Saved opening video" className="max-h-80 w-full rounded-xl bg-black object-contain"/> : <div className="flex min-h-48 items-center justify-center rounded-xl border border-border p-5 text-center text-sm text-muted">Save your opening from its preview.</div>}</figure><figure><figcaption className="mb-3 text-sm font-medium">2 · Demo</figcaption>{preview ? <video ref={previewPlayer} src={preview.url} controls playsInline preload="metadata" aria-label="Selected demo video" className="max-h-80 w-full rounded-xl bg-black object-contain" onLoadedMetadata={event => { const length = event.currentTarget.duration; if (Number.isFinite(length) && length >= 1 && length <= 120) {
@@ -349,13 +399,69 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
         event.currentTarget.pause();
         event.currentTarget.currentTime = draft.editing.trimStartMs / 1000;
     } }}/> : <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border p-5 text-sm text-muted"><Video aria-hidden="true"/>Add an optional demo</div>}</figure></div>}<p className="text-center text-sm text-muted">{preview && opening ? `Opening → Demo · ${Math.round(((openingQuery.data?.durationSeconds ?? 0) + (draft.editing.trimEndMs - draft.editing.trimStartMs) / 1000) * 10) / 10}s total` : preview && !hasOpening ? "This demo will be scheduled on its own." : "The demo plays after your saved opening."}</p>{format === "wall_text" ? <p className="text-center text-xs leading-5 text-muted">Your wall of text stays on the opening. The demo uses its own sound and framing.</p> : null}</section>;
-    const schedulePreview = <section className="space-y-5 p-5" aria-label="Schedule video preview"><h2 className="text-base font-semibold">{hasDemo && hasOpening ? "Your hook and demo" : "Your video"}</h2><p className="text-sm text-muted">{hasDemo && hasOpening ? "The hook plays first, followed by the demo, in one scheduled post." : "Review your video before confirming its schedule."}</p>{currentFinal ? <section className="space-y-3" aria-label="Your final video"><h3 className="text-sm font-medium">Your final video</h3><video src={currentFinal.url} controls playsInline aria-label="Merged final video" className="mx-auto max-h-[65dvh] max-w-full rounded-xl" /></section> : <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">{opening || sourcePreview ? <section aria-label="Scheduled hook"><h3 className="mb-3 text-sm font-medium">1 · Hook</h3><video src={opening?.url ?? sourcePreview?.url} controls playsInline preload="metadata" className="max-h-80 w-full rounded-xl bg-black object-contain" /></section> : null}{preview ? <section aria-label="Scheduled demo"><h3 className="mb-3 text-sm font-medium">{hasOpening ? "2 · Demo" : "Demo"}</h3><video src={preview.url} controls playsInline preload="metadata" className="max-h-80 w-full rounded-xl bg-black object-contain" /></section> : null}</div>}<div ref={setScheduleProgressTarget} />{!currentFinal && !activeSave ? <><p role="status" className="text-sm text-muted">{localPreview ? "Preview · rendering and scheduling disabled" : hasOpening && openingPreparation?.error ? openingPreparation.error : (hasOpening && !opening ? openingPreparation?.message ?? "Preparing your hook video…" : !hasOpening && !hasDemo ? "Add a hook video in Create or a demo in Demo before scheduling." : !hasDemo && !draft.backgroundMusic ? "Your video is ready to schedule." : selection.busy ? "Uploading your demo…" : validation ?? "Preparing your final video…")}</p>{problems}{enabled && (hasOpening || hasDemo) && (!hasOpening || !openingPreparation?.busy) ? <Button type="button" variant="outline" disabled={busy} onClick={onContinue}>{hasOpening && openingPreparation?.error ? "Retry preparation" : "Prepare final video"}</Button> : null}</> : null}</section>;
-    return <>{active && controlsTarget ? createPortal(controls, controlsTarget) : null}{active && resultsTarget ? createPortal(results, resultsTarget) : null}{actionsTarget ? createPortal(actions, actionsTarget) : null}{scheduleActive && scheduleResultsTarget ? createPortal(schedulePreview, scheduleResultsTarget) : null}{activeSave ? <DemoSaveRun key={JSON.stringify([activeSave.opening?.id ?? null, activeSave.openingRevision, activeSave.demo?.id ?? "opening-only", activeSave.draft])} save={activeSave} ownerId={owner} format={format} enabled={enabled} pendingSource={pendingSource} onBusy={reportSaveBusy} onSaved={saved} onContinue={onContinue} actionsTarget={scheduleProgressTarget} /> : null}{editActive && editControlsTarget ? createPortal(editingControls, editControlsTarget) : null}{(editActive || editPreviewActive) && editResultsTarget ? createPortal(editingPreview, editResultsTarget) : null}{editActive && editActionsTarget ? createPortal(editingActions, editActionsTarget) : null}<WorkflowVideoAssetPicker open={assetsOpen && active} onOpenChange={setAssetsOpen} ownerId={owner} selectedId={demo?.id} description="Choose a ready video to publish on its own or after your hook." previewAssets={previewAssets} onSelect={asset => { if (busy || !selection.selectAsset(asset))
+    // Publication still requires the verified saved output. Local sequence
+    // playback is independent of that gate and never becomes onSaved output.
+    const scheduleFinal = pendingSource ? null : currentFinal ?? (finalVideo && (!hasDemo && !draft.backgroundMusic || finalVideo.id !== opening?.id) ? finalVideo : !hasDemo && !draft.backgroundMusic ? opening : null);
+    const referenceMusic = openingPreview?.referenceAudio ?? (referenceAudio ? { url: referenceAudio.audioUrl, volume: referenceAudio.volume, playback: "repeat" as const } : null);
+    const sequenceSegments: SequencePreviewSegment[] = [];
+    const rawOpening = openingPreview?.segment ?? (sourcePreview?.duration && sourcePreview.duration > 0 ? {
+      id: videoId ?? "opening-preview", label: format === "wall_text" ? "Wall of text" : "Hook", url: sourcePreview.url,
+      durationSeconds: sourcePreview.duration, width: openingAsset?.width ?? 1080, height: openingAsset?.height ?? 1920,
+    } : openingAsset ? { id: openingAsset.id, label: format === "wall_text" ? "Wall of text" : "Hook", url: openingAsset.url,
+      durationSeconds: openingAsset.durationSeconds ?? 0, width: openingAsset.width ?? 1080, height: openingAsset.height ?? 1920 } : null);
+    if (!pendingSource && rawOpening) sequenceSegments.push({ ...rawOpening, id: `opening:${rawOpening.id}` });
+    if (!pendingSource && preview && duration > 0) {
+      const demoReference = getReferenceAudioPreview(demo);
+      const requiresPreparation = !canReuseUnchangedHookSource(demo ?? null, exportEditing, null);
+      const rawDemo: SequencePreviewSegment = { id: `demo:${demo?.id ?? draft.demoId ?? preview.url}`, label: "Demo", url: preview.url,
+        durationSeconds: duration, width, height, editing: exportEditing, framing: draft.framing,
+        addedAudio: audioQuery.data?.url || audio.asset?.url ? { url: audioQuery.data?.url ?? audio.asset!.url, volume: exportEditing.musicVolume, playback: draft.playback } : null };
+      sequenceSegments.push(mapSequencePreviewDemoReference(rawDemo, demoReference, { openingHasReference: Boolean(referenceMusic), requiresPreparation,
+        referenceVolume: rawDemo.addedAudio ? exportEditing.musicVolume : requiresPreparation ? .2 : demoReference?.volume }));
+    }
+    const customMusicUrl = backgroundQuery.data?.url ?? backgroundAudio.asset?.url;
+    const sequenceMusic: SequencePreviewAudio | null = referenceMusic ?? (draft.backgroundMusic ? customMusicUrl ? { url: customMusicUrl, volume: .2, playback: draft.backgroundPlayback ?? "repeat" }
+      : defaultMusicPreview?.owner === owner && defaultMusicQuery.data ? { url: defaultMusicPreview.url, volume: .2, playback: defaultMusicPreview.playback } : null : null);
+    const sequenceKey = JSON.stringify([sequenceSegments, sequenceMusic, openingRevision]);
+    const sequenceInUse = watchedSequence === sequenceKey && finishedSequence !== sequenceKey;
+    const showSequence = sequenceSegments.length > 0 && (!scheduleFinal || sequenceInUse);
+    const sequenceDuration = sequenceSegments.reduce((total, segment) => total + (segment.editing ? segment.editing.trimEndMs - segment.editing.trimStartMs : segment.durationSeconds * 1000), 0) / 1000;
+    const musicPending = needsDefaultMusic && !sequenceMusic;
+    const demoAudioPending = hasDemo && draft.audioId && !audioQuery.data?.url && !audio.asset?.url;
+    const customMusicPending = draft.backgroundMusic && draft.backgroundAudioId && !customMusicUrl && !referenceMusic;
+    const sequenceDisabledReason = openingPreview?.disabledReason ?? validation ?? (videoId && !openingPreview ? "Loading hook settings…" : hasDemo && !preview ? "Loading your demo…"
+      : demoAudioPending ? audioQuery.isError ? "Demo audio could not load. Return to Edit and choose another track." : !enabled || !owner ? "Sign in to preview your selected demo audio." : "Loading demo audio…"
+      : customMusicPending ? backgroundQuery.isError ? "Background music could not load. Return to Edit and choose another track." : !enabled || !owner ? "Sign in to preview your selected background music." : "Loading background music…"
+      : musicPending ? !enabled || !owner ? "Background music needs a signed-in session. Return to Edit and turn it off to preview original sound." : defaultMusicQuery.isError ? "Background music could not load. Return to Edit and choose another track." : "Loading background music…" : null);
+    const preparationError = hasOpening ? openingPreparation?.error : null;
+    const finalInfo = scheduleFinal && finalMediaInfo?.id === scheduleFinal.id ? finalMediaInfo : null;
+    const displayedDuration = showSequence ? sequenceDuration : finalInfo?.duration;
+    const finalDuration = displayedDuration && displayedDuration > 0 ? `${Math.floor(displayedDuration / 60)}:${String(Math.floor(displayedDuration % 60)).padStart(2, "0")}` : null;
+    const finalStatus = finalInfo?.error && !showSequence ? "Preview unavailable" : scheduleFinal ? localPreview ? "Sample" : "Ready" : preparationError || selection.error || videoError || audioError || backgroundError || validation ? "Needs attention" : showSequence || localPreview ? "Preview" : !hasOpening && !hasDemo && !pendingSource ? "No video" : busy || openingPreparation?.busy ? "Preparing" : "Not ready";
+    const schedulePreview = <section className={scheduleStyles.panel} aria-label="Schedule video preview">
+      <header className={scheduleStyles.heading}><h2>Final video</h2><div className={scheduleStyles.status}><span data-ready={Boolean(scheduleFinal) && !finalInfo?.error}>{finalStatus}</span>{finalDuration ? <span className={scheduleStyles.duration}>{finalDuration}</span> : null}</div></header>
+      <div data-schedule-final className={scheduleStyles.media}>
+        {showSequence ? <WorkflowSequencePreview showDescription={false} segments={sequenceSegments} backgroundAudio={sequenceMusic} active={scheduleActive} className={scheduleStyles.sequence} playbackDisabledReason={sequenceDisabledReason} onPlaybackStart={() => setWatchedSequence(sequenceKey)} /> : scheduleFinal ? <video key={scheduleFinal.id} src={scheduleFinal.url} controls playsInline preload="auto" aria-label="Final video" className={scheduleStyles.video} onLoadedMetadata={event => { const media = event.currentTarget; setFinalMediaInfo({ id: scheduleFinal.id, duration: Number.isFinite(media.duration) ? media.duration : 0, width: media.videoWidth, height: media.videoHeight }); }} onError={() => setFinalMediaInfo({ id: scheduleFinal.id, duration: 0, width: 0, height: 0, error: true })} /> : <div className="flex max-w-sm flex-col items-center gap-3 px-4 py-8 text-center">
+          <span className="flex size-12 items-center justify-center rounded-xl border border-border bg-card-muted text-muted"><Video className="size-5" aria-hidden="true" /></span>
+          <h3 className="text-sm font-medium">{preparationError ? "Your video couldn't be prepared" : localPreview ? "Final video preview" : !hasOpening && !hasDemo ? "No video to prepare yet" : "Preparing your final video"}</h3>
+          <p className="text-xs leading-6 text-muted">{localPreview ? "Add clips to preview them here. Rendering is disabled in this local preview." : !hasOpening && !hasDemo ? "Add a hook or demo to get started." : "Loading your clips. The publishing file prepares separately."}</p>
+        </div>}
+      </div>
+      <div className={scheduleStyles.caption}><p>{finalInfo?.error && !showSequence ? "The video preview could not load. Go back to Edit to check your clip." : showSequence ? `${sequenceSegments.map(segment => segment.label).join(" → ")} · preview. Your publishing file prepares separately.` : hasDemo && hasOpening ? `${format === "wall_text" ? "Wall of text" : "Hook"} + demo · one finished video` : "Review the finished video before scheduling."}{finalInfo && !showSequence && finalInfo.width > 0 && finalInfo.height > 0 ? ` · ${Math.min(finalInfo.width, finalInfo.height)}p` : ""}</p>{showSequence && scheduleFinal ? <Button type="button" variant="ghost" size="sm" onClick={() => setFinishedSequence(sequenceKey)}>View finished video</Button> : null}</div>
+      <div ref={setScheduleProgressTarget} className={scheduleStyles.progress} />
+      {localPreview && scheduleFinal ? <p className={scheduleStyles.notice}>Prepared sample · rendering and scheduling disabled.</p> : null}
+      {!scheduleFinal && !activeSave ? <>
+        <p role="status" className="text-sm leading-6 text-muted">{localPreview ? "Preview · rendering and scheduling disabled" : preparationError ?? (hasOpening && !opening ? openingPreparation?.message ?? "Preparing your hook video…" : selection.busy ? "Uploading your demo…" : validation ?? "Preparing your final video…")}</p>
+        {problems}
+        {enabled && (hasOpening || hasDemo) && (!hasOpening || !openingPreparation?.busy) ? <Button type="button" variant="outline" disabled={busy} onClick={onContinue}>{preparationError ? "Retry preparation" : "Prepare final video"}</Button> : null}
+      </> : null}
+    </section>;
+    return <>{active && controlsTarget ? createPortal(controls, controlsTarget) : null}{active && resultsTarget ? createPortal(results, resultsTarget) : null}{actionsTarget ? createPortal(actions, actionsTarget) : null}{scheduleActive && scheduleResultsTarget ? createPortal(schedulePreview, scheduleResultsTarget) : null}{activeSave ? <DemoSaveRun key={JSON.stringify([activeSave.opening?.id ?? null, activeSave.openingRevision, activeSave.demo?.id ?? "opening-only", activeSave.draft])} save={activeSave} ownerId={owner} format={format} enabled={enabled} pendingSource={pendingSource} onBusy={reportSaveBusy} onSaved={saved} onContinue={onContinue} compact actionsTarget={scheduleProgressTarget} /> : null}{editActive && editControlsTarget ? createPortal(editingControls, editControlsTarget) : null}{(editActive || editPreviewActive) && editResultsTarget ? createPortal(editingPreview, editResultsTarget) : null}{editActive && editActionsTarget ? createPortal(editingActions, editActionsTarget) : null}<WorkflowVideoAssetPicker open={assetsOpen && active} onOpenChange={setAssetsOpen} ownerId={owner} selectedId={demo?.id} description="Choose a ready video to publish on its own or after your hook." previewAssets={previewAssets} onSelect={asset => { if (busy || !selection.selectAsset(asset))
         return false; setVideoError(null); prepareSelection(); selection.setMode("assets"); return true; }}/></>;
 }
 /** An explicit Save freezes the inputs. Each stage has its own durable receipt;
  * reloading/retrying reuses it, and a failed preparation cannot start the join. */
-export function DemoSaveRun({ save, ownerId, format, enabled, onBusy, onSaved, onContinue, pendingSource = false, actionsTarget }: {
+export function DemoSaveRun({ save, ownerId, format, enabled, onBusy, onSaved, onContinue, pendingSource = false, actionsTarget, compact = false }: {
     save: DemoSave;
     ownerId: string | null;
     format: "hook" | "wall_text";
@@ -365,20 +471,21 @@ export function DemoSaveRun({ save, ownerId, format, enabled, onBusy, onSaved, o
     onSaved: (output: VideoOutput) => void;
     onContinue: () => void;
     actionsTarget?: HTMLElement | null;
+    compact?: boolean;
 }) {
     const requiresDemo = save.demo !== null;
     const demoScope = save.demo?.id ?? "opening-only";
     const openingScope = save.opening?.id ?? "demo-only";
     const needsPreparation = requiresDemo && !canReuseUnchangedHookSource(save.demo, save.draft.editing, null);
-    const prep = useWorkflowFinishing({ ownerId, enabled: enabled && needsPreparation, kind: "hook", source: save.demo, demo: null, demoAudio: null, playback: "once", options: DEFAULT_FINISHING_OPTIONS, editing: { ...save.draft.editing, musicVolume: .2 }, scope: `format-demo-prep:${format}:${openingScope}:${demoScope}` });
+    const prep = useWorkflowFinishing({ ownerId, enabled: enabled && needsPreparation, fastStatus: true, kind: "hook", source: save.demo, demo: null, demoAudio: null, playback: "once", options: DEFAULT_FINISHING_OPTIONS, editing: { ...save.draft.editing, musicVolume: .2 }, scope: `format-demo-prep:${format}:${openingScope}:${demoScope}` });
     const editedDemo = needsPreparation ? prep.output : save.demo;
     // Start added audio at the trimmed demo's beginning, not at its raw
     // source timestamp. This optional pass never touches the opening audio.
-    const sound = useWorkflowFinishing({ ownerId, enabled: enabled && requiresDemo && !!save.audio, kind: "hook", source: editedDemo, demo: null, demoAudio: null, playback: "once", options: DEFAULT_FINISHING_OPTIONS, editing: { ...save.draft.editing, text: null, textOverlays: undefined, trimStartMs: 0, trimEndMs: save.draft.editing.trimEndMs - save.draft.editing.trimStartMs, originalVolume: 1 }, backgroundSource: save.audio, backgroundPlayback: save.draft.playback, scope: `format-demo-sound:${format}:${openingScope}:${demoScope}`, demoFramingError: !editedDemo ? "Preparing your demo…" : null });
+    const sound = useWorkflowFinishing({ ownerId, enabled: enabled && requiresDemo && !!save.audio, fastStatus: true, kind: "hook", source: editedDemo, demo: null, demoAudio: null, playback: "once", options: DEFAULT_FINISHING_OPTIONS, editing: { ...save.draft.editing, text: null, textOverlays: undefined, trimStartMs: 0, trimEndMs: save.draft.editing.trimEndMs - save.draft.editing.trimStartMs, originalVolume: 1 }, backgroundSource: save.audio, backgroundPlayback: save.draft.playback, scope: `format-demo-sound:${format}:${openingScope}:${demoScope}`, demoFramingError: !editedDemo ? "Preparing your demo…" : null });
     const prepared = save.audio ? sound.output : editedDemo;
     const framing = trimmedDemoFraming(save.draft.framing, save.draft.editing);
     // Apply default music once, after clip edits, across the saved sequence.
-    const join = useWorkflowFinishing({ ownerId, enabled, kind: "hook", source: save.opening ?? prepared, demo: null, demoSource: save.opening && requiresDemo ? prepared : null, demoAudio: null, playback: "once", options: { ...DEFAULT_FINISHING_OPTIONS, backgroundMusic: save.draft.backgroundMusic === true }, demoFraming: save.opening && requiresDemo ? framing : null, sourceFraming: !save.opening ? framing : null, reuseUnchangedSource: !save.opening && !!prepared && !framing && canReuseUnchangedHookSource(prepared, defaultDemoEdit(prepared.durationSeconds ?? 0), null), scope: `format-demo:${format}:${openingScope}`, demoFramingError: requiresDemo && !prepared ? "Preparing the demo before joining…" : null });
+    const join = useWorkflowFinishing({ ownerId, enabled, fastStatus: true, kind: "hook", source: save.opening ?? prepared, demo: null, demoSource: save.opening && requiresDemo ? prepared : null, demoAudio: null, playback: "once", options: { ...DEFAULT_FINISHING_OPTIONS, backgroundMusic: save.draft.backgroundMusic === true }, backgroundSource: save.background, backgroundPlayback: save.draft.backgroundPlayback ?? "repeat", demoFraming: save.opening && requiresDemo ? framing : null, sourceFraming: !save.opening ? framing : null, reuseUnchangedSource: !save.opening && !!prepared && !framing && canReuseUnchangedHookSource(prepared, defaultDemoEdit(prepared.durationSeconds ?? 0), null), scope: `format-demo:${format}:${openingScope}`, demoFramingError: requiresDemo && !prepared ? "Preparing the demo before joining…" : null });
     const attempted = useRef({ prep: false, sound: false, join: false });
     const current = !requiresDemo || prepared ? join : editedDemo && save.audio ? sound : prep;
     const action = current.action;
@@ -399,5 +506,15 @@ export function DemoSaveRun({ save, ownerId, format, enabled, onBusy, onSaved, o
     useEffect(() => { if (join.output)
         onSaved({ id: join.output.id, kind: "media_asset", url: join.output.url, title: join.output.title }); }, [join.output, onSaved]);
     const actions = join.output ? <><Button type="button" disabled={pendingSource} className="h-10 rounded-lg px-4" onClick={onContinue}>Continue to Schedule</Button><p role="status" className="text-xs text-muted">{save.opening && requiresDemo ? "Your opening and demo are saved as one video." : "Your final video is ready."}</p></> : <><Button type="button" className="h-10 rounded-lg px-4" disabled={pendingSource || !error && action.disabled} onClick={() => { if (!pendingSource) action.onAction(); }}>{error || ["failed", "cancelled"].includes(current.status?.outcome ?? "") ? "Retry final video" : !requiresDemo || prepared ? "Saving your video…" : "Preparing your demo…"}</Button><p role="status" className="text-xs leading-5 text-muted">{action.message}</p>{error ? <p role="alert" className="text-xs text-destructive">{error}</p> : null}<Button type="button" variant="ghost" size="sm" onClick={action.refresh} disabled={action.busy}>Refresh save status</Button>{action.cancel ? <Button type="button" variant="ghost" size="sm" onClick={action.cancel}>Cancel save</Button> : null}</>;
-    return actionsTarget ? createPortal(actions, actionsTarget) : actionsTarget === undefined ? actions : null;
+    const scheduleActions = join.output ? <p role="status" className="text-xs text-muted">Publishing file ready.</p> : <div className="space-y-1">
+      <p role="status" className="text-xs leading-5 text-muted">{error ? "Your publishing file couldn't be prepared." : action.message}</p>
+      {error ? <p role="alert" className="text-xs text-destructive">{error}</p> : null}
+      <div className="flex flex-wrap justify-center gap-1">
+        {error || ["failed", "cancelled"].includes(current.status?.outcome ?? "") ? <Button type="button" variant="outline" size="sm" disabled={pendingSource} onClick={() => { if (!pendingSource) action.onAction(); }}>Retry final video</Button> : null}
+        <Button type="button" variant="ghost" size="sm" onClick={action.refresh} disabled={action.busy}>Refresh status</Button>
+        {action.cancel ? <Button type="button" variant="ghost" size="sm" onClick={action.cancel}>Cancel save</Button> : null}
+      </div>
+    </div>;
+    const content = compact ? scheduleActions : actions;
+    return actionsTarget ? createPortal(content, actionsTarget) : actionsTarget === undefined ? content : null;
 }

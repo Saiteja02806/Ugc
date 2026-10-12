@@ -8,6 +8,8 @@ import { record, SubtitleError } from "../subtitles/contracts.js";
 import { runMediaCommand } from "../subtitles/media.js";
 import { EXPLORE_BACKGROUND_AUDIO_MAX_BYTES, EXPLORE_BACKGROUND_AUDIO_MAX_DURATION_MS, planExploreBackgroundAudio, type ExploreBackgroundPlayback } from "./explore-background-audio.js";
 import { demoFramingExpression, parseDemoFraming, type DemoFraming } from "./explore-finishing-contract.js";
+import { parseExploreFormatEdit, type ExploreFormatEdit } from "./explore-format-edit.js";
+import { prepareExploreFormatEditFilter } from "./explore-format-render.js";
 
 type CompositionTools = { ffmpeg: string; ffprobe: string };
 type VideoInput = { width: number; height: number; durationMs: number; videoIndex: number; audioIndex: number | null };
@@ -95,6 +97,8 @@ export function buildExploreCompositionFilter(videos: VideoInput[], demoAudio?: 
   demoFraming?: DemoFraming;
   sourceFraming?: DemoFraming;
   originalVolume?: number;
+  sourceOriginalVolume?: number;
+  demoOriginalVolume?: number;
 } = {}) {
   const { width, height } = videos[0];
   const filters: string[] = [];
@@ -111,7 +115,8 @@ export function buildExploreCompositionFilter(videos: VideoInput[], demoAudio?: 
     const selected = video.audioIndex === null ? null : { inputIndex: index, audioIndex: video.audioIndex };
     const original = selected === null ? "anullsrc=channel_layout=stereo:sample_rate=48000" : `[${selected.inputIndex}:${selected.audioIndex}]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo`;
     filters.push(`${original},apad,atrim=duration=${seconds},asetpts=PTS-STARTPTS[main${index}]`);
-    filters.push(`[main${index}]${options.originalVolume === undefined ? "anull" : `volume=${options.originalVolume}`}[original${index}]`);
+    const originalVolume = index === 0 ? options.sourceOriginalVolume ?? options.originalVolume : options.demoOriginalVolume ?? options.originalVolume;
+    filters.push(`[main${index}]${originalVolume === undefined ? "anull" : `volume=${originalVolume}`}[original${index}]`);
     if (index === 1 && demoAudio) {
       // Added audio is DEMO-ONLY, never a replacement for original speech.
       // Repeat is explicit; uploaded recordings play once by default.
@@ -145,6 +150,9 @@ export function buildExploreCompositionFilter(videos: VideoInput[], demoAudio?: 
 export async function composeExploreVideo(options: {
   sourcePath: string;
   originalVolume?: number;
+  /** Suppress previously added reference music on the opening while retaining demo speech. */
+  sourceOriginalVolume?: number;
+  demoOriginalVolume?: number;
   musicVolume?: number;
   demoPath?: string;
   demoFraming?: DemoFraming;
@@ -161,9 +169,9 @@ export async function composeExploreVideo(options: {
   tools: CompositionTools;
   subtitleScope?: { language: unknown };
   signal?: AbortSignal;
-}) {
+}, formatEdit?: { editing: ExploreFormatEdit; fontsDir: string }) {
   options.signal?.throwIfAborted();
-  if ([options.originalVolume, options.musicVolume].some(value => value !== undefined && (!Number.isFinite(value) || value < 0 || value > 1))) throw new SubtitleError("COMPOSITION_INPUT_INVALID", "Choose an audio level between 0 and 100 percent.");
+  if ([options.originalVolume, options.sourceOriginalVolume, options.demoOriginalVolume, options.musicVolume].some(value => value !== undefined && (!Number.isFinite(value) || value < 0 || value > 1))) throw new SubtitleError("COMPOSITION_INPUT_INVALID", "Choose an audio level between 0 and 100 percent.");
   const demoFraming = options.demoFraming === undefined ? undefined : parseDemoFraming(options.demoFraming);
   const sourceFraming = options.sourceFraming === undefined ? undefined : parseDemoFraming(options.sourceFraming);
   if (sourceFraming && options.demoPath) throw new SubtitleError("COMPOSITION_FRAMING_INVALID", "Single-clip framing requires one video.");
@@ -177,15 +185,21 @@ export async function composeExploreVideo(options: {
   const demoAudio = options.demoAudioPath ? await probeAudio(options.demoAudioPath, options.tools, options.signal) : undefined;
   const backgroundMusic = options.backgroundMusicPath ? await probeAudio(options.backgroundMusicPath, options.tools, options.signal) : undefined;
   const measuredDurationMs = videos.reduce((sum, video) => sum + video.durationMs, 0);
+  // Trim/text follow composition and mixing on the same timeline as the former
+  // second encode. A format draft can only edit one clip, never an appended demo.
+  if (formatEdit && (options.demoPath || options.subtitleScope)) throw new SubtitleError("COMPOSITION_INPUT_INVALID", "Format editing requires one video without auto subtitles.");
+  const editing = formatEdit ? parseExploreFormatEdit(formatEdit.editing) : null;
+  if (editing && editing.trimEndMs > measuredDurationMs + 50) throw new SubtitleError("COMPOSITION_INPUT_INVALID", "The trim range extends beyond this video.");
+  const targetDurationMs = editing ? editing.trimEndMs - editing.trimStartMs : measuredDurationMs;
   const demoAudioTiming = demoAudio ? planExploreBackgroundAudio(demoAudio.durationMs, videos[1].durationMs, options.demoAudioPlayback) : null;
   const backgroundMusicTiming = backgroundMusic ? planExploreBackgroundAudio(backgroundMusic.durationMs, measuredDurationMs, options.backgroundMusicPlayback) : null;
   // Before creating outputs or any later paid transcription. This is the
   // complete sequence duration, not the length of the generated opening alone.
   if (options.subtitleScope) assertExploreSubtitleScope(options.subtitleScope.language, measuredDurationMs);
   // Validate framing BEFORE any output or later paid transcription is created.
-  const filter = buildExploreCompositionFilter(videos, demoAudio ? { ...demoAudio, playback: options.demoAudioPlayback } : undefined, {
+  let filter = buildExploreCompositionFilter(videos, demoAudio ? { ...demoAudio, playback: options.demoAudioPlayback } : undefined, {
     backgroundMusic: backgroundMusic ? { ...backgroundMusic, inputIndex: videos.length + (demoAudio ? 1 : 0), playback: options.backgroundMusicPlayback, volume: options.musicVolume } : undefined,
-    subtitleAudio: Boolean(options.subtitleScope), demoFraming, sourceFraming, originalVolume: options.originalVolume,
+    subtitleAudio: Boolean(options.subtitleScope), demoFraming, sourceFraming, originalVolume: options.originalVolume, sourceOriginalVolume: options.sourceOriginalVolume, demoOriginalVolume: options.demoOriginalVolume,
   });
   options.signal?.throwIfAborted();
   const paths = [options.sourcePath, options.demoPath, options.demoAudioPath, options.backgroundMusicPath].filter((path): path is string => Boolean(path));
@@ -210,15 +224,21 @@ export async function composeExploreVideo(options: {
       throw new SubtitleError("COMPOSITION_SOURCE_CHANGED", "An audio source changed while preparing the composition. No output was published.");
     }
   }
+  const formatFilter = editing && formatEdit ? await prepareExploreFormatEditFilter({
+    width: videos[0].width, height: videos[0].height, durationMs: measuredDurationMs, editing, workDir,
+    tools: { ...options.tools, fontsDir: formatEdit.fontsDir }, sourceVideo: "formatSourceVideo", sourceAudio: "formatSourceAudio", firstImageInputIndex: paths.length,
+  }) : null;
+  if (formatFilter) filter = `${filter.replaceAll("[video]", "[formatSourceVideo]").replaceAll("[audio]", "[formatSourceAudio]")};${formatFilter.filter}`;
   const args = ["-nostdin", "-hide_banner", "-loglevel", "error", "-n"];
   for (const [index] of paths.entries()) args.push("-protocol_whitelist", "file,pipe", "-i", `input-${index}`);
-  if (demoFraming || sourceFraming) {
+  for (const file of formatFilter?.captionImages ?? []) args.push("-loop", "1", "-framerate", "30", "-i", file);
+  if (demoFraming || sourceFraming || formatFilter) {
     // A bounded recording may exceed Windows' command-line length. The graph
     // is generated from validated numbers, inside this new owned directory.
     await writeFile(join(workDir, "composition.filter"), filter, { flag: "wx" });
     args.push("-filter_complex_script", "composition.filter");
   } else args.push("-filter_complex", filter);
-  args.push("-map", "[video]", "-map", "[audio]", "-t", String(measuredDurationMs / 1000),
+  args.push("-map", formatFilter ? "[v]" : "[video]", "-map", formatFilter ? "[a]" : "[audio]", "-t", String(targetDurationMs / 1000),
     "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-ar", "48000", "-ac", "2", "-movflags", "+faststart", "composed.mp4");
   if (options.subtitleScope) args.push("-map", "[speech]", "-vn", "-t", String(measuredDurationMs / 1000), "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", "speech.wav");
   await runMediaCommand(options.tools.ffmpeg, args, { cwd: workDir, signal: options.signal, timeoutMs: 180_000 });
@@ -229,7 +249,7 @@ export async function composeExploreVideo(options: {
   const video = streams.find((stream) => stream.codec_type === "video"), audio = streams.find((stream) => stream.codec_type === "audio");
   const outputDurationMs = Number(video?.duration ?? format.duration) * 1000;
   if (!video || !audio || video.width !== videos[0].width || video.height !== videos[0].height || audio.codec_name !== "aac" ||
-      !Number.isFinite(outputDurationMs) || Math.abs(outputDurationMs - measuredDurationMs) > 150) {
+      !Number.isFinite(outputDurationMs) || Math.abs(outputDurationMs - targetDurationMs) > 150) {
     throw new SubtitleError("COMPOSITION_OUTPUT_INVALID", "The composition did not preserve its expected dimensions, duration and soundtrack. No output was published.");
   }
   if (options.subtitleScope) assertExploreSubtitleScope(options.subtitleScope.language, outputDurationMs);

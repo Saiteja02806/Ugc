@@ -59,6 +59,7 @@ const schedulingDb = readProjectFile("lib/scheduling/db.ts");
 const schedulingWorkspace = readProjectFile(
   "components/scheduling/scheduling-workspace.tsx",
 );
+const scheduleRefreshPolicy = readProjectFile("lib/scheduling/schedule-refresh-policy.ts");
 const scheduleEditor = readProjectFile(
   "components/scheduling/schedule-editor.tsx",
 );
@@ -738,15 +739,15 @@ test("schedule refreshes share in-flight reads while polling still forces fresh 
   );
   assert.doesNotMatch(scheduleLoad, /fetch\("\/api\/schedules"/);
   assert.match(
-    schedulingWorkspace,
+    scheduleRefreshPolicy,
     /ACTIVE_SCHEDULE_POLL_INTERVAL_MS = 5_000/,
   );
   assert.match(
     schedulingWorkspace,
-    /window\.setInterval\(\(\) => \{[\s\S]*?loadSchedules\(\{ force: true \}\)/,
+    /window\.setTimeout[\s\S]*?loadSchedules\(\{ force: true \}\)/,
   );
   assert.match(
-    schedulingWorkspace,
+    scheduleRefreshPolicy,
     /target\.status === "publishing" \|\| target\.status === "scheduling"[\s\S]*?target\.updatedAt[\s\S]*?ACTIVE_JOB_TIMEOUT_MS/,
   );
 });
@@ -1088,7 +1089,7 @@ test("social scheduling uses one five-minute rule without quarter-hour rounding"
 
   assert.doesNotMatch(carouselScheduleModal, /minimumLeadMinutes \+ 2/);
   assert.match(
-    schedulingWorkspace,
+    scheduleRefreshPolicy,
     /ACTIVE_SCHEDULE_POLL_INTERVAL_MS = 5_000/,
   );
 });

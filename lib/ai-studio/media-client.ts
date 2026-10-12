@@ -30,8 +30,8 @@ export async function fetchAIStudioMediaAssets(params: {
   return data.assets;
 }
 
-export async function fetchAIStudioMediaAsset(assetId: string, token: string, options?: { signal?: AbortSignal }) {
-  const response = await fetch(`/api/media/${encodeURIComponent(assetId)}`, {
+export async function fetchAIStudioMediaAsset(assetId: string, token: string, options?: { signal?: AbortSignal; remixSource?: boolean }) {
+  const response = await fetch(`/api/media/${encodeURIComponent(assetId)}${options?.remixSource ? "?remixSource=1" : ""}`, {
     cache: "no-store",
     signal: options?.signal,
     headers: { Authorization: `Bearer ${token}` },

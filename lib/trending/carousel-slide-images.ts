@@ -1,13 +1,13 @@
 import "server-only";
 
-import { getMediaAssetForOwner, type MediaAssetRow } from "@/lib/media/media-storage";
+import { getMediaAssetsForOwnerByIds, type MediaAssetRow } from "@/lib/media/media-storage";
 import { TrendingCreativeEditAccessError } from "@/lib/trending/creative-edits";
 import { CAROUSEL_SLIDE_IMAGE_PROJECT, CAROUSEL_SLIDE_IMAGE_TYPES } from "./carousel-slide-image-selection";
 
 /** Original and catalogue images use their existing resolvers. Manual slide
  * uploads are verified under the authenticated owner on every save. */
 export async function getOwnedCarouselSlideImages(assetIds: string[], userId: string) {
-  const assets = await Promise.all([...new Set(assetIds)].map(assetId => getMediaAssetForOwner({ assetId, userId })));
+  const assets = await getMediaAssetsForOwnerByIds({ assetIds: [...new Set(assetIds)], userId });
   const images = new Map<string, MediaAssetRow>();
   for (const asset of assets) {
     if (!asset) continue;

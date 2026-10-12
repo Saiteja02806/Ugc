@@ -33,6 +33,23 @@ test("the additive migration admits every influencer model and replays new model
   } finally { await db.close(); }
 });
 
+test("the existing reservation RPC persists an uploaded character reference for every model without a new migration", async () => {
+  const db = await fixture({ promptDriven: true });
+  try {
+    await db.exec(sql);
+    for (const model of ["gpt_image", "gemini_3_pro", "nano_banana_2", "seedream_5_pro", "gpt_image_2_5"]) {
+      const batchId = key(), assetId = randomUUID();
+      const payload = [{ ...input(batchId, model), referenceImageAssetId: assetId, referenceImageUrl: "https://owned.test/uploaded-style.png" }];
+      const first = (await db.query(call, [`attached-${model}`, batchId, fingerprint, payload])).rows;
+      const replay = (await db.query(call, [`attached-${model}`, batchId, fingerprint, payload])).rows;
+      assert.equal(first[0].job.input_json.referenceImageAssetId, assetId);
+      assert.equal(first[0].job.input_json.referenceImageUrl, payload[0].referenceImageUrl);
+      assert.equal(replay[0].job.id, first[0].job.id);
+      assert.equal(replay[0].created, false);
+    }
+  } finally { await db.close(); }
+});
+
 test("Seedream limits and unknown models fail atomically while Sunburst retains long descriptions", async () => {
   const db = await fixture({ promptDriven: true });
   try {

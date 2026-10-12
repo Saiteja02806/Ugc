@@ -40,11 +40,13 @@ function harness({ seedanceEnabled = false } = {}) {
       useCallback(callback) { cursor++; return callback; },
     },
     "next/image": { default: "image" },
-    "lucide-react": Object.fromEntries(["Check", "UserRound", "Video"].map((name) => [name, name])),
+    "lucide-react": Object.fromEntries(["Check", "Plus", "UserRound", "Video"].map((name) => [name, name])),
     "@/components/explore/hook-workflow-media-controls": { WorkflowFilePicker: "picker", WorkflowMediaPlayer: "player" },
     "@/components/explore/workflow-audio-reference": { WorkflowAudioReference: "audio-reference" },
     "@/components/generation/ai-studio-composer": { AiStudioSettingSelect: "select" },
     "@/components/explore/workflow-duration-control": { WorkflowDurationControl: "duration-control" },
+    "@/components/explore/workflow-reference-preview": { WorkflowReferencePreview: "image-preview" },
+    "@/components/explore/workflow-reference-preview.module.css": { default: {} },
     "@/components/ui/button": { Button: "button" },
     "@/components/ui/popover": Object.fromEntries(["Popover", "PopoverContent", "PopoverTitle", "PopoverTrigger"].map((name) => [name, name])),
     "@/lib/ai-studio/creator-references": { CREATOR_REFERENCES: [{ id: "c1", src: "/creator.png", fileName: "creator.png" }] },
@@ -53,6 +55,8 @@ function harness({ seedanceEnabled = false } = {}) {
     "@/lib/utils": { cn: (...values) => values.join(" ") },
     "@/components/explore/workflow-studio.module.css": { default: {} },
     "@/components/explore/workflow-creation.module.css": { default: new Proxy({}, { get: (_, key) => key }) },
+    "@/components/explore/workflow-section-layout.module.css": { default: new Proxy({}, { get: (_, key) => key }) },
+    "@/components/explore/workflow-focused-composer.module.css": { default: new Proxy({}, { get: (_, key) => key }) },
     "react/jsx-runtime": { jsx: element, jsxs: element, Fragment: "fragment" },
   };
   const exported = {};
@@ -74,8 +78,23 @@ test("the actual shared form has labelled fields and forwards user text verbatim
   input.props.onChange({ target: { value: exact } });
   assert.deepEqual(changes, [exact]);
   assert.deepEqual(nodes(tree).filter((node) => ["select", "duration-control"].includes(node.type)).map((node) => node.props.ariaLabel), [
-    "Hook model", "Hook duration", "Hook quality", "Number of hook videos", "Hook aspect ratio",
+    "Hook model", "Hook duration", "Hook aspect ratio", "Hook quality", "Number of hook videos",
   ]);
+});
+
+test("all optional generation references remain visible above instructions and errors stay visible", () => {
+  const tree = harness().render({ creator: { asset: null, loading: false, error: "Choose a smaller image." } });
+  const all = nodes(tree);
+  const references = all.find(node => node.props["aria-label"] === "Optional references");
+  assert.ok(references);
+  assert.equal(nodes(references).filter(node => node.type === "details").length, 0);
+  assert.equal(all.filter(node => node.type === "details").length, 1, "Only output settings use a disclosure");
+  assert.ok(all.indexOf(references) < all.findIndex(node => node.type === "textarea"));
+  assert.ok(nodes(references).some(node => node.type === "audio-reference"));
+  const alert = all.find(node => node.props.role === "alert" && !nodes(references).includes(node));
+  assert.ok(alert);
+  assert.equal(alert.props.children, "Choose a smaller image.");
+  assert.equal(alert.props.hidden, undefined);
 });
 
 test("settings retain their selections when the form rerenders with attachments or instructions", () => {
@@ -164,18 +183,18 @@ test("the shared settings hook owns the draft, applies rapid changes to current 
     assert.match(parent, /useWorkflowGenerationSettings\(/);
     assert.match(parent, /generationSettings=\{generation.settings\}/);
     assert.match(parent, /onGenerationSettingsChange=\{generation.changeSettings\}/);
-    assert.match(parent, /const dirty = Boolean\(selection.dirty \|\| generation.dirty/);
+    assert.match(parent, /const dirty = Boolean\((?:clipsDirty \|\| )?selection.dirty \|\| generation.dirty/);
   }
 });
 
 test("text-only prompts remain valid and local reference previews do not promise unsupported generation behavior", () => {
-  const text = nodes(harness().render()).filter((node) => node.type === "p").map((node) => node.props.children).join(" ");
+  const text = nodes(harness().render()).filter((node) => node.type === "p").flatMap(node => nodes(node).map(child => typeof child.props.children === "string" ? child.props.children : "")).join(" ");
   assert.match(text, /Text-only prompts are supported; reference images are optional/);
   assert.match(text, /Use Seedance 2.5 for a video reference up to 30 seconds/);
   assert.doesNotMatch(source, /disabled=\{!creator.asset|instructions.*creator.asset/);
   const audio = read("components/explore/workflow-audio-reference.tsx");
-  assert.match(audio, /Main voice reference/);
-  assert.match(audio, /Voice guidance · Up to 30 seconds/);
+  assert.match(audio, /<PopoverTitle>Voice reference<\/PopoverTitle>/);
+  assert.match(audio, /Requires Seedance 2\.5 · Up to 30 seconds/);
   assert.doesNotMatch(audio, /voice—not background music or demo audio/);
   assert.doesNotMatch(audio, /Exact recording<\/Button>/);
   assert.match(audio, /maxDuration: 30/);
@@ -241,21 +260,15 @@ test("the form cannot call providers, persist drafts or inject instructions", ()
   assert.doesNotMatch(source, /onInstructionsChange\(.*(?:trim|replace|concat)/);
 });
 
-test("available creator imagery is blurred without selecting it; selected imagery is sharp", () => {
+test("image preview appears only for the image the user actually selected", () => {
   const actual = harness();
-  const available = nodes(actual.render()).filter((node) => node.type === "image" && node.props.fill);
-  assert.equal(available.length, 1);
-  assert.equal(available[0].props.src, "/creator.png");
-  assert.equal(available[0].props.className, "referenceAvailable");
-  assert.equal(available[0].props["aria-hidden"], "true");
+  assert.equal(nodes(actual.render()).filter(node => node.type === "image-preview").length, 0);
   const asset = { name: "chosen.png", url: "blob:chosen" };
-  const selected = nodes(actual.render({ creator: { asset } })).filter((node) => node.type === "image" && node.props.fill);
+  const selected = nodes(actual.render({ creator: { asset } })).filter(node => node.type === "image-preview");
   assert.equal(selected.length, 1);
-  assert.equal(selected[0].props.src, asset.url);
-  assert.equal(selected[0].props.className, "referenceMedia");
-  const css = read("components/explore/workflow-creation.module.css");
-  assert.match(css, /\.referenceAvailable[^}]*filter: blur\(2px\)/);
-  assert.doesNotMatch(css.match(/\.referenceMedia, \.referenceAvailable\s*\{[^}]+\}/)?.[0] ?? "", /filter:/);
+  assert.equal(selected[0].props.url, asset.url);
+  assert.equal(selected[0].props.name, asset.name);
+  assert.equal(nodes(actual.render()).filter(node => node.type === "image-preview").length, 0);
 });
 
 test("reference video appears only after a user selects it, with no stock-video fallback", () => {
@@ -263,7 +276,7 @@ test("reference video appears only after a user selects it, with no stock-video 
   assert.equal(nodes(actual.render()).filter((node) => node.type === "video").length, 0);
   const asset = { name: "mine.mp4", url: "blob:mine" };
   const selected = nodes(actual.render({ videoReference: { asset } }));
-  const video = selected.find((node) => node.type === "video");
+  const video = selected.find(node => node.type === "image-preview" && node.props.kind === "video").props.media;
   assert.equal(video.props.src, asset.url);
   assert.equal(video.props.className, "referenceMedia");
   assert.equal(video.props.muted, true);
@@ -288,6 +301,6 @@ test("reference states show selection, loading and errors without changing instr
   assert.equal(tile(failed, "Choose video").props["data-state"], "error");
   assert.ok(nodes(failed).some((node) => node.props.role === "alert" && node.props.children === "Not a video."));
   assert.equal(nodes(failed).find((node) => node.type === "textarea").props.value, "  Keep exactly this.  ");
-  assert.ok([empty, loading, selected, failed].every((tree) => tile(tree, "Choose video").props.className === "referenceButton"));
+  assert.ok([empty, loading, selected, failed].every((tree) => tile(tree, "Choose video").props.className.includes("referenceButton")));
   assert.equal(nodes(empty).find((node) => node.type === "h2").props.className, "sr-only");
 });

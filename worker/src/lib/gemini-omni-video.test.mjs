@@ -20,7 +20,13 @@ mock.module("@google/genai", { namedExports: {
       },
     };
     interactions = {
-      create: async params => { requests.push({ type: "create", ...params }); return result; },
+      create: async params => {
+        if (params.generation_config?.video_config?.task === "edit") {
+          assert.equal(params.response_format.aspect_ratio, undefined, "Google edit requests must inherit source framing");
+          assert.equal(params.response_format.duration, undefined, "Google edit requests must inherit source timing");
+        }
+        requests.push({ type: "create", ...params }); return result;
+      },
       get: async id => { requests.push({ type: "resume", id }); return result; },
     };
   },
@@ -32,6 +38,14 @@ const { ProviderRequestNotSubmittedError } = await import("../../dist/lib/genera
 const { generateGeminiOmniVideoBuffer } = await import("../../dist/lib/gemini-omni-video.js");
 const params = prompt => ({ aspectRatio: "9:16", durationSeconds: 5, prompt });
 const creates = () => requests.filter(request => request.type === "create").length;
+function clip(seconds) {
+  const bytes = Buffer.alloc(60);
+  bytes.writeUInt32BE(24, 0); bytes.write("ftypmp42", 4);
+  bytes.writeUInt32BE(36, 24); bytes.write("moov", 28);
+  bytes.writeUInt32BE(28, 32); bytes.write("mvhd", 36);
+  bytes.writeUInt32BE(1000, 52); bytes.writeUInt32BE(seconds * 1000, 56);
+  return bytes;
+}
 
 test("long prompts reach Omni intact and use the configured model's live input limit", async () => {
   const previousModel = process.env.GEMINI_OMNI_MODEL;
@@ -46,6 +60,7 @@ test("long prompts reach Omni intact and use the configured model's live input l
     assert.equal(submitted.type, "create");
     assert.equal(submitted.input, prompt);
     assert.equal(submitted.model, count.model);
+    assert.equal(submitted.response_format.aspect_ratio, "9:16");
   } finally {
     if (previousModel === undefined) delete process.env.GEMINI_OMNI_MODEL;
     else process.env.GEMINI_OMNI_MODEL = previousModel;
@@ -61,6 +76,66 @@ test("reference images are included in token counting and the complete generatio
     const count = requests.findLast(request => request.type === "count");
     assert.deepEqual(count.contents, [{ inlineData: { data: data.toString("base64"), mimeType: "image/png" } }, { text: "A creator smiles." }]);
     assert.deepEqual(requests.at(-1).input, [{ type: "image", data: data.toString("base64"), mime_type: "image/png" }, { type: "text", text: "A creator smiles." }]);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test("video edits submit actual video bytes and the identity image, with explicit source and reference roles", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async url => new Response(Buffer.from(url.endsWith(".mp4") ? "source-video" : "identity-image"), {
+    headers: { "Content-Type": url.endsWith(".mp4") ? "video/mp4" : "image/png" },
+  });
+  try {
+    await generateGeminiOmniVideoBuffer({ ...params("Remove text and swap the face. Copy the actions."),
+      referenceVideoUrl: "https://owned-media.example.test/source.mp4", referenceVideoDurationSeconds: 5, referenceVideoMode: "edit",
+      referenceImageUrl: "https://owned-media.example.test/identity.png" });
+    const submitted = requests.at(-1);
+    assert.equal(submitted.input[0].type, "video"); assert.equal(Buffer.from(submitted.input[0].data, "base64").toString(), "source-video");
+    assert.equal(submitted.input[1].type, "image"); assert.equal(Buffer.from(submitted.input[1].data, "base64").toString(), "identity-image");
+    assert.match(submitted.input[2].text, /Sources <VIDEO_0>@Video1/);
+    assert.match(submitted.input[2].text, /References <IMAGE_REF_0>@Image1/);
+    assert.ok(submitted.input[2].text.endsWith("Remove text and swap the face. Copy the actions."));
+    assert.equal(submitted.generation_config.video_config.task, "edit");
+    assert.equal(submitted.response_format.duration, undefined, "Editing must not shorten or extend the source timeline");
+    assert.equal(submitted.response_format.aspect_ratio, undefined, "Editing preserves the source aspect ratio");
+    const count = requests.findLast(request => request.type === "count");
+    assert.ok(count.contents.some(part => part.inlineData?.mimeType === "video/mp4"));
+    assert.ok(count.contents.some(part => part.inlineData?.mimeType === "image/png"));
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test("a missing, long or inaccessible source video never falls back to image-only generation", async () => {
+  const before = creates(); const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response("Missing", { status: 404 });
+  try {
+    for (const source of [
+      { referenceVideoMode: "edit" },
+      { referenceVideoMode: "edit", referenceVideoUrl: "https://owned.test/missing.mp4", referenceVideoDurationSeconds: 11 },
+      { referenceVideoMode: "edit", referenceVideoUrl: "https://owned.test/missing.mp4", referenceVideoDurationSeconds: 5 },
+    ]) await assert.rejects(generateGeminiOmniVideoBuffer({ ...params("Copy the actions."), ...source }), ProviderRequestNotSubmittedError);
+    assert.equal(creates(), before);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test("a ten-second MP4 is sent intact with its image, and false source-duration metadata cannot submit a paid edit", async () => {
+  const originalFetch = globalThis.fetch;
+  let source = clip(10);
+  globalThis.fetch = async url => new Response(url.endsWith(".mp4") ? source : Buffer.from("appearance"), {
+    headers: { "Content-Type": url.endsWith(".mp4") ? "video/mp4" : "image/png" },
+  });
+  try {
+    const input = { ...params("Change the appearance and preserve all ten seconds."), referenceVideoUrl: "https://owned.test/source.mp4",
+      referenceVideoDurationSeconds: 10, referenceVideoMode: "edit", referenceImageUrl: "https://owned.test/image.png" };
+    await generateGeminiOmniVideoBuffer(input);
+    const submitted = requests.at(-1);
+    assert.deepEqual(Buffer.from(submitted.input[0].data, "base64"), source);
+    assert.equal(submitted.input[1].type, "image");
+    assert.equal(submitted.generation_config.video_config.task, "edit");
+    const before = creates();
+    for (const seconds of [3, 11]) {
+      source = clip(seconds);
+      await assert.rejects(generateGeminiOmniVideoBuffer(input), ProviderRequestNotSubmittedError);
+    }
+    assert.equal(creates(), before);
   } finally { globalThis.fetch = originalFetch; }
 });
 

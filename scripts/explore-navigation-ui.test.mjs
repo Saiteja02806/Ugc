@@ -102,7 +102,7 @@ test("AI character cover and caption remain inside a single live link without a 
 test("quick starts preserve destinations, duration and preview query parameters with per-link feedback", () => {
   const { ExploreWorkspace } = load("components/explore/explore-workspace.tsx", {
     "next/link": link,
-    "lucide-react": Object.fromEntries(["ArrowUpRight", "CalendarDays", "FolderOpen", "ImageIcon", "Sparkles", "TrendingUp", "Video"].map(name => [name, name])),
+    "lucide-react": Object.fromEntries(["ArrowUpRight", "Headphones", "ImageIcon", "Sparkles", "Video"].map(name => [name, name])),
     "@/components/explore/ai-character-card": { AICharacterCard: "character-card" },
     "@/components/explore/explore-workflow-card": { ExploreWorkflowCard: "workflow-card" },
     "@/components/explore/explore-link-indicator": indicatorImport,

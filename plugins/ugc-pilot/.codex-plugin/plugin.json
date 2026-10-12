@@ -1,7 +1,7 @@
 {
   "name": "ugc-pilot",
-  "version": "0.1.2",
-  "description": "Draft business-specific UGC hooks, wall overlays, video prompts and slideshow copy; generate and manage media with your UGC Pilot account.",
+  "version": "0.1.4",
+  "description": "Draft UGC copy, generate media, and finish owned hook/demo videos through your UGC Pilot account.",
   "author": {
     "name": "UGC Pilot",
     "url": "https://www.getugcpilot.com"
@@ -12,7 +12,7 @@
   "interface": {
     "displayName": "UGC Pilot",
     "shortDescription": "Images and videos in your AI",
-    "longDescription": "Draft hook text, wall-of-text copy, video prompts and slideshow sequences using your business context. Connect your own UGC Pilot account to generate images and 3–10 second footage, use owned image references, manage media and retrieve results. Generation uses UGC Pilot plan credits. Exact text editing and slideshow rendering require separate tools. This is a private beta.",
+    "longDescription": "Draft UGC hooks, wall text, footage prompts and slideshow copy. Generate images and short videos using UGC Pilot credits. Where enabled, upload local clips, attach a demo, render exact video text and retrieve finished media through the video finishing tools. Finishing requires separate OAuth permission. Slideshow rendering, audio generation and social publishing are not included. Private beta candidate; check live capabilities.",
     "developerName": "UGC Pilot",
     "websiteURL": "https://getugcpilot.com",
     "supportURL": "https://getugcpilot.com/contact",
@@ -52,10 +52,10 @@
               "expected_behavior": "Waits for the user's reference selection, verifies ownership, checks cost, then submits duration_seconds 5 and count 1. Retrieves the real result or reports the actual job status."
             },
             {
-              "description": "Inspect the owned media library",
-              "prompt": "Show my recent UGC Pilot images and videos with their links. Do not create or delete anything.",
-              "tools_triggered": "list_assets",
-              "expected_behavior": "Returns only the connected account's media and actual returned links. Explains an empty library accurately. No mutation or generation call."
+              "description": "Attach a selected owned demo without generating new footage",
+              "prompt": "Attach my selected owned demo after my selected hook and return the finished video. Do not generate new footage.",
+              "tools_triggered": "get_video_finishing_capabilities, get_asset, finish_video, get_video_finish",
+              "expected_behavior": "Checks deployed availability and creative permission, validates selected assets, submits one stable finishing UUID, polls its receipt and retrieves the actual output. Reports disabled rollout, pending or failed work truthfully without starting generation."
             },
             {
               "description": "Resume an existing generation without another charge",
@@ -81,7 +81,7 @@
         }
       },
       "publication": {
-        "release_notes": "Adds five creative skills for hook text, emotional footage prompts, wall-of-text copy, wall footage prompts and semantic slideshow copy. Retains the twelve-tool MCP and existing connection, generation and media-management workflows. Installed-client evaluation and directory submission remain pending."
+        "release_notes": "Adds owned hook/demo video finishing instructions and a local upload/download helper requiring Node.js 22+ and ffprobe. Preserves the existing twelve MCP tools; three additional finishing tools require a coordinated server release, enabled capabilities and creative:write consent. Codex and Claude Code production acceptance and directory submission remain pending."
       }
     }
   }

@@ -26,7 +26,8 @@ import type { BackgroundJobRow, Json } from "../types.js";
 import type { WorkerJobContext, WorkerJobOutput } from "./index.js";
 import { resolveOwnedPrivateMediaUrl } from "../lib/private-media.js";
 import { parseImageReferenceContext } from "../lib/image-reference-context.js";
-import { slideshowReferencePrompt } from "../lib/slideshow-reference-prompt.js";
+import { slideshowReferencePrompt, slideshowReferenceImagesPrompt } from "../lib/slideshow-reference-prompt.js";
+import { parseSlideshowReferenceContract, slideshowGenerationPrompt, type SlideshowReferenceContract } from "../lib/slideshow-generation-contract.js";
 
 const MAX_CHARACTER_PROMPT_LENGTH = 32_000;
 
@@ -39,6 +40,9 @@ type GenerateImageInput = {
   referenceImageUrl?: string;
   referenceImageUrls?: string[];
   subjectReferenceIndex?: number;
+  additionalReferenceStartIndex?: number;
+  regenerationReferenceIndex?: number;
+  slideshowReferenceContract?: SlideshowReferenceContract;
 };
 
 function getInput(job: BackgroundJobRow): GenerateImageInput {
@@ -67,6 +71,9 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
   const model = getImageModel(job.input_json.model);
   const referenceImageUrl = getOptionalHttpsUrl(job.input_json.referenceImageUrl);
   const referenceImageUrls = job.input_json.referenceImageUrls === undefined ? undefined : parseImageReferenceContext(job.input_json.referenceImageUrls);
+  const slideshowReferenceContract = job.input_json.slideshowReferenceContract === undefined ? undefined
+    : parseSlideshowReferenceContract(job.input_json.slideshowReferenceContract, referenceImageUrls?.length ?? (referenceImageUrl ? 1 : 0));
+  if (slideshowReferenceContract && (job.input_json.exploreFormat !== "slideshow" || !["gpt_image_2_5", "nano_banana_2"].includes(model))) throw new ProviderRequestNotSubmittedError("This image job does not support the slideshow reference contract.");
   if (referenceImageUrls && (job.input_json.exploreFormat !== "slideshow" || !["gpt_image_2_5", "nano_banana_2"].includes(model))) {
     throw new Error("This image job does not support slideshow reference context.");
   }
@@ -77,6 +84,14 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
   if (subjectReferenceIndex !== undefined && (!referenceImageUrls || !Number.isInteger(subjectReferenceIndex) || subjectReferenceIndex !== referenceImageUrls.length || referenceImageUrls.length < 2)) {
     throw new ProviderRequestNotSubmittedError("Choose valid layout and subject reference roles.");
   }
+  const additionalReferenceStartIndex = job.input_json.additionalReferenceStartIndex;
+  if (additionalReferenceStartIndex !== undefined && (!referenceImageUrls || subjectReferenceIndex !== undefined || typeof additionalReferenceStartIndex !== "number" || !Number.isInteger(additionalReferenceStartIndex) || additionalReferenceStartIndex < 1 || additionalReferenceStartIndex > referenceImageUrls.length)) {
+    throw new ProviderRequestNotSubmittedError("Choose valid slideshow and additional reference roles.");
+  }
+  const regenerationReferenceIndex = job.input_json.regenerationReferenceIndex;
+  if (regenerationReferenceIndex !== undefined && (!referenceImageUrls || additionalReferenceStartIndex === undefined || !Number.isInteger(regenerationReferenceIndex) || regenerationReferenceIndex !== referenceImageUrls.length)) {
+    throw new ProviderRequestNotSubmittedError("Choose valid regeneration reference roles.");
+  }
   return {
     aspectRatio: getAspectRatio(job.input_json.aspectRatio),
     generationId: generationId.trim(),
@@ -85,6 +100,9 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
     referenceImageUrl: referenceImageUrls?.[0] ?? referenceImageUrl,
     referenceImageUrls,
     ...(subjectReferenceIndex === undefined ? {} : { subjectReferenceIndex: subjectReferenceIndex as number }),
+    ...(additionalReferenceStartIndex === undefined ? {} : { additionalReferenceStartIndex }),
+    ...(regenerationReferenceIndex === undefined ? {} : { regenerationReferenceIndex: regenerationReferenceIndex as number }),
+    ...(slideshowReferenceContract ? { slideshowReferenceContract } : {}),
   };
 }
 
@@ -93,9 +111,14 @@ export async function runGenerateImageJob(
   context: WorkerJobContext,
 ): Promise<WorkerJobOutput> {
   const input = getInput(job);
-  const providerPrompt = input.subjectReferenceIndex
+  const providerPrompt = input.slideshowReferenceContract
+    ? slideshowGenerationPrompt(input.prompt, input.aspectRatio, input.slideshowReferenceContract)
+    : input.additionalReferenceStartIndex
+    ? slideshowReferenceImagesPrompt(input.prompt, input.referenceImageUrls!.length, input.additionalReferenceStartIndex, input.regenerationReferenceIndex)
+    : input.subjectReferenceIndex
     ? slideshowReferencePrompt(input.prompt, input.referenceImageUrls!.length, input.subjectReferenceIndex)
     : input.prompt;
+  if (input.slideshowReferenceContract && providerPrompt.length > 32_000) throw new ProviderRequestNotSubmittedError("Shorten the slideshow instructions to fit within 32,000 characters including reference guidance.");
   const userId = getPathSegment(job.user_id, "user");
   const projectId = getPathSegment(job.project_id, "default");
   const outputKey = `images/generated/${userId}/${projectId}/${input.generationId}.png`;
@@ -122,6 +145,9 @@ export async function runGenerateImageJob(
     // Keep older queued jobs' fingerprints unchanged.
     ...(input.referenceImageUrls ? { referenceImageUrls: input.referenceImageUrls } : {}),
     ...(input.subjectReferenceIndex ? { subjectReferenceIndex: input.subjectReferenceIndex } : {}),
+    ...(input.additionalReferenceStartIndex ? { additionalReferenceStartIndex: input.additionalReferenceStartIndex } : {}),
+    ...(input.regenerationReferenceIndex ? { regenerationReferenceIndex: input.regenerationReferenceIndex } : {}),
+    ...(input.slideshowReferenceContract ? { slideshowReferenceContract: input.slideshowReferenceContract } : {}),
   });
   const reservation = await context.store.reserveGenerationProviderOperation({
     jobId: job.id,
@@ -154,6 +180,7 @@ export async function runGenerateImageJob(
               input.aspectRatio,
               referenceImages,
               input.model === "gpt_image_2_5" ? SLIDESHOW_IMAGE_MODEL : undefined,
+              Boolean(input.slideshowReferenceContract),
             );
     } catch (error) {
       return persistProviderSubmissionFailure({
@@ -212,6 +239,7 @@ export async function runGenerateImageJob(
   const imageBuffer = await prepareAIStudioImageOutput(
     generatedImageBuffer,
     input.aspectRatio,
+    { preserveComposition: Boolean(input.slideshowReferenceContract) },
   );
   const dimensions = getAIStudioImageDimensions(input.aspectRatio);
 

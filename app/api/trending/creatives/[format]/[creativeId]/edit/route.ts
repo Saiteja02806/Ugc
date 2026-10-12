@@ -22,6 +22,7 @@ import {
 import {
   loadTrendingCreativeEditor,
   loadTrendingCreativeReadView,
+  loadTrendingCarouselEditStatus,
   saveTrendingCreativeEditor,
 } from "@/lib/trending/creative-edit-service";
 import {
@@ -154,6 +155,17 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   try {
+    if (new URL(request.url).searchParams.get("view") === "status") {
+      if (scope.value.format !== "carousel") {
+        return json({ ok: false, error: "Status checks are only available for slideshows." }, 400);
+      }
+      const status = await loadTrendingCarouselEditStatus({
+        assignmentId: scope.value.assignmentId,
+        creativeId: scope.value.creativeId,
+        userId: auth.userId,
+      });
+      return json({ status, ok: true });
+    }
     const load = new URL(request.url).searchParams.get("view") === "history"
       ? loadTrendingCreativeReadView : loadTrendingCreativeEditor;
     const edit = await load({

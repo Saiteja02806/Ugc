@@ -12,6 +12,7 @@ function text(tree) { return Array.isArray(tree) ? tree.map(text).join(" ") : tr
 function runtime() {
   let cursor = 0; const slots = [], effects = [];
   return { react: {
+    useCallback(callback) { cursor++; return callback; },
     useId() { return `source-${cursor++}`; },
     useRef(value) { const i = cursor++; return slots[i] ??= { current: value }; },
     useState(value) { const i = cursor++; if (!(i in slots)) slots[i] = value; return [slots[i], v => { slots[i] = typeof v === "function" ? v(slots[i]) : v; }]; },
@@ -41,9 +42,19 @@ test("source controls in both workflows expose the three choices and keep source
     const buttons = nodes(tree).filter(n => n.type === "button");
     assert.deepEqual(buttons.map(text), ["Generate", "Upload", "Creative Assets"]); assert.equal(buttons[0].props["aria-pressed"], true);
     buttons[1].props.onClick(); buttons[2].props.onClick(); assert.deepEqual(modes, ["upload", "assets"]);
+    const focusedTree = rt.render(() => mod.WorkflowVideoSourceSection({ kind, selection, presentation: "focused" }));
+    const focusedModes = nodes(focusedTree).find(n => n.props["aria-label"] === `${kind === "hook" ? "Hook video" : "Creator / phone video"} source`);
+    assert.deepEqual(nodes(focusedModes).filter(n => n.type === "button").map(text), ["Generate", "Use video"]);
+    nodes(focusedModes).find(n => n.type === "button" && text(n) === "Use video").props.onClick();
+    assert.equal(modes.at(-1), "upload");
     const input = nodes(tree).find(n => n.type === "input"), event = { target: { files: [{ name: "existing.mp4" }], value: "existing.mp4" } };
     input.props.onChange(event); assert.equal(uploads.length, 1); assert.equal(event.target.value, "");
     selection.mode = "upload"; selection.error = "Upload failed"; selection.preview = { name: "existing.mp4", duration: 5 };
+    const existing = rt.render(() => mod.WorkflowVideoSourceSection({ kind, selection, presentation: "focused" }));
+    assert.ok(nodes(existing).some(n => n.props["aria-label"] === "Existing video source"));
+    const modeCount = modes.length;
+    nodes(existing).find(n => n.type === "button" && text(n) === "Use video").props.onClick();
+    assert.equal(modes.length, modeCount, "Selecting the current existing-video mode preserves the uploaded clip");
     tree = rt.render(() => mod.WorkflowVideoSourceSection({ kind, selection }));
     assert.equal(nodes(tree).find(n => n.props.role === "alert").props.children, "Upload failed");
     assert.ok(nodes(tree).find(n => n.type === "button" && text(n) === "Replace")); rt.unmount();
@@ -51,7 +62,7 @@ test("source controls in both workflows expose the three choices and keep source
 });
 
 test("reuse footer continues only when ready and edit/schedule keep their existing actions", () => {
-  const mod = load("components/explore/workflow-creation-panel.tsx", { "react/jsx-runtime": jsx, "@base-ui/react/tabs": { Tabs: { List: "tablist", Tab: "tab" } }, "@/components/ui/button": { Button: "button" }, "@/components/explore/workflow-creation.module.css": css });
+  const mod = load("components/explore/workflow-creation-panel.tsx", { "react/jsx-runtime": jsx, "@/components/ui/button": { Button: "button" }, "@/components/explore/workflow-creation.module.css": css, "@/components/explore/workflow-section-layout.module.css": css, "@/lib/utils": { cn: (...values) => values.join(" ") } });
   let continued = 0;
   for (const disabled of [true, false]) {
     const tree = mod.WorkflowCreationPanel({ kind: "hook", section: "create", create: { disabled, busy: false, message: "Choose a video", onAction: () => continued++ } });
@@ -62,7 +73,7 @@ test("reuse footer continues only when ready and edit/schedule keep their existi
   const action = { disabled: false, busy: false, message: "Ready", onAction() {}, refresh() {} };
   for (const section of ["edit", "schedule"]) {
     const tree = mod.WorkflowCreationPanel({ kind: "phone", section, create: { message: "Wrong message" }, edit: action, schedule: action });
-    assert.deepEqual(nodes(tree).filter(n => n.type === "button").map(text), [section === "edit" ? "Apply edits" : "Schedule post"]);
+    assert.deepEqual(nodes(tree).filter(n => n.type === "button").map(text), [section === "edit" ? "Prepare final video" : "Review schedule"]);
     assert.ok(!text(tree).includes("Wrong message"));
   }
 });
@@ -70,14 +81,30 @@ test("reuse footer continues only when ready and edit/schedule keep their existi
 test("both Create layouts preserve instruction drafts when reusing a video and pass that exact clip into editing", () => {
   for (const kind of ["hook", "phone"]) {
     const rt = runtime();
+    const panels = [{ scrollTop: 120 }, { scrollTop: 240 }], scrollCalls = [], focusCalls = [];
+    let pageScroll = 340, pauses = 0, frames = 0;
+    const workflowRoot = {
+      querySelectorAll(selector) { return selector === "audio, video" ? [{ pause() { pauses++; } }] : panels; },
+      querySelector() { return { focus(options) { focusCalls.push(options); } }; },
+      scrollIntoView(options) { scrollCalls.push(options); pageScroll = 0; },
+    };
     const selection = { ownerId: "owner", mode: "generate", source: asset, preview: { name: asset.title, url: asset.url, duration: 5 }, ready: true, dirty: true };
-    const finishing = { options: {}, setOptions() {}, output: null };
+    const finishing = { options: {}, setOptions() {}, output: null, edit: { busy: false } };
     const imports = {
       react: rt.react, "react/jsx-runtime": jsx, "@base-ui/react/tabs": { Tabs: { Root: "tabs-root", Panel: "tabs-panel" } }, "lucide-react": { ArrowLeft: "arrow", BookOpen: "book" }, "next/link": { default: "link" },
+      "@/components/ui/button": { Button: "button" },
+      "@/components/layout/workflow-navigation": { WorkflowNavigationButton: "navigation-button" },
+      "@/components/ui/quiet-scrollbar.module.css": css,
+      "@/components/explore/workflow-section-navigation": { WorkflowSectionNavigation: "section-nav", WorkflowSectionHeading: "section-heading", useWorkflowSectionOrientation: () => "vertical" },
+      "@/components/explore/workflow-section-layout.module.css": css,
       "@/components/explore/use-workflow-source-video": { useWorkflowSourceVideo: () => selection },
       "@/components/explore/use-workflow-generation-settings": { useWorkflowGenerationSettings: () => ({ dirty: false, settings: { aspectRatio: "9:16" }, changeSettings() {} }) },
       "@/components/explore/workflow-generation-boundary": { WorkflowAccountBoundary: ({children}) => children("owner"), WorkflowGenerationBoundary: ({children}) => children(null) },
       "@/components/explore/workflow-finishing-boundary": { WorkflowFinishingBoundary: ({ children }) => children(finishing) },
+      "@/components/explore/talking-head-clip-editing": { TalkingHeadClipEditing: ({ children, source, sourcePreview, demo, demoFraming }) => children({ source, sourcePreview, demoSource: null, demo: demo.asset, demoFraming, editing: false, busy: false, controls: null, preview: null, actions: null }) },
+      "@/components/explore/talking-head-schedule-review": { TalkingHeadScheduleSummary: "schedule-summary", TalkingHeadScheduleActions: "schedule-actions" },
+      "@/components/explore/workflow-schedule-review.module.css": css,
+      "@/components/explore/talking-head-schedule-preview.module.css": css,
       "@/components/explore/workflow-video-source-section": { WorkflowVideoSourceSection: "source-section" },
       "@/components/explore/workflow-creation-panel": { WorkflowCreationPanel: "creation-panel" },
       "@/components/explore/workflow-composition-panel": { WorkflowCompositionPanel: "composition-panel" },
@@ -91,17 +118,48 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       "@/lib/utils": { cn: (...values) => values.join(" ") }, "@/components/explore/workflow-creation.module.css": css, "@/components/explore/workflow-studio.module.css": css,
       [`@/components/explore/${kind}-workflow-composer`]: kind === "hook" ? { HookWorkflowComposer: "composer" } : { PhoneWorkflowComposer: "composer", AppScreenPicker: "app-screen" },
     };
-    const mod = load(`components/explore/${kind}-workflow-preview.tsx`, imports, { window: { addEventListener() {}, removeEventListener() {}, requestAnimationFrame: fn => fn() }, requestAnimationFrame: fn => fn() });
+    const mod = load(`components/explore/${kind}-workflow-preview.tsx`, imports, { window: { addEventListener() {}, removeEventListener() {}, requestAnimationFrame: fn => { frames++; fn(); } }, requestAnimationFrame: fn => fn() });
     const render = () => rt.render(() => (kind === "hook" ? mod.HookWorkflowPreview : mod.PhoneWorkflowPreview)({ generationEnabled: true }));
-    let tree = render(); nodes(tree).find(n => n.type === "composer").props.onInstructionsChange("Keep my original prompt");
+    let tree = render();
+    const preview = view => nodes(view).find(n => n.props.id === `${kind}-workflow-preview`);
+    const heading = view => nodes(view).find(n => n.type === "creation-panel").props.heading.props;
+    assert.equal(preview(tree).props.hidden, true, "An empty preview does not take up Create space");
+    heading(tree).onTogglePreview(); tree = render();
+    assert.equal(preview(tree).props.hidden, false, "The user can inspect the empty preview explicitly");
+    heading(tree).onTogglePreview(); tree = render();
+    nodes(tree).find(n => n.type === "composer").props.onInstructionsChange("Keep my original prompt");
     selection.mode = "upload"; tree = render();
+    if (kind === "hook") nodes(tree).find(n => n.type === "tabs-root").props.ref.current = workflowRoot;
+    assert.equal(preview(tree).props.hidden, false, "A selected source appears automatically");
     assert.equal(nodes(tree).find(n => n.type === "composer").props.instructions, "Keep my original prompt");
     assert.equal(nodes(tree).find(n => n.props.className === "generationFields").props.hidden, true);
     assert.equal(nodes(tree).filter(n => n.type === "source-section").length, 1);
     assert.equal(nodes(tree).find(n => n.type === "preview-canvas").props.source.url, asset.url);
     nodes(tree).find(n => n.type === "creation-panel").props.create.onAction(); tree = render();
     assert.equal(nodes(tree).find(n => n.type === "creation-panel").props.section, "edit");
+    assert.equal(preview(tree).props.hidden, false);
     assert.equal(nodes(tree).find(n => n.type === "edit-workspace").props.generatedVideo.id, asset.id);
+    if (kind === "hook") {
+      assert.equal(pageScroll, 0, "A real stage change reveals the workflow heading even when the document scrolled");
+      assert.deepEqual(scrollCalls.map(value => [value.block, value.behavior]), [["start", "instant"]]);
+      assert.deepEqual(panels.map(panel => panel.scrollTop), [0, 0]);
+      assert.equal(focusCalls[0].preventScroll, true);
+      const before = { pauses, frames, scrolls: scrollCalls.length, focus: focusCalls.length };
+      panels[0].scrollTop = 90; panels[1].scrollTop = 180; pageScroll = 260;
+      nodes(tree).find(n => n.type === "tabs-root").props.onValueChange("edit"); tree = render();
+      assert.deepEqual({ pauses, frames, scrolls: scrollCalls.length, focus: focusCalls.length }, before, "Refocusing the active stage does not pause playback or reset scrolling");
+      assert.equal(pageScroll, 260); assert.deepEqual(panels.map(panel => panel.scrollTop), [90, 180]);
+      assert.equal(nodes(tree).find(n => n.type === "composer").props.instructions, "Keep my original prompt");
+      assert.equal(nodes(tree).find(n => n.type === "edit-workspace").props.generatedVideo, asset);
+      nodes(tree).find(n => n.type === "scheduling-panel").props.onChange({ platform: "instagram", caption: "Keep this schedule caption", date: "2026-10-13", time: "16:30" }); tree = render();
+      nodes(tree).find(n => n.type === "tabs-root").props.onValueChange("schedule"); tree = render();
+      assert.equal(pageScroll, 0); assert.deepEqual(panels.map(panel => panel.scrollTop), [0, 0]);
+      assert.equal(scrollCalls.length, before.scrolls + 1);
+      assert.equal(nodes(tree).find(n => n.type === "schedule-workspace").props.source, asset);
+      assert.equal(nodes(tree).find(n => n.type === "scheduling-panel").props.draft.caption, "Keep this schedule caption");
+      nodes(tree).find(n => n.type === "schedule-actions").props.onBackToEdit(); tree = render();
+      assert.equal(nodes(tree).find(n => n.type === "scheduling-panel").props.draft.caption, "Keep this schedule caption");
+    }
     nodes(tree).find(n => n.type === "edit-workspace").props.onChangeSource(); tree = render();
     selection.mode = "generate"; tree = render(); assert.equal(nodes(tree).find(n => n.props.className === "generationFields").props.hidden, false);
     assert.equal(nodes(tree).find(n => n.type === "composer").props.instructions, "Keep my original prompt"); rt.unmount();

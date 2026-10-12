@@ -66,15 +66,13 @@ test("the dedicated renderer keeps all layouts fixed and inside the safe area", 
       assert.equal(result.diagnostics.layoutVariant, spec.layoutVariant);
       assert.equal(
         result.diagnostics.storyFontSize,
-        spec.slideNumber === 1 ? 84 : 48,
+        spec.slideNumber === 1 ? 72 : 48,
       );
       assert.equal(result.diagnostics.ctaFontSize, spec.ctaText ? 48 : null);
       assert.equal(result.diagnostics.ctaLineCount > 0, Boolean(spec.ctaText));
       assert.equal(
         result.diagnostics.bubbleShapeStrategy,
-        spec.slideNumber === 1
-          ? "plain-white-text"
-          : "plain-white-text-with-outline",
+        "plain-white-text-with-outline",
       );
       assert.equal(result.diagnostics.whiteBackgroundGroupCount, 0);
       assert.equal(result.diagnostics.textTreatment, "overlay");
@@ -113,7 +111,7 @@ test("the renderer rejects story copy that cannot fit without unsafe shrinking",
   );
 });
 
-test("a legacy hook image replacement renders at its original 72px without weakening new covers", async () => {
+test("a legacy hook image replacement renders at its current 72px Inter contract", async () => {
   const assetBuffer = await sharp({ create: { width: 1080, height: 1350,
     channels: 3, background: "#47617d" } }).png().toBuffer();
   const spec = makeSpec({
@@ -127,7 +125,7 @@ test("a legacy hook image replacement renders at its original 72px without weake
   assert.equal(legacy.diagnostics.safeAreaContained, true);
   const current = await renderCarouselStructure2SlideFromBuffer({ assetBuffer, format: "4:5",
     spec: { ...spec, coverFontSize: undefined, storyText: "Why being available keeps draining you" } });
-  assert.equal(current.diagnostics.storyFontSize, 84);
+  assert.equal(current.diagnostics.storyFontSize, 72);
 });
 
 for (const source of [

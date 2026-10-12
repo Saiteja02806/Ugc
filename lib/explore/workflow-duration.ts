@@ -1,6 +1,6 @@
 import { getAIStudioVideoDurations, type AIStudioVideoDuration, type AIStudioVideoModel } from "../ai-studio/generation-settings.ts";
 
-const PRESETS = [5, 10, 15, 20, 30] as const;
+const PRESETS = [3, 5, 10, 15, 20, 30] as const;
 
 export function workflowDurationPresets(model: AIStudioVideoModel) {
   const supported = getAIStudioVideoDurations(model);

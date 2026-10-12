@@ -17,9 +17,15 @@ When several reference images match, show the candidates and ask the user to cho
 
 ## Upload a supplied file
 
-Uploading requires `assets:write` and a host that can send the file's real bytes. Inspect the actual file type and byte length. Call `create_upload` with inputs from its discovered schema. Use the returned signed PUT URL and headers exactly, then call `confirm_upload` with its asset ID. Treat signed URLs as credentials: do not print them in the final answer or share them with unrelated tools. Do not confirm before the PUT succeeds, use fabricated bytes, or fetch arbitrary remote URLs just to create a reference.
+Uploading requires `assets:write` and a host that can send the file's real bytes. Inspect the actual file type and byte length. Call `create_upload` with inputs from its discovered schema. Use the returned signed PUT URL and headers exactly, then call `confirm_upload` with its asset ID. Treat signed URLs as credentials: do not print them in the final answer or share them with unrelated tools. Do not claim a ready asset before confirmation, use fabricated bytes, or fetch arbitrary remote URLs just to create a reference.
 
-When an upload succeeded but confirmation was interrupted, retry confirmation for the same asset ID. Inspect the existing upload before starting a second one. If the client cannot upload, direct the user to their UGC Pilot media library and continue after they select the asset.
+For a terminal-capable IDE, use the bundled [local transfer workflow](references/local-transfer.md). Its dependency-free Node helper measures real media with ffprobe, streams file bytes, saves a non-secret recovery receipt before PUT, and downloads completed outputs without overwriting user files. Follow its stdin input contract so signed URLs never enter shell command text or persisted receipts. Other hosts need their own supported binary-transfer mechanism.
+
+When an upload succeeded but confirmation was interrupted, retry confirmation for the same asset ID. Preserve the reservation/asset ID before PUT; the current tools do not discover lost unconfirmed reservations or renew expired upload URLs. If the client cannot transfer local bytes, report that limitation and use a supported IDE, local bridge, or attachment mechanism. A remote MCP cannot read the local path.
+
+If the transfer response itself was interrupted, the saved local receipt supplies confirmation inputs for that same upload ID. Resolve its storage state through `confirm_upload`; never assume a timeout means the upload failed or automatically repeat PUT.
+
+For hook-plus-demo requests, upload the hook as creator footage (`collection: "influencer"`) or ordinary video, and the demo as video using the discovered schema. Both can be used by the Explore finisher. A generic upload does not create a dedicated Demo-library record. Continue through [video finishing](../finish-ugc-video/SKILL.md) when available.
 
 ## Delete
 

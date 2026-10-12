@@ -8,6 +8,7 @@ import type { MediaAssetRow } from "@/lib/media/media-storage";
 import { getStorageObject } from "@/lib/storage/storage";
 import { getMaxUploadBytes } from "@/lib/media/media-upload";
 import { isPrivateUserMedia } from "@/lib/media/media-delivery";
+import { privateMediaObject, assertPrivateMediaIdentity } from "@/lib/media/private-media-storage";
 import { ToolFailure } from "./read-tools";
 
 const run = promisify(execFile);
@@ -25,14 +26,22 @@ function containerMatches(bytes: Buffer, mime: string) {
 export async function probeStoredMcpUpload(asset: MediaAssetRow) {
   // Storage keys come only from an already owner-checked reservation. No URL,
   // shell command, executable path or local source path comes from the caller.
-  if (isPrivateUserMedia(asset)) throw new ToolFailure("UPLOAD_PROBE_UNAVAILABLE", "Private upload probing is not configured.", true);
   const directory = await mkdtemp(join(tmpdir(), "ugc-upload-probe-"));
   const filePath = join(directory, "source");
   try {
-    const object = await getStorageObject({ key: asset.storage_key });
-    if (!object.Body || object.ContentLength !== asset.file_size_bytes || !asset.file_size_bytes ||
-      asset.file_size_bytes > getMaxUploadBytes(asset.collection)) throw new ToolFailure("UPLOAD_MISMATCH", "The stored file differs from the reservation.");
-    const reader = object.Body.transformToWebStream().getReader();
+    // The persisted location, not the current rollout flag or a caller URL,
+    // chooses the source. Private reads pin the checked object generation.
+    const object = isPrivateUserMedia(asset)
+      ? await privateProbeObject(asset)
+      : await getStorageObject({ key: asset.storage_key });
+    const stream = object.Body?.transformToWebStream();
+    if (!stream || object.ContentLength !== asset.file_size_bytes || !asset.file_size_bytes ||
+      asset.file_size_bytes > getMaxUploadBytes(asset.collection) ||
+      (object.ContentType && object.ContentType.split(";", 1)[0].trim().toLowerCase() !== asset.mime_type)) {
+      if (stream) await stream.cancel().catch(() => {});
+      throw new ToolFailure("UPLOAD_MISMATCH", "The stored file differs from the reservation.");
+    }
+    const reader = stream.getReader();
     const file = await open(filePath, "wx", 0o600);
     let timer: ReturnType<typeof setTimeout> | undefined;
     let byteCount = 0;
@@ -79,6 +88,13 @@ export async function probeStoredMcpUpload(asset: MediaAssetRow) {
     if (error instanceof ToolFailure) throw error;
     throw new ToolFailure("UPLOAD_PROBE_UNAVAILABLE", "Could not validate the stored upload. Confirm this same ID again.", true);
   } finally { await rm(directory, { recursive: true, force: true }); }
+}
+
+async function privateProbeObject(asset: MediaAssetRow) {
+  const key=assertPrivateMediaIdentity(asset.storage_key,asset.url);
+  const object = await privateMediaObject({ key });
+  return { ContentLength: object.size, ContentType: object.contentType,
+    Body: { transformToWebStream: () => object.body } };
 }
 
 export const uploadProbe = { run: probeStoredMcpUpload };

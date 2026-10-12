@@ -215,3 +215,23 @@ test('pre-reservation intent saves a stable request ID and exact metadata before
   await writeFile(intent, JSON.stringify(saved));
   await rejects(recoverUpload(intent), 'INVALID_RECEIPT');
 });
+
+test('explicit private-bucket receipt streams identical bytes; undeclared or mismatched bucket destinations are refused', async()=>{
+ const privateReservation={...reservation(),storage_bucket:'offline-private-media',
+  upload_url:reservation().upload_url.replace('/ugcsaas-media/','/offline-private-media/')};
+ let requests=0;
+ const output=await uploadFile(video,{reservation:privateReservation,inspection,receiptPath:receiptPath('private-upload'),ffprobe,
+  fetchImpl:async(url,options)=>{requests++;assert.equal(new URL(url).pathname.split('/')[1],'offline-private-media');
+   const chunks=[];for await(const chunk of options.body)chunks.push(chunk);assert.deepEqual(Buffer.concat(chunks),bytes);return new Response('',{status:200});}});
+ assert.equal(output.uploaded,true);assert.equal(requests,1);
+ assert.doesNotMatch(await readFile(receiptPath('private-upload'),'utf8'),/signature|storage_bucket|storage.googleapis/);
+ for(const [index,change] of [
+  r=>{delete r.storage_bucket;}, r=>{r.storage_bucket='different-bucket';},
+  r=>{r.storage_bucket='../bucket';}, r=>{r.upload_url=r.upload_url.replace('/media/','/media/%2e%2e/');},
+ ].entries()) {
+  const bad={...privateReservation};change(bad);
+  await assert.rejects(uploadFile(video,{reservation:bad,inspection,receiptPath:receiptPath(`private-invalid-${index}`),ffprobe,
+   fetchImpl:()=>{requests++;throw new Error('must not transfer');}}));
+ }
+ assert.equal(requests,1);
+});

@@ -94,8 +94,15 @@ function uploadDestination(reservation, inspection) {
   const url = storageUrl(reservation.upload_url);
   const { collection, mime_type: mime, file_size_bytes: size } = inspection.create_upload;
   const extension = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp', 'video/mp4': '.mp4', 'video/quicktime': '.mov', 'video/webm': '.webm' }[mime];
-  const escapedId = reservation.upload_id.replaceAll('-', '\\-');
-  check(url.hostname === 'storage.googleapis.com' && new RegExp(`^/ugcsaas-media/media/[^/]+/${collection}/${escapedId}\\${extension}$`).test(url.pathname),
+  // New servers explicitly describe their private bucket. Old public receipts
+  // keep the production default; never infer a new bucket from an arbitrary URL.
+  const bucket = reservation.storage_bucket ?? 'ugcsaas-media';
+  check(typeof bucket === 'string' && /^[a-z0-9][a-z0-9_-]{1,61}[a-z0-9]$/.test(bucket),
+    'INVALID_RESERVATION', 'The server upload bucket descriptor is invalid.');
+  const segments = url.pathname.split('/');
+  check(url.hostname === 'storage.googleapis.com' && segments.length === 6 &&
+    segments[1] === bucket && segments[2] === 'media' && /^[A-Za-z0-9_-]+$/.test(segments[3]) &&
+    segments[4] === collection && segments[5] === `${reservation.upload_id}${extension}`,
     'INVALID_DESTINATION', 'The signed destination does not match the reserved UGC Pilot asset.');
   check(Date.parse(reservation.expires_at) > Date.now(), 'UPLOAD_EXPIRED', 'The upload link expired. Preserve the ID; resolve the transfer and renew_upload for the same reservation when supported.');
   const headers = reservation.required_headers;

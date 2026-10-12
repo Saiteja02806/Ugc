@@ -1,14 +1,14 @@
 import "server-only";
 import { McpServer, requireScopes } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import { assertPrivateMediaWritesDisabled } from "@/lib/media/private-media-storage";
-import { headStorageObject } from "@/lib/storage/storage";
+import { headMcpUpload } from "./upload-storage";
 import { decodeAssetCursor, encodeAssetCursor } from "./asset-cursor";
 import { executeTool, MCP_MEDIA_COLLECTIONS, oauthMetadata, principal, ToolFailure } from "./read-tools";
 import { getUploadForOwner, leaseUploadUrl, listUploadsForOwner, uploadSummary } from "./upload-recovery";
 
 export const registeredUploadRecoveryMcpTools = ["get_upload", "list_uploads", "renew_upload"] as const;
 export const uploadReservation = z.strictObject({ upload_id: z.uuid(), upload_url: z.url().regex(/^https:\/\//), expires_at: z.iso.datetime({ offset: true }),
+  storage_bucket:z.string().regex(/^[a-z0-9][a-z0-9_-]{1,61}[a-z0-9]$/).optional(),
   required_headers: z.strictObject({ "Content-Type": z.string(), "x-goog-content-length-range": z.string(), "x-goog-if-generation-match": z.literal("0") }) });
 const summary = z.strictObject({ upload_id: z.uuid(), request_id: z.uuid().nullable(), collection: z.enum(MCP_MEDIA_COLLECTIONS),
   status: z.enum(["uploading", "ready", "processing", "failed"]), file_name: z.string().nullable(),
@@ -54,11 +54,10 @@ export function registerUploadRecoveryMcpTools(server: McpServer) {
     scopeChallenge: requireScopes("assets:write"), _meta: oauthMetadata("assets:write"),
   }, (args, ctx) => executeTool(async () => {
     const userId = principal(ctx, "assets:write");
-    assertPrivateMediaWritesDisabled();
     const row = await getUploadForOwner({ userId, uploadId: args.upload_id });
     if (row.status !== "uploading") throw new ToolFailure("UPLOAD_ALREADY_CONFIRMED", "Retrieve this asset instead of uploading again.");
     try {
-      await headStorageObject({ key: row.storage_key });
+      await headMcpUpload(row);
       throw new ToolFailure("UPLOAD_ALREADY_TRANSFERRED", "Bytes already exist. Confirm this same upload ID before attempting another transfer.");
     } catch (error) {
       if (error instanceof ToolFailure) throw error;

@@ -5,7 +5,7 @@ import test from 'node:test';
 import { PGlite } from '@electric-sql/pglite';
 
 const baseline = readFileSync(new URL('../supabase/migrations/20260829093001_production_baseline_v1.sql', import.meta.url), 'utf8');
-const migration = readFileSync(new URL('../supabase/migrations/20261011194608_edit_draft_revision_safety.sql', import.meta.url), 'utf8');
+const migration = readFileSync(new URL('../supabase/migrations/20261012035734_edit_draft_revision_safety.sql', import.meta.url), 'utf8');
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const draft = text => ({ trimStartSeconds: 0, trimEndSeconds: null, textOverlays: [{id:'title', position:'top',style:'clean',text}] });
 async function setup() {

@@ -18,4 +18,12 @@ The complete npm run test:mcp suite, TypeScript, touched-file ESLint and Next.js
 
 ## Release status
 
-Candidate only. Production remains on `8cac394b4114306a3f35b4e66158f91f934b06d0`; the new history field is not yet deployed. Private upload creation remains disabled.
+Released at runtime `415405fc834577c7547583e66ebbb989f985b85b`. [Draft PR #40](https://github.com/Saiteja02806/Ugc/pull/40) is attached and stacked on `codex/mcp-private-upload`; the whole deployed MCP/Edit ancestor is retained. Exact-commit MCP CI `38243928556` and `38243974106` passed.
+
+Website project `prj_mVOxt7AUko5egMAESaxjGyC60Kvu`: `dpl_4bszasuCMsTM3ibWiH1eFBgbUfFA`, `ugc-36fgmbqah-ugcpilot.vercel.app`. MCP project `prj_IU0eCl6JEnHt2mMaEV0g2Ej1NMYU`: `dpl_D2GUbYmA4YVWiuNDDYxgD4rsRPwc`, `ugc-8lborddgf-ugcpilot.vercel.app`. Both reached READY at the exact project/commit/production target. Managed staged reads confirmed setup 200 with version 0.1.8 links/noindex and MCP health 200 ready. Previous production aliases were checked immediately before promotion. Website promotion preceded MCP. Real `getugcpilot.com`/`www.getugcpilot.com` and `mcp.getugcpilot.com` aliases now map to those deployments.
+
+All 24 production package/auth/isolation checks passed at `2026-10-12T11:55:03.397Z`; immutable 0.1.8 ZIP/guide and older archives are unchanged. Fresh normal managed authenticated Codex CLI discovery returned all 33 tools, OAuth, no tools error, and the new `get_operation` output field. Native read of an existing owned final_render operation succeeded with the new field null and its existing output ID. This proves served shape/backward compatibility, not a saved-export customer journey. A read-only production aggregate found zero export receipts, so no real export recovery is claimed.
+
+Both deployment commands explicitly set `MCP_PRIVATE_UPLOADS_ENABLED=false` for build/runtime and retained the correct MCP_ONLY_DEPLOYMENT target. No environment secrets were pulled or used to infer gate values. No database migration, worker release, bucket/IAM change, upload, generation, draft edit, export, cancellation/retry, media deletion or publishing was performed. New-deployment 30-minute error/fatal grouping returned no entries for either project; the short observation window is not complete workflow acceptance.
+
+Scope exclusions: unrelated primary-root source changes, machine configuration/credentials, `.tmp` fixtures/logs and build/cache output. All seven reviewed intentional isolated changes are committed/pushed; no intended release path was omitted. Full application parity, Claude Code authentication and real hook/demo/render/local download acceptance in both IDEs remain unfinished.

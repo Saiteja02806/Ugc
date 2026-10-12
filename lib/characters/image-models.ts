@@ -11,6 +11,9 @@ const labels: Record<(typeof CHARACTER_IMAGE_MODELS)[number], string> = {
 };
 
 export const CHARACTER_IMAGE_MODEL_OPTIONS = CHARACTER_IMAGE_MODELS.map(value => ({ value, label: labels[value] }));
+export function getCharacterImageModelLabel(model: (typeof CHARACTER_IMAGE_MODELS)[number]) {
+  return labels[model];
+}
 export const MAX_CHARACTER_PROMPT_LENGTH = 32_000;
 
 export function getCharacterPromptLimit(model: (typeof CHARACTER_IMAGE_MODELS)[number]) {

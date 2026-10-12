@@ -31,6 +31,7 @@ import {
   type CharacterGenerationDependencies,
 } from "./generation-service";
 import type { CharacterGenerationAccess, CharacterJobStatusResponse } from "./types";
+import { CharacterImageModelSchema } from "./schema";
 import { characterAccessFromCredits, characterRequestCount } from "./access-policy";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -157,6 +158,7 @@ export function createCharacterGenerationHandlers(dependencies: CharacterApiDepe
           ok: true,
           job: {
             id: job.id,
+            model: CharacterImageModelSchema.parse(getCharacterJobInput(job)?.model),
             status: job.status,
             isTerminal: TERMINAL_STATUSES.has(job.status),
             error: getPublicBackgroundJob(job).error?.message ?? null,

@@ -9,7 +9,8 @@ import { AiStudioComposer, AiStudioSetting, AiStudioSettingSelect } from "@/comp
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { CharacterImageCount, CharacterImageModel } from "@/lib/characters/types";
-import { CHARACTER_IMAGE_MODEL_OPTIONS, getCharacterPromptLimit } from "@/lib/characters/image-models";
+import { CHARACTER_IMAGE_MODEL_OPTIONS, getCharacterImageModelLabel, getCharacterPromptLimit } from "@/lib/characters/image-models";
+import { characterBatchProgress } from "@/lib/characters/batch-progress";
 import { useCharacterBuilder } from "./use-character-builder";
 import { CharacterHistory } from "./character-history";
 import { ReferenceMediaUpload } from "@/components/generation/reference-media-upload";
@@ -62,6 +63,7 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
   const quantityAffordable = Boolean(access && count <= access.affordableImageCount);
   const manualLocked = authLoading || !userId || !quantityAffordable || accessLoading || builder.access.isError;
   const error = builder.generate.error || builder.select.error;
+  const progress = characterBatchProgress(builder.visibleJobs, builder.visibleStatuses);
   const selected = imageReference ? null : builder.selected;
   const countOptions = access
     ? COUNT_OPTIONS.filter((option) => Number(option.value) <= access.affordableImageCount || Number(option.value) === count)
@@ -120,7 +122,7 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
       <div className={styles.stage} aria-live="polite" aria-busy={busy}>
         {builder.visibleJobs.length ? <div className={styles.resultsPanel}>
           <div className={styles.resultsToolbar}>
-            <p className={styles.resultsHeading}>{builder.inProgress ? "Creating your influencer…" : "Select an image to save it to My influencers."}</p>
+            <p className={styles.resultsHeading} role="status">{progress.message}</p>
             <div className="flex shrink-0 gap-1">
               {builder.historyImage ? <Button variant="ghost" size="sm" onClick={builder.returnToSession}>Back to session</Button> : null}
               <Button variant="outline" size="sm" disabled={busy || Boolean(pending) || builder.select.isPending} onClick={() => { builder.startNewSession(); setPrompt(""); resetImageReference(); }}>New session</Button>
@@ -145,7 +147,7 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
                     : <div className="flex flex-col items-center gap-3 text-muted"><Loader2 className="size-6 animate-spin motion-reduce:animate-none" aria-hidden="true" /><span className="text-xs">Creating candidate {index + 1}</span></div>}
                 </button>
                 <div className={styles.candidateFooter}>
-                  <span className="text-xs text-muted">Image {index + 1}</span>
+                  <span className="text-xs text-muted">Image {index + 1}{job?.model ? ` · ${getCharacterImageModelLabel(job.model)}` : ""}</span>
                   {saving ? <span className={styles.saveStatus}><Loader2 className="size-3 animate-spin motion-reduce:animate-none" aria-hidden="true" />Saving…</span>
                     : saved || active ? <span className={styles.saveStatus}><Check className="size-3" aria-hidden="true" />Saved</span> : null}
                 </div>

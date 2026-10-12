@@ -1,6 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+test("OpenAI image moderation rejections are terminal, safe and actionable", () => {
+  for (const jobType of ["generate_image", "image_generation"] as const) {
+    const job = { jobType, status: "failed", errorCode: "moderation_blocked",
+      errorMessage: "400 Your request was rejected by the safety system. request-private token=private-secret",
+      attemptCount: 1, maxAttempts: 3 } as BackgroundJobRecord;
+    const error = getPublicBackgroundJob(job).error;
+    assert.equal(error?.code, "PROVIDER_CONTENT_MODERATION");
+    assert.equal(error?.retryable, false);
+    assert.match(error?.message ?? "", /blocked this generation through content moderation/);
+    assert.doesNotMatch(JSON.stringify(error), /request-private|private-secret|You can retry/);
+  }
+});
+
 import {
   getCanonicalBackgroundJobType,
   getPublicBackgroundJob,

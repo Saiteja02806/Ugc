@@ -32,6 +32,8 @@ export type EditableVideoDraft = {
 export type EditableVideoDraftInput = Omit<EditableVideoDraft, "updatedAt">;
 
 export type EditableVideo = {
+  draftId?: string;
+  draftRevision?: number;
   createdAt: string | null;
   draft: EditableVideoDraft | null;
   durationSeconds: number | null;

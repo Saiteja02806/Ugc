@@ -45,19 +45,50 @@ input, unchanged legacy routing, and duration mismatch rejection.
 The focused release suite passes 81 tests, and the worker regression suites
 pass 308 plus 15 tests. Standalone TypeScript validation also passes.
 
-The website snapshot preserves all 2,998 files from current production deployment
+The website snapshot initially preserved production deployment
 `dpl_FykkpKgW4iGKUAjcGzh7ttU4r5pX`, including its 116 differences from the
-worker baseline, before applying the scoped patch. Only local deployment JSON,
-TypeScript build caches, and Supabase CLI cache metadata are excluded from upload.
-Environment files and installed/build dependencies remain excluded.
+worker baseline. A concurrent MCP Edit-draft release then promoted
+`dpl_2bnCDVseTHoX3aR9e1BqioaAC1bG`. Its twelve additional source changes were
+preserved before staging the combined reference release. SHA-1 verification
+matches all 2,999 retained production files and the 23 scoped patch files.
+Excluded baseline paths are `tsconfig.tsbuildinfo` (TypeScript build cache)
+and `supabase/.temp/cli-latest` (local CLI cache). Local deployment JSON,
+environment files, installed dependencies, and build output remain excluded.
 
-The worker image build succeeded with digest
-`sha256:cbe44cb4b8ebcbe6df74bc47ddbf9040043413de29550104d7b71509c656a301`.
-Cloud Run revision `ugc-ai-generation-worker-00168-fop` passes its platform
-startup probe with internal-only ingress and zero traffic during staging. Its
-runtime and baked source identity are `7aec285e20e59c9bbce766bf0c40d8d1b1893278`.
-The website staging build passes production TypeScript checks and all 153 static
-pages, and the same 81 focused tests pass against the preserved source.
-Promotion and an authenticated production generation remain outstanding.
+The final website deployment `dpl_4NiAfTi4YsUhC5cNppwJ2FJhp8AB`
+(`ugc-c1ioxolbh-ugcpilot.vercel.app`) is promoted to the production domain.
+Its build compiles, passes TypeScript, and renders all 153 static pages.
+The 81 reference tests and eleven preserved MCP Edit-draft tests pass.
+
+The worker image build `bdf82290-e69d-4b7a-918c-7bda2635e770` succeeded with
+digest `sha256:94eeaa1266b91f16611a452b947335c916087438a8bb01e62141a279e4921bc8`.
+Cloud Run revision `ugc-ai-generation-worker-00170-qay` passed startup checks
+at zero traffic and now receives 100% of production traffic. Internal ingress
+is preserved. Runtime and baked identity are
+`f8a614b8f08730ed82dfb0f6a37d16ad061347b5`.
+
+The first production canary reached Gemini with the video and image, but Google
+rejected an aspect-ratio setting for edit mode. Its 40-credit reservation was
+released, with no provider operation accepted. The adapter now inherits source
+framing as well as source duration; its tests reject either override in edit
+requests. Ordinary generation still sends its selected ratio and duration.
+
+After reconnecting the browser, the exact ten-second owned upload succeeded on
+the combined production release. Its image remains attached, the form and
+pending result both display ten seconds, and job
+`6de321e4-206f-41aa-910f-72fe8e9a4e1b` queues `google_omni`, `edit`,
+ten-second source/billing metadata and one image. This job completed through
+Gemini with one accepted operation, no retry, and a committed 40-credit charge.
+The worker verified 10.006 seconds from the returned MP4 container before saving.
+The downloaded result independently measures 10.000 seconds of video and
+10.005 seconds of audio with ffprobe. The production editor displays the saved
+result and both references remain attached.
+
+Visual fidelity remains a provider limitation: this canary retained some source
+text and returned a landscape 1280-by-720 frame from a portrait source despite
+the preservation prompt. The requested ratio is still stored as generation
+metadata, so its 9:16 label is not proof of the output frame's actual shape.
+The reference-delivery and duration checks passed; exact visual edits and framing
+must be reviewed before publishing. No automatic additional paid call was made.
 
 Provider contract: https://ai.google.dev/gemini-api/docs/omni

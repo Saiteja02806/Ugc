@@ -20,7 +20,13 @@ mock.module("@google/genai", { namedExports: {
       },
     };
     interactions = {
-      create: async params => { requests.push({ type: "create", ...params }); return result; },
+      create: async params => {
+        if (params.generation_config?.video_config?.task === "edit") {
+          assert.equal(params.response_format.aspect_ratio, undefined, "Google edit requests must inherit source framing");
+          assert.equal(params.response_format.duration, undefined, "Google edit requests must inherit source timing");
+        }
+        requests.push({ type: "create", ...params }); return result;
+      },
       get: async id => { requests.push({ type: "resume", id }); return result; },
     };
   },
@@ -54,6 +60,7 @@ test("long prompts reach Omni intact and use the configured model's live input l
     assert.equal(submitted.type, "create");
     assert.equal(submitted.input, prompt);
     assert.equal(submitted.model, count.model);
+    assert.equal(submitted.response_format.aspect_ratio, "9:16");
   } finally {
     if (previousModel === undefined) delete process.env.GEMINI_OMNI_MODEL;
     else process.env.GEMINI_OMNI_MODEL = previousModel;
@@ -89,6 +96,7 @@ test("video edits submit actual video bytes and the identity image, with explici
     assert.ok(submitted.input[2].text.endsWith("Remove text and swap the face. Copy the actions."));
     assert.equal(submitted.generation_config.video_config.task, "edit");
     assert.equal(submitted.response_format.duration, undefined, "Editing must not shorten or extend the source timeline");
+    assert.equal(submitted.response_format.aspect_ratio, undefined, "Editing preserves the source aspect ratio");
     const count = requests.findLast(request => request.type === "count");
     assert.ok(count.contents.some(part => part.inlineData?.mimeType === "video/mp4"));
     assert.ok(count.contents.some(part => part.inlineData?.mimeType === "image/png"));

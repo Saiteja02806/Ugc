@@ -118,7 +118,8 @@ export async function generateGeminiOmniVideoBuffer({
       model,
       ...(referenceVideo ? { generation_config: { video_config: { task: "edit" as const } } } : {}),
       response_format: {
-        aspect_ratio: aspectRatio,
+        // Edits inherit the source framing; Google rejects aspect_ratio for edit.
+        ...(!referenceVideo ? { aspect_ratio: aspectRatio } : {}),
         delivery: "uri",
         // Edit mode retains the source timeline; an output duration would ask
         // the provider to shorten or extend the footage instead.

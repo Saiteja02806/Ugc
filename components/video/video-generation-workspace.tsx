@@ -1242,7 +1242,7 @@ export function VideoGenerationStudioPanel({
                   avatarLabel={uploadedReference?.asset.title ?? null}
                   prompt={activeVideoPrompt}
                   modelLabel={getVideoModelLabel(model)}
-                  durationSeconds={durationSeconds}
+                  durationSeconds={hasWorkflowVideoReference ? sourceDuration ?? 0 : durationSeconds}
                   resolution={resolution}
                 />
               ),

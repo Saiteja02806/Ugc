@@ -44,3 +44,9 @@ Capability flags for MCP upload, download and cloning remain false. The audio ca
 - Production was inspected read-only: the five existing audio record/preferences tables are RLS-enabled, service SELECT/INSERT allowed, anon/authenticated SELECT denied. `create_audio_generation_request` is invoker with empty search path and service-only EXECUTE. No schema, grants, bucket or IAM mutation was made.
 
 These fixtures exercise actual shared services/query builders and existing SQL primitives, with mocked provider/storage/queue boundaries. They do not prove a hosted paid generation, private transfer, multi-client interruption or local download. Supabase current query/filter docs and the same-day changelog were consulted; installed Next server/client boundary guidance was read. Full application parity and the original real hook → demo → finished download journey in both IDEs remain unfinished.
+
+## Published candidate
+
+Reviewed candidate commit: 0055433f5dc1f8831c654f40f4d7fdf2b49b1377. Draft PR #41 (https://github.com/Saiteja02806/Ugc/pull/41) is attached and stacked on codex/mcp-edit-export-history. Exact-commit MCP CI 38248424314 and 38248441470 both completed successfully, including the full 43-tool suite, shared audio adapter/SQL tests, package validation, immutable builder checks and app/worker dependency audits. Final local MCP suite, compile and lint/type checks also passed.
+
+A post-push alias read confirmed production is still website dpl_4bszasuCMsTM3ibWiH1eFBgbUfFA and MCP dpl_D2GUbYmA4YVWiuNDDYxgD4rsRPwc. No candidate deployment/promotion occurred. All fourteen intentional candidate source/test/config/evidence paths are committed and the remote SHA matches; unrelated primary-root source, local credentials/config, temporary fixtures/logs and build/cache output remain excluded. No intended isolated source path was omitted.

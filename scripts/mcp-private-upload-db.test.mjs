@@ -10,7 +10,7 @@ async function setup() {
  const start=baseline.indexOf('CREATE TABLE "public"."media_assets" (');
  await db.exec(baseline.slice(start,baseline.indexOf("\n);",start)+3));
  await db.exec("alter table media_assets enable row level security; grant all on media_assets to service_role;");
- for(const file of ["20260928151747_mcp_upload_quota.sql","20261011171055_mcp_upload_recovery.sql","20261012103751_mcp_private_upload.sql"])
+ for(const file of ["20260928151747_mcp_upload_quota.sql","20261011171055_mcp_upload_recovery.sql","20261012105853_mcp_private_upload.sql"])
   await db.exec(readFileSync(new URL("../supabase/migrations/"+file,import.meta.url),"utf8"));
  return db;
 }

@@ -16,7 +16,7 @@ const {registerOperationMcpTools}=await import('../lib/mcp/operation-tools.ts');
 const id=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const code=r=>JSON.parse(r.content[0].text).code;
 function harness(){
-  const h={rows:new Map(),assets:new Map(),receipts:new Map(),calls:[],dispatches:[],configurationMissing:false,deliveryFailed:false,outage:false};active=h;
+  const h={rows:new Map(),assets:new Map(),receipts:new Map(),exports:new Map(),renders:new Map(),calls:[],dispatches:[],configurationMissing:false,deliveryFailed:false,outage:false};active=h;
   h.row=(n,owner='owner-a')=>({id:id(n),user_id:owner,job_type:'generate_image',status:'completed',
     queue_name:'ai-generation',queue_provider:'gcp',queue_message_id:null,attempt_count:1,max_attempts:3,
     created_at:`2026-10-11T00:00:00.${String(n).padStart(6,'0')}Z`,updated_at:'2026-10-11T00:00:00.123456Z',
@@ -41,6 +41,16 @@ function harness(){
       return Response.json({job_id:body.p_job_id,request_id:body.p_request_id,replayed:false,accepted_at:row.updated_at});
     }
     const owner=url.searchParams.get('user_id')?.slice(3),key=url.searchParams.get('id')?.slice(3);
+    if(url.pathname.endsWith('/edit_export_requests')){
+      assert.ok(owner,'export receipt owner is mandatory');
+      if(h.exportOutage)return Response.json({message:'private-export-database-secret'},{status:400});
+      return Response.json(h.exports.get(`${owner}:${url.searchParams.get('request_id').slice(3)}`)??null);
+    }
+    if(url.pathname.endsWith('/video_render_jobs')){
+      assert.ok(owner,'render owner is mandatory');
+      const render=h.renders.get(url.searchParams.get('render_id').slice(3));
+      return Response.json(render?.user_id===owner?render:null);
+    }
     if(url.pathname.endsWith('/mcp_job_control_requests')){
       assert.ok(owner);return Response.json(h.receipts.has(`${owner}:${url.searchParams.get('request_id').slice(3)}`)?{request_id:id(99)}:null);
     }
@@ -99,7 +109,7 @@ test('operation details verify every output owner and recover finishing handles 
     input_json:{version:1,userId:'owner-a',requestKey:id(90),fingerprint:'private-fingerprint'},output_json:{mediaAssetId:id(80),mediaAssetIds:[id(81)],private:'private-output-secret'}});
   h.assets.set(id(80),{id:id(80),user_id:'owner-a',status:'ready'});h.assets.set(id(81),{id:id(81),user_id:'owner-b',status:'ready'});
   const details=(await h.call('get_operation',{operation_id:id(1)})).structuredContent;
-  assert.deepEqual(details.output_asset_ids,[id(80)]);assert.equal(details.finishing_request_id,id(90));assert.doesNotMatch(JSON.stringify(details),/private-|input_json|output_json|owner-a/);
+  assert.deepEqual(details.output_asset_ids,[id(80)]);assert.equal(details.finishing_request_id,id(90));assert.equal(details.edit_export_request_id,null);assert.doesNotMatch(JSON.stringify(details),/private-|input_json|output_json|owner-a/);
   assert.equal(code(await h.call('get_operation',{operation_id:id(1)},'owner-b')),'NOT_FOUND');
   h.rows.get(id(1)).job_type='test_worker_job';assert.equal(code(await h.call('get_operation',{operation_id:id(1)})),'NOT_FOUND');
 });
@@ -129,4 +139,85 @@ test('missing queue config or changed revisions fail before action; outages stay
   assert.equal(code(await h.call('retry_operation',args)),'OPERATION_DISPATCH_UNAVAILABLE');assert.equal(h.receipts.size,0);
   h.configurationMissing=false;assert.equal(code(await h.call('retry_operation',{...args,expected_updated_at:'2026-10-10T00:00:00Z'})),'OPERATION_CHANGED');
   assert.equal(h.receipts.size,0);h.outage=true;const r=await h.call('get_operation',{operation_id:id(1)});assert.equal(code(r),'OPERATIONS_UNAVAILABLE');assert.doesNotMatch(JSON.stringify(r),/private-database-secret/);
+});
+
+function exportFixture(h){
+  const payload={renderId:id(91),userId:'owner-a',projectId:'edit-project',sourceVideoId:id(79),
+    sourceVideoUrl:'https://private-source.example/video',ratio:'9:16',draft:{textOverlays:[{text:'private-saved-text'}]}};
+  const receipt={user_id:'owner-a',request_id:id(90),draft_id:id(92),expected_revision:3,render_id:id(91),job_id:id(1),
+    output_asset_id:id(80),render_payload:structuredClone(payload)};
+  h.exports.set('owner-a:'+id(90),receipt);
+  const job={...h.row(1),job_type:'render_edit_video',project_id:'edit-project',idempotency_key:'edit-export:'+id(90),
+    input_json:payload,output_json:{videoUrl:'https://private-output.example/video'}};
+  h.rows.set(id(1),job);
+  const render={user_id:'owner-a',status:'completed',source_video_id:id(79),project_id:'edit-project',ratio:'9:16'};
+  h.renders.set(id(91),render);
+  const asset={id:id(80),user_id:'owner-a',collection:'video',source_type:'edit_export',source_record_id:id(91),
+    parent_asset_id:id(79),status:'ready',deleted_at:null,url:'https://private-output.example/video'};
+  h.assets.set(id(80),asset);
+  return {job,receipt,render,asset};
+}
+
+test('history recovers a lost Edit export request and exact immutable output without raw payloads or mutations',async()=>{
+  const h=harness();const f=exportFixture(h);
+  // The worker returns a video URL, not the immutable output UUID. Recover it from the receipt.
+  const history=(await h.call('list_operations',{type:'final_render',project_id:'edit-project'})).structuredContent;
+  assert.equal(history.items[0].id,id(1));
+  process.env.MCP_VIDEO_FINISHING_ENABLED='false';h.configurationMissing=true;
+  const get=()=>h.call('get_operation',{operation_id:history.items[0].id},'owner-a',['jobs:read']);
+  const recovered=(await get()).structuredContent;
+  assert.equal(recovered.edit_export_request_id,id(90));assert.equal(recovered.finishing_request_id,null);
+  assert.deepEqual(recovered.output_asset_ids,[id(80)]);
+  assert.doesNotMatch(JSON.stringify(recovered),/private-|sourceVideoUrl|videoUrl|render_payload|owner-a|expected_revision/);
+  f.job.output_json={mediaAssetId:id(81)};h.assets.set(id(81),{...f.asset,id:id(81)});
+  assert.deepEqual((await get()).structuredContent.output_asset_ids,[id(80)]);
+  assert.equal(h.dispatches.length,0);assert.equal(h.receipts.size,0);
+  assert.ok(h.calls.every(c=>!['POST','PATCH','DELETE'].includes(c.method)));
+  assert.equal(code(await h.call('get_operation',{operation_id:id(1)},'owner-b')),'NOT_FOUND');
+});
+
+test('export history preserves its recovery handle for pending, failed and cancelled work without advertising an output',async()=>{
+  for(const status of ['queued','processing','failed','cancelled']){
+    const h=harness();const f=exportFixture(h);f.job.status=status;f.render.status=status==='failed'?'failed':'queued';
+    const details=(await h.call('get_operation',{operation_id:id(1)})).structuredContent;
+    assert.equal(details.edit_export_request_id,id(90));assert.deepEqual(details.output_asset_ids,[]);assert.equal(h.dispatches.length,0);
+  }
+});
+
+test('export history rejects foreign, removed or misidentified artifacts and keeps a verified request handle',async()=>{
+  for(const change of [{user_id:'owner-b'},{deleted_at:'removed'},{status:'uploading'},{collection:'image'},
+    {source_type:'generated_video'},{source_record_id:id(500)},{parent_asset_id:id(500)}]){
+    const h=harness();const f=exportFixture(h);Object.assign(f.asset,change);
+    const details=(await h.call('get_operation',{operation_id:id(1)})).structuredContent;
+    assert.equal(details.edit_export_request_id,id(90));assert.deepEqual(details.output_asset_ids,[]);
+  }
+});
+
+test('mismatched export receipts or immutable jobs and lookup outages fail closed with safe retryable errors',async()=>{
+  for(const corrupt of [f=>f.receipt.job_id=id(500),f=>f.receipt.user_id='owner-b',f=>f.receipt.request_id=id(500),
+    f=>f.receipt.render_payload.userId='owner-b',f=>f.receipt.render_payload.renderId=id(500),
+    f=>f.job.input_json.draft={textOverlays:[]},f=>f.render.source_video_id=id(500),
+    f=>f.render.project_id='wrong-project',f=>f.render.ratio='1:1']){
+    const h=harness();const f=exportFixture(h);corrupt(f);
+    const result=await h.call('get_operation',{operation_id:id(1)});
+    assert.equal(code(result),'OPERATIONS_UNAVAILABLE');assert.equal(JSON.parse(result.content[0].text).retryable,true);
+    assert.doesNotMatch(JSON.stringify(result),/private-|owner-b|render_payload|wrong-project/);assert.equal(h.dispatches.length,0);
+  }
+  for(const missing of ['receipt','render','database']){
+    const h=harness();exportFixture(h);
+    if(missing==='receipt')h.exports.clear();else if(missing==='render')h.renders.clear();else h.exportOutage=true;
+    assert.equal(code(await h.call('get_operation',{operation_id:id(1)})),'OPERATIONS_UNAVAILABLE');
+    assert.equal(h.dispatches.length,0);
+  }
+});
+
+test('legacy website renders and other operations keep their existing outputs without inventing export handles',async()=>{
+  const h=harness();const f=exportFixture(h);f.job.idempotency_key='website-render:'+id(91);
+  f.job.output_json={mediaAssetId:id(80)};
+  const legacy=(await h.call('get_operation',{operation_id:id(1)})).structuredContent;
+  assert.equal(legacy.edit_export_request_id,null);assert.deepEqual(legacy.output_asset_ids,[id(80)]);
+  assert.equal(h.calls.some(c=>c.path.endsWith('/edit_export_requests')),false);
+  f.job.idempotency_key='edit-export:invalid-uuid';
+  const malformed=(await h.call('get_operation',{operation_id:id(1)})).structuredContent;
+  assert.equal(malformed.edit_export_request_id,null);assert.deepEqual(malformed.output_asset_ids,[]);
 });

@@ -8,7 +8,7 @@ import { buildEditOverlayTextLayout } from "./overlay-render-spec";
 import { getMediaAssetForOwner, serializeMediaAsset } from "@/lib/media/media-storage";
 import { isEditableMediaAsset } from "@/lib/media/editable-video";
 import { isTrustedMediaReferenceUrl } from "@/lib/media/media-reference";
-import { getBackgroundJobForUser, getMissingBackgroundJobStorageEnvVars } from "@/lib/jobs/background-jobs";
+import { getBackgroundJobForUser, getMissingBackgroundJobStorageEnvVars, type BackgroundJobRecord } from "@/lib/jobs/background-jobs";
 import { dispatchQueuedBackgroundJobForRecovery } from "@/lib/jobs/background-job-service";
 import { getMissingBackgroundJobCloudTasksEnvVars } from "@/lib/jobs/gcp-cloud-tasks";
 
@@ -75,6 +75,17 @@ export async function getEditExportForOwner(owner:string,requestId:string) {
   if(!r)return {request_id:key,draft_id:null,revision:null,job_id:null,outcome:"unconfirmed",status:null,progress:null,output_asset_ids:[],
     message:"This export request is not confirmed. Keep the same request ID when checking or submitting again."};
   return resultFor(r);
+}
+// History can recover a lost request UUID without trusting the worker output or
+// submitting/requeuing anything. Legacy website renders have no export receipt.
+export async function getEditExportForOperation(owner:string,job:BackgroundJobRecord) {
+  if(job.userId!==owner)throw new EditDraftError("NOT_FOUND","Operation not found.",404);
+  if(job.jobType!=="render_edit_video"||!job.idempotencyKey?.startsWith("edit-export:"))return null;
+  const key=job.idempotencyKey.slice("edit-export:".length);
+  if(!z.uuid().safeParse(key).success)return null;
+  const receipt=await readReceipt(owner,identity(owner,key));
+  if(!receipt||receipt.job_id!==job.id)unavailable();
+  return resultFor(receipt);
 }
 export async function startEditExportForOwner(params:{userId:string;requestId:string;draftId:string;expectedRevision:number}) {
   const key=identity(params.userId,params.requestId),draftId=params.draftId.toLowerCase();

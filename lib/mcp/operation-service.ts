@@ -6,6 +6,7 @@ import { getBackgroundJobForUser, type BackgroundJobRecord } from "@/lib/jobs/ba
 import { dispatchQueuedBackgroundJobForRecovery } from "@/lib/jobs/background-job-service";
 import { getMissingBackgroundJobCloudTasksEnvVars } from "@/lib/jobs/gcp-cloud-tasks";
 import { getMediaAssetForOwner } from "@/lib/media/media-storage";
+import { getEditExportForOperation } from "@/lib/edit/export-service";
 import { getMcpStore } from "./store";
 import { ToolFailure } from "./read-tools";
 
@@ -39,6 +40,13 @@ export function operationSummary(job: BackgroundJobRecord) {
 }
 
 export async function operationDetails(job: BackgroundJobRecord, userId: string) {
+  if (job.jobType === "render_edit_video" && job.idempotencyKey?.startsWith("edit-export:")) {
+    let savedExport;
+    try { savedExport = await getEditExportForOperation(userId, job); }
+    catch { throw new ToolFailure("OPERATIONS_UNAVAILABLE", "Edit export recovery is temporarily unavailable. Read this operation again before submitting another export.", true); }
+    return { operation: operationSummary(job), output_asset_ids: savedExport?.output_asset_ids ?? [],
+      finishing_request_id: null, edit_export_request_id: savedExport?.request_id ?? null };
+  }
   const output = job.output && typeof job.output === "object" && !Array.isArray(job.output) ? job.output : {};
   const candidates = [output.mediaAssetId, output.outputAssetId, output.audioAssetId, output.assetId,
     ...(Array.isArray(output.mediaAssetIds) ? output.mediaAssetIds : [])];
@@ -56,7 +64,7 @@ export async function operationDetails(job: BackgroundJobRecord, userId: string)
     input.version === 1 && input.userId === userId && typeof input.requestKey === "string" &&
     z.uuid().safeParse(input.requestKey).success && job.idempotencyKey === `explore-finish:${input.requestKey}`
     ? input.requestKey : null;
-  return { operation: operationSummary(job), output_asset_ids, finishing_request_id };
+  return { operation: operationSummary(job), output_asset_ids, finishing_request_id, edit_export_request_id: null };
 }
 
 export async function controlOperation(params: {

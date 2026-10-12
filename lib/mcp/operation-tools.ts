@@ -48,9 +48,9 @@ export function registerOperationMcpTools(server: McpServer) {
       updated_at: last.createdAt, id: last.id }) : null };
   }));
   server.registerTool("get_operation", {
-    description: "Read any owned customer job, its safe retry/cancellation status and verified completed output IDs. Recover a finishing request ID when available. Never submits work.",
+    description: "Read any owned customer job, its safe retry/cancellation status and verified completed output IDs. Recover finishing or saved Edit export request IDs when available; use get_video_finish or get_edit_export for their receipts. Never submits work.",
     inputSchema: z.strictObject({ operation_id: z.uuid() }),
-    outputSchema: z.strictObject({ operation: summary, output_asset_ids: z.array(z.uuid()).max(20), finishing_request_id: z.uuid().nullable() }),
+    outputSchema: z.strictObject({ operation: summary, output_asset_ids: z.array(z.uuid()).max(20), finishing_request_id: z.uuid().nullable(), edit_export_request_id: z.uuid().nullable() }),
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     scopeChallenge: requireScopes("jobs:read"), _meta: oauthMetadata("jobs:read"),
   }, (args, ctx) => executeTool(async () => {

@@ -122,7 +122,7 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
       <div className={styles.stage} aria-live="polite" aria-busy={busy}>
         {builder.visibleJobs.length ? <div className={styles.resultsPanel}>
           <div className={styles.resultsToolbar}>
-            <p className={styles.resultsHeading} role="status">{progress.message}</p>
+            <p className={styles.resultsHeading} role="status">{builder.historyImage ? "Image from your character history." : progress.message}</p>
             <div className="flex shrink-0 gap-1">
               {builder.historyImage ? <Button variant="ghost" size="sm" onClick={builder.returnToSession}>Back to session</Button> : null}
               <Button variant="outline" size="sm" disabled={busy || Boolean(pending) || builder.select.isPending} onClick={() => { builder.startNewSession(); setPrompt(""); resetImageReference(); }}>New session</Button>

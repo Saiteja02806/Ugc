@@ -1,20 +1,13 @@
 import {
-  DEFAULT_EDIT_PROJECT_ID,
-  ensureEditableVideo,
+  serializeEditableVideo,
   listEditableVideosForOwner,
 } from "@/lib/edit/render-storage";
 import {
   FirebaseAuthRequestError,
   requireFirebaseUser,
 } from "@/lib/firebase/server-auth";
-import {
-  getMediaAssetForOwner,
-  serializeMediaAsset,
-} from "@/lib/media/media-storage";
-import {
-  getEditableVideoSource,
-  isEditableMediaAsset,
-} from "@/lib/media/editable-video";
+import { openEditDraftForOwner } from "@/lib/edit/open-draft";
+import { EditDraftError } from "@/lib/edit/draft-contract";
 import { withPrivateEditDelivery } from "@/lib/edit/private-video-delivery";
 
 export const runtime = "nodejs";
@@ -54,52 +47,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const sourceRow = await getMediaAssetForOwner({
-      assetId: sourceVideoId,
-      userId: user.uid,
-    });
-
-    if (!sourceRow) {
-      return Response.json(
-        { ok: false, error: "The source Creative Asset was not found." },
-        { status: 404 },
-      );
-    }
-
-    const sourceAsset = serializeMediaAsset(sourceRow);
-
-    if (!isEditableMediaAsset(sourceAsset)) {
-      return Response.json(
-        {
-          ok: false,
-          error: "Only raw Creative Assets videos can be edited.",
-        },
-        { status: 400 },
-      );
-    }
-
-    if (sourceAsset.status !== "ready") {
-      return Response.json(
-        { ok: false, error: "This source video is not ready for editing." },
-        { status: 409 },
-      );
-    }
-
-    const video = await ensureEditableVideo({
-      draft: sourceAsset.metadata.draft,
-      durationSeconds: sourceAsset.durationSeconds,
-      projectId: sourceAsset.projectId ?? DEFAULT_EDIT_PROJECT_ID,
-      ratio:
-        sourceAsset.ratio === "other"
-          ? getClosestEditableRatio(sourceAsset.width, sourceAsset.height)
-          : sourceAsset.ratio,
-      source: getEditableVideoSource(sourceAsset),
-      sourceVideoId: sourceAsset.id,
-      sourceVideoUrl: sourceRow.url,
-      thumbnailUrl: sourceRow.thumbnail_url,
-      title: sourceAsset.title,
-      userId: user.uid,
-    });
+    const opened = await openEditDraftForOwner(user.uid, sourceVideoId);
+    const video = serializeEditableVideo(opened.video);
 
     return Response.json(
       { ok: true, video: await withPrivateEditDelivery(video, user.uid) },
@@ -110,29 +59,8 @@ export async function POST(request: Request) {
   }
 }
 
-function getClosestEditableRatio(width: number | null, height: number | null) {
-  if (!width || !height || width <= 0 || height <= 0) {
-    return "9:16" as const;
-  }
-
-  const sourceRatio = width / height;
-  const supportedRatios = [
-    { ratio: "9:16" as const, value: 9 / 16 },
-    { ratio: "1:1" as const, value: 1 },
-    { ratio: "4:5" as const, value: 4 / 5 },
-    { ratio: "16:9" as const, value: 16 / 9 },
-  ];
-
-  return supportedRatios.reduce((closest, candidate) =>
-    Math.abs(Math.log(sourceRatio / candidate.value)) <
-    Math.abs(Math.log(sourceRatio / closest.value))
-      ? candidate
-      : closest,
-  ).ratio;
-}
-
 function editVideoErrorResponse(error: unknown, fallback: string) {
-  const status = error instanceof FirebaseAuthRequestError ? error.status : 500;
+  const status = error instanceof FirebaseAuthRequestError || error instanceof EditDraftError ? error.status : 500;
 
   if (status >= 500) {
     console.error(fallback, error);
@@ -142,7 +70,8 @@ function editVideoErrorResponse(error: unknown, fallback: string) {
     {
       ok: false,
       error:
-        error instanceof FirebaseAuthRequestError ? error.message : fallback,
+        error instanceof FirebaseAuthRequestError || error instanceof EditDraftError ? error.message : fallback,
+      ...(error instanceof EditDraftError ? { code: error.code } : {}),
     },
     { status },
   );

@@ -21,6 +21,7 @@ async function setup() {
   assert.ok(start >= 0);
   await db.exec(baseline.slice(start,baseline.indexOf('\n$function$;',start)+13));
   await db.exec(migration);
+  await db.exec(readFileSync(new URL("../supabase/migrations/20261012052534_edit_open_draft.sql", import.meta.url),"utf8"));
   await db.query(`insert into media_assets(id,user_id,collection,source_type,title,file_name,storage_key,url,mime_type,status,duration_seconds)
     values($1,'owner-a','video','upload','Source','source.mp4','private-key','https://example.test/private','video/mp4','ready',10)`,[id(1)]);
   await db.query(`insert into editable_videos(id,user_id,project_id,source_video_id,source,title,source_video_url,duration_seconds,draft_json)
@@ -93,5 +94,58 @@ test('legacy draft updates increment the revision; status-only updates do not; a
     assert.equal((await db.query("select relrowsecurity rls from pg_class where oid='edit_draft_save_requests'::regclass")).rows[0].rls,true);
     await db.exec('set role service_role');
     assert.equal((await save(db,'service',1)).video.draft_revision,2);
+  }finally{await db.close();}
+});
+
+const open = async(db,source=id(1),initial=null,owner='owner-a') =>
+  (await db.query('select edit_open_draft($1,$2,$3) result',[owner,source,initial])).rows[0].result;
+async function newSource(db,n,overrides={}) {
+  const values={user_id:'owner-a',collection:'video',source_type:'upload',status:'ready',mime_type:'video/mp4',width:720,height:1280,ratio:'9:16',duration_seconds:10,...overrides};
+  const columns=['id','title','file_name','storage_key','url',...Object.keys(values)];
+  const params=[id(n),'New source','new.mp4','private-new','https://example.test/private-new',...Object.values(values)];
+  await db.query(`insert into media_assets(${columns.join(',')}) values(${params.map((_,i)=>'$'+(i+1)).join(',')})`,params);
+}
+test('new draft opening is owner-scoped and replay-safe; reopening never resets later website edits',async()=>{
+  const db=await setup();try {
+    await newSource(db,10,{project_id:'saved-project'});
+    const opened=await Promise.all([open(db,id(10),draft('initial')),open(db,id(10),draft('initial'))]);
+    assert.deepEqual(opened.map(x=>x.reused).sort(),[false,true]);assert.equal(opened[0].video.id,opened[1].video.id);
+    assert.equal(opened[0].video.project_id,'saved-project');assert.equal(opened[0].video.source,'draft');
+    await db.query('select edit_save_draft($1,$2,$3,0,$4)',['owner-a',opened[0].video.id,randomUUID(),draft('website edit')]);
+    const resumed=await open(db,id(10),draft('replacement metadata'));
+    assert.equal(resumed.reused,true);assert.equal(resumed.video.draft_revision,1);assert.equal(resumed.video.draft_json.textOverlays[0].text,'website edit');
+    assert.equal((await db.query('select count(*)::int n from editable_videos where source_video_id=$1',[id(10)])).rows[0].n,1);
+    assert.equal((await db.query('select count(*)::int n from video_render_jobs')).rows[0].n,0);
+    assert.equal((await db.query('select count(*)::int n from edit_draft_save_requests')).rows[0].n,1);
+  }finally{await db.close();}
+});
+test('foreign, missing, removed, unready and unsupported sources cannot open drafts or resurrect removed projects',async()=>{
+  const db=await setup();try {
+    await assert.rejects(open(db,id(1),null,'owner-b'),/edit_open_not_found/);
+    await assert.rejects(open(db,id(999)),/edit_open_not_found/);
+    const cases=[{status:'uploading'},{collection:'image',mime_type:'image/png'}, {source_type:'edit_export'}, {deleted_at:'2026-10-12T00:00:00Z'}];
+    for(let i=0;i<cases.length;i++){
+      await newSource(db,20+i,cases[i]);await assert.rejects(open(db,id(20+i)),/edit_open_(not_found|unsupported|not_ready)/);
+    }
+    await newSource(db,30);const original=await open(db,id(30));
+    await db.query('update editable_videos set deleted_at=now() where id=$1',[original.video.id]);
+    await assert.rejects(open(db,id(30)),/edit_open_removed/);
+    assert.equal((await db.query('select count(*)::int n from editable_videos')).rows[0].n,2);
+    assert.equal((await db.query('select count(*)::int n from video_render_jobs')).rows[0].n,0);
+  }finally{await db.close();}
+});
+test('opening uses canonical dimensions/classification and preserves selected legacy draft identity/render history',async()=>{
+  const db=await setup();try {
+    for(const [n,overrides,ratio,source]of [[40,{collection:'influencer',source_type:'influencer_upload',ratio:'other',width:1600,height:900},'16:9','hook'],
+      [41,{source_type:'demo_upload',ratio:'other',width:800,height:1000},'4:5','demo'],[42,{source_type:'generated_video'},'9:16','hook']]){
+      await newSource(db,n,overrides);const result=await open(db,id(n));assert.equal(result.video.ratio,ratio);assert.equal(result.video.source,source);
+    }
+    await db.query("update editable_videos set latest_render_id=$2,rendered_video_url='keep-output',status='rendered' where id=$1",[id(2),id(80)]);
+    const existing=await open(db);assert.equal(existing.video.id,id(2));assert.equal(existing.video.latest_render_id,id(80));assert.equal(existing.video.rendered_video_url,'keep-output');
+    assert.equal(existing.video.draft_json.textOverlays[0].text,'original');
+    const flags=(await db.query(`select prosecdef,has_function_privilege('anon',oid,'execute') anon,
+      has_function_privilege('authenticated',oid,'execute') authenticated,has_function_privilege('service_role',oid,'execute') service
+      from pg_proc where proname='edit_open_draft'`)).rows[0];assert.deepEqual(flags,{prosecdef:false,anon:false,authenticated:false,service:true});
+    await db.exec('set role service_role');assert.equal((await open(db)).video.id,id(2));
   }finally{await db.close();}
 });

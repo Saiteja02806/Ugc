@@ -6,6 +6,7 @@ import {
   type EditableVideoDraftInput,
 } from "@/lib/edit/video-library";
 
+import type { SavedEditDraftRow } from "./saved-drafts";
 import { getSavedEditDraftForOwner, updateSavedEditDraftForOwner } from "./saved-drafts";
 import { EditDraftError } from "./draft-contract";
 
@@ -414,6 +415,7 @@ async function getEditableVideoRowForOwner(params: {
     .eq("source_video_id", params.sourceVideoId)
     .is("deleted_at", null)
     .order("updated_at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(1)
     .maybeSingle();
 
@@ -424,7 +426,7 @@ async function getEditableVideoRowForOwner(params: {
   return data;
 }
 
-function serializeEditableVideo(row: EditableVideoRow): EditableVideo {
+export function serializeEditableVideo(row: EditableVideoRow | SavedEditDraftRow): EditableVideo {
   const draft = normalizeEditableVideoDraftInput(row.draft_json);
 
   return {

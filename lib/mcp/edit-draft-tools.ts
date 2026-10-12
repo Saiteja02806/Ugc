@@ -2,6 +2,7 @@ import "server-only";
 import { McpServer, requireScopes } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { EditDraftError, editDraftInput, editDraftRevision } from "@/lib/edit/draft-contract";
+import { openEditDraftForOwner } from "@/lib/edit/open-draft";
 import { normalizeEditableVideoDraftInput } from "@/lib/edit/video-library";
 import { getSavedEditDraftForOwner, listSavedEditDraftsForOwner, updateSavedEditDraftForOwner, type SavedEditDraftRow } from "@/lib/edit/saved-drafts";
 import { getMediaAssetForOwner, serializeMediaAsset } from "@/lib/media/media-storage";
@@ -9,7 +10,7 @@ import { isEditableMediaAsset } from "@/lib/media/editable-video";
 import { decodeAssetCursor, encodeAssetCursor } from "./asset-cursor";
 import { executeTool, oauthMetadata, principal, ToolFailure } from "./read-tools";
 
-export const registeredEditDraftMcpTools = ["list_edit_drafts", "get_edit_draft", "update_edit_draft"] as const;
+export const registeredEditDraftMcpTools = ["list_edit_drafts", "get_edit_draft", "update_edit_draft", "open_edit_draft"] as const;
 const summarySchema = z.strictObject({ draft_id: z.uuid(), project_id: z.string(), title: z.string(),
   source: z.enum(["hook", "demo", "draft", "final"]), status: z.enum(["ready", "draft", "rendering", "rendered", "failed"]),
   ratio: z.enum(["9:16", "1:1", "4:5", "16:9"]), duration_seconds: z.number().nonnegative().nullable(),
@@ -26,6 +27,20 @@ async function errors<T>(run: () => Promise<T>) {
   }
 }
 export function registerEditDraftMcpTools(server: McpServer) {
+  server.registerTool("open_edit_draft", {
+    description: "Open or create the application's Edit-page draft for one ready owned raw video/influencer asset. Resolve the asset through list_assets/get_asset first. Reopening or retrying the same asset returns its current saved draft, preserving text, trims, revision and render history. Source metadata initializes new drafts only. No video is generated/rendered, no credits are spent, and Explore compositions/slideshows are separate.",
+    inputSchema: z.strictObject({ asset_id: z.uuid() }),
+    outputSchema: z.strictObject({ draft: summarySchema, content: editDraftInput.nullable(), source_asset_id: z.uuid(), reused: z.boolean() }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    scopeChallenge: requireScopes("creative:write"), _meta: oauthMetadata("creative:write"),
+  }, (args, ctx) => executeTool(async () => {
+    const userId = principal(ctx, "creative:write");
+    return errors(async () => {
+      const opened = await openEditDraftForOwner(userId, args.asset_id);
+      return { draft: summary(opened.video), content: normalizeEditableVideoDraftInput(opened.video.draft_json),
+        source_asset_id: args.asset_id, reused: opened.reused };
+    });
+  }));
   server.registerTool("list_edit_drafts", {
     description: "List the connected account's existing Edit-page projects and saved drafts, including website edits. Explore compositions and slideshows use separate draft systems. No render is submitted.",
     inputSchema: z.strictObject({ project_id: z.string().trim().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,119}$/).optional(),

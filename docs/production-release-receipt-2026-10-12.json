@@ -6,12 +6,16 @@
     "project": "ugc",
     "projectId": "prj_mVOxt7AUko5egMAESaxjGyC60Kvu",
     "url": "https://getugcpilot.com",
-    "deploymentId": "dpl_APkxhGiNzNPGiAWBezoc1zPWgD9W",
+    "deploymentId": "dpl_6c36CneZZahS6nm1ZvPFuztPU8Mu",
+    "manuallyStagedAndPromotedDeploymentId": "dpl_APkxhGiNzNPGiAWBezoc1zPWgD9W",
+    "automaticGitBuildBecameActive": true,
+    "automaticBuildSourceReverified": true,
+    "automaticBuildSignedInDefaultsReverified": true,
     "status": "READY",
     "target": "production",
     "sourceCommit": "4d7947a62b783a93f37d2bc3ceefdc0c1132b1e1",
     "framework": "nextjs",
-    "buildDurationSeconds": 122.078,
+    "buildDurationSeconds": 125.819,
     "rollbackDeploymentId": "dpl_4bszasuCMsTM3ibWiH1eFBgbUfFA"
   },
   "mcp": {

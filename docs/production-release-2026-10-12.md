@@ -2,7 +2,7 @@
 
 Status: LIVE. Production source is
 `4d7947a62b783a93f37d2bc3ceefdc0c1132b1e1`. Promoted on 12 October 2026;
-signed-in production acceptance and final log inspection completed around
+signed-in production acceptance and final log inspection completed after
 15:24 UTC. A documentation/test-only follow-up records this evidence without
 changing the deployed application or worker source.
 
@@ -130,7 +130,7 @@ future customer generations will succeed.
 
 | Target | Production destination | Verified release |
 |---|---|---|
-| Website `ugcpilot/ugc` | https://getugcpilot.com (www redirects here) | `dpl_APkxhGiNzNPGiAWBezoc1zPWgD9W`, READY, production, Next.js, source `4d7947a6`, build 122.1 seconds |
+| Website `ugcpilot/ugc` | https://getugcpilot.com (www redirects here) | Final observed Git build `dpl_6c36CneZZahS6nm1ZvPFuztPU8Mu`, READY, production, Next.js, source `4d7947a6`, build 125.8 seconds |
 | MCP `ugcpilot/ugc-mcp` | https://mcp.getugcpilot.com | `dpl_FoAACavGxABJ5mZBRvZ796gLEfSr`, READY, production, Next.js, source `4d7947a6`, build 74.1 seconds |
 | Six Cloud Run services | `ugcsaas / us-central1` | Each service has 100% traffic on `<service>-r-4d7947a6`; exact digest below |
 | Two active Cloud Run jobs | `ugc-video-render-job`, `ugc-carousel-replenishment` | Updated to the same exact digest and runtime SHA; not executed |
@@ -150,6 +150,15 @@ the final image's build assertion and startup checks prove that fix.
 Both `main` and the release branch were verified remotely at the deployed
 source before the documentation/test-only evidence follow-up. Safe target,
 rollback and validation metadata: [release receipt](production-release-receipt-2026-10-12.json).
+
+The manually staged/promoted website build was
+`dpl_APkxhGiNzNPGiAWBezoc1zPWgD9W` (122.1-second build). After the source
+push, Vercel's automatic `main` build of the same `4d7947a6` commit became
+active. Domain/source metadata, signed-in saved defaults and an empty recent
+error/fatal log sample were verified on that final automatic build too. The
+evidence follow-up contains only documentation and a browser test, with no
+application/worker change. The separate audio candidate is being rebuilt on
+this production ancestor in its own checkout and may supersede these targets.
 
 ## Production screen acceptance and regression coverage
 

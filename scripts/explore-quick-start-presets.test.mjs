@@ -23,9 +23,9 @@ function load(path, imports = {}, env = {}) {
 
 const generation = load("lib/ai-studio/generation-settings.ts", {}, { NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: "true" });
 const presets = load("lib/explore/launch-presets.ts", { "../ai-studio/generation-settings": generation });
-const expected = [["studio","/ai-studio",null],["trending","/dashboard",null],["library","/library",null],["video","/ai-studio","videos"],["image","/ai-studio","images"],["schedule","/scheduling",null]];
-test("all six quick starts open the approved destinations and preserve preview", () => {
-  assert.equal(presets.EXPLORE_QUICK_STARTS.length,6);
+const expected = [["studio","/ai-studio",null],["video","/ai-studio","videos"],["image","/ai-studio","images"],["audio","/audio-generation",null]];
+test("all four quick starts open the approved destinations and preserve preview", () => {
+  assert.equal(presets.EXPLORE_QUICK_STARTS.length,4);
   for (const [id,pathname,mode] of expected) {
     const shortcut=presets.EXPLORE_QUICK_STARTS.find(item=>item.id===id);
     for (const preview of [false,true]) {
@@ -35,11 +35,18 @@ test("all six quick starts open the approved destinations and preserve preview",
     }
   }
 });
-test("the old workflow routes remain hidden under every launch setting", () => {
-  for (const file of ["create-hook","creator-phone"]) {
-    const route=load("app/explore/"+file+"/page.tsx",{"next/navigation":{notFound(){throw Error("NOT_FOUND")}}},{NODE_ENV:"production",EXPLORE_GENERATION_ENABLED:"true"});
-    assert.throws(()=>route.default({searchParams:Promise.resolve({model:"kling_3_0",duration:"10",preview:"1"})}),/NOT_FOUND/);
+test("Talking Head + Demo is visible while preview stays non-spending and Creator Phone remains hidden", async () => {
+  const imports = { "@/components/explore/hook-workflow-preview": { HookWorkflowPreview: "HookWorkflowPreview" } };
+  for (const enabled of ["true", "false"]) {
+    const route = load("app/explore/create-hook/page.tsx", imports, { NODE_ENV: "production", EXPLORE_GENERATION_ENABLED: enabled });
+    const live = await route.default({ searchParams: Promise.resolve({}) });
+    assert.equal(live.type, "HookWorkflowPreview");
+    assert.equal(live.props.generationEnabled, enabled === "true");
+    const preview = await route.default({ searchParams: Promise.resolve({ preview: "1" }) });
+    assert.equal(preview.props.generationEnabled, false);
   }
+  const phone = load("app/explore/creator-phone/page.tsx", { "next/navigation": { notFound() { throw Error("NOT_FOUND"); } } });
+  assert.throws(() => phone.default(), /NOT_FOUND/);
 });
 test("legacy Recreate links redirect to the matching format and preserve job recovery", async () => {
   const route=load("app/explore/recreate/page.tsx",{"next/navigation":{redirect(url){throw Error(url)}},"@/worker/src/lib/explore-finishing-contract":{isExploreUuid:value=>typeof value==="string" && /^[0-9a-f-]{36}$/.test(value)}}).default;

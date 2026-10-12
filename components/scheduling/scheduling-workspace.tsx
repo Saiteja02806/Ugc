@@ -100,6 +100,7 @@ import {
   getScheduleEditBlockReason,
 } from "@/lib/scheduling/schedule-action-policy";
 import { getSchedulePublishFailureMessage } from "@/lib/scheduling/schedule-publish-outcome";
+import { getScheduleRefreshDelay } from "@/lib/scheduling/schedule-refresh-policy";
 import { getPublishedPostLink, getPostLinkUnavailableReason, shouldShowExportPreview } from "@/lib/scheduling/published-post-link";
 import {
   AccountDataAuthenticationUnavailableError,
@@ -135,10 +136,6 @@ const creativeAssetHookVideoSourceTypes: MediaSourceType[] = [
   "influencer_upload",
   "generated_video",
 ];
-const ACTIVE_SCHEDULE_POLL_INTERVAL_MS = 5_000;
-const ACTIVE_SCHEDULE_LOOKAHEAD_MS = 60_000;
-const ACTIVE_SCHEDULE_LOOKBEHIND_MS = 120_000;
-const ACTIVE_JOB_TIMEOUT_MS = 5 * 60 * 1_000;
 type MediaListResponse =
   | { assets: MediaAsset[]; ok: true }
   | { error?: string; ok?: false };
@@ -240,6 +237,11 @@ export function SchedulingWorkspace() {
   const [schedulesLoaded, setSchedulesLoaded] = useState(
     () => cachedSchedules !== undefined,
   );
+  const [hasScheduleData, setHasScheduleData] = useState(
+    () => cachedSchedules !== undefined,
+  );
+  const [scheduleLoadError, setScheduleLoadError] = useState<string | null>(null);
+  const [schedulesRefreshing, setSchedulesRefreshing] = useState(false);
   const initialDraftQueryState = useRef<"handled" | "idle" | "opening">(
     "idle",
   );
@@ -463,6 +465,7 @@ export function SchedulingWorkspace() {
   const loadSchedules = useCallback(async (
     options: SchedulingCatalogLoadOptions = {},
   ) => {
+    setSchedulesRefreshing(true);
     try {
       const data = await loadAccountSchedules(queryClient, accountId, options);
 
@@ -480,16 +483,19 @@ export function SchedulingWorkspace() {
           current === configuredLeadMinutes ? current : configuredLeadMinutes,
         );
       }
+      setHasScheduleData(true);
+      setScheduleLoadError(null);
       return data;
     } catch (error) {
       if (error instanceof AccountDataAuthenticationUnavailableError) {
         return null;
       }
 
-      setActionNotice("Could not load server schedules.");
+      setScheduleLoadError("Could not load schedules.");
       return null;
     } finally {
       setSchedulesLoaded(true);
+      setSchedulesRefreshing(false);
     }
   }, [accountId, queryClient]);
 
@@ -536,22 +542,53 @@ export function SchedulingWorkspace() {
     return () => window.clearTimeout(timer);
   }, [accountId, loadScheduleMedia, loadSchedules, loadSocialConnections]);
 
-  const hasActiveServerWork = useMemo(
-    () => serverSchedules.some(hasActiveSchedulingWork),
-    [serverSchedules],
-  );
-
   useEffect(() => {
-    if (!hasActiveServerWork) {
+    if (accountId === "signed-out") {
       return;
     }
 
-    const timer = window.setInterval(() => {
-      void loadSchedules({ force: true });
-    }, ACTIVE_SCHEDULE_POLL_INTERVAL_MS);
+    let disposed = false;
+    let timer: number | undefined;
+    let refreshing = false;
 
-    return () => window.clearInterval(timer);
-  }, [hasActiveServerWork, loadSchedules]);
+    function scheduleRefresh(schedules: ScheduledPost[]) {
+      window.clearTimeout(timer);
+      const delay = getScheduleRefreshDelay(schedules);
+      if (delay !== null && !disposed) {
+        timer = window.setTimeout(() => void refresh(), delay);
+      }
+    }
+
+    async function refresh() {
+      if (disposed || refreshing) {
+        return;
+      }
+      refreshing = true;
+      window.clearTimeout(timer);
+      const data = await loadSchedules({ force: true });
+      refreshing = false;
+      if (!disposed) {
+        scheduleRefresh(data?.schedules ?? serverSchedules);
+      }
+    }
+
+    function refreshWhenVisible() {
+      if (document.visibilityState === "visible") {
+        void refresh();
+      }
+    }
+
+    scheduleRefresh(serverSchedules);
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      disposed = true;
+      window.clearTimeout(timer);
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [accountId, loadSchedules, serverSchedules]);
 
   const counts = useMemo(() => getTabCounts(drafts), [drafts]);
   const visibleDrafts = useMemo(
@@ -1260,7 +1297,47 @@ export function SchedulingWorkspace() {
           </div>
         ) : null}
 
-        {dayPlannerOpen ? (
+        {scheduleLoadError ? (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-control border border-error/30 bg-card px-4 py-3"
+          >
+            <div>
+              <p className="text-sm font-bold text-foreground">
+                {hasScheduleData
+                  ? "Could not refresh schedules."
+                  : scheduleLoadError}
+              </p>
+              <p className="mt-1 text-sm text-muted">
+                {hasScheduleData
+                  ? "Showing the last loaded data. Retry to see the latest status."
+                  : "Your posts could not be retrieved. Retry to load your calendar."}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={schedulesRefreshing}
+              aria-busy={schedulesRefreshing}
+              onClick={() => void loadSchedules({ force: true })}
+            >
+              <RefreshCw
+                className={cn(
+                  "size-4",
+                  schedulesRefreshing && "animate-spin motion-reduce:animate-none",
+                )}
+                aria-hidden="true"
+              />
+              {schedulesRefreshing ? "Retrying…" : "Retry"}
+            </Button>
+          </div>
+        ) : null}
+
+        {!hasScheduleData ? (
+          scheduleLoadError ? null : (
+            <p role="status" className="text-sm text-muted">Loading schedules…</p>
+          )
+        ) : dayPlannerOpen ? (
           <DayScheduleWorkspace
             drafts={selectedDayDrafts}
             isSchedulingFinalDraftId={schedulingFinalDraftId}
@@ -1280,13 +1357,29 @@ export function SchedulingWorkspace() {
         ) : (
           <>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <ScheduleTabs
-                activeTab={activeTab}
-                counts={counts}
-                onChange={setActiveTab}
-              />
+              {viewMode === "list" ? (
+                <ScheduleTabs
+                  activeTab={activeTab}
+                  counts={counts}
+                  onChange={setActiveTab}
+                />
+              ) : (
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="text-sm font-semibold text-muted">All post statuses</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setActiveTab("drafts");
+                      setViewMode("list");
+                    }}
+                  >
+                    View drafts ({counts.drafts})
+                  </Button>
+                </div>
+              )}
               <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                {viewMode === "list" ? (
+                {viewMode === "list" && activeTab !== "drafts" ? (
                   <ScheduleListDatePicker
                     selectedDate={selectedCalendarDate}
                     onSelectDate={handleSelectCalendarDate}
@@ -1296,20 +1389,40 @@ export function SchedulingWorkspace() {
               </div>
             </div>
 
-            <ScheduleContent
-              activeTab={activeTab}
-              calendarMonth={visibleCalendarMonth}
-              calendarDrafts={calendarDrafts}
-              drafts={visibleDrafts}
-              selectedDate={selectedCalendarDate}
-              viewMode={viewMode}
-              onCreateDraftForDate={(dateKey) =>
-                void handleNewSchedulePost(dateKey)
-              }
-              onMonthChange={setVisibleCalendarMonth}
-              onOpenDate={handleOpenDayPlanner}
-              onSelectDate={handleSelectCalendarDate}
-            />
+            {viewMode === "list" && activeTab === "drafts" ? (
+              <div
+                id="schedule-content-panel"
+                role="tabpanel"
+                aria-labelledby="schedule-tab-drafts"
+              >
+                <ScheduleUndatedDraftList
+                  drafts={visibleDrafts}
+                  renderingScheduleId={renderingScheduleId}
+                  schedulingFinalDraftId={schedulingFinalDraftId}
+                  retryingPublishTargetId={retryingPublishTargetId}
+                  onEditDraft={(draft) => void handleEditSchedule(draft)}
+                  onCancelDraft={setSchedulePendingCancellation}
+                  onRenderDraft={handleStartCombinationRender}
+                  onScheduleDraft={handleScheduleFinalPost}
+                  onRetryPublishing={handleRetryPublishing}
+                />
+              </div>
+            ) : (
+              <ScheduleContent
+                activeTab={activeTab}
+                calendarMonth={visibleCalendarMonth}
+                calendarDrafts={calendarDrafts}
+                drafts={visibleDrafts}
+                selectedDate={selectedCalendarDate}
+                viewMode={viewMode}
+                onCreateDraftForDate={(dateKey) =>
+                  void handleNewSchedulePost(dateKey)
+                }
+                onMonthChange={setVisibleCalendarMonth}
+                onOpenDate={handleOpenDayPlanner}
+                onSelectDate={handleSelectCalendarDate}
+              />
+            )}
           </>
         )}
       </div>
@@ -1679,8 +1792,9 @@ function ScheduleContent({
   return (
     <div
       id="schedule-content-panel"
-      role="tabpanel"
-      aria-labelledby={`schedule-tab-${activeTab}`}
+      role={viewMode === "calendar" ? "region" : "tabpanel"}
+      aria-label={viewMode === "calendar" ? "Publishing calendar, all statuses" : undefined}
+      aria-labelledby={viewMode === "list" ? `schedule-tab-${activeTab}` : undefined}
       className="flex min-h-0 w-full flex-1"
     >
       {content}
@@ -1850,6 +1964,61 @@ function ScheduleDayListItem({ draft }: { draft: ScheduleDraft }) {
         {getScheduleStatusLabel(draft.status)}
       </Badge>
     </li>
+  );
+}
+
+function ScheduleUndatedDraftList({
+  drafts,
+  renderingScheduleId,
+  schedulingFinalDraftId,
+  retryingPublishTargetId,
+  onEditDraft,
+  onCancelDraft,
+  onRenderDraft,
+  onScheduleDraft,
+  onRetryPublishing,
+}: {
+  drafts: ScheduleDraft[];
+  renderingScheduleId: string | null;
+  schedulingFinalDraftId: string | null;
+  retryingPublishTargetId: string | null;
+  onEditDraft: (draft: ScheduleDraft) => void;
+  onCancelDraft: (draft: ScheduleDraft) => void;
+  onRenderDraft: (draftId: string) => void;
+  onScheduleDraft: (draft: ScheduleDraft) => void;
+  onRetryPublishing: (draft: ScheduleDraft, target: ScheduledPostTarget) => void;
+}) {
+  return (
+    <section aria-labelledby="undated-drafts-title" className="rounded-[var(--radius-panel)] border border-border bg-card p-4 shadow-card sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 id="undated-drafts-title" className="text-lg font-bold text-foreground">Drafts</h2>
+          <p className="mt-1 text-sm text-muted">Posts without a selected publish date and time.</p>
+        </div>
+        <Badge variant="outline">{drafts.length} {getTabItemName("drafts", drafts.length)}</Badge>
+      </div>
+      {drafts.length > 0 ? (
+        <ol aria-label="Undated drafts" className="mt-5 space-y-3">
+          {drafts.map((draft) => (
+            <li key={draft.id}>
+              <SelectedDayDraftCard
+                draft={draft}
+                isRendering={renderingScheduleId === draft.id}
+                isSchedulingFinal={schedulingFinalDraftId === draft.id}
+                retryingPublishTargetId={retryingPublishTargetId}
+                onEditDraft={onEditDraft}
+                onCancelDraft={onCancelDraft}
+                onRenderDraft={onRenderDraft}
+                onScheduleDraft={onScheduleDraft}
+                onRetryPublishing={onRetryPublishing}
+              />
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="mt-5 rounded-control border border-dashed border-border bg-card-muted p-6 text-sm text-muted">No undated drafts.</p>
+      )}
+    </section>
   );
 }
 
@@ -2252,7 +2421,9 @@ function CalendarPlanner({
     [calendarMonth],
   );
   const draftsByDate = useMemo(() => groupDraftsByDate(drafts), [drafts]);
-  const postCount = drafts.filter((draft) => draft.scheduledDate).length;
+  const postCount = drafts.filter(
+    (draft) => draft.scheduledDate?.slice(0, 7) === calendarMonth,
+  ).length;
   const selectedDayDrafts = draftsByDate.get(selectedDate) ?? [];
 
   function moveMonth(monthOffset: number) {
@@ -2290,7 +2461,7 @@ function CalendarPlanner({
             </span>
           </div>
           <p className="mt-1 text-xs font-semibold leading-5 text-muted">
-            New posts only. Older posts remain available in the history tabs.
+            All post statuses. Browse older posts in List view.
           </p>
         </div>
 
@@ -2555,7 +2726,7 @@ function SelectedCalendarDayPanel({
         <div className="mt-4 rounded-control border border-dashed border-border bg-card px-3 py-5 text-center">
           <CalendarDays className="mx-auto size-5 text-muted" aria-hidden="true" />
           <p className="mt-2 text-sm font-bold text-foreground">
-            No Instagram posts yet
+            No posts yet
           </p>
           <p className="mt-1 text-xs font-medium leading-5 text-muted">
             Add a post to start planning this day.
@@ -2818,7 +2989,7 @@ function SelectedDayDraftCard({
             {draft.mediaTitle || "Combination draft"}
           </p>
           <p className="mt-1 text-xs font-semibold text-muted">
-            {draft.scheduledTime || "--:--"} {draft.timezone}
+            {draft.scheduledTime ? `${draft.scheduledTime} ${draft.timezone}` : "Publish date and time not selected"}
           </p>
         </div>
         <span
@@ -3552,73 +3723,6 @@ function getDraftPlannedScheduledFor(draft: ScheduleDraft) {
   return `${draft.scheduledDate}T${draft.scheduledTime}`;
 }
 
-function hasActiveSchedulingWork(schedule: ScheduledPost) {
-  const now = Date.now();
-  const isWallText = Boolean(getString(schedule.metadata.wallTextAssignmentId));
-  const renderStatus = getString(
-    isWallText
-      ? schedule.metadata.wallTextRenderStatus
-      : schedule.metadata.combinedRenderStatus,
-  );
-  const finalScheduleStatus = getString(schedule.metadata.finalScheduleStatus);
-  const renderQueuedAt = Date.parse(
-    getString(
-      isWallText
-        ? schedule.metadata.wallTextRenderQueuedAt
-        : schedule.metadata.combinedRenderQueuedAt,
-    ) ?? schedule.updatedAt,
-  );
-  const isRecentRender =
-    (renderStatus === "queued" || renderStatus === "rendering") &&
-    Number.isFinite(renderQueuedAt) &&
-    now - renderQueuedAt < ACTIVE_JOB_TIMEOUT_MS;
-  // The initial Wall schedule is returned before the server-side `after()`
-  // continuation has claimed its render. Keep the directly opened Scheduling
-  // page fresh through that small hand-off window instead of leaving it on an
-  // old "Video needs preparation" state until the user refreshes.
-  const isAwaitingWallRenderStart =
-    isWallText &&
-    renderStatus === "not_requested" &&
-    Number.isFinite(renderQueuedAt) &&
-    now - renderQueuedAt < ACTIVE_JOB_TIMEOUT_MS;
-
-  const finalScheduleStartedAt = Date.parse(
-    getString(schedule.metadata.finalScheduleQueuedAt) ?? schedule.updatedAt,
-  );
-  const isRecentFinalize =
-    ["draft", "scheduling"].includes(schedule.status) &&
-    ["finalizing", "scheduling"].includes(finalScheduleStatus ?? "") &&
-    Number.isFinite(finalScheduleStartedAt) &&
-    now - finalScheduleStartedAt < ACTIVE_JOB_TIMEOUT_MS;
-
-  const hasDuePublishingTarget = schedule.targets.some((target) => {
-    if (target.status === "publishing" || target.status === "scheduling") {
-      const targetUpdatedAt = Date.parse(target.updatedAt);
-
-      return (
-        Number.isFinite(targetUpdatedAt) &&
-        now - targetUpdatedAt < ACTIVE_JOB_TIMEOUT_MS
-      );
-    }
-
-    const scheduledTime = Date.parse(target.scheduledFor);
-
-    return (
-      target.status === "scheduled" &&
-      Number.isFinite(scheduledTime) &&
-      scheduledTime >= now - ACTIVE_SCHEDULE_LOOKBEHIND_MS &&
-      scheduledTime <= now + ACTIVE_SCHEDULE_LOOKAHEAD_MS
-    );
-  });
-
-  return (
-    isRecentRender ||
-    isAwaitingWallRenderStart ||
-    isRecentFinalize ||
-    hasDuePublishingTarget
-  );
-}
-
 async function queueCombinationRender({
   scheduleId,
   token,
@@ -3852,6 +3956,11 @@ function getDraftStatusFromScheduledPost(
   schedule: ScheduledPost,
   mediaIssue: ScheduleMediaIssue | null = null,
 ): ScheduleDraftStatus {
+  // Cancellation is authoritative even when historical render metadata remains.
+  if (schedule.status === "cancelled") {
+    return "cancelled";
+  }
+
   const isWallTextSchedule = Boolean(
     getString(schedule.metadata.wallTextAssignmentId),
   );
@@ -3888,10 +3997,6 @@ function getDraftStatusFromScheduledPost(
 
   if (schedule.status === "partially_failed") {
     return "partially_failed";
-  }
-
-  if (schedule.status === "cancelled") {
-    return "cancelled";
   }
 
   if (schedule.status === "published") {

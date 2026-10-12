@@ -20,14 +20,16 @@ type WorkflowFinishingView = { edit: WorkflowAction; schedule: WorkflowAction; o
 // The presentational boundary receives values and event handlers, not refs.
 // Rendering the view must not execute a controller's imperative actions.
 function FinishingView({ value, children }: { value: WorkflowFinishingView; children: (value: WorkflowFinishingView) => ReactNode }) { return children(value); }
-export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo, demoAudio, playback, scheduleDraft, children, demoFraming, demoFramingError }: {
+export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo, demoSource, demoAudio, playback, scheduleDraft, children, demoFraming, demoFramingError, fastStatus = false }: {
   enabled: boolean; ownerId: string | null; kind: "hook" | "phone"; source: MediaAsset | null; demo: LocalWorkflowMedia | null; demoAudio: LocalWorkflowMedia | null; playback: "once" | "repeat"; scheduleDraft: WorkflowScheduleDraft;
   children: (value: WorkflowFinishingView) => ReactNode;
   demoFraming?: DemoFraming | null;
+  demoSource?: MediaAsset | null;
   demoFramingError?: string | null;
+  fastStatus?: boolean;
 }) {
   const [options, setOptions] = useState(DEFAULT_FINISHING_OPTIONS);
-  const finishing = useWorkflowFinishing({ enabled, ownerId, kind, source, demo, demoAudio, playback, options, onRestoreOptions: setOptions, demoFraming, demoFramingError });
+  const finishing = useWorkflowFinishing({ enabled, ownerId, kind, source, demo, demoSource, demoAudio, playback, options, onRestoreOptions: setOptions, demoFraming, demoFramingError, fastStatus });
   const [open, setOpen] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null), [message, setMessage] = useState("Apply edits before scheduling your finished video.");
   const [connections, setConnections] = useState<SocialConnection[]>([]), [lead, setLead] = useState(5);
   const [receipt, setReceipt] = useState<ScheduleReceipt | null>(null), [confirmedSource, setConfirmedSource] = useState<string | null>(null), [restored, setRestored] = useState(false);

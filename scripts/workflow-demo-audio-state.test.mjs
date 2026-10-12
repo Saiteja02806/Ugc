@@ -20,6 +20,7 @@ function layout(kind) {
   const generationSettings = {aspectRatio:"9:16"};
   let generated = null;
   let finishingInputs;
+  const scheduleAction = { disabled: true, busy: false, message: "Wait for the saved final file", error: null, onAction() {}, refresh() {} };
   const slots = [];
   const attachments = Array.from({ length: 5 }, () => ({
     asset: { name: "selected", url: "blob:fixture", duration: 5 }, loading: false, error: null,
@@ -33,13 +34,22 @@ function layout(kind) {
       useState(initial) { const index = cursor++; slots[index] ??= { value: initial }; return [slots[index].value, (value) => { slots[index].value = typeof value === "function" ? value(slots[index].value) : value; }]; },
       useRef(initial) { const index = cursor++; slots[index] ??= { current: initial }; return slots[index]; },
       useEffect() {},
+      useCallback: callback => callback,
     },
     "@base-ui/react/tabs": { Tabs: { Root: "tabs", Panel: "tabpanel" } },
+    "@/components/ui/button": { Button: "button" },
+    "@/components/layout/workflow-navigation": { WorkflowNavigationButton: "navigation-button" },
+    "@/components/ui/quiet-scrollbar.module.css": css,
+    "@/components/explore/workflow-section-navigation": { WorkflowSectionNavigation: "section-nav", WorkflowSectionHeading: "section-heading", useWorkflowSectionOrientation: () => "vertical" },
     "lucide-react": { ArrowLeft: "arrow", BookOpen: "book" },
     "next/link": { default: "link" },
     "@/components/explore/hook-workflow-composer": { HookWorkflowComposer: "composer" },
     "@/components/explore/phone-workflow-composer": { PhoneWorkflowComposer: "composer", AppScreenPicker: "app-screen" },
     "@/components/explore/workflow-composition-panel": { WorkflowCompositionPanel: "composition" },
+    "@/components/explore/talking-head-clip-editing": { TalkingHeadClipEditing: ({ children, source, demo, demoFraming }) => children({ source, demo: demo.asset, demoSource: null, demoFraming, editing: false, busy: false, error: null, controls: null, preview: null }) },
+    "@/components/explore/talking-head-schedule-review": { TalkingHeadScheduleSummary: "schedule-summary", TalkingHeadScheduleActions: "schedule-actions" },
+    "@/components/explore/workflow-schedule-review.module.css": css,
+    "@/components/explore/talking-head-schedule-preview.module.css": css,
     "@/components/explore/workflow-creation-panel": { WorkflowCreationPanel: "controls" },
     "@/components/explore/workflow-edit-workspace": { WorkflowEditWorkspace: "editing", WorkflowScheduleWorkspace: "scheduling" },
     "@/components/explore/workflow-scheduling-panel": { EMPTY_SCHEDULE_DRAFT: {}, WorkflowSchedulingPanel: "schedule-settings" },
@@ -55,9 +65,10 @@ function layout(kind) {
       return { settings: generationSettings, dirty: false, changeSettings(patch) { Object.assign(generationSettings,patch); } };
     } },
     "@/components/explore/workflow-generation-boundary": { WorkflowAccountBoundary: ({ children }) => children("owner"), WorkflowGenerationBoundary: ({ children }) => children(generated) },
-    "@/components/explore/workflow-finishing-boundary": { WorkflowFinishingBoundary: ({ children, ...inputs }) => { finishingInputs=inputs; return children({ edit: undefined, schedule: undefined, output: null, options: { subtitles: false, style: "clean" }, setOptions() {} }); } },
+    "@/components/explore/workflow-finishing-boundary": { WorkflowFinishingBoundary: ({ children, ...inputs }) => { finishingInputs=inputs; return children({ edit: {busy:false}, schedule: scheduleAction, output: null, options: { subtitles: false, style: "clean" }, setOptions() {} }); } },
     "@/components/explore/workflow-studio.module.css": css,
     "@/components/explore/workflow-creation.module.css": css,
+    "@/components/explore/workflow-section-layout.module.css": css,
     "@/lib/utils": { cn: (...values) => values.join(" ") },
     "react/jsx-runtime": { jsx: element, jsxs: element, Fragment: "fragment" },
   };
@@ -77,8 +88,8 @@ function layout(kind) {
         finishing: finishingInputs,
       };
     },
-    demo: attachments[3], audio: attachments[4], generationInputs,
-    selectVideo(video) { generated = video ? {selected:video} : null; },
+    demo: attachments[3], audio: attachments[4], generationInputs, scheduleAction,
+    selectVideo(video) { generated = video ? {selected:video, results:[video]} : null; },
   };
 }
 
@@ -88,6 +99,25 @@ test("Hook quick-start model and duration reach the settings owner through the a
   assert.deepEqual(actual.generationInputs, [{ initialModel: "kling_3_0", initialDuration: 10 }]);
   assert.equal(actual.demo.removed, 0);
   assert.equal(actual.audio.removed, 0);
+});
+
+test("Talking Head Schedule uses the shared review form and a single guarded bottom action without changing the preview inputs", () => {
+  const actual = layout("hook");
+  actual.render().tabs.onValueChange("schedule");
+  const view = actual.render(), all = nodes(view.tree);
+  const settings = all.find(node => node.type === "schedule-settings");
+  const summary = all.find(node => node.type === "schedule-summary");
+  const actions = all.find(node => node.type === "schedule-actions");
+  assert.equal(settings.props.presentation, "review");
+  assert.equal(summary.props.draft, settings.props.draft);
+  assert.equal(summary.props.timezone, settings.props.timezone);
+  assert.equal(actions.props.action, actual.scheduleAction);
+  assert.equal(actions.props.enabled, false, "The local preview cannot schedule");
+  assert.equal(all.filter(node => node.props?.["aria-label"] === "Schedule actions").length, 1);
+  assert.ok(all.find(node => node.type === "controls").props.actionContent, "The in-card default action is replaced");
+  assert.equal(all.find(node => node.type === "scheduling").props.demoAudio, actual.audio.asset);
+  actions.props.onBackToEdit();
+  assert.equal(actual.render().tabs.value, "edit");
 });
 
 for (const kind of ["hook", "phone"]) {

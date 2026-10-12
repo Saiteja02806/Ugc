@@ -9,7 +9,7 @@ export async function importDatabase(){
   await db.exec("create role anon;create role authenticated;create role service_role bypassrls;");
   const baseline=sql("20260829093001_production_baseline_v1.sql"),start=baseline.indexOf('CREATE TABLE "public"."media_assets" (');assert.ok(start>=0);
   await db.exec(baseline.slice(start,baseline.indexOf("\n);",start)+3));
-  await db.exec(sql("20260930153000_ai_studio_audio_references.sql"));
+  await db.exec(sql("20260930093912_ai_studio_audio_references.sql"));
   const audio=sql("20261001120000_audio_generation.sql"),a=audio.indexOf("create table public.audio_assets (");assert.ok(a>=0);
   await db.exec(audio.slice(a,audio.indexOf("\n);",a)+3));
   await db.exec("alter table media_assets enable row level security;alter table audio_assets enable row level security;grant all on media_assets,audio_assets to service_role;");

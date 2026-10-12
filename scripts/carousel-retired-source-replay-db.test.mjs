@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { after, before, test } from "node:test";
 import { PGlite } from "@electric-sql/pglite";
 
-const retirementMigration = read("supabase/migrations/20261011075309_guard_retired_carousel_reservation_replays.sql");
+const retirementMigration = read("supabase/migrations/20261011081756_guard_retired_carousel_reservation_replays.sql");
 const originalMigration = read("supabase/migration_archive/pre_baseline_20260829/canonical_history/20260820054247_add_carousel_related_static_reservation_v2.sql");
 const originalFunction = originalMigration.match(/create or replace function public\.reserve_carousel_role_assets_v2\([\s\S]*?\n\$\$;/i)?.[0];
 assert.ok(originalFunction, "the canonical original allocator function must exist");

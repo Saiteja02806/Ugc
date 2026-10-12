@@ -2,7 +2,7 @@ import { demoFramingPosition, isExploreUuid, parseDemoFraming, type DemoFraming 
 import { parseExploreFormatEdit, type ExploreFormatEdit } from "../../worker/src/lib/explore-format-edit.ts";
 import { readFormatEditDraft } from "./format-edit-draft.ts";
 
-export type FormatDemoDraft = { version: 1; demoId: string | null; audioId: string | null; editing: ExploreFormatEdit; framing: DemoFraming | null; playback: "once" | "repeat"; backgroundMusic?: boolean };
+export type FormatDemoDraft = { version: 1; demoId: string | null; audioId: string | null; editing: ExploreFormatEdit; framing: DemoFraming | null; playback: "once" | "repeat"; backgroundMusic?: boolean; backgroundAudioId?: string | null; backgroundPlayback?: "once" | "repeat" };
 export function defaultDemoEdit(duration: number): ExploreFormatEdit {
   return { version: 1, format: "hook", trimStartMs: 0, trimEndMs: Math.round(duration * 1000), originalVolume: 1, musicVolume: .2, text: null };
 }
@@ -12,7 +12,8 @@ export function readFormatDemoDraft(raw: string | null): FormatDemoDraft | null 
     const value = JSON.parse(raw) as FormatDemoDraft;
     const editing = readFormatEditDraft(value.editing);
     if (value.version !== 1 || editing.format !== "hook" || value.demoId !== null && !isExploreUuid(value.demoId) || value.audioId !== null && !isExploreUuid(value.audioId) || !["once", "repeat"].includes(value.playback) || value.backgroundMusic !== undefined && typeof value.backgroundMusic !== "boolean") return null;
-    return { version: 1, demoId: value.demoId, audioId: value.audioId, editing, framing: value.framing ? parseDemoFraming(value.framing) : null, playback: value.playback, ...(value.backgroundMusic !== undefined ? { backgroundMusic: value.backgroundMusic } : {}) };
+    if (value.backgroundAudioId !== undefined && value.backgroundAudioId !== null && !isExploreUuid(value.backgroundAudioId) || value.backgroundPlayback !== undefined && !["once", "repeat"].includes(value.backgroundPlayback)) return null;
+    return { version: 1, demoId: value.demoId, audioId: value.audioId, editing, framing: value.framing ? parseDemoFraming(value.framing) : null, playback: value.playback, ...(value.backgroundMusic !== undefined ? { backgroundMusic: value.backgroundMusic } : {}), ...(value.backgroundAudioId !== undefined ? { backgroundAudioId: value.backgroundAudioId } : {}), ...(value.backgroundPlayback !== undefined ? { backgroundPlayback: value.backgroundPlayback } : {}) };
   } catch { return null; }
 }
 /** Framing was recorded against the original demo. Rebase it after trimming,

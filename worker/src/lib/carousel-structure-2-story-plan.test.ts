@@ -124,7 +124,7 @@ test("Structure 2 leaves creative cover wording to the prompt and uses a larger 
   });
   const issues = validateCarouselStructure2StoryPlan(plan, { businessDescription });
 
-  assert.equal(CAROUSEL_STRUCTURE_2_COVER_FONT_SIZE, 84);
+  assert.equal(CAROUSEL_STRUCTURE_2_COVER_FONT_SIZE, 72);
   assert.equal(getCarouselStructure2StoryMaxLines(1), 4);
   assert.ok(!issues.some((issue) => issue.code === "perspective"));
 });
@@ -162,14 +162,14 @@ test("Structure 2 prompt and schema describe the strict six-slide contract", () 
   assert.match(prompt, /exactly six slides/i);
   assert.match(prompt, /only Slide 1 may lead with direct reader wording/i);
   assert.match(prompt, /normally 6-14 words/i);
-  assert.match(prompt, /at 84px/i);
+  assert.match(prompt, /at 72px/i);
   assert.match(prompt, /Hook slide = one statement only/i);
   assert.match(prompt, /First-person hooks are welcome/i);
   assert.match(prompt, /Save the explanation for Slide 2 onward/i);
   assert.doesNotMatch(prompt, /Do not begin with a complete personal-story/i);
   assert.match(prompt, /aim for 16-22 body words/i);
   assert.match(prompt, /lowercase/i);
-  assert.match(prompt, /Inter Tight Bold at 700 weight/i);
+  assert.match(prompt, /Inter Medium at 500 weight/i);
   assert.match(prompt, /Slides 1-5 return ctaText: null/i);
   assert.match(prompt, /Slide 4 must explain a real product capability/i);
   assert.doesNotMatch(prompt, /CTA presence and slide position are your creative choice/i);

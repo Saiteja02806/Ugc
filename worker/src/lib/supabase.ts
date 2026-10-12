@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { retryCarouselStructureTakeover } from "./carousel-structure-takeover-retry.js";
 
 import type {
   BackgroundJobsDatabase,
@@ -898,7 +899,7 @@ export class SupabaseJobStore {
         "rendering",
         "uploading_output",
       ])
-      .select("*")
+      .select("id")
       .maybeSingle();
 
     if (error) {
@@ -3181,14 +3182,14 @@ export class SupabaseJobStore {
     failureReason: string;
     planningAttemptCount: 2;
   }) {
-    const { data, error } = await this.client.rpc(
+    const { data, error } = await retryCarouselStructureTakeover(() => this.client.rpc(
       "take_over_carousel_experiment_batch_with_structure_2",
       {
         p_experiment_batch_id: params.experimentBatchId,
         p_failure_reason: params.failureReason,
         p_planning_attempt_count: params.planningAttemptCount,
       },
-    );
+    ));
 
     if (error) {
       throw new Error(

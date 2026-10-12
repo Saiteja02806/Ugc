@@ -1,4 +1,6 @@
 import { FirebaseAuthRequestError, requireFirebaseUser } from "@/lib/firebase/server-auth";
+import { getBackgroundJobForUser } from "@/lib/jobs/background-jobs";
+import { remixSourceFromJob } from "@/lib/explore/remix-source";
 import {
   getMediaAssetForOwner,
   serializeMediaAsset,
@@ -49,7 +51,14 @@ async function handleRequest(
     }
 
     if (action === "get") {
-      return Response.json({ ok: true, asset: serializeMediaAsset(asset) });
+      const serialized = serializeMediaAsset(asset);
+      if (new URL(request.url).searchParams.get("remixSource") === "1") {
+        // Read provenance from this owner's original job, never browser state.
+        const job = asset.source_record_id && (asset.source_type === "generated_video" || asset.source_type === "generated_image")
+          ? await getBackgroundJobForUser({ jobId: asset.source_record_id, userId: user.uid }) : null;
+        serialized.metadata = { ...serialized.metadata, remixTextSource: job ? remixSourceFromJob(job.input) : null };
+      }
+      return Response.json({ ok: true, asset: serialized });
     }
 
     if (action === "delete") {

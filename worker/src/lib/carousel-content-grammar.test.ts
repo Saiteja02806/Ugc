@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { CAROUSEL_COUNTED_BODY_REPAIR_VERSION } from "./carousel-counted-body-repair.js";
 import test from "node:test";
 
 import type { WebsiteBusinessAnalysis } from "../types.js";
@@ -76,6 +77,157 @@ test("Structure 1 accepts a six-slide reader-first educational carousel", () => 
     assert.equal(result.plan.slides.length, 6, format.id);
     assert.equal(result.plan.slides[0]!.formatRole, "cover_hook");
     assert.equal(result.plan.slides[5]!.formatRole, "takeaway_cta");
+  }
+});
+
+test("Structure 1 accepts lowercase body openings across every educational format", () => {
+  for (const format of CAROUSEL_CONTENT_GRAMMAR.formats) {
+    const hookFamilyId = format.compatibleHookFamilies[0]!;
+    const fixture = createFixture(format.id, hookFamilyId);
+    for (const slide of fixture.slides) {
+      if (slide.body) slide.body = slide.body.toLowerCase();
+    }
+
+    const result = parseCarouselContentPlanForAssignment(fixture, {
+      analysis,
+      contentFormatId: format.id,
+      hookFamilyId,
+      recentHistory: [],
+      slideCount: CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
+    });
+
+    assert.deepEqual(result.blockingIssues, [], format.id);
+    assert.ok(
+      result.plan.slides.some((slide) => slide.body && /^[a-z]/.test(slide.body)),
+      format.id,
+    );
+  }
+});
+
+test("Structure 1 still blocks repeated words and punctuation spacing in lowercase bodies", () => {
+  const original = parseCarouselContentPlanForAssignment(
+    createFixture("comparison", "question"),
+    { analysis, contentFormatId: "comparison", hookFamilyId: "question", recentHistory: [], slideCount: 6 },
+  ).plan;
+  const slide = original.slides.find((slide) => slide.slideNumber > 1 && slide.body);
+  assert.ok(slide?.body);
+  const lowercase = slide.body.toLowerCase();
+  const firstWord = lowercase.split(/\s+/)[0]!;
+
+  for (const body of [
+    `${firstWord} ${lowercase}`,
+    lowercase.replace(/\.$/, " ."),
+  ]) {
+    const altered = {
+      ...original,
+      slides: original.slides.map((current) =>
+        current.slideNumber === slide.slideNumber ? { ...current, body } : current,
+      ),
+    };
+    const partitioned = partitionCarouselContentPlanValidationIssues(
+      validateCarouselContentPlan(altered, analysis),
+    );
+    assert.ok(
+      partitioned.blockingIssues.some((issue) => issue.code === "grammar" && issue.slideNumber === slide.slideNumber),
+      body,
+    );
+  }
+});
+
+test("Structure 1 removes only a body that exactly duplicates its list items", () => {
+  for (const format of CAROUSEL_CONTENT_GRAMMAR.formats.filter((format) =>
+    format.slides.some((slide) => slide.listItemCount !== undefined),
+  )) {
+    const hookFamilyId = format.compatibleHookFamilies[0]!;
+    for (const marker of ["numbered", "bullet", "plain"] as const) {
+      const fixture = createFixture(format.id, hookFamilyId);
+      for (const slide of fixture.slides) {
+        if (slide.listItems.length > 0) {
+          slide.body = slide.listItems.map((item, index) =>
+            marker === "numbered" ? `${index + 3}. ${item}` : marker === "bullet" ? `- ${item}` : item,
+          ).join("\n\n");
+        }
+      }
+      const result = parseCarouselContentPlanForAssignment(fixture, {
+        analysis, contentFormatId: format.id, hookFamilyId, recentHistory: [], slideCount: 6,
+      });
+      assert.deepEqual(result.blockingIssues, [], `${format.id}/${marker}`);
+      for (const slide of result.plan.slides.filter((slide) => slide.listItems.length > 0)) {
+        assert.equal(slide.body, null);
+        assert.equal(slide.subtext, null);
+        assert.deepEqual(slide.listItems, fixture.slides[slide.slideNumber - 1]!.listItems);
+      }
+    }
+  }
+});
+
+test("Structure 1 never discards unique list-body advice or relaxes item fit", () => {
+  const fixture = createFixture("list", "curiosity");
+  const input = { analysis, contentFormatId: "list", hookFamilyId: "curiosity", recentHistory: [], slideCount: 6 };
+  const slide = fixture.slides.find((slide) => slide.listItems.length > 0)!;
+  slide.body = `Important context that must not disappear.\n\n${slide.listItems.map((item, index) => `${index + 1}. ${item}`).join("\n\n")}`;
+  assert.throws(() => parseCarouselContentPlanForAssignment(fixture, input), /List line|Body must|one clear idea/i);
+  slide.body = null;
+  slide.listItems[0] = "A deliberately excessive sentence that cannot fit inside the fixed list item area because it repeats every detail";
+  assert.throws(() => parseCarouselContentPlanForAssignment(fixture, input), /list items|List line/i);
+});
+
+test("Structure 1 repair diagnostics report the actual body count separately from headings", () => {
+  const fixture = createFixture("comparison", "question");
+  const parsed = parseCarouselContentPlanForAssignment(fixture, {
+    analysis, contentFormatId: "comparison", hookFamilyId: "question", recentHistory: [], slideCount: 6,
+  }).plan;
+  parsed.slides[1]!.headline = "Detailed campaign planning advice";
+  parsed.slides[1]!.body = "Keep campaign decisions visible";
+  const issues = validateCarouselContentPlan(parsed, analysis);
+  assert.match(issues.find((issue) => issue.code === "body_length")?.message ?? "", /Actual body: 4 words.*excluding the headline, list and CTA/);
+});
+
+test("counted body repair preserves all valid fields with the existing one-call repair budget", async () => {
+  const assignments = [
+    { contentFormatId: "how_to", hookFamilyId: "curiosity" },
+    { contentFormatId: "mistakes", hookFamilyId: "problem_recognition" },
+    { contentFormatId: "before_after", hookFamilyId: "specific_outcome" },
+    { contentFormatId: "comparison", hookFamilyId: "question" },
+    { contentFormatId: "list", hookFamilyId: "surprise" },
+  ];
+  const fixtures = assignments.map((a, i) => createDistinctBatchFixture(a.contentFormatId, a.hookFamilyId, i));
+  const finalBody = fixtures[0]!.slides[5]!.body!;
+  fixtures[0]!.slides[5]!.body = "Keep the next decision visible";
+  const previousFetch = globalThis.fetch, previousKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = "test-key-counted-repair";
+  const requests: Array<{ response_format: { json_schema: { name: string; schema: { properties: Record<string, unknown> } } } }> = [];
+  globalThis.fetch = async (_input, init) => {
+    const request = JSON.parse(String(init?.body)); requests.push(request);
+    const words = finalBody.split(/\s+/);
+    const midpoint = Math.ceil(words.length / 2);
+    const content = request.response_format.json_schema.name === "carousel_content_batch"
+      ? { items: fixtures.map((plan, slotIndex) => ({ plan, slotIndex, status: "ready", notApplicableReason: null })) }
+      : { bodiesBySlide: { slide6: { firstWords: words.slice(0, midpoint), secondWords: words.slice(midpoint) } } };
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(content) } }] }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  try {
+    const result = await buildCarouselContentPlanBatch({ analysis, businessDescription: analysis.productSummary ?? "", recentHistory: [],
+      bodyRepairPolicy: { version: CAROUSEL_COUNTED_BODY_REPAIR_VERSION },
+      items: assignments.map((assignment, slotIndex) => ({ ...assignment, slotIndex, candidateIndex: slotIndex, creativeSeed: `Campaign ${slotIndex}`, emotion: "relief", hookTemplateId: null, hookTemplateVersion: null, planningBrief: null })),
+    });
+    assert.equal(result.length, 5);
+    assert.equal(requests.length, 2);
+    assert.equal(requests[1]!.response_format.json_schema.name, "counted_carousel_body_repair");
+    assert.equal(result[0]!.plan.slides[5]!.body?.split(/\s+/).length, finalBody.split(/\s+/).length);
+    for (const item of result) {
+      assert.equal(item.plan.validationResult.bodyRepairPolicyVersion, CAROUSEL_COUNTED_BODY_REPAIR_VERSION);
+      for (const slide of item.plan.slides) {
+        const original = fixtures[item.slotIndex]!.slides[slide.slideNumber - 1]!;
+        assert.equal(slide.headline, original.headline);
+        assert.deepEqual(slide.listItems, original.listItems);
+        assert.equal(slide.imageDirection, original.imageDirection);
+        if (!(item.slotIndex === 0 && slide.slideNumber === 6)) assert.equal(slide.body, original.body);
+      }
+    }
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = previousKey;
   }
 });
 
@@ -334,10 +486,10 @@ test("the worker sends a persisted template only as Slide 1 planner guidance", a
     assert.match(requestText, /not let it change Slides 2-6/i);
     assert.match(requestText, /Verified grounding anchors/i);
     assert.match(requestText, /social slideshow cover/i);
-    assert.match(requestText, /84px/i);
-    assert.match(requestText, /Inter Tight Bold at 700 weight/i);
+    assert.match(requestText, /72px/i);
+    assert.match(requestText, /Inter Medium at 500 weight/i);
     assert.match(requestText, /normally 6-14 words/i);
-    assert.match(requestText, /four centred display lines at 84px/i);
+    assert.match(requestText, /four centred display lines at 72px/i);
     assert.match(requestText, /aim for 20-24 words/i);
     assert.match(requestText, /conversational lowercase/i);
     assert.match(requestText, /Hook slide = one statement only/i);
@@ -578,12 +730,22 @@ test("the production-shaped five-item batch uses combined formats and a native f
     assert.match(requestText, /source.*format_native/);
     assert.match(requestText, /social slideshow cover/i);
     assert.match(requestText, /within 4 lines/i);
-    assert.match(requestText, /Inter Tight Bold at 700 weight/i);
+    assert.match(requestText, /Inter Medium at 500 weight/i);
     assert.match(requestText, /normally 6-14 words/i);
-    assert.match(requestText, /four centred display lines at 84px/i);
+    assert.match(requestText, /four centred display lines at 72px/i);
     assert.match(requestText, /aim for 20-24 words/i);
     assert.match(requestText, /heading is optional/i);
     assert.match(requestText, /grounding\.anchorId/i);
+    const schemaText = (request as { response_format: { json_schema: { schema: unknown } } } | null)!.response_format.json_schema.schema;
+    function assertListBodies(value: unknown) {
+      if (!value || typeof value !== "object") return;
+      const record = value as Record<string, unknown>;
+      const properties = record.properties as { listItems?: { minItems: number }; body?: { type?: string; anyOf?: Array<{ type?: string; description?: string }> } } | undefined;
+      if (properties?.listItems && properties.listItems.minItems > 0) assert.deepEqual(properties.body, { type: "null" });
+      else if (properties?.body?.anyOf) assert.match(properties.body.anyOf.find((field) => field.type === "string")?.description ?? "", /18-30 words total excluding headline and ctaText/);
+      for (const child of Object.values(record)) assertListBodies(child);
+    }
+    assertListBodies(schemaText);
   } finally {
     globalThis.fetch = originalFetch;
     if (originalApiKey === undefined) delete process.env.OPENAI_API_KEY;
@@ -865,7 +1027,7 @@ test("Structure 1 reserves the white SVG heading treatment for content slides", 
   assert.equal(cover.whiteBackgroundGroupCount, 0);
   assert.equal(heading.bodyFontSize, 48);
   assert.equal(bodyOnly.bodyFontSize, 48);
-  assert.equal(cover.bodyFontSize, 84);
+  assert.equal(cover.bodyFontSize, 72);
   assert.equal(heading.headingBackgroundUsesLineFittedPath, true);
   assert.equal(
     heading.headingBackgroundLineCount,

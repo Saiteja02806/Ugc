@@ -5,7 +5,7 @@ import test from "node:test";
 import { fixture } from "./character-shared-credits-db.test.mjs";
 
 // Apply the real additive migration to isolated Postgres. No hosted data or providers.
-const sql = readFileSync(new URL("../supabase/migrations/20261009093932_character_seedream_sunburst_models.sql", import.meta.url), "utf8");
+const sql = readFileSync(new URL("../supabase/migrations/20261009111108_character_seedream_sunburst_models.sql", import.meta.url), "utf8");
 const signature = "public.character_create_reserved_generation_batch_v2(text,text,text,integer,jsonb,text,boolean)";
 const call = "select * from public.character_create_reserved_generation_batch_v2($1,$2,$3,1,$4,'ai-generation',false)";
 const fingerprint = "e".repeat(64);
@@ -29,6 +29,23 @@ test("the additive migration admits every influencer model and replays new model
       assert.equal(replay[0].job.id, first[0].job.id);
       assert.equal(replay[0].created, false);
       assert.equal((await db.query("select count(*)::int n from billing_credit_reservations where user_id=$1", [owner])).rows[0].n, 1);
+    }
+  } finally { await db.close(); }
+});
+
+test("the existing reservation RPC persists an uploaded character reference for every model without a new migration", async () => {
+  const db = await fixture({ promptDriven: true });
+  try {
+    await db.exec(sql);
+    for (const model of ["gpt_image", "gemini_3_pro", "nano_banana_2", "seedream_5_pro", "gpt_image_2_5"]) {
+      const batchId = key(), assetId = randomUUID();
+      const payload = [{ ...input(batchId, model), referenceImageAssetId: assetId, referenceImageUrl: "https://owned.test/uploaded-style.png" }];
+      const first = (await db.query(call, [`attached-${model}`, batchId, fingerprint, payload])).rows;
+      const replay = (await db.query(call, [`attached-${model}`, batchId, fingerprint, payload])).rows;
+      assert.equal(first[0].job.input_json.referenceImageAssetId, assetId);
+      assert.equal(first[0].job.input_json.referenceImageUrl, payload[0].referenceImageUrl);
+      assert.equal(replay[0].job.id, first[0].job.id);
+      assert.equal(replay[0].created, false);
     }
   } finally { await db.close(); }
 });

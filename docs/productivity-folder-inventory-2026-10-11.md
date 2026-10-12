@@ -1,6 +1,6 @@
 # Productivity source-folder inventory
 
-Audit date: 2026-10-11. This document records the read-only local source inventory and historical import mappings. Live production retirement and selection verification are separate work owned by the main audit.
+Audit date: 2026-10-11. This document records the local source inventory before cleanup and historical import mappings. The completed cleanup and live verification are recorded in `docs/productivity-image-cleanup-2026-10-11.md`.
 
 Source root: `C:/Users/chund/OneDrive/Desktop/slideshows/power`.
 
@@ -8,7 +8,7 @@ Source root: `C:/Users/chund/OneDrive/Desktop/slideshows/power`.
 
 The current carousel role library uses three runtime roles: `hook`, `human`, and `static`. Folder names and categories are provenance; the backend selects canonical approved assets by category and role. `hook` here means a still image for the first slideshow slide. It does not by itself mean a Hook video workflow.
 
-| Source folder | Current importer mapping | Local image count | Intended use |
+| Source folder | Current importer mapping | Local images before cleanup | Intended use |
 |---|---|---:|---|
 | `productivity_hook` | `productivity / hook` | 29 | First-slide background |
 | `productivity_humanhookpart-2/human` | `productivity / hook` | 39 | Additional first-slide backgrounds; the nested `human` name does not map these to body-slide `human` |
@@ -19,6 +19,14 @@ The current carousel role library uses three runtime roles: `hook`, `human`, and
 | `working pictures` | Excluded: unsupported role bucket | 18 across categories | No standard category/role assignment |
 
 There is no runtime `other` role in this importer. Local folders called “not been” and “part-2” are source batches, not runtime categories or priorities. The numbered static folder suffixes are normalized to the same productivity/static bucket.
+
+After this inventory, the user requested intake of `produtivity_hook_part3`.
+That subsequent reviewed additive operation imported 38 new unique sources
+as productivity/hook backgrounds and raised the active hook pool to 59.
+The misspelled folder remains unsupported by the legacy full-tree classifier;
+the scoped part-3 intake preserves existing duplicates in their original roles.
+See `docs/productivity-hook-part3-import-2026-10-11.md` for the completed review,
+omissions, import and production verification.
 
 The power root contains 1,585 files, including 1,563 supported image files. These are source counts, not counts of selectable backend assets. Exact duplicates are collapsed when preparing the canonical library.
 
@@ -60,4 +68,9 @@ Validation: 17 tests passed across the existing role-library contracts and new r
 - Import metadata shape: `scripts/prepare-carousel-role-library.mjs`.
 - Source-of-truth sections: “2026-08-24 Carousel Human-Hook Library Reconciliation” and “2026-08-31 Carousel Fresh-First Source Rotation” in `CAROUSEL_CONTEXT.md`.
 
-This inventory task did not delete or alter local images, database records, or storage objects. It did not make AI generation requests. Existing produced slides and saved customer content were not modified.
+The main cleanup subsequently deleted the exact JPG and all 39 part-2 images
+after verifying backups, and retired all 40 canonical backend identities.
+The part-2 directory now retains its two MP4 files. Eleven duplicate copies
+outside the named deletion paths remain locally but cannot pass the hash
+denylist. Existing produced slides, saved customer content and historical
+source bytes were preserved. No AI generation request was made.

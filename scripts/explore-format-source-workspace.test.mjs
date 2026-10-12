@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import * as remixSource from "../lib/explore/remix-source.ts";
 
 function load(path, imports) {
   const exports = {};
@@ -15,7 +16,7 @@ function load(path, imports) {
   return exports;
 }
 const policy = load("lib/explore/workflow-source-video.ts", {});
-const mapper = load("lib/explore/format-video-source.ts", { "./workflow-source-video.ts": policy });
+const mapper = load("lib/explore/format-video-source.ts", { "./workflow-source-video.ts": policy, "./remix-source.ts": remixSource });
 const pagination = load("lib/explore/reference-pagination.ts", {});
 const video = { id: "00000000-0000-4000-8000-000000000001", collection: "influencer", status: "ready", mimeType: "video/mp4", durationSeconds: 8,
   fileSizeBytes: 2000, title: "My saved clip", url: "/owned.mp4", ratio: "16:9", width: 1280, height: 720, metadata: {}, createdAt: "2026-10-08T00:00:00Z" };
@@ -23,7 +24,7 @@ function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree &
 function text(tree) { return Array.isArray(tree) ? tree.map(text).join(" ") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" ? tree : ""; }
 function harness(format, query = "", { local = true, selected = video, catalogue = [], subscription = { isActive: true } } = {}) {
   let cursor = 0, params = new URLSearchParams(query), columns = 5, resizeCallback, sourceInput;
-  const slots = [], queries = [], tokens = [], reads = [];
+  const slots = [], effects = [], queries = [], tokens = [], reads = [];
   const window = { location: { pathname: `/explore/${format}`, get search() { return `?${params}`; } }, history: { replaceState(_, __, url) { params = new URLSearchParams(url.split("?")[1]); } }, matchMedia: () => ({ matches: false }), getComputedStyle: () => ({ gridTemplateColumns: Array(columns).fill("200px").join(" ") }) };
   const source = { mode: "assets", source: selected, preview: selected ? { name: selected.title, url: selected.url, duration: selected.durationSeconds } : null,
     ready: Boolean(selected), dirty: Boolean(selected), busy: false, setMode(value) { source.mode = value; }, selectAsset(value) { accept(value, "assets"); return true; }, removeUpload() {}, chooseUpload: async () => false };
@@ -38,6 +39,13 @@ function harness(format, query = "", { local = true, selected = video, catalogue
     useState(value) { const i = cursor++; if (!(i in slots)) slots[i] = typeof value === "function" ? value() : value; return [slots[i], next => { slots[i] = typeof next === "function" ? next(slots[i]) : next; }]; },
     useRef(value) { const i = cursor++; return slots[i] ??= { current: value }; }, useCallback: fn => fn, useMemo: fn => fn(),
     useId: () => "workflow-controls-test",
+    useEffect(callback, deps) {
+      const i = cursor++, previous = slots[i];
+      if (previous && deps !== undefined && previous.deps !== undefined && deps.length === previous.deps.length && deps.every((value, n) => Object.is(value, previous.deps[n]))) return;
+      const next = { deps: deps?.slice(), cleanup: previous?.cleanup };
+      slots[i] = next;
+      effects.push(() => { previous?.cleanup?.(); next.cleanup = callback(); });
+    },
   }, "next/dynamic": { default: () => "generation-panel" }, "next/link": { default: "link" }, "next/navigation": { useSearchParams: () => params },
   "@base-ui/react/tabs": { Tabs: { Root: "tabs-root", List: "tablist", Tab: "tab", Panel: "tabpanel" } },
   "@tanstack/react-query": { useQuery(options) { queries.push(options); return options.queryKey[0] === "recreate-references" ? { data: catalogue } : {}; } },
@@ -47,6 +55,7 @@ function harness(format, query = "", { local = true, selected = video, catalogue
   "@/components/explore/use-workflow-source-video": { useWorkflowSourceVideo(input) { sourceInput = input; return source; } },
   "@/components/explore/format-workspace.module.css": new Proxy({}, { get: (_, key) => key }),
   "@/lib/ai-studio/access-policy": { getAIStudioAccessMessage: () => "" }, "@/lib/explore/format-video-source": mapper,
+  "@/lib/explore/remix-source": remixSource,
   "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: async (...args) => { reads.push(args); return video; } },
   "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { tokens.push(owner); return "owner-token"; } },
   "@/worker/src/lib/explore-finishing-contract": { isExploreUuid: value => typeof value === "string" && /^[\da-f-]{36}$/i.test(value) },
@@ -55,7 +64,12 @@ function harness(format, query = "", { local = true, selected = video, catalogue
   "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
   };
   const mod = load("components/explore/format-workspace.tsx", imports);
-  return { source, accept, queries, tokens, reads, params: () => params, resize(count) { columns = count; resizeCallback?.(); }, render() { cursor = 0; return mod.FormatWorkspace({ format, previewReferences: local ? catalogue : undefined }); } };
+  return { source, accept, queries, tokens, reads, params: () => params, resize(count) { columns = count; resizeCallback?.(); }, render() {
+    cursor = 0;
+    const tree = mod.FormatWorkspace({ format, previewReferences: local ? catalogue : undefined });
+    for (const commit of effects.splice(0)) commit();
+    return tree;
+  } };
 }
 
 const catalogue = Array.from({ length: 90 }, (_, index) => ({ id: `wall-${index}`, format: "wall_text", title: `Productivity ${index + 1}`, category: index < 45 ? "productivity" : "other", slides: [], posterUrl: "/poster.jpg", videoUrl: "/reference.mp4" }));
@@ -143,8 +157,8 @@ for (const format of ["hook", "wall_text"]) {
     const demoKey = nodes(tree).find(n => n.type === "FormatDemoSection").key;
     assert.equal(nodes(tree).find(n => n.type === "tabs-root").props["data-editing"], true);
     assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Creation views").props.hidden, true);
-    const reveal = nodes(tree).find(n => n.type === "Button" && text(n) === "Workflow controls");
-    assert.equal(reveal.props["aria-expanded"], false);
+    const reveal = nodes(nodes(tree).find(n => n.props?.["aria-label"] === "Workspace panels")).find(n => n.type === "Button" && text(n) === "Controls");
+    assert.equal(reveal.props["aria-pressed"], false);
     assert.equal(reveal.props["aria-controls"], nodes(tree).find(n => n.type === "aside").props.id);
     reveal.props.onClick();
     tree = h.render();
@@ -155,10 +169,10 @@ for (const format of ["hook", "wall_text"]) {
     nodes(tree).find(n => n.type === "Button" && text(n).trim() === "Back to editor").props.onClick();
     tree = h.render();
     assert.equal(nodes(tree).find(n => n.type === "tabs-root").props["data-controls-expanded"], false);
-    nodes(tree).find(n => n.type === "Button" && text(n).trim() === "Back to previews").props.onClick();
+    nodes(tree).find(n => n.type === "FormatVideoEditor").props.onBackToPreview();
     tree = h.render();
     assert.equal(nodes(tree).find(n => n.type === "tabs-root").props["data-editing"], false);
-    assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Creation views").props.hidden, false);
+    assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "demo");
     assert.equal(nodes(tree).find(n => n.type === "FormatVideoEditor").key, openingKey);
     nodes(tree).find(n => n.type === "FormatDemoSection").props.onEdit();
     tree = h.render();
@@ -237,7 +251,7 @@ for (const format of ["hook", "wall_text"]) {
       h.accept(video, mode);
       const tree = h.render(), editor = nodes(tree).find(n => n.type === "FormatVideoEditor");
       assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "create");
-      assert.deepEqual(nodes(tree).filter(n => n.type === "tab").map(n => text(n)), ["Create", "Demo", "Schedule"]);
+      assert.equal(nodes(tree).find(n => n.type === "WorkflowSectionNavigation").props.editValue, "demo", "The shared header owns Create, Edit and Schedule navigation");
       assert.equal(editor.props.active, true); assert.equal(editor.props.video.mediaAssetId, video.id);
       assert.equal(editor.props.editingActive, false, "Accepted clips show their preview before exposing tools");
       assert.equal(h.params().get("videoSource"), mode);
@@ -249,7 +263,7 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(editor.props.active, true); assert.equal(editor.props.video.url, "blob:local-opening");
     assert.equal(editor.props.video.mediaAssetId, null);
   });
-  test(`${format}: editing each preview uses Create or Demo while preserving both editor identities`, () => {
+  test(`${format}: editing both previews uses the Edit stage while preserving both editor identities`, () => {
     const h = harness(format, "", { selected: null }); h.render(); h.accept(video, "assets");
     let tree = h.render(); const openingKey = nodes(tree).find(n => n.type === "FormatVideoEditor").key;
     let demo = nodes(tree).find(n => n.type === "FormatDemoSection"); const demoKey = demo.key;
@@ -259,7 +273,7 @@ for (const format of ["hook", "wall_text"]) {
     demo = nodes(tree).find(n => n.type === "FormatDemoSection");
     assert.equal(demo.props.editActive, true); assert.equal(demo.key, demoKey);
     assert.equal(nodes(tree).some(n => n.props?.["aria-label"] === "Video to edit"), false);
-    nodes(tree).find(n => n.type === "Button" && text(n).trim() === "Back to previews").props.onClick();
+    demo.props.onEditDone();
     tree = h.render(); assert.equal(nodes(tree).find(n => n.type === "FormatVideoEditor").props.active, true);
     assert.equal(nodes(tree).find(n => n.type === "FormatVideoEditor").props.editingActive, false);
     assert.equal(nodes(tree).find(n => n.type === "FormatVideoEditor").key, openingKey);
@@ -268,7 +282,7 @@ for (const format of ["hook", "wall_text"]) {
     tree = h.render(); assert.equal(nodes(tree).find(n => n.type === "FormatVideoEditor").props.editingActive, true);
     assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").props.editActive, false);
     nodes(tree).find(n => n.type === "FormatDemoSection").props.onEditDone();
-    tree = h.render(); assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "create");
+    tree = h.render(); assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "demo");
     assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").props.editPreviewActive, true);
     assert.equal(nodes(tree).find(n => n.type === "FormatVideoEditor").props.editingActive, false);
   });
@@ -372,7 +386,9 @@ for (const format of ["hook", "wall_text"]) {
     assert.ok(demo); assert.equal(demo.props.active, true);
     const demoKey = demo.key;
     assert.equal(demo.props.opening, null); assert.equal(demo.props.videoId, null);
-    assert.equal(text(nodes(tree).find(n => n.type === "tabpanel" && n.props.value === "demo")).trim(), "");
+    const demoCopy = text(nodes(tree).find(n => n.type === "tabpanel" && n.props.value === "demo"));
+    if (format === "hook") assert.match(demoCopy, /Add a hook in Create to remix its text/);
+    else assert.equal(demoCopy.trim(), "");
     assert.equal(nodes(nodes(tree).find(n => n.type === "tabpanel" && n.props.value === "demo")).some(n => n.type === "Button" && text(n) === "Go to Create"), false, "Demo uploads must remain available without an opening");
     demo.props.onSelectionChange(true);
     nodes(h.render()).find(n => n.type === "WorkflowVideoSourceSection").props.selection.selectAsset(video);
@@ -418,6 +434,21 @@ for (const format of ["hook", "wall_text"]) {
     nodes(h.render()).find(n => n.type === "FormatDemoSection").props.onSkip();
     assert.equal(nodes(h.render()).find(n => n.type === "FormatSchedulePanel").props.output.id, "opening");
   });
+  test(`${format}: background audio keeps the opening out of both final preview and scheduling until the mix is saved`, () => {
+    const h = harness(format); h.render(); h.accept(video, "assets");
+    let tree = h.render();
+    nodes(tree).find(n => n.type === "FormatDemoSection").props.onFinalRequiredChange(true);
+    const opening = { id: "opening", kind: "media_asset", url: "/opening.mp4", title: "Opening" };
+    nodes(tree).find(n => n.type === "FormatVideoEditor").props.onSaved(opening);
+    tree = h.render();
+    assert.equal(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output, null);
+    assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").props.finalVideo, null);
+    const mixed = { id: "mixed-final", kind: "media_asset", url: "/mixed.mp4", title: "Final video" };
+    nodes(tree).find(n => n.type === "FormatDemoSection").props.onSaved(mixed);
+    tree = h.render();
+    assert.deepEqual(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output, mixed);
+    assert.deepEqual(JSON.parse(JSON.stringify(nodes(tree).find(n => n.type === "FormatDemoSection").props.finalVideo)), mixed);
+  });
   for (const mode of ["upload", "assets"]) {
     test(`${format}: its preview Edit action opens the ready ${mode} clip without a separate tab`, () => {
       const h = harness(format); h.source.mode = mode;
@@ -454,7 +485,7 @@ for (const format of ["hook", "wall_text"]) {
   test(`${format}: restoring an imported edit rechecks owned media without requiring generation tags`, async () => {
     const h = harness(format, `editVideoId=${video.id}&videoSource=assets`, { local: false, selected: null }); h.render();
     const query = h.queries.find(q => q.queryKey[0] === "explore-edit-restore"); assert.equal(query.enabled, true);
-    assert.equal((await query.queryFn()).id, video.id); assert.deepEqual(h.tokens, ["owner"]); assert.deepEqual(h.reads, [[video.id, "owner-token"]]);
+    assert.equal((await query.queryFn()).id, video.id); assert.deepEqual(h.tokens, ["owner"]); assert.deepEqual(JSON.parse(JSON.stringify(h.reads)), [[video.id, "owner-token", { remixSource: true }]]);
   });
   test(`${format}: generated-result restoration still enforces the original workflow boundary`, async () => {
     const h = harness(format, `editVideoId=${video.id}&videoSource=generate`, { local: false, selected: null }); h.render();
@@ -462,10 +493,56 @@ for (const format of ["hook", "wall_text"]) {
   });
 }
 
-test("slideshow keeps its Edit slides tab and image-selection transition", () => {
+for (const format of ["slideshow", "hook", "wall_text"]) {
+  test(`${format}: stage changes reset both scroll areas after commit without clearing selected media or saved drafts`, () => {
+    const reference = { id: "retained-reference", format, title: "Reference", slides: [{ id: "reference-slide", url: "/reference-slide.png" }], posterUrl: "/poster.png", videoUrl: "/reference.mp4" };
+    const h = harness(format, "refId=retained-reference", { catalogue: [reference] });
+    h.render();
+    if (format !== "slideshow") h.accept(video, "assets");
+    let tree = h.render();
+    const editorType = format === "slideshow" ? "FormatSlideshowEditor" : "FormatVideoEditor";
+    const saved = { id: "retained-output", kind: format === "slideshow" ? "library_item" : "media_asset", url: "/saved-output", title: "Retained saved draft", ...(format === "slideshow" ? { slides: ["/first.png", "/second.png"] } : {}) };
+    const initialEditor = nodes(tree).find(n => n.type === editorType);
+    initialEditor.props.onSaved(saved);
+    tree = h.render();
+    const controls = nodes(tree).find(n => n.type === "aside");
+    const controlsScrollRef = nodes(controls).find(n => n.type === "div" && n.props.ref && typeof n.props.ref === "object").props.ref;
+    const previewScrollRef = nodes(tree).find(n => n.props?.["aria-label"] === "Workflow preview").props.ref;
+    const controlsScroll = { scrollTop: 420 }, previewScroll = { scrollTop: 180 };
+    controlsScrollRef.current = controlsScroll; previewScrollRef.current = previewScroll;
+    const beforeParams = h.params().toString();
+
+    for (const stage of [format === "slideshow" ? "edit" : "demo", "create", "schedule"]) {
+      controlsScroll.scrollTop = 420; previewScroll.scrollTop = 180;
+      nodes(tree).find(n => n.type === "tabs-root").props.onValueChange(stage);
+      assert.equal(controlsScroll.scrollTop, 420, "Scroll work belongs to the committed effect, not the event handler");
+      assert.equal(previewScroll.scrollTop, 180);
+      tree = h.render();
+      assert.equal(controlsScroll.scrollTop, 0); assert.equal(previewScroll.scrollTop, 0);
+      assert.equal(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output, saved);
+      assert.equal(nodes(tree).find(n => n.type === editorType).key, initialEditor.key);
+      assert.equal(h.params().toString(), beforeParams);
+      if (format !== "slideshow") assert.equal(nodes(tree).find(n => n.type === editorType).props.video.mediaAssetId, video.id);
+      else assert.equal(nodes(tree).find(n => n.type === editorType).props.reference, reference);
+
+      controlsScroll.scrollTop = 140; previewScroll.scrollTop = 60;
+      nodes(tree).find(n => n.type === "tabs-root").props.onValueChange(stage);
+      tree = h.render();
+      assert.equal(controlsScroll.scrollTop, 140, "Refocusing the current stage must not disrupt its scroll position");
+      assert.equal(previewScroll.scrollTop, 60);
+    }
+    assert.equal(h.tokens.length, 0); assert.equal(h.reads.length, 0);
+  });
+}
+
+test("slideshow uses shared header navigation and preserves its image-selection transition", () => {
   const h = harness("slideshow", "", { selected: null });
   let tree = h.render();
-  assert.deepEqual(nodes(tree).filter(n => n.type === "tab").map(n => text(n)), ["Create", "Edit slides", "Schedule"]);
+  const navigation = nodes(tree).filter(n => n.type === "WorkflowSectionNavigation");
+  assert.equal(navigation.length, 1);
+  assert.equal(navigation[0].props.editValue, "edit");
+  assert.ok(nodes(nodes(tree).find(n => n.type === "header")).includes(navigation[0]));
+  assert.equal(nodes(nodes(tree).find(n => n.type === "aside")).some(n => n.type === "tablist"), false);
   nodes(tree).filter(n => n.type === "div" && typeof n.props?.ref === "function").forEach(n => n.props.ref({ clientWidth: 0 }));
   tree = h.render();
   nodes(tree).find(n => n.type === "FormatSlideshowEditor").props.controllerRef.current = { useImage: () => true };
@@ -473,6 +550,28 @@ test("slideshow keeps its Edit slides tab and image-selection transition", () =>
   tree = h.render();
   assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "edit");
   assert.equal(nodes(tree).find(n => n.type === "FormatSlideshowEditor").props.active, true);
+  assert.equal(nodes(tree).find(n => n.type === "tabs-root").props["data-pane"], "preview");
+  nodes(tree).find(n => n.type === "tabs-root").props.onValueChange("edit");
+  assert.equal(nodes(h.render()).find(n => n.type === "tabs-root").props["data-pane"], "preview", "Refocusing the active stage must not hide its Preview panel");
+});
+
+test("slideshow shares Schedule actions and returns to Edit without changing its saved post", () => {
+  const h = harness("slideshow", "", { selected: null });
+  let tree = h.render();
+  const saved = { id: "saved-slides", kind: "library_item", url: "/slide-1.png", title: "Saved slideshow", slides: ["/slide-1.png", "/slide-2.png"] };
+  nodes(tree).find(n => n.type === "FormatSlideshowEditor").props.onSaved(saved);
+  nodes(tree).find(n => n.type === "tabs-root").props.onValueChange("schedule");
+  tree = h.render();
+  const actions = nodes(tree).filter(n => n.props?.["aria-label"] === "Schedule actions");
+  assert.equal(actions.length, 1); assert.equal(actions[0].props.hidden, false);
+  const scheduling = nodes(tree).find(n => n.type === "FormatSchedulePanel");
+  assert.equal(scheduling.props.imageOnly, true); assert.equal(scheduling.props.output, saved);
+  const postPreview = nodes(tree).find(n => n.props?.["aria-label"] === "Saved slideshow preview");
+  assert.equal(postPreview.props.tabIndex, 0, "Long saved sequences remain keyboard scrollable");
+  assert.deepEqual(nodes(postPreview).filter(n => n.type === "img").map(n => n.props.src), saved.slides);
+  scheduling.props.onBackToEdit(); tree = h.render();
+  assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "edit");
+  assert.equal(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output, saved);
 });
 
 test("compact panel navigation retains accepted clips and saved output", () => {

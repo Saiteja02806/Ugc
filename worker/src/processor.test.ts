@@ -51,6 +51,64 @@ test("persists terminal provider reasons instead of JOB_FAILED without retrying 
   }
 });
 
+test("checkpoint processing accepts the guarded ID-only response", async () => {
+  const job = createJob(), commands: string[] = [];
+  const store = createJobStore(job);
+  const updateStage = store.updateJobStage.bind(store);
+  store.updateJobStage = async params => {
+    const updated = await updateStage(params);
+    return updated ? { id: updated.id } : null;
+  };
+  let continued = false;
+  await processWorkerMessage({
+    config: createConfig(), message: createMessage(), queue: createQueue(commands), store,
+    dependencies: { async runJob(_job, context) {
+      await context.checkpoint({ stage: "Rendering slide 5", progress: 50, status: "rendering" });
+      // The local store's completion helper expects processing; the checkpoint
+      // contract itself allows rendering/uploading status in the real database.
+      job.status = "processing";
+      continued = true; return { ok: true };
+    } },
+  });
+  assert.equal(continued, true); assert.equal(job.status, "completed");
+});
+
+test("cancellation during a guarded checkpoint stops the handler before output completion", async () => {
+  const job = createJob(), commands: string[] = [];
+  const store = createJobStore(job);
+  store.updateJobStage = async () => { job.status = "cancel_requested"; return null; };
+  let continued = false;
+  await processWorkerMessage({
+    config: createConfig(), message: createMessage(), queue: createQueue(commands), store,
+    dependencies: { async runJob(_job, context) {
+      await context.checkpoint({ stage: "Rendering slide 5", status: "rendering" });
+      continued = true; return { ok: true };
+    } },
+  });
+  assert.equal(continued, false); assert.equal(job.status, "cancelled");
+  assert.equal(commands.filter(command => command === "DeleteMessageCommand").length, 1);
+});
+
+test("lost ownership during a guarded checkpoint cannot complete or fail the new owner's job", async () => {
+  const job = createJob(), commands: string[] = [];
+  const store = createJobStore(job);
+  store.updateJobStage = async () => { job.claim_token = "new-owner-claim"; return null; };
+  store.markFailed = async params => {
+    assert.notEqual(params.claimToken, job.claim_token);
+    return null; // The real store predicates the failure update on the claim.
+  };
+  let continued = false;
+  await processWorkerMessage({
+    config: createConfig(), message: createMessage(), queue: createQueue(commands), store,
+    dependencies: { async runJob(_job, context) {
+      await context.checkpoint({ stage: "Rendering slide 5", status: "rendering" });
+      continued = true; return { ok: true };
+    } },
+  });
+  assert.equal(continued, false);
+  assert.equal(job.status, "processing"); assert.equal(job.claim_token, "new-owner-claim");
+});
+
 test("only one delivery can claim and execute a background job", async () => {
   const job = createJob();
   const commands: string[] = [];

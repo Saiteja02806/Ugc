@@ -13,6 +13,8 @@ import type { BackgroundJobRow } from "../types.js";
 import type { WorkerJobContext } from "./index.js";
 import { configuredScribeProvider, type ScribeTranscriptionProvider } from "../subtitles/elevenlabs-provider.js";
 import { parsePlacement, parseStyle } from "../subtitles/contracts.js";
+import { getAssetReferenceSoundtrack, getExplorePairedReference, referenceAudioBaseStorageKey } from "../lib/explore-reference-soundtrack.js";
+import { verifyReferenceAudioFile } from "../lib/explore-reference-audio-render.js";
 
 export type ExploreFinishingDependencies = {
   store: Pick<ExploreFinishingStore,"read"|"asset"|"claimSpeech"|"saveSpeech"|"finalize">;
@@ -66,6 +68,20 @@ export async function runFinishExploreVideoJob(job: BackgroundJobRow, context: P
     ...(draft.backgroundAssetId ? [{ id:draft.backgroundAssetId,collection:"audio" as const,max:50*1024*1024 }] : []),
   ];
   const assets = await Promise.all(selections.map(selection => deps.store.asset(job.user_id!,selection.id,selection.collection)));
+  const referenceSoundtrack = getAssetReferenceSoundtrack(assets[0].metadata);
+  const reference = referenceSoundtrack ? getExplorePairedReference(referenceSoundtrack.referenceId) : null;
+  // An applied soundtrack must never be reused as the clean speech layer.
+  const cleanKey = (asset: typeof assets[number]) => {
+    const soundtrack = getAssetReferenceSoundtrack(asset.metadata);
+    if (!soundtrack?.cleanStorageKey) {
+      if (soundtrack && asset.source_type !== "generated_video") throw new ExploreFinishError("This reference video is missing its saved audio base.", 409);
+      return null;
+    }
+    if (soundtrack.cleanStorageKey !== referenceAudioBaseStorageKey(asset.id)) throw new ExploreFinishError("The saved audio base belongs to another video.", 409);
+    return soundtrack.cleanStorageKey;
+  };
+  const sourceCleanKey = reference ? cleanKey(assets[0]) : null;
+  const demoHasReferenceMusic = reference && draft.demoAssetId && getAssetReferenceSoundtrack(assets[1]?.metadata) && !cleanKey(assets[1]);
   const directory = await mkdtemp(join(tmpdir(),"ugc-explore-finish-"));
   const controller = new AbortController();
   let checkpointFailure: unknown;
@@ -95,27 +111,42 @@ export async function runFinishExploreVideoJob(job: BackgroundJobRow, context: P
     let downloadFailure: unknown;
     const downloads = await Promise.allSettled(assets.map(async (asset,index) => {
       try {
-        await deps.storage.download(asset.storage_key,join(directory,`source-${index}`),selections[index].max,
+        const key = reference && selections[index].collection === "video" ? cleanKey(asset) ?? asset.storage_key : asset.storage_key;
+        await deps.storage.download(key,join(directory,`source-${index}`),selections[index].max,
           isPrivateMedia(asset.metadata) ? "private_user_media" : "primary",controller.signal);
       } catch (error) {
         downloadFailure ??= error; controller.abort(error); throw error;
       }
     }));
     if (downloads.some(result => result.status === "rejected")) throw downloadFailure;
+    const referenceAudioPath = reference ? join(directory, "reference.mp3") : undefined;
+    if (reference && referenceAudioPath) {
+      await deps.storage.download(reference.audioStorageKey, referenceAudioPath, 50 * 1024 ** 2, "primary", controller.signal);
+      await verifyReferenceAudioFile(referenceAudioPath, reference.audioSha256);
+    }
     controller.signal.throwIfAborted();
     await checkpoint({ status:"rendering",stage:"composing_explore_video",progress:30 });
     let i=1;
     const demoPath = draft.demoAssetId ? join(directory,`source-${i++}`) : undefined;
     const demoAudioPath = draft.demoAudioAssetId ? join(directory,`source-${i++}`) : undefined;
     const backgroundMusicPath = draft.backgroundAssetId ? join(directory,`source-${i++}`) : undefined;
+    // Single-clip edit drafts only contain explicitly selected owned audio;
+    // automatic default music is added by non-editing composition requests.
+    // Keep that clip audio in the clean base before applying its paired track.
+    // Generic final/join music must still yield to the registered soundtrack.
+    const clipBackgroundMusicPath = !reference || (draft.editing && !draft.demoAssetId) ? backgroundMusicPath : undefined;
+    const referenceVolume = referenceSoundtrack ? draft.editing?.musicVolume ?? referenceSoundtrack.volume : undefined;
     const tools = { ffmpeg:process.env.FFMPEG_PATH || "ffmpeg",ffprobe:process.env.FFPROBE_PATH || "ffprobe",
       fontsDir:process.env.SUBTITLE_FONTS_DIR || fileURLToPath(new URL("../../assets/fonts/",import.meta.url)) };
-    const result = await deps.finish({ sourcePath:join(directory,"source-0"),demoPath,demoAudioPath,backgroundMusicPath,signal:controller.signal,
+    const result = await deps.finish({ sourcePath:join(directory,"source-0"),demoPath,demoAudioPath,
+      backgroundMusicPath: clipBackgroundMusicPath, signal:controller.signal,
+      ...(reference ? { referenceAudioPath, referenceAudioVolume: referenceVolume, sourceOriginalVolume: sourceCleanKey ? undefined : 0,
+        ...(demoHasReferenceMusic ? { demoOriginalVolume: 0 } : {}) } : {}),
         ...(draft.demoFraming ? { demoFraming: draft.demoFraming } : {}),
         ...(draft.sourceFraming ? { sourceFraming: draft.sourceFraming } : {}),
         ...(draft.editing ? { editing: draft.editing } : {}),
       ...(demoAudioPath ? { demoAudioPlayback:draft.demoAudioPlayback } : {}),
-      ...(backgroundMusicPath ? { backgroundMusicPlayback:draft.backgroundPlayback } : {}),workDir:join(directory,"render"),tools,
+      ...(clipBackgroundMusicPath ? { backgroundMusicPlayback:draft.backgroundPlayback } : {}),workDir:join(directory,"render"),tools,
       ...(draft.subtitles && subtitleStyle && subtitlePlacement ? { subtitles:{ ...draft.subtitles,style:subtitleStyle,placement:subtitlePlacement,loadTranscript:async (speech) => {
         await checkpoint({ status:"waiting_external_service",stage:"transcribing_composed_audio",progress:55 });
         const duration = Math.ceil(speech.durationMs);
@@ -143,7 +174,10 @@ export async function runFinishExploreVideoJob(job: BackgroundJobRow, context: P
     let output: Record<string,unknown>;
     try {
       output = await deps.storage.upload(receipt,result.outputPath,{ durationSeconds:result.durationMs/1000,width:result.width,height:result.height,
-        ratio:assets[0].ratio || "other",metadata:{ sourceHashes:result.sourceHashes,segments:result.segments,
+        ratio:assets[0].ratio || "other",
+        ...(reference && result.referenceAudioBasePath ? { referenceAudioBasePath: result.referenceAudioBasePath } : {}),
+        metadata:{ sourceHashes:result.sourceHashes,segments:result.segments,
+          ...(reference ? { referenceSoundtrack: { version: 1, referenceId: reference.id, audioSha256: reference.audioSha256, volume: referenceVolume, cleanStorageKey: referenceAudioBaseStorageKey(receipt.output_asset_id) } } : {}),
           demoAudioTiming:result.demoAudioTiming,backgroundMusicTiming:result.backgroundMusicTiming,subtitleStyle:result.subtitleStyle,subtitlePlacement:result.subtitlePlacement,subtitleWordCount:result.subtitleWordCount,
           subtitleRenderVersion:result.subtitleRenderVersion,subtitleAudioTimeline:"final-composition-v1",
           ...(draft.demoFraming ? { demoFraming: draft.demoFraming } : {}),

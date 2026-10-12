@@ -7,6 +7,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import ts from "typescript";
 import { CAROUSEL_HOOK_FONT_SIZE } from "../worker/dist/lib/carousel-text-presentation.js";
+import { CAROUSEL_COVER_FONT_WEIGHT, CAROUSEL_HOOK_LINE_HEIGHT } from "../worker/dist/lib/carousel-cover-typography.js";
 
 const require = createRequire(import.meta.url);
 const browserRequire = process.env.CAROUSEL_BROWSER_DEPENDENCIES
@@ -78,17 +79,17 @@ function pack(file) {
 }
 const entryId = pack(entry);
 const bundle = `const process={env:{NODE_ENV:"development"}};const modules=[${modules.join(",")}],cache={};function load(id){if(cache[id])return cache[id].exports;const module=cache[id]={exports:{}};modules[id](module,module.exports,load);return module.exports;}load(${entryId});`;
-const font = readFileSync("worker/src/assets/fonts/InterTight-VariableFont_wght.ttf");
+const font = readFileSync("worker/src/assets/fonts/Inter-VariableFont_wght.ttf");
 const html = `<!doctype html><html><head><style>
-@font-face{font-family:InterTight;src:url('/font.ttf');font-weight:100 900}
-body{margin:40px;background:#202625;color:white;font-family:InterTight,Arial}
+@font-face{font-family:Inter;src:url('/font.ttf');font-weight:100 900}
+body{margin:40px;background:#202625;color:white;font-family:Inter,Arial}
 #frame{position:relative;overflow:hidden;container-type:inline-size;background:#435254;border:1px solid #777}
 .absolute{position:absolute}.z-20{z-index:20}.group{width:82cqw;text-align:center}
 .group p{margin:0 auto;max-width:78cqw;white-space:pre-line}
 .heading{font-size:4.62963cqw;font-weight:600;line-height:1.04}
 .heading span{box-decoration-break:clone;background:white;color:#111316;border-radius:1.8cqw;padding:.7cqw 2.2cqw}
-.group .body{font-size:4.44444cqw;font-weight:600;line-height:1.16;margin-top:2.96296cqw;-webkit-text-stroke:.370cqw rgba(0,0,0,.72);paint-order:stroke fill}
-.cover{width:78cqw;text-align:center}.hook{font-size:${CAROUSEL_HOOK_FONT_SIZE / 10.8}cqw;font-weight:700;line-height:.98;margin:0;white-space:pre-line}
+.group .body{font-size:4.44444cqw;font-weight:400;line-height:1.16;margin-top:2.96296cqw;-webkit-text-stroke:.370cqw rgba(0,0,0,.72);paint-order:stroke fill}
+.cover{width:78cqw;text-align:center}.hook{font-size:${CAROUSEL_HOOK_FONT_SIZE / 10.8}cqw;font-weight:${CAROUSEL_COVER_FONT_WEIGHT};line-height:${CAROUSEL_HOOK_LINE_HEIGHT};margin:0;white-space:pre-line;-webkit-text-stroke:.370cqw rgba(0,0,0,.72);paint-order:stroke fill}
 [role=alert]{position:absolute;bottom:8px;background:white;color:black;font:12px Arial}
 </style></head><body><div id="root"></div><script>${bundle.replaceAll("</script", "<\\/script")}</script></body></html>`;
 const browser = await chromium.launch({ channel: process.env.CAROUSEL_BROWSER_CHANNEL || "msedge", headless: true });

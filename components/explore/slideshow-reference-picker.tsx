@@ -9,6 +9,7 @@ import { readAIStudioReferenceMetadata, uploadAIStudioReferenceMedia } from "@/l
 import type { RecreateReference } from "@/lib/explore/recreate-types";
 import creation from "./workflow-creation.module.css";
 import styles from "./format-workspace.module.css";
+import pickerStyles from "./slideshow-reference-picker.module.css";
 
 export function SlideshowReferencePicker({ reference, slideIndex, selectedSlideIds, disabled, localPreview, onPreview, onRemove, onUpload, onSelectionChange, onBusy }: {
   reference: RecreateReference | null; slideIndex: number; disabled: boolean; localPreview: boolean;
@@ -57,17 +58,15 @@ export function SlideshowReferencePicker({ reference, slideIndex, selectedSlideI
     } catch (error) { if (alive.current) setError(error instanceof Error ? error.message : "Could not upload your slideshow. Try again."); }
     finally { working.current = false; if (alive.current) { setBusy(false); onBusy(false); } }
   }
-  return <section aria-label="Slideshow references" className="space-y-3">
-    <div className="flex items-center justify-between gap-2"><h2 className="text-sm font-medium">Slideshow reference</h2>{reference ? <Button type="button" variant="ghost" size="icon-sm" disabled={disabled || busy} onClick={onRemove} aria-label="Remove slideshow reference"><X className="size-4" /></Button> : null}</div>
-    <div className={styles.slideshowReferenceTiles}>
-      {reference ? <button type="button" className={styles.slideshowReferenceTile} disabled={disabled || busy} onClick={onPreview} aria-label="Preview selected slideshow"><img src={reference.slides[slideIndex]?.url ?? reference.posterUrl} alt="" width={128} height={128} /><span>Preview slideshow</span></button> : null}
-      <Button type="button" variant="outline" data-workflow-tile="reference" className={creation.referenceButton} disabled={disabled || busy} onClick={() => input.current?.click()}><Upload className="size-5" aria-hidden="true" /><span className={creation.referenceLabel}>{busy ? "Uploading…" : "Upload slides"}</span></Button>
+  return <section aria-label="Slideshow references" className={pickerStyles.picker}>
+    <div className={pickerStyles.heading}><h2>Slideshow reference</h2><span>Optional</span>{reference ? <Button type="button" variant="ghost" size="icon-sm" disabled={disabled || busy} onClick={onRemove} aria-label="Remove slideshow reference"><X className="size-4" /></Button> : null}</div>
+    <div className={pickerStyles.tiles}>
+      {reference ? <><button type="button" className={pickerStyles.preview} disabled={disabled || busy} onClick={onPreview} aria-label="Preview selected slideshow"><img src={reference.slides[slideIndex]?.url ?? reference.posterUrl} alt="" width={128} height={128} /><span>Preview</span></button><div className={pickerStyles.referenceCopy}><strong>{reference.title}</strong><span>Style &amp; composition</span></div></> : null}
+      <Button type="button" variant="outline" data-workflow-tile="reference" className={`${creation.referenceButton} ${pickerStyles.upload}`} disabled={disabled || busy} onClick={() => input.current?.click()}><Upload className="size-4" aria-hidden="true" /><span className={creation.referenceLabel}>{busy ? "Uploading…" : "Upload slides"}</span></Button>
     </div>
     <input ref={input} className="sr-only" type="file" multiple accept="image/jpeg,image/png,image/webp" aria-label="Upload slideshow images" tabIndex={-1} onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; if (files.length) void upload(files); }} />
     {error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}
-    {reference ? <div className="space-y-2">
-      <p className="truncate text-xs font-medium">{reference.title}</p>
-      <p className="text-sm font-medium">Reference images</p>
+    {reference ? <details className={pickerStyles.selection}><summary>Reference images<span>{selectedSlideIds.length} selected</span></summary><div className="space-y-2">
       <div role="group" aria-label="Slides to send as reference" className={styles.slideshowContextMode}>
         <Button type="button" size="sm" variant="ghost" aria-pressed={selectedSlideIds.length === reference.slides.length} disabled={disabled || busy} onClick={() => onSelectionChange(reference.slides.map(slide => slide.id))}>Use all</Button>
         <Button type="button" size="sm" variant="ghost" aria-pressed={selectedSlideIds.length !== reference.slides.length} disabled={disabled || busy} onClick={() => { if (selectedSlideIds.length === reference.slides.length) onSelectionChange([reference.slides[slideIndex].id]); }}>Choose images</Button>
@@ -84,7 +83,7 @@ export function SlideshowReferencePicker({ reference, slideIndex, selectedSlideI
       </div>
       <p aria-live="polite" className="text-[13px] leading-5 text-muted">{selectedSlideIds.length ? `${selectedSlideIds.length} reference image${selectedSlideIds.length === 1 ? "" : "s"} will guide the result.` : "Select at least one reference image."}</p>
       {selectedSlideIds.length ? <div className="border-t border-border pt-3"><p className="text-sm font-semibold">Creating slide {slideIndex + 1} of {reference.slides.length}</p><p className="mt-1 text-[13px] leading-5 text-muted">Choose how many versions to generate below. Pick one result to add it to Edit slides.</p></div> : null}
-    </div> : <p className="text-xs leading-5 text-muted">Select a slideshow on the right, or upload 2–10 images as a reference.</p>}
+    </div></details> : <p className="text-xs leading-5 text-muted">Choose an example or upload 2–10 reference images.</p>}
     {localPreview && busy ? <p role="status" className="text-xs text-muted">Reading your slide images on this device…</p> : null}
   </section>;
 }

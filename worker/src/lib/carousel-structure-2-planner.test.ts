@@ -146,7 +146,7 @@ test("renderer overflow is repaired before a candidate is accepted even when est
   process.env.OPENAI_API_KEY = "test-key-no-network";
   const rejected = rawPlan(true);
   Reflect.set(rejected.slides.sixth!, "headline", null);
-  rejected.slides.sixth!.storyText = "I used WWWWWWWWWWWWWWWW for planning.\n\nMy next task had an owner and context so I could continue.";
+  rejected.slides.sixth!.storyText = "I used WWWWWWWWWWWWWWWWWWWWWW for planning.\n\nMy next task had an owner and context so I could continue.";
   const distinctHooks = ["why my Monday plan fell apart", "how changing priorities derailed my week",
     "i kept restarting work after every change", "my task list forgot the next decision", "what i missed when planning my week"];
   rejected.slides.first!.storyText = distinctHooks[0]!;

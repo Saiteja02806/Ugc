@@ -127,6 +127,10 @@ export type TrendingCreativeEditRecord = {
   updatedAt: string | null;
 };
 
+export type TrendingCarouselEditStatus = Pick<TrendingCreativeEditRecord,
+  "assignmentId" | "creativeId" | "id" | "revision" | "renderState" | "renderError" | "updatedAt"
+> & { format: "carousel" };
+
 export type TrendingCreativeEditSaveInput = {
   assignmentId: string;
   expectedRevision: number;

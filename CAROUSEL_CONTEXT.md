@@ -1,6 +1,467 @@
 # Carousel System Context
 
-Last updated: 2026-10-10
+Last updated: 2026-10-12
+
+## 2026-10-12 Worker Inter font resolution
+
+- Staging revealed that the bundled Inter variable TTF declares its family as
+  `Inter Variable`; Linux Fontconfig otherwise resolved the renderer's `Inter`
+  request to DejaVu Sans. The worker image now installs an explicit Inter alias
+  and fails its build if Fontconfig cannot resolve the bundled family. The
+  runtime availability diagnostic accepts the aliased family. Slide text,
+  sizing, weight, line-fitting rules and saved historical renders are unchanged.
+
+## 2026-10-12 Copy contract fixes and opt-in voice experiment (local, not deployed)
+
+- Structure 1 now requests `body: null` for configured list slides and removes
+  only an exact ordered duplicate of `listItems` from legacy bodies. Distinct
+  advice remains validated. Lowercase acceptance is retained. Body-length
+  diagnostics report actual field counts; current local planner is
+  `llm-carousel-planner-v54-body-count-feedback`. Existing word, grounding,
+  layout, grammar and complete-batch rules are not relaxed.
+- The optional batch-only `structure-1-counted-body-repair-v1` policy repairs
+  eligible body fields using two 9-12-word arrays in the existing repair call.
+  Other fields are frozen and full publication validation remains. Customer
+  jobs do not select it. Live testing returned no complete accepted batches;
+  the one eligible counted repair met its count but failed the existing
+  multiple-idea check. This policy has not earned default rollout.
+- Structure 2 supports an opt-in `structure-2-reader-scenario-v1` copy policy
+  for context without verified personal experience. All story text/headlines,
+  including covers and repairs, use reader scenarios or impersonal wording.
+  The six roles, product turn on slide 4 and CTA slot remain. Caller absence
+  preserves the legacy v24 contract; selected policy records a v25 planner and
+  policy metadata. No customer job selects it; versioned job integration,
+  rollout and hosted acceptance remain future work.
+- Fresh paired tests across UGCPilot, Cal AI, Calendly and MOO accepted 14/20
+  legacy Structure 2 plans and 20/20 scenario plans. All 120 accepted scenario
+  slides have no personal-narrator matches and pass measured layout in 1:1 and
+  4:5 (240 inspections). Unsupported feature/outcome claims, grammar defects
+  and generic lessons still occur. Acceptance is not a factual-quality or
+  TikTok engagement score. The broader lesson/evidence proposal remains
+  unimplemented.
+- Three isolated trials requested 160 plans and made 136 live text calls. All
+  Structure 1 arms returned 0/20 plans under complete-batch acceptance, including
+  improved count guidance and counted repair. No images, production database,
+  customer jobs, publication, push or deployment were involved. 78 focused
+  worker and 16 application contract checks passed. Full evidence and limits:
+  `docs/carousel-copy-fixes-2026-10-12.md`.
+
+## 2026-10-12 Isolated copy-quality comparison (no runtime change)
+
+- A fresh public-fixture test requested 120 plans across four businesses, both
+  structures and three variants. Structure 2 returned 15/20 accepted plans with
+  the current local writer, 20/20 with experimental sourced facts/scenario voice,
+  and 9/20 when a separate lesson-planning call was added. A failed retail outline
+  blocked ten requested plans before writing; these remain in the denominators.
+- Structure 1 returned no complete tested batches in any variant despite the
+  lowercase fix. Remaining list/body, layout and copy checks still block batches;
+  one failed candidate can withhold valid siblings. No Structure 2 takeover was
+  allowed in this isolated comparison.
+- The facts/scenario candidate still produced first-person covers, unsupported
+  conclusions and generic takeaways. The complete lesson-first proposal has not
+  earned implementation. These are AI-agent editorial observations, not human
+  preference scores or measured TikTok performance. Application source, customer
+  jobs and deployments were unchanged by the experiment.
+- Full results and limits: `docs/carousel-copy-comparison-audit-2026-10-12.md`.
+
+## 2026-10-12 Structure 1 lowercase body validation (local, not deployed)
+
+- Structure 1 accepts lowercase body openings as requested by the shared text
+  presentation guidance. Capitalization alone no longer produces a grammar
+  failure. Existing repeated-word, repeated-copy, agreement-pattern and
+  punctuation-spacing checks remain, as do word counts, grounding and layout
+  checks. Planner version is `llm-carousel-planner-v52-lowercase-body-validation`.
+- Regression coverage exercises lowercase prose in all fifteen educational
+  formats and confirms repeated words and incorrect punctuation spacing still
+  block validation. The worker build and all 24 Structure 1 grammar checks pass.
+  Offline replay of 72 saved live-provider drafts reduces grammar flags from
+  232 to 65; other grammar checks can still flag lowercase copy with defects.
+  This repairs one confirmed cause of failed Structure 1 batches; it does not
+  establish that other live-test failures are resolved.
+- Structure 2 quality improvements remain a proposal for discussion. No change
+  to its story voice, evidence requirements, format rotation or runtime is made
+  by this fix. The prior live test and its evidence remain the baseline.
+- The user's intended distinction is Structure 1 useful teaching without a
+  compulsory product introduction; Structure 2 an everyday scenario followed
+  by a useful lesson and a natural, relevant product mechanism. Evidence-aware
+  story voice and copy evaluation are discussed in
+  `docs/carousel-structure-2-quality-proposal-2026-10-12.md`, not implemented.
+
+## 2026-10-12 Explore Slideshow reference roles and composition (local, not deployed)
+
+- Explore Slideshow now shares the focused workflow shell: Create, Edit and
+  Schedule sit in the left side of the page header; app navigation is available
+  through the menu. Schedule uses the common review cards and bottom action bar.
+  Edit places the live slide preview on the left and a text inspector on the
+  right, with the slide sequence and ordering actions below the preview. Text
+  appearance and image replacement/recreation use expandable groups. Create
+  uses a compact selected reference and an expandable reference-image selector.
+  Stage changes reset the controls and preview scrolling while retaining drafts.
+  Owned slide identities, saved Library slideshow, generation jobs and
+  Instagram/TikTok image-post contracts are unchanged by these layout updates.
+
+- New Slideshow generation jobs carry `slideshowReferenceContract.version: 2`.
+  Selected gallery images guide style and composition; prompt attachments supply
+  content or other guidance according to the user's instructions. Attachment
+  numbering is explicit and independent of gallery numbering. The API derives
+  roles from owned, canonical references and freezes them into every output job.
+  One physical image may serve several roles without being sent twice.
+- Recreate slide always sends its owned existing image as the main edit target,
+  including requests without attachments or selected gallery images. Edits
+  preserve that image except for requested changes. Replacing a slide retains
+  its editable Remix Text, slide identity and neighboring slides.
+- Default visual generation omits reference captions, headlines and text
+  overlays. Remix Text remains separate. Explicit instructions to render text
+  override this default, requesting readable placement, preferably central,
+  with comfortable margins and no obstruction of the subject. This is provider
+  guidance, not an automated guarantee of generated text accuracy.
+- New Slideshows default to 4:5. GPT Image 2.5 requests the selected dimensions
+  directly: 1024x1280 (4:5), 1024x1024 (1:1), 720x1280 (9:16) or 1280x720
+  (16:9). Nano Banana receives the selected ratio. V2 output processing preserves
+  the full returned composition; an unexpected provider ratio uses containment
+  with white margins instead of cropping. Matching native dimensions add no margins.
+- The complete composed prompt is checked against 32,000 characters before
+  credit reservation and again before provider submission. Instructions are not
+  truncated. Existing reference ownership, size limits, paid-request fencing and
+  staged-output recovery remain in effect. No database migration is required.
+- Jobs without the V2 contract keep their existing provider prompts, request
+  fingerprints, image sizing and output processing. Deploy the updated worker
+  before the website can enqueue V2 jobs. Drain V2 jobs before rolling the worker
+  back; an older worker does not understand their roles or native sizing.
+- Local verification: 171 focused checks pass; the isolated real-component
+  browser regression, website TypeScript, scoped lint, worker build and website
+  production build also pass. No paid generation or deployment was performed.
+  Signed-in acceptance and visual instruction compliance on the deployed site
+  remain release-time checks. See `docs/slideshow-generation-fix-2026-10-12.md`.
+
+## 2026-10-11 Trending publishing defaults (local, not deployed)
+
+- New Trending Carousel, Reaction, Text Reel and Hook schedules use the account's
+  saved AI disclosure without a repeated checkbox. TikTok uses saved visibility
+  and comments; YouTube uses saved visibility, made-for-kids and notifications.
+  Initial defaults are TikTok Everyone/comments on, AI disclosure on, YouTube
+  public, made-for-kids off and subscriber notifications off. Existing schedules
+  and legacy missing-setting
+  publisher fallbacks retain their previous behavior; no stored target is rewritten.
+- Trending shows a small "Change default settings" link to Settings > Preferences
+  instead of repeated visibility/comment questions. It opens separately to keep
+  the current post; returning refreshes defaults without losing the caption.
+  The additive migration
+  `20261012135300_expanded_account_publishing_defaults.sql` extends the existing
+  service-only preference table, preserving disclosure values and row isolation.
+  Older AI-only PUT requests update only that field and preserve newer preferences.
+  Apply this migration before releasing the updated website. It is local only.
+- This Settings-only TikTok behavior follows the user's explicit local product
+  request but differs from TikTok's published Direct Post UX requirements: manual
+  per-post visibility with no preset and interactions off until manually enabled.
+  It carries app-review risk and must not be described as provider-approved.
+  Current creator capabilities, disabled interactions, audit limits and final
+  consent remain enforced. Unsupported saved visibility blocks publication;
+  it is never silently switched to another audience. Creator-disabled comments,
+  Duet and Stitch are forced off without changing saved defaults. There is no supported
+  age-restriction preference in this integration; restrictions and moderation
+  remain managed on the destination platform, independently of made-for-kids.
+- Trending blocks confirmation when account preferences are unavailable and
+  offers a retry. Closing/reopening, retrying or switching accounts invalidates
+  prior responses. Returning from Settings also refreshes the preference read.
+  Instagram-only submissions remain independent of the preference service.
+- This supersedes the repeated Trending AI controls and fallback-on-error
+  behavior documented on 10 October. Explore and generic existing-schedule
+  editing retain their per-post controls and stored settings. Carousel generation,
+  slide sourcing, rendering, readiness, ownership and worker publication are unchanged.
+
+## 2026-10-11 Delivery-aware image rotation and reviewed Hook choices
+
+- Image rotation now ranks successful feed delivery per business profile instead
+  of treating every reservation as exposure. Terminal failures can contribute
+  images to a successor; existing reservations, completed slides and stored
+  renders stay immutable. Outstanding current-version inventory is protected.
+- When eligible alternatives exist, selection avoids images already allocated
+  for the same feed date, including across a rotation-cycle boundary. Small
+  pools allow bounded reuse between carousels while keeping each carousel's
+  slides distinct. Profile-specific ordering diversifies initial selections.
+  Delivery means a completed carousel linked to either supported feed; it is
+  not a claim that a person viewed the image. Global equal usage and perceptual
+  duplicate exclusion remain outside this guarantee.
+- Explicit `source_metadata.reviewedRoleCategories` can make one canonical
+  shared source eligible in an additional reviewed category without creating
+  duplicate bytes or changing historical category/role identity. The exact
+  Gym-hook source also supplied in productivity is approved for both categories;
+  the six part-3 sources already classified as human remain human. Refreshes
+  retain this explicit review metadata. Retired sources remain excluded.
+- The authenticated Hook picker resolves the owned completed carousel's category
+  and offers its active, reviewed hook images before the existing packaged
+  choices. Save resolves each image ID and URL server-side and limits catalogue
+  hooks to slide 1. Manual uploads remain available independently on every slide.
+- Structure 2 takeover uses nonblocking profile/batch locks and covering foreign
+  key indexes. The worker retries the same atomic RPC at most three times for
+  lock contention, statement timeout, serialization failure or deadlock, with
+  500ms and 1500ms waits. It does not rerun planning or rewrite existing output.
+- Production database migrations are `20261011095743` and `20261011095929`.
+  The website Hook-picker change and worker RPC retries remain local at the
+  user's request; no GitHub branch, Vercel build or Cloud Run image was published.
+  Rollback-only live probes selected 30 distinct images for five six-slide
+  carousels, including five part-3 hooks, and successfully took over the previously
+  timed-out five-item batch. Retry outputs matched. All generation, slide,
+  usage and user-assignment checksums were unchanged after both probes.
+  Fifty-six focused regression checks, both editor browser fixtures, main
+  workspace TypeScript and worker builds pass. The isolated repair website
+  build passes with Webpack; a local Turbopack run cannot follow the dependency
+  junction outside its workspace root. Signed-in acceptance on the deployed
+  website remains a deployment-time check.
+
+
+## 2026-10-11 Productivity part-3 hook intake
+
+- The user supplied `produtivity_hook_part3` as replacement source material for
+  the depleted productivity first-slide hook pool. This is an additive intake
+  alongside the remaining 21 active hooks, with no reactivation of part-2 assets.
+- Review of 48 files found two exact duplicate pairs. The user approved omitting
+  the unrelated painting and lower-resolution café duplicate. Six hashes already
+  belong to active productivity human records; those existing roles and historical
+  references are preserved. The resulting scoped intake contains 38 new unique
+  productivity/hook backgrounds.
+- The legacy full-tree classifier still excludes the misspelled folder. This
+  batch uses an explicit reviewed additive manifest and source metadata rather
+  than changing global duplicate arbitration or running destructive reconciliation.
+  The retained source bytes, base and thumbnail use the current library contract;
+  two reviewed crops align to the top to preserve the person's head.
+- The batch enters automatic Carousel hook rotation through production data.
+  It does not change the editor's separately packaged, static Hook library
+  catalogue or the Hook-video workflow. Website/worker rendering and allocation
+  rules are unchanged. See `docs/productivity-hook-part3-import-2026-10-11.md`
+  for production completion and verification.
+- Production intake completed: 38 new hook rows and 114 source/rendition
+  objects verified. Active productivity pools are now 59 hook, 239 human and
+  132 static. All 438 pre-existing source records retained their metadata,
+  all 40 retired sources remain inactive, and all 417 checked completed
+  carousels retain their previous application-visible slide counts.
+
+## 2026-10-11 Productivity source retirement and allocation audit
+
+- The user rejected all 39 images under
+  `productivity_humanhookpart-2/human` and the specific
+  `productivity-human/Pinterest_2026-08-16 (61)/pinterest_029.jpg`.
+  Exact SHA-256 matching identifies 40 canonical production assets: 39 hook
+  backgrounds and one human background. Eleven local copies outside the named
+  paths share rejected hashes; the import denylist covers these copies too.
+- These are Carousel still-image roles, not Hook-video footage. Runtime roles
+  are hook, human and static; source batch folders do not create an Other role.
+  The misspelled `produtivity_hook_part3` is unsupported by the standard importer.
+- Safe removal uses inactive, archived source tombstones with
+  `runtime_exclusion_reason=user_requested_retirement` and explicit
+  `source_metadata.retirement.preserveHistoricalRenders=true`. Approved review
+  metadata and source bytes are retained for existing completed rendered
+  slides and owned edits. All fresh selection remains strictly active/ready;
+  generic rejected or archived sources never receive this historical exception.
+- Migration `20261011081756_guard_retired_carousel_reservation_replays.sql`
+  fences both existing-reservation replay branches without deleting assigned
+  usage, rotation state or source provenance. A failed generation whose source
+  was retired must use a successor rather than replaying that retired source.
+- Role-library preparation excludes retired paths and hashes. Import and
+  reconciliation reject stale manifests, preserve historical tombstones and
+  recheck locked rows before any destructive reconciliation. Originals needed
+  by old slides are not physically deleted from storage.
+- Production retirement completed after the website safeguard was READY:
+  39 hook and one human source are inactive/archived, and the 40 specified
+  local files were deleted with verified backups. Ordinary productivity pools
+  now contain 21 hook, 239 human and 132 static images. All 417 affected
+  completed carousels retain their previous application-visible slide counts;
+  all 40 original background URLs remain available for existing owned edits.
+- The live pre-removal audit found 60 hook, 240 human and 132 static assets;
+  every eligible image appeared in completed output, and no profile reused an
+  eligible role image while another was unseen. Fresh selection is newest-first,
+  then per-profile/category/role shuffle cycles. Usage is reservation-based:
+  failed generations consume rotation, and shown/saved/published image exposure
+  is not tracked. Global equal usage and perceptual-duplicate exclusion are not
+  current guarantees. See `docs/productivity-image-cleanup-2026-10-11.md` for
+  rollout status and `docs/carousel-image-allocation-audit-2026-10-11.md` for evidence.
+
+## 2026-10-11 Inter Medium slideshow typography (local implementation)
+
+- The supplied typography brief supersedes the 84px Inter Tight Bold cover
+  decision. Both Trending Carousel structures and the edit preview use one
+  bundled Inter variable face: 72px Medium 500 hooks, maximum hook weight 600,
+  centered single blocks, at most four lines, with 1.08 line height. A thin
+  black outline supplies contrast over the existing backgrounds.
+- Real headings remain black 50px SemiBold 600 on fitted white rounded pills.
+  Body copy is white 48px Regular 400 under a heading, or Medium 500 for short
+  statements without a heading. Authored thought blocks retain their 32px gap;
+  no heading or supporting hook paragraph is invented. Body outlines remain.
+  Existing 1080x1080 and 1080x1350 outputs, roles, copy grounding, image
+  sourcing and measured overflow rejection stay in force.
+- Renderer versions are Structure 1 v27 and Structure 2 v14; planner versions
+  are v51 and v24. Intentional cover edits use the current 72px contract even
+  when their source used an older renderer. Untouched saved slide bytes remain
+  immutable; existing edit fingerprints include the renderer version.
+- Browser previews and the worker image package the same Inter file. Worker
+  font diagnostics now inspect Inter Medium instead of the retired Geist face.
+  This typography change is local and is not yet active in production. Rollout
+  needs the website plus both generation and edit workers. See
+  `docs/carousel-inter-typography-2026-10-11.md` for validation and scope.
+
+## 2026-10-11 Trending slide-upload latency repairs (local, not deployed)
+
+- Pending Carousel edits poll the authenticated editor GET with `view=status`.
+  Readable owned assignment access is still required, including visit history.
+  The query returns only edit ID, revision, render state/error and timestamp;
+  it does not rebuild default editor content or resolve images. A full history
+  read follows completion (or discovery of a newer revision). Only a current
+  full record with complete rendered slides can become ready for scheduling.
+  Polls do not overlap; removal aborts pending requests and revision/timestamp
+  checks reject stale responses, including pending responses after readiness.
+  While already polling an update, a transient `draft` from another save is
+  retried until job attachment or failure; it cannot stop pending polling.
+- Save verifies replacement media IDs in one owner/deletion-scoped query,
+  bounded to 20 distinct IDs. Ready/image/upload-purpose/MIME/dimension checks
+  and existing original, Hook-library and app-screenshot resolution remain.
+  The submitted expected revision is checked again immediately before the
+  guarded write, so slow verification cannot overwrite a newer tab's save.
+- Choosing a slide image immediately shows a temporary object-URL preview on
+  the captured slide, labelled **Uploading image…**. Temporary previews are
+  separate from editable/saved content. Save and dialog dismissal remain blocked
+  until confirmation; failure restores the prior image. Slide switching does
+  not retarget uploads; unmount ignores late completion and revokes previews.
+- Worker progress checkpoints return only the job ID instead of full payloads.
+  Claim-token/status predicates, heartbeat, cancellation/lost-claim fallback,
+  checkpoint frequency and final revision/readiness fencing are retained.
+- Incident profiling now also confirms five PostgREST connection-pool acquisition
+  timeouts alongside database lock waits. Historical CPU/I/O and pool occupancy
+  remain unavailable; no schema, pool-size or worker-capacity change is justified
+  from this evidence alone. See `docs/trending-body-slide-upload-latency-2026-10-11.md`.
+
+## 2026-10-10 Explore Remix Text (local implementation)
+
+- Remix Text is a compact collapsed row after Trim in the Hook, Wall of Text and
+  Demo clip editors, and alongside each owned slideshow output's text tools.
+  Manual text tools remain the default. Opening the row automatically shows the
+  chosen post's extracted caption and saved Business Context's name/readiness;
+  there is no reference or source-slide picker. Only additional instructions are
+  tucked into an optional disclosure. The original generation job supplies the
+  source identity; owned-media reads opt in to an owner-scoped job lookup to
+  restore it. Reordering slides never selects source text by display index.
+  Uploaded or unlinked outputs use manual text. Unknown sources cannot generate.
+  Receipts are scoped to account, output, reference and original slide; matching
+  older receipts remain recoverable. Source/account changes ignore late replies.
+  The editable generated draft replaces the form. **Use this text** applies it,
+  collapses the row and restores manual controls. Demo request recovery uses its
+  owned demo ID; applying copy retains the existing hook-format demo render
+  contract in both video workflows. User changes may expand the draft within editor bounds; AI
+  output still has the original similarity/length checks. Current styles,
+  positions, audio and trim are preserved when copy is applied.
+  The clip editor follows the visible video ratio: a narrow portrait preview in
+  an 856px frame, or a landscape preview up to 480px wide in a 1040px frame,
+  without cropping or distortion. The large nested preview card and repeated
+  labels are removed. Remix has no sparkle icons; source copy is a readable,
+  scrollable quote preserving line breaks. Workflow controls remain mounted
+  behind their toggle at every editor width. Demo trim is a small disclosure,
+  and a single reserved footer places Back and Apply beside each other on the
+  right, or Back above Apply on mobile. No header Back button is duplicated.
+- Video text presets include **Snapchat Classic**: regular Arial, white text,
+  a full-width black strip at 58% opacity, 56px type at 1080px width and initial
+  placement 7.5% from the top. Position, size, wrapping width, color, timing and
+  opacity remain editable. Preview and PNG export share SVG layout; Sharp renders
+  transparent caption PNGs and FFmpeg composites them in the same overlay order,
+  including mixed presets. Legacy bold exports and draft fingerprints stay
+  compatible. The worker image includes an emoji fallback font; glyph appearance
+  still depends on installed fonts. No production image was rebuilt in this turn.
+- Original visible text is stored in `lib/explore/reference-text-catalog.json`,
+  linked to the exact catalogue reference ID, slide ID and source SHA-256. Local
+  Windows OCR processed all 326 slides and 127 videos from 185 references,
+  including the 16 references with paired audio. The completed local audit has
+  441 reviewed text entries, 12 without eligible Remix Text and zero awaiting
+  review. All source mappings/fingerprints match; all 19 prior reviews are unchanged.
+  V2 re-extracted 434 unreviewed units at up to 4fps with real timestamps and final
+  frames, retaining complete raw transcripts separately. All new sampled frames
+  were visually inspected; changing-caption boundaries checked on native frames.
+  The ten known priority cases are corrected. Timing still has frame/sampling
+  limits; this is transcription review, not verification of source claims.
+  Creator captions are eligible; app UI, screenshot text and incidental text are
+  excluded. Infographic/poster slides are excluded entirely, including titles,
+  instructions and added Study tips captions, under the user's latest decision.
+  Five posters, six app-screen-only slides and one no-caption photograph have
+  empty active blocks. Historical raw OCR is audit evidence only; reviewed and
+  excluded entries are protected from re-extraction, even with force enabled.
+  See `docs/explore-remix-text-accuracy-audit-2026-10-10.md`.
+- Authenticated remix requests resolve original copy server-side and use only the
+  current account's saved Business Context. The prompt keeps the hook, sequence,
+  paragraphs and approximate length while requiring supported business facts.
+  Similar structure does not promise equivalent reach. Uploaded references are
+  outside this initial catalogue extraction path.
+- Migration `20261012135237_explore_reference_text_remix.sql` adds private,
+  service-role-only request receipts. An atomic per-account claim precedes each
+  paid request, bounds requests to 20 per 24 hours and rejects changed payloads
+  under an existing key. Completed replies return the frozen source snapshot.
+  Pending/uncertain replies never submit the same paid request again. Browser
+  recovery keys include account, format and output target; applying copy or an
+  explicit new remix clears that request. Stale replies cannot change other slides
+  or accounts.
+- `EXPLORE_TEXT_REMIX_ENABLED=true` is required for generation. Migration, rollout
+  flag and production acceptance are pending; no deployment or paid AI call was
+  made. Automatic approval review rejected the optional external extraction pilot
+  because the media destination and paid processing were not specifically
+  approved. Local OCR completed without uploading media to an AI provider.
+- Remix adds editable overlays to the existing rendering path. Text already
+  baked into source pixels still requires a clean generated/uploaded background.
+  See `docs/explore-remix-text-2026-10-10.md` for verification and review commands.
+  The 11 October section/preset update and its checks are recorded in
+  `docs/explore-remix-text-ui-2026-10-11.md`.
+
+## 2026-10-10 Generation acceptance and actionable copy repair
+
+- The `bb83ce3` production release includes the six-slide screenshot migration,
+  v22 measured copy planner, independent reconciliation and dedicated edit queue.
+  A subsequent real run completed nine six-slide Carousels, including nine final
+  product screenshots. The previously exhausted October 10 feed now has seven
+  ready and three decided Carousel slots, with no ownership/output mismatch.
+- One candidate still failed because repair attempts repeatedly reused a blocked
+  phrase without identifying it. The v23 worker repair names the exact rejected
+  phrase and gives the same quality guidance to initial and repair requests.
+  Fixed typography, word ranges, grounding and measured rendering remain gates.
+- A second production response contained all five complete plans but omitted an
+  outer closing brace and emitted whitespace until its token limit. The worker
+  can append at most the two outer object terminators; exact batch keys and all
+  existing candidate parsing/validation remain mandatory. It never reconstructs
+  missing text or fields. `providerEnvelopeRepaired` records this syntax repair.
+  Compact JSON and real scene descriptions are explicit model instructions.
+- The v23 repair is released in `9e3a130`. Generation revision
+  `ugc-carousel-worker-00110-lpb` is ready at 100% traffic; startup logs verify
+  matching build/runtime commits and the v23 planner. The production website
+  also serves that commit. See `docs/carousel-generation-repairs-2026-10-10.md`
+  for acceptance evidence. Existing saved images are not rewritten.
+
+## 2026-10-10 Explore slideshow multiple instruction references (local implementation)
+
+- The instructions plus button accepts multiple JPG/PNG/WebP uploads and multiple
+  owned saved images. It appends references rather than replacing the prior image.
+  A compact overlapping card stack sits inside the writing box. Hover, keyboard
+  focus or tap reveals only the image, bounded to 160px wide / 200px high, with no
+  header, numbering, filename or side padding. Remove images through the plus
+  picker. The textarea reserves space below the user's writing for the stack.
+- Layout context retains its existing explicit selection: the active selected
+  slide is first, followed by the other chosen slideshow slides. Instruction
+  attachments follow in their selected order and are general image references
+  interpreted according to the user's prompt. Six chosen layout slides and two
+  attached images therefore become eight image inputs, not two replacement inputs.
+  Each requested version generates one image using this complete context.
+- Requests use owner-verified `referenceImageAssetIds`; a regeneration target is
+  sent separately as `regenerationImageAssetId`, appended after the visible user
+  references and given an explicit existing-slide role. New jobs freeze reference
+  order, `additionalReferenceStartIndex` and optional `regenerationReferenceIndex`
+  into the paid-operation fingerprint. Existing scalar requests, queued jobs and
+  their fingerprints remain compatible. Empty scalar fields are omitted.
+- The application retains its 14-image total bound (layouts, attachments and any
+  regeneration target), 25 MB per image and 50 MB combined. Invalid, unavailable,
+  foreign, oversized or excess attachments fail before billing or dispatch. The
+  worker also bounds actual downloaded bytes before contacting an image provider.
+  Successful uploads survive a later file failure; pending work and errors block
+  generation. Account changes clear attachment cards and prior upload errors.
+- GPT Image 2.5 already routes to `gpt-image-2.5-sunburst`; Nano Banana 2 also
+  receives the complete ordered image list. No automatic business context is
+  inserted into this manual Explore generation path.
+- Local verification commands and limitations are recorded in
+  `docs/explore-slideshow-references-2026-10-10.md`. These changes have not been
+  deployed or exercised with a paid provider generation.
 
 ## 2026-10-11 Productivity source retirement and allocation audit
 
@@ -1283,6 +1744,16 @@ silently replaced with a video media asset. The Scheduling editor preserves the
 Library item, collects an exact connected account plus wall-clock date/time,
 and only then creates Cloud Tasks. Undated drafts remain visible in the
 Drafts list and do not appear as timed calendar entries.
+
+The Scheduling Calendar shows every eligible dated post status; status filters
+belong to List view. Calendar labels this scope and provides a direct View drafts
+action. Its month badge counts only that month. Undated drafts have a separate
+list with existing edit/cancel/recovery actions, without a selected-day filter.
+Cancelled parent status takes precedence over retained render metadata. The
+workspace wakes at a future target's publish window, polls active work, and
+refreshes on focus or visibility restoration. Failed reads expose Retry; an
+initial read failure does not masquerade as an empty account, and a refresh
+failure retains the last successful data with a visible stale-data notice.
 
 Social scheduling uses one server-owned five-minute minimum lead for ready
 media, including ready Library carousels. Date/time controls use one-minute
@@ -6117,6 +6588,43 @@ and advertises only deployed workflows. See
 - Slideshows generate images only, edit an ordered 2–10 image sequence, and save it to the owner's Library through a restricted, idempotent API. Manually arranged sequences do not invent a Carousel generation/plan record; the existing Library slide foreign key becomes nullable for this path. Automatic Carousel sourcing, matching, plans and readiness remain unchanged.
 - Generation immediately opens Your Video / Your Slides. Editing and saving remain gated until the schema and renderer release are verified.
 
+### 2026-10-11 Explore image and video reference correction (local)
+
+- Hook and Wall of text now retain the optional image and source video together.
+  A selected gallery clip is a real generation input, resolved by its registered
+  ID on the server. This supersedes the earlier style-example-only behavior.
+- New video workflow requests use explicit Google Omni edit mode, with video
+  bytes, appearance image and complete instructions. Source roles and token
+  counting include both media. Existing jobs without this mode keep their
+  original provider routes and request fingerprints.
+- Sources are limited to 10 seconds and 32 MB; gallery MP4 duration is verified
+  before billing, owned uploads retain their ownership checks, and clips are
+  never silently shortened. Unsupported models cannot discard the video.
+  Missing input fails before provider submission without image-only fallback.
+- Generated edits require user review. Provider completion is not a check of
+  face likeness, action matching or text removal. Website and worker release
+  plus an authenticated production canary are still required. See
+  `docs/workflow-image-video-reference-fix-2026-10-11.md` for the contract.
+
+### 2026-10-11 Explore workflow grid presentation (local)
+
+- Explore follows the user's two-row sketch. At desktop container widths of
+  840 CSS pixels or more, Talking Head + Demo, Hook video, and Wall of text
+  occupy the first row. Slideshows, Build AI influencer, and Quick start occupy
+  the second row. Every workflow is in the page layout; horizontal scrolling
+  and the two navigation dots are removed. The grid reflows to two columns
+  from 560 CSS pixels and one column below that.
+- Build AI influencer uses the same landscape preview and below-preview title
+  placement as the workflow cards. Quick start contains only AI Studio, Video
+  generation, Image generation, and Audio generation in a roomier 2-by-2
+  layout. Library, Trending content, and Schedule a post shortcuts are removed.
+  Its button area matches the neighboring 16:9 previews, with its heading and
+  description placed below using the same spacing and typography. Full shortcut
+  descriptions remain in each link's accessible name.
+- Workflow destinations, development preview links, cover playback/reduced
+  motion, and slideshow generation/editor contracts retain their behavior.
+  This presentation change is local and has not been deployed.
+
 ### 2026-10-08 Manual slideshow editor follow-up
 
 - Slideshows shares the older workflow sidebar and footer. Users choose slideshow examples from the right-hand gallery or upload 2–10 JPG/PNG/WebP reference images; image model, ratio and image-count controls stay in Create. Uploading references does not call a generation provider.
@@ -6162,4 +6670,14 @@ and advertises only deployed workflows. See
 - Explore video workflows pass the confirmed final owned video to scheduling as one playable, fixed video with its duration. The generic scheduler retains Hook/Secondary selection for independently composed posts; Explore does not offer a second composition of its already finished video. Slideshows retain their saved, ordered image sequence.
 - Hook and Wall of text can schedule an opening alone, a demo alone, or opening followed by demo. A selected but unprepared opening is never silently skipped. Neither clip selected blocks preparation. An unchanged, ready owned MP4 can be scheduled directly; standalone demo trim, text, sound and crop/pan still apply before scheduling. Source framing is an optional single-clip extension behind the existing framing gate, with a distinct renderer fingerprint; omitted legacy fields and receipts keep their identities.
 - Optional publishing controls are collapsed. TikTok's required visibility selection and supported interaction choices remain available; privacy is not silently preset. Photo posts omit video-only Duet/Stitch controls. An owner-persisted AI content disclosure default in Settings initializes new TikTok/YouTube posts, while explicit per-post choices and saved schedule settings remain authoritative. This preference does not alter Carousel sourcing, plans, rendering, readiness or publishing ownership.
+- The shared Trending publishing modal and Trending video drawer also load this account disclosure preference. Account selection and creator-capability refresh store only per-post overrides, so they cannot replace a saved AI default with a hard-coded value. New TikTok/YouTube submissions wait for the preference read; a failed read is disclosed for review with the existing AI disclosure fallback. Closing/reopening the modal or changing accounts invalidates its prior preference response. TikTok visibility and interactions remain explicit per-post choices.
+- The video drawer exposes the AI disclosure choice for each selected TikTok/YouTube account, including when optional audience settings are collapsed. Supported TikTok video interactions can be enabled per post; creator-disabled interactions stay unavailable. The shared photo-post modal continues to expose only comments.
 - These changes have local component/browser, database permission and renderer checks. The publishing-preference migration and the website/worker contract must be released together before production acceptance. Local fixtures cannot publish real posts or replace authenticated verification.
+
+
+## 2026-10-12 Explore reference duration contract
+
+- Hook and Wall of Text send the selected gallery or owned source video, optional appearance image, and complete prompt to Google Omni in edit mode. A ten-second source retains its ten-second timeline; output duration is derived from the source.
+- Source support follows Omni uploaded-video editing (up to ten seconds), with a 32 MB download bound. Sources are never silently truncated or omitted. Unsupported models must disclose incompatibility while retaining the attachments.
+- Edit results must pass an actual MP4 duration check before storage, allowing 0.25 seconds for frame/container rounding. Mismatched or unreadable results fail without a new paid retry. Verified duration is retained for recovery.
+- This scoped release preserves old jobs without edit mode. Worker rollout precedes the website, followed by authenticated production verification. See `docs/wall-text-reference-release-2026-10-12.md` for validation and release state.

@@ -7,6 +7,9 @@ import { defaultDemoEdit, readFormatDemoDraft, trimmedDemoFraming } from "../lib
 import { formatTextLayout, formatTextOverlays, parseExploreFormatEdit } from "../worker/src/lib/explore-format-edit.ts";
 import * as editDraft from "../lib/explore/format-edit-draft.ts";
 import { canReuseUnchangedHookSource } from "../lib/explore/unchanged-hook-source.ts";
+import { getReferenceAudioPreview } from "../lib/explore/reference-audio-preview.ts";
+import { applyVideoTextRemix } from "../lib/explore/remix-text-edit.ts";
+import { mapSequencePreviewDemoReference } from "../lib/explore/sequence-preview.ts";
 
 const textFields = {};
 vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../components/explore/format-video-text-fields.tsx", import.meta.url), "utf8"), {
@@ -31,7 +34,7 @@ function text(tree) {
 /** Runs the real Demo component and its event/effect callbacks. Child render
  * coordinators stay observable so a test cannot accidentally submit a render. */
 function harness({ owner = "owner", format = "hook", storage = new Map(), owned = [asset(1), asset(2), asset(3), asset(4, "audio"), asset(5)], enabled = true } = {}) {
-  const slots = [], effects = [], selectionReports = [], savedReports = [], queryInputs = [], uploads = [];
+  const slots = [], effects = [], selectionReports = [], savedReports = [], queryInputs = [], uploads = [], queryFailures = new Set();
   const ownedAssets = new Map(owned.map(value => [value.id, value]));
   let cursor = 0, needsRender = false, tree, dirty = 0, pendingVideo = null, sourceInput;
   const localStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) };
@@ -86,7 +89,7 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
   const jsx = { jsx: (type, props, key) => ({ type, props, key }), jsxs: (type, props, key) => ({ type, props, key }), Fragment: "fragment" };
   const imports = {
     react, "react/jsx-runtime": jsx, "react-dom": { createPortal: (children, target) => ({ type: "portal", props: { children, target } }) },
-    "@tanstack/react-query": { useQuery(input) { queryInputs.push(input); return { data: input.enabled ? ownedAssets.get(input.queryKey.at(-1)) : undefined, refetch() {} }; } },
+    "@tanstack/react-query": { useQuery(input) { queryInputs.push(input); return { data: input.enabled ? ownedAssets.get(input.queryKey.at(-1)) : undefined, isError: queryFailures.has(input.queryKey[0]), refetch() {} }; } },
     "@/contexts/auth-context": { useAuth: () => ({ user: owner ? { uid: owner } : null }) },
     "@/components/explore/use-workflow-source-video": { useWorkflowSourceVideo(input) {
       sourceInput = input;
@@ -99,6 +102,10 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
     "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: {}, useWorkflowFinishing() { throw new Error("A selection or prop transition cannot dispatch finishing."); } },
     "@/lib/explore/format-demo": { defaultDemoEdit, readFormatDemoDraft, trimmedDemoFraming },
     "@/lib/explore/unchanged-hook-source": { canReuseUnchangedHookSource },
+    "@/lib/explore/reference-audio-preview": { getReferenceAudioPreview },
+    "@/lib/explore/workflow-default-music-client": { loadWorkflowDefaultMusic: async () => { throw new Error("Test attempted default music download."); } },
+    "@/lib/explore/sequence-preview": { mapSequencePreviewDemoReference },
+    "@/lib/explore/remix-text-edit": { applyVideoTextRemix },
     "@/worker/src/lib/explore-format-edit": { parseExploreFormatEdit, formatTextLayout, formatTextOverlays },
     "@/lib/explore/format-edit-draft": editDraft,
     "@/lib/explore/format-video-source": { formatVideoFromAsset(value) { if (value.status !== "ready" || value.collection !== "video") throw new Error("Choose an owned ready video."); return value; } },
@@ -130,7 +137,7 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
     throw new Error("Demo effects did not settle.");
   }
   const find = (predicate) => nodes(tree).find(predicate);
-  return { render, props, storage, ownedAssets, queryInputs, uploads, selectionReports, savedReports, get dirty() { return dirty; },
+  return { render, props, storage, ownedAssets, queryInputs, queryFailures, uploads, selectionReports, savedReports, get dirty() { return dirty; },
     find, button(label) { const found = find(node => node.type === "Button" && text(node).trim() === (label === "Save final video" ? "Schedule" : label)); assert.ok(found, `Missing ${label}`); return found; },
     input(label) { const found = find(node => node.props?.["aria-label"] === label); assert.ok(found, `Missing ${label}`); return found; },
     select(value = asset(2)) { render(); const picker = find(node => node.type === "WorkflowVideoAssetPicker"); assert.equal(picker.props.onSelect(value), true); return render(); },
@@ -150,6 +157,24 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
 }
 
 for (const format of ["hook", "wall_text"]) {
+  test(`${format}: background upload in the overview preserves demo text, trim and its separate audio`, async () => {
+    const stored = { ...draft(), audioId: id(4), framing: { version: 1, width: 1, height: 1, points: [[0, 0, 0], [7000, 0, 0]] } };
+    const h = harness({ format, storage: new Map([[draftKey("owner", format), JSON.stringify(stored)]]) });
+    h.render({ editActive: false, opening: output(1), videoId: id(1), openingRevision: 1 });
+    const picker = h.find(node => node.type === "WorkflowFilePicker" && node.props.label === "Upload background audio");
+    assert.equal(await picker.props.attachment.choose({ name: "soundtrack.mp3" }), true); h.render();
+    const next = readFormatDemoDraft(h.storage.get(draftKey("owner", format)));
+    assert.equal(next.backgroundMusic, true); assert.equal(next.backgroundAudioId, id(4));
+    assert.deepEqual(normalize(next.editing), stored.editing);
+    assert.equal(next.audioId, stored.audioId); assert.deepEqual(normalize(next.framing), stored.framing);
+    h.button("Schedule").props.onClick(); h.render();
+    assert.equal(h.saveRun().props.save.background.id, id(4));
+    assert.equal(h.saveRun().props.save.audio.id, id(4));
+    picker.props.attachment.remove(); h.render();
+    assert.equal(readFormatDemoDraft(h.storage.get(draftKey("owner", format))).backgroundAudioId, null);
+    assert.equal(readFormatDemoDraft(h.storage.get(draftKey("owner", format))).audioId, stored.audioId);
+    assert.equal(h.uploads.length, 1);
+  });
   test(`${format}: background audio is a persisted preference and does not render on toggle`, () => {
     const h = harness({ format }); h.render({ editActive: false });
     const toggle = () => h.input("Background audio");
@@ -232,6 +257,19 @@ for (const format of ["hook", "wall_text"]) {
     assert.deepEqual(normalize(restored.saveRun().props.save.draft.editing.text), overlay);
     assert.equal(restored.saveRun().props.save.opening.id, id(1));
   });
+  test(`${format}: Demo ignores the opening reference and retains independent manual text controls`, () => {
+    const stored = draft();
+    stored.editing.text = { value: "Demo caption", width: .94, y: .075, fontSize: 56, color: "#ffffff", startMs: 100, endMs: 1500, preset: "snapchat-classic", backgroundOpacity: .4 };
+    const storage = new Map([[draftKey("owner", format), JSON.stringify(stored)]]);
+    const h = harness({ format, storage }); h.render({ opening: output(1), remixReference: { id: "reference-a", format } });
+    assert.equal(h.find(n => n.type === "RemixTextSection"), undefined, "Opening reference remix is never offered for the demo");
+    const fields = h.find(n => n.type === textFields.FormatVideoTextFields);
+    fields.props.onChange({ ...fields.props.editing, text: { ...fields.props.editing.text, value: "New demo copy" } });
+    h.render();
+    const saved = normalize(readFormatDemoDraft(storage.get(draftKey("owner", format))));
+    assert.deepEqual(saved, { ...stored, editing: { ...stored.editing, text: { ...stored.editing.text, value: "New demo copy" } } });
+    assert.equal(saved.editing.format, "hook");
+  });
   test(`${format}: failed Demo replacement preserves restored trim, sound, framing and ready save`, async () => {
     const stored = draft(); stored.framing.height = .5;
     const storage = new Map([[draftKey("owner", format), JSON.stringify(stored)]]);
@@ -254,8 +292,8 @@ for (const format of ["hook", "wall_text"]) {
   });
   test(`${format}: a demo can schedule alone, while merging waits for an owned opening`, () => {
     const h = harness({ format }); h.render();
-    assert.equal(h.button("First upload demo").props.disabled, undefined);
-    assert.equal(h.button("Choose from Creative Assets").props.disabled, undefined);
+    assert.equal(h.button("Upload demo").props.disabled, undefined);
+    assert.equal(h.button("Creative Assets").props.disabled, undefined);
     assert.equal(h.find(node => node.type === "fieldset").props.disabled, false);
     assert.equal(h.button("Save final video").props.disabled, true);
     h.select();
@@ -274,7 +312,7 @@ for (const format of ["hook", "wall_text"]) {
     const h = harness({ format }); h.select();
     h.edit("Demo trim start", .5); h.edit("Demo trim end", 6.5); h.edit("Demo original volume", 35);
     h.find(node => node.type === "WorkflowDemoControls").props.onChange(draft().framing); h.render();
-    const audioPicker = h.find(node => node.type === "WorkflowFilePicker" && node.props.kind === "audio");
+    const audioPicker = h.find(node => node.type === "WorkflowFilePicker" && node.props.label === "Upload demo audio");
     assert.equal(await audioPicker.props.attachment.choose({ name: "music.mp3" }), true); h.render();
     h.edit("Demo added audio volume", 60); h.edit("Demo audio playback", "repeat");
     const expected = normalize(readFormatDemoDraft(h.storage.get(draftKey("owner", format))));
@@ -461,3 +499,122 @@ test("local preview gives an unavailable fixture a recovery message instead of i
   assert.ok(!text(tree).includes("Restoring your demo…"));
   assert.equal(h.button("Save final video").props.disabled, true);
 });
+
+for (const format of ["hook", "wall_text"]) {
+  test(`${format}: Schedule shows no source clips while joining, then exactly one finished video`, () => {
+    const h = harness({ format }); h.select();
+    h.render({ opening: output(1), openingRevision: 1, scheduleActive: true, scheduleResultsTarget: {}, active: false, editActive: false });
+    h.props.onContinue(); h.render();
+    const schedule = () => h.find(node => node.props?.["aria-label"] === "Schedule video preview");
+    assert.equal(nodes(schedule()).filter(node => node.type === "video").length, 0, "A raw Hook/Demo must not look like the final scheduled result");
+    const run = h.saveRun(); assert.ok(run);
+    run.props.onSaved(output(5)); h.render();
+    const videos = nodes(schedule()).filter(node => node.type === "video");
+    assert.equal(videos.length, 1);
+    assert.equal(videos[0].props.src, output(5).url);
+    h.render({ opening: null, openingRevision: 2 });
+    assert.equal(nodes(schedule()).filter(node => node.type === "video").length, 0, "Editing the opening invalidates its previous combined preview");
+  });
+}
+
+test("a standalone finished opening appears once, but adding background music requires a new final result", () => {
+  const h = harness();
+  h.render({ opening: output(1), scheduleActive: true, scheduleResultsTarget: {}, active: false, editActive: false, finalVideo: output(1) });
+  const schedule = () => h.find(node => node.props?.["aria-label"] === "Schedule video preview");
+  assert.equal(nodes(schedule()).filter(node => node.type === "video").length, 1);
+  h.render({ active: true });
+  h.find(node => node.props?.["aria-label"] === "Background audio").props.onClick(); h.render();
+  assert.equal(nodes(schedule()).filter(node => node.type === "video").length, 0, "The old opening cannot stand in for the pending audio mix");
+  h.render({ finalVideo: output(5) });
+  assert.equal(nodes(schedule()).find(node => node.type === "video").props.src, output(5).url);
+});
+
+test("an opening preparation failure keeps Schedule free of source clips and offers retry", () => {
+  const h = harness(); h.render({ videoId: id(1), sourcePreview: { url: asset(1).url }, scheduleActive: true, scheduleResultsTarget: {}, openingPreparation: { busy: false, error: "Render failed. Try again." } });
+  const schedule = h.find(node => node.props?.["aria-label"] === "Schedule video preview");
+  assert.equal(nodes(schedule).filter(node => node.type === "video").length, 0);
+  assert.match(text(schedule), /Render failed/);
+  h.button("Retry preparation").props.onClick();
+  assert.equal(h.props.prepareRequest, 1);
+});
+
+test("Schedule immediately previews the live Hook and Demo drafts without reporting them as published output", () => {
+  const hookText = { value: "Hook only", width: .8, y: .2, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 2000 };
+  const demoText = { ...hookText, value: "Demo only" };
+  const stored = { ...draft(), framing: null, editing: { ...draft().editing, text: demoText } };
+  const openingPreview = { segment: { id: id(1), label: "Hook", url: "/original-hook.mp4", durationSeconds: 8, width: 720, height: 1280,
+    editing: { ...defaultDemoEdit(8), trimStartMs: 2000, trimEndMs: 7000, text: hookText },
+    addedAudio: { url: "/hook-music.mp3", volume: .4, playback: "repeat", timelineOffsetMs: 2000, mixDurationMs: 8000 } }, referenceAudio: null };
+  const h = harness({ storage: new Map([[draftKey(), JSON.stringify(stored)]]) });
+  h.render({ opening: output(1), openingPreview, openingRevision: 1, scheduleActive: true, scheduleResultsTarget: {}, active: false, editActive: false });
+  const player = h.find(n => n.type === "WorkflowSequencePreview"); assert.ok(player);
+  const [hook, demo] = normalize(player.props.segments);
+  assert.equal(hook.url, "/original-hook.mp4"); assert.equal(hook.editing.trimStartMs, 2000);
+  assert.deepEqual(hook.editing.text, hookText); assert.equal(hook.addedAudio.timelineOffsetMs, 2000);
+  assert.equal(demo.url, asset(2).url); assert.deepEqual(demo.editing.text, demoText);
+  assert.equal(demo.editing.trimStartMs, 500); assert.equal(demo.editing.trimEndMs, 6500);
+  assert.equal(demo.addedAudio.url, asset(4, "audio").url); assert.equal(demo.addedAudio.volume, .6);
+  assert.notEqual(hook.id, demo.id); assert.equal(player.props.backgroundAudio, null);
+  assert.equal(h.savedReports.length, 0); assert.equal(h.saveRun(), undefined);
+  assert.equal(h.uploads.length, 0, "Previewing drafts cannot upload or create a finishing receipt");
+});
+
+test("a playing sequence stays mounted when its verified file arrives, then switches only on request", () => {
+  const h = harness(); h.select();
+  h.render({ opening: output(1), openingRevision: 1, scheduleActive: true, scheduleResultsTarget: {}, active: false, editActive: false });
+  h.props.onContinue(); h.render();
+  const player = () => h.find(n => n.type === "WorkflowSequencePreview");
+  player().props.onPlaybackStart(); h.render();
+  const run = h.saveRun(); run.props.onSaved(output(5)); run.props.onBusy(false); h.render();
+  assert.ok(player(), "The final file must not interrupt current preview playback");
+  assert.equal(h.find(n => n.props?.["aria-label"] === "Final video"), undefined);
+  h.button("View finished video").props.onClick(); h.render();
+  assert.equal(player(), undefined); assert.equal(h.input("Final video").props.src, output(5).url);
+  h.render({ openingRevision: 2, opening: null });
+  assert.equal(h.find(n => n.props?.["aria-label"] === "Final video"), undefined);
+});
+
+test("reference music continues globally without replacing the Demo's independent soundtrack", () => {
+  const h = harness({ storage: new Map([[draftKey(), JSON.stringify({ ...draft(), framing: null })]]) });
+  const track = { url: "/paired-reference.mp3", volume: .35, playback: "repeat" };
+  h.render({ opening: output(1), openingPreview: { segment: { id: id(1), label: "Hook", url: "/clean-hook.mp4", durationSeconds: 8, width: 720, height: 1280 }, referenceAudio: track },
+    scheduleActive: true, scheduleResultsTarget: {}, active: false, editActive: false });
+  const player = h.find(n => n.type === "WorkflowSequencePreview");
+  assert.deepEqual(normalize(player.props.backgroundAudio), track);
+  assert.equal(player.props.segments[0].url, "/clean-hook.mp4");
+  assert.equal(player.props.segments[1].addedAudio.url, asset(4, "audio").url);
+  assert.equal(h.savedReports.length, 0);
+});
+
+test("a paired Demo uses its clean speech base and retains its selected added audio through both opening modes", () => {
+  const stored = { ...draft(), framing: null };
+  const pairedDemo = { ...asset(2), metadata: { referenceAudioPreview: { referenceId: "demo-pair", title: "Demo reference",
+    audioUrl: "/demo-reference.mp3", cleanVideoUrl: "/clean-demo.mp4", volume: .3 } } };
+  const h = harness({ storage: new Map([[draftKey(), JSON.stringify(stored)]]), owned: [asset(1), pairedDemo, asset(4, "audio")] });
+  const openingPreview = { segment: { id: id(1), label: "Hook", url: "/clean-hook.mp4", durationSeconds: 8, width: 720, height: 1280 }, referenceAudio: null };
+  h.render({ opening: output(1), openingPreview, scheduleActive: true, scheduleResultsTarget: {}, active: false, editActive: false });
+  const segment = () => h.find(n => n.type === "WorkflowSequencePreview").props.segments[1];
+  assert.equal(segment().url, "/clean-demo.mp4"); assert.equal(segment().referenceAudio.url, "/demo-reference.mp3");
+  assert.equal(segment().referenceAudio.volume, .6, "The sound pass uses the selected Demo music volume");
+  assert.equal(segment().addedAudio.url, asset(4, "audio").url); assert.equal(segment().editing.originalVolume, .35);
+  h.render({ openingPreview: { ...openingPreview, referenceAudio: { url: "/opening-reference.mp3", volume: .2, playback: "repeat" } } });
+  assert.equal(segment().url, "/clean-demo.mp4"); assert.equal(segment().referenceAudio, null, "The continuous opening track replaces the Demo pair");
+  assert.equal(segment().addedAudio.url, asset(4, "audio").url);
+});
+
+for (const kind of ["demo", "background"]) {
+  test(`a restored ${kind} soundtrack keeps Play unavailable until the selected owned audio loads`, () => {
+    const stored = { ...draft(), framing: null, audioId: kind === "demo" ? id(4) : null,
+      backgroundMusic: kind === "background", backgroundAudioId: kind === "background" ? id(4) : null };
+    const h = harness({ storage: new Map([[draftKey(), JSON.stringify(stored)]]), owned: [asset(1), asset(2)] });
+    h.render({ opening: output(1), scheduleActive: true, scheduleResultsTarget: {}, active: false, editActive: false });
+    const player = () => h.find(n => n.type === "WorkflowSequencePreview");
+    assert.match(player().props.playbackDisabledReason, /Loading.*audio|Loading background music/);
+    h.queryFailures.add(kind === "demo" ? "format-demo-audio" : "format-background-audio"); h.render();
+    assert.match(player().props.playbackDisabledReason, /could not load/);
+    h.queryFailures.clear(); h.ownedAssets.set(id(4), asset(4, "audio")); h.render();
+    assert.equal(player().props.playbackDisabledReason, null);
+    assert.equal(kind === "demo" ? player().props.segments[1].addedAudio.url : player().props.backgroundAudio.url, asset(4, "audio").url);
+    assert.equal(h.savedReports.length, 0);
+  });
+}

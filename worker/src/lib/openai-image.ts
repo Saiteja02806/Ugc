@@ -1,7 +1,7 @@
 import OpenAI, { toFile } from "openai";
 
 import { ProviderRequestNotSubmittedError } from "./generation-provider.js";
-import type { AIStudioImageRatio } from "./image-output.js";
+import { getAIStudioImageDimensions, type AIStudioImageRatio } from "./image-output.js";
 import { downloadReferenceImageBytes, downloadReferenceImageContext } from "./reference-image-download.js";
 
 const DEFAULT_IMAGE_MODEL = "gpt-image-2";
@@ -14,6 +14,7 @@ export async function generateOpenAiImageBuffer(
   aspectRatio: AIStudioImageRatio = "9:16",
   referenceImageUrl?: string | string[],
   modelOverride?: typeof SLIDESHOW_IMAGE_MODEL,
+  nativeAspectRatio = false,
 ) {
   const client = getOpenAIClient();
   const model = modelOverride || process.env.OPENAI_IMAGE_MODEL?.trim() || DEFAULT_IMAGE_MODEL;
@@ -25,12 +26,12 @@ export async function generateOpenAiImageBuffer(
         ...(model === "gpt-image-1" || model === "gpt-image-1.5" ? { input_fidelity: "high" as const } : {}),
         model,
         prompt,
-        size: getProviderImageSize(aspectRatio),
+        size: getProviderImageSize(aspectRatio, nativeAspectRatio),
       })
     : await client.images.generate({
         model,
         prompt,
-        size: getProviderImageSize(aspectRatio),
+        size: getProviderImageSize(aspectRatio, nativeAspectRatio),
       });
   const imageBase64 = result.data?.[0]?.b64_json;
 
@@ -56,7 +57,11 @@ function referenceImageFile({ buffer, contentType }: { buffer: Buffer; contentTy
   return toFile(buffer, `${name}.${extension}`, { type: contentType });
 }
 
-function getProviderImageSize(aspectRatio: AIStudioImageRatio) {
+function getProviderImageSize(aspectRatio: AIStudioImageRatio, nativeAspectRatio: boolean) {
+  if (nativeAspectRatio) {
+    const { width, height } = getAIStudioImageDimensions(aspectRatio);
+    return `${width}x${height}`;
+  }
   if (aspectRatio === "1:1") {
     return "1024x1024" as const;
   }

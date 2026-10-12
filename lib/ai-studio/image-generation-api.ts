@@ -22,7 +22,8 @@ import {
 import { createAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
 import { canonicalMediaReference, isTrustedMediaReferenceUrl as isTrustedStorageUrl } from "@/lib/media/media-reference";
 import { getMediaAssetForOwner } from "@/lib/media/media-storage";
-import { parseImageReferenceContext } from "@/worker/src/lib/image-reference-context";
+import { MAX_IMAGE_REFERENCE_CONTEXT, parseImageReferenceContext } from "@/worker/src/lib/image-reference-context";
+import { parseSlideshowReferenceContract, slideshowGenerationPrompt, type SlideshowReferenceContract } from "@/worker/src/lib/slideshow-generation-contract";
 import {
   BillingAccessError,
   deliverBillingUsageForJob,
@@ -41,6 +42,8 @@ type GenerateRequest = {
   referenceImageUrl?: unknown;
   referenceImageUrls?: unknown;
   referenceImageAssetId?: unknown;
+  referenceImageAssetIds?: unknown;
+  regenerationImageAssetId?: unknown;
 };
 
 type ImageJobOutput = {
@@ -134,7 +137,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
     | GenerateRequest
     | null;
   const prompt = normalizeAIStudioPrompt(body?.prompt);
-  const aspectRatio = parseAIStudioImageAspectRatio(body?.aspectRatio);
+  const aspectRatio = parseAIStudioImageAspectRatio(body?.aspectRatio ?? (body?.exploreFormat === "slideshow" ? "4:5" : undefined));
   const quantity = parseAIStudioGenerationQuantity(body?.quantity);
   if (body?.exploreFormat !== undefined && body.exploreFormat !== "slideshow") {
     return NextResponse.json({ message: "Choose an image workflow.", ok: false }, { status: 400 });
@@ -146,6 +149,10 @@ export async function handleAIStudioImageGeneration(request: Request) {
   let referenceImageUrl: string | null;
   let referenceImageUrls: string[] | undefined;
   let subjectReferenceIndex: number | undefined;
+  let additionalReferenceStartIndex: number | undefined;
+  let regenerationReferenceIndex: number | undefined;
+  let attachmentReferences: string[] = [];
+  let regenerationReferenceUrl: string | null = null;
   try { referenceImageUrl = cleanTrustedHttpsUrl(await canonicalMediaReference(body?.referenceImageUrl, user.uid)); }
   catch { return NextResponse.json({ ok: false, message: "This reference is unavailable to your account." }, { status: 400 }); }
   if (body?.referenceImageUrl && !referenceImageUrl) {
@@ -176,6 +183,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
     }
   }
 
+  const styleReferences = referenceImageUrls ?? (referenceImageUrl ? [referenceImageUrl] : []);
   if (body?.referenceImageAssetId !== undefined) {
     if (body.exploreFormat !== "slideshow" || typeof body.referenceImageAssetId !== "string" || !UUID_PATTERN.test(body.referenceImageAssetId)) {
       return NextResponse.json({ ok: false, message: "Choose a valid uploaded reference image." }, { status: 400 });
@@ -190,12 +198,45 @@ export async function handleAIStudioImageGeneration(request: Request) {
       const references = [...new Set([...layoutReferences, ownedUrl])];
       if (references.length > 14) return NextResponse.json({ ok: false, message: "Choose at most 13 layout images when attaching a subject/style image." }, { status: 400 });
       referenceImageUrl = references[0];
+      attachmentReferences = [ownedUrl];
       if (references.length > 1) {
         referenceImageUrls = references;
         if (!layoutReferences.includes(ownedUrl)) subjectReferenceIndex = references.length;
       }
     } catch {
       return NextResponse.json({ ok: false, message: "Could not verify your reference image. Try again before generating." }, { status: 503 });
+    }
+  }
+
+  if (body?.referenceImageAssetIds !== undefined || body?.regenerationImageAssetId !== undefined) {
+    const ids = body.referenceImageAssetIds ?? [];
+    const regenerationId = body.regenerationImageAssetId;
+    if (body.exploreFormat !== "slideshow" || body.referenceImageAssetId !== undefined || !Array.isArray(ids) || (body.referenceImageAssetIds !== undefined && ids.length < 1) || ids.length > MAX_IMAGE_REFERENCE_CONTEXT || ids.some(id => typeof id !== "string" || !UUID_PATTERN.test(id)) || new Set(ids).size !== ids.length || (regenerationId !== undefined && (typeof regenerationId !== "string" || !UUID_PATTERN.test(regenerationId)))) {
+      return NextResponse.json({ ok: false, message: `Choose 1–${MAX_IMAGE_REFERENCE_CONTEXT} distinct uploaded reference images.` }, { status: 400 });
+    }
+    try {
+      const layoutReferences = referenceImageUrls ?? (referenceImageUrl ? [referenceImageUrl] : []);
+      const assets = await Promise.all([...ids, ...(regenerationId ? [regenerationId] : [])].map(assetId => getMediaAssetForOwner({ assetId, userId: user.uid })));
+      if (assets.some(asset => !asset || asset.status !== "ready" || asset.collection !== "image" || !["image/png", "image/jpeg", "image/webp"].includes(asset.mime_type) || !asset.file_size_bytes || asset.file_size_bytes > 25 * 1024 * 1024)) {
+        return NextResponse.json({ ok: false, message: "A reference image is no longer available. Remove it or upload it again before generating." }, { status: 400 });
+      }
+      if ([...new Map(assets.map(asset => [asset!.id, asset!])).values()].reduce((bytes, asset) => bytes + asset.file_size_bytes!, 0) > 50 * 1024 * 1024) {
+        return NextResponse.json({ ok: false, message: "Use reference images up to 50 MB combined." }, { status: 400 });
+      }
+      const ownedUrls = await Promise.all(assets.map(async asset => cleanTrustedHttpsUrl(await canonicalMediaReference(asset!.url, user.uid))));
+      if (ownedUrls.some(url => !url)) return NextResponse.json({ ok: false, message: "A reference image is unavailable to your account." }, { status: 400 });
+      attachmentReferences = ownedUrls.slice(0, ids.length) as string[];
+      const additional = [...new Set(ownedUrls.slice(0, ids.length) as string[])].filter(url => !layoutReferences.includes(url));
+      const references = [...layoutReferences, ...additional];
+      const regenerationUrl = regenerationId ? ownedUrls.at(-1)! : null;
+      regenerationReferenceUrl = regenerationUrl;
+      if (regenerationUrl && !references.includes(regenerationUrl)) { references.push(regenerationUrl); regenerationReferenceIndex = references.length; }
+      if (references.length > MAX_IMAGE_REFERENCE_CONTEXT) return NextResponse.json({ ok: false, message: `Use up to ${MAX_IMAGE_REFERENCE_CONTEXT} reference images in total. Select fewer slideshow references or remove an attached image.` }, { status: 400 });
+      referenceImageUrls = parseImageReferenceContext(references);
+      referenceImageUrl = referenceImageUrls[0];
+      if (additional.length || regenerationReferenceIndex) additionalReferenceStartIndex = layoutReferences.length + 1;
+    } catch {
+      return NextResponse.json({ ok: false, message: "Could not verify your reference images. Try again before generating." }, { status: 503 });
     }
   }
 
@@ -214,6 +255,23 @@ export async function handleAIStudioImageGeneration(request: Request) {
       },
       { status: 400 },
     );
+  }
+
+  let slideshowReferenceContract: SlideshowReferenceContract | undefined;
+  if (body?.exploreFormat === "slideshow") {
+    const references = referenceImageUrls ?? (referenceImageUrl ? [referenceImageUrl] : []);
+    if (!references.length) return NextResponse.json({ ok: false, message: "Choose a slideshow style reference, attach an image or select a slide to recreate." }, { status: 400 });
+    const indexOf = (url: string) => references.indexOf(url) + 1;
+    slideshowReferenceContract = parseSlideshowReferenceContract({
+      version: 2,
+      styleReferenceIndices: styleReferences.map(indexOf),
+      attachmentReferenceIndices: attachmentReferences.map(indexOf),
+      ...(regenerationReferenceUrl ? { regenerationReferenceIndex: indexOf(regenerationReferenceUrl) } : {}),
+    }, references.length);
+    // Validate the complete provider prompt before reserving credits; never truncate instructions.
+    if (slideshowGenerationPrompt(prompt, aspectRatio, slideshowReferenceContract).length > 32_000) {
+      return NextResponse.json({ ok: false, message: "Shorten your instructions so the slideshow prompt, including reference guidance, fits within 32,000 characters." }, { status: 400 });
+    }
   }
 
   const missingRuntimeEnv = getMissingRuntimeEnv();
@@ -266,6 +324,9 @@ export async function handleAIStudioImageGeneration(request: Request) {
           referenceImageUrl,
           ...(referenceImageUrls ? { referenceImageUrls } : {}),
           ...(subjectReferenceIndex ? { subjectReferenceIndex } : {}),
+          ...(additionalReferenceStartIndex ? { additionalReferenceStartIndex } : {}),
+          ...(regenerationReferenceIndex ? { regenerationReferenceIndex } : {}),
+          ...(slideshowReferenceContract ? { slideshowReferenceContract } : {}),
         },
         jobType: IMAGE_JOB_TYPE,
         projectId: "ai-studio",

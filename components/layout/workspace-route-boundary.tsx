@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { AppShell } from "@/components/layout/app-shell";
-import { getWorkspaceRouteConfig } from "@/lib/navigation/workspace-route";
+import { getWorkspaceRouteConfig, isFocusedVideoWorkflowRoute } from "@/lib/navigation/workspace-route";
 
 export function WorkspaceRouteBoundary({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -23,6 +23,7 @@ export function WorkspaceRouteBoundary({ children }: { children: ReactNode }) {
       <AppShell
         activeKey={route.activeKey}
         defaultSidebarCollapsed={route.defaultSidebarCollapsed}
+        focusNavigation={isFocusedVideoWorkflowRoute(pathname)}
       >
         {children}
       </AppShell>

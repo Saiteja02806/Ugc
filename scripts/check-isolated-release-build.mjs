@@ -14,6 +14,6 @@ if (process.argv[2]) {
   }
 }
 if (allow.some(key => !env[key])) throw new Error("Supply the existing public Firebase build configuration. No server credentials are needed.");
-const result = spawnSync(process.execPath, [resolve("node_modules/next/dist/bin/next"), "build"], { env, stdio: "inherit" });
+const result = spawnSync(process.execPath, [resolve("node_modules/next/dist/bin/next"), "build", ...(process.argv.includes("--webpack") ? ["--webpack"] : [])], { env, stdio: "inherit" });
 if (result.error) throw result.error;
 process.exitCode = result.status ?? 1;

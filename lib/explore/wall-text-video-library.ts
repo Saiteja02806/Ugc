@@ -5,6 +5,7 @@ import {
   type ExploreWallTextVideo,
 } from "@/lib/explore/hook-video-types";
 import { buildPublicStorageUrl } from "@/lib/storage/storage";
+import { getPairedExploreVideos } from "./paired-reference-library";
 
 export type { ExploreWallTextVideo } from "@/lib/explore/hook-video-types";
 
@@ -84,13 +85,13 @@ const EXPLORE_WALL_TEXT_VIDEO_ASSETS: ReadonlyArray<ExploreWallTextVideoAsset> =
 ];
 
 export function getExploreWallTextVideos(): ExploreWallTextVideo[] {
-  return EXPLORE_WALL_TEXT_VIDEO_ASSETS.map((asset) => ({
+  return [...EXPLORE_WALL_TEXT_VIDEO_ASSETS.map((asset) => ({
     id: asset.id,
     posterUrl: buildPublicStorageUrl(
       getExploreVideoPosterStorageKey(asset.storageKey),
     ),
     videoUrl: buildPublicStorageUrl(asset.storageKey),
-  }));
+  })), ...getPairedExploreVideos("wall_text")];
 }
 
 export function getExploreWallTextPreviewVideo(): ExploreWallTextVideo | null {
@@ -101,7 +102,7 @@ export function getExploreWallTextPreviewVideo(): ExploreWallTextVideo | null {
 export function isExploreWallTextVideoId(value: unknown): value is string {
   return (
     typeof value === "string" &&
-    EXPLORE_WALL_TEXT_VIDEO_ASSETS.some((asset) => asset.id === value)
+    getExploreWallTextVideos().some((asset) => asset.id === value)
   );
 }
 

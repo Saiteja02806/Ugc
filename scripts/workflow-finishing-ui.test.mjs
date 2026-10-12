@@ -8,6 +8,7 @@ import * as finishClient from "../lib/explore/workflow-finishing-client.ts";
 import * as scheduleClient from "../lib/explore/workflow-schedule-client.ts";
 import * as schedulingDraft from "../lib/explore/workflow-scheduling-draft.ts";
 import * as defaultMusicClient from "../lib/explore/workflow-default-music-client.ts";
+import * as referenceAudioPreview from "../lib/explore/reference-audio-preview.ts";
 import { SUBTITLE_STYLES } from "../worker/dist/subtitles/styles.js";
 
 const load = (path, imports, globals = {}) => {
@@ -19,13 +20,14 @@ const load = (path, imports, globals = {}) => {
 const tick = () => new Promise(setImmediate);
 const source = { id: randomUUID(), status: "ready", collection: "video", durationSeconds: 5 };
 const output = { id: randomUUID(), status: "ready", collection: "video", url: "https://storage.googleapis.com/test/finished.mp4" };
-function harness({ saved = null, lost = false, completed = false, subtitles = false, style = "clean", backgroundMusic = false, musicUnavailable = false, kind = "hook", placement = "bottom", pending = false, scope, demoSource = null, outputFailures = 0, reuseUnchangedSource = false } = {}) {
+function harness({ saved = null, lost = false, completed = false, subtitles = false, style = "clean", backgroundMusic = false, musicUnavailable = false, kind = "hook", placement = "bottom", pending = false, uncertain = false, scope, demoSource = null, outputFailures = 0, reuseUnchangedSource = false, fastStatus = false } = {}) {
   let cursor = 0, pendingFailure = lost;
   const slots = [], effects = [], calls = [], musicReads = [], uploads = [], store = new Map(), timers = new Map(), listeners = new Map();
+  const intervals = [], document = { visibilityState: "visible", addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: name => listeners.delete(name) };
   const musicAssetId = randomUUID();
   const storageKey = finishClient.finishStorageKey("owner", kind) + (scope ? `:${encodeURIComponent(scope)}` : "");
   if (saved) store.set(storageKey, JSON.stringify(saved));
-  const props = { ownerId: "owner", enabled: true, kind, source, demo: null, demoSource, demoAudio: null, playback: "once", scope, reuseUnchangedSource, options: { subtitles, style, backgroundMusic, placement }, onRestoreOptions(value) { props.options = value; } };
+  const props = { ownerId: "owner", enabled: true, kind, source, demo: null, demoSource, demoAudio: null, playback: "once", scope, reuseUnchangedSource, fastStatus, options: { subtitles, style, backgroundMusic, placement }, onRestoreOptions(value) { props.options = value; } };
   const jobId = randomUUID(); let cancelled = false;
   const react = {
     useRef(value) { const i = cursor++; return slots[i] ??= { current: value }; },
@@ -36,6 +38,7 @@ function harness({ saved = null, lost = false, completed = false, subtitles = fa
   const testModule = load("components/explore/use-workflow-finishing.ts", {
     react, "@/lib/explore/workflow-finishing-client": finishClient,
     "@/lib/explore/workflow-default-music-client": defaultMusicClient,
+    "@/lib/explore/reference-audio-preview": referenceAudioPreview,
     "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { assert.equal(owner, "owner"); return "owner-token"; } },
     "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: async (id, _token, options) => { assert.equal(id, output.id); assert.ok(options.signal instanceof AbortSignal); if (outputFailures-- > 0) throw new Error("temporary output lookup failure"); return output; } },
     "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia: async (file, kind, _limit, owner, options) => {
@@ -46,10 +49,10 @@ function harness({ saved = null, lost = false, completed = false, subtitles = fa
     crypto: { randomUUID },
     AbortSignal,
     window: { addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: name => listeners.delete(name) },
-    document: { visibilityState: "visible", addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: name => listeners.delete(name) },
+    document,
     localStorage: { getItem: key => store.get(key) ?? null, setItem: (key, value) => store.set(key, value) },
     navigator: { locks: { request: async (_key, _opts, run) => run({}) } },
-    setInterval: fn => { const id = randomUUID(); timers.set(id, fn); return id; }, clearInterval: id => timers.delete(id),
+    setInterval: (fn, delay) => { intervals.push(delay); const id = randomUUID(); timers.set(id, fn); return id; }, clearInterval: id => timers.delete(id),
     fetch: async (url, init) => {
       if (url === "/api/explore/default-music") {
         musicReads.push({ url, ...init });
@@ -60,13 +63,43 @@ function harness({ saved = null, lost = false, completed = false, subtitles = fa
       if (init.method === "POST" && pendingFailure) { pendingFailure = false; throw new Error("lost response"); }
       const entry = init.method === "POST" ? JSON.parse(init.body) : JSON.parse(store.get(storageKey));
       if (init.method === "POST" && !pending) completed = true;
-      return Response.json({ ok: true, receiptVersion: 1, requestKey: entry.requestKey, jobId, outcome: pending ? cancelled ? "cancelled" : "pending" : completed || init.method === "POST" ? "completed" : "unconfirmed", mediaAssetId: !pending && (completed || init.method === "POST") ? output.id : null, message: "Saved output." });
+      const outcome = uncertain && init.method === "POST" ? "uncertain" : pending ? cancelled ? "cancelled" : "pending" : completed || init.method === "POST" ? "completed" : "unconfirmed";
+      return Response.json({ ok: true, receiptVersion: 1, requestKey: entry.requestKey, jobId, outcome, mediaAssetId: outcome === "completed" ? output.id : null, message: "Saved output." });
     },
   });
-  return { props, calls, musicReads, uploads, musicAssetId, jobId, store, storageKey, timers, listeners,
+  return { props, calls, musicReads, uploads, musicAssetId, jobId, store, storageKey, timers, listeners, intervals, visibility(value) { document.visibilityState = value; },
     poll() { for (const run of timers.values()) run(); }, event(name) { listeners.get(name)?.(); },
     render() { cursor = 0; const view = testModule.useWorkflowFinishing(props); while (effects.length) effects.shift()(); return view; }, unmount() { for (const slot of slots) slot?.cleanup?.(); } };
 }
+
+test("uncertain finishing responses automatically recover the same request without submitting again", async () => {
+  const h = harness({ uncertain: true, fastStatus: true });
+  h.render(); await tick(); h.render().action.onAction(); await tick();
+  const uncertain = h.render();
+  assert.equal(uncertain.status.outcome, "uncertain"); assert.equal(uncertain.output, null);
+  assert.equal(h.timers.size, 1); assert.equal(h.intervals.at(-1), 1000);
+  const request = JSON.parse(h.calls[0].body);
+  h.poll(); h.poll(); await tick();
+  assert.equal(h.render().output.id, output.id);
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
+  assert.equal(h.calls.filter(call => call.method === "GET").length, 1, "overlapping status reads are skipped");
+  assert.equal(JSON.parse(h.store.get(h.storageKey)).requestKey, request.requestKey);
+  assert.equal(h.timers.size, 0); h.unmount();
+});
+
+test("fast foreground checks pause while hidden and ordinary workflow polling remains unchanged", async () => {
+  for (const fastStatus of [false, true]) {
+    const h = harness({ pending: true, fastStatus });
+    h.render(); await tick(); h.render().action.onAction(); await tick(); h.render();
+    assert.equal(h.intervals.at(-1), fastStatus ? 1000 : 4000);
+    h.visibility("hidden"); h.poll(); await tick();
+    assert.equal(h.calls.filter(call => call.method === "GET").length, fastStatus ? 0 : 1);
+    h.visibility("visible"); h.event("visibilitychange"); await tick();
+    assert.equal(h.calls.filter(call => call.method === "GET").length, fastStatus ? 1 : 2);
+    assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
+    h.unmount(); assert.equal(h.timers.size, 0); assert.equal(h.listeners.size, 0);
+  }
+});
 
 test("a completed output lookup recovers automatically without another render", async () => {
   for (const kind of ["hook", "phone"]) {
@@ -279,6 +312,23 @@ test("background ON snapshots owned approved audio only on Apply; retry retains 
 test("missing approved default fails before uploading or dispatching any finishing job", async () => {
   const h = harness({ backgroundMusic: true, musicUnavailable: true }); h.render(); await tick(); h.render().action.onAction(); await tick(); await tick();
   assert.match(h.render().action.error, /not configured/); assert.equal(h.calls.length, 0); assert.equal(h.uploads.length, 0); assert.equal(h.store.size, 0); h.unmount();
+});
+
+test("an explicitly chosen background track bypasses default music and keeps its playback on retry", async () => {
+  const h = harness({ backgroundMusic: true, lost: true });
+  h.props.backgroundSource = { id: randomUUID(), status: "ready", collection: "audio" };
+  h.props.backgroundPlayback = "once";
+  h.render(); await tick(); h.render().action.onAction(); await tick();
+  const first = JSON.parse(h.calls[0].body).draft;
+  assert.equal(first.backgroundAssetId, h.props.backgroundSource.id);
+  assert.equal(first.backgroundPlayback, "once");
+  assert.equal(h.musicReads.length, 0); assert.equal(h.uploads.length, 0);
+  h.render().action.onAction(); await tick();
+  assert.equal(h.calls[1].body, h.calls[0].body);
+  assert.equal(h.render().output.id, output.id);
+  h.props.backgroundSource = { ...h.props.backgroundSource, id: randomUUID() };
+  assert.equal(h.render().output, null, "A different soundtrack invalidates the prepared output");
+  h.unmount();
 });
 
 test("reload restores the music switch and turning it OFF invalidates the saved music-bearing output", async () => {

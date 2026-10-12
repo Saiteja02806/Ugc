@@ -56,7 +56,7 @@ function harness(options = {}) {
     } },
   }, { process: { env } });
   const tools = new Map();
-  const module = load("lib/mcp/finishing-tools.ts", {
+  const toolModule = load("lib/mcp/finishing-tools.ts", {
     "server-only": {}, "zod": { z }, "@modelcontextprotocol/server": { requireScopes: (...scopes) => scopes },
     "@/lib/billing/subscription-db": { getUserSubscription: async (owner, flags) => {
       calls.push("access"); assert.ok(owner); assert.equal(flags.refreshCredits, false); assert.equal(flags.initializeFreeCredits, false);
@@ -68,7 +68,7 @@ function harness(options = {}) {
     "@/worker/src/lib/explore-format-edit": edit,
     "./read-tools": { executeTool, oauthMetadata, principal, ToolFailure },
   }, { process: { env } });
-  module.registerFinishingMcpTools({ registerTool(name, config, callback) { tools.set(name, { config, callback }); } });
+  toolModule.registerFinishingMcpTools({ registerTool(name, config, callback) { tools.set(name, { config, callback }); } });
   async function call(name, input = {}, owner = "owner-a", scopes = ["creative:write", "account:read", "jobs:read"]) {
     const tool = tools.get(name), parsed = tool.config.inputSchema.parse(input);
     const result = await tool.callback(parsed, { http: { authInfo: { scopes, extra: { firebaseUid: owner } } } });

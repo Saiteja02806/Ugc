@@ -1,0 +1,10 @@
+.preview { display: flex; width: 100%; height: 100%; min-width: 0; min-height: 0; flex-direction: column; gap: 10px; }
+.stage { display: flex; flex: 1; min-width: 0; min-height: 0; align-items: center; justify-content: center; overflow: hidden; container-type: size; }
+.frame { position: relative; width: min(100%, calc(60dvh * var(--sequence-aspect))); width: min(100cqw, calc(100cqh * var(--sequence-aspect)), calc(620px * var(--sequence-aspect))); max-height: 100%; aspect-ratio: var(--sequence-aspect); overflow: hidden; border-radius: 12px; background: #000; }
+.controls { display: flex; width: 100%; max-width: 480px; min-width: 0; flex: none; align-items: center; gap: 8px; margin-inline: auto; }
+.preview > p, .preview > [role="alert"] { flex: none; }
+.preview:fullscreen { padding: 16px; background: #000; }
+@media (max-width: 1023px), (max-height: 520px) {
+  .preview { height: auto; }
+  .stage { flex: none; height: min(560px, 50dvh); min-height: 220px; }
+}

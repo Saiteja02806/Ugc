@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { Readable } from "node:stream";
 import test from "node:test";
 import { ExploreFinishingStorage } from "../worker/dist/lib/explore-finishing-storage.js";
 import { EXPLORE_RENDER_VERSION, exploreFinishOutputKey } from "../worker/dist/lib/explore-finishing-contract.js";
+import { referenceAudioBaseStorageKey } from "../worker/dist/lib/explore-reference-soundtrack.js";
 
 const id = "11111111-1111-4111-8111-111111111111", requestKey = "22222222-2222-4222-8222-222222222222";
 const receipt = { user_id: "owner-a", request_key: requestKey, output_asset_id: id, fingerprint: "a".repeat(64), draft: { subtitles: { language: "en" } } };
@@ -35,6 +36,48 @@ function env(t, changes = {}) {
   for (const [name, value] of Object.entries(values)) { if (value === undefined) delete process.env[name]; else process.env[name] = value; }
   t.after(() => { for (const [name, value] of Object.entries(before)) { if (value === undefined) delete process.env[name]; else process.env[name] = value; } });
 }
+
+function pairedFixture() {
+  const objects = new Map(), calls = [];
+  const storage = new ExploreFinishingStorage({ bucket: () => ({
+    file: name => ({ name, exists: async () => [objects.has(name)], getMetadata: async () => {
+      if (!objects.has(name)) throw Object.assign(new Error("Missing"), { code: 404 });
+      return [objects.get(name)];
+    } }),
+    upload: async (path, options) => {
+      calls.push(options);
+      assert.deepEqual(options.preconditionOpts, { ifGenerationMatch: 0 });
+      if (objects.has(options.destination)) throw Object.assign(new Error("Already exists"), { code: 412 });
+      objects.set(options.destination, { ...options.metadata, size: String((await stat(path)).size) });
+    },
+  }) });
+  return { storage, objects, calls };
+}
+
+test("paired publication saves the owned clean audio base first and recovery verifies both objects", async t => {
+  env(t); const dir = await workspace(t), path = join(dir, "video.mp4"), cleanPath = join(dir, "clean.mp4");
+  await writeFile(path, Buffer.alloc(100)); await writeFile(cleanPath, Buffer.alloc(90));
+  const cleanKey = referenceAudioBaseStorageKey(id), f = pairedFixture();
+  const pair = { ...details, referenceAudioBasePath: cleanPath, metadata: { referenceSoundtrack: { version: 1, referenceId: "paired", audioSha256: "b".repeat(64), volume: .2, cleanStorageKey: cleanKey } } };
+  const published = await f.storage.upload(receipt, path, pair);
+  assert.deepEqual(f.calls.map(call => call.destination), [cleanKey, key]);
+  assert.equal(published.referenceAudioBasePath, undefined);
+  assert.deepEqual(await f.storage.existing(receipt), published);
+  assert.deepEqual(await f.storage.upload(receipt, path, pair), published);
+  const clean = f.objects.get(cleanKey);
+  clean.metadata.ownerId = "another-owner";
+  await assert.rejects(f.storage.existing(receipt), /different work/);
+  f.objects.delete(cleanKey);
+  await assert.rejects(f.storage.existing(receipt), /Missing/);
+});
+
+test("paired output cannot publish with a missing or foreign clean base", async t => {
+  env(t); const dir = await workspace(t), path = join(dir, "video.mp4"); await writeFile(path, Buffer.alloc(100));
+  const f = pairedFixture();
+  await assert.rejects(f.storage.upload(receipt, path, { ...details, metadata: { referenceSoundtrack: {} } }), /required before publication/);
+  await assert.rejects(f.storage.upload(receipt, path, { ...details, referenceAudioBasePath: path, metadata: { referenceSoundtrack: { cleanStorageKey: referenceAudioBaseStorageKey(requestKey) } } }), /another video/);
+  assert.equal(f.calls.length, 0);
+});
 async function workspace(t) {
   const dir = await mkdtemp(join(tmpdir(), "explore-storage-offline-"));
   t.after(async () => { assert.equal(dirname(resolve(dir)), resolve(tmpdir())); assert.ok(basename(dir).startsWith("explore-storage-offline-")); await rm(dir, { recursive: true, force: true }); });

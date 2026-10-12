@@ -2,7 +2,7 @@
 
 ## Scope and production evidence
 
-Read-only audit of both Carousel structures' image routing, reservation and reuse. The connected Supabase MCP project URL was verified as `https://kltxwijhluawgveykfbt.supabase.co`. The deployed database definition of `reserve_carousel_role_assets_v2(uuid, uuid, text, jsonb, boolean)` was inspected directly. Production counts below are a snapshot taken before the requested productivity asset retirement; retirement will reduce the eligible pool.
+Read-only audit of both Carousel structures' image routing, reservation and reuse. The connected Supabase MCP project URL was verified as `https://kltxwijhluawgveykfbt.supabase.co`. The deployed database definition of `reserve_carousel_role_assets_v2(uuid, uuid, text, jsonb, boolean)` was inspected directly. Production counts below are a snapshot taken before the requested productivity asset retirement. The completed cleanup leaves 21 hook, 239 human and 132 static assets eligible; allocation policy and historical usage remain unchanged.
 
 The relevant role planner/category resolver and fresh-first/six-slide migrations match deployed website commit `4ab55bbee69b637930931ebfde01ea6cba568a5a`. The current `worker/src/lib/supabase.ts` differs only in unrelated job progress response size; its reservation call is unchanged. This audit did not run paid image generation, modify runtime code, or mutate the database/storage.
 

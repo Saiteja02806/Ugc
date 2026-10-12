@@ -2,6 +2,8 @@ export type ExploreVideoReference = {
   id: string;
   posterUrl: string;
   videoUrl: string;
+  durationSeconds?: number;
+  pairedAudio?: { title: string; url: string; durationSeconds: number };
 };
 
 export type ExploreHookVideo = ExploreVideoReference;

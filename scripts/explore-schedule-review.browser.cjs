@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Standalone CommonJS fixture runner. */
 // Actual scheduling and preference components; isolated HTTP fixtures cannot publish.
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -19,7 +20,7 @@ const final={id:'00000000-0000-4000-8000-000000000010',sourceType:'combined_vide
 const hook={...final,id:'00000000-0000-4000-8000-000000000011',sourceType:'user_video',title:'Original hook',durationLabel:'8s'};
 const accounts=['instagram','tiktok','youtube'].map((platform,index)=>({id:'account-'+platform,platform,status:'connected',platformAccountName:'Local '+platform,platformAccountUsername:'fixture',scopes:platform==='instagram'?['instagram_business_content_publish']:platform==='tiktok'?['video.publish']:['https://www.googleapis.com/auth/youtube.upload'],supportsBackgroundRefresh:true}));
 const selected=(params.get('platforms')??'instagram').split(',');
-createRoot(document.getElementById('root')).render(params.get('mode')==='preferences'?<PublishingPreferencesSettings/>:<ScheduleEditor finalVideo={manual?undefined:final} demoMediaOptions={[final,{...final,id:'unrelated',title:'Another video'}]} hookMediaOptions={manual?[hook]:[]} editingIsCombinedVideo={false} editingPlannedPlatforms={[]} editingSchedule={null} editingScheduledDate={null} editingScheduledTime={null} errorMessage={null} initialClipSelection={manual?'hook_and_secondary':'secondary_only'} initialDemoMediaId={final.id} initialHookMediaId={manual?hook.id:''} initialCaption='Local review: one finished video' initialPlannedTargets={accounts.filter(account=>selected.includes(account.platform)).map(account=>({platform:account.platform,connectionId:account.id,settings:{}}))} initialScheduledDate='2026-12-01' initialScheduledTime='10:30' minimumScheduleLeadMinutes={5} requireScheduleTarget saving={false} socialConnections={accounts} tiktokBetaEnabled youtubeBetaEnabled onClose={()=>{}} onRefreshMedia={async()=>true} onRefreshConnections={async()=>true} onSave={value=>{window.__submission=value;}}/>);`);
+createRoot(document.getElementById('root')).render(params.get('mode')==='preferences'?<PublishingPreferencesSettings/>:<ScheduleEditor finalVideo={manual?undefined:final} demoMediaOptions={[final,{...final,id:'unrelated',title:'Another video'}]} hookMediaOptions={manual?[hook]:[]} editingIsCombinedVideo={false} editingPlannedPlatforms={[]} editingSchedule={null} editingScheduledDate={null} editingScheduledTime={null} errorMessage={null} initialClipSelection={manual?'hook_and_secondary':'secondary_only'} initialDemoMediaId={final.id} initialHookMediaId={manual?hook.id:''} initialCaption='Local review: one finished video' initialPlannedTargets={accounts.filter(account=>selected.includes(account.platform)).map(account=>({platform:account.platform,connectionId:account.id,settings:{}}))} initialScheduledDate='2026-12-01' initialScheduledTime='10:30' minimumScheduleLeadMinutes={5} requireScheduleTarget saving={false} socialConnections={accounts} tiktokBetaEnabled youtubeBetaEnabled onClose={()=>{}} onRefreshMedia={async()=>true} onRefreshConnections={async()=>true} onSave={value=>{window.__submission=value;document.body.dataset.fixtureSubmission=JSON.stringify(value);}}/>);`);
 
 async function main() {
   await new Promise((resolve, reject) => {
@@ -28,8 +29,7 @@ async function main() {
   });
   let preferences = { containsSyntheticMedia: false }, preferenceDelay = 0, preferenceFailure = false;
   const writes = [], errors = [];
-  const cssDir = path.join(root, ".next/static/chunks");
-  const css = fs.readdirSync(cssDir).filter(name => name.endsWith(".css")).map(name => fs.readFileSync(path.join(cssDir, name), "utf8")).join("\n");
+  const css = require('./compiled-browser-css.cjs')(root);
   const json = (res, body) => { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); };
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://fixture");
@@ -97,7 +97,7 @@ async function main() {
     await page.getByText("AI content disclosure · On", { exact: true }).click();
     const disclosure = page.getByRole("checkbox", { name: /^Contains AI-generated content/ });
     await disclosure.uncheck(); await disclosure.check();
-    await page.waitForResponse(response => response.url().endsWith("publishing-preferences"));
+    await page.waitForResponse(response => new URL(response.url()).pathname.endsWith("publishing-preferences"));
     assert.equal(await disclosure.isChecked(), true, "An arriving preference cannot overwrite an explicit post edit");
     preferenceDelay = 0;
 
@@ -105,10 +105,10 @@ async function main() {
     const setting = page.getByRole("checkbox", { name: "Contains AI-generated content by default", exact: true });
     await page.waitForFunction(() => !document.querySelector('input[type="checkbox"]')?.disabled);
     assert.equal(await setting.isChecked(), false); await setting.check();
-    await page.getByRole("button", { name: "Save publishing default", exact: true }).click();
-    await page.getByText("Publishing default saved for your account.", { exact: true }).waitFor();
+    await page.getByRole("button", { name: "Save publishing defaults", exact: true }).click();
+    await page.getByText("Publishing defaults saved for your account.", { exact: true }).waitFor();
     await page.reload(); await page.waitForFunction(() => !document.querySelector('input[type="checkbox"]')?.disabled);
-    assert.equal(await setting.isChecked(), true); assert.deepEqual(writes, [{containsSyntheticMedia:true}]);
+    assert.equal(await setting.isChecked(), true); assert.deepEqual(writes, [{containsSyntheticMedia:true,tiktokPrivacyLevel:"PUBLIC_TO_EVERYONE",tiktokAllowComments:true,youtubePrivacyStatus:"public",youtubeMadeForKids:false,youtubeNotifySubscribers:false}]);
     console.log("PASS account preference saves, restores and does not overwrite explicit per-post edits");
 
     await page.goto(base + "/?mode=manual");

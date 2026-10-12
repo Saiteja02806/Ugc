@@ -22,6 +22,18 @@ test("unsent schedule forms are versioned and isolated by owner, format, mode an
   }
 });
 
+test("slideshow shares the review form while labeling Instagram as an image post", () => {
+  const h = harness();
+  h.props.format = "slideshow"; h.props.imageOnly = true;
+  h.props.output = { ...output, kind: "library_item" };
+  h.render(); h.hydrate(); h.form().onChange(draft);
+  const tree = h.render();
+  assert.equal(h.form().presentation, "review"); assert.equal(h.form().imageOnly, true);
+  const summary = nodes(tree).find(node => node.props?.["aria-label"] === "Schedule summary");
+  assert.equal(nodes(summary).find(node => node.type === "p").props.children, "Instagram");
+  assert.equal(h.externalCalls, 0);
+});
+
 test("malformed or oversized drafts cannot hydrate a scheduling form", () => {
   const key = drafts.formatScheduleDraftKey(scope);
   for (const bad of [null, "not-json", "x".repeat(24_001), JSON.stringify({ version: 2, key, draft }),
@@ -43,6 +55,8 @@ function harness(storage = new Map()) {
   react.useLayoutEffect = react.useEffect;
   const jsx = { jsx: (type, props, key) => ({ type, props, key }), jsxs: (type, props, key) => ({ type, props, key }), Fragment: "fragment" };
   const imports = { react, "react/jsx-runtime": jsx, "react-dom": { createPortal: children => children },
+    "lucide-react": { ArrowLeft: "ArrowLeft", ArrowRight: "ArrowRight" },
+    "@/components/explore/workflow-schedule-review.module.css": { default: {} },
     "next/dynamic": { default: () => "ScheduleEditor" }, "next/link": { default: "Link" },
     "@/contexts/auth-context": { useAuth: () => ({ user: owner ? { uid: owner } : null }) },
     "@/components/providers/account-timezone-provider": { useAccountTimeZone: () => "Asia/Calcutta" },

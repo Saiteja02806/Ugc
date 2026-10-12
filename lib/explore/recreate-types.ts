@@ -23,6 +23,7 @@ export type RecreateReference = {
   posterUrl: string;
   videoUrl?: string;
   durationSeconds?: number;
+  pairedAudio?: { title: string; url: string; durationSeconds: number };
   slides: ReferenceSlide[];
 };
 

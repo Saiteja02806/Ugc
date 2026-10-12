@@ -8,6 +8,7 @@ import type { CarouselStructure2RenderSpec } from "./carousel-structure-2-render
 import { createCarouselStructure2SlideInserts } from "./carousel-structure-2-persistence.js";
 import { buildCarouselStructure2StoryPlanSchema, parseCarouselStructure2StoryPlan, validateCarouselStructure2StoryPlan } from "./carousel-structure-2-story-plan.js";
 import { CAROUSEL_STRUCTURE_2_STORY_ROLES, type CarouselStructure2StoryRole } from "./carousel-structure-2-formats.js";
+import { CAROUSEL_HOOK_FONT_WEIGHT_MAX } from "./carousel-cover-typography.js";
 
 const body = "i used to wait until i felt ready\n\nnow i show up for ten minutes every morning";
 function spec(overrides: Partial<CarouselStructure2RenderSpec> = {}): CarouselStructure2RenderSpec {
@@ -53,8 +54,13 @@ test("reference hooks are one large cover block over two to four lines in both f
     ]) {
       const first = await inspectCarouselSlideLayout({ format, slide: { body: null, ctaText: null, headline: hook, imageDirection: "existing background", layoutPreset: "top-hook", listItems: [], slideNumber: 1, slideType: "hook", subtext: null, textMode: "single_statement", textPosition: "center" } });
       const second = await inspectCarouselStructure2SlideLayout({ format, spec: spec({ slideNumber: 1, headline: null, storyText: hook, storyRole: CAROUSEL_STRUCTURE_2_STORY_ROLES[0], ctaText: null }) });
-      assert.equal(first.bodyFontSize, 84);
-      assert.equal(second.storyFontSize, 84);
+      assert.equal(first.bodyFontSize, 72);
+      assert.equal(second.storyFontSize, 72);
+      assert.equal(first.bodyFontWeight, 500);
+      assert.equal(second.storyFontWeight, 500);
+      assert.ok(first.bodyFontWeight <= CAROUSEL_HOOK_FONT_WEIGHT_MAX);
+      assert.equal(first.textLineHeight, Math.round(72 * 1.08));
+      assert.equal(second.textLineHeight, first.textLineHeight);
       for (const layout of [first, second]) {
         assert.equal(layout.bodyBlockCount, 1);
         assert.equal(layout.ctaLineCount, 0);
@@ -106,6 +112,10 @@ test("both slideshow sizes and structures render heading-only pills, two body bl
       assert.ok(layout.ctaLineCount! > 0);
     }
     assert.equal(second.safeAreaContained, true);
+    assert.equal(first.bodyFontWeight, 400);
+    assert.equal(second.storyFontWeight, 400);
+    assert.equal(first.headingFontWeight, 600);
+    assert.equal(second.headingFontWeight, 600);
   }
 });
 
@@ -114,10 +124,31 @@ test("Structure 2 does not infer a pill from an old story or a body-only slide",
     const layout = await inspectCarouselStructure2SlideLayout({ format: "4:5", spec: spec({ headline }) });
     assert.equal(layout.whiteBackgroundGroupCount, 0);
     assert.equal(layout.bodyBlockCount, 2);
+    assert.equal(layout.storyFontWeight, 500);
   }
   const cover = await inspectCarouselStructure2SlideLayout({ format: "4:5", spec: spec({ slideNumber: 1, headline: null, storyText: "five shifts that made learning feel easier" }) });
   assert.equal(cover.whiteBackgroundGroupCount, 0);
   assert.equal(cover.storyFontSize, CAROUSEL_HOOK_FONT_SIZE);
+});
+
+test("short statements use Medium without inventing a heading in either structure", async () => {
+  const statement = "i started tracking\n\nwhat i already had";
+  for (const format of ["1:1", "4:5"] as const) {
+    const first = await inspectCarouselSlideLayout({ format, slide: {
+      body: statement, ctaText: null, headline: null, imageDirection: "existing background",
+      layoutPreset: "middle-statement", listItems: [], slideNumber: 3, slideType: "solution",
+      subtext: statement, textMode: "single_statement", textPosition: "center",
+    } });
+    const second = await inspectCarouselStructure2SlideLayout({ format, spec: spec({ headline: null, storyText: statement }) });
+    for (const layout of [first, second]) {
+      assert.equal(layout.whiteBackgroundGroupCount, 0);
+      assert.equal(layout.bodyBlockCount, 2);
+      assert.equal(layout.bubbleShapeStrategy, "plain-white-text-with-outline");
+      assert.equal(layout.fontFamily, "Inter, Arial, Helvetica, sans-serif");
+    }
+    assert.equal(first.bodyFontWeight, 500);
+    assert.equal(second.storyFontWeight, 500);
+  }
 });
 
 test("overflow and orphan lines fail explicitly instead of shrinking or flattening", async () => {

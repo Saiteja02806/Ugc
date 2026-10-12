@@ -112,7 +112,7 @@ for (const structureId of ["structure_1", "structure_2"] as const) {
 
 for (const structureId of ["structure_1", "structure_2"] as const) {
   for (const changesCopy of [false, true]) {
-    test(`${structureId} image replacement ${changesCopy ? "uses current typography for changed copy" : "keeps authoritative original hook typography"}`, async () => {
+    test(`${structureId} image replacement ${changesCopy ? "uses current typography for changed copy" : "uses current typography for unchanged copy"}`, async () => {
       const originalCopy = "Why being always available keeps draining you";
       let fontSize: number | undefined;
       let ready = false;
@@ -151,7 +151,7 @@ for (const structureId of ["structure_1", "structure_2"] as const) {
           uploadRenderedCarouselSlide: async () => ({ key: "edited.webp", url: "https://example.test/edited.webp" }),
         },
       });
-      assert.equal(fontSize, changesCopy ? 84 : 72);
+      assert.equal(fontSize, 72);
       assert.equal(ready, true);
     });
   }
@@ -241,7 +241,7 @@ test("renders and persists a normalized immutable Carousel edit", async () => {
           buffer: Buffer.from("rendered"),
           diagnostics: {
             bubbleShapeStrategy: "heading-white-svg-background",
-            fontFamily: "Inter Tight, Inter, Arial, Helvetica, sans-serif",
+            fontFamily: "Inter, Arial, Helvetica, sans-serif",
             maxTextWidth: 700,
             whiteBackgroundGroupCount: 1,
           },
@@ -390,7 +390,7 @@ test("reuses immutable output for unchanged Carousel slides", async () => {
           buffer: Buffer.from("rendered"),
           diagnostics: {
             bubbleShapeStrategy: "heading-white-svg-background",
-            fontFamily: "Inter Tight, Inter, Arial, Helvetica, sans-serif",
+            fontFamily: "Inter, Arial, Helvetica, sans-serif",
             maxTextWidth: 700,
             whiteBackgroundGroupCount: 1,
           },

@@ -5,7 +5,7 @@ import { after, before, test } from "node:test";
 import { PGlite } from "@electric-sql/pglite";
 import ts from "typescript";
 
-const sql = readFileSync(new URL("../supabase/migrations/20261005064026_trending_skipped_post_reconsideration.sql", import.meta.url), "utf8");
+const sql = readFileSync(new URL("../supabase/migrations/20261005082258_trending_skipped_post_reconsideration.sql", import.meta.url), "utf8");
 const formats = {
   carousel: ["user_carousel_assignments", "carousel_id", "pending", "accepted"],
   hook_video: ["user_hook_video_assignments", "hook_suggestion_id", "active", "selected"],

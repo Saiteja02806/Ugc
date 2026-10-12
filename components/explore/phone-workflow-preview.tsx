@@ -1,6 +1,7 @@
 "use client";
 
 import { Tabs } from "@base-ui/react/tabs";
+import { Button } from "@/components/ui/button";
 import { ArrowLeft, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -13,6 +14,7 @@ import { EMPTY_SCHEDULE_DRAFT, WorkflowSchedulingPanel } from "@/components/expl
 import { WorkflowConnectedAccounts } from "@/components/explore/workflow-connected-accounts";
 import { selectWorkflowAccount, workflowSelectedAccounts, workflowSelectedPlatforms } from "@/lib/explore/workflow-scheduling-draft";
 import { WorkflowPreviewCanvas } from "@/components/explore/workflow-preview-canvas";
+import { WorkflowSectionHeading, WorkflowSectionNavigation, useWorkflowSectionOrientation } from "@/components/explore/workflow-section-navigation";
 import { useLocalAppScreen } from "@/components/explore/use-local-app-screen";
 import { useWorkflowSourceVideo } from "@/components/explore/use-workflow-source-video";
 import { WorkflowVideoSourceSection } from "@/components/explore/workflow-video-source-section";
@@ -22,6 +24,7 @@ import { WorkflowAccountBoundary, WorkflowGenerationBoundary } from "@/component
 import { WorkflowFinishingBoundary } from "@/components/explore/workflow-finishing-boundary";
 import studio from "@/components/explore/workflow-studio.module.css";
 import creation from "@/components/explore/workflow-creation.module.css";
+import sections from "@/components/explore/workflow-section-layout.module.css";
 import { cn } from "@/lib/utils";
 import type { ExploreBackgroundPlayback } from "@/worker/src/lib/explore-background-audio";
 import type { DemoFraming } from "@/worker/src/lib/explore-finishing-contract";
@@ -32,6 +35,8 @@ export function PhoneWorkflowPreview({ generationEnabled = false, demoFramingEna
 
 function PhoneWorkflowLayout({ generationEnabled, ownerId, demoFramingEnabled }: { generationEnabled: boolean; ownerId: string | null; demoFramingEnabled: boolean }) {
   const [section, setSection] = useState<WorkflowSection>("create");
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const orientation = useWorkflowSectionOrientation();
   const [scheduleDraft, setScheduleDraft] = useState(EMPTY_SCHEDULE_DRAFT);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const selection = useWorkflowSourceVideo({ enabled: generationEnabled, ownerId });
@@ -92,19 +97,24 @@ function PhoneWorkflowLayout({ generationEnabled, ownerId, demoFramingEnabled }:
     const outputAspect = source?.width && source.height ? source.width / source.height : generation.settings.aspectRatio === "16:9" ? 16 / 9 : 9 / 16;
     const framingError = demoFramingEnabled && demoFraming && Math.abs(demoFraming.aspect / outputAspect - 1) > .015 ? "Video shape changed. Record framing again for this shape, or reset it." : null;
     const currentFraming = demoFramingEnabled && !framingError ? demoFraming?.frame ?? null : null;
+    const createPreviewAvailable = selection.mode === "generate" ? Boolean(run?.results.length || run?.busy || run?.error) : Boolean(selection.preview);
+    const previewVisible = section !== "create" || createPreviewAvailable || previewOpen;
     return <WorkflowFinishingBoundary enabled={generationEnabled} ownerId={ownerId} kind="phone" source={source} demo={demo.asset} demoAudio={demoAudio.asset} playback={demoAudioPlayback} scheduleDraft={scheduleDraft} demoFraming={currentFraming} demoFramingError={framingError}>{(finish) => <section className={cn(studio.studio, creation.shell, "min-w-0")}>
     {/* The Library follows the complete first-screen workspace, never its initial viewport. */}
-    <div data-phone-first-screen className="flex min-h-[calc(100dvh-4rem)] flex-col md:min-h-dvh">
-      <header className={cn(creation.header, "flex shrink-0 items-center gap-3 px-4 py-3 sm:px-6 lg:px-8")}>
+    <Tabs.Root ref={workspaceRef} value={section} orientation={orientation} data-section={section} onValueChange={changeSection} data-phone-first-screen className={sections.workspace}>
+      <header className={cn(creation.header, sections.header, "flex shrink-0 items-center gap-3 px-4 py-3 sm:px-6 lg:px-8")}>
         <Link href={generationEnabled ? "/explore" : "/explore?preview=1"} aria-label="Back to Explore" className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" onClick={(event) => {
           if (!event.metaKey && !event.ctrlKey && dirty && !window.confirm("Leave this workflow? Your local changes are not saved.")) event.preventDefault();
         }}><ArrowLeft className="size-4" aria-hidden="true" /></Link>
         <span className="hidden text-sm text-muted sm:block">Explore <span className="ml-2" aria-hidden="true">/</span></span>
         <div className="min-w-0"><h1 className="text-base font-semibold tracking-tight text-foreground-strong sm:text-lg">Creator Shows App on Phone</h1></div>
+        <WorkflowSectionNavigation />
       </header>
 
-      <Tabs.Root ref={workspaceRef} value={section} className={creation.layout} onValueChange={changeSection}>
-        <WorkflowCreationPanel kind="phone" section={section} generation={selection.mode === "generate" ? run ?? undefined : undefined} create={selection.mode === "generate" ? undefined : { disabled: !selection.ready, busy: selection.busy, message: selection.ready ? "Your selected video is ready. Continue to add optional edits." : "Upload or choose a video to continue. Up to 120 seconds.", onAction: () => changeSection("edit") }} edit={generationEnabled ? finish.edit : undefined} schedule={generationEnabled ? finish.schedule : undefined}>
+      <div className={sections.layout}>
+        <div className={sections.stage} data-preview-visible={previewVisible}>
+        <WorkflowCreationPanel kind="phone" section={section} generation={selection.mode === "generate" ? run ?? undefined : undefined} create={selection.mode === "generate" ? undefined : { disabled: !selection.ready, busy: selection.busy, message: selection.ready ? "Your selected video is ready. Continue to add optional edits." : "Upload or choose a video to continue. Up to 120 seconds.", onAction: () => changeSection("edit") }} edit={generationEnabled ? finish.edit : undefined} schedule={generationEnabled ? finish.schedule : undefined}
+          heading={<WorkflowSectionHeading kind="phone" section={section} previewVisible={previewVisible} previewId="phone-workflow-preview" onTogglePreview={section === "create" && !createPreviewAvailable ? () => setPreviewOpen(current => !current) : undefined} />}>
           <Tabs.Panel value="create" keepMounted className={creation.sectionPanel}>
             <WorkflowVideoSourceSection kind="phone" selection={selection} />
             <div className={creation.generationFields} hidden={selection.mode !== "generate"}>
@@ -121,10 +131,11 @@ function PhoneWorkflowLayout({ generationEnabled, ownerId, demoFramingEnabled }:
             <WorkflowSchedulingPanel draft={scheduleDraft} onChange={setScheduleDraft} accountsControl={<WorkflowConnectedAccounts enabled={generationEnabled} active={section === "schedule"} ownerId={ownerId} platforms={workflowSelectedPlatforms(scheduleDraft)} selectedIds={workflowSelectedAccounts(scheduleDraft)} onSelect={(platform, id) => setScheduleDraft(current => selectWorkflowAccount(current, platform, id))} />} />
           </Tabs.Panel>
         </WorkflowCreationPanel>
-        <section aria-label="Phone video creation workspace" className={creation.main}>
+        <section id="phone-workflow-preview" aria-label="Phone video creation workspace" className={cn(creation.main, sections.preview)} hidden={!previewVisible}>
           {section === "create" ? <WorkflowPreviewCanvas kind="phone" generation={selection.mode === "generate" ? run ?? undefined : undefined} source={selection.preview} mode={selection.mode} onContinue={selection.ready ? () => changeSection("edit") : undefined} />
             : section === "edit" ? <WorkflowEditWorkspace kind="phone" demo={demo} demoAudio={demoAudio} generatedVideo={source} sourcePreview={sourcePreview} onChangeSource={() => changeSection("create")} finishedVideo={finish.output} demoFraming={currentFraming} />
             : <WorkflowScheduleWorkspace draft={scheduleDraft} finishedVideo={finish.output} />}
+          {section === "create" && selection.mode === "generate" && source ? <div className={cn(sections.nextStage, "mx-5 mb-5")}><Button type="button" onClick={() => changeSection("edit")}>Continue to edit</Button></div> : section === "edit" && finish.output ? <div className={cn(sections.nextStage, "mx-5 mb-5")}><Button type="button" onClick={() => changeSection("schedule")}>Continue to schedule</Button></div> : null}
           <div className={creation.canvasFooter}>
             <a href="#phone-reference-library" aria-label="Scroll to Library" className={creation.libraryShortcut} onClick={(event) => {
               if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -136,9 +147,10 @@ function PhoneWorkflowLayout({ generationEnabled, ownerId, demoFramingEnabled }:
             }}>Library ↓</a>
           </div>
         </section>
+        </div>
 
-      </Tabs.Root>
-    </div>
+      </div>
+    </Tabs.Root>
 
     <PhoneLibrary />
   </section>}</WorkflowFinishingBoundary>;

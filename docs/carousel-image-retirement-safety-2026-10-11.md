@@ -42,7 +42,15 @@ Only a completed generation's existing slide with `status = ready` and a nonempt
 
 `getCarouselEditBackgrounds` also resolves the preserved source bytes for these exact tombstones. Its only application caller supplies IDs from the existing source slides after verifying the requesting owner and completed generation. Submitted edits are matched to those same source slide IDs. This preserves text edits and source-background restoration for an existing owned Carousel; it does not offer the source as a new image choice.
 
-Changes are limited to `lib/carousel/db.ts`, `lib/carousel/historical-source-retirement.ts`, and its focused test file. Fresh image listing, role readiness, worker selection, and production reservation SQL are unchanged. The website patch must be deployed before adding the retirement markers. This report does not claim the patch has already been deployed or the assets already retired; those operations are handled by the main cleanup task.
+The historical read change is limited to `lib/carousel/db.ts`,
+`lib/carousel/historical-source-retirement.ts`, and its focused test file.
+Fresh image listing, role readiness and worker selection remain unchanged.
+The companion reservation migration now fences both replay branches. The
+website patch was READY on the production domain before the main cleanup
+archived all 40 sources. Post-removal application reads of all 417 affected
+generations found zero slide-count loss, and all 40 original background URLs
+remain readable for existing edits. See the completed cleanup report for the
+full deployment and acceptance evidence.
 
 ## Import and reconciliation risks
 

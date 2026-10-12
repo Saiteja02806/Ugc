@@ -13,8 +13,10 @@ export async function uploadCarouselSlideImage(file: File) {
   return (await uploadAIStudioReferenceMedia(file, "image", 3, undefined, { purpose: CAROUSEL_SLIDE_IMAGE_PROJECT })).asset;
 }
 
+export type CarouselSlideImagePreview = { slideId: string; url: string };
+
 export function CarouselSlideImageSection({
-  slide, disabled = false, onUploaded, onRestore, onBusyChange,
+  slide, disabled = false, onUploaded, onRestore, onBusyChange, onPreviewChange,
   uploadImage = uploadCarouselSlideImage,
 }: {
   slide: TrendingCarouselEditSlide;
@@ -22,16 +24,25 @@ export function CarouselSlideImageSection({
   onUploaded: (slideId: string, asset: MediaAsset) => void;
   onRestore: (slideId: string) => void;
   onBusyChange: (busy: boolean) => void;
+  onPreviewChange?: (preview: CarouselSlideImagePreview | null) => void;
   uploadImage?: (file: File) => Promise<MediaAsset>;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const fileTargetRef = useRef<{ id: string; number: number } | null>(null);
   const working = useRef(false);
   const alive = useRef(false);
+  const previewUrl = useRef<string | null>(null);
   const [uploadingSlide, setUploadingSlide] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+      previewUrl.current = null;
+    };
+  }, []);
 
   async function upload(file: File, target: { id: string; number: number }) {
     if (disabled || working.current) return;
@@ -40,6 +51,8 @@ export function CarouselSlideImageSection({
     onBusyChange(true);
     try {
       validateCarouselSlideImage(file);
+      previewUrl.current = URL.createObjectURL(file);
+      onPreviewChange?.({ slideId: target.id, url: previewUrl.current });
       const asset = await uploadImage(file);
       if (!alive.current) return;
       onUploaded(target.id, asset);
@@ -49,9 +62,12 @@ export function CarouselSlideImageSection({
     } finally {
       working.current = false;
       if (alive.current) {
+        onPreviewChange?.(null);
         setUploadingSlide(null); onBusyChange(false);
         if (inputRef.current) inputRef.current.value = "";
       }
+      if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+      previewUrl.current = null;
     }
   }
 

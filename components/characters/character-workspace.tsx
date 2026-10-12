@@ -3,7 +3,7 @@
 import { ArrowLeft, Check, History, ImageIcon, Images, Loader2, RectangleVertical, UserRound, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState, type FormEvent, type KeyboardEvent } from "react";
+import { useCallback, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { AiStudioComposer, AiStudioSetting, AiStudioSettingSelect } from "@/components/generation/ai-studio-composer";
 import { Button } from "@/components/ui/button";
@@ -12,9 +12,12 @@ import type { CharacterImageCount, CharacterImageModel } from "@/lib/characters/
 import { CHARACTER_IMAGE_MODEL_OPTIONS, getCharacterPromptLimit } from "@/lib/characters/image-models";
 import { useCharacterBuilder } from "./use-character-builder";
 import { CharacterHistory } from "./character-history";
+import { ReferenceMediaUpload } from "@/components/generation/reference-media-upload";
+import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import styles from "./character-workspace.module.css";
 
 const COUNT_OPTIONS = [1, 2, 3].map((count) => ({ value: String(count), label: String(count) }));
+const REFERENCE_IMAGE_KINDS = ["image"] as const;
 
 const EXAMPLE_PORTRAITS = [
   { src: "/explore/characters/creator-bedroom.webp", alt: "Example AI influencer holding a small microphone" },
@@ -35,8 +38,23 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
   const [model, setModel] = useState<CharacterImageModel>("gpt_image");
   const [count, setCount] = useState<CharacterImageCount>(1);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [imageReference, setImageReference] = useState<AIStudioReferenceMedia | null>(null);
+  const [referencePending, setReferencePending] = useState(false);
+  const [referenceError, setReferenceError] = useState<string | null>(null);
+  const [referenceControlVersion, setReferenceControlVersion] = useState(0);
+  const referencePendingRef = useRef(false);
+  const referenceErrorRef = useRef<string | null>(null);
+  const updateReferencePending = useCallback((value: boolean) => {
+    referencePendingRef.current = value;
+    setReferencePending(value);
+  }, []);
+  const updateReferenceError = useCallback((message: string | null) => {
+    referenceErrorRef.current = message;
+    setReferenceError(message);
+  }, []);
   const access = builder.access.data?.access;
-  const busy = builder.generate.isPending || builder.inProgress || builder.restoring;
+  const generationBusy = builder.generate.isPending || builder.inProgress || builder.restoring || builder.select.isPending;
+  const busy = generationBusy || referencePending;
   const pending = builder.session.pendingRequest;
   const promptLimit = getCharacterPromptLimit(model);
   const promptTooLong = prompt.length > promptLimit;
@@ -44,17 +62,23 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
   const quantityAffordable = Boolean(access && count <= access.affordableImageCount);
   const manualLocked = authLoading || !userId || !quantityAffordable || accessLoading || builder.access.isError;
   const error = builder.generate.error || builder.select.error;
-  const selected = builder.selected;
+  const selected = imageReference ? null : builder.selected;
   const countOptions = access
     ? COUNT_OPTIONS.filter((option) => Number(option.value) <= access.affordableImageCount || Number(option.value) === count)
     : COUNT_OPTIONS;
 
+  function resetImageReference() {
+    setImageReference(null);
+    updateReferenceError(null);
+    setReferenceControlVersion((version) => version + 1);
+  }
+
   function submitPrompt(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
-    if (busy || manualLocked || pending || promptTooLong || !prompt.trim()) return;
+    if (busy || referencePendingRef.current || referenceErrorRef.current || manualLocked || pending || promptTooLong || !prompt.trim()) return;
     builder.generate.mutate({
       mode: "custom", prompt: prompt.trim(), model, imageCount: count,
-      ...(selected ? { referenceCharacterId: selected.id } : {}),
+      ...(imageReference ? { referenceImageAssetId: imageReference.asset.id } : selected ? { referenceCharacterId: selected.id } : {}),
       idempotencyKey: crypto.randomUUID(),
     });
   }
@@ -99,7 +123,7 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
             <p className={styles.resultsHeading}>{builder.inProgress ? "Creating your influencer…" : "Select an image to save it to My influencers."}</p>
             <div className="flex shrink-0 gap-1">
               {builder.historyImage ? <Button variant="ghost" size="sm" onClick={builder.returnToSession}>Back to session</Button> : null}
-              <Button variant="outline" size="sm" disabled={busy || Boolean(pending) || builder.select.isPending} onClick={() => { builder.startNewSession(); setPrompt(""); }}>New session</Button>
+              <Button variant="outline" size="sm" disabled={busy || Boolean(pending) || builder.select.isPending} onClick={() => { builder.startNewSession(); setPrompt(""); resetImageReference(); }}>New session</Button>
             </div>
           </div>
           <div className={styles.results}>
@@ -111,7 +135,7 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
               const saving = builder.select.isPending && builder.select.variables === receipt.jobId;
               return <article key={receipt.jobId} className={styles.candidate} data-selected={active} aria-label={`Influencer candidate ${index + 1}`}>
                 <button type="button" className={styles.portrait} aria-label={`Select influencer image ${index + 1}`} aria-pressed={active}
-                  disabled={!output || builder.select.isPending || active} onClick={() => builder.select.mutate(receipt.jobId)}>
+                  disabled={!output || busy || builder.select.isPending || active} onClick={() => builder.select.mutate(receipt.jobId, { onSuccess: resetImageReference })}>
                   {output ? <>
                     {/* Generated provider URLs are validated by the owned status endpoint. */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -150,22 +174,28 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
         {pending && !builder.generate.isPending ? <div className={styles.notice}>
           <p>Your previous request hasn’t been confirmed. Retry it to recover the same generation.</p>
           <div className="mt-2 flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={() => builder.generate.mutate(pending)}>Retry request</Button>
+            <Button size="sm" variant="outline" disabled={referencePending} onClick={() => builder.generate.mutate(pending)}>Retry request</Button>
             <Button size="sm" variant="ghost" onClick={builder.discardPendingRequest}>Start a new request</Button>
           </div>
         </div> : null}
         <AiStudioComposer active ariaLabel="Describe your AI influencer" name="character-prompt" layout="unified"
           prompt={prompt} onPromptChange={setPrompt} placeholder={selected ? "Describe a new outfit, setting or pose for your influencer…" : "Describe the influencer you want to create…"}
           generateLabel={selected ? "Create variation" : "Generate"}
-          generateDisabled={busy || manualLocked || Boolean(pending) || promptTooLong || !prompt.trim()}
+          generateDisabled={busy || Boolean(referenceError) || manualLocked || Boolean(pending) || promptTooLong || !prompt.trim()}
+          hasAttachments={Boolean(imageReference) || referencePending || Boolean(referenceError)}
+          leadingControl={<ReferenceMediaUpload key={`${selected?.id ?? "uploaded-reference"}:${referenceControlVersion}`} allowedKinds={REFERENCE_IMAGE_KINDS}
+            expectedUserId={userId ?? undefined} selection={imageReference}
+            disabled={authLoading || !userId || generationBusy || Boolean(pending) || builder.select.isPending}
+            onChange={(reference) => { setImageReference(reference); if (reference) builder.chooseCharacter(null); }}
+            onPendingChange={updateReferencePending} onErrorChange={updateReferenceError} />}
           maxLength={promptLimit}
           generationLocked={manualLocked} isGenerating={builder.generate.isPending || builder.inProgress}
-          onSubmit={submitPrompt} onTextareaKeyDown={handleTextareaKeyDown} accessMessage={usageLabel}
+          onSubmit={submitPrompt} onTextareaKeyDown={handleTextareaKeyDown} accessMessage={referencePending ? "Uploading your reference image…" : usageLabel}
           contextBanner={selected ? <div className={styles.reference}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={selected.url} alt="Saved influencer reference" />
             <span><span className="font-medium">{selected.name}</span> · Keeping this identity</span>
-            <Button size="icon-sm" variant="ghost" className="ml-auto" aria-label="Remove influencer reference" onClick={() => builder.chooseCharacter(null)}><X className="size-3.5" aria-hidden="true" /></Button>
+            <Button size="icon-sm" variant="ghost" className="ml-auto" aria-label="Remove influencer reference" disabled={busy || Boolean(pending)} onClick={() => builder.chooseCharacter(null)}><X className="size-3.5" aria-hidden="true" /></Button>
           </div> : undefined}
           settings={<>
             <AiStudioSettingSelect<CharacterImageModel> ariaLabel="Image model" icon={<ImageIcon className="size-3.5" aria-hidden="true" />} options={CHARACTER_IMAGE_MODEL_OPTIONS} value={model} onChange={setModel} disabled={busy || Boolean(pending)} />
@@ -190,7 +220,7 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
         <DialogContent>
           <DialogHeader><DialogTitle>My influencers</DialogTitle><DialogDescription>Choose a saved influencer to keep their identity in your next image.</DialogDescription></DialogHeader>
           <div className={styles.library}>
-            {builder.characters.data?.characters.map((character) => <button key={character.id} type="button" disabled={busy} className={`${styles.savedCharacter} outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50`} onClick={() => { builder.chooseCharacter(character.id); setLibraryOpen(false); }}>
+            {builder.characters.data?.characters.map((character) => <button key={character.id} type="button" disabled={busy || Boolean(pending)} className={`${styles.savedCharacter} outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50`} onClick={() => { resetImageReference(); builder.chooseCharacter(character.id); setLibraryOpen(false); }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={character.url} alt={character.name} />
               <span className="text-sm font-medium">{character.name}</span>

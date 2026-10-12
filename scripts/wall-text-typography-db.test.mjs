@@ -5,7 +5,7 @@ import { PGlite } from "@electric-sql/pglite";
 
 const migrations = new URL("../supabase/migrations/", import.meta.url);
 const approvedTypographyMigration = "20260908172213_apply_wall_text_b_52px_typography_v13.sql";
-const compactTypographyMigration = "20260925170000_allow_wall_text_v13_50px_typography.sql";
+const compactTypographyMigration = "20261001042901_allow_wall_text_v13_50px_typography.sql";
 
 test("V13 migrations preserve 52px cards and admit the compact 50px contract", { timeout: 60_000 }, async () => {
   const db = new PGlite();

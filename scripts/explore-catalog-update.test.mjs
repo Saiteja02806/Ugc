@@ -118,6 +118,7 @@ function loadHookLibrary(status) {
   const require = (specifier) => {
     if (specifier === "server-only") return {};
     if (specifier === "./imported-catalog.json") return catalog;
+    if (specifier === "./paired-reference-library") return { getPairedExploreVideos: () => [] };
     if (specifier === "@/lib/explore/hook-video-types") return { getExploreVideoPosterStorageKey: (key) => key.replace(/\.mp4$/, ".webp") };
     if (specifier === "@/lib/storage/storage") return { buildPublicStorageUrl: (key) => `https://example.test/${key}` };
     throw new Error(`Unexpected dependency: ${specifier}`);

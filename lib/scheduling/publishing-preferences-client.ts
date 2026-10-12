@@ -4,7 +4,7 @@ import { parsePublishingPreferences, type PublishingPreferences } from "./publis
 export async function requestPublishingPreferences(value?: PublishingPreferences, signal?: AbortSignal) {
   const token = await getCurrentUserIdToken();
   if (!token) throw new Error("Sign in to manage publishing preferences.");
-  const response = await fetch("/api/account/publishing-preferences", {
+  const response = await fetch("/api/account/publishing-preferences?schema=2", {
     method: value ? "PUT" : "GET", cache: "no-store",
     signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(10_000)]) : AbortSignal.timeout(10_000),
     headers: { Authorization: `Bearer ${token}`, ...(value ? { "Content-Type": "application/json" } : {}) },

@@ -1,0 +1,235 @@
+{
+  "startedAt": "2026-10-12T09:23:39.428Z",
+  "completedAt": "2026-10-12T09:27:21.076Z",
+  "durationSeconds": 221.648,
+  "revision": "9e3a1306cafb431c4af4ddc470e30b0f068f6fd6",
+  "versions": {
+    "structure1": "llm-carousel-planner-v50-single-statement-social-hook",
+    "structure2": "llm-carousel-structure-2-writer-v23-actionable-copy-repair",
+    "briefs": "carousel-content-plan-creative-briefs-v6-item-context-concept-lanes"
+  },
+  "model": "gpt-4o-mini",
+  "summaries": [
+    {
+      "business": "UGCPilot",
+      "structures": [
+        {
+          "structure": "structure_1",
+          "requested": 10,
+          "accepted": 0,
+          "batches": 2,
+          "successfulBatches": 0,
+          "providerCalls": 8,
+          "repairProviderCalls": 4,
+          "acceptedRepaired": 0,
+          "acceptedWithAdvisories": 0,
+          "envelopeRecovered": 0,
+          "totalTokens": 79327,
+          "assignedFormats": [
+            "list",
+            "mistakes",
+            "how_to",
+            "comparison",
+            "swap",
+            "myth_fact",
+            "cheat_sheet",
+            "checklist",
+            "framework",
+            "breakdown"
+          ],
+          "failures": [
+            {
+              "batch": 1,
+              "message": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 2: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 2: Each slide body must express one clear idea. Slide 2: Body copy contains a grammar or spacing problem. Slide 2: Copy is generic instead of specific to the supplied evidence. Slide 3: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 3: Body must use at least 18 words and at most 300 characters. Slide 3: Each slide body must express one clear idea. Slide 3: Body copy contains a grammar or spacing problem. Slide 4: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 4: Body must use at least 18 words and at most 300 characters. Slide 4: Each slide body must express one clear idea. Slide 4: Body copy contains a grammar or spacing problem. Slide 5: Body must use at least 18 words and at most 300 characters. Slide 5: Body copy contains a grammar or spacing problem. Slide 6: Body must use at least 18 words and at most 300 characters. Slide 6: Body copy contains a grammar or spacing problem."
+            },
+            {
+              "batch": 2,
+              "message": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 1: Cover hook must fit within 4 lines at the fixed 84px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 1: Slide 1 must contain one statement only. Move the second sentence or explanation to Slide 2 onward. Slide 2: Body must use at least 18 words and at most 300 characters. Slide 2: Each slide body must express one clear idea. Slide 2: Body copy contains a grammar or spacing problem. Slide 2: Headline and body repeat the same idea. Slide 3: Body must use at least 18 words and at most 300 characters. Slide 3: Each slide body must express one clear idea. Slide 3: Body copy contains a grammar or spacing problem. Slide 3: Headline and body repeat the same idea. Slide 4: Body must use at least 18 words and at most 300 characters. Slide 4: Each slide body must express one clear idea. Slide 4: Body copy contains a grammar or spacing problem. Slide 4: Headline and body repeat the same idea. Slide 5: Headline must be 3-10 words and at most 100 characters. Slide 5: Body must use at least 18 words and at most 300 characters. Slide 5: Body copy contains a grammar or spacing problem. Slide 6: Body must use at least 18 words and at most 300 characters. Slide 6: Body copy contains a grammar or spacing problem. Carousel concept does not connect to its selected verified grounding."
+            }
+          ]
+        },
+        {
+          "structure": "structure_2",
+          "requested": 10,
+          "accepted": 10,
+          "batches": 2,
+          "successfulBatches": 2,
+          "providerCalls": 3,
+          "repairProviderCalls": 1,
+          "acceptedRepaired": 1,
+          "acceptedWithAdvisories": 0,
+          "envelopeRecovered": 0,
+          "totalTokens": 28310,
+          "assignedFormats": [
+            "wrong_belief",
+            "perfect_plan_breaks",
+            "stopped_behavior",
+            "terrible_at",
+            "result_without_sacrifice",
+            "identity_transformation",
+            "new_rule",
+            "wrong_villain"
+          ],
+          "failures": []
+        }
+      ]
+    },
+    {
+      "business": "Cal AI",
+      "structures": [
+        {
+          "structure": "structure_1",
+          "requested": 10,
+          "accepted": 0,
+          "batches": 2,
+          "successfulBatches": 0,
+          "providerCalls": 8,
+          "repairProviderCalls": 4,
+          "acceptedRepaired": 0,
+          "acceptedWithAdvisories": 0,
+          "envelopeRecovered": 0,
+          "totalTokens": 78344,
+          "assignedFormats": [
+            "list",
+            "mistakes",
+            "how_to",
+            "comparison",
+            "swap",
+            "myth_fact",
+            "cheat_sheet",
+            "checklist",
+            "framework",
+            "breakdown"
+          ],
+          "failures": [
+            {
+              "batch": 1,
+              "message": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 2: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 2: Body must use at least 18 words and at most 300 characters. Slide 2: Body copy contains a grammar or spacing problem. Slide 2: Headline and body repeat the same idea. Slide 3: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 3: Body must use at least 18 words and at most 300 characters. Slide 3: Body copy contains a grammar or spacing problem. Slide 4: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 4: Body must use at least 18 words and at most 300 characters. Slide 4: Body copy contains a grammar or spacing problem. Slide 4: Headline and body repeat the same idea. Slide 5: Headline must be 3-10 words and at most 100 characters. Slide 5: Body must use at least 18 words and at most 300 characters. Slide 5: Body copy contains a grammar or spacing problem. Slide 6: Headline must be 3-10 words and at most 100 characters. Slide 6: Body must use at least 18 words and at most 300 characters. Slide 6: Body copy contains a grammar or spacing problem. Carousel concept does not connect to its selected verified grounding."
+            },
+            {
+              "batch": 2,
+              "message": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 1: Cover hook must fit within 4 lines at the fixed 84px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 2: Each slide body must express one clear idea. Slide 3: Body must use at least 18 words and at most 300 characters. Slide 3: Each slide body must express one clear idea. Slide 4: Each slide body must express one clear idea. Slide 4: Body copy contains a grammar or spacing problem. Slide 4: Copy is generic instead of specific to the supplied evidence. Slide 5: Copy is generic instead of specific to the supplied evidence. Slide 6: Body must use at least 18 words and at most 300 characters."
+            }
+          ]
+        },
+        {
+          "structure": "structure_2",
+          "requested": 10,
+          "accepted": 10,
+          "batches": 2,
+          "successfulBatches": 2,
+          "providerCalls": 4,
+          "repairProviderCalls": 2,
+          "acceptedRepaired": 2,
+          "acceptedWithAdvisories": 4,
+          "envelopeRecovered": 5,
+          "totalTokens": 35806,
+          "assignedFormats": [
+            "wrong_belief",
+            "perfect_plan_breaks",
+            "stopped_behavior",
+            "terrible_at",
+            "result_without_sacrifice",
+            "identity_transformation",
+            "new_rule",
+            "wrong_villain"
+          ],
+          "failures": []
+        }
+      ]
+    },
+    {
+      "business": "Calendly",
+      "structures": [
+        {
+          "structure": "structure_1",
+          "requested": 10,
+          "accepted": 0,
+          "batches": 2,
+          "successfulBatches": 0,
+          "providerCalls": 8,
+          "repairProviderCalls": 4,
+          "acceptedRepaired": 0,
+          "acceptedWithAdvisories": 0,
+          "envelopeRecovered": 0,
+          "totalTokens": 76929,
+          "assignedFormats": [
+            "list",
+            "mistakes",
+            "how_to",
+            "comparison",
+            "swap",
+            "myth_fact",
+            "cheat_sheet",
+            "checklist",
+            "framework",
+            "breakdown"
+          ],
+          "failures": [
+            {
+              "batch": 1,
+              "message": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 2: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 2: Body must use at least 18 words and at most 300 characters. Slide 2: Body copy contains a grammar or spacing problem. Slide 2: Headline and body repeat the same idea. Slide 3: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 3: Body must use at least 18 words and at most 300 characters. Slide 3: Body copy contains a grammar or spacing problem. Slide 3: Headline and body repeat the same idea. Slide 4: List line 1 must fit within 2 lines at the fixed 48px font size. Authored line breaks exceed the fixed line budget or contain an orphan line. Slide 4: Body must use at least 18 words and at most 300 characters. Slide 4: Body copy contains a grammar or spacing problem. Slide 5: Body must use at least 18 words and at most 300 characters. Slide 5: Body copy contains a grammar or spacing problem. Slide 5: Headline and body repeat the same idea. Slide 6: Body must use at least 18 words and at most 300 characters. Slide 6: Body copy contains a grammar or spacing problem. Carousel concept does not connect to its selected verified grounding."
+            },
+            {
+              "batch": 2,
+              "message": "Carousel Structure 1 batch planning failed after validation repair: Carousel Structure 1 isolated batch repair failed: Slide 2: Body must use at least 18 words and at most 300 characters. Slide 2: Each slide body must express one clear idea. Slide 2: Headline and body repeat the same idea. Slide 3: Body must use at least 18 words and at most 300 characters. Slide 3: Each slide body must express one clear idea. Slide 4: Body must use at least 18 words and at most 300 characters. Slide 4: Each slide body must express one clear idea. Slide 4: Headline and body repeat the same idea. Slide 5: Headline and body repeat the same idea. Slide 6: Body must use at least 18 words and at most 300 characters. Carousel concept does not connect to its selected verified grounding."
+            }
+          ]
+        },
+        {
+          "structure": "structure_2",
+          "requested": 10,
+          "accepted": 10,
+          "batches": 2,
+          "successfulBatches": 2,
+          "providerCalls": 3,
+          "repairProviderCalls": 1,
+          "acceptedRepaired": 1,
+          "acceptedWithAdvisories": 0,
+          "envelopeRecovered": 5,
+          "totalTokens": 31893,
+          "assignedFormats": [
+            "wrong_belief",
+            "perfect_plan_breaks",
+            "stopped_behavior",
+            "terrible_at",
+            "result_without_sacrifice",
+            "identity_transformation",
+            "new_rule",
+            "wrong_villain"
+          ],
+          "failures": []
+        }
+      ]
+    }
+  ],
+  "providerCalls": 37,
+  "successfulHttpResponses": 37,
+  "responsesWithProviderIds": 37,
+  "tokenUsage": {
+    "calls": 37,
+    "promptTokens": 270765,
+    "completionTokens": 68082,
+    "totalTokens": 338847
+  },
+  "lengthFinishRequestIndices": [
+    31,
+    33
+  ],
+  "duplicateBodyGroups": [],
+  "acceptedStructure2WithFreshnessWarnings": 4,
+  "acceptedStructure2WithReframePrefix": 30,
+  "acceptedStructure2WithThoughtCover": 13,
+  "editorialReview": {
+    "method": "AI-agent reading of all 30 accepted six-slide stories; subjective editorial judgments, not human-panel preference or measured TikTok engagement.",
+    "reviewedAcceptedStories": 30,
+    "storiesContainingUnsubstantiatedFirstPersonAfterUseResults": 30,
+    "testimonialEvidenceInInputBriefs": false,
+    "concerns": [
+      "Unsubstantiated first-person results",
+      "Generic reframe and takeaway",
+      "Format differences collapsing into similar prose",
+      "Nutrition accuracy caveats omitted or softened"
+    ]
+  }
+}

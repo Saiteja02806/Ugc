@@ -1,4 +1,5 @@
 import type { MediaAsset } from "../media/types.ts";
+import { getReferenceAudioPreview } from "./reference-audio-preview.ts";
 import { formatTextOverlays, parseExploreFormatEdit, type ExploreFormatEdit } from "../../worker/src/lib/explore-format-edit.ts";
 
 /** Caller supplies the authenticated owned-media response, never preview data. */
@@ -7,7 +8,8 @@ export function canReuseUnchangedHookSource(source: MediaAsset | null, editing: 
       source.durationSeconds === null || !Number.isFinite(source.durationSeconds) || backgroundId) return false;
   try {
     const edit = parseExploreFormatEdit(editing);
+    const referenceAudio = getReferenceAudioPreview(source);
     return edit.format === "hook" && edit.trimStartMs === 0 && edit.trimEndMs === Math.round(source.durationSeconds * 1000) &&
-      edit.originalVolume === 1 && formatTextOverlays(edit).length === 0;
+      edit.originalVolume === 1 && formatTextOverlays(edit).length === 0 && (!referenceAudio || edit.musicVolume === referenceAudio.volume);
   } catch { return false; }
 }

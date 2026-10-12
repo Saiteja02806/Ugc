@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { buildCountedBodyRepairSchema, getCountedBodyRepairSlides, parseCountedBodyRepair, validateCountedBodyRepairPolicy, type CarouselCountedBodyRepairPolicy } from "./carousel-counted-body-repair.js";
 
 import type { WebsiteBusinessAnalysis } from "../types.js";
 import type {
@@ -38,7 +39,7 @@ import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 import { CAROUSEL_TEXT_PRESENTATION_GUIDANCE, CAROUSEL_HOOK_COPY_GUIDANCE, CAROUSEL_HOOK_MIN_WORDS, CAROUSEL_HOOK_MAX_WORDS, CAROUSEL_BODY_BLOCK_MAX_LINES, CAROUSEL_HEADING_FONT_SIZE, getCarouselBodyBlocks, getCarouselHookStatementIssue, normalizeCarouselText } from "./carousel-text-presentation.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v50-single-statement-social-hook";
+  "llm-carousel-planner-v54-body-count-feedback";
 export const CAROUSEL_V1_ASSIGNMENT_REQUIRED_ERROR =
   "Carousel V1 requires exactly six slides plus a backend-selected content format and compatible hook family.";
 
@@ -158,6 +159,7 @@ export type CarouselPlanValidationIssue = {
 };
 
 export type CarouselPlanValidationResult = {
+  bodyRepairPolicyVersion?: string;
   advisoryIssues: CarouselPlanValidationIssue[];
   fallbackUsed: boolean;
   finalIssues: CarouselPlanValidationIssue[];
@@ -169,6 +171,7 @@ export type CarouselPlanValidationResult = {
 };
 
 export type CarouselContentPlanInput = {
+  bodyRepairPolicy?: CarouselCountedBodyRepairPolicy;
   analysis?: WebsiteBusinessAnalysis;
   businessDescription?: string;
   candidateIndex?: number;
@@ -200,6 +203,7 @@ function getStructure1BodyCopyLimits(slideNumber: number) {
 }
 
 export type CarouselBatchContentPlanInput = {
+  bodyRepairPolicy?: CarouselCountedBodyRepairPolicy;
   analysis?: WebsiteBusinessAnalysis;
   businessDescription: string;
   items: Array<{
@@ -497,6 +501,7 @@ export async function buildCarouselContentPlan(
 export async function buildCarouselContentPlanBatch(
   input: CarouselBatchContentPlanInput,
 ): Promise<CarouselBatchContentPlanItem[]> {
+  validateCountedBodyRepairPolicy(input.bodyRepairPolicy);
   if (
     input.items.length !== 5 ||
     new Set(input.items.map((item) => item.slotIndex)).size !== 5 ||
@@ -509,6 +514,7 @@ export async function buildCarouselContentPlanBatch(
     .sort((left, right) => left.slotIndex - right.slotIndex)
     .map((item) => {
       const planInput = {
+        bodyRepairPolicy: input.bodyRepairPolicy,
         analysis: input.analysis,
         businessDescription: input.businessDescription,
         candidateIndex: item.candidateIndex,
@@ -738,7 +744,10 @@ export async function buildCarouselContentPlanBatch(
       );
     }
 
-    return completed.sort((left, right) => left.slotIndex - right.slotIndex);
+    return completed.sort((left, right) => left.slotIndex - right.slotIndex).map((item) => input.bodyRepairPolicy
+      ? { ...item, plan: { ...item.plan, plannerVersion: `${item.plan.plannerVersion}-${input.bodyRepairPolicy.version}`,
+          validationResult: { ...item.plan.validationResult, bodyRepairPolicyVersion: input.bodyRepairPolicy.version } } }
+      : item);
   } catch (error) {
     throw new Error(
       `Carousel Structure 1 batch planning failed after validation repair: ${getErrorMessage(error)}`,
@@ -1123,6 +1132,17 @@ function normalizeBodyForTextMode(params: {
   }
 
   if (params.textMode === "question_list" || params.textMode === "checklist") {
+    if (params.body && params.listItems.length > 0) {
+      // Some older model responses repeat the list in body. Remove only that
+      // exact redundant layer; introductions or other distinct advice survive.
+      const bodyLines = params.body.split(/\r?\n/).filter((line) => line.trim());
+      const normalizeListLine = (line: string) => line.trim()
+        .replace(/^(?:[-*•]\s+|\d+[.)]\s+)/, "")
+        .replace(/\s+/g, " ");
+      if (bodyLines.length === params.listItems.length && bodyLines.every(
+        (line, index) => normalizeListLine(line) === normalizeListLine(params.listItems[index]!),
+      )) return null;
+    }
     return params.body;
   }
 
@@ -1554,7 +1574,7 @@ export function validateCarouselContentPlan(
       ) {
         issues.push({
           code: "body_length",
-          message: `Body must use at least ${bodyCopyLimits.minimumWords} words and at most ${bodyCopyLimits.maximumCharacters} characters.`,
+          message: `Body must use at least ${bodyCopyLimits.minimumWords} words and at most ${bodyCopyLimits.maximumCharacters} characters. Actual body: ${bodyWords} words and ${slide.body.length} characters; count the body alone, excluding the headline, list and CTA.`,
           slideNumber: slide.slideNumber,
         });
       }
@@ -1562,7 +1582,7 @@ export function validateCarouselContentPlan(
       if (bodyWords > bodyCopyLimits.maximumWords) {
         issues.push({
           code: "body_word_limit",
-          message: `Slide ${slide.slideNumber} body must not exceed ${bodyCopyLimits.maximumWords} words.`,
+          message: `Slide ${slide.slideNumber} body must not exceed ${bodyCopyLimits.maximumWords} words. Actual body: ${bodyWords} words; rewrite this field without changing valid slides.`,
           slideNumber: slide.slideNumber,
         });
       }
@@ -1598,8 +1618,8 @@ export function validateCarouselContentPlan(
         });
       }
 
+      // Conversational lowercase is an authored style, not a grammar defect.
       if (
-        (slide.slideNumber !== 1 && /^[a-z]/.test(slide.body)) ||
         /\b([a-z][a-z'-]{2,})\s+\1\b/i.test(slide.body) ||
         /\bplanning and reporting\b(?:\s+[a-z'-]+){0,5}\s+creates\b/i.test(
           slide.body,
@@ -2154,11 +2174,11 @@ function buildGrammarPlannerMessages(
           ? "- The selected template contains a personal-result, time, metric, or performance implication. Keep its structure, but remove or soften that implication unless the supplied business context directly supports it."
           : null,
         `- On Slides 2-6, headlines are optional. When present, use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words, at most ${MAX_HEADLINE_LENGTH} characters, and no more than two visual lines. Slide 1 requires one ${FIRST_SLIDE_MIN_HEADLINE_WORDS}-${FIRST_SLIDE_MAX_HEADLINE_WORDS}-word headline hook, at most ${FIRST_SLIDE_MAX_HEADLINE_LENGTH} characters.`,
-        `- Slide 1 is a social slideshow cover. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in Inter Tight Bold at 700 weight, centered at ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px, with no added gradient or outline. The one hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines. The renderer never shrinks or truncates copy. A short first-person problem or changed belief can leave a strong open loop; explain the story on Slides 2-6.`,
-        `- Slides 2-6 body copy must each be one or two short body blocks separated by \\n\\n. Aim for 20-24 words (the hard accepted range is 18-30); count words before returning, and never exceed ${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words or ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters.`,
-        `- Slides 2-6 use centered Inter Tight SemiBold at fixed ${CAROUSEL_FIXED_FONT_SIZE}px type. Their actual headlines receive one measured white SVG background with dark text; body and list text remain white directly on the image. Slide 1 never uses the white SVG background: its cover hook is clean white display text over the unchanged image blend. Headlines remain optional: never add one merely to obtain the SVG background. Slides 2-6 body copy must fit within ${getCarouselStructure1BodyMaxLines(2)} lines; each list item within two; list groups within eight total. The renderer will not shrink or truncate copy.`,
+        `- Slide 1 is a social slideshow cover. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in Inter Medium at 500 weight (hard maximum 600), centered at ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px, with a thin black outline and no added gradient. The one hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines. The renderer never shrinks or truncates copy. A short first-person problem or changed belief can leave a strong open loop; explain the story on Slides 2-6.`,
+        `- On non-list Slides 2-6, body copy must be one or two short body blocks separated by \\n\\n. Aim for 20-24 words (the hard accepted range is 18-30); count words before returning, and never exceed ${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words or ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters. List slides use only their configured listItems and body: null; the prose word minimum does not apply to listItems.`,
+        `- Slides 2-6 use centered Inter Regular or Medium at fixed ${CAROUSEL_FIXED_FONT_SIZE}px type. Their actual headlines receive one measured white SVG background with dark text; body and list text remain white directly on the image. Slide 1 never uses the white SVG background: its cover hook is white Medium display text with a thin black outline over the unchanged image blend. Headlines remain optional: never add one merely to obtain the SVG background. Slides 2-6 body copy must fit within ${getCarouselStructure1BodyMaxLines(2)} lines; each list item within two; list groups within eight total. The renderer will not shrink or truncate copy.`,
         CAROUSEL_TEXT_PRESENTATION_GUIDANCE,
-        "- List slides must use the exact configured number of short listItems and normally set headline and body to null. Never add a second text layer for decoration.",
+        "- List slides must use the exact configured number of short listItems and set body to null. Headlines are normally null. Never repeat listItems in body or add a second text layer for decoration.",
         "- Every slide without a configured listItemCount must return listItems as an empty array.",
         "- Do not repeat the same information across slides.",
         "- Do not use generic phrases such as boost productivity, streamline your workflow, unlock efficiency, save time, work smarter, or next level.",
@@ -2263,9 +2283,9 @@ function buildBatchPlannerMessages(
         "When a slot's combinedFormat.hookOverlay source is template, use that pattern only for Slide 1. Adapt {topic}; never copy it verbatim, do not change Slides 2-6 or their format roles, and never increase the Slide 1 copy budget. For adapt_if_unsupported claims, remove or soften unsupported personal, time, metric, or performance promises.",
         "Use simple, specific, natural copy. Prioritize useful information over promotion.",
         `Optional headlines on Slides 2-6 must use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words and at most ${MAX_HEADLINE_LENGTH} characters. Slide 1 requires one ${FIRST_SLIDE_MIN_HEADLINE_WORDS}-${FIRST_SLIDE_MAX_HEADLINE_WORDS}-word headline hook, at most ${FIRST_SLIDE_MAX_HEADLINE_LENGTH} characters. Headlines remain optional and are never added merely to obtain the white SVG treatment.`,
-        `Slide 1 is a social slideshow cover. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Tight Bold at 700 weight and ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px, with no added gradient or outline. Its one hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines. The renderer never shrinks or truncates copy. Give a specific reason to swipe through a tension, outcome, contrast, mistake, useful promise, or curiosity gap.`,
+        `Slide 1 is a social slideshow cover. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Medium at 500 weight (hard maximum 600) and ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px, with a thin black outline and no added gradient. Its one hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines. The renderer never shrinks or truncates copy. Give a specific reason to swipe through a tension, outcome, contrast, mistake, useful promise, or curiosity gap.`,
         CAROUSEL_TEXT_PRESENTATION_GUIDANCE,
-        `Slides 2-6 body copy must each be one or two short body blocks separated by \\n\\n. Aim for 20-24 words (the hard accepted range is 18-30); count words before returning, and never exceed ${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words or ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters.`,
+        `Non-list Slides 2-6 body copy must be one or two short body blocks separated by \\n\\n. Aim for 20-24 words (the hard accepted range is 18-30); count words before returning, and never exceed ${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words or ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters. List slides use their exact configured short listItems and body: null; do not duplicate the list in a prose body or apply the prose word minimum to listItems.`,
         "Never invent numbers, product capabilities, proof, customers, brands, health claims, financial claims, or guaranteed outcomes.",
         "Avoid generic copy such as boost productivity, streamline your workflow, save time, work smarter, unlock efficiency, or next level.",
         "Follow every format role, slide type, allowed text mode, and list-item count exactly.",
@@ -2361,9 +2381,17 @@ async function buildSingleBatchItemRepair(params: {
       { ...params.input, slideCount: CAROUSEL_STRUCTURE_1_SLIDE_COUNT },
       params.context,
     );
+    const countedSlides = validateCountedBodyRepairPolicy(params.input.bodyRepairPolicy) && originalPlan && !params.replacement
+      ? getCountedBodyRepairSlides(originalPlan.slides, params.issues) : null;
     const completion = await getOpenAIClient().chat.completions.create({
       max_completion_tokens: 1_800,
-      messages: [
+      messages: countedSlides ? [
+        { role: "system", content: "Repair only the requested carousel body fields. Return two arrays of 9-12 individual words for each body: firstWords and secondWords. Join words into two natural complete thoughts, not filler. One idea per slide. No headings, metadata, list, CTA or full plan. Keep the existing business facts, meaning and assigned role; invent no product feature, customer story, result or measurement. Words have no whitespace, with punctuation attached. The two arrays become the same legacy body string separated by a blank line, with 18-24 words total and at most 300 characters. Each block must fit three lines at fixed 48px. Preserve every other field. Slide 6 gives a concrete useful action or decision." },
+        { role: "user", content: JSON.stringify({ businessDescription: params.input.businessDescription, planningBrief: params.input.planningBrief, grounding: params.context.groundingCandidates,
+          issues: params.issues, frozenPlan: originalPlan,
+          bodiesToReplace: countedSlides.map((n) => ({ slideNumber: n, currentBody: originalPlan!.slides[n - 1]!.body, role: originalPlan!.slides[n - 1]!.formatRole })),
+        }) },
+      ] : [
         baseMessages[0]!,
         {
           role: "user" as const,
@@ -2383,8 +2411,8 @@ async function buildSingleBatchItemRepair(params: {
       response_format: {
         type: "json_schema",
         json_schema: {
-          name: "repaired_carousel_batch_item",
-          schema: buildCarouselContentPlanSchema(
+          name: countedSlides ? "counted_carousel_body_repair" : "repaired_carousel_batch_item",
+          schema: countedSlides ? buildCountedBodyRepairSchema(countedSlides) : buildCarouselContentPlanSchema(
             CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
             params.context,
           ),
@@ -2396,8 +2424,10 @@ async function buildSingleBatchItemRepair(params: {
     repairRawResponse = completion.choices[0]?.message.content ?? null;
     if (!repairRawResponse) throw new Error("OpenAI returned no repaired batch item.");
 
+    const replacements = countedSlides ? parseCountedBodyRepair(JSON.parse(repairRawResponse), countedSlides) : null;
     const parsedRepair = parseCarouselContentPlanShape(
-      JSON.parse(repairRawResponse),
+      replacements ? { ...originalPlan, slides: originalPlan!.slides.map((slide) => replacements.has(slide.slideNumber)
+        ? { ...slide, body: replacements.get(slide.slideNumber)!, subtext: replacements.get(slide.slideNumber)! } : slide) } : JSON.parse(repairRawResponse),
       CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
       params.context,
     );
@@ -2674,7 +2704,7 @@ function buildNativeSlideOneOverflowFallbackMessages(params: {
       role: "user" as const,
       content: [
         "Replace only Slide 1. Slides 2-6 are frozen and must not be returned or rewritten.",
-        `Write a short, natural, reader-first cover that honestly previews those frozen slides. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Tight Bold at 700 weight, with no added gradient or outline.`,
+        `Write a short, natural, reader-first cover that honestly previews those frozen slides. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Medium at 500 weight (hard maximum 600), with a thin black outline and no added gradient.`,
         "Do not reuse the optional hook-template pattern. Do not mechanically truncate the rejected cover.",
         `The one cover hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} measured lines at ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px. Use fewer, simpler words when needed; do not add a subtitle or support line.`,
         "Keep the exact Slide 1 format role, slide type, one allowed text mode, list-item count, and null CTA required by the base format.",
@@ -2734,11 +2764,11 @@ function buildRepairMessages(params: {
         "Private creative brief (context only):",
         JSON.stringify(params.planningBrief),
         `Every Slide 2-6 headline is optional; when present it must be ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words, at most ${MAX_HEADLINE_LENGTH} characters, and at most two visual lines. Slide 1 requires one ${FIRST_SLIDE_MIN_HEADLINE_WORDS}-${FIRST_SLIDE_MAX_HEADLINE_WORDS}-word headline hook, at most ${FIRST_SLIDE_MAX_HEADLINE_LENGTH} characters.`,
-        `Slide 1 must be a social slideshow cover: a specific benefit, tension, mistake, contrast, or curiosity gap. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Tight Bold at 700 weight and ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px, with no added gradient or outline. Preserve a valid first-person open loop. Its one hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} measured lines. The renderer never shrinks or truncates copy.`,
+        `Slide 1 must be a social slideshow cover: a specific benefit, tension, mistake, contrast, or curiosity gap. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Medium at 500 weight (hard maximum 600) and ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px, with a thin black outline and no added gradient. Preserve a valid first-person open loop. Its one hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} measured lines. The renderer never shrinks or truncates copy.`,
         hasSlideOneCoverFitFailure
           ? `Slide 1 exceeded its fixed cover budget. Replace it with a shorter, simpler single hook that fits within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines at ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px and ${FIRST_SLIDE_MAX_HEADLINE_LENGTH} characters. Do not add a subtitle or support line to solve the overflow.`
           : null,
-        "Each body on Slides 2-6 must be one or two complete, specific body blocks separated by \\n\\n. Aim for 20-24 words (the hard accepted range is 18-30), count words before returning, keep it at most 300 characters, and fit it within ten visual lines at the fixed 48px body size, with at most three lines per block.",
+        "Each non-list body on Slides 2-6 must be one or two complete, specific body blocks separated by \\n\\n. Aim for 20-24 words (the hard accepted range is 18-30), count words before returning, keep it at most 300 characters, and fit it within ten visual lines at the fixed 48px body size, with at most three lines per block. Normally use two blocks of 9-12 words each so their combined body reaches the minimum. The listed actual counts exclude the headline and CTA: neither can supply missing body words. A short closing slogan does not satisfy Slide 6; give a concrete useful action or decision. List slides must return body: null and their exact configured short listItems; never duplicate listItems in body or apply the prose word minimum to the list.",
         "List modes may use at most eight total visual lines, with at most two lines per item.",
         "Remove repeated punctuation, fragments, generic copy, unsupported claims, repeated ideas, headline/body repetition, and grammar errors such as lead to missed leads.",
         "Do not repeat a connector within one short sentence, such as for better management for clearer decisions.",
@@ -2941,11 +2971,12 @@ function buildCarouselContentSlideSchema(
       properties: {
         ctaText: index === slideCount - 1 ? { anyOf: [{ type: "string", minLength: 1, maxLength: MAX_CTA_LENGTH }, { type: "null" }] } : { type: "null" },
         body:
-          index === 0
+          index === 0 || configuredListItemCount !== undefined
             ? { type: "null" }
             : {
                 anyOf: [
                   {
+                    description: "Non-list body only: 18-30 words total excluding headline and ctaText. Aim for 20-24 words across two short, complete thoughts of 9-12 words each, separated by a blank line. Each thought fits three lines at fixed 48px. Slide 6 needs a useful action or decision, not a short slogan. Count this field alone; preserve the assigned role and factual meaning.",
                     maxLength: maximumBodyLength,
                     minLength: 1,
                     type: "string",

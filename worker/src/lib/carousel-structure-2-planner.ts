@@ -26,9 +26,12 @@ import {
 import type { CarouselStructure2FormatId } from "./carousel-structure-2-formats.js";
 import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 import { CONTENT_PLAN_OPENAI_MAX_RETRIES, CONTENT_PLAN_OPENAI_TIMEOUT_MS } from "./content-plan-provider-retry.js";
+import { isStructure2ReaderScenario, type CarouselStructure2CopyPolicy } from "./carousel-structure-2-copy-policy.js";
 
 export const CAROUSEL_STRUCTURE_2_PLANNER_VERSION =
-  "llm-carousel-structure-2-writer-v23-actionable-copy-repair";
+  "llm-carousel-structure-2-writer-v24-inter-medium-typography";
+export const CAROUSEL_STRUCTURE_2_READER_SCENARIO_PLANNER_VERSION =
+  "llm-carousel-structure-2-writer-v25-reader-scenario-v1";
 
 // The OpenAI strict decoder cannot safely carry the whitespace word-count
 // regex. Keep the exact contract in the publisher validator and allow one
@@ -69,6 +72,7 @@ export type CarouselStructure2StoryPlanResult = {
   slotIndex: number;
   source: "llm";
   validationResult: {
+    copyPolicyVersion?: string;
     hookTemplateResolutionReason?: string | null;
     advisoryIssues: CarouselStructure2StoryValidationIssue[];
     fallbackUsed: boolean;
@@ -107,6 +111,7 @@ export class CarouselStructure2EmptyProviderResponseError extends Error {
 export type CarouselStructure2StoryBatchInput = {
   assignments: CarouselStructure2StoryAssignment[];
   businessDescription: string;
+  copyPolicy?: CarouselStructure2CopyPolicy;
   recentHistory?: CarouselStructure2RecentHistoryInput[];
   onPlanFailure?: (failure: CarouselStructure2PlanFailure) => Promise<void>;
 };
@@ -121,6 +126,7 @@ export type CarouselStructure2PlanFailure = {
 export async function buildCarouselStructure2StoryPlanBatch(
   input: CarouselStructure2StoryBatchInput,
 ): Promise<CarouselStructure2StoryPlanResult[]> {
+  isStructure2ReaderScenario(input.copyPolicy); // Reject unknown policies before provider work.
   assertCarouselStructure2StoryAssignments(input.assignments);
   const assignments = [...input.assignments].sort(
     (left, right) => left.slotIndex - right.slotIndex,
@@ -190,6 +196,7 @@ export async function buildCarouselStructure2StoryPlanBatch(
         const validation = partitionCarouselStructure2ValidationIssues(
           validateCarouselStructure2StoryPlan(parsedPlan, {
             businessDescription: input.businessDescription,
+            copyPolicy: input.copyPolicy,
             recentHistory: acceptedHistory,
           }),
         );
@@ -205,6 +212,7 @@ export async function buildCarouselStructure2StoryPlanBatch(
 
     if (parsedPlan && initialIssues.length === 0) {
       const result = createLlmResult({
+        copyPolicy: input.copyPolicy,
         advisoryIssues,
         assignment,
         initialBatchResponse,
@@ -222,6 +230,7 @@ export async function buildCarouselStructure2StoryPlanBatch(
 
     const diagnostics = { repair: null as string | null };
     const repaired = await attemptIsolatedRepair({
+      copyPolicy: input.copyPolicy,
       assignment,
       businessDescription: input.businessDescription,
       initialBatchResponse,
@@ -270,6 +279,7 @@ export async function buildCarouselStructure2StoryPlanBatch(
 }
 
 async function attemptIsolatedRepair(params: {
+  copyPolicy?: CarouselStructure2CopyPolicy;
   assignment: CarouselStructure2StoryAssignment;
   businessDescription: string;
   initialBatchResponse: string | null;
@@ -303,6 +313,7 @@ async function attemptIsolatedRepair(params: {
         max_completion_tokens: 1_800,
         messages: usesTargetedCopyRepair
           ? buildCarouselStructure2StoryTextRepairMessages({
+              copyPolicy: params.copyPolicy,
               assignment: params.assignment,
               businessDescription: params.businessDescription,
               issues: targetedIssues!,
@@ -312,6 +323,7 @@ async function attemptIsolatedRepair(params: {
               repairAttemptLimit: MAX_TARGETED_REPAIR_ATTEMPTS,
             })
           : buildCarouselStructure2RepairMessages({
+              copyPolicy: params.copyPolicy,
               assignment: params.assignment,
               businessDescription: params.businessDescription,
               issues: currentIssues,
@@ -328,8 +340,8 @@ async function attemptIsolatedRepair(params: {
               ? `carousel_structure_2_story_text_repair_${params.assignment.slotIndex}_${attempt}`
               : `carousel_structure_2_story_repair_${params.assignment.slotIndex}_${attempt}`,
             schema: usesTargetedCopyRepair
-              ? buildCarouselStructure2StoryTextRepairSchema(targetedSlideNumbers)
-              : buildCarouselStructure2StoryPlanSchema(),
+              ? buildCarouselStructure2StoryTextRepairSchema(targetedSlideNumbers, params.copyPolicy)
+              : buildCarouselStructure2StoryPlanSchema(params.copyPolicy),
             strict: true,
           },
         },
@@ -362,6 +374,7 @@ async function attemptIsolatedRepair(params: {
       const validation = partitionCarouselStructure2ValidationIssues(
         validateCarouselStructure2StoryPlan(repairedPlan, {
           businessDescription: params.businessDescription,
+          copyPolicy: params.copyPolicy,
           recentHistory: params.recentHistory,
         }),
       );
@@ -372,6 +385,7 @@ async function attemptIsolatedRepair(params: {
 
       if (finalIssues.length === 0) {
         return createLlmResult({
+          copyPolicy: params.copyPolicy,
           advisoryIssues: validation.advisoryIssues,
           assignment: params.assignment,
           initialBatchResponse: params.initialBatchResponse,
@@ -397,13 +411,14 @@ async function attemptIsolatedRepair(params: {
           const completion = await getOpenAIClient().chat.completions.create({
             model: params.model, temperature: 0.15, max_completion_tokens: 300,
             messages: buildCarouselStructure2StoryTextRepairMessages({
+              copyPolicy: params.copyPolicy,
               assignment: nativeAssignment, businessDescription: params.businessDescription,
               issues: finalIssues, plan: repairedPlan, recentHistory: params.recentHistory,
               repairAttempt: 1, repairAttemptLimit: 1,
             }),
             response_format: { type: "json_schema", json_schema: {
               name: `carousel_structure_2_native_cover_${params.assignment.slotIndex}`,
-              schema: buildCarouselStructure2StoryTextRepairSchema([1]), strict: true,
+              schema: buildCarouselStructure2StoryTextRepairSchema([1], params.copyPolicy), strict: true,
             } },
           });
           const response = completion.choices[0]?.message.content;
@@ -412,13 +427,14 @@ async function attemptIsolatedRepair(params: {
           params.diagnostics.repair = repairResponses.join("\n\n--- Structure 2 repair attempt ---\n\n");
           const nativePlan = replaceStoryTexts(repairedPlan, parseCarouselStructure2StoryTextRepair(JSON.parse(response), [1]));
           const nativeValidation = partitionCarouselStructure2ValidationIssues(validateCarouselStructure2StoryPlan(nativePlan, {
+            copyPolicy: params.copyPolicy,
             businessDescription: params.businessDescription, recentHistory: params.recentHistory,
           }));
           if (nativeValidation.blockingIssues.length === 0) {
             nativeValidation.blockingIssues.push(...await getCarouselStructure2MeasuredCopyIssues(nativePlan));
           }
           if (!nativeValidation.blockingIssues.length) {
-            const result = createLlmResult({ assignment: nativeAssignment, plan: nativePlan,
+            const result = createLlmResult({ copyPolicy: params.copyPolicy, assignment: nativeAssignment, plan: nativePlan,
               advisoryIssues: nativeValidation.advisoryIssues, initialBatchResponse: params.initialBatchResponse,
               initialIssues: params.initialIssues, model: params.model, repairResponse: params.diagnostics.repair, repaired: true });
             result.fallbackReason = "hook_template_cover_render_fit";
@@ -499,6 +515,7 @@ function replaceIssues(
 }
 
 function createLlmResult(params: {
+  copyPolicy?: CarouselStructure2CopyPolicy;
   advisoryIssues: CarouselStructure2StoryValidationIssue[];
   assignment: CarouselStructure2StoryAssignment;
   initialBatchResponse: string | null;
@@ -516,7 +533,9 @@ function createLlmResult(params: {
     fallbackReason: null,
     model: params.model,
     plan: params.plan,
-    plannerVersion: CAROUSEL_STRUCTURE_2_PLANNER_VERSION,
+    plannerVersion: isStructure2ReaderScenario(params.copyPolicy)
+      ? CAROUSEL_STRUCTURE_2_READER_SCENARIO_PLANNER_VERSION
+      : CAROUSEL_STRUCTURE_2_PLANNER_VERSION,
     rawLlmResponse: {
       initialBatch: params.initialBatchResponse,
       repair: params.repairResponse,
@@ -524,6 +543,7 @@ function createLlmResult(params: {
     slotIndex: params.assignment.slotIndex,
     source: "llm",
     validationResult: {
+      ...(params.copyPolicy ? { copyPolicyVersion: params.copyPolicy.version } : {}),
       hookTemplateResolutionReason: reason,
       advisoryIssues: params.advisoryIssues,
       fallbackUsed: false,

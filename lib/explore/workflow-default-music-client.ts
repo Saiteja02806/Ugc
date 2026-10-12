@@ -1,6 +1,7 @@
 const extensions: Record<string, string> = { "audio/mpeg": "mp3", "audio/mp3": "mp3", "audio/wav": "wav", "audio/x-wav": "wav", "audio/ogg": "ogg", "audio/mp4": "m4a" };
 
-/** Called on Apply edits only; never add music merely by selecting a toggle. */
+/** Read-only approved track loading for playback or an explicit export.
+ * Downloading it never uploads audio or submits a render. */
 export async function loadWorkflowDefaultMusic(deps: {
   token: () => Promise<string | null>; fetch: typeof fetch; assertActive: () => void;
 }) {

@@ -1,16 +1,17 @@
 import { createHash } from "node:crypto";
 import { constants, createReadStream } from "node:fs";
-import { copyFile, mkdir, writeFile } from "node:fs/promises";
+import { copyFile, cp, mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import { composeExploreVideo } from "./explore-video-composition.js";
 import { renderExploreFormatEdit } from "./explore-format-render.js";
 import type { ExploreFormatEdit } from "./explore-format-edit.js";
+import { renderExploreReferenceAudio } from "./explore-reference-audio-render.js";
 import { assertExploreSubtitleScope } from "../subtitles/explore-policy.js";
 import { parsePlacement, parseStyle, SubtitleError, validateTranscript, type SubtitlePlacement, type SubtitleStyle } from "../subtitles/contracts.js";
 import { getSubtitleLayout, groupSubtitleWords, serializeAss, serializeSrt, serializeVtt } from "../subtitles/captions.js";
 import { groupNaturalSubtitleWords } from "../subtitles/phrases.js";
-import { createTextMeasurer, prepareSubtitleFonts, probeVideo, renderSubtitleVideo, type SubtitleTools } from "../subtitles/media.js";
+import { createTextMeasurer, prepareSubtitleFonts, probeVideo, renderSubtitleVideo, runMediaCommand, type SubtitleTools } from "../subtitles/media.js";
 import { planEditorialPages, serializeEditorialAss } from "../subtitles/editorial.js";
 import { createEditorialMeasurer, prepareEditorialFonts } from "../subtitles/editorial-media.js";
 import { createDynamicMeasurer, serializeDynamicAss } from "../subtitles/dynamic.js";
@@ -21,6 +22,8 @@ export type ExploreSpeechIdentity = { audioPath: string; sourceHash: string; dur
 export type ExploreFinishingOptions = Omit<Parameters<typeof composeExploreVideo>[0], "subtitleScope"> & {
   tools: SubtitleTools;
   editing?: ExploreFormatEdit;
+  referenceAudioPath?: string;
+  referenceAudioVolume?: number;
   subtitles?: {
     language: "en";
     style: SubtitleStyle;
@@ -46,9 +49,17 @@ export async function finishExploreVideo(options: ExploreFinishingOptions) {
   const style = subtitles ? parseStyle(subtitles.style) : null;
   const placement = subtitles ? parsePlacement(subtitles.placement ?? "bottom") : null;
   if (subtitles && subtitles.language !== "en") assertExploreSubtitleScope(subtitles.language, 1);
-  const composed = await composeExploreVideo({ ...options, originalVolume: options.editing?.originalVolume, musicVolume: options.editing?.musicVolume, subtitleScope: subtitles ? { language: subtitles.language } : undefined });
-  const composition = options.editing ? { ...composed, ...await renderExploreFormatEdit({ sourcePath: composed.outputPath, width: composed.width, height: composed.height, durationMs: composed.durationMs, editing: options.editing, workDir: options.workDir, tools: options.tools, signal: options.signal }) } : composed;
-  if (!subtitles) return { ...composition, subtitleStyle: null, subtitlePlacement: null, subtitleWordCount: 0, subtitleRenderVersion: null };
+  const singlePassEditing = options.editing && !options.demoPath && !subtitles ? options.editing : undefined;
+  const composed = await composeExploreVideo({ ...options, originalVolume: options.editing?.originalVolume, musicVolume: options.editing?.musicVolume, subtitleScope: subtitles ? { language: subtitles.language } : undefined },
+    singlePassEditing ? { editing: singlePassEditing, fontsDir: options.tools.fontsDir } : undefined);
+  const edited = options.editing && !singlePassEditing ? { ...composed, ...await renderExploreFormatEdit({ sourcePath: composed.outputPath, width: composed.width, height: composed.height, durationMs: composed.durationMs, editing: options.editing, workDir: options.workDir, tools: options.tools, signal: options.signal }) } : composed;
+  // Start the paired track AFTER trim/text, on the complete final timeline.
+  // Save the unmixed edit too so future edits never stack music over demo speech.
+  let referenceAudioBasePath = options.referenceAudioPath ? edited.outputPath : null;
+  const referenceAudio = options.referenceAudioPath ? await renderExploreReferenceAudio({ sourcePath: edited.outputPath, audioPath: options.referenceAudioPath,
+    workDir: options.workDir, volume: options.referenceAudioVolume ?? .2, replaceOriginal: false, tools: options.tools, signal: options.signal }) : null;
+  const composition = referenceAudio ? { ...edited, outputPath: referenceAudio.outputPath, backgroundMusicTiming: referenceAudio.timing, hasBackgroundMusic: true } : edited;
+  if (!subtitles) return { ...composition, referenceAudioBasePath, subtitleStyle: null, subtitlePlacement: null, subtitleWordCount: 0, subtitleRenderVersion: null };
   if (!composition.subtitleAudioPath || !style || !placement) throw new SubtitleError("SUBTITLE_INPUT_INVALID", "The final audio track could not be prepared.");
   assertExploreSubtitleScope(subtitles.language, composition.durationMs);
   const captionDir = join(dirname(composition.outputPath), "subtitles");
@@ -66,6 +77,8 @@ export async function finishExploreVideo(options: ExploreFinishingOptions) {
   const measure = editorialMeasure ? (text: string) => editorialMeasure(text, layout.fontSize, "lead").then(ink => ink.width)
     : serifMeasure ? (text: string) => serifMeasure(text).then(ink => ink.width) : createTextMeasurer(layout, options.tools);
   await measure("Subtitle font check");
+  if (referenceAudio) await runMediaCommand(options.tools.ffmpeg, ["-nostdin", "-v", "error", "-y", "-protocol_whitelist", "file,pipe", "-i", composition.outputPath,
+    "-map", "0:a:0", "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", composition.subtitleAudioPath], { signal: options.signal });
   const sourceHash = await digestFile(composition.subtitleAudioPath);
   options.signal?.throwIfAborted();
   const transcript = validateTranscript(await subtitles.loadTranscript({ audioPath: composition.subtitleAudioPath,
@@ -87,8 +100,17 @@ export async function finishExploreVideo(options: ExploreFinishingOptions) {
   await renderSubtitleVideo(captionDir, video, options.tools, options.signal);
   const outputPath = join(captionDir, "captioned.mp4");
   const result = await probeVideo(outputPath, options.tools, options.signal);
+  if (referenceAudioBasePath) {
+    const cleanCaptionDir = join(captionDir, "audio-base");
+    await mkdir(cleanCaptionDir);
+    await copyFile(referenceAudioBasePath, join(cleanCaptionDir, "source-video"), constants.COPYFILE_EXCL);
+    await copyFile(join(captionDir, "captions.ass"), join(cleanCaptionDir, "captions.ass"), constants.COPYFILE_EXCL);
+    await cp(join(captionDir, "fonts"), join(cleanCaptionDir, "fonts"), { recursive: true, errorOnExist: true, force: false });
+    await renderSubtitleVideo(cleanCaptionDir, await probeVideo(join(cleanCaptionDir, "source-video"), options.tools, options.signal), options.tools, options.signal);
+    referenceAudioBasePath = join(cleanCaptionDir, "captioned.mp4");
+  }
   assertExploreSubtitleScope(subtitles.language, result.durationMs);
   options.signal?.throwIfAborted();
-  return { ...composition, outputPath, subtitleStyle: style, subtitlePlacement: placement, subtitleWordCount: transcript.words.length,
+  return { ...composition, referenceAudioBasePath, outputPath, subtitleStyle: style, subtitlePlacement: placement, subtitleWordCount: transcript.words.length,
     subtitleRenderVersion: subtitleStyleDefinition(style).renderVersion };
 }

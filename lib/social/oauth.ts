@@ -2105,7 +2105,7 @@ function mapSocialConnection(row: SocialConnectionRow): SocialConnection {
     platformAccountId: row.platform_account_id,
     platformAccountName: row.platform_account_name,
     platformAccountUsername: row.platform_account_username,
-    profilePictureUrl: getInstagramProfilePictureUrl(row.metadata),
+    profilePictureUrl: getSocialProfilePictureUrl(row.platform, row.metadata),
     provider: row.provider,
     refreshExpiresAt: row.refresh_expires_at,
     requiresInstagramProfessionalAccount:
@@ -2260,8 +2260,11 @@ function isInstagramProfileFresh(metadata: Json) {
   );
 }
 
-function getInstagramProfilePictureUrl(metadata: Json) {
-  const value = getMetadataString(metadata, "profilePictureUrl");
+function getSocialProfilePictureUrl(platform: SocialPlatform, metadata: Json) {
+  const value = getMetadataString(
+    metadata,
+    platform === "tiktok" ? "avatarUrl" : "profilePictureUrl",
+  );
 
   if (!value) {
     return null;

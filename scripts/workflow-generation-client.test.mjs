@@ -244,7 +244,7 @@ test("saved job IDs are bounded, versioned and isolated by account and workflow"
   assert.doesNotThrow(() => clientModule.persistWorkflowGenerationJobs({ setItem() { throw new Error("blocked storage"); } }, "owner-a", "hook", batch));
 });
 
-test("workflows stay visible, generation requires the explicit server rollout flag, and previews always stay non-spending", async () => {
+test("Talking Head + Demo stays visible, the phone workflow stays hidden, and preview generation is guarded", async () => {
   for (const environment of ["development", "production", "test"]) {
     for (const generationEnabled of [undefined, "false", "true"]) {
       for (const preview of [undefined, "1"]) {
@@ -262,7 +262,12 @@ test("workflows stay visible, generation requires the explicit server rollout fl
               "react/jsx-runtime": { jsx: (type, props) => ({ type, props }) },
             }, { process: { env: { NODE_ENV: environment, EXPLORE_GENERATION_ENABLED: generationEnabled } } });
             const invoke = () => page.default({ searchParams: Promise.resolve({ preview, mode }) });
-            assert.throws(invoke, /NOT_FOUND/);
+            if (kind === "phone") assert.throws(invoke, /NOT_FOUND/);
+            else {
+              const rendered = await invoke();
+              assert.equal(rendered.type, "hook");
+              assert.equal(rendered.props.generationEnabled, generationEnabled === "true" && preview !== "1");
+            }
           }
         }
       }

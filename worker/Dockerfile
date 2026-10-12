@@ -19,8 +19,8 @@ ARG WORKER_BUILD_GIT_COMMIT=missing
 LABEL org.opencontainers.image.revision=${WORKER_BUILD_GIT_COMMIT}
 
 RUN apt-get update \
-  && apt-get install -y ffmpeg ca-certificates fontconfig fonts-inter fonts-noto-cjk \
-  && mkdir -p /usr/local/share/fonts/geist /usr/local/share/fonts/inter-tight /usr/local/share/fonts/arial /usr/local/share/fonts/avenir-next \
+  && apt-get install -y ffmpeg ca-certificates fontconfig fonts-noto-cjk fonts-noto-color-emoji \
+  && mkdir -p /usr/local/share/fonts/geist /usr/local/share/fonts/inter /usr/local/share/fonts/inter-tight /usr/local/share/fonts/arial /usr/local/share/fonts/avenir-next \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/node_modules/geist/dist/fonts/geist-sans/Geist-Regular.ttf /usr/local/share/fonts/geist/
@@ -28,11 +28,14 @@ COPY --from=build /app/node_modules/geist/dist/fonts/geist-sans/Geist-SemiBold.t
 COPY --from=build /app/node_modules/geist/dist/fonts/geist-sans/Geist-Bold.ttf /usr/local/share/fonts/geist/
 COPY --from=build /app/node_modules/geist/dist/fonts/geist-sans/Geist-Black.ttf /usr/local/share/fonts/geist/
 COPY --from=build /app/src/assets/fonts/InterTight-VariableFont_wght.ttf /usr/local/share/fonts/inter-tight/
+COPY --from=build /app/src/assets/fonts/Inter-VariableFont_wght.ttf /usr/local/share/fonts/inter/
+COPY --from=build /app/src/assets/fonts/61-ugc-inter.conf /etc/fonts/conf.d/61-ugc-inter.conf
 COPY --from=build /app/src/assets/fonts/arial-bold.ttf /usr/local/share/fonts/arial/Arial-Bold.ttf
 COPY --from=build /app/src/assets/fonts/arial-regular.ttf /usr/local/share/fonts/arial/Arial-Regular.ttf
 COPY --from=build /app/src/assets/fonts/avenir-next-demi-bold.ttf /usr/local/share/fonts/avenir-next/Avenir-Next-Demi-Bold.ttf
 
-RUN fc-cache -f
+RUN fc-cache -f \
+  && fc-match -f '%{family}\n' 'Inter:style=Medium' | grep -Fx 'Inter Variable'
 
 WORKDIR /app
 

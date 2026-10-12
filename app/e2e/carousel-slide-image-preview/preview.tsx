@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { EditorFields, EditorPreview } from "@/components/trending/trending-creative-editor";
-import { CarouselSlideImageSection } from "@/components/trending/carousel-slide-image-section";
+import { CarouselSlideImageSection, type CarouselSlideImagePreview as SlideImagePreview } from "@/components/trending/carousel-slide-image-section";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { readAIStudioReferenceMetadata } from "@/lib/ai-studio/reference-media-upload";
@@ -40,6 +40,7 @@ export function CarouselSlideImagePreview() {
   const [content, setContent] = useState<TrendingCreativeEditContent | null>(initial);
   const [index, setIndex] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [imagePreview, setImagePreview] = useState<SlideImagePreview | null>(null);
   const [delay, setDelay] = useState(false);
   const [fail, setFail] = useState(false);
   const [open, setOpen] = useState(true);
@@ -76,11 +77,12 @@ export function CarouselSlideImagePreview() {
         <div className="grid min-h-0 overflow-y-auto lg:grid-cols-[minmax(300px,0.82fr)_minmax(0,1.18fr)]">
           <div className="border-b border-border bg-muted/25 p-6 lg:border-b-0 lg:border-r">
             <EditorPreview content={content} edit={null} fallbackHookPreviewUrl={null} initialContent={null}
-              item={item} onContentChange={setContent} sourcePreview={null} activeSlideIndex={index} />
+              item={item} onContentChange={setContent} sourcePreview={null} activeSlideIndex={index} slideImagePreview={imagePreview} />
           </div>
           <div className="min-w-0 p-6">
             <EditorFields content={content} activeSlideIndex={index} onActiveSlideIndexChange={setIndex} onContentChange={setContent} />
             <CarouselSlideImageSection slide={content.slides[index]} onBusyChange={setBusy} uploadImage={localUpload}
+              onPreviewChange={setImagePreview}
               onUploaded={(id, asset) => { setContent(current => applyCarouselSlideImage(current, id, asset)); setSaved(false); }}
               onRestore={id => { setSaved(false); setContent(current => current?.format === "carousel" ? { ...current,
                 slides: current.slides.map(slide => slide.slideId === id ? restoreOriginalCarouselBackground(slide) : slide) } : current); }} />

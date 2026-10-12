@@ -10,7 +10,7 @@ const original = {
   sourceRendererVersion: "story-native-tiktok-text-blocks-inter-tight-v11",
 };
 
-test("image-only changes retain the known original 72px hook instead of forcing 84px", () => {
+test("image-only cover edits use the current 72px contract for older sources", () => {
   assert.equal(getCarouselEditHookFontSize(original), 72);
   assert.equal(getCarouselEditHookFontSize({ ...original,
     sourceRendererVersion: "social-tiktok-text-blocks-inter-tight-v25" }), 72);
@@ -24,5 +24,5 @@ test("changed copy, current renderers, unknown sources and body slides keep the 
     { ...original, sourceRendererVersion: "story-native-full-frame-product-inter-tight-v13" },
     { ...original, sourceRendererVersion: "unknown" },
     { ...original, originalHeadline: undefined },
-  ]) assert.equal(getCarouselEditHookFontSize(slide), 84);
+  ]) assert.equal(getCarouselEditHookFontSize(slide), 72);
 });

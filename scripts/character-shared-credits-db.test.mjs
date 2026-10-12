@@ -12,7 +12,7 @@ const functionSql = (sql, name) => {
   assert.ok(start >= 0 && end > start, `Missing function ${name}`);
   return sql.slice(start, end + "$function$;".length);
 };
-const sharedMigration = source("20261005045851_character_shared_generation_credits.sql");
+const sharedMigration = source("20261005082254_character_shared_generation_credits.sql");
 const callSql = "select * from public.character_create_reserved_generation_batch($1,$2,$3,$4,$5,'ai-generation',$6)";
 const fingerprint = "a".repeat(64);
 let sequence = 0;
@@ -60,13 +60,13 @@ export async function fixture({ applyShared = true, promptDriven = false } = {})
     await db.exec(functionSql(billing, name));
   }
   await db.exec(functionSql(source("20260905123000_harden_wall_text_regeneration_recovery.sql"), "create_or_get_background_job_v1"));
-  await db.exec(source("20261002192039_character_generation_batch.sql"));
+  await db.exec(source("20261003041121_character_generation_batch.sql"));
   await db.exec(source("20261003045651_character_gemini_3_pro_image.sql"));
-  await db.exec(source("20261003041318_character_allowance_privileges.sql"));
+  await db.exec(source("20261003041415_character_allowance_privileges.sql"));
   await db.exec(source("20261003110411_one_time_free_generation_credits.sql"));
   await db.exec("create trigger settle_billing after update of status on background_jobs for each row execute function settle_billing_from_background_job()");
   if (applyShared) await db.exec(sharedMigration);
-  if (promptDriven) await db.exec(source("20261005140000_character_prompt_driven_generation.sql"));
+  if (promptDriven) await db.exec(source("20261005140223_character_prompt_driven_generation.sql"));
   return db;
 }
 

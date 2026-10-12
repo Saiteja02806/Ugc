@@ -1,7 +1,8 @@
 # Productivity image cleanup — 11 October 2026
 
-Status: safeguards validated; reservation replay guard applied to production.
-Targeted website rollout and source retirement are pending.
+Status: completed in production on 11 October 2026. The website safeguard is
+live, all 40 rejected source rows are inactive/archived, and all 40 specified
+local image files were deleted after backup verification.
 
 ## Requested scope and identity
 
@@ -72,8 +73,57 @@ RLS-without-policy notices on private service-role tables; this change adds no
 table or public execution grant.
 
 No paid image generation or customer batch was triggered for this cleanup.
-The production website safeguard must be READY before the source rows are
-retired. Final retirement and post-removal results will be appended here.
+
+## Production completion and post-removal results
+
+- Functional release `e4cd22228b72e9b0c41f5cc3cd00e860082f281b` completed its
+  configured Vercel production build. Deployment
+  `dpl_Uc4rAU1xyMq6QEEi6trJBvPpCM4A` was READY with both `getugcpilot.com`
+  and `www.getugcpilot.com` aliases before the retirement transaction ran.
+- The reservation migration is registered in the production migration ledger
+  as `20261011081756_guard_retired_carousel_reservation_replays`. Its local
+  filename follows that production version. Its original guard marker remains
+  unchanged; the function contains both replay guards.
+- The guarded retirement transaction archived exactly 39 hook backgrounds and
+  one human background. None remains active, ready for new selection, or
+  without its historical preservation marker. All 40 hashes, library IDs,
+  original/source/thumbnail URLs and storage keys, and usage counts match
+  their pre-removal backup.
+- All 422 target slide references and all 441 generations with target usage
+  remain intact. No active carousel generation job was found after retirement.
+- The application database reader was run against production for every one of
+  the 417 affected completed generations. All retained their recorded visible
+  slide counts: 2,436 visible slides in total, zero added loss. The 66 older
+  generations that already had fewer than six visible slides were unchanged;
+  this cleanup does not claim to repair those earlier incomplete records.
+- The application edit-background reader returned all 40 original background
+  URLs unchanged. Two retained source URLs and two historical rendered-slide
+  URLs returned HTTP 200, as did the real production domain. The production
+  landing page was also opened successfully in the browser. An authenticated
+  customer editing session and a new paid render were not run.
+- At 08:27 UTC, all 40 specified local originals were deleted with native
+  literal-path file operations after verifying both path boundaries and all
+  source/backup hashes. The two MP4s and 11 copies outside the requested paths
+  remain on disk. The permanent hash denylist excludes those copies from
+  future image imports.
+
+Remaining selectable ordinary productivity images:
+
+| Role | Before | Retired | After |
+|---|---:|---:|---:|
+| Hook | 60 | 39 | 21 |
+| Human | 240 | 1 | 239 |
+| Static | 132 | 0 | 132 |
+
+All role pools still exceed the per-carousel minimum. Four active owned product
+assets remain separate from these ordinary category pools. Source bytes in
+backend storage are intentionally retained for existing carousels and edits;
+the rejected images have been removed from the active library, rather than
+physically purged from historical storage.
+
+Ignored audit evidence includes `backend-after.json`,
+`local-deletion-result.json`, and `runtime-verification.json` under
+`.tmp/productivity-image-retirement`. The recorded results contain no credentials.
 
 ## Folder and allocation explanation
 

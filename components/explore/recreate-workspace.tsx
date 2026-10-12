@@ -179,15 +179,16 @@ export function FilterMenu({ activeCategories, categories, count, disabled, onCl
   </Popover>;
 }
 
-export function ReferenceCard({ isSelected, onPreview, onRecreate, reference, compact = false, hideCaption = false }: { isSelected: boolean; onPreview: () => void; onRecreate: () => void; reference: RecreateReference; compact?: boolean; hideCaption?: boolean }) {
+export function ReferenceCard({ isSelected, onPreview, onRecreate, reference, compact = false, hideCaption = false, showActionLabel = false }: { isSelected: boolean; onPreview: () => void; onRecreate: () => void; reference: RecreateReference; compact?: boolean; hideCaption?: boolean; showActionLabel?: boolean }) {
   return <article className="group min-w-0">
     <div className={cn(studio.mediaFrame, "relative overflow-hidden bg-card-muted ring-offset-background hover:shadow-card", isSelected && "ring-2 ring-primary ring-offset-2")}>
       <ReferenceMedia reference={reference} onPreview={onPreview} />
-      <button type="button" onClick={onRecreate} aria-pressed={isSelected} className={cn("absolute right-3 inline-flex size-10 items-center justify-center rounded-lg border transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white", compact ? "top-3" : "bottom-3", isSelected ? "border-primary bg-primary text-primary-foreground" : "border-white/25 bg-black/60 text-white backdrop-blur-sm hover:bg-primary hover:border-primary")} aria-label={`Recreate ${reference.title}`} title={isSelected ? "Selected reference" : "Recreate this reference"}>
+      {!showActionLabel ? <button type="button" onClick={onRecreate} aria-pressed={isSelected} className={cn("absolute right-3 inline-flex size-10 items-center justify-center rounded-lg border transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white", compact ? "top-3" : "bottom-3", isSelected ? "border-primary bg-primary text-primary-foreground" : "border-white/25 bg-black/60 text-white backdrop-blur-sm hover:bg-primary hover:border-primary")} aria-label={`Recreate ${reference.title}`} title={isSelected ? "Selected reference" : "Recreate this reference"}>
         {compact && isSelected ? <Check className="size-5" strokeWidth={2} aria-hidden="true" /> : <RotateCcw className="size-5" strokeWidth={1.6} aria-hidden="true" />}
-      </button>
+      </button> : null}
     </div>
     {compact && !hideCaption ? <div className="mt-2 flex min-w-0 items-center justify-between gap-2"><p className="truncate text-xs font-medium" title={reference.title}>{reference.title}</p>{isSelected ? <span className="shrink-0 text-[10px] font-medium text-primary">Selected</span> : null}</div> : null}
+    {showActionLabel ? <Button type="button" variant="outline" aria-label={`Recreate ${reference.title}`} aria-pressed={isSelected} onClick={onRecreate} className="mt-2 h-9 w-full gap-2 px-2 text-xs">{isSelected ? <Check className="size-4" aria-hidden="true" /> : <RotateCcw className="size-4" aria-hidden="true" />}{isSelected ? "Selected" : "Recreate"}</Button> : null}
   </article>;
 }
 

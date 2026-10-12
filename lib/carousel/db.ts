@@ -1430,11 +1430,44 @@ export async function failUnqueuedCarouselPreparation(params: {
   };
 }
 
+export async function listActiveCarouselCategoryHooks(categorySlug: string, assetIds?: string[]) {
+  if (!["gym", "food", "productivity", "dating", "travel", "skin"].includes(categorySlug)) {
+    throw new Error("Unsupported Carousel image category.");
+  }
+  const ids = assetIds ? Array.from(new Set(assetIds.filter(Boolean))) : undefined;
+  if (ids?.length === 0) return [];
+  let query = getSupabaseServerClient()
+    .from(CATEGORY_IMAGE_ASSETS_TABLE)
+    .select("id,base_url,width,height,source_filename,source_file_sha256")
+    .or(`category_slug.eq.${categorySlug},source_metadata->reviewedRoleCategories.cs.["${categorySlug}"]`)
+    .eq("asset_role", "hook")
+    .is("owner_business_profile_id", null)
+    .not("library_asset_id", "is", null)
+    .eq("is_active", true).eq("status", "ready").eq("subject_review_status", "approved")
+    .is("runtime_exclusion_reason", null)
+    .order("id");
+  if (ids) query = query.in("id", ids);
+  const { data, error } = await query;
+  if (error) throw new Error(`Could not load Carousel category hooks: ${error.message}`);
+  return (data ?? []).flatMap(asset => {
+    if (!asset.width || !asset.height || asset.width <= 0 || asset.height <= 0) return [];
+    return [{
+      id: asset.id, url: asset.base_url, name: asset.source_filename || "Hook background",
+      width: asset.width, height: asset.height, sha256: asset.source_file_sha256,
+    }];
+  });
+}
+
 export async function countActiveCarouselRoleAssets(categorySlug: string) {
+  if (!["gym", "food", "productivity", "dating", "travel", "skin"].includes(categorySlug)) {
+    throw new Error("Unsupported Carousel image category.");
+  }
   const { data, error } = await getSupabaseServerClient()
     .from(CATEGORY_IMAGE_ASSETS_TABLE)
     .select("asset_role")
-    .eq("category_slug", categorySlug)
+    .or(`category_slug.eq.${categorySlug},source_metadata->reviewedRoleCategories.cs.["${categorySlug}"]`)
+    .is("owner_business_profile_id", null)
+    .not("library_asset_id", "is", null)
     .eq("is_active", true)
     .eq("status", "ready")
     .eq("subject_review_status", "approved")

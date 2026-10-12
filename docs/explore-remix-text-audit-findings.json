@@ -1,0 +1,149 @@
+{
+  "visualScope": "2026-10-10 through 2026-10-11: all 453 source units checked against original identities and source-byte fingerprints. All 326 slides visually reviewed. All sampled source frames of the 125 previously unreviewed videos inspected in sequence, including final frames; changing-caption boundaries checked on native neighbouring frames. The two prior approved videos and all 19 baseline reviews were preserved. V2 re-extracted 434 unreviewed units using local Windows OCR, actual timestamps, sampling up to 4fps and complete retained transcripts. This is a visual transcription audit, not full playback/frame-by-frame certification of all videos, fact-checking of source claims, or an OCR accuracy percentage.",
+  "findings": [
+    {
+      "referenceId": "explore-paired-wall_text-d2a11374187469b8f8baee61",
+      "slideId": null,
+      "issue": "Sampled frames show the same 'BARE MINIMUM' paragraph, but OCR creates 27 variants. Several bottom lines are corrupted or missing, including 'makes time for me', 'deep conversation' and the final quoted line; the headline emoji is also missed.",
+      "action": "Verify the entire original, then consolidate the complete static paragraph into one block. Restore the lower lines, punctuation and headline emoji; remove the spurious standalone '1'.",
+      "status": "resolved",
+      "resolvedAt": "2026-10-11",
+      "resolution": "Creator captions visually transcribed; all 54 sampled frames inspected in source order, including final frame. Static caption consolidated into one complete block; numeric values, punctuation and emojis checked against full-size source. Timing ends at video stream duration. App UI, generated app-demo copy and screenshot excerpts excluded. Source claims were not fact-checked.",
+      "reviewFile": "docs/remix-text-priority-reviewed-v2.json"
+    },
+    {
+      "referenceId": "explore-wall-text-59",
+      "slideId": null,
+      "issue": "Confirmed missing later captions, garbled hook and mixed game/interface text. Saved blocks end at 11 seconds; original duration is available in the viewer. Final sampled frame contains '4x damage & unlimited health in ACTION' and emojis, absent from saved blocks.",
+      "action": "Play the whole original. Transcribe intentional overlay captions in order, including emojis. Remove incidental game UI. Check each caption's actual start/end before approving.",
+      "status": "resolved",
+      "resolvedAt": "2026-10-11",
+      "resolution": "Creator captions visually transcribed; all 100 sampled frames inspected in source order, including final frame. All caption transitions additionally inspected at native 30fps around their boundaries; times rounded to milliseconds. Final black frame excluded for tutorial 28. App UI, generated app-demo copy and screenshot excerpts excluded. Source claims were not fact-checked.",
+      "reviewFile": "docs/remix-text-priority-reviewed-v2.json"
+    },
+    {
+      "referenceId": "explore-wall-text-28",
+      "slideId": null,
+      "issue": "Tutorial subtitles change while app-interface labels and a screenshot quote are also visible. The saved list is capped at 20 OCR blocks; late video content requires checking.",
+      "action": "Review the whole tutorial. Separate intentional subtitles from app controls, character names and the screenshot quote; recover late captions and their timing. Decide whether the quote is part of the reusable reference copy.",
+      "status": "resolved",
+      "resolvedAt": "2026-10-11",
+      "resolution": "Creator captions visually transcribed; all 51 sampled frames inspected in source order, including final frame. All caption transitions additionally inspected at native 30fps around their boundaries; times rounded to milliseconds. Final black frame excluded for tutorial 28. App UI, generated app-demo copy and screenshot excerpts excluded. Source claims were not fact-checked.",
+      "reviewFile": "docs/remix-text-priority-reviewed-v2.json"
+    },
+    {
+      "referenceId": "explore-wall-text-06",
+      "slideId": null,
+      "issue": "Static startup hook is badly transcribed; skull and wilted-rose emojis are missing. App demo/paywall and desktop controls are mixed into the extraction; the list is capped at 20 blocks.",
+      "action": "Confirm the hook 'bro rate my startup idea' with its emojis. Decide which demonstrated app copy, if any, should be part of the remix. Exclude desktop controls. Check timing through the end.",
+      "status": "resolved",
+      "resolvedAt": "2026-10-11",
+      "resolution": "Creator captions visually transcribed; all 53 sampled frames inspected in source order, including final frame. Static caption consolidated into one complete block; numeric values, punctuation and emojis checked against full-size source. Timing ends at video stream duration. App UI, generated app-demo copy and screenshot excerpts excluded. Source claims were not fact-checked.",
+      "reviewFile": "docs/remix-text-priority-reviewed-v2.json"
+    },
+    {
+      "referenceId": "explore-wall-text-765ce326c924aaf6",
+      "slideId": null,
+      "issue": "Sampled frames show a static investing paragraph, but OCR creates 25 variants. '25 to 65 at 8%:' is corrupted as '25 to 65%t SO/o:' in the first saved block.",
+      "action": "Verify the entire original, then consolidate the static paragraph into one block. Carefully transcribe the ages, percentage, monthly contribution and dollar amounts. This audit does not validate the investment claims.",
+      "status": "resolved",
+      "resolvedAt": "2026-10-11",
+      "resolution": "Creator captions visually transcribed; all 50 sampled frames inspected in source order, including final frame. Static caption consolidated into one complete block; numeric values, punctuation and emojis checked against full-size source. Timing ends at video stream duration. App UI, generated app-demo copy and screenshot excerpts excluded. Source claims were not fact-checked.",
+      "reviewFile": "docs/remix-text-priority-reviewed-v2.json"
+    },
+    {
+      "referenceId": "explore-wall-text-03",
+      "slideId": null,
+      "issue": "Sampled frames show a static 'Eldest daughter core' paragraph, but OCR creates 22 variants. Some lines lose words ('Can do it by myself.. doesn’t want to') and the final quotation is garbled.",
+      "action": "Verify the entire original, then consolidate into one complete block. Correct missing words, capitalization and the final 'I said what I said' quotation.",
+      "status": "resolved",
+      "resolvedAt": "2026-10-11",
+      "resolution": "Creator captions visually transcribed; all 42 sampled frames inspected in source order, including final frame. Static caption consolidated into one complete block; numeric values, punctuation and emojis checked against full-size source. Timing ends at video stream duration. App UI, generated app-demo copy and screenshot excerpts excluded. Source claims were not fact-checked.",
+      "reviewFile": "docs/remix-text-priority-reviewed-v2.json"
+    },
+    {
+      "referenceId": "explore-wall-text-48",
+      "slideId": null,
+      "issue": "Sampled frames show a static bullet list, but OCR creates 32 variants. Words around 'never asking for help' and 'let down enough times to stop trying' are missing or split.",
+      "action": "Verify the entire original, then consolidate into one complete block. Preserve the five bullets and parentheses. This audit checks transcription, not the psychological claims.",
+      "status": "resolved",
+      "resolvedAt": "2026-10-11",
+      "resolution": "Creator captions visually transcribed; all 60 sampled frames inspected in source order, including final frame. Static caption consolidated into one complete block; numeric values, punctuation and emojis checked against full-size source. Timing ends at video stream duration. App UI, generated app-demo copy and screenshot excerpts excluded. Source claims were not fact-checked.",
+      "reviewFile": "docs/remix-text-priority-reviewed-v2.json"
+    },
+    {
+      "referenceId": "explore-wall-text-61",
+      "slideId": null,
+      "issue": "Sampled frames show a static research list, but OCR creates 23 variants. The first saved block loses the line 'humans can only maintain about 150' in the final bullet.",
+      "action": "Verify the entire original, then consolidate into one complete block. Restore all five bullets, including the final number and sentence. This audit does not fact-check the source explanations.",
+      "status": "resolved",
+      "resolvedAt": "2026-10-11",
+      "resolution": "Creator captions visually transcribed; all 47 sampled frames inspected in source order, including final frame. Static caption consolidated into one complete block; numeric values, punctuation and emojis checked against full-size source. Timing ends at video stream duration. App UI, generated app-demo copy and screenshot excerpts excluded. Source claims were not fact-checked.",
+      "reviewFile": "docs/remix-text-priority-reviewed-v2.json"
+    },
+    {
+      "referenceId": "explore-wall-text-8ed8ad307341d9c3",
+      "slideId": null,
+      "issue": "Beginning/middle/end samples have the same choice list; OCR creates 23 variants, including stray characters after 'Dream Partner'. Only 20 variants are saved.",
+      "action": "Verify the entire original, then consolidate into one static block. Keep the headline, A–H choices, currency amounts and final question; remove OCR artifacts.",
+      "status": "resolved",
+      "resolvedAt": "2026-10-11",
+      "resolution": "Creator captions visually transcribed; all 48 sampled frames inspected in source order, including final frame. Static caption consolidated into one complete block; numeric values, punctuation and emojis checked against full-size source. Timing ends at video stream duration. App UI, generated app-demo copy and screenshot excerpts excluded. Source claims were not fact-checked.",
+      "reviewFile": "docs/remix-text-priority-reviewed-v2.json"
+    },
+    {
+      "referenceId": "explore-slideshow-fitness-2ac394bae86d6779",
+      "slideId": "slide-4-63d001b6c171",
+      "issue": "Saved text combines the intentional overlays '3. Train consistently' and '“JournAI” app' with phone UI, dates, rank labels and numbers. App-name letters are also confused by OCR.",
+      "action": "Keep the intentional headline and app mention as reference copy; exclude phone UI. Confirm the brand spelling before approving. The business-specific remix should use the user's supported brand/product details.",
+      "status": "resolved",
+      "resolvedAt": "2026-10-11",
+      "resolution": "Full original inspected. Creator headline and added “JournAI” app caption only; phone interface, dates and rank labels excluded.",
+      "reviewFile": "docs/remix-text-priority-reviewed-v2.json"
+    }
+  ],
+  "summary": {
+    "units": 453,
+    "references": 185,
+    "ready": 441,
+    "noText": 12,
+    "needsReview": 0,
+    "resolvedPriorityCases": 10,
+    "v2Transcripts": 434,
+    "v2SampledFrames": 3927,
+    "baselineReviewsUnchanged": 19,
+    "missingSourceMappings": 0
+  },
+  "captionPolicy": {
+    "appScreens": "Creator-added captions only; exclude app UI, demo content, screenshots, watermarks and scenery.",
+    "posterSlides": "Exclude the entire infographic/poster, including title, instructions and added Study tips text. Latest user instruction supersedes earlier keep-poster decision.",
+    "rawEvidence": "Historical OCR retained for audit only; excluded units have no active text blocks and cannot generate Remix Text."
+  },
+  "posterExclusions": [
+    {
+      "referenceId": "explore-slideshow-study-4b4378520daac41e",
+      "slideId": "slide-3-db3d2afc6b3a",
+      "sourceSha256": "db3d2afc6b3a08805514fcd862812fe0a70f0abeb046348404d7736dfb3f390b"
+    },
+    {
+      "referenceId": "explore-slideshow-study-4d7bd8101ccf9198",
+      "slideId": "slide-3-408a8fce001a",
+      "sourceSha256": "408a8fce001a97742a9afa828591ee33184faa21092628ca67e6105eb80cac04"
+    },
+    {
+      "referenceId": "explore-slideshow-study-a0ee8ec7f0c27c0a",
+      "slideId": "slide-3-10c24e92f755",
+      "sourceSha256": "10c24e92f7555361ae9527a828339b183398f6aeae0d59cf0b7645325c2e8f2d"
+    },
+    {
+      "referenceId": "explore-slideshow-study-a0ee8ec7f0c27c0a",
+      "slideId": "slide-5-a0724326ddf2",
+      "sourceSha256": "a0724326ddf26bc3ca1d388ca5651dfc34ed7c0ca7ff02304cb8ed8f08bca129"
+    },
+    {
+      "referenceId": "explore-slideshow-study-a0ee8ec7f0c27c0a",
+      "slideId": "slide-6-05c50b03a457",
+      "sourceSha256": "05c50b03a457dfd9ea3d9e50f0edc99c312ad4fb4a7c084a8142c2d202ef1f58"
+    }
+  ]
+}

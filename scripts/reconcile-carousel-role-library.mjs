@@ -171,7 +171,19 @@ function buildPlan(params) {
         throw new Error(`Refusing to restore preserved retired asset ${existing.library_asset_id}.`);
       }
       assertRemoteIdentity(asset, existing);
-      retained.push({ ...asset, remoteId: existing.id });
+      retained.push({
+        ...asset,
+        remoteId: existing.id,
+        dbRow: {
+          ...asset.dbRow,
+          source_metadata: {
+            ...asset.dbRow.source_metadata,
+            ...(existing.source_metadata?.reviewedRoleCategories
+              ? { reviewedRoleCategories: existing.source_metadata.reviewedRoleCategories }
+              : {}),
+          },
+        },
+      });
       continue;
     }
 

@@ -1,6 +1,8 @@
 import type { MediaAsset } from "../media/types.ts";
+import { readRemixSource, type RemixTextSource } from "../explore/remix-source.ts";
 
 export type AIStudioImageResult = {
+  remixTextSource?: RemixTextSource | null;
   aspectRatio: "1:1" | "4:5" | "9:16" | "16:9";
   createdAt: string;
   id: string;
@@ -13,6 +15,7 @@ export type AIStudioImageResult = {
 };
 
 export type AIStudioVideoResult = {
+  remixTextSource?: RemixTextSource | null;
   createdAt: string;
   durationSeconds: number | null;
   id: string;
@@ -44,6 +47,7 @@ export function getAIStudioImageResults(
     .slice(0, limit)
     .map((asset) => ({
       aspectRatio: toSupportedRatio(asset.ratio, "4:5"),
+      ...(Object.hasOwn(asset.metadata ?? {}, "remixTextSource") ? { remixTextSource: readRemixSource(asset.metadata.remixTextSource) } : {}),
       createdAt: asset.createdAt,
       id: asset.id,
       mediaAssetId: asset.id,
@@ -70,6 +74,7 @@ export function getAIStudioVideoResults(
     .map((asset) => ({
       createdAt: asset.createdAt,
       durationSeconds: asset.durationSeconds,
+      ...(Object.hasOwn(asset.metadata ?? {}, "remixTextSource") ? { remixTextSource: readRemixSource(asset.metadata.remixTextSource) } : {}),
       id: asset.id,
       mediaAssetId: asset.id,
       modelLabel: getVideoModelLabel(asset.metadata),

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import * as remixSource from "../lib/explore/remix-source.ts";
 
 function load(file, imports = {}, globals = {}) {
   const exports = {};
@@ -11,7 +12,9 @@ function load(file, imports = {}, globals = {}) {
   }).outputText;
   vm.runInNewContext(code, { exports, Error, URL, URLSearchParams, Headers, process: { env: {} }, require(name) { if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts");
     if (name in imports) return imports[name];
+    if (name === "../explore/remix-source.ts") return remixSource;
     if (name === "@/lib/explore/slideshow-image") return { resolveSlideshowImage: async image => image };
+    if (name === "@/worker/src/lib/image-reference-context") return load("worker/src/lib/image-reference-context.ts");
     if(name === "next/link") return "Link";
     if(name === "./generation-session.ts" || name === "@/lib/ai-studio/generation-session") return load("lib/ai-studio/generation-session.ts");
     if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts");

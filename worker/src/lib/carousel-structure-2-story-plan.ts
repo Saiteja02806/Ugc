@@ -1,4 +1,5 @@
 import { structure2HookGuidance } from "./carousel-structure-2-hook-templates.js";
+import { applyStructure2CopyPolicyMessages, applyStructure2CopyPolicySchema, getStructure2CopyInstruction, hasStructure2PersonalStoryVoice, isStructure2ReaderScenario, type CarouselStructure2CopyPolicy } from "./carousel-structure-2-copy-policy.js";
 import { CAROUSEL_TEXT_PRESENTATION_GUIDANCE, CAROUSEL_HOOK_COPY_GUIDANCE, CAROUSEL_HOOK_MIN_WORDS, CAROUSEL_HOOK_MAX_WORDS, CAROUSEL_BODY_BLOCK_MAX_LINES, CAROUSEL_HEADING_FONT_SIZE, CAROUSEL_HEADING_MAX_LINES, getCarouselBodyBlocks, getCarouselHookStatementIssue, isCarouselOrphanLine, normalizeCarouselText } from "./carousel-text-presentation.js";
 import type {
   CarouselPlanningBrief,
@@ -235,10 +236,12 @@ export function validateCarouselStructure2StoryPlan(
   plan: CarouselStructure2StoryPlan,
   params: {
     businessDescription?: string;
+    copyPolicy?: CarouselStructure2CopyPolicy;
     recentHistory?: readonly CarouselStructure2RecentHistoryInput[];
   } = {},
 ) {
   const issues: CarouselStructure2StoryValidationIssue[] = [];
+  const readerScenario = isStructure2ReaderScenario(params.copyPolicy);
   const format = getCarouselStructure2Format(plan.strategy.storyFormatId);
   const seenRoles = new Set<CarouselStructure2StoryRole>();
   const seenCopy: string[] = [];
@@ -359,7 +362,7 @@ export function validateCarouselStructure2StoryPlan(
       });
     }
     if (
-      reference?.perspective === "first_person" &&
+      !readerScenario && reference?.perspective === "first_person" &&
       /\b(you|your)\b/i.test(copy)
     ) {
       issues.push({
@@ -367,6 +370,10 @@ export function validateCarouselStructure2StoryPlan(
         message: "This slide must stay in the first-person story perspective.",
         slideNumber: slide.slideNumber,
       });
+    }
+    if (readerScenario && hasStructure2PersonalStoryVoice([slide.headline, slide.storyText].filter(Boolean).join(" "))) {
+      issues.push({ code: "perspective", slideNumber: slide.slideNumber,
+        message: "This copy policy requires a reader scenario or impersonal observation, including the cover and heading; no personal narrator is supplied." });
     }
     if (
       reference?.productMention === "forbidden" &&
@@ -480,7 +487,7 @@ export function partitionCarouselStructure2ValidationIssues(
   return { advisoryIssues, blockingIssues };
 }
 
-export function buildCarouselStructure2StoryPlanSchema() {
+export function buildCarouselStructure2StoryPlanSchema(copyPolicy?: CarouselStructure2CopyPolicy) {
   const slides = Object.fromEntries(
     CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS.map((positionKey, index) => {
       const isCover = index === 0;
@@ -525,7 +532,7 @@ export function buildCarouselStructure2StoryPlanSchema() {
     }),
   );
 
-  return {
+  return applyStructure2CopyPolicySchema({
     additionalProperties: false,
     properties: {
       slides: {
@@ -545,7 +552,7 @@ export function buildCarouselStructure2StoryPlanSchema() {
     },
     required: ["slides", "strategy"],
     type: "object",
-  } as const;
+  } as const, copyPolicy);
 }
 
 /**
@@ -556,9 +563,10 @@ export function buildCarouselStructure2StoryPlanSchema() {
  */
 export function buildCarouselStructure2StoryTextRepairSchema(
   slideNumbers: readonly number[],
+  copyPolicy?: CarouselStructure2CopyPolicy,
 ) {
   const keys = getTargetedStoryTextKeys(slideNumbers);
-  return {
+  return applyStructure2CopyPolicySchema({
     additionalProperties: false,
     properties: {
       storyTextBySlide: {
@@ -590,17 +598,18 @@ export function buildCarouselStructure2StoryTextRepairSchema(
     },
     required: ["storyTextBySlide"],
     type: "object",
-  } as const;
+  } as const, copyPolicy);
 }
 
 export function buildCarouselStructure2StoryBatchSchema(params: {
   assignments: readonly CarouselStructure2StoryAssignment[];
+  copyPolicy?: CarouselStructure2CopyPolicy;
 }) {
   assertCarouselStructure2StoryAssignments(params.assignments);
   const plans = Object.fromEntries(
     CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS.map((positionKey) => [
       positionKey,
-      buildCarouselStructure2StoryPlanSchema(),
+      buildCarouselStructure2StoryPlanSchema(params.copyPolicy),
     ]),
   );
 
@@ -680,6 +689,7 @@ export function parseCarouselStructure2StoryBatchResponse(
 export function buildCarouselStructure2BatchMessages(params: {
   assignments: readonly CarouselStructure2StoryAssignment[];
   businessDescription: string;
+  copyPolicy?: CarouselStructure2CopyPolicy;
   recentHistory?: readonly CarouselStructure2RecentHistoryInput[];
 }) {
   assertCarouselStructure2StoryAssignments(params.assignments);
@@ -688,13 +698,13 @@ export function buildCarouselStructure2BatchMessages(params: {
     .map((assignment, index) => ({
       creativeSeed: assignment.creativeSeed,
       emotion: assignment.emotion,
-      formatReference: getFormatReference(assignment.storyFormatId),
+      formatReference: getFormatReference(assignment.storyFormatId, params.copyPolicy),
       hookGuidance: structure2HookGuidance(assignment),
       outputKey: CAROUSEL_STRUCTURE_2_BATCH_POSITION_KEYS[index],
       privateCreativeBrief: assignment.planningBrief,
     }));
 
-  return [
+  return applyStructure2CopyPolicyMessages([
     {
       role: "system" as const,
       content:
@@ -713,7 +723,7 @@ export function buildCarouselStructure2BatchMessages(params: {
         `Slide 1 may use first-person or direct reader wording such as 'you' or 'your'. ${STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE} Give a specific benefit, tension, mistake, contrast, or curiosity gap.`,
         "Perspective boundary: only Slide 1 may lead with direct reader wording. Slides 2-5 must stay in the first-person story voice (I, me, or my). Slide 6 may turn the lesson toward the reader after its takeaway.",
         "Slides 1-5 return ctaText: null. Slide 6 may include a short natural CTA, otherwise null, alongside its useful final value. The renderer displays it on that same slide as plain text, not a button or pill.",
-        `Optional content headings use black text on a fitted white SVG pill, at most two lines at 50px. Body blocks and optional CTA are white text without background. Slide 1 uses centered Inter Tight Bold at 700 weight, ${getCarouselStructure2StoryFontSize(1)}px type within ${getCarouselStructure2StoryMaxLines(1)} visual lines. Each body block fits three lines at ${CAROUSEL_FIXED_FONT_SIZE}px. No gradient, tint or CTA button is added. All text groups must fit inside the square safe area; never shrink or truncate.`,
+        `Optional content headings use black text on a fitted white SVG pill, at most two lines at 50px. Body blocks and optional CTA are white text without background. Slide 1 uses centered Inter Medium at 500 weight (hard maximum 600), ${getCarouselStructure2StoryFontSize(1)}px type within ${getCarouselStructure2StoryMaxLines(1)} visual lines. Each body block fits three lines at ${CAROUSEL_FIXED_FONT_SIZE}px. No gradient, tint or CTA button is added. All text groups must fit inside the square safe area; never shrink or truncate.`,
         "Follow roleGuidance in its given order. Do not reorder, repeat, or omit story roles.",
         "Slide 4 must explain a real product capability that directly addresses the Slide 2 problem. Keep product connections natural and grounded only in businessDescription; never invent a capability.",
         "Do not invent precise features, proof, metrics, customers, guarantees, health outcomes, financial outcomes, or performance claims.",
@@ -727,12 +737,13 @@ export function buildCarouselStructure2BatchMessages(params: {
         STRUCTURE_2_OUTPUT_COPY_CONTRACT,
       ].join("\n"),
     },
-  ];
+  ], params.copyPolicy);
 }
 
 export function buildCarouselStructure2RepairMessages(params: {
   assignment: CarouselStructure2StoryAssignment;
   businessDescription: string;
+  copyPolicy?: CarouselStructure2CopyPolicy;
   issues: readonly CarouselStructure2StoryValidationIssue[];
   rawPlan: unknown;
   recentHistory?: readonly CarouselStructure2RecentHistoryInput[];
@@ -750,7 +761,7 @@ export function buildCarouselStructure2RepairMessages(params: {
     (issue) => issue.slideNumber === 1 && issue.code === "hook_incomplete",
   );
 
-  return [
+  return applyStructure2CopyPolicyMessages([
     {
       role: "system" as const,
       content:
@@ -769,8 +780,8 @@ export function buildCarouselStructure2RepairMessages(params: {
         JSON.stringify({ businessDescription: params.businessDescription }),
         "Format reference:",
         structure2HookGuidance(params.assignment),
-        JSON.stringify(getFormatReference(params.assignment.storyFormatId)),
-        `Slide 1 is reader-first, so direct reader wording such as 'you' or 'your' is allowed. ${STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Tight Bold at 700 weight and must create a specific reason to swipe within ${getCarouselStructure2StoryMaxLines(1)} visual lines at ${getCarouselStructure2StoryFontSize(1)}px type.`,
+        JSON.stringify(getFormatReference(params.assignment.storyFormatId, params.copyPolicy)),
+        `Slide 1 is reader-first, so direct reader wording such as 'you' or 'your' is allowed. ${STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Medium at 500 weight (hard maximum 600) and must create a specific reason to swipe within ${getCarouselStructure2StoryMaxLines(1)} visual lines at ${getCarouselStructure2StoryFontSize(1)}px type.`,
         "Only Slide 1 may lead with direct reader wording. Keep Slides 2-5 in the first-person story voice (I, me, or my); Slide 6 may turn the lesson toward the reader after its takeaway.",
         CAROUSEL_TEXT_PRESENTATION_GUIDANCE,
         "Keep Slides 2-6 readable: aim for 16-22 body words total (accepted 14-30). Preserve distinct optional headline and storyText body blocks separated by \\n\\n; each block fits three lines at 48px.",
@@ -791,12 +802,13 @@ export function buildCarouselStructure2RepairMessages(params: {
         JSON.stringify(params.rawPlan),
       ].filter((line): line is string => line !== null).join("\n"),
     },
-  ];
+  ], params.copyPolicy);
 }
 
 export function buildCarouselStructure2StoryTextRepairMessages(params: {
   assignment: CarouselStructure2StoryAssignment;
   businessDescription: string;
+  copyPolicy?: CarouselStructure2CopyPolicy;
   issues: readonly CarouselStructure2StoryValidationIssue[];
   plan: CarouselStructure2StoryPlan;
   recentHistory?: readonly CarouselStructure2RecentHistoryInput[];
@@ -818,17 +830,17 @@ export function buildCarouselStructure2StoryTextRepairMessages(params: {
       currentStoryText: slide.storyText,
       hookGuidance: isCover ? structure2HookGuidance(params.assignment) : undefined,
       replacementKey: getTargetedStoryTextKey(slide.slideNumber),
-      requirement: isCover
+      requirement: getStructure2CopyInstruction(isCover
         ? `${STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE} Return one statement in one block, normally ${targetRange} words. It must stay within ${wordRange} words and fit within ${lineLimit} visual lines at centered ${fontSize}px type. Never leave a hanging phrase.`
-        : `Return one or two short ${slide.storyRole} body blocks separated by \\n\\n, totaling ${wordRange} words; aim for ${targetRange} words. Each block must fit three visual lines at ${fontSize}px. Preserve the separate heading and existing CTA.`,
-      roleGuidance: getFormatReference(params.assignment.storyFormatId).roleGuidance[
+        : `Return one or two short ${slide.storyRole} body blocks separated by \\n\\n, totaling ${wordRange} words; aim for ${targetRange} words. Each block must fit three visual lines at ${fontSize}px. Preserve the separate heading and existing CTA.`, params.copyPolicy),
+      roleGuidance: getFormatReference(params.assignment.storyFormatId, params.copyPolicy).roleGuidance[
         slide.slideNumber - 1
       ],
       slideNumber: slide.slideNumber,
       storyRole: slide.storyRole,
       voiceRequirement:
         slide.slideNumber >= 2 && slide.slideNumber <= 5
-          ? "Keep the replacement in first-person story voice (I, me, or my)."
+          ? getStructure2CopyInstruction("Keep the replacement in first-person story voice (I, me, or my).", params.copyPolicy)
           : slide.slideNumber === 6
             ? "Preserve the useful final value; any existing CTA remains in its separate field on this same slide."
             : null,
@@ -838,7 +850,7 @@ export function buildCarouselStructure2StoryTextRepairMessages(params: {
     throw new Error("A targeted Structure 2 copy repair requires at least one slide.");
   }
 
-  return [
+  return applyStructure2CopyPolicyMessages([
     {
       role: "system" as const,
       content:
@@ -869,7 +881,7 @@ export function buildCarouselStructure2StoryTextRepairMessages(params: {
         .filter((line): line is string => line !== null)
         .join("\n"),
     },
-  ];
+  ], params.copyPolicy);
 }
 
 export function parseCarouselStructure2StoryTextRepair(
@@ -965,16 +977,16 @@ export function formatCarouselStructure2ValidationIssues(
     .join(" ");
 }
 
-function getFormatReference(storyFormatId: CarouselStructure2FormatId) {
+function getFormatReference(storyFormatId: CarouselStructure2FormatId, copyPolicy?: CarouselStructure2CopyPolicy) {
   const format = getCarouselStructure2Format(storyFormatId);
   return {
     exampleFlows: format.exampleFlows,
-    generationRules: format.generationRules,
+    generationRules: format.generationRules.map((rule) => getStructure2CopyInstruction(rule, copyPolicy)),
     id: format.id,
     name: format.name,
     purpose: format.purpose,
     roleGuidance: format.slides.map((slide) => ({
-      instruction: slide.instruction,
+      instruction: getStructure2CopyInstruction(slide.instruction, copyPolicy),
       maximumWords: slide.maximumWords,
       minimumWords: slide.minimumWords,
       storyRole: slide.storyRole,

@@ -17,8 +17,12 @@ export const CharacterGenerateRequestSchema = z.strictObject({
   imageCount: CharacterImageCountSchema.optional(),
   prompt: z.string().trim().min(1, "Describe your influencer before generating.").max(MAX_CHARACTER_PROMPT_LENGTH, "Your description is too long to send. Please shorten it."),
   referenceCharacterId: z.uuid().optional(),
+  referenceImageAssetId: z.uuid().optional(),
   idempotencyKey: z.string().trim().min(1).max(200),
 }).superRefine((request, context) => {
+  if (request.referenceCharacterId && request.referenceImageAssetId) {
+    context.addIssue({ code: "custom", path: ["referenceImageAssetId"], message: "Choose an uploaded image or a saved influencer as your reference." });
+  }
   if (request.model === "seedream_5_pro" && request.prompt.length > getCharacterPromptLimit(request.model)) {
     context.addIssue({ code: "custom", path: ["prompt"], message: "Seedream 5.0 Pro supports descriptions up to 4,000 characters. Shorten your description before generating." });
   }

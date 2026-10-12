@@ -1,5 +1,5 @@
 import { FirebaseAuthRequestError, requireFirebaseUser } from "@/lib/firebase/server-auth";
-import { parsePublishingPreferences } from "@/lib/scheduling/publishing-preferences";
+import { parsePublishingPreferencesUpdate, type PublishingPreferences } from "@/lib/scheduling/publishing-preferences";
 import { getPublishingPreferences, savePublishingPreferences } from "@/lib/scheduling/publishing-preferences-db";
 
 export const runtime = "nodejs";
@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export async function GET(request: Request) {
   try {
     const user = await requireFirebaseUser(request);
-    return json({ ok: true, preferences: await getPublishingPreferences(user.uid) });
+    return json({ ok: true, preferences: responsePreferences(request, await getPublishingPreferences(user.uid)) });
   } catch (error) { return failure(error); }
 }
 
@@ -16,9 +16,9 @@ export async function PUT(request: Request) {
     const user = await requireFirebaseUser(request);
     const body: unknown = await request.json().catch(() => null);
     let preferences;
-    try { preferences = parsePublishingPreferences(body); }
-    catch { return json({ ok: false, message: "Choose a valid AI content disclosure default." }, 400); }
-    return json({ ok: true, preferences: await savePublishingPreferences(user.uid, preferences) });
+    try { preferences = parsePublishingPreferencesUpdate(body); }
+    catch { return json({ ok: false, message: "Choose valid publishing defaults." }, 400); }
+    return json({ ok: true, preferences: responsePreferences(request, await savePublishingPreferences(user.uid, preferences)) });
   } catch (error) { return failure(error); }
 }
 
@@ -26,6 +26,13 @@ function failure(error: unknown) {
   return error instanceof FirebaseAuthRequestError
     ? json({ ok: false, message: error.message }, error.status)
     : json({ ok: false, message: "Could not load or save publishing preferences. Please try again." }, 503);
+}
+
+function responsePreferences(request: Request, preferences: PublishingPreferences) {
+  // Already-open clients validate the original one-field response strictly.
+  return new URL(request.url).searchParams.get("schema") === "2"
+    ? preferences
+    : { containsSyntheticMedia: preferences.containsSyntheticMedia };
 }
 
 function json(body: unknown, status = 200) {

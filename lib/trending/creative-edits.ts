@@ -217,10 +217,27 @@ export async function getTrendingCreativeEdit(params: {
   return data;
 }
 
+/** Status polling must not fetch large content or rendered slide payloads. */
+export async function getTrendingCarouselEditStatus(params: {
+  creativeId: string;
+  userId: string;
+}) {
+  const { data, error } = await getClient()
+    .from(TRENDING_CREATIVE_EDITS_TABLE)
+    .select("id,revision,render_status,render_error,updated_at")
+    .eq("user_id", params.userId)
+    .eq("format", "carousel")
+    .eq("creative_id", params.creativeId)
+    .maybeSingle();
+  if (error) throw new Error(`Could not check this Trending update: ${error.message}`);
+  return data;
+}
+
 export async function upsertTrendingCreativeEdit(params: {
   assignmentId: string;
   content: TrendingCreativeEditContent;
   creativeId: string;
+  expectedRevision: number;
   format: TrendingCreativeEditFormat;
   positions: Json;
   resolvedMediaAssetId?: string | null;
@@ -231,6 +248,14 @@ export async function upsertTrendingCreativeEdit(params: {
   wallTextAttribution?: ReturnType<typeof classifyWallTextEdit>;
 }) {
   const existing = await getTrendingCreativeEdit(params);
+  // Image verification can outlast a save in another tab. Fence this second
+  // read with the submitted revision as well as the guarded write below.
+  if ((existing?.revision ?? 0) !== params.expectedRevision) {
+    throw new TrendingCreativeEditAccessError(
+      "This Trending edit changed in another tab. Reload it and try again.",
+      409,
+    );
+  }
   const now = new Date().toISOString();
   if (params.format === "wall_text") {
     if (!params.wallTextAttribution) {

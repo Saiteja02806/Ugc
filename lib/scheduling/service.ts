@@ -75,6 +75,7 @@ import {
 } from "@/lib/scheduling/schedule-time";
 import { getScheduleEditBlockReason } from "@/lib/scheduling/schedule-action-policy";
 import { SchedulingRequestError } from "@/lib/scheduling/errors";
+import { isVerifiedExploreFinishedVideo } from "@/lib/scheduling/explore-finished-video";
 import { getConnectionPublishingBlock } from "@/lib/scheduling/social-connection-policy";
 import { assertTikTokScheduleEligibility } from "@/lib/scheduling/tiktok-preflight";
 import {
@@ -324,7 +325,18 @@ export async function createUserSchedule(params: {
       collection: source.collection,
       mediaMode,
       sourceType: source.sourceType,
-    })
+    }) &&
+    !(
+      mediaMode === "single_video" &&
+      source.sourceType === "combined_render" &&
+      await isVerifiedExploreFinishedVideo(
+        await getMediaAssetForOwner({
+          assetId: normalized.source.id,
+          userId: params.userId,
+        }),
+        params.userId,
+      )
+    )
   ) {
     throw new SchedulingRequestError(
       "Choose a Reel clip or prepare the hook and secondary clips before scheduling.",
@@ -615,7 +627,13 @@ export async function scheduleRenderedPost(params: {
       userId: params.userId,
     });
 
-    if (!isDirectScheduledVideoAsset(scheduledVideoAsset)) {
+    if (
+      !scheduledVideoAsset ||
+      !(
+        isDirectScheduledVideoAsset(scheduledVideoAsset) ||
+        await isVerifiedExploreFinishedVideo(scheduledVideoAsset, params.userId)
+      )
+    ) {
       throw new SchedulingRequestError(
         "The selected Reel clip is not available for publishing.",
         409,

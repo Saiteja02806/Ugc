@@ -32,7 +32,7 @@ const itemContextMigration = readFileSync(
 );
 const planMatchedFactMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260923191000_store_wall_text_plan_selected_fact.sql",
+    "../../supabase/migrations/20260923160227_store_wall_text_plan_selected_fact.sql",
     import.meta.url,
   ),
   "utf8",

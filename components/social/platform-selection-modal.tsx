@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
+import { usePublishingPreferencesDefault } from "@/components/scheduling/use-publishing-preferences-default";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
   invalidateAccountSchedules,
@@ -66,9 +67,6 @@ import {
 import { getConnectionPublishingBlockMessage } from "@/lib/scheduling/social-connection-policy";
 import { INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR } from "@/lib/social/instagram-professional-account";
 import {
-  getTikTokPrivacyLabel,
-  isTikTokPrivacyLevel,
-  TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE,
   type TikTokPublishCapabilities,
 } from "@/lib/social/tiktok-publishing";
 import { hasTikTokUiAccess } from "@/lib/social/platform-visibility";
@@ -229,13 +227,14 @@ export function PlatformSelectionModal({
   const contentKind = getContentKind(context);
   const queryClient = useQueryClient();
   const accountId = user?.uid ?? "signed-out";
+  const publishingPreferences = usePublishingPreferencesDefault(user?.uid ?? null, open);
   const [step, setStep] = useState<ModalStep>("accounts");
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>("choose");
   const [connections, setConnections] = useState<SocialConnection[]>([]);
   const [selectedConnectionIds, setSelectedConnectionIds] = useState<string[]>(
     [],
   );
-  const [publishingSettings, setPublishingSettings] = useState<
+  const [publishingSettingsOverrides, setPublishingSettings] = useState<
     Record<string, ConnectionPublishingSettings>
   >({});
   const [tiktokCapabilities, setTikTokCapabilities] = useState<
@@ -476,12 +475,46 @@ export function PlatformSelectionModal({
   const hasInstagramDestination = selectedConnections.some(
     (connection) => connection.platform === "instagram",
   );
-  const publishingSettingsError = getPublishingSettingsError({
-    connections: selectedConnections,
-    requireTikTokMusicConfirmation: false,
-    settings: publishingSettings,
-    tiktokCapabilities,
-  });
+  const publishingSettings = useMemo(() => Object.fromEntries(
+    connections.map((connection) => {
+      const capability = tiktokCapabilities[connection.id];
+      return [connection.id, {
+      ...getDefaultPublishingSettings(connection.platform),
+      ...(connection.platform !== "instagram"
+        ? { containsSyntheticMedia: publishingPreferences.containsSyntheticMedia }
+        : {}),
+      ...(connection.platform === "tiktok" ? {
+        privacyLevel: publishingPreferences.tiktokPrivacyLevel,
+        allowComment: publishingPreferences.tiktokAllowComments,
+      } : {}),
+      ...(connection.platform === "youtube" ? {
+        privacyStatus: publishingPreferences.youtubePrivacyStatus,
+        madeForKids: publishingPreferences.youtubeMadeForKids,
+        notifySubscribers: publishingPreferences.youtubeNotifySubscribers,
+      } : {}),
+      ...publishingSettingsOverrides[connection.id],
+      ...(connection.platform === "tiktok" && capability?.status === "ready" ? {
+        ...(capability.capabilities.interactions.commentsDisabled ? { allowComment: false } : {}),
+        ...(capability.capabilities.interactions.duetsDisabled ? { allowDuet: false } : {}),
+        ...(capability.capabilities.interactions.stitchesDisabled ? { allowStitch: false } : {}),
+      } : {}),
+      }];
+    }),
+  ), [connections, publishingPreferences.containsSyntheticMedia, publishingPreferences.tiktokPrivacyLevel, publishingPreferences.tiktokAllowComments, publishingPreferences.youtubePrivacyStatus, publishingPreferences.youtubeMadeForKids, publishingPreferences.youtubeNotifySubscribers, publishingSettingsOverrides, tiktokCapabilities]);
+  const usesPublishingPreferences = selectedConnections.some(
+    (connection) => connection.platform !== "instagram",
+  );
+  const preferencesPending = usesPublishingPreferences && publishingPreferences.loading;
+  const publishingSettingsError = preferencesPending
+    ? "Loading your publishing defaults…"
+    : usesPublishingPreferences && publishingPreferences.error
+      ? publishingPreferences.error
+    : getPublishingSettingsError({
+        connections: selectedConnections,
+        requireTikTokMusicConfirmation: false,
+        settings: publishingSettings,
+        tiktokCapabilities,
+      });
   const tiktokPublishingAgreement = getTikTokPublishingAgreement({
     connections: selectedConnections,
     settings: publishingSettings,
@@ -591,7 +624,7 @@ export function PlatformSelectionModal({
         ? current
         : {
             ...current,
-            [connection.id]: getDefaultPublishingSettings(connection.platform),
+            [connection.id]: {},
           },
     );
 
@@ -656,27 +689,6 @@ export function PlatformSelectionModal({
           status: "ready",
         },
       }));
-      setPublishingSettings((current) => {
-        const settings =
-          current[connectionId] ?? getDefaultPublishingSettings("tiktok");
-        const privacyLevel = settings.privacyLevel;
-
-        return {
-          ...current,
-          [connectionId]: {
-            ...settings,
-            allowComment: data.capabilities.interactions.commentsDisabled
-              ? false
-              : settings.allowComment === true,
-            privacyLevel:
-              isTikTokPrivacyLevel(privacyLevel) &&
-              data.capabilities.privacyLevels.includes(privacyLevel) &&
-              (data.capabilities.directPostAudited || privacyLevel === "SELF_ONLY")
-                ? privacyLevel
-                : "",
-          },
-        };
-      });
     } catch (error) {
       setTikTokCapabilities((current) => ({
         ...current,
@@ -979,6 +991,9 @@ export function PlatformSelectionModal({
               context={context}
               publishingSettings={publishingSettings}
               publishingSettingsError={publishingSettingsError}
+              preferencesError={usesPublishingPreferences ? publishingPreferences.error : null}
+              preferencesPending={preferencesPending}
+              onRetryPreferences={publishingPreferences.retry}
               selectedConnections={selectedConnections}
               tiktokCapabilities={tiktokCapabilities}
               onCaptionChange={setCaption}
@@ -1353,8 +1368,11 @@ function DetailsStep({
   onCaptionChange,
   onChangeSetting,
   onRetryTikTok,
+  onRetryPreferences,
   publishingSettings,
   publishingSettingsError,
+  preferencesError,
+  preferencesPending,
   selectedConnections,
   tiktokCapabilities,
 }: {
@@ -1368,8 +1386,11 @@ function DetailsStep({
     value: boolean | string,
   ) => void;
   onRetryTikTok: (connectionId: string) => void;
+  onRetryPreferences: () => void;
   publishingSettings: Record<string, ConnectionPublishingSettings>;
   publishingSettingsError: string | null;
+  preferencesError: string | null;
+  preferencesPending: boolean;
   selectedConnections: SocialConnection[];
   tiktokCapabilities: Record<string, TikTokCapabilitiesState>;
 }) {
@@ -1450,43 +1471,23 @@ function DetailsStep({
           <InstagramCaptionPreview caption={caption} />
         ) : null}
 
-        <section
-          aria-labelledby="post-publishing-settings"
-          className="rounded-card border border-border bg-card p-4 sm:p-5"
-        >
-          <h3
-            id="post-publishing-settings"
-            className="text-sm font-semibold text-foreground"
-          >
-            Publishing settings
-          </h3>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Confirm the destination before choosing when to publish.
-          </p>
-          <div className="mt-3 divide-y divide-border rounded-control border border-border bg-card-muted px-3.5">
-            {selectedConnections.map((connection) => (
-                <CarouselAccountSettings
-                  key={connection.id}
-                  connection={connection}
-                  contentKind={contentKind}
-                settings={
-                  publishingSettings[connection.id] ??
-                  getDefaultPublishingSettings(connection.platform)
-                }
-                tiktokCapabilities={tiktokCapabilities[connection.id]}
-                onChange={(key, value) =>
-                  onChangeSetting(connection.id, key, value)
-                }
-                onRetry={() => onRetryTikTok(connection.id)}
-              />
-            ))}
+        {preferencesError ? (
+          <div className="text-xs text-error" role="alert">
+            <p>{preferencesError}</p>
+            <Button type="button" variant="outline" size="sm" onClick={onRetryPreferences} className="mt-2">Retry loading defaults</Button>
           </div>
-          {publishingSettingsError ? (
-            <p className="mt-2 text-xs font-semibold text-error" role="alert">
-              {publishingSettingsError}
-            </p>
-          ) : null}
-        </section>
+        ) : preferencesPending ? (
+          <p className="text-xs text-muted-foreground" role="status">Loading your publishing defaults…</p>
+        ) : null}
+        <a href="/settings#preferences" target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-muted-foreground underline underline-offset-4 hover:text-foreground">Change default settings</a>
+        {selectedConnections.filter((connection) => connection.platform === "tiktok" && tiktokCapabilities[connection.id]?.status !== "ready").map((connection) => (
+          <CarouselAccountSettings key={connection.id} connection={connection} contentKind={contentKind}
+            settings={publishingSettings[connection.id] ?? getDefaultPublishingSettings(connection.platform)}
+            tiktokCapabilities={tiktokCapabilities[connection.id]}
+            onChange={(key, value) => onChangeSetting(connection.id, key, value)}
+            onRetry={() => onRetryTikTok(connection.id)} />
+        ))}
+        {publishingSettingsError && !preferencesPending && !preferencesError ? <p className="text-xs font-semibold text-error" role="alert">{publishingSettingsError}</p> : null}
       </div>
     </div>
   );
@@ -1539,131 +1540,20 @@ function CarouselAccountSettings({
   );
 }
 
-function YouTubeVideoSettings({
-  onChange,
-  settings,
-}: {
-  onChange: (key: string, value: boolean | string) => void;
-  settings: ConnectionPublishingSettings;
-}) {
-  return (
-    <div className="mt-3 grid gap-3">
-      <label className="text-xs font-semibold text-foreground">
-        Visibility
-        <select
-          value={getStringSetting(settings, "privacyStatus", "private")}
-          onChange={(event) => onChange("privacyStatus", event.target.value)}
-          className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-        >
-          <option value="private">Private</option>
-          <option value="unlisted">Unlisted</option>
-          <option value="public">Public</option>
-        </select>
-      </label>
-      <SettingCheckbox
-        checked={getBooleanSetting(settings, "madeForKids", false)}
-        label="Made for kids"
-        onChange={(checked) => onChange("madeForKids", checked)}
-      />
-      <SettingCheckbox
-        checked={getBooleanSetting(settings, "notifySubscribers", false)}
-        label="Notify subscribers"
-        onChange={(checked) => onChange("notifySubscribers", checked)}
-      />
-      <SettingCheckbox
-        checked={getBooleanSetting(settings, "containsSyntheticMedia", true)}
-        label="Contains AI-generated content"
-        onChange={(checked) => onChange("containsSyntheticMedia", checked)}
-      />
-    </div>
-  );
+function YouTubeVideoSettings({ settings }: { onChange: (key: string, value: boolean | string) => void; settings: ConnectionPublishingSettings }) {
+  const privacyStatus = getStringSetting(settings, 'privacyStatus', 'public');
+  return <p className="mt-3 text-xs text-muted-foreground">{privacyStatus === 'public' ? 'Public' : privacyStatus === 'unlisted' ? 'Unlisted' : 'Private'} · Uses your publishing defaults in Settings.</p>;
 }
 
-function TikTokCarouselSettings({
-  capabilitiesState,
-  onChange,
-  onRetry,
-  settings,
-}: {
+function TikTokCarouselSettings({ capabilitiesState, onRetry }: {
   capabilitiesState?: TikTokCapabilitiesState;
   onChange: (key: string, value: boolean | string) => void;
   onRetry: () => void;
   settings: ConnectionPublishingSettings;
 }) {
-  if (!capabilitiesState || capabilitiesState.status === "loading") {
-    return (
-      <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-        <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
-        Loading TikTok account settings...
-      </div>
-    );
-  }
-
-  if (capabilitiesState.status === "error") {
-    return (
-      <div className="mt-3 flex items-center justify-between gap-3 rounded-md bg-error/10 px-3 py-2">
-        <p className="text-xs font-semibold text-error">
-          {capabilitiesState.message}
-        </p>
-        <Button type="button" size="sm" variant="ghost" onClick={onRetry}>
-          Retry
-        </Button>
-      </div>
-    );
-  }
-
-  const capabilities = capabilitiesState.capabilities;
-  const privacyLevel = getStringSetting(settings, "privacyLevel", "");
-  const brandedContent = getBooleanSetting(settings, "brandedContent", false);
-
-  return (
-    <div className="mt-3 grid gap-3">
-      {!capabilities.directPostAudited ? (
-        <p className="rounded-md border border-primary/25 bg-primary/5 px-3 py-2 text-[11px] font-medium leading-5 text-foreground">
-          {TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE}
-        </p>
-      ) : null}
-      <label className="block">
-        <span className="text-xs font-semibold text-foreground">Visibility</span>
-        <select
-          value={privacyLevel}
-          onChange={(event) => onChange("privacyLevel", event.target.value)}
-          className="mt-1.5 h-10 w-full rounded-control border border-border bg-card-muted px-3 text-sm text-foreground outline-none hover:border-border-strong focus:border-focus focus:ring-2 focus:ring-focus/20"
-        >
-          <option value="">Select visibility</option>
-          {capabilities.privacyLevels.map((level) => (
-            <option
-              key={level}
-              value={level}
-              disabled={brandedContent && level === "SELF_ONLY"}
-            >
-              {getTikTokPrivacyLabel(level)}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <div className="grid gap-2 sm:grid-cols-3">
-        <SettingCheckbox
-          checked={getBooleanSetting(settings, "allowComment", false)}
-          disabled={capabilities.interactions.commentsDisabled}
-          label="Allow comments"
-          onChange={(checked) => onChange("allowComment", checked)}
-        />
-      </div>
-
-      <fieldset>
-        <legend className="text-xs font-semibold text-foreground">AI-generated content</legend>
-        <div className="mt-2">
-          <SettingCheckbox
-            checked={getBooleanSetting(settings, "containsSyntheticMedia", true)}
-            label="Contains AI-generated content"
-            onChange={(checked) => onChange("containsSyntheticMedia", checked)}
-          />
-        </div>
-      </fieldset>
-    </div>
-  );
+  if (!capabilitiesState || capabilitiesState.status === "loading") return <p role="status" className="mt-3 text-xs text-muted-foreground">Checking TikTok account settings…</p>;
+  if (capabilitiesState.status === "error") return <div className="mt-3 text-xs text-error"><p role="alert">{capabilitiesState.message}</p><Button type="button" size="sm" variant="outline" onClick={onRetry}>Retry TikTok account</Button></div>;
+  return null;
 }
 
 function ScheduleChoiceStep({
@@ -1861,35 +1751,7 @@ function QuickSlot({ label, onClick }: { label: string; onClick: () => void }) {
   );
 }
 
-function SettingCheckbox({
-  checked,
-  disabled = false,
-  label,
-  onChange,
-}: {
-  checked: boolean;
-  disabled?: boolean;
-  label: string;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <label
-      className={cn(
-        "flex min-h-10 items-center gap-2 rounded-md border border-border px-3 py-2 text-xs font-medium text-foreground",
-        disabled && "cursor-not-allowed bg-muted opacity-65",
-      )}
-    >
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.checked)}
-        className="size-4 shrink-0 accent-primary"
-      />
-      {label}
-    </label>
-  );
-}
+
 
 function getDefaultPublishingSettings(
   platform: SocialPlatform,
@@ -2049,16 +1911,6 @@ function getConnectionAccountName(connection: SocialConnection) {
 
 function getPlatformLabel(platform: SocialPlatform) {
   return platforms.find((definition) => definition.platform === platform)?.label ?? platform;
-}
-
-function getBooleanSetting(
-  settings: ConnectionPublishingSettings,
-  key: string,
-  fallback: boolean,
-) {
-  return typeof settings[key] === "boolean"
-    ? (settings[key] as boolean)
-    : fallback;
 }
 
 function getStringSetting(

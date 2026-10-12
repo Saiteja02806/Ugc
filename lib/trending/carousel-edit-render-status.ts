@@ -30,11 +30,12 @@ export function getLatestTrendingEdit(
 }
 
 export function shouldApplyCarouselEditRefresh(
-  previous: Pick<TrendingCreativeEditRecord, "revision" | "updatedAt"> | undefined,
-  refreshed: Pick<TrendingCreativeEditRecord, "revision" | "updatedAt">,
+  previous: (Pick<TrendingCreativeEditRecord, "revision" | "updatedAt"> & Partial<Pick<TrendingCreativeEditRecord, "renderState">>) | undefined,
+  refreshed: Pick<TrendingCreativeEditRecord, "revision" | "updatedAt"> & Partial<Pick<TrendingCreativeEditRecord, "renderState">>,
 ) {
   if (!previous) return true;
   if (refreshed.revision !== previous.revision) return refreshed.revision > previous.revision;
+  if (previous.renderState === "ready" && (refreshed.renderState === "queued" || refreshed.renderState === "rendering")) return false;
   return !previous.updatedAt || !refreshed.updatedAt ||
     Date.parse(refreshed.updatedAt) >= Date.parse(previous.updatedAt);
 }

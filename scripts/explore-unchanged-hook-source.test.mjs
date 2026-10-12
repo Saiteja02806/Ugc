@@ -23,3 +23,10 @@ test("real edits, wall text, added audio, unknown duration and other containers 
   assert.equal(canReuseUnchangedHookSource(source, edit, "owned-audio"), false);
   assert.equal(canReuseUnchangedHookSource(null, edit, null), false);
 });
+
+test("paired music volume changes render; the saved paired volume can reuse the unchanged source", () => {
+  const paired = { ...source, metadata: { referenceAudioPreview: { referenceId: "paired", title: "Exact track", audioUrl: "https://media.example/track.mp3", cleanVideoUrl: null, volume: .35 } } };
+  assert.equal(canReuseUnchangedHookSource(paired, { ...edit, musicVolume: .35 }, null), true);
+  assert.equal(canReuseUnchangedHookSource(paired, { ...edit, musicVolume: .2 }, null), false);
+  assert.equal(canReuseUnchangedHookSource(paired, { ...edit, musicVolume: 0 }, null), false);
+});

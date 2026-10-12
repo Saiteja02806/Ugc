@@ -7,6 +7,7 @@ import * as schedulingDraft from "../lib/explore/workflow-scheduling-draft.ts";
 
 const read = (path) => readFileSync(new URL(`../components/explore/${path}`, import.meta.url), "utf8");
 const panel = read("workflow-creation-panel.tsx");
+const navigation = read("workflow-section-navigation.tsx");
 const schedule = read("workflow-scheduling-panel.tsx");
 const edit = read("workflow-composition-panel.tsx");
 const workspace = read("workflow-edit-workspace.tsx");
@@ -15,7 +16,7 @@ function load(source) {
   const imports = {
     react: { useId: () => "schedule-test" },
     "@base-ui/react/tabs": { Tabs: { List: "tablist", Tab: "tab" } },
-    "lucide-react": { Sparkles: "sparkles", Check: "check" },
+    "lucide-react": { Sparkles: "sparkles", Check: "check", Eye: "eye", EyeOff: "eye-off" },
     "@/components/social/platform-icon": { SocialPlatformIcon: "platform-icon" },
     "@/components/ui/button": { Button: "button" },
     "@/components/ui/input": { Input: "input" },
@@ -23,6 +24,9 @@ function load(source) {
     "@/lib/explore/workflow-scheduling-draft": schedulingDraft,
     "@/components/generation/ai-studio-composer": { AiStudioSettingSelect: "select" },
     "@/components/explore/workflow-creation.module.css": { default: {} },
+    "@/components/explore/workflow-schedule-review.module.css": { default: {} },
+    "@/components/explore/workflow-section-layout.module.css": { default: {} },
+    "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
     "react/jsx-runtime": { jsx: element, jsxs: element, Fragment: "fragment" },
   };
   const exported = {};
@@ -63,34 +67,38 @@ test("both workflows have three accessible, permanently mounted section panels",
     assert.match(scheduling, /<WorkflowSchedulingPanel/);
     assert.match(source, /Object.values\(scheduleDraft\)\.some\(Boolean\)/);
     assert.match(source, /Your local changes are not saved/);
-    assert.match(source, /section === "edit" \? <WorkflowEditWorkspace/);
+    assert.match(source, /section === "edit" \? [\s\S]*?<WorkflowEditWorkspace/);
     assert.match(source, /<WorkflowScheduleWorkspace draft=\{scheduleDraft\}/);
   }
 });
 
 test("each section shows only its own primary action and supports keyboard tab activation", () => {
   const { WorkflowCreationPanel } = load(panel);
+  const { WorkflowSectionNavigation } = load(navigation);
+  const nav = WorkflowSectionNavigation();
+  const tabs = nodes(nav).filter((node) => node.type === "tab");
+  assert.deepEqual(tabs.map((node) => node.props.value), ["create", "edit", "schedule"]);
+  for (const [index, label] of ["Create", "Edit", "Schedule"].entries()) assert.equal(text(tabs[index]), label);
+  assert.equal(nav.props.activateOnFocus, undefined, "Focusing a tab must not start preparation or change stages");
   for (const section of ["create", "edit", "schedule"]) {
     const tree = WorkflowCreationPanel({ kind: "hook", section, children: "content" });
-    const tabs = nodes(tree).filter((node) => node.type === "tab");
-    assert.deepEqual(tabs.map((node) => [node.props.value, text(node)]), [["create", "Create"], ["edit", "Edited demo"], ["schedule", "Schedule"]]);
-    assert.equal(nodes(tree).find((node) => node.type === "tablist").props.activateOnFocus, true);
+    assert.equal(nodes(tree).filter((node) => node.type === "tab").length, 0);
     const actions = nodes(tree).filter((node) => node.type === "button");
     assert.equal(actions.length, 1);
     assert.equal(actions[0].props.disabled, true);
     assert.equal(tree.props["data-section"], section);
-    assert.match(text(actions[0]), new RegExp(section === "create" ? "Generate video" : section === "edit" ? "Apply edits" : "Schedule post"));
+    assert.match(text(actions[0]), new RegExp(section === "create" ? "Generate video" : section === "edit" ? "Prepare final video" : "Review schedule"));
   }
 });
 
-test("connected Apply edits and Schedule post forward real actions and render guarded progress/errors", () => {
+test("connected Prepare final video and Review schedule forward real actions and render guarded progress/errors", () => {
   const { WorkflowCreationPanel } = load(panel);
   for (const kind of ["hook", "phone"]) for (const section of ["edit", "schedule"]) {
     let calls = 0, refreshes = 0;
     const action = { disabled: false, busy: false, message: "Ready to confirm.", error: "A response was lost.", onAction() { calls++; }, refresh() { refreshes++; } };
     const tree = WorkflowCreationPanel({ kind, section, [section]: action, children: "settings" });
     const buttons = nodes(tree).filter(n => n.type === "button");
-    const primary = buttons.find(n => text(n) === (section === "edit" ? "Apply edits" : "Schedule post"));
+    const primary = buttons.find(n => text(n) === (section === "edit" ? "Prepare final video" : "Review schedule"));
     assert.equal(primary.props.disabled, false); primary.props.onClick(); assert.equal(calls, 1);
     assert.match(visibleText(tree), /Ready to confirm/); assert.match(text(nodes(tree).find(n => n.props.role === "alert")), /response was lost/);
     buttons.find(n => text(n) === "Refresh status").props.onClick(); assert.equal(refreshes, 1);
@@ -132,7 +140,7 @@ test("Schedule footer stays clean without implying publishing is connected", () 
   for (const kind of ["hook", "phone"]) {
     const tree = WorkflowCreationPanel({ kind, section: "schedule", children: "settings" });
     const footer = nodes(tree).find((node) => node.type === "footer");
-    assert.equal(visibleText(footer), "Schedule post");
+    assert.equal(visibleText(footer), "Review schedule");
     const action = nodes(footer).find((node) => node.type === "button");
     assert.equal(action.props.disabled, true);
     assert.equal(action.props["aria-describedby"], `${kind}-preview-limits`);
@@ -154,7 +162,7 @@ test("spare desktop Create space goes to the instructions field without stretchi
   const form = read("workflow-creation-form.tsx");
   const styles = read("workflow-creation.module.css");
   const desktop = styles.slice(styles.indexOf("@media (min-width: 1024px) {"), styles.indexOf("@media (min-width: 1024px) and"));
-  assert.match(form, /<div className=\{creation.instructionsField\}>/);
+  assert.match(form, /<div className=\{kind === "hook" \? focused.brief : creation.instructionsField\}>/);
   assert.match(desktop, /\.controls\[data-section="create"\] \.controlContent/);
   assert.match(desktop, /\.controls\[data-section="create"\] \.sectionPanel:not\(\[hidden\]\):not\(\[data-ending-style\]\)/);
   assert.match(desktop, /\.controls\[data-section="create"\] \.instructionsField\s*\{ flex: 1/);
@@ -168,12 +176,12 @@ test("editing excludes scheduling and explains shared subtitle scope", () => {
   assert.match(creationCanvas, /Selected source video preview/);
   assert.match(creationCanvas, /Continue to edit/);
   assert.match(creationCanvas, /Add your app screen and instructions in Create/);
-  assert.doesNotMatch(edit, /Demo sound|<details|aria-label="Scheduling"|Schedule<\/Button>/);
+  assert.doesNotMatch(edit, /Demo sound|aria-label="Scheduling"|Schedule<\/Button>/);
   assert.match(edit, /Demo audio/);
   assert.match(edit, /EXPLORE_SUBTITLE_SCOPE_LABEL/);
   assert.match(edit, /including both segments; nothing is trimmed automatically/);
   assert.match(workspace, /demo.asset \? <>\{demoFraming \? <WorkflowDemoPreview/);
-  assert.match(workspace, /: <WorkflowMediaPlayer asset=\{demo.asset\}/);
+  assert.match(workspace, /: <WorkflowMediaPlayer asset=\{demoPreview \?\? demo.asset\}/);
   assert.match(workspace, /className=\{creation.demoPlayer\}/);
   assert.doesNotMatch(workspace, /autoPlay|\.mp4|setInstructions|onInstructionsChange/);
   assert.match(workspace, /draft.caption \|\|/);
@@ -195,5 +203,6 @@ test("shared polish uses neutral disabled actions, visible focus and reduced-mot
   assert.match(styles, /prefers-reduced-motion: reduce[\s\S]*\.referenceButton[^}]*transition: none/);
   assert.match(styles, /max-width: 1023px[^}]*height: 44px/);
   assert.doesNotMatch(panel, /disabled:opacity-75|Video rendering is not connected yet/);
-  for (const source of [schedule, edit, read("workflow-creation-form.tsx")]) assert.match(source, /<h2 className="sr-only">/);
+  assert.match(schedule, /<h2 className="text-lg font-semibold tracking-tight">Schedule your/);
+  for (const source of [edit, read("workflow-creation-form.tsx")]) assert.match(source, /<h2 className="sr-only">/);
 });

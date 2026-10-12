@@ -145,6 +145,7 @@ docs/ide-access-implementation-checklist-2026-10-11.md
 docs/ide-local-media-transfer-implementation-2026-10-11.md
 docs/ide-video-finishing-implementation-2026-10-11.md
 docs/mcp-audio-access-candidate-2026-10-12.md
+docs/mcp-audio-plugin-candidate-2026-10-12.md
 docs/mcp-audio-transfer-candidate-2026-10-12.md
 docs/mcp-audio-video-import-candidate-2026-10-12.md
 docs/mcp-audio-video-import-checkpoint-2026-10-12.md
@@ -167,6 +168,7 @@ docs/production-migration-filename-alignment-2026-10-12.json
 docs/production-release-2026-10-12.md
 docs/production-release-excluded-paths-2026-10-12.md
 docs/production-release-included-paths-2026-10-12.txt
+docs/production-release-receipt-2026-10-12.json
 docs/productivity-folder-inventory-2026-10-11.md
 docs/productivity-hook-part3-import-2026-10-11.md
 docs/productivity-image-cleanup-2026-10-11.md
@@ -348,6 +350,7 @@ scripts/audits/carousel-copy-fixes-2026-10-12.mjs
 scripts/audits/inspect-release-worktree-2026-10-12.mjs
 scripts/audits/summarize-carousel-copy-fixes-2026-10-12.mjs
 scripts/audits/validate-combined-release-2026-10-12.mjs
+scripts/audits/verify-release-workflows.browser.cjs
 scripts/build-ugc-pilot-plugin.py
 scripts/carousel-delivery-rotation-db.test.mjs
 scripts/carousel-retired-source-replay-db.test.mjs

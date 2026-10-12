@@ -2,6 +2,23 @@
 
 Last updated: 2026-10-12
 
+## 2026-10-12 Combined production release
+
+- Source `4d7947a62b783a93f37d2bc3ceefdc0c1132b1e1` is deployed to the
+  website, MCP, all six UGC worker services and both active worker jobs. The
+  website and worker now share the slideshow V2 contract. Existing image
+  retirement/allocation repairs and the lowercase/list-body validation fixes
+  are included. The Inter alias is verified in every worker's startup log.
+- Publishing defaults load from Settings in production. The Trending modal
+  and Hook drawer use the saved defaults and a Change default settings link;
+  account restrictions remain enforced. Explore's separate Schedule editor
+  still retains its per-post controls. Existing schedules are unchanged.
+- The experimental counted-body repair and reader-scenario voice policies
+  remain unselected for customer jobs. Deployment does not establish improved
+  AI copy quality or engagement. The evidence/lesson-first proposal remains
+  unimplemented. See `docs/production-release-2026-10-12.md` for deployment
+  receipts, acceptance coverage and limitations.
+
 ## 2026-10-12 Worker Inter font resolution
 
 - Staging revealed that the bundled Inter variable TTF declares its family as
@@ -11,7 +28,11 @@ Last updated: 2026-10-12
   runtime availability diagnostic accepts the aliased family. Slide text,
   sizing, weight, line-fitting rules and saved historical renders are unchanged.
 
-## 2026-10-12 Copy contract fixes and opt-in voice experiment (local, not deployed)
+## 2026-10-12 Copy contract fixes and opt-in voice experiment
+
+Release follow-up: the stable contract fixes below are included in the combined
+production release. The optional policies are present in source but remain
+disabled for customer jobs; their isolated results do not justify activation.
 
 - Structure 1 now requests `body: null` for configured list slides and removes
   only an exact ordered duplicate of `listItems` from legacy bodies. Distinct

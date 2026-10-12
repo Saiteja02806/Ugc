@@ -14,9 +14,11 @@ import { registerOperationMcpTools, registeredOperationMcpTools } from "./operat
 
 import { registerEditDraftMcpTools, registeredEditDraftMcpTools } from "./edit-draft-tools";
 
+import { registerEditExportMcpTools, registeredEditExportMcpTools } from "./edit-export-tools";
+
 export const registeredMcpTools: readonly string[] = [
   ...registeredReadMcpTools, ...registeredMutationMcpTools, ...registeredGenerationMcpTools,
-  ...registeredFinishingMcpTools, ...registeredDemoMcpTools, ...registeredUploadRecoveryMcpTools, ...registeredOperationMcpTools, ...registeredEditDraftMcpTools,
+  ...registeredFinishingMcpTools, ...registeredDemoMcpTools, ...registeredUploadRecoveryMcpTools, ...registeredOperationMcpTools, ...registeredEditDraftMcpTools, ...registeredEditExportMcpTools,
 ];
 
 export const mcpHandler = createMcpHandler(
@@ -30,6 +32,7 @@ export const mcpHandler = createMcpHandler(
     registerUploadRecoveryMcpTools(server);
     registerOperationMcpTools(server);
     registerEditDraftMcpTools(server);
+    registerEditExportMcpTools(server);
     return server;
   },
   {

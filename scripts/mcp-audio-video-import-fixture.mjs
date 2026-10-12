@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createHash, randomUUID } from "node:crypto";
 import { PGlite } from "@electric-sql/pglite";
-export const migration="20261012135219_mcp_audio_video_import.sql";
+export const migration="20261012150824_mcp_audio_video_import.sql";
 const sql=name=>readFileSync(new URL("../supabase/migrations/"+name,import.meta.url),"utf8");
 export async function importDatabase(){
   const db=new PGlite();

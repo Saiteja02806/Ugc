@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ugc-pilot",
-  "version": "0.1.6",
-  "description": "Draft UGC copy, generate and finish videos, and manage owned demos and recoverable uploads through UGC Pilot.",
+  "version": "0.1.7",
+  "description": "Draft UGC copy, generate and finish videos, edit saved drafts, and transfer owned media through UGC Pilot.",
   "author": {
     "name": "UGC Pilot",
     "url": "https://www.getugcpilot.com"
@@ -19,7 +19,7 @@
       "interface": {
         "displayName": "UGC Pilot",
         "shortDescription": "Images and videos in your AI",
-        "longDescription": "Draft UGC hooks, wall text, footage prompts and slideshow copy. Generate images and short videos using UGC Pilot credits. Where enabled, upload local clips, attach a demo, render exact video text and retrieve finished media through the video finishing tools. Finishing requires separate OAuth permission. Slideshow rendering, audio generation and social publishing are not included. Private beta candidate; check live capabilities.",
+        "longDescription": "Draft UGC copy and generate images or short videos using UGC Pilot credits. Upload local clips from a terminal-capable IDE, attach demos, and retrieve finished media where enabled. Open, save and export the application's Edit-page trim/text drafts. Writes require the corresponding OAuth permission. Slideshow rendering, audio generation and social publishing remain unavailable. Private beta; check live capabilities.",
         "developerName": "UGC Pilot",
         "websiteURL": "https://getugcpilot.com",
         "supportURL": "https://getugcpilot.com/contact",
@@ -33,7 +33,8 @@
           "Video generation",
           "Media library",
           "Video finishing where enabled",
-          "Demo library and upload recovery where deployed"
+          "Demo library and upload recovery where deployed",
+          "Saved Edit drafts and export where enabled"
         ],
         "logo": "./assets/logo.png",
         "composerIcon": "./assets/logo.png",
@@ -95,7 +96,7 @@
         }
       },
       "publication": {
-        "release_notes": "Adds dedicated Demo registration/list/get/delete and upload reservation recovery with stable request IDs, lookup, renewal and server byte probing. The local helper saves an intent receipt before reservation. Requires the matching twenty-two-tool server release; installed Codex/Claude acceptance and public directory submission remain pending."
+        "release_notes": "Packages the local transfer helper, Demo/upload recovery, operation history and shared Edit-page open/save/export workflows for the 33-tool server contract. Preserves the hosted MCP endpoint and per-user OAuth. Installed Codex/Claude journey acceptance and public directory approval remain pending."
       }
     }
   }

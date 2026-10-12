@@ -134,11 +134,11 @@ export function validatePackage({ submission = false } = {}) {
   assert(portableInterface);
   assert.deepEqual(codex.extensions?.["com.openai"], portableExtension, "Compatibility onboarding/review metadata differs");
 
-  const knownTools = new Set(["read", "mutation", "generation", "finishing", "demo", "upload-recovery", "operation"].flatMap((kind) => {
+  const knownTools = new Set(["read", "mutation", "generation", "finishing", "demo", "upload-recovery", "operation", "edit-draft", "edit-export"].flatMap((kind) => {
     const code = fs.readFileSync(path.join(root, `lib/mcp/${kind}-tools.ts`), "utf8");
     return [...code.matchAll(/registerTool\("([a-z_]+)"/g)].map((match) => match[1]);
   }));
-  assert.equal(knownTools.size, 26, "Review the package contract when the MCP tool surface changes");
+  assert.equal(knownTools.size, 33, "Review the package contract when the MCP tool surface changes");
   const reviewReadiness = validateOpenAiMetadata(plugin, knownTools, { submission });
   const skillNames = new Set(packageFiles.filter((relative) => relative.endsWith("/SKILL.md")).map((relative) => path.basename(path.dirname(relative))));
   for (const item of json("evaluation-cases.json").cases) {
@@ -171,7 +171,7 @@ export function validatePackage({ submission = false } = {}) {
   }
   const files = packageFiles.map((relative) => ({
     path: relative,
-    sha256: createHash("sha256").update(fs.readFileSync(path.join(pluginDir, relative))).digest("hex"),
+    sha256: createHash("sha256").update(relative.endsWith(".png") ? fs.readFileSync(path.join(pluginDir, relative)) : fs.readFileSync(path.join(pluginDir, relative), "utf8").replaceAll("\r\n", "\n")).digest("hex"),
   }));
   return { name: plugin.name, version: plugin.version, endpoint, files, skillCount: skillNames.size, toolCount: knownTools.size, reviewReadiness };
 }

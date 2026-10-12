@@ -402,6 +402,87 @@
         "cancel_operation"
       ],
       "expected": "Requires normal jobs:write consent and saves the complete action receipt before submitting. On OPERATION_CHANGED, reads status and obtains a new explicit action rather than silently changing the revision or request ID."
+    },
+    {
+      "id": "edit-read-only",
+      "prompt": "Show my saved Edit drafts. Do not change or render anything.",
+      "expected_skills": [
+        "edit-ugc-draft"
+      ],
+      "expected_tools": [
+        "list_edit_drafts"
+      ],
+      "forbidden_tools": [
+        "open_edit_draft",
+        "update_edit_draft",
+        "export_edit_draft",
+        "finish_video",
+        "generate_video"
+      ],
+      "expected": "Lists owned saved drafts without creating an editor or claiming a render."
+    },
+    {
+      "id": "edit-save-reopen",
+      "prompt": "Open my selected owned raw clip, trim it from one to four seconds, add the exact bottom text I supplied, and save it. Do not export.",
+      "expected_skills": [
+        "edit-ugc-draft"
+      ],
+      "expected_tools": [
+        "get_asset",
+        "open_edit_draft",
+        "update_edit_draft",
+        "get_edit_draft"
+      ],
+      "forbidden_tools": [
+        "export_edit_draft",
+        "finish_video",
+        "generate_video"
+      ],
+      "expected": "Uses the selected source and returned draft ID, preserves other current content, saves a UUID with exact revision/inputs, then verifies the saved content. No render."
+    },
+    {
+      "id": "edit-save-lost-response",
+      "prompt": "The draft save response was lost. Recover that save without overwriting later website edits.",
+      "expected_skills": [
+        "edit-ugc-draft"
+      ],
+      "expected_tools": [
+        "update_edit_draft",
+        "get_edit_draft"
+      ],
+      "expected": "Reuses the persisted save UUID and identical inputs; rereads after replay. Does not invent a new UUID or advance the expected revision to bypass a conflict."
+    },
+    {
+      "id": "edit-export-download",
+      "prompt": "Export the selected saved draft revision and save the finished video at my chosen new path.",
+      "expected_skills": [
+        "edit-ugc-draft",
+        "manage-ugc-media"
+      ],
+      "expected_tools": [
+        "get_edit_export_capabilities",
+        "get_edit_draft",
+        "export_edit_draft",
+        "get_edit_export",
+        "get_asset"
+      ],
+      "expected": "Checks availability, persists a distinct export UUID and exact revision, tracks the immutable export and retrieves its ready output. Local download uses real bytes; a pending receipt is not a completed file."
+    },
+    {
+      "id": "edit-export-recovery",
+      "prompt": "Our Edit export is still pending after reconnecting. Check it without starting another render.",
+      "expected_skills": [
+        "edit-ugc-draft"
+      ],
+      "expected_tools": [
+        "get_edit_export"
+      ],
+      "forbidden_tools": [
+        "export_edit_draft",
+        "generate_video",
+        "finish_video"
+      ],
+      "expected": "Reads by the saved dedicated export UUID, reports actual state, and does not substitute a generic finishing request ID or allocate a fresh export."
     }
   ],
   "notes": "Expected skill sequences are evaluation criteria, not measured host activation results. Brand reads may be used when explicitly relevant and connected. Draft-only cases below supply briefs or declare missing context."

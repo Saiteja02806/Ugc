@@ -9,7 +9,7 @@ Use the connected account's discovered UGC Pilot tools. Do not request another u
 
 ## Browse and resume
 
-Use `list_assets` for the requested image/video/creator-footage collection and its pagination cursor. Current tools list these visual assets; do not promise audio or generation-history tools. Use `get_asset` for URLs and metadata rather than guessing a storage URL.
+Use `list_assets` for the requested image/video/creator-footage collection and its pagination cursor. Current tools list these visual assets. Use discovered `list_operations`/`get_operation` for owner-scoped application background-job history; do not promise audio-library access. Use `get_asset` for URLs and metadata rather than guessing a storage URL.
 
 Use `get_job` when the user supplies an existing MCP generation job ID. Poll existing work without resubmitting generation. A completed job's `output_asset_ids` can be read with `get_asset`. A website-created job may not be an MCP generation job; `NOT_FOUND` also protects account isolation. Do not claim all website history is available through this tool.
 

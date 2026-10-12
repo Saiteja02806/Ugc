@@ -57,19 +57,19 @@ export default function ConnectAiPage() {
         <section className="mt-12 grid gap-6 border-t border-border pt-8 md:grid-cols-2">
           <div>
             <h2 className="text-lg font-semibold">Take the setup with you</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">The beta bundle includes connection settings, workflow skills, and a setup guide. Install it through a supported plugin flow; uploading it into a chat alone does not connect your account.</p>
+            <p className="mt-2 text-sm leading-6 text-muted">The beta bundle includes connection settings, editing workflows, a local upload/download helper, and a setup guide. Install it through a supported plugin flow; uploading it into a chat alone does not connect your account.</p>
             <div className="mt-5 flex flex-wrap gap-3">
-              <a href="/downloads/ugc-pilot-0.1.2.zip" download className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2">
+              <a href="/downloads/ugc-pilot-0.1.7.zip" download className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2">
                 <Download className="size-4" aria-hidden="true" />Download plugin bundle
               </a>
-              <a href="/downloads/ugc-pilot-0.1.2-setup.md" download className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Download setup guide</a>
-              <a href="/downloads/ugc-pilot-0.1.2.zip.sha256" className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Verify download</a>
+              <a href="/downloads/ugc-pilot-0.1.7-setup.md" download className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Download setup guide</a>
+              <a href="/downloads/ugc-pilot-0.1.7.zip.sha256" className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Verify download</a>
             </div>
           </div>
           <div className="rounded-2xl border border-border bg-card p-5">
             <h2 className="text-lg font-semibold">What you can create today</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">Generate images and 3–10 second videos, animate an image from your library, and retrieve finished media. Create 1, 2, or 4 outputs at a time.</p>
-            <p className="mt-3 text-sm leading-6 text-muted">This beta does not include creator selection, carousels, or social publishing. Fresh-account setup is being verified before a public plugin release.</p>
+            <p className="mt-2 text-sm leading-6 text-muted">Generate images and short videos, upload hook/demo clips from a supported IDE, attach demos, and retrieve finished media. Open and save Edit drafts, then export a selected revision when enabled.</p>
+            <p className="mt-3 text-sm leading-6 text-muted">Local file transfer needs Node.js and ffprobe in your IDE. Full application access, including carousels and social publishing, remains in development. Codex and Claude workflow verification is still in progress.</p>
             <Link href="/ai-studio" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Open AI Studio<ArrowRight className="size-4" aria-hidden="true" /></Link>
           </div>
         </section>

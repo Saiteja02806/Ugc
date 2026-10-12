@@ -16,7 +16,7 @@ async function setup(){
   await db.exec('create unique index job_request on background_jobs(user_id,idempotency_key) where idempotency_key is not null;');
   const start=baseline.lastIndexOf('CREATE OR REPLACE FUNCTION public.finalize_edit_render (');
   await db.exec(baseline.slice(start,baseline.indexOf('\n$function$;',start)+13));
-  for(const file of ['20261012035734_edit_draft_revision_safety.sql','20261012092903_edit_export_requests.sql'])
+  for(const file of ['20261012035734_edit_draft_revision_safety.sql','20261012094628_edit_export_requests.sql'])
     await db.exec(readFileSync(new URL('../supabase/migrations/'+file,import.meta.url),'utf8'));
   await db.query(`insert into media_assets(id,user_id,collection,source_type,title,storage_key,url,mime_type,status,duration_seconds)
     values($1,'owner-a','video','upload','Source','owned-source','https://example.test/source','video/mp4','ready',10)`,[id(1)]);

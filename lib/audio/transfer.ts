@@ -45,13 +45,13 @@ export function verifyAudioTransferToken(value:string|null,mode:Token["mode"],no
 function expires(){return Math.floor(Date.now()/1000)+300;}
 function checksum(bytes:Uint8Array){return createHash("sha256").update(bytes).digest("hex");}
 function canonicalMime(value:string){return ({"audio/mp3":"audio/mpeg","audio/x-wav":"audio/wav","audio/x-m4a":"audio/mp4"} as Record<string,string>)[value]??value;}
-function containerMatches(bytes:Uint8Array,type:string){const b=Buffer.from(bytes);return type==="audio/wav"?b.toString("ascii",0,4)==="RIFF"&&b.toString("ascii",8,12)==="WAVE":
+export function audioContainerMatches(bytes:Uint8Array,type:string){const b=Buffer.from(bytes);return type==="audio/wav"?b.toString("ascii",0,4)==="RIFF"&&b.toString("ascii",8,12)==="WAVE":
   type==="audio/ogg"?b.toString("ascii",0,4)==="OggS":type==="audio/mp4"?b.toString("ascii",4,8)==="ftyp":
   type==="audio/webm"?b.subarray(0,4).equals(Buffer.from([26,69,223,163]))&&b.includes(Buffer.from("webm")):
   type==="audio/mpeg"&&(b.toString("ascii",0,3)==="ID3"||b[0]===255&&(b[1]&224)===224);}
 async function assetRow(owner:string,id:string){const {data,error}=await audioDb().from("audio_assets").select("*").eq("user_id",owner).eq("id",id).maybeSingle();
   if(error)throw new AudioError("Audio transfer status is unavailable.",503);return data&&data.user_id===owner?data:null;}
-function checkedAsset(row:Record<string,unknown>){
+export function checkedAudioTransferAsset(row:Record<string,unknown>){
   const type=mime.parse(canonicalMime(String(row.mime_type))),size=Number(row.size_bytes),hash=sha.parse(row.checksum);
   if(!Number.isSafeInteger(size)||size<32||size>AUDIO_MAX_OUTPUT_BYTES||typeof row.object_key!=="string"||typeof row.user_id!=="string"||typeof row.id!=="string")throw new AudioError("Audio transfer metadata is unavailable.",503);
   validatePrivateAudioKey(row.object_key);
@@ -62,7 +62,7 @@ function checkedAsset(row:Record<string,unknown>){
 export async function getAudioDownloadForOwner(owner:string,id:string){
   const row=await assetRow(owner,id);if(!row||row.status!=="ready")return null;
   if(!audioTransferReadiness().download)return null;
-  const checked=checkedAsset(row),expiry=expires();
+  const checked=checkedAudioTransferAsset(row),expiry=expires();
   const token=signAudioTransferToken({v:1,mode:"download",owner,asset_id:id,expires:expiry,sha256:checked.hash,size:checked.size,mime_type:checked.type,object_identity:checked.object_identity});
   const url=new URL(`/api/audio/delivery/${id}`,appOrigin());url.searchParams.set("token",token);
   return {url:url.toString(),expires_at:new Date(expiry*1000).toISOString(),mime_type:checked.type,file_size_bytes:checked.size,sha256:checked.hash};
@@ -91,7 +91,7 @@ export async function handleAudioTransferUpload(request:Request){
   try{const token=verifyAudioTransferToken(new URL(request.url).searchParams.get("token"),"upload");if(!token||token.mode!=="upload")throw new AudioError("Audio transfer link is invalid or expired.",403);
     const input=token.input,type=request.headers.get("content-type")?.split(";",1)[0].trim().toLowerCase();if(type!==input.mime_type)throw new AudioError("Audio transfer MIME type does not match the approved file.");
     await assertAudioUploadAccess(token.owner);
-    const bytes=await boundedBody(request,input.file_size_bytes);if(checksum(bytes)!==input.sha256||!containerMatches(bytes,input.mime_type))throw new AudioError("Audio bytes do not match the approved file.");
+    const bytes=await boundedBody(request,input.file_size_bytes);if(checksum(bytes)!==input.sha256||!audioContainerMatches(bytes,input.mime_type))throw new AudioError("Audio bytes do not match the approved file.");
     await probeAudio(bytes,binaries());
     const form=new FormData();form.set("file",new File([bytes],input.file_name,{type:input.mime_type}));form.set("purpose",input.purpose);form.set("requestKey",input.request_id);
     const result=await uploadAudioForOwner(token.owner,async()=>form);
@@ -101,8 +101,8 @@ export async function handleAudioTransferUpload(request:Request){
 export async function handleAudioTransferDownload(request:Request,assetId:string){
   try{const token=verifyAudioTransferToken(new URL(request.url).searchParams.get("token"),"download");if(!token||token.mode!=="download"||token.asset_id!==assetId)throw new AudioError("Audio transfer link is invalid or expired.",403);
     const row=await assetRow(token.owner,assetId);if(!row||row.status!=="ready")throw new AudioError("Audio not found.",404);
-    const checked=checkedAsset(row);if(checked.hash!==token.sha256||checked.size!==token.size||checked.type!==token.mime_type||checked.object_identity!==token.object_identity)throw new AudioError("The audio changed. Retrieve a fresh download link.",409);
-    const bytes=await readPrivateAudio(row.object_key);if(bytes.length!==token.size||checksum(bytes)!==token.sha256||!containerMatches(bytes,token.mime_type))throw new AudioError("Audio download verification failed.",503);
+    const checked=checkedAudioTransferAsset(row);if(checked.hash!==token.sha256||checked.size!==token.size||checked.type!==token.mime_type||checked.object_identity!==token.object_identity)throw new AudioError("The audio changed. Retrieve a fresh download link.",409);
+    const bytes=await readPrivateAudio(row.object_key);if(bytes.length!==token.size||checksum(bytes)!==token.sha256||!audioContainerMatches(bytes,token.mime_type))throw new AudioError("Audio download verification failed.",503);
     const extension=({"audio/mpeg":"mp3","audio/wav":"wav","audio/mp4":"m4a","audio/ogg":"ogg","audio/webm":"webm"} as Record<string,string>)[token.mime_type];
     return new Response(bytes as Uint8Array<ArrayBuffer>,{headers:{...headers,"Content-Type":token.mime_type,"Content-Length":String(bytes.length),"Content-Disposition":`attachment; filename="${row.test_only?"free-test-":""}audio.${extension}"`}});
   }catch(error){return failed(error);}

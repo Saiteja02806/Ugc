@@ -454,6 +454,63 @@ Last updated: 2026-10-12
   `docs/explore-slideshow-references-2026-10-10.md`. These changes have not been
   deployed or exercised with a paid provider generation.
 
+## 2026-10-11 Productivity source retirement and allocation audit
+
+- The user rejected all 39 images under
+  `productivity_humanhookpart-2/human` and the specific
+  `productivity-human/Pinterest_2026-08-16 (61)/pinterest_029.jpg`.
+  Exact SHA-256 matching identifies 40 canonical production assets: 39 hook
+  backgrounds and one human background. Eleven local copies outside the named
+  paths share rejected hashes; the import denylist covers these copies too.
+- These are Carousel still-image roles, not Hook-video footage. Runtime roles
+  are hook, human and static; source batch folders do not create an Other role.
+  The misspelled `produtivity_hook_part3` is unsupported by the standard importer.
+- Safe removal uses inactive, archived source tombstones with
+  `runtime_exclusion_reason=user_requested_retirement` and explicit
+  `source_metadata.retirement.preserveHistoricalRenders=true`. Approved review
+  metadata and source bytes are retained for existing completed rendered
+  slides and owned edits. All fresh selection remains strictly active/ready;
+  generic rejected or archived sources never receive this historical exception.
+- Migration `20261011075309_guard_retired_carousel_reservation_replays.sql`
+  fences both existing-reservation replay branches without deleting assigned
+  usage, rotation state or source provenance. A failed generation whose source
+  was retired must use a successor rather than replaying that retired source.
+- Role-library preparation excludes retired paths and hashes. Import and
+  reconciliation reject stale manifests, preserve historical tombstones and
+  recheck locked rows before any destructive reconciliation. Originals needed
+  by old slides are not physically deleted from storage.
+- The live pre-removal audit found 60 hook, 240 human and 132 static assets;
+  every eligible image appeared in completed output, and no profile reused an
+  eligible role image while another was unseen. Fresh selection is newest-first,
+  then per-profile/category/role shuffle cycles. Usage is reservation-based:
+  failed generations consume rotation, and shown/saved/published image exposure
+  is not tracked. Global equal usage and perceptual-duplicate exclusion are not
+  current guarantees. See `docs/productivity-image-cleanup-2026-10-11.md` for
+  rollout status and `docs/carousel-image-allocation-audit-2026-10-11.md` for evidence.
+
+## 2026-10-10 Generation acceptance and actionable copy repair
+
+- The `bb83ce3` production release includes the six-slide screenshot migration,
+  v22 measured copy planner, independent reconciliation and dedicated edit queue.
+  A subsequent real run completed nine six-slide Carousels, including nine final
+  product screenshots. The previously exhausted October 10 feed now has seven
+  ready and three decided Carousel slots, with no ownership/output mismatch.
+- One candidate still failed because repair attempts repeatedly reused a blocked
+  phrase without identifying it. The v23 worker repair names the exact rejected
+  phrase and gives the same quality guidance to initial and repair requests.
+  Fixed typography, word ranges, grounding and measured rendering remain gates.
+- A second production response contained all five complete plans but omitted an
+  outer closing brace and emitted whitespace until its token limit. The worker
+  can append at most the two outer object terminators; exact batch keys and all
+  existing candidate parsing/validation remain mandatory. It never reconstructs
+  missing text or fields. `providerEnvelopeRepaired` records this syntax repair.
+  Compact JSON and real scene descriptions are explicit model instructions.
+- The v23 repair is released in `9e3a130`. Generation revision
+  `ugc-carousel-worker-00110-lpb` is ready at 100% traffic; startup logs verify
+  matching build/runtime commits and the v23 planner. The production website
+  also serves that commit. See `docs/carousel-generation-repairs-2026-10-10.md`
+  for acceptance evidence. Existing saved images are not rewritten.
+
 ## 2026-10-10 Slideshow latency, screenshot persistence and history repairs (local implementation)
 
 - Interactive slideshow renders now target `carousel-edit` / `ugc-carousel-edit`

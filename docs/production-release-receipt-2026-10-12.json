@@ -1,0 +1,283 @@
+{
+  "recordedAt": "2026-10-12T15:27:20.098Z",
+  "deployedSourceCommit": "4d7947a62b783a93f37d2bc3ceefdc0c1132b1e1",
+  "releaseBranch": "codex/complete-release-20261009",
+  "website": {
+    "project": "ugc",
+    "projectId": "prj_mVOxt7AUko5egMAESaxjGyC60Kvu",
+    "url": "https://getugcpilot.com",
+    "deploymentId": "dpl_APkxhGiNzNPGiAWBezoc1zPWgD9W",
+    "status": "READY",
+    "target": "production",
+    "sourceCommit": "4d7947a62b783a93f37d2bc3ceefdc0c1132b1e1",
+    "framework": "nextjs",
+    "buildDurationSeconds": 122.078,
+    "rollbackDeploymentId": "dpl_4bszasuCMsTM3ibWiH1eFBgbUfFA"
+  },
+  "mcp": {
+    "project": "ugc-mcp",
+    "projectId": "prj_IU0eCl6JEnHt2mMaEV0g2Ej1NMYU",
+    "url": "https://mcp.getugcpilot.com",
+    "deploymentId": "dpl_FoAACavGxABJ5mZBRvZ796gLEfSr",
+    "status": "READY",
+    "target": "production",
+    "sourceCommit": "4d7947a62b783a93f37d2bc3ceefdc0c1132b1e1",
+    "framework": "nextjs",
+    "buildDurationSeconds": 74.14,
+    "rollbackDeploymentId": "dpl_D2GUbYmA4YVWiuNDDYxgD4rsRPwc",
+    "pluginVersion": "0.1.8",
+    "toolCount": 33,
+    "skills": 10
+  },
+  "cloudBuildId": "2534d0c1-829a-4786-8af6-9f03824288ee",
+  "workers": [
+    {
+      "service": "ugc-ai-generation-worker",
+      "revision": "ugc-ai-generation-worker-r-4d7947a6",
+      "percent": 100,
+      "image": "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker@sha256:e5045bed113509ba073a16ceb7f65abac0917eb93beb077e734194fe81fa20f0",
+      "commit": "4d7947a62b783a93f37d2bc3ceefdc0c1132b1e1",
+      "verified": true,
+      "ingress": "internal",
+      "startupIdentityVerified": true,
+      "font": {
+        "available": true,
+        "family": "Inter Variable",
+        "style": "Medium"
+      },
+      "configurationPreserved": true,
+      "previous": {
+        "image": "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker@sha256:94eeaa1266b91f16611a452b947335c916087438a8bb01e62141a279e4921bc8",
+        "traffic": [
+          {
+            "revision": "ugc-ai-generation-worker-00170-qay",
+            "percent": 100
+          }
+        ]
+      }
+    },
+    {
+      "service": "ugc-carousel-worker",
+      "revision": "ugc-carousel-worker-r-4d7947a6",
+      "percent": 100,
+      "image": "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker@sha256:e5045bed113509ba073a16ceb7f65abac0917eb93beb077e734194fe81fa20f0",
+      "commit": "4d7947a62b783a93f37d2bc3ceefdc0c1132b1e1",
+      "verified": true,
+      "ingress": "internal",
+      "startupIdentityVerified": true,
+      "font": {
+        "available": true,
+        "family": "Inter Variable",
+        "style": "Medium"
+      },
+      "configurationPreserved": true,
+      "previous": {
+        "image": "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker@sha256:1aa2154ba2c1969d71f0c7950f4dc5bdbaf5aace8a183c96d8f94b1f8afb9f1f",
+        "traffic": [
+          {
+            "revision": "ugc-carousel-worker-00110-lpb",
+            "percent": 100
+          }
+        ]
+      }
+    },
+    {
+      "service": "ugc-carousel-edit-worker",
+      "revision": "ugc-carousel-edit-worker-r-4d7947a6",
+      "percent": 100,
+      "image": "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker@sha256:e5045bed113509ba073a16ceb7f65abac0917eb93beb077e734194fe81fa20f0",
+      "commit": "4d7947a62b783a93f37d2bc3ceefdc0c1132b1e1",
+      "verified": true,
+      "ingress": "internal",
+      "startupIdentityVerified": true,
+      "font": {
+        "available": true,
+        "family": "Inter Variable",
+        "style": "Medium"
+      },
+      "configurationPreserved": true,
+      "previous": {
+        "image": "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker@sha256:e42643fbacdde6fdee5ad12917931a2b986ca391daf65f34a115547198bbfafc",
+        "traffic": [
+          {
+            "revision": "ugc-carousel-edit-worker-00002-7hw",
+            "percent": 100
+          }
+        ]
+      }
+    },
+    {
+      "service": "ugc-video-render-worker",
+      "revision": "ugc-video-render-worker-r-4d7947a6",
+      "percent": 100,
+      "image": "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker@sha256:e5045bed113509ba073a16ceb7f65abac0917eb93beb077e734194fe81fa20f0",
+      "commit": "4d7947a62b783a93f37d2bc3ceefdc0c1132b1e1",
+      "verified": true,
+      "ingress": "internal",
+      "startupIdentityVerified": true,
+      "font": {
+        "available": true,
+        "family": "Inter Variable",
+        "style": "Medium"
+      },
+      "configurationPreserved": true,
+      "previous": {
+        "image": "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker@sha256:e42643fbacdde6fdee5ad12917931a2b986ca391daf65f34a115547198bbfafc",
+        "traffic": [
+          {
+            "revision": "ugc-video-render-worker-00097-4js",
+            "percent": 100
+          }
+        ]
+      }
+    },
+    {
+      "service": "ugc-reaction-render-worker",
+      "revision": "ugc-reaction-render-worker-r-4d7947a6",
+      "percent": 100,
+      "image": "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker@sha256:e5045bed113509ba073a16ceb7f65abac0917eb93beb077e734194fe81fa20f0",
+      "commit": "4d7947a62b783a93f37d2bc3ceefdc0c1132b1e1",
+      "verified": true,
+      "ingress": "internal",
+      "startupIdentityVerified": true,
+      "font": {
+        "available": true,
+        "family": "Inter Variable",
+        "style": "Medium"
+      },
+      "configurationPreserved": true,
+      "previous": {
+        "image": "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker@sha256:e42643fbacdde6fdee5ad12917931a2b986ca391daf65f34a115547198bbfafc",
+        "traffic": [
+          {
+            "revision": "ugc-reaction-render-worker-00031-ddq",
+            "percent": 100
+          }
+        ]
+      }
+    },
+    {
+      "service": "ugc-social-publish-worker",
+      "revision": "ugc-social-publish-worker-r-4d7947a6",
+      "percent": 100,
+      "image": "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker@sha256:e5045bed113509ba073a16ceb7f65abac0917eb93beb077e734194fe81fa20f0",
+      "commit": "4d7947a62b783a93f37d2bc3ceefdc0c1132b1e1",
+      "verified": true,
+      "ingress": "internal",
+      "startupIdentityVerified": true,
+      "font": {
+        "available": true,
+        "family": "Inter Variable",
+        "style": "Medium"
+      },
+      "configurationPreserved": true,
+      "previous": {
+        "image": "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker@sha256:e42643fbacdde6fdee5ad12917931a2b986ca391daf65f34a115547198bbfafc",
+        "traffic": [
+          {
+            "revision": "ugc-social-publish-worker-00068-rbj",
+            "percent": 100
+          }
+        ]
+      }
+    }
+  ],
+  "jobs": [
+    {
+      "name": "ugc-video-render-job",
+      "image": "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker@sha256:e5045bed113509ba073a16ceb7f65abac0917eb93beb077e734194fe81fa20f0",
+      "sourceCommit": "4d7947a62b783a93f37d2bc3ceefdc0c1132b1e1",
+      "executedForVerification": false,
+      "configurationPreserved": true,
+      "previousImage": "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker@sha256:e42643fbacdde6fdee5ad12917931a2b986ca391daf65f34a115547198bbfafc"
+    },
+    {
+      "name": "ugc-carousel-replenishment",
+      "image": "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker@sha256:e5045bed113509ba073a16ceb7f65abac0917eb93beb077e734194fe81fa20f0",
+      "sourceCommit": "4d7947a62b783a93f37d2bc3ceefdc0c1132b1e1",
+      "executedForVerification": false,
+      "configurationPreserved": true,
+      "previousImage": "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker@sha256:e42643fbacdde6fdee5ad12917931a2b986ca391daf65f34a115547198bbfafc"
+    }
+  ],
+  "database": {
+    "projectId": "kltxwijhluawgveykfbt",
+    "appliedByThisRelease": [
+      "20261012135237",
+      "20261012135247",
+      "20261012135300"
+    ],
+    "localVersionsMatchedAtPreparation": 126,
+    "historicalSqlReplayed": false,
+    "destructiveMigrations": false,
+    "privilegesAndRlsVerified": true,
+    "note": "A separate audio release applied another additive migration subsequently; it is not part of this source release."
+  },
+  "validation": {
+    "applicationChecks": 932,
+    "workerChecks": 603,
+    "workflowViewportCases": 28,
+    "independentClipViewportCases": 7,
+    "typescript": "passed",
+    "productionBuilds": "passed",
+    "mcpSuite": "passed",
+    "pluginIntegrity": "passed",
+    "productionDependencyVulnerabilities": 0,
+    "scopedLintErrors": 0,
+    "scopedLintExistingWarnings": 9,
+    "migrationGuards": "passed"
+  },
+  "productionBrowser": {
+    "signedIn": true,
+    "domain": "https://getugcpilot.com",
+    "verified": [
+      "Settings publishing defaults",
+      "Explore four workflows and four quick starts",
+      "Talking Head Use video mode",
+      "Talking Head Create/Edit/Schedule",
+      "Hook Create/Edit/Schedule",
+      "Wall of text Create/Edit/Schedule",
+      "Slideshows Create/Edit/Schedule",
+      "Audio catalogue and text-to-speech controls",
+      "Trending existing content",
+      "Owned Library demos",
+      "Calendar and account/media scheduling setup"
+    ],
+    "paidGenerationSubmitted": false,
+    "uploadSubmitted": false,
+    "socialPostSubmitted": false,
+    "trendingLikeSubmitted": false,
+    "trendingDefaultsModal": "Real-component browser tests passed; production Like was not triggered to avoid recording a user decision."
+  },
+  "observability": {
+    "checkedAt": "2026-10-12T15:27:20.100Z",
+    "workerErrorEvents": 0,
+    "mcpErrorFatalEvents": 0,
+    "website5xxRequestRows": 0,
+    "websiteWarningEvents": 10,
+    "warningKinds": [
+      "MaxListenersExceededWarning",
+      "DEP0169 url.parse deprecation"
+    ],
+    "warningClustersPredateRelease": true,
+    "sampledProtectedHookResponseStatus": 206,
+    "vercelDrainsConfigured": 0,
+    "externalMonitoringVerified": false,
+    "limitedToSampledWindow": true
+  },
+  "policies": {
+    "countedBodyRepairDefaultEnabled": false,
+    "readerScenarioVoiceDefaultEnabled": false,
+    "lessonEvidenceProposalImplemented": false
+  },
+  "exclusionsManifest": "production-release-excluded-paths-2026-10-12.md",
+  "includedManifest": "production-release-included-paths-2026-10-12.txt",
+  "excludedLocalPaths": 404,
+  "limitations": [
+    "No new production paid generation or actual social publication was performed.",
+    "Existing historical renders were not regenerated.",
+    "AI factual quality, complete-batch reliability and TikTok engagement remain separate unresolved criteria.",
+    "Separate audio candidate source was not merged or deployed by this release.",
+    "Recheck aliases before rollback; another authorized release may follow."
+  ]
+}

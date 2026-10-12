@@ -9,7 +9,7 @@ export function getCarouselFontRuntimeInfo() {
   const [family, style, file] = (result.stdout ?? "").trim().split("|");
 
   return {
-    available: result.status === 0 && family?.split(",").some((name) => name.trim().toLowerCase() === "inter"),
+    available: result.status === 0 && family?.split(",").some((name) => /^(inter|inter variable)$/.test(name.trim().toLowerCase())),
     family: family || null,
     file: file || null,
     style: style || null,

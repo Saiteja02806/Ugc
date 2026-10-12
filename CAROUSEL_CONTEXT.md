@@ -2,6 +2,15 @@
 
 Last updated: 2026-10-12
 
+## 2026-10-12 Worker Inter font resolution
+
+- Staging revealed that the bundled Inter variable TTF declares its family as
+  `Inter Variable`; Linux Fontconfig otherwise resolved the renderer's `Inter`
+  request to DejaVu Sans. The worker image now installs an explicit Inter alias
+  and fails its build if Fontconfig cannot resolve the bundled family. The
+  runtime availability diagnostic accepts the aliased family. Slide text,
+  sizing, weight, line-fitting rules and saved historical renders are unchanged.
+
 ## 2026-10-12 Copy contract fixes and opt-in voice experiment (local, not deployed)
 
 - Structure 1 now requests `body: null` for configured list slides and removes

@@ -29,11 +29,13 @@ COPY --from=build /app/node_modules/geist/dist/fonts/geist-sans/Geist-Bold.ttf /
 COPY --from=build /app/node_modules/geist/dist/fonts/geist-sans/Geist-Black.ttf /usr/local/share/fonts/geist/
 COPY --from=build /app/src/assets/fonts/InterTight-VariableFont_wght.ttf /usr/local/share/fonts/inter-tight/
 COPY --from=build /app/src/assets/fonts/Inter-VariableFont_wght.ttf /usr/local/share/fonts/inter/
+COPY --from=build /app/src/assets/fonts/61-ugc-inter.conf /etc/fonts/conf.d/61-ugc-inter.conf
 COPY --from=build /app/src/assets/fonts/arial-bold.ttf /usr/local/share/fonts/arial/Arial-Bold.ttf
 COPY --from=build /app/src/assets/fonts/arial-regular.ttf /usr/local/share/fonts/arial/Arial-Regular.ttf
 COPY --from=build /app/src/assets/fonts/avenir-next-demi-bold.ttf /usr/local/share/fonts/avenir-next/Avenir-Next-Demi-Bold.ttf
 
-RUN fc-cache -f
+RUN fc-cache -f \
+  && fc-match -f '%{family}\n' 'Inter:style=Medium' | grep -Fx 'Inter Variable'
 
 WORKDIR /app
 

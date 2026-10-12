@@ -15,7 +15,7 @@ test("the full bundle passes while reporting the missing review recording", () =
   const result = validatePackage();
   assert.equal(result.version, "0.1.8");
   assert.equal(result.skillCount, 10);
-  assert.equal(result.toolCount, 33);
+  assert.equal(result.toolCount, 43);
   assert.deepEqual(result.reviewReadiness, { submissionMaterialsComplete: false, pending: ["review.demo_recording_url"] });
 });
 

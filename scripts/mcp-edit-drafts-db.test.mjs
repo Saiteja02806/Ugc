@@ -21,7 +21,7 @@ async function setup() {
   assert.ok(start >= 0);
   await db.exec(baseline.slice(start,baseline.indexOf('\n$function$;',start)+13));
   await db.exec(migration);
-  await db.exec(readFileSync(new URL("../supabase/migrations/20261012051657_edit_open_draft.sql", import.meta.url),"utf8"));
+  await db.exec(readFileSync(new URL("../supabase/migrations/20261012052534_edit_open_draft.sql", import.meta.url),"utf8"));
   await db.query(`insert into media_assets(id,user_id,collection,source_type,title,file_name,storage_key,url,mime_type,status,duration_seconds)
     values($1,'owner-a','video','upload','Source','source.mp4','private-key','https://example.test/private','video/mp4','ready',10)`,[id(1)]);
   await db.query(`insert into editable_videos(id,user_id,project_id,source_video_id,source,title,source_video_url,duration_seconds,draft_json)

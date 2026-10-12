@@ -1,6 +1,6 @@
 # Open or create Edit drafts through MCP — 12 October 2026
 
-Status: implemented and verified locally; migration, coordinated production release and native account workflow acceptance are pending. Source registers 30 tools. This step covers the dedicated Edit page, not Explore composition or slideshow draft persistence. Full application access remains unfinished.
+Status: implemented and verified locally; the exact additive migration is applied; coordinated production release and native account workflow acceptance are pending. Source registers 30 tools. This step covers the dedicated Edit page, not Explore composition or slideshow draft persistence. Full application access remains unfinished.
 
 ## Behavior
 
@@ -21,3 +21,7 @@ New drafts may have null content, representing an unedited source. Update tools 
 ## Release and acceptance remaining
 
 Apply the exact reviewed additive RPC migration, verify service-only invoker permissions and source-body identity, stage both hosted projects from one commit, confirm READY/CI and promote website then MCP. Verify production domain aliases, route/auth isolation and fresh authenticated discovery. A selected real owned source is still needed for native open → edit → reopen acceptance; no customer draft will be created just to prove the tool is registered. Codex/Claude customer journey acceptance, dedicated export, updated public plugin distribution and broader application parity remain unfinished.
+
+Applied migration: authoritative version `20261012052534` (`edit_open_draft`); filename alignment changes no SQL. SHA-256 `e5d8d59213a2625f90a58f96be15a80b03a49477e81b305a101a37abd7c5ce55`, 3638 LF bytes. Applied normalized-body MD5 `d07a138d625665b1e424874fadc6df06` matches the tested/committed source. Privileges are service-only, SECURITY INVOKER, with an empty search path. Security advisors returned only the previously expected INFO `rls_enabled_no_policy` class and no WARN/ERROR findings. No account draft was created by the migration.
+
+Reviewed runtime commit `471a68edc44384106cff01b59a74865d0d2a1dee`. Website staged build `dpl_2bnCDVseTHoX3aR9e1BqioaAC1bG` and MCP staged build `dpl_55XV1t9VgaYrAdbuENgAgguxmZ23` use the intended project/commit identities. READY status/promotion/production alias checks remain pending. [Draft PR #36](https://github.com/Saiteja02806/Ugc/pull/36) is stacked on the existing shared draft branch. Source change, configuration/test and evidence files are included; unrelated primary-worktree changes, logs/fixtures and local configuration are excluded from this scoped release.

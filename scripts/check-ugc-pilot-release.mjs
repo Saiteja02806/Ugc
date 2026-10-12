@@ -29,7 +29,7 @@ await check("setup page", `${website}/connect-ai`, 200, {}, (_, bytes) => {
   assert(html.includes(`/downloads/ugc-pilot-${version}.zip.sha256`), "Setup page points to a different checksum");
   assert(html.includes("noindex"), "Private beta setup must remain noindex");
 });
-for (const current of new Set(["0.1.0", "0.1.1", "0.1.2", "0.1.7", version])) {
+for (const current of new Set(["0.1.0", "0.1.1", "0.1.2", "0.1.7", "0.1.8", version])) {
   const file = `ugc-pilot-${current}.zip`;
   await check(`archive ${current}`, `${website}/downloads/${file}`, 200, {}, async (_, bytes, item) => {
     const local = await fs.readFile(new URL(`../public/downloads/${file}`, import.meta.url));
@@ -46,6 +46,14 @@ await check("setup guide", `${website}/downloads/ugc-pilot-${version}-setup.md`,
   const local = await fs.readFile(new URL(`../public/downloads/ugc-pilot-${version}-setup.md`, import.meta.url), "utf8");
   assert(bytes.equals(Buffer.from(local.replaceAll("\r\n", "\n"))), "Production guide differs from reviewed canonical source");
 });
+// Older standalone guides are release artifacts too, not just the ZIPs.
+for (const file of await fs.readdir(new URL("../public/downloads/", import.meta.url))) {
+  if (!file.startsWith("ugc-pilot-") || !file.endsWith(".md") || file === `ugc-pilot-${version}-setup.md`) continue;
+  await check(`preserved guide ${file}`, `${website}/downloads/${file}`, 200, {}, async (_, bytes) => {
+    const local = await fs.readFile(new URL(`../public/downloads/${file}`, import.meta.url), "utf8");
+    assert.equal(bytes.toString().replaceAll("\r\n", "\n"), local.replaceAll("\r\n", "\n"), "Older production guide differs from reviewed source");
+  });
+}
 for (const path of ["/contact", "/terms"]) await check(path, `${website}${path}`, 200);
 await check("AI privacy disclosure", `${website}/privacy`, 200, {}, (_, bytes) => {
   assert(bytes.toString().includes("Connections to AI assistants"), "Missing AI connection disclosure");

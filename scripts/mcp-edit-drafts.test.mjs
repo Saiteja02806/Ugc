@@ -8,6 +8,7 @@ mock.module('../lib/firebase/server-auth.ts',{namedExports:{FirebaseAuthRequestE
 mock.module('../lib/edit/private-video-delivery.ts',{namedExports:{withPrivateEditDelivery:async video=>video}});
 process.env.NEXT_PUBLIC_SUPABASE_URL='https://draft-fixture.supabase.co';
 process.env.SUPABASE_SERVICE_ROLE_KEY='offline-draft-test-key';
+const {POST:websiteOpen}=await import("../app/api/edit/videos/route.ts");
 const {GET:websiteGet,PATCH:websiteSave}=await import('../app/api/edit/videos/[sourceVideoId]/route.ts');
 const {registerEditDraftMcpTools}=await import('../lib/mcp/edit-draft-tools.ts');
 const {EditDraftSaveSession}=await import('../lib/edit/draft-save-session.ts');
@@ -16,7 +17,7 @@ const {normalizeEditableVideoDraftForDuration}=await import('../lib/edit/editor-
 const id=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const content=text=>({trimStartSeconds:0,trimEndSeconds:null,textOverlays:[{id:'title',position:'top',style:'clean',text}]});
 function harness(){
-  const h={calls:[],rows:new Map(),receipts:new Map()};
+  const h={calls:[],rows:new Map(),receipts:new Map(),assets:new Map(),openCalls:0};
   const r=n=>({id:id(n),user_id:'owner-a',project_id:'project-a',source_video_id:id(100+n),source:'hook',title:'Hook',ratio:'9:16',status:'draft',
     draft_json:content('original'),draft_revision:0,duration_seconds:10,created_at:`2026-10-11T00:00:00.${String(n).padStart(6,'0')}Z`,updated_at:'2026-10-11T00:00:00.123456Z',deleted_at:null,
     source_video_url:'private-source-secret',thumbnail_url:'private-thumb-secret',rendered_video_url:'private-output-secret',latest_render_id:id(500)});
@@ -24,6 +25,16 @@ function harness(){
   globalThis.fetch=async(input,init)=>{
     const req=input instanceof Request?input:new Request(input,init),url=new URL(req.url);h.calls.push(url);
     const body=req.method==='POST'?await req.json():null;
+    if(url.pathname.endsWith('/rpc/edit_open_draft')){
+      h.openCalls++;
+      const asset=h.assets.get(body.p_asset_id);
+      if(!asset||asset.user_id!==body.p_user_id||asset.deleted_at)return Response.json({message:'edit_open_not_found'},{status:400});
+      if(asset.status!=='ready')return Response.json({message:'edit_open_not_ready'},{status:400});
+      const existing=[...h.rows.values()].find(row=>row.user_id===body.p_user_id&&row.source_video_id===body.p_asset_id&&!row.deleted_at);
+      if(existing)return Response.json({video:existing,reused:true});
+      const created={...r(900),source_video_id:asset.id,user_id:body.p_user_id,title:asset.title,project_id:asset.project_id??'test-project-001',draft_json:body.p_initial_draft,draft_revision:0,status:body.p_initial_draft?'draft':'ready'};
+      h.rows.set(created.id,created);return Response.json({video:created,reused:false});
+    }
     if(url.pathname.endsWith('/rpc/edit_save_draft')){
       const old=h.receipts.get(body.p_user_id+body.p_request_id);
       if(old){if(old.inputs!==JSON.stringify(body))return Response.json({message:'edit_draft_request_conflict private-secret'},{status:400});return Response.json({...old.result,replayed:true});}
@@ -33,7 +44,10 @@ function harness(){
       row.draft_json=body.p_draft;row.draft_revision++;const result={video:structuredClone(row),replayed:false};
       h.receipts.set(body.p_user_id+body.p_request_id,{inputs:JSON.stringify(body),result});return Response.json(result);
     }
-    if(url.pathname.endsWith('/media_assets'))return Response.json(null);
+    if(url.pathname.endsWith('/media_assets')){
+      const asset=h.assets.get(url.searchParams.get('id')?.slice(3));
+      return Response.json(asset&&asset.user_id===url.searchParams.get('user_id')?.slice(3)&&!asset.deleted_at?asset:null);
+    }
     if(!url.pathname.endsWith('/editable_videos'))throw new Error('Unexpected database call');
     const source=url.searchParams.get('source_video_id')?.slice(3);
     const owner=url.searchParams.get('user_id')?.slice(3),target=url.searchParams.get('id')?.slice(3);
@@ -55,7 +69,7 @@ function harness(){
 const code=result=>JSON.parse(result.content[0].text).code;
 test('list/get/update enforce read and write consent before any database call and reject caller ownership fields',async()=>{
   const h=harness();
-  for(const [name,args]of[['list_edit_drafts',{}],['get_edit_draft',{draft_id:id(1)}],['update_edit_draft',{draft_id:id(1),request_id:id(9),expected_revision:0,content:content('new')}]]){
+  for(const [name,args]of[['open_edit_draft',{asset_id:id(101)}],['list_edit_drafts',{}],['get_edit_draft',{draft_id:id(1)}],['update_edit_draft',{draft_id:id(1),request_id:id(9),expected_revision:0,content:content('new')}]]){
     assert.equal(code(await h.call(name,args,'owner-a',[])),'INSUFFICIENT_SCOPE');assert.equal(h.calls.length,0);
     assert.equal(h.tools.get(name).config.inputSchema.safeParse({...args,user_id:'foreign'}).success,false);
   }
@@ -143,4 +157,29 @@ test('website saves target the opened draft even when legacy projects share a so
   assert.equal(h.rows.get(id(2)).draft_json.textOverlays[0].text,'selected');assert.equal(h.rows.get(id(1)).draft_json.textOverlays[0].text,'original');
   h.rows.set(id(3),h.row(3));assert.equal((await websiteSave(request(id(3)),context)).status,404);
   assert.equal((await websiteSave(request(id(2)),{params:Promise.resolve({sourceVideoId:id(103)})})).status,404);
+});
+
+function source(n,overrides={}){return {id:id(n),user_id:'owner-a',collection:'video',source_type:'upload',status:'ready',project_id:'project-a',title:'Source',
+  storage_key:'private-source-secret',url:'https://example.test/source',thumbnail_url:null,mime_type:'video/mp4',metadata:{},ratio:'9:16',width:720,height:1280,duration_seconds:10,
+  created_at:'2026-10-12T00:00:00Z',updated_at:'2026-10-12T00:00:00Z',deleted_at:null,...overrides};}
+test('MCP open and website open return the same draft, replay preserves edits and no output leaks storage details',async()=>{
+  const h=harness();h.assets.set(id(101),source(101,{metadata:{draft:content('initial')}}));
+  const first=(await h.call('open_edit_draft',{asset_id:id(101)})).structuredContent;
+  assert.equal(first.reused,false);assert.equal(first.draft.revision,0);assert.deepEqual(first.content,content('initial'));
+  await h.call('update_edit_draft',{draft_id:first.draft.draft_id,request_id:id(600),expected_revision:0,content:content('IDE edit')});
+  const request=new Request('https://example.test/api/edit/videos',{method:'POST',headers:{authorization:'Bearer fixture-owner-a','content-type':'application/json'},body:JSON.stringify({sourceVideoId:id(101)})});
+  const response=await websiteOpen(request),web=await response.json();assert.equal(response.status,200);assert.equal(web.video.draftId,first.draft.draft_id);
+  assert.equal(web.video.draft.textOverlays[0].text,'IDE edit');assert.equal(web.video.draftRevision,1);
+  const replay=(await h.call('open_edit_draft',{asset_id:id(101)})).structuredContent;assert.equal(replay.reused,true);assert.equal(replay.draft.revision,1);
+  assert.equal(h.rows.size,1);assert.doesNotMatch(JSON.stringify(replay),/private-source-secret|storage_key|source_video_url|latest_render_id|user_id/);
+});
+test('opening rejects insufficient consent, forged metadata and unowned/unready/unsupported sources before creation',async()=>{
+  const h=harness();const tool=h.tools.get('open_edit_draft');
+  for(const field of ['user_id','title','project_id','draft','source_video_url'])assert.equal(tool.config.inputSchema.safeParse({asset_id:id(101),[field]:'forged'}).success,false);
+  assert.equal(code(await h.call('open_edit_draft',{asset_id:id(101)},'owner-a',['assets:read'])),'INSUFFICIENT_SCOPE');assert.equal(h.calls.length,0);
+  for(const [n,overrides,expected]of [[101,{user_id:'other'},'NOT_FOUND'],[102,{deleted_at:'removed'},'NOT_FOUND'],[103,{status:'uploading'},'SOURCE_NOT_READY'],
+    [104,{source_type:'edit_export'},'UNSUPPORTED_SOURCE'],[105,{collection:'image',mime_type:'image/png'},'UNSUPPORTED_SOURCE']]){
+    h.assets.set(id(n),source(n,overrides));assert.equal(code(await h.call('open_edit_draft',{asset_id:id(n)})),expected);
+  }
+  assert.equal(h.openCalls,0);assert.equal(h.rows.size,0);
 });

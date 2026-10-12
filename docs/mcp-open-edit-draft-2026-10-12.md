@@ -1,0 +1,23 @@
+# Open or create Edit drafts through MCP — 12 October 2026
+
+Status: implemented and verified locally; migration, coordinated production release and native account workflow acceptance are pending. Source registers 30 tools. This step covers the dedicated Edit page, not Explore composition or slideshow draft persistence. Full application access remains unfinished.
+
+## Behavior
+
+`open_edit_draft(asset_id)` requires the existing `creative:write` scope. It opens a ready, owned raw video or influencer asset, creating the website's existing `editable_videos` record only when needed. It accepts no owner, project, title, media URL or initial content from callers. Existing draft content/revision, output URL, render ID and status are preserved on reopening. Returned tool content contains only the safe draft summary, normalized trim/text content, source asset ID and whether an existing draft was reused. Canonical URLs, storage keys and owner/render identifiers are omitted from MCP responses.
+
+The website's POST `/api/edit/videos` calls the same `openEditDraftForOwner` service. The service keeps source-metadata initialization for new records, validates owned raw source eligibility, and calls the new service-only `edit_open_draft` invoker RPC. SQL revalidates owner/readiness/deletion, locks the source against simultaneous removal, serializes opens by owner/source, and creates or returns the editor in one transaction. The existing owner/project/source unique constraint remains authoritative; removed projects are not resurrected. Existing legacy projects are selected by updated time and a deterministic UUID tiebreaker, matching subsequent website loads. Source classification, canonical URLs, duration, project and ratio come from the owned media row. No billing, queue, worker, generation or render action is included.
+
+New drafts may have null content, representing an unedited source. Update tools already accept trim start 0, trim end null and no text overlays; authored changes are saved with the existing revision-safe request receipt flow. This tool does not export the dedicated Edit renderer, schedule, publish or manage Explore/slideshow drafts.
+
+## Verification
+
+- Complete `npm run test:mcp` passed, including HTTP discovery and annotations for all 30 source registrations and previous generation/upload/finishing/operation regressions.
+- Eight actual-baseline PGlite database checks passed: prior save/revision/render invariants plus create/reopen replay, same-source queued calls, preserved subsequent website edits, foreign/deleted/unready/unsupported source rejection, removed-project rejection, source classification/ratio, render-history preservation and service-only RPC permissions. Queued PGlite calls do not prove hosted multi-session concurrency.
+- Eleven service/tool/browser checks passed, including actual website POST and MCP open/update/read using one mocked REST store, current website GET/PATCH parity, consent-before-database behavior, rejected caller metadata, safe output and existing conflict/lost-response recovery. No production mutation was used as test evidence.
+- TypeScript, targeted ESLint, diff checks, local Next production build (synthetic public Firebase configuration), twelve existing Edit/private-media regressions, migration guard and six migration parity checks passed.
+- Production schema preflight confirmed the revision column, source/draft RLS and existing owner/project/source unique constraint. No pre-existing `edit_open_draft` function exists. The prior unrelated Edit boundary checker failure remains recorded in the saved-draft evidence; this step does not change the affected Creative Assets UI.
+
+## Release and acceptance remaining
+
+Apply the exact reviewed additive RPC migration, verify service-only invoker permissions and source-body identity, stage both hosted projects from one commit, confirm READY/CI and promote website then MCP. Verify production domain aliases, route/auth isolation and fresh authenticated discovery. A selected real owned source is still needed for native open → edit → reopen acceptance; no customer draft will be created just to prove the tool is registered. Codex/Claude customer journey acceptance, dedicated export, updated public plugin distribution and broader application parity remain unfinished.

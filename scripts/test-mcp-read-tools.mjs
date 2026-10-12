@@ -334,7 +334,7 @@ assert.equal(discovered.body.result.tools.find((tool) => tool.name === "get_prof
 for (const tool of discovered.body.result.tools) {
   assert.equal(tool._meta.securitySchemes[0].type, "oauth2");
   assert.equal(tool._meta.securitySchemes[0].scopes.length, 1);
-  const writes = ["create_upload", "confirm_upload", "delete_asset", "generate_image", "generate_video", "finish_video", "register_demo", "delete_demo", "renew_upload", "cancel_operation", "retry_operation", "update_edit_draft"];
+  const writes = ["create_upload", "confirm_upload", "delete_asset", "generate_image", "generate_video", "finish_video", "register_demo", "delete_demo", "renew_upload", "cancel_operation", "retry_operation", "update_edit_draft", "open_edit_draft"];
   const irreversible = ["delete_asset", "generate_image", "generate_video", "finish_video", "delete_demo", "cancel_operation", "retry_operation", "update_edit_draft"];
   assert.equal(tool.annotations.readOnlyHint, !writes.includes(tool.name), `${tool.name}: read-only annotation`);
   assert.equal(tool.annotations.destructiveHint, irreversible.includes(tool.name), `${tool.name}: destructive annotation`);

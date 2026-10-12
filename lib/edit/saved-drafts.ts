@@ -56,3 +56,26 @@ export async function updateSavedEditDraftForOwner(params: { userId: string; dra
   return receipt;
 }
 export type SavedDraftContent = EditableVideoDraftInput;
+
+/** Internal only: initial content is derived from the owned source's metadata. */
+export async function openSavedEditDraftRecord(userId: string, assetId: string, initialDraft: EditableVideoDraftInput | null) {
+  const { data, error } = await db().rpc("edit_open_draft", { p_user_id: userId, p_asset_id: assetId, p_initial_draft: initialDraft });
+  if (error) {
+    const known: Record<string, [string,string,number]> = {
+      edit_open_not_found: ["NOT_FOUND", "The source video was not found.",404],
+      edit_open_unsupported: ["UNSUPPORTED_SOURCE", "Only raw Creative Assets videos can be edited.",400],
+      edit_open_not_ready: ["SOURCE_NOT_READY", "This source video is not ready for editing.",409],
+      edit_open_removed: ["DRAFT_REMOVED", "This Edit project was removed and cannot be reopened.",409],
+      edit_open_invalid: ["INVALID_ASSET", "The source video cannot be opened for editing.",400],
+    };
+    const match = Object.entries(known).find(([key]) => error.message.includes(key));
+    if (match) throw new EditDraftError(...match[1]);
+    throw new EditDraftError("DRAFTS_UNAVAILABLE", "Could not open the Edit draft. Retry using the same source asset.",503);
+  }
+  const receipt = data as { video: SavedEditDraftRow; reused: boolean };
+  if (!receipt?.video || receipt.video.user_id !== userId || receipt.video.source_video_id !== assetId ||
+      receipt.video.deleted_at !== null || !z.uuid().safeParse(receipt.video.id).success ||
+      !editDraftRevision.safeParse(receipt.video.draft_revision).success || typeof receipt.reused !== "boolean")
+    throw new EditDraftError("DRAFTS_UNAVAILABLE", "Could not verify the opened Edit draft. Retry using the same source asset.",503);
+  return receipt;
+}

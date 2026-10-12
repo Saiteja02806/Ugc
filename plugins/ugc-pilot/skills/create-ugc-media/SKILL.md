@@ -31,3 +31,12 @@ For `completed`, call `get_asset` for each `output_asset_ids` entry and return t
 If a job failed, stalled, or was cancelled, report the returned error and current status. Resume/poll existing work before considering a new paid generation. Do not automatically create a new charge after a terminal failure. Handle authentication/scope errors through reauthorization; insufficient credits require the user to change their budget or account plan. Do not alter billing or queue infrastructure.
 
 For image → video requests, finish and retrieve the image first, then pass its asset ID to `generate_video`. Estimate the combined cost before beginning when both generations are requested.
+
+
+## Operation history and controls
+
+When discovered, use `list_operations` to find owned website or MCP jobs and `get_operation` for safe status, verified output IDs and a saved finishing request handle. History reads never start work. Older `get_job` remains restricted to MCP generation jobs.
+
+Only cancel/retry when the user requests that action. Both controls require `jobs:write` through normal OAuth consent. Read `get_operation` first. Persist a new request UUID and its complete `expected_updated_at` with the selected action/job ID in a non-secret local receipt before calling. Do not truncate timestamp precision. A supported retry may reserve the original generation cost again; follow the returned retry policy and current credits. Never retry uncertain or terminal provider submissions automatically.
+
+After a lost control response, reuse the exact saved request UUID, action, job ID and expected revision. A replay reports the current job; it never requests another retry. On `OPERATION_CHANGED`, read current status and get a new explicit action before making another request; do not silently mint a new key. Cancellation may be asynchronous. If these tools are absent, report that deployment state rather than calling Firebase website routes with an MCP token.

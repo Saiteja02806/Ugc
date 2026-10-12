@@ -25,7 +25,9 @@ export function isMcpUpload(asset: MediaAssetRow) {
 
 export function assertMcpUploadConfirmable(asset: MediaAssetRow) {
   if (!isMcpUpload(asset) ||
-      (asset.source_type !== "upload" && asset.source_type !== "influencer_upload")) {
+      (asset.source_type !== "upload" && asset.source_type !== "influencer_upload" &&
+       !(asset.source_type === "demo_upload" && asset.status === "ready" &&
+         asset.metadata && typeof asset.metadata === "object" && !Array.isArray(asset.metadata) && asset.metadata.mcpDemo === true))) {
     throw new UploadValidationError("NOT_FOUND", "Upload not found.");
   }
   if (asset.status !== "uploading" && asset.status !== "ready") {
@@ -101,7 +103,7 @@ export function validateMcpUploadConfirmation(params: {
     throw new UploadValidationError("INVALID_INPUT", "Image uploads do not have a video duration.");
   }
   if (asset.status === "ready" && (asset.width !== input.width || asset.height !== input.height ||
-      asset.duration_seconds !== durationSeconds)) {
+      (asset.duration_seconds !== durationSeconds && !(typeof asset.duration_seconds === "number" && typeof durationSeconds === "number" && Math.abs(asset.duration_seconds - durationSeconds) <= 0.05)))) {
     throw new UploadValidationError("UPLOAD_MISMATCH", "The saved media dimensions or duration differ from this confirmation.");
   }
 

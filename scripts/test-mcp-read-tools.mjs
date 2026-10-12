@@ -189,6 +189,9 @@ const { mcpHandler, registeredMcpTools } = await import("../lib/mcp/server.ts");
 const { decodeAssetCursor, encodeAssetCursor } = await import("../lib/mcp/asset-cursor.ts");
 const { POST: mcpRoutePost } = await import("../app/mcp/route.ts");
 const { gcsStorageProvider } = await import("../lib/storage/gcs.ts");
+const { uploadProbe } = await import("../lib/mcp/upload-probe.ts");
+uploadProbe.run = async row => row.collection === "image" ? { width: 640, height: 640, durationSeconds: null }
+  : { width: 1080, height: 1920, durationSeconds: 4 };
 const signedUploads = [];
 const tombstonedObjects = [];
 const deletedObjects = [];
@@ -331,8 +334,8 @@ assert.equal(discovered.body.result.tools.find((tool) => tool.name === "get_prof
 for (const tool of discovered.body.result.tools) {
   assert.equal(tool._meta.securitySchemes[0].type, "oauth2");
   assert.equal(tool._meta.securitySchemes[0].scopes.length, 1);
-  const writes = ["create_upload", "confirm_upload", "delete_asset", "generate_image", "generate_video", "finish_video"];
-  const irreversible = ["delete_asset", "generate_image", "generate_video", "finish_video"];
+  const writes = ["create_upload", "confirm_upload", "delete_asset", "generate_image", "generate_video", "finish_video", "register_demo", "delete_demo", "renew_upload", "cancel_operation", "retry_operation", "update_edit_draft", "open_edit_draft", "export_edit_draft"];
+  const irreversible = ["delete_asset", "generate_image", "generate_video", "finish_video", "delete_demo", "cancel_operation", "retry_operation", "update_edit_draft", "export_edit_draft"];
   assert.equal(tool.annotations.readOnlyHint, !writes.includes(tool.name), `${tool.name}: read-only annotation`);
   assert.equal(tool.annotations.destructiveHint, irreversible.includes(tool.name), `${tool.name}: destructive annotation`);
   assert.equal(tool.annotations.openWorldHint, false, `${tool.name}: bounded account annotation`);

@@ -9,6 +9,7 @@ import {
   jsonResponse,
   readJsonBody,
 } from "@/lib/demo/demo-api";
+import { deleteDemoForOwner, isRegisteredMcpDemoForOwner } from "@/lib/demo/demo-library";
 import { getDemoVideo, softDeleteDemoVideo } from "@/lib/demo/demo-storage";
 import { validateRawDemoKeyForOwner } from "@/lib/demo/demo-upload";
 import { deleteStorageObject } from "@/lib/storage/storage";
@@ -76,6 +77,16 @@ export async function DELETE(request: Request) {
     });
     const requestedKey = getString(body.key, 500);
 
+    if (await isRegisteredMcpDemoForOwner({
+      userId: auth.user.uid, demoId, projectId, key: demo.source_s3_key,
+    })) {
+      if (requestedKey && requestedKey !== demo.source_s3_key) {
+        return jsonResponse({ ok: false, error: "Demo delete key does not match the demo record." }, 409);
+      }
+      await deleteDemoForOwner({ userId: auth.user.uid, demoId, projectId });
+      return jsonResponse({ ok: true, demoId, projectId, key: demo.source_s3_key,
+        storageDeleted: false, storageWarning: "Source bytes retained for existing renders." });
+    }
     if (requestedKey) {
       const key = validateRawDemoKeyForOwner({
         userId: auth.user.uid,

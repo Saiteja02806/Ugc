@@ -38,14 +38,29 @@ class PluginBuildTests(unittest.TestCase):
         with zipfile.ZipFile(archive) as package:
             self.assertIsNone(package.testzip())
             self.assertEqual(sorted(package.namelist()), sorted("ugc-pilot/" + name for name in builder.FILES))
-            self.assertEqual(len([name for name in package.namelist() if name.endswith("/SKILL.md")]), 9)
+            self.assertEqual(len([name for name in package.namelist() if name.endswith("/SKILL.md")]), 10)
             for name in builder.FILES:
-                self.assertEqual(package.read("ugc-pilot/" + name), (builder.SOURCE / name).read_bytes())
+                self.assertEqual(package.read("ugc-pilot/" + name), (builder.SOURCE / name).read_bytes().replace(b"\r\n", b"\n") if Path(name).suffix in {".md", ".json", ".mjs"} else (builder.SOURCE / name).read_bytes())
+                if Path(name).suffix in {".md", ".json", ".mjs"}:
+                    self.assertNotIn(b"\r\n", package.read("ugc-pilot/" + name))
             versions = [json.loads(package.read("ugc-pilot/" + name))["version"] for name in ["plugin.json", ".codex-plugin/plugin.json", ".claude-plugin/plugin.json"]]
-            self.assertEqual(versions, ["0.1.4"] * 3)
+            self.assertEqual(versions, ["0.1.8"] * 3)
         self.assertIn(hashlib.sha256(before).hexdigest(), archive.with_suffix(".zip.sha256").read_text())
-        self.assertTrue((self.destination / "ugc-pilot-0.1.4-setup.md").exists())
+        self.assertTrue((self.destination / "ugc-pilot-0.1.8-setup.md").exists())
         self.assertFalse((self.destination / "ugc-pilot-setup.md").exists())
+        guide = (self.destination / "ugc-pilot-0.1.8-setup.md").read_text(encoding="utf-8")
+        self.assertNotIn("](skills/", guide)
+        self.assertIn("skills/edit-ugc-draft/SKILL.md", guide)
+        self.assertIn(".agents/plugins/marketplace.json", guide)
+
+    def test_reviewed_public_archive_matches_current_canonical_source(self):
+        archive = ROOT / "public/downloads/ugc-pilot-0.1.8.zip"
+        with zipfile.ZipFile(archive) as package:
+            self.assertIsNone(package.testzip())
+            self.assertEqual(sorted(package.namelist()), sorted("ugc-pilot/" + name for name in builder.FILES))
+            for name in builder.FILES:
+                self.assertEqual(package.read("ugc-pilot/" + name), builder.package_bytes(name))
+        self.assertEqual(archive.with_suffix(".zip.sha256").read_text().strip(), hashlib.sha256(archive.read_bytes()).hexdigest() + "  " + archive.name)
 
     def test_existing_version_is_never_replaced_with_different_bytes(self):
         archive = self.build()

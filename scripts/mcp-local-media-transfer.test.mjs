@@ -8,7 +8,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { inspectFile, uploadFile, recoverUpload, downloadAsset } from '../plugins/ugc-pilot/skills/manage-ugc-media/scripts/transfer-media.mjs';
+import { inspectFile, prepareUpload, uploadFile, recoverUpload, downloadAsset } from '../plugins/ugc-pilot/skills/manage-ugc-media/scripts/transfer-media.mjs';
 
 const run = promisify(execFile);
 const require = createRequire(import.meta.url);
@@ -196,4 +196,42 @@ test('CLI errors never print signed URLs, provider errors or credentials', async
   assert(!error.stderr.includes('private-secret'));
   const invalid = receiptPath('invalid-recovery'); await writeFile(invalid, JSON.stringify({ upload_url: 'provider-secret' }));
   await rejects(recoverUpload(invalid), 'INVALID_RECEIPT');
+});
+
+test('pre-reservation intent saves a stable request ID and exact metadata before any MCP request', async () => {
+  const intent = path.join(dir, 'intent-only.json');
+  const prepared = await prepareUpload(video, { receiptPath: intent, collection: 'influencer', ffprobe, title: '  Hook  ' });
+  assert.equal(prepared.create_upload.title, 'Hook');
+  assert.match(prepared.create_upload.request_id, /^[a-f0-9-]{36}$/);
+  assert.deepEqual(prepared.inspection, inspection);
+  const saved = JSON.parse(await readFile(intent, 'utf8'));
+  assert.doesNotMatch(JSON.stringify(saved), /signature|upload_url|storage.googleapis|[A-Za-z]:\\/);
+  const recovered = await recoverUpload(intent);
+  assert.deepEqual(recovered.get_upload, { request_id: prepared.create_upload.request_id });
+  assert.deepEqual(recovered.create_upload, prepared.create_upload);
+  assert.deepEqual(recovered.inspection, inspection);
+  await rejects(prepareUpload(video, { receiptPath: intent, collection: 'influencer', ffprobe }), 'RECEIPT_EXISTS');
+  saved.create_upload.upload_url = 'https://untrusted.example.test';
+  await writeFile(intent, JSON.stringify(saved));
+  await rejects(recoverUpload(intent), 'INVALID_RECEIPT');
+});
+
+test('explicit private-bucket receipt streams identical bytes; undeclared or mismatched bucket destinations are refused', async()=>{
+ const privateReservation={...reservation(),storage_bucket:'offline-private-media',
+  upload_url:reservation().upload_url.replace('/ugcsaas-media/','/offline-private-media/')};
+ let requests=0;
+ const output=await uploadFile(video,{reservation:privateReservation,inspection,receiptPath:receiptPath('private-upload'),ffprobe,
+  fetchImpl:async(url,options)=>{requests++;assert.equal(new URL(url).pathname.split('/')[1],'offline-private-media');
+   const chunks=[];for await(const chunk of options.body)chunks.push(chunk);assert.deepEqual(Buffer.concat(chunks),bytes);return new Response('',{status:200});}});
+ assert.equal(output.uploaded,true);assert.equal(requests,1);
+ assert.doesNotMatch(await readFile(receiptPath('private-upload'),'utf8'),/signature|storage_bucket|storage.googleapis/);
+ for(const [index,change] of [
+  r=>{delete r.storage_bucket;}, r=>{r.storage_bucket='different-bucket';},
+  r=>{r.storage_bucket='../bucket';}, r=>{r.upload_url=r.upload_url.replace('/media/','/media/%2e%2e/');},
+ ].entries()) {
+  const bad={...privateReservation};change(bad);
+  await assert.rejects(uploadFile(video,{reservation:bad,inspection,receiptPath:receiptPath(`private-invalid-${index}`),ffprobe,
+   fetchImpl:()=>{requests++;throw new Error('must not transfer');}}));
+ }
+ assert.equal(requests,1);
 });

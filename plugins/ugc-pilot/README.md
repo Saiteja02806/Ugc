@@ -1,21 +1,21 @@
-# UGC Pilot private beta — 0.1.4 candidate
+# UGC Pilot private beta — 0.1.8 candidate
 
-Draft UGC copy and video prompts in ordinary language, then use your connected UGC Pilot account when you ask to generate media. This package includes nine skills: the existing connection, generation and media-library workflows plus five creative workflows and a video-finishing workflow.
+Draft UGC copy and video prompts in ordinary language, then use your connected UGC Pilot account when you ask to generate media. This package includes ten skills covering connection, generation, media transfer, five creative workflows, video finishing, and shared Edit drafts/export.
 
 The package points to the existing hosted MCP at **https://mcp.getugcpilot.com/mcp**. It includes no server executable, credentials, or automatic installation script. Generation uses your UGC Pilot plan and credits, separately from your AI subscription.
 
-Terminal-capable IDEs can use the bundled [local transfer helper](skills/manage-ugc-media/references/local-transfer.md) to measure and upload actual hook/demo files, recover confirmation from a saved receipt, and download completed media without overwriting existing files. It requires Node.js 22+ and ffprobe. Hosts without process/file access need their own transfer mechanism. The helper never handles account OAuth or submits generation.
+Terminal-capable IDEs can use the bundled [local transfer helper](skills/manage-ugc-media/references/local-transfer.md) to measure and upload actual hook/demo files, recover reservation from a saved intent and confirmation from a saved transfer receipt, and download completed media without overwriting existing files. It requires Node.js 22+ and ffprobe. Hosts without process/file access need their own transfer mechanism. The helper never handles account OAuth or submits generation.
 
 ## Install and sign in
 
-- **Codex:** use Settings → MCP servers → Add server, choose Streamable HTTP, and paste the endpoint. Select Authenticate, sign into your UGC Pilot account, approve access, and restart the connection. To install the workflow skills as well, use the private plugin link supplied with this beta or your trusted plugin source.
+- **Codex:** use Settings → MCP servers → Add server, choose Streamable HTTP, and paste the endpoint. Select Authenticate, sign into your UGC Pilot account, approve access, and restart the connection. To load the workflow skills and helper, follow the repository marketplace example in the client setup guide, or update the plugin through your trusted installed source.
 - **Claude web / Desktop:** use Customize → Connectors → Add custom connector, paste the endpoint, finish OAuth, and enable it in the conversation. Organization policies may require administrator setup.
 - **Claude Code:** extract this folder and evaluate with `claude --plugin-dir /absolute/path/to/ugc-pilot`. Complete OAuth through `/mcp`. Marketplace installation is a separate distribution step.
 - **ChatGPT:** install the actual private plugin link supplied with the beta and connect when prompted. Developer mode offers a manual MCP connection for eligible accounts. A public directory listing has not been released.
 
 For exact CLI commands and troubleshooting, read [client setup](skills/connect-ugc-pilot/references/client-setup.md). Reading or uploading this ZIP in a web chat alone does not install an MCP connection.
 
-The host must load this skill package for the five creative workflows to be discoverable. Adding the MCP URL alone connects the tools; it does not install these local Markdown skills. A web-client connector and a plugin directory listing are separate distribution paths. This local candidate has not been uploaded or approved for a public directory, and existing installed/cached versions need an explicit update before they gain the new skills.
+The host must load this skill package for the five creative workflows to be discoverable. Adding the MCP URL alone connects the tools; it does not install these local Markdown skills. A web-client connector and a plugin directory listing are separate distribution paths. This package has not been approved for a public directory, and existing installed/cached versions need an explicit update before they gain the new skills.
 
 ## Creative requests
 
@@ -28,6 +28,7 @@ The host must load this skill package for the five creative workflows to be disc
 | “Write a four-slide slideshow.” | UGC Native Slideshow: copy, sequence and visual intentions |
 | “Generate the actual video.” | Create UGC Media: current capabilities, cost checks, submission and retrieval |
 | “Upload my hook and demo, attach them, and finish the video.” | Finish UGC Video: local transfer, owned clip preparation, composition and output retrieval where enabled |
+| “Open this video in Edit, trim it, save my text, and export it.” | Edit UGC Draft: the same saved draft as the application, revision-safe changes and dedicated export where enabled |
 
 The AI selects skills by deliverable and context, not fixed command keywords. Copy plus prompt requests can run both steps; selected copy remains unchanged. It reuses your brief or, when relevant and connected, reads your business profile. Drafting alone does not submit a paid generation. Slideshow JSON is a semantic content plan, not the existing application Carousel worker contract. Exact video text and demo composition use the separately gated finishing tools. Slide rendering still needs separate tools.
 
@@ -38,7 +39,15 @@ The AI selects skills by deliverable and context, not fixed command keywords. Co
 3. “Animate that image into one five-second vertical video with a slow camera push-in. Return the finished video link.”
 4. “Check the progress of the UGC Pilot job we already started. Do not create a new generation.”
 
-The current MCP supports account/brand reads, image/video library access, uploads/deletion, image generation, short-video generation, and job polling. Counts are 1, 2, or 4; clips are 3–10 seconds and prompts are limited to 1,000 characters. Ask the AI to check live capabilities before spending credits. This source candidate includes finishing capability checks, exact video edits/demo composition and finishing status, plus local file transfer. Deployment requires `MCP_VIDEO_FINISHING_ENABLED=true`, matching existing Explore renderer gates, and explicit `creative:write` permission. This package does not enable a deployed server. Slideshow rendering, audio generation, dedicated Demo registration, server draft/history APIs, scheduling and publishing remain outside this MCP slice.
+The coordinated server contract contains **33 tools**. Tool discovery and live capability checks are authoritative; installing this package does not enable server features or refresh a cached catalogue.
+
+- Account/brand reads, owned visual media, image generation and short-video generation. Counts are 1, 2 or 4; clips are 3–10 seconds and prompts have a 1,000-character limit. Check live costs and options before generation.
+- Owned Demo registration/list/get/delete, upload reservation lookup/list/renewal, and server probing before readiness. The helper preserves reservation intent and transfer confirmation separately.
+- Video finishing: exact text, supported trims/volumes/framing, demo composition and optional supported subtitles. These use the deployed finishing capability gates and `creative:write`; subtitles can incur a separate cost.
+- Owner-scoped operation history and supported cancellation/retry. Writes require `jobs:write`, the exact operation revision and a stable request UUID. Retry can reserve credits under the original plan; replay recovers the accepted action.
+- Shared Edit-page opening, listing, reading and revision-safe saving, plus dedicated export capabilities/submission/status. Save/open do not render. Export snapshots a saved revision using the website's renderer. See [Edit workflow](skills/edit-ugc-draft/SKILL.md). Persist the dedicated export UUID because generic job history does not yet recover it.
+
+Full application parity remains unfinished. Explore/slideshow working drafts, slideshow rendering, audio generation/upload, advanced generation/character choices, full Library/business settings, Carousel actions, social publishing and analytics require additional implementation. Private-media upload support is a separately gated server rollout. It requires a verified separate private bucket and its signing/read/cleanup configuration; the helper validates the server's explicit bucket descriptor and never bypasses unavailable storage.
 
 ## Verification status
 

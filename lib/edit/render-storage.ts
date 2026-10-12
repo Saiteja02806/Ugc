@@ -6,6 +6,10 @@ import {
   type EditableVideoDraftInput,
 } from "@/lib/edit/video-library";
 
+import type { SavedEditDraftRow } from "./saved-drafts";
+import { getSavedEditDraftForOwner, updateSavedEditDraftForOwner } from "./saved-drafts";
+import { EditDraftError } from "./draft-contract";
+
 const EDITABLE_VIDEOS_TABLE = "editable_videos";
 const VIDEO_RENDER_JOBS_TABLE = "video_render_jobs";
 export const DEFAULT_EDIT_PROJECT_ID = "test-project-001";
@@ -69,6 +73,10 @@ type FinalizeEditRenderArgs = {
 type RenderDatabase = {
   public: {
     Functions: {
+      edit_queue_render_snapshot: {
+        Args: { p_user_id: string; p_draft_id: string; p_render_id: string; p_draft: Json };
+        Returns: boolean;
+      };
       finalize_edit_render: {
         Args: FinalizeEditRenderArgs;
         Returns: boolean;
@@ -79,6 +87,7 @@ type RenderDatabase = {
         Insert: EditableVideoInsert;
         Relationships: [];
         Row: EditableVideoInsert & {
+          draft_revision: number;
           created_at: string;
           deleted_at: string | null;
           id: string;
@@ -315,160 +324,23 @@ export async function ensureEditableVideo(
 }
 
 export async function saveEditableVideoDraftForOwner(params: {
-  draft: EditableVideoDraftInput;
-  sourceVideoId: string;
-  userId: string;
+  draft: EditableVideoDraftInput; draftId: string; sourceVideoId: string; userId: string; requestId: string; expectedRevision: number;
 }) {
-  const current = await getEditableVideoRowForOwner(params);
-
-  if (!current) {
-    return null;
-  }
-
-  const draft = normalizeEditableVideoDraftInput(params.draft);
-
-  if (!draft) {
-    throw new Error("The edit draft is invalid.");
-  }
-
-  const { data, error } = await getSupabaseServerClient()
-    .from(EDITABLE_VIDEOS_TABLE)
-    .update({
-      draft_json: toJson(draft),
-      status: current.status === "rendering" ? "rendering" : "draft",
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", current.id)
-    .eq("user_id", params.userId)
-    .is("deleted_at", null)
-    .select("*")
-    .single();
-
-  if (error) {
-    throw new Error(`Could not save editable video draft: ${error.message}`);
-  }
-
-  return serializeEditableVideo(data);
+  const current = await getSavedEditDraftForOwner(params.userId, params.draftId);
+  if (current.source_video_id !== params.sourceVideoId) throw new EditDraftError("NOT_FOUND", "The saved Edit draft was not found for this video.", 404);
+  const receipt = await updateSavedEditDraftForOwner({ userId: params.userId, draftId: current.id,
+    requestId: params.requestId, expectedRevision: params.expectedRevision, draft: params.draft });
+  return serializeEditableVideo(receipt.video as EditableVideoRow);
 }
 
 export async function createQueuedRenderJob(input: CreateQueuedRenderJobInput) {
-  const now = new Date().toISOString();
-  const draftJson = toJson(input.draft);
-  const previousEditableVideo = await getEditableVideoRowForOwner(input);
-
-  const editableVideo: EditableVideoInsert = {
-    draft_json: draftJson,
-    duration_seconds: input.durationSeconds ?? null,
-    latest_render_id: input.renderId,
-    project_id: input.projectId,
-    ratio: input.ratio,
-    source: input.source,
-    source_video_id: input.sourceVideoId,
-    source_video_url: input.sourceVideoUrl,
-    status: "rendering",
-    thumbnail_url: input.thumbnailUrl ?? null,
-    title: input.title,
-    updated_at: now,
-    user_id: input.userId,
-  };
-
-  const { data: editableVideoRow, error: editableVideoError } =
-    await getSupabaseServerClient()
-      .from(EDITABLE_VIDEOS_TABLE)
-      .upsert(editableVideo, {
-        onConflict: "user_id,project_id,source_video_id",
-      })
-      .select("deleted_at")
-      .maybeSingle();
-
-  if (editableVideoError) {
-    throw new Error(
-      `Could not persist editable video: ${editableVideoError.message}`,
-    );
-  }
-
-  if (!editableVideoRow || editableVideoRow.deleted_at) {
-    throw new Error("The source video is no longer available for editing.");
-  }
-
-  const renderJob: RenderJobInsert = {
-    draft_json: draftJson,
-    project_id: input.projectId,
-    ratio: input.ratio,
-    render_id: input.renderId,
-    source_video_id: input.sourceVideoId,
-    source_video_url: input.sourceVideoUrl,
-    status: "queued",
-    updated_at: now,
-    user_id: input.userId,
-  };
-
-  const { error: renderJobError } = await getSupabaseServerClient()
-    .from(VIDEO_RENDER_JOBS_TABLE)
-    .insert(renderJob);
-
-  if (renderJobError) {
-    try {
-      await compensateEditableVideoAfterQueueFailure({
-        input,
-        previousEditableVideo,
-      });
-    } catch (compensationError) {
-      throw new Error(
-        `Could not persist render job: ${renderJobError.message}. Could not restore the Edit project: ${compensationError instanceof Error ? compensationError.message : "Unknown compensation error."}`,
-      );
-    }
-
-    throw new Error(`Could not persist render job: ${renderJobError.message}`);
-  }
-}
-
-async function compensateEditableVideoAfterQueueFailure(params: {
-  input: CreateQueuedRenderJobInput;
-  previousEditableVideo: EditableVideoRow | null;
-}) {
-  const client = getSupabaseServerClient();
-
-  if (!params.previousEditableVideo) {
-    const { error } = await client
-      .from(EDITABLE_VIDEOS_TABLE)
-      .delete()
-      .eq("user_id", params.input.userId)
-      .eq("project_id", params.input.projectId)
-      .eq("source_video_id", params.input.sourceVideoId)
-      .eq("latest_render_id", params.input.renderId);
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    return;
-  }
-
-  const previous = params.previousEditableVideo;
-  const { error } = await client
-    .from(EDITABLE_VIDEOS_TABLE)
-    .update({
-      draft_json: previous.draft_json,
-      duration_seconds: previous.duration_seconds,
-      latest_render_id: previous.latest_render_id,
-      ratio: previous.ratio,
-      rendered_video_url: previous.rendered_video_url,
-      source: previous.source,
-      source_video_url: previous.source_video_url,
-      status: previous.status,
-      thumbnail_url: previous.thumbnail_url,
-      title: previous.title,
-      updated_at: previous.updated_at,
-    })
-    .eq("user_id", params.input.userId)
-    .eq("project_id", params.input.projectId)
-    .eq("source_video_id", params.input.sourceVideoId)
-    .eq("latest_render_id", params.input.renderId);
-
-  if (error) {
-    throw new Error(error.message);
-  }
+  await ensureEditableVideo(input);
+  const row = await getEditableVideoRowForOwner(input);
+  if (!row) throw new Error("The source video is no longer available for editing.");
+  const { data, error } = await getSupabaseServerClient().rpc("edit_queue_render_snapshot", {
+    p_user_id: input.userId, p_draft_id: row.id, p_render_id: input.renderId, p_draft: toJson(input.draft),
+  });
+  if (error || data !== true) throw new Error("Could not persist the Edit render snapshot.");
 }
 
 export async function markRenderJobRendering(renderId: string) {
@@ -543,6 +415,7 @@ async function getEditableVideoRowForOwner(params: {
     .eq("source_video_id", params.sourceVideoId)
     .is("deleted_at", null)
     .order("updated_at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(1)
     .maybeSingle();
 
@@ -553,10 +426,12 @@ async function getEditableVideoRowForOwner(params: {
   return data;
 }
 
-function serializeEditableVideo(row: EditableVideoRow): EditableVideo {
+export function serializeEditableVideo(row: EditableVideoRow | SavedEditDraftRow): EditableVideo {
   const draft = normalizeEditableVideoDraftInput(row.draft_json);
 
   return {
+    draftId: row.id,
+    draftRevision: row.draft_revision,
     createdAt: row.created_at,
     draft: draft
       ? {

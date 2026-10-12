@@ -1,7 +1,7 @@
 {
   "name": "ugc-pilot",
-  "version": "0.1.4",
-  "description": "Draft UGC copy, generate media, and finish owned hook/demo videos through your UGC Pilot account.",
+  "version": "0.1.8",
+  "description": "Draft UGC copy, generate and finish videos, edit saved drafts, and transfer owned media through UGC Pilot.",
   "author": {
     "name": "UGC Pilot",
     "url": "https://www.getugcpilot.com"

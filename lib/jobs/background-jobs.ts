@@ -566,15 +566,20 @@ export async function listBackgroundJobsForUser(params: {
   jobType?: BackgroundJobType;
   projectId?: string;
   completedOnly?: boolean;
+  jobTypes?: BackgroundJobType[];
+  statuses?: BackgroundJobStatus[];
+  after?: { createdAt: string; id: string };
   limit?: number;
   userId: string;
 }) {
+  if (params.jobTypes?.length === 0 || params.statuses?.length === 0) return [];
   const limit = Math.max(1, Math.min(params.limit ?? 50, 100));
   let query = getSupabaseServerClient()
     .from(BACKGROUND_JOBS_TABLE)
     .select("*")
     .eq("user_id", params.userId)
     .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(limit);
 
   if (params.activeOnly) {
@@ -592,6 +597,13 @@ export async function listBackgroundJobsForUser(params: {
 
   if (params.jobType) {
     query = query.eq("job_type", params.jobType);
+  }
+
+  if (params.jobTypes) query = query.in("job_type", params.jobTypes);
+  if (params.statuses) query = query.in("status", params.statuses);
+  if (params.after) {
+    // This cursor comes from the verified MCP signature, never arbitrary SQL.
+    query = query.or(`created_at.lt.${params.after.createdAt},and(created_at.eq.${params.after.createdAt},id.lt.${params.after.id})`);
   }
 
   if (params.exploreFormat) query = query.eq("input_json->>exploreFormat", params.exploreFormat);

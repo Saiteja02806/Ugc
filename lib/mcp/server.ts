@@ -6,9 +6,19 @@ import { registerMutationMcpTools, registeredMutationMcpTools } from "./mutation
 import { registerReadMcpTools, registeredReadMcpTools } from "./read-tools";
 import { registerFinishingMcpTools, registeredFinishingMcpTools } from "./finishing-tools";
 
+import { registerDemoMcpTools, registeredDemoMcpTools } from "./demo-tools";
+
+import { registerUploadRecoveryMcpTools, registeredUploadRecoveryMcpTools } from "./upload-recovery-tools";
+
+import { registerOperationMcpTools, registeredOperationMcpTools } from "./operation-tools";
+
+import { registerEditDraftMcpTools, registeredEditDraftMcpTools } from "./edit-draft-tools";
+
+import { registerEditExportMcpTools, registeredEditExportMcpTools } from "./edit-export-tools";
+
 export const registeredMcpTools: readonly string[] = [
   ...registeredReadMcpTools, ...registeredMutationMcpTools, ...registeredGenerationMcpTools,
-  ...registeredFinishingMcpTools,
+  ...registeredFinishingMcpTools, ...registeredDemoMcpTools, ...registeredUploadRecoveryMcpTools, ...registeredOperationMcpTools, ...registeredEditDraftMcpTools, ...registeredEditExportMcpTools,
 ];
 
 export const mcpHandler = createMcpHandler(
@@ -18,6 +28,11 @@ export const mcpHandler = createMcpHandler(
     registerMutationMcpTools(server);
     registerGenerationMcpTools(server);
     registerFinishingMcpTools(server);
+    registerDemoMcpTools(server);
+    registerUploadRecoveryMcpTools(server);
+    registerOperationMcpTools(server);
+    registerEditDraftMcpTools(server);
+    registerEditExportMcpTools(server);
     return server;
   },
   {

@@ -12,6 +12,12 @@ SOURCE = ROOT / "plugins" / "ugc-pilot"
 FILES = json.loads((ROOT / "scripts/ugc-pilot-package-files.json").read_text(encoding="utf-8"))
 
 
+def package_bytes(relative):
+    data = (SOURCE / relative).read_bytes()
+    # Match Git text blobs across Windows CRLF and Unix LF checkouts.
+    return data.replace(b"\r\n", b"\n") if Path(relative).suffix in {".md", ".json", ".mjs"} else data
+
+
 def build(destination=None):
     subprocess.run(["node", str(ROOT / "scripts/validate-ugc-pilot-plugin.mjs")], cwd=ROOT, check=True)
     manifest = json.loads((SOURCE / "plugin.json").read_text(encoding="utf-8"))
@@ -28,19 +34,25 @@ def build(destination=None):
             entry = zipfile.ZipInfo(f"ugc-pilot/{relative}", date_time=(2026, 10, 7, 0, 0, 0))
             entry.compress_type = zipfile.ZIP_DEFLATED
             entry.external_attr = 0o100644 << 16
-            output.writestr(entry, source.read_bytes())
+            output.writestr(entry, package_bytes(relative))
     archive_bytes = buffer.getvalue()
     with zipfile.ZipFile(io.BytesIO(archive_bytes)) as check:
         assert check.testzip() is None, "ZIP CRC failure"
         assert sorted(check.namelist()) == sorted(f"ugc-pilot/{relative}" for relative in FILES)
         for relative in FILES:
-            assert check.read(f"ugc-pilot/{relative}") == (SOURCE / relative).read_bytes()
+            assert check.read(f"ugc-pilot/{relative}") == package_bytes(relative)
     digest = hashlib.sha256(archive_bytes).hexdigest()
     readme = (SOURCE / "README.md").read_text(encoding="utf-8")
     standalone = readme.replace(
         "[client setup](skills/connect-ugc-pilot/references/client-setup.md)",
         "[client setup](#client-setup)",
     )
+    # A downloaded standalone guide cannot resolve the extracted bundle's links.
+    for relative in [
+        "skills/manage-ugc-media/references/local-transfer.md",
+        "skills/edit-ugc-draft/SKILL.md",
+    ]:
+        standalone = standalone.replace(f"[local transfer helper]({relative})", f"local transfer helper (`{relative}` in the extracted bundle)").replace(f"[Edit workflow]({relative})", f"Edit workflow (`{relative}` in the extracted bundle)")
     standalone += "\n\n---\n\n" + (SOURCE / "skills/connect-ugc-pilot/references/client-setup.md").read_text(encoding="utf-8")
     outputs = {
         archive: archive_bytes,

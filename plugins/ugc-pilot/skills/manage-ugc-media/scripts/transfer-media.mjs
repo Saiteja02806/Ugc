@@ -66,6 +66,22 @@ export async function inspectFile(filePath, { collection = 'video', ffprobe = 'f
   const handle = await open(filePath, 'r');
   try { return await inspectHandle(handle, filePath, collection, ffprobe); } finally { await handle.close(); }
 }
+export async function prepareUpload(filePath, { receiptPath, collection = 'video', ffprobe = 'ffprobe', title } = {}) {
+  check(receiptPath, 'INVALID_INPUT', 'Provide a new local intent receipt path before reserving an upload.');
+  const inspection = await inspectFile(filePath, { collection, ffprobe });
+  check(title === undefined || (typeof title === 'string' && title.trim().length > 0 && title.trim().length <= 140), 'INVALID_INPUT', 'The upload title must be 1 to 140 characters.');
+  const requestId = randomUUID();
+  const createInput = { ...inspection.create_upload, ...(title === undefined ? {} : { title: title.trim() }), request_id: requestId };
+  let record;
+  try { record = await open(receiptPath, 'wx', 0o600); }
+  catch (error) {
+    if (error.code === 'EEXIST') throw new TransferError('RECEIPT_EXISTS', 'The intent receipt exists. Recover its request ID instead of creating another intent.');
+    throw error;
+  }
+  try { await writeReceipt(record, { version: 2, request_id: requestId, inspection, create_upload: createInput }); }
+  finally { await record.close(); }
+  return { inspection, create_upload: createInput, intent_receipt_path: path.resolve(receiptPath) };
+}
 function storageUrl(value) {
   let url;
   try { url = new URL(value); } catch { throw new TransferError('INVALID_DESTINATION', 'The media URL is invalid.'); }
@@ -78,10 +94,17 @@ function uploadDestination(reservation, inspection) {
   const url = storageUrl(reservation.upload_url);
   const { collection, mime_type: mime, file_size_bytes: size } = inspection.create_upload;
   const extension = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp', 'video/mp4': '.mp4', 'video/quicktime': '.mov', 'video/webm': '.webm' }[mime];
-  const escapedId = reservation.upload_id.replaceAll('-', '\\-');
-  check(url.hostname === 'storage.googleapis.com' && new RegExp(`^/ugcsaas-media/media/[^/]+/${collection}/${escapedId}\\${extension}$`).test(url.pathname),
+  // New servers explicitly describe their private bucket. Old public receipts
+  // keep the production default; never infer a new bucket from an arbitrary URL.
+  const bucket = reservation.storage_bucket ?? 'ugcsaas-media';
+  check(typeof bucket === 'string' && /^[a-z0-9][a-z0-9_-]{1,61}[a-z0-9]$/.test(bucket),
+    'INVALID_RESERVATION', 'The server upload bucket descriptor is invalid.');
+  const segments = url.pathname.split('/');
+  check(url.hostname === 'storage.googleapis.com' && segments.length === 6 &&
+    segments[1] === bucket && segments[2] === 'media' && /^[A-Za-z0-9_-]+$/.test(segments[3]) &&
+    segments[4] === collection && segments[5] === `${reservation.upload_id}${extension}`,
     'INVALID_DESTINATION', 'The signed destination does not match the reserved UGC Pilot asset.');
-  check(Date.parse(reservation.expires_at) > Date.now(), 'UPLOAD_EXPIRED', 'The upload link expired. Preserve the ID; obtain a new reservation only after resolving this upload.');
+  check(Date.parse(reservation.expires_at) > Date.now(), 'UPLOAD_EXPIRED', 'The upload link expired. Preserve the ID; resolve the transfer and renew_upload for the same reservation when supported.');
   const headers = reservation.required_headers;
   check(headers && Object.keys(headers).length === 3 && headers['Content-Type'] === mime &&
     headers['x-goog-content-length-range'] === `1,${size}` && headers['x-goog-if-generation-match'] === '0',
@@ -146,6 +169,26 @@ export async function recoverUpload(receiptPath) {
     check((await handle.stat()).size <= 16_384, 'INVALID_RECEIPT', 'The local upload receipt is invalid.');
     let receipt;
     try { receipt = JSON.parse(await handle.readFile('utf8')); } catch { throw new TransferError('INVALID_RECEIPT', 'The local upload receipt is invalid.'); }
+    if (receipt?.version === 2) {
+      const inspection = receipt.inspection, fields = inspection?.create_upload, media = inspection?.media;
+      check(UUID.test(receipt.request_id) && /^[a-f0-9]{64}$/.test(inspection?.sha256 ?? '') &&
+        ['image', 'video', 'influencer'].includes(fields?.collection) && types.has(fields?.mime_type) &&
+        typeof fields.file_name === 'string' && fields.file_name.length > 0 && fields.file_name.length <= 255 && !/[/\\\0]/.test(fields.file_name) &&
+        Number.isSafeInteger(fields.file_size_bytes) && fields.file_size_bytes > 0 && fields.file_size_bytes <= (fields.collection === 'image' ? 25 : 250) * 1024 * 1024 &&
+        Number.isSafeInteger(media?.width) && media.width > 0 && Number.isSafeInteger(media?.height) && media.height > 0 &&
+        (fields.collection === 'image' ? media.duration_seconds === undefined : Number.isFinite(media.duration_seconds) && media.duration_seconds > 0),
+      'INVALID_RECEIPT', 'The saved upload intent is invalid.');
+      const input = receipt.create_upload;
+      const cleanInspection = { sha256: inspection.sha256, create_upload: {
+        collection: fields.collection, file_name: fields.file_name, mime_type: fields.mime_type, file_size_bytes: fields.file_size_bytes },
+        media: { width: media.width, height: media.height, ...(fields.collection === 'image' ? {} : { duration_seconds: media.duration_seconds }) } };
+      check(isDeepStrictEqual(cleanInspection, inspection) && input?.request_id === receipt.request_id &&
+        (input.title === undefined || (typeof input.title === 'string' && input.title === input.title.trim() && input.title.length > 0 && input.title.length <= 140)),
+      'INVALID_RECEIPT', 'The saved upload intent is invalid.');
+      const cleanInput = { ...cleanInspection.create_upload, ...(input.title === undefined ? {} : { title: input.title }), request_id: receipt.request_id };
+      check(isDeepStrictEqual(cleanInput, input), 'INVALID_RECEIPT', 'The saved reservation inputs are invalid.');
+      return { get_upload: { request_id: receipt.request_id }, create_upload: cleanInput, inspection: cleanInspection };
+    }
     const input = receipt?.confirm_upload;
     check(receipt?.version === 1 && UUID.test(receipt.upload_id) && input?.upload_id === receipt.upload_id &&
       Number.isSafeInteger(input.width) && input.width > 0 && Number.isSafeInteger(input.height) && input.height > 0 &&
@@ -219,16 +262,17 @@ async function stdinJson() {
 async function main() {
   check(Number(process.versions.node.split('.')[0]) >= 22, 'RUNTIME_REQUIRED', 'Use Node.js 22 or newer.');
   const [command, filePath, ...options] = process.argv.slice(2);
-  check(['inspect', 'upload', 'recover', 'download'].includes(command) && filePath && options.length % 2 === 0,
-    'INVALID_INPUT', 'Usage: transfer-media.mjs inspect|upload|recover|download FILE [--collection GROUP] [--ffprobe EXECUTABLE] [--receipt FILE]');
+  check(['inspect', 'prepare', 'upload', 'recover', 'download'].includes(command) && filePath && options.length % 2 === 0,
+    'INVALID_INPUT', 'Usage: transfer-media.mjs inspect|prepare|upload|recover|download FILE [--collection GROUP] [--ffprobe EXECUTABLE] [--receipt FILE]');
   const parsed = {};
   for (let i = 0; i < options.length; i += 2) {
-    const key = { '--collection': 'collection', '--ffprobe': 'ffprobe', '--receipt': 'receiptPath' }[options[i]];
+    const key = { '--collection': 'collection', '--ffprobe': 'ffprobe', '--receipt': 'receiptPath', '--title': 'title' }[options[i]];
     check(key && !Object.hasOwn(parsed, key), 'INVALID_INPUT', 'Unknown or duplicate transfer option.');
     parsed[key] = options[i + 1];
   }
   let result;
   if (command === 'inspect') result = await inspectFile(filePath, parsed);
+  else if (command === 'prepare') result = await prepareUpload(filePath, parsed);
   else if (command === 'recover') result = await recoverUpload(filePath);
   else {
     const input = await stdinJson();

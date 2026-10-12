@@ -1,7 +1,7 @@
 {
   "name": "ugc-pilot",
-  "version": "0.1.4",
-  "description": "Draft UGC copy, generate media, and finish owned hook/demo videos through your UGC Pilot account.",
+  "version": "0.1.8",
+  "description": "Draft UGC copy, generate and finish videos, edit saved drafts, and transfer owned media through UGC Pilot.",
   "author": {
     "name": "UGC Pilot",
     "url": "https://www.getugcpilot.com"
@@ -12,7 +12,7 @@
   "interface": {
     "displayName": "UGC Pilot",
     "shortDescription": "Images and videos in your AI",
-    "longDescription": "Draft UGC hooks, wall text, footage prompts and slideshow copy. Generate images and short videos using UGC Pilot credits. Where enabled, upload local clips, attach a demo, render exact video text and retrieve finished media through the video finishing tools. Finishing requires separate OAuth permission. Slideshow rendering, audio generation and social publishing are not included. Private beta candidate; check live capabilities.",
+    "longDescription": "Draft UGC copy and generate images or short videos using UGC Pilot credits. Upload local clips from a terminal-capable IDE, attach demos, and retrieve finished media where enabled. Open, save and export the application's Edit-page trim/text drafts. Writes require the corresponding OAuth permission. Slideshow rendering, audio generation and social publishing remain unavailable. Private beta; check live capabilities.",
     "developerName": "UGC Pilot",
     "websiteURL": "https://getugcpilot.com",
     "supportURL": "https://getugcpilot.com/contact",
@@ -81,7 +81,7 @@
         }
       },
       "publication": {
-        "release_notes": "Adds owned hook/demo video finishing instructions and a local upload/download helper requiring Node.js 22+ and ffprobe. Preserves the existing twelve MCP tools; three additional finishing tools require a coordinated server release, enabled capabilities and creative:write consent. Codex and Claude Code production acceptance and directory submission remain pending."
+        "release_notes": "Adds explicit private-bucket local transfer support for the gated 33-tool server upload rollout. Preserves existing public reservations and the hosted endpoint/OAuth. A separate private user-media bucket, activation and installed Codex/Claude journey acceptance remain pending."
       }
     }
   }

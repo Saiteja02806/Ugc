@@ -1,6 +1,6 @@
-# UGC Pilot private beta — 0.1.8 candidate
+# UGC Pilot private beta — 0.1.9 candidate
 
-Draft UGC copy and video prompts in ordinary language, then use your connected UGC Pilot account when you ask to generate media. This package includes ten skills covering connection, generation, media transfer, five creative workflows, video finishing, and shared Edit drafts/export.
+Draft UGC copy and video prompts in ordinary language, then use your connected UGC Pilot account when you ask to generate media. This package includes ten skills covering connection, generation, media transfer, five creative workflows, video finishing, shared Edit drafts/export, and speech/private audio transfer where enabled.
 
 The package points to the existing hosted MCP at **https://mcp.getugcpilot.com/mcp**. It includes no server executable, credentials, or automatic installation script. Generation uses your UGC Pilot plan and credits, separately from your AI subscription.
 
@@ -39,16 +39,20 @@ The AI selects skills by deliverable and context, not fixed command keywords. Co
 3. “Animate that image into one five-second vertical video with a slow camera push-in. Return the finished video link.”
 4. “Check the progress of the UGC Pilot job we already started. Do not create a new generation.”
 
-The coordinated server contract contains **33 tools**. Tool discovery and live capability checks are authoritative; installing this package does not enable server features or refresh a cached catalogue.
+The coordinated audio candidate contract contains **46 tools**. Production may still expose the previous 33-tool catalogue until its server release. Tool discovery and live capability checks are authoritative; installing this package does not enable server features or refresh a cached catalogue.
 
 - Account/brand reads, owned visual media, image generation and short-video generation. Counts are 1, 2 or 4; clips are 3–10 seconds and prompts have a 1,000-character limit. Check live costs and options before generation.
 - Owned Demo registration/list/get/delete, upload reservation lookup/list/renewal, and server probing before readiness. The helper preserves reservation intent and transfer confirmation separately.
 - Video finishing: exact text, supported trims/volumes/framing, demo composition and optional supported subtitles. These use the deployed finishing capability gates and `creative:write`; subtitles can incur a separate cost.
 - Owner-scoped operation history and supported cancellation/retry. Writes require `jobs:write`, the exact operation revision and a stable request UUID. Retry can reserve credits under the original plan; replay recovers the accepted action.
-- Shared Edit-page opening, listing, reading and revision-safe saving, plus dedicated export capabilities/submission/status. Save/open do not render. Export snapshots a saved revision using the website's renderer. See [Edit workflow](skills/edit-ugc-draft/SKILL.md). Persist the dedicated export UUID because generic job history does not yet recover it.
+- Shared Edit-page opening, listing, reading and revision-safe saving, plus dedicated export capabilities/submission/status. Save/open do not render. Export snapshots a saved revision using the website's renderer. See [Edit workflow](skills/edit-ugc-draft/SKILL.md). Preserve the dedicated export UUID; `get_operation` can recover `edit_export_request_id` when discovered.
 
-Full application parity remains unfinished. Explore/slideshow working drafts, slideshow rendering, audio generation/upload, advanced generation/character choices, full Library/business settings, Carousel actions, social publishing and analytics require additional implementation. Private-media upload support is a separately gated server rollout. It requires a verified separate private bucket and its signing/read/cleanup configuration; the helper validates the server's explicit bucket descriptor and never bypasses unavailable storage.
+Full application parity remains unfinished. Explore/slideshow working drafts, slideshow rendering, voice sample/clone/verification/removal and default music, advanced generation/character choices, full Library/business settings, Carousel actions, social publishing and analytics require additional implementation. Private-media upload support is a separately gated server rollout. It requires a verified separate private bucket and its signing/read/cleanup configuration; the helper validates the server's explicit bucket descriptor and never bypasses unavailable storage.
 
 ## Verification status
 
 Package/schema validation and offline behavior checks are independent from installed-host activation. Fresh-account OAuth, installed skill behavior, paid generation through each target host and media previews must pass before customer rollout. See the bundled evaluation-cases.json for pending acceptance scenarios; expected routes are criteria, not recorded passes. A demo recording and platform approval remain separate requirements.
+
+## Speech and audio where enabled
+
+The bundle includes the dependency-free audio helper and [audio workflow](skills/manage-ugc-media/references/audio-workflow.md). Discover `get_audio_capabilities` before requested speech, voice preferences or private audio transfer. Saved recordings use a separate private library. Import an eligible recording to a distinct editing attachment before passing it to the finisher; free tests and voice references cannot be used in videos. The current default editing copy is public while the original stays private. Check the separate import/storage gates. No audio generation is needed for a connection check.

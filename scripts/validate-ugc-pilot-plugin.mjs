@@ -164,6 +164,11 @@ export function validatePackage({ submission = false } = {}) {
     if (relative.endsWith(".md")) validateResourceLinks(text, relative);
     if (relative.includes("/schemas/") || relative.endsWith("references/output-schema.json")) ajv.compile(JSON.parse(text));
   }
+  assert.equal(
+    fs.readFileSync(path.join(pluginDir, "skills/manage-ugc-media/scripts/transfer-audio.mjs"), "utf8").replaceAll("\r\n", "\n"),
+    fs.readFileSync(path.join(root, "scripts/ugc-pilot-audio-transfer.mjs"), "utf8").replaceAll("\r\n", "\n"),
+    "Packaged audio helper must match the actual-byte-tested implementation",
+  );
   const icon = fs.readFileSync(path.join(pluginDir, "assets/logo.png"));
   assert.equal(icon.subarray(1, 4).toString(), "PNG");
   for (const dimension of [icon.readUInt32BE(16), icon.readUInt32BE(20)]) {

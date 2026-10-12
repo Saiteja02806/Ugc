@@ -483,6 +483,94 @@
         "finish_video"
       ],
       "expected": "Reads by the saved dedicated export UUID, reports actual state, and does not substitute a generic finishing request ID or allocate a fresh export."
+    },
+    {
+      "id": "audio-read-only",
+      "prompt": "Show my saved audio and voices. Do not generate or change anything.",
+      "expected_skills": [
+        "manage-ugc-media"
+      ],
+      "expected_tools": [
+        "get_audio_capabilities",
+        "list_audio_assets",
+        "list_audio_voices"
+      ],
+      "forbidden_tools": [
+        "generate_audio",
+        "create_audio_upload",
+        "import_audio_for_video",
+        "set_audio_voice_selection",
+        "set_audio_voice_bookmark"
+      ],
+      "expected": "Uses discovered separate audio reads, reports availability and never generates a sample or changes preferences."
+    },
+    {
+      "id": "audio-speech",
+      "prompt": "Generate the agreed script using my selected available voice and save the audio locally.",
+      "expected_skills": [
+        "create-ugc-media",
+        "manage-ugc-media"
+      ],
+      "expected_tools": [
+        "get_audio_capabilities",
+        "list_audio_voices",
+        "generate_audio",
+        "get_audio_generation",
+        "get_audio_asset"
+      ],
+      "expected": "Checks requested voice/model/cost, saves exact inputs/client UUID before submitting, polls the same request and uses the binary helper for a verified new local file. A queued receipt is not a saved recording."
+    },
+    {
+      "id": "audio-local-upload",
+      "prompt": "Upload my chosen local WAV as an exact recording.",
+      "expected_skills": [
+        "manage-ugc-media"
+      ],
+      "expected_tools": [
+        "get_audio_capabilities",
+        "create_audio_upload",
+        "get_audio_generation",
+        "get_audio_asset"
+      ],
+      "forbidden_tools": [
+        "generate_audio",
+        "create_upload"
+      ],
+      "expected": "Prepares real measured bytes and a durable receipt, passes the fresh audio POST descriptor on stdin, recovers the same request after interruption and checks processing before claiming ready audio."
+    },
+    {
+      "id": "audio-import-recovery",
+      "prompt": "The selected saved recording import was interrupted. Recover the original request without rendering.",
+      "expected_skills": [
+        "manage-ugc-media"
+      ],
+      "expected_tools": [
+        "get_audio_video_import"
+      ],
+      "forbidden_tools": [
+        "generate_audio",
+        "finish_video",
+        "export_edit_draft"
+      ],
+      "expected": "Reads the saved client import UUID; pending is not a ready finisher ID. If explicitly recovering submission, reuses exact source/request identity. Does not duplicate copies or confuse private audio IDs with ready editing attachment IDs."
+    },
+    {
+      "id": "audio-video-attachment",
+      "prompt": "Use my chosen ready recording as background audio for the selected video and finish it.",
+      "expected_skills": [
+        "finish-ugc-video",
+        "manage-ugc-media"
+      ],
+      "expected_tools": [
+        "get_audio_capabilities",
+        "get_audio_asset",
+        "import_audio_for_video",
+        "get_video_finishing_capabilities",
+        "finish_video",
+        "get_video_finish",
+        "get_asset"
+      ],
+      "expected": "Checks eligible non-test/non-reference recording and import availability, persists a stable import request and uses only its ready independent media_asset_id. Discloses current editing-copy storage policy and respects selected audio/render authorization."
     }
   ],
   "notes": "Expected skill sequences are evaluation criteria, not measured host activation results. Brand reads may be used when explicitly relevant and connected. Draft-only cases below supply briefs or declare missing context."

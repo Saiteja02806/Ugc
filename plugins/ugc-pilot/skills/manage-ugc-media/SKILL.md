@@ -1,6 +1,6 @@
 ---
 name: manage-ugc-media
-description: Browse or retrieve the connected UGC Pilot media library, resume generation jobs, or upload and delete owned media when explicitly requested.
+description: Browse owned UGC Pilot visual or audio media, recover existing jobs, transfer supplied files and manage requested voice preferences or editing attachments through discovered tools.
 ---
 
 # Manage UGC Pilot media
@@ -9,7 +9,7 @@ Use the connected account's discovered UGC Pilot tools. Do not request another u
 
 ## Browse and resume
 
-Use `list_assets` for the requested image/video/creator-footage collection and its pagination cursor. Current tools list these visual assets. Use discovered `list_operations`/`get_operation` for owner-scoped application background-job history; do not promise audio-library access. Use `get_asset` for URLs and metadata rather than guessing a storage URL.
+Use `list_assets` for the requested image/video/creator-footage collection and its pagination cursor. Current tools list these visual assets. Use discovered `list_operations`/`get_operation` for owner-scoped application background-job history; use the separate discovered audio tools for private recordings, following [audio workflow](references/audio-workflow.md). Use `get_asset` for URLs and metadata rather than guessing a storage URL.
 
 Use `get_job` when the user supplies an existing MCP generation job ID. Poll existing work without resubmitting generation. A completed job's `output_asset_ids` can be read with `get_asset`. A website-created job may not be an MCP generation job; `NOT_FOUND` also protects account isolation. Do not claim all website history is available through this tool.
 
@@ -32,3 +32,7 @@ For hook-plus-demo requests, upload the hook as creator footage (`collection: "i
 Use `delete_demo` for a verified dedicated Demo when available; it hides the Demo and its linked source together while preserving existing renders. Call `delete_asset` only when the user explicitly requests deletion and the target is unambiguous. Name the item and use its verified owned ID. Ask for clarification for multiple matches or an unclear bulk request. Do not delete generated outputs as automatic cleanup. The tool removes the library entry using the product's soft-deletion behavior; do not promise that the physical storage object is erased.
 
 For missing authentication or insufficient permissions, use the client's OAuth connection flow. For `NOT_FOUND`, explain that the item is unavailable to this connected account; do not probe other accounts.
+
+## Audio recordings and preferences
+
+For voice catalogue/preferences, saved private audio, local audio upload/download or importing a selected recording into a video, read [audio workflow](references/audio-workflow.md). Its helper is separate from visual uploads and accepts the audio API descriptor rather than `create_upload`. Use live capabilities and preserve the user's selected purpose, file, audio and stable request identities.

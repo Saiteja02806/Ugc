@@ -51,8 +51,9 @@ def build(destination=None):
     for relative in [
         "skills/manage-ugc-media/references/local-transfer.md",
         "skills/edit-ugc-draft/SKILL.md",
+        "skills/manage-ugc-media/references/audio-workflow.md",
     ]:
-        standalone = standalone.replace(f"[local transfer helper]({relative})", f"local transfer helper (`{relative}` in the extracted bundle)").replace(f"[Edit workflow]({relative})", f"Edit workflow (`{relative}` in the extracted bundle)")
+        standalone = standalone.replace(f"[local transfer helper]({relative})", f"local transfer helper (`{relative}` in the extracted bundle)").replace(f"[Edit workflow]({relative})", f"Edit workflow (`{relative}` in the extracted bundle)").replace(f"[audio workflow]({relative})", f"audio workflow (`{relative}` in the extracted bundle)")
     standalone += "\n\n---\n\n" + (SOURCE / "skills/connect-ugc-pilot/references/client-setup.md").read_text(encoding="utf-8")
     outputs = {
         archive: archive_bytes,

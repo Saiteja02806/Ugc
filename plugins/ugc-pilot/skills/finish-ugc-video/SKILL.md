@@ -9,7 +9,7 @@ Use discovered `get_video_finishing_capabilities`, `finish_video`, and `get_vide
 
 Resolve the opening and optional demo to ready owned asset IDs using `get_asset`. For local files, use signed PUT and confirmation with actual bytes; see [media management](../manage-ugc-media/SKILL.md). A generic ready uploaded video can serve as the Explore demo. To add it to the dedicated Demo library, use discovered `register_demo` after confirmation; this preserves its source asset ID. Browse registered demos through `list_demos`/`get_demo`. Generate new footage only when requested, using [media creation](../create-ugc-media/SKILL.md).
 
-Read the discovered finishing schema for exact fields. The minimal composition is `draft: {sourceAssetId: openingId, demoAssetId: demoId}`. The opening plays first, then the demo. Optional audio inputs must be existing owned assets; this workflow has no audio generation/upload tools. Preserve chosen clips, wording, order and audio. Add paid subtitles only when requested and reported available.
+Read the discovered finishing schema for exact fields. The minimal composition is `draft: {sourceAssetId: openingId, demoAssetId: demoId}`. The opening plays first, then the demo. Optional audio inputs must be ready owned audio media attachments. For a private saved/generated recording, follow [audio workflow](../manage-ugc-media/references/audio-workflow.md) to obtain a separate ready `media_asset_id`; do not pass its private audio-library ID directly. Importing uses the current media-upload storage policy and does not itself render. Preserve chosen clips, wording, order and audio. Add paid subtitles only when requested and reported available.
 
 ## Prepare edits in valid stages
 

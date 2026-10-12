@@ -1,6 +1,6 @@
 ---
 name: create-ugc-media
-description: Generate images or short videos through the connected UGC Pilot account, including animating an owned image and retrieving completed results.
+description: Generate requested images, short videos or speech through the connected UGC Pilot account and recover completed results.
 ---
 
 # Create UGC Pilot media
@@ -18,7 +18,7 @@ Use the connected UGC Pilot tools. If absent, explain the connection step; do no
 
 Use `generate_image` with `prompt`, `aspect_ratio`, `count`, optional `reference_asset_id`, and `client_request_id`. The image prompt limit is 2,000 characters.
 
-Use `generate_video` with the same fields and explicit `duration_seconds`. Its prompt limit is 1,000 characters. The reference is an optional owned image to animate. This generates a short clip. To attach a demo or render exact text afterward, use [video finishing](../finish-ugc-video/SKILL.md) when capabilities permit it. Creator marketplace, audio generation, Carousel and social publishing remain separate capabilities.
+Use `generate_video` with the same fields and explicit `duration_seconds`. Its prompt limit is 1,000 characters. The reference is an optional owned image to animate. This generates a short clip. To attach a demo or render exact text afterward, use [video finishing](../finish-ugc-video/SKILL.md) when capabilities permit it. For speech generation use the [audio workflow](../manage-ugc-media/references/audio-workflow.md), including its separate capability, voice and request contracts. Creator marketplace, Carousel and social publishing remain separate capabilities.
 
 Create a fresh random `client_request_id` for each intentional generation. Keep that ID and the exact input with the returned job IDs in the conversation. Never use the same request ID for a changed prompt, reference, duration, or count. After a transport failure with an uncertain outcome, retry the exact same input and request ID so the server can return existing jobs. Do not change the ID to bypass a conflict or charge twice. For `partial: true`, track all accepted jobs; if completing the original batch is still authorized, retry only the same original request and ID.
 

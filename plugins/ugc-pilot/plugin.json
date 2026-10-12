@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ugc-pilot",
-  "version": "0.1.8",
-  "description": "Draft UGC copy, generate and finish videos, edit saved drafts, and transfer owned media through UGC Pilot.",
+  "version": "0.1.9",
+  "description": "Draft UGC copy, generate speech and media, finish videos, edit saved drafts, and transfer owned media through UGC Pilot where enabled.",
   "author": {
     "name": "UGC Pilot",
     "url": "https://www.getugcpilot.com"
@@ -19,7 +19,7 @@
       "interface": {
         "displayName": "UGC Pilot",
         "shortDescription": "Images and videos in your AI",
-        "longDescription": "Draft UGC copy and generate images or short videos using UGC Pilot credits. Upload local clips from a terminal-capable IDE, attach demos, and retrieve finished media where enabled. Open, save and export the application's Edit-page trim/text drafts. Writes require the corresponding OAuth permission. Slideshow rendering, audio generation and social publishing remain unavailable. Private beta; check live capabilities.",
+        "longDescription": "Draft UGC copy and generate images, short videos or speech using UGC Pilot credits where enabled. Upload local clips/audio from a terminal-capable IDE, attach demos or eligible saved audio, and retrieve finished media. Open, save and export Edit-page trim/text drafts. Check live capabilities and OAuth permissions. Slideshow rendering, voice cloning and social publishing remain unavailable through MCP. Private beta; a package update does not activate server features.",
         "developerName": "UGC Pilot",
         "websiteURL": "https://getugcpilot.com",
         "supportURL": "https://getugcpilot.com/contact",
@@ -34,7 +34,8 @@
           "Media library",
           "Video finishing where enabled",
           "Demo library and upload recovery where deployed",
-          "Saved Edit drafts and export where enabled"
+          "Saved Edit drafts and export where enabled",
+          "Speech, private audio transfer and editing attachments where enabled"
         ],
         "logo": "./assets/logo.png",
         "composerIcon": "./assets/logo.png",

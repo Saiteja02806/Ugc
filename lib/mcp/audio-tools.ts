@@ -2,6 +2,7 @@ import "server-only";
 import { McpServer, requireScopes } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { AudioError, AUDIO_MAX_CHARACTERS, AUDIO_MODEL_IDS } from "@/worker/src/lib/audio-contract";
+import { audioUploadInput, createAudioUploadForOwner, getAudioDownloadForOwner } from "@/lib/audio/transfer";
 import { generateAudioForOwner } from "@/lib/audio/service";
 import { audioAssetSchema, audioGenerationSchema, getAudioAssetForOwner, getAudioCapabilitiesForOwner,
   getAudioGenerationForOwner, listAudioForOwner, listAudioVoicesForOwner } from "@/lib/audio/mcp-library";
@@ -10,7 +11,7 @@ import { getAudioVoiceSelection, setAudioVoiceSelection } from "@/lib/audio/sele
 import { executeTool, oauthMetadata, principal, ToolFailure } from "./read-tools";
 
 export const registeredAudioMcpTools=["get_audio_capabilities","list_audio_voices","list_audio_assets","get_audio_asset",
-  "list_audio_generations","get_audio_generation","generate_audio","get_audio_preferences","set_audio_voice_selection","set_audio_voice_bookmark"] as const;
+  "list_audio_generations","get_audio_generation","generate_audio","get_audio_preferences","set_audio_voice_selection","set_audio_voice_bookmark","create_audio_upload"] as const;
 const empty=z.strictObject({}),voiceId=z.string().regex(/^[\w-]{1,100}$/),nullableText=z.string().nullable();
 const read={readOnlyHint:true,destructiveHint:false,openWorldHint:false} as const;
 const preferenceWrite={readOnlyHint:false,destructiveHint:false,idempotentHint:true,openWorldHint:false} as const;
@@ -37,7 +38,7 @@ export function registerAudioMcpTools(server:McpServer) {
     inputSchema:empty,outputSchema:z.strictObject({generation_available:z.boolean(),generation_access:z.enum(["allowed","upgrade_required","unavailable"]),
       credit_cost_per_1000_characters:z.number().int().nonnegative(),max_characters:z.literal(AUDIO_MAX_CHARACTERS),
       speeds:z.strictObject({minimum:z.literal(0.8),maximum:z.literal(1.2)}),models:z.array(z.strictObject({id:z.string(),name:z.string(),languages:z.array(z.string())})),
-      catalogue_source:z.enum(["account","public-preview"]),upload_available:z.literal(false),download_available:z.literal(false),voice_clone_available:z.literal(false),message:z.string()}),
+      catalogue_source:z.enum(["account","public-preview"]),upload_available:z.boolean(),download_available:z.boolean(),voice_clone_available:z.literal(false),message:z.string()}),
     annotations:read,scopeChallenge:requireScopes("account:read"),_meta:oauthMetadata("account:read"),
   },(_,ctx)=>executeTool(()=>audioErrors(()=>getAudioCapabilitiesForOwner(principal(ctx,"account:read")))));
   server.registerTool("list_audio_voices",{
@@ -54,10 +55,10 @@ export function registerAudioMcpTools(server:McpServer) {
     return {items:page.items.map(item=>audioAssetSchema.parse(item)),next_cursor:page.next_cursor};
   })));
   server.registerTool("get_audio_asset",{
-    description:"Read one owned undeleted private audio record's metadata and video eligibility. Does not stream, download, copy or convert it into a visual-media-library asset.",
-    inputSchema:z.strictObject({asset_id:z.uuid()}),outputSchema:z.strictObject({asset:audioAssetSchema}),
+    description:"Read owned private audio metadata and an expiring verified download link when ready/configured. Feed the link to the local binary helper; refresh this read if it expires. Free tests/reference recordings stay ineligible for video use. Does not copy or convert the record into a visual-media-library asset.",
+    inputSchema:z.strictObject({asset_id:z.uuid()}),outputSchema:z.strictObject({asset:audioAssetSchema,download:z.strictObject({url:z.url().regex(/^https:\/\//),expires_at:z.iso.datetime({offset:true}),mime_type:z.string(),file_size_bytes:z.number().int().positive(),sha256:z.string().regex(/^[a-f0-9]{64}$/)}).nullable()}),
     annotations:read,scopeChallenge:requireScopes("assets:read"),_meta:oauthMetadata("assets:read"),
-  },(args,ctx)=>executeTool(()=>audioErrors(async()=>({asset:await getAudioAssetForOwner(principal(ctx,"assets:read"),args.asset_id)}))));
+  },(args,ctx)=>executeTool(()=>audioErrors(async()=>{const owner=principal(ctx,"assets:read");return {asset:await getAudioAssetForOwner(owner,args.asset_id),download:await getAudioDownloadForOwner(owner,args.asset_id)};})));
   server.registerTool("list_audio_generations",{
     description:"Page through owned website and MCP audio request history with stable request UUIDs, safe states and verified completed generated audio IDs. Hides scripts, provider diagnostics and storage. Does not resume or requeue jobs.",
     inputSchema:pageInput,outputSchema:z.strictObject({items:z.array(audioGenerationSchema),next_cursor:nullableText}),
@@ -72,7 +73,7 @@ export function registerAudioMcpTools(server:McpServer) {
     annotations:read,scopeChallenge:requireScopes("jobs:read"),_meta:oauthMetadata("jobs:read"),
   },(args,ctx)=>executeTool(()=>audioErrors(()=>getAudioGenerationForOwner(principal(ctx,"jobs:read"),args.request_id))));
   server.registerTool("generate_audio",{
-    description:"Generate requested speech using the application's existing voices, models, plan/rollout/quota/credit rules. May spend credits and provider allowance. Save a new request UUID and exact inputs before submission; recover with get_audio_generation, or replay identical inputs. Do not generate to test connectivity. Output is a private audio-library ID; binary download/video-import adapters are not yet available through MCP.",
+    description:"Generate requested speech using the application's existing voices, models, plan/rollout/quota/credit rules. May spend credits and provider allowance. Save a new request UUID and exact inputs before submission; recover with get_audio_generation, or replay identical inputs. Do not generate to test connectivity. Output is a private audio-library ID; use get_audio_asset for its expiring download, while video import remains a separate adapter.",
     inputSchema:z.strictObject({request_id:z.uuid(),script:z.string().trim().min(1).max(AUDIO_MAX_CHARACTERS),voice_id:voiceId,
       model_id:z.enum(AUDIO_MODEL_IDS),speed:z.number().min(0.8).max(1.2).default(1),name:z.string().trim().min(1).max(100).default("Untitled audio")}),
     outputSchema:z.strictObject({request_id:z.uuid(),generation_id:z.uuid(),status:z.string(),test_only:z.boolean(),credits:z.number().int().nonnegative()}),
@@ -81,6 +82,11 @@ export function registerAudioMcpTools(server:McpServer) {
     const result=await generateAudioForOwner(principal(ctx,"generation:write"),{requestKey:args.request_id,script:args.script,voiceId:args.voice_id,modelId:args.model_id,speed:args.speed,name:args.name});
     return {request_id:args.request_id,generation_id:result.id,status:result.status,test_only:result.testOnly,credits:result.credits};
   })));
+  server.registerTool("create_audio_upload",{
+    description:"Prepare a requested local audio transfer from measured file metadata/SHA-256. Save the request UUID and exact file/purpose before calling. Returns a short-lived content-bound POST link, not an uploaded asset. Use the local binary helper to send exact bytes; recover with get_audio_generation by the same UUID or renew this identical intent. Three MB/three minute audio limit; uses the website's existing plan/quota/replay service. Never accepts arbitrary source URLs or uploads just to test connection.",
+    inputSchema:audioUploadInput,outputSchema:z.strictObject({request_id:z.uuid(),url:z.url().regex(/^https:\/\//),method:z.literal("POST"),headers:z.strictObject({"Content-Type":z.string()}),expires_at:z.iso.datetime({offset:true})}),
+    annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:true,openWorldHint:false},scopeChallenge:requireScopes("assets:write"),_meta:oauthMetadata("assets:write"),
+  },(args,ctx)=>executeTool(()=>audioErrors(()=>createAudioUploadForOwner(principal(ctx,"assets:write"),args))));
   server.registerTool("get_audio_preferences",{
     description:"Read the same saved voice selection and bookmarks as the website. Preferences do not grant access to a voice; resolve IDs against list_audio_voices before generating.",
     inputSchema:empty,outputSchema:z.strictObject({voice_id:voiceId.nullable(),bookmarked_voice_ids:z.array(voiceId)}),

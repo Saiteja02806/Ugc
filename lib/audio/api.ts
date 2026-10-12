@@ -1,14 +1,12 @@
 import "server-only";
-import { createHash, randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { requireFirebaseUser, FirebaseAuthRequestError } from "@/lib/firebase/server-auth";
 import { BillingAccessError } from "@/lib/billing/subscription-db";
-import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
-import { AUDIO_MAX_UPLOAD_BYTES, AUDIO_UPLOAD_TYPES, AudioError, audioObjectPrefix, isAudioUuid, parseAudioRequestKey, type AudioRequest } from "@/worker/src/lib/audio-contract";
-import { audioDb, audioRpc, getAudioRequest, readPrivateAudio, savePrivateAudio, deletePrivateAudio } from "@/worker/src/lib/audio-store";
+import { AUDIO_MAX_UPLOAD_BYTES, AudioError, audioObjectPrefix, isAudioUuid, parseAudioRequestKey } from "@/worker/src/lib/audio-contract";
+import { audioDb, audioRpc, getAudioRequest, readPrivateAudio, deletePrivateAudio } from "@/worker/src/lib/audio-store";
 import { ElevenLabsAudio, getElevenLabsApiKey } from "@/worker/src/lib/elevenlabs-audio";
-import { audioProvider as provider, invited, assertPlanAccess, assertAvailability, assertRolloutAccess, history,
-  createRequest, replayRequest, getAudioBootstrapForOwner, generateAudioForOwner, invalidateAudioCatalogue } from "./service";
+import { audioProvider as provider, assertPlanAccess, assertAvailability, assertRolloutAccess, history,
+  createRequest, replayRequest, getAudioBootstrapForOwner, generateAudioForOwner, uploadAudioForOwner, invalidateAudioCatalogue } from "./service";
 export { getAudioBootstrapForOwner, generateAudioForOwner } from "./service";
 function json(data: unknown, status = 200) { return NextResponse.json(data, { status, headers: { "Cache-Control": "private, no-store" } }); }
 export function audioApiError(error: unknown) {
@@ -35,50 +33,13 @@ export async function handleAudioGeneration(request: Request) {
 }
 export async function handleAudioUpload(request: Request) {
   try {
-    const user = await requireFirebaseUser(request); await assertPlanAccess(user.uid); assertAvailability(user.uid); assertRolloutAccess(user.uid, invited(user.uid) ? null : await provider.account());
-    if (getMissingJobQueueEnvVars(["generate_audio"]).length) throw new AudioError("The audio worker has not been configured yet.", 503);
-    const length = Number(request.headers.get("content-length") ?? 0); if (length > AUDIO_MAX_UPLOAD_BYTES + 16384) throw new AudioError("Audio files must be smaller than 3 MB.", 413);
-    const form = await request.formData(); const file = form.get("file"); const purpose = form.get("purpose"); const key = parseAudioRequestKey(form.get("requestKey"));
-    if (!(file instanceof File) || file.size < 32 || file.size > AUDIO_MAX_UPLOAD_BYTES || !AUDIO_UPLOAD_TYPES.includes(file.type)) throw new AudioError("Choose an MP3, WAV, M4A, OGG or WebM audio file smaller than 3 MB.");
-    if (purpose !== "reference" && purpose !== "exact") throw new AudioError("Choose how this recording will be used.");
-    const bytes = new Uint8Array(await file.arrayBuffer()); const checksum = createHash("sha256").update(bytes).digest("hex");
-    // Separate attempts cannot overwrite a winning upload before the database
-    // establishes ownership of its idempotency key.
-    const assetId = key; const name = file.name.slice(0, 100); const objectKey = `${audioObjectPrefix(user.uid, assetId)}/recording-${randomUUID()}`;
-    const initial = await audioDb().from("audio_assets").select("*").eq("id", assetId).maybeSingle();
-    let existing = initial.data; const readError = initial.error; let createdHere = false;
-    if (readError) throw new AudioError("Audio uploads are unavailable.", 503);
-    if (existing && (existing.user_id !== user.uid || existing.checksum !== checksum || existing.purpose !== purpose)) throw new AudioError("This upload ID already belongs to another recording.", 409);
-    if (!existing) {
-      await savePrivateAudio(objectKey, bytes, file.type);
-      const { error } = await audioDb().from("audio_assets").insert({ id: assetId, user_id: user.uid, name, purpose, object_key: objectKey, mime_type: file.type, size_bytes: bytes.length, checksum, status: "processing", test_only: false });
-      if (error) {
-        // Recover a concurrent winner or an insert whose response was lost.
-        // Remove only this attempt's unreferenced object, never the winner's.
-        const settled = await audioDb().from("audio_assets").select("*").eq("id", assetId).maybeSingle();
-        if (settled.error) throw new AudioError("The audio upload could not be saved.", 503);
-        if (settled.data?.object_key !== objectKey) await deletePrivateAudio([objectKey]);
-        if (!settled.data) throw new AudioError("The audio upload could not be saved.", 503);
-        if (settled.data.user_id !== user.uid || settled.data.checksum !== checksum || settled.data.purpose !== purpose) throw new AudioError("This upload ID already belongs to another recording.", 409);
-        existing = settled.data;
-      }
-      createdHere = !error || existing?.object_key === objectKey;
-    }
-    let result: AudioRequest;
-    try { result = await createRequest(user.uid, "upload", key, { name, sourceAssetId: assetId, purpose, checksum, testOnly: false }, null); }
-    catch (error) {
-      // A quota rejection should not leave a new upload consuming storage. Keep
-      // the file if the RPC committed but its response/dispatch was interrupted.
-      if (createdHere) {
-        const lookup = await audioDb().from("audio_generation_requests").select("id").eq("user_id", user.uid).eq("request_key", key).maybeSingle();
-        if (!lookup.error && !lookup.data) {
-          const removed = await audioDb().from("audio_assets").delete().eq("id", assetId).eq("user_id", user.uid);
-          if (!removed.error) await deletePrivateAudio([objectKey]);
-        }
-      }
-      throw error;
-    }
-    return json({ id: result.id, assetId }, 202);
+    const user = await requireFirebaseUser(request);
+    const result = await uploadAudioForOwner(user.uid, async () => {
+      const length = Number(request.headers.get("content-length") ?? 0);
+      if (length > AUDIO_MAX_UPLOAD_BYTES + 16384) throw new AudioError("Audio files must be smaller than 3 MB.", 413);
+      return request.formData();
+    });
+    return json(result, 202);
   } catch (error) { return audioApiError(error); }
 }
 export async function handleAudioClone(request: Request) {

@@ -4,8 +4,8 @@ import { getUserSubscription } from "@/lib/billing/subscription-db";
 import { getBackgroundJobById } from "@/lib/jobs/background-jobs";
 import { dispatchQueuedBackgroundJobForRecovery } from "@/lib/jobs/background-job-service";
 import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
-import { AudioError, audioCostMicros, isAudioUuid, isVoiceEligible, parseAudioRequestKey, parseAudioSpeech, type AudioAccount, type AudioModel, type AudioRequest, type AudioVoice } from "@/worker/src/lib/audio-contract";
-import { audioDb, audioRpc, privateAudioConfigured } from "@/worker/src/lib/audio-store";
+import { AUDIO_MAX_UPLOAD_BYTES, AUDIO_UPLOAD_TYPES, audioObjectPrefix, AudioError, audioCostMicros, isAudioUuid, isVoiceEligible, parseAudioRequestKey, parseAudioSpeech, type AudioAccount, type AudioModel, type AudioRequest, type AudioVoice } from "@/worker/src/lib/audio-contract";
+import { audioDb, audioRpc, savePrivateAudio, deletePrivateAudio, privateAudioConfigured } from "@/worker/src/lib/audio-store";
 import { ElevenLabsAudio, getElevenLabsApiKey, toAudioVoice } from "@/worker/src/lib/elevenlabs-audio";
 import type { AudioBootstrap, AudioHistory } from "./types";
 import { getGoogleServiceAccountCredentials } from "@/lib/gcp/credentials";
@@ -174,4 +174,57 @@ export async function generateAudioForOwner(userId: string, inputBody: Record<st
     if (data.account.remaining < input.script.length) throw new AudioError("The ElevenLabs allowance is too low for this script.", 429);
     const result = await createRequest(userId, "speech", key, { ...input, privateVoiceProfileId: selectedVoice.private ? selectedVoice.profileId : undefined, testOnly: !data.account.paid }, data.account);
     return { id: result.id, status: result.status, testOnly: result.test_only, credits: result.credits };
+}
+
+export async function assertAudioUploadAccess(userId: string) {
+  await assertPlanAccess(userId); assertAvailability(userId); assertRolloutAccess(userId, invited(userId) ? null : await audioProvider.account());
+  if (getMissingJobQueueEnvVars(["generate_audio"]).length) throw new AudioError("The audio worker has not been configured yet.", 503);
+}
+export async function uploadAudioForOwner(userId: string, readForm: () => Promise<FormData>) {
+  await assertAudioUploadAccess(userId);
+  const form = await readForm();
+    const file = form.get("file"); const purpose = form.get("purpose"); const key = parseAudioRequestKey(form.get("requestKey"));
+    if (!(file instanceof File) || file.size < 32 || file.size > AUDIO_MAX_UPLOAD_BYTES || !AUDIO_UPLOAD_TYPES.includes(file.type)) throw new AudioError("Choose an MP3, WAV, M4A, OGG or WebM audio file smaller than 3 MB.");
+    if (purpose !== "reference" && purpose !== "exact") throw new AudioError("Choose how this recording will be used.");
+    const bytes = new Uint8Array(await file.arrayBuffer()); const checksum = createHash("sha256").update(bytes).digest("hex");
+    // Separate attempts cannot overwrite a winning upload before the database
+    // establishes ownership of its idempotency key.
+    const assetId = key; const name = file.name.slice(0, 100); const objectKey = `${audioObjectPrefix(userId, assetId)}/recording-${randomUUID()}`;
+    const normalizedMime=(value:string)=>({"audio/mp3":"audio/mpeg","audio/x-wav":"audio/wav","audio/x-m4a":"audio/mp4"} as Record<string,string>)[value]??value;
+    const matchesIntent=(value:Record<string,unknown>)=>value.user_id===userId&&value.status!=="deleted"&&value.checksum===checksum&&value.purpose===purpose&&
+      value.name===name&&Number(value.size_bytes)===bytes.length&&normalizedMime(String(value.mime_type))===normalizedMime(file.type);
+    const initial = await audioDb().from("audio_assets").select("*").eq("id", assetId).maybeSingle();
+    let existing = initial.data; const readError = initial.error; let createdHere = false;
+    if (readError) throw new AudioError("Audio uploads are unavailable.", 503);
+    if (existing && !matchesIntent(existing)) throw new AudioError("This upload ID already belongs to another recording.", 409);
+    if (!existing) {
+      await savePrivateAudio(objectKey, bytes, file.type);
+      const { error } = await audioDb().from("audio_assets").insert({ id: assetId, user_id: userId, name, purpose, object_key: objectKey, mime_type: file.type, size_bytes: bytes.length, checksum, status: "processing", test_only: false });
+      if (error) {
+        // Recover a concurrent winner or an insert whose response was lost.
+        // Remove only this attempt's unreferenced object, never the winner's.
+        const settled = await audioDb().from("audio_assets").select("*").eq("id", assetId).maybeSingle();
+        if (settled.error) throw new AudioError("The audio upload could not be saved.", 503);
+        if (settled.data?.object_key !== objectKey) await deletePrivateAudio([objectKey]);
+        if (!settled.data) throw new AudioError("The audio upload could not be saved.", 503);
+        if (!matchesIntent(settled.data)) throw new AudioError("This upload ID already belongs to another recording.", 409);
+        existing = settled.data;
+      }
+      createdHere = !error || existing?.object_key === objectKey;
+    }
+    let result: AudioRequest;
+    try { result = await createRequest(userId, "upload", key, { name, sourceAssetId: assetId, purpose, checksum, testOnly: false }, null); }
+    catch (error) {
+      // A quota rejection should not leave a new upload consuming storage. Keep
+      // the file if the RPC committed but its response/dispatch was interrupted.
+      if (createdHere) {
+        const lookup = await audioDb().from("audio_generation_requests").select("id").eq("user_id", userId).eq("request_key", key).maybeSingle();
+        if (!lookup.error && !lookup.data) {
+          const removed = await audioDb().from("audio_assets").delete().eq("id", assetId).eq("user_id", userId);
+          if (!removed.error) await deletePrivateAudio([objectKey]);
+        }
+      }
+      throw error;
+    }
+    return { id: result.id, assetId };
 }

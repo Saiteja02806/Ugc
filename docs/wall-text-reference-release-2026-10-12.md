@@ -45,10 +45,19 @@ input, unchanged legacy routing, and duration mismatch rejection.
 The focused release suite passes 81 tests, and the worker regression suites
 pass 308 plus 15 tests. Standalone TypeScript validation also passes.
 
-The website deployment must preserve the current deployed source, including any
-concurrent releases. The saved local Vercel CLI credentials are unauthorized and
-point at a different team; the user's sign-in is pending. Production remains
-unchanged until the complete release can be verified. An authenticated production
-generation and inspection of the returned clip remain outstanding.
+The website snapshot preserves all 2,998 files from current production deployment
+`dpl_FykkpKgW4iGKUAjcGzh7ttU4r5pX`, including its 116 differences from the
+worker baseline, before applying the scoped patch. Only local deployment JSON,
+TypeScript build caches, and Supabase CLI cache metadata are excluded from upload.
+Environment files and installed/build dependencies remain excluded.
+
+The worker image build succeeded with digest
+`sha256:cbe44cb4b8ebcbe6df74bc47ddbf9040043413de29550104d7b71509c656a301`.
+Cloud Run revision `ugc-ai-generation-worker-00168-fop` passes its platform
+startup probe with internal-only ingress and zero traffic during staging. Its
+runtime and baked source identity are `7aec285e20e59c9bbce766bf0c40d8d1b1893278`.
+The website staging build passes production TypeScript checks and all 153 static
+pages, and the same 81 focused tests pass against the preserved source.
+Promotion and an authenticated production generation remain outstanding.
 
 Provider contract: https://ai.google.dev/gemini-api/docs/omni

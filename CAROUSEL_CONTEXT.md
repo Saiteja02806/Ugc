@@ -6106,3 +6106,11 @@ and advertises only deployed workflows. See
 - Hook and Wall of text can schedule an opening alone, a demo alone, or opening followed by demo. A selected but unprepared opening is never silently skipped. Neither clip selected blocks preparation. An unchanged, ready owned MP4 can be scheduled directly; standalone demo trim, text, sound and crop/pan still apply before scheduling. Source framing is an optional single-clip extension behind the existing framing gate, with a distinct renderer fingerprint; omitted legacy fields and receipts keep their identities.
 - Optional publishing controls are collapsed. TikTok's required visibility selection and supported interaction choices remain available; privacy is not silently preset. Photo posts omit video-only Duet/Stitch controls. An owner-persisted AI content disclosure default in Settings initializes new TikTok/YouTube posts, while explicit per-post choices and saved schedule settings remain authoritative. This preference does not alter Carousel sourcing, plans, rendering, readiness or publishing ownership.
 - These changes have local component/browser, database permission and renderer checks. The publishing-preference migration and the website/worker contract must be released together before production acceptance. Local fixtures cannot publish real posts or replace authenticated verification.
+
+
+## 2026-10-12 Explore reference duration contract
+
+- Hook and Wall of Text send the selected gallery or owned source video, optional appearance image, and complete prompt to Google Omni in edit mode. A ten-second source retains its ten-second timeline; output duration is derived from the source.
+- Source support follows Omni uploaded-video editing (up to ten seconds), with a 32 MB download bound. Sources are never silently truncated or omitted. Unsupported models must disclose incompatibility while retaining the attachments.
+- Edit results must pass an actual MP4 duration check before storage, allowing 0.25 seconds for frame/container rounding. Mismatched or unreadable results fail without a new paid retry. Verified duration is retained for recovery.
+- This scoped release preserves old jobs without edit mode. Worker rollout precedes the website, followed by authenticated production verification. See `docs/wall-text-reference-release-2026-10-12.md` for validation and release state.

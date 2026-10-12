@@ -31,6 +31,9 @@ function harness(upload, { images = [], queryError = false, fetchSaved = async i
     "@/components/ui/popover": { Popover: "Popover", PopoverContent: "PopoverContent", PopoverTitle: "PopoverTitle", PopoverTrigger: "PopoverTrigger" },
     "@/components/explore/hook-workflow-media-controls": { WorkflowMediaPlayer: "WorkflowMediaPlayer" },
     "@/components/explore/workflow-creation-form": { ReferenceVideoThumbnail: "ReferenceVideoThumbnail" },
+    "@/components/explore/workflow-reference-preview": { WorkflowReferencePreview: "ImagePreview" },
+    "@/components/explore/workflow-reference-preview.module.css": { default: {} },
+    "@/components/explore/workflow-video-layout.module.css": { default: {} },
     "@/components/explore/workflow-creation.module.css": { default: {} },
     "@/components/explore/workflow-studio.module.css": { default: {} },
     "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => ({ asset: null, error: null, remove() {} }) },
@@ -64,7 +67,7 @@ test("optional guidance blocks generation while pending and binds the upload to 
   const h = harness(() => new Promise(done => { resolve = done; }));
   h.choose("video");
   assert.deepEqual(h.pending, [true]); assert.deepEqual(h.changes, []);
-  assert.equal(h.calls[0][1], "video"); assert.equal(h.calls[0][2], 3); assert.equal(h.calls[0][3], "expected-owner");
+  assert.equal(h.calls[0][1], "video"); assert.equal(h.calls[0][2], 10); assert.equal(h.calls[0][3], "expected-owner");
   const ready = { kind: "video", asset: { url: "https://owned.test/new.mp4" } };
   resolve(ready); await flush();
   assert.deepEqual(h.changes, [ready]); assert.deepEqual(h.pending, [true, false]);

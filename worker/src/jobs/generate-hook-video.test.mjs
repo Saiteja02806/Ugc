@@ -3,13 +3,23 @@ import { mock, test } from "node:test";
 
 const received = [];
 const buffer = Buffer.from("fixture-video");
+let outputBuffer = buffer;
+const uploads = [];
+function clip(seconds) {
+  const bytes = Buffer.alloc(60);
+  bytes.writeUInt32BE(24, 0); bytes.write("ftypmp42", 4);
+  bytes.writeUInt32BE(36, 24); bytes.write("moov", 28);
+  bytes.writeUInt32BE(28, 32); bytes.write("mvhd", 36);
+  bytes.writeUInt32BE(1000, 52); bytes.writeUInt32BE(Math.round(seconds * 1000), 56);
+  return bytes;
+}
 let providerError;
 const generate = provider => async params => {
   received.push({ provider, ...params });
   if (providerError) throw providerError;
   await params.onOperationCreated?.("fixture-operation");
   await params.onOperationSucceeded?.("fixture-operation");
-  return buffer;
+  return outputBuffer;
 };
 for (const [file, name, provider] of [
   ["runway-seedance-video", "generateRunwaySeedanceVideoBuffer", "runway"],
@@ -26,7 +36,7 @@ for (const [file, name, provider] of [
 mock.module(new URL("../../dist/logger.js", import.meta.url), { namedExports: { logger: { info() {}, warn() {} } } });
 mock.module(new URL("../../dist/lib/storage.js", import.meta.url), { namedExports: {
   getStoredObject: async () => null,
-  uploadBufferToStorage: async params => ({ key: params.key, url: "https://owned-media.example.test/video.mp4" }),
+  uploadBufferToStorage: async params => { uploads.push(params); return { key: params.key, url: "https://owned-media.example.test/video.mp4" }; },
 } });
 mock.module(new URL("../../dist/lib/video-output.js", import.meta.url), { namedExports: { assertGeneratedMp4: value => value } });
 const { ProviderRequestNotSubmittedError, ProviderSubmissionUncertainError } = await import("../../dist/lib/generation-provider.js");
@@ -67,6 +77,42 @@ test("the actual worker preserves long Omni prompts and their final narration", 
     assert.equal(f.events.find(event => event.name === "submitted").providerOperationId, "fixture-operation");
     assert.equal(f.events.at(-1).name, "persisted");
   }
+});
+
+test("explicit source-video edits route both inputs to Gemini without changing legacy video routing", async () => {
+  const f = fixture({ referenceVideoMode: "edit", referenceVideoUrl: "https://owned-media.example.test/source.mp4",
+    referenceVideoDurationSeconds: 6.25, avatarImageUrl: "https://owned-media.example.test/identity.png",
+    referenceImageUrls: ["https://owned-media.example.test/identity.png"], hookIdea: "Remove text. ".repeat(150) + "Copy the actions.", durationSeconds: 7 });
+  outputBuffer = clip(6.25);
+  let output;
+  try { output = await runGenerateHookVideoJob(f.job, f.context); }
+  finally { outputBuffer = buffer; }
+  assert.equal(output.provider, "gemini"); assert.equal(output.durationSeconds, 6.25);
+  const submitted = received.at(-1);
+  assert.equal(submitted.referenceVideoMode, "edit"); assert.equal(submitted.referenceVideoUrl, f.job.input_json.referenceVideoUrl);
+  assert.deepEqual(submitted.referenceImageUrls, f.job.input_json.referenceImageUrls);
+  assert.equal(submitted.prompt, f.job.input_json.hookIdea);
+  assert.equal(f.events.filter(event => event.name === "reserve").length, 1);
+  assert.equal(f.events.find(event => event.name === "reserve").operationKey, "primary-gemini");
+});
+
+test("a ten-second source produces a verified ten-second Omni edit and a short result is terminal before storage", async () => {
+  const input = { referenceVideoMode: "edit", referenceVideoUrl: "https://owned-media.example.test/source.mp4",
+    referenceVideoDurationSeconds: 10, durationSeconds: 10, avatarImageUrl: "https://owned-media.example.test/identity.png" };
+  try {
+    outputBuffer = clip(10);
+    const f = fixture(input);
+    const output = await runGenerateHookVideoJob(f.job, f.context);
+    assert.equal(output.durationSeconds, 10);
+    assert.equal(f.events.find(event => event.name === "persisted").metadata.durationSeconds, 10);
+    assert.equal(received.at(-1).provider, "gemini");
+    outputBuffer = clip(3);
+    const before = uploads.length, failed = fixture(input);
+    await assert.rejects(runGenerateHookVideoJob(failed.job, failed.context), /could not preserve.*duration/);
+    assert.equal(uploads.length, before);
+    assert.equal(failed.events.find(event => event.name === "failed").retryAllowed, false);
+    assert.equal(failed.events.filter(event => event.name === "submitted").length, 1);
+  } finally { outputBuffer = buffer; }
 });
 
 test("other direct paths reject excess text before reserving a provider operation", async () => {

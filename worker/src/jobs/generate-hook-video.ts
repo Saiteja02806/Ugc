@@ -30,6 +30,7 @@ import {
   type HookVideoProvider,
 } from "../lib/ugc-video-prompt.js";
 import { assertGeneratedMp4 } from "../lib/video-output.js";
+import { assertVideoEditDuration } from "../lib/video-reference-input.js";
 import { shouldFallbackToRunway } from "../lib/video-provider-fallback.js";
 import { generateVeoHookVideoBuffer } from "../lib/veo-video.js";
 import { RetryableJobError } from "../retryable-job-error.js";
@@ -49,6 +50,7 @@ type GenerateHookVideoBaseInput = {
   provider?: HookVideoProvider;
   referenceVideoDurationSeconds?: number;
   referenceVideoUrl?: string;
+  referenceVideoMode?: "edit";
   userId: string;
   videoId: string;
 };
@@ -101,6 +103,8 @@ export async function runGenerateHookVideoJob(
         input.provider ??
         DEFAULT_HOOK_VIDEO_PROVIDER,
       uploaded: existingOutput,
+      outputDurationSeconds: input.referenceVideoMode && isJsonObject(persistedOperation?.metadata) && typeof persistedOperation.metadata.durationSeconds === "number"
+        ? persistedOperation.metadata.durationSeconds : undefined,
     });
   }
 
@@ -116,6 +120,17 @@ export async function runGenerateHookVideoJob(
   });
   const buffer = assertGeneratedMp4(generated.buffer);
   const { provider } = generated;
+  let outputDurationSeconds: number | undefined;
+  if (input.referenceVideoMode === "edit") {
+    try {
+      outputDurationSeconds = assertVideoEditDuration(buffer, input.referenceVideoDurationSeconds!);
+    } catch (cause) {
+      const error = new ProviderOperationTerminalError(cause instanceof Error ? cause.message : "The reference duration could not be preserved.");
+      await context.store.markGenerationProviderFailed({ jobId: job.id, operationKey: generated.operationKey,
+        errorCode: error.code, errorMessage: error.message, retryAllowed: false });
+      throw error;
+    }
+  }
 
   logger.info("Hook video generated", {
     bufferSize: buffer.length,
@@ -141,7 +156,7 @@ export async function runGenerateHookVideoJob(
     jobId: job.id,
     metadata: {
       ...(completedOperation && isJsonObject(completedOperation.metadata) ? completedOperation.metadata : {}),
-      durationSeconds: getOutputDurationSeconds(input, provider),
+      durationSeconds: outputDurationSeconds ?? getOutputDurationSeconds(input, provider),
       provider,
       ratio: input.aspectRatio,
     },
@@ -160,6 +175,7 @@ export async function runGenerateHookVideoJob(
     input,
     provider,
     uploaded,
+    outputDurationSeconds,
   });
 }
 
@@ -187,6 +203,10 @@ async function generateWithFallback(
 
   if (selectedProvider === "openrouter") {
     return generateWithProvider(job, context, "openrouter", "primary", input, prompt);
+  }
+
+  if (input.referenceVideoMode === "edit") {
+    return generateWithProvider(job, context, "gemini", "primary", input, prompt);
   }
 
   if (input.referenceVideoUrl) {
@@ -295,6 +315,7 @@ async function generateWithProvider(
     ...(input.referenceAudioUrls.length ? { referenceAudioUrls: input.referenceAudioUrls } : {}),
     referenceVideoDurationSeconds: input.referenceVideoDurationSeconds ?? null,
     referenceVideoUrl: input.referenceVideoUrl ?? null,
+    ...(input.referenceVideoMode ? { referenceVideoMode: input.referenceVideoMode } : {}),
     videoId: input.videoId,
   });
   const reservation = await context.store.reserveGenerationProviderOperation({
@@ -350,6 +371,7 @@ async function generateWithProvider(
       referenceAudioUrls: !providerOperationId && !providerOutputUrl
         ? await Promise.all(input.referenceAudioUrls.map(url => resolveOwnedPrivateMediaUrl(url, job.user_id ?? ""))) : input.referenceAudioUrls,
       referenceVideoDurationSeconds: input.referenceVideoDurationSeconds,
+      referenceVideoMode: input.referenceVideoMode,
       referenceVideoUrl: !providerOperationId && !providerOutputUrl && input.referenceVideoUrl
         ? await resolveOwnedPrivateMediaUrl(input.referenceVideoUrl, job.user_id ?? "") : input.referenceVideoUrl,
       resolution: input.resolution,
@@ -400,6 +422,7 @@ async function generateProviderBuffer(
     referenceAudioUrls?: string[];
     referenceVideoDurationSeconds?: number;
     referenceVideoUrl?: string;
+    referenceVideoMode?: "edit";
     resolution: HookVideoResolution;
   },
   onOperationSucceeded: (operationId: string, outputUrl?: string, usage?: { costUsd?: number; generationId?: string }) => Promise<void>,
@@ -444,9 +467,10 @@ function buildOutput(params: {
   input: GenerateHookVideoInput;
   provider: HookVideoProvider;
   uploaded: { key: string; url: string };
+  outputDurationSeconds?: number;
 }) {
   return {
-    durationSeconds: getOutputDurationSeconds(params.input, params.provider),
+    durationSeconds: params.outputDurationSeconds ?? getOutputDurationSeconds(params.input, params.provider),
     fileSizeBytes: params.bufferSize,
     key: params.uploaded.key,
     ok: true,
@@ -475,8 +499,13 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
         : undefined;
   const provider = getOptionalChoice(job.input_json.provider, hookVideoProviders);
   const referenceVideoUrl = getOptionalHttpsUrl(job.input_json.referenceVideoUrl);
+  const referenceVideoMode = job.input_json.referenceVideoMode === "edit" ? "edit" : undefined;
+  if ((job.input_json.referenceVideoMode !== undefined && job.input_json.referenceVideoMode !== "edit") ||
+      (referenceVideoMode && (model !== "google_omni" || !referenceVideoUrl))) {
+    throw new ProviderRequestNotSubmittedError("Video editing requires Google Omni and a source video.");
+  }
   const hookIdea = getText(job.input_json.hookIdea, "hookIdea", promptMode === "direct" ? undefined : MAX_HOOK_LENGTH);
-  const promptMaxLength = getVideoPromptCharacterLimit({ model, provider, hasReferenceVideo: Boolean(referenceVideoUrl) });
+  const promptMaxLength = getVideoPromptCharacterLimit({ model, provider, hasReferenceVideo: Boolean(referenceVideoUrl), referenceVideoMode });
   if (promptMode === "direct" && promptMaxLength !== undefined && hookIdea.length > promptMaxLength) {
     throw new ProviderRequestNotSubmittedError("This prompt is too long for the selected model. Shorten it and try again.");
   }
@@ -494,9 +523,10 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
     provider,
     referenceVideoDurationSeconds: getOptionalDurationSeconds(
       job.input_json.referenceVideoDurationSeconds,
-      job.input_json.model === "seedance_2_5" ? 30 : 3,
+      referenceVideoMode ? 10 : job.input_json.model === "seedance_2_5" ? 30 : 3,
     ),
     referenceVideoUrl,
+    referenceVideoMode,
     resolution: getGenerationResolution(job.input_json.resolution, model),
     userId: getPathSegment(job.input_json.userId, "userId"),
     videoId: getPathSegment(job.input_json.videoId, "videoId"),

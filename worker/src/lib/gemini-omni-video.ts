@@ -10,6 +10,7 @@ import {
   ProviderRequestNotSubmittedError,
 } from "./generation-provider.js";
 import { getRequiredProviderEnv } from "./provider-env.js";
+import { downloadVideoReference, readMp4DurationSeconds, OMNI_EDIT_MAX_VIDEO_SECONDS } from "./video-reference-input.js";
 
 type GenerateGeminiOmniVideoParams = {
   aspectRatio: "9:16" | "16:9";
@@ -23,6 +24,9 @@ type GenerateGeminiOmniVideoParams = {
   providerOperationId?: string;
   referenceImageUrl?: string;
   referenceImageUrls?: string[];
+  referenceVideoUrl?: string;
+  referenceVideoDurationSeconds?: number;
+  referenceVideoMode?: "edit";
   resolution: "480p" | "720p" | "1080p";
 };
 
@@ -41,6 +45,9 @@ export async function generateGeminiOmniVideoBuffer({
   providerOperationId,
   referenceImageUrl,
   referenceImageUrls,
+  referenceVideoUrl,
+  referenceVideoDurationSeconds,
+  referenceVideoMode,
   resolution,
 }: GenerateGeminiOmniVideoParams) {
   const ai = getGoogleClient();
@@ -64,6 +71,12 @@ export async function generateGeminiOmniVideoBuffer({
       );
     }
   } else {
+    if (referenceVideoUrl && (referenceVideoMode !== "edit" || !referenceVideoDurationSeconds || !Number.isFinite(referenceVideoDurationSeconds) || referenceVideoDurationSeconds <= 0 || referenceVideoDurationSeconds > OMNI_EDIT_MAX_VIDEO_SECONDS)) {
+      throw new ProviderRequestNotSubmittedError("Google Omni video editing requires a source video up to 10 seconds.");
+    }
+    if (referenceVideoMode && !referenceVideoUrl) {
+      throw new ProviderRequestNotSubmittedError("The source video is missing. No generation was submitted.");
+    }
     const imageUrls = referenceImageUrls?.length
       ? referenceImageUrls
       : referenceImageUrl ? [referenceImageUrl] : [];
@@ -71,23 +84,45 @@ export async function generateGeminiOmniVideoBuffer({
       throw new ProviderRequestNotSubmittedError("UGC Pilot accepts up to 6 Google Omni reference images.");
     }
     const referenceImages = await Promise.all(imageUrls.map(downloadReferenceImage));
-    await validateOmniInputTokens(ai, model, prompt, referenceImages);
+    let referenceVideo;
+    if (referenceVideoUrl) {
+      try {
+        const video = await downloadVideoReference(referenceVideoUrl);
+        if (video.buffer.subarray(4, 8).toString("ascii") === "ftyp") {
+          const actualDuration = readMp4DurationSeconds(video.buffer);
+          if (actualDuration > OMNI_EDIT_MAX_VIDEO_SECONDS || Math.abs(actualDuration - referenceVideoDurationSeconds!) > 0.25) {
+            throw new Error("The reference video's actual duration does not match its saved duration.");
+          }
+        }
+        referenceVideo = { data: video.buffer.toString("base64"), mimeType: video.mimeType };
+      } catch (error) {
+        throw new ProviderRequestNotSubmittedError("Could not load the source video. No generation was submitted.", { cause: error });
+      }
+    }
+    const generationPrompt = referenceVideo
+      ? `[# Sources <VIDEO_0>@Video1]${referenceImages.length ? ` [# References ${referenceImages.map((_, index) => `<IMAGE_REF_${index}>@Image${index + 1}`).join(" ")}]` : ""}\nEdit the supplied source video. Preserve its actions, timing, camera, lighting and scene except for the changes requested below.${referenceImages.length ? " Use the supplied image(s) as appearance references, not as starting frames." : ""}\n${prompt}`
+      : prompt;
+    await validateOmniInputTokens(ai, model, generationPrompt, [...referenceImages, ...(referenceVideo ? [referenceVideo] : [])]);
     interaction = await ai.interactions.create({
-      input: referenceImages.length
+      input: referenceImages.length || referenceVideo
         ? [
+            ...(referenceVideo ? [{ data: referenceVideo.data, mime_type: referenceVideo.mimeType, type: "video" as const }] : []),
             ...referenceImages.map((image) => ({
               data: image.data,
               mime_type: image.mimeType,
               type: "image" as const,
             })),
-            { text: prompt, type: "text" as const },
+            { text: generationPrompt, type: "text" as const },
           ]
         : prompt,
       model,
+      ...(referenceVideo ? { generation_config: { video_config: { task: "edit" as const } } } : {}),
       response_format: {
         aspect_ratio: aspectRatio,
         delivery: "uri",
-        duration: `${durationSeconds}s`,
+        // Edit mode retains the source timeline; an output duration would ask
+        // the provider to shorten or extend the footage instead.
+        ...(!referenceVideo ? { duration: `${durationSeconds}s` } : {}),
         resolution,
         type: "video",
       },
@@ -208,7 +243,7 @@ async function validateOmniInputTokens(
 
   if (totalTokens > inputTokenLimit) {
     throw new ProviderRequestNotSubmittedError(
-      `Google Omni supports up to ${inputTokenLimit.toLocaleString("en-US")} input tokens, including reference images. Shorten your prompt and try again.`,
+      `Google Omni supports up to ${inputTokenLimit.toLocaleString("en-US")} input tokens, including reference media. Shorten your prompt and try again.`,
     );
   }
 }

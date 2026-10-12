@@ -325,7 +325,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     contextBanner, referenceImageUrl: format === "slideshow" && !slideshowUploadBusy ? sourceImage : undefined,
     referenceImageUrls: format === "slideshow" && !slideshowUploadBusy ? sourceImages : undefined,
     referenceImageAssetId: format === "slideshow" ? slideshowRegenerationImage?.mediaAssetId ?? slideshowRegenerationImage?.id : undefined,
-    styleVideo: format !== "slideshow" && reference?.videoUrl ? { url: reference.videoUrl, name: reference.title, duration: null } : undefined,
+    styleVideo: format !== "slideshow" && reference?.videoUrl ? { id: reference.id, url: reference.videoUrl, name: reference.title, duration: null } : undefined,
     referenceTitle: reference?.title, onClearReference: clearStyleReference, preview: localPreview,
     emptyContent: <div className={styles.emptyResult}><span className={styles.emptyIcon}>{format === "slideshow" ? <Images aria-hidden="true" /> : <Film aria-hidden="true" />}</span><h2 className="text-lg font-semibold">{format === "slideshow" ? "Your images will appear here" : "Your video will appear here"}</h2><p className="max-w-sm text-sm leading-6 text-muted">{format === "slideshow" ? "Choose a reference and describe your changes in Create." : "Add your instructions in Create. You can use a style example or attach your own image or video."} Your generation will appear here, ready to edit.</p><Button type="button" variant="outline" onClick={browseReferences}>Browse references</Button></div>,
     workflow: { format, controlsTarget, controlsActive: step === "create" && (format === "slideshow" || source.mode === "generate"), resultsTarget, actionsTarget: createActionsTarget, onBusyChange: reportBusy,

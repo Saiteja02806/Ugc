@@ -38,7 +38,7 @@ export function registerAudioMcpTools(server:McpServer) {
     inputSchema:empty,outputSchema:z.strictObject({generation_available:z.boolean(),generation_access:z.enum(["allowed","upgrade_required","unavailable"]),
       credit_cost_per_1000_characters:z.number().int().nonnegative(),max_characters:z.literal(AUDIO_MAX_CHARACTERS),
       speeds:z.strictObject({minimum:z.literal(0.8),maximum:z.literal(1.2)}),models:z.array(z.strictObject({id:z.string(),name:z.string(),languages:z.array(z.string())})),
-      catalogue_source:z.enum(["account","public-preview"]),upload_available:z.boolean(),download_available:z.boolean(),voice_clone_available:z.literal(false),message:z.string()}),
+      catalogue_source:z.enum(["account","public-preview"]),upload_available:z.boolean(),download_available:z.boolean(),voice_clone_available:z.literal(false),video_import_available:z.boolean(),message:z.string()}),
     annotations:read,scopeChallenge:requireScopes("account:read"),_meta:oauthMetadata("account:read"),
   },(_,ctx)=>executeTool(()=>audioErrors(()=>getAudioCapabilitiesForOwner(principal(ctx,"account:read")))));
   server.registerTool("list_audio_voices",{
@@ -47,7 +47,7 @@ export function registerAudioMcpTools(server:McpServer) {
     annotations:read,scopeChallenge:requireScopes("assets:read"),_meta:oauthMetadata("assets:read"),
   },(_,ctx)=>executeTool(()=>audioErrors(()=>listAudioVoicesForOwner(principal(ctx,"assets:read")))));
   server.registerTool("list_audio_assets",{
-    description:"Page through owned saved audio metadata, excluding deleted recordings. Audio uses a separate private library. usable_for_video excludes reference recordings and free test audio; these IDs are not generic get_asset IDs.",
+    description:"Page through owned saved audio metadata, excluding deleted recordings. Audio uses a separate private library. usable_for_video excludes reference recordings and free test audio; these IDs are not generic get_asset IDs. Use import_audio_for_video to create a separate editing snapshot.",
     inputSchema:pageInput,outputSchema:z.strictObject({items:z.array(audioAssetSchema),next_cursor:nullableText}),
     annotations:read,scopeChallenge:requireScopes("assets:read"),_meta:oauthMetadata("assets:read"),
   },(args,ctx)=>executeTool(()=>audioErrors(async()=>{

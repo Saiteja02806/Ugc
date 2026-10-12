@@ -90,7 +90,7 @@ export function createMediaUploadTarget(input: {
   }
 
   const assetId = crypto.randomUUID();
-  const cleanUserId = cleanPathPart(input.userId);
+  const cleanUserId = mediaUploadOwnerPath(input.userId);
   const key = `media/${cleanUserId}/${input.collection}/${assetId}${extension}`;
   const fallbackTitle = fileName.replace(/\.[^.]+$/, "").trim() || "Untitled media";
 
@@ -127,7 +127,7 @@ function getContentTypes(collection: MediaCollection) {
   return collection === "image" ? imageTypes : collection === "audio" ? audioTypes : videoTypes;
 }
 
-function cleanPathPart(value: string) {
+export function mediaUploadOwnerPath(value: string) {
   return (
     value
       .trim()

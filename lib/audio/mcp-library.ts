@@ -5,6 +5,7 @@ import { AudioError, AUDIO_MAX_CHARACTERS, type AudioVoice } from "@/worker/src/
 import { getBackgroundJobForUser } from "@/lib/jobs/background-jobs";
 import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
 import { audioTransferReadiness } from "./transfer";
+import { audioVideoImportReadiness } from "./video-import";
 import { getAudioBootstrapForOwner } from "./service";
 import { decodeAssetCursor, encodeAssetCursor } from "@/lib/mcp/asset-cursor";
 
@@ -81,8 +82,8 @@ export async function getAudioCapabilitiesForOwner(owner:string) {
   return {generation_available:data.canGenerate&&!getMissingJobQueueEnvVars(["generate_audio"]).length,
     generation_access:data.generationAccess,credit_cost_per_1000_characters:data.creditCostPer1000,max_characters:AUDIO_MAX_CHARACTERS,
     speeds:{minimum:0.8,maximum:1.2},models:data.models,catalogue_source:data.catalogueSource??"account",
-    upload_available:data.canUpload&&transfer.upload&&!getMissingJobQueueEnvVars(["generate_audio"]).length,download_available:transfer.download,voice_clone_available:false,
-    message:data.message??"Audio voice cloning and video import MCP adapters are still in development."};
+    upload_available:data.canUpload&&transfer.upload&&!getMissingJobQueueEnvVars(["generate_audio"]).length,download_available:transfer.download,voice_clone_available:false,video_import_available:audioVideoImportReadiness(),
+    message:data.message??"Voice cloning is still in development. Check video_import_available before creating an editing snapshot."};
 }
 export async function listAudioVoicesForOwner(owner:string) {
   const data=await getAudioBootstrapForOwner(owner,{refreshVerification:false});

@@ -1,4 +1,5 @@
-import { normalizeEditableVideoDraftInput } from "@/lib/edit/video-library";
+import { EditDraftError, editDraftRevision, parseEditDraft } from "@/lib/edit/draft-contract";
+import { z } from "zod";
 import { withPrivateEditDelivery } from "@/lib/edit/private-video-delivery";
 import {
   getEditableVideoForOwner,
@@ -14,6 +15,8 @@ export const dynamic = "force-dynamic";
 
 type UpdateEditableVideoBody = {
   draft?: unknown;
+  requestId?: unknown;
+  expectedRevision?: unknown;
 };
 
 export async function GET(
@@ -54,17 +57,14 @@ export async function PATCH(
     const body = (await request.json().catch(() => null)) as
       | UpdateEditableVideoBody
       | null;
-    const draft = normalizeEditableVideoDraftInput(body?.draft);
-
-    if (!draft) {
-      return Response.json(
-        { ok: false, error: "The edit draft is invalid." },
-        { status: 400 },
-      );
-    }
+    if (!z.uuid().safeParse(body?.requestId).success || !editDraftRevision.safeParse(body?.expectedRevision).success)
+      throw new EditDraftError("DRAFT_PRECONDITION_REQUIRED", "Reload this editor to save your changes safely.", 428);
+    const draft = parseEditDraft(body?.draft);
 
     const video = await saveEditableVideoDraftForOwner({
       draft,
+      requestId: body!.requestId as string,
+      expectedRevision: body!.expectedRevision as number,
       sourceVideoId,
       userId: user.uid,
     });
@@ -86,7 +86,7 @@ export async function PATCH(
 }
 
 function editVideoErrorResponse(error: unknown, fallback: string) {
-  const status = error instanceof FirebaseAuthRequestError ? error.status : 500;
+  const status = error instanceof FirebaseAuthRequestError || error instanceof EditDraftError ? error.status : 500;
 
   if (status >= 500) {
     console.error(fallback, error);
@@ -96,7 +96,8 @@ function editVideoErrorResponse(error: unknown, fallback: string) {
     {
       ok: false,
       error:
-        error instanceof FirebaseAuthRequestError ? error.message : fallback,
+        error instanceof FirebaseAuthRequestError || error instanceof EditDraftError ? error.message : fallback,
+      ...(error instanceof EditDraftError ? { code: error.code } : {}),
     },
     { status },
   );

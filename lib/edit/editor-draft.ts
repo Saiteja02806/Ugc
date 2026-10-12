@@ -18,7 +18,8 @@ export function normalizeEditableVideoDraftForDuration(
     Math.abs(trimEnd - duration) <= FULL_DURATION_TRIM_EPSILON_SECONDS;
 
   return {
-    ...draft,
+    textOverlays: draft.textOverlays,
+    trimStartSeconds: draft.trimStartSeconds,
     trimEndSeconds: reachesFullDuration ? null : trimEnd,
   };
 }

@@ -18,6 +18,8 @@ import {
   type FocusedVideoEditorDraftState,
 } from "@/components/edit/focused-video-editor";
 import { buttonClassName } from "@/components/ui/button";
+import { EditDraftError } from "@/lib/edit/draft-contract";
+import { EditDraftSaveSession } from "@/lib/edit/draft-save-session";
 import { normalizeEditableVideoDraftForDuration } from "@/lib/edit/editor-draft";
 import { CREATIVE_ASSETS_VIDEOS_HREF } from "@/lib/edit/routes";
 import type { EditableVideo } from "@/lib/edit/video-library";
@@ -56,6 +58,8 @@ export function FocusedVideoEditorShell({
   const [video, setVideo] = useState<EditableVideo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [draft, setDraft] = useState<FocusedVideoEditorDraftState | null>(null);
+  const [saveConflict, setSaveConflict] = useState(false);
+  const saveSessionRef = useRef<EditDraftSaveSession<EditableVideo> | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [lastRenderedDraftKey, setLastRenderedDraftKey] = useState<string | null>(
@@ -107,6 +111,9 @@ export function FocusedVideoEditorShell({
         throw new Error(getApiError(data, "Video not found."));
       }
 
+      if (!Number.isSafeInteger(data.video.draftRevision)) throw new Error("Reload this editor to enable safe draft saves.");
+      saveSessionRef.current = new EditDraftSaveSession(data.video.draftRevision!);
+      setSaveConflict(false);
       const initialDraft = getDraftForRender(data.video, null);
 
       const initialDraftKey = serializeDraft(initialDraft);
@@ -155,29 +162,27 @@ export function FocusedVideoEditorShell({
       currentVideo: EditableVideo,
       currentDraft: FocusedVideoEditorDraftState,
     ) => {
+      const session = saveSessionRef.current;
       const operation = draftSaveQueueRef.current.then(async () => {
-        const token = await requireToken();
-        const response = await fetch(
-          `/api/edit/videos/${encodeURIComponent(currentVideo.id)}`,
-          {
-            body: JSON.stringify({ draft: currentDraft }),
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            method: "PATCH",
-          },
-        );
-        const data = (await response.json()) as
-          | { ok: true; video: EditableVideo }
-          | { error?: string; ok?: false };
-
-        if (!response.ok || data.ok !== true) {
-          throw new Error(getApiError(data, "Could not save these changes."));
+        if (!session) throw new Error("Reload the editor before saving.");
+        try {
+          const result = await session.save(currentDraft, async (saveRequest) => {
+            const token = await requireToken();
+            const response = await fetch(`/api/edit/videos/${encodeURIComponent(currentVideo.id)}`, {
+              body: JSON.stringify(saveRequest), method: "PATCH",
+              headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+            });
+            const data = await response.json() as { ok?: boolean; video?: EditableVideo; error?: string; code?: string };
+            if (!response.ok || data.ok !== true || !data.video)
+              throw new EditDraftError(data.code ?? "DRAFTS_UNAVAILABLE", data.error ?? "Could not save these changes.", response.status);
+            return data.video;
+          });
+          if (saveSessionRef.current === session) setVideo(result);
+          return result;
+        } catch (error) {
+          if (error instanceof EditDraftError && ["DRAFT_CHANGED", "DRAFT_REQUEST_CONFLICT", "DRAFT_PRECONDITION_REQUIRED"].includes(error.code)) setSaveConflict(true);
+          throw error;
         }
-
-        setVideo(data.video);
-        return data.video;
       });
 
       draftSaveQueueRef.current = operation.then(
@@ -525,6 +530,10 @@ export function FocusedVideoEditorShell({
             className="mb-4 w-fit rounded-control border border-error/20 bg-error/5 px-3 py-2 text-xs font-semibold text-error"
           >
             {saveMessage}
+            {saveConflict ? <button type="button" className="ml-3 underline" onClick={() => {
+              if (window.confirm("Reload the saved draft? This replaces your unsaved local edits."))
+                void draftSaveQueueRef.current.then(() => loadVideo());
+            }}>Reload saved draft</button> : null}
           </p>
         ) : null}
 

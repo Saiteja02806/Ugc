@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-10-12
+Last updated: 2026-10-13
 
 ## 2026-10-12 Combined production release
 
@@ -6702,3 +6702,12 @@ and advertises only deployed workflows. See
 - Source support follows Omni uploaded-video editing (up to ten seconds), with a 32 MB download bound. Sources are never silently truncated or omitted. Unsupported models must disclose incompatibility while retaining the attachments.
 - Edit results must pass an actual MP4 duration check before storage, allowing 0.25 seconds for frame/container rounding. Mismatched or unreadable results fail without a new paid retry. Verified duration is retained for recovery.
 - This scoped release preserves old jobs without edit mode. Worker rollout precedes the website, followed by authenticated production verification. See `docs/wall-text-reference-release-2026-10-12.md` for validation and release state.
+
+
+### 2026-10-13 MCP Library adapter candidate (not deployed)
+
+- IDE Library identities are separate from generic media IDs and Creative Asset groups. Owner-bound pages and item reads expose ordered saved Carousel/slideshow outputs, exact snapshot revisions and explicit archive tombstones.
+- Carousel saves share the website's owner/completion/latest-ready-edit resolver and canonical payload builder. The MCP request binds actual generation/slide/edit source state and destination state, including removed saves. Stale inputs reject; recreating a removed save requires an explicit new request with the inspected tombstone revision.
+- The additive service-only transaction records immutable accepted request inputs/results atomically with canonical saves or metadata-only removal. Recovery returns historical receipts before current write gates, plan status or source readiness and never reapplies an older replacement over newer website edits. Existing website RPCs, Carousel generation/matching/renderers and publishing behavior are preserved.
+- Explore v2 MCP saves share existing owned-ready-image validation, exact ordering and fingerprints. Catalogue guidance does not enter outputs implicitly. This adapter saves already rendered images; browser-only text-bearing slideshow export still needs a separate backend workflow.
+- MCP_LIBRARY_WRITES_ENABLED defaults off. The migration, hosted rollout and intended authenticated user workflow require separate verification. Offline fixture/SDK tests are not production acceptance and no customer media is generated for connectivity checks.

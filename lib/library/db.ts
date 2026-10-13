@@ -135,7 +135,7 @@ export function getMissingLibraryDbEnvVars() {
   return missing;
 }
 
-export async function saveGeneratedCarouselToLibrary(input: {
+export type GeneratedCarouselLibraryInput = {
   edit?: {
     id: string;
     revision: number;
@@ -148,7 +148,9 @@ export async function saveGeneratedCarouselToLibrary(input: {
   slides: CarouselSlideRecord[];
   title: string;
   userId: string;
-}) {
+};
+
+export function buildGeneratedCarouselLibraryPayload(input: GeneratedCarouselLibraryInput) {
   const orderedSlides = [...input.slides].sort(
     (first, second) => first.slideNumber - second.slideNumber,
   );
@@ -180,8 +182,7 @@ export async function saveGeneratedCarouselToLibrary(input: {
     slideType: slide.slideType,
     subtext: slide.subtext,
   }));
-  const { data, error } = await getLibrarySupabaseClient()
-    .rpc("save_generated_carousel_library_item", {
+  return {
       p_cover_url: coverUrl,
       p_metadata: {
         businessProfileId: input.generation.businessProfileId,
@@ -201,7 +202,13 @@ export async function saveGeneratedCarouselToLibrary(input: {
       p_thumbnail_url: coverUrl,
       p_title: input.title,
       p_user_id: input.userId,
-    })
+    };
+}
+
+export async function saveGeneratedCarouselToLibrary(input: GeneratedCarouselLibraryInput) {
+  const payload = buildGeneratedCarouselLibraryPayload(input);
+  const { data, error } = await getLibrarySupabaseClient()
+    .rpc("save_generated_carousel_library_item", payload)
     .single();
 
   if (error) {

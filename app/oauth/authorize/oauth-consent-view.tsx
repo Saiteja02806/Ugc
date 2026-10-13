@@ -35,12 +35,12 @@ const SCOPE_DETAILS: Record<string, { title: string; description: string; icon: 
   },
   "assets:read": {
     title: "Creative library",
-    description: "View your uploaded and generated media.",
+    description: "View your uploaded/generated media, saved Library items and request history.",
     icon: Images,
   },
   "assets:write": {
     title: "Manage media",
-    description: "Organize Creative Asset groups, upload references and delete media you select.",
+    description: "Organize groups, save or remove selected Library entries, upload references and delete media you select.",
     icon: Upload,
   },
   "generation:write": {

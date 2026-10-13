@@ -32,9 +32,11 @@ import {registerBusinessContextMcpTools,registeredBusinessContextMcpTools} from 
 
 import { registerBusinessOnboardingMcpTools, registeredBusinessOnboardingMcpTools } from "./business-onboarding-tools";
 
+import {registerBusinessLogoMcpTools,registeredBusinessLogoMcpTools} from "./business-logo-tools";
+
 export const registeredMcpTools: readonly string[] = [
   ...registeredReadMcpTools, ...registeredMutationMcpTools, ...registeredGenerationMcpTools,
-  ...registeredFinishingMcpTools, ...registeredDemoMcpTools, ...registeredUploadRecoveryMcpTools, ...registeredOperationMcpTools, ...registeredEditDraftMcpTools, ...registeredEditExportMcpTools, ...registeredAudioMcpTools, ...registeredAudioVideoImportMcpTools, ...registeredReferenceMcpTools, ...registeredCreativeGroupMcpTools, ...registeredLibraryContentMcpTools, ...registeredAccountSettingsMcpTools, ...registeredBusinessContextMcpTools, ...registeredBusinessOnboardingMcpTools,
+  ...registeredFinishingMcpTools, ...registeredDemoMcpTools, ...registeredUploadRecoveryMcpTools, ...registeredOperationMcpTools, ...registeredEditDraftMcpTools, ...registeredEditExportMcpTools, ...registeredAudioMcpTools, ...registeredAudioVideoImportMcpTools, ...registeredReferenceMcpTools, ...registeredCreativeGroupMcpTools, ...registeredLibraryContentMcpTools, ...registeredAccountSettingsMcpTools, ...registeredBusinessContextMcpTools, ...registeredBusinessOnboardingMcpTools, ...registeredBusinessLogoMcpTools,
 ];
 
 export const mcpHandler = createMcpHandler(
@@ -57,6 +59,7 @@ export const mcpHandler = createMcpHandler(
     registerAccountSettingsMcpTools(server);
     registerBusinessContextMcpTools(server);
     registerBusinessOnboardingMcpTools(server);
+    registerBusinessLogoMcpTools(server);
     return server;
   },
   {

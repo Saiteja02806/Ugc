@@ -1,7 +1,7 @@
 // Real, independent Postgres sessions. No production credentials or host ports.
 import { spawn } from 'node:child_process';
 import { readFile, readdir } from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import test, { before, after } from 'node:test';
 
@@ -15,7 +15,9 @@ function command(args, input='') {
     child.stdin.end(input);
   });
 }
-function sql(query) { return command(['exec','-i',container,'psql','-X','-qAt','-v','ON_ERROR_STOP=1','-U','postgres'],query); }
+// The entrypoint's temporary init server is socket-only and shuts down again.
+// Wait for the final TCP listener inside the container; expose no host port.
+function sql(query) { return command(['exec','-i','-e','PGPASSWORD=isolated-test-only',container,'psql','-h','127.0.0.1','-X','-qAt','-v','ON_ERROR_STOP=1','-U','postgres'],query); }
 const quote = value => `'${String(value).replaceAll("'","''")}'`;
 function transition(user,action,payload) {
   return `select row_to_json(d) from public.mutate_business_onboarding_v1(${quote(user)},${quote(action)},${quote(JSON.stringify(payload))}::jsonb) d;`;
@@ -118,4 +120,17 @@ test('legacy REST row-before-owner locking returns busy instead of deadlocking M
  await holding;
  const current=await mcpState(user);assert.equal(current.profile.context_json.businessName,'Website later');assert.deepEqual(current.profile.primary_goals,[]);
  assert.equal(await sql(`select count(*) from mcp_business_onboarding_requests where user_id=${quote(user)};`),'0');
+});
+
+test('concurrent identical logo reservations accept one stable target with no duplicate',async()=>{
+ const owner=`logo-concurrency-${randomUUID()}`,request=randomUUID(),input={file_name:'logo.png',mime_type:'image/png',file_size_bytes:100,sha256:'a'.repeat(64)},prefix=`business-profile-logos/${createHash('sha256').update(owner).digest('hex')}/`;
+ const reserve=key=>sql(`select mcp_reserve_business_logo(${quote(owner)},${quote(request)},${quote(JSON.stringify(input))}::jsonb,${quote(prefix+key+'.png')});`).then(JSON.parse);
+ const result=await Promise.all([reserve(randomUUID()),reserve(randomUUID())]);assert.equal(result.filter(value=>value.replayed).length,1);assert.equal(result[0].upload.id,result[1].upload.id);assert.equal(await sql(`select count(*) from mcp_business_logo_uploads where user_id=${quote(owner)};`),'1');
+});
+test('concurrent duplicate logo confirmations retain one immutable verified descriptor',async()=>{
+ const owner=`logo-confirm-${randomUUID()}`,request=randomUUID(),key=`business-profile-logos/${createHash('sha256').update(owner).digest('hex')}/${randomUUID()}.png`,input={file_name:'logo.png',mime_type:'image/png',file_size_bytes:100,sha256:'a'.repeat(64)};
+ const reserved=JSON.parse(await sql(`select mcp_reserve_business_logo(${quote(owner)},${quote(request)},${quote(JSON.stringify(input))}::jsonb,${quote(key)});`));
+ const logo={storageKey:key,url:`https://media.example.com/${key}`,mimeType:'image/png',fileSizeBytes:100,width:128,height:128};
+ const statement=`select mcp_confirm_business_logo(${quote(owner)},${quote(reserved.upload.id)},${quote(JSON.stringify(logo))}::jsonb,${quote(input.sha256)});`;
+ const result=await Promise.all([sql(statement).then(JSON.parse),sql(statement).then(JSON.parse)]);assert.deepEqual(result[0],result[1]);assert.equal(result[0].status,'ready');
 });

@@ -47,7 +47,7 @@ function args(state,next=context,operation='save_draft',key=id(1)){return {reque
 
 test('six real registrations expose separate fresh brand-write consent and pure capabilities',async()=>{
  const tools=(await rpc('tools/list',{})).result.tools;assert.deepEqual(tools.map(t=>t.name).sort(),[...registeredBusinessContextMcpTools].sort());for(const t of tools){assert.deepEqual(t._meta.securitySchemes[0].scopes,[t.annotations.readOnlyHint?'brand:read':'brand:write']);assert.equal(t.annotations.openWorldHint,false);}
- const cap=(await call('get_business_context_capabilities')).structuredContent;assert.equal(cap.reanalyze_available,false);assert.equal(cap.onboarding_available,false);assert.equal(requests.length,0);assert.equal((await call('get_business_context')).structuredContent.profile,null);
+ const cap=(await call('get_business_context_capabilities')).structuredContent;assert.equal(cap.reanalyze_available,false);assert.equal(cap.onboarding_available,true);assert.equal(requests.length,0);assert.equal((await call('get_business_context')).structuredContent.profile,null);
 });
 test('old consent, disabled gate and malformed input stop before storage or provider work',async()=>{
  await h.seed();const state=await h.read('owner-a'),a=args(state);error(await call('save_business_context_draft',a,'owner-a',['brand:read','account:write','generation:write']));error(await call('save_business_context_draft',{...a,user_id:'owner-b'}));error(await call('apply_business_context',{...a,source:'not an apply field'}));

@@ -25,7 +25,7 @@ in a non-secret workspace record before submission. `start` can analyze the
 source. `identity` saves the exact name; omit `logo_storage_key` to preserve
 the current logo, use null to remove it, or select an existing owned business
 logo key that the server will inspect. Generic visual asset IDs are not logo
-keys. Dedicated local logo upload and screenshots need separate capabilities.
+keys. For a supplied local logo, use the manage-ugc-media business-logo workflow when its six tools are discovered. Dedicated screenshots need separate capabilities.
 
 `goals` saves unfinished choices without completing setup. `submit` requires
 selected goals and the user's timezone. Completion can activate application

@@ -99,3 +99,17 @@ package's supported `FFMPEG_BIN` override. It checks required filters before
 running unchanged rendering assertions. This adjusts the test environment only;
 no runtime dependency, worker image, production setting or render behavior was
 changed. Fresh exact-source Linux acceptance remains required.
+
+## Portable font identity assertion
+
+At source `7cdaa818`, MCP Linux run 38441457287 and the migration guard passed.
+Both combined application runs reached the worker suite after Explore passed.
+The worker suite passed 605 of 606 cases; its Avenir font identity check retained
+the expected width of 310 pixels, but Linux rasterized height at 37 instead of
+Windows' 35. This was an exact pixel-height assertion, not a failed font lookup.
+
+The test now retains the exact advance-width check, compares both dimensions
+against the explicitly named Demi-Bold face on the same host, and requires the
+serif fallback to have a different width. No renderer, font asset, worker image
+or production configuration changes. Fresh Linux results must verify this
+comparison; previous application failures remain recorded.

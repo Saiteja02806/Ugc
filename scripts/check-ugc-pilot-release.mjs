@@ -29,7 +29,8 @@ await check("setup page", `${website}/connect-ai`, 200, {}, (_, bytes) => {
   assert(html.includes(`/downloads/ugc-pilot-${version}.zip.sha256`), "Setup page points to a different checksum");
   assert(html.includes("noindex"), "Private beta setup must remain noindex");
 });
-for (const current of new Set(["0.1.0", "0.1.1", "0.1.2", "0.1.7", "0.1.8", "0.1.9", version])) {
+const publishedArchives = (await fs.readdir(new URL("../public/downloads/", import.meta.url))).filter(file => /^ugc-pilot-\d+\.\d+\.\d+\.zip$/.test(file));
+for (const current of publishedArchives.map(file => file.slice("ugc-pilot-".length, -".zip".length)).sort()) {
   const file = `ugc-pilot-${current}.zip`;
   await check(`archive ${current}`, `${website}/downloads/${file}`, 200, {}, async (_, bytes, item) => {
     const local = await fs.readFile(new URL(`../public/downloads/${file}`, import.meta.url));

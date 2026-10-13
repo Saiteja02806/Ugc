@@ -1,5 +1,6 @@
 export const MCP_SCOPES = [
   "account:read",
+  "account:write",
   "brand:read",
   "assets:read",
   "assets:write",

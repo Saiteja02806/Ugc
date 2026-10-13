@@ -25,7 +25,12 @@ import styles from "./oauth-consent.module.css";
 const SCOPE_DETAILS: Record<string, { title: string; description: string; icon: LucideIcon }> = {
   "account:read": {
     title: "Account and plan",
-    description: "View your account ID, plan, and available credits.",
+    description: "View your account ID, plan, available credits, publishing defaults and timezone.",
+    icon: UserRound,
+  },
+  "account:write": {
+    title: "Update account defaults",
+    description: "Change your publishing defaults and initialize an unset account timezone. Existing posts remain unchanged.",
     icon: UserRound,
   },
   "brand:read": {

@@ -146,19 +146,8 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
         {connected && options && onOptionsChange ? <Button type="button" role="switch" aria-label="Auto subtitles" aria-checked={options.subtitles} variant="muted" className="h-7 rounded-full px-3 text-xs" onClick={() => onOptionsChange({ ...options, subtitles: !options.subtitles })}>{options.subtitles ? "On" : "Off"}</Button> : <UnavailableToggle label="Auto subtitles" descriptionId={unavailableId} hideLabel />}
       </div>
       <details ref={subtitleAppearance} className={cn(sections.optionalGroup, sections.subtitleAppearance)}>
-        <summary>Subtitle appearance <span className={sections.groupSummary}>{SUBTITLE_STYLES.find(style => style.id === selectedStyle)?.label} · {selectedPlacement === "bottom" ? "Bottom" : selectedPlacement === "middle" ? "Middle" : "Top"}</span></summary>
+        <summary>Subtitle appearance <span className={sections.groupSummary}>{SUBTITLE_STYLES.find(style => style.id === selectedStyle)?.label}</span></summary>
         <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-xs font-medium">Position</span>
-            <div role="group" aria-label="Subtitle position" className="flex gap-1">
-              {(["bottom", "middle", "top"] as const).map(placement => <Button key={placement} type="button"
-                variant={selectedPlacement === placement ? "muted" : "outline"} className="h-8 px-3 text-xs"
-                aria-pressed={selectedPlacement === placement} onClick={() => {
-                  setSubtitlePlacement(placement);
-                  if (options && onOptionsChange) onOptionsChange({ ...options, placement });
-                }}>{placement === "bottom" ? "Bottom" : placement === "middle" ? "Middle" : "Top"}</Button>)}
-            </div>
-          </div>
           <div role="group" aria-label={connected ? "Subtitle style samples" : "Subtitle style samples (local preview only)"} aria-describedby={subtitleHelpId} className={creation.subtitleChoices}>
             {SUBTITLE_STYLES.map((style) => <button key={style.id} type="button" aria-label={`${style.label} subtitle style`} aria-pressed={selectedStyle === style.id} aria-describedby={subtitleHelpId}
               title={style.description} className={creation.subtitleChoice} data-style={style.id} onClick={() => { setSubtitleStyle(style.id); if (options && onOptionsChange) onOptionsChange({ ...options, style: style.id }); }}>
@@ -176,6 +165,16 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
         </div>
       </details>
       {options?.subtitles && captions ? <WorkflowCaptionEditor captions={captions} disabled={editingBusy} /> : null}
+      {options?.subtitles || !connected ? <div className={creation.captionPosition}>
+        <span className="text-xs font-medium">Caption position</span>
+        <div role="group" aria-label="Caption position" className={creation.captionPositionChoices}>
+          {(["bottom", "middle", "top"] as const).map(placement => <Button key={placement} type="button" variant="ghost"
+            disabled={editingBusy} aria-pressed={selectedPlacement === placement} onClick={() => {
+              setSubtitlePlacement(placement);
+              if (options && onOptionsChange) onOptionsChange({ ...options, placement });
+            }}>{placement === "bottom" ? "Bottom" : placement === "middle" ? "Middle" : "Top"}</Button>)}
+        </div>
+      </div> : null}
       <p id={subtitleHelpId} className="sr-only">Selecting a style changes your draft only. These rendered examples use the same clip and transcript at Bottom position. Apply edits saves subtitles from your final audio. {EXPLORE_SUBTITLE_SCOPE_LABEL}, including both segments; nothing is trimmed automatically.</p>
     </section>
     <p id={unavailableId} className="sr-only">{connected ? "Off keeps original sound without adding default music. On adds the approved default track underneath the original hook and demo sound when you Apply edits. Separately selected demo audio plays during the demo only. If no approved default is configured, Apply edits will explain this; it never chooses unreviewed music." : "Music and subtitle rendering are not connected in this local preview."}</p>

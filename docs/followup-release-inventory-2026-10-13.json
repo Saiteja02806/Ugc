@@ -1,11 +1,12 @@
 {
-  "recordedAt": "2026-10-13T17:03:33.683Z",
+  "recordedAt": "2026-10-13T17:39:01.712Z",
   "branch": "codex/complete-release-20261009",
   "base": "a2b3dd79ebf20c6a6ae96f493523cc695d6feccb",
+  "currentHead": "1177258da1d997f31366559c093edd0a48c951da",
   "files": [
     {
       "path": "CAROUSEL_CONTEXT.md",
-      "status": " M",
+      "status": "M ",
       "bytes": 443987,
       "sha256": "892e94735d4202b74ba9be0e2969f89b598da75c1a181a24d3b709cd5461d535",
       "excluded": false,
@@ -13,15 +14,23 @@
     },
     {
       "path": "app/explore/build-character/page.tsx",
-      "status": " M",
+      "status": "M ",
       "bytes": 824,
       "sha256": "9fb595b1303d32575951470f628f8f4ad2d931df17edf1b0c79283d87566ed33",
       "excluded": false,
       "reason": null
     },
     {
-      "path": "app/explore/hook-video/page.tsx",
+      "path": "app/explore/create-hook/page.tsx",
       "status": " M",
+      "bytes": 739,
+      "sha256": "fd3b2f686efe834dd0cf4b152b6b6721dd8fd687f8836e40520e79112d3c4241",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "app/explore/hook-video/page.tsx",
+      "status": "M ",
       "bytes": 1379,
       "sha256": "cf79f76fd70948d313132fc9b6fd3495eba7aa71f6732cb1682d28a6a7526a55",
       "excluded": false,
@@ -29,7 +38,7 @@
     },
     {
       "path": "app/explore/slideshows/page.tsx",
-      "status": " M",
+      "status": "M ",
       "bytes": 1238,
       "sha256": "e91e1b9c25d73c2ca413d5be893ee58e83fdf64841d4d3cd431565103d3aeabc",
       "excluded": false,
@@ -37,7 +46,7 @@
     },
     {
       "path": "app/explore/wall-of-text/page.tsx",
-      "status": " M",
+      "status": "M ",
       "bytes": 1260,
       "sha256": "8f47773b537e0549a9da50c8cfc897cc8b09a1c1e981e6835fd40f396f10def7",
       "excluded": false,
@@ -45,7 +54,7 @@
     },
     {
       "path": "app/page.tsx",
-      "status": " M",
+      "status": "M ",
       "bytes": 14305,
       "sha256": "fd10fc5a4b2cb3e3b2dbf518e90cf332051562a920d758a07150ab8f6ccb301f",
       "excluded": false,
@@ -53,7 +62,7 @@
     },
     {
       "path": "components/characters/character-history.tsx",
-      "status": " M",
+      "status": "M ",
       "bytes": 4788,
       "sha256": "355772a45ff3f506edfac09950e12fa8d1a04d0628f0d9589e378d8b8a5a8933",
       "excluded": false,
@@ -61,7 +70,7 @@
     },
     {
       "path": "components/characters/character-reference.test.mjs",
-      "status": " M",
+      "status": "M ",
       "bytes": 11777,
       "sha256": "1bf8155a47cb5f22ef66849c62e095c6ec8e7e463416606605382ebe2b1c717a",
       "excluded": false,
@@ -69,7 +78,7 @@
     },
     {
       "path": "components/characters/character-session.test.mjs",
-      "status": " M",
+      "status": "M ",
       "bytes": 18651,
       "sha256": "f08d6ea721e30b2a5f6262fddb703bcc0bf15158c217fd9a2e6f44a738d68019",
       "excluded": false,
@@ -77,7 +86,7 @@
     },
     {
       "path": "components/characters/character-workspace.module.css",
-      "status": " M",
+      "status": "M ",
       "bytes": 6684,
       "sha256": "5f55adaee25335247570d1ad03a67bb64a6b83dccefedbb045da9970c5fa7246",
       "excluded": false,
@@ -85,7 +94,7 @@
     },
     {
       "path": "components/characters/character-workspace.tsx",
-      "status": " M",
+      "status": "M ",
       "bytes": 19751,
       "sha256": "968efa123d120e1c16ef956a9ee41728b0b636628b1b13bd8d09bf2060011c6f",
       "excluded": false,
@@ -93,7 +102,7 @@
     },
     {
       "path": "components/characters/use-character-builder.test.mjs",
-      "status": " M",
+      "status": "M ",
       "bytes": 18807,
       "sha256": "f2e3a9dcce337d506b8a2208bbddbe50fc7351da070257036d874356c6aa0f84",
       "excluded": false,
@@ -101,15 +110,23 @@
     },
     {
       "path": "components/characters/use-character-builder.ts",
-      "status": " M",
+      "status": "M ",
       "bytes": 15050,
       "sha256": "416e4b2bdfdff37f6493718b2728536c26626fecfe19f78afdea6307c8a7119e",
       "excluded": false,
       "reason": null
     },
     {
-      "path": "components/explore/explore-workflow-card.tsx",
+      "path": "components/explore/ai-character-card.tsx",
       "status": " M",
+      "bytes": 2377,
+      "sha256": "7bcc6a70430d3695a175991ec14ffd6d38d02ede518fe668db61ba0f68959382",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "components/explore/explore-workflow-card.tsx",
+      "status": "M ",
       "bytes": 2160,
       "sha256": "bcbeeab5ee3f588a1a0542fee3948c6d99caad9f1da9004c35f8d3e9ddd344aa",
       "excluded": false,
@@ -117,7 +134,7 @@
     },
     {
       "path": "components/explore/format-demo-section.tsx",
-      "status": " M",
+      "status": "M ",
       "bytes": 68420,
       "sha256": "f6675db59b6c01b688632bf774752d484288f7c492f831f4bac0c88458cd28d9",
       "excluded": false,
@@ -125,7 +142,7 @@
     },
     {
       "path": "components/explore/format-generation-references.tsx",
-      "status": " M",
+      "status": "M ",
       "bytes": 21214,
       "sha256": "7a0b38ff58ab8cfd622c7113fb44a7cc04cb6a44ed9cecc8174f76acccb3231d",
       "excluded": false,
@@ -133,7 +150,7 @@
     },
     {
       "path": "components/explore/format-schedule-panel.tsx",
-      "status": " M",
+      "status": "M ",
       "bytes": 16985,
       "sha256": "a6a4699af0c0935c74a0de7a1e1a6f278cf671ee204ce688b77afe7bf7dae0b0",
       "excluded": false,
@@ -141,7 +158,7 @@
     },
     {
       "path": "components/explore/format-slideshow-editor.tsx",
-      "status": " M",
+      "status": "M ",
       "bytes": 39256,
       "sha256": "1afd1a38418af7421fd9cf6dfa5a588f461b92415074c8068764462eec32f49c",
       "excluded": false,
@@ -149,7 +166,7 @@
     },
     {
       "path": "components/explore/format-video-editor.tsx",
-      "status": " M",
+      "status": "M ",
       "bytes": 33240,
       "sha256": "02ac9a10fb99e20395e4d61943998b92a67ea57b7f74c97888812c281b581b15",
       "excluded": false,
@@ -157,7 +174,7 @@
     },
     {
       "path": "components/explore/format-workspace.module.css",
-      "status": " M",
+      "status": "M ",
       "bytes": 23875,
       "sha256": "ed98e1ac318dcbfa6abca3e3f45fe54a20e5f9e0d644e410f18eeb9f76287c25",
       "excluded": false,
@@ -166,14 +183,14 @@
     {
       "path": "components/explore/format-workspace.tsx",
       "status": " M",
-      "bytes": 54609,
-      "sha256": "033a6859167a9126da33e59b3423f9d3c13b72cee160e865098dbabac3fc4bb7",
+      "bytes": 54897,
+      "sha256": "539601dacbcd676d020c9d5f7e72b0e30b119cd1832931f9599fe43f949fb974",
       "excluded": false,
       "reason": null
     },
     {
       "path": "components/explore/hook-workflow-preview.tsx",
-      "status": " M",
+      "status": "M ",
       "bytes": 19029,
       "sha256": "f7902612ba2bfde0d7d306a41891f38cefe7fd81cde93dd4addd64968e74204d",
       "excluded": false,
@@ -181,7 +198,7 @@
     },
     {
       "path": "components/explore/phone-workflow-preview.tsx",
-      "status": " M",
+      "status": "M ",
       "bytes": 15543,
       "sha256": "efd3fb4d9513aa76f7e14b65ce8fd27ca0cb43ee8b2d6dcf3d4257be6553c9b3",
       "excluded": false,
@@ -189,7 +206,7 @@
     },
     {
       "path": "components/explore/recreate-generation-view.ts",
-      "status": " M",
+      "status": "M ",
       "bytes": 1100,
       "sha256": "e7f386d93dace49d4b4c5b030118b1629777a800b2c6d2a01131d44b6c335ade",
       "excluded": false,
@@ -197,15 +214,31 @@
     },
     {
       "path": "components/explore/talking-head-schedule-preview.module.css",
-      "status": " M",
+      "status": "M ",
       "bytes": 807,
       "sha256": "6d04de34a355365c2c6d5c9595cc76916bf1e869a9cfdbdd05566c546e55e5f5",
       "excluded": false,
       "reason": null
     },
     {
-      "path": "components/explore/use-local-workflow-media.ts",
+      "path": "components/explore/use-cover-playback.ts",
       "status": " M",
+      "bytes": 2803,
+      "sha256": "4c05fe048267b9f95869306f5c4c72c2c0ac93f5325df1d1464ccb1c31095e93",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "components/explore/use-local-workflow-images.ts",
+      "status": "A ",
+      "bytes": 5236,
+      "sha256": "eea94835730e034c62141c1770088ae1df176db041df51dbaabc9c0d479d3c5f",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "components/explore/use-local-workflow-media.ts",
+      "status": "M ",
       "bytes": 5585,
       "sha256": "bf5d1119efa316eb1f246bd58c8ca31954675f280fa5adb4909da498b9b54506",
       "excluded": false,
@@ -213,7 +246,7 @@
     },
     {
       "path": "components/explore/workflow-audio-reference.tsx",
-      "status": " M",
+      "status": "M ",
       "bytes": 3648,
       "sha256": "fa4166ba8a7f640c3be6aff9682ef118ec884126453cff69db30419990734c69",
       "excluded": false,
@@ -221,7 +254,7 @@
     },
     {
       "path": "components/explore/workflow-creation-form.tsx",
-      "status": " M",
+      "status": "M ",
       "bytes": 16610,
       "sha256": "e8348924e0bdb94195c48c7dfc5478158f8d0236eb469bd8a74ced04ae51f677",
       "excluded": false,
@@ -229,7 +262,7 @@
     },
     {
       "path": "components/explore/workflow-reference-preview.module.css",
-      "status": " M",
+      "status": "M ",
       "bytes": 3357,
       "sha256": "1397e766084aa0d7fbe6b1af5a34a7622b8e68b1d16a1dd9a0a4d325d0c5de70",
       "excluded": false,
@@ -237,7 +270,7 @@
     },
     {
       "path": "components/explore/workflow-saved-audio-choices.tsx",
-      "status": " M",
+      "status": "M ",
       "bytes": 9314,
       "sha256": "ff6e222ca5a4abe154f77f852fcc34aaf97afed891bd2281e0bbdba9d2dbfd0a",
       "excluded": false,
@@ -245,7 +278,7 @@
     },
     {
       "path": "components/explore/workflow-saved-audio-picker.tsx",
-      "status": " M",
+      "status": "M ",
       "bytes": 6999,
       "sha256": "43e64e5bfdb2896ff825a141da8531240427427a2cf45e491a8bd5340388141c",
       "excluded": false,
@@ -253,7 +286,7 @@
     },
     {
       "path": "components/explore/workflow-section-layout.module.css",
-      "status": " M",
+      "status": "M ",
       "bytes": 13534,
       "sha256": "3112ffe695ec63f60d69e13b757a2ddd42f83e8e6752fc022b5396bc3da8478a",
       "excluded": false,
@@ -261,7 +294,7 @@
     },
     {
       "path": "components/explore/workflow-video-layout.module.css",
-      "status": " M",
+      "status": "M ",
       "bytes": 10975,
       "sha256": "f859a87eb91296941e6673e1737ac8b671eda5fdad8acbbbbb9e76097a2b8d1c",
       "excluded": false,
@@ -269,7 +302,7 @@
     },
     {
       "path": "components/generation/ai-studio-composer.tsx",
-      "status": " M",
+      "status": "M ",
       "bytes": 31359,
       "sha256": "02d9315e50c0d67cc39c634d74dff4356ea8c8b8099ab6990ccaf26f66b298b8",
       "excluded": false,
@@ -277,7 +310,7 @@
     },
     {
       "path": "components/generation/reference-media-upload.tsx",
-      "status": " M",
+      "status": "M ",
       "bytes": 7009,
       "sha256": "56e245fe582a9cc09518183e7f37b2e449b70c6985092d7a2ccd4e6d3c3205cf",
       "excluded": false,
@@ -285,23 +318,39 @@
     },
     {
       "path": "components/generation/reference-upload-preview.tsx",
-      "status": " M",
+      "status": "M ",
       "bytes": 4037,
       "sha256": "8425581d10ec2d38394a750b3375015e043658a3d80f77d774f773688118eae9",
       "excluded": false,
       "reason": null
     },
     {
-      "path": "components/marketing/landing-comparison-section.tsx",
+      "path": "components/layout/app-sidebar.tsx",
       "status": " M",
+      "bytes": 24844,
+      "sha256": "7172fe588113145b7197d48f5647050bbe6c4b817412676cba8aaf9ff2592c72",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "components/marketing/landing-comparison-section.tsx",
+      "status": "M ",
       "bytes": 9192,
       "sha256": "5edb5529f403e46bc189860d77c2ab138d53ec330256fecdcfad92ed5a7c1e4f",
       "excluded": false,
       "reason": null
     },
     {
+      "path": "components/marketing/landing-content-showcase.tsx",
+      "status": "A ",
+      "bytes": 3532,
+      "sha256": "98ba79fbf5d1dba5ba7e8e3eba5b9b7d98cc37eb01e04ab57cadd5c4f274f271",
+      "excluded": false,
+      "reason": null
+    },
+    {
       "path": "components/marketing/landing-hero-showcase.tsx",
-      "status": " M",
+      "status": "M ",
       "bytes": 10567,
       "sha256": "320a7019076e92c78fd6b6a34024fc5e1dbddcc0d1619a69feb83b12b9dc1b36",
       "excluded": false,
@@ -309,7 +358,7 @@
     },
     {
       "path": "components/marketing/landing-swipe-deck.tsx",
-      "status": " D",
+      "status": "D ",
       "bytes": 0,
       "sha256": null,
       "excluded": false,
@@ -317,7 +366,7 @@
     },
     {
       "path": "components/video/reference-files-upload.tsx",
-      "status": " M",
+      "status": "M ",
       "bytes": 7045,
       "sha256": "8ded4f12ff9fbe62f7c9093399a9600579e1b928e26e523ae1642facec8fd9ed",
       "excluded": false,
@@ -325,15 +374,103 @@
     },
     {
       "path": "components/video/video-generation-workspace.tsx",
-      "status": " M",
+      "status": "M ",
       "bytes": 91186,
       "sha256": "4c06c34b93d27a1c2872cf06036d8bb0020c238b7ee8e9a796105da64816a1a6",
       "excluded": false,
       "reason": null
     },
     {
-      "path": "lib/ai-studio/pending-generation.test.mjs",
+      "path": "docs/explore-action-audit-2026-10-13.md",
+      "status": "A ",
+      "bytes": 5796,
+      "sha256": "c9618f3dea329075318c13b5e34e9236a137914df077e6a2a88b18a476e314ee",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "docs/explore-workflow-frame-fix-2026-10-13.md",
+      "status": "A ",
+      "bytes": 2977,
+      "sha256": "4bf6b54dfd714fa7f510fe8e25eb9eb00cefa68554e1badd0f67bbb6624c4e57",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "docs/followup-release-2026-10-13.md",
       "status": " M",
+      "bytes": 5332,
+      "sha256": "9fc23acc11cd6ccaa0104bd30060b0d4d28dc1122ae11fb2cb8be2b4d7e6408c",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "docs/followup-release-excluded-paths-2026-10-13.md",
+      "status": "A ",
+      "bytes": 46303,
+      "sha256": "20c1d6eb0367c1f5e5faaa45b54119fee9b397b1b724a716cb681dd0dd599616",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "docs/followup-release-inventory-2026-10-13.json",
+      "status": " M",
+      "bytes": 92883,
+      "sha256": "3f3bd84bc725d62dc0ece8c96567978f929e219ce938af4795c075fdc5c9a346",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "docs/influencer-sessions-and-explore-navigation-2026-10-13.md",
+      "status": "A ",
+      "bytes": 4121,
+      "sha256": "2ec8531a4f20e706a1c4d9cefd1e1f35cd96c8c26bb71b810311779d972af3b8",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "docs/landing-passive-showcase-review-2026-10-13.md",
+      "status": "A ",
+      "bytes": 5511,
+      "sha256": "15b2fbd7e932ae14b9048e2b5cc547d608405cbae1b1d4389901e7027be11f44",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "docs/mcp-business-onboarding-progress-2026-10-13.md",
+      "status": "A ",
+      "bytes": 7664,
+      "sha256": "8ad34e9b8d3635f16d939f2db7643ba37fec0c715c5b24febed3febac62fc719",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "docs/mcp-business-upload-next-step-2026-10-13.md",
+      "status": "A ",
+      "bytes": 2863,
+      "sha256": "edbe2a7a3459b82070398dd23974de1d07c15d299eee4059a8f60782899d2e4e",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "docs/mcp-remaining-work-audit-2026-10-11.md",
+      "status": " M",
+      "bytes": 57546,
+      "sha256": "ef86d38b30751713ec758389deb7a48478bacfe239bce71a5808c47c20bb1f8c",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "docs/workflow-loading-audit-2026-10-13.md",
+      "status": " M",
+      "bytes": 7216,
+      "sha256": "2dcc45b149f6259e8a53ed55bc7951ae83edfed3b25ee631cd046850d470af9d",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "lib/ai-studio/pending-generation.test.mjs",
+      "status": "M ",
       "bytes": 13885,
       "sha256": "9d96489aa604e778cafb326b02fb73d97a7c7e8f100e14aee8cabffc53e13beb",
       "excluded": false,
@@ -341,7 +478,7 @@
     },
     {
       "path": "lib/ai-studio/pending-generation.ts",
-      "status": " M",
+      "status": "M ",
       "bytes": 9692,
       "sha256": "747f5a01cf9ba713cb15cc2856ad25783f41fda1b778f27d55c8deefa0d2163d",
       "excluded": false,
@@ -349,7 +486,7 @@
     },
     {
       "path": "lib/ai-studio/video-generation-api.test.mjs",
-      "status": " M",
+      "status": "M ",
       "bytes": 19518,
       "sha256": "1d5dfb754ad48a39753c906b5fc185f183bfdfc0e0d771c475f4d4133a193657",
       "excluded": false,
@@ -357,7 +494,7 @@
     },
     {
       "path": "lib/ai-studio/video-generation-api.ts",
-      "status": " M",
+      "status": "M ",
       "bytes": 29107,
       "sha256": "fc5c5c09cc6e7a941200c079941b491d26405090dfd03aadf1a29bfc53b574c6",
       "excluded": false,
@@ -365,7 +502,7 @@
     },
     {
       "path": "lib/characters/batch-progress.test.ts",
-      "status": " M",
+      "status": "M ",
       "bytes": 1916,
       "sha256": "323f5df97b8ca5640b040b95003b0575411c1103edc124acab1118978e1ab070",
       "excluded": false,
@@ -373,7 +510,7 @@
     },
     {
       "path": "lib/characters/batch-progress.ts",
-      "status": " M",
+      "status": "M ",
       "bytes": 1015,
       "sha256": "60f8e1f7cf8430952fd3874b2b78d22988ea7a76af96eb6ce35aa74f2ad81cec",
       "excluded": false,
@@ -381,7 +518,7 @@
     },
     {
       "path": "lib/characters/client-session.test.ts",
-      "status": " M",
+      "status": "M ",
       "bytes": 4598,
       "sha256": "e7ac9f9c5a30e1e4b7af1d4066e00f12eab696f4389c818814dcf4b2a665d0e3",
       "excluded": false,
@@ -389,15 +526,23 @@
     },
     {
       "path": "lib/characters/client-session.ts",
-      "status": " M",
+      "status": "M ",
       "bytes": 2082,
       "sha256": "85ed045c0620bcbd1d6ae757ea6a26d1128674320850d88875d5502d624c5a77",
       "excluded": false,
       "reason": null
     },
     {
+      "path": "lib/characters/identity-list.test.mjs",
+      "status": "A ",
+      "bytes": 5349,
+      "sha256": "e1d29a475ee33670e16dc90fb408e3678138cc7b55aaf07b7c3ad13350f84f59",
+      "excluded": false,
+      "reason": null
+    },
+    {
       "path": "lib/characters/identity-service.ts",
-      "status": " M",
+      "status": "M ",
       "bytes": 11312,
       "sha256": "e802877617907c3d257e9968bc77a9878055ab38fefb3ca15f20a57421c6aaf2",
       "excluded": false,
@@ -405,7 +550,7 @@
     },
     {
       "path": "lib/characters/identity.test.ts",
-      "status": " M",
+      "status": "M ",
       "bytes": 16827,
       "sha256": "a7d977449bd3e96eca0bc1cf2b91decd735af96ace282d158bc0b8557343b1b5",
       "excluded": false,
@@ -413,15 +558,23 @@
     },
     {
       "path": "lib/characters/identity.ts",
-      "status": " M",
+      "status": "M ",
       "bytes": 7780,
       "sha256": "c794ee08fd5372f20755bc2dbaf8bb977bf58aba8527d456b469d092757021e5",
       "excluded": false,
       "reason": null
     },
     {
+      "path": "lib/explore/browser-fetch-transport.test.ts",
+      "status": "A ",
+      "bytes": 3780,
+      "sha256": "d0cc5c52443645c6cdda6e55b62aa434b3d59558cb0b7918b5630888aa3c15b6",
+      "excluded": false,
+      "reason": null
+    },
+    {
       "path": "lib/explore/clip-draft-client.ts",
-      "status": " M",
+      "status": "M ",
       "bytes": 4782,
       "sha256": "865382421bc50832f4eb27727fdf6c18a2c53bd0e15372585173c43e8a84ec44",
       "excluded": false,
@@ -429,7 +582,7 @@
     },
     {
       "path": "lib/explore/workflow-connected-accounts.ts",
-      "status": " M",
+      "status": "M ",
       "bytes": 4303,
       "sha256": "54fa83ddb348c229b6981479e3073c26c0d5bbd969025fac9f5de667d2f6cfb4",
       "excluded": false,
@@ -437,7 +590,7 @@
     },
     {
       "path": "lib/explore/workflow-default-music-client.ts",
-      "status": " M",
+      "status": "M ",
       "bytes": 1799,
       "sha256": "b831d65bbf45b3047cc62f8c41c33dd38a5e96b76fcd7402398f13c58d9076a6",
       "excluded": false,
@@ -445,7 +598,7 @@
     },
     {
       "path": "lib/explore/workflow-finishing-client.ts",
-      "status": " M",
+      "status": "M ",
       "bytes": 5758,
       "sha256": "0e359a104b85e975d2f104ca8f1b70f94a8859c7ec04ae414cced8b4911a5824",
       "excluded": false,
@@ -453,15 +606,47 @@
     },
     {
       "path": "lib/explore/workflow-generation-client.ts",
-      "status": " M",
+      "status": "M ",
       "bytes": 24164,
       "sha256": "1663b76b6bfb5dcb2ac2b16c3f9befd74fd8e6b4424741070ac073d0cdc65e8d",
       "excluded": false,
       "reason": null
     },
     {
+      "path": "public/marketing/showcase/hero-restored/left_side-v3.json",
+      "status": "A ",
+      "bytes": 442,
+      "sha256": "05a621a167c2e9eb95d614c3f74c36c7f37cb29a491494ea431591de5d446cee",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "public/marketing/showcase/hero-restored/left_side-v3.mp4",
+      "status": "A ",
+      "bytes": 6212902,
+      "sha256": "fb53c2bffc57b9aa41b973834404cfb7e00a522e9607ffa209f624e447be80ce",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "public/marketing/showcase/hero-restored/left_side-v3.webp",
+      "status": "A ",
+      "bytes": 61538,
+      "sha256": "40d5e1bc1cc34d9953573a72d5a9ec0b9cd26e67918c21b432527f049258e8fc",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/character-auto-save-db.test.mjs",
+      "status": "A ",
+      "bytes": 9593,
+      "sha256": "8dec31f4a199d8d98fe014616ce3be1cee5cc388f46afc937120b7ad3b023d14",
+      "excluded": false,
+      "reason": null
+    },
+    {
       "path": "scripts/character-reference.browser.cjs",
-      "status": " M",
+      "status": "M ",
       "bytes": 16189,
       "sha256": "09f7e4c3fa30c7b46b43d5b8649dd90cdd455985be4b107ad207d8af577ae7c2",
       "excluded": false,
@@ -469,7 +654,7 @@
     },
     {
       "path": "scripts/explore-format-common-editor.test.mjs",
-      "status": " M",
+      "status": "M ",
       "bytes": 30429,
       "sha256": "4daa83b98264b21b7969d503271ed3efa4ee63c63cb915c718a6d8213f4341e8",
       "excluded": false,
@@ -477,7 +662,7 @@
     },
     {
       "path": "scripts/explore-format-demo-state.test.mjs",
-      "status": " M",
+      "status": "M ",
       "bytes": 50433,
       "sha256": "e3317da2d597be7529f995acc2c57910bccf54876787ce1b518cff89b03d0eed",
       "excluded": false,
@@ -485,7 +670,7 @@
     },
     {
       "path": "scripts/explore-format-generation-ui.test.mjs",
-      "status": " M",
+      "status": "M ",
       "bytes": 33989,
       "sha256": "99c57535ceebb9f5b84e14f3dc6685cff384fae81c97d237d4b0c7e1a7eac40e",
       "excluded": false,
@@ -493,23 +678,63 @@
     },
     {
       "path": "scripts/explore-format-reference-upload.test.mjs",
-      "status": " M",
+      "status": "M ",
       "bytes": 13508,
       "sha256": "2b688b6c3ac735c7472a4d1402a773b9e1bbfbad9babb40013839a61cf0d3fe6",
       "excluded": false,
       "reason": null
     },
     {
+      "path": "scripts/explore-format-source-workspace.test.mjs",
+      "status": " M",
+      "bytes": 60544,
+      "sha256": "d51628252cd564114140e6f357b6ae2eb12d9b3a19cf5631e19f61b3ec3477f6",
+      "excluded": false,
+      "reason": null
+    },
+    {
       "path": "scripts/explore-navigation-ui.test.mjs",
       "status": " M",
-      "bytes": 13078,
-      "sha256": "9c388059c7494703e090c34771e585e5beb0db70044e5375f242f310d4175719",
+      "bytes": 16486,
+      "sha256": "bb2a597ec73c03afb973e3bcef8fb4491b359bface9703310f43b76d4d59dc4a",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/explore-quick-start-presets.test.mjs",
+      "status": " M",
+      "bytes": 7065,
+      "sha256": "ced0549b140b0c10c1ef2c2b005ad6e339bd4527f26e155bcef3116eca2b5be7",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/explore-recreate-source-action.test.mjs",
+      "status": " M",
+      "bytes": 9862,
+      "sha256": "c6b3a406a31e10112948a736d606032383c4c06ed9022ba638a92b300d93dad3",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/explore-reference-tiles.browser.cjs",
+      "status": "A ",
+      "bytes": 3730,
+      "sha256": "d5616bffca21495eabd6f9f0a990e76290b817b4ff2c13d224d347e8e0c3a9b7",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/explore-slideshow-actions.test.mjs",
+      "status": "A ",
+      "bytes": 3153,
+      "sha256": "c3c9e615b3698a2f6d89c800629f2400bc413bbc66a53a4e735f35362b4bf4b6",
       "excluded": false,
       "reason": null
     },
     {
       "path": "scripts/explore-slideshow-editor.test.mjs",
-      "status": " M",
+      "status": "M ",
       "bytes": 40075,
       "sha256": "d85c1f6aa32ee4fc31e78476a4302e827f2dcdcdd280bc880acc0f4a4f762e25",
       "excluded": false,
@@ -517,7 +742,7 @@
     },
     {
       "path": "scripts/explore-slideshow.browser.cjs",
-      "status": " M",
+      "status": "M ",
       "bytes": 33440,
       "sha256": "e5b96d60252285c76f0f381fe198b3d4082888ba42ed0b1c05500d6b0bf57f4f",
       "excluded": false,
@@ -525,15 +750,23 @@
     },
     {
       "path": "scripts/generate-button-ui.test.mjs",
-      "status": " M",
+      "status": "M ",
       "bytes": 5467,
       "sha256": "697d3000704574dfa1f8be17429b10904b90d653420f09f602e4f2ebff0a6eb7",
       "excluded": false,
       "reason": null
     },
     {
-      "path": "scripts/phone-workflow-preview.test.mjs",
+      "path": "scripts/hook-workflow-preview.test.mjs",
       "status": " M",
+      "bytes": 7808,
+      "sha256": "2b945bc6f157e3a627a50cddc6f795e7a588e4e00237437bae39b84d7d6443c9",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/phone-workflow-preview.test.mjs",
+      "status": "M ",
       "bytes": 12323,
       "sha256": "7e538fa7d1c91c30db77b30e8e4c60899a780a27cbb79fbdc784ce58e5149ae1",
       "excluded": false,
@@ -541,15 +774,23 @@
     },
     {
       "path": "scripts/prepare-landing-hero-left.mjs",
-      "status": " M",
+      "status": "M ",
       "bytes": 3645,
       "sha256": "0a98d9e84b1187fde28228a5994dd3937886d8267e5c3c5e2ea2ed9cdbdd3415",
       "excluded": false,
       "reason": null
     },
     {
-      "path": "scripts/verify-landing-post-feed.mjs",
+      "path": "scripts/ui-main-reconciliation.test.mjs",
       "status": " M",
+      "bytes": 7480,
+      "sha256": "07c053f5f6802848c14d9f9f0a52fa39a0e999b04b39cfcbdd1da22057ff1d31",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/verify-landing-post-feed.mjs",
+      "status": "M ",
       "bytes": 3202,
       "sha256": "5ea29baa665b7eade7f9b795d90cb757a28cc67ea1afcf4888572b4ea1c4084d",
       "excluded": false,
@@ -557,7 +798,7 @@
     },
     {
       "path": "scripts/workflow-bookmarked-audio.test.mjs",
-      "status": " M",
+      "status": "M ",
       "bytes": 11645,
       "sha256": "bb11cc0aaf986b2d049cb7b9ae6bc42cc170fa7de7799f46778cb20d18f32bf3",
       "excluded": false,
@@ -565,7 +806,7 @@
     },
     {
       "path": "scripts/workflow-connected-accounts.test.mjs",
-      "status": " M",
+      "status": "M ",
       "bytes": 16525,
       "sha256": "43e1b1f1e44a3fad2dd9745409254abf6c2114830c2b35fbbed6253de0db3987",
       "excluded": false,
@@ -573,7 +814,7 @@
     },
     {
       "path": "scripts/workflow-demo-audio-state.test.mjs",
-      "status": " M",
+      "status": "M ",
       "bytes": 19854,
       "sha256": "a33333086b08ffc8dcda6eec12fb80b6ee871dccf22d850be9c00fad0054e12d",
       "excluded": false,
@@ -582,136 +823,64 @@
     {
       "path": "scripts/workflow-generation-client.test.mjs",
       "status": " M",
-      "bytes": 40704,
-      "sha256": "6e6db7c004d2ba27304dbc6535bf8ca4c4546a5b6c4bcaf4a22b70e28ea0db9b",
+      "bytes": 41378,
+      "sha256": "8713338ac386114b312e23194668e3c055f2ccc51e7dece3b562e3f48eb3ade5",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/workflow-image-collection.test.mjs",
+      "status": "A ",
+      "bytes": 5639,
+      "sha256": "a0223e21027fc50df3ef0d3b4b5d5721363de4b774798c9952a195e0fed339b1",
       "excluded": false,
       "reason": null
     },
     {
       "path": "scripts/workflow-source-video-ui.test.mjs",
-      "status": " M",
+      "status": "M ",
       "bytes": 18852,
       "sha256": "249d3e271c42ed3908500586a8e9aa86175bef6bbecf0e3f96bad0997a0a6c03",
       "excluded": false,
       "reason": null
     },
     {
+      "path": "supabase/migrations/20261013143246_character_auto_save_influencer_images.sql",
+      "status": "A ",
+      "bytes": 4395,
+      "sha256": "50be42abbe0c4ab486c063dcb0c45d35e21098e01a041a51a2799a80bbe628f2",
+      "excluded": false,
+      "reason": null
+    },
+    {
       "path": "worker/src/lib/gemini-omni-video.test.mjs",
-      "status": " M",
+      "status": "M ",
       "bytes": 11336,
       "sha256": "43e976a510324517906ae7082532204e584b103d005b19a2809f03821d15427e",
       "excluded": false,
       "reason": null
     },
     {
-      "path": "components/explore/use-local-workflow-images.ts",
+      "path": "components/explore/hook-workflow-entry.tsx",
       "status": "??",
-      "bytes": 5236,
-      "sha256": "eea94835730e034c62141c1770088ae1df176db041df51dbaabc9c0d479d3c5f",
+      "bytes": 571,
+      "sha256": "12b533e056a5a19644f407bd7dd5cc90892d0230d30c809ce72b0ce9a07ce1d4",
       "excluded": false,
       "reason": null
     },
     {
-      "path": "components/marketing/landing-content-showcase.tsx",
+      "path": "docs/mcp-business-logo-candidate-2026-10-13.md",
       "status": "??",
-      "bytes": 3532,
-      "sha256": "98ba79fbf5d1dba5ba7e8e3eba5b9b7d98cc37eb01e04ab57cadd5c4f274f271",
+      "bytes": 4982,
+      "sha256": "2794a0e41135e2bf4f59ca07cf5032a1e371bce8869184c648dc8221ab567b23",
       "excluded": false,
       "reason": null
     },
     {
-      "path": "docs/explore-action-audit-2026-10-13.md",
+      "path": "docs/mcp-business-onboarding-candidate-2026-10-13.md",
       "status": "??",
-      "bytes": 5796,
-      "sha256": "c9618f3dea329075318c13b5e34e9236a137914df077e6a2a88b18a476e314ee",
-      "excluded": false,
-      "reason": null
-    },
-    {
-      "path": "docs/explore-workflow-frame-fix-2026-10-13.md",
-      "status": "??",
-      "bytes": 2977,
-      "sha256": "4bf6b54dfd714fa7f510fe8e25eb9eb00cefa68554e1badd0f67bbb6624c4e57",
-      "excluded": false,
-      "reason": null
-    },
-    {
-      "path": "docs/followup-release-2026-10-13.md",
-      "status": "??",
-      "bytes": 3939,
-      "sha256": "6881bfb4aef5aa2337d2602c467f458bafe6ecce039043adfb9950b3ee9dcc86",
-      "excluded": false,
-      "reason": null
-    },
-    {
-      "path": "docs/followup-release-excluded-paths-2026-10-13.md",
-      "status": "??",
-      "bytes": 46303,
-      "sha256": "20c1d6eb0367c1f5e5faaa45b54119fee9b397b1b724a716cb681dd0dd599616",
-      "excluded": false,
-      "reason": null
-    },
-    {
-      "path": "docs/followup-release-inventory-2026-10-13.json",
-      "status": "??",
-      "bytes": 90385,
-      "sha256": "4349cb6f05c906148e0372dc5db8e780dd7b2e461741312590dbb2bd3321c164",
-      "excluded": false,
-      "reason": null
-    },
-    {
-      "path": "docs/influencer-sessions-and-explore-navigation-2026-10-13.md",
-      "status": "??",
-      "bytes": 4121,
-      "sha256": "2ec8531a4f20e706a1c4d9cefd1e1f35cd96c8c26bb71b810311779d972af3b8",
-      "excluded": false,
-      "reason": null
-    },
-    {
-      "path": "docs/landing-passive-showcase-review-2026-10-13.md",
-      "status": "??",
-      "bytes": 5511,
-      "sha256": "15b2fbd7e932ae14b9048e2b5cc547d608405cbae1b1d4389901e7027be11f44",
-      "excluded": false,
-      "reason": null
-    },
-    {
-      "path": "docs/mcp-business-onboarding-progress-2026-10-13.md",
-      "status": "??",
-      "bytes": 7664,
-      "sha256": "8ad34e9b8d3635f16d939f2db7643ba37fec0c715c5b24febed3febac62fc719",
-      "excluded": false,
-      "reason": null
-    },
-    {
-      "path": "docs/mcp-business-upload-next-step-2026-10-13.md",
-      "status": "??",
-      "bytes": 2863,
-      "sha256": "edbe2a7a3459b82070398dd23974de1d07c15d299eee4059a8f60782899d2e4e",
-      "excluded": false,
-      "reason": null
-    },
-    {
-      "path": "docs/workflow-loading-audit-2026-10-13.md",
-      "status": "??",
-      "bytes": 4604,
-      "sha256": "1422ea7d973a495fc2598d635a1910b315ca552d59e5fe3415b02f58ffc9c875",
-      "excluded": false,
-      "reason": null
-    },
-    {
-      "path": "lib/characters/identity-list.test.mjs",
-      "status": "??",
-      "bytes": 5349,
-      "sha256": "e1d29a475ee33670e16dc90fb408e3678138cc7b55aaf07b7c3ad13350f84f59",
-      "excluded": false,
-      "reason": null
-    },
-    {
-      "path": "lib/explore/browser-fetch-transport.test.ts",
-      "status": "??",
-      "bytes": 3780,
-      "sha256": "d0cc5c52443645c6cdda6e55b62aa434b3d59558cb0b7918b5630888aa3c15b6",
+      "bytes": 5825,
+      "sha256": "5fec2e2abb9207252308e01aca0196c42f934f7208cd7b452b67137c7c9e8062",
       "excluded": false,
       "reason": null
     },
@@ -844,74 +1013,10 @@
       "reason": "Generated review images/video; retained locally."
     },
     {
-      "path": "public/marketing/showcase/hero-restored/left_side-v3.json",
+      "path": "scripts/workflow-navigation.browser.cjs",
       "status": "??",
-      "bytes": 442,
-      "sha256": "05a621a167c2e9eb95d614c3f74c36c7f37cb29a491494ea431591de5d446cee",
-      "excluded": false,
-      "reason": null
-    },
-    {
-      "path": "public/marketing/showcase/hero-restored/left_side-v3.mp4",
-      "status": "??",
-      "bytes": 6212902,
-      "sha256": "fb53c2bffc57b9aa41b973834404cfb7e00a522e9607ffa209f624e447be80ce",
-      "excluded": false,
-      "reason": null
-    },
-    {
-      "path": "public/marketing/showcase/hero-restored/left_side-v3.webp",
-      "status": "??",
-      "bytes": 61538,
-      "sha256": "40d5e1bc1cc34d9953573a72d5a9ec0b9cd26e67918c21b432527f049258e8fc",
-      "excluded": false,
-      "reason": null
-    },
-    {
-      "path": "scripts/character-auto-save-db.test.mjs",
-      "status": "??",
-      "bytes": 9593,
-      "sha256": "8dec31f4a199d8d98fe014616ce3be1cee5cc388f46afc937120b7ad3b023d14",
-      "excluded": false,
-      "reason": null
-    },
-    {
-      "path": "scripts/explore-recreate-source-action.test.mjs",
-      "status": "??",
-      "bytes": 9751,
-      "sha256": "f24e0dda4ecc8c6c718ff1d1b1b5ec703bd30ea35408f2599275404830f77937",
-      "excluded": false,
-      "reason": null
-    },
-    {
-      "path": "scripts/explore-reference-tiles.browser.cjs",
-      "status": "??",
-      "bytes": 3730,
-      "sha256": "d5616bffca21495eabd6f9f0a990e76290b817b4ff2c13d224d347e8e0c3a9b7",
-      "excluded": false,
-      "reason": null
-    },
-    {
-      "path": "scripts/explore-slideshow-actions.test.mjs",
-      "status": "??",
-      "bytes": 3153,
-      "sha256": "c3c9e615b3698a2f6d89c800629f2400bc413bbc66a53a4e735f35362b4bf4b6",
-      "excluded": false,
-      "reason": null
-    },
-    {
-      "path": "scripts/workflow-image-collection.test.mjs",
-      "status": "??",
-      "bytes": 5639,
-      "sha256": "a0223e21027fc50df3ef0d3b4b5d5721363de4b774798c9952a195e0fed339b1",
-      "excluded": false,
-      "reason": null
-    },
-    {
-      "path": "supabase/migrations/20261013143246_character_auto_save_influencer_images.sql",
-      "status": "??",
-      "bytes": 4395,
-      "sha256": "50be42abbe0c4ab486c063dcb0c45d35e21098e01a041a51a2799a80bbe628f2",
+      "bytes": 5697,
+      "sha256": "4bba00c6dcb7e0eed54c4305e95d3f91eb01aa23b964ca4ca422e5da082bf4a6",
       "excluded": false,
       "reason": null
     }

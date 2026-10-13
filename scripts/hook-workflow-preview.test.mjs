@@ -19,11 +19,20 @@ test("Talking Head + Demo connects in production while explicit layout previews 
   assert.match(read("lib/explore/workflows.ts"), /destination: "\/explore\/create-hook"/);
   assert.match(workspace, /HookWorkflowPreview/);
   const compiled = ts.transpileModule(page, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS } }).outputText;
+  let query = new URLSearchParams();
+  const entry = {};
+  new Function("require", "exports", ts.transpileModule(read("components/explore/hook-workflow-entry.tsx"), { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS } }).outputText)(name => {
+    if (name === "react/jsx-runtime") return { jsx: (type, props) => ({ type, props }) };
+    if (name === "next/navigation") return { useSearchParams: () => query };
+    return { HookWorkflowPreview: "HookWorkflowPreview" };
+  }, entry);
   const exports = {};
   new Function("require", "exports", compiled)(name => {
     if (name === "react/jsx-runtime") return { jsx: (type, props) => ({ type, props }) };
-    assert.equal(name, "@/components/explore/hook-workflow-preview");
-    return { HookWorkflowPreview: "HookWorkflowPreview" };
+    if (name === "react") return { Suspense: "Suspense" };
+    if (name === "@/components/layout/workspace-content-loading") return { WorkspaceContentLoading: "Loading" };
+    assert.equal(name, "@/components/explore/hook-workflow-entry");
+    return entry;
   }, exports);
   const flags = ["EXPLORE_GENERATION_ENABLED", "EXPLORE_DEMO_FRAMING_ENABLED"];
   const previous = flags.map(key => process.env[key]);
@@ -32,7 +41,10 @@ test("Talking Head + Demo connects in production while explicit layout previews 
     for (const enabled of ["true", "false"]) {
       process.env.EXPLORE_GENERATION_ENABLED = enabled;
       for (const preview of [undefined, "1"]) {
-        const rendered = await exports.default({ searchParams: Promise.resolve({ preview }) });
+        query = new URLSearchParams(preview ? { preview } : {});
+        const shell = exports.default();
+        assert.equal(shell instanceof Promise, false);
+        const rendered = shell.props.children.type(shell.props.children.props);
         assert.equal(rendered.type, "HookWorkflowPreview");
         assert.equal(rendered.props.generationEnabled, enabled === "true" && preview !== "1");
         assert.equal(rendered.props.demoFramingEnabled, true);

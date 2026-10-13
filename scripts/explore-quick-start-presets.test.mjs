@@ -36,13 +36,22 @@ test("all four quick starts open the approved destinations and preserve preview"
   }
 });
 test("Talking Head + Demo is visible while preview stays non-spending and Creator Phone remains hidden", async () => {
-  const imports = { "@/components/explore/hook-workflow-preview": { HookWorkflowPreview: "HookWorkflowPreview" } };
+  let query = new URLSearchParams();
+  const entry = load("components/explore/hook-workflow-entry.tsx", {
+    "next/navigation": { useSearchParams: () => query },
+    "@/components/explore/hook-workflow-preview": { HookWorkflowPreview: "HookWorkflowPreview" },
+  });
+  const imports = { react: { Suspense: "Suspense" }, "@/components/explore/hook-workflow-entry": entry,
+    "@/components/layout/workspace-content-loading": { WorkspaceContentLoading: "Loading" } };
   for (const enabled of ["true", "false"]) {
     const route = load("app/explore/create-hook/page.tsx", imports, { NODE_ENV: "production", EXPLORE_GENERATION_ENABLED: enabled });
-    const live = await route.default({ searchParams: Promise.resolve({}) });
+    query = new URLSearchParams();
+    const shell = route.default();
+    const live = shell.props.children.type(shell.props.children.props);
     assert.equal(live.type, "HookWorkflowPreview");
     assert.equal(live.props.generationEnabled, enabled === "true");
-    const preview = await route.default({ searchParams: Promise.resolve({ preview: "1" }) });
+    query = new URLSearchParams({ preview: "1" });
+    const preview = shell.props.children.type(shell.props.children.props);
     assert.equal(preview.props.generationEnabled, false);
   }
   const phone = load("app/explore/creator-phone/page.tsx", { "next/navigation": { notFound() { throw Error("NOT_FOUND"); } } });

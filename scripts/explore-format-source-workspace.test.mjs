@@ -47,7 +47,7 @@ function harness(format, query = "", { local = true, selected = video, catalogue
       slots[i] = next;
       effects.push(() => { previous?.cleanup?.(); next.cleanup = callback(); });
     },
-  }, "next/dynamic": { default: () => "generation-panel" }, "next/link": { default: "link" }, "next/navigation": { useSearchParams: () => params },
+  }, "next/dynamic": { default: loader => loader.toString().match(/module\.(FormatVideoEditor|FormatSlideshowEditor|WallSchedulePreview)/)?.[1] ?? "generation-panel" }, "next/link": { default: "link" }, "next/navigation": { useSearchParams: () => params },
   "@base-ui/react/tabs": { Tabs: { Root: "tabs-root", List: "tablist", Tab: "tab", Panel: "tabpanel" } },
   "@tanstack/react-query": { useQuery(options) { queries.push(options); return options.queryKey[0] === "recreate-references" ? { data: catalogue } : {}; } },
   "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" }, loading: false }) },

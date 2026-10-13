@@ -17,6 +17,7 @@ export function AICharacterCard({ localPreview = false }: { localPreview?: boole
   return (
     <article aria-labelledby="explore-character-title" className={styles.workflowCard}>
       <Link href={localPreview ? "/explore/build-character?preview=1" : "/explore/build-character"}
+        prefetch={true}
         aria-label="Build AI influencer: create an AI influencer for yourself or your business"
         className="group block rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-4 focus-visible:ring-offset-background">
         <div className={cn(styles.cover, styles.characterMotion)} data-character-cover>

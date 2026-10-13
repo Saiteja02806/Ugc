@@ -5,7 +5,6 @@ import scrollbars from "@/components/ui/quiet-scrollbar.module.css";
 import { useWorkflowNavigation } from "@/components/layout/workflow-navigation";
 
 import {
-  ExternalLink,
   Menu,
   Settings,
   X,
@@ -25,7 +24,6 @@ import {
   SidebarIcon,
   type SidebarIconName,
 } from "@/components/icons/sidebar-icon";
-import { DiscordIcon } from "@/components/icons/discord-icon";
 import { ProductLogoMark } from "@/components/brand/product-logo";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
@@ -235,8 +233,6 @@ export function AppSidebar({
           collapsed={collapsed}
         />
 
-        <SidebarDiscordLink collapsed={collapsed} />
-
         {collapsed ? null : <SidebarPlanCreditsWidget />}
 
         <AccountSection
@@ -285,8 +281,6 @@ export function AppSidebar({
               activeKey={activeKey}
               onNavigate={() => setIsMobileNavigationOpen(false)}
             />
-
-            <SidebarDiscordLink collapsed={false} />
 
             <SidebarPlanCreditsWidget />
 
@@ -556,89 +550,6 @@ function CollapsedMagneticNavItem({
         {item.label}
       </span>
     </Link>
-  );
-}
-
-function SidebarDiscordLink({ collapsed = false }: { collapsed?: boolean }) {
-  const surfaceRef = useRef<HTMLSpanElement>(null);
-  const tooltipId = useId();
-  const discordHref = "https://discord.gg/wNtwSVFvK";
-
-  function resetSurface() {
-    if (surfaceRef.current) {
-      surfaceRef.current.style.transform = "translate3d(0, 0, 0) scale(1)";
-    }
-  }
-
-  function handlePointerMove(event: ReactPointerEvent<HTMLAnchorElement>) {
-    if (
-      event.pointerType !== "mouse" ||
-      window.matchMedia("(pointer: coarse)").matches ||
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
-      return;
-    }
-
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const relativeX = (event.clientX - bounds.left) / bounds.width - 0.5;
-    const relativeY = (event.clientY - bounds.top) / bounds.height - 0.5;
-    const translateX = Math.max(-4, Math.min(4, relativeX * 8));
-    const translateY = Math.max(-3, Math.min(3, relativeY * 6));
-
-    if (surfaceRef.current) {
-      surfaceRef.current.style.transform = `translate3d(${translateX}px, ${translateY}px, 0) scale(1.05)`;
-    }
-  }
-
-  if (collapsed) {
-    return (
-      <div className="mb-2 flex justify-center">
-        <a
-          href={discordHref}
-          target="_blank"
-          rel="noreferrer noopener"
-          onBlur={resetSurface}
-          onPointerCancel={resetSurface}
-          onPointerLeave={resetSurface}
-          onPointerMove={handlePointerMove}
-          aria-describedby={tooltipId}
-          aria-label="Discord"
-          className="group/rail-item relative flex size-10 items-center justify-center rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
-        >
-          <span
-            ref={surfaceRef}
-            className="flex size-10 items-center justify-center rounded-control text-muted-subtle transition-[transform,background-color,color,box-shadow] duration-[160ms] ease-out will-change-transform group-hover/rail-item:bg-deep-contrast group-hover/rail-item:text-white group-hover/rail-item:shadow-[0_8px_20px_rgb(23_52_84_/_0.24)] group-focus-visible/rail-item:bg-deep-contrast group-focus-visible/rail-item:text-white group-focus-visible/rail-item:shadow-[0_8px_20px_rgb(23_52_84_/_0.24)] motion-reduce:transform-none motion-reduce:transition-none"
-          >
-            <DiscordIcon className="size-5" />
-          </span>
-          <span
-            id={tooltipId}
-            role="tooltip"
-            className="pointer-events-none invisible absolute left-full top-1/2 z-[var(--z-tooltip)] ml-3 -translate-y-1/2 whitespace-nowrap rounded-small bg-deep-contrast px-2.5 py-1.5 text-xs font-semibold text-white opacity-0 shadow-floating transition-opacity duration-150 delay-0 group-hover/rail-item:visible group-hover/rail-item:opacity-100 group-hover/rail-item:delay-[160ms] group-focus-visible/rail-item:visible group-focus-visible/rail-item:opacity-100 motion-reduce:transition-none"
-          >
-            Discord
-          </span>
-        </a>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mb-2 px-3">
-      <a
-        href={discordHref}
-        target="_blank"
-        rel="noreferrer noopener"
-        className="group relative flex h-10 w-full items-center gap-3 rounded-control px-3 text-sm font-medium text-muted transition-colors duration-150 hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 motion-reduce:transition-none"
-      >
-        <DiscordIcon className="size-[19px] text-muted-subtle transition-colors group-hover:text-foreground-strong" />
-        <span className="truncate">Discord</span>
-        <ExternalLink
-          className="ml-auto size-3.5 text-muted-subtle/70 transition-colors group-hover:text-foreground-strong"
-          aria-hidden="true"
-        />
-      </a>
-    </div>
   );
 }
 

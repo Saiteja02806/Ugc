@@ -35,3 +35,22 @@ First-byte time includes network latency. The first Explore sample includes conn
 - Detailed route/chunk measurements are in `.tmp/workflow-production-latency-audit.json`; the read-only measurement script is `.tmp/audit-workflow-latency.mjs`.
 
 The next acceptance check is authenticated rapid workflow switching on the real domain after the routing/prefetch changes reach production. If a multi-second delay remains, capture the clicked route's network and main-thread trace to distinguish catalogue/profile API waits, chunk loading and browser rendering from the measured server round trip.
+
+## Local remediation completed after the audit
+
+The user asked to finish any remaining local fixes. Talking Head now uses a synchronous static route with a Suspense-contained client entry. The actual client reads `preview=1` and disables live generation exactly as before; both rollout flags remain server-derived. The production build now marks all five active workflow destinations as static, including `/explore/create-hook`.
+
+Every workflow card, including Build AI influencer, explicitly prefetches its full destination. Decorative covers show their posters immediately and download/play only after sustained hover or keyboard focus. Touch navigation, short hover, click, pointer-down, offscreen/hidden state, reduced motion and unmount cancel playback/downloads. This removes simultaneous automatic cover video loads during route prefetch.
+
+The format workspace loads video editor, slideshow editor and Wall schedule preview through separate dynamic imports rather than eagerly importing all three into every format's opening code. Their existing mounting conditions, account keys, saved drafts, polling and callback contracts stay intact.
+
+Validation after these changes:
+
+- Production build passed and marks Explore plus Talking Head, Hook, Wall, Slideshows and Build AI influencer as static.
+- 135 targeted tests passed, including the explicit production preview guard, no paid operations in preview, generation recovery, preserved editor/source state, catalogue recreation, navigation and cover-download cancellation.
+- Targeted ESLint passed without errors.
+- Real Next.js local preview browser verification passed: all five workflows open and return twice; a second Wall click wins while the first Hook RSC response is intentionally delayed 700 ms; the late Hook response cannot overwrite Wall; opening Explore starts zero decorative cover requests; no page errors or API writes occurred.
+- In the precompiled development preview, observed click-to-workflow-heading times ranged from 286 to 971 ms across ten transitions. These are local sanity measurements, not production timing promises or authenticated end-to-end acceptance. The cold development compiler is excluded; one first compilation took 83 seconds and does not ship to production.
+- Browser details and a rapid-switch screenshot are stored in `.tmp/workflow-navigation-browser/`; production build and test logs are `.tmp/workflow-loading-build.log` and `.tmp/workflow-loading-tests.log`.
+
+These additional fixes remain local. Deployment and signed-in production acceptance are still required to confirm the experience on the live site.

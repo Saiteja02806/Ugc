@@ -1,5 +1,55 @@
 # Remaining work for complete IDE operation
 
+## Latest verified checkpoint — 13 October 2026
+
+This checkpoint supersedes older paragraphs labelled “current” below. Complete
+application access is still unfinished. The specified existing-media Codex
+hook → demo → two-second downloaded video journey has passed; real Claude Code
+workflow acceptance and the broader application requirements remain separate.
+
+This chat currently discovers 79 released native tools. Read-only production
+deployment inspection now reports website `dpl_DtdBHu576DFWeK8FM5ftsWJTFxn7`
+and MCP `dpl_AtJF6EHBjdaYqkgz151gUQtoFMvk`, both READY with source
+`a2b3dd79ebf20c6a6ae96f493523cc695d6feccb`. That source includes account-settings
+release `21866e2287501bf5b13b355a2fa103c0258a8afc`. A subsequent application
+release PR #54 is merged at `1177258da1d997f31366559c093edd0a48c951da`; any
+future candidate promotion must reconcile with the latest live/merged source
+and preserve its Explore/UI and MCP capability fixes.
+
+Unreleased candidates:
+
+- [PR #51](https://github.com/Saiteja02806/Ugc/pull/51): shared Business Context
+  draft/apply and recovery, plugin 0.1.13, 85 source registrations.
+- [PR #53](https://github.com/Saiteja02806/Ugc/pull/53): both saved onboarding
+  modes, identity/goals/submission, durable receipts/job recovery, plugin 0.1.14,
+  90 source registrations. Exact-commit Linux, independent-session races,
+  migration guard and primary hosted build passed.
+- [PR #55](https://github.com/Saiteja02806/Ugc/pull/55): dedicated logo
+  reservations/recovery/renewal, actual decoded-byte confirmation, local transfer
+  helper and shared website/MCP attachment guard, plugin 0.1.15, 96 source
+  registrations. Local full MCP/build/type/lint/package checks passed. One Linux
+  run passed all eight independent-session cases; another reached Docker's
+  temporary initialization server and lost its connection. The fixture now waits
+  for the final TCP listener, with fresh exact-source Linux checks pending.
+
+Production migration history was rechecked through the existing connected
+Supabase project: account settings version 20261013090422 is present; Business
+Context 20261013112752, onboarding 20261013141043 and logo upload 20261013165323
+remain absent. No candidate schema, promotion, write enablement, bucket/IAM
+change or customer logo upload occurred here. Candidate tool counts and package
+checks do not establish live application access.
+
+Dedicated app screenshots, website reanalysis, advanced generation integration,
+full editor/Explore drafts, slideshow text rendering, Trending/Carousel actions,
+social publishing, analytics and host acceptance remain required. Existing
+new-write gates and unavailable provider/storage configuration must be resolved
+and verified for intended user workflows before marking full parity complete.
+
+Current implementation evidence is in the candidate PRs and
+[logo evidence](mcp-business-logo-candidate-2026-10-13.md),
+[onboarding evidence](mcp-business-onboarding-candidate-2026-10-13.md) and
+[screenshot next-step audit](mcp-business-upload-next-step-2026-10-13.md).
+
 Initially audited on 11 October 2026 against MCP registration, tool schemas, plugin source, upload/finishing services and customer-facing website API routes. Release follow-ups below now record the scoped Demo and upload-recovery deployments, migrations, CI and live discovery. No production media upload, generation, render, transcription or publishing was performed. Complete host/workflow acceptance remains separate from release checks.
 
 ## Current boundary

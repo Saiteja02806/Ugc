@@ -20,12 +20,11 @@ import presentation from "@/components/explore/workflow-video-layout.module.css"
 import slideshowLayout from "@/components/explore/workflow-slideshow-layout.module.css";
 import { WorkflowSectionNavigation } from "@/components/explore/workflow-section-navigation";
 import scrollbars from "@/components/ui/quiet-scrollbar.module.css";
-import { FormatVideoEditor, type FormatOpeningPreview, type FormatPreparationStatus, type WorkflowClipEditState } from "@/components/explore/format-video-editor";
+import type { FormatOpeningPreview, FormatPreparationStatus, WorkflowClipEditState } from "@/components/explore/format-video-editor";
 import { FormatDemoSection } from "@/components/explore/format-demo-section";
-import { FormatSlideshowEditor, type SlideshowEditorController } from "@/components/explore/format-slideshow-editor";
+import type { SlideshowEditorController } from "@/components/explore/format-slideshow-editor";
 import { SlideshowReferencePicker } from "@/components/explore/slideshow-reference-picker";
 import { FormatSchedulePanel } from "@/components/explore/format-schedule-panel";
-import { WallSchedulePreview } from "@/components/explore/wall-schedule-preview";
 import { useBackgroundScheduleAvailability } from "@/components/explore/pending-schedule-panel";
 import type { ExploreScheduleComposition } from "@/lib/explore/pending-schedule-client";
 import { createWallScheduleComposition } from "@/lib/explore/wall-pending-composition";
@@ -49,6 +48,9 @@ import { cn } from "@/lib/utils";
 
 const ImagePanel = dynamic(() => import("@/components/workspace/ugc-chat-workspace").then(module => module.ImageGenerationStudioPanel));
 const VideoPanel = dynamic(() => import("@/components/video/video-generation-workspace").then(module => module.VideoGenerationStudioPanel));
+const FormatVideoEditor = dynamic(() => import("@/components/explore/format-video-editor").then(module => module.FormatVideoEditor));
+const FormatSlideshowEditor = dynamic(() => import("@/components/explore/format-slideshow-editor").then(module => module.FormatSlideshowEditor));
+const WallSchedulePreview = dynamic(() => import("@/components/explore/wall-schedule-preview").then(module => module.WallSchedulePreview));
 const EMPTY: RecreateReference[] = [];
 const TITLES = { hook: "Hook video", wall_text: "Wall of text", slideshow: "Slideshows" };
 type SavedOutput = { id: string; kind: "media_asset" | "library_item"; url: string; title: string; slides?: string[] };

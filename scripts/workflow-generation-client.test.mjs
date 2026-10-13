@@ -336,10 +336,18 @@ test("Talking Head + Demo stays visible, the phone workflow stays hidden, and pr
           const value = rollout.getWorkflowGenerationMode({ environment, generationEnabled, preview, mode });
           const expected = preview === "1" ? "preview" : generationEnabled === "true" ? "generation" : "preview";
           assert.equal(value, expected);
+          const entry = load("components/explore/hook-workflow-entry.tsx", {
+            "next/navigation": { useSearchParams: () => new URLSearchParams(preview ? { preview } : {}) },
+            "@/components/explore/hook-workflow-preview": { HookWorkflowPreview: "hook" },
+            "react/jsx-runtime": { jsx: (type, props) => ({ type, props }) },
+          });
           for (const kind of ["hook", "phone"]) {
             const page = load(kind === "hook" ? "app/explore/create-hook/page.tsx" : "app/explore/creator-phone/page.tsx", {
               "next/navigation": { notFound() { throw new Error("NOT_FOUND"); } },
               "@/components/explore/hook-workflow-preview": { HookWorkflowPreview: "hook" },
+              "@/components/explore/hook-workflow-entry": entry,
+              "@/components/layout/workspace-content-loading": { WorkspaceContentLoading: "Loading" },
+              react: { Suspense: "Suspense" },
               "@/components/explore/phone-workflow-preview": { PhoneWorkflowPreview: "phone" },
               "@/lib/explore/launch-presets": { parseWorkflowDuration: () => 5, parseWorkflowModel: () => undefined },
               "@/lib/explore/workflow-generation-rollout": rollout,
@@ -348,7 +356,8 @@ test("Talking Head + Demo stays visible, the phone workflow stays hidden, and pr
             const invoke = () => page.default({ searchParams: Promise.resolve({ preview, mode }) });
             if (kind === "phone") assert.throws(invoke, /NOT_FOUND/);
             else {
-              const rendered = await invoke();
+              const shell = await invoke();
+              const rendered = shell.props.children.type(shell.props.children.props);
               assert.equal(rendered.type, "hook");
               assert.equal(rendered.props.generationEnabled, generationEnabled === "true" && preview !== "1");
             }

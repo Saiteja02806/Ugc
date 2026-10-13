@@ -62,7 +62,7 @@ test("newer main session, history and uploaded-reference recovery remain present
 test("compact presentation is opt-in and keeps newer default composer controls", () => {
   for (const pattern of [/compact = false/, /hasAttachments = true/, /showPromptHint = true/,
     /unifiedMaxWidthClassName/, /compact \? 72 : layout === "unified" \? 64 : 128/,
-    /!compact && layout === "unified" && leadingControl && !hasAttachments/,
+    /!compact && layout === "unified" && leadingControl && \(!hasAttachments \|\| inlineReferences\)/,
     /leadingControl && \(!compact \|\| hasAttachments\)/,
     /\{!hasAttachments \? leadingControl : null\}/]) assert.match(composer, pattern);
   assert.match(composer, /disabled=\{generateDisabled \|\| promptTooLong\}/);

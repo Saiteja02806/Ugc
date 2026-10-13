@@ -40,7 +40,7 @@ const SCOPE_DETAILS: Record<string, { title: string; description: string; icon: 
   },
   "assets:write": {
     title: "Manage media",
-    description: "Upload references and delete media you select.",
+    description: "Organize Creative Asset groups, upload references and delete media you select.",
     icon: Upload,
   },
   "generation:write": {

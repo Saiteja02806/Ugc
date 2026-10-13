@@ -3,6 +3,11 @@
 Initially audited on 11 October 2026 against MCP registration, tool schemas, plugin source, upload/finishing services and customer-facing website API routes. Release follow-ups below now record the scoped Demo and upload-recovery deployments, migrations, CI and live discovery. No production media upload, generation, render, transcription or publishing was performed. Complete host/workflow acceptance remains separate from release checks.
 
 
+
+## Creative Asset group candidate — 13 October 2026
+
+Eleven application group/capability/request-recovery tools are implemented in an isolated 63-tool candidate based on reference PR #46. Shared group tables/triggers, revision-bound atomic writes, immutable receipts, complete membership/request paging and media-preserving deletion are covered by six actual-canonical PostgreSQL tests and eight actual MCP/PostgREST tests. Full MCP regressions and the final build pass; the additive receipt/RPC/index migration is not applied and writes default disabled. Release and installed-host boundaries are recorded in [group candidate evidence](mcp-creative-groups-candidate-2026-10-13.md). This closes group implementation, not the entire Library or full-application acceptance.
+
 ## Current reference/remix candidate — 13 October 2026
 
 The private plugin is now 0.1.9, Codex loads its reviewed helpers, and native discovery returns all 46 deployed tools. Website restoration `4042fc64bd468ebba825240cb6fb62385e3b9d40` passed all 30 production release checks. Audio remains unconfigured through MCP; local Claude Code remains signed out. Advanced-generation PR #45 is a separate unreleased 50-tool candidate pending new migration authorization.

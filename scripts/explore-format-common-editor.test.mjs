@@ -166,12 +166,12 @@ test("overview shows editable reference text immediately and keeps manual entry 
   const props = { owner: null, targetKey: "video:hook", format: "hook", overview: true, reference: { id: "hook-a", format: "hook" }, previewSource: seed, localPreview: true, children: manual, onUse() {} };
   const render = () => { cursor = 0; const control = mod.RemixTextSection(props); return control.type(control.props); };
   let tree = render();
-  const generate = nodes(tree).find(node => node.type === "Button" && node.props.children === "Generate");
+  const generate = nodes(tree).find(node => node.type === "Button" && node.props.children === "Generate remix");
   assert.ok(generate);
   assert.equal(generate.props.disabled, true, "The local fixture cannot make an AI request");
-  assert.equal(nodes(tree).some(node => node.type === "Button" && node.props.children === "Generate remix"), false, "One visible Generate action");
+  assert.equal(nodes(tree).filter(node => node.type === "Button" && node.props.children === "Generate remix").length, 1, "One visible Generate remix action");
   assert.equal(nodes(tree).find(node => node.props?.["data-remix-control"]).props.children[1].props.hidden, undefined);
-  assert.equal(nodes(tree).find(node => node.props?.role === "status").props.children, "Available");
+  assert.equal(nodes(tree).find(node => node.props?.role === "status").props.children, "Preview");
   assert.ok(nodes(tree).indexOf(manual) < nodes(tree).findIndex(node => node.props?.["data-remix-control"]), "Manual editing sits above the remix box");
   const options = nodes(tree).find(node => node.props?.["aria-label"] === "Remix options");
   assert.equal(options.props["aria-expanded"], false, "Optional guidance starts out of the main view");
@@ -192,7 +192,7 @@ test("overview shows editable reference text immediately and keeps manual entry 
   assert.equal(generationRequests, 0);
 });
 
-test("overview Generate submits the edited hook seed only on click, then applies the reviewed result to its clip", async () => {
+test("overview Generate remix submits the edited hook seed only on click, then applies the reviewed result to its clip", async () => {
   let cursor = 0, applied; const slots = [], effects = [], calls = [];
   const source = { referenceId: "hook-a", slideId: null, sourceSha256: "a".repeat(64), format: "hook", status: "ready", blocks: [{ text: "An example hook", startMs: 0, endMs: 5000 }], extractedAt: "2026-10-10T12:00:00Z", model: "reviewed-local-ocr", notes: "" };
   const react = {
@@ -212,14 +212,18 @@ test("overview Generate submits the edited hook seed only on click, then applies
   });
   const props = { owner: "owner-a", targetKey: "video:hook", format: "hook", overview: true, reference: { id: "hook-a", format: "hook" }, onUse(output, original) { applied = { output, original }; } };
   const render = () => { cursor = 0; const control = mod.RemixTextSection(props); return control.type(control.props); };
-  let tree = render(); effects.splice(0).forEach(fn => fn()); await new Promise(setImmediate); tree = render();
+  let tree = render();
+  assert.equal(nodes(tree).find(n => n.props?.role === "status").props.children, "Loading…");
+  assert.equal(nodes(tree).find(n => n.type === "Button" && n.props.children === "Generate remix").props.disabled, true);
+  effects.splice(0).forEach(fn => fn()); await new Promise(setImmediate); tree = render();
+  assert.equal(nodes(tree).find(n => n.props?.role === "status").props.children, "Ready");
   assert.equal(calls.length, 1); assert.equal(calls[0].options.method, undefined, "Mounting only loads reference and business details");
   assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Reference text").props.value, "An example hook");
   assert.equal(nodes(tree).some(n => n.type === "a" && n.props.children === "Review"), false, "Ready business context stays connected without the overview row");
   nodes(tree).find(n => n.props?.["aria-label"] === "Remix options").props.onClick(); tree = render();
   nodes(tree).find(n => n.props?.["aria-label"] === "Remix instructions").props.onChange({ target: { value: "Use a friendly tone and avoid emojis" } }); tree = render();
   nodes(tree).find(n => n.props?.["aria-label"] === "Reference text").props.onChange({ target: { value: "Introduce our planning app" } }); tree = render();
-  const generate = nodes(tree).find(n => n.type === "Button" && n.props.children === "Generate");
+  const generate = nodes(tree).find(n => n.type === "Button" && n.props.children === "Generate remix");
   assert.equal(Boolean(generate.props.disabled), false); generate.props.onClick(); await new Promise(setImmediate); tree = render();
   assert.equal(calls.length, 2); assert.equal(calls[1].url, "/api/explore/remix-text");
   const payload = JSON.parse(calls[1].options.body);
@@ -230,6 +234,37 @@ test("overview Generate submits the edited hook seed only on click, then applies
   nodes(tree).find(n => n.type === "Button" && n.props.children === "Apply to hook").props.onClick(); tree = render();
   assert.equal(applied.output.blocks[0], "Plan your day in one place"); assert.equal(applied.original.referenceId, "hook-a");
   assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Reference text").props.value, "Introduce our planning app");
+});
+
+for (const scenario of [
+  { enabled: false, ready: true, text: "An example hook", status: "Unavailable" },
+  { enabled: true, ready: false, text: "An example hook", status: "Add business context" },
+  { enabled: true, ready: true, text: "", status: "Add text" },
+]) test(`overview keeps Generate remix visible while ${scenario.status.toLowerCase()}`, async () => {
+  let cursor = 0, posts = 0; const slots = [], effects = [];
+  const react = {
+    useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
+      return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useId() { return `remix-${cursor++}`; }, useEffect(fn) { effects.push(fn); },
+  };
+  const mod = load("components/explore/remix-text-section.tsx", { react, "@/lib/explore/reference-text": referenceText,
+    "@/lib/firebase/auth": { getCurrentUserIdToken: async () => "fixture-token" } }, {
+    AbortController, URLSearchParams,
+    fetch: async (_url, options) => {
+      if (options.method === "POST") posts++;
+      return { ok: true, json: async () => ({ ok: true, source: null, enabled: scenario.enabled, businessContext: { ready: scenario.ready, name: "Acme" } }) };
+    },
+  });
+  const props = { owner: "owner-a", targetKey: "video:hook", format: "hook", overview: true, onUse() {} };
+  const render = () => { cursor = 0; const control = mod.RemixTextSection(props); return control.type(control.props); };
+  let tree = render(); effects.splice(0).forEach(fn => fn()); await new Promise(setImmediate); tree = render();
+  const field = nodes(tree).find(n => n.props?.["aria-label"] === "Reference text");
+  field.props.onChange({ target: { value: scenario.text } }); tree = render();
+  assert.equal(nodes(tree).find(n => n.props?.role === "status").props.children, scenario.status);
+  const generate = nodes(tree).find(n => n.type === "Button" && n.props.children === "Generate remix");
+  assert.ok(generate); assert.equal(generate.props.disabled, true);
+  generate.props.onClick(); await new Promise(setImmediate); assert.equal(posts, 0);
+  assert.equal(Boolean(nodes(tree).find(n => n.props?.["aria-label"] === "Reference text").props.disabled), false, "Starting text remains editable");
 });
 
 test("shared opening and demo text controls retain timing within the edited clip", () => {

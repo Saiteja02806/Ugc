@@ -3,7 +3,6 @@
 .control { border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
 .overviewControl { border: 0; border-radius: 0; background: transparent; }
 .overviewHeader { display: flex; min-height: 20px; align-items: center; gap: 12px; margin-bottom: 8px; }
-.overviewLabel { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; font-weight: 550; }
 .availability { color: var(--muted); font-size: 11px; font-weight: 400; }
 .overviewGenerate { min-width: 144px; max-width: 100%; min-height: 44px; padding-inline: 18px; }
 .overviewActions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

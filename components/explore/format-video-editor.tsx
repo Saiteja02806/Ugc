@@ -13,7 +13,7 @@ import type { ReferenceText } from "@/lib/explore/reference-text";
 import type { RecreateReference } from "@/lib/explore/recreate-types";
 import { Button } from "@/components/ui/button";
 import { WorkflowFilePicker } from "@/components/explore/hook-workflow-media-controls";
-import { WorkflowSavedAudioPicker } from "@/components/explore/workflow-saved-audio-picker";
+import { WorkflowBackgroundAudioPicker } from "@/components/explore/workflow-background-audio-picker";
 import { useLocalWorkflowMedia } from "@/components/explore/use-local-workflow-media";
 import { DEFAULT_FINISHING_OPTIONS, useWorkflowFinishing } from "@/components/explore/use-workflow-finishing";
 import { useAuth } from "@/contexts/auth-context";
@@ -177,7 +177,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
     setTime(0); soundtrack.current?.pause();
     if (player.current) player.current.currentTime = startMs / 1000;
   }
-  async function chooseAudio(file: File) {
+  async function chooseAudio(file: File, mode: "once" | "repeat" = playback) {
     if (!owner || uploading || pendingSource || !enabled) return false;
     setUploading(true); setUploadError(null); onDirty();
     persistDraft(editing);
@@ -185,11 +185,11 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
       if (!await localAudio.choose(file, { maxDuration: 600 })) return false;
       const result = await uploadAIStudioReferenceMedia(file, "audio", 120, owner, { maxAudioDurationSeconds: 600, purpose: "explore-demo" });
       if (!alive.current) return false;
-      setBackgroundId(result.asset.id); persistDraft(editing, result.asset.id); return true;
+      setBackgroundId(result.asset.id); setPlayback(mode); persistDraft(editing, result.asset.id, mode); return true;
     } catch (error) { if (alive.current) setUploadError(error instanceof Error ? error.message : "Could not upload audio."); return false; }
     finally { if (alive.current) setUploading(false); }
   }
-  const attachment = { ...localAudio, choose: chooseAudio, chooseRemote: (...args: Parameters<typeof localAudio.chooseRemote>) => { onDirty(); return localAudio.chooseRemote(...args); }, loading: uploading || localAudio.loading, remove: () => { localAudio.remove(); setBackgroundId(null); setUploadError(null); persistDraft(editing, null); onDirty(); } };
+  const attachment = { ...localAudio, choose: (file: File) => chooseAudio(file), chooseRemote: (...args: Parameters<typeof localAudio.chooseRemote>) => { onDirty(); return localAudio.chooseRemote(...args); }, loading: uploading || localAudio.loading, remove: () => { localAudio.remove(); setBackgroundId(null); setUploadError(null); persistDraft(editing, null); onDirty(); } };
   const background = backgroundQuery.data;
   const previewAudioUrl = referenceAudio?.audioUrl ?? background?.url ?? localAudio.asset?.url;
   const previewVideoUrl = referenceAudio?.cleanVideoUrl ?? sourceQuery.data?.url ?? video.url;
@@ -249,7 +249,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
       {referenceAudio ? <><p className="text-xs leading-5 text-muted">Reference audio: {referenceAudio.title}. It plays across the complete video, including your demo, and repeats to fit.</p><label className="block space-y-2 text-xs text-muted">Music volume · {Math.round(editing.musicVolume * 100)}%<input aria-label="Reference music volume" type="range" min={0} max={100} value={editing.musicVolume * 100} onChange={event => change({ ...editing, musicVolume: Number(event.target.value) / 100 })} className="w-full accent-primary" /></label></> : null}
       {!referenceAudio || referenceAudio.cleanVideoUrl ? <label className="block space-y-2 text-xs text-muted">Original volume · {Math.round(editing.originalVolume * 100)}%<input aria-label="Original volume" type="range" min={0} max={100} value={editing.originalVolume * 100} onChange={event => change({ ...editing, originalVolume: Number(event.target.value) / 100 })} className="w-full accent-primary" /></label> : null}
       {!referenceAudio ? <>
-      <div className="flex flex-wrap gap-2"><WorkflowFilePicker attachment={attachment} kind="audio" label="Upload background audio" buttonLabel="Upload audio" disabled={!enabled} /><WorkflowSavedAudioPicker ownerId={owner} attachment={attachment} disabled={uploading || pendingSource} localPreview={localPreview} /></div>
+      <div className="flex flex-wrap gap-2"><WorkflowFilePicker attachment={attachment} kind="audio" label="Upload background audio" buttonLabel="Upload audio" disabled={!enabled} /><WorkflowBackgroundAudioPicker ownerId={owner} attachment={attachment} onChoose={chooseAudio} disabled={!enabled || uploading || pendingSource} localPreview={localPreview} /></div>
       {previewAudioUrl ? <><p className="break-words text-xs text-muted">{background?.title ?? localAudio.asset?.name}</p><Button type="button" size="sm" variant="ghost" onClick={attachment.remove}>Remove audio</Button><label className="block space-y-2 text-xs text-muted">Music volume · {Math.round(editing.musicVolume * 100)}%<input aria-label="Music volume" type="range" min={0} max={100} value={editing.musicVolume * 100} onChange={event => change({ ...editing, musicVolume: Number(event.target.value) / 100 })} className="w-full accent-primary" /></label><label className="block space-y-2 text-xs text-muted">Playback<select aria-label="Music playback" value={playback} onChange={event => { const mode = event.target.value as "once" | "repeat"; setPlayback(mode); persistDraft(editing, backgroundId, mode); onDirty(); }} className={field}><option value="once">Play once</option><option value="repeat">Repeat to fit</option></select></label></> : null}
       </> : null}
     </section></details></div>

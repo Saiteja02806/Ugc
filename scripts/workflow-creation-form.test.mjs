@@ -97,6 +97,33 @@ test("all optional generation references remain visible above instructions and e
   assert.equal(alert.props.hidden, undefined);
 });
 
+test("shared creation tiles remove the chosen image or video directly and retain the collection contract", () => {
+  const first = { name: "first.png", url: "blob:first" }, second = { name: "second.png", url: "blob:second" };
+  const removed = [];
+  let clearedAll = 0, clearedVideo = 0;
+  const creator = { asset: first, loading: false, remove: () => clearedAll++ };
+  const all = nodes(harness().render({ creator,
+    imageReferences: { assets: [first, second], maxImages: 6, removeImage: url => removed.push(url) },
+    videoReference: { asset: { name: "clip.mp4", url: "blob:clip" }, loading: false, remove: () => clearedVideo++ },
+  }));
+  all.find(node => node.type === "image-preview" && node.props.url === second.url).props.onRemove();
+  assert.deepEqual(removed, [second.url]);
+  assert.equal(clearedAll, 0);
+  all.find(node => node.type === "image-preview" && node.props.kind === "video").props.onRemove();
+  assert.equal(clearedVideo, 1);
+  const single = nodes(harness().render({ creator })).find(node => node.type === "image-preview");
+  single.props.onRemove(); assert.equal(clearedAll, 1);
+});
+
+test("shared creation tiles disable direct removal while their attachments are loading", () => {
+  const all = nodes(harness().render({
+    creator: { asset: { name: "image.png", url: "blob:image" }, loading: true, remove() {} },
+    videoReference: { asset: { name: "video.mp4", url: "blob:video" }, loading: true, remove() {} },
+  })).filter(node => node.type === "image-preview");
+  assert.equal(all.length, 2);
+  assert.ok(all.every(node => node.props.disabled));
+});
+
 test("settings retain their selections when the form rerenders with attachments or instructions", () => {
   const actual = harness();
   const first = actual.render();

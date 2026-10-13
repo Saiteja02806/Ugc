@@ -2,15 +2,15 @@ import { copyFile, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import sharp from "sharp";
 import { escapeAssText, type SubtitleLayout } from "./captions.js";
-import { SubtitleError, subtitlePlacementGeometry, type SubtitleCue, type SubtitlePlacement, type TimedWord } from "./contracts.js";
+import { SubtitleError, type SubtitleCue, type SubtitlePlacement, type TimedWord } from "./contracts.js";
 import { runMediaCommand, type SubtitleTools } from "./media.js";
-import { groupNaturalSubtitleWords } from "./phrases.js";
+import { SERIF_BOX_FAMILY, serifBoxAnchor, groupSerifBoxPhrases } from "./serif-box-policy.js";
 
-const FAMILY = "Instrument Serif";
+const FAMILY = SERIF_BOX_FAMILY;
 // The reference has slightly fuller strokes than the regular font. This small
 // same-colour edge follows the reveal, so it does not create a visible outline.
 const strokeWidth = (fontSize: number) => Number((fontSize * .3 / 61).toFixed(3));
-export const serifBoxAnchor = (placement: SubtitlePlacement) => placement === "bottom" ? .75 : subtitlePlacementGeometry(placement).anchor;
+export { serifBoxAnchor } from "./serif-box-policy.js";
 export type SerifBoxInk = { left: number; top: number; width: number; height: number };
 export type MeasureSerifBox = (text: string) => Promise<SerifBoxInk>;
 const time = (ms: number) => {
@@ -60,8 +60,7 @@ export function createSerifBoxMeasurer(layout: SubtitleLayout, tools: SubtitleTo
 }
 
 export function groupSerifBoxWords(words: TimedWord[], layout: SubtitleLayout, measure: MeasureSerifBox) {
-  return groupNaturalSubtitleWords(words, layout, text => measure(text).then(ink => ink.width),
-    { maxWords: 6, preferredWords: 5, maxDurationMs: 2800, maxLines: 1 });
+  return groupSerifBoxPhrases(words, layout, text => measure(text).then(ink => ink.width));
 }
 
 /** A fixed phrase: future words are grey, then each whole word fades to white. */

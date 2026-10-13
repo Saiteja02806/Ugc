@@ -186,6 +186,36 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(h.requests[0].body.referenceVideoMode, "edit");
     assert.equal(h.requests[0].body.referenceId,`${format}-fixture`);
   });
+  test(`${format}: gallery metadata displays seconds before generation and preserves the video request`, async () => {
+    const h = harness(format, { captureRequests: true });
+    const durationText = () => h.render().composer.props.settings.props.children
+      .find(node => node?.type === "div" && node.props.children[1]?.type === "output").props.children[1].props.children[1].props.children;
+    assert.equal(durationText(), "Reading…");
+    h.render().composer.props.referenceControls.props.onStyleVideoDurationChange("https://example.test/style.mp4", 7.54);
+    assert.equal(durationText(), "7.5 sec");
+    assert.equal(h.render().composer.props.estimatedCredits, 32);
+    await h.render().composer.props.onSubmit({ preventDefault() {} });
+    assert.equal(h.requests[0].body.durationSeconds, 8);
+    assert.equal(h.requests[0].body.useGalleryVideoReference, true);
+    assert.equal(h.requests[0].body.referenceVideoUrl, null, "The server still resolves the registered video independently");
+    assert.deepEqual(h.requests[0].body.referenceImageUrls, []);
+  });
+  test(`${format}: switching video references cannot inherit a stale duration`, () => {
+    const h = harness(format);
+    const first = h.composer.props.referenceControls.props;
+    first.onStyleVideoDurationChange(first.styleVideo.url, 4);
+    const next = { id: "next", url: "https://example.test/next.mp4", name: "Next", duration: null };
+    h.selectGallery(next);
+    const controls = h.render().composer.props.referenceControls.props;
+    controls.onStyleVideoDurationChange(next.url, 9.25);
+    first.onStyleVideoDurationChange(first.styleVideo.url, 4);
+    for (const duration of [0, -1, Infinity, NaN]) controls.onStyleVideoDurationChange(next.url, duration);
+    assert.match(h.render().composer.props.settingsSummary, /9.3s clip/);
+    assert.equal(h.render().composer.props.estimatedCredits, 40);
+    h.clearGallery();
+    controls.onStyleVideoDurationChange(next.url, 8);
+    assert.ok(h.render().composer.props.settings.props.children.some(node => node?.type === "WorkflowDurationControl"));
+  });
   test(`${format}: Recreate replaces an earlier upload, preserves the appearance image and sends the clicked gallery ID`, async () => {
     const h = harness(format, { captureRequests: true, reference: false });
     const image = { kind: "image", asset: { id: "appearance", url: "https://owned-media.test/person.png", title: "Appearance" } };

@@ -90,7 +90,7 @@ const primaryNavigationItems: SidebarItem[] = [
 const libraryNavigationItems: SidebarItem[] = [
   {
     key: "library",
-    label: "Content",
+    label: "Demo",
     href: "/library?tab=posts",
     icon: "library",
   },

@@ -35,7 +35,7 @@ function text(tree) {
 /** Runs the real Demo component and its event/effect callbacks. Child render
  * coordinators stay observable so a test cannot accidentally submit a render. */
 function harness({ owner = "owner", format = "hook", storage = new Map(), owned = [asset(1), asset(2), asset(3), asset(4, "audio"), asset(5)], enabled = true } = {}) {
-  const slots = [], effects = [], selectionReports = [], savedReports = [], queryInputs = [], uploads = [], queryFailures = new Set(), draftSaves = [];
+  const slots = [], effects = [], selectionReports = [], savedReports = [], queryInputs = [], uploads = [], queryFailures = new Set(), draftSaves = [], draftInputs = [];
   const ownedAssets = new Map(owned.map(value => [value.id, value]));
   let cursor = 0, needsRender = false, tree, dirty = 0, pendingVideo = null, sourceInput;
   const localStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) };
@@ -110,8 +110,8 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
     "@/worker/src/lib/explore-format-edit": { parseExploreFormatEdit, formatTextLayout, formatTextOverlays },
     "@/worker/src/lib/explore-finishing-contract": finishingContract,
     "@/lib/explore/format-edit-draft": editDraft,
-    "@/components/explore/use-clip-draft-save": { useClipDraftSave: input => ({ loaded: true, busy: false, dirty: true, saved: null, error: null, reload() {},
-      async save() { draftSaves.push(normalize(input.content)); return { id: id(99), scope: input.scope, revision: 1, content: input.content }; } }) },
+    "@/components/explore/use-clip-draft-save": { useClipDraftSave: input => { draftInputs.push(input); return { loaded: true, busy: false, dirty: true, saved: null, error: null, reload() {},
+      async save() { draftSaves.push(normalize(input.content)); return { id: id(99), scope: input.scope, revision: 1, content: input.content }; } }; } },
     "@/lib/explore/format-video-source": { formatVideoFromAsset(value) { if (value.status !== "ready" || value.collection !== "video") throw new Error("Choose an owned ready video."); return value; } },
     "@/lib/firebase/auth": { getCurrentUserIdToken: async () => { throw new Error("Test attempted authentication."); } },
     "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: async () => { throw new Error("Test attempted network media loading."); } },
@@ -141,7 +141,7 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
     throw new Error("Demo effects did not settle.");
   }
   const find = (predicate) => nodes(tree).find(predicate);
-  return { render, props, audio, storage, ownedAssets, queryInputs, queryFailures, uploads, selectionReports, savedReports, draftSaves, get dirty() { return dirty; },
+  return { render, props, audio, storage, ownedAssets, queryInputs, queryFailures, uploads, selectionReports, savedReports, draftSaves, draftInputs, get sourceInput() { return sourceInput; }, get dirty() { return dirty; },
     find, button(label) { const currentLabel = label === "Save final video" || label === "Schedule" ? "Schedule video" : label; const found = find(node => node.type === "Button" && text(node).trim() === currentLabel); assert.ok(found, `Missing ${currentLabel}`); return found; },
     input(label) { const found = find(node => node.props?.["aria-label"] === label); assert.ok(found, `Missing ${label}`); return found; },
     select(value = asset(2)) { render(); const picker = find(node => node.type === "WorkflowVideoAssetPicker"); assert.equal(picker.props.onSelect(value), true); return render(); },
@@ -160,7 +160,54 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
   };
 }
 
+test("Content Edit selects its requested demo over another browser draft and restores all saved settings without rendering", () => {
+  const h = harness({ storage: new Map([[draftKey(), JSON.stringify(draft(3))]]) });
+  h.render({ contentDemoId: id(2) });
+  assert.equal(h.sourceInput.library, "content");
+  assert.equal(readFormatDemoDraft(h.storage.get(draftKey())).demoId, id(2));
+  const saved = { version: 1, sourceAssetId: id(2), editing: draft().editing, backgroundAssetId: id(4), backgroundPlayback: "repeat", framing: draft().framing,
+    workflowMusic: { enabled: true, assetId: id(4), playback: "once" } };
+  h.draftInputs.at(-1).onRestore(saved, false); h.render();
+  const restored = readFormatDemoDraft(h.storage.get(draftKey()));
+  assert.deepEqual(normalize(restored.editing), saved.editing); assert.deepEqual(normalize(restored.framing), saved.framing);
+  assert.equal(restored.audioId, id(4)); assert.equal(restored.backgroundAudioId, id(4)); assert.equal(restored.backgroundPlayback, "once");
+  assert.equal(h.saveRun(), undefined); assert.equal(h.uploads.length, 0);
+});
+
+test("a slow Content restore cannot overwrite current-session demo changes", () => {
+  const h = harness(); h.render({ contentDemoId: id(2) });
+  h.edit("Demo trim start", 2);
+  h.draftInputs.at(-1).onRestore({ version: 1, sourceAssetId: id(2), editing: draft().editing, backgroundAssetId: id(4), backgroundPlayback: "repeat", framing: draft().framing }, false);
+  h.render(); assert.equal(readFormatDemoDraft(h.storage.get(draftKey())).editing.trimStartMs, 2000);
+});
+
+test("Content demo edits reopen and save independently of rendering availability", async () => {
+  const h = harness({ enabled: false }); h.render({ contentDemoId: id(2) });
+  assert.equal(h.draftInputs.at(-1).enabled, true);
+  h.draftInputs.at(-1).onRestore({ version: 1, sourceAssetId: id(2), editing: defaultDemoEdit(8), backgroundAssetId: id(4), backgroundPlayback: "once", framing: null }, false);
+  h.render();
+  assert.equal(h.queryInputs.filter(query => query.queryKey[0] === "format-demo-audio").at(-1).enabled, true);
+  assert.equal(h.button("Apply demo edits").props.disabled, false);
+  await h.button("Apply demo edits").props.onClick(); h.render();
+  assert.equal(h.draftSaves.length, 1); assert.equal(h.draftSaves[0].sourceAssetId, id(2));
+  assert.equal(h.saveRun(), undefined); assert.equal(h.savedReports.length, 0);
+});
+
 for (const format of ["hook", "wall_text"]) {
+  for (const playback of ["once", "repeat"]) test(`${format}: background library selection saves ${playback} and keeps demo edits`, async () => {
+    const stored = { ...draft(), backgroundMusic: false };
+    const h = harness({ format, storage: new Map([[draftKey("owner", format), JSON.stringify(stored)]]) });
+    h.render({ opening: output(1), videoId: id(1), openingRevision: 1 });
+    const picker = h.find(node => node.type === "WorkflowBackgroundAudioPicker");
+    assert.ok(picker); assert.equal(await picker.props.onChoose({ name: "Hook track 01.mp3" }, playback), true); h.render();
+    const next = readFormatDemoDraft(h.storage.get(draftKey("owner", format)));
+    assert.equal(next.backgroundAudioId, id(4)); assert.equal(next.backgroundMusic, true); assert.equal(next.backgroundPlayback, playback);
+    assert.equal(next.audioId, stored.audioId); assert.deepEqual(normalize(next.editing), stored.editing); assert.deepEqual(normalize(next.framing), stored.framing);
+    const savedSpeech = h.find(node => node.type === "WorkflowSavedAudioPicker");
+    assert.ok(savedSpeech, "Demo speech remains a separate personal recording choice");
+    assert.notEqual(savedSpeech.props.attachment, picker.props.attachment);
+    assert.equal(h.uploads.length, 1); assert.equal(h.uploads[0][4].purpose, "explore-demo");
+  });
   test(`${format}: background upload in the overview preserves demo text, trim and its separate audio`, async () => {
     const stored = { ...draft(), audioId: id(4), framing: { version: 1, width: 1, height: 1, points: [[0, 0, 0], [7000, 0, 0]] } };
     const h = harness({ format, storage: new Map([[draftKey("owner", format), JSON.stringify(stored)]]) });
@@ -300,7 +347,7 @@ for (const format of ["hook", "wall_text"]) {
   test(`${format}: a demo can schedule alone, while merging waits for an owned opening`, () => {
     const h = harness({ format }); h.render();
     assert.equal(h.button("Upload demo").props.disabled, undefined);
-    assert.equal(h.button("Creative Assets").props.disabled, undefined);
+    assert.equal(h.button("Demo").props.disabled, undefined);
     assert.equal(h.find(node => node.type === "fieldset").props.disabled, false);
     assert.equal(h.button("Save final video").props.disabled, true);
     h.select();

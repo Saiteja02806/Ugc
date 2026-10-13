@@ -170,6 +170,29 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
   }
 });
 
+test("Content Demo picker uses its own inventory and cache, excluding ordinary creative videos", async () => {
+  const rt = runtime(), calls = [];
+  let query, data;
+  const policy = load("lib/explore/workflow-source-video.ts", {});
+  const demo = { id: "00000000-0000-4000-8000-000000000001", status: "ready", sourceType: "demo_upload", collection: "video", mimeType: "video/mp4", url: "/demo.mp4", title: "My demo" };
+  const mod = load("components/explore/workflow-video-asset-picker.tsx", {
+    react: rt.react, "react/jsx-runtime": jsx, "next/image": { default: "image" }, "lucide-react": { Video: "video-icon" },
+    "@tanstack/react-query": { useQuery: input => { query = input; return { data, isPending: !data }; } },
+    "@/lib/http/read-deadline": { withReadDeadline: action => action(new AbortController().signal) },
+    "@/components/ui/button": { Button: "button" }, "@/components/ui/dialog": Object.fromEntries(["Dialog", "DialogContent", "DialogDescription", "DialogHeader", "DialogTitle"].map(n => [n, n])),
+    "@/lib/explore/workflow-source-video": policy, "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { assert.equal(owner, "owner"); return "owned-token"; } },
+  }, { fetch: async (url, init) => { calls.push({ url, ...init }); return Response.json({ ok: true, assets: [demo, { ...demo, sourceType: "generated_video", id: "00000000-0000-4000-8000-000000000002" }] }); } });
+  const props = { open: false, library: "content", ownerId: "owner", onSelect() { return true; }, onOpenChange() {} };
+  rt.render(() => mod.WorkflowVideoAssetPicker(props)); assert.equal(query.enabled, false); assert.equal(calls.length, 0);
+  props.open = true; rt.render(() => mod.WorkflowVideoAssetPicker(props));
+  assert.deepEqual(Array.from(query.queryKey), ["explore-source-videos", "owner", "content"]);
+  data = await query.queryFn({ signal: new AbortController().signal });
+  const tree = rt.render(() => mod.WorkflowVideoAssetPicker(props));
+  assert.equal(calls[0].url, "/api/demo/sources"); assert.equal(calls[0].headers.Authorization, "Bearer owned-token");
+  assert.equal(nodes(tree).filter(n => n.type === "button" && "aria-pressed" in n.props).length, 1);
+  assert.match(text(tree).replace(/\s+/g, " "), /Choose from Demo/); rt.unmount();
+});
+
 test("Creative Assets fetch is owner-authenticated, excludes unfinished/non-video rows, and does no work while closed", async () => {
   const rt = runtime(), calls = [], selected = [];
   const client = new QueryClient();

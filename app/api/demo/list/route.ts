@@ -5,6 +5,7 @@ import {
   jsonResponse,
 } from "@/lib/demo/demo-api";
 import { listDemoVideos } from "@/lib/demo/demo-storage";
+import { ExploreClipDraftStore } from "@/lib/explore/clip-draft-store";
 
 export const runtime = "nodejs";
 
@@ -37,9 +38,15 @@ export async function GET(request: Request) {
       userId: auth.user.uid,
     });
 
+    let demoEditsUnavailable = false;
+    const edits = await (async () => new ExploreClipDraftStore().listContentDemoEdits(auth.user.uid, demos.map(demo => demo.id)))().catch(() => {
+      demoEditsUnavailable = true;
+      return new Map();
+    });
     return jsonResponse({
       ok: true,
-      demos,
+      demos: demos.map(demo => ({ ...demo, explore_edit: edits.get(demo.id) ?? null })),
+      demoEditsUnavailable,
     });
   } catch (error) {
     console.error("Failed to list demo videos:", error);

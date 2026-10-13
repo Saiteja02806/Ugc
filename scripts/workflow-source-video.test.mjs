@@ -17,9 +17,9 @@ const file = name => ({ name, type: "video/mp4", size: 2000 });
 const tick = () => new Promise(setImmediate);
 const deferred = () => { let resolve, reject; const promise = new Promise((ok, no) => { resolve = ok; reject = no; }); return { promise, resolve, reject }; };
 
-function harness(enabled = true, ownerId = "owner", minDuration = 0) {
+function harness(enabled = true, ownerId = "owner", minDuration = 0, library = "creative_assets") {
   let cursor = 0, urlNumber = 0;
-  const slots = [], effects = [], players = [], uploads = [], revoked = [];
+  const slots = [], effects = [], players = [], uploads = [], demoUploads = [], revoked = [];
   const react = {
     useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; },
     useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = initial; return [slots[i], v => { slots[i] = typeof v === "function" ? v(slots[i]) : v; }]; },
@@ -31,11 +31,12 @@ function harness(enabled = true, ownerId = "owner", minDuration = 0) {
     setTimeout: () => 1, clearTimeout() {},
   });
   const source = load("components/explore/use-workflow-source-video.ts", {
+    "@/lib/trending/hook-video-client-upload": { uploadHookVideoDemo(...args) { const request = deferred(); demoUploads.push({ args, ...request }); return request.promise; } },
     react, "@/components/explore/use-local-workflow-media": local, "@/lib/explore/workflow-source-video": policy,
     "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia(...args) { const request = deferred(); uploads.push({ args, ...request }); return request.promise; } },
   });
-  return { players, uploads, revoked,
-    render() { cursor = 0; const result = source.useWorkflowSourceVideo({ enabled, ownerId, minDuration }); while (effects.length) effects.shift()(); return result; },
+  return { players, uploads, demoUploads, revoked,
+    render() { cursor = 0; const result = source.useWorkflowSourceVideo({ enabled, ownerId, minDuration, library }); while (effects.length) effects.shift()(); return result; },
     metadata(duration = 5) { const player = players.at(-1); player.duration = duration; player.onloadedmetadata(); },
     unmount() { for (const slot of slots) slot?.cleanup?.(); },
   };
@@ -46,6 +47,27 @@ test("source policy accepts only playable ready videos in both Creative Assets c
   for (const change of [{ collection: "image" }, { mimeType: "image/png" }, { status: "uploading" }, { url: "" }, { id: "not-a-uuid" },
     { durationSeconds: 121 }, { durationSeconds: 0 }, { durationSeconds: NaN }, { fileSizeBytes: 250 * 1024 * 1024 + 1 }]) assert.ok(policy.workflowSourceVideoError(asset(1, change)));
   assert.equal(policy.workflowSourceVideoError(asset(1, { durationSeconds: null, fileSizeBytes: null })), null);
+});
+
+test("Demo uploads use Content completion and selection excludes ordinary creative videos", async () => {
+  const h = harness(true, "owner", 1, "content"); h.render().setMode("upload");
+  const pending = h.render().chooseUpload(file("demo.mp4")); h.metadata(); await tick();
+  assert.equal(h.uploads.length, 0); assert.equal(h.demoUploads.length, 1);
+  assert.equal(h.demoUploads[0].args[1], "owner"); assert.equal(h.render().ready, false);
+  h.demoUploads[0].resolve(asset(1, { sourceType: "demo_upload" })); assert.equal(await pending, true);
+  assert.equal(h.render().source.sourceType, "demo_upload");
+  h.render().setMode("assets");
+  assert.equal(h.render().selectAsset(asset(2, { sourceType: "generated_video" })), false);
+  assert.equal(h.render().selectAsset(asset(3, { sourceType: "demo_upload" })), true);
+  h.unmount();
+});
+
+test("Demo validates Content's limits before uploading while opening uploads retain their limits", async () => {
+  const h = harness(true, "owner", 1, "content"); h.render().setMode("upload");
+  assert.equal(await h.render().chooseUpload({ ...file("big.mp4"), size: 101 * 1024 ** 2 }), false);
+  const pending = h.render().chooseUpload(file("long.mp4")); h.metadata(61);
+  assert.equal(await pending, false); assert.equal(h.demoUploads.length, 0); assert.equal(h.uploads.length, 0);
+  assert.match(h.render().error, /60 seconds/); h.unmount();
 });
 
 test("live upload cannot continue until owned completion and keeps modes' separate selections", async () => {

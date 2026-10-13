@@ -94,7 +94,7 @@ export function LibraryWorkspace() {
         <header>
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold tracking-normal text-foreground-strong sm:text-[28px]">
-              Content Library
+              Demo
             </h1>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
               Keep reusable demo footage in one place, ready for your next

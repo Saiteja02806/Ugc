@@ -64,7 +64,7 @@ export function WorkflowCreationForm({ kind, instructions, onInstructionsChange,
         </div>
         <div className={kind === "hook" ? creation.classicReference : sections.referenceCard}><h4 className={kind === "hook" ? "sr-only" : undefined}>Video reference</h4>{kind !== "hook" ? <p>Scene & motion</p> : null}
         <div className={imagePreview.picker}>
-        {videoReference.asset ? <WorkflowReferencePreview key={videoReference.asset.url} kind="video" url={videoReference.asset.url} name={videoReference.asset.name} media={<ReferenceVideoThumbnail url={videoReference.asset.url} />} /> : null}
+        {videoReference.asset ? <WorkflowReferencePreview key={videoReference.asset.url} kind="video" url={videoReference.asset.url} name={videoReference.asset.name} disabled={videoReference.loading} onRemove={videoReference.remove} media={<ReferenceVideoThumbnail url={videoReference.asset.url} />} /> : null}
         <Popover>
           <PopoverTrigger render={<Button type="button" variant="outline" aria-label="Choose video reference" aria-busy={videoReference.loading} data-state={videoReference.loading ? "loading" : videoReference.error ? "error" : videoReference.asset ? "selected" : "empty"} title={videoReference.asset?.name ?? "Choose an optional video reference"} className={cn(creation.referenceButton, imagePreview.action)} />}>
             {!videoReference.asset ? <>{kind === "hook" ? <Video aria-hidden="true" /> : null}<span className={creation.referenceLabel}>{kind === "hook" ? "Video reference" : "Choose video"}</span></> : null}<Plus className={imagePreview.add} aria-hidden="true" />
@@ -122,7 +122,7 @@ function CreatorPicker({ creator, imageReferences, tile = false }: { creator: Wo
   const selected = CREATOR_REFERENCES.find((reference) => reference.src === creator.asset?.url);
   const label = selected ? `Creator ${CREATOR_REFERENCES.indexOf(selected) + 1}` : creator.asset ? "Custom creator" : "Creator";
   return <div className={imagePreview.picker}>
-    {images.length ? <><div className={imagePreview.images} data-count={images.length}>{images.map(image => <WorkflowReferencePreview key={image.url} url={image.url} name={image.name} />)}</div>{images.length > 1 ? <span className={imagePreview.count}>{images.length} images</span> : null}</> : null}
+    {images.length ? <><div className={imagePreview.images} data-count={images.length}>{images.map(image => <WorkflowReferencePreview key={image.url} url={image.url} name={image.name} disabled={creator.loading} onRemove={imageReferences ? () => imageReferences.removeImage(image.url) : creator.remove} />)}</div>{images.length > 1 ? <span className={imagePreview.count}>{images.length} images</span> : null}</> : null}
     {imageReferences ? <input ref={uploadInput} type="file" multiple accept="image/png,image/jpeg,image/webp" className="hidden" aria-label="Add reference images" disabled={creator.loading || full} onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; if (files.length) void imageReferences.chooseFiles(files); }} /> : null}
     <Popover open={open} onOpenChange={setOpen}>
     <PopoverTrigger render={<Button type="button" variant="outline" className={cn(creation.referenceButton, imagePreview.action)} aria-busy={creator.loading} data-state={creator.loading ? "loading" : creator.error ? "error" : creator.asset ? "selected" : "available"} title={creator.asset?.name ?? "Choose an optional creator image"} aria-label={`Choose image, currently ${creator.asset ? label : "none selected"}`} />}>
@@ -146,7 +146,7 @@ function CreatorPicker({ creator, imageReferences, tile = false }: { creator: Wo
 }
 
 /** No playback or crop controls inside a tile; detach before the blob is released. */
-export function ReferenceVideoThumbnail({ url }: { url: string }) {
+export function ReferenceVideoThumbnail({ url, onDurationChange }: { url: string; onDurationChange?: (duration: number) => void }) {
   const current = useRef<HTMLVideoElement | null>(null);
   const playerRef = useCallback((player: HTMLVideoElement | null) => {
     if (current.current && current.current !== player) {
@@ -157,5 +157,9 @@ export function ReferenceVideoThumbnail({ url }: { url: string }) {
     current.current = player;
     if (player && player.getAttribute("src") !== url) player.setAttribute("src", url);
   }, [url]);
-  return <video key={url} ref={playerRef} src={url} muted playsInline preload="metadata" aria-hidden="true" className={creation.referenceMedia} />;
+  return <video key={url} ref={playerRef} src={url} muted playsInline preload="metadata" aria-hidden="true" className={creation.referenceMedia}
+    onLoadedMetadata={event => {
+      const duration = event.currentTarget.duration;
+      if (Number.isFinite(duration) && duration > 0) onDurationChange?.(duration);
+    }} />;
 }

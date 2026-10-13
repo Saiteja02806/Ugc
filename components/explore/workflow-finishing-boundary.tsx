@@ -55,6 +55,7 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
   }, [audioSelection, source]);
   const changeOptions = (value: FinishingOptions) => setOptions(previous => previous.backgroundMusic !== value.backgroundMusic ? { ...value, corrections: [] } : value);
   const captions: WorkflowCaptions = { action: { ...captionFinishing.action, disabled: captionFinishing.action.disabled || finishing.status?.outcome === "pending" || finishing.action.busy },
+    generating: captionFinishing.status?.outcome === "pending" || captionFinishing.status?.outcome === "uncertain" && !captionFinishing.status.terminal,
     transcript: captionFinishing.transcript, corrections: options.corrections ?? [],
     onCorrectionsChange: corrections => setOptions(previous => ({ ...previous, corrections })) };
   const pendingComposition = useTalkingHeadPendingComposition({ owner: ownerId, kind, source, demo, demoSource, demoAudio, playback,

@@ -35,6 +35,7 @@ export default async function ExploreFormatPreview({ searchParams }: { searchPar
     mimeType: "video/mp4", fileName: "preview.mp4", fileSizeBytes: 2000, durationSeconds: clip.duration, width: clip.width, height: clip.height, ratio: clip.ratio,
     metadata: {}, parentAssetId: null, projectId: null, sourceRecordId: null, thumbnailUrl: null, url: clip.url,
   }));
+  previewAssets.push({ ...previewAssets[0], id: "00000000-0000-4000-8000-000000000020", sourceType: "demo_upload", title: "Saved demo footage" });
   const previewFinalVideo = query.finished === "1" && format !== "slideshow" && portrait ? { id: "prepared-local-sample",
     url: format === "hook" ? "/e2e/explore-format-preview/final-video" : clip.url,
     title: format === "hook" ? "Prepared hook and demo sample" : "Wall of text sample footage" } : undefined;

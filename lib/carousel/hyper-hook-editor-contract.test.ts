@@ -66,7 +66,11 @@ test("keeps the global folder authenticated and read-only", () => {
   assert.doesNotMatch(route, /export async function (?:POST|PATCH|DELETE)/);
 });
 
-test("shows a folder picker and applies its selection to Slide 1 only", () => {
+test("hides the customer folder and its requests while preserving saved Slide 1 compatibility", () => {
+  assert.match(editor, /const CAROUSEL_EDITOR_HOOK_LIBRARY_VISIBLE = false/);
+  assert.match(editor, /CAROUSEL_EDITOR_HOOK_LIBRARY_VISIBLE \? <HyperHookLibrarySection/);
+  assert.match(editor, /loadCarouselHyperHooks = useCallback\(async \(\) => \{\s*if \(!CAROUSEL_EDITOR_HOOK_LIBRARY_VISIBLE/);
+  assert.doesNotMatch(editor, /You can also choose from the Hook library/);
   assert.match(editor, /function HyperHookLibrarySection/);
   assert.match(editor, /Hook library/);
   assert.match(editor, /Slide 1 only/);

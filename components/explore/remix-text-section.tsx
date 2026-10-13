@@ -156,7 +156,8 @@ function RemixTextControl({ owner, targetKey, format, reference, previewSource, 
   const instructionField = <label className={styles.label}>Remix instructions
     <textarea aria-label="Remix instructions" placeholder="For example: use a friendly tone, keep it in English, avoid emojis…" value={input.instructions} disabled={locked} rows={2} maxLength={2000} onChange={event => changeInput({ ...input, instructions: event.target.value })} className={styles.field} />
   </label>;
-  const generateButton = <Button type="button" className={overview ? styles.overviewGenerate : styles.generate} disabled={generationDisabled} title={localPreview ? "AI generation is unavailable in this preview." : undefined} onClick={() => void generate()}>{busy ? "Generating remix…" : outcome === "uncertain" ? "Check remix result" : overview ? "Generate" : "Generate remix"}</Button>;
+  const availability = busy ? "Generating…" : draft ? "Draft ready" : outcome === "uncertain" ? "Check result" : localPreview ? "Preview" : !owner ? "Sign in" : loading ? "Loading…" : !enabled ? "Unavailable" : outcome === "failed" ? "Start a new remix" : !business?.ready ? "Add business context" : !startingText.trim() ? "Add text" : "Ready";
+  const generateButton = <Button type="button" className={overview ? styles.overviewGenerate : styles.generate} disabled={generationDisabled} title={localPreview ? "AI generation is unavailable in this preview." : undefined} onClick={() => void generate()}>{busy ? "Generating remix…" : outcome === "uncertain" ? "Check remix result" : "Generate remix"}</Button>;
   const flow = <div className={`${styles.flow} ${overview ? styles.overviewFlow : ""}`} aria-busy={busy || loading}>
         {!draft ? <>
           <label className={styles.label}><span className={overview ? styles.srOnly : undefined}>Reference text</span>
@@ -178,7 +179,7 @@ function RemixTextControl({ owner, targetKey, format, reference, previewSource, 
             <details className={styles.option} open={Boolean(recovery?.instructions)}><summary>Additional instructions <span>Optional</span></summary>{instructionField}</details>
             {generateButton}
           </>}
-          {localPreview ? !overview ? <p className={styles.notice}>Local preview · AI generation is disabled.</p> : null : !owner ? <p className={styles.notice}>Sign in to generate a remix.</p> : !loading && !enabled && !error ? <p className={styles.notice}>Remix generation is not enabled yet.</p> : null}
+          {localPreview ? !overview ? <p className={styles.notice}>Local preview · AI generation is disabled.</p> : null : !owner ? <p className={styles.notice}>Sign in to generate a remix.</p> : !loading && !enabled && !error ? <p className={styles.notice}>Remix generation is currently unavailable. Please try again later.</p> : null}
         </> : <div className={styles.draft}>
           <p className={styles.draftTitle} role="status">Review your remix</p>
           {format === "slideshow" ? <><label className={styles.label}>Heading<textarea aria-label="Remixed heading" value={draft.heading} disabled={disabled} maxLength={180} rows={2} className={styles.field} onChange={event => { if (outputSource) saveReview({ ...draft, heading: event.target.value }, outputSource); }} /></label><label className={styles.label}>Body<textarea aria-label="Remixed body" value={draft.body} disabled={disabled} maxLength={600} rows={3} className={styles.field} onChange={event => { if (outputSource) saveReview({ ...draft, body: event.target.value }, outputSource); }} /></label></> : draft.blocks.map((block, i) => <label key={i} className={styles.label}>{draft.blocks.length === 1 ? "Remixed text" : `Text block ${i + 1}`}<textarea aria-label={draft.blocks.length === 1 ? "Remixed text" : `Remixed text block ${i + 1}`} value={block} disabled={disabled} maxLength={600} rows={3} className={styles.field} onChange={event => { if (outputSource) saveReview({ ...draft, blocks: draft.blocks.map((text, n) => n === i ? event.target.value : text) }, outputSource); }} /></label>)}
@@ -195,7 +196,7 @@ function RemixTextControl({ owner, targetKey, format, reference, previewSource, 
     {overview && children ? <div className={styles.manualEntry} data-remix-manual-entry>{children}</div> : null}
     {overview ? <div className={`${styles.control} ${styles.overviewControl}`} data-remix-control>
       <div className={styles.overviewHeader}>
-        <div className={styles.overviewLabel}><span>Remix text</span><span className={styles.availability} role="status">{busy ? "Generating…" : draft ? "Draft ready" : outcome === "uncertain" ? "Check result" : "Available"}</span></div>
+        <span className={styles.availability} role="status">{availability}</span>
       </div>
       {flow}
     </div> : <details className={styles.control} data-remix-control open={mode === "reference"} onToggle={event => showMode(event.currentTarget.open ? "reference" : "manual")}>

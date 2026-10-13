@@ -158,7 +158,9 @@ function HookWorkflowLayout({ initialDuration, initialModel, generationEnabled, 
           <Tabs.Panel value="edit" keepMounted className={creation.sectionPanel}>
             {clips.controls}
             <div hidden={clips.editing}>
-            <WorkflowCompositionPanel videoLabel="Talking head" connected={generationEnabled} ownerId={ownerId} options={finish.options} onOptionsChange={finish.setOptions} captions={{ ...finish.captions, onPreview: () => changeSection("schedule") }}
+            <WorkflowCompositionPanel videoLabel="Talking head" connected={generationEnabled} ownerId={ownerId} options={finish.options} onOptionsChange={finish.setOptions} captions={{ ...finish.captions,
+              onOpen: () => workspaceRef.current?.querySelectorAll<HTMLMediaElement>("audio, video").forEach(player => player.pause()),
+              preview: <WorkflowScheduleWorkspace captionReview draft={scheduleDraft} source={clips.source} sourcePreview={sourcePreview} demoSource={clips.demoSource} demo={demo.asset} demoAudio={demoAudio.asset} demoAudioPlayback={demoAudioPlayback} openingPreview={clips.openingPreview} demoPreview={clips.demoPreview} demoFraming={clips.demoFraming} rawDemoFraming={currentFraming} options={finish.options} captions={finish.captions.transcript} ownerId={ownerId} enabled={generationEnabled} previewDisabledReason={framingError ?? demoSelectionError ?? clips.error} /> }}
               demoFramingEnabled={demoFramingEnabled} demoFraming={currentFraming} demoFramingError={framingError} onDemoFramingChange={frame => setDemoFraming(frame ? { frame, aspect: outputAspect } : null)} editingBusy={finish.edit?.busy}
               outputAspect={outputAspect} onDemoControlsOpen={() => workspaceRef.current?.querySelectorAll<HTMLMediaElement>("audio, video").forEach(player => player.pause())}
               demo={{ ...demo, choose: chooseDemo, remove: removeDemo }} demoAudio={{ ...demoAudio, choose: chooseDemoAudio, remove: removeDemoAudio }} demoAudioPlayback={demoAudioPlayback} onDemoAudioPlaybackChange={setDemoAudioPlayback} />

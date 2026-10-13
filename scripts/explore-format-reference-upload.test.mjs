@@ -7,7 +7,7 @@ import ts from "typescript";
 const savedImage = (id = "saved-image") => ({ id, collection: "image", status: "ready", sourceType: "upload", mimeType: "image/png", projectId: "explore-reference", fileName: "my-reference.png", title: "My reference", url: `https://owned.test/${id}.png` });
 
 function harness(upload, { images = [], queryError = false, fetchSaved = async id => savedImage(id), preview = false, disabled = false, ownerId = "expected-owner" } = {}) {
-  const states = [], refs = [], effects = [], changes = [], pending = [], calls = [], queries = [], savedReads = [], cancellations = [], errors = [];
+  const states = [], refs = [], effects = [], changes = [], selectionChanges = [], pending = [], calls = [], queries = [], savedReads = [], cancellations = [], errors = [];
   const imageCache = new Map([[JSON.stringify(["explore-reference-images", ownerId ?? "signed-out"]), images]]);
   let cursor = 0;
   const imports = {
@@ -48,13 +48,13 @@ function harness(upload, { images = [], queryError = false, fetchSaved = async i
     if (!node || typeof node !== "object") return [];
     return [...(condition(node) ? [node] : []), ...[node.props?.children].flat(Infinity).flatMap(child => all(child, condition))];
   }
-  const render = () => { cursor = 0; return exported.FormatGenerationReferences({ ownerId, preview, disabled,
+  const render = (overrides = {}) => { cursor = 0; return exported.FormatGenerationReferences({ ownerId, preview, disabled,
     selection: { kind: "image", asset: { url: "https://owned.test/original.png", title: "Original" } },
-    onChange: value => changes.push(value), onPendingChange: value => pending.push(value), onErrorChange: value => errors.push(value),
+    onChange: (value, kind) => { changes.push(value); selectionChanges.push({ value, kind }); }, onPendingChange: value => pending.push(value), onErrorChange: value => errors.push(value), ...overrides,
   }); };
   const tree = render();
   const cleanups = effects.map(effect => effect()).filter(Boolean);
-  return { calls, changes, pending, errors, queries, savedReads, imageCache, cancellations, render, all, cleanup: () => cleanups.forEach(cleanup => cleanup()),
+  return { calls, changes, selectionChanges, pending, errors, queries, savedReads, imageCache, cancellations, render, all, cleanup: () => cleanups.forEach(cleanup => cleanup()),
     button(label) { return all(render(), node => node.type === "Button" && node.props["aria-label"] === label)[0]; },
     openImage() { all(render(), node => node.type === "Popover")[0].props.onOpenChange(true); return render(); },
     choose(kind) { all(tree, node => node.type === "input" && node.props["aria-label"] === `Choose optional ${kind} reference`)[0].props.onChange({ currentTarget: { files: [{ name: "reference.mp4" }], value: "selected" } }); },
@@ -179,4 +179,48 @@ test("a first successful upload switches the open picker to Your images", async 
   assert.equal(root().props.value, "catalog");
   h.choose("image"); await flush();
   assert.equal(root().props.value, "user");
+});
+
+test("tile removal detaches only the chosen image and preserves the ordered collection", () => {
+  const h = harness(async () => {});
+  const images = ["first", "middle", "last"].map(id => ({ kind: "image", asset: savedImage(id) }));
+  const updates = [];
+  const previews = h.all(h.render({ imageSelections: images, onImagesChange: next => updates.push(next) }), node => node.type === "ImagePreview");
+  previews[1].props.onRemove();
+  assert.deepEqual(Array.from(updates[0], image => image.asset.id), ["first", "last"]);
+  assert.deepEqual(h.changes, [], "An image removal must not clear the video or the whole selection");
+  assert.equal(h.calls.length, 0);
+  assert.deepEqual(h.errors, [null]);
+});
+
+test("tile removal clears a gallery video through its gallery owner and an uploaded video through its video owner", () => {
+  const h = harness(async () => {});
+  let cleared = 0;
+  const gallery = h.all(h.render({ styleVideo: { name: "Gallery clip", url: "https://gallery.test/clip.mp4" }, onClearStyle: () => cleared++ }), node => node.type === "ImagePreview" && node.props.kind === "video")[0];
+  gallery.props.onRemove();
+  assert.equal(cleared, 1);
+  assert.deepEqual(h.changes, [], "Removing a gallery reference must not clear appearance images");
+  const uploaded = h.all(h.render({ videoSelection: { kind: "video", asset: { url: "https://owned.test/clip.mp4", title: "Owned clip" } } }), node => node.type === "ImagePreview" && node.props.kind === "video")[0];
+  uploaded.props.onRemove();
+  assert.deepEqual(h.selectionChanges, [{ value: null, kind: "video" }]);
+});
+
+test("single-image callers retain their removal contract and busy tiles cannot change accepted references", async () => {
+  const single = harness(async () => {});
+  single.all(single.render(), node => node.type === "ImagePreview")[0].props.onRemove();
+  assert.deepEqual(single.selectionChanges, [{ value: null, kind: "image" }]);
+  for (const disabled of [true, false]) {
+    let resolve;
+    const h = harness(() => new Promise(done => { resolve = done; }), { disabled });
+    if (!disabled) h.choose("video");
+    let cleared = 0;
+    const tree = h.render({ styleVideo: { name: "Gallery clip", url: "https://gallery.test/clip.mp4" }, onClearStyle: () => cleared++ });
+    for (const tile of h.all(tree, node => node.type === "ImagePreview")) {
+      assert.equal(tile.props.disabled, true);
+      tile.props.onRemove();
+    }
+    assert.deepEqual(h.changes, []);
+    assert.equal(cleared, 0);
+    resolve?.({ kind: "video", asset: { url: "https://owned.test/new.mp4" } }); await flush();
+  }
 });

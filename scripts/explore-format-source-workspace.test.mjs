@@ -77,6 +77,15 @@ function harness(format, query = "", { local = true, selected = video, catalogue
 }
 
 const catalogue = Array.from({ length: 90 }, (_, index) => ({ id: `wall-${index}`, format: "wall_text", title: `Productivity ${index + 1}`, category: index < 45 ? "productivity" : "other", slides: [], posterUrl: "/poster.jpg", videoUrl: "/reference.mp4" }));
+test("a saved Demo entry opens its own editor and returns to the Demo screen", () => {
+  const h = harness("hook", `demoId=${video.id}&step=demo`, { local: false });
+  const tree = h.render(), editor = nodes(tree).find(n => n.type === "FormatDemoSection");
+  assert.equal(editor.props.contentDemoId, video.id); assert.equal(editor.props.editActive, true);
+  const back = nodes(tree).find(n => n.type === "link" && n.props["aria-label"] === "Back to Demo");
+  assert.equal(back.props.href, "/library?tab=posts");
+  assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "demo");
+});
+
 for (const format of ["hook", "wall_text"]) {
   if (format === "hook") test(`${format}: background scheduling enters Schedule with exact raw composition and no export requests`, () => {
     const h = harness(format, "", { local: false, backgroundCapability: { data: true, isFetching: false } });

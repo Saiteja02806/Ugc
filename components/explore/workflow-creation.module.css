@@ -99,7 +99,7 @@
 .settingsGrid.imageSettings > .settingField { grid-column: span 3; }
 .settingsGrid.imageSettings > .settingField:first-child { grid-column: 1 / -1; }
 .settingField > span { font-size: 12px; line-height: 16px; }
-.settingField > button {
+.settingField > button, .settingField > .referenceDuration {
   width: 100%;
   min-width: 0;
   height: 36px;
@@ -111,6 +111,7 @@
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 45%, transparent);
   transition: background-color 160ms ease, box-shadow 160ms ease;
 }
+.settingField > .referenceDuration { display: flex; align-items: center; justify-content: flex-start; gap: 6px; }
 .settingField > button:hover { box-shadow: inset 0 0 0 1px var(--muted); }
 .settingField > button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .settingField > button > svg { flex-shrink: 0; width: 12px; }
@@ -205,6 +206,9 @@
 .editWorkspace > div:first-child .sectionHelp { margin-top: 6px; }
 .sequenceGrid { display: grid; grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr); align-items: stretch; gap: 12px; }
 .segment { display: flex; min-width: 0; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid color-mix(in srgb, var(--border) 45%, transparent); border-radius: 12px; }
+.segmentActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
+.segmentActions > button { max-width: 100%; min-height: 36px; height: auto; white-space: normal; padding: 8px 14px; }
+.previewAction { width: fit-content; max-width: 100%; min-height: 40px; align-self: center; padding-inline: 24px; }
 .segmentEmpty { display: flex; min-height: 220px; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px 0; text-align: center; }
 .segmentEmpty p { max-width: 240px; margin: 0; font-size: 13px; line-height: 22px; color: var(--muted); }
 .sequenceArrow { width: 20px; height: 20px; align-self: center; color: var(--muted); }
@@ -232,7 +236,7 @@
 
 @media (max-width: 1023px) {
   .sourceModes > button, .sourceSummary > button { min-width: 44px; min-height: 44px; }
-  .settingField > button, .scheduleDateTime input { height: 44px; }
+  .settingField > button, .settingField > .referenceDuration, .scheduleDateTime input { height: 44px; }
   .helpButton { width: 44px; height: 44px; }
 }
 

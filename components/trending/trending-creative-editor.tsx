@@ -115,6 +115,10 @@ import { getWallTextManualBlocks, validateWallTextManualCopy, WALL_TEXT_MANUAL_M
 import { getWallTextRenderBlocks } from "@/lib/trending/wall-text-types";
 import { cn } from "@/lib/utils";
 
+// Keep the existing catalogue for saved edits and generation context, while
+// keeping the Hook library picker out of the customer editor.
+const CAROUSEL_EDITOR_HOOK_LIBRARY_VISIBLE = false;
+
 const carouselInter = localFont({
   src: "../../worker/src/assets/fonts/Inter-VariableFont_wght.ttf",
   display: "swap",
@@ -438,7 +442,7 @@ export function TrendingCreativeEditor({
   }, [item]);
 
   const loadCarouselHyperHooks = useCallback(async () => {
-    if (!item || item.format !== "carousel") {
+    if (!CAROUSEL_EDITOR_HOOK_LIBRARY_VISIBLE || !item || item.format !== "carousel") {
       return;
     }
 
@@ -971,7 +975,7 @@ export function TrendingCreativeEditor({
           <DialogTitle>Edit creative</DialogTitle>
           <DialogDescription>
             {item?.format === "carousel"
-              ? "Edit each slide’s text and upload your own slide images. You can also choose from the Hook library or app screenshots."
+              ? "Edit each slide’s text, upload your own slide images, or choose app screenshots."
               : "Edit your text and choose a Creative Assets video."}
           </DialogDescription>
         </DialogHeader>
@@ -1027,7 +1031,7 @@ export function TrendingCreativeEditor({
                       } : current)}
                     /> : null}
                     <fieldset disabled={saving || slideImageUploading} className="contents">
-                    <HyperHookLibrarySection
+                    {CAROUSEL_EDITOR_HOOK_LIBRARY_VISIBLE ? <HyperHookLibrarySection
                       assets={hyperHookAssets}
                       content={content}
                       error={hyperHookAssetsError}
@@ -1038,7 +1042,7 @@ export function TrendingCreativeEditor({
                       onOpen={() => setHyperHookFolderOpen(true)}
                       onRestore={restoreCarouselHookBackground}
                       onRetry={() => void loadCarouselHyperHooks()}
-                    />
+                    /> : null}
                     <AppScreenshotsSection
                       activeSlideIndex={activeSlideIndex}
                       assets={productAssets}

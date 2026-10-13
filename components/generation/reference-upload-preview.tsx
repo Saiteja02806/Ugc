@@ -98,7 +98,7 @@ export function ReferenceUploadPreview({
         </div>
       )}
       {onRemove ? (
-        <Button type="button" variant="muted" size="icon-sm" className={fillContainer ? "absolute right-1 bottom-1 size-5 rounded-full border border-border bg-card shadow-sm [&_svg]:size-3" : "absolute -right-1 -top-1 size-5 rounded-full border border-border bg-card shadow-sm [&_svg]:size-3"} aria-label={`Remove ${name}`} disabled={disabled} onClick={onRemove}>
+        <Button type="button" variant="muted" size="icon-sm" className={fillContainer ? "absolute right-1 top-1 size-5 rounded-full border border-border bg-card shadow-sm [&_svg]:size-3" : "absolute -right-1 -top-1 size-5 rounded-full border border-border bg-card shadow-sm [&_svg]:size-3"} aria-label={`Remove ${name}`} disabled={disabled} onClick={onRemove}>
           <X aria-hidden="true" />
         </Button>
       ) : null}

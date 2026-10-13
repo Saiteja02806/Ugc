@@ -176,6 +176,19 @@ test("fast foreground checks pause while hidden and ordinary workflow polling re
   }
 });
 
+test("background status checks keep the action state steady; explicit refresh still indicates work", async () => {
+  const h = harness({ pending: true, fastStatus: true });
+  h.render(); await tick(); h.render().action.onAction(); await tick();
+  const before = h.render(); assert.equal(before.action.busy, false); assert.equal(before.action.disabled, true);
+  h.poll();
+  assert.equal(h.render().action.busy, false, "Polling must not flash a loading label");
+  await tick(); assert.equal(h.render().action.busy, false); assert.equal(h.render().action.disabled, true);
+  h.event("focus"); assert.equal(h.render().action.busy, false); await tick();
+  h.render().action.refresh(); assert.equal(h.render().action.busy, true); await tick();
+  assert.equal(h.render().action.busy, false); assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
+  h.unmount();
+});
+
 test("a completed output lookup recovers automatically without another render", async () => {
   for (const kind of ["hook", "phone"]) {
     const h = harness({ kind, outputFailures: 1 }); h.render(); await tick();

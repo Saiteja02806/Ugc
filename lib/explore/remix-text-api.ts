@@ -32,7 +32,10 @@ export async function handleReferenceText(request: Request) {
     let source = null;
     try { if (referenceId) source = getReferenceText(referenceId, slideId); } catch { return json({ ok: false, message: "This reference text is unavailable. Choose another source." }, 400); }
     const profile = await getBusinessProfileForUser(user.uid);
-    return json({ ok: true, source, enabled: process.env.EXPLORE_TEXT_REMIX_ENABLED === "true",
+    const enabled = process.env.EXPLORE_TEXT_REMIX_ENABLED === "true"
+      && Boolean(process.env.OPENAI_API_KEY?.trim())
+      && Boolean((process.env.SUPABASE_URL?.trim() || process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()) && process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
+    return json({ ok: true, source, enabled,
       businessContext: { name: profile?.context.businessName ?? null, ready: Boolean(profile?.context.businessName && profile.context.productSummary) } });
   } catch (error) { return errorResponse(error); }
 }

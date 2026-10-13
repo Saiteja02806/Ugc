@@ -1,7 +1,7 @@
 "use client";
 
 import { AudioLines, Check, Info, Play, Video } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { RemoveMediaButton, WorkflowFilePicker, WorkflowMediaPlayer, formatMediaSeconds, type WorkflowAttachment } from "@/components/explore/hook-workflow-media-controls";
 import creation from "@/components/explore/workflow-creation.module.css";
@@ -44,6 +44,7 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
 }) {
   const [subtitleStyle, setSubtitleStyle] = useState<SubtitleStyle>("clean");
   const [subtitlePlacement, setSubtitlePlacement] = useState<"bottom" | "middle" | "top">("bottom");
+  const subtitleAppearance = useRef<HTMLDetailsElement>(null);
   const selectedStyle = options?.style ?? subtitleStyle;
   const selectedPlacement = options?.placement ?? subtitlePlacement;
   const kind = videoLabel === "Hook" ? "hook" : "phone";
@@ -144,7 +145,7 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
         </div>
         {connected && options && onOptionsChange ? <Button type="button" role="switch" aria-label="Auto subtitles" aria-checked={options.subtitles} variant="muted" className="h-7 rounded-full px-3 text-xs" onClick={() => onOptionsChange({ ...options, subtitles: !options.subtitles })}>{options.subtitles ? "On" : "Off"}</Button> : <UnavailableToggle label="Auto subtitles" descriptionId={unavailableId} hideLabel />}
       </div>
-      <details className={sections.optionalGroup}>
+      <details ref={subtitleAppearance} className={cn(sections.optionalGroup, sections.subtitleAppearance)}>
         <summary>Subtitle appearance <span className={sections.groupSummary}>{SUBTITLE_STYLES.find(style => style.id === selectedStyle)?.label} · {selectedPlacement === "bottom" ? "Bottom" : selectedPlacement === "middle" ? "Middle" : "Top"}</span></summary>
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -166,7 +167,12 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
               <span className={creation.subtitleChoiceLabel}>{style.label}{selectedStyle === style.id ? <Check className="size-3.5" aria-hidden="true" /> : null}</span>
             </button>)}
           </div>
-          <WorkflowSubtitlePreview style={selectedStyle} />
+          <WorkflowSubtitlePreview style={selectedStyle} onCollapse={() => {
+            if (subtitleAppearance.current) {
+              subtitleAppearance.current.open = false;
+              subtitleAppearance.current.querySelector("summary")?.focus();
+            }
+          }} />
         </div>
       </details>
       {options?.subtitles && captions ? <WorkflowCaptionEditor captions={captions} disabled={editingBusy} /> : null}

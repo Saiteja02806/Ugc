@@ -24,7 +24,7 @@ import studio from "@/components/explore/workflow-studio.module.css";
 type Kind = "image" | "video";
 
 /** Optional generation guidance; imported editor footage uses the separate source picker. */
-export function FormatGenerationReferences({ selection, imageSelection, imageSelections, videoSelection, onImagesChange, maxImages = 6, onChange, onPendingChange, onErrorChange, disabled, preview, ownerId, styleVideo, onClearStyle, active = true, videoInputEnabled = true }: {
+export function FormatGenerationReferences({ selection, imageSelection, imageSelections, videoSelection, onImagesChange, maxImages = 6, onChange, onPendingChange, onErrorChange, disabled, preview, ownerId, styleVideo, onStyleVideoDurationChange, onClearStyle, active = true, videoInputEnabled = true }: {
   selection: AIStudioReferenceMedia | null;
   imageSelection?: AIStudioReferenceMedia | null;
   imageSelections?: AIStudioReferenceMedia[];
@@ -38,6 +38,7 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
   preview: boolean;
   ownerId?: string;
   styleVideo?: LocalWorkflowMedia & { id?: string; selectionRevision?: number };
+  onStyleVideoDurationChange?: (url: string, duration: number) => void;
   onClearStyle?: () => void;
   active?: boolean;
   videoInputEnabled?: boolean;
@@ -151,19 +152,32 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
       if (request === revision.current) { setPending(null); onPendingChange(false); }
     }
   }
-  function remove(kind: Kind) { (kind === "image" ? localImage : localVideo).remove(); setError(null); onErrorChange?.(null); onChange(null, kind); setOpenKind(null); }
+  function remove(kind: Kind) {
+    if (disabled || pending) return;
+    (kind === "image" ? localImage : localVideo).remove(); setError(null); onErrorChange?.(null); onChange(null, kind); setOpenKind(null);
+  }
+  function removeImage(image: AIStudioReferenceMedia) {
+    if (disabled || pending) return;
+    if (!onImagesChange) { remove("image"); return; }
+    onImagesChange(selectedImages.filter(item => item.asset.id !== image.asset.id));
+    setError(null); onErrorChange?.(null);
+  }
+  function removeStyleVideo() {
+    if (disabled || pending) return;
+    onClearStyle?.(); setError(null); onErrorChange?.(null); setOpenKind(null);
+  }
   const catalogSelections = selectedImages.filter(image => image.asset.projectId === CATALOG_REFERENCE_IMAGE_PROJECT || image.asset.projectId === "ai-studio").map(image => image.asset.fileName);
 
   return <section aria-label="Optional generation references" className={cn(presentation.referenceGroup, presentation.classicReferences)}>
     <div className={presentation.referenceHeading}><h3>Optional references</h3></div>
     <div className={creation.referenceGrid} data-workflow-reference-grid>
       {(["image", "video"] as const).filter(kind => kind === "image" || videoInputEnabled || Boolean(styleVideo) || Boolean(selectedVideo)).map(kind => {
-        const selected = kind === "image" ? selectedImage : selectedVideo;
+        const selected = kind === "image" ? selectedImages[0] ?? null : selectedVideo;
         const isStyle = kind === "video" && !selectedVideo && Boolean(styleVideo);
         const asset = selected ? { name: selected.asset.fileName ?? selected.asset.title, url: selected.asset.url, duration: selected.asset.durationSeconds } : isStyle ? styleVideo : null;
         const input = kind === "image" ? imageInput : videoInput;
         const uploadActions = <div className="flex flex-wrap items-center gap-2">{kind === "image" || videoInputEnabled ? <Button type="button" variant="outline" disabled={disabled || Boolean(pending) || kind === "image" && imageLimitReached} onClick={() => input.current?.click()} className="h-9 rounded-lg text-sm">{kind === "image" ? "Add image" : isStyle ? "Upload video reference" : asset ? "Replace video" : "Attach video"}</Button> : null}
-          {asset ? <Button type="button" variant="ghost" aria-label={isStyle ? "Remove gallery video reference" : `Remove ${kind} reference`} disabled={disabled || Boolean(pending)} onClick={isStyle ? () => { onClearStyle?.(); setOpenKind(null); } : () => remove(kind)} className="h-9 rounded-lg text-sm">{kind === "image" ? "None" : "Remove video"}</Button> : null}
+          {asset ? <Button type="button" variant="ghost" aria-label={isStyle ? "Remove gallery video reference" : `Remove ${kind} reference`} disabled={disabled || Boolean(pending)} onClick={isStyle ? removeStyleVideo : () => remove(kind)} className="h-9 rounded-lg text-sm">{kind === "image" ? "None" : "Remove video"}</Button> : null}
           {kind === "image" && activeImageTab === "user" && !preview && ownerId ? <Button type="button" variant="ghost" size="icon-sm" aria-label="Refresh your images" title="Refresh your images" disabled={Boolean(pending) || imagesQuery.isFetching} onClick={() => void imagesQuery.refetch()}><RefreshCw className={cn("size-3.5", imagesQuery.isFetching && "animate-spin motion-reduce:animate-none")} aria-hidden="true" /></Button> : null}
         </div>;
         return <div key={kind} data-reference-state={asset ? "selected" : "empty"} className={cn("relative min-w-0", presentation.referenceCard)}>
@@ -171,7 +185,7 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
             const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; if (file) void choose(kind, file);
           }} />
           <div className={imagePreview.picker}>
-          {kind === "image" && selectedImages.length ? <><div className={imagePreview.images} data-count={selectedImages.length}>{selectedImages.map(image => <WorkflowReferencePreview key={image.asset.id} url={image.asset.url} name={image.asset.fileName ?? image.asset.title} />)}</div>{selectedImages.length > 1 ? <span className={imagePreview.count}>{selectedImages.length} images</span> : null}</> : asset ? <WorkflowReferencePreview key={asset.url} kind={kind} url={asset.url} name={asset.name ?? "Selected reference"} media={kind === "video" ? <ReferenceVideoThumbnail url={asset.url} /> : undefined} /> : null}
+          {kind === "image" && selectedImages.length ? <><div className={imagePreview.images} data-count={selectedImages.length}>{selectedImages.map(image => <WorkflowReferencePreview key={image.asset.id} url={image.asset.url} name={image.asset.fileName ?? image.asset.title} disabled={disabled || Boolean(pending)} onRemove={() => removeImage(image)} />)}</div>{selectedImages.length > 1 ? <span className={imagePreview.count}>{selectedImages.length} images</span> : null}</> : asset ? <WorkflowReferencePreview key={asset.url} kind={kind} url={asset.url} name={asset.name ?? "Selected reference"} disabled={disabled || Boolean(pending)} onRemove={isStyle ? onClearStyle ? removeStyleVideo : undefined : () => remove(kind)} media={kind === "video" ? <ReferenceVideoThumbnail url={asset.url} onDurationChange={isStyle ? duration => onStyleVideoDurationChange?.(asset.url, duration) : undefined} /> : undefined} /> : null}
           <Popover open={active && openKind === kind} onOpenChange={open => { if (open && kind === "image") setImageTab(null); setOpenKind(open ? kind : null); }}>
             <PopoverTrigger render={<Button type="button" variant="outline" data-workflow-tile="reference" aria-label={isStyle ? "Choose gallery video reference" : `${asset ? "Replace" : "Add"} ${kind} reference`} aria-busy={pending === kind} title={asset?.name ?? `Choose an optional ${kind} reference`} disabled={disabled || Boolean(pending)} data-state={pending === kind ? "loading" : asset ? "selected" : "empty"} className={cn(creation.referenceButton, imagePreview.action)} />}>
               {pending === kind ? <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : !asset ? kind === "image" ? <UserRound aria-hidden="true" /> : <Video aria-hidden="true" /> : null}
@@ -182,7 +196,7 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
               <p className="text-sm leading-6 text-muted">{isStyle ? "This gallery clip will be sent to generation as the source video. Add images for appearance and describe the changes you want. Clips over 10 seconds must be trimmed and uploaded first." : kind === "image" ? `Add up to ${maxImages} appearance or product images. Describe how to use each image in your instructions.` : "Source video up to 10 seconds and 32 MB. Keep images alongside it for appearance. The edit follows the source clip's actions and timing."}</p>
               {asset ? <>{kind === "image" ? <ReferenceImagePreview asset={asset} /> : <WorkflowMediaPlayer asset={asset} kind="video" label="Video reference preview" className="mx-auto aspect-auto h-auto max-h-[40dvh] w-auto max-w-full bg-transparent" />}<p className="break-all text-xs text-muted">{asset.name}</p></> : null}
               {uploadActions}
-              {kind === "image" && onImagesChange && selectedImages.length ? <div className="grid grid-cols-3 gap-2" aria-label="Selected image references">{selectedImages.map(image => <div key={image.asset.id} className="overflow-hidden rounded-lg"><ReferenceCreatorImage url={image.asset.url} /><Button type="button" variant="ghost" size="sm" disabled={disabled || Boolean(pending)} aria-label={`Remove image ${image.asset.fileName ?? image.asset.title}`} className="w-full" onClick={() => { onImagesChange(selectedImages.filter(item => item.asset.id !== image.asset.id)); setError(null); onErrorChange?.(null); }}>Remove</Button></div>)}</div> : null}
+              {kind === "image" && onImagesChange && selectedImages.length ? <div className="grid grid-cols-3 gap-2" aria-label="Selected image references">{selectedImages.map(image => <div key={image.asset.id} className="overflow-hidden rounded-lg"><ReferenceCreatorImage url={image.asset.url} /><Button type="button" variant="ghost" size="sm" disabled={disabled || Boolean(pending)} aria-label={`Remove image ${image.asset.fileName ?? image.asset.title}`} className="w-full" onClick={() => removeImage(image)}>Remove</Button></div>)}</div> : null}
               {kind === "image" ? <Tabs.Root value={activeImageTab} onValueChange={value => { if (value === "user" || value === "catalog") setImageTab(value); }} className="space-y-3">
                 <Tabs.List aria-label="Image sources" className="flex gap-1 rounded-lg border border-border bg-card-muted p-1">
                   <Tabs.Tab value="user" type="button" className="flex-1 rounded-md px-2 py-2 text-xs font-medium text-muted hover:text-foreground-strong data-[active]:bg-card data-[active]:text-foreground-strong">Your images</Tabs.Tab>

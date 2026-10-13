@@ -46,6 +46,7 @@
 .optionalGroup > summary { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 12px; border-radius: 6px; color: var(--foreground); font-size: 13px; font-weight: 500; cursor: pointer; }
 .optionalGroup > summary::after { content: "+"; color: var(--muted); font-size: 18px; font-weight: 400; }
 .optionalGroup[open] > summary::after { content: "−"; }
+.subtitleAppearance > summary::after { display: inline-flex; width: 28px; height: 28px; flex: none; align-items: center; justify-content: center; border-radius: 6px; background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); font-weight: 600; }
 .optionalGroup > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .groupSummary { margin-left: auto; color: var(--muted); font-size: 12px; font-weight: 400; text-align: right; }
 .optionalGroup[open] > summary { margin-bottom: 12px; }

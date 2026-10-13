@@ -44,6 +44,7 @@ import { Input } from "@/components/ui/input";
 import { ReferenceFilesUpload } from "@/components/video/reference-files-upload";
 import { FormatGenerationReferences } from "@/components/explore/format-generation-references";
 import { WorkflowDurationControl } from "@/components/explore/workflow-duration-control";
+import creation from "@/components/explore/workflow-creation.module.css";
 import { CreatorReferencePicker } from "@/components/video/creator-reference-picker";
 import { VideoGenerationFailure } from "@/components/video/video-generation-failure";
 import { Button } from "@/components/ui/button";
@@ -343,6 +344,8 @@ export function VideoGenerationStudioPanel({
     useState<AIStudioReferenceMedia[]>([]);
   const [uploadedVideoReference, setUploadedVideoReference] =
     useState<AIStudioReferenceMedia | null>(null);
+  const [galleryVideoMetadata, setGalleryVideoMetadata] = useState<{ url: string; duration: number } | null>(null);
+  const activeGalleryVideoUrl = useRef<string | undefined>(undefined);
   const gallerySelectionKey = workflow && recreateView?.styleVideo
     ? `${recreateView.styleVideo.id ?? recreateView.styleVideo.url}:${recreateView.styleVideo.selectionRevision ?? 0}` : null;
   const [previousGallerySelectionKey, setPreviousGallerySelectionKey] = useState(gallerySelectionKey);
@@ -445,9 +448,17 @@ export function VideoGenerationStudioPanel({
   const retryJob = useRetryBackgroundJob();
   const generationLocked = recreateView?.preview === true || accessState !== "pro";
   const galleryVideoReference = workflow ? recreateView?.styleVideo : undefined;
+  activeGalleryVideoUrl.current = galleryVideoReference?.url;
   const uploadedReferenceVideo = galleryVideoReference ? null : uploadedVideoReference;
   const hasWorkflowVideoReference = Boolean(workflow && (uploadedReferenceVideo || galleryVideoReference));
-  const sourceDuration = uploadedReferenceVideo?.asset.durationSeconds ?? galleryVideoReference?.duration;
+  const sourceDuration = uploadedReferenceVideo?.asset.durationSeconds
+    ?? (galleryVideoMetadata?.url === galleryVideoReference?.url ? galleryVideoMetadata?.duration : null)
+    ?? galleryVideoReference?.duration;
+  const sourceDurationLabel = sourceDuration ? `${Number(sourceDuration.toFixed(1))} sec` : "Reading…";
+  function reportGalleryVideoDuration(url: string, duration: number) {
+    if (url !== activeGalleryVideoUrl.current || !Number.isFinite(duration) || duration <= 0) return;
+    setGalleryVideoMetadata(previous => previous?.url === url && previous.duration === duration ? previous : { url, duration });
+  }
   const billedDuration = hasWorkflowVideoReference && sourceDuration ? Math.max(3, Math.ceil(sourceDuration)) : durationSeconds;
   const creditsPerVideo = billedDuration * creditsPerSecond;
   const requiredCredits = creditsPerVideo * quantity;
@@ -1165,7 +1176,7 @@ export function VideoGenerationStudioPanel({
                 setResolution(value as AIStudioVideoResolution);
               }}
             />);
-  const durationSetting = hasWorkflowVideoReference ? <div className="col-span-3 flex min-w-0 flex-col gap-1 text-sm"><span className="text-muted">Duration</span><p>{sourceDuration ? `${sourceDuration.toFixed(1)}s source clip` : "Source clip duration · checked before generation"}</p></div> : workflow && !uploadedReferenceVideo ? (
+  const durationSetting = hasWorkflowVideoReference ? <div className={creation.settingField}><span>Duration</span><output aria-label="Reference video duration" aria-live="polite" className={creation.referenceDuration}><Clock3 className="size-3.5 shrink-0 text-muted" aria-hidden="true" /><span>{sourceDurationLabel}</span></output></div> : workflow && !uploadedReferenceVideo ? (
     <WorkflowDurationControl
       key={model}
       ariaLabel="Video duration"
@@ -1332,7 +1343,7 @@ export function VideoGenerationStudioPanel({
         estimatedCredits={workflow && !generationLocked && !recreateView?.preview && (!hasWorkflowVideoReference || sourceDuration) ? requiredCredits : undefined}
         outputSummary={workflow ? `${resolution} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}
         settingsSummary={workflow ? `${model === "wan_3_0" ? "WAN 3.0" : model === "seedance_2_5" ? "Seedance 2.5" : "Google Omni"} · ${hasWorkflowVideoReference ? `${sourceDuration ? `${sourceDuration.toFixed(1)}s clip` : "Source clip"} · Edit` : `${durationSeconds}s`} · ${aspectRatio} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}
-        referenceControls={workflow ? <FormatGenerationReferences key={user?.uid ?? "preview"} active={workflow.controlsActive} selection={uploadedReference} imageSelection={uploadedReference} imageSelections={referenceImages} onImagesChange={handleImageReferencesChange} maxImages={workflowImageLimit} videoSelection={uploadedReferenceVideo} onChange={handleReferenceChange} onPendingChange={setCreatorReferenceUploadPending} onErrorChange={reportReferenceError} disabled={isGenerating || (!recreateView?.preview && generationLocked)} preview={Boolean(recreateView?.preview)} ownerId={user?.uid} styleVideo={recreateView?.styleVideo} onClearStyle={recreateView?.onClearReference} videoInputEnabled={model !== "wan_3_0"} /> : undefined}
+        referenceControls={workflow ? <FormatGenerationReferences key={user?.uid ?? "preview"} active={workflow.controlsActive} selection={uploadedReference} imageSelection={uploadedReference} imageSelections={referenceImages} onImagesChange={handleImageReferencesChange} maxImages={workflowImageLimit} videoSelection={uploadedReferenceVideo} onChange={handleReferenceChange} onPendingChange={setCreatorReferenceUploadPending} onErrorChange={reportReferenceError} disabled={isGenerating || (!recreateView?.preview && generationLocked)} preview={Boolean(recreateView?.preview)} ownerId={user?.uid} styleVideo={recreateView?.styleVideo} onStyleVideoDurationChange={reportGalleryVideoDuration} onClearStyle={recreateView?.onClearReference} videoInputEnabled={model !== "wan_3_0"} /> : undefined}
         compact={Boolean(recreateView)}
         accessMessage={workflow && !generationLocked && !hasInsufficientCredits ? null : composerMessage}
         active={workflow?.controlsActive ?? active}

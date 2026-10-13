@@ -26,7 +26,7 @@ export function WorkflowAudioReference({ audioLabel, audio, ownerId, tile = fals
   const [open, setOpen] = useState(false);
   const audioName = audioLabel.toLowerCase();
   return <div className={reference.picker}>
-    {audio.asset ? <WorkflowReferencePreview key={audio.asset.url} kind="voice" url={audio.asset.url} name={audio.asset.name} /> : null}
+    {audio.asset ? <WorkflowReferencePreview key={audio.asset.url} kind="voice" url={audio.asset.url} name={audio.asset.name} disabled={audio.loading} onRemove={audio.remove} /> : null}
     <Popover open={open} onOpenChange={setOpen}>
     <PopoverTrigger render={<Button type="button" variant="outline" className={cn(creation.referenceButton, reference.action)} aria-busy={audio.loading} data-state={audio.loading ? "loading" : audio.error ? "error" : audio.asset ? "selected" : "empty"} aria-label={`Select audio, ${audioName}${audio.asset ? ` selected: ${audio.asset.name}` : " optional"}`} title={audio.asset?.name ?? "Choose an optional audio reference"} />}>
       {!audio.asset ? <>{tile ? <AudioLines aria-hidden="true" /> : null}<span className={creation.referenceLabel}>{tile ? "Select audio" : "Choose audio"}</span></> : null}<Plus className={reference.add} aria-hidden="true" />

@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocalWorkflowMedia, type LocalWorkflowMedia } from "@/components/explore/use-local-workflow-media";
 import { uploadAIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
+import { uploadHookVideoDemo } from "@/lib/trending/hook-video-client-upload";
 import { workflowSourceVideoError, type WorkflowVideoMode } from "@/lib/explore/workflow-source-video";
 import type { MediaAsset } from "@/lib/media/types";
 
-export function useWorkflowSourceVideo({ enabled, ownerId, initialMode = "generate", minDuration = 0, onSelected }: { enabled: boolean; ownerId: string | null; initialMode?: WorkflowVideoMode; minDuration?: number; onSelected?: (asset: MediaAsset | null, preview: LocalWorkflowMedia, mode: "upload" | "assets") => void }) {
+export function useWorkflowSourceVideo({ enabled, ownerId, initialMode = "generate", minDuration = 0, library = "creative_assets", onSelected }: { enabled: boolean; ownerId: string | null; initialMode?: WorkflowVideoMode; minDuration?: number; library?: "creative_assets" | "content"; onSelected?: (asset: MediaAsset | null, preview: LocalWorkflowMedia, mode: "upload" | "assets") => void }) {
   const [mode, setMode] = useState<WorkflowVideoMode>(initialMode);
   const local = useLocalWorkflowMedia("video");
   const [uploaded, setUploaded] = useState<MediaAsset | null>(null);
@@ -24,18 +25,20 @@ export function useWorkflowSourceVideo({ enabled, ownerId, initialMode = "genera
     const controller = new AbortController();
     metadataRequest.current = controller;
     setError(null);
-    if (!["video/mp4", "video/quicktime", "video/webm"].includes(file.type) || file.size <= 0 || file.size > 250 * 1024 * 1024) {
-      setError("Choose an MP4, MOV or WebM video up to 250 MB."); setBusy(false); return false;
+    const maxMB = library === "content" ? 100 : 250;
+    if (!["video/mp4", "video/quicktime", "video/webm"].includes(file.type) || file.size <= 0 || file.size > maxMB * 1024 * 1024) {
+      setError(`Choose an MP4, MOV or WebM video up to ${maxMB} MB.`); setBusy(false); return false;
     }
     if (enabled && !ownerId) { setError("Sign in to upload your video."); setBusy(false); return false; }
     setBusy(true);
     try {
       let preview: LocalWorkflowMedia | null = null;
-      if (!await local.choose(file, { minDuration, maxDuration: 120, signal: controller.signal, onRead: value => { preview = value; } })) return false;
+      if (!await local.choose(file, { minDuration, maxDuration: library === "content" ? 60 : 120, signal: controller.signal, onRead: value => { preview = value; } })) return false;
       if (!active.current || request !== revision.current) return false;
       // Layout review stays browser-only. Live uploads use the existing owned-media API.
       if (enabled && ownerId) {
-        const result = await uploadAIStudioReferenceMedia(file, "video", 120, ownerId, { requireVideoReferenceRatio: false, purpose: "explore-source" });
+        const result = library === "content" ? { asset: await uploadHookVideoDemo(file, ownerId) }
+          : await uploadAIStudioReferenceMedia(file, "video", 120, ownerId, { requireVideoReferenceRatio: false, purpose: "explore-source" });
         if (!active.current || request !== revision.current) return false;
         const problem = workflowSourceVideoError(result.asset) ?? (result.asset.durationSeconds !== null && result.asset.durationSeconds < minDuration ? `Choose a video at least ${minDuration} second long.` : null);
         if (problem) throw new Error(problem);
@@ -52,6 +55,7 @@ export function useWorkflowSourceVideo({ enabled, ownerId, initialMode = "genera
     } finally { if (active.current && request === revision.current) setBusy(false); }
   }
   function selectAsset(asset: MediaAsset) {
+    if (library === "content" && asset.sourceType !== "demo_upload") { setAssetError("Choose footage from the Demo screen."); return false; }
     const problem = workflowSourceVideoError(asset) ?? (asset.durationSeconds !== null && asset.durationSeconds < minDuration ? `Choose a video at least ${minDuration} second long.` : null);
     if (problem) { setAssetError(problem); return false; }
     setSelected(asset); setAssetError(null); onSelected?.(asset, { name: asset.title, url: asset.url, duration: asset.durationSeconds }, "assets"); return true;

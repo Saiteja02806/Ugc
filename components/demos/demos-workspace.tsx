@@ -33,7 +33,7 @@ import {
   isActiveDemoStatus,
   type DemoDisplayStatus,
 } from "@/lib/demo/demo-display";
-import { getContentDemoEditorHref } from "@/lib/edit/routes";
+import { getContentDemoEditorHref, getContentExploreDemoEditorHref } from "@/lib/edit/routes";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
@@ -75,6 +75,7 @@ type DemoRatio = "9:16" | "1:1" | "4:5" | "16:9" | "other";
 type DemoStatus = DemoDisplayStatus;
 
 type DemoVideo = {
+  explore_edit?: { scope: "hook:demo"; revision: number; updatedAt: string } | null;
   created_at: string;
   deleted_at: string | null;
   draft_json: Record<string, unknown>;
@@ -224,7 +225,7 @@ export function UploadedPostsTab({
         },
       );
       const data = await readJsonResponse<
-        { demos: DemoVideo[]; ok: true } | ApiErrorResponse
+        { demos: DemoVideo[]; ok: true; demoEditsUnavailable?: boolean } | ApiErrorResponse
       >(response, loadErrorFallback);
 
       if (!response.ok || data.ok !== true) {
@@ -233,7 +234,7 @@ export function UploadedPostsTab({
 
       if (latestDemoLoadRequestIdRef.current === requestId) {
         setDemos(data.demos);
-        setErrorMessage(null);
+        setErrorMessage(data.demoEditsUnavailable ? "Demos loaded, but saved demo edits could not be checked. Refresh before editing." : null);
         if (user) {
           inMemoryDemoVideos = {
             cachedAt: Date.now(),
@@ -855,7 +856,7 @@ export function UploadedPostsTab({
           <DialogHeader>
             <DialogTitle>Delete {selectedDemoIds.size} demos?</DialogTitle>
             <DialogDescription>
-              This will permanently delete the {selectedDemoIds.size} selected demo videos from your Content Library. This action cannot be undone.
+              This will permanently delete the {selectedDemoIds.size} selected demo videos from your Demo screen. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:justify-between">
@@ -1744,6 +1745,7 @@ export function DemoCard({
         </div>
 
         <div className="space-y-2 border-t border-border pt-2.5">
+          {demo.explore_edit ? <p className="text-xs text-muted">Saved demo edits · open Edit to preview or continue.</p> : null}
           <div className="flex min-w-0 items-center justify-between gap-2">
             <p className="truncate text-xs font-semibold text-foreground">
               {getFileTypeLabel(demo.file_type)}
@@ -1761,8 +1763,9 @@ export function DemoCard({
             >
               Preview
             </button>
+            {demo.explore_edit ? <Link href={getContentDemoEditorHref(demo.id)} className="inline-flex min-h-9 items-center justify-center rounded-control border border-border px-3 text-xs font-semibold text-muted hover:bg-card-muted">Edit original</Link> : null}
             <Link
-              href={getContentDemoEditorHref(demo.id)}
+              href={demo.explore_edit ? getContentExploreDemoEditorHref(demo.id) : getContentDemoEditorHref(demo.id)}
               className="inline-flex min-h-9 items-center justify-center gap-1 rounded-control bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary-hover"
             >
               <Pencil className="size-3" aria-hidden="true" />
@@ -2352,7 +2355,7 @@ function DemoVideoPreviewModal({
           </div>
 
           <Link
-            href={getContentDemoEditorHref(demo.id)}
+            href={demo.explore_edit ? getContentExploreDemoEditorHref(demo.id) : getContentDemoEditorHref(demo.id)}
             className="inline-flex h-9 items-center justify-center gap-1.5 rounded-control bg-primary px-4 text-xs font-semibold text-white transition-colors hover:bg-primary-hover"
           >
             <Pencil className="size-3.5" />

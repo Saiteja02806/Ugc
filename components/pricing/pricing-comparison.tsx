@@ -22,7 +22,7 @@ type FeatureRow = {
 
 const featureMatrix: FeatureRow[] = [
   { label: "Daily hooks, Wall of Text & carousels", free: `During ${FREE_TRIAL_CONTENT_DAYS}-day trial`, starter: true, growth: true },
-  { label: "Review, edit & content library", free: true, starter: true, growth: true },
+  { label: "Review, edit & demo library", free: true, starter: true, growth: true },
   { label: "Instagram scheduling", free: "Unlimited during trial", starter: true, growth: true },
   { label: "Connect Instagram & YouTube", free: true, starter: true, growth: true },
   { label: "YouTube video scheduling", free: true, starter: true, growth: true },

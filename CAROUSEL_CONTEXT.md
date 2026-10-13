@@ -1,6 +1,66 @@
 # Carousel System Context
 
-Last updated: 2026-10-13
+Last updated: 2026-10-14
+
+## 2026-10-14 Hook Remix text overview and readiness (local, not deployed)
+
+- The Hook Demo panel uses the heading **Remix text**. Its introductory helper
+  and the explanatory paragraph beneath **Schedule video** are removed. Manual
+  text entry and the editable source remain available; the duplicate inner
+  Remix text label is removed.
+- The overview action is explicitly **Generate remix**. Its status reports
+  loading, preview, unavailable, missing context/text, ready, or a saved result
+  instead of claiming Available while its button is disabled.
+- The reference-text GET enables generation only when the website rollout flag,
+  OpenAI credential and receipt-storage credentials are configured. Generation
+  still resolves the signed-in account's saved business facts on the server,
+  includes the current source copy and optional instructions, preserves immutable
+  receipts, and requires review/application before changing the clip text.
+- Read-only checks on 14 October confirmed the website project has production
+  OpenAI and storage credentials configured, but no production
+  `EXPLORE_TEXT_REMIX_ENABLED` variable. Add `EXPLORE_TEXT_REMIX_ENABLED=true`
+  to the website's next approved deployment after confirming receipt storage
+  and provider/model readiness. The MCP service is a separate deployment and
+  reports its own provider unconfigured; its status must not be treated as the
+  website's provider status. No configuration change or deployment was made.
+- All 35 focused UI/API/source tests, the existing local remix browser suite,
+  web TypeScript and scoped ESLint pass. Live website inspection confirms the
+  earlier heading/helper copy is still deployed. No real provider generation
+  was submitted, so production generation acceptance remains a release check.
+
+## 2026-10-14 Demo library and Explore editing (local, not deployed)
+
+- The former Content screen is named Demo in navigation, its heading/metadata,
+  loading states and both editor return links. Explore and Trending demo pickers,
+  upload/save messages and edit breadcrumbs use the same name. Existing
+  `/library` URLs, API identities and storage contracts remain compatible.
+- Hook video's Demo picker is labelled Demo and lists only owner-verified
+  Content demo records with ready `demo_upload` media projections. Opening
+  selection retains its existing Creative Assets picker. Removed, unfinished,
+  foreign and ordinary generated/uploaded videos cannot enter the Demo picker.
+- New Demo uploads use the existing Content upload/completion APIs and their
+  1–60-second / 100 MB limits. A lost completion acknowledgement recovers the
+  same owned projection; it must not delete an already saved Content demo.
+  Existing restored Explore clips remain editable and schedulable.
+- Apply demo edits retains the full versioned `explore_clip_drafts` record,
+  including trim, text, original sound, added audio, crop/pan and music settings.
+  The Demo screen discovers those owner-scoped `hook:demo` revisions against its demo
+  records, shows saved edits and opens the same Explore editor for that demo.
+  Edit original preserves access to the older Content editor and its exports.
+  No lossy conversion into the older editor's trim/text-only draft is used.
+- Demo entry links select the requested owned demo independently of another
+  workflow's browser draft and restore its server-saved edits. A slow restore
+  cannot overwrite edits already made in the current session. Reading or
+  reopening saved edits does not submit a render or schedule a post.
+- Demo draft saving and owned audio restoration work independently of rendering
+  availability. Export and scheduling retain their existing capability checks.
+- Final opening-plus-demo outputs continue through the existing scheduling
+  renderer. This change does not register final posts as reusable demo footage,
+  copy historical outputs, change a worker contract, or require a migration.
+  Production acceptance remains pending deployment.
+- Validation and release boundaries are recorded in
+  `docs/demo-library-explore-fix-2026-10-14.md` (169 focused regressions, web
+  TypeScript and scoped lint with no errors).
 
 ## 2026-10-13 Landing slideshow showcase (local; deployment held by user)
 
@@ -6872,6 +6932,42 @@ and advertises only deployed workflows. See
   so deployment plus authenticated production acceptance remain pending. See
   docs/explore-action-audit-2026-10-13.md for validation evidence.
 
+## 2026-10-14 Reference video duration display (local)
+
+- Hook and Wall Create show the selected source length as a compact seconds
+  value in the Duration field, aligned with the other settings. For gallery
+  entries without saved duration, the existing video thumbnail reports loaded
+  media metadata before Generate; the field briefly shows Reading… meanwhile.
+- Duration metadata is scoped to the current video URL. Late events from a
+  replaced or removed video cannot change the selected reference's duration.
+  Owned uploads retain their saved duration. Gallery generation still sends
+  the registered ID and the backend independently verifies the actual MP4.
+- This presentation follow-up is local and not deployed. No paid generation
+  or publication was submitted. Focused request/state tests cover metadata,
+  duration-based estimates and stale selections alongside existing delivery.
+
+## 2026-10-14 Direct reference removal controls (local)
+
+- Selected Explore image and video references expose a small × in the top
+  corner. The separate + stays at the bottom corner to add or replace guidance.
+  Each image in a collection removes only itself and preserves the remaining
+  order. Gallery videos clear their Recreate selection; uploaded videos clear
+  their attachment. Neither action deletes saved library assets.
+- An explicit cleared selection also suppresses the initial URL/preview
+  reference. Removing guidance cannot reveal the initial gallery clip again;
+  choosing another Recreate card establishes a new selection normally.
+- Talking Head + Demo, Hook, Wall of Text, shared audio reference tiles and
+  standalone video generation use this placement. Reading/uploading references
+  and disabled generation controls cannot remove accepted guidance mid-request.
+- This follow-up is local and not deployed. No paid generation or publishing
+  was submitted for the UI checks.
+- Validation: 168 focused reference/form/workspace tests, TypeScript and scoped
+  lint pass. Desktop browser checks cover all three Explore video workflows;
+  mobile Talking Head + Demo and Hook checks pass with Webpack. The final Wall
+  mobile run could not finish while its client modules were still compiling
+  in the shared development worktree. Concurrent caption imports also prevent
+  the Turbopack preview from resolving worker `.js` references to `.ts` source.
+
 ## Preserved production-branch history
 
 The records below are retained from the deployed branch during release reconciliation. Later dated release receipts above remain authoritative for current status.
@@ -6883,3 +6979,17 @@ The records below are retained from the deployed branch during release reconcili
 - The additive service-only transaction records immutable accepted request inputs/results atomically with canonical saves or metadata-only removal. Recovery returns historical receipts before current write gates, plan status or source readiness and never reapplies an older replacement over newer website edits. Existing website RPCs, Carousel generation/matching/renderers and publishing behavior are preserved.
 - Explore v2 MCP saves share existing owned-ready-image validation, exact ordering and fingerprints. Catalogue guidance does not enter outputs implicitly. This adapter saves already rendered images; browser-only text-bearing slideshow export still needs a separate backend workflow.
 - MCP_LIBRARY_WRITES_ENABLED defaults off. The migration, hosted rollout and intended authenticated user workflow require separate verification. Offline fixture/SDK tests are not production acceptance and no customer media is generated for connectivity checks.
+
+## 2026-10-13 Hook library hidden in Slideshow Edit (local, explicitly not deployed)
+
+- The customer editor no longer mounts the Hook library folder or requests its
+  catalogue. The description refers only to slide uploads and app screenshots.
+- Existing Hook catalogue assets, category sourcing, stored edits, authenticated
+  compatibility API and renderer contracts are retained. No image, category row
+  or customer edit is deleted or rewritten.
+- The current endpoint merges the fixed 15 Hyper Hooks with active hooks for the
+  Carousel's category. That merge can increase the visible folder as category
+  assets are added; specific newly uploaded image identities have not been
+  reconciled during this check.
+- The user explicitly asked that this UI change not be deployed. It was prepared
+  after deployment source 07a4e516 was frozen and is outside that release.

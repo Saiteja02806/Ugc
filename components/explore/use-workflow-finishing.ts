@@ -67,12 +67,12 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
       setOutput(asset);
     }
   }, [ownerId]);
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (quiet = false) => {
     if (!enabled || !ownerId || !saved.current || working.current || !active.current) return;
-    working.current = true; setBusy(true);
+    working.current = true; if (!quiet) setBusy(true);
     try { await accept(await requestFinish(deps(), saved.current)); }
     catch (e) { if (active.current) setError(e instanceof Error ? e.message : "Could not recover your edit."); }
-    finally { working.current = false; if (active.current) setBusy(false); }
+    finally { working.current = false; if (!quiet && active.current) setBusy(false); }
   }, [enabled, ownerId, accept, deps]);
   useEffect(() => {
     if (!enabled || !ownerId) return;
@@ -85,7 +85,7 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
         setRecoveryEntries(readFinishRecovery(localStorage.getItem(finishRecoveryStorageKey(storageKey)), ownerId, kind));
         if (saved.current) onRestoreOptions?.({ subtitles: !!saved.current.draft.subtitles, style: saved.current.draft.subtitles?.style ?? "clean", backgroundMusic: !!saved.current.draft.backgroundAssetId, placement: saved.current.draft.subtitles?.placement ?? "bottom", ...(saved.current.draft.subtitles?.corrections ? { corrections: saved.current.draft.subtitles.corrections } : {}) });
         if (saved.current) onRestoreDraft?.(saved.current.draft);
-        setSavedEntry(saved.current); setRestored(true); void refresh();
+        setSavedEntry(saved.current); setRestored(true); void refresh(true);
       } catch (e) { setError(e instanceof Error ? e.message : "Could not verify the saved edit."); }
     });
     return () => { stopped = true; };
@@ -98,13 +98,13 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
     // failed. Recover that same result without dispatching another render.
     const timer = setInterval(() => {
       if (fastStatus && typeof document !== "undefined" && document.visibilityState === "hidden") return;
-      void refresh();
+      void refresh(true);
     }, fastStatus ? 1000 : 4000);
     return () => clearInterval(timer);
   }, [needsRecovery, refresh, fastStatus]);
   useEffect(() => {
     if (!needsRecovery || typeof window === "undefined") return;
-    const recover = () => { void refresh(); };
+    const recover = () => { void refresh(true); };
     const visible = () => { if (document.visibilityState === "visible") recover(); };
     window.addEventListener("focus", recover);
     window.addEventListener("online", recover);

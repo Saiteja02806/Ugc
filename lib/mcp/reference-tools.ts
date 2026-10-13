@@ -51,7 +51,7 @@ export function registerReferenceMcpTools(server: McpServer) {
     description:"Read reference/text-remix access and runtime readiness without initializing credits, extracting text or calling a provider.",
     inputSchema:z.strictObject({}), outputSchema:z.strictObject({ catalogue_available:z.literal(true), text_access:z.enum(["allowed","initialization_required"]),
       remix_available:z.boolean(), remix_enabled:z.boolean(), provider_configured:z.boolean(), storage_configured:z.boolean(), business_context_ready:z.boolean(),
-      formats:z.array(format), max_instructions_characters:z.literal(2000), max_source_characters:z.literal(6000), max_source_blocks:z.literal(20), daily_request_limit:z.literal(20), quota_window_hours:z.literal(24), required_write_scope:z.literal("creative:write") }),
+      formats:z.array(format), max_instructions_characters:z.literal(2000), max_source_characters:z.literal(6000), max_source_blocks:z.literal(20), daily_request_limit:z.literal(20), quota_window_hours:z.literal(24), required_write_scope:z.literal("generation:write"), required_brand_scope:z.literal("brand:read") }),
     annotations:readOnly, scopeChallenge:requireScopes("account:read"), _meta:oauthMetadata("account:read"),
   },async (_args,ctx) => executeTool(async () => {
     const owner = principal(ctx,"account:read"), allowed = await access(owner), profile = await getBusinessProfileForUser(owner);
@@ -61,7 +61,7 @@ export function registerReferenceMcpTools(server: McpServer) {
     const ready = Boolean(profile?.context.businessName && profile.context.productSummary);
     return { catalogue_available:true, text_access:allowed.allowed ? "allowed" : "initialization_required", remix_available:(allowed.allowed || allowed.initializationRequired) && enabled && provider && storage && ready,
       remix_enabled:enabled, provider_configured:provider, storage_configured:storage, business_context_ready:ready, formats:["hook","wall_text","slideshow"],
-      max_instructions_characters:2000, max_source_characters:6000, max_source_blocks:20, daily_request_limit:20, quota_window_hours:24, required_write_scope:"creative:write" };
+      max_instructions_characters:2000, max_source_characters:6000, max_source_blocks:20, daily_request_limit:20, quota_window_hours:24, required_write_scope:"generation:write", required_brand_scope:"brand:read" };
   }));
   server.registerTool("list_references",{
     description:"Browse the application's published Hook, Wall-of-Text and slideshow reference catalogue, including slide IDs and supplied paired soundtrack metadata. Catalogue identities are distinct from owned media IDs; this does not upload, transcribe or render anything.",
@@ -86,9 +86,10 @@ export function registerReferenceMcpTools(server: McpServer) {
   server.registerTool("remix_reference_text",{
     description:"Generate and save a requested business-specific text remix through the application's same provider/claim service. May use provider allowance. Save the caller's stable requestKey and exact inputs before calling; recover interrupted or uncertain work with get_text_remix. First-use submission may initialize the application's standard one-time free allowance. This does not edit a draft or render media.",
     inputSchema:RemixRequestSchema, outputSchema:resultSchema,
-    annotations:{ readOnlyHint:false, destructiveHint:true, openWorldHint:true, idempotentHint:true }, scopeChallenge:requireScopes("creative:write"), _meta:oauthMetadata("creative:write"),
+    annotations:{ readOnlyHint:false, destructiveHint:true, openWorldHint:true, idempotentHint:true }, scopeChallenge:requireScopes("generation:write","brand:read"), _meta:oauthMetadata("generation:write",{securitySchemes:[{type:"oauth2",scopes:["generation:write","brand:read"]}]}),
   },async (args,ctx) => executeTool(async () => {
-    const owner = principal(ctx,"creative:write");
+    const owner = principal(ctx,"generation:write");
+    principal(ctx,"brand:read");
     if (process.env.MCP_TEXT_REMIX_ENABLED !== "true") throw new ToolFailure("REMIX_UNAVAILABLE","IDE text-remix creation is not enabled. Saved results remain readable.");
     // Explicit new work follows website first-use access; catalogue/history reads never grant credits.
     await requireAccess(owner,true);

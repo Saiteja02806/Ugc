@@ -68,7 +68,7 @@ const { createMcpHandler, McpServer }=await import("@modelcontextprotocol/server
 const { registerReferenceMcpTools, registeredReferenceMcpTools }=await import("../lib/mcp/reference-tools.ts");
 const handler=createMcpHandler(()=>{const server=new McpServer({name:"reference-fixture",version:"1.0.0"});registerReferenceMcpTools(server);return server;},{legacy:"stateless"});
 let callId=0;
-async function rpc(method,params,scopes=["account:read","assets:read","creative:write","jobs:read"],uid=owner) {
+async function rpc(method,params,scopes=["account:read","assets:read","generation:write","brand:read","jobs:read"],uid=owner) {
   const request=new Request("https://mcp.getugcpilot.com/mcp",{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json, text/event-stream"},body:JSON.stringify({jsonrpc:"2.0",id:++callId,method,params})});
   const response=await handler.fetch(request,{authInfo:{token:"fixture-not-a-real-token",clientId:"fixture-client",scopes,extra:{firebaseUid:uid}}});
   const text=await response.text(),line=text.split("\n").find(l=>l.startsWith("data: "));return JSON.parse(line?line.slice(6):text);
@@ -81,7 +81,7 @@ beforeEach(()=>{allowed=true;planError=false;initializationNeeded=false;allowanc
 test("actual MCP discovery declares six scoped tools and the provider write",async()=>{
   const discovered=(await rpc("tools/list",{})).result.tools;
   assert.deepEqual(discovered.map(t=>t.name).sort(),[...registeredReferenceMcpTools].sort());
-  for(const tool of discovered){assert.equal(tool._meta.securitySchemes[0].type,"oauth2");assert.equal(tool._meta.securitySchemes[0].scopes.length,1);assert.equal(tool.annotations.readOnlyHint,tool.name!=="remix_reference_text");}
+  for(const tool of discovered){assert.equal(tool._meta.securitySchemes[0].type,"oauth2");assert.equal(tool._meta.securitySchemes[0].scopes.length,tool.name==="remix_reference_text"?2:1);assert.equal(tool.annotations.readOnlyHint,tool.name!=="remix_reference_text");}
   const write=discovered.find(t=>t.name==="remix_reference_text");assert.equal(write.annotations.idempotentHint,true);assert.equal(write.annotations.openWorldHint,true);
   error(await call("remix_reference_text",input(),["assets:read"]));assert.equal(providerCalls,0);assert.equal(receipts.size,0);
 });
@@ -164,4 +164,13 @@ test("first intended remix initializes the website allowance; capability/history
   const submitted=(await call("remix_reference_text",input())).structuredContent;assert.equal(submitted.outcome,"completed");assert.equal(allowanceInitializations,1);assert.equal(providerCalls,1);
   const readsBefore=planReads.length;await call("get_text_remix",{request_key:id});assert.equal(allowanceInitializations,1);assert.equal(planReads.length,readsBefore);
   assert.ok(planReads.some(r=>r.options.initializeFreeCredits===true&&r.options.refreshCredits===false));
+});
+
+test("business-grounded provider submission needs generation AND brand consent before access or claims",async()=>{
+  for(const scopes of [["creative:write","brand:read"],["generation:write"],["brand:read"]]) {
+    error(await call("remix_reference_text",input(),scopes));
+    assert.equal(planReads.length,0);assert.equal(profileOwners.length,0);assert.equal(receipts.size,0);assert.equal(providerCalls,0);
+  }
+  const tools=(await rpc("tools/list",{})).result.tools,tool=tools.find(t=>t.name==="remix_reference_text");
+  assert.deepEqual(tool._meta.securitySchemes[0].scopes,["generation:write","brand:read"]);
 });

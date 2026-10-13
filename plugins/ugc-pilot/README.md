@@ -1,6 +1,6 @@
-# UGC Pilot private beta — 0.1.11 candidate
+# UGC Pilot private beta — 0.1.12 candidate
 
-Draft UGC copy and video prompts in ordinary language, then use your connected UGC Pilot account when you ask to generate media. This package includes thirteen skills covering connection, generation, media transfer, five creative workflows, video finishing, shared Edit drafts/export, speech/private audio transfer, application references, Creative Asset groups, and saved Library outputs where enabled.
+Draft UGC copy and video prompts in ordinary language, then use your connected UGC Pilot account when you ask to generate media. This package includes fourteen skills covering connection, generation, media transfer, five creative workflows, video finishing, shared Edit drafts/export, speech/private audio transfer, application references, Creative Asset groups, and saved Library outputs where enabled.
 
 The package points to the existing hosted MCP at **https://mcp.getugcpilot.com/mcp**. It includes no server executable, credentials, or automatic installation script. Generation uses your UGC Pilot plan and credits, separately from your AI subscription.
 
@@ -40,6 +40,10 @@ The AI selects skills by deliverable and context, not fixed command keywords. Co
 
 Each workflow checks live capabilities. Reference remix, group and Library writes are disabled in the current production release; reads and existing receipt recovery are separate. Do not enable rollout flags or silently substitute another workflow. A published package, discovered tool, and successful installed-host execution are different evidence.
 
+## Account defaults where deployed
+
+Use the [account workflow](skills/manage-ugc-account/SKILL.md) for publishing defaults, unset timezone initialization and settings receipts. These tools require the additive account-settings migration; writes also require the separate `account:write` consent and write gate. Reads never initialize preferences. Existing scheduled posts and initialized timezones are preserved. Business Context, onboarding, logos/screenshots and social-account operations remain separate work.
+
 ## Try it
 
 1. “Use UGC Pilot to check my account, credits, and available generation options. Do not generate anything.”
@@ -47,7 +51,7 @@ Each workflow checks live capabilities. Reference remix, group and Library write
 3. “Animate that image into one five-second vertical video with a slow camera push-in. Return the finished video link.”
 4. “Check the progress of the UGC Pilot job we already started. Do not create a new generation.”
 
-The released server contract contains **73 tools**. Existing conversations can retain an older cached catalogue. Tool discovery and live capability checks are authoritative; installing this package does not enable server features or refresh a cached catalogue.
+The released server contract contains **73 tools**; this account-settings candidate registers **79** after its server/schema release. Existing conversations can retain an older cached catalogue. Tool discovery and live capability checks are authoritative; installing this package does not enable server features or refresh a cached catalogue.
 
 - Account/brand reads, owned visual media, image generation and short-video generation. Counts are 1, 2 or 4; clips are 3–10 seconds and prompts have a 1,000-character limit. Check live costs and options before generation.
 - Owned Demo registration/list/get/delete, upload reservation lookup/list/renewal, and server probing before readiness. The helper preserves reservation intent and transfer confirmation separately.

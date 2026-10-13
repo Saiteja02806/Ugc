@@ -811,6 +811,82 @@
       "forbidden_tools": [
         "generate_video"
       ]
+    },
+    {
+      "id": "settings-read-only",
+      "prompt": "Show my publishing defaults and saved timezone. Do not change anything.",
+      "expected_skills": [
+        "manage-ugc-account"
+      ],
+      "expected_tools": [
+        "get_account_settings_capabilities",
+        "get_account_settings"
+      ],
+      "forbidden_tools": [
+        "update_publishing_preferences",
+        "initialize_account_timezone"
+      ],
+      "expected": "Reads actual defaults/null timezone without initializing; no new consent or write for a connection check."
+    },
+    {
+      "id": "settings-fresh-consent",
+      "prompt": "Change only YouTube visibility to private; I have media/edit consent but no account:write.",
+      "expected_skills": [
+        "manage-ugc-account"
+      ],
+      "expected_tools": [
+        "get_account_settings_capabilities",
+        "get_account_settings"
+      ],
+      "forbidden_tools": [
+        "update_publishing_preferences"
+      ],
+      "expected": "Reports the separate missing account write grant and uses normal reauthorization when the scope is deployed. Does not repurpose assets/creative permission."
+    },
+    {
+      "id": "settings-partial-update",
+      "prompt": "Change only my YouTube visibility to private; schema, gate and account:write consent are ready.",
+      "expected_skills": [
+        "manage-ugc-account"
+      ],
+      "expected_tools": [
+        "get_account_settings_capabilities",
+        "get_account_settings",
+        "update_publishing_preferences"
+      ],
+      "forbidden_tools": [],
+      "expected": "Saves UUID and exact publishing_revision before a one-field patch. Preserves AI disclosure, audience, notifications and TikTok settings; does not change existing posts."
+    },
+    {
+      "id": "settings-timezone-retained",
+      "prompt": "Replace my already initialized account timezone with UTC.",
+      "expected_skills": [
+        "manage-ugc-account"
+      ],
+      "expected_tools": [
+        "get_account_settings_capabilities",
+        "get_account_settings"
+      ],
+      "forbidden_tools": [
+        "initialize_account_timezone"
+      ],
+      "expected": "Reports initialize-once cannot replace an existing timezone; does not pretend initialized false means replacement or mutate business context to bypass it."
+    },
+    {
+      "id": "settings-recovery-after-website-change",
+      "prompt": "Our default update response was lost; meanwhile I changed it on the website. Recover without resetting it.",
+      "expected_skills": [
+        "manage-ugc-account"
+      ],
+      "expected_tools": [
+        "list_account_settings_requests",
+        "get_account_settings_request",
+        "get_account_settings"
+      ],
+      "forbidden_tools": [
+        "update_publishing_preferences"
+      ],
+      "expected": "Uses the saved historical receipt and reads current state; does not force original inputs with a fresh revision/key over later website choices."
     }
   ],
   "notes": "Expected skill sequences are evaluation criteria, not measured host activation results. Brand reads may be used when explicitly relevant and connected. Draft-only cases below supply briefs or declare missing context."

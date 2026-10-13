@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ugc-pilot",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "Create UGC media, finish videos, edit drafts, manage groups and saved Library outputs, and remix application references through UGC Pilot where enabled.",
   "author": {
     "name": "UGC Pilot",
@@ -38,7 +38,8 @@
           "Speech, private audio transfer and editing attachments where enabled",
           "Application reference catalogue and saved text remix where enabled",
           "Creative Asset groups and membership where enabled",
-          "Saved Carousel/slideshow Library management where enabled"
+          "Saved Carousel/slideshow Library management where enabled",
+          "Account publishing defaults and timezone initialization with separate consent where enabled"
         ],
         "logo": "./assets/logo.png",
         "composerIcon": "./assets/logo.png",
@@ -100,7 +101,7 @@
         }
       },
       "publication": {
-        "release_notes": "Adds three portable workflows for the released reference, Creative Asset group and application Library tools. Preserves distinct media/source identities, exact revisions, stable request recovery and disabled-write behavior. The Codex existing-hook trim/demo/composition/local-download test passed with the previous helper; new workflows and Claude Code acceptance remain pending. No server gates are activated by this package."
+        "release_notes": "Adds account-default read/update/recovery workflow for the gated account-settings backend. Writes need fresh account:write consent, exact revisions and durable request UUIDs. Existing posts, selected social-account restrictions and initialized timezone choices are preserved. Package installation does not apply the migration or enable writes; hosted acceptance remains pending."
       }
     }
   }

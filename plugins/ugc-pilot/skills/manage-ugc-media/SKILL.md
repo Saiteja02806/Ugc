@@ -38,3 +38,7 @@ For missing authentication or insufficient permissions, use the client's OAuth c
 ## Audio recordings and preferences
 
 For voice catalogue/preferences, saved private audio, local audio upload/download or importing a selected recording into a video, read [audio workflow](references/audio-workflow.md). Its helper is separate from visual uploads and accepts the audio API descriptor rather than `create_upload`. Use live capabilities and preserve the user's selected purpose, file, audio and stable request identities.
+
+## Business logos
+
+For a supplied local business logo, read [business logo workflow](references/business-logo-workflow.md). It uses dedicated recoverable reservations and a separate helper, not generic image upload. Confirmation verifies bytes before an intended onboarding attachment; screenshots remain separate work.

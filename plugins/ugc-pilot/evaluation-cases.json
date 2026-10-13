@@ -1005,6 +1005,54 @@
         "mutate_business_onboarding"
       ],
       "expected": "Reports disabled writes and preserves intended source facts; does not change gates or bypass consent."
+    },
+    {
+      "id": "business-logo-local-transfer",
+      "prompt": "Upload this local PNG as my business logo, then attach it to my saved business setup. Keep my other answers.",
+      "expected_skills": [
+        "manage-ugc-media",
+        "onboard-ugc-business"
+      ],
+      "expected_tools": [
+        "get_business_logo_upload_capabilities",
+        "create_business_logo_upload",
+        "renew_business_logo_upload",
+        "confirm_business_logo_upload",
+        "get_business_onboarding",
+        "mutate_business_onboarding"
+      ],
+      "expected": "Preserves local UUID/file checksum and durable reservation, transfers through stdin-only signed link, verifies actual bytes before attaching its logo key with fresh onboarding fence and consent."
+    },
+    {
+      "id": "business-logo-lost-acknowledgement",
+      "prompt": "My business-logo upload timed out. Recover the same reservation before trying any upload again.",
+      "expected_skills": [
+        "manage-ugc-media"
+      ],
+      "expected_tools": [
+        "get_business_logo_upload",
+        "confirm_business_logo_upload"
+      ],
+      "forbidden_tools": [
+        "create_business_logo_upload"
+      ],
+      "expected": "Recovers the original upload UUID and confirms existing bytes before transfer renewal; never assumes a timeout means PUT failed or duplicates a reservation."
+    },
+    {
+      "id": "business-logo-disabled",
+      "prompt": "Upload my logo but the dedicated business media write gate is disabled.",
+      "expected_skills": [
+        "manage-ugc-media"
+      ],
+      "expected_tools": [
+        "get_business_logo_upload_capabilities"
+      ],
+      "forbidden_tools": [
+        "create_business_logo_upload",
+        "renew_business_logo_upload",
+        "confirm_business_logo_upload"
+      ],
+      "expected": "Reports disabled writes and preserves the supplied file/intended change without bypassing consent, changing gates or substituting a generic image asset."
     }
   ],
   "notes": "Expected skill sequences are evaluation criteria, not measured host activation results. Brand reads may be used when explicitly relevant and connected. Draft-only cases below supply briefs or declare missing context."

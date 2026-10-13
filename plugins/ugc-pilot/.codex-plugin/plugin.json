@@ -1,6 +1,6 @@
 {
   "name": "ugc-pilot",
-  "version": "0.1.14",
+  "version": "0.1.15",
   "description": "Create UGC media, finish videos, edit drafts, manage groups and saved Library outputs, and remix application references through UGC Pilot where enabled.",
   "author": {
     "name": "UGC Pilot",
@@ -12,7 +12,7 @@
   "interface": {
     "displayName": "UGC Pilot",
     "shortDescription": "Images and videos in your AI",
-    "longDescription": "Create media and speech using UGC Pilot where enabled. Upload local clips/audio from a supported IDE, attach demos and retrieve finished videos. Open, save and export Edit drafts. Browse application references, Creative Asset groups and saved Carousel/slideshow Library outputs; remix text and change groups/Library when their gates permit. Read and edit shared Business Context drafts and apply reviewed changes for future content with separate brand consent where enabled. Resume business onboarding with saved answers and durable analysis/completion where the separate brand write gate permits. Slideshow text rendering, voice cloning and social publishing remain unavailable through MCP. Private beta; updating this package does not activate server features.",
+    "longDescription": "Create media and speech using UGC Pilot where enabled. Upload local clips/audio from a supported IDE, attach demos and retrieve finished videos. Open, save and export Edit drafts. Browse application references, Creative Asset groups and saved Carousel/slideshow Library outputs; remix text and change groups/Library when their gates permit. Read and edit shared Business Context drafts and apply reviewed changes for future content with separate brand consent where enabled. Resume business onboarding with saved answers and durable analysis/completion where the separate brand write gate permits. Upload a supplied business logo through a recoverable local transfer and server verification where the business-media gate permits. Slideshow text rendering, voice cloning and social publishing remain unavailable through MCP. Private beta; updating this package does not activate server features.",
     "developerName": "UGC Pilot",
     "websiteURL": "https://getugcpilot.com",
     "supportURL": "https://getugcpilot.com/contact",

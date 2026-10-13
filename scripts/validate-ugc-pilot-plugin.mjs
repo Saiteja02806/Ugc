@@ -134,7 +134,7 @@ export function validatePackage({ submission = false } = {}) {
   assert(portableInterface);
   assert.deepEqual(codex.extensions?.["com.openai"], portableExtension, "Compatibility onboarding/review metadata differs");
 
-  const knownTools = new Set(["read", "mutation", "generation", "finishing", "demo", "upload-recovery", "operation", "edit-draft", "edit-export", "audio", "audio-video-import", "reference", "creative-group", "library-content", "account-settings", "business-context", "business-onboarding"].flatMap((kind) => {
+  const knownTools = new Set(["read", "mutation", "generation", "finishing", "demo", "upload-recovery", "operation", "edit-draft", "edit-export", "audio", "audio-video-import", "reference", "creative-group", "library-content", "account-settings", "business-context", "business-onboarding", "business-logo"].flatMap((kind) => {
     const code = fs.readFileSync(path.join(root, `lib/mcp/${kind}-tools.ts`), "utf8");
     if (kind === "business-context") {
       const inventory=code.match(/registeredBusinessContextMcpTools\s*=\s*(\[[^\]]+\])\s*as const/);
@@ -156,7 +156,7 @@ export function validatePackage({ submission = false } = {}) {
     }
     return [...code.matchAll(/registerTool\("([a-z_]+)"/g)].map((match) => match[1]);
   }));
-  assert.equal(knownTools.size, 90, "Review the package contract when the MCP tool surface changes");
+  assert.equal(knownTools.size, 96, "Review the package contract when the MCP tool surface changes");
   const reviewReadiness = validateOpenAiMetadata(plugin, knownTools, { submission });
   const skillNames = new Set(packageFiles.filter((relative) => relative.endsWith("/SKILL.md")).map((relative) => path.basename(path.dirname(relative))));
   for (const item of json("evaluation-cases.json").cases) {

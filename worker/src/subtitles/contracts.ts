@@ -1,7 +1,7 @@
 /** Shared timed-subtitle contracts for the lab and the owned Explore worker. */
 export const SUBTITLE_VERSION = "subtitles-v1";
-import { isSubtitleStyle, SUBTITLE_STYLES, type SubtitleStyle } from "./styles.js";
-export { SUBTITLE_STYLES, type SubtitleStyle } from "./styles.js";
+import { isSubtitleStyle, SUBTITLE_STYLES, type SubtitleStyle } from "./styles.ts";
+export { SUBTITLE_STYLES, type SubtitleStyle } from "./styles.ts";
 export const SUBTITLE_PLACEMENTS = ["bottom", "middle", "top"] as const;
 export type SubtitlePlacement = (typeof SUBTITLE_PLACEMENTS)[number];
 /** Shared preview/export anchors. Existing Top/Bottom geometry stays unchanged. */

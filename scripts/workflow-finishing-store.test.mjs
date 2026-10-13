@@ -12,7 +12,9 @@ function load(file, imports = {}, globals = {}) {
   return exports;
 }
 const edit = load("worker/src/lib/explore-format-edit.ts", { "./edit-overlay-render-spec.ts": load("worker/src/lib/edit-overlay-render-spec.ts") });
-const contract = load("worker/src/lib/explore-finishing-contract.ts", { "../subtitles/styles.ts": load("worker/src/subtitles/styles.ts"), "./explore-format-edit.ts": edit });
+const subtitleContracts = load("worker/src/subtitles/contracts.ts", { "./styles.js": load("worker/src/subtitles/styles.ts"), "./styles.ts": load("worker/src/subtitles/styles.ts") });
+const corrections = load("worker/src/subtitles/corrections.ts", { "./contracts.js": subtitleContracts, "./contracts.ts": subtitleContracts });
+const contract = load("worker/src/lib/explore-finishing-contract.ts", { "../subtitles/styles.ts": load("worker/src/subtitles/styles.ts"), "./explore-format-edit.ts": edit, "../subtitles/contracts.ts": subtitleContracts, "../subtitles/corrections.ts": corrections });
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12,"0")}`;
 const draft = { version: 1, kind: "phone", sourceAssetId: id(1), demoAssetId: null, demoAudioAssetId: null, demoAudioPlayback: "once",
   backgroundAssetId: null, backgroundPlayback: "once", subtitles: null };
@@ -31,10 +33,10 @@ function harness({ row = receipt, readError = null, rpcError = null } = {}) {
   return {store:new api.ExploreFinishingRequestStore(db),calls};
 }
 
-test("app store reads only owner-matched receipt fields, never transcript/provider claim or storage details", async () => {
+test("app store reads owner-matched receipt and caption fields, never provider claims or storage details", async () => {
   const h = harness(), result = await h.store.read(owner,key);
   assert.deepEqual(plain(result),receipt); assert.deepEqual(plain(h.calls),[["from","explore_video_finishes"],
-    ["select","user_id,request_key,fingerprint,draft,job_id,output_asset_id,status"],["eq","user_id",owner],["eq","request_key",key]]);
+    ["select","user_id,request_key,fingerprint,draft,job_id,output_asset_id,status,transcript,speech_duration_ms"],["eq","user_id",owner],["eq","request_key",key]]);
   assert.equal(await harness({row:null}).store.read(owner,key),null);
 });
 
@@ -43,8 +45,9 @@ test("shared receipt parser rejects foreign, stale, malformed and unsupported re
     {draft:{...draft,sourceAssetId:"https://other/video"}},{draft:{...draft,provider:"another-paid-provider"}}]) {
     assert.throws(()=>contract.parseExploreFinishReceipt({...receipt,...change},owner,key));
   }
-  const result = contract.parseExploreFinishReceipt({...receipt,transcript:{private:"speech"},transcription_provider_key:"private-policy"},owner,key);
-  assert.equal("transcript" in result,false); assert.equal("transcription_provider_key" in result,false);
+  assert.throws(() => contract.parseExploreFinishReceipt({...receipt,transcript:{private:"speech"},transcription_provider_key:"private-policy"},owner,key));
+  const result = contract.parseExploreFinishReceipt({...receipt,transcription_provider_key:"private-policy"},owner,key);
+  assert.equal("transcription_provider_key" in result,false);
 });
 
 test("app reservation calls only the reviewed atomic owner/draft RPC and checks its exact result before returning", async () => {

@@ -14,10 +14,11 @@ export type WorkflowCreateAction = { disabled: boolean; busy: boolean; message: 
 export type WorkflowSection = "create" | "edit" | "schedule";
 
 /** Panels stay mounted across sections so references, settings and drafts survive. */
-export function WorkflowCreationPanel({ kind, section, children, generation, create, edit, schedule, heading, actionContent }: { kind: "hook" | "phone"; section: WorkflowSection; children: ReactNode; generation?: WorkflowGenerationView; create?: WorkflowCreateAction; edit?: WorkflowAction; schedule?: WorkflowAction; heading?: ReactNode; actionContent?: ReactNode }) {
+export function WorkflowCreationPanel({ kind, section, children, generation, create, edit, schedule, heading, navigation, actionContent }: { kind: "hook" | "phone"; section: WorkflowSection; children: ReactNode; generation?: WorkflowGenerationView; create?: WorkflowCreateAction; edit?: WorkflowAction; schedule?: WorkflowAction; heading?: ReactNode; navigation?: ReactNode; actionContent?: ReactNode }) {
   const createAction = section === "create" ? create : undefined;
   const action = section === "edit" ? edit : section === "schedule" ? schedule : undefined;
   return <section aria-label="Creation controls" data-section={section} className={cn(creation.controls, sections.controls)}>
+    {navigation}
     {heading}
     <div data-workflow-section-content className={creation.controlContent} role="region" aria-label="Workflow section settings">
       {children}
@@ -26,6 +27,7 @@ export function WorkflowCreationPanel({ kind, section, children, generation, cre
       {actionContent ?? <>
       <p id={`${kind}-preview-limits`} className={!action && section === "schedule" ? "sr-only" : "mb-2 text-xs leading-5 text-muted"}>{createAction ? createAction.message : action ? action.message : generation ? generation.message : <>Local preview · not saved or connected.<span className="sr-only"> Generation, music, subtitles and scheduling are not connected. Video rendering is also not connected.</span></>}</p>
       {action?.error ? <div className="mb-2"><p role="alert" className="text-xs leading-5 text-destructive">{action.error}</p><Button type="button" variant="ghost" disabled={action.busy} onClick={action.refresh}>Refresh status</Button></div> : null}
+      {action?.recoveryAvailable && !action.error ? <Button type="button" variant="ghost" disabled={action.busy} onClick={action.refresh}>Check saved requests</Button> : null}
       {generation?.error && section === "create" ? <div className="mb-2 space-y-1"><p role="alert" className="text-xs leading-5 text-destructive">{generation.error}</p><Button type="button" variant="ghost" className="h-8 text-xs" onClick={generation.refreshStatus}>Refresh status</Button></div> : null}
       {generation?.notice && section === "create" ? <p role="status" className="mb-2 text-xs leading-5 text-muted">{generation.notice}</p> : null}
       {createAction ? <Button type="button" disabled={createAction.disabled} aria-busy={createAction.busy} onClick={createAction.onAction} aria-describedby={`${kind}-preview-limits`} className={creation.primaryAction}>{createAction.busy ? "Uploading video…" : "Continue to edit"}</Button> : section === "create" && generation ? <Button type="button" disabled={generation.disabled} aria-busy={generation.busy} aria-label={kind === "hook" ? "Generate hook" : "Generate phone video"} aria-describedby={`${kind}-preview-limits`} className={creation.primaryAction} onClick={generation.onGenerate}>{generation.busy ? "Generating video…" : "Generate video"}</Button>

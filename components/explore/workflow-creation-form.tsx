@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Check, Plus } from "lucide-react";
+import { Check, Plus, UserRound, Video } from "lucide-react";
 import { useCallback, useId, useRef, useState, type ReactNode } from "react";
 
 import { WorkflowFilePicker, WorkflowMediaPlayer, type WorkflowAttachment } from "@/components/explore/hook-workflow-media-controls";
@@ -19,7 +19,6 @@ import studio from "@/components/explore/workflow-studio.module.css";
 import creation from "@/components/explore/workflow-creation.module.css";
 import sections from "@/components/explore/workflow-section-layout.module.css";
 import imagePreview from "@/components/explore/workflow-reference-preview.module.css";
-import focused from "@/components/explore/workflow-focused-composer.module.css";
 
 const OUTPUTS = AI_STUDIO_GENERATION_QUANTITIES.map((count) => ({ value: String(count), label: `${count} video${count > 1 ? "s" : ""}` }));
 const RATIOS = AI_STUDIO_VIDEO_ASPECT_RATIOS.map((ratio) => ({ value: ratio, label: ratio }));
@@ -45,28 +44,28 @@ export function WorkflowCreationForm({ kind, instructions, onInstructionsChange,
   const qualities = getAIStudioVideoResolutions(model).map((value) => ({ value, label: value }));
   const prefix = kind === "hook" ? "Hook" : "Phone video";
   const referenceCount = [creator.asset, videoReference.asset, audio.asset].filter(Boolean).length;
-  const qualityField = <SettingField label="Quality"><AiStudioSettingSelect ariaLabel={`${prefix} quality`} value={resolution} onChange={(value) => onGenerationSettingsChange({ resolution: parseAIStudioVideoResolution(value) })} options={qualities} /></SettingField>;
-  const quantityField = <SettingField label="Videos"><AiStudioSettingSelect ariaLabel={kind === "hook" ? "Number of hook videos" : "Number of phone videos"} value={String(quantity)} onChange={(value) => onGenerationSettingsChange({ quantity: parseAIStudioGenerationQuantity(Number(value)) })} options={OUTPUTS} /></SettingField>;
-  const ratioField = <SettingField label="Ratio"><AiStudioSettingSelect ariaLabel={`${prefix} aspect ratio`} value={aspectRatio} onChange={(value) => onGenerationSettingsChange({ aspectRatio: parseAIStudioVideoAspectRatio(value) })} options={RATIOS} /></SettingField>;
+  const qualityField = <SettingField label="Quality"><AiStudioSettingSelect fieldLayout="classic" ariaLabel={`${prefix} quality`} value={resolution} onChange={(value) => onGenerationSettingsChange({ resolution: parseAIStudioVideoResolution(value) })} options={qualities} /></SettingField>;
+  const quantityField = <SettingField label="Videos"><AiStudioSettingSelect fieldLayout="classic" ariaLabel={kind === "hook" ? "Number of hook videos" : "Number of phone videos"} value={String(quantity)} onChange={(value) => onGenerationSettingsChange({ quantity: parseAIStudioGenerationQuantity(Number(value)) })} options={OUTPUTS} /></SettingField>;
+  const ratioField = <SettingField label="Ratio"><AiStudioSettingSelect fieldLayout="classic" ariaLabel={`${prefix} aspect ratio`} value={aspectRatio} onChange={(value) => onGenerationSettingsChange({ aspectRatio: parseAIStudioVideoAspectRatio(value) })} options={RATIOS} /></SettingField>;
 
-  return <section aria-label={kind === "hook" ? "Hook composer" : "Phone video composer"} className={kind === "hook" ? focused.composer : creation.composer}>
+  return <section aria-label={kind === "hook" ? "Hook composer" : "Phone video composer"} className={creation.composer}>
     <h2 className="sr-only">Create</h2>
     {appScreenControl ? <section aria-label="App screen input" className={creation.finishRow}>
       <h3 className="text-sm font-medium">Inside the phone</h3>
       {appScreenControl}
     </section> : null}
-    <section aria-label="Optional references" className={sections.references}>
-      <div className={sections.referencesHeading}><h3>Generation references</h3><span>Optional{referenceCount ? ` · ${referenceCount} attached` : ""}</span>{referenceCount ? <span className={imagePreview.previewHelp}>Hover or tap to preview</span> : null}</div>
+    <section aria-label="Optional references" className={kind === "hook" ? creation.classicReferences : sections.references}>
+      <div className={sections.referencesHeading}><h3>{kind === "hook" ? "Optional references" : "Generation references"}</h3>{kind !== "hook" ? <span>Optional</span> : null}{referenceCount ? <span>{referenceCount} attached</span> : null}</div>
       <div className={creation.referenceGrid}>
-        <div className={sections.referenceCard}><h4>Image reference</h4><p>Appearance</p>
-        <CreatorPicker creator={creator} />
+        <div className={kind === "hook" ? creation.classicReference : sections.referenceCard}><h4 className={kind === "hook" ? "sr-only" : undefined}>Image reference</h4>{kind !== "hook" ? <p>Appearance</p> : null}
+        <CreatorPicker creator={creator} tile={kind === "hook"} />
         </div>
-        <div className={sections.referenceCard}><h4>Video reference</h4><p>Scene & motion</p>
+        <div className={kind === "hook" ? creation.classicReference : sections.referenceCard}><h4 className={kind === "hook" ? "sr-only" : undefined}>Video reference</h4>{kind !== "hook" ? <p>Scene & motion</p> : null}
         <div className={imagePreview.picker}>
         {videoReference.asset ? <WorkflowReferencePreview key={videoReference.asset.url} kind="video" url={videoReference.asset.url} name={videoReference.asset.name} media={<ReferenceVideoThumbnail url={videoReference.asset.url} />} /> : null}
         <Popover>
           <PopoverTrigger render={<Button type="button" variant="outline" aria-label="Choose video reference" aria-busy={videoReference.loading} data-state={videoReference.loading ? "loading" : videoReference.error ? "error" : videoReference.asset ? "selected" : "empty"} title={videoReference.asset?.name ?? "Choose an optional video reference"} className={cn(creation.referenceButton, imagePreview.action)} />}>
-            {!videoReference.asset ? <span className={creation.referenceLabel}>Choose video</span> : null}<Plus className={imagePreview.add} aria-hidden="true" />
+            {!videoReference.asset ? <>{kind === "hook" ? <Video aria-hidden="true" /> : null}<span className={creation.referenceLabel}>{kind === "hook" ? "Video reference" : "Choose video"}</span></> : null}<Plus className={imagePreview.add} aria-hidden="true" />
           </PopoverTrigger>
           <PopoverContent side="right" align="start" className={cn(studio.floating, creation.floating)}>
             <PopoverTitle>Video reference</PopoverTitle>
@@ -79,33 +78,32 @@ export function WorkflowCreationForm({ kind, instructions, onInstructionsChange,
         </Popover>
         </div>
         </div>
-        <div className={sections.referenceCard}><h4>Voice reference</h4><p>Vocal delivery</p>
-        <WorkflowAudioReference audio={audio} audioLabel={audioLabel} audioMode={audioMode} onAudioModeChange={onAudioModeChange} ownerId={ownerId} />
+        <div className={kind === "hook" ? creation.classicReference : sections.referenceCard}><h4 className={kind === "hook" ? "sr-only" : undefined}>Audio reference</h4>{kind !== "hook" ? <p>Vocal delivery</p> : null}
+        <WorkflowAudioReference audio={audio} audioLabel={audioLabel} audioMode={audioMode} onAudioModeChange={onAudioModeChange} ownerId={ownerId} tile={kind === "hook"} />
         </div>
       </div>
-      <p className={creation.sectionHelp}>References are optional. Video and voice guidance require Seedance 2.5.</p>
+      <p className={kind === "hook" ? "sr-only" : creation.sectionHelp}>References are optional. Video and voice guidance require Seedance 2.5.</p>
     </section>
     {creator.loading || videoReference.loading || audio.loading ? <p role="status" className={creation.sectionHelp}>Reading your reference…</p> : null}
     {creator.error || videoReference.error || audio.error ? <p role="alert" className="text-xs leading-5 text-destructive">{creator.error || videoReference.error || audio.error}</p> : null}
 
-    <div className={kind === "hook" ? focused.brief : creation.instructionsField}>
-      <label htmlFor={promptId} className="block text-sm font-medium">{kind === "hook" ? "What should the creator say and do?" : "Your instructions"}</label>
-      {kind === "hook" ? <p id={helperId}>Describe the words, delivery and setting.<span className="sr-only"> Text-only prompts are supported; reference images are optional.</span></p> : null}
+    <div className={creation.instructionsField}>
+      <label htmlFor={promptId} className="block text-sm font-medium">Your instructions</label>
+      {kind === "hook" ? <p id={helperId} className="sr-only">Describe the words, delivery and setting. Text-only prompts are supported; reference images are optional.</p> : null}
       <textarea id={promptId} name={`${kind}Instructions`} autoComplete="off" rows={4} value={instructions}
         onChange={(event) => onInstructionsChange(event.target.value)}
         placeholder={kind === "hook" ? "Example: A creator looks into the camera and says, “Still planning your day in five apps? Try this instead.” Use natural lighting, a close-up shot, and a casual, friendly tone." : "Example: A creator holds a phone toward the camera and says, “This app keeps my day in one place.” Show the attached app screen inside the phone. Use natural lighting and a casual, friendly delivery."} aria-describedby={helperId}
-        className={kind === "hook" ? focused.prompt : creation.prompt} />
+        className={creation.prompt} />
     </div>
     {kind === "phone" ? <p id={helperId} className="sr-only">Nothing is prefilled or rewritten. Your instructions stay unchanged. Text-only prompts are supported; reference images are optional.</p> : null}
 
     <section aria-label="Video settings" className={kind === "hook" ? "space-y-3" : "mt-4 border-t border-border pt-4"}>
-    <div role="group" aria-label={`${prefix} generation settings`} className={kind === "hook" ? focused.primarySettings : creation.settingsGrid}>
-      <SettingField label="Model"><AiStudioSettingSelect ariaLabel={`${prefix} model`} value={model} onChange={(value) => onGenerationSettingsChange({ model: parseAIStudioVideoModel(value) })} options={models} /></SettingField>
-      <SettingField label="Duration"><WorkflowDurationControl key={model} ariaLabel={`${prefix} duration`} model={model} value={duration} onChange={(duration) => onGenerationSettingsChange({ duration })} /></SettingField>
-      {kind === "phone" ? <>{qualityField}{quantityField}</> : null}
+    <div role="group" aria-label={`${prefix} generation settings`} className={creation.settingsGrid}>
+      <SettingField label="Model"><AiStudioSettingSelect fieldLayout="classic" ariaLabel={`${prefix} model`} value={model} onChange={(value) => onGenerationSettingsChange({ model: parseAIStudioVideoModel(value) })} options={models} /></SettingField>
+      <SettingField label="Duration"><WorkflowDurationControl fieldLayout="classic" key={model} ariaLabel={`${prefix} duration`} model={model} value={duration} onChange={(duration) => onGenerationSettingsChange({ duration })} /></SettingField>
+      {qualityField}{quantityField}
       {ratioField}
     </div>
-    {kind === "hook" ? <details className={focused.output}><summary>Output settings<span>{resolution} · {quantity} video{quantity === 1 ? "" : "s"}</span></summary><div role="group" aria-label="Output settings" className={focused.outputFields}>{qualityField}{quantityField}</div></details> : null}
     </section>
   </section>;
 }
@@ -114,7 +112,7 @@ function SettingField({ label, children }: { label: string; children: ReactNode 
   return <div className={creation.settingField}><span className="text-sm font-medium">{label}</span>{children}</div>;
 }
 
-function CreatorPicker({ creator }: { creator: WorkflowAttachment }) {
+function CreatorPicker({ creator, tile = false }: { creator: WorkflowAttachment; tile?: boolean }) {
   const [open, setOpen] = useState(false);
   const selected = CREATOR_REFERENCES.find((reference) => reference.src === creator.asset?.url);
   const label = selected ? `Creator ${CREATOR_REFERENCES.indexOf(selected) + 1}` : creator.asset ? "Custom creator" : "Creator";
@@ -122,7 +120,7 @@ function CreatorPicker({ creator }: { creator: WorkflowAttachment }) {
     {creator.asset ? <WorkflowReferencePreview key={creator.asset.url} url={creator.asset.url} name={creator.asset.name} /> : null}
     <Popover open={open} onOpenChange={setOpen}>
     <PopoverTrigger render={<Button type="button" variant="outline" className={cn(creation.referenceButton, imagePreview.action)} aria-busy={creator.loading} data-state={creator.loading ? "loading" : creator.error ? "error" : creator.asset ? "selected" : "available"} title={creator.asset?.name ?? "Choose an optional creator image"} aria-label={`Choose image, currently ${creator.asset ? label : "none selected"}`} />}>
-      {!creator.asset ? <span className={creation.referenceLabel}>Choose image</span> : null}<Plus className={imagePreview.add} aria-hidden="true" />
+      {!creator.asset ? <>{tile ? <UserRound aria-hidden="true" /> : null}<span className={creation.referenceLabel}>Choose image</span></> : null}<Plus className={imagePreview.add} aria-hidden="true" />
     </PopoverTrigger>
     <PopoverContent side="right" align="start" className={cn(studio.floating, creation.floating)}>
       <PopoverTitle>Choose image</PopoverTitle>

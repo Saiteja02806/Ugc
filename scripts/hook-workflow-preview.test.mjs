@@ -53,7 +53,7 @@ test("layout review cannot generate, render, upload or spend credits", () => {
 test("user-owned references and audio intent are separate from demo background audio", () => {
   assert.match(composer, /Upload creator/);
   assert.match(composer, /Attach video reference/);
-  assert.match(audioReference, /<PopoverTitle>Voice reference<\/PopoverTitle>/);
+  assert.match(audioReference, /<PopoverTitle>Audio reference<\/PopoverTitle>/);
   assert.match(audioReference, /Requires Seedance 2\.5 · Up to 30 seconds/);
   assert.match(workspace, /audioReference: hookAudio\.asset/);
   assert.match(workspace, /demoAudio=\{demoAudio\.asset\}/);
@@ -69,36 +69,24 @@ test("the workflow keeps user instructions authoritative and removes test-hook c
   assert.match(composer, /onInstructionsChange\(event\.target\.value\)/);
   assert.match(workspace, /onInstructionsChange=\{setInstructions\}/);
   assert.match(workspace, /useState\(""\)/);
-  assert.match(workspace, /Reference library/);
+  assert.doesNotMatch(workspace, /Reference library/);
   assert.match(workspace, /WorkflowCompositionPanel/);
   assert.doesNotMatch(workspace, /Try with a hook video|Use this hook|Hook selected|Build your video/);
 });
 
-test("the Library follows a full first-screen creation area and has no example media", () => {
-  assert.match(workspace, /data-hook-first-screen[^\n]*sections\.workspace/);
-  assert.ok(workspace.indexOf("<LibrarySection />") > workspace.indexOf("<HookWorkflowComposer"));
-  const library = workspace.slice(workspace.indexOf("function LibrarySection()"));
-  assert.match(library, /data-hook-library/);
-  assert.match(library, /No videos yet/);
-  assert.doesNotMatch(library, /<video|<Image|<img|\.mp4|poster=/);
-  assert.doesNotMatch(workspace, /RailTabButton|<[^>]+role="tab"/);
-});
-
-test("the Library shortcut scrolls and moves focus without changing the workflow", () => {
-  assert.match(workspace, /href="#hook-reference-library"/);
-  assert.match(workspace, />Library ↓<\/a>/);
-  assert.match(workspace, /library\.focus\(\{ preventScroll: true \}\)/);
-  assert.match(workspace, /library\.scrollIntoView/);
-  assert.match(workspace, /prefers-reduced-motion: reduce/);
-  assert.match(workspace, /id="hook-reference-library" tabIndex=\{-1\}/);
+test("Talking Head uses the requested compact panel without heading, preview toggle or empty library", () => {
+  assert.match(workspace, /data-hook-first-screen/);
+  assert.match(workspace, /const previewVisible = true/);
+  assert.doesNotMatch(workspace, /WorkflowSectionHeading|onTogglePreview|setPreviewOpen|LibrarySection|libraryShortcut|hook-reference-library/);
+  assert.match(workspace, /WorkflowSectionNavigation presentation="panel"/);
 });
 
 test("the creation form has visible labels and reflows without remounting settings", () => {
   for (const label of ["Model", "Duration", "Quality", "Videos", "Ratio"]) {
     assert.ok(composer.includes(`<SettingField label="${label}"`));
   }
-  assert.match(composer, /className=\{kind === "hook" \? focused\.prompt : creation\.prompt\}/);
-  assert.match(composer, /className=\{kind === "hook" \? focused\.primarySettings : creation\.settingsGrid\}/);
+  assert.match(composer, /className=\{creation\.prompt\}/);
+  assert.match(composer, /aria-label=\{`\$\{prefix\} generation settings`\} className=\{creation\.settingsGrid\}/);
   assert.match(composer, /One mounted form at every size/);
   assert.doesNotMatch(composer, /ResizeObserver|SettingsStrip/);
 });

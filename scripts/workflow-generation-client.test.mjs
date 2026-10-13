@@ -41,6 +41,17 @@ function harness(overrides = {}) {
   return { client, calls, uploads, tokens };
 }
 
+test("Talking Head and creator-phone preserve two/three requested videos through the request and response", async () => {
+  for (const kind of ["hook", "phone"]) for (const quantity of [2, 3]) {
+    let payload;
+    const actual = harness({ fetch: async (_url, init) => { payload = JSON.parse(init.body); return response(queued(quantity)); } });
+    const batch = await actual.client.generate(draft({ kind, settings: { ...settings.createWorkflowGenerationSettings(), quantity } }));
+    assert.equal(payload.quantity, quantity);
+    assert.equal(batch.jobs.length, quantity);
+    assert.equal(batch.partial, false);
+  }
+});
+
 test("text-only generation uses the existing authenticated API without requiring or inventing references", async () => {
   for (const kind of ["hook", "phone"]) {
     const actual = harness();

@@ -112,10 +112,10 @@ export async function extractSubtitleAudio(inputPath: string, outputPath: string
   if (!foundData) throw new SubtitleError("AUDIO_INVALID", "Extracted audio has no PCM samples.");
 }
 
-export async function renderSubtitleVideo(workDir: string, video: VideoInfo, tools: SubtitleTools, signal?: AbortSignal) {
+export async function renderSubtitleVideo(workDir: string, video: VideoInfo, tools: SubtitleTools, signal?: AbortSignal, preset: "medium" | "veryfast" = "medium") {
   const result = await runMediaCommand(tools.ffmpeg, ["-hide_banner", "-n", "-protocol_whitelist", "file,pipe", "-i", "source-video",
     "-vf", `scale=${video.width}:${video.height},setsar=1,ass=captions.ass:fontsdir=fonts`, "-map", `0:${video.videoIndex}`, "-map", `0:${video.audioIndex}`,
-    "-t", String(video.durationMs / 1000), "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p",
+    "-t", String(video.durationMs / 1000), "-c:v", "libx264", "-preset", preset, "-crf", "20", "-pix_fmt", "yuv420p",
     "-c:a", video.audioCodec === "aac" ? "copy" : "aac", "-movflags", "+faststart", "captioned.mp4"], { cwd: workDir, signal });
   if (/Glyph.*not found|failed to find.*glyph|fontselect: failed/iu.test(result.stderr)) throw new SubtitleError("FONT_UNAVAILABLE", "The selected fonts cannot render this transcript language.");
   const output = await probeVideo(join(workDir, "captioned.mp4"), tools, signal);

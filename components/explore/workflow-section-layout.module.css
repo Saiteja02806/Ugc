@@ -1,18 +1,21 @@
-/* Stage navigation shares the existing title row at every desktop size. */
+/* Workflow stages can sit in the compact control panel or an existing header. */
 .workspace { display: flex; min-width: 0; min-height: calc(100dvh - 4rem); flex-direction: column; container: workflow-sections / inline-size; }
-:global(.dark) .workspace.workspace { --background: #090c0e; --card: #14191d; --card-muted: #1c2329; --border: #343e47; --foreground: #edf1f5; --foreground-strong: #f7f9fb; --muted: #b0bdc9; --muted-subtle: #b0bdc9; }
+/* Theme colours come from AppShell, including portaled menus and dialogs. */
 .header { position: sticky; top: 0; z-index: 10; flex-wrap: wrap; gap: 12px; padding: 8px 20px; background: var(--background); }
 .header h1 { overflow-wrap: anywhere; }
 .layout { display: grid; min-width: 0; flex: 1; align-content: start; padding: 8px 20px 24px; }
 .navigation { display: flex; min-width: 0; flex: none; gap: 4px; margin-left: 20px; }
+.panelNavigation { display: grid; min-width: 0; flex: none; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 8px 8px 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); }
+.panelNavigation .stageTab { min-width: 0; padding-inline: 8px; font-size: 13px; }
 .stageTab { position: relative; display: flex; min-width: 72px; min-height: 44px; align-items: center; justify-content: center; border: 0; border-radius: 6px 6px 0 0; padding: 10px 16px; background: transparent; color: var(--muted); font-size: 14px; font-weight: 500; cursor: pointer; transition: background-color 160ms ease, color 160ms ease; white-space: nowrap; }
 .stageTab:hover { background: var(--card-muted); color: var(--foreground); }
 .stageTab[data-active] { color: var(--foreground-strong); font-weight: 600; }
 .stageTab[data-active]::after { content: ""; position: absolute; inset: auto 12px 0; height: 2px; border-radius: 2px; background: var(--primary); }
 .stageTab:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.stage { display: grid; width: 100%; max-width: 1380px; margin-inline: auto; min-width: 0; align-items: start; gap: 24px; }
+.stage { display: grid; width: 100%; min-width: 0; align-items: start; gap: 24px; }
 .stage[data-preview-visible="false"] { max-width: 760px; }
 .stage .controls { min-width: 0; align-self: start; }
+.stage[data-focused-workflow] .controls { container: workflow-form / inline-size; }
 .sectionHeading { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: 16px; border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); padding: 20px; }
 .sectionHeading h2 { margin: 0; color: var(--foreground-strong); font-size: clamp(22px, 2vw, 30px); line-height: 1.2; font-weight: 650; letter-spacing: -0.025em; }
 .sectionHeading p { max-width: 520px; margin-top: 6px; color: var(--muted); font-size: 13px; line-height: 21px; }
@@ -26,6 +29,7 @@
 .stage .preview { min-height: 0; align-self: start; container: workflow-preview / inline-size; }
 .preview[hidden] { display: none; }
 .preview > section { flex: initial; padding: 20px; }
+.workspace[data-hook-first-screen] .stage[data-stage="create"] .preview > section { flex: 1; }
 .preview video { width: auto; height: auto; max-height: 360px; max-width: 100%; object-fit: contain; align-self: center; }
 .preview [data-workflow-empty-segment], .preview [data-workflow-empty-post] { flex: initial; min-height: 128px; }
 .references { display: grid; gap: 12px; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
@@ -55,11 +59,10 @@
 .stage[data-focused-workflow] .references { border-top: 1px solid color-mix(in srgb, var(--border) 65%, transparent); padding-top: 16px; margin-bottom: 0; }
 .stage[data-focused-workflow] .references { gap: 8px; padding-block: 10px; }
 .stage[data-focused-workflow] [aria-label="Hook composer"] { gap: 10px; }
-.stage[data-focused-workflow] .controls [aria-label="Hook generation settings"] { width: 100%; max-width: 480px; grid-template-columns: minmax(0, 220px) repeat(2, minmax(0, 118px)); }
-.stage[data-focused-workflow] .controls [aria-label="Hook generation settings"] > div { grid-column: auto; }
 .stage[data-focused-workflow] .referenceCard { gap: 4px; padding: 10px; border: 1px solid var(--border); border-radius: 9px; background: color-mix(in srgb, var(--card-muted) 25%, var(--card)); }
 .stage[data-focused-workflow] .referenceCard > div { margin-top: auto; }
-.stage[data-focused-workflow] .controls textarea[name="hookInstructions"] { min-height: 98px; height: 98px; }
+.workspace[data-hook-first-screen] .stage[data-stage="create"] .controls textarea[name="hookInstructions"] { min-height: 160px; height: 200px; }
+.workspace[data-hook-first-screen] .controls textarea[name="hookInstructions"]::placeholder { font-size: 14px; opacity: 1; }
 .stage[data-focused-workflow] .preview video { max-height: 300px; }
 .stage[data-focused-workflow][data-stage="schedule"] .preview [data-sequence-preview] video { width: 100%; height: 100%; max-width: none; max-height: none; align-self: auto; }
 .workspace[data-hook-first-screen] .stage[data-stage="schedule"] .sectionHeading { display: none; }
@@ -79,14 +82,21 @@
   .stage[data-focused-workflow][data-stage="create"] .controls [data-workflow-action] > button:last-child { width: 100%; }
 }
 @container workflow-sections (min-width: 860px) {
-  .stage[data-focused-workflow][data-stage="schedule"] { max-width: 1100px; grid-template-columns: minmax(0, 420px) minmax(0, 600px); }
+  .stage[data-focused-workflow][data-stage="create"][data-preview-visible="true"], .stage[data-focused-workflow][data-stage="schedule"] { max-width: none; grid-template-columns: clamp(360px, 25cqw, 440px) minmax(0, 1fr); }
+  .stage[data-focused-workflow][data-stage="create"][data-preview-visible="false"] { max-width: 440px; }
   .stage[data-focused-workflow][data-editing="true"] { max-width: 1000px; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); }
-  .stage[data-focused-workflow][data-stage="edit"][data-editing="false"] { max-width: 1120px; grid-template-columns: 320px minmax(0, 1fr); }
-  .stage[data-focused-workflow][data-stage="schedule"] .preview, .stage[data-focused-workflow][data-editing="true"] .preview { grid-column: 1; grid-row: 1; }
-  .stage[data-focused-workflow][data-stage="schedule"] .controls, .stage[data-focused-workflow][data-editing="true"] .controls { grid-column: 2; grid-row: 1; }
+  .stage[data-focused-workflow][data-stage="edit"][data-editing="false"] { max-width: none; grid-template-columns: clamp(360px, 25cqw, 440px) minmax(0, 1fr); }
+  .stage[data-focused-workflow][data-stage="edit"][data-editing="false"] .preview, .stage[data-focused-workflow][data-stage="schedule"] .preview { grid-column: 2; grid-row: 1; }
+  .stage[data-focused-workflow][data-stage="edit"][data-editing="false"] .controls, .stage[data-focused-workflow][data-stage="schedule"] .controls { grid-column: 1; grid-row: 1; }
+  .stage[data-focused-workflow][data-editing="true"] .preview { grid-column: 1; grid-row: 1; }
+  .stage[data-focused-workflow][data-editing="true"] .controls { grid-column: 2; grid-row: 1; }
+}
+@container workflow-form (max-width: 479px) {
+  .stage[data-focused-workflow] .sectionHeading { gap: 8px; }
+  .stage[data-focused-workflow] .sectionHeading h2 { font-size: 20px; line-height: 28px; }
 }
 @container workflow-sections (min-width: 860px) {
-  .stage[data-preview-visible="true"] { grid-template-columns: minmax(0, 620px) minmax(0, 1fr); }
+  .stage[data-preview-visible="true"] { grid-template-columns: minmax(0, .45fr) minmax(0, .55fr); }
 }
 @container workflow-sections (max-width: 859px) {
   .header { gap: 8px; padding-inline: 16px; }

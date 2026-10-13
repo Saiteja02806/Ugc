@@ -3,6 +3,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { withReadDeadline } from "@/lib/http/read-deadline";
 import { characterSessionStorageKey, EMPTY_CHARACTER_SESSION, parseCharacterClientSession,
   type CharacterClientSession } from "@/lib/characters/client-session";
 import type { PublicCharacter } from "@/lib/characters/identity-service";
@@ -11,11 +12,12 @@ import type { CharacterGenerateRequest, CharacterGenerationAccess, CharacterGene
 import { mergeCharacterHistoryPages } from "@/lib/characters/history";
 
 export async function characterRequest<T>(userId: string | null, path: string, options: RequestInit = {}): Promise<T> {
+  const read = async (signal?: AbortSignal): Promise<T> => {
   if (!userId) throw Object.assign(new Error("Sign in to create and save your influencer."), { status: 401 });
   const token = await getCurrentUserIdToken(userId);
   if (!token) throw Object.assign(new Error("Sign in to create and save your influencer."), { status: 401 });
   const response = await fetch(path, {
-    ...options, cache: "no-store",
+    ...options, signal, cache: "no-store",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
   });
   const data = await response.json().catch(() => null);
@@ -25,6 +27,8 @@ export async function characterRequest<T>(userId: string | null, path: string, o
     throw error;
   }
   return data as T;
+  };
+  return !options.method || options.method.toUpperCase() === "GET" ? withReadDeadline(read, options.signal ?? undefined) : read(options.signal ?? undefined);
 }
 
 export function useCharacterBuilder(userId: string | null, historyOpen = false) {
@@ -37,11 +41,12 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false) 
   const accessKey = ["character-access", userId] as const;
   const historyKey = ["character-history", userId] as const;
   // Foreground images belong to this mounted visit, not the durable recovery
-  // receipt. Only an unfinished cached batch is resumed automatically.
+  // receipt. Unfinished batches and unresolved failures remain visible; fully
+  // successful previous batches are available through History.
   const [foregroundJobs, setForegroundJobs] = useState<CharacterJobReceipt[]>(() => {
     const restored = client.getQueryData<CharacterClientSession>(sessionKey)?.jobs ?? [];
     const statuses = client.getQueryData<CharacterJobStatusResponse["job"][]>(["character-jobs", userId, restored.map((job) => job.jobId)]);
-    return statuses?.some((job) => !job.isTerminal) ? restored : [];
+    return statuses?.some((job) => !job.isTerminal || job.status === "failed") ? restored : [];
   });
   const [historyImage, setHistoryImage] = useState<CharacterHistoryImage | null>(null);
   const sessionQuery = useQuery({
@@ -99,7 +104,8 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false) 
         void client.invalidateQueries({ queryKey: accessKey });
         void client.invalidateQueries({ queryKey: ["billing-subscription", userId] });
         void client.invalidateQueries({ queryKey: historyKey });
-      } else if (mounted.current && !signal.aborted && results.some((job) => !job.isTerminal && !job.checkError)) {
+      }
+      if (mounted.current && !signal.aborted && results.some((job) => job.status === "failed" || !job.isTerminal && !job.checkError)) {
         const latest = client.getQueryData<CharacterClientSession>(sessionKey);
         if (JSON.stringify(latest?.jobs) === JSON.stringify(session.jobs)) setForegroundJobs(session.jobs);
       }
@@ -150,7 +156,7 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false) 
   const selected = characters.data?.characters.find((character) => character.id === session.selectedCharacterId) ?? null;
   const visibleJobs = historyImage ? [{ jobId: historyImage.jobId, generationId: historyImage.generationId }] : foregroundJobs;
   const visibleStatuses = historyImage ? [{
-    id: historyImage.jobId, status: "completed" as const, isTerminal: true, error: null, checkError: null,
+    id: historyImage.jobId, model: historyImage.model, status: "completed" as const, isTerminal: true, error: null, checkError: null,
     output: { url: historyImage.url, mediaAssetId: historyImage.mediaAssetId, generationId: historyImage.generationId, width: null, height: null, ratio: "9:16" },
   }] : jobs.data;
   return { session, access, characters, jobs, generate, select, selected, inProgress, visibleJobs, visibleStatuses,

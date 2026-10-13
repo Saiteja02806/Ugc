@@ -13,6 +13,7 @@ import sections from "@/components/explore/workflow-section-layout.module.css";
 
 type ClipEditingView = {
   source: MediaAsset | null; demoSource: MediaAsset | null; demo: LocalWorkflowMedia | null;
+  rawSource: MediaAsset | null; rawDemoSource: MediaAsset | null; openingState: WorkflowClipEditState | null; demoState: WorkflowClipEditState | null;
   demoFraming: DemoFraming | null; error: string | null; editing: boolean; busy: boolean;
   controls: ReactNode; preview: ReactNode; actions: ReactNode;
   openOpening: (() => void) | undefined; openDemo: (() => void) | undefined;
@@ -29,10 +30,10 @@ function ClipEditingView({ value, children }: { value: ClipEditingView; children
 
 /** Prepare each clip with the shared editor, then retain the existing final
  * composition/subtitle/scheduling pipeline. Unsaved edits never reach it. */
-export function TalkingHeadClipEditing({ enabled, ownerId, source, sourcePreview, demo, demoFraming, active, onDirty, children }: {
+export function TalkingHeadClipEditing({ enabled, ownerId, source, sourcePreview, demo, demoFraming, active, onDirty, children, backgroundScheduling = false }: {
   enabled: boolean; ownerId: string | null; source: MediaAsset | null; sourcePreview: LocalWorkflowMedia | null;
   demo: WorkflowAttachment; demoFraming: DemoFraming | null; active: boolean; onDirty: () => void;
-  children: (view: ClipEditingView) => ReactNode;
+  children: (view: ClipEditingView) => ReactNode; backgroundScheduling?: boolean;
 }) {
   const [requested, setRequested] = useState<{ target: "opening" | "demo"; key: string } | null>(null);
   const [openingState, setOpeningState] = useState<WorkflowClipEditState | null>(null);
@@ -63,10 +64,11 @@ export function TalkingHeadClipEditing({ enabled, ownerId, source, sourcePreview
   const editing = active && Boolean(target);
   const preparedDemo = selectedDemoState?.output ?? ownedDemo;
   const error = uploadState?.busy ? "Preparing your demo for editing…" : uploadState?.error
+    ?? (backgroundScheduling && source && !selectedOpeningState || backgroundScheduling && ownedDemo && demoStarted === demo.asset?.url && !selectedDemoState ? "Loading your saved clip edits…" : null)
     ?? (selectedOpeningState?.busy || selectedDemoState?.busy ? "Wait for your clip edits to finish saving." : null)
     ?? selectedOpeningState?.error ?? selectedDemoState?.error
-    ?? (selectedOpeningState?.needsSaving ? "Save your talking-head clip edits before applying finishing options." : null)
-    ?? (selectedDemoState?.needsSaving ? "Save your demo clip edits before applying finishing options." : null);
+    ?? ((backgroundScheduling ? selectedOpeningState?.needsSaving && selectedOpeningState?.needsDraftSaving : selectedOpeningState?.needsSaving) ? "Save your talking-head clip edits before applying finishing options." : null)
+    ?? ((backgroundScheduling ? selectedDemoState?.needsSaving && selectedDemoState?.needsDraftSaving : selectedDemoState?.needsSaving) ? "Save your demo clip edits before applying finishing options." : null);
 
   async function openDemo() {
     const media = demo.asset;
@@ -86,10 +88,11 @@ export function TalkingHeadClipEditing({ enabled, ownerId, source, sourcePreview
   }
   return <>
     <ClipEditingView value={{
-      source: selectedOpeningState?.output ?? source,
-      demoSource: preparedDemo,
-      demo: preparedDemo ? null : demo.asset,
-      demoFraming: selectedDemoState?.output && demoFraming ? trimmedDemoFraming(demoFraming, selectedDemoState.editing) : demoFraming,
+      source: backgroundScheduling ? source : selectedOpeningState?.output ?? source,
+      rawSource: source, rawDemoSource: ownedDemo, openingState: selectedOpeningState, demoState: selectedDemoState,
+      demoSource: backgroundScheduling ? ownedDemo : preparedDemo,
+      demo: (backgroundScheduling ? ownedDemo : preparedDemo) ? null : demo.asset,
+      demoFraming: !backgroundScheduling && selectedDemoState?.output && demoFraming ? trimmedDemoFraming(demoFraming, selectedDemoState.editing) : demoFraming,
       error, editing, busy: Boolean(uploadState?.busy || selectedOpeningState?.busy || selectedDemoState?.busy),
       controls: <div hidden={!editing} ref={setControlsTarget} className={sections.clipControls} />,
       preview: <div hidden={!editing} ref={setResultsTarget} className={sections.clipPreview} />,

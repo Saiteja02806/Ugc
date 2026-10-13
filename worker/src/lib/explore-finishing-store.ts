@@ -12,6 +12,15 @@ function database() {
 }
 export class ExploreFinishingStore {
   constructor(private readonly db = database()) {}
+  async hasPendingSchedule(owner: string, key: string) {
+    const { data, error } = await this.db.from("explore_video_schedules").select("request_key")
+      .eq("user_id", owner).eq("request_key", key).eq("state", "pending").maybeSingle();
+    // Additive rollout: workers can run legacy finishing before the pending
+    // scheduling migration exists. A real binding is required to call back.
+    if (error && ["42P01", "PGRST205"].includes(error.code)) return false;
+    if (error) throw new ExploreFinishError("Could not confirm pending schedule recovery.", 503);
+    return data?.request_key === key;
+  }
   private async rpc(name: string, args: Record<string, unknown>) {
     const { data, error } = await this.db.rpc(name, args);
     if (error) {

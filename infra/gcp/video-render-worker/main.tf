@@ -18,12 +18,14 @@ resource "google_cloud_run_v2_service" "video_render_worker" {
   }
 
   template {
-    service_account                  = var.worker_service_account_email
-    timeout                          = "${var.request_timeout_seconds}s"
+    service_account = var.worker_service_account_email
+    # Allow bounded ASR/render recovery to finish inside the HTTP request;
+    # the existing launcher service timeout stays unchanged when opted out.
+    timeout                          = "${var.enable_interactive_explore_finishing ? max(900, var.request_timeout_seconds) : var.request_timeout_seconds}s"
     max_instance_request_concurrency = 1
 
     scaling {
-      min_instance_count = var.min_instance_count
+      min_instance_count = var.enable_interactive_explore_finishing ? max(1, var.min_instance_count) : var.min_instance_count
       max_instance_count = var.max_instance_count
     }
 
@@ -35,9 +37,8 @@ resource "google_cloud_run_v2_service" "video_render_worker" {
       }
 
       resources {
-        # Compatibility receiver only. Long renders are launched as the
-        # one-shot Cloud Run Job below, so this HTTP service must never keep an
-        # always-allocated CPU running while the queue is empty.
+        # CPU remains request based. Interactive Explore can keep memory warm
+        # without running a polling loop or allocating idle CPU continuously.
         cpu_idle          = true
         startup_cpu_boost = true
 
@@ -96,7 +97,12 @@ resource "google_cloud_run_v2_service" "video_render_worker" {
 
       env {
         name  = "WORKER_JOB_TYPES"
-        value = var.worker_job_types
+        value = var.enable_interactive_explore_finishing ? "render_demo_video" : var.worker_job_types
+      }
+
+      env {
+        name  = "WORKER_EXPLORE_FINISH_ONLY"
+        value = tostring(var.enable_interactive_explore_finishing)
       }
 
       env {

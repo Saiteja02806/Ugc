@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isWallTextEnabled } from "@/lib/trending/wall-text-access";
 
 import { getBusinessProfileForUser } from "@/lib/business-profiles/db";
 import {
@@ -67,6 +68,9 @@ export async function POST(request: Request) {
   }
 
   try {
+    if (!isWallTextEnabled()) {
+      return json({ ideaCount: 0, ok: true, skipped: "trending_format_disabled" });
+    }
     const profile = await getBusinessProfileForUser(input.userId);
 
     if (

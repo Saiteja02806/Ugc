@@ -13,26 +13,56 @@ import type { MediaAsset } from "@/lib/media/types";
 import type { SocialConnection } from "@/lib/social/types";
 import type { ScheduleMediaOption } from "@/lib/scheduling/types";
 import { readScheduleReceipt, verifySavedSchedule, scheduleReceiptMessage, type ScheduleReceipt } from "@/lib/explore/workflow-schedule-client";
-import type { DemoFraming } from "@/worker/src/lib/explore-finishing-contract";
+import type { DemoFraming, ExploreClipComposition } from "@/worker/src/lib/explore-finishing-contract";
+import { trimmedDemoFraming } from "@/lib/explore/format-demo";
+import { useTalkingHeadPendingComposition } from "./talking-head-pending-composition";
+import type { ExploreScheduleComposition } from "@/lib/explore/pending-schedule-client";
+import type { WorkflowCaptions } from "./workflow-caption-editor";
 
 const ScheduleEditor = dynamic(() => import("@/components/scheduling/schedule-editor").then(m => m.ScheduleEditor), { ssr: false });
-type WorkflowFinishingView = { edit: WorkflowAction; schedule: WorkflowAction; output: MediaAsset | null; options: FinishingOptions; setOptions: (value: FinishingOptions) => void };
+type WorkflowFinishingView = { edit: WorkflowAction; schedule: WorkflowAction; output: MediaAsset | null; options: FinishingOptions; setOptions: (value: FinishingOptions) => void; captions: WorkflowCaptions; scheduleReview?: ReactNode; pendingComposition?: ExploreScheduleComposition };
 // The presentational boundary receives values and event handlers, not refs.
 // Rendering the view must not execute a controller's imperative actions.
 function FinishingView({ value, children }: { value: WorkflowFinishingView; children: (value: WorkflowFinishingView) => ReactNode }) { return children(value); }
-export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo, demoSource, demoAudio, playback, scheduleDraft, children, demoFraming, demoFramingError, fastStatus = false }: {
+export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo, demoSource, demoAudio, playback, scheduleDraft, children, demoFraming, demoFramingError, fastStatus = false, inlineSchedule = false, onScheduleDraftChange, composition, backgroundScheduling = false, demoAudioAssetId = null }: {
   enabled: boolean; ownerId: string | null; kind: "hook" | "phone"; source: MediaAsset | null; demo: LocalWorkflowMedia | null; demoAudio: LocalWorkflowMedia | null; playback: "once" | "repeat"; scheduleDraft: WorkflowScheduleDraft;
   children: (value: WorkflowFinishingView) => ReactNode;
   demoFraming?: DemoFraming | null;
   demoSource?: MediaAsset | null;
   demoFramingError?: string | null;
   fastStatus?: boolean;
+  inlineSchedule?: boolean;
+  onScheduleDraftChange?: (draft: WorkflowScheduleDraft) => void;
+  composition?: ExploreClipComposition; backgroundScheduling?: boolean; demoAudioAssetId?: string | null;
 }) {
   const [options, setOptions] = useState(DEFAULT_FINISHING_OPTIONS);
-  const finishing = useWorkflowFinishing({ enabled, ownerId, kind, source, demo, demoSource, demoAudio, playback, options, onRestoreOptions: setOptions, demoFraming, demoFramingError, fastStatus });
+  const effectiveDemoFraming = demoFraming && composition?.demoEditing ? trimmedDemoFraming(demoFraming, composition.demoEditing) : demoFraming;
+  // Independent durable identity for speech review. Style and word edits never
+  // regenerate it; both requests share the owner's exact audio cache.
+  const captionFinishing = useWorkflowFinishing({ enabled, ownerId, kind, source, demo, demoSource, demoAudio, playback,
+    options: { subtitles: true, style: "clean", placement: "bottom", backgroundMusic: options.backgroundMusic }, demoFraming: effectiveDemoFraming, demoFramingError,
+    composition, demoAudioAssetId, captionPreview: true, scope: "caption-preview", fastStatus: true });
+  const finishing = useWorkflowFinishing({ enabled, ownerId, kind, source, demo, demoSource, demoAudio, playback, options, onRestoreOptions: setOptions, demoFraming: effectiveDemoFraming, demoFramingError, fastStatus, reuseUnchangedSource: true, captionDraft: captionFinishing.captionDraft, composition, demoAudioAssetId });
+  const audioSelection = JSON.stringify([ownerId, source?.id, demo?.url, demoSource?.id, demoAudio?.url, playback, composition, demoAudioAssetId]);
+  const priorAudioSelection = useRef(audioSelection);
+  const hadAudioSource = useRef(!!source);
+  useEffect(() => {
+    if (priorAudioSelection.current !== audioSelection) {
+      priorAudioSelection.current = audioSelection;
+      if (hadAudioSource.current) setOptions(previous => previous.corrections?.length ? { ...previous, corrections: [] } : previous);
+    }
+    hadAudioSource.current = !!source;
+  }, [audioSelection, source]);
+  const changeOptions = (value: FinishingOptions) => setOptions(previous => previous.backgroundMusic !== value.backgroundMusic ? { ...value, corrections: [] } : value);
+  const captions: WorkflowCaptions = { action: { ...captionFinishing.action, disabled: captionFinishing.action.disabled || finishing.status?.outcome === "pending" || finishing.action.busy },
+    transcript: captionFinishing.transcript, corrections: options.corrections ?? [],
+    onCorrectionsChange: corrections => setOptions(previous => ({ ...previous, corrections })) };
+  const pendingComposition = useTalkingHeadPendingComposition({ owner: ownerId, kind, source, demo, demoSource, demoAudio, playback,
+    composition, demoAudioAssetId, framing: demoFraming, options, captionDraft: captionFinishing.captionDraft, captionsReady: Boolean(captions.transcript), selectionError: demoFramingError });
   const [open, setOpen] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null), [message, setMessage] = useState("Apply edits before scheduling your finished video.");
   const [connections, setConnections] = useState<SocialConnection[]>([]), [lead, setLead] = useState(5);
   const [receipt, setReceipt] = useState<ScheduleReceipt | null>(null), [confirmedSource, setConfirmedSource] = useState<string | null>(null), [restored, setRestored] = useState(false);
+  const [reviewedOutputId, setReviewedOutputId] = useState<string | null>(null);
   const active = useRef(true), working = useRef(false);
   const storageKey = `ugc-explore:schedule:v1:${encodeURIComponent(ownerId ?? "")}:${kind}`;
   const selectedTargets = workflowScheduleTargets(scheduleDraft);
@@ -114,15 +144,17 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
       if (!finishing.output) throw new Error("Apply edits and wait for the finished video before scheduling.");
       const [config] = await Promise.all([authorized("/api/schedules?configOnly=1"), loadConnections()]);
       if (typeof config.minimumScheduleLeadMinutes !== "number" || config.minimumScheduleLeadMinutes < 0) throw new Error("Could not confirm scheduling limits.");
-      setLead(config.minimumScheduleLeadMinutes); setOpen(true);
+      setLead(config.minimumScheduleLeadMinutes); setReviewedOutputId(finishing.output.id); setOpen(true);
     } catch (e) { if (active.current) setError(e instanceof Error ? e.message : "Could not start scheduling."); }
     finally { working.current = false; if (active.current) setBusy(false); }
   }
   async function save(submission: ScheduleFormSubmission) {
     if (!ownerId || !finishing.output || working.current) return;
+    if (inlineSchedule && reviewedOutputId !== finishing.output.id) { setError("Your finished video changed. Review this output before scheduling."); return; }
     working.current = true; setBusy(true); setError(null);
     try {
       if (submission.scheduledSource.kind !== "media_asset" || submission.scheduledSource.id !== finishing.output.id || !selectedTargets.length || submission.targets.length !== selectedTargets.length || !selectedTargets.every(target => submission.targets.some(candidate => candidate.connectionId === target.connectionId && candidate.platform === target.platform))) throw new Error("Confirm the selected finished video and an account for every selected platform.");
+      onScheduleDraftChange?.({ ...scheduleDraft, caption: submission.caption, date: submission.scheduledDate, time: submission.scheduledTime, timezone: submission.timezone });
       await locked(async prior => {
         if (prior && (!prior.scheduleId || prior.input.source.id === finishing.output!.id)) { setReceipt(prior); await send(prior); return; }
         // Never discard an uncertain request. An older confirmed output stays
@@ -141,11 +173,13 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
   const alreadySaved = confirmedSource !== null && (!output || confirmedSource === output.id);
   const resumeSaved = receipt !== null && !receipt.scheduleId;
   const schedule: WorkflowAction = { busy, disabled: !enabled || !ownerId || !restored || busy || alreadySaved || (!resumeSaved && (!output || !selectedTargets.length)), error, message: output && !receipt ? "Select an account for each platform, then review and confirm your schedule." : message, onAction: () => { void start(); }, refresh: () => { void refresh(); } };
-  return <><FinishingView value={{ edit: finishing.action, schedule, output, options, setOptions }}>{children}</FinishingView>
-    {open && output ? <ScheduleEditor finalVideo={media[0]} demoMediaOptions={media} hookMediaOptions={[]} editingIsCombinedVideo={false} editingPlannedPlatforms={[]} editingSchedule={null} editingScheduledDate={null} editingScheduledTime={null}
+  const review = open && output && (!inlineSchedule || reviewedOutputId === output.id) ? <ScheduleEditor presentation={inlineSchedule ? "inline" : "modal"} finalVideo={media[0]} demoMediaOptions={media} hookMediaOptions={[]} editingIsCombinedVideo={false} editingPlannedPlatforms={[]} editingSchedule={null} editingScheduledDate={null} editingScheduledTime={null}
       initialClipSelection="secondary_only" initialDemoMediaId={output.id} initialHookMediaId="" initialCaption={scheduleDraft.caption} initialPlannedTargets={selectedTargets}
-      initialScheduledDate={scheduleDraft.date} initialScheduledTime={scheduleDraft.time} minimumScheduleLeadMinutes={lead} requireScheduleTarget saving={busy} errorMessage={error}
+      initialScheduledDate={scheduleDraft.date} initialScheduledTime={scheduleDraft.time} initialTimezone={scheduleDraft.timezone} minimumScheduleLeadMinutes={lead} requireScheduleTarget saving={busy} errorMessage={error}
+      onCloseDraft={snapshot => onScheduleDraftChange?.({ ...scheduleDraft, caption: snapshot.caption, date: snapshot.date, time: snapshot.time, timezone: snapshot.timezone })}
       socialConnections={connections.filter(c => selectedTargets.some(target => target.connectionId === c.id))} tiktokBetaEnabled={selectedPlatforms.includes("tiktok")} youtubeBetaEnabled={selectedPlatforms.includes("youtube")}
-      onClose={() => { if (!busy) setOpen(false); }} onRefreshMedia={async () => true} onRefreshConnections={loadConnections} onSave={value => { void save(value); }} /> : null}
+      onClose={() => { if (!busy) setOpen(false); }} onRefreshMedia={async () => true} onRefreshConnections={loadConnections} onSave={value => { void save(value); }} /> : null;
+  return <><FinishingView value={{ edit: { ...finishing.action, disabled: finishing.action.disabled || captionFinishing.status?.outcome === "pending" || captionFinishing.action.busy || options.subtitles && !captions.transcript && !output }, schedule, output, options, setOptions: changeOptions, captions, scheduleReview: inlineSchedule ? review : undefined, pendingComposition: backgroundScheduling ? pendingComposition : undefined }}>{children}</FinishingView>
+    {!inlineSchedule ? review : null}
   </>;
 }

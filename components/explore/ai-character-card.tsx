@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useCoverPlayback } from "@/components/explore/use-cover-playback";
 
 import { ExploreLinkIndicator } from "@/components/explore/explore-link-indicator";
 import styles from "@/components/explore/explore-workspace.module.css";
@@ -12,20 +12,7 @@ const CHARACTER_COVER = "/explore/characters/ai-character-create-yours-v5.mp4";
 const CHARACTER_POSTER = "/explore/characters/ai-character-create-yours-v5.webp";
 
 export function AICharacterCard({ localPreview = false }: { localPreview?: boolean }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  useEffect(() => {
-    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const syncPlayback = () => {
-      const video = videoRef.current;
-      if (!video) return;
-      video.autoplay = !preference.matches;
-      if (preference.matches) video.pause();
-      else void video.play().catch(() => {});
-    };
-    syncPlayback();
-    preference.addEventListener("change", syncPlayback);
-    return () => preference.removeEventListener("change", syncPlayback);
-  }, []);
+  const videoRef = useCoverPlayback(CHARACTER_COVER);
 
   return (
     <article aria-labelledby="explore-character-title" className={styles.workflowCard}>
@@ -35,13 +22,8 @@ export function AICharacterCard({ localPreview = false }: { localPreview?: boole
         <div className={cn(styles.cover, styles.characterMotion)} data-character-cover>
           <Image src={CHARACTER_POSTER} alt="" fill sizes="(min-width: 960px) 33vw, (min-width: 640px) 50vw, 100vw"
             className={styles.characterPoster} />
-          <video ref={videoRef} src={CHARACTER_COVER} poster={CHARACTER_POSTER}
-            autoPlay muted loop playsInline preload="auto" width={960} height={540}
-            onCanPlay={(event) => {
-              if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-                void event.currentTarget.play().catch(() => {});
-              }
-            }}
+          <video ref={videoRef} poster={CHARACTER_POSTER}
+            muted loop playsInline preload="none" width={960} height={540}
             aria-hidden="true" tabIndex={-1} className={styles.characterVideo} />
           <span className="absolute bottom-4 right-4 flex size-9 items-center justify-center rounded-full border border-border bg-background/60 text-muted transition-colors group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground motion-reduce:transition-none">
             <ExploreLinkIndicator label="AI character builder" className="size-4" />

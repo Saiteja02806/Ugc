@@ -1,5 +1,5 @@
-import { SubtitleError, type SubtitleCue, type TimedWord } from "./contracts.js";
-import type { MeasureText, SubtitleLayout } from "./captions.js";
+import { SubtitleError, type SubtitleCue, type TimedWord } from "./contracts.ts";
+import type { MeasureText, SubtitleLayout } from "./captions.ts";
 
 const token = (text: string) => text.toLowerCase().replace(/^[^a-z']+|[^a-z']+$/gu, "");
 const unfinished = new Set(["a", "an", "the", "and", "but", "or", "because", "if", "when", "with", "for", "of", "to", "in", "on", "at", "your", "my", "our", "is", "are", "was", "were", "very", "too"]);

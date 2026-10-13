@@ -71,6 +71,28 @@ test("completed results are hidden on reload and cached route re-entry", async (
   assert.equal(JSON.parse(storage.get(characterSessionStorageKey(owner))).jobs[0].jobId, jobId);
 });
 
+test("a partially failed two-image batch stays visible on reload without another paid request", async () => {
+  const second = { jobId: "33333333-3333-4333-8333-333333333333", generationId: "generation-2" };
+  const receipts = [receipt, second];
+  const failed = { id: second.jobId, model: "gpt_image_2_5", status: "failed", isTerminal: true, output: null,
+    error: "The model provider blocked this generation through content moderation." };
+  storage.set(characterSessionStorageKey(owner), JSON.stringify({ ...EMPTY_CHARACTER_SESSION, jobs: receipts }));
+  responseFor = async path => Response.json({ ok: true, job: path.includes(second.jobId) ? failed : { ...completed, model: "gpt_image_2_5" } });
+  // A hard reload starts with no query cache and must recover both durable jobs.
+  const screen = mount();
+  await screen.render().jobs.refetch();
+  assert.deepEqual(screen.render().visibleJobs, receipts);
+  assert.equal(screen.render().visibleStatuses[1].model, "gpt_image_2_5");
+  assert.equal(screen.render().inProgress, false);
+  screen.unmount();
+  assert.deepEqual(mount().render().visibleJobs, receipts);
+  assert.equal(calls.some(call => call.path.includes("/generate")), false);
+  const next = mount();
+  next.render().startNewSession();
+  assert.deepEqual(next.render().visibleJobs, []);
+  assert.deepEqual(next.render().session.jobs, []);
+});
+
 test("new generations stay visible for this visit, then move to history on the next visit", async () => {
   const screen = mount();
   await screen.render().generate.mutateAsync(request);

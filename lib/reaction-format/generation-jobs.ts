@@ -1,4 +1,5 @@
 import "server-only";
+import { assertTrendingFormatGenerationEnabled } from "@/lib/trending/format-policy";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
@@ -69,6 +70,7 @@ export async function enqueueTrendingReactionRefill(
     requestedCount: number;
   },
 ): Promise<ReactionRefillResult> {
+  assertTrendingFormatGenerationEnabled("reaction");
   const requestedCount = Math.max(1, Math.min(12, Math.trunc(params.requestedCount)));
   const currentActiveCount = Math.max(0, Math.trunc(params.currentActiveCount));
   const generationContext = buildReactionGenerationContext(profile);

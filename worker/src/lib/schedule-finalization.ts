@@ -2,6 +2,7 @@ import { createHmac } from "node:crypto";
 
 const FINALIZATION_PATH = "/api/internal/schedules/finalize";
 const WALL_TEXT_FINALIZATION_PATH = "/api/internal/schedules/wall-text-finalize";
+const EXPLORE_FINALIZATION_PATH = "/api/internal/schedules/explore-finalize";
 const FINALIZATION_SIGNATURE_HEADER = "x-ugc-finalization-signature";
 const FINALIZATION_TIMESTAMP_HEADER = "x-ugc-finalization-timestamp";
 const MAX_ATTEMPTS = 3;
@@ -179,6 +180,22 @@ export async function finalizeRenderedWallTextSchedules(params: {
   throw lastError instanceof Error
     ? lastError
     : new Error("Could not finalize the rendered Wall-of-text schedule.");
+}
+
+export async function finalizeExploreVideoSchedule(params: { userId: string; requestKey: string }) {
+  const config = getFinalizationConfig(EXPLORE_FINALIZATION_PATH), body = JSON.stringify(params);
+  const timestamp = Date.now().toString(), controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(config.endpoint, { method: "POST", body, signal: controller.signal,
+      headers: { "Content-Type": "application/json", [FINALIZATION_TIMESTAMP_HEADER]: timestamp,
+        [FINALIZATION_SIGNATURE_HEADER]: createWorkerScheduleFinalizationSignature({ body, timestamp, secret: config.secret }) } });
+    const result = await readResponseBody(response) as { ok?: unknown; inspected?: unknown; finalized?: unknown } | null;
+    if (!response.ok || result?.ok !== true || typeof result.inspected !== "number" || typeof result.finalized !== "boolean") {
+      throw new Error("Explore schedule finalization is unconfirmed. The saved output will be recovered.");
+    }
+    return result;
+  } finally { clearTimeout(timeout); }
 }
 
 class FinalizationRequestError extends Error {

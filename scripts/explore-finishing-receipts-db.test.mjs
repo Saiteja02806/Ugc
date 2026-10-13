@@ -8,6 +8,7 @@ const migration = readFileSync(new URL("../supabase/migrations/20261004053418_ex
 const stylesMigration = readFileSync(new URL("../supabase/migrations/20261007153721_explore_subtitle_styles.sql", import.meta.url), "utf8");
 const serifBoxMigration = readFileSync(new URL("../supabase/migrations/20261008071151_explore_serif_box_subtitles.sql", import.meta.url), "utf8");
 const sourcesMigration = readFileSync(new URL("../supabase/migrations/20261007153742_explore_existing_video_sources.sql", import.meta.url), "utf8");
+const captionReviewMigration = readFileSync(new URL("../supabase/migrations/20261013060000_explore_caption_review.sql", import.meta.url), "utf8");
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const fingerprint = "a".repeat(64), hash = "b".repeat(64), policy = "elevenlabs:scribe_v2:auto:en:word:v1";
 const draft = (owner = "owner-a", subtitles = true) => ({ version: 1, kind: "hook", sourceAssetId: id(owner === "owner-a" ? 1 : 2),
@@ -49,6 +50,7 @@ async function fixture() {
   await db.exec(stylesMigration);
   await db.exec(serifBoxMigration);
   await db.exec(sourcesMigration);
+  await db.exec(captionReviewMigration);
   await db.exec("set role service_role");
   return db;
 }
@@ -261,5 +263,26 @@ test("the additive renderer lease patch retains current main predicates and priv
     const sql = (await db.query("select pg_get_functiondef('claim_video_render_execution_slot(uuid,uuid,integer)'::regprocedure) definition")).rows[0].definition;
     for (const existing of ["render_demo_video","render_edit_video","final_render","Newer-main behavior sentinel"]) assert.ok(sql.includes(existing));
     assert.equal((await db.query("select has_function_privilege('anon','claim_video_render_execution_slot(uuid,uuid,integer)','execute') allowed")).rows[0].allowed,false);
+  } finally { await db.close(); }
+});
+
+test("caption-only receipts never publish an asset and their saved speech is reusable by the final export", async () => {
+  const db = await fixture();
+  try {
+    const previewDraft = { ...draft(), captionPreview: true, subtitles: { ...draft().subtitles, version: 2 } };
+    const r = await start(db, id(100), "owner-a", previewDraft);
+    const token = await lease(db, r);
+    const jobInput = (await db.query("select input_json from background_jobs where id=$1", [r.job_id])).rows[0].input_json;
+    assert.equal(jobInput.interactiveFinishingVersion, 1);
+    assert.equal((await claim(db, r, token)).state, "submit");
+    assert.equal(await save(db, r), true);
+    await assert.rejects(finalize(db, r, token), /not_ready/);
+    assert.equal((await db.query("select count(*)::integer n from media_assets where id=$1", [r.output_asset_id])).rows[0].n, 0);
+    await db.query("update background_jobs set status='completed' where id=$1", [r.job_id]);
+    const final = await start(db, id(101), "owner-a", { ...previewDraft, captionPreview: undefined, subtitles: { ...previewDraft.subtitles, corrections: [{ index: 0, text: "Hi" }] } });
+    const finalToken = await lease(db, final);
+    assert.equal((await claim(db, final, finalToken)).state, "ready");
+    const providerWords = (await db.query("select transcript from explore_video_finishes where request_key=$1", [r.request_key])).rows[0].transcript.words;
+    assert.equal(providerWords[0].text, "Hello");
   } finally { await db.close(); }
 });

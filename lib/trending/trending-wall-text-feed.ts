@@ -1,4 +1,5 @@
 import "server-only";
+import { assertTrendingFormatGenerationEnabled } from "./format-policy";
 
 import { createHash, randomUUID } from "node:crypto";
 
@@ -95,6 +96,7 @@ export async function enqueueTrendingWallTextRefill(
     targetActive?: number;
   } = {},
 ) {
+  assertTrendingFormatGenerationEnabled("wall_text");
   const targetActive = Math.max(
     Math.trunc(options.targetActive ?? DEFAULT_WALL_TEXT_ACTIVE_TARGET),
     1,
@@ -188,6 +190,7 @@ export async function prepareTrendingWallTextIdeas(
     requestKey?: string;
   } = {},
 ) {
+  assertTrendingFormatGenerationEnabled("wall_text");
   let mode = options.mode ?? "initial";
   const requestedCount = Math.min(
     Math.max(Math.trunc(options.requestedCount ?? DEFAULT_WALL_TEXT_ACTIVE_TARGET), 1),

@@ -6,7 +6,11 @@ export const AI_STUDIO_IMAGE_ASPECT_RATIOS = [
 ] as const;
 
 export const AI_STUDIO_VIDEO_ASPECT_RATIOS = ["9:16", "16:9"] as const;
-export const AI_STUDIO_GENERATION_QUANTITIES = [1, 2, 4] as const;
+export const AI_STUDIO_GENERATION_QUANTITIES = [1, 2, 3, 4] as const;
+
+export function isAIStudioGenerationQuantity(value: unknown): value is AIStudioGenerationQuantity {
+  return AI_STUDIO_GENERATION_QUANTITIES.includes(value as AIStudioGenerationQuantity);
+}
 export const AI_STUDIO_IMAGE_MODELS = ["nano_banana_2", "seedream_5_pro"] as const;
 export const SLIDESHOW_IMAGE_MODELS = ["gpt_image_2_5", "nano_banana_2"] as const;
 export const AI_STUDIO_VIDEO_MODELS = ["kling_3_0", "google_omni", "seedance_2_5", "wan_3_0"] as const;

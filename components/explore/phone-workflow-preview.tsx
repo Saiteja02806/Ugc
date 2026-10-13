@@ -122,7 +122,7 @@ function PhoneWorkflowLayout({ generationEnabled, ownerId, demoFramingEnabled }:
             </div>
           </Tabs.Panel>
           <Tabs.Panel value="edit" keepMounted className={creation.sectionPanel}>
-            <WorkflowCompositionPanel videoLabel="Phone video" connected={generationEnabled} ownerId={ownerId} options={finish.options} onOptionsChange={finish.setOptions}
+            <WorkflowCompositionPanel videoLabel="Phone video" connected={generationEnabled} ownerId={ownerId} options={finish.options} onOptionsChange={finish.setOptions} captions={finish.captions}
               demoFramingEnabled={demoFramingEnabled} demoFraming={currentFraming} demoFramingError={framingError} onDemoFramingChange={frame => setDemoFraming(frame ? { frame, aspect: outputAspect } : null)} editingBusy={finish.edit?.busy}
               outputAspect={outputAspect} onDemoControlsOpen={() => workspaceRef.current?.querySelectorAll<HTMLMediaElement>("audio, video").forEach(player => player.pause())}
               demo={{ ...demo, choose: chooseDemo, remove: removeDemo }} demoAudio={{ ...demoAudio, choose: chooseDemoAudio, remove: removeDemoAudio }} demoAudioPlayback={demoAudioPlayback} onDemoAudioPlaybackChange={setDemoAudioPlayback} />

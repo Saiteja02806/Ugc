@@ -1,6 +1,106 @@
 # Carousel System Context
 
-Last updated: 2026-10-12
+Last updated: 2026-10-13
+
+## 2026-10-13 Trending slideshows only (local, not deployed)
+
+- Trending now exposes only Slideshows. New daily packs and upgrade additions
+  use a 100% Slideshow / 0% Hook / 0% Wall / 0% Reaction mix for every plan,
+  overriding historical preferences at runtime without deleting or rewriting
+  those preferences. Existing allowances and slideshow generation stay intact.
+- Adjust remains available and shows only Slideshows at a fixed 100%. Video
+  rows and controls are hidden. The first-visit guide previews only slideshows;
+  cached feed items and fresh server results obey the same format policy.
+- Existing daily snapshots, assignments, creatives and schedules are preserved.
+  A runtime view hides video slots and excludes them from remaining/pending
+  counts. An existing pack retains its original slideshow allocation until the
+  next new pack; hidden video slots are neither replaced nor replenished.
+- App generation entry points reject hidden formats before reservation or paid
+  work. The worker settles already queued Trending Hook-copy, Wall-plan,
+  Wall-copy and Reaction-generation jobs as `trending_format_disabled` before
+  calling their handlers. Explore generation and saved publishing/render jobs
+  retain their existing behavior. In-flight work is not remotely cancelled.
+- All format implementations are retained behind the temporary product policy
+  in `lib/trending/format-policy.ts` and its matching worker policy. Release the
+  worker and website together for production effect; this entry does not claim
+  deployment or authenticated production acceptance. No schema migration or
+  destructive database operation is required.
+- Focused policy/feed/API/worker checks, TypeScript, worker build, scoped lint
+  and isolated desktop/mobile Adjust checks pass. See
+  `docs/trending-slideshow-only-2026-10-13.md` for the existing-pack boundary,
+  release requirements and the unrelated existing UI assertion failure.
+
+## 2026-10-13 Explore recovery fixes and compact-layout restoration (local, not deployed)
+
+- Ordinary Slideshow image and Hook/Wall video submission saves the exact input
+  and owner/workflow request identity before dispatch. Lost acknowledgements
+  recover scoped jobs, including terminal jobs. Partial batches keep a separate
+  discovery identity; hydration/manual checks only read saved children and merge
+  later results without replacing a newer selected output or submitting missing
+  slots. Slideshow prompt/ratio browser metadata uses the same owner/workflow key.
+- Terminal unconfirmed transcription can be left for another saved source or a
+  subtitles-off edit while the original exact recovery record is preserved.
+  Style-only changes against that old source do not create a paid transcription.
+  Recovery history updates share the cross-tab lock; auth/GET waits are bounded.
+- Workflow libraries keep account-scoped cached results visible with refresh and
+  retry controls. Decorative covers load only near the viewport and pause when
+  offscreen, hidden or reduced motion is selected.
+- The user rejected the isolated single-page/nine-layout design study and chose
+  the earlier compact two-panel design as the base: narrow controls on the left,
+  stage navigation within that panel, and a dense media area on the right.
+  Shared app colors, preview visibility and functional fixes are retained. This
+  is a presentation restoration, not a Git rollback of scheduling or recovery.
+- Desktop controls are bounded at 360–440px. Gallery cards fill adaptive tracks
+  with a 200px minimum and 16px horizontal gaps. Their separate 44px Recreate
+  actions overlay the media, retaining accessible names and the shared Button
+  treatment. Overview Edit/Schedule keep controls left; expanded clip editing
+  retains its larger preview and wide tools. Narrow layouts still switch panels.
+- See `docs/explore-functional-fixes-review-2026-10-13.md` for checks, production
+  release dependencies and remaining acceptance limits. No production generation,
+  scheduling submission, push or deployment was performed by this task.
+
+## 2026-10-13 Explore scheduling remains in the workflow panel (local, not deployed)
+
+- Hook, Wall of Text, Slideshow and Talking Head + Demo place Back to Edit,
+  Review schedule, progress, errors and saved-post links inside the scheduling
+  settings card. The separate full-width scheduling action strip is removed.
+- Review schedule opens the existing publishing controls inside that same
+  right-hand panel. It keeps explicit Schedule post confirmation, provider
+  options, account and time validation, exact-output checks, durable receipts
+  and duplicate-prevention behavior. General Scheduling and other callers
+  retain their existing modal presentation.
+- Returning from inline review retains caption, date, time and timezone.
+  The previous draft summary is hidden during review; confirmed values become
+  the displayed summary. A changed finished output cannot inherit an open
+  review for the previous output.
+- A saved Slideshow library item is a valid scheduling source without a video
+  clip selector. Its submit title no longer dereferences missing video media.
+- Ordinary Explore workflow actions use the shared Button treatment, including
+  Filter, Clear filters, Try again, slideshow preview Previous/Next and View
+  plans. Navigation cards, stage tabs and media selection controls keep their
+  appropriate link and selection semantics.
+- See `docs/explore-inline-scheduling-update-2026-10-13.md` for local checks
+  and limits. No deployment or production scheduling submission was performed.
+
+## 2026-10-12 Explore workflow palette and frame consistency (local, not deployed)
+
+- Hook, Wall of Text, Talking Head + Demo and Slideshow inherit AppShell's
+  theme variables. Workflow-only dark palettes no longer override Explore's
+  charcoal surfaces, borders and muted text. Shared button corner and focus
+  treatment is retained, and selected scheduling platforms retain their tint.
+- Create uses the available desktop width with small outer gutters, balanced
+  controls/gallery columns and bottom-aligned action areas. Slideshow keeps its
+  slide-specific Edit layout and the common Schedule review. Mobile keeps its
+  existing single-column and Controls/Preview navigation.
+- Talking Head's Create preview is visible by default. Hide/Show preview keeps
+  the current instructions and selected clip; selected or generated media no
+  longer overrides an explicit Hide preview choice. Edit and Schedule continue
+  to show their relevant previews. Generation, image roles, rendering,
+  ownership checks, saved posts and publishing contracts are unchanged.
+- 143 focused checks, TypeScript and scoped lint pass. Local browser checks
+  cover wide desktop and phone reflow. See
+  `docs/workflow-theme-spacing-update-2026-10-12.md`. No deployment or paid
+  generation was performed.
 
 ## 2026-10-12 Combined production release
 
@@ -6702,3 +6802,12 @@ and advertises only deployed workflows. See
 - Source support follows Omni uploaded-video editing (up to ten seconds), with a 32 MB download bound. Sources are never silently truncated or omitted. Unsupported models must disclose incompatibility while retaining the attachments.
 - Edit results must pass an actual MP4 duration check before storage, allowing 0.25 seconds for frame/container rounding. Mismatched or unreadable results fail without a new paid retry. Verified duration is retained for recovery.
 - This scoped release preserves old jobs without edit mode. Worker rollout precedes the website, followed by authenticated production verification. See `docs/wall-text-reference-release-2026-10-12.md` for validation and release state.
+
+
+## 2026-10-13 Compact Explore restoration and pending Wall scheduling (local)
+
+- The user's final marked screenshots select narrow left controls, in-panel stage tabs and a dense right gallery/preview. Hook uses Create/Demo/Schedule; Wall uses Create/Edit/Schedule; Slideshows uses Create/Edit slides/Schedule; Talking Head uses Create/Edit demo/Schedule. Quality and alternative-output counts are immediately visible.
+- Talking Head's preview is always present. Its redundant creation headline/description, Hide/Show preview control, Library shortcut and empty Library section are removed at the user's explicit request. Image, video and audio reference pickers remain wired; audio guidance is Seedance 2.5, up to 30 seconds. This supersedes the earlier optional-hide presentation for this route.
+- A local Wall single-clip pending-schedule producer now captures the selected owned source, trim, timed text and original/background audio settings through the existing top-level editing contract. Source/account changes, loading/errors and stale confirmation invalidate that snapshot. Background scheduling stays capability-gated and falls back to export-first when unavailable. Its right pane uses the existing sequence preview before export; platform targets still require verified final media.
+- These UI and pending-schedule changes do not alter automatic Carousel sourcing, matching, plans, reservations or readiness. Saved Slideshow image sequences retain their Library ownership and explicit confirmation.
+- Latest read-only production check resolves website SHA e3de4a4eb66cb7c7c6e6de6bda9bc9062aafbc63; its pending-schedule API and the four local Explore migrations are not deployed. Local validation is not production acceptance. See docs/explore-functional-fixes-review-2026-10-13.md.

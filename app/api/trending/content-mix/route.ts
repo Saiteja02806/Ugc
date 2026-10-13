@@ -14,6 +14,7 @@ import {
   type TrendingContentMix,
 } from "@/lib/trending/content-mix";
 import { areTrendingHookVideosEnabled } from "@/lib/trending/hook-video-feature";
+import { TRENDING_SLIDESHOW_ONLY_ENABLED } from "@/lib/trending/format-policy";
 import { ensureUnifiedTrendingDailyFeed } from "@/lib/trending/unified-daily-feed";
 import {
   getDailyTrendingFeedForDate,
@@ -38,6 +39,9 @@ const ContentMixSchema = z
   })
   .strict()
   .superRefine((value, context) => {
+    if (TRENDING_SLIDESHOW_ONLY_ENABLED && value.carousel !== 100) {
+      context.addIssue({ code: "custom", message: "Trending currently generates slideshows only. Keep Slideshows at 100%." });
+    }
     if (
       value.carousel +
         value.wall_text +
@@ -70,7 +74,7 @@ export async function GET(request: Request) {
     });
 
     return json({
-      editable: true,
+      editable: !TRENDING_SLIDESHOW_ONLY_ENABLED,
       entitlement,
       limits: { ...TRENDING_CONTENT_MIX_LIMITS },
       ok: true,

@@ -54,7 +54,10 @@ function visibleText(node) {
 test("both workflows have three accessible, permanently mounted section panels", () => {
   for (const kind of ["hook", "phone"]) {
     const source = read(`${kind}-workflow-preview.tsx`);
-    assert.match(source, /useState<WorkflowSection>\("create"\)/);
+    if (kind === "hook") {
+      assert.match(source, /requestedSection === "edit" \|\| requestedSection === "schedule" \? requestedSection : "create"/);
+      assert.match(source, /useState<WorkflowSection>\(initialSection\)/);
+    } else assert.match(source, /useState<WorkflowSection>\("create"\)/);
     assert.match(source, /<Tabs.Root[^>]*value=\{section\}/);
     for (const value of ["create", "edit", "schedule"]) assert.match(source, new RegExp(`<Tabs.Panel value="${value}" keepMounted`));
     const create = source.slice(source.indexOf('<Tabs.Panel value="create"'), source.indexOf('<Tabs.Panel value="edit"'));
@@ -89,6 +92,24 @@ test("each section shows only its own primary action and supports keyboard tab a
     assert.equal(tree.props["data-section"], section);
     assert.match(text(actions[0]), new RegExp(section === "create" ? "Generate video" : section === "edit" ? "Prepare final video" : "Review schedule"));
   }
+});
+
+test("panel navigation remains outside scrolling settings and leaves retained content and actions intact", () => {
+  const { WorkflowCreationPanel } = load(panel);
+  const { WorkflowSectionNavigation } = load(navigation);
+  const stageNavigation = WorkflowSectionNavigation({ presentation: "panel" });
+  const retainedContent = element("textarea", { value: "Keep the existing prompt" });
+  let continued = 0;
+  const tree = WorkflowCreationPanel({ kind: "hook", section: "create", navigation: stageNavigation, children: retainedContent,
+    create: { disabled: false, busy: false, message: "Selected video is ready", onAction() { continued++; } } });
+  const settings = nodes(tree).find(node => node.props?.["data-workflow-section-content"] !== undefined);
+  assert.equal(settings.props.children, retainedContent);
+  assert.equal(nodes(settings).includes(stageNavigation), false, "Stage navigation must stay reachable above the scrolling form");
+  assert.equal(tree.props.children[0], stageNavigation);
+  assert.deepEqual(nodes(stageNavigation).filter(node => node.type === "tab").map(node => node.props.value), ["create", "edit", "schedule"]);
+  assert.equal(stageNavigation.props.activateOnFocus, undefined);
+  nodes(tree).find(node => node.type === "button").props.onClick();
+  assert.equal(continued, 1);
 });
 
 test("connected Prepare final video and Review schedule forward real actions and render guarded progress/errors", () => {
@@ -195,10 +216,13 @@ test("the section implementation does not add requests, storage, prompts or affe
   assert.match(styles, /prefers-reduced-motion: reduce[^}]*sectionPanel[^}]*animation: none/);
 });
 
-test("shared polish uses neutral disabled actions, visible focus and reduced-motion transitions", () => {
+test("shared polish retains app disabled and focus treatment with reduced-motion transitions", () => {
   const styles = read("workflow-creation.module.css");
-  assert.match(styles, /\.primaryAction:disabled[^}]*background: var\(--card-muted\)[^}]*opacity: 1/);
-  assert.match(styles, /\.controls :global\(button:focus-visible\)[^}]*outline: 2px solid var\(--focus\)/);
+  const sharedButton = readFileSync(new URL("../components/ui/button.tsx", import.meta.url), "utf8");
+  assert.match(sharedButton, /disabled:opacity-55/);
+  assert.doesNotMatch(styles, /\.primaryAction:disabled/);
+  assert.match(sharedButton, /focus-visible:ring-3 focus-visible:ring-ring\/30/);
+  assert.doesNotMatch(styles, /\.controls :global\(button:focus-visible\)/, "Workflow buttons retain the app's shared focus treatment");
   assert.match(styles, /\.referenceButton\[data-state="selected"\][^}]*border-color: var\(--primary\)/);
   assert.match(styles, /prefers-reduced-motion: reduce[\s\S]*\.referenceButton[^}]*transition: none/);
   assert.match(styles, /max-width: 1023px[^}]*height: 44px/);

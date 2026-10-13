@@ -1,4 +1,5 @@
 import "server-only";
+import { assertTrendingFormatGenerationEnabled } from "./format-policy";
 
 import {
   createAndDispatchBackgroundJob,
@@ -34,6 +35,7 @@ type WallTextJobParams = {
 export function enqueueTrendingWallTextJob(params: WallTextJobParams & { dailyFeedId?: undefined }): Promise<BackgroundJobRecord>;
 export function enqueueTrendingWallTextJob(params: WallTextJobParams): Promise<BackgroundJobRecord | null>;
 export async function enqueueTrendingWallTextJob(params: WallTextJobParams) {
+  assertTrendingFormatGenerationEnabled("wall_text");
   // A current plan can skip the plan launcher, so guard the writer path here
   // as well as in the planner launcher. This check is intentionally before
   // daily delivery admission, which can reserve a customer's Wall slot.

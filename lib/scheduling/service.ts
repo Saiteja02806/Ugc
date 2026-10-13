@@ -168,6 +168,30 @@ export async function listUserSchedules(params: {
   return listScheduledPostsForUser(params);
 }
 
+/** Validate the same ownership, time, platform and publishing preferences as
+ * ordinary scheduling, without starting publishing before the video exists. */
+export async function prepareExplorePendingSchedule(params: {
+  input: ScheduleCreateInput;
+  userId: string;
+  allowTikTokTargets?: boolean;
+  allowYouTubeTargets?: boolean;
+}) {
+  const normalized = await normalizeScheduleCreateInput({
+    ...params.input, targets: [], plannedTargets: params.input.targets, metadata: {},
+  });
+  assertScheduleTargetSelection(normalized);
+  const source = await resolveScheduleSource({ sourceId: normalized.source.id, sourceKind: "media_asset", userId: params.userId });
+  const connections = await resolveScheduleTargets({ targets: normalized.plannedTargets, userId: params.userId });
+  assertSchedulingTargetAccess(connections, params);
+  if (connections.some(connection => connection.platform === "instagram")) await assertInstagramTrialScheduleAccess(params.userId);
+  const metadata = applyTrustedPlannedTargetMetadata({ metadata: normalized.metadata, plannedTargets: connections, snapshotProvided: true });
+  const scheduledFor = getMetadataString(metadata.plannedScheduledFor);
+  if (!scheduledFor) throw new SchedulingRequestError("Choose a date and time to schedule.");
+  return { caption: normalized.caption, title: normalized.title || source.title,
+    timezone: normalized.timezone, projectId: source.projectId,
+    metadata: { ...metadata, mediaMode: "single_video", plannedPublishDeadlineAt: scheduledFor }, scheduledFor };
+}
+
 export async function reconcileCancelledSchedulerResources(userId: string) {
   const targets = await listCancelledScheduleTargetsNeedingCleanup({
     limit: 10,
@@ -191,6 +215,11 @@ export async function createUserSchedule(params: {
   input: ScheduleCreateInput;
   userId: string;
 }) {
+  // Only the dedicated Explore reservation API may bind a schedule to an
+  // immutable finishing receipt. Generic schedule metadata cannot opt in.
+  if (Object.keys(params.input?.metadata ?? {}).some(key => key.startsWith("exploreFinish"))) {
+    throw new SchedulingRequestError("Use the Explore workflow to save a video preparation schedule.", 409, "explore_schedule_contract_required");
+  }
   const normalized = await normalizeScheduleCreateInput(params.input);
   assertScheduleTargetSelection(normalized);
 
@@ -439,6 +468,15 @@ export async function scheduleRenderedPost(params: {
 
   if (!existing) {
     throw new SchedulingRequestError("This schedule was not found.", 404);
+  }
+
+  if (existing.metadata.exploreFinishRequestKey) {
+    const expectedAssetId = existing.metadata.exploreFinishOutputAssetId;
+    const asset = existing.mediaAssetId ? await getMediaAssetForOwner({ assetId: existing.mediaAssetId, userId: params.userId }) : null;
+    if (existing.metadata.exploreFinishStatus !== "ready" || asset?.id !== expectedAssetId ||
+        !await isVerifiedExploreFinishedVideo(asset, params.userId)) {
+      throw new SchedulingRequestError("The exact saved video is still preparing. It will be scheduled automatically when ready.", 409, "explore_video_preparing");
+    }
   }
 
   if (canRetrySchedulerCreateFailure(existing)) {
@@ -824,6 +862,28 @@ export async function scheduleRenderedPost(params: {
   };
 }
 
+/** Recover an interrupted Explore target handoff without replacing target or
+ * job identities, including a crash after a scheduler task was accepted. */
+export async function reconcileExploreScheduleTargets(params: { postId: string; userId: string }) {
+  const schedule = await getRequiredSchedule(params);
+  if (schedule.status === "cancelled" || schedule.status === "published" || schedule.status === "publishing") return schedule;
+  const asset = schedule.mediaAssetId ? await getMediaAssetForOwner({ assetId: schedule.mediaAssetId, userId: params.userId }) : null;
+  if (!schedule.metadata.exploreFinishRequestKey || schedule.metadata.exploreFinishStatus !== "ready" ||
+      asset?.id !== schedule.metadata.exploreFinishOutputAssetId || !await isVerifiedExploreFinishedVideo(asset, params.userId)) {
+    throw new SchedulingRequestError("The prepared Explore video could not be verified.", 409, "explore_finish_verification_failed");
+  }
+  const unresolved = schedule.targets.filter(target => target.status === "scheduling");
+  if (unresolved.length) await scheduleTargetRows({ projectId: schedule.projectId, userId: params.userId,
+    targetRows: unresolved.map(target => ({ id: target.id, scheduled_for: target.scheduledFor })) });
+  const current = await getRequiredSchedule(params);
+  if (current.status === "cancelled") return current;
+  const failedCount = current.targets.filter(target => ["failed", "action_required", "skipped"].includes(target.status)).length;
+  const scheduledCount = current.targets.filter(target => ["scheduled", "publishing", "published"].includes(target.status)).length;
+  await markScheduledPostStatus({ postId: params.postId, userId: params.userId,
+    status: getPostStatusFromSchedulerCounts({ failedCount, scheduledCount }), lastErrorCode: failedCount ? "scheduler_create_failed" : null });
+  return getRequiredSchedule(params);
+}
+
 export async function retryUserScheduleTargetPublishing(params: {
   allowTikTokTargets?: boolean;
   allowYouTubeTargets?: boolean;
@@ -946,6 +1006,10 @@ export async function updateUserSchedule(params: {
 
   if (!existing) {
     throw new SchedulingRequestError("This schedule was not found.", 404);
+  }
+
+  if (existing.metadata.exploreFinishRequestKey && existing.metadata.exploreFinishStatus !== "ready") {
+    throw new SchedulingRequestError("This workflow's saved video is still preparing or failed preparation. Cancel it, or confirm a new future schedule in the workflow.", 409, "explore_preparation_snapshot_locked");
   }
 
   const editBlockReason = getScheduleEditBlockReason(existing);

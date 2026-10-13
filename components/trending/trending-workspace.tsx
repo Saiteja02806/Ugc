@@ -115,6 +115,7 @@ import type {
 } from "@/lib/trending/hook-video-types";
 import type { TrendingCarouselEditStatus, TrendingCreativeEditRecord } from "@/lib/trending/creative-edit-contract";
 import { cn } from "@/lib/utils";
+import { filterTrendingItemsForRuntime } from "@/lib/trending/format-policy";
 
 import skeletonStyles from "./trending-post-skeleton.module.css";
 import reviewLayout from "./trending-review-layout.module.css";
@@ -746,7 +747,7 @@ export function TrendingWorkspace() {
       const pendingDecisionAssignmentIds = getPendingDecisionAssignmentIds(
         user.uid,
       );
-      return existingMemoryCache.items.filter(
+      return filterTrendingItemsForRuntime(existingMemoryCache.items).filter(
         (item) => !pendingDecisionAssignmentIds.has(item.assignmentId),
       );
     }
@@ -761,7 +762,7 @@ export function TrendingWorkspace() {
       const pendingDecisionAssignmentIds = getPendingDecisionAssignmentIds(
         user.uid,
       );
-      return existingMemoryCache.items.some(
+      return filterTrendingItemsForRuntime(existingMemoryCache.items).some(
         (item) => !pendingDecisionAssignmentIds.has(item.assignmentId),
       )
         ? `${user.uid}:${currentBrowserLocalDate}`
@@ -847,7 +848,7 @@ export function TrendingWorkspace() {
   );
   const visibleCarouselHistoryError = user ? carouselHistoryError : null;
   const orderedTrendingItems = useMemo(
-    () => [...visibleTrendingItems].sort(compareTrendingFeedItems),
+    () => filterTrendingItemsForRuntime(visibleTrendingItems).sort(compareTrendingFeedItems),
     [visibleTrendingItems],
   );
   const carouselFeedProfile: CarouselProfileFeed | null = user
@@ -977,9 +978,10 @@ export function TrendingWorkspace() {
           return;
         }
 
-        const receivedItems =
+        const receivedItems = filterTrendingItemsForRuntime(
           data.items ??
-          createCarouselTrendingFeedProvider(data.carousels).items;
+          createCarouselTrendingFeedProvider(data.carousels).items,
+        );
         const pendingDecisionAssignmentIds = getPendingDecisionAssignmentIds(
           userId,
         );
@@ -1196,8 +1198,7 @@ export function TrendingWorkspace() {
               ) : null}
             </div>
             <p data-trending-intro className="mt-1 max-w-2xl text-[14px] leading-[20px] text-muted sm:text-[15px] sm:leading-[22px]">
-              Explore Carousel, Hook, Wall-of-text, and Reaction Reel content
-              made from your business profile.
+              Explore slideshows made from your business profile.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -1485,7 +1486,7 @@ function TrendingReadyEmptyState() {
       <EmptyHeader>
         <EmptyTitle>You&apos;re all caught up</EmptyTitle>
         <EmptyDescription>
-          Check back tomorrow for fresh daily hooks and carousel content.
+          Check back tomorrow for fresh daily slideshows.
         </EmptyDescription>
       </EmptyHeader>
     </Empty>

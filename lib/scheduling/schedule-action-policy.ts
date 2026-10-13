@@ -4,6 +4,9 @@ const activeRenderStatuses = new Set(["queued", "rendering"]);
 const activeFinalScheduleStatuses = new Set(["finalizing", "scheduling"]);
 
 export function getScheduleEditBlockReason(schedule: ScheduledPost) {
+  if (schedule.metadata.exploreFinishRequestKey) {
+    return "This schedule contains a confirmed video snapshot. Cancel it and create a new schedule to change the video or publishing details.";
+  }
   if (schedule.status !== "draft" || schedule.targets.length > 0) {
     return "Only a draft without platform publishing jobs can be edited.";
   }

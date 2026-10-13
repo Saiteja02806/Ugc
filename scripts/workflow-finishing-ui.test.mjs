@@ -9,6 +9,7 @@ import * as scheduleClient from "../lib/explore/workflow-schedule-client.ts";
 import * as schedulingDraft from "../lib/explore/workflow-scheduling-draft.ts";
 import * as defaultMusicClient from "../lib/explore/workflow-default-music-client.ts";
 import * as referenceAudioPreview from "../lib/explore/reference-audio-preview.ts";
+import { withReadDeadline } from "../lib/http/read-deadline.ts";
 import { SUBTITLE_STYLES } from "../worker/dist/subtitles/styles.js";
 
 const load = (path, imports, globals = {}) => {
@@ -20,14 +21,16 @@ const load = (path, imports, globals = {}) => {
 const tick = () => new Promise(setImmediate);
 const source = { id: randomUUID(), status: "ready", collection: "video", durationSeconds: 5 };
 const output = { id: randomUUID(), status: "ready", collection: "video", url: "https://storage.googleapis.com/test/finished.mp4" };
-function harness({ saved = null, lost = false, completed = false, subtitles = false, style = "clean", backgroundMusic = false, musicUnavailable = false, kind = "hook", placement = "bottom", pending = false, uncertain = false, scope, demoSource = null, outputFailures = 0, reuseUnchangedSource = false, fastStatus = false } = {}) {
+function harness({ saved = null, lost = false, completed = false, subtitles = false, style = "clean", backgroundMusic = false, musicUnavailable = false, kind = "hook", placement = "bottom", pending = false, uncertain = false, terminalUncertain = false, archiveFailure = false, recovery = [], scope, demoSource = null, outputFailures = 0, reuseUnchangedSource = false, fastStatus = false, captionTranscript = null, composition, demoAudioAssetId = null, onArchivedRead } = {}) {
   let cursor = 0, pendingFailure = lost;
   const slots = [], effects = [], calls = [], musicReads = [], uploads = [], store = new Map(), timers = new Map(), listeners = new Map();
   const intervals = [], document = { visibilityState: "visible", addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: name => listeners.delete(name) };
   const musicAssetId = randomUUID();
   const storageKey = finishClient.finishStorageKey("owner", kind) + (scope ? `:${encodeURIComponent(scope)}` : "");
   if (saved) store.set(storageKey, JSON.stringify(saved));
-  const props = { ownerId: "owner", enabled: true, kind, source, demo: null, demoSource, demoAudio: null, playback: "once", scope, reuseUnchangedSource, fastStatus, options: { subtitles, style, backgroundMusic, placement }, onRestoreOptions(value) { props.options = value; } };
+  if (recovery.length) store.set(finishClient.finishRecoveryStorageKey(storageKey), JSON.stringify(recovery));
+  let priorCompleted = false;
+  const props = { ownerId: "owner", enabled: true, kind, source, demo: null, demoSource, demoAudio: null, playback: "once", scope, reuseUnchangedSource, fastStatus, composition, demoAudioAssetId, options: { subtitles, style, backgroundMusic, placement }, onRestoreOptions(value) { props.options = value; } };
   const jobId = randomUUID(); let cancelled = false;
   const react = {
     useRef(value) { const i = cursor++; return slots[i] ??= { current: value }; },
@@ -36,6 +39,7 @@ function harness({ saved = null, lost = false, completed = false, subtitles = fa
     useEffect(fn, deps) { const i = cursor++; const prior = slots[i]; if (!prior || deps.some((v, n) => !Object.is(v, prior.deps[n]))) effects.push(() => { prior?.cleanup?.(); slots[i] = { deps, cleanup: fn() }; }); },
   };
   const testModule = load("components/explore/use-workflow-finishing.ts", {
+    "@/lib/http/read-deadline": { withReadDeadline },
     react, "@/lib/explore/workflow-finishing-client": finishClient,
     "@/lib/explore/workflow-default-music-client": defaultMusicClient,
     "@/lib/explore/reference-audio-preview": referenceAudioPreview,
@@ -50,7 +54,7 @@ function harness({ saved = null, lost = false, completed = false, subtitles = fa
     AbortSignal,
     window: { addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: name => listeners.delete(name) },
     document,
-    localStorage: { getItem: key => store.get(key) ?? null, setItem: (key, value) => store.set(key, value) },
+    localStorage: { getItem: key => store.get(key) ?? null, setItem: (key, value) => { if (archiveFailure && key === finishClient.finishRecoveryStorageKey(storageKey)) throw new Error("recovery storage unavailable"); store.set(key, value); }, removeItem: key => store.delete(key) },
     navigator: { locks: { request: async (_key, _opts, run) => run({}) } },
     setInterval: (fn, delay) => { intervals.push(delay); const id = randomUUID(); timers.set(id, fn); return id; }, clearInterval: id => timers.delete(id),
     fetch: async (url, init) => {
@@ -61,16 +65,87 @@ function harness({ saved = null, lost = false, completed = false, subtitles = fa
       calls.push({ url, ...init });
       if (url === `/api/jobs/${jobId}/cancel`) { cancelled = true; return Response.json({ok:true}); }
       if (init.method === "POST" && pendingFailure) { pendingFailure = false; throw new Error("lost response"); }
-      const entry = init.method === "POST" ? JSON.parse(init.body) : JSON.parse(store.get(storageKey));
+      const requestedKey = init.method === "GET" ? new URL(url, "https://app.test").searchParams.get("requestKey") : null;
+      const activeEntry = JSON.parse(store.get(storageKey) ?? "null");
+      const archivedEntry = JSON.parse(store.get(finishClient.finishRecoveryStorageKey(storageKey)) ?? "[]").find(entry => entry.requestKey === requestedKey);
+      const entry = init.method === "POST" ? JSON.parse(init.body) : requestedKey === activeEntry?.requestKey ? activeEntry : archivedEntry;
+      if (archivedEntry) onArchivedRead?.(store, finishClient.finishRecoveryStorageKey(storageKey));
       if (init.method === "POST" && !pending) completed = true;
-      const outcome = uncertain && init.method === "POST" ? "uncertain" : pending ? cancelled ? "cancelled" : "pending" : completed || init.method === "POST" ? "completed" : "unconfirmed";
-      return Response.json({ ok: true, receiptVersion: 1, requestKey: entry.requestKey, jobId, outcome, mediaAssetId: outcome === "completed" ? output.id : null, message: "Saved output." });
+      const oldUncertainty = terminalUncertain && entry.requestKey === saved?.requestKey && !priorCompleted;
+      const outcome = oldUncertainty || uncertain && init.method === "POST" ? "uncertain" : priorCompleted && entry.requestKey === saved?.requestKey ? "completed" : pending ? cancelled ? "cancelled" : "pending" : captionTranscript ? "captions_ready" : completed || init.method === "POST" ? "completed" : "unconfirmed";
+      return Response.json({ ok: true, receiptVersion: 1, requestKey: entry.requestKey, jobId, outcome, status: oldUncertainty ? "failed" : outcome === "completed" ? "completed" : outcome === "cancelled" ? "cancelled" : "queued", mediaAssetId: outcome === "completed" ? output.id : null, ...(captionTranscript ? { captionTranscript } : {}), message: "Saved output." });
     },
   });
-  return { props, calls, musicReads, uploads, musicAssetId, jobId, store, storageKey, timers, listeners, intervals, visibility(value) { document.visibilityState = value; },
+  return { props, calls, musicReads, uploads, musicAssetId, jobId, store, storageKey, timers, listeners, intervals, completePrior() { priorCompleted = true; }, visibility(value) { document.visibilityState = value; },
     poll() { for (const run of timers.values()) run(); }, event(name) { listeners.get(name)?.(); },
     render() { cursor = 0; const view = testModule.useWorkflowFinishing(props); while (effects.length) effects.shift()(); return view; }, unmount() { for (const slot of slots) slot?.cleanup?.(); } };
 }
+
+test("recovered captions require the exact current opening, demo and audio before reuse", async () => {
+  const demo = { ...source, id: randomUUID() }, audioId = randomUUID();
+  const captionTranscript = { schemaVersion: 1, provider: "elevenlabs", model: "scribe_v2", language: "en", durationMs: 10000, words: [{ text: "outreach", startMs: 5100, endMs: 5600 }] };
+  const saved = { version: 1, ownerId: "owner", kind: "hook", requestKey: randomUUID(), draft: { version: 1, kind: "hook", sourceAssetId: source.id, demoAssetId: demo.id, demoAudioAssetId: audioId, demoAudioPlayback: "repeat", backgroundAssetId: null, backgroundPlayback: "once", subtitles: { language: "en", style: "clean", placement: "bottom", version: 2 }, captionPreview: true } };
+  const h = harness({ saved, scope: "caption-preview", demoSource: demo, captionTranscript });
+  h.props.captionPreview = true; h.props.demoAudioSource = { id: audioId, status: "ready", collection: "audio" }; h.props.playback = "repeat";
+  h.render(); await tick(); await tick();
+  assert.equal(h.render().transcript.words[0].text, "outreach");
+  assert.equal(h.render().captionDraft.demoAssetId, demo.id); assert.equal(h.render().output, null);
+  for (const [field, replacement] of [["source", null], ["source", { ...source, id: randomUUID() }], ["demoSource", null], ["demoSource", { ...demo, id: randomUUID() }], ["demoAudioSource", null], ["playback", "once"]]) {
+    const previous = h.props[field]; h.props[field] = replacement;
+    assert.equal(h.render().transcript, null, `Hide words when ${field} changes`);
+    assert.equal(h.render().captionDraft, null);
+    h.props[field] = previous;
+  }
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 0); h.unmount();
+});
+
+test("terminal transcription uncertainty permits independent edits and preserves the original recovery identity", async () => {
+  const saved = { version: 1, ownerId: "owner", kind: "hook", requestKey: randomUUID(), draft: { version: 1, kind: "hook", sourceAssetId: source.id, demoAssetId: null, demoAudioAssetId: null, demoAudioPlayback: "once", backgroundAssetId: null, backgroundPlayback: "once", subtitles: { language: "en", style: "clean", placement: "bottom" } } };
+  for (const mode of ["different-source", "subtitles-off", "unchanged-source-reuse"]) {
+    const h = harness({ saved, terminalUncertain: true, reuseUnchangedSource: mode === "unchanged-source-reuse" });
+    h.render(); await tick(); let view = h.render();
+    assert.equal(view.action.disabled, true); assert.equal(view.action.cancel, undefined);
+    assert.match(view.action.error, /another video or turn off subtitles/);
+    assert.equal(h.timers.size, 0, "A terminal request does not poll forever");
+    // Style-only changes do not create a new transcription for the same audio.
+    h.props.options = { ...h.props.options, style: "bold-box" };
+    view = h.render(); assert.equal(view.action.disabled, true);
+    view.action.onAction(); await tick();
+    assert.equal(h.calls.some(call => call.method === "POST"), false);
+    if (mode === "different-source") h.props.source = { ...source, id: randomUUID() };
+    else h.props.options = { ...h.props.options, subtitles: false };
+    view = h.render(); assert.equal(view.action.disabled, false);
+    view.action.onAction(); await tick(); view = h.render();
+    const archived = finishClient.readFinishRecovery(h.store.get(finishClient.finishRecoveryStorageKey(h.storageKey)), "owner", "hook");
+    assert.deepEqual(archived, [saved]); assert.equal(view.action.recoveryAvailable, true);
+    const posts = h.calls.filter(call => call.method === "POST");
+    if (mode === "unchanged-source-reuse") { assert.equal(posts.length, 0); assert.equal(view.output.id, source.id); assert.equal(h.store.has(h.storageKey), false); }
+    else {
+      assert.equal(posts.length, 1);
+      const next = JSON.parse(posts[0].body);
+      assert.notEqual(next.requestKey, saved.requestKey); assert.equal(next.draft.sourceAssetId, h.props.source.id);
+      assert.equal(Boolean(next.draft.subtitles), mode === "different-source");
+    }
+    h.completePrior(); view.action.refresh(); await tick(); await tick(); view = h.render();
+    assert.ok(h.calls.some(call => call.method === "GET" && call.url.includes(saved.requestKey)));
+    assert.match(view.action.message, /earlier finished video is saved in Creative Assets/);
+    assert.equal(h.calls.filter(call => call.method === "POST").length, posts.length);
+    h.unmount();
+  }
+});
+
+test("recovery storage failure cannot replace an uncertain request or dispatch a new render", async () => {
+  const saved = { version: 1, ownerId: "owner", kind: "hook", requestKey: randomUUID(), draft: { version: 1, kind: "hook", sourceAssetId: source.id, demoAssetId: null, demoAudioAssetId: null, demoAudioPlayback: "once", backgroundAssetId: null, backgroundPlayback: "once", subtitles: { language: "en", style: "clean" } } };
+  const h = harness({ saved, terminalUncertain: true, archiveFailure: true });
+  h.render(); await tick(); h.render(); h.props.options = { ...h.props.options, subtitles: false };
+  h.render().action.onAction(); await tick();
+  assert.match(h.render().action.error, /recovery storage unavailable/);
+  assert.equal(h.calls.some(call => call.method === "POST"), false);
+  assert.equal(JSON.parse(h.store.get(h.storageKey)).requestKey, saved.requestKey);
+  assert.equal(finishClient.canLeaveUncertainFinish({ requestKey: randomUUID(), outcome: "uncertain", terminal: true }, saved, source.id, false), false, "A stale status cannot authorize replacing a different active request");
+  assert.throws(() => finishClient.readFinishRecovery(JSON.stringify([{ ...saved, ownerId: "another-owner" }]), "owner", "hook"), /another workflow/);
+  h.unmount();
+});
 
 test("uncertain finishing responses automatically recover the same request without submitting again", async () => {
   const h = harness({ uncertain: true, fastStatus: true });
@@ -136,10 +211,70 @@ test("an unchanged owned opening avoids rendering and still honors an existing p
   assert.equal(recovered.calls.length, 1); assert.equal(recovered.calls[0].method, "GET"); recovered.unmount();
 });
 
+test("owned demo audio is sent once in the final join, preserves playback and invalidates a changed track", async () => {
+  const h = harness();
+  const demo = { id: randomUUID(), status: "ready", collection: "video", durationSeconds: 8 };
+  const audio = { id: randomUUID(), status: "ready", collection: "audio" };
+  h.props.demoSource = demo; h.props.demoAudioSource = audio; h.props.playback = "repeat";
+  h.render(); await tick(); h.render().action.onAction(); await tick();
+  const request = h.calls.find(call => call.method === "POST");
+  const draft = JSON.parse(request.body).draft;
+  assert.equal(draft.demoAssetId, demo.id);
+  assert.equal(draft.demoAudioAssetId, audio.id);
+  assert.equal(draft.demoAudioPlayback, "repeat");
+  assert.equal(h.uploads.length, 0);
+  assert.equal(h.render().output.id, output.id);
+  h.props.demoAudioSource = { ...audio, id: randomUUID() };
+  assert.equal(h.render().output, null);
+  h.unmount();
+});
+
+test("recovered format joins require the same demo audio selection and playback, including removal", async () => {
+  const demo = { id: randomUUID(), status: "ready", collection: "video", durationSeconds: 8 };
+  const audio = { id: randomUUID(), status: "ready", collection: "audio" };
+  const saved = { version: 1, ownerId: "owner", kind: "hook", requestKey: randomUUID(), draft: { version: 1, kind: "hook", sourceAssetId: source.id, demoAssetId: demo.id, demoAudioAssetId: audio.id, demoAudioPlayback: "repeat", backgroundAssetId: null, backgroundPlayback: "once", subtitles: null } };
+  for (const selection of ["same", "changed", "removed", "playback"]) {
+    const h = harness({ saved, completed: true, scope: `format-demo:hook:${source.id}`, demoSource: demo });
+    h.props.demoAudioSource = selection === "removed" ? null : selection === "changed" ? { ...audio, id: randomUUID() } : audio;
+    h.props.playback = selection === "playback" ? "once" : "repeat";
+    h.render(); await tick();
+    assert.equal(h.render().output?.id ?? null, selection === "same" ? output.id : null, selection);
+    assert.equal(h.calls.filter(call => call.method === "POST").length, 0);
+    h.unmount();
+  }
+});
+
+test("choosing another unchanged ready video after a completed edit reuses it without rendering again", async () => {
+  const saved = { version: 1, ownerId: "owner", kind: "hook", requestKey: randomUUID(), draft: { version: 1, kind: "hook", sourceAssetId: source.id, demoAssetId: null, demoAudioAssetId: null, demoAudioPlayback: "once", backgroundAssetId: null, backgroundPlayback: "once", subtitles: null } };
+  const h = harness({ saved, completed: true, reuseUnchangedSource: true });
+  h.render(); await tick();
+  const replacement = { ...source, id: randomUUID() };
+  h.props.source = replacement;
+  assert.equal(h.render().output, null);
+  h.render().action.onAction(); await tick();
+  assert.equal(h.render().output.id, replacement.id);
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 0);
+  h.unmount();
+});
+
+test("single-video reuse never discards owned demo audio or accepts a nonready audio source", async () => {
+  for (const status of ["ready", "uploading"]) {
+    const h = harness({ reuseUnchangedSource: true });
+    h.props.demoSource = { id: randomUUID(), status: "ready", collection: "video", durationSeconds: 5 };
+    h.props.demoAudioSource = { id: randomUUID(), status, collection: "audio" };
+    h.render(); await tick(); h.render().action.onAction(); await tick();
+    if (status === "ready") assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
+    else { assert.equal(h.calls.length, 0); assert.match(h.render().action.error, /ready owned demo audio/); }
+    h.unmount();
+  }
+});
+
 test("a status timeout preserves the original request and never submits a replacement", async () => {
   const controller = new AbortController();
   const client = load("lib/explore/workflow-finishing-client.ts", {
+    "../http/read-deadline.ts": { withReadDeadline },
     "../../worker/src/lib/explore-finishing-contract.ts": await import("../worker/src/lib/explore-finishing-contract.ts"),
+    "../../worker/src/subtitles/contracts.ts": await import("../worker/src/subtitles/contracts.ts"),
   }, { AbortSignal: { timeout(ms) { assert.equal(ms, 30_000); return controller.signal; } } });
   const saved = { requestKey: randomUUID() };
   let call;
@@ -410,6 +545,8 @@ function schedulingHarness({ kind = "hook", saved = null, lost = false, storageF
     "next/dynamic": { default: (_loader, options) => { assert.equal(options.ssr, false); return Editor; } },
     "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: { subtitles: false, style: "clean" }, useWorkflowFinishing: () => ({ action: {}, output: finished }) },
     "@/lib/explore/workflow-schedule-client": scheduleClient,
+    "./talking-head-pending-composition": { useTalkingHeadPendingComposition: () => ({}) },
+    "@/lib/explore/format-demo": { trimmedDemoFraming: (framing) => framing },
     "@/lib/explore/workflow-scheduling-draft": schedulingDraft,
     "@/lib/explore/workflow-connected-accounts": { parseWorkflowConnectedAccounts: value => { assert.equal(value.ok, true); return value.connections; } },
     "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { assert.equal(owner, "owner"); return "owner-token"; } },
@@ -466,6 +603,31 @@ test("both Explore workflows confirm one or both platforms and keep all exact se
   }
 });
 
+test("Talking Head review stays inside the workflow and only submits after explicit confirmation", async () => {
+  const h = schedulingHarness(); h.props.inlineSchedule = true;
+  let retainedDraft;
+  h.props.onScheduleDraftChange = draft => { retainedDraft = draft; };
+  h.render(); await tick(); h.render().view.schedule.onAction(); await tick();
+  let screen = h.render();
+  assert.equal(screen.editor, null, "The boundary does not mount a separate review screen");
+  const editor = screen.view.scheduleReview.props;
+  assert.equal(editor.presentation, "inline");
+  assert.equal(editor.finalVideo.id, output.id);
+  assert.equal(h.calls.some(call => call.method === "POST"), false);
+  editor.onCloseDraft({ caption: "Changed inline", date: "2026-10-20", time: "16:30", timezone: "UTC" });
+  assert.equal(retainedDraft.caption, "Changed inline");
+  assert.equal(retainedDraft.timezone, "UTC");
+  assert.equal(retainedDraft.connectionId, h.props.scheduleDraft.connectionId);
+  editor.onSave(h.submission); await tick(); screen = h.render();
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
+  assert.equal(screen.view.scheduleReview, null);
+  assert.equal(retainedDraft.caption, h.submission.caption);
+  assert.equal(retainedDraft.date, h.submission.scheduledDate);
+  assert.equal(retainedDraft.time, h.submission.scheduledTime);
+  assert.equal(retainedDraft.timezone, h.submission.timezone);
+  h.unmount();
+});
+
 test("scheduling reload only reads and can explicitly resume the original video/account even without local draft media", async () => {
   const saved = { version: 1, owner: "owner", kind: "hook", input: { caption: "Original caption", source: { kind: "media_asset", id: output.id }, targets: [{ connectionId: randomUUID(), platform: "instagram" }], scheduledFor: "2026-10-06T10:00:00.000Z", timezone: "Asia/Calcutta", idempotencyKey: `explore:${randomUUID()}` } };
   const h = schedulingHarness({ saved, finished: null }); h.render(); await tick(); const screen = h.render();
@@ -493,4 +655,35 @@ test("scheduling refuses wrong media/accounts, missing durable storage and unsaf
     }
     assert.equal(h.calls.some(c => c.method === "POST"), false); h.unmount();
   }
+});
+
+
+test("Talking Head caption/export snapshots keep independent clip edits and demo audio without per-clip renders", async () => {
+  const demo = { id: randomUUID(), status: "ready", collection: "video", durationSeconds: 90 };
+  const editing = { version: 1, format: "hook", trimStartMs: 1000, trimEndMs: 3000, originalVolume: .6, musicVolume: .3, text: null };
+  const composition = { version: 1, sourceEditing: editing, demoEditing: { ...editing, trimEndMs: 6000 }, sourceAudioAssetId: randomUUID(), sourceAudioPlayback: "repeat" };
+  const demoAudioAssetId = randomUUID();
+  const h = harness({ subtitles: true, demoSource: demo, composition, demoAudioAssetId });
+  h.props.playback = "repeat"; h.render(); await tick(); h.render().action.onAction(); await tick(); h.render();
+  const body = JSON.parse(h.calls.find(call => call.method === "POST").body).draft;
+  assert.deepEqual(body.composition, composition);
+  assert.equal(body.demoAudioAssetId, demoAudioAssetId); assert.equal(body.demoAudioPlayback, "repeat");
+  assert.equal(body.demoAssetId, demo.id); assert.equal(body.sourceAssetId, source.id);
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
+  assert.equal(body.subtitles.version, 2); h.unmount();
+});
+
+
+test("checking an earlier completed request preserves a concurrently archived request", async () => {
+  const draft = { version: 1, kind: "hook", sourceAssetId: source.id, demoAssetId: null, demoAudioAssetId: null, demoAudioPlayback: "once", backgroundAssetId: null, backgroundPlayback: "once", subtitles: { language: "en", style: "clean" } };
+  const old = { version: 1, ownerId: "owner", kind: "hook", requestKey: randomUUID(), draft };
+  const concurrent = { ...old, requestKey: randomUUID() };
+  let added = false;
+  const h = harness({ recovery: [old], completed: true, onArchivedRead(store, key) {
+    if (!added) { added = true; store.set(key, JSON.stringify([old, concurrent])); }
+  } });
+  h.render(); await tick(); h.render().action.refresh(); await tick(); await tick();
+  assert.deepEqual(finishClient.readFinishRecovery(h.store.get(finishClient.finishRecoveryStorageKey(h.storageKey)), "owner", "hook"), [concurrent]);
+  assert.equal(h.calls.some(call => call.method === "POST"), false);
+  h.unmount();
 });

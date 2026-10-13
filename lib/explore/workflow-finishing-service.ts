@@ -5,9 +5,10 @@ import { FORMAT_TEXT_SEQUENCE_RENDER_VERSION } from "@/worker/src/lib/explore-fo
 import { getBackgroundJobForUser, getMissingBackgroundJobStorageEnvVars, type BackgroundJobRecord } from "@/lib/jobs/background-jobs";
 import { dispatchQueuedBackgroundJobForRecovery } from "@/lib/jobs/background-job-service";
 import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
-import { ExploreFinishError, EXPLORE_RENDER_VERSION, DEMO_FRAMING_RENDER_VERSION, isExploreUuid, parseExploreFinishDraft, type ExploreFinishDraft, type ExploreFinishReceipt } from "@/worker/src/lib/explore-finishing-contract";
+import { ExploreFinishError, EXPLORE_RENDER_VERSION, DEMO_FRAMING_RENDER_VERSION, EXPLORE_COMPOSITION_RENDER_VERSION, isExploreUuid, parseExploreFinishDraft, type ExploreFinishDraft, type ExploreFinishReceipt } from "@/worker/src/lib/explore-finishing-contract";
 import { SCRIBE_PROVIDER_KEY } from "@/worker/src/subtitles/elevenlabs-contract";
 import { ExploreFinishingRequestStore } from "./workflow-finishing-store";
+import type { SubtitleTranscript } from "@/worker/src/subtitles/contracts";
 
 const terminal = new Set(["completed", "failed", "cancelled"]);
 const safeErrors: Record<string, string> = {
@@ -26,7 +27,8 @@ export type WorkflowFinishingResult = {
   requestKey: string;
   kind?: ExploreFinishDraft["kind"];
   jobId: string | null;
-  outcome: "unconfirmed" | "pending" | "completed" | "failed" | "cancelled" | "uncertain";
+  outcome: "unconfirmed" | "pending" | "completed" | "captions_ready" | "failed" | "cancelled" | "uncertain";
+  captionTranscript?: SubtitleTranscript;
   status?: BackgroundJobRecord["status"];
   progress?: number | null;
   mediaAssetId: string | null;
@@ -35,7 +37,7 @@ export type WorkflowFinishingResult = {
 
 /** Keep normalized drafts and legacy renderer fingerprints identical across clients. */
 export function fingerprintExploreFinish(draft: ExploreFinishDraft) {
-  return createHash("sha256").update(JSON.stringify({ renderer: draft.sourceFraming ? "explore-finish-single-pan-v1" : draft.editing ? draft.editing.textOverlays === undefined ? "explore-format-edit-v1" : FORMAT_TEXT_SEQUENCE_RENDER_VERSION : draft.demoFraming ? DEMO_FRAMING_RENDER_VERSION : EXPLORE_RENDER_VERSION,
+  return createHash("sha256").update(JSON.stringify({ renderer: draft.composition ? EXPLORE_COMPOSITION_RENDER_VERSION : draft.sourceFraming ? "explore-finish-single-pan-v1" : draft.editing ? draft.editing.textOverlays === undefined ? "explore-format-edit-v1" : FORMAT_TEXT_SEQUENCE_RENDER_VERSION : draft.demoFraming ? DEMO_FRAMING_RENDER_VERSION : EXPLORE_RENDER_VERSION,
     transcription: draft.subtitles ? SCRIBE_PROVIDER_KEY : null, draft })).digest("hex");
 }
 
@@ -60,7 +62,7 @@ function verifyJob(job: BackgroundJobRecord | null, receipt: ExploreFinishReceip
       job.idempotencyKey !== `explore-finish:${receipt.request_key}` || !input || typeof input !== "object" || Array.isArray(input) ||
       input.version !== 1 || input.userId !== receipt.user_id || input.requestKey !== receipt.request_key ||
       input.outputAssetId !== receipt.output_asset_id || input.fingerprint !== receipt.fingerprint) throw new ExploreFinishError("The saved finishing job could not be verified.", 409);
-  if (job.status === "completed" && receipt.status !== "completed") throw new ExploreFinishError("The finished-media record is not confirmed yet.", 503);
+  if (job.status === "completed" && receipt.status !== "completed" && !(receipt.draft.captionPreview && receipt.transcript)) throw new ExploreFinishError("The finished-media record is not confirmed yet.", 503);
   return job;
 }
 
@@ -82,14 +84,15 @@ async function resultFor(store: ExploreFinishingRequestStore, receipt: ExploreFi
   const verified = verifyJob(job, receipt);
   if (receipt.status === "completed") await store.asset(receipt.user_id, receipt.output_asset_id, "video");
   const uncertain = receipt.status === "uncertain" || ["PROVIDER_REQUEST_UNCERTAIN", "provider_submission_uncertain"].includes(verified.errorCode ?? "");
-  const outcome = receipt.status === "completed" ? "completed" : uncertain ? "uncertain" :
+  const outcome = receipt.draft.captionPreview && verified.status === "completed" && receipt.transcript ? "captions_ready" : receipt.status === "completed" ? "completed" : uncertain ? "uncertain" :
     verified.status === "failed" ? "failed" : verified.status === "cancelled" ? "cancelled" : "pending";
   const failureMessage = safeErrors[verified.errorCode ?? ""];
   return { ok: true, receiptVersion: 1, requestKey: receipt.request_key, kind: receipt.draft.kind,
     jobId: receipt.job_id, outcome, status: verified.status,
     progress: typeof verified.progress === "number" && Number.isFinite(verified.progress) ? Math.max(0, Math.min(100, verified.progress)) : null,
     mediaAssetId: outcome === "completed" ? receipt.output_asset_id : null,
-    message: outcome === "completed" ? "Your finished video is saved." : uncertain ? "Transcription needs review; no automatic resubmission will be made." :
+    ...(receipt.transcript ? { captionTranscript: receipt.transcript } : {}),
+    message: outcome === "captions_ready" ? "Captions are ready. Review the words, then prepare your final video." : outcome === "completed" ? "Your finished video is saved." : uncertain ? "Transcription needs review; no automatic resubmission will be made." :
       outcome === "failed" ? typeof failureMessage === "string" ? failureMessage : "Finishing did not complete. Your original media is unchanged." :
       outcome === "cancelled" ? "Finishing was cancelled. Your original media is unchanged." : pendingFinishMessage(verified) };
 }
@@ -105,7 +108,7 @@ export async function startWorkflowFinishingForOwner(owner: string, requestKey: 
   if (prior && (prior.fingerprint !== fingerprint || JSON.stringify(prior.draft) !== JSON.stringify(draft))) throw new ExploreFinishError("This request was already used for different edits.", 409);
   if (!prior) {
     const runtime = videoFinishingRuntime();
-    if (draft.editing && !runtime.editing) throw new ExploreFinishError("Format video editing is not enabled yet.", 503);
+    if ((draft.editing || draft.composition) && !runtime.editing) throw new ExploreFinishError("Format video editing is not enabled yet.", 503);
     if ((draft.demoFraming || draft.sourceFraming) && !runtime.framing) throw new ExploreFinishError("Demo framing is not enabled yet.", 503);
     if (draft.subtitles && !runtime.subtitles) throw new ExploreFinishError("Subtitle finishing is not enabled yet.", 503);
     if (!runtime.configured) throw new ExploreFinishError("Video finishing dispatch is not configured.", 503);

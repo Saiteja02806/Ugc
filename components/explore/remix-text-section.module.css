@@ -5,8 +5,7 @@
 .overviewHeader { display: flex; min-height: 20px; align-items: center; gap: 12px; margin-bottom: 8px; }
 .overviewLabel { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; font-weight: 550; }
 .availability { color: var(--muted); font-size: 11px; font-weight: 400; }
-.overviewGenerate { min-width: 120px; max-width: 100%; min-height: 40px; padding-inline: 18px; }
-.overviewGenerate:disabled { border-color: var(--border); background: var(--card-muted); color: var(--muted); opacity: 1; }
+.overviewGenerate { min-width: 144px; max-width: 100%; min-height: 44px; padding-inline: 18px; }
 .overviewActions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .optionsToggle { min-height: 36px; padding-inline: 0 8px; color: var(--muted); font-size: 12px; gap: 6px; }
 .optionsToggle[aria-expanded="true"] svg { transform: rotate(180deg); }
@@ -20,7 +19,7 @@
 .hint { margin-left: auto; color: var(--muted); font-size: 11px; font-weight: 400; }
 .chevron { flex: none; color: var(--muted); }
 .control[open] > .trigger .chevron { transform: rotate(180deg); }
-.section button:focus-visible, .section a:focus-visible, .section summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.section a:focus-visible, .section summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 .flow { display: grid; gap: 10px; border-top: 1px solid var(--border); padding: 12px; }
 .overviewFlow { gap: 8px; border-top: 0; padding: 0; }
 .label { display: grid; min-width: 0; gap: 5px; font-size: 12px; font-weight: 500; color: var(--foreground); }

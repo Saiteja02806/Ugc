@@ -4,9 +4,10 @@ import test from "node:test";
 import { PGlite } from "@electric-sql/pglite";
 
 const migration = readFileSync(new URL("../supabase/migrations/20261003190747_explore_atomic_generation_requests.sql", import.meta.url), "utf8");
+const threeOutputMigration = readFileSync(new URL("../supabase/migrations/20261012172333_explore_three_output_generation.sql", import.meta.url), "utf8");
 const key = "11111111-1111-4111-8111-111111111111";
 const fingerprint = "a".repeat(64);
-async function fixture(credits = 100) {
+async function fixture(credits = 100, threeOutputs = true) {
   const db = new PGlite();
   await db.exec(`
     create role anon; create role authenticated; create role service_role bypassrls;
@@ -36,6 +37,7 @@ async function fixture(credits = 100) {
     grant execute on function reserve_billing_credits(text,text,text,int),create_or_get_background_job_v1(text,jsonb,text,text,int,text,text,text) to service_role;
   `);
   await db.exec(migration);
+  if (threeOutputs) await db.exec(threeOutputMigration);
   return db;
 }
 const inputs = (quantity = 2, owner = "owner-a", kind = "hook", fp = fingerprint) => Array.from({ length: quantity }, (_, index) => ({
@@ -48,6 +50,49 @@ const start = (db, { owner = "owner-a", kind = "hook", quantity = 2, fp = finger
 );
 const resolve = (db, owner = "owner-a", kind = "hook", quantity = 2) => db.query("select explore_resolve_generation_request($1,$2,$3,$4) result",[owner,key,kind,quantity]);
 const counts = async (db) => (await db.query("select (select count(*)::int from background_jobs) jobs,(select count(*)::int from billing_credit_reservations) reservations,(select count(*)::int from explore_generation_requests) receipts")).rows[0];
+
+test("two and three videos commit atomically for Talking Head and creator-phone and replay without charging again", async () => {
+  for (const kind of ["hook", "phone"]) for (const quantity of [2, 3]) {
+    const db = await fixture();
+    try {
+      await db.exec("set role service_role");
+      const args = { kind, quantity, input: inputs(quantity, "owner-a", kind) };
+      const first = (await start(db, args)).rows[0].result;
+      const again = (await start(db, args)).rows[0].result;
+      assert.equal(first.jobs.length, quantity);
+      assert.deepEqual(again.jobs, first.jobs);
+      assert.deepEqual(await counts(db), { jobs: quantity, reservations: quantity, receipts: 1 });
+      assert.equal((await db.query("select remaining from balances where user_id='owner-a'")).rows[0].remaining, 100 - quantity * 4);
+      const receipt = (await resolve(db, "owner-a", kind, quantity)).rows[0].result;
+      assert.equal(receipt.quantity, quantity);
+      assert.equal(receipt.job_ids.length, quantity);
+    } finally { await db.close(); }
+  }
+});
+
+test("three requested videos with insufficient total credits leave no partial jobs or reservations", async () => {
+  const db = await fixture(10);
+  try {
+    await db.exec("set role service_role");
+    await assert.rejects(start(db, { quantity: 3, input: inputs(3) }), /insufficient_billing_credits/);
+    assert.deepEqual(await counts(db), { jobs: 0, reservations: 0, receipts: 0 });
+    assert.equal((await db.query("select remaining from balances where user_id='owner-a'")).rows[0].remaining, 10);
+  } finally { await db.close(); }
+});
+
+test("the additive three-output migration preserves existing receipt IDs, fingerprints and service-only replay", async () => {
+  const db = await fixture(100, false);
+  try {
+    const original = (await start(db)).rows[0].result;
+    const receipt = (await resolve(db)).rows[0].result;
+    await db.exec(threeOutputMigration);
+    await db.exec("set role service_role");
+    assert.deepEqual((await start(db)).rows[0].result.jobs, original.jobs);
+    assert.deepEqual((await resolve(db)).rows[0].result, receipt);
+    const newBatch = (await start(db, { owner: "owner-b", kind: "phone", quantity: 3, input: inputs(3, "owner-b", "phone") })).rows[0].result;
+    assert.equal(newBatch.jobs.length, 3);
+  } finally { await db.close(); }
+});
 
 test("every job, credit reservation and receipt commit together; replay keeps all IDs and cost", async () => {
   const db = await fixture();
@@ -120,7 +165,7 @@ test("request identity is owner-scoped and rejects changed workflow, quantity or
 test("malformed batches cannot reserve, commit duplicate output IDs or impersonate another owner", async () => {
   const db = await fixture();
   try {
-    const malformed = [inputs(3),inputs().map((input)=>({...input,userId:"owner-b"})),inputs().map((input)=>({...input,batchIndex:1})),inputs().map((input)=>({...input,videoId:inputs()[0].videoId}))];
+    const malformed = [inputs(5),inputs().map((input)=>({...input,userId:"owner-b"})),inputs().map((input)=>({...input,batchIndex:1})),inputs().map((input)=>({...input,videoId:inputs()[0].videoId}))];
     for (const input of malformed) await assert.rejects(start(db,{input}),/input_invalid/);
     assert.deepEqual(await counts(db),{jobs:0,reservations:0,receipts:0});
     await db.exec("insert into background_jobs(user_id,job_type,project_id,idempotency_key,input_json) values('owner-a','generate_hook_video','ai-studio','legacy-request','{}')");

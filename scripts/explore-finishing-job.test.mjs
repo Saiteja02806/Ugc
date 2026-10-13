@@ -25,6 +25,19 @@ test("worker source lookup admits legacy videos with MIME checks and retains own
 });
 const transcript = { schemaVersion:1,provider:"elevenlabs",model:"scribe_v2",language:"en",durationMs:2000,
   words:[{text:"Hook",startMs:100,endMs:500},{text:"Demo",startMs:1100,endMs:1500}] };
+
+test("caption-only worker persists speech and completes without uploading or finalizing a video", async () => {
+  const f = fixture({ draftChanges: { captionPreview: true, subtitles: { language: "en", style: "clean", version: 2 } } });
+  const result = await runFinishExploreVideoJob(f.job, f.context, f.deps);
+  assert.deepEqual(result, { captionsReady: true, requestKey: f.receipt.request_key });
+  assert.equal(f.submits(), 1); assert.ok(f.events.includes("save"));
+  assert.ok(!f.events.includes("upload") && !f.events.includes("finalize"));
+  assert.ok(f.events.includes("checkpoint:captions_ready"));
+  f.receipt.transcript = transcript;
+  const count = f.composed();
+  assert.deepEqual(await runFinishExploreVideoJob(f.job, f.context, f.deps), result);
+  assert.equal(f.composed(), count, "a saved preview recovers without rendering or provider work");
+});
 function fixture({ subtitles = true, claimState = "submit", receiptStatus = "queued", recovered = null, draftChanges = {} } = {}) {
   const events = []; let submits = 0, composed = 0, sourcePath;
   const receipt = { user_id:"owner-a",request_key:id(10),job_id:id(11),output_asset_id:id(12),fingerprint:fp,status:receiptStatus,
@@ -56,6 +69,36 @@ function fixture({ subtitles = true, claimState = "submit", receiptStatus = "que
   const context = {checkpoint:async ({stage})=>{events.push(`checkpoint:${stage}`);}};
   return {receipt,job,deps,context,events,output,submits:()=>submits,composed:()=>composed,sourcePath:()=>sourcePath};
 }
+
+test("background schedule callback follows verified file finalization and completed recovery never renders again", async () => {
+  const f = fixture({ subtitles: false });
+  f.deps.store.hasPendingSchedule = async () => true;
+  f.deps.finalizeSchedule = async input => { assert.deepEqual(input, { userId: f.receipt.user_id, requestKey: f.receipt.request_key }); f.events.push("schedule"); return { ok: true, inspected: 1, finalized: true }; };
+  await runFinishExploreVideoJob(f.job, f.context, f.deps);
+  assert.ok(f.events.indexOf("schedule") > f.events.indexOf("finalize"));
+  f.receipt.status = "completed";
+  await runFinishExploreVideoJob(f.job, f.context, f.deps);
+  assert.equal(f.composed(), 1); assert.equal(f.events.filter(event => event === "schedule").length, 2);
+});
+
+test("unconfirmed background schedule callback retries saved output without re-rendering or paid ASR", async () => {
+  const f = fixture({ receiptStatus: "completed" });
+  f.deps.store.hasPendingSchedule = async () => true;
+  f.deps.finalizeSchedule = async () => { throw new Error("Response lost"); };
+  await assert.rejects(runFinishExploreVideoJob(f.job, f.context, f.deps), error => error.code === "explore_schedule_finalization_pending");
+  assert.equal(f.composed(), 0); assert.equal(f.submits(), 0); assert.equal(f.events.includes("upload"), false);
+  f.deps.finalizeSchedule = async () => ({ ok: true, inspected: 1, finalized: true });
+  await runFinishExploreVideoJob(f.job, f.context, f.deps);
+  assert.equal(f.composed(), 0); assert.equal(f.submits(), 0);
+});
+
+test("ordinary finishing without a bound pending schedule does not publish", async () => {
+  const f = fixture({ receiptStatus: "completed" }); let callbacks = 0;
+  f.deps.store.hasPendingSchedule = async () => false;
+  f.deps.finalizeSchedule = async () => { callbacks++; };
+  await runFinishExploreVideoJob(f.job, f.context, f.deps);
+  assert.equal(callbacks, 0);
+});
 
 test("both workflows pass all subtitle positions and styles into export and saved metadata, with legacy Bottom", async () => {
   for (const kind of ["hook", "phone"]) for (const placement of [undefined, "bottom", "middle", "top"]) for (const style of SUBTITLE_STYLES) {

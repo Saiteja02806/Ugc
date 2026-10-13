@@ -17,7 +17,7 @@ export async function handleWorkflowGenerationRecovery(request: Request) {
   const query = new URL(request.url).searchParams;
   const requestKey = query.get("requestKey") ?? "";
   const quantity = Number(query.get("quantity"));
-  if (!UUID.test(requestKey) || ![1, 2, 4].includes(quantity)) return json({ ok: false, error: "Invalid recovery identity." }, 400);
+  if (!UUID.test(requestKey) || ![1, 2, 3, 4].includes(quantity)) return json({ ok: false, error: "Invalid recovery identity." }, 400);
   try {
     if (query.get("receipt") === "2") {
       const kind = query.get("kind");
@@ -57,7 +57,7 @@ export async function handleWorkflowGenerationResolution(request: Request) {
   const query = new URL(request.url).searchParams;
   const requestKey = query.get("requestKey") ?? "", kind = query.get("kind"), quantity = Number(query.get("quantity"));
   const body = await request.json().catch(() => null);
-  if (query.get("receipt") !== "2" || !UUID.test(requestKey) || ![1, 2, 4].includes(quantity) ||
+  if (query.get("receipt") !== "2" || !UUID.test(requestKey) || ![1, 2, 3, 4].includes(quantity) ||
       (kind !== "hook" && kind !== "phone") || body?.action !== "resolve") return json({ ok: false, error: "Invalid request resolution." }, 400);
   try { return await receiptResponse(await resolveWorkflowGenerationReceipt(ownerId, requestKey, kind, quantity), ownerId); }
   catch { return json({ ok: false, error: "Could not resolve the saved request. No new generation was submitted." }, 503); }

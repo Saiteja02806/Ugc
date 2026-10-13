@@ -25,6 +25,7 @@ import {
   processRecoveredWorkerJob,
 } from "./processor.js";
 import { parseWorkerDeliveryMessage } from "./lib/queue-message.js";
+import { isExploreUuid } from "./lib/explore-finishing-contract.js";
 
 let shouldStop = false;
 
@@ -290,6 +291,12 @@ async function handleBackgroundJobTask(
       error: "Task job type does not match the durable job record.",
       ok: false,
     });
+    return;
+  }
+  const ownedInput = job.input_json && typeof job.input_json === "object" && !Array.isArray(job.input_json) ? job.input_json : {};
+  if (process.env.WORKER_EXPLORE_FINISH_ONLY === "true" && (!job.user_id || job.job_type !== "render_demo_video" || job.project_id !== "explore" ||
+      ownedInput.version !== 1 || ownedInput.interactiveFinishingVersion !== 1 || !isExploreUuid(ownedInput.requestKey) || job.idempotency_key !== `explore-finish:${ownedInput.requestKey}` || ownedInput.userId !== job.user_id)) {
+    writeJsonResponse(response, 400, { ok: false, error: "This receiver accepts owned Explore finishing requests only." });
     return;
   }
 

@@ -5,6 +5,8 @@ import vm from "node:vm";
 import path from "node:path";
 import ts from "typescript";
 import * as remixSource from "../lib/explore/remix-source.ts";
+import * as pendingGeneration from "../lib/ai-studio/pending-generation.ts";
+import * as readDeadline from "../lib/http/read-deadline.ts";
 
 function load(file, imports = {}, globals = {}) {
   const exports = {};
@@ -22,11 +24,12 @@ function load(file, imports = {}, globals = {}) {
   }, ...globals });
   return exports;
 }
-function harness(format, { reference = true, referenceUrls, regenerationTarget, access = "pro", preview = false, captureRequests = false, completedJob = null, persistedJobId = completedJob?.id ?? null, wanEnabled = false } = {}) {
+function harness(format, { reference = true, referenceUrls, regenerationTarget, access = "pro", preview = false, captureRequests = false, completedJob = null, persistedJobId = completedJob?.id ?? null, wanEnabled = false, initialStorage = [], recoveredBatch = null } = {}) {
   const events = [], controls = {}, results = {};
   const requests = [], states = [], errors = [];
   const effects = [], readyVideos = [];
-  let cursor = 0;
+  let cursor = 0, refCursor = 0, effectCursor = 0;
+  const refs = [], effectDependencies = [];
   let promptSet = false;
   const imports = {
     react: {
@@ -34,7 +37,17 @@ function harness(format, { reference = true, referenceUrls, regenerationTarget, 
         const index = cursor++;
         if (!promptSet && value === "") { promptSet = true; value = "My requested changes"; }
         if (!(index in states)) states[index] = value;
-        return [states[index], next => { states[index] = typeof next === "function" ? next(states[index]) : next; }]; }, useRef: value => ({ current: value }), useEffect: callback => { if (completedJob) effects.push(callback); }, useMemo: fn => fn(),
+        return [states[index], next => { states[index] = typeof next === "function" ? next(states[index]) : next; }]; },
+      useRef(value) { return refs[refCursor++] ??= { current: value }; },
+      useEffect(callback, deps) {
+        const index = effectCursor++, prior = effectDependencies[index];
+        if (!prior || !deps || deps.some((value, i) => !Object.is(value, prior[i]))) {
+          effectDependencies[index] = deps ?? [];
+          // Submission-only fixtures still execute the actual account lifecycle.
+          if (callback.toString().includes("activeUserIdRef.current =")) callback();
+          else if (completedJob) effects.push(callback);
+        }
+      }, useMemo: fn => fn(), useCallback: fn => fn,
     },
     "react/jsx-runtime": { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "Fragment" },
     "@tanstack/react-query": { useQueryClient: () => ({ invalidateQueries: async () => {} }) },
@@ -51,6 +64,9 @@ function harness(format, { reference = true, referenceUrls, regenerationTarget, 
     "@/lib/ai-studio/video-history": load("lib/ai-studio/video-history.ts"),
     "@/lib/ai-studio/video-generation-state": load("lib/ai-studio/video-generation-state.ts"),
     "@/lib/ai-studio/generation-session": load("lib/ai-studio/generation-session.ts"),
+    "@/lib/ai-studio/pending-generation": pendingGeneration,
+    "@/components/generation/use-generation-discovery": { useGenerationDiscovery: args => ({ available: Boolean(recoveredBatch), checking: false, error: null, check: async () => { if (recoveredBatch) args.onRecovered(recoveredBatch.result, recoveredBatch.input); } }) },
+    "@/lib/http/read-deadline": readDeadline,
     "@/lib/ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts", { "../../worker/src/lib/video-prompt-policy": load("worker/src/lib/video-prompt-policy.ts") }),
     "@/lib/explore/format-generation-prompt": load("lib/explore/format-generation-prompt.ts", { "@/lib/ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts") }),
     "@/lib/firebase/auth": { getCurrentUserIdToken: () => { events.push("waiting-for-auth"); return captureRequests || completedJob ? Promise.resolve("fixture-token") : new Promise(() => {}); } },
@@ -59,7 +75,9 @@ function harness(format, { reference = true, referenceUrls, regenerationTarget, 
     "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
   };
   const file = format === "slideshow" ? "components/workspace/ugc-chat-workspace.tsx" : "components/video/video-generation-workspace.tsx";
-  const panelModule = load(file, imports, { URLSearchParams, setTimeout: () => 1, clearTimeout() {}, window: { addEventListener() {}, removeEventListener() {}, setTimeout: () => 1, clearTimeout() {}, localStorage: { getItem: () => null, setItem() {} } }, console: { error: (...values) => errors.push(values.map(String).join(" ")) }, crypto: { randomUUID: () => "fixture-request" }, fetch: async (url, options) => {
+  const stored = new Map(initialStorage);
+  const storage = { getItem: key => stored.get(key) ?? null, setItem: (key, value) => stored.set(key, value), removeItem: key => stored.delete(key) };
+  const panelModule = load(file, imports, { URLSearchParams, AbortSignal, localStorage: storage, navigator: { locks: { request: async (_key, _options, callback) => callback({}) } }, setTimeout: () => 1, clearTimeout() {}, window: { addEventListener() {}, removeEventListener() {}, setTimeout: () => 1, clearTimeout() {}, localStorage: storage }, console: { error: (...values) => errors.push(values.map(String).join(" ")) }, crypto: { randomUUID: () => "00000000-0000-4000-8000-000000000001" }, fetch: async (url, options) => {
     assert.equal(captureRequests, true, "No network requests are allowed");
     requests.push({ url, ...options, body: JSON.parse(options.body) });
     return { ok: false, json: async () => ({ ok: false, error: "Fixture stops after capturing the request" }) };
@@ -77,9 +95,40 @@ function harness(format, { reference = true, referenceUrls, regenerationTarget, 
     for (const child of [node.props?.children].flat(Infinity)) { const match = find(child, type); if (match) return match; }
     return null;
   }
-  const render = () => { cursor = 0; const tree = Panel(props); return { composer: find(tree, "AiStudioComposer"), output: find(tree, "AiStudioResults") }; };
-  return { events, controls, results, requests, errors, readyVideos, flushEffects: async () => { for (const effect of effects.splice(0)) effect(); await new Promise(resolve => setImmediate(resolve)); }, render, ...render() };
+  const render = () => { cursor = 0; refCursor = 0; effectCursor = 0; const tree = Panel(props); return { composer: find(tree, "AiStudioComposer"), output: find(tree, "AiStudioResults") }; };
+  return { events, controls, results, requests, errors, readyVideos, stored, flushEffects: async () => { for (const effect of effects.splice(0)) effect(); await new Promise(resolve => setImmediate(resolve)); }, render, ...render() };
 }
+
+test("slideshow pending cards restore prompt and ratio from the same owner/scope key used by admission", async () => {
+  const jobId = "00000000-0000-4000-8000-000000000002";
+  const metadataKey = `ugc-ai-studio.image-job.v2.test-owner.slideshow.${jobId}`;
+  const h = harness("slideshow", { initialStorage: [[metadataKey, JSON.stringify({ prompt: "Original slide instructions", aspectRatio: "4:5" })]], completedJob: { id: jobId, jobType: "image_generation", exploreFormat: "slideshow", status: "queued", createdAt: "2026-10-13T00:00:00Z", updatedAt: "2026-10-13T00:00:00Z" } });
+  await h.flushEffects();
+  const card = h.render().output.props.children.find(node => node.type?.name === "ImageGenerationCard");
+  assert.equal(card.props.prompt, "Original slide instructions"); assert.equal(card.props.aspectRatio, "4:5");
+});
+
+test("read-only earlier image recovery merges scoped job hints and retains newer metadata", async () => {
+  const oldJob = "00000000-0000-4000-8000-000000000002", newJob = "00000000-0000-4000-8000-000000000003";
+  const storageKey = "ugc-ai-studio.latest-image-job.v2.test-owner.slideshow", newMetadataKey = `ugc-ai-studio.image-job.v2.test-owner.slideshow.${newJob}`;
+  const h = harness("slideshow", { initialStorage: [[storageKey, JSON.stringify([newJob])], [newMetadataKey, JSON.stringify({ prompt: "Newer instructions", aspectRatio: "9:16" })]], recoveredBatch: { result: { jobs: [{ jobId: oldJob }] }, input: { prompt: "Earlier slide instructions", aspectRatio: "4:5" } } });
+  const button = h.composer.props.secondaryActions.props.children.find(node => node?.props?.children === "Check earlier requests");
+  await button.props.onClick();
+  assert.deepEqual(new Set(JSON.parse(h.stored.get(storageKey))), new Set([newJob, oldJob]));
+  assert.equal(JSON.parse(h.stored.get(`ugc-ai-studio.image-job.v2.test-owner.slideshow.${oldJob}`)).prompt, "Earlier slide instructions");
+  assert.equal(JSON.parse(h.stored.get(newMetadataKey)).prompt, "Newer instructions"); assert.equal(h.requests.length, 0);
+});
+
+test("earlier video discovery preserves newer hints and cannot select an old completed opening", async () => {
+  const oldJob = "00000000-0000-4000-8000-000000000002", newJob = "00000000-0000-4000-8000-000000000003";
+  const storageKey = "ugc-ai-studio.latest-video-job.v2.test-owner.hook";
+  const h = harness("hook", { initialStorage: [[storageKey, JSON.stringify([newJob])]], completedJob: { id: oldJob, jobType: "video_generation", exploreFormat: "hook", status: "completed", output: { mediaAssetId: "old-video", url: "/old.mp4", ratio: "9:16" }, updatedAt: "2026-10-13T00:00:00Z" }, recoveredBatch: { result: { jobs: [{ jobId: oldJob }] }, input: { prompt: "Earlier instructions", aspectRatio: "9:16", model: "google_omni", resolution: "720p" } } });
+  const button = h.composer.props.secondaryActions.props.children.find(node => node?.props?.children === "Check earlier requests");
+  await button.props.onClick(); await h.flushEffects();
+  assert.deepEqual(new Set(JSON.parse(h.stored.get(storageKey))), new Set([newJob, oldJob]));
+  assert.equal(JSON.parse(h.stored.get(`ugc-ai-studio.video-job.v2.test-owner.hook.${oldJob}`)).prompt, "Earlier instructions");
+  assert.equal(h.readyVideos.length, 0); assert.equal(h.requests.length, 0);
+});
 
 for (const format of ["hook", "wall_text"]) {
   test(`${format}: local preview allows supported quality changes while generation remains locked`, () => {
@@ -244,6 +293,21 @@ test("slideshow sends the exact selected context independently of output quantit
   assert.deepEqual(h.requests[0].body.referenceImageUrls, urls);
   assert.equal(h.requests[0].body.quantity, 2);
   assert.equal(h.requests[0].body.prompt, "My requested changes");
+});
+
+test("the rendered Hook, Wall of Text and slideshow selectors submit two or three outputs without normalization to one", async () => {
+  for (const format of ["hook", "wall_text", "slideshow"]) for (const quantity of [2, 3]) {
+    const h = harness(format, { captureRequests: true, reference: format === "slideshow" });
+    const label = format === "slideshow" ? "Number of images" : "Number of videos";
+    const select = h.composer.props.settings.props.children.flat(Infinity).find(node => node?.props?.ariaLabel === label);
+    assert.ok(select, `${format} quantity selector must be rendered`);
+    assert.ok(select.props.options.some(option => option.value === String(quantity)));
+    select.props.onChange(String(quantity));
+    await h.render().composer.props.onSubmit({ preventDefault() {} });
+    await new Promise(setImmediate);
+    assert.equal(h.requests.length, 1, JSON.stringify(h.errors));
+    assert.equal(h.requests[0].body.quantity, quantity);
+  }
 });
 
 test("slideshow uses GPT Image 2.5 by default, offers Nano Banana and omits Seedream", async () => {

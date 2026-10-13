@@ -213,7 +213,7 @@ function assertAtomicReceiptResponse(value: unknown, request: { requestKey: stri
     throw new Error("The recovery response could not be verified. Refresh status before generating again.");
   }
 }
-export type WorkflowGenerationRequest = { version: 1 | 2; ownerId: string; kind: WorkflowKind; requestKey: string; quantity: 1 | 2 | 4 };
+export type WorkflowGenerationRequest = { version: 1 | 2; ownerId: string; kind: WorkflowKind; requestKey: string; quantity: 1 | 2 | 3 | 4 };
 export type WorkflowGenerationRecovery = {
   ownerId: string;
   kind: WorkflowKind;
@@ -233,15 +233,15 @@ export function readWorkflowGenerationRequest(storage: Pick<Storage, "getItem">,
     if (raw.length > 1024) throw new Error("oversized");
     const value: unknown = JSON.parse(raw);
     if (!isRecord(value) || ![1, 2].includes(Number(value.version)) || typeof value.version !== "number" || value.ownerId !== ownerId || value.kind !== kind ||
-      typeof value.requestKey !== "string" || !REQUEST_ID.test(value.requestKey) || ![1, 2, 4].includes(Number(value.quantity)) || typeof value.quantity !== "number") throw new Error("invalid");
-    return { version: value.version as 1 | 2, ownerId, kind, requestKey: value.requestKey, quantity: value.quantity as 1 | 2 | 4 };
+      typeof value.requestKey !== "string" || !REQUEST_ID.test(value.requestKey) || ![1, 2, 3, 4].includes(Number(value.quantity)) || typeof value.quantity !== "number") throw new Error("invalid");
+    return { version: value.version as 1 | 2, ownerId, kind, requestKey: value.requestKey, quantity: value.quantity as 1 | 2 | 3 | 4 };
   } catch {
     throw new Error("The saved request cannot be verified. Contact support before starting another generation; do not clear browser storage to retry.");
   }
 }
 
 export function persistWorkflowGenerationRequest(storage: Pick<Storage, "getItem" | "setItem">, ownerId: string, kind: WorkflowKind, requestKey: string, quantity: number) {
-  if (!REQUEST_ID.test(requestKey) || ![1, 2, 4].includes(quantity)) throw new Error("The request identity is invalid.");
+  if (!REQUEST_ID.test(requestKey) || ![1, 2, 3, 4].includes(quantity)) throw new Error("The request identity is invalid.");
   if (readWorkflowGenerationRequest(storage, ownerId, kind)) throw new Error("A previous request is not confirmed. Refresh status first.");
   storage.setItem(workflowGenerationRequestStorageKey(ownerId, kind), JSON.stringify({ version: 2, ownerId, kind, requestKey, quantity }));
   const saved = readWorkflowGenerationRequest(storage, ownerId, kind);

@@ -3,7 +3,8 @@
 import { ChevronDown, ChevronUp, History, ImageIcon, Loader2, Plus } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { FormEvent, KeyboardEvent } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useGenerationDiscovery } from "@/components/generation/use-generation-discovery";
 
 import {
   AiStudioComposer,
@@ -56,6 +57,8 @@ import {
   mergeAIStudioImageHistory,
 } from "@/lib/ai-studio/image-history";
 import { normalizeAIStudioPrompt } from "@/lib/ai-studio/prompt-policy";
+import { pendingGenerationKey, readPendingGeneration, submitPendingGeneration, mergeStoredGenerationJobIds, type PendingGeneration, type RecoveredGeneration } from "@/lib/ai-studio/pending-generation";
+import { withReadDeadline } from "@/lib/http/read-deadline";
 import { resolveSlideshowImage } from "@/lib/explore/slideshow-image";
 import { appendAIStudioSessionResultIds } from "@/lib/ai-studio/generation-session";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
@@ -134,21 +137,25 @@ function persistImageJobs(
   userId: string,
   jobs: readonly { jobId: string }[],
   metadata: { aspectRatio: AIStudioImageAspectRatio; prompt: string },
+  merge = false,
 ) {
   try {
-    const jobIds = jobs.map((job) => job.jobId);
+    const storageKey = `${IMAGE_JOB_STORAGE_PREFIX}${userId}`;
+    const jobIds = merge ? mergeStoredGenerationJobIds(window.localStorage, storageKey, jobs) : jobs.map((job) => job.jobId);
     window.localStorage.setItem(
-      `${IMAGE_JOB_STORAGE_PREFIX}${userId}`,
+      storageKey,
       JSON.stringify(jobIds),
     );
-    for (const jobId of jobIds) {
+    for (const { jobId } of jobs) {
       window.localStorage.setItem(
         `${IMAGE_JOB_METADATA_PREFIX}${userId}.${jobId}`,
         JSON.stringify(metadata),
       );
     }
+    return true;
   } catch {
     // The owner-scoped URL remains the resume fallback when storage is blocked.
+    return false;
   }
 }
 
@@ -211,6 +218,13 @@ export function ImageGenerationStudioPanel({
   const workflow = recreateView?.workflow;
   const workflowFormat = workflow?.format;
   const { loading: authLoading, user } = useAuth();
+  const metadataOwnerId = user ? workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid : null;
+  const discoveredJobIdsRef = useRef(new Set<string>());
+  const restoreDiscoveredJobs = useCallback((result: RecoveredGeneration, input: Record<string, unknown>) => {
+    if (!metadataOwnerId || !persistImageJobs(metadataOwnerId, result.jobs, { aspectRatio: input.aspectRatio as AIStudioImageAspectRatio, prompt: String(input.prompt) }, true)) throw new Error("Could not save earlier job identities. Their recovery records are preserved.");
+    for (const job of result.jobs) { discoveredJobIdsRef.current.add(job.jobId); foregroundJobIdsRef.current.delete(job.jobId); }
+  }, [metadataOwnerId]);
+  const earlierRequests = useGenerationDiscovery({ ownerId: user?.uid ?? null, kind: "image", scope: workflowFormat ?? "studio", enabled: active && !recreateView?.preview, onRecovered: restoreDiscoveredJobs });
   const queryClient = useQueryClient();
   const [prompt, setPrompt] = useState("");
   const [aspectRatio, setAspectRatio] =
@@ -236,6 +250,9 @@ export function ImageGenerationStudioPanel({
   const [activeSubmittedAt, setActiveSubmittedAt] = useState(() => new Date().toISOString());
   const [latestCompletedId, setLatestCompletedId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  const [savedSubmission, setPendingSubmission] = useState<PendingGeneration | null>(null);
+  const pendingSubmission = savedSubmission?.ownerId === user?.uid && savedSubmission?.scope === (workflowFormat ?? "studio") && !recreateView?.preview ? savedSubmission : null;
   const [generatedAssets, setGeneratedAssets] = useState<
     AIStudioImageResult[]
   >([]);
@@ -267,6 +284,19 @@ export function ImageGenerationStudioPanel({
   const billingSyncedJobIdsRef = useRef(new Set<string>());
   const submissionKeyRef = useRef<string | null>(null);
   const activeUserIdRef = useRef<string | null>(null);
+  const pendingOwnerId = user?.uid;
+  useEffect(() => {
+    let stopped = false;
+    void Promise.resolve().then(() => {
+      if (stopped) return;
+      try {
+        const saved = pendingOwnerId && !recreateView?.preview ? readPendingGeneration(localStorage.getItem(pendingGenerationKey(pendingOwnerId, "image", workflowFormat ?? "studio")), pendingOwnerId, "image", workflowFormat ?? "studio") : null;
+        setPendingSubmission(saved);
+        if (saved) { setPrompt(String(saved.input.prompt)); setActionNotice("A previous image submission needs confirmation. Recover saved request checks its original instructions and settings."); }
+      } catch { setActionError("The saved image request could not be verified. Keep its recovery record."); }
+    });
+    return () => { stopped = true; };
+  }, [pendingOwnerId, workflowFormat, recreateView?.preview]);
   const persistedJobId = usePersistedJobIdFromUrl(workflowFormat ? `explore-${workflowFormat}Job` : IMAGE_JOB_URL_PARAMETER);
   const referenceContextKey = JSON.stringify(recreateView?.referenceImageUrls ?? null);
   useEffect(() => {
@@ -388,7 +418,7 @@ export function ImageGenerationStudioPanel({
           const assetJobs = new Map(assets.map((asset) => [asset.id, asset.sourceRecordId]));
           const loadedImages = getAIStudioImageResults(assets, assets.length).map((image) => {
             const jobId = assetJobs.get(image.id);
-            const savedPrompt = jobId ? submittedPromptsRef.current.get(jobId) ?? getImageJobPrompt(user.uid, jobId) : null;
+            const savedPrompt = jobId ? submittedPromptsRef.current.get(jobId) ?? getImageJobPrompt(workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid, jobId) : null;
             return savedPrompt
               ? { ...image, prompt: savedPrompt }
               : image;
@@ -420,7 +450,7 @@ export function ImageGenerationStudioPanel({
   useEffect(() => {
     if (!foregroundAutoResumeRef.current) return;
     for (const job of durableJobs) {
-      if (activeJobStatuses.has(job.status) || job.id === urlJobId) {
+      if (!discoveredJobIdsRef.current.has(job.id) && (activeJobStatuses.has(job.status) || job.id === urlJobId)) {
         foregroundJobIdsRef.current.add(job.id);
       }
     }
@@ -485,7 +515,7 @@ export function ImageGenerationStudioPanel({
       completedJob: (typeof completedJobs)[number],
     ) {
       const completionEpoch = foregroundEpochRef.current;
-      const isForeground = () => isImageCompletionForeground(
+      const isForeground = () => !discoveredJobIdsRef.current.has(completedJob.id) && isImageCompletionForeground(
         completedJob.id,
         completionEpoch,
         foregroundEpochRef.current,
@@ -538,7 +568,7 @@ export function ImageGenerationStudioPanel({
           // catches up or the media endpoint is temporarily unavailable.
         }
 
-        const storedPrompt = getImageJobPrompt(userId, completedJob.id);
+        const storedPrompt = getImageJobPrompt(workflowFormat ? `${userId}.${workflowFormat}` : userId, completedJob.id);
         const savedPrompt = submittedPromptsRef.current.get(completedJob.id) ?? storedPrompt ?? output.prompt ?? persistedResult?.prompt;
         const nextResult: AIStudioImageResult = persistedResult
           ? { ...persistedResult, prompt: savedPrompt, remixTextSource: completedJob.remixTextSource ?? null }
@@ -593,18 +623,14 @@ export function ImageGenerationStudioPanel({
     const trimmedPrompt = normalizeAIStudioPrompt(rawPrompt);
 
     if (
-      generationLocked ||
-      hasInsufficientCredits ||
-      referenceUploadPending ||
-      referenceUploadError || selectingImageRef.current ||
-      tooManyReferences ||
-      !trimmedPrompt ||
-      Boolean(workflow && !recreateView?.referenceImageUrl && !recreateView?.referenceImageAssetId && !instructionReferences.length) ||
-      isGenerating || recoveringJobs
+      recreateView?.preview || (!pendingSubmission && (generationLocked || hasInsufficientCredits || referenceUploadPending || referenceUploadError || tooManyReferences || !trimmedPrompt ||
+      Boolean(workflow && !recreateView?.referenceImageUrl && !recreateView?.referenceImageAssetId && !instructionReferences.length))) || selectingImageRef.current ||
+      isGenerating || recoveringJobs || submittingRef.current
     ) {
       return;
     }
     setIsSubmitting(true);
+    submittingRef.current = true;
     setSelectedHistoryImageId(null);
     foregroundAutoResumeRef.current = false;
     const submissionEpoch = foregroundEpochRef.current;
@@ -615,27 +641,19 @@ export function ImageGenerationStudioPanel({
 
     try {
       workflow?.onGenerationStart();
-      const token = await getCurrentUserIdToken();
+      const token = await withReadDeadline(() => getCurrentUserIdToken(user?.uid));
 
       if (!token || !user) {
         throw new Error("Sign in before generating images.");
       }
 
-      const idempotencyKey =
-        submissionKeyRef.current ?? crypto.randomUUID();
-      submissionKeyRef.current = idempotencyKey;
-
-      const response = await fetch("/api/ai-studio/images/generate", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          "Idempotency-Key": idempotencyKey,
-        },
-        body: JSON.stringify({
+      if (!navigator.locks) throw new Error("Use a browser with Web Locks support to recover generation safely.");
+      const admitted = await submitPendingGeneration({ ownerId: user.uid, kind: "image", scope: workflowFormat ?? "studio", token, storage: localStorage, locks: navigator.locks,
+        fetch, uuid: () => crypto.randomUUID(), assertActive() { if (activeUserIdRef.current !== user.uid) throw new Error("This account's generation is no longer active."); },
+        onStored(saved) { setPendingSubmission(saved); submissionKeyRef.current = saved.requestKey; },
+        input: {
           aspectRatio,
           exploreFormat: workflow?.format,
-          idempotencyKey,
           model,
           prompt: trimmedPrompt,
           quantity,
@@ -643,17 +661,13 @@ export function ImageGenerationStudioPanel({
           ...(workflowFormat === "slideshow" && recreateView?.referenceImageUrls?.length ? { referenceImageUrls: recreateView.referenceImageUrls } : {}),
           ...(workflowFormat === "slideshow" && instructionReferences.length ? { referenceImageAssetIds: instructionReferences.map(selection => selection.asset.id) } : {}),
           ...(workflowFormat === "slideshow" && recreateView?.referenceImageAssetId ? { regenerationImageAssetId: recreateView.referenceImageAssetId } : {}),
-        }),
-      });
-      const data = (await response.json()) as GenerateResponse;
-
-      if (!response.ok || !data.ok) {
-        throw new Error(
-          data.ok === false ? data.message : "Generation could not start.",
-        );
-      }
-
-      persistImageJobs(workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid, data.jobs, { aspectRatio, prompt: trimmedPrompt });
+        }, acknowledge(result, input) {
+          if (!persistImageJobs(workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid, result.jobs, { aspectRatio: input.aspectRatio as AIStudioImageAspectRatio, prompt: String(input.prompt) })) throw new Error("Your generation is saved on the server. Its browser recovery record is preserved; recover it again.");
+        } });
+      if (!admitted) throw new Error("Could not confirm the generation lock.");
+      const data = admitted.result as Extract<GenerateResponse, { ok: true }>;
+      const submittedPrompt = String(admitted.input.prompt);
+      setPendingSubmission(null); setActivePrompt(submittedPrompt);
       void queryClient.invalidateQueries({
         queryKey: ["billing-subscription", user.uid],
       });
@@ -662,14 +676,14 @@ export function ImageGenerationStudioPanel({
       }
       persistJobIdInUrl(data.jobId, workflowFormat ? `explore-${workflowFormat}Job` : IMAGE_JOB_URL_PARAMETER);
       for (const job of data.jobs) {
-        submittedPromptsRef.current.set(job.jobId, trimmedPrompt);
+        submittedPromptsRef.current.set(job.jobId, submittedPrompt);
         resolvedJobIdsRef.current.delete(job.jobId);
         if (submissionEpoch === foregroundEpochRef.current) {
           foregroundJobIdsRef.current.add(job.jobId);
         }
       }
       if (activeUserIdRef.current === user.uid) {
-        setSubmittedPrompts((current) => ({ ...current, ...Object.fromEntries(data.jobs.map((job) => [job.jobId, trimmedPrompt])) }));
+        setSubmittedPrompts((current) => ({ ...current, ...Object.fromEntries(data.jobs.map((job) => [job.jobId, submittedPrompt])) }));
       }
       const jobIds = data.jobs.map((job) => job.jobId);
       setSubmittedJobIds(jobIds);
@@ -684,6 +698,11 @@ export function ImageGenerationStudioPanel({
         getErrorMessage(error, "Image generation failed. Try again."),
       );
     } finally {
+      submittingRef.current = false;
+      if (user && activeUserIdRef.current === user.uid) {
+        try { setPendingSubmission(readPendingGeneration(localStorage.getItem(pendingGenerationKey(user.uid, "image", workflowFormat ?? "studio")), user.uid, "image", workflowFormat ?? "studio")); }
+        catch { setActionError("Could not read the saved request. Its server result remains recoverable."); }
+      }
       setIsSubmitting(false);
     }
   }
@@ -746,6 +765,7 @@ export function ImageGenerationStudioPanel({
 
     try {
       resolvedJobIdsRef.current.delete(retryableJob.id);
+      discoveredJobIdsRef.current.delete(retryableJob.id);
       foregroundJobIdsRef.current.add(retryableJob.id);
       setSelectedHistoryImageId(null);
       await retryJob.mutateAsync(retryableJob.id);
@@ -832,9 +852,9 @@ export function ImageGenerationStudioPanel({
       ) {
         imageRows.push({
           key: jobId,
-          aspectRatio: user ? getImageJobAspectRatio(user.uid, jobId) : aspectRatio,
+          aspectRatio: metadataOwnerId ? getImageJobAspectRatio(metadataOwnerId, jobId) : aspectRatio,
           createdAt: job?.createdAt ?? activeSubmittedAt,
-          prompt: submittedPrompts[jobId] ?? (user ? getImageJobPrompt(user.uid, jobId) ?? MISSING_IMAGE_PROMPT : activePrompt),
+          prompt: submittedPrompts[jobId] ?? (metadataOwnerId ? getImageJobPrompt(metadataOwnerId, jobId) ?? MISSING_IMAGE_PROMPT : activePrompt),
           asset: null,
         });
       }
@@ -972,17 +992,17 @@ export function ImageGenerationStudioPanel({
         active={workflow?.controlsActive ?? active}
         ariaLabel="Image prompt"
         generateDisabled={
-          generationLocked ||
+          recreateView?.preview || (!pendingSubmission && (generationLocked ||
           hasInsufficientCredits ||
           referenceUploadPending ||
           Boolean(referenceUploadError) || selectingImage ||
           tooManyReferences ||
           !prompt.trim() ||
-          Boolean(workflow && !recreateView?.referenceImageUrl && !recreateView?.referenceImageAssetId && !instructionReferences.length) ||
+          Boolean(workflow && !recreateView?.referenceImageUrl && !recreateView?.referenceImageAssetId && !instructionReferences.length))) ||
           isGenerating || recoveringJobs
         }
-        generateLabel="Generate image"
-        generationLocked={generationLocked}
+        generateLabel={pendingSubmission ? "Recover saved request" : "Generate image"}
+        generationLocked={generationLocked && !pendingSubmission}
         promptAttachmentControl={workflowFormat === "slideshow" ?
           <FormatInstructionImageReference
             key={user?.uid ?? "signed-out"}
@@ -1028,6 +1048,8 @@ export function ImageGenerationStudioPanel({
         onTextareaKeyDown={handleTextareaKeyDown}
         secondaryActions={
           <>
+            {earlierRequests.available ? <Button type="button" variant="ghost" size="sm" disabled={earlierRequests.checking || isSubmitting} onClick={() => void earlierRequests.check()}>{earlierRequests.checking ? "Checking earlier requests…" : "Check earlier requests"}</Button> : null}
+            {earlierRequests.error ? <span role="alert" className="text-xs text-destructive">{earlierRequests.error}</span> : null}
             {isGenerating ? (
               <Button
                 type="button"

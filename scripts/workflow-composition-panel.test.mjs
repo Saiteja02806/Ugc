@@ -37,6 +37,7 @@ function harness(code, exportName) {
     "@/worker/src/lib/explore-background-audio": audioTiming,
     "@/worker/src/subtitles/styles": subtitleStyles,
     "@/components/explore/workflow-subtitle-preview": { WorkflowSubtitlePreview: "subtitle-preview" },
+    "./workflow-caption-editor": { WorkflowCaptionEditor: "caption-editor" },
     "react/jsx-runtime": { jsx: element, jsxs: element, Fragment: "fragment" },
   };
   const exported = {};
@@ -113,7 +114,7 @@ test("connected subtitle controls save real finishing options and Audio selectio
   assert.equal(music.props["aria-checked"], false); music.props.onClick(); assert.equal(changes[3].backgroundMusic, true);
   const picker = nodes(tree).find(n => n.type === "saved-audio-picker"); assert.equal(picker.props.attachment, props.demoAudio); assert.equal(picker.props.ownerId, "owner");
   assert.doesNotMatch(text(tree), /Music and subtitle rendering are not connected in this local preview/);
-  assert.match(text(tree), /Apply edits to save captions on your video/);
+  assert.match(text(tree), /generate captions and correct their words before preparing your final video/);
 });
 
 test("visual subtitle choices default to Clean and rerender locally without enabling the generator", () => {

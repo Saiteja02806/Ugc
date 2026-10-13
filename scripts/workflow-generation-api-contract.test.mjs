@@ -68,11 +68,11 @@ function client(overrides = {}) {
 
 test("both workflow clients reach the real API's text-only contract for every available model", async () => {
   for (const kind of ["hook", "phone"]) {
-    for (const model of ["kling_3_0", "google_omni", "seedance_2_5", "wan_3_0"]) {
+    for (const model of ["kling_3_0", "google_omni", "seedance_2_5", "wan_3_0"]) for (const quantity of [2, 3]) {
       jobs.clear(); reservations.clear();
-      const input = draft({ kind, settings: normalizeWorkflowGenerationSettings({ model, quantity: 2 }, true) });
+      const input = draft({ kind, settings: normalizeWorkflowGenerationSettings({ model, quantity }, true) });
       const batch = await client().generate(input);
-      assert.equal(batch.jobs.length, 2);
+      assert.equal(batch.jobs.length, quantity);
       assert.equal(batch.partial, false);
       assert.equal(uploads.length, 0);
       for (const job of jobs.values()) {
@@ -84,7 +84,7 @@ test("both workflow clients reach the real API's text-only contract for every av
         assert.deepEqual(job.input.referenceImageUrls, []);
         assert.equal(job.input.provider, model === "seedance_2_5" || model === "wan_3_0" ? "openrouter" : undefined);
       }
-      assert.equal(reservations.size, 2);
+      assert.equal(reservations.size, quantity);
     }
   }
 });

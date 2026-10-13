@@ -20,6 +20,8 @@ function layout(kind) {
   const generationSettings = {aspectRatio:"9:16"};
   let generated = null;
   let finishingInputs;
+  let finishedOutput = null;
+  const prepareAction = { disabled: false, busy: false, message: "Prepare final video", error: null, onAction() {}, refresh() {} };
   const scheduleAction = { disabled: true, busy: false, message: "Wait for the saved final file", error: null, onAction() {}, refresh() {} };
   const slots = [];
   const attachments = Array.from({ length: 5 }, () => ({
@@ -30,6 +32,7 @@ function layout(kind) {
   }));
   const css = { default: new Proxy({}, { get: (_, key) => key }) };
   const imports = {
+    "./pending-schedule-panel": { PendingExploreSchedulePanel: "pending-schedule", useBackgroundScheduleAvailability: () => ({ data: false }) },
     react: {
       useState(initial) { const index = cursor++; slots[index] ??= { value: initial }; return [slots[index].value, (value) => { slots[index].value = typeof value === "function" ? value(slots[index].value) : value; }]; },
       useRef(initial) { const index = cursor++; slots[index] ??= { current: initial }; return slots[index]; },
@@ -43,6 +46,7 @@ function layout(kind) {
     "@/components/explore/workflow-section-navigation": { WorkflowSectionNavigation: "section-nav", WorkflowSectionHeading: "section-heading", useWorkflowSectionOrientation: () => "vertical" },
     "lucide-react": { ArrowLeft: "arrow", BookOpen: "book" },
     "next/link": { default: "link" },
+    "next/navigation": { useSearchParams: () => new URLSearchParams() },
     "@/components/explore/hook-workflow-composer": { HookWorkflowComposer: "composer" },
     "@/components/explore/phone-workflow-composer": { PhoneWorkflowComposer: "composer", AppScreenPicker: "app-screen" },
     "@/components/explore/workflow-composition-panel": { WorkflowCompositionPanel: "composition" },
@@ -65,7 +69,7 @@ function layout(kind) {
       return { settings: generationSettings, dirty: false, changeSettings(patch) { Object.assign(generationSettings,patch); } };
     } },
     "@/components/explore/workflow-generation-boundary": { WorkflowAccountBoundary: ({ children }) => children("owner"), WorkflowGenerationBoundary: ({ children }) => children(generated) },
-    "@/components/explore/workflow-finishing-boundary": { WorkflowFinishingBoundary: ({ children, ...inputs }) => { finishingInputs=inputs; return children({ edit: {busy:false}, schedule: scheduleAction, output: null, options: { subtitles: false, style: "clean" }, setOptions() {} }); } },
+    "@/components/explore/workflow-finishing-boundary": { WorkflowFinishingBoundary: ({ children, ...inputs }) => { finishingInputs=inputs; return children({ edit: prepareAction, schedule: scheduleAction, output: finishedOutput, captions: { transcript: null }, options: { subtitles: false, style: "clean" }, setOptions() {} }); } },
     "@/components/explore/workflow-studio.module.css": css,
     "@/components/explore/workflow-creation.module.css": css,
     "@/components/explore/workflow-section-layout.module.css": css,
@@ -74,7 +78,7 @@ function layout(kind) {
   };
   const exported = {};
   const compiled = ts.transpileModule(read(`components/explore/${kind}-workflow-preview.tsx`), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
-  vm.runInNewContext(compiled, { exports: exported, window: { requestAnimationFrame(callback) { callback(); } }, require(name) { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; } });
+  vm.runInNewContext(compiled, { exports: exported, URLSearchParams, window: { location: { pathname: "/explore/create-hook", search: "" }, history: { replaceState() {} }, requestAnimationFrame(callback) { callback(); } }, require(name) { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; } });
   const component = exported[kind === "hook" ? "HookWorkflowPreview" : "PhoneWorkflowPreview"];
   return {
     render(props = {}) {
@@ -88,10 +92,23 @@ function layout(kind) {
         finishing: finishingInputs,
       };
     },
-    demo: attachments[3], audio: attachments[4], generationInputs, scheduleAction,
+    demo: attachments[3], audio: attachments[4], generationInputs, scheduleAction, prepareAction,
     selectVideo(video) { generated = video ? {selected:video, results:[video]} : null; },
+    setFinishedOutput(output) { finishedOutput = output; },
   };
 }
+
+test("Talking Head preview always remains visible and its removed toggle cannot hide selected media", () => {
+  const actual = layout("hook");
+  const preview = rendered => nodes(rendered.tree).find(node => node.props?.id === "hook-workflow-preview");
+  let rendered = actual.render();
+  assert.equal(preview(rendered).props.hidden, false);
+  assert.equal(nodes(rendered.tree).find(node => node.type === "controls").props.heading, undefined);
+  actual.selectVideo({ id: "selected-preview-clip", title: "Selected clip", url: "blob:fixture", width: 720, height: 1280 });
+  rendered = actual.render();
+  assert.equal(preview(rendered).props.hidden, false);
+  assert.equal(rendered.finishing.source.id, "selected-preview-clip");
+});
 
 test("Hook quick-start model and duration reach the settings owner through the actual layout", () => {
   const actual = layout("hook");
@@ -101,23 +118,47 @@ test("Hook quick-start model and duration reach the settings owner through the a
   assert.equal(actual.audio.removed, 0);
 });
 
-test("Talking Head Schedule uses the shared review form and a single guarded bottom action without changing the preview inputs", () => {
+test("Talking Head Schedule keeps its guarded actions inside the settings panel without changing preview inputs", () => {
   const actual = layout("hook");
   actual.render().tabs.onValueChange("schedule");
   const view = actual.render(), all = nodes(view.tree);
   const settings = all.find(node => node.type === "schedule-settings");
   const summary = all.find(node => node.type === "schedule-summary");
-  const actions = all.find(node => node.type === "schedule-actions");
+  const actions = settings.props.footer;
   assert.equal(settings.props.presentation, "review");
   assert.equal(summary.props.draft, settings.props.draft);
   assert.equal(summary.props.timezone, settings.props.timezone);
   assert.equal(actions.props.action, actual.scheduleAction);
+  assert.equal(actions.props.preparation, actual.prepareAction);
   assert.equal(actions.props.enabled, false, "The local preview cannot schedule");
-  assert.equal(all.filter(node => node.props?.["aria-label"] === "Schedule actions").length, 1);
+  assert.equal(actions.type, "schedule-actions");
+  assert.equal(all.filter(node => node.type === "footer" && node.props?.["aria-label"] === "Schedule actions").length, 0);
+  assert.equal(view.finishing.inlineSchedule, true);
   assert.ok(all.find(node => node.type === "controls").props.actionContent, "The in-card default action is replaced");
   assert.equal(all.find(node => node.type === "scheduling").props.demoAudio, actual.audio.asset);
   actions.props.onBackToEdit();
   assert.equal(actual.render().tabs.value, "edit");
+});
+
+test("Talking Head Schedule forwards preparation only until a finished file exists and preserves the posting draft", () => {
+  const actual = layout("hook");
+  actual.render().tabs.onValueChange("schedule");
+  let view = actual.render({ generationEnabled: true });
+  let settings = nodes(view.tree).find(node => node.type === "schedule-settings").props;
+  const draft = { platform: "instagram", caption: "Keep this caption", date: "2026-10-20", time: "16:30", timezone: "Asia/Calcutta", connectionIds: { instagram: "selected-account" } };
+  settings.onChange(draft);
+  view = actual.render({ generationEnabled: true });
+  settings = nodes(view.tree).find(node => node.type === "schedule-settings").props;
+  assert.equal(settings.footer.props.preparation, actual.prepareAction);
+  assert.equal(settings.footer.props.enabled, true);
+  assert.equal(settings.draft, draft);
+  actual.setFinishedOutput({ id: "finished-file", url: "https://example.test/finished.mp4" });
+  view = actual.render({ generationEnabled: true });
+  settings = nodes(view.tree).find(node => node.type === "schedule-settings").props;
+  assert.equal(settings.footer.props.preparation, undefined, "A verified file returns the card to schedule review");
+  assert.equal(settings.footer.props.action, actual.scheduleAction);
+  assert.equal(settings.draft, draft, "Preparation status must not reset posting settings");
+  assert.equal(settings.timezone, draft.timezone);
 });
 
 for (const kind of ["hook", "phone"]) {

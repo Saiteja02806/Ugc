@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import { QueryClient, QueryObserver } from "@tanstack/react-query";
+import { withReadDeadline } from "../lib/http/read-deadline.ts";
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const element = (type, props = {}) => typeof type === "function" ? type(props) : { type, props };
@@ -15,14 +17,14 @@ function runtime() {
     useCallback(callback) { cursor++; return callback; },
     useId() { return `source-${cursor++}`; },
     useRef(value) { const i = cursor++; return slots[i] ??= { current: value }; },
-    useState(value) { const i = cursor++; if (!(i in slots)) slots[i] = value; return [slots[i], v => { slots[i] = typeof v === "function" ? v(slots[i]) : v; }]; },
+    useState(value) { const i = cursor++; if (!(i in slots)) slots[i] = typeof value === "function" ? value() : value; return [slots[i], v => { slots[i] = typeof v === "function" ? v(slots[i]) : v; }]; },
     useEffect(fn, deps) { const i = cursor++, prior = slots[i]; if (!prior || deps.some((v, n) => !Object.is(v, prior.deps[n]))) effects.push(() => { prior?.cleanup?.(); slots[i] = { deps, cleanup: fn() }; }); },
   }, render(fn) { cursor = 0; const tree = fn(); while (effects.length) effects.shift()(); return tree; }, unmount() { for (const slot of slots) slot?.cleanup?.(); } };
 }
 function load(path, imports, globals = {}) {
   const exports = {};
   vm.runInNewContext(ts.transpileModule(read(path), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText, {
-    exports, require(name) { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, Error, AbortController, ...globals,
+    exports, require(name) { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, Error, AbortController, URLSearchParams, ...globals,
   });
   return exports;
 }
@@ -89,13 +91,15 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       scrollIntoView(options) { scrollCalls.push(options); pageScroll = 0; },
     };
     const selection = { ownerId: "owner", mode: "generate", source: asset, preview: { name: asset.title, url: asset.url, duration: 5 }, ready: true, dirty: true };
-    const finishing = { options: {}, setOptions() {}, output: null, edit: { busy: false } };
+    const finishing = { options: {}, setOptions() {}, output: null, captions: { transcript: null }, edit: { busy: false } };
     const imports = {
+      "./pending-schedule-panel": { PendingExploreSchedulePanel: "pending-schedule", useBackgroundScheduleAvailability: () => ({ data: false }) },
       react: rt.react, "react/jsx-runtime": jsx, "@base-ui/react/tabs": { Tabs: { Root: "tabs-root", Panel: "tabs-panel" } }, "lucide-react": { ArrowLeft: "arrow", BookOpen: "book" }, "next/link": { default: "link" },
       "@/components/ui/button": { Button: "button" },
       "@/components/layout/workflow-navigation": { WorkflowNavigationButton: "navigation-button" },
       "@/components/ui/quiet-scrollbar.module.css": css,
       "@/components/explore/workflow-section-navigation": { WorkflowSectionNavigation: "section-nav", WorkflowSectionHeading: "section-heading", useWorkflowSectionOrientation: () => "vertical" },
+      "next/navigation": { useSearchParams: () => new URLSearchParams() },
       "@/components/explore/workflow-section-layout.module.css": css,
       "@/components/explore/use-workflow-source-video": { useWorkflowSourceVideo: () => selection },
       "@/components/explore/use-workflow-generation-settings": { useWorkflowGenerationSettings: () => ({ dirty: false, settings: { aspectRatio: "9:16" }, changeSettings() {} }) },
@@ -118,15 +122,19 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       "@/lib/utils": { cn: (...values) => values.join(" ") }, "@/components/explore/workflow-creation.module.css": css, "@/components/explore/workflow-studio.module.css": css,
       [`@/components/explore/${kind}-workflow-composer`]: kind === "hook" ? { HookWorkflowComposer: "composer" } : { PhoneWorkflowComposer: "composer", AppScreenPicker: "app-screen" },
     };
-    const mod = load(`components/explore/${kind}-workflow-preview.tsx`, imports, { window: { addEventListener() {}, removeEventListener() {}, requestAnimationFrame: fn => { frames++; fn(); } }, requestAnimationFrame: fn => fn() });
+    const mod = load(`components/explore/${kind}-workflow-preview.tsx`, imports, { window: { location: { pathname: "/explore/create-hook", search: "" }, history: { replaceState() {} }, addEventListener() {}, removeEventListener() {}, requestAnimationFrame: fn => { frames++; fn(); } }, requestAnimationFrame: fn => fn() });
     const render = () => rt.render(() => (kind === "hook" ? mod.HookWorkflowPreview : mod.PhoneWorkflowPreview)({ generationEnabled: true }));
     let tree = render();
     const preview = view => nodes(view).find(n => n.props.id === `${kind}-workflow-preview`);
     const heading = view => nodes(view).find(n => n.type === "creation-panel").props.heading.props;
-    assert.equal(preview(tree).props.hidden, true, "An empty preview does not take up Create space");
-    heading(tree).onTogglePreview(); tree = render();
-    assert.equal(preview(tree).props.hidden, false, "The user can inspect the empty preview explicitly");
-    heading(tree).onTogglePreview(); tree = render();
+    assert.equal(preview(tree).props.hidden, kind !== "hook", "Talking Head preview is visible by default");
+    if (kind === "hook") {
+      assert.equal(nodes(tree).find(n => n.type === "creation-panel").props.heading, undefined, "Talking Head has no redundant heading or hide control");
+    } else {
+      heading(tree).onTogglePreview(); tree = render();
+      assert.equal(preview(tree).props.hidden, false, "Phone retains its own explicit preview control");
+      heading(tree).onTogglePreview(); tree = render();
+    }
     nodes(tree).find(n => n.type === "composer").props.onInstructionsChange("Keep my original prompt");
     selection.mode = "upload"; tree = render();
     if (kind === "hook") nodes(tree).find(n => n.type === "tabs-root").props.ref.current = workflowRoot;
@@ -157,7 +165,7 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       assert.equal(scrollCalls.length, before.scrolls + 1);
       assert.equal(nodes(tree).find(n => n.type === "schedule-workspace").props.source, asset);
       assert.equal(nodes(tree).find(n => n.type === "scheduling-panel").props.draft.caption, "Keep this schedule caption");
-      nodes(tree).find(n => n.type === "schedule-actions").props.onBackToEdit(); tree = render();
+      nodes(tree).find(n => n.type === "scheduling-panel").props.footer.props.onBackToEdit(); tree = render();
       assert.equal(nodes(tree).find(n => n.type === "scheduling-panel").props.draft.caption, "Keep this schedule caption");
     }
     nodes(tree).find(n => n.type === "edit-workspace").props.onChangeSource(); tree = render();
@@ -168,15 +176,28 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
 
 test("Creative Assets fetch is owner-authenticated, excludes unfinished/non-video rows, and does no work while closed", async () => {
   const rt = runtime(), calls = [], selected = [];
+  const client = new QueryClient();
+  let observer, unsubscribe;
+  const useQuery = options => {
+    if (!observer) { observer = new QueryObserver(client, options); unsubscribe = observer.subscribe(() => {}); }
+    else observer.setOptions(options);
+    return { ...observer.getCurrentResult(), refetch: () => observer.refetch() };
+  };
   const policy = load("lib/explore/workflow-source-video.ts", {});
   const mod = load("components/explore/workflow-video-asset-picker.tsx", { react: rt.react, "react/jsx-runtime": jsx, "next/image": { default: "image" }, "lucide-react": { Video: "video-icon" },
+    "@tanstack/react-query": { useQuery }, "@/lib/http/read-deadline": { withReadDeadline },
     "@/components/ui/button": { Button: "button" }, "@/components/ui/dialog": Object.fromEntries(["Dialog", "DialogContent", "DialogDescription", "DialogHeader", "DialogTitle"].map(n => [n, n])),
     "@/lib/explore/workflow-source-video": policy, "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { assert.equal(owner, "owner"); return "owned-token"; } },
-  }, { fetch: async (url, init) => { calls.push({ url, ...init }); return Response.json({ ok: true, assets: [asset, { ...asset, id: "00000000-0000-4000-8000-000000000002", status: "uploading" }, { ...asset, mimeType: "image/png" }] }); } });
+  }, { AbortSignal, fetch: async (url, init) => { calls.push({ url, ...init }); return Response.json({ ok: true, assets: [asset, { ...asset, id: "00000000-0000-4000-8000-000000000002", status: "uploading" }, { ...asset, mimeType: "image/png" }] }); } });
   const props = { open: false, ownerId: "owner", onSelect: value => { selected.push(value); return true; }, onOpenChange() {} };
   const render = () => rt.render(() => mod.WorkflowVideoAssetPicker(props));
   render(); await tick(); assert.equal(calls.length, 0); props.open = true; render(); await tick();
-  const tree = render(), rows = nodes(tree).filter(n => n.type === "button");
-  assert.equal(calls.length, 1); assert.equal(calls[0].url, "/api/media"); assert.equal(calls[0].headers.Authorization, "Bearer owned-token"); assert.equal(calls[0].cache, "no-store");
-  assert.equal(rows.length, 1); rows[0].props.onClick(); assert.equal(selected[0].id, asset.id); rt.unmount(); assert.equal(calls[0].signal.aborted, true);
+  const tree = render(), rows = nodes(tree).filter(n => n.type === "button" && "aria-pressed" in n.props);
+  assert.equal(calls.length, 1); assert.equal(calls[0].url, "/api/media?collection=video"); assert.equal(calls[0].headers.Authorization, "Bearer owned-token"); assert.equal(calls[0].cache, "no-store");
+  assert.equal(rows.length, 1); rows[0].props.onClick(); assert.equal(selected[0].id, asset.id);
+  props.open = false; render(); props.open = true; render(); await tick();
+  assert.equal(calls.length, 1, "Reopening uses the owner's fresh cached library");
+  props.ownerId = "different-owner"; props.open = false;
+  assert.equal(nodes(render()).filter(n => n.type === "button" && "aria-pressed" in n.props).length, 0, "Another account cannot see the previous owner's cached videos");
+  rt.unmount(); unsubscribe(); client.clear();
 });

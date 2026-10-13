@@ -156,7 +156,7 @@ function RemixTextControl({ owner, targetKey, format, reference, previewSource, 
   const instructionField = <label className={styles.label}>Remix instructions
     <textarea aria-label="Remix instructions" placeholder="For example: use a friendly tone, keep it in English, avoid emojis…" value={input.instructions} disabled={locked} rows={2} maxLength={2000} onChange={event => changeInput({ ...input, instructions: event.target.value })} className={styles.field} />
   </label>;
-  const generateButton = <Button type="button" className={overview ? styles.overviewGenerate : styles.generate} disabled={generationDisabled} onClick={() => void generate()}>{busy ? "Generating remix…" : outcome === "uncertain" ? "Check remix result" : overview ? "Generate" : "Generate remix"}</Button>;
+  const generateButton = <Button type="button" className={overview ? styles.overviewGenerate : styles.generate} disabled={generationDisabled} title={localPreview ? "AI generation is unavailable in this preview." : undefined} onClick={() => void generate()}>{busy ? "Generating remix…" : outcome === "uncertain" ? "Check remix result" : overview ? "Generate" : "Generate remix"}</Button>;
   const flow = <div className={`${styles.flow} ${overview ? styles.overviewFlow : ""}`} aria-busy={busy || loading}>
         {!draft ? <>
           <label className={styles.label}><span className={overview ? styles.srOnly : undefined}>Reference text</span>
@@ -178,14 +178,14 @@ function RemixTextControl({ owner, targetKey, format, reference, previewSource, 
             <details className={styles.option} open={Boolean(recovery?.instructions)}><summary>Additional instructions <span>Optional</span></summary>{instructionField}</details>
             {generateButton}
           </>}
-          {localPreview ? <p className={styles.notice}>Local preview · AI generation is disabled.</p> : !owner ? <p className={styles.notice}>Sign in to generate a remix.</p> : !loading && !enabled && !error ? <p className={styles.notice}>Remix generation is not enabled yet.</p> : null}
+          {localPreview ? !overview ? <p className={styles.notice}>Local preview · AI generation is disabled.</p> : null : !owner ? <p className={styles.notice}>Sign in to generate a remix.</p> : !loading && !enabled && !error ? <p className={styles.notice}>Remix generation is not enabled yet.</p> : null}
         </> : <div className={styles.draft}>
           <p className={styles.draftTitle} role="status">Review your remix</p>
           {format === "slideshow" ? <><label className={styles.label}>Heading<textarea aria-label="Remixed heading" value={draft.heading} disabled={disabled} maxLength={180} rows={2} className={styles.field} onChange={event => { if (outputSource) saveReview({ ...draft, heading: event.target.value }, outputSource); }} /></label><label className={styles.label}>Body<textarea aria-label="Remixed body" value={draft.body} disabled={disabled} maxLength={600} rows={3} className={styles.field} onChange={event => { if (outputSource) saveReview({ ...draft, body: event.target.value }, outputSource); }} /></label></> : draft.blocks.map((block, i) => <label key={i} className={styles.label}>{draft.blocks.length === 1 ? "Remixed text" : `Text block ${i + 1}`}<textarea aria-label={draft.blocks.length === 1 ? "Remixed text" : `Remixed text block ${i + 1}`} value={block} disabled={disabled} maxLength={600} rows={3} className={styles.field} onChange={event => { if (outputSource) saveReview({ ...draft, blocks: draft.blocks.map((text, n) => n === i ? event.target.value : text) }, outputSource); }} /></label>)}
           {draftError ? <p role="alert" className={`${styles.notice} ${styles.error}`}>{draftError}</p> : null}
           <Button type="button" disabled={disabled || busy || Boolean(draftError)} onClick={() => { if (outputSource && onUse(validateRemixDraft(draft, outputSource), outputSource) !== false) { reset(); setMode(overview ? "reference" : "manual"); } }}>{format === "slideshow" ? "Apply to this slide" : overview ? "Apply to hook" : "Apply to this clip"}</Button>
         </div>}
-        <p className={`${styles.scope} ${overview ? styles.overviewScope : ""}`}>{scopeLabel}</p>
+        {!overview ? <p className={styles.scope}>{scopeLabel}</p> : null}
         {error ? <p role="alert" className={`${styles.notice} ${styles.error}`}>{error}</p> : null}
         {storageError ? <p role="status" className={styles.notice}>This draft couldn&apos;t be saved in your browser. Keep this screen open until you apply it.</p> : null}
         {error && !enabled && owner && !localPreview ? <Button type="button" variant="outline" disabled={locked || loading} onClick={() => { setError(null); setLoading(true); setLoadAttempt(n => n + 1); }}>Retry loading remix details</Button> : null}

@@ -23,17 +23,25 @@ export function TalkingHeadScheduleSummary({ draft, timezone }: { draft: Workflo
   </section>;
 }
 
-/** Moving the controls does not create a second scheduling or preparation action. */
-export function TalkingHeadScheduleActions({ action, enabled, onBackToEdit }: { action?: WorkflowAction; enabled: boolean; onBackToEdit: () => void }) {
-  const busy = Boolean(action?.busy);
-  return <div className={reviewStyles.actions}>
-    {action?.error ? <div className="space-y-1"><p role="alert" className="text-xs leading-5 text-destructive">{action.error}</p><Button type="button" variant="ghost" disabled={busy} onClick={action.refresh}>Refresh status</Button></div> : null}
+/** Both preparation and review reuse the finishing boundary's guarded actions. */
+export function TalkingHeadScheduleActions({ action, preparation, enabled, onBackToEdit }: { action?: WorkflowAction; preparation?: WorkflowAction; enabled: boolean; onBackToEdit: () => void }) {
+  // An enabled schedule action can resume an existing durable request, even
+  // before the current output has reloaded. Keep that recovery path available.
+  const needsPreparation = Boolean(preparation && !action?.busy && (!action || action.disabled));
+  const current = needsPreparation ? preparation : action;
+  const busy = Boolean(current?.busy);
+  const preparing = needsPreparation && Boolean(current?.cancel);
+  const error = current?.error ?? action?.error;
+  const refresh = current?.error || !error ? current?.refresh : action?.refresh;
+  return <div className={reviewStyles.actions} aria-label="Schedule actions">
+    {error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}
     <div className={reviewStyles.actionRow}>
       <Button type="button" variant="outline" disabled={busy} className={reviewStyles.backButton} onClick={onBackToEdit}><ArrowLeft size={16} aria-hidden="true" />Back to Edit</Button>
       <div className={reviewStyles.reviewAction}>
-        <p className={reviewStyles.actionHelp} role="status">{enabled && action ? action.message : "Preview · scheduling disabled"}</p>
-        <Button type="button" size="lg" className={reviewStyles.reviewButton} disabled={!enabled || !action || action.disabled || busy} aria-busy={busy} onClick={action?.onAction}>{busy ? "Checking…" : "Review schedule"}<ArrowRight size={16} aria-hidden="true" /></Button>
+        <p className={reviewStyles.actionHelp} role="status">{enabled && current ? current.message : "Preview · scheduling disabled"}</p>
+        <Button type="button" size="lg" className={reviewStyles.reviewButton} disabled={!enabled || !current || current.disabled || busy} aria-busy={busy || preparing} onClick={current?.onAction}>{needsPreparation ? busy || preparing ? "Preparing video…" : current?.error ? "Retry final video" : "Prepare final video" : busy ? "Checking…" : "Review schedule"}<ArrowRight size={16} aria-hidden="true" /></Button>
       </div>
     </div>
+    {current && (error || preparing) ? <div className="flex flex-wrap justify-end gap-2"><Button type="button" variant="ghost" size="sm" disabled={busy} onClick={refresh}>Refresh status</Button>{needsPreparation && current.cancel ? <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={current.cancel}>Cancel preparation</Button> : null}</div> : null}
   </div>;
 }

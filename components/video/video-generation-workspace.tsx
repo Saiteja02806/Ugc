@@ -1,5 +1,9 @@
 "use client";
 
+import { pendingGenerationKey, readPendingGeneration, submitPendingGeneration, mergeStoredGenerationJobIds, type PendingGeneration, type RecoveredGeneration } from "@/lib/ai-studio/pending-generation";
+import { useGenerationDiscovery } from "@/components/generation/use-generation-discovery";
+import { withReadDeadline } from "@/lib/http/read-deadline";
+
 import {
   ChevronDown,
   ChevronUp,
@@ -23,7 +27,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { FormEvent, KeyboardEvent } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   AiStudioComposer,
@@ -164,21 +168,25 @@ function persistPendingVideoMetadata(
     prompt: string;
     resolution: AIStudioVideoResolution;
   },
+  merge = false,
 ) {
   try {
-    const jobIds = jobs.map((job) => job.jobId);
+    const storageKey = `${VIDEO_JOB_STORAGE_PREFIX}${userId}`;
+    const jobIds = merge ? mergeStoredGenerationJobIds(window.localStorage, storageKey, jobs) : jobs.map((job) => job.jobId);
     window.localStorage.setItem(
-      `${VIDEO_JOB_STORAGE_PREFIX}${userId}`,
+      storageKey,
       JSON.stringify(jobIds),
     );
-    for (const jobId of jobIds) {
+    for (const { jobId } of jobs) {
       window.localStorage.setItem(
         `${VIDEO_JOB_METADATA_PREFIX}${userId}.${jobId}`,
         JSON.stringify(metadata),
       );
     }
+    return true;
   } catch {
     // Supabase remains authoritative; this metadata only restores local labels.
+    return false;
   }
 }
 
@@ -307,6 +315,13 @@ export function VideoGenerationStudioPanel({
   }
 
   const { loading: authLoading, user } = useAuth();
+  const metadataOwnerId = user ? workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid : null;
+  const discoveredJobIdsRef = useRef(new Set<string>());
+  const restoreDiscoveredJobs = useCallback((result: RecoveredGeneration, input: Record<string, unknown>) => {
+    if (!metadataOwnerId || !persistPendingVideoMetadata(metadataOwnerId, result.jobs, { aspectRatio: input.aspectRatio as AIStudioVideoAspectRatio, avatarName: input.avatarImageUrl ? "Reference image" : "", model: input.model as AIStudioVideoModel, prompt: String(input.prompt), resolution: input.resolution as AIStudioVideoResolution }, true)) throw new Error("Could not save earlier job identities. Their recovery records are preserved.");
+    for (const job of result.jobs) { discoveredJobIdsRef.current.add(job.jobId); foregroundJobIdsRef.current.delete(job.jobId); }
+  }, [metadataOwnerId]);
+  const earlierRequests = useGenerationDiscovery({ ownerId: user?.uid ?? null, kind: "video", scope: workflowFormat ?? "studio", enabled: active && !recreateView?.preview, onRecovered: restoreDiscoveredJobs });
   const queryClient = useQueryClient();
   const [prompt, setPrompt] = useState("");
   const [aspectRatio, setAspectRatio] =
@@ -355,6 +370,8 @@ export function VideoGenerationStudioPanel({
   const [submittedJobIds, setSubmittedJobIds] = useState<string[]>([]);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [savedSubmission, setPendingSubmission] = useState<PendingGeneration | null>(null);
+  const pendingSubmission = savedSubmission?.ownerId === user?.uid && savedSubmission?.scope === (workflowFormat ?? "studio") && !recreateView?.preview ? savedSubmission : null;
   const storedJobIds = useStoredBackgroundJobIds(user ? `${VIDEO_JOB_STORAGE_PREFIX}${workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid}` : null);
   const [ignoredPersistedJobId, setIgnoredPersistedJobId] = useState<
     string | null
@@ -367,6 +384,19 @@ export function VideoGenerationStudioPanel({
   const billingSyncedJobIdsRef = useRef(new Set<string>());
   const submissionKeyRef = useRef<string | null>(null);
   const activeUserIdRef = useRef<string | null>(null);
+  const pendingOwnerId = user?.uid;
+  useEffect(() => {
+    let stopped = false;
+    void Promise.resolve().then(() => {
+      if (stopped) return;
+      try {
+        const saved = pendingOwnerId && !recreateView?.preview ? readPendingGeneration(localStorage.getItem(pendingGenerationKey(pendingOwnerId, "video", workflowFormat ?? "studio")), pendingOwnerId, "video", workflowFormat ?? "studio") : null;
+        setPendingSubmission(saved);
+        if (saved) { setPrompt(String(saved.input.prompt)); setActionNotice("A previous video submission needs confirmation. Recover saved request checks its original instructions and settings."); }
+      } catch { setActionError("The saved video request could not be verified. Keep its recovery record."); }
+    });
+    return () => { stopped = true; };
+  }, [pendingOwnerId, workflowFormat, recreateView?.preview]);
   const persistedJobId = usePersistedJobIdFromUrl(workflowFormat ? `explore-${workflowFormat}Job` : VIDEO_JOB_URL_PARAMETER);
   const urlJobId =
     persistedJobId && persistedJobId !== ignoredPersistedJobId
@@ -636,7 +666,7 @@ export function VideoGenerationStudioPanel({
   useEffect(() => {
     if (!foregroundAutoResumeRef.current) return;
     for (const job of durableJobs) {
-      if (!["cancelled", "completed", "failed"].includes(job.status) || job.id === urlJobId) {
+      if (!discoveredJobIdsRef.current.has(job.id) && (!["cancelled", "completed", "failed"].includes(job.status) || job.id === urlJobId)) {
         foregroundJobIdsRef.current.add(job.id);
       }
     }
@@ -701,7 +731,7 @@ export function VideoGenerationStudioPanel({
       completedJob: (typeof completedJobs)[number],
     ) {
       const completionEpoch = foregroundEpochRef.current;
-      const isForeground = () => isAIStudioSessionCompletion(
+      const isForeground = () => !discoveredJobIdsRef.current.has(completedJob.id) && isAIStudioSessionCompletion(
         completedJob.id, completionEpoch, foregroundEpochRef.current, foregroundJobIdsRef.current,
       );
       const completedOutput = getVideoJobOutput(completedJob.output);
@@ -817,39 +847,36 @@ export function VideoGenerationStudioPanel({
     );
 
     if (
-      generationLocked ||
-      hasInsufficientCredits ||
-      !trimmedPrompt ||
-      referenceFilesPending || creatorReferenceUploadPending ||
+      recreateView?.preview || (!pendingSubmission && (generationLocked || hasInsufficientCredits || !trimmedPrompt || referenceFilesPending || creatorReferenceUploadPending)) ||
       isGenerating || recoveringJobs || submittingRef.current
     ) {
       return;
     }
 
-    if (isExploreRecreate && !activeReferenceImageUrl) {
+    if (!pendingSubmission && isExploreRecreate && !activeReferenceImageUrl) {
       setReferenceImageRequiredDialogOpen(true);
       return;
     }
 
-    if (promptLengthError) {
+    if (!pendingSubmission && promptLengthError) {
       setActionError(promptLengthError);
       return;
     }
 
-    if (model === "kling_3_0" && trimmedPrompt.length < 2) {
+    if (!pendingSubmission && model === "kling_3_0" && trimmedPrompt.length < 2) {
       setActionError("Kling 3.0 requires a prompt of at least 2 characters.");
       return;
     }
 
-    if (!isAIStudioVideoModelAvailable(model)) {
+    if (!pendingSubmission && !isAIStudioVideoModelAvailable(model)) {
       setActionError(`${getAIStudioVideoModelLabel(model)} is temporarily unavailable. Choose another video model.`);
       return;
     }
-    if (hasWorkflowVideoReference && model !== "google_omni") {
+    if (!pendingSubmission && hasWorkflowVideoReference && model !== "google_omni") {
       setActionError("Choose Google Omni to use this video reference. Both references will be kept.");
       return;
     }
-    if (hasWorkflowVideoReference && sourceDuration && sourceDuration > 10) {
+    if (!pendingSubmission && hasWorkflowVideoReference && sourceDuration && sourceDuration > 10) {
       setActionError("Upload a trimmed reference video up to 10 seconds. The selected clip will not be shortened automatically.");
       return;
     }
@@ -868,18 +895,16 @@ export function VideoGenerationStudioPanel({
     workflow?.onGenerationStart();
 
     try {
-      const token = await getCurrentUserIdToken();
+      const token = await withReadDeadline(() => getCurrentUserIdToken(user?.uid));
 
       if (!token || !user) {
         throw new Error("Sign in before generating a video.");
       }
 
-      const idempotencyKey =
-        submissionKeyRef.current ?? crypto.randomUUID();
-      submissionKeyRef.current = idempotencyKey;
-
-      const response = await fetch("/api/ai-studio/videos/generate", {
-        body: JSON.stringify({
+      if (!navigator.locks) throw new Error("Use a browser with Web Locks support to recover generation safely.");
+      const admitted = await submitPendingGeneration({ ownerId: user.uid, kind: "video", scope: workflowFormat ?? "studio", token, storage: localStorage, locks: navigator.locks,
+        fetch, uuid: () => crypto.randomUUID(), assertActive() { if (activeUserIdRef.current !== user.uid) throw new Error("This account's generation is no longer active."); },
+        onStored(saved) { setPendingSubmission(saved); submissionKeyRef.current = saved.requestKey; }, input: {
           aspectRatio,
           exploreFormat: workflow?.format,
           avatarImageUrl: activeReferenceImageUrl,
@@ -887,7 +912,6 @@ export function VideoGenerationStudioPanel({
           referenceAudioUrls: audioReferences.map((audio) => audio.asset.url),
           referenceAudioAssetIds: audioReferences.map((audio) => audio.asset.id),
           durationSeconds: hasWorkflowVideoReference && sourceDuration ? Math.max(3, Math.ceil(sourceDuration)) : durationSeconds,
-          idempotencyKey,
           model,
           prompt: trimmedPrompt,
           quantity,
@@ -900,28 +924,14 @@ export function VideoGenerationStudioPanel({
           referenceId: galleryVideoReference?.id ?? referenceContext?.id ?? null,
           referenceType: referenceContext?.type ?? null,
           referenceUrl: referenceContext?.sourceUrl ?? null,
-        }),
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          "Idempotency-Key": idempotencyKey,
-        },
-        method: "POST",
-      });
-      const data = (await response.json()) as GenerateVideoResponse;
-
-      if (!response.ok || !data.ok) {
-        throw new Error(
-          data.ok === false ? data.error : "Video generation could not start.",
-        );
-      }
-      persistPendingVideoMetadata(workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid, data.jobs, {
-        aspectRatio,
-        avatarName: uploadedReference?.asset.title ?? uploadedVideoReference?.asset.title ?? "",
-        model,
-        prompt: trimmedPrompt,
-        resolution,
-      });
+        }, acknowledge(result, input) {
+          if (!persistPendingVideoMetadata(workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid, result.jobs, {
+            aspectRatio: input.aspectRatio as AIStudioVideoAspectRatio, avatarName: input.avatarImageUrl ? "Reference image" : "", model: input.model as AIStudioVideoModel, prompt: String(input.prompt), resolution: input.resolution as AIStudioVideoResolution,
+          })) throw new Error("Your generation is saved on the server. Its browser recovery record is preserved; recover it again.");
+        } });
+      if (!admitted) throw new Error("Could not confirm the generation lock.");
+      const data = admitted.result as Extract<GenerateVideoResponse, { ok: true }>;
+      setPendingSubmission(null); setActiveVideoPrompt(String(admitted.input.prompt));
       void queryClient.invalidateQueries({
         queryKey: ["billing-subscription", user.uid],
       });
@@ -949,6 +959,10 @@ export function VideoGenerationStudioPanel({
       setGenerationState("failed");
     } finally {
       submittingRef.current = false;
+      if (user && activeUserIdRef.current === user.uid) {
+        try { setPendingSubmission(readPendingGeneration(localStorage.getItem(pendingGenerationKey(user.uid, "video", workflowFormat ?? "studio")), user.uid, "video", workflowFormat ?? "studio")); }
+        catch { setActionError("Could not read the saved request. Its server result remains recoverable."); }
+      }
       setIsSubmitting(false);
     }
   }
@@ -1283,7 +1297,7 @@ export function VideoGenerationStudioPanel({
       <AiStudioComposer
         portalTarget={workflow?.controlsTarget}
         actionsTarget={workflow?.actionsTarget}
-        promptHelper={workflow ? hasWorkflowVideoReference ? "Describe your changes. The video supplies actions; the image supplies appearance." : workflow.format === "wall_text" ? "Describe the background; add your text using Edit below the preview." : "Scene, action and spoken words in quotes." : undefined}
+        promptHelper={workflow ? hasWorkflowVideoReference ? "Describe your changes. The video supplies actions; the image supplies appearance." : workflow.format === "wall_text" ? "Describe the background; add your text in Edit." : "Scene, action and spoken words in quotes." : undefined}
         promptLabel={workflow ? workflow.format === "wall_text" ? "What should the background look like?" : "What should the creator say and do?" : undefined}
         estimatedCredits={workflow && !generationLocked && !recreateView?.preview && (!hasWorkflowVideoReference || sourceDuration) ? requiredCredits : undefined}
         outputSummary={workflow ? `${resolution} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}
@@ -1335,20 +1349,20 @@ export function VideoGenerationStudioPanel({
           ) : null)
         }
         generateDisabled={
-          !isAIStudioVideoModelAvailable(model) ||
+          recreateView?.preview || (!pendingSubmission && (!isAIStudioVideoModelAvailable(model) ||
           generationLocked ||
           hasInsufficientCredits ||
           !prompt.trim() ||
           creatorReferenceUploadPending ||
-          referenceFilesPending ||
+          referenceFilesPending)) ||
           isGenerating || recoveringJobs
         }
-        generateLabel="Generate video"
-        generationLocked={generationLocked}
+        generateLabel={pendingSubmission ? "Recover saved request" : "Generate video"}
+        generationLocked={generationLocked && !pendingSubmission}
         hasAttachments={referenceFiles.length > 0 || referenceFilesPending}
         isGenerating={isGenerating}
         layout={workflow ? "workflow" : "unified"}
-        workflowDesign={workflow ? "focused" : undefined}
+        workflowDesign={workflow ? "classic" : undefined}
         showPromptHint={generationLocked || hasInsufficientCredits}
         leadingControl={workflow ? undefined :
             <ReferenceFilesUpload
@@ -1374,6 +1388,8 @@ export function VideoGenerationStudioPanel({
         onTextareaKeyDown={handleTextareaKeyDown}
         secondaryActions={
           <>
+            {earlierRequests.available ? <Button type="button" variant="ghost" size="sm" disabled={earlierRequests.checking || isSubmitting} onClick={() => void earlierRequests.check()}>{earlierRequests.checking ? "Checking earlier requests…" : "Check earlier requests"}</Button> : null}
+            {earlierRequests.error ? <span role="alert" className="text-xs text-destructive">{earlierRequests.error}</span> : null}
             {generationLocked ? (
               <Button type="button" variant="ghost" size="icon-sm" aria-label="Refresh access" title="Refresh access" disabled={refreshingAccess} onClick={() => void refreshGenerationAccess()}>
                 <RefreshCw className={cn("size-3.5", refreshingAccess && "animate-spin motion-reduce:animate-none")} aria-hidden="true" />

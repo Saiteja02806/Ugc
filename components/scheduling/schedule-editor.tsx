@@ -20,6 +20,7 @@ import type { ReactNode, RefObject } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
+import { Button } from "@/components/ui/button";
 import { useAccountTimeZone } from "@/components/providers/account-timezone-provider";
 import { getSchedulingTimeZoneOptions } from "@/lib/scheduling/account-timezone";
 import { InstagramCaptionPreview } from "@/components/social/instagram-caption-preview";
@@ -131,6 +132,8 @@ export type ScheduleFormSubmission = {
   timezone: string;
   useOpeningClip: boolean;
 };
+
+export type ScheduleEditorDraftSnapshot = { caption: string; date: string; time: string; timezone: string };
 
 type TikTokPublishSettingsResponse =
   | { capabilities: TikTokPublishCapabilities; ok: true }
@@ -246,9 +249,11 @@ export function ScheduleEditor({
   initialCaption = "",
   initialHookMediaId,
   finalVideo,
+  pendingVideo,
   initialPlannedTargets,
   initialScheduledDate,
   initialScheduledTime,
+  initialTimezone,
   minimumScheduleLeadMinutes,
   onClose,
   onRefreshMedia,
@@ -259,6 +264,8 @@ export function ScheduleEditor({
   socialConnections,
   tiktokBetaEnabled,
   youtubeBetaEnabled,
+  presentation = "modal",
+  onCloseDraft,
 }: {
   demoMediaOptions: ScheduleMediaOption[];
   editingIsCombinedVideo: boolean;
@@ -275,9 +282,12 @@ export function ScheduleEditor({
   initialHookMediaId: string;
   /** Explore has already prepared this exact output; composition stays fixed. */
   finalVideo?: ScheduleMediaOption;
+  /** Explicit Explore background acceptance; never used by the generic schedule API. */
+  pendingVideo?: ScheduleMediaOption;
   initialPlannedTargets: ScheduleCreateTargetInput[];
   initialScheduledDate: string;
   initialScheduledTime: string;
+  initialTimezone?: string;
   minimumScheduleLeadMinutes: number;
   onClose: () => void;
   onRefreshMedia: () => Promise<boolean>;
@@ -288,8 +298,13 @@ export function ScheduleEditor({
   socialConnections: SocialConnection[];
   tiktokBetaEnabled: boolean;
   youtubeBetaEnabled: boolean;
+  /** Explore keeps confirmation within its scheduling panel; other callers stay modal. */
+  presentation?: "modal" | "inline";
+  /** Preserve unsent inline edits when returning to the overview form. */
+  onCloseDraft?: (draft: ScheduleEditorDraftSnapshot) => void;
 }) {
-  useLockBodyScroll();
+  const inline = presentation === "inline";
+  useLockBodyScroll(!inline);
   const defaultTimezone = useAccountTimeZone();
   const dialogRef = useRef<HTMLElement>(null);
 
@@ -299,6 +314,7 @@ export function ScheduleEditor({
   const carouselLibraryItemId = isCarouselSchedule
     ? initialLibraryItemId ?? editingSchedule?.libraryItemId ?? null
     : null;
+  const fixedInlineSource = inline && Boolean(finalVideo || pendingVideo || initialLibraryItemId);
   const enabledPlatforms = useMemo<SchedulePlatform[]>(
     () => [
       "instagram",
@@ -357,7 +373,7 @@ export function ScheduleEditor({
         editingSchedule,
         hasHookOptions: hookMediaOptions.length > 0,
         hasSecondaryOptions: demoMediaOptions.length > 0,
-        requestedSelection: finalVideo ? "secondary_only" : initialClipSelection,
+        requestedSelection: finalVideo || pendingVideo ? "secondary_only" : initialClipSelection,
       }).useHook,
   );
   const [useSecondaryClip, setUseSecondaryClip] = useState(
@@ -367,14 +383,17 @@ export function ScheduleEditor({
         editingSchedule,
         hasHookOptions: hookMediaOptions.length > 0,
         hasSecondaryOptions: demoMediaOptions.length > 0,
-        requestedSelection: finalVideo ? "secondary_only" : initialClipSelection,
+        requestedSelection: finalVideo || pendingVideo ? "secondary_only" : initialClipSelection,
       }).useSecondary,
   );
+  const openingClipSelectionChanged = useRef(false);
+  const secondaryClipSelectionChanged = useRef(false);
+  const useAvailableClipDefaults = !initialClipSelection && !finalVideo && !pendingVideo;
   const [selectedHookMediaId, setSelectedHookMediaId] = useState<string>(
     initialHookMediaId,
   );
   const [selectedDemoMediaId, setSelectedDemoMediaId] = useState<string>(
-    finalVideo?.id ?? initialDemoMediaId,
+    finalVideo?.id ?? pendingVideo?.id ?? initialDemoMediaId,
   );
   const [refreshingMedia, setRefreshingMedia] = useState(false);
   const [hookPickerError, setHookPickerError] = useState<string | null>(null);
@@ -422,7 +441,7 @@ export function ScheduleEditor({
   const scheduledDate = scheduledDateOverride ?? initialScheduledDate;
   const scheduledTime = scheduledTimeOverride ?? initialScheduledTime;
   const [timezoneOverride, setTimezone] = useState<string | null>(editingSchedule?.timezone ?? null);
-  const timezone = timezoneOverride ?? defaultTimezone;
+  const timezone = timezoneOverride ?? initialTimezone ?? defaultTimezone;
   const [currentTime, setCurrentTime] = useState(() => Date.now());
 
   const localHookMediaOptions = hookMediaOptions;
@@ -451,31 +470,42 @@ export function ScheduleEditor({
     if (
       isCarouselSchedule ||
       editingSchedule ||
-      selectedDemoMediaId ||
       demoMediaOptions.length === 0
     ) {
       return;
     }
 
-    setSelectedDemoMediaId(demoMediaOptions[0]!.id);
-  }, [demoMediaOptions, editingSchedule, isCarouselSchedule, selectedDemoMediaId]);
+    if (!selectedDemoMediaId) {
+      setSelectedDemoMediaId(demoMediaOptions[0]!.id);
+    }
+    // Media can arrive after upload/refresh. Keep its inclusion in sync with
+    // default selection, without overriding an explicit Skip or saved choice.
+    if (useAvailableClipDefaults && !secondaryClipSelectionChanged.current) {
+      setUseSecondaryClip(true);
+    }
+  }, [demoMediaOptions, editingSchedule, isCarouselSchedule, selectedDemoMediaId, useAvailableClipDefaults]);
 
   useEffect(() => {
     if (
       isCarouselSchedule ||
       editingSchedule ||
-      selectedHookMediaId ||
       localHookMediaOptions.length === 0
     ) {
       return;
     }
 
-    setSelectedHookMediaId(localHookMediaOptions[0]!.id);
+    if (!selectedHookMediaId) {
+      setSelectedHookMediaId(localHookMediaOptions[0]!.id);
+    }
+    if (useAvailableClipDefaults && !openingClipSelectionChanged.current) {
+      setUseOpeningClip(true);
+    }
   }, [
     editingSchedule,
     isCarouselSchedule,
     localHookMediaOptions,
     selectedHookMediaId,
+    useAvailableClipDefaults,
   ]);
 
   const availableSocialConnections = useMemo(
@@ -561,10 +591,15 @@ export function ScheduleEditor({
         useHookClip: useOpeningClip,
         useSecondaryClip,
       });
-  const mediaValidationError = getScheduleMediaValidationError({
+  const pendingExploreReview = inline && !finalVideo && !initialLibraryItemId && Boolean(pendingVideo && pendingVideo.sourceType === "combined_video" && pendingVideo.status === "missing_render" && selectedDemoMedia?.status === "missing_render" && selectedDemoMedia.id === pendingVideo.id) && !useOpeningClip && useSecondaryClip;
+  const fixedVideoReadinessError = fixedInlineSource && !isCarouselSchedule && !pendingExploreReview && selectedDemoMedia?.status !== "ready"
+    ? "Wait for your finished video, or return to the workflow to confirm background preparation." : null;
+  const mediaValidationError = pendingExploreReview ? null : fixedVideoReadinessError ?? getScheduleMediaValidationError({
     hookMedia: isCarouselSchedule ? null : selectedHookMedia,
     secondaryMedia: isCarouselSchedule
-      ? getCarouselScheduleMediaOption(editingSchedule)
+      ? initialLibraryItemId
+        ? { id: initialLibraryItemId, sourceType: "generated_carousel", status: "ready", title: "Saved slideshow" }
+        : getCarouselScheduleMediaOption(editingSchedule)
       : selectedDemoMedia,
     useHookClip: isCarouselSchedule ? false : useOpeningClip,
     useSecondaryClip: isCarouselSchedule ? true : useSecondaryClip,
@@ -590,6 +625,16 @@ export function ScheduleEditor({
   }, []);
 
   useEffect(() => {
+    if (!inline) return;
+    const focusFrame = window.requestAnimationFrame(() => {
+      dialogRef.current?.focus({ preventScroll: true });
+      dialogRef.current?.scrollIntoView({ block: "nearest" });
+    });
+    return () => window.cancelAnimationFrame(focusFrame);
+  }, [inline]);
+
+  useEffect(() => {
+    if (inline) return;
     const previouslyFocused =
       document.activeElement instanceof HTMLElement
         ? document.activeElement
@@ -647,7 +692,7 @@ export function ScheduleEditor({
       document.removeEventListener("keydown", handleKeyDown);
       previouslyFocused?.focus();
     };
-  }, [onClose]);
+  }, [inline, onClose]);
 
   function toggleConnection(connectionId: string) {
     const connection = availableSocialConnections.find(
@@ -790,16 +835,26 @@ export function ScheduleEditor({
   }, [loadTikTokCapabilities, selectedConnections, tiktokCapabilities]);
 
   function handleSelectHookMedia(mediaId: string) {
+    openingClipSelectionChanged.current = true;
+    setUseOpeningClip(true);
     setHookPickerError(null);
     setSelectedHookMediaId(mediaId);
   }
 
+  function handleSelectSecondaryMedia(mediaId: string) {
+    secondaryClipSelectionChanged.current = true;
+    setUseSecondaryClip(true);
+    setSelectedDemoMediaId(mediaId);
+  }
+
   function handleToggleOpeningClip(enabled: boolean) {
+    openingClipSelectionChanged.current = true;
     setUseOpeningClip(enabled);
     setHookPickerError(null);
   }
 
   function handleToggleSecondaryClip(enabled: boolean) {
+    secondaryClipSelectionChanged.current = true;
     setUseSecondaryClip(enabled);
   }
 
@@ -845,8 +900,8 @@ export function ScheduleEditor({
         ? { id: carouselLibraryItemId!, kind: "library_item" }
         : { id: selectedPublishMedia!.id, kind: "media_asset" },
       scheduledSourceTitle:
-        isCarouselSchedule && editingSchedule
-          ? editingSchedule.title
+        isCarouselSchedule
+          ? editingSchedule?.title ?? "Saved slideshow"
           : selectedPublishMedia!.title,
       scheduledVideo: selectedPublishMedia,
       scheduledTime,
@@ -870,24 +925,24 @@ export function ScheduleEditor({
 
   return (
     <div
-      role="presentation"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-0 backdrop-blur-sm sm:p-4"
+      role={inline ? undefined : "presentation"}
+      className={inline ? "min-w-0" : "fixed inset-0 z-50 flex items-center justify-center bg-overlay p-0 backdrop-blur-sm sm:p-4"}
       onMouseDown={(event) => {
-        if (event.currentTarget === event.target) {
+        if (!inline && event.currentTarget === event.target) {
           onClose();
         }
       }}
     >
       <aside
         ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
+        role={inline ? "region" : "dialog"}
+        aria-modal={inline ? undefined : true}
         aria-labelledby="schedule-drawer-title"
         aria-describedby="schedule-drawer-description"
         tabIndex={-1}
-        className="flex h-full w-full flex-col overflow-hidden border border-border bg-card shadow-floating focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:h-[calc(100vh-2rem)] sm:max-h-[920px] sm:max-w-[1400px] sm:rounded-[var(--radius-panel)]"
+        className={inline ? "flex min-w-0 w-full flex-col rounded-[var(--radius-panel)] border border-border bg-card" : "flex h-full w-full flex-col overflow-hidden border border-border bg-card shadow-floating focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:h-[calc(100vh-2rem)] sm:max-h-[920px] sm:max-w-[1400px] sm:rounded-[var(--radius-panel)]"}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-border bg-card px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-5 lg:px-8">
+        <div className={inline ? "flex items-start justify-between gap-4 border-b border-border px-5 py-4" : "flex items-start justify-between gap-4 border-b border-border bg-card px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-5 lg:px-8"}>
           <div className="flex min-w-0 items-start gap-3">
             <span className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary ring-1 ring-inset ring-primary/10">
               <SocialPlatformIcon className="size-4" platform="instagram" />
@@ -897,7 +952,7 @@ export function ScheduleEditor({
                 id="schedule-drawer-title"
                 className="text-lg font-bold tracking-normal text-foreground"
               >
-                {finalVideo ? "Review schedule" : isCarouselSchedule
+                {inline ? "Confirm your schedule" : finalVideo ? "Review schedule" : isCarouselSchedule
                   ? `Schedule ${hasAdditionalCarouselPublishingPlatform ? "publishing" : "Instagram"} carousel`
                   : editingSchedule
                     ? `Edit ${hasAdditionalVideoPublishingPlatform ? "publishing" : "Instagram"} schedule`
@@ -907,23 +962,29 @@ export function ScheduleEditor({
                 id="schedule-drawer-description"
                 className="mt-1 max-w-2xl text-sm font-medium leading-6 text-muted"
               >
-                {finalVideo ? `Review your finished video, choose your ${publishingAccountLabel} account, and set the publish time.` : isCarouselSchedule
+                {inline ? "Check the caption, accounts and publishing options before scheduling." : finalVideo ? `Review your finished video, choose your ${publishingAccountLabel} account, and set the publish time.` : isCarouselSchedule
                   ? `Confirm the carousel, choose your ${publishingAccountLabel} account, and set the publish time.`
                   : `Choose real media, your ${publishingAccountLabel} account, and when the post should publish.`}
               </p>
             </div>
           </div>
-          <button
+          <Button
             type="button"
-            onClick={onClose}
-            aria-label="Close scheduling workspace"
-            className="inline-flex size-9 shrink-0 touch-manipulation items-center justify-center rounded-control border border-border bg-card text-muted transition hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            variant="ghost"
+            size={inline ? "sm" : "icon"}
+            onClick={() => {
+              if (inline) onCloseDraft?.({ caption, date: scheduledDate, time: scheduledTime, timezone });
+              onClose();
+            }}
+            disabled={inline && saving}
+            aria-label={inline ? "Back to schedule settings" : "Close scheduling workspace"}
+            className={inline ? "shrink-0" : "inline-flex size-9 shrink-0 touch-manipulation items-center justify-center rounded-control border border-border bg-card text-muted transition hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"}
           >
-            <X className="size-4" aria-hidden="true" />
-          </button>
+            {inline ? "Back" : <X className="size-4" aria-hidden="true" />}
+          </Button>
         </div>
 
-        <ol
+        {!inline ? <ol
           aria-label="Scheduling checklist"
           className="grid grid-cols-3 border-b border-border bg-card-muted/40 px-4 sm:px-6 lg:px-8"
         >
@@ -948,11 +1009,12 @@ export function ScheduleEditor({
               </span>
             </li>
           ))}
-        </ol>
+        </ol> : null}
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 lg:px-8">
+        <div className={inline ? "min-w-0 px-5" : "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 lg:px-8"}>
           <div className="mx-auto max-w-[1280px] divide-y divide-border">
             <ScheduleFlowSection
+              compact={inline}
               step="1"
               title="Media"
               description={
@@ -961,9 +1023,9 @@ export function ScheduleEditor({
                   : "Choose a hook, a secondary clip, or both in sequence"
               }
             >
-              <div className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)] xl:gap-6">
+              <div className={inline ? "grid min-w-0 gap-4" : "grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)] xl:gap-6"}>
                 <div className="grid content-start gap-4">
-                  {finalVideo ? (
+                  {fixedInlineSource ? null : finalVideo ? (
                     <FinalVideoPreview key={finalVideo.id} video={finalVideo} />
                   ) : isCarouselSchedule && editingSchedule ? (
                     <ScheduledCarouselSourceCard schedule={editingSchedule} />
@@ -987,11 +1049,14 @@ export function ScheduleEditor({
                         emptyDescription="Create or upload a Content video, then select it here."
                         emptyTitle="No secondary clips found."
                         enabled={useSecondaryClip}
+                        errorMessage={hookPickerError}
                         icon={<FileVideo className="size-4" aria-hidden="true" />}
                         mediaOptions={demoMediaOptions}
                         selectedMediaId={activeDemoMediaId}
                         title="Secondary clip"
-                        onSelectMedia={setSelectedDemoMediaId}
+                        refreshingMedia={refreshingMedia}
+                        onRefreshMedia={handleRefreshMedia}
+                        onSelectMedia={handleSelectSecondaryMedia}
                         onToggle={handleToggleSecondaryClip}
                       />
                     </>
@@ -1056,7 +1121,7 @@ export function ScheduleEditor({
                   ) : null}
                 </div>
 
-                <div className="grid content-start gap-4">
+                {!inline ? <div className="grid content-start gap-4">
                   {finalVideo ? (
                     <p className="rounded-control border border-border bg-card-muted/45 px-4 py-3 text-sm leading-6 text-muted">This finished video will be published to each selected account. Return to Explore to edit it.</p>
                   ) : isCarouselSchedule && editingSchedule ? (
@@ -1072,11 +1137,12 @@ export function ScheduleEditor({
                   {hasInstagramDestination ? (
                     <InstagramCaptionPreview caption={caption} />
                   ) : null}
-                </div>
+                </div> : null}
               </div>
             </ScheduleFlowSection>
 
             <ScheduleFlowSection
+              compact={inline}
               step="2"
               title={
                 hasAdditionalVideoPublishingPlatform
@@ -1133,12 +1199,13 @@ export function ScheduleEditor({
             </ScheduleFlowSection>
 
             <ScheduleFlowSection
+              compact={inline}
               step="3"
               title="Date & time"
               description="Publish time in the selected timezone"
             >
-              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.72fr)]">
-                <div className="grid content-start gap-3">
+              <div className={inline ? "grid min-w-0 gap-4" : "grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.72fr)]"}>
+                <div className={inline ? "grid w-full max-w-[480px] content-start gap-3" : "grid content-start gap-3"}>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label className="block">
                       <span className="text-sm font-bold text-foreground">
@@ -1217,7 +1284,7 @@ export function ScheduleEditor({
                   ) : null}
                 </div>
 
-                {finalVideo ? <p className="self-start rounded-control border border-border bg-card-muted/45 px-4 py-3 text-sm leading-6 text-muted">Your finished video is ready. Confirm the accounts, caption and publish time before scheduling.</p> : <StatusPreview
+                {inline ? null : finalVideo ? <p className="self-start rounded-control border border-border bg-card-muted/45 px-4 py-3 text-sm leading-6 text-muted">Your finished video is ready. Confirm the accounts, caption and publish time before scheduling.</p> : <StatusPreview
                   openingMedia={isCarouselSchedule ? null : selectedHookMedia}
                   scheduledMedia={
                     isCarouselSchedule
@@ -1233,7 +1300,7 @@ export function ScheduleEditor({
           </div>
         </div>
 
-        <div className="border-t border-border bg-card px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-[0_-12px_30px_rgb(16_32_51_/_0.06)] sm:px-6 sm:py-4 lg:px-8">
+        <div className={inline ? "border-t border-border px-5 py-4" : "border-t border-border bg-card px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-[0_-12px_30px_rgb(16_32_51_/_0.06)] sm:px-6 sm:py-4 lg:px-8"}>
           {tiktokPublishingAgreement ? (
             <p className="mb-3 text-xs leading-5 text-muted">
               {tiktokPublishingAgreement}
@@ -1248,12 +1315,16 @@ export function ScheduleEditor({
               <span>{errorMessage}</span>
             </div>
           ) : null}
-          <div className="mx-auto flex max-w-[1280px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className={inline ? "flex flex-wrap items-center justify-between gap-3" : "mx-auto flex max-w-[1280px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"}>
             <p className="max-w-3xl text-xs font-semibold leading-5 text-muted">
               {unavailableSavedTargetError
                 ? unavailableSavedTargetError
-                : hasSelectedConnections
-                  ? finalVideo
+                : mediaValidationError
+                  ? mediaValidationError
+                  : hasSelectedConnections
+                  ? pendingExploreReview
+                    ? "Your schedule will be saved now. Video preparation continues in the background."
+                    : finalVideo
                     ? "This finished video will be scheduled to your selected accounts."
                     : shouldCombineClips
                     ? "We prepare one combined video first, then schedule it automatically when ready."
@@ -1266,15 +1337,15 @@ export function ScheduleEditor({
                     ? "Choose a connected account before scheduling this post."
                     : `Choose a connected ${publishingAccountLabel} account before scheduling this post.`}
             </p>
-            <button
+            <Button
               type="button"
               onClick={handleSaveDraft}
               disabled={!canSaveDraft}
-              className="inline-flex h-11 w-full shrink-0 touch-manipulation items-center justify-center gap-2 rounded-control bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_10px_24px_rgb(225_101_64_/_0.18)] transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-56"
+              className={inline ? "min-h-11 shrink-0 gap-2" : "inline-flex h-11 w-full shrink-0 touch-manipulation items-center justify-center gap-2 rounded-control bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_10px_24px_rgb(225_101_64_/_0.18)] transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-56"}
             >
               <CheckCircle2 className="size-4" aria-hidden="true" />
-              {saving ? "Scheduling…" : canSaveDraft ? editingSchedule ? "Save and schedule" : "Schedule post" : unavailableSavedTargetError ? "Review saved account" : captionValidationError ? "Shorten caption" : publishingSettingsError ? "Review publishing settings" : requireScheduleTarget && !hasSelectedConnections ? "Choose an account" : isCarouselSchedule || selectedPublishMedia ? "Choose date and time" : mediaValidationError ?? "Select media to schedule"}
-            </button>
+              {saving ? "Scheduling…" : canSaveDraft ? editingSchedule ? "Save and schedule" : "Schedule post" : unavailableSavedTargetError ? "Review saved account" : captionValidationError ? "Shorten caption" : publishingSettingsError ? "Review publishing settings" : requireScheduleTarget && !hasSelectedConnections ? "Choose an account" : mediaValidationError ?? (isCarouselSchedule || selectedPublishMedia ? "Choose date and time" : "Select media to schedule")}
+            </Button>
           </div>
         </div>
       </aside>
@@ -1287,17 +1358,19 @@ function ScheduleFlowSection({
   description,
   step,
   title,
+  compact = false,
 }: {
   children: ReactNode;
   description: string;
   step: string;
   title: string;
+  compact?: boolean;
 }) {
   return (
     <section
       aria-labelledby={`schedule-step-${step}-title`}
       aria-describedby={`schedule-step-${step}-description`}
-      className="py-6 lg:py-7"
+      className={compact ? "py-4" : "py-6 lg:py-7"}
     >
       <h3 id={`schedule-step-${step}-title`} className="sr-only">
         {title}
@@ -1827,10 +1900,13 @@ function ScheduleRoleMediaPicker({
   emptyDescription,
   emptyTitle,
   enabled,
+  errorMessage,
   icon,
   mediaOptions,
+  onRefreshMedia,
   onSelectMedia,
   onToggle,
+  refreshingMedia,
   selectedMediaId,
   title,
 }: {
@@ -1838,10 +1914,13 @@ function ScheduleRoleMediaPicker({
   emptyDescription: string;
   emptyTitle: string;
   enabled: boolean;
+  errorMessage: string | null;
   icon: ReactNode;
   mediaOptions: ScheduleMediaOption[];
+  onRefreshMedia: () => void;
   onSelectMedia: (mediaId: string) => void;
   onToggle: (enabled: boolean) => void;
+  refreshingMedia: boolean;
   selectedMediaId: string;
   title: string;
 }) {
@@ -1869,16 +1948,34 @@ function ScheduleRoleMediaPicker({
             </p>
           </div>
         </div>
-        <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs font-bold text-muted">
-          <span className="hidden sm:inline">{enabled ? "Included" : "Skip"}</span>
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(event) => onToggle(event.target.checked)}
-            className="size-4 accent-primary"
-          />
-        </label>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            aria-label="Refresh secondary clips"
+            title="Refresh secondary clips"
+            disabled={refreshingMedia}
+            onClick={onRefreshMedia}
+            className="flex size-9 items-center justify-center rounded-control text-muted transition hover:bg-card hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50"
+          >
+            <RefreshCw className={cn("size-4", refreshingMedia && "animate-spin")} aria-hidden="true" />
+          </button>
+          <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs font-bold text-muted">
+            <span className="hidden sm:inline">{enabled ? "Included" : "Skip"}</span>
+            <input
+              type="checkbox"
+              checked={enabled}
+              onChange={(event) => onToggle(event.target.checked)}
+              className="size-4 accent-primary"
+            />
+          </label>
+        </div>
       </div>
+
+      {errorMessage ? (
+        <p role="alert" className="px-4 py-3 text-xs font-semibold text-red-500">
+          {errorMessage}
+        </p>
+      ) : null}
 
       {!enabled ? (
         <p className="px-4 py-3 text-xs font-semibold leading-5 text-muted">
@@ -2964,15 +3061,16 @@ function getTimezoneOptions(currentTimezone: string) {
   return getSchedulingTimeZoneOptions(currentTimezone);
 }
 
-function useLockBodyScroll() {
+function useLockBodyScroll(enabled = true) {
   useEffect(() => {
+    if (!enabled) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, []);
+  }, [enabled]);
 }
 
 function toDateKey(date: Date) {

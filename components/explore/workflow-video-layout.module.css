@@ -2,9 +2,9 @@
 .videoWorkspace { container: workflow-video / inline-size; }
 .videoWorkspace.videoWorkspace > header { min-height: 56px; padding-block: 6px; }
 .videoWorkspace.videoWorkspace .videoLayout {
-  display: grid; width: 100%; max-width: 1380px; margin-inline: auto;
-  grid-template-columns: minmax(0, 620px) minmax(0, 1fr);
-  gap: 24px; padding: 12px 24px 24px; align-items: start;
+  display: grid; width: 100%; margin-inline: auto;
+  grid-template-columns: clamp(360px, 25cqw, 440px) minmax(0, 1fr);
+  gap: 16px; padding: 12px 24px 24px; align-items: start;
 }
 .controls { container: workflow-form / inline-size; }
 .preview { container: workflow-gallery / inline-size; }
@@ -12,14 +12,17 @@
 .videoWorkspace.videoWorkspace .controls > div { padding: 20px; }
 .videoWorkspace.videoWorkspace .controls > footer { margin-top: 0; padding: 16px 20px; }
 .createIntro { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; margin-bottom: 18px; }
-.taskHeading { color: var(--foreground-strong); font-size: 24px; line-height: 32px; font-weight: 650; letter-spacing: -.025em; text-wrap: balance; }
+.taskHeading { color: var(--foreground-strong); font-size: 16px; line-height: 24px; font-weight: 600; text-wrap: balance; }
 .createIntro > section { display: contents; }
 .createIntro > section > h2 { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 .createIntro > section > div[role="group"]:first-of-type { grid-column: 2; grid-row: 1; }
 .createIntro > section > :not(h2):not(div[role="group"]:first-of-type), .createIntro > p { grid-column: 1 / -1; }
 .videoWorkspace.videoWorkspace .controls form textarea { min-height: 112px; height: 112px; background: var(--background); }
-.videoWorkspace.videoWorkspace .exampleGrid { grid-template-columns: repeat(auto-fill, minmax(0, 164px)); justify-content: start; gap: 18px 16px; }
-.exampleGrid > article { width: 100%; max-width: 164px; }
+.videoWorkspace.videoWorkspace .exampleGrid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 20px 16px; }
+.exampleGrid > article { position: relative; width: 100%; max-width: none; }
+.exampleGrid [data-reference-recreate] { position: absolute; z-index: 1; inset: 12px 12px auto auto; width: 44px; height: 44px; min-height: 44px; margin: 0; padding: 0; border-color: color-mix(in srgb, var(--foreground) 25%, transparent); background: color-mix(in srgb, var(--background) 85%, transparent); color: var(--foreground); }
+.exampleGrid [data-reference-recreate]:hover, .exampleGrid [data-reference-recreate][aria-pressed="true"] { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
+.exampleGrid [data-reference-recreate] > span { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .videoWorkspace.videoWorkspace .controls [data-workflow-reference-grid] { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
 .referenceGroup { display: grid; gap: 12px; padding-block: 16px; border-block: 1px solid color-mix(in srgb, var(--border) 65%, transparent); }
 .referenceHeading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
@@ -30,10 +33,10 @@
 .referenceCard > p { grid-column: 1; color: var(--muted); font-size: 12px; line-height: 18px; }
 .referenceCard > div:last-child { grid-column: 2; grid-row: 1 / 3; margin: 0; }
 .remixOverview { position: relative; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
-.remixOverview > h2 { padding-right: 170px; font-size: 14px; line-height: 32px; font-weight: 600; }
+.remixOverview > h2 { padding-right: 180px; font-size: 14px; line-height: 40px; font-weight: 600; }
 .remixOverview > p { margin-block: 6px 10px; color: var(--muted); font-size: 12px; line-height: 1.6; }
 .remixOverview [data-remix-manual-entry] { position: absolute; top: 8px; right: 0; margin: 0; }
-.remixOverview [data-remix-manual-entry] button { min-height: 32px; padding-inline: 10px; gap: 6px; color: var(--foreground); font-size: 12px; }
+.remixOverview [data-remix-manual-entry] button { min-height: 40px; padding-inline: 12px; gap: 8px; font-size: 13px; }
 .videoWorkspace[data-stage="demo"][data-editing="false"] .controls [aria-label="Background audio settings"] { gap: 4px; padding-top: 10px; }
 .videoWorkspace[data-stage="demo"][data-editing="false"] .controls [aria-label="Background audio settings"] > div:last-child:not(:first-child) { margin-top: 0; gap: 6px; }
 .referenceCard[data-reference-state="empty"] { grid-template-columns: minmax(0, 1fr); }
@@ -43,32 +46,39 @@
 .videoWorkspace .referenceCard [data-workflow-tile="reference"]:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 /* The overview shows both clips, even before an optional demo is chosen. */
 @container workflow-video (min-width: 1024px) {
-  .videoWorkspace.videoWorkspace[data-stage="demo"] .videoLayout { max-width: none; grid-template-columns: minmax(360px, 420px) minmax(0, 1fr); }
+  .videoWorkspace.videoWorkspace[data-stage="create"] .videoLayout { align-items: stretch; }
+  .videoWorkspace.videoWorkspace[data-stage="create"] .controls { align-self: stretch; height: 100%; }
+  .videoWorkspace.videoWorkspace[data-stage="demo"] .videoLayout,
+  .videoWorkspace.videoWorkspace[data-stage="edit"] .videoLayout { max-width: none; grid-template-columns: clamp(360px, 25cqw, 440px) minmax(0, 1fr); }
   .videoWorkspace[data-stage="demo"][data-editing="false"] .controls [data-demo-source="upload"] { min-width: 0; }
-  .videoWorkspace.videoWorkspace[data-stage="schedule"] .videoLayout { max-width: 1600px; grid-template-columns: minmax(360px, .88fr) minmax(0, 1.12fr); grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+  .videoWorkspace.videoWorkspace[data-stage="schedule"] .videoLayout { max-width: none; grid-template-columns: clamp(360px, 25cqw, 440px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); align-items: stretch; }
   .videoWorkspace.videoWorkspace[data-stage="demo"][data-editing="false"] .controls,
   .videoWorkspace.videoWorkspace[data-stage="demo"][data-editing="false"] .preview,
+  .videoWorkspace.videoWorkspace[data-stage="edit"] .controls,
+  .videoWorkspace.videoWorkspace[data-stage="edit"] .preview,
   .videoWorkspace.videoWorkspace[data-stage="schedule"] .controls,
   .videoWorkspace.videoWorkspace[data-stage="schedule"] .preview { align-self: stretch; height: 100%; }
-  .videoWorkspace[data-stage="schedule"] .controls { grid-column: 2; grid-row: 1; }
-  .videoWorkspace[data-stage="schedule"] .preview { grid-column: 1; grid-row: 1; }
+  .videoWorkspace[data-stage="demo"] .controls,
+  .videoWorkspace[data-stage="edit"] .controls,
+  .videoWorkspace[data-stage="schedule"] .controls { grid-column: 1; grid-row: 1; }
+  .videoWorkspace[data-stage="demo"] .preview,
+  .videoWorkspace[data-stage="edit"] .preview,
+  .videoWorkspace[data-stage="schedule"] .preview { grid-column: 2; grid-row: 1; }
 }
-.videoWorkspace.videoWorkspace[data-editing="true"] .videoLayout { grid-template-columns: minmax(0, 1fr); max-width: 1100px; }
+.videoWorkspace.videoWorkspace[data-editing="true"] .videoLayout { grid-template-columns: minmax(0, 1fr); max-width: none; }
+.videoWorkspace.videoWorkspace[data-editing="true"] .controls, .videoWorkspace.videoWorkspace[data-editing="true"] .preview { grid-column: 1; grid-row: 1; }
 .videoWorkspace.videoWorkspace[data-stage="demo"][data-editing="false"] .preview { align-self: start; min-height: 0; }
 .videoWorkspace.videoWorkspace[data-stage="demo"] .controls > footer button { width: auto; min-width: 140px; max-width: 100%; }
-/* Schedule owns two review cards and one action bar, independent of editor panes. */
+/* Schedule actions live with the form; the preview remains beside it. */
 .videoWorkspace.videoWorkspace[data-stage="schedule"] .controls { min-height: 0; border: 0; background: transparent; overflow: visible; }
 .videoWorkspace.videoWorkspace[data-stage="schedule"] .controls > div { padding: 0; scrollbar-gutter: auto; }
 .videoWorkspace.videoWorkspace[data-stage="schedule"] .preview { background: var(--card); }
 .videoWorkspace.videoWorkspace[data-stage="schedule"] .preview > div:not([hidden]) { padding: 0; min-height: 0; }
-.scheduleFooter { flex: none; width: 100%; padding: 16px 24px; border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent); background: var(--background); }
-.scheduleFooter > div { width: 100%; max-width: 1552px; margin-inline: auto; }
 @media (min-width: 1024px) and (min-height: 521px) {
   .videoWorkspace.videoWorkspace[data-stage="schedule"] .preview > div:not([hidden]) { overflow: hidden; }
 }
 @media (min-width: 1024px) and (max-width: 1366px) {
   .videoWorkspace.videoWorkspace[data-stage="schedule"] .videoLayout { gap: 16px; padding-inline: 16px; }
-  .scheduleFooter { padding-inline: 16px; }
 }
 @container workflow-form (max-width: 519px) {
   .createIntro { grid-template-columns: minmax(0, 1fr); gap: 10px; }
@@ -85,7 +95,6 @@
   .videoWorkspace[data-pane="preview"] .controls, .videoWorkspace[data-pane="controls"] .preview { display: none; }
   .videoWorkspace[data-pane="controls"] .controls { display: flex; }
   .videoWorkspace.videoWorkspace[data-stage="schedule"] .controls, .videoWorkspace.videoWorkspace[data-stage="schedule"] .preview { min-height: 0; }
-  .scheduleFooter { position: sticky; bottom: 0; z-index: 5; padding: 12px 16px; }
 }
 @media (max-height: 740px) {
   .videoWorkspace.videoWorkspace .videoLayout { padding-top: 8px; padding-bottom: 12px; gap: 16px; }

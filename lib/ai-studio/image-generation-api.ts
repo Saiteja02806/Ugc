@@ -11,6 +11,7 @@ import {
   DEFAULT_SLIDESHOW_IMAGE_MODEL,
   type AIStudioImageModel,
   parseAIStudioGenerationQuantity,
+  isAIStudioGenerationQuantity,
   parseAIStudioImageAspectRatio,
   parseAIStudioImageModel,
 } from "@/lib/ai-studio/generation-settings";
@@ -137,6 +138,9 @@ export async function handleAIStudioImageGeneration(request: Request) {
     | GenerateRequest
     | null;
   const prompt = normalizeAIStudioPrompt(body?.prompt);
+  if (body?.quantity !== undefined && !isAIStudioGenerationQuantity(body.quantity)) {
+    return NextResponse.json({ ok: false, message: "Choose 1, 2, 3 or 4 images." }, { status: 400 });
+  }
   const aspectRatio = parseAIStudioImageAspectRatio(body?.aspectRatio ?? (body?.exploreFormat === "slideshow" ? "4:5" : undefined));
   const quantity = parseAIStudioGenerationQuantity(body?.quantity);
   if (body?.exploreFormat !== undefined && body.exploreFormat !== "slideshow") {

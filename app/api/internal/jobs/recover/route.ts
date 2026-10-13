@@ -7,6 +7,7 @@ import {
   recoverBackgroundJob,
 } from "@/lib/jobs/background-jobs";
 import { enqueueBackgroundJobCloudTask } from "@/lib/jobs/gcp-cloud-tasks";
+import { reconcileDueExplorePendingSchedules } from "@/lib/explore/pending-schedule-service";
 import {
   getMissingBusinessProfileEnvVars,
 } from "@/lib/business-profiles/db";
@@ -185,6 +186,8 @@ export async function POST(request: Request) {
       resumedPlans: await resumeIncompleteWallTextPlans(Math.min(limit, 10)),
     };
 
+    const exploreSchedules = await reconcileDueExplorePendingSchedules(Math.min(limit, 10));
+
     return json({
       inspected: staleJobs.length,
       ok: true,
@@ -194,6 +197,7 @@ export async function POST(request: Request) {
       trendingIntegrityRepair: integrityResults,
       trendingReconciliation: trendingResults,
       wallTextEarlyDelivery,
+      exploreSchedules,
     });
   } catch (error) {
     console.error("Background job recovery scan failed:", error);

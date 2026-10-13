@@ -15,6 +15,7 @@ import {
   VIDEO_RENDER_LAUNCHER_PATH,
 } from "./gcp-cloud-tasks-logic";
 import { getGcpProjectId, getQueueNameForJobType } from "@/lib/queues/config";
+import { exploreInteractiveDispatchUrl } from "./explore-interactive-dispatch";
 
 const CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform";
 let cloudTasksAuth: GoogleAuth | null = null;
@@ -75,12 +76,13 @@ export async function enqueueBackgroundJobCloudTask(job: BackgroundJobRecord) {
     process.env.GCP_REGION?.trim() ||
     DEFAULT_GCP_JOB_TASKS_LOCATION;
   const queueName = getCloudTasksQueueName(job.jobType);
-  const dispatchUrl = getRequiredDispatchUrl(job.jobType);
+  const interactiveUrl = exploreInteractiveDispatchUrl(job, process.env);
+  const dispatchUrl = interactiveUrl ?? getRequiredDispatchUrl(job.jobType);
   const { endpoint, requestBody, taskName } =
     buildBackgroundJobCloudTaskRequest({
       attempt: job.attemptCount,
       audience:
-        process.env.GCP_BACKGROUND_JOB_TASK_AUDIENCE?.trim() ||
+        (interactiveUrl ? new URL(interactiveUrl).origin : process.env.GCP_BACKGROUND_JOB_TASK_AUDIENCE?.trim()) ||
         new URL(dispatchUrl).origin,
       dispatchUrl,
       jobId: job.id,

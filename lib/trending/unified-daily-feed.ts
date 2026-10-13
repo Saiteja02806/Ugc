@@ -5,6 +5,7 @@ import { updateBusinessProfileTrendingTimezone } from "@/lib/business-profiles/d
 import { FreeTrialAccessError } from "@/lib/billing/free-trial";
 import { getPublicDailyFeedState } from "@/lib/trending/daily-feed-status";
 import { loadTrendingFormat } from "@/lib/trending/format-isolation";
+import { getTrendingDailyPlanForRuntime, isTrendingFormatEnabled } from "@/lib/trending/format-policy";
 import {
   ensureTrendingDailyFeed,
   readTrendingDailyFeed,
@@ -112,10 +113,11 @@ export async function readUnifiedTrendingDailyFeed(params: {
     params.timezone ?? params.profile.trendingTimezone,
   );
   const localDate = getTrendingLocalDate(timezone);
-  const [preference, existingPlan] = await Promise.all([
+  const [preference, storedPlan] = await Promise.all([
     getTrendingContentMixPreference(params.userId),
     getDailyTrendingFeedForDate({ localDate, userId: params.userId }),
   ]);
+  const existingPlan = storedPlan ? getTrendingDailyPlanForRuntime(storedPlan) : null;
   let entitlement: TrendingPlanEntitlement;
   let trialAccessBlocked = false;
 
@@ -124,13 +126,13 @@ export async function readUnifiedTrendingDailyFeed(params: {
       existingFeedId: existingPlan?.feed.id,
     });
   } catch (error) {
-    if (!(error instanceof FreeTrialAccessError) || !existingPlan) {
+    if (!(error instanceof FreeTrialAccessError) || !storedPlan) {
       throw error;
     }
 
     // A trial ending stops new preparation, without hiding content that was
     // already generated in the current daily pack.
-    entitlement = getExistingFeedEntitlement(existingPlan.feed);
+    entitlement = getExistingFeedEntitlement(storedPlan.feed);
     trialAccessBlocked = true;
   }
   const effectivePreference = resolveTrendingContentMixPreference({
@@ -543,7 +545,7 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
       upgradeSlots,
     }),
   };
-  const initialPlan = await ensureDailyTrendingFeedPlan({
+  const storedInitialPlan = await ensureDailyTrendingFeedPlan({
     businessProfileId: params.profile.id,
     businessProfileVersion: params.profile.profileVersion,
     entitlement: reservedEntitlement,
@@ -553,6 +555,7 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
     timezone,
     userId: params.userId,
   });
+  const initialPlan = getTrendingDailyPlanForRuntime(storedInitialPlan);
   const reservedAllocation = countReservedSlots(initialPlan.slots);
   const [carouselProvider, hookProvider, wallTextProvider, reactionProvider] =
     await loadProviders({
@@ -584,10 +587,11 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
     wallTextAssignmentIds: wallTextProvider.items.map((item) => item.assignmentId),
   });
 
-  const attachedPlan = await getDailyTrendingFeed(
+  const storedAttachedPlan = await getDailyTrendingFeed(
     initialPlan.feed.id,
     params.userId,
   );
+  const attachedPlan = getTrendingDailyPlanForRuntime(storedAttachedPlan);
   const missingByFormat = countMissingSlots(attachedPlan.slots);
   const preparationResults = await prepareMissingFormats({
     currentCounts: {
@@ -939,7 +943,7 @@ async function prepareMissingFormats(params: {
   >();
   const tasks: Promise<void>[] = [];
 
-  if (params.includeHookVideos && params.missingByFormat.hook_video > 0) {
+  if (isTrendingFormatEnabled("hook_video") && params.includeHookVideos && params.missingByFormat.hook_video > 0) {
     tasks.push(
       prepareTrendingHookIdeas(params.profile, {
         mode: "refill",
@@ -959,7 +963,7 @@ async function prepareMissingFormats(params: {
     );
   }
 
-  if (params.includeWallText && params.missingByFormat.wall_text > 0) {
+  if (isTrendingFormatEnabled("wall_text") && params.includeWallText && params.missingByFormat.wall_text > 0) {
     tasks.push(
       enqueueTrendingWallTextRefill(params.profile, {
         dailyFeedId: params.wallTextDailyFeedKey,
@@ -994,7 +998,7 @@ async function prepareMissingFormats(params: {
     );
   }
 
-  if (params.missingByFormat.reaction > 0) {
+  if (isTrendingFormatEnabled("reaction") && params.missingByFormat.reaction > 0) {
     // The planner and renderer make final owner-scoped MP4s in the worker.
     // The raw catalog is never treated as a browser-side Trending fallback.
     tasks.push(
@@ -1062,7 +1066,7 @@ export function getPublicDailyFeedFailure(params: {
     };
   }
 
-  if (params.error === HOOK_SOURCE_UNAVAILABLE_MESSAGE) {
+  if (isTrendingFormatEnabled("hook_video") && params.error === HOOK_SOURCE_UNAVAILABLE_MESSAGE) {
     return {
       code: "hook_source_unavailable",
       message: HOOK_SOURCE_UNAVAILABLE_MESSAGE,
@@ -1150,7 +1154,7 @@ function buildFormatAvailability(params: {
     MissingFormatPreparationResult
   >;
 }): TrendingFeedProviderAvailability[] {
-  return (["carousel", "wall_text", "hook_video", "reaction"] as const).map((format) => {
+  return (["carousel", "wall_text", "hook_video", "reaction"] as const).filter(isTrendingFormatEnabled).map((format) => {
     if (params.allocation[format] === 0) {
       return { format, reason: "Disabled in the saved content mix.", state: "ready" as const };
     }

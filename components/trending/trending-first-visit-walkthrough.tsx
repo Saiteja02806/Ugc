@@ -18,6 +18,7 @@ import { createPortal } from "react-dom";
 
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
+import { TRENDING_SLIDESHOW_ONLY_ENABLED } from "@/lib/trending/format-policy";
 
 type Format = "hook" | "slideshow" | "wall";
 type StepKind =
@@ -40,7 +41,7 @@ type ControlGuidePosition = { arrowLeft: number; left: number; top: number };
 
 const SCENE_TRANSITION_MS = 420;
 
-const STEPS: readonly Step[] = [
+const ALL_STEPS: readonly Step[] = [
   { durationMs: 2_300, kind: "hook_preview" },
   { durationMs: 2_100, kind: "hook_swipe" },
   { durationMs: 3_100, kind: "hook_demo" },
@@ -53,12 +54,16 @@ const STEPS: readonly Step[] = [
   { durationMs: 2_400, kind: "slideshow_schedule" },
   { durationMs: 900, kind: "complete" },
 ];
+const STEPS = ALL_STEPS.filter((step) => !TRENDING_SLIDESHOW_ONLY_ENABLED ||
+  step.kind.startsWith("slideshow_") || step.kind === "complete");
 
 const CONTROL_GUIDE = {
   adjust: {
     action: "Got it",
     description:
-      "Choose which content types you want more or less of. This shapes future posts and does not change this one.",
+      TRENDING_SLIDESHOW_ONLY_ENABLED
+        ? "Your daily content is set to 100% slideshows. Open Adjust to view your daily allowance."
+        : "Choose which content types you want more or less of. This shapes future posts and does not change this one.",
     heading: "Adjust future content",
     selector: "[data-trending-adjust-control]",
     step: "2 of 2",

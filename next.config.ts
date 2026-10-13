@@ -6,6 +6,10 @@ const firebaseAuthHelperDomain =
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1"],
+  experimental: {
+    // Worker source keeps NodeNext .js imports; Webpack can also resolve its .ts source.
+    extensionAlias: { ".js": [".js", ".ts"] },
+  },
   outputFileTracingIncludes: {
     "/mcp": ["./node_modules/ffprobe-static/bin/linux/x64/ffprobe", "./node_modules/ffprobe-static/bin/win32/x64/ffprobe.exe"],
     "/api/trending/**": ["./worker/src/assets/fonts/*.ttf", "./node_modules/@fontsource/inter/files/inter-latin-400-normal.woff2"],

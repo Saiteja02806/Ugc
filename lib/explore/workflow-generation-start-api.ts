@@ -14,7 +14,7 @@ export async function handleWorkflowGenerationStart(request: Request) {
   }
   const body = await request.clone().json().catch(() => null);
   if (!body || typeof body !== "object" || Array.isArray(body) || !["hook", "phone"].includes(body.workflowKind) ||
-      ![1, 2, 4].includes(body.quantity) || typeof body.idempotencyKey !== "string" || !UUID.test(body.idempotencyKey) ||
+      ![1, 2, 3, 4].includes(body.quantity) || typeof body.idempotencyKey !== "string" || !UUID.test(body.idempotencyKey) ||
       request.headers.get("Idempotency-Key") !== body.idempotencyKey) return json({ ok: false, error: "Invalid workflow request identity." }, 400);
   try {
     const response = await handleAIStudioVideoGeneration(request, { startBatch: async (batch) => {

@@ -20,6 +20,7 @@ import { getReferenceAudioPreview } from "@/lib/explore/reference-audio-preview"
 import { loadWorkflowDefaultMusic } from "@/lib/explore/workflow-default-music-client";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import schedulePreview from "@/components/explore/talking-head-schedule-preview.module.css";
+import type { SubtitleTranscript } from "@/worker/src/subtitles/contracts";
 
 /** Shows only user-selected demo media, never a stock or pretend generated video. */
 export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, sourcePreview, onChangeSource, finishedVideo, demoFraming, demoPreview, onEditSource, onEditDemo, editingBusy = false }: {
@@ -67,13 +68,14 @@ export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, s
   </section>;
 }
 
-export function WorkflowScheduleWorkspace({ draft, finishedVideo, source, sourcePreview, demoSource, demo, demoAudio, demoAudioPlayback = "once", openingPreview, demoPreview, demoFraming, rawDemoFraming, options, ownerId = null, enabled = false, previewDisabledReason, active = true }: {
+export function WorkflowScheduleWorkspace({ draft, finishedVideo, source, sourcePreview, demoSource, demo, demoAudio, demoAudioPlayback = "once", openingPreview, demoPreview, demoFraming, rawDemoFraming, options, ownerId = null, enabled = false, previewDisabledReason, active = true, captions }: {
   draft: WorkflowScheduleDraft; finishedVideo?: MediaAsset | null;
   source?: MediaAsset | null; sourcePreview?: LocalWorkflowMedia | null;
   demoSource?: MediaAsset | null; demo?: LocalWorkflowMedia | null; demoAudio?: LocalWorkflowMedia | null;
   demoAudioPlayback?: "once" | "repeat"; openingPreview?: FormatOpeningPreview | null; demoPreview?: FormatOpeningPreview | null;
   demoFraming?: DemoFraming | null; rawDemoFraming?: DemoFraming | null; options?: FinishingOptions;
   ownerId?: string | null; enabled?: boolean; previewDisabledReason?: string | null; active?: boolean;
+  captions?: SubtitleTranscript | null;
 }) {
   const [sizes, setSizes] = useState<Record<string, { width: number; height: number; duration: number }>>({});
   const [sizeErrors, setSizeErrors] = useState<Record<string, boolean>>({});
@@ -138,8 +140,9 @@ export function WorkflowScheduleWorkspace({ draft, finishedVideo, source, source
     {demoUrl && !demoPreview && (!demoSource?.width || !demoSource?.height) ? <video key={`demo:${demoUrl}`} src={demoUrl} preload="metadata" hidden aria-hidden="true" onLoadedMetadata={event => readSize(demoUrl, event.currentTarget)} onError={() => setSizeErrors(previous => ({ ...previous, [demoUrl]: true }))} /> : null}
     <div><h2 className={creation.sectionTitle}>{segments.length ? "Final video" : "Post preview"}</h2><p className={creation.sectionHelp}>{platform || "Choose a platform in Schedule."}</p></div>
     {showFinished ? <WorkflowMediaPlayer asset={{ name: finishedVideo!.title, url: finishedVideo!.url, duration: finishedVideo!.durationSeconds }} kind="video" label="Scheduled finished video preview" /> : segments.length ? <>
-      <WorkflowSequencePreview segments={segments} backgroundAudio={backgroundAudio} active={active} className={schedulePreview.sequence} playbackDisabledReason={disabledReason} onPlaybackStart={() => setWatched(sequenceKey)} showDescription={false} />
-      <p role="status" className="text-xs leading-5 text-muted">Talking head{secondary ? " → Demo" : ""} · Preview. {finishedVideo ? "Your publishing file is ready." : "Use Prepare final video in Edit to save your publishing file."}{options?.subtitles ? " Auto subtitles appear in the rendered file." : ""}</p>
+      <WorkflowSequencePreview segments={segments} backgroundAudio={backgroundAudio} active={active} className={schedulePreview.sequence} playbackDisabledReason={disabledReason} onPlaybackStart={() => setWatched(sequenceKey)} showDescription={false}
+        captions={options?.subtitles && captions && !disabledReason ? { transcript: captions, style: options.style, placement: options.placement ?? "bottom", corrections: options.corrections } : null} />
+      <p role="status" className="text-xs leading-5 text-muted">Talking head{secondary ? " → Demo" : ""} · Preview. {finishedVideo ? "Your publishing file is ready." : "Choose Prepare final video to save your publishing file."}{options?.subtitles ? captions ? " Captions are shown in this preview. Review the rendered style in your final file." : " Generate captions in Edit to preview and correct the words." : ""}</p>
       {finishedVideo ? <Button type="button" variant="outline" className="self-center" onClick={() => setFinishedSelected(finishedVideo.id)}>View finished video</Button> : null}
     </> : <div data-workflow-empty-post className={creation.postEmpty}><Video className="size-6 text-muted" aria-hidden="true" /><h3 className="text-lg font-semibold">Your finished video will appear here.</h3><p className={creation.sectionHelp}>Apply edits to save a finished video before scheduling.</p></div>}
     {!segments.length ? <section aria-label="Post caption preview" className={creation.captionPreview}>

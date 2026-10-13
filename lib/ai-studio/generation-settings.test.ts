@@ -24,7 +24,7 @@ test("accepts only supported AI Studio settings", () => {
   assert.equal(parseAIStudioVideoAspectRatio("16:9"), "16:9");
   assert.equal(parseAIStudioVideoAspectRatio("4:5"), "9:16");
   assert.equal(parseAIStudioGenerationQuantity(4), 4);
-  assert.equal(parseAIStudioGenerationQuantity(3), 1);
+  assert.equal(parseAIStudioGenerationQuantity(3), 3);
   assert.equal(parseAIStudioImageModel("seedream_5_pro"), "seedream_5_pro");
   assert.equal(parseAIStudioImageModel("nano_banana_2"), "nano_banana_2");
   assert.equal(parseAIStudioImageModel("unknown"), "nano_banana_2");

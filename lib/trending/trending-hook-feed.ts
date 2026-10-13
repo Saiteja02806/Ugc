@@ -1,4 +1,5 @@
 import "server-only";
+import { assertTrendingFormatGenerationEnabled } from "./format-policy";
 
 import { createHash } from "node:crypto";
 
@@ -53,6 +54,7 @@ export async function prepareTrendingHookIdeas(
     targetActive?: number;
   } = {},
 ) {
+  assertTrendingFormatGenerationEnabled("hook_video");
   let mode = options.mode ?? "initial";
   const targetActive = Math.max(Math.trunc(options.targetActive ?? 6), 1);
   const source = await resolveTrendingVideoSource({

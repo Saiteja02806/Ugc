@@ -20,13 +20,14 @@ const providers = [
   },
 ] satisfies TrendingFeedProviderResult[];
 
-test("enables Wall-of-text in every runtime", () => {
-  assert.equal(isWallTextEnabled(), true);
+test("hides Wall-of-text while Trending generates only slideshows", () => {
+  assert.equal(isWallTextEnabled(), false);
 });
 
-test("keeps Wall-of-text providers in development, test, and production", () => {
+test("excludes Wall-of-text providers without mutating saved provider data", () => {
   assert.deepEqual(
     filterWallTextProvidersForRuntime(providers).map((provider) => provider.format),
-    ["carousel", "wall_text"],
+    ["carousel"],
   );
+  assert.equal(providers.length, 2);
 });

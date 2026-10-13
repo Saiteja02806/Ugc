@@ -5,16 +5,17 @@ import { Maximize, Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { FormatVideoTextOverlay } from "@/components/explore/format-video-text-overlay";
 import { Button } from "@/components/ui/button";
 import styles from "@/components/explore/workflow-sequence-preview.module.css";
+import { WorkflowCaptionOverlay, type SequenceCaptions } from "./workflow-caption-overlay";
 import { createSequencePreviewTimeline, sequencePreviewAudioPosition, sequencePreviewOverlays, sequencePreviewPosition,
   sequencePreviewProjection, validateSequencePreviewAudio, type SequencePreviewAudio, type SequencePreviewSegment, type SequencePreviewTimeline } from "@/lib/explore/sequence-preview";
 
 export type { SequencePreviewAudio, SequencePreviewSegment } from "@/lib/explore/sequence-preview";
 type Props = { segments: readonly SequencePreviewSegment[]; backgroundAudio?: SequencePreviewAudio | null; active?: boolean;
-  outputWidth?: number; outputHeight?: number; className?: string; onPlaybackStart?: () => void; playbackDisabledReason?: string | null; showDescription?: boolean };
+  outputWidth?: number; outputHeight?: number; className?: string; onPlaybackStart?: () => void; playbackDisabledReason?: string | null; showDescription?: boolean; captions?: SequenceCaptions | null };
 const stamp = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`;
 
 /** Local playback never submits a render or changes publication readiness. */
-export function WorkflowSequencePreview({ segments, backgroundAudio, active = true, outputWidth, outputHeight, className, onPlaybackStart, playbackDisabledReason, showDescription = true }: Props) {
+export function WorkflowSequencePreview({ segments, backgroundAudio, active = true, outputWidth, outputHeight, className, onPlaybackStart, playbackDisabledReason, showDescription = true, captions }: Props) {
   let timeline: SequencePreviewTimeline;
   try { timeline = createSequencePreviewTimeline(segments); if (backgroundAudio) validateSequencePreviewAudio(backgroundAudio); }
   catch (error) { return <p role="alert" className="text-sm leading-6 text-destructive">{error instanceof Error ? error.message : "Choose your video again to preview it."}</p>; }
@@ -24,13 +25,14 @@ export function WorkflowSequencePreview({ segments, backgroundAudio, active = tr
   // A changed draft gets a fresh paused session rather than continuing old media or timing.
   return <SequencePreviewSession key={JSON.stringify([segments, backgroundAudio, width, height, active])} timeline={timeline}
     backgroundAudio={backgroundAudio} active={active} width={width} height={height} className={className}
-    onPlaybackStart={onPlaybackStart} playbackDisabledReason={playbackDisabledReason} showDescription={showDescription} />;
+    onPlaybackStart={onPlaybackStart} playbackDisabledReason={playbackDisabledReason} showDescription={showDescription} captions={captions} />;
 }
 
-function SequencePreviewSession({ timeline, backgroundAudio, active, width, height, className, onPlaybackStart, playbackDisabledReason, showDescription }: {
+function SequencePreviewSession({ timeline, backgroundAudio, active, width, height, className, onPlaybackStart, playbackDisabledReason, showDescription, captions }: {
   timeline: SequencePreviewTimeline; backgroundAudio?: SequencePreviewAudio | null; active: boolean; width: number; height: number; className?: string;
   onPlaybackStart?: () => void; playbackDisabledReason?: string | null;
   showDescription?: boolean;
+  captions?: SequenceCaptions | null;
 }) {
   const videos = useRef<(HTMLVideoElement | null)[]>([]), layers = useRef<(HTMLDivElement | null)[]>([]);
   const addedAudio = useRef<(HTMLAudioElement | null)[]>([]), background = useRef<HTMLAudioElement | null>(null), surface = useRef<HTMLElement | null>(null);
@@ -98,7 +100,7 @@ function SequencePreviewSession({ timeline, backgroundAudio, active, width, heig
     }
     syncSound(background.current, backgroundAudio, current.timeMs, timeline.durationMs);
     const overlayKey = `${current.index}:${sequencePreviewOverlays(entry, elapsed).map(text => `${text.startMs}:${text.endMs}`).join(",")}`;
-    if (force || current.timeMs - current.lastUi >= 100 || current.overlayKey !== overlayKey) {
+    if (force || current.timeMs - current.lastUi >= (captions ? 33 : 100) || current.overlayKey !== overlayKey) {
       current.lastUi = current.timeMs; current.overlayKey = overlayKey;
       if (current.mounted) setTimeMs(current.timeMs);
     }
@@ -177,6 +179,7 @@ function SequencePreviewSession({ timeline, backgroundAudio, active, width, heig
               <FormatVideoTextOverlay key={overlayIndex} label={`${entry.label} text overlay ${overlayIndex + 1}`} text={text} width={entry.width} height={entry.height} />) : null}
           </div>;
         })}
+        {captions && Math.abs(captions.transcript.durationMs - timeline.durationMs) <= 150 ? <WorkflowCaptionOverlay captions={captions} timeMs={timeMs} width={width} height={height} /> : null}
         {waiting && active ? <div role="status" className="absolute inset-0 grid place-items-center bg-black/30 text-sm text-white">Loading next frame…</div> : null}
       </div>
     </div>

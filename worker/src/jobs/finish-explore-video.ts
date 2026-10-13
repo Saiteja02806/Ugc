@@ -15,14 +15,29 @@ import { configuredScribeProvider, type ScribeTranscriptionProvider } from "../s
 import { parsePlacement, parseStyle } from "../subtitles/contracts.js";
 import { getAssetReferenceSoundtrack, getExplorePairedReference, referenceAudioBaseStorageKey } from "../lib/explore-reference-soundtrack.js";
 import { verifyReferenceAudioFile } from "../lib/explore-reference-audio-render.js";
+import { finalizeExploreVideoSchedule } from "../lib/schedule-finalization.js";
 
 export type ExploreFinishingDependencies = {
-  store: Pick<ExploreFinishingStore,"read"|"asset"|"claimSpeech"|"saveSpeech"|"finalize">;
+  store: Pick<ExploreFinishingStore,"read"|"asset"|"claimSpeech"|"saveSpeech"|"finalize"> & Partial<Pick<ExploreFinishingStore,"hasPendingSchedule">>;
   storage: Pick<ExploreFinishingStorage,"existing"|"download"|"upload">;
   finish: typeof finishExploreVideo;
   /** Explicitly chosen/configured provider; never fall back to another paid API. */
   transcription?: ScribeTranscriptionProvider;
+  finalizeSchedule?: typeof finalizeExploreVideoSchedule;
 };
+
+async function recoverPendingSchedule(deps: ExploreFinishingDependencies, receipt: ExploreFinishReceipt) {
+  try {
+    if (await deps.store.hasPendingSchedule?.(receipt.user_id, receipt.request_key)) {
+      await (deps.finalizeSchedule ?? finalizeExploreVideoSchedule)({ userId: receipt.user_id, requestKey: receipt.request_key });
+    }
+  } catch {
+    // Output is already stored and finalized. Retry enters completed recovery,
+    // never FFmpeg or transcription again; the periodic outbox is independent.
+    throw new RetryableJobError("Your video is saved. Its schedule confirmation will be recovered without rendering again.",
+      { code: "explore_schedule_finalization_pending", retryAfterSeconds: 30 });
+  }
+}
 
 async function finalizeStoredOutput(deps: ExploreFinishingDependencies, receipt: ExploreFinishReceipt, claimToken: string, output: Record<string,unknown>) {
   try { await deps.store.finalize(receipt,claimToken,output); }
@@ -44,12 +59,15 @@ export async function runFinishExploreVideoJob(job: BackgroundJobRow, context: P
   // not an unverified URL from a previous worker delivery.
   if (receipt.status === "completed") {
     await deps.store.asset(job.user_id,receipt.output_asset_id,"video");
+    await recoverPendingSchedule(deps, receipt);
     return { mediaAssetId:receipt.output_asset_id,requestKey:receipt.request_key };
   }
-  const recovered = await deps.storage.existing(receipt);
+  if (receipt.draft.captionPreview && receipt.transcript) return { captionsReady: true, requestKey: receipt.request_key };
+  const recovered = receipt.draft.captionPreview ? null : await deps.storage.existing(receipt);
   if (recovered) {
     await context.checkpoint({ status:"uploading_output",stage:"saving_finished_video",progress:95 });
     await finalizeStoredOutput(deps,receipt,job.claim_token,recovered);
+    await recoverPendingSchedule(deps, receipt);
     return { mediaAssetId:receipt.output_asset_id,requestKey:receipt.request_key };
   }
   // Already stored output and subtitles-off jobs do not depend on ASR secrets.
@@ -66,6 +84,7 @@ export async function runFinishExploreVideoJob(job: BackgroundJobRow, context: P
     ...(draft.demoAssetId ? [{ id:draft.demoAssetId,collection:"video" as const,max:250*1024*1024 }] : []),
     ...(draft.demoAudioAssetId ? [{ id:draft.demoAudioAssetId,collection:"audio" as const,max:50*1024*1024 }] : []),
     ...(draft.backgroundAssetId ? [{ id:draft.backgroundAssetId,collection:"audio" as const,max:50*1024*1024 }] : []),
+    ...(draft.composition?.sourceAudioAssetId ? [{ id:draft.composition.sourceAudioAssetId,collection:"audio" as const,max:50*1024*1024 }] : []),
   ];
   const assets = await Promise.all(selections.map(selection => deps.store.asset(job.user_id!,selection.id,selection.collection)));
   const referenceSoundtrack = getAssetReferenceSoundtrack(assets[0].metadata);
@@ -106,7 +125,7 @@ export async function runFinishExploreVideoJob(job: BackgroundJobRow, context: P
         checkpointFailure = error; controller.abort(error);
       }).finally(() => { checking = false; checkInFlight = undefined; });
     }, 5000);
-    // At most four inputs, all already owner-checked and individually bounded.
+    // At most five inputs, all already owner-checked and individually bounded.
     // Wait for every stream to settle before deleting this worker directory.
     let downloadFailure: unknown;
     const downloads = await Promise.allSettled(assets.map(async (asset,index) => {
@@ -130,21 +149,24 @@ export async function runFinishExploreVideoJob(job: BackgroundJobRow, context: P
     const demoPath = draft.demoAssetId ? join(directory,`source-${i++}`) : undefined;
     const demoAudioPath = draft.demoAudioAssetId ? join(directory,`source-${i++}`) : undefined;
     const backgroundMusicPath = draft.backgroundAssetId ? join(directory,`source-${i++}`) : undefined;
+    const sourceAudioPath = draft.composition?.sourceAudioAssetId ? join(directory,`source-${i++}`) : undefined;
     // Single-clip edit drafts only contain explicitly selected owned audio;
     // automatic default music is added by non-editing composition requests.
     // Keep that clip audio in the clean base before applying its paired track.
     // Generic final/join music must still yield to the registered soundtrack.
     const clipBackgroundMusicPath = !reference || (draft.editing && !draft.demoAssetId) ? backgroundMusicPath : undefined;
-    const referenceVolume = referenceSoundtrack ? draft.editing?.musicVolume ?? referenceSoundtrack.volume : undefined;
+    const referenceVolume = referenceSoundtrack ? draft.composition?.sourceEditing?.musicVolume ?? draft.editing?.musicVolume ?? referenceSoundtrack.volume : undefined;
     const tools = { ffmpeg:process.env.FFMPEG_PATH || "ffmpeg",ffprobe:process.env.FFPROBE_PATH || "ffprobe",
       fontsDir:process.env.SUBTITLE_FONTS_DIR || fileURLToPath(new URL("../../assets/fonts/",import.meta.url)) };
     const result = await deps.finish({ sourcePath:join(directory,"source-0"),demoPath,demoAudioPath,
       backgroundMusicPath: clipBackgroundMusicPath, signal:controller.signal,
+      ...(draft.captionPreview ? { captionPreview: true } : {}),
       ...(reference ? { referenceAudioPath, referenceAudioVolume: referenceVolume, sourceOriginalVolume: sourceCleanKey ? undefined : 0,
         ...(demoHasReferenceMusic ? { demoOriginalVolume: 0 } : {}) } : {}),
         ...(draft.demoFraming ? { demoFraming: draft.demoFraming } : {}),
         ...(draft.sourceFraming ? { sourceFraming: draft.sourceFraming } : {}),
         ...(draft.editing ? { editing: draft.editing } : {}),
+        ...(draft.composition ? { clipComposition: { ...draft.composition, sourceAudioPath } } : {}),
       ...(demoAudioPath ? { demoAudioPlayback:draft.demoAudioPlayback } : {}),
       ...(clipBackgroundMusicPath ? { backgroundMusicPlayback:draft.backgroundPlayback } : {}),workDir:join(directory,"render"),tools,
       ...(draft.subtitles && subtitleStyle && subtitlePlacement ? { subtitles:{ ...draft.subtitles,style:subtitleStyle,placement:subtitlePlacement,loadTranscript:async (speech) => {
@@ -170,6 +192,10 @@ export async function runFinishExploreVideoJob(job: BackgroundJobRow, context: P
     if (watch) { clearInterval(watch); watch = undefined; }
     await checkInFlight;
     if (checkpointFailure) throw checkpointFailure;
+    if (draft.captionPreview) {
+      await context.checkpoint({ status:"processing",stage:"captions_ready",progress:100 });
+      return { captionsReady: true, requestKey: receipt.request_key };
+    }
     await context.checkpoint({ status:"uploading_output",stage:"uploading_finished_video",progress:85 });
     let output: Record<string,unknown>;
     try {
@@ -192,6 +218,7 @@ export async function runFinishExploreVideoJob(job: BackgroundJobRow, context: P
     }
     await context.checkpoint({ status:"uploading_output",stage:"saving_finished_video",progress:95 });
     await finalizeStoredOutput(deps,receipt,job.claim_token,output);
+    await recoverPendingSchedule(deps, receipt);
     return { mediaAssetId:receipt.output_asset_id,requestKey:receipt.request_key };
   } catch (error) {
     throw checkpointFailure ?? error;

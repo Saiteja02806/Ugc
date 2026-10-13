@@ -1,3 +1,5 @@
+import { isTrendingFormatEnabled } from "./format-policy.ts";
+
 export function parseTrendingHookVideosEnabled(value: string | undefined) {
   return value?.trim().toLowerCase() !== "false";
 }
@@ -11,10 +13,10 @@ type TrendingHookVideoFeatureInput = {
 export function resolveTrendingHookVideosEnabled({
   featureFlag,
 }: TrendingHookVideoFeatureInput) {
-  // Hook ideas are part of every daily bundle. Keep an explicit false value as
-  // an emergency kill switch without making a missing flag silently strand
-  // reserved Hook positions forever.
-  return parseTrendingHookVideosEnabled(featureFlag);
+  return (
+    isTrendingFormatEnabled("hook_video") &&
+    parseTrendingHookVideosEnabled(featureFlag)
+  );
 }
 
 export function areTrendingHookVideosEnabled(request?: Request) {

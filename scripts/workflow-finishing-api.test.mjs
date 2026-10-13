@@ -13,7 +13,9 @@ function load(file, imports = {}, globals = {}) {
   return exports;
 }
 const edit = load("worker/src/lib/explore-format-edit.ts", { "./edit-overlay-render-spec.ts": load("worker/src/lib/edit-overlay-render-spec.ts") });
-const contract = load("worker/src/lib/explore-finishing-contract.ts", { "../subtitles/styles.ts": load("worker/src/subtitles/styles.ts"), "./explore-format-edit.ts": edit });
+const subtitleContracts = load("worker/src/subtitles/contracts.ts", { "./styles.ts": load("worker/src/subtitles/styles.ts") });
+const corrections = load("worker/src/subtitles/corrections.ts", { "./contracts.ts": subtitleContracts });
+const contract = load("worker/src/lib/explore-finishing-contract.ts", { "../subtitles/styles.ts": load("worker/src/subtitles/styles.ts"), "./explore-format-edit.ts": edit, "../subtitles/contracts.ts": subtitleContracts, "../subtitles/corrections.ts": corrections });
 const key = "11111111-1111-4111-8111-111111111111", jobId = "22222222-2222-4222-8222-222222222222";
 const outputId = "33333333-3333-4333-8333-333333333333", sourceId = "44444444-4444-4444-8444-444444444444", owner = "owner-a";
 const providerKey = "elevenlabs:scribe_v2:auto:en:word:v1";
@@ -51,7 +53,7 @@ function harness(options = {}) {
     "./workflow-finishing-service": service,
   }, { Response, URL, Buffer, process: { env } });
   const draft = { ...baseDraft, ...options.draftChanges };
-  receipt = { user_id: owner, request_key: key, job_id: jobId, output_asset_id: outputId, status: options.receiptStatus ?? "queued",
+  receipt = { user_id: owner, request_key: key, job_id: jobId, output_asset_id: outputId, status: options.receiptStatus ?? "queued", ...(options.transcript ? { transcript: options.transcript } : {}),
     fingerprint: api.fingerprintExploreFinish(contract.parseExploreFinishDraft(draft)), draft };
   record = { id: jobId, userId: owner, jobType: "render_demo_video", projectId: "explore", idempotencyKey: `explore-finish:${key}`,
     input: { version: 1, userId: owner, requestKey: key, fingerprint: receipt.fingerprint, outputAssetId: outputId },
@@ -78,6 +80,15 @@ test("both workflows accept all positions and legacy omission without changing o
   for (const placement of [null, "center", 0, {}, "TOP"]) {
     assert.throws(() => contract.parseExploreFinishDraft({ ...baseDraft, subtitles: { ...baseDraft.subtitles, placement } }), /placement/);
   }
+});
+
+test("owned caption recovery exposes validated words without a publishing ID or another dispatch", async () => {
+  const transcript = { schemaVersion: 1, provider: "elevenlabs", model: "scribe_v2", language: "en", durationMs: 1000, words: [{ text: "Hello", startMs: 100, endMs: 500 }] };
+  const h = harness({ prior: true, jobStatus: "completed", transcript, draftChanges: { captionPreview: true, subtitles: { ...baseDraft.subtitles, version: 2 } } });
+  const response = await h.status(), body = await response.json();
+  assert.equal(response.status, 200); assert.equal(body.outcome, "captions_ready"); assert.equal(body.mediaAssetId, null);
+  assert.deepEqual(body.captionTranscript, transcript);
+  assert.ok(!h.calls.includes("dispatch") && !h.calls.includes("asset"));
 });
 
 test("queues only a verified committed owned job and acknowledges opaque identities, without exposing raw input/output", async () => {

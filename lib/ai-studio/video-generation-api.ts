@@ -10,6 +10,7 @@ import {
 } from "@/lib/ai-studio/prompt-policy";
 import {
   parseAIStudioGenerationQuantity,
+  isAIStudioGenerationQuantity,
   parseAIStudioVideoDuration,
   parseAIStudioVideoAspectRatio,
   parseAIStudioVideoModel,
@@ -173,6 +174,9 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     | GenerateVideoRequest
     | null;
   const prompt = normalizeAIStudioPrompt(body?.prompt ?? body?.hookIdea);
+  if (body?.quantity !== undefined && !isAIStudioGenerationQuantity(body.quantity)) {
+    return NextResponse.json({ ok: false, error: "Choose 1, 2, 3 or 4 videos." }, { status: 400 });
+  }
   // Resolve private browser links once, with ownership, before validation/billing.
   try {
     if (body) {

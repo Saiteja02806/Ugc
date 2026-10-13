@@ -64,7 +64,7 @@ test("pending feedback reflects Next link status, clears on completion and reser
 test("all three workflow cards keep real links and place feedback inside the corresponding link", () => {
   const { ExploreWorkflowCard } = load("components/explore/explore-workflow-card.tsx", {
     "next/link": link,
-    react: { useRef: () => ({ current: null }), useEffect: () => {} },
+    "@/components/explore/use-cover-playback": { useCoverPlayback: () => ({ current: null }) },
     "@/components/explore/explore-link-indicator": indicatorImport,
   });
   for (const workflow of workflows.EXPLORE_WORKFLOWS) {
@@ -85,7 +85,7 @@ test("AI character cover and caption remain inside a single live link without a 
   const { AICharacterCard } = load("components/explore/ai-character-card.tsx", {
     "next/link": link,
     "next/image": { default: "image", __esModule: true },
-    react: { useRef: () => ({ current: null }), useEffect: () => {} },
+    "@/components/explore/use-cover-playback": { useCoverPlayback: () => ({ current: null }) },
     "@/components/explore/explore-link-indicator": indicatorImport,
   });
   for (const localPreview of [false, true]) {

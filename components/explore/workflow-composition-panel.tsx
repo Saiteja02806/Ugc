@@ -18,11 +18,12 @@ import { SUBTITLE_STYLE_REGISTRY, subtitlePreview, type SubtitleStyle } from "@/
 import { WorkflowSubtitlePreview } from "@/components/explore/workflow-subtitle-preview";
 import { WorkflowDemoControls } from "@/components/explore/workflow-demo-controls";
 import type { DemoFraming } from "@/worker/src/lib/explore-finishing-contract";
+import { WorkflowCaptionEditor, type WorkflowCaptions } from "./workflow-caption-editor";
 
 const SUBTITLE_STYLES = SUBTITLE_STYLE_REGISTRY;
 
 /** Editing is separate from creation and scheduling; attachment ownership stays above. */
-export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudioPlayback, onDemoAudioPlaybackChange, connected = false, options, onOptionsChange, ownerId, demoFramingEnabled = false, demoFraming = null, onDemoFramingChange, outputAspect = 9 / 16, editingBusy = false, demoFramingError = null, onDemoControlsOpen }: {
+export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudioPlayback, onDemoAudioPlaybackChange, connected = false, options, onOptionsChange, ownerId, demoFramingEnabled = false, demoFraming = null, onDemoFramingChange, outputAspect = 9 / 16, editingBusy = false, demoFramingError = null, onDemoControlsOpen, captions }: {
   videoLabel: "Hook" | "Phone video" | "Talking head";
   demo: WorkflowAttachment;
   demoAudio: WorkflowAttachment;
@@ -39,6 +40,7 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
   editingBusy?: boolean;
   demoFramingError?: string | null;
   onDemoControlsOpen?: () => void;
+  captions?: WorkflowCaptions;
 }) {
   const [subtitleStyle, setSubtitleStyle] = useState<SubtitleStyle>("clean");
   const [subtitlePlacement, setSubtitlePlacement] = useState<"bottom" | "middle" | "top">("bottom");
@@ -136,7 +138,7 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
             <PopoverContent side="right" align="start" className={cn(studio.floating, creation.floating)}>
               <PopoverTitle>Auto subtitles</PopoverTitle>
               <p className="text-sm leading-6 text-muted">{EXPLORE_SUBTITLE_SCOPE_LABEL}. This includes your {videoLabel.toLowerCase()} and demo together. Nothing is trimmed automatically.</p>
-              <p className="text-sm leading-6 text-muted">{connected ? "Choose a style and play its example. Turn on subtitles and Apply edits to save captions on your video." : "Choose a style and play its example. Rendering is not connected in this preview."}</p>
+              <p className="text-sm leading-6 text-muted">{connected ? "Turn on subtitles, generate captions and correct their words before preparing your final video." : "Choose a style and play its example. Rendering is not connected in this preview."}</p>
             </PopoverContent>
           </Popover>
         </div>
@@ -167,6 +169,7 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
           <WorkflowSubtitlePreview style={selectedStyle} />
         </div>
       </details>
+      {options?.subtitles && captions ? <WorkflowCaptionEditor captions={captions} disabled={editingBusy} /> : null}
       <p id={subtitleHelpId} className="sr-only">Selecting a style changes your draft only. These rendered examples use the same clip and transcript at Bottom position. Apply edits saves subtitles from your final audio. {EXPLORE_SUBTITLE_SCOPE_LABEL}, including both segments; nothing is trimmed automatically.</p>
     </section>
     <p id={unavailableId} className="sr-only">{connected ? "Off keeps original sound without adding default music. On adds the approved default track underneath the original hook and demo sound when you Apply edits. Separately selected demo audio plays during the demo only. If no approved default is configured, Apply edits will explain this; it never chooses unreviewed music." : "Music and subtitle rendering are not connected in this local preview."}</p>

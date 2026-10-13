@@ -17,7 +17,7 @@ import { LandingHeader } from "@/components/marketing/landing-header";
 import { LandingHeroShowcase } from "@/components/marketing/landing-hero-showcase";
 import { LandingMultiPlatformSection } from "@/components/marketing/landing-multi-platform-section";
 import { LandingPlatformBadge } from "@/components/marketing/landing-platforms";
-import { LandingSwipeDeck } from "@/components/marketing/landing-swipe-deck";
+import { LandingContentShowcase } from "@/components/marketing/landing-content-showcase";
 import { AUTH_SESSION_COOKIE_NAME } from "@/lib/firebase/auth-session";
 import { visibleSocialPlatformList } from "@/lib/social/platform-visibility";
 
@@ -228,8 +228,8 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Section 3: Interactive Swipe Decision Feed */}
-      <LandingSwipeDeck />
+      {/* Section 3: Passive slideshow example */}
+      <LandingContentShowcase />
 
       {/* Section 4: Why UGCPilot Comparison Matrix */}
       <LandingComparisonSection />

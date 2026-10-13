@@ -60,7 +60,7 @@ test("Talking Head Schedule previews current raw trims, text, framing and Demo a
   assert.deepEqual([preview.segments[0].editing.trimStartMs, preview.segments[1].editing.trimEndMs], [1000, 2500]);
   assert.deepEqual(preview.segments[1].framing, frame);
   assert.deepEqual(JSON.parse(JSON.stringify(preview.segments[1].addedAudio)), { url: "blob:demo-audio", volume: .2, playback: "repeat" });
-  assert.match(text(h.tree), /Auto subtitles appear in the rendered file/); assert.equal(h.requests, 0);
+  assert.match(text(h.tree), /Generate captions in Edit to preview and correct the words/); assert.equal(h.requests, 0);
 });
 test("prepared clips use their baked edits and rebased crop without applying trim or text twice", () => {
   const h = harness({ source: media("saved-opening", "https://media.test/opening.mp4"), demoSource: media("saved-demo", "https://media.test/demo.mp4"),

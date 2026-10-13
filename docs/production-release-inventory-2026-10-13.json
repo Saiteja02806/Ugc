@@ -1,0 +1,2046 @@
+{
+  "recordedAt": "2026-10-13T13:15:39.377Z",
+  "branch": "codex/complete-release-20261009",
+  "head": "e5bc9bdff19a72fcfab94430304f32564e2f2745",
+  "productionSource": "21866e2287501bf5b13b355a2fa103c0258a8afc",
+  "files": [
+    {
+      "path": "CAROUSEL_CONTEXT.md",
+      "status": " M",
+      "bytes": 439408,
+      "sha256": "ba08d1ffdb017fb1fe5aa9334b203bcd688ca1630b2afb6ffecdd24c992e94c3",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "components/characters/character-reference.test.mjs",
+      "status": " M",
+      "bytes": 10905,
+      "sha256": "27ff996610c931c980da1f0e641a6216d97ea27799a82391d2caad486d59c156",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "components/characters/character-session.test.mjs",
+      "status": " M",
+      "bytes": 10445,
+      "sha256": "3056fb043d2b185c273b1fd2c5e7678ee3f4c4e58cca05e0ca2e187f3a752577",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "components/characters/use-character-builder.ts",
+      "status": " M",
+      "bytes": 10791,
+      "sha256": "30c3aef96a75a60ea045a07b9cf5fcf8056ba9f66866e9bdc9f48fe74b2158ed",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "components/explore/format-generation-references.tsx",
+      "status": " M",
+      "bytes": 18460,
+      "sha256": "eaf687b0a4b0ff4625d7c0a251d4bd6c4d9b646f6bbc04751ce2f3947940532f",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "components/explore/slideshow-reference-picker.module.css",
+      "status": " M",
+      "bytes": 2349,
+      "sha256": "c37abc650c845945dbe29e8d10994e6e748c31c9b936753d159859f3174ce7e4",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "components/explore/workflow-schedule-review.module.css",
+      "status": " M",
+      "bytes": 3567,
+      "sha256": "e221fe08378531537531f2f227c1215651a0ae3051337d3f65a3bb0341d1e97a",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "components/explore/workflow-scheduling-panel.tsx",
+      "status": " M",
+      "bytes": 4835,
+      "sha256": "728ce6a0483e25fea137f4a64068a31b112719d71a5594821f7e3c844af88da4",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "components/explore/workflow-section-layout.module.css",
+      "status": " M",
+      "bytes": 13513,
+      "sha256": "cfa49f6c454e79cfaba31c99cfb80e7e1d98c4bdd7d3bf15822637ec97952893",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "components/explore/workflow-video-layout.module.css",
+      "status": " M",
+      "bytes": 11126,
+      "sha256": "428793ea0acc673ba93a2faf66f2f763ea2cd90e3216a11d02642814a6951e50",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "components/video/video-generation-workspace.tsx",
+      "status": " M",
+      "bytes": 88673,
+      "sha256": "55ff7f08880d9c3af9b4bc3787441fd88947f86bf502e4f34adaa51a52ee6ce1",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "docs/explore-functional-fixes-review-2026-10-13.md",
+      "status": " M",
+      "bytes": 17487,
+      "sha256": "8ec4b9b5baec825eae3b96566c24f7d5e9263e3f3e9dae1f023c0b0ae53dc36e",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "docs/mcp-account-settings-candidate-2026-10-13.md",
+      "status": " M",
+      "bytes": 9979,
+      "sha256": "3523e37d14dcbb73965a13cabf19dc7f40073d5988ade45fded16c1a5784e33e",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "docs/mcp-audio-plugin-candidate-2026-10-12.md",
+      "status": " M",
+      "bytes": 14419,
+      "sha256": "1505b3d334a233158e01b62b8aa26e0c7a971337dbbe7ac475118cda912559ca",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "docs/mcp-audio-video-import-candidate-2026-10-12.md",
+      "status": " M",
+      "bytes": 15498,
+      "sha256": "226c07589e751d2d7241f1f86890593d59ef75971b21b8482c03e2573fe6b35b",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "docs/mcp-library-content-candidate-2026-10-13.md",
+      "status": " M",
+      "bytes": 11084,
+      "sha256": "1225bacc93ba4596352fa501f604bab561e7e920404cb1fc75bf041ffbb69245",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "docs/mcp-plugin-0.1.11-release-2026-10-13.md",
+      "status": " M",
+      "bytes": 8422,
+      "sha256": "3be923d463193c1039e7051bf358d5b2581c28fd5d14b4fc7269ace4158e2287",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "docs/mcp-remaining-work-audit-2026-10-11.md",
+      "status": " M",
+      "bytes": 54429,
+      "sha256": "4795fc3012f3753c283cd34a0db49f26ba60ca1df1eb150b5cb49c492a1bf082",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "docs/production-release-2026-10-13.md",
+      "status": " M",
+      "bytes": 3837,
+      "sha256": "bbb0e4e44e19475872cf7f0b5f2ee290d197cb435f798ad18cad6d36751c2ac5",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "lib/explore/clip-draft.test.mjs",
+      "status": " M",
+      "bytes": 8864,
+      "sha256": "54601809860de041fd850cdae2dd2c679a4b2a75e49cdae4aa0a76b9e2a82dcc",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/explore-background-composition.test.mjs",
+      "status": " M",
+      "bytes": 11971,
+      "sha256": "3ac8a2d75c208d757fc0ae1d52e5658761c7d994fed3df1198bac2214d92259e",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/explore-caption-review.browser.cjs",
+      "status": " M",
+      "bytes": 12189,
+      "sha256": "9e80d35296172c1378182a1dbcb9207bc88048eddf8f0b0b6468b9822863f6eb",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/explore-format-demo.test.mjs",
+      "status": " M",
+      "bytes": 15258,
+      "sha256": "699dfc1d59bbc166c4d785ec5c639f45e9e1798a87dce16f5b2f2f0bed209a47",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/explore-format-generation-ui.test.mjs",
+      "status": " M",
+      "bytes": 27360,
+      "sha256": "5bdebaa1d0f6ab4023957e861ca796cdf12796a31e8eadac37ccf28a6fc9eaa1",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/explore-format-video-source.test.mjs",
+      "status": " M",
+      "bytes": 2536,
+      "sha256": "e65a3048e33f2cfa708144a2aad8362cef77a8c461c3100ad20be683d324e71b",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/explore-format-video-worker.test.mjs",
+      "status": " M",
+      "bytes": 5403,
+      "sha256": "b99bc26a2ab1f140699eb42be67ce4c8f5c602692c10cc650a8f8095ec22b317",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/explore-pending-schedules-db.test.mjs",
+      "status": " M",
+      "bytes": 11343,
+      "sha256": "85933c0806f02b11357f3a9dde7fa7d37ce8736001dce5d92629504b16ec29fb",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/explore-reference-images.test.mjs",
+      "status": " M",
+      "bytes": 10114,
+      "sha256": "edf6ba4485a6abbb4ce828e6c53e9fc08e8a106ecb3df1267ad7ab472439cba5",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/explore-slideshow-editor.test.mjs",
+      "status": " M",
+      "bytes": 36720,
+      "sha256": "8fdfb1fd8161e4eb3f4b5b4e35c9947e48e9d7912e0cd20946f88e2afa234e8f",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/explore-wall-text-removal.test.mjs",
+      "status": " M",
+      "bytes": 2607,
+      "sha256": "c45660d367dbb3e83dfa069bb6988de993cc41e9bb74c94492bfc77597122be6",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/explore-workflow-job-recovery-api.test.mjs",
+      "status": " M",
+      "bytes": 5992,
+      "sha256": "2c067fd882bf73473d700094def82155576b1f0a7f40a7694b48c18fe38d857b",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/explore-workflow-job-recovery.test.mjs",
+      "status": " M",
+      "bytes": 16666,
+      "sha256": "a82896d5135afd71cf4eea33df834b6b225146ce935bc30ba25185f3646d702e",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/mcp-video-finishing.test.mjs",
+      "status": " M",
+      "bytes": 13284,
+      "sha256": "a6e5ed7f2ed890a203cd0a6f876279a0326e046cb2dac933273d67f68e3ba4d8",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/workflow-composition-panel.test.mjs",
+      "status": " M",
+      "bytes": 32762,
+      "sha256": "48894afe3ce64d20955b5dd7dcbe7b635cf99c14029d7fa328e80041ebd3a226",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/workflow-creation-form.test.mjs",
+      "status": " M",
+      "bytes": 20368,
+      "sha256": "f8e50bd5a1cf38fb8124abd2a7013e9bf1b43401fbfb5d05e02cb43423e3cafa",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/workflow-reference-inputs-ui.test.mjs",
+      "status": " M",
+      "bytes": 11871,
+      "sha256": "7c7c5fc8ebf2acc729d5bf5ea46bbcfb610744672b6ecfa70b81cae1a08190a3",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "scripts/workflow-sections.test.mjs",
+      "status": " M",
+      "bytes": 16297,
+      "sha256": "c2c6c65e685a878cf5c1ea56c8afd31202b7e66f1dc97631a5d6dc33d39db2f7",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "supabase/migrations/20261012212314_explore_clip_draft_saves.sql",
+      "status": " M",
+      "bytes": 7029,
+      "sha256": "1cb4c95faee860e9a046bebf34658e46dcc86ee543ba13cde527d33c901a1e0d",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "supabase/migrations/20261012212532_explore_pending_video_schedules.sql",
+      "status": " M",
+      "bytes": 8220,
+      "sha256": "a3f8528b1f00402e98da2ae8f2f0c2a3704765f0ab694305694232695713d530",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "worker/src/lib/explore-video-finishing.ts",
+      "status": " M",
+      "bytes": 15325,
+      "sha256": "6475008227498a41b197ff83b165cb52938c3611355478d1df742bbbc833afa8",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "docs/mcp-account-settings-production-verification-2026-10-13.json",
+      "status": "??",
+      "bytes": 11428,
+      "sha256": "a60cf091ed7dc367fda9cc6eeb2f533e86cd6933e339b465a0a3b5cfe4df45f4",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "docs/mcp-account-settings-release-2026-10-13.md",
+      "status": "??",
+      "bytes": 6348,
+      "sha256": "2a22f7a5735521cae304a737b46bbe8fd76a2aa1fb796feeaf520375de740b42",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "docs/mcp-business-context-candidate-2026-10-13.md",
+      "status": "??",
+      "bytes": 7502,
+      "sha256": "3e60d938e6bef89c3a9134526194d02d7e0b91492048cf54b8fc95e3821fdf3e",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "docs/mcp-plugin-0.1.11-production-verification-2026-10-13.json",
+      "status": "??",
+      "bytes": 10416,
+      "sha256": "858a0b49ec9df0e10917112dff9a86e68836951ed1064e427c778c1407f9f795",
+      "excluded": false,
+      "reason": null
+    },
+    {
+      "path": "outputs/mcp-hook-demo-test-2026-10-13.mp4",
+      "status": "??",
+      "bytes": 866207,
+      "sha256": "ff61f35e9452cccd5d4b95891ddc74fd3d0aeb27a78bc2166200dad638461a0c",
+      "excluded": true,
+      "reason": "Temporary generated review output; retained locally."
+    }
+  ],
+  "ignored": [
+    {
+      "path": ".agents/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".chrome-carousel-upgrade-check/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".codex-artifacts/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".codex-audits/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".codex-auth-check-stderr.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".codex-auth-check-stdout.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".codex-dev-4173.err.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".codex-dev-4173.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".codex-dev-4173.out.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".codex-dev-4300.err.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".codex-dev-4300.out.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".codex-dev-error.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".codex-dev-output.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".codex-dev-shell.err.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".codex-dev-shell.out.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".codex-dev-stderr.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".codex-dev-stdout.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".codex-library-dev-4173.err.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".codex-library-dev-4173.out.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".codex-next-dev.err.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".codex-next-dev.out.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".codex/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".env.development.local",
+      "reason": "Private or local environment configuration."
+    },
+    {
+      "path": ".env.local",
+      "reason": "Private or local environment configuration."
+    },
+    {
+      "path": ".mcp-audit-app-tests.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".mcp-audit-lint.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".mcp-audit-typecheck.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".mcp-audit-worker-tests.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".next-dev-4300.err.log",
+      "reason": "Dependencies, generated build output or local CLI state."
+    },
+    {
+      "path": ".next-dev-4300.out.log",
+      "reason": "Dependencies, generated build output or local CLI state."
+    },
+    {
+      "path": ".next-dev.err.log",
+      "reason": "Dependencies, generated build output or local CLI state."
+    },
+    {
+      "path": ".next-dev.out.log",
+      "reason": "Dependencies, generated build output or local CLI state."
+    },
+    {
+      "path": ".next-server-4300-direct.err.log",
+      "reason": "Dependencies, generated build output or local CLI state."
+    },
+    {
+      "path": ".next-server-4300-direct.out.log",
+      "reason": "Dependencies, generated build output or local CLI state."
+    },
+    {
+      "path": ".next-server-4300.err.log",
+      "reason": "Dependencies, generated build output or local CLI state."
+    },
+    {
+      "path": ".next-server-4300.out.log",
+      "reason": "Dependencies, generated build output or local CLI state."
+    },
+    {
+      "path": ".next-start-4300.err.log",
+      "reason": "Dependencies, generated build output or local CLI state."
+    },
+    {
+      "path": ".next-start-4300.out.log",
+      "reason": "Dependencies, generated build output or local CLI state."
+    },
+    {
+      "path": ".next/",
+      "reason": "Dependencies, generated build output or local CLI state."
+    },
+    {
+      "path": ".playwright-mcp/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-all-app-tests.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-app-tests.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-build.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-cloud-build.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-copy-validation.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-env-names.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-final-app.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-final-next.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-final-targeted.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-final-worker.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-merged-types.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-merged-worker.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-next-build.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-production-ai-smoke.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-production-render-smoke-final.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-production-render-smoke.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-production-smoke-final.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-production-smoke.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-reconcile-test.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-validation-recheck.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-validation.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-vercel-errors.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-vercel.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-wall-simulation.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-worker-identity.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-worker-image.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-worker-rollout.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-worker-tests.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".release-worktrees/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".tmp-release-app-tests.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".tmp-release-build.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".tmp-release-carousel-tests.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".tmp-release-extra.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".tmp-release-final-extra.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".tmp-release-targeted.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".tmp-release-worker-tests.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".tmp/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".tools/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".trigger-dev.err.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".trigger-dev.out.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": ".vercel/",
+      "reason": "Dependencies, generated build output or local CLI state."
+    },
+    {
+      "path": "ai-studio-images-desktop.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "artifacts/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "auth-desktop.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "carousel-candidate1-slide1.webp",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "carousel-candidate1-slide5.webp",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "carousel-candidate2-slide1.webp",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "carousel-final-generated-deck.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "carousel-final-polished-deck-styled.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "carousel-final-polished-deck.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "carousel-final-single-deck.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "carousel-final-slide3-fixed.webp",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "carousel-final-slide3-polished.webp",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "carousel-final-slide5-fixed.webp",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "carousel-final-slide5-polished.webp",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "carousel-ui-check-ready.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "carousel-upgrade-check.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design-qa-onboarding-flow-v3-comparison.jpg",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design-qa-onboarding-step1-comparison.jpg",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design-qa-onboarding-step1-desktop-v3.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design-qa-onboarding-step1-desktop.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design-qa-onboarding-step1-mobile-form.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design-qa-onboarding-step1-mobile-viewport-v3.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design-qa-onboarding-step1-mobile-viewport.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design-qa-onboarding-step2-desktop-v3.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design-qa-onboarding-step2-desktop.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design-qa-onboarding-step2-mobile-v3.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design-qa-onboarding-step2-mobile.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design-qa-onboarding-step3-desktop-v3.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design-qa-onboarding-step3-mobile-grid-v3.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design-qa-onboarding-step3-mobile-v3.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design-qa-onboarding-step3-selected-v3.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design-qa.md",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Auto-Save/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "\"design/explore-character-motion/Auto-Save/Explore AI Character \\342\\200\\224 Build Use Grow v2 auto-save 1.aep\"",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "\"design/explore-character-motion/Auto-Save/Explore AI Character \\342\\200\\224 Build Use Grow v2 auto-save 2.aep\"",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "\"design/explore-character-motion/Auto-Save/Explore AI Character \\342\\200\\224 Create Yours v4 auto-save 1.aep\"",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "\"design/explore-character-motion/Auto-Save/Explore AI Character \\342\\200\\224 Create Yours v4 auto-save 2.aep\"",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "\"design/explore-character-motion/Auto-Save/Explore AI Character \\342\\200\\224 Create Yours v4 auto-save 3.aep\"",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "\"design/explore-character-motion/Auto-Save/Explore AI Character \\342\\200\\224 Create Yours v4 auto-save 4.aep\"",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-00.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-01.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-02.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-03.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-04.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-05.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-06.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-07.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-08.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-09.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-10.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-11.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-12.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-13.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-14.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-15.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-16.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-17.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-18.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-19.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-20.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-21.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-22.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/review-frame-23.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/storyboard-v2.jpg",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v2-review-0.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v2-review-1.4.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v2-review-10.7.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v2-review-4.8.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v2-review-7.8.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/layout-study.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/native-0.000.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/native-1.600.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/native-10.350.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/native-11.958.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/native-3.650.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/native-5.300.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/native-8.150.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/qa-long-copy-flat-depth.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-00.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-01.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-02.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-03.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-04.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-05.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-06.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-07.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-08.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-09.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-10.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-11.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-12.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-13.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-14.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-15.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-16.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-17.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-18.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-19.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-20.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-21.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-22.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/review-frame-23.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v3/storyboard-v3.jpg",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/explore-desktop.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/explore-mobile.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/native-0.000.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/native-11.100.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/native-13.700.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/native-15.958.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/native-3.400.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/native-5.600.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/native-6.700.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/native-9.000.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/native-final-centered.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-00.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-01.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-02.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-03.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-04.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-05.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-06.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-07.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-08.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-09.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-10.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-11.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-12.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-13.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-14.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-15.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-16.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-17.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-18.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-19.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-20.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-21.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-22.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-23.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-24.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-25.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-26.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-27.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-28.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-29.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-30.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-31.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-32.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-33.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-34.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-35.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/review-36.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v4/storyboard-v4.jpg",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/explore-desktop.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/explore-mobile.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/native-business.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/native-examples.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/native-final-aligned.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/native-final.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/native-initial-reveal.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/native-opening.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/native-subject.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/native-transition-10.1.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/native-transition-2.4.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-00.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-01.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-02.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-03.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-04.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-05.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-06.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-07.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-08.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-09.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-10.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-11.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-12.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-13.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-14.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-15.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-16.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-17.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-18.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-19.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-20.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-21.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-22.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-23.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-24.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-25.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-26.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-27.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-28.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-29.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-30.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-31.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-32.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-33.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-34.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-35.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-36.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-37.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/review-38.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-character-motion/Preview/v5/storyboard-v5.jpg",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-hook-motion/Auto-Save/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "\"design/explore-hook-motion/Auto-Save/Explore Hook Cover \\342\\200\\224 Editorial Motion v4 auto-save 1.aep\"",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "\"design/explore-hook-motion/Auto-Save/Explore Hook Cover \\342\\200\\224 Editorial Motion v5 auto-save 1.aep\"",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "\"design/explore-hook-motion/Auto-Save/Explore Hook Cover \\342\\200\\224 Editorial Motion v6 auto-save 1.aep\"",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "design/explore-phone-motion/Auto-Save/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "\"design/explore-phone-motion/Auto-Save/Explore Phone Cover \\342\\200\\224 Clean Loop v6 auto-save 1.aep\"",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "\"design/explore-phone-motion/Auto-Save/Explore Phone Cover \\342\\200\\224 Screen to Creator v4 auto-save 1.aep\"",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "\"design/explore-phone-motion/Auto-Save/Explore Phone Cover \\342\\200\\224 Screen to Creator v4 auto-save 2.aep\"",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "\"design/explore-phone-motion/Auto-Save/Explore Phone Cover \\342\\200\\224 Screen to Creator v4 auto-save 3.aep\"",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "\"design/explore-phone-motion/Auto-Save/Explore Phone Cover \\342\\200\\224 iPhone Motion v5 auto-save 1.aep\"",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "desktop.ini",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "dev-header-preview-4174-error.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "dev-header-preview-4174.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "dev-header-preview-error.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "dev-header-preview.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "dev-header-test-error.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "dev-header-test.log",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "edit-screen-audit/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "folderico-QfzIGG.ico",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "hatch-pet-runs/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "infra/gcp/ai-generation-worker/.terraform/",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/ai-generation-worker/ai-generation-worker.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/ai-generation-worker/recovery-canary-fix.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/ai-generation-worker/release-214c1ad.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/ai-generation-worker/release-397b5c9.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/ai-generation-worker/release-5200bcc.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/ai-generation-worker/release-b5e81a3.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/ai-generation-worker/release.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/ai-generation-worker/terraform.tfvars",
+      "reason": "Private or local environment configuration."
+    },
+    {
+      "path": "infra/gcp/bootstrap/.terraform/",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/bootstrap/terraform.tfstate",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/carousel-scheduler/.terraform/",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/carousel-scheduler/release-5200bcc.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/carousel-scheduler/release.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/carousel-scheduler/terraform.tfvars",
+      "reason": "Private or local environment configuration."
+    },
+    {
+      "path": "infra/gcp/carousel-worker/.terraform/",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/carousel-worker/release-5200bcc.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/carousel-worker/release-b5e81a3.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/carousel-worker/release-bb83ce3-edit-service.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/carousel-worker/release.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/carousel-worker/terraform.tfvars",
+      "reason": "Private or local environment configuration."
+    },
+    {
+      "path": "infra/gcp/foundation/.terraform/",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/foundation/foundation-final-cutover.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/foundation/foundation-postcutover.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/foundation/foundation-queues-release.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/foundation/foundation-release.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/foundation/release-bb83ce3-queues.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/foundation/terraform.tfvars",
+      "reason": "Private or local environment configuration."
+    },
+    {
+      "path": "infra/gcp/reaction-render-worker/.terraform/",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/reaction-render-worker/release-5200bcc.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/reaction-render-worker/terraform.tfvars",
+      "reason": "Private or local environment configuration."
+    },
+    {
+      "path": "infra/gcp/social-publish-worker/.terraform/",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/social-publish-worker/release-5200bcc.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/social-publish-worker/release-f74a3431dfce.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/social-publish-worker/release.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/social-publish-worker/terraform.tfvars",
+      "reason": "Private or local environment configuration."
+    },
+    {
+      "path": "infra/gcp/video-render-worker/.terraform/",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/video-render-worker/hook_composition_audio.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/video-render-worker/release-214c1ad.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/video-render-worker/release-397b5c9.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/video-render-worker/release-5200bcc.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/video-render-worker/release-564af8d.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/video-render-worker/release-8b946e6.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/video-render-worker/release-f5cfe10.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/video-render-worker/release.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/video-render-worker/terraform.tfvars",
+      "reason": "Private or local environment configuration."
+    },
+    {
+      "path": "infra/gcp/video-render-worker/video-render-worker.tfplan",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "infra/gcp/worker-canary/.terraform/",
+      "reason": "Local infrastructure state, plans or provider cache."
+    },
+    {
+      "path": "landing-all.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-bottom-preview.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-cards-peek-refined.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-cards-under-clean.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-cards-under-section.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-centered-badges.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-comparison-cards.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-comparison-clean-outline.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-comparison-emojis.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-comparison-explore-lib.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-comparison-focus.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-comparison-refined.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-complete.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-cta-closeup.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-cta-scrolled.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-flow-clean.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-formats-full.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-formats-shelf.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-full-buttons.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-full-page.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-hero-aurora-preview.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-hero-clean-full.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-hero-clean.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-hero-dark.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-hero-fixed-white.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-hero-padding-fixed.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-hero-scrolled-header.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-multi-account-detail.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-multi-account-flow.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-multi-account-verified.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-pill-clean.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-redesign-preview.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-screenshot-mobile.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-screenshot-tablet.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-screenshot.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-sections-2-and-3.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-swipe-buttons-zoom.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-swipe-deck-compact.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-swipe-deck-preview.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-swipe-focus.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-swipe-like-dislike.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-swipe-posted.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-trust-badges-moved.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-updated-hooks.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-updated-order-preview.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing-updated-videos.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "landing_page/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "local-landing-page.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "local-run-logs/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "next-env.d.ts",
+      "reason": "Dependencies, generated build output or local CLI state."
+    },
+    {
+      "path": "node_modules/",
+      "reason": "Dependencies, generated build output or local CLI state."
+    },
+    {
+      "path": "onboarding-flow-audit/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "output/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "public/try-ugcpilot/media/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "scripts/__pycache__/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "supabase/.temp/",
+      "reason": "Dependencies, generated build output or local CLI state."
+    },
+    {
+      "path": "supabase/supabase/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "tinder/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "tmp-logs/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "tmp/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "tsconfig.tsbuildinfo",
+      "reason": "Dependencies, generated build output or local CLI state."
+    },
+    {
+      "path": "ugc-home-desktop.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "ugc-home-header-updated-mobile.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "ugc-home-mobile.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "ugcpilot_logo__1.png",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "worker/dist/",
+      "reason": "Ignored local media, review output, logs or workspace artifacts."
+    },
+    {
+      "path": "worker/node_modules/",
+      "reason": "Dependencies, generated build output or local CLI state."
+    }
+  ]
+}

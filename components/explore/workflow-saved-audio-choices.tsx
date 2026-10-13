@@ -54,14 +54,15 @@ function SavedAudioSession({ uid, audio, onVoiceReference }: { uid: string; audi
     const previous = player.current; player.current = null; previous?.pause();
     setAttaching(id); setError(null); setPlaying(null);
     try {
-      const response = await createAudioFetch(uid)(path, { signal: controller.signal });
-      if (Number(response.headers.get("Content-Length")) > 12 * 1024 * 1024) throw new Error("This recording is too large for an audio reference.");
-      const blob = await response.blob();
-      if (!blob.size || blob.size > 12 * 1024 * 1024 || !blob.type.startsWith("audio/")) throw new Error("Choose a complete audio recording up to 30 seconds.");
-      const extension = blob.type.includes("wav") ? "wav" : blob.type.includes("mp4") || blob.type.includes("m4a") ? "m4a" : blob.type.includes("ogg") ? "ogg" : blob.type.includes("webm") ? "webm" : "mp3";
-      const file = new File([blob], `${name}.${extension}`, { type: blob.type });
-      if (controller.signal.aborted) return;
-      if (await audio.choose(file, { maxDuration: 30, signal: controller.signal }) && !controller.signal.aborted && voice) onVoiceReference();
+      const accepted = await audio.chooseRemote(async () => {
+        const response = await createAudioFetch(uid)(path, { signal: controller.signal });
+        if (Number(response.headers.get("Content-Length")) > 12 * 1024 * 1024) throw new Error("This recording is too large for an audio reference.");
+        const blob = await response.blob();
+        if (!blob.size || blob.size > 12 * 1024 * 1024 || !blob.type.startsWith("audio/")) throw new Error("Choose a complete audio recording up to 30 seconds.");
+        const extension = blob.type.includes("wav") ? "wav" : blob.type.includes("mp4") || blob.type.includes("m4a") ? "m4a" : blob.type.includes("ogg") ? "ogg" : blob.type.includes("webm") ? "webm" : "mp3";
+        return new File([blob], `${name}.${extension}`, { type: blob.type });
+      }, { maxDuration: 30, signal: controller.signal });
+      if (accepted && !controller.signal.aborted && voice) onVoiceReference();
     } catch (error) {
       if (!controller.signal.aborted) setError(error instanceof Error ? error.message : "Audio could not be selected. Try again.");
     } finally {

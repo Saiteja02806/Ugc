@@ -785,11 +785,11 @@ test("a deep-linked carousel draft opens the scheduling editor without switching
 test("new schedules preselect available hook and secondary clips", () => {
   assert.match(
     scheduleEditor,
-    /editingSchedule \|\|[\s\S]*selectedDemoMediaId \|\|[\s\S]*demoMediaOptions\.length === 0[\s\S]*setSelectedDemoMediaId\(demoMediaOptions\[0\]!\.id\)/,
+    /editingSchedule \|\|[\s\S]*demoMediaOptions\.length === 0[\s\S]*if \(!selectedDemoMediaId\)[\s\S]*setSelectedDemoMediaId\(demoMediaOptions\[0\]!\.id\)/,
   );
   assert.match(
     scheduleEditor,
-    /editingSchedule \|\|[\s\S]*selectedHookMediaId \|\|[\s\S]*localHookMediaOptions\.length === 0[\s\S]*setSelectedHookMediaId\(localHookMediaOptions\[0\]!\.id\)/,
+    /editingSchedule \|\|[\s\S]*localHookMediaOptions\.length === 0[\s\S]*if \(!selectedHookMediaId\)[\s\S]*setSelectedHookMediaId\(localHookMediaOptions\[0\]!\.id\)/,
   );
   assert.match(scheduleEditor, /function getInitialClipSelection/);
   assert.match(schedulingWorkspace, /clipSelection: submission\.clipSelection/);

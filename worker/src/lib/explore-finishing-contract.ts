@@ -1,8 +1,19 @@
 /** Shared, serializable contract. Clients submit owned asset IDs, never URLs or storage keys. */
 import { parseExploreFormatEdit } from "./explore-format-edit.ts";
+import { parseSubtitleCorrections, type SubtitleCorrection } from "../subtitles/corrections.ts";
+import { validateTranscript, type SubtitleTranscript } from "../subtitles/contracts.ts";
 export const EXPLORE_FINISH_VERSION = 1;
 export const EXPLORE_RENDER_VERSION = "explore-finish-v2";
 export const DEMO_FRAMING_RENDER_VERSION = "explore-finish-pan-v2";
+export const EXPLORE_COMPOSITION_RENDER_VERSION = "explore-clip-composition-v1";
+/** An immutable edit snapshot for both clips, processed in one owned worker job. */
+export type ExploreClipComposition = {
+  version: 1;
+  sourceEditing: import("./explore-format-edit.js").ExploreFormatEdit | null;
+  demoEditing: import("./explore-format-edit.js").ExploreFormatEdit | null;
+  sourceAudioAssetId: string | null;
+  sourceAudioPlayback: "once" | "repeat";
+};
 export const MAX_DEMO_FRAMING_POINTS = 512;
 /** Fixed-size viewport; timestamps are relative to the DEMO, not the opening. */
 export type DemoFramingPoint = [timeMs: number, x: number, y: number];
@@ -23,11 +34,15 @@ export type ExploreFinishDraft = {
   /** Crop/pan the sole clip after its independent trim/text/audio preparation. */
   sourceFraming?: DemoFraming;
   editing?: import("./explore-format-edit.js").ExploreFormatEdit;
-  subtitles: { language: "en"; style: ExploreFinishStyle; placement?: "bottom" | "middle" | "top" } | null;
+  composition?: ExploreClipComposition;
+  /** Explicit caption generation saves speech only; it never creates a publishing asset. */
+  captionPreview?: true;
+  subtitles: { language: "en"; style: ExploreFinishStyle; placement?: "bottom" | "middle" | "top"; version?: 2; corrections?: SubtitleCorrection[] } | null;
 };
 export type ExploreFinishReceipt = {
   user_id: string; request_key: string; fingerprint: string; draft: ExploreFinishDraft;
   job_id: string; output_asset_id: string; status: "queued" | "completed" | "uncertain";
+  transcript?: SubtitleTranscript;
 };
 export class ExploreFinishError extends Error {
   constructor(message: string, public readonly status = 400, public readonly code = "explore_finish_invalid") { super(message); }
@@ -48,17 +63,19 @@ function playback(value: unknown) {
 }
 export function parseExploreFinishDraft(value: unknown): ExploreFinishDraft {
   const raw = object(value);
-  const fields = ["version", "kind", "sourceAssetId", "demoAssetId", "demoAudioAssetId", "demoAudioPlayback", "backgroundAssetId", "backgroundPlayback", "subtitles", "demoFraming", "sourceFraming", "editing"];
+  const fields = ["version", "kind", "sourceAssetId", "demoAssetId", "demoAudioAssetId", "demoAudioPlayback", "backgroundAssetId", "backgroundPlayback", "subtitles", "demoFraming", "sourceFraming", "editing", "captionPreview", "composition"];
   if (Object.keys(raw).some(key => !fields.includes(key)) || raw.version !== 1 || (raw.kind !== "hook" && raw.kind !== "phone")) throw new ExploreFinishError("This finishing draft uses an unsupported format.");
   const sourceAssetId = asset(raw.sourceAssetId, false)!;
   const demoAssetId = asset(raw.demoAssetId);
   const demoAudioAssetId = asset(raw.demoAudioAssetId);
   const backgroundAssetId = asset(raw.backgroundAssetId);
   const demoAudioPlayback = playback(raw.demoAudioPlayback), backgroundPlayback = playback(raw.backgroundPlayback);
+  const composition = raw.composition === undefined ? undefined : parseExploreClipComposition(raw.composition);
+  if (composition && (raw.editing !== undefined || !demoAssetId && composition.demoEditing)) throw new ExploreFinishError("Choose one complete clip composition and add a demo before editing it.");
   if (demoAudioAssetId && !demoAssetId) throw new ExploreFinishError("Add a demo before selecting demo audio.");
   const demoFraming = raw.demoFraming === undefined ? undefined : parseDemoFraming(raw.demoFraming);
   const sourceFraming = raw.sourceFraming === undefined ? undefined : parseDemoFraming(raw.sourceFraming);
-  if (sourceFraming && (raw.kind !== "hook" || demoAssetId || demoAudioAssetId || demoFraming || raw.editing !== undefined || raw.subtitles !== null)) throw new ExploreFinishError("Single-clip framing requires one prepared video and no subtitles.");
+  if (sourceFraming && !composition && (raw.kind !== "hook" || demoAssetId || demoAudioAssetId || demoFraming || raw.editing !== undefined || raw.subtitles !== null)) throw new ExploreFinishError("Single-clip framing requires one prepared video and no subtitles.");
   const editing = raw.editing === undefined ? undefined : parseExploreFormatEdit(raw.editing);
   if (editing && (raw.kind !== "hook" || demoAssetId || demoAudioAssetId || demoFraming || raw.subtitles !== null)) throw new ExploreFinishError("Format editing uses one video and no subtitles.");
   if (demoFraming && !demoAssetId) throw new ExploreFinishError("Add a demo before recording its framing.");
@@ -66,17 +83,32 @@ export function parseExploreFinishDraft(value: unknown): ExploreFinishDraft {
   let subtitles: ExploreFinishDraft["subtitles"] = null;
   if (raw.subtitles !== null) {
     const sub = object(raw.subtitles);
-    if (Object.keys(sub).some(key => !["language", "style", "placement"].includes(key)) || sub.language !== "en" ||
+    if (Object.keys(sub).some(key => !["language", "style", "placement", "version", "corrections"].includes(key)) || sub.language !== "en" ||
+        (sub.version !== undefined && sub.version !== 2) || (sub.corrections !== undefined && sub.version !== 2) ||
         !EXPLORE_FINISH_STYLES.includes(sub.style as ExploreFinishStyle) || (sub.placement !== undefined && sub.placement !== "top" && sub.placement !== "middle" && sub.placement !== "bottom")) throw new ExploreFinishError("Choose an English subtitle style and placement.");
     // Missing placement means Bottom at render time. Keep it omitted here so
     // durable legacy request fingerprints do not change during recovery.
     subtitles = { language: "en", style: sub.style as ExploreFinishStyle,
-      ...(sub.placement === undefined ? {} : { placement: sub.placement as "bottom" | "middle" | "top" }) };
+      ...(sub.placement === undefined ? {} : { placement: sub.placement as "bottom" | "middle" | "top" }),
+      ...(sub.version === 2 ? { version: 2 as const } : {}),
+      ...(sub.corrections === undefined ? {} : { corrections: parseSubtitleCorrections(sub.corrections) }) };
   }
+  if (raw.captionPreview !== undefined && (raw.captionPreview !== true || subtitles?.version !== 2)) throw new ExploreFinishError("Caption generation requires the current subtitle workflow.");
   // Omit the new option entirely on legacy drafts: existing fingerprints and
   // interrupted finishing requests must remain byte-for-byte compatible.
   return { version: 1, kind: raw.kind, sourceAssetId, demoAssetId, demoAudioAssetId, demoAudioPlayback, backgroundAssetId, backgroundPlayback, subtitles,
-    ...(demoFraming ? { demoFraming } : {}), ...(sourceFraming ? { sourceFraming } : {}), ...(editing ? { editing } : {}) };
+    ...(demoFraming ? { demoFraming } : {}), ...(sourceFraming ? { sourceFraming } : {}), ...(editing ? { editing } : {}), ...(composition ? { composition } : {}), ...(raw.captionPreview ? { captionPreview: true as const } : {}) };
+}
+
+export function parseExploreClipComposition(value: unknown): ExploreClipComposition {
+  const raw = object(value);
+  if (raw.version !== 1 || Object.keys(raw).some(key => !["version", "sourceEditing", "demoEditing", "sourceAudioAssetId", "sourceAudioPlayback"].includes(key))) throw new ExploreFinishError("This clip composition is unsupported.");
+  const sourceEditing = raw.sourceEditing === null ? null : parseExploreFormatEdit(raw.sourceEditing);
+  const demoEditing = raw.demoEditing === null ? null : parseExploreFormatEdit(raw.demoEditing);
+  const sourceAudioAssetId = asset(raw.sourceAudioAssetId);
+  const sourceAudioPlayback = playback(raw.sourceAudioPlayback);
+  if (sourceAudioAssetId && !sourceEditing || !sourceAudioAssetId && sourceAudioPlayback !== "once") throw new ExploreFinishError("Select the opening audio and its edit settings before choosing its playback.");
+  return { version: 1, sourceEditing, demoEditing, sourceAudioAssetId, sourceAudioPlayback };
 }
 
 export function parseDemoFraming(value: unknown): DemoFraming {
@@ -161,5 +193,6 @@ export function parseExploreFinishReceipt(raw: unknown, ownerId: string, request
   if (r.user_id !== ownerId || r.request_key !== requestKey || !isExploreUuid(r.job_id) || !isExploreUuid(r.output_asset_id) ||
       typeof r.fingerprint !== "string" || !/^[0-9a-f]{64}$/.test(r.fingerprint) || !["queued","completed","uncertain"].includes(String(r.status))) throw new ExploreFinishError("Could not verify the saved finishing request.", 409);
   return { user_id: ownerId, request_key: requestKey, fingerprint: r.fingerprint, draft: parseExploreFinishDraft(r.draft),
-    job_id: r.job_id, output_asset_id: r.output_asset_id, status: r.status as ExploreFinishReceipt["status"] };
+    job_id: r.job_id, output_asset_id: r.output_asset_id, status: r.status as ExploreFinishReceipt["status"],
+    ...(r.transcript == null ? {} : { transcript: validateTranscript(r.transcript, Number(r.speech_duration_ms)) }) };
 }

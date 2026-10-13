@@ -11,18 +11,18 @@ import {
   validateTrendingContentMix,
 } from "./content-mix.ts";
 
-test("Free receives exactly 2 Slideshows, 3 Wall posts, 2 Reaction Reels, and 3 Hooks", () => {
+test("Free allocates its entire Trending allowance to Slideshows", () => {
   assert.deepEqual(
     allocateTrendingContent({
       dailyLimit: 10,
       localDate: "2026-08-23",
       mix: FREE_TRENDING_CONTENT_MIX,
     }),
-    { carousel: 2, hook_video: 3, reaction: 2, wall_text: 3 },
+    { carousel: 10, hook_video: 0, reaction: 0, wall_text: 0 },
   );
 });
 
-test("Free keeps its 2/3/2/3 default until the user saves a custom mix", () => {
+test("the slideshow-only policy overrides a saved Free mix without changing its version", () => {
   const unsaved = resolveTrendingContentMixPreference({
     planKey: "free",
     preference: {
@@ -41,21 +41,19 @@ test("Free keeps its 2/3/2/3 default until the user saves a custom mix", () => {
   });
 
   assert.deepEqual(unsaved.mix, FREE_TRENDING_CONTENT_MIX);
-  assert.deepEqual(saved.mix, {
-    carousel: 50,
-    hook_video: 0,
-    wall_text: 50,
-  });
+  assert.deepEqual(saved.mix, DEFAULT_TRENDING_CONTENT_MIX);
+  assert.equal(saved.preferenceVersion, 2);
+  assert.equal(saved.updatedAt, "2026-08-24T12:00:00.000Z");
 });
 
-test("Starter default mix creates exactly 4 Slideshows, 6 Walls, 4 Reactions, and 6 Hooks", () => {
+test("Starter default mix creates exactly 20 Slideshows", () => {
   assert.deepEqual(
     allocateTrendingContent({
       dailyLimit: 20,
       localDate: "2026-08-20",
       mix: DEFAULT_TRENDING_CONTENT_MIX,
     }),
-    { carousel: 4, hook_video: 6, reaction: 4, wall_text: 6 },
+    { carousel: 20, hook_video: 0, reaction: 0, wall_text: 0 },
   );
 });
 
@@ -74,7 +72,7 @@ test("a changed mix replans only unbound positions", () => {
   assert.equal(formats.filter((format) => format === "wall_text").length, 8);
 });
 
-test("Growth receives exactly 10 Slideshows, 15 Walls, 10 Reactions, and 15 Hooks", () => {
+test("Growth receives exactly 50 Slideshows on every local date", () => {
   const first = allocateTrendingContent({
     dailyLimit: 50,
     localDate: "2026-08-20",
@@ -86,16 +84,16 @@ test("Growth receives exactly 10 Slideshows, 15 Walls, 10 Reactions, and 15 Hook
     mix: DEFAULT_TRENDING_CONTENT_MIX,
   });
 
-  assert.deepEqual(first, { carousel: 10, hook_video: 15, reaction: 10, wall_text: 15 });
+  assert.deepEqual(first, { carousel: 50, hook_video: 0, reaction: 0, wall_text: 0 });
   assert.deepEqual(second, first);
   assert.equal(first.carousel + first.wall_text + first.hook_video + first.reaction, 50);
 });
 
-test("the planned feed is interleaved and preserves exact totals", () => {
+test("the legacy mixed feed remains interleaved and preserves exact totals", () => {
   const plan = buildTrendingDailyFormatPlan({
     dailyLimit: 20,
     localDate: "2026-08-20",
-    mix: DEFAULT_TRENDING_CONTENT_MIX,
+    mix: { carousel: 20, hook_video: 30, reaction: 20, wall_text: 30 },
   });
 
   assert.equal(plan.formats.length, 20);

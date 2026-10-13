@@ -4,6 +4,8 @@ import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
 import { getReferenceImageFileError } from "../../lib/generation/reference-image.ts";
+import { characterBatchProgress } from "../../lib/characters/batch-progress.ts";
+import { getCharacterImageModelLabel } from "../../lib/characters/image-models.ts";
 
 const assetId = "55555555-5555-4555-8555-555555555555";
 const image = { kind: "image", asset: { id: assetId, url: "https://owned.test/style.png" } };
@@ -47,6 +49,7 @@ function characterHarness() {
     generate: { isPending: false, mutate: request => submitted.push(request) },
     select: { isPending: false }, session: { pendingRequest: null }, selected: null,
     visibleJobs: [], historyImages: [], jobs: {}, history: {},
+    touchSession() {},
     chooseCharacter(id) { builder.selected = id ? { id, url: "https://owned.test/saved.png", name: "Saved" } : null; },
   };
   const h = runtime("./character-workspace.tsx", {
@@ -54,12 +57,18 @@ function characterHarness() {
     "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" }, loading: false }) },
     "@/components/generation/ai-studio-composer": { AiStudioComposer: "Composer", AiStudioSetting: "Setting", AiStudioSettingSelect: "SettingSelect" },
     "@/components/generation/reference-media-upload": { ReferenceMediaUpload: "Upload" },
-    "@/lib/characters/image-models": { CHARACTER_IMAGE_MODEL_OPTIONS: [], getCharacterPromptLimit: () => 32000 },
+    "@/components/generation/reference-upload-preview": { ReferenceUploadPreview: "ReferencePreview" },
+    "@/lib/characters/image-models": { CHARACTER_IMAGE_MODEL_OPTIONS: [], getCharacterPromptLimit: () => 32000, getCharacterImageModelLabel },
+    "@/lib/characters/batch-progress": { characterBatchProgress },
     "./use-character-builder": { useCharacterBuilder: () => builder }, "./character-history": { CharacterHistory: "History" },
     "./character-workspace.module.css": { default: {} },
     "@/components/ui/dialog": { Dialog: "Dialog", DialogContent: "DialogContent", DialogDescription: "DialogDescription", DialogHeader: "DialogHeader", DialogTitle: "DialogTitle" },
   });
-  const render = () => h.render(() => { const root = h.exported.CharacterWorkspace({}); return root.type(root.props); });
+  const render = () => h.render(() => {
+    let root = h.exported.CharacterWorkspace({});
+    while (typeof root.type === "function") root = root.type(root.props);
+    return root;
+  });
   const composer = () => all(render(), node => node.type === "Composer")[0].props;
   const upload = () => composer().leadingControl.props;
   composer().onPromptChange("Generate an influencer in a similar style to this.");
@@ -122,13 +131,26 @@ test("uncertain admissions freeze attachment changes and retry the original requ
 test("a saved reference cannot unmount an active upload or change during an uncertain admission", () => {
   const h = characterHarness();
   h.builder.chooseCharacter("44444444-4444-4444-8444-444444444444");
-  const remove = () => all(h.composer().contextBanner, node => node.type === "Button")[0].props;
+  const remove = () => h.upload().referencePreview.props;
   assert.equal(remove().disabled, false);
   h.upload().onPendingChange(true);
   assert.equal(remove().disabled, true);
   h.upload().onPendingChange(false);
   h.builder.session.pendingRequest = { mode: "custom", referenceCharacterId: h.builder.selected.id };
   assert.equal(remove().disabled, true);
+});
+
+test("the influencer composer keeps its identity thumbnail inline and credit status beside Generate", () => {
+  const h = characterHarness();
+  h.builder.chooseCharacter("44444444-4444-4444-8444-444444444444");
+  assert.equal(h.composer().contextBanner, undefined);
+  assert.equal(h.upload().inline, true);
+  assert.equal(h.upload().referencePreview.props.url, "https://owned.test/saved.png");
+  assert.equal(h.composer().inlineReferences, true);
+  assert.equal(h.composer().quiet, true);
+  assert.equal(h.composer().showPromptHint, false);
+  const status = all(h.composer().secondaryActions, node => node.props?.role === "status")[0];
+  assert.match(status.props.children, /1 image · 1 credit · 10 available/);
 });
 
 function uploadHarness(upload) {

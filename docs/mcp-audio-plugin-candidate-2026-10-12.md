@@ -63,4 +63,13 @@ The deployed source registers 46 tools; this ongoing chat still exposes the cach
 
 Full application parity remains unfinished. Next acceptance is fresh read-only audio discovery/capabilities, followed by an intended user-selected hook → demo → finished local download workflow in Codex and Claude Code. Import/private-media activation and the broader application gaps remain separately tracked. Logs, helpers, cache/build output and local environment files remain excluded by `.vercelignore`; versioned public downloads are included. No unrelated runtime change was omitted or rolled back.
 
+
+## Current follow-up — 13 October 2026
+
+The approved audio restoration and private plugin 0.1.9 update are complete. All 30 production release checks pass; this chat discovers 46 tools and authenticated audio readiness is false because MCP configuration is incomplete. Advanced PR #45 has passed exact-head core CI and the primary preview, with a separately diagnosed Firebase configuration failure on its secondary preview. Its migration remains unapplied. Historical pending statements above are superseded by [current restoration evidence](mcp-release-restoration-2026-10-13.md). Full application and intended IDE media-workflow acceptance remain unfinished.
+
+## Preserved production-branch history
+
+The records below are retained from the deployed branch during release reconciliation. Later dated release receipts above remain authoritative for current status.
+
 Audio website restoration candidate: an intervening website deployment from `6ef994fd5f2fd48cb96ff75980480b68656670eb` removed the already-approved audio routes and public plugin 0.1.9, while MCP retained the audio release. Read-only checks confirmed setup 0.1.8, missing 0.1.9 ZIP and missing audio transfer route. This branch merges the intervening commit's documentation, Carousel context and audit script into the previously validated audio release. Only three evidence documents conflicted; the later approved-release records were retained. Runtime/config/package/migration bytes are unchanged from `50686f18154fbe5937d6b1d2322bb2b1f0bbf9cb`. Restoration deploys only the website, using the existing approval and disabled import/private-upload gates; no new migration or advanced-generation code is included. Draft advanced PR #45 remains a separate unapproved candidate.

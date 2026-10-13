@@ -1,14 +1,16 @@
-.picker { display: flex; min-width: 0; align-items: center; gap: 8px; margin-top: 4px; }
-.picker .action { width: auto; min-width: 0; min-height: 48px; height: 48px; flex: 1; aspect-ratio: auto; flex-direction: row; gap: 4px; padding: 6px; background: var(--background); }
-.picker .action[data-state="selected"] { width: 44px; height: 44px; min-height: 44px; flex: none; border-color: transparent; padding: 0; background: transparent; }
-.picker .action[data-state="selected"]:hover { background: var(--card-muted); }
-.thumbnail.thumbnail { width: 52px; height: 48px; min-width: 52px; flex: none; overflow: visible; padding: 5px 8px 5px 2px; background: transparent; cursor: zoom-in; }
-.deck { position: relative; display: grid; width: 38px; height: 38px; flex: none; place-items: center; border: 1px solid var(--border); border-radius: 5px; background: var(--background); transition: transform 160ms ease, border-color 160ms ease; }
-.deck::before { content: ""; position: absolute; inset: 2px -5px -2px 5px; z-index: -1; border: 1px solid color-mix(in srgb, var(--muted) 45%, var(--border)); border-radius: inherit; background: var(--card-muted); transform: rotate(4deg); }
-.thumbnail { isolation: isolate; }
-.thumbnail:hover .deck, .thumbnail:focus-visible .deck, .thumbnail[aria-expanded="true"] .deck { border-color: var(--primary); transform: translateY(-2px); }
+.picker { position: relative; display: grid; width: 100%; min-width: 0; min-height: 104px; aspect-ratio: 1; overflow: hidden; margin-top: 4px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-muted); }
+.picker.picker .action { position: absolute; inset: 0; width: 100%; min-width: 0; min-height: 0; height: 100%; aspect-ratio: auto; flex-direction: column; gap: 10px; padding: 8px; border: 0; background: transparent; }
+.picker.picker .action[data-state="selected"] { inset: 6px 6px auto auto; z-index: 2; width: 30px; height: 30px; min-height: 30px; padding: 0; border: 1px solid #ffffff30; border-radius: 50%; background: #171717cf; color: #fff; box-shadow: 0 1px 4px #0005; }
+.picker.picker .action[data-state="selected"]:hover { background: #171717; }
+.thumbnail.thumbnail { width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; padding: 0; border: 0; border-radius: 0; background: transparent; cursor: zoom-in; }
+.deck { position: relative; display: grid; width: 100%; height: 100%; place-items: center; background: var(--background); }
+.thumbnail:hover .deck, .thumbnail:focus-visible .deck, .thumbnail[aria-expanded="true"] .deck { box-shadow: inset 0 0 0 2px var(--primary); }
+.images { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 2px; }
+.images[data-count="1"] { grid-template-columns: minmax(0, 1fr); }
+.images[data-count="5"], .images[data-count="6"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.count { position: absolute; z-index: 2; bottom: 6px; left: 6px; padding: 2px 6px; border-radius: 5px; background: #171717d9; color: #fff; font-size: 11px; line-height: 16px; pointer-events: none; }
 .previewHelp { margin-left: auto; color: var(--muted); font-size: 11px; line-height: 18px; }
-.thumbnailImage, .deck > video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
+.thumbnailImage, .deck > video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .deck > svg { width: 22px; height: 22px; color: var(--muted); }
 .thumbnail:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .preview.preview { width: max-content; max-width: min(160px, calc(100vw - 32px), var(--available-width)); max-height: min(200px, calc(100dvh - 32px), var(--available-height)); overflow: hidden; gap: 0; padding: 0; border: 0; border-radius: 8px; background: transparent; box-shadow: 0 8px 24px #0005; }
@@ -18,5 +20,5 @@
 .previewMedia:has(> svg) { width: 160px; height: 64px; background: var(--card); }
 .fileName { overflow-wrap: anywhere; padding: 8px; color: var(--muted); background: var(--card); font-size: 12px; line-height: 18px; }
 .picker .add { width: 16px; height: 16px; flex: none; margin-left: auto; color: var(--muted); }
-.picker .action[data-state="selected"] .add { margin: 0; width: 20px; height: 20px; }
+.picker .action[data-state="selected"] .add { margin: 0; width: 18px; height: 18px; color: inherit; }
 @media (prefers-reduced-motion: reduce) { .preview, .deck { animation: none; transition: none; } }

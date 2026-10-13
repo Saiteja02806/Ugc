@@ -109,8 +109,8 @@ export function FormatDemoWorkspace({ ownerId, enabled, localPreview, active, op
   </section>;
   const canContinue = Boolean(opening && (!hasDemo || finishing.output && demoReady && !error && openingQuery.data?.id === opening.id));
   const actions = <div className="space-y-2">
-    <Button type="button" className="h-11 w-full rounded-lg" disabled={canContinue ? false : !hasDemo || !demoReady || finishing.action.disabled || !openingQuery.data} onClick={canContinue ? onContinue : finishing.action.onAction}>
-      {canContinue ? "Continue to Schedule" : finishing.action.busy ? "Saving…" : "Save final video"}
+    <Button type="button" className="h-11 w-full rounded-xl font-semibold shadow-sm hover:shadow transition-all" disabled={canContinue ? false : !hasDemo || !demoReady || finishing.action.disabled || !openingQuery.data} onClick={canContinue ? onContinue : finishing.action.onAction}>
+      {canContinue ? "Schedule video" : finishing.action.busy ? "Saving…" : "Save final video"}
     </Button>
     {hasDemo && !opening ? <p role="status" className="text-xs leading-5 text-muted">Save your hook edits to combine these videos.</p> : null}
     {hasDemo && opening && localPreview ? <p className="text-xs text-muted">Preview · saving disabled</p> : null}

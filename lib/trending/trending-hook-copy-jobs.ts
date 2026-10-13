@@ -1,4 +1,5 @@
 import "server-only";
+import { assertTrendingFormatGenerationEnabled } from "./format-policy";
 
 import {
   getQueueNameForJobType,
@@ -42,6 +43,7 @@ export async function enqueueTrendingHookCopyJob(params: {
   userId: string;
   beforeDispatch?: (job: BackgroundJobRecord) => Promise<void>;
 }) {
+  assertTrendingFormatGenerationEnabled("hook_video");
   const selectionVersion =
     params.selectionVersion ?? TRENDING_HOOK_SELECTION_VERSION;
   const baseIdempotencyKey = params.generationRun

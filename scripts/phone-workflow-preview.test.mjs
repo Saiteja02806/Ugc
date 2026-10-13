@@ -58,10 +58,13 @@ test("instructions are empty initially and only change through user input", () =
 
 test("app screen, optional references, creator audio and appended demo are independent", () => {
   assert.match(workspace, /const appScreen = useLocalAppScreen\(\)/);
-  for (const name of ["creator", "videoReference", "creatorAudio", "demo", "demoAudio"]) assert.match(workspace, new RegExp(`const ${name} = useLocalWorkflowMedia`));
+  assert.match(workspace, /const creator = useLocalWorkflowImages/);
+  assert.match(workspace, /referenceImages: creator\.assets/);
+  assert.match(workspace, /imageReferences=\{creator\}/);
+  for (const name of ["videoReference", "creatorAudio", "demo", "demoAudio"]) assert.match(workspace, new RegExp(`const ${name} = useLocalWorkflowMedia`));
   assert.match(composer, /accept="image\/\*,video\/\*"/);
   assert.match(composer, /Screen recordings require Seedance 2.5 through OpenRouter/);
-  assert.match(audioReference, /<PopoverTitle>Voice reference<\/PopoverTitle>/);
+  assert.match(audioReference, /<PopoverTitle>Audio reference<\/PopoverTitle>/);
   assert.match(audioReference, /Requires Seedance 2\.5 · Up to 30 seconds/);
   assert.match(workspace, /audioReference: creatorAudio\.asset/);
   assert.match(workspace, /demoAudio=\{demoAudio\.asset\}/);
@@ -85,7 +88,7 @@ test("Library stays below the first screen and contains no unapproved media", ()
 
 test("responsive settings and permanent controls retain mounted composer state", () => {
   assert.match(composer, /<WorkflowCreationForm kind="phone"/);
-  assert.match(form, /role="group" aria-label=\{`\$\{prefix\} generation settings`\} className=\{kind === "hook" \? focused\.primarySettings : creation\.settingsGrid\}/);
+  assert.match(form, /role="group" aria-label=\{`\$\{prefix\} generation settings`\} className=\{creation\.settingsGrid\}/);
   assert.doesNotMatch(form, /ResizeObserver|SettingsStrip/);
   assert.doesNotMatch(workspace, /<PhoneWorkflowComposer[^>]*key=/);
   assert.match(workspace, /<WorkflowCreationPanel kind="phone"/);

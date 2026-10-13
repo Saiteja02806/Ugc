@@ -28,7 +28,7 @@ export function WorkflowFilePicker({ attachment, kind, label, icon, buttonLabel,
       if (file) void attachment.choose(file);
       event.target.value = "";
     }} />
-    <Button type="button" variant="outline" aria-label={label} className={cn("rounded-full text-xs", className)} disabled={disabled || attachment.loading} onClick={() => input.current?.click()}>
+    <Button type="button" variant="outline" aria-label={label} className={cn("h-10 px-3 text-sm", className)} disabled={disabled || attachment.loading} onClick={() => input.current?.click()}>
       {icon}{attachment.loading ? "Reading file…" : buttonLabel ?? label}
     </Button>
   </>;

@@ -2,7 +2,7 @@ import type { ScheduleCreateTargetInput } from "../scheduling/types.ts";
 
 // Legacy single-platform fields remain readable by previews and older callers.
 export type WorkflowScheduleDraft = {
-  platform: string; caption: string; date: string; time: string; connectionId?: string;
+  platform: string; caption: string; date: string; time: string; connectionId?: string; timezone?: string;
   platforms?: string[]; connectionIds?: Record<string, string>;
 };
 

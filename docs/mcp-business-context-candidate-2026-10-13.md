@@ -34,3 +34,18 @@ No Business Context migration, production deployment, gate activation, customer 
 Website reanalysis, onboarding/goal edits, logos/screenshots, broader generation/characters, Explore draft parity, backend slideshow text rendering, Trending/Carousel actions, social publishing, analytics and full installed Codex/Claude acceptance remain unfinished. The private account plugin is still 0.1.11; its update tool is unavailable in this session, while public 0.1.12 remains live. Existing gated features are still disabled. This candidate closes manual Business Context implementation only after release and acceptance; full application access remains the goal.
 
 Ignored logs, temporary helpers, dependencies, credentials/local environment files and build output are excluded. Intentional unrelated primary-workspace UI/worker/infra/migration work is outside this isolated candidate and was neither reset nor included in its release.
+
+
+## Remote review and protected-stage checkpoint
+
+Draft PR #51: https://github.com/Saiteja02806/Ugc/pull/51. Exact source `4025d6345f24aca9c6bfe74d5b3e84c0960a9bb7` is pushed and the isolated checkout is clean. Both Linux MCP runs (38393451847, 38393438993), migration guard 38393451868 and primary website preview passed. The secondary Trending preview failed and is excluded.
+
+Protected website `dpl_4yUPgdgLseGZsxXngjTv7YfDcXZD` and MCP `dpl_7c5YX6ABbbo7fVuoakannVromLX7` are READY at that source. Both were staged with no custom-domain assignment, all seven writes explicitly false at build/runtime, and the correct website/MCP surface setting. Source came from a verified clean Git archive. An earlier unpromoted archive included ignored temporary logs due to recursive directory packing; that build `dpl_FaEsSvqweEVPjmUpMrkzdsR3H9UV` was removed. No credential patterns were found in those temporary text files; the replacement contains only committed source.
+
+The protected website setup page and its actual downloaded 0.1.13 ZIP are verified; the SHA matches the reviewed package. The browser client blocks the staged MCP health URL. The user's manual navigation reached Vercel's access-request page because the browser uses a different Vercel account from the existing connected team account. Normal sign-in with the existing team account is needed; no access grant, bypass link or team permission change was created by the agent. Health acceptance, new production authorization, migration and promotion remain pending.
+
+Both live domains were rechecked and remain on source `21866e2287501bf5b13b355a2fa103c0258a8afc`. Production still has 131 migrations and lacks this candidate table. Full application access remains unfinished.
+
+## Reconciliation note
+
+The older production checkpoint above is historical. Read-only live inspection now reports source `a2b3dd79ebf20c6a6ae96f493523cc695d6feccb`, and merged application source `1177258da1d997f31366559c093edd0a48c951da` is included in the separate `codex/mcp-business-release` integration. The business candidate schemas remain unapplied. Do not promote an older isolated source over the newer application fixes.

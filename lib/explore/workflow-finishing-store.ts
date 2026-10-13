@@ -15,12 +15,16 @@ function database() {
 export class ExploreFinishingRequestStore {
   constructor(private readonly db = database()) {}
   async read(owner: string, key: string) {
-    const { data,error } = await this.db.from("explore_video_finishes").select("user_id,request_key,fingerprint,draft,job_id,output_asset_id,status")
+    const { data,error } = await this.db.from("explore_video_finishes").select("user_id,request_key,fingerprint,draft,job_id,output_asset_id,status,transcript,speech_duration_ms")
       .eq("user_id",owner).eq("request_key",key).maybeSingle();
     if (error) throw new ExploreFinishError("Could not read the saved finishing request.",503);
     return data ? parseExploreFinishReceipt(data,owner,key) : null;
   }
   async create(owner: string, key: string, fingerprint: string, draft: ExploreFinishDraft) {
+    // New clip compositions have one additional owned opening soundtrack.
+    // Existing RPCs verify their legacy source fields atomically; do not let
+    // an arbitrary nested ID enter a finishing request before owner checking.
+    if (draft.composition?.sourceAudioAssetId) await this.asset(owner, draft.composition.sourceAudioAssetId, "audio");
     const { data,error } = await this.db.rpc("explore_create_video_finish",{p_user_id:owner,p_request_key:key,p_fingerprint:fingerprint,p_draft:draft});
     if (error) {
       const messages: Record<string,string> = {
@@ -35,7 +39,7 @@ export class ExploreFinishingRequestStore {
     if (receipt.fingerprint !== fingerprint || JSON.stringify(receipt.draft) !== JSON.stringify(draft)) throw new ExploreFinishError("The saved finishing draft is different.",409);
     return receipt;
   }
-  async asset(owner: string, id: string, collection: "video") {
+  async asset(owner: string, id: string, collection: "video" | "audio") {
     const { data,error } = await this.db.from("media_assets").select("id,user_id,collection,status,deleted_at")
       .eq("id",id).eq("user_id",owner).eq("collection",collection).eq("status","ready").is("deleted_at",null).maybeSingle();
     if (error) throw new ExploreFinishError("Could not check the finished video.",503);

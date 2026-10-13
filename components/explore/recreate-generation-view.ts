@@ -10,7 +10,7 @@ export type RecreateGenerationView = {
   referenceImageUrl?: string;
   referenceImageUrls?: string[];
   referenceTitle?: string;
-  styleVideo?: { id?: string; url: string; name: string; duration: number | null };
+  styleVideo?: { id?: string; selectionRevision?: number; url: string; name: string; duration: number | null };
   onClearReference?: () => void;
   workflow?: {
     format: "hook" | "wall_text" | "slideshow";

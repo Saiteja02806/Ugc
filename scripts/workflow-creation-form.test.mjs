@@ -78,7 +78,7 @@ test("the actual shared form has labelled fields and forwards user text verbatim
   input.props.onChange({ target: { value: exact } });
   assert.deepEqual(changes, [exact]);
   assert.deepEqual(nodes(tree).filter((node) => ["select", "duration-control"].includes(node.type)).map((node) => node.props.ariaLabel), [
-    "Hook model", "Hook duration", "Hook aspect ratio", "Hook quality", "Number of hook videos",
+    "Hook model", "Hook duration", "Hook quality", "Number of hook videos", "Hook aspect ratio",
   ]);
 });
 
@@ -88,7 +88,7 @@ test("all optional generation references remain visible above instructions and e
   const references = all.find(node => node.props["aria-label"] === "Optional references");
   assert.ok(references);
   assert.equal(nodes(references).filter(node => node.type === "details").length, 0);
-  assert.equal(all.filter(node => node.type === "details").length, 1, "Only output settings use a disclosure");
+  assert.equal(all.filter(node => node.type === "details").length, 0, "Generation quality and quantity remain immediately visible");
   assert.ok(all.indexOf(references) < all.findIndex(node => node.type === "textarea"));
   assert.ok(nodes(references).some(node => node.type === "audio-reference"));
   const alert = all.find(node => node.props.role === "alert" && !nodes(references).includes(node));
@@ -193,7 +193,7 @@ test("text-only prompts remain valid and local reference previews do not promise
   assert.match(text, /Use Seedance 2.5 for a video reference up to 30 seconds/);
   assert.doesNotMatch(source, /disabled=\{!creator.asset|instructions.*creator.asset/);
   const audio = read("components/explore/workflow-audio-reference.tsx");
-  assert.match(audio, /<PopoverTitle>Voice reference<\/PopoverTitle>/);
+  assert.match(audio, /<PopoverTitle>Audio reference<\/PopoverTitle>/);
   assert.match(audio, /Requires Seedance 2\.5 · Up to 30 seconds/);
   assert.doesNotMatch(audio, /voice—not background music or demo audio/);
   assert.doesNotMatch(audio, /Exact recording<\/Button>/);

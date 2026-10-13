@@ -159,6 +159,7 @@ async function reconcilePublication(event: Publication) {
 }
 
 export async function resumeIncompleteWallTextPlans(limit = 10) {
+  if (!isWallTextEnabled()) return [];
   const { data, error } = await getClient().rpc("list_wall_text_plans_needing_resume", { p_limit: limit });
   if (error) throw new Error(`Could not list incomplete Wall-of-text plans: ${error.message}`);
   const results = [];

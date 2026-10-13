@@ -1,5 +1,5 @@
-import { SubtitleError, subtitlePlacementGeometry, type SubtitleCue, type SubtitlePlacement, type SubtitleStyle, type TimedWord } from "./contracts.js";
-import { isDynamicSubtitleStyle } from "./styles.js";
+import { SubtitleError, subtitlePlacementGeometry, type SubtitleCue, type SubtitlePlacement, type SubtitleStyle, type TimedWord } from "./contracts.ts";
+import { isDynamicSubtitleStyle } from "./styles.ts";
 
 export type SubtitleLayout = {
   width: number;

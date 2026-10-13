@@ -241,6 +241,9 @@ function getRetryGuidance(retryable: boolean) {
 
 function getPublicJobErrorCode(job: BackgroundJobRecord) {
   const code = job.errorCode || "JOB_FAILED";
+  // OpenAI image submissions use this durable SDK error code. Keep historical
+  // rejections understandable without exposing raw provider diagnostics.
+  if (code === "moderation_blocked") return "PROVIDER_CONTENT_MODERATION";
   // Older video workers persisted terminal provider errors as JOB_FAILED.
   // Recognize only known signatures; never publish arbitrary stored diagnostics.
   if (

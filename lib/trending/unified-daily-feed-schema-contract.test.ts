@@ -552,7 +552,7 @@ test("keeps an existing daily pack immutable after an authenticated mix update",
   assert.doesNotMatch(contentMixRoute, /replanDailyTrendingUnboundSlots/);
   assert.match(contentMixRoute, /applied: currentFeed \? "next_day" : "today"/);
   assert.match(contentMixRoute, /Today's complete pack stays unchanged/);
-  assert.match(contentMixRoute, /editable: true/);
+  assert.match(contentMixRoute, /editable: !TRENDING_SLIDESHOW_ONLY_ENABLED/);
   assert.doesNotMatch(contentMixRoute, /entitlement\.planKey === "free"/);
   assert.doesNotMatch(contentMixRoute, /fixed daily mix/);
 });

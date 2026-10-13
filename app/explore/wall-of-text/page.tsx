@@ -1,9 +1,19 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { FormatWorkspace } from "@/components/explore/format-workspace";
+import { WorkspaceContentLoading } from "@/components/layout/workspace-content-loading";
 import { getLocalRecreateReferences } from "@/lib/explore/recreate-catalog";
 export const metadata: Metadata = { title: "Wall of text", description: "Generate a video background and add your own text." };
-export default async function WallOfTextPage({ searchParams }: { searchParams: Promise<{ preview?: string }> }) {
+type PageProps = { searchParams: Promise<{ preview?: string }> };
+const finishingEnabled = process.env.EXPLORE_FINISHING_ENABLED === "true" && process.env.EXPLORE_FORMAT_EDITING_ENABLED === "true";
+
+export default function WallOfTextPage({ searchParams }: PageProps) {
+  return <Suspense fallback={<WorkspaceContentLoading label="Opening Wall of text" />}>
+    {process.env.NODE_ENV === "development" ? <WallOfTextPreview searchParams={searchParams} /> : <FormatWorkspace format="wall_text" finishingEnabled={finishingEnabled} />}
+  </Suspense>;
+}
+
+async function WallOfTextPreview({ searchParams }: PageProps) {
   const query = await searchParams;
-  const preview = process.env.NODE_ENV === "development" && query.preview === "1";
-  return <FormatWorkspace format="wall_text" previewReferences={preview ? getLocalRecreateReferences() : undefined} finishingEnabled={process.env.EXPLORE_FINISHING_ENABLED === "true" && process.env.EXPLORE_FORMAT_EDITING_ENABLED === "true"} />;
+  return <FormatWorkspace format="wall_text" previewReferences={query.preview === "1" ? getLocalRecreateReferences() : undefined} finishingEnabled={finishingEnabled} />;
 }

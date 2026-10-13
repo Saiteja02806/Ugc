@@ -100,26 +100,22 @@ export function ReferenceFilesUpload({ active, allowedKinds, disabled, maxFiles,
 
   return (
     <div className="min-w-0 space-y-1.5">
-      <div className="flex min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain px-1 py-1.5">
+      <div className="flex min-w-0 flex-wrap items-center gap-2 px-1 py-1.5">
         <input ref={inputRef} type="file" multiple accept={allowedKinds.map((kind) => REFERENCE_FILE_ACCEPT[kind]).join(",")} aria-label="Add reference files" className="hidden" onChange={(event) => {
           const files = Array.from(event.currentTarget.files ?? []);
           event.currentTarget.value = "";
           void addFiles(files);
         }} />
-        <Button type="button" variant="muted" size="icon-sm" className="size-9 shrink-0 rounded-lg border border-dashed border-border text-muted" aria-label={busy ? "Uploading reference files" : "Add reference files"} disabled={disabled || busy || selections.length >= maxFiles} title={`Choose, drop, or paste ${allowedKinds.join(", ")} files`} onClick={() => inputRef.current?.click()}>
+        <div data-reference-tile className="relative size-28 shrink-0 overflow-hidden rounded-xl border border-border bg-card-muted">
+        <div className={`absolute inset-0 grid gap-0.5 ${selections.length + pending.length > 4 ? "grid-cols-3" : selections.length + pending.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+        {selections.map((selection, index) => <ReferenceUploadPreview key={selection.asset.id} fillContainer kind={selection.kind} url={selection.asset.url} name={selection.asset.fileName || selection.asset.title} label={`${selection.kind === "image" ? "Image" : selection.kind === "video" ? "Video" : "Audio"} ${index + 1}`} disabled={disabled || busy} onRemove={() => { const next = selections.filter(item => item.asset.id !== selection.asset.id); selectionsRef.current = next; onChange(next); }} />)}
+        {pending.map(preview => <ReferenceUploadPreview key={preview.index} fillContainer kind={preview.kind} url={preview.url} name={preview.file.name} label="Reference" pending queued={preview.index > uploadIndex} />)}
+        </div>
+        <Button type="button" variant="muted" size="icon-sm" className={selections.length || pending.length ? "absolute right-1.5 top-1.5 z-10 size-8 rounded-full border border-white/20 bg-black/75 text-white" : "absolute inset-0 size-full border-0 bg-transparent text-muted"} aria-label={busy ? "Uploading reference files" : "Add reference files"} disabled={disabled || busy || selections.length >= maxFiles} title={`Choose, drop, or paste ${allowedKinds.join(", ")} files`} onClick={() => inputRef.current?.click()}>
           {busy ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Plus className="size-4" aria-hidden="true" />}
         </Button>
-        {selections.map((selection, index) => (
-          <div key={selection.asset.id} className="flex shrink-0 items-center gap-2">
-            <ReferenceUploadPreview kind={selection.kind} url={selection.asset.url} name={selection.asset.fileName || selection.asset.title} label={`${selection.kind === "image" ? "Image" : selection.kind === "video" ? "Video" : "Audio"} ${index + 1}`} disabled={disabled || busy} onRemove={() => {
-              const next = selections.filter((item) => item.asset.id !== selection.asset.id);
-              selectionsRef.current = next;
-              onChange(next);
-            }} />
-            {selection.kind === "audio" ? <audio src={selection.asset.url} controls preload="none" aria-label={`Preview ${selection.asset.fileName || selection.asset.title}`} className="h-8 w-40" /> : null}
-          </div>
-        ))}
-        {pending.map((preview) => <ReferenceUploadPreview key={preview.index} kind={preview.kind} url={preview.url} name={preview.file.name} label="Reference" pending queued={preview.index > uploadIndex} />)}
+        </div>
+        {selections.filter(selection => selection.kind === "audio").map(selection => <audio key={selection.asset.id} src={selection.asset.url} controls preload="none" aria-label={`Preview ${selection.asset.fileName || selection.asset.title}`} className="h-8 w-40" />)}
       </div>
       {error ? <p role="alert" className="text-xs text-destructive">{error}</p> : null}
     </div>

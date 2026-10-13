@@ -11,9 +11,9 @@ export function useWorkflowSectionOrientation() {
   return "horizontal" as const;
 }
 
-export function WorkflowSectionNavigation({ editValue = "edit", editLabel = "Edit" }: { editValue?: "edit" | "demo"; editLabel?: string } = {}) {
-  const stages = [{ value: "create", label: "Create" }, { value: editValue, label: editLabel }, { value: "schedule", label: "Schedule" }];
-  return <Tabs.List aria-label="Workflow sections" className={sections.navigation}>
+export function WorkflowSectionNavigation({ editValue = "edit", editLabel = "Edit", hideSchedule = false, presentation = "header" }: { editValue?: "edit" | "demo"; editLabel?: string; hideSchedule?: boolean; presentation?: "header" | "panel" } = {}) {
+  const stages = [{ value: "create", label: "Create" }, { value: editValue, label: editLabel }, ...(hideSchedule ? [] : [{ value: "schedule", label: "Schedule" }])];
+  return <Tabs.List aria-label="Workflow sections" className={presentation === "panel" ? sections.panelNavigation : sections.navigation}>
     {stages.map(stage => <Tabs.Tab key={stage.value} value={stage.value} className={sections.stageTab}>{stage.label}</Tabs.Tab>)}
   </Tabs.List>;
 }

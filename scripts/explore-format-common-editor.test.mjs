@@ -19,6 +19,7 @@ function load(path, imports, globals = {}) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, { exports, localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, ...globals, require(name) {
     if (name === "@/lib/explore/format-edit-draft") return editDraft;
+    if (name === "@/components/explore/use-clip-draft-save") return imports[name] ?? { useClipDraftSave: () => ({ saved: null, loaded: true, busy: false, dirty: true, error: null, save() {}, reload() {} }) };
     if (name === "@/lib/explore/unchanged-hook-source") return unchangedHook;
     if (name === "@/lib/explore/reference-audio-preview") return referenceAudio;
     if (name === "@/lib/explore/remix-source") return remixSource;
@@ -92,6 +93,64 @@ test("paired editor restores the saved volume before automatic save, locks its e
 const fields = load("components/explore/format-video-text-fields.tsx", {});
 const nodes = tree => Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : [];
 const editing = { version: 1, format: "hook", trimStartMs: 2000, trimEndMs: 8000, originalVolume: 1, musicVolume: .2, text: null };
+
+test("pending and failed soundtrack replacements block draft saves, rendering and schedule clip state", () => {
+  let cursor = 0, input, clipState, renderCalls = 0;
+  const slots = [], effects = [];
+  const audio = { asset: { name: "previous", url: "blob:previous" }, loading: true, error: null };
+  const source = { id: "00000000-0000-4000-8000-000000000001", status: "ready", collection: "video", mimeType: "video/mp4", url: "/raw.mp4", durationSeconds: 5, metadata: {} };
+  const react = { useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
+    return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useEffect: fn => effects.push(fn) };
+  const mod = load("components/explore/format-video-editor.tsx", { react, "react-dom": { createPortal: (children, target) => ({ type: "portal", props: { children, target } }) },
+    "@tanstack/react-query": { useQuery: options => ({ data: options.queryKey[0] === "explore-edit-source" ? source : undefined }) },
+    "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" } }) },
+    "@/components/explore/format-video-text-fields": fields,
+    "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => audio },
+    "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: {}, useWorkflowFinishing: value => { input = value; return { output: null, action: { disabled: false, busy: false, onAction() { renderCalls++; } } }; } },
+  });
+  const render = () => { cursor = 0; const tree = mod.FormatVideoEditor({ format: "hook", video: { id: source.id, mediaAssetId: source.id, url: source.url, title: "Owned", durationSeconds: 5, ratio: "9:16" },
+    active: true, controlsTarget: {}, resultsTarget: {}, enabled: true, prepareRequest: 1, onDirty() {}, onSaved() {}, onContinue() {}, onClipStateChange: value => { clipState = value; } });
+    while (effects.length) effects.shift()(); return tree; };
+  let tree = render();
+  assert.match(input.demoFramingError, /selected audio to finish loading/);
+  assert.equal(clipState.busy, true);
+  assert.equal(nodes(tree).find(n => n.type === "Button" && n.props.children === "Save edits").props.disabled, true);
+  assert.equal(nodes(tree).find(n => n.type === "Button" && n.props.children === "Prepare publishing video").props.disabled, true);
+  assert.equal(renderCalls, 0, "The saved preparation request waits instead of preparing with old audio");
+  audio.loading = false; audio.error = "The selected soundtrack could not load.";
+  tree = render();
+  assert.equal(input.demoFramingError, audio.error); assert.equal(clipState.error, audio.error);
+  assert.equal(nodes(tree).find(n => n.type === "Button" && n.props.children === "Save edits").props.disabled, true);
+  assert.equal(renderCalls, 0);
+  audio.error = null; render();
+  assert.equal(renderCalls, 1, "An explicitly saved prepare request can continue after selection is resolved");
+});
+
+for (const format of ["hook", "wall_text"]) test(`${format}: Save edits saves the exact draft without submitting a render`, () => {
+  let cursor = 0, saveCalls = 0, renderCalls = 0, draftInput;
+  const slots = [], source = { id: "00000000-0000-4000-8000-000000000001", status: "ready", collection: "video", mimeType: "video/mp4", url: "/raw.mp4", durationSeconds: 5, metadata: {} };
+  const react = { useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
+    return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useEffect() {} };
+  const mod = load("components/explore/format-video-editor.tsx", { react, "react-dom": { createPortal: (children, target) => ({ type: "portal", props: { children, target } }) },
+    "@tanstack/react-query": { useQuery: options => ({ data: options.queryKey[0] === "explore-edit-source" ? source : undefined }) },
+    "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" } }) },
+    "@/components/explore/format-video-text-fields": fields,
+    "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => ({}) },
+    "@/components/explore/use-clip-draft-save": { useClipDraftSave: input => { draftInput = input; return { loaded: true, dirty: true, saved: null, save() { saveCalls++; } }; } },
+    "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: {}, useWorkflowFinishing: () => ({ output: null, action: { disabled: false, busy: false, onAction() { renderCalls++; } } }) },
+  });
+  const tree = mod.FormatVideoEditor({ format, video: { id: source.id, mediaAssetId: source.id, url: source.url, title: "Owned clip", durationSeconds: 5, ratio: "9:16" },
+    active: true, controlsTarget: {}, resultsTarget: {}, enabled: true, onDirty() {}, onSaved() { throw new Error("A draft is not a ready video"); }, onContinue() {} });
+  const save = nodes(tree).find(node => node.type === "Button" && node.props.children === "Save edits");
+  assert.equal(save.props.disabled, false, "Incomplete text is a valid draft, not a render request");
+  save.props.onClick(); assert.equal(saveCalls, 1); assert.equal(renderCalls, 0);
+  assert.equal(draftInput.content.editing.format, format); assert.equal(draftInput.content.sourceAssetId, source.id);
+  assert.equal(draftInput.owner, "owner"); assert.equal(draftInput.content.backgroundAssetId, null);
+  const prepare = nodes(tree).find(node => node.type === "Button" && node.props.children === "Prepare publishing video");
+  assert.ok(prepare, "Publishing/export remains a separate explicit operation"); prepare.props.onClick(); assert.equal(renderCalls, 1);
+});
 
 test("overview shows editable reference text immediately and keeps manual entry outside the remix box", () => {
   let cursor = 0, generationRequests = 0; const slots = [];

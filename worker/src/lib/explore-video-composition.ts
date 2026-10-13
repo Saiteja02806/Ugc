@@ -94,6 +94,7 @@ function backgroundAudioFilter(input: AudioInput, targetDurationMs: number, labe
 export function buildExploreCompositionFilter(videos: VideoInput[], demoAudio?: Omit<AudioInput, "inputIndex">, options: {
   backgroundMusic?: AudioInput;
   subtitleAudio?: boolean;
+  audioOnly?: boolean;
   demoFraming?: DemoFraming;
   sourceFraming?: DemoFraming;
   originalVolume?: number;
@@ -105,13 +106,13 @@ export function buildExploreCompositionFilter(videos: VideoInput[], demoAudio?: 
   for (const [index, video] of videos.entries()) {
     const seconds = String(video.durationMs / 1000);
     const framing = index === 1 ? options.demoFraming : options.sourceFraming;
-    if (framing) {
+    if (framing && !options.audioOnly) {
       const cropWidth = Math.floor(video.width * framing.width / 2) * 2, cropHeight = Math.floor(video.height * framing.height / 2) * 2;
       if (cropWidth < 64 || cropHeight < 64 || Math.abs((video.width * framing.width) / (video.height * framing.height) / (width / height) - 1) > .015 ||
           framing.points[framing.points.length - 1][0] > video.durationMs + 50) throw new SubtitleError("COMPOSITION_FRAMING_INVALID", "Record a frame matching your selected video, within the demo's duration and at least 64 pixels wide and high.");
       const x = demoFramingExpression(framing, 1, video.width), y = demoFramingExpression(framing, 2, video.height);
       filters.push(`[${index}:${video.videoIndex}]scale=${video.width}:${video.height},setsar=1,setpts=PTS-STARTPTS,fps=30,crop=w=${cropWidth}:h=${cropHeight}:x='${x}':y='${y}':exact=1,scale=${width}:${height}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=black,format=yuv420p[v${index}]`);
-    } else filters.push(`[${index}:${video.videoIndex}]scale=${width}:${height}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,fps=30,format=yuv420p,setpts=PTS-STARTPTS[v${index}]`);
+    } else if (!options.audioOnly) filters.push(`[${index}:${video.videoIndex}]scale=${width}:${height}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,fps=30,format=yuv420p,setpts=PTS-STARTPTS[v${index}]`);
     const selected = video.audioIndex === null ? null : { inputIndex: index, audioIndex: video.audioIndex };
     const original = selected === null ? "anullsrc=channel_layout=stereo:sample_rate=48000" : `[${selected.inputIndex}:${selected.audioIndex}]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo`;
     filters.push(`${original},apad,atrim=duration=${seconds},asetpts=PTS-STARTPTS[main${index}]`);
@@ -125,7 +126,9 @@ export function buildExploreCompositionFilter(videos: VideoInput[], demoAudio?: 
       filters.push(`[original${index}][background]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,alimiter=limit=0.95:level=false:latency=true[a${index}]`);
     } else filters.push(`[original${index}]anull[a${index}]`);
   }
-  if (videos.length === 1) {
+  if (options.audioOnly) {
+    filters.push(videos.length === 1 ? "[a0]anull[combinedAudio]" : "[a0][a1]concat=n=2:v=0:a=1[combinedAudio]");
+  } else if (videos.length === 1) {
     filters.push("[v0]null[video];[a0]anull[combinedAudio]");
   } else filters.push("[v0][a0][v1][a1]concat=n=2:v=1:a=1[video][combinedAudio]");
   if (options.backgroundMusic) {
@@ -161,6 +164,7 @@ export async function composeExploreVideo(options: {
   demoAudioPath?: string;
   /** Explicit user preference; never infer looping from an uploaded filename. */
   demoAudioPlayback?: ExploreBackgroundPlayback;
+  demoAudioVolume?: number;
   /** Approved default/custom background; selected by the handler, never a client URL. */
   backgroundMusicPath?: string;
   /** Repeat only when the selected music is approved as suitable for looping. */
@@ -168,10 +172,12 @@ export async function composeExploreVideo(options: {
   workDir: string;
   tools: CompositionTools;
   subtitleScope?: { language: unknown };
+  /** Decode/mix audio only for caption review. No video frames are encoded. */
+  audioOnly?: boolean;
   signal?: AbortSignal;
 }, formatEdit?: { editing: ExploreFormatEdit; fontsDir: string }) {
   options.signal?.throwIfAborted();
-  if ([options.originalVolume, options.sourceOriginalVolume, options.demoOriginalVolume, options.musicVolume].some(value => value !== undefined && (!Number.isFinite(value) || value < 0 || value > 1))) throw new SubtitleError("COMPOSITION_INPUT_INVALID", "Choose an audio level between 0 and 100 percent.");
+  if ([options.originalVolume, options.sourceOriginalVolume, options.demoOriginalVolume, options.musicVolume, options.demoAudioVolume].some(value => value !== undefined && (!Number.isFinite(value) || value < 0 || value > 1))) throw new SubtitleError("COMPOSITION_INPUT_INVALID", "Choose an audio level between 0 and 100 percent.");
   const demoFraming = options.demoFraming === undefined ? undefined : parseDemoFraming(options.demoFraming);
   const sourceFraming = options.sourceFraming === undefined ? undefined : parseDemoFraming(options.sourceFraming);
   if (sourceFraming && options.demoPath) throw new SubtitleError("COMPOSITION_FRAMING_INVALID", "Single-clip framing requires one video.");
@@ -196,10 +202,14 @@ export async function composeExploreVideo(options: {
   // Before creating outputs or any later paid transcription. This is the
   // complete sequence duration, not the length of the generated opening alone.
   if (options.subtitleScope) assertExploreSubtitleScope(options.subtitleScope.language, measuredDurationMs);
+  if (options.audioOnly && (!options.subtitleScope || formatEdit)) throw new SubtitleError("COMPOSITION_INPUT_INVALID", "Audio preparation requires an untrimmed subtitle sequence.");
+  // Even a speech-only request validates the recorded video crop before it can
+  // make a paid claim. Its later export must be renderable as selected.
+  if (options.audioOnly) buildExploreCompositionFilter(videos, undefined, { demoFraming, sourceFraming });
   // Validate framing BEFORE any output or later paid transcription is created.
-  let filter = buildExploreCompositionFilter(videos, demoAudio ? { ...demoAudio, playback: options.demoAudioPlayback } : undefined, {
+  let filter = buildExploreCompositionFilter(videos, demoAudio ? { ...demoAudio, playback: options.demoAudioPlayback, volume: options.demoAudioVolume } : undefined, {
     backgroundMusic: backgroundMusic ? { ...backgroundMusic, inputIndex: videos.length + (demoAudio ? 1 : 0), playback: options.backgroundMusicPlayback, volume: options.musicVolume } : undefined,
-    subtitleAudio: Boolean(options.subtitleScope), demoFraming, sourceFraming, originalVolume: options.originalVolume, sourceOriginalVolume: options.sourceOriginalVolume, demoOriginalVolume: options.demoOriginalVolume,
+    subtitleAudio: Boolean(options.subtitleScope) && !options.audioOnly, audioOnly: options.audioOnly, demoFraming, sourceFraming, originalVolume: options.originalVolume, sourceOriginalVolume: options.sourceOriginalVolume, demoOriginalVolume: options.demoOriginalVolume,
   });
   options.signal?.throwIfAborted();
   const paths = [options.sourcePath, options.demoPath, options.demoAudioPath, options.backgroundMusicPath].filter((path): path is string => Boolean(path));
@@ -238,10 +248,14 @@ export async function composeExploreVideo(options: {
     await writeFile(join(workDir, "composition.filter"), filter, { flag: "wx" });
     args.push("-filter_complex_script", "composition.filter");
   } else args.push("-filter_complex", filter);
-  args.push("-map", formatFilter ? "[v]" : "[video]", "-map", formatFilter ? "[a]" : "[audio]", "-t", String(targetDurationMs / 1000),
+  if (options.audioOnly) args.push("-map", "[audio]", "-vn", "-t", String(measuredDurationMs / 1000), "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", "speech.wav");
+  else args.push("-map", formatFilter ? "[v]" : "[video]", "-map", formatFilter ? "[a]" : "[audio]", "-t", String(targetDurationMs / 1000),
     "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-ar", "48000", "-ac", "2", "-movflags", "+faststart", "composed.mp4");
-  if (options.subtitleScope) args.push("-map", "[speech]", "-vn", "-t", String(measuredDurationMs / 1000), "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", "speech.wav");
+  if (options.subtitleScope && !options.audioOnly) args.push("-map", "[speech]", "-vn", "-t", String(measuredDurationMs / 1000), "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", "speech.wav");
   await runMediaCommand(options.tools.ffmpeg, args, { cwd: workDir, signal: options.signal, timeoutMs: 180_000 });
+  if (options.audioOnly) return { outputPath: join(workDir, "speech.wav"), subtitleAudioPath: join(workDir, "speech.wav"), durationMs: measuredDurationMs, measuredDurationMs,
+    width: videos[0].width, height: videos[0].height, sourceHashes, segments: videos.map((video, index) => ({ kind: index === 0 ? "opening" as const : "demo" as const, durationMs: video.durationMs, hasOriginalAudio: video.audioIndex !== null })),
+    hasDemoBackgroundAudio: Boolean(demoAudio), hasBackgroundMusic: Boolean(backgroundMusic), demoAudioTiming, backgroundMusicTiming };
   const outputPath = join(workDir, "composed.mp4");
   // The final sequence can be twice the individual-input limit. Reuse the
   // bounded probe directly instead of the single-input duration validator.

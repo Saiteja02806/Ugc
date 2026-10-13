@@ -39,6 +39,8 @@ export function getScheduleRefreshDelay(
 }
 
 function hasActiveSchedulingWork(schedule: ScheduledPost, now: number) {
+  if (schedule.metadata.exploreFinishRequestKey && schedule.metadata.exploreFinishStatus === "preparing" &&
+      Date.parse(String(schedule.metadata.plannedPublishDeadlineAt)) > now) return true;
   const isWallText = Boolean(getString(schedule.metadata.wallTextAssignmentId));
   const renderStatus = getString(
     isWallText

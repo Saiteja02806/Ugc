@@ -213,7 +213,7 @@ test("actual recovery handler reads only the authenticated owner's generation jo
 test("actual recovery handler authenticates and validates before any database access", async () => {
   const out = apiHarness({ signedIn: false }); assert.equal((await out.invoke()).status, 401); assert.equal(out.reads.length, 0);
   const invalid = apiHarness();
-  for (const query of ["requestKey=bad&quantity=1", `requestKey=${key}&quantity=3`, `requestKey=${key}`]) assert.equal((await invalid.invoke(query)).status, 400);
+  for (const query of ["requestKey=bad&quantity=1", `requestKey=${key}&quantity=5`, `requestKey=${key}`]) assert.equal((await invalid.invoke(query)).status, 400);
   assert.equal(invalid.reads.length, 0);
 });
 

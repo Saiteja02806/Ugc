@@ -101,9 +101,15 @@ variable "worker_visibility_timeout_seconds" {
 }
 
 variable "min_instance_count" {
-  description = "Minimum compatibility HTTP receiver instances. Use 0: long renders run in the one-shot Cloud Run Job and exit when complete."
+  description = "Minimum HTTP receiver instances. The optional interactive Explore mode keeps at least one warm."
   type        = number
   default     = 0
+}
+
+variable "enable_interactive_explore_finishing" {
+  description = "Use the existing authenticated HTTP service for Explore captions/finishing only, with one warm instance. Adds idle instance charges; enable after reviewing the plan and setting the app's GCP_EXPLORE_FINISH_TASK_URL to this service's /tasks/jobs endpoint. Heavy render jobs retain the launcher."
+  type        = bool
+  default     = false
 }
 
 variable "max_instance_count" {
@@ -113,7 +119,7 @@ variable "max_instance_count" {
 }
 
 variable "request_timeout_seconds" {
-  description = "Cloud Run request timeout for health checks and incidental requests."
+  description = "Cloud Run request timeout. Optional interactive Explore mode uses at least 900 seconds, within the Cloud Tasks dispatch deadline."
   type        = number
   default     = 300
 }

@@ -41,6 +41,7 @@ export type CharacterJobStatusResponse = {
   ok: true;
   job: {
     id: string;
+    model?: CharacterImageModel;
     status: BackgroundJobStatus;
     isTerminal: boolean;
     error: string | null;

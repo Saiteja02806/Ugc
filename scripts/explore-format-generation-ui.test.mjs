@@ -5,6 +5,8 @@ import vm from "node:vm";
 import path from "node:path";
 import ts from "typescript";
 import * as remixSource from "../lib/explore/remix-source.ts";
+import * as pendingGeneration from "../lib/ai-studio/pending-generation.ts";
+import * as readDeadline from "../lib/http/read-deadline.ts";
 
 function load(file, imports = {}, globals = {}) {
   const exports = {};
@@ -22,19 +24,30 @@ function load(file, imports = {}, globals = {}) {
   }, ...globals });
   return exports;
 }
-function harness(format, { reference = true, referenceUrls, regenerationTarget, access = "pro", preview = false, captureRequests = false, completedJob = null, persistedJobId = completedJob?.id ?? null, wanEnabled = false } = {}) {
+function harness(format, { reference = true, referenceUrls, regenerationTarget, access = "pro", preview = false, captureRequests = false, completedJob = null, persistedJobId = completedJob?.id ?? null, wanEnabled = false, initialStorage = [], recoveredBatch = null } = {}) {
   const events = [], controls = {}, results = {};
   const requests = [], states = [], errors = [];
   const effects = [], readyVideos = [];
-  let cursor = 0;
-  let promptSet = false;
+  let cursor = 0, refCursor = 0, effectCursor = 0;
+  const refs = [], effectDependencies = [];
+  let promptSet = false, rendering = false, stateChanged = false;
   const imports = {
     react: {
       useState(initial) { let value = typeof initial === "function" ? initial() : initial;
         const index = cursor++;
         if (!promptSet && value === "") { promptSet = true; value = "My requested changes"; }
         if (!(index in states)) states[index] = value;
-        return [states[index], next => { states[index] = typeof next === "function" ? next(states[index]) : next; }]; }, useRef: value => ({ current: value }), useEffect: callback => { if (completedJob) effects.push(callback); }, useMemo: fn => fn(),
+        return [states[index], next => { const value = typeof next === "function" ? next(states[index]) : next; if (rendering && !Object.is(states[index], value)) stateChanged = true; states[index] = value; }]; },
+      useRef(value) { return refs[refCursor++] ??= { current: value }; },
+      useEffect(callback, deps) {
+        const index = effectCursor++, prior = effectDependencies[index];
+        if (!prior || !deps || deps.some((value, i) => !Object.is(value, prior[i]))) {
+          effectDependencies[index] = deps ?? [];
+          // Submission-only fixtures still execute the actual account lifecycle.
+          if (callback.toString().includes("activeUserIdRef.current =")) callback();
+          else if (completedJob) effects.push(callback);
+        }
+      }, useMemo: fn => fn(), useCallback: fn => fn,
     },
     "react/jsx-runtime": { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "Fragment" },
     "@tanstack/react-query": { useQueryClient: () => ({ invalidateQueries: async () => {} }) },
@@ -51,6 +64,9 @@ function harness(format, { reference = true, referenceUrls, regenerationTarget, 
     "@/lib/ai-studio/video-history": load("lib/ai-studio/video-history.ts"),
     "@/lib/ai-studio/video-generation-state": load("lib/ai-studio/video-generation-state.ts"),
     "@/lib/ai-studio/generation-session": load("lib/ai-studio/generation-session.ts"),
+    "@/lib/ai-studio/pending-generation": pendingGeneration,
+    "@/components/generation/use-generation-discovery": { useGenerationDiscovery: args => ({ available: Boolean(recoveredBatch), checking: false, error: null, check: async () => { if (recoveredBatch) args.onRecovered(recoveredBatch.result, recoveredBatch.input); } }) },
+    "@/lib/http/read-deadline": readDeadline,
     "@/lib/ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts", { "../../worker/src/lib/video-prompt-policy": load("worker/src/lib/video-prompt-policy.ts") }),
     "@/lib/explore/format-generation-prompt": load("lib/explore/format-generation-prompt.ts", { "@/lib/ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts") }),
     "@/lib/firebase/auth": { getCurrentUserIdToken: () => { events.push("waiting-for-auth"); return captureRequests || completedJob ? Promise.resolve("fixture-token") : new Promise(() => {}); } },
@@ -59,7 +75,9 @@ function harness(format, { reference = true, referenceUrls, regenerationTarget, 
     "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
   };
   const file = format === "slideshow" ? "components/workspace/ugc-chat-workspace.tsx" : "components/video/video-generation-workspace.tsx";
-  const panelModule = load(file, imports, { URLSearchParams, setTimeout: () => 1, clearTimeout() {}, window: { addEventListener() {}, removeEventListener() {}, setTimeout: () => 1, clearTimeout() {}, localStorage: { getItem: () => null, setItem() {} } }, console: { error: (...values) => errors.push(values.map(String).join(" ")) }, crypto: { randomUUID: () => "fixture-request" }, fetch: async (url, options) => {
+  const stored = new Map(initialStorage);
+  const storage = { getItem: key => stored.get(key) ?? null, setItem: (key, value) => stored.set(key, value), removeItem: key => stored.delete(key) };
+  const panelModule = load(file, imports, { URLSearchParams, AbortSignal, localStorage: storage, navigator: { locks: { request: async (_key, _options, callback) => callback({}) } }, setTimeout: () => 1, clearTimeout() {}, window: { addEventListener() {}, removeEventListener() {}, setTimeout: () => 1, clearTimeout() {}, localStorage: storage }, console: { error: (...values) => errors.push(values.map(String).join(" ")) }, crypto: { randomUUID: () => "00000000-0000-4000-8000-000000000001" }, fetch: async (url, options) => {
     assert.equal(captureRequests, true, "No network requests are allowed");
     requests.push({ url, ...options, body: JSON.parse(options.body) });
     return { ok: false, json: async () => ({ ok: false, error: "Fixture stops after capturing the request" }) };
@@ -71,15 +89,47 @@ function harness(format, { reference = true, referenceUrls, regenerationTarget, 
     preview, referenceImageUrl: format === "slideshow" && reference ? "https://example.test/reference.png" : undefined, styleVideo: format !== "slideshow" && reference ? {url:"https://example.test/style.mp4",name:"Style video",duration:null} : undefined, emptyContent: "Empty",
     workflow: { format, controlsTarget: controls, resultsTarget: results, onGenerationStart: () => events.push("show-results"), onGeneratedVideo: video => readyVideos.push(video) },
   } };
+  props.recreateView.onClearReference = () => { props.recreateView.styleVideo = undefined; };
   function find(node, type) {
     if (!node || typeof node !== "object") return null;
     if (node.type === type) return node;
     for (const child of [node.props?.children].flat(Infinity)) { const match = find(child, type); if (match) return match; }
     return null;
   }
-  const render = () => { cursor = 0; const tree = Panel(props); return { composer: find(tree, "AiStudioComposer"), output: find(tree, "AiStudioResults") }; };
-  return { events, controls, results, requests, errors, readyVideos, flushEffects: async () => { for (const effect of effects.splice(0)) effect(); await new Promise(resolve => setImmediate(resolve)); }, render, ...render() };
+  const render = () => { let tree; do { stateChanged = false; rendering = true; cursor = 0; refCursor = 0; effectCursor = 0; tree = Panel(props); rendering = false; } while (stateChanged); return { composer: find(tree, "AiStudioComposer"), output: find(tree, "AiStudioResults") }; };
+  return { events, controls, results, requests, errors, readyVideos, stored, selectGallery(video) { props.recreateView.styleVideo = video; return render(); }, clearGallery() { props.recreateView.onClearReference(); return render(); }, flushEffects: async () => { for (const effect of effects.splice(0)) effect(); await new Promise(resolve => setImmediate(resolve)); }, render, ...render() };
 }
+
+test("slideshow pending cards restore prompt and ratio from the same owner/scope key used by admission", async () => {
+  const jobId = "00000000-0000-4000-8000-000000000002";
+  const metadataKey = `ugc-ai-studio.image-job.v2.test-owner.slideshow.${jobId}`;
+  const h = harness("slideshow", { initialStorage: [[metadataKey, JSON.stringify({ prompt: "Original slide instructions", aspectRatio: "4:5" })]], completedJob: { id: jobId, jobType: "image_generation", exploreFormat: "slideshow", status: "queued", createdAt: "2026-10-13T00:00:00Z", updatedAt: "2026-10-13T00:00:00Z" } });
+  await h.flushEffects();
+  const card = h.render().output.props.children.find(node => node.type?.name === "ImageGenerationCard");
+  assert.equal(card.props.prompt, "Original slide instructions"); assert.equal(card.props.aspectRatio, "4:5");
+});
+
+test("read-only earlier image recovery merges scoped job hints and retains newer metadata", async () => {
+  const oldJob = "00000000-0000-4000-8000-000000000002", newJob = "00000000-0000-4000-8000-000000000003";
+  const storageKey = "ugc-ai-studio.latest-image-job.v2.test-owner.slideshow", newMetadataKey = `ugc-ai-studio.image-job.v2.test-owner.slideshow.${newJob}`;
+  const h = harness("slideshow", { initialStorage: [[storageKey, JSON.stringify([newJob])], [newMetadataKey, JSON.stringify({ prompt: "Newer instructions", aspectRatio: "9:16" })]], recoveredBatch: { result: { jobs: [{ jobId: oldJob }] }, input: { prompt: "Earlier slide instructions", aspectRatio: "4:5" } } });
+  const button = h.composer.props.secondaryActions.props.children.find(node => node?.props?.children === "Check earlier requests");
+  await button.props.onClick();
+  assert.deepEqual(new Set(JSON.parse(h.stored.get(storageKey))), new Set([newJob, oldJob]));
+  assert.equal(JSON.parse(h.stored.get(`ugc-ai-studio.image-job.v2.test-owner.slideshow.${oldJob}`)).prompt, "Earlier slide instructions");
+  assert.equal(JSON.parse(h.stored.get(newMetadataKey)).prompt, "Newer instructions"); assert.equal(h.requests.length, 0);
+});
+
+test("earlier video discovery preserves newer hints and cannot select an old completed opening", async () => {
+  const oldJob = "00000000-0000-4000-8000-000000000002", newJob = "00000000-0000-4000-8000-000000000003";
+  const storageKey = "ugc-ai-studio.latest-video-job.v2.test-owner.hook";
+  const h = harness("hook", { initialStorage: [[storageKey, JSON.stringify([newJob])]], completedJob: { id: oldJob, jobType: "video_generation", exploreFormat: "hook", status: "completed", output: { mediaAssetId: "old-video", url: "/old.mp4", ratio: "9:16" }, updatedAt: "2026-10-13T00:00:00Z" }, recoveredBatch: { result: { jobs: [{ jobId: oldJob }] }, input: { prompt: "Earlier instructions", aspectRatio: "9:16", model: "google_omni", resolution: "720p" } } });
+  const button = h.composer.props.secondaryActions.props.children.find(node => node?.props?.children === "Check earlier requests");
+  await button.props.onClick(); await h.flushEffects();
+  assert.deepEqual(new Set(JSON.parse(h.stored.get(storageKey))), new Set([newJob, oldJob]));
+  assert.equal(JSON.parse(h.stored.get(`ugc-ai-studio.video-job.v2.test-owner.hook.${oldJob}`)).prompt, "Earlier instructions");
+  assert.equal(h.readyVideos.length, 0); assert.equal(h.requests.length, 0);
+});
 
 for (const format of ["hook", "wall_text"]) {
   test(`${format}: local preview allows supported quality changes while generation remains locked`, () => {
@@ -135,6 +185,84 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(h.requests[0].body.useGalleryVideoReference, true);
     assert.equal(h.requests[0].body.referenceVideoMode, "edit");
     assert.equal(h.requests[0].body.referenceId,`${format}-fixture`);
+  });
+  test(`${format}: Recreate replaces an earlier upload, preserves the appearance image and sends the clicked gallery ID`, async () => {
+    const h = harness(format, { captureRequests: true, reference: false });
+    const image = { kind: "image", asset: { id: "appearance", url: "https://owned-media.test/person.png", title: "Appearance" } };
+    const upload = { kind: "video", asset: { id: "earlier-upload", url: "https://owned-media.test/old.mp4", durationSeconds: 4, title: "Earlier upload" } };
+    h.render().composer.props.referenceControls.props.onChange(image, "image");
+    h.render().composer.props.referenceControls.props.onChange(upload, "video");
+    const gallery = { id: `${format}-clicked`, url: "https://example.test/clicked.mp4", name: "Clicked reference", duration: 7, selectionRevision: 1 };
+    h.selectGallery(gallery);
+    const composer = h.render().composer;
+    assert.equal(composer.props.referenceControls.props.videoSelection, null);
+    assert.equal(composer.props.referenceControls.props.styleVideo.url, gallery.url);
+    assert.equal(composer.props.referenceControls.props.imageSelection.asset.id, image.asset.id);
+    await composer.props.onSubmit({ preventDefault() {} });
+    const input = h.requests[0].body;
+    assert.equal(input.useGalleryVideoReference, true); assert.equal(input.referenceId, gallery.id);
+    assert.equal(input.referenceVideoUrl, null); assert.equal(input.referenceVideoAssetId, null);
+    assert.equal(input.referenceImageUrls.length, 1); assert.equal(input.referenceImageUrls[0], image.asset.url);
+    h.clearGallery();
+    assert.equal(h.render().composer.props.referenceControls.props.videoSelection, null, "Removing gallery guidance must not restore the earlier upload");
+  });
+  test(`${format}: clicking the same gallery card again replaces a later upload and selects compatible model quality`, async () => {
+    const h = harness(format, { reference: false, wanEnabled: true, captureRequests: true });
+    const setting = label => h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === label);
+    setting("Video model").props.onChange("wan_3_0");
+    setting("Video quality").props.onChange("480p");
+    setting("Video duration").props.onChange(30);
+    const gallery = { id: `${format}-repeat`, url: "https://example.test/repeat.mp4", name: "Repeated reference", duration: 6, selectionRevision: 1 };
+    h.selectGallery(gallery);
+    assert.equal(setting("Video model").props.value, "google_omni");
+    assert.equal(setting("Video quality").props.value, "720p");
+    h.render().composer.props.referenceControls.props.onChange({ kind: "video", asset: { id: "new-upload", url: "https://owned-media.test/new.mp4", durationSeconds: 4, title: "New upload" } }, "video");
+    h.render();
+    h.selectGallery({ ...gallery, selectionRevision: 2 });
+    await h.render().composer.props.onSubmit({ preventDefault() {} });
+    assert.equal(h.requests[0].body.referenceId, gallery.id);
+    assert.equal(h.requests[0].body.referenceVideoUrl, null);
+    assert.equal(h.requests[0].body.resolution, "720p");
+    h.clearGallery();
+    assert.equal(setting("Video duration").props.value, 5);
+  });
+  test(`${format}: failed replacement blocks generation using the previous reference until an explicit new selection`, async () => {
+    const h = harness(format, { captureRequests: true });
+    h.composer.props.referenceControls.props.onErrorChange("Upload failed");
+    let composer = h.render().composer;
+    assert.equal(composer.props.generateDisabled, true);
+    await composer.props.onSubmit({ preventDefault() {} });
+    assert.equal(h.requests.length, 0);
+    h.selectGallery({ id: `${format}-replacement`, url: "https://example.test/replacement.mp4", name: "Replacement", duration: 5, selectionRevision: 1 });
+    composer = h.render().composer;
+    assert.equal(composer.props.generateDisabled, false);
+    await composer.props.onSubmit({ preventDefault() {} });
+    assert.equal(h.requests[0].body.referenceId, `${format}-replacement`);
+  });
+  test(`${format}: pending reference uploads cannot change models and Recreate keeps compatible quality`, () => {
+    const h = harness(format, { reference: false, wanEnabled: true });
+    const setting = label => h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === label);
+    setting("Video quality").props.onChange("1080p");
+    h.render().composer.props.referenceControls.props.onPendingChange(true);
+    assert.equal(setting("Video model").props.disabled, true);
+    setting("Video model").props.onChange("wan_3_0");
+    assert.equal(setting("Video model").props.value, "google_omni");
+    h.render().composer.props.referenceControls.props.onPendingChange(false);
+    h.selectGallery({ id: `${format}-quality`, url: "https://example.test/quality.mp4", name: "Quality", duration: 6 });
+    assert.equal(setting("Video quality").props.value, "1080p");
+  });
+  test(`${format}: plus appends multiple images in the same reference container and submits every selected image`, async () => {
+    const h = harness(format, { captureRequests: true });
+    const images = Array.from({ length: 3 }, (_, index) => ({ kind: "image", asset: { id: `image-${index}`, url: `https://owned-media.test/image-${index}.png`, title: `Image ${index}` } }));
+    for (const image of images) h.render().composer.props.referenceControls.props.onChange(image, "image");
+    let controls = h.render().composer.props.referenceControls.props;
+    assert.equal(controls.imageSelections.length, 3); assert.equal(controls.maxImages, 5);
+    controls.onImagesChange(images.filter(image => image.asset.id !== "image-1"));
+    controls = h.render().composer.props.referenceControls.props;
+    assert.equal(controls.imageSelections.length, 2); assert.ok(controls.styleVideo);
+    await h.render().composer.props.onSubmit({ preventDefault() {} });
+    assert.deepEqual(h.requests[0].body.referenceImageUrls, [images[0].asset.url, images[2].asset.url]);
+    assert.equal(h.requests[0].body.useGalleryVideoReference, true);
   });
   test(`${format}: custom video is sent as owned generation input in the real generation request`, async () => {
     const h = harness(format, { captureRequests: true });
@@ -228,7 +356,7 @@ for (const format of ["hook", "wall_text", "slideshow"]) {
     assert.deepEqual(h.events, ["show-results", "waiting-for-auth"]);
     assert.equal(h.composer.props.referenceControls.type, "FormatGenerationReferences");
     assert.equal(h.composer.props.leadingControl, undefined);
-    assert.equal(h.composer.props.promptLabel, format === "wall_text" ? "What should the background look like?" : "What should the creator say and do?");
+    assert.equal(h.composer.props.promptLabel, "Your instructions");
   });
 }
 
@@ -244,6 +372,21 @@ test("slideshow sends the exact selected context independently of output quantit
   assert.deepEqual(h.requests[0].body.referenceImageUrls, urls);
   assert.equal(h.requests[0].body.quantity, 2);
   assert.equal(h.requests[0].body.prompt, "My requested changes");
+});
+
+test("the rendered Hook, Wall of Text and slideshow selectors submit two or three outputs without normalization to one", async () => {
+  for (const format of ["hook", "wall_text", "slideshow"]) for (const quantity of [2, 3]) {
+    const h = harness(format, { captureRequests: true, reference: format === "slideshow" });
+    const label = format === "slideshow" ? "Number of images" : "Number of videos";
+    const select = h.composer.props.settings.props.children.flat(Infinity).find(node => node?.props?.ariaLabel === label);
+    assert.ok(select, `${format} quantity selector must be rendered`);
+    assert.ok(select.props.options.some(option => option.value === String(quantity)));
+    select.props.onChange(String(quantity));
+    await h.render().composer.props.onSubmit({ preventDefault() {} });
+    await new Promise(setImmediate);
+    assert.equal(h.requests.length, 1, JSON.stringify(h.errors));
+    assert.equal(h.requests[0].body.quantity, quantity);
+  }
 });
 
 test("slideshow uses GPT Image 2.5 by default, offers Nano Banana and omits Seedream", async () => {

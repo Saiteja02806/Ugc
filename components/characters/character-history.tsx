@@ -22,8 +22,8 @@ export function CharacterHistory({ open, onOpenChange, images, selectedJobId, on
   return <Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent className="inset-y-0 left-auto right-0 top-0 flex h-dvh w-full max-w-[460px] translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 border-l bg-background p-0 sm:max-w-[460px]">
       <header className="shrink-0 border-b border-border px-5 py-5 pr-12">
-        <DialogTitle>Character history</DialogTitle>
-        <DialogDescription className="mt-1 text-xs">Your completed character images. Open an image to view it or save it to My influencers.</DialogDescription>
+        <DialogTitle>Influencer image history</DialogTitle>
+        <DialogDescription className="mt-1 text-xs">Every completed influencer image is saved automatically. Open an image to view it or use it as a reference.</DialogDescription>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5">
         {busy ? <p className="mb-4 text-xs text-muted" role="status">You can open an earlier image when your current request finishes.</p> : null}
@@ -32,7 +32,7 @@ export function CharacterHistory({ open, onOpenChange, images, selectedJobId, on
           : !images.length && !error ? <div className="flex min-h-48 flex-col items-center justify-center px-5 text-center">
             <History className="size-5 text-muted" aria-hidden="true" />
             <p className="mt-3 text-sm font-medium">{signedIn ? "Your character images will be saved here" : "Sign in to see your character history"}</p>
-            <p className="mt-1 text-xs leading-5 text-muted">{signedIn ? "Completed images stay here when you start a new session." : "Your history is saved to your account."}</p>
+            <p className="mt-1 text-xs leading-5 text-muted">{signedIn ? "Your images stay here when a fresh session starts automatically." : "Your history is saved to your account."}</p>
           </div> : null}
         <div className="space-y-6">{[...groups].map(([label, group]) => <section key={label} aria-label={label}>
           <h2 className="mb-2 text-xs font-semibold text-muted">{label}</h2>

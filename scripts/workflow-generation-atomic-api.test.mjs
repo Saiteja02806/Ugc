@@ -69,7 +69,7 @@ test("authentication, malformed identity and failed storage never acknowledge or
   const h = recoveryHarness({ signedIn: false }); assert.equal((await h.invoke()).status, 401); assert.equal((await h.invoke("POST")).status, 401);
   assert.equal(h.reads.length + h.resolutions.length, 0);
   const invalid = recoveryHarness();
-  for (const query of [`requestKey=${key}&quantity=1&kind=other&receipt=2`, `requestKey=bad&quantity=1&kind=hook&receipt=2`, `requestKey=${key}&quantity=3&kind=hook&receipt=2`]) {
+  for (const query of [`requestKey=${key}&quantity=1&kind=other&receipt=2`, `requestKey=bad&quantity=1&kind=hook&receipt=2`, `requestKey=${key}&quantity=5&kind=hook&receipt=2`]) {
     assert.equal((await invalid.invoke("GET", query)).status, 400); assert.equal((await invalid.invoke("POST", query)).status, 400);
   }
   assert.equal((await invalid.invoke("POST", undefined, { action: "start" })).status, 400);
@@ -146,7 +146,7 @@ function startHarness({ enabled = true, failCreate = false, validationStatus = n
 test("start remains gated, identity-validated and behind the existing generation validation", async () => {
   const disabled = startHarness({ enabled: false }); assert.equal((await disabled.invoke()).status, 503); assert.equal(disabled.delegates.length, 0);
   const invalid = startHarness();
-  for (const change of [{ workflowKind: "other" }, { quantity: 3 }, { idempotencyKey: "invalid" }]) assert.equal((await invalid.invoke(change)).status, 400);
+  for (const change of [{ workflowKind: "other" }, { quantity: 5 }, { idempotencyKey: "invalid" }]) assert.equal((await invalid.invoke(change)).status, 400);
   assert.equal((await invalid.invoke({}, videoId)).status, 400); assert.equal(invalid.delegates.length, 0);
   for (const status of [401, 403, 400, 503]) {
     const h = startHarness({ validationStatus: status }); const response = await h.invoke();

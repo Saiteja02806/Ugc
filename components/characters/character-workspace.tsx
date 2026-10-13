@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Check, History, ImageIcon, Images, Loader2, RectangleVertical, UserRound, X } from "lucide-react";
+import { ArrowLeft, Check, History, ImageIcon, Images, Loader2, RectangleVertical, UserRound } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
@@ -9,10 +9,12 @@ import { AiStudioComposer, AiStudioSetting, AiStudioSettingSelect } from "@/comp
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { CharacterImageCount, CharacterImageModel } from "@/lib/characters/types";
-import { CHARACTER_IMAGE_MODEL_OPTIONS, getCharacterPromptLimit } from "@/lib/characters/image-models";
+import { CHARACTER_IMAGE_MODEL_OPTIONS, getCharacterImageModelLabel, getCharacterPromptLimit } from "@/lib/characters/image-models";
+import { characterBatchProgress } from "@/lib/characters/batch-progress";
 import { useCharacterBuilder } from "./use-character-builder";
 import { CharacterHistory } from "./character-history";
 import { ReferenceMediaUpload } from "@/components/generation/reference-media-upload";
+import { ReferenceUploadPreview } from "@/components/generation/reference-upload-preview";
 import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import styles from "./character-workspace.module.css";
 
@@ -28,26 +30,40 @@ const EXAMPLE_PORTRAITS = [
 
 export function CharacterWorkspace({ localPreview = false }: { localPreview?: boolean }) {
   const { user, loading } = useAuth();
-  return <CharacterScreen key={user?.uid ?? "signed-out"} userId={user?.uid ?? null} authLoading={loading} localPreview={localPreview} />;
+  return <CharacterSessionScreen key={user?.uid ?? "signed-out"} userId={user?.uid ?? null} authLoading={loading} localPreview={localPreview} />;
 }
 
-function CharacterScreen({ userId, authLoading, localPreview }: { userId: string | null; authLoading: boolean; localPreview: boolean }) {
+type CharacterScreenProps = { userId: string | null; authLoading: boolean; localPreview: boolean };
+
+function CharacterSessionScreen(props: CharacterScreenProps) {
   const [historyOpen, setHistoryOpen] = useState(false);
-  const builder = useCharacterBuilder(userId, historyOpen);
+  const [referencePending, setReferencePending] = useState(false);
+  const builder = useCharacterBuilder(props.userId, historyOpen, referencePending);
+  // A fresh session also clears the draft and uploaded reference. The builder
+  // stays mounted so an outstanding request and its recovery receipt survive.
+  return <CharacterScreen key={builder.sessionResetVersion} {...props} builder={builder}
+    historyOpen={historyOpen} setHistoryOpen={setHistoryOpen} referencePending={referencePending} setReferencePending={setReferencePending} />;
+}
+
+function CharacterScreen({ userId, authLoading, localPreview, builder, historyOpen, setHistoryOpen, referencePending, setReferencePending }: CharacterScreenProps & {
+  builder: ReturnType<typeof useCharacterBuilder>; historyOpen: boolean; setHistoryOpen: (open: boolean) => void;
+  referencePending: boolean; setReferencePending: (pending: boolean) => void;
+}) {
   const [prompt, setPrompt] = useState("");
   const [model, setModel] = useState<CharacterImageModel>("gpt_image");
   const [count, setCount] = useState<CharacterImageCount>(1);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [imageReference, setImageReference] = useState<AIStudioReferenceMedia | null>(null);
-  const [referencePending, setReferencePending] = useState(false);
   const [referenceError, setReferenceError] = useState<string | null>(null);
   const [referenceControlVersion, setReferenceControlVersion] = useState(0);
+  const touchSession = builder.touchSession;
   const referencePendingRef = useRef(false);
   const referenceErrorRef = useRef<string | null>(null);
   const updateReferencePending = useCallback((value: boolean) => {
     referencePendingRef.current = value;
     setReferencePending(value);
-  }, []);
+    touchSession();
+  }, [touchSession, setReferencePending]);
   const updateReferenceError = useCallback((message: string | null) => {
     referenceErrorRef.current = message;
     setReferenceError(message);
@@ -62,6 +78,7 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
   const quantityAffordable = Boolean(access && count <= access.affordableImageCount);
   const manualLocked = authLoading || !userId || !quantityAffordable || accessLoading || builder.access.isError;
   const error = builder.generate.error || builder.select.error;
+  const progress = characterBatchProgress(builder.visibleJobs, builder.visibleStatuses);
   const selected = imageReference ? null : builder.selected;
   const countOptions = access
     ? COUNT_OPTIONS.filter((option) => Number(option.value) <= access.affordableImageCount || Number(option.value) === count)
@@ -83,6 +100,7 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
     });
   }
   function openLibrary() {
+    builder.touchSession();
     setLibraryOpen(true);
     if (userId) void builder.characters.refetch();
   }
@@ -107,8 +125,8 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
           </Link>
           <h1 className="text-xl font-semibold tracking-tight text-foreground-strong sm:text-2xl">Build AI influencer</h1>
         </div>
-        <div className={styles.headerActions}>
-          <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)} aria-label="Character history" title="Character history" className={styles.historyButton}>
+        <div className={styles.headerActions} role="group" aria-label="Your influencer images">
+          <Button variant="ghost" size="sm" onClick={() => { builder.touchSession(); setHistoryOpen(true); }} aria-label="Influencer image history" title="Influencer image history" className={styles.historyButton}>
             <History className="size-3.5" aria-hidden="true" /><span>History</span>
           </Button>
           <Button variant="outline" size="sm" onClick={openLibrary} aria-label="My influencers" title="My influencers" className={styles.libraryButton}>
@@ -120,11 +138,8 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
       <div className={styles.stage} aria-live="polite" aria-busy={busy}>
         {builder.visibleJobs.length ? <div className={styles.resultsPanel}>
           <div className={styles.resultsToolbar}>
-            <p className={styles.resultsHeading}>{builder.inProgress ? "Creating your influencer…" : "Select an image to save it to My influencers."}</p>
-            <div className="flex shrink-0 gap-1">
-              {builder.historyImage ? <Button variant="ghost" size="sm" onClick={builder.returnToSession}>Back to session</Button> : null}
-              <Button variant="outline" size="sm" disabled={busy || Boolean(pending) || builder.select.isPending} onClick={() => { builder.startNewSession(); setPrompt(""); resetImageReference(); }}>New session</Button>
-            </div>
+            <p className={styles.resultsHeading} role="status">{builder.historyImage ? "Image from your character history." : progress.message}</p>
+            {builder.historyImage ? <Button variant="ghost" size="sm" onClick={builder.returnToSession}>Back to session</Button> : null}
           </div>
           <div className={styles.results}>
             {builder.visibleJobs.map((receipt, index) => {
@@ -145,8 +160,8 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
                     : <div className="flex flex-col items-center gap-3 text-muted"><Loader2 className="size-6 animate-spin motion-reduce:animate-none" aria-hidden="true" /><span className="text-xs">Creating candidate {index + 1}</span></div>}
                 </button>
                 <div className={styles.candidateFooter}>
-                  <span className="text-xs text-muted">Image {index + 1}</span>
-                  {saving ? <span className={styles.saveStatus}><Loader2 className="size-3 animate-spin motion-reduce:animate-none" aria-hidden="true" />Saving…</span>
+                  <span className="text-xs text-muted">Image {index + 1}{job?.model ? ` · ${getCharacterImageModelLabel(job.model)}` : ""}</span>
+                  {saving ? <span className={styles.saveStatus}><Loader2 className="size-3 animate-spin motion-reduce:animate-none" aria-hidden="true" />Selecting…</span>
                     : saved || active ? <span className={styles.saveStatus}><Check className="size-3" aria-hidden="true" />Saved</span> : null}
                 </div>
               </article>;
@@ -178,35 +193,31 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
             <Button size="sm" variant="ghost" onClick={builder.discardPendingRequest}>Start a new request</Button>
           </div>
         </div> : null}
-        <AiStudioComposer active ariaLabel="Describe your AI influencer" name="character-prompt" layout="unified"
-          prompt={prompt} onPromptChange={setPrompt} placeholder={selected ? "Describe a new outfit, setting or pose for your influencer…" : "Describe the influencer you want to create…"}
+        <AiStudioComposer active ariaLabel="Describe your AI influencer" name="character-prompt" layout="unified" inlineReferences quiet showPromptHint={false}
+          prompt={prompt} onPromptChange={(value) => { builder.touchSession(); setPrompt(value); }} placeholder={selected ? "Describe a new outfit, setting or pose for your influencer…" : "Describe the influencer you want to create…"}
           generateLabel={selected ? "Create variation" : "Generate"}
           generateDisabled={busy || Boolean(referenceError) || manualLocked || Boolean(pending) || promptTooLong || !prompt.trim()}
           hasAttachments={Boolean(imageReference) || referencePending || Boolean(referenceError)}
-          leadingControl={<ReferenceMediaUpload key={`${selected?.id ?? "uploaded-reference"}:${referenceControlVersion}`} allowedKinds={REFERENCE_IMAGE_KINDS}
+          leadingControl={<ReferenceMediaUpload key={referenceControlVersion} allowedKinds={REFERENCE_IMAGE_KINDS} inline
             expectedUserId={userId ?? undefined} selection={imageReference}
+            referencePreview={selected ? <ReferenceUploadPreview kind="image" url={selected.url} name="influencer reference" label="Identity"
+              disabled={busy || Boolean(pending)} onRemove={() => builder.chooseCharacter(null)} /> : undefined}
             disabled={authLoading || !userId || generationBusy || Boolean(pending) || builder.select.isPending}
-            onChange={(reference) => { setImageReference(reference); if (reference) builder.chooseCharacter(null); }}
+            onChange={(reference) => { builder.touchSession(); setImageReference(reference); if (reference) builder.chooseCharacter(null); }}
             onPendingChange={updateReferencePending} onErrorChange={updateReferenceError} />}
           maxLength={promptLimit}
           generationLocked={manualLocked} isGenerating={builder.generate.isPending || builder.inProgress}
           onSubmit={submitPrompt} onTextareaKeyDown={handleTextareaKeyDown} accessMessage={referencePending ? "Uploading your reference image…" : usageLabel}
-          contextBanner={selected ? <div className={styles.reference}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={selected.url} alt="Saved influencer reference" />
-            <span><span className="font-medium">{selected.name}</span> · Keeping this identity</span>
-            <Button size="icon-sm" variant="ghost" className="ml-auto" aria-label="Remove influencer reference" disabled={busy || Boolean(pending)} onClick={() => builder.chooseCharacter(null)}><X className="size-3.5" aria-hidden="true" /></Button>
-          </div> : undefined}
           settings={<>
-            <AiStudioSettingSelect<CharacterImageModel> ariaLabel="Image model" icon={<ImageIcon className="size-3.5" aria-hidden="true" />} options={CHARACTER_IMAGE_MODEL_OPTIONS} value={model} onChange={setModel} disabled={busy || Boolean(pending)} />
+            <AiStudioSettingSelect<CharacterImageModel> ariaLabel="Image model" icon={<ImageIcon className="size-3.5" aria-hidden="true" />} options={CHARACTER_IMAGE_MODEL_OPTIONS} value={model} onChange={(value) => { builder.touchSession(); setModel(value); }} disabled={busy || Boolean(pending)} />
             <AiStudioSetting icon={<RectangleVertical className="size-3.5" aria-hidden="true" />} label="9:16 portrait" />
             <AiStudioSettingSelect ariaLabel="Number of images" icon={<Images className="size-3.5" aria-hidden="true" />}
-              options={countOptions} value={String(count)} onChange={(value) => setCount(Number(value) as CharacterImageCount)}
+              options={countOptions} value={String(count)} onChange={(value) => { builder.touchSession(); setCount(Number(value) as CharacterImageCount); }}
               disabled={busy || Boolean(pending)} />
           </>}
-          secondaryActions={userId ? builder.access.isError ? <Button size="sm" variant="ghost" onClick={() => void builder.access.refetch()}>Retry access</Button>
+          secondaryActions={<><p role="status" className={styles.usage}>{referencePending ? "Uploading reference…" : usageLabel}</p>{userId ? builder.access.isError ? <Button size="sm" variant="ghost" onClick={() => void builder.access.refetch()}>Retry access</Button>
             : !accessLoading && access && (!access.isPaid || !quantityAffordable) ? <Link href="/pricing" className="px-2 py-1 text-xs text-primary hover:underline">Get more credits</Link> : undefined
-            : <Link href="/sign-in" className="px-2 py-1 text-xs text-primary hover:underline">Sign in</Link>}
+            : <Link href="/sign-in" className="px-2 py-1 text-xs text-primary hover:underline">Sign in</Link>}</>}
         />
       </div>
 
@@ -217,17 +228,16 @@ function CharacterScreen({ userId, authLoading, localPreview }: { userId: string
         signedIn={Boolean(userId)} busy={busy || Boolean(pending) || builder.select.isPending} />
 
       <Dialog open={libraryOpen} onOpenChange={setLibraryOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>My influencers</DialogTitle><DialogDescription>Choose a saved influencer to keep their identity in your next image.</DialogDescription></DialogHeader>
+        <DialogContent className={styles.libraryDialog}>
+          <DialogHeader><DialogTitle>My influencers</DialogTitle><DialogDescription>All your generated influencer images are saved here automatically. Choose an image to keep that identity in your next generation.</DialogDescription></DialogHeader>
           <div className={styles.library}>
-            {builder.characters.data?.characters.map((character) => <button key={character.id} type="button" disabled={busy || Boolean(pending)} className={`${styles.savedCharacter} outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50`} onClick={() => { resetImageReference(); builder.chooseCharacter(character.id); setLibraryOpen(false); }}>
+            {builder.characters.data?.characters.map((character) => <button key={character.id} type="button" aria-pressed={selected?.id === character.id} disabled={busy || Boolean(pending)} className={`${styles.savedCharacter} outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50`} onClick={() => { resetImageReference(); builder.chooseCharacter(character.id); setLibraryOpen(false); }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={character.url} alt={character.name} />
-              <span className="text-sm font-medium">{character.name}</span>
-              {selected?.id === character.id ? <Check className="ml-auto size-4 text-primary" aria-hidden="true" /> : null}
+              <img src={character.url} alt={character.name} loading="lazy" decoding="async" />
+              <span className={styles.savedCharacterName}>{character.name}{selected?.id === character.id ? <Check className="size-3.5 shrink-0 text-primary" aria-hidden="true" /> : null}</span>
             </button>)}
-            {!userId ? <div className="space-y-3"><p className="text-sm text-muted">Sign in to see your saved influencers.</p><Button variant="outline" size="sm" nativeButton={false} render={<Link href="/sign-in" />}>Sign in</Button></div> : builder.characters.isPending ? <p className="text-sm text-muted">Loading influencers…</p> : builder.characters.isError ? <><p className="text-sm text-destructive" role="alert">{builder.characters.error.message}</p><Button size="sm" variant="outline" onClick={() => void builder.characters.refetch()}>Try again</Button></> : !builder.characters.data?.characters.length ? <p className="text-sm leading-6 text-muted">Your saved influencers will appear here. Generate an image, then select it to save your influencer.</p> : null}
-            {busy && builder.characters.data?.characters.length ? <p className="text-xs text-muted">Wait for the current generation to finish before switching influencers.</p> : null}
+            {!userId ? <div className={styles.libraryNotice}><p className="text-sm text-muted">Sign in to see your saved influencers.</p><Button variant="outline" size="sm" nativeButton={false} render={<Link href="/sign-in" />}>Sign in</Button></div> : builder.characters.isPending ? <p className={styles.libraryNotice} role="status">Loading influencers…</p> : builder.characters.isError ? <div className={styles.libraryNotice}><p className="text-sm text-destructive" role="alert">{builder.characters.error.message}</p><Button size="sm" variant="outline" onClick={() => void builder.characters.refetch()}>Try again</Button></div> : !builder.characters.data?.characters.length ? <p className={styles.libraryNotice}>Generate your first influencer image. Every completed image will appear here automatically.</p> : null}
+            {busy && builder.characters.data?.characters.length ? <p className={styles.libraryNotice}>Wait for the current generation to finish before switching influencers.</p> : null}
           </div>
         </DialogContent>
       </Dialog>

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { characterSessionStorageKey, EMPTY_CHARACTER_SESSION, parseCharacterClientSession } from "./client-session.ts";
+import { appendCharacterSessionJobs, CHARACTER_SESSION_IDLE_TIMEOUT_MS, characterSessionStorageKey, EMPTY_CHARACTER_SESSION,
+  isCharacterSessionIdle, parseCharacterClientSession } from "./client-session.ts";
 
 test("uncertain uploaded-reference requests restore the exact attachment ID without a signed URL", () => {
   const pendingRequest = { mode: "custom", model: "gpt_image", imageCount: 1, prompt: "Make an influencer in this style", idempotencyKey: "same-key", referenceImageAssetId: "11111111-1111-4111-8111-111111111111" };
@@ -38,7 +39,23 @@ test("removed assisted requests are discarded without losing previous results or
     selectedCharacterId: "33333333-3333-4333-8333-333333333333",
     pendingRequest: { mode: "assisted", model: "gpt_image", idempotencyKey: "obsolete" },
   };
-  assert.deepEqual(parseCharacterClientSession(JSON.stringify(stored)), { ...stored, pendingRequest: null });
+  assert.deepEqual(parseCharacterClientSession(JSON.stringify(stored)), { ...EMPTY_CHARACTER_SESSION, ...stored, pendingRequest: null });
+});
+
+test("continuous batches accumulate beyond the per-request three-image limit without duplicate receipts", () => {
+  const jobs = Array.from({ length: 7 }, (_, index) => ({ jobId: `11111111-1111-4111-8111-${String(index).padStart(12, "0")}`, generationId: `generation-${index}` }));
+  const accumulated = appendCharacterSessionJobs(jobs.slice(0, 3), [...jobs.slice(2), jobs[6]]);
+  assert.deepEqual(accumulated, jobs);
+  assert.deepEqual(parseCharacterClientSession(JSON.stringify({ ...EMPTY_CHARACTER_SESSION, jobs: accumulated })).jobs, jobs);
+});
+
+test("idle expiration requires ten minutes, known settled jobs and a resolved admission", () => {
+  const session = { ...EMPTY_CHARACTER_SESSION, lastActivityAt: 1_000 };
+  assert.equal(isCharacterSessionIdle(session, 1_000 + CHARACTER_SESSION_IDLE_TIMEOUT_MS - 1, true), false);
+  assert.equal(isCharacterSessionIdle(session, 1_000 + CHARACTER_SESSION_IDLE_TIMEOUT_MS, true), true);
+  assert.equal(isCharacterSessionIdle(session, 1_000 + CHARACTER_SESSION_IDLE_TIMEOUT_MS, false), false);
+  assert.equal(isCharacterSessionIdle({ ...session, pendingRequest: { mode: "custom", prompt: "A presenter", model: "gpt_image", idempotencyKey: "unresolved" } }, 1_000 + CHARACTER_SESSION_IDLE_TIMEOUT_MS, true), false);
+  assert.equal(isCharacterSessionIdle(EMPTY_CHARACTER_SESSION, CHARACTER_SESSION_IDLE_TIMEOUT_MS, true), false);
 });
 
 test("browser session storage remains scoped to each account", () => {

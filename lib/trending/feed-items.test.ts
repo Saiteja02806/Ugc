@@ -187,7 +187,7 @@ test("omits the Hook provider when the server feature is disabled", () => {
   );
 });
 
-test("enables Hook videos by default and preserves an explicit kill switch", () => {
+test("legacy Hook flag parsing preserves its explicit kill switch", () => {
   assert.equal(parseTrendingHookVideosEnabled("true"), true);
   assert.equal(parseTrendingHookVideosEnabled(" TRUE "), true);
   assert.equal(parseTrendingHookVideosEnabled("1"), true);
@@ -195,14 +195,14 @@ test("enables Hook videos by default and preserves an explicit kill switch", () 
   assert.equal(parseTrendingHookVideosEnabled(undefined), true);
 });
 
-test("allows the explicit Hook flag to control production safely", () => {
+test("the slideshow-only policy overrides an explicit Hook flag in production", () => {
   assert.equal(
     resolveTrendingHookVideosEnabled({
       deploymentEnvironment: "production",
       featureFlag: "true",
       requestUrl: "https://preview.example.com/api/trending/feed",
     }),
-    true,
+    false,
   );
   assert.equal(
     resolveTrendingHookVideosEnabled({
@@ -210,7 +210,7 @@ test("allows the explicit Hook flag to control production safely", () => {
       featureFlag: "true",
       requestUrl: "https://getugcpilot.com/api/trending/feed",
     }),
-    true,
+    false,
   );
   assert.equal(
     resolveTrendingHookVideosEnabled({
@@ -221,14 +221,14 @@ test("allows the explicit Hook flag to control production safely", () => {
   );
 });
 
-test("allows explicitly enabled Hook videos on localhost for testing", () => {
+test("the slideshow-only policy also applies on localhost", () => {
   assert.equal(
     resolveTrendingHookVideosEnabled({
       deploymentEnvironment: "development",
       featureFlag: "true",
       requestUrl: "http://127.0.0.1:4173/api/trending/feed",
     }),
-    true,
+    false,
   );
   assert.equal(
     resolveTrendingHookVideosEnabled({

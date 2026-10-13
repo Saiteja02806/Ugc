@@ -12,6 +12,7 @@ import type { AIStudioReferenceKind } from "@/lib/ai-studio/reference-media-uplo
 
 export function ReferenceUploadPreview({
   disabled = false,
+  fillContainer = false,
   kind,
   label,
   name,
@@ -21,6 +22,7 @@ export function ReferenceUploadPreview({
   url,
 }: {
   disabled?: boolean;
+  fillContainer?: boolean;
   kind: AIStudioReferenceKind;
   label: string;
   name: string;
@@ -29,8 +31,9 @@ export function ReferenceUploadPreview({
   queued?: boolean;
   url?: string;
 }) {
-  const tileClassName =
-    "relative flex size-12 items-center justify-center overflow-hidden rounded-lg border border-border bg-card-muted";
+  const tileClassName = fillContainer
+    ? "relative flex size-full min-h-0 items-center justify-center overflow-hidden border-0 bg-card-muted"
+    : "relative flex size-12 items-center justify-center overflow-hidden rounded-lg border border-border bg-card-muted";
   const tileContent = (
     <>
       {kind === "image" && url ? (
@@ -53,7 +56,7 @@ export function ReferenceUploadPreview({
   );
 
   return (
-    <div className="relative shrink-0" title={name}>
+    <div className={fillContainer ? "relative min-h-0 min-w-0" : "relative shrink-0"} title={name}>
       {kind === "image" && url && !pending ? (
         <Popover>
           <PopoverTrigger
@@ -95,7 +98,7 @@ export function ReferenceUploadPreview({
         </div>
       )}
       {onRemove ? (
-        <Button type="button" variant="muted" size="icon-sm" className="absolute -right-1 -top-1 size-5 rounded-full border border-border bg-card shadow-sm [&_svg]:size-3" aria-label={`Remove ${name}`} disabled={disabled} onClick={onRemove}>
+        <Button type="button" variant="muted" size="icon-sm" className={fillContainer ? "absolute right-1 bottom-1 size-5 rounded-full border border-border bg-card shadow-sm [&_svg]:size-3" : "absolute -right-1 -top-1 size-5 rounded-full border border-border bg-card shadow-sm [&_svg]:size-3"} aria-label={`Remove ${name}`} disabled={disabled} onClick={onRemove}>
           <X aria-hidden="true" />
         </Button>
       ) : null}

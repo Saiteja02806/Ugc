@@ -8,7 +8,7 @@ import type { WorkflowKind } from "./workflow-generation-client";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === "object" && !Array.isArray(value));
-export type WorkflowGenerationReceipt = { requestKey: string; kind: WorkflowKind; quantity: 1 | 2 | 4; outcome: "accepted" | "not_started"; jobIds: string[] };
+export type WorkflowGenerationReceipt = { requestKey: string; kind: WorkflowKind; quantity: 1 | 2 | 3 | 4; outcome: "accepted" | "not_started"; jobIds: string[] };
 export class WorkflowGenerationReceiptError extends Error {
   constructor(message: string, public readonly status = 503) { super(message); }
 }
@@ -22,13 +22,13 @@ function db() {
 
 function parseReceipt(value: unknown, ownerId: string, requestKey: string): WorkflowGenerationReceipt {
   if (!isRecord(value) || value.user_id !== ownerId || value.request_key !== requestKey ||
-      !["hook", "phone"].includes(String(value.workflow_kind)) || ![1, 2, 4].includes(Number(value.quantity)) || typeof value.quantity !== "number" ||
+      !["hook", "phone"].includes(String(value.workflow_kind)) || ![1, 2, 3, 4].includes(Number(value.quantity)) || typeof value.quantity !== "number" ||
       !["accepted", "not_started"].includes(String(value.outcome)) || !Array.isArray(value.job_ids) ||
       value.job_ids.some((id) => typeof id !== "string" || !UUID.test(id)) || new Set(value.job_ids).size !== value.job_ids.length ||
       value.job_ids.length !== (value.outcome === "accepted" ? value.quantity : 0)) {
     throw new WorkflowGenerationReceiptError("The saved generation request could not be verified.", 409);
   }
-  return { requestKey, kind: value.workflow_kind as WorkflowKind, quantity: value.quantity as 1 | 2 | 4,
+  return { requestKey, kind: value.workflow_kind as WorkflowKind, quantity: value.quantity as 1 | 2 | 3 | 4,
     outcome: value.outcome as WorkflowGenerationReceipt["outcome"], jobIds: value.job_ids as string[] };
 }
 

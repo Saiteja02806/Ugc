@@ -240,7 +240,7 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
     const targetKey = replace ? current[previewIndex]?.referenceSlideId : null;
     if (replace && (!targetKey || files.length !== 1) || !replace && current.length + files.length > MAX_SLIDESHOW_SLIDES) { setError("A slideshow can contain up to 10 images. Replace one image or choose fewer files."); return; }
     if (files.some(file => !["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size <= 0 || file.size > 25 * 1024 * 1024)) { setError("Choose JPG, PNG or WebP images, up to 25 MB each."); return; }
-    working.current = true; setUploading(true); setError(null);
+    working.current = true; setUploading(true); setError(null); setOutput(null); onDirty();
     const selectedRevision = revision.current;
     try {
       const settled = await Promise.allSettled(files.map(async file => imageFromAsset((await uploadAIStudioReferenceMedia(file, "image", 3, owner, { purpose: "explore-slides" })).asset)));
@@ -321,6 +321,10 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
     finally { working.current = false; if (alive.current) setBusy(false); }
   }
   function goToCreate() { startNewSlide(); onGoToCreate?.(); }
+  function continueToSchedule() {
+    if (locked || working.current || generationBusy || !output) return;
+    onContinue();
+  }
   const selected = slides[Math.min(previewIndex, Math.max(0, slides.length - 1))];
   const slideSource = selected?.image?.remixTextSource !== undefined ? resolveRemixSource(selected.image.remixTextSource, legacyReferences ?? (reference ? [reference] : []), "slideshow") : { reference, slideId: reference?.slides.find(s => s.id === selected?.referenceSlideId)?.id ?? null };
   const design = selected ? text[selected.referenceSlideId] ?? EMPTY_SLIDE_TEXT : EMPTY_SLIDE_TEXT;
@@ -336,7 +340,7 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
   const canSave = Boolean(pending) || slides.length >= MIN_SLIDESHOW_SLIDES && slides.every(slide => slide.image);
   const actions = <div className="space-y-2">
     {error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}
-    {output ? <Button type="button" size="lg" className="h-11 w-full rounded-lg" disabled={busy} onClick={onContinue}>Continue to Schedule</Button> : <Button type="button" size="lg" className="h-11 w-full rounded-lg" disabled={!canSave || localPreview || !savingEnabled || busy || uploading || restoring || generationBusy} onClick={() => void save()}>{busy ? "Saving…" : pending ? "Resume save" : "Save slideshow"}</Button>}
+    {output ? <Button type="button" size="lg" className="h-11 w-full rounded-xl font-semibold shadow-sm hover:shadow transition-all" disabled={locked || generationBusy} onClick={continueToSchedule}>Schedule slideshow</Button> : <Button type="button" size="lg" className="h-11 w-full rounded-xl font-semibold shadow-sm hover:shadow transition-all" disabled={!canSave || localPreview || !savingEnabled || busy || uploading || restoring || generationBusy} onClick={() => void save()}>{busy ? "Saving…" : pending ? "Resume save" : "Save slideshow"}</Button>}
     <p role="status" className="text-xs leading-5 text-muted">{restoring ? "Restoring your slides…" : uploading ? "Uploading your slide images…" : localPreview ? "Preview · uploads and saving disabled" : output ? "Your slideshow is saved in Library." : !savingEnabled ? "Slideshow saving is unavailable right now." : slides.length < 2 && !pending ? "Add at least two generated or uploaded images to save a slideshow." : "Save this sequence before scheduling."}</p>
   </div>;
   if (!active || !controlsTarget || !resultsTarget) return null;

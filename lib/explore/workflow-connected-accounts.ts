@@ -68,7 +68,8 @@ export async function loadWorkflowConnectedAccounts(dependencies: {
   const token = await dependencies.getOwnerToken();
   dependencies.assertActive();
   if (!token) throw new Error("Sign in to view your connected accounts.");
-  const response = await dependencies.fetch("/api/social/connections", {
+  const { fetch: sendRequest } = dependencies;
+  const response = await sendRequest("/api/social/connections", {
     method: "GET", cache: "no-store", headers: { Authorization: `Bearer ${token}` }, signal,
   });
   const value: unknown = await response.json().catch(() => null);

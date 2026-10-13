@@ -1,0 +1,19 @@
+# Complete production release, 13 October 2026
+
+Status: preparation in progress. Deployment has not yet been claimed.
+
+The initial complete worktree audit includes 233 intentional changed/new paths: Explore layouts, inline scheduling, clip-draft persistence, background preparation, caption review and recovery, partial generation discovery, character batch progress, slideshow-only Trending, worker contracts, infrastructure configuration, tests and documentation. Four Explore migrations are missing from production. The production MCP/plugin source is newer than this checkout and must be merged before release to preserve its approved audio, group, Library, reference and plugin 0.1.11 contracts.
+
+Release order follows `infra/gcp/README.md`: reviewed and validated Git source to main, only missing compatible Supabase migrations, exact-source staged Vercel builds, matching immutable GCP worker rollout, then live promotion and authenticated production verification. Staging holds the live domains across the app/worker compatibility window. Existing MCP write gates remain at their persisted settings; optional warm-receiver configuration defaults off and requires a reviewed infrastructure plan before activation.
+
+All initial changes and hashes are recorded in [the inventory](production-release-inventory-2026-10-13.json). Every excluded path and its reason is recorded in [the exclusion manifest](production-release-excluded-paths-2026-10-13.md). Temporary generated output, ignored secrets/local configuration, dependencies, builds, logs and infrastructure state remain on disk. No intentional project source is excluded.
+
+Final validation, migration ledger, source SHA, deployment identities, worker digest, rollback metadata and production acceptance will be recorded here after execution. Production smoke checks must use the actual domains and must not submit paid generations or social posts.
+
+## Preparation checkpoint
+
+The production MCP/plugin ancestor has been merged without runtime conflicts; documentation history from both branches is retained. Full default Turbopack production build and website/worker TypeScript checks pass. The broad application run passed 1,370 tests and the compiled worker suite passed 606 tests. The full MCP suite passes, and the caption browser fixture passed generation/review, corrections, seeking across the demo boundary, style/placement, final draft, GET-only reload recovery and stale-caption removal. The fixture now serves proper HTTP byte ranges, matching production media delivery. The 0.1.11 package validates and all 33 public production baseline checks pass.
+
+Release preparation corrected unapplied Explore table privileges to revoke production default ALL grants before regranting only the required service-role access. Real PostgreSQL regressions reproduce those defaults and verify browser roles denied, immutable receipts append-only and no service-role DELETE/TRUNCATE. Caption RPC text guards match the current production definitions. The CLI migration dry run could not complete because its saved Supabase access token is invalid; the existing scoped Supabase MCP connection still performs authorized read-only checks. Production retains 130 migration entries, with the four Explore migrations absent.
+
+The user requested waiting for ongoing shared-workspace edits. No main push, production migration, worker build/rollout, Vercel setting change or live promotion has run in this chat. The Explore chat continues restoring final reference pickers, and the independent account-settings release is in progress. Freeze/source validation and live-target reconciliation must be repeated after those finish. The optional warm receiver remains disabled; the existing production recovery scheduler is enabled and the active video-render Job has finalization configuration.

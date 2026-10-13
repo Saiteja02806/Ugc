@@ -13,14 +13,14 @@ const styles = new Proxy({}, { get: (_target, name) => String(name) });
 
 // Execute the real presentation components with isolated React/Next contexts.
 // This tests link destinations and pending UI, not browser navigation/network.
-function load(path, imports = {}, environment = "production") {
+function load(path, imports = {}, environment = "production", flags = {}) {
   const compiled = ts.transpileModule(read(path), {
     compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
   }).outputText;
   const exported = {};
   vm.runInNewContext(compiled, {
     exports: exported,
-    process: { env: { NODE_ENV: environment } },
+    process: { env: { NODE_ENV: environment, ...flags } },
     URLSearchParams,
     require: name => {
       if (name === "react/jsx-runtime") return { jsx: element, jsxs: element, Fragment: "fragment" };
@@ -64,7 +64,7 @@ test("pending feedback reflects Next link status, clears on completion and reser
 test("all three workflow cards keep real links and place feedback inside the corresponding link", () => {
   const { ExploreWorkflowCard } = load("components/explore/explore-workflow-card.tsx", {
     "next/link": link,
-    react: { useRef: () => ({ current: null }), useEffect: () => {} },
+    "@/components/explore/use-cover-playback": { useCoverPlayback: () => ({ current: null }) },
     "@/components/explore/explore-link-indicator": indicatorImport,
   });
   for (const workflow of workflows.EXPLORE_WORKFLOWS) {
@@ -75,7 +75,7 @@ test("all three workflow cards keep real links and place feedback inside the cor
       assert.equal(anchor.props.onClick, undefined);
       assert.equal(anchor.props.onNavigate, undefined);
       assert.equal(anchor.props.disabled, undefined);
-      assert.equal(anchor.props.prefetch, undefined);
+      assert.equal(anchor.props.prefetch, true);
       assert.equal(nodes(anchor).find(node => node.type === "video").props.controls, undefined);
     }
   }
@@ -85,7 +85,7 @@ test("AI character cover and caption remain inside a single live link without a 
   const { AICharacterCard } = load("components/explore/ai-character-card.tsx", {
     "next/link": link,
     "next/image": { default: "image", __esModule: true },
-    react: { useRef: () => ({ current: null }), useEffect: () => {} },
+    "@/components/explore/use-cover-playback": { useCoverPlayback: () => ({ current: null }) },
     "@/components/explore/explore-link-indicator": indicatorImport,
   });
   for (const localPreview of [false, true]) {
@@ -154,6 +154,56 @@ test("production Explore renders synchronously without consuming request query p
   assert.equal(preview.type, "suspense");
   assert.equal(preview.props.fallback.type, "explore");
   assert.equal(preview.props.children.type, "preview-entry");
+});
+
+test("production format routes do not wait for query parameters, while development fixtures stay available", async () => {
+  const fixtures = [{ id: "local-reference" }];
+  const imports = {
+    react: { Suspense: "suspense" },
+    "@/components/explore/format-workspace": { FormatWorkspace: "format-workspace" },
+    "@/components/layout/workspace-content-loading": { WorkspaceContentLoading: "workspace-loading" },
+    "@/lib/explore/recreate-catalog": { getLocalRecreateReferences: () => fixtures },
+  };
+  for (const [path, format] of [["hook-video", "hook"], ["wall-of-text", "wall_text"], ["slideshows", "slideshow"]]) {
+    for (const enabled of ["true", "false"]) {
+      const flags = { EXPLORE_FINISHING_ENABLED: enabled, EXPLORE_FORMAT_EDITING_ENABLED: "true", EXPLORE_SLIDESHOW_SAVING_ENABLED: enabled };
+      const { default: Page } = load(`app/explore/${path}/page.tsx`, imports, "production", flags);
+      const searchParams = { then() { throw new Error(`${path} must not wait for production query parameters`); } };
+      const tree = Page({ searchParams });
+      assert.equal(tree instanceof Promise, false);
+      assert.equal(tree.type, "suspense");
+      assert.equal(tree.props.fallback.type, "workspace-loading");
+      assert.equal(tree.props.children.type, "format-workspace");
+      assert.equal(tree.props.children.props.format, format);
+      assert.equal(tree.props.children.props.previewReferences, undefined);
+      assert.equal(tree.props.children.props[format === "slideshow" ? "slideshowSavingEnabled" : "finishingEnabled"], enabled === "true");
+
+      const { default: DevPage } = load(`app/explore/${path}/page.tsx`, imports, "development", flags);
+      for (const preview of [undefined, "1"]) {
+        const devTree = DevPage({ searchParams: Promise.resolve({ preview }) });
+        const child = devTree.props.children;
+        const workspace = await child.type(child.props);
+        assert.equal(workspace.type, "format-workspace");
+        assert.equal(workspace.props.format, format);
+        assert.equal(workspace.props.previewReferences, preview === "1" ? fixtures : undefined);
+      }
+    }
+  }
+});
+
+test("Build AI influencer renders without waiting for production query parameters", async () => {
+  const imports = {
+    react: { Suspense: "suspense" },
+    "@/components/characters/character-workspace": { CharacterWorkspace: "character-workspace" },
+  };
+  const { default: Page } = load("app/explore/build-character/page.tsx", imports);
+  const tree = Page({ searchParams: { then() { throw new Error("Builder must not wait for production query parameters"); } } });
+  assert.equal(tree.type, "character-workspace");
+  assert.equal(tree instanceof Promise, false);
+  const { default: DevPage } = load("app/explore/build-character/page.tsx", imports, "development");
+  const dev = DevPage({ searchParams: Promise.resolve({ preview: "1" }) });
+  const preview = await dev.props.children.type(dev.props.children.props);
+  assert.equal(preview.props.localPreview, true);
 });
 
 test("Explore preview URL handling stays client-side and cannot enable production preview", () => {

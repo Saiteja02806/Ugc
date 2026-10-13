@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowUpRight, Headphones, ImageIcon, Sparkles, Video } from "lucide-react";
+import { Headphones, ImageIcon, Sparkles, Video } from "lucide-react";
 import Link from "next/link";
 
 import { AICharacterCard } from "@/components/explore/ai-character-card";
 import { ExploreWorkflowCard } from "@/components/explore/explore-workflow-card";
+import { ExploreLinkIndicator } from "@/components/explore/explore-link-indicator";
 import styles from "@/components/explore/explore-workspace.module.css";
 import scrollbars from "@/components/ui/quiet-scrollbar.module.css";
 import { EXPLORE_QUICK_STARTS, getQuickStartPreviewHref } from "@/lib/explore/launch-presets";
@@ -42,7 +43,7 @@ export function ExploreWorkspace({ localPreview = false }: { localPreview?: bool
                     >
                       <Icon className="size-[18px] shrink-0 text-muted" strokeWidth={1.7} aria-hidden="true" />
                       <span className={styles.toolTitle}>{shortcut.title}</span>
-                      <ArrowUpRight className={cn(styles.arrow, "size-3.5 shrink-0 text-muted")} aria-hidden="true" />
+                      <ExploreLinkIndicator label={shortcut.title} className={cn(styles.arrow, "size-3.5 shrink-0 text-muted")} />
                     </Link>
                   );
                 })}

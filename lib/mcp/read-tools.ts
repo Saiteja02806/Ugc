@@ -8,7 +8,6 @@ import { getUserSubscription, type UserSubscriptionInfo } from "@/lib/billing/su
 import { getBusinessProfileForUser, isBusinessProfileOnboardingComplete } from "@/lib/business-profiles/db";
 import { getMissingBusinessProfileOnboardingFields } from "@/lib/business-profiles/schema";
 import {
-  AI_STUDIO_GENERATION_QUANTITIES,
   AI_STUDIO_IMAGE_ASPECT_RATIOS,
   AI_STUDIO_VIDEO_ASPECT_RATIOS,
 } from "@/lib/ai-studio/generation-settings";
@@ -30,7 +29,10 @@ const mediaSourceTypeDescription =
 export const MCP_MEDIA_COLLECTIONS = ["influencer", "video", "image"] as const;
 const mediaCollection = z.enum(MCP_MEDIA_COLLECTIONS).describe(mediaCollectionDescription);
 const mediaSourceType = z.enum(mediaSourceTypes).describe(mediaSourceTypeDescription);
-export const generationCount = z.literal([1, 2, 4]).describe(
+// Screen quantities may expand independently of the reviewed MCP batch API.
+// Advertise only counts accepted by this tool's input and output contracts.
+const MCP_GENERATION_QUANTITIES = [1, 2, 4] as const;
+export const generationCount = z.literal(MCP_GENERATION_QUANTITIES).describe(
   "Number of outputs to create. Choose 1, 2, or 4.",
 );
 const videoToolRegistered = registeredGenerationMcpTools.includes("generate_video");
@@ -320,14 +322,14 @@ export function registerReadMcpTools(server: McpServer) {
       image_generation: {
         available: imageAvailable,
         aspect_ratios: imageAvailable ? [...AI_STUDIO_IMAGE_ASPECT_RATIOS] : [],
-        counts: imageAvailable ? [...AI_STUDIO_GENERATION_QUANTITIES] : [],
+        counts: imageAvailable ? [...MCP_GENERATION_QUANTITIES] : [],
         max_reference_images: imageAvailable ? 1 : 0,
       },
       video_generation: {
         available: videoAvailable,
         aspect_ratios: videoAvailable ? [...AI_STUDIO_VIDEO_ASPECT_RATIOS] : [],
         durations_seconds: videoAvailable ? [...MCP_VIDEO_DURATIONS] : [],
-        counts: videoAvailable ? [...AI_STUDIO_GENERATION_QUANTITIES] : [],
+        counts: videoAvailable ? [...MCP_GENERATION_QUANTITIES] : [],
         max_reference_images: videoAvailable ? 1 : 0,
         max_reference_videos: 0,
       },

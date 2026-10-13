@@ -5,6 +5,7 @@ import vm from "node:vm";
 import ts from "typescript";
 
 const source = readFileSync(new URL("../components/explore/workflow-saved-audio-choices.tsx", import.meta.url), "utf8");
+const mediaSource = readFileSync(new URL("../components/explore/use-local-workflow-media.ts", import.meta.url), "utf8");
 const voice = { id: "bIHbv24MWmeRgasZH58o", name: "Will - Relaxed Optimist", labels: { accent: "american" }, previewUrl: "https://storage.googleapis.com/eleven-public-prod/sample.mp3" };
 const element = (type, props = {}) => typeof type === "function" ? type(props) : { type, props };
 const nodes = node => Array.isArray(node) ? node.flatMap(nodes) : node && typeof node === "object" ? [node, ...nodes(node.props?.children)] : [];
@@ -13,7 +14,26 @@ const text = node => Array.isArray(node) ? node.map(text).join(" ") : node && ty
 function harness({ paid = true, owner = "owner", user = "owner", response = () => new Response(new Uint8Array([1,2,3]), { headers: { "Content-Type": "audio/mpeg" } }) } = {}) {
   let cursor = 0, referenced = 0;
   const slots = [], calls = [], choices = [];
-  const audio = { asset: null, loading: false, error: null, choose: async (file, options) => { choices.push({file, options}); return true; } };
+  let mediaCursor = 0, nextUrl = 0;
+  const mediaSlots = [{ name: "previous.mp3", url: "blob:previous", duration: 5, file: new File(["previous"], "previous.mp3", { type: "audio/mpeg" }) }];
+  const revoked = [];
+  const mediaModule = {};
+  vm.runInNewContext(ts.transpileModule(mediaSource, { fileName: "media.ts", compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, {
+    exports: mediaModule,
+    require: name => { assert.equal(name, "react"); return {
+      useState: initial => { const index = mediaCursor++; if (!(index in mediaSlots)) mediaSlots[index] = initial; return [mediaSlots[index], value => { mediaSlots[index] = typeof value === "function" ? value(mediaSlots[index]) : value; }]; },
+      useRef: initial => { const index = mediaCursor++; return mediaSlots[index] ??= { current: initial }; },
+      useEffect() {},
+    }; },
+    Error, setTimeout, clearTimeout,
+    URL: { createObjectURL: () => `blob:selected-${++nextUrl}`, revokeObjectURL: url => revoked.push(url) },
+    document: { createElement: () => ({ duration: 5, removeAttribute() {}, load() {}, set src(_) { queueMicrotask(() => this.onloadedmetadata?.()); } }) },
+  });
+  function attachment() {
+    mediaCursor = 0;
+    const audio = mediaModule.useLocalWorkflowMedia("audio");
+    return { ...audio, chooseRemote: (read, options, acceptFile) => audio.chooseRemote(read, { ...options, onRead: media => { choices.push({ file: media.file, options }); options?.onRead?.(media); } }, acceptFile) };
+  }
   const imports = {
     react: {
       useState: initial => { const i = cursor++; if (!(i in slots)) slots[i] = initial; return [slots[i], value => { slots[i] = value; }]; },
@@ -40,7 +60,7 @@ function harness({ paid = true, owner = "owner", user = "owner", response = () =
   vm.runInNewContext(ts.transpileModule(source, {fileName:"choices.tsx", compilerOptions:{ target:ts.ScriptTarget.ES2022, module:ts.ModuleKind.CommonJS, jsx:ts.JsxEmit.ReactJSX }}).outputText, {
     exports: exported, require: name => { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, File, AbortController, Error,
   });
-  return { calls, choices, referenced: () => referenced, render() { cursor = 0; return exported.WorkflowSavedAudioChoices({ownerId:owner, audio, onVoiceReference: () => referenced++}); } };
+  return { calls, choices, revoked, get audio() { return attachment(); }, referenced: () => referenced, render() { cursor = 0; return exported.WorkflowSavedAudioChoices({ownerId:owner, audio: attachment(), onVoiceReference: () => referenced++}); } };
 }
 
 test("Use sample passes the authenticated normalized MP3 to the voice-reference attachment only", async () => {
@@ -67,11 +87,69 @@ test("failed or non-audio responses display an error without replacing the attac
     const actual = harness({response});
     nodes(actual.render()).find(node => node.props["aria-label"] === `Use ${voice.name} sample as voice reference`).props.onClick();
     await new Promise(setImmediate);
-    const error = nodes(actual.render()).find(node => node.props.role === "alert");
-    assert.match(text(error), /complete audio recording|Sample unavailable/);
+    assert.match(actual.audio.error, /complete audio recording|Sample unavailable/);
+    assert.equal(actual.audio.asset.url, "blob:previous");
     assert.equal(actual.choices.length, 0);
     assert.equal(actual.referenced(), 0);
   }
+});
+
+test("a saved voice is pending in the parent attachment from the click until download succeeds", async () => {
+  let finish;
+  const actual = harness({ response: () => new Promise(resolve => { finish = resolve; }) });
+  nodes(actual.render()).find(node => node.props["aria-label"] === `Use ${voice.name} sample as voice reference`).props.onClick();
+  assert.equal(actual.audio.loading, true, "Generate must see pending state before the file download finishes");
+  assert.equal(actual.audio.asset.url, "blob:previous");
+  assert.equal(actual.choices.length, 0);
+  finish(new Response(new Uint8Array([1, 2, 3]), { headers: { "Content-Type": "audio/mpeg" } }));
+  await new Promise(setImmediate);
+  assert.equal(actual.audio.loading, false);
+  assert.equal(actual.audio.error, null);
+  assert.equal(actual.choices.length, 1);
+});
+
+test("removing audio while a saved choice downloads prevents a late replacement", async () => {
+  let finish;
+  const actual = harness({ response: () => new Promise(resolve => { finish = resolve; }) });
+  nodes(actual.render()).find(node => node.props["aria-label"] === `Use ${voice.name} sample as voice reference`).props.onClick();
+  actual.audio.remove();
+  finish(new Response(new Uint8Array([1, 2, 3]), { headers: { "Content-Type": "audio/mpeg" } }));
+  await new Promise(setImmediate);
+  assert.equal(actual.choices.length, 0);
+  assert.equal(actual.audio.asset, null);
+  assert.equal(actual.audio.loading, false);
+});
+
+test("failed local replacements retain the prior preview and clear only after removal or a successful choice", async () => {
+  const actual = harness();
+  assert.equal(await actual.audio.choose(new File(["invalid"], "wrong.png", { type: "image/png" })), false);
+  assert.equal(actual.audio.asset.url, "blob:previous");
+  assert.match(actual.audio.error, /Choose an audio file/);
+  assert.equal(await actual.audio.choose(new File(["valid"], "selected.mp3", { type: "audio/mpeg" })), true);
+  assert.equal(actual.audio.error, null);
+  assert.equal(actual.audio.asset.name, "selected.mp3");
+  actual.audio.remove();
+  assert.equal(actual.audio.asset, null);
+  assert.equal(actual.audio.error, null);
+});
+
+test("closing an interrupted saved selection keeps a visible error; choosing a newer file wins over its late response", async () => {
+  const actual = harness();
+  const controller = new AbortController();
+  let finish;
+  const pending = actual.audio.chooseRemote(() => new Promise(resolve => { finish = resolve; }), { signal: controller.signal });
+  assert.equal(actual.audio.loading, true);
+  controller.abort();
+  finish(new File(["valid"], "cancelled.mp3", { type: "audio/mpeg" }));
+  assert.equal(await pending, false);
+  assert.match(actual.audio.error, /selection was interrupted/);
+  assert.equal(actual.audio.asset.url, "blob:previous");
+  const late = actual.audio.chooseRemote(() => new Promise(resolve => { finish = resolve; }));
+  assert.equal(await actual.audio.choose(new File(["new"], "newer.mp3", { type: "audio/mpeg" })), true);
+  finish(new File(["late"], "late.mp3", { type: "audio/mpeg" }));
+  assert.equal(await late, false);
+  assert.equal(actual.audio.asset.name, "newer.mp3");
+  assert.equal(actual.audio.error, null);
 });
 
 test("preview-only voices and another owner's bookmarks cannot be attached", () => {
@@ -82,4 +160,20 @@ test("preview-only voices and another owner's bookmarks cannot be attached", () 
     assert.equal(nodes(actual.render()).filter(node => node.type === "button").length, 0);
     assert.equal(actual.calls.length, 0);
   }
+});
+
+test("remote soundtrack selection stays pending through download and hands off to the caller's upload callback", async () => {
+  const actual = harness();
+  let download;
+  const acceptedFiles = [];
+  // The shared controller's callback form must preserve editor-specific uploads.
+  // Use the real controller directly so its acceptance callback is observable.
+  const raw = actual.audio;
+  const pending = raw.chooseRemote(() => new Promise(resolve => { download = resolve; }), {}, async file => { acceptedFiles.push(file.name); return true; });
+  assert.equal(actual.audio.loading, true);
+  download(new File(["saved"], "saved.mp3", { type: "audio/mpeg" }));
+  assert.equal(await pending, true);
+  assert.deepEqual(acceptedFiles, ["saved.mp3"]);
+  assert.equal(actual.audio.asset.url, "blob:previous", "The acceptance callback controls persistence; the download must not replace it with a preview-only source");
+  assert.equal(actual.audio.loading, false);
 });

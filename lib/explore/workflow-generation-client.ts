@@ -9,10 +9,12 @@ export type WorkflowGenerationDraft = {
   instructions: string;
   settings: WorkflowGenerationSettings;
   creator: WorkflowImageSource | null;
+  referenceImages?: WorkflowImageSource[];
   appScreen?: (WorkflowImageSource & { kind: "image" | "video"; duration?: number | null }) | null;
   videoReference: WorkflowTimedSource | null;
   audioReference: WorkflowTimedSource | null;
   referencesPending?: boolean;
+  referencesError?: string | null;
 };
 export type WorkflowGenerationBatch = {
   jobs: { jobId: string; videoId: string }[];
@@ -23,8 +25,16 @@ export type WorkflowGenerationBatch = {
 const JOB_ID = /^[a-zA-Z0-9_-]{1,128}$/;
 const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === "object" && !Array.isArray(value));
 
+function selectedWorkflowImages(draft: WorkflowGenerationDraft) {
+  const selected = [...(draft.referenceImages ?? (draft.creator ? [draft.creator] : [])), ...(draft.appScreen?.kind === "image" ? [draft.appScreen] : [])];
+  return [...new Map(selected.map(image => [image.url, image])).values()];
+}
+
 export function getWorkflowGenerationDraftError(draft: WorkflowGenerationDraft) {
   if (draft.referencesPending) return "Wait for your selected files to finish loading.";
+  // A failed replacement may retain the prior preview. Do not submit that
+  // stale reference until the user replaces or removes the rejected input.
+  if (draft.referencesError) return draft.referencesError;
   const prompt = normalizeAIStudioPrompt(draft.instructions);
   if (!prompt) return "Write your instructions before generating a video.";
   const lengthError = getAIStudioPromptLengthError(prompt, draft.settings.model === "kling_3_0" ? AI_STUDIO_KLING_PROMPT_MAX_LENGTH : AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH);
@@ -43,7 +53,11 @@ export function getWorkflowGenerationDraftError(draft: WorkflowGenerationDraft) 
     const audio = source === draft.audioReference;
     if (!source.file.type.startsWith(audio ? "audio/" : "video/") || !Number.isFinite(source.file.size) || source.file.size <= 0 || source.file.size > (audio ? 25 : 250) * 1024 ** 2) return "Use a playable reference audio file up to 25 MB or video up to 250 MB.";
   }
-  for (const image of [draft.creator, draft.appScreen?.kind === "image" ? draft.appScreen : null]) {
+  const images = selectedWorkflowImages(draft);
+  const referenceLimit = draft.settings.model === "kling_3_0" ? 2 : 6;
+  const imageLimit = referenceLimit - videos.length - Number(Boolean(draft.audioReference));
+  if (images.length > imageLimit) return `This model accepts up to ${imageLimit} image references. Remove an image or choose another model.`;
+  for (const image of images) {
     if (image?.file && (!["image/png", "image/jpeg", "image/webp"].includes(image.file.type) || !Number.isFinite(image.file.size) || image.file.size <= 0 || image.file.size > 20 * 1024 ** 2)) {
       return "Use a PNG, JPEG or WebP reference image up to 20 MB.";
     }
@@ -85,6 +99,7 @@ export function createWorkflowGenerationClient(dependencies: {
   assertActive: () => void;
   recovery?: WorkflowGenerationRecovery;
 }) {
+  const { fetch: sendRequest } = dependencies;
   const uploaded = new Map<string, { url: string }>();
   const uploadedMedia = new Map<string, { url: string; assetId: string; duration: number }>();
   let pending: { fingerprint: string; key: string; body?: string; attempted?: boolean } | null = null;
@@ -123,8 +138,7 @@ export function createWorkflowGenerationClient(dependencies: {
       // Snapshot the click, so later edits cannot change an in-flight request.
       const settings = { ...draft.settings };
       const prompt = normalizeAIStudioPrompt(draft.instructions);
-      const selectedImages = [draft.creator, draft.appScreen?.kind === "image" ? draft.appScreen : null].filter((image): image is WorkflowImageSource => Boolean(image));
-      const images = [...new Map(selectedImages.map((image) => [image.url, image])).values()];
+      const images = selectedWorkflowImages(draft).map(image => ({ ...image }));
       const video = draft.videoReference ? { ...draft.videoReference } : draft.appScreen?.kind === "video" ? { ...draft.appScreen } : null;
       const audio = draft.audioReference ? { ...draft.audioReference } : null;
       const fingerprint = JSON.stringify({ kind: draft.kind, prompt, settings, images: images.map((image) => image.url), video: video?.url, audio: audio?.url });
@@ -176,7 +190,7 @@ export function createWorkflowGenerationClient(dependencies: {
           recovery.onChange();
         }
         submission.attempted = true;
-        const response = await dependencies.fetch(dependencies.recovery ? "/api/ai-studio/videos/workflow-start" : "/api/ai-studio/videos/generate", {
+        const response = await sendRequest(dependencies.recovery ? "/api/ai-studio/videos/workflow-start" : "/api/ai-studio/videos/generate", {
           method: "POST",
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Idempotency-Key": submission.key },
           body: submission.body,
@@ -213,7 +227,7 @@ function assertAtomicReceiptResponse(value: unknown, request: { requestKey: stri
     throw new Error("The recovery response could not be verified. Refresh status before generating again.");
   }
 }
-export type WorkflowGenerationRequest = { version: 1 | 2; ownerId: string; kind: WorkflowKind; requestKey: string; quantity: 1 | 2 | 4 };
+export type WorkflowGenerationRequest = { version: 1 | 2; ownerId: string; kind: WorkflowKind; requestKey: string; quantity: 1 | 2 | 3 | 4 };
 export type WorkflowGenerationRecovery = {
   ownerId: string;
   kind: WorkflowKind;
@@ -233,15 +247,15 @@ export function readWorkflowGenerationRequest(storage: Pick<Storage, "getItem">,
     if (raw.length > 1024) throw new Error("oversized");
     const value: unknown = JSON.parse(raw);
     if (!isRecord(value) || ![1, 2].includes(Number(value.version)) || typeof value.version !== "number" || value.ownerId !== ownerId || value.kind !== kind ||
-      typeof value.requestKey !== "string" || !REQUEST_ID.test(value.requestKey) || ![1, 2, 4].includes(Number(value.quantity)) || typeof value.quantity !== "number") throw new Error("invalid");
-    return { version: value.version as 1 | 2, ownerId, kind, requestKey: value.requestKey, quantity: value.quantity as 1 | 2 | 4 };
+      typeof value.requestKey !== "string" || !REQUEST_ID.test(value.requestKey) || ![1, 2, 3, 4].includes(Number(value.quantity)) || typeof value.quantity !== "number") throw new Error("invalid");
+    return { version: value.version as 1 | 2, ownerId, kind, requestKey: value.requestKey, quantity: value.quantity as 1 | 2 | 3 | 4 };
   } catch {
     throw new Error("The saved request cannot be verified. Contact support before starting another generation; do not clear browser storage to retry.");
   }
 }
 
 export function persistWorkflowGenerationRequest(storage: Pick<Storage, "getItem" | "setItem">, ownerId: string, kind: WorkflowKind, requestKey: string, quantity: number) {
-  if (!REQUEST_ID.test(requestKey) || ![1, 2, 4].includes(quantity)) throw new Error("The request identity is invalid.");
+  if (!REQUEST_ID.test(requestKey) || ![1, 2, 3, 4].includes(quantity)) throw new Error("The request identity is invalid.");
   if (readWorkflowGenerationRequest(storage, ownerId, kind)) throw new Error("A previous request is not confirmed. Refresh status first.");
   storage.setItem(workflowGenerationRequestStorageKey(ownerId, kind), JSON.stringify({ version: 2, ownerId, kind, requestKey, quantity }));
   const saved = readWorkflowGenerationRequest(storage, ownerId, kind);
@@ -284,7 +298,8 @@ export async function recoverWorkflowGenerationRequest(dependencies: {
   if (!token) throw new Error("Sign in to recover your saved request.");
   dependencies.assertActive();
   const url = `/api/ai-studio/videos/recover?requestKey=${encodeURIComponent(request.requestKey)}&quantity=${request.quantity}${request.version === 2 ? `&receipt=2&kind=${request.kind}` : ""}`;
-  let response = await dependencies.fetch(url, {
+  const { fetch: sendRequest } = dependencies;
+  let response = await sendRequest(url, {
     method: "GET", cache: "no-store", headers: { Authorization: `Bearer ${token}` },
   });
   let value: unknown = await response.json().catch(() => null);
@@ -296,7 +311,7 @@ export async function recoverWorkflowGenerationRequest(dependencies: {
     dependencies.assertActive();
     if (!currentToken) throw new Error("Sign in to resolve your saved request.");
     assertCurrentRequest();
-    response = await dependencies.fetch(url, { method: "POST", cache: "no-store", headers: { Authorization: `Bearer ${currentToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "resolve" }) });
+    response = await sendRequest(url, { method: "POST", cache: "no-store", headers: { Authorization: `Bearer ${currentToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "resolve" }) });
     value = await response.json().catch(() => null);
     dependencies.assertActive();
   }

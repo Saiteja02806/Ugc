@@ -29,6 +29,7 @@ import {
 } from "@/lib/trending/content-mix";
 import { rebalanceTrendingContentMix } from "@/lib/trending/content-mix-editor";
 import type { TrendingFeedFormat } from "@/lib/trending/feed-items";
+import { isTrendingFormatEnabled, resolveTrendingContentMixForRuntime, TRENDING_SLIDESHOW_ONLY_ENABLED } from "@/lib/trending/format-policy";
 import { cn } from "@/lib/utils";
 
 type ContentMixPayload = {
@@ -116,6 +117,8 @@ const MIX_ROWS: Array<{
 const CONTENT_MIX_RANGE_CLASS =
   "mt-2.5 h-1.5 w-full cursor-pointer appearance-none rounded-full outline-none transition-[filter,opacity] focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:cursor-not-allowed disabled:opacity-70 [&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:-mt-1 [&::-webkit-slider-thumb]:size-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-card [&::-webkit-slider-thumb]:bg-[var(--mix-accent)] [&::-webkit-slider-thumb]:shadow-[0_0_0_1px_var(--mix-accent)] [&::-moz-range-track]:h-1.5 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-transparent [&::-moz-range-thumb]:size-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-card [&::-moz-range-thumb]:bg-[var(--mix-accent)]";
 
+const AVAILABLE_MIX_ROWS = MIX_ROWS.filter(({ format }) => isTrendingFormatEnabled(format));
+
 export function TrendingContentMixDialog({
   onApplied,
   onOpenChange,
@@ -176,9 +179,9 @@ export function TrendingContentMixDialog({
 
         if (controller.signal.aborted) return;
 
-        setPayload(data);
-        setMix({ ...data.preference.mix });
-        setSavedMix({ ...data.preference.mix });
+        setPayload({ ...data, editable: data.editable && !TRENDING_SLIDESHOW_ONLY_ENABLED });
+        setMix(resolveTrendingContentMixForRuntime(data.preference.mix));
+        setSavedMix(resolveTrendingContentMixForRuntime(data.preference.mix));
         setLoadState("ready");
       } catch (loadError) {
         if (controller.signal.aborted) return;
@@ -206,7 +209,7 @@ export function TrendingContentMixDialog({
       mix,
     });
   }, [mix, payload]);
-  const hasChanges = MIX_ROWS.some(
+  const hasChanges = AVAILABLE_MIX_ROWS.some(
     ({ format }) =>
       getMixValue(mix, format) !== getMixValue(savedMix, format),
   );
@@ -283,9 +286,9 @@ export function TrendingContentMixDialog({
             Adjust content mix
           </DialogTitle>
           <DialogDescription className="leading-5">
-            Choose how your daily Trending content is distributed. You can set
-            any format to 100%. Editing an individual creative remains under
-            Edit.
+            {TRENDING_SLIDESHOW_ONLY_ENABLED
+              ? "Your daily Trending content is 100% slideshows. Use Edit to change an individual slideshow."
+              : "Choose how your daily Trending content is distributed. You can set any format to 100%. Editing an individual creative remains under Edit."}
           </DialogDescription>
         </DialogHeader>
 
@@ -348,7 +351,7 @@ export function TrendingContentMixDialog({
                   className="mt-4 flex h-1.5 w-full overflow-hidden rounded-full bg-border/70"
                   role="img"
                 >
-                  {MIX_ROWS.map(({ barClass, format }) => (
+                  {AVAILABLE_MIX_ROWS.map(({ barClass, format }) => (
                     <span
                       key={format}
                       className={cn("h-full transition-[width]", barClass)}
@@ -360,13 +363,14 @@ export function TrendingContentMixDialog({
 
               {!payload.editable ? (
                 <p className="mt-4 rounded-xl border border-border bg-card-muted px-4 py-3 text-xs leading-5 text-muted">
-                  Content-mix adjustments are temporarily unavailable. Refresh
-                  and try again.
+                  {TRENDING_SLIDESHOW_ONLY_ENABLED
+                    ? "Slideshows are set to 100% of your daily content."
+                    : "Content-mix adjustments are temporarily unavailable. Refresh and try again."}
                 </p>
               ) : null}
 
               <div className="mt-4 space-y-3">
-                {MIX_ROWS.map(
+                {AVAILABLE_MIX_ROWS.map(
                   ({
                     accentColor,
                     format,

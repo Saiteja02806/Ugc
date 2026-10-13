@@ -6,12 +6,13 @@ import ffmpeg from "ffmpeg-static";
 import ffprobe from "ffprobe-static";
 
 const source = path.resolve(process.argv[2] ?? "landing_page/heeo_Section/left_side.mp4");
+const name = process.argv[3] ?? "left_side-v2";
+if (!/^left_side-v\d+$/.test(name)) throw new Error("Expected a versioned left hero asset name.");
 const destination = path.resolve("public/marketing/showcase/hero-restored");
 const staging = path.resolve(".tmp/landing-hero-left");
 mkdirSync(staging, { recursive: true });
 mkdirSync(destination, { recursive: true });
-const temporary = mkdtempSync(path.join(staging, "v2-"));
-const name = "left_side-v2";
+const temporary = mkdtempSync(path.join(staging, `${name}-`));
 const hash = file => createHash("sha256").update(readFileSync(file)).digest("hex");
 const probe = file => JSON.parse(execFileSync(ffprobe.path, ["-v", "error", "-show_streams", "-of", "json", file], { windowsHide: true, encoding: "utf8" }));
 const run = args => execFileSync(ffmpeg, ["-hide_banner", "-loglevel", "error", "-y", ...args], { windowsHide: true, encoding: "utf8" });

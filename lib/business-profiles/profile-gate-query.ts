@@ -1,6 +1,7 @@
 "use client";
 
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { withReadDeadline } from "@/lib/http/read-deadline";
 
 export const BUSINESS_PROFILE_GATE_STALE_TIME_MS = 30 * 60 * 1_000;
 export const BUSINESS_PROFILE_GATE_GC_TIME_MS = 60 * 60 * 1_000;
@@ -16,6 +17,7 @@ export function getBusinessProfileGateQueryKey(userId: string) {
 export async function fetchBusinessProfileGate(
   signal?: AbortSignal,
 ): Promise<BusinessProfileGateResult> {
+  return withReadDeadline(async bounded => {
   const token = await getCurrentUserIdToken();
 
   if (!token) {
@@ -25,7 +27,7 @@ export async function fetchBusinessProfileGate(
   const response = await fetch("/api/business-profile", {
     cache: "no-store",
     headers: { Authorization: `Bearer ${token}` },
-    signal,
+    signal: bounded,
   });
   const data = (await response.json().catch(() => null)) as {
     message?: string;
@@ -40,4 +42,5 @@ export async function fetchBusinessProfileGate(
   return {
     onboardingComplete: data.profile?.onboardingComplete === true,
   };
+  }, signal);
 }

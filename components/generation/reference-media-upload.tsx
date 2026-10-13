@@ -1,13 +1,13 @@
 "use client";
 
-import { ImagePlus, Loader2, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { ImagePlus, Loader2, Plus, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ReferenceUploadPreview } from "@/components/generation/reference-upload-preview";
 import { Button } from "@/components/ui/button";
 import { uploadAIStudioReferenceMedia, type AIStudioReferenceKind, type AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import { getReferenceImageFileError } from "@/lib/generation/reference-image";
 
-export function ReferenceMediaUpload({ active = true, allowedKinds, disabled = false, expectedUserId, maxVideoDurationSeconds = 3, selection, onChange, onPendingChange, onErrorChange }: {
+export function ReferenceMediaUpload({ active = true, allowedKinds, disabled = false, expectedUserId, maxVideoDurationSeconds = 3, selection, onChange, onPendingChange, onErrorChange, inline = false, referencePreview }: {
   active?: boolean;
   allowedKinds: readonly AIStudioReferenceKind[];
   disabled?: boolean;
@@ -17,6 +17,8 @@ export function ReferenceMediaUpload({ active = true, allowedKinds, disabled = f
   onChange: (selection: AIStudioReferenceMedia | null) => void;
   onPendingChange?: (pending: boolean) => void;
   onErrorChange?: (message: string | null) => void;
+  inline?: boolean;
+  referencePreview?: ReactNode;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const busyRef = useRef(false);
@@ -101,6 +103,9 @@ export function ReferenceMediaUpload({ active = true, allowedKinds, disabled = f
 
   const allowedLabel = allowedKinds.join(" or ");
   const buttonLabel = selection ? `Replace reference ${selection.kind}` : `Add reference ${allowedLabel}`;
+  const preview = pending ? <ReferenceUploadPreview kind={pending.kind} url={pending.url} name={pending.file.name} label="Reference" pending />
+    : selection ? <ReferenceUploadPreview kind={selection.kind} url={selection.asset.url} name={`reference ${selection.kind}`} label="Reference" disabled={disabled || busy} onRemove={() => { setUploadError(null); onChange(null); }} />
+    : referencePreview;
   return (
     <div className="min-w-0 space-y-1.5">
       <div className="flex min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain px-1 py-1.5">
@@ -109,10 +114,11 @@ export function ReferenceMediaUpload({ active = true, allowedKinds, disabled = f
           event.currentTarget.value = "";
           if (file) void selectFile(file);
         }} />
+        {inline ? preview : null}
         <Button type="button" variant="muted" size="icon-sm" className="size-9 shrink-0 rounded-lg border border-dashed border-border text-muted" aria-label={buttonLabel} title={`${buttonLabel}. Choose, drop, or paste a file.`} disabled={disabled || busy} onClick={() => inputRef.current?.click()}>
-          {busy ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : selection ? <RefreshCw className="size-4" aria-hidden="true" /> : <ImagePlus className="size-4" aria-hidden="true" />}
+          {busy ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : inline ? <Plus className="size-4" aria-hidden="true" /> : selection ? <RefreshCw className="size-4" aria-hidden="true" /> : <ImagePlus className="size-4" aria-hidden="true" />}
         </Button>
-        {pending ? <ReferenceUploadPreview kind={pending.kind} url={pending.url} name={pending.file.name} label="Reference" pending /> : selection ? <ReferenceUploadPreview kind={selection.kind} url={selection.asset.url} name={`reference ${selection.kind}`} label="Reference" disabled={disabled || busy} onRemove={() => { setUploadError(null); onChange(null); }} /> : null}
+        {!inline ? preview : null}
       </div>
       {errorMessage ? <div className="flex flex-wrap items-center gap-2"><p role="alert" className="text-xs font-medium text-destructive">{errorMessage}</p>{onErrorChange ? <Button type="button" variant="ghost" size="sm" onClick={() => setUploadError(null)}>Remove failed reference</Button> : null}</div> : null}
     </div>

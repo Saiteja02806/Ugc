@@ -37,6 +37,7 @@ function harness(code, exportName) {
     "@/worker/src/lib/explore-background-audio": audioTiming,
     "@/worker/src/subtitles/styles": subtitleStyles,
     "@/components/explore/workflow-subtitle-preview": { WorkflowSubtitlePreview: "subtitle-preview" },
+    "./workflow-caption-editor": { WorkflowCaptionEditor: "caption-editor" },
     "react/jsx-runtime": { jsx: element, jsxs: element, Fragment: "fragment" },
   };
   const exported = {};
@@ -113,7 +114,7 @@ test("connected subtitle controls save real finishing options and Audio selectio
   assert.equal(music.props["aria-checked"], false); music.props.onClick(); assert.equal(changes[3].backgroundMusic, true);
   const picker = nodes(tree).find(n => n.type === "saved-audio-picker"); assert.equal(picker.props.attachment, props.demoAudio); assert.equal(picker.props.ownerId, "owner");
   assert.doesNotMatch(text(tree), /Music and subtitle rendering are not connected in this local preview/);
-  assert.match(text(tree), /Apply edits to save captions on your video/);
+  assert.match(text(tree), /generate captions and correct their words before preparing your final video/);
 });
 
 test("visual subtitle choices default to Clean and rerender locally without enabling the generator", () => {
@@ -216,7 +217,7 @@ test("settings occupy two rows with Quality, Videos and Ratio alongside each oth
   assert.match(styles, /\.settingField:nth-child\(-n\+2\)[^}]*grid-column: span 3/);
   assert.match(styles, /\.referenceGrid[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(styles, /\.referenceButton\s*\{[^}]*width: 100%[^}]*aspect-ratio: 1/);
-  assert.match(styles, /\.referenceButton\s*\{[^}]*border-radius: 8px/);
+  assert.match(styles, /\.referenceButton\s*\{[^}]*border-radius: 12px/);
 });
 
 test("actual attachment pickers receive only their own media state", () => {
@@ -265,7 +266,7 @@ test("permanent layout is limited to workflows 1 and 3, with narrow in-flow cont
   for (const kind of ["hook", "phone"]) {
     const workspace = read(`components/explore/${kind}-workflow-preview.tsx`);
     const header = workspace.slice(workspace.indexOf("<header"), workspace.indexOf("</header>"));
-    assert.doesNotMatch(header, /Attach audio|Attached demo|Popover|<Button/);
+    assert.doesNotMatch(header, /Attach audio|Attached demo|Popover/);
     assert.doesNotMatch(workspace, /wideLayout|useSyncExternalStore|demoOpen|<Dialog/);
     assert.match(workspace, /<WorkflowCompositionPanel/);
   }
@@ -405,7 +406,7 @@ test("concise reference pickers preserve uploads, playback, removal, errors and 
 test("both workflows keep concise voice-reference guidance separate from demo-only playback", () => {
   for (const [audioLabel, videoLabel] of [["Hook audio", "Hook"], ["Creator audio", "Phone video"]]) {
     const reference = audioRender({ audioLabel, audio: makeAttachment("voice.wav", true) });
-    assert.match(text(reference.tree), /Voice reference/);
+    assert.match(text(reference.tree), /Audio reference/);
     assert.match(text(reference.tree), /Requires Seedance 2\.5 · Up to 30 seconds/);
     assert.doesNotMatch(text(reference.tree), /background music|demo audio|OpenRouter|Files upload|exact copy/);
     const demo = render({ videoLabel, demo: makeAttachment("demo.mp4", true), demoAudio: makeAttachment("demo.wav", true) });

@@ -11,9 +11,13 @@ const migration = readProjectFile(
   "supabase/migrations/20260906120000_add_reaction_trending_delivery.sql",
 );
 
-test("Adjust exposes Reaction Reels as an editable fourth format", () => {
+test("Adjust retains the Reaction implementation behind the available-format filter", () => {
   assert.match(dialog, /format: "reaction"/);
   assert.match(dialog, /label: "Reaction Reels"/);
+  assert.match(dialog, /MIX_ROWS\.filter\(\(\{ format \}\) => isTrendingFormatEnabled\(format\)\)/);
+  assert.match(dialog, /AVAILABLE_MIX_ROWS\.map/);
+  assert.match(route, /editable: !TRENDING_SLIDESHOW_ONLY_ENABLED/);
+  assert.match(route, /TRENDING_SLIDESHOW_ONLY_ENABLED && value\.carousel !== 100/);
   assert.match(dialog, /updateMix\(format, Number\(event\.target\.value\)\)/);
   assert.match(route, /reaction: z\.number\(\)\.int\(\)\.min\(0\)\.max\(100\)/);
   assert.match(

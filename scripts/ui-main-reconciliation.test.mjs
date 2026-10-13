@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
@@ -28,13 +28,13 @@ test("Recreate previews cannot inherit or submit live jobs even with paid access
     assert.match(source, /const generationLocked = recreateView\?\.preview === true \|\| accessState !== "pro"/);
     assert.match(source, /toolbar=\{recreateView\?\.preview \? undefined/);
     const submit = functionBody(source, handler);
-    assert.ok(submit.indexOf("generationLocked") < submit.indexOf("await fetch("));
+    assert.ok(submit.indexOf("generationLocked") < submit.indexOf("await submitPendingGeneration("));
   }
   for (const [source, name] of [[image, "loadResults"], [video, "loadGeneratedVideos"]]) {
     const load = functionBody(source, name);
     const guard = load.slice(load.indexOf("if (recreateView?.preview)"), load.indexOf("return;", load.indexOf("if (recreateView?.preview)")));
     assert.match(guard, /setResultsLoading\(false\)/);
-    assert.match(guard, /setStoredJobIds\(\[\]\)/);
+    assert.match(guard, /setSubmittedJobIds\(\[\]\)/);
     assert.ok(load.indexOf("return;", load.indexOf("recreateView?.preview")) < load.indexOf("await getCurrentUserIdToken("));
   }
 });
@@ -50,7 +50,7 @@ test("newer main session, history and uploaded-reference recovery remain present
   assert.match(image, /mergeAIStudioImageHistory/);
   assert.match(image, /getVisibleAIStudioImages/);
   assert.match(image, /<ImagePreviewDialog/);
-  assert.match(image, /value === "gemini_3_pro" \? "Gemini 3 Pro"/);
+  assert.match(image, /label: getAIStudioImageModelLabel\(value\)/);
   assert.match(video, /<ReferenceFilesUpload/);
   assert.match(video, /isAIStudioVideoResolutionSupported/);
   assert.match(video, /getAIStudioVideoDurations/);
@@ -61,7 +61,7 @@ test("newer main session, history and uploaded-reference recovery remain present
 
 test("compact presentation is opt-in and keeps newer default composer controls", () => {
   for (const pattern of [/compact = false/, /hasAttachments = true/, /showPromptHint = true/,
-    /unifiedMaxWidthClassName/, /compact \? 96 : layout === "unified" \? 64 : 128/,
+    /unifiedMaxWidthClassName/, /compact \? 72 : layout === "unified" \? 64 : 128/,
     /!compact && layout === "unified" && leadingControl && !hasAttachments/,
     /leadingControl && \(!compact \|\| hasAttachments\)/,
     /\{!hasAttachments \? leadingControl : null\}/]) assert.match(composer, pattern);
@@ -80,10 +80,10 @@ test("custom Recreate empty content cannot replace progress, loading or failure 
 });
 
 test("selected image references use the existing trusted storage API contract", () => {
-  assert.match(image, /referenceImageUrl: referenceImage\?\.asset\.url \?\? recreateView\?\.referenceImageUrl \?\? null/);
-  assert.match(image, /submissionKeyRef\.current = null;\s*\}, \[recreateView\?\.referenceImageUrl\]\)/);
+  assert.match(image, /referenceImageUrl: workflowFormat === "slideshow" \? recreateView\?\.referenceImageUrl \?\? null : referenceImage\?\.asset\.url \?\? recreateView\?\.referenceImageUrl \?\? null/);
+  assert.match(image, /submissionKeyRef\.current = null;\s*\}, \[recreateView\?\.referenceImageUrl, recreateView\?\.referenceImageAssetId, referenceContextKey\]\)/);
   const api = read("lib/ai-studio/image-generation-api.ts");
-  assert.match(api, /cleanTrustedHttpsUrl\(body\?\.referenceImageUrl\)/);
+  assert.match(api, /cleanTrustedHttpsUrl\(await canonicalMediaReference\(body\?\.referenceImageUrl, user\.uid\)\)/);
   assert.match(api, /isTrustedStorageUrl/);
   assert.match(api, /reserveBillingCredits/);
 });
@@ -106,6 +106,8 @@ test("navigation retires Create Content, keeps other main routes and exposes the
 
 test("both retired Create Content routes stop rendering in every environment without a loading flash", () => {
   for (const file of ["app/create-content/page.tsx", "app/e2e/create-content-preview/page.tsx"]) {
+    // Deleted route files also resolve to the framework's 404, without rendering.
+    if (!existsSync(new URL("../" + file, import.meta.url))) continue;
     for (const environment of ["development", "test", "production"]) {
       const exported = {};
       const source = read(file);
@@ -118,6 +120,9 @@ test("both retired Create Content routes stop rendering in every environment wit
       assert.doesNotMatch(source, /CreateContentWorkspace/);
     }
   }
-  assert.match(read("app/create-content/loading.tsx"), /return null/);
-  assert.doesNotMatch(read("app/create-content/loading.tsx"), /WorkspaceContentLoading/);
+  const loadingFile = new URL("../app/create-content/loading.tsx", import.meta.url);
+  if (existsSync(loadingFile)) {
+    assert.match(readFileSync(loadingFile, "utf8"), /return null/);
+    assert.doesNotMatch(readFileSync(loadingFile, "utf8"), /WorkspaceContentLoading/);
+  }
 });

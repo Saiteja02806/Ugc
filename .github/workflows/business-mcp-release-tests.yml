@@ -1,0 +1,33 @@
+name: Business MCP combined release tests
+
+on:
+  push:
+    branches: ["codex/mcp-business-release"]
+  pull_request:
+    paths:
+      - ".github/workflows/business-mcp-release-tests.yml"
+      - "lib/business-profiles/**"
+      - "lib/mcp/**"
+      - "app/api/business-profile/**"
+      - "app/api/internal/jobs/process-media-analysis/**"
+
+permissions:
+  contents: read
+
+jobs:
+  preserved-application:
+    if: github.head_ref == 'codex/mcp-business-release' || github.ref == 'refs/heads/codex/mcp-business-release'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:explore
+      - run: node --test --test-concurrency=1 "worker/dist/**/*.test.js"
+      - run: npm run test:scheduling-ui
+      - run: npm run test:scheduling-metadata
+      - run: npm run test:business-context
+      - run: node --import ./scripts/next-server-only-test-loader.mjs --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/business-profiles/onboarding-schema-contract.test.ts

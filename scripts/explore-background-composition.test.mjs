@@ -27,8 +27,11 @@ test("whole clip snapshots validate exact asset IDs, trim/text/audio and keep le
     { ...input, composition: { ...input.composition, extra: true } },
     { ...input, composition: { ...input.composition, demoEditing: edit({ originalVolume: 3 }) } },
   ]) assert.throws(() => parseExploreFinishDraft(invalid));
-  const { composition, ...legacy } = input;
+  const legacy = { ...input }; delete legacy.composition;
   assert.deepEqual(parseExploreFinishDraft(legacy), legacy);
+  assert.throws(() => parseExploreFinishDraft({ ...legacy, demoAssetId: null, demoAudioAssetId: null, editing: edit({}),
+    subtitles: { language: "en", style: "clean", version: 2 } }), /Format editing uses one video and no subtitles/,
+  "Single-clip editing with captions must use the supported composition contract, before worker dispatch");
 });
 
 const frame = (path, time) => command(["-ss", String(time), "-i", path, "-frames:v", "1", "-pix_fmt", "rgb24", "-f", "rawvideo", "pipe:1"]);
@@ -79,4 +82,77 @@ test("one worker composition preserves both independent edits, exact text timing
   assert.ok(power(result.outputPath, 1.4, 220) > power(result.outputPath, 1.4, 1100) * 100, "demo soundtrack starts at its beginning after the trim");
   assert.ok(power(result.outputPath, 2.4, 1100) > power(result.outputPath, 2.4, 220) * 100);
   assert.deepEqual(await Promise.all(inputs.map(async path => createHash("sha256").update(await readFile(path)).digest("hex"))), hashes);
+});
+
+test("Talking Head captions review and export support trimmed opening and demo without optional opening audio", async t => {
+  const parent = resolve(".tmp"); await mkdir(parent, { recursive: true });
+  const dir = await mkdtemp(join(parent, "explore-caption-no-opening-audio-"));
+  t.after(async () => {
+    assert.equal(dirname(resolve(dir)), parent); assert.ok(basename(dir).startsWith("explore-caption-no-opening-audio-"));
+    await rm(dir, { recursive: true, force: true });
+  });
+  const opening = join(dir, "opening.mp4"), demo = join(dir, "demo.mp4");
+  for (const [path, color, frequency] of [[opening, "blue", 440], [demo, "red", 660]]) command(["-n", "-f", "lavfi", "-i", `color=c=${color}:s=256x384:r=30:d=3`, "-f", "lavfi", "-i", `sine=frequency=${frequency}:duration=3`, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", path]);
+  const originalHashes = await Promise.all([opening, demo].map(async path => createHash("sha256").update(await readFile(path)).digest("hex")));
+  for (const withDemo of [false, true]) {
+    let submissions = 0;
+    const speech = new Map(), identities = [];
+    const loadTranscript = async identity => {
+      identities.push([identity.sourceHash, identity.durationMs]);
+      if (!speech.has(identity.sourceHash)) {
+        submissions++;
+        speech.set(identity.sourceHash, { schemaVersion: 1, provider: "elevenlabs", model: "scribe_v2", language: "en", durationMs: identity.durationMs,
+          words: [{ text: "personally", startMs: 100, endMs: 600 }, ...(withDemo ? [{ text: "Demo", startMs: 1200, endMs: 1700 }] : [])] });
+      }
+      return speech.get(identity.sourceHash);
+    };
+    for (const captionPreview of [true, false]) {
+      const path = join(dir, `${withDemo ? "with-demo" : "opening-only"}-${captionPreview ? "review" : "export"}`); await mkdir(path);
+      const result = await finishExploreVideo({ sourcePath: opening, ...(withDemo ? { demoPath: demo } : {}), captionPreview, tools, workDir: join(path, "render"),
+        clipComposition: { version: 1, sourceEditing: edit({ trimStartMs: 500, trimEndMs: 1500 }), demoEditing: withDemo ? edit({ trimStartMs: 1000 }) : null,
+          sourceAudioPlayback: "once" },
+        subtitles: { language: "en", style: "clean", placement: "bottom", version: 2, corrections: [{ index: 0, text: "personalized" }], loadTranscript } });
+      assert.ok(Math.abs(result.durationMs - (withDemo ? 3000 : 1000)) <= 100);
+      assert.deepEqual(result.segments.map(segment => segment.durationMs), withDemo ? [1000, 2000] : [1000]);
+      assert.equal(result.hasBackgroundMusic, false); assert.equal(result.subtitleWordCount, withDemo ? 2 : 1);
+      if (captionPreview) assert.ok(result.outputPath.endsWith("speech.wav"));
+      else {
+        assert.ok(result.outputPath.endsWith("captioned.mp4"));
+        const ass = await readFile(join(path, "render", "subtitles", "captions.ass"), "utf8");
+        assert.match(ass, /personalized/); assert.doesNotMatch(ass, /personally/);
+        assert.ok(whitePixels(frame(result.outputPath, .3)) > 20);
+        if (withDemo) {
+          assert.ok(whitePixels(frame(result.outputPath, 1.4)) > 20);
+          assert.ok(power(result.outputPath, .3, 440) > power(result.outputPath, .3, 660) * 100);
+          assert.ok(power(result.outputPath, 1.4, 660) > power(result.outputPath, 1.4, 440) * 100);
+        }
+      }
+    }
+    assert.equal(submissions, 1, "Review and export reuse the same exact trimmed speech result");
+    assert.deepEqual(identities[0], identities[1]);
+    assert.equal(speech.values().next().value.words[0].text, "personally", "Corrections leave the original transcript intact");
+  }
+  assert.deepEqual(await Promise.all([opening, demo].map(async path => createHash("sha256").update(await readFile(path)).digest("hex"))), originalHashes);
+});
+
+test("nested opening audio keeps explicitly selected once and repeat playback", async t => {
+  const parent = resolve(".tmp"); await mkdir(parent, { recursive: true });
+  const dir = await mkdtemp(join(parent, "explore-opening-audio-playback-"));
+  t.after(async () => {
+    assert.equal(dirname(resolve(dir)), parent); assert.ok(basename(dir).startsWith("explore-opening-audio-playback-"));
+    await rm(dir, { recursive: true, force: true });
+  });
+  const opening = join(dir, "opening.mp4"), audio = join(dir, "music.wav");
+  command(["-n", "-f", "lavfi", "-i", "color=c=blue:s=256x384:r=30:d=1", "-f", "lavfi", "-i", "sine=frequency=440:duration=1", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", opening]);
+  command(["-n", "-f", "lavfi", "-i", "sine=frequency=880:duration=0.35", audio]);
+  const powers = new Map();
+  for (const playback of ["once", "repeat"]) {
+    const path = join(dir, playback); await mkdir(path);
+    const result = await finishExploreVideo({ sourcePath: opening, tools, workDir: join(path, "render"),
+      clipComposition: { version: 1, sourceEditing: edit({ trimEndMs: 1000, musicVolume: .6 }), demoEditing: null, sourceAudioPath: audio, sourceAudioPlayback: playback } });
+    assert.ok(Math.abs(result.durationMs - 1000) <= 100);
+    assert.ok(power(result.outputPath, .05, 880) > 1, "The selected track is audible at the opening");
+    powers.set(playback, power(result.outputPath, .55, 880));
+  }
+  assert.ok(powers.get("repeat") > powers.get("once") * 100, "Repeat covers the opening; once stops after the short track");
 });

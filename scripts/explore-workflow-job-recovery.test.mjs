@@ -10,8 +10,11 @@ function load(file, imports = {}, globals = {}) {
   const code = ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), "utf8"), {
     fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
   }).outputText;
-  vm.runInNewContext(code, { exports, Error, URL, URLSearchParams, Headers, process: { env: {} }, require(name) { if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts");
+  vm.runInNewContext(code, { exports, Error, URL, URLSearchParams, Headers, AbortController, process: { env: {} }, require(name) { if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts");
     if (name in imports) return imports[name];
+    if (name === "@/lib/ai-studio/pending-generation") return load("lib/ai-studio/pending-generation.ts", imports, globals);
+    if (name === "@/lib/http/read-deadline") return load("lib/http/read-deadline.ts", imports, globals);
+    if (name === "@/components/generation/use-generation-discovery") return load("components/generation/use-generation-discovery.ts", imports, globals);
     if (name === "../explore/remix-source.ts") return remixSource;
     if (name === "@/lib/explore/slideshow-image") return { resolveSlideshowImage: async image => image };
     if (name === "@/worker/src/lib/image-reference-context") return load("worker/src/lib/image-reference-context.ts");
@@ -104,7 +107,7 @@ function harness(format, { saved = false, listed = true, history = "failure", di
     "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
   };
   const mod = load(image ? "components/workspace/ugc-chat-workspace.tsx" : "components/video/video-generation-workspace.tsx", imports,
-    { window, fetch: transport, setTimeout: () => 1, clearTimeout() {} });
+    { window, localStorage: window.localStorage, fetch: transport, setTimeout: () => 1, clearTimeout() {} });
   const Panel = image ? mod.ImageGenerationStudioPanel : mod.VideoGenerationStudioPanel;
   const props = { active: true, accessState: "pro", creditsRemaining: 1000, creditCost: 1, recreateView: {
     preview: localPreview, referenceImageUrl: "/reference.png",

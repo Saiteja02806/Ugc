@@ -183,7 +183,7 @@ test("spare desktop Create space goes to the instructions field without stretchi
   const form = read("workflow-creation-form.tsx");
   const styles = read("workflow-creation.module.css");
   const desktop = styles.slice(styles.indexOf("@media (min-width: 1024px) {"), styles.indexOf("@media (min-width: 1024px) and"));
-  assert.match(form, /<div className=\{kind === "hook" \? focused.brief : creation.instructionsField\}>/);
+  assert.match(form, /<div className=\{creation.instructionsField\}>/);
   assert.match(desktop, /\.controls\[data-section="create"\] \.controlContent/);
   assert.match(desktop, /\.controls\[data-section="create"\] \.sectionPanel:not\(\[hidden\]\):not\(\[data-ending-style\]\)/);
   assert.match(desktop, /\.controls\[data-section="create"\] \.instructionsField\s*\{ flex: 1/);

@@ -119,7 +119,9 @@ test("the existing media API authenticates list and single-image requests and ig
     "@/lib/firebase/server-auth": auth, "@/lib/media/media-storage": media, "@/lib/media/types": types,
     "@/lib/media/media-library-visibility": load("lib/media/media-library-visibility.ts", {}),
   }, { Response, URL, console });
-  const get = load("app/api/media/[assetId]/route.ts", { "@/lib/firebase/server-auth": auth, "@/lib/media/media-storage": media }, { Response, console });
+  const get = load("app/api/media/[assetId]/route.ts", { "@/lib/firebase/server-auth": auth, "@/lib/media/media-storage": media,
+    "@/lib/jobs/background-jobs": { getBackgroundJobsByIds: async () => [] },
+    "@/lib/explore/remix-source": load("lib/explore/remix-source.ts", {}) }, { Response, URL, console });
   const url = "https://www.getugcpilot.com/api/media?collection=image&sourceTypes=upload&userId=owner-b";
   assert.equal((await list.GET(new Request(url))).status, 401); assert.equal(calls.length, 0);
   const response = await list.GET(new Request(url, { headers: { Authorization: "Bearer owner-token" } }));

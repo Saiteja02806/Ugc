@@ -71,10 +71,10 @@ test("completed results are hidden on reload and cached route re-entry", async (
   assert.equal(JSON.parse(storage.get(characterSessionStorageKey(owner))).jobs[0].jobId, jobId);
 });
 
-test("a partially failed two-image batch stays visible on reload without another paid request", async () => {
+for (const status of ["failed", "cancelled"]) test(`a completed+${status} two-image batch stays visible on reload without another paid request`, async () => {
   const second = { jobId: "33333333-3333-4333-8333-333333333333", generationId: "generation-2" };
   const receipts = [receipt, second];
-  const failed = { id: second.jobId, model: "gpt_image_2_5", status: "failed", isTerminal: true, output: null,
+  const failed = { id: second.jobId, model: "gpt_image_2_5", status, isTerminal: true, output: null,
     error: "The model provider blocked this generation through content moderation." };
   storage.set(characterSessionStorageKey(owner), JSON.stringify({ ...EMPTY_CHARACTER_SESSION, jobs: receipts }));
   responseFor = async path => Response.json({ ok: true, job: path.includes(second.jobId) ? failed : { ...completed, model: "gpt_image_2_5" } });

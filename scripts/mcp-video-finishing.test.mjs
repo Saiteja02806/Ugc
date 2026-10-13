@@ -15,8 +15,8 @@ function load(file, imports = {}, globals = {}) {
   return exports;
 }
 const edit = load("worker/src/lib/explore-format-edit.ts", { "./edit-overlay-render-spec.ts": load("worker/src/lib/edit-overlay-render-spec.ts") });
-const subtitleContracts = load("worker/src/subtitles/contracts.ts", { "./styles.js": load("worker/src/subtitles/styles.ts") });
-const corrections = load("worker/src/subtitles/corrections.ts", { "./contracts.js": subtitleContracts });
+const subtitleContracts = load("worker/src/subtitles/contracts.ts", { "./styles.ts": load("worker/src/subtitles/styles.ts") });
+const corrections = load("worker/src/subtitles/corrections.ts", { "./contracts.ts": subtitleContracts });
 const contract = load("worker/src/lib/explore-finishing-contract.ts", { "../subtitles/styles.ts": load("worker/src/subtitles/styles.ts"), "./explore-format-edit.ts": edit, "../subtitles/contracts.ts": subtitleContracts, "../subtitles/corrections.ts": corrections });
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const key = id(1), source = id(2), demo = id(3), jobId = id(4), outputId = id(5);

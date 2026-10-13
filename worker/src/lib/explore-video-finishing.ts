@@ -67,7 +67,7 @@ export async function finishExploreVideo(options: ExploreFinishingOptions): Prom
     const source = snapshot.sourceEditing ? await finishExploreVideo({
       sourcePath: options.sourcePath, editing: snapshot.sourceEditing,
       sourceOriginalVolume: options.sourceOriginalVolume,
-      backgroundMusicPath: snapshot.sourceAudioPath, backgroundMusicPlayback: snapshot.sourceAudioPlayback,
+      ...(snapshot.sourceAudioPath ? { backgroundMusicPath: snapshot.sourceAudioPath, backgroundMusicPlayback: snapshot.sourceAudioPlayback } : {}),
       tools: options.tools, workDir: join(parent, "opening-edit"), signal: options.signal,
     }) : null;
     const demo = snapshot.demoEditing && options.demoPath ? await finishExploreVideo({

@@ -11,7 +11,7 @@ create table public.explore_clip_drafts (
   unique (user_id, scope, source_asset_id)
 );
 alter table public.explore_clip_drafts enable row level security;
-revoke all on public.explore_clip_drafts from public, anon, authenticated;
+revoke all on public.explore_clip_drafts from public, anon, authenticated, service_role;
 grant select, insert, update on public.explore_clip_drafts to service_role;
 
 create table public.explore_clip_draft_saves (
@@ -21,7 +21,7 @@ create table public.explore_clip_draft_saves (
   created_at timestamptz not null default clock_timestamp(), primary key (user_id, request_id)
 );
 alter table public.explore_clip_draft_saves enable row level security;
-revoke all on public.explore_clip_draft_saves from public, anon, authenticated;
+revoke all on public.explore_clip_draft_saves from public, anon, authenticated, service_role;
 grant select, insert on public.explore_clip_draft_saves to service_role;
 
 create function public.explore_save_clip_draft(

@@ -277,7 +277,7 @@ for (const format of ["hook", "wall_text", "slideshow"]) {
     assert.deepEqual(h.events, ["show-results", "waiting-for-auth"]);
     assert.equal(h.composer.props.referenceControls.type, "FormatGenerationReferences");
     assert.equal(h.composer.props.leadingControl, undefined);
-    assert.equal(h.composer.props.promptLabel, format === "wall_text" ? "What should the background look like?" : "What should the creator say and do?");
+    assert.equal(h.composer.props.promptLabel, "Your instructions");
   });
 }
 

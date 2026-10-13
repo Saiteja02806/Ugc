@@ -9,9 +9,12 @@ function load(file, imports = {}, globals = {}) {
   const exports = {};
   const code = ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), "utf8"), { fileName: file,
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
-  vm.runInNewContext(code, { exports, process: { env: {} }, require: name => {
+  vm.runInNewContext(code, { exports, Error, URL, URLSearchParams, Headers, AbortController, AbortSignal, process: { env: {} }, require: name => {
     if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts");
     if (name in imports) return imports[name];
+    if (name === "@/lib/ai-studio/pending-generation") return load("lib/ai-studio/pending-generation.ts", imports, globals);
+    if (name === "@/lib/http/read-deadline") return load("lib/http/read-deadline.ts", imports, globals);
+    if (name === "@/components/generation/use-generation-discovery") return load("components/generation/use-generation-discovery.ts", imports, globals);
     if (name === "@/lib/explore/slideshow-image") return { resolveSlideshowImage: async image => image };
     if (name === "@/worker/src/lib/image-reference-context") return load("worker/src/lib/image-reference-context.ts");
     if (name.startsWith("./") || name.startsWith("../")) return load(path.posix.join(path.posix.dirname(file), name), imports, globals);
@@ -28,11 +31,14 @@ function harness(format, { reference = true, referenceUrls, regenerationTarget, 
   let promptSet = false;
   const imports = {
     react: {
+      useCallback: fn => fn,
       useState(initial) { let value = typeof initial === "function" ? initial() : initial;
         const index = cursor++;
         if (!promptSet && value === "") { promptSet = true; value = "My requested changes"; }
         if (!(index in states)) states[index] = value;
-        return [states[index], next => { states[index] = typeof next === "function" ? next(states[index]) : next; }]; }, useRef: value => ({ current: value }), useEffect: callback => { if (completedJob) effects.push(callback); }, useMemo: fn => fn(),
+        return [states[index], next => { states[index] = typeof next === "function" ? next(states[index]) : next; }]; },
+      useRef(value) { const index = cursor++; return states[index] ??= { current: value }; },
+      useEffect: callback => { if (completedJob || captureRequests) effects.push(callback); }, useMemo: fn => fn(),
     },
     "react/jsx-runtime": { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "Fragment" },
     "@tanstack/react-query": { useQueryClient: () => ({ invalidateQueries: async () => {} }) },
@@ -57,7 +63,9 @@ function harness(format, { reference = true, referenceUrls, regenerationTarget, 
     "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
   };
   const file = format === "slideshow" ? "components/workspace/ugc-chat-workspace.tsx" : "components/video/video-generation-workspace.tsx";
-  const panelModule = load(file, imports, { URLSearchParams, setTimeout: () => 1, clearTimeout() {}, window: { addEventListener() {}, removeEventListener() {}, setTimeout: () => 1, clearTimeout() {}, localStorage: { getItem: () => null, setItem() {} } }, console: { error: (...values) => errors.push(values.map(String).join(" ")) }, crypto: { randomUUID: () => "fixture-request" }, fetch: async (url, options) => {
+  const storageValues = new Map();
+  const localStorage = { getItem: key => storageValues.get(key) ?? null, setItem: (key,value) => storageValues.set(key,value), removeItem: key => storageValues.delete(key) };
+  const panelModule = load(file, imports, { URLSearchParams, localStorage, navigator: { locks: { request: async (_key, options, callback) => (typeof options === "function" ? options : callback)({ name: _key }) } }, setTimeout: () => 1, clearTimeout() {}, window: { addEventListener() {}, removeEventListener() {}, setTimeout: () => 1, clearTimeout() {}, localStorage }, console: { error: (...values) => errors.push(values.map(String).join(" ")) }, crypto: { randomUUID: () => "11111111-1111-4111-8111-111111111111" }, fetch: async (url, options) => {
     assert.equal(captureRequests, true, "No network requests are allowed");
     requests.push({ url, ...options, body: JSON.parse(options.body) });
     return { ok: false, json: async () => ({ ok: false, error: "Fixture stops after capturing the request" }) };
@@ -83,8 +91,10 @@ function harness(format, { reference = true, referenceUrls, regenerationTarget, 
 for (const format of ["hook", "wall_text"]) {
   test(format + ': gallery source is requested as actual video input with the prompt and appearance image', async () => {
     const h = harness(format, { captureRequests: true });
+    await h.flushEffects();
     h.render().composer.props.referenceControls.props.onChange({ kind: 'image', asset: { id: 'image', url: 'https://owned.test/image.png', title: 'Image' } }, 'image');
     await h.render().composer.props.onSubmit({ preventDefault() {} });
+    assert.ok(h.requests[0], JSON.stringify({ errors: h.errors, events: h.events }));
     assert.equal(h.requests[0].body.useGalleryVideoReference, true);
     assert.equal(h.requests[0].body.referenceVideoMode, 'edit');
     assert.equal(h.requests[0].body.referenceId, format + '-fixture');
@@ -93,6 +103,7 @@ for (const format of ["hook", "wall_text"]) {
   });
   for (const order of [['image', 'video'], ['video', 'image']]) test(format + ': both selection orders retain both media and send a ten-second edit', async () => {
     const h = harness(format, { captureRequests: true, reference: false });
+    await h.flushEffects();
     const references = {
       image: { kind: 'image', asset: { id: 'identity', url: 'https://owned.test/image.png', title: 'Identity' } },
       video: { kind: 'video', asset: { id: 'source', url: 'https://owned.test/source.mp4', durationSeconds: 10, ratio: '9:16', title: 'Source' } },

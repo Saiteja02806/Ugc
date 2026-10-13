@@ -15,6 +15,7 @@ const schedule = () => ({ caption: "Exact caption", title: "Hook + Demo", timezo
 async function fixture() {
   const db = new PGlite();
   await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
+    alter default privileges in schema public grant all on tables to service_role,anon,authenticated;
     create table background_jobs(id uuid primary key default gen_random_uuid(),user_id text,job_type text,project_id text,idempotency_key text,
       input_json jsonb,status text default 'queued',claim_token uuid,unique(user_id,job_type,idempotency_key));
     create table media_assets(id uuid primary key,user_id text,collection text,status text,deleted_at timestamptz,source_type text,mime_type text,
@@ -36,7 +37,14 @@ async function fixture() {
       return exists(select 1 from public.background_jobs where job_type in ('render_edit_video','final_render')); end; $$;
     grant select,insert,update on media_assets,background_jobs,scheduled_posts,scheduled_post_targets,social_connections to service_role;
     grant execute on function create_or_get_background_job_v1(text,jsonb,text,text,int,text,text,text) to service_role;`);
-  await db.exec(finishing); await db.exec(sources); await db.exec(migration); await db.exec("set role service_role");
+  await db.exec(finishing); await db.exec(sources); await db.exec(migration);
+  const { rows } = await db.query(`select has_table_privilege('anon','explore_video_schedules','SELECT') as browser_read,
+    has_table_privilege('authenticated','explore_video_schedules','INSERT') as browser_write,
+    has_table_privilege('service_role','explore_video_schedules','DELETE') as service_delete,
+    has_table_privilege('service_role','explore_video_schedules','TRUNCATE') as service_truncate,
+    has_table_privilege('service_role','explore_video_schedules','UPDATE') as service_update`);
+  assert.deepEqual(rows[0], { browser_read: false, browser_write: false, service_delete: false, service_truncate: false, service_update: true });
+  await db.exec("set role service_role");
   return db;
 }
 async function reserve(db, key = id(10), owner = "owner-a", rawDraft = draft(), rawSchedule = schedule(), rawHash = hash) {

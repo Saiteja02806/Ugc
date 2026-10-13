@@ -11,7 +11,7 @@ function load(path, imports = {}) {
   return exports;
 }
 const policy = load("lib/explore/workflow-source-video.ts");
-const { formatVideoFromAsset } = load("lib/explore/format-video-source.ts", { "./workflow-source-video.ts": policy });
+const { formatVideoFromAsset } = load("lib/explore/format-video-source.ts", { "./workflow-source-video.ts": policy, "./remix-source.ts": load("lib/explore/remix-source.ts") });
 const asset = changes => ({ id: "00000000-0000-4000-8000-000000000001", title: "My original footage", url: "/owned-video.mp4",
   status: "ready", collection: "video", mimeType: "video/mp4", fileSizeBytes: 2000, durationSeconds: 8,
   ratio: "16:9", width: 1280, height: 720, createdAt: "2026-10-08T00:00:00Z", metadata: {}, ...changes });

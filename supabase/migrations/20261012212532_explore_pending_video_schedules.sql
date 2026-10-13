@@ -19,7 +19,7 @@ create table public.explore_video_schedules (
 );
 create index explore_video_schedules_due on public.explore_video_schedules(next_attempt_at) where state='pending';
 alter table public.explore_video_schedules enable row level security;
-revoke all on public.explore_video_schedules from public,anon,authenticated;
+revoke all on public.explore_video_schedules from public,anon,authenticated,service_role;
 grant select,insert,update on public.explore_video_schedules to service_role;
 
 create function public.explore_reserve_video_schedule(

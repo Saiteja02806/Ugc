@@ -69,7 +69,7 @@ test("pending opening replacement pauses new final-save stages and blocks retry/
   assert.equal(retry.props.disabled, true); retry.props.onClick(); assert.equal(h.calls.length, 1);
   h.props.pendingSource = false; h.errors.join = null; h.render(); assert.deepEqual(h.calls.map(call => call.name), ["prep", "join"]);
   h.outputs.join = asset(5); h.props.pendingSource = true;
-  const next = nodes(h.render()).find(node => node.type === "Button" && node.props.children === "Continue to Schedule"); assert.equal(next.props.disabled, true);
+  const next = nodes(h.render()).find(node => node.type === "Button" && node.props.children === "Schedule video"); assert.equal(next.props.disabled, true);
 });
 
 test("save coordinator waits for owned preparation, joins the saved opening first and reports only the final video", () => {
@@ -83,18 +83,18 @@ test("save coordinator waits for owned preparation, joins the saved opening firs
   assert.equal(h.reported.at(-1).id, id(5)); assert.equal(h.busy.at(-1), false);
 });
 
-test("added demo audio starts after trimming and is prepared before the final join", () => {
+test("compatible demo audio joins after trimming without redrawing the demo text", () => {
   const h = coordinator({ audio: true });
   const overlay = { value: "Demo only", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 2000 };
   h.props.save.draft.editing.text = overlay; h.render(); h.outputs.prep = asset(3); h.render();
-  assert.deepEqual(h.calls.map(c => c.name), ["prep", "sound"]);
+  assert.deepEqual(h.calls.map(c => c.name), ["prep", "join"]);
   assert.equal(h.calls[0].input.backgroundSource, undefined);
   assert.deepEqual(h.calls[0].input.editing.text, overlay);
-  assert.equal(h.calls[1].input.editing.text, null, "Audio preparation must not draw the demo text a second time");
-  assert.equal(h.calls[1].input.backgroundSource.id, id(4));
-  assert.equal(h.calls[1].input.editing.trimStartMs, 0); assert.equal(h.calls[1].input.editing.trimEndMs, 2000);
-  h.outputs.sound = asset(6); h.render();
-  assert.equal(h.calls.at(-1).input.demoSource.id, id(6));
+  assert.equal(h.calls[1].input.editing, undefined, "The trimmed demo text is already baked into its saved output");
+  assert.equal(h.calls[1].input.demoAudioSource.id, id(4));
+  assert.equal(h.calls[1].input.demoSource.id, id(3));
+  assert.equal(h.calls[1].input.playback, "once");
+  assert.equal(h.calls.filter(call => call.name === "sound").length, 0);
 });
 
 test("default background audio is added once to the final sequence after Demo preparation", () => {

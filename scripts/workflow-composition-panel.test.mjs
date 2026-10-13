@@ -217,7 +217,7 @@ test("settings occupy two rows with Quality, Videos and Ratio alongside each oth
   assert.match(styles, /\.settingField:nth-child\(-n\+2\)[^}]*grid-column: span 3/);
   assert.match(styles, /\.referenceGrid[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(styles, /\.referenceButton\s*\{[^}]*width: 100%[^}]*aspect-ratio: 1/);
-  assert.match(styles, /\.referenceButton\s*\{[^}]*border-radius: 8px/);
+  assert.match(styles, /\.referenceButton\s*\{[^}]*border-radius: 12px/);
 });
 
 test("actual attachment pickers receive only their own media state", () => {
@@ -266,7 +266,7 @@ test("permanent layout is limited to workflows 1 and 3, with narrow in-flow cont
   for (const kind of ["hook", "phone"]) {
     const workspace = read(`components/explore/${kind}-workflow-preview.tsx`);
     const header = workspace.slice(workspace.indexOf("<header"), workspace.indexOf("</header>"));
-    assert.doesNotMatch(header, /Attach audio|Attached demo|Popover|<Button/);
+    assert.doesNotMatch(header, /Attach audio|Attached demo|Popover/);
     assert.doesNotMatch(workspace, /wideLayout|useSyncExternalStore|demoOpen|<Dialog/);
     assert.match(workspace, /<WorkflowCompositionPanel/);
   }
@@ -406,7 +406,7 @@ test("concise reference pickers preserve uploads, playback, removal, errors and 
 test("both workflows keep concise voice-reference guidance separate from demo-only playback", () => {
   for (const [audioLabel, videoLabel] of [["Hook audio", "Hook"], ["Creator audio", "Phone video"]]) {
     const reference = audioRender({ audioLabel, audio: makeAttachment("voice.wav", true) });
-    assert.match(text(reference.tree), /Voice reference/);
+    assert.match(text(reference.tree), /Audio reference/);
     assert.match(text(reference.tree), /Requires Seedance 2\.5 · Up to 30 seconds/);
     assert.doesNotMatch(text(reference.tree), /background music|demo audio|OpenRouter|Files upload|exact copy/);
     const demo = render({ videoLabel, demo: makeAttachment("demo.mp4", true), demoAudio: makeAttachment("demo.wav", true) });

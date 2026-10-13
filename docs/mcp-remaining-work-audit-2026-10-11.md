@@ -151,6 +151,20 @@ The service-only migration `20261013090422` is unapplied and account settings wr
 
 PR #50 remote checkpoint: both exact-source Linux MCP runs (38377603423 and 38377582419), the migration guard and primary website preview passed. The secondary Trending preview failed and remains excluded. The isolated checkout is clean; production migration/consent/host acceptance remains pending. Both production domains still target `e3de4a4...`, and PR #49 stages remain READY at `fb7728fc...`.
 
+## Plugin 0.1.11 released and installed-source verified
+
+The user approved both exact PR #49 promotions after confirming staged MCP readiness. Both live domains now serve `fb7728fc8ac4f1e66ad55fb45b6830d267ad1b38`. All 33 public live regression checks passed. The existing private plugin was updated in place to 0.1.11 with 13 skills, retaining publisher, audience, prompts, connections and transfer helpers; full source read-back and all 39 local cached text files match. The current chat exposes 73 tools, and actual owner group/Library reads succeed. Group/Library/text-remix writes remain disabled, and the remix provider is unconfigured. See [release evidence](mcp-plugin-0.1.11-release-2026-10-13.md).
+
+PR #50 account defaults remain a separate 79-tool source candidate. Production schema inspection confirms its receipt table/RPCs and migration are absent; all 130 earlier migration entries remain present, and the two shared settings tables match the candidate's expected columns/defaults. No settings mutation was performed. Protected website/MCP candidate builds are being prepared with all six new-write gates disabled; no live 0.1.12 promotion or migration is approved yet.
+
+PR #50 release preparation completed: both protected production stages are READY at `21866e2287501bf5b13b355a2fa103c0258a8afc`, and signed-in website artifact downloads match the reviewed 0.1.12 ZIP/guide/checksum. The user explicitly approved service-only migration `20261013090422` and these gated promotions. That approval persists. The isolated canonical migration checkout contains exactly 131 reviewed files, but both inherited and saved Supabase CLI authentication report invalid tokens. Normal CLI sign-in was requested. The migration and candidate promotions remain unapplied; live production stays on verified 0.1.11. No customer settings/media/posts or unrelated project changes ran.
+
+## Account-settings gated release completed through the existing connection
+
+The user challenged the unnecessary CLI login prerequisite. Both app configuration and live Supabase MCP point to the same project and production queries work. The approved SQL was applied through that existing connection; the single new generated history entry was hash-checked and transactionally aligned to canonical version `20261013090422`, preserving all prior records. All 131 versions match source. Both primary domains now serve exact source `21866e2287501bf5b13b355a2fa103c0258a8afc`; all 36 public production checks pass, and fresh authenticated discovery sees 79 tools. Settings writes remain disabled and no customer preferences or posts changed.
+
+Current chat still caches 73 tools, and the private plugin remains 0.1.11; the prepared 0.1.12 account overlay has not been uploaded because its updater tools are no longer available in this session. Production owner settings RPC and local actual SDK cases pass; current-chat new-tool execution and private-package update remain pending. The full application goal remains incomplete. See [complete release evidence](mcp-account-settings-release-2026-10-13.md).
+
 ## Preserved production-branch history
 
 The records below are retained from the deployed branch during release reconciliation. Later dated release receipts above remain authoritative for current status.
@@ -190,3 +204,11 @@ Audio website restoration candidate: an intervening website deployment from `6ef
 
 Plugin 0.1.11 now includes reference/remix, Creative Asset group and application Library skills for the already released 73-tool backend. Each preserves source/media identities, revisions, gate checks and immutable recovery receipts. The existing finishing skill now handles one active job per account and sequential clip preparation. All package checks, the full MCP regression suite, lint/type checks and the configured isolated application build pass; 17 older published artifacts and both transfer helpers are unchanged. The new workflows' installed-host execution and gated write acceptance are still pending. See [candidate evidence](mcp-released-workflows-plugin-candidate-2026-10-13.md). Full application parity is not complete.
 
+
+## Current Business Context candidate and account read acceptance — 2026-10-13
+
+The active chat now exposes all 79 released tools, and actual native account-settings capabilities/settings reads succeeded with writes disabled. This supersedes the earlier cached-73 current-chat limitation. Both live domains still serve account source `21866e2287501bf5b13b355a2fa103c0258a8afc`; its 131 migration versions are present. No CLI reauthentication is needed.
+
+The isolated `codex/mcp-business-context` candidate adds six read/draft/apply/recovery tools, shared website Settings records, fresh `brand:write`, exact revisions and immutable receipts, plus plugin 0.1.13 (15 skills). Full local MCP regressions, six SQL/six actual SDK cases, 20 shared context/daily-version checks, type/lint, configured build, deterministic package checks and migration guard pass. The new migration is unapplied and writes default disabled. See [candidate evidence](mcp-business-context-candidate-2026-10-13.md). Source count 85 is not released-client acceptance.
+
+Reanalysis, onboarding/goal changes and logos/screenshots remain business gaps. Broader generation, advanced editor/Explore drafts, backend slideshow text rendering, Trending/Carousel actions, social publishing/analytics, local upload and real Claude Code acceptance remain unfinished. Existing-media Codex trim → hook/demo composition → downloaded-file acceptance is already complete for the user's specified two-second task. Full application access remains active.

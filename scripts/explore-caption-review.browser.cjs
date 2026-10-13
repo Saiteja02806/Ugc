@@ -48,7 +48,18 @@ async function main() {
     if (url.pathname === "/") { res.setHeader("Content-Type", "text/html"); return res.end('<html class="dark"><head><link rel="stylesheet" href="/style.css"/><style>body{margin:24px;background:#111;color:white;font-family:Arial}.preview{height:520px;width:360px}.stage{height:430px}.frame{position:relative;width:286px;height:430px;overflow:hidden}.controls{display:flex}button{margin:8px}</style></head><body><div id="root"></div><script>window.process={env:{}}</script><script src="/bundle.js"></script></body></html>'); }
     if (url.pathname === "/bundle.js") { res.setHeader("Content-Type", "text/javascript"); return res.end(fs.readFileSync(path.join(out,"bundle.js"))); }
     if (url.pathname === "/style.css") { res.setHeader("Content-Type", "text/css"); return res.end(css); }
-    if (url.pathname === "/video.mp4") { res.setHeader("Content-Type", "video/mp4"); return res.end(fs.readFileSync(path.join(out,"video.mp4"))); }
+    if (url.pathname === "/video.mp4") {
+      const media=fs.readFileSync(path.join(out,"video.mp4"));
+      res.setHeader("Content-Type", "video/mp4"); res.setHeader("Accept-Ranges", "bytes");
+      const range=/^bytes=(\d+)-(\d*)$/.exec(req.headers.range ?? "");
+      if (range) {
+        const start=Number(range[1]), end=range[2] ? Math.min(Number(range[2]),media.length-1) : media.length-1;
+        if (start>end || start>=media.length) { res.statusCode=416; res.setHeader("Content-Range",`bytes */${media.length}`); return res.end(); }
+        res.statusCode=206; res.setHeader("Content-Range",`bytes ${start}-${end}/${media.length}`); res.setHeader("Content-Length",end-start+1);
+        return res.end(media.subarray(start,end+1));
+      }
+      res.setHeader("Content-Length",media.length); return res.end(media);
+    }
     if (url.pathname === "/api/explore/finishes") {
       assert.equal(req.headers.authorization, "Bearer caption-fixture");
       let key = url.searchParams.get("requestKey"), draft;
@@ -75,7 +86,12 @@ async function main() {
     await page.getByRole("textbox",{name:"Caption word 1",exact:true}).waitFor();
     assert.equal(posts.length,1); assert.equal(posts[0].captionPreview,true);
     const slider=page.getByRole("slider",{name:"Combined preview position"});
-    await slider.focus(); await slider.press("Home"); for (let i=0;i<20;i++) await slider.press("ArrowRight");
+    await page.waitForFunction(() => [...document.querySelectorAll("video")].every(video => video.readyState >= 1));
+    await slider.focus(); await slider.press("Home");
+    for (let i=0;i<20;i++) {
+      await slider.press("ArrowRight");
+      await page.waitForFunction(expected => document.querySelector('input[aria-label="Combined preview position"]')?.value === String(expected), (i+1)*50);
+    }
     assert.equal(await slider.inputValue(), "1000");
     await page.locator("[data-caption-preview]").waitFor();
     assert.match(await page.locator("[data-caption-preview]").textContent(),/personally/);

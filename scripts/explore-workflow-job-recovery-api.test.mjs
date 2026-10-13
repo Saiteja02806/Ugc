@@ -4,6 +4,7 @@ import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
 import { createClient } from "@supabase/supabase-js";
+import * as remixSource from "../lib/explore/remix-source.ts";
 
 function load(file, imports = {}, globals = {}) {
   const exports = {};
@@ -12,6 +13,7 @@ function load(file, imports = {}, globals = {}) {
   }).outputText;
   vm.runInNewContext(code, { exports, URL, console, require(name) {
     if (name in imports) return imports[name];
+    if (name === "../explore/remix-source.ts") return remixSource;
     throw new Error(`Unexpected import: ${name}`);
   }, ...globals });
   return exports;
@@ -35,7 +37,7 @@ function harness(format = "hook") {
     const workflow = url.searchParams.get("input_json->>exploreFormat");
     if (workflow) selected = selected.filter(row => `eq.${row.input_json.exploreFormat}` === workflow);
     const status = url.searchParams.get("status"); if (status?.startsWith("in.")) selected = selected.filter(row => row.status === "processing");
-    assert.equal(url.searchParams.get("order"), "created_at.desc");
+    assert.equal(url.searchParams.get("order"), "created_at.desc,id.desc");
     selected.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
     selected = selected.slice(0, Number(url.searchParams.get("limit")));
     return Response.json(selected);

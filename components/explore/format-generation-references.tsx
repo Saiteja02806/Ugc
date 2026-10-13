@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Loader2, Plus, RefreshCw } from "lucide-react";
+import { Check, Loader2, Plus, RefreshCw, UserRound, Video } from "lucide-react";
 import { Tabs } from "@base-ui/react/tabs";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
@@ -131,8 +131,8 @@ export function FormatGenerationReferences({ selection, imageSelection, videoSel
   const localError = localImage.error ?? localVideo.error;
   const catalogSelection = selectedImage && (selectedImage.asset.projectId === CATALOG_REFERENCE_IMAGE_PROJECT || selectedImage.asset.projectId === "ai-studio") ? selectedImage.asset.fileName : null;
 
-  return <section aria-label="Optional generation references" className={presentation.referenceGroup}>
-    <div className={presentation.referenceHeading}><h3>Generation references</h3><span>Optional</span>{selectedImage || selectedVideo || styleVideo ? <span className={imagePreview.previewHelp}>Hover or tap to preview</span> : null}</div>
+  return <section aria-label="Optional generation references" className={cn(presentation.referenceGroup, presentation.classicReferences)}>
+    <div className={presentation.referenceHeading}><h3>Optional references</h3></div>
     <div className={creation.referenceGrid} data-workflow-reference-grid>
       {(["image", "video"] as const).filter(kind => kind === "image" || videoInputEnabled || Boolean(styleVideo)).map(kind => {
         const local = kind === "image" ? localImage.asset : localVideo.asset;
@@ -145,8 +145,6 @@ export function FormatGenerationReferences({ selection, imageSelection, videoSel
           {kind === "image" && activeImageTab === "user" && !preview && ownerId ? <Button type="button" variant="ghost" size="icon-sm" aria-label="Refresh your images" title="Refresh your images" disabled={Boolean(pending) || imagesQuery.isFetching} onClick={() => void imagesQuery.refetch()}><RefreshCw className={cn("size-3.5", imagesQuery.isFetching && "animate-spin motion-reduce:animate-none")} aria-hidden="true" /></Button> : null}
         </div>;
         return <div key={kind} data-reference-state={asset ? "selected" : "empty"} className={cn("relative min-w-0", presentation.referenceCard)}>
-          <h4>{kind === "image" ? "Image reference" : "Video reference"}</h4>
-          <p>{kind === "image" ? "Appearance" : isStyle ? "Gallery clip · used for scene & motion" : "Scene & motion"}</p>
           <input ref={input} type="file" className="hidden" aria-label={`Choose optional ${kind} reference`} accept={kind === "image" ? "image/png,image/jpeg,image/webp" : "video/mp4,video/quicktime,video/webm"} disabled={disabled || Boolean(pending) || kind === "video" && !videoInputEnabled} onChange={event => {
             const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; if (file) void choose(kind, file);
           }} />
@@ -154,7 +152,7 @@ export function FormatGenerationReferences({ selection, imageSelection, videoSel
           {asset ? <WorkflowReferencePreview key={asset.url} kind={kind} url={asset.url} name={asset.name ?? "Selected reference"} media={kind === "video" ? <ReferenceVideoThumbnail url={asset.url} /> : undefined} /> : null}
           <Popover open={active && openKind === kind} onOpenChange={open => { if (open && kind === "image") setImageTab(null); setOpenKind(open ? kind : null); }}>
             <PopoverTrigger render={<Button type="button" variant="outline" data-workflow-tile="reference" aria-label={isStyle ? "Choose gallery video reference" : `${asset ? "Replace" : "Add"} ${kind} reference`} aria-busy={pending === kind} title={asset?.name ?? `Choose an optional ${kind} reference`} disabled={disabled || Boolean(pending)} data-state={pending === kind ? "loading" : asset ? "selected" : "empty"} className={cn(creation.referenceButton, imagePreview.action)} />}>
-              {pending === kind ? <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : null}
+              {pending === kind ? <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : !asset ? kind === "image" ? <UserRound aria-hidden="true" /> : <Video aria-hidden="true" /> : null}
               {pending === kind || !asset ? <span className={creation.referenceLabel}>{pending === kind ? "Preparing…" : kind === "image" ? "Choose image" : "Choose video"}</span> : null}<Plus className={imagePreview.add} aria-hidden="true" />
             </PopoverTrigger>
             <PopoverContent ref={popup} initialFocus={popup} tabIndex={-1} side="bottom" align="center" className={cn(studio.floating, creation.floating)} style={{ maxHeight: "min(calc(100dvh - 2rem), var(--available-height))", maxWidth: "min(calc(100vw - 2rem), var(--available-width))" }}>
@@ -191,7 +189,6 @@ export function FormatGenerationReferences({ selection, imageSelection, videoSel
       })}
     </div>
     {pending ? <p role="status" className={creation.sectionHelp}>Reading your reference…</p> : null}
-    <p className={creation.sectionHelp}>Use an image for appearance and a video for actions together. Video sources must be up to 10 seconds and 32 MB. Generated edits still need review.</p>
     {error || localError ? <p role="alert" className="text-xs leading-5 text-destructive">{error ?? localError}</p> : null}
   </section>;
 }

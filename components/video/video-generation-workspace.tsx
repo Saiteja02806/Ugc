@@ -1135,7 +1135,7 @@ export function VideoGenerationStudioPanel({
                 setResolution(value as AIStudioVideoResolution);
               }}
             />);
-  const durationSetting = hasWorkflowVideoReference ? <div className="space-y-1 text-sm"><span className="text-muted">Duration</span><p>{sourceDuration ? `${sourceDuration.toFixed(1)}s source clip` : "Source clip duration · checked before generation"}</p></div> : workflow && !uploadedReferenceVideo ? (
+  const durationSetting = hasWorkflowVideoReference ? <div className="col-span-3 flex min-w-0 flex-col gap-1 text-sm"><span className="text-muted">Duration</span><p>{sourceDuration ? `${sourceDuration.toFixed(1)}s source clip` : "Source clip duration · checked before generation"}</p></div> : workflow && !uploadedReferenceVideo ? (
     <WorkflowDurationControl
       key={model}
       ariaLabel="Video duration"
@@ -1298,7 +1298,7 @@ export function VideoGenerationStudioPanel({
         portalTarget={workflow?.controlsTarget}
         actionsTarget={workflow?.actionsTarget}
         promptHelper={workflow ? hasWorkflowVideoReference ? "Describe your changes. The video supplies actions; the image supplies appearance." : workflow.format === "wall_text" ? "Describe the background; add your text in Edit." : "Scene, action and spoken words in quotes." : undefined}
-        promptLabel={workflow ? workflow.format === "wall_text" ? "What should the background look like?" : "What should the creator say and do?" : undefined}
+        promptLabel={workflow ? "Your instructions" : undefined}
         estimatedCredits={workflow && !generationLocked && !recreateView?.preview && (!hasWorkflowVideoReference || sourceDuration) ? requiredCredits : undefined}
         outputSummary={workflow ? `${resolution} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}
         settingsSummary={workflow ? `${model === "wan_3_0" ? "WAN 3.0" : model === "seedance_2_5" ? "Seedance 2.5" : "Google Omni"} · ${hasWorkflowVideoReference ? `${sourceDuration ? `${sourceDuration.toFixed(1)}s clip` : "Source clip"} · Edit` : `${durationSeconds}s`} · ${aspectRatio} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}

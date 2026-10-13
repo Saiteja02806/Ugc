@@ -178,7 +178,7 @@ test("slide selection and preview navigation retain the saved slideshow without 
   assert.equal(tools().props.design.heading, "First message");
   assert.equal(h.dirty.length, beforeDirty); assert.deepEqual([...h.storage], beforeStorage);
   assert.equal(h.requests.length, 1); assert.equal(h.saved.length, 1);
-  assert.ok(h.control("Button", "Continue to Schedule"));
+  assert.ok(h.control("Button", "Schedule slideshow"));
 });
 test("moving then removing a slide preserves the selected identity, neighboring text and exact save order", async () => {
   const h = await editor(); h.heading("Retained heading");
@@ -217,7 +217,7 @@ test("slide arrangement stays beside the preview while text tools remain in the 
 test("the dedicated footer exposes exactly one save, resume or schedule action throughout recovery", async () => {
   let continued = 0;
   const h = await editor({ failFirst: true, actionsTarget: {}, onContinue: () => continued++ });
-  const primary = () => nodes(h.render()).filter(node => node.type === "Button" && ["Save slideshow", "Resume save", "Continue to Schedule", "Saving…"].includes(text(node)));
+  const primary = () => nodes(h.render()).filter(node => node.type === "Button" && ["Save slideshow", "Resume save", "Schedule slideshow", "Saving…"].includes(text(node)));
   const assertAction = label => {
     assert.equal(primary().length, 1); assert.equal(text(primary()[0]), label);
     const footer = nodes(h.render()).find(node => node.type === "portal" && node.props.target === h.props.actionsTarget);
@@ -225,8 +225,8 @@ test("the dedicated footer exposes exactly one save, resume or schedule action t
   };
   assertAction("Save slideshow"); await h.clickSave("Save slideshow"); assertAction("Resume save");
   for (const label of ["Move slide 1 later", "Remove slide"]) assert.equal(h.control("Button", label).props.disabled, true);
-  await h.clickSave("Resume save"); assertAction("Continue to Schedule");
-  h.control("Button", "Continue to Schedule").props.onClick(); assert.equal(continued, 1);
+  await h.clickSave("Resume save"); assertAction("Schedule slideshow");
+  h.control("Button", "Schedule slideshow").props.onClick(); assert.equal(continued, 1);
   assert.deepEqual(h.requests[0], h.requests[1]);
 });
 test("saving edited text uploads its generated image with the owner and keeps untouched generated slides", async () => {
@@ -235,8 +235,8 @@ test("saving edited text uploads its generated image with the owner and keeps un
   assert.equal(h.uploads[0].owner, "owner"); assert.equal(h.uploads[0].kind, "image");
   assert.equal(h.renders[0].source, "https://storage.test/generated-1.png");
   assert.equal(h.requests[0].slides[0].mediaAssetId, id(301)); assert.equal(h.requests[0].slides[1].mediaAssetId, id(202));
-  assert.equal(h.saved.length, 1); assert.ok(h.control("Button", "Continue to Schedule"));
-  h.heading("Changed heading"); assert.ok(h.control("Button", "Save slideshow")); assert.equal(h.control("Button", "Continue to Schedule"), undefined);
+  assert.equal(h.saved.length, 1); assert.ok(h.control("Button", "Schedule slideshow"));
+  h.heading("Changed heading"); assert.ok(h.control("Button", "Save slideshow")); assert.equal(h.control("Button", "Schedule slideshow"), undefined);
 });
 test("an interrupted save freezes editing and retries the same key and rendered asset IDs", async () => {
   const h = await editor({ failFirst: true }); h.heading("My heading"); await h.clickSave("Save slideshow");

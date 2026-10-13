@@ -4,6 +4,8 @@ import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
 import { getReferenceImageFileError } from "../../lib/generation/reference-image.ts";
+import { characterBatchProgress } from "../../lib/characters/batch-progress.ts";
+import { getCharacterImageModelLabel } from "../../lib/characters/image-models.ts";
 
 const assetId = "55555555-5555-4555-8555-555555555555";
 const image = { kind: "image", asset: { id: assetId, url: "https://owned.test/style.png" } };
@@ -54,7 +56,8 @@ function characterHarness() {
     "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" }, loading: false }) },
     "@/components/generation/ai-studio-composer": { AiStudioComposer: "Composer", AiStudioSetting: "Setting", AiStudioSettingSelect: "SettingSelect" },
     "@/components/generation/reference-media-upload": { ReferenceMediaUpload: "Upload" },
-    "@/lib/characters/image-models": { CHARACTER_IMAGE_MODEL_OPTIONS: [], getCharacterPromptLimit: () => 32000 },
+    "@/lib/characters/image-models": { CHARACTER_IMAGE_MODEL_OPTIONS: [], getCharacterPromptLimit: () => 32000, getCharacterImageModelLabel },
+    "@/lib/characters/batch-progress": { characterBatchProgress },
     "./use-character-builder": { useCharacterBuilder: () => builder }, "./character-history": { CharacterHistory: "History" },
     "./character-workspace.module.css": { default: {} },
     "@/components/ui/dialog": { Dialog: "Dialog", DialogContent: "DialogContent", DialogDescription: "DialogDescription", DialogHeader: "DialogHeader", DialogTitle: "DialogTitle" },

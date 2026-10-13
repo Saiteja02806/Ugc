@@ -46,7 +46,7 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false) 
   const [foregroundJobs, setForegroundJobs] = useState<CharacterJobReceipt[]>(() => {
     const restored = client.getQueryData<CharacterClientSession>(sessionKey)?.jobs ?? [];
     const statuses = client.getQueryData<CharacterJobStatusResponse["job"][]>(["character-jobs", userId, restored.map((job) => job.jobId)]);
-    return statuses?.some((job) => !job.isTerminal || job.status === "failed") ? restored : [];
+    return statuses?.some((job) => !job.isTerminal || job.status === "failed" || job.status === "cancelled") ? restored : [];
   });
   const [historyImage, setHistoryImage] = useState<CharacterHistoryImage | null>(null);
   const sessionQuery = useQuery({
@@ -105,7 +105,7 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false) 
         void client.invalidateQueries({ queryKey: ["billing-subscription", userId] });
         void client.invalidateQueries({ queryKey: historyKey });
       }
-      if (mounted.current && !signal.aborted && results.some((job) => job.status === "failed" || !job.isTerminal && !job.checkError)) {
+      if (mounted.current && !signal.aborted && results.some((job) => job.status === "failed" || job.status === "cancelled" || !job.isTerminal && !job.checkError)) {
         const latest = client.getQueryData<CharacterClientSession>(sessionKey);
         if (JSON.stringify(latest?.jobs) === JSON.stringify(session.jobs)) setForegroundJobs(session.jobs);
       }

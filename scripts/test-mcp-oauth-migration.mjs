@@ -53,7 +53,7 @@ try {
   const rotated = await db.query(`SELECT * FROM public.mcp_rotate_refresh_token(
     'old', 'new-refresh', 'new-access', 'client', 'https://mcp.example/mcp')`);
   assert.equal(rotated.rows[0].firebase_uid, "firebase-user");
-  assert.deepEqual(rotated.rows[0].scopes, ["account:read"], "refresh must not add newly supported account:write consent");
+  assert.deepEqual(rotated.rows[0].scopes, ["account:read"], "refresh must preserve old consent without adding account:write or brand:write");
   const refreshedScopes = await db.query("SELECT scopes FROM public.mcp_oauth_tokens WHERE token_hash IN ('new-refresh','new-access')");
   assert.equal(refreshedScopes.rows.length, 2);
   assert(refreshedScopes.rows.every(token => JSON.stringify(token.scopes) === JSON.stringify(["account:read"])));

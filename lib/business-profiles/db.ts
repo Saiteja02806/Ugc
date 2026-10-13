@@ -31,7 +31,7 @@ type BusinessProfileStatus = "failed" | "preparing";
 type BusinessProfileOnboardingStatus = "completed" | "incomplete";
 export type BusinessProfileOnboardingStep = 1 | 2 | 3;
 
-type BusinessProfileRow = {
+export type BusinessProfileRow = {
   analysis_id: string | null;
   business_context_draft_base_version: number | null;
   business_context_draft_json: WebsiteBusinessAnalysis | null;
@@ -70,6 +70,10 @@ type BusinessProfileRow = {
 type BusinessProfileDatabase = {
   public: {
     Functions: {
+      mcp_commit_legacy_onboarding_analysis: {
+        Args:{p_user_id:string;p_job_id:string;p_analysis_id:string;p_context:WebsiteBusinessAnalysis;p_content_hash:string};
+        Returns:{changed:boolean;profile:BusinessProfileRow|null;skipped?:string};
+      };
       apply_business_context_v1: {
         Args: {
           p_content_hash: string;
@@ -254,6 +258,17 @@ export async function saveBusinessProfile(input: {
     .single();
   if (error) throw new Error(`Could not save business profile: ${error.message}`);
   return { changed: true, profile: mapProfile(data) };
+}
+
+/** Legacy analysis callbacks retain the selected source and saved-profile fence. */
+export async function saveBusinessProfileFromSetupJob(input:{analysis:WebsiteBusinessAnalysis;analysisId:string;jobId:string;intakeType:BusinessProfileIntakeType;userId:string}) {
+  const {data,error}=await getClient().rpc("mcp_commit_legacy_onboarding_analysis",{
+    p_user_id:input.userId,p_job_id:input.jobId,p_analysis_id:input.analysisId,p_context:input.analysis,
+    p_content_hash:hashAnalysis(input.analysis,input.intakeType),
+  });
+  if(error)throw new Error("Could not confirm the selected business source. Retry the saved setup job.");
+  if(!data)throw new Error("Business source persistence returned no result.");
+  return {changed:data.changed,profile:data.profile?mapProfile(data.profile):null,skipped:data.skipped};
 }
 
 /** Saves a Settings draft only. It never changes the active profile version. */
@@ -593,7 +608,7 @@ function getStoredHash(profile: BusinessProfileRecord) {
   return hashAnalysis(profile.context, profile.intakeType);
 }
 
-function mapProfile(row: BusinessProfileRow): BusinessProfileRecord {
+export function mapProfile(row: BusinessProfileRow): BusinessProfileRecord {
   const primaryGoals = getStoredPrimaryGoals(row);
 
   return {
@@ -646,5 +661,7 @@ function getStoredPrimaryGoals(row: BusinessProfileRow): PrimaryGoals {
 
   return parsed.success ? parsed.data : [];
 }
+
+export { hashAnalysis as hashBusinessProfileAnalysis };
 
 export { isBusinessProfileOnboardingComplete } from "./onboarding-access";

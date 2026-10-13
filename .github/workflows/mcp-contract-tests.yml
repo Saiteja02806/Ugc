@@ -6,6 +6,10 @@ on:
       - "app/mcp/**"
       - "app/oauth/**"
       - "lib/mcp/**"
+      - "lib/business-profiles/**"
+      - "app/api/business-profile/**"
+      - "app/api/internal/jobs/process-media-analysis/**"
+      - "scripts/onboarding-background*.mjs"
       - "lib/library/**"
       - "app/api/library/**"
       - "lib/explore/slideshow-api.ts"
@@ -48,6 +52,10 @@ on:
       - "app/mcp/**"
       - "app/oauth/**"
       - "lib/mcp/**"
+      - "lib/business-profiles/**"
+      - "app/api/business-profile/**"
+      - "app/api/internal/jobs/process-media-analysis/**"
+      - "scripts/onboarding-background*.mjs"
       - "lib/library/**"
       - "app/api/library/**"
       - "lib/explore/slideshow-api.ts"
@@ -99,6 +107,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:mcp
+      - run: npm run test:onboarding-background
+      - run: npm run test:onboarding-concurrency
       - run: node --test scripts/validate-ugc-pilot-plugin.test.mjs
       - run: python3 scripts/test-ugc-pilot-plugin-build.py
       - run: npm audit --omit=dev --audit-level=high

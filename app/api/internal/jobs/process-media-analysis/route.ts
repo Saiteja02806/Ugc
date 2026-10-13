@@ -1,3 +1,4 @@
+import { finalizeLegacyOnboardingPreparation } from "@/lib/business-profiles/onboarding-completion";
 import { NextResponse } from "next/server";
 
 import {
@@ -70,6 +71,11 @@ export async function POST(request: Request) {
     }
 
     if (operation === "business_profile_setup") {
+      if (input.legacyFinalizeOnly === true) {
+        return json({ ...await finalizeLegacyOnboardingPreparation(job.userId, {
+          profileId: input.profileId, profileVersion: input.profileVersion, timezone: input.timezone,
+        }), ok: true });
+      }
       const draftId = getString(input.onboardingDraftId);
       const sourceRevision = typeof input.sourceRevision === "number" ? input.sourceRevision : undefined;
       if (input.finalizeOnly === true) {

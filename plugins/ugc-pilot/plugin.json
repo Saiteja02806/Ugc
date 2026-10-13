@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ugc-pilot",
-  "version": "0.1.12",
+  "version": "0.1.15",
   "description": "Create UGC media, finish videos, edit drafts, manage groups and saved Library outputs, and remix application references through UGC Pilot where enabled.",
   "author": {
     "name": "UGC Pilot",
@@ -19,7 +19,7 @@
       "interface": {
         "displayName": "UGC Pilot",
         "shortDescription": "Images and videos in your AI",
-        "longDescription": "Create media and speech using UGC Pilot where enabled. Upload local clips/audio from a supported IDE, attach demos and retrieve finished videos. Open, save and export Edit drafts. Browse application references, Creative Asset groups and saved Carousel/slideshow Library outputs; remix text and change groups/Library when their gates permit. Slideshow text rendering, voice cloning and social publishing remain unavailable through MCP. Private beta; updating this package does not activate server features.",
+        "longDescription": "Create media and speech using UGC Pilot where enabled. Upload local clips/audio from a supported IDE, attach demos and retrieve finished videos. Open, save and export Edit drafts. Browse application references, Creative Asset groups and saved Carousel/slideshow Library outputs; remix text and change groups/Library when their gates permit. Read and edit shared Business Context drafts and apply reviewed changes for future content with separate brand consent where enabled. Resume business onboarding with saved answers and durable analysis/completion where the separate brand write gate permits. Upload a supplied business logo through a recoverable local transfer and server verification where the business-media gate permits. Slideshow text rendering, voice cloning and social publishing remain unavailable through MCP. Private beta; updating this package does not activate server features.",
         "developerName": "UGC Pilot",
         "websiteURL": "https://getugcpilot.com",
         "supportURL": "https://getugcpilot.com/contact",
@@ -39,7 +39,10 @@
           "Application reference catalogue and saved text remix where enabled",
           "Creative Asset groups and membership where enabled",
           "Saved Carousel/slideshow Library management where enabled",
-          "Account publishing defaults and timezone initialization with separate consent where enabled"
+          "Account publishing defaults and timezone initialization with separate consent where enabled",
+          "Shared Business Context drafts and reviewed promotion with separate consent where enabled",
+          "Saved website/manual/mobile business onboarding with durable receipts where enabled",
+          "Dedicated local business-logo reservations, transfer and verification where enabled"
         ],
         "logo": "./assets/logo.png",
         "composerIcon": "./assets/logo.png",
@@ -101,7 +104,7 @@
         }
       },
       "publication": {
-        "release_notes": "Adds account-default read/update/recovery workflow for the gated account-settings backend. Writes need fresh account:write consent, exact revisions and durable request UUIDs. Existing posts, selected social-account restrictions and initialized timezone choices are preserved. Package installation does not apply the migration or enable writes; hosted acceptance remains pending."
+        "release_notes": "Adds the shared Business Context read/draft/apply/recovery workflow. Writes require deployed schema, enabled gate, fresh brand:write consent, current revisions and durable request UUIDs. Existing goals, generated media and today's pinned content are preserved. Onboarding, website reanalysis and logo/screenshot management remain separate work; package installation does not activate features."
       }
     }
   }

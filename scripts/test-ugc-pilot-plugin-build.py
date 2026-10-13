@@ -40,32 +40,57 @@ class PluginBuildTests(unittest.TestCase):
         with zipfile.ZipFile(archive) as package:
             self.assertIsNone(package.testzip())
             self.assertEqual(sorted(package.namelist()), sorted("ugc-pilot/" + name for name in builder.FILES))
-            self.assertEqual(len([name for name in package.namelist() if name.endswith("/SKILL.md")]), 14)
+            self.assertEqual(len([name for name in package.namelist() if name.endswith("/SKILL.md")]), 16)
             for name in builder.FILES:
                 self.assertEqual(package.read("ugc-pilot/" + name), (builder.SOURCE / name).read_bytes().replace(b"\r\n", b"\n") if Path(name).suffix in {".md", ".json", ".mjs"} else (builder.SOURCE / name).read_bytes())
                 if Path(name).suffix in {".md", ".json", ".mjs"}:
                     self.assertNotIn(b"\r\n", package.read("ugc-pilot/" + name))
             versions = [json.loads(package.read("ugc-pilot/" + name))["version"] for name in ["plugin.json", ".codex-plugin/plugin.json", ".claude-plugin/plugin.json"]]
-            self.assertEqual(versions, ["0.1.12"] * 3)
+            self.assertEqual(versions, ["0.1.15"] * 3)
         self.assertIn(hashlib.sha256(before).hexdigest(), archive.with_suffix(".zip.sha256").read_text())
-        self.assertTrue((self.destination / "ugc-pilot-0.1.12-setup.md").exists())
+        self.assertTrue((self.destination / "ugc-pilot-0.1.15-setup.md").exists())
         self.assertFalse((self.destination / "ugc-pilot-setup.md").exists())
-        guide = (self.destination / "ugc-pilot-0.1.12-setup.md").read_text(encoding="utf-8")
+        guide = (self.destination / "ugc-pilot-0.1.15-setup.md").read_text(encoding="utf-8")
         self.assertNotIn("](skills/", guide)
         self.assertIn("skills/edit-ugc-draft/SKILL.md", guide)
-        for skill in ["manage-ugc-groups", "manage-ugc-library", "remix-ugc-reference", "manage-ugc-account"]:
+        for skill in ["manage-ugc-groups", "manage-ugc-library", "remix-ugc-reference", "manage-ugc-account", "manage-ugc-business", "onboard-ugc-business"]:
             self.assertIn(f"skills/{skill}/SKILL.md", guide)
         self.assertIn("[client setup](#client-setup)", guide)
         self.assertIn(".agents/plugins/marketplace.json", guide)
 
     def test_reviewed_public_archive_matches_current_canonical_source(self):
-        archive = ROOT / "public/downloads/ugc-pilot-0.1.12.zip"
+        archive = ROOT / "public/downloads/ugc-pilot-0.1.15.zip"
         with zipfile.ZipFile(archive) as package:
             self.assertIsNone(package.testzip())
             self.assertEqual(sorted(package.namelist()), sorted("ugc-pilot/" + name for name in builder.FILES))
             for name in builder.FILES:
                 self.assertEqual(package.read("ugc-pilot/" + name), builder.package_bytes(name))
         self.assertEqual(archive.with_suffix(".zip.sha256").read_text().strip(), hashlib.sha256(archive.read_bytes()).hexdigest() + "  " + archive.name)
+
+    def test_packaged_business_logo_helper_prepares_a_durable_exact_intent(self):
+        import struct
+        import zlib
+        archive = self.build()
+        helper = self.destination / "transfer-business-logo.mjs"
+        with zipfile.ZipFile(archive) as package:
+            helper.write_bytes(package.read("ugc-pilot/skills/manage-ugc-media/scripts/transfer-business-logo.mjs"))
+        def chunk(kind, value):
+            return struct.pack(">I", len(value)) + kind + value + struct.pack(">I", zlib.crc32(kind + value) & 0xffffffff)
+        image = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 128, 128, 8, 2, 0, 0, 0))
+        image += chunk(b"IDAT", zlib.compress((b"\x00" + b"\x40\x70\x90" * 128) * 128)) + chunk(b"IEND", b"")
+        source = self.destination / "business-logo.png"
+        source.write_bytes(image)
+        receipt = self.destination / "business-logo-intent.json"
+        prepared = subprocess.run(["node", str(helper), "prepare", "--file", str(source), "--receipt", str(receipt)], capture_output=True, text=True, check=True)
+        output = json.loads(prepared.stdout)
+        saved = json.loads(receipt.read_text())
+        self.assertEqual(output["create_business_logo_upload"]["sha256"], hashlib.sha256(image).hexdigest())
+        self.assertEqual(saved["input"]["request_id"], output["request_id"])
+        self.assertEqual(saved["input"]["file_size_bytes"], len(image))
+        self.assertIsNone(saved["upload_id"])
+        duplicate = subprocess.run(["node", str(helper), "prepare", "--file", str(source), "--receipt", str(receipt)], capture_output=True, text=True)
+        self.assertNotEqual(duplicate.returncode, 0)
+        self.assertEqual(json.loads(receipt.read_text()), saved)
 
     def test_packaged_audio_helper_executes_and_preserves_recovery_identity(self):
         archive = self.build()

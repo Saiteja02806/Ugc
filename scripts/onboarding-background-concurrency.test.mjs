@@ -15,7 +15,9 @@ function command(args, input='') {
     child.stdin.end(input);
   });
 }
-function sql(query) { return command(['exec','-i',container,'psql','-X','-qAt','-v','ON_ERROR_STOP=1','-U','postgres'],query); }
+// The entrypoint's temporary init server is socket-only and shuts down again.
+// Wait for the final TCP listener inside the container; expose no host port.
+function sql(query) { return command(['exec','-i','-e','PGPASSWORD=isolated-test-only',container,'psql','-h','127.0.0.1','-X','-qAt','-v','ON_ERROR_STOP=1','-U','postgres'],query); }
 const quote = value => `'${String(value).replaceAll("'","''")}'`;
 function transition(user,action,payload) {
   return `select row_to_json(d) from public.mutate_business_onboarding_v1(${quote(user)},${quote(action)},${quote(JSON.stringify(payload))}::jsonb) d;`;

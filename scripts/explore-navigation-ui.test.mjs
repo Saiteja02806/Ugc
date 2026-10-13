@@ -13,7 +13,7 @@ const styles = new Proxy({}, { get: (_target, name) => String(name) });
 
 // Execute the real presentation components with isolated React/Next contexts.
 // This tests link destinations and pending UI, not browser navigation/network.
-function load(path, imports = {}, environment = "production", flags = {}) {
+function load(path, imports = {}, environment = "production", flags = {}, globals = {}) {
   const compiled = ts.transpileModule(read(path), {
     compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
   }).outputText;
@@ -22,6 +22,7 @@ function load(path, imports = {}, environment = "production", flags = {}) {
     exports: exported,
     process: { env: { NODE_ENV: environment, ...flags } },
     URLSearchParams,
+    ...globals,
     require: name => {
       if (name === "react/jsx-runtime") return { jsx: element, jsxs: element, Fragment: "fragment" };
       if (name === "@/lib/utils") return { cn };
@@ -221,4 +222,58 @@ test("Explore preview URL handling stays client-side and cannot enable productio
 test("decorative covers pass pointer input to the link rather than acting as media controls", () => {
   const css = read("components/explore/explore-workspace.module.css");
   assert.match(css, /\.cover video, \.characterMotion\s*\{\s*pointer-events: none;/);
+});
+
+test("Talking Head is a synchronous route and keeps its preview guard in the client", () => {
+  for (const enabled of ["true", "false"]) {
+    const route = load("app/explore/create-hook/page.tsx", {
+      react: { Suspense: "suspense" },
+      "@/components/explore/hook-workflow-entry": { HookWorkflowEntry: "entry" },
+      "@/components/layout/workspace-content-loading": { WorkspaceContentLoading: "loading" },
+    }, "production", { EXPLORE_GENERATION_ENABLED: enabled });
+    const shell = route.default({ searchParams: { then() { throw Error("Must not consume request params"); } } });
+    assert.equal(shell instanceof Promise, false);
+    for (const query of ["", "preview=1", "preview=0"]) {
+      const entry = load("components/explore/hook-workflow-entry.tsx", {
+        "next/navigation": { useSearchParams: () => new URLSearchParams(query) },
+        "@/components/explore/hook-workflow-preview": { HookWorkflowPreview: "workflow" },
+      });
+      assert.equal(entry.HookWorkflowEntry(shell.props.children.props).props.generationEnabled, enabled === "true" && query !== "preview=1");
+    }
+  }
+});
+
+test("cover motion does not download on visibility, cancels fast clicks and respects reduced motion", () => {
+  const handlers = new Map(), videoHandlers = new Map(), timers = new Map();
+  let effect, observe, cleanup, paused = 0, released = 0;
+  const preference = { matches: false, addEventListener() {}, removeEventListener() {} };
+  const link = { addEventListener: (name, fn) => handlers.set(name, fn), removeEventListener: name => handlers.delete(name) };
+  const video = { src: null, closest: () => link, hasAttribute: () => video.src !== null,
+    removeAttribute() { video.src = null; }, load() { released++; }, pause() { paused++; }, play: async () => {},
+    addEventListener: (name, fn) => videoHandlers.set(name, fn), removeEventListener: name => videoHandlers.delete(name) };
+  const { useCoverPlayback } = load("components/explore/use-cover-playback.ts", {
+    react: { useRef: () => ({ current: video }), useEffect: fn => { effect = fn; } },
+  }, "production", {}, {
+    window: { matchMedia: () => preference },
+    document: { visibilityState: "visible", addEventListener() {}, removeEventListener() {} },
+    IntersectionObserver: class { constructor(fn) { observe = fn; } observe() {} disconnect() {} },
+    setTimeout(fn, delay) { assert.equal(delay, 250); const id = Symbol(); timers.set(id, fn); return id; },
+    clearTimeout: id => timers.delete(id),
+  });
+  useCoverPlayback("/cover.mp4"); cleanup = effect();
+  observe([{ isIntersecting: true }]);
+  assert.equal(video.src, null); assert.equal(timers.size, 0);
+  handlers.get("pointerenter")({ pointerType: "touch" });
+  assert.equal(timers.size, 0);
+  handlers.get("pointerenter")({ pointerType: "mouse" });
+  assert.equal(timers.size, 1);
+  handlers.get("pointerdown")();
+  assert.equal(timers.size, 0); assert.equal(video.src, null);
+  handlers.get("focus")(); [...timers.values()][0](); timers.clear();
+  assert.equal(video.src, "/cover.mp4");
+  handlers.get("blur")(); assert.equal(video.src, null); assert.equal(released, 1);
+  preference.matches = true;
+  handlers.get("focus")(); assert.equal(timers.size, 0);
+  assert.ok(paused > 0);
+  cleanup(); assert.equal(handlers.size, 0); assert.equal(videoHandlers.size, 0);
 });

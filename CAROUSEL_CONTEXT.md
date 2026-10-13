@@ -5,8 +5,9 @@ Last updated: 2026-10-13
 ## 2026-10-13 Combined MCP candidate reconciliation (unreleased)
 
 - The business release integration retains both the reviewed MCP Business
-  Context/onboarding/logo candidates and the newer application source
-  `1177258da1d997f31366559c093edd0a48c951da`. No production promotion, worker
+  Context/onboarding/logo candidates and the latest live application source
+  `07a4e516407151d5411f37e05fece468e8dcfdbd` (PR #57), including its Explore
+  navigation/preview and editor-loading fixes. No production promotion, worker
   update, schema application or write enablement has occurred in this branch.
 - Existing application release decisions and deployment holds below remain
   recorded. The combined source must be validated against current production

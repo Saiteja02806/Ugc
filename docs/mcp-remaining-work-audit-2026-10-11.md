@@ -1,5 +1,65 @@
 # Remaining work for complete IDE operation
 
+## Latest verified checkpoint — 13 October 2026
+
+This checkpoint supersedes older paragraphs labelled “current” below. Complete
+application access is still unfinished. The specified existing-media Codex
+hook → demo → two-second downloaded video journey has passed; real Claude Code
+workflow acceptance and the broader application requirements remain separate.
+
+This chat currently discovers 79 released native tools. The latest read-only
+production deployment inspection reports website `dpl_CUXcYhNf8ykvHiG8pxzVLRxnYsYX`
+and MCP `dpl_FfqQgPemMxdXcLvWyNWiiAwarr1W`, both READY at main source
+`07a4e516407151d5411f37e05fece468e8dcfdbd` (PR #57). The business candidate
+now preserves this entire newer navigation/preview/editor-loading release.
+Earlier account/application releases remain ancestors, not the current source.
+
+Unreleased candidates:
+
+- [PR #51](https://github.com/Saiteja02806/Ugc/pull/51): shared Business Context
+  draft/apply and recovery, plugin 0.1.13, 85 source registrations.
+- [PR #53](https://github.com/Saiteja02806/Ugc/pull/53): both saved onboarding
+  modes, identity/goals/submission, durable receipts/job recovery, plugin 0.1.14,
+  90 source registrations. Exact-commit Linux, independent-session races,
+  migration guard and primary hosted build passed.
+- [PR #55](https://github.com/Saiteja02806/Ugc/pull/55): dedicated logo
+  reservations/recovery/renewal, actual decoded-byte confirmation, local transfer
+  helper and shared website/MCP attachment guard, plugin 0.1.15, 96 source
+  registrations. Local full MCP/build/type/lint/package checks passed. One Linux
+  run passed all eight independent-session cases; another reached Docker's
+  temporary initialization server and lost its connection. The fixture now waits
+  for the final TCP listener. Both corrected exact-source runs passed all eight
+  independent-session cases, migration guard and primary hosted build.
+- [PR #56](https://github.com/Saiteja02806/Ugc/pull/56): combines all three
+  business candidates with latest live/main source
+  `07a4e516407151d5411f37e05fece468e8dcfdbd`. Prior reconciled source `92f0eb36`
+  passed both exact-source Linux application runs, MCP and migration guard:
+  907 Explore, 606 worker, 97 scheduling UI, 3 scheduling metadata,
+  20 Business Context and 10 onboarding schema cases. CI uses distribution
+  FFmpeg with all five required filters; the Avenir test retains exact advance
+  width and compares the explicit face on each platform. New checks after
+  adopting PR #57 remain required. No business migration or promotion occurred.
+  Automatic approval review rejected creating production-target stages without
+  explicit authorization; neither a stage nor a protection bypass was created.
+
+Production migration history was rechecked through the existing connected
+Supabase project: account settings version 20261013090422 is present; Business
+Context 20261013112752, onboarding 20261013141043 and logo upload 20261013165323
+remain absent. No candidate schema, promotion, write enablement, bucket/IAM
+change or customer logo upload occurred here. Candidate tool counts and package
+checks do not establish live application access.
+
+Dedicated app screenshots, website reanalysis, advanced generation integration,
+full editor/Explore drafts, slideshow text rendering, Trending/Carousel actions,
+social publishing, analytics and host acceptance remain required. Existing
+new-write gates and unavailable provider/storage configuration must be resolved
+and verified for intended user workflows before marking full parity complete.
+
+Current implementation evidence is in the candidate PRs and
+[logo evidence](mcp-business-logo-candidate-2026-10-13.md),
+[onboarding evidence](mcp-business-onboarding-candidate-2026-10-13.md) and
+[screenshot next-step audit](mcp-business-upload-next-step-2026-10-13.md).
+
 Initially audited on 11 October 2026 against MCP registration, tool schemas, plugin source, upload/finishing services and customer-facing website API routes. Release follow-ups below now record the scoped Demo and upload-recovery deployments, migrations, CI and live discovery. No production media upload, generation, render, transcription or publishing was performed. Complete host/workflow acceptance remains separate from release checks.
 
 ## Current boundary

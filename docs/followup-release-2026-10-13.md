@@ -4,6 +4,17 @@ Status: user authorized deployment of all current intentional checkout changes.
 Combined validation is in progress; no follow-up production success is claimed.
 The previous release baseline is `a2b3dd79ebf20c6a6ae96f493523cc695d6feccb`.
 
+The initial 98-path release is merged at `1177258d` and its website builds and
+immutable worker image succeeded, but its live promotion was held. Additional
+completed navigation changes are included in the final source freeze: static
+Talking Head entry with the same preview guard, complete character-card
+prefetch, decorative cover cancellation and separately loaded editor code.
+Sidebar cleanup and completed candidate progress documents are included.
+Candidate Business Context/onboarding/logo runtime remains deferred in its
+separate branches. The user's later request to hide the Slideshow Edit hook
+library is explicitly excluded from deployment and will be prepared locally
+after the deployment source is frozen.
+
 This release includes the landing Talking Head UGC video/badge and passive
 three-second slideshow; browser fetch-receiver fixes; stable workflow frames
 across Create/Edit/Schedule; reference tile collections and actual Recreate
@@ -62,3 +73,13 @@ versions and the source has 136, with only the automatic character-save migratio
 missing. Before migration, production has eight completed builder images,
 seven already saved influencers, and one unsaved image. The completion trigger
 is absent. The baseline security advisor has informational notices only.
+
+The final navigation/UI source passed 146 focused checks, final application
+TypeScript and scoped ESLint. The existing UI reconciliation source assertion
+was updated for the reviewed inline-reference layout; no application behavior
+was changed to satisfy it. The attempted full follow-up rerun was interrupted
+before completion and is not claimed as passed. Initial broad regression and
+worker results above remain the evidence for the otherwise unchanged scope.
+The source chat's configured production build and rapid-switch browser checks
+also passed. Exact-source Linux website builds and live acceptance remain
+required before declaring this final revision deployed.

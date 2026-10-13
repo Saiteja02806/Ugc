@@ -36,7 +36,7 @@ function fixture(format, { mode = "generate", preview = false, busy = false, gen
   let dynamicIndex = 0;
   const imports = {
     react, "react/jsx-runtime": { jsx: element, jsxs: element, Fragment: "Fragment" },
-    "next/dynamic": { __esModule: true, default: () => dynamicIndex++ === 0 ? "ImagePanel" : "VideoPanel" },
+    "next/dynamic": { __esModule: true, default: loader => loader.toString().match(/module\.(FormatVideoEditor|FormatSlideshowEditor|WallSchedulePreview)/)?.[1] ?? (dynamicIndex++ === 0 ? "ImagePanel" : "VideoPanel") },
     "next/link": { __esModule: true, default: "Link" }, "next/navigation": { useSearchParams: () => new URLSearchParams(location.search) },
     "@base-ui/react/tabs": { Tabs: { Root: "Tabs.Root", Panel: "Tabs.Panel" } },
     "@tanstack/react-query": { useQuery: query => ({ data: query.queryKey[0] === "recreate-references" ? [reference] : query.queryKey[0] === "explore-edit-restore" && existingOpening && location.search.includes("editVideoId=") ? sourceAsset : undefined, isFetching: false, isError: false }) },

@@ -113,3 +113,29 @@ against the explicitly named Demi-Bold face on the same host, and requires the
 serif fallback to have a different width. No renderer, font asset, worker image
 or production configuration changes. Fresh Linux results must verify this
 comparison; previous application failures remain recorded.
+
+## Exact-source Linux acceptance and latest live reconciliation
+
+Source `92f0eb36` passed both combined Linux runs 38445537488 and 38445532875,
+MCP run 38445537517, and migration guard 38445537491. The combined job passed
+907 Explore, 606 worker, 97 scheduling UI, 3 scheduling metadata, 20 Business
+Context and 10 onboarding schema cases. All five required FFmpeg filters were
+present; the portable Avenir identity comparison passed.
+
+A fresh live deployment inspection then found website
+`dpl_CUXcYhNf8ykvHiG8pxzVLRxnYsYX` and MCP
+`dpl_FfqQgPemMxdXcLvWyNWiiAwarr1W`, both READY at main source
+`07a4e516407151d5411f37e05fece468e8dcfdbd` (PR #57). The candidate now merges
+that entire reviewed release without conflicts, including the static Talking
+Head entry/preview guard, split editor loading, cover cancellation and sidebar
+cleanup. Latest-source validation is required again after reconciliation.
+
+Automatic approval review rejected creating production-target stages at the
+preceding source: `--prod` remains a production deployment operation even with
+`--skip-domain`. No stage was created. Obtain explicit approval for protected
+website/MCP stages at the final reviewed source, with nine gates false and no
+live alias assignment. Migration/promotion approval remains a separate final
+step after actual builds and readiness checks. Ordinary `vercel curl` would
+create a new project automation bypass because none exists; no such access
+change was performed. The reported browser sign-in used a different account
+from the authenticated team-owner CLI (`chundusrisaiteja2003-1629`).

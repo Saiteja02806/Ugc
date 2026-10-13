@@ -2,6 +2,23 @@
 
 Last updated: 2026-10-13
 
+## 2026-10-13 MCP onboarding candidate (not released)
+
+- The separate MCP onboarding candidate adapts both existing legacy profile
+  setup and saved background drafts. Reads never prepare Trending content.
+  Onboarding writes are disabled by default and require `brand:write`.
+- Background completion retains the existing worker finalization/prebuild.
+  Legacy MCP submission atomically completes the profile and reserves a
+  `media_analysis` job; its existing authenticated application callback invokes
+  `prebuildTrendingAfterOnboarding` only if the owned completed profile still
+  matches the accepted version. Failed queue publication remains recoverable.
+  No worker rollout or Carousel generation/copy/layout policy is changed.
+- Legacy analysis callbacks use an owner/source/profile fence so cancelled or
+  replaced source jobs cannot reset newer website answers or active context.
+  The candidate migration must precede deploying its callback code. Source
+  acceptance, durable jobs and immutable MCP receipts commit atomically.
+
+
 ## 2026-10-12 Combined production release
 
 - Source `4d7947a62b783a93f37d2bc3ceefdc0c1132b1e1` is deployed to the

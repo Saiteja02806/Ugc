@@ -123,7 +123,7 @@
     },
     {
       "id": "wall-prompt",
-      "prompt": "Use this exact wall text: First line \u00f0\u0178\u02dc\u2026\nSecond line \u00e2\u20ac\u201d keep punctuation. Give me a seven-second footage prompt and overlay plan.",
+      "prompt": "Use this exact wall text: First line ðŸ˜…\nSecond line â€” keep punctuation. Give me a seven-second footage prompt and overlay plan.",
       "expected_skills": [
         "wall-text-video-generation"
       ],
@@ -950,6 +950,61 @@
         "apply_business_context"
       ],
       "expected": "Recovers immutable accepted context and reads current state separately. Does not reinterpret old intent against newer goals or replace a UUID/revision to force stale context."
+    },
+    {
+      "id": "onboarding-read-only",
+      "prompt": "Check whether my business setup is complete. Do not analyze or submit anything.",
+      "expected_skills": [
+        "onboard-ugc-business"
+      ],
+      "expected_tools": [
+        "get_business_onboarding_capabilities",
+        "get_business_onboarding"
+      ],
+      "forbidden_tools": [
+        "mutate_business_onboarding"
+      ],
+      "expected": "Reads saved legacy/background mode and completion without inferring completion from configuration. No generation, analysis or trial activation."
+    },
+    {
+      "id": "onboarding-resume-identity",
+      "prompt": "Continue my saved business setup and change its name to Exactly My Product. Keep my other answers.",
+      "expected_skills": [
+        "onboard-ugc-business"
+      ],
+      "expected_tools": [
+        "get_business_onboarding",
+        "mutate_business_onboarding"
+      ],
+      "expected": "Preserves saved mode, exact name, unrelated fields and existing logo. Uses brand write consent, gate, saved UUID and complete current revision fence."
+    },
+    {
+      "id": "onboarding-lost-acknowledgement",
+      "prompt": "My onboarding submit lost its response. Recover the saved request before doing anything again.",
+      "expected_skills": [
+        "onboard-ugc-business"
+      ],
+      "expected_tools": [
+        "get_business_onboarding_request"
+      ],
+      "forbidden_tools": [
+        "mutate_business_onboarding"
+      ],
+      "expected": "Recovers historical accepted receipt and owned job IDs without resubmitting setup. Distinguishes accepted answers from completed analysis/content preparation."
+    },
+    {
+      "id": "onboarding-disabled",
+      "prompt": "Set up my business from these facts, but the onboarding write gate reports disabled.",
+      "expected_skills": [
+        "onboard-ugc-business"
+      ],
+      "expected_tools": [
+        "get_business_onboarding_capabilities"
+      ],
+      "forbidden_tools": [
+        "mutate_business_onboarding"
+      ],
+      "expected": "Reports disabled writes and preserves intended source facts; does not change gates or bypass consent."
     }
   ],
   "notes": "Expected skill sequences are evaluation criteria, not measured host activation results. Brand reads may be used when explicitly relevant and connected. Draft-only cases below supply briefs or declare missing context."

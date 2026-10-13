@@ -84,3 +84,18 @@ advanced generation integration, full Explore/editor drafts, slideshow text
 rendering, Trending/Carousel actions, social publishing/analytics, gated-feature
 activation and real Codex/Claude acceptance are still required. No customer
 content has been generated/uploaded solely for connectivity in this candidate.
+
+## Linux media setup correction
+
+The new combined Linux job exposed that the npm `ffmpeg-static` Linux 7.0.2
+binary lacks `drawtext`, although the Windows binary used for local acceptance
+has it. Required-filter diagnostic run 38441110677 proves `drawtext: false`;
+the first Linux real text-render tests therefore could not run their filters.
+No customer input or application error detail was exposed during diagnosis.
+
+Combined CI now installs the same distribution FFmpeg/font stack selected by
+the worker Dockerfile, including the committed Inter alias, and uses the pinned
+package's supported `FFMPEG_BIN` override. It checks required filters before
+running unchanged rendering assertions. This adjusts the test environment only;
+no runtime dependency, worker image, production setting or render behavior was
+changed. Fresh exact-source Linux acceptance remains required.

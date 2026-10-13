@@ -18,12 +18,22 @@ jobs:
   preserved-application:
     if: github.head_ref == 'codex/mcp-business-release' || github.ref == 'refs/heads/codex/mcp-business-release'
     runs-on: ubuntu-latest
+    env:
+      FFMPEG_BIN: /usr/bin/ffmpeg
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
+      - name: Install the worker-compatible test media stack
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fontconfig fonts-noto-cjk fonts-noto-color-emoji
+          sudo mkdir -p /usr/local/share/fonts/ugc-pilot
+          sudo cp worker/src/assets/fonts/*.ttf /usr/local/share/fonts/ugc-pilot/
+          sudo cp worker/src/assets/fonts/61-ugc-inter.conf /etc/fonts/conf.d/61-ugc-inter.conf
+          sudo fc-cache -f
       - run: npm ci
       - run: node scripts/check-test-media-capabilities.mjs
       - run: npm run test:explore

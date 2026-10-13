@@ -288,8 +288,8 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   if (body?.exploreFormat && referenceAudioUrls.length) {
     return NextResponse.json({ error: "Add narration in Edit video; voice references are not used in this workflow.", ok: false }, { status: 400 });
   }
-  if (referenceVideoMode && (!referenceVideoDurationSeconds || referenceVideoDurationSeconds > OMNI_EDIT_MAX_VIDEO_SECONDS || referenceImageUrls.length > 1)) {
-    return NextResponse.json({ error: "Use one optional image with a reference video up to 10 seconds.", ok: false }, { status: 400 });
+  if (referenceVideoMode && (!referenceVideoDurationSeconds || referenceVideoDurationSeconds > OMNI_EDIT_MAX_VIDEO_SECONDS || referenceImageUrls.length > 5)) {
+    return NextResponse.json({ error: "Use up to five images with a reference video up to 10 seconds.", ok: false }, { status: 400 });
   }
   if (isFormatVideoReference && !referenceVideoMode && (referenceImageUrls.length || !referenceVideoDurationSeconds || referenceVideoDurationSeconds > 3)) {
     return NextResponse.json({ error: "Choose one optional image or a video reference up to 3 seconds.", ok: false }, { status: 400 });

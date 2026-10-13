@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 export type LocalWorkflowMedia = { name: string; url: string; duration: number | null; file?: File };
 export type LocalMediaKind = "image" | "audio" | "video";
+type FileSelectionOptions = { minDuration?: number; maxDuration?: number; signal?: AbortSignal; onRead?: (asset: LocalWorkflowMedia) => void };
 
 /** Browser-only attachments for layout review. No upload, account write, or provider request. */
 export function useLocalWorkflowMedia(kind: LocalMediaKind) {
@@ -14,42 +15,61 @@ export function useLocalWorkflowMedia(kind: LocalMediaKind) {
   useEffect(() => () => { revision.current += 1; }, []);
   useEffect(() => () => { if (asset?.url.startsWith("blob:")) URL.revokeObjectURL(asset.url); }, [asset]);
 
-  async function choose(file: File, options: { minDuration?: number; maxDuration?: number; signal?: AbortSignal; onRead?: (asset: LocalWorkflowMedia) => void } = {}) {
+  async function select(source: File | (() => Promise<File>), options: FileSelectionOptions = {}, acceptFile?: (file: File) => Promise<boolean>) {
     const request = ++revision.current;
     setError(null);
-    const maxMB = kind === "video" ? 250 : kind === "audio" ? 25 : 20;
-    if (!file.type.startsWith(`${kind}/`) || file.size > maxMB * 1024 * 1024) {
-      setError(`Choose ${kind === "image" || kind === "audio" ? "an" : "a"} ${kind} file smaller than ${maxMB} MB.`);
-      setLoading(false);
-      return false;
-    }
     setLoading(true);
-    const url = URL.createObjectURL(file);
+    let url: string | null = null;
+    let accepted = false;
+    let downloading = typeof source === "function";
     try {
+      // Saved choices are pending generation inputs from the initial click,
+      // including the download before browser metadata validation begins.
+      const file = typeof source === "function" ? await source() : source;
+      if (request !== revision.current) return false;
+      if (options.signal?.aborted) throw new Error(`This ${kind} selection was interrupted. Choose it again or remove the reference.`);
+      downloading = false;
+      const maxMB = kind === "video" ? 250 : kind === "audio" ? 25 : 20;
+      if (!file.type.startsWith(`${kind}/`) || !Number.isFinite(file.size) || file.size <= 0 || file.size > maxMB * 1024 * 1024) {
+        setError(`Choose ${kind === "image" || kind === "audio" ? "an" : "a"} ${kind} file smaller than ${maxMB} MB.`);
+        return false;
+      }
+      if (acceptFile) {
+        // Editor callers upload and persist in their own choose callback.
+        // Hand off without replacing that callback or the previous source.
+        setLoading(false);
+        return await acceptFile(file);
+      }
+      url = URL.createObjectURL(file);
       const duration = await readDuration(url, kind);
-      if (request !== revision.current || options.signal?.aborted) { URL.revokeObjectURL(url); return false; }
+      if (request !== revision.current) return false;
+      if (options.signal?.aborted) throw new Error(`This ${kind} selection was interrupted. Choose it again or remove the reference.`);
       if (options.minDuration && duration !== null && duration < options.minDuration) {
-        URL.revokeObjectURL(url);
         setError(`Choose ${kind} at least ${options.minDuration} second long.`);
         return false;
       }
       if (options.maxDuration && duration !== null && duration > options.maxDuration) {
-        URL.revokeObjectURL(url);
         setError(`Choose ${kind} up to ${options.maxDuration} seconds long.`);
         return false;
       }
       const next = { name: file.name, url, duration, file };
       setAsset(next);
       options.onRead?.(next);
+      accepted = true;
       return true;
-    } catch {
-      URL.revokeObjectURL(url);
-      if (request === revision.current && !options.signal?.aborted) setError(`This ${kind} could not be previewed. Try another file.`);
+    } catch (cause) {
+      if (request === revision.current) setError(options.signal?.aborted
+        ? `This ${kind} selection was interrupted. Choose it again or remove the reference.`
+        : downloading && cause instanceof Error ? cause.message : `This ${kind} could not be previewed. Try another file.`);
       return false;
     } finally {
+      if (url && !accepted) URL.revokeObjectURL(url);
       if (request === revision.current) setLoading(false);
     }
   }
+
+  const choose = (file: File, options: FileSelectionOptions = {}) => select(file, options);
+  const chooseRemote = (loadFile: () => Promise<File>, options: FileSelectionOptions = {}, acceptFile?: (file: File) => Promise<boolean>) => select(loadFile, options, acceptFile);
 
   function remove() {
     revision.current += 1;
@@ -65,7 +85,7 @@ export function useLocalWorkflowMedia(kind: LocalMediaKind) {
     setLoading(false);
     setError(null);
   }
-  return { asset, choose, chooseLibraryImage, error, loading, remove, clearError: () => setError(null) };
+  return { asset, choose, chooseRemote, chooseLibraryImage, error, loading, remove, clearError: () => setError(null) };
 }
 
 function readDuration(url: string, kind: LocalMediaKind): Promise<number | null> {

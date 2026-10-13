@@ -343,12 +343,32 @@ export function VideoGenerationStudioPanel({
     useState<AIStudioReferenceMedia[]>([]);
   const [uploadedVideoReference, setUploadedVideoReference] =
     useState<AIStudioReferenceMedia | null>(null);
+  const gallerySelectionKey = workflow && recreateView?.styleVideo
+    ? `${recreateView.styleVideo.id ?? recreateView.styleVideo.url}:${recreateView.styleVideo.selectionRevision ?? 0}` : null;
+  const [previousGallerySelectionKey, setPreviousGallerySelectionKey] = useState(gallerySelectionKey);
   const [audioReferences, setAudioReferences] = useState<AIStudioReferenceMedia[]>([]);
   const [referenceFilesPending, setReferenceFilesPending] = useState(false);
   const [selectedCreatorReferenceId, setSelectedCreatorReferenceId] =
     useState<string | null>(null);
   const [creatorReferenceUploadPending, setCreatorReferenceUploadPending] =
     useState(false);
+  const [referenceSelectionError, setReferenceSelectionError] = useState<{ key: string | null; message: string } | null>(null);
+  const referenceError = referenceSelectionError?.key === gallerySelectionKey ? referenceSelectionError.message : null;
+  function reportReferenceError(message: string | null) {
+    setReferenceSelectionError(message ? { key: gallerySelectionKey, message } : null);
+  }
+  if (previousGallerySelectionKey !== gallerySelectionKey) {
+    setPreviousGallerySelectionKey(gallerySelectionKey);
+    if (gallerySelectionKey) {
+      // Recreate is an explicit replacement of the source video, including
+      // clicking the same card again after an earlier upload.
+      setUploadedVideoReference(null);
+      setReferenceSelectionError(null);
+      setModel("google_omni");
+      if (!isAIStudioVideoResolutionSupported("google_omni", resolution)) setResolution("720p");
+      if (!getAIStudioVideoDurations("google_omni").includes(durationSeconds)) setDurationSeconds(5);
+    }
+  }
   const [referenceImageRequiredDialogOpen, setReferenceImageRequiredDialogOpen] =
     useState(false);
   const [activeVideoPrompt, setActiveVideoPrompt] = useState("");
@@ -424,9 +444,10 @@ export function VideoGenerationStudioPanel({
   const cancelJob = useCancelBackgroundJob();
   const retryJob = useRetryBackgroundJob();
   const generationLocked = recreateView?.preview === true || accessState !== "pro";
-  const galleryVideoReference = workflow && !uploadedVideoReference ? recreateView?.styleVideo : undefined;
-  const hasWorkflowVideoReference = Boolean(workflow && (uploadedVideoReference || galleryVideoReference));
-  const sourceDuration = uploadedVideoReference?.asset.durationSeconds ?? galleryVideoReference?.duration;
+  const galleryVideoReference = workflow ? recreateView?.styleVideo : undefined;
+  const uploadedReferenceVideo = galleryVideoReference ? null : uploadedVideoReference;
+  const hasWorkflowVideoReference = Boolean(workflow && (uploadedReferenceVideo || galleryVideoReference));
+  const sourceDuration = uploadedReferenceVideo?.asset.durationSeconds ?? galleryVideoReference?.duration;
   const billedDuration = hasWorkflowVideoReference && sourceDuration ? Math.max(3, Math.ceil(sourceDuration)) : durationSeconds;
   const creditsPerVideo = billedDuration * creditsPerSecond;
   const requiredCredits = creditsPerVideo * quantity;
@@ -446,8 +467,9 @@ export function VideoGenerationStudioPanel({
     ...(uploadedReference ? [uploadedReference] : []),
     ...additionalImageReferences,
   ];
+  const workflowImageLimit = hasWorkflowVideoReference ? 5 : 6;
+  const referenceLimitError = workflow && referenceImages.length > workflowImageLimit ? `Use up to ${workflowImageLimit} image references with these inputs. Remove an image before generating.` : null;
   const activeReferenceImageUrl = uploadedReference?.asset.url ?? (workflow && !uploadedVideoReference ? recreateView?.referenceImageUrl : null) ?? null;
-  const uploadedReferenceVideo = uploadedVideoReference;
   const promptMaxLength = getExploreVideoPromptMaxLength({ model, hasReferenceVideo: Boolean(uploadedReferenceVideo || galleryVideoReference), referenceVideoMode: hasWorkflowVideoReference ? "edit" : undefined, format: workflowFormat === "slideshow" ? undefined : workflowFormat });
   const referenceFiles = [...referenceImages, ...(uploadedVideoReference ? [uploadedVideoReference] : []), ...audioReferences];
 
@@ -460,13 +482,16 @@ export function VideoGenerationStudioPanel({
 
   function handleReferenceChange(selection: AIStudioReferenceMedia | null, kind?: "image" | "video") {
     submissionKeyRef.current = null;
+    setReferenceSelectionError(null);
     setSelectedCreatorReferenceId(null);
     if (workflow) {
-      setAdditionalImageReferences([]);
       const changedKind = selection?.kind ?? kind;
-      if (changedKind === "image") setUploadedReference(selection);
+      if (changedKind === "image") {
+        const images = selection ? [...referenceImages.filter(image => image.asset.id !== selection.asset.id), selection] : [];
+        setUploadedReference(images[0] ?? null); setAdditionalImageReferences(images.slice(1));
+      }
       if (changedKind === "video") setUploadedVideoReference(selection);
-      if (!selection && !changedKind) { setUploadedReference(null); setUploadedVideoReference(null); }
+      if (!selection && !changedKind) { setUploadedReference(null); setAdditionalImageReferences([]); setUploadedVideoReference(null); }
       if (selection?.kind === "video") {
         recreateView?.onClearReference?.();
         if (selection.asset.ratio === "9:16" || selection.asset.ratio === "16:9") setAspectRatio(selection.asset.ratio);
@@ -480,10 +505,11 @@ export function VideoGenerationStudioPanel({
 
   function handleImageReferencesChange(selections: AIStudioReferenceMedia[]) {
     submissionKeyRef.current = null;
+    setReferenceSelectionError(null);
     setSelectedCreatorReferenceId(null);
     setUploadedReference(selections[0] ?? null);
     setAdditionalImageReferences(selections.slice(1));
-    if (selections.length && model === "google_omni") setUploadedVideoReference(null);
+    if (selections.length && model === "google_omni" && !workflow) setUploadedVideoReference(null);
   }
 
   function handleVideoReferenceChange(selection: AIStudioReferenceMedia | null) {
@@ -542,7 +568,7 @@ export function VideoGenerationStudioPanel({
   const isGenerating =
     effectiveGenerationState === "generating";
   const onWorkflowBusyChange = workflow?.onBusyChange;
-  useEffect(() => { onWorkflowBusyChange?.(isGenerating); }, [isGenerating, onWorkflowBusyChange]);
+  useEffect(() => { onWorkflowBusyChange?.(isGenerating || creatorReferenceUploadPending || referenceFilesPending); }, [isGenerating, creatorReferenceUploadPending, referenceFilesPending, onWorkflowBusyChange]);
   const pendingGenerationCount =
     isSubmitting
     ? quantity
@@ -860,6 +886,10 @@ export function VideoGenerationStudioPanel({
 
     if (!pendingSubmission && promptLengthError) {
       setActionError(promptLengthError);
+      return;
+    }
+    if (!pendingSubmission && (referenceError || referenceLimitError)) {
+      setActionError(referenceError ?? referenceLimitError);
       return;
     }
 
@@ -1302,7 +1332,7 @@ export function VideoGenerationStudioPanel({
         estimatedCredits={workflow && !generationLocked && !recreateView?.preview && (!hasWorkflowVideoReference || sourceDuration) ? requiredCredits : undefined}
         outputSummary={workflow ? `${resolution} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}
         settingsSummary={workflow ? `${model === "wan_3_0" ? "WAN 3.0" : model === "seedance_2_5" ? "Seedance 2.5" : "Google Omni"} · ${hasWorkflowVideoReference ? `${sourceDuration ? `${sourceDuration.toFixed(1)}s clip` : "Source clip"} · Edit` : `${durationSeconds}s`} · ${aspectRatio} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}
-        referenceControls={workflow ? <FormatGenerationReferences key={user?.uid ?? "preview"} active={workflow.controlsActive} selection={uploadedReference} imageSelection={uploadedReference} videoSelection={uploadedVideoReference} onChange={handleReferenceChange} onPendingChange={setCreatorReferenceUploadPending} disabled={isGenerating || (!recreateView?.preview && generationLocked)} preview={Boolean(recreateView?.preview)} ownerId={user?.uid} styleVideo={recreateView?.styleVideo} onClearStyle={recreateView?.onClearReference} videoInputEnabled={model !== "wan_3_0"} /> : undefined}
+        referenceControls={workflow ? <FormatGenerationReferences key={user?.uid ?? "preview"} active={workflow.controlsActive} selection={uploadedReference} imageSelection={uploadedReference} imageSelections={referenceImages} onImagesChange={handleImageReferencesChange} maxImages={workflowImageLimit} videoSelection={uploadedReferenceVideo} onChange={handleReferenceChange} onPendingChange={setCreatorReferenceUploadPending} onErrorChange={reportReferenceError} disabled={isGenerating || (!recreateView?.preview && generationLocked)} preview={Boolean(recreateView?.preview)} ownerId={user?.uid} styleVideo={recreateView?.styleVideo} onClearStyle={recreateView?.onClearReference} videoInputEnabled={model !== "wan_3_0"} /> : undefined}
         compact={Boolean(recreateView)}
         accessMessage={workflow && !generationLocked && !hasInsufficientCredits ? null : composerMessage}
         active={workflow?.controlsActive ?? active}
@@ -1354,6 +1384,8 @@ export function VideoGenerationStudioPanel({
           hasInsufficientCredits ||
           !prompt.trim() ||
           creatorReferenceUploadPending ||
+          Boolean(referenceError) ||
+          Boolean(referenceLimitError) ||
           referenceFilesPending)) ||
           isGenerating || recoveringJobs
         }
@@ -1414,7 +1446,7 @@ export function VideoGenerationStudioPanel({
               ariaLabel="Video model"
               fieldLabel={workflow ? "Model" : undefined}
               fieldLayout={workflow ? "classic" : undefined}
-              disabled={generationLocked && !recreateView?.preview || isGenerating || referenceFilesPending}
+              disabled={generationLocked && !recreateView?.preview || isGenerating || referenceFilesPending || creatorReferenceUploadPending}
               size="sm"
               options={AI_STUDIO_VIDEO_MODELS.filter(value => !workflow || value === "google_omni" || value === "wan_3_0").map((value) => ({
                 label: `${getAIStudioVideoModelLabel(value)}${isAIStudioVideoModelAvailable(value) ? "" : " · temporarily unavailable"}`,
@@ -1423,6 +1455,7 @@ export function VideoGenerationStudioPanel({
               }))}
               value={model}
               onChange={(value) => {
+                if (isGenerating || referenceFilesPending || creatorReferenceUploadPending) return;
                 submissionKeyRef.current = null;
                 const nextModel = value as AIStudioVideoModel;
                 if (hasWorkflowVideoReference && value !== "google_omni") {

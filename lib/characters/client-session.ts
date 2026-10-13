@@ -1,16 +1,36 @@
 import { z } from "zod";
 import { CharacterGenerateRequestSchema } from "./schema.ts";
 
+export const CHARACTER_SESSION_IDLE_TIMEOUT_MS = 10 * 60 * 1_000;
+
 export const CharacterClientSessionSchema = z.strictObject({
   version: z.literal(1),
   pendingRequest: CharacterGenerateRequestSchema.nullable(),
-  jobs: z.array(z.strictObject({ jobId: z.uuid(), generationId: z.string().min(1) })).max(3),
+  jobs: z.array(z.strictObject({ jobId: z.uuid(), generationId: z.string().min(1) })),
   selectedCharacterId: z.uuid().nullable(),
+  lastActivityAt: z.number().int().nonnegative().nullable().default(null),
+  sessionEpoch: z.number().int().nonnegative().default(0),
 });
 export type CharacterClientSession = z.infer<typeof CharacterClientSessionSchema>;
 export const EMPTY_CHARACTER_SESSION: CharacterClientSession = {
-  version: 1, pendingRequest: null, jobs: [], selectedCharacterId: null,
+  version: 1, pendingRequest: null, jobs: [], selectedCharacterId: null, lastActivityAt: null, sessionEpoch: 0,
 };
+
+export function appendCharacterSessionJobs(
+  current: CharacterClientSession["jobs"], incoming: CharacterClientSession["jobs"],
+) {
+  const seen = new Set(current.map((job) => job.jobId));
+  return [...current, ...incoming.filter((job) => {
+    if (seen.has(job.jobId)) return false;
+    seen.add(job.jobId);
+    return true;
+  })];
+}
+
+export function isCharacterSessionIdle(session: CharacterClientSession, now: number, jobsSettled: boolean) {
+  return jobsSettled && !session.pendingRequest && session.lastActivityAt !== null
+    && now - session.lastActivityAt >= CHARACTER_SESSION_IDLE_TIMEOUT_MS;
+}
 
 export function parseCharacterClientSession(value: string | null): CharacterClientSession {
   try {

@@ -1,0 +1,16 @@
+{
+  "source": "landing_page/middle.mp4",
+  "sourceSha256": "e5e7f18ad1f7df41486d27d8a7ebf947b4a54a739a04a1e25a51941ce163fbbd",
+  "width": 716,
+  "height": 1284,
+  "duration": 13.208984,
+  "frames": 317,
+  "fps": "24/1",
+  "bytes": 6212902,
+  "sha256": "fb53c2bffc57b9aa41b973834404cfb7e00a522e9607ffa209f624e447be80ce",
+  "posterTime": 0,
+  "silent": true,
+  "fastStart": true,
+  "fullDecodeVerified": true,
+  "encodedVideoUnchanged": true
+}

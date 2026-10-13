@@ -78,6 +78,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const localAudio = useLocalWorkflowMedia("audio");
+  const audioSelectionError = localAudio.loading ? "Wait for your selected audio to finish loading." : localAudio.error;
   const player = useRef<HTMLVideoElement | null>(null);
   const soundtrack = useRef<HTMLAudioElement | null>(null);
   const alive = useRef(true);
@@ -135,10 +136,10 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   const finishing = useWorkflowFinishing({ ownerId: owner, enabled, kind: "hook", source: sourceQuery.data ?? null, demo: null, demoAudio: null, playback: "once", options: DEFAULT_FINISHING_OPTIONS,
     editing: exportEditing, backgroundSource: backgroundQuery.data ?? null, backgroundPlayback: playback, scope: `${draftScope ?? `format:${format}`}:${video.mediaAssetId}`, onRestoreDraft: restore,
     reuseUnchangedSource: canReuseUnchangedHookSource(sourceQuery.data ?? null, exportEditing, backgroundId), fastStatus: prepareRequest > 0,
-    demoFramingError: validation ?? uploadError ?? (uploading ? "Uploading background audio…" : backgroundId && !backgroundQuery.data ? "Loading your background audio…" : null),
+    demoFramingError: validation ?? audioSelectionError ?? uploadError ?? (uploading ? "Uploading background audio…" : backgroundId && !backgroundQuery.data ? "Loading your background audio…" : null),
   });
-  const preparationBusy = pendingSource || finishing.action.busy || Boolean(finishing.action.cancel);
-  const preparationError = validation ?? finishing.action.error ?? (sourceQuery.isError ? "Could not load this video. Return to the editor and retry." : null);
+  const preparationBusy = pendingSource || localAudio.loading || finishing.action.busy || Boolean(finishing.action.cancel);
+  const preparationError = validation ?? audioSelectionError ?? finishing.action.error ?? (sourceQuery.isError ? "Could not load this video. Return to the editor and retry." : null);
   const preparationMessage = finishing.action.message;
   const hasClipEdits = exportEditing.trimStartMs !== 0 || exportEditing.trimEndMs !== Math.round(duration * 1000) || exportEditing.originalVolume !== 1 || overlays.length > 0 || Boolean(backgroundId) || Boolean(referenceAudio && exportEditing.musicVolume !== referenceAudio.volume);
   const needsSaving = hasClipEdits && !finishing.output;
@@ -150,10 +151,10 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   useEffect(() => { onPreparationChange?.({ busy: preparationBusy, error: preparationError, message: preparationMessage }); }, [onPreparationChange, preparationBusy, preparationError, preparationMessage]);
   const handledPrepareRequest = useRef(0);
   useEffect(() => {
-    if (!prepareRequest || handledPrepareRequest.current === prepareRequest || pendingSource || finishing.output || finishing.action.disabled || !sourceQuery.data) return;
+    if (!prepareRequest || handledPrepareRequest.current === prepareRequest || pendingSource || audioSelectionError || uploading || finishing.output || finishing.action.disabled || !sourceQuery.data) return;
     handledPrepareRequest.current = prepareRequest;
     finishing.action.onAction();
-  }, [prepareRequest, pendingSource, finishing.output, finishing.action, sourceQuery.data]);
+  }, [prepareRequest, pendingSource, audioSelectionError, uploading, finishing.output, finishing.action, sourceQuery.data]);
   useEffect(() => {
     if (finishing.output) onSaved({ id: finishing.output.id, kind: "media_asset", url: finishing.output.url, title: finishing.output.title });
   }, [finishing.output, onSaved]);
@@ -188,7 +189,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
     } catch (error) { if (alive.current) setUploadError(error instanceof Error ? error.message : "Could not upload audio."); return false; }
     finally { if (alive.current) setUploading(false); }
   }
-  const attachment = { ...localAudio, choose: chooseAudio, loading: uploading || localAudio.loading, remove: () => { localAudio.remove(); setBackgroundId(null); setUploadError(null); persistDraft(editing, null); onDirty(); } };
+  const attachment = { ...localAudio, choose: chooseAudio, chooseRemote: (...args: Parameters<typeof localAudio.chooseRemote>) => { onDirty(); return localAudio.chooseRemote(...args); }, loading: uploading || localAudio.loading, remove: () => { localAudio.remove(); setBackgroundId(null); setUploadError(null); persistDraft(editing, null); onDirty(); } };
   const background = backgroundQuery.data;
   const previewAudioUrl = referenceAudio?.audioUrl ?? background?.url ?? localAudio.asset?.url;
   const previewVideoUrl = referenceAudio?.cleanVideoUrl ?? sourceQuery.data?.url ?? video.url;
@@ -221,12 +222,12 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   if (!active || !controlsTarget || !resultsTarget) return <>{overviewRemix}</>;
   const actions = <div className={styles.clipActionContent}>
     {validation || draftSave.error || finishing.action.error ? <p role="alert" className="text-xs leading-5 text-destructive">{validation ?? draftSave.error ?? finishing.action.error}</p> : null}
-    <div className={styles.clipActionButtons}><Button type="button" disabled={!enabled || localPreview || pendingSource || uploading || draftSave.busy || !draftSave.loaded || !sourceQuery.data || !!draftValidation || !!uploadError || Boolean(backgroundId && !backgroundQuery.data)} onClick={() => void draftSave.save()} className="h-11 min-w-28 rounded-xl px-5 font-semibold shadow-sm hover:shadow transition-all">{draftSave.busy ? "Saving…" : draftSave.saved && !draftSave.dirty ? "Edits saved" : "Save edits"}</Button>
+    <div className={styles.clipActionButtons}><Button type="button" disabled={!enabled || localPreview || pendingSource || uploading || !!audioSelectionError || draftSave.busy || !draftSave.loaded || !sourceQuery.data || !!draftValidation || !!uploadError || Boolean(backgroundId && !backgroundQuery.data)} onClick={() => void draftSave.save()} className="h-11 min-w-28 rounded-xl px-5 font-semibold shadow-sm hover:shadow transition-all">{draftSave.busy ? "Saving…" : draftSave.saved && !draftSave.dirty ? "Edits saved" : "Save edits"}</Button>
       {(draftSave.saved && !draftSave.dirty) || localPreview ? <Button type="button" variant="outline" disabled={pendingSource || draftSave.busy} onClick={onContinue} className="h-11 rounded-xl px-5 font-semibold">{continueLabel}</Button> : null}
       {onBackToPreview ? <Button type="button" variant="outline" onClick={onBackToPreview} disabled={draftSave.busy} className="h-11 rounded-xl px-4"><ArrowLeft className="size-4" aria-hidden="true" />Back to previews</Button> : null}</div>
     <p role="status" className="text-xs leading-5 text-muted">{enabled ? draftSave.busy ? "Saving your edits…" : draftSave.saved && !draftSave.dirty ? `Edits saved · revision ${draftSave.saved.revision}. Your publishing video is prepared separately.` : draftSave.loaded ? "Save your edits without waiting for video rendering." : "Loading saved edits…" : "Saving edits is unavailable in this preview."}</p>
     {draftSave.error ? <Button type="button" variant="ghost" size="sm" onClick={draftSave.reload} disabled={draftSave.busy}>Reload saved draft</Button> : null}
-    {enabled && !finishing.output ? <Button type="button" size="sm" variant="outline" disabled={pendingSource || draftSave.busy || finishing.action.disabled || !sourceQuery.data} onClick={() => finishing.action.onAction()}>{finishing.action.busy || finishing.action.cancel ? "Preparing video…" : "Prepare publishing video"}</Button> : null}
+    {enabled && !finishing.output ? <Button type="button" size="sm" variant="outline" disabled={pendingSource || !!audioSelectionError || uploading || draftSave.busy || finishing.action.disabled || !sourceQuery.data} onClick={() => finishing.action.onAction()}>{finishing.action.busy || finishing.action.cancel ? "Preparing video…" : "Prepare publishing video"}</Button> : null}
     {finishing.action.busy || finishing.output ? <p role="status" className="text-xs leading-5 text-muted">{finishing.output ? "Publishing video ready in Library." : finishing.action.message}</p> : null}
     {sourceQuery.isError ? <p role="alert" className="text-xs text-destructive">Could not load this saved video. <button type="button" onClick={() => void sourceQuery.refetch()} className="rounded underline focus-visible:outline-2 focus-visible:outline-focus">Retry</button></p> : null}
     {finishing.action.cancel ? <Button type="button" variant="ghost" onClick={finishing.action.cancel}>Cancel preparation</Button> : null}

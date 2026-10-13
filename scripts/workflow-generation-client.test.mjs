@@ -75,6 +75,16 @@ test("text-only generation uses the existing authenticated API without requiring
   }
 });
 
+test("Talking Head native browser fetch is called without a transport object receiver", async () => {
+  const actual = harness({ fetch: async function (url, init) {
+    assert.equal(this, undefined, "Window.fetch rejects the dependency object as receiver");
+    assert.equal(url, "/api/ai-studio/videos/generate");
+    assert.equal(init.method, "POST");
+    return response(queued());
+  } });
+  assert.equal((await actual.client.generate(draft())).jobs.length, 1);
+});
+
 test("invalid settings and unsupported attached inputs fail before auth, upload or generation calls", async () => {
   const badDrafts = [
     draft({ instructions: "  " }), draft({ referencesPending: true }),
@@ -96,12 +106,26 @@ test("invalid settings and unsupported attached inputs fail before auth, upload 
   }
 });
 
+test("a failed reference replacement blocks generation with the previous reference or no reference", async () => {
+  for (const kind of ["hook", "phone"]) for (const creator of [null, { name: "previous.png", url: "blob:previous", file: { type: "image/png", size: 200 } }]) {
+    const actual = harness();
+    const input = draft({ kind, creator, referencesError: "This video could not be previewed. Try another file." });
+    assert.equal(clientModule.getWorkflowGenerationDraftError(input), input.referencesError);
+    await assert.rejects(actual.client.generate(input), /This video could not be previewed/);
+    assert.equal(actual.tokens.length, 0, "A rejected selection must stop before authentication or any upload");
+    assert.equal(actual.uploads.length, 0);
+    assert.equal(actual.calls.length, 0, "A stale reference must never be submitted");
+    await actual.client.generate({ ...input, referencesError: null });
+    assert.equal(actual.calls.length, 1, "Removing or successfully replacing the rejected reference unblocks an explicit new click");
+  }
+});
+
 test("creator and app images are uploaded in order; browser/local URLs never reach the generation API", async () => {
   const creator = { name: "me.png", url: "blob:creator", file: { type: "image/png", size: 200 } };
   const app = { name: "app.png", url: "blob:app", kind: "image", file: { type: "image/png", size: 200 } };
   const actual = harness();
   await actual.client.generate(draft({ kind: "phone", creator, appScreen: app }));
-  assert.deepEqual(actual.uploads, [creator, app]);
+  assert.deepEqual(plain(actual.uploads), [creator, app]);
   const body = JSON.parse(actual.calls[0].body);
   assert.deepEqual(body.referenceImageUrls, ["https://storage.googleapis.com/test/1.png", "https://storage.googleapis.com/test/2.png"]);
   assert.equal(body.avatarImageUrl, body.referenceImageUrls[0]);
@@ -114,6 +138,55 @@ test("duplicate image selections upload only once", async () => {
   await actual.client.generate(draft({ kind: "phone", creator, appScreen: { ...creator, kind: "image" } }));
   assert.equal(actual.uploads.length, 1);
   assert.equal(JSON.parse(actual.calls[0].body).referenceImageUrls.length, 1);
+});
+
+test("the ordered image collection is authoritative and every selected image reaches generation", async () => {
+  for (const kind of ["hook", "phone"]) {
+    const images = Array.from({ length: 3 }, (_, index) => ({ name: `image-${index}.png`, url: `blob:image-${index}`, file: { type: "image/png", size: 200 } }));
+    const appScreen = kind === "phone" ? { name: "app.png", url: "blob:app", kind: "image" } : null;
+    const actual = harness();
+    await actual.client.generate(draft({ kind, creator: images[0], referenceImages: images, appScreen }));
+    assert.deepEqual(plain(actual.uploads), [...images, ...(appScreen ? [appScreen] : [])]);
+    const body = JSON.parse(actual.calls[0].body);
+    assert.equal(body.referenceImageUrls.length, images.length + (appScreen ? 1 : 0));
+    assert.equal(body.avatarImageUrl, body.referenceImageUrls[0]);
+    assert.doesNotMatch(actual.calls[0].body, /blob:/);
+  }
+  const removed = harness();
+  await removed.client.generate(draft({ creator: { name: "old.png", url: "blob:old" }, referenceImages: [] }));
+  assert.equal(removed.uploads.length, 0, "An explicit empty collection cannot resurrect the legacy creator");
+});
+
+test("image limits include the phone screenshot and block before any upload or authentication", async () => {
+  const images = count => Array.from({ length: count }, (_, index) => ({ name: `image-${index}.png`, url: `blob:image-${index}` }));
+  for (const input of [
+    draft({ referenceImages: images(7) }),
+    draft({ referenceImages: images(3), settings: settings.normalizeWorkflowGenerationSettings({ model: "kling_3_0" }) }),
+    draft({ kind: "phone", referenceImages: images(6), appScreen: { name: "app.png", url: "blob:app", kind: "image" } }),
+    draft({ referenceImages: images(6), videoReference: { name: "source.mp4", url: "blob:source", duration: 5, file: { type: "video/mp4", size: 1024 } } }),
+    draft({ referenceImages: images(5), videoReference: { name: "source.mp4", url: "blob:source", duration: 5, file: { type: "video/mp4", size: 1024 } }, audioReference: { name: "audio.mp3", url: "blob:audio", duration: 5, file: { type: "audio/mpeg", size: 1024 } } }),
+    draft({ referenceImages: [{ name: "invalid.svg", url: "blob:invalid", file: { type: "image/svg+xml", size: 200 } }] }),
+  ]) {
+    const actual = harness();
+    await assert.rejects(actual.client.generate(input));
+    assert.equal(actual.uploads.length + actual.calls.length + actual.tokens.length, 0);
+  }
+  for (const model of ["kling_3_0", "google_omni", "seedance_2_5"]) {
+    const actual = harness();
+    await actual.client.generate(draft({ referenceImages: images(model === "kling_3_0" ? 2 : 6), settings: settings.normalizeWorkflowGenerationSettings({ model }) }));
+    assert.equal(JSON.parse(actual.calls[0].body).referenceImageUrls.length, model === "kling_3_0" ? 2 : 6);
+  }
+});
+
+test("image-array edits after the generation click cannot replace the captured references", async () => {
+  let resolveAuth;
+  const images = [{ name: "first.png", url: "blob:first" }, { name: "second.png", url: "blob:second" }];
+  let tokenCalls = 0;
+  const actual = harness({ getOwnerToken: () => ++tokenCalls === 1 ? new Promise(resolve => { resolveAuth = resolve; }) : Promise.resolve("fixture-token") });
+  const generating = actual.client.generate(draft({ referenceImages: images }));
+  images[0].url = "blob:later"; images.splice(1);
+  resolveAuth("fixture-token"); await generating;
+  assert.deepEqual(actual.uploads.map(image => image.url), ["blob:first", "blob:second"]);
 });
 
 const referenceId = "11111111-1111-4111-8111-111111111111";
@@ -385,6 +458,21 @@ function connectedHarness(overrides = {}) {
 }
 const readyAsset = (id = "asset-1") => ({ id, title: "Saved video", collection: "video", status: "ready", sourceType: "generated_video", url: `https://storage.googleapis.com/test/${id}.mp4`, durationSeconds: 5 });
 const jobQuery = (id, status, output = null, error = null) => ({ data: { id, status, output, error, jobType: "video_generation", projectId: "ai-studio" }, isError: false, isPending: false, refetch: async () => {} });
+
+test("the connected Generate action stays blocked while a failed replacement retains its prior preview", async () => {
+  for (const kind of ["hook", "phone"]) {
+    const actual = connectedHarness();
+    const input = draft({ kind, creator: { name: "previous.png", url: "blob:previous", file: { type: "image/png", size: 200 } }, referencesError: "Choose another reference file." });
+    let view = actual.render(input);
+    assert.equal(view.disabled, true);
+    assert.equal(view.message, input.referencesError);
+    view.onGenerate();
+    await new Promise(setImmediate);
+    assert.equal(actual.calls.length, 0);
+    view = actual.render({ ...input, referencesError: null });
+    assert.equal(view.disabled, false, "A successful replacement or removal restores the normal explicit Generate action");
+  }
+});
 
 test("the connected controller queues only after a click and keeps every atomic-batch job", async () => {
   for (const kind of ["hook", "phone"]) {

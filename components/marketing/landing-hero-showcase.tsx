@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Images, ScanText, Sparkles } from "lucide-react";
+import { Images, Sparkles, Video } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const heroMediaPath = "/marketing/showcase/hero-restored";
@@ -63,30 +63,30 @@ export function LandingHeroShowcase() {
       {/* 3-Card Showcase Stage */}
       <div className="relative flex flex-col items-center justify-center gap-6 sm:gap-4 lg:flex-row lg:items-end lg:justify-center">
         {/* ========================================================= */}
-        {/* 1. Left Card: supplied left_side video */}
+        {/* 1. Left Card: supplied landing_page/middle.mp4 video */}
         {/* ========================================================= */}
         <div className="relative z-0 order-2 hidden w-[240px] shrink-0 lg:order-1 lg:block lg:w-[290px]">
           <div className="transform-gpu transition-transform duration-300 lg:-rotate-[5deg] lg:origin-top-right lg:translate-y-4 hover:scale-[1.02]">
             <article className="group relative aspect-[9/16] w-full overflow-hidden rounded-[20px] sm:rounded-[24px] border border-border/80 bg-black shadow-card ring-1 ring-white/10">
               {/* Subtle format pill */}
               <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5 rounded-full border border-white/20 bg-black/65 px-3 py-1 text-[11px] font-semibold tracking-wide text-white backdrop-blur-md shadow-sm">
-                <ScanText className="size-3.5 text-primary" aria-hidden="true" />
-                <span>Wall of Text</span>
+                <Video className="size-3.5 text-primary" aria-hidden="true" />
+                <span>Talking Head UGC</span>
               </div>
 
               {/* Video preview */}
               <video
                 src={
                   shouldLoadSideVideoPreviews
-                    ? `${heroMediaPath}/left_side-v2.mp4`
+                    ? `${heroMediaPath}/left_side-v3.mp4`
                     : undefined
                 }
                 autoPlay
                 muted
                 loop
                 playsInline
-                poster={`${heroMediaPath}/left_side-v2.webp`}
-                aria-label="Wall of Text video preview"
+                poster={`${heroMediaPath}/left_side-v3.webp`}
+                aria-label="Talking Head UGC video preview"
                 preload="metadata"
                 className="size-full object-cover"
               />

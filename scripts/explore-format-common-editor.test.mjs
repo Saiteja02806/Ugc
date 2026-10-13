@@ -94,6 +94,39 @@ const fields = load("components/explore/format-video-text-fields.tsx", {});
 const nodes = tree => Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : [];
 const editing = { version: 1, format: "hook", trimStartMs: 2000, trimEndMs: 8000, originalVolume: 1, musicVolume: .2, text: null };
 
+test("pending and failed soundtrack replacements block draft saves, rendering and schedule clip state", () => {
+  let cursor = 0, input, clipState, renderCalls = 0;
+  const slots = [], effects = [];
+  const audio = { asset: { name: "previous", url: "blob:previous" }, loading: true, error: null };
+  const source = { id: "00000000-0000-4000-8000-000000000001", status: "ready", collection: "video", mimeType: "video/mp4", url: "/raw.mp4", durationSeconds: 5, metadata: {} };
+  const react = { useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
+    return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useEffect: fn => effects.push(fn) };
+  const mod = load("components/explore/format-video-editor.tsx", { react, "react-dom": { createPortal: (children, target) => ({ type: "portal", props: { children, target } }) },
+    "@tanstack/react-query": { useQuery: options => ({ data: options.queryKey[0] === "explore-edit-source" ? source : undefined }) },
+    "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" } }) },
+    "@/components/explore/format-video-text-fields": fields,
+    "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => audio },
+    "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: {}, useWorkflowFinishing: value => { input = value; return { output: null, action: { disabled: false, busy: false, onAction() { renderCalls++; } } }; } },
+  });
+  const render = () => { cursor = 0; const tree = mod.FormatVideoEditor({ format: "hook", video: { id: source.id, mediaAssetId: source.id, url: source.url, title: "Owned", durationSeconds: 5, ratio: "9:16" },
+    active: true, controlsTarget: {}, resultsTarget: {}, enabled: true, prepareRequest: 1, onDirty() {}, onSaved() {}, onContinue() {}, onClipStateChange: value => { clipState = value; } });
+    while (effects.length) effects.shift()(); return tree; };
+  let tree = render();
+  assert.match(input.demoFramingError, /selected audio to finish loading/);
+  assert.equal(clipState.busy, true);
+  assert.equal(nodes(tree).find(n => n.type === "Button" && n.props.children === "Save edits").props.disabled, true);
+  assert.equal(nodes(tree).find(n => n.type === "Button" && n.props.children === "Prepare publishing video").props.disabled, true);
+  assert.equal(renderCalls, 0, "The saved preparation request waits instead of preparing with old audio");
+  audio.loading = false; audio.error = "The selected soundtrack could not load.";
+  tree = render();
+  assert.equal(input.demoFramingError, audio.error); assert.equal(clipState.error, audio.error);
+  assert.equal(nodes(tree).find(n => n.type === "Button" && n.props.children === "Save edits").props.disabled, true);
+  assert.equal(renderCalls, 0);
+  audio.error = null; render();
+  assert.equal(renderCalls, 1, "An explicitly saved prepare request can continue after selection is resolved");
+});
+
 for (const format of ["hook", "wall_text"]) test(`${format}: Save edits saves the exact draft without submitting a render`, () => {
   let cursor = 0, saveCalls = 0, renderCalls = 0, draftInput;
   const slots = [], source = { id: "00000000-0000-4000-8000-000000000001", status: "ready", collection: "video", mimeType: "video/mp4", url: "/raw.mp4", durationSeconds: 5, metadata: {} };

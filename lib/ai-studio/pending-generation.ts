@@ -44,6 +44,7 @@ export async function submitPendingGeneration(args: {
   fetch: typeof fetch; uuid: () => string; assertActive: () => void;
   onStored: (saved: PendingGeneration) => void; acknowledge: (result: RecoveredGeneration, input: Record<string, unknown>) => void;
 }) {
+  const { fetch: sendRequest } = args;
   const key = pendingGenerationKey(args.ownerId, args.kind, args.scope);
   return args.locks.request(key, { ifAvailable: true }, async lock => {
     if (!lock) throw new Error("Another tab is submitting this generation. Check its saved request first.");
@@ -57,7 +58,7 @@ export async function submitPendingGeneration(args: {
     let result: RecoveredGeneration | null = null;
     if (prior) {
       const query = new URLSearchParams({ requestKey, kind: saved.kind, quantity: String(saved.input.quantity), scope: saved.scope });
-      const response = await args.fetch(`/api/ai-studio/generation-requests?${query}`, options);
+      const response = await sendRequest(`/api/ai-studio/generation-requests?${query}`, options);
       const value = await response.json().catch(() => null); args.assertActive();
       if (!response.ok || !value?.ok || value.requestKey !== requestKey || !Array.isArray(value.jobs)) throw new Error("Could not check your saved generation. Its request is preserved; try recovery again.");
       if (value.jobs.length) result = confirmed(value, saved);
@@ -65,7 +66,7 @@ export async function submitPendingGeneration(args: {
     }
     if (!result) {
       args.assertActive();
-      const response = await args.fetch(`/api/ai-studio/${saved.kind === "image" ? "images" : "videos"}/generate`, {
+      const response = await sendRequest(`/api/ai-studio/${saved.kind === "image" ? "images" : "videos"}/generate`, {
         ...options, method: "POST", headers: { ...options.headers, "Content-Type": "application/json", "Idempotency-Key": requestKey }, body: JSON.stringify(saved.input),
       });
       const value = await response.json().catch(() => null); args.assertActive();
@@ -98,6 +99,7 @@ export async function checkGenerationDiscoveries(args: {
   fetch: typeof fetch; assertActive: () => void;
   acknowledge: (result: RecoveredGeneration, input: Record<string, unknown>) => void;
 }) {
+  const { fetch: sendRequest } = args;
   const key = pendingGenerationKey(args.ownerId, args.kind, args.scope);
   const discoveryKey = generationDiscoveryKey(args.ownerId, args.kind, args.scope);
   return args.locks.request(key, { ifAvailable: true }, async lock => {
@@ -108,7 +110,7 @@ export async function checkGenerationDiscoveries(args: {
     let recovered = 0;
     for (const saved of history) {
       const query = new URLSearchParams({ requestKey: saved.requestKey, kind: saved.kind, quantity: String(saved.input.quantity), scope: saved.scope });
-      const response = await args.fetch(`/api/ai-studio/generation-requests?${query}`, { cache: "no-store", headers: { Authorization: `Bearer ${args.token}` }, signal: AbortSignal.timeout(30_000) });
+      const response = await sendRequest(`/api/ai-studio/generation-requests?${query}`, { cache: "no-store", headers: { Authorization: `Bearer ${args.token}` }, signal: AbortSignal.timeout(30_000) });
       const value = await response.json().catch(() => null); args.assertActive();
       if (!response.ok || !value?.ok || value.requestKey !== saved.requestKey || !Array.isArray(value.jobs)) throw new Error("Could not check an earlier generation. Its discovery record is preserved.");
       if (value.jobs.length) {

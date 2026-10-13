@@ -7,7 +7,7 @@ import ts from "typescript";
 const savedImage = (id = "saved-image") => ({ id, collection: "image", status: "ready", sourceType: "upload", mimeType: "image/png", projectId: "explore-reference", fileName: "my-reference.png", title: "My reference", url: `https://owned.test/${id}.png` });
 
 function harness(upload, { images = [], queryError = false, fetchSaved = async id => savedImage(id), preview = false, disabled = false, ownerId = "expected-owner" } = {}) {
-  const states = [], refs = [], effects = [], changes = [], pending = [], calls = [], queries = [], savedReads = [], cancellations = [];
+  const states = [], refs = [], effects = [], changes = [], pending = [], calls = [], queries = [], savedReads = [], cancellations = [], errors = [];
   const imageCache = new Map([[JSON.stringify(["explore-reference-images", ownerId ?? "signed-out"]), images]]);
   let cursor = 0;
   const imports = {
@@ -50,11 +50,11 @@ function harness(upload, { images = [], queryError = false, fetchSaved = async i
   }
   const render = () => { cursor = 0; return exported.FormatGenerationReferences({ ownerId, preview, disabled,
     selection: { kind: "image", asset: { url: "https://owned.test/original.png", title: "Original" } },
-    onChange: value => changes.push(value), onPendingChange: value => pending.push(value),
+    onChange: value => changes.push(value), onPendingChange: value => pending.push(value), onErrorChange: value => errors.push(value),
   }); };
   const tree = render();
   const cleanups = effects.map(effect => effect()).filter(Boolean);
-  return { calls, changes, pending, queries, savedReads, imageCache, cancellations, render, all, cleanup: () => cleanups.forEach(cleanup => cleanup()),
+  return { calls, changes, pending, errors, queries, savedReads, imageCache, cancellations, render, all, cleanup: () => cleanups.forEach(cleanup => cleanup()),
     button(label) { return all(render(), node => node.type === "Button" && node.props["aria-label"] === label)[0]; },
     openImage() { all(render(), node => node.type === "Popover")[0].props.onOpenChange(true); return render(); },
     choose(kind) { all(tree, node => node.type === "input" && node.props["aria-label"] === `Choose optional ${kind} reference`)[0].props.onChange({ currentTarget: { files: [{ name: "reference.mp4" }], value: "selected" } }); },
@@ -76,7 +76,12 @@ test("failed guidance retains the previous selection and releases the pending st
   const h = harness(async () => { throw new Error("Upload failed"); });
   h.choose("video"); await flush();
   assert.deepEqual(h.changes, []); assert.deepEqual(h.pending, [true, false]);
+  assert.deepEqual(h.errors, [null, "Upload failed"], "The generation owner must know the replacement failed");
   assert.equal(h.all(h.render(), node => node.props?.role === "alert")[0].props.children, "Upload failed");
+  const cancel = h.all(h.render(), node => node.type === "Button" && node.props.children === "Cancel reference change")[0];
+  cancel.props.onClick();
+  assert.deepEqual(h.changes, [], "Cancelling the failed change retains the previously accepted reference");
+  assert.deepEqual(h.errors, [null, "Upload failed", null]);
 });
 test("an unmounted owner's late upload cannot select media in the next workflow session", async () => {
   let resolve;

@@ -116,6 +116,23 @@ test("a missing, long or inaccessible source video never falls back to image-onl
   } finally { globalThis.fetch = originalFetch; }
 });
 
+test("video edits preserve every selected appearance image in model input and token counting", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async url => new Response(Buffer.from(url.endsWith(".mp4") ? "reference-video" : url), {
+    headers: { "Content-Type": url.endsWith(".mp4") ? "video/mp4" : "image/png" },
+  });
+  try {
+    const images = ["https://owned.test/person.png", "https://owned.test/product.png", "https://owned.test/setting.png"];
+    await generateGeminiOmniVideoBuffer({ ...params("Keep the actions and use the supplied person and product."), referenceVideoUrl: "https://owned.test/source.mp4", referenceVideoDurationSeconds: 5, referenceVideoMode: "edit", referenceImageUrls: images });
+    const submitted = requests.at(-1);
+    assert.equal(submitted.input[0].type, "video");
+    assert.deepEqual(submitted.input.filter(part => part.type === "image").map(part => Buffer.from(part.data, "base64").toString()), images);
+    assert.match(submitted.input.at(-1).text, /<IMAGE_REF_2>@Image3/);
+    const count = requests.findLast(request => request.type === "count");
+    assert.equal(count.contents.filter(part => part.inlineData?.mimeType === "image/png").length, images.length);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
 test("a ten-second MP4 is sent intact with its image, and false source-duration metadata cannot submit a paid edit", async () => {
   const originalFetch = globalThis.fetch;
   let source = clip(10);

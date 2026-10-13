@@ -8,7 +8,8 @@ export function clipDraftPendingKey(owner: string, scope: string, sourceAssetId:
 export type ClipDraftTransport = { token: () => Promise<string | null>; fetch: typeof fetch };
 async function request(deps: ClipDraftTransport, url: string, body?: ExploreClipDraftSaveRequest) {
   const token = await deps.token(); if (!token) throw new ExploreClipDraftError("Sign in to save your edits.", 401);
-  const response = await deps.fetch(url, { method: body ? "POST" : "GET", cache: "no-store", signal: AbortSignal.timeout(15000),
+  const { fetch: send } = deps;
+  const response = await send(url, { method: body ? "POST" : "GET", cache: "no-store", signal: AbortSignal.timeout(15000),
     headers: { Authorization: `Bearer ${token}`, ...(body ? { "Content-Type": "application/json", "Idempotency-Key": body.requestId } : {}) },
     ...(body ? { body: JSON.stringify(body) } : {}) });
   const result = await response.json().catch(() => null);

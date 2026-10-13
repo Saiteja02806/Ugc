@@ -9,6 +9,6 @@ export function characterBatchProgress(receipts: readonly CharacterJobReceipt[],
   const message = unavailable
     ? `${progress} · ${unavailable} image${unavailable === 1 ? "" : "s"} could not be created${pending ? ` · ${pending} still processing` : ""}.`
     : pending ? `${progress} · ${pending} still processing.`
-    : `${progress}. Select an image to save it to My influencers.`;
+    : `${progress}. Saved to My influencers.`;
   return { created, unavailable, pending, message };
 }

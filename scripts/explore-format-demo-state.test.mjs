@@ -141,7 +141,7 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
     throw new Error("Demo effects did not settle.");
   }
   const find = (predicate) => nodes(tree).find(predicate);
-  return { render, props, storage, ownedAssets, queryInputs, queryFailures, uploads, selectionReports, savedReports, draftSaves, get dirty() { return dirty; },
+  return { render, props, audio, storage, ownedAssets, queryInputs, queryFailures, uploads, selectionReports, savedReports, draftSaves, get dirty() { return dirty; },
     find, button(label) { const currentLabel = label === "Save final video" || label === "Schedule" ? "Schedule video" : label; const found = find(node => node.type === "Button" && text(node).trim() === currentLabel); assert.ok(found, `Missing ${currentLabel}`); return found; },
     input(label) { const found = find(node => node.props?.["aria-label"] === label); assert.ok(found, `Missing ${label}`); return found; },
     select(value = asset(2)) { render(); const picker = find(node => node.type === "WorkflowVideoAssetPicker"); assert.equal(picker.props.onSelect(value), true); return render(); },
@@ -596,6 +596,28 @@ test("background schedule snapshots raw clip edits, independent sound and global
   assert.deepEqual(normalize(value.composition.demoEditing), normalize(editDraft.prepareFormatEditForExport(stored.editing)));
   assert.equal(value.composition.sourceAudioAssetId, id(5)); assert.equal(value.demoAudioAssetId, id(4)); assert.equal(value.backgroundAssetId, id(6));
   assert.equal(h.uploads.length, 0); assert.equal(h.savedReports.length, 0);
+});
+
+test("a pending or failed soundtrack selection cannot save or schedule the previous demo audio", async () => {
+  const stored = { ...draft(), framing: null };
+  const h = harness({ storage: new Map([[draftKey(), JSON.stringify(stored)]]) });
+  let composition;
+  h.audio.loading = true;
+  h.render({ backgroundScheduling: true, onPendingCompositionChange: value => { composition = value; }, prepareRequest: 1 });
+  assert.match(composition.error, /selected media to finish uploading/);
+  assert.equal(h.button("Apply demo edits").props.disabled, true);
+  assert.equal(h.saveRun(), undefined);
+  await assert.rejects(composition.resolve(), /selected media to finish uploading/);
+  h.audio.loading = false; h.audio.error = "Selected audio unavailable.";
+  h.render();
+  assert.equal(composition.error, h.audio.error);
+  assert.equal(h.button("Apply demo edits").props.disabled, true);
+  assert.equal(h.saveRun(), undefined);
+  await assert.rejects(composition.resolve(), /Selected audio unavailable/);
+  h.audio.error = null; h.render({ prepareRequest: 0 });
+  assert.equal(composition.error, null);
+  assert.equal(h.button("Apply demo edits").props.disabled, false);
+  assert.equal((await composition.resolve()).sourceAssetId, id(2));
 });
 
 test("reference music continues globally without replacing the Demo's independent soundtrack", () => {

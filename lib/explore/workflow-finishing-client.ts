@@ -45,8 +45,9 @@ export async function requestFinish(deps: { token: () => Promise<string | null>;
   const token = await withReadDeadline(() => deps.token(), undefined, FINISH_REQUEST_TIMEOUT_MS); deps.assertActive();
   if (!token) throw new Error("Sign in before applying edits.");
   const signal = AbortSignal.timeout(FINISH_REQUEST_TIMEOUT_MS);
+  const { fetch: send } = deps;
   try {
-    const response = await deps.fetch(submit ? "/api/explore/finishes" : `/api/explore/finishes?requestKey=${encodeURIComponent(saved.requestKey)}`, {
+    const response = await send(submit ? "/api/explore/finishes" : `/api/explore/finishes?requestKey=${encodeURIComponent(saved.requestKey)}`, {
       method: submit ? "POST" : "GET", cache: "no-store", signal, headers: { Authorization: `Bearer ${token}`, ...(submit ? { "Content-Type": "application/json", "Idempotency-Key": saved.requestKey } : {}) },
       ...(submit ? { body: JSON.stringify({ requestKey: saved.requestKey, draft: saved.draft }) } : {}),
     });

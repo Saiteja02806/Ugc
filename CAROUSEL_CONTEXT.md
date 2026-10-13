@@ -2,6 +2,24 @@
 
 Last updated: 2026-10-13
 
+## 2026-10-13 Landing slideshow showcase (local; deployment held by user)
+
+- The landing page's former three-format interactive daily-feed demo is now a
+  passive slideshow example. It shows only slideshow images, advances every
+  three seconds in a visible tab, and stays still for reduced-motion users.
+- Approval copy, double-tap/scroll decisions, history, heart/skip buttons and
+  Hook/Wall video previews are removed from this marketing section. The copy
+  now describes creating a repeatable content format. Real Trending approval
+  and scheduling behavior is unchanged by this presentation-only change.
+- The nearby landing comparison copy distinguishes daily Trending slideshows
+  from Hook and text-led videos created in Explore; it no longer promises all
+  three formats in the daily feed.
+- The separate hero retains its three-card layout; its left card uses the
+  supplied `landing_page/middle.mp4` as versioned `left_side-v3` media with a
+  matching first-frame poster. Center and right hero media are unchanged.
+- These follow-up changes are local. The user explicitly requested no further
+  deployment while other changes are being prepared.
+
 ## 2026-10-13 Trending slideshows only (local, not deployed)
 
 - Trending now exposes only Slideshows. New daily packs and upgrade additions
@@ -6813,6 +6831,46 @@ and advertises only deployed workflows. See
 - Latest read-only production check resolves website SHA fb7728fc8ac4f1e66ad55fb45b6830d267ad1b38; its pending-schedule API and the four local Explore migrations are not deployed. Local validation is not production acceptance. See docs/explore-functional-fixes-review-2026-10-13.md.
 - Final Hook/Wall Create restoration uses direct square optional-reference buttons, Your instructions, visible source heading and 200px prompt. Selected references shrink to a compact row; source-duration text retains the classic settings grid. Existing upload/selection/model constraints are unchanged. Slideshow image scheduling and automatic Carousel operations remain unchanged by these presentation corrections.
 - Schedule review actions use bounded columns and stack in narrow form containers after the user identified an overlap. Stable platform tiles keep Instagram, TikTok and YouTube names separate from selection checks; the obsolete Talking Head inline-platform override is removed. Confirmation, ownership, selected target and image-only platform constraints are unchanged.
+
+- Talking Head + Demo keeps one workflow header and the same rounded controls card across Create, Edit demo and Schedule. The stage tabs remain inside that card; Schedule inherits its width, alignment, padding and scrolling instead of replacing it with a separate form card. This is a presentation change only.
+
+- Hook video and Wall of text retain the Talking Head + Demo controls-width rule on compact desktop screens: `clamp(360px, 25cqw, 440px)`. The former 336px override is removed so those cards no longer become narrower on laptop or short-height screens. Mobile keeps the existing single-column layout.
+
+- The same persistent header and tabbed controls card applies to Hook video, Wall of text and Slideshows when entering Schedule. The phone workflow places Create/Edit demo/Schedule inside its controls card and uses the same desktop controls width, including when its empty preview is hidden. Scheduling actions, drafts and explicit confirmation boundaries remain intact.
+
+## 2026-10-13 Explore Recreate actions and reference tiles (local)
+
+- Recreate on Hook/Wall gallery cards explicitly returns to Create/Generate and
+  selects that card's registered video. Earlier uploaded video guidance cannot
+  override it, including repeated selection of the same card. Appearance images
+  and previously selected owned outputs remain available. Previewing a card
+  only opens its preview. Active uploads/generation block conflicting actions.
+- Image, video and audio reference tiles retain their original dimensions after
+  selection. Selected images fill the tile; its overlay plus adds more images
+  into the same container. Talking Head and video-generation image collections
+  preserve order and individual removal, and every displayed image becomes an
+  explicit generation input. Model limits are enforced without discarding
+  attachments: Kling uses two references; other models use six total. Hook/Wall
+  Omni edits accept up to five appearance images plus the actual source video,
+  superseding the earlier one-image restriction. The existing provider already
+  forwards multiple image parts and token-counts all media.
+- Recreate selects a compatible model and normalizes only unsupported settings.
+  Reference upload failures retain the prior preview but block generation until
+  an explicit replacement/removal/cancellation. Saved-audio downloads expose
+  parent pending/error state from the click, preserve specialized upload
+  callbacks, and cannot silently submit earlier audio to generation or finishing.
+- Valid slideshow output-image uploads immediately invalidate the scheduling
+  output. Editor actions, direct Schedule navigation and scheduling review all
+  respect pending slideshow changes. Failed uploads retain editable images but
+  require explicit re-save before scheduling the sequence.
+- Native browser fetch is invoked without dependency objects as receivers in
+  generation admission/recovery/discovery and connected-account helpers, so
+  Generate and account loading no longer throw Illegal invocation before a
+  request. Durable request identities and owner checks remain intact.
+- These corrections are local; no paid models or publishing were invoked during
+  fixtures. Production authentication is unavailable in the checking browser,
+  so deployment plus authenticated production acceptance remain pending. See
+  docs/explore-action-audit-2026-10-13.md for validation evidence.
 
 ## Preserved production-branch history
 

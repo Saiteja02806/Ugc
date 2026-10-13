@@ -18,6 +18,16 @@ const client = load("lib/explore/workflow-connected-accounts.ts", { "../social/t
 const account = (overrides = {}) => ({ id: "connection-a", platform: "instagram", platformAccountName: "Example App", platformAccountUsername: "example_app", status: "connected", scopes: ["instagram_business_content_publish"], supportsBackgroundRefresh: false, ...overrides });
 const payload = (connections = [account()]) => ({ ok: true, connections });
 const plain = (value) => JSON.parse(JSON.stringify(value));
+
+test("connected accounts use native browser fetch without a transport receiver", async () => {
+  const result = await client.loadWorkflowConnectedAccounts({ getOwnerToken: async () => "owner-token", assertActive() {}, fetch: async function (url, options) {
+    assert.equal(this, undefined);
+    assert.equal(url, "/api/social/connections");
+    assert.equal(options.method, "GET");
+    return Response.json(payload());
+  } });
+  assert.equal(result[0].id, "connection-a");
+});
 const element = (type, props = {}) => ({ type, props });
 const nodes = (value) => value == null ? [] : Array.isArray(value) ? value.flatMap(nodes) : typeof value === "object" ? [value, ...nodes(value.props?.children)] : [];
 const text = (value) => value == null ? "" : Array.isArray(value) ? value.map(text).join(" ") : typeof value === "object" ? text(value.props?.children) : String(value);

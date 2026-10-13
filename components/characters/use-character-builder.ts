@@ -1,10 +1,11 @@
 "use client";
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { withReadDeadline } from "@/lib/http/read-deadline";
-import { characterSessionStorageKey, EMPTY_CHARACTER_SESSION, parseCharacterClientSession,
+import { appendCharacterSessionJobs, CHARACTER_SESSION_IDLE_TIMEOUT_MS, characterSessionStorageKey, EMPTY_CHARACTER_SESSION,
+  isCharacterSessionIdle, parseCharacterClientSession,
   type CharacterClientSession } from "@/lib/characters/client-session";
 import type { PublicCharacter } from "@/lib/characters/identity-service";
 import type { CharacterGenerateRequest, CharacterGenerationAccess, CharacterGenerationResponse, CharacterHistoryImage, CharacterHistoryPage, CharacterJobReceipt,
@@ -31,7 +32,7 @@ export async function characterRequest<T>(userId: string | null, path: string, o
   return !options.method || options.method.toUpperCase() === "GET" ? withReadDeadline(read, options.signal ?? undefined) : read(options.signal ?? undefined);
 }
 
-export function useCharacterBuilder(userId: string | null, historyOpen = false) {
+export function useCharacterBuilder(userId: string | null, historyOpen = false, activityPending = false) {
   const client = useQueryClient();
   const generationFlight = useRef<Promise<CharacterGenerationResponse> | null>(null);
   const mounted = useRef(true);
@@ -40,14 +41,6 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false) 
   const charactersKey = ["characters", userId] as const;
   const accessKey = ["character-access", userId] as const;
   const historyKey = ["character-history", userId] as const;
-  // Foreground images belong to this mounted visit, not the durable recovery
-  // receipt. Unfinished batches and unresolved failures remain visible; fully
-  // successful previous batches are available through History.
-  const [foregroundJobs, setForegroundJobs] = useState<CharacterJobReceipt[]>(() => {
-    const restored = client.getQueryData<CharacterClientSession>(sessionKey)?.jobs ?? [];
-    const statuses = client.getQueryData<CharacterJobStatusResponse["job"][]>(["character-jobs", userId, restored.map((job) => job.jobId)]);
-    return statuses?.some((job) => !job.isTerminal || job.status === "failed" || job.status === "cancelled") ? restored : [];
-  });
   const [historyImage, setHistoryImage] = useState<CharacterHistoryImage | null>(null);
   const sessionQuery = useQuery({
     queryKey: sessionKey, enabled: Boolean(userId), staleTime: Infinity,
@@ -57,14 +50,24 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false) 
     },
   });
   const session = sessionQuery.data ?? EMPTY_CHARACTER_SESSION;
-  function updateSession(patch: Partial<CharacterClientSession>) {
-    const current = client.getQueryData<CharacterClientSession>(sessionKey) ?? EMPTY_CHARACTER_SESSION;
+  const updateSession = useCallback((patch: Partial<CharacterClientSession>) => {
+    const key = ["character-session", userId] as const;
+    const current = client.getQueryData<CharacterClientSession>(key) ?? EMPTY_CHARACTER_SESSION;
     const next = { ...current, ...patch };
-    client.setQueryData(sessionKey, next);
+    client.setQueryData(key, next);
     if (userId) {
       try { localStorage.setItem(characterSessionStorageKey(userId), JSON.stringify(next)); } catch { /* Storage may be disabled. */ }
     }
-  }
+  }, [client, userId]);
+  const touchSession = useCallback(() => {
+    if (userId) updateSession({ lastActivityAt: Date.now() });
+  }, [userId, updateSession]);
+  const cachedJobStatus = useCallback((job: CharacterJobReceipt) => {
+    return client.getQueryData<CharacterJobStatusResponse["job"]>(["character-job", userId, job.jobId])
+      ?? client.getQueryData<CharacterJobStatusResponse["job"][]>([
+        "character-jobs", userId, session.jobs.map((receipt) => receipt.jobId),
+      ])?.find((status) => status.id === job.jobId);
+  }, [client, userId, session.jobs]);
 
   const characters = useQuery({
     queryKey: charactersKey, enabled: Boolean(userId), retry: 1,
@@ -84,50 +87,81 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false) 
   const jobs = useQuery({
     queryKey: ["character-jobs", userId, session.jobs.map((job) => job.jobId)],
     enabled: Boolean(userId && session.jobs.length), retry: 2,
+    initialData: () => {
+      const restored = session.jobs.flatMap((job) => {
+        const status = cachedJobStatus(job);
+        return status ? [{ ...status, checkError: null }] : [];
+      });
+      return restored.length ? restored : undefined;
+    },
     queryFn: async ({ signal }) => {
-      const checks = await Promise.allSettled(session.jobs.map(async (job) =>
-        (await characterRequest<CharacterJobStatusResponse>(userId, `/api/characters/status?jobId=${job.jobId}`, { signal })).job));
+      // Completed results are immutable. Carry them between batch query keys so
+      // appending a generation does not poll every older image again.
+      const previousStatuses = session.jobs.map(cachedJobStatus);
+      const checks = await Promise.allSettled(session.jobs.map(async (job, index) => {
+        const previous = previousStatuses[index];
+        if (previous?.isTerminal) return previous;
+        return (await characterRequest<CharacterJobStatusResponse>(userId, `/api/characters/status?jobId=${job.jobId}`, { signal })).job;
+      }));
       if (checks.every((check) => check.status === "rejected")) {
         throw (checks[0] as PromiseRejectedResult).reason;
       }
       const results = checks.map((check, index) => {
         if (check.status === "fulfilled") return { ...check.value, checkError: null };
-        const previous = client.getQueryData<Array<CharacterJobStatusResponse["job"] & { checkError: string | null }>>([
-          "character-jobs", userId, session.jobs.map((job) => job.jobId),
-        ])?.find((job) => job.id === session.jobs[index].jobId);
+        const previous = previousStatuses[index];
         return {
           ...(previous ?? { id: session.jobs[index].jobId, status: "queued" as const, isTerminal: false, error: null, output: null }),
           checkError: "Could not check this candidate. Trying again…",
         };
       });
-      if (results.every((job) => job.isTerminal)) {
+      const latest = client.getQueryData<CharacterClientSession>(sessionKey);
+      if (signal.aborted || JSON.stringify(latest?.jobs) !== JSON.stringify(session.jobs)) return results;
+      results.forEach((job) => {
+        if (!job.checkError) client.setQueryData(["character-job", userId, job.id], job);
+      });
+      const newlyTerminal = results.some((job, index) => job.isTerminal && !previousStatuses[index]?.isTerminal);
+      const newlyCompleted = results.some((job, index) => job.output && !previousStatuses[index]?.output);
+      if (newlyTerminal) {
         void client.invalidateQueries({ queryKey: accessKey });
         void client.invalidateQueries({ queryKey: ["billing-subscription", userId] });
+      }
+      if (newlyCompleted || newlyTerminal && results.every((job) => job.isTerminal)) {
         void client.invalidateQueries({ queryKey: historyKey });
       }
-      if (mounted.current && !signal.aborted && results.some((job) => job.status === "failed" || job.status === "cancelled" || !job.isTerminal && !job.checkError)) {
-        const latest = client.getQueryData<CharacterClientSession>(sessionKey);
-        if (JSON.stringify(latest?.jobs) === JSON.stringify(session.jobs)) setForegroundJobs(session.jobs);
+      if (newlyCompleted) void client.invalidateQueries({ queryKey: charactersKey });
+      // A running generation counts as activity until its output is ready;
+      // recovery of already finished old jobs keeps their original idle time.
+      if (results.some((job, index) => job.isTerminal && previousStatuses[index] && !previousStatuses[index]!.isTerminal)) {
+        touchSession();
       }
       return results;
     },
-    refetchInterval: (query) => query.state.error ? false : query.state.data?.every((job) => job.isTerminal) ? false : 2_500,
+    refetchInterval: (query) => query.state.error ? false
+      : session.jobs.every((receipt) => query.state.data?.some((job) => job.id === receipt.jobId && job.isTerminal)) ? false : 2_500,
     refetchOnWindowFocus: true,
   });
 
   const generate = useMutation({
     mutationFn: (request: CharacterGenerateRequest) => {
       if (generationFlight.current) return generationFlight.current;
-      updateSession({ pendingRequest: request });
+      const current = client.getQueryData<CharacterClientSession>(sessionKey) ?? EMPTY_CHARACTER_SESSION;
+      const admittedRequest = current.pendingRequest ?? request;
+      updateSession({ pendingRequest: admittedRequest, lastActivityAt: Date.now() });
       const flight = characterRequest<CharacterGenerationResponse>(userId, "/api/characters/generate", {
-        method: "POST", body: JSON.stringify(request),
+        method: "POST", body: JSON.stringify(admittedRequest),
       }).finally(() => { generationFlight.current = null; });
       generationFlight.current = flight;
       return flight;
     },
     onSuccess: (result) => {
-      updateSession({ jobs: result.jobs, pendingRequest: null });
-      if (mounted.current) { setForegroundJobs(result.jobs); setHistoryImage(null); }
+      const current = client.getQueryData<CharacterClientSession>(sessionKey) ?? EMPTY_CHARACTER_SESSION;
+      result.jobs.forEach((job) => {
+        if (!client.getQueryData(["character-job", userId, job.jobId])) client.setQueryData(["character-job", userId, job.jobId], {
+          id: job.jobId, status: "queued", isTerminal: false, error: null, output: null, checkError: null,
+        });
+      });
+      updateSession({ jobs: appendCharacterSessionJobs(current.jobs, result.jobs), pendingRequest: null, lastActivityAt: Date.now() });
+      if (mounted.current) setHistoryImage(null);
       void client.invalidateQueries({ queryKey: accessKey });
       void client.invalidateQueries({ queryKey: ["billing-subscription", userId] });
     },
@@ -144,7 +178,7 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false) 
     }),
     onSuccess: async (result) => {
       await client.cancelQueries({ queryKey: charactersKey });
-      updateSession({ selectedCharacterId: result.character.id });
+      updateSession({ selectedCharacterId: result.character.id, lastActivityAt: Date.now() });
       client.setQueryData<{ ok: true; characters: PublicCharacter[] }>(charactersKey, (previous) => ({
         ok: true, characters: [result.character, ...(previous?.characters ?? []).filter((character) => character.id !== result.character.id)],
       }));
@@ -152,27 +186,57 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false) 
       void client.invalidateQueries({ queryKey: historyKey });
     },
   });
-  const inProgress = session.jobs.length > 0 && (!jobs.data || jobs.data.some((job) => !job.isTerminal));
+  const inProgress = session.jobs.some((receipt) => !jobs.data?.find((job) => job.id === receipt.jobId)?.isTerminal);
   const selected = characters.data?.characters.find((character) => character.id === session.selectedCharacterId) ?? null;
-  const visibleJobs = historyImage ? [{ jobId: historyImage.jobId, generationId: historyImage.generationId }] : foregroundJobs;
+  const visibleJobs = historyImage ? [{ jobId: historyImage.jobId, generationId: historyImage.generationId }] : session.jobs;
   const visibleStatuses = historyImage ? [{
     id: historyImage.jobId, model: historyImage.model, status: "completed" as const, isTerminal: true, error: null, checkError: null,
     output: { url: historyImage.url, mediaAssetId: historyImage.mediaAssetId, generationId: historyImage.generationId, width: null, height: null, ratio: "9:16" },
   }] : jobs.data;
-  return { session, access, characters, jobs, generate, select, selected, inProgress, visibleJobs, visibleStatuses,
+  const resetSelection = select.reset;
+  const resetGeneration = generate.reset;
+  const resetSession = useCallback(() => {
+    const current = client.getQueryData<CharacterClientSession>(["character-session", userId]) ?? EMPTY_CHARACTER_SESSION;
+    if (activityPending || select.isPending || generationFlight.current || current.pendingRequest || current.jobs.some((job) => !cachedJobStatus(job)?.isTerminal)) return;
+    setHistoryImage(null);
+    updateSession({ jobs: [], selectedCharacterId: null, lastActivityAt: null, sessionEpoch: current.sessionEpoch + 1 });
+    resetSelection(); resetGeneration();
+  }, [client, userId, cachedJobStatus, updateSession, resetSelection, resetGeneration, activityPending, select.isPending]);
+  useEffect(() => {
+    if (!userId || sessionQuery.isPending || typeof window === "undefined") return;
+    // Old v1 receipts had no activity timestamp. Give their recovered session
+    // one idle window while preserving any uncertain admission.
+    if (session.lastActivityAt === null && (session.jobs.length || session.pendingRequest || session.selectedCharacterId)) {
+      touchSession();
+      return;
+    }
+    const expireIfIdle = () => {
+      const current = client.getQueryData<CharacterClientSession>(["character-session", userId]) ?? EMPTY_CHARACTER_SESSION;
+      const settled = current.jobs.every((job) => cachedJobStatus(job)?.isTerminal);
+      if (!activityPending && !select.isPending && !generationFlight.current && isCharacterSessionIdle(current, Date.now(), settled)) resetSession();
+    };
+    expireIfIdle();
+    const timer = session.lastActivityAt !== null && !inProgress && !session.pendingRequest && !activityPending && !select.isPending
+      ? window.setTimeout(expireIfIdle, Math.max(0, session.lastActivityAt + CHARACTER_SESSION_IDLE_TIMEOUT_MS - Date.now()))
+      : null;
+    window.addEventListener("focus", expireIfIdle);
+    document.addEventListener("visibilitychange", expireIfIdle);
+    return () => {
+      if (timer !== null) window.clearTimeout(timer);
+      window.removeEventListener("focus", expireIfIdle);
+      document.removeEventListener("visibilitychange", expireIfIdle);
+    };
+  }, [client, userId, sessionQuery.isPending, session.lastActivityAt, session.sessionEpoch, session.pendingRequest,
+    session.jobs.length, session.selectedCharacterId, inProgress, touchSession, cachedJobStatus, resetSession, activityPending, select.isPending]);
+  return { session, sessionResetVersion: session.sessionEpoch, touchSession, access, characters, jobs, generate, select, selected, inProgress, visibleJobs, visibleStatuses,
     history, historyImages: mergeCharacterHistoryPages(history.data?.pages ?? []), historyImage,
     openHistoryImage: (image: CharacterHistoryImage) => {
-      if (!inProgress && !generationFlight.current && !session.pendingRequest) setHistoryImage(image);
+      if (!inProgress && !generationFlight.current && !session.pendingRequest) { touchSession(); setHistoryImage(image); }
     },
-    returnToSession: () => setHistoryImage(null),
-    startNewSession: () => {
-      if (inProgress || generationFlight.current || session.pendingRequest) return;
-      setForegroundJobs([]); setHistoryImage(null);
-      updateSession({ jobs: [], selectedCharacterId: null });
-      select.reset(); generate.reset();
-    },
+    returnToSession: () => { touchSession(); setHistoryImage(null); },
+    startNewSession: resetSession,
     restoring: Boolean(userId) && sessionQuery.isPending,
-    chooseCharacter: (id: string | null) => updateSession({ selectedCharacterId: id }),
+    chooseCharacter: (id: string | null) => updateSession({ selectedCharacterId: id, lastActivityAt: Date.now() }),
     discardPendingRequest: () => { updateSession({ pendingRequest: null }); generate.reset(); },
   };
 }

@@ -23,5 +23,5 @@ test("completed status without a saved output is not presented as a created imag
 });
 test("counts only this batch's candidates even when statuses contain unrelated images", () => {
   const result = characterBatchProgress(receipts, [completed, { ...completed, id: "job-2" }, { ...failed, id: "other-job" }]);
-  assert.equal(result.message, "2 of 2 images created. Select an image to save it to My influencers.");
+  assert.equal(result.message, "2 of 2 images created. Saved to My influencers.");
 });

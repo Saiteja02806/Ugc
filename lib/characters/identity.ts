@@ -52,6 +52,22 @@ function getClient() {
 
 const store: CharacterIdentityStore = {
   getJob: (jobId, userId) => getBackgroundJobForUser({ jobId, userId }),
+  async getJobs(jobIds, userId) {
+    const pages: string[][] = [];
+    for (let index = 0; index < jobIds.length; index += 100) pages.push(jobIds.slice(index, index + 100));
+    const results = await Promise.all(pages.map(async (ids) => {
+      const { data, error } = await getClient().from("background_jobs")
+        .select("id,user_id,job_type,status,input_json,output_json,output_reference,created_at")
+        .eq("user_id", userId).eq("job_type", "generate_image").eq("status", "completed")
+        .in("id", ids).contains("input_json", { characterSource: CHARACTER_SOURCE });
+      if (error) throw new Error(`Could not load saved character references: ${error.message}`);
+      return (data ?? []).map((row) => ({
+        id: row.id, userId: row.user_id, jobType: row.job_type, status: row.status,
+        input: row.input_json, output: row.output_json, outputReference: row.output_reference,
+      }));
+    }));
+    return results.flat();
+  },
   getAsset: (assetId, userId) => getMediaAssetForOwner({ assetId, userId }),
   async getCandidateAsset(jobId, userId) {
     const { data, error } = await getClient().from("media_assets")
@@ -65,18 +81,23 @@ const store: CharacterIdentityStore = {
     return data;
   },
   async listSelectedAssets(userId) {
-    const { data, error } = await getClient().from("media_assets")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("collection", "influencer")
-      .eq("source_type", "generated_image")
-      .eq("status", "ready")
-      .is("deleted_at", null)
-      .contains("metadata", { characterIdentity: { source: CHARACTER_SOURCE, version: 1 } })
-      .order("updated_at", { ascending: false })
-      .limit(100);
-    if (error) throw new Error(`Could not list saved characters: ${error.message}`);
-    return data ?? [];
+    const assets: MediaAssetRow[] = [];
+    const pageSize = 100;
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await getClient().from("media_assets")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("collection", "influencer")
+        .eq("source_type", "generated_image")
+        .eq("status", "ready")
+        .is("deleted_at", null)
+        .contains("metadata", { characterIdentity: { source: CHARACTER_SOURCE, version: 1 } })
+        .order("updated_at", { ascending: false }).order("id", { ascending: false })
+        .range(offset, offset + pageSize - 1);
+      if (error) throw new Error(`Could not list saved characters: ${error.message}`);
+      assets.push(...data ?? []);
+      if ((data?.length ?? 0) < pageSize) return assets;
+    }
   },
   async promoteCandidate({ asset, marker, name, userId }) {
     const metadata = asset.metadata && typeof asset.metadata === "object" && !Array.isArray(asset.metadata)

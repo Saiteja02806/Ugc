@@ -326,3 +326,29 @@ test("database faults remain visible instead of silently dropping selected ident
   await assert.rejects(f.service.get(ASSET_ID, USER_ID), (error) => error === failure);
   await assert.rejects(f.service.list(USER_ID), (error) => error === failure);
 });
+
+test("automatically saved variations list with bulk provenance and remain selectable as references without another save", async () => {
+  const f = fixture();
+  const marker = { source: CHARACTER_SOURCE, version: 1, jobId: JOB_ID,
+    selectedAt: "2026-10-02T12:00:00.000Z", automatic: true };
+  f.mutateAsset({ collection: "influencer", title: "My AI influencer", metadata: { characterIdentity: marker } });
+  const secondJobId = "b3333333-3333-4333-8333-333333333333";
+  const secondId = "a2222222-2222-4222-8222-222222222222";
+  const secondJob = { ...f.job, id: secondJobId };
+  const second = { ...f.asset(), id: secondId, source_record_id: secondJobId,
+    metadata: { characterIdentity: { ...marker, jobId: secondJobId } } };
+  let loads = 0;
+  f.store.listSelectedAssets = async () => [f.asset(), second, { ...second, user_id: "foreign-owner" }];
+  f.store.getJobs = async (ids, userId) => {
+    loads += 1; assert.deepEqual(ids, [JOB_ID, secondJobId]); assert.equal(userId, USER_ID);
+    return [f.job, secondJob];
+  };
+  f.store.getJob = async () => { throw new Error("The library must use bulk provenance"); };
+  const characters = await f.service.list(USER_ID);
+  assert.deepEqual(characters.map(character => character.id), [ASSET_ID, secondId]);
+  assert.equal(loads, 1);
+  f.store.getJob = async () => f.job;
+  assert.equal((await f.service.select({ jobId: JOB_ID, userId: USER_ID })).id, ASSET_ID);
+  assert.equal(f.promotions(), 0);
+  assert.equal((await f.service.get(ASSET_ID, USER_ID))?.referenceMediaAssetId, ASSET_ID);
+});

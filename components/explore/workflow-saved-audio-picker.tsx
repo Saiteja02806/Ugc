@@ -47,17 +47,20 @@ function SavedAudioLibrary({ ownerId, attachment, disabled = false, buttonLabel 
     selecting.current = true;
     setBusy(true); setError(null);
     try {
-      const blob = await withReadDeadline(async signal => {
-        const token = await getCurrentUserIdToken(ownerId); if (!token) throw new Error("Sign in to select audio.");
-        signal.throwIfAborted();
-        const response = await fetch(`/api/audio/assets/${encodeURIComponent(asset.id)}?forExplore=1`, { cache: "no-store", headers: { Authorization: `Bearer ${token}` }, signal });
-        if (!response.ok || Number(response.headers.get("content-length")) > 12 * 1024 * 1024) throw new Error("This recording is no longer available for Explore.");
-        return response.blob();
-      });
-      if (!active.current) return;
-      if (!blob.size || blob.size > 12 * 1024 * 1024 || !blob.type.startsWith("audio/")) throw new Error("Choose a complete saved audio recording.");
-      const extension = blob.type.includes("wav") ? "wav" : blob.type.includes("mp4") || blob.type.includes("m4a") ? "m4a" : blob.type.includes("ogg") ? "ogg" : blob.type.includes("webm") ? "webm" : "mp3";
-      if (await attachment.choose(new File([blob], `saved-audio-${asset.id}.${extension}`, { type: blob.type })) && active.current) setOpen(false);
+      const accepted = await attachment.chooseRemote(async () => {
+        const blob = await withReadDeadline(async signal => {
+          const token = await getCurrentUserIdToken(ownerId); if (!token) throw new Error("Sign in to select audio.");
+          signal.throwIfAborted();
+          const response = await fetch(`/api/audio/assets/${encodeURIComponent(asset.id)}?forExplore=1`, { cache: "no-store", headers: { Authorization: `Bearer ${token}` }, signal });
+          if (!response.ok || Number(response.headers.get("content-length")) > 12 * 1024 * 1024) throw new Error("This recording is no longer available for Explore.");
+          return response.blob();
+        });
+        if (!active.current) throw new Error("This audio selection was interrupted. Choose it again or remove the audio.");
+        if (!blob.size || blob.size > 12 * 1024 * 1024 || !blob.type.startsWith("audio/")) throw new Error("Choose a complete saved audio recording.");
+        const extension = blob.type.includes("wav") ? "wav" : blob.type.includes("mp4") || blob.type.includes("m4a") ? "m4a" : blob.type.includes("ogg") ? "ogg" : blob.type.includes("webm") ? "webm" : "mp3";
+        return new File([blob], `saved-audio-${asset.id}.${extension}`, { type: blob.type });
+      }, {}, file => attachment.choose(file));
+      if (accepted && active.current) setOpen(false);
     } catch (e) { if (active.current) setError(e instanceof Error ? e.message : "Could not select saved audio."); }
     finally { selecting.current = false; if (active.current) setBusy(false); }
   }
@@ -70,7 +73,7 @@ function SavedAudioLibrary({ ownerId, attachment, disabled = false, buttonLabel 
         </> : null}
         {loaded ? <p className="text-xs leading-5 text-muted">Ready tracks only. Test audio and private voice references stay out of this library.</p> : null}
         {loaded ? <Button type="button" variant="ghost" size="sm" disabled={busy || library.isFetching} onClick={() => void library.refetch()}>{library.isFetching ? "Refreshing audio…" : "Refresh library"}</Button> : null}
-        {error || loadError ? <div className="space-y-2"><p role="alert" className="text-xs leading-5 text-destructive">{error ?? loadError}</p>{loadError ? <Button type="button" variant="outline" size="sm" disabled={busy || library.isFetching} onClick={() => void library.refetch()}>Retry loading audio</Button> : null}</div> : null}
+        {error || attachment.error || loadError ? <div className="space-y-2"><p role="alert" className="text-xs leading-5 text-destructive">{error ?? attachment.error ?? loadError}</p>{loadError ? <Button type="button" variant="outline" size="sm" disabled={busy || library.isFetching} onClick={() => void library.refetch()}>Retry loading audio</Button> : null}</div> : null}
       </>}
     </PopoverContent></Popover>;
 }

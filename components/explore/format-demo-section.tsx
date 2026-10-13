@@ -198,7 +198,7 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
     const hasDemo = Boolean(preview || draft.demoId || selection.busy);
     useEffect(() => { onSelectionChange(hasDemo); }, [hasDemo, onSelectionChange]);
     useEffect(() => { onFinalRequiredChange?.(hasDemo || draft.backgroundMusic === true); }, [hasDemo, draft.backgroundMusic, onFinalRequiredChange]);
-    const busy = pendingSource || Boolean(activeSave && saveBusy) || selection.busy || uploadingAudio || uploadingBackground || demoDraftSave.busy;
+    const busy = pendingSource || Boolean(activeSave && saveBusy) || selection.busy || audio.loading || backgroundAudio.loading || uploadingAudio || uploadingBackground || demoDraftSave.busy;
     const duration = preview?.duration ?? naturalDuration;
     const width = naturalSize?.width ?? demo?.width ?? 1080, height = naturalSize?.height ?? demo?.height ?? 1920;
     const exportEditing = prepareFormatEditForExport(draft.editing);
@@ -238,7 +238,7 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
     }
     const hasOpening = Boolean(videoId || opening || sourcePreview);
     let compositionDraft: ExploreFinishDraft | null = null;
-    let compositionError = pendingSource || selection.busy || uploadingAudio || uploadingBackground ? "Wait for the selected media to finish uploading." :
+    let compositionError = pendingSource || selection.busy || audio.loading || backgroundAudio.loading || uploadingAudio || uploadingBackground ? "Wait for the selected media to finish uploading." :
       demoQuery.isError || audioQuery.isError || backgroundQuery.isError ? "Could not restore the selected clip or audio. Retry in Edit before scheduling." :
       enabled && !localPreview && hasDemo && demoDraftSourceId && !demoDraftSave.loaded ? demoDraftSave.error ?? "Loading your saved demo edits…" :
       hasOpening && (!openingClipState || openingClipState.sourceId !== videoId) ? "Loading the opening edit settings…" :
@@ -247,7 +247,7 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
       validation && hasDemo ? validation :
       draft.audioId && !audioQuery.data ? "Loading your demo audio…" :
       draft.backgroundMusic && draft.backgroundAudioId && !backgroundQuery.data ? "Loading your background music…" :
-      selection.error || audioError || backgroundError || null;
+      selection.error || audio.error || backgroundAudio.error || audioError || backgroundError || null;
     if (!compositionError) try {
       if (!hasOpening && !demo) throw new Error("Add a hook or demo before scheduling.");
       const sourceId = hasOpening ? openingClipState!.sourceId : demo!.id;
@@ -274,6 +274,7 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
       onPendingCompositionChange({ signature: compositionSignature, sourceId: captured?.sourceAssetId ?? videoId ?? demo?.id ?? "",
         title: hasOpening ? format === "wall_text" ? "Wall of text video" : "Hook + demo video" : preview?.name ?? "Demo video", draft: captured, error: compositionError,
         resolve: async () => {
+          if (compositionError) throw new Error(compositionError);
           if (!captured || compositionError || latestCompositionSignature.current !== compositionSignature || !alive.current) throw new Error("Your clips changed. Review the updated video before scheduling.");
           let result = captured;
           if (needsDefaultMusic) {
@@ -290,7 +291,7 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
           return result;
         } });
     }, [onPendingCompositionChange, compositionSignature, compositionDraft, compositionError, videoId, demo?.id, hasOpening, format, preview?.name, needsDefaultMusic, owner, defaultMusicQuery.data]);
-    const ready = !pendingSource && (hasOpening ? !!openingQuery.data : !!demo) && (hasDemo ? !!demo : draft.backgroundMusic === true) && !selection.busy && !selection.error && !validation && !audioError && !backgroundError && !uploadingAudio && !uploadingBackground && (!draft.audioId || !!audioQuery.data) && (!draft.backgroundMusic || !draft.backgroundAudioId || !!backgroundQuery.data);
+    const ready = !pendingSource && (hasOpening ? !!openingQuery.data : !!demo) && (hasDemo ? !!demo : draft.backgroundMusic === true) && !selection.busy && !selection.error && !validation && !audio.loading && !backgroundAudio.loading && !audio.error && !backgroundAudio.error && !audioError && !backgroundError && !uploadingAudio && !uploadingBackground && (!draft.audioId || !!audioQuery.data) && (!draft.backgroundMusic || !draft.backgroundAudioId || !!backgroundQuery.data);
     const handledPrepareRequest = useRef(0);
     useEffect(() => {
         if (!prepareRequest || handledPrepareRequest.current === prepareRequest || !enabled || !ready || currentFinal || activeSave) return;
@@ -351,7 +352,7 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
                 setUploadingAudio(false);
         }
     }
-    const audioAttachment = { ...audio, choose: chooseAudio, loading: uploadingAudio || audio.loading, remove: () => { audio.remove(); setAudioError(null); change({ ...draft, audioId: null, playback: "once" }); } };
+    const audioAttachment = { ...audio, choose: chooseAudio, chooseRemote: (...args: Parameters<typeof audio.chooseRemote>) => { setSave(null); setFinal(null); onDirty(); return audio.chooseRemote(...args); }, loading: uploadingAudio || audio.loading, remove: () => { audio.remove(); setAudioError(null); change({ ...draft, audioId: null, playback: "once" }); } };
     async function chooseBackgroundAudio(file: File) {
         if (busy) return false;
         setUploadingBackground(true); setBackgroundError(null); setFinal(null); onDirty();
@@ -365,7 +366,7 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
         } catch (error) { if (alive.current) setBackgroundError(error instanceof Error ? error.message : "Could not upload background audio."); return false; }
         finally { if (alive.current) setUploadingBackground(false); }
     }
-    const backgroundAttachment = { ...backgroundAudio, choose: chooseBackgroundAudio, loading: uploadingBackground || backgroundAudio.loading, remove: () => { backgroundAudio.remove(); setBackgroundError(null); change({ ...draft, backgroundAudioId: null }); } };
+    const backgroundAttachment = { ...backgroundAudio, choose: chooseBackgroundAudio, chooseRemote: (...args: Parameters<typeof backgroundAudio.chooseRemote>) => { setSave(null); setFinal(null); onDirty(); return backgroundAudio.chooseRemote(...args); }, loading: uploadingBackground || backgroundAudio.loading, remove: () => { backgroundAudio.remove(); setBackgroundError(null); change({ ...draft, backgroundAudioId: null }); } };
     const saved = useCallback((output: VideoOutput) => {
         if (activeSave && saveContext.current === activeSave) { setFinal(output); onSaved(output); }
     }, [activeSave, onSaved]);
@@ -432,8 +433,8 @@ export function FormatDemoSection({ format, videoId, opening, openingRevision, e
       </fieldset> : <p className="text-sm leading-6 text-muted">Add a demo in the Demo section to edit it here.</p>}
       {problems}
     </div>;
-    const editingActions = <div className={styles.clipActionContent}><div className={styles.clipActionButtons}><Button type="button" className="h-11 rounded-xl px-5 font-semibold shadow-sm hover:shadow transition-all" disabled={busy || !preview || !!validation || !localPreview && (!enabled || !demo || !demoDraftSave.loaded || Boolean(draft.audioId && !audioQuery.data) || Boolean(draft.backgroundAudioId && !backgroundQuery.data))} onClick={async () => {
-      if (busy || !preview || validation) return;
+    const editingActions = <div className={styles.clipActionContent}><div className={styles.clipActionButtons}><Button type="button" className="h-11 rounded-xl px-5 font-semibold shadow-sm hover:shadow transition-all" disabled={busy || !preview || !!validation || !!audio.error || !!backgroundAudio.error || !!audioError || !!backgroundError || !localPreview && (!enabled || !demo || !demoDraftSave.loaded || Boolean(draft.audioId && !audioQuery.data) || Boolean(draft.backgroundAudioId && !backgroundQuery.data))} onClick={async () => {
+      if (busy || !preview || validation || audio.error || backgroundAudio.error || audioError || backgroundError) return;
       if (localPreview) { onEditDone?.(); return; }
       const accepted = await demoDraftSave.save(); if (accepted && alive.current) onEditDone?.();
     }}>{demoDraftSave.busy ? "Saving…" : "Apply demo edits"}</Button>{onEditDone ? <Button type="button" variant="outline" className="h-11 rounded-xl px-4" disabled={busy} onClick={onEditDone}><ArrowLeft className="size-4" aria-hidden="true" />Back to previews</Button> : null}</div>

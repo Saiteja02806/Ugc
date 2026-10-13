@@ -14,6 +14,7 @@ export function ExploreWorkflowCard({ workflow, localPreview }: { workflow: Expl
     <article className={styles.workflowCard}>
       <Link
         href={`${workflow.destination}${localPreview ? "?preview=1" : ""}`}
+        prefetch={true}
         className="group block rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-4 focus-visible:ring-offset-background"
       >
         <div

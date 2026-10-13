@@ -41,6 +41,7 @@ export function WorkflowAudioReference({ audioLabel, audio, ownerId, tile = fals
         <p className="break-all text-xs text-muted">{audio.asset.name}</p>
       </> : null}
       {audio.error ? <p role="alert" className="text-sm text-destructive">{audio.error}</p> : null}
+      {audio.error && !audio.asset ? <Button type="button" variant="ghost" onClick={audio.remove}>Cancel audio selection</Button> : null}
     </PopoverContent>
   </Popover></div>;
 }

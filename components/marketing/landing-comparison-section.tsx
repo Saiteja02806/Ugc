@@ -13,7 +13,7 @@ export function LandingComparisonSection() {
             Stop spending hours crafting viral formats manually.
           </h2>
           <p className="mx-auto mt-3.5 max-w-lg text-sm leading-6 text-muted sm:text-base">
-            UGCPilot analyzes your business to generate ready-to-post Reel hooks, Wall-of-Text videos, and slideshows daily. Review in seconds, manage multiple accounts, and scale your organic marketing.
+            Get daily slideshow ideas for your business, then review and schedule your content. Create hook and text-led videos in Explore when you need them.
           </p>
         </div>
 
@@ -127,13 +127,13 @@ export function LandingComparisonSection() {
                   <span className="flex size-4.5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary mt-0.5">
                     <Check className="size-3" aria-hidden="true" />
                   </span>
-                  <span><strong>Automated Business Analysis</strong> creates tailored viral hooks and angles for your niche</span>
+                  <span><strong>Business context</strong> helps shape content ideas for your niche</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <span className="flex size-4.5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary mt-0.5">
                     <Check className="size-3" aria-hidden="true" />
                   </span>
-                  <span><strong>All 3 High-Performing Formats</strong> ready daily: Reel Hooks, Wall-of-Text & Slideshows</span>
+                  <span><strong>Daily Slideshows</strong> in Trending, ready for your review</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <span className="flex size-4.5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary mt-0.5">

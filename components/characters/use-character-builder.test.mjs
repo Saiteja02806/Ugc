@@ -36,7 +36,7 @@ const queryClient = {
 };
 
 mock.module("react", { defaultExport: React, namedExports: {
-  ...React, useRef: (value) => ({ current: value }), useEffect: () => {},
+  ...React, useCallback: (callback) => callback, useRef: (value) => ({ current: value }), useEffect: () => {},
   useState: (initial) => [typeof initial === "function" ? initial() : initial, () => {}],
 } });
 mock.module("@tanstack/react-query", { namedExports: {
@@ -302,7 +302,8 @@ test("one failing candidate check preserves the successful result and continues 
   assert.equal(result[1].isTerminal, false);
   assert.ok(result[1].checkError);
   assert.equal(builder.jobs.__options.refetchInterval({ state: { data: result } }), 2500);
-  assert.equal(invalidated.length, 0);
+  assert.ok(invalidated.some((key) => serializeKey(key) === serializeKey(["characters", "account-a"])), "a partial success is already available in My influencers");
+  assert.ok(invalidated.some((key) => serializeKey(key) === serializeKey(["character-history", "account-a"])), "a partial success is already available in History");
   assert.equal(useCharacterBuilder("account-a").inProgress, true);
 });
 

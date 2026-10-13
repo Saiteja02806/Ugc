@@ -19,6 +19,7 @@ import { useLocalAppScreen } from "@/components/explore/use-local-app-screen";
 import { useWorkflowSourceVideo } from "@/components/explore/use-workflow-source-video";
 import { WorkflowVideoSourceSection } from "@/components/explore/workflow-video-source-section";
 import { useLocalWorkflowMedia } from "@/components/explore/use-local-workflow-media";
+import { useLocalWorkflowImages } from "@/components/explore/use-local-workflow-images";
 import { useWorkflowGenerationSettings } from "@/components/explore/use-workflow-generation-settings";
 import { WorkflowAccountBoundary, WorkflowGenerationBoundary } from "@/components/explore/workflow-generation-boundary";
 import { WorkflowFinishingBoundary } from "@/components/explore/workflow-finishing-boundary";
@@ -44,9 +45,9 @@ function PhoneWorkflowLayout({ generationEnabled, ownerId, demoFramingEnabled }:
   const [instructions, setInstructions] = useState("");
   const generation = useWorkflowGenerationSettings();
   const appScreen = useLocalAppScreen();
-  const creator = useLocalWorkflowMedia("image");
   const videoReference = useLocalWorkflowMedia("video");
   const creatorAudio = useLocalWorkflowMedia("audio");
+  const creator = useLocalWorkflowImages(Math.max(0, (generation.settings.model === "kling_3_0" ? 2 : 6) - Number(Boolean(appScreen.asset)) - Number(Boolean(videoReference.asset)) - Number(Boolean(creatorAudio.asset))));
   const demo = useLocalWorkflowMedia("video");
   const demoAudio = useLocalWorkflowMedia("audio");
   const [demoAudioPlayback, setDemoAudioPlayback] = useState<ExploreBackgroundPlayback>("once");
@@ -91,15 +92,16 @@ function PhoneWorkflowLayout({ generationEnabled, ownerId, demoFramingEnabled }:
     setDemoAudioPlayback("once");
   }
 
-  return <WorkflowGenerationBoundary enabled={generationEnabled} ownerId={ownerId} draft={{ kind: "phone", instructions, settings: generation.settings, creator: creator.asset, appScreen: appScreen.asset, videoReference: videoReference.asset, audioReference: creatorAudio.asset, referencesPending: creator.loading || appScreen.loading || videoReference.loading || creatorAudio.loading }}>{(run) => {
+  return <WorkflowGenerationBoundary enabled={generationEnabled} ownerId={ownerId} draft={{ kind: "phone", instructions, settings: generation.settings, creator: creator.asset, referenceImages: creator.assets, appScreen: appScreen.asset, videoReference: videoReference.asset, audioReference: creatorAudio.asset, referencesPending: creator.loading || appScreen.loading || videoReference.loading || creatorAudio.loading, referencesError: creator.error || appScreen.error || videoReference.error || creatorAudio.error || null }}>{(run) => {
     const source = selection.mode === "generate" ? run?.selected ?? null : selection.source;
     const sourcePreview = selection.mode === "generate" ? source ? { name: source.title, url: source.url, duration: source.durationSeconds } : null : selection.preview;
     const outputAspect = source?.width && source.height ? source.width / source.height : generation.settings.aspectRatio === "16:9" ? 16 / 9 : 9 / 16;
     const framingError = demoFramingEnabled && demoFraming && Math.abs(demoFraming.aspect / outputAspect - 1) > .015 ? "Video shape changed. Record framing again for this shape, or reset it." : null;
+    const demoSelectionError = demo.loading || demoAudio.loading ? "Wait for your selected demo media to finish loading." : demo.error || demoAudio.error || null;
     const currentFraming = demoFramingEnabled && !framingError ? demoFraming?.frame ?? null : null;
     const createPreviewAvailable = selection.mode === "generate" ? Boolean(run?.results.length || run?.busy || run?.error) : Boolean(selection.preview);
     const previewVisible = section !== "create" || createPreviewAvailable || previewOpen;
-    return <WorkflowFinishingBoundary enabled={generationEnabled} ownerId={ownerId} kind="phone" source={source} demo={demo.asset} demoAudio={demoAudio.asset} playback={demoAudioPlayback} scheduleDraft={scheduleDraft} demoFraming={currentFraming} demoFramingError={framingError}>{(finish) => <section className={cn(studio.studio, creation.shell, "min-w-0")}>
+    return <WorkflowFinishingBoundary enabled={generationEnabled} ownerId={ownerId} kind="phone" source={source} demo={demo.asset} demoAudio={demoAudio.asset} playback={demoAudioPlayback} scheduleDraft={scheduleDraft} demoFraming={currentFraming} demoFramingError={framingError ?? demoSelectionError}>{(finish) => <section className={cn(studio.studio, creation.shell, "min-w-0")}>
     {/* The Library follows the complete first-screen workspace, never its initial viewport. */}
     <Tabs.Root ref={workspaceRef} value={section} orientation={orientation} data-section={section} onValueChange={changeSection} data-phone-first-screen className={sections.workspace}>
       <header className={cn(creation.header, sections.header, "flex shrink-0 items-center gap-3 px-4 py-3 sm:px-6 lg:px-8")}>
@@ -108,17 +110,17 @@ function PhoneWorkflowLayout({ generationEnabled, ownerId, demoFramingEnabled }:
         }}><ArrowLeft className="size-4" aria-hidden="true" /></Link>
         <span className="hidden text-sm text-muted sm:block">Explore <span className="ml-2" aria-hidden="true">/</span></span>
         <div className="min-w-0"><h1 className="text-base font-semibold tracking-tight text-foreground-strong sm:text-lg">Creator Shows App on Phone</h1></div>
-        <WorkflowSectionNavigation />
       </header>
 
       <div className={sections.layout}>
-        <div className={sections.stage} data-preview-visible={previewVisible}>
+        <div className={sections.stage} data-preview-visible={previewVisible} data-focused-workflow data-stage={section} data-editing={false}>
         <WorkflowCreationPanel kind="phone" section={section} generation={selection.mode === "generate" ? run ?? undefined : undefined} create={selection.mode === "generate" ? undefined : { disabled: !selection.ready, busy: selection.busy, message: selection.ready ? "Your selected video is ready. Continue to add optional edits." : "Upload or choose a video to continue. Up to 120 seconds.", onAction: () => changeSection("edit") }} edit={generationEnabled ? finish.edit : undefined} schedule={generationEnabled ? finish.schedule : undefined}
+          navigation={<WorkflowSectionNavigation presentation="panel" editLabel="Edit demo" />}
           heading={<WorkflowSectionHeading kind="phone" section={section} previewVisible={previewVisible} previewId="phone-workflow-preview" onTogglePreview={section === "create" && !createPreviewAvailable ? () => setPreviewOpen(current => !current) : undefined} />}>
           <Tabs.Panel value="create" keepMounted className={creation.sectionPanel}>
             <WorkflowVideoSourceSection kind="phone" selection={selection} />
             <div className={creation.generationFields} hidden={selection.mode !== "generate"}>
-            <PhoneWorkflowComposer ownerId={ownerId} instructions={instructions} onInstructionsChange={setInstructions} creator={creator} videoReference={videoReference} generationSettings={generation.settings} onGenerationSettingsChange={generation.changeSettings} appScreenControl={<AppScreenPicker attachment={appScreen} />} audioLabel="Creator audio" audio={creatorAudio} audioMode={audioMode} onAudioModeChange={setAudioMode} />
+            <PhoneWorkflowComposer ownerId={ownerId} instructions={instructions} onInstructionsChange={setInstructions} creator={creator} imageReferences={creator} videoReference={videoReference} generationSettings={generation.settings} onGenerationSettingsChange={generation.changeSettings} appScreenControl={<AppScreenPicker attachment={appScreen} />} audioLabel="Creator audio" audio={creatorAudio} audioMode={audioMode} onAudioModeChange={setAudioMode} />
             </div>
           </Tabs.Panel>
           <Tabs.Panel value="edit" keepMounted className={creation.sectionPanel}>

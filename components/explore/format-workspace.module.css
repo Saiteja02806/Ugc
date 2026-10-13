@@ -211,7 +211,7 @@
 }
 /* Compact the frame, not the whole page: readable text and full media remain. */
 @media (min-width: 1024px) and (max-width: 1366.98px), (min-width: 1024px) and (max-height: 740px) {
-  .workspace.classicWorkspace .workflowLayout { grid-template-columns: 336px minmax(0, 1fr); gap: 12px; padding-inline: 16px; padding-bottom: 12px; }
+  .workspace.classicWorkspace .workflowLayout { gap: 12px; padding-inline: 16px; padding-bottom: 12px; }
   .workflowTabs > button { min-height: 44px; padding-block: 10px; }
   .workspace.classicWorkspace .workflowContent { gap: 10px; padding: 12px; }
   .workflowFooter { padding: 10px 12px 12px; }

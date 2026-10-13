@@ -22,6 +22,7 @@ import { WorkflowVideoSourceSection } from "@/components/explore/workflow-video-
 import { WorkflowNavigationButton } from "@/components/layout/workflow-navigation";
 import scrollbars from "@/components/ui/quiet-scrollbar.module.css";
 import { useLocalWorkflowMedia } from "@/components/explore/use-local-workflow-media";
+import { useLocalWorkflowImages } from "@/components/explore/use-local-workflow-images";
 import { useWorkflowGenerationSettings } from "@/components/explore/use-workflow-generation-settings";
 import { WorkflowAccountBoundary, WorkflowGenerationBoundary } from "@/components/explore/workflow-generation-boundary";
 import { WorkflowFinishingBoundary } from "@/components/explore/workflow-finishing-boundary";
@@ -56,9 +57,9 @@ function HookWorkflowLayout({ initialDuration, initialModel, generationEnabled, 
   const [audioMode, setAudioMode] = useState<"voice" | "recording">("voice");
   const [instructions, setInstructions] = useState("");
   const generation = useWorkflowGenerationSettings(initialDuration, initialModel);
-  const creator = useLocalWorkflowMedia("image");
   const videoReference = useLocalWorkflowMedia("video");
   const hookAudio = useLocalWorkflowMedia("audio");
+  const creator = useLocalWorkflowImages(Math.max(0, (generation.settings.model === "kling_3_0" ? 2 : 6) - Number(Boolean(videoReference.asset)) - Number(Boolean(hookAudio.asset))));
   const demo = useLocalWorkflowMedia("video");
   const demoAudio = useLocalWorkflowMedia("audio");
   const [demoAudioPlayback, setDemoAudioPlayback] = useState<ExploreBackgroundPlayback>("once");
@@ -119,42 +120,31 @@ function HookWorkflowLayout({ initialDuration, initialModel, generationEnabled, 
     setDemoAudioPlayback("once");
   }
 
-  return <WorkflowGenerationBoundary enabled={generationEnabled} ownerId={ownerId} draft={{ kind: "hook", instructions, settings: generation.settings, creator: creator.asset, videoReference: videoReference.asset, audioReference: hookAudio.asset, referencesPending: creator.loading || videoReference.loading || hookAudio.loading }}>{(run) => {
+  return <WorkflowGenerationBoundary enabled={generationEnabled} ownerId={ownerId} draft={{ kind: "hook", instructions, settings: generation.settings, creator: creator.asset, referenceImages: creator.assets, videoReference: videoReference.asset, audioReference: hookAudio.asset, referencesPending: creator.loading || videoReference.loading || hookAudio.loading, referencesError: creator.error || videoReference.error || hookAudio.error || null }}>{(run) => {
     const source = selection.mode === "generate" ? run?.selected ?? null : selection.source;
     const sourcePreview = selection.mode === "generate" ? source ? { name: source.title, url: source.url, duration: source.durationSeconds } : null : selection.preview;
     const outputAspect = source?.width && source.height ? source.width / source.height : generation.settings.aspectRatio === "16:9" ? 16 / 9 : 9 / 16;
     const framingError = demoFramingEnabled && demoFraming && Math.abs(demoFraming.aspect / outputAspect - 1) > .015 ? "Video shape changed. Record framing again for this shape, or reset it." : null;
+    const demoSelectionError = demo.loading || demoAudio.loading ? "Wait for your selected demo media to finish loading." : demo.error || demoAudio.error || null;
     const currentFraming = demoFramingEnabled && !framingError ? demoFraming?.frame ?? null : null;
     const previewVisible = true;
     return <TalkingHeadClipEditing enabled={generationEnabled} ownerId={ownerId} source={source} sourcePreview={sourcePreview} demo={demo} demoFraming={currentFraming} active={section === "edit"} backgroundScheduling={backgroundScheduling} onDirty={markClipsDirty}>{(clips) =>
-    <WorkflowFinishingBoundary enabled={generationEnabled} ownerId={ownerId} kind="hook" source={clips.source} demo={clips.demo} demoSource={clips.demoSource} demoAudio={demoAudio.asset} playback={backgroundScheduling && clips.demoState?.backgroundAssetId ? clips.demoState.backgroundPlayback ?? "once" : demoAudioPlayback} demoAudioAssetId={backgroundScheduling ? clips.demoState?.backgroundAssetId ?? null : null} scheduleDraft={scheduleDraft} onScheduleDraftChange={setScheduleDraft} demoFraming={clips.demoFraming} demoFramingError={framingError ?? clips.error} fastStatus inlineSchedule backgroundScheduling={backgroundScheduling}
+    <WorkflowFinishingBoundary enabled={generationEnabled} ownerId={ownerId} kind="hook" source={clips.source} demo={clips.demo} demoSource={clips.demoSource} demoAudio={demoAudio.asset} playback={backgroundScheduling && clips.demoState?.backgroundAssetId ? clips.demoState.backgroundPlayback ?? "once" : demoAudioPlayback} demoAudioAssetId={backgroundScheduling ? clips.demoState?.backgroundAssetId ?? null : null} scheduleDraft={scheduleDraft} onScheduleDraftChange={setScheduleDraft} demoFraming={clips.demoFraming} demoFramingError={framingError ?? demoSelectionError ?? clips.error} fastStatus inlineSchedule backgroundScheduling={backgroundScheduling}
       composition={backgroundScheduling ? { version: 1, sourceEditing: clips.openingState?.editing ?? null, demoEditing: clips.demoState?.editing ?? null,
         sourceAudioAssetId: clips.openingState?.backgroundAssetId ?? null, sourceAudioPlayback: clips.openingState?.backgroundPlayback ?? "once" } : undefined}>{(finish) => <section className={cn(studio.studio, creation.shell, "min-w-0")}>
     {/* The Library follows the complete first-screen workspace, never its initial viewport. */}
     <Tabs.Root ref={workspaceRef} value={section} orientation={orientation} data-section={section} onValueChange={changeSection} data-hook-first-screen className={cn(sections.workspace, scheduleLayout.shell, scrollbars.surface, scrollbars.page)}>
-      {section === "schedule" ? (
-        <header className={cn(creation.header, sections.header, "flex shrink-0 items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8")}>
-          <div className="flex items-center gap-3">
-            <Button type="button" variant="outline" size="sm" className="gap-2 rounded-xl" onClick={() => changeSection("edit")}>
-              <ArrowLeft className="size-4" aria-hidden="true" />Back to Edit
-            </Button>
-            <span className="hidden text-sm text-muted sm:inline">Explore <span className="mx-1" aria-hidden="true">/</span> Talking Head + Demo <span className="mx-1" aria-hidden="true">/</span></span>
-            <h1 className="text-base font-semibold tracking-tight text-foreground-strong sm:text-lg">Schedule post</h1>
-          </div>
-        </header>
-      ) : (
         <header className={cn(creation.header, sections.header, "flex shrink-0 items-center gap-3 px-4 py-3 sm:px-6 lg:px-8")}>
           <WorkflowNavigationButton />
-          <Link href={generationEnabled ? "/explore" : "/explore?preview=1"} aria-label="Back to Explore" className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" onClick={(event) => {
+          <Link prefetch={true} href={generationEnabled ? "/explore" : "/explore?preview=1"} aria-label="Back to Explore" className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" onClick={(event) => {
             if (!event.metaKey && !event.ctrlKey && dirty && !window.confirm("Leave this workflow? Your local changes are not saved.")) event.preventDefault();
           }}><ArrowLeft className="size-4" aria-hidden="true" /></Link>
           <span className="hidden text-sm text-muted sm:block">Explore <span className="ml-2" aria-hidden="true">/</span></span>
           <div className="min-w-0"><h1 className="text-base font-semibold tracking-tight text-foreground-strong sm:text-lg">Talking Head + Demo</h1></div>
         </header>
-      )}
 
-      <div className={cn(sections.layout, scheduleLayout.layout)}>
-        <div className={cn(sections.stage, scheduleLayout.stage)} data-preview-visible={previewVisible} data-focused-workflow data-stage={section} data-editing={clips.editing}>
+      <div className={sections.layout}>
+        <div className={sections.stage} data-preview-visible={previewVisible} data-focused-workflow data-stage={section} data-editing={clips.editing}>
         <WorkflowCreationPanel kind="hook" section={section} generation={selection.mode === "generate" ? run ?? undefined : undefined} create={selection.mode === "generate" ? undefined : { disabled: !selection.ready, busy: selection.busy, message: selection.ready ? "Your selected video is ready. Continue to add optional edits." : "Upload or choose a video to continue. Up to 120 seconds.", onAction: () => changeSection("edit") }} edit={generationEnabled ? finish.edit : undefined} schedule={generationEnabled ? finish.schedule : undefined}
           navigation={<WorkflowSectionNavigation presentation="panel" editLabel="Edit demo" />}
           actionContent={section === "schedule" ? <></> : clips.editing ? clips.actions : undefined}
@@ -162,7 +152,7 @@ function HookWorkflowLayout({ initialDuration, initialModel, generationEnabled, 
           <Tabs.Panel value="create" keepMounted className={creation.sectionPanel}>
             <WorkflowVideoSourceSection kind="hook" selection={selection} />
             <div className={creation.generationFields} hidden={selection.mode !== "generate"}>
-            <HookWorkflowComposer ownerId={ownerId} instructions={instructions} onInstructionsChange={setInstructions} creator={creator} videoReference={videoReference} generationSettings={generation.settings} onGenerationSettingsChange={generation.changeSettings} audioLabel="Hook audio" audio={hookAudio} audioMode={audioMode} onAudioModeChange={setAudioMode} />
+            <HookWorkflowComposer ownerId={ownerId} instructions={instructions} onInstructionsChange={setInstructions} creator={creator} imageReferences={creator} videoReference={videoReference} generationSettings={generation.settings} onGenerationSettingsChange={generation.changeSettings} audioLabel="Hook audio" audio={hookAudio} audioMode={audioMode} onAudioModeChange={setAudioMode} />
             </div>
           </Tabs.Panel>
           <Tabs.Panel value="edit" keepMounted className={creation.sectionPanel}>

@@ -47,8 +47,8 @@
 .videoWorkspace.videoWorkspace .controls .classicReferences [data-workflow-reference-grid] { grid-template-columns: repeat(2, minmax(0, 128px)); gap: 12px; }
 .classicReferences.classicReferences .referenceCard { display: flex; align-items: center; justify-content: center; min-height: 104px; padding: 0; border: 0; background: transparent; }
 .classicReferences.classicReferences .referenceCard > div:last-child { width: 100%; margin: 0; }
-.classicReferences.classicReferences .referenceCard[data-reference-state="selected"] { min-height: 52px; }
-.videoWorkspace.videoWorkspace .classicReferences .referenceCard[data-reference-state="selected"] [data-workflow-tile="reference"] { height: 44px; min-height: 44px; }
+.classicReferences.classicReferences .referenceCard[data-reference-state="selected"] { min-height: 104px; }
+.videoWorkspace.videoWorkspace .classicReferences .referenceCard[data-reference-state="selected"] [data-workflow-tile="reference"] { height: 30px; min-height: 30px; }
 .videoWorkspace.videoWorkspace .classicReferences .referenceCard[data-reference-state="empty"] [data-workflow-tile="reference"] { height: auto; min-height: 104px; aspect-ratio: 1; flex-direction: column; gap: 10px; padding: 8px; border: 1px solid var(--border); background: var(--card-muted); }
 .classicReferences .referenceCard[data-reference-state="empty"] [data-workflow-tile="reference"] > svg:first-child { width: 22px; height: 22px; }
 .classicReferences .referenceCard[data-reference-state="empty"] [data-workflow-tile="reference"] > svg:last-child { display: none; }
@@ -78,15 +78,12 @@
 .videoWorkspace.videoWorkspace[data-stage="demo"][data-editing="false"] .preview { align-self: start; min-height: 0; }
 .videoWorkspace.videoWorkspace[data-stage="demo"] .controls > footer button { width: auto; min-width: 140px; max-width: 100%; }
 /* Schedule actions live with the form; the preview remains beside it. */
-.videoWorkspace.videoWorkspace[data-stage="schedule"] .controls { min-height: 0; border: 0; background: transparent; overflow: visible; }
-.videoWorkspace.videoWorkspace[data-stage="schedule"] .controls > div { padding: 0; scrollbar-gutter: auto; }
+.videoWorkspace.videoWorkspace[data-stage="schedule"] .controls { min-height: 0; }
+.videoWorkspace.videoWorkspace[data-stage="schedule"] .controls [aria-label="Post scheduling settings"] { padding: 0; border: 0; border-radius: 0; background: transparent; }
 .videoWorkspace.videoWorkspace[data-stage="schedule"] .preview { background: var(--card); }
 .videoWorkspace.videoWorkspace[data-stage="schedule"] .preview > div:not([hidden]) { padding: 0; min-height: 0; }
 @media (min-width: 1024px) and (min-height: 521px) {
   .videoWorkspace.videoWorkspace[data-stage="schedule"] .preview > div:not([hidden]) { overflow: hidden; }
-}
-@media (min-width: 1024px) and (max-width: 1366px) {
-  .videoWorkspace.videoWorkspace[data-stage="schedule"] .videoLayout { gap: 16px; padding-inline: 16px; }
 }
 @container workflow-form (max-width: 519px) {
   .createIntro { grid-template-columns: minmax(0, 1fr); gap: 10px; }

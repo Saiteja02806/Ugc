@@ -119,7 +119,7 @@ test("access and release gates stop a save before database mutations", async () 
 
 function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : []; }
 function text(tree) { return Array.isArray(tree) ? tree.map(text).join("") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" ? tree : ""; }
-async function editor({ failFirst = false, generated = true, storedDraft = null, localPreview = false, previewImages, onBackToPreview, onContinue = () => {}, storageState, actionsTarget = null } = {}) {
+async function editor({ failFirst = false, generated = true, storedDraft = null, localPreview = false, previewImages, onBackToPreview, onContinue = () => {}, storageState, actionsTarget = null, uploadResult } = {}) {
   let cursor = 0, nextRequest = 100;
   const slots = [], effects = [], storage = new Map(storageState ?? []), requests = [], renders = [], uploads = [], saved = [], dirty = [], controller = { current: null };
   if (storedDraft) storage.set(`ugc-explore:slideshow-draft:v2:owner:uploaded:${id(40)}`, JSON.stringify(storedDraft));
@@ -135,7 +135,7 @@ async function editor({ failFirst = false, generated = true, storedDraft = null,
     "lucide-react": { ArrowLeft: "icon", ArrowRight: "icon", Download: "icon", Trash2: "icon" },
     "@/components/ui/button": { Button: "Button" }, "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" } }) },
     "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: async value => ({ id: value, collection: "image", status: "ready", url: "https://storage.test/" + value + ".png", title: "Saved image", createdAt: "", ratio: "9:16" }) },
-    "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia: async (file, kind, _, owner) => { uploads.push({ file, kind, owner }); return { asset: { id: id(300 + uploads.length) } }; } },
+    "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia: async (file, kind, _, owner) => { uploads.push({ file, kind, owner }); return uploadResult ? uploadResult(file) : { asset: { id: id(300 + uploads.length) } }; } },
     "@/lib/explore/slideshow-text": { EMPTY_SLIDE_TEXT, parseSlideText },
     "@/lib/explore/slideshow-text-client": { renderSlideText: async (source, design) => { renders.push({ source, design }); return { source, design }; }, createSlideTextSvg: (design, width, height) => slideTextSvg(design, width, height, measure) },
     "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { assert.equal(owner, "owner"); return "offline-token"; } },
@@ -144,6 +144,7 @@ async function editor({ failFirst = false, generated = true, storedDraft = null,
     document: {}, window: { addEventListener() {}, removeEventListener() {} }, setTimeout, clearTimeout, localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
     crypto: { randomUUID: () => id(nextRequest++) }, navigator: { locks: { request: async (_, options, callback) => { assert.equal(options.ifAvailable, true); return callback({}); } } },
     fetch: async (url, options) => {
+      if (url === "/api/library?type=carousel&projectId=explore") return { ok: true, json: async () => ({ ok: true, items: requests.map(body => ({ id: id(99), title: "Saved", sourceId: `explore-slideshow:${body.requestKey}`, projectId: "explore", slideCount: body.slides.length, slides: body.slides.map((_, i) => ({ slideNumber: i + 1, renderedUrl: `https://storage.test/${i}.png` })) })) }) };
       assert.equal(url, "/api/explore/slideshows", "Only the mocked slideshow saving endpoint may be called");
       const body = JSON.parse(options.body); requests.push(body);
       if (failFirst && requests.length === 1) return { ok: false, json: async () => ({ error: "Interrupted save" }) };
@@ -179,6 +180,47 @@ test("slide selection and preview navigation retain the saved slideshow without 
   assert.equal(h.dirty.length, beforeDirty); assert.deepEqual([...h.storage], beforeStorage);
   assert.equal(h.requests.length, 1); assert.equal(h.saved.length, 1);
   assert.ok(h.control("Button", "Schedule slideshow"));
+});
+
+test("a pending image replacement blocks scheduling the previously saved sequence and requires a new save", async () => {
+  let finishUpload, continued = 0;
+  const h = await editor({ onContinue: () => continued++, uploadResult: () => new Promise(resolve => { finishUpload = resolve; }) });
+  await h.clickSave("Save slideshow");
+  const priorSchedule = h.control("Button", "Schedule slideshow");
+  h.control("input", "Replace slideshow image").props.onChange({ currentTarget: { files: [{ name: "replacement.png", type: "image/png", size: 100 }], value: "selected" } });
+  priorSchedule.props.onClick();
+  assert.equal(continued, 0, "The upload starts locking the old schedule before the next render");
+  assert.equal(h.control("Button", "Schedule slideshow"), undefined);
+  assert.equal(h.control("Button", "Save slideshow").props.disabled, true);
+  finishUpload({ asset: { id: id(301), collection: "image", status: "ready", url: "https://storage.test/replacement.png", title: "Replacement", createdAt: "", ratio: "4:5" } });
+  await new Promise(setImmediate);
+  assert.equal(h.control("Button", "Schedule slideshow"), undefined);
+  assert.equal(h.control("Button", "Save slideshow").props.disabled, false);
+  assert.equal(nodes(h.render()).find(node => node.type === "img").props.src, "https://storage.test/replacement.png");
+  await h.clickSave("Save slideshow");
+  h.control("Button", "Schedule slideshow").props.onClick();
+  assert.equal(continued, 1);
+  assert.deepEqual(h.requests[1].slides.map(slide => slide.mediaAssetId), [id(301), id(202)]);
+});
+
+test("a failed valid image replacement keeps the old sequence unscheduled until explicit re-save", async () => {
+  let rejectUpload, continued = 0;
+  const h = await editor({ onContinue: () => continued++, uploadResult: () => new Promise((_, reject) => { rejectUpload = reject; }) });
+  await h.clickSave("Save slideshow");
+  const dirtyBefore = h.dirty.length, priorSchedule = h.control("Button", "Schedule slideshow");
+  h.control("input", "Replace slideshow image").props.onChange({ currentTarget: { files: [{ name: "replacement.png", type: "image/png", size: 100 }], value: "selected" } });
+  assert.equal(h.dirty.length, dirtyBefore + 1);
+  priorSchedule.props.onClick();
+  rejectUpload(new Error("Upload failed"));
+  await new Promise(setImmediate);
+  assert.equal(continued, 0);
+  assert.equal(h.control("Button", "Schedule slideshow"), undefined);
+  assert.equal(h.control("Button", "Save slideshow").props.disabled, false);
+  assert.equal(nodes(h.render()).find(node => node.type === "img").props.src, "https://storage.test/generated-1.png");
+  await h.clickSave("Save slideshow");
+  h.control("Button", "Schedule slideshow").props.onClick();
+  assert.equal(continued, 1);
+  assert.equal(h.requests.length, 1, "Explicit re-save verifies the unchanged owned Library receipt without a new write");
 });
 test("moving then removing a slide preserves the selected identity, neighboring text and exact save order", async () => {
   const h = await editor(); h.heading("Retained heading");

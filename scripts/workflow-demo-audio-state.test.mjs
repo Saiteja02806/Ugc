@@ -19,6 +19,7 @@ function layout(kind) {
   const generationInputs = [];
   const generationSettings = {aspectRatio:"9:16"};
   let generated = null;
+  let generationDraft;
   let finishingInputs;
   let finishedOutput = null;
   const prepareAction = { disabled: false, busy: false, message: "Prepare final video", error: null, onAction() {}, refresh() {} };
@@ -30,6 +31,8 @@ function layout(kind) {
     async choose() { return this.accepted; },
     remove() { this.removed++; },
   }));
+  attachments[0].assets = [attachments[0].asset];
+  const appScreen = { asset: null, loading: false, error: null };
   const css = { default: new Proxy({}, { get: (_, key) => key }) };
   const imports = {
     "./pending-schedule-panel": { PendingExploreSchedulePanel: "pending-schedule", useBackgroundScheduleAvailability: () => ({ data: false }) },
@@ -60,15 +63,16 @@ function layout(kind) {
     "@/components/explore/workflow-connected-accounts": { WorkflowConnectedAccounts: "accounts" },
     "@/lib/explore/workflow-scheduling-draft": schedulingDraft,
     "@/components/explore/workflow-preview-canvas": { WorkflowPreviewCanvas: "canvas" },
-    "@/components/explore/use-local-app-screen": { useLocalAppScreen: () => ({ asset: null, loading: false }) },
+    "@/components/explore/use-local-app-screen": { useLocalAppScreen: () => appScreen },
     "@/components/explore/use-workflow-source-video": { useWorkflowSourceVideo: () => ({mode: "generate", source: null, preview: null, dirty: false}) },
     "@/components/explore/workflow-video-source-section": { WorkflowVideoSourceSection: "source-section" },
     "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => attachments[mediaCursor++] },
+    "@/components/explore/use-local-workflow-images": { useLocalWorkflowImages: () => attachments[0] },
     "@/components/explore/use-workflow-generation-settings": { useWorkflowGenerationSettings: (initialDuration, initialModel) => {
       generationInputs.push({ initialDuration, initialModel });
       return { settings: generationSettings, dirty: false, changeSettings(patch) { Object.assign(generationSettings,patch); } };
     } },
-    "@/components/explore/workflow-generation-boundary": { WorkflowAccountBoundary: ({ children }) => children("owner"), WorkflowGenerationBoundary: ({ children }) => children(generated) },
+    "@/components/explore/workflow-generation-boundary": { WorkflowAccountBoundary: ({ children }) => children("owner"), WorkflowGenerationBoundary: ({ children, draft }) => { generationDraft = draft; return children(generated); } },
     "@/components/explore/workflow-finishing-boundary": { WorkflowFinishingBoundary: ({ children, ...inputs }) => { finishingInputs=inputs; return children({ edit: prepareAction, schedule: scheduleAction, output: finishedOutput, captions: { transcript: null }, options: { subtitles: false, style: "clean" }, setOptions() {} }); } },
     "@/components/explore/workflow-studio.module.css": css,
     "@/components/explore/workflow-creation.module.css": css,
@@ -82,7 +86,7 @@ function layout(kind) {
   const component = exported[kind === "hook" ? "HookWorkflowPreview" : "PhoneWorkflowPreview"];
   return {
     render(props = {}) {
-      cursor = 0; mediaCursor = 0;
+      cursor = 0; mediaCursor = 1;
       const tree = component({ generationEnabled: false, demoFramingEnabled:true, ...props });
       return {
         tree,
@@ -90,13 +94,65 @@ function layout(kind) {
         tabs: nodes(tree).find((node) => node.type === "tabs").props,
         composer: nodes(tree).find((node) => node.type === "composer").props,
         finishing: finishingInputs,
+        generationDraft,
       };
     },
-    demo: attachments[3], audio: attachments[4], generationInputs, scheduleAction, prepareAction,
+    demo: attachments[3], audio: attachments[4], references: attachments.slice(0, 3), appScreen, generationInputs, scheduleAction, prepareAction,
     selectVideo(video) { generated = video ? {selected:video, results:[video]} : null; },
     setFinishedOutput(output) { finishedOutput = output; },
   };
 }
+
+test("both Create layouts carry failed image, video and audio selections into generation validation", () => {
+  for (const kind of ["hook", "phone"]) {
+    const actual = layout(kind);
+    assert.equal(actual.render().generationDraft.referencesError, null);
+    for (const [index, reference] of actual.references.entries()) {
+      reference.error = `Failed reference ${index}`;
+      const rendered = actual.render();
+      assert.equal(rendered.generationDraft.referencesError, reference.error);
+      assert.equal(rendered.generationDraft.referencesPending, false);
+      assert.equal(rendered.generationDraft[index === 0 ? "creator" : index === 1 ? "videoReference" : "audioReference"].url, "blob:fixture", "The previous preview remains visible, while validation receives the failed replacement");
+      reference.error = null;
+      assert.equal(actual.render().generationDraft.referencesError, null);
+    }
+    actual.demo.error = "Failed demo upload";
+    actual.audio.error = "Failed demo audio";
+    assert.equal(actual.render().generationDraft.referencesError, null, "Demo failures belong to finishing and cannot rewrite generation inputs");
+    if (kind === "phone") {
+      actual.appScreen.error = "This screen recording could not be previewed.";
+      assert.equal(actual.render().generationDraft.referencesError, actual.appScreen.error);
+    }
+  }
+});
+
+test("both Create layouts pass every chosen image to the visible picker and generation draft in the same order", () => {
+  for (const kind of ["hook", "phone"]) {
+    const actual = layout(kind);
+    const images = [actual.references[0].asset, { name: "Second image", url: "blob:second", duration: null }, { name: "Third image", url: "blob:third", duration: null }];
+    actual.references[0].assets = images;
+    const rendered = actual.render();
+    assert.equal(rendered.composer.imageReferences, actual.references[0]);
+    assert.equal(rendered.generationDraft.referenceImages, images);
+    assert.equal(rendered.generationDraft.creator, images[0], "The original creator field remains the first selected image");
+    assert.equal(rendered.finishing.demo.url, "blob:fixture", "Generation images cannot replace editor/demo footage");
+  }
+});
+
+test("both finishing layouts block pending or failed demo soundtrack changes while keeping the previous preview", () => {
+  for (const kind of ["hook", "phone"]) {
+    const actual = layout(kind);
+    actual.audio.loading = true;
+    let rendered = actual.render();
+    assert.match(rendered.finishing.demoFramingError, /selected demo media to finish loading/);
+    assert.equal(rendered.finishing.demoAudio.url, "blob:fixture");
+    actual.audio.loading = false; actual.audio.error = "Could not download the selected soundtrack.";
+    rendered = actual.render();
+    assert.equal(rendered.finishing.demoFramingError, actual.audio.error);
+    actual.audio.error = null;
+    assert.equal(actual.render().finishing.demoFramingError, null);
+  }
+});
 
 test("Talking Head preview always remains visible and its removed toggle cannot hide selected media", () => {
   const actual = layout("hook");

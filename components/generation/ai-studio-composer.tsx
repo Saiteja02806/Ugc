@@ -64,6 +64,8 @@ export function AiStudioComposer({
   promptAttachmentControl,
   estimatedCredits,
   outputSummary,
+  inlineReferences = false,
+  quiet = false,
 }: {
   active: boolean;
   compact?: boolean;
@@ -100,6 +102,8 @@ export function AiStudioComposer({
   promptAttachmentControl?: ReactNode;
   estimatedCredits?: number;
   outputSummary?: string;
+  inlineReferences?: boolean;
+  quiet?: boolean;
 }) {
   const promptId = useId();
   const formId = useId();
@@ -225,6 +229,7 @@ export function AiStudioComposer({
               )
             : "max-w-[1024px] rounded-[20px] border-border p-2.5 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 sm:p-3",
           compact && "rounded-[28px] shadow-none",
+          quiet && "shadow-none focus-within:border-border-strong focus-within:ring-0",
         )}
       >
         <FieldGroup className={layout === "unified" ? "gap-0" : "gap-2"}>
@@ -240,10 +245,10 @@ export function AiStudioComposer({
                 ? "gap-y-1 px-4 pb-1.5 pt-3"
                 : "gap-y-2 px-1 pt-1",
               contextBanner && layout === "unified" && "!pt-1.5",
-              !compact && layout === "unified" && leadingControl && !hasAttachments && "grid grid-cols-[44px_minmax(0,1fr)] items-start gap-x-2",
+              !compact && layout === "unified" && leadingControl && (!hasAttachments || inlineReferences) && (inlineReferences ? "grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3" : "grid grid-cols-[44px_minmax(0,1fr)] items-start gap-x-2"),
             )}
           >
-            {leadingControl && (!compact || hasAttachments) ? <div className={cn("min-w-0", !compact && layout === "unified" && !hasAttachments && "col-start-1 row-start-1")}>{leadingControl}</div> : null}
+            {leadingControl && (!compact || hasAttachments) ? <div className={cn("min-w-0", !compact && layout === "unified" && (!hasAttachments || inlineReferences) && "col-start-1 row-start-1")}>{leadingControl}</div> : null}
             <FieldLabel htmlFor={promptId} className="sr-only">
               {ariaLabel}
             </FieldLabel>
@@ -264,7 +269,7 @@ export function AiStudioComposer({
                   ? compact ? "max-h-18 min-h-10 rounded-none px-0 py-0 text-[13px] font-normal leading-5" : "max-h-16 min-h-10 rounded-none px-0 py-0 text-base font-normal leading-6 sm:text-sm"
                   : "max-h-32 min-h-16 rounded-lg px-2 py-1.5 text-sm font-medium leading-6 focus-visible:ring-2 focus-visible:ring-focus sm:text-[15px]",
                 "min-w-0",
-                !compact && layout === "unified" && leadingControl && !hasAttachments && "col-start-2 row-start-1 self-center",
+                !compact && layout === "unified" && leadingControl && (!hasAttachments || inlineReferences) && "col-start-2 row-start-1 self-center",
               )}
               placeholder={placeholder}
             />
@@ -273,7 +278,7 @@ export function AiStudioComposer({
                 id={promptHelperId}
                 className={cn(
                   "flex min-w-0 items-start justify-between gap-3 text-xs",
-                  !compact && layout === "unified" && leadingControl && !hasAttachments && "col-span-full",
+                  !compact && layout === "unified" && leadingControl && (!hasAttachments || inlineReferences) && "col-span-full",
                   layout === "unified" ? "px-0" : "px-2",
                   compact && "pb-1 text-[11px] leading-4 text-muted-subtle",
                   promptTooLong && "text-destructive",
@@ -358,7 +363,8 @@ export function AiStudioComposer({
                   title={generationLocked ? accessMessage ?? undefined : undefined}
                   className={cn(
                     "min-w-0 flex-1 h-10 rounded-full px-5 text-sm font-semibold tracking-[-0.01em] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.22),0_1px_3px_rgba(0,0,0,0.12)] transition-all duration-150 active:scale-[0.98] sm:min-w-[168px]",
-                    isGenerating && "ring-2 ring-primary/35 shadow-xs shadow-primary/20",
+                    isGenerating && !quiet && "ring-2 ring-primary/35 shadow-xs shadow-primary/20",
+                    quiet && "shadow-none",
                     layout === "unified" && "w-full",
                     compact && "h-8 rounded-full px-3 text-xs font-medium shadow-none sm:min-w-0",
                   )}

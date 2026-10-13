@@ -9,7 +9,8 @@ export async function loadWorkflowDefaultMusic(deps: {
   const token = await deps.token();
   if (!token) throw new Error("Sign in before adding background music.");
   deps.assertActive();
-  const response = await deps.fetch("/api/explore/default-music", { method: "GET", cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
+  const { fetch: send } = deps;
+  const response = await send("/api/explore/default-music", { method: "GET", cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
   deps.assertActive();
   if (!response.ok) {
     const value = await response.json().catch(() => null);

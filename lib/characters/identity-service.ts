@@ -87,6 +87,7 @@ type SelectionMarker = z.infer<typeof selectionSchema>;
 
 export type CharacterIdentityStore = {
   getJob(jobId: string, userId: string): Promise<CharacterSourceJob | null>;
+  getJobs?(jobIds: string[], userId: string): Promise<CharacterSourceJob[]>;
   getAsset(assetId: string, userId: string): Promise<MediaAssetRow | null>;
   getCandidateAsset(jobId: string, userId: string): Promise<MediaAssetRow | null>;
   listSelectedAssets(userId: string): Promise<MediaAssetRow[]>;
@@ -255,9 +256,16 @@ export function createCharacterIdentityService(store: CharacterIdentityStore) {
 
     async list(userId: string): Promise<PublicCharacter[]> {
       const assets = await store.listSelectedAssets(userId);
+      const jobIds = [...new Set(assets.filter((asset) => asset.user_id === userId && getMarker(asset))
+        .map((asset) => asset.source_record_id).filter((id): id is string => Boolean(id)))];
+      // The library can contain every generated variation. Load provenance in
+      // batches instead of making a separate database request for every image.
+      const jobs = store.getJobs ? new Map((await store.getJobs(jobIds, userId)).map((job) => [job.id, job])) : null;
       const results = await Promise.all(assets.map(async (asset) => {
         if (asset.user_id !== userId || !getMarker(asset)) return null;
-        const job = asset.source_record_id ? await store.getJob(asset.source_record_id, userId) : null;
+        const job = asset.source_record_id
+          ? jobs ? jobs.get(asset.source_record_id) ?? null : await store.getJob(asset.source_record_id, userId)
+          : null;
         try {
           return serializePublicCharacter(getTrustedSelectedCharacter(job, asset, userId));
         } catch (error) {

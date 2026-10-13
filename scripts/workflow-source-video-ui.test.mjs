@@ -116,6 +116,7 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       "@/components/explore/workflow-scheduling-panel": { EMPTY_SCHEDULE_DRAFT: {}, WorkflowSchedulingPanel: "scheduling-panel" },
       "@/components/explore/workflow-preview-canvas": { WorkflowPreviewCanvas: "preview-canvas" },
       "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => ({ asset: null }) },
+      "@/components/explore/use-local-workflow-images": { useLocalWorkflowImages: () => ({ asset: null, assets: [], loading: false, error: null }) },
       "@/components/explore/use-local-app-screen": { useLocalAppScreen: () => ({ asset: null }) },
       "@/components/explore/workflow-connected-accounts": { WorkflowConnectedAccounts: "accounts" },
       "@/lib/explore/workflow-scheduling-draft": { workflowSelectedAccounts: () => [], workflowSelectedPlatforms: () => [], selectWorkflowAccount() {} },
@@ -126,14 +127,9 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
     const render = () => rt.render(() => (kind === "hook" ? mod.HookWorkflowPreview : mod.PhoneWorkflowPreview)({ generationEnabled: true }));
     let tree = render();
     const preview = view => nodes(view).find(n => n.props.id === `${kind}-workflow-preview`);
-    const heading = view => nodes(view).find(n => n.type === "creation-panel").props.heading.props;
     assert.equal(preview(tree).props.hidden, kind !== "hook", "Talking Head preview is visible by default");
     if (kind === "hook") {
       assert.equal(nodes(tree).find(n => n.type === "creation-panel").props.heading, undefined, "Talking Head has no redundant heading or hide control");
-    } else {
-      heading(tree).onTogglePreview(); tree = render();
-      assert.equal(preview(tree).props.hidden, false, "Phone retains its own explicit preview control");
-      heading(tree).onTogglePreview(); tree = render();
     }
     nodes(tree).find(n => n.type === "composer").props.onInstructionsChange("Keep my original prompt");
     selection.mode = "upload"; tree = render();

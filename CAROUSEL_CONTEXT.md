@@ -6811,3 +6811,16 @@ and advertises only deployed workflows. See
 - A local Wall single-clip pending-schedule producer now captures the selected owned source, trim, timed text and original/background audio settings through the existing top-level editing contract. Source/account changes, loading/errors and stale confirmation invalidate that snapshot. Background scheduling stays capability-gated and falls back to export-first when unavailable. Its right pane uses the existing sequence preview before export; platform targets still require verified final media.
 - These UI and pending-schedule changes do not alter automatic Carousel sourcing, matching, plans, reservations or readiness. Saved Slideshow image sequences retain their Library ownership and explicit confirmation.
 - Latest read-only production check resolves website SHA e3de4a4eb66cb7c7c6e6de6bda9bc9062aafbc63; its pending-schedule API and the four local Explore migrations are not deployed. Local validation is not production acceptance. See docs/explore-functional-fixes-review-2026-10-13.md.
+
+## Preserved production-branch history
+
+The records below are retained from the deployed branch during release reconciliation. Later dated release receipts above remain authoritative for current status.
+
+### 2026-10-13 MCP Library adapter candidate (not deployed)
+
+- IDE Library identities are separate from generic media IDs and Creative Asset groups. Owner-bound pages and item reads expose ordered saved Carousel/slideshow outputs, exact snapshot revisions and explicit archive tombstones.
+- Carousel saves share the website's owner/completion/latest-ready-edit resolver and canonical payload builder. The MCP request binds actual generation/slide/edit source state and destination state, including removed saves. Stale inputs reject; recreating a removed save requires an explicit new request with the inspected tombstone revision.
+- The additive service-only transaction records immutable accepted request inputs/results atomically with canonical saves or metadata-only removal. Recovery returns historical receipts before current write gates, plan status or source readiness and never reapplies an older replacement over newer website edits. Existing website RPCs, Carousel generation/matching/renderers and publishing behavior are preserved.
+- Explore v2 MCP saves share existing owned-ready-image validation, exact ordering and fingerprints. Catalogue guidance does not enter outputs implicitly. This adapter saves already rendered images; browser-only text-bearing slideshow export still needs a separate backend workflow.
+- MCP_LIBRARY_WRITES_ENABLED defaults off. The migration, hosted rollout and intended authenticated user workflow require separate verification. Offline fixture/SDK tests are not production acceptance and no customer media is generated for connectivity checks.
+

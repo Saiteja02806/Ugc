@@ -5,7 +5,7 @@ import {
   type ExploreHookVideo,
 } from "@/lib/explore/hook-video-types";
 import { buildPublicStorageUrl } from "@/lib/storage/storage";
-import importedCatalog from "./imported-catalog.json";
+import importedCatalog from "./imported-catalog.json" with { type: "json" };
 import { getPairedExploreVideos } from "./paired-reference-library";
 
 export type { ExploreHookVideo } from "@/lib/explore/hook-video-types";

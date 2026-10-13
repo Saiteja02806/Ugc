@@ -29,7 +29,17 @@ export async function handleSlideshowSave(request: Request) {
     if (raw.length > 16_384) return reject("The slideshow request is too large.", 413);
     let body: unknown;
     try { body = JSON.parse(raw); } catch { return reject("Choose a valid slideshow."); }
-    if (!record(body) || !isExploreUuid(body.requestKey) || request.headers.get("Idempotency-Key") !== body.requestKey ||
+    if (!record(body) || request.headers.get("Idempotency-Key") !== body.requestKey) return reject("Choose a valid slideshow request.");
+    return await saveSlideshowForOwner(user.uid, body);
+  } catch (error) {
+    return json({ ok:false, error:error instanceof FirebaseAuthRequestError ? error.message : "Could not confirm the saved slideshow. Resume the same save." }, error instanceof FirebaseAuthRequestError ? error.status : 503);
+  }
+}
+/** Caller authenticates/checks access; website and MCP retain the same validation/fingerprint/RPC. */
+export async function prepareSlideshowSaveForOwner(userId: string, body: unknown) {
+  try {
+    if (process.env.EXPLORE_SLIDESHOW_SAVING_ENABLED !== "true") return reject("Slideshow saving is not enabled yet.",503);
+    if (!record(body) || !isExploreUuid(body.requestKey) ||
       !Array.isArray(body.slides) || body.slides.length < MIN_SLIDESHOW_SLIDES || body.slides.length > MAX_SLIDESHOW_SLIDES ||
       (body.version !== undefined && body.version !== 1 && body.version !== 2)) return reject("Choose 2–10 valid slideshow images.");
     const ownedSequence = body.version === 2;
@@ -40,7 +50,7 @@ export async function handleSlideshowSave(request: Request) {
 
     const choices: { referenceSlideId: string; mediaAssetId: string | null }[] = [];
     const positions = new Set<string>();
-    for (const [index, value] of body.slides.entries()) {
+    for (const value of body.slides) {
       if (!record(value) || typeof value.referenceSlideId !== "string" || !value.referenceSlideId || value.referenceSlideId.length > 160 || positions.has(value.referenceSlideId) ||
         !(isExploreUuid(value.mediaAssetId) || !ownedSequence && value.mediaAssetId === null)) return reject("Choose an owned ready image for every slide.");
       const original = reference?.slides.find(slide => slide.id === value.referenceSlideId);
@@ -50,12 +60,12 @@ export async function handleSlideshowSave(request: Request) {
     }
     // Owned media checks are independent and bounded to at most ten unique IDs.
     const ids = [...new Set(choices.flatMap(slide => slide.mediaAssetId ? [slide.mediaAssetId] : []))];
-    const assets = await Promise.all(ids.map(async assetId => [assetId, await getMediaAssetForOwner({ userId: user.uid, assetId })] as const));
+    const assets = await Promise.all(ids.map(async assetId => [assetId, await getMediaAssetForOwner({ userId: userId, assetId })] as const));
     const byId = new Map(assets);
     const slides = [];
     for (const [index, chosen] of choices.entries()) {
       const asset = chosen.mediaAssetId ? byId.get(chosen.mediaAssetId) : null;
-      if (chosen.mediaAssetId && (!asset || asset.user_id !== user.uid || asset.deleted_at != null || asset.collection !== "image" || asset.status !== "ready" || !["image/jpeg", "image/png", "image/webp"].includes(asset.mime_type ?? ""))) return reject("Choose a ready image from your account.");
+      if (chosen.mediaAssetId && (!asset || asset.user_id !== userId || asset.deleted_at != null || asset.collection !== "image" || asset.status !== "ready" || !["image/jpeg", "image/png", "image/webp"].includes(asset.mime_type ?? ""))) return reject("Choose a ready image from your account.");
       const url = asset?.url ?? reference?.slides.find(slide => slide.id === chosen.referenceSlideId)?.url;
       if (typeof url !== "string" || !url.startsWith("https://") || !isTrustedStorageUrl(url)) return reject("This slide is unavailable for publishing.");
       slides.push({ slideNumber: index + 1, referenceSlideId: chosen.referenceSlideId, mediaAssetId: asset?.id ?? null, renderedUrl: url, renderedS3Key: asset?.storage_key ?? null });
@@ -65,16 +75,29 @@ export async function handleSlideshowSave(request: Request) {
       ? { version: 2, referenceId: body.referenceId, slides }
       : { referenceId: body.referenceId, slides })).digest("hex");
     const title = reference?.title ?? (uploaded ? "Your uploaded slideshow" : "My slideshow");
+    return { p_user_id: userId, p_request_key: body.requestKey as string, p_fingerprint: fingerprint,
+      p_title: title, p_slides: slides, p_metadata: { referenceId: body.referenceId as string | null,
+        ...(ownedSequence ? { slideshowDraftVersion: 2 } : {}) } };
+
+  } catch (error) {
+    return json({ ok: false, error: error instanceof FirebaseAuthRequestError ? error.message : "Could not confirm the saved slideshow. Resume the same save." }, error instanceof FirebaseAuthRequestError ? error.status : 503);
+  }
+}
+
+/** The website retains its original RPC, response and immutable v1/v2 fingerprints. */
+export async function saveSlideshowForOwner(userId: string, body: unknown) {
+  const prepared = await prepareSlideshowSaveForOwner(userId, body);
+  if (prepared instanceof Response) return prepared;
+  try {
     const databaseUrl = process.env.SUPABASE_URL?.trim() ?? process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
     const databaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
     if (!databaseUrl || !databaseKey) return reject("Slideshow saving is unavailable.", 503);
     const client = createClient(databaseUrl, databaseKey, { auth: { persistSession: false } });
-    const { data, error } = await client.rpc("explore_save_slideshow", { p_user_id: user.uid, p_request_key: body.requestKey, p_fingerprint: fingerprint, p_title: title, p_slides: slides, p_metadata: { referenceId: body.referenceId, ...(ownedSequence ? { slideshowDraftVersion: 2 } : {}) } });
-    // A lost or failed RPC acknowledgement can follow a committed write. The
-    // client retains the same request identity instead of creating a new item.
+    const { data, error } = await client.rpc("explore_save_slideshow", prepared);
     if (error || !isExploreUuid(data)) return json({ ok: false, error: "Could not confirm the saved slideshow. Resume the same save." }, 503);
-    return json({ ok: true, id: data, kind: "library_item", title, url: slides[0].renderedUrl, slides: slides.map(slide => slide.renderedUrl) });
-  } catch (error) {
-    return json({ ok: false, error: error instanceof FirebaseAuthRequestError ? error.message : "Could not confirm the saved slideshow. Resume the same save." }, error instanceof FirebaseAuthRequestError ? error.status : 503);
+    return json({ ok: true, id: data, kind: "library_item", title: prepared.p_title,
+      url: prepared.p_slides[0].renderedUrl, slides: prepared.p_slides.map(slide => slide.renderedUrl) });
+  } catch {
+    return json({ ok: false, error: "Could not confirm the saved slideshow. Resume the same save." }, 503);
   }
 }

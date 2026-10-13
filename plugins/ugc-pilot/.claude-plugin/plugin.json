@@ -1,7 +1,7 @@
 {
   "name": "ugc-pilot",
-  "version": "0.1.8",
-  "description": "Draft UGC copy, generate and finish videos, edit saved drafts, and transfer owned media through UGC Pilot.",
+  "version": "0.1.11",
+  "description": "Create UGC media, finish videos, edit drafts, manage groups and saved Library outputs, and remix application references through UGC Pilot where enabled.",
   "author": {
     "name": "UGC Pilot",
     "url": "https://www.getugcpilot.com"

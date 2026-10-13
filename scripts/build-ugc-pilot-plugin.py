@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import io
 import json
+import re
 import subprocess
 import zipfile
 
@@ -47,12 +48,16 @@ def build(destination=None):
         "[client setup](skills/connect-ugc-pilot/references/client-setup.md)",
         "[client setup](#client-setup)",
     )
-    # A downloaded standalone guide cannot resolve the extracted bundle's links.
-    for relative in [
-        "skills/manage-ugc-media/references/local-transfer.md",
-        "skills/edit-ugc-draft/SKILL.md",
-    ]:
-        standalone = standalone.replace(f"[local transfer helper]({relative})", f"local transfer helper (`{relative}` in the extracted bundle)").replace(f"[Edit workflow]({relative})", f"Edit workflow (`{relative}` in the extracted bundle)")
+    # The standalone guide has no extracted skill tree beside it. Preserve
+    # external/anchor links; turn each local package link into a named path.
+    def standalone_link(match):
+        label, target = match.groups()
+        if target.startswith(("https://", "http://", "mailto:", "#")):
+            return match.group(0)
+        if target.split("#", 1)[0] not in FILES:
+            raise ValueError(f"Unknown standalone guide resource: {target}")
+        return f"{label} (`{target}` in the extracted bundle)"
+    standalone = re.sub(r"\[([^]\n]+)\]\(([^)]+)\)", standalone_link, standalone)
     standalone += "\n\n---\n\n" + (SOURCE / "skills/connect-ugc-pilot/references/client-setup.md").read_text(encoding="utf-8")
     outputs = {
         archive: archive_bytes,

@@ -6,6 +6,8 @@ import io
 import json
 from pathlib import Path
 import tempfile
+import subprocess
+import wave
 import unittest
 import zipfile
 
@@ -38,29 +40,59 @@ class PluginBuildTests(unittest.TestCase):
         with zipfile.ZipFile(archive) as package:
             self.assertIsNone(package.testzip())
             self.assertEqual(sorted(package.namelist()), sorted("ugc-pilot/" + name for name in builder.FILES))
-            self.assertEqual(len([name for name in package.namelist() if name.endswith("/SKILL.md")]), 10)
+            self.assertEqual(len([name for name in package.namelist() if name.endswith("/SKILL.md")]), 13)
             for name in builder.FILES:
                 self.assertEqual(package.read("ugc-pilot/" + name), (builder.SOURCE / name).read_bytes().replace(b"\r\n", b"\n") if Path(name).suffix in {".md", ".json", ".mjs"} else (builder.SOURCE / name).read_bytes())
                 if Path(name).suffix in {".md", ".json", ".mjs"}:
                     self.assertNotIn(b"\r\n", package.read("ugc-pilot/" + name))
             versions = [json.loads(package.read("ugc-pilot/" + name))["version"] for name in ["plugin.json", ".codex-plugin/plugin.json", ".claude-plugin/plugin.json"]]
-            self.assertEqual(versions, ["0.1.8"] * 3)
+            self.assertEqual(versions, ["0.1.11"] * 3)
         self.assertIn(hashlib.sha256(before).hexdigest(), archive.with_suffix(".zip.sha256").read_text())
-        self.assertTrue((self.destination / "ugc-pilot-0.1.8-setup.md").exists())
+        self.assertTrue((self.destination / "ugc-pilot-0.1.11-setup.md").exists())
         self.assertFalse((self.destination / "ugc-pilot-setup.md").exists())
-        guide = (self.destination / "ugc-pilot-0.1.8-setup.md").read_text(encoding="utf-8")
+        guide = (self.destination / "ugc-pilot-0.1.11-setup.md").read_text(encoding="utf-8")
         self.assertNotIn("](skills/", guide)
         self.assertIn("skills/edit-ugc-draft/SKILL.md", guide)
+        for skill in ["manage-ugc-groups", "manage-ugc-library", "remix-ugc-reference"]:
+            self.assertIn(f"skills/{skill}/SKILL.md", guide)
+        self.assertIn("[client setup](#client-setup)", guide)
         self.assertIn(".agents/plugins/marketplace.json", guide)
 
     def test_reviewed_public_archive_matches_current_canonical_source(self):
-        archive = ROOT / "public/downloads/ugc-pilot-0.1.8.zip"
+        archive = ROOT / "public/downloads/ugc-pilot-0.1.11.zip"
         with zipfile.ZipFile(archive) as package:
             self.assertIsNone(package.testzip())
             self.assertEqual(sorted(package.namelist()), sorted("ugc-pilot/" + name for name in builder.FILES))
             for name in builder.FILES:
                 self.assertEqual(package.read("ugc-pilot/" + name), builder.package_bytes(name))
         self.assertEqual(archive.with_suffix(".zip.sha256").read_text().strip(), hashlib.sha256(archive.read_bytes()).hexdigest() + "  " + archive.name)
+
+    def test_packaged_audio_helper_executes_and_preserves_recovery_identity(self):
+        archive = self.build()
+        helper = self.destination / "transfer-audio.mjs"
+        with zipfile.ZipFile(archive) as package:
+            helper.write_bytes(package.read("ugc-pilot/skills/manage-ugc-media/scripts/transfer-audio.mjs"))
+        audio = self.destination / "recording.wav"
+        with wave.open(str(audio), "wb") as output:
+            output.setnchannels(1)
+            output.setsampwidth(2)
+            output.setframerate(16000)
+            output.writeframes(bytes(32000))
+        receipt = self.destination / "audio-receipt.json"
+        prepared = subprocess.run(["node", str(helper), "prepare", str(audio), str(receipt), "exact"], capture_output=True, text=True, check=True)
+        intent = json.loads(prepared.stdout)
+        self.assertEqual(intent["create_audio_upload"]["sha256"], hashlib.sha256(audio.read_bytes()).hexdigest())
+        self.assertEqual(intent["create_audio_upload"]["file_size_bytes"], audio.stat().st_size)
+        before = receipt.read_bytes()
+        recovered = subprocess.run(["node", str(helper), "recover", str(receipt)], capture_output=True, text=True, check=True)
+        recovery = json.loads(recovered.stdout)
+        self.assertEqual(recovery["request_id"], intent["request_id"])
+        self.assertEqual(recovery["create_audio_upload"], intent["create_audio_upload"])
+        duplicate = subprocess.run(["node", str(helper), "prepare", str(audio), str(receipt), "exact"], capture_output=True, text=True)
+        self.assertNotEqual(duplicate.returncode, 0)
+        self.assertEqual(receipt.read_bytes(), before)
+        self.assertNotIn(b"https://", before)
+        self.assertEqual(recovery["stage"], "prepared")
 
     def test_existing_version_is_never_replaced_with_different_bytes(self):
         archive = self.build()

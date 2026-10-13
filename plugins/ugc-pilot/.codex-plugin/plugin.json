@@ -1,7 +1,7 @@
 {
   "name": "ugc-pilot",
-  "version": "0.1.8",
-  "description": "Draft UGC copy, generate and finish videos, edit saved drafts, and transfer owned media through UGC Pilot.",
+  "version": "0.1.11",
+  "description": "Create UGC media, finish videos, edit drafts, manage groups and saved Library outputs, and remix application references through UGC Pilot where enabled.",
   "author": {
     "name": "UGC Pilot",
     "url": "https://www.getugcpilot.com"
@@ -12,7 +12,7 @@
   "interface": {
     "displayName": "UGC Pilot",
     "shortDescription": "Images and videos in your AI",
-    "longDescription": "Draft UGC copy and generate images or short videos using UGC Pilot credits. Upload local clips from a terminal-capable IDE, attach demos, and retrieve finished media where enabled. Open, save and export the application's Edit-page trim/text drafts. Writes require the corresponding OAuth permission. Slideshow rendering, audio generation and social publishing remain unavailable. Private beta; check live capabilities.",
+    "longDescription": "Create media and speech using UGC Pilot where enabled. Upload local clips/audio from a supported IDE, attach demos and retrieve finished videos. Open, save and export Edit drafts. Browse application references, Creative Asset groups and saved Carousel/slideshow Library outputs; remix text and change groups/Library when their gates permit. Slideshow text rendering, voice cloning and social publishing remain unavailable through MCP. Private beta; updating this package does not activate server features.",
     "developerName": "UGC Pilot",
     "websiteURL": "https://getugcpilot.com",
     "supportURL": "https://getugcpilot.com/contact",
@@ -81,7 +81,7 @@
         }
       },
       "publication": {
-        "release_notes": "Adds explicit private-bucket local transfer support for the gated 33-tool server upload rollout. Preserves existing public reservations and the hosted endpoint/OAuth. A separate private user-media bucket, activation and installed Codex/Claude journey acceptance remain pending."
+        "release_notes": "Adds three portable workflows for the released reference, Creative Asset group and application Library tools. Preserves distinct media/source identities, exact revisions, stable request recovery and disabled-write behavior. The Codex existing-hook trim/demo/composition/local-download test passed with the previous helper; new workflows and Claude Code acceptance remain pending. No server gates are activated by this package."
       }
     }
   }

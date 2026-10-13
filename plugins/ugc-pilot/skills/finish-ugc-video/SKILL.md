@@ -9,13 +9,15 @@ Use discovered `get_video_finishing_capabilities`, `finish_video`, and `get_vide
 
 Resolve the opening and optional demo to ready owned asset IDs using `get_asset`. For local files, use signed PUT and confirmation with actual bytes; see [media management](../manage-ugc-media/SKILL.md). A generic ready uploaded video can serve as the Explore demo. To add it to the dedicated Demo library, use discovered `register_demo` after confirmation; this preserves its source asset ID. Browse registered demos through `list_demos`/`get_demo`. Generate new footage only when requested, using [media creation](../create-ugc-media/SKILL.md).
 
-Read the discovered finishing schema for exact fields. The minimal composition is `draft: {sourceAssetId: openingId, demoAssetId: demoId}`. The opening plays first, then the demo. Optional audio inputs must be existing owned assets; this workflow has no audio generation/upload tools. Preserve chosen clips, wording, order and audio. Add paid subtitles only when requested and reported available.
+Read the discovered finishing schema for exact fields. The minimal composition is `draft: {sourceAssetId: openingId, demoAssetId: demoId}`. The opening plays first, then the demo. Optional audio inputs must be ready owned audio media attachments. For a private saved/generated recording, follow [audio workflow](../manage-ugc-media/references/audio-workflow.md) to obtain a separate ready `media_asset_id`; do not pass its private audio-library ID directly. Importing uses the current media-upload storage policy and does not itself render. Preserve chosen clips, wording, order and audio. Add paid subtitles only when requested and reported available.
 
 ## Prepare edits in valid stages
 
 1. For trim, volume or manual text, submit a single-clip draft with `editing`, `kind: "hook"`, no demo/framing/subtitles. Text times are relative to the trimmed clip. Pass exact authored words through `text` or up to 20 `textOverlays`, using `text: null` for a sequence.
 2. Wait for the completed owned output. For single-clip crop/pan, submit that output with `sourceFraming`, no editing/demo/subtitles. Framing points start at zero and remain within the selected frame.
 3. Use prepared outputs as the final opening/demo IDs, with selected music/demo audio and, when requested and enabled, English subtitles. Demo framing can accompany demo composition. Manual editing and single-clip framing require their separate preparation stages.
+
+The application permits one active finishing job per account. Prepare the opening, wait for completion, then prepare the demo and wait before composition; do not submit all stages together. A concurrency `FINISH_CONFLICT` means wait for the existing active job to end, then submit the saved unchanged next-stage inputs/key. Polling never requeues it.
 
 Each stage uses a fresh random UUID `request_key`. Save the key, exact normalized inputs and receipt in the conversation and, when the host can persist workspace files, a local non-secret operation record for recovery. Reuse that same key and identical inputs after interruption. Changed edits require a new intentional stage; do not change the key to bypass a conflict or uncertain outcome.
 

@@ -57,13 +57,13 @@ export default function ConnectAiPage() {
         <section className="mt-12 grid gap-6 border-t border-border pt-8 md:grid-cols-2">
           <div>
             <h2 className="text-lg font-semibold">Take the setup with you</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">The beta bundle includes connection settings, editing workflows, a local upload/download helper, and a setup guide. Install it through a supported plugin flow; uploading it into a chat alone does not connect your account.</p>
+            <p className="mt-2 text-sm leading-6 text-muted">The beta bundle includes connection settings, editing, reference, group and Library workflows, local media/audio transfer helpers, and a setup guide. Install it through a supported plugin flow; uploading it into a chat alone does not connect your account.</p>
             <div className="mt-5 flex flex-wrap gap-3">
-              <a href="/downloads/ugc-pilot-0.1.8.zip" download className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2">
+              <a href="/downloads/ugc-pilot-0.1.11.zip" download className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2">
                 <Download className="size-4" aria-hidden="true" />Download plugin bundle
               </a>
-              <a href="/downloads/ugc-pilot-0.1.8-setup.md" download className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Download setup guide</a>
-              <a href="/downloads/ugc-pilot-0.1.8.zip.sha256" className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Verify download</a>
+              <a href="/downloads/ugc-pilot-0.1.11-setup.md" download className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Download setup guide</a>
+              <a href="/downloads/ugc-pilot-0.1.11.zip.sha256" className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Verify download</a>
             </div>
           </div>
           <div className="rounded-2xl border border-border bg-card p-5">

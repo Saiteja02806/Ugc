@@ -16,9 +16,19 @@ import { registerEditDraftMcpTools, registeredEditDraftMcpTools } from "./edit-d
 
 import { registerEditExportMcpTools, registeredEditExportMcpTools } from "./edit-export-tools";
 
+import { registerAudioMcpTools, registeredAudioMcpTools } from "./audio-tools";
+
+import { registerAudioVideoImportMcpTools, registeredAudioVideoImportMcpTools } from "./audio-video-import-tools";
+
+import { registerReferenceMcpTools, registeredReferenceMcpTools } from "./reference-tools";
+
+import { registerCreativeGroupMcpTools, registeredCreativeGroupMcpTools } from "./creative-group-tools";
+
+import { registerLibraryContentMcpTools, registeredLibraryContentMcpTools } from "./library-content-tools";
+
 export const registeredMcpTools: readonly string[] = [
   ...registeredReadMcpTools, ...registeredMutationMcpTools, ...registeredGenerationMcpTools,
-  ...registeredFinishingMcpTools, ...registeredDemoMcpTools, ...registeredUploadRecoveryMcpTools, ...registeredOperationMcpTools, ...registeredEditDraftMcpTools, ...registeredEditExportMcpTools,
+  ...registeredFinishingMcpTools, ...registeredDemoMcpTools, ...registeredUploadRecoveryMcpTools, ...registeredOperationMcpTools, ...registeredEditDraftMcpTools, ...registeredEditExportMcpTools, ...registeredAudioMcpTools, ...registeredAudioVideoImportMcpTools, ...registeredReferenceMcpTools, ...registeredCreativeGroupMcpTools, ...registeredLibraryContentMcpTools,
 ];
 
 export const mcpHandler = createMcpHandler(
@@ -33,6 +43,11 @@ export const mcpHandler = createMcpHandler(
     registerOperationMcpTools(server);
     registerEditDraftMcpTools(server);
     registerEditExportMcpTools(server);
+    registerAudioMcpTools(server);
+    registerAudioVideoImportMcpTools(server);
+    registerReferenceMcpTools(server);
+    registerCreativeGroupMcpTools(server);
+    registerLibraryContentMcpTools(server);
     return server;
   },
   {

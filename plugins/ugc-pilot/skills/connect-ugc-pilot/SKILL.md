@@ -17,7 +17,9 @@ Once tools are available:
 2. Call `get_entitlements` and report plan/access, spendable credits, reserved credits, and generation costs returned by the server.
 3. Call `get_capabilities` and report the actual available formats, durations, and counts.
 
-For demo composition, check `get_video_finishing_capabilities` when discovered. For the dedicated Edit-page export, check `get_edit_export_capabilities`. Both are read-only. Draft listing/reading uses `assets:read`; opening/saving/export uses the existing `creative:write`, and export status uses `jobs:read`. Tool catalogue refresh alone does not require new consent when those permissions were already approved.
+For demo composition, check `get_video_finishing_capabilities` when discovered. For the dedicated Edit-page export, check `get_edit_export_capabilities`. Both are read-only. For audio check discovered `get_audio_capabilities` without generating a sample or verifying a voice; its generation/upload/download/import flags are separate. Audio reads/preferences/import reuse their discovered account/assets/jobs scopes; speech generation uses `generation:write`. Draft listing/reading uses `assets:read`; opening/saving/export uses the existing `creative:write`, and export status uses `jobs:read`. Tool catalogue refresh alone does not require new consent when those permissions were already approved.
+
+For requested application reference/group/Library work, use discovered `get_reference_capabilities`, `get_asset_group_capabilities` or `get_library_capabilities`. These checks do not activate writes. Group/Library writes reuse `assets:write`; application remix creation needs both `generation:write` and `brand:read`. Library IDs, catalogue reference IDs and owned media IDs are distinct.
 
 A Codex, ChatGPT, or Claude subscription does not supply UGC Pilot generation credits. Check the UGC Pilot account's actual entitlements. This connection check is read-only; do not generate a sample unless the user requests generation.
 

@@ -24,8 +24,8 @@ export const videoFinishDraftSchema = z.strictObject({
   version: z.literal(1).default(1), kind: z.enum(["hook", "phone"]).default("hook"),
   sourceAssetId: uuid.describe("Owned ready opening video or creator footage; generated and uploaded clips are supported."),
   demoAssetId: uuid.nullable().default(null).describe("Owned ready demo video appended after the opening."),
-  demoAudioAssetId: uuid.nullable().default(null), demoAudioPlayback: playback.default("once"),
-  backgroundAssetId: uuid.nullable().default(null), backgroundPlayback: playback.default("once"),
+  demoAudioAssetId: uuid.nullable().default(null).describe("Owned ready audio media snapshot. For saved private audio, first use import_audio_for_video and its ready media_asset_id. Requires a demo video."), demoAudioPlayback: playback.default("once"),
+  backgroundAssetId: uuid.nullable().default(null).describe("Owned ready audio media snapshot, including import_audio_for_video output; private audio-library IDs are not accepted."), backgroundPlayback: playback.default("once"),
   demoFraming: framing.optional(), sourceFraming: framing.optional(),
   editing: z.strictObject({
     version: z.literal(1), format: z.enum(["hook", "wall_text"]),

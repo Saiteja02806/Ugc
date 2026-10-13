@@ -134,11 +134,20 @@ export function validatePackage({ submission = false } = {}) {
   assert(portableInterface);
   assert.deepEqual(codex.extensions?.["com.openai"], portableExtension, "Compatibility onboarding/review metadata differs");
 
-  const knownTools = new Set(["read", "mutation", "generation", "finishing", "demo", "upload-recovery", "operation", "edit-draft", "edit-export"].flatMap((kind) => {
+  const knownTools = new Set(["read", "mutation", "generation", "finishing", "demo", "upload-recovery", "operation", "edit-draft", "edit-export", "audio", "audio-video-import", "reference", "creative-group", "library-content"].flatMap((kind) => {
     const code = fs.readFileSync(path.join(root, `lib/mcp/${kind}-tools.ts`), "utf8");
+    if (kind === "creative-group") {
+      const inventory = code.match(/registeredCreativeGroupMcpTools\s*=\s*(\[[^\]]+\])\s*as const/);
+      assert(inventory, "Missing creative-group registered inventory");
+      const declared = JSON.parse(inventory[1]);
+      const staticNames = [...code.matchAll(/registerTool\("([a-z_]+)"/g)].map(match => match[1]);
+      const dynamicNames = [...code.matchAll(/tool:"([a-z_]+)"/g)].map(match => match[1]);
+      assert.deepEqual([...new Set([...staticNames, ...dynamicNames])].sort(), [...declared].sort(), "Group registrations differ from declared inventory");
+      return declared;
+    }
     return [...code.matchAll(/registerTool\("([a-z_]+)"/g)].map((match) => match[1]);
   }));
-  assert.equal(knownTools.size, 33, "Review the package contract when the MCP tool surface changes");
+  assert.equal(knownTools.size, 73, "Review the package contract when the MCP tool surface changes");
   const reviewReadiness = validateOpenAiMetadata(plugin, knownTools, { submission });
   const skillNames = new Set(packageFiles.filter((relative) => relative.endsWith("/SKILL.md")).map((relative) => path.basename(path.dirname(relative))));
   for (const item of json("evaluation-cases.json").cases) {
@@ -164,6 +173,11 @@ export function validatePackage({ submission = false } = {}) {
     if (relative.endsWith(".md")) validateResourceLinks(text, relative);
     if (relative.includes("/schemas/") || relative.endsWith("references/output-schema.json")) ajv.compile(JSON.parse(text));
   }
+  assert.equal(
+    fs.readFileSync(path.join(pluginDir, "skills/manage-ugc-media/scripts/transfer-audio.mjs"), "utf8").replaceAll("\r\n", "\n"),
+    fs.readFileSync(path.join(root, "scripts/ugc-pilot-audio-transfer.mjs"), "utf8").replaceAll("\r\n", "\n"),
+    "Packaged audio helper must match the actual-byte-tested implementation",
+  );
   const icon = fs.readFileSync(path.join(pluginDir, "assets/logo.png"));
   assert.equal(icon.subarray(1, 4).toString(), "PNG");
   for (const dimension of [icon.readUInt32BE(16), icon.readUInt32BE(20)]) {

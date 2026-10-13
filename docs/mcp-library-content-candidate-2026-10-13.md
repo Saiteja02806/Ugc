@@ -60,3 +60,16 @@ The coordinated reference/group/Library release now has reviewable source, green
 PRs #46–#48 are deployed at `e3de4a4eb66cb7c7c6e6de6bda9bc9062aafbc63` on both primary production domains. Applied group/Library migrations and the service-only default-grant correction are aligned with all 130 production migration versions. Both Linux MCP workflows, the migration guard, 13 focused SQL cases and 30 public production checks pass. Fresh authenticated discovery sees 73 tools. All five new write gates remain false on both projects.
 
 The active chat still caches 46 tools; its Windows control socket cannot refresh it, so the new Library owner reads through this chat are pending. No customer media operations, bucket/IAM changes or worker releases ran. New workflow packaging, audio configuration, advanced-generation PR #45, Claude Code verification and full application parity remain unfinished. The separate secondary Firebase preview failure remains visible. See [complete release evidence](mcp-library-content-release-2026-10-13.md).
+
+## Preserved production-branch history
+
+The records below are retained from the deployed branch during release reconciliation. Later dated release receipts above remain authoritative for current status.
+
+## Approved production migration checkpoint
+
+The user approved the combined PRs #46–#48 gated release. Group and Library migrations were applied without customer media operations. Supabase assigned authoritative ledger versions `20261013072941` and `20261013072958`; local filenames and executable fixture references were aligned to those versions without changing either reviewed SQL body.
+
+Post-application inspection exposed Supabase default `ALL` grants to `service_role` on newly created public tables, which the isolated original fixtures did not reproduce. Additive correction `20261013073411_mcp_request_receipt_permissions.sql` revokes those grants on only the two new receipt tables and retains SELECT/INSERT. Production verification confirms RLS enabled, browser roles denied, service-role UPDATE/DELETE/TRUNCATE denied, and all six new RPCs restricted to service-role invocation with empty search paths. The correction does not change existing application table grants, existing website save RPCs, media, buckets/IAM or workers.
+
+A real PostgreSQL grant regression now starts with the production default ALL grant, executes both original receipt DDLs and the correction, verifies all browser/service-role privileges, and exercises allowed inserts/reads plus denied updates/deletes/truncation. Both projects have explicit production false configuration for group, Library, text-remix, audio-import and private-upload writes. Domain promotion and post-release verification remain pending at this checkpoint.
+

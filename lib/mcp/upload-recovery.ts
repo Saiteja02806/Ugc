@@ -49,7 +49,7 @@ export function uploadSummary(row: MediaAssetRow) {
 
 export async function getUploadForOwner(input: { userId: string; uploadId?: string; requestId?: string }) {
   let query = getMcpStore().from("media_assets").select("*").eq("user_id", input.userId)
-    .eq("metadata->>mcpUpload", "true").is("deleted_at", null);
+    .eq("metadata->>mcpUpload", "true").in("collection", ["image","video","influencer"]).is("deleted_at", null);
   if (input.uploadId) query = query.eq("id", input.uploadId);
   else if (input.requestId) query = query.eq("metadata->>mcpUploadRequestKey", input.requestId);
   else throw new ToolFailure("INVALID_INPUT", "Supply one upload ID or request ID.");
@@ -61,7 +61,7 @@ export async function getUploadForOwner(input: { userId: string; uploadId?: stri
 
 export async function listUploadsForOwner(input: { userId: string; limit: number; status: string; after?: { id: string; updated_at: string } }) {
   let query = getMcpStore().from("media_assets").select("*").eq("user_id", input.userId)
-    .eq("metadata->>mcpUpload", "true").is("deleted_at", null);
+    .eq("metadata->>mcpUpload", "true").in("collection", ["image","video","influencer"]).is("deleted_at", null);
   if (input.status !== "all") query = query.eq("status", input.status);
   if (input.after) query = query.or(`updated_at.lt.${input.after.updated_at},and(updated_at.eq.${input.after.updated_at},id.lt.${input.after.id})`);
   const { data, error } = await query.order("updated_at", { ascending: false }).order("id", { ascending: false }).limit(input.limit + 1);

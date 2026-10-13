@@ -35,17 +35,17 @@ const SCOPE_DETAILS: Record<string, { title: string; description: string; icon: 
   },
   "assets:read": {
     title: "Creative library",
-    description: "View your uploaded and generated media.",
+    description: "View your uploaded/generated media, saved Library items and request history.",
     icon: Images,
   },
   "assets:write": {
     title: "Manage media",
-    description: "Upload references and delete media you select.",
+    description: "Organize groups, save or remove selected Library entries, upload references and delete media you select.",
     icon: Upload,
   },
   "generation:write": {
-    title: "Generate images and videos",
-    description: "Create images and videos using your plan’s credits.",
+    title: "Generate content",
+    description: "Create requested images, videos, speech and business-specific text remixes. Generation may use your plan’s credits.",
     icon: Sparkles,
   },
   "jobs:read": {

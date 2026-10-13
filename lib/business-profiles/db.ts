@@ -647,4 +647,6 @@ function getStoredPrimaryGoals(row: BusinessProfileRow): PrimaryGoals {
   return parsed.success ? parsed.data : [];
 }
 
+export { hashAnalysis as hashBusinessProfileAnalysis };
+
 export { isBusinessProfileOnboardingComplete } from "./onboarding-access";

@@ -28,9 +28,11 @@ import { registerLibraryContentMcpTools, registeredLibraryContentMcpTools } from
 
 import {registerAccountSettingsMcpTools,registeredAccountSettingsMcpTools} from "./account-settings-tools";
 
+import {registerBusinessContextMcpTools,registeredBusinessContextMcpTools} from "./business-context-tools";
+
 export const registeredMcpTools: readonly string[] = [
   ...registeredReadMcpTools, ...registeredMutationMcpTools, ...registeredGenerationMcpTools,
-  ...registeredFinishingMcpTools, ...registeredDemoMcpTools, ...registeredUploadRecoveryMcpTools, ...registeredOperationMcpTools, ...registeredEditDraftMcpTools, ...registeredEditExportMcpTools, ...registeredAudioMcpTools, ...registeredAudioVideoImportMcpTools, ...registeredReferenceMcpTools, ...registeredCreativeGroupMcpTools, ...registeredLibraryContentMcpTools, ...registeredAccountSettingsMcpTools,
+  ...registeredFinishingMcpTools, ...registeredDemoMcpTools, ...registeredUploadRecoveryMcpTools, ...registeredOperationMcpTools, ...registeredEditDraftMcpTools, ...registeredEditExportMcpTools, ...registeredAudioMcpTools, ...registeredAudioVideoImportMcpTools, ...registeredReferenceMcpTools, ...registeredCreativeGroupMcpTools, ...registeredLibraryContentMcpTools, ...registeredAccountSettingsMcpTools, ...registeredBusinessContextMcpTools,
 ];
 
 export const mcpHandler = createMcpHandler(
@@ -51,6 +53,7 @@ export const mcpHandler = createMcpHandler(
     registerCreativeGroupMcpTools(server);
     registerLibraryContentMcpTools(server);
     registerAccountSettingsMcpTools(server);
+    registerBusinessContextMcpTools(server);
     return server;
   },
   {

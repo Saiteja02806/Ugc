@@ -1,3 +1,4 @@
+import { toClientOnboardingProfile } from "@/lib/business-profiles/onboarding-view";
 import { randomUUID } from "node:crypto";
 
 import { NextResponse } from "next/server";
@@ -7,18 +8,15 @@ import {
   completeBusinessProfileOnboarding,
   getBusinessProfileForUser,
   getMissingBusinessProfileEnvVars,
-  isBusinessProfileOnboardingComplete,
   saveBusinessProfileOnboardingGoalDraft,
   saveBusinessProfileOnboardingIdentity,
 } from "@/lib/business-profiles/db";
 import { inspectBusinessLogo } from "@/lib/business-profiles/logo";
 import { enqueueBusinessProfileSetupJob } from "@/lib/business-profiles/jobs";
 import {
-  BUSINESS_PROFILE_ONBOARDING_VERSION,
   BusinessProfileOnboardingContextSchema,
   PrimaryGoalsDraftSchema,
   PrimaryGoalsSchema,
-  getMissingBusinessProfileOnboardingFields,
 } from "@/lib/business-profiles/schema";
 import { BusinessProfileSetupInputSchema } from "@/lib/business-profiles/setup";
 import {
@@ -91,7 +89,7 @@ export async function GET(request: Request) {
 
     return json({
       ok: true,
-      profile: profile ? toClientProfile(profile) : null,
+      profile: profile ? toClientOnboardingProfile(profile) : null,
     });
   } catch (error) {
     const message =
@@ -288,7 +286,7 @@ export async function PATCH(request: Request) {
         });
       }
 
-      return json({ ok: true, profile: toClientProfile(profile) });
+      return json({ ok: true, profile: toClientOnboardingProfile(profile) });
     }
 
     if (parsed.data.action === "save_goal_draft") {
@@ -297,7 +295,7 @@ export async function PATCH(request: Request) {
         profile: existing,
       });
 
-      return json({ ok: true, profile: toClientProfile(profile) });
+      return json({ ok: true, profile: toClientOnboardingProfile(profile) });
     }
 
     if (!existing.context.businessName?.trim()) {
@@ -326,7 +324,7 @@ export async function PATCH(request: Request) {
       }
     }
 
-    return json({ ok: true, prebuild, profile: toClientProfile(profile) });
+    return json({ ok: true, prebuild, profile: toClientOnboardingProfile(profile) });
   } catch (error) {
     console.error("Could not update business profile onboarding:", error);
     return json(
@@ -351,35 +349,4 @@ function isValidTimezone(value: string) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
-}
-
-function toClientProfile(
-  profile: NonNullable<Awaited<ReturnType<typeof getBusinessProfileForUser>>>,
-) {
-  const onboardingComplete = isBusinessProfileOnboardingComplete(profile);
-
-  return {
-    analysisConfidence: profile.context.confidence,
-    analysisSummary: profile.context.productSummary,
-    businessName: profile.context.businessName,
-    id: profile.id,
-    intakeType: profile.intakeType,
-    logoStorageKey: profile.logoStorageKey,
-    logoUrl: profile.logoUrl,
-    onboardingComplete,
-    onboardingCompletedAt: profile.onboardingCompletedAt,
-    onboardingMissingFields: [
-      ...getMissingBusinessProfileOnboardingFields(profile.context),
-      ...(profile.primaryGoals.length > 0 ? [] : ["primaryGoals"]),
-    ],
-    onboardingRequiredVersion: BUSINESS_PROFILE_ONBOARDING_VERSION,
-    onboardingStep: profile.onboardingStep,
-    onboardingStatus: onboardingComplete ? "completed" : "incomplete",
-    onboardingVersion: profile.onboardingVersion,
-    preparationError: profile.preparationError,
-    preparationStatus: profile.preparationStatus,
-    primaryGoal: profile.primaryGoal,
-    primaryGoals: profile.primaryGoals,
-    profileVersion: profile.profileVersion,
-  };
 }

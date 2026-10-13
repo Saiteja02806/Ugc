@@ -42,7 +42,7 @@ Each workflow checks live capabilities. Reference remix, group and Library write
 
 ## Account defaults where deployed
 
-Use the [account workflow](skills/manage-ugc-account/SKILL.md) for publishing defaults, unset timezone initialization and settings receipts. These tools require the additive account-settings migration; writes also require the separate `account:write` consent and write gate. Reads never initialize preferences. Existing scheduled posts and initialized timezones are preserved. Use the [Business Context workflow](skills/manage-ugc-business/SKILL.md) to read and edit the shared Settings draft or apply reviewed context for future content. Writes separately require deployed schema, an enabled gate and fresh `brand:write` consent. Business onboarding, website reanalysis, logos/screenshots and social-account operations remain separate work.
+Use the [account workflow](skills/manage-ugc-account/SKILL.md) for publishing defaults, unset timezone initialization and settings receipts. These tools require the additive account-settings migration; writes also require the separate `account:write` consent and write gate. Reads never initialize preferences. Existing scheduled posts and initialized timezones are preserved. Use the [Business Context workflow](skills/manage-ugc-business/SKILL.md) to read and edit the shared Settings draft or apply reviewed context for future content. Writes separately require deployed schema, an enabled gate and fresh `brand:write` consent. Use the [business onboarding workflow](skills/onboard-ugc-business/SKILL.md) to resume saved legacy/background setup, choose a website/manual/mobile source, save identity/goals and submit intended setup where its separate write gate is enabled. Read capabilities first; completion can activate access/trial and prepare Trending content. Dedicated logo upload, screenshots, website reanalysis and social-account operations remain separate work.
 
 ## Try it
 
@@ -51,7 +51,7 @@ Use the [account workflow](skills/manage-ugc-account/SKILL.md) for publishing de
 3. “Animate that image into one five-second vertical video with a slow camera push-in. Return the finished video link.”
 4. “Check the progress of the UGC Pilot job we already started. Do not create a new generation.”
 
-The released server contract contains **79 tools**; this Business Context candidate registers **85** after its server/schema release. Existing conversations can retain an older cached catalogue. Tool discovery and live capability checks are authoritative; installing this package does not enable server features or refresh a cached catalogue.
+The released server contract contains **79 tools**. Business Context PR #51 is a separate **85**-tool candidate. This onboarding candidate registers **90** after its server/schema release; hosted acceptance remains pending. Existing conversations can retain an older cached catalogue. Tool discovery and live capability checks are authoritative; installing this package does not enable server features or refresh a cached catalogue.
 
 - Account/brand reads, owned visual media, image generation and short-video generation. Counts are 1, 2 or 4; clips are 3–10 seconds and prompts have a 1,000-character limit. Check live costs and options before generation.
 - Owned Demo registration/list/get/delete, upload reservation lookup/list/renewal, and server probing before readiness. The helper preserves reservation intent and transfer confirmation separately.

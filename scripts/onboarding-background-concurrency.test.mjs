@@ -75,3 +75,47 @@ test('duplicate finalizers commit one profile and preserve one trial timestamp',
   assert.equal(a.profile_id,b.profile_id); assert.equal(a.completed_at,b.completed_at);
   assert.equal(await sql(`select count(*) from free_trial_entitlements where user_id=${quote(d.user_id)};`),'1');
 });
+
+async function mcpState(user,enrolled=true) {
+ return JSON.parse(await sql(`select public.mcp_read_business_onboarding(${quote(user)},${enrolled});`));
+}
+const mcpFence=state=>({mode:state.mode,profile_revision:state.profile_revision,draft_id:state.draft?.id??null,draft_revision:state.draft?.revision??null});
+function mcpStatement(user,key,input,prepared={},enrolled=true) {
+ return `select public.mcp_mutate_business_onboarding(${quote(user)},${quote(key)},${quote(JSON.stringify(input))}::jsonb,${quote(JSON.stringify(prepared))}::jsonb,${enrolled});`;
+}
+async function mcpChange(user,key,input,prepared={},enrolled=true) {return JSON.parse(await sql(mcpStatement(user,key,input,prepared,enrolled)));}
+
+test('concurrent identical MCP start requests return one immutable receipt and one analysis',async()=>{
+ const user=`mcp-concurrency-${randomUUID()}`,key=randomUUID(),input={expected_state:mcpFence(await mcpState(user)),change:{action:'start',source:{intakeType:'website',websiteUrl:'https://example.com'}}};
+ const results=await Promise.all([mcpChange(user,key,input),mcpChange(user,key,input)]);
+ assert.equal(results.filter(result=>result.replayed).length,1);assert.deepEqual(results[0].receipt,results[1].receipt);
+ assert.equal(await sql(`select count(*) from background_jobs where user_id=${quote(user)};`),'1');
+ assert.equal(await sql(`select count(*) from mcp_business_onboarding_requests where user_id=${quote(user)};`),'1');
+});
+test('independent website and MCP saves of the same background revision accept exactly one',async()=>{
+ const draft=await identityDraft(),state=await mcpState(draft.user_id);
+ const result=await Promise.allSettled([
+  mutate(draft.user_id,'goals',{draftId:draft.id,revision:draft.revision,primaryGoals:['grow_views']}),
+  mcpChange(draft.user_id,randomUUID(),{expected_state:mcpFence(state),change:{action:'goals',primary_goals:['generate_leads']}}),
+ ]);
+ assert.equal(result.filter(item=>item.status==='fulfilled').length,1);
+ assert.match(result.find(item=>item.status==='rejected').reason.message,/revision_conflict/);
+});
+test('legacy REST row-before-owner locking returns busy instead of deadlocking MCP owner-before-row',async()=>{
+ const user=`mcp-lock-${randomUUID()}`;
+ await sql(`insert into public.business_profiles(user_id,intake_type,context_json,content_hash) values(${quote(user)},'manual','{"businessName":"Fixture"}','fixture');`);
+ const state=await mcpState(user),tag=`mcp-profile-lock-${randomUUID()}`;
+ const holding=sql(`begin;set application_name=${quote(tag)};select id from business_profiles where user_id=${quote(user)} for update;select pg_sleep(3);update business_profiles set context_json=context_json||'{"businessName":"Website later"}'::jsonb,updated_at=now() where user_id=${quote(user)};commit;`);
+ for(let tries=0;tries<60;tries++) {
+  const sleeping=await sql(`select count(*) from pg_stat_activity where application_name=${quote(tag)} and wait_event='PgSleep';`);
+  if(sleeping==='1')break;
+  if(tries===59)throw Error('The independent row-lock holder never reached its sleep barrier');
+  await new Promise(resolve=>setTimeout(resolve,25));
+ }
+ const started=Date.now();
+ await assert.rejects(mcpChange(user,randomUUID(),{expected_state:mcpFence(state),change:{action:'goals',primary_goals:['generate_leads']}}),/could not obtain lock/);
+ assert.ok(Date.now()-started<2000,'NOWAIT should release the owner lock before the legacy writer reaches its guard');
+ await holding;
+ const current=await mcpState(user);assert.equal(current.profile.context_json.businessName,'Website later');assert.deepEqual(current.profile.primary_goals,[]);
+ assert.equal(await sql(`select count(*) from mcp_business_onboarding_requests where user_id=${quote(user)};`),'0');
+});

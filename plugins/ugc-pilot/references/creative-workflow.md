@@ -17,6 +17,9 @@ User-stated facts are inputs, not independently verified facts. Do not invent me
 | Slideshow copy / slide sequence / semantic JSON | [UGC Native Slideshow](../skills/ugc-native-slideshow/SKILL.md) |
 | Generate the actual image or video | [Create UGC Media](../skills/create-ugc-media/SKILL.md) |
 | Attach a demo / trim / render exact video text | [Finish UGC Video](../skills/finish-ugc-video/SKILL.md) |
+| Browse application references / create a saved application text remix | [Remix UGC Reference](../skills/remix-ugc-reference/SKILL.md) |
+| Organize Creative Asset groups / membership | [Manage UGC Groups](../skills/manage-ugc-groups/SKILL.md) |
+| Browse or save rendered Carousel/slideshow Library snapshots | [Manage UGC Library](../skills/manage-ugc-library/SKILL.md) |
 
 These are instructions for the host model, not a keyword router. Use the requested deliverable and conversation context. For an ambiguous “make a hook,” infer text from a copywriting conversation and a prompt from a directing conversation; otherwise ask whether they want words, a prompt, or a generated clip.
 

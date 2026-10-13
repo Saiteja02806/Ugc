@@ -5,6 +5,8 @@ description: Browse owned UGC Pilot visual or audio media, recover existing jobs
 
 # Manage UGC Pilot media
 
+For application Creative Asset groups use [group management](../manage-ugc-groups/SKILL.md); for saved Carousel/slideshow entries use [Library management](../manage-ugc-library/SKILL.md). Generic media assets and those application identities are separate.
+
 Use the connected account's discovered UGC Pilot tools. Do not request another user's account ID or privileged credentials to access their media.
 
 ## Browse and resume

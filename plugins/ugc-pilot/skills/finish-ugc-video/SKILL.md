@@ -17,6 +17,8 @@ Read the discovered finishing schema for exact fields. The minimal composition i
 2. Wait for the completed owned output. For single-clip crop/pan, submit that output with `sourceFraming`, no editing/demo/subtitles. Framing points start at zero and remain within the selected frame.
 3. Use prepared outputs as the final opening/demo IDs, with selected music/demo audio and, when requested and enabled, English subtitles. Demo framing can accompany demo composition. Manual editing and single-clip framing require their separate preparation stages.
 
+The application permits one active finishing job per account. Prepare the opening, wait for completion, then prepare the demo and wait before composition; do not submit all stages together. A concurrency `FINISH_CONFLICT` means wait for the existing active job to end, then submit the saved unchanged next-stage inputs/key. Polling never requeues it.
+
 Each stage uses a fresh random UUID `request_key`. Save the key, exact normalized inputs and receipt in the conversation and, when the host can persist workspace files, a local non-secret operation record for recovery. Reuse that same key and identical inputs after interruption. Changed edits require a new intentional stage; do not change the key to bypass a conflict or uncertain outcome.
 
 ## Recover and retrieve

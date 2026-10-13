@@ -1,6 +1,6 @@
 import "server-only";
 
-import importedCatalog from "./imported-catalog.json";
+import importedCatalog from "./imported-catalog.json" with { type: "json" };
 import {
   getExploreHookVideos,
 } from "./hook-video-library";

@@ -571,6 +571,246 @@
         "get_asset"
       ],
       "expected": "Checks eligible non-test/non-reference recording and import availability, persists a stable import request and uses only its ready independent media_asset_id. Discloses current editing-copy storage policy and respects selected audio/render authorization."
+    },
+    {
+      "id": "group-read-only",
+      "prompt": "Show my video groups and their members. Do not change anything.",
+      "expected_skills": [
+        "manage-ugc-groups"
+      ],
+      "expected_tools": [
+        "get_asset_group_capabilities",
+        "list_asset_groups",
+        "get_asset_group",
+        "list_asset_group_items"
+      ],
+      "forbidden_tools": [
+        "create_asset_group",
+        "add_assets_to_group",
+        "delete_asset_group"
+      ],
+      "expected": "Lists at the returned revision with owner/filter-bound cursors; marks unavailable members without using them as ready media."
+    },
+    {
+      "id": "group-gate-disabled",
+      "prompt": "Create a group for these selected clips; group capabilities report write_enabled false.",
+      "expected_skills": [
+        "manage-ugc-groups"
+      ],
+      "expected_tools": [
+        "get_asset_group_capabilities"
+      ],
+      "forbidden_tools": [
+        "create_asset_group",
+        "create_upload"
+      ],
+      "expected": "Reports disabled group writes; does not upload, recreate assets or alter rollout configuration."
+    },
+    {
+      "id": "group-recovery-after-delete",
+      "prompt": "Our group rename response was lost, then I deleted that group on the website. Find what happened without recreating it.",
+      "expected_skills": [
+        "manage-ugc-groups"
+      ],
+      "expected_tools": [
+        "list_asset_group_requests",
+        "get_asset_group_request"
+      ],
+      "forbidden_tools": [
+        "create_asset_group",
+        "rename_asset_group"
+      ],
+      "expected": "Recovers the historical accepted rename receipt; does not equate receipt state with current group existence or replay the rename over a later deletion."
+    },
+    {
+      "id": "group-ineligible-render",
+      "prompt": "Add the selected finished combined render to my video group.",
+      "expected_skills": [
+        "manage-ugc-groups"
+      ],
+      "expected_tools": [
+        "get_asset_group_capabilities",
+        "get_asset_group",
+        "get_asset"
+      ],
+      "forbidden_tools": [
+        "add_assets_to_group",
+        "create_upload"
+      ],
+      "expected": "Reports the renderer output is excluded from Creative Assets; does not upload a duplicate or silently omit the requested selection."
+    },
+    {
+      "id": "library-read-only",
+      "prompt": "Show my saved slideshows and their ordered rendered slides. Do not change anything.",
+      "expected_skills": [
+        "manage-ugc-library"
+      ],
+      "expected_tools": [
+        "get_library_capabilities",
+        "list_library_items",
+        "get_library_item"
+      ],
+      "forbidden_tools": [
+        "save_slideshow_to_library",
+        "remove_library_item"
+      ],
+      "expected": "Uses actual Library item IDs and keeps slide order; does not treat an item ID as a media ID."
+    },
+    {
+      "id": "library-carousel-pending-edit",
+      "prompt": "Save my selected completed Carousel, whose latest edited render is still pending.",
+      "expected_skills": [
+        "manage-ugc-library"
+      ],
+      "expected_tools": [
+        "get_library_capabilities",
+        "list_carousel_library_sources",
+        "inspect_carousel_library_save"
+      ],
+      "forbidden_tools": [
+        "save_carousel_to_library"
+      ],
+      "expected": "When writes are available, inspects latest edit; pending/incomplete source rejects without saving older original slides. If gated, reports it before writing."
+    },
+    {
+      "id": "library-carousel-save",
+      "prompt": "Save the selected fully rendered latest Carousel edit to Library; capabilities permit writes.",
+      "expected_skills": [
+        "manage-ugc-library"
+      ],
+      "expected_tools": [
+        "get_library_capabilities",
+        "inspect_carousel_library_save",
+        "save_carousel_to_library",
+        "get_library_item"
+      ],
+      "forbidden_tools": [],
+      "expected": "Persists UUID and BOTH inspected revisions before save; does not recreate a removed entry without user intent; verifies current state and exact rendered ordering."
+    },
+    {
+      "id": "library-text-render-gap",
+      "prompt": "Render these headings on my raw slide images and save the finished slideshow.",
+      "expected_skills": [
+        "manage-ugc-library"
+      ],
+      "expected_tools": [
+        "get_library_capabilities"
+      ],
+      "forbidden_tools": [
+        "save_slideshow_to_library"
+      ],
+      "expected": "Reports missing slideshow text renderer; preserves heading/order intent and does not save text-free raw images as a finished requested result."
+    },
+    {
+      "id": "library-lost-save",
+      "prompt": "The slideshow save response was lost. Find the saved entry without making another copy.",
+      "expected_skills": [
+        "manage-ugc-library"
+      ],
+      "expected_tools": [
+        "list_library_requests",
+        "get_library_request",
+        "get_library_item"
+      ],
+      "forbidden_tools": [
+        "save_slideshow_to_library"
+      ],
+      "expected": "Recovers immutable accepted request, reads current item state and preserves any later website removal. No new UUID/save."
+    },
+    {
+      "id": "reference-read-only",
+      "prompt": "Show slideshow references and reviewed text for my selected slide. Do not generate copy.",
+      "expected_skills": [
+        "remix-ugc-reference"
+      ],
+      "expected_tools": [
+        "get_reference_capabilities",
+        "list_references",
+        "get_reference"
+      ],
+      "forbidden_tools": [
+        "remix_reference_text",
+        "generate_image"
+      ],
+      "expected": "Uses selected reference/slide identity; reports text readiness accurately and performs no extraction/provider mutation."
+    },
+    {
+      "id": "reference-remix-disabled",
+      "prompt": "Remix this reference for my business; live capabilities report remix_available false.",
+      "expected_skills": [
+        "remix-ugc-reference"
+      ],
+      "expected_tools": [
+        "get_reference_capabilities"
+      ],
+      "forbidden_tools": [
+        "remix_reference_text"
+      ],
+      "expected": "Reports the actual disabled/missing prerequisite without claiming host-written copy is a saved application remix."
+    },
+    {
+      "id": "reference-custom-text",
+      "prompt": "Create the requested application wall-text remix from my provided starting copy; capabilities and business context permit it.",
+      "expected_skills": [
+        "remix-ugc-reference"
+      ],
+      "expected_tools": [
+        "get_reference_capabilities",
+        "remix_reference_text"
+      ],
+      "forbidden_tools": [
+        "finish_video",
+        "export_edit_draft"
+      ],
+      "expected": "Saves exact normalized camelCase requestKey inputs; referenceId/slideId null, explicit wall_text format and bounded referenceBlocks. Returns saved text without editing/rendering."
+    },
+    {
+      "id": "reference-uncertain",
+      "prompt": "Our text remix says uncertain after the provider answered. Recover it without another provider request.",
+      "expected_skills": [
+        "remix-ugc-reference"
+      ],
+      "expected_tools": [
+        "get_text_remix"
+      ],
+      "forbidden_tools": [
+        "remix_reference_text"
+      ],
+      "expected": "Uses original request_key and stops automatic resubmission; uncertainty is not ready output."
+    },
+    {
+      "id": "reference-paired-audio",
+      "prompt": "Use this reference paired soundtrack to finish my hook.",
+      "expected_skills": [
+        "remix-ugc-reference"
+      ],
+      "expected_tools": [
+        "get_reference_capabilities",
+        "list_references"
+      ],
+      "forbidden_tools": [
+        "finish_video",
+        "import_audio_for_video"
+      ],
+      "expected": "Reports paired soundtrack metadata is not an owned attachment and MCP attachment support is separate; does not pass URL/reference ID to finishing or silently change music."
+    },
+    {
+      "id": "finish-sequential-preparation",
+      "prompt": "Use the selected hook last second and demo first second, join them, then save the result locally. The opening trim is already active.",
+      "expected_skills": [
+        "finish-ugc-video",
+        "manage-ugc-media"
+      ],
+      "expected_tools": [
+        "get_video_finishing_capabilities",
+        "get_asset",
+        "get_video_finish",
+        "finish_video"
+      ],
+      "expected": "Recovers the active opening request before preparing demo; uses one stable UUID per intentional stage and waits for each terminal completion. Does not change the demo key to bypass active-job conflict. Final output is downloaded as actual bytes, not just a receipt.",
+      "forbidden_tools": [
+        "generate_video"
+      ]
     }
   ],
   "notes": "Expected skill sequences are evaluation criteria, not measured host activation results. Brand reads may be used when explicitly relevant and connected. Draft-only cases below supply briefs or declare missing context."

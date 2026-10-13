@@ -1,6 +1,6 @@
-# UGC Pilot private beta — 0.1.9 candidate
+# UGC Pilot private beta — 0.1.11 candidate
 
-Draft UGC copy and video prompts in ordinary language, then use your connected UGC Pilot account when you ask to generate media. This package includes ten skills covering connection, generation, media transfer, five creative workflows, video finishing, shared Edit drafts/export, and speech/private audio transfer where enabled.
+Draft UGC copy and video prompts in ordinary language, then use your connected UGC Pilot account when you ask to generate media. This package includes thirteen skills covering connection, generation, media transfer, five creative workflows, video finishing, shared Edit drafts/export, speech/private audio transfer, application references, Creative Asset groups, and saved Library outputs where enabled.
 
 The package points to the existing hosted MCP at **https://mcp.getugcpilot.com/mcp**. It includes no server executable, credentials, or automatic installation script. Generation uses your UGC Pilot plan and credits, separately from your AI subscription.
 
@@ -32,6 +32,14 @@ The host must load this skill package for the five creative workflows to be disc
 
 The AI selects skills by deliverable and context, not fixed command keywords. Copy plus prompt requests can run both steps; selected copy remains unchanged. It reuses your brief or, when relevant and connected, reads your business profile. Drafting alone does not submit a paid generation. Slideshow JSON is a semantic content plan, not the existing application Carousel worker contract. Exact video text and demo composition use the separately gated finishing tools. Slide rendering still needs separate tools.
 
+## Application references, groups and Library
+
+- “Browse hook references and show their reviewed text.” Use the [reference workflow](skills/remix-ugc-reference/SKILL.md); creating an application remix is a separate requested action with provider/quota access.
+- “Show my image groups and organize these selected Creative Assets.” Use the [group workflow](skills/manage-ugc-groups/SKILL.md) with current revisions and eligible owned media.
+- “Save this completed Carousel, or these already rendered slides, to my Library.” Use the [Library workflow](skills/manage-ugc-library/SKILL.md). Saving slides does not render missing text.
+
+Each workflow checks live capabilities. Reference remix, group and Library writes are disabled in the current production release; reads and existing receipt recovery are separate. Do not enable rollout flags or silently substitute another workflow. A published package, discovered tool, and successful installed-host execution are different evidence.
+
 ## Try it
 
 1. “Use UGC Pilot to check my account, credits, and available generation options. Do not generate anything.”
@@ -39,7 +47,7 @@ The AI selects skills by deliverable and context, not fixed command keywords. Co
 3. “Animate that image into one five-second vertical video with a slow camera push-in. Return the finished video link.”
 4. “Check the progress of the UGC Pilot job we already started. Do not create a new generation.”
 
-The coordinated audio candidate contract contains **46 tools**. Production may still expose the previous 33-tool catalogue until its server release. Tool discovery and live capability checks are authoritative; installing this package does not enable server features or refresh a cached catalogue.
+The released server contract contains **73 tools**. Existing conversations can retain an older cached catalogue. Tool discovery and live capability checks are authoritative; installing this package does not enable server features or refresh a cached catalogue.
 
 - Account/brand reads, owned visual media, image generation and short-video generation. Counts are 1, 2 or 4; clips are 3–10 seconds and prompts have a 1,000-character limit. Check live costs and options before generation.
 - Owned Demo registration/list/get/delete, upload reservation lookup/list/renewal, and server probing before readiness. The helper preserves reservation intent and transfer confirmation separately.
@@ -47,11 +55,11 @@ The coordinated audio candidate contract contains **46 tools**. Production may s
 - Owner-scoped operation history and supported cancellation/retry. Writes require `jobs:write`, the exact operation revision and a stable request UUID. Retry can reserve credits under the original plan; replay recovers the accepted action.
 - Shared Edit-page opening, listing, reading and revision-safe saving, plus dedicated export capabilities/submission/status. Save/open do not render. Export snapshots a saved revision using the website's renderer. See [Edit workflow](skills/edit-ugc-draft/SKILL.md). Preserve the dedicated export UUID; `get_operation` can recover `edit_export_request_id` when discovered.
 
-Full application parity remains unfinished. Explore/slideshow working drafts, slideshow rendering, voice sample/clone/verification/removal and default music, advanced generation/character choices, full Library/business settings, Carousel actions, social publishing and analytics require additional implementation. Private-media upload support is a separately gated server rollout. It requires a verified separate private bucket and its signing/read/cleanup configuration; the helper validates the server's explicit bucket descriptor and never bypasses unavailable storage.
+Full application parity remains unfinished. Explore/slideshow working drafts, slideshow rendering, voice sample/clone/verification/removal and default music, advanced generation/character choices, business settings, further Trending/Carousel actions, social publishing and analytics require additional implementation. Private-media upload support is a separately gated server rollout. It requires a verified separate private bucket and its signing/read/cleanup configuration; the helper validates the server's explicit bucket descriptor and never bypasses unavailable storage.
 
 ## Verification status
 
-Package/schema validation and offline behavior checks are independent from installed-host activation. Fresh-account OAuth, installed skill behavior, paid generation through each target host and media previews must pass before customer rollout. See the bundled evaluation-cases.json for pending acceptance scenarios; expected routes are criteria, not recorded passes. A demo recording and platform approval remain separate requirements.
+The existing-media trim → demo composition → actual local download passed in Codex on 13 October 2026 using the released 0.1.9 helper. This is not new-hook generation, local upload, Claude Code, or complete application acceptance. Package/schema validation and offline behavior checks are independent from installed-host activation. Fresh-account OAuth, installed skill behavior, paid generation through each target host and media previews must pass before customer rollout. See the bundled evaluation-cases.json for pending acceptance scenarios; expected routes are criteria, not recorded passes. A demo recording and platform approval remain separate requirements.
 
 ## Speech and audio where enabled
 

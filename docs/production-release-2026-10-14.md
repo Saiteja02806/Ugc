@@ -11,6 +11,7 @@ The user authorized deploying all current changes and making them active. This r
 - Reference uploads display their actual duration and consistent controls for multiple images. Upload recovery and saved source behavior are included.
 - Remix Text reports real provider/storage readiness and has simpler copy. The website release activates `EXPLORE_TEXT_REMIX_ENABLED=true` and explicitly selects the verified `gpt-5.6-luna` model.
 - All current navigation, pricing, tests and audit documentation are included. The isolated Business candidate on another branch is outside this worktree; persisted MCP experimental gates remain unchanged.
+- Four concurrent SEO audit/planning documents are included in the final source inventory.
 
 ## Reviewed runtime activation
 
@@ -29,5 +30,7 @@ Apply narrowly scoped Cloud Run updates because the ignored Terraform variables 
 Explore suite: 953 passed. The initial sandbox-only temporary file rename failure was eliminated by rerunning the same suite outside the Windows sandbox. Additional modified API/source and subtitle playback tests: 22 passed. Web TypeScript and scoped ESLint passed with one existing unused-variable warning. The worker suite and its Edit export follow-up passed. Production receipt table and claim RPC exist. The configured OpenAI credential can read `gpt-5.6-luna` (HTTP 200); no paid generation was submitted.
 
 The complete webpack production build passed, including TypeScript, all 160 prerendered pages and build traces. The complete MCP suite passed. Worker regressions passed 313 tests plus 15 Edit export tests. Terraform validation passed. Prior actual-React desktop/mobile caption, polling, collapse and all-eight-style browser checks passed; the real render parity audit is detailed in the subtitle analysis.
+
+The first staged Vercel builds identified NodeNext `.js` source imports in the shared Serif/Editorial modules that webpack's extension aliases accepted but Turbopack rejected. Both shared modules now import their `.ts` source explicitly; the worker compiler's existing `rewriteRelativeImportExtensions` emits `.js` imports for native Node. The complete default Turbopack production build and nine compiled Serif/Editorial regressions pass. The failed candidates were never promoted.
 
 Immutable image, deployment IDs, final remote commit and authenticated production acceptance are recorded in the local release receipt after execution. Existing rollback service/job specifications are retained in ignored local release evidence. Rollback restores the previous image and disables the new dispatch URL before restoring the prior Vercel deployments.

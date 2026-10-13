@@ -1,5 +1,5 @@
-import { escapeAssText, type SubtitleLayout } from "./captions.js";
-import { SubtitleError, subtitlePlacementGeometry, type SubtitleCue, type SubtitlePlacement } from "./contracts.js";
+import { escapeAssText, type SubtitleLayout } from "./captions.ts";
+import { SubtitleError, subtitlePlacementGeometry, type SubtitleCue, type SubtitlePlacement } from "./contracts.ts";
 
 export const EDITORIAL_FAMILY = "UGCPilot Editorial Study";
 export const EDITORIAL_RENDER_VERSION = "editorial-v1";

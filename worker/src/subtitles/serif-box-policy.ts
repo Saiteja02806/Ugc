@@ -1,6 +1,6 @@
-import { subtitlePlacementGeometry, type SubtitlePlacement, type TimedWord } from "./contracts.js";
-import type { MeasureText, SubtitleLayout } from "./captions.js";
-import { groupNaturalSubtitleWords } from "./phrases.js";
+import { subtitlePlacementGeometry, type SubtitlePlacement, type TimedWord } from "./contracts.ts";
+import type { MeasureText, SubtitleLayout } from "./captions.ts";
+import { groupNaturalSubtitleWords } from "./phrases.ts";
 
 /** Shared by the export renderer and interactive preview. */
 export const SERIF_BOX_FAMILY = "Instrument Serif";

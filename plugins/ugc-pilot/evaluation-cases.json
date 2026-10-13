@@ -123,7 +123,7 @@
     },
     {
       "id": "wall-prompt",
-      "prompt": "Use this exact wall text: First line ðŸ˜…\nSecond line â€” keep punctuation. Give me a seven-second footage prompt and overlay plan.",
+      "prompt": "Use this exact wall text: First line \u00f0\u0178\u02dc\u2026\nSecond line \u00e2\u20ac\u201d keep punctuation. Give me a seven-second footage prompt and overlay plan.",
       "expected_skills": [
         "wall-text-video-generation"
       ],
@@ -887,6 +887,69 @@
         "update_publishing_preferences"
       ],
       "expected": "Uses the saved historical receipt and reads current state; does not force original inputs with a fresh revision/key over later website choices."
+    },
+    {
+      "id": "business-read-only",
+      "prompt": "Show my active Business Context and unfinished Settings draft. Do not change or analyze anything.",
+      "expected_skills": [
+        "manage-ugc-business"
+      ],
+      "expected_tools": [
+        "get_business_context_capabilities",
+        "get_business_context"
+      ],
+      "forbidden_tools": [
+        "save_business_context_draft",
+        "apply_business_context"
+      ],
+      "expected": "Reads current profile/draft and reports missing setup truthfully. Does not initialize onboarding, generate, analyze or request write consent for a read."
+    },
+    {
+      "id": "business-save-without-apply",
+      "prompt": "Change only my product summary in the saved Business Context draft. Keep it unfinished; brand consent, schema and gate are ready.",
+      "expected_skills": [
+        "manage-ugc-business"
+      ],
+      "expected_tools": [
+        "get_business_context_capabilities",
+        "get_business_context",
+        "save_business_context_draft"
+      ],
+      "forbidden_tools": [
+        "apply_business_context"
+      ],
+      "expected": "Preserves other fields and goals, stores UUID/exact current revisions before saving into the shared website draft, and reports active version unchanged."
+    },
+    {
+      "id": "business-fresh-consent",
+      "prompt": "Apply my reviewed Business Context; I only have account:write and creative:write, without brand:write.",
+      "expected_skills": [
+        "manage-ugc-business"
+      ],
+      "expected_tools": [
+        "get_business_context_capabilities",
+        "get_business_context"
+      ],
+      "forbidden_tools": [
+        "apply_business_context"
+      ],
+      "expected": "Identifies the separate missing brand grant and normal reauthorization boundary. Does not use account or creative scope to mutate brand data."
+    },
+    {
+      "id": "business-recovery-after-website-change",
+      "prompt": "The Business Context apply response was lost and I edited my goals on the website later. Recover without reverting later changes.",
+      "expected_skills": [
+        "manage-ugc-business"
+      ],
+      "expected_tools": [
+        "list_business_context_requests",
+        "get_business_context_request",
+        "get_business_context"
+      ],
+      "forbidden_tools": [
+        "apply_business_context"
+      ],
+      "expected": "Recovers immutable accepted context and reads current state separately. Does not reinterpret old intent against newer goals or replace a UUID/revision to force stale context."
     }
   ],
   "notes": "Expected skill sequences are evaluation criteria, not measured host activation results. Brand reads may be used when explicitly relevant and connected. Draft-only cases below supply briefs or declare missing context."

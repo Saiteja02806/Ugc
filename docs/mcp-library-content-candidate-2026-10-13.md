@@ -30,3 +30,12 @@ The complete MCP suite, TypeScript, scoped lint and thirteen package/migration-p
 All intentional candidate source/SQL/CI/tests/docs/consent changes are included. Unrelated dirty primary-workspace changes, local environment/configuration, ignored dependencies/build output/logs/fixtures, and temporary helper files are excluded. Published/private plugin 0.1.9 artifacts, older downloads and the lockfile are unchanged. New Library workflow packaging/installation, hosted schema/gates, intended account actions and Claude Code authentication remain unfinished.
 
 Migration SHA-256: `45f2ea298147507f6023f5ac90d515c75272f64bbae63567cb7fa80c3c468535`. All 21 intentional paths were audited before staging.
+
+
+## Approved production migration checkpoint
+
+The user approved the combined PRs #46–#48 gated release. Group and Library migrations were applied without customer media operations. Supabase assigned authoritative ledger versions `20261013072941` and `20261013072958`; local filenames and executable fixture references were aligned to those versions without changing either reviewed SQL body.
+
+Post-application inspection exposed Supabase default `ALL` grants to `service_role` on newly created public tables, which the isolated original fixtures did not reproduce. Additive correction `20261013073411_mcp_request_receipt_permissions.sql` revokes those grants on only the two new receipt tables and retains SELECT/INSERT. Production verification confirms RLS enabled, browser roles denied, service-role UPDATE/DELETE/TRUNCATE denied, and all six new RPCs restricted to service-role invocation with empty search paths. The correction does not change existing application table grants, existing website save RPCs, media, buckets/IAM or workers.
+
+A real PostgreSQL grant regression now starts with the production default ALL grant, executes both original receipt DDLs and the correction, verifies all browser/service-role privileges, and exercises allowed inserts/reads plus denied updates/deletes/truncation. Both projects have explicit production false configuration for group, Library, text-remix, audio-import and private-upload writes. Domain promotion and post-release verification remain pending at this checkpoint.

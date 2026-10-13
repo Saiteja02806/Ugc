@@ -5,7 +5,7 @@ export const id=n=>`00000000-0000-4000-8000-${String(n).padStart(12,"0")}`;
 const baseline=await readFile(new URL("../supabase/migrations/20260829093001_production_baseline_v1.sql",import.meta.url),"utf8");
 function section(name){const marker=`-- source: public/${name}.sql`,a=baseline.indexOf(marker),b=baseline.indexOf("-- source:",a+marker.length);assert.ok(a>=0);return baseline.slice(a,b<0?undefined:b);}
 const explore=await readFile(new URL("../supabase/migrations/20261008071155_explore_format_workflows.sql",import.meta.url),"utf8");
-const migration=await readFile(new URL("../supabase/migrations/20261013062530_mcp_library_content.sql",import.meta.url),"utf8");
+const migration=await readFile(new URL("../supabase/migrations/20261013072958_mcp_library_content.sql",import.meta.url),"utf8");
 export async function fixture(){
  const db=new PGlite();
  await db.exec("create role anon;create role authenticated;create role service_role bypassrls;grant usage on schema public to service_role;");

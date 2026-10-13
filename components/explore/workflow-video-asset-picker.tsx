@@ -14,7 +14,8 @@ export function WorkflowVideoAssetPicker({ open, onOpenChange, ownerId, selected
   open: boolean; onOpenChange: (open: boolean) => void; ownerId: string | null; selectedId?: string; onSelect: (asset: MediaAsset) => boolean; description?: string; previewAssets?: MediaAsset[]; library?: "creative_assets" | "content";
 }) {
   const name = surface === "content" ? "Demo" : "Creative Assets";
-  const eligible = (asset: unknown): asset is MediaAsset => isWorkflowSourceVideo(asset) && (surface !== "content" || asset.sourceType === "demo_upload");
+  const eligible = (asset: unknown): asset is MediaAsset => isWorkflowSourceVideo(asset) &&
+    (surface === "content" ? asset.sourceType === "demo_upload" : asset.sourceType !== "demo_upload");
   const library = useQuery<MediaAsset[]>({
     queryKey: ["explore-source-videos", ownerId, surface], enabled: open && !!ownerId && !previewAssets,
     staleTime: 30_000, gcTime: 5 * 60_000, retry: false, refetchOnWindowFocus: false,

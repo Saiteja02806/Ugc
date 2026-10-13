@@ -41,16 +41,20 @@ export async function listDemosForOwner(input: {
   return data as DemoVideoRow[];
 }
 
-/** An IDE-registered Demo may use the generic media namespace rather than demos/raw. */
+/** Registered Demos retain their original owned media key instead of copying bytes.
+ * The legacy helper name also covers an explicit website-upload reclassification. */
 export async function isRegisteredMcpDemoForOwner(input: {
   userId: string; demoId: string; projectId: string; key: string;
 }) {
   const { data, error } = await getMcpStore().from("media_assets")
-    .select("id").eq("id", input.demoId).eq("user_id", input.userId)
+    .select("id,metadata").eq("id", input.demoId).eq("user_id", input.userId)
     .eq("project_id", input.projectId).eq("source_type", "demo_upload")
     .eq("source_record_id", input.demoId).eq("storage_key", input.key)
-    .eq("collection", "video").contains("metadata", { mcpUpload: true, mcpDemo: true })
+    .eq("collection", "video")
     .is("deleted_at", null).maybeSingle();
   if (error) fail(error);
-  return !!data;
+  if (!data || data.id !== input.demoId) return false;
+  const metadata = data.metadata && typeof data.metadata === "object" && !Array.isArray(data.metadata) ? data.metadata : {};
+  return (metadata.mcpUpload === true && metadata.mcpDemo === true) ||
+    (metadata.demoImportedFromUpload === true && metadata.demoId === input.demoId);
 }

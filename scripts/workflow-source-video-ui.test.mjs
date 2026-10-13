@@ -193,7 +193,7 @@ test("Content Demo picker uses its own inventory and cache, excluding ordinary c
   assert.match(text(tree).replace(/\s+/g, " "), /Choose from Demo/); rt.unmount();
 });
 
-test("Creative Assets fetch is owner-authenticated, excludes unfinished/non-video rows, and does no work while closed", async () => {
+test("Creative Assets fetch is owner-authenticated, excludes demos/unfinished/non-video rows, and does no work while closed", async () => {
   const rt = runtime(), calls = [], selected = [];
   const client = new QueryClient();
   let observer, unsubscribe;
@@ -207,7 +207,7 @@ test("Creative Assets fetch is owner-authenticated, excludes unfinished/non-vide
     "@tanstack/react-query": { useQuery }, "@/lib/http/read-deadline": { withReadDeadline },
     "@/components/ui/button": { Button: "button" }, "@/components/ui/dialog": Object.fromEntries(["Dialog", "DialogContent", "DialogDescription", "DialogHeader", "DialogTitle"].map(n => [n, n])),
     "@/lib/explore/workflow-source-video": policy, "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { assert.equal(owner, "owner"); return "owned-token"; } },
-  }, { AbortSignal, fetch: async (url, init) => { calls.push({ url, ...init }); return Response.json({ ok: true, assets: [asset, { ...asset, id: "00000000-0000-4000-8000-000000000002", status: "uploading" }, { ...asset, mimeType: "image/png" }] }); } });
+  }, { AbortSignal, fetch: async (url, init) => { calls.push({ url, ...init }); return Response.json({ ok: true, assets: [asset, { ...asset, id: "00000000-0000-4000-8000-000000000002", status: "uploading" }, { ...asset, mimeType: "image/png" }, { ...asset, id: "00000000-0000-4000-8000-000000000003", sourceType: "demo_upload" }] }); } });
   const props = { open: false, ownerId: "owner", onSelect: value => { selected.push(value); return true; }, onOpenChange() {} };
   const render = () => rt.render(() => mod.WorkflowVideoAssetPicker(props));
   render(); await tick(); assert.equal(calls.length, 0); props.open = true; render(); await tick();

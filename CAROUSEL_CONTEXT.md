@@ -6993,3 +6993,22 @@ The records below are retained from the deployed branch during release reconcili
   reconciled during this check.
 - The user explicitly asked that this UI change not be deployed. It was prepared
   after deployment source 07a4e516 was frozen and is outside that release.
+
+## 2026-10-14 Demo and Creative Assets separation
+
+- Dedicated `demo_upload` footage is excluded from the general Creative Assets
+  inventory and Explore's opening picker. Demo reads its dedicated records and
+  owned ready media projection. Scheduling explicitly retains ready demos as
+  secondary footage; existing compositions, media IDs and stored files remain
+  valid. This does not change Carousel image sourcing, matching or rendering.
+- The user specifically identified the existing WhatsApp upload as demo footage.
+  Its classification is corrected by linking that same asset to a Demo record,
+  retaining its original storage key and bytes. No filename heuristic applies
+  to other uploads. Generic-namespace registered demo removal retains bytes for
+  completed compositions after exact owner/project/source/key validation.
+- The prior complete UI/subtitle release c6a2e13f is active on the website, MCP
+  and warm video receiver. An authenticated 19.2-second caption run completed
+  in 11.34 seconds (0.95-second startup), compared with 130.63 seconds before
+  activation. Production Serif preview is one line and caption review is centered.
+  Ongoing SEO and subsequent inline Demo action work remain outside the frozen
+  follow-up release. See docs/demo-creative-assets-separation-2026-10-14.md.

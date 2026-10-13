@@ -9,7 +9,7 @@ export function isMediaAssetVisibleInMediaList(
   asset: MediaLibraryVisibilityCandidate & { status: string },
   purpose: string | null,
 ) {
-  return (purpose === "scheduling" && asset.sourceType === "reaction_render" && asset.status === "ready") ||
+  return (purpose === "scheduling" && ["reaction_render", "demo_upload"].includes(asset.sourceType) && asset.status === "ready") ||
     isMediaAssetVisibleInCreativeLibrary(asset);
 }
 
@@ -18,6 +18,7 @@ export function isMediaAssetVisibleInCreativeLibrary(
 ) {
   if (
     asset.sourceType === "catalog_influencer" ||
+    asset.sourceType === "demo_upload" ||
     asset.sourceType === "combined_render" ||
     asset.sourceType === "wall_text_render" ||
     asset.sourceType === "reaction_render"

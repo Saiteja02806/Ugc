@@ -15,6 +15,29 @@ function load(path, imports, globals = {}) {
 }
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 
+test("registered demo sources require exact owner/project/media linkage and a trusted registration marker", async () => {
+  for (const [metadata, accepted] of [
+    [{ mcpUpload: true, mcpDemo: true }, true],
+    [{ demoImportedFromUpload: true, demoId: id(1) }, true],
+    [{ demoImportedFromUpload: true, demoId: id(2) }, false],
+    [{ demoImportedFromUpload: "true", demoId: id(1) }, false],
+    [{ mcpDemo: true }, false], [{}, false], [null, false],
+  ]) {
+    const filters = {};
+    const { isRegisteredMcpDemoForOwner } = load("lib/demo/demo-library.ts", {
+      "server-only": {}, "@/lib/mcp/store": { getMcpStore: () => ({ from(table) {
+        assert.equal(table, "media_assets");
+        return { select(value) { assert.equal(value, "id,metadata"); return this; },
+          eq(key, value) { filters[key] = value; return this; },
+          is(key, value) { filters[key] = value; return this; },
+          async maybeSingle() { return { data: { id: id(1), metadata }, error: null }; } };
+      } }) },
+    });
+    assert.equal(await isRegisteredMcpDemoForOwner({ userId: "owner", demoId: id(1), projectId: "default", key: "original-key" }), accepted);
+    assert.deepEqual(filters, { id: id(1), user_id: "owner", project_id: "default", source_type: "demo_upload", source_record_id: id(1), storage_key: "original-key", collection: "video", deleted_at: null });
+  }
+});
+
 test("Content inventory requires both an owned demo and its ready projection, retaining the current Content title", async () => {
   const row = (n, patch = {}) => ({ id: id(n), status: "ready", user_id: "owner", source_type: "demo_upload", ...patch });
   const mod = load("lib/demo/content-demo-sources.ts", {

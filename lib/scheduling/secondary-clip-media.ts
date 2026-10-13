@@ -26,9 +26,9 @@ export function isScheduledVideoMediaAsset(asset: MediaAsset) {
 export function isContentSecondaryClipMediaAsset(asset: MediaAsset) {
   return (
     isScheduledVideoMediaAsset(asset) &&
-    isMediaAssetVisibleInCreativeLibrary({
+    (asset.sourceType === "demo_upload" || isMediaAssetVisibleInCreativeLibrary({
       metadata: asset.metadata,
       sourceType: asset.sourceType,
-    })
+    }))
   );
 }

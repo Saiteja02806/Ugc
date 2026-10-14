@@ -333,3 +333,28 @@ test("workflow form keeps its preview draft in sync without repeated parent upda
   assert.equal(h.snapshots[0].targets[0].connectionId, h.props.initialPlannedTargets[0].connectionId);
   h.unmount();
 });
+
+
+test("workflow account replacement keeps one choice per platform and preserves other platforms", async () => {
+  const first = fixture({ presentation: "workflow" });
+  const alternate = { ...first.props.socialConnections[0], id: "00000000-0000-4000-8000-000000000009" };
+  first.props.socialConnections = [...first.props.socialConnections, alternate];
+  await renderSettled(first);
+  let picker = first.nodes().find(node => node.type?.name === "ConnectedAccountSelector");
+  const youtube = first.props.socialConnections.find(account => account.platform === "youtube");
+  picker.props.onToggle(youtube.id); first.render();
+  picker = first.nodes().find(node => node.type?.name === "ConnectedAccountSelector");
+  picker.props.onToggle(alternate.id); first.render();
+  picker = first.nodes().find(node => node.type?.name === "ConnectedAccountSelector");
+  assert.deepEqual(Array.from(picker.props.selectedConnectionIds).sort(), [alternate.id, youtube.id].sort());
+  first.save().props.onClick();
+  assert.equal(first.submitted[0].targets.length, 2);
+  assert.equal(first.submitted[0].targets.find(target => target.platform === "instagram").connectionId, alternate.id);
+  first.unmount();
+  const ordinary = fixture({ presentation: "modal" }); ordinary.props.socialConnections = [...ordinary.props.socialConnections, alternate];
+  await renderSettled(ordinary);
+  ordinary.nodes().find(node => node.type?.name === "ConnectedAccountSelector").props.onToggle(alternate.id); ordinary.render();
+  assert.equal(ordinary.nodes().find(node => node.type?.name === "ConnectedAccountSelector").props.selectedConnectionIds.length, 2, "Generic Scheduling retains its multiple-account behavior");
+  ordinary.unmount();
+});
+

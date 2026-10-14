@@ -16,7 +16,7 @@ export class ScheduleRequestError extends Error {
 export function isScheduleTimeRejected(error: unknown) {
   return error instanceof ScheduleRequestError && error.status === 409 && error.code === "schedule_time_too_soon";
 }
-export const SCHEDULE_TIME_REJECTED_MESSAGE = "The earlier request's time was rejected. Review your current date and time, then confirm again.";
+export const SCHEDULE_TIME_REJECTED_MESSAGE = "The earlier request's time was rejected. Choose a future time, then click Schedule post.";
 
 export type ScheduleReceipt = { version: 1; owner: string; kind: "hook" | "phone"; input: ScheduleCreateInput; scheduleId?: string; timeRejected?: true };
 export function readScheduleReceipt(raw: string | null, owner: string, kind: "hook" | "phone", sourceKind: "media_asset" | "library_item" = "media_asset"): ScheduleReceipt | null {

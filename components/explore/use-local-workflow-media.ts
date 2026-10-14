@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-export type LocalWorkflowMedia = { name: string; url: string; duration: number | null; file?: File };
+export type LocalWorkflowMedia = { name: string; url: string; duration: number | null; width?: number | null; height?: number | null; file?: File };
 export type LocalMediaKind = "image" | "audio" | "video";
 type FileSelectionOptions = { minDuration?: number; maxDuration?: number; signal?: AbortSignal; onRead?: (asset: LocalWorkflowMedia) => void };
 

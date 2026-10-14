@@ -8,6 +8,7 @@ import { useLocalWorkflowMedia, type LocalMediaKind, type LocalWorkflowMedia } f
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import studio from "@/components/explore/workflow-studio.module.css";
+import playerStyles from "@/components/explore/workflow-media-player.module.css";
 import { cn } from "@/lib/utils";
 
 export type WorkflowAttachment = ReturnType<typeof useLocalWorkflowMedia>;
@@ -61,7 +62,7 @@ export function WorkflowMediaPlayer({ asset, kind, label, className }: {
   }, [asset.url]);
 
   return kind === "video"
-    ? <video key={asset.url} ref={playerRef} src={asset.url} aria-label={label} controls playsInline preload="metadata" className={cn("aspect-video w-full rounded-2xl bg-black object-contain", className)} />
+    ? <video key={asset.url} ref={playerRef} src={asset.url} width={asset.width ?? undefined} height={asset.height ?? undefined} aria-label={label} controls playsInline preload="metadata" className={cn(playerStyles.video, "rounded-2xl bg-black object-contain", className)} />
     : <audio key={asset.url} ref={playerRef} src={asset.url} aria-label={label} controls preload="metadata" className="h-9 w-full min-w-0" />;
 }
 

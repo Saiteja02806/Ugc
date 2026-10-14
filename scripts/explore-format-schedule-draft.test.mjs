@@ -6,12 +6,13 @@ import vm from "node:vm";
 import ts from "typescript";
 import * as drafts from "../lib/explore/format-schedule-draft.ts";
 import * as scheduling from "../lib/explore/workflow-scheduling-draft.ts";
+import { prepareSimpleWorkflowSchedule } from "../lib/explore/simple-workflow-schedule.ts";
 import * as scheduleClient from "../lib/explore/workflow-schedule-client.ts";
 
 const empty = { platform: "", caption: "", date: "", time: "", connectionId: "" };
 const output = { id: "00000000-0000-4000-8000-000000000001", kind: "media_asset", url: "/saved.mp4", title: "Saved video" };
 const scope = { environment: "live", owner: "alice", format: "hook", output };
-const draft = { caption: "My post", date: "2026-10-20", time: "18:30", platform: "instagram", platforms: ["instagram"], connectionId: "account-a", connectionIds: { instagram: "account-a" } };
+const draft = { caption: "My post", date: "2099-12-01", time: "18:30", platform: "instagram", platforms: ["instagram"], connectionId: "account-a", connectionIds: { instagram: "account-a" } };
 const normalize = value => JSON.parse(JSON.stringify(value));
 const nodes = tree => Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : [];
 
@@ -80,6 +81,7 @@ function harness(storage = new Map(), { allowReview = false, allowConfirm = fals
     "@/contexts/auth-context": { useAuth: () => ({ user: owner ? { uid: owner } : null }) },
     "@/components/providers/account-timezone-provider": { useAccountTimeZone: () => "Asia/Calcutta" },
     "@/components/explore/workflow-scheduling-panel": { EMPTY_SCHEDULE_DRAFT: empty, WorkflowSchedulingPanel: "WorkflowSchedulingPanel" },
+    "@/lib/explore/simple-workflow-schedule": { prepareSimpleWorkflowSchedule },
     "@/lib/explore/format-schedule-draft": drafts, "@/lib/explore/workflow-scheduling-draft": scheduling,
     "@/lib/explore/workflow-schedule-client": allowConfirm ? scheduleClient : { readScheduleReceipt: () => null },
     "@/lib/explore/workflow-connected-accounts": { parseWorkflowConnectedAccounts: value => { assert.equal(value.ok, true); assert.ok(Array.isArray(value.connections)); } },
@@ -102,7 +104,7 @@ function harness(storage = new Map(), { allowReview = false, allowConfirm = fals
       }
       if (url === "/api/schedules?configOnly=1") return { ok: true, json: async () => ({ ok: true, minimumScheduleLeadMinutes: 5 }) };
       assert.equal(url, "/api/social/connections");
-      return { ok: true, json: async () => ({ ok: true, connections: [{ id: reviewAccountId, platform: "instagram" }] }) };
+      return { ok: true, json: async () => ({ ok: true, connections: [{ id: reviewAccountId, platform: "instagram",status:"connected",platformAccountName:null,platformAccountUsername:null,scopes:["instagram_business_content_publish"],supportsBackgroundRefresh:true }] }) };
     }, require(name) { if (name in imports) return imports[name]; if (name.startsWith("@/components/")) return new Proxy({}, { get: (_, key) => String(key) }); throw new Error(name); } });
   const props = { output, format: "hook", localPreview: false, imageOnly: false, active: true };
   const render = () => { cursor = 0; tree = exported.FormatSchedulePanel(props); while (effects.length) effects.shift()(); return tree; };
@@ -114,82 +116,51 @@ function harness(storage = new Map(), { allowReview = false, allowConfirm = fals
   };
 }
 
-test("all format reviews stay inline, retain edits on Back, and close when the finished output changes", async () => {
-  for (const format of ["hook", "wall_text", "slideshow"]) {
-    const h = harness(new Map(), { allowReview: true });
-    h.props.format = format; h.props.imageOnly = format === "slideshow";
-    if (h.props.imageOnly) h.props.output = { ...output, kind: "library_item" };
-    h.render(); h.hydrate(); h.form().onChange(draft); h.render();
-    const openReview = () => nodes(h.form().footer).find(node => node.type === "Button" && node.props.size === "lg").props.onClick();
-    openReview(); await new Promise(setImmediate); let tree = h.render();
-    const editor = h.editor();
-    assert.equal(editor.presentation, "inline");
-    assert.equal(editor.initialCaption, draft.caption);
-    assert.equal(editor.initialTimezone, "Asia/Calcutta");
-    assert.equal(editor.initialLibraryItemId, h.props.imageOnly ? output.id : undefined);
-    assert.equal(editor.finalVideo?.id, h.props.imageOnly ? undefined : output.id);
-    assert.equal(nodes(tree).some(node => node.props?.["aria-label"] === "Schedule summary"), false, "Do not show the previous summary during editable review");
-    assert.equal(h.requests.length, 2);
-    editor.onCloseDraft({ caption: "Updated caption", date: "2026-10-21", time: "17:45", timezone: "Asia/Dubai" }); editor.onClose(); tree = h.render();
-    assert.equal(h.editor(), null);
-    assert.deepEqual(normalize(h.form().draft), { ...draft, caption: "Updated caption", date: "2026-10-21", time: "17:45", timezone: "Asia/Dubai" });
-    assert.ok(nodes(tree).some(node => node.props?.["aria-label"] === "Schedule summary"));
-    openReview(); await new Promise(setImmediate); h.render();
-    assert.equal(h.editor().initialTimezone, "Asia/Dubai");
-    h.props.output = { ...h.props.output, id: "replacement-output" }; h.render();
-    assert.equal(h.editor(), null, "A review is tied to its exact output");
-    assert.equal(h.requests.some(request => request.options.method === "POST"), false);
+const clickSchedule = h => nodes(h.form().footer).find(node => node.type === "Button" && node.props.size === "lg").props.onClick();
+const settle = () => new Promise(setImmediate);
+
+test("Hook, Wall and Slideshow use the original simple form and schedule directly", async () => {
+  for(const format of ["hook","wall_text","slideshow"]) {
+    const account=randomUUID(), h=harness(new Map(),{allowReview:true,allowConfirm:true,reviewAccountId:account});
+    h.props.format=format; h.props.imageOnly=format === "slideshow"; if(h.props.imageOnly)h.props.output={...output,kind:"library_item"};
+    h.render(); h.hydrate(); h.form().onChange({...draft,connectionId:account,connectionIds:{instagram:account},timezone:"Asia/Dubai"}); h.render();
+    assert.equal(h.editor(),null); assert.equal(h.externalCalls,0); clickSchedule(h); await settle(); h.render();
+    const posts=h.requests.filter(request=>request.options.method === "POST"); assert.equal(posts.length,1); assert.equal(h.editor(),null);
+    const actual=JSON.parse(posts[0].options.body); assert.deepEqual(actual.source,{id:output.id,kind:h.props.output.kind});
+    assert.equal(actual.caption,draft.caption); assert.equal(actual.scheduledFor,"2099-12-01T14:30:00.000Z");
+    assert.ok(nodes(h.render()).some(node=>node.props?.["aria-label"] === "Schedule summary"));
   }
 });
 
-test("Hook, Wall and Slideshow correct rejected receipts while preserving the same idempotency key", async () => {
-  for (const format of ["hook", "wall_text", "slideshow"]) {
-    const account = randomUUID(), kind = format === "slideshow" ? "library_item" : "media_asset";
-    const prior = { version: 1, owner: "alice", kind: "hook", input: { caption: "Old", source: { kind, id: output.id }, targets: [{ platform: "instagram", connectionId: account }], scheduledDate: "2026-10-14", scheduledTime: "04:10", scheduledFor: "2026-10-13T22:40:00.000Z", timezone: "Asia/Calcutta", idempotencyKey: `explore:${randomUUID()}` } };
-    const key = `ugc-explore:schedule:v1:alice:format:${kind}:${output.id}`;
-    const h = harness(new Map([[key, JSON.stringify(prior)]]), { allowReview: true, allowConfirm: true, reviewAccountId: account, transport: async (_url, options) => options.method === "POST" && JSON.parse(options.body).scheduledTime === "04:10" ? Response.json({ ok: false, code: "schedule_time_too_soon", message: "Choose a time at least 5 minutes from now." }, { status: 409 }) : null });
-    h.props.format = format; h.props.imageOnly = kind === "library_item"; h.props.output = { ...output, kind };
-    h.render(); h.hydrate(); h.form().onChange({ ...draft, connectionId: account, connectionIds: { instagram: account }, date: "2026-10-14", time: "04:18" }); h.render();
-    nodes(h.form().footer).find(node => node.type === "Button" && node.props.size === "lg").props.onClick(); await new Promise(setImmediate); h.render();
-    assert.equal(h.editor().initialScheduledTime, "04:18"); assert.equal(JSON.parse(h.storage.get(key)).timeRejected, true);
-    h.editor().onSave({ caption: "Updated", scheduledDate: "2026-10-14", scheduledTime: "04:18", scheduledFor: "2026-10-13T22:48:00.000Z", timezone: "Asia/Calcutta", scheduledSource: { id: output.id, kind }, targets: [{ platform: "instagram", connectionId: account }] });
-    await new Promise(setImmediate); h.render();
-    const posts = h.requests.filter(request => request.options.method === "POST");
-    const updated = JSON.parse(posts.at(-1).options.body);
-    assert.equal(updated.scheduledTime, "04:18"); assert.equal(updated.idempotencyKey, prior.input.idempotencyKey);
-    assert.equal(h.editor(), null);
+test("rejected format requests use the corrected time without changing their idempotency key", async () => {
+  for(const format of ["hook","wall_text","slideshow"]) {
+    const account=randomUUID(), kind=format === "slideshow" ? "library_item" : "media_asset";
+    const prior={version:1,owner:"alice",kind:"hook",timeRejected:true,input:{caption:"Original",source:{kind,id:output.id},targets:[{platform:"instagram",connectionId:account}],scheduledFor:"2026-10-13T22:40:00.000Z",timezone:"Asia/Calcutta",idempotencyKey:`explore:${randomUUID()}`}};
+    const key=`ugc-explore:schedule:v1:alice:format:${kind}:${output.id}`;
+    const h=harness(new Map([[key,JSON.stringify(prior)]]),{allowReview:true,allowConfirm:true,reviewAccountId:account,transport:async(url)=>url === "/api/schedules" ? Response.json({ok:true,schedules:[]}) : null});
+    h.props.format=format; h.props.imageOnly=kind === "library_item"; h.props.output={...output,kind};
+    h.render(); h.hydrate(); h.form().onChange({...draft,connectionId:account,connectionIds:{instagram:account}}); h.render(); clickSchedule(h); await settle(); h.render();
+    const posts=h.requests.filter(request=>request.options.method === "POST"); assert.equal(posts.length,1);
+    const actual=JSON.parse(posts[0].options.body); assert.equal(actual.idempotencyKey,prior.input.idempotencyKey); assert.equal(actual.scheduledFor,"2099-12-01T13:00:00.000Z"); assert.equal(h.editor(),null);
   }
 });
 
-test("uncertain format requests replay exact inputs even when the visible time changes", async () => {
-  const account = randomUUID(); let count = 0;
-  const h = harness(new Map(), { allowReview: true, allowConfirm: true, reviewAccountId: account, transport: async (_url, options) => { if (options.method === "POST" && ++count === 1) throw new Error("Lost acknowledgement"); } });
-  h.render(); h.hydrate(); h.form().onChange({ ...draft, connectionId: account, connectionIds: { instagram: account } }); h.render();
-  nodes(h.form().footer).find(node => node.type === "Button" && node.props.size === "lg").props.onClick(); await new Promise(setImmediate); h.render();
-  const submission = { caption: "Exact", scheduledDate: "2026-10-14", scheduledTime: "04:18", scheduledFor: "2026-10-13T22:48:00.000Z", timezone: "Asia/Calcutta", scheduledSource: { ...output }, targets: [{ platform: "instagram", connectionId: account }] };
-  h.editor().onSave(submission); await new Promise(setImmediate); h.render();
-  h.editor().onSave({ ...submission, scheduledTime: "04:28", scheduledFor: "2026-10-13T22:58:00.000Z" }); await new Promise(setImmediate); h.render();
-  const posts = h.requests.filter(request => request.options.method === "POST");
-  assert.equal(posts.length, 2); assert.equal(posts[1].options.body, posts[0].options.body);
+test("uncertain format requests replay exact input after visible time and caption changes", async () => {
+  const account=randomUUID(); let count=0;
+  const h=harness(new Map(),{allowReview:true,allowConfirm:true,reviewAccountId:account,transport:async(_url,options)=>{ if(options.method === "POST" && ++count === 1) throw Error("Lost acknowledgement"); }});
+  h.render(); h.hydrate(); h.form().onChange({...draft,connectionId:account,connectionIds:{instagram:account}}); h.render(); clickSchedule(h); await settle(); h.render();
+  h.form().onChange({...h.form().draft,caption:"Changed",time:"19:45"}); h.render(); clickSchedule(h); await settle(); h.render();
+  const posts=h.requests.filter(request=>request.options.method === "POST"); assert.equal(posts.length,2); assert.equal(posts[1].options.body,posts[0].options.body);
 });
 
-test("confirmed inline values become the schedule summary while the exact request is persisted before submission", async () => {
-  for (const format of ["hook", "wall_text", "slideshow"]) {
-    const account = randomUUID();
-    const h = harness(new Map(), { allowReview: true, allowConfirm: true, reviewAccountId: account });
-    h.props.format = format; h.props.imageOnly = format === "slideshow";
-    if (h.props.imageOnly) h.props.output = { ...output, kind: "library_item" };
-    h.render(); h.hydrate(); h.form().onChange({ ...draft, connectionId: account, connectionIds: { instagram: account } }); h.render();
-    nodes(h.form().footer).find(node => node.type === "Button" && node.props.size === "lg").props.onClick(); await new Promise(setImmediate); h.render();
-    assert.equal(h.requests.some(request => request.options.method === "POST"), false);
-    const confirmed = { caption: "Confirmed post", scheduledDate: "2026-10-21", scheduledTime: "17:45", timezone: "Asia/Dubai", scheduledFor: "2026-10-21T13:45:00.000Z", scheduledSource: { id: output.id, kind: h.props.output.kind }, targets: [{ platform: "instagram", connectionId: account }] };
-    h.editor().onSave(confirmed); await new Promise(setImmediate); h.render();
-    assert.equal(h.editor(), null);
-    assert.equal(h.form().draft.caption, confirmed.caption); assert.equal(h.form().draft.date, confirmed.scheduledDate);
-    assert.equal(h.form().draft.time, confirmed.scheduledTime); assert.equal(h.form().draft.timezone, confirmed.timezone);
-    assert.ok(nodes(h.form().footer).some(node => node.props?.role === "status" && node.props.children === "Your post is scheduled. Review it in Scheduling."));
-    const posts = h.requests.filter(request => request.options.method === "POST"); assert.equal(posts.length, 1);
-    assert.deepEqual(JSON.parse(posts[0].options.body).source, confirmed.scheduledSource);
+test("source or draft changes while settings load cannot submit a stale format schedule", async () => {
+  for(const field of ["output","caption","time"]) {
+    let complete; const account=randomUUID();
+    const h=harness(new Map(),{allowReview:true,allowConfirm:true,reviewAccountId:account,transport:async(url)=>url === "/api/schedules?configOnly=1" ? new Promise(resolve=>{complete=resolve;}) : null});
+    h.render(); h.hydrate(); h.form().onChange({...draft,connectionId:account,connectionIds:{instagram:account}}); h.render(); clickSchedule(h); await settle();
+    if(field === "output")h.props.output={...output,id:randomUUID()}; else h.form().onChange({...h.form().draft,[field]:field === "time" ? "19:45" : "Changed"});
+    h.render(); complete(Response.json({ok:true,minimumScheduleLeadMinutes:5})); await settle(); h.render();
+    assert.equal(h.requests.some(request=>request.options.method === "POST"),false); assert.equal(h.editor(),null);
   }
 });
 

@@ -63,6 +63,7 @@ export function WorkflowSchedulingPanel({ draft, onChange, accountsControl, imag
       </div>
     </div>
     <p id={`${id}-timezone`} className="text-xs text-muted">Time zone: {timezone ?? "your device’s time zone"}</p>
+    {selected.includes("tiktok") ? <p className="text-xs leading-5 text-muted">By scheduling, you agree to TikTok’s Music Usage Confirmation.</p> : null}
     {footer}
   </section>;
 }

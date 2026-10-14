@@ -1,5 +1,5 @@
 .workspace.workspace { gap: 14px; }
-.sequence.sequence { flex: 1; height: auto; min-height: 240px; max-height: 480px; }
+.sequence.sequence { flex: none; height: min(60dvh, 480px); min-height: 240px; max-height: 480px; }
 /* Schedule stays inside the same tabbed controls card as Create and Edit demo. */
 .shell.shell[data-section="schedule"] [aria-label="Post scheduling settings"] { padding: 0; border: 0; border-radius: 0; background: transparent; }
 .shell.shell[data-section="schedule"] [data-workflow-action] { display: none; }

@@ -6,6 +6,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import sharp from "sharp";
 import * as remixSource from "../lib/explore/remix-source.ts";
+import { prepareSlideshowSequence } from "../lib/explore/slideshow-preparation.ts";
 
 function load(file, imports = {}, globals = {}) {
   const exports = {};
@@ -119,9 +120,9 @@ test("access and release gates stop a save before database mutations", async () 
 
 function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : []; }
 function text(tree) { return Array.isArray(tree) ? tree.map(text).join("") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" ? tree : ""; }
-async function editor({ failFirst = false, generated = true, storedDraft = null, localPreview = false, previewImages, onBackToPreview, onContinue = () => {}, storageState, actionsTarget = null, uploadResult } = {}) {
+async function editor({ failFirst = false, generated = true, storedDraft = null, localPreview = false, previewImages, onBackToPreview, onContinue = () => {}, storageState, actionsTarget = null, uploadResult, libraryItem } = {}) {
   let cursor = 0, nextRequest = 100;
-  const slots = [], effects = [], storage = new Map(storageState ?? []), requests = [], renders = [], uploads = [], saved = [], dirty = [], controller = { current: null };
+  const slots = [], effects = [], storage = new Map(storageState ?? []), requests = [], libraryReads = [], renders = [], uploads = [], saved = [], dirty = [], controller = { current: null };
   if (storedDraft) storage.set(`ugc-explore:slideshow-draft:v2:owner:uploaded:${id(40)}`, JSON.stringify(storedDraft));
   const element = (type, props) => ({ type, props });
   const react = {
@@ -137,6 +138,7 @@ async function editor({ failFirst = false, generated = true, storedDraft = null,
     "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: async value => ({ id: value, collection: "image", status: "ready", url: "https://storage.test/" + value + ".png", title: "Saved image", createdAt: "", ratio: "9:16" }) },
     "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia: async (file, kind, _, owner) => { uploads.push({ file, kind, owner }); return uploadResult ? uploadResult(file) : { asset: { id: id(300 + uploads.length) } }; } },
     "@/lib/explore/slideshow-text": { EMPTY_SLIDE_TEXT, parseSlideText },
+    "@/lib/explore/slideshow-preparation": { prepareSlideshowSequence },
     "@/lib/explore/slideshow-text-client": { renderSlideText: async (source, design) => { renders.push({ source, design }); return { source, design }; }, createSlideTextSvg: (design, width, height) => slideTextSvg(design, width, height, measure) },
     "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { assert.equal(owner, "owner"); return "offline-token"; } },
     "@/worker/src/lib/explore-finishing-contract": { isExploreUuid: uuid }, "./slideshow-editor.module.css": { default: { preview: "preview", overlay: "overlay" } }, "./workflow-creation.module.css": { default: {} },
@@ -144,7 +146,12 @@ async function editor({ failFirst = false, generated = true, storedDraft = null,
     document: {}, window: { addEventListener() {}, removeEventListener() {} }, setTimeout, clearTimeout, localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
     crypto: { randomUUID: () => id(nextRequest++) }, navigator: { locks: { request: async (_, options, callback) => { assert.equal(options.ifAvailable, true); return callback({}); } } },
     fetch: async (url, options) => {
-      if (url === "/api/library?type=carousel&projectId=explore") return { ok: true, json: async () => ({ ok: true, items: requests.map(body => ({ id: id(99), title: "Saved", sourceId: `explore-slideshow:${body.requestKey}`, projectId: "explore", slideCount: body.slides.length, slides: body.slides.map((_, i) => ({ slideNumber: i + 1, renderedUrl: `https://storage.test/${i}.png` })) })) }) };
+      if (url === `/api/library/carousels/${id(99)}`) {
+        libraryReads.push(url);
+        const body = requests.at(-1);
+        const item = libraryItem ?? (body ? { id: id(99), title: "Saved", sourceId: `explore-slideshow:${body.requestKey}`, projectId: "explore", slideCount: body.slides.length, slides: body.slides.map((_, i) => ({ slideNumber: i + 1, renderedUrl: `https://storage.test/${i}.png` })) } : null);
+        return { ok: true, json: async () => ({ok:true, item}) };
+      }
       assert.equal(url, "/api/explore/slideshows", "Only the mocked slideshow saving endpoint may be called");
       const body = JSON.parse(options.body); requests.push(body);
       if (failFirst && requests.length === 1) return { ok: false, json: async () => ({ error: "Interrupted save" }) };
@@ -163,8 +170,54 @@ async function editor({ failFirst = false, generated = true, storedDraft = null,
     addImage({ id: id(202), url: "https://storage.test/generated-2.png" }, 1);
     control("button", "Preview slide 1").props.onClick();
   }
-  return { render, control, heading, clickSave, requests, renders, uploads, saved, dirty, controller, useImage: addImage, storage, props };
+  return { render, control, heading, clickSave, requests, libraryReads, renders, uploads, saved, dirty, controller, useImage: addImage, storage, props };
 }
+
+test("saved slideshows restore by exact ID without depending on the first sixty browsing results", async () => {
+  const first = await editor(); first.heading("Saved heading"); await first.clickSave("Save slideshow");
+  const request = first.requests[0];
+  const item = {id:id(99), title:"Saved", sourceId:`explore-slideshow:${request.requestKey}`, projectId:"explore", slideCount:2, slides:[1,2].map((slideNumber,index) => ({slideNumber, renderedUrl:`https://storage.test/${index}.png`}))};
+  const reopened = await editor({generated:false, storageState:first.storage, libraryItem:item});
+  assert.deepEqual(reopened.libraryReads, [`/api/library/carousels/${id(99)}`]);
+  assert.equal(reopened.requests.length, 0); assert.equal(reopened.saved.length, 1);
+  assert.ok(reopened.control("Button", "Schedule slideshow"));
+  for (const patch of [{projectId:"other"}, {sourceId:"explore-slideshow:another-request"}, {slides:[item.slides[1],item.slides[0]]}]) {
+    const invalid = await editor({generated:false, storageState:first.storage, libraryItem:{...item,...patch}});
+    assert.equal(invalid.saved.length, 0); assert.equal(invalid.control("Button", "Schedule slideshow"), undefined);
+  }
+});
+
+test("two edited slides prepare together and still save in their exact displayed order", async () => {
+  const finish = new Map();
+  const h = await editor({uploadResult: file => new Promise(resolve => finish.set(file.design.heading, resolve))});
+  h.heading("First slide"); h.control("button", "Preview slide 2").props.onClick(); h.heading("Second slide");
+  await h.clickSave("Save slideshow");
+  assert.equal(h.uploads.length, 2); assert.equal(h.requests.length, 0);
+  assert.match(text(h.render()), /Preparing slides · 0 of 2/);
+  finish.get("Second slide")({asset:{id:id(302)}}); await new Promise(setImmediate);
+  assert.match(text(h.render()), /Preparing slides · 1 of 2/); assert.equal(h.requests.length, 0);
+  finish.get("First slide")({asset:{id:id(301)}}); await new Promise(setImmediate);
+  assert.deepEqual(h.requests[0].slides.map(slide => slide.mediaAssetId), [id(301),id(302)]);
+  assert.ok(h.control("Button", "Schedule slideshow"));
+});
+
+test("recovering another tab's earlier save preserves newer text as unsaved until its own save", async () => {
+  const first = await editor({failFirst:true}); first.heading("First tab text"); await first.clickSave("Save slideshow");
+  const key = "ugc-explore:slideshow-draft:v2:owner:save";
+  const raw = first.storage.get(key);
+  const otherStorage = new Map(first.storage); otherStorage.delete(key);
+  const other = await editor({generated:false, storageState:otherStorage}); other.heading("Second tab text");
+  // The first tab writes its immutable unfinished receipt after this tab's edit.
+  other.storage.set(key, raw);
+  await other.clickSave("Save slideshow");
+  assert.deepEqual(other.requests[0], first.requests[0]); assert.equal(other.saved.length, 0);
+  assert.equal(nodes(other.render()).find(node => node.type === "FormatSlideshowTextTools").props.design.heading, "Second tab text");
+  assert.equal(other.control("Button", "Schedule slideshow"), undefined);
+  assert.match(text(other.render()), /newer edits are still unsaved/);
+  await other.clickSave("Save slideshow");
+  assert.notEqual(other.requests[1].requestKey, first.requests[0].requestKey);
+  assert.equal(other.renders[0].design.heading, "Second tab text"); assert.equal(other.saved.length, 1);
+});
 test("slide selection and preview navigation retain the saved slideshow without marking it dirty", async () => {
   const h = await editor(); h.heading("First message");
   h.control("button", "Preview slide 2").props.onClick(); h.heading("Second message");

@@ -13,6 +13,7 @@ import {
 } from "../lib/generation-provider.js";
 import { generateRunwayHookVideoBuffer } from "../lib/runway-video.js";
 import { generateRunwaySeedanceVideoBuffer } from "../lib/runway-seedance-video.js";
+import { generateRunwayWanVideoBuffer } from "../lib/runway-wan-video.js";
 import { generateOpenRouterSeedanceVideoBuffer } from "../lib/openrouter-seedance-video.js";
 import { generateOpenRouterWanVideoBuffer } from "../lib/openrouter-wan-video.js";
 import { resolveHookVideoProvider } from "../lib/hook-video-provider.js";
@@ -44,6 +45,7 @@ type GenerateHookVideoBaseInput = {
   avatarImageUrl?: string;
   referenceImageUrls: string[];
   referenceAudioUrls: string[];
+  referenceAudioDurationSeconds: number[];
   resolution: HookVideoResolution;
   durationSeconds: number;
   hookIdea: string;
@@ -198,12 +200,12 @@ async function generateWithFallback(
     ? await context.store.getGenerationProviderOperation({ jobId: job.id, operationKey: "primary-higgsfield" })
     : null;
   const selectedProvider = resolveHookVideoProvider(input, legacyOperation);
-  if (input.model === "wan_3_0" && (input.referenceVideoUrl || input.referenceAudioUrls.length)) {
-    throw new ProviderRequestNotSubmittedError("WAN 3.0 supports image references in UGC Pilot. Choose Seedance 2.5 for audio or video references.");
+  if (input.model === "wan_3_0" && selectedProvider !== "runway" && (input.referenceVideoUrl || input.referenceAudioUrls.length)) {
+    throw new ProviderRequestNotSubmittedError("This saved WAN 3.0 request cannot use audio or video references. Start a new generation with your references.");
   }
 
-  if (input.referenceAudioUrls.length && input.model !== "seedance_2_5" && selectedProvider !== "higgsfield") {
-    throw new ProviderRequestNotSubmittedError("Audio references require Seedance 2.5.");
+  if (input.referenceAudioUrls.length && input.model !== "seedance_2_5" && !(input.model === "wan_3_0" && selectedProvider === "runway") && selectedProvider !== "higgsfield") {
+    throw new ProviderRequestNotSubmittedError("Choose WAN 3.0 or Seedance 2.5 to use audio references.");
   }
 
   if (selectedProvider === "higgsfield") {
@@ -322,6 +324,7 @@ async function generateWithProvider(
     referenceImageUrls: input.referenceImageUrls,
     // Keep fingerprints of existing requests unchanged when no audio was attached.
     ...(input.referenceAudioUrls.length ? { referenceAudioUrls: input.referenceAudioUrls } : {}),
+    ...(input.referenceAudioDurationSeconds.length ? { referenceAudioDurationSeconds: input.referenceAudioDurationSeconds } : {}),
     referenceVideoDurationSeconds: input.referenceVideoDurationSeconds ?? null,
     referenceVideoUrl: input.referenceVideoUrl ?? null,
     ...(input.referenceVideoMode ? { referenceVideoMode: input.referenceVideoMode } : {}),
@@ -379,6 +382,7 @@ async function generateWithProvider(
         ? await Promise.all(input.referenceImageUrls.map(url => resolveOwnedPrivateMediaUrl(url, job.user_id ?? ""))) : input.referenceImageUrls,
       referenceAudioUrls: !providerOperationId && !providerOutputUrl
         ? await Promise.all(input.referenceAudioUrls.map(url => resolveOwnedPrivateMediaUrl(url, job.user_id ?? ""))) : input.referenceAudioUrls,
+      referenceAudioDurationSeconds: input.referenceAudioDurationSeconds,
       referenceVideoDurationSeconds: input.referenceVideoDurationSeconds,
       referenceVideoMode: input.referenceVideoMode,
       referenceVideoUrl: !providerOperationId && !providerOutputUrl && input.referenceVideoUrl
@@ -429,6 +433,7 @@ async function generateProviderBuffer(
     referenceImageUrl?: string;
     referenceImageUrls?: string[];
     referenceAudioUrls?: string[];
+    referenceAudioDurationSeconds?: number[];
     referenceVideoDurationSeconds?: number;
     referenceVideoUrl?: string;
     referenceVideoMode?: "edit";
@@ -452,6 +457,9 @@ async function generateProviderBuffer(
   }
 
   if (provider === "runway") {
+    if (params.model === "wan_3_0") {
+      return generateRunwayWanVideoBuffer({ ...params, onOperationSucceeded });
+    }
     if (params.model === "kling_3_0") {
       return generateKlingVideoBuffer({ ...params, onOperationSucceeded });
     }
@@ -527,6 +535,7 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
     avatarImageUrl: getOptionalHttpsUrl(job.input_json.avatarImageUrl),
     referenceImageUrls: getReferenceImageUrls(job.input_json.referenceImageUrls, job.input_json.avatarImageUrl),
     referenceAudioUrls: getReferenceAudioUrls(job.input_json.referenceAudioUrls),
+    referenceAudioDurationSeconds: getReferenceAudioDurations(job.input_json.referenceAudioDurationSeconds),
     durationSeconds: getGenerationDurationSeconds(job.input_json.durationSeconds, model),
     hookIdea,
     model,
@@ -534,7 +543,7 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
     provider,
     referenceVideoDurationSeconds: getOptionalDurationSeconds(
       job.input_json.referenceVideoDurationSeconds,
-      referenceVideoMode ? 10 : job.input_json.model === "seedance_2_5" ? 30 : 3,
+      referenceVideoMode ? 10 : model === "wan_3_0" ? 15 : model === "seedance_2_5" ? 30 : 3,
     ),
     referenceVideoUrl,
     referenceVideoMode,
@@ -568,7 +577,7 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
 }
 
 function getOutputDurationSeconds(input: GenerateHookVideoInput, provider: HookVideoProvider) {
-  if (input.model === "wan_3_0" && provider === "openrouter") return input.durationSeconds;
+  if (input.model === "wan_3_0" && (provider === "openrouter" || provider === "runway")) return input.durationSeconds;
   if (input.model === "seedance_2_5" && (provider === "runway" || provider === "openrouter")) return input.durationSeconds;
   return input.referenceVideoUrl
     ? input.referenceVideoDurationSeconds ?? input.durationSeconds
@@ -583,9 +592,26 @@ function getGenerationDurationSeconds(value: Json | undefined, model: GenerateHo
     }
     return value;
   }
+  if (model === "seedance_2_5" || model === "kling_3_0" || model === "google_omni") {
+    if (value === undefined) return 4;
+    const minimum = model === "seedance_2_5" ? 4 : 3;
+    const maximum = model === "seedance_2_5" ? 30 : model === "kling_3_0" ? 15 : 10;
+    if (typeof value !== "number" || !Number.isInteger(value) || value < minimum || value > maximum) {
+      throw new ProviderRequestNotSubmittedError(`Choose a whole-number duration from ${minimum} to ${maximum} seconds for this model.`);
+    }
+    return value;
+  }
   return typeof value === "number" && Number.isInteger(value) && value >= 3 && value <= 30
     ? value
     : 4;
+}
+
+function getReferenceAudioDurations(value: Json | undefined): number[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.some(seconds => typeof seconds !== "number" || !Number.isFinite(seconds) || seconds <= 0 || seconds > 15)) {
+    throw new ProviderRequestNotSubmittedError("WAN 3.0 audio references must be 15 seconds or shorter.");
+  }
+  return value as number[];
 }
 
 function getGenerationResolution(

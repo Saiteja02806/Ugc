@@ -120,7 +120,7 @@ function PhoneWorkflowLayout({ generationEnabled, ownerId, demoFramingEnabled }:
           <Tabs.Panel value="create" keepMounted className={creation.sectionPanel}>
             <WorkflowVideoSourceSection kind="phone" selection={selection} />
             <div className={creation.generationFields} hidden={selection.mode !== "generate"}>
-            <PhoneWorkflowComposer ownerId={ownerId} instructions={instructions} onInstructionsChange={setInstructions} creator={creator} imageReferences={creator} videoReference={videoReference} generationSettings={generation.settings} onGenerationSettingsChange={generation.changeSettings} appScreenControl={<AppScreenPicker attachment={appScreen} />} audioLabel="Creator audio" audio={creatorAudio} audioMode={audioMode} onAudioModeChange={setAudioMode} />
+            <PhoneWorkflowComposer ownerId={ownerId} instructions={instructions} onInstructionsChange={setInstructions} creator={creator} imageReferences={creator} videoReference={videoReference} generationSettings={generation.settings} onGenerationSettingsChange={generation.changeSettings} appScreenControl={<AppScreenPicker attachment={appScreen} model={generation.settings.model} />} audioLabel="Creator audio" audio={creatorAudio} audioMode={audioMode} onAudioModeChange={setAudioMode} />
             </div>
           </Tabs.Panel>
           <Tabs.Panel value="edit" keepMounted className={creation.sectionPanel}>

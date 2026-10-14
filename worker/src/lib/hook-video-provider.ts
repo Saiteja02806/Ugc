@@ -7,10 +7,12 @@ export function resolveHookVideoProvider(input: {
 }, legacyOperation: { provider_operation_id: string | null; status: string } | null) {
   if (input.model === "kling_3_0") return "runway" as const;
   if (input.model === "wan_3_0") {
-    if (input.provider && input.provider !== "openrouter") {
-      throw new ProviderRequestNotSubmittedError("WAN 3.0 requires OpenRouter.");
+    if (input.provider && input.provider !== "openrouter" && input.provider !== "runway") {
+      throw new ProviderRequestNotSubmittedError("The selected WAN 3.0 generation route is unavailable.");
     }
-    return "openrouter" as const;
+    // New multimodal requests freeze Runway routing before queuing. Older
+    // OpenRouter jobs keep their route so recovery cannot create a second job.
+    return input.provider ?? "openrouter" as const;
   }
   if (legacyOperation) {
     // A paid or uncertain legacy operation cannot become a fresh Runway task.

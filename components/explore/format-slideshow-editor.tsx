@@ -18,6 +18,7 @@ import type { LibraryCarouselItemRecord } from "@/lib/library/db";
 import type { MediaAsset } from "@/lib/media/types";
 import { EMPTY_SLIDE_TEXT, parseSlideText, type SlideTextDesign } from "@/lib/explore/slideshow-text";
 import { createSlideTextSvg, renderSlideText } from "@/lib/explore/slideshow-text-client";
+import { prepareSlideshowSequence } from "@/lib/explore/slideshow-preparation";
 import { FormatSlideshowTextTools } from "./format-slideshow-text-tools";
 import { RemixTextSection } from "./remix-text-section";
 import textStyles from "./slideshow-editor.module.css";
@@ -65,6 +66,7 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
   const [dimensions, setDimensions] = useState({ url: "", width: 1080, height: 1350 });
   const [previewIndex, setPreviewIndex] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [saveProgress, setSaveProgress] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(!localPreview);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,7 +108,7 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
   }, [persist, onDirty, text, owner, localPreview, draftKey]);
   const startNewSlide = useCallback(() => { replacementTarget.current = null; }, []);
   function editFingerprint(sequence: SlideshowSaveRequest["slides"]) { return JSON.stringify({ slides: sequence, text: sequence.map(slide => text[slide.referenceSlideId] ?? EMPTY_SLIDE_TEXT) }); }
-  function matchesSaved(saved: SlideshowSaveRequest, sequence: SlideshowSaveRequest["slides"]) { return sameSlideshowChoices(saved.sourceSlides ?? saved.slides, sequence) && (!saved.editFingerprint || saved.editFingerprint === editFingerprint(sequence)); }
+  function matchesSaved(saved: SlideshowSaveRequest, sequence: SlideshowSaveRequest["slides"]) { return sameSlideshowChoices(saved.sourceSlides ?? saved.slides, sequence) && (saved.editFingerprint ? saved.editFingerprint === editFingerprint(sequence) : !sequence.some(slide => hasText(text[slide.referenceSlideId] ?? EMPTY_SLIDE_TEXT))); }
   useImperativeHandle(controllerRef, () => ({ startNewSlide, useImage(image, index) {
     if (locked || working.current) { setError("Finish or resume the current slideshow save before changing slides."); return false; }
     if (!isExploreUuid(image.id) || !image.url.startsWith("https://")) { setError("Choose a saved image from your account."); return false; }
@@ -129,9 +131,9 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
   }
   async function verifyOutput(saved: SlideshowSaveRequest, token: string): Promise<SlideshowOutput> {
     if (!saved.output) throw new Error("No saved slideshow was found.");
-    const response = await fetch("/api/library?type=carousel&projectId=explore", { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
-    const data = await response.json() as { ok?: boolean; items?: LibraryCarouselItemRecord[] };
-    const item = data.items?.find(value => value.id === saved.output?.id && value.sourceId === `explore-slideshow:${saved.requestKey}` && value.projectId === "explore");
+    const response = await fetch(`/api/library/carousels/${saved.output.id}`, { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
+    const data = await response.json() as { ok?: boolean; item?: LibraryCarouselItemRecord };
+    const item = data.item?.id === saved.output.id && data.item.sourceId === `explore-slideshow:${saved.requestKey}` && data.item.projectId === "explore" ? data.item : null;
     const verified = item && item.slideCount === saved.slides.length && item.slides.every((slide, index) => slide.slideNumber === index + 1)
       ? readSlideshowOutput({ id: item.id, kind: "library_item", title: item.title, url: item.slides[0]?.renderedUrl, slides: item.slides.map(slide => slide.renderedUrl) }, saved.slides.length) : null;
     if (!response.ok || !data.ok || !verified) throw new Error("This saved slideshow is unavailable. Review your Library before scheduling.");
@@ -257,7 +259,7 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
   async function save() {
     if (!owner || localPreview || !savingEnabled || working.current || restoring || uploading || generationBusy) return;
     if (!pending && (slides.length < MIN_SLIDESHOW_SLIDES || slides.length > MAX_SLIDESHOW_SLIDES || slides.some(slide => !slide.image))) return;
-    working.current = true; setBusy(true); setError(null);
+    working.current = true; setBusy(true); setError(null); setSaveProgress("Checking saved slideshow…");
     try {
       if (!navigator.locks) throw new Error("Use a browser with Web Locks to save safely across tabs.");
       await navigator.locks.request(saveKey, { ifAvailable: true }, async lock => {
@@ -271,8 +273,10 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
         let saved: SlideshowSaveRequest;
         if (prior && !prior.output) saved = prior;
         else {
-          const resolved = [];
-          for (const slide of slideRef.current) {
+          const snapshot = [...slideRef.current];
+          const fingerprint = editFingerprint(current);
+          const resolved = await prepareSlideshowSequence(snapshot, async slide => {
+            if (!alive.current) throw new Error("Slideshow preparation was interrupted. Your edits are preserved.");
             const design = text[slide.referenceSlideId] ?? EMPTY_SLIDE_TEXT;
             let mediaAssetId = slide.mediaAssetId;
             if (hasText(design)) {
@@ -280,15 +284,16 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
               if (renderedText.current[slide.referenceSlideId]?.signature === signature) mediaAssetId = renderedText.current[slide.referenceSlideId].id;
               else {
                 const file = await renderSlideText(slide.image!.url, design, { referenceId: reference?.id ?? "owned", slideId: slide.referenceSlideId, mediaAssetId, ownerId: owner, preview: false });
-                if (!alive.current) return;
+                if (!alive.current) throw new Error("Slideshow preparation was interrupted. Your edits are preserved.");
                 const uploaded = await uploadAIStudioReferenceMedia(file, "image", undefined, owner);
-                if (!alive.current) return;
+                if (!alive.current) throw new Error("Slideshow preparation was interrupted. Your edits are preserved.");
                 mediaAssetId = uploaded.asset.id; renderedText.current[slide.referenceSlideId] = { signature, id: mediaAssetId };
               }
             }
-            resolved.push({ referenceSlideId: slide.referenceSlideId, mediaAssetId });
-          }
-          saved = { version: 2, owner, requestKey: crypto.randomUUID(), referenceId: reference?.id ?? null, slides: resolved, sourceSlides: current, editFingerprint: editFingerprint(current) };
+            return { referenceSlideId: slide.referenceSlideId, mediaAssetId };
+          }, (completed, total) => { if (alive.current) setSaveProgress(`Preparing slides · ${completed} of ${total}`); });
+          if (!alive.current) return;
+          saved = { version: 2, owner, requestKey: crypto.randomUUID(), referenceId: reference?.id ?? null, slides: resolved, sourceSlides: current, editFingerprint: fingerprint };
         }
         // Another tab's unfinished request wins until its exact outcome is known.
         if (saved.version === 1) {
@@ -296,12 +301,9 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
           if (!alive.current) return;
           setLegacyPreview(saved.slides.map(slide => recovered.find(value => value.referenceSlideId === slide.referenceSlideId)?.image?.url ?? (slide.mediaAssetId ? "" : guide?.slides.find(original => original.id === slide.referenceSlideId)?.url ?? "")));
           slideRef.current = []; setSlides([]); setPreviewIndex(0); setOutput(null); onDirty();
-        } else if (!sameSlideshowChoices(saved.sourceSlides ?? saved.slides, current)) {
-          const recovered = await loadChoices(saved.sourceSlides ?? saved.slides, token);
-          if (!alive.current) return;
-          persist(recovered); setPreviewIndex(0); setOutput(null); onDirty();
         }
         localStorage.setItem(saveKey, JSON.stringify(saved)); setPending(saved);
+        setSaveProgress(resumedRequest ? "Recovering saved slideshow…" : "Saving slideshow to Library…");
         const response = await fetch("/api/explore/slideshows", { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Idempotency-Key": saved.requestKey }, body: JSON.stringify({ version: saved.version, requestKey: saved.requestKey, referenceId: saved.referenceId, slides: saved.slides }) });
         const data: unknown = await response.json();
         const result = readSlideshowOutput(data, saved.slides.length);
@@ -315,10 +317,14 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
           throw new Error(data && typeof data === "object" && "error" in data && typeof data.error === "string" ? data.error : "Could not confirm your save. Resume the same request.");
         }
         if (!alive.current) return;
-        localStorage.setItem(saveKey, JSON.stringify({ ...saved, output: result })); setPending(null); setOutput(result); onSaved(result);
+        localStorage.setItem(saveKey, JSON.stringify({ ...saved, output: result })); setPending(null);
+        if (saved.version === 2 && !matchesSaved(saved, current)) {
+          setOutput(null); onDirty();
+          setError("The earlier slideshow is saved in Library. Your newer edits are still unsaved. Save again to keep these edits.");
+        } else { setOutput(result); onSaved(result); }
       });
     } catch (e) { if (alive.current) setError(e instanceof Error ? e.message : "Could not save the slideshow."); }
-    finally { working.current = false; if (alive.current) setBusy(false); }
+    finally { working.current = false; if (alive.current) { setBusy(false); setSaveProgress(null); } }
   }
   function goToCreate() { startNewSlide(); onGoToCreate?.(); }
   function continueToSchedule() {
@@ -341,7 +347,7 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
   const actions = <div className="space-y-2">
     {error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}
     {output ? <Button type="button" size="lg" className="h-11 w-full rounded-xl font-semibold shadow-sm hover:shadow transition-all" disabled={locked || generationBusy} onClick={continueToSchedule}>Schedule slideshow</Button> : <Button type="button" size="lg" className="h-11 w-full rounded-xl font-semibold shadow-sm hover:shadow transition-all" disabled={!canSave || localPreview || !savingEnabled || busy || uploading || restoring || generationBusy} onClick={() => void save()}>{busy ? "Saving…" : pending ? "Resume save" : "Save slideshow"}</Button>}
-    <p role="status" className="text-xs leading-5 text-muted">{restoring ? "Restoring your slides…" : uploading ? "Uploading your slide images…" : localPreview ? "Preview · uploads and saving disabled" : output ? "Your slideshow is saved in Library." : !savingEnabled ? "Slideshow saving is unavailable right now." : slides.length < 2 && !pending ? "Add at least two generated or uploaded images to save a slideshow." : "Save this sequence before scheduling."}</p>
+    <p role="status" className="text-xs leading-5 text-muted">{busy ? saveProgress ?? "Saving your slideshow…" : restoring ? "Restoring your slides…" : uploading ? "Uploading your slide images…" : localPreview ? "Preview · uploads and saving disabled" : output ? "Your slideshow is saved in Library." : !savingEnabled ? "Slideshow saving is unavailable right now." : slides.length < 2 && !pending ? "Add at least two generated or uploaded images to save a slideshow." : "Save this sequence before scheduling."}</p>
   </div>;
   if (!active || !controlsTarget || !resultsTarget) return null;
   return <>{actionsTarget ? createPortal(actions, actionsTarget) : null}{createPortal(<div className={textStyles.inspector}>

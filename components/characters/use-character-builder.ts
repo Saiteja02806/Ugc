@@ -42,6 +42,16 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false, 
   const accessKey = ["character-access", userId] as const;
   const historyKey = ["character-history", userId] as const;
   const [historyImage, setHistoryImage] = useState<CharacterHistoryImage | null>(null);
+  // Foreground results belong to this mounted visit, unlike durable recovery
+  // receipts. A completed receipt alone must never reopen a historical image.
+  const [visitJobIds, setVisitJobIds] = useState<Set<string>>(() => new Set());
+  const rememberVisitJobs = useCallback((ids: string[]) => {
+    if (!mounted.current || !ids.length) return;
+    setVisitJobIds((current) => {
+      if (ids.every((id) => current.has(id))) return current;
+      return new Set([...current, ...ids]);
+    });
+  }, []);
   const sessionQuery = useQuery({
     queryKey: sessionKey, enabled: Boolean(userId), staleTime: Infinity,
     queryFn: () => {
@@ -119,6 +129,9 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false, 
       results.forEach((job) => {
         if (!job.checkError) client.setQueryData(["character-job", userId, job.id], job);
       });
+      // Only an observed unfinished job is recovered into this visit. Unknown
+      // jobs that are already completed on their first check belong to History.
+      rememberVisitJobs(results.filter((job) => !job.isTerminal && !job.checkError).map((job) => job.id));
       const newlyTerminal = results.some((job, index) => job.isTerminal && !previousStatuses[index]?.isTerminal);
       const newlyCompleted = results.some((job, index) => job.output && !previousStatuses[index]?.output);
       if (newlyTerminal) {
@@ -140,6 +153,11 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false, 
       : session.jobs.every((receipt) => query.state.data?.some((job) => job.id === receipt.jobId && job.isTerminal)) ? false : 2_500,
     refetchOnWindowFocus: true,
   });
+  useEffect(() => {
+    // Cached unfinished jobs also survive navigation until they finish.
+    rememberVisitJobs((jobs.data ?? []).filter((job) => !job.isTerminal && !job.checkError
+      && !client.getQueryData<CharacterJobStatusResponse["job"]>(["character-job", userId, job.id])?.isTerminal).map((job) => job.id));
+  }, [client, userId, jobs.data, rememberVisitJobs]);
 
   const generate = useMutation({
     mutationFn: (request: CharacterGenerateRequest) => {
@@ -160,6 +178,7 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false, 
           id: job.jobId, status: "queued", isTerminal: false, error: null, output: null, checkError: null,
         });
       });
+      rememberVisitJobs(result.jobs.map((job) => job.jobId));
       updateSession({ jobs: appendCharacterSessionJobs(current.jobs, result.jobs), pendingRequest: null, lastActivityAt: Date.now() });
       if (mounted.current) setHistoryImage(null);
       void client.invalidateQueries({ queryKey: accessKey });
@@ -188,7 +207,9 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false, 
   });
   const inProgress = session.jobs.some((receipt) => !jobs.data?.find((job) => job.id === receipt.jobId)?.isTerminal);
   const selected = characters.data?.characters.find((character) => character.id === session.selectedCharacterId) ?? null;
-  const visibleJobs = historyImage ? [{ jobId: historyImage.jobId, generationId: historyImage.generationId }] : session.jobs;
+  const visibleJobs = historyImage ? [{ jobId: historyImage.jobId, generationId: historyImage.generationId }]
+    : session.jobs.filter((receipt) => visitJobIds.has(receipt.jobId)
+      || !jobs.data?.find((job) => job.id === receipt.jobId)?.isTerminal);
   const visibleStatuses = historyImage ? [{
     id: historyImage.jobId, model: historyImage.model, status: "completed" as const, isTerminal: true, error: null, checkError: null,
     output: { url: historyImage.url, mediaAssetId: historyImage.mediaAssetId, generationId: historyImage.generationId, width: null, height: null, ratio: "9:16" },
@@ -199,6 +220,7 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false, 
     const current = client.getQueryData<CharacterClientSession>(["character-session", userId]) ?? EMPTY_CHARACTER_SESSION;
     if (activityPending || select.isPending || generationFlight.current || current.pendingRequest || current.jobs.some((job) => !cachedJobStatus(job)?.isTerminal)) return;
     setHistoryImage(null);
+    setVisitJobIds(new Set());
     updateSession({ jobs: [], selectedCharacterId: null, lastActivityAt: null, sessionEpoch: current.sessionEpoch + 1 });
     resetSelection(); resetGeneration();
   }, [client, userId, cachedJobStatus, updateSession, resetSelection, resetGeneration, activityPending, select.isPending]);

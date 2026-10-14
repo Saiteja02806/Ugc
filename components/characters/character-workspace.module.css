@@ -42,6 +42,8 @@
 .portrait:not(:disabled) { cursor: pointer; }
 .portrait:focus-visible { outline: 2px solid var(--primary); outline-offset: -4px; border-radius: 14px; }
 .portrait img { width: 100%; height: 100%; object-fit: contain; }
+/* Keep hover/click on our controls instead of the browser's image-search overlay. */
+.workspace img, .savedCharacter img { pointer-events: none; }
 .candidateFooter { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; padding: 10px 12px; }
 .saveStatus { display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--primary); }
 .composerArea { position: sticky; bottom: 0; padding-top: 16px; background: linear-gradient(transparent, var(--background) 16px); }

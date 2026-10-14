@@ -12,19 +12,22 @@ import { cn } from "@/lib/utils";
 import { WorkflowSavedAudioChoices } from "@/components/explore/workflow-saved-audio-choices";
 import { WorkflowReferencePreview } from "@/components/explore/workflow-reference-preview";
 import reference from "@/components/explore/workflow-reference-preview.module.css";
+import { getVideoReferencePolicy } from "@/lib/ai-studio/video-reference-policy";
+import type { AIStudioVideoModel } from "@/lib/ai-studio/generation-settings";
 
 export type WorkflowAudioReferenceProps = {
   ownerId?: string | null;
-  audioLabel: "Hook audio" | "Creator audio";
+  audioLabel: "Hook audio" | "Creator audio" | "Talking head audio";
   audio: WorkflowAttachment;
   audioMode: "voice" | "recording";
   onAudioModeChange: (mode: "voice" | "recording") => void;
 };
 
 /** An AI reference only; no recording is inserted as generated-video music. */
-export function WorkflowAudioReference({ audioLabel, audio, ownerId, tile = false }: WorkflowAudioReferenceProps & { tile?: boolean }) {
+export function WorkflowAudioReference({ audioLabel, audio, ownerId, tile = false, model = "seedance_2_5" }: WorkflowAudioReferenceProps & { tile?: boolean; model?: AIStudioVideoModel }) {
   const [open, setOpen] = useState(false);
   const audioName = audioLabel.toLowerCase();
+  const maxDuration = getVideoReferencePolicy(model).maxAudioDuration;
   return <div className={reference.picker}>
     {audio.asset ? <WorkflowReferencePreview key={audio.asset.url} kind="voice" url={audio.asset.url} name={audio.asset.name} disabled={audio.loading} onRemove={audio.remove} /> : null}
     <Popover open={open} onOpenChange={setOpen}>
@@ -33,9 +36,9 @@ export function WorkflowAudioReference({ audioLabel, audio, ownerId, tile = fals
     </PopoverTrigger>
     <PopoverContent side="right" align="start" className={cn(studio.floating, creation.floating)}>
       <PopoverTitle>Audio reference</PopoverTitle>
-      <p className="text-xs text-muted">Guide vocal delivery with an audio clip. Requires Seedance 2.5 · Up to 30 seconds.</p>
-      <WorkflowFilePicker attachment={{ ...audio, choose: file => audio.choose(file, { maxDuration: 30 }) }} kind="audio" label={audio.asset ? `Replace ${audioName}` : `Attach ${audioName}`} buttonLabel={audio.asset ? "Replace audio" : "Choose audio"} className="h-9 text-sm" />
-      {open && ownerId ? <WorkflowSavedAudioChoices ownerId={ownerId} audio={audio} onVoiceReference={() => {}} /> : null}
+      <p className="text-xs text-muted">Guide vocal delivery. WAN 3.0: up to 15 seconds · Seedance 2.5: up to 30 seconds.</p>
+      <WorkflowFilePicker attachment={{ ...audio, choose: file => audio.choose(file, { maxDuration }) }} kind="audio" label={audio.asset ? `Replace ${audioName}` : `Attach ${audioName}`} buttonLabel={audio.asset ? "Replace audio" : "Choose audio"} className="h-9 text-sm" />
+      {open && ownerId ? <WorkflowSavedAudioChoices ownerId={ownerId} audio={audio} maxDuration={maxDuration} onVoiceReference={() => {}} /> : null}
       {audio.asset ? <>
         <div className="flex min-w-0 items-center gap-1"><WorkflowMediaPlayer asset={audio.asset} kind="audio" label={`${audioLabel} preview`} /><RemoveMediaButton label={audioName} onClick={audio.remove} /></div>
         <p className="break-all text-xs text-muted">{audio.asset.name}</p>

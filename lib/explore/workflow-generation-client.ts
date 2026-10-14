@@ -1,5 +1,6 @@
 import { AI_STUDIO_KLING_PROMPT_MAX_LENGTH, AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH, getAIStudioPromptLengthError, normalizeAIStudioPrompt } from "../ai-studio/prompt-policy";
 import { normalizeWorkflowGenerationSettings, type WorkflowGenerationSettings } from "./workflow-generation-settings";
+import { getVideoReferencePolicy, getVideoReferenceTypeError, getVideoTimedReferenceError } from "../ai-studio/video-reference-policy";
 
 export type WorkflowKind = "hook" | "phone";
 export type WorkflowImageSource = { name: string; url: string; file?: File };
@@ -46,24 +47,28 @@ export function getWorkflowGenerationDraftError(draft: WorkflowGenerationDraft) 
   }
   // Reject before uploading or spending. Never quietly discard an attached input.
   const videos = [draft.videoReference, draft.appScreen?.kind === "video" ? draft.appScreen : null].filter(Boolean) as WorkflowTimedSource[];
-  if ((videos.length || draft.audioReference) && draft.settings.model !== "seedance_2_5") return "Choose Seedance 2.5 to use reference audio or video through OpenRouter. These inputs guide generation; they are not background music or a demo.";
+  const referenceTypeError = getVideoReferenceTypeError(draft.settings.model, videos.length > 0, Boolean(draft.audioReference));
+  if (referenceTypeError) return referenceTypeError;
   if (videos.length > 1) return "Use one reference video: either Choose video or an app recording, not both.";
   for (const source of [...videos, ...(draft.audioReference ? [draft.audioReference] : [])]) {
-    if (!source.file || !Number.isFinite(source.duration) || !source.duration || source.duration <= 0 || source.duration > 30) return "Choose a reference audio or video file up to 30 seconds. Files are not shortened automatically.";
     const audio = source === draft.audioReference;
-    if (!source.file.type.startsWith(audio ? "audio/" : "video/") || !Number.isFinite(source.file.size) || source.file.size <= 0 || source.file.size > (audio ? 25 : 250) * 1024 ** 2) return "Use a playable reference audio file up to 25 MB or video up to 250 MB.";
+    if (!source.file) return "Choose or upload the reference file again.";
+    const referenceError = getVideoTimedReferenceError(draft.settings.model, audio ? "audio" : "video", source.duration, source.file.size);
+    if (referenceError) return referenceError;
+    if (!source.file.type.startsWith(audio ? "audio/" : "video/")) return "Use a playable audio or video reference file.";
   }
   const images = selectedWorkflowImages(draft);
-  const referenceLimit = draft.settings.model === "kling_3_0" ? 2 : 6;
+  const policy = getVideoReferencePolicy(draft.settings.model, { hasTimedReferences: videos.length > 0 || Boolean(draft.audioReference) });
+  const referenceLimit = policy.maxFiles;
   const imageLimit = referenceLimit - videos.length - Number(Boolean(draft.audioReference));
   if (images.length > imageLimit) return `This model accepts up to ${imageLimit} image references. Remove an image or choose another model.`;
   for (const image of images) {
-    if (image?.file && (!["image/png", "image/jpeg", "image/webp"].includes(image.file.type) || !Number.isFinite(image.file.size) || image.file.size <= 0 || image.file.size > 20 * 1024 ** 2)) {
-      return "Use a PNG, JPEG or WebP reference image up to 20 MB.";
+    if (image?.file && (!["image/png", "image/jpeg", "image/webp"].includes(image.file.type) || !Number.isFinite(image.file.size) || image.file.size <= 0 || image.file.size > policy.maxImageBytes)) {
+      return `Use a PNG, JPEG or WebP reference image up to ${policy.maxImageBytes / 1024 ** 2} MB with these references.`;
     }
   }
   if (draft.kind === "phone" && draft.appScreen && draft.settings.model === "kling_3_0") {
-    return "Choose Omni Flash 1.1 or an enabled Seedance 2.5 to use an app screenshot. Kling uses its images as first/last frames, not as an app-screen reference.";
+    return "Choose Omni Flash 1.1, Seedance 2.5 or WAN 3.0 to use an app screenshot. Kling uses its images as first/last frames.";
   }
   return null;
 }
@@ -162,6 +167,8 @@ export function createWorkflowGenerationClient(dependencies: {
             const result = uploadedMedia.get(cacheKey) ?? await dependencies.uploadReference(source, kind);
             dependencies.assertActive();
             if (!result.url.startsWith("https://") || !REQUEST_ID.test(result.assetId) || !Number.isFinite(result.duration) || result.duration <= 0 || result.duration > 30) throw new Error("The reference file could not be verified after uploading.");
+            const uploadedReferenceError = getVideoTimedReferenceError(settings.model, kind, result.duration);
+            if (uploadedReferenceError) throw new Error(uploadedReferenceError);
             uploadedMedia.set(cacheKey, result);
             return result;
           }

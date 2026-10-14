@@ -8,6 +8,13 @@ test("new Seedance requests use Runway, while Omni remains Gemini", () => {
   assert.equal(resolveHookVideoProvider({ model: "google_omni" }, null), "gemini");
 });
 
+test("WAN freezes the reference-capable route while preserving earlier image generation routing", () => {
+  assert.equal(resolveHookVideoProvider({ model: "wan_3_0" }, null), "openrouter");
+  assert.equal(resolveHookVideoProvider({ model: "wan_3_0", provider: "openrouter" }, null), "openrouter");
+  assert.equal(resolveHookVideoProvider({ model: "wan_3_0", provider: "runway" }, null), "runway");
+  assert.throws(() => resolveHookVideoProvider({ model: "wan_3_0", provider: "gemini" }, null), ProviderRequestNotSubmittedError);
+});
+
 test("explicit OpenRouter Seedance routing preserves accepted legacy tasks", () => {
   assert.equal(resolveHookVideoProvider({ model: "seedance_2_5", provider: "openrouter" }, null), "openrouter");
   assert.equal(resolveHookVideoProvider({ model: "seedance_2_5", provider: "openrouter" }, { status: "submitted", provider_operation_id: "legacy" }), "higgsfield");

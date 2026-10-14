@@ -55,7 +55,10 @@ import {
 } from "@/lib/carousel/db";
 import { resolveCarouselImageLibraryCategory } from "@/lib/carousel/image-library-category";
 import { DEFAULT_CAROUSEL_RENDER_STYLE } from "@/lib/carousel/render-style";
-import { assertCarouselStructureRuntimeReady } from "@/lib/carousel/structure";
+import {
+  assertCarouselStructureRuntimeReady,
+  type CarouselStructureId,
+} from "@/lib/carousel/structure";
 import {
   isCarouselContentFormatId,
   isCarouselHookFamilyId,
@@ -65,6 +68,11 @@ import {
   selectCarouselStructure2ExperimentBatch,
   type CarouselStructure2FormatAssignment,
 } from "@/lib/carousel/structure-2-selector";
+import {
+  buildTrendingSlideshowStyleBatchPlan,
+  getCarouselStructureForTrendingSlideshowStyle,
+  type TrendingSlideshowStyleMix,
+} from "@/lib/trending/slideshow-style-mix";
 
 export async function prepareBusinessProfileCarousels(profile: BusinessProfileRecord) {
   const contentPlan = await ensureCarouselContentPlanGeneration({
@@ -150,6 +158,7 @@ export async function prepareDailyBusinessProfileCarousels(params: {
   localDate: string;
   originDailyFeedId: string;
   profile: BusinessProfileRecord;
+  slideshowStyleMix?: TrendingSlideshowStyleMix;
   targetCandidateCount: number;
   timezone: string;
 }) {
@@ -199,6 +208,15 @@ export async function prepareDailyBusinessProfileCarousels(params: {
     generationBatchId: params.generationBatchId,
     originDailyFeedId: params.originDailyFeedId,
     profile: params.profile,
+    requestedStructureIds: params.slideshowStyleMix
+      ? buildTrendingSlideshowStyleBatchPlan({
+          carouselCount: Math.ceil(
+            requestedCandidateCount / CAROUSEL_EXPERIMENT_BATCH_SIZE,
+          ) * CAROUSEL_EXPERIMENT_BATCH_SIZE,
+          localDate: params.localDate,
+          mix: params.slideshowStyleMix,
+        }).map(getCarouselStructureForTrendingSlideshowStyle)
+      : undefined,
   });
 
   assertDailyBatchOwnership({
@@ -223,6 +241,7 @@ async function prepareControlledGenerationBatch(params: {
   generationBatchId: string;
   originDailyFeedId?: string | null;
   profile: BusinessProfileRecord;
+  requestedStructureIds?: readonly CarouselStructureId[];
 }) {
   // This must happen before reserving experiment batches or plan items. A
   // missing Cloud Tasks configuration is an application deployment error, not
@@ -234,11 +253,23 @@ async function prepareControlledGenerationBatch(params: {
       CAROUSEL_EXPERIMENT_BATCH_SIZE,
     50,
   );
+  const requestedStructureIds = params.requestedStructureIds;
+
+  if (
+    requestedStructureIds &&
+    requestedStructureIds.length !==
+      candidateCount / CAROUSEL_EXPERIMENT_BATCH_SIZE
+  ) {
+    throw new Error(
+      "The requested slideshow structures must match the complete planning batch count.",
+    );
+  }
   const experimentBatches = await reserveCarouselExperimentBatches({
     batchCount: candidateCount / CAROUSEL_EXPERIMENT_BATCH_SIZE,
     businessProfileId: params.profile.id,
     businessProfileVersion: params.profile.profileVersion,
     generationBatchId: params.generationBatchId,
+    requestedStructureIds,
   });
   const contentPlanItemsByExperimentBatch = new Map<
     string,

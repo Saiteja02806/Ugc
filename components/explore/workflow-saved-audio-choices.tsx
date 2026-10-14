@@ -15,15 +15,15 @@ import { Button } from "@/components/ui/button";
 import type { WorkflowAttachment } from "./hook-workflow-media-controls";
 import styles from "./workflow-saved-audio.module.css";
 
-export function WorkflowSavedAudioChoices({ ownerId, audio, onVoiceReference }: { ownerId: string; audio: WorkflowAttachment; onVoiceReference: () => void }) {
+export function WorkflowSavedAudioChoices({ ownerId, audio, onVoiceReference, maxDuration = 30 }: { ownerId: string; audio: WorkflowAttachment; onVoiceReference: () => void; maxDuration?: number }) {
   const { user, loading } = useAuth();
   if (loading) return <p role="status" className="text-xs text-muted">Loading your saved voices…</p>;
   if (!user) return <p className="text-xs text-muted">Sign in to see your saved voices and recordings.</p>;
   if (user.uid !== ownerId) return <p role="status" className="text-xs text-muted">Loading your saved voices…</p>;
-  return <SavedAudioSession key={user.uid} uid={user.uid} audio={audio} onVoiceReference={onVoiceReference} />;
+  return <SavedAudioSession key={user.uid} uid={user.uid} audio={audio} maxDuration={maxDuration} onVoiceReference={onVoiceReference} />;
 }
 
-function SavedAudioSession({ uid, audio, onVoiceReference }: { uid: string; audio: WorkflowAttachment; onVoiceReference: () => void }) {
+function SavedAudioSession({ uid, audio, onVoiceReference, maxDuration }: { uid: string; audio: WorkflowAttachment; onVoiceReference: () => void; maxDuration: number }) {
   const api = useMemo(() => createAudioApi(uid), [uid]);
   const bookmarks = useAudioBookmarks(uid, api);
   const selection = useAudioVoiceSelection(uid, api);
@@ -38,7 +38,7 @@ function SavedAudioSession({ uid, audio, onVoiceReference }: { uid: string; audi
   const selected = voices.find(voice => voice.id === selection.voiceId);
   const saved = [...bookmarks.ids].map(id => voices.find(voice => voice.id === id)).filter((voice): voice is AudioVoice => Boolean(voice) && voice?.id !== selected?.id);
   const unavailable = [...bookmarks.ids].filter(id => !voices.some(voice => voice.id === id)).length;
-  const recordings = library.data?.assets.filter(asset => asset.status === "ready" && !asset.testOnly && (asset.purpose === "generated" || asset.purpose === "exact") && (asset.duration === null || asset.duration <= 30)) ?? [];
+  const recordings = library.data?.assets.filter(asset => asset.status === "ready" && !asset.testOnly && (asset.purpose === "generated" || asset.purpose === "exact") && (asset.duration === null || asset.duration <= maxDuration)) ?? [];
 
   function preview(voice: AudioVoice) {
     const previous = player.current; player.current = null; previous?.pause();
@@ -58,10 +58,10 @@ function SavedAudioSession({ uid, audio, onVoiceReference }: { uid: string; audi
         const response = await createAudioFetch(uid)(path, { signal: controller.signal });
         if (Number(response.headers.get("Content-Length")) > 12 * 1024 * 1024) throw new Error("This recording is too large for an audio reference.");
         const blob = await response.blob();
-        if (!blob.size || blob.size > 12 * 1024 * 1024 || !blob.type.startsWith("audio/")) throw new Error("Choose a complete audio recording up to 30 seconds.");
+        if (!blob.size || blob.size > 12 * 1024 * 1024 || !blob.type.startsWith("audio/")) throw new Error(`Choose a complete audio recording up to ${maxDuration} seconds.`);
         const extension = blob.type.includes("wav") ? "wav" : blob.type.includes("mp4") || blob.type.includes("m4a") ? "m4a" : blob.type.includes("ogg") ? "ogg" : blob.type.includes("webm") ? "webm" : "mp3";
         return new File([blob], `${name}.${extension}`, { type: blob.type });
-      }, { maxDuration: 30, signal: controller.signal });
+      }, { maxDuration, signal: controller.signal });
       if (accepted && !controller.signal.aborted && voice) onVoiceReference();
     } catch (error) {
       if (!controller.signal.aborted) setError(error instanceof Error ? error.message : "Audio could not be selected. Try again.");

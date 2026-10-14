@@ -27,6 +27,7 @@ const generate = provider => async params => {
 };
 for (const [file, name, provider] of [
   ["runway-seedance-video", "generateRunwaySeedanceVideoBuffer", "runway"],
+  ["runway-wan-video", "generateRunwayWanVideoBuffer", "runway"],
   ["openrouter-seedance-video", "generateOpenRouterSeedanceVideoBuffer", "openrouter"],
   ["openrouter-wan-video", "generateOpenRouterWanVideoBuffer", "openrouter"],
   ["kling-video", "generateKlingVideoBuffer", "kling"],
@@ -69,6 +70,26 @@ function fixture(input = {}, shouldSubmit = true) {
     } },
   };
 }
+
+test("WAN multimodal worker dispatch retains every reference and the selected output duration", async () => {
+  const inputs = { model: "wan_3_0", provider: "runway", durationSeconds: 3,
+    referenceImageUrls: ["https://owned-media.example.test/image.png"],
+    referenceAudioUrls: ["https://owned-media.example.test/audio.mp3"], referenceAudioDurationSeconds: [5],
+    referenceVideoUrl: "https://owned-media.example.test/video.mp4", referenceVideoDurationSeconds: 15 };
+  const f = fixture(inputs);
+  const output = await runGenerateHookVideoJob(f.job, f.context);
+  assert.equal(received.at(-1).provider, "runway"); assert.equal(received.at(-1).model, "wan_3_0");
+  assert.deepEqual(received.at(-1).referenceImageUrls, inputs.referenceImageUrls);
+  assert.deepEqual(received.at(-1).referenceAudioUrls, inputs.referenceAudioUrls);
+  assert.deepEqual(received.at(-1).referenceAudioDurationSeconds, [5]);
+  assert.equal(received.at(-1).referenceVideoUrl, inputs.referenceVideoUrl);
+  assert.equal(output.durationSeconds, 3, "Input video duration must not replace the chosen output duration");
+  const reservation = f.events.find(event => event.name === "reserve");
+  assert.equal(reservation.operationKey, "primary-runway");
+  const different = fixture({ ...inputs, referenceAudioDurationSeconds: [4] });
+  await runGenerateHookVideoJob(different.job, different.context);
+  assert.notEqual(different.events.find(event => event.name === "reserve").requestFingerprint, reservation.requestFingerprint);
+});
 
 test("both Explore formats apply their selected MP3 to the completed provider result and persist its reference identity", async () => {
   const { getExplorePairedReferences } = await import("../../dist/lib/explore-reference-soundtrack.js");

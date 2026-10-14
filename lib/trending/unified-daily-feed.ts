@@ -564,6 +564,9 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
       includeWallText: params.includeWallText,
       markItemsShown: params.markItemsShown,
       profile: params.profile,
+      slideshowStyleMix: initialPlan.feed.slideshowStyleMixEnabled
+        ? initialPlan.feed.slideshowStyleMix
+        : undefined,
       slots: initialPlan.slots,
       timezone,
       userId: params.userId,
@@ -848,6 +851,7 @@ async function loadProviders(params: {
   includeWallText: boolean;
   markItemsShown?: boolean;
   profile: BusinessProfileRecord;
+  slideshowStyleMix?: DailyTrendingFeedRecord["slideshowStyleMix"];
   slots: DailyTrendingFeedSlotRecord[];
   timezone: string;
   userId: string;
@@ -872,6 +876,7 @@ async function loadProviders(params: {
           dailyLimitOverride: params.allocation.carousel,
           markItemsShown: params.markItemsShown,
           profile: params.profile,
+          slideshowStyleMix: params.slideshowStyleMix,
           timezone: params.timezone,
           userId: params.userId,
           }),

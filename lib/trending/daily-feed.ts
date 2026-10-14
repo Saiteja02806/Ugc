@@ -16,6 +16,7 @@ import {
   type CarouselSlideRecord,
   type Json,
 } from "@/lib/carousel/db";
+import type { CarouselStructureId } from "@/lib/carousel/structure";
 import {
   enqueueProcessingCarouselCandidates,
   prepareDailyBusinessProfileCarousels,
@@ -51,6 +52,11 @@ import type {
   TrendingCarouselSourceRecord,
   TrendingFeedItemSource,
 } from "@/lib/trending/feed-items";
+import {
+  buildTrendingSlideshowStyleBatchPlan,
+  getCarouselStructureForTrendingSlideshowStyle,
+  type TrendingSlideshowStyleMix,
+} from "@/lib/trending/slideshow-style-mix";
 
 const SUBSCRIPTION_ENTITLEMENTS_TABLE = "subscription_entitlements";
 const USER_SUBSCRIPTION_PLANS_TABLE = "user_subscription_plans";
@@ -121,8 +127,11 @@ type DailyCarouselFeedRow = {
   created_at: string;
   daily_limit: number;
   id: string;
+  helpful_tips_percent: number;
   local_date: string;
   plan_key: string;
+  product_stories_cta_percent: number;
+  slideshow_style_mix_enabled: boolean;
   status: "failed" | "preparing" | "ready";
   timezone: string;
   updated_at: string;
@@ -169,7 +178,15 @@ type UserCarouselAssignmentInsert = Partial<UserCarouselAssignmentRow> &
 
 type DailyCarouselFeedInsert = Pick<
   DailyCarouselFeedRow,
-  "daily_limit" | "local_date" | "plan_key" | "status" | "timezone" | "user_id"
+  | "daily_limit"
+  | "helpful_tips_percent"
+  | "local_date"
+  | "plan_key"
+  | "product_stories_cta_percent"
+  | "slideshow_style_mix_enabled"
+  | "status"
+  | "timezone"
+  | "user_id"
 >;
 
 type DailyCarouselFeedItemInsert = Pick<
@@ -325,6 +342,7 @@ export async function ensureTrendingDailyFeed(params: {
   dailyLimitOverride?: number;
   markItemsShown?: boolean;
   profile: BusinessProfileRecord;
+  slideshowStyleMix?: TrendingSlideshowStyleMix;
   throwOnRefillError?: boolean;
   timezone?: string | null;
   userId: string;
@@ -351,6 +369,7 @@ export async function ensureTrendingDailyFeed(params: {
     entitlement: requestedEntitlement,
     localDate,
     timezone,
+    slideshowStyleMix: params.slideshowStyleMix,
     userId: params.userId,
   });
 
@@ -575,8 +594,47 @@ async function populateDailyFeed(params: {
     invalidAssignments.map((assignment) => assignment.id),
   );
 
-  const recovered = validAssignments
-    .slice(0, topUpPlan.remainingSlotCount);
+  const requestedStructureIds = getRequestedStructureIdsForFeed({
+    feed: params.feed,
+    positions: topUpPlan.availablePositions,
+  });
+  const statusByCarouselId = new Map(
+    candidateStatuses.map((status) => [status.generation.id, status]),
+  );
+  const eligibleRecoveredAssignments = params.feed.slideshow_style_mix_enabled
+    ? validAssignments.filter(
+        (assignment) =>
+          statusByCarouselId.get(assignment.carouselId)?.generation
+            .originDailyFeedId === params.feed.id,
+      )
+    : validAssignments;
+  const recoveredByStructure = new Map<
+    CarouselStructureId,
+    typeof eligibleRecoveredAssignments
+  >();
+
+  for (const assignment of eligibleRecoveredAssignments) {
+    const structureId = statusByCarouselId.get(assignment.carouselId)?.generation
+      .structureId;
+    if (!structureId) continue;
+    const matches = recoveredByStructure.get(structureId) ?? [];
+    matches.push(assignment);
+    recoveredByStructure.set(structureId, matches);
+  }
+
+  const recoveredPlan: Array<UserCarouselAssignment | null> =
+    requestedStructureIds.length === 0
+      ? eligibleRecoveredAssignments.slice(0, topUpPlan.remainingSlotCount)
+      : requestedStructureIds.map((structureId) => {
+          const matches = recoveredByStructure.get(structureId) ?? [];
+          return matches.shift() ?? null;
+        });
+  const recovered = recoveredPlan.filter(
+    (assignment): assignment is UserCarouselAssignment => Boolean(assignment),
+  );
+  const missingStructureIds = requestedStructureIds.flatMap(
+    (structureId, index) => (recoveredPlan[index] ? [] : [structureId]),
+  );
   const remainingSlotCount = Math.max(
     topUpPlan.remainingSlotCount - recovered.length,
     0,
@@ -584,19 +642,34 @@ async function populateDailyFeed(params: {
   const fresh = await createFreshAssignments({
     count: remainingSlotCount,
     localDate: params.localDate,
+    originDailyFeedId: params.feed.slideshow_style_mix_enabled
+      ? params.feed.id
+      : undefined,
     profile: params.profile,
+    requestedStructureIds:
+      requestedStructureIds.length === 0
+        ? undefined
+        : missingStructureIds,
     userId: params.userId,
   });
-  const selected = [
-    ...recovered.map((assignment) => ({
-      assignment,
-      source: "new" as const,
-    })),
-    ...fresh.map(({ assignment }) => ({
-      assignment,
-      source: "new" as const,
-    })),
-  ].slice(0, topUpPlan.remainingSlotCount);
+  const selected = requestedStructureIds.length === 0
+    ? [
+        ...recovered.map((assignment) => ({
+          assignment,
+          source: "new" as const,
+        })),
+        ...fresh.map(({ assignment }) => ({
+          assignment,
+          source: "new" as const,
+        })),
+      ].slice(0, topUpPlan.remainingSlotCount)
+    : (() => {
+        const freshAssignments = fresh.map(({ assignment }) => assignment);
+        return recoveredPlan.flatMap((assignment) => {
+          const resolved = assignment ?? freshAssignments.shift();
+          return resolved ? [{ assignment: resolved, source: "new" as const }] : [];
+        });
+      })();
 
   if (selected.length === 0) {
     return;
@@ -676,6 +749,9 @@ async function reconcileDailyCarouselRefill(params: {
       params.feed.daily_limit - params.feedItems.length,
       0,
     ),
+    originDailyFeedId: params.feed.slideshow_style_mix_enabled
+      ? params.feed.id
+      : undefined,
     profile: params.profile,
     userId: params.userId,
   });
@@ -827,8 +903,49 @@ async function reconcileDailyCarouselRefill(params: {
     localDate: params.localDate,
     originDailyFeedId: params.feed.id,
     profile: params.profile,
+    slideshowStyleMix: params.feed.slideshow_style_mix_enabled
+      ? {
+          helpfulTips: params.feed.helpful_tips_percent,
+          productStoriesCta: params.feed.product_stories_cta_percent,
+        }
+      : undefined,
     targetCandidateCount: refillBatch.requested_count,
     timezone: params.feed.timezone,
+  });
+}
+
+/**
+ * New slideshow-style packs reserve positions against their own, immutable
+ * style snapshot. Legacy feeds deliberately return an empty plan so their
+ * existing inventory and displayed cards retain their old behavior.
+ */
+function getRequestedStructureIdsForFeed(params: {
+  feed: DailyCarouselFeedRow;
+  positions: readonly number[];
+}): CarouselStructureId[] {
+  if (!params.feed.slideshow_style_mix_enabled) {
+    return [];
+  }
+
+  const batchPlan = buildTrendingSlideshowStyleBatchPlan({
+    carouselCount: params.feed.daily_limit,
+    localDate: params.feed.local_date,
+    mix: {
+      helpfulTips: params.feed.helpful_tips_percent,
+      productStoriesCta: params.feed.product_stories_cta_percent,
+    },
+  });
+  const structures = batchPlan
+    .flatMap((style) =>
+      Array.from({ length: 5 }, () =>
+        getCarouselStructureForTrendingSlideshowStyle(style),
+      ),
+    )
+    .slice(0, params.feed.daily_limit);
+
+  return params.positions.flatMap((position) => {
+    const structure = structures[position - 1];
+    return structure ? [structure] : [];
   });
 }
 
@@ -854,6 +971,7 @@ async function hasTerminalDailyCarouselFailure(
 async function getViableUnassignedCarouselInventory(params: {
   localDate: string;
   minimumTotalCount: number;
+  originDailyFeedId?: string;
   profile: BusinessProfileRecord;
   requireProcessingCandidate?: boolean;
   userId: string;
@@ -877,6 +995,7 @@ async function getViableUnassignedCarouselInventory(params: {
       cursor,
       limit: CAROUSEL_INVENTORY_PAGE_SIZE,
       projectId: params.profile.projectId,
+      originDailyFeedId: params.originDailyFeedId,
       statuses:
         params.requireProcessingCandidate && params.minimumTotalCount <= 0
           ? ["processing"]
@@ -1308,6 +1427,7 @@ async function getOrCreateDailyFeed(params: {
   entitlement: TrendingFeedEntitlement;
   localDate: string;
   timezone: string;
+  slideshowStyleMix?: TrendingSlideshowStyleMix;
   userId: string;
 }) {
   const findExisting = () =>
@@ -1323,8 +1443,12 @@ async function getOrCreateDailyFeed(params: {
         .from(DAILY_CAROUSEL_FEEDS_TABLE)
         .insert({
           daily_limit: params.entitlement.dailyCarouselLimit,
+          helpful_tips_percent: params.slideshowStyleMix?.helpfulTips ?? 50,
           local_date: params.localDate,
           plan_key: params.entitlement.planKey,
+          product_stories_cta_percent:
+            params.slideshowStyleMix?.productStoriesCta ?? 50,
+          slideshow_style_mix_enabled: Boolean(params.slideshowStyleMix),
           status: "ready",
           timezone: params.timezone,
           user_id: params.userId,
@@ -1451,7 +1575,9 @@ async function listAssignableCompletedCarouselStatuses(params: {
   count: number;
   existingAssignments: readonly UserCarouselAssignment[];
   localDate: string;
+  originDailyFeedId?: string;
   profile: BusinessProfileRecord;
+  structureId?: CarouselStructureId;
   userId: string;
 }) {
   const assignedCarouselIds = new Set(
@@ -1470,6 +1596,7 @@ async function listAssignableCompletedCarouselStatuses(params: {
       cursor,
       limit: CAROUSEL_INVENTORY_PAGE_SIZE,
       projectId: params.profile.projectId,
+      originDailyFeedId: params.originDailyFeedId,
       statuses: ["completed"],
       userId: params.userId,
     });
@@ -1478,7 +1605,11 @@ async function listAssignableCompletedCarouselStatuses(params: {
       assignedCarouselIds,
       existingConceptFingerprints: reservedConceptFingerprints,
       localDate: params.localDate,
-      statuses: page.statuses,
+      statuses: params.structureId
+        ? page.statuses.filter(
+            (status) => status.generation.structureId === params.structureId,
+          )
+        : page.statuses,
     }).slice(0, remainingCount);
 
     selected.push(...pageSelection);
@@ -1528,7 +1659,9 @@ async function getExistingVisibleConceptFingerprints(
 async function createFreshAssignments(params: {
   count: number;
   localDate: string;
+  originDailyFeedId?: string;
   profile: BusinessProfileRecord;
+  requestedStructureIds?: readonly CarouselStructureId[];
   userId: string;
 }) {
   if (params.count <= 0) {
@@ -1536,13 +1669,53 @@ async function createFreshAssignments(params: {
   }
 
   const existingAssignments = await listAllAssignmentsForUser(params.userId);
-  const freshStatuses = await listAssignableCompletedCarouselStatuses({
-    count: params.count,
-    existingAssignments,
-    localDate: params.localDate,
-    profile: params.profile,
-    userId: params.userId,
-  });
+  const requestedStructureIds = params.requestedStructureIds ?? [];
+  const requestedCounts = requestedStructureIds.reduce(
+    (counts, structureId) => {
+      counts.set(structureId, (counts.get(structureId) ?? 0) + 1);
+      return counts;
+    },
+    new Map<CarouselStructureId, number>(),
+  );
+  const statusesByStructure = new Map<
+    CarouselStructureId,
+    Awaited<ReturnType<typeof listAssignableCompletedCarouselStatuses>>
+  >();
+  if (requestedCounts.size === 0) {
+    const statuses = await listAssignableCompletedCarouselStatuses({
+      count: params.count,
+      existingAssignments,
+      localDate: params.localDate,
+      originDailyFeedId: params.originDailyFeedId,
+      profile: params.profile,
+      userId: params.userId,
+    });
+    statusesByStructure.set("structure_1", statuses);
+  } else {
+    await Promise.all(
+      [...requestedCounts].map(async ([structureId, count]) => {
+        statusesByStructure.set(
+          structureId,
+          await listAssignableCompletedCarouselStatuses({
+            count,
+            existingAssignments,
+            localDate: params.localDate,
+            originDailyFeedId: params.originDailyFeedId,
+            profile: params.profile,
+            structureId,
+            userId: params.userId,
+          }),
+        );
+      }),
+    );
+  }
+  const freshStatuses = requestedCounts.size === 0
+    ? (statusesByStructure.get("structure_1") ?? [])
+    : requestedStructureIds.flatMap((structureId) => {
+        const statuses = statusesByStructure.get(structureId) ?? [];
+        const status = statuses.shift();
+        return status ? [status] : [];
+      });
   const assignments: Array<{
     assignment: UserCarouselAssignment;
     created: boolean;

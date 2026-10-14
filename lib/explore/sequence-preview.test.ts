@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createSequencePreviewTimeline, sequencePreviewPosition, sequencePreviewOverlays, sequencePreviewAudioPosition, sequencePreviewProjection,
-  validateSequencePreviewAudio, mapSequencePreviewDemoReference, type SequencePreviewSegment } from "./sequence-preview.ts";
+  validateSequencePreviewAudio, mapSequencePreviewDemoReference, mapSequencePreviewDemoAudio, formatPreviewAudioPosition, type SequencePreviewSegment } from "./sequence-preview.ts";
 import type { ExploreFormatEdit } from "../../worker/src/lib/explore-format-edit.ts";
 
 const edit = (start: number, end: number, value: string): ExploreFormatEdit => ({ version: 1, format: "hook", trimStartMs: start, trimEndMs: end,
@@ -66,6 +66,31 @@ test("custom Hook audio preserves the pre-trim source clock and fades at its ori
   assert.equal(sequencePreviewAudioPosition(15000, track.mixDurationMs!, 7900 + track.timelineOffsetMs!, track.playback).gain, .5);
   assert.throws(() => validateSequencePreviewAudio({ ...track, timelineOffsetMs: NaN }), /timing/);
   assert.throws(() => validateSequencePreviewAudio({ ...track, timelineOffsetMs: 10000 }), /timing/);
+});
+test("clip preview uses raw custom-audio timing and trimmed paired-reference timing, including fades and repeats", () => {
+  const trim = { trimStartMs: 500, trimEndMs: 1500 };
+  assert.deepEqual(formatPreviewAudioPosition(2000, 2000, trim, 700, "once"), { audible: true, positionMs: 700, gain: 1 });
+  assert.deepEqual(formatPreviewAudioPosition(2000, 2000, trim, 700, "once", true), { audible: true, positionMs: 200, gain: 1 });
+  assert.equal(formatPreviewAudioPosition(2000, 2000, trim, 600, "once", true).gain, .5);
+  assert.equal(formatPreviewAudioPosition(2000, 2000, trim, 1400, "once", true).gain, .5);
+  assert.equal(formatPreviewAudioPosition(2000, 2000, trim, 1400, "once").gain, 1);
+  assert.deepEqual(formatPreviewAudioPosition(300, 2000, trim, 700, "once"), { audible: false, positionMs: 300, gain: 0 });
+  assert.deepEqual(formatPreviewAudioPosition(300, 2000, trim, 700, "repeat"), { audible: true, positionMs: 100, gain: 1 });
+  assert.deepEqual(formatPreviewAudioPosition(300, 2000, trim, 900, "repeat", true), { audible: true, positionMs: 100, gain: 1 });
+});
+test("raw Demo audio restarts after trim while prepared clips, references, volume and playback remain exact", () => {
+  const addedAudio = { url: "blob:custom-demo", volume: .6, playback: "repeat" as const, timelineOffsetMs: 1000, mixDurationMs: 12000 };
+  const referenceAudio = { url: "blob:reference", volume: .3, playback: "repeat" as const };
+  const input = { ...demo, addedAudio, referenceAudio };
+  const normalized = mapSequencePreviewDemoAudio(input, { rawComposition: true });
+  assert.deepEqual(normalized.addedAudio, { ...addedAudio, timelineOffsetMs: 0, mixDurationMs: 7000 });
+  assert.equal(normalized.referenceAudio, referenceAudio);
+  assert.equal(normalized.editing, demo.editing);
+  assert.equal(input.addedAudio.timelineOffsetMs, 1000);
+  assert.equal(mapSequencePreviewDemoAudio(input, { rawComposition: false }), input);
+  assert.equal(mapSequencePreviewDemoAudio({ ...demo, referenceAudio }, { rawComposition: true }).referenceAudio, referenceAudio);
+  const unchanged = { ...input, editing: undefined };
+  assert.equal(mapSequencePreviewDemoAudio(unchanged, { rawComposition: true }), unchanged);
 });
 const paired = { referenceId: "paired-demo", title: "Demo soundtrack", audioUrl: "blob:demo-reference", cleanVideoUrl: "blob:demo-clean", volume: .3 };
 test("paired opening removes the Demo's paired track while keeping independently selected Demo audio", () => {

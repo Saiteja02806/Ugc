@@ -24,13 +24,14 @@ function generationModules(seedanceEnabled = false) {
   };
   const backend = load("lib/ai-studio/generation-settings.ts");
   const workflow = load("lib/explore/workflow-generation-settings.ts", { "../ai-studio/generation-settings": backend });
-  return { backend, workflow };
+  const referencePolicy = load("lib/ai-studio/video-reference-policy.ts", { "./generation-settings": backend });
+  return { backend, workflow, referencePolicy };
 }
 
 function harness({ seedanceEnabled = false } = {}) {
   let cursor = 0;
   const slots = [];
-  const { backend, workflow } = generationModules(seedanceEnabled);
+  const { backend, workflow, referencePolicy } = generationModules(seedanceEnabled);
   let generationSettings = workflow.createWorkflowGenerationSettings();
   const imports = {
     react: {
@@ -51,6 +52,7 @@ function harness({ seedanceEnabled = false } = {}) {
     "@/components/ui/popover": Object.fromEntries(["Popover", "PopoverContent", "PopoverTitle", "PopoverTrigger"].map((name) => [name, name])),
     "@/lib/ai-studio/creator-references": { CREATOR_REFERENCES: [{ id: "c1", src: "/creator.png", fileName: "creator.png" }] },
     "@/lib/ai-studio/generation-settings": backend,
+    "@/lib/ai-studio/video-reference-policy": referencePolicy,
     "@/lib/explore/workflow-generation-settings": workflow,
     "@/lib/utils": { cn: (...values) => values.join(" ") },
     "@/components/explore/workflow-studio.module.css": { default: {} },
@@ -207,24 +209,29 @@ test("the shared settings hook owns the draft, applies rapid changes to current 
   assert.equal(exported.useWorkflowGenerationSettings(10).dirty, false);
   for (const file of ["hook-workflow-preview", "phone-workflow-preview"]) {
     const parent = read(`components/explore/${file}.tsx`);
-    assert.match(parent, /useWorkflowGenerationSettings\(/);
+    if (file === "hook-workflow-preview") {
+      assert.match(parent, /useWorkflowSession\(/);
+      assert.match(parent, /normalizeWorkflowGenerationSettings\(\{ \.\.\.generationSettings, \.\.\.patch \}\)/);
+      assert.match(parent, /recovery\.update\(previous => \(\{ \.\.\.previous, generationSettings: settings \}\)\)/);
+    } else assert.match(parent, /useWorkflowGenerationSettings\(/);
     assert.match(parent, /generationSettings=\{generation.settings\}/);
     assert.match(parent, /onGenerationSettingsChange=\{generation.changeSettings\}/);
-    assert.match(parent, /const dirty = Boolean\((?:clipsDirty \|\| )?selection.dirty \|\| generation.dirty/);
+    if (file === "phone-workflow-preview") assert.match(parent, /const dirty = Boolean\(selection.dirty \|\| generation.dirty/);
+    else assert.match(parent, /const dirty = Boolean\(creator.asset \|\| videoReference.asset/);
   }
 });
 
 test("text-only prompts remain valid and local reference previews do not promise unsupported generation behavior", () => {
   const text = nodes(harness().render()).filter((node) => node.type === "p").flatMap(node => nodes(node).map(child => typeof child.props.children === "string" ? child.props.children : "")).join(" ");
   assert.match(text, /Text-only prompts are supported; reference images are optional/);
-  assert.match(text, /Use Seedance 2.5 for a video reference up to 30 seconds/);
+  assert.match(text, /WAN 3.0: up to 15 seconds and 32 MB · Seedance 2.5: up to 30 seconds and 250 MB/);
   assert.doesNotMatch(source, /disabled=\{!creator.asset|instructions.*creator.asset/);
   const audio = read("components/explore/workflow-audio-reference.tsx");
   assert.match(audio, /<PopoverTitle>Audio reference<\/PopoverTitle>/);
-  assert.match(audio, /Requires Seedance 2\.5 · Up to 30 seconds/);
+  assert.match(audio, /WAN 3\.0: up to 15 seconds · Seedance 2\.5: up to 30 seconds/);
   assert.doesNotMatch(audio, /voice—not background music or demo audio/);
   assert.doesNotMatch(audio, /Exact recording<\/Button>/);
-  assert.match(audio, /maxDuration: 30/);
+  assert.match(audio, /maxDuration \}/);
   assert.doesNotMatch(audio, /Use exact recording for the spoken words/);
 });
 

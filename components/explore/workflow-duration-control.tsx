@@ -34,7 +34,9 @@ export function WorkflowDurationControl({
   const limits = continuous ? `${supported[0]}–${supported.at(-1)} seconds, whole numbers only.` : `Supported seconds: ${supported.join(", ")}.`;
   const customTriggerLabel = isPreset ? "Custom" : creditsPerSecond === undefined ? `${value} sec · Custom` : `${value} sec`;
   const hint = custom === null
-    ? "Enter a supported duration before applying."
+    ? continuous
+      ? `Choose ${supported[0]}–${supported.at(-1)} whole seconds for ${getAIStudioVideoModelLabel(model)}.`
+      : `Choose one of these whole-second durations: ${supported.join(", ")}.`
     : creditsPerSecond === undefined
       ? `The video will be ${custom} seconds.`
       : `${custom} seconds · ${custom * creditsPerSecond} credits per video.`;

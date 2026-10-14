@@ -35,6 +35,7 @@ const assets = new Map([1, 2].map(n => { const id = `00000000-0000-4000-8000-000
 const connectionId = "00000000-0000-4000-8000-000000000099";
 const connections = [{ id: connectionId, platform: "instagram", platformAccountName: "Fixture", platformAccountUsername: "fixture", status: "connected", scopes: ["instagram_business_content_publish"], supportsBackgroundRefresh: true }];
 const receipts = new Map(), renders = [], schedules = [];
+const clipDrafts = new Map(), clipSaves = [], clipSaveReceipts = new Map();
 const uploads = [];
 const talkingHeadFixture = talkingHead ? require('./talking-head-editor-fixture.cjs') : null;
 if (talkingHeadFixture) talkingHeadFixture.setup({file, assets, makeAsset});
@@ -50,7 +51,7 @@ async function main() {
   const server = http.createServer(async (request, response) => {
     const url = new URL(request.url, 'http://fixture');
     if (serving && url.pathname === '/fixture-status') return json(response, {renders, schedules, uploads, overlappingRenders});
-    if (url.pathname === '/fixture') { response.setHeader('Content-Type', 'text/html'); return response.end('<div id="root"></div><script>window.process={env:{}}</script><script src="/bundle.js"></script>'); }
+    if (url.pathname === '/fixture') { response.setHeader('Content-Type', 'text/html; charset=utf-8'); return response.end('<meta charset="utf-8"><div id="root"></div><script>window.process={env:{}}</script><script src="/bundle.js"></script>'); }
     if (url.pathname === '/bundle.js') { response.setHeader('Content-Type', 'text/javascript'); return response.end(fs.readFileSync(path.join(out, 'bundle.js'))); }
     if (/^\/[a-zA-Z0-9_-]+\.bundle\.js$/.test(url.pathname) && fs.existsSync(path.join(out, path.basename(url.pathname)))) { response.setHeader('Content-Type', 'text/javascript'); return response.end(fs.readFileSync(path.join(out, path.basename(url.pathname)))); }
     if (url.pathname === '/video.mp4') {
@@ -68,6 +69,15 @@ async function main() {
     }
     if (url.pathname.startsWith('/api/')) assert.equal(request.headers.authorization, 'Bearer fixture-owner');
     if (url.pathname === '/api/social/connections') return json(response, {ok:true, connections});
+    if (talkingHead && url.pathname === '/api/explore/clip-drafts') {
+      if (request.method === 'GET') return json(response, {ok:true, draft:clipDrafts.get(`${url.searchParams.get('scope')}:${url.searchParams.get('sourceAssetId')}`) ?? null});
+      let body=''; for await(const chunk of request) body+=chunk; const input=JSON.parse(body);
+      if (clipSaveReceipts.has(input.requestId)) return json(response,{...clipSaveReceipts.get(input.requestId),replayed:true});
+      const key=`${input.scope}:${input.content.sourceAssetId}`, previous=clipDrafts.get(key);
+      assert.equal(input.expectedRevision,previous?.revision ?? 0);
+      const draft={id:'00000000-0000-4000-8000-000000000097',scope:input.scope,revision:input.expectedRevision+1,content:input.content,updatedAt:'2026-10-14T12:00:00Z'};
+      clipDrafts.set(key,draft);clipSaves.push(input);const result={ok:true,requestId:input.requestId,replayed:false,draft};clipSaveReceipts.set(input.requestId,result);return json(response,result);
+    }
     if (url.pathname === '/api/explore/finishes') {
       let receipt;
       if (request.method === 'POST') {
@@ -85,7 +95,8 @@ async function main() {
       } else receipt = receipts.get(url.searchParams.get('requestKey'));
       return json(response, receipt);
     }
-    if (url.pathname === '/api/schedules' && request.method === 'GET') return json(response, {ok:true, minimumScheduleLeadMinutes:5});
+    if (url.pathname === '/api/schedules' && request.method === 'GET') return json(response, {ok:true, minimumScheduleLeadMinutes:5, schedules:schedules.map(input=>({id:'00000000-0000-4000-8000-000000000098',mediaAssetId:input.source.id,idempotencyKey:input.idempotencyKey,status:'scheduled',targets:input.targets.map(target=>({socialConnectionId:target.connectionId,platform:target.platform}))}))});
+    if (talkingHead && url.pathname === '/api/schedules/00000000-0000-4000-8000-000000000098') { const input=schedules[0]; return json(response,{ok:true,schedule:{id:'00000000-0000-4000-8000-000000000098',mediaAssetId:input.source.id,idempotencyKey:input.idempotencyKey,status:'scheduled',targets:input.targets.map(target=>({socialConnectionId:target.connectionId,platform:target.platform}))}}); }
     if (url.pathname === '/api/schedules' && request.method === 'POST') {
       let body = ''; for await (const chunk of request) body += chunk; const input = JSON.parse(body); schedules.push(input);
       return json(response, {ok:true, schedule:{id:'00000000-0000-4000-8000-000000000098', mediaAssetId:input.source.id, idempotencyKey:input.idempotencyKey, status:'scheduled', targets:input.targets.map(target => ({socialConnectionId:target.connectionId, platform:target.platform}))}});
@@ -102,7 +113,7 @@ async function main() {
   async function waitRenders(count) { const deadline = Date.now() + 20000; while (renders.length < count && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50)); assert.equal(renders.length, count); }
   function complete(index) { const entry = renders[index], receipt = receipts.get(entry.requestKey); receipt.outcome = 'completed'; receipt.mediaAssetId = receipt.outputId; receipt.message = 'Saved fixture'; }
   try {
-    if (talkingHeadFixture) { await talkingHeadFixture.run({page, base, renders, schedules, uploads, receipts, waitRenders, complete, errors, overlapping: () => overlappingRenders}); return; }
+    if (talkingHeadFixture) { await talkingHeadFixture.run({page, base, renders, schedules, uploads, receipts, clipSaves, waitRenders, complete, errors, overlapping: () => overlappingRenders}); return; }
     await page.goto(base + '/fixture');
     await page.getByRole('button', {name:'Creative Assets', exact:true}).click(); await page.getByRole('button', {name:'Choose demo fixture'}).click();
     await page.getByRole('button', {name:'Schedule', exact:true}).evaluate(button => {button.click(); button.click();});

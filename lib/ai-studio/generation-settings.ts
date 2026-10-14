@@ -15,6 +15,10 @@ export const AI_STUDIO_IMAGE_MODELS = ["nano_banana_2", "seedream_5_pro"] as con
 export const SLIDESHOW_IMAGE_MODELS = ["gpt_image_2_5", "nano_banana_2"] as const;
 export const AI_STUDIO_VIDEO_MODELS = ["kling_3_0", "google_omni", "seedance_2_5", "wan_3_0"] as const;
 export const AI_STUDIO_VIDEO_DURATIONS = [3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30] as const;
+// Kling 3.0's configured route accepts every whole second from 3 through 15.
+const KLING_VIDEO_DURATIONS = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] as const;
+// Seedance's configured route currently starts at 4 seconds; do not infer its
+// duration support from WAN's broader range or change an entered value silently.
 const SEEDANCE_VIDEO_DURATIONS = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30] as const;
 const WAN_VIDEO_DURATIONS = [2, 3, ...SEEDANCE_VIDEO_DURATIONS] as const;
 export const AI_STUDIO_VIDEO_RESOLUTIONS = ["480p", "720p", "1080p"] as const;
@@ -63,7 +67,8 @@ export function isAIStudioVideoModelAvailable(
 export function getAIStudioVideoDurations(model: AIStudioVideoModel): readonly AIStudioVideoDuration[] {
   if (model === "wan_3_0") return WAN_VIDEO_DURATIONS;
   if (model === "seedance_2_5") return SEEDANCE_VIDEO_DURATIONS;
-  return AI_STUDIO_VIDEO_DURATIONS.filter((duration) => duration <= (model === "kling_3_0" ? 15 : 10));
+  if (model === "kling_3_0") return KLING_VIDEO_DURATIONS;
+  return AI_STUDIO_VIDEO_DURATIONS.filter((duration) => duration <= 10);
 }
 
 export function parseAIStudioImageAspectRatio(

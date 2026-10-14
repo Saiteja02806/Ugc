@@ -2,6 +2,8 @@ import { FirebaseError } from "firebase/app";
 import {
   createUserWithEmailAndPassword,
   EmailAuthProvider,
+  getAdditionalUserInfo,
+  getRedirectResult,
   getIdToken,
   linkWithCredential,
   onAuthStateChanged,
@@ -11,9 +13,11 @@ import {
   signInWithRedirect,
   signOut,
   type User,
+  type UserCredential,
 } from "firebase/auth";
 
 import { auth, googleProvider } from "./client";
+import { trackAccountCreated } from "../analytics/site-analytics";
 import { AUTH_SESSION_COOKIE_NAME } from "./auth-session";
 import type { EmailPurchaseIntent } from "../auth/email-policy";
 
@@ -75,6 +79,7 @@ export function mapFirebaseUser(user: User): AuthUser {
 export async function signInWithGoogle() {
   try {
     const result = await signInWithPopup(auth, googleProvider);
+    trackGoogleAccountCreated(result);
     return mapFirebaseUser(result.user);
   } catch (error) {
     console.error("Google sign-in failed:", error);
@@ -92,6 +97,19 @@ export async function signInWithGoogleRedirect() {
     console.error("Google redirect sign-in failed:", error);
     throw error;
   }
+}
+
+export async function trackGoogleRedirectAccountCreated() {
+  try {
+    const result = await getRedirectResult(auth);
+    if (result) trackGoogleAccountCreated(result);
+  } catch { /* Optional measurement must not interrupt redirect sign-in. */ }
+}
+
+function trackGoogleAccountCreated(result: UserCredential) {
+  try {
+    if (getAdditionalUserInfo(result)?.isNewUser) trackAccountCreated("Google", result.user.uid);
+  } catch { /* Optional measurement must not interrupt successful sign-in. */ }
 }
 
 export function consumeGoogleRedirectPending() {
@@ -129,6 +147,7 @@ export async function signUpWithEmail(email: string, password: string, intent: E
       password,
     );
 
+    trackAccountCreated("Email", result.user.uid);
     await sendVerificationForUser(result.user, intent);
     await getIdToken(result.user, true);
 

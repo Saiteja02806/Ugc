@@ -64,6 +64,14 @@ function restore(status = completed, activity = now) {
   storage.set(characterSessionStorageKey(owner), JSON.stringify({ ...EMPTY_CHARACTER_SESSION, jobs: [receipt], lastActivityAt: activity }));
   cache.set(key(jobKey), [status]);
 }
+function completedVisit(historyOpen = false, activityPending = false) {
+  restore({ ...completed, status: "processing", isTerminal: false, output: null });
+  const screen = mount(owner, historyOpen, activityPending);
+  screen.render();
+  cache.set(key(jobKey), [completed]);
+  screen.render();
+  return screen;
+}
 function advance(milliseconds) {
   now += milliseconds;
   for (const [id, timer] of [...timers]) if (timer.at <= now) { timers.delete(id); timer.callback(); }
@@ -89,19 +97,21 @@ beforeEach(() => {
 });
 afterEach(() => { mock.restoreAll(); delete globalThis.window; delete globalThis.document; });
 
-test("completed results survive reload and cached route re-entry within one idle window", async () => {
+test("completed results stay in History on reload and cached route re-entry even before idle expiry", async () => {
   restore();
-  const first = mount();
-  assert.deepEqual(first.render().visibleJobs, [receipt]);
+  cache.set(key(["character-history", owner]), { pages: [{ images: [image] }] });
+  const first = mount(owner, true);
+  assert.deepEqual(first.render().visibleJobs, []);
   await first.render().jobs.refetch();
-  assert.deepEqual(first.render().visibleJobs, [receipt]);
+  assert.deepEqual(first.render().visibleJobs, []);
+  assert.equal(first.render().historyImages[0].url, image.url);
   first.unmount();
-  assert.deepEqual(mount().render().visibleJobs, [receipt]);
+  assert.deepEqual(mount().render().visibleJobs, []);
   assert.equal(calls.some((call) => call.path.includes("/generate")), false);
   assert.equal(JSON.parse(storage.get(characterSessionStorageKey(owner))).jobs[0].jobId, jobId);
 });
 
-for (const status of ["failed", "cancelled"]) test(`a completed+${status} two-image batch stays visible on reload without another paid request`, async () => {
+for (const status of ["failed", "cancelled"]) test(`a completed+${status} two-image batch stays out of the refreshed workspace without another paid request`, async () => {
   const second = { jobId: "33333333-3333-4333-8333-333333333333", generationId: "generation-2" };
   const receipts = [receipt, second];
   const failed = { id: second.jobId, model: "gpt_image_2_5", status, isTerminal: true, output: null,
@@ -111,11 +121,11 @@ for (const status of ["failed", "cancelled"]) test(`a completed+${status} two-im
   // A hard reload starts with no query cache and must recover both durable jobs.
   const screen = mount();
   await screen.render().jobs.refetch();
-  assert.deepEqual(screen.render().visibleJobs, receipts);
+  assert.deepEqual(screen.render().visibleJobs, []);
   assert.equal(screen.render().visibleStatuses[1].model, "gpt_image_2_5");
   assert.equal(screen.render().inProgress, false);
   screen.unmount();
-  assert.deepEqual(mount().render().visibleJobs, receipts);
+  assert.deepEqual(mount().render().visibleJobs, []);
   assert.equal(calls.some(call => call.path.includes("/generate")), false);
   const next = mount();
   next.render().startNewSession();
@@ -123,14 +133,14 @@ for (const status of ["failed", "cancelled"]) test(`a completed+${status} two-im
   assert.deepEqual(next.render().session.jobs, []);
 });
 
-test("new generations remain in the current session on the next visit", async () => {
+test("new generations stay visible during the current visit and move to History on the next visit", async () => {
   const screen = mount();
   await screen.render().generate.mutateAsync(request);
   assert.deepEqual(screen.render().visibleJobs, [receipt]);
   await screen.render().jobs.refetch();
   assert.equal(screen.render().visibleStatuses[0].output.url, image.url);
   screen.unmount();
-  assert.deepEqual(mount().render().visibleJobs, [receipt]);
+  assert.deepEqual(mount().render().visibleJobs, []);
 });
 
 test("consecutive batches append every image and poll only their new jobs", async () => {
@@ -154,16 +164,15 @@ test("consecutive batches append every image and poll only their new jobs", asyn
   assert.equal(screen.render().visibleStatuses.filter((job) => job.output).length, 6);
   assert.equal(calls.filter((call) => call.path.includes("/status")).length, 6, "older terminal jobs are never polled again");
   screen.unmount();
-  assert.deepEqual(mount().render().visibleJobs, receipts);
+  assert.deepEqual(mount().render().visibleJobs, []);
   assert.equal(JSON.parse(storage.get(characterSessionStorageKey(owner))).jobs.length, 6);
 });
 
 test("ten idle minutes clear the canvas and selected identity while durable History stays intact", () => {
-  restore();
+  const screen = completedVisit(true);
   cache.set(key(["character-session", owner]), { ...EMPTY_CHARACTER_SESSION, jobs: [receipt], lastActivityAt: now,
     selectedCharacterId: image.mediaAssetId });
   cache.set(key(["character-history", owner]), { pages: [{ images: [image] }] });
-  const screen = mount(owner, true);
   assert.equal(screen.render().sessionResetVersion, 0);
   advance(CHARACTER_SESSION_IDLE_TIMEOUT_MS - 1);
   assert.deepEqual(screen.render().visibleJobs, [receipt]);
@@ -177,8 +186,7 @@ test("ten idle minutes clear the canvas and selected identity while durable Hist
 });
 
 test("an active reference upload protects the current session until it settles", () => {
-  restore();
-  const screen = mount(owner, false, true);
+  const screen = completedVisit(false, true);
   screen.render();
   advance(CHARACTER_SESSION_IDLE_TIMEOUT_MS + 1);
   listeners.get("focus")();
@@ -194,8 +202,7 @@ test("an active reference upload protects the current session until it settles",
 });
 
 test("typing or reference activity extends the window without changing the reset version", () => {
-  restore();
-  const screen = mount();
+  const screen = completedVisit();
   screen.render();
   advance(CHARACTER_SESSION_IDLE_TIMEOUT_MS - 1_000);
   screen.render().touchSession();
@@ -209,8 +216,7 @@ test("typing or reference activity extends the window without changing the reset
 });
 
 test("expired route re-entry starts a fresh session and browser focus handles suspended timers", () => {
-  restore();
-  const first = mount();
+  const first = completedVisit();
   first.render();
   first.unmount();
   now += CHARACTER_SESSION_IDLE_TIMEOUT_MS;
@@ -277,7 +283,59 @@ test("unfinished recovery remains visible after completion in the same session",
   assert.deepEqual(screen.render().visibleJobs, [receipt]);
   assert.equal(screen.render().inProgress, false);
   screen.unmount();
-  assert.deepEqual(mount().render().visibleJobs, [receipt]);
+  assert.deepEqual(mount().render().visibleJobs, []);
+});
+
+test("a reload recovers only unfinished candidates while hiding completed siblings", async () => {
+  const pending = { jobId: "33333333-3333-4333-8333-333333333333", generationId: "generation-2" };
+  storage.set(characterSessionStorageKey(owner), JSON.stringify({ ...EMPTY_CHARACTER_SESSION,
+    jobs: [receipt, pending], lastActivityAt: now }));
+  let pendingStatus = { ...completed, id: pending.jobId, status: "processing", isTerminal: false, output: null };
+  responseFor = async (path) => Response.json({ ok: true, job: path.includes(pending.jobId) ? pendingStatus : completed });
+  const screen = mount();
+  await screen.render().jobs.refetch();
+  assert.deepEqual(screen.render().visibleJobs, [pending]);
+  pendingStatus = { ...completed, id: pending.jobId };
+  await screen.render().jobs.refetch();
+  assert.deepEqual(screen.render().visibleJobs, [pending], "the recovered candidate stays visible when it finishes during this visit");
+  assert.equal(screen.render().inProgress, false);
+  screen.unmount();
+  assert.deepEqual(mount().render().visibleJobs, []);
+});
+
+test("unknown jobs checked as already complete never reopen historical results", async () => {
+  restore(); cache.delete(key(jobKey));
+  const screen = mount();
+  await screen.render().jobs.refetch();
+  assert.deepEqual(screen.render().visibleJobs, []);
+  assert.equal(screen.render().inProgress, false);
+  assert.equal(calls.length, 1);
+  assert.ok(invalidated.some((queryKey) => queryKey[0] === "character-history"));
+});
+
+test("stale unfinished batch cache cannot reopen an individually completed historical job", async () => {
+  restore({ ...completed, status: "processing", isTerminal: false, output: null });
+  cache.set(key(["character-job", owner, jobId]), completed);
+  const screen = mount();
+  screen.render();
+  await screen.render().jobs.refetch();
+  assert.deepEqual(screen.render().visibleJobs, []);
+  assert.equal(calls.length, 0, "the known immutable result requires no status request");
+});
+
+test("a failed recovery check does not make an already completed job a current-visit result", async () => {
+  const second = { jobId: "33333333-3333-4333-8333-333333333333", generationId: "generation-2" };
+  storage.set(characterSessionStorageKey(owner), JSON.stringify({ ...EMPTY_CHARACTER_SESSION, jobs: [receipt, second] }));
+  let unavailable = true;
+  responseFor = async (path) => path.includes(jobId) && unavailable
+    ? Response.json({ ok: false, error: "Temporary outage" }, { status: 503 })
+    : Response.json({ ok: true, job: { ...completed, id: path.includes(jobId) ? jobId : second.jobId } });
+  const screen = mount();
+  await screen.render().jobs.refetch();
+  assert.deepEqual(screen.render().visibleJobs, [receipt]);
+  unavailable = false;
+  await screen.render().jobs.refetch();
+  assert.deepEqual(screen.render().visibleJobs, []);
 });
 
 test("unknown recovery remains visible and blocks a replacement", async () => {
@@ -291,7 +349,7 @@ test("unknown recovery remains visible and blocks a replacement", async () => {
   assert.deepEqual(screen.render().session.jobs, [receipt]);
 });
 
-test("a generation admitted after leaving is recovered in the same session", async () => {
+test("a generation admitted after leaving is retained for recovery but finished output belongs to History", async () => {
   let finish;
   responseFor = async () => new Promise((resolve) => { finish = resolve; });
   const first = mount();
@@ -303,7 +361,7 @@ test("a generation admitted after leaving is recovered in the same session", asy
   assert.deepEqual(first.render().visibleJobs, [receipt]);
   cache.set(key(jobKey), [completed]);
   const next = mount();
-  assert.deepEqual(next.render().visibleJobs, [receipt]);
+  assert.deepEqual(next.render().visibleJobs, []);
   assert.deepEqual(next.render().session.jobs, [receipt]);
   assert.equal(calls.length, 1);
 });
@@ -313,12 +371,12 @@ test("history opens only by explicit selection and new session preserves durable
   cache.set(key(["character-history", owner]), { pages: [{ images: [image] }, { images: [image] }] });
   const screen = mount(owner, true);
   assert.equal(screen.render().historyImages.length, 1);
-  assert.deepEqual(screen.render().visibleJobs, [receipt]);
+  assert.deepEqual(screen.render().visibleJobs, []);
   screen.render().openHistoryImage(image);
   assert.deepEqual(screen.render().visibleJobs, [receipt]);
   assert.equal(screen.render().visibleStatuses[0].output.url, image.url);
   screen.render().returnToSession();
-  assert.deepEqual(screen.render().visibleJobs, [receipt]);
+  assert.deepEqual(screen.render().visibleJobs, []);
   screen.render().openHistoryImage(image);
   screen.render().startNewSession();
   assert.deepEqual(screen.render().visibleJobs, []);

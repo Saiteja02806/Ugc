@@ -224,3 +224,26 @@ test("single-image callers retain their removal contract and busy tiles cannot c
     resolve?.({ kind: "video", asset: { url: "https://owned.test/new.mp4" } }); await flush();
   }
 });
+
+test("audio guidance stays distinct from video and receives the selected model's upload limits", async () => {
+  const ready = { kind: "audio", asset: { id: "voice", url: "https://owned.test/voice.mp3", title: "Voice" } };
+  const h = harness(async () => ready);
+  const tree = h.render({ audioInputEnabled: true, maxVideoDuration: 15, maxAudioDuration: 15, preserveVideoTiming: false });
+  h.all(tree, node => node.type === "input" && node.props["aria-label"] === "Choose optional audio reference")[0].props.onChange({ currentTarget: { files: [new File(["audio"], "voice.mp3", { type: "audio/mpeg" })], value: "selected" } });
+  await flush();
+  assert.equal(h.calls[0][1], "audio"); assert.equal(h.calls[0][3], "expected-owner");
+  assert.equal(h.calls[0][4].maxAudioDurationSeconds, 15); assert.equal(h.calls[0][4].requireVideoReferenceRatio, false);
+  assert.deepEqual(h.selectionChanges, [{ value: ready, kind: "audio" }]);
+  const retained = h.render({ audioSelection: ready, audioInputEnabled: false });
+  const input = h.all(retained, node => node.type === "input" && node.props["aria-label"] === "Choose optional audio reference")[0];
+  assert.equal(input.props.disabled, true, "Unsupported model changes keep the selected audio available to remove");
+  const preview = h.all(retained, node => node.type === "ImagePreview" && node.props.kind === "voice")[0];
+  preview.props.onRemove(); assert.deepEqual(h.selectionChanges.at(-1), { value: null, kind: "audio" });
+});
+
+test("WAN timed-reference image limits reject an oversized saved image without clearing the current selection", async () => {
+  const h = harness(async () => {}, { images: [savedImage()], fetchSaved: async () => ({ ...savedImage(), fileSizeBytes: 17 * 1024 ** 2 }) });
+  const tree = h.render({ maxImageBytes: 16 * 1024 ** 2 });
+  h.all(tree, node => node.type === "Button" && node.props["aria-label"] === "Use your image my-reference.png")[0].props.onClick(); await flush();
+  assert.equal(h.changes.length, 0); assert.match(h.errors.at(-1), /16 MB/);
+});

@@ -42,7 +42,7 @@ test("the hidden phone route cannot be reopened with preview or rollout paramete
 
 test("preview has no generation, upload, persistence or credit side effects", () => {
   assert.doesNotMatch(frontend, /\bfetch\(|localStorage|sessionStorage|getCurrentUserIdToken|\.trigger\(|useChat|use server/);
-  assert.match(panel, /<Button type="button" disabled aria-label=\{kind === "hook" \? "Generate hook" : "Generate phone video"\}/);
+  assert.match(panel, /<Button type="button" disabled aria-label=\{kind === "hook" \? "Generate talking-head video" : "Generate phone video"\}/);
   assert.match(panel, /Generation, music, subtitles and scheduling are not connected/);
   assert.match(workspace, /beforeunload/);
 });
@@ -63,9 +63,9 @@ test("app screen, optional references, creator audio and appended demo are indep
   assert.match(workspace, /imageReferences=\{creator\}/);
   for (const name of ["videoReference", "creatorAudio", "demo", "demoAudio"]) assert.match(workspace, new RegExp(`const ${name} = useLocalWorkflowMedia`));
   assert.match(composer, /accept="image\/\*,video\/\*"/);
-  assert.match(composer, /Screen recordings require Seedance 2.5 through OpenRouter/);
+  assert.match(composer, /Screen recordings: WAN 3.0 up to 15 seconds and 32 MB · Seedance 2.5 up to 30 seconds and 250 MB/);
   assert.match(audioReference, /<PopoverTitle>Audio reference<\/PopoverTitle>/);
-  assert.match(audioReference, /Requires Seedance 2\.5 · Up to 30 seconds/);
+  assert.match(audioReference, /WAN 3\.0: up to 15 seconds · Seedance 2\.5: up to 30 seconds/);
   assert.match(workspace, /audioReference: creatorAudio\.asset/);
   assert.match(workspace, /demoAudio=\{demoAudio\.asset\}/);
   assert.doesNotMatch(audioReference, />Exact recording<\/Button>/);
@@ -172,6 +172,7 @@ test("actual app-screen hook preserves the prior image after invalid or corrupt 
   harness.complete(0);
   assert.equal(await initial, true);
   hook = harness.render();
+  assert.equal(hook.asset.file, screenshot, "Generation must receive the original selected upload");
   const firstUrl = hook.asset.url;
   assert.equal(await hook.choose({ name: "bad.wav", type: "audio/wav", size: 200 }), false);
   hook = harness.render();
@@ -201,6 +202,7 @@ test("actual app-screen hook keeps the newest cross-kind choice when metadata fi
   assert.equal(hook.asset.name, "app.mp4");
   assert.equal(hook.asset.kind, "video");
   assert.equal(hook.asset.duration, 5);
+  assert.equal(hook.asset.file, recording, "Recordings must retain the file for the generation upload");
   assert.equal(hook.loading, false);
   assert.deepEqual(harness.released, ["blob:test-1"]);
   harness.unmount();
@@ -236,4 +238,22 @@ test("actual app-screen hook ignores metadata completing after unmount", async (
   harness.complete(0);
   assert.equal(await pending, false);
   assert.deepEqual(harness.released, ["blob:test-1"]);
+});
+
+test("model-specific app-screen limits retain the accepted upload after a rejected replacement", async () => {
+  const harness = createMediaHarness();
+  let hook = harness.render();
+  const first = hook.choose(screenshot);
+  harness.complete(0); assert.equal(await first, true); hook = harness.render();
+  const accepted = hook.asset;
+  assert.equal(await hook.choose({ ...recording, size: 33 * 1024 ** 2 }, { maxBytes: 32 * 1024 ** 2 }), false);
+  hook = harness.render(); assert.equal(hook.asset, accepted); assert.match(hook.error, /32 MB/);
+  const tooLong = hook.choose(recording, { maxDuration: 4 });
+  harness.complete(1); assert.equal(await tooLong, false);
+  hook = harness.render(); assert.equal(hook.asset, accepted); assert.match(hook.error, /4 seconds/);
+  assert.deepEqual(harness.released, ["blob:test-2"]);
+  const replacement = hook.choose(recording, { maxDuration: 15, maxBytes: 32 * 1024 ** 2 });
+  harness.complete(2); assert.equal(await replacement, true);
+  hook = harness.render(); assert.equal(hook.asset.file, recording); assert.equal(hook.error, null);
+  harness.unmount();
 });

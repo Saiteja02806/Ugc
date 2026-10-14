@@ -1866,12 +1866,67 @@ function evaluateCarouselContentPlanForPublishing(params: {
 }) {
   return partitionCarouselContentPlanValidationIssues([
     ...validateCarouselContentPlan(params.plan, params.analysis),
+    ...validateHelpfulTipsPlan(params.plan, params.analysis),
     ...validateCarouselPlanGrounding(params.plan, params.groundingCandidates),
     ...validateCarouselRecentContentRepetition(
       params.plan,
       params.recentHistory,
     ),
   ]);
+}
+
+/**
+ * Structure 1 is the Helpful tips product surface. Its value must stand on its
+ * own: a card that promotes the owner's product belongs to Structure 2, not a
+ * helpful-tip slot selected by the account mixer.
+ */
+function validateHelpfulTipsPlan(
+  plan: Pick<CarouselContentPlan, "slides">,
+  analysis?: WebsiteBusinessAnalysis,
+) {
+  const issues: CarouselPlanValidationIssue[] = [];
+  const normalizedBusinessName = normalizeValidationText(
+    analysis?.businessName ?? "",
+  );
+
+  for (const slide of plan.slides) {
+    const texts = [
+      slide.headline,
+      slide.body,
+      ...(slide.listItems ?? []),
+    ].filter((value): value is string => Boolean(value));
+
+    if (typeof slide.ctaText === "string" && slide.ctaText.trim()) {
+      issues.push({
+        code: "unsupported_claim",
+        message: "Helpful tips cannot include a call to action.",
+        slideNumber: slide.slideNumber,
+      });
+    }
+
+    for (const text of texts) {
+      const normalized = normalizeValidationText(text);
+      const namesBusiness =
+        normalizedBusinessName.length >= 3 &&
+        normalized.includes(normalizedBusinessName);
+      const promotesProduct =
+        /\b(?:get started|sign up|book a demo|try our|download our|install our|visit our|our app|our platform|our tool)\b/i.test(
+          text,
+        );
+
+      if (namesBusiness || promotesProduct) {
+        issues.push({
+          code: "unsupported_claim",
+          message:
+            "Helpful tips must teach without naming or promoting the business or product.",
+          slideNumber: slide.slideNumber,
+        });
+        break;
+      }
+    }
+  }
+
+  return issues;
 }
 
 function hasUnsupportedPreciseNumber(value: string, evidenceText: string) {
@@ -2161,11 +2216,11 @@ function buildGrammarPlannerMessages(
         "- Use the private creative brief as human specificity and factual direction, not as a fixed storyline or a replacement for the selected format.",
         "- Avoid wording and close paraphrases from recentAcceptedCopy.",
         "- Follow every supplied slide role, slideType, allowed text mode, item count, and instruction exactly.",
-        "- Slide 6 must retain useful, self-contained value. An optional CTA may accompany that value on this same slide only.",
+        "- Helpful tips are self-contained teaching. Do not name or promote the business, product, app, platform, or service. ctaText must be null on every slide, including Slide 6. End with a practical action or decision.",
         "",
         "Writing rules:",
         "- Use simple, natural language and one main idea per slide.",
-        "- Prioritize useful content over promotion. Do not turn the carousel into an advertisement.",
+        "- Prioritize useful content over promotion. Do not turn the carousel into an advertisement or mention the business or product in visible copy.",
         "- Hook wording must be completely fresh and must follow the selected hook family without copying examples or history.",
         grammarContext.hookTemplate
           ? "- Apply the selected hook template only to Slide 1 as a structural pattern; adapt its {topic} placeholder naturally, rather than copying it verbatim. Do not let it change Slides 2-6, their selected format roles, or the Slide 1 copy budget."
@@ -2187,7 +2242,7 @@ function buildGrammarPlannerMessages(
         "- Slide 1 imageDirection may describe a person or face only when that scene is supported by the approved Hook image category; otherwise use an object-only scene. Slides 2-6 imageDirection must name one concrete object-only scene and useful text-safe space.",
         "- Never request an unreviewed human scene. On Slides 2-6, do not write humans, people, faces, hands, bodies, silhouettes, teams, customers, or workers in imageDirection, even as exclusions.",
         "- formatRole must exactly match the configured role for its slide number.",
-        "- ctaText is optional on Slide 6 only; it must be null on Slides 1-5 and must not replace promised value.",
+        "- ctaText must be null on every slide. Helpful tips end with a practical action or decision, never a CTA.",
         "",
         "Minimal business context:",
         JSON.stringify({ businessDescription: input.businessDescription }),
@@ -2281,7 +2336,7 @@ function buildBatchPlannerMessages(
         "Every ready plan must select one supplied grounding.anchorId. Its concept and Slides 3-5 must naturally develop that verified workflow, product detail, or user situation. Do not invent an anchor, and do not merely repeat a product name on every slide.",
         "Write fresh hooks and slide copy that do not copy recentAcceptedCopy or another item in this response.",
         "When a slot's combinedFormat.hookOverlay source is template, use that pattern only for Slide 1. Adapt {topic}; never copy it verbatim, do not change Slides 2-6 or their format roles, and never increase the Slide 1 copy budget. For adapt_if_unsupported claims, remove or soften unsupported personal, time, metric, or performance promises.",
-        "Use simple, specific, natural copy. Prioritize useful information over promotion.",
+        "Use simple, specific, natural copy. Helpful tips are self-contained teaching: never name or promote the business, product, app, platform, or service, and keep ctaText null on every slide.",
         `Optional headlines on Slides 2-6 must use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words and at most ${MAX_HEADLINE_LENGTH} characters. Slide 1 requires one ${FIRST_SLIDE_MIN_HEADLINE_WORDS}-${FIRST_SLIDE_MAX_HEADLINE_WORDS}-word headline hook, at most ${FIRST_SLIDE_MAX_HEADLINE_LENGTH} characters. Headlines remain optional and are never added merely to obtain the white SVG treatment.`,
         `Slide 1 is a social slideshow cover. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Medium at 500 weight (hard maximum 600) and ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px, with a thin black outline and no added gradient. Its one hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines. The renderer never shrinks or truncates copy. Give a specific reason to swipe through a tension, outcome, contrast, mistake, useful promise, or curiosity gap.`,
         CAROUSEL_TEXT_PRESENTATION_GUIDANCE,
@@ -2290,7 +2345,7 @@ function buildBatchPlannerMessages(
         "Avoid generic copy such as boost productivity, streamline your workflow, save time, work smarter, unlock efficiency, or next level.",
         "Follow every format role, slide type, allowed text mode, and list-item count exactly.",
         "Return listItems as an empty array whenever that slide role has no configured listItemCount.",
-        "Slide 1 is the assigned reader-first cover. Slide 6 is a useful, self-contained takeaway. ctaText is optional on Slide 6 only; it must be null on Slides 1-5 and must not replace promised value.",
+        "Slide 1 is the assigned reader-first cover. Slide 6 is a useful, self-contained takeaway and practical action. ctaText must be null on every slide.",
         "Slide 1 imageDirection may describe a person or face only when that scene is supported by the approved Hook image category; otherwise use an object-only scene. Slides 2-6 imageDirection must describe only concrete object-only scenes and text-safe space, and never mention humans, people, faces, hands, bodies, silhouettes, teams, customers, or workers, even as exclusions.",
         "Minimal business context:",
         JSON.stringify({ businessDescription: input.businessDescription }),
@@ -2777,7 +2832,7 @@ function buildRepairMessages(params: {
         "Never use these phrases: boost productivity, effectively, efficiently, effortlessly, enhance your marketing efforts, seamless, streamline your workflow, transform your campaign management, unify your planning and reporting, unlock efficiency, with ease, next level, one workspace for everything, save time, stay on top, or work smarter.",
         CAROUSEL_TEXT_PRESENTATION_GUIDANCE,
         "Select one supplied grounding.anchorId. The concept and Slides 3-5 must naturally develop that verified workflow, product detail, or user situation. Do not invent a grounding fact or force a product name into every slide.",
-        "The final slide must be a self-contained takeaway using normal body content. An optional short CTA may accompany Slide 6 only.",
+        "The final slide must be a self-contained takeaway using normal body content and a practical action. ctaText must remain null on every slide; never name or promote the business or product.",
         "Every role without a configured listItemCount must return listItems as an empty array.",
         hasRecentRepetition
           ? "Preserve contentFormatId, hookFamilyId, formatRole, slideType, configured text modes, list-item counts, seed, and emotion. Rewrite only enough to avoid close wording repetition."

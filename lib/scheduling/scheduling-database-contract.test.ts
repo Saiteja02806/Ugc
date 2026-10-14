@@ -1063,7 +1063,11 @@ test("social scheduling uses one five-minute rule without quarter-hour rounding"
   );
   assert.match(
     schedulingService,
-    /assertMinimumLead: assertTaskCreationBuffer/,
+    /assertMinimumLead: params\.recoverAccepted \? \(\) => undefined : assertTaskCreationBuffer/,
+  );
+  assert.match(
+    schedulingService,
+    /leadPolicy === "render_finalization"[\s\S]*?\? assertTaskCreationBuffer[\s\S]*?: assertMinimumScheduleLead/,
   );
   assert.match(
     schedulingService,
@@ -1127,7 +1131,7 @@ test("the main scheduler uses compact role-based clip and time controls", () => 
   assert.match(scheduleEditor, /function SchedulePrimaryMediaCard/);
   assert.match(scheduleEditor, /<ScheduleMediaVisual option=\{option\}/);
   assert.match(scheduleEditor, /setFailedThumbnailUrl/);
-  assert.match(scheduleEditor, /24-hour time with 1-minute precision\./);
+  assert.match(scheduleEditor, /Choose AM or PM\. Times use the selected timezone\./);
   assert.match(scheduleEditor, /function ScheduleTimeRail/);
   assert.match(
     scheduleEditor,

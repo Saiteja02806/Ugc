@@ -16,10 +16,10 @@ file("css-loader.cjs", `module.exports=source=>'const style=document.createEleme
 file("auth.tsx", `export const useAuth=()=>({user:{uid:'fixture-owner'},loading:false});`);
 file("token.ts", `export const getCurrentUserIdToken=async owner=>{if(owner!=='fixture-owner')throw new Error('Account changed');return 'fixture-token';};`);
 file("next.tsx", `export default function Element({href,src,alt,children}){return href?<a href={href}>{children}</a>:<img src={src} alt={alt}/>;}`);
-file("entry.tsx", `import {createRoot} from 'react-dom/client';import {QueryClient,QueryClientProvider} from '@tanstack/react-query';import {CharacterWorkspace} from '@/components/characters/character-workspace';const client=new QueryClient({defaultOptions:{queries:{retry:false}}});createRoot(document.getElementById('root')).render(<QueryClientProvider client={client}><CharacterWorkspace/></QueryClientProvider>);`);
+file("entry.tsx", `import {createRoot} from 'react-dom/client';import {QueryClient,QueryClientProvider} from '@tanstack/react-query';import {CharacterWorkspace} from '@/components/characters/character-workspace';const client=new QueryClient({defaultOptions:{queries:{retry:false}}});const root=createRoot(document.getElementById('root'));window.fixtureNavigate=active=>root.render(<QueryClientProvider client={client}>{active?<CharacterWorkspace/>:<p>Explore fixture</p>}</QueryClientProvider>);window.fixtureNavigate(true);`);
 
 const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
-const requests = [], uploads = [], receipts = new Map(), assets = new Map();
+const requests = [], selections = [], uploads = [], receipts = new Map(), assets = new Map();
 const generated = new Map();
 let mode = "hold-upload", releaseUpload, base;
 let reachedUpload;
@@ -53,6 +53,12 @@ async function main() {
     if (url.pathname === "/api/characters/access") { json({ ok: true, access: { affordableImageCount: 3, creditsRemaining: 20, imageCreditCost: 1, isPaid: true } }); return; }
     if (url.pathname === "/api/characters") { json({ ok: true, characters: [...generated.values()].map(job => ({ id: job.output.mediaAssetId, url: job.output.url, name: "My AI influencer", sourceJobId: job.id })) }); return; }
     if (url.pathname === "/api/characters/history") { json({ ok: true, images: [...generated.values()].map(job => ({ jobId: job.id, generationId: job.output.generationId, mediaAssetId: job.output.mediaAssetId, url: job.output.url, createdAt: new Date().toISOString(), prompt: "Generated influencer", saved: true, model: "gpt_image" })), nextCursor: null }); return; }
+    if (url.pathname === "/api/characters/select") {
+      const body = await readBody(req); selections.push(body);
+      assert.deepEqual(Object.keys(body), ["jobId"]);
+      const job = generated.get(body.jobId); assert.ok(job?.output);
+      json({ ok: true, character: { id: job.output.mediaAssetId, url: job.output.url, name: "My AI influencer", sourceJobId: job.id } }); return;
+    }
     if (url.pathname === "/api/media/create-upload-url") {
       const body = await readBody(req); uploads.push(body);
       if (mode === "upload-error") { json({ ok: false, error: "Reference storage unavailable" }, 503); return; }
@@ -122,11 +128,31 @@ async function main() {
       await page.getByRole("status").filter({ hasText: `${expected} of ${expected} images created` }).waitFor();
     }
     assert.equal(requests.length, 3); assert.equal(new Set(requests.map(body => body.referenceImageAssetId)).size, 3);
+    console.log("Checking image hover stays on the app controls and selection stays in the workspace…");
+    const firstCandidate = page.getByRole("button", { name: "Select influencer image 1", exact: true });
+    const controlAtImage = async locator => locator.locator("img").evaluate(img => {
+      const rect = img.getBoundingClientRect();
+      return { pointerEvents: getComputedStyle(img).pointerEvents,
+        control: document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)?.closest("button")?.getAttribute("aria-label") };
+    });
+    assert.deepEqual(await controlAtImage(firstCandidate), { pointerEvents: "none", control: "Select influencer image 1" });
+    await firstCandidate.hover();
+    await firstCandidate.click({ position: { x: 40, y: 40 } });
+    await page.getByRole("button", { name: "Preview Identity: influencer reference" }).waitFor();
+    assert.equal(selections[0].jobId, [...generated.keys()][0]);
+    assert.equal(page.url(), `${base}/`); assert.equal(page.context().pages().length, 1);
+    await page.getByRole("button", { name: "Remove influencer reference", exact: true }).click();
+    await firstCandidate.focus();
+    await firstCandidate.press("Enter");
+    await page.getByRole("button", { name: "Preview Identity: influencer reference" }).waitFor();
+    assert.equal(selections.length, 2, "keyboard activation keeps image selection accessible");
+    await page.getByRole("button", { name: "Remove influencer reference", exact: true }).click();
     console.log("Checking saved gallery and idle rollover…");
     assert.equal(await page.getByRole("article", { name: /Influencer candidate/ }).count(), 3);
     await page.getByRole("button", { name: "My influencers", exact: true }).click();
     await page.getByRole("dialog").getByRole("button", { name: "My AI influencer" }).first().waitFor();
     assert.equal(await page.getByRole("dialog").getByRole("button", { name: "My AI influencer" }).count(), 3);
+    assert.equal(await page.getByRole("dialog").locator("img").first().evaluate(img => getComputedStyle(img).pointerEvents), "none");
     await page.screenshot({ path: path.join(out, "library-desktop.png"), fullPage: true });
     await page.getByRole("dialog").getByRole("button", { name: "My AI influencer" }).first().click();
     await page.getByRole("button", { name: "Preview Identity: influencer reference" }).waitFor();
@@ -176,8 +202,34 @@ async function main() {
     await page.setViewportSize({ width: 390, height: 844 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await page.screenshot({ path: path.join(out, "mobile.png"), fullPage: true });
+    console.log("Checking completed image History after cached re-entry and reload…");
+    await page.evaluate(() => window.fixtureNavigate(false));
+    await page.getByText("Explore fixture", { exact: true }).waitFor();
+    await page.evaluate(() => window.fixtureNavigate(true));
+    await page.getByText("Your creator starts here.", { exact: true }).waitFor();
+    assert.equal(await page.getByRole("article", { name: /Influencer candidate/ }).count(), 0);
+    await page.getByRole("button", { name: "Influencer image history", exact: true }).click();
+    const historyImages = page.getByRole("dialog").getByRole("button", { name: /Generated influencer/ });
+    await historyImages.first().waitFor();
+    assert.equal(await historyImages.count(), 4);
+    assert.equal(await historyImages.first().locator("img").evaluate(img => getComputedStyle(img).pointerEvents), "none");
+    await historyImages.first().click();
+    await page.getByText("Image from your character history.", { exact: true }).waitFor();
+    assert.equal(await page.getByRole("article", { name: /Influencer candidate/ }).count(), 1);
+    await page.getByRole("button", { name: "Back to session", exact: true }).click();
+    await page.getByText("Your creator starts here.", { exact: true }).waitFor();
+    await page.reload();
+    await page.getByText("Your creator starts here.", { exact: true }).waitFor();
+    await page.getByRole("button", { name: "Generate", exact: true }).waitFor();
+    assert.equal(await page.getByRole("article", { name: /Influencer candidate/ }).count(), 0);
+    await page.getByRole("button", { name: "Influencer image history", exact: true }).click();
+    await historyImages.first().waitFor();
+    assert.equal(await historyImages.count(), 4);
+    assert.equal(requests.length, 5, "re-entry, History and reload never regenerate an image");
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    await page.screenshot({ path: path.join(out, "history-after-reload-mobile.png"), fullPage: true });
     assert.deepEqual(errors, []);
-    console.log("PASS: continuous generations accumulate; 10-minute idle reset clears the draft/reference and preserves My influencers; no New session button; uploads/errors and refresh recovery work; mobile fits.");
+    console.log("PASS: image hover targets app controls and pointer/keyboard selection stays in the workspace; continuous generations accumulate; completed images stay in History after reload and cached re-entry; explicit History preview returns to a clean workspace; 10-minute idle reset preserves My influencers; uploads/errors and uncertain-request recovery work; mobile fits.");
   } finally {
     releaseUpload?.();
     if (browser) await browser.close();

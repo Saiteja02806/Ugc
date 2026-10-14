@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 
-export type LocalWorkflowMedia = { name: string; url: string; duration: number | null; file?: File };
+export type LocalWorkflowMedia = { name: string; url: string; duration: number | null; width?: number | null; height?: number | null; file?: File };
 export type LocalMediaKind = "image" | "audio" | "video";
-type FileSelectionOptions = { minDuration?: number; maxDuration?: number; signal?: AbortSignal; onRead?: (asset: LocalWorkflowMedia) => void };
+type FileSelectionOptions = { minDuration?: number; maxDuration?: number; maxBytes?: number; signal?: AbortSignal; onRead?: (asset: LocalWorkflowMedia) => void };
 
 /** Browser-only attachments for layout review. No upload, account write, or provider request. */
 export function useLocalWorkflowMedia(kind: LocalMediaKind) {
@@ -29,8 +29,10 @@ export function useLocalWorkflowMedia(kind: LocalMediaKind) {
       if (request !== revision.current) return false;
       if (options.signal?.aborted) throw new Error(`This ${kind} selection was interrupted. Choose it again or remove the reference.`);
       downloading = false;
-      const maxMB = kind === "video" ? 250 : kind === "audio" ? 25 : 20;
-      if (!file.type.startsWith(`${kind}/`) || !Number.isFinite(file.size) || file.size <= 0 || file.size > maxMB * 1024 * 1024) {
+      const defaultMaxBytes = (kind === "video" ? 250 : kind === "audio" ? 25 : 20) * 1024 ** 2;
+      const maxBytes = Math.min(defaultMaxBytes, options.maxBytes ?? defaultMaxBytes);
+      const maxMB = maxBytes / 1024 ** 2;
+      if (!file.type.startsWith(`${kind}/`) || !Number.isFinite(file.size) || file.size <= 0 || file.size > maxBytes) {
         setError(`Choose ${kind === "image" || kind === "audio" ? "an" : "a"} ${kind} file smaller than ${maxMB} MB.`);
         return false;
       }

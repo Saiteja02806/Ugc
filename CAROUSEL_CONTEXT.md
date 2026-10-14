@@ -1,6 +1,172 @@
 # Carousel System Context
 
+## 2026-10-14 Explore scheduling integrity and Talking Head session recovery (local)
+
+- Direct scheduling of saved videos and Library slideshows commits the parent,
+  platform targets and their existing publish jobs in one service-only
+  transaction. Exact accepted replays reuse those IDs and recover incomplete
+  scheduler handoff. Earlier targetless split-write records require explicit
+  review/cancellation because their original targets cannot be invented safely.
+- Apply `20261014100508_atomic_direct_schedule_creation.sql` before releasing
+  the website. Missing atomic storage fails closed; the site does not fall back
+  to split writes. The existing scheduled-time recovery/claim guards remain
+  mandatory, and a queued publishing job cannot run before its target is due.
+- Explore scheduling bounds authentication, request and response-body waits
+  without retrying mutations automatically. Pending TikTok receipts compare
+  canonical provider options, retaining strict account/time/option verification.
+- Talking Head restores an owner-scoped browser session of owned source/demo/
+  audio IDs, chosen generated result, current stage, finishing options and unsent
+  schedule. Reload performs owned-media reads only. Missing/interrupted media
+  requires recovery or replacement; it never selects another video implicitly.
+- Save edits persists JSON clip drafts. Final preparation consumes the exact
+  raw clips and saved composition independently of background capability.
+  An absent demo uses one larger preview; adding a demo makes a two-clip sequence.
+  Cropped demo overview uses the opening's output dimensions, and Schedule's
+  video stage has a definite height so desktop containment cannot collapse it.
+  Preview/export audio timing now agrees for trimmed custom opening/demo music.
+- This is local implementation, not a production release. The migration was
+  not applied and no live generation, scheduling or publishing was performed.
+  See `docs/explore-safe-workflow-implementation-2026-10-14.md` for validation
+  and the remaining authenticated production acceptance boundary.
+
+## 2026-10-14 Explore Wall empty state and slideshow save recovery (local)
+
+- Wall of Text's empty Edit controls explain that a video is required and offer
+  the existing upload, Creative Assets and generation flows. Loading and failed
+  restores also show a status instead of leaving the sidebar blank.
+- Explore slideshow saves prepare at most two independent images concurrently,
+  retain the exact chosen output order, reuse unchanged prepared images within
+  the session, and report per-slide progress. Failed preparation waits for the
+  other in-flight work before releasing its cross-tab save lock; it does not
+  submit a partial Library sequence.
+- Saved slideshow verification reads the exact owner-bound Library item by ID
+  rather than searching the newest 60 items. Project, request provenance,
+  sequence count and order checks remain required. The authenticated read is
+  noncached and does not create, update or remove a Library item.
+- An interrupted request retains its immutable key and rendered assets. If its
+  recovered result differs from the current source/text fingerprint, the newer
+  draft stays visibly unsaved and cannot enter Schedule as the recovered result.
+  The next explicit save creates a separate revision for those newer edits.
+- Slideshow account tiles say Instagram carousel; video account labels retain
+  their existing Reels wording. Automatic Carousel generation, matching,
+  readiness, schema and publishing behavior are unchanged.
+- These changes are local. See
+  `docs/wall-slideshow-fixes-2026-10-14.md` for validation and release limits.
+
 Last updated: 2026-10-14
+
+## 2026-10-14 Captioned Explore schedule receipt verification (local)
+
+- Production scheduling errors at 14:57 IST are caused by a valid captioned
+  finishing receipt losing its authoritative speech duration during parsing,
+  then being reparsed by the scheduling verifier. The resulting NaN produced
+  `VIDEO_DURATION_INVALID` and a generic 500 despite sufficient scheduling lead.
+- The shared parser retains validated `speech_duration_ms` with its transcript.
+  Malformed speech data fails closed through typed receipt errors. Drafts,
+  fingerprints, owner/output matching and existing completed videos are intact.
+  No database migration, media regeneration or Carousel rendering change is
+  needed. The exact saved production receipt verifies under the local fix.
+- Talking Head recovery ignores superseded hydration responses and replaces
+  old time-rejection help with uncertainty guidance when a corrected request
+  has a server/transport failure. Such retries preserve the exact request and
+  identity, without automatic posting or duplicate schedule creation.
+- See `docs/explore-captioned-video-scheduling-fix-2026-10-14.md`. These changes
+  require a website release and authenticated production acceptance. This
+  investigation creates no schedules and enables no recurring monitor.
+
+## 2026-10-14 Shared schedule AM/PM clarity (local, not deployed)
+
+- The shared Schedule editor now displays and selects explicit AM/PM while
+  preserving 24-hour draft/API times. It distinguishes past selections,
+  shows the current clock and earliest slot in the selected timezone, and
+  revalidates elapsed lead at confirmation. This also applies when the
+  generic editor schedules a saved Carousel or Explore Slideshow.
+- Use next available time updates only the unsent date/time with an extra
+  confirmation minute. Accepted and uncertain durable requests retain their
+  existing recovery rules; the shortcut never submits a post automatically.
+- The reported 02:49 at 14:40 IST was morning, whereas 2:49 PM is 14:49.
+  Exact browser reproduction and recovery checks are recorded in
+  `docs/explore-schedule-am-pm-fix-2026-10-14.md`. No worker, schema, rendering,
+  Carousel sourcing or production publishing changes are required.
+
+## 2026-10-14 Slideshow style mixer (local implementation, not deployed)
+
+- The owner prefers a percentage mixer in Trending's Adjust dialog with the
+  user-facing labels **Helpful tips** and **Product stories + CTA**, initially
+  50% each. Internal Structure 1/2 names should not be exposed in the product.
+  Helpful tips must teach useful information without product promotion.
+- This is a mix within Slideshows; the existing slideshow-only format policy
+  remains 100% Slideshows. Trending's Adjust dialog and API now save the
+  account-scoped percentages. New daily packs snapshot the preference and
+  allocate complete five-candidate batches; 20- and 50-slide packs resolve to
+  10/10 and 25/25 at 50/50.
+- Daily refill reserves style-specific candidates from that pack's inventory.
+  Helpful tips use `account_preference` routing, so generic product-story
+  takeover cannot silently replace them. Publishing validation rejects CTAs,
+  the exact business name and common acquisition language. Existing packs keep
+  their prior routing and assigned content.
+- Apply `20261014113000_add_trending_slideshow_style_mixer.sql` before releasing
+  the website. Local allocation, worker build, focused unit tests and PGlite
+  migration/replay checks pass. No production migration or deployment occurred.
+  See `docs/trending-slideshow-style-mixer-implementation-2026-10-14.md`.
+
+## 2026-10-14 Structure 1 delivery audit and BOSS collage retirement
+
+- The owner's acceptance definition for active Structure 1 is useful educational
+  content actually delivered in Trending, without product promotion. An enabled
+  rotation setting, requested batch or successful Structure 2 takeover does not
+  establish that result. This is an explicit product requirement for the next
+  copy implementation; this audit does not change planner or routing behavior.
+- The supplied account's 14 October pack has 50 completed Structure 2 outputs
+  and zero Structure 1 outputs. Five requested Structure 1 batches (25 ideas)
+  all failed two planning attempts and switched to Structure 2. The account has
+  zero completed/shown Structure 1 outputs in its saved history. All 50 current
+  final slides promote UGCPilot in their body despite null `cta_text` fields.
+  The current optional CTA policy does not enforce the clarified no-promotion
+  requirement. See `docs/structure-1-production-delivery-audit-2026-10-14.md`.
+- The exact screenshot text identifies Structure 2 generation
+  `3857e2ad-e970-45a0-b99b-1a5b0a83e1b7`, slide 3, and background asset
+  `64d03b1d-e596-4110-abb6-1afc584c3541`. Its BOSS affirmation collage was
+  retired in production on 14 October: inactive/archived, explicit
+  `user_requested_retirement`, historical-render preservation marker.
+- The source hash
+  `11287eed773aa99be929566759cf3d29bbc1635d1fc6912775557e81b9c0ca8f`
+  and `productivity-human/Pinterest_2026-08-16 (76)/pinterest_019.jpg` are in
+  the import/reconciliation denylist. Zero matching sources remain eligible.
+  Both reservation replay guards are installed. All five historical decks
+  retain their complete ready slides and original edit backgrounds; source
+  bytes and stored historical copy are retained, not physically deleted.
+- Twenty-two source-retirement/import/replay/history checks pass, and actual
+  application status reads against production preserve all 29 expected slides.
+  No paid generation, schedule, publication or generation-policy change was
+  performed for this audit/removal.
+
+## 2026-10-14 Trending content-plan partial-reservation reuse (production)
+
+- The deployed idea allocator now treats `released_partial` as a terminal
+  reservation eligible for reuse of its already consumed, successful ideas,
+  alongside `completed` and `expired_partial`. Both the selection predicate
+  and final item-update predicate are changed. Active reservations, original
+  request replay, owner/profile/period checks, locking and usage history retain
+  their existing behavior; the 30-day plan stays active.
+- The 14 October pack requested 50 slideshows but only 43 ideas qualified:
+  40 available and three reusable consumed ideas. Another 107 successful ideas
+  were incorrectly excluded by their earlier `released_partial` reservations.
+  Eight five-item reservations were released before dispatch; no writer jobs
+  had been created. Three bounded recovery attempts left all 50 slots failed.
+- Migration `20261014034706_reuse_released_partial_carousel_content_plan_items`
+  is applied in production. It patches only the two expected predicates and
+  refuses an unexpected allocator definition. Its source and permissions were
+  compared to the inspected production function before/after application.
+- Ten actual PostgreSQL regressions and 49 existing lifecycle/replenishment/
+  writer-ownership checks pass. A production verification reserved 50 ideas
+  in ten disjoint partitions with exact request replays, then rolled back all
+  test writes and verified the original item/reservation/use snapshot.
+- The failed pack was restarted through production Trending's Try again
+  control. The subsequent delivery audit confirms all 50 candidate generations
+  completed and today's feed contains all 50 assignments. All outputs resolved
+  to Structure 2; this reservation fix does not establish Structure 1 health. See
+  `docs/trending-partial-content-plan-reuse-fix-2026-10-14.md` for evidence.
 
 ## 2026-10-14 Hook Remix text overview and readiness (local, not deployed)
 
@@ -7012,6 +7178,27 @@ The records below are retained from the deployed branch during release reconcili
   activation. Production Serif preview is one line and caption review is centered.
   Ongoing SEO and subsequent inline Demo action work remain outside the frozen
   follow-up release. See docs/demo-creative-assets-separation-2026-10-14.md.
+
+## 2026-10-14 Explore schedule time rejection recovery (local)
+
+- Explore Talking Head + Demo, Hook, Wall of Text and Slideshow distinguish an
+  explicit HTTP 409 `schedule_time_too_soon` rejection from an uncertain request.
+  After a rejection, Review schedule opens the current form and explicit
+  confirmation submits its current time. Ordinary finished-media scheduling
+  retains the original idempotency key; accepted server schedules recover
+  before the time-dependent minimum lead check. New requests still require
+  the full five-minute lead and valid timezone/date/account selection.
+- Background preparation permits a new immutable request only after an
+  explicit time rejection and a read confirming the old request is unconfirmed.
+  Confirmation and replay share the browser lock. Lost responses, missing GET
+  results alone, accepted requests and existing publishing targets do not
+  authorize replacement or automatic posting.
+- Real production records confirm one Explore-format Instagram Reel reached
+  publication on 2026-10-12. The caption in the reported 2026-10-14 screenshot
+  has no matching server schedule in the connected account. This is evidence
+  for the existing publishing pipeline, not a new production test of every
+  workflow or deployment of this fix. Details and validation are recorded in
+  `docs/explore-schedule-time-recovery-2026-10-14.md`.
 
 ## 2026-10-14 Approved workflow sidebar width
 

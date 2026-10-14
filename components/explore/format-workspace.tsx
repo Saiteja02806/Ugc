@@ -29,6 +29,8 @@ import { useBackgroundScheduleAvailability } from "@/components/explore/pending-
 import type { ExploreScheduleComposition } from "@/lib/explore/pending-schedule-client";
 import { createWallScheduleComposition } from "@/lib/explore/wall-pending-composition";
 import { WorkflowVideoSourceSection } from "@/components/explore/workflow-video-source-section";
+import { WorkflowClipSourceActions } from "@/components/explore/workflow-clip-source-actions";
+import { WorkflowVideoAssetPicker } from "@/components/explore/workflow-video-asset-picker";
 import { useWorkflowSourceVideo } from "@/components/explore/use-workflow-source-video";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
@@ -103,6 +105,8 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
   const paneNavigation = useRef<HTMLElement | null>(null);
   const [view, setView] = useState<"references" | "results">(() => searchParams.get(`explore-${format}Job`) || format !== "slideshow" && (localPreview && previewVideo || isExploreUuid(editVideoId)) ? "results" : "references");
   const [showGenerationResults, setShowGenerationResults] = useState(false);
+  const [openingAssetsOpen, setOpeningAssetsOpen] = useState(false);
+  const [inlineOpeningError, setInlineOpeningError] = useState<string | null>(null);
   const [controlsTarget, setControlsTarget] = useState<HTMLDivElement | null>(null);
   const [resultsTarget, setResultsTarget] = useState<HTMLDivElement | null>(null);
   const [editControlsTarget, setEditControlsTarget] = useState<HTMLDivElement | null>(null);
@@ -326,7 +330,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
   }
   function chooseDemoInDemo() {
     setEditExpanded(false); setStep("demo"); revealOnMobile("controls");
-    requestAnimationFrame(() => demoControlsTarget?.querySelector<HTMLButtonElement>("[data-demo-source='upload']")?.focus({ preventScroll: true }));
+    requestAnimationFrame(() => demoControlsTarget?.querySelector<HTMLButtonElement>("[aria-label='Choose demo video source']")?.focus({ preventScroll: true }));
   }
   const videoSelection = { ...source, source: importedSource ?? null, preview: importedPreview, ready: importedReady, setMode: setVideoMode,
     chooseUpload: async (file: File) => {
@@ -346,6 +350,18 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     setEditExpanded(false); setShowGenerationResults(false); setStep("create");
     revealOnMobile("controls");
     requestAnimationFrame(() => controlsArea.current?.querySelector<HTMLButtonElement>("[role='group'] button[aria-pressed='true']")?.focus({ preventScroll: true }));
+  }
+  async function uploadOpeningHere(file: File) {
+    if (generating || source.busy || restoredVideo.isFetching) return false;
+    const previousMode = source.mode;
+    setInlineOpeningError(null);
+    source.setMode("upload");
+    const accepted = await videoSelection.chooseUpload(file);
+    if (!accepted) {
+      source.setMode(previousMode);
+      setInlineOpeningError("This video could not be added. Try another MP4, MOV or WebM clip.");
+    }
+    return accepted;
   }
   const changeOpeningAction = <Button type="button" variant="outline" disabled={generating || source.busy} aria-label={format === "wall_text" ? "Change wall-of-text video" : "Change hook video"} onClick={chooseOpeningInCreate}>Change</Button>;
 
@@ -443,7 +459,18 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
         </div> : null}
         <div ref={setControlsTarget} className={classic ? creation.generationFields : styles.createControls} hidden={format !== "slideshow" && source.mode !== "generate"} />
         </Tabs.Panel>
-        {format !== "hook" ? <Tabs.Panel value="edit" keepMounted className={classic ? creation.sectionPanel : styles.sectionPanel}><div ref={setEditControlsTarget} className={cn(styles.editControls, format === "wall_text" && "p-4 sm:p-6")} /></Tabs.Panel> : null}
+        {format !== "hook" ? <Tabs.Panel value="edit" keepMounted className={classic ? creation.sectionPanel : styles.sectionPanel}>
+          <div ref={setEditControlsTarget} className={cn(styles.editControls, format === "wall_text" && "p-4 sm:p-6")} />
+          {format === "wall_text" && !selectedVideo ? <section aria-label="Wall of text edit setup" className="px-4 pb-6 sm:px-6">
+            <div className={styles.emptyControls}>
+              <div className={styles.emptyIcon}><Film size={20} aria-hidden="true" /></div>
+              <h2 className="text-base font-semibold">Choose a video to start editing</h2>
+              <p role="status" className="text-sm leading-6 text-muted">{source.busy || restoredVideo.isFetching ? "Preparing your video…" : restoredVideo.isError ? "This saved video is unavailable. Upload or choose another video." : "Upload, choose a saved video, or generate a background. Then add your text and trim the clip."}</p>
+              <WorkflowClipSourceActions label="wall-of-text video" disabled={generating || source.busy || restoredVideo.isFetching} onUpload={uploadOpeningHere} onChooseAssets={() => { setInlineOpeningError(null); setOpeningAssetsOpen(true); }} onGenerate={() => { setVideoMode("generate"); chooseOpeningInCreate(); }} />
+              {inlineOpeningError ? <p role="alert" className="text-sm text-destructive">{inlineOpeningError}</p> : null}
+            </div>
+          </section> : null}
+        </Tabs.Panel> : null}
         {format === "hook" ? <Tabs.Panel value="demo" keepMounted className={creation.sectionPanel}><div ref={setDemoControlsTarget} /><section className={presentation.remixOverview} aria-label="Remix text"><h2>Remix text</h2><div ref={setRemixOverviewTarget} />{!selectedVideo ? <p>Add a hook in Create to remix its text.</p> : null}</section></Tabs.Panel> : null}
         <Tabs.Panel value="schedule" keepMounted className={classic ? cn(creation.sectionPanel, styles.classicSchedule) : styles.sectionPanel}>
         <FormatSchedulePanel key={`${format}:${selectedVideo?.id ?? "owned-slides"}`} format={format} draftScopeId={selectedVideo?.id ?? "owned-slides"} preparing={format !== "slideshow" && Boolean(selectedVideo || demoSelected || source.busy) && !scheduleOutput} pendingSource={source.busy || format === "slideshow" && (slideshowSaving || slideshowUploadBusy)} active={step === "schedule"} output={scheduleOutput} pendingComposition={backgroundScheduling && !scheduleOutput ? format === "wall_text" ? { ...wallComposition, resolve: resolveWallComposition } : pendingComposition : null} localPreview={localPreview} imageOnly={format === "slideshow"} onBackToEdit={() => { setEditExpanded(false); setStep(format === "hook" ? "demo" : "edit"); revealOnMobile("preview"); }} />
@@ -467,9 +494,10 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
                   <span className={styles.emptyClipIcon}><Film aria-hidden="true" /></span>
                   <div className={styles.emptyClipCopy}>
                     <div className={styles.emptyClipTitle}><h3>Hook video</h3><span className={styles.clipOptional}>Optional</span></div>
-                    <p aria-live="polite">{restoredVideo.isFetching ? "Restoring your video…" : source.busy ? "Preparing your opening video…" : restoredVideo.isError ? "This saved clip is unavailable. Choose another in Create." : demoSelected ? "You can schedule your demo on its own, or add an opening in Create." : "Add an opening in Create, a demo in Demo, or both."}</p>
+                    <p aria-live="polite">{restoredVideo.isFetching ? "Restoring your video…" : source.busy ? "Preparing your opening video…" : restoredVideo.isError ? "This saved clip is unavailable. Upload or choose another video here." : demoSelected ? "You can schedule your demo on its own, or add an opening here." : "Upload or choose an opening video, a demo, or both."}</p>
                   </div>
-                  <Button type="button" variant="outline" disabled={generating || source.busy || restoredVideo.isFetching} onClick={chooseOpeningInCreate}>Go to Create</Button>
+                  <div className={styles.emptyClipActions}><WorkflowClipSourceActions label="hook video" disabled={generating || source.busy || restoredVideo.isFetching} onUpload={uploadOpeningHere} onGenerate={chooseOpeningInCreate} onChooseAssets={() => { setInlineOpeningError(null); setOpeningAssetsOpen(true); }} /></div>
+                  {inlineOpeningError ? <p role="alert" className="col-span-full text-xs text-destructive">{inlineOpeningError}</p> : null}
                 </div> : null}
               </div>
               <div ref={setDemoEditResultsTarget} className={styles.clipPreviewCard} data-clip-empty={!demoSelected} hidden={editExpanded && editTarget !== "demo"} />
@@ -509,6 +537,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     {format !== "slideshow" && selectedVideo ? <FormatVideoEditor key={`${user?.uid}:${selectedVideo.id}`} format={format} video={selectedVideo} remixReference={clipReference} remixReferences={references} previewText={previewText} remixOverviewTarget={format === "hook" ? remixOverviewTarget : null} localPreview={localPreview} active={format === "wall_text" ? step === "edit" : (clipStageVisible && (!editExpanded || editTarget === "opening"))} editingActive={format === "wall_text" ? step === "edit" : (editExpanded && editTarget === "opening")} onEdit={() => openClipEditor("opening")} previewActions={changeOpeningAction} controlsTarget={editControlsTarget} actionsTarget={format === "wall_text" ? editActionsTarget : clipActionsTarget} resultsTarget={editResultsTarget} enabled={finishingEnabled && !localPreview} pendingSource={source.busy} prepareRequest={backgroundScheduling ? 0 : scheduleRequest} onClipStateChange={reportOpeningClip} onPreparationChange={reportOpeningPreparation} onPreviewChange={reportOpeningPreview} onBackToPreview={format === "wall_text" ? undefined : showClipPreviews} onDirty={markDirty} onSaved={acceptOpening} onContinue={format === "wall_text" ? requestSchedule : () => { setEditExpanded(false); setStep("demo"); }} continueLabel={format === "wall_text" ? "Schedule video" : "Continue to Demo"} /> : null}
     {format === "hook" ? <FormatDemoSection key={`demo:${user?.uid}:${format}:${contentDemoId ?? "workflow"}`} contentDemoId={contentDemoId} format={format} videoId={selectedVideo?.mediaAssetId ?? selectedVideo?.id ?? (isExploreUuid(editVideoId) ? editVideoId : null)} opening={openingOutput} openingRevision={openingRevision} finalVideo={localPreview && previewFinalVideo ? { ...previewFinalVideo, kind: "media_asset" } : scheduleOutput?.kind === "media_asset" ? { ...scheduleOutput, kind: "media_asset" } : null} active={step === "demo"} scheduleActive={step === "schedule"} scheduleResultsTarget={scheduleResultsTarget} prepareRequest={backgroundScheduling ? 0 : scheduleRequest} backgroundScheduling={backgroundScheduling} openingClipState={openingClipState} onPendingCompositionChange={reportPendingComposition} openingPreparation={openingPreparation} openingPreview={openingPreview?.segment.id === (selectedVideo?.mediaAssetId ?? selectedVideo?.id) ? openingPreview : null} sourcePreview={selectedVideo ? { name: selectedVideo.title, url: selectedVideo.url, duration: selectedVideo.durationSeconds } : importedPreview} editActive={clipStageVisible && editExpanded && editTarget === "demo"} editPreviewActive={clipStageVisible && (!editExpanded || editTarget === "demo")} editControlsTarget={editControlsTarget} editActionsTarget={clipActionsTarget} editResultsTarget={demoEditResultsTarget} onEdit={() => openClipEditor("demo")} onAdd={chooseDemoInDemo} onEditDone={applyDemoEdits} enabled={finishingEnabled && !localPreview} pendingSource={source.busy} controlsTarget={demoControlsTarget} actionsTarget={demoActionsTarget} resultsTarget={demoResultsTarget} onDirty={markDemoDirty} localPreview={localPreview} onSelectionChange={reportDemoSelection} onFinalRequiredChange={setFinalPassRequired} onSaved={acceptOutput} onSkip={() => { setDemoSelected(false); setSavedOutput(openingOutput); setEditExpanded(false); setStep("schedule"); }} onContinue={requestSchedule} previewAssets={localPreview ? previewAssets : undefined} /> : null}
     {format === "slideshow" ? <FormatSlideshowEditor key={`${user?.uid}:slideshow`} reference={reference} legacyReferences={references} previewText={previewText} previewImages={localPreview && reference?.id === previewSlideshow?.referenceId ? previewSlideshow?.images : undefined} controllerRef={slideshowEditor} slideIndex={activeSlideIndex} active={step === "edit"} generationBusy={generating} controlsTarget={editControlsTarget} actionsTarget={editActionsTarget} resultsTarget={editResultsTarget} localPreview={localPreview} savingEnabled={slideshowSavingEnabled} onDirty={markDirty} onSaved={acceptOutput} onContinue={() => setStep("schedule")} onRegenerate={regenerateSlide} onBusyChange={reportSlideshowBusy} onBackToPreview={() => { setStep("create"); setView("results"); revealOnMobile("preview"); }} onGoToCreate={() => { setSlideshowRegenerationImage(null); setStep("create"); revealOnMobile("controls"); }} /> : null}
+    <WorkflowVideoAssetPicker open={openingAssetsOpen} onOpenChange={setOpeningAssetsOpen} ownerId={user?.uid ?? null} selectedId={selectedVideo?.mediaAssetId ?? undefined} previewAssets={localPreview ? previewAssets : undefined} description="Choose an opening video to add to this workflow." onSelect={asset => { if (source.busy || generating || !videoSelection.selectAsset(asset)) return false; setInlineOpeningError(null); return true; }} />
     <ReferencePreviewDialog key={`${previewReference?.id}:${previewSlide}`} initialSlide={previewSlide} open={Boolean(previewReference)} onOpenChange={open => { if (!open) setPreviewReference(null); }} reference={previewReference} />
   </>;
 }

@@ -1,5 +1,6 @@
 import { ArrowRight, ChevronRight, Clock3 } from "lucide-react";
 import Link from "next/link";
+import { practicalGuides } from "@/lib/marketing/practical-guides";
 
 import { GuideContentBrief } from "@/components/marketing/guide-content-brief";
 import { LandingHeader } from "@/components/marketing/landing-header";
@@ -44,6 +45,7 @@ export const founderGuideOpenGraphImage = {
 };
 
 export const founderGuides = {
+  ...practicalGuides,
   "saas-marketing": {
     slug: "saas-marketing",
     keyword: "SaaS marketing",
@@ -309,7 +311,7 @@ export const founderGuides = {
     ],
     productHref: "/ai-social-media-manager",
     productLabel: "Explore a workflow for creating and reviewing content",
-    related: ["saas-marketing", "social-media-marketing-for-saas", "marketing-for-startups"],
+    related: ["product-demo-to-short-video", "readable-video-text", "saas-marketing"],
     sources: [
       { label: "Google Search Central: creating helpful, reliable content", href: "https://developers.google.com/search/docs/fundamentals/creating-helpful-content" },
       { label: "Google Search Console: understanding search performance", href: "https://support.google.com/webmasters/answer/7576553?hl=en" },
@@ -394,7 +396,7 @@ export const founderGuides = {
     ],
     productHref: "/ai-ugc-video-generator",
     productLabel: "Create a launch video in AI Studio",
-    related: ["marketing-for-startups", "how-to-market-a-website", "saas-marketing"],
+    related: ["product-demo-to-short-video", "marketing-for-startups", "how-to-market-a-website"],
   },
   "marketing-for-startups": {
     slug: "marketing-for-startups",
@@ -649,11 +651,16 @@ function toJsonLd(guide: FounderGuide) {
         author: {
           "@type": "Organization",
           name: guide.author ?? "UGCPilot",
+          url: "https://getugcpilot.com",
+          logo: "https://getugcpilot.com/brand/ugc-pilot-logo.png",
         },
         publisher: {
           "@type": "Organization",
           name: "UGCPilot",
+          url: "https://getugcpilot.com",
+          logo: "https://getugcpilot.com/brand/ugc-pilot-logo.png",
         },
+        image: `https://getugcpilot.com${founderGuideOpenGraphImage.url}`,
       },
       {
         "@type": "BreadcrumbList",

@@ -21,7 +21,7 @@ const final={id:'00000000-0000-4000-8000-000000000010',sourceType:'combined_vide
 const hook={...final,id:'00000000-0000-4000-8000-000000000011',sourceType:'user_video',title:'Original hook',durationLabel:'8s'};
 const accounts=['instagram','tiktok','youtube'].map((platform,index)=>({id:'account-'+platform,platform,status:'connected',platformAccountName:'Local '+platform,platformAccountUsername:'fixture',scopes:platform==='instagram'?['instagram_business_content_publish']:platform==='tiktok'?['video.publish']:['https://www.googleapis.com/auth/youtube.upload'],supportsBackgroundRefresh:true}));
 const selected=(params.get('platforms')??'instagram').split(',');
-createRoot(document.getElementById('root')).render(params.get('mode')==='preferences'?<PublishingPreferencesSettings/>:<ScheduleEditor finalVideo={manual?undefined:final} demoMediaOptions={[final,{...final,id:'unrelated',title:'Another video'}]} hookMediaOptions={manual?[hook]:[]} editingIsCombinedVideo={false} editingPlannedPlatforms={[]} editingSchedule={null} editingScheduledDate={null} editingScheduledTime={null} errorMessage={null} initialClipSelection={manual?'hook_and_secondary':'secondary_only'} initialDemoMediaId={final.id} initialHookMediaId={manual?hook.id:''} initialCaption='Local review: one finished video' initialPlannedTargets={accounts.filter(account=>selected.includes(account.platform)).map(account=>({platform:account.platform,connectionId:account.id,settings:{}}))} initialScheduledDate='2026-12-01' initialScheduledTime='10:30' minimumScheduleLeadMinutes={5} requireScheduleTarget saving={false} socialConnections={accounts} tiktokBetaEnabled youtubeBetaEnabled onClose={()=>{}} onRefreshMedia={async()=>true} onRefreshConnections={async()=>true} onSave={value=>{window.__submission=value;document.body.dataset.fixtureSubmission=JSON.stringify(value);}}/>);`);
+createRoot(document.getElementById('root')).render(params.get('mode')==='preferences'?<PublishingPreferencesSettings/>:<ScheduleEditor presentation={params.get('presentation')==='workflow'?'workflow':'modal'} finalVideo={manual?undefined:final} demoMediaOptions={[final,{...final,id:'unrelated',title:'Another video'}]} hookMediaOptions={manual?[hook]:[]} editingIsCombinedVideo={false} editingPlannedPlatforms={[]} editingSchedule={null} editingScheduledDate={null} editingScheduledTime={null} errorMessage={null} initialClipSelection={manual?'hook_and_secondary':'secondary_only'} initialDemoMediaId={final.id} initialHookMediaId={manual?hook.id:''} initialCaption='Local review: one finished video' initialPlannedTargets={accounts.filter(account=>selected.includes(account.platform)).map(account=>({platform:account.platform,connectionId:account.id,settings:{}}))} initialScheduledDate={params.get('date')??'2026-12-01'} initialScheduledTime={params.get('time')??'10:30'} minimumScheduleLeadMinutes={5} requireScheduleTarget saving={false} socialConnections={accounts} tiktokBetaEnabled youtubeBetaEnabled onClose={()=>{}} onRefreshMedia={async()=>true} onRefreshConnections={async()=>true} onSave={value=>{window.__submission=value;document.body.dataset.fixtureSubmission=JSON.stringify(value);}}/>);`);
 
 async function main() {
   await new Promise((resolve, reject) => {
@@ -58,6 +58,34 @@ async function main() {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   page.on("pageerror", error => errors.push(error.message));
   try {
+    await page.clock.setFixedTime(new Date("2026-10-14T09:10:30Z"));
+    await page.goto(base + "/?presentation=workflow&date=2026-10-14&time=02:49");
+    const timePicker = page.getByRole("button", { name: "Choose publish time, currently 02:49 AM", exact: true });
+    await timePicker.waitFor();
+    assert.equal(await page.getByRole("button", { name: "Choose date and time", exact: true }).isDisabled(), true);
+    assert.match(await page.locator("#schedule-clock-help").innerText(), /Now: 2026-10-14 02:40 PM.*Asia\/Calcutta[\s\S]*Earliest: 2026-10-14 02:46 PM/);
+    await timePicker.click();
+    await page.getByRole("group", { name: "AM/PM", exact: true }).getByRole("button", { name: "PM", exact: true }).click();
+    await page.getByRole("button", { name: "Done", exact: true }).click();
+    assert.equal(await page.locator('input[name="scheduledTime"]').inputValue(), "14:49");
+    assert.equal(await page.locator("#schedule-time-feedback").count(), 0);
+    assert.equal(await page.getByRole("button", { name: "Schedule post", exact: true }).isEnabled(), true);
+    assert.equal(await page.evaluate(() => window.__submission), undefined);
+    await page.getByRole("button", { name: "Schedule post", exact: true }).click();
+    const afternoon = await page.evaluate(() => window.__submission);
+    assert.equal(afternoon.scheduledTime, "14:49"); assert.equal(afternoon.scheduledFor, "2026-10-14T09:19:00.000Z");
+    await page.screenshot({ path: path.join(out, "schedule-afternoon-corrected.png"), fullPage: true });
+    console.log("PASS screenshot regression: explicit PM clears the warning and submits 14:49 IST at the correct UTC instant");
+
+    await page.clock.setFixedTime(new Date("2026-10-14T18:27:30Z"));
+    await page.goto(base + "/?presentation=workflow&date=2026-10-14&time=23:59");
+    await page.getByRole("button", { name: "Use next available time", exact: true }).click();
+    assert.equal(await page.locator('input[name="scheduledDate"]').inputValue(), "2026-10-15");
+    assert.equal(await page.locator('input[name="scheduledTime"]').inputValue(), "00:04");
+    assert.equal(await page.evaluate(() => window.__submission), undefined);
+    assert.equal(await page.getByRole("button", { name: "Schedule post", exact: true }).isEnabled(), true);
+    console.log("PASS next available time crosses midnight with a confirmation buffer and never submits automatically");
+    await page.clock.setFixedTime(new Date("2026-10-14T09:10:30Z"));
     await page.goto(base);
     await page.getByRole("button", { name: "Schedule post", exact: true }).waitFor();
     assert.equal(await page.getByRole("heading", { name: "Final video", exact: true }).count(), 1);

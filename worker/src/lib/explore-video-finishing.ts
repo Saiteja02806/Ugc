@@ -91,19 +91,25 @@ export async function finishExploreVideo(options: ExploreFinishingOptions): Prom
   const placement = subtitles ? parsePlacement(subtitles.placement ?? "bottom") : null;
   if (subtitles && subtitles.language !== "en") assertExploreSubtitleScope(subtitles.language, 1);
   let preparedTranscript: ReturnType<typeof validateTranscript> | null = null;
+  const singlePassSubtitles = subtitles?.version === 2 && !options.referenceAudioPath && !options.editing && !options.captionPreview;
+  let preparedSpeech: Awaited<ReturnType<typeof composeExploreVideo>> | null = null;
+  let preparedEditorial: ReturnType<typeof createEditorialMeasurer> | null = null;
+  let preparedSerif: ReturnType<typeof createSerifBoxMeasurer> | null = null;
+  if (singlePassSubtitles) await mkdir(options.workDir, { recursive: false });
   // New drafts prepare the exact mixed audio before any video encode. Legacy
   // receipts retain their original speech identity and recovery behavior.
   if (subtitles?.version === 2 && !options.referenceAudioPath && style) {
     const speech = await composeExploreVideo({ ...options, originalVolume: options.editing?.originalVolume, musicVolume: options.editing?.musicVolume,
       workDir: join(dirname(options.workDir), "speech-preview"), subtitleScope: { language: subtitles.language }, audioOnly: true });
-    const fontCheck = join(dirname(options.workDir), "caption-font-check");
+    preparedSpeech = speech;
+    const fontCheck = singlePassSubtitles ? join(options.workDir, "subtitles") : join(dirname(options.workDir), "caption-font-check");
     await mkdir(fontCheck);
     if (style === "editorial") await prepareEditorialFonts(options.tools, fontCheck);
     else if (style === "serif-box") await prepareSerifBoxFonts(options.tools, fontCheck);
     else await prepareSubtitleFonts(options.tools, fontCheck);
     const previewLayout = getSubtitleLayout(speech.width, speech.height, style);
-    if (style === "editorial") await createEditorialMeasurer(previewLayout, options.tools, fontCheck, options.signal)("Subtitle font check", previewLayout.fontSize, "lead");
-    else if (style === "serif-box") await createSerifBoxMeasurer(previewLayout, options.tools, fontCheck, options.signal)("Subtitle font check");
+    if (style === "editorial") { preparedEditorial = createEditorialMeasurer(previewLayout, options.tools, fontCheck, options.signal); await preparedEditorial("Subtitle font check", previewLayout.fontSize, "lead"); }
+    else if (style === "serif-box") { preparedSerif = createSerifBoxMeasurer(previewLayout, options.tools, fontCheck, options.signal); await preparedSerif("Subtitle font check"); }
     else await createTextMeasurer(previewLayout, options.tools)("Subtitle font check");
     preparedTranscript = validateTranscript(await subtitles.loadTranscript({ audioPath: speech.subtitleAudioPath!, sourceHash: await digestFile(speech.subtitleAudioPath!),
       durationMs: Math.ceil(speech.measuredDurationMs), language: subtitles.language }), Math.ceil(speech.measuredDurationMs));
@@ -115,7 +121,7 @@ export async function finishExploreVideo(options: ExploreFinishingOptions): Prom
       subtitleWordCount: preparedTranscript.words.length, subtitleRenderVersion: subtitleStyleDefinition(style).renderVersion };
   }
   const singlePassEditing = options.editing && !options.demoPath && !subtitles ? options.editing : undefined;
-  const composed = await composeExploreVideo({ ...options, originalVolume: options.editing?.originalVolume, musicVolume: options.editing?.musicVolume, subtitleScope: subtitles ? { language: subtitles.language } : undefined },
+  const composed = singlePassSubtitles ? preparedSpeech! : await composeExploreVideo({ ...options, originalVolume: options.editing?.originalVolume, musicVolume: options.editing?.musicVolume, subtitleScope: subtitles ? { language: subtitles.language } : undefined },
     singlePassEditing ? { editing: singlePassEditing, fontsDir: options.tools.fontsDir } : undefined);
   const edited = options.editing && !singlePassEditing ? { ...composed, ...await renderExploreFormatEdit({ sourcePath: composed.outputPath, width: composed.width, height: composed.height, durationMs: composed.durationMs, editing: options.editing, workDir: options.workDir, tools: options.tools, signal: options.signal }) } : composed;
   // Start the paired track AFTER trim/text, on the complete final timeline.
@@ -127,21 +133,25 @@ export async function finishExploreVideo(options: ExploreFinishingOptions): Prom
   if (!subtitles) return { ...composition, referenceAudioBasePath, subtitleStyle: null, subtitlePlacement: null, subtitleWordCount: 0, subtitleRenderVersion: null };
   if (!composition.subtitleAudioPath || !style || !placement) throw new SubtitleError("SUBTITLE_INPUT_INVALID", "The final audio track could not be prepared.");
   assertExploreSubtitleScope(subtitles.language, composition.durationMs);
-  const captionDir = join(dirname(composition.outputPath), "subtitles");
-  await mkdir(captionDir);
-  await copyFile(composition.outputPath, join(captionDir, "source-video"), constants.COPYFILE_EXCL);
-  const video = await probeVideo(join(captionDir, "source-video"), options.tools, options.signal);
-  assertExploreSubtitleScope(subtitles.language, video.durationMs);
+  const captionDir = singlePassSubtitles ? join(options.workDir, "subtitles") : join(dirname(composition.outputPath), "subtitles");
+  if (!singlePassSubtitles) await mkdir(captionDir);
+  if (!singlePassSubtitles) await copyFile(composition.outputPath, join(captionDir, "source-video"), constants.COPYFILE_EXCL);
+  const video = singlePassSubtitles ? null : await probeVideo(join(captionDir, "source-video"), options.tools, options.signal);
+  const captionVideo = video ?? composition;
+  assertExploreSubtitleScope(subtitles.language, captionVideo.durationMs);
   // Confirm fonts/runtime inputs BEFORE requesting transcription.
-  if (style === "editorial") await prepareEditorialFonts(options.tools, captionDir);
-  else if (style === "serif-box") await prepareSerifBoxFonts(options.tools, captionDir);
-  else await prepareSubtitleFonts(options.tools, captionDir);
-  const layout = getSubtitleLayout(video.width, video.height, style);
-  const editorialMeasure = style === "editorial" ? createEditorialMeasurer(layout, options.tools, captionDir, options.signal) : null;
-  const serifMeasure = style === "serif-box" ? createSerifBoxMeasurer(layout, options.tools, captionDir, options.signal) : null;
-  const measure = editorialMeasure ? (text: string) => editorialMeasure(text, layout.fontSize, "lead").then(ink => ink.width)
+  if (!singlePassSubtitles) {
+    if (style === "editorial") await prepareEditorialFonts(options.tools, captionDir);
+    else if (style === "serif-box") await prepareSerifBoxFonts(options.tools, captionDir);
+    else await prepareSubtitleFonts(options.tools, captionDir);
+  }
+  const layout = getSubtitleLayout(captionVideo.width, captionVideo.height, style);
+  const editorialMeasure = style === "editorial" ? singlePassSubtitles ? preparedEditorial : createEditorialMeasurer(layout, options.tools, captionDir, options.signal) : null;
+  const serifMeasure = style === "serif-box" ? singlePassSubtitles ? preparedSerif : createSerifBoxMeasurer(layout, options.tools, captionDir, options.signal) : null;
+  const measure = editorialMeasure ? Object.assign((text: string) => editorialMeasure(text, layout.fontSize, "lead").then(ink => ink.width),
+    { preload: editorialMeasure.preload ? (texts: string[]) => editorialMeasure.preload!(texts, layout.fontSize, "lead") : undefined })
     : serifMeasure ? (text: string) => serifMeasure(text).then(ink => ink.width) : createTextMeasurer(layout, options.tools);
-  await measure("Subtitle font check");
+  if (!singlePassSubtitles) await measure("Subtitle font check");
   if (referenceAudio) await runMediaCommand(options.tools.ffmpeg, ["-nostdin", "-v", "error", "-y", "-protocol_whitelist", "file,pipe", "-i", composition.outputPath,
     "-map", "0:a:0", "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", composition.subtitleAudioPath], { signal: options.signal });
   const sourceHash = await digestFile(composition.subtitleAudioPath);
@@ -168,7 +178,13 @@ export async function finishExploreVideo(options: ExploreFinishingOptions): Prom
   await writeFile(join(captionDir, "captions.ass"), ass, { flag: "wx" });
   await writeFile(join(captionDir, "captions.srt"), serializeSrt(cues), { flag: "wx" });
   await writeFile(join(captionDir, "captions.vtt"), serializeVtt(cues), { flag: "wx" });
-  await renderSubtitleVideo(captionDir, video, options.tools, options.signal, "veryfast");
+  if (singlePassSubtitles) {
+    const finished = await composeExploreVideo({ ...options, workDir: join(options.workDir, "composition"), subtitleScope: { language: subtitles.language }, burnSubtitles: true });
+    assertExploreSubtitleScope(subtitles.language, finished.durationMs);
+    return { ...finished, subtitleAudioPath: preparedSpeech!.subtitleAudioPath, referenceAudioBasePath: null, subtitleStyle: style,
+      subtitlePlacement: placement, subtitleWordCount: transcript.words.length, subtitleRenderVersion: subtitleStyleDefinition(style).renderVersion };
+  }
+  await renderSubtitleVideo(captionDir, video!, options.tools, options.signal, "veryfast");
   const outputPath = join(captionDir, "captioned.mp4");
   const result = await probeVideo(outputPath, options.tools, options.signal);
   if (referenceAudioBasePath) {

@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-assign-module-variable -- Replaces the test module loader inside an isolated fixture. */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";

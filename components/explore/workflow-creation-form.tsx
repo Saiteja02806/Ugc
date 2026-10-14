@@ -15,6 +15,7 @@ import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/compone
 import { CREATOR_REFERENCES } from "@/lib/ai-studio/creator-references";
 import { AI_STUDIO_GENERATION_QUANTITIES, AI_STUDIO_VIDEO_ASPECT_RATIOS, getAIStudioVideoResolutions, parseAIStudioGenerationQuantity, parseAIStudioVideoAspectRatio, parseAIStudioVideoModel, parseAIStudioVideoResolution } from "@/lib/ai-studio/generation-settings";
 import { getWorkflowVideoModels, type WorkflowGenerationSettings } from "@/lib/explore/workflow-generation-settings";
+import { getVideoReferencePolicy } from "@/lib/ai-studio/video-reference-policy";
 import { cn } from "@/lib/utils";
 import studio from "@/components/explore/workflow-studio.module.css";
 import creation from "@/components/explore/workflow-creation.module.css";
@@ -42,6 +43,7 @@ export function WorkflowCreationForm({ kind, instructions, onInstructionsChange,
   const promptId = useId();
   const helperId = useId();
   const { model, duration, quantity, resolution, aspectRatio } = generationSettings;
+  const referencePolicy = getVideoReferencePolicy(model);
   const models = getWorkflowVideoModels();
   const qualities = getAIStudioVideoResolutions(model).map((value) => ({ value, label: value }));
   const prefix = kind === "hook" ? "Hook" : "Phone video";
@@ -71,9 +73,9 @@ export function WorkflowCreationForm({ kind, instructions, onInstructionsChange,
           </PopoverTrigger>
           <PopoverContent side="right" align="start" className={cn(studio.floating, creation.floating)}>
             <PopoverTitle>Video reference</PopoverTitle>
-            <p className="text-sm leading-6 text-muted">Use Seedance 2.5 for a video reference up to 30 seconds to guide the scene and motion. Add demo footage separately in Edit. Files upload when you Generate.</p>
+            <p className="text-sm leading-6 text-muted">Guide the scene and motion. WAN 3.0: up to 15 seconds and 32 MB · Seedance 2.5: up to 30 seconds and 250 MB.</p>
             {videoReference.asset ? <><WorkflowMediaPlayer asset={videoReference.asset} kind="video" label="Video reference preview" className="mx-auto aspect-auto h-auto max-h-[40dvh] w-auto max-w-full bg-transparent" /><p className="break-all text-xs text-muted">{videoReference.asset.name}</p></> : null}
-            <WorkflowFilePicker attachment={videoReference} kind="video" label={videoReference.asset ? "Replace video reference" : "Attach video reference"} className="h-9 text-sm" />
+            <WorkflowFilePicker attachment={{ ...videoReference, choose: file => videoReference.choose(file, { maxDuration: referencePolicy.maxVideoDuration, maxBytes: referencePolicy.maxVideoBytes }) }} kind="video" label={videoReference.asset ? "Replace video reference" : "Attach video reference"} className="h-9 text-sm" />
             {videoReference.asset || videoReference.error ? <Button type="button" variant="ghost" aria-label="Remove video reference" className="h-9 rounded-lg text-sm" onClick={videoReference.remove}>Remove video</Button> : null}
             {videoReference.error ? <p role="alert" className="text-sm text-destructive">{videoReference.error}</p> : null}
           </PopoverContent>
@@ -81,10 +83,10 @@ export function WorkflowCreationForm({ kind, instructions, onInstructionsChange,
         </div>
         </div>
         <div className={kind === "hook" ? creation.classicReference : sections.referenceCard}><h4 className={kind === "hook" ? "sr-only" : undefined}>Audio reference</h4>{kind !== "hook" ? <p>Vocal delivery</p> : null}
-        <WorkflowAudioReference audio={audio} audioLabel={audioLabel} audioMode={audioMode} onAudioModeChange={onAudioModeChange} ownerId={ownerId} tile={kind === "hook"} />
+        <WorkflowAudioReference audio={audio} audioLabel={audioLabel} audioMode={audioMode} onAudioModeChange={onAudioModeChange} ownerId={ownerId} tile={kind === "hook"} model={model} />
         </div>
       </div>
-      <p className={kind === "hook" ? "sr-only" : creation.sectionHelp}>References are optional. Video and voice guidance require Seedance 2.5.</p>
+      <p className={kind === "hook" ? "sr-only" : creation.sectionHelp}>References are optional. Use WAN 3.0 or Seedance 2.5 for video and audio guidance.</p>
     </section>
     {creator.loading || videoReference.loading || audio.loading ? <p role="status" className={creation.sectionHelp}>Reading your reference…</p> : null}
     {creator.error || videoReference.error || audio.error ? <p role="alert" className="text-xs leading-5 text-destructive">{creator.error || videoReference.error || audio.error}</p> : null}

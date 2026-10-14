@@ -26,7 +26,7 @@ mock.module("@/lib/jobs/background-job-service", { namedExports: { createAndDisp
   return jobs.get(key);
 } } });
 mock.module("@/lib/storage/storage", { namedExports: { isTrustedStorageUrl: (url) => new URL(url).hostname === "storage.example.com" } });
-mock.module("@/lib/media/media-storage", { namedExports: { getMediaAssetForOwner: async ({ assetId, userId }) => {
+mock.module("@/lib/media/media-storage", { namedExports: { getMediaAssetsForOwnerByUrls: async ({ urls, userId }) => [...ownedAssets.values()].filter(asset => asset.user_id === userId && urls.includes(asset.url)), getMediaAssetForOwner: async ({ assetId, userId }) => {
   const asset = ownedAssets.get(assetId); return asset?.user_id === userId ? asset : null;
 } } });
 mock.module("@/lib/explore/hook-video-library", { namedExports: { isExploreHookVideoId: () => false } });
@@ -50,7 +50,13 @@ const draft = (overrides = {}) => ({ kind: "hook", instructions: "A creator expl
 function client(overrides = {}) {
   return createWorkflowGenerationClient({
     assertActive() {}, getOwnerToken: async () => "fake-owner-token", createIdempotencyKey: () => "submission",
-    uploadImage: async (image) => { uploads.push(image); return { url: `https://storage.example.com/${uploads.length}.png` }; },
+    uploadImage: async (image) => {
+      uploads.push(image);
+      const url = `https://storage.example.com/${uploads.length}.png`, id = `image-${uploads.length}`;
+      ownedAssets.set(id, { id, url, user_id: "owner-a", collection: "image", status: "ready", deleted_at: null,
+        mime_type: "image/png", file_size_bytes: 1024 });
+      return { url };
+    },
     uploadReference: async (source, kind) => {
       uploads.push(source);
       const id = kind === "audio" ? audioId : videoId, url = `https://storage.example.com/${kind}.media`;
@@ -121,6 +127,27 @@ test("both Explore workflows send owned Create audio/video to OpenRouter, indepe
     assert.equal(uploads.length, 2);
     assert.equal(reservations.size, 1);
     assert.doesNotMatch(JSON.stringify(input), /blob:|demoAssetId|demoAudioAssetId|backgroundAssetId/);
+  }
+});
+
+test("Talking Head and Hook retain all three reference kinds through their real client and API for WAN", async () => {
+  for (const kind of ["hook", "phone"]) {
+    jobs.clear(); reservations.clear(); uploads.length = 0; ownedAssets.clear();
+    const reference = media => ({ name: `${media}.media`, url: `blob:${media}`, duration: 15,
+      file: { type: `${media}/${media === "audio" ? "mpeg" : "mp4"}`, size: 1024 } });
+    await client().generate(draft({ kind, settings: normalizeWorkflowGenerationSettings({ model: "wan_3_0", duration: 3, durationSeconds: 3 }, true),
+      creator: { name: "creator.png", url: "blob:creator" },
+      videoReference: kind === "hook" ? reference("video") : null,
+      appScreen: kind === "phone" ? { ...reference("video"), kind: "video" } : null,
+      audioReference: reference("audio"),
+    }));
+    const input = [...jobs.values()][0].input;
+    assert.equal(input.provider, "runway"); assert.equal(input.model, "wan_3_0");
+    assert.deepEqual(input.referenceImageUrls, ["https://storage.example.com/1.png"]);
+    assert.deepEqual(input.referenceAudioUrls, ["https://storage.example.com/audio.media"]);
+    assert.deepEqual(input.referenceAudioDurationSeconds, [15]);
+    assert.equal(input.referenceVideoUrl, "https://storage.example.com/video.media");
+    assert.equal(input.durationSeconds, 3); assert.equal(reservations.size, 1);
   }
 });
 

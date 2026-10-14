@@ -18,15 +18,15 @@ const job = { id: "job-1", input_json: {
   resolution: "720p", projectId: "ai-studio", userId: "user-1", videoId: "video-1",
 } };
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
-function context(existing = null) {
+function context(existing = null, expectedProvider = "openrouter") {
   let operation = existing;
   const events = [];
   const store = {
     getGenerationProviderOperation: async ({ operationKey }) => operationKey === "primary-higgsfield" ? null : operation,
     reserveGenerationProviderOperation: async (input) => {
-      assert.equal(input.provider, "openrouter"); assert.equal(input.operationKey, "primary-openrouter");
+      assert.equal(input.provider, expectedProvider); assert.equal(input.operationKey, `primary-${expectedProvider}`);
       const shouldSubmit = !operation;
-      operation ??= { provider: "openrouter", status: "reserved", provider_operation_id: null, output_url: null, metadata: input.metadata };
+      operation ??= { provider: expectedProvider, status: "reserved", provider_operation_id: null, output_url: null, metadata: input.metadata };
       return { operation, shouldSubmit };
     },
     markGenerationProviderSubmitted: async (input) => { events.push("save-id"); Object.assign(operation, { status: "submitted", provider_operation_id: input.providerOperationId }); },
@@ -157,5 +157,47 @@ test("WAN invalid duration and timed references are rejected before any provider
   mock.method(globalThis, "fetch", async () => assert.fail("must reject before provider access"));
   for (const patch of [{ durationSeconds: 1 }, { referenceAudioUrls: ["https://storage.example.com/voice.mp3"] }, { referenceVideoUrl: "https://storage.example.com/demo.mp4", referenceVideoDurationSeconds: 2 }]) {
     await assert.rejects(runGenerateHookVideoJob({ ...job, input_json: { ...job.input_json, model: "wan_3_0", ...patch } }, context()));
+  }
+});
+
+test("WAN's real Runway worker path sends images, audio and video together and resumes the accepted task", async () => {
+  const initialSecret = process.env.RUNWAYML_API_SECRET;
+  process.env.RUNWAYML_API_SECRET = "dummy-wan-worker-test-key";
+  const ctx = context(null, "runway"); let posts = 0;
+  const references = { referenceImageUrls: ["https://storage.example.com/image.png"],
+    referenceAudioUrls: ["https://storage.example.com/audio.mp3"], referenceAudioDurationSeconds: [15],
+    referenceVideoUrl: "https://storage.example.com/video.mp4", referenceVideoDurationSeconds: 15 };
+  mock.method(globalThis, "fetch", async (url, init) => {
+    const raw = String(url);
+    assert.ok(raw.startsWith("https://api.dev.runwayml.com/") || raw.startsWith("https://storage.example.com/"));
+    if (raw.includes("/organization/usage")) return json({ results: [{ usedCredits: [] }] });
+    if (raw.endsWith("/organization")) return json({ usage: { models: {} } });
+    if (init?.method === "POST") {
+      posts++; assert.ok(raw.endsWith("/text_to_video"));
+      const body = JSON.parse(init.body);
+      assert.equal(body.model, "wan3"); assert.equal(body.duration, 3); assert.equal(body.ratio, "720:1280");
+      assert.deepEqual(body.references, [{ uri: references.referenceImageUrls[0] }]);
+      assert.deepEqual(body.referenceAudio, [{ type: "audio", uri: references.referenceAudioUrls[0] }]);
+      assert.deepEqual(body.referenceVideos, [{ type: "video", uri: references.referenceVideoUrl }]);
+      return json({ id: "wan-reference-task" });
+    }
+    if (raw.endsWith("/tasks/wan-reference-task")) {
+      assert.equal(ctx.operation().provider_operation_id, "wan-reference-task");
+      return json({ id: "wan-reference-task", status: "SUCCEEDED", output: ["https://storage.example.com/wan-result.mp4"] });
+    }
+    assert.ok(["provider_succeeded", "output_persisted"].includes(ctx.operation().status));
+    return new Response(video, { headers: { "content-type": "video/mp4" } });
+  });
+  try {
+    const wanJob = { ...job, input_json: { ...job.input_json, ...references, model: "wan_3_0", provider: "runway", durationSeconds: 3 } };
+    const output = await runGenerateHookVideoJob(wanJob, ctx);
+    assert.equal(output.provider, "runway"); assert.equal(output.durationSeconds, 3);
+    assert.equal(ctx.operation().metadata.durationSeconds, 3);
+    assert.deepEqual(ctx.events, ["save-id", "save-provider-output", "save-stored-output"]);
+    await runGenerateHookVideoJob(wanJob, ctx);
+    assert.equal(posts, 1, "Retry must reuse the accepted task rather than issue another paid generation");
+  } finally {
+    if (initialSecret === undefined) delete process.env.RUNWAYML_API_SECRET;
+    else process.env.RUNWAYML_API_SECRET = initialSecret;
   }
 });

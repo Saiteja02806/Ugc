@@ -46,7 +46,7 @@ test("Seedance uses its own capabilities and is gated until the provider is read
   assert.deepEqual(getAIStudioVideoResolutions("seedance_2_5"), ["480p", "720p"]);
   assert.equal(isAIStudioVideoResolutionSupported("seedance_2_5", "1080p"), false);
   assert.deepEqual(getAIStudioVideoDurations("seedance_2_5"), Array.from({ length: 27 }, (_, i) => i + 4));
-  assert.ok(getAIStudioVideoDurations("kling_3_0").every((seconds) => seconds >= 3 && seconds <= 15));
+  assert.deepEqual(getAIStudioVideoDurations("kling_3_0"), Array.from({ length: 13 }, (_, i) => i + 3));
   assert.ok(getAIStudioVideoDurations("google_omni").every((seconds) => seconds <= 10));
   assert.equal(isAIStudioVideoModelAvailable("seedance_2_5", false), false);
   assert.equal(isAIStudioVideoModelAvailable("seedance_2_5", true), true);
@@ -83,4 +83,5 @@ test("WAN capabilities support three-second hooks independently of Seedance's ro
   assert.equal(isAIStudioVideoModelAvailable("seedance_2_5", false, true), false);
   assert.ok(!getAIStudioVideoDurations("google_omni").includes(2));
   assert.ok(!getAIStudioVideoDurations("kling_3_0").includes(2));
+  assert.ok(!getAIStudioVideoDurations("seedance_2_5").includes(3));
 });

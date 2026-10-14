@@ -7,7 +7,7 @@ import { founderGuides } from "@/components/marketing/founder-guide-page";
 import { LandingHeader } from "@/components/marketing/landing-header";
 
 export const metadata: Metadata = {
-  title: "Marketing Guides for SaaS, Website & App Founders",
+  title: "Marketing & Video Guides for Founders",
   description:
     "Practical marketing guides for SaaS, website, and mobile-app founders who need a clear message, useful content, and a sustainable growth routine.",
   alternates: { canonical: "/guides" },
@@ -28,9 +28,25 @@ export const metadata: Metadata = {
 
 export default function GuidesPage() {
   const guides = Object.values(founderGuides);
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: "UGC Pilot founder marketing guides",
+    url: "https://getugcpilot.com/guides",
+    mainEntity: {
+      "@type": "ItemList",
+      itemListElement: guides.map((guide, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: guide.title,
+        url: `https://getugcpilot.com/guides/${guide.slug}`,
+      })),
+    },
+  };
 
   return (
     <main className="instagram-theme min-h-screen overflow-x-hidden bg-background text-foreground">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }} />
       <LandingHeader initialHasSession={false} />
       <section className="relative overflow-hidden border-b border-border px-4 pb-16 pt-28 sm:px-6 sm:pb-22 sm:pt-36 lg:px-8">
         <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[420px] bg-[radial-gradient(ellipse_60%_55%_at_50%_0%,rgba(255,107,69,0.15),transparent_76%)]" />

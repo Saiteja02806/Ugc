@@ -88,13 +88,13 @@ test("the unified toolbar keeps settings and Generate inside the same form", () 
   assert.match(composer, /layout === "unified" && "px-3 pb-2 sm:px-4 sm:pb-3"/);
   assert.match(imageWorkspace, /AiStudioRatioPicker/);
   assert.match(imageWorkspace, /ariaLabel="Number of images"/);
-  assert.match(imageWorkspace, /generateLabel="Generate image"/);
+  assert.match(imageWorkspace, /generateLabel=\{pendingSubmission \? "Recover saved request" : "Generate image"\}/);
   assert.match(videoWorkspace, /layout=\{workflow \? "workflow" : "unified"\}/);
 });
 
 test("image and video controls send selected settings to generation APIs", () => {
-  assert.match(imageWorkspace, /body: JSON\.stringify\(\{[\s\S]*?aspectRatio,[\s\S]*?quantity,/);
-  assert.match(videoWorkspace, /body: JSON\.stringify\(\{[\s\S]*?aspectRatio,[\s\S]*?quantity,/);
+  assert.match(imageWorkspace, /submitPendingGeneration\(\{[\s\S]*?input: \{[\s\S]*?aspectRatio,[\s\S]*?quantity,/);
+  assert.match(videoWorkspace, /submitPendingGeneration\(\{[\s\S]*?input: \{[\s\S]*?aspectRatio,[\s\S]*?quantity,/);
   assert.match(imageWorkspace, /ariaLabel="Image model"/);
   assert.match(imageWorkspace, /getAIStudioImageModelLabel/);
   assert.match(generationSettings, /Nano Banana 2\.1/);
@@ -144,10 +144,10 @@ test("video duration displays and enforces four credits per second", () => {
   );
 });
 
-test("image defaults to 9:16 and workspaces use the public canonical job names", () => {
+test("slideshow images default to 4:5 while Studio defaults to 9:16 and canonical job names stay public", () => {
   assert.match(
     imageWorkspace,
-    /useState<AIStudioImageAspectRatio>\("9:16"\)/,
+    /useState<AIStudioImageAspectRatio>\(workflowFormat === "slideshow" \? "4:5" : "9:16"\)/,
   );
   assert.match(imageWorkspace, /job\.jobType === "image_generation"/);
   assert.match(videoWorkspace, /job\.jobType === "video_generation"/);
@@ -253,9 +253,9 @@ test("AI Studio keeps direct image and video references optional outside Explore
   assert.match(imageWorkspace, /referenceImageUrl: workflowFormat === "slideshow" \? recreateView\?\.referenceImageUrl \?\? null : referenceImage\?\.asset\.url \?\? recreateView\?\.referenceImageUrl \?\? null/);
   assert.match(
     videoWorkspace,
-    /<ReferenceFilesUpload[\s\S]*?allowedKinds=\{\["image"\]\}/,
+    /<ReferenceFilesUpload[\s\S]*?allowedKinds=\{referencePolicy\.allowedKinds\}/,
   );
-  assert.match(videoWorkspace, /maxFiles=\{model === "kling_3_0" \? 2 : 6\}/);
+  assert.match(videoWorkspace, /maxFiles=\{referencePolicy\.maxFiles\}/);
   assert.match(videoWorkspace, /avatarImageUrl: activeReferenceImageUrl/);
   assert.match(videoWorkspace, /referenceImageUrls: referenceImages\.length \? referenceImages\.map\(\(image\) => image\.asset\.url\) : activeReferenceImageUrl \? \[activeReferenceImageUrl\] : \[\]/);
   assert.match(videoWorkspace, /referenceVideoUrl: uploadedReferenceVideo\?\.asset\.url \?\? null/);

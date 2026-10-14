@@ -15,7 +15,7 @@ import type { DemoFraming } from "@/worker/src/lib/explore-finishing-contract";
 import type { FormatOpeningPreview } from "@/components/explore/format-video-editor";
 import type { FinishingOptions } from "@/components/explore/use-workflow-finishing";
 import { WorkflowSequencePreview } from "@/components/explore/workflow-sequence-preview";
-import { mapSequencePreviewDemoReference, type SequencePreviewAudio, type SequencePreviewSegment } from "@/lib/explore/sequence-preview";
+import { mapSequencePreviewDemoReference, mapSequencePreviewDemoAudio, type SequencePreviewAudio, type SequencePreviewSegment } from "@/lib/explore/sequence-preview";
 import { getReferenceAudioPreview } from "@/lib/explore/reference-audio-preview";
 import { loadWorkflowDefaultMusic } from "@/lib/explore/workflow-default-music-client";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
@@ -23,7 +23,7 @@ import schedulePreview from "@/components/explore/talking-head-schedule-preview.
 import type { SubtitleTranscript } from "@/worker/src/subtitles/contracts";
 
 /** Shows only user-selected demo media, never a stock or pretend generated video. */
-export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, sourcePreview, onChangeSource, finishedVideo, demoFraming, demoPreview, onEditSource, onEditDemo, editingBusy = false }: {
+export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, sourcePreview, onChangeSource, finishedVideo, demoFraming, demoPreview, openingPreview, demoSegmentPreview, rawComposition = false, onAddDemo, onEditSource, onEditDemo, editingBusy = false }: {
   kind: "hook" | "phone";
   demo: WorkflowAttachment;
   demoAudio: WorkflowAttachment;
@@ -33,19 +33,29 @@ export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, s
   finishedVideo?: MediaAsset | null;
   demoFraming?: DemoFraming | null;
   demoPreview?: LocalWorkflowMedia;
+  openingPreview?: FormatOpeningPreview | null;
+  demoSegmentPreview?: FormatOpeningPreview | null;
+  rawComposition?: boolean;
+  onAddDemo?: () => void;
   onEditSource?: () => void;
   onEditDemo?: () => void;
   editingBusy?: boolean;
 }) {
   const videoLabel = kind === "hook" ? "Talking head" : "Phone video";
   const sourceEditLabel = kind === "hook" ? "Edit talking-head video" : "Edit phone video";
-  if (finishedVideo) return <section aria-label="Saved finished video" className={creation.editWorkspace}><h2 className={creation.sectionTitle}>Your finished video</h2><WorkflowMediaPlayer asset={{ name: finishedVideo.title, url: finishedVideo.url, duration: finishedVideo.durationSeconds }} kind="video" label="Finished video preview" /><p className="text-xs text-muted">Saved to your Library. Review the rendered subtitles and audio before scheduling.</p>{onEditSource || onEditDemo ? <div className={creation.segmentActions}>{onEditSource ? <Button type="button" variant="outline" aria-label={sourceEditLabel} disabled={editingBusy} onClick={onEditSource}><Pencil className="size-3.5" aria-hidden="true" />Edit video</Button> : null}{onEditDemo ? <Button type="button" variant="outline" aria-label="Edit demo video" disabled={editingBusy} onClick={onEditDemo}><Pencil className="size-3.5" aria-hidden="true" />Edit demo</Button> : null}</div> : null}</section>;
+  const hasDemo = Boolean(demo.asset || demoPreview);
+  const editedOpening = openingPreview?.segment.id === generatedVideo?.id ? openingPreview : null;
+  const editedDemo = demoSegmentPreview ? mapSequencePreviewDemoAudio(demoSegmentPreview.segment, { rawComposition }) : null;
+  const outputWidth = editedOpening?.segment.width ?? generatedVideo?.width ?? undefined;
+  const outputHeight = editedOpening?.segment.height ?? generatedVideo?.height ?? undefined;
+  if (finishedVideo) return <section aria-label="Saved finished video" className={creation.editWorkspace}><h2 className={creation.sectionTitle}>Your finished video</h2><WorkflowMediaPlayer asset={{ name: finishedVideo.title, url: finishedVideo.url, duration: finishedVideo.durationSeconds, width: finishedVideo.width, height: finishedVideo.height }} kind="video" label="Finished video preview" /><p className="text-xs text-muted">Saved to your Library. Review the rendered subtitles and audio before scheduling.</p>{onEditSource || onEditDemo ? <div className={creation.segmentActions}>{onEditSource ? <Button type="button" variant="outline" aria-label={sourceEditLabel} disabled={editingBusy} onClick={onEditSource}><Pencil className="size-3.5" aria-hidden="true" />Edit video</Button> : null}{onEditDemo ? <Button type="button" variant="outline" aria-label="Edit demo video" disabled={editingBusy} onClick={onEditDemo}><Pencil className="size-3.5" aria-hidden="true" />Edit demo</Button> : null}</div> : null}</section>;
   return <section aria-label="Video editing workspace" className={creation.editWorkspace}>
     <div>
-      <h2 className={creation.sectionTitle}>Your video sequence</h2>
-      <p className={creation.sectionHelp}>{videoLabel} first. Demo optional.</p>
+      <h2 className={creation.sectionTitle}>{hasDemo ? "Your video sequence" : "Your video"}</h2>
+      <p className={creation.sectionHelp}>{hasDemo ? `${videoLabel} first, then Demo.` : "Publish this video on its own, or add an optional demo."}</p>
+      {!hasDemo && onAddDemo ? <Button type="button" variant="outline" className="mt-3" disabled={editingBusy} onClick={onAddDemo}>Add optional demo</Button> : null}
     </div>
-    <div data-workflow-sequence className={creation.sequenceGrid}>
+    <div data-workflow-sequence data-demo-selected={hasDemo} className={creation.sequenceGrid}>
       <section aria-label={`${videoLabel} segment`} className={creation.segment}>
         <div className={creation.segmentHeader}>
           <h3 className="text-sm font-medium">{videoLabel}</h3>
@@ -54,28 +64,28 @@ export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, s
             {onEditSource ? <Button type="button" variant="outline" aria-label={sourceEditLabel} disabled={editingBusy} onClick={onEditSource}><Pencil className="size-3.5" aria-hidden="true" />Edit video</Button> : null}
           </div>
         </div>
-        {sourcePreview ? <WorkflowMediaPlayer asset={sourcePreview} kind="video" label={`${videoLabel} segment preview`} className={creation.demoPlayer} /> : generatedVideo ? <WorkflowMediaPlayer asset={{ name: generatedVideo.title, url: generatedVideo.url, duration: generatedVideo.durationSeconds }} kind="video" label={`${videoLabel} segment preview`} className={creation.demoPlayer} />
+        {editedOpening ? <WorkflowSequencePreview segments={[editedOpening.segment]} backgroundAudio={editedOpening.referenceAudio} className={creation.editSequence} playbackDisabledReason={editedOpening.disabledReason} /> : sourcePreview ? <WorkflowMediaPlayer asset={sourcePreview} kind="video" label={`${videoLabel} segment preview`} className={creation.demoPlayer} /> : generatedVideo ? <WorkflowMediaPlayer asset={{ name: generatedVideo.title, url: generatedVideo.url, duration: generatedVideo.durationSeconds, width: generatedVideo.width, height: generatedVideo.height }} kind="video" label={`${videoLabel} segment preview`} className={creation.demoPlayer} />
           : <div data-workflow-empty-segment className={creation.segmentEmpty}><Video className="size-5 text-muted" aria-hidden="true" /><p>Your generated {videoLabel.toLowerCase()} will appear here.</p></div>}
       </section>
-      <ArrowRight className={creation.sequenceArrow} aria-hidden="true" />
+      {hasDemo ? <><ArrowRight className={creation.sequenceArrow} aria-hidden="true" />
       <section aria-label="Demo segment" className={creation.segment}>
         <div className={creation.segmentHeader}>
           <h3 className="text-sm font-medium">Demo <span className="text-xs font-normal text-muted">Optional</span></h3>
           {onEditDemo ? <div className={creation.segmentActions}><Button type="button" variant="outline" aria-label="Edit demo video" disabled={editingBusy} onClick={onEditDemo}><Pencil className="size-3.5" aria-hidden="true" />Edit video</Button></div> : null}
         </div>
-        {demo.asset ? <>{demoFraming ? <WorkflowDemoPreview key={`${(demoPreview ?? demo.asset).url}:${JSON.stringify(demoFraming)}`} asset={demoPreview ?? demo.asset} framing={demoFraming} /> : <WorkflowMediaPlayer asset={demoPreview ?? demo.asset} kind="video" label="Video sequence demo preview" className={creation.demoPlayer} />}<p className="truncate text-xs text-muted" title={demo.asset.name}>{demo.asset.name}</p></>
+        {editedDemo ? <WorkflowSequencePreview segments={[{ ...editedDemo, framing: demoFraming }]} outputWidth={outputWidth} outputHeight={outputHeight} backgroundAudio={demoSegmentPreview?.referenceAudio} className={creation.editSequence} playbackDisabledReason={demoSegmentPreview?.disabledReason} /> : demo.asset ? <>{demoFraming ? <WorkflowDemoPreview key={`${(demoPreview ?? demo.asset).url}:${JSON.stringify(demoFraming)}`} asset={demoPreview ?? demo.asset} framing={demoFraming} /> : <WorkflowMediaPlayer asset={demoPreview ?? demo.asset} kind="video" label="Video sequence demo preview" className={creation.demoPlayer} />}<p className="truncate text-xs text-muted" title={demo.asset.name}>{demo.asset.name}</p></>
           : <div data-workflow-empty-segment className={creation.segmentEmpty}><Video className="size-5 text-muted" aria-hidden="true" /><p>Add a demo in Edit &amp; add demo, or keep your {videoLabel.toLowerCase()} on its own.</p></div>}
-      </section>
+      </section></> : null}
     </div>
-    <section aria-label="Demo audio summary" className={creation.audioSummary}>
+    {hasDemo ? <section aria-label="Demo audio summary" className={creation.audioSummary}>
       <AudioLines className="size-4 shrink-0 text-muted" aria-hidden="true" />
       <div className="min-w-0"><h3 className="text-sm font-medium">Demo audio <span className="ml-1 text-xs font-normal text-muted">Optional</span></h3><p className="mt-1 truncate text-xs text-muted" title={demoAudio.asset?.name}>{demoAudio.asset?.name ?? (demo.asset ? "Original demo sound preserved. Extra audio is optional." : "Add a demo before choosing its audio.")}</p></div>
-    </section>
-    <p className="text-xs leading-5 text-muted">This is a sequence preview, not a rendered video. Subtitle style applies to spoken audio across both segments.</p>
+    </section> : null}
+    <p className="text-xs leading-5 text-muted">Editing preview. Save your clip edits, then prepare the final video to review rendered subtitles and the complete audio mix.</p>
   </section>;
 }
 
-export function WorkflowScheduleWorkspace({ draft, finishedVideo, source, sourcePreview, demoSource, demo, demoAudio, demoAudioPlayback = "once", openingPreview, demoPreview, demoFraming, rawDemoFraming, options, ownerId = null, enabled = false, previewDisabledReason, active = true, captions, captionReview = false }: {
+export function WorkflowScheduleWorkspace({ draft, finishedVideo, source, sourcePreview, demoSource, demo, demoAudio, demoAudioPlayback = "once", openingPreview, demoPreview, demoFraming, rawDemoFraming, options, ownerId = null, enabled = false, previewDisabledReason, active = true, captions, captionReview = false, rawComposition = false }: {
   draft: WorkflowScheduleDraft; finishedVideo?: MediaAsset | null;
   source?: MediaAsset | null; sourcePreview?: LocalWorkflowMedia | null;
   demoSource?: MediaAsset | null; demo?: LocalWorkflowMedia | null; demoAudio?: LocalWorkflowMedia | null;
@@ -84,6 +94,7 @@ export function WorkflowScheduleWorkspace({ draft, finishedVideo, source, source
   ownerId?: string | null; enabled?: boolean; previewDisabledReason?: string | null; active?: boolean;
   captions?: SubtitleTranscript | null;
   captionReview?: boolean;
+  rawComposition?: boolean;
 }) {
   const [sizes, setSizes] = useState<Record<string, { width: number; height: number; duration: number }>>({});
   const [sizeErrors, setSizeErrors] = useState<Record<string, boolean>>({});
@@ -128,6 +139,7 @@ export function WorkflowScheduleWorkspace({ draft, finishedVideo, source, source
   // Final joining replaces a Demo's paired reference only when the opening has
   // its own continuous reference. Prepared clips already contain their edits.
   if (secondary && referenceAudio) secondary = mapSequencePreviewDemoReference(secondary, getReferenceAudioPreview(demoSource), { openingHasReference: true, requiresPreparation: false });
+  if (secondary && !preparedDemo) secondary = mapSequencePreviewDemoAudio(secondary, { rawComposition });
   const extraAudio: SequencePreviewAudio | null = demoAudio ? { url: demoAudio.url, volume: .2, playback: demoAudioPlayback } : null;
   const extraAudioNeedsSavedMix = Boolean(secondary?.addedAudio && secondary?.referenceAudio && extraAudio);
   if (secondary && extraAudio) secondary = secondary.addedAudio ? { ...secondary, referenceAudio: secondary.referenceAudio ?? extraAudio } : { ...secondary, addedAudio: extraAudio };
@@ -146,8 +158,8 @@ export function WorkflowScheduleWorkspace({ draft, finishedVideo, source, source
   return <section aria-label={captionReview ? "Caption video preview" : "Post preview"} className={captionReview ? "flex h-full min-h-0 flex-col gap-3" : `${creation.editWorkspace} ${segments.length ? schedulePreview.workspace : ""}`}>
     {sourceUrl && !openingPreview && (!source?.width || !source?.height) ? <video key={`source:${sourceUrl}`} src={sourceUrl} preload="metadata" hidden aria-hidden="true" onLoadedMetadata={event => readSize(sourceUrl, event.currentTarget)} onError={() => setSizeErrors(previous => ({ ...previous, [sourceUrl]: true }))} /> : null}
     {demoUrl && !demoPreview && (!demoSource?.width || !demoSource?.height) ? <video key={`demo:${demoUrl}`} src={demoUrl} preload="metadata" hidden aria-hidden="true" onLoadedMetadata={event => readSize(demoUrl, event.currentTarget)} onError={() => setSizeErrors(previous => ({ ...previous, [demoUrl]: true }))} /> : null}
-    <div><h2 className={creation.sectionTitle}>{captionReview ? "Video preview" : segments.length ? "Final video" : "Post preview"}</h2><p className={creation.sectionHelp}>{captionReview ? `Talking head${secondary ? " → Demo" : ""}` : platform || "Choose a platform in Schedule."}</p></div>
-    {showFinished ? <WorkflowMediaPlayer asset={{ name: finishedVideo!.title, url: finishedVideo!.url, duration: finishedVideo!.durationSeconds }} kind="video" label="Scheduled finished video preview" /> : segments.length ? <>
+    <div><h2 className={creation.sectionTitle}>{captionReview ? "Video preview" : showFinished ? "Prepared publishing video" : segments.length ? "Editing preview" : "Post preview"}</h2><p className={creation.sectionHelp}>{captionReview ? `Talking head${secondary ? " → Demo" : ""}` : platform || "Choose a platform in Schedule."}</p></div>
+    {showFinished ? <WorkflowMediaPlayer asset={{ name: finishedVideo!.title, url: finishedVideo!.url, duration: finishedVideo!.durationSeconds, width: finishedVideo!.width, height: finishedVideo!.height }} kind="video" label="Scheduled finished video preview" /> : segments.length ? <>
       <WorkflowSequencePreview segments={segments} backgroundAudio={backgroundAudio} active={active} className={schedulePreview.sequence} playbackDisabledReason={disabledReason} onPlaybackStart={() => setWatched(sequenceKey)} showDescription={false}
         captions={options?.subtitles && captions && !disabledReason ? { transcript: captions, style: options.style, placement: options.placement ?? "bottom", corrections: options.corrections } : null} />
       <p role="status" className="text-xs leading-5 text-muted">{captionReview ? "Play or scrub the video to check your words. Corrections appear in this preview." : <>Talking head{secondary ? " → Demo" : ""} · Preview. {finishedVideo ? "Your publishing file is ready." : "Choose Prepare final video to save your publishing file."}{options?.subtitles ? captions ? " Captions are shown in this preview. Review the rendered style in your final file." : " Generate captions in Edit to preview and correct the words." : ""}</>}</p>

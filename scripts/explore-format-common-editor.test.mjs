@@ -10,6 +10,7 @@ import * as referenceAudio from "../lib/explore/reference-audio-preview.ts";
 import * as remixSource from "../lib/explore/remix-source.ts";
 import { applyVideoTextRemix } from "../lib/explore/remix-text-edit.ts";
 import * as referenceText from "../lib/explore/reference-text.ts";
+import * as sequencePreview from "../lib/explore/sequence-preview.ts";
 import { isExploreUuid } from "../worker/src/lib/explore-finishing-contract.ts";
 
 const jsx = { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "fragment" };
@@ -22,6 +23,7 @@ function load(path, imports, globals = {}) {
     if (name === "@/components/explore/use-clip-draft-save") return imports[name] ?? { useClipDraftSave: () => ({ saved: null, loaded: true, busy: false, dirty: true, error: null, save() {}, reload() {} }) };
     if (name === "@/lib/explore/unchanged-hook-source") return unchangedHook;
     if (name === "@/lib/explore/reference-audio-preview") return referenceAudio;
+    if (name === "@/lib/explore/sequence-preview") return sequencePreview;
     if (name === "@/lib/explore/remix-source") return remixSource;
     if (name === "@/lib/explore/remix-text-edit") return { applyVideoTextRemix };
     if (name === "@/worker/src/lib/explore-format-edit") return { formatTextLayout, formatTextOverlays, parseExploreFormatEdit };
@@ -330,7 +332,7 @@ for (const format of ["hook", "wall_text"]) {
       assert.equal(requests, 0);
     }
   });
-  test(`${format}: trimmed opening preview starts added sound at clip zero and repeats relative to the trim`, () => {
+  test(`${format}: trimmed custom opening preview keeps the raw music clock and repeats from its original start`, () => {
     let cursor = 0; const slots = [];
     const react = {
       useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
@@ -355,9 +357,50 @@ for (const format of ["hook", "wall_text"]) {
     nodes(tree).find(n => n.props?.["aria-label"] === "Trim start").props.onChange({ target: { value: "2" } });
     assert.equal(player.currentTime, 2); tree = render();
     player.currentTime = 2.5; nodes(tree).find(n => n.type === "video").props.onSeeked();
-    assert.equal(sound.currentTime, .5);
+    assert.equal(sound.currentTime, 2.5);
     nodes(tree).find(n => n.props?.["aria-label"] === "Music playback").props.onChange({ target: { value: "repeat" } });
     tree = render(); player.currentTime = 6.5; nodes(tree).find(n => n.type === "video").props.onSeeked();
-    assert.equal(sound.currentTime, 1.5);
+    assert.equal(sound.currentTime, .5);
   });
 }
+
+test("paired clip preview updates edge fades every playback frame and stops audio on pause and unmount", () => {
+  let cursor = 0, nextFrame = 0;
+  const slots = [], effects = [], cleanups = [], frames = new Map();
+  const react = {
+    useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
+      return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn,
+    useEffect(fn) { effects.push(fn); },
+  };
+  const asset = { id: "00000000-0000-4000-8000-000000000001", status: "ready", collection: "video", mimeType: "video/mp4", url: "/mixed.mp4", durationSeconds: 2,
+    metadata: { referenceAudioPreview: { referenceId: "paired", title: "Reference", audioUrl: "/reference.mp3", cleanVideoUrl: "/clean.mp4", volume: .8 } } };
+  const stored = { editing: { version: 1, format: "hook", trimStartMs: 500, trimEndMs: 1500, originalVolume: 1, musicVolume: .8, text: null }, backgroundId: null, playback: "once" };
+  const mod = load("components/explore/format-video-editor.tsx", {
+    react, "react-dom": { createPortal: children => children },
+    "@tanstack/react-query": { useQuery: options => ({ data: options.queryKey[0] === "explore-edit-source" ? asset : null }) },
+    "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" } }) },
+    "@/components/explore/format-video-text-fields": fields,
+    "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => ({}) },
+    "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: {}, useWorkflowFinishing: () => ({ action: { disabled: false } }) },
+  }, { window: {}, localStorage: { getItem: () => JSON.stringify(stored), setItem() {} },
+    requestAnimationFrame(fn) { const id = ++nextFrame; frames.set(id, fn); return id; }, cancelAnimationFrame: id => frames.delete(id) });
+  const tree = mod.FormatVideoEditor({ format: "hook", video: { ...asset, mediaAssetId: asset.id, title: "Paired", ratio: "9:16" },
+    active: true, controlsTarget: {}, resultsTarget: {}, enabled: true, onDirty() {}, onSaved() {}, onContinue() {} });
+  const video = nodes(tree).find(node => node.type === "video"), audio = nodes(tree).find(node => node.type === "audio");
+  const player = { currentTime: .5, paused: true, pause() { this.paused = true; } };
+  const sound = { currentTime: 0, duration: 2, paused: true, volume: 0, play() { this.paused = false; return Promise.resolve(); }, pause() { this.paused = true; } };
+  video.props.ref.current = player; audio.props.ref.current = sound;
+  for (const effect of effects) { const cleanup = effect(); if (cleanup) cleanups.push(cleanup); }
+  player.paused = false; video.props.onPlay({ currentTarget: player });
+  assert.equal(sound.volume, 0); assert.equal(frames.size, 1);
+  player.currentTime = .55;
+  const [id, tick] = frames.entries().next().value; frames.delete(id); tick();
+  assert.ok(Math.abs(sound.volume - .2) < .001, "50ms into the reference uses a quarter of its .8 gain");
+  assert.equal(frames.size, 1);
+  player.paused = true; video.props.onPause(); assert.equal(frames.size, 0); assert.equal(sound.paused, true);
+  player.paused = false; video.props.onPlay({ currentTarget: player }); assert.equal(frames.size, 1);
+  video.props.ref.current = null; audio.props.ref.current = null;
+  for (const cleanup of cleanups) cleanup();
+  assert.equal(frames.size, 0); assert.equal(sound.paused, true);
+});

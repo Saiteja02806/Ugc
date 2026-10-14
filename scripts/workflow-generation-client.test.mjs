@@ -15,9 +15,10 @@ const load = (file, imports = {}, globals = {}) => {
   });
   return exported;
 };
-const backend = load("lib/ai-studio/generation-settings.ts", {}, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: "true" } } });
-const settings = load("lib/explore/workflow-generation-settings.ts", { "../ai-studio/generation-settings": backend }, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: "true" } } });
+const backend = load("lib/ai-studio/generation-settings.ts", {}, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: "true", NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: "true" } } });
+const settings = load("lib/explore/workflow-generation-settings.ts", { "../ai-studio/generation-settings": backend }, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: "true", NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: "true" } } });
 const clientModule = load("lib/explore/workflow-generation-client.ts", {
+  "../ai-studio/video-reference-policy": load("lib/ai-studio/video-reference-policy.ts", { "./generation-settings": backend }),
   "../ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts", { "../../worker/src/lib/video-prompt-policy": load("worker/src/lib/video-prompt-policy.ts") }),
   "./workflow-generation-settings": settings,
 });
@@ -191,6 +192,51 @@ test("image-array edits after the generation click cannot replace the captured r
 
 const referenceId = "11111111-1111-4111-8111-111111111111";
 const timed = kind => ({ name: `${kind}.media`, url: `blob:${kind}`, duration: 5, file: { type: kind === "audio" ? "audio/mpeg" : "video/mp4", size: 1024 } });
+test("WAN accepts image, video and audio together in both connected workflows, preserving all inputs and three seconds", async () => {
+  for (const kind of ["hook", "phone"]) {
+    const actual = harness({ uploadReference: async (source, mediaKind) => ({ url: `https://storage.googleapis.com/test/${mediaKind}.media`, assetId: mediaKind === "audio" ? referenceId : "22222222-2222-4222-8222-222222222222", duration: source.duration }) });
+    await actual.client.generate(draft({ kind, creator: { name: "creator.png", url: "blob:creator", file: { type: "image/png", size: 100 } }, videoReference: { ...timed("video"), duration: 15 }, audioReference: { ...timed("audio"), duration: 15 }, settings: settings.normalizeWorkflowGenerationSettings({ model: "wan_3_0", duration: 3 }) }));
+    const body = JSON.parse(actual.calls[0].body);
+    assert.equal(body.model, "wan_3_0");
+    assert.equal(body.durationSeconds, 3);
+    assert.equal(body.referenceImageUrls.length, 1);
+    assert.equal(body.referenceVideoDurationSeconds, 15);
+    assert.deepEqual(body.referenceAudioAssetIds, [referenceId]);
+    assert.doesNotMatch(actual.calls[0].body, /blob:/);
+  }
+});
+
+test("WAN oversized and overlong references stop before authentication, upload and billing", async () => {
+  const wanSettings = settings.normalizeWorkflowGenerationSettings({ model: "wan_3_0", duration: 3 });
+  for (const refs of [
+    { videoReference: { ...timed("video"), duration: 15.01 } },
+    { audioReference: { ...timed("audio"), duration: 15.01 } },
+    { videoReference: { ...timed("video"), file: { type: "video/mp4", size: 32 * 1024 ** 2 + 1 } } },
+    { audioReference: { ...timed("audio"), file: { type: "audio/mpeg", size: 25 * 1024 ** 2 + 1 } } },
+  ]) {
+    const actual = harness();
+    await assert.rejects(actual.client.generate(draft({ ...refs, settings: wanSettings })), /WAN 3.0/);
+    assert.equal(actual.calls.length + actual.uploads.length + actual.tokens.length, 0);
+  }
+  const incompatible = clientModule.getWorkflowGenerationDraftError(draft({ videoReference: timed("video"), settings: settings.normalizeWorkflowGenerationSettings({ model: "kling_3_0" }) }));
+  assert.match(incompatible, /Seedance 2.5 or WAN 3.0/);
+  assert.doesNotMatch(incompatible, /OpenRouter|Runway|Higgsfield/);
+});
+
+test("a WAN reference whose verified upload is longer than the local preview never reaches generation", async () => {
+  const actual = harness({ uploadReference: async () => ({ url: "https://storage.googleapis.com/test/reference.mp4", assetId: referenceId, duration: 16 }) });
+  await assert.rejects(actual.client.generate(draft({ videoReference: timed("video"), settings: settings.normalizeWorkflowGenerationSettings({ model: "wan_3_0", duration: 3 }) })), /up to 15 seconds for WAN 3.0/);
+  assert.equal(actual.calls.length, 0);
+});
+
+test("WAN images use the connected route's size limit without reducing image-only support", async () => {
+  const input = draft({ creator: { name: "large.png", url: "blob:large", file: { type: "image/png", size: 17 * 1024 ** 2 } }, settings: settings.normalizeWorkflowGenerationSettings({ model: "wan_3_0", duration: 3 }) });
+  const actual = harness();
+  assert.equal(clientModule.getWorkflowGenerationDraftError(input), null);
+  await assert.rejects(actual.client.generate({ ...input, audioReference: timed("audio") }), /image up to 16 MB/);
+  assert.equal(actual.calls.length + actual.uploads.length + actual.tokens.length, 0);
+});
+
 test("Create references upload once, guide Seedance and preserve the exact uncertain request", async () => {
   const uploads = [], calls = [];
   const actual = harness({

@@ -2,7 +2,14 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
 import { readSavedFinish, finishStorageKey, parseFinishStatus, requestFinish } from "../lib/explore/workflow-finishing-client.ts";
-import { readScheduleReceipt, verifySavedSchedule, scheduleReceiptMessage } from "../lib/explore/workflow-schedule-client.ts";
+import { readScheduleReceipt, verifySavedSchedule, scheduleReceiptMessage, ScheduleRequestError, isScheduleTimeRejected } from "../lib/explore/workflow-schedule-client.ts";
+
+test("only an explicit server time rejection unlocks a saved request for correction", () => {
+  assert.equal(isScheduleTimeRejected(new ScheduleRequestError("Too soon", 409, "schedule_time_too_soon")), true);
+  for (const error of [new Error("Choose a time at least 5 minutes from now."), new ScheduleRequestError("Too soon", 503, "schedule_time_too_soon"), new ScheduleRequestError("Unknown", 409, "schedule_version_conflict"), new ScheduleRequestError("Too soon", 409)]) {
+    assert.equal(isScheduleTimeRejected(error), false);
+  }
+});
 import { readAudioSubmission, audioSubmissionStorageKey, audioSubmissionResolved } from "../lib/audio/submission-client.ts";
 
 const draft = { version: 1, kind: "hook", sourceAssetId: randomUUID(), demoAssetId: randomUUID(), demoAudioAssetId: randomUUID(), demoAudioPlayback: "repeat", backgroundAssetId: null, backgroundPlayback: "once", subtitles: { language: "en", style: "clean", placement: "bottom" } };

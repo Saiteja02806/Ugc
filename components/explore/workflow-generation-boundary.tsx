@@ -46,15 +46,18 @@ function AccountBoundary({ children }: { children: (ownerId: string | null) => R
   return children(!loading && user ? user.uid : null);
 }
 
-export function WorkflowGenerationBoundary({ enabled, ownerId, draft, children }: {
+export type RestoredWorkflowGenerationSelection = { assetId: string | null; asset: MediaAsset | null; ready: boolean; allowAutomaticSelection?: boolean };
+export function WorkflowGenerationBoundary({ enabled, ownerId, draft, children, restoredSelection, onSelectionChange }: {
   enabled: boolean;
   ownerId: string | null;
   draft: WorkflowGenerationDraft;
   children: (generation: WorkflowGenerationView | null) => ReactNode;
+  restoredSelection?: RestoredWorkflowGenerationSelection;
+  onSelectionChange?: (asset: MediaAsset | null) => void;
 }) {
   if (!enabled) return children(null);
   if (!ownerId) return children(emptyView("Sign in before generating a video."));
-  return <ConnectedGeneration key={`${ownerId}:${draft.kind}`} ownerId={ownerId} draft={draft}>{children}</ConnectedGeneration>;
+  return <ConnectedGeneration key={`${ownerId}:${draft.kind}`} ownerId={ownerId} draft={draft} restoredSelection={restoredSelection} onSelectionChange={onSelectionChange}>{children}</ConnectedGeneration>;
 }
 
 function subscribeToStoredJobs(notify: () => void) {
@@ -73,10 +76,12 @@ function getStoredRequestSnapshot(ownerId: string, kind: WorkflowKind) {
   catch { return "storage-unavailable"; }
 }
 
-function ConnectedGeneration({ ownerId, draft, children }: {
+function ConnectedGeneration({ ownerId, draft, children, restoredSelection, onSelectionChange }: {
   ownerId: string;
   draft: WorkflowGenerationDraft;
   children: (generation: WorkflowGenerationView) => ReactNode;
+  restoredSelection?: RestoredWorkflowGenerationSelection;
+  onSelectionChange?: (asset: MediaAsset | null) => void;
 }) {
   const active = useRef(true);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
@@ -111,7 +116,7 @@ function ConnectedGeneration({ ownerId, draft, children }: {
     if (job.status !== "completed" || !output || typeof output !== "object" || Array.isArray(output)) return [];
     return typeof output.mediaAssetId === "string" && JOB_ID.test(output.mediaAssetId) ? [output.mediaAssetId] : [];
   });
-  const distinctAssetIds = [...new Set(assetIds)];
+  const distinctAssetIds = [...new Set([...assetIds, ...(restoredSelection?.ready && restoredSelection.assetId ? [restoredSelection.assetId] : [])])];
   const mediaQueries = useQueries({ queries: distinctAssetIds.map((assetId) => ({
     queryKey: ["explore-generation-media", ownerId, assetId],
     queryFn: async () => {
@@ -126,8 +131,13 @@ function ConnectedGeneration({ ownerId, draft, children }: {
     },
     retry: 1,
   })) });
-  const results = mediaQueries.flatMap((query) => query.data ? [query.data] : []);
-  const selected = results.find((asset) => asset.id === selectedId) ?? results[0] ?? null;
+  const currentResults = mediaQueries.flatMap((query) => query.data ? [query.data] : []);
+  // A verified chosen result may belong to an earlier batch. Keep its exact ID,
+  // even if the newest saved batch no longer includes it.
+  const restoredAsset = restoredSelection?.ready && restoredSelection.assetId === restoredSelection.asset?.id ? restoredSelection.asset : null;
+  const results = restoredAsset && !currentResults.some(asset => asset.id === restoredAsset.id) ? [...currentResults, restoredAsset] : currentResults;
+  const requestedId = restoredSelection ? restoredSelection.assetId : selectedId;
+  const selected = restoredSelection && !restoredSelection.ready ? null : requestedId ? results.find(asset => asset.id === requestedId) ?? null : restoredSelection?.allowAutomaticSelection === false ? null : results[0] ?? null;
   const queryError = jobQueries.some((query) => query.isError) || mediaQueries.some((query) => query.isError);
   const pending = jobQueries.some((query) => query.isPending) || mediaQueries.some((query) => query.isPending);
   const busy = submitting || recovering || pending || jobs.some((job) => !terminal.has(job.status));
@@ -140,9 +150,11 @@ function ConnectedGeneration({ ownerId, draft, children }: {
   const validBilling = Boolean(billing.data && billing.data.userId === ownerId && Number.isFinite(rate) && rate! > 0 && Number.isFinite(billing.data.creditsRemaining) && billing.data.creditsRemaining >= 0);
   const billingReady = !billing.isError && validBilling && !billing.isPending;
   const insufficientCredits = billingReady && billing.data!.creditsRemaining < requiredCredits;
-  const disabled = access !== "pro" || !billingReady || insufficientCredits || busy || recoveryPending || queryError || invalidJob || missingOutput || uncertainProvider || Boolean(draftError);
+  const selectionUnavailable = Boolean(restoredSelection?.ready && requestedId && !selected && !pending);
+  const disabled = access !== "pro" || !billingReady || insufficientCredits || busy || recoveryPending || queryError || invalidJob || missingOutput || uncertainProvider || Boolean(draftError) || restoredSelection?.ready === false || selectionUnavailable;
   const statusError = requestError ?? (recoveryPending ? "The previous request is not confirmed. Refresh status to recover it; no new generation will be submitted."
     : billing.isError || (billing.data && !validBilling) ? "Could not confirm generation credits for this account. Refresh status before generating."
+    : selectionUnavailable ? "Your saved selected video is unavailable. Retry recovery or choose another video; it will not be replaced automatically."
     : invalidJob ? "This saved job does not belong to video generation. Open the correct workflow."
     : queryError ? "Could not load the saved generation status. Refresh status before starting another request."
     : missingOutput ? "The saved job completed without a video reference. Contact support with the job ID."
@@ -151,6 +163,9 @@ function ConnectedGeneration({ ownerId, draft, children }: {
   useEffect(() => {
     if (terminalKey) void queryClient.invalidateQueries({ queryKey: ["billing-subscription", ownerId] });
   }, [terminalKey, queryClient, ownerId]);
+  useEffect(() => {
+    if (restoredSelection?.ready && restoredSelection.allowAutomaticSelection !== false && !restoredSelection.assetId && selected) onSelectionChange?.(selected);
+  }, [restoredSelection?.ready, restoredSelection?.allowAutomaticSelection, restoredSelection?.assetId, selected, onSelectionChange]);
 
   const [client] = useState(() => createWorkflowGenerationClient({
     getOwnerToken: () => getCurrentUserIdToken(ownerId),
@@ -196,12 +211,13 @@ function ConnectedGeneration({ ownerId, draft, children }: {
   const acceptBatch = useCallback((batch: WorkflowGenerationBatch) => {
     setSubmittedIds(batch.jobs.map((job) => job.jobId));
     setSelectedId(null);
+    onSelectionChange?.(null);
     setNotice(batch.partial ? batch.message : null);
     try { persistWorkflowGenerationJobs(window.localStorage, ownerId, draft.kind, batch); } catch { /* Server jobs remain authoritative. */ }
     try { persistJobIdInUrl(batch.jobs[0].jobId, urlParameter); } catch { /* Server jobs remain authoritative. */ }
     window.dispatchEvent(new Event(STORAGE_CHANGED));
     void queryClient.invalidateQueries({ queryKey: ["billing-subscription", ownerId] });
-  }, [ownerId, draft.kind, urlParameter, queryClient]);
+  }, [ownerId, draft.kind, urlParameter, queryClient, onSelectionChange]);
 
   const recover = useCallback(async (resolveUnreceived = false) => {
     if (!active.current || submittingRef.current || recoveringRef.current) return;
@@ -253,7 +269,7 @@ function ConnectedGeneration({ ownerId, draft, children }: {
 
   return children({ busy, disabled, message, error: actionError ?? statusError, notice, results, selected,
     onGenerate: () => { void generate(); },
-    selectResult: (id) => { if (results.some((asset) => asset.id === id)) setSelectedId(id); },
+    selectResult: (id) => { const asset = results.find(value => value.id === id); if (asset) { setSelectedId(id); onSelectionChange?.(asset); } },
     refreshStatus: () => {
       void recover(true);
       for (const query of [...jobQueries, ...mediaQueries]) void query.refetch();

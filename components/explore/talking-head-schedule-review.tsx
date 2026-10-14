@@ -30,7 +30,7 @@ export function TalkingHeadScheduleActions({ action, preparation, enabled, onBac
   const needsPreparation = Boolean(preparation && !action?.busy && (!action || action.disabled));
   const current = needsPreparation ? preparation : action;
   const busy = Boolean(current?.busy);
-  const preparing = needsPreparation && Boolean(current?.cancel);
+  const preparing = needsPreparation && Boolean(current?.processing || current?.cancel);
   const error = current?.error ?? action?.error;
   const refresh = current?.error || !error ? current?.refresh : action?.refresh;
   return <div className={reviewStyles.actions} aria-label="Schedule actions">
@@ -39,7 +39,7 @@ export function TalkingHeadScheduleActions({ action, preparation, enabled, onBac
       <Button type="button" variant="outline" disabled={busy} className={reviewStyles.backButton} onClick={onBackToEdit}><ArrowLeft size={16} aria-hidden="true" />Back to Edit</Button>
       <div className={reviewStyles.reviewAction}>
         <p className={reviewStyles.actionHelp} role="status">{enabled && current ? current.message : "Preview · scheduling disabled"}</p>
-        <Button type="button" size="lg" className={reviewStyles.reviewButton} disabled={!enabled || !current || current.disabled || busy} aria-busy={busy || preparing} onClick={current?.onAction}>{needsPreparation ? busy || preparing ? "Preparing video…" : current?.error ? "Retry final video" : "Prepare final video" : busy ? "Checking…" : "Review schedule"}<ArrowRight size={16} aria-hidden="true" /></Button>
+        <Button type="button" size="lg" className={reviewStyles.reviewButton} disabled={!enabled || !current || current.disabled || busy} aria-busy={busy || preparing} onClick={current?.onAction}>{needsPreparation ? busy || preparing ? "Preparing video…" : current?.error ? "Retry final video" : "Prepare final video" : busy ? "Checking…" : action?.message.includes("interrupted schedule") || action?.message.includes("Resume the saved") ? "Resume saved request" : action?.message.includes("is scheduled") || action?.message.includes("schedule is saved") ? "Schedule saved" : "Schedule post"}<ArrowRight size={16} aria-hidden="true" /></Button>
       </div>
     </div>
     {current && (error || preparing) ? <div className="flex flex-wrap justify-end gap-2"><Button type="button" variant="ghost" size="sm" disabled={busy} onClick={refresh}>Refresh status</Button>{needsPreparation && current.cancel ? <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={current.cancel}>Cancel preparation</Button> : null}</div> : null}

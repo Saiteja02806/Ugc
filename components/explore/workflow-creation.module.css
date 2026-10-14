@@ -55,7 +55,7 @@
 .demoSourceActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .demoSequence { width: 100%; max-width: 960px; margin-inline: auto; padding: 28px; }
 .demoPreviewGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-top: 24px; }
-.sequencePlayer { aspect-ratio: 16 / 9; max-height: 55dvh; border: 1px solid var(--border); border-radius: 12px; object-fit: contain; }
+.sequencePlayer { aspect-ratio: auto; width: auto; height: auto; max-width: 100%; max-height: 55dvh; align-self: center; border: 1px solid var(--border); border-radius: 12px; object-fit: contain; }
 .sequencePlaceholder { display: flex; width: 100%; min-height: 180px; height: auto; aspect-ratio: 16 / 9; flex-direction: column; align-items: center; justify-content: center; gap: 12px; border: 1px dashed var(--border); border-radius: 12px; padding: 16px; font-size: 13px; color: var(--muted); }
 .sequencePlaceholder .videoStartActions > button { min-height: 88px; }
 @media (max-width: 767px) {
@@ -205,6 +205,8 @@
 .editWorkspace { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 24px; padding: 24px; }
 .editWorkspace > div:first-child .sectionHelp { margin-top: 6px; }
 .sequenceGrid { display: grid; grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr); align-items: stretch; gap: 12px; }
+.sequenceGrid[data-demo-selected="false"] { grid-template-columns: minmax(0, 1fr); }
+.editSequence { min-height: 280px; height: min(60dvh, 620px); flex: none; }
 .segment { display: flex; min-width: 0; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid color-mix(in srgb, var(--border) 45%, transparent); border-radius: 12px; }
 .segmentActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
 .segmentHeader { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
@@ -218,7 +220,7 @@
 .segmentEmpty { display: flex; min-height: 220px; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px 0; text-align: center; }
 .segmentEmpty p { max-width: 240px; margin: 0; font-size: 13px; line-height: 22px; color: var(--muted); }
 .sequenceArrow { width: 20px; height: 20px; align-self: center; color: var(--muted); }
-.demoPlayer { aspect-ratio: auto; width: auto; height: auto; max-width: 100%; max-height: 320px; align-self: center; border-radius: 6px; background: transparent; }
+.demoPlayer { aspect-ratio: auto; width: auto; height: auto; max-width: 100%; max-height: min(60dvh, 620px); align-self: center; border-radius: 6px; background: transparent; }
 .audioSummary { display: flex; min-width: 0; align-items: center; gap: 12px; padding: 16px; border-radius: 12px; background: var(--card); }
 .postEmpty { display: flex; min-height: 240px; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; }
 .captionPreview { min-width: 0; padding: 16px; border-top: 1px solid color-mix(in srgb, var(--border) 45%, transparent); }

@@ -501,6 +501,7 @@ type CarouselDatabase = {
           p_business_profile_id: string;
           p_business_profile_version: number;
           p_generation_batch_id: string;
+          p_requested_structures?: string[];
         };
         Returns: CarouselExperimentBatchRow[];
       };
@@ -1592,15 +1593,20 @@ export async function reserveCarouselExperimentBatches(params: {
   businessProfileId: string;
   businessProfileVersion: number;
   generationBatchId: string;
+  requestedStructureIds?: readonly CarouselStructureId[];
 }) {
-  const { data, error } = await getSupabaseServerClient().rpc(
-    "reserve_carousel_experiment_batches",
-    {
+  const reservationArgs = {
       p_batch_count: params.batchCount,
       p_business_profile_id: params.businessProfileId,
       p_business_profile_version: params.businessProfileVersion,
       p_generation_batch_id: params.generationBatchId,
-    },
+      ...(params.requestedStructureIds
+        ? { p_requested_structures: [...params.requestedStructureIds] }
+        : {}),
+  };
+  const { data, error } = await getSupabaseServerClient().rpc(
+    "reserve_carousel_experiment_batches",
+    reservationArgs,
   );
 
   if (error) {
@@ -2560,6 +2566,7 @@ export async function getAutoCarouselGenerationStatusPageForUser(params: {
   businessProfileVersion: number;
   cursor?: AutoCarouselGenerationStatusPageCursor | null;
   limit: number;
+  originDailyFeedId?: string;
   projectId: string;
   statuses: readonly CarouselGenerationStatus[];
   userId: string;
@@ -2586,6 +2593,10 @@ export async function getAutoCarouselGenerationStatusPageForUser(params: {
     .or(
       `available_on_local_date.is.null,available_on_local_date.lte.${params.availableOnOrBeforeLocalDate}`,
     );
+
+  if (params.originDailyFeedId) {
+    query = query.eq("origin_daily_feed_id", params.originDailyFeedId);
+  }
 
   if (params.cursor) {
     query = query.or(

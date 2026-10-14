@@ -19,8 +19,10 @@ const finalVideo = { id: "00000000-0000-4000-8000-000000000010", sourceType: "co
 
 // Render the real editor, execute its effects, and drive actual event handlers.
 // Only browser primitives and network responses are isolated; validators stay real.
-function fixture(overrides = {}) {
+function fixture(overrides = {}, instant = Date.now()) {
   let cursor = 0, tree;
+  let now = instant, tick;
+  class FixtureDate extends Date { static now() { return now; } }
   const slots = [], effects = [], frames = [], submitted = [], snapshots = [], calls = [];
   const browser = { overflow: "auto", listeners: 0, frames: 0, focused: 0, scrolled: 0, closed: 0 };
   const changed = (a, b) => !a || b.some((value, index) => !Object.is(value, a[index]));
@@ -55,10 +57,10 @@ function fixture(overrides = {}) {
     "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
   };
   const exported = {};
-  vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText, {
+  vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText + "\nexports.__ScheduleTimePicker = ScheduleTimePicker;", {
     exports: exported, require(name) { assert.ok(name in imports, `Unexpected dependency: ${name}`); return imports[name]; },
-    document, HTMLElement: class {}, AbortController, Intl, Date, console,
-    window: { setInterval: () => 1, clearInterval() {}, requestAnimationFrame: callback => { browser.frames++; frames.push(callback); return browser.frames; }, cancelAnimationFrame() {} },
+    document, HTMLElement: class {}, AbortController, Intl, Date: FixtureDate, console,
+    window: { setInterval: callback => { tick = callback; return 1; }, clearInterval() {}, requestAnimationFrame: callback => { browser.frames++; frames.push(callback); return browser.frames; }, cancelAnimationFrame() {} },
     fetch: async (url, options) => {
       calls.push({ url, options });
       assert.match(url, /\/publish-settings$/);
@@ -70,11 +72,13 @@ function fixture(overrides = {}) {
     initialClipSelection: "secondary_only", initialDemoMediaId: finalVideo.id, initialHookMediaId: "", initialCaption: "My exact caption", initialPlannedTargets: [{ connectionId: accounts[0].id, platform: "instagram", settings: { shareToFeed: false } }], initialScheduledDate: "2099-12-01", initialScheduledTime: "16:30", minimumScheduleLeadMinutes: 5, requireScheduleTarget: true, saving: false, socialConnections: accounts, tiktokBetaEnabled: true, youtubeBetaEnabled: true,
     onClose() { browser.closed++; }, onCloseDraft(value) { snapshots.push(value); }, onRefreshMedia: async () => true, onRefreshConnections: async () => true, onSave(value) { submitted.push(value); }, ...overrides };
   return { props, browser, submitted, snapshots, calls,
+    advance(milliseconds, refresh = true) { now += milliseconds; if (refresh) tick?.(); },
     render() { cursor = 0; tree = exported.ScheduleEditor(props);
       const region = nodes(tree).find(node => ["region", "dialog"].includes(node.props?.role));
       region.props.ref.current = { focus() { browser.focused++; }, scrollIntoView() { browser.scrolled++; } };
       while (effects.length) effects.shift()(); while (frames.length) frames.shift()(); return tree; },
     nodes() { return nodes(tree); },
+    picker(value, onChange) { cursor = 0; tree = exported.__ScheduleTimePicker({ value, onChange, invalid: false }); return tree; },
     save() { return nodes(tree).find(node => node.type === "SharedButton" && node.props.onClick?.name === "handleSaveDraft"); },
     publishing() { return nodes(tree).find(node => node.type?.name === "PlatformPublishingSettings"); },
     unmount() { for (const slot of slots) slot?.cleanup?.(); },
@@ -294,4 +298,132 @@ test("inline confirmation retains date, caption and TikTok capability/privacy va
   assert.equal(h.save().props.disabled, false); h.save().props.onClick();
   assert.equal(h.submitted[0].targets[0].settings.privacyLevel, "PUBLIC_TO_EVERYONE");
   assert.equal(h.submitted[0].targets[0].settings.allowComment, false); h.unmount();
+});
+
+
+test("workflow scheduling has one direct Schedule post action and no confirmation screen", async () => {
+  const h = fixture({ presentation: "workflow" }); await renderSettled(h);
+  const region = h.nodes().find(node => node.props?.role === "region");
+  assert.match(text(region), /Schedule your video/);
+  assert.doesNotMatch(text(region), /Confirm your schedule|Review schedule/);
+  assert.equal(h.nodes().filter(node => node.type === "SharedButton" && text(node) === "Schedule post").length, 1);
+  assert.equal(h.browser.overflow, "auto");
+  assert.equal(h.submitted.length, 0);
+  h.save().props.onClick();
+  assert.equal(h.submitted.length, 1);
+  assert.equal(h.submitted[0].scheduledSource.id, finalVideo.id);
+  assert.equal(h.submitted[0].targets[0].settings.shareToFeed, false);
+  h.unmount();
+});
+
+
+test("workflow form keeps its preview draft in sync without repeated parent updates or scheduling", async () => {
+  const changes = [];
+  const h = fixture({ presentation: "workflow", onDraftChange: value => changes.push(value) });
+  await renderSettled(h);
+  assert.equal(changes.length, 1);
+  h.nodes().find(node => node.type === "textarea").props.onChange({ target: { value: "Updated live caption" } });
+  h.render();
+  assert.equal(changes.at(-1).caption, "Updated live caption");
+  const count = changes.length;
+  h.props.initialCaption = "Updated live caption";
+  h.props.onDraftChange = value => changes.push(value);
+  h.render(); h.render();
+  assert.equal(changes.length, count);
+  assert.equal(changes.at(-1).targets[0].connectionId, h.props.initialPlannedTargets[0].connectionId);
+  assert.equal(h.submitted.length, 0);
+  h.nodes().find(node => node.props?.["aria-label"] === "Back to Edit").props.onClick();
+  assert.equal(h.snapshots[0].caption, "Updated live caption");
+  assert.equal(h.snapshots[0].targets[0].connectionId, h.props.initialPlannedTargets[0].connectionId);
+  h.unmount();
+});
+
+
+test("workflow account replacement keeps one choice per platform and preserves other platforms", async () => {
+  const first = fixture({ presentation: "workflow" });
+  const alternate = { ...first.props.socialConnections[0], id: "00000000-0000-4000-8000-000000000009" };
+  first.props.socialConnections = [...first.props.socialConnections, alternate];
+  await renderSettled(first);
+  let picker = first.nodes().find(node => node.type?.name === "ConnectedAccountSelector");
+  const youtube = first.props.socialConnections.find(account => account.platform === "youtube");
+  picker.props.onToggle(youtube.id); first.render();
+  picker = first.nodes().find(node => node.type?.name === "ConnectedAccountSelector");
+  picker.props.onToggle(alternate.id); first.render();
+  picker = first.nodes().find(node => node.type?.name === "ConnectedAccountSelector");
+  assert.deepEqual(Array.from(picker.props.selectedConnectionIds).sort(), [alternate.id, youtube.id].sort());
+  first.save().props.onClick();
+  assert.equal(first.submitted[0].targets.length, 2);
+  assert.equal(first.submitted[0].targets.find(target => target.platform === "instagram").connectionId, alternate.id);
+  first.unmount();
+  const ordinary = fixture({ presentation: "modal" }); ordinary.props.socialConnections = [...ordinary.props.socialConnections, alternate];
+  await renderSettled(ordinary);
+  ordinary.nodes().find(node => node.type?.name === "ConnectedAccountSelector").props.onToggle(alternate.id); ordinary.render();
+  assert.equal(ordinary.nodes().find(node => node.type?.name === "ConnectedAccountSelector").props.selectedConnectionIds.length, 2, "Generic Scheduling retains its multiple-account behavior");
+  ordinary.unmount();
+});
+
+test("the screenshot's 02:49 is past at 14:40 IST, while 14:49 submits the intended afternoon instant", async () => {
+  const h = fixture({ presentation: "workflow", initialScheduledDate: "2026-10-14", initialScheduledTime: "02:49" }, Date.parse("2026-10-14T09:10:30Z"));
+  await renderSettled(h);
+  assert.equal(h.save().props.disabled, true);
+  assert.match(text(h.nodes().find(node => node.props?.id === "schedule-time-feedback")), /in the past/);
+  assert.match(text(h.nodes().find(node => node.props?.id === "schedule-clock-help")), /Now: 2026-10-14 02:40 PM.*Asia\/Calcutta.*Earliest: 2026-10-14 02:46 PM/);
+  h.save().props.onClick(); assert.equal(h.submitted.length, 0);
+  control(h, "ScheduleTimePicker").props.onChange("14:49"); h.render();
+  assert.equal(h.save().props.disabled, false);
+  assert.equal(h.nodes().find(node => node.props?.id === "schedule-time-feedback"), undefined);
+  assert.equal(h.submitted.length, 0);
+  h.save().props.onClick();
+  assert.equal(h.submitted[0].scheduledTime, "14:49");
+  assert.equal(h.submitted[0].scheduledFor, "2026-10-14T09:19:00.000Z");
+  h.unmount();
+});
+
+test("AM/PM selection converts correctly while keeping the scheduling API in 24-hour time", () => {
+  for (const [value, label, toggled] of [["02:49", "02:49 AM", "14:49"], ["14:49", "02:49 PM", "02:49"], ["00:05", "12:05 AM", "12:05"], ["12:05", "12:05 PM", "00:05"]]) {
+    const h = fixture(); let changed;
+    const tree = h.picker(value, next => { changed = next; });
+    const trigger = h.nodes().find(node => node.type === "PopoverTrigger");
+    assert.match(text(trigger), new RegExp(label));
+    assert.equal(trigger.props.render.props["aria-label"], `Choose publish time, currently ${label}`);
+    assert.equal(h.nodes().find(node => node.props?.name === "scheduledTime").props.value, value);
+    const period = control(h, "ScheduleTimeRail");
+    const rails = nodes(tree).filter(node => node.type?.name === "ScheduleTimeRail");
+    assert.deepEqual(Array.from(period.props.values), ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]);
+    rails.find(node => node.props.label === "AM/PM").props.onSelect(label.endsWith("AM") ? "PM" : "AM");
+    assert.equal(changed, toggled);
+    rails.find(node => node.props.label === "Hour").props.onSelect("12");
+    assert.equal(changed, `${label.endsWith("AM") ? "00" : "12"}:${value.slice(3)}`);
+    rails.find(node => node.props.label === "Minute").props.onSelect("17");
+    assert.equal(changed, `${value.slice(0, 2)}:17`);
+  }
+});
+
+test("next available time rolls into tomorrow in the selected timezone without submitting or losing the draft", async () => {
+  const changes = [];
+  const h = fixture({ presentation: "workflow", initialTimezone: "Asia/Kolkata", initialScheduledDate: "2026-10-14", initialScheduledTime: "23:59", onDraftChange: value => changes.push(value) }, Date.parse("2026-10-14T18:27:30Z"));
+  await renderSettled(h);
+  const before = changes.at(-1);
+  assert.equal(h.save().props.disabled, true);
+  h.nodes().find(node => node.type === "button" && text(node) === "Use next available time").props.onClick(); h.render();
+  const after = changes.at(-1);
+  assert.equal(after.date, "2026-10-15"); assert.equal(after.time, "00:04");
+  assert.equal(after.timezone, "Asia/Kolkata"); assert.equal(after.caption, before.caption);
+  assert.deepEqual(after.targets, before.targets);
+  assert.equal(h.save().props.disabled, false); assert.equal(h.submitted.length, 0);
+  h.save().props.onClick(); assert.equal(h.submitted[0].scheduledFor, "2026-10-14T18:34:00.000Z");
+  h.unmount();
+});
+
+test("submission revalidates a sleeping tab and minute refresh disables a newly expired slot", async () => {
+  for (const refresh of [false, true]) {
+    const h = fixture({ presentation: "workflow", initialScheduledDate: "2026-10-14", initialScheduledTime: "14:46" }, Date.parse("2026-10-14T09:10:30Z"));
+    await renderSettled(h); assert.equal(h.save().props.disabled, false);
+    h.advance(31_000, refresh); if (refresh) h.render();
+    if (refresh) assert.equal(h.save().props.disabled, true);
+    h.save().props.onClick(); h.render();
+    assert.equal(h.submitted.length, 0); assert.equal(h.save().props.disabled, true);
+    assert.match(text(h.nodes().find(node => node.props?.id === "schedule-clock-help")), /Earliest: 2026-10-14 02:47 PM/);
+    h.unmount();
+  }
 });

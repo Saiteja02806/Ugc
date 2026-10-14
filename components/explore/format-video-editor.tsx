@@ -32,7 +32,7 @@ import type { MediaAsset } from "@/lib/media/types";
 import { getReferenceAudioPreview } from "@/lib/explore/reference-audio-preview";
 import { useClipDraftSave } from "@/components/explore/use-clip-draft-save";
 import type { ExploreClipDraft, ExploreClipDraftContent } from "@/lib/explore/clip-draft-contract";
-import type { SequencePreviewAudio, SequencePreviewSegment } from "@/lib/explore/sequence-preview";
+import { formatPreviewAudioPosition, type SequencePreviewAudio, type SequencePreviewSegment } from "@/lib/explore/sequence-preview";
 
 const field = "w-full rounded-lg border border-border bg-card-muted px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-focus";
 const defaultEdit = (format: "hook" | "wall_text", duration: number): ExploreFormatEdit => ({ version: 1, format, trimStartMs: 0, trimEndMs: Math.round(duration * 1000), originalVolume: 1, musicVolume: .2, text: null });
@@ -81,8 +81,11 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   const audioSelectionError = localAudio.loading ? "Wait for your selected audio to finish loading." : localAudio.error;
   const player = useRef<HTMLVideoElement | null>(null);
   const soundtrack = useRef<HTMLAudioElement | null>(null);
+  const playingSoundtrack = useRef<HTMLAudioElement | null>(null);
+  const soundtrackFrame = useRef<number | null>(null);
+  const synchronizeSoundRef = useRef<() => void>(() => {});
   const alive = useRef(true);
-  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; stopSoundtrackPlayback(); }; }, []);
   const sourceQuery = useQuery({ queryKey: ["explore-edit-source", owner, video.mediaAssetId, "remix-source"], staleTime: 30_000, enabled: Boolean(owner && video.mediaAssetId && !localPreview), queryFn: async () => {
     const token = await getCurrentUserIdToken(owner ?? undefined); if (!token || !video.mediaAssetId) throw new Error("Sign in to edit this saved video.");
     const asset = await fetchAIStudioMediaAsset(video.mediaAssetId, token, { remixSource: true });
@@ -159,7 +162,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
     if (finishing.output) onSaved({ id: finishing.output.id, kind: "media_asset", url: finishing.output.url, title: finishing.output.title });
   }, [finishing.output, onSaved]);
   useEffect(() => {
-    if (!active) { player.current?.pause(); soundtrack.current?.pause(); }
+    if (!active) { player.current?.pause(); stopSoundtrackPlayback(); }
   }, [active]);
 
   function persistDraft(next: ExploreFormatEdit, audioId = backgroundId, mode = playback) {
@@ -174,7 +177,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   }
   function trim(startMs: number, endMs: number) {
     change(trimFormatVideoEdit(editing, startMs, endMs));
-    setTime(0); soundtrack.current?.pause();
+    setTime(0); stopSoundtrackPlayback();
     if (player.current) player.current.currentTime = startMs / 1000;
   }
   async function chooseAudio(file: File, mode: "once" | "repeat" = playback) {
@@ -207,14 +210,37 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   useEffect(() => { onPreviewChange?.(JSON.parse(sequencePreview) as FormatOpeningPreview); }, [onPreviewChange, sequencePreview]);
   function synchronizeSound() {
     const audio = soundtrack.current, videoPlayer = player.current;
-    if (!audio || !videoPlayer) return;
-    audio.volume = editing.musicVolume;
+    if (!audio || !videoPlayer || !Number.isFinite(audio.duration) || audio.duration <= 0) return;
+    if (playingSoundtrack.current !== audio) { playingSoundtrack.current?.pause(); playingSoundtrack.current = audio; }
     const length = audio.duration;
-    const elapsed = Math.max(0, videoPlayer.currentTime - editing.trimStartMs / 1000);
-    const expected = previewPlayback === "repeat" && Number.isFinite(length) && length > 0 ? elapsed % length : elapsed;
-    if (Math.abs(audio.currentTime - expected) > .15 && Number.isFinite(expected)) audio.currentTime = expected;
-    if (previewPlayback === "once" && Number.isFinite(length) && expected >= length) { audio.pause(); return; }
-    if (!videoPlayer.paused) void audio.play().catch(() => {});
+    const state = formatPreviewAudioPosition(length * 1000, duration * 1000, editing, videoPlayer.currentTime * 1000, previewPlayback, !!referenceAudio);
+    audio.volume = editing.musicVolume * state.gain;
+    if (!state.audible) { audio.pause(); return; }
+    const expected = state.positionMs / 1000;
+    if (Math.abs(audio.currentTime - expected) > .15) audio.currentTime = expected;
+    if (!videoPlayer.paused && audio.paused) void audio.play().then(() => {
+      if (!alive.current || player.current !== videoPlayer || videoPlayer.paused || soundtrack.current !== audio) audio.pause();
+    }).catch(() => {});
+  }
+  useEffect(() => {
+    synchronizeSoundRef.current = synchronizeSound;
+    if (soundtrackFrame.current === null && soundtrack.current && player.current && !player.current.paused) startSoundtrackPlayback();
+  });
+  function stopSoundtrackPlayback() {
+    if (soundtrackFrame.current !== null) cancelAnimationFrame(soundtrackFrame.current);
+    soundtrackFrame.current = null;
+    soundtrack.current?.pause();
+    if (playingSoundtrack.current !== soundtrack.current) playingSoundtrack.current?.pause();
+  }
+  function startSoundtrackPlayback() {
+    if (!soundtrack.current) return;
+    if (soundtrackFrame.current !== null) cancelAnimationFrame(soundtrackFrame.current);
+    const tick = () => {
+      if (!alive.current || !soundtrack.current || !player.current || player.current.paused) { soundtrackFrame.current = null; return; }
+      synchronizeSoundRef.current();
+      soundtrackFrame.current = requestAnimationFrame(tick);
+    };
+    tick();
   }
   const remixSource = sourceQuery.data && Object.hasOwn(sourceQuery.data.metadata ?? {}, "remixTextSource") ? readRemixSource(sourceQuery.data.metadata.remixTextSource) : video.remixTextSource;
   const boundReference = remixSource === undefined ? remixReference : resolveRemixSource(remixSource, remixReferences ?? (remixReference ? [remixReference] : []), format).reference;
@@ -267,7 +293,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
         event.currentTarget.volume = previewOriginalVolume;
         if (Number.isFinite(d) && d >= 1) event.currentTarget.currentTime = Math.min(editing.trimStartMs / 1000, d - .001);
         setTime(0);
-      }} onPlay={event => { event.currentTarget.volume = previewOriginalVolume; if (event.currentTarget.currentTime < editing.trimStartMs / 1000 || event.currentTarget.currentTime >= editing.trimEndMs / 1000) event.currentTarget.currentTime = editing.trimStartMs / 1000; synchronizeSound(); }} onPause={() => soundtrack.current?.pause()} onSeeked={synchronizeSound} onTimeUpdate={event => {
+      }} onPlay={event => { event.currentTarget.volume = previewOriginalVolume; if (event.currentTarget.currentTime < editing.trimStartMs / 1000 || event.currentTarget.currentTime >= editing.trimEndMs / 1000) event.currentTarget.currentTime = editing.trimStartMs / 1000; startSoundtrackPlayback(); }} onPause={stopSoundtrackPlayback} onSeeked={synchronizeSound} onTimeUpdate={event => {
         event.currentTarget.volume = previewOriginalVolume;
         setTime(event.currentTarget.currentTime * 1000 - editing.trimStartMs);
         if (event.currentTarget.currentTime * 1000 >= editing.trimEndMs) { event.currentTarget.pause(); event.currentTarget.currentTime = editing.trimStartMs / 1000; }
@@ -275,7 +301,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
       }} />
       {overlays.map((text, overlayIndex) => time >= text.startMs && time < text.endMs ? <FormatVideoTextOverlay key={overlayIndex} label={`Text overlay ${overlayIndex + 1} preview`} text={text} width={width} height={height} /> : null)}
     </div>
-    {previewAudioUrl ? <audio ref={soundtrack} src={previewAudioUrl} loop={previewPlayback === "repeat"} preload="metadata" aria-label="Background audio preview" /> : null}
+    {previewAudioUrl ? <audio ref={soundtrack} src={previewAudioUrl} loop={previewPlayback === "repeat"} preload="metadata" onLoadedMetadata={synchronizeSound} aria-label="Background audio preview" /> : null}
     {!editingActive && onEdit ? <><p className="max-w-full truncate text-xs text-muted" title={video.title}>{video.title}</p><div className={styles.clipCardActions}><Button type="button" variant="outline" data-edit-clip="opening" disabled={pendingSource || uploading} onClick={onEdit}>Edit {clipLabel.toLowerCase()}</Button>{previewActions}</div></> : null}
     {editingActive && finishing.output ? <div className="w-full max-w-sm space-y-2"><h3 className="text-sm font-medium">Saved video</h3><video src={finishing.output.url} controls playsInline className="max-h-80 w-full rounded-xl" /></div> : null}
   </section>;

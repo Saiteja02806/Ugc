@@ -77,6 +77,18 @@ function harness(format, query = "", { local = true, selected = video, catalogue
 }
 
 const catalogue = Array.from({ length: 90 }, (_, index) => ({ id: `wall-${index}`, format: "wall_text", title: `Productivity ${index + 1}`, category: index < 45 ? "productivity" : "other", slides: [], posterUrl: "/poster.jpg", videoUrl: "/reference.mp4" }));
+test("Wall empty Edit offers upload/assets/generation and keeps source actions in the editor", async () => {
+  const h = harness("wall_text", "", {selected:null});
+  nodes(h.render()).find(n=>n.type === "tabs-root").props.onValueChange("edit");
+  const setup = nodes(h.render()).find(n=>n.props?.["aria-label"] === "Wall of text edit setup");
+  assert.match(text(setup), /Choose a video to start editing/);
+  const actions = nodes(setup).find(n=>n.type === "WorkflowClipSourceActions");
+  actions.props.onChooseAssets();
+  assert.equal(nodes(h.render()).find(n=>n.type === "WorkflowVideoAssetPicker").props.open, true);
+  assert.equal(nodes(h.render()).find(n=>n.type === "tabs-root").props.value, "edit");
+  actions.props.onGenerate();
+  assert.equal(h.source.mode, "generate"); assert.equal(nodes(h.render()).find(n=>n.type === "tabs-root").props.value,"create");
+});
 test("a saved Demo entry opens its own editor and returns to the Demo screen", () => {
   const h = harness("hook", `demoId=${video.id}&step=demo`, { local: false });
   const tree = h.render(), editor = nodes(tree).find(n => n.type === "FormatDemoSection");
@@ -352,25 +364,42 @@ for (const format of ["hook"]) {
     const editor = nodes(h.render()).find(n => n.type === "FormatVideoEditor");
     assert.equal(editor.props.active, true); assert.equal(editor.props.video.id, replacement.id); assert.equal(h.params().get("editVideoId"), replacement.id);
   });
-  test(`${format}: an empty video preview recovers through Create without an Edit tab`, () => {
+  test(`${format}: an empty video preview offers direct source actions without an Edit tab`, () => {
     const h = harness(format, "", { selected: null }); nodes(h.render()).find(n => n.type === "button" && text(n) === "Your videos").props.onClick();
-    const choose = nodes(h.render()).find(n => n.type === "Button" && text(n) === "Go to Create");
-    assert.ok(choose); assert.equal(Boolean(choose.props.disabled), false); choose.props.onClick();
+    const choose = nodes(h.render()).find(n => n.type === "WorkflowClipSourceActions");
+    assert.ok(choose); assert.equal(Boolean(choose.props.disabled), false); choose.props.onChooseAssets();
+    assert.equal(nodes(h.render()).find(n => n.type === "WorkflowVideoAssetPicker").props.open, true);
     assert.equal(nodes(h.render()).find(n => n.type === "tabs-root").props.value, "create");
   });
-  test(`${format}: the empty opening card uses Create as the single source chooser and preserves Demo`, () => {
+  test(`${format}: the empty opening card selects Creative Assets directly and preserves Demo and its tab`, () => {
     const h = harness(format, "", { selected: null });
     nodes(h.render()).find(n => n.type === "tabs-root").props.onValueChange("demo");
     let tree = h.render(); const demoKey = nodes(tree).find(n => n.type === "FormatDemoSection").key;
     const preview = nodes(tree).find(n => n.props?.["aria-label"] === "Clip previews and editor");
-    assert.equal(nodes(preview).some(n => n.type === "Button" && ["Upload", "Create", "Choose from Creative Assets"].includes(text(n))), false);
-    nodes(preview).find(n => n.type === "Button" && text(n) === "Go to Create").props.onClick();
+    nodes(preview).find(n => n.type === "WorkflowClipSourceActions").props.onChooseAssets();
     tree = h.render();
-    assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "create");
+    assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "demo");
     assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").key, demoKey);
-    assert.equal(nodes(tree).find(n => n.type === "WorkflowVideoSourceSection").props.selection.selectAsset(video), true);
+    const picker = nodes(tree).find(n => n.type === "WorkflowVideoAssetPicker");
+    assert.equal(picker.props.open, true); assert.equal(picker.props.onSelect(video), true); picker.props.onOpenChange(false);
     tree = h.render();
+    assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "demo");
+    assert.equal(nodes(tree).find(n => n.type === "WorkflowVideoAssetPicker").props.open, false);
     assert.equal(nodes(tree).find(n => n.type === "FormatVideoEditor").props.video.url, video.url);
+    assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").key, demoKey);
+  });
+  test(`${format}: inline upload uses the existing flow without navigation and preserves the demo on failure`, async () => {
+    const h = harness(format, "step=demo", { selected: null });
+    let tree = h.render(); const demoKey = nodes(tree).find(n => n.type === "FormatDemoSection").key;
+    h.source.chooseUpload = async () => false;
+    assert.equal(await nodes(tree).find(n => n.type === "WorkflowClipSourceActions").props.onUpload({ name: "bad.mp4" }), false);
+    tree = h.render(); assert.match(text(tree), /This video could not be added/);
+    assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "demo");
+    assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").key, demoKey);
+    h.source.chooseUpload = async () => { h.accept(video, "upload"); return true; };
+    assert.equal(await nodes(tree).find(n => n.type === "WorkflowClipSourceActions").props.onUpload({ name: "good.mp4" }), true);
+    tree = h.render(); assert.equal(nodes(tree).find(n => n.type === "FormatVideoEditor").props.video.id, video.id);
+    assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "demo");
     assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").key, demoKey);
   });
   test(`${format}: Change returns to Create without clearing the opening, its edits or Demo`, () => {

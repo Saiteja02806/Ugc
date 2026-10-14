@@ -75,6 +75,14 @@ export function mapSequencePreviewDemoReference(segment: SequencePreviewSegment,
   });
   return { ...segment, url: clean ?? segment.url, editing, referenceAudio };
 }
+/** Raw demo composition adds its selected music after preparing the trimmed
+ * clip. Prepared media already contains that mix and keeps its saved clock. */
+export function mapSequencePreviewDemoAudio(segment: SequencePreviewSegment, options: { rawComposition: boolean }): SequencePreviewSegment {
+  if (!options.rawComposition || !segment.editing || !segment.addedAudio) return segment;
+  const { trimStartMs, trimEndMs } = parseExploreFormatEdit(prepareFormatEditForExport(segment.editing));
+  return { ...segment, addedAudio: validateSequencePreviewAudio({ ...segment.addedAudio,
+    timelineOffsetMs: 0, mixDurationMs: trimEndMs - trimStartMs }) };
+}
 /** Half-open clip intervals: the exact Hook endpoint belongs to the Demo. */
 export function sequencePreviewPosition(timeline: SequencePreviewTimeline, timeMs: number) {
   const clamped = Math.min(timeline.durationMs, Math.max(0, finite(timeMs) ? timeMs : 0));
@@ -111,4 +119,11 @@ export function sequencePreviewAudioPosition(sourceDurationMs: number, targetDur
   const fade = timing.fadeDurationMs;
   const gain = audible ? Math.max(0, Math.min(1, elapsed / fade, (timing.audibleDurationMs - elapsed) / fade)) : 0;
   return { audible, positionMs: timing.repeat ? elapsed % sourceDurationMs : Math.min(elapsed, sourceDurationMs), gain };
+}
+/** Custom clip music is mixed on the raw timeline before trim. Paired
+ * reference music deliberately restarts and fades on the trimmed timeline. */
+export function formatPreviewAudioPosition(audioDurationMs: number, videoDurationMs: number, editing: Pick<ExploreFormatEdit, "trimStartMs" | "trimEndMs">,
+  sourceMs: number, playback: "once" | "repeat", restartAfterTrim = false) {
+  return sequencePreviewAudioPosition(audioDurationMs, restartAfterTrim ? editing.trimEndMs - editing.trimStartMs : videoDurationMs,
+    restartAfterTrim ? sourceMs - editing.trimStartMs : sourceMs, playback);
 }

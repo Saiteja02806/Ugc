@@ -98,13 +98,20 @@ async function resultFor(store: ExploreFinishingRequestStore, receipt: ExploreFi
 }
 
 /** Callers authenticate the owner and enforce creation entitlement before entering this boundary. */
-export async function startWorkflowFinishingForOwner(owner: string, requestKey: string, rawDraft: unknown) {
+export async function startWorkflowFinishingForOwner(owner: string, requestKey: string, rawDraft: unknown, options: { modernSubtitles?: boolean } = {}) {
   const key = identity(owner, requestKey);
   if (process.env.EXPLORE_FINISHING_ENABLED !== "true") throw new ExploreFinishError("Video finishing is not enabled yet.", 503);
   if (Buffer.byteLength(JSON.stringify(rawDraft) ?? "", "utf8") > 32 * 1024) throw new ExploreFinishError("The finishing draft is too large.", 413);
-  const draft = parseExploreFinishDraft(rawDraft), fingerprint = fingerprintExploreFinish(draft);
+  let draft = parseExploreFinishDraft(rawDraft);
   const store = new ExploreFinishingRequestStore();
   const prior = await store.read(owner, key);
+  // New connector requests use the same bounded warm path as the website.
+  // An omitted version is resolved from an accepted receipt on exact replay:
+  // old requests retain their speech identity and cannot be silently upgraded.
+  if (options.modernSubtitles && draft.subtitles && draft.subtitles.version === undefined && (!prior || prior.draft.subtitles?.version === 2)) {
+    draft = { ...draft, subtitles: { ...draft.subtitles, version: 2 } };
+  }
+  const fingerprint = fingerprintExploreFinish(draft);
   if (prior && (prior.fingerprint !== fingerprint || JSON.stringify(prior.draft) !== JSON.stringify(draft))) throw new ExploreFinishError("This request was already used for different edits.", 409);
   if (!prior) {
     const runtime = videoFinishingRuntime();

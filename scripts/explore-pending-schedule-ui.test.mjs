@@ -1,3 +1,4 @@
+import * as scheduleTransport from "../lib/explore/workflow-schedule-transport.ts";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -7,6 +8,8 @@ import ts from "typescript";
 import * as schedulingDraft from "../lib/explore/workflow-scheduling-draft.ts";
 import * as contract from "../lib/explore/pending-schedule-contract.ts";
 import * as client from "../lib/explore/pending-schedule-client.ts";
+import { prepareSimpleWorkflowSchedule } from "../lib/explore/simple-workflow-schedule.ts";
+import * as scheduleClient from "../lib/explore/workflow-schedule-client.ts";
 
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const element = (type, props) => ({ type, props });
@@ -53,6 +56,7 @@ function fixture(options = {}) {
     "@/lib/firebase/auth": { getCurrentUserIdToken: async () => "fixture-token" }, "@/lib/explore/workflow-scheduling-draft": schedulingDraft,
     "@/lib/explore/workflow-connected-accounts": { parseWorkflowConnectedAccounts: value => { assert.equal(value.ok, true); assert.ok(Array.isArray(value.connections)); return value.connections; } },
     "@/lib/explore/pending-schedule-contract": contract, "@/lib/explore/pending-schedule-client": client,
+    "@/lib/explore/workflow-schedule-client": scheduleClient, "@/lib/explore/workflow-schedule-transport": scheduleTransport, "@/lib/explore/simple-workflow-schedule": { prepareSimpleWorkflowSchedule },
     "@/components/explore/workflow-schedule-review.module.css": { __esModule: true, default: new Proxy({}, { get: (_, name) => name }) },
   };
   const exports = {};
@@ -65,7 +69,7 @@ function fixture(options = {}) {
       calls.push({ url, method: init?.method ?? "GET", body: init?.body });
       if (options.transport) { const custom = await options.transport(url, init); if (custom) return custom; }
       if (url === "/api/schedules?configOnly=1") return Response.json({ ok: true, minimumScheduleLeadMinutes: 5 });
-      if (url === "/api/social/connections") return Response.json({ ok: true, connections: [ { id: id(3), platform: "instagram", status: "connected" } ] });
+      if (url === "/api/social/connections") return Response.json({ ok: true, connections: [ { id: id(3), platform: "instagram", status: "connected", platformAccountName: null, platformAccountUsername: null, scopes: ["instagram_business_content_publish"], supportsBackgroundRefresh: true } ] });
       if (init?.method === "POST") {
         const request = JSON.parse(init.body);
         assert.equal(JSON.parse(values.get(storageKey)).input.requestKey, request.requestKey, "Receipt must be stored before the mutation");
@@ -75,44 +79,46 @@ function fixture(options = {}) {
         return Response.json(serverReply, { status: 202 });
       }
       assert.match(url, /\/api\/explore\/schedules\?requestKey=/);
-      return Response.json(serverReply ?? reply(options.saved?.input ?? input(), "unconfirmed"));
+      return Response.json(serverReply ?? reply(JSON.parse(values.get(storageKey) ?? "null")?.input ?? options.saved?.input ?? input(), "unconfirmed"));
     },
   });
   const props = { owner: "owner-a", scope: "hook", composition: { signature: "exact-clips-v1", sourceId: id(1), title: "My video", draft: finishDraft, error: null, resolve: async () => finishDraft },
     draft: { platform: "instagram", caption: submission.caption, date: submission.scheduledDate, time: submission.scheduledTime, connectionId: id(3) },
-    onChange: value => changes.push(value), timezone: "Asia/Calcutta", active: true, ...options.props };
+    onChange: value => { changes.push(value); props.draft = value; }, timezone: "Asia/Calcutta", active: true, ...options.props };
   return { props, calls, values, changes, setServerReply(value) { serverReply = value; },
     render() { cursor = 0; tree = exports.PendingExploreSchedulePanel(props); while (effects.length) effects.shift()(); return tree; },
     nodes() { return nodes(tree); }, text() { return text(tree) + (nodes(tree).find(node => node.type === "ScheduleEditor")?.props.errorMessage ?? ""); },
     button(label) { return nodes(tree).find(node => node.type === "SharedButton" && text(node) === label); },
-    async review() { this.render(); await settle(); this.render(); await this.button("Review schedule").props.onClick(); await settle(); this.render(); return nodes(tree).find(node => node.type === "ScheduleEditor"); },
+    async form() { for (let i = 0; i < 4; i++) { this.render(); await settle(); } this.render(); assert.equal(this.button("Review schedule"), undefined); assert.equal(nodes(tree).find(node => node.type === "ScheduleEditor"), undefined); return nodes(tree).find(node => node.type === "WorkflowSchedulingPanel"); },
     async tick() { for (const callback of [...timers.values()]) await callback(); await settle(); this.render(); },
     unmount() { for (const slot of slots) slot?.cleanup?.(); },
   };
 }
 
 test("mount, receipt restoration and preparation polling never create a schedule", async () => {
-  const empty = fixture(); empty.render(); await settle(); empty.render(); assert.equal(empty.calls.length, 0); empty.unmount();
+  const empty = fixture(); empty.render(); await settle(); empty.render(); assert.equal(empty.calls.filter(call => call.method === "POST").length, 0); empty.unmount();
   const h = fixture({ saved: savedEntry(true), serverReply: reply() }); h.render(); await settle(); h.render(); await h.tick();
   assert.equal(h.calls.length, 2); assert.ok(h.calls.every(call => call.method === "GET"));
   assert.match(h.text(), /Your schedule is saved/); h.unmount();
 });
 
-test("explicit inline confirmation saves exact clips, caption, time and provider settings before rendering", async () => {
-  const h = fixture(), editor = await h.review(); assert.ok(editor); assert.equal(editor.props.presentation, "inline");
-  assert.equal(editor.props.pendingVideo.status, "missing_render"); assert.ok(h.calls.every(call => call.method === "GET"));
-  editor.props.onSave(submission); editor.props.onSave(submission); await settle(); h.render();
+test("the original simple form submits directly with one Schedule post click", async () => {
+  const h = fixture(), form = await h.form(); assert.ok(form); assert.equal(form.props.presentation, "review");
+  assert.equal(h.calls.length, 0, "Entering Schedule must not replace the form or create a schedule");
+  const action=h.button("Schedule post"); action.props.onClick(); action.props.onClick(); await settle(); h.render();
   const mutations = h.calls.filter(call => call.method === "POST"); assert.equal(mutations.length, 1);
-  const request = JSON.parse(mutations[0].body); assert.deepEqual(request.draft, finishDraft); assert.deepEqual(request.schedule.targets, submission.targets);
+  const request = JSON.parse(mutations[0].body); assert.deepEqual(request.draft, finishDraft);
+  assert.deepEqual(request.schedule.targets, [{ connectionId: id(3), platform: "instagram", settings: { shareToFeed: true } }]);
   assert.equal(request.schedule.caption, submission.caption); assert.equal(request.schedule.scheduledFor, submission.scheduledFor);
-  assert.equal(request.schedule.timezone, submission.timezone); assert.equal(h.changes[0].caption, submission.caption);
+  assert.equal(request.schedule.timezone, submission.timezone); assert.equal(h.changes.length, 0);
   assert.equal(JSON.parse(h.values.values().next().value).confirmed, true); assert.match(h.text(), /You can leave this screen/); h.unmount();
 });
 
-test("wrong media or clip-selection submissions cannot schedule a different video", async () => {
-  for (const altered of [{ scheduledSource: { kind: "media_asset", id: id(99) } }, { scheduledSource: { kind: "library_item", id: id(1) } }, { clipSelection: "hook_and_secondary" }, { useOpeningClip: true }]) {
-    const h = fixture(), editor = await h.review(); editor.props.onSave({ ...submission, ...altered }); await settle(); h.render();
-    assert.equal(h.calls.filter(call => call.method === "POST").length, 0); assert.match(h.text(), /selected video changed/); h.unmount();
+test("unavailable accounts and invalid compositions cannot enqueue video preparation", async () => {
+  for (const mode of ["account", "composition"]) {
+    const h=fixture(); if (mode === "account") h.props.draft.connectionId=id(99); else h.props.composition.error="Choose valid clips";
+    await h.form(); h.button("Schedule post").props.onClick(); await settle(); h.render();
+    assert.equal(h.calls.filter(call=>call.method === "POST").length,0); h.unmount();
   }
 });
 
@@ -120,7 +126,7 @@ test("clip or account changes during async source resolution block the stale con
   for (const field of ["clip", "account"]) {
     let resolve;
     const h = fixture(); h.props.composition.resolve = () => new Promise(done => { resolve = done; });
-    const editor = await h.review(); editor.props.onSave(submission); await settle();
+    const editor = await h.form(); h.button("Schedule post").props.onClick(); await settle();
     if (field === "clip") h.props.composition = { ...h.props.composition, signature: "changed-clips-v2" };
     else h.props.draft = { ...h.props.draft, connectionId: id(90) };
     h.render(); resolve(finishDraft); await settle(); h.render();
@@ -130,18 +136,37 @@ test("clip or account changes during async source resolution block the stale con
 
 test("source resolver cannot substitute another opening asset", async () => {
   const h = fixture(); h.props.composition.resolve = async () => ({ ...finishDraft, sourceAssetId: id(99) });
-  const editor = await h.review(); editor.props.onSave(submission); await settle(); h.render();
+  const editor = await h.form(); h.button("Schedule post").props.onClick(); await settle(); h.render();
   assert.equal(h.calls.filter(call => call.method === "POST").length, 0); assert.match(h.text(), /prepared video changed/); h.unmount();
 });
 
 test("lost POST reply is recovered by read-only check or reload without a duplicate POST", async () => {
-  const h = fixture({ loseResponse: true }), editor = await h.review(); editor.props.onSave(submission); await settle(); h.render();
+  const h = fixture({ loseResponse: true }), editor = await h.form(); h.button("Schedule post").props.onClick(); await settle(); h.render();
   assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
   const saved = JSON.parse(h.values.values().next().value); assert.equal(saved.confirmed, false);
   h.button("Check saved request").props.onClick(); await settle(); h.render();
   assert.equal(h.calls.filter(call => call.method === "POST").length, 1); assert.match(h.text(), /Your schedule is saved/); h.unmount();
   const reloaded = fixture({ saved, serverReply: reply(saved.input) }); reloaded.render(); await settle(); reloaded.render();
   assert.equal(reloaded.calls.length, 1); assert.equal(reloaded.calls[0].method, "GET"); assert.equal(JSON.parse(reloaded.values.values().next().value).confirmed, true); reloaded.unmount();
+});
+
+test("background workflows correct explicit server time rejections in the same simple form", async () => {
+  let rejectedOnce=false;
+  const h=fixture({transport:async(url,init)=> { if(url === "/api/explore/schedules" && init.method === "POST" && !rejectedOnce) { rejectedOnce=true; return Response.json({ok:false,code:"schedule_time_too_soon",message:"Choose a later time"},{status:409}); } return null; }});
+  await h.form(); h.button("Schedule post").props.onClick(); await settle(); h.render();
+  const rejected=JSON.parse(h.values.values().next().value); assert.equal(rejected.timeRejected,true); assert.equal(rejected.confirmed,false);
+  assert.equal(h.button("Confirm the same saved request"),undefined); assert.ok(await h.form());
+  h.props.draft={...h.props.draft,time:"16:45"}; h.render(); h.button("Schedule post").props.onClick(); await settle(); h.render();
+  const posts=h.calls.filter(call=>call.method === "POST"); assert.equal(posts.length,2);
+  const request=JSON.parse(posts[1].body); assert.notEqual(request.requestKey,rejected.input.requestKey); assert.equal(request.schedule.scheduledTime,"16:45");
+  assert.equal(JSON.parse(h.values.values().next().value).confirmed,true); h.unmount();
+});
+
+test("rejected background requests survive reload without automatic submissions", async () => {
+  const saved = { ...savedEntry(), timeRejected: true };
+  const h = fixture({ saved }); h.render(); await settle(); h.render();
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 0);
+  assert.ok(await h.form()); assert.equal(h.calls.filter(call => call.method === "POST").length, 0); h.unmount();
 });
 
 test("an absent server receipt permits only explicit replay of the same durable input", async () => {
@@ -153,9 +178,9 @@ test("an absent server receipt permits only explicit replay of the same durable 
 });
 
 test("another tab's confirmed receipt is read before any new mutation", async () => {
-  const h = fixture(), editor = await h.review(), saved = savedEntry(true);
+  const h = fixture(), editor = await h.form(), saved = savedEntry(true);
   h.values.set("ugc-explore:background-schedule:v1:owner-a:hook", JSON.stringify(saved)); h.setServerReply(reply(saved.input));
-  editor.props.onSave(submission); await settle(); h.render();
+  h.button("Schedule post").props.onClick(); await settle(); h.render();
   assert.equal(h.calls.filter(call => call.method === "POST").length, 0); assert.match(h.text(), /Your schedule is saved/); h.unmount();
 });
 
@@ -163,9 +188,9 @@ test("a verified preparation failure with no targets can be explicitly confirmed
   const saved = savedEntry(true), h = fixture({ saved, serverReply: reply(saved.input, "failed") });
   h.render(); await settle(); h.render();
   assert.equal(h.calls.filter(call => call.method === "POST").length, 0);
-  const editor = await h.review(); assert.ok(editor);
+  const editor = await h.form(); assert.ok(editor);
   const next = { ...submission, scheduledDate: "2099-12-02", scheduledFor: "2099-12-02T11:00:00.000Z" };
-  editor.props.onSave(next); await settle(); h.render();
+  h.props.draft={...h.props.draft,date:next.scheduledDate}; h.render(); h.button("Schedule post").props.onClick(); await settle(); h.render();
   const mutation = h.calls.find(call => call.method === "POST"); assert.ok(mutation);
   const request = JSON.parse(mutation.body); assert.notEqual(request.requestKey, saved.input.requestKey);
   assert.equal(request.schedule.scheduledFor, next.scheduledFor); h.unmount();
@@ -174,7 +199,7 @@ test("a verified preparation failure with no targets can be explicitly confirmed
 test("platform failures with existing publishing targets cannot create a duplicate schedule", async () => {
   const saved = savedEntry(true), failed = reply(saved.input, "failed"); failed.schedule.targets = [{ id: id(80), status: "scheduled" }];
   const h = fixture({ saved, serverReply: failed }); h.render(); await settle(); h.render();
-  assert.equal(h.button("Review schedule").props.disabled, true);
+  assert.equal(h.button("Schedule saved").props.disabled, true);
   assert.equal(h.calls.filter(call => call.method === "POST").length, 0); h.unmount();
 });
 

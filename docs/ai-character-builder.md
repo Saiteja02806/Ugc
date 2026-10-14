@@ -151,11 +151,27 @@ selected model keep identity; visual similarity still depends on model output.
 ## Current session and history
 
 Results generated during a mounted workspace visit remain visible for that
-visit. On reload or leave-and-return, completed results are hidden and the
-workspace starts clean. The durable client receipt still recovers uncertain
+visit until ten minutes without activity starts a fresh session. On reload or
+leave-and-return, completed results are hidden and the workspace starts clean.
+The durable client receipt still recovers uncertain
 admissions and unfinished jobs; a recovered unfinished batch stays visible when
 it finishes during the current visit. Historical completed batches never become
 foreground results merely because a status request completes.
+
+October 14, 2026 repair: foreground job membership is now scoped to the mounted
+workspace rather than restored from the account's durable receipt. Only newly
+admitted jobs and jobs observed unfinished during the current visit retain their
+completed results on screen. A first status check that finds an already completed
+job leaves it in History. Completed siblings in a partially unfinished batch
+remain in History while the unfinished candidates recover. Failed status checks
+retain recovery and retry controls without classifying old output as new.
+See `docs/character-session-history-fix-2026-10-14.md` for validation and release status.
+
+Generated portraits, saved influencer cards and History thumbnails pass pointer
+events to their app controls instead of the image element. This suppresses the
+browser's image-search hover overlay while preserving pointer and keyboard
+selection inside the workspace. No global browser settings or context menus
+are changed.
 
 The History button loads completed, owned character jobs in cursor pages of 25,
 including candidates that were never selected and images saved to My influencers.

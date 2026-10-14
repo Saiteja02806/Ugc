@@ -715,7 +715,7 @@ export function ScheduleEditor({
     setSelectedConnectionIds((currentConnectionIds) =>
       currentConnectionIds.includes(connectionId)
         ? currentConnectionIds.filter((currentId) => currentId !== connectionId)
-        : [...currentConnectionIds, connectionId],
+        : [...currentConnectionIds.filter(currentId => !workflow || !connection || availableSocialConnections.find(candidate => candidate.id === currentId)?.platform !== connection.platform), connectionId],
     );
 
     if (!selecting || !connection) {

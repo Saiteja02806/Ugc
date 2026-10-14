@@ -11,6 +11,7 @@ import Link from "next/link";
 
 import { LandingAuthCta } from "@/components/marketing/landing-auth-actions";
 import { LandingHeader } from "@/components/marketing/landing-header";
+import { productExamples, type ProductExample } from "@/lib/marketing/product-examples";
 
 type Feature = {
   title: string;
@@ -37,6 +38,7 @@ export type SeoLandingPageContent = {
   proof: string;
   workflowLabel: string;
   workflow: readonly Step[];
+  example?: ProductExample;
   features: readonly Feature[];
   featuresTitle: string;
   featuresDescription: string;
@@ -52,6 +54,7 @@ export type SeoLandingPageContent = {
 
 export const seoPageContent = {
   carousel: {
+    example: productExamples.carousel,
     canonicalPath: "/instagram-carousel-maker",
     eyebrow: "Instagram carousel maker",
     title: "Turn your business story into an Instagram carousel.",
@@ -121,6 +124,11 @@ export const seoPageContent = {
     ],
     relatedPages: [
       {
+        title: "Readable video text",
+        description: "Review contrast, text density and a phone preview before sharing a visual explanation.",
+        href: "/guides/readable-video-text",
+      },
+      {
         title: "AI UGC video generator",
         description: "Create short-form video alongside your carousel workflow.",
         href: "/ai-ugc-video-generator",
@@ -136,6 +144,7 @@ export const seoPageContent = {
       "Set up your business context, review a complete carousel, and decide what gets published.",
   },
   video: {
+    example: productExamples.video,
     canonicalPath: "/ai-ugc-video-generator",
     eyebrow: "AI UGC video generator",
     title: "Create short-form videos with a direction your team can stand behind.",
@@ -204,6 +213,16 @@ export const seoPageContent = {
       },
     ],
     relatedPages: [
+      {
+        title: "Turn a product demo into a short video",
+        description: "Choose one genuine product action, write its opening and review a complete edit.",
+        href: "/guides/product-demo-to-short-video",
+      },
+      {
+        title: "Make on-screen text readable",
+        description: "Check contrast, placement and reading time in the exported video.",
+        href: "/guides/readable-video-text",
+      },
       {
         title: "Instagram carousel maker",
         description: "Create a companion carousel when a message needs more explanation.",
@@ -314,6 +333,7 @@ export const seoPageContent = {
       "Start with your business context, choose a format for one useful message, and build the routine from there.",
   },
   manager: {
+    example: productExamples.manager,
     canonicalPath: "/ai-social-media-manager",
     eyebrow: "AI social media manager",
     title: "Keep social content moving without losing the human decision.",
@@ -382,6 +402,11 @@ export const seoPageContent = {
       },
     ],
     relatedPages: [
+      {
+        title: "A practical weekly content plan",
+        description: "Turn customer questions into useful posts using a filled example and copyable brief.",
+        href: "/guides/saas-content-marketing",
+      },
       {
         title: "Social media marketing for startups",
         description: "Turn the workflow into a sustainable founder-led content routine.",
@@ -534,6 +559,33 @@ export function SeoLandingPage({
           </div>
         </div>
       </section>
+
+      {content.example ? (
+        <section id="worked-example" className="scroll-mt-24 border-y border-border bg-card-muted/30 px-4 py-14 sm:px-6 sm:py-18 lg:px-8">
+          <div className="mx-auto max-w-[960px]">
+            <p className="text-sm font-semibold text-primary">A practical example</p>
+            <h2 className="mt-3 text-2xl font-semibold leading-tight tracking-[-0.025em] text-foreground-strong sm:text-3xl">{content.example.title}</h2>
+            <p className="mt-4 text-base leading-7 text-muted">{content.example.introduction}</p>
+            <div className="mt-7 grid gap-7 md:grid-cols-2">
+              <div>
+                <h3 className="font-semibold text-foreground-strong">Starting brief</h3>
+                <p className="mt-3 whitespace-pre-wrap rounded-xl border border-border bg-card p-5 text-sm leading-7">{content.example.input}</p>
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground-strong">Planned output</h3>
+                <ol className="mt-3 list-decimal space-y-3 pl-5 text-sm leading-7">
+                  {content.example.output.map((item) => <li key={item}>{item}</li>)}
+                </ol>
+              </div>
+            </div>
+            <h3 className="mt-7 font-semibold text-foreground-strong">What to review</h3>
+            <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-7 text-muted">
+              {content.example.review.map((item) => <li key={item}>{item}</li>)}
+            </ul>
+            <p className="mt-5 border-l-2 border-primary pl-4 text-sm leading-7 text-muted">{content.example.limits}</p>
+          </div>
+        </section>
+      ) : null}
 
       <section className="px-4 py-18 sm:px-6 sm:py-24 lg:px-8">
         <div className="mx-auto grid max-w-[1200px] gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">

@@ -47,3 +47,19 @@ test("natural grouping preserves overlaps without overlapping display cues", asy
   assert.deepEqual(cues.flatMap(c => c.words), words);
   assert.equal(cues[0].endMs, cues[1].startMs);
 });
+
+test("batch preloading preserves the existing phrase and line-break decisions", async () => {
+  const words = "Keep the phrase together, then use the exact same measured line breaks.".split(" ").map((text, i) => word(text, i * 250, i * 250 + 200));
+  const batches: string[][] = [];
+  const ready = new Set<string>();
+  const batched = Object.assign(async (text: string) => { ready.add(text); return measure(text); }, {
+    preload: async (texts: string[]) => { batches.push(texts); texts.forEach(text => ready.add(text)); },
+  });
+  for (const options of [{}, { maxLines: 1 as const, preferredWords: 5 }]) {
+    const baseline = await groupNaturalSubtitleWords(words, { ...layout, maxLineWidth: 220 }, measure, options);
+    const result = await groupNaturalSubtitleWords(words, { ...layout, maxLineWidth: 220 }, batched, options);
+    assert.deepEqual(result, baseline);
+  }
+  assert.ok(batches.every(batch => batch.length > 1 && new Set(batch).size === batch.length));
+  assert.ok(ready.has("Keep the phrase together,"));
+});

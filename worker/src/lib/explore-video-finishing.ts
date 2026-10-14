@@ -139,7 +139,8 @@ export async function finishExploreVideo(options: ExploreFinishingOptions): Prom
   const layout = getSubtitleLayout(video.width, video.height, style);
   const editorialMeasure = style === "editorial" ? createEditorialMeasurer(layout, options.tools, captionDir, options.signal) : null;
   const serifMeasure = style === "serif-box" ? createSerifBoxMeasurer(layout, options.tools, captionDir, options.signal) : null;
-  const measure = editorialMeasure ? (text: string) => editorialMeasure(text, layout.fontSize, "lead").then(ink => ink.width)
+  const measure = editorialMeasure ? Object.assign((text: string) => editorialMeasure(text, layout.fontSize, "lead").then(ink => ink.width),
+    { preload: editorialMeasure.preload ? (texts: string[]) => editorialMeasure.preload!(texts, layout.fontSize, "lead") : undefined })
     : serifMeasure ? (text: string) => serifMeasure(text).then(ink => ink.width) : createTextMeasurer(layout, options.tools);
   await measure("Subtitle font check");
   if (referenceAudio) await runMediaCommand(options.tools.ffmpeg, ["-nostdin", "-v", "error", "-y", "-protocol_whitelist", "file,pipe", "-i", composition.outputPath,

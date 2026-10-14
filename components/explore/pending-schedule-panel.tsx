@@ -13,6 +13,7 @@ import { workflowScheduleTargets, workflowSelectedAccounts, workflowSelectedPlat
 import { parseWorkflowConnectedAccounts } from "@/lib/explore/workflow-connected-accounts";
 import { parseExplorePendingSchedule, type ExplorePendingScheduleResult } from "@/lib/explore/pending-schedule-contract";
 import { readSavedExploreSchedule, verifyExploreScheduleReply, type ExploreScheduleComposition, type SavedExploreSchedule } from "@/lib/explore/pending-schedule-client";
+import { ScheduleRequestError, isScheduleTimeRejected, SCHEDULE_TIME_REJECTED_MESSAGE } from "@/lib/explore/workflow-schedule-client";
 import type { SocialConnection } from "@/lib/social/types";
 import type { ScheduleMediaOption } from "@/lib/scheduling/types";
 import type { ScheduleFormSubmission } from "@/components/scheduling/schedule-editor";
@@ -24,7 +25,7 @@ async function authorized(owner: string, url: string, init?: RequestInit) {
   if (!token) throw new Error("Sign in to schedule your post.");
   const response = await fetch(url, { ...init, cache: "no-store", signal: AbortSignal.timeout(20000), headers: { ...init?.headers, Authorization: `Bearer ${token}` } });
   const value = await response.json().catch(() => null);
-  if (!response.ok || !value?.ok) throw new Error(value?.message ?? value?.error ?? "Could not confirm the saved schedule. Check the same request before trying again.");
+  if (!response.ok || !value?.ok) throw new ScheduleRequestError(value?.message ?? value?.error ?? "Could not confirm the saved schedule. Check the same request before trying again.", response.status, value?.code);
   return value;
 }
 export function useBackgroundScheduleAvailability(owner: string | null, enabled: boolean) {
@@ -51,7 +52,7 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
   const accept = useCallback((entry: SavedExploreSchedule, raw: unknown) => {
     const value = verifyExploreScheduleReply(raw, entry);
     if (!alive.current || currentIdentity.current.storageKey !== storageKey) return;
-    const next = { ...entry, confirmed: value.preparation.state !== "unconfirmed" };
+    const next = { ...entry, confirmed: value.preparation.state !== "unconfirmed", timeRejected: value.preparation.state === "unconfirmed" ? entry.timeRejected : undefined };
     setSaved(next); setResult(value);
     if (next.confirmed) { setOpenSignature(null); localStorage.setItem(storageKey, JSON.stringify(next)); }
   }, [storageKey]);
@@ -85,7 +86,7 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
   const boundResult = saved?.signature === composition.signature ? result : null;
   const failedBeforePublishing = boundResult?.preparation.state === "failed" && boundResult.schedule?.targets.length === 0;
   const confirmed = saved?.signature === composition.signature && saved.confirmed && !failedBeforePublishing;
-  const unresolved = !!saved && !saved.confirmed;
+  const unresolved = !!saved && !saved.confirmed && !saved.timeRejected;
   async function check() {
     if (!saved || working.current) return;
     working.current = true; setBusy(true); setError(null);
@@ -103,6 +104,10 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
       const [config, accountData] = await Promise.all([authorized(owner, "/api/schedules?configOnly=1"), authorized(owner, "/api/social/connections")]);
       parseWorkflowConnectedAccounts(accountData);
       if (!Number.isFinite(config.minimumScheduleLeadMinutes) || config.minimumScheduleLeadMinutes < 0 || current.current.signature !== signature || currentIdentity.current.storageKey !== storageKey || currentIdentity.current.targetSignature !== targetSignature) throw new Error("Your clips or accounts changed. Review the updated schedule before confirming.");
+      if (saved?.timeRejected) {
+        const checked = verifyExploreScheduleReply(await authorized(owner, `/api/explore/schedules?requestKey=${encodeURIComponent(saved.input.requestKey)}`), saved);
+        if (checked.preparation.state !== "unconfirmed") { accept(saved, checked); return; }
+      }
       if (alive.current) { reviewedTargets.current = targetSignature; setLead(config.minimumScheduleLeadMinutes); setConnections(accountData.connections); setOpenSignature(signature); }
     } catch (e) { if (alive.current) setError(e instanceof Error ? e.message : "Could not open schedule confirmation."); }
     finally { working.current = false; if (alive.current) setBusy(false); }
@@ -111,6 +116,10 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
     try {
       accept(entry, await authorized(owner, "/api/explore/schedules", { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": entry.input.requestKey }, body: JSON.stringify(entry.input) }));
     } catch (error) {
+      if (isScheduleTimeRejected(error) && !entry.confirmed && alive.current && currentIdentity.current.storageKey === storageKey) {
+        const rejected = { ...entry, timeRejected: true as const };
+        localStorage.setItem(storageKey, JSON.stringify(rejected)); setSaved(rejected); setResult(null);
+      }
       // Once a receipt exists, expose read-only recovery instead of leaving the
       // confirmation form open with a button that cannot safely submit again.
       if (alive.current && currentIdentity.current.storageKey === storageKey) setOpenSignature(null);
@@ -128,7 +137,11 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
       await navigator.locks.request(storageKey, { ifAvailable: true }, async lock => {
         if (!lock) throw new Error("Another tab is confirming this schedule. Check its saved request first.");
         const prior = readSavedExploreSchedule(localStorage.getItem(storageKey), owner);
-        if (prior && !prior.confirmed) { setSaved(prior); throw new Error("An earlier request is unconfirmed. Check that saved request before confirming again."); }
+        if (prior && !prior.confirmed && !prior.timeRejected) { setSaved(prior); throw new Error("An earlier request is unconfirmed. Check that saved request before confirming again."); }
+        if (prior?.timeRejected) {
+          const checked = verifyExploreScheduleReply(await authorized(owner, `/api/explore/schedules?requestKey=${encodeURIComponent(prior.input.requestKey)}`), prior);
+          if (checked.preparation.state !== "unconfirmed") { accept(prior, checked); return; }
+        }
         if (prior?.confirmed && prior.signature === composition.signature) {
           const checked = verifyExploreScheduleReply(await authorized(owner, `/api/explore/schedules?requestKey=${encodeURIComponent(prior.input.requestKey)}`), prior);
           if (checked.preparation.state !== "failed" || checked.schedule?.targets.length !== 0) { accept(prior, checked); return; }
@@ -150,7 +163,16 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
   async function retrySavedRequest() {
     if (!saved || saved.confirmed || result?.preparation.state !== "unconfirmed" || working.current) return;
     working.current = true; setBusy(true); setError(null);
-    try { await send(saved); }
+    try {
+      if (!navigator.locks) throw new Error("Use a browser with Web Locks to confirm scheduling safely across tabs.");
+      await navigator.locks.request(storageKey, { ifAvailable: true }, async lock => {
+        if (!lock) throw new Error("Another tab is confirming this schedule. Check its saved request first.");
+        const prior = readSavedExploreSchedule(localStorage.getItem(storageKey), owner);
+        if (!prior || prior.input.requestKey !== saved.input.requestKey) throw new Error("The saved request changed. Check its current status.");
+        if (prior.confirmed || prior.timeRejected) return;
+        await send(prior);
+      });
+    }
     catch (e) { if (alive.current) setError(e instanceof Error ? e.message : "Could not confirm the same request."); }
     finally { working.current = false; if (alive.current) setBusy(false); }
   }
@@ -158,7 +180,7 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
   const actions = <div className={styles.actions} aria-label="Schedule actions">
     {error ? <p role="alert" className="text-xs text-destructive">{error}</p> : null}
     <div className={styles.actionRow}>{onBackToEdit ? <Button type="button" variant="outline" className={styles.backButton} disabled={busy} onClick={onBackToEdit}><ArrowLeft size={16} aria-hidden="true" />Back to Edit</Button> : <span />}
-      <div className={styles.reviewAction}><p role="status" className={styles.actionHelp}>{boundResult?.preparation.message ?? composition.error ?? (unresolved ? "Check the earlier saved request before confirming another schedule." : "Save your schedule now. Video preparation will continue in the background.")}</p>
+      <div className={styles.reviewAction}><p role="status" className={styles.actionHelp}>{saved?.timeRejected && !saved.confirmed ? SCHEDULE_TIME_REJECTED_MESSAGE : boundResult?.preparation.message ?? composition.error ?? (unresolved ? "Check the earlier saved request before confirming another schedule." : "Save your schedule now. Video preparation will continue in the background.")}</p>
       <Button type="button" size="lg" className={styles.reviewButton} disabled={busy || !unresolved && (confirmed || !!composition.error || !composition.draft || !targets.length)} onClick={() => void review()}>{busy ? "Checking…" : unresolved ? "Check saved request" : "Review schedule"}<ArrowRight size={16} aria-hidden="true" /></Button></div></div>
     {unresolved && result?.preparation.state === "unconfirmed" ? <Button type="button" variant="outline" disabled={busy} onClick={() => void retrySavedRequest()}>Confirm the same saved request</Button> : null}
     {confirmed ? <Link href="/scheduling" className="text-sm text-primary underline">View saved post in Scheduling</Link> : null}

@@ -1,0 +1,354 @@
+{
+  "createdAt": "2026-10-14T04:18:52.876Z",
+  "baseSha": "b19009d344837aac8a6c12ee8578a32d1edbcc41",
+  "included": [
+    {
+      "path": "CAROUSEL_CONTEXT.md",
+      "sha256": "68b6448f99419532d8b641eabd6f829d111d2da06bcf74526f1cbb0ff4922b1e"
+    },
+    {
+      "path": "components/explore/format-demo-section.tsx",
+      "sha256": "d12a16ebef29be3cf972ac1c32e69ad236a499cb597f32633454ae2d3a4f37d2"
+    },
+    {
+      "path": "components/explore/format-schedule-panel.tsx",
+      "sha256": "b607c5676577061b795566fa124876383475728503250c0350c1be5a17f3ef16"
+    },
+    {
+      "path": "components/explore/format-workspace.module.css",
+      "sha256": "b15b3db286334b58d2ce44f59e139effbfe2bc1e4641bafe72010cc9b8ca81b5"
+    },
+    {
+      "path": "components/explore/format-workspace.tsx",
+      "sha256": "6e10c8528b64a8a24279ca5ed1e84a7f4128df4756c5f4e885960215eaefe851"
+    },
+    {
+      "path": "components/explore/pending-schedule-panel.tsx",
+      "sha256": "447d143e1e68a0c9c454b164782171ed283689b1dd42ad5701ac3de8dba45a85"
+    },
+    {
+      "path": "components/explore/use-workflow-source-video.ts",
+      "sha256": "262e45f5529ef1b03af558771c634a63af60ccafb05e2745edb8a24418e4e96a"
+    },
+    {
+      "path": "components/explore/workflow-finishing-boundary.tsx",
+      "sha256": "9064bcf153e93f886f71766769c62a7b48ce49f5b4c4c67661570bebbc40aed0"
+    },
+    {
+      "path": "lib/explore/pending-schedule-client.ts",
+      "sha256": "ab8d71889ddfd091f81896fd3440094bdfa460a8cadfd591d2a70dae1794d6ad"
+    },
+    {
+      "path": "lib/explore/workflow-schedule-client.ts",
+      "sha256": "79e805a774dc3bc479ffb7d30f3d0f17b9fc3e0d78819511c65dc81646f5622b"
+    },
+    {
+      "path": "lib/scheduling/schedule-time.test.ts",
+      "sha256": "2b2baddc99e75ff0ba9fbde9226f15a71b6105f8370ee4af8e4961974fac498c"
+    },
+    {
+      "path": "lib/scheduling/service.ts",
+      "sha256": "ebaf65549d92978960d7a9e632176590c5f7e8f67071bc3f2749719d0fcab9db"
+    },
+    {
+      "path": "scripts/explore-format-demo-state.test.mjs",
+      "sha256": "75d24253a50169c9cbe491fb91ee015622647d7830ba4ebf05cdd662e4bf26e1"
+    },
+    {
+      "path": "scripts/explore-format-schedule-draft.test.mjs",
+      "sha256": "ed571903f410a80aadcde5e98ef48956bc0065cfeb39f6754bf1684c7f86bcfc"
+    },
+    {
+      "path": "scripts/explore-format-source-workspace.test.mjs",
+      "sha256": "f513c02b3b81f3c11c7dfdc51bb32c9f99ab03160f3a5720c5fdc10c6fa73048"
+    },
+    {
+      "path": "scripts/explore-pending-schedule-ui.test.mjs",
+      "sha256": "6a076f8080598b8e15f8d0b31653845299b4f314dc85a2bbf87513cd84f3f018"
+    },
+    {
+      "path": "scripts/test-subtitle-finishing.mjs",
+      "sha256": "18b1f485cb74ad10ec99d5e6038dff79ece7eeb7cf1d2a2d6e19566e3995c8e1"
+    },
+    {
+      "path": "scripts/workflow-finishing-ui.test.mjs",
+      "sha256": "06df97eb651915c42387880b1464d7c8b1b118df9f6d85880a9922151129d85a"
+    },
+    {
+      "path": "scripts/workflow-release-clients.test.mjs",
+      "sha256": "71d3b1eaeda2081e45d457187b0bc50579092dea904d994c8739dc6714d6eed8"
+    },
+    {
+      "path": "scripts/workflow-source-video.test.mjs",
+      "sha256": "df1a33b5f1e8ef600e7ac0bbdd6896c996ad9027b09ad5fa4ac64fd9dc6f5659"
+    },
+    {
+      "path": "worker/src/lib/explore-video-finishing.ts",
+      "sha256": "a410ab7855c598cc7aa83362a61d02b6bcb6d9f3f4faf5a5efe1367c6666edfe"
+    },
+    {
+      "path": "worker/src/subtitles/captions.ts",
+      "sha256": "b283dec77f41170affb345f6bcff65f76d0bdeb1a82c31d3b4f82731aee5190d"
+    },
+    {
+      "path": "worker/src/subtitles/editorial-media.ts",
+      "sha256": "d4b486e246b772cc6d9ac1e20a72518d88c2b027c34c616872bd9f35f69995fa"
+    },
+    {
+      "path": "worker/src/subtitles/editorial.ts",
+      "sha256": "c30b6f2f4fe476d494cab041a9de037b45853f10bbe7ba39f0c377cc2439a074"
+    },
+    {
+      "path": "worker/src/subtitles/phrases.test.ts",
+      "sha256": "b2703b3418fdc9dc1435de2b236164eb1a635dd3649f0018a9f114375a64aa1a"
+    },
+    {
+      "path": "worker/src/subtitles/phrases.ts",
+      "sha256": "481370a8feee19fbd03af439f0b362ebe104b895620fcfa2b56f8d8acc39ae54"
+    },
+    {
+      "path": "worker/src/subtitles/serif-box.ts",
+      "sha256": "1745124a2c8db4ce10711cfef1a6dcc2c6d4524b0fae271954e899feb9d6e8d7"
+    },
+    {
+      "path": "components/explore/workflow-clip-source-actions.tsx",
+      "sha256": "35e41e51542e7c1af710b7fd5fb4e3fbc982707bcc0684a3485b490f1abb1e64"
+    },
+    {
+      "path": "docs/explore-schedule-time-recovery-2026-10-14.md",
+      "sha256": "820a900e8fd2caa0194d8d77e341e4d409ed0f8e7f9e12e3bc1a1f10d51a6b39"
+    },
+    {
+      "path": "docs/inline-workflow-video-actions-2026-10-14.md",
+      "sha256": "20f283b6801a4bed0f50a7a3582f712b1f7b692ca81ae7e20dc01768f937c578"
+    },
+    {
+      "path": "docs/talking-head-caption-measurement-fix-2026-10-14.md",
+      "sha256": "2228effa74f1fdb3105c5b8feb30070d30b385fece96eb3d02e001ae5cc13e5e"
+    },
+    {
+      "path": "docs/talking-head-prepare-latency-analysis-2026-10-14.md",
+      "sha256": "c2500d3148d1c81bad18e829358e1ac3116d30fa91822beba6c55acf6e725a68"
+    },
+    {
+      "path": "docs/trending-partial-content-plan-reuse-fix-2026-10-14.md",
+      "sha256": "b7d3cf9e40a05b5e1dc99a4a99c8d482c85927773778f6f737fadf55e213b458"
+    },
+    {
+      "path": "scripts/carousel-partial-plan-reuse-db.test.mjs",
+      "sha256": "e74fb1fed65b217c9710684a2ea2896306602bdd5c707eebf41ac6668c7ca0da"
+    },
+    {
+      "path": "scripts/schedule-create-recovery.test.mjs",
+      "sha256": "a7f8f2a502f580d07455f06d81c8e1fbc70b81d395f21c98e82f102d8d8ca135"
+    },
+    {
+      "path": "scripts/subtitle-batch-measurements.test.mjs",
+      "sha256": "a725d4624bd98ced3f60d28ad2d7f2899a65d09a58f44ec541da41184cf5f4eb"
+    },
+    {
+      "path": "scripts/talking-head-prepare-latency.benchmark.mjs",
+      "sha256": "630d69733447b5296136755f70c7183c5ca6d2a7bb6c5d98dd322776eae9ab77"
+    },
+    {
+      "path": "scripts/workflow-clip-source-actions.test.mjs",
+      "sha256": "bd02b4646f71ec2e04fef5e5c31642604a40c96d53d1ebf9c3fb8906d58087db"
+    },
+    {
+      "path": "scripts/workflow-inline-clip-actions.browser.cjs",
+      "sha256": "ad11c5ac4e978a4a9d92f4d98a771f3842f76c9ed367b9b5d4b9c6708432b1fe"
+    },
+    {
+      "path": "supabase/migrations/20261014034706_reuse_released_partial_carousel_content_plan_items.sql",
+      "sha256": "b0f8fdb963ac19dfdd7b163968ff47d4ddaf78c8e471840ff975d0c99c9307fd"
+    },
+    {
+      "path": "worker/src/subtitles/batched-ink.ts",
+      "sha256": "843b99084da29c624d6614af263ff9c9e6a92ee871f6c04b7ea563cebd33e06f"
+    }
+  ],
+  "excluded": [
+    {
+      "path": "app/guides/page.tsx",
+      "reason": "SEO work explicitly deferred by the user"
+    },
+    {
+      "path": "app/sitemap.ts",
+      "reason": "SEO work explicitly deferred by the user"
+    },
+    {
+      "path": "components/marketing/founder-guide-page.tsx",
+      "reason": "SEO work explicitly deferred by the user"
+    },
+    {
+      "path": "components/marketing/landing-header.tsx",
+      "reason": "SEO work explicitly deferred by the user"
+    },
+    {
+      "path": "components/marketing/seo-landing-page.tsx",
+      "reason": "SEO work explicitly deferred by the user"
+    },
+    {
+      "path": "docs/mcp-goal-progress-2026-10-14.md",
+      "reason": "MCP work explicitly deferred by the user"
+    },
+    {
+      "path": "scripts/check-public-seo.mjs",
+      "reason": "SEO work explicitly deferred by the user"
+    },
+    {
+      "path": "app/guides/product-demo-to-short-video/page.tsx",
+      "reason": "SEO work explicitly deferred by the user"
+    },
+    {
+      "path": "app/guides/readable-video-text/page.tsx",
+      "reason": "SEO work explicitly deferred by the user"
+    },
+    {
+      "path": "docs/seo-implementation-results-2026-10-14.md",
+      "reason": "SEO work explicitly deferred by the user"
+    },
+    {
+      "path": "docs/seo-organic-distribution-2026-10-14.md",
+      "reason": "SEO work explicitly deferred by the user"
+    },
+    {
+      "path": "docs/seo-production-release-2026-10-14.md",
+      "reason": "SEO work explicitly deferred by the user"
+    },
+    {
+      "path": "lib/marketing/practical-guides.ts",
+      "reason": "SEO work explicitly deferred by the user"
+    },
+    {
+      "path": "lib/marketing/product-examples.ts",
+      "reason": "SEO work explicitly deferred by the user"
+    },
+    {
+      "path": "lib/marketing/public-page-paths.json",
+      "reason": "SEO work explicitly deferred by the user"
+    },
+    {
+      "path": "lib/marketing/public-pages.ts",
+      "reason": "SEO work explicitly deferred by the user"
+    },
+    {
+      "path": "outputs/check-reference-duration.cjs",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/demo-editor-preview.jpg",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/demo-picker-preview.jpg",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/mcp-hook-demo-test-2026-10-13.mp4",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/reference-duration-hook-1342.png",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/reference-duration-wall_text-1342.png",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/reference-tile-multiple.png",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/reference-tile-single.png",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/reference-tiles-updated.png",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/reference-tiles/hook-1342-image-video.png",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/reference-tiles/hook-1342-multiple.png",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/reference-tiles/hook-1342-single.png",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/reference-tiles/hook-390-image-video.png",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/reference-tiles/hook-390-multiple.png",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/reference-tiles/hook-390-single.png",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/reference-tiles/remove-check-failure.png",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/reference-tiles/talking-head-1342-multiple.png",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/reference-tiles/talking-head-1342-single.png",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/reference-tiles/talking-head-390-multiple.png",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/reference-tiles/talking-head-390-single.png",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/reference-tiles/wall_text-1342-image-video.png",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/reference-tiles/wall_text-1342-multiple.png",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/reference-tiles/wall_text-1342-single.png",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/reference-tiles/wall_text-390-multiple.png",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/reference-tiles/wall_text-390-single.png",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "outputs/trending-partial-plan-reuse-recovered-2026-10-14.png",
+      "reason": "Generated local QA artifact"
+    },
+    {
+      "path": "scripts/test-public-seo-render.mjs",
+      "reason": "SEO work explicitly deferred by the user"
+    }
+  ],
+  "ignored": [
+    "Secrets/local environment",
+    "node_modules/",
+    "worker/dist/",
+    ".next/",
+    ".tmp/",
+    ".tools/",
+    ".vercel/",
+    "Terraform state and private variables"
+  ]
+}

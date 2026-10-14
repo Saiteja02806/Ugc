@@ -29,6 +29,16 @@ test("converts an India wall-clock time to UTC", () => {
   );
 });
 
+test("04:18 is valid at 04:08 in both India timezone aliases", () => {
+  for (const timeZone of ["Asia/Calcutta", "Asia/Kolkata"]) {
+    const now = Date.parse(resolveZonedDateTime({ date: "2026-10-14", time: "04:08", timeZone })) + 45_000;
+    const scheduledFor = resolveZonedDateTime({ date: "2026-10-14", time: "04:18", timeZone });
+    assert.equal(scheduledFor, "2026-10-13T22:48:00.000Z");
+    assert.equal(validateScheduleLeadTime({ minimumLeadMinutes: 5, now, scheduledFor }).valid, true);
+    assert.equal(validateScheduleLeadTime({ minimumLeadMinutes: 5, now, scheduledFor: resolveZonedDateTime({ date: "2026-10-14", time: "04:10", timeZone }) }).valid, false);
+  }
+});
+
 test("uses the selected timezone instead of the device timezone", () => {
   assert.equal(
     resolveZonedDateTime({

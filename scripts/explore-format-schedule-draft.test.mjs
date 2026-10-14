@@ -62,7 +62,7 @@ test("inline review timezone survives draft storage and invalid timezones cannot
 });
 
 /** Actual panel lifecycle with opt-in isolated review/confirmation responses. */
-function harness(storage = new Map(), { allowReview = false, allowConfirm = false, reviewAccountId = "account-a" } = {}) {
+function harness(storage = new Map(), { allowReview = false, allowConfirm = false, reviewAccountId = "account-a", transport } = {}) {
   let cursor = 0, owner = "alice", tree;
   const slots = [], effects = [], timers = new Map(), requests = []; let timerId = 0, externalCalls = 0;
   const localStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) };
@@ -93,6 +93,7 @@ function harness(storage = new Map(), { allowReview = false, allowConfirm = fals
       if (!allowReview) throw new Error("Unexpected network request");
       assert.equal(options.headers.Authorization, "Bearer fixture-token");
       assert.equal(options.cache, "no-store");
+      if (transport) { const response = await transport(url, options); if (response) return response; }
       if (options.method === "POST") {
         assert.equal(allowConfirm, true, "Review and Back must never create a schedule"); assert.equal(url, "/api/schedules");
         const input = JSON.parse(options.body);
@@ -139,6 +140,37 @@ test("all format reviews stay inline, retain edits on Back, and close when the f
     assert.equal(h.editor(), null, "A review is tied to its exact output");
     assert.equal(h.requests.some(request => request.options.method === "POST"), false);
   }
+});
+
+test("Hook, Wall and Slideshow correct rejected receipts while preserving the same idempotency key", async () => {
+  for (const format of ["hook", "wall_text", "slideshow"]) {
+    const account = randomUUID(), kind = format === "slideshow" ? "library_item" : "media_asset";
+    const prior = { version: 1, owner: "alice", kind: "hook", input: { caption: "Old", source: { kind, id: output.id }, targets: [{ platform: "instagram", connectionId: account }], scheduledDate: "2026-10-14", scheduledTime: "04:10", scheduledFor: "2026-10-13T22:40:00.000Z", timezone: "Asia/Calcutta", idempotencyKey: `explore:${randomUUID()}` } };
+    const key = `ugc-explore:schedule:v1:alice:format:${kind}:${output.id}`;
+    const h = harness(new Map([[key, JSON.stringify(prior)]]), { allowReview: true, allowConfirm: true, reviewAccountId: account, transport: async (_url, options) => options.method === "POST" && JSON.parse(options.body).scheduledTime === "04:10" ? Response.json({ ok: false, code: "schedule_time_too_soon", message: "Choose a time at least 5 minutes from now." }, { status: 409 }) : null });
+    h.props.format = format; h.props.imageOnly = kind === "library_item"; h.props.output = { ...output, kind };
+    h.render(); h.hydrate(); h.form().onChange({ ...draft, connectionId: account, connectionIds: { instagram: account }, date: "2026-10-14", time: "04:18" }); h.render();
+    nodes(h.form().footer).find(node => node.type === "Button" && node.props.size === "lg").props.onClick(); await new Promise(setImmediate); h.render();
+    assert.equal(h.editor().initialScheduledTime, "04:18"); assert.equal(JSON.parse(h.storage.get(key)).timeRejected, true);
+    h.editor().onSave({ caption: "Updated", scheduledDate: "2026-10-14", scheduledTime: "04:18", scheduledFor: "2026-10-13T22:48:00.000Z", timezone: "Asia/Calcutta", scheduledSource: { id: output.id, kind }, targets: [{ platform: "instagram", connectionId: account }] });
+    await new Promise(setImmediate); h.render();
+    const posts = h.requests.filter(request => request.options.method === "POST");
+    const updated = JSON.parse(posts.at(-1).options.body);
+    assert.equal(updated.scheduledTime, "04:18"); assert.equal(updated.idempotencyKey, prior.input.idempotencyKey);
+    assert.equal(h.editor(), null);
+  }
+});
+
+test("uncertain format requests replay exact inputs even when the visible time changes", async () => {
+  const account = randomUUID(); let count = 0;
+  const h = harness(new Map(), { allowReview: true, allowConfirm: true, reviewAccountId: account, transport: async (_url, options) => { if (options.method === "POST" && ++count === 1) throw new Error("Lost acknowledgement"); } });
+  h.render(); h.hydrate(); h.form().onChange({ ...draft, connectionId: account, connectionIds: { instagram: account } }); h.render();
+  nodes(h.form().footer).find(node => node.type === "Button" && node.props.size === "lg").props.onClick(); await new Promise(setImmediate); h.render();
+  const submission = { caption: "Exact", scheduledDate: "2026-10-14", scheduledTime: "04:18", scheduledFor: "2026-10-13T22:48:00.000Z", timezone: "Asia/Calcutta", scheduledSource: { ...output }, targets: [{ platform: "instagram", connectionId: account }] };
+  h.editor().onSave(submission); await new Promise(setImmediate); h.render();
+  h.editor().onSave({ ...submission, scheduledTime: "04:28", scheduledFor: "2026-10-13T22:58:00.000Z" }); await new Promise(setImmediate); h.render();
+  const posts = h.requests.filter(request => request.options.method === "POST");
+  assert.equal(posts.length, 2); assert.equal(posts[1].options.body, posts[0].options.body);
 });
 
 test("confirmed inline values become the schedule summary while the exact request is persisted before submission", async () => {

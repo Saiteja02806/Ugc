@@ -12,6 +12,7 @@ const root = path.resolve(__dirname, ".."), out = path.join(root, ".tmp/explore-
 fs.mkdirSync(out, { recursive: true });
 const file = (name, value) => fs.writeFileSync(path.join(out, name), value);
 file("loader.cjs", `const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=source=>ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.ReactJSX}}).outputText;`);
+file("css.cjs", `const names={};module.exports=function(source){const css=source.replace(/\\.([a-zA-Z_][\\w-]*)/g,(_,name)=>'.'+(names[name]='schedule_'+name));return 'const style=document.createElement("style");style.textContent='+JSON.stringify(css)+';document.head.append(style);export default '+JSON.stringify(names)+';';};`);
 file("auth.ts", "export const getCurrentUserIdToken=async()=> 'local-review';");
 file("timezone.ts", "export const useAccountTimeZone=()=> 'Asia/Calcutta';");
 file("entry.tsx", `import {createRoot} from 'react-dom/client';import {ScheduleEditor} from '@/components/scheduling/schedule-editor';import {PublishingPreferencesSettings} from '@/components/settings/publishing-preferences-settings';
@@ -24,7 +25,7 @@ createRoot(document.getElementById('root')).render(params.get('mode')==='prefere
 
 async function main() {
   await new Promise((resolve, reject) => {
-    const compiler = webpack({ mode: "development", devtool: false, context: root, entry: path.join(out, "entry.tsx"), output: { path: out, filename: "bundle.js" }, resolve: { extensions: [".tsx", ".ts", ".js"], alias: { "@/lib/firebase/auth": path.join(out, "auth.ts"), "@/components/providers/account-timezone-provider": path.join(out, "timezone.ts"), "@": root } }, module: { rules: [{ test: /\.tsx?$/, use: path.join(out, "loader.cjs") }] } });
+    const compiler = webpack({ mode: "development", devtool: false, context: root, entry: path.join(out, "entry.tsx"), output: { path: out, filename: "bundle.js" }, resolve: { extensions: [".tsx", ".ts", ".js"], alias: { "@/lib/firebase/auth": path.join(out, "auth.ts"), "@/components/providers/account-timezone-provider": path.join(out, "timezone.ts"), "@": root } }, module: { rules: [{ test: /\.tsx?$/, use: path.join(out, "loader.cjs") }, { test: /\.css$/, use: path.join(out, "css.cjs") }] } });
     compiler.run((error, stats) => compiler.close(() => error || stats.hasErrors() ? reject(error || new Error(stats.toString({ all: false, errors: true }))) : resolve()));
   });
   let preferences = { containsSyntheticMedia: false }, preferenceDelay = 0, preferenceFailure = false;

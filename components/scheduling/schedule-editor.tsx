@@ -20,6 +20,7 @@ import type { ReactNode, RefObject } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
+import styles from "./schedule-editor.module.css";
 import { Button } from "@/components/ui/button";
 import { useAccountTimeZone } from "@/components/providers/account-timezone-provider";
 import { getSchedulingTimeZoneOptions } from "@/lib/scheduling/account-timezone";
@@ -942,15 +943,15 @@ export function ScheduleEditor({
         tabIndex={-1}
         className={inline ? "flex min-w-0 w-full flex-col rounded-[var(--radius-panel)] border border-border bg-card" : "flex h-full w-full flex-col overflow-hidden border border-border bg-card shadow-floating focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:h-[calc(100vh-2rem)] sm:max-h-[920px] sm:max-w-[1400px] sm:rounded-[var(--radius-panel)]"}
       >
-        <div className={inline ? "flex items-start justify-between gap-4 border-b border-border px-5 py-4" : "flex items-start justify-between gap-4 border-b border-border bg-card px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-5 lg:px-8"}>
-          <div className="flex min-w-0 items-start gap-3">
+        <div className={inline ? "grid grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b border-border px-5 py-4" : "flex items-start justify-between gap-4 border-b border-border bg-card px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-5 lg:px-8"}>
+          <div className={inline ? "contents" : "flex min-w-0 items-start gap-3"}>
             <span className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary ring-1 ring-inset ring-primary/10">
               <SocialPlatformIcon className="size-4" platform="instagram" />
             </span>
-            <div className="min-w-0">
+            <div className={inline ? "contents" : "min-w-0"}>
               <h2
                 id="schedule-drawer-title"
-                className="text-lg font-bold tracking-normal text-foreground"
+                className={cn("min-w-0 text-lg font-bold tracking-normal text-foreground", inline && "col-start-2 row-start-1")}
               >
                 {inline ? "Confirm your schedule" : finalVideo ? "Review schedule" : isCarouselSchedule
                   ? `Schedule ${hasAdditionalCarouselPublishingPlatform ? "publishing" : "Instagram"} carousel`
@@ -960,7 +961,7 @@ export function ScheduleEditor({
               </h2>
               <p
                 id="schedule-drawer-description"
-                className="mt-1 max-w-2xl text-sm font-medium leading-6 text-muted"
+                className={cn("max-w-2xl text-sm font-medium leading-6 text-muted", inline ? "col-span-3 row-start-2" : "mt-1")}
               >
                 {inline ? "Check the caption, accounts and publishing options before scheduling." : finalVideo ? `Review your finished video, choose your ${publishingAccountLabel} account, and set the publish time.` : isCarouselSchedule
                   ? `Confirm the carousel, choose your ${publishingAccountLabel} account, and set the publish time.`
@@ -978,7 +979,7 @@ export function ScheduleEditor({
             }}
             disabled={inline && saving}
             aria-label={inline ? "Back to schedule settings" : "Close scheduling workspace"}
-            className={inline ? "shrink-0" : "inline-flex size-9 shrink-0 touch-manipulation items-center justify-center rounded-control border border-border bg-card text-muted transition hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"}
+            className={inline ? "col-start-3 row-start-1 shrink-0" : "inline-flex size-9 shrink-0 touch-manipulation items-center justify-center rounded-control border border-border bg-card text-muted transition hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"}
           >
             {inline ? "Back" : <X className="size-4" aria-hidden="true" />}
           </Button>
@@ -2311,18 +2312,18 @@ function ConnectedAccountSelector({
 
   return (
     <div className="max-w-xl">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-bold text-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <span className="min-w-0 text-sm font-bold text-foreground">
           {accountLabel === "Instagram" ? "Instagram account" : "Publishing account"}
         </span>
         <button
           type="button"
           disabled={refreshing}
           onClick={() => void refreshAccounts()}
-          className="inline-flex h-8 items-center gap-1.5 rounded-control border border-border px-3 text-xs font-bold text-foreground transition hover:bg-card-muted disabled:opacity-50"
+          className={cn(styles.refreshAccounts, "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-control border border-border px-3 py-1.5 text-foreground transition hover:bg-card-muted disabled:opacity-50")}
         >
-          <RefreshCw className={cn("size-3.5", refreshing && "animate-spin")} aria-hidden="true" />
-          {refreshing ? "Refreshing accounts…" : "Refresh accounts"}
+          <RefreshCw className={cn("size-3.5 shrink-0", refreshing && "motion-safe:animate-spin")} aria-hidden="true" />
+          {refreshing ? "Refreshing…" : "Refresh accounts"}
         </button>
       </div>
       {refreshError ? <p role="alert" className="mt-2 text-xs font-semibold text-error">{refreshError}</p> : null}

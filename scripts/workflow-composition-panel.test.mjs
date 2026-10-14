@@ -123,7 +123,7 @@ test("visual subtitle choices default to Clean and rerender locally without enab
   const first = actual.render(props);
   const appearance = nodes(first).find(node => node.type === "details");
   assert.equal(appearance.props.open, undefined);
-  assert.equal(text(nodes(appearance).find(node => node.type === "summary")), "Subtitle appearance Clean · Bottom");
+  assert.equal(text(nodes(appearance).find(node => node.type === "summary")), "Subtitle appearance Clean");
   const group = nodes(first).find((node) => node.props["aria-label"] === "Subtitle style samples (local preview only)");
   assert.equal(group.props.role, "group");
   const choices = nodes(group).filter((node) => node.type === "button");

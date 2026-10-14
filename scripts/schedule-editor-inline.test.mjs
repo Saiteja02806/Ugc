@@ -34,6 +34,7 @@ function fixture(overrides = {}) {
   const document = { activeElement: null, body: { style: { get overflow() { return browser.overflow; }, set overflow(value) { browser.overflow = value; } } },
     addEventListener() { browser.listeners++; }, removeEventListener() { browser.listeners--; } };
   const imports = {
+    "./schedule-editor.module.css": { default: { refreshAccounts: "refreshAccounts" } },
     react, "react/jsx-runtime": { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
     "lucide-react": new Proxy({}, { get: (_, name) => name }),
     "@/components/ui/button": { Button: "SharedButton" },

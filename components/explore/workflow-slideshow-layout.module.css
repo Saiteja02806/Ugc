@@ -1,6 +1,6 @@
 /* Slideshow shares the workflow shell, with room for its slide-specific tools. */
-.workspace.workspace[data-stage="create"] .layout { grid-template-columns: clamp(360px, 25cqw, 440px) minmax(0, 1fr); }
-.workspace.workspace[data-stage="edit"] .layout { max-width: none; grid-template-columns: clamp(360px, 25cqw, 440px) minmax(0, 1fr); align-items: stretch; }
+.workspace.workspace[data-stage="create"] .layout { grid-template-columns: clamp(378px, 26.25cqw, 462px) minmax(0, 1fr); }
+.workspace.workspace[data-stage="edit"] .layout { max-width: none; grid-template-columns: clamp(378px, 26.25cqw, 462px) minmax(0, 1fr); align-items: stretch; }
 .workspace.workspace[data-stage="edit"] aside { grid-column: 1; grid-row: 1; align-self: stretch; }
 .workspace.workspace[data-stage="edit"] [aria-label="Workflow preview"] { grid-column: 2; grid-row: 1; background: var(--background); }
 .workspace.workspace[data-stage="edit"] aside > div { padding: 22px; }

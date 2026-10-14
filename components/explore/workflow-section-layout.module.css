@@ -85,10 +85,10 @@
   .stage[data-focused-workflow][data-stage="create"] .controls [data-workflow-action] > button:last-child { width: 100%; }
 }
 @container workflow-sections (min-width: 860px) {
-  .stage[data-focused-workflow][data-stage="create"][data-preview-visible="true"], .stage[data-focused-workflow][data-stage="schedule"] { max-width: none; grid-template-columns: clamp(360px, 25cqw, 440px) minmax(0, 1fr); }
-  .stage[data-focused-workflow][data-stage="create"][data-preview-visible="false"] { max-width: clamp(360px, 25cqw, 440px); }
+  .stage[data-focused-workflow][data-stage="create"][data-preview-visible="true"], .stage[data-focused-workflow][data-stage="schedule"] { max-width: none; grid-template-columns: clamp(378px, 26.25cqw, 462px) minmax(0, 1fr); }
+  .stage[data-focused-workflow][data-stage="create"][data-preview-visible="false"] { max-width: clamp(378px, 26.25cqw, 462px); }
   .stage[data-focused-workflow][data-editing="true"] { max-width: 1000px; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); }
-  .stage[data-focused-workflow][data-stage="edit"][data-editing="false"] { max-width: none; grid-template-columns: clamp(360px, 25cqw, 440px) minmax(0, 1fr); }
+  .stage[data-focused-workflow][data-stage="edit"][data-editing="false"] { max-width: none; grid-template-columns: clamp(378px, 26.25cqw, 462px) minmax(0, 1fr); }
   .stage[data-focused-workflow][data-stage="edit"][data-editing="false"] .preview, .stage[data-focused-workflow][data-stage="schedule"] .preview { grid-column: 2; grid-row: 1; }
   .stage[data-focused-workflow][data-stage="edit"][data-editing="false"] .controls, .stage[data-focused-workflow][data-stage="schedule"] .controls { grid-column: 1; grid-row: 1; }
   .stage[data-focused-workflow][data-editing="true"] .preview { grid-column: 1; grid-row: 1; }

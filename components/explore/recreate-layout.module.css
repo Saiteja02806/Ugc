@@ -16,7 +16,7 @@
 .editor :global([data-slot="composer-actions"] button[aria-label^="Add reference"]) { width: 28px; min-width: 28px; border-radius: 8px; }
 
 @media (min-width: 1024px) {
-  .split { display: grid; grid-template-columns: var(--recreate-editor-width, clamp(320px, 32%, 420px)) 16px minmax(0, 1fr); }
+  .split { display: grid; grid-template-columns: var(--recreate-editor-width, clamp(336px, 33.6%, 441px)) 16px minmax(0, 1fr); }
   .editor { container: recreate-editor / inline-size; overflow-y: auto; overscroll-behavior: contain; }
   .divider {
     position: relative; display: flex; min-height: 0; align-items: center; justify-content: center;

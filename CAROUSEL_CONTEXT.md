@@ -7012,3 +7012,18 @@ The records below are retained from the deployed branch during release reconcili
   activation. Production Serif preview is one line and caption review is centered.
   Ongoing SEO and subsequent inline Demo action work remain outside the frozen
   follow-up release. See docs/demo-creative-assets-separation-2026-10-14.md.
+
+## 2026-10-14 Approved workflow sidebar width
+
+- The owner selected the 5% wider controls after reviewing local 5% and 10%
+  schedule comparisons. Talking Head + Demo, Phone Video, Hook video, Wall of
+  text and Slideshows use `clamp(378px, 26.25cqw, 462px)` for desktop controls
+  across Create, overview Edit/Demo and Schedule, including the empty Create
+  state. The format shell fallback grows from 360px to 378px.
+- Recreate's default editor grows by the same 5% to
+  `clamp(336px, 33.6%, 441px)`. Its resize state, keyboard increments and gallery
+  space limits remain authoritative; its TypeScript default matches the CSS.
+- Inline schedule review gives the description its own full-width header row.
+  Refresh accounts keeps a single line and a stable 148px width while loading.
+  Mobile stacking, expanded clip-edit tools and publishing contracts retain
+  their existing behavior. This supersedes earlier 360–440px controls guidance.

@@ -3,7 +3,7 @@
 .videoWorkspace.videoWorkspace > header { min-height: 56px; padding-block: 6px; }
 .videoWorkspace.videoWorkspace .videoLayout {
   display: grid; width: 100%; margin-inline: auto;
-  grid-template-columns: clamp(360px, 25cqw, 440px) minmax(0, 1fr);
+  grid-template-columns: clamp(378px, 26.25cqw, 462px) minmax(0, 1fr);
   gap: 16px; padding: 12px 24px 24px; align-items: start;
 }
 .controls { container: workflow-form / inline-size; }
@@ -57,9 +57,9 @@
   .videoWorkspace.videoWorkspace[data-stage="create"] .videoLayout { align-items: stretch; }
   .videoWorkspace.videoWorkspace[data-stage="create"] .controls { align-self: stretch; height: 100%; }
   .videoWorkspace.videoWorkspace[data-stage="demo"] .videoLayout,
-  .videoWorkspace.videoWorkspace[data-stage="edit"] .videoLayout { max-width: none; grid-template-columns: clamp(360px, 25cqw, 440px) minmax(0, 1fr); }
+  .videoWorkspace.videoWorkspace[data-stage="edit"] .videoLayout { max-width: none; grid-template-columns: clamp(378px, 26.25cqw, 462px) minmax(0, 1fr); }
   .videoWorkspace[data-stage="demo"][data-editing="false"] .controls [data-demo-source="upload"] { min-width: 0; }
-  .videoWorkspace.videoWorkspace[data-stage="schedule"] .videoLayout { max-width: none; grid-template-columns: clamp(360px, 25cqw, 440px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+  .videoWorkspace.videoWorkspace[data-stage="schedule"] .videoLayout { max-width: none; grid-template-columns: clamp(378px, 26.25cqw, 462px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); align-items: stretch; }
   .videoWorkspace.videoWorkspace[data-stage="demo"][data-editing="false"] .controls,
   .videoWorkspace.videoWorkspace[data-stage="demo"][data-editing="false"] .preview,
   .videoWorkspace.videoWorkspace[data-stage="edit"] .controls,

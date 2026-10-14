@@ -83,7 +83,9 @@ export function updateAnalyticsPage(pathname: string) {
   const state = target.ugcPilotAnalytics ??= { configured: false, lastPage: null, signups: new Set() };
   const parameters = safePageParameters(pathname, document.referrer);
   target.dataLayer ??= [];
-  target.gtag ??= (...args: unknown[]) => { target.dataLayer!.push(args); };
+  // Google's loader consumes the standard gtag arguments-object command queue.
+  // eslint-disable-next-line prefer-rest-params -- Preserve Google's documented gtag queue format.
+  target.gtag ??= function () { target.dataLayer!.push(arguments); };
   // Global values apply to automatic engagement events as well as our events.
   target.gtag("set", parameters);
   target.gtag("consent", state.configured ? "update" : "default", {

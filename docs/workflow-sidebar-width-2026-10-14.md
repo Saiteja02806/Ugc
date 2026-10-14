@@ -18,12 +18,19 @@ occupy a separate header row, and Refresh accounts has a stable 148px width,
 existing behavior. No generation, rendering, scheduling or publishing API
 contract changes are part of this release.
 
-Validation: 65 focused workflow/schedule/resize tests pass, TypeScript and scoped
-ESLint pass, and the existing schedule browser regression passes its fixed-media,
+Validation: 65 focused workflow/schedule/resize tests and 11 retained Recreate
+composer/drag/keyboard regressions pass. TypeScript and scoped ESLint pass, and
+the existing schedule browser regression passes its fixed-media,
 platform preference, ordinary two-clip and mobile checks. The selected local
 comparison covered 1840px and 1280px desktop widths plus 390px mobile, without
 horizontal overflow. Production deployment and browser measurements are recorded
 separately in the local release receipt after deployment.
+
+Live production checks confirm all four exposed workflows use 462px controls
+at 1840px desktop width and 378px at 1280px laptop width, consistently across
+Create, Edit/Demo, and Schedule. Their 390px mobile layouts have no horizontal
+overflow. Phone Video is hidden and the old Recreate route redirects to its
+format workflow; the retained implementations were checked by local regressions.
 
 Concurrent SEO, clip-source actions, schedule-time recovery, Carousel migration,
 and generated QA artifacts remain outside this approved UI release. Their exact

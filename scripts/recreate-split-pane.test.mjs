@@ -35,7 +35,7 @@ test("the splitter has no full-height line or focus outline", () => {
   assert.doesNotMatch(layout, /\.divider::before|\.divider::after/);
   assert.match(layout, /\.divider:focus-visible \.grip \{ outline: 2px solid/);
   assert.doesNotMatch(layout, /\.divider:focus-visible \{[^}]*outline:/);
-  assert.match(layout, /clamp\(320px, 32%, 420px\)/);
+  assert.match(layout, /clamp\(336px, 33.6%, 441px\)/);
   assert.match(split, /onDoubleClick=\{\(\) => setRequestedWidth\(null\)\}/);
   assert.match(split, /startRequestedWidth: requestedWidth/);
 });

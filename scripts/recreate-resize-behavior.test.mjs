@@ -70,18 +70,18 @@ function mountSplit(containerWidth = 1200) {
 
 test("dragging left/right updates the real pane width without remounting either child", () => {
   const actual = mountSplit();
-  assert.equal(actual.divider().props["aria-valuenow"], 384);
+  assert.equal(actual.divider().props["aria-valuenow"], 403);
   actual.divider().props.onPointerDown(actual.pointer(400));
   actual.divider().props.onPointerMove(actual.pointer(540));
   actual.flush();
-  assert.equal(actual.render().props.style["--recreate-editor-width"], "524px");
+  assert.equal(actual.render().props.style["--recreate-editor-width"], "543px");
   assert.equal(actual.render().props.children[0].props.children, actual.children[0]);
   assert.equal(actual.render().props.children[2], actual.children[1]);
   actual.divider().props.onPointerMove(actual.pointer(300));
   actual.flush();
-  assert.equal(actual.render().props.style["--recreate-editor-width"], "284px");
+  assert.equal(actual.render().props.style["--recreate-editor-width"], "303px");
   actual.divider().props.onPointerUp(actual.pointer(320));
-  assert.equal(actual.render().props.style["--recreate-editor-width"], "304px");
+  assert.equal(actual.render().props.style["--recreate-editor-width"], "323px");
   assert.equal(actual.render().props["data-resizing"], undefined);
   assert.equal(actual.captured.size, 0);
   actual.cleanup();
@@ -97,7 +97,7 @@ test("cancelling restores the starting layout and keyboard resizing/reset remain
   assert.equal(actual.pendingFrames(), 0);
   const key = value => actual.divider().props.onKeyDown({ key: value, shiftKey: false, preventDefault() {} });
   key("ArrowRight");
-  assert.equal(actual.render().props.style["--recreate-editor-width"], "400px");
+  assert.equal(actual.render().props.style["--recreate-editor-width"], "419px");
   key("End");
   assert.equal(actual.divider().props["aria-valuenow"], 560);
   actual.resize(800);
@@ -106,6 +106,6 @@ test("cancelling restores the starting layout and keyboard resizing/reset remain
   assert.equal(actual.divider().props["aria-valuenow"], 220);
   key("Enter");
   assert.equal(actual.render().props.style, undefined);
-  assert.equal(actual.divider().props["aria-valuenow"], 320);
+  assert.equal(actual.divider().props["aria-valuenow"], 336);
   actual.cleanup();
 });

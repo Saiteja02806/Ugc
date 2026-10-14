@@ -14,6 +14,7 @@ function renderComposer(overrides = {}, scrollHeight = 20) {
     "react/jsx-runtime": { jsx: element, jsxs: element },
     "react-dom": { createPortal: children => children },
     "@/components/explore/workflow-creation.module.css": { default: {} },
+    "@/components/explore/workflow-focused-composer.module.css": { default: {} },
     "lucide-react": Object.fromEntries(["Check", "ChevronDown", "Loader2", "SlidersHorizontal"].map(name => [name, name])),
     "@/components/ui/button": { Button: "button" },
     "@/components/generation/composer-settings-rail": { ComposerSettingsRail: "rail" },

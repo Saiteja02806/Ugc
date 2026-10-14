@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
-import type { ScheduleFormSubmission } from "@/components/scheduling/schedule-editor";
+import type { ScheduleFormSubmission, ScheduleEditorDraftSnapshot } from "@/components/scheduling/schedule-editor";
 import { DEFAULT_FINISHING_OPTIONS, useWorkflowFinishing, type FinishingOptions, type WorkflowAction } from "@/components/explore/use-workflow-finishing";
 import type { LocalWorkflowMedia } from "@/components/explore/use-local-workflow-media";
 import type { WorkflowScheduleDraft } from "@/components/explore/workflow-scheduling-panel";
@@ -24,7 +24,7 @@ type WorkflowFinishingView = { edit: WorkflowAction; schedule: WorkflowAction; o
 // The presentational boundary receives values and event handlers, not refs.
 // Rendering the view must not execute a controller's imperative actions.
 function FinishingView({ value, children }: { value: WorkflowFinishingView; children: (value: WorkflowFinishingView) => ReactNode }) { return children(value); }
-export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo, demoSource, demoAudio, playback, scheduleDraft, children, demoFraming, demoFramingError, fastStatus = false, inlineSchedule = false, onScheduleDraftChange, composition, backgroundScheduling = false, demoAudioAssetId = null }: {
+export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo, demoSource, demoAudio, playback, scheduleDraft, children, demoFraming, demoFramingError, fastStatus = false, inlineSchedule = false, scheduleActive = false, onBackToEdit, onScheduleDraftChange, composition, backgroundScheduling = false, demoAudioAssetId = null }: {
   enabled: boolean; ownerId: string | null; kind: "hook" | "phone"; source: MediaAsset | null; demo: LocalWorkflowMedia | null; demoAudio: LocalWorkflowMedia | null; playback: "once" | "repeat"; scheduleDraft: WorkflowScheduleDraft;
   children: (value: WorkflowFinishingView) => ReactNode;
   demoFraming?: DemoFraming | null;
@@ -32,6 +32,8 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
   demoFramingError?: string | null;
   fastStatus?: boolean;
   inlineSchedule?: boolean;
+  scheduleActive?: boolean;
+  onBackToEdit?: () => void;
   onScheduleDraftChange?: (draft: WorkflowScheduleDraft) => void;
   composition?: ExploreClipComposition; backgroundScheduling?: boolean; demoAudioAssetId?: string | null;
 }) {
@@ -64,6 +66,7 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
   const [connections, setConnections] = useState<SocialConnection[]>([]), [lead, setLead] = useState(5);
   const [receipt, setReceipt] = useState<ScheduleReceipt | null>(null), [confirmedSource, setConfirmedSource] = useState<string | null>(null), [restored, setRestored] = useState(false);
   const [reviewedOutputId, setReviewedOutputId] = useState<string | null>(null);
+  const [formLoading, setFormLoading] = useState(false);
   const active = useRef(true), working = useRef(false);
   const storageKey = `ugc-explore:schedule:v1:${encodeURIComponent(ownerId ?? "")}:${kind}`;
   const selectedTargets = workflowScheduleTargets(scheduleDraft);
@@ -112,6 +115,24 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
     const value = await authorized("/api/social/connections");
     parseWorkflowConnectedAccounts(value); setConnections(value.connections); return true;
   }
+  // Entering Schedule loads the single form. It never submits a saved request.
+  const outputId = finishing.output?.id;
+  const currentOutputId = useRef(outputId);
+  useEffect(() => { currentOutputId.current = outputId; }, [outputId]);
+  useEffect(() => {
+    if (!inlineSchedule || !scheduleActive || !enabled || !ownerId || !outputId || !restored) return;
+    let stopped = false;
+    void Promise.resolve().then(async () => {
+      if (stopped) return;
+      setFormLoading(true); setError(null);
+      const [config, accounts] = await Promise.all([authorized("/api/schedules?configOnly=1"), authorized("/api/social/connections")]);
+      parseWorkflowConnectedAccounts(accounts);
+      if (!Number.isFinite(config.minimumScheduleLeadMinutes) || config.minimumScheduleLeadMinutes < 0) throw new Error("Could not confirm scheduling limits.");
+      if (!stopped) { setConnections(accounts.connections); setLead(config.minimumScheduleLeadMinutes); setReviewedOutputId(outputId); setOpen(true); }
+    }).catch(e => { if (!stopped) setError(e instanceof Error ? e.message : "Could not load scheduling settings."); })
+      .finally(() => { if (!stopped) setFormLoading(false); });
+    return () => { stopped = true; };
+  }, [inlineSchedule, scheduleActive, enabled, ownerId, outputId, restored, authorized]);
   async function send(saved: ScheduleReceipt) {
     try {
       accept(saved, await authorized("/api/schedules", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(saved.input) }));
@@ -146,11 +167,11 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
       let resume = false;
       await locked(async saved => {
         setReceipt(saved);
-        if (saved && !saved.scheduleId) {
+        if (saved && !saved.scheduleId && !saved.timeRejected) {
           try { await send(saved); resume = true; }
           catch (e) { if (!isScheduleTimeRejected(e)) throw e; }
         }
-        else if (saved && (saved.input.source.id === finishing.output?.id || !finishing.output)) { resume = true; await check(saved); }
+        else if (saved?.scheduleId && (saved.input.source.id === finishing.output?.id || !finishing.output)) { resume = true; await check(saved); }
       });
       if (resume) return;
       if (!finishing.output) throw new Error("Apply edits and wait for the finished video before scheduling.");
@@ -165,15 +186,26 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
     if (inlineSchedule && reviewedOutputId !== finishing.output.id) { setError("Your finished video changed. Review this output before scheduling."); return; }
     working.current = true; setBusy(true); setError(null);
     try {
-      if (submission.scheduledSource.kind !== "media_asset" || submission.scheduledSource.id !== finishing.output.id || !selectedTargets.length || submission.targets.length !== selectedTargets.length || !selectedTargets.every(target => submission.targets.some(candidate => candidate.connectionId === target.connectionId && candidate.platform === target.platform))) throw new Error("Confirm the selected finished video and an account for every selected platform.");
-      onScheduleDraftChange?.({ ...scheduleDraft, caption: submission.caption, date: submission.scheduledDate, time: submission.scheduledTime, timezone: submission.timezone });
+      const validTargets = inlineSchedule
+        ? submission.targets.length > 0 && submission.targets.length <= 3 && new Set(submission.targets.map(target => target.platform!)).size === submission.targets.length && submission.targets.every(target => connections.some(connection => connection.id === target.connectionId && connection.platform === target.platform))
+        : selectedTargets.length > 0 && submission.targets.length === selectedTargets.length && selectedTargets.every(target => submission.targets.some(candidate => candidate.connectionId === target.connectionId && candidate.platform === target.platform));
+      if (submission.scheduledSource.kind !== "media_asset" || submission.scheduledSource.id !== finishing.output.id || !validTargets) throw new Error("Choose the current finished video and a connected account for every selected platform.");
+      onScheduleDraftChange?.({ ...scheduleDraft, caption: submission.caption, date: submission.scheduledDate, time: submission.scheduledTime, timezone: submission.timezone, platforms: submission.targets.map(target => target.platform!), connectionIds: Object.fromEntries(submission.targets.map(target => [target.platform, target.connectionId])), platform: submission.targets[0].platform!, connectionId: submission.targets[0].connectionId });
       await locked(async prior => {
         if (prior && (!prior.timeRejected || prior.scheduleId) && (!prior.scheduleId || prior.input.source.id === finishing.output!.id)) { setReceipt(prior); await send(prior); return; }
-        if (prior?.timeRejected && prior.input.source.id !== finishing.output!.id) throw new Error("Review the video from the rejected request before confirming its new time.");
+        if (prior?.timeRejected) {
+          // Another tab may have accepted the old request since its rejection.
+          // Verify before replacing it, including when a new render has a new ID.
+          const value = await authorized("/api/schedules");
+          if (!Array.isArray(value.schedules)) throw new Error("Could not verify the rejected scheduling request.");
+          const match = value.schedules.find((s: { idempotencyKey?: string }) => s.idempotencyKey === prior.input.idempotencyKey);
+          if (match) { accept(prior, { ok: true, schedule: match }); return; }
+        }
         // Never discard an uncertain request. An older confirmed output stays
         // in Scheduling while a different finished video gets its own key.
         if (prior && !prior.timeRejected) await check(prior);
-        const saved: ScheduleReceipt = { version: 1, owner: ownerId, kind, input: { caption: submission.caption, source: submission.scheduledSource, targets: submission.targets, title: finishing.output!.title, scheduledFor: submission.scheduledFor, scheduledDate: submission.scheduledDate, scheduledTime: submission.scheduledTime, timezone: submission.timezone, idempotencyKey: prior?.timeRejected ? prior.input.idempotencyKey : `explore:${crypto.randomUUID()}`, metadata: { mediaMode: "single_video", exploreWorkflow: kind } } };
+        if (!active.current || currentOutputId.current !== submission.scheduledSource.id) throw new Error("Your finished video changed. Schedule the current output instead.");
+        const saved: ScheduleReceipt = { version: 1, owner: ownerId, kind, input: { caption: submission.caption, source: submission.scheduledSource, targets: submission.targets, title: finishing.output!.title, scheduledFor: submission.scheduledFor, scheduledDate: submission.scheduledDate, scheduledTime: submission.scheduledTime, timezone: submission.timezone, idempotencyKey: prior?.timeRejected && prior.input.source.id === finishing.output!.id ? prior.input.idempotencyKey : `explore:${crypto.randomUUID()}`, metadata: { mediaMode: "single_video", exploreWorkflow: kind } } };
         readScheduleReceipt(JSON.stringify(saved), ownerId, kind);
         localStorage.setItem(storageKey, JSON.stringify(saved)); setReceipt(saved);
         await send(saved);
@@ -181,17 +213,20 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
     } catch (e) { if (active.current) setError(e instanceof Error ? e.message : "Could not save scheduling. Resume the saved request."); }
     finally { working.current = false; if (active.current) setBusy(false); }
   }
+  const syncDraft = (snapshot: ScheduleEditorDraftSnapshot) => onScheduleDraftChange?.({ ...scheduleDraft, caption: snapshot.caption, date: snapshot.date, time: snapshot.time, timezone: snapshot.timezone,
+    ...(snapshot.targets ? { platforms: snapshot.targets.map(target => target.platform!), connectionIds: Object.fromEntries(snapshot.targets.map(target => [target.platform, target.connectionId])), platform: snapshot.targets[0]?.platform ?? "", connectionId: snapshot.targets[0]?.connectionId ?? "" } : {}) });
   const output = finishing.output;
   const media: ScheduleMediaOption[] = output ? [{ id: output.id, mediaUrl: output.url, thumbnailUrl: output.thumbnailUrl ?? undefined, sourceType: "edit_video", status: "ready", title: output.title }] : [];
   const alreadySaved = confirmedSource !== null && (!output || confirmedSource === output.id);
   const resumeSaved = receipt !== null && !receipt.scheduleId;
-  const schedule: WorkflowAction = { busy, disabled: !enabled || !ownerId || !restored || busy || alreadySaved || (!resumeSaved && (!output || !selectedTargets.length)), error, message: output && !receipt ? "Select an account for each platform, then review and confirm your schedule." : message, onAction: () => { void start(); }, refresh: () => { void refresh(); } };
-  const review = open && output && (!inlineSchedule || reviewedOutputId === output.id) ? <ScheduleEditor presentation={inlineSchedule ? "inline" : "modal"} finalVideo={media[0]} demoMediaOptions={media} hookMediaOptions={[]} editingIsCombinedVideo={false} editingPlannedPlatforms={[]} editingSchedule={null} editingScheduledDate={null} editingScheduledTime={null}
+  const schedule: WorkflowAction = { busy, disabled: !enabled || !ownerId || !restored || busy || alreadySaved || (!resumeSaved && (!output || !inlineSchedule && !selectedTargets.length)), error, message: output && !receipt ? "Choose your accounts and time, then click Schedule post." : message, onAction: () => { void start(); }, refresh: () => { void refresh(); } };
+  const uncertain = receipt !== null && !receipt.scheduleId && !receipt.timeRejected;
+  const review = open && output && !alreadySaved && (!inlineSchedule || reviewedOutputId === output.id && (!uncertain || busy)) ? <ScheduleEditor key={output.id} presentation={inlineSchedule ? "workflow" : "modal"} finalVideo={media[0]} demoMediaOptions={media} hookMediaOptions={[]} editingIsCombinedVideo={false} editingPlannedPlatforms={[]} editingSchedule={null} editingScheduledDate={null} editingScheduledTime={null}
       initialClipSelection="secondary_only" initialDemoMediaId={output.id} initialHookMediaId="" initialCaption={scheduleDraft.caption} initialPlannedTargets={selectedTargets}
       initialScheduledDate={scheduleDraft.date} initialScheduledTime={scheduleDraft.time} initialTimezone={scheduleDraft.timezone} minimumScheduleLeadMinutes={lead} requireScheduleTarget saving={busy} errorMessage={error}
-      onCloseDraft={snapshot => onScheduleDraftChange?.({ ...scheduleDraft, caption: snapshot.caption, date: snapshot.date, time: snapshot.time, timezone: snapshot.timezone })}
-      socialConnections={connections.filter(c => selectedTargets.some(target => target.connectionId === c.id))} tiktokBetaEnabled={selectedPlatforms.includes("tiktok")} youtubeBetaEnabled={selectedPlatforms.includes("youtube")}
-      onClose={() => { if (!busy) setOpen(false); }} onRefreshMedia={async () => true} onRefreshConnections={loadConnections} onSave={value => { void save(value); }} /> : null;
+      onCloseDraft={syncDraft} onDraftChange={inlineSchedule ? syncDraft : undefined}
+      socialConnections={inlineSchedule ? connections : connections.filter(c => selectedTargets.some(target => target.connectionId === c.id))} tiktokBetaEnabled={inlineSchedule || selectedPlatforms.includes("tiktok")} youtubeBetaEnabled={inlineSchedule || selectedPlatforms.includes("youtube")}
+      onClose={() => { if (!busy) { setOpen(false); if (inlineSchedule) onBackToEdit?.(); } }} onRefreshMedia={async () => true} onRefreshConnections={loadConnections} onSave={value => { void save(value); }} /> : inlineSchedule && scheduleActive && !alreadySaved && formLoading ? <p role="status">Loading scheduling settings…</p> : null;
   return <><FinishingView value={{ edit: { ...finishing.action, disabled: finishing.action.disabled || captionFinishing.status?.outcome === "pending" || captionFinishing.action.busy || options.subtitles && !captions.transcript && !output }, schedule, output, options, setOptions: changeOptions, captions, scheduleReview: inlineSchedule ? review : undefined, pendingComposition: backgroundScheduling ? pendingComposition : undefined }}>{children}</FinishingView>
     {!inlineSchedule ? review : null}
   </>;

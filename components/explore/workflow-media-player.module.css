@@ -1,0 +1,10 @@
+/* Native video dimensions preserve portrait, landscape and square footage. */
+.video {
+  aspect-ratio: auto;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 60dvh;
+  flex: none;
+  align-self: center;
+}

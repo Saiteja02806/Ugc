@@ -1,6 +1,6 @@
 # Inline workflow video selection — 14 October 2026
 
-The Hook workflow's empty opening card only offered **Go to Create**, and the empty demo card required the side-panel controls. Both cards now offer one source button directly in the preview area. The Demo side panel uses the same compact control.
+The Hook workflow's empty opening card only offered **Go to Create**, and the empty demo card required the side-panel controls. Both cards now offer one source button directly in the preview area. Following the user's scope correction, the Demo side panel retains its previous separate Upload demo / Replace demo and Creative Assets cards. The dropdown applies only to the preview cards.
 
 `WorkflowClipSourceActions` opens a hover-capable Popover containing Upload video and Creative Assets; click, keyboard and tap also work. The opening menu includes Generate video to return to the existing generation controls. The trigger displays the selected source and the menu marks it with a check. Choosing Upload opens the native file chooser in the same click gesture, and each card delegates the selected file to its existing upload handler. Creative Assets opens the existing owned-video dialog without switching workflow tabs. Pending upload and preparation states disable the controls. Failed opening uploads show an inline error and preserve the existing demo; cancelling a chooser does not mutate the draft.
 
@@ -12,4 +12,4 @@ Verification covers both upload entry points, Creative Assets selection, cancell
 
 The focused suite passed 133 tests. Scoped ESLint and TypeScript checks passed. The real-page browser check passed for the single trigger, hover menu, mobile tap menu, both clip upload entry points, both Creative Assets selections, chooser cancellation, retained Demo tab, and no horizontal mobile overflow. It reported no page errors or account writes. Desktop and mobile screenshots were reviewed in `.tmp/inline-clip-browser/`.
 
-These changes are local. Signed-in production acceptance must be performed at `https://www.getugcpilot.com` after deployment.
+The preview actions were deployed in release `a870105b` and passed authenticated production acceptance, including direct asset selection without leaving Demo. The sidebar restoration passed 122 focused tests, scoped ESLint and TypeScript. Its production acceptance must confirm both sidebar cards and the retained preview dropdowns at `https://www.getugcpilot.com`.

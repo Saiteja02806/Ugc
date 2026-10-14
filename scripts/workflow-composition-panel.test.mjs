@@ -58,6 +58,24 @@ function text(node) {
   if (typeof node !== "object") return String(node);
   return text(node.props?.children);
 }
+
+test("finishing controls announce worker preparation between reads and clear it after completion", () => {
+  const actual = harness(read("components/explore/workflow-creation-panel.tsx"), "WorkflowCreationPanel");
+  const edit = { busy: false, processing: true, disabled: true, message: "Rendering video subtitles…", error: null, onAction() {}, refresh() {} };
+  for (const action of [edit, { ...edit, busy: true }]) {
+    const tree = actual.render({ kind: "hook", section: "edit", edit: action, children: null });
+    const button = nodes(tree).find(node => node.type === "button");
+    assert.equal(text(button), "Preparing video…");
+    assert.equal(button.props["aria-busy"], true);
+    assert.equal(button.props.disabled, true);
+    assert.equal(nodes(tree).find(node => node.props.role === "status").props.children, edit.message);
+  }
+  const tree = actual.render({ kind: "hook", section: "edit", edit: { ...edit, processing: false, disabled: false, message: "Your finished video is saved." }, children: null });
+  const button = nodes(tree).find(node => node.type === "button");
+  assert.equal(text(button), "Prepare final video");
+  assert.equal(button.props["aria-busy"], false);
+  assert.equal(button.props.disabled, false);
+});
 const makeAttachment = (name, attached = false, duration = 3) => ({ asset: attached ? { name, url: `blob:${name}`, duration } : null, error: null, loading: false, choose() {}, remove() {} });
 function render(overrides = {}) {
   const props = { videoLabel: "Hook", demo: makeAttachment("demo.mp4"), demoAudio: makeAttachment("demo.wav"), demoAudioPlayback: "once", onDemoAudioPlaybackChange() {}, ...overrides };

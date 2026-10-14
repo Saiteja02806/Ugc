@@ -134,7 +134,7 @@ export type ScheduleFormSubmission = {
   useOpeningClip: boolean;
 };
 
-export type ScheduleEditorDraftSnapshot = { caption: string; date: string; time: string; timezone: string };
+export type ScheduleEditorDraftSnapshot = { caption: string; date: string; time: string; timezone: string; targets?: ScheduleCreateTargetInput[] };
 
 type TikTokPublishSettingsResponse =
   | { capabilities: TikTokPublishCapabilities; ok: true }
@@ -267,6 +267,7 @@ export function ScheduleEditor({
   youtubeBetaEnabled,
   presentation = "modal",
   onCloseDraft,
+  onDraftChange,
 }: {
   demoMediaOptions: ScheduleMediaOption[];
   editingIsCombinedVideo: boolean;
@@ -300,11 +301,13 @@ export function ScheduleEditor({
   tiktokBetaEnabled: boolean;
   youtubeBetaEnabled: boolean;
   /** Explore keeps confirmation within its scheduling panel; other callers stay modal. */
-  presentation?: "modal" | "inline";
+  presentation?: "modal" | "inline" | "workflow";
   /** Preserve unsent inline edits when returning to the overview form. */
   onCloseDraft?: (draft: ScheduleEditorDraftSnapshot) => void;
+  onDraftChange?: (draft: ScheduleEditorDraftSnapshot) => void;
 }) {
-  const inline = presentation === "inline";
+  const inline = presentation !== "modal";
+  const workflow = presentation === "workflow";
   useLockBodyScroll(!inline);
   const defaultTimezone = useAccountTimeZone();
   const dialogRef = useRef<HTMLElement>(null);
@@ -527,6 +530,12 @@ export function ScheduleEditor({
       ),
     [availableSocialConnections, selectedConnectionIds],
   );
+  const draftTargets = useMemo(() => selectedConnections.map(connection => ({ connectionId: connection.id, platform: connection.platform })), [selectedConnections]);
+  const draftChange = useRef(onDraftChange);
+  useEffect(() => { draftChange.current = onDraftChange; }, [onDraftChange]);
+  useEffect(() => {
+    if (workflow) draftChange.current?.({ caption, date: scheduledDate, time: scheduledTime, timezone, targets: draftTargets });
+  }, [workflow, caption, scheduledDate, scheduledTime, timezone, draftTargets]);
   const hasInstagramDestination = selectedConnections.some(
     (connection) => connection.platform === "instagram",
   );
@@ -953,7 +962,7 @@ export function ScheduleEditor({
                 id="schedule-drawer-title"
                 className={cn("min-w-0 text-lg font-bold tracking-normal text-foreground", inline && "col-start-2 row-start-1")}
               >
-                {inline ? "Confirm your schedule" : finalVideo ? "Review schedule" : isCarouselSchedule
+                {workflow ? "Schedule your video" : inline ? "Confirm your schedule" : finalVideo ? "Review schedule" : isCarouselSchedule
                   ? `Schedule ${hasAdditionalCarouselPublishingPlatform ? "publishing" : "Instagram"} carousel`
                   : editingSchedule
                     ? `Edit ${hasAdditionalVideoPublishingPlatform ? "publishing" : "Instagram"} schedule`
@@ -963,7 +972,7 @@ export function ScheduleEditor({
                 id="schedule-drawer-description"
                 className={cn("max-w-2xl text-sm font-medium leading-6 text-muted", inline ? "col-span-3 row-start-2" : "mt-1")}
               >
-                {inline ? "Check the caption, accounts and publishing options before scheduling." : finalVideo ? `Review your finished video, choose your ${publishingAccountLabel} account, and set the publish time.` : isCarouselSchedule
+                {workflow ? "Choose where and when to share your video." : inline ? "Check the caption, accounts and publishing options before scheduling." : finalVideo ? `Review your finished video, choose your ${publishingAccountLabel} account, and set the publish time.` : isCarouselSchedule
                   ? `Confirm the carousel, choose your ${publishingAccountLabel} account, and set the publish time.`
                   : `Choose real media, your ${publishingAccountLabel} account, and when the post should publish.`}
               </p>
@@ -974,14 +983,14 @@ export function ScheduleEditor({
             variant="ghost"
             size={inline ? "sm" : "icon"}
             onClick={() => {
-              if (inline) onCloseDraft?.({ caption, date: scheduledDate, time: scheduledTime, timezone });
+              if (inline) onCloseDraft?.({ caption, date: scheduledDate, time: scheduledTime, timezone, ...(workflow ? { targets: draftTargets } : {}) });
               onClose();
             }}
             disabled={inline && saving}
-            aria-label={inline ? "Back to schedule settings" : "Close scheduling workspace"}
+            aria-label={workflow ? "Back to Edit" : inline ? "Back to schedule settings" : "Close scheduling workspace"}
             className={inline ? "col-start-3 row-start-1 shrink-0" : "inline-flex size-9 shrink-0 touch-manipulation items-center justify-center rounded-control border border-border bg-card text-muted transition hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"}
           >
-            {inline ? "Back" : <X className="size-4" aria-hidden="true" />}
+            {workflow ? "Back to Edit" : inline ? "Back" : <X className="size-4" aria-hidden="true" />}
           </Button>
         </div>
 

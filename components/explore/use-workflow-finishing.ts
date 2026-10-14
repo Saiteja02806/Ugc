@@ -16,7 +16,7 @@ import { withReadDeadline } from "@/lib/http/read-deadline";
 
 export type FinishingOptions = { subtitles: boolean; style: ExploreFinishStyle; backgroundMusic: boolean; placement?: "bottom" | "middle" | "top"; corrections?: SubtitleCorrection[] };
 export const DEFAULT_FINISHING_OPTIONS: FinishingOptions = { subtitles: false, style: "clean", backgroundMusic: false, placement: "bottom" };
-export type WorkflowAction = { busy: boolean; disabled: boolean; message: string; error: string | null; onAction: () => void; refresh: () => void; cancel?: () => void; recoveryAvailable?: boolean };
+export type WorkflowAction = { busy: boolean; processing?: boolean; disabled: boolean; message: string; error: string | null; onAction: () => void; refresh: () => void; cancel?: () => void; recoveryAvailable?: boolean };
 export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, demoSource = null, demoAudio, demoAudioSource = null, playback, options, onRestoreOptions, demoFraming = null, sourceFraming = null, demoFramingError = null, editing, backgroundSource = null, backgroundPlayback: formatBackgroundPlayback = "once", scope, onRestoreDraft, reuseUnchangedSource = false, fastStatus = false, captionPreview = false, captionDraft = null, composition, demoAudioAssetId = null }: {
   ownerId: string | null; enabled: boolean; kind: "hook" | "phone"; source: MediaAsset | null;
   demo: LocalWorkflowMedia | null; demoAudio: LocalWorkflowMedia | null; playback: "once" | "repeat"; options: FinishingOptions;
@@ -250,7 +250,7 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
     finally { working.current = false; if (active.current) setBusy(false); }
   }
   const actionMessage = loadingOutput ? "Your video is saved. Loading your finished video…" : status?.message ?? (source ? "Apply edits to save your finished video." : "Choose a saved video before applying edits.");
-  const action: WorkflowAction = { busy, disabled, message: recoveryMessage ? `${actionMessage} ${recoveryMessage}` : actionMessage, error: demoFramingError ?? error, onAction: () => { void apply(); }, refresh: () => { void refreshAll(); }, recoveryAvailable: recoveryEntries.length > 0,
+  const action: WorkflowAction = { busy, processing: status?.outcome === "pending" || loadingOutput, disabled, message: recoveryMessage ? `${actionMessage} ${recoveryMessage}` : actionMessage, error: demoFramingError ?? error, onAction: () => { void apply(); }, refresh: () => { void refreshAll(); }, recoveryAvailable: recoveryEntries.length > 0,
     ...(pending && status?.jobId && !status.terminal ? { cancel: () => { void cancel(); } } : {}) };
   return { action, output: currentOutput, status, transcript: currentTranscript, captionDraft: currentTranscript && savedEntry?.draft.subtitles?.version === 2 ? savedEntry.draft : null };
 }

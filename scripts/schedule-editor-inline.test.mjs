@@ -295,3 +295,41 @@ test("inline confirmation retains date, caption and TikTok capability/privacy va
   assert.equal(h.submitted[0].targets[0].settings.privacyLevel, "PUBLIC_TO_EVERYONE");
   assert.equal(h.submitted[0].targets[0].settings.allowComment, false); h.unmount();
 });
+
+
+test("workflow scheduling has one direct Schedule post action and no confirmation screen", async () => {
+  const h = fixture({ presentation: "workflow" }); await renderSettled(h);
+  const region = h.nodes().find(node => node.props?.role === "region");
+  assert.match(text(region), /Schedule your video/);
+  assert.doesNotMatch(text(region), /Confirm your schedule|Review schedule/);
+  assert.equal(h.nodes().filter(node => node.type === "SharedButton" && text(node) === "Schedule post").length, 1);
+  assert.equal(h.browser.overflow, "auto");
+  assert.equal(h.submitted.length, 0);
+  h.save().props.onClick();
+  assert.equal(h.submitted.length, 1);
+  assert.equal(h.submitted[0].scheduledSource.id, finalVideo.id);
+  assert.equal(h.submitted[0].targets[0].settings.shareToFeed, false);
+  h.unmount();
+});
+
+
+test("workflow form keeps its preview draft in sync without repeated parent updates or scheduling", async () => {
+  const changes = [];
+  const h = fixture({ presentation: "workflow", onDraftChange: value => changes.push(value) });
+  await renderSettled(h);
+  assert.equal(changes.length, 1);
+  h.nodes().find(node => node.type === "textarea").props.onChange({ target: { value: "Updated live caption" } });
+  h.render();
+  assert.equal(changes.at(-1).caption, "Updated live caption");
+  const count = changes.length;
+  h.props.initialCaption = "Updated live caption";
+  h.props.onDraftChange = value => changes.push(value);
+  h.render(); h.render();
+  assert.equal(changes.length, count);
+  assert.equal(changes.at(-1).targets[0].connectionId, h.props.initialPlannedTargets[0].connectionId);
+  assert.equal(h.submitted.length, 0);
+  h.nodes().find(node => node.props?.["aria-label"] === "Back to Edit").props.onClick();
+  assert.equal(h.snapshots[0].caption, "Updated live caption");
+  assert.equal(h.snapshots[0].targets[0].connectionId, h.props.initialPlannedTargets[0].connectionId);
+  h.unmount();
+});

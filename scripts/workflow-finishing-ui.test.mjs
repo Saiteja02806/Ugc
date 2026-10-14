@@ -180,9 +180,11 @@ test("background status checks keep the action state steady; explicit refresh st
   const h = harness({ pending: true, fastStatus: true });
   h.render(); await tick(); h.render().action.onAction(); await tick();
   const before = h.render(); assert.equal(before.action.busy, false); assert.equal(before.action.disabled, true);
+  assert.equal(before.action.processing, true, "The worker remains active between quiet status reads");
   h.poll();
   assert.equal(h.render().action.busy, false, "Polling must not flash a loading label");
   await tick(); assert.equal(h.render().action.busy, false); assert.equal(h.render().action.disabled, true);
+  assert.equal(h.render().action.processing, true);
   h.event("focus"); assert.equal(h.render().action.busy, false); await tick();
   h.render().action.refresh(); assert.equal(h.render().action.busy, true); await tick();
   assert.equal(h.render().action.busy, false); assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
@@ -197,9 +199,11 @@ test("a completed output lookup recovers automatically without another render", 
     assert.equal(interrupted.status.outcome, "completed"); assert.equal(interrupted.output, null);
     assert.match(interrupted.action.message, /Loading your finished video/);
     assert.equal(interrupted.action.disabled, true); assert.equal(h.timers.size, 1);
+    assert.equal(interrupted.action.processing, true, "Loading the saved output is still preparation");
     const originalRequest = h.calls[0].body;
     h.poll(); await tick();
     assert.equal(h.render().output.id, output.id); assert.equal(h.timers.size, 0);
+    assert.equal(h.render().action.processing, false);
     assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
     assert.equal(JSON.parse(h.store.get(h.storageKey)).requestKey, JSON.parse(originalRequest).requestKey);
     h.unmount(); assert.equal(h.listeners.size, 0);
@@ -586,7 +590,7 @@ function schedulingHarness({ kind = "hook", saved = null, lost = false, storageF
   });
   const submission = { caption: "Confirmed caption", scheduledSource: { kind: "media_asset", id: finished?.id ?? output.id }, targets: [{ connectionId, platform: "instagram", settings: { placement: "reels" } }], scheduledFor: "2026-10-06T10:00:00.000Z", scheduledDate: "2026-10-06", scheduledTime: "15:30", timezone: "Asia/Calcutta" };
   if (multiple) submission.targets.push({ connectionId: youtubeId, platform: "youtube", settings: { privacyStatus: "private" } });
-  return { calls, props, store, storageKey, submission, render() {
+  return { calls, props, store, storageKey, submission, setFinished(value) { finished = value; }, render() {
     cursor = 0; const tree = testModule.WorkflowFinishingBoundary(props); while (effects.length) effects.shift()();
     return { view: tree.props.children[0].props.value, editor: tree.props.children[1]?.props ?? null };
   }, unmount() { for (const slot of slots) slot?.cleanup?.(); } };
@@ -640,15 +644,16 @@ test("both Explore workflows confirm one or both platforms and keep all exact se
   }
 });
 
-test("Talking Head review stays inside the workflow and only submits after explicit confirmation", async () => {
+test("Talking Head opens its single Schedule form on tab entry and submits only on Schedule post", async () => {
   const h = schedulingHarness(); h.props.inlineSchedule = true;
   let retainedDraft;
   h.props.onScheduleDraftChange = draft => { retainedDraft = draft; };
-  h.render(); await tick(); h.render().view.schedule.onAction(); await tick();
+  h.props.scheduleActive = true;
+  h.render(); await tick(); h.render(); await tick();
   let screen = h.render();
   assert.equal(screen.editor, null, "The boundary does not mount a separate review screen");
   const editor = screen.view.scheduleReview.props;
-  assert.equal(editor.presentation, "inline");
+  assert.equal(editor.presentation, "workflow");
   assert.equal(editor.finalVideo.id, output.id);
   assert.equal(h.calls.some(call => call.method === "POST"), false);
   editor.onCloseDraft({ caption: "Changed inline", date: "2026-10-20", time: "16:30", timezone: "UTC" });
@@ -722,5 +727,72 @@ test("checking an earlier completed request preserves a concurrently archived re
   h.render(); await tick(); h.render().action.refresh(); await tick(); await tick();
   assert.deepEqual(finishClient.readFinishRecovery(h.store.get(finishClient.finishRecoveryStorageKey(h.storageKey)), "owner", "hook"), [concurrent]);
   assert.equal(h.calls.some(call => call.method === "POST"), false);
+  h.unmount();
+});
+
+
+test("a rejected schedule accepts the newly prepared video with a fresh identity and corrected time", async () => {
+  for (const kind of ["hook", "phone"]) {
+    const newOutput = { ...output, id: randomUUID() };
+    const saved = { version: 1, owner: "owner", kind, timeRejected: true, input: { source: { kind: "media_asset", id: output.id }, targets: [{ platform: "instagram", connectionId: randomUUID() }], caption: "Earlier caption", timezone: "Asia/Calcutta", scheduledFor: "2026-10-13T22:40:00.000Z", idempotencyKey: `explore:${randomUUID()}` } };
+    const h = schedulingHarness({ kind, saved, finished: newOutput });
+    h.props.inlineSchedule = true; h.props.scheduleActive = true;
+    h.render(); await tick(); h.render(); await tick();
+    const screen = h.render(), editor = screen.view.scheduleReview.props;
+    assert.equal(editor.finalVideo.id, newOutput.id);
+    assert.equal(h.calls.filter(call => call.method === "POST").length, 0);
+    editor.onSave({ ...h.submission, scheduledDate: "2026-10-14", scheduledTime: "12:30", scheduledFor: "2026-10-14T07:00:00.000Z" });
+    await tick();
+    const posts = h.calls.filter(call => call.method === "POST");
+    assert.equal(posts.length, 1);
+    const next = JSON.parse(posts[0].body);
+    assert.equal(next.source.id, newOutput.id);
+    assert.equal(next.scheduledTime, "12:30");
+    assert.notEqual(next.idempotencyKey, saved.input.idempotencyKey);
+    assert.equal(h.calls.at(-2).url, "/api/schedules", "Check the old rejection before replacing it");
+    assert.match(h.render().view.schedule.message, /is scheduled/);
+    assert.equal(h.render().view.schedule.error, null);
+    h.unmount();
+  }
+});
+
+test("a previously rejected request accepted in another tab prevents a second scheduling mutation", async () => {
+  let accepted = false;
+  const saved = { version: 1, owner: "owner", kind: "hook", timeRejected: true, input: { source: { kind: "media_asset", id: output.id }, targets: [{ platform: "instagram", connectionId: randomUUID() }], caption: "Earlier caption", timezone: "Asia/Calcutta", scheduledFor: "2026-10-13T22:40:00.000Z", idempotencyKey: `explore:${randomUUID()}` } };
+  const h = schedulingHarness({ saved, finished: { ...output, id: randomUUID() }, transport: async (url, init) => accepted && url === "/api/schedules" && !init.method ? Response.json({ ok: true, schedules: [{ id: randomUUID(), mediaAssetId: output.id, idempotencyKey: saved.input.idempotencyKey, status: "scheduled", targets: saved.input.targets.map(target => ({ socialConnectionId: target.connectionId, platform: target.platform })) }] }) : null });
+  h.props.inlineSchedule = true; h.props.scheduleActive = true;
+  h.render(); await tick(); h.render(); await tick();
+  const editor = h.render().view.scheduleReview.props;
+  accepted = true; editor.onSave(h.submission); await tick();
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 0);
+  assert.ok(JSON.parse(h.store.get(h.storageKey)).scheduleId);
+  h.unmount();
+});
+
+test("leaving Schedule while accounts load cannot open a stale form or create a post", async () => {
+  let complete;
+  const h = schedulingHarness({ transport: async url => url === "/api/social/connections" ? new Promise(resolve => { complete = resolve; }) : null });
+  h.props.inlineSchedule = true; h.props.scheduleActive = true;
+  h.render(); await tick(); h.render(); await tick();
+  h.props.scheduleActive = false; h.render();
+  complete(Response.json({ ok: true, connections: [] })); await tick();
+  assert.equal(h.render().view.scheduleReview, null);
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 0);
+  h.unmount();
+});
+
+
+test("changing the finished output during rejected-request lookup blocks a stale submission", async () => {
+  let hold = false, complete;
+  const saved = { version: 1, owner: "owner", kind: "hook", timeRejected: true, input: { source: { kind: "media_asset", id: output.id }, targets: [{ platform: "instagram", connectionId: randomUUID() }], caption: "Earlier caption", timezone: "Asia/Calcutta", scheduledFor: "2026-10-13T22:40:00.000Z", idempotencyKey: `explore:${randomUUID()}` } };
+  const h = schedulingHarness({ saved, transport: async (url, init) => hold && url === "/api/schedules" && !init.method ? new Promise(resolve => { complete = resolve; }) : null });
+  h.props.inlineSchedule = true; h.props.scheduleActive = true;
+  h.render(); await tick(); h.render(); await tick();
+  hold = true; h.render().view.scheduleReview.props.onSave(h.submission); await tick();
+  h.setFinished({ ...output, id: randomUUID() }); h.render();
+  complete(Response.json({ ok: true, schedules: [] })); await tick();
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 0);
+  assert.match(h.render().view.schedule.error, /finished video changed/);
+  assert.equal(JSON.parse(h.store.get(h.storageKey)).input.idempotencyKey, saved.input.idempotencyKey);
   h.unmount();
 });

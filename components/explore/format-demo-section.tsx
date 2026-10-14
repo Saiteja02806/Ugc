@@ -1,6 +1,6 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Video } from "lucide-react";
+import { ArrowLeft, FolderOpen, Upload, Video } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
@@ -138,7 +138,7 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
             try { localStorage.setItem(key, JSON.stringify(draft)); } catch { /* Restored assets still require owned reads. */ }
         }
     }, [owner, key, draft, selectionChanged]);
-    const alive = useRef(true), previewPlayer = useRef<HTMLVideoElement>(null), editPlayer = useRef<HTMLVideoElement>(null), editAudio = useRef<HTMLAudioElement>(null);
+    const alive = useRef(true), fileInput = useRef<HTMLInputElement>(null), previewPlayer = useRef<HTMLVideoElement>(null), editPlayer = useRef<HTMLVideoElement>(null), editAudio = useRef<HTMLAudioElement>(null);
     useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
     useEffect(() => { if (!active)
         previewPlayer.current?.pause(); }, [active]);
@@ -412,7 +412,11 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
     const controls = <div className={`${styles.demoControls} space-y-4`}>
       <h2 className="text-sm font-semibold">Demo <span className="ml-1 text-xs font-normal text-muted">Optional</span></h2>
       <fieldset disabled={busy} className="min-w-0 space-y-4">
-        <WorkflowClipSourceActions label="demo video" disabled={busy} selectedMode={preview ? selection.mode === "assets" ? "assets" : "upload" : undefined} onUpload={chooseVideo} onChooseAssets={() => setAssetsOpen(true)} />
+        <div className={styles.demoSourceActions}>
+          <Button type="button" variant="outline" data-demo-source="upload" onClick={() => fileInput.current?.click()}><span className={styles.demoSourceIcon} aria-hidden="true"><Upload className="size-5" /></span><span>{preview ? "Replace demo" : "Upload demo"}</span></Button>
+          <Button type="button" variant="outline" onClick={() => setAssetsOpen(true)}><span className={styles.demoSourceIcon} aria-hidden="true"><FolderOpen className="size-5" /></span><span>Creative Assets</span></Button>
+          <input ref={fileInput} type="file" accept="video/mp4,video/quicktime,video/webm" className="sr-only" aria-label="Upload or replace demo video" onChange={event => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; if (file) void chooseVideo(file); }}/>
+        </div>
         {preview ? <div className="flex items-center gap-2"><p className="min-w-0 flex-1 truncate text-xs text-muted" title={preview.name}>{preview.name}</p><Button type="button" size="sm" variant="ghost" onClick={removeDemo}>Remove</Button></div>
           : <p className="text-xs leading-5 text-muted">MP4, MOV or WebM · 1–60 seconds · Up to 100 MB. Uploads appear on the Demo screen.</p>}
         <section className={creation.editGroup} aria-label="Background audio settings">

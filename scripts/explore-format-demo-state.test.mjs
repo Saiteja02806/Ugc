@@ -319,7 +319,8 @@ for (const format of ["hook", "wall_text"]) {
     assert.deepEqual(h.draftSaves[0].editing.text, overlay);
     assert.equal(h.saveRun(), undefined, "Apply edits does not render the publishing file");
     assert.equal(h.input("Selected demo video").props.src, asset(2).url);
-    assert.ok(h.find(n => n.type === "WorkflowClipSourceActions"), "Demo source menu remains available");
+    assert.ok(h.button("Replace demo"), "Sidebar keeps the original replacement control");
+    assert.ok(h.button("Creative Assets"), "Sidebar keeps its separate asset-library control");
     assert.equal(h.find(n => n.props?.["aria-label"] === "Demo trim start"), undefined);
     const restored = harness({ format, storage: h.storage }); restored.render({ opening: output(1) });
     assert.deepEqual(normalize(restored.find(n => n.type === textFields.FormatVideoTextFields).props.editing.text), overlay);
@@ -346,7 +347,7 @@ for (const format of ["hook", "wall_text"]) {
     const h = harness({ format, storage }); h.props.opening = output(1); h.render();
     assert.equal(h.button("Save final video").props.disabled, false);
     const previousDirty = h.dirty;
-    const pending = h.find(n => n.type === "WorkflowClipSourceActions").props.onUpload({ name: "invalid.mp4" });
+    const pending = h.input("Upload or replace demo video").props.onChange({ currentTarget: { files: [{ name: "invalid.mp4" }], value: "invalid.mp4" } });
     h.render(); h.rejectVideoUpload(); await new Promise(setImmediate); h.render();
     assert.ok(h.find(n => n.props?.["aria-label"] === "Selected demo video" && n.props.src === asset(2).url));
     assert.deepEqual(JSON.parse(storage.get(draftKey("owner", format))), stored);
@@ -362,8 +363,8 @@ for (const format of ["hook", "wall_text"]) {
   });
   test(`${format}: a demo can schedule alone, while merging waits for an owned opening`, () => {
     const h = harness({ format }); h.render();
-    assert.equal(h.find(n => n.type === "WorkflowClipSourceActions").props.disabled, false);
-    assert.equal(h.find(n => n.type === "WorkflowClipSourceActions").props.disabled, false);
+    assert.ok(h.button("Upload demo"));
+    assert.ok(h.button("Creative Assets"));
     assert.equal(h.find(node => node.type === "fieldset").props.disabled, false);
     assert.equal(h.button("Save final video").props.disabled, true);
     h.select();

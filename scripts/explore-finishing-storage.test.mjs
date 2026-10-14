@@ -7,6 +7,7 @@ import test from "node:test";
 import { ExploreFinishingStorage } from "../worker/dist/lib/explore-finishing-storage.js";
 import { EXPLORE_RENDER_VERSION, exploreFinishOutputKey } from "../worker/dist/lib/explore-finishing-contract.js";
 import { referenceAudioBaseStorageKey } from "../worker/dist/lib/explore-reference-soundtrack.js";
+import { CRC32C } from "@google-cloud/storage";
 
 const id = "11111111-1111-4111-8111-111111111111", requestKey = "22222222-2222-4222-8222-222222222222";
 const receipt = { user_id: "owner-a", request_key: requestKey, output_asset_id: id, fingerprint: "a".repeat(64), draft: { subtitles: { language: "en" } } };
@@ -20,13 +21,18 @@ function stored(changes = {}) {
 function fixture({ exists = true, metadata = stored(), chunks = [Buffer.from("source-data")], uploadError } = {}) {
   const calls = [];
   const bucket = {
+    name: "offline-media",
     file(name, options) {
       calls.push({ method: "file", name, options });
       return { name, exists: async () => [exists], getMetadata: async () => [metadata], createReadStream: () => Readable.from(chunks) };
     },
     upload: async (path, options) => { calls.push({ method: "upload", path, options }); if (uploadError) throw uploadError; },
   };
-  const storage = new ExploreFinishingStorage({ bucket: name => { assert.equal(name, "offline-media"); return bucket; } });
+  const storage = new ExploreFinishingStorage({ bucket: name => { assert.equal(name, "offline-media"); return bucket; } }, async url => {
+    const request = new URL(url); assert.equal(request.hostname, "storage.googleapis.com"); assert.equal(request.searchParams.get("alt"), "media");
+    assert.equal(request.searchParams.get("generation"), String(metadata.generation));
+    return Readable.from(chunks);
+  });
   return { storage, calls };
 }
 function env(t, changes = {}) {
@@ -142,20 +148,19 @@ test("downloads a bounded generation-pinned snapshot instead of racing a mutable
   const f = fixture({ metadata: { size: "11", generation: "7" } });
   await f.storage.download("owned/source.mp4", destination, 20);
   assert.equal((await readFile(destination)).toString(), "source-data");
-  assert.deepEqual(f.calls.find(call => call.options)?.options, { generation: "7" });
+  assert.equal(f.calls[0].name, "owned/source.mp4");
   await assert.rejects(f.storage.download("owned/source.mp4", destination, 20), error => error.code === "EEXIST");
 });
 
 test("download cancellation destroys the pinned stream instead of waiting for all source bytes", async t => {
   env(t); const dir=await workspace(t), controller=new AbortController();
   let stream, released;
-  const storage=new ExploreFinishingStorage({bucket:()=>({file:(name,options)=>({
+  const storage=new ExploreFinishingStorage({bucket:()=>({name:"offline-media",file:()=>({
     getMetadata:async()=>[{size:"11",generation:"7"}],
-    createReadStream:()=>{
-      assert.equal(options.generation,"7");
-      stream=new Readable({read(){}}); released=true; return stream;
-    },
-  })})});
+  })})}, async url=>{
+    assert.equal(new URL(url).searchParams.get("generation"),"7");
+    stream=new Readable({read(){}}); released=true; return stream;
+  });
   const run=storage.download("owned/source.mp4",join(dir,"cancelled"),20,"primary",controller.signal);
   const rejected=assert.rejects(run,error=>error.name === "AbortError");
   for (let i=0;i<100 && !released;i++) await new Promise(resolve=>setTimeout(resolve,5));
@@ -168,13 +173,13 @@ test("only explicitly private inputs use the private bucket; public inputs and o
   const buckets = [];
   const storage = new ExploreFinishingStorage({ bucket: name => {
     buckets.push(name);
-    return { file: () => ({ exists: async () => [false], getMetadata: async () => [{ size: "3", generation: "9" }],
+    return { name, file: () => ({ exists: async () => [false], getMetadata: async () => [{ size: "3", generation: "9" }],
       createReadStream: () => Readable.from([Buffer.from("mp4")]) }) };
-  } });
+  } }, async ()=>Readable.from([Buffer.from("mp4")]));
   await storage.download("owned/private.mp4", join(directory, "private"), 20, "private_user_media");
-  assert.deepEqual(buckets.splice(0), ["offline-private", "offline-private"]);
+  assert.deepEqual(buckets.splice(0), ["offline-private"]);
   await storage.download("owned/public.mp4", join(directory, "public"), 20);
-  assert.deepEqual(buckets.splice(0), ["offline-media", "offline-media"]);
+  assert.deepEqual(buckets.splice(0), ["offline-media"]);
   assert.equal(await storage.existing(receipt), null);
   assert.deepEqual(buckets.splice(0), ["offline-media"]);
   process.env.GCP_PRIVATE_MEDIA_BUCKET = "offline-media";
@@ -188,4 +193,18 @@ test("unsafe keys, missing generation, over-limit data or changing size fail saf
   for (const metadata of [{ size: "11" }, { size: "21", generation: "7" }, { size: "0", generation: "7" }]) await assert.rejects(fixture({ metadata }).storage.download("owned/source", join(dir, `bad-${n++}`), 20));
   await assert.rejects(fixture({ metadata: { size: "10", generation: "7" } }).storage.download("owned/source", join(dir, `bad-${n++}`), 20), /changed/);
   await assert.rejects(fixture({ metadata: { size: "11", generation: "7" }, chunks: [Buffer.alloc(21)] }).storage.download("owned/source", join(dir, `bad-${n++}`), 20), /size limit/);
+});
+
+test("authenticated streaming validates CRC32C and encoded object identity, and rejects an interrupted stream", async t => {
+  env(t); const dir = await workspace(t), bytes = Buffer.from("source-data"), crc = new CRC32C(); crc.update(bytes);
+  const good = fixture({ metadata: { size: String(bytes.length), generation: "7", crc32c: crc.toString() } });
+  await good.storage.download("owned/name with spaces.mp4", join(dir, "valid"), 20);
+  assert.deepEqual(await readFile(join(dir, "valid")), bytes);
+  await assert.rejects(fixture({ metadata: { size: String(bytes.length), generation: "7", crc32c: "AAAAAA==" } }).storage.download("owned/source", join(dir, "wrong-crc"), 20), /checksum/);
+  const source = new Readable({ read() { this.push(Buffer.from("partial")); this.destroy(new Error("Interrupted media")); } });
+  const storage = new ExploreFinishingStorage({ bucket: () => ({ name: "offline-media", file: () => ({ getMetadata: async () => [{ size: "11", generation: "7" }] }) }) }, async url => {
+    assert.ok(new URL(url).pathname.endsWith("owned%2Fsource")); return source;
+  });
+  await assert.rejects(storage.download("owned/source", join(dir, "interrupted"), 20), /Interrupted media/);
+  assert.equal(source.destroyed, true);
 });

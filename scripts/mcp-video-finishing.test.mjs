@@ -77,7 +77,7 @@ function harness(options = {}) {
     if (!result.isError) tool.config.outputSchema.parse(result.structuredContent);
     return plain(result);
   }
-  return { calls, tools, call, env, receipts, records, accessOff: () => { access = false; } };
+  return { calls, tools, call, env, receipts, records, service, accessOff: () => { access = false; } };
 }
 const input = { request_key: key, draft: { sourceAssetId: source, demoAssetId: demo } };
 const errorCode = result => JSON.parse(result.content[0].text).code;
@@ -99,6 +99,25 @@ test("owned generic hook and demo compose through the real shared service and pr
   assert.equal(h.calls.filter(call => call === "create").length, 1);
   assert.equal(errorCode(await h.call("finish_video", { ...input, draft: { sourceAssetId: source } })), "FINISH_CONFLICT");
   assert.equal(h.calls.filter(call => call === "create").length, 1);
+});
+
+test("new connector subtitles use modern audio preparation while omitted-version replays preserve their receipt", async () => {
+  const options = { env: { EXPLORE_FINISHING_SUBTITLES_ENABLED: "true" } };
+  const h = harness(options), request = { ...input, draft: { sourceAssetId: source, subtitles: { language: "en", style: "serif-box" } } };
+  assert.equal((await h.call("finish_video", request)).isError, undefined);
+  assert.equal(h.receipts.get(`owner-a:${key}`).draft.subtitles.version, 2);
+  const accepted = plain(h.receipts.get(`owner-a:${key}`));
+  await h.call("finish_video", request);
+  assert.deepEqual(plain(h.receipts.get(`owner-a:${key}`)), accepted);
+  assert.equal(h.calls.filter(call => call === "create").length, 1);
+  assert.equal(errorCode(await h.call("finish_video", { ...request, draft: { ...request.draft, subtitles: { ...request.draft.subtitles, placement: "top" } } })), "FINISH_CONFLICT");
+  const legacy = harness(options);
+  await legacy.service.startWorkflowFinishingForOwner("owner-a", key, legacy.tools.get("finish_video").config.inputSchema.parse(request).draft);
+  const before = plain(legacy.receipts.get(`owner-a:${key}`));
+  assert.equal(before.draft.subtitles.version, undefined);
+  assert.equal((await legacy.call("finish_video", request)).isError, undefined);
+  assert.deepEqual(plain(legacy.receipts.get(`owner-a:${key}`)), before);
+  assert.equal(errorCode(await legacy.call("finish_video", { ...request, draft: { ...request.draft, subtitles: { ...request.draft.subtitles, version: 2 } } })), "FINISH_CONFLICT");
 });
 
 test("old generation permission cannot authorize finishing, and rollout/access failures never write", async () => {

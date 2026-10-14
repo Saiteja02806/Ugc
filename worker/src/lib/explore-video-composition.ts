@@ -174,6 +174,8 @@ export async function composeExploreVideo(options: {
   subtitleScope?: { language: unknown };
   /** Decode/mix audio only for caption review. No video frames are encoded. */
   audioOnly?: boolean;
+  /** Internal modern export: ASS/fonts live in the sibling subtitles directory. */
+  burnSubtitles?: boolean;
   signal?: AbortSignal;
 }, formatEdit?: { editing: ExploreFormatEdit; fontsDir: string }) {
   options.signal?.throwIfAborted();
@@ -203,13 +205,14 @@ export async function composeExploreVideo(options: {
   // complete sequence duration, not the length of the generated opening alone.
   if (options.subtitleScope) assertExploreSubtitleScope(options.subtitleScope.language, measuredDurationMs);
   if (options.audioOnly && (!options.subtitleScope || formatEdit)) throw new SubtitleError("COMPOSITION_INPUT_INVALID", "Audio preparation requires an untrimmed subtitle sequence.");
+  if (options.burnSubtitles && (!options.subtitleScope || options.audioOnly || formatEdit)) throw new SubtitleError("COMPOSITION_INPUT_INVALID", "Subtitle burning requires a prepared modern video sequence.");
   // Even a speech-only request validates the recorded video crop before it can
   // make a paid claim. Its later export must be renderable as selected.
   if (options.audioOnly) buildExploreCompositionFilter(videos, undefined, { demoFraming, sourceFraming });
   // Validate framing BEFORE any output or later paid transcription is created.
   let filter = buildExploreCompositionFilter(videos, demoAudio ? { ...demoAudio, playback: options.demoAudioPlayback, volume: options.demoAudioVolume } : undefined, {
     backgroundMusic: backgroundMusic ? { ...backgroundMusic, inputIndex: videos.length + (demoAudio ? 1 : 0), playback: options.backgroundMusicPlayback, volume: options.musicVolume } : undefined,
-    subtitleAudio: Boolean(options.subtitleScope) && !options.audioOnly, audioOnly: options.audioOnly, demoFraming, sourceFraming, originalVolume: options.originalVolume, sourceOriginalVolume: options.sourceOriginalVolume, demoOriginalVolume: options.demoOriginalVolume,
+    subtitleAudio: Boolean(options.subtitleScope) && !options.audioOnly && !options.burnSubtitles, audioOnly: options.audioOnly, demoFraming, sourceFraming, originalVolume: options.originalVolume, sourceOriginalVolume: options.sourceOriginalVolume, demoOriginalVolume: options.demoOriginalVolume,
   });
   options.signal?.throwIfAborted();
   const paths = [options.sourcePath, options.demoPath, options.demoAudioPath, options.backgroundMusicPath].filter((path): path is string => Boolean(path));
@@ -239,6 +242,7 @@ export async function composeExploreVideo(options: {
     tools: { ...options.tools, fontsDir: formatEdit.fontsDir }, sourceVideo: "formatSourceVideo", sourceAudio: "formatSourceAudio", firstImageInputIndex: paths.length,
   }) : null;
   if (formatFilter) filter = `${filter.replaceAll("[video]", "[formatSourceVideo]").replaceAll("[audio]", "[formatSourceAudio]")};${formatFilter.filter}`;
+  if (options.burnSubtitles) filter = `${filter.replaceAll("[video]", "[captionSource]")};[captionSource]ass=../subtitles/captions.ass:fontsdir=../subtitles/fonts[video]`;
   const args = ["-nostdin", "-hide_banner", "-loglevel", "error", "-n"];
   for (const [index] of paths.entries()) args.push("-protocol_whitelist", "file,pipe", "-i", `input-${index}`);
   for (const file of formatFilter?.captionImages ?? []) args.push("-loop", "1", "-framerate", "30", "-i", file);
@@ -250,9 +254,10 @@ export async function composeExploreVideo(options: {
   } else args.push("-filter_complex", filter);
   if (options.audioOnly) args.push("-map", "[audio]", "-vn", "-t", String(measuredDurationMs / 1000), "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", "speech.wav");
   else args.push("-map", formatFilter ? "[v]" : "[video]", "-map", formatFilter ? "[a]" : "[audio]", "-t", String(targetDurationMs / 1000),
-    "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-ar", "48000", "-ac", "2", "-movflags", "+faststart", "composed.mp4");
-  if (options.subtitleScope && !options.audioOnly) args.push("-map", "[speech]", "-vn", "-t", String(measuredDurationMs / 1000), "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", "speech.wav");
-  await runMediaCommand(options.tools.ffmpeg, args, { cwd: workDir, signal: options.signal, timeoutMs: 180_000 });
+    "-c:v", "libx264", "-preset", "veryfast", "-crf", options.burnSubtitles ? "20" : "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-ar", "48000", "-ac", "2", "-movflags", "+faststart", "composed.mp4");
+  if (options.subtitleScope && !options.audioOnly && !options.burnSubtitles) args.push("-map", "[speech]", "-vn", "-t", String(measuredDurationMs / 1000), "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", "speech.wav");
+  const rendered = await runMediaCommand(options.tools.ffmpeg, args, { cwd: workDir, signal: options.signal, timeoutMs: 180_000 });
+  if (options.burnSubtitles && /Glyph.*not found|failed to find.*glyph|fontselect: failed/iu.test(rendered.stderr)) throw new SubtitleError("FONT_UNAVAILABLE", "The selected fonts cannot render this transcript language.");
   if (options.audioOnly) return { outputPath: join(workDir, "speech.wav"), subtitleAudioPath: join(workDir, "speech.wav"), durationMs: measuredDurationMs, measuredDurationMs,
     width: videos[0].width, height: videos[0].height, sourceHashes, segments: videos.map((video, index) => ({ kind: index === 0 ? "opening" as const : "demo" as const, durationMs: video.durationMs, hasOriginalAudio: video.audioIndex !== null })),
     hasDemoBackgroundAudio: Boolean(demoAudio), hasBackgroundMusic: Boolean(backgroundMusic), demoAudioTiming, backgroundMusicTiming };
@@ -273,5 +278,5 @@ export async function composeExploreVideo(options: {
     segments: videos.map((video, index) => ({ kind: index === 0 ? "opening" as const : "demo" as const, durationMs: video.durationMs, hasOriginalAudio: video.audioIndex !== null })),
     hasDemoBackgroundAudio: Boolean(demoAudio), hasBackgroundMusic: Boolean(backgroundMusic),
     demoAudioTiming, backgroundMusicTiming,
-    subtitleAudioPath: options.subtitleScope ? join(workDir, "speech.wav") : null };
+    subtitleAudioPath: options.subtitleScope && !options.burnSubtitles ? join(workDir, "speech.wav") : null };
 }

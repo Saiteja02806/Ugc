@@ -14,7 +14,7 @@
 }
 
 /* The preview may use the full workspace; precise editing controls should not. */
-.controlGrid {
+.editorRoot .controlGrid {
   display: grid;
   width: min(100%, 760px);
   min-width: 0;
@@ -24,9 +24,9 @@
   gap: 16px;
 }
 
-.controlGrid > .textControlSection,
-.controlGrid > .utilityControlSection,
-.controlGrid > [data-editor-section="trim"] {
+.editorRoot .controlGrid > .textControlSection,
+.editorRoot .controlGrid > .utilityControlSection,
+.editorRoot .controlGrid > [data-editor-section="trim"] {
   grid-column: auto;
   grid-row: auto;
   min-width: 0;
